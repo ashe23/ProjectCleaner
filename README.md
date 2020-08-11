@@ -9,4 +9,4 @@ Versions: 4.25
 1) Create Plugins Folder in your project root directory
 2) Download .zip file and extract to Plugins folder.
 3) Open Project, it will ask to rebuild project.
-4) Wait until building succeeded and your Done!
+4) Wait until building succeeded and you are Done!
