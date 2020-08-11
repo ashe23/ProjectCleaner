@@ -1,0 +1,24 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0",
+	"FriendlyName": "ProjectCleaner",
+	"Description": "Simple UE4 plugin for deleting all unused assets in project.",
+	"Category": "Other",
+	"CreatedBy": "Ashot Barkhudaryan",
+	"CreatedByURL": "",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "",
+	"CanContainContent": false,
+	"IsBetaVersion": false,
+	"IsExperimentalVersion": false,
+	"Installed": false,
+	"Modules": [
+		{
+			"Name": "ProjectCleaner",
+			"Type": "Editor",
+			"LoadingPhase": "Default"
+		}
+	]
+}
