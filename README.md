@@ -4,6 +4,7 @@ Simple UE4 plugin for deleting all unused assets in project.
 No more Migration and other hacky methods needed.
 
 Versions Supported: 4.25 , 4.23
+Platform: Windows
 
 ## Caution: In large projects it may take some time to locate and delete assets!
 
