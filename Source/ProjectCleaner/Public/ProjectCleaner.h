@@ -1,4 +1,4 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 
@@ -21,12 +21,14 @@ public:
 	
 private:
 
-	void RegisterMenus();
+	void AddToolbarExtension(FToolBarBuilder& Builder);
+	void AddMenuExtension(FMenuBuilder& Builder);
 
 	void GetAllDependencies(const struct FARFilter& InAssetRegistryFilter, const class IAssetRegistry& AssetRegistry, TSet<FName>& OutDependencySet);
 #if WITH_EDITOR
 	int32 DeleteUnusedAssets(TArray<FAssetData>& AssetsToDelete);
 #endif
+
 private:
 	TSharedPtr<class FUICommandList> PluginCommands;
 };

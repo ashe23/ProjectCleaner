@@ -1,4 +1,4 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 using UnrealBuildTool;
 
@@ -37,7 +37,7 @@ public class ProjectCleaner : ModuleRules
 				"Projects",
 				"InputCore",
 				"UnrealEd",
-				"ToolMenus",
+				"LevelEditor",
 				"CoreUObject",
 				"Engine",
 				"Slate",

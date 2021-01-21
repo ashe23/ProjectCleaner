@@ -1,4 +1,4 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 #include "ProjectCleanerCommands.h"
 
@@ -6,7 +6,7 @@
 
 void FProjectCleanerCommands::RegisterCommands()
 {
-	UI_COMMAND(PluginAction, "ProjectCleaner", "Delete All unused assets.", EUserInterfaceActionType::Button, FInputGesture());
+	UI_COMMAND(PluginAction, "ProjectCleaner", "Execute ProjectCleaner action", EUserInterfaceActionType::Button, FInputGesture());
 }
 
 #undef LOCTEXT_NAMESPACE
