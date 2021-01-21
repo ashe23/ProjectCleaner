@@ -25,38 +25,47 @@ static const FName ProjectCleanerTabName("ProjectCleaner");
 void FProjectCleanerModule::StartupModule()
 {
 	// This code will execute after your module is loaded into memory; the exact timing is specified in the .uplugin file per-module
-	
+
 	FProjectCleanerStyle::Initialize();
 	FProjectCleanerStyle::ReloadTextures();
 
 	FProjectCleanerCommands::Register();
-	
+
 	PluginCommands = MakeShareable(new FUICommandList);
 
 	PluginCommands->MapAction(
 		FProjectCleanerCommands::Get().PluginAction,
 		FExecuteAction::CreateRaw(this, &FProjectCleanerModule::PluginButtonClicked),
 		FCanExecuteAction());
-		
+
 	FLevelEditorModule& LevelEditorModule = FModuleManager::LoadModuleChecked<FLevelEditorModule>("LevelEditor");
-	
+
 	{
 		TSharedPtr<FExtender> MenuExtender = MakeShareable(new FExtender());
-		MenuExtender->AddMenuExtension("WindowLayout", EExtensionHook::After, PluginCommands, FMenuExtensionDelegate::CreateRaw(this, &FProjectCleanerModule::AddMenuExtension));
+		MenuExtender->AddMenuExtension("WindowLayout", EExtensionHook::After, PluginCommands,
+		                               FMenuExtensionDelegate::CreateRaw(
+			                               this, &FProjectCleanerModule::AddMenuExtension));
 
 		LevelEditorModule.GetMenuExtensibilityManager()->AddExtender(MenuExtender);
 	}
-	
+
 	{
 		TSharedPtr<FExtender> ToolbarExtender = MakeShareable(new FExtender);
-		ToolbarExtender->AddToolBarExtension("Settings", EExtensionHook::After, PluginCommands, FToolBarExtensionDelegate::CreateRaw(this, &FProjectCleanerModule::AddToolbarExtension));
-		
+		ToolbarExtender->AddToolBarExtension("Settings", EExtensionHook::After, PluginCommands,
+		                                     FToolBarExtensionDelegate::CreateRaw(
+			                                     this, &FProjectCleanerModule::AddToolbarExtension));
+
 		LevelEditorModule.GetToolBarExtensibilityManager()->AddExtender(ToolbarExtender);
 	}
-	
-	FGlobalTabmanager::Get()->RegisterNomadTabSpawner(ProjectCleanerTabName, FOnSpawnTab::CreateRaw(this, &FProjectCleanerModule::OnSpawnPluginTab))
-    .SetDisplayName(LOCTEXT("FProjectCleanerTabTitle", "ProjectCleaner"))
-    .SetMenuType(ETabSpawnerMenuType::Hidden);
+
+	FGlobalTabmanager::Get()->RegisterNomadTabSpawner(ProjectCleanerTabName,
+	                                                  FOnSpawnTab::CreateRaw(
+		                                                  this, &FProjectCleanerModule::OnSpawnPluginTab))
+	                        .SetDisplayName(LOCTEXT("FProjectCleanerTabTitle", "ProjectCleaner"))
+	                        .SetMenuType(ETabSpawnerMenuType::Hidden);
+
+	UnusedAssets.Reserve(100);
+	EmptyFolders.Reserve(50);
 }
 
 void FProjectCleanerModule::ShutdownModule()
@@ -68,71 +77,14 @@ void FProjectCleanerModule::ShutdownModule()
 	FProjectCleanerCommands::Unregister();
 
 	FGlobalTabmanager::Get()->UnregisterNomadTabSpawner(ProjectCleanerTabName);
+
+	UnusedAssets.Empty();
+	EmptyFolders.Empty();
 }
 
 void FProjectCleanerModule::PluginButtonClicked()
 {
 	FGlobalTabmanager::Get()->InvokeTab(ProjectCleanerTabName);
-	// FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
-	//
-	// TArray<FAssetData> AllGameAssets;
-	// FindAllGameAssets(AllGameAssets);
-	// RemoveLevelAssets(AllGameAssets);
-	//
-	//
-	// // Finding all assets and their dependencies that used in levels
-	// TSet<FName> LevelsDependencies;
-	// FARFilter Filter;
-	// Filter.ClassNames.Add(UWorld::StaticClass()->GetFName());
-	// this->GetAllDependencies(Filter, AssetRegistryModule.Get(), LevelsDependencies);
-	//
-	// // Removing all assets that are used in any level
-	// AllGameAssets.RemoveAll([&](const FAssetData& Val) {
-	// 	return LevelsDependencies.Contains(Val.PackageName);
-	// });
-	//
-	// TArray<FName> DirectoriesToDelete;
-	//
-	// for (const auto& Asset : AllGameAssets)
-	// {
-	// 	DirectoriesToDelete.AddUnique(Asset.PackagePath);
-	// }
-	//
-	// for(const auto& Directory : DirectoriesToDelete)
-	// {
-	// 	UE_LOG(LogTemp, Warning, TEXT("%s"), *Directory.ToString());
-	// }
-	//
-	// UE_LOG(LogTemp, Warning, TEXT("Directories Num: %d"), DirectoriesToDelete.Num());
-	// UE_LOG(LogTemp, Warning, TEXT("Assets Num: %d"), AllGameAssets.Num());
-	//
-	//
-	// // excluding Build_data and Level assets
-	// // AllGameAssets.RemoveAll([](FAssetData Val) {
-	// // 	return Val.AssetName.ToString().Contains("_BuiltData") || Val.AssetClass == UWorld::StaticClass()->GetFName();
-	// // });
-	// //
-	// //
-	// //
-	// //
-	// FText DialogText;
-	// if (AllGameAssets.Num() == 0)
-	// {
-	// 	DialogText = FText::FromString(FString{ "No assets to delete!" });
-	// }
-	// else
-	// {
-	// 	const int32 DeletedAssetNum = this->DeleteUnusedAssets(AllGameAssets);
-	// 	this->DeleteEmptyFolder(DirectoriesToDelete);
-	// 	
-	//
-	// 	DialogText = FText::Format(
-	// 		LOCTEXT("PluginButtonDialogText", "Deleted {0} assets."),
-	// 		DeletedAssetNum
-	// 	);
-	// }
-	//
-	// FMessageDialog::Open(EAppMsgType::Ok, DialogText);
 }
 
 void FProjectCleanerModule::AddMenuExtension(FMenuBuilder& Builder)
@@ -140,7 +92,8 @@ void FProjectCleanerModule::AddMenuExtension(FMenuBuilder& Builder)
 	Builder.AddMenuEntry(FProjectCleanerCommands::Get().PluginAction);
 }
 
-void FProjectCleanerModule::GetAllDependencies(const FARFilter & InAssetRegistryFilter, const IAssetRegistry & AssetRegistry, TSet<FName>& OutDependencySet)
+void FProjectCleanerModule::GetAllDependencies(const FARFilter& InAssetRegistryFilter,
+                                               const IAssetRegistry& AssetRegistry, TSet<FName>& OutDependencySet)
 {
 	TArray<FName> PackageNamesToProcess;
 	{
@@ -173,7 +126,7 @@ void FProjectCleanerModule::GetAllDependencies(const FARFilter & InAssetRegistry
 
 // #if WITH_EDITOR
 int32 FProjectCleanerModule::DeleteUnusedAssets(TArray<FAssetData>& AssetsToDelete)
-{	
+{
 	if (AssetsToDelete.Num() > 0)
 	{
 		return ObjectTools::DeleteAssets(AssetsToDelete);
@@ -181,6 +134,7 @@ int32 FProjectCleanerModule::DeleteUnusedAssets(TArray<FAssetData>& AssetsToDele
 
 	return 0;
 }
+
 // #endif
 
 void FProjectCleanerModule::AddToolbarExtension(FToolBarBuilder& Builder)
@@ -191,12 +145,13 @@ void FProjectCleanerModule::AddToolbarExtension(FToolBarBuilder& Builder)
 void FProjectCleanerModule::FindAllGameAssets(TArray<FAssetData>& GameAssetsContainer) const
 {
 	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
-	AssetRegistryModule.Get().GetAssetsByPath(FName{ "/Game" }, GameAssetsContainer, true);
+	AssetRegistryModule.Get().GetAssetsByPath(FName{"/Game"}, GameAssetsContainer, true);
 }
 
 void FProjectCleanerModule::RemoveLevelAssets(TArray<FAssetData>& GameAssetsContainer) const
 {
-	GameAssetsContainer.RemoveAll([](FAssetData Val) {
+	GameAssetsContainer.RemoveAll([](FAssetData Val)
+	{
 		return Val.AssetName.ToString().Contains("_BuiltData") || Val.AssetClass == UWorld::StaticClass()->GetFName();
 	});
 }
@@ -204,108 +159,213 @@ void FProjectCleanerModule::RemoveLevelAssets(TArray<FAssetData>& GameAssetsCont
 
 void FProjectCleanerModule::DeleteEmptyFolder(const TArray<FName>& DirectoriesToDelete)
 {
-	for(const auto& Directory : DirectoriesToDelete)
+	for (const auto& Directory : DirectoriesToDelete)
 	{
 		FString Dir = Directory.ToString();
 		Dir.RemoveFromStart(TEXT("/Game/"));
-		
-		const FString DirectoryPath = FPaths::ProjectContentDir() + Dir;		
-		IFileManager::Get().DeleteDirectory(*DirectoryPath, false);		
-	}	
+
+		const FString DirectoryPath = FPaths::ProjectContentDir() + Dir;
+		IFileManager::Get().DeleteDirectory(*DirectoryPath, false);
+	}
 }
 
 
 TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs)
 {
-	FText WidgetText = FText::Format(
-        LOCTEXT("WindowWidgetText", "Add code to {0} in {1} to override this window's contents"),
-        FText::FromString(TEXT("FTestPluginModule::OnSpawnPluginTab")),
-        FText::FromString(TEXT("TestPlugin.cpp"))
-        );
+	int32 UnusedAssetsCount = FindUnusedAssets();
+	int64 UnusedAssetsSize = FindUnusedAssetsFileSize();
+	int32 EmptyFoldersCount = FindEmptyFolders();
 
 	return SNew(SDockTab)
-        .TabRole(ETabRole::NomadTab)
-        [
-            // Put your tab content here!
-            SNew(SBorder)
+		.TabRole(ETabRole::NomadTab)
+		[
+			// Put your tab content here!
+			SNew(SBorder)
             .HAlign(HAlign_Center)
             .Padding(25)
-            // .VAlign(VAlign_Center)
-            [
+			// .VAlign(VAlign_Center)
+			[
 				SNew(SVerticalBox)
 				+ SVerticalBox::Slot()
-				.AutoHeight()
-				.HAlign(HAlign_Fill)
-				.VAlign(VAlign_Fill)
-				.Padding(50)
+				  .AutoHeight()
+				  .HAlign(HAlign_Fill)
+				  .VAlign(VAlign_Fill)
+				  .Padding(20)
 				[
-					SNew(SHorizontalBox)					
+					SNew(SHorizontalBox)
 					+ SHorizontalBox::Slot()
-					.AutoWidth()					
+					.AutoWidth()
 					[
 						SNew(SButton)
 						.Text(FText::FromString(TEXT("Delete Unused Assets")))
 						.HAlign(HAlign_Left)
+						.OnClicked_Raw(this, &FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick)
 					]
 					+ SHorizontalBox::Slot()
 					.AutoWidth()
 					[
 						SNew(SButton)
-	                    .Text(FText::FromString(TEXT("Organize Project")))
+	                    .Text(FText::FromString(TEXT("Delete Empty Folders")))
 	                    .HAlign(HAlign_Left)
-	                    .OnClicked_Raw(this, &FProjectCleanerModule::OnProjectOrganizeBtnClick)
+	                    .OnClicked_Raw(this, &FProjectCleanerModule::OnDeleteEmptyFolderClick)
 					]
 				]
 				+ SVerticalBox::Slot()
-				.HAlign(HAlign_Center)
-				.AutoHeight()
+				  .HAlign(HAlign_Center)
+				  .AutoHeight()
 				[
 					SNew(SHorizontalBox)
 					+ SHorizontalBox::Slot()
-	                .AutoWidth()
-	                [
-	                    SNew(STextBlock)
+					.AutoWidth()
+					[
+						SNew(STextBlock)
 	                    .AutoWrapText(true)
-	                    .Text(LOCTEXT("Unused Assets:", "999"))
-	                ]               
+	                    .Text(LOCTEXT("Unused Assets:", "Unused Assets:"))
+					]
+					+ SHorizontalBox::Slot()
+					.AutoWidth()
+					[
+						SNew(STextBlock)
+						.AutoWrapText(true)
+						.Text(FText::AsNumber(UnusedAssetsCount))
+					]
 				]
 				+ SVerticalBox::Slot()
-                .HAlign(HAlign_Center)
-                .AutoHeight()
-                [
-                    SNew(SHorizontalBox)
-                    + SHorizontalBox::Slot()
-                    .AutoWidth()
-                    [
-                        SNew(STextBlock)
+				  .HAlign(HAlign_Center)
+				  .AutoHeight()
+				[
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot()
+					.AutoWidth()
+					[
+						SNew(STextBlock)
+	                    .AutoWrapText(true)
+	                    .Text(LOCTEXT("Unused Assets Size:", "Unused Assets Size:"))
+					]
+					+ SHorizontalBox::Slot()
+					.AutoWidth()
+					[
+						SNew(STextBlock)
+	                    .AutoWrapText(true)
+	                    .Text(FText::AsNumber(UnusedAssetsSize))
+					]
+				]
+				+ SVerticalBox::Slot()
+				  .HAlign(HAlign_Center)
+				  .AutoHeight()
+				[
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot()
+					.AutoWidth()
+					[
+						SNew(STextBlock)
                         .AutoWrapText(true)
-                        .Text(LOCTEXT("Empty Folders:", "9"))
-                    ]               
-                ]
-                + SVerticalBox::Slot()
-                .HAlign(HAlign_Center)
-                .AutoHeight()
-                [
-                    SNew(SHorizontalBox)
-                    + SHorizontalBox::Slot()
-                    .AutoWidth()
-                    [
-                        SNew(STextBlock)
+                        .Text(LOCTEXT("Empty Folders:", "Empty Folders:"))
+					]
+					+ SHorizontalBox::Slot()
+					.AutoWidth()
+					[
+						SNew(STextBlock)
                         .AutoWrapText(true)
-                        .Text(LOCTEXT("Unused Assets Size:", "9.9 MB"))
-                    ]               
-                ]
-            ]
-        ];
+                        .Text(FText::AsNumber(EmptyFoldersCount))
+					]
+				]
+			]
+		];
 }
 
 
-FReply FProjectCleanerModule::OnProjectOrganizeBtnClick()
+FReply FProjectCleanerModule::OnDeleteEmptyFolderClick()
 {
-	UE_LOG(LogTemp, Warning, TEXT("PRojectOrganzieBtnClicked!"));
+	// todo:ashe23 change scanning methods
+	UE_LOG(LogTemp, Warning, TEXT("Remove empty folders!"));
+	const FString DirectoryPath = FPaths::ProjectContentDir() + TEXT("/NewFolder");
+	IFileManager::Get().DeleteDirectory(*DirectoryPath, false);
+
 	return FReply::Handled();
 }
+
+FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
+{
+	FText DialogText;
+	if (UnusedAssets.Num() == 0)
+	{
+		DialogText = FText::FromString(FString{"No assets to delete!"});
+	}
+	else
+	{
+		const int32 DeletedAssetNum = this->DeleteUnusedAssets(UnusedAssets);
+
+		DialogText = FText::Format(
+			LOCTEXT("PluginButtonDialogText", "Deleted {0} assets."),
+			DeletedAssetNum
+		);
+	}
+
+	FMessageDialog::Open(EAppMsgType::Ok, DialogText);
+
+	// todo:ashe23 update window info after deletion
+
+	return FReply::Handled();
+}
+
+
+int32 FProjectCleanerModule::FindUnusedAssets()
+{
+	// todo:ashe23 i think this is hacky method, but for now it will work fine
+	UnusedAssets.Empty();
+	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
+
+	FindAllGameAssets(UnusedAssets);
+	RemoveLevelAssets(UnusedAssets);
+
+
+	// Finding all assets and their dependencies that used in levels
+	TSet<FName> LevelsDependencies;
+	FARFilter Filter;
+	Filter.ClassNames.Add(UWorld::StaticClass()->GetFName());
+	this->GetAllDependencies(Filter, AssetRegistryModule.Get(), LevelsDependencies);
+
+	// Removing all assets that are used in any level
+	UnusedAssets.RemoveAll([&](const FAssetData& Val)
+	{
+		return LevelsDependencies.Contains(Val.PackageName);
+	});
+
+	return UnusedAssets.Num();
+}
+
+int32 FProjectCleanerModule::FindEmptyFolders()
+{
+	EmptyFolders.Empty();
+	for (const auto& Asset : UnusedAssets)
+	{
+		const int32 IsRoot = Asset.PackagePath.Compare("/Game");
+		if (IsRoot != 0)
+		{
+			EmptyFolders.AddUnique(Asset.PackagePath);
+		}
+	}
+
+	return EmptyFolders.Num();
+}
+
+int64 FProjectCleanerModule::FindUnusedAssetsFileSize()
+{
+	int64 Size = 0;
+	for (const auto& Asset : UnusedAssets)
+	{
+		FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>(
+			"AssetRegistry");
+		const auto AssetPackageData = AssetRegistryModule.Get().GetAssetPackageData(Asset.PackageName);
+		if (!AssetPackageData) continue;
+		Size += AssetPackageData->DiskSize;
+	}
+
+	return Size;
+}
+
 #pragma optimize("", on)
 #undef LOCTEXT_NAMESPACE
-	
+
 IMPLEMENT_MODULE(FProjectCleanerModule, ProjectCleaner)

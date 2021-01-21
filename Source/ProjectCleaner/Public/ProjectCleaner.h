@@ -28,6 +28,9 @@ private:
 
 	// Finding all assets in "Game" Root directory of project
 	void FindAllGameAssets(TArray<FAssetData>& GameAssetsContainer) const;
+	int32 FindUnusedAssets();
+	int32 FindEmptyFolders();
+	int64 FindUnusedAssetsFileSize();
 	// Excluding Build_data and Level assets
 	void RemoveLevelAssets(TArray<FAssetData>& GameAssetsContainer) const;
 	void GetAllDependencies(const struct FARFilter& InAssetRegistryFilter, const class IAssetRegistry& AssetRegistry, TSet<FName>& OutDependencySet);
@@ -38,8 +41,12 @@ private:
 
 private:
 	// Button events
-	FReply OnProjectOrganizeBtnClick();
+	FReply OnDeleteEmptyFolderClick();
+	FReply OnDeleteUnusedAssetsBtnClick();
 private:
 	TSharedRef<class SDockTab> OnSpawnPluginTab(const class FSpawnTabArgs& SpawnTabArgs);
 	TSharedPtr<class FUICommandList> PluginCommands;
+	TArray<FAssetData> UnusedAssets;
+	TArray<FName> EmptyFolders;
 };
+
