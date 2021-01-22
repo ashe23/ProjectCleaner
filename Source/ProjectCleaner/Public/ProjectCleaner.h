@@ -30,7 +30,13 @@ private:
 	void FindAllGameAssets(TArray<FAssetData>& GameAssetsContainer) const;
 	int32 FindUnusedAssets();
 	int32 FindEmptyFolders();
+	void FindEmptyFolderRecursive(const FString Path, bool bRootPath);
+	void FindEmptyFolderRecursive2(const FString Path, bool bRootPath);
+	void RemoveDevAndCollectionFolders(TArray<FString>& Directories);
 	int64 FindUnusedAssetsFileSize();
+	bool HasFiles(const FString& Dir) const;
+	bool IsEmptyFolder(const FString& Dir) const;
+	void GetChildFolders(const FString& Path, TArray<FString>& Output) const;
 	// Excluding Build_data and Level assets
 	void RemoveLevelAssets(TArray<FAssetData>& GameAssetsContainer) const;
 	void GetAllDependencies(const struct FARFilter& InAssetRegistryFilter, const class IAssetRegistry& AssetRegistry, TSet<FName>& OutDependencySet);
@@ -49,4 +55,5 @@ private:
 	TArray<FAssetData> UnusedAssets;
 	TArray<FName> EmptyFolders;
 };
+
 

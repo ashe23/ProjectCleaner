@@ -15,6 +15,7 @@
 #include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "ObjectTools.h"
 #include "AssetRegistry/Public/AssetData.h"
+#include "GenericPlatform/GenericPlatformFile.h"
 
 static const FName ProjectCleanerTabName("ProjectCleaner");
 
@@ -277,10 +278,14 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 
 FReply FProjectCleanerModule::OnDeleteEmptyFolderClick()
 {
-	// todo:ashe23 change scanning methods
-	UE_LOG(LogTemp, Warning, TEXT("Remove empty folders!"));
-	const FString DirectoryPath = FPaths::ProjectContentDir() + TEXT("/NewFolder");
-	IFileManager::Get().DeleteDirectory(*DirectoryPath, false);
+	if (EmptyFolders.Num() == 0) return FReply::Handled();
+
+	for (const auto& EmptyFolder : EmptyFolders)
+	{
+		IFileManager::Get().DeleteDirectory(*EmptyFolder.ToString(), false, true);
+	}
+
+	// todo:ashe23 add message after deletion , or no empty folders found
 
 	return FReply::Handled();
 }
@@ -338,16 +343,138 @@ int32 FProjectCleanerModule::FindUnusedAssets()
 int32 FProjectCleanerModule::FindEmptyFolders()
 {
 	EmptyFolders.Empty();
-	for (const auto& Asset : UnusedAssets)
-	{
-		const int32 IsRoot = Asset.PackagePath.Compare("/Game");
-		if (IsRoot != 0)
-		{
-			EmptyFolders.AddUnique(Asset.PackagePath);
-		}
-	}
+
+	// scan all folders
+	auto ProjectRoot = FPaths::ProjectContentDir();
+	ProjectRoot.RemoveFromEnd(TEXT("/"));
+	FindEmptyFolderRecursive2(ProjectRoot, true);
+
+	// TArray<FString> Directories;
+	// IFileManager::Get().FindFiles(Directories, *(ProjectRoot / TEXT("*")), false, true);
+	//
+	// Directories.RemoveAll([&](const FString& Val)
+	// {
+	// 	return Val.Contains("Developers") || Val.Contains("Collections");
+	// });
+
+	// for(const auto& Dir : Directories)
+	// {
+	// 	TArray<FString> ChildDirs;
+	// 	const auto Path = ProjectRoot + Dir + TEXT("/*");
+	// 	GetChildFolders(Path, ChildDirs);
+	//
+	//
+	// 	
+	// 	
+	// 	// if(IsEmptyFolder(Path))
+	// 	// {
+	// 	// 	EmptyFolders.Add(FName(*Path));
+	// 	// }
+	// 	
+	// }
+
+	// const auto Dir = FPaths::ProjectContentDir() + FString{TEXT("aaa")};
+	// const auto Exists = FPaths::DirectoryExists(Dir);
+	// TArray<FString> Files;
+	// IFileManager::Get().FindFiles(Files, *Dir,nullptr);
+	// int32 Size = Files.Num();
+
+
+	// for (const auto& Asset : UnusedAssets)
+	// {
+	// 	const int32 IsRoot = Asset.PackagePath.Compare("/Game");
+	// 	if (IsRoot != 0)
+	// 	{
+	// 		EmptyFolders.AddUnique(Asset.PackagePath);
+	// 	}
+	// }
 
 	return EmptyFolders.Num();
+}
+
+void FProjectCleanerModule::FindEmptyFolderRecursive(const FString Path, bool bRootPath)
+{
+	auto Dir = Path / TEXT("*");
+
+	if (IsEmptyFolder(Dir) && !bRootPath)
+	{
+		EmptyFolders.Add(FName(*Path));
+		return;
+	}
+
+	TArray<FString> ChildDirectories;
+	GetChildFolders(Dir, ChildDirectories);
+	if (bRootPath)
+	{
+		RemoveDevAndCollectionFolders(ChildDirectories);
+	}
+
+	// if all child folders are empty add parent to empty folders
+	if (ChildDirectories.Num() == 0)
+	{
+		return;
+	}
+
+	if(!bRootPath)
+	{
+		bool AllChildsHasEmptyDirectories = true;
+		for (const auto& ChildDir : ChildDirectories)
+		{
+			const auto ChildPath = Path + TEXT("/") + ChildDir + TEXT("/*");
+			const bool IsEmpty = IsEmptyFolder(ChildPath);
+			if (!IsEmpty)
+			{
+				AllChildsHasEmptyDirectories = false;
+				break;
+			}
+		}
+
+		if (AllChildsHasEmptyDirectories)
+		{
+			EmptyFolders.Add(FName(*Path));
+			return;
+		}		
+	}
+
+	Dir.RemoveFromEnd("*");
+	for (const auto& ChildDir : ChildDirectories)
+	{
+		Dir = Path + TEXT("/") + ChildDir;
+		FindEmptyFolderRecursive(Dir, false);
+	}
+
+
+	UE_LOG(LogTemp, Warning, TEXT("a"));
+}
+
+void FProjectCleanerModule::FindEmptyFolderRecursive2(const FString Path, bool bRootPath)
+{
+	auto Dir = Path / TEXT("*");
+	TArray<FString> Folders;
+	GetChildFolders(Dir, Folders);
+	if(bRootPath)
+	{
+		RemoveDevAndCollectionFolders(Folders);
+	}
+	
+
+	if(Folders.Num() == 0)
+	{
+		EmptyFolders.Add(FName(*Path));
+	}
+
+	for(const auto& Folder : Folders)
+	{
+		FindEmptyFolderRecursive2(Path + TEXT("/") + Folder, false);
+	}
+}
+
+void FProjectCleanerModule::RemoveDevAndCollectionFolders(TArray<FString>& Directories)
+{
+	Directories.RemoveAll([&](const FString& Val)
+	{
+		return Val.Contains("Developers") || Val.Contains("Collections");
+	});
 }
 
 int64 FProjectCleanerModule::FindUnusedAssetsFileSize()
@@ -364,6 +491,28 @@ int64 FProjectCleanerModule::FindUnusedAssetsFileSize()
 
 	return Size;
 }
+
+bool FProjectCleanerModule::HasFiles(const FString& Dir) const
+{
+	TArray<FString> Directories;
+	IFileManager::Get().FindFiles(Directories, *Dir, true, false);
+
+	return Directories.Num() == 0;
+}
+
+bool FProjectCleanerModule::IsEmptyFolder(const FString& Dir) const
+{
+	TArray<FString> Directories;
+	IFileManager::Get().FindFiles(Directories, *Dir, true, true);
+
+	return Directories.Num() == 0;
+}
+
+void FProjectCleanerModule::GetChildFolders(const FString& Path, TArray<FString>& Output) const
+{
+	IFileManager::Get().FindFiles(Output, *Path, false, true);
+}
+
 
 #pragma optimize("", on)
 #undef LOCTEXT_NAMESPACE
