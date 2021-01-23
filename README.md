@@ -3,11 +3,16 @@ Simple UE4 plugin for deleting all unused assets in project.
 
 No more Migration and other hacky methods needed.
 
+# How its working?
+It will scan your projects all assets that never used in any level.
+So if you have any level asset that never used, make sure delete them first, then try to clean with plugin.
+Any asset(and its dependencies) referenced by any level will remain untouched.
+
 Versions Supported: 4.23+  
 Platform: Windows
 
 #### Caution: In large projects it may take some time to locate and delete assets!
-##### Known issue
+##### Known issues
 - Assets that used in C++ code (Hard linked) will be deleted.
 
 # Installation

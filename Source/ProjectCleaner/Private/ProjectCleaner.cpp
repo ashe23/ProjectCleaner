@@ -9,19 +9,16 @@
 #include "FileManager.h"
 #include "LevelEditor.h"
 #include "Widgets/Docking/SDockTab.h"
-#include "Widgets/Layout/SBox.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Text/STextBlock.h"
-#include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "ObjectTools.h"
 #include "AssetRegistry/Public/AssetData.h"
-#include "GenericPlatform/GenericPlatformFile.h"
+#include "ProjectCleanerUtility.h"
+
 
 static const FName ProjectCleanerTabName("ProjectCleaner");
 
 #define LOCTEXT_NAMESPACE "FProjectCleanerModule"
-
-#pragma optimize("", off)
 
 void FProjectCleanerModule::StartupModule()
 {
@@ -173,9 +170,9 @@ void FProjectCleanerModule::DeleteEmptyFolder(const TArray<FName>& DirectoriesTo
 
 TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs)
 {
-	int32 UnusedAssetsCount = FindUnusedAssets();
-	int64 UnusedAssetsSize = FindUnusedAssetsFileSize();
-	int32 EmptyFoldersCount = FindEmptyFolders();
+	UnusedAssetsCount = FindUnusedAssets();
+	UnusedAssetsFilesSize = FindUnusedAssetsFileSize();
+	EmptyFoldersCount = FindEmptyFolders();
 
 	return SNew(SDockTab)
 		.TabRole(ETabRole::NomadTab)
@@ -248,7 +245,7 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 					[
 						SNew(STextBlock)
 	                    .AutoWrapText(true)
-	                    .Text(FText::AsNumber(UnusedAssetsSize))
+	                    .Text(FText::AsNumber(UnusedAssetsFilesSize))
 					]
 				]
 				+ SVerticalBox::Slot()
@@ -278,14 +275,30 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 
 FReply FProjectCleanerModule::OnDeleteEmptyFolderClick()
 {
-	if (EmptyFolders.Num() == 0) return FReply::Handled();
+	FText DialogText;
+
+	if (EmptyFolders.Num() == 0)
+	{
+		DialogText = FText::FromString(FString{"No empty folders to delete!"});
+		FMessageDialog::Open(EAppMsgType::Ok, DialogText);
+
+		return FReply::Handled();
+	}
 
 	for (const auto& EmptyFolder : EmptyFolders)
 	{
-		IFileManager::Get().DeleteDirectory(*EmptyFolder.ToString(), false, true);
+		if (IFileManager::Get().DirectoryExists(*EmptyFolder))
+		{
+			IFileManager::Get().DeleteDirectory(*EmptyFolder, false, true);
+		}
 	}
 
-	// todo:ashe23 add message after deletion , or no empty folders found
+	DialogText = FText::Format(
+		LOCTEXT("PluginButtonDialogText", "Deleted {0} empty folder."),
+		EmptyFoldersCount
+	);
+
+	FMessageDialog::Open(EAppMsgType::Ok, DialogText);
 
 	return FReply::Handled();
 }
@@ -317,7 +330,7 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 
 int32 FProjectCleanerModule::FindUnusedAssets()
 {
-	// todo:ashe23 i think this is hacky method, but for now it will work fine
+	// todo:ashe23  hacky method i know, but for,  now i haven`t got any better idea :)
 	UnusedAssets.Empty();
 	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
 
@@ -344,137 +357,10 @@ int32 FProjectCleanerModule::FindEmptyFolders()
 {
 	EmptyFolders.Empty();
 
-	// scan all folders
-	auto ProjectRoot = FPaths::ProjectContentDir();
-	ProjectRoot.RemoveFromEnd(TEXT("/"));
-	FindEmptyFolderRecursive2(ProjectRoot, true);
-
-	// TArray<FString> Directories;
-	// IFileManager::Get().FindFiles(Directories, *(ProjectRoot / TEXT("*")), false, true);
-	//
-	// Directories.RemoveAll([&](const FString& Val)
-	// {
-	// 	return Val.Contains("Developers") || Val.Contains("Collections");
-	// });
-
-	// for(const auto& Dir : Directories)
-	// {
-	// 	TArray<FString> ChildDirs;
-	// 	const auto Path = ProjectRoot + Dir + TEXT("/*");
-	// 	GetChildFolders(Path, ChildDirs);
-	//
-	//
-	// 	
-	// 	
-	// 	// if(IsEmptyFolder(Path))
-	// 	// {
-	// 	// 	EmptyFolders.Add(FName(*Path));
-	// 	// }
-	// 	
-	// }
-
-	// const auto Dir = FPaths::ProjectContentDir() + FString{TEXT("aaa")};
-	// const auto Exists = FPaths::DirectoryExists(Dir);
-	// TArray<FString> Files;
-	// IFileManager::Get().FindFiles(Files, *Dir,nullptr);
-	// int32 Size = Files.Num();
-
-
-	// for (const auto& Asset : UnusedAssets)
-	// {
-	// 	const int32 IsRoot = Asset.PackagePath.Compare("/Game");
-	// 	if (IsRoot != 0)
-	// 	{
-	// 		EmptyFolders.AddUnique(Asset.PackagePath);
-	// 	}
-	// }
+	const auto ProjectRoot = FPaths::ProjectContentDir();
+	ProjectCleanerUtility::GetAllEmptyDirectories(ProjectRoot / TEXT("*"), EmptyFolders, true);
 
 	return EmptyFolders.Num();
-}
-
-void FProjectCleanerModule::FindEmptyFolderRecursive(const FString Path, bool bRootPath)
-{
-	auto Dir = Path / TEXT("*");
-
-	if (IsEmptyFolder(Dir) && !bRootPath)
-	{
-		EmptyFolders.Add(FName(*Path));
-		return;
-	}
-
-	TArray<FString> ChildDirectories;
-	GetChildFolders(Dir, ChildDirectories);
-	if (bRootPath)
-	{
-		RemoveDevAndCollectionFolders(ChildDirectories);
-	}
-
-	// if all child folders are empty add parent to empty folders
-	if (ChildDirectories.Num() == 0)
-	{
-		return;
-	}
-
-	if(!bRootPath)
-	{
-		bool AllChildsHasEmptyDirectories = true;
-		for (const auto& ChildDir : ChildDirectories)
-		{
-			const auto ChildPath = Path + TEXT("/") + ChildDir + TEXT("/*");
-			const bool IsEmpty = IsEmptyFolder(ChildPath);
-			if (!IsEmpty)
-			{
-				AllChildsHasEmptyDirectories = false;
-				break;
-			}
-		}
-
-		if (AllChildsHasEmptyDirectories)
-		{
-			EmptyFolders.Add(FName(*Path));
-			return;
-		}		
-	}
-
-	Dir.RemoveFromEnd("*");
-	for (const auto& ChildDir : ChildDirectories)
-	{
-		Dir = Path + TEXT("/") + ChildDir;
-		FindEmptyFolderRecursive(Dir, false);
-	}
-
-
-	UE_LOG(LogTemp, Warning, TEXT("a"));
-}
-
-void FProjectCleanerModule::FindEmptyFolderRecursive2(const FString Path, bool bRootPath)
-{
-	auto Dir = Path / TEXT("*");
-	TArray<FString> Folders;
-	GetChildFolders(Dir, Folders);
-	if(bRootPath)
-	{
-		RemoveDevAndCollectionFolders(Folders);
-	}
-	
-
-	if(Folders.Num() == 0)
-	{
-		EmptyFolders.Add(FName(*Path));
-	}
-
-	for(const auto& Folder : Folders)
-	{
-		FindEmptyFolderRecursive2(Path + TEXT("/") + Folder, false);
-	}
-}
-
-void FProjectCleanerModule::RemoveDevAndCollectionFolders(TArray<FString>& Directories)
-{
-	Directories.RemoveAll([&](const FString& Val)
-	{
-		return Val.Contains("Developers") || Val.Contains("Collections");
-	});
 }
 
 int64 FProjectCleanerModule::FindUnusedAssetsFileSize()
@@ -492,29 +378,6 @@ int64 FProjectCleanerModule::FindUnusedAssetsFileSize()
 	return Size;
 }
 
-bool FProjectCleanerModule::HasFiles(const FString& Dir) const
-{
-	TArray<FString> Directories;
-	IFileManager::Get().FindFiles(Directories, *Dir, true, false);
-
-	return Directories.Num() == 0;
-}
-
-bool FProjectCleanerModule::IsEmptyFolder(const FString& Dir) const
-{
-	TArray<FString> Directories;
-	IFileManager::Get().FindFiles(Directories, *Dir, true, true);
-
-	return Directories.Num() == 0;
-}
-
-void FProjectCleanerModule::GetChildFolders(const FString& Path, TArray<FString>& Output) const
-{
-	IFileManager::Get().FindFiles(Output, *Path, false, true);
-}
-
-
-#pragma optimize("", on)
 #undef LOCTEXT_NAMESPACE
 
 IMPLEMENT_MODULE(FProjectCleanerModule, ProjectCleaner)

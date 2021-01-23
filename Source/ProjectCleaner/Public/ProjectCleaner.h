@@ -30,13 +30,7 @@ private:
 	void FindAllGameAssets(TArray<FAssetData>& GameAssetsContainer) const;
 	int32 FindUnusedAssets();
 	int32 FindEmptyFolders();
-	void FindEmptyFolderRecursive(const FString Path, bool bRootPath);
-	void FindEmptyFolderRecursive2(const FString Path, bool bRootPath);
-	void RemoveDevAndCollectionFolders(TArray<FString>& Directories);
 	int64 FindUnusedAssetsFileSize();
-	bool HasFiles(const FString& Dir) const;
-	bool IsEmptyFolder(const FString& Dir) const;
-	void GetChildFolders(const FString& Path, TArray<FString>& Output) const;
 	// Excluding Build_data and Level assets
 	void RemoveLevelAssets(TArray<FAssetData>& GameAssetsContainer) const;
 	void GetAllDependencies(const struct FARFilter& InAssetRegistryFilter, const class IAssetRegistry& AssetRegistry, TSet<FName>& OutDependencySet);
@@ -49,11 +43,15 @@ private:
 	// Button events
 	FReply OnDeleteEmptyFolderClick();
 	FReply OnDeleteUnusedAssetsBtnClick();
+	// Stats
+	int32 UnusedAssetsCount = 0;
+	int64 UnusedAssetsFilesSize = 0;
+	int32 EmptyFoldersCount = 0;
 private:
 	TSharedRef<class SDockTab> OnSpawnPluginTab(const class FSpawnTabArgs& SpawnTabArgs);
 	TSharedPtr<class FUICommandList> PluginCommands;
 	TArray<FAssetData> UnusedAssets;
-	TArray<FName> EmptyFolders;
+	TArray<FString> EmptyFolders;
 };
 
 
