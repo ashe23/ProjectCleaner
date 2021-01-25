@@ -167,14 +167,13 @@ void FProjectCleanerModule::DeleteEmptyFolder(const TArray<FName>& DirectoriesTo
 	}
 }
 
-
+#pragma optimize("", off)
 TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs)
 {
-	UnusedAssetsCount = FindUnusedAssets();
-	UnusedAssetsFilesSize = FindUnusedAssetsFileSize();
-	EmptyFoldersCount = FindEmptyFolders();
-
-	return SNew(SDockTab)
+	// todo:ashe23 too often updates?
+	UpdateStats();
+	
+	return  SNew(SDockTab)
 		.TabRole(ETabRole::NomadTab)
 		[
 			// Put your tab content here!
@@ -225,7 +224,7 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 					[
 						SNew(STextBlock)
 						.AutoWrapText(true)
-						.Text(FText::AsNumber(UnusedAssetsCount))
+						.Text_Lambda([this] () -> FText { return FText::AsNumber(UnusedAssetsCount); })
 					]
 				]
 				+ SVerticalBox::Slot()
@@ -245,7 +244,7 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 					[
 						SNew(STextBlock)
 	                    .AutoWrapText(true)
-	                    .Text(FText::AsNumber(UnusedAssetsFilesSize))
+	                    .Text_Lambda([this] () -> FText { return FText::AsNumber(UnusedAssetsFilesSize); })
 					]
 				]
 				+ SVerticalBox::Slot()
@@ -265,14 +264,14 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 					[
 						SNew(STextBlock)
                         .AutoWrapText(true)
-                        .Text(FText::AsNumber(EmptyFoldersCount))
+                        .Text_Lambda([this] () -> FText { return FText::AsNumber(EmptyFoldersCount); })
 					]
 				]
 			]
 		];
 }
 
-
+#pragma optimize("", on)
 FReply FProjectCleanerModule::OnDeleteEmptyFolderClick()
 {
 	FText DialogText;
@@ -298,7 +297,9 @@ FReply FProjectCleanerModule::OnDeleteEmptyFolderClick()
 		EmptyFoldersCount
 	);
 
+	UpdateStats();
 	FMessageDialog::Open(EAppMsgType::Ok, DialogText);
+
 
 	return FReply::Handled();
 }
@@ -320,9 +321,8 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 		);
 	}
 
+	UpdateStats();
 	FMessageDialog::Open(EAppMsgType::Ok, DialogText);
-
-	// todo:ashe23 update window info after deletion
 
 	return FReply::Handled();
 }
@@ -376,6 +376,13 @@ int64 FProjectCleanerModule::FindUnusedAssetsFileSize()
 	}
 
 	return Size;
+}
+
+void FProjectCleanerModule::UpdateStats()
+{
+	UnusedAssetsCount = FindUnusedAssets();
+	UnusedAssetsFilesSize = FindUnusedAssetsFileSize();
+	EmptyFoldersCount = FindEmptyFolders();
 }
 
 #undef LOCTEXT_NAMESPACE

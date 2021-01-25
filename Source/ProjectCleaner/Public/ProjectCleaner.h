@@ -31,6 +31,7 @@ private:
 	int32 FindUnusedAssets();
 	int32 FindEmptyFolders();
 	int64 FindUnusedAssetsFileSize();
+	void UpdateStats();
 	// Excluding Build_data and Level assets
 	void RemoveLevelAssets(TArray<FAssetData>& GameAssetsContainer) const;
 	void GetAllDependencies(const struct FARFilter& InAssetRegistryFilter, const class IAssetRegistry& AssetRegistry, TSet<FName>& OutDependencySet);
