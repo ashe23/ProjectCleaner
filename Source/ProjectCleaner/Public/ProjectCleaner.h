@@ -37,6 +37,7 @@ private:
 	void GetAllDependencies(const struct FARFilter& InAssetRegistryFilter, const class IAssetRegistry& AssetRegistry, TSet<FName>& OutDependencySet);
 // #if WITH_EDITOR
 	int32 DeleteUnusedAssets(TArray<FAssetData>& AssetsToDelete);
+	void DeleteEmptyFolders();
 	static void DeleteEmptyFolder(const TArray<FName>& DirectoriesToDelete);
 // #endif
 

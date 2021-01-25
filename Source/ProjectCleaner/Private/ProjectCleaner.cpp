@@ -62,6 +62,7 @@ void FProjectCleanerModule::StartupModule()
 	                        .SetDisplayName(LOCTEXT("FProjectCleanerTabTitle", "ProjectCleaner"))
 	                        .SetMenuType(ETabSpawnerMenuType::Hidden);
 
+	// Reserve some space
 	UnusedAssets.Reserve(100);
 	EmptyFolders.Reserve(50);
 }
@@ -125,12 +126,26 @@ void FProjectCleanerModule::GetAllDependencies(const FARFilter& InAssetRegistryF
 // #if WITH_EDITOR
 int32 FProjectCleanerModule::DeleteUnusedAssets(TArray<FAssetData>& AssetsToDelete)
 {
+	// todo:ashe23 try to delete in chunks for performance purposes
 	if (AssetsToDelete.Num() > 0)
 	{
 		return ObjectTools::DeleteAssets(AssetsToDelete);
 	}
 
 	return 0;
+}
+
+void FProjectCleanerModule::DeleteEmptyFolders()
+{
+	for (const auto& EmptyFolder : EmptyFolders)
+	{
+		if (IFileManager::Get().DirectoryExists(*EmptyFolder))
+		{
+			IFileManager::Get().DeleteDirectory(*EmptyFolder, false, true);
+		}
+	}
+
+	EmptyFolders.Empty();
 }
 
 // #endif
@@ -167,7 +182,6 @@ void FProjectCleanerModule::DeleteEmptyFolder(const TArray<FName>& DirectoriesTo
 	}
 }
 
-#pragma optimize("", off)
 TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs)
 {
 	// todo:ashe23 too often updates?
@@ -217,7 +231,7 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 					[
 						SNew(STextBlock)
 	                    .AutoWrapText(true)
-	                    .Text(LOCTEXT("Unused Assets:", "Unused Assets:"))
+	                    .Text(LOCTEXT("Unused Assets:", "Unused Assets: "))
 					]
 					+ SHorizontalBox::Slot()
 					.AutoWidth()
@@ -237,14 +251,17 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 					[
 						SNew(STextBlock)
 	                    .AutoWrapText(true)
-	                    .Text(LOCTEXT("Unused Assets Size:", "Unused Assets Size:"))
+	                    .Text(LOCTEXT("Unused Assets Size:", "Unused Assets Size: "))
 					]
 					+ SHorizontalBox::Slot()
 					.AutoWidth()
 					[
 						SNew(STextBlock)
 	                    .AutoWrapText(true)
-	                    .Text_Lambda([this] () -> FText { return FText::AsNumber(UnusedAssetsFilesSize); })
+	                    .Text_Lambda([this] () -> FText
+	                    {
+		                    return FText::AsMemory(UnusedAssetsFilesSize);
+	                    })
 					]
 				]
 				+ SVerticalBox::Slot()
@@ -257,7 +274,7 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 					[
 						SNew(STextBlock)
                         .AutoWrapText(true)
-                        .Text(LOCTEXT("Empty Folders:", "Empty Folders:"))
+                        .Text(LOCTEXT("Empty Folders:", "Empty Folders: "))
 					]
 					+ SHorizontalBox::Slot()
 					.AutoWidth()
@@ -271,7 +288,6 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 		];
 }
 
-#pragma optimize("", on)
 FReply FProjectCleanerModule::OnDeleteEmptyFolderClick()
 {
 	FText DialogText;
@@ -284,13 +300,7 @@ FReply FProjectCleanerModule::OnDeleteEmptyFolderClick()
 		return FReply::Handled();
 	}
 
-	for (const auto& EmptyFolder : EmptyFolders)
-	{
-		if (IFileManager::Get().DirectoryExists(*EmptyFolder))
-		{
-			IFileManager::Get().DeleteDirectory(*EmptyFolder, false, true);
-		}
-	}
+	this->DeleteEmptyFolders();
 
 	DialogText = FText::Format(
 		LOCTEXT("PluginButtonDialogText", "Deleted {0} empty folder."),
@@ -299,7 +309,6 @@ FReply FProjectCleanerModule::OnDeleteEmptyFolderClick()
 
 	UpdateStats();
 	FMessageDialog::Open(EAppMsgType::Ok, DialogText);
-
 
 	return FReply::Handled();
 }
@@ -315,9 +324,14 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 	{
 		const int32 DeletedAssetNum = this->DeleteUnusedAssets(UnusedAssets);
 
+		// after assets deleted, perform empty directories cleaning automatically
+		UpdateStats();
+		this->DeleteEmptyFolders();
+		
 		DialogText = FText::Format(
-			LOCTEXT("PluginButtonDialogText", "Deleted {0} assets."),
-			DeletedAssetNum
+			LOCTEXT("PluginButtonDialogText", "Deleted {0} assets and {1} empty folders."),
+			DeletedAssetNum,
+			EmptyFoldersCount
 		);
 	}
 
