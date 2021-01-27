@@ -5,6 +5,10 @@
 #include "FileManager.h"
 #include "AssetRegistry/Public/AssetData.h"
 #include "AssetRegistryModule.h"
+#include "AssetToolsModule.h"
+#include "Engine/World.h"
+#include "Misc/Paths.h"
+#include "ObjectTools.h"
 
 bool ProjectCleanerUtility::HasFiles(const FString& SearchPath)
 {
@@ -75,8 +79,130 @@ void ProjectCleanerUtility::RemoveDevsAndCollectionsDirectories(TArray<FString>&
 	});
 }
 
+int32 ProjectCleanerUtility::DeleteUnusedAssets(TArray<FAssetData>& AssetsToDelete)
+{
+	// todo:ashe23 try to delete in chunks for performance purposes
+	if (AssetsToDelete.Num() > 0)
+	{
+		return ObjectTools::DeleteAssets(AssetsToDelete);
+	}
+
+	return 0;
+}
+
+void ProjectCleanerUtility::DeleteEmptyFolders(TArray<FString>& EmptyFolders)
+{
+	for (const auto& EmptyFolder : EmptyFolders)
+	{
+		if (IFileManager::Get().DirectoryExists(*EmptyFolder))
+		{
+			IFileManager::Get().DeleteDirectory(*EmptyFolder, false, true);
+		}
+	}
+
+	EmptyFolders.Empty();
+}
+
 void ProjectCleanerUtility::FindAllGameAssets(TArray<FAssetData>& GameAssetsContainer)
 {
+	// todo fix up redirectors before finding all assets and filling them in array
+	// FAssetToolsModule& AssetToolsModule = FModuleManager::LoadModuleChecked<FAssetToolsModule>(TEXT("AssetTools"));
+	// AssetToolsModule.Get().FixupReferencers(Redirectors);
+
 	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
 	AssetRegistryModule.Get().GetAssetsByPath(FName{"/Game"}, GameAssetsContainer, true);
+	// AssetRegistryModule.Get().GetAssetAvailability()
+
+	// for(const auto& Asset: GameAssetsContainer)
+	// {
+	// 	Asset.IsRedirector();
+	// }
+}
+
+void ProjectCleanerUtility::RemoveLevelAssets(TArray<FAssetData>& GameAssetsContainer)
+{
+	GameAssetsContainer.RemoveAll([](FAssetData Val)
+	{
+		return Val.AssetName.ToString().Contains("_BuiltData") || Val.AssetClass == UWorld::StaticClass()->GetFName();
+	});
+}
+
+void ProjectCleanerUtility::GetAllDependencies(const FARFilter& InAssetRegistryFilter,
+	const IAssetRegistry& AssetRegistry, TSet<FName>& OutDependencySet)
+{
+	TArray<FName> PackageNamesToProcess;
+	{
+		TArray<FAssetData> FoundAssets;
+		AssetRegistry.GetAssets(InAssetRegistryFilter, FoundAssets);
+		for (const FAssetData& AssetData : FoundAssets)
+		{
+			PackageNamesToProcess.Add(AssetData.PackageName);
+			OutDependencySet.Add(AssetData.PackageName);
+		}
+	}
+
+	TArray<FAssetIdentifier> AssetDependencies;
+	while (PackageNamesToProcess.Num() > 0)
+	{
+		const FName PackageName = PackageNamesToProcess.Pop(false);
+		AssetDependencies.Reset();
+		AssetRegistry.GetDependencies(FAssetIdentifier(PackageName), AssetDependencies);
+		for (const FAssetIdentifier& Dependency : AssetDependencies)
+		{
+			bool bIsAlreadyInSet = false;
+			OutDependencySet.Add(Dependency.PackageName, &bIsAlreadyInSet);
+			if (bIsAlreadyInSet == false)
+			{
+				PackageNamesToProcess.Add(Dependency.PackageName);
+			}
+		}
+	}
+}
+
+int32 ProjectCleanerUtility::GetUnusedAssetsNum(TArray<FAssetData>& UnusedAssets)
+{
+	UnusedAssets.Empty();
+	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
+
+	FindAllGameAssets(UnusedAssets);
+	RemoveLevelAssets(UnusedAssets);
+
+	// Finding all assets and their dependencies that used in levels
+	TSet<FName> LevelsDependencies;
+	FARFilter Filter;
+	Filter.ClassNames.Add(UWorld::StaticClass()->GetFName());
+	GetAllDependencies(Filter, AssetRegistryModule.Get(), LevelsDependencies);
+
+	// Removing all assets that are used in any level
+	UnusedAssets.RemoveAll([&](const FAssetData& Val)
+	{
+		return LevelsDependencies.Contains(Val.PackageName);
+	});
+
+	return UnusedAssets.Num();
+}
+
+int32 ProjectCleanerUtility::GetEmptyFoldersNum(TArray<FString>& EmptyFolders)
+{
+	EmptyFolders.Empty();
+
+	const auto ProjectRoot = FPaths::ProjectContentDir();
+	GetAllEmptyDirectories(ProjectRoot / TEXT("*"), EmptyFolders, true);
+
+	return EmptyFolders.Num();
+}
+
+int64 ProjectCleanerUtility::GetUnusedAssetsTotalSize(TArray<FAssetData>& UnusedAssets)
+{
+	int64 Size = 0;
+	for (const auto& Asset : UnusedAssets)
+	{
+		FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>(
+            "AssetRegistry");
+		const auto AssetPackageData = AssetRegistryModule.Get().GetAssetPackageData(Asset.PackageName);
+		if (!AssetPackageData) continue;
+		Size += AssetPackageData->DiskSize;
+	}
+
+	return Size;
 }

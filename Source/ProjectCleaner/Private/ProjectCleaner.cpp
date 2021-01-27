@@ -92,95 +92,10 @@ void FProjectCleanerModule::AddMenuExtension(FMenuBuilder& Builder)
 	Builder.AddMenuEntry(FProjectCleanerCommands::Get().PluginAction);
 }
 
-void FProjectCleanerModule::GetAllDependencies(const FARFilter& InAssetRegistryFilter,
-                                               const IAssetRegistry& AssetRegistry, TSet<FName>& OutDependencySet)
-{
-	TArray<FName> PackageNamesToProcess;
-	{
-		TArray<FAssetData> FoundAssets;
-		AssetRegistry.GetAssets(InAssetRegistryFilter, FoundAssets);
-		for (const FAssetData& AssetData : FoundAssets)
-		{
-			PackageNamesToProcess.Add(AssetData.PackageName);
-			OutDependencySet.Add(AssetData.PackageName);
-		}
-	}
-
-	TArray<FAssetIdentifier> AssetDependencies;
-	while (PackageNamesToProcess.Num() > 0)
-	{
-		const FName PackageName = PackageNamesToProcess.Pop(false);
-		AssetDependencies.Reset();
-		AssetRegistry.GetDependencies(FAssetIdentifier(PackageName), AssetDependencies);
-		for (const FAssetIdentifier& Dependency : AssetDependencies)
-		{
-			bool bIsAlreadyInSet = false;
-			OutDependencySet.Add(Dependency.PackageName, &bIsAlreadyInSet);
-			if (bIsAlreadyInSet == false)
-			{
-				PackageNamesToProcess.Add(Dependency.PackageName);
-			}
-		}
-	}
-}
-
-// #if WITH_EDITOR
-int32 FProjectCleanerModule::DeleteUnusedAssets(TArray<FAssetData>& AssetsToDelete)
-{
-	// todo:ashe23 try to delete in chunks for performance purposes
-	if (AssetsToDelete.Num() > 0)
-	{
-		return ObjectTools::DeleteAssets(AssetsToDelete);
-	}
-
-	return 0;
-}
-
-void FProjectCleanerModule::DeleteEmptyFolders()
-{
-	for (const auto& EmptyFolder : EmptyFolders)
-	{
-		if (IFileManager::Get().DirectoryExists(*EmptyFolder))
-		{
-			IFileManager::Get().DeleteDirectory(*EmptyFolder, false, true);
-		}
-	}
-
-	EmptyFolders.Empty();
-}
-
-// #endif
 
 void FProjectCleanerModule::AddToolbarExtension(FToolBarBuilder& Builder)
 {
 	Builder.AddToolBarButton(FProjectCleanerCommands::Get().PluginAction);
-}
-
-// void FProjectCleanerModule::FindAllGameAssets(TArray<FAssetData>& GameAssetsContainer) const
-// {
-// 	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
-// 	AssetRegistryModule.Get().GetAssetsByPath(FName{"/Game"}, GameAssetsContainer, true);
-// }
-
-void FProjectCleanerModule::RemoveLevelAssets(TArray<FAssetData>& GameAssetsContainer) const
-{
-	GameAssetsContainer.RemoveAll([](FAssetData Val)
-	{
-		return Val.AssetName.ToString().Contains("_BuiltData") || Val.AssetClass == UWorld::StaticClass()->GetFName();
-	});
-}
-
-
-void FProjectCleanerModule::DeleteEmptyFolder(const TArray<FName>& DirectoriesToDelete)
-{
-	for (const auto& Directory : DirectoriesToDelete)
-	{
-		FString Dir = Directory.ToString();
-		Dir.RemoveFromStart(TEXT("/Game/"));
-
-		const FString DirectoryPath = FPaths::ProjectContentDir() + Dir;
-		IFileManager::Get().DeleteDirectory(*DirectoryPath, false);
-	}
 }
 
 TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs)
@@ -301,7 +216,7 @@ FReply FProjectCleanerModule::OnDeleteEmptyFolderClick()
 		return FReply::Handled();
 	}
 
-	this->DeleteEmptyFolders();
+	ProjectCleanerUtility::DeleteEmptyFolders(EmptyFolders);
 
 	DialogText = FText::Format(
 		LOCTEXT("PluginButtonDialogText", "Deleted {0} empty folder."),
@@ -323,11 +238,11 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 	}
 	else
 	{
-		const int32 DeletedAssetNum = this->DeleteUnusedAssets(UnusedAssets);
+		const int32 DeletedAssetNum = ProjectCleanerUtility::DeleteUnusedAssets(UnusedAssets);
 
 		// after assets deleted, perform empty directories cleaning automatically
 		UpdateStats();
-		this->DeleteEmptyFolders();
+		ProjectCleanerUtility::DeleteEmptyFolders(EmptyFolders);
 		
 		DialogText = FText::Format(
 			LOCTEXT("PluginButtonDialogText", "Deleted {0} assets and {1} empty folders."),
@@ -343,62 +258,11 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 }
 
 
-int32 FProjectCleanerModule::FindUnusedAssets()
-{
-	// todo:ashe23  hacky method i know, but for,  now i haven`t got any better idea :)
-	UnusedAssets.Empty();
-	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
-
-	// FindAllGameAssets(UnusedAssets);
-	ProjectCleanerUtility::FindAllGameAssets(UnusedAssets);
-	RemoveLevelAssets(UnusedAssets);
-
-
-	// Finding all assets and their dependencies that used in levels
-	TSet<FName> LevelsDependencies;
-	FARFilter Filter;
-	Filter.ClassNames.Add(UWorld::StaticClass()->GetFName());
-	this->GetAllDependencies(Filter, AssetRegistryModule.Get(), LevelsDependencies);
-
-	// Removing all assets that are used in any level
-	UnusedAssets.RemoveAll([&](const FAssetData& Val)
-	{
-		return LevelsDependencies.Contains(Val.PackageName);
-	});
-
-	return UnusedAssets.Num();
-}
-
-int32 FProjectCleanerModule::FindEmptyFolders()
-{
-	EmptyFolders.Empty();
-
-	const auto ProjectRoot = FPaths::ProjectContentDir();
-	ProjectCleanerUtility::GetAllEmptyDirectories(ProjectRoot / TEXT("*"), EmptyFolders, true);
-
-	return EmptyFolders.Num();
-}
-
-int64 FProjectCleanerModule::FindUnusedAssetsFileSize()
-{
-	int64 Size = 0;
-	for (const auto& Asset : UnusedAssets)
-	{
-		FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>(
-			"AssetRegistry");
-		const auto AssetPackageData = AssetRegistryModule.Get().GetAssetPackageData(Asset.PackageName);
-		if (!AssetPackageData) continue;
-		Size += AssetPackageData->DiskSize;
-	}
-
-	return Size;
-}
-
 void FProjectCleanerModule::UpdateStats()
 {
-	UnusedAssetsCount = FindUnusedAssets();
-	UnusedAssetsFilesSize = FindUnusedAssetsFileSize();
-	EmptyFoldersCount = FindEmptyFolders();
+	UnusedAssetsCount = ProjectCleanerUtility::GetUnusedAssetsNum(UnusedAssets);
+	UnusedAssetsFilesSize = ProjectCleanerUtility::GetUnusedAssetsTotalSize(UnusedAssets);
+	EmptyFoldersCount = ProjectCleanerUtility::GetEmptyFoldersNum(EmptyFolders);
 }
 
 #undef LOCTEXT_NAMESPACE

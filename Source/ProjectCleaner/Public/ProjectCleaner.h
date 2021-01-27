@@ -27,18 +27,7 @@ private:
 	void AddMenuExtension(FMenuBuilder& Builder);
 
 	// Finding all assets in "Game" Root directory of project
-	int32 FindUnusedAssets();
-	int32 FindEmptyFolders();
-	int64 FindUnusedAssetsFileSize();
 	void UpdateStats();
-	// Excluding Build_data and Level assets
-	void RemoveLevelAssets(TArray<FAssetData>& GameAssetsContainer) const;
-	void GetAllDependencies(const struct FARFilter& InAssetRegistryFilter, const class IAssetRegistry& AssetRegistry, TSet<FName>& OutDependencySet);
-// #if WITH_EDITOR
-	int32 DeleteUnusedAssets(TArray<FAssetData>& AssetsToDelete);
-	void DeleteEmptyFolders();
-	static void DeleteEmptyFolder(const TArray<FName>& DirectoriesToDelete);
-// #endif
 
 private:
 	// Button events
