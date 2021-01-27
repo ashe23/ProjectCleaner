@@ -26,9 +26,7 @@ private:
 	void AddToolbarExtension(FToolBarBuilder& Builder);
 	void AddMenuExtension(FMenuBuilder& Builder);
 
-	// Finding all assets in "Game" Root directory of project
 	void UpdateStats();
-
 private:
 	// Button events
 	FReply OnDeleteEmptyFolderClick();
