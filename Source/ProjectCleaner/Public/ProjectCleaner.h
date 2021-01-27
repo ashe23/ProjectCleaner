@@ -27,7 +27,6 @@ private:
 	void AddMenuExtension(FMenuBuilder& Builder);
 
 	// Finding all assets in "Game" Root directory of project
-	void FindAllGameAssets(TArray<FAssetData>& GameAssetsContainer) const;
 	int32 FindUnusedAssets();
 	int32 FindEmptyFolders();
 	int64 FindUnusedAssetsFileSize();

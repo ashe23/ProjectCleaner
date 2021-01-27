@@ -75,6 +75,7 @@ void FProjectCleanerModule::ShutdownModule()
 
 	FProjectCleanerCommands::Unregister();
 
+	// todo:ashe23 fix focus issue when tab already pinned in editor somewhere
 	FGlobalTabmanager::Get()->UnregisterNomadTabSpawner(ProjectCleanerTabName);
 
 	UnusedAssets.Empty();
@@ -155,11 +156,11 @@ void FProjectCleanerModule::AddToolbarExtension(FToolBarBuilder& Builder)
 	Builder.AddToolBarButton(FProjectCleanerCommands::Get().PluginAction);
 }
 
-void FProjectCleanerModule::FindAllGameAssets(TArray<FAssetData>& GameAssetsContainer) const
-{
-	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
-	AssetRegistryModule.Get().GetAssetsByPath(FName{"/Game"}, GameAssetsContainer, true);
-}
+// void FProjectCleanerModule::FindAllGameAssets(TArray<FAssetData>& GameAssetsContainer) const
+// {
+// 	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
+// 	AssetRegistryModule.Get().GetAssetsByPath(FName{"/Game"}, GameAssetsContainer, true);
+// }
 
 void FProjectCleanerModule::RemoveLevelAssets(TArray<FAssetData>& GameAssetsContainer) const
 {
@@ -348,7 +349,8 @@ int32 FProjectCleanerModule::FindUnusedAssets()
 	UnusedAssets.Empty();
 	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
 
-	FindAllGameAssets(UnusedAssets);
+	// FindAllGameAssets(UnusedAssets);
+	ProjectCleanerUtility::FindAllGameAssets(UnusedAssets);
 	RemoveLevelAssets(UnusedAssets);
 
 

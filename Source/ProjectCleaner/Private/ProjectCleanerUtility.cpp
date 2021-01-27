@@ -3,7 +3,8 @@
 
 #include "Public/ProjectCleanerUtility.h"
 #include "FileManager.h"
-
+#include "AssetRegistry/Public/AssetData.h"
+#include "AssetRegistryModule.h"
 
 bool ProjectCleanerUtility::HasFiles(const FString& SearchPath)
 {
@@ -72,4 +73,10 @@ void ProjectCleanerUtility::RemoveDevsAndCollectionsDirectories(TArray<FString>&
 	{
 		return Val.Contains("Developers") || Val.Contains("Collections");
 	});
+}
+
+void ProjectCleanerUtility::FindAllGameAssets(TArray<FAssetData>& GameAssetsContainer)
+{
+	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
+	AssetRegistryModule.Get().GetAssetsByPath(FName{"/Game"}, GameAssetsContainer, true);
 }
