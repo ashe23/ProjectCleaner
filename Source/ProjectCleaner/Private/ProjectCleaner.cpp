@@ -17,7 +17,6 @@
 #include "ProjectCleanerUtility.h"
 #include "SNotificationList.h"
 
-
 static const FName ProjectCleanerTabName("ProjectCleaner");
 
 #define LOCTEXT_NAMESPACE "FProjectCleanerModule"

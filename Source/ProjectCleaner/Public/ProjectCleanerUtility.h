@@ -2,8 +2,8 @@
 
 #pragma once
 
+#include "Engine/StreamableManager.h"
 #include "CoreMinimal.h"
-
 
 struct FAssetData;
 
@@ -51,4 +51,8 @@ public:
 
 	// Returns total size of unused assets
 	static int64 GetUnusedAssetsTotalSize(TArray<FAssetData>& UnusedAssets);
+
+	static void GetRedirectors();
+
+	FStreamableManager StreamableManager;
 };

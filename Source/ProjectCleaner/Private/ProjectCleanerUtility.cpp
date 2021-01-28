@@ -9,6 +9,7 @@
 #include "Engine/World.h"
 #include "Misc/Paths.h"
 #include "ObjectTools.h"
+#include "UObject/ObjectRedirector.h"
 
 bool ProjectCleanerUtility::HasFiles(const FString& SearchPath)
 {
@@ -82,6 +83,12 @@ void ProjectCleanerUtility::RemoveDevsAndCollectionsDirectories(TArray<FString>&
 int32 ProjectCleanerUtility::DeleteUnusedAssets(TArray<FAssetData>& AssetsToDelete)
 {
 	// todo:ashe23 try to delete in chunks for performance purposes
+	// todo:ashe23 after deleting lot of files content browser not updates its content, but in reality files are deleted
+	for (const auto& Asset : AssetsToDelete)
+	{
+		// StreamableManager.Unload(Asset.GetAsset());
+	}
+	
 	if (AssetsToDelete.Num() > 0)
 	{
 		return ObjectTools::DeleteAssets(AssetsToDelete);
@@ -106,8 +113,7 @@ void ProjectCleanerUtility::DeleteEmptyFolders(TArray<FString>& EmptyFolders)
 void ProjectCleanerUtility::FindAllGameAssets(TArray<FAssetData>& GameAssetsContainer)
 {
 	// todo fix up redirectors before finding all assets and filling them in array
-	// FAssetToolsModule& AssetToolsModule = FModuleManager::LoadModuleChecked<FAssetToolsModule>(TEXT("AssetTools"));
-	// AssetToolsModule.Get().FixupReferencers(Redirectors);
+	FAssetToolsModule& AssetToolsModule = FModuleManager::LoadModuleChecked<FAssetToolsModule>(TEXT("AssetTools"));
 
 	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
 	AssetRegistryModule.Get().GetAssetsByPath(FName{"/Game"}, GameAssetsContainer, true);
@@ -167,6 +173,12 @@ int32 ProjectCleanerUtility::GetUnusedAssetsNum(TArray<FAssetData>& UnusedAssets
 	FindAllGameAssets(UnusedAssets);
 	RemoveLevelAssets(UnusedAssets);
 
+	// finding redirectors
+	TArray<FAssetData> Redirs;
+	FARFilter RedirectorFilter;
+	RedirectorFilter.ClassNames.Add(UObjectRedirector::StaticClass()->GetFName());
+	AssetRegistryModule.Get().GetAssets(RedirectorFilter,Redirs);
+	
 	// Finding all assets and their dependencies that used in levels
 	TSet<FName> LevelsDependencies;
 	FARFilter Filter;
@@ -205,4 +217,9 @@ int64 ProjectCleanerUtility::GetUnusedAssetsTotalSize(TArray<FAssetData>& Unused
 	}
 
 	return Size;
+}
+
+void ProjectCleanerUtility::GetRedirectors()
+{
+	
 }
