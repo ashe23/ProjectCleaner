@@ -8,12 +8,14 @@
 #include "AssetRegistryModule.h"
 #include "FileManager.h"
 #include "LevelEditor.h"
+#include "NotificationManager.h"
 #include "Widgets/Docking/SDockTab.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Text/STextBlock.h"
 #include "ObjectTools.h"
 #include "AssetRegistry/Public/AssetData.h"
 #include "ProjectCleanerUtility.h"
+#include "SNotificationList.h"
 
 
 static const FName ProjectCleanerTabName("ProjectCleaner");
@@ -100,17 +102,23 @@ void FProjectCleanerModule::AddToolbarExtension(FToolBarBuilder& Builder)
 
 TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs)
 {
-	// todo:ashe23 too often updates?
 	UpdateStats();
-	
-	return  SNew(SDockTab)
+
+	const float CommonPadding = 20.0f;
+
+	const FText TipOneText = FText::FromString(
+		"Tip : Please close all opened window before running any cleaning operations, so some assets released from memory.");
+	const FText TipTwoText = FText::FromString(
+		"!!! This process can take some time based on your project sizes and amount assets you used. \n So be patient and a take a cup of coffee until it finished :)");
+	const FText TipThreeText = FText::FromString("How plugin works? \n It will delete all assets that never used in any level. \n So before cleaning project try to delete any level(maps) assets that you never used.");
+
+	return SNew(SDockTab)
 		.TabRole(ETabRole::NomadTab)
 		[
 			// Put your tab content here!
 			SNew(SBorder)
             .HAlign(HAlign_Center)
             .Padding(25)
-			// .VAlign(VAlign_Center)
 			[
 				SNew(SVerticalBox)
 				+ SVerticalBox::Slot()
@@ -119,22 +127,115 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 				  .VAlign(VAlign_Fill)
 				  .Padding(20)
 				[
+					// First Tip Text
 					SNew(SHorizontalBox)
 					+ SHorizontalBox::Slot()
-					.AutoWidth()
+					  .AutoWidth()
+					  .HAlign(HAlign_Center)
+					  .VAlign(VAlign_Top)
+					[
+						SNew(SBorder)
+						.HAlign(HAlign_Center)
+						.VAlign(VAlign_Center)
+						.Padding(CommonPadding)
+						.BorderImage(&TipOneBrushColor)
+						[
+							SNew(STextBlock)
+							.Justification(ETextJustify::Center)
+	                        .AutoWrapText(true)
+							.Text(TipOneText)
+						]
+					]
+				]
+				+ SVerticalBox::Slot()
+				  .AutoHeight()
+				  .HAlign(HAlign_Center)
+				[
+					// Second Tip Text
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot()
+					  .AutoWidth()
+					  .HAlign(HAlign_Center)
+					  .VAlign(VAlign_Top)
+					[
+						SNew(SBorder)
+	                    .HAlign(HAlign_Center)
+	                    .VAlign(VAlign_Center)
+	                    .Padding(CommonPadding)
+	                    .BorderImage(&TipTwoBrushColor)
+						[
+							SNew(STextBlock)
+	                        .Justification(ETextJustify::Center)
+	                        .AutoWrapText(true)
+	                        .Text(TipTwoText)
+						]
+					]
+				]
+				+ SVerticalBox::Slot()
+                  .AutoHeight()
+                  .HAlign(HAlign_Center)
+                  .Padding(0.0f, 20.0f)
+                [
+                    // Third Tip Text
+                    SNew(SHorizontalBox)
+                    + SHorizontalBox::Slot()
+                      .AutoWidth()
+                      .HAlign(HAlign_Center)
+                      .VAlign(VAlign_Top)
+                    [
+                        SNew(SBorder)
+                        .HAlign(HAlign_Center)
+                        .VAlign(VAlign_Center)
+                        .Padding(CommonPadding)
+                        .BorderImage(&TipTwoBrushColor)
+                        [
+                            SNew(STextBlock)
+                            .Justification(ETextJustify::Center)
+                            .AutoWrapText(true)
+                            .Text(TipThreeText)
+                        ]
+                    ]
+                ]
+				+ SVerticalBox::Slot()
+				  .AutoHeight()
+				  .HAlign(HAlign_Center)
+				  .Padding(0.0f, 20.0f)
+				[
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot()
+					  .AutoWidth()
+					  .HAlign(HAlign_Fill)
+					  .VAlign(VAlign_Fill)
 					[
 						SNew(SButton)
-						.Text(FText::FromString(TEXT("Delete Unused Assets")))
-						.HAlign(HAlign_Left)
+						.HAlign(HAlign_Center)
+						.VAlign(VAlign_Center)
+						.ContentPadding(10)
+						.ButtonColorAndOpacity(FSlateColor{FLinearColor{1.0, 0.0f, 0.006082f, 0.466667f}})
 						.OnClicked_Raw(this, &FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick)
+						[
+							SNew(STextBlock)
+							.AutoWrapText(true)
+							.ColorAndOpacity(FSlateColor{FLinearColor::White})
+							.Text(LOCTEXT("Delete Unused Assets", "Delete Unused Assets"))
+						]
 					]
 					+ SHorizontalBox::Slot()
-					.AutoWidth()
+					  .Padding(20.0f, 0.0f)
+					  .AutoWidth()
 					[
 						SNew(SButton)
-	                    .Text(FText::FromString(TEXT("Delete Empty Folders")))
-	                    .HAlign(HAlign_Left)
+						.HAlign(HAlign_Center)
+						.VAlign(VAlign_Center)
+						.ContentPadding(10)
+						.ButtonColorAndOpacity(FSlateColor{FLinearColor{1.0, 0.0f, 0.006082f, 0.466667f}})
 	                    .OnClicked_Raw(this, &FProjectCleanerModule::OnDeleteEmptyFolderClick)
+						[
+							SNew(STextBlock)
+	                        .AutoWrapText(true)
+	                        .ColorAndOpacity(FSlateColor{FLinearColor::White})
+	                        .Text(LOCTEXT("Delete Empty Folders", "Delete Empty Folders"))
+						]
 					]
 				]
 				+ SVerticalBox::Slot()
@@ -146,15 +247,15 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 					.AutoWidth()
 					[
 						SNew(STextBlock)
-	                    .AutoWrapText(true)
-	                    .Text(LOCTEXT("Unused Assets:", "Unused Assets: "))
+		                    .AutoWrapText(true)
+		                    .Text(LOCTEXT("Unused Assets:", "Unused Assets: "))
 					]
 					+ SHorizontalBox::Slot()
 					.AutoWidth()
 					[
 						SNew(STextBlock)
-						.AutoWrapText(true)
-						.Text_Lambda([this] () -> FText { return FText::AsNumber(UnusedAssetsCount); })
+							.AutoWrapText(true)
+							.Text_Lambda([this]() -> FText { return FText::AsNumber(UnusedAssetsCount); })
 					]
 				]
 				+ SVerticalBox::Slot()
@@ -174,10 +275,10 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 					[
 						SNew(STextBlock)
 	                    .AutoWrapText(true)
-	                    .Text_Lambda([this] () -> FText
-	                    {
-		                    return FText::AsMemory(UnusedAssetsFilesSize);
-	                    })
+	                    .Text_Lambda([this]() -> FText
+						                {
+							                return FText::AsMemory(UnusedAssetsFilesSize);
+						                })
 					]
 				]
 				+ SVerticalBox::Slot()
@@ -197,7 +298,7 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 					[
 						SNew(STextBlock)
                         .AutoWrapText(true)
-                        .Text_Lambda([this] () -> FText { return FText::AsNumber(EmptyFoldersCount); })
+                        .Text_Lambda([this]() -> FText { return FText::AsNumber(EmptyFoldersCount); })
 					]
 				]
 			]
@@ -243,7 +344,7 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 		// after assets deleted, perform empty directories cleaning automatically
 		UpdateStats();
 		ProjectCleanerUtility::DeleteEmptyFolders(EmptyFolders);
-		
+
 		DialogText = FText::Format(
 			LOCTEXT("PluginButtonDialogText", "Deleted {0} assets and {1} empty folders."),
 			DeletedAssetNum,
@@ -263,6 +364,18 @@ void FProjectCleanerModule::UpdateStats()
 	UnusedAssetsCount = ProjectCleanerUtility::GetUnusedAssetsNum(UnusedAssets);
 	UnusedAssetsFilesSize = ProjectCleanerUtility::GetUnusedAssetsTotalSize(UnusedAssets);
 	EmptyFoldersCount = ProjectCleanerUtility::GetEmptyFoldersNum(EmptyFolders);
+}
+
+void FProjectCleanerModule::ShowOperationProgress()
+{
+	FNotificationInfo Info(LOCTEXT("OperationProgress", "Deleting Assets, please wait"));
+	Info.bFireAndForget = false;
+
+	auto NotManager = FSlateNotificationManager::Get().AddNotification(Info);
+	if (NotManager.IsValid())
+	{
+		NotManager->SetCompletionState(SNotificationItem::CS_Pending);
+	}
 }
 
 #undef LOCTEXT_NAMESPACE
