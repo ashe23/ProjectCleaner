@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 
 class SNotificationItem;
+class FSlateNotificationManager;
 
 
 /**
@@ -14,9 +15,9 @@ class PROJECTCLEANER_API ProjectCleanerNotificationManager
 {
 public:
 	void Show();
-	void UpdateProgress();
+	// void UpdateProgress();
 	void Hide();
 
-private:
-	TSharedPtr<SNotificationItem, ESPMode::Fast> NotificationManager;
+
+	TWeakPtr<SNotificationItem> NotificationManager;
 };

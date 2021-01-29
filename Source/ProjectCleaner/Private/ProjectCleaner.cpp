@@ -4,18 +4,18 @@
 #include "ProjectCleanerStyle.h"
 #include "ProjectCleanerCommands.h"
 #include "Misc/MessageDialog.h"
-#include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "AssetRegistryModule.h"
 #include "FileManager.h"
 #include "LevelEditor.h"
-#include "NotificationManager.h"
+#include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "Widgets/Docking/SDockTab.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Text/STextBlock.h"
 #include "ObjectTools.h"
 #include "AssetRegistry/Public/AssetData.h"
 #include "ProjectCleanerUtility.h"
-#include "SNotificationList.h"
+#include "ProjectCleanerNotificationManager.h"
+#include "NotificationManager.h"
 
 static const FName ProjectCleanerTabName("ProjectCleaner");
 
@@ -66,6 +66,8 @@ void FProjectCleanerModule::StartupModule()
 	// Reserve some space
 	UnusedAssets.Reserve(100);
 	EmptyFolders.Reserve(50);
+
+	NotificationManager = new ProjectCleanerNotificationManager();
 }
 
 void FProjectCleanerModule::ShutdownModule()
@@ -81,6 +83,8 @@ void FProjectCleanerModule::ShutdownModule()
 
 	UnusedAssets.Empty();
 	EmptyFolders.Empty();
+
+	delete NotificationManager;
 }
 
 void FProjectCleanerModule::PluginButtonClicked()
@@ -315,6 +319,8 @@ FReply FProjectCleanerModule::OnDeleteEmptyFolderClick()
 		return FReply::Handled();
 	}
 
+	NotificationManager->Show();
+	
 	ProjectCleanerUtility::DeleteEmptyFolders(EmptyFolders);
 
 	DialogText = FText::Format(
@@ -323,6 +329,8 @@ FReply FProjectCleanerModule::OnDeleteEmptyFolderClick()
 	);
 
 	UpdateStats();
+	NotificationManager->Hide();
+	
 	FMessageDialog::Open(EAppMsgType::Ok, DialogText);
 
 	return FReply::Handled();
@@ -337,6 +345,8 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 	}
 	else
 	{
+		NotificationManager->Show();
+		
 		const int32 DeletedAssetNum = ProjectCleanerUtility::DeleteUnusedAssets(UnusedAssets);
 
 		// after assets deleted, perform empty directories cleaning automatically
@@ -351,6 +361,8 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 	}
 
 	UpdateStats();
+	NotificationManager->Hide();
+
 	FMessageDialog::Open(EAppMsgType::Ok, DialogText);
 
 	return FReply::Handled();
@@ -362,18 +374,6 @@ void FProjectCleanerModule::UpdateStats()
 	UnusedAssetsCount = ProjectCleanerUtility::GetUnusedAssetsNum(UnusedAssets);
 	UnusedAssetsFilesSize = ProjectCleanerUtility::GetUnusedAssetsTotalSize(UnusedAssets);
 	EmptyFoldersCount = ProjectCleanerUtility::GetEmptyFoldersNum(EmptyFolders);
-}
-
-void FProjectCleanerModule::ShowOperationProgress()
-{
-	FNotificationInfo Info(LOCTEXT("OperationProgress", "Deleting Assets, please wait"));
-	Info.bFireAndForget = false;
-
-	auto NotManager = FSlateNotificationManager::Get().AddNotification(Info);
-	if (NotManager.IsValid())
-	{
-		NotManager->SetCompletionState(SNotificationItem::CS_Pending);
-	}
 }
 
 #undef LOCTEXT_NAMESPACE

@@ -10,13 +10,6 @@
 #include "Misc/Paths.h"
 #include "ObjectTools.h"
 #include "UObject/ObjectRedirector.h"
-// #include "Editor/ContentBrowser/Private/ContentBrowserUtils.h"
-#include "ContentBrowser/Private/ContentBrowserUtils.h"
-// #include "ContentBrowserUtils.h"
-#include "ContentBrowserModule.h"
-#include "PackageTools.h"
-#include "Kismet/GameplayStatics.h"
-#include "HAL/PlatformFilemanager.h"
 
 bool ProjectCleanerUtility::HasFiles(const FString& SearchPath)
 {
@@ -90,21 +83,7 @@ void ProjectCleanerUtility::RemoveDevsAndCollectionsDirectories(TArray<FString>&
 int32 ProjectCleanerUtility::DeleteUnusedAssets(TArray<FAssetData>& AssetsToDelete)
 {
 	// todo:ashe23 try to delete in chunks for performance purposes
-	// todo:ashe23 after deleting lot of files content browser not updates its content, but in reality files are deleted
-	// TArray<UPackage*> Packages;
-	// FStreamableManager* Man = new FStreamableManager();
-	// if(!Man) return -1;
-	// for (const auto& Asset : AssetsToDelete)
-	// {
-	// 	// StreamableManager.Unload(Asset.GetAsset());
-	// 	Man->Unload(Asset.ToSoftObjectPath());
-	//
-	// }
-
-	//
-	// const bool PackageUnloadResult = UPackageTools::UnloadPackages(Packages);
-	// UE_LOG(LogTemp, Warning, TEXT("Result: %s"), PackageUnloadResult ? TEXT("True") : TEXT("False"));
-	
+	// todo:ashe23 after deleting lot of files content browser not updates its content, but in reality files are deleted	
 
 	if (AssetsToDelete.Num() > 0)
 	{
@@ -129,17 +108,8 @@ void ProjectCleanerUtility::DeleteEmptyFolders(TArray<FString>& EmptyFolders)
 
 void ProjectCleanerUtility::FindAllGameAssets(TArray<FAssetData>& GameAssetsContainer)
 {
-	// todo fix up redirectors before finding all assets and filling them in array
-	FAssetToolsModule& AssetToolsModule = FModuleManager::LoadModuleChecked<FAssetToolsModule>(TEXT("AssetTools"));
-
 	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
 	AssetRegistryModule.Get().GetAssetsByPath(FName{"/Game"}, GameAssetsContainer, true);
-	// AssetRegistryModule.Get().GetAssetAvailability()
-
-	// for(const auto& Asset: GameAssetsContainer)
-	// {
-	// 	Asset.IsRedirector();
-	// }
 }
 
 void ProjectCleanerUtility::RemoveLevelAssets(TArray<FAssetData>& GameAssetsContainer)
@@ -189,12 +159,6 @@ int32 ProjectCleanerUtility::GetUnusedAssetsNum(TArray<FAssetData>& UnusedAssets
 
 	FindAllGameAssets(UnusedAssets);
 	RemoveLevelAssets(UnusedAssets);
-
-	// finding redirectors
-	TArray<FAssetData> Redirs;
-	FARFilter RedirectorFilter;
-	RedirectorFilter.ClassNames.Add(UObjectRedirector::StaticClass()->GetFName());
-	AssetRegistryModule.Get().GetAssets(RedirectorFilter, Redirs);
 
 	// Finding all assets and their dependencies that used in levels
 	TSet<FName> LevelsDependencies;
@@ -254,20 +218,13 @@ void ProjectCleanerUtility::FixupRedirectors()
 	if (AssetList.Num() > 0)
 	{
 		TArray<UObject*> Objects;
-		TArray<UPackage*> Packages;
 		// loading asset if needed
 		for (const auto& Asset : AssetList)
 		{
 			Objects.Add(Asset.GetAsset());
-			Packages.Add(Asset.GetPackage());
-			
-			// todo:ashe23 unload loaded assets
-			// Asset.IsAssetLoaded()
 		}
 
-		const bool PackageUnloadResult = UPackageTools::UnloadPackages(Packages);
-		UE_LOG(LogTemp, Warning, TEXT("result: %s"), PackageUnloadResult ? TEXT("True") : TEXT("False"));
-		
+
 		// converting them to redirectors
 		TArray<UObjectRedirector*> Redirectors;
 		for (auto Object : Objects)

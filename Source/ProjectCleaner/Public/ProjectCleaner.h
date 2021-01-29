@@ -12,6 +12,7 @@ class FMenuBuilder;
 struct FAssetData;
 struct FSlateBrush;
 struct FSlateColorBrush;
+class ProjectCleanerNotificationManager;
 
 
 class FProjectCleanerModule : public IModuleInterface
@@ -21,6 +22,7 @@ public:
 			TipOneBrushColor(FSlateColorBrush{ FLinearColor{1.0f, 0.973208f, 0.0f, 0.227f } }),
 			TipTwoBrushColor(FSlateColorBrush{ FLinearColor{1.0f, 0.039437f, 0.0f, 0.227f } })
 	{
+		NotificationManager = nullptr;
 	}
 	/** IModuleInterface implementation */
 	virtual void StartupModule() override;
@@ -35,7 +37,6 @@ private:
 	void AddMenuExtension(FMenuBuilder& Builder);
 
 	void UpdateStats();
-	void ShowOperationProgress();
 private:
 	// Button events
 	FReply OnDeleteEmptyFolderClick();
@@ -49,6 +50,7 @@ private:
 	TSharedPtr<class FUICommandList> PluginCommands;
 	TArray<FAssetData> UnusedAssets;
 	TArray<FString> EmptyFolders;
+	ProjectCleanerNotificationManager* NotificationManager;
 
 	// slate
 	FSlateColorBrush TipOneBrushColor;
