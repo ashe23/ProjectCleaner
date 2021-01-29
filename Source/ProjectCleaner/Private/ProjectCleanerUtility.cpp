@@ -10,6 +10,13 @@
 #include "Misc/Paths.h"
 #include "ObjectTools.h"
 #include "UObject/ObjectRedirector.h"
+// #include "Editor/ContentBrowser/Private/ContentBrowserUtils.h"
+#include "ContentBrowser/Private/ContentBrowserUtils.h"
+// #include "ContentBrowserUtils.h"
+#include "ContentBrowserModule.h"
+#include "PackageTools.h"
+#include "Kismet/GameplayStatics.h"
+#include "HAL/PlatformFilemanager.h"
 
 bool ProjectCleanerUtility::HasFiles(const FString& SearchPath)
 {
@@ -84,14 +91,24 @@ int32 ProjectCleanerUtility::DeleteUnusedAssets(TArray<FAssetData>& AssetsToDele
 {
 	// todo:ashe23 try to delete in chunks for performance purposes
 	// todo:ashe23 after deleting lot of files content browser not updates its content, but in reality files are deleted
-	for (const auto& Asset : AssetsToDelete)
-	{
-		// StreamableManager.Unload(Asset.GetAsset());
-	}
+	// TArray<UPackage*> Packages;
+	// FStreamableManager* Man = new FStreamableManager();
+	// if(!Man) return -1;
+	// for (const auto& Asset : AssetsToDelete)
+	// {
+	// 	// StreamableManager.Unload(Asset.GetAsset());
+	// 	Man->Unload(Asset.ToSoftObjectPath());
+	//
+	// }
+
+	//
+	// const bool PackageUnloadResult = UPackageTools::UnloadPackages(Packages);
+	// UE_LOG(LogTemp, Warning, TEXT("Result: %s"), PackageUnloadResult ? TEXT("True") : TEXT("False"));
 	
+
 	if (AssetsToDelete.Num() > 0)
 	{
-		return ObjectTools::DeleteAssets(AssetsToDelete);
+		return ObjectTools::DeleteAssets(AssetsToDelete, true);
 	}
 
 	return 0;
@@ -134,7 +151,7 @@ void ProjectCleanerUtility::RemoveLevelAssets(TArray<FAssetData>& GameAssetsCont
 }
 
 void ProjectCleanerUtility::GetAllDependencies(const FARFilter& InAssetRegistryFilter,
-	const IAssetRegistry& AssetRegistry, TSet<FName>& OutDependencySet)
+                                               const IAssetRegistry& AssetRegistry, TSet<FName>& OutDependencySet)
 {
 	TArray<FName> PackageNamesToProcess;
 	{
@@ -177,8 +194,8 @@ int32 ProjectCleanerUtility::GetUnusedAssetsNum(TArray<FAssetData>& UnusedAssets
 	TArray<FAssetData> Redirs;
 	FARFilter RedirectorFilter;
 	RedirectorFilter.ClassNames.Add(UObjectRedirector::StaticClass()->GetFName());
-	AssetRegistryModule.Get().GetAssets(RedirectorFilter,Redirs);
-	
+	AssetRegistryModule.Get().GetAssets(RedirectorFilter, Redirs);
+
 	// Finding all assets and their dependencies that used in levels
 	TSet<FName> LevelsDependencies;
 	FARFilter Filter;
@@ -210,7 +227,7 @@ int64 ProjectCleanerUtility::GetUnusedAssetsTotalSize(TArray<FAssetData>& Unused
 	for (const auto& Asset : UnusedAssets)
 	{
 		FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>(
-            "AssetRegistry");
+			"AssetRegistry");
 		const auto AssetPackageData = AssetRegistryModule.Get().GetAssetPackageData(Asset.PackageName);
 		if (!AssetPackageData) continue;
 		Size += AssetPackageData->DiskSize;
@@ -219,7 +236,50 @@ int64 ProjectCleanerUtility::GetUnusedAssetsTotalSize(TArray<FAssetData>& Unused
 	return Size;
 }
 
-void ProjectCleanerUtility::GetRedirectors()
+void ProjectCleanerUtility::FixupRedirectors()
 {
-	
+	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
+
+	const FName RootPath = TEXT("/Game");
+
+	FARFilter Filter;
+	Filter.bRecursivePaths = true;
+	Filter.PackagePaths.Emplace(RootPath);
+	Filter.ClassNames.Emplace(TEXT("ObjectRedirector"));
+
+	// Query for a list of assets
+	TArray<FAssetData> AssetList;
+	AssetRegistryModule.Get().GetAssets(Filter, AssetList);
+
+	if (AssetList.Num() > 0)
+	{
+		TArray<UObject*> Objects;
+		TArray<UPackage*> Packages;
+		// loading asset if needed
+		for (const auto& Asset : AssetList)
+		{
+			Objects.Add(Asset.GetAsset());
+			Packages.Add(Asset.GetPackage());
+			
+			// todo:ashe23 unload loaded assets
+			// Asset.IsAssetLoaded()
+		}
+
+		const bool PackageUnloadResult = UPackageTools::UnloadPackages(Packages);
+		UE_LOG(LogTemp, Warning, TEXT("result: %s"), PackageUnloadResult ? TEXT("True") : TEXT("False"));
+		
+		// converting them to redirectors
+		TArray<UObjectRedirector*> Redirectors;
+		for (auto Object : Objects)
+		{
+			const auto Redirector = CastChecked<UObjectRedirector>(Object);
+			Redirectors.Add(Redirector);
+		}
+
+		// Fix up all founded redirectors
+		FAssetToolsModule& AssetToolsModule = FModuleManager::LoadModuleChecked<FAssetToolsModule>(TEXT("AssetTools"));
+		AssetToolsModule.Get().FixupReferencers(Redirectors);
+
+		UE_LOG(LogTemp, Warning, TEXT("Fixed References!"));
+	}
 }

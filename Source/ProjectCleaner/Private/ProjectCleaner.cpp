@@ -102,6 +102,7 @@ void FProjectCleanerModule::AddToolbarExtension(FToolBarBuilder& Builder)
 TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs)
 {
 	UpdateStats();
+	ProjectCleanerUtility::FixupRedirectors();
 
 	const float CommonPadding = 20.0f;
 
@@ -109,7 +110,8 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 		"Tip : Please close all opened window before running any cleaning operations, so some assets released from memory.");
 	const FText TipTwoText = FText::FromString(
 		"!!! This process can take some time based on your project sizes and amount assets you used. \n So be patient and a take a cup of coffee until it finished :)");
-	const FText TipThreeText = FText::FromString("How plugin works? \n It will delete all assets that never used in any level. \n So before cleaning project try to delete any level(maps) assets that you never used.");
+	const FText TipThreeText = FText::FromString(
+		"How plugin works? \n It will delete all assets that never used in any level. \n So before cleaning project try to delete any level(maps) assets that you never used.");
 
 	return SNew(SDockTab)
 		.TabRole(ETabRole::NomadTab)
@@ -171,30 +173,30 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 					]
 				]
 				+ SVerticalBox::Slot()
-                  .AutoHeight()
-                  .HAlign(HAlign_Center)
-                  .Padding(0.0f, 20.0f)
-                [
-                    // Third Tip Text
-                    SNew(SHorizontalBox)
-                    + SHorizontalBox::Slot()
-                      .AutoWidth()
-                      .HAlign(HAlign_Center)
-                      .VAlign(VAlign_Top)
-                    [
-                        SNew(SBorder)
+				  .AutoHeight()
+				  .HAlign(HAlign_Center)
+				  .Padding(0.0f, 20.0f)
+				[
+					// Third Tip Text
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot()
+					  .AutoWidth()
+					  .HAlign(HAlign_Center)
+					  .VAlign(VAlign_Top)
+					[
+						SNew(SBorder)
                         .HAlign(HAlign_Center)
                         .VAlign(VAlign_Center)
                         .Padding(CommonPadding)
                         .BorderImage(&TipTwoBrushColor)
-                        [
-                            SNew(STextBlock)
+						[
+							SNew(STextBlock)
                             .Justification(ETextJustify::Center)
                             .AutoWrapText(true)
                             .Text(TipThreeText)
-                        ]
-                    ]
-                ]
+						]
+					]
+				]
 				+ SVerticalBox::Slot()
 				  .AutoHeight()
 				  .HAlign(HAlign_Center)
@@ -274,10 +276,7 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 					[
 						SNew(STextBlock)
 	                    .AutoWrapText(true)
-	                    .Text_Lambda([this]() -> FText
-						                {
-							                return FText::AsMemory(UnusedAssetsFilesSize);
-						                })
+	                    .Text_Lambda([this]() -> FText { return FText::AsMemory(UnusedAssetsFilesSize); })
 					]
 				]
 				+ SVerticalBox::Slot()

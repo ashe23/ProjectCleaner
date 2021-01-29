@@ -52,7 +52,7 @@ public:
 	// Returns total size of unused assets
 	static int64 GetUnusedAssetsTotalSize(TArray<FAssetData>& UnusedAssets);
 
-	static void GetRedirectors();
+	static void FixupRedirectors();
 
 	FStreamableManager StreamableManager;
 };
