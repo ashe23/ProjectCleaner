@@ -7,6 +7,12 @@
 
 struct FAssetData;
 
+struct AssetChunk
+{
+	TArray<FName> Dependecies;
+};
+
+
 /**
  * This class responsible for different file and directory operations in unreal engine context
  */
@@ -49,10 +55,20 @@ public:
 	// Returns total number of empty folders
 	static int32 GetEmptyFoldersNum(TArray<FString>& EmptyFolders);
 
-	// Returns total size of unused assets
+	// Returns total size of unused assets (in bytes)
 	static int64 GetUnusedAssetsTotalSize(TArray<FAssetData>& UnusedAssets);
 
 	static void FixupRedirectors();
 
+	// REFACTOR START
+	static void FindAndCreateAssetTree();
+	static bool DepResolve(const FName& Asset, TArray<FName>& Resolved);
+	static bool IsLevelAsset(const FName& Asset);
+	static void FindAllAssetsWithNoDependecies(TArray<FName>& Assets);
+	static void DeleteAssetChunks(TArray<AssetChunk>& AssetChunks);
+	// REFACTOR END
+
+	
+	TArray<FAssetData> LevelDependencyAssets;
 	FStreamableManager StreamableManager;
 };

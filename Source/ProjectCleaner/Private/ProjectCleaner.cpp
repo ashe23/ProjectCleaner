@@ -105,8 +105,28 @@ void FProjectCleanerModule::AddToolbarExtension(FToolBarBuilder& Builder)
 
 TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs)
 {
-	UpdateStats();
+	// UpdateStats();
 	ProjectCleanerUtility::FixupRedirectors();
+	TArray<FName> RootAssets;	
+	ProjectCleanerUtility::FindAllAssetsWithNoDependecies(RootAssets);
+
+	for (const auto& Asset : RootAssets)
+	{
+		{
+			TArray<FName> Resolved;
+			Resolved.Reserve(20);
+			ProjectCleanerUtility::DepResolve(Asset, Resolved);
+			if (Resolved.Num() > 0)
+			{
+				AssetChunk Chunk;
+				Chunk.Dependecies = Resolved;
+				AssetChunks.Add(Chunk);
+			}
+		}
+	}
+
+	// ProjectCleanerUtility::DeleteAssetChunks(AssetChunks);
+
 
 	const float CommonPadding = 20.0f;
 
@@ -309,6 +329,7 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 
 FReply FProjectCleanerModule::OnDeleteEmptyFolderClick()
 {
+	return FReply::Handled();
 	FText DialogText;
 
 	if (EmptyFolders.Num() == 0)
@@ -320,7 +341,7 @@ FReply FProjectCleanerModule::OnDeleteEmptyFolderClick()
 	}
 
 	NotificationManager->Show();
-	
+
 	ProjectCleanerUtility::DeleteEmptyFolders(EmptyFolders);
 
 	DialogText = FText::Format(
@@ -330,7 +351,7 @@ FReply FProjectCleanerModule::OnDeleteEmptyFolderClick()
 
 	UpdateStats();
 	NotificationManager->Hide();
-	
+
 	FMessageDialog::Open(EAppMsgType::Ok, DialogText);
 
 	return FReply::Handled();
@@ -338,6 +359,7 @@ FReply FProjectCleanerModule::OnDeleteEmptyFolderClick()
 
 FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 {
+	return FReply::Handled();
 	FText DialogText;
 	if (UnusedAssets.Num() == 0)
 	{
@@ -346,7 +368,7 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 	else
 	{
 		NotificationManager->Show();
-		
+
 		const int32 DeletedAssetNum = ProjectCleanerUtility::DeleteUnusedAssets(UnusedAssets);
 
 		// after assets deleted, perform empty directories cleaning automatically

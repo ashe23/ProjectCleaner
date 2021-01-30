@@ -13,6 +13,7 @@ struct FAssetData;
 struct FSlateBrush;
 struct FSlateColorBrush;
 class ProjectCleanerNotificationManager;
+struct AssetChunk;
 
 
 class FProjectCleanerModule : public IModuleInterface
@@ -55,6 +56,11 @@ private:
 	// slate
 	FSlateColorBrush TipOneBrushColor;
 	FSlateColorBrush TipTwoBrushColor;
+
+	// REFACTOR START
+	TArray<AssetChunk> AssetChunks;
+	// REFACTOR END
+	
 };
 
 

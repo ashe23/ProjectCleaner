@@ -9,7 +9,11 @@
 #include "Engine/World.h"
 #include "Misc/Paths.h"
 #include "ObjectTools.h"
+#include "Materials/Material.h"
 #include "UObject/ObjectRedirector.h"
+
+#pragma optimize("", off)
+
 
 bool ProjectCleanerUtility::HasFiles(const FString& SearchPath)
 {
@@ -83,11 +87,11 @@ void ProjectCleanerUtility::RemoveDevsAndCollectionsDirectories(TArray<FString>&
 int32 ProjectCleanerUtility::DeleteUnusedAssets(TArray<FAssetData>& AssetsToDelete)
 {
 	// todo:ashe23 try to delete in chunks for performance purposes
-	// todo:ashe23 after deleting lot of files content browser not updates its content, but in reality files are deleted	
+	// todo:ashe23 after deleting lot of files content browser not updates its content, but in reality files are deleted
 
 	if (AssetsToDelete.Num() > 0)
 	{
-		return ObjectTools::DeleteAssets(AssetsToDelete, true);
+		return ObjectTools::DeleteAssets(AssetsToDelete, false);
 	}
 
 	return 0;
@@ -236,7 +240,155 @@ void ProjectCleanerUtility::FixupRedirectors()
 		// Fix up all founded redirectors
 		FAssetToolsModule& AssetToolsModule = FModuleManager::LoadModuleChecked<FAssetToolsModule>(TEXT("AssetTools"));
 		AssetToolsModule.Get().FixupReferencers(Redirectors);
-
-		UE_LOG(LogTemp, Warning, TEXT("Fixed References!"));
 	}
 }
+
+void ProjectCleanerUtility::FindAndCreateAssetTree()
+{
+	// TArray<FAssetData> AssetContainer;
+	TArray<FAssetData> LevelAssets;
+	//
+	// AssetContainer.Reserve(1000);
+	// LevelAssets.Reserve(5);
+	//
+	// // 1) Getting all level assets
+	// FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
+	// // AssetRegistryModule.Get().GetAssetsByPath(FName{"/Game"}, AssetContainer, true);
+	// FARFilter Filter;
+	// Filter.bRecursivePaths = true;
+	// Filter.PackagePaths.Add(FName{"/Game"});
+	// Filter.ClassNames.Add(UWorld::StaticClass()->GetFName());
+	// AssetRegistryModule.Get().GetAssets(Filter, LevelAssets);
+	//
+	// // 2) Get all assets that used in that levels
+	// FAssetIdentifier AssetIdentifier;
+	// AssetIdentifier.PackageName = LevelAssets[0].PackageName;
+	// TArray<FAssetIdentifier> Output;
+	// AssetRegistryModule.Get().GetDependencies(AssetIdentifier, Output, EAssetRegistryDependencyType::All);
+	//
+	// // 3) Removing any engine content
+	// Output.RemoveAll([&](const FAssetIdentifier Elem)
+	// {
+	// 	return !Elem.PackageName.ToString().Contains("/Game/") || Elem.PackageName.ToString().Contains("_BuiltData");
+	// });
+	//
+	// TArray<FAssetIdentifier> LevelDependencies;
+	// for(const auto& Elem : Output)
+	// {		
+	// 	FAssetIdentifier Identifier;
+	// 	Identifier.PackageName = Elem.PackageName;
+	// 	AssetRegistryModule.Get().GetDependencies(Identifier,LevelDependencies);
+	// }
+
+	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
+	FARFilter Filter;
+	Filter.bRecursivePaths = true;
+	Filter.PackagePaths.Add("/Game");
+	Filter.ClassNames.Add(UBlueprint::StaticClass()->GetFName());
+	AssetRegistryModule.Get().GetAssets(Filter, LevelAssets);
+
+	TArray<FAssetIdentifier> Deps;
+	TArray<FAssetIdentifier> Refs;
+
+	FAssetIdentifier id;
+	id.PackageName = LevelAssets[2].PackageName;
+	AssetRegistryModule.Get().GetDependencies(id, Deps);
+	AssetRegistryModule.Get().GetReferencers(id, Refs);
+
+	UE_LOG(LogTemp, Warning, TEXT("%d"), LevelAssets.Num());
+}
+
+bool ProjectCleanerUtility::DepResolve(const FName& Asset, TArray<FName>& Resolved)
+{
+	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
+
+	if (IsLevelAsset(Asset)) return false;
+
+	bool NoLevelsFound = true;
+
+	TArray<FName> Referencers;
+	AssetRegistryModule.Get().GetReferencers(Asset, Referencers);
+
+	// remove itself from list
+	Referencers.RemoveAll([&](const FName Val)
+	{
+		return Val.ToString().Compare(Asset.ToString()) == 0;
+	});
+
+
+	for (const auto& Ref : Referencers)
+	{
+		if (!DepResolve(Ref, Resolved))
+		{
+			NoLevelsFound = false;
+		}
+	}
+
+	if (NoLevelsFound)
+	{
+		Resolved.AddUnique(Asset);
+		return true;
+	}
+
+	return false;
+}
+
+bool ProjectCleanerUtility::IsLevelAsset(const FName& Asset)
+{
+	TArray<FAssetData> Levels;
+	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
+	FARFilter Filter;
+	Filter.bRecursivePaths = true;
+	Filter.PackagePaths.Add(FName{"/Game"});
+	Filter.ClassNames.Add(UWorld::StaticClass()->GetFName());
+	AssetRegistryModule.Get().GetAssets(Filter, Levels);
+
+	for (const auto& Level : Levels)
+	{
+		if (Level.PackageName.Compare(Asset) == 0)
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+void ProjectCleanerUtility::FindAllAssetsWithNoDependecies(TArray<FName>& Assets)
+{
+	TArray<FAssetData> AllAssets;
+	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
+	AssetRegistryModule.Get().GetAssetsByPath(FName{"/Game"}, AllAssets, true);
+
+	for (const auto& Asset : AllAssets)
+	{
+		if (Asset.AssetClass.Compare(FName{"MapBuildDataRegistry"}) == 0)
+		{
+			continue;
+		}
+
+		TArray<FName> Dependecies;
+		AssetRegistryModule.Get().GetDependencies(Asset.PackageName, Dependecies);
+
+		if (Dependecies.Num() == 0)
+		{
+			Assets.Add(Asset.PackageName);
+		}
+	}
+}
+
+void ProjectCleanerUtility::DeleteAssetChunks(TArray<AssetChunk>& AssetChunks)
+{
+	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
+	for (const auto& Chunk : AssetChunks)
+	{
+		TArray<FAssetData> Assets;
+		for (const auto& Dep : Chunk.Dependecies)
+		{
+			Assets.Add(AssetRegistryModule.Get().GetAssetByObjectPath(Dep));
+		}
+		ObjectTools::DeleteAssets(Assets);
+	}
+}
+
+#pragma optimize("", on)
