@@ -91,7 +91,7 @@ int32 ProjectCleanerUtility::DeleteUnusedAssets(TArray<FAssetData>& AssetsToDele
 
 	if (AssetsToDelete.Num() > 0)
 	{
-		return ObjectTools::DeleteAssets(AssetsToDelete, false);
+		return ObjectTools::DeleteAssets(AssetsToDelete, true);
 	}
 
 	return 0;
@@ -120,7 +120,7 @@ void ProjectCleanerUtility::RemoveLevelAssets(TArray<FAssetData>& GameAssetsCont
 {
 	GameAssetsContainer.RemoveAll([](FAssetData Val)
 	{
-		return Val.AssetName.ToString().Contains("_BuiltData") || Val.AssetClass == UWorld::StaticClass()->GetFName();
+		return Val.AssetClass.ToString().Contains("MapBuildDataRegistry") || Val.AssetClass == UWorld::StaticClass()->GetFName();
 	});
 }
 
@@ -148,7 +148,7 @@ void ProjectCleanerUtility::GetAllDependencies(const FARFilter& InAssetRegistryF
 		{
 			bool bIsAlreadyInSet = false;
 			OutDependencySet.Add(Dependency.PackageName, &bIsAlreadyInSet);
-			if (bIsAlreadyInSet == false)
+			if (bIsAlreadyInSet == false && Dependency.IsValid())
 			{
 				PackageNamesToProcess.Add(Dependency.PackageName);
 			}

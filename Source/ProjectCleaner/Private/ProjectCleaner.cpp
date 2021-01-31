@@ -107,12 +107,12 @@ void FProjectCleanerModule::AddToolbarExtension(FToolBarBuilder& Builder)
 
 TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs)
 {
-	// UpdateStats();
-	AssetChunks.Empty();
+	UpdateStats();
+	// AssetChunks.Empty();
 	ProjectCleanerUtility::FixupRedirectors();
 
-	ProjectCleanerUtility::GetUnusedAssetsNum(UnusedAssets);
-	ProjectCleanerUtility::FindAndCreateAssetTree(UnusedAssets, AssetChunks);
+	// ProjectCleanerUtility::GetUnusedAssetsNum(UnusedAssets);
+	// ProjectCleanerUtility::FindAndCreateAssetTree(UnusedAssets, AssetChunks);
 
 
 	const float CommonPadding = 20.0f;
@@ -129,7 +129,7 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 		[
 			// Put your tab content here!
 			SNew(SBorder)
-            .HAlign(HAlign_Center)
+            .HAlign(HAlign_Center)            
             .Padding(25)
 			[
 				SNew(SVerticalBox)
@@ -316,7 +316,7 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 
 FReply FProjectCleanerModule::OnDeleteEmptyFolderClick()
 {
-	return FReply::Handled();
+	// return FReply::Handled();
 	FText DialogText;
 
 	if (EmptyFolders.Num() == 0)
@@ -346,8 +346,8 @@ FReply FProjectCleanerModule::OnDeleteEmptyFolderClick()
 
 FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 {
-	ProjectCleanerUtility::DeleteAssetChunks(AssetChunks);
-	return FReply::Handled();
+	// ProjectCleanerUtility::DeleteAssetChunks(AssetChunks);
+	// return FReply::Handled();
 	FText DialogText;
 	if (UnusedAssets.Num() == 0)
 	{
