@@ -66,6 +66,7 @@ void FProjectCleanerModule::StartupModule()
 	// Reserve some space
 	UnusedAssets.Reserve(100);
 	EmptyFolders.Reserve(50);
+	AssetChunks.Reserve(500);
 
 	NotificationManager = new ProjectCleanerNotificationManager();
 }
@@ -83,6 +84,7 @@ void FProjectCleanerModule::ShutdownModule()
 
 	UnusedAssets.Empty();
 	EmptyFolders.Empty();
+	AssetChunks.Empty();
 
 	delete NotificationManager;
 }
@@ -108,7 +110,10 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 	// UpdateStats();
 	AssetChunks.Empty();
 	ProjectCleanerUtility::FixupRedirectors();
-	ProjectCleanerUtility::FindAndCreateAssetTree(AssetChunks);
+
+	ProjectCleanerUtility::GetUnusedAssetsNum(UnusedAssets);
+	ProjectCleanerUtility::FindAndCreateAssetTree(UnusedAssets, AssetChunks);
+
 
 	const float CommonPadding = 20.0f;
 

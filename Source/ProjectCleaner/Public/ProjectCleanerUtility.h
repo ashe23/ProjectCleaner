@@ -57,11 +57,13 @@ public:
 	static void FixupRedirectors();
 
 	// REFACTOR START
-	static void FindAndCreateAssetTree(TMap<FName, FAssetChunk>& AssetChunks);
+	static void FindAndCreateAssetTree(TArray<FAssetData>& UnusedAssets, TArray<FAssetChunk>& AssetChunks);
 	static bool DepResolve(const FName& Asset, TArray<FName>& Resolved);
+	// static bool DepResolveIterative(TArray<FName> Resolved);
 	static bool IsLevelAsset(const FName& Asset);
 	static void FindAllAssetsWithNoDependencies(TArray<FName>& Assets, const TArray<FAssetData>& AllAssets);
-	static void DeleteAssetChunks(TMap<FName, FAssetChunk>& AssetChunks);
+	void FindAllRefs(const FName& Root);
+	static void DeleteAssetChunks(TArray<FAssetChunk>& AssetChunks);
 	// REFACTOR END
 
 	

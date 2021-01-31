@@ -57,7 +57,7 @@ private:
 	FSlateColorBrush TipTwoBrushColor;
 
 	// REFACTOR START
-	TMap<FName, FAssetChunk> AssetChunks;
+	TArray<FAssetChunk> AssetChunks;
 	// REFACTOR END
 	
 };
