@@ -243,59 +243,48 @@ void ProjectCleanerUtility::FixupRedirectors()
 	}
 }
 
-void ProjectCleanerUtility::FindAndCreateAssetTree()
+void ProjectCleanerUtility::FindAndCreateAssetTree(TMap<FName, FAssetChunk>& AssetChunks)
 {
-	// TArray<FAssetData> AssetContainer;
-	TArray<FAssetData> LevelAssets;
-	//
-	// AssetContainer.Reserve(1000);
-	// LevelAssets.Reserve(5);
-	//
-	// // 1) Getting all level assets
-	// FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
-	// // AssetRegistryModule.Get().GetAssetsByPath(FName{"/Game"}, AssetContainer, true);
-	// FARFilter Filter;
-	// Filter.bRecursivePaths = true;
-	// Filter.PackagePaths.Add(FName{"/Game"});
-	// Filter.ClassNames.Add(UWorld::StaticClass()->GetFName());
-	// AssetRegistryModule.Get().GetAssets(Filter, LevelAssets);
-	//
-	// // 2) Get all assets that used in that levels
-	// FAssetIdentifier AssetIdentifier;
-	// AssetIdentifier.PackageName = LevelAssets[0].PackageName;
-	// TArray<FAssetIdentifier> Output;
-	// AssetRegistryModule.Get().GetDependencies(AssetIdentifier, Output, EAssetRegistryDependencyType::All);
-	//
-	// // 3) Removing any engine content
-	// Output.RemoveAll([&](const FAssetIdentifier Elem)
-	// {
-	// 	return !Elem.PackageName.ToString().Contains("/Game/") || Elem.PackageName.ToString().Contains("_BuiltData");
-	// });
-	//
-	// TArray<FAssetIdentifier> LevelDependencies;
-	// for(const auto& Elem : Output)
-	// {		
-	// 	FAssetIdentifier Identifier;
-	// 	Identifier.PackageName = Elem.PackageName;
-	// 	AssetRegistryModule.Get().GetDependencies(Identifier,LevelDependencies);
-	// }
+	// 1) Finding all assets of projects
+	TArray<FAssetData> AllAssets;
+	AllAssets.Reserve(1000);
 
 	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
-	FARFilter Filter;
-	Filter.bRecursivePaths = true;
-	Filter.PackagePaths.Add("/Game");
-	Filter.ClassNames.Add(UBlueprint::StaticClass()->GetFName());
-	AssetRegistryModule.Get().GetAssets(Filter, LevelAssets);
+	AssetRegistryModule.Get().GetAssetsByPath(FName{"/Game"}, AllAssets, true);
 
-	TArray<FAssetIdentifier> Deps;
-	TArray<FAssetIdentifier> Refs;
+	// 2) Finding unused assets
+	TArray<FName> RootAssets;
+	FindAllAssetsWithNoDependencies(RootAssets, AllAssets);
 
-	FAssetIdentifier id;
-	id.PackageName = LevelAssets[2].PackageName;
-	AssetRegistryModule.Get().GetDependencies(id, Deps);
-	AssetRegistryModule.Get().GetReferencers(id, Refs);
+	for (const auto& Asset : RootAssets)
+	{
+		{
+			TArray<FName> Resolved;
+			Resolved.Reserve(20);
+			DepResolve(Asset, Resolved);
+			if (Resolved.Num() > 0)
+			{
+				FAssetChunk Chunk;
+				for (const auto& Elem : Resolved)
+				{
+					const auto FoundedAssetData = AllAssets.FindByPredicate([&](const FAssetData& SingleAsset)
+					{
+						return SingleAsset.PackageName == Elem;
+					});
 
-	UE_LOG(LogTemp, Warning, TEXT("%d"), LevelAssets.Num());
+					if (FoundedAssetData && FoundedAssetData->IsValid())
+					{
+						Chunk.Dependencies.Add(*FoundedAssetData);
+					}
+				}
+
+				if(Chunk.Dependencies.Num() > 0)
+				{
+					AssetChunks.Add(Asset, Chunk);					
+				}
+			}
+		}
+	}
 }
 
 bool ProjectCleanerUtility::DepResolve(const FName& Asset, TArray<FName>& Resolved)
@@ -354,40 +343,37 @@ bool ProjectCleanerUtility::IsLevelAsset(const FName& Asset)
 	return false;
 }
 
-void ProjectCleanerUtility::FindAllAssetsWithNoDependecies(TArray<FName>& Assets)
+void ProjectCleanerUtility::FindAllAssetsWithNoDependencies(TArray<FName>& Assets, const TArray<FAssetData>& AllAssets)
 {
-	TArray<FAssetData> AllAssets;
 	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
-	AssetRegistryModule.Get().GetAssetsByPath(FName{"/Game"}, AllAssets, true);
-
 	for (const auto& Asset : AllAssets)
 	{
-		if (Asset.AssetClass.Compare(FName{"MapBuildDataRegistry"}) == 0)
+		if (Asset.AssetClass.Compare(UWorld::StaticClass()->GetFName()) == 0 || Asset.AssetClass.Compare(FName{"MapBuildDataRegistry"}) == 0)
 		{
 			continue;
 		}
 
-		TArray<FName> Dependecies;
-		AssetRegistryModule.Get().GetDependencies(Asset.PackageName, Dependecies);
+		TArray<FName> Dependencies;
+		AssetRegistryModule.Get().GetDependencies(Asset.PackageName, Dependencies);
+		// remove itself from list
+		Dependencies.RemoveAll([&](const FName Val)
+        {
+            return Val.ToString().Compare(Asset.PackageName.ToString()) == 0;
+        });
 
-		if (Dependecies.Num() == 0)
+		if (Dependencies.Num() == 0)
 		{
 			Assets.Add(Asset.PackageName);
 		}
 	}
 }
 
-void ProjectCleanerUtility::DeleteAssetChunks(TArray<AssetChunk>& AssetChunks)
+void ProjectCleanerUtility::DeleteAssetChunks(TMap<FName, FAssetChunk>& AssetChunks)
 {
-	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
-	for (const auto& Chunk : AssetChunks)
+	// todo:ashe23 add progress calculation here
+	for(const auto& Chunk : AssetChunks)
 	{
-		TArray<FAssetData> Assets;
-		for (const auto& Dep : Chunk.Dependecies)
-		{
-			Assets.Add(AssetRegistryModule.Get().GetAssetByObjectPath(Dep));
-		}
-		ObjectTools::DeleteAssets(Assets);
+		ObjectTools::DeleteAssets(Chunk.Value.Dependencies, false);
 	}
 }
 

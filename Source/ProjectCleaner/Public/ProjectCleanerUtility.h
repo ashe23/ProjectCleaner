@@ -3,14 +3,10 @@
 #pragma once
 
 #include "Engine/StreamableManager.h"
+#include "StructsContainer.h"
 #include "CoreMinimal.h"
 
 struct FAssetData;
-
-struct AssetChunk
-{
-	TArray<FName> Dependecies;
-};
 
 
 /**
@@ -61,11 +57,11 @@ public:
 	static void FixupRedirectors();
 
 	// REFACTOR START
-	static void FindAndCreateAssetTree();
+	static void FindAndCreateAssetTree(TMap<FName, FAssetChunk>& AssetChunks);
 	static bool DepResolve(const FName& Asset, TArray<FName>& Resolved);
 	static bool IsLevelAsset(const FName& Asset);
-	static void FindAllAssetsWithNoDependecies(TArray<FName>& Assets);
-	static void DeleteAssetChunks(TArray<AssetChunk>& AssetChunks);
+	static void FindAllAssetsWithNoDependencies(TArray<FName>& Assets, const TArray<FAssetData>& AllAssets);
+	static void DeleteAssetChunks(TMap<FName, FAssetChunk>& AssetChunks);
 	// REFACTOR END
 
 	

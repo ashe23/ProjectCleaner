@@ -13,8 +13,8 @@
 #include "Widgets/Text/STextBlock.h"
 #include "ObjectTools.h"
 #include "AssetRegistry/Public/AssetData.h"
-#include "ProjectCleanerUtility.h"
 #include "ProjectCleanerNotificationManager.h"
+#include "ProjectCleanerUtility.h"
 #include "NotificationManager.h"
 
 static const FName ProjectCleanerTabName("ProjectCleaner");
@@ -106,27 +106,9 @@ void FProjectCleanerModule::AddToolbarExtension(FToolBarBuilder& Builder)
 TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs)
 {
 	// UpdateStats();
+	AssetChunks.Empty();
 	ProjectCleanerUtility::FixupRedirectors();
-	TArray<FName> RootAssets;	
-	ProjectCleanerUtility::FindAllAssetsWithNoDependecies(RootAssets);
-
-	for (const auto& Asset : RootAssets)
-	{
-		{
-			TArray<FName> Resolved;
-			Resolved.Reserve(20);
-			ProjectCleanerUtility::DepResolve(Asset, Resolved);
-			if (Resolved.Num() > 0)
-			{
-				AssetChunk Chunk;
-				Chunk.Dependecies = Resolved;
-				AssetChunks.Add(Chunk);
-			}
-		}
-	}
-
-	// ProjectCleanerUtility::DeleteAssetChunks(AssetChunks);
-
+	ProjectCleanerUtility::FindAndCreateAssetTree(AssetChunks);
 
 	const float CommonPadding = 20.0f;
 
@@ -359,6 +341,7 @@ FReply FProjectCleanerModule::OnDeleteEmptyFolderClick()
 
 FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 {
+	ProjectCleanerUtility::DeleteAssetChunks(AssetChunks);
 	return FReply::Handled();
 	FText DialogText;
 	if (UnusedAssets.Num() == 0)

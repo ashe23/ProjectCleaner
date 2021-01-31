@@ -4,8 +4,9 @@
 
 #include "Modules/ModuleManager.h"
 #include "Input/Reply.h"
-#include "CoreMinimal.h"
 #include "SlateColorBrush.h"
+#include "StructsContainer.h"
+#include "CoreMinimal.h"
 
 class FToolBarBuilder;
 class FMenuBuilder;
@@ -13,8 +14,6 @@ struct FAssetData;
 struct FSlateBrush;
 struct FSlateColorBrush;
 class ProjectCleanerNotificationManager;
-struct AssetChunk;
-
 
 class FProjectCleanerModule : public IModuleInterface
 {
@@ -58,7 +57,7 @@ private:
 	FSlateColorBrush TipTwoBrushColor;
 
 	// REFACTOR START
-	TArray<AssetChunk> AssetChunks;
+	TMap<FName, FAssetChunk> AssetChunks;
 	// REFACTOR END
 	
 };
