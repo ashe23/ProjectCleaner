@@ -107,9 +107,7 @@ void FProjectCleanerModule::AddToolbarExtension(FToolBarBuilder& Builder)
 
 TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs)
 {
-	UpdateStats();
-	ProjectCleanerUtility::FixupRedirectors();
-
+	InitCleaner();
 
 	const float CommonPadding = 20.0f;
 
@@ -263,7 +261,7 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 					[
 						SNew(STextBlock)
 							.AutoWrapText(true)
-							.Text_Lambda([this]() -> FText { return FText::AsNumber(UnusedAssetsCount); })
+							.Text_Lambda([this]() -> FText { return FText::AsNumber(CleaningStats.UnusedAssetsNum); })
 					]
 				]
 				+ SVerticalBox::Slot()
@@ -283,7 +281,7 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 					[
 						SNew(STextBlock)
 	                    .AutoWrapText(true)
-	                    .Text_Lambda([this]() -> FText { return FText::AsMemory(UnusedAssetsFilesSize); })
+	                    .Text_Lambda([this]() -> FText { return FText::AsMemory(CleaningStats.UnusedAssetsTotalSize); })
 					]
 				]
 				+ SVerticalBox::Slot()
@@ -303,7 +301,7 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 					[
 						SNew(STextBlock)
                         .AutoWrapText(true)
-                        .Text_Lambda([this]() -> FText { return FText::AsNumber(EmptyFoldersCount); })
+                        .Text_Lambda([this]() -> FText { return FText::AsNumber(CleaningStats.EmptyFolders); })
 					]
 				]
 			]
@@ -312,7 +310,6 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 
 FReply FProjectCleanerModule::OnDeleteEmptyFolderClick()
 {
-	// return FReply::Handled();
 	FText DialogText;
 
 	if (EmptyFolders.Num() == 0)
@@ -323,13 +320,13 @@ FReply FProjectCleanerModule::OnDeleteEmptyFolderClick()
 		return FReply::Handled();
 	}
 
-	NotificationManager->Show();
+	NotificationManager->Show(CleaningStats);
 
 	ProjectCleanerUtility::DeleteEmptyFolders(EmptyFolders);
 
 	DialogText = FText::Format(
 		LOCTEXT("PluginButtonDialogText", "Deleted {0} empty folder."),
-		EmptyFoldersCount
+		CleaningStats.EmptyFolders
 	);
 
 	UpdateStats();
@@ -342,29 +339,85 @@ FReply FProjectCleanerModule::OnDeleteEmptyFolderClick()
 
 FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 {
-	TArray<FAssetData> RootAssets;
-	ProjectCleanerUtility::GetRootAssets(RootAssets, UnusedAssets);
-	while (RootAssets.Num() > 0)
+	if (UnusedAssets.Num() == 0)
 	{
-		ProjectCleanerUtility::DeleteAssetsv2(RootAssets);
+		const FText DialogText = FText::FromString(FString{"No assets to delete!"});
+		FMessageDialog::Open(EAppMsgType::Ok, DialogText);
 
-		for(const auto& Asset : RootAssets)
-		{
-			UnusedAssets.Remove(Asset);
-		}
-		RootAssets.Empty();
-		ProjectCleanerUtility::GetRootAssets(RootAssets, UnusedAssets);
+		return FReply::Handled();
 	}
 
+	TArray<FAssetData> RootAssets;
+	ProjectCleanerUtility::GetRootAssets(RootAssets, UnusedAssets);
+
+	// Checking if array exceeding chunk size limit
+	// if so we splitting chunk into sub-chunks, this is for preventing buffer overflow
+	if (RootAssets.Num() > CleaningStats.DeleteChunkSize)
+	{
+		// todo:ashe23 split chunks
+		NotificationManager->Show(CleaningStats);
+
+		TArray<FAssetData> Chunk;
+		Chunk.Reserve(CleaningStats.DeleteChunkSize);
+
+
+		while (RootAssets.Num() > CleaningStats.DeleteChunkSize)
+		{
+			if (RootAssets.Num() <= CleaningStats.DeleteChunkSize)
+			{
+				break;
+			}
+
+			for (int32 i = 0; i < CleaningStats.DeleteChunkSize; ++i)
+			{
+				if (RootAssets.IsValidIndex(i))
+				{
+					Chunk.Add(RootAssets[i]);
+					RootAssets.RemoveAt(i);
+				}
+			}
+
+			CleaningStats.DeletedAssetCount += ProjectCleanerUtility::DeleteAssetsv2(Chunk);
+			NotificationManager->Update(CleaningStats);
+
+			Chunk.Empty();
+		}
+
+		CleaningStats.DeletedAssetCount += ProjectCleanerUtility::DeleteAssetsv2(RootAssets);
+		NotificationManager->Update(CleaningStats);
+	}
+	else
+	{
+		NotificationManager->Show(CleaningStats);
+
+		while (RootAssets.Num() > 0)
+		{
+			CleaningStats.DeletedAssetCount += ProjectCleanerUtility::DeleteAssetsv2(RootAssets);
+
+			NotificationManager->Update(CleaningStats);
+
+			for (const auto& Asset : RootAssets)
+			{
+				UnusedAssets.Remove(Asset);
+			}
+
+			RootAssets.Empty();
+			ProjectCleanerUtility::GetRootAssets(RootAssets, UnusedAssets);
+		}
+	}
 	// what is left is circular dependent assets that should be deleted
-	ProjectCleanerUtility::DeleteAssetsv2(UnusedAssets);
-	
+	CleaningStats.DeletedAssetCount += ProjectCleanerUtility::DeleteAssetsv2(UnusedAssets);
+
+	NotificationManager->Update(CleaningStats);
+
 	UpdateStats();
 	ProjectCleanerUtility::DeleteEmptyFolders(EmptyFolders);
 	UpdateStats();
-	
+
+	NotificationManager->Hide();
+
 	return FReply::Handled();
-	
+
 	FText DialogText;
 	if (UnusedAssets.Num() == 0)
 	{
@@ -372,7 +425,7 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 	}
 	else
 	{
-		NotificationManager->Show();
+		// NotificationManager->Show();
 
 		const int32 DeletedAssetNum = ProjectCleanerUtility::DeleteUnusedAssets(UnusedAssets);
 
@@ -398,9 +451,18 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 
 void FProjectCleanerModule::UpdateStats()
 {
-	UnusedAssetsCount = ProjectCleanerUtility::GetUnusedAssetsNum(UnusedAssets);
-	UnusedAssetsFilesSize = ProjectCleanerUtility::GetUnusedAssetsTotalSize(UnusedAssets);
-	EmptyFoldersCount = ProjectCleanerUtility::GetEmptyFoldersNum(EmptyFolders);
+	CleaningStats.UnusedAssetsNum = ProjectCleanerUtility::GetUnusedAssetsNum(UnusedAssets);
+	CleaningStats.UnusedAssetsTotalSize = ProjectCleanerUtility::GetUnusedAssetsTotalSize(UnusedAssets);
+	CleaningStats.EmptyFolders = ProjectCleanerUtility::GetEmptyFoldersNum(EmptyFolders);
+	CleaningStats.TotalAssetNum = CleaningStats.UnusedAssetsNum;
+}
+
+void FProjectCleanerModule::InitCleaner()
+{
+	// before any cleaning operation fixup redirectors
+	ProjectCleanerUtility::FixupRedirectors();
+
+	UpdateStats();
 }
 
 #undef LOCTEXT_NAMESPACE

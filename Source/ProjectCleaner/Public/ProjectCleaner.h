@@ -37,6 +37,7 @@ private:
 	void AddMenuExtension(FMenuBuilder& Builder);
 
 	void UpdateStats();
+	void InitCleaner();
 private:
 	// Button events
 	FReply OnDeleteEmptyFolderClick();
@@ -45,6 +46,8 @@ private:
 	int32 UnusedAssetsCount = 0;
 	int32 EmptyFoldersCount = 0;
 	int64 UnusedAssetsFilesSize = 0;
+
+	FCleaningStats CleaningStats;
 private:
 	TSharedRef<class SDockTab> OnSpawnPluginTab(const class FSpawnTabArgs& SpawnTabArgs);
 	TSharedPtr<class FUICommandList> PluginCommands;

@@ -64,9 +64,8 @@ public:
 	// static bool DepResolveIterative(TArray<FName> Resolved);
 	static bool IsLevelAsset(const FName& Asset);
 	static void FindAllAssetsWithNoDependencies(TArray<FName>& Assets, const TArray<FAssetData>& AllAssets);
-	void FindAllRefs(const FName& Root);
 	static void DeleteAssetChunks(TArray<FAssetChunk>& AssetChunks);
-	static void DeleteAssetsv2(TArray<FAssetData>& Assets);
+	static int32 DeleteAssetsv2(TArray<FAssetData>& Assets);
 	static void GetRootAssets(TArray<FAssetData>& RootAssets, TArray<FAssetData>& AllAssets);
 	// REFACTOR END
 

@@ -274,63 +274,6 @@ void ProjectCleanerUtility::FindAndCreateAssetTree(TArray<FAssetData>& UnusedAss
 			AssetChunks.Add(Chunk);
 		}
 	}
-
-
-	// while (UnusedAssets.Num() > 0)
-	// {
-	// 	const auto Elem = UnusedAssets.Pop(false);
-	// 	AssetRegistryModule.Get().GetReferencers(Elem.PackageName, Refs);
-	// 	for (const auto& Ref : Refs)
-	// 	{
-	// 		Output.AddUnique(Ref);
-	// 	}
-	// 	Refs.Reset();
-	// }
-
-
-	UE_LOG(LogTemp, Warning, TEXT("A"));
-
-	// ========= OLD Recursive VERSION =========
-	// // 1) Finding all assets of projects
-	// TArray<FAssetData> AllAssets;
-	// AllAssets.Reserve(1000);
-	//
-	// FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
-	// AssetRegistryModule.Get().GetAssetsByPath(FName{"/Game"}, AllAssets, true);
-	//
-	// // 2) Finding unused assets
-	// TArray<FName> RootAssets;
-	// FindAllAssetsWithNoDependencies(RootAssets, AllAssets);
-	//
-	// for (const auto& Asset : RootAssets)
-	// {
-	// 	{
-	// 		TArray<FName> Resolved;
-	// 		Resolved.Reserve(20);
-	// 		DepResolve(Asset, Resolved);
-	// 		if (Resolved.Num() > 0)
-	// 		{
-	// 			FAssetChunk Chunk;
-	// 			for (const auto& Elem : Resolved)
-	// 			{
-	// const auto FoundedAssetData = AllAssets.FindByPredicate([&](const FAssetData& SingleAsset)
-	// {
-	// 	return SingleAsset.PackageName == Elem;
-	// });
-	//
-	// 				if (FoundedAssetData && FoundedAssetData->IsValid())
-	// 				{
-	// 					Chunk.Dependencies.Add(*FoundedAssetData);
-	// 				}
-	// 			}
-	//
-	// 			if(Chunk.Dependencies.Num() > 0)
-	// 			{
-	// 				AssetChunks.Add(Asset, Chunk);					
-	// 			}
-	// 		}
-	// 	}
-	// }
 }
 
 bool ProjectCleanerUtility::DepResolve(const FName& Asset, TArray<FName>& Resolved)
@@ -444,12 +387,6 @@ void ProjectCleanerUtility::FindAllAssetsWithNoDependencies(TArray<FName>& Asset
 	}
 }
 
-
-void ProjectCleanerUtility::FindAllRefs(const FName& Root)
-{
-	TArray<FName> Stack;
-}
-
 void ProjectCleanerUtility::DeleteAssetChunks(TArray<FAssetChunk>& AssetChunks)
 {
 	// todo:ashe23 add progress calculation here
@@ -460,10 +397,9 @@ void ProjectCleanerUtility::DeleteAssetChunks(TArray<FAssetChunk>& AssetChunks)
 	}
 }
 
-void ProjectCleanerUtility::DeleteAssetsv2(TArray<FAssetData>& Assets)
+int32 ProjectCleanerUtility::DeleteAssetsv2(TArray<FAssetData>& Assets)
 {
-	const int32 DeletedObjects = ObjectTools::DeleteAssets(Assets, true);
-	UE_LOG(LogTemp, Warning, TEXT("%d"), DeletedObjects);
+	return ObjectTools::DeleteAssets(Assets, false);	
 }
 
 void ProjectCleanerUtility::GetRootAssets(TArray<FAssetData>& RootAssets, TArray<FAssetData>& AllAssets)

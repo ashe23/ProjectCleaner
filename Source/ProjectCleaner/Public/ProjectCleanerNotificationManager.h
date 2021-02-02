@@ -4,6 +4,8 @@
 
 #include "CoreMinimal.h"
 
+#include "StructsContainer.h"
+
 class SNotificationItem;
 class FSlateNotificationManager;
 
@@ -14,8 +16,8 @@ class FSlateNotificationManager;
 class PROJECTCLEANER_API ProjectCleanerNotificationManager
 {
 public:
-	void Show();
-	// void UpdateProgress();
+	void Show(const FCleaningStats& Stats);
+	void Update(const FCleaningStats& Stats);
 	void Hide();
 
 
