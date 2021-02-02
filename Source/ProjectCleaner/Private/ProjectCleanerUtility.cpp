@@ -462,7 +462,8 @@ void ProjectCleanerUtility::DeleteAssetChunks(TArray<FAssetChunk>& AssetChunks)
 
 void ProjectCleanerUtility::DeleteAssetsv2(TArray<FAssetData>& Assets)
 {
-	ObjectTools::DeleteAssets(Assets, false);
+	const int32 DeletedObjects = ObjectTools::DeleteAssets(Assets, true);
+	UE_LOG(LogTemp, Warning, TEXT("%d"), DeletedObjects);
 }
 
 void ProjectCleanerUtility::GetRootAssets(TArray<FAssetData>& RootAssets, TArray<FAssetData>& AllAssets)

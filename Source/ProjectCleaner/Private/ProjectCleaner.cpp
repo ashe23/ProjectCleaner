@@ -108,45 +108,7 @@ void FProjectCleanerModule::AddToolbarExtension(FToolBarBuilder& Builder)
 TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs)
 {
 	UpdateStats();
-	// AssetChunks.Empty();
 	ProjectCleanerUtility::FixupRedirectors();
-
-	// first we must all assets that never used in any level
-	// from that list we must find all assets that can be deleted
-	// asset can be deleted if no any asset referencing him(hard only)  and its dependecy assets never used in any level
-	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
-	// ProjectCleanerUtility::FindAndCreateAssetTree(UnusedAssets, AssetChunks);
-
-	TArray<FAssetData> RootAssets;
-	ProjectCleanerUtility::GetRootAssets(RootAssets, UnusedAssets);
-	while (RootAssets.Num() > 0)
-	{
-		ProjectCleanerUtility::DeleteAssetsv2(RootAssets);
-		RootAssets.Empty();
-		ProjectCleanerUtility::GetRootAssets(RootAssets, UnusedAssets);
-	}
-	ProjectCleanerUtility::DeleteAssetsv2(UnusedAssets);
-	ProjectCleanerUtility::DeleteEmptyFolders(EmptyFolders);
-	// for (const auto& RootAsset : RootAssets)
-	// {
-	// 	TArray<FName> Dependencies;
-	// 	ProjectCleanerUtility::GetDependencyTree(AssetRegistryModule.Get(), RootAsset.PackageName, Dependencies);
-	//
-	// 	FAssetChunk Chunk;
-	// 	while (UnusedAssets.Num() > 0)
-	// 	{
-	// 		const auto& Asset = UnusedAssets.Pop(false);
-	// 		if (Dependencies.Contains(Asset.PackageName))
-	// 		{
-	// 			Chunk.Dependencies.AddUnique(Asset);
-	// 		}
-	// 	}
-	// 	AssetChunks.Add(Chunk);
-	// }
-
-
-	// ProjectCleanerUtility::FindAllAssetsWithNoDependencies(HardStatue, UnusedAssets);
-	// FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
 
 
 	const float CommonPadding = 20.0f;
@@ -380,8 +342,29 @@ FReply FProjectCleanerModule::OnDeleteEmptyFolderClick()
 
 FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 {
-	ProjectCleanerUtility::DeleteAssetChunks(AssetChunks);
+	TArray<FAssetData> RootAssets;
+	ProjectCleanerUtility::GetRootAssets(RootAssets, UnusedAssets);
+	while (RootAssets.Num() > 0)
+	{
+		ProjectCleanerUtility::DeleteAssetsv2(RootAssets);
+
+		for(const auto& Asset : RootAssets)
+		{
+			UnusedAssets.Remove(Asset);
+		}
+		RootAssets.Empty();
+		ProjectCleanerUtility::GetRootAssets(RootAssets, UnusedAssets);
+	}
+
+	// what is left is circular dependent assets that should be deleted
+	ProjectCleanerUtility::DeleteAssetsv2(UnusedAssets);
+	
+	UpdateStats();
+	ProjectCleanerUtility::DeleteEmptyFolders(EmptyFolders);
+	UpdateStats();
+	
 	return FReply::Handled();
+	
 	FText DialogText;
 	if (UnusedAssets.Num() == 0)
 	{
