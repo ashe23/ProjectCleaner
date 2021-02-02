@@ -111,8 +111,42 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 	// AssetChunks.Empty();
 	ProjectCleanerUtility::FixupRedirectors();
 
-	// ProjectCleanerUtility::GetUnusedAssetsNum(UnusedAssets);
+	// first we must all assets that never used in any level
+	// from that list we must find all assets that can be deleted
+	// asset can be deleted if no any asset referencing him(hard only)  and its dependecy assets never used in any level
+	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
 	// ProjectCleanerUtility::FindAndCreateAssetTree(UnusedAssets, AssetChunks);
+
+	TArray<FAssetData> RootAssets;
+	ProjectCleanerUtility::GetRootAssets(RootAssets, UnusedAssets);
+	while (RootAssets.Num() > 0)
+	{
+		ProjectCleanerUtility::DeleteAssetsv2(RootAssets);
+		RootAssets.Empty();
+		ProjectCleanerUtility::GetRootAssets(RootAssets, UnusedAssets);
+	}
+	ProjectCleanerUtility::DeleteAssetsv2(UnusedAssets);
+	ProjectCleanerUtility::DeleteEmptyFolders(EmptyFolders);
+	// for (const auto& RootAsset : RootAssets)
+	// {
+	// 	TArray<FName> Dependencies;
+	// 	ProjectCleanerUtility::GetDependencyTree(AssetRegistryModule.Get(), RootAsset.PackageName, Dependencies);
+	//
+	// 	FAssetChunk Chunk;
+	// 	while (UnusedAssets.Num() > 0)
+	// 	{
+	// 		const auto& Asset = UnusedAssets.Pop(false);
+	// 		if (Dependencies.Contains(Asset.PackageName))
+	// 		{
+	// 			Chunk.Dependencies.AddUnique(Asset);
+	// 		}
+	// 	}
+	// 	AssetChunks.Add(Chunk);
+	// }
+
+
+	// ProjectCleanerUtility::FindAllAssetsWithNoDependencies(HardStatue, UnusedAssets);
+	// FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
 
 
 	const float CommonPadding = 20.0f;
@@ -129,7 +163,7 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 		[
 			// Put your tab content here!
 			SNew(SBorder)
-            .HAlign(HAlign_Center)            
+            .HAlign(HAlign_Center)
             .Padding(25)
 			[
 				SNew(SVerticalBox)
@@ -346,8 +380,8 @@ FReply FProjectCleanerModule::OnDeleteEmptyFolderClick()
 
 FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 {
-	// ProjectCleanerUtility::DeleteAssetChunks(AssetChunks);
-	// return FReply::Handled();
+	ProjectCleanerUtility::DeleteAssetChunks(AssetChunks);
+	return FReply::Handled();
 	FText DialogText;
 	if (UnusedAssets.Num() == 0)
 	{

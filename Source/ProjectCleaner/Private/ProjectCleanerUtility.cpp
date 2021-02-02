@@ -120,7 +120,8 @@ void ProjectCleanerUtility::RemoveLevelAssets(TArray<FAssetData>& GameAssetsCont
 {
 	GameAssetsContainer.RemoveAll([](FAssetData Val)
 	{
-		return Val.AssetClass.ToString().Contains("MapBuildDataRegistry") || Val.AssetClass == UWorld::StaticClass()->GetFName();
+		return Val.AssetClass.ToString().Contains("MapBuildDataRegistry") || Val.AssetClass == UWorld::StaticClass()->
+			GetFName();
 	});
 }
 
@@ -336,12 +337,13 @@ bool ProjectCleanerUtility::DepResolve(const FName& Asset, TArray<FName>& Resolv
 {
 	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
 
-	if (IsLevelAsset(Asset)) return false;
+	if (IsLevelAsset(Asset) || Resolved.Contains(Asset)) return false;
 
+	Resolved.AddUnique(Asset);
 	bool NoLevelsFound = true;
 
 	TArray<FName> Referencers;
-	AssetRegistryModule.Get().GetReferencers(Asset, Referencers, EAssetRegistryDependencyType::Hard);
+	AssetRegistryModule.Get().GetReferencers(Asset, Referencers);
 
 	// remove itself from list
 	Referencers.RemoveAll([&](const FName Val)
@@ -365,6 +367,33 @@ bool ProjectCleanerUtility::DepResolve(const FName& Asset, TArray<FName>& Resolv
 	}
 
 	return false;
+}
+
+bool ProjectCleanerUtility::GetDependencyTree(const IAssetRegistry& AssetRegistry, const FName& Asset,
+                                              TArray<FName>& Checked)
+{
+	if (IsLevelAsset(Asset) || Checked.Contains(Asset)) return false;
+
+	Checked.AddUnique(Asset);
+
+	TArray<FName> Deps;
+	AssetRegistry.GetDependencies(Asset, Deps);
+
+	for (const auto& Dep : Deps)
+	{
+		GetDependencyTree(AssetRegistry, Dep, Checked);
+	}
+
+	return true;
+}
+
+bool ProjectCleanerUtility::HasReferencer(const FName& Asset)
+{
+	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
+	TArray<FName> Refs;
+	AssetRegistryModule.Get().GetReferencers(Asset, Refs);
+
+	return Refs.Num() > 0;
 }
 
 bool ProjectCleanerUtility::IsLevelAsset(const FName& Asset)
@@ -401,7 +430,7 @@ void ProjectCleanerUtility::FindAllAssetsWithNoDependencies(TArray<FName>& Asset
 		}
 
 		TArray<FName> Dependencies;
-		AssetRegistryModule.Get().GetDependencies(Asset.PackageName, Dependencies);
+		AssetRegistryModule.Get().GetDependencies(Asset.PackageName, Dependencies, EAssetRegistryDependencyType::Hard);
 		// remove itself from list
 		Dependencies.RemoveAll([&](const FName Val)
 		{
@@ -426,7 +455,33 @@ void ProjectCleanerUtility::DeleteAssetChunks(TArray<FAssetChunk>& AssetChunks)
 	// todo:ashe23 add progress calculation here
 	for (const auto& Chunk : AssetChunks)
 	{
-		ObjectTools::DeleteAssets(Chunk.Dependencies, false);
+		const int32 DeletedObjects = ObjectTools::DeleteAssets(Chunk.Dependencies, false);
+		UE_LOG(LogTemp, Warning, TEXT("%d"), DeletedObjects);
+	}
+}
+
+void ProjectCleanerUtility::DeleteAssetsv2(TArray<FAssetData>& Assets)
+{
+	ObjectTools::DeleteAssets(Assets, false);
+}
+
+void ProjectCleanerUtility::GetRootAssets(TArray<FAssetData>& RootAssets, TArray<FAssetData>& AllAssets)
+{
+	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
+	for (const auto& Asset : AllAssets)
+	{
+		TArray<FName> Refs;
+		AssetRegistryModule.Get().GetReferencers(Asset.PackageName, Refs);
+
+		Refs.RemoveAll([&](const FName& Val)
+		{
+			return Val.Compare(Asset.PackageName) == 0;
+		});
+
+		if (Refs.Num() == 0)
+		{
+			RootAssets.AddUnique(Asset);
+		}
 	}
 }
 

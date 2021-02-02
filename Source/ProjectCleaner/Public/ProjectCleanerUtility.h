@@ -59,11 +59,15 @@ public:
 	// REFACTOR START
 	static void FindAndCreateAssetTree(TArray<FAssetData>& UnusedAssets, TArray<FAssetChunk>& AssetChunks);
 	static bool DepResolve(const FName& Asset, TArray<FName>& Resolved);
+	static bool GetDependencyTree(const IAssetRegistry& AssetRegistry, const FName& Asset, TArray<FName>& Checked);
+	static bool HasReferencer(const FName& Asset);
 	// static bool DepResolveIterative(TArray<FName> Resolved);
 	static bool IsLevelAsset(const FName& Asset);
 	static void FindAllAssetsWithNoDependencies(TArray<FName>& Assets, const TArray<FAssetData>& AllAssets);
 	void FindAllRefs(const FName& Root);
 	static void DeleteAssetChunks(TArray<FAssetChunk>& AssetChunks);
+	static void DeleteAssetsv2(TArray<FAssetData>& Assets);
+	static void GetRootAssets(TArray<FAssetData>& RootAssets, TArray<FAssetData>& AllAssets);
 	// REFACTOR END
 
 	
