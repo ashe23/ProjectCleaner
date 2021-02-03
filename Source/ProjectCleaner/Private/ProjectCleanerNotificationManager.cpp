@@ -2,50 +2,59 @@
 
 
 #include "Public/ProjectCleanerNotificationManager.h"
-#include "SNotificationList.h"
 #include "NotificationManager.h"
 
 
-void ProjectCleanerNotificationManager::Show(const FCleaningStats& Stats)
+TWeakPtr<SNotificationItem> ProjectCleanerNotificationManager::Add(const FString& Text,
+                                                                   const SNotificationItem::ECompletionState
+                                                                   CompletionState) const
 {
-	// FText Text = FText::Format(LOCTEXT("LightBuildProgressMessage", "Building lighting{0}:  {1}%"), FText::FromString(ScenarioString), FText::AsNumber(LightmassProcessor->GetAsyncPercentDone()));
-	// FStaticLightingManager::Get()->SetNotificationText( Text );
-	// FNotificationInfo Info(FText::FromString(TEXT("Cleaning project. This can take some time, Please wait")));
-	const int32 DeletePercentage = (static_cast<float>(Stats.DeletedAssetCount) / Stats.TotalAssetNum) * 100.0f;
-	FNotificationInfo Info(FText::FromString(FString::Printf(
-				TEXT("Deleted %d of %d assets. %d %%"),
-				Stats.DeletedAssetCount,
-				Stats.TotalAssetNum,
-				DeletePercentage
-			)
-		)
-	);
+	FNotificationInfo Info(FText::FromString(Text));
 	Info.bFireAndForget = false;
 
-
-	NotificationManager = FSlateNotificationManager::Get().AddNotification(Info);
+	const TWeakPtr<SNotificationItem> NotificationManager = FSlateNotificationManager::Get().AddNotification(Info);
 	if (NotificationManager.IsValid())
 	{
-		NotificationManager.Pin()->SetCompletionState(SNotificationItem::CS_Pending);
+		NotificationManager.Pin()->SetCompletionState(CompletionState);
+	}
+
+	return NotificationManager;
+}
+
+void ProjectCleanerNotificationManager::AddTransient(const FString& Text,
+                                                     const SNotificationItem::ECompletionState
+                                                     CompletionState,
+                                                     const float ExpireDuration) const
+{
+	FNotificationInfo Info(FText::FromString(Text));
+	Info.bFireAndForget = true;
+	Info.ExpireDuration = ExpireDuration;
+
+
+	const TWeakPtr<SNotificationItem> NotificationManager = FSlateNotificationManager::Get().AddNotification(Info);
+	if (NotificationManager.IsValid())
+	{
+		NotificationManager.Pin()->SetCompletionState(CompletionState);
 	}
 }
 
-void ProjectCleanerNotificationManager::Update(const FCleaningStats& Stats)
+
+void ProjectCleanerNotificationManager::Update(TWeakPtr<SNotificationItem> NotificationManager,
+                                               const FCleaningStats& Stats) const
 {
 	if (NotificationManager.IsValid())
 	{
-		const int32 DeletePercentage = (static_cast<float>(Stats.DeletedAssetCount) / Stats.TotalAssetNum) * 100.0f;
 		NotificationManager.Pin()->SetText(FText::FromString(FString::Printf(
 				TEXT("Deleted %d of %d assets. %d %%"),
 				Stats.DeletedAssetCount,
 				Stats.TotalAssetNum,
-				DeletePercentage
+				Stats.GetPercentage()
 			)
 		));
 	}
 }
 
-void ProjectCleanerNotificationManager::Hide()
+void ProjectCleanerNotificationManager::Hide(TWeakPtr<SNotificationItem> NotificationManager) const
 {
 	if (!NotificationManager.IsValid()) return;
 
@@ -56,8 +65,18 @@ void ProjectCleanerNotificationManager::Hide()
 	NotificationManager.Reset();
 
 	// New notification about success
-	FNotificationInfo Info(FText::FromString(TEXT("All assets deleted sucessfully.")));
-	Info.ExpireDuration = 10.0f;
+	FNotificationInfo Info(FText::FromString(
+		FString::Printf(TEXT("Deleted %d assets and %d empty folders."), CachedStats.DeletedAssetCount,
+		                CachedStats.EmptyFolders)));
+	Info.ExpireDuration = 5.0f;
 
 	NotificationManager = FSlateNotificationManager::Get().AddNotification(Info);
+}
+
+void ProjectCleanerNotificationManager::Reset(TWeakPtr<SNotificationItem> NotificationManager)
+{
+	if (!NotificationManager.IsValid()) return;
+
+	NotificationManager.Pin()->ExpireAndFadeout();
+	NotificationManager.Reset();
 }

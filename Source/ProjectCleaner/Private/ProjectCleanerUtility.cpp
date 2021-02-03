@@ -12,23 +12,12 @@
 #include "Materials/Material.h"
 #include "UObject/ObjectRedirector.h"
 
-#pragma optimize("", off)
-
-
 bool ProjectCleanerUtility::HasFiles(const FString& SearchPath)
 {
 	TArray<FString> Files;
 	IFileManager::Get().FindFiles(Files, *SearchPath, true, false);
 
 	return Files.Num() > 0;
-}
-
-bool ProjectCleanerUtility::HasDirectories(const FString& SearchPath)
-{
-	TArray<FString> Directories;
-	IFileManager::Get().FindFiles(Directories, *SearchPath, false, true);
-
-	return Directories.Num() > 0;
 }
 
 bool ProjectCleanerUtility::GetAllEmptyDirectories(const FString& SearchPath, TArray<FString>& Directories,
@@ -82,19 +71,6 @@ void ProjectCleanerUtility::RemoveDevsAndCollectionsDirectories(TArray<FString>&
 	{
 		return Val.Contains("Developers") || Val.Contains("Collections");
 	});
-}
-
-int32 ProjectCleanerUtility::DeleteUnusedAssets(TArray<FAssetData>& AssetsToDelete)
-{
-	// todo:ashe23 try to delete in chunks for performance purposes
-	// todo:ashe23 after deleting lot of files content browser not updates its content, but in reality files are deleted
-
-	if (AssetsToDelete.Num() > 0)
-	{
-		return ObjectTools::DeleteAssets(AssetsToDelete, true);
-	}
-
-	return 0;
 }
 
 void ProjectCleanerUtility::DeleteEmptyFolders(TArray<FString>& EmptyFolders)
@@ -244,160 +220,7 @@ void ProjectCleanerUtility::FixupRedirectors()
 	}
 }
 
-void ProjectCleanerUtility::FindAndCreateAssetTree(TArray<FAssetData>& UnusedAssets,
-                                                   TArray<FAssetChunk>& AssetChunks)
-{
-	// find root assets
-	TArray<FName> RootAssets;
-	FindAllAssetsWithNoDependencies(RootAssets, UnusedAssets);
-
-	for (const auto& RootAsset : RootAssets)
-	{
-		TArray<FName> Refs;
-		DepResolve(RootAsset, Refs);
-
-		FAssetChunk Chunk;
-		for (const auto& Ref : Refs)
-		{
-			const auto FoundedAssetData = UnusedAssets.FindByPredicate([&](const FAssetData& SingleAsset)
-			{
-				return SingleAsset.PackageName == Ref;
-			});
-			if (FoundedAssetData && FoundedAssetData->IsValid())
-			{
-				Chunk.Dependencies.Add(*FoundedAssetData);
-			}
-		}
-
-		if (Chunk.Dependencies.Num() > 0)
-		{
-			AssetChunks.Add(Chunk);
-		}
-	}
-}
-
-bool ProjectCleanerUtility::DepResolve(const FName& Asset, TArray<FName>& Resolved)
-{
-	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
-
-	if (IsLevelAsset(Asset) || Resolved.Contains(Asset)) return false;
-
-	Resolved.AddUnique(Asset);
-	bool NoLevelsFound = true;
-
-	TArray<FName> Referencers;
-	AssetRegistryModule.Get().GetReferencers(Asset, Referencers);
-
-	// remove itself from list
-	Referencers.RemoveAll([&](const FName Val)
-	{
-		return Val.ToString().Compare(Asset.ToString()) == 0;
-	});
-
-
-	for (const auto& Ref : Referencers)
-	{
-		if (!DepResolve(Ref, Resolved))
-		{
-			NoLevelsFound = false;
-		}
-	}
-
-	if (NoLevelsFound)
-	{
-		Resolved.AddUnique(Asset);
-		return true;
-	}
-
-	return false;
-}
-
-bool ProjectCleanerUtility::GetDependencyTree(const IAssetRegistry& AssetRegistry, const FName& Asset,
-                                              TArray<FName>& Checked)
-{
-	if (IsLevelAsset(Asset) || Checked.Contains(Asset)) return false;
-
-	Checked.AddUnique(Asset);
-
-	TArray<FName> Deps;
-	AssetRegistry.GetDependencies(Asset, Deps);
-
-	for (const auto& Dep : Deps)
-	{
-		GetDependencyTree(AssetRegistry, Dep, Checked);
-	}
-
-	return true;
-}
-
-bool ProjectCleanerUtility::HasReferencer(const FName& Asset)
-{
-	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
-	TArray<FName> Refs;
-	AssetRegistryModule.Get().GetReferencers(Asset, Refs);
-
-	return Refs.Num() > 0;
-}
-
-bool ProjectCleanerUtility::IsLevelAsset(const FName& Asset)
-{
-	TArray<FAssetData> Levels;
-	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
-	FARFilter Filter;
-	Filter.bRecursivePaths = true;
-	Filter.PackagePaths.Add(FName{"/Game"});
-	Filter.ClassNames.Add(UWorld::StaticClass()->GetFName());
-	AssetRegistryModule.Get().GetAssets(Filter, Levels);
-
-	for (const auto& Level : Levels)
-	{
-		if (Level.PackageName.Compare(Asset) == 0)
-		{
-			return true;
-		}
-	}
-
-	return false;
-}
-
-void ProjectCleanerUtility::FindAllAssetsWithNoDependencies(TArray<FName>& Assets, const TArray<FAssetData>& AllAssets)
-{
-	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
-	for (const auto& Asset : AllAssets)
-	{
-		if (Asset.AssetClass.Compare(UWorld::StaticClass()->GetFName()) == 0 || Asset.AssetClass.Compare(FName{
-			"MapBuildDataRegistry"
-		}) == 0)
-		{
-			continue;
-		}
-
-		TArray<FName> Dependencies;
-		AssetRegistryModule.Get().GetDependencies(Asset.PackageName, Dependencies, EAssetRegistryDependencyType::Hard);
-		// remove itself from list
-		Dependencies.RemoveAll([&](const FName Val)
-		{
-			return Val.ToString().Compare(Asset.PackageName.ToString()) == 0;
-		});
-
-		if (Dependencies.Num() == 0)
-		{
-			Assets.Add(Asset.PackageName);
-		}
-	}
-}
-
-void ProjectCleanerUtility::DeleteAssetChunks(TArray<FAssetChunk>& AssetChunks)
-{
-	// todo:ashe23 add progress calculation here
-	for (const auto& Chunk : AssetChunks)
-	{
-		const int32 DeletedObjects = ObjectTools::DeleteAssets(Chunk.Dependencies, false);
-		UE_LOG(LogTemp, Warning, TEXT("%d"), DeletedObjects);
-	}
-}
-
-int32 ProjectCleanerUtility::DeleteAssetsv2(TArray<FAssetData>& Assets)
+int32 ProjectCleanerUtility::DeleteAssets(TArray<FAssetData>& Assets)
 {
 	// first try to delete normally
 	int32 DeletedAssets = ObjectTools::DeleteAssets(Assets, false);
@@ -419,7 +242,8 @@ int32 ProjectCleanerUtility::DeleteAssetsv2(TArray<FAssetData>& Assets)
 	return DeletedAssets;
 }
 
-void ProjectCleanerUtility::GetRootAssets(TArray<FAssetData>& RootAssets, TArray<FAssetData>& AllAssets,
+void ProjectCleanerUtility::GetRootAssets(TArray<FAssetData>& RootAssets,
+                                          TArray<FAssetData>& AllAssets,
                                           const FCleaningStats& CleaningStats)
 {
 	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
@@ -430,6 +254,7 @@ void ProjectCleanerUtility::GetRootAssets(TArray<FAssetData>& RootAssets, TArray
 		TArray<FName> Refs;
 		AssetRegistryModule.Get().GetReferencers(Asset.PackageName, Refs);
 
+		// Removing itself from list
 		Refs.RemoveAll([&](const FName& Val)
 		{
 			return Val.Compare(Asset.PackageName) == 0;
@@ -441,5 +266,3 @@ void ProjectCleanerUtility::GetRootAssets(TArray<FAssetData>& RootAssets, TArray
 		}
 	}
 }
-
-#pragma optimize("", on)

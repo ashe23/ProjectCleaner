@@ -42,28 +42,20 @@ private:
 	// Button events
 	FReply OnDeleteEmptyFolderClick();
 	FReply OnDeleteUnusedAssetsBtnClick();
+	FReply CloseModalWindow() const;
 	// Stats
-	int32 UnusedAssetsCount = 0;
-	int32 EmptyFoldersCount = 0;
-	int64 UnusedAssetsFilesSize = 0;
-
 	FCleaningStats CleaningStats;
 private:
-	TSharedRef<class SDockTab> OnSpawnPluginTab(const class FSpawnTabArgs& SpawnTabArgs);
+	void OnSpawnPluginTab(const class FSpawnTabArgs& SpawnTabArgs);
 	TSharedPtr<class FUICommandList> PluginCommands;
 	TArray<FAssetData> UnusedAssets;
 	TArray<FString> EmptyFolders;
 	ProjectCleanerNotificationManager* NotificationManager;
-	TEnumAsByte<ECleanerStatus::Type> CleanerStatus;
-
-	// slate
+	TSharedPtr<SWindow> ParentWindow;
+	
+	// Slate styles
 	FSlateColorBrush TipOneBrushColor;
 	FSlateColorBrush TipTwoBrushColor;
-
-	// REFACTOR START
-	TArray<FAssetChunk> AssetChunks;
-	// REFACTOR END
-	
 };
 
 

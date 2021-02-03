@@ -2,7 +2,6 @@
 
 #pragma once
 
-#include "Engine/StreamableManager.h"
 #include "StructsContainer.h"
 #include "CoreMinimal.h"
 
@@ -17,10 +16,7 @@ class PROJECTCLEANER_API ProjectCleanerUtility
 public:
 	// Check if given path contains files in it, non recursive
 	static bool HasFiles(const FString& SearchPath);
-	
-	// Check if given path contains directories in it, non recursive
-	static bool HasDirectories(const FString& SearchPath);
-	
+
 	// Finds all empty folders in given path recursive version
 	static bool GetAllEmptyDirectories(const FString& SearchPath, TArray<FString>& Directories, const bool bIsRootDirectory);
 	
@@ -29,9 +25,6 @@ public:
 
 	// Removes from given Directories "Developers" and "Collections" folders
 	static void RemoveDevsAndCollectionsDirectories(TArray<FString>& Directories);
-
-	// Deletes unused assets
-	static int32 DeleteUnusedAssets(TArray<FAssetData>& AssetsToDelete);
 
 	// Deletes Empty Folders
 	static void DeleteEmptyFolders(TArray<FString>& EmptyFolders);
@@ -42,7 +35,7 @@ public:
 	// Removes all level assets(Maps) from GameAssetsContainer 
 	static void RemoveLevelAssets(TArray<FAssetData>& GameAssetsContainer);
 	
-	// todo:ashe23 docs
+	// Returns all level dependencies by given filter
 	static void GetAllDependencies(const struct FARFilter& InAssetRegistryFilter, const class IAssetRegistry& AssetRegistry, TSet<FName>& OutDependencySet);
 	
 	// Returns total number of unused assets
@@ -54,18 +47,12 @@ public:
 	// Returns total size of unused assets (in bytes)
 	static int64 GetUnusedAssetsTotalSize(TArray<FAssetData>& UnusedAssets);
 
+	// Fixup Redirectors , same as in content browser menu
 	static void FixupRedirectors();
 
-	// REFACTOR START
-	static void FindAndCreateAssetTree(TArray<FAssetData>& UnusedAssets, TArray<FAssetChunk>& AssetChunks);
-	static bool DepResolve(const FName& Asset, TArray<FName>& Resolved);
-	static bool GetDependencyTree(const IAssetRegistry& AssetRegistry, const FName& Asset, TArray<FName>& Checked);
-	static bool HasReferencer(const FName& Asset);
-	// static bool DepResolveIterative(TArray<FName> Resolved);
-	static bool IsLevelAsset(const FName& Asset);
-	static void FindAllAssetsWithNoDependencies(TArray<FName>& Assets, const TArray<FAssetData>& AllAssets);
-	static void DeleteAssetChunks(TArray<FAssetChunk>& AssetChunks);
-	static int32 DeleteAssetsv2(TArray<FAssetData>& Assets);
+	// Deletes given array of assets
+	static int32 DeleteAssets(TArray<FAssetData>& Assets);
+
+	// Returns all assets that has not any referencer on it
 	static void GetRootAssets(TArray<FAssetData>& RootAssets, TArray<FAssetData>& AllAssets,const FCleaningStats& CleaningStats);
-	// REFACTOR END	
 };

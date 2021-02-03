@@ -23,21 +23,13 @@ struct FCleaningStats
 		UnusedAssetsNum = 0;
 		EmptyFolders = 0;
 		UnusedAssetsTotalSize = 0;
-		DeleteChunkSize = 20;
+		DeleteChunkSize = 100;
 		DeletedAssetCount = 0;
 		TotalAssetNum = 0;
 	}
-};
 
-UENUM()
-namespace ECleanerStatus 
-{
-	enum Type
+	int32 GetPercentage() const
 	{
-		None,
-		Failed,
-        NotAllAssetsDeleted,
-        Success,
-    };
-
-}
+		return (DeletedAssetCount * 100.0f)  / TotalAssetNum;	
+	}
+};
