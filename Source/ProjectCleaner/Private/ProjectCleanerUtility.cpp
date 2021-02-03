@@ -399,14 +399,34 @@ void ProjectCleanerUtility::DeleteAssetChunks(TArray<FAssetChunk>& AssetChunks)
 
 int32 ProjectCleanerUtility::DeleteAssetsv2(TArray<FAssetData>& Assets)
 {
-	return ObjectTools::DeleteAssets(Assets, false);	
+	// first try to delete normally
+	int32 DeletedAssets = ObjectTools::DeleteAssets(Assets, false);
+
+	// if normally not working try to force delete
+	if (DeletedAssets == 0)
+	{
+		TArray<UObject*> AssetObjects;
+		AssetObjects.Reserve(Assets.Num());
+
+		for (const auto& Asset : Assets)
+		{
+			AssetObjects.Add(Asset.GetAsset());
+		}
+
+		DeletedAssets = ObjectTools::ForceDeleteObjects(AssetObjects, false);
+	}
+
+	return DeletedAssets;
 }
 
-void ProjectCleanerUtility::GetRootAssets(TArray<FAssetData>& RootAssets, TArray<FAssetData>& AllAssets)
+void ProjectCleanerUtility::GetRootAssets(TArray<FAssetData>& RootAssets, TArray<FAssetData>& AllAssets,
+                                          const FCleaningStats& CleaningStats)
 {
 	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
 	for (const auto& Asset : AllAssets)
 	{
+		if (RootAssets.Num() >= CleaningStats.DeleteChunkSize) break;
+
 		TArray<FName> Refs;
 		AssetRegistryModule.Get().GetReferencers(Asset.PackageName, Refs);
 

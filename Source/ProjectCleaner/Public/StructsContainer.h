@@ -23,8 +23,21 @@ struct FCleaningStats
 		UnusedAssetsNum = 0;
 		EmptyFolders = 0;
 		UnusedAssetsTotalSize = 0;
-		DeleteChunkSize = 100;
+		DeleteChunkSize = 20;
 		DeletedAssetCount = 0;
 		TotalAssetNum = 0;
 	}
 };
+
+UENUM()
+namespace ECleanerStatus 
+{
+	enum Type
+	{
+		None,
+		Failed,
+        NotAllAssetsDeleted,
+        Success,
+    };
+
+}

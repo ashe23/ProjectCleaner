@@ -69,6 +69,7 @@ void FProjectCleanerModule::StartupModule()
 	AssetChunks.Reserve(500);
 
 	NotificationManager = new ProjectCleanerNotificationManager();
+	CleanerStatus = ECleanerStatus::None;
 }
 
 void FProjectCleanerModule::ShutdownModule()
@@ -320,7 +321,7 @@ FReply FProjectCleanerModule::OnDeleteEmptyFolderClick()
 		return FReply::Handled();
 	}
 
-	NotificationManager->Show(CleaningStats);
+	// NotificationManager->Show(CleaningStats);
 
 	ProjectCleanerUtility::DeleteEmptyFolders(EmptyFolders);
 
@@ -330,7 +331,7 @@ FReply FProjectCleanerModule::OnDeleteEmptyFolderClick()
 	);
 
 	UpdateStats();
-	NotificationManager->Hide();
+	// NotificationManager->Hide();
 
 	FMessageDialog::Open(EAppMsgType::Ok, DialogText);
 
@@ -347,63 +348,34 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 		return FReply::Handled();
 	}
 
+	// Root assets has no referencers
 	TArray<FAssetData> RootAssets;
-	ProjectCleanerUtility::GetRootAssets(RootAssets, UnusedAssets);
+	RootAssets.Reserve(CleaningStats.DeleteChunkSize);
+	ProjectCleanerUtility::GetRootAssets(RootAssets, UnusedAssets, CleaningStats);
 
-	// Checking if array exceeding chunk size limit
-	// if so we splitting chunk into sub-chunks, this is for preventing buffer overflow
-	if (RootAssets.Num() > CleaningStats.DeleteChunkSize)
+
+	NotificationManager->Show(CleaningStats);
+
+	while (RootAssets.Num() > 0)
 	{
-		// todo:ashe23 split chunks
-		NotificationManager->Show(CleaningStats);
-
-		TArray<FAssetData> Chunk;
-		Chunk.Reserve(CleaningStats.DeleteChunkSize);
-
-
-		while (RootAssets.Num() > CleaningStats.DeleteChunkSize)
+		const int32 DeletedAssetNum = ProjectCleanerUtility::DeleteAssetsv2(RootAssets);
+		if (DeletedAssetNum != RootAssets.Num())
 		{
-			if (RootAssets.Num() <= CleaningStats.DeleteChunkSize)
-			{
-				break;
-			}
-
-			for (int32 i = 0; i < CleaningStats.DeleteChunkSize; ++i)
-			{
-				if (RootAssets.IsValidIndex(i))
-				{
-					Chunk.Add(RootAssets[i]);
-					RootAssets.RemoveAt(i);
-				}
-			}
-
-			CleaningStats.DeletedAssetCount += ProjectCleanerUtility::DeleteAssetsv2(Chunk);
-			NotificationManager->Update(CleaningStats);
-
-			Chunk.Empty();
+			UE_LOG(LogTemp, Warning, TEXT("Some assets not deleted."));
+			CleanerStatus = ECleanerStatus::NotAllAssetsDeleted;
 		}
 
-		CleaningStats.DeletedAssetCount += ProjectCleanerUtility::DeleteAssetsv2(RootAssets);
+		CleaningStats.DeletedAssetCount += DeletedAssetNum;
+
 		NotificationManager->Update(CleaningStats);
-	}
-	else
-	{
-		NotificationManager->Show(CleaningStats);
 
-		while (RootAssets.Num() > 0)
+		for (const auto& Asset : RootAssets)
 		{
-			CleaningStats.DeletedAssetCount += ProjectCleanerUtility::DeleteAssetsv2(RootAssets);
-
-			NotificationManager->Update(CleaningStats);
-
-			for (const auto& Asset : RootAssets)
-			{
-				UnusedAssets.Remove(Asset);
-			}
-
-			RootAssets.Empty();
-			ProjectCleanerUtility::GetRootAssets(RootAssets, UnusedAssets);
+			UnusedAssets.Remove(Asset);
 		}
+
+		RootAssets.Empty();
+		ProjectCleanerUtility::GetRootAssets(RootAssets, UnusedAssets, CleaningStats);
 	}
 	// what is left is circular dependent assets that should be deleted
 	CleaningStats.DeletedAssetCount += ProjectCleanerUtility::DeleteAssetsv2(UnusedAssets);
@@ -455,6 +427,7 @@ void FProjectCleanerModule::UpdateStats()
 	CleaningStats.UnusedAssetsTotalSize = ProjectCleanerUtility::GetUnusedAssetsTotalSize(UnusedAssets);
 	CleaningStats.EmptyFolders = ProjectCleanerUtility::GetEmptyFoldersNum(EmptyFolders);
 	CleaningStats.TotalAssetNum = CleaningStats.UnusedAssetsNum;
+	CleaningStats.DeletedAssetCount = 0;
 }
 
 void FProjectCleanerModule::InitCleaner()

@@ -66,10 +66,6 @@ public:
 	static void FindAllAssetsWithNoDependencies(TArray<FName>& Assets, const TArray<FAssetData>& AllAssets);
 	static void DeleteAssetChunks(TArray<FAssetChunk>& AssetChunks);
 	static int32 DeleteAssetsv2(TArray<FAssetData>& Assets);
-	static void GetRootAssets(TArray<FAssetData>& RootAssets, TArray<FAssetData>& AllAssets);
-	// REFACTOR END
-
-	
-	TArray<FAssetData> LevelDependencyAssets;
-	FStreamableManager StreamableManager;
+	static void GetRootAssets(TArray<FAssetData>& RootAssets, TArray<FAssetData>& AllAssets,const FCleaningStats& CleaningStats);
+	// REFACTOR END	
 };

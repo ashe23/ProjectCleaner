@@ -54,6 +54,7 @@ private:
 	TArray<FAssetData> UnusedAssets;
 	TArray<FString> EmptyFolders;
 	ProjectCleanerNotificationManager* NotificationManager;
+	TEnumAsByte<ECleanerStatus::Type> CleanerStatus;
 
 	// slate
 	FSlateColorBrush TipOneBrushColor;
