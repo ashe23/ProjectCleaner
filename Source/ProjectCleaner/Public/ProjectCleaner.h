@@ -50,6 +50,8 @@ private:
 	TSharedPtr<class FUICommandList> PluginCommands;
 	TArray<FAssetData> UnusedAssets;
 	TArray<FString> EmptyFolders;
+	TArray<FString> NonProjectFiles;
+	TArray<FString> ProjectAllSourceFiles;
 	ProjectCleanerNotificationManager* NotificationManager;
 	TSharedPtr<SWindow> ParentWindow;
 	

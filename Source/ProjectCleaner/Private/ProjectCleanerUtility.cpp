@@ -11,6 +11,10 @@
 #include "ObjectTools.h"
 #include "Materials/Material.h"
 #include "UObject/ObjectRedirector.h"
+#include "HAL/PlatformFilemanager.h"
+#include "Misc/FileHelper.h"
+
+#pragma optimize("", off)
 
 bool ProjectCleanerUtility::HasFiles(const FString& SearchPath)
 {
@@ -133,7 +137,7 @@ void ProjectCleanerUtility::GetAllDependencies(const FARFilter& InAssetRegistryF
 	}
 }
 
-int32 ProjectCleanerUtility::GetUnusedAssetsNum(TArray<FAssetData>& UnusedAssets)
+int32 ProjectCleanerUtility::GetUnusedAssetsNum(TArray<FAssetData>& UnusedAssets, TArray<FString> AllSourceFiles)
 {
 	UnusedAssets.Empty();
 	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
@@ -151,6 +155,13 @@ int32 ProjectCleanerUtility::GetUnusedAssetsNum(TArray<FAssetData>& UnusedAssets
 	UnusedAssets.RemoveAll([&](const FAssetData& Val)
 	{
 		return LevelsDependencies.Contains(Val.PackageName);
+	});
+
+	// Remove all assets that used in code( hard linked)
+	FindAllSourceFiles(AllSourceFiles);
+	UnusedAssets.RemoveAll([&](const FAssetData& Val)
+	{
+		return UsedInSourceFiles(AllSourceFiles, Val.PackageName);
 	});
 
 	return UnusedAssets.Num();
@@ -266,3 +277,46 @@ void ProjectCleanerUtility::GetRootAssets(TArray<FAssetData>& RootAssets,
 		}
 	}
 }
+
+void ProjectCleanerUtility::FindNonProjectFiles()
+{
+}
+
+void ProjectCleanerUtility::FindAllSourceFiles(TArray<FString>& AllFiles)
+{
+	const auto ProjectSourceDir = FPaths::GameSourceDir();
+	const auto ProjectPluginsDir = FPaths::ProjectPluginsDir();
+	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
+	TArray<FString> ProjectSourceFiles;
+	TArray<FString> ProjectPluginsFiles;
+
+	PlatformFile.FindFilesRecursively(ProjectSourceFiles, *ProjectSourceDir, TEXT(".cpp"));
+	PlatformFile.FindFilesRecursively(ProjectSourceFiles, *ProjectSourceDir, TEXT(".h"));
+	PlatformFile.FindFilesRecursively(ProjectPluginsFiles, *ProjectPluginsDir, TEXT(".cpp"));
+	PlatformFile.FindFilesRecursively(ProjectPluginsFiles, *ProjectPluginsDir, TEXT(".h"));
+
+	AllFiles.Append(ProjectSourceFiles);
+	AllFiles.Append(ProjectPluginsFiles);	
+}
+
+bool ProjectCleanerUtility::UsedInSourceFiles(TArray<FString>& AllFiles, const FName& Asset)
+{
+	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
+
+	for (const auto& File : AllFiles)
+	{
+		if (PlatformFile.FileExists(*File))
+		{
+			FString FileContent;
+			FFileHelper::LoadFileToString(FileContent, *File);
+			if (FileContent.Find(Asset.ToString()) != -1)
+			{
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
+#pragma optimize("", on)

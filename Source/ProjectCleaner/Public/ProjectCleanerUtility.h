@@ -39,7 +39,7 @@ public:
 	static void GetAllDependencies(const struct FARFilter& InAssetRegistryFilter, const class IAssetRegistry& AssetRegistry, TSet<FName>& OutDependencySet);
 	
 	// Returns total number of unused assets
-	static int32 GetUnusedAssetsNum(TArray<FAssetData>& UnusedAssets);
+	static int32 GetUnusedAssetsNum(TArray<FAssetData>& UnusedAssets, TArray<FString> AllSourceFiles);
 
 	// Returns total number of empty folders
 	static int32 GetEmptyFoldersNum(TArray<FString>& EmptyFolders);
@@ -55,4 +55,12 @@ public:
 
 	// Returns all assets that has not any referencer on it
 	static void GetRootAssets(TArray<FAssetData>& RootAssets, TArray<FAssetData>& AllAssets,const FCleaningStats& CleaningStats);
+
+	static void FindNonProjectFiles();
+
+	// Finds all ".h" and ".cpp" source files in Project "Source" and "Plugins" directories
+	static void FindAllSourceFiles(TArray<FString>& AllFiles);
+	
+	// Check if given asset used in source codes (hardcoded path)
+	static bool UsedInSourceFiles(TArray<FString>& AllFiles, const FName& Asset);
 };

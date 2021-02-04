@@ -13,11 +13,12 @@
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Text/STextBlock.h"
 #include "ObjectTools.h"
+#include "HAL/PlatformFilemanager.h"
+#include "Misc/FileHelper.h"
 #include "AssetRegistry/Public/AssetData.h"
 #include "ProjectCleanerNotificationManager.h"
 #include "ProjectCleanerUtility.h"
 #include "NotificationManager.h"
-#include "SWeakWidget.h"
 #include "Editor/ContentBrowser/Public/ContentBrowserModule.h"
 #include "Framework/Application/SlateApplication.h"
 
@@ -70,6 +71,7 @@ void FProjectCleanerModule::StartupModule()
 	// Reserve some space
 	UnusedAssets.Reserve(100);
 	EmptyFolders.Reserve(50);
+	ProjectAllSourceFiles.Reserve(100);
 
 	NotificationManager = new ProjectCleanerNotificationManager();
 }
@@ -82,11 +84,11 @@ void FProjectCleanerModule::ShutdownModule()
 
 	FProjectCleanerCommands::Unregister();
 
-	// todo:ashe23 fix focus issue when tab already pinned in editor somewhere
 	// FGlobalTabmanager::Get()->UnregisterNomadTabSpawner(ProjectCleanerTabName);
 
 	UnusedAssets.Empty();
 	EmptyFolders.Empty();
+	ProjectAllSourceFiles.Empty();
 
 	delete NotificationManager;
 }
@@ -304,7 +306,7 @@ void FProjectCleanerModule::PluginButtonClicked()
 	ParentWindow = FSlateApplication::Get().GetActiveTopLevelWindow();
 	if (ParentWindow.IsValid())
 	{
-		FSlateApplication::Get().AddModalWindow(TestWindow, ParentWindow, false);		
+		FSlateApplication::Get().AddModalWindow(TestWindow, ParentWindow, false);
 	}
 }
 
@@ -536,12 +538,11 @@ void FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs)
 FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 {
 	// todo:ashe23 close modal window when pressing this button
-	CloseModalWindow();
-	
+
 	if (UnusedAssets.Num() == 0)
 	{
 		NotificationManager->AddTransient(
-			TEXT("No assets to delete!"),
+			TEXT("There are no assets to delete!"),
 			SNotificationItem::ECompletionState::CS_Fail,
 			3.0f
 		);
@@ -587,18 +588,18 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 	NotificationManager->CachedStats.EmptyFolders = CleaningStats.EmptyFolders;
 
 
-	FContentBrowserModule& CBModule = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
-	TArray<FString> FocusFolders;
-	FocusFolders.Add("/Game/");
-	CBModule.Get().SyncBrowserToFolders(FocusFolders);
-
-
 	ProjectCleanerUtility::DeleteEmptyFolders(EmptyFolders);
 
 	UpdateStats();
 
 	NotificationManager->Hide(NotificationRef);
 
+	FContentBrowserModule& CBModule = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
+	TArray<FString> FocusFolders;
+	FocusFolders.Add("/Game");
+	CBModule.Get().SyncBrowserToFolders(FocusFolders);
+
+	// todo:ashe23 maybe close window, then start cleaning process?
 	return FReply::Handled();
 }
 
@@ -615,12 +616,11 @@ FReply FProjectCleanerModule::CloseModalWindow() const
 FReply FProjectCleanerModule::OnDeleteEmptyFolderClick()
 {
 	// todo:ashe23 close modal window when pressing this button
-	CloseModalWindow();
-	
+
 	if (EmptyFolders.Num() == 0)
 	{
 		NotificationManager->AddTransient(
-			FString{"No empty folders to delete!"},
+			FString{"There are no empty folders to delete!"},
 			SNotificationItem::ECompletionState::CS_Fail,
 			3.0f
 		);
@@ -640,13 +640,18 @@ FReply FProjectCleanerModule::OnDeleteEmptyFolderClick()
 
 	UpdateStats();
 
+	FContentBrowserModule& CBModule = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
+	TArray<FString> FocusFolders;
+	FocusFolders.Add("/Game");
+	CBModule.Get().SyncBrowserToFolders(FocusFolders);
+
 	return FReply::Handled();
 }
 
 
 void FProjectCleanerModule::UpdateStats()
 {
-	CleaningStats.UnusedAssetsNum = ProjectCleanerUtility::GetUnusedAssetsNum(UnusedAssets);
+	CleaningStats.UnusedAssetsNum = ProjectCleanerUtility::GetUnusedAssetsNum(UnusedAssets, ProjectAllSourceFiles);
 	CleaningStats.UnusedAssetsTotalSize = ProjectCleanerUtility::GetUnusedAssetsTotalSize(UnusedAssets);
 	CleaningStats.EmptyFolders = ProjectCleanerUtility::GetEmptyFoldersNum(EmptyFolders);
 	CleaningStats.TotalAssetNum = CleaningStats.UnusedAssetsNum;

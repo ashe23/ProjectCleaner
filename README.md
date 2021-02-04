@@ -11,7 +11,7 @@ Any asset(and its dependencies) referenced by any level will remain untouched.
 Versions Supported: 4.23+  
 Platform: Windows
 
-#### Caution: In large projects it may take some time to locate and delete assets!
+##### Caution: In large projects it may take some time to locate and delete assets!
 ##### Known issues
 - Assets that used in C++ code (Hard linked) will be deleted.
 
