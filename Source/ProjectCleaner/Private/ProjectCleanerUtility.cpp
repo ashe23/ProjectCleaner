@@ -280,6 +280,7 @@ void ProjectCleanerUtility::GetRootAssets(TArray<FAssetData>& RootAssets,
 
 void ProjectCleanerUtility::FindNonProjectFiles()
 {
+	// todo:ashe23
 }
 
 void ProjectCleanerUtility::FindAllSourceFiles(TArray<FString>& AllFiles)

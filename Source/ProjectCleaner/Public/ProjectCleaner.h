@@ -42,7 +42,6 @@ private:
 	// Button events
 	FReply OnDeleteEmptyFolderClick();
 	FReply OnDeleteUnusedAssetsBtnClick();
-	FReply CloseModalWindow() const;
 	// Stats
 	FCleaningStats CleaningStats;
 private:
@@ -53,7 +52,7 @@ private:
 	TArray<FString> NonProjectFiles;
 	TArray<FString> ProjectAllSourceFiles;
 	ProjectCleanerNotificationManager* NotificationManager;
-	TSharedPtr<SWindow> ParentWindow;
+	TSharedPtr<SWindow> TestWindow;
 	
 	// Slate styles
 	FSlateColorBrush TipOneBrushColor;

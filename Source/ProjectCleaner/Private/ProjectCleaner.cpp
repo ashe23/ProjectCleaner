@@ -109,11 +109,11 @@ void FProjectCleanerModule::PluginButtonClicked()
 		"How plugin works? \n It will delete all assets that never used in any level. \n So before cleaning project try to delete any level(maps) assets that you never used.");
 
 	// spawning new window
-	auto TestWindow = SNew(SWindow)
+	TestWindow = SNew(SWindow)
 	.Title(LOCTEXT("ProjectCleaner", "Project Cleaner"))
 	.ClientSize(FVector2D{800, 800})
 	.SupportsMaximize(true)
-	.SupportsMinimize(false)
+	.SupportsMinimize(false)	
 	// .SizingRule(ESizingRule::Autosized)
 	.AutoCenter(EAutoCenter::PrimaryWorkArea)
 	[
@@ -302,12 +302,8 @@ void FProjectCleanerModule::PluginButtonClicked()
 		]
 	];
 
-
-	ParentWindow = FSlateApplication::Get().GetActiveTopLevelWindow();
-	if (ParentWindow.IsValid())
-	{
-		FSlateApplication::Get().AddModalWindow(TestWindow, ParentWindow, false);
-	}
+	TestWindow->SetCanTick(true);
+	FSlateApplication::Get().AddWindow(TestWindow.ToSharedRef());
 }
 
 void FProjectCleanerModule::AddMenuExtension(FMenuBuilder& Builder)
@@ -334,7 +330,7 @@ void FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs)
 	const FText TipThreeText = FText::FromString(
 		"How plugin works? \n It will delete all assets that never used in any level. \n So before cleaning project try to delete any level(maps) assets that you never used.");
 
-
+	//
 	// if (TopWindow.IsValid())
 	// {
 	// 	auto Win = FSlateApplication::Get().AddWindowAsNativeChild(TestWindow, TopWindow.ToSharedRef(), true);
@@ -343,8 +339,8 @@ void FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs)
 	// 		GEditor->EditorAddModalWindow( Win );
 	// 	}
 	// }	
-
-
+	//
+	//
 	// return SNew(SDockTab)
 	// 	.TabRole(ETabRole::NomadTab)
 	// 	[
@@ -537,8 +533,8 @@ void FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs)
 
 FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 {
-	// todo:ashe23 close modal window when pressing this button
-
+	TestWindow->RequestDestroyWindow();
+	
 	if (UnusedAssets.Num() == 0)
 	{
 		NotificationManager->AddTransient(
@@ -546,77 +542,66 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 			SNotificationItem::ECompletionState::CS_Fail,
 			3.0f
 		);
-
+	
 		return FReply::Handled();
 	}
-
+	
 	// Root assets has no referencers
 	TArray<FAssetData> RootAssets;
 	RootAssets.Reserve(CleaningStats.DeleteChunkSize);
 	ProjectCleanerUtility::GetRootAssets(RootAssets, UnusedAssets, CleaningStats);
-
-
+	
+	
 	const auto NotificationRef = NotificationManager->Add(
 		TEXT("Starting Cleanup. This could take some time, please wait"),
 		SNotificationItem::ECompletionState::CS_Pending
 	);
-
+	
 	while (RootAssets.Num() > 0)
 	{
 		CleaningStats.DeletedAssetCount += ProjectCleanerUtility::DeleteAssets(RootAssets);
-
+	
 		NotificationManager->Update(NotificationRef, CleaningStats);
-
+	
 		for (const auto& Asset : RootAssets)
 		{
 			UnusedAssets.Remove(Asset);
 		}
-
+	
 		RootAssets.Empty();
 		ProjectCleanerUtility::GetRootAssets(RootAssets, UnusedAssets, CleaningStats);
 	}
-
+	
 	// what is left is circular dependent assets that should be deleted
 	CleaningStats.DeletedAssetCount += ProjectCleanerUtility::DeleteAssets(UnusedAssets);
-
+	
 	NotificationManager->Update(NotificationRef, CleaningStats);
-
+	
 	NotificationManager->CachedStats = CleaningStats;
-
+	
 	UpdateStats();
-
+	
 	NotificationManager->CachedStats.EmptyFolders = CleaningStats.EmptyFolders;
-
-
+	
+	
 	ProjectCleanerUtility::DeleteEmptyFolders(EmptyFolders);
-
+	
 	UpdateStats();
-
+	
 	NotificationManager->Hide(NotificationRef);
-
+	
 	FContentBrowserModule& CBModule = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
 	TArray<FString> FocusFolders;
 	FocusFolders.Add("/Game");
 	CBModule.Get().SyncBrowserToFolders(FocusFolders);
-
-	// todo:ashe23 maybe close window, then start cleaning process?
-	return FReply::Handled();
-}
-
-FReply FProjectCleanerModule::CloseModalWindow() const
-{
-	if (ParentWindow.IsValid())
-	{
-		ParentWindow->RequestDestroyWindow();
-	}
 
 	return FReply::Handled();
 }
 
 FReply FProjectCleanerModule::OnDeleteEmptyFolderClick()
 {
-	// todo:ashe23 close modal window when pressing this button
-
+	TestWindow->RequestDestroyWindow();
+	
 	if (EmptyFolders.Num() == 0)
 	{
 		NotificationManager->AddTransient(
@@ -624,12 +609,12 @@ FReply FProjectCleanerModule::OnDeleteEmptyFolderClick()
 			SNotificationItem::ECompletionState::CS_Fail,
 			3.0f
 		);
-
+	
 		return FReply::Handled();
 	}
-
+	
 	ProjectCleanerUtility::DeleteEmptyFolders(EmptyFolders);
-
+	
 	const FString PostFixText = CleaningStats.EmptyFolders > 1 ? TEXT(" empty folders") : TEXT(" empty folder");
 	const FString DisplayText = FString{"Deleted "} + FString::FromInt(CleaningStats.EmptyFolders) + PostFixText;
 	NotificationManager->AddTransient(
@@ -637,9 +622,9 @@ FReply FProjectCleanerModule::OnDeleteEmptyFolderClick()
 		SNotificationItem::ECompletionState::CS_Success,
 		5.0f
 	);
-
+	
 	UpdateStats();
-
+	
 	FContentBrowserModule& CBModule = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
 	TArray<FString> FocusFolders;
 	FocusFolders.Add("/Game");
