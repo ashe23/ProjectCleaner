@@ -45,6 +45,7 @@ public class ProjectCleaner : ModuleRules
 				"Slate",
 				"SlateCore",
 				"ContentBrowser",
+				"EditorStyle",
 				// ... add private dependencies that you statically link with here ...	
 			}
 		);

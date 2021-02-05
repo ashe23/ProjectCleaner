@@ -14,6 +14,7 @@
 #include "Widgets/Text/STextBlock.h"
 #include "ObjectTools.h"
 #include "HAL/PlatformFilemanager.h"
+#include "EditorStyleSet.h"
 #include "Misc/FileHelper.h"
 #include "AssetRegistry/Public/AssetData.h"
 #include "ProjectCleanerNotificationManager.h"
@@ -21,6 +22,7 @@
 #include "NotificationManager.h"
 #include "Editor/ContentBrowser/Public/ContentBrowserModule.h"
 #include "Framework/Application/SlateApplication.h"
+#include "Widgets/Images/SImage.h"
 
 static const FName ProjectCleanerTabName("ProjectCleaner");
 
@@ -120,6 +122,7 @@ void FProjectCleanerModule::PluginButtonClicked()
 		SNew(SBorder)
             .HAlign(HAlign_Center)
             .Padding(25)
+            .ForegroundColor(FEditorStyle::GetSlateColor("DefaultForeground"))
 		[
 			SNew(SVerticalBox)
 			+ SVerticalBox::Slot()
@@ -298,6 +301,23 @@ void FProjectCleanerModule::PluginButtonClicked()
                         .AutoWrapText(true)
                         .Text_Lambda([this]() -> FText { return FText::AsNumber(CleaningStats.EmptyFolders); })
 				]
+			]
+			+SVerticalBox::Slot()
+			.HAlign(HAlign_Center)
+			.AutoHeight()
+			[
+				SNew(SButton)
+	            .ButtonStyle( FEditorStyle::Get(), "HoverHintOnly" )
+	            .ToolTipText( LOCTEXT( "FolderButtonToolTipText", "Choose a directory from this computer") )
+	            // .OnClicked( FOnClicked::CreateSP(this, &FDirectoryPathStructCustomization::OnPickDirectory, PathProperty.ToSharedRef(), bRelativeToGameContentDir, bUseRelativePath) )
+	            .ContentPadding( 2.0f )
+	            .ForegroundColor( FSlateColor::UseForeground() )
+	            .IsFocusable( false )
+	            [
+	                SNew( SImage )
+	                .Image( FEditorStyle::GetBrush("PropertyWindow.Button_Ellipsis") )
+	                .ColorAndOpacity( FSlateColor::UseForeground() )
+	            ]
 			]
 		]
 	];
@@ -595,6 +615,11 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 	FocusFolders.Add("/Game");
 	CBModule.Get().SyncBrowserToFolders(FocusFolders);
 
+
+	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
+	AssetRegistryModule.Get().ScanPathsSynchronous(FocusFolders, true);
+	AssetRegistryModule.Get().SearchAllAssets(true);
+	
 	return FReply::Handled();
 }
 

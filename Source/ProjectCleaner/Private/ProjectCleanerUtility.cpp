@@ -13,6 +13,7 @@
 #include "UObject/ObjectRedirector.h"
 #include "HAL/PlatformFilemanager.h"
 #include "Misc/FileHelper.h"
+#include "Misc/ScopedSlowTask.h"
 
 #pragma optimize("", off)
 
@@ -139,18 +140,27 @@ void ProjectCleanerUtility::GetAllDependencies(const FARFilter& InAssetRegistryF
 
 int32 ProjectCleanerUtility::GetUnusedAssetsNum(TArray<FAssetData>& UnusedAssets, TArray<FString> AllSourceFiles)
 {
+	FScopedSlowTask SlowTask{3.0f, FText::FromString("Scanning project...")};
+	SlowTask.MakeDialog();
+	
 	UnusedAssets.Empty();
 	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
+	
 
 	FindAllGameAssets(UnusedAssets);
 	RemoveLevelAssets(UnusedAssets);
 
+	SlowTask.EnterProgressFrame(1.0f);
+	
 	// Finding all assets and their dependencies that used in levels
 	TSet<FName> LevelsDependencies;
 	FARFilter Filter;
 	Filter.ClassNames.Add(UWorld::StaticClass()->GetFName());
 	GetAllDependencies(Filter, AssetRegistryModule.Get(), LevelsDependencies);
 
+	SlowTask.EnterProgressFrame(1.0f);
+
+	
 	// Removing all assets that are used in any level
 	UnusedAssets.RemoveAll([&](const FAssetData& Val)
 	{
@@ -159,6 +169,9 @@ int32 ProjectCleanerUtility::GetUnusedAssetsNum(TArray<FAssetData>& UnusedAssets
 
 	// Remove all assets that used in code( hard linked)
 	FindAllSourceFiles(AllSourceFiles);
+	
+	SlowTask.EnterProgressFrame(1.0f);
+	
 	UnusedAssets.RemoveAll([&](const FAssetData& Val)
 	{
 		return UsedInSourceFiles(AllSourceFiles, Val.PackageName);
@@ -169,16 +182,24 @@ int32 ProjectCleanerUtility::GetUnusedAssetsNum(TArray<FAssetData>& UnusedAssets
 
 int32 ProjectCleanerUtility::GetEmptyFoldersNum(TArray<FString>& EmptyFolders)
 {
+	FScopedSlowTask SlowTask{1.0f, FText::FromString("Searching empty folders...")};
+	SlowTask.MakeDialog();
+	
 	EmptyFolders.Empty();
 
 	const auto ProjectRoot = FPaths::ProjectContentDir();
 	GetAllEmptyDirectories(ProjectRoot / TEXT("*"), EmptyFolders, true);
 
+	SlowTask.EnterProgressFrame(1.0f);
+	
 	return EmptyFolders.Num();
 }
 
 int64 ProjectCleanerUtility::GetUnusedAssetsTotalSize(TArray<FAssetData>& UnusedAssets)
 {
+	FScopedSlowTask SlowTask{1.0f, FText::FromString("Calculating total size of unused assets...")};
+	SlowTask.MakeDialog();
+	
 	int64 Size = 0;
 	for (const auto& Asset : UnusedAssets)
 	{
@@ -189,11 +210,16 @@ int64 ProjectCleanerUtility::GetUnusedAssetsTotalSize(TArray<FAssetData>& Unused
 		Size += AssetPackageData->DiskSize;
 	}
 
+	SlowTask.EnterProgressFrame(1.0f);
+	
 	return Size;
 }
 
 void ProjectCleanerUtility::FixupRedirectors()
 {
+	FScopedSlowTask SlowTask{1.0f, FText::FromString("Fixing up Redirectors...")};
+	SlowTask.MakeDialog();
+	
 	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
 
 	const FName RootPath = TEXT("/Game");
@@ -229,6 +255,8 @@ void ProjectCleanerUtility::FixupRedirectors()
 		FAssetToolsModule& AssetToolsModule = FModuleManager::LoadModuleChecked<FAssetToolsModule>(TEXT("AssetTools"));
 		AssetToolsModule.Get().FixupReferencers(Redirectors);
 	}
+
+	SlowTask.EnterProgressFrame(1.0f);
 }
 
 int32 ProjectCleanerUtility::DeleteAssets(TArray<FAssetData>& Assets)
