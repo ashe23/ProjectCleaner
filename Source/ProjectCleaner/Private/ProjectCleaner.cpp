@@ -98,7 +98,10 @@ void FProjectCleanerModule::ShutdownModule()
 void FProjectCleanerModule::PluginButtonClicked()
 {
 	// FGlobalTabmanager::Get()->InvokeTab(ProjectCleanerTabName);
-
+	
+	// FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
+	// AssetRegistryModule.Get().RemovePath("/Game/NewFolder");
+	
 	InitCleaner();
 
 	const float CommonPadding = 20.0f;
@@ -616,9 +619,10 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 	CBModule.Get().SyncBrowserToFolders(FocusFolders);
 
 
-	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
-	AssetRegistryModule.Get().ScanPathsSynchronous(FocusFolders, true);
-	AssetRegistryModule.Get().SearchAllAssets(true);
+	// FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
+	// AssetRegistryModule.Get().ScanPathsSynchronous(FocusFolders, true);
+	// AssetRegistryModule.Get().SearchAllAssets(true);
+
 	
 	return FReply::Handled();
 }
@@ -650,10 +654,10 @@ FReply FProjectCleanerModule::OnDeleteEmptyFolderClick()
 	
 	UpdateStats();
 	
-	FContentBrowserModule& CBModule = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
-	TArray<FString> FocusFolders;
-	FocusFolders.Add("/Game");
-	CBModule.Get().SyncBrowserToFolders(FocusFolders);
+	// FContentBrowserModule& CBModule = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
+	// TArray<FString> FocusFolders;
+	// FocusFolders.Add("/Game");
+	// CBModule.Get().SyncBrowserToFolders(FocusFolders);
 
 	return FReply::Handled();
 }
@@ -663,14 +667,15 @@ void FProjectCleanerModule::UpdateStats()
 {
 	CleaningStats.UnusedAssetsNum = ProjectCleanerUtility::GetUnusedAssetsNum(UnusedAssets, ProjectAllSourceFiles);
 	CleaningStats.UnusedAssetsTotalSize = ProjectCleanerUtility::GetUnusedAssetsTotalSize(UnusedAssets);
-	CleaningStats.EmptyFolders = ProjectCleanerUtility::GetEmptyFoldersNum(EmptyFolders);
+	CleaningStats.EmptyFolders = ProjectCleanerUtility::GetEmptyFoldersNum(EmptyFolders, NonProjectFiles);
 	CleaningStats.TotalAssetNum = CleaningStats.UnusedAssetsNum;
 	CleaningStats.DeletedAssetCount = 0;
 }
 
 void FProjectCleanerModule::InitCleaner()
 {
-	// before any cleaning operation fixup redirectors
+	ProjectCleanerUtility::SaveAllAssets();
+	
 	ProjectCleanerUtility::FixupRedirectors();
 
 	UpdateStats();

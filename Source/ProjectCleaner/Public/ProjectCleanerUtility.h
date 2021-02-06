@@ -18,7 +18,7 @@ public:
 	static bool HasFiles(const FString& SearchPath);
 
 	// Finds all empty folders in given path recursive version
-	static bool GetAllEmptyDirectories(const FString& SearchPath, TArray<FString>& Directories, const bool bIsRootDirectory);
+	static bool GetAllEmptyDirectories(const FString& SearchPath, TArray<FString>& Directories, TArray<FString>& NonProjectFiles, const bool bIsRootDirectory);
 	
 	// Finds all child directions in given path
 	static void GetChildrenDirectories(const FString& SearchPath, TArray<FString>& Output);
@@ -42,7 +42,7 @@ public:
 	static int32 GetUnusedAssetsNum(TArray<FAssetData>& UnusedAssets, TArray<FString> AllSourceFiles);
 
 	// Returns total number of empty folders
-	static int32 GetEmptyFoldersNum(TArray<FString>& EmptyFolders);
+	static int32 GetEmptyFoldersNum(TArray<FString>& EmptyFolders,TArray<FString>& NonProjectFiles);
 
 	// Returns total size of unused assets (in bytes)
 	static int64 GetUnusedAssetsTotalSize(TArray<FAssetData>& UnusedAssets);
@@ -56,11 +56,13 @@ public:
 	// Returns all assets that has not any referencer on it
 	static void GetRootAssets(TArray<FAssetData>& RootAssets, TArray<FAssetData>& AllAssets,const FCleaningStats& CleaningStats);
 
-	static void FindNonProjectFiles();
+	static void FindNonProjectFiles(const FString& SearchPath, TArray<FString>& NonProjectFilesList);
 
 	// Finds all ".h" and ".cpp" source files in Project "Source" and "Plugins" directories
 	static void FindAllSourceFiles(TArray<FString>& AllFiles);
 	
 	// Check if given asset used in source codes (hardcoded path)
 	static bool UsedInSourceFiles(TArray<FString>& AllFiles, const FName& Asset);
+
+	static void SaveAllAssets();
 };

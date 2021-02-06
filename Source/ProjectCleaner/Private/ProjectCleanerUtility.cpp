@@ -14,6 +14,9 @@
 #include "HAL/PlatformFilemanager.h"
 #include "Misc/FileHelper.h"
 #include "Misc/ScopedSlowTask.h"
+#include "FileHelpers.h"
+#include "IContentBrowserSingleton.h"
+#include "Editor/ContentBrowser/Public/ContentBrowserModule.h"
 
 #pragma optimize("", off)
 
@@ -25,12 +28,16 @@ bool ProjectCleanerUtility::HasFiles(const FString& SearchPath)
 	return Files.Num() > 0;
 }
 
-bool ProjectCleanerUtility::GetAllEmptyDirectories(const FString& SearchPath, TArray<FString>& Directories,
+bool ProjectCleanerUtility::GetAllEmptyDirectories(const FString& SearchPath,
+                                                   TArray<FString>& Directories,
+                                                   TArray<FString>& NonProjectFiles,
                                                    const bool bIsRootDirectory)
 {
 	bool AllSubDirsEmpty = true;
 	TArray<FString> ChildDirectories;
 	GetChildrenDirectories(SearchPath, ChildDirectories);
+
+	FindNonProjectFiles(SearchPath, NonProjectFiles);
 
 	// Your Project Root directory (<Your Project>/Content) also contains "Collections" and "Developers" folders
 	// we dont need them
@@ -46,7 +53,7 @@ bool ProjectCleanerUtility::GetAllEmptyDirectories(const FString& SearchPath, TA
 		auto NewPath = SearchPath;
 		NewPath.RemoveFromEnd(TEXT("*"));
 		NewPath += Dir / TEXT("*");
-		if (GetAllEmptyDirectories(NewPath, Directories, false))
+		if (GetAllEmptyDirectories(NewPath, Directories,NonProjectFiles, false))
 		{
 			NewPath.RemoveFromEnd(TEXT("*"));
 			Directories.Add(NewPath);
@@ -80,13 +87,27 @@ void ProjectCleanerUtility::RemoveDevsAndCollectionsDirectories(TArray<FString>&
 
 void ProjectCleanerUtility::DeleteEmptyFolders(TArray<FString>& EmptyFolders)
 {
-	for (const auto& EmptyFolder : EmptyFolders)
+	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
+	for (auto& EmptyFolder : EmptyFolders)
 	{
 		if (IFileManager::Get().DirectoryExists(*EmptyFolder))
 		{
 			IFileManager::Get().DeleteDirectory(*EmptyFolder, false, true);
+			auto f = EmptyFolder.Replace(*FPaths::ProjectContentDir(), TEXT("/Game/"));
+			AssetRegistryModule.Get().RemovePath(f);
 		}
 	}
+
+
+	TArray<FString> Paths;
+	Paths.Add("/Game");
+	AssetRegistryModule.Get().ScanPathsSynchronous(Paths, true);
+	AssetRegistryModule.Get().SearchAllAssets(true);
+
+	FContentBrowserModule& CBModule = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
+	TArray<FString> FocusFolders;
+	FocusFolders.Add("/Game");
+	CBModule.Get().SetSelectedPaths(FocusFolders, true);
 
 	EmptyFolders.Empty();
 }
@@ -142,16 +163,16 @@ int32 ProjectCleanerUtility::GetUnusedAssetsNum(TArray<FAssetData>& UnusedAssets
 {
 	FScopedSlowTask SlowTask{3.0f, FText::FromString("Scanning project...")};
 	SlowTask.MakeDialog();
-	
+
 	UnusedAssets.Empty();
 	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
-	
+
 
 	FindAllGameAssets(UnusedAssets);
 	RemoveLevelAssets(UnusedAssets);
 
 	SlowTask.EnterProgressFrame(1.0f);
-	
+
 	// Finding all assets and their dependencies that used in levels
 	TSet<FName> LevelsDependencies;
 	FARFilter Filter;
@@ -160,7 +181,7 @@ int32 ProjectCleanerUtility::GetUnusedAssetsNum(TArray<FAssetData>& UnusedAssets
 
 	SlowTask.EnterProgressFrame(1.0f);
 
-	
+
 	// Removing all assets that are used in any level
 	UnusedAssets.RemoveAll([&](const FAssetData& Val)
 	{
@@ -169,9 +190,9 @@ int32 ProjectCleanerUtility::GetUnusedAssetsNum(TArray<FAssetData>& UnusedAssets
 
 	// Remove all assets that used in code( hard linked)
 	FindAllSourceFiles(AllSourceFiles);
-	
+
 	SlowTask.EnterProgressFrame(1.0f);
-	
+
 	UnusedAssets.RemoveAll([&](const FAssetData& Val)
 	{
 		return UsedInSourceFiles(AllSourceFiles, Val.PackageName);
@@ -180,18 +201,18 @@ int32 ProjectCleanerUtility::GetUnusedAssetsNum(TArray<FAssetData>& UnusedAssets
 	return UnusedAssets.Num();
 }
 
-int32 ProjectCleanerUtility::GetEmptyFoldersNum(TArray<FString>& EmptyFolders)
+int32 ProjectCleanerUtility::GetEmptyFoldersNum(TArray<FString>& EmptyFolders, TArray<FString>& NonProjectFiles)
 {
 	FScopedSlowTask SlowTask{1.0f, FText::FromString("Searching empty folders...")};
 	SlowTask.MakeDialog();
-	
+
 	EmptyFolders.Empty();
 
 	const auto ProjectRoot = FPaths::ProjectContentDir();
-	GetAllEmptyDirectories(ProjectRoot / TEXT("*"), EmptyFolders, true);
+	GetAllEmptyDirectories(ProjectRoot / TEXT("*"), EmptyFolders, NonProjectFiles, true);
 
 	SlowTask.EnterProgressFrame(1.0f);
-	
+
 	return EmptyFolders.Num();
 }
 
@@ -199,7 +220,7 @@ int64 ProjectCleanerUtility::GetUnusedAssetsTotalSize(TArray<FAssetData>& Unused
 {
 	FScopedSlowTask SlowTask{1.0f, FText::FromString("Calculating total size of unused assets...")};
 	SlowTask.MakeDialog();
-	
+
 	int64 Size = 0;
 	for (const auto& Asset : UnusedAssets)
 	{
@@ -211,7 +232,7 @@ int64 ProjectCleanerUtility::GetUnusedAssetsTotalSize(TArray<FAssetData>& Unused
 	}
 
 	SlowTask.EnterProgressFrame(1.0f);
-	
+
 	return Size;
 }
 
@@ -219,7 +240,7 @@ void ProjectCleanerUtility::FixupRedirectors()
 {
 	FScopedSlowTask SlowTask{1.0f, FText::FromString("Fixing up Redirectors...")};
 	SlowTask.MakeDialog();
-	
+
 	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
 
 	const FName RootPath = TEXT("/Game");
@@ -241,7 +262,6 @@ void ProjectCleanerUtility::FixupRedirectors()
 		{
 			Objects.Add(Asset.GetAsset());
 		}
-
 
 		// converting them to redirectors
 		TArray<UObjectRedirector*> Redirectors;
@@ -306,9 +326,26 @@ void ProjectCleanerUtility::GetRootAssets(TArray<FAssetData>& RootAssets,
 	}
 }
 
-void ProjectCleanerUtility::FindNonProjectFiles()
+void ProjectCleanerUtility::FindNonProjectFiles(const FString& SearchPath, TArray<FString>& NonProjectFilesList)
 {
-	// todo:ashe23
+	// Project Directories may contain non .uasset files, which wont be shown in content browser,
+	// Or there also case when assets saved in old engine versions not showing in new engine version content browser,
+	// those asset must be tracked and informed to user , so they can handle them manually
+	TArray<FString> NonUAssetFiles;
+	IFileManager::Get().FindFiles(NonUAssetFiles, *SearchPath, true, false);
+
+	for (const auto& NonUAssetFile : NonUAssetFiles)
+	{
+		const auto Extension = FPaths::GetExtension(NonUAssetFile);
+		if (!Extension.Equals("uasset") && !Extension.Equals("umap"))
+		{
+			FString Path = SearchPath;
+			Path.RemoveFromEnd("*");
+			Path.Append(NonUAssetFile);
+			Path = FPaths::ConvertRelativePathToFull(Path);
+			NonProjectFilesList.AddUnique(Path);
+		}
+	}
 }
 
 void ProjectCleanerUtility::FindAllSourceFiles(TArray<FString>& AllFiles)
@@ -325,7 +362,7 @@ void ProjectCleanerUtility::FindAllSourceFiles(TArray<FString>& AllFiles)
 	PlatformFile.FindFilesRecursively(ProjectPluginsFiles, *ProjectPluginsDir, TEXT(".h"));
 
 	AllFiles.Append(ProjectSourceFiles);
-	AllFiles.Append(ProjectPluginsFiles);	
+	AllFiles.Append(ProjectPluginsFiles);
 }
 
 bool ProjectCleanerUtility::UsedInSourceFiles(TArray<FString>& AllFiles, const FName& Asset)
@@ -346,6 +383,18 @@ bool ProjectCleanerUtility::UsedInSourceFiles(TArray<FString>& AllFiles, const F
 	}
 
 	return false;
+}
+
+void ProjectCleanerUtility::SaveAllAssets()
+{
+	FEditorFileUtils::SaveDirtyPackages(
+		true,
+		true,
+		true,
+		false,
+		false,
+		false
+	);
 }
 
 #pragma optimize("", on)
