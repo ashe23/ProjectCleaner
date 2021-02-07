@@ -20,9 +20,12 @@
 #include "ProjectCleanerNotificationManager.h"
 #include "ProjectCleanerUtility.h"
 #include "NotificationManager.h"
+#include "SListView.h"
 #include "Editor/ContentBrowser/Public/ContentBrowserModule.h"
 #include "Framework/Application/SlateApplication.h"
 #include "Widgets/Images/SImage.h"
+#include "Widgets/Input/SComboBox.h"
+// #include "Ui/SProjectCleanerBrowser.h"
 
 static const FName ProjectCleanerTabName("ProjectCleaner");
 
@@ -64,11 +67,11 @@ void FProjectCleanerModule::StartupModule()
 		LevelEditorModule.GetToolBarExtensibilityManager()->AddExtender(ToolbarExtender);
 	}
 
-	// FGlobalTabmanager::Get()->RegisterNomadTabSpawner(ProjectCleanerTabName,
-	//                                                   FOnSpawnTab::CreateRaw(
-	// 	                                                  this, &FProjectCleanerModule::OnSpawnPluginTab))
-	//                         .SetDisplayName(LOCTEXT("FProjectCleanerTabTitle", "ProjectCleaner"))
-	//                         .SetMenuType(ETabSpawnerMenuType::Hidden);
+	FGlobalTabmanager::Get()->RegisterNomadTabSpawner(ProjectCleanerTabName,
+	                                                  FOnSpawnTab::CreateRaw(
+		                                                  this, &FProjectCleanerModule::OnSpawnPluginTab))
+	                        .SetDisplayName(LOCTEXT("FProjectCleanerTabTitle", "ProjectCleaner"))
+	                        .SetMenuType(ETabSpawnerMenuType::Hidden);
 
 	// Reserve some space
 	UnusedAssets.Reserve(100);
@@ -86,7 +89,7 @@ void FProjectCleanerModule::ShutdownModule()
 
 	FProjectCleanerCommands::Unregister();
 
-	// FGlobalTabmanager::Get()->UnregisterNomadTabSpawner(ProjectCleanerTabName);
+	FGlobalTabmanager::Get()->UnregisterNomadTabSpawner(ProjectCleanerTabName);
 
 	UnusedAssets.Empty();
 	EmptyFolders.Empty();
@@ -97,12 +100,13 @@ void FProjectCleanerModule::ShutdownModule()
 
 void FProjectCleanerModule::PluginButtonClicked()
 {
-	// FGlobalTabmanager::Get()->InvokeTab(ProjectCleanerTabName);
-	
-	// FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
-	// AssetRegistryModule.Get().RemovePath("/Game/NewFolder");
-	
+	FGlobalTabmanager::Get()->InvokeTab(ProjectCleanerTabName);
+
+	return;
+
 	InitCleaner();
+
+	TArray<TSharedPtr<FString>> Items;
 
 	const float CommonPadding = 20.0f;
 
@@ -118,7 +122,7 @@ void FProjectCleanerModule::PluginButtonClicked()
 	.Title(LOCTEXT("ProjectCleaner", "Project Cleaner"))
 	.ClientSize(FVector2D{800, 800})
 	.SupportsMaximize(true)
-	.SupportsMinimize(false)	
+	.SupportsMinimize(false)
 	// .SizingRule(ESizingRule::Autosized)
 	.AutoCenter(EAutoCenter::PrimaryWorkArea)
 	[
@@ -305,22 +309,22 @@ void FProjectCleanerModule::PluginButtonClicked()
                         .Text_Lambda([this]() -> FText { return FText::AsNumber(CleaningStats.EmptyFolders); })
 				]
 			]
-			+SVerticalBox::Slot()
-			.HAlign(HAlign_Center)
-			.AutoHeight()
+			+ SVerticalBox::Slot()
+			  .HAlign(HAlign_Center)
+			  .AutoHeight()
 			[
 				SNew(SButton)
-	            .ButtonStyle( FEditorStyle::Get(), "HoverHintOnly" )
-	            .ToolTipText( LOCTEXT( "FolderButtonToolTipText", "Choose a directory from this computer") )
+	            .ButtonStyle(FEditorStyle::Get(), "HoverHintOnly")
+	            .ToolTipText(LOCTEXT("FolderButtonToolTipText", "Choose a directory from this computer"))
 	            // .OnClicked( FOnClicked::CreateSP(this, &FDirectoryPathStructCustomization::OnPickDirectory, PathProperty.ToSharedRef(), bRelativeToGameContentDir, bUseRelativePath) )
-	            .ContentPadding( 2.0f )
-	            .ForegroundColor( FSlateColor::UseForeground() )
-	            .IsFocusable( false )
-	            [
-	                SNew( SImage )
-	                .Image( FEditorStyle::GetBrush("PropertyWindow.Button_Ellipsis") )
-	                .ColorAndOpacity( FSlateColor::UseForeground() )
-	            ]
+	            .ContentPadding(2.0f)
+	            .ForegroundColor(FSlateColor::UseForeground())
+	            .IsFocusable(false)
+				[
+					SNew(SImage)
+	                .Image(FEditorStyle::GetBrush("PropertyWindow.Button_Ellipsis"))
+	                .ColorAndOpacity(FSlateColor::UseForeground())
+				]
 			]
 		]
 	];
@@ -334,24 +338,176 @@ void FProjectCleanerModule::AddMenuExtension(FMenuBuilder& Builder)
 	Builder.AddMenuEntry(FProjectCleanerCommands::Get().PluginAction);
 }
 
+FReply FProjectCleanerModule::RefreshBrowser()
+{
+	// UpdateStats();
+	UE_LOG(LogTemp, Warning, TEXT("Refreshing browser..."));
+
+	return FReply::Handled();
+}
+
 
 void FProjectCleanerModule::AddToolbarExtension(FToolBarBuilder& Builder)
 {
 	Builder.AddToolBarButton(FProjectCleanerCommands::Get().PluginAction);
 }
 
-void FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs)
+TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs)
 {
-	InitCleaner();
-
-	const float CommonPadding = 20.0f;
-
 	const FText TipOneText = FText::FromString(
-		"Tip : Please close all opened window before running any cleaning operations, so some assets released from memory.");
-	const FText TipTwoText = FText::FromString(
-		"!!! This process can take some time based on your project sizes and amount assets you used. \n So be patient and a take a cup of coffee until it finished :)");
-	const FText TipThreeText = FText::FromString(
-		"How plugin works? \n It will delete all assets that never used in any level. \n So before cleaning project try to delete any level(maps) assets that you never used.");
+        "Tip : Please close all opened window before running any cleaning operations, so some assets released from memory.");
+	return SNew(SDockTab)
+		.TabRole(ETabRole::NomadTab)
+		[
+			// action buttons
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot()
+			  .Padding(FMargin(20))
+			  .AutoHeight()
+			[
+				SNew(SBorder)
+				.Padding(FMargin(5))
+				.BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
+				[
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot()
+					.AutoWidth()
+					.Padding(FMargin(0.0f, 0.0f, 20.0f, 0.0f))
+					[
+						SNew(SButton)
+						.HAlign(HAlign_Center)
+						.VAlign(VAlign_Center)
+						.Text(FText::FromString("Refresh"))
+						.OnClicked_Raw(this, &FProjectCleanerModule::RefreshBrowser)
+					]
+					+ SHorizontalBox::Slot()
+					.AutoWidth()
+					[
+						SNew(SButton)
+	                    .HAlign(HAlign_Center)
+	                    .VAlign(VAlign_Center)
+	                    .Text(FText::FromString("Delete Unused Assets"))
+	                    // .OnClicked_Raw(this, &FProjectCleanerModule::RefreshBrowser)
+					]
+					+ SHorizontalBox::Slot()
+                    .AutoWidth()
+					.Padding(FMargin(20.0f, 0.0f))
+                    [
+                        SNew(SButton)
+                        .HAlign(HAlign_Center)
+                        .VAlign(VAlign_Center)
+                        .Text(FText::FromString("Delete Empty Folders"))
+                        // .OnClicked_Raw(this, &FProjectCleanerModule::RefreshBrowser)
+                    ]
+				]
+			]
+			// stats
+			+ SVerticalBox::Slot()
+			  .Padding(FMargin(20))
+			  .AutoHeight()
+			[
+				SNew(SBorder)
+	            .Padding(FMargin(5))
+	            .BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
+				[
+					SNew(SVerticalBox)
+					+ SVerticalBox::Slot()
+					.HAlign(HAlign_Center)
+					[
+						// Unused Assets
+						SNew(SHorizontalBox)
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						[
+							SNew(STextBlock)
+					        .AutoWrapText(true)
+					        .Text(LOCTEXT("Unused Assets:", "Unused Assets: "))
+						]
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						[
+							SNew(STextBlock)
+					        .AutoWrapText(true)
+					        .Text_Lambda([this]() -> FText { return FText::AsNumber(CleaningStats.UnusedAssetsNum); })
+						]
+
+					]
+					// stats
+					+ SVerticalBox::Slot()
+					  .HAlign(HAlign_Center)
+					  .AutoHeight()
+					[
+						// Total size
+						SNew(SHorizontalBox)
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						[
+							SNew(STextBlock)
+					        .AutoWrapText(true)
+					        .Text(LOCTEXT("Total Size:", "Total Size: "))
+						]
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						[
+							SNew(STextBlock)
+					        .AutoWrapText(true)
+					        .Text_Lambda([this]() -> FText
+							                {
+								                return FText::AsMemory(CleaningStats.UnusedAssetsTotalSize);
+							                })
+						]
+					]
+					// stats
+					+ SVerticalBox::Slot()
+					  .HAlign(HAlign_Center)
+					  .AutoHeight()
+					[
+						// Empty folders count
+						SNew(SHorizontalBox)
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						[
+							SNew(STextBlock)
+                       .AutoWrapText(true)
+                       .Text(LOCTEXT("Empty Folders:", "Empty Folders: "))
+						]
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						[
+							SNew(STextBlock)
+                       .AutoWrapText(true)
+                       .Text_Lambda([this]() -> FText { return FText::AsNumber(CleaningStats.EmptyFolders); })
+						]
+					]
+				]
+			]
+			+SVerticalBox::Slot()
+			.AutoHeight()
+	        .Padding(FMargin(20))
+			[
+				SNew(SBorder)
+				.Padding(FMargin(20))
+	            .BorderImage(&TipOneBrushColor)
+	            .VAlign(VAlign_Center)
+	            .HAlign(HAlign_Center)
+	            [
+	            	SNew(STextBlock)
+	            	.Justification(ETextJustify::Center)
+	            	.AutoWrapText(true)
+	            	.Text(TipOneText)
+	            ]
+			]
+		];
+	// InitCleaner();
+	//
+	// const float CommonPadding = 20.0f;
+	//
+	// const FText TipOneText = FText::FromString(
+	// 	"Tip : Please close all opened window before running any cleaning operations, so some assets released from memory.");
+	// const FText TipTwoText = FText::FromString(
+	// 	"!!! This process can take some time based on your project sizes and amount assets you used. \n So be patient and a take a cup of coffee until it finished :)");
+	// const FText TipThreeText = FText::FromString(
+	// 	"How plugin works? \n It will delete all assets that never used in any level. \n So before cleaning project try to delete any level(maps) assets that you never used.");
 
 	//
 	// if (TopWindow.IsValid())
@@ -494,61 +650,61 @@ void FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs)
 	// 			  .HAlign(HAlign_Center)
 	// 			  .AutoHeight()
 	// 			[
-	// 				SNew(SHorizontalBox)
-	// 				+ SHorizontalBox::Slot()
-	// 				.AutoWidth()
-	// 				[
-	// 					SNew(STextBlock)
-	// 	                    .AutoWrapText(true)
-	// 	                    .Text(LOCTEXT("Unused Assets:", "Unused Assets: "))
-	// 				]
-	// 				+ SHorizontalBox::Slot()
-	// 				.AutoWidth()
-	// 				[
-	// 					SNew(STextBlock)
-	// 						.AutoWrapText(true)
-	// 						.Text_Lambda([this]() -> FText { return FText::AsNumber(CleaningStats.UnusedAssetsNum); })
-	// 				]
+	// SNew(SHorizontalBox)
+	// + SHorizontalBox::Slot()
+	// .AutoWidth()
+	// [
+	// 	SNew(STextBlock)
+	//                  .AutoWrapText(true)
+	//                  .Text(LOCTEXT("Unused Assets:", "Unused Assets: "))
+	// ]
+	// + SHorizontalBox::Slot()
+	// .AutoWidth()
+	// [
+	// 	SNew(STextBlock)
+	// 		.AutoWrapText(true)
+	// 		.Text_Lambda([this]() -> FText { return FText::AsNumber(CleaningStats.UnusedAssetsNum); })
+	// ]
 	// 			]
+	// + SVerticalBox::Slot()
+	//   .HAlign(HAlign_Center)
+	//   .AutoHeight()
+	// [
+	// 	SNew(SHorizontalBox)
+	// 	+ SHorizontalBox::Slot()
+	// 	.AutoWidth()
+	// 	[
+	// 		SNew(STextBlock)
+	//                  .AutoWrapText(true)
+	//                  .Text(LOCTEXT("Unused Assets Size:", "Unused Assets Size: "))
+	// 	]
+	// 	+ SHorizontalBox::Slot()
+	// 	.AutoWidth()
+	// 	[
+	// 		SNew(STextBlock)
+	//                  .AutoWrapText(true)
+	//                  .Text_Lambda([this]() -> FText { return FText::AsMemory(CleaningStats.UnusedAssetsTotalSize); })
+	// 	]
+	// ]
 	// 			+ SVerticalBox::Slot()
 	// 			  .HAlign(HAlign_Center)
 	// 			  .AutoHeight()
 	// 			[
-	// 				SNew(SHorizontalBox)
-	// 				+ SHorizontalBox::Slot()
-	// 				.AutoWidth()
-	// 				[
-	// 					SNew(STextBlock)
-	//                     .AutoWrapText(true)
-	//                     .Text(LOCTEXT("Unused Assets Size:", "Unused Assets Size: "))
-	// 				]
-	// 				+ SHorizontalBox::Slot()
-	// 				.AutoWidth()
-	// 				[
-	// 					SNew(STextBlock)
-	//                     .AutoWrapText(true)
-	//                     .Text_Lambda([this]() -> FText { return FText::AsMemory(CleaningStats.UnusedAssetsTotalSize); })
-	// 				]
-	// 			]
-	// 			+ SVerticalBox::Slot()
-	// 			  .HAlign(HAlign_Center)
-	// 			  .AutoHeight()
-	// 			[
-	// 				SNew(SHorizontalBox)
-	// 				+ SHorizontalBox::Slot()
-	// 				.AutoWidth()
-	// 				[
-	// 					SNew(STextBlock)
-	//                        .AutoWrapText(true)
-	//                        .Text(LOCTEXT("Empty Folders:", "Empty Folders: "))
-	// 				]
-	// 				+ SHorizontalBox::Slot()
-	// 				.AutoWidth()
-	// 				[
-	// 					SNew(STextBlock)
-	//                        .AutoWrapText(true)
-	//                        .Text_Lambda([this]() -> FText { return FText::AsNumber(CleaningStats.EmptyFolders); })
-	// 				]
+	// SNew(SHorizontalBox)
+	// + SHorizontalBox::Slot()
+	// .AutoWidth()
+	// [
+	// 	SNew(STextBlock)
+	//                    .AutoWrapText(true)
+	//                    .Text(LOCTEXT("Empty Folders:", "Empty Folders: "))
+	// ]
+	// + SHorizontalBox::Slot()
+	// .AutoWidth()
+	// [
+	// 	SNew(STextBlock)
+	//                    .AutoWrapText(true)
+	//                    .Text_Lambda([this]() -> FText { return FText::AsNumber(CleaningStats.EmptyFolders); })
+	// ]
 	// 			]
 	// 		]
 	// 	];
@@ -557,7 +713,7 @@ void FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs)
 FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 {
 	TestWindow->RequestDestroyWindow();
-	
+
 	if (UnusedAssets.Num() == 0)
 	{
 		NotificationManager->AddTransient(
@@ -565,54 +721,54 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 			SNotificationItem::ECompletionState::CS_Fail,
 			3.0f
 		);
-	
+
 		return FReply::Handled();
 	}
-	
+
 	// Root assets has no referencers
 	TArray<FAssetData> RootAssets;
 	RootAssets.Reserve(CleaningStats.DeleteChunkSize);
 	ProjectCleanerUtility::GetRootAssets(RootAssets, UnusedAssets, CleaningStats);
-	
-	
+
+
 	const auto NotificationRef = NotificationManager->Add(
 		TEXT("Starting Cleanup. This could take some time, please wait"),
 		SNotificationItem::ECompletionState::CS_Pending
 	);
-	
+
 	while (RootAssets.Num() > 0)
 	{
 		CleaningStats.DeletedAssetCount += ProjectCleanerUtility::DeleteAssets(RootAssets);
-	
+
 		NotificationManager->Update(NotificationRef, CleaningStats);
-	
+
 		for (const auto& Asset : RootAssets)
 		{
 			UnusedAssets.Remove(Asset);
 		}
-	
+
 		RootAssets.Empty();
 		ProjectCleanerUtility::GetRootAssets(RootAssets, UnusedAssets, CleaningStats);
 	}
-	
+
 	// what is left is circular dependent assets that should be deleted
 	CleaningStats.DeletedAssetCount += ProjectCleanerUtility::DeleteAssets(UnusedAssets);
-	
+
 	NotificationManager->Update(NotificationRef, CleaningStats);
-	
+
 	NotificationManager->CachedStats = CleaningStats;
-	
+
 	UpdateStats();
-	
+
 	NotificationManager->CachedStats.EmptyFolders = CleaningStats.EmptyFolders;
-	
-	
+
+
 	ProjectCleanerUtility::DeleteEmptyFolders(EmptyFolders);
-	
+
 	UpdateStats();
-	
+
 	NotificationManager->Hide(NotificationRef);
-	
+
 	FContentBrowserModule& CBModule = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
 	TArray<FString> FocusFolders;
 	FocusFolders.Add("/Game");
@@ -623,14 +779,20 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 	// AssetRegistryModule.Get().ScanPathsSynchronous(FocusFolders, true);
 	// AssetRegistryModule.Get().SearchAllAssets(true);
 
-	
+
 	return FReply::Handled();
 }
+
+// TSharedRef<ITableRow> FProjectCleanerModule::OnGenerateWidgetForList(TSharedPtr<FString> InItem,
+// 	const TSharedRef<STableViewBase>& OwnerTable)
+// {
+// 	return SNew(STextBlock).Text( (*InItem) );
+// }
 
 FReply FProjectCleanerModule::OnDeleteEmptyFolderClick()
 {
 	TestWindow->RequestDestroyWindow();
-	
+
 	if (EmptyFolders.Num() == 0)
 	{
 		NotificationManager->AddTransient(
@@ -638,12 +800,12 @@ FReply FProjectCleanerModule::OnDeleteEmptyFolderClick()
 			SNotificationItem::ECompletionState::CS_Fail,
 			3.0f
 		);
-	
+
 		return FReply::Handled();
 	}
-	
+
 	ProjectCleanerUtility::DeleteEmptyFolders(EmptyFolders);
-	
+
 	const FString PostFixText = CleaningStats.EmptyFolders > 1 ? TEXT(" empty folders") : TEXT(" empty folder");
 	const FString DisplayText = FString{"Deleted "} + FString::FromInt(CleaningStats.EmptyFolders) + PostFixText;
 	NotificationManager->AddTransient(
@@ -651,9 +813,9 @@ FReply FProjectCleanerModule::OnDeleteEmptyFolderClick()
 		SNotificationItem::ECompletionState::CS_Success,
 		5.0f
 	);
-	
+
 	UpdateStats();
-	
+
 	// FContentBrowserModule& CBModule = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
 	// TArray<FString> FocusFolders;
 	// FocusFolders.Add("/Game");
@@ -675,7 +837,7 @@ void FProjectCleanerModule::UpdateStats()
 void FProjectCleanerModule::InitCleaner()
 {
 	ProjectCleanerUtility::SaveAllAssets();
-	
+
 	ProjectCleanerUtility::FixupRedirectors();
 
 	UpdateStats();

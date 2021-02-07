@@ -6,6 +6,7 @@
 #include "Input/Reply.h"
 #include "SlateColorBrush.h"
 #include "StructsContainer.h"
+#include "UI/SProjectCleanerBrowser.h"
 #include "CoreMinimal.h"
 
 class FToolBarBuilder;
@@ -13,6 +14,8 @@ class FMenuBuilder;
 struct FAssetData;
 struct FSlateBrush;
 struct FSlateColorBrush;
+class ITableRow;
+class STableViewBase;
 class ProjectCleanerNotificationManager;
 
 class FProjectCleanerModule : public IModuleInterface
@@ -36,16 +39,18 @@ private:
 	void AddToolbarExtension(FToolBarBuilder& Builder);
 	void AddMenuExtension(FMenuBuilder& Builder);
 
+	FReply RefreshBrowser();
 	void UpdateStats();
 	void InitCleaner();
 private:
 	// Button events
 	FReply OnDeleteEmptyFolderClick();
 	FReply OnDeleteUnusedAssetsBtnClick();
+
 	// Stats
 	FCleaningStats CleaningStats;
 private:
-	void OnSpawnPluginTab(const class FSpawnTabArgs& SpawnTabArgs);
+	TSharedRef<SDockTab> OnSpawnPluginTab(const class FSpawnTabArgs& SpawnTabArgs);
 	TSharedPtr<class FUICommandList> PluginCommands;
 	TArray<FAssetData> UnusedAssets;
 	TArray<FString> EmptyFolders;
@@ -53,7 +58,7 @@ private:
 	TArray<FString> ProjectAllSourceFiles;
 	ProjectCleanerNotificationManager* NotificationManager;
 	TSharedPtr<SWindow> TestWindow;
-	
+	TWeakPtr<SProjectCleanerBrowser> ProjectCleanerBrowserUI;
 	// Slate styles
 	FSlateColorBrush TipOneBrushColor;
 	FSlateColorBrush TipTwoBrushColor;
