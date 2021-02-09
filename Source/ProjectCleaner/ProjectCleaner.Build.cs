@@ -46,6 +46,8 @@ public class ProjectCleaner : ModuleRules
 				"SlateCore",
 				"ContentBrowser",
 				"EditorStyle",
+				"PropertyEditor",
+				"UnrealEd"
 				// ... add private dependencies that you statically link with here ...	
 			}
 		);

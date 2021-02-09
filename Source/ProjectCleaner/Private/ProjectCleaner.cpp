@@ -475,8 +475,8 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 						.AutoWidth()
 						[
 							SNew(STextBlock)
-                       .AutoWrapText(true)
-                       .Text_Lambda([this]() -> FText { return FText::AsNumber(CleaningStats.EmptyFolders); })
+                           .AutoWrapText(true)
+                           .Text_Lambda([this]() -> FText { return FText::AsNumber(CleaningStats.EmptyFolders); })
 						]
 					]
 				]
@@ -496,6 +496,12 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 	            	.AutoWrapText(true)
 	            	.Text(TipOneText)
 	            ]
+			]
+			+SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(FMargin(20))
+			[
+				SAssignNew(ProjectCleanerBrowserUI, SProjectCleanerBrowser)
 			]
 		];
 	// InitCleaner();

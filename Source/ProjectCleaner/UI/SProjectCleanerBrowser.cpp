@@ -2,45 +2,58 @@
 
 
 #include "SProjectCleanerBrowser.h"
+#include "PropertyEditorModule.h"
+#include "UObject/ObjectMacros.h"
+
 
 void SProjectCleanerBrowser::Construct(const FArguments& InArgs)
 {
-	Options.Add(MakeShareable(new FString("Option1")));
-	Options.Add(MakeShareable(new FString("Option2")));
-	Options.Add(MakeShareable(new FString("LastOption")));
 
-	CurrentItem = Options[0];
+	FPropertyEditorModule& PropertyEditor = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
+
+	FDetailsViewArgs FolderFilterArgs;
+	FolderFilterArgs.bUpdatesFromSelection = false;
+	FolderFilterArgs.bLockable = false;
+	FolderFilterArgs.bAllowSearch = false;
+	FolderFilterArgs.bShowOptions = false;
+	FolderFilterArgs.bAllowFavoriteSystem = false;
+	FolderFilterArgs.NameAreaSettings = FDetailsViewArgs::HideNameArea;
+	FolderFilterArgs.ViewIdentifier = "ExcludeDirectoriesFromScan";
+
+	DirFilterSettings = PropertyEditor.CreateDetailView(FolderFilterArgs);
 	
 	ChildSlot
 	[
-		SNew(SComboBox<FComboItemType>)
-		.OptionsSource(&Options)
-		.OnSelectionChanged(this, &SProjectCleanerBrowser::OnSelectionChanged)
-		.OnGenerateWidget(this, &SProjectCleanerBrowser::MakeWidgetForOption)
-		.InitiallySelectedItem(CurrentItem)
+		SNew(SVerticalBox)
+		+SVerticalBox::Slot()
+		.Padding(20)
 		[
-			SNew(STextBlock)
-			.Text(this, &SProjectCleanerBrowser::GetCurrentItemLabel)
+			SNew(SBorder)
+			.Padding(FMargin(20))
+			[
+				DirFilterSettings.ToSharedRef()
+			]
 		]
+		
 	];
 }
 
-TSharedRef<SWidget> SProjectCleanerBrowser::MakeWidgetForOption(FComboItemType InOption)
-{
-	return SNew(STextBlock).Text(FText::FromString(*InOption));
-}
-
-void SProjectCleanerBrowser::OnSelectionChanged(FComboItemType NewValue, ESelectInfo::Type)
-{
-	CurrentItem = NewValue;
-}
-
-FText SProjectCleanerBrowser::GetCurrentItemLabel() const
-{
-	if(CurrentItem.IsValid())
-	{
-		return FText::FromString(*CurrentItem);
-	}
-
-	return FText::FromString("<<Invalid Option>>");
-}
+// TSharedRef<SWidget> SProjectCleanerBrowser::MakeWidgetForOption(FComboItemType InOption)
+// {
+// 	return SNew(STextBlock).Text(FText::FromString(*InOption));
+// }
+//
+// void SProjectCleanerBrowser::OnSelectionChanged(FComboItemType NewValue, ESelectInfo::Type)
+// {
+// 	CurrentItem = NewValue;
+// }
+//
+// FText SProjectCleanerBrowser::GetCurrentItemLabel() const
+// {
+// 	if(CurrentItem.IsValid())
+// 	{
+// 		return FText::FromString(*CurrentItem);
+// 	}
+//
+// 	return FText::FromString("<<Invalid Option>>");
+// }
