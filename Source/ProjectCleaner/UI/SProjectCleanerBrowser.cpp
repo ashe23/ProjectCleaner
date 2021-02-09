@@ -36,6 +36,12 @@ void SProjectCleanerBrowser::Construct(const FArguments& InArgs)
 		]
 		
 	];
+
+	if(InArgs._DirectoryFilterSettings)
+	{
+		DirectoryFilterSettings = InArgs._DirectoryFilterSettings;
+		DirFilterSettings->SetObject(DirectoryFilterSettings);
+	}
 }
 
 // TSharedRef<SWidget> SProjectCleanerBrowser::MakeWidgetForOption(FComboItemType InOption)

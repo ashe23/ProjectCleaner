@@ -159,9 +159,9 @@ void ProjectCleanerUtility::GetAllDependencies(const FARFilter& InAssetRegistryF
 	}
 }
 
-int32 ProjectCleanerUtility::GetUnusedAssetsNum(TArray<FAssetData>& UnusedAssets, TArray<FString> AllSourceFiles)
+int32 ProjectCleanerUtility::GetUnusedAssetsNum(TArray<FAssetData>& UnusedAssets, TArray<FString>& AllSourceFiles)
 {
-	FScopedSlowTask SlowTask{3.0f, FText::FromString("Scanning project...")};
+	FScopedSlowTask SlowTask{4.0f, FText::FromString("Scanning project...")};
 	SlowTask.MakeDialog();
 
 	UnusedAssets.Empty();
@@ -197,6 +197,8 @@ int32 ProjectCleanerUtility::GetUnusedAssetsNum(TArray<FAssetData>& UnusedAssets
 	{
 		return UsedInSourceFiles(AllSourceFiles, Val.PackageName);
 	});
+	
+	SlowTask.EnterProgressFrame(1.0f);
 
 	return UnusedAssets.Num();
 }

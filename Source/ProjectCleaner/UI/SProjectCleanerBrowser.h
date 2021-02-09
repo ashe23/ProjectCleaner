@@ -17,9 +17,6 @@ class UDirectoryFilterSettings : public UObject
 
 	GENERATED_BODY()
 public:
-	UPROPERTY(DisplayName = "Path", EditAnywhere, Category = "DirectoryFilterSettings")
-	FString PathName;
-
 	UPROPERTY(DisplayName = "Dest Path", EditAnywhere, Category = "DirectoryFilterSettings", meta = (ContentDir))
 	TArray<FDirectoryPath> DirectoryFilterPath;
 };

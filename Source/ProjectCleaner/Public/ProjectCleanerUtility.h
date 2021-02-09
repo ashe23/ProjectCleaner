@@ -39,7 +39,7 @@ public:
 	static void GetAllDependencies(const struct FARFilter& InAssetRegistryFilter, const class IAssetRegistry& AssetRegistry, TSet<FName>& OutDependencySet);
 	
 	// Returns total number of unused assets
-	static int32 GetUnusedAssetsNum(TArray<FAssetData>& UnusedAssets, TArray<FString> AllSourceFiles);
+	static int32 GetUnusedAssetsNum(TArray<FAssetData>& UnusedAssets, TArray<FString>& AllSourceFiles);
 
 	// Returns total number of empty folders
 	static int32 GetEmptyFoldersNum(TArray<FString>& EmptyFolders,TArray<FString>& NonProjectFiles);

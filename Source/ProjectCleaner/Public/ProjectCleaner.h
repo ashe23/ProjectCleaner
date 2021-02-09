@@ -59,6 +59,7 @@ private:
 	ProjectCleanerNotificationManager* NotificationManager;
 	TSharedPtr<SWindow> TestWindow;
 	TWeakPtr<SProjectCleanerBrowser> ProjectCleanerBrowserUI;
+	UDirectoryFilterSettings* DirectoryFilterSettings;
 	// Slate styles
 	FSlateColorBrush TipOneBrushColor;
 	FSlateColorBrush TipTwoBrushColor;
