@@ -31,6 +31,8 @@ static const FName ProjectCleanerTabName("ProjectCleaner");
 
 #define LOCTEXT_NAMESPACE "FProjectCleanerModule"
 
+#pragma optimize("", off)
+
 void FProjectCleanerModule::StartupModule()
 {
 	// This code will execute after your module is loaded into memory; the exact timing is specified in the .uplugin file per-module
@@ -342,8 +344,19 @@ void FProjectCleanerModule::AddMenuExtension(FMenuBuilder& Builder)
 
 FReply FProjectCleanerModule::RefreshBrowser()
 {
-	// UpdateStats();
 	UE_LOG(LogTemp, Warning, TEXT("Refreshing browser..."));
+
+	ProjectCleanerUtility::GetUnusedAssetsNum(UnusedAssets, ProjectAllSourceFiles);
+	ProjectCleanerUtility::GetEmptyFoldersNum(EmptyFolders, NonProjectFiles);
+
+	if (ShouldApplyDirectoryFilters())
+	{
+		ApplyDirectoryFilters();
+	}
+
+	CleaningStats.UnusedAssetsNum = UnusedAssets.Num();
+	CleaningStats.UnusedAssetsTotalSize = ProjectCleanerUtility::GetUnusedAssetsTotalSize(UnusedAssets);
+	CleaningStats.EmptyFolders = EmptyFolders.Num();
 
 	return FReply::Handled();
 }
@@ -721,76 +734,47 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 
 FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 {
-	UpdateStats();
-
-	// 1) Find all unused assets
-	ProjectCleanerUtility::GetUnusedAssetsNum(UnusedAssets, ProjectAllSourceFiles);
-	
-	// 2) Apply directory filter if needed
-	for (int32 i = 0; i < UnusedAssets.Num(); ++i)
-	{
-		bool Contains = false;
-		// directory filter
-		for (const auto& Dir : DirectoryFilterSettings->DirectoryFilterPath)
-		{
-			Contains = Dir.Path.Equals(UnusedAssets[i].PackagePath.ToString());
-			if (Contains)
-			{
-				UnusedAssets.RemoveAt(i);
-				break;
-			}
-		}
-		
-		if (Contains)
-		{
-			break;
-		}
-	}
-	// 3) Show stats
-	CleaningStats.UnusedAssetsNum = UnusedAssets.Num();
-
-
-	UE_LOG(LogTemp, Warning, TEXT("A"));
 	// TestWindow->RequestDestroyWindow();
-	//
-	// if (UnusedAssets.Num() == 0)
-	// {
-	// 	NotificationManager->AddTransient(
-	// 		TEXT("There are no assets to delete!"),
-	// 		SNotificationItem::ECompletionState::CS_Fail,
-	// 		3.0f
-	// 	);
-	//
-	// 	return FReply::Handled();
-	// }
-	//
-	// // Root assets has no referencers
-	// TArray<FAssetData> RootAssets;
-	// RootAssets.Reserve(CleaningStats.DeleteChunkSize);
-	// ProjectCleanerUtility::GetRootAssets(RootAssets, UnusedAssets, CleaningStats);
-	//
-	//
-	// const auto NotificationRef = NotificationManager->Add(
-	// 	TEXT("Starting Cleanup. This could take some time, please wait"),
-	// 	SNotificationItem::ECompletionState::CS_Pending
-	// );
-	//
-	// while (RootAssets.Num() > 0)
-	// {
-	// 	CleaningStats.DeletedAssetCount += ProjectCleanerUtility::DeleteAssets(RootAssets);
-	//
-	// 	NotificationManager->Update(NotificationRef, CleaningStats);
-	//
-	// 	for (const auto& Asset : RootAssets)
-	// 	{
-	// 		UnusedAssets.Remove(Asset);
-	// 	}
-	//
-	// 	RootAssets.Empty();
-	// 	ProjectCleanerUtility::GetRootAssets(RootAssets, UnusedAssets, CleaningStats);
-	// }
-	//
-	// // what is left is circular dependent assets that should be deleted
+
+	if (UnusedAssets.Num() == 0)
+	{
+		NotificationManager->AddTransient(
+			TEXT("There are no assets to delete!"),
+			SNotificationItem::ECompletionState::CS_Fail,
+			3.0f
+		);
+	
+		return FReply::Handled();
+	}
+	
+	// Root assets has no referencers
+	TArray<FAssetData> RootAssets;
+	RootAssets.Reserve(CleaningStats.DeleteChunkSize);
+	ProjectCleanerUtility::GetRootAssets(RootAssets, UnusedAssets, CleaningStats);
+	
+	
+	const auto NotificationRef = NotificationManager->Add(
+		TEXT("Starting Cleanup. This could take some time, please wait"),
+		SNotificationItem::ECompletionState::CS_Pending
+	);
+	
+	while (RootAssets.Num() > 0)
+	{
+		CleaningStats.DeletedAssetCount += ProjectCleanerUtility::DeleteAssets(RootAssets);
+	
+		NotificationManager->Update(NotificationRef, CleaningStats);
+	
+		for (const auto& Asset : RootAssets)
+		{
+			UnusedAssets.Remove(Asset);
+		}
+	
+		RootAssets.Empty();
+		ProjectCleanerUtility::GetRootAssets(RootAssets, UnusedAssets, CleaningStats);
+	}
+
+	RefreshBrowser();
+	// what is left is circular dependent assets that should be deleted
 	// CleaningStats.DeletedAssetCount += ProjectCleanerUtility::DeleteAssets(UnusedAssets);
 	//
 	// NotificationManager->Update(NotificationRef, CleaningStats);
@@ -805,28 +789,22 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 	// ProjectCleanerUtility::DeleteEmptyFolders(EmptyFolders);
 	//
 	// UpdateStats();
-	//
-	// NotificationManager->Hide(NotificationRef);
-	//
-	// FContentBrowserModule& CBModule = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
-	// TArray<FString> FocusFolders;
-	// FocusFolders.Add("/Game");
-	// CBModule.Get().SyncBrowserToFolders(FocusFolders);
+	
+	NotificationManager->Hide(NotificationRef);
+	
+	FContentBrowserModule& CBModule = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
+	TArray<FString> FocusFolders;
+	FocusFolders.Add("/Game");
+	CBModule.Get().SyncBrowserToFolders(FocusFolders);
 
 
-	// FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
-	// AssetRegistryModule.Get().ScanPathsSynchronous(FocusFolders, true);
-	// AssetRegistryModule.Get().SearchAllAssets(true);
+	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
+	AssetRegistryModule.Get().ScanPathsSynchronous(FocusFolders, true);
+	AssetRegistryModule.Get().SearchAllAssets(true);
 
 
 	return FReply::Handled();
 }
-
-// TSharedRef<ITableRow> FProjectCleanerModule::OnGenerateWidgetForList(TSharedPtr<FString> InItem,
-// 	const TSharedRef<STableViewBase>& OwnerTable)
-// {
-// 	return SNew(STextBlock).Text( (*InItem) );
-// }
 
 FReply FProjectCleanerModule::OnDeleteEmptyFolderClick()
 {
@@ -855,10 +833,10 @@ FReply FProjectCleanerModule::OnDeleteEmptyFolderClick()
 
 	UpdateStats();
 
-	// FContentBrowserModule& CBModule = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
-	// TArray<FString> FocusFolders;
-	// FocusFolders.Add("/Game");
-	// CBModule.Get().SyncBrowserToFolders(FocusFolders);
+	FContentBrowserModule& CBModule = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
+	TArray<FString> FocusFolders;
+	FocusFolders.Add("/Game");
+	CBModule.Get().SyncBrowserToFolders(FocusFolders);
 
 	return FReply::Handled();
 }
@@ -882,6 +860,54 @@ void FProjectCleanerModule::InitCleaner()
 	UpdateStats();
 }
 
+bool FProjectCleanerModule::ShouldApplyDirectoryFilters() const
+{
+	if (!DirectoryFilterSettings) return false;
+
+	return DirectoryFilterSettings->DirectoryFilterPath.Num() > 0;
+}
+
+void FProjectCleanerModule::ApplyDirectoryFilters()
+{
+	if (UnusedAssets.Num() == 0) return;
+
+	// todo:ashe23 i feel like i need optimization here
+	// unused assets filter
+	auto CopyAssets = UnusedAssets;
+	for (int32 i = 0; i < CopyAssets.Num(); ++i)
+	{
+		for (const auto& Dir : DirectoryFilterSettings->DirectoryFilterPath)
+		{
+			const auto PackagePath = CopyAssets[i].PackagePath.ToString();
+			const bool Contains = PackagePath.Contains(Dir.Path);
+			if (Contains)
+			{
+				UnusedAssets.Remove(CopyAssets[i]);
+				break;
+			}
+		}
+	}
+
+	// empty folders filter
+	auto CopyFolders = EmptyFolders;
+	const auto RootDir = FPaths::ProjectContentDir();
+	for (int32 i = 0; i < CopyFolders.Num(); ++i)
+	{
+		auto FolderPath = CopyFolders[i];
+		auto Replaced = FolderPath.Replace(*RootDir, TEXT("/Game/"));
+
+		for (const auto& Dir : DirectoryFilterSettings->DirectoryFilterPath)
+		{
+			if (Replaced.Contains(Dir.Path))
+			{
+				EmptyFolders.Remove(CopyFolders[i]);
+				break;
+			}
+		}
+	}
+}
+
+#pragma optimize("", on)
 #undef LOCTEXT_NAMESPACE
 
 IMPLEMENT_MODULE(FProjectCleanerModule, ProjectCleaner)

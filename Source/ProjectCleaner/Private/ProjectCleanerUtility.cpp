@@ -352,6 +352,7 @@ void ProjectCleanerUtility::FindNonProjectFiles(const FString& SearchPath, TArra
 
 void ProjectCleanerUtility::FindAllSourceFiles(TArray<FString>& AllFiles)
 {
+	// todo:ashe23 remove save and intermediate folder from scan
 	const auto ProjectSourceDir = FPaths::GameSourceDir();
 	const auto ProjectPluginsDir = FPaths::ProjectPluginsDir();
 	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();

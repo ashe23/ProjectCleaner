@@ -26,6 +26,7 @@ public:
 			TipTwoBrushColor(FSlateColorBrush{ FLinearColor{1.0f, 0.039437f, 0.0f, 0.227f } })
 	{
 		NotificationManager = nullptr;
+		DirectoryFilterSettings = nullptr;
 	}
 	/** IModuleInterface implementation */
 	virtual void StartupModule() override;
@@ -42,6 +43,8 @@ private:
 	FReply RefreshBrowser();
 	void UpdateStats();
 	void InitCleaner();
+	bool ShouldApplyDirectoryFilters() const;
+	void ApplyDirectoryFilters();
 private:
 	// Button events
 	FReply OnDeleteEmptyFolderClick();
