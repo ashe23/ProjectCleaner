@@ -43,23 +43,3 @@ void SProjectCleanerBrowser::Construct(const FArguments& InArgs)
 		DirFilterSettings->SetObject(DirectoryFilterSettings);
 	}
 }
-
-// TSharedRef<SWidget> SProjectCleanerBrowser::MakeWidgetForOption(FComboItemType InOption)
-// {
-// 	return SNew(STextBlock).Text(FText::FromString(*InOption));
-// }
-//
-// void SProjectCleanerBrowser::OnSelectionChanged(FComboItemType NewValue, ESelectInfo::Type)
-// {
-// 	CurrentItem = NewValue;
-// }
-//
-// FText SProjectCleanerBrowser::GetCurrentItemLabel() const
-// {
-// 	if(CurrentItem.IsValid())
-// 	{
-// 		return FText::FromString(*CurrentItem);
-// 	}
-//
-// 	return FText::FromString("<<Invalid Option>>");
-// }

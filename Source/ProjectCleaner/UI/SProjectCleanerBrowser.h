@@ -17,7 +17,7 @@ class UDirectoryFilterSettings : public UObject
 
 	GENERATED_BODY()
 public:
-	UPROPERTY(DisplayName = "Dest Path", EditAnywhere, Category = "DirectoryFilterSettings", meta = (ContentDir))
+	UPROPERTY(DisplayName = "Directory", EditAnywhere, Category = "ExcludeThisDirectories", meta = (ContentDir))
 	TArray<FDirectoryPath> DirectoryFilterPath;
 };
 
@@ -35,15 +35,8 @@ public:
 
 	void Construct(const FArguments& InArgs);
 
-	// TSharedRef<SWidget> MakeWidgetForOption(FComboItemType InOption);
-	// void OnSelectionChanged(FComboItemType NewValue, ESelectInfo::Type);
-	// FText GetCurrentItemLabel() const;
 
 	TSharedPtr<IDetailsView> DirFilterSettings;
 	UDirectoryFilterSettings* DirectoryFilterSettings;
-	
-	// FComboItemType CurrentItem;
-	// TArray<FComboItemType> Options;
 
-	// TArray<FString> ExcludeDirectoryList;
 };

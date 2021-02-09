@@ -15,6 +15,7 @@
 #include "ObjectTools.h"
 #include "HAL/PlatformFilemanager.h"
 #include "EditorStyleSet.h"
+#include "GenericPlatformMisc.h"
 #include "Misc/FileHelper.h"
 #include "AssetRegistry/Public/AssetData.h"
 #include "ProjectCleanerNotificationManager.h"
@@ -25,7 +26,6 @@
 #include "Framework/Application/SlateApplication.h"
 #include "Widgets/Images/SImage.h"
 #include "Widgets/Input/SComboBox.h"
-// #include "Ui/SProjectCleanerBrowser.h"
 
 static const FName ProjectCleanerTabName("ProjectCleaner");
 
@@ -104,11 +104,12 @@ void FProjectCleanerModule::ShutdownModule()
 
 void FProjectCleanerModule::PluginButtonClicked()
 {
+	InitCleaner();
+
 	FGlobalTabmanager::Get()->InvokeTab(ProjectCleanerTabName);
 
 	return;
 
-	InitCleaner();
 
 	TArray<TSharedPtr<FString>> Items;
 
@@ -344,19 +345,7 @@ void FProjectCleanerModule::AddMenuExtension(FMenuBuilder& Builder)
 
 FReply FProjectCleanerModule::RefreshBrowser()
 {
-	UE_LOG(LogTemp, Warning, TEXT("Refreshing browser..."));
-
-	ProjectCleanerUtility::GetUnusedAssetsNum(UnusedAssets, ProjectAllSourceFiles);
-	ProjectCleanerUtility::GetEmptyFoldersNum(EmptyFolders, NonProjectFiles);
-
-	if (ShouldApplyDirectoryFilters())
-	{
-		ApplyDirectoryFilters();
-	}
-
-	CleaningStats.UnusedAssetsNum = UnusedAssets.Num();
-	CleaningStats.UnusedAssetsTotalSize = ProjectCleanerUtility::GetUnusedAssetsTotalSize(UnusedAssets);
-	CleaningStats.EmptyFolders = EmptyFolders.Num();
+	UpdateStats();
 
 	return FReply::Handled();
 }
@@ -734,7 +723,21 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 
 FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 {
-	// TestWindow->RequestDestroyWindow();
+	const FText ConfirmationText = FText::FromString("Are you sure you want to permanently delete unused assets?");
+	const FText ConfirmationTextTile = FText::FromString("Confirm deletion");
+
+	const EAppReturnType::Type ReturnType = FMessageDialog::Open(
+		EAppMsgType::YesNo,
+		ConfirmationText,
+		&ConfirmationTextTile
+	);
+
+
+	if (ReturnType == EAppReturnType::Type::No || ReturnType == EAppReturnType::Cancel)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Cancelled by user!"));
+		return FReply::Handled();
+	}
 
 	if (UnusedAssets.Num() == 0)
 	{
@@ -743,55 +746,54 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 			SNotificationItem::ECompletionState::CS_Fail,
 			3.0f
 		);
-	
+
 		return FReply::Handled();
 	}
-	
+
 	// Root assets has no referencers
 	TArray<FAssetData> RootAssets;
 	RootAssets.Reserve(CleaningStats.DeleteChunkSize);
 	ProjectCleanerUtility::GetRootAssets(RootAssets, UnusedAssets, CleaningStats);
-	
-	
+
 	const auto NotificationRef = NotificationManager->Add(
 		TEXT("Starting Cleanup. This could take some time, please wait"),
 		SNotificationItem::ECompletionState::CS_Pending
 	);
-	
+
 	while (RootAssets.Num() > 0)
 	{
 		CleaningStats.DeletedAssetCount += ProjectCleanerUtility::DeleteAssets(RootAssets);
-	
+
 		NotificationManager->Update(NotificationRef, CleaningStats);
-	
+
 		for (const auto& Asset : RootAssets)
 		{
 			UnusedAssets.Remove(Asset);
 		}
-	
+
 		RootAssets.Empty();
 		ProjectCleanerUtility::GetRootAssets(RootAssets, UnusedAssets, CleaningStats);
 	}
 
-	RefreshBrowser();
+	UpdateStats();
+	
 	// what is left is circular dependent assets that should be deleted
-	// CleaningStats.DeletedAssetCount += ProjectCleanerUtility::DeleteAssets(UnusedAssets);
-	//
-	// NotificationManager->Update(NotificationRef, CleaningStats);
-	//
-	// NotificationManager->CachedStats = CleaningStats;
-	//
-	// UpdateStats();
-	//
-	// NotificationManager->CachedStats.EmptyFolders = CleaningStats.EmptyFolders;
-	//
-	//
-	// ProjectCleanerUtility::DeleteEmptyFolders(EmptyFolders);
-	//
-	// UpdateStats();
+	CleaningStats.DeletedAssetCount += ProjectCleanerUtility::DeleteAssets(UnusedAssets);
 	
+	NotificationManager->Update(NotificationRef, CleaningStats);
+	
+	NotificationManager->CachedStats = CleaningStats;
+	
+	UpdateStats();
+	
+	NotificationManager->CachedStats.EmptyFolders = CleaningStats.EmptyFolders;
+	
+	ProjectCleanerUtility::DeleteEmptyFolders(EmptyFolders);
+	
+	UpdateStats();
+
 	NotificationManager->Hide(NotificationRef);
-	
+
 	FContentBrowserModule& CBModule = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
 	TArray<FString> FocusFolders;
 	FocusFolders.Add("/Game");
@@ -844,9 +846,17 @@ FReply FProjectCleanerModule::OnDeleteEmptyFolderClick()
 
 void FProjectCleanerModule::UpdateStats()
 {
-	CleaningStats.UnusedAssetsNum = ProjectCleanerUtility::GetUnusedAssetsNum(UnusedAssets, ProjectAllSourceFiles);
+	ProjectCleanerUtility::GetUnusedAssets(UnusedAssets, ProjectAllSourceFiles);
+	ProjectCleanerUtility::GetEmptyFoldersNum(EmptyFolders, NonProjectFiles);
+
+	if (ShouldApplyDirectoryFilters())
+	{
+		ApplyDirectoryFilters();
+	}
+
+	CleaningStats.UnusedAssetsNum = UnusedAssets.Num();
 	CleaningStats.UnusedAssetsTotalSize = ProjectCleanerUtility::GetUnusedAssetsTotalSize(UnusedAssets);
-	CleaningStats.EmptyFolders = ProjectCleanerUtility::GetEmptyFoldersNum(EmptyFolders, NonProjectFiles);
+	CleaningStats.EmptyFolders = EmptyFolders.Num();
 	CleaningStats.TotalAssetNum = CleaningStats.UnusedAssetsNum;
 	CleaningStats.DeletedAssetCount = 0;
 }

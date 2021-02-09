@@ -31,8 +31,11 @@ public:
 	/** IModuleInterface implementation */
 	virtual void StartupModule() override;
 	virtual void ShutdownModule() override;
+
 	
-	/** This function will be bound to Command. */
+	/**
+	 * @brief Opens ProjectCleanerBrowser Main Tab
+	 */
 	void PluginButtonClicked();
 	
 private:
@@ -43,7 +46,18 @@ private:
 	FReply RefreshBrowser();
 	void UpdateStats();
 	void InitCleaner();
+	
+	/**
+	 * If user entered any exclude directory, then we should exclude given directories from scanning
+	 * @brief Checks if any exclude directory exists. 
+	 * @return bool 
+	 */
 	bool ShouldApplyDirectoryFilters() const;
+	
+	/**
+	 * Excludes assets and empty folders that not passing user filter
+	 * @brief 
+	 */
 	void ApplyDirectoryFilters();
 private:
 	// Button events

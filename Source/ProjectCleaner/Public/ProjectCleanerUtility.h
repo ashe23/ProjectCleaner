@@ -29,7 +29,12 @@ public:
 	// Deletes Empty Folders
 	static void DeleteEmptyFolders(TArray<FString>& EmptyFolders);
 	
-	// Finding all assets in "Game" Root directory of project
+	
+	/**
+	 * Finds all game assets in "Root" project directory
+	 * @brief Finds all assets in project
+	 * @param GameAssetsContainer Container for all game assets
+	 */
 	static void FindAllGameAssets(TArray<FAssetData>& GameAssetsContainer);
 	
 	// Removes all level assets(Maps) from GameAssetsContainer 
@@ -38,8 +43,18 @@ public:
 	// Returns all level dependencies by given filter
 	static void GetAllDependencies(const struct FARFilter& InAssetRegistryFilter, const class IAssetRegistry& AssetRegistry, TSet<FName>& OutDependencySet);
 	
-	// Returns total number of unused assets
-	static int32 GetUnusedAssetsNum(TArray<FAssetData>& UnusedAssets, TArray<FString>& AllSourceFiles);
+	/**
+	 * Finds all unused assets in project
+	 * This function looking asset only in root project content directory
+	 * Assets in Developer and Collections will not be scanned
+	 * Also this function will scan any source files ".h" and ".cpp" files that contains hardlink to asset
+	 * 
+	 * @brief Returns total amount of founded unused assets
+	 * @param UnusedAssets - Container for all unused assets
+	 * @param AllSourceFiles - Container for all source files that contains hardlinks to asset
+	 * @return int32 Number of unused assets
+	 */
+	static int32 GetUnusedAssets(TArray<FAssetData>& UnusedAssets, TArray<FString>& AllSourceFiles);
 
 	// Returns total number of empty folders
 	static int32 GetEmptyFoldersNum(TArray<FString>& EmptyFolders,TArray<FString>& NonProjectFiles);

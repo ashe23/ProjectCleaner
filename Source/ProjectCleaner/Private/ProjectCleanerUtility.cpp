@@ -53,7 +53,7 @@ bool ProjectCleanerUtility::GetAllEmptyDirectories(const FString& SearchPath,
 		auto NewPath = SearchPath;
 		NewPath.RemoveFromEnd(TEXT("*"));
 		NewPath += Dir / TEXT("*");
-		if (GetAllEmptyDirectories(NewPath, Directories,NonProjectFiles, false))
+		if (GetAllEmptyDirectories(NewPath, Directories, NonProjectFiles, false))
 		{
 			NewPath.RemoveFromEnd(TEXT("*"));
 			Directories.Add(NewPath);
@@ -122,8 +122,9 @@ void ProjectCleanerUtility::RemoveLevelAssets(TArray<FAssetData>& GameAssetsCont
 {
 	GameAssetsContainer.RemoveAll([](FAssetData Val)
 	{
-		return Val.AssetClass.ToString().Contains("MapBuildDataRegistry") || Val.AssetClass == UWorld::StaticClass()->
-			GetFName();
+		return
+			Val.AssetClass.ToString().Contains("MapBuildDataRegistry") ||
+			Val.AssetClass == UWorld::StaticClass()->GetFName();
 	});
 }
 
@@ -159,7 +160,7 @@ void ProjectCleanerUtility::GetAllDependencies(const FARFilter& InAssetRegistryF
 	}
 }
 
-int32 ProjectCleanerUtility::GetUnusedAssetsNum(TArray<FAssetData>& UnusedAssets, TArray<FString>& AllSourceFiles)
+int32 ProjectCleanerUtility::GetUnusedAssets(TArray<FAssetData>& UnusedAssets, TArray<FString>& AllSourceFiles)
 {
 	FScopedSlowTask SlowTask{4.0f, FText::FromString("Scanning project...")};
 	SlowTask.MakeDialog();
@@ -197,7 +198,7 @@ int32 ProjectCleanerUtility::GetUnusedAssetsNum(TArray<FAssetData>& UnusedAssets
 	{
 		return UsedInSourceFiles(AllSourceFiles, Val.PackageName);
 	});
-	
+
 	SlowTask.EnterProgressFrame(1.0f);
 
 	return UnusedAssets.Num();
