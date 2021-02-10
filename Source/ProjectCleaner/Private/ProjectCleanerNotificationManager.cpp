@@ -66,7 +66,7 @@ void ProjectCleanerNotificationManager::Hide(TWeakPtr<SNotificationItem> Notific
 
 	// New notification about success
 	FNotificationInfo Info(FText::FromString(
-		FString::Printf(TEXT("Deleted %d assets and %d empty folders."), CachedStats.DeletedAssetCount,
+		FString::Printf(TEXT("Deleted %d asset and %d empty folder."), CachedStats.DeletedAssetCount,
 		                CachedStats.EmptyFolders)));
 	Info.ExpireDuration = 5.0f;
 

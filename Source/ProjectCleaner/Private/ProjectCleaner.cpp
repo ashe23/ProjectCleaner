@@ -359,53 +359,29 @@ void FProjectCleanerModule::AddToolbarExtension(FToolBarBuilder& Builder)
 TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs)
 {
 	const FText TipOneText = FText::FromString(
-		"Tip : Please close all opened window before running any cleaning operations, so some assets released from memory.");
+		"How to use?\nDelete all unused levels first. (If any asset used in level it wont be deleted).\n"
+	);
+
 	return SNew(SDockTab)
 		.TabRole(ETabRole::NomadTab)
 		[
-			// action buttons
 			SNew(SVerticalBox)
 			+ SVerticalBox::Slot()
-			  .Padding(FMargin(20))
 			  .AutoHeight()
+			  .Padding(FMargin(20))
 			[
 				SNew(SBorder)
-				.Padding(FMargin(5))
-				.BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
+                .Padding(FMargin(10))
+                .BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
+                .VAlign(VAlign_Center)
+                .HAlign(HAlign_Center)
 				[
-					SNew(SHorizontalBox)
-					+ SHorizontalBox::Slot()
-					  .AutoWidth()
-					  .Padding(FMargin(0.0f, 0.0f, 20.0f, 0.0f))
-					[
-						SNew(SButton)
-						.HAlign(HAlign_Center)
-						.VAlign(VAlign_Center)
-						.Text(FText::FromString("Refresh"))
-						.OnClicked_Raw(this, &FProjectCleanerModule::RefreshBrowser)
-					]
-					+ SHorizontalBox::Slot()
-					.AutoWidth()
-					[
-						SNew(SButton)
-	                    .HAlign(HAlign_Center)
-	                    .VAlign(VAlign_Center)
-	                    .Text(FText::FromString("Delete Unused Assets"))
-	                    .OnClicked_Raw(this, &FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick)
-					]
-					+ SHorizontalBox::Slot()
-					  .AutoWidth()
-					  .Padding(FMargin(20.0f, 0.0f))
-					[
-						SNew(SButton)
-                        .HAlign(HAlign_Center)
-                        .VAlign(VAlign_Center)
-                        .Text(FText::FromString("Delete Empty Folders"))
-						// .OnClicked_Raw(this, &FProjectCleanerModule::RefreshBrowser)
-					]
+					SNew(STextBlock)
+                    .Justification(ETextJustify::Center)
+                    .AutoWrapText(true)
+                    .Text(TipOneText)
 				]
 			]
-			// stats
 			+ SVerticalBox::Slot()
 			  .Padding(FMargin(20))
 			  .AutoHeight()
@@ -489,24 +465,52 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 			  .AutoHeight()
 			  .Padding(FMargin(20))
 			[
-				SNew(SBorder)
-				.Padding(FMargin(20))
-	            .BorderImage(&TipOneBrushColor)
-	            .VAlign(VAlign_Center)
-	            .HAlign(HAlign_Center)
-				[
-					SNew(STextBlock)
-	            	.Justification(ETextJustify::Center)
-	            	.AutoWrapText(true)
-	            	.Text(TipOneText)
-				]
-			]
-			+ SVerticalBox::Slot()
-			  .AutoHeight()
-			  .Padding(FMargin(20))
-			[
 				SAssignNew(ProjectCleanerBrowserUI, SProjectCleanerBrowser)
 				.DirectoryFilterSettings(DirectoryFilterSettings)
+			]
+			// action buttons
+			+ SVerticalBox::Slot()
+			  .Padding(FMargin(20))
+			  .AutoHeight()
+			[
+				SNew(SBorder)
+                .Padding(FMargin(5))
+                .BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
+				[
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot()
+					  // .AutoWidth()
+					  .FillWidth(1.0f)
+					  .Padding(FMargin(0.0f, 0.0f, 20.0f, 0.0f))
+					[
+						SNew(SButton)
+                        .HAlign(HAlign_Center)
+                        .VAlign(VAlign_Center)
+                        .Text(FText::FromString("Refresh"))
+                        .OnClicked_Raw(this, &FProjectCleanerModule::RefreshBrowser)
+					]
+					+ SHorizontalBox::Slot()
+					.FillWidth(1.0f)
+					// .AutoWidth()
+					[
+						SNew(SButton)
+                        .HAlign(HAlign_Center)
+                        .VAlign(VAlign_Center)
+                        .Text(FText::FromString("Delete Unused Assets"))
+                        .OnClicked_Raw(this, &FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick)
+					]
+					+ SHorizontalBox::Slot()
+					  .FillWidth(1.0f)
+					  // .AutoWidth()
+					  .Padding(FMargin(20.0f, 0.0f))
+					[
+						SNew(SButton)
+                        .HAlign(HAlign_Center)
+                        .VAlign(VAlign_Center)
+                        .Text(FText::FromString("Delete Empty Folders"))
+						.OnClicked_Raw(this, &FProjectCleanerModule::OnDeleteEmptyFolderClick)
+					]
+				]
 			]
 		];
 	// InitCleaner();
@@ -723,30 +727,23 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 
 FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 {
-	const FText ConfirmationText = FText::FromString("Are you sure you want to permanently delete unused assets?");
-	const FText ConfirmationTextTile = FText::FromString("Confirm deletion");
-
-	const EAppReturnType::Type ReturnType = FMessageDialog::Open(
-		EAppMsgType::YesNo,
-		ConfirmationText,
-		&ConfirmationTextTile
-	);
-
-
-	if (ReturnType == EAppReturnType::Type::No || ReturnType == EAppReturnType::Cancel)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Cancelled by user!"));
-		return FReply::Handled();
-	}
-
 	if (UnusedAssets.Num() == 0)
 	{
 		NotificationManager->AddTransient(
-			TEXT("There are no assets to delete!"),
+			StandardCleanerText.NoAssetsToDelete.ToString(),
 			SNotificationItem::ECompletionState::CS_Fail,
 			3.0f
 		);
 
+		return FReply::Handled();
+	}
+
+	const auto ConfirmationWindowStatus = ShowConfirmationWindow(
+		StandardCleanerText.AssetsDeleteWindowTitle,
+		StandardCleanerText.AssetsDeleteWindowContent
+	);
+	if (IsConfirmationWindowCanceled(ConfirmationWindowStatus))
+	{
 		return FReply::Handled();
 	}
 
@@ -756,7 +753,7 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 	ProjectCleanerUtility::GetRootAssets(RootAssets, UnusedAssets, CleaningStats);
 
 	const auto NotificationRef = NotificationManager->Add(
-		TEXT("Starting Cleanup. This could take some time, please wait"),
+		StandardCleanerText.StartingCleanup.ToString(),
 		SNotificationItem::ECompletionState::CS_Pending
 	);
 
@@ -775,53 +772,58 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 		ProjectCleanerUtility::GetRootAssets(RootAssets, UnusedAssets, CleaningStats);
 	}
 
-	UpdateStats();
-	
-	// what is left is circular dependent assets that should be deleted
 	CleaningStats.DeletedAssetCount += ProjectCleanerUtility::DeleteAssets(UnusedAssets);
-	
+
 	NotificationManager->Update(NotificationRef, CleaningStats);
-	
+
 	NotificationManager->CachedStats = CleaningStats;
-	
 	UpdateStats();
-	
 	NotificationManager->CachedStats.EmptyFolders = CleaningStats.EmptyFolders;
-	
 	ProjectCleanerUtility::DeleteEmptyFolders(EmptyFolders);
-	
+	NotificationManager->Hide(NotificationRef);
 	UpdateStats();
 
-	NotificationManager->Hide(NotificationRef);
-
-	FContentBrowserModule& CBModule = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
-	TArray<FString> FocusFolders;
-	FocusFolders.Add("/Game");
-	CBModule.Get().SyncBrowserToFolders(FocusFolders);
-
-
-	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
-	AssetRegistryModule.Get().ScanPathsSynchronous(FocusFolders, true);
-	AssetRegistryModule.Get().SearchAllAssets(true);
-
+	UpdateContentBrowser();
 
 	return FReply::Handled();
 }
 
+EAppReturnType::Type FProjectCleanerModule::ShowConfirmationWindow(const FText& Title, const FText& ContentText) const
+{
+	return FMessageDialog::Open(
+		EAppMsgType::YesNo,
+		ContentText,
+		&Title
+	);
+}
+
+bool FProjectCleanerModule::IsConfirmationWindowCanceled(EAppReturnType::Type Status)
+{
+	return Status == EAppReturnType::Type::No || Status == EAppReturnType::Cancel;
+}
+
 FReply FProjectCleanerModule::OnDeleteEmptyFolderClick()
 {
-	TestWindow->RequestDestroyWindow();
-
 	if (EmptyFolders.Num() == 0)
 	{
 		NotificationManager->AddTransient(
-			FString{"There are no empty folders to delete!"},
+			StandardCleanerText.NoEmptyFolderToDelete.ToString(),
 			SNotificationItem::ECompletionState::CS_Fail,
 			3.0f
 		);
 
 		return FReply::Handled();
 	}
+
+	const auto ConfirmationWindowStatus = ShowConfirmationWindow(
+		StandardCleanerText.EmptyFolderWindowTitle,
+		StandardCleanerText.EmptyFolderWindowContent
+	);
+	if (IsConfirmationWindowCanceled(ConfirmationWindowStatus))
+	{
+		return FReply::Handled();
+	}
+
 
 	ProjectCleanerUtility::DeleteEmptyFolders(EmptyFolders);
 
@@ -835,10 +837,7 @@ FReply FProjectCleanerModule::OnDeleteEmptyFolderClick()
 
 	UpdateStats();
 
-	FContentBrowserModule& CBModule = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
-	TArray<FString> FocusFolders;
-	FocusFolders.Add("/Game");
-	CBModule.Get().SyncBrowserToFolders(FocusFolders);
+	UpdateContentBrowser();
 
 	return FReply::Handled();
 }
@@ -870,6 +869,19 @@ void FProjectCleanerModule::InitCleaner()
 	UpdateStats();
 }
 
+void FProjectCleanerModule::UpdateContentBrowser() const
+{
+	FContentBrowserModule& CBModule = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
+	TArray<FString> FocusFolders;
+	FocusFolders.Add("/Game");
+	CBModule.Get().SyncBrowserToFolders(FocusFolders);
+
+
+	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
+	AssetRegistryModule.Get().ScanPathsSynchronous(FocusFolders, true);
+	AssetRegistryModule.Get().SearchAllAssets(true);
+}
+
 bool FProjectCleanerModule::ShouldApplyDirectoryFilters() const
 {
 	if (!DirectoryFilterSettings) return false;
@@ -881,7 +893,6 @@ void FProjectCleanerModule::ApplyDirectoryFilters()
 {
 	if (UnusedAssets.Num() == 0) return;
 
-	// todo:ashe23 i feel like i need optimization here
 	// unused assets filter
 	auto CopyAssets = UnusedAssets;
 	for (int32 i = 0; i < CopyAssets.Num(); ++i)

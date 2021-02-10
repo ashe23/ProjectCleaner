@@ -30,6 +30,28 @@ struct FCleaningStats
 
 	int32 GetPercentage() const
 	{
-		return (DeletedAssetCount * 100.0f)  / TotalAssetNum;	
+		return (DeletedAssetCount * 100.0f) / TotalAssetNum;
+	}
+};
+
+struct FStandardCleanerText
+{
+	FText AssetsDeleteWindowTitle;
+	FText AssetsDeleteWindowContent;
+	FText EmptyFolderWindowTitle;
+	FText EmptyFolderWindowContent;
+	FText StartingCleanup;
+	FText NoAssetsToDelete;
+	FText NoEmptyFolderToDelete;
+
+	FStandardCleanerText()
+	{
+		AssetsDeleteWindowTitle = FText::FromString("Confirm deletion");
+		AssetsDeleteWindowContent = FText::FromString("Are you sure you want to permanently delete unused assets?");
+		EmptyFolderWindowTitle = FText::FromString("Confirm deletion of empty folders");
+		EmptyFolderWindowContent = FText::FromString("Are you sure you want to delete all empty folders in project?");
+		StartingCleanup = FText::FromString("Starting Cleanup. This could take some time, please wait");
+		NoAssetsToDelete = FText::FromString("There are no assets to delete!");
+		NoEmptyFolderToDelete = FText::FromString("There are no empty folders to delete!");
 	}
 };
