@@ -104,324 +104,235 @@ void FProjectCleanerModule::ShutdownModule()
 
 void FProjectCleanerModule::PluginButtonClicked()
 {
-	// InitCleaner();
+	InitCleaner();
 
-	// FGlobalTabmanager::Get()->InvokeTab(ProjectCleanerTabName);
+	FGlobalTabmanager::Get()->InvokeTab(ProjectCleanerTabName);
 
-	ProjectCleanerUtility::GetUnusedAssets(UnusedAssets, ProjectAllSourceFiles);
+	// TArray<TSharedPtr<FString>> Items;
 
-	TArray<FAssetData> RootAssets;
-	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
-	for (const auto& UnusedAsset : UnusedAssets)
-	{
-		TArray<FName> SoftRefs;
-		TArray<FName> HardRefs;
-		AssetRegistryModule.Get().GetReferencers(UnusedAsset.PackageName, SoftRefs, EAssetRegistryDependencyType::Soft);
-		AssetRegistryModule.Get().GetReferencers(UnusedAsset.PackageName, HardRefs, EAssetRegistryDependencyType::Hard);
-
-		SoftRefs.RemoveAll([&](const FName& Val)
-		{
-			return Val == UnusedAsset.PackageName;
-		});
-
-		HardRefs.RemoveAll([&](const FName& Val)
-		{
-			return Val == UnusedAsset.PackageName;
-		});
-
-		if(HardRefs.Num() > 0) continue;
-
-		if(SoftRefs.Num() > 0)
-		{
-			for(const auto& SoftRef : SoftRefs)
-			{
-				TArray<FName> Refs;
-				AssetRegistryModule.Get().GetReferencers(SoftRef, Refs, EAssetRegistryDependencyType::Hard);
-				
-				// if soft refs referencer has same asset and no other as hard ref => add to list
-				// This detects cycle
-				if(Refs.Num() == 1 && Refs.Contains(UnusedAsset.PackageName))
-				{
-					FAssetData* AssetData = ProjectCleanerUtility::GetAssetData(SoftRef, UnusedAssets);
-					if(AssetData && AssetData->IsValid())
-					{
-						RootAssets.AddUnique(*AssetData);
-						RootAssets.AddUnique(UnusedAsset);
-					}
-				}				
-			}
-		}
-		else
-		{
-			RootAssets.AddUnique(UnusedAsset);			
-		}
-
-	
-	}
-
-	// FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
-	// TArray<FNode> Tree;
-	// for (const auto& Asset : UnusedAssets)
-	// {
-	// 	FNode NewNode;
-	// 	NewNode.Asset = Asset;
-	// 	AssetRegistryModule.Get().
-	// 	                    GetReferencers(Asset.PackageName, NewNode.Parents);
-	// 	AssetRegistryModule.Get().
-	// 	                    GetDependencies(Asset.PackageName, NewNode.Children);
-	// 	NewNode.bCyclic = NewNode.IsCyclic();
-	// 	Tree.Add(NewNode);
-	// }
+	// const float CommonPadding = 20.0f;
 	//
+	// const FText TipOneText = FText::FromString(
+	// 	"Tip : Please close all opened window before running any cleaning operations, so some assets released from memory.");
+	// const FText TipTwoText = FText::FromString(
+	// 	"!!! This process can take some time based on your project sizes and amount assets you used. \n So be patient and a take a cup of coffee until it finished :)");
+	// const FText TipThreeText = FText::FromString(
+	// 	"How plugin works? \n It will delete all assets that never used in any level. \n So before cleaning project try to delete any level(maps) assets that you never used.");
 	//
-	// // finding all assets that are not cyclic and have no parents
-	// TArray<FNode> FilteredNodes;
-	// for(const auto& Node : Tree)
-	// {
-	// 	if(!Node.bCyclic && Node.Parents.Num() == 0)
-	// 	{
-	// 		FilteredNodes.Add(Node);
-	// 	}
+	// // spawning new window
+	// TestWindow = SNew(SWindow)
+	// .Title(LOCTEXT("ProjectCleaner", "Project Cleaner"))
+	// .ClientSize(FVector2D{800, 800})
+	// .SupportsMaximize(true)
+	// .SupportsMinimize(false)
+	// // .SizingRule(ESizingRule::Autosized)
+	// .AutoCenter(EAutoCenter::PrimaryWorkArea)
+	// [
+	// 	SNew(SBorder)
+	//            .HAlign(HAlign_Center)
+	//            .Padding(25)
+	//            .ForegroundColor(FEditorStyle::GetSlateColor("DefaultForeground"))
+	// 	[
+	// 		SNew(SVerticalBox)
+	// 		+ SVerticalBox::Slot()
+	// 		  .AutoHeight()
+	// 		  .HAlign(HAlign_Fill)
+	// 		  .VAlign(VAlign_Fill)
+	// 		  .Padding(20)
+	// 		[
+	// 			// First Tip Text
+	// 			SNew(SHorizontalBox)
+	// 			+ SHorizontalBox::Slot()
+	// 			  .AutoWidth()
+	// 			  .HAlign(HAlign_Center)
+	// 			  .VAlign(VAlign_Top)
+	// 			[
+	// 				SNew(SBorder)
+	// 					.HAlign(HAlign_Center)
+	// 					.VAlign(VAlign_Center)
+	// 					.Padding(CommonPadding)
+	// 					.BorderImage(&TipOneBrushColor)
+	// 				[
+	// 					SNew(STextBlock)
+	// 						.Justification(ETextJustify::Center)
+	//                         .AutoWrapText(true)
+	// 						.Text(TipOneText)
+	// 				]
+	// 			]
+	// 		]
+	// 		+ SVerticalBox::Slot()
+	// 		  .AutoHeight()
+	// 		  .HAlign(HAlign_Center)
+	// 		[
+	// 			// Second Tip Text
+	// 			SNew(SHorizontalBox)
+	// 			+ SHorizontalBox::Slot()
+	// 			  .AutoWidth()
+	// 			  .HAlign(HAlign_Center)
+	// 			  .VAlign(VAlign_Top)
+	// 			[
+	// 				SNew(SBorder)
+	//                     .HAlign(HAlign_Center)
+	//                     .VAlign(VAlign_Center)
+	//                     .Padding(CommonPadding)
+	//                     .BorderImage(&TipTwoBrushColor)
+	// 				[
+	// 					SNew(STextBlock)
+	//                         .Justification(ETextJustify::Center)
+	//                         .AutoWrapText(true)
+	//                         .Text(TipTwoText)
+	// 				]
+	// 			]
+	// 		]
+	// 		+ SVerticalBox::Slot()
+	// 		  .AutoHeight()
+	// 		  .HAlign(HAlign_Center)
+	// 		  .Padding(0.0f, 20.0f)
+	// 		[
+	// 			// Third Tip Text
+	// 			SNew(SHorizontalBox)
+	// 			+ SHorizontalBox::Slot()
+	// 			  .AutoWidth()
+	// 			  .HAlign(HAlign_Center)
+	// 			  .VAlign(VAlign_Top)
+	// 			[
+	// 				SNew(SBorder)
+	//                        .HAlign(HAlign_Center)
+	//                        .VAlign(VAlign_Center)
+	//                        .Padding(CommonPadding)
+	//                        .BorderImage(&TipTwoBrushColor)
+	// 				[
+	// 					SNew(STextBlock)
+	//                            .Justification(ETextJustify::Center)
+	//                            .AutoWrapText(true)
+	//                            .Text(TipThreeText)
+	// 				]
+	// 			]
+	// 		]
+	// 		+ SVerticalBox::Slot()
+	// 		  .AutoHeight()
+	// 		  .HAlign(HAlign_Center)
+	// 		  .Padding(0.0f, 20.0f)
+	// 		[
+	// 			SNew(SHorizontalBox)
+	// 			+ SHorizontalBox::Slot()
+	// 			  .AutoWidth()
+	// 			  .HAlign(HAlign_Fill)
+	// 			  .VAlign(VAlign_Fill)
+	// 			[
+	// 				SNew(SButton)
+	// 					.HAlign(HAlign_Center)
+	// 					.VAlign(VAlign_Center)
+	// 					.ContentPadding(10)
+	// 					.ButtonColorAndOpacity(FSlateColor{FLinearColor{1.0, 0.0f, 0.006082f, 0.466667f}})
+	// 					.OnClicked_Raw(this, &FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick)
+	// 				[
+	// 					SNew(STextBlock)
+	// 						.AutoWrapText(true)
+	// 						.ColorAndOpacity(FSlateColor{FLinearColor::White})
+	// 						.Text(LOCTEXT("Delete Unused Assets", "Delete Unused Assets"))
+	// 				]
+	// 			]
+	// 			+ SHorizontalBox::Slot()
+	// 			  .Padding(20.0f, 0.0f)
+	// 			  .AutoWidth()
+	// 			[
+	// 				SNew(SButton)
+	// 					.HAlign(HAlign_Center)
+	// 					.VAlign(VAlign_Center)
+	// 					.ContentPadding(10)
+	// 					.ButtonColorAndOpacity(FSlateColor{FLinearColor{1.0, 0.0f, 0.006082f, 0.466667f}})
+	//                     .OnClicked_Raw(this, &FProjectCleanerModule::OnDeleteEmptyFolderClick)
+	// 				[
+	// 					SNew(STextBlock)
+	//                         .AutoWrapText(true)
+	//                         .ColorAndOpacity(FSlateColor{FLinearColor::White})
+	//                         .Text(LOCTEXT("Delete Empty Folders", "Delete Empty Folders"))
+	// 				]
+	// 			]
+	// 		]
+	// 		+ SVerticalBox::Slot()
+	// 		  .HAlign(HAlign_Center)
+	// 		  .AutoHeight()
+	// 		[
+	// 			SNew(SHorizontalBox)
+	// 			+ SHorizontalBox::Slot()
+	// 			.AutoWidth()
+	// 			[
+	// 				SNew(STextBlock)
+	// 	                    .AutoWrapText(true)
+	// 	                    .Text(LOCTEXT("Unused Assets:", "Unused Assets: "))
+	// 			]
+	// 			+ SHorizontalBox::Slot()
+	// 			.AutoWidth()
+	// 			[
+	// 				SNew(STextBlock)
+	// 						.AutoWrapText(true)
+	// 						.Text_Lambda([this]() -> FText { return FText::AsNumber(CleaningStats.UnusedAssetsNum); })
+	// 			]
+	// 		]
+	// 		+ SVerticalBox::Slot()
+	// 		  .HAlign(HAlign_Center)
+	// 		  .AutoHeight()
+	// 		[
+	// 			SNew(SHorizontalBox)
+	// 			+ SHorizontalBox::Slot()
+	// 			.AutoWidth()
+	// 			[
+	// 				SNew(STextBlock)
+	//                     .AutoWrapText(true)
+	//                     .Text(LOCTEXT("Unused Assets Size:", "Unused Assets Size: "))
+	// 			]
+	// 			+ SHorizontalBox::Slot()
+	// 			.AutoWidth()
+	// 			[
+	// 				SNew(STextBlock)
+	//                     .AutoWrapText(true)
+	//                     .Text_Lambda([this]() -> FText { return FText::AsMemory(CleaningStats.UnusedAssetsTotalSize); })
+	// 			]
+	// 		]
+	// 		+ SVerticalBox::Slot()
+	// 		  .HAlign(HAlign_Center)
+	// 		  .AutoHeight()
+	// 		[
+	// 			SNew(SHorizontalBox)
+	// 			+ SHorizontalBox::Slot()
+	// 			.AutoWidth()
+	// 			[
+	// 				SNew(STextBlock)
+	//                        .AutoWrapText(true)
+	//                        .Text(LOCTEXT("Empty Folders:", "Empty Folders: "))
+	// 			]
+	// 			+ SHorizontalBox::Slot()
+	// 			.AutoWidth()
+	// 			[
+	// 				SNew(STextBlock)
+	//                        .AutoWrapText(true)
+	//                        .Text_Lambda([this]() -> FText { return FText::AsNumber(CleaningStats.EmptyFolders); })
+	// 			]
+	// 		]
+	// 		+ SVerticalBox::Slot()
+	// 		  .HAlign(HAlign_Center)
+	// 		  .AutoHeight()
+	// 		[
+	// 			SNew(SButton)
+	//             .ButtonStyle(FEditorStyle::Get(), "HoverHintOnly")
+	//             .ToolTipText(LOCTEXT("FolderButtonToolTipText", "Choose a directory from this computer"))
+	//             // .OnClicked( FOnClicked::CreateSP(this, &FDirectoryPathStructCustomization::OnPickDirectory, PathProperty.ToSharedRef(), bRelativeToGameContentDir, bUseRelativePath) )
+	//             .ContentPadding(2.0f)
+	//             .ForegroundColor(FSlateColor::UseForeground())
+	//             .IsFocusable(false)
+	// 			[
+	// 				SNew(SImage)
+	//                 .Image(FEditorStyle::GetBrush("PropertyWindow.Button_Ellipsis"))
+	//                 .ColorAndOpacity(FSlateColor::UseForeground())
+	// 			]
+	// 		]
+	// 	]
+	// ];
 	//
-	// 	if(Node.bCyclic && Node.Parents.Num() == 1)
-	// 	{
-	// 		FNode NewNode;
-	// 		NewNode.Asset = Node.Asset;
-	// 		NewNode.Children.Append(Node.Parents);
-	// 		NewNode.Children.Append(Node.Children);
-	// 		NewNode.bCyclic = false;
-	// 		FilteredNodes.Add(NewNode);
-	// 	}
-	// }
-
-	return;
-
-
-	TArray<TSharedPtr<FString>> Items;
-
-	const float CommonPadding = 20.0f;
-
-	const FText TipOneText = FText::FromString(
-		"Tip : Please close all opened window before running any cleaning operations, so some assets released from memory.");
-	const FText TipTwoText = FText::FromString(
-		"!!! This process can take some time based on your project sizes and amount assets you used. \n So be patient and a take a cup of coffee until it finished :)");
-	const FText TipThreeText = FText::FromString(
-		"How plugin works? \n It will delete all assets that never used in any level. \n So before cleaning project try to delete any level(maps) assets that you never used.");
-
-	// spawning new window
-	TestWindow = SNew(SWindow)
-	.Title(LOCTEXT("ProjectCleaner", "Project Cleaner"))
-	.ClientSize(FVector2D{800, 800})
-	.SupportsMaximize(true)
-	.SupportsMinimize(false)
-	// .SizingRule(ESizingRule::Autosized)
-	.AutoCenter(EAutoCenter::PrimaryWorkArea)
-	[
-		SNew(SBorder)
-            .HAlign(HAlign_Center)
-            .Padding(25)
-            .ForegroundColor(FEditorStyle::GetSlateColor("DefaultForeground"))
-		[
-			SNew(SVerticalBox)
-			+ SVerticalBox::Slot()
-			  .AutoHeight()
-			  .HAlign(HAlign_Fill)
-			  .VAlign(VAlign_Fill)
-			  .Padding(20)
-			[
-				// First Tip Text
-				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot()
-				  .AutoWidth()
-				  .HAlign(HAlign_Center)
-				  .VAlign(VAlign_Top)
-				[
-					SNew(SBorder)
-						.HAlign(HAlign_Center)
-						.VAlign(VAlign_Center)
-						.Padding(CommonPadding)
-						.BorderImage(&TipOneBrushColor)
-					[
-						SNew(STextBlock)
-							.Justification(ETextJustify::Center)
-	                        .AutoWrapText(true)
-							.Text(TipOneText)
-					]
-				]
-			]
-			+ SVerticalBox::Slot()
-			  .AutoHeight()
-			  .HAlign(HAlign_Center)
-			[
-				// Second Tip Text
-				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot()
-				  .AutoWidth()
-				  .HAlign(HAlign_Center)
-				  .VAlign(VAlign_Top)
-				[
-					SNew(SBorder)
-	                    .HAlign(HAlign_Center)
-	                    .VAlign(VAlign_Center)
-	                    .Padding(CommonPadding)
-	                    .BorderImage(&TipTwoBrushColor)
-					[
-						SNew(STextBlock)
-	                        .Justification(ETextJustify::Center)
-	                        .AutoWrapText(true)
-	                        .Text(TipTwoText)
-					]
-				]
-			]
-			+ SVerticalBox::Slot()
-			  .AutoHeight()
-			  .HAlign(HAlign_Center)
-			  .Padding(0.0f, 20.0f)
-			[
-				// Third Tip Text
-				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot()
-				  .AutoWidth()
-				  .HAlign(HAlign_Center)
-				  .VAlign(VAlign_Top)
-				[
-					SNew(SBorder)
-                        .HAlign(HAlign_Center)
-                        .VAlign(VAlign_Center)
-                        .Padding(CommonPadding)
-                        .BorderImage(&TipTwoBrushColor)
-					[
-						SNew(STextBlock)
-                            .Justification(ETextJustify::Center)
-                            .AutoWrapText(true)
-                            .Text(TipThreeText)
-					]
-				]
-			]
-			+ SVerticalBox::Slot()
-			  .AutoHeight()
-			  .HAlign(HAlign_Center)
-			  .Padding(0.0f, 20.0f)
-			[
-				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot()
-				  .AutoWidth()
-				  .HAlign(HAlign_Fill)
-				  .VAlign(VAlign_Fill)
-				[
-					SNew(SButton)
-						.HAlign(HAlign_Center)
-						.VAlign(VAlign_Center)
-						.ContentPadding(10)
-						.ButtonColorAndOpacity(FSlateColor{FLinearColor{1.0, 0.0f, 0.006082f, 0.466667f}})
-						.OnClicked_Raw(this, &FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick)
-					[
-						SNew(STextBlock)
-							.AutoWrapText(true)
-							.ColorAndOpacity(FSlateColor{FLinearColor::White})
-							.Text(LOCTEXT("Delete Unused Assets", "Delete Unused Assets"))
-					]
-				]
-				+ SHorizontalBox::Slot()
-				  .Padding(20.0f, 0.0f)
-				  .AutoWidth()
-				[
-					SNew(SButton)
-						.HAlign(HAlign_Center)
-						.VAlign(VAlign_Center)
-						.ContentPadding(10)
-						.ButtonColorAndOpacity(FSlateColor{FLinearColor{1.0, 0.0f, 0.006082f, 0.466667f}})
-	                    .OnClicked_Raw(this, &FProjectCleanerModule::OnDeleteEmptyFolderClick)
-					[
-						SNew(STextBlock)
-	                        .AutoWrapText(true)
-	                        .ColorAndOpacity(FSlateColor{FLinearColor::White})
-	                        .Text(LOCTEXT("Delete Empty Folders", "Delete Empty Folders"))
-					]
-				]
-			]
-			+ SVerticalBox::Slot()
-			  .HAlign(HAlign_Center)
-			  .AutoHeight()
-			[
-				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot()
-				.AutoWidth()
-				[
-					SNew(STextBlock)
-		                    .AutoWrapText(true)
-		                    .Text(LOCTEXT("Unused Assets:", "Unused Assets: "))
-				]
-				+ SHorizontalBox::Slot()
-				.AutoWidth()
-				[
-					SNew(STextBlock)
-							.AutoWrapText(true)
-							.Text_Lambda([this]() -> FText { return FText::AsNumber(CleaningStats.UnusedAssetsNum); })
-				]
-			]
-			+ SVerticalBox::Slot()
-			  .HAlign(HAlign_Center)
-			  .AutoHeight()
-			[
-				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot()
-				.AutoWidth()
-				[
-					SNew(STextBlock)
-	                    .AutoWrapText(true)
-	                    .Text(LOCTEXT("Unused Assets Size:", "Unused Assets Size: "))
-				]
-				+ SHorizontalBox::Slot()
-				.AutoWidth()
-				[
-					SNew(STextBlock)
-	                    .AutoWrapText(true)
-	                    .Text_Lambda([this]() -> FText { return FText::AsMemory(CleaningStats.UnusedAssetsTotalSize); })
-				]
-			]
-			+ SVerticalBox::Slot()
-			  .HAlign(HAlign_Center)
-			  .AutoHeight()
-			[
-				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot()
-				.AutoWidth()
-				[
-					SNew(STextBlock)
-                        .AutoWrapText(true)
-                        .Text(LOCTEXT("Empty Folders:", "Empty Folders: "))
-				]
-				+ SHorizontalBox::Slot()
-				.AutoWidth()
-				[
-					SNew(STextBlock)
-                        .AutoWrapText(true)
-                        .Text_Lambda([this]() -> FText { return FText::AsNumber(CleaningStats.EmptyFolders); })
-				]
-			]
-			+ SVerticalBox::Slot()
-			  .HAlign(HAlign_Center)
-			  .AutoHeight()
-			[
-				SNew(SButton)
-	            .ButtonStyle(FEditorStyle::Get(), "HoverHintOnly")
-	            .ToolTipText(LOCTEXT("FolderButtonToolTipText", "Choose a directory from this computer"))
-	            // .OnClicked( FOnClicked::CreateSP(this, &FDirectoryPathStructCustomization::OnPickDirectory, PathProperty.ToSharedRef(), bRelativeToGameContentDir, bUseRelativePath) )
-	            .ContentPadding(2.0f)
-	            .ForegroundColor(FSlateColor::UseForeground())
-	            .IsFocusable(false)
-				[
-					SNew(SImage)
-	                .Image(FEditorStyle::GetBrush("PropertyWindow.Button_Ellipsis"))
-	                .ColorAndOpacity(FSlateColor::UseForeground())
-				]
-			]
-		]
-	];
-
-	TestWindow->SetCanTick(true);
-	FSlateApplication::Get().AddWindow(TestWindow.ToSharedRef());
+	// TestWindow->SetCanTick(true);
+	// FSlateApplication::Get().AddWindow(TestWindow.ToSharedRef());
 }
 
 void FProjectCleanerModule::AddMenuExtension(FMenuBuilder& Builder)
@@ -432,6 +343,8 @@ void FProjectCleanerModule::AddMenuExtension(FMenuBuilder& Builder)
 FReply FProjectCleanerModule::RefreshBrowser()
 {
 	UpdateStats();
+
+	UpdateContentBrowser();
 
 	return FReply::Handled();
 }
@@ -583,7 +496,7 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
                         .HAlign(HAlign_Center)
                         .VAlign(VAlign_Center)
                         .Text(FText::FromString("Delete Unused Assets"))
-						// .OnClicked_Raw(this, &FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick)
+						.OnClicked_Raw(this, &FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick)
 					]
 					+ SHorizontalBox::Slot()
 					.FillWidth(1.0f)
@@ -594,7 +507,7 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
                         .HAlign(HAlign_Center)
                         .VAlign(VAlign_Center)
                         .Text(FText::FromString("Delete Empty Folders"))
-						// .OnClicked_Raw(this, &FProjectCleanerModule::OnDeleteEmptyFolderClick)
+						.OnClicked_Raw(this, &FProjectCleanerModule::OnDeleteEmptyFolderClick)
 					]
 				]
 			]
@@ -944,6 +857,24 @@ void FProjectCleanerModule::UpdateStats()
 	CleaningStats.EmptyFolders = EmptyFolders.Num();
 	CleaningStats.TotalAssetNum = CleaningStats.UnusedAssetsNum;
 	CleaningStats.DeletedAssetCount = 0;
+
+	if (NonProjectFiles.Num() > 0)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Non UAsset file list:"));
+		for (const auto& Asset : NonProjectFiles)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("%s"), *Asset);
+		}
+
+		FNotificationInfo Info(StandardCleanerText.NonUAssetFilesFound);
+		Info.ExpireDuration = 10.0f;
+		Info.Hyperlink = FSimpleDelegate::CreateStatic([]()
+		{
+			FGlobalTabmanager::Get()->InvokeTab(FName("OutputLog"));
+		});
+		Info.HyperlinkText = LOCTEXT("ShowOutputLogHyperlink", "Show Output Log");
+		FSlateNotificationManager::Get().AddNotification(Info);
+	}
 }
 
 void FProjectCleanerModule::InitCleaner()
@@ -979,40 +910,82 @@ void FProjectCleanerModule::ApplyDirectoryFilters()
 {
 	if (UnusedAssets.Num() == 0) return;
 
+	// 1) find all asset in given filter path
+	// 2) for every asset find all related assets and exclude them from main list
+	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
+
+	TArray<FAssetData> ProcessingAssets;
+	for (const auto& Filter : DirectoryFilterSettings->DirectoryFilterPath)
+	{
+		{
+			TArray<FAssetData> Temp;
+			AssetRegistryModule.Get().GetAssetsByPath(FName{*Filter.Path}, Temp, true);
+			for (const auto& Elem : Temp)
+			{
+				ProcessingAssets.AddUnique(Elem);
+			}
+		}
+	}
+
+	TArray<FName> FilteredAssets;
+	for (const auto& Asset : ProcessingAssets)
+	{
+		ProjectCleanerUtility::GetReferencersHierarchy(Asset.PackageName, FilteredAssets);
+		ProjectCleanerUtility::GetDependencyHierarchy(Asset.PackageName, FilteredAssets);
+	}
+
+
+	for (const auto& FilteredAsset : FilteredAssets)
+	{
+		UnusedAssets.RemoveAll([&](const FAssetData& Elem)
+		{
+			return Elem.PackageName == FilteredAsset;
+		});
+	}
+
+	for (const auto& Filter : DirectoryFilterSettings->DirectoryFilterPath)
+	{
+		UnusedAssets.RemoveAll([&](const FAssetData& Elem)
+        {
+            return Elem.PackagePath.ToString() == Filter.Path;
+        });
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("A"));
 	// unused assets filter
-	auto CopyAssets = UnusedAssets;
-	for (int32 i = 0; i < CopyAssets.Num(); ++i)
-	{
-		for (const auto& Dir : DirectoryFilterSettings->DirectoryFilterPath)
-		{
-			const auto PackagePath = CopyAssets[i].PackagePath.ToString();
-			const bool Contains = PackagePath.Contains(Dir.Path);
-			if (Contains)
-			{
-				ProjectCleanerUtility::RemoveAllDependenciesFromList(CopyAssets[i], UnusedAssets);
-				UnusedAssets.Remove(CopyAssets[i]);
-				break;
-			}
-		}
-	}
-
-	// empty folders filter
-	auto CopyFolders = EmptyFolders;
-	const auto RootDir = FPaths::ProjectContentDir();
-	for (int32 i = 0; i < CopyFolders.Num(); ++i)
-	{
-		auto FolderPath = CopyFolders[i];
-		auto Replaced = FolderPath.Replace(*RootDir, TEXT("/Game/"));
-
-		for (const auto& Dir : DirectoryFilterSettings->DirectoryFilterPath)
-		{
-			if (Replaced.Contains(Dir.Path))
-			{
-				EmptyFolders.Remove(CopyFolders[i]);
-				break;
-			}
-		}
-	}
+	// auto CopyAssets = UnusedAssets;
+	// for (int32 i = 0; i < CopyAssets.Num(); ++i)
+	// {
+	// 	for (const auto& Dir : DirectoryFilterSettings->DirectoryFilterPath)
+	// 	{
+	// 		const auto PackagePath = CopyAssets[i].PackagePath.ToString();
+	// 		const bool Contains = PackagePath.Contains(Dir.Path);
+	// 		if (Contains)
+	// 		{
+	// 			ProjectCleanerUtility::RemoveAllDependenciesFromList(CopyAssets[i], UnusedAssets);
+	// 			UnusedAssets.Remove(CopyAssets[i]);
+	// 			break;
+	// 		}
+	// 	}
+	// }
+	//
+	// // empty folders filter
+	// auto CopyFolders = EmptyFolders;
+	// const auto RootDir = FPaths::ProjectContentDir();
+	// for (int32 i = 0; i < CopyFolders.Num(); ++i)
+	// {
+	// 	auto FolderPath = CopyFolders[i];
+	// 	auto Replaced = FolderPath.Replace(*RootDir, TEXT("/Game/"));
+	//
+	// 	for (const auto& Dir : DirectoryFilterSettings->DirectoryFilterPath)
+	// 	{
+	// 		if (Replaced.Contains(Dir.Path))
+	// 		{
+	// 			EmptyFolders.Remove(CopyFolders[i]);
+	// 			break;
+	// 		}
+	// 	}
+	// }
 }
 
 #pragma optimize("", on)

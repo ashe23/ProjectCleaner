@@ -210,6 +210,7 @@ int32 ProjectCleanerUtility::GetEmptyFoldersNum(TArray<FString>& EmptyFolders, T
 	SlowTask.MakeDialog();
 
 	EmptyFolders.Empty();
+	NonProjectFiles.Empty();
 
 	const auto ProjectRoot = FPaths::ProjectContentDir();
 	GetAllEmptyDirectories(ProjectRoot / TEXT("*"), EmptyFolders, NonProjectFiles, true);
@@ -309,22 +310,67 @@ void ProjectCleanerUtility::GetRootAssets(TArray<FAssetData>& RootAssets,
                                           const FCleaningStats& CleaningStats)
 {
 	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
-	for (const auto& Asset : AllAssets)
+	// for (const auto& Asset : AllAssets)
+	// {
+	// 	if (RootAssets.Num() >= CleaningStats.DeleteChunkSize) break;
+	//
+	// 	TArray<FName> Refs;
+	// 	AssetRegistryModule.Get().GetReferencers(Asset.PackageName, Refs, EAssetRegistryDependencyType::Hard);
+	//
+	// 	// Removing itself from list
+	// 	// Refs.RemoveAll([&](const FName& Val)
+	// 	// {
+	// 	// 	return Val.Compare(Asset.PackageName) == 0;
+	// 	// });
+	//
+	// 	if (Refs.Num() == 0)
+	// 	{
+	// 		RootAssets.AddUnique(Asset);
+	// 	}
+	// }
+
+	for (const auto& UnusedAsset : AllAssets)
 	{
-		if (RootAssets.Num() >= CleaningStats.DeleteChunkSize) break;
+		TArray<FName> SoftRefs;
+		TArray<FName> HardRefs;
+		AssetRegistryModule.Get().GetReferencers(UnusedAsset.PackageName, SoftRefs, EAssetRegistryDependencyType::Soft);
+		AssetRegistryModule.Get().GetReferencers(UnusedAsset.PackageName, HardRefs, EAssetRegistryDependencyType::Hard);
 
-		TArray<FName> Refs;
-		AssetRegistryModule.Get().GetReferencers(Asset.PackageName, Refs, EAssetRegistryDependencyType::Hard);
-
-		// Removing itself from list
-		// Refs.RemoveAll([&](const FName& Val)
-		// {
-		// 	return Val.Compare(Asset.PackageName) == 0;
-		// });
-
-		if (Refs.Num() == 0)
+		SoftRefs.RemoveAll([&](const FName& Val)
 		{
-			RootAssets.AddUnique(Asset);
+			return Val == UnusedAsset.PackageName;
+		});
+
+		HardRefs.RemoveAll([&](const FName& Val)
+		{
+			return Val == UnusedAsset.PackageName;
+		});
+
+		if (HardRefs.Num() > 0) continue;
+
+		if (SoftRefs.Num() > 0)
+		{
+			for (const auto& SoftRef : SoftRefs)
+			{
+				TArray<FName> Refs;
+				AssetRegistryModule.Get().GetReferencers(SoftRef, Refs, EAssetRegistryDependencyType::Hard);
+
+				// if soft refs referencer has same asset and no other as hard ref => add to list
+				// This detects cycle
+				if (Refs.Num() == 1 && Refs.Contains(UnusedAsset.PackageName))
+				{
+					FAssetData* AssetData = GetAssetData(SoftRef, AllAssets);
+					if (AssetData && AssetData->IsValid())
+					{
+						RootAssets.AddUnique(*AssetData);
+						RootAssets.AddUnique(UnusedAsset);
+					}
+				}
+			}
+		}
+		else
+		{
+			RootAssets.AddUnique(UnusedAsset);
 		}
 	}
 }
@@ -439,9 +485,6 @@ void ProjectCleanerUtility::RemoveAllDependenciesFromList(const FAssetData& Asse
 		Refs.Empty();
 		AssetRegistryModule.Get().GetReferencers(Asset.PackageName, Refs);
 	}
-
-
-	UE_LOG(LogTemp, Warning, TEXT("A"));
 }
 
 FAssetData* ProjectCleanerUtility::GetAssetData(const FName& Asset, TArray<FAssetData>& List)
@@ -450,6 +493,44 @@ FAssetData* ProjectCleanerUtility::GetAssetData(const FName& Asset, TArray<FAsse
 	{
 		return Val.PackageName == Asset;
 	});
+}
+
+void ProjectCleanerUtility::GetReferencersHierarchy(const FName& AssetName, TArray<FName>& List)
+{
+	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
+	TArray<FName> Refs;
+	AssetRegistryModule.Get().GetReferencers(AssetName, Refs);
+	Refs.RemoveAll([&](const FName& Elem)
+	{
+		return Elem == AssetName;
+	});
+
+	if (Refs.Num() == 0) return;
+
+	for (const auto& Ref : Refs)
+	{
+		List.AddUnique(Ref);
+		GetReferencersHierarchy(Ref, List);
+	}
+}
+
+void ProjectCleanerUtility::GetDependencyHierarchy(const FName& AssetName, TArray<FName>& List)
+{
+	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
+	TArray<FName> Deps;
+	AssetRegistryModule.Get().GetDependencies(AssetName, Deps);
+	Deps.RemoveAll([&](const FName& Elem)
+    {
+        return Elem == AssetName;
+    });
+
+	if (Deps.Num() == 0) return;
+
+	for (const auto& Dep : Deps)
+	{
+		List.AddUnique(Dep);
+		GetDependencyHierarchy(Dep, List);
+	}
 }
 
 #pragma optimize("", on)

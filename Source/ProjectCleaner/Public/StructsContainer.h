@@ -43,6 +43,8 @@ struct FStandardCleanerText
 	FText StartingCleanup;
 	FText NoAssetsToDelete;
 	FText NoEmptyFolderToDelete;
+	FText NonUAssetFilesFound;
+	FText SearchingEmptyFolders;
 
 	FStandardCleanerText()
 	{
@@ -53,6 +55,8 @@ struct FStandardCleanerText
 		StartingCleanup = FText::FromString("Starting Cleanup. This could take some time, please wait");
 		NoAssetsToDelete = FText::FromString("There are no assets to delete!");
 		NoEmptyFolderToDelete = FText::FromString("There are no empty folders to delete!");
+		NonUAssetFilesFound = FText::FromString("Project contains non .uasset files. Check Output Log for more info.");
+		SearchingEmptyFolders = FText::FromString("Searching empty folders...");
 	}
 };
 

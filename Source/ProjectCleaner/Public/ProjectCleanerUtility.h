@@ -88,5 +88,9 @@ public:
 	 */
 	static void RemoveAllDependenciesFromList(const FAssetData& Asset, TArray<FAssetData>& List);
 
-	static FAssetData* GetAssetData(const FName& Asset, TArray<FAssetData>& List); 
+	static FAssetData* GetAssetData(const FName& Asset, TArray<FAssetData>& List);
+
+	static void GetReferencersHierarchy(const FName& AssetName, TArray<FName>& List);
+	
+	static void GetDependencyHierarchy(const FName& AssetName, TArray<FName>& List);
 };
