@@ -104,9 +104,95 @@ void FProjectCleanerModule::ShutdownModule()
 
 void FProjectCleanerModule::PluginButtonClicked()
 {
-	InitCleaner();
+	// InitCleaner();
 
-	FGlobalTabmanager::Get()->InvokeTab(ProjectCleanerTabName);
+	// FGlobalTabmanager::Get()->InvokeTab(ProjectCleanerTabName);
+
+	ProjectCleanerUtility::GetUnusedAssets(UnusedAssets, ProjectAllSourceFiles);
+
+	TArray<FAssetData> RootAssets;
+	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
+	for (const auto& UnusedAsset : UnusedAssets)
+	{
+		TArray<FName> SoftRefs;
+		TArray<FName> HardRefs;
+		AssetRegistryModule.Get().GetReferencers(UnusedAsset.PackageName, SoftRefs, EAssetRegistryDependencyType::Soft);
+		AssetRegistryModule.Get().GetReferencers(UnusedAsset.PackageName, HardRefs, EAssetRegistryDependencyType::Hard);
+
+		SoftRefs.RemoveAll([&](const FName& Val)
+		{
+			return Val == UnusedAsset.PackageName;
+		});
+
+		HardRefs.RemoveAll([&](const FName& Val)
+		{
+			return Val == UnusedAsset.PackageName;
+		});
+
+		if(HardRefs.Num() > 0) continue;
+
+		if(SoftRefs.Num() > 0)
+		{
+			for(const auto& SoftRef : SoftRefs)
+			{
+				TArray<FName> Refs;
+				AssetRegistryModule.Get().GetReferencers(SoftRef, Refs, EAssetRegistryDependencyType::Hard);
+				
+				// if soft refs referencer has same asset and no other as hard ref => add to list
+				// This detects cycle
+				if(Refs.Num() == 1 && Refs.Contains(UnusedAsset.PackageName))
+				{
+					FAssetData* AssetData = ProjectCleanerUtility::GetAssetData(SoftRef, UnusedAssets);
+					if(AssetData && AssetData->IsValid())
+					{
+						RootAssets.AddUnique(*AssetData);
+						RootAssets.AddUnique(UnusedAsset);
+					}
+				}				
+			}
+		}
+		else
+		{
+			RootAssets.AddUnique(UnusedAsset);			
+		}
+
+	
+	}
+
+	// FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
+	// TArray<FNode> Tree;
+	// for (const auto& Asset : UnusedAssets)
+	// {
+	// 	FNode NewNode;
+	// 	NewNode.Asset = Asset;
+	// 	AssetRegistryModule.Get().
+	// 	                    GetReferencers(Asset.PackageName, NewNode.Parents);
+	// 	AssetRegistryModule.Get().
+	// 	                    GetDependencies(Asset.PackageName, NewNode.Children);
+	// 	NewNode.bCyclic = NewNode.IsCyclic();
+	// 	Tree.Add(NewNode);
+	// }
+	//
+	//
+	// // finding all assets that are not cyclic and have no parents
+	// TArray<FNode> FilteredNodes;
+	// for(const auto& Node : Tree)
+	// {
+	// 	if(!Node.bCyclic && Node.Parents.Num() == 0)
+	// 	{
+	// 		FilteredNodes.Add(Node);
+	// 	}
+	//
+	// 	if(Node.bCyclic && Node.Parents.Num() == 1)
+	// 	{
+	// 		FNode NewNode;
+	// 		NewNode.Asset = Node.Asset;
+	// 		NewNode.Children.Append(Node.Parents);
+	// 		NewNode.Children.Append(Node.Children);
+	// 		NewNode.bCyclic = false;
+	// 		FilteredNodes.Add(NewNode);
+	// 	}
+	// }
 
 	return;
 
@@ -474,14 +560,14 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 			  .AutoHeight()
 			[
 				SNew(SBorder)
-                .Padding(FMargin(5))
+                .Padding(FMargin(10))
                 .BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
 				[
 					SNew(SHorizontalBox)
 					+ SHorizontalBox::Slot()
-					  // .AutoWidth()
-					  .FillWidth(1.0f)
-					  .Padding(FMargin(0.0f, 0.0f, 20.0f, 0.0f))
+					// .AutoWidth()
+					.FillWidth(1.0f)
+					// .Padding(FMargin(0.0f, 0.0f, 20.0f, 0.0f))
 					[
 						SNew(SButton)
                         .HAlign(HAlign_Center)
@@ -497,18 +583,18 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
                         .HAlign(HAlign_Center)
                         .VAlign(VAlign_Center)
                         .Text(FText::FromString("Delete Unused Assets"))
-                        .OnClicked_Raw(this, &FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick)
+						// .OnClicked_Raw(this, &FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick)
 					]
 					+ SHorizontalBox::Slot()
-					  .FillWidth(1.0f)
-					  // .AutoWidth()
-					  .Padding(FMargin(20.0f, 0.0f))
+					.FillWidth(1.0f)
+					// .AutoWidth()
+					// .Padding(FMargin(20.0f, 0.0f))
 					[
 						SNew(SButton)
                         .HAlign(HAlign_Center)
                         .VAlign(VAlign_Center)
                         .Text(FText::FromString("Delete Empty Folders"))
-						.OnClicked_Raw(this, &FProjectCleanerModule::OnDeleteEmptyFolderClick)
+						// .OnClicked_Raw(this, &FProjectCleanerModule::OnDeleteEmptyFolderClick)
 					]
 				]
 			]
@@ -903,6 +989,7 @@ void FProjectCleanerModule::ApplyDirectoryFilters()
 			const bool Contains = PackagePath.Contains(Dir.Path);
 			if (Contains)
 			{
+				ProjectCleanerUtility::RemoveAllDependenciesFromList(CopyAssets[i], UnusedAssets);
 				UnusedAssets.Remove(CopyAssets[i]);
 				break;
 			}

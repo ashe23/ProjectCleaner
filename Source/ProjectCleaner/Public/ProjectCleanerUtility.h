@@ -80,4 +80,13 @@ public:
 	static bool UsedInSourceFiles(TArray<FString>& AllFiles, const FName& Asset);
 
 	static void SaveAllAssets();
+
+	/**
+	 * @brief Removes all dependencies for given asset from given list 
+	 * @param Asset FAssetData Searchable asset
+	 * @param List TArray<FAssetData> List of assets from which to remove deps
+	 */
+	static void RemoveAllDependenciesFromList(const FAssetData& Asset, TArray<FAssetData>& List);
+
+	static FAssetData* GetAssetData(const FName& Asset, TArray<FAssetData>& List); 
 };

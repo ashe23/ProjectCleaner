@@ -55,3 +55,28 @@ struct FStandardCleanerText
 		NoEmptyFolderToDelete = FText::FromString("There are no empty folders to delete!");
 	}
 };
+
+struct FNode
+{
+	FAssetData Asset;
+
+	TArray<FName> Parents;
+	TArray<FName> Children;
+
+	bool bCyclic;
+	
+	bool IsCyclic()
+	{
+		bool Contains = false;
+		for (const auto& Parent : Parents)
+		{
+			Contains = Children.Contains(Parent);
+			if (Contains)
+			{
+				break;
+			}
+		}
+
+		return Contains;
+	}
+};

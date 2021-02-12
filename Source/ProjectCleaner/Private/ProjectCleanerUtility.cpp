@@ -190,14 +190,14 @@ int32 ProjectCleanerUtility::GetUnusedAssets(TArray<FAssetData>& UnusedAssets, T
 	});
 
 	// Remove all assets that used in code( hard linked)
-	FindAllSourceFiles(AllSourceFiles);
+	// FindAllSourceFiles(AllSourceFiles);
 
-	SlowTask.EnterProgressFrame(1.0f);
+	// SlowTask.EnterProgressFrame(1.0f);
 
-	UnusedAssets.RemoveAll([&](const FAssetData& Val)
-	{
-		return UsedInSourceFiles(AllSourceFiles, Val.PackageName);
-	});
+	// UnusedAssets.RemoveAll([&](const FAssetData& Val)
+	// {
+	// 	return UsedInSourceFiles(AllSourceFiles, Val.PackageName);
+	// });
 
 	SlowTask.EnterProgressFrame(1.0f);
 
@@ -314,13 +314,13 @@ void ProjectCleanerUtility::GetRootAssets(TArray<FAssetData>& RootAssets,
 		if (RootAssets.Num() >= CleaningStats.DeleteChunkSize) break;
 
 		TArray<FName> Refs;
-		AssetRegistryModule.Get().GetReferencers(Asset.PackageName, Refs);
+		AssetRegistryModule.Get().GetReferencers(Asset.PackageName, Refs, EAssetRegistryDependencyType::Hard);
 
 		// Removing itself from list
-		Refs.RemoveAll([&](const FName& Val)
-		{
-			return Val.Compare(Asset.PackageName) == 0;
-		});
+		// Refs.RemoveAll([&](const FName& Val)
+		// {
+		// 	return Val.Compare(Asset.PackageName) == 0;
+		// });
 
 		if (Refs.Num() == 0)
 		{
@@ -399,6 +399,57 @@ void ProjectCleanerUtility::SaveAllAssets()
 		false,
 		false
 	);
+}
+
+void ProjectCleanerUtility::RemoveAllDependenciesFromList(const FAssetData& Asset, TArray<FAssetData>& List)
+{
+	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
+	TArray<FName> Deps;
+	TArray<FName> Refs;
+
+	AssetRegistryModule.Get().GetDependencies(Asset.PackageName, Deps);
+	AssetRegistryModule.Get().GetReferencers(Asset.PackageName, Refs);
+
+	// Removing all dependencies
+	// for given asset find its dependencies
+	// delete all of them from list
+	// for every founded dep get their dependencies
+	TArray<FName> DepTree;
+	DepTree.Reserve(20);
+
+	while (Deps.Num() > 0)
+	{
+		for (const auto& Dep : Deps)
+		{
+			AssetRegistryModule.Get().GetDependencies(Dep, Deps);
+		}
+	}
+
+	// Removing all referencers
+	while (Refs.Num() > 0)
+	{
+		for (const auto& Ref : Refs)
+		{
+			List.RemoveAll([&](const FAssetData& Elem)
+			{
+				return Elem.PackageName.Compare(Ref);
+			});
+		}
+
+		Refs.Empty();
+		AssetRegistryModule.Get().GetReferencers(Asset.PackageName, Refs);
+	}
+
+
+	UE_LOG(LogTemp, Warning, TEXT("A"));
+}
+
+FAssetData* ProjectCleanerUtility::GetAssetData(const FName& Asset, TArray<FAssetData>& List)
+{
+	return List.FindByPredicate([&](const FAssetData& Val)
+	{
+		return Val.PackageName == Asset;
+	});
 }
 
 #pragma optimize("", on)
