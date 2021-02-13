@@ -67,6 +67,8 @@ private:
 	// Button events
 	FReply OnDeleteEmptyFolderClick();
 	FReply OnDeleteUnusedAssetsBtnClick();
+	// TESTING ONLY!!! remove when package
+	FReply OnTestBtnClick();
 
 	/**
 	 * @brief Creates confirmation window with yes/no options
@@ -100,6 +102,9 @@ private:
 	// Slate styles
 	FSlateColorBrush TipOneBrushColor;
 	FSlateColorBrush TipTwoBrushColor;
+	
+	// test
+	TArray<FNode> AdjacencyList;
 };
 
 

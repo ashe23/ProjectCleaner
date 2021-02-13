@@ -93,4 +93,8 @@ public:
 	static void GetReferencersHierarchy(const FName& AssetName, TArray<FName>& List);
 	
 	static void GetDependencyHierarchy(const FName& AssetName, TArray<FName>& List);
+
+	static void CreateAdjacencyList(TArray<FAssetData>& AssetList, TArray<FNode>& AdjacencyList);
+
+	static void FindAllRelatedAssets(const FNode& Asset, TArray<FName>& FilteredAssets,const TArray<FNode> AdjacencyList);
 };

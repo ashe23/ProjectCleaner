@@ -509,6 +509,17 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
                         .Text(FText::FromString("Delete Empty Folders"))
 						.OnClicked_Raw(this, &FProjectCleanerModule::OnDeleteEmptyFolderClick)
 					]
+					+ SHorizontalBox::Slot()
+					.FillWidth(1.0f)
+					// .AutoWidth()
+					// .Padding(FMargin(20.0f, 0.0f))
+					[
+						SNew(SButton)
+                        .HAlign(HAlign_Center)
+                        .VAlign(VAlign_Center)
+                        .Text(FText::FromString("Test Btn"))
+                        .OnClicked_Raw(this, &FProjectCleanerModule::OnTestBtnClick)
+					]
 				]
 			]
 		];
@@ -787,6 +798,13 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 	return FReply::Handled();
 }
 
+FReply FProjectCleanerModule::OnTestBtnClick()
+{
+	ProjectCleanerUtility::GetUnusedAssets(UnusedAssets, ProjectAllSourceFiles);
+
+	return FReply::Handled();
+}
+
 EAppReturnType::Type FProjectCleanerModule::ShowConfirmationWindow(const FText& Title, const FText& ContentText) const
 {
 	return FMessageDialog::Open(
@@ -910,82 +928,40 @@ void FProjectCleanerModule::ApplyDirectoryFilters()
 {
 	if (UnusedAssets.Num() == 0) return;
 
-	// 1) find all asset in given filter path
-	// 2) for every asset find all related assets and exclude them from main list
-	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
 
+	ProjectCleanerUtility::CreateAdjacencyList(UnusedAssets, AdjacencyList);
+
+	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
 	TArray<FAssetData> ProcessingAssets;
 	for (const auto& Filter : DirectoryFilterSettings->DirectoryFilterPath)
 	{
+		TArray<FAssetData> AssetsInPath;
+		AssetRegistryModule.Get().GetAssetsByPath(FName{*Filter.Path}, AssetsInPath, true);
+
+		for (const auto& Asset : AssetsInPath)
 		{
-			TArray<FAssetData> Temp;
-			AssetRegistryModule.Get().GetAssetsByPath(FName{*Filter.Path}, Temp, true);
-			for (const auto& Elem : Temp)
-			{
-				ProcessingAssets.AddUnique(Elem);
-			}
+			ProcessingAssets.AddUnique(Asset);
 		}
 	}
 
 	TArray<FName> FilteredAssets;
 	for (const auto& Asset : ProcessingAssets)
 	{
-		ProjectCleanerUtility::GetReferencersHierarchy(Asset.PackageName, FilteredAssets);
-		ProjectCleanerUtility::GetDependencyHierarchy(Asset.PackageName, FilteredAssets);
-	}
-
-
-	for (const auto& FilteredAsset : FilteredAssets)
-	{
-		UnusedAssets.RemoveAll([&](const FAssetData& Elem)
+		const auto AssetNode = AdjacencyList.FindByPredicate([&](const FNode& Elem)
 		{
-			return Elem.PackageName == FilteredAsset;
+			return Elem.Asset == Asset.PackageName;
 		});
+		if (AssetNode)
+		{
+			ProjectCleanerUtility::FindAllRelatedAssets(*AssetNode, FilteredAssets, AdjacencyList);
+		}
 	}
 
-	for (const auto& Filter : DirectoryFilterSettings->DirectoryFilterPath)
+	
+	UnusedAssets.RemoveAll([&](const FAssetData& Elem)
 	{
-		UnusedAssets.RemoveAll([&](const FAssetData& Elem)
-        {
-            return Elem.PackagePath.ToString() == Filter.Path;
-        });
-	}
-
-	UE_LOG(LogTemp, Warning, TEXT("A"));
-	// unused assets filter
-	// auto CopyAssets = UnusedAssets;
-	// for (int32 i = 0; i < CopyAssets.Num(); ++i)
-	// {
-	// 	for (const auto& Dir : DirectoryFilterSettings->DirectoryFilterPath)
-	// 	{
-	// 		const auto PackagePath = CopyAssets[i].PackagePath.ToString();
-	// 		const bool Contains = PackagePath.Contains(Dir.Path);
-	// 		if (Contains)
-	// 		{
-	// 			ProjectCleanerUtility::RemoveAllDependenciesFromList(CopyAssets[i], UnusedAssets);
-	// 			UnusedAssets.Remove(CopyAssets[i]);
-	// 			break;
-	// 		}
-	// 	}
-	// }
-	//
-	// // empty folders filter
-	// auto CopyFolders = EmptyFolders;
-	// const auto RootDir = FPaths::ProjectContentDir();
-	// for (int32 i = 0; i < CopyFolders.Num(); ++i)
-	// {
-	// 	auto FolderPath = CopyFolders[i];
-	// 	auto Replaced = FolderPath.Replace(*RootDir, TEXT("/Game/"));
-	//
-	// 	for (const auto& Dir : DirectoryFilterSettings->DirectoryFilterPath)
-	// 	{
-	// 		if (Replaced.Contains(Dir.Path))
-	// 		{
-	// 			EmptyFolders.Remove(CopyFolders[i]);
-	// 			break;
-	// 		}
-	// 	}
-	// }
+		return FilteredAssets.Contains(Elem.PackageName);
+	});	
 }
 
 #pragma optimize("", on)
