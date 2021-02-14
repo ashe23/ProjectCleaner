@@ -47,7 +47,7 @@ public class ProjectCleaner : ModuleRules
 				"ContentBrowser",
 				"EditorStyle",
 				"PropertyEditor",
-				"UnrealEd"
+				"UnrealEd",
 				// ... add private dependencies that you statically link with here ...	
 			}
 		);

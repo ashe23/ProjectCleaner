@@ -189,15 +189,15 @@ int32 ProjectCleanerUtility::GetUnusedAssets(TArray<FAssetData>& UnusedAssets, T
 		return LevelsDependencies.Contains(Val.PackageName);
 	});
 
-	// Remove all assets that used in code( hard linked)
-	// FindAllSourceFiles(AllSourceFiles);
+	// Remove all assets that used in code( hard linked )
+	FindAllSourceFiles(AllSourceFiles);
 
-	// SlowTask.EnterProgressFrame(1.0f);
+	SlowTask.EnterProgressFrame(1.0f);
 
-	// UnusedAssets.RemoveAll([&](const FAssetData& Val)
-	// {
-	// 	return UsedInSourceFiles(AllSourceFiles, Val.PackageName);
-	// });
+	UnusedAssets.RemoveAll([&](const FAssetData& Val)
+	{
+		return UsedInSourceFiles(AllSourceFiles, Val.PackageName);
+	});
 
 	SlowTask.EnterProgressFrame(1.0f);
 
@@ -399,19 +399,47 @@ void ProjectCleanerUtility::FindNonProjectFiles(const FString& SearchPath, TArra
 
 void ProjectCleanerUtility::FindAllSourceFiles(TArray<FString>& AllFiles)
 {
-	// todo:ashe23 remove save and intermediate folder from scan
-	const auto ProjectSourceDir = FPaths::GameSourceDir();
-	const auto ProjectPluginsDir = FPaths::ProjectPluginsDir();
 	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
+	
+	// 1) finding all source files in main project "Source" directory (<yourproject>/Source/*)
+	const auto ProjectSourceDir = FPaths::GameSourceDir();
 	TArray<FString> ProjectSourceFiles;
-	TArray<FString> ProjectPluginsFiles;
-
 	PlatformFile.FindFilesRecursively(ProjectSourceFiles, *ProjectSourceDir, TEXT(".cpp"));
 	PlatformFile.FindFilesRecursively(ProjectSourceFiles, *ProjectSourceDir, TEXT(".h"));
-	PlatformFile.FindFilesRecursively(ProjectPluginsFiles, *ProjectPluginsDir, TEXT(".cpp"));
-	PlatformFile.FindFilesRecursively(ProjectPluginsFiles, *ProjectPluginsDir, TEXT(".h"));
-
 	AllFiles.Append(ProjectSourceFiles);
+
+	// 2) we should find all source files in plugins folder (<yourproject>/Plugins/*)
+	// But we should include only "Source" directories in our scanning
+	const auto ProjectPluginsDir = FPaths::ProjectPluginsDir();
+	TArray<FString> ProjectPluginsFiles;
+	
+	// finding all installed plugins in "Plugins" directory
+	struct DirectoryVisitor : public IPlatformFile::FDirectoryVisitor
+	{
+		virtual bool Visit(const TCHAR* FilenameOrDirectory, bool bIsDirectory) override
+		{
+			if(bIsDirectory)
+			{
+				InstalledPlugins.Add(FilenameOrDirectory);
+			}
+			
+			return true;
+		}
+
+		TArray<FString> InstalledPlugins;
+	};
+
+	DirectoryVisitor Visitor;
+	PlatformFile.IterateDirectory(*ProjectPluginsDir, Visitor);
+
+	// for every installed plugin we scanning only "Source" directories
+	for(const auto& Dir : Visitor.InstalledPlugins)
+	{
+		const FString PluginSourcePathDir = Dir + "/Source";
+		PlatformFile.FindFilesRecursively(ProjectPluginsFiles, *PluginSourcePathDir, TEXT(".cpp"));
+		PlatformFile.FindFilesRecursively(ProjectPluginsFiles, *PluginSourcePathDir, TEXT(".h"));
+	}
+	
 	AllFiles.Append(ProjectPluginsFiles);
 }
 

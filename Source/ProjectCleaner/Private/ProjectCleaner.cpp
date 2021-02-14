@@ -26,6 +26,7 @@
 #include "Framework/Application/SlateApplication.h"
 #include "Widgets/Images/SImage.h"
 #include "Widgets/Input/SComboBox.h"
+#include "Misc/App.h"
 
 static const FName ProjectCleanerTabName("ProjectCleaner");
 
@@ -344,8 +345,6 @@ FReply FProjectCleanerModule::RefreshBrowser()
 {
 	UpdateStats();
 
-	UpdateContentBrowser();
-
 	return FReply::Handled();
 }
 
@@ -490,9 +489,10 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 					]
 					+ SHorizontalBox::Slot()
 					.FillWidth(1.0f)
+					.Padding(FMargin{40.0f, 0.0f, 40.0f, 0.0f})
 					// .AutoWidth()
 					[
-						SNew(SButton)
+						SNew(SButton)						
                         .HAlign(HAlign_Center)
                         .VAlign(VAlign_Center)
                         .Text(FText::FromString("Delete Unused Assets"))
@@ -508,17 +508,6 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
                         .VAlign(VAlign_Center)
                         .Text(FText::FromString("Delete Empty Folders"))
 						.OnClicked_Raw(this, &FProjectCleanerModule::OnDeleteEmptyFolderClick)
-					]
-					+ SHorizontalBox::Slot()
-					.FillWidth(1.0f)
-					// .AutoWidth()
-					// .Padding(FMargin(20.0f, 0.0f))
-					[
-						SNew(SButton)
-                        .HAlign(HAlign_Center)
-                        .VAlign(VAlign_Center)
-                        .Text(FText::FromString("Test Btn"))
-                        .OnClicked_Raw(this, &FProjectCleanerModule::OnTestBtnClick)
 					]
 				]
 			]
@@ -782,6 +771,8 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 		ProjectCleanerUtility::GetRootAssets(RootAssets, UnusedAssets, CleaningStats);
 	}
 
+	// circular dependent assets remains here, to do delete them we should delete all at once
+	// but problem is when project contains a lots of assets, engine might freeze
 	CleaningStats.DeletedAssetCount += ProjectCleanerUtility::DeleteAssets(UnusedAssets);
 
 	NotificationManager->Update(NotificationRef, CleaningStats);
@@ -794,13 +785,6 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 	UpdateStats();
 
 	UpdateContentBrowser();
-
-	return FReply::Handled();
-}
-
-FReply FProjectCleanerModule::OnTestBtnClick()
-{
-	ProjectCleanerUtility::GetUnusedAssets(UnusedAssets, ProjectAllSourceFiles);
 
 	return FReply::Handled();
 }
@@ -931,6 +915,7 @@ void FProjectCleanerModule::ApplyDirectoryFilters()
 
 	ProjectCleanerUtility::CreateAdjacencyList(UnusedAssets, AdjacencyList);
 
+	// query list of assets in given directory paths in filter section
 	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
 	TArray<FAssetData> ProcessingAssets;
 	for (const auto& Filter : DirectoryFilterSettings->DirectoryFilterPath)
@@ -944,6 +929,7 @@ void FProjectCleanerModule::ApplyDirectoryFilters()
 		}
 	}
 
+	// query all related assets that contains in given directory paths
 	TArray<FName> FilteredAssets;
 	for (const auto& Asset : ProcessingAssets)
 	{
@@ -957,11 +943,11 @@ void FProjectCleanerModule::ApplyDirectoryFilters()
 		}
 	}
 
-	
+	// remove them from deletion list
 	UnusedAssets.RemoveAll([&](const FAssetData& Elem)
 	{
 		return FilteredAssets.Contains(Elem.PackageName);
-	});	
+	});
 }
 
 #pragma optimize("", on)

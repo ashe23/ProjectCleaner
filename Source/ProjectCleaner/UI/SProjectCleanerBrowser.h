@@ -35,7 +35,6 @@ public:
 
 	void Construct(const FArguments& InArgs);
 
-
 	TSharedPtr<IDetailsView> DirFilterSettings;
 	UDirectoryFilterSettings* DirectoryFilterSettings;
 
