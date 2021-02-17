@@ -2,8 +2,11 @@
 
 
 #include "UI/SProjectCleanerBrowser.h"
+
+// Engine Headers
 #include "PropertyEditorModule.h"
-#include "UObject/ObjectMacros.h"
+#include "Modules/ModuleManager.h"
+#include "Widgets/Layout/SBorder.h"
 
 
 void SProjectCleanerBrowser::Construct(const FArguments& InArgs)
@@ -20,7 +23,7 @@ void SProjectCleanerBrowser::Construct(const FArguments& InArgs)
 	FolderFilterArgs.NameAreaSettings = FDetailsViewArgs::HideNameArea;
 	FolderFilterArgs.ViewIdentifier = "ExcludeDirectoriesFromScan";
 
-	DirFilterSettings = PropertyEditor.CreateDetailView(FolderFilterArgs);
+	DirectoryFilterProperty = PropertyEditor.CreateDetailView(FolderFilterArgs);
 	
 	ChildSlot
 	[
@@ -31,7 +34,7 @@ void SProjectCleanerBrowser::Construct(const FArguments& InArgs)
 			SNew(SBorder)
 			.Padding(FMargin(20))
 			[
-				DirFilterSettings.ToSharedRef()
+				DirectoryFilterProperty.ToSharedRef()
 			]
 		]
 		
@@ -40,6 +43,6 @@ void SProjectCleanerBrowser::Construct(const FArguments& InArgs)
 	if(InArgs._DirectoryFilterSettings)
 	{
 		DirectoryFilterSettings = InArgs._DirectoryFilterSettings;
-		DirFilterSettings->SetObject(DirectoryFilterSettings);
+		DirectoryFilterProperty->SetObject(DirectoryFilterSettings);
 	}
 }

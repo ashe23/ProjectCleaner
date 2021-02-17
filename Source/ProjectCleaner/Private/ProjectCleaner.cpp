@@ -23,6 +23,8 @@
 #include "AssetQueryManager.h"
 #include "AssetFilterManager.h"
 
+DEFINE_LOG_CATEGORY(LogProjectCleaner);
+
 static const FName ProjectCleanerTabName("ProjectCleaner");
 
 #define LOCTEXT_NAMESPACE "FProjectCleanerModule"
@@ -77,7 +79,6 @@ void FProjectCleanerModule::StartupModule()
 	// Reserve some space
 	UnusedAssets.Reserve(100);
 	EmptyFolders.Reserve(50);
-	ProjectAllSourceFiles.Reserve(100);
 
 	NotificationManager = new ProjectCleanerNotificationManager();
 
@@ -96,32 +97,15 @@ void FProjectCleanerModule::ShutdownModule()
 
 	UnusedAssets.Empty();
 	EmptyFolders.Empty();
-	ProjectAllSourceFiles.Empty();
 
 	delete NotificationManager;
 }
 
 void FProjectCleanerModule::PluginButtonClicked()
 {
-	UnusedAssets.Reset();
-	
-	AssetQueryManager::GetAllAssets(UnusedAssets);
-	AssetFilterManager::RemoveLevelAssets(UnusedAssets);
+	InitCleaner();
 
-	TArray<FAssetData> Levels;
-	TArray<FAssetData> Deps;
-	AssetQueryManager::GetLevelAssets(Levels);
-	AssetQueryManager::GetDependencies(Levels, Deps);
-	AssetFilterManager::Difference(UnusedAssets, Deps);
-
-	TArray<FAssetData> UnusedAssetsOLD;
-	ProjectCleanerUtility::GetUnusedAssets(UnusedAssetsOLD, ProjectAllSourceFiles);
-
-	UE_LOG(LogTemp, Warning, TEXT("A"));
-
-	// InitCleaner();
-
-	// FGlobalTabmanager::Get()->InvokeTab(ProjectCleanerTabName);
+	FGlobalTabmanager::Get()->InvokeTab(ProjectCleanerTabName);
 
 	// TArray<TSharedPtr<FString>> Items;
 
@@ -763,7 +747,7 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 	// Root assets has no referencers
 	TArray<FAssetData> RootAssets;
 	RootAssets.Reserve(CleaningStats.DeleteChunkSize);
-	ProjectCleanerUtility::GetRootAssets(RootAssets, UnusedAssets, CleaningStats);
+	AssetQueryManager::GetRootAssets(RootAssets, UnusedAssets);
 
 	const auto NotificationRef = NotificationManager->Add(
 		StandardCleanerText.StartingCleanup.ToString(),
@@ -782,7 +766,7 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 		}
 
 		RootAssets.Empty();
-		ProjectCleanerUtility::GetRootAssets(RootAssets, UnusedAssets, CleaningStats);
+		AssetQueryManager::GetRootAssets(RootAssets, UnusedAssets);
 	}
 
 	// circular dependent assets remains here, to do delete them we should delete all at once
@@ -860,26 +844,21 @@ FReply FProjectCleanerModule::OnDeleteEmptyFolderClick()
 
 void FProjectCleanerModule::UpdateStats()
 {
-	ProjectCleanerUtility::GetUnusedAssets(UnusedAssets, ProjectAllSourceFiles);
+	AssetQueryManager::GetUnusedAssets(UnusedAssets, DirectoryFilterSettings);
 	ProjectCleanerUtility::GetEmptyFoldersNum(EmptyFolders, NonProjectFiles);
 
-	if (ShouldApplyDirectoryFilters())
-	{
-		ApplyDirectoryFilters();
-	}
-
 	CleaningStats.UnusedAssetsNum = UnusedAssets.Num();
-	CleaningStats.UnusedAssetsTotalSize = ProjectCleanerUtility::GetUnusedAssetsTotalSize(UnusedAssets);
+	CleaningStats.UnusedAssetsTotalSize = AssetQueryManager::GetTotalSize(UnusedAssets);
 	CleaningStats.EmptyFolders = EmptyFolders.Num();
 	CleaningStats.TotalAssetNum = CleaningStats.UnusedAssetsNum;
 	CleaningStats.DeletedAssetCount = 0;
 
 	if (NonProjectFiles.Num() > 0)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Non UAsset file list:"));
+		UE_LOG(LogProjectCleaner, Warning, TEXT("Non UAsset file list:"));
 		for (const auto& Asset : NonProjectFiles)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("%s"), *Asset);
+			UE_LOG(LogProjectCleaner, Warning, TEXT("%s"), *Asset);
 		}
 
 		FNotificationInfo Info(StandardCleanerText.NonUAssetFilesFound);
@@ -913,55 +892,6 @@ void FProjectCleanerModule::UpdateContentBrowser() const
 	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
 	AssetRegistryModule.Get().ScanPathsSynchronous(FocusFolders, true);
 	AssetRegistryModule.Get().SearchAllAssets(true);
-}
-
-bool FProjectCleanerModule::ShouldApplyDirectoryFilters() const
-{
-	if (!DirectoryFilterSettings) return false;
-
-	return DirectoryFilterSettings->DirectoryFilterPath.Num() > 0;
-}
-
-void FProjectCleanerModule::ApplyDirectoryFilters()
-{
-	if (UnusedAssets.Num() == 0) return;
-
-
-	ProjectCleanerUtility::CreateAdjacencyList(UnusedAssets, AdjacencyList);
-
-	// query list of assets in given directory paths in filter section
-	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
-	TArray<FAssetData> ProcessingAssets;
-	for (const auto& Filter : DirectoryFilterSettings->DirectoryFilterPath)
-	{
-		TArray<FAssetData> AssetsInPath;
-		AssetRegistryModule.Get().GetAssetsByPath(FName{*Filter.Path}, AssetsInPath, true);
-
-		for (const auto& Asset : AssetsInPath)
-		{
-			ProcessingAssets.AddUnique(Asset);
-		}
-	}
-
-	// query all related assets that contains in given directory paths
-	TArray<FName> FilteredAssets;
-	for (const auto& Asset : ProcessingAssets)
-	{
-		const auto AssetNode = AdjacencyList.FindByPredicate([&](const FNode& Elem)
-		{
-			return Elem.Asset == Asset.PackageName;
-		});
-		if (AssetNode)
-		{
-			ProjectCleanerUtility::FindAllRelatedAssets(*AssetNode, FilteredAssets, AdjacencyList);
-		}
-	}
-
-	// remove them from deletion list
-	UnusedAssets.RemoveAll([&](const FAssetData& Elem)
-	{
-		return FilteredAssets.Contains(Elem.PackageName);
-	});
 }
 
 #pragma optimize("", on)

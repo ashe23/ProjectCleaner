@@ -19,6 +19,8 @@ struct FAssetData;
 struct FSlateBrush;
 struct FSlateColorBrush;
 
+DECLARE_LOG_CATEGORY_EXTERN(LogProjectCleaner, Log, All);
+
 class FProjectCleanerModule : public IModuleInterface
 {
 public:
@@ -52,22 +54,11 @@ private:
 	 * @brief Updates content browser
 	 */
 	void UpdateContentBrowser() const;
-	
-	/**
-	 * If user entered any exclude directory, then we should exclude given directories from scanning
-	 * @brief Checks if any exclude directory exists. 
-	 * @return bool 
-	 */
-	bool ShouldApplyDirectoryFilters() const;
-	
-	/**
-	 * @brief Excludes assets and empty folders that not passing user filter
-	 */
-	void ApplyDirectoryFilters();
-private:
-	// Button events
+
+	// Button events Start //
 	FReply OnDeleteEmptyFolderClick();
 	FReply OnDeleteUnusedAssetsBtnClick();
+	// Button events End //
 
 	/**
 	 * @brief Creates confirmation window with yes/no options
@@ -90,10 +81,9 @@ private:
 private:
 	TSharedRef<SDockTab> OnSpawnPluginTab(const class FSpawnTabArgs& SpawnTabArgs);
 	TSharedPtr<class FUICommandList> PluginCommands;
-	TArray<FAssetData> UnusedAssets; // todo:ashe23 maybe change this to TSet?
+	TArray<FAssetData> UnusedAssets;
 	TArray<FString> EmptyFolders;
 	TArray<FString> NonProjectFiles;
-	TArray<FString> ProjectAllSourceFiles;
 	ProjectCleanerNotificationManager* NotificationManager;
 	TSharedPtr<SWindow> TestWindow;
 	TWeakPtr<SProjectCleanerBrowser> ProjectCleanerBrowserUI;

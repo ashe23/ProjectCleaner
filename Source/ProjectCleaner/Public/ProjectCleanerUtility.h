@@ -9,7 +9,7 @@ struct FAssetData;
 
 
 /**
- * This class responsible for different file and directory operations in unreal engine context
+ * This class responsible for different utility operations in unreal engine context
  */
 class PROJECTCLEANER_API ProjectCleanerUtility
 {
@@ -29,38 +29,8 @@ public:
 	// Deletes Empty Folders
 	static void DeleteEmptyFolders(TArray<FString>& EmptyFolders);
 	
-	
-	/**
-	 * Finds all game assets in "Root" project directory
-	 * @brief Finds all assets in project
-	 * @param GameAssetsContainer Container for all game assets
-	 */
-	static void FindAllGameAssets(TArray<FAssetData>& GameAssetsContainer);
-	
-	// Removes all level assets(Maps) from GameAssetsContainer 
-	static void RemoveLevelAssets(TArray<FAssetData>& GameAssetsContainer);
-	
-	// Returns all level dependencies by given filter
-	static void GetAllDependencies(const struct FARFilter& InAssetRegistryFilter, const class IAssetRegistry& AssetRegistry, TSet<FName>& OutDependencySet);
-	
-	/**
-	 * Finds all unused assets in project
-	 * This function looking asset only in root project content directory
-	 * Assets in Developer and Collections will not be scanned
-	 * Also this function will scan any source files ".h" and ".cpp" files that contains hardlink to asset
-	 * 
-	 * @brief Returns total amount of founded unused assets
-	 * @param UnusedAssets - Container for all unused assets
-	 * @param AllSourceFiles - Container for all source files that contains hardlinks to asset
-	 * @return int32 Number of unused assets
-	 */
-	static int32 GetUnusedAssets(TArray<FAssetData>& UnusedAssets, TArray<FString>& AllSourceFiles);
-
 	// Returns total number of empty folders
 	static int32 GetEmptyFoldersNum(TArray<FString>& EmptyFolders,TArray<FString>& NonProjectFiles);
-
-	// Returns total size of unused assets (in bytes)
-	static int64 GetUnusedAssetsTotalSize(TArray<FAssetData>& UnusedAssets);
 
 	// Fixup Redirectors , same as in content browser menu
 	static void FixupRedirectors();
@@ -68,33 +38,13 @@ public:
 	// Deletes given array of assets
 	static int32 DeleteAssets(TArray<FAssetData>& Assets);
 
-	// Returns all assets that has not any referencer on it
-	static void GetRootAssets(TArray<FAssetData>& RootAssets, TArray<FAssetData>& AllAssets,const FCleaningStats& CleaningStats);
-
 	static void FindNonProjectFiles(const FString& SearchPath, TArray<FString>& NonProjectFilesList);
 
 	// Finds all ".h" and ".cpp" source files in Project "Source" and "Plugins" directories
 	static void FindAllSourceFiles(TArray<FString>& AllFiles);
 	
 	// Check if given asset used in source codes (hardcoded path)
-	static bool UsedInSourceFiles(TArray<FString>& AllFiles, const FName& Asset);
+	static bool UsedInSourceFiles(const TArray<FString>& AllFiles, const FName& Asset);
 
 	static void SaveAllAssets();
-
-	/**
-	 * @brief Removes all dependencies for given asset from given list 
-	 * @param Asset FAssetData Searchable asset
-	 * @param List TArray<FAssetData> List of assets from which to remove deps
-	 */
-	static void RemoveAllDependenciesFromList(const FAssetData& Asset, TArray<FAssetData>& List);
-
-	static FAssetData* GetAssetData(const FName& Asset, TArray<FAssetData>& List);
-
-	static void GetReferencersHierarchy(const FName& AssetName, TArray<FName>& List);
-	
-	static void GetDependencyHierarchy(const FName& AssetName, TArray<FName>& List);
-
-	static void CreateAdjacencyList(TArray<FAssetData>& AssetList, TArray<FNode>& AdjacencyList);
-
-	static void FindAllRelatedAssets(const FNode& Asset, TArray<FName>& FilteredAssets,const TArray<FNode> AdjacencyList);
 };

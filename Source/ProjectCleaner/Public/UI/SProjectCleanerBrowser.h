@@ -18,7 +18,7 @@ class UDirectoryFilterSettings : public UObject
 	GENERATED_BODY()
 public:
 	UPROPERTY(DisplayName = "Directory", EditAnywhere, Category = "ExcludeThisDirectories", meta = (ContentDir))
-	TArray<FDirectoryPath> DirectoryFilterPath;
+	TArray<FDirectoryPath> DirectoryPaths;
 };
 
 /**
@@ -35,7 +35,7 @@ public:
 
 	void Construct(const FArguments& InArgs);
 
-	TSharedPtr<IDetailsView> DirFilterSettings;
+	TSharedPtr<IDetailsView> DirectoryFilterProperty;
 	UDirectoryFilterSettings* DirectoryFilterSettings;
 
 };

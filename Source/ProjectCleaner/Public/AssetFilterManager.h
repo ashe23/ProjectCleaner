@@ -26,9 +26,9 @@ public:
 	static bool IsLevelAsset(const FName& ClassName);
 
 	/**
-	 * @brief Returns First Container after applying difference operation with Second Container
-	 * @param FirstContainer 
-	 * @param SecondContainer 
+	 * @brief Returns AssetContainer after applying difference operation with FilterSet
+	 * @param AssetContainer 
+	 * @param FilterSet 
 	 */
-	static void Difference(TArray<FAssetData>& FirstContainer, TArray<FAssetData>& SecondContainer);
+	static void Difference(TArray<FAssetData>& AssetContainer, TSet<FName>& FilterSet);
 };

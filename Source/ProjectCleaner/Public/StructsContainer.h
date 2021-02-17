@@ -3,11 +3,6 @@
 #include "AssetRegistry/Public/AssetData.h"
 #include "CoreMinimal.h"
 
-struct FAssetChunk
-{
-	TArray<FAssetData> Dependencies;
-};
-
 struct FCleaningStats
 {
 	int32 UnusedAssetsNum;
@@ -60,6 +55,10 @@ struct FStandardCleanerText
 	}
 };
 
+
+/**
+ * @brief Adjacency List Node
+ */
 struct FNode
 {
 	FName Asset;

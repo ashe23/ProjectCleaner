@@ -20,11 +20,11 @@ bool AssetFilterManager::IsLevelAsset(const FName& ClassName)
 	return ClassName == "MapBuildDataRegistry" || ClassName == UWorld::StaticClass()->GetFName();
 }
 
-void AssetFilterManager::Difference(TArray<FAssetData>& FirstContainer, TArray<FAssetData>& SecondContainer)
+void AssetFilterManager::Difference(TArray<FAssetData>& AssetContainer, TSet<FName>& FilterSet)
 {
-	FirstContainer.RemoveAll([&](const FAssetData& Elem)
+	AssetContainer.RemoveAll([&](const FAssetData& Elem)
 	{
-		return SecondContainer.Contains(Elem);
+		return FilterSet.Contains(Elem.PackageName);
 	});
 }
 
