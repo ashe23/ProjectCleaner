@@ -5,7 +5,6 @@
 #include "ProjectCleanerCommands.h"
 #include "Misc/MessageDialog.h"
 #include "AssetRegistryModule.h"
-#include "FileManager.h"
 #include "IContentBrowserSingleton.h"
 #include "LevelEditor.h"
 #include "Framework/MultiBox/MultiBoxBuilder.h"
@@ -13,20 +12,16 @@
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Text/STextBlock.h"
 #include "ObjectTools.h"
-#include "HAL/PlatformFilemanager.h"
 #include "EditorStyleSet.h"
-#include "GenericPlatformMisc.h"
-#include "Misc/FileHelper.h"
+#include "GenericPlatform/GenericPlatformMisc.h"
 #include "AssetRegistry/Public/AssetData.h"
 #include "ProjectCleanerNotificationManager.h"
 #include "ProjectCleanerUtility.h"
-#include "NotificationManager.h"
-#include "SListView.h"
+#include "Framework/Notifications/NotificationManager.h"
 #include "Editor/ContentBrowser/Public/ContentBrowserModule.h"
-#include "Framework/Application/SlateApplication.h"
-#include "Widgets/Images/SImage.h"
-#include "Widgets/Input/SComboBox.h"
-#include "Misc/App.h"
+
+#include "AssetQueryManager.h"
+#include "AssetFilterManager.h"
 
 static const FName ProjectCleanerTabName("ProjectCleaner");
 
@@ -54,9 +49,12 @@ void FProjectCleanerModule::StartupModule()
 
 	{
 		TSharedPtr<FExtender> MenuExtender = MakeShareable(new FExtender());
-		MenuExtender->AddMenuExtension("WindowLayout", EExtensionHook::After, PluginCommands,
-		                               FMenuExtensionDelegate::CreateRaw(
-			                               this, &FProjectCleanerModule::AddMenuExtension));
+		MenuExtender->AddMenuExtension(
+			"WindowLayout",
+			EExtensionHook::After,
+			PluginCommands,
+			FMenuExtensionDelegate::CreateRaw(this, &FProjectCleanerModule::AddMenuExtension)
+		);
 
 		LevelEditorModule.GetMenuExtensibilityManager()->AddExtender(MenuExtender);
 	}
@@ -105,9 +103,17 @@ void FProjectCleanerModule::ShutdownModule()
 
 void FProjectCleanerModule::PluginButtonClicked()
 {
-	InitCleaner();
+	AssetQueryManager::GetAllAssets(UnusedAssets);
+	AssetFilterManager::RemoveLevelAssets(UnusedAssets);
 
-	FGlobalTabmanager::Get()->InvokeTab(ProjectCleanerTabName);
+	TArray<FAssetData> Levels;
+	AssetQueryManager::GetLevelAssets(Levels);
+
+	UE_LOG(LogTemp, Warning, TEXT("A"));
+	
+	// InitCleaner();
+
+	// FGlobalTabmanager::Get()->InvokeTab(ProjectCleanerTabName);
 
 	// TArray<TSharedPtr<FString>> Items;
 
@@ -356,30 +362,30 @@ void FProjectCleanerModule::AddToolbarExtension(FToolBarBuilder& Builder)
 
 TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs)
 {
-	const FText TipOneText = FText::FromString(
-		"How to use?\nDelete all unused levels first. (If any asset used in level it wont be deleted).\n"
-	);
+	// const FText TipOneText = FText::FromString(
+	// 	"How to use?\nDelete all unused levels first. (If any asset used in level it wont be deleted).\n"
+	// );
 
 	return SNew(SDockTab)
 		.TabRole(ETabRole::NomadTab)
 		[
 			SNew(SVerticalBox)
-			+ SVerticalBox::Slot()
-			  .AutoHeight()
-			  .Padding(FMargin(20))
-			[
-				SNew(SBorder)
-                .Padding(FMargin(10))
-                .BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
-                .VAlign(VAlign_Center)
-                .HAlign(HAlign_Center)
-				[
-					SNew(STextBlock)
-                    .Justification(ETextJustify::Center)
-                    .AutoWrapText(true)
-                    .Text(TipOneText)
-				]
-			]
+			// + SVerticalBox::Slot()
+			//   .AutoHeight()
+			//   .Padding(FMargin(20))
+			// [
+			// 	SNew(SBorder)
+   //              .Padding(FMargin(10))
+   //              .BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
+   //              .VAlign(VAlign_Center)
+   //              .HAlign(HAlign_Center)
+			// 	[
+			// 		SNew(STextBlock)
+   //                  .Justification(ETextJustify::Center)
+   //                  .AutoWrapText(true)
+   //                  .Text(TipOneText)
+			// 	]
+			// ]
 			+ SVerticalBox::Slot()
 			  .Padding(FMargin(20))
 			  .AutoHeight()
@@ -488,11 +494,11 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
                         .OnClicked_Raw(this, &FProjectCleanerModule::RefreshBrowser)
 					]
 					+ SHorizontalBox::Slot()
-					.FillWidth(1.0f)
-					.Padding(FMargin{40.0f, 0.0f, 40.0f, 0.0f})
+					  .FillWidth(1.0f)
+					  .Padding(FMargin{40.0f, 0.0f, 40.0f, 0.0f})
 					// .AutoWidth()
 					[
-						SNew(SButton)						
+						SNew(SButton)
                         .HAlign(HAlign_Center)
                         .VAlign(VAlign_Center)
                         .Text(FText::FromString("Delete Unused Assets"))

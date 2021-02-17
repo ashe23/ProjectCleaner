@@ -5,9 +5,9 @@
 #include "CoreMinimal.h"
 
 #include "IDetailsView.h"
-#include "SCompoundWidget.h"
-#include "SlateBasics.h"
+#include "Widgets/SCompoundWidget.h"
 #include "Engine/EngineTypes.h"
+#include "Widgets/SBoxPanel.h"
 #include "SProjectCleanerBrowser.generated.h"
 
 

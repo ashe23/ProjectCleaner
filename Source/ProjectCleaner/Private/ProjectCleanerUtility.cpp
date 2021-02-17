@@ -1,8 +1,8 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "Public/ProjectCleanerUtility.h"
-#include "FileManager.h"
+#include "ProjectCleanerUtility.h"
+#include "HAL/FileManager.h"
 #include "AssetRegistry/Public/AssetData.h"
 #include "AssetRegistryModule.h"
 #include "AssetToolsModule.h"
@@ -13,8 +13,8 @@
 #include "UObject/ObjectRedirector.h"
 #include "HAL/PlatformFilemanager.h"
 #include "Misc/FileHelper.h"
-#include "Misc/ScopedSlowTask.h"
 #include "FileHelpers.h"
+#include "Misc/ScopedSlowTask.h"
 #include "IContentBrowserSingleton.h"
 #include "Editor/ContentBrowser/Public/ContentBrowserModule.h"
 

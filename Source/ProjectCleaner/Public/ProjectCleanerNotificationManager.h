@@ -3,7 +3,7 @@
 #pragma once
 
 #include "StructsContainer.h"
-#include "SNotificationList.h"
+#include "Widgets/Notifications/SNotificationList.h"
 #include "CoreMinimal.h"
 
 class FSlateNotificationManager;

@@ -2,21 +2,22 @@
 
 #pragma once
 
-#include "Modules/ModuleManager.h"
 #include "Input/Reply.h"
-#include "SlateColorBrush.h"
+#include "Brushes/SlateColorBrush.h"
 #include "StructsContainer.h"
 #include "UI/SProjectCleanerBrowser.h"
+#include "Modules/ModuleInterface.h"
 #include "CoreMinimal.h"
 
 class FToolBarBuilder;
 class FMenuBuilder;
+class ITableRow;
+class STableViewBase;
+class SDockTab;
+class ProjectCleanerNotificationManager;
 struct FAssetData;
 struct FSlateBrush;
 struct FSlateColorBrush;
-class ITableRow;
-class STableViewBase;
-class ProjectCleanerNotificationManager;
 
 class FProjectCleanerModule : public IModuleInterface
 {
@@ -89,7 +90,7 @@ private:
 private:
 	TSharedRef<SDockTab> OnSpawnPluginTab(const class FSpawnTabArgs& SpawnTabArgs);
 	TSharedPtr<class FUICommandList> PluginCommands;
-	TArray<FAssetData> UnusedAssets;
+	TArray<FAssetData> UnusedAssets; // todo:ashe23 maybe change this to TSet?
 	TArray<FString> EmptyFolders;
 	TArray<FString> NonProjectFiles;
 	TArray<FString> ProjectAllSourceFiles;

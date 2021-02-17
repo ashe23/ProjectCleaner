@@ -1,8 +1,8 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "Public/ProjectCleanerNotificationManager.h"
-#include "NotificationManager.h"
+#include "ProjectCleanerNotificationManager.h"
+#include "Framework/Notifications/NotificationManager.h"
 
 
 TWeakPtr<SNotificationItem> ProjectCleanerNotificationManager::Add(const FString& Text,

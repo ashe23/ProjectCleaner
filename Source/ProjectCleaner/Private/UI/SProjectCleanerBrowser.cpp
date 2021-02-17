@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "SProjectCleanerBrowser.h"
+#include "UI/SProjectCleanerBrowser.h"
 #include "PropertyEditorModule.h"
 #include "UObject/ObjectMacros.h"
 

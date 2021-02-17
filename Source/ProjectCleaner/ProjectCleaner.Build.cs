@@ -11,6 +11,7 @@ public class ProjectCleaner : ModuleRules
 		PublicIncludePaths.AddRange(
 			new string[]
 			{
+				"Runtime/Slate/Public",
 				// ... add public include paths required here ...
 			}
 		);
