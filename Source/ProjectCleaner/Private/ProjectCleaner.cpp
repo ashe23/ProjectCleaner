@@ -103,14 +103,22 @@ void FProjectCleanerModule::ShutdownModule()
 
 void FProjectCleanerModule::PluginButtonClicked()
 {
+	UnusedAssets.Reset();
+	
 	AssetQueryManager::GetAllAssets(UnusedAssets);
 	AssetFilterManager::RemoveLevelAssets(UnusedAssets);
 
 	TArray<FAssetData> Levels;
+	TArray<FAssetData> Deps;
 	AssetQueryManager::GetLevelAssets(Levels);
+	AssetQueryManager::GetDependencies(Levels, Deps);
+	AssetFilterManager::Difference(UnusedAssets, Deps);
+
+	TArray<FAssetData> UnusedAssetsOLD;
+	ProjectCleanerUtility::GetUnusedAssets(UnusedAssetsOLD, ProjectAllSourceFiles);
 
 	UE_LOG(LogTemp, Warning, TEXT("A"));
-	
+
 	// InitCleaner();
 
 	// FGlobalTabmanager::Get()->InvokeTab(ProjectCleanerTabName);
@@ -375,15 +383,15 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 			//   .Padding(FMargin(20))
 			// [
 			// 	SNew(SBorder)
-   //              .Padding(FMargin(10))
-   //              .BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
-   //              .VAlign(VAlign_Center)
-   //              .HAlign(HAlign_Center)
+			//              .Padding(FMargin(10))
+			//              .BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
+			//              .VAlign(VAlign_Center)
+			//              .HAlign(HAlign_Center)
 			// 	[
 			// 		SNew(STextBlock)
-   //                  .Justification(ETextJustify::Center)
-   //                  .AutoWrapText(true)
-   //                  .Text(TipOneText)
+			//                  .Justification(ETextJustify::Center)
+			//                  .AutoWrapText(true)
+			//                  .Text(TipOneText)
 			// 	]
 			// ]
 			+ SVerticalBox::Slot()

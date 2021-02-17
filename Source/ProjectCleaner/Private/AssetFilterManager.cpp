@@ -5,13 +5,27 @@
 #include "AssetRegistryModule.h"
 #include "AssetRegistry/Public/AssetData.h"
 #include "Engine/World.h"
+#pragma optimize("", off)
 
 void AssetFilterManager::RemoveLevelAssets(TArray<FAssetData>& AssetContainer)
 {
 	AssetContainer.RemoveAll([](const FAssetData& Val)
 	{
-		return
-			Val.AssetClass.ToString().Contains("MapBuildDataRegistry") ||
-			Val.AssetClass == UWorld::StaticClass()->GetFName();
+		return IsLevelAsset(Val.AssetClass);
 	});
 }
+
+bool AssetFilterManager::IsLevelAsset(const FName& ClassName)
+{
+	return ClassName == "MapBuildDataRegistry" || ClassName == UWorld::StaticClass()->GetFName();
+}
+
+void AssetFilterManager::Difference(TArray<FAssetData>& FirstContainer, TArray<FAssetData>& SecondContainer)
+{
+	FirstContainer.RemoveAll([&](const FAssetData& Elem)
+	{
+		return SecondContainer.Contains(Elem);
+	});
+}
+
+#pragma optimize("", on)

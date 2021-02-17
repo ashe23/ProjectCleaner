@@ -178,6 +178,8 @@ int32 ProjectCleanerUtility::GetUnusedAssets(TArray<FAssetData>& UnusedAssets, T
 	TSet<FName> LevelsDependencies;
 	FARFilter Filter;
 	Filter.ClassNames.Add(UWorld::StaticClass()->GetFName());
+	Filter.PackagePaths.Add("/Game");
+	Filter.bRecursivePaths = true;
 	GetAllDependencies(Filter, AssetRegistryModule.Get(), LevelsDependencies);
 
 	SlowTask.EnterProgressFrame(1.0f);
