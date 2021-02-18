@@ -11,6 +11,7 @@
 #include "Widgets/Docking/SDockTab.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Text/STextBlock.h"
+#include "Widgets/Layout/SScrollBox.h"
 #include "ObjectTools.h"
 #include "EditorStyleSet.h"
 #include "GenericPlatform/GenericPlatformMisc.h"
@@ -94,135 +95,139 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 	return SNew(SDockTab)
 		.TabRole(ETabRole::NomadTab)
 		[
-			SNew(SVerticalBox)			
-			+ SVerticalBox::Slot()
-			  .Padding(FMargin(20))
-			  .AutoHeight()
+			SNew(SScrollBox)
+			+ SScrollBox::Slot()
 			[
-				SNew(SBorder)
+				SNew(SVerticalBox)
+				+ SVerticalBox::Slot()
+				  .Padding(FMargin(20))
+				  .AutoHeight()
+				[
+					SNew(SBorder)
 	            .Padding(FMargin(5))
 	            .BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
-				[
-					SNew(SVerticalBox)
-					+ SVerticalBox::Slot()
-					.HAlign(HAlign_Center)
 					[
-						// Unused Assets
-						SNew(SHorizontalBox)
-						+ SHorizontalBox::Slot()
-						.AutoWidth()
+						SNew(SVerticalBox)
+						+ SVerticalBox::Slot()
+						.HAlign(HAlign_Center)
 						[
-							SNew(STextBlock)
+							// Unused Assets
+							SNew(SHorizontalBox)
+							+ SHorizontalBox::Slot()
+							.AutoWidth()
+							[
+								SNew(STextBlock)
 					        .AutoWrapText(true)
 					        .Text(LOCTEXT("Unused Assets:", "Unused Assets: "))
-						]
-						+ SHorizontalBox::Slot()
-						.AutoWidth()
-						[
-							SNew(STextBlock)
+							]
+							+ SHorizontalBox::Slot()
+							.AutoWidth()
+							[
+								SNew(STextBlock)
 					        .AutoWrapText(true)
 					        .Text_Lambda([this]() -> FText { return FText::AsNumber(CleaningStats.UnusedAssetsNum); })
-						]
+							]
 
-					]
-					// stats
-					+ SVerticalBox::Slot()
-					  .HAlign(HAlign_Center)
-					  .AutoHeight()
-					[
-						// Total size
-						SNew(SHorizontalBox)
-						+ SHorizontalBox::Slot()
-						.AutoWidth()
+						]
+						// stats
+						+ SVerticalBox::Slot()
+						  .HAlign(HAlign_Center)
+						  .AutoHeight()
 						[
-							SNew(STextBlock)
+							// Total size
+							SNew(SHorizontalBox)
+							+ SHorizontalBox::Slot()
+							.AutoWidth()
+							[
+								SNew(STextBlock)
 					        .AutoWrapText(true)
 					        .Text(LOCTEXT("Total Size:", "Total Size: "))
-						]
-						+ SHorizontalBox::Slot()
-						.AutoWidth()
-						[
-							SNew(STextBlock)
+							]
+							+ SHorizontalBox::Slot()
+							.AutoWidth()
+							[
+								SNew(STextBlock)
 					        .AutoWrapText(true)
 					        .Text_Lambda([this]() -> FText
-							                {
-								                return FText::AsMemory(CleaningStats.UnusedAssetsTotalSize);
-							                })
+								                {
+									                return FText::AsMemory(CleaningStats.UnusedAssetsTotalSize);
+								                })
+							]
 						]
-					]
-					// stats
-					+ SVerticalBox::Slot()
-					  .HAlign(HAlign_Center)
-					  .AutoHeight()
-					[
-						// Empty folders count
-						SNew(SHorizontalBox)
-						+ SHorizontalBox::Slot()
-						.AutoWidth()
+						// stats
+						+ SVerticalBox::Slot()
+						  .HAlign(HAlign_Center)
+						  .AutoHeight()
 						[
-							SNew(STextBlock)
+							// Empty folders count
+							SNew(SHorizontalBox)
+							+ SHorizontalBox::Slot()
+							.AutoWidth()
+							[
+								SNew(STextBlock)
                        .AutoWrapText(true)
                        .Text(LOCTEXT("Empty Folders:", "Empty Folders: "))
-						]
-						+ SHorizontalBox::Slot()
-						.AutoWidth()
-						[
-							SNew(STextBlock)
+							]
+							+ SHorizontalBox::Slot()
+							.AutoWidth()
+							[
+								SNew(STextBlock)
                            .AutoWrapText(true)
                            .Text_Lambda([this]() -> FText { return FText::AsNumber(CleaningStats.EmptyFolders); })
+							]
 						]
 					]
 				]
-			]
-			+ SVerticalBox::Slot()
-			  .AutoHeight()
-			  .Padding(FMargin(20))
-			[
-				SAssignNew(ProjectCleanerBrowserUI, SProjectCleanerBrowser)
-				.DirectoryFilterSettings(DirectoryFilterSettings)
-			]
-			// action buttons
-			+ SVerticalBox::Slot()
-			  .Padding(FMargin(20))
-			  .AutoHeight()
-			[
-				SNew(SBorder)
+				+ SVerticalBox::Slot()
+				  .AutoHeight()
+				  .Padding(FMargin(20))
+				[
+					SAssignNew(ProjectCleanerBrowserUI, SProjectCleanerBrowser)
+					.DirectoryFilterSettings(DirectoryFilterSettings)
+				]
+				// action buttons
+				+ SVerticalBox::Slot()
+				  .Padding(FMargin(20))
+				  .AutoHeight()
+				[
+					SNew(SBorder)
                 .Padding(FMargin(10))
                 .BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
-				[
-					SNew(SHorizontalBox)
-					+ SHorizontalBox::Slot()
-					// .AutoWidth()
-					.FillWidth(1.0f)
-					// .Padding(FMargin(0.0f, 0.0f, 20.0f, 0.0f))
 					[
-						SNew(SButton)
+						SNew(SHorizontalBox)
+						+ SHorizontalBox::Slot()
+						// .AutoWidth()
+						.FillWidth(1.0f)
+						// .Padding(FMargin(0.0f, 0.0f, 20.0f, 0.0f))
+						[
+							SNew(SButton)
                         .HAlign(HAlign_Center)
                         .VAlign(VAlign_Center)
                         .Text(FText::FromString("Refresh"))
                         .OnClicked_Raw(this, &FProjectCleanerModule::RefreshBrowser)
-					]
-					+ SHorizontalBox::Slot()
-					  .FillWidth(1.0f)
-					  .Padding(FMargin{40.0f, 0.0f, 40.0f, 0.0f})
-					// .AutoWidth()
-					[
-						SNew(SButton)
+						]
+						+ SHorizontalBox::Slot()
+						  .FillWidth(1.0f)
+						  .Padding(FMargin{40.0f, 0.0f, 40.0f, 0.0f})
+						// .AutoWidth()
+						[
+							SNew(SButton)
                         .HAlign(HAlign_Center)
                         .VAlign(VAlign_Center)
                         .Text(FText::FromString("Delete Unused Assets"))
 						.OnClicked_Raw(this, &FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick)
-					]
-					+ SHorizontalBox::Slot()
-					.FillWidth(1.0f)
-					// .AutoWidth()
-					// .Padding(FMargin(20.0f, 0.0f))
-					[
-						SNew(SButton)
+						]
+						+ SHorizontalBox::Slot()
+						.FillWidth(1.0f)
+						// .AutoWidth()
+						// .Padding(FMargin(20.0f, 0.0f))
+						[
+							SNew(SButton)
                         .HAlign(HAlign_Center)
                         .VAlign(VAlign_Center)
                         .Text(FText::FromString("Delete Empty Folders"))
 						.OnClicked_Raw(this, &FProjectCleanerModule::OnDeleteEmptyFolderClick)
+						]
 					]
 				]
 			]
@@ -317,8 +322,8 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 		{
 			return RootAssets.Contains(Elem);
 		});
-		
-		RootAssets.Reset();		
+
+		RootAssets.Reset();
 	}
 
 	NotificationManager->Update(NotificationRef, CleaningStats);
