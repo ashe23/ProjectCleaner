@@ -94,6 +94,9 @@ private:
 	
 	// test
 	TArray<FNode> AdjacencyList;
+
+private:
+	void InitModuleComponents();
 };
 
 

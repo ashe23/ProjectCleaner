@@ -19,8 +19,11 @@ public:
 	 * @brief Returns all unused assets in project
 	 * @param AssetContainer Container for all game assets
 	 * @param DirectoryFilterSettings Directories never scan
+	 * @param AdjacencyList Adjacency list for assets
 	 */
-	static void GetUnusedAssets(TArray<FAssetData>& AssetContainer, UDirectoryFilterSettings* DirectoryFilterSettings);
+	static void GetUnusedAssets(TArray<FAssetData>& AssetContainer,
+	                            UDirectoryFilterSettings* DirectoryFilterSettings,
+	                            TArray<FNode>& AdjacencyList);
 	/**
 	 * @brief Returns total size of given assets (in bytes)
 	 * @param AssetContainer Container for all game assets
@@ -35,6 +38,16 @@ public:
 	 * @param AssetContainer 
 	 */
 	static void GetRootAssets(TArray<FAssetData>& RootAssets, TArray<FAssetData>& AssetContainer);
+
+	/**
+	* @brief Finds all related assets using DFS for given single asset
+	* @param Node - given asset
+	* @param RelatedAssets - Assets container
+	* @param AdjacencyList - Where to search assets
+	*/
+	static void FindAllRelatedAssets(const FNode& Node,
+	                                 TArray<FName>& RelatedAssets,
+	                                 const TArray<FNode> AdjacencyList);
 private:
 	/**
 	* @brief Finds all assets in project
@@ -65,7 +78,7 @@ private:
 
 	/**
 	 * How This function works:
-	 * 1) It Creates Adjacency List for all assets in AssetsContainer
+	 * 1) It Creates Adjacency List for all assets in AssetsContainer todo:ashe23 update later
 	 * 2) Finds all assets in given directory filter paths("Exclude This Directories" from UI)
 	 * 3) Using DFS algorithm finds all related assets for founded assets in Step #2
 	 * 4) And finally removes them from AssetContainer
@@ -90,10 +103,12 @@ private:
 	 *	
 	 * @brief Deletes all assets from AssetContainer that user picked from "Exclude This Directories" filter 
 	 * @param AssetContainer 
-	 * @param DirectoryFilterSettings 
+	 * @param DirectoryFilterSettings
+	 * @param AdjacencyList Adjacency list for assets
 	 */
 	static void ApplyDirectoryFilters(TArray<FAssetData>& AssetContainer,
-	                                  UDirectoryFilterSettings* DirectoryFilterSettings);
+	                                  UDirectoryFilterSettings* DirectoryFilterSettings,
+	                                  TArray<FNode>& AdjacencyList);
 
 	/**
 	 * @brief Create adjacency list for given assets
@@ -101,14 +116,4 @@ private:
 	 * @param AdjacencyList 
 	 */
 	static void CreateAdjacencyList(TArray<FAssetData>& AssetContainer, TArray<FNode>& AdjacencyList);
-
-	/**
-	 * @brief Finds all related assets using DFS for given single asset
-	 * @param Node - given asset
-	 * @param RelatedAssets - Assets container
-	 * @param AdjacencyList - Where to search assets
-	 */
-	static void FindAllRelatedAssets(const FNode& Node,
-	                                 TArray<FName>& RelatedAssets,
-	                                 const TArray<FNode> AdjacencyList);
 };

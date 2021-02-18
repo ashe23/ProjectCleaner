@@ -10,36 +10,43 @@
 #include "AssetRegistryModule.h"
 #include "AssetRegistry/Public/AssetData.h"
 #include "Engine/World.h"
+#include "Misc/ScopedSlowTask.h"
 
 #pragma optimize("", off)
 
 void AssetQueryManager::GetUnusedAssets(TArray<FAssetData>& AssetContainer,
-                                        UDirectoryFilterSettings* DirectoryFilterSettings)
+                                        UDirectoryFilterSettings* DirectoryFilterSettings,
+                                        TArray<FNode>& AdjacencyList)
 {
-	// todo:ashe23 SlowScope here maybe?
+	FScopedSlowTask SlowTask{3.0f, FText::FromString("Scanning project for unused assets...")};
+	SlowTask.MakeDialog();
+
 	AssetContainer.Reset();
-	
+	AdjacencyList.Reset();
+
 	// 1) Filtering and keeping all assets that never used in any levels
 	GetAllAssets(AssetContainer);
 	AssetFilterManager::RemoveLevelAssets(AssetContainer);
 	TSet<FName> Deps;
 	GetAllAssetNamesThatUsedInLevel(Deps);
 	AssetFilterManager::Difference(AssetContainer, Deps);
+	CreateAdjacencyList(AssetContainer, AdjacencyList);
+
+	SlowTask.EnterProgressFrame(1.0f);
 
 	// 2) Filtering assets and their related assets from directories "Exclude This Directories" filter
 	if (ShouldApplyDirectoryFilters(DirectoryFilterSettings))
 	{
-		ApplyDirectoryFilters(AssetContainer, DirectoryFilterSettings);
+		ApplyDirectoryFilters(AssetContainer, DirectoryFilterSettings, AdjacencyList);
 	}
 
-	// 3) Filtering also assets that used in source code files via hardlinks
-	TArray<FString> AllSourceFiles;
-	ProjectCleanerUtility::FindAllSourceFiles(AllSourceFiles);
+	SlowTask.EnterProgressFrame(1.0f);
 
-	AssetContainer.RemoveAll([&](const FAssetData& Val)
-	{
-		return ProjectCleanerUtility::UsedInSourceFiles(AllSourceFiles, Val.PackageName);
-	});
+	// 3) Filtering also assets that used in source code files via hardlinks, and for every single one, finding
+	// related assets and excluding them from deletion list
+	AssetFilterManager::RemoveAllAssetsUsedInSourceFiles(AssetContainer, AdjacencyList);
+
+	SlowTask.EnterProgressFrame(1.0f);
 }
 
 int64 AssetQueryManager::GetTotalSize(const TArray<FAssetData>& AssetContainer)
@@ -69,14 +76,14 @@ void AssetQueryManager::GetRootAssets(TArray<FAssetData>& RootAssets, TArray<FAs
 
 		// sometimes assets has self reference on itself, so we remove them from list
 		SoftRefs.RemoveAll([&](const FName& Val)
-        {
-            return Val == UnusedAsset.PackageName;
-        });
+		{
+			return Val == UnusedAsset.PackageName;
+		});
 
 		HardRefs.RemoveAll([&](const FName& Val)
-        {
-            return Val == UnusedAsset.PackageName;
-        });
+		{
+			return Val == UnusedAsset.PackageName;
+		});
 
 		if (HardRefs.Num() > 0) continue;
 
@@ -106,6 +113,29 @@ void AssetQueryManager::GetRootAssets(TArray<FAssetData>& RootAssets, TArray<FAs
 		}
 	}
 }
+
+void AssetQueryManager::FindAllRelatedAssets(const FNode& Node,
+                                             TArray<FName>& RelatedAssets,
+                                             const TArray<FNode> AdjacencyList)
+{
+	RelatedAssets.AddUnique(Node.Asset);
+	for (const auto& Adj : Node.AdjacentAssets)
+	{
+		if (!RelatedAssets.Contains(Adj))
+		{
+			const FNode* NodeRef = AdjacencyList.FindByPredicate([&](const FNode& Elem)
+			{
+				return Elem.Asset == Adj;
+			});
+
+			if (NodeRef)
+			{
+				FindAllRelatedAssets(*NodeRef, RelatedAssets, AdjacencyList);
+			}
+		}
+	}
+}
+
 
 void AssetQueryManager::GetAllAssets(TArray<FAssetData>& AssetContainer)
 {
@@ -167,12 +197,13 @@ bool AssetQueryManager::ShouldApplyDirectoryFilters(UDirectoryFilterSettings* Di
 }
 
 void AssetQueryManager::ApplyDirectoryFilters(TArray<FAssetData>& AssetContainer,
-                                              UDirectoryFilterSettings* DirectoryFilterSettings)
+                                              UDirectoryFilterSettings* DirectoryFilterSettings,
+                                              TArray<FNode>& AdjacencyList)
 {
 	if (AssetContainer.Num() == 0) return;
 
-	TArray<FNode> AdjacencyList;
-	CreateAdjacencyList(AssetContainer, AdjacencyList);
+	// TArray<FNode> AdjacencyList;
+	// CreateAdjacencyList(AssetContainer, AdjacencyList);
 
 	// query list of assets in given directory paths in filter section
 	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
@@ -249,28 +280,6 @@ void AssetQueryManager::CreateAdjacencyList(TArray<FAssetData>& AssetContainer, 
 		}
 
 		AdjacencyList.Add(Node);
-	}
-}
-
-void AssetQueryManager::FindAllRelatedAssets(const FNode& Node,
-                                             TArray<FName>& RelatedAssets,
-                                             const TArray<FNode> AdjacencyList)
-{
-	RelatedAssets.AddUnique(Node.Asset);
-	for (const auto& Adj : Node.AdjacentAssets)
-	{
-		if (!RelatedAssets.Contains(Adj))
-		{
-			const FNode* NodeRef = AdjacencyList.FindByPredicate([&](const FNode& Elem)
-			{
-				return Elem.Asset == Adj;
-			});
-
-			if (NodeRef)
-			{
-				FindAllRelatedAssets(*NodeRef, RelatedAssets, AdjacencyList);
-			}
-		}
 	}
 }
 

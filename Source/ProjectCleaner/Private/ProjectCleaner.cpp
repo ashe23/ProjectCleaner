@@ -38,43 +38,7 @@ void FProjectCleanerModule::StartupModule()
 	FProjectCleanerStyle::Initialize();
 	FProjectCleanerStyle::ReloadTextures();
 
-	FProjectCleanerCommands::Register();
-
-	PluginCommands = MakeShareable(new FUICommandList);
-
-	PluginCommands->MapAction(
-		FProjectCleanerCommands::Get().PluginAction,
-		FExecuteAction::CreateRaw(this, &FProjectCleanerModule::PluginButtonClicked),
-		FCanExecuteAction());
-
-	FLevelEditorModule& LevelEditorModule = FModuleManager::LoadModuleChecked<FLevelEditorModule>("LevelEditor");
-
-	{
-		TSharedPtr<FExtender> MenuExtender = MakeShareable(new FExtender());
-		MenuExtender->AddMenuExtension(
-			"WindowLayout",
-			EExtensionHook::After,
-			PluginCommands,
-			FMenuExtensionDelegate::CreateRaw(this, &FProjectCleanerModule::AddMenuExtension)
-		);
-
-		LevelEditorModule.GetMenuExtensibilityManager()->AddExtender(MenuExtender);
-	}
-
-	{
-		TSharedPtr<FExtender> ToolbarExtender = MakeShareable(new FExtender);
-		ToolbarExtender->AddToolBarExtension("Settings", EExtensionHook::After, PluginCommands,
-		                                     FToolBarExtensionDelegate::CreateRaw(
-			                                     this, &FProjectCleanerModule::AddToolbarExtension));
-
-		LevelEditorModule.GetToolBarExtensibilityManager()->AddExtender(ToolbarExtender);
-	}
-
-	FGlobalTabmanager::Get()->RegisterNomadTabSpawner(ProjectCleanerTabName,
-	                                                  FOnSpawnTab::CreateRaw(
-		                                                  this, &FProjectCleanerModule::OnSpawnPluginTab))
-	                        .SetDisplayName(LOCTEXT("FProjectCleanerTabTitle", "ProjectCleaner"))
-	                        .SetMenuType(ETabSpawnerMenuType::Hidden);
+	InitModuleComponents();
 
 	// Reserve some space
 	UnusedAssets.Reserve(100);
@@ -722,6 +686,52 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 	// 	];
 }
 
+void FProjectCleanerModule::InitModuleComponents()
+{
+	FProjectCleanerCommands::Register();
+
+	PluginCommands = MakeShareable(new FUICommandList);
+
+	PluginCommands->MapAction(
+		FProjectCleanerCommands::Get().PluginAction,
+		FExecuteAction::CreateRaw(this, &FProjectCleanerModule::PluginButtonClicked),
+		FCanExecuteAction()
+	);
+
+	FLevelEditorModule& LevelEditorModule = FModuleManager::LoadModuleChecked<FLevelEditorModule>("LevelEditor");
+
+	{
+		TSharedPtr<FExtender> MenuExtender = MakeShareable(new FExtender());
+		MenuExtender->AddMenuExtension(
+			"WindowLayout",
+			EExtensionHook::After,
+			PluginCommands,
+			FMenuExtensionDelegate::CreateRaw(this, &FProjectCleanerModule::AddMenuExtension)
+		);
+
+		LevelEditorModule.GetMenuExtensibilityManager()->AddExtender(MenuExtender);
+	}
+
+	{
+		TSharedPtr<FExtender> ToolbarExtender = MakeShareable(new FExtender);
+		ToolbarExtender->AddToolBarExtension(
+			"Settings",
+			EExtensionHook::After,
+			PluginCommands,
+			FToolBarExtensionDelegate::CreateRaw(this, &FProjectCleanerModule::AddToolbarExtension)
+		);
+
+		LevelEditorModule.GetToolBarExtensibilityManager()->AddExtender(ToolbarExtender);
+	}
+
+	FGlobalTabmanager::Get()->RegisterNomadTabSpawner(
+		                        ProjectCleanerTabName,
+		                        FOnSpawnTab::CreateRaw(this, &FProjectCleanerModule::OnSpawnPluginTab)
+	                        )
+	                        .SetDisplayName(LOCTEXT("FProjectCleanerTabTitle", "ProjectCleaner"))
+	                        .SetMenuType(ETabSpawnerMenuType::Hidden);
+}
+
 FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 {
 	if (UnusedAssets.Num() == 0)
@@ -844,7 +854,7 @@ FReply FProjectCleanerModule::OnDeleteEmptyFolderClick()
 
 void FProjectCleanerModule::UpdateStats()
 {
-	AssetQueryManager::GetUnusedAssets(UnusedAssets, DirectoryFilterSettings);
+	AssetQueryManager::GetUnusedAssets(UnusedAssets, DirectoryFilterSettings, AdjacencyList);
 	ProjectCleanerUtility::GetEmptyFoldersNum(EmptyFolders, NonProjectFiles);
 
 	CleaningStats.UnusedAssetsNum = UnusedAssets.Num();

@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 
 struct FAssetData;
+struct FNode;
 
 /**
  * @brief This class responsible for filtering assets
@@ -31,4 +32,12 @@ public:
 	 * @param FilterSet 
 	 */
 	static void Difference(TArray<FAssetData>& AssetContainer, TSet<FName>& FilterSet);
+
+	/**
+	 * @brief Removes all assets and their related assets from asset container,
+	 * if one of assets in chain has been used in source files via hardlink
+	 * @param AssetContainer 
+	 * @param AdjacencyList 
+	 */
+	static void RemoveAllAssetsUsedInSourceFiles(TArray<FAssetData>& AssetContainer, TArray<FNode>& AdjacencyList);
 };
