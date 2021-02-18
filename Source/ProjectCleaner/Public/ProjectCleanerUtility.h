@@ -3,6 +3,8 @@
 #pragma once
 
 #include "StructsContainer.h"
+
+// Engine Headers
 #include "CoreMinimal.h"
 
 struct FAssetData;
@@ -14,37 +16,88 @@ struct FAssetData;
 class PROJECTCLEANER_API ProjectCleanerUtility
 {
 public:
-	// Check if given path contains files in it, non recursive
+	/**
+	 * @brief Check if given path contains files in it, non recursive
+	 * @param SearchPath 
+	 * @return bool
+	 */
 	static bool HasFiles(const FString& SearchPath);
 
-	// Finds all empty folders in given path recursive version
-	static bool GetAllEmptyDirectories(const FString& SearchPath, TArray<FString>& Directories, TArray<FString>& NonProjectFiles, const bool bIsRootDirectory);
-	
-	// Finds all child directions in given path
+	/**
+	 * @brief Finds all empty folders in given path recursive version
+	 * @param SearchPath 
+	 * @param Directories 
+	 * @param NonProjectFiles 
+	 * @param bIsRootDirectory 
+	 * @return bool
+	 */
+	static bool GetAllEmptyDirectories(const FString& SearchPath,
+	                                   TArray<FString>& Directories,
+	                                   TArray<FString>& NonProjectFiles,
+	                                   const bool bIsRootDirectory);
+
+	/**
+	 * @brief Finds all child directions in given path
+	 * @param SearchPath 
+	 * @param Output 
+	 */
 	static void GetChildrenDirectories(const FString& SearchPath, TArray<FString>& Output);
 
-	// Removes from given Directories "Developers" and "Collections" folders
+	/**
+	 * @brief Removes from given Directories "Developers" and "Collections" folders
+	 * @param Directories 
+	 */
 	static void RemoveDevsAndCollectionsDirectories(TArray<FString>& Directories);
 
-	// Deletes Empty Folders
+	/**
+	 * @brief Deletes Empty Folders
+	 * @param EmptyFolders 
+	 */
 	static void DeleteEmptyFolders(TArray<FString>& EmptyFolders);
-	
-	// Returns total number of empty folders
-	static int32 GetEmptyFoldersNum(TArray<FString>& EmptyFolders,TArray<FString>& NonProjectFiles);
 
-	// Fixup Redirectors , same as in content browser menu
+	/**
+	 * @brief Returns total number of empty folders
+	 * @param EmptyFolders 
+	 * @param NonProjectFiles 
+	 * @return Number of empty folders
+	 */
+	static int32 GetEmptyFoldersNum(TArray<FString>& EmptyFolders, TArray<FString>& NonProjectFiles);
+
+	/**
+	 * @brief Fixup Redirectors , same as in content browser menu
+	 */
 	static void FixupRedirectors();
 
-	// Deletes given array of assets
+	/**
+	 * @brief Deletes given array of assets
+	 * @param Assets 
+	 * @return Number of deleted assets
+	 */
 	static int32 DeleteAssets(TArray<FAssetData>& Assets);
 
+	/**
+	 * @brief Finds all non .uproject files
+	 * @param SearchPath 
+	 * @param NonProjectFilesList 
+	 */
 	static void FindNonProjectFiles(const FString& SearchPath, TArray<FString>& NonProjectFilesList);
 
-	// Finds all ".h" and ".cpp" source files in Project "Source" and "Plugins" directories
+	/**
+	 * @brief Finds all ".h" and ".cpp" source files in Project "Source" and "Plugins" directories
+	 * @param AllFiles 
+	 */
 	static void FindAllSourceFiles(TArray<FString>& AllFiles);
-	
-	// Check if given asset used in source codes (hardcoded path)
+
+	/**
+	 * @brief Check if given asset used in source codes (hardcoded path)
+	 * @param AllFiles 
+	 * @param Asset 
+	 * @return bool
+	 */
 	static bool UsedInSourceFiles(const TArray<FString>& AllFiles, const FName& Asset);
 
+	/**
+	 * @brief Saves all unsaved assets
+	 */
 	static void SaveAllAssets();
 };

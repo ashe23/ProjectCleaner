@@ -77,10 +77,9 @@ public:
 
 	/**
 	 * How This function works:
-	 * 1) It Creates Adjacency List for all assets in AssetsContainer todo:ashe23 update later
-	 * 2) Finds all assets in given directory filter paths("Exclude This Directories" from UI)
-	 * 3) Using DFS algorithm finds all related assets for founded assets in Step #2
-	 * 4) And finally removes them from AssetContainer
+	 * 1) Finds all assets in given directory filter paths("Exclude This Directories" from UI)
+	 * 2) Using DFS algorithm finds all related assets for founded assets in Step #1
+	 * 3) And finally removes them from AssetContainer
 	 *
 	 * This is needed, because asset dependencies can be in different folders and if even one asset in dependency chain
 	 * is in filter directory path, we should exclude all assets in chain.

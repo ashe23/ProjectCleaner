@@ -3,33 +3,32 @@
 #include "ProjectCleaner.h"
 #include "ProjectCleanerStyle.h"
 #include "ProjectCleanerCommands.h"
-#include "Misc/MessageDialog.h"
-#include "AssetRegistryModule.h"
+#include "ProjectCleanerNotificationManager.h"
+#include "ProjectCleanerUtility.h"
+#include "AssetQueryManager.h"
+
+// Engine Headers
 #include "IContentBrowserSingleton.h"
+#include "AssetRegistryModule.h"
+#include "Misc/MessageDialog.h"
 #include "LevelEditor.h"
 #include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "Widgets/Docking/SDockTab.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Text/STextBlock.h"
 #include "Widgets/Layout/SScrollBox.h"
-#include "ObjectTools.h"
 #include "EditorStyleSet.h"
 #include "GenericPlatform/GenericPlatformMisc.h"
 #include "AssetRegistry/Public/AssetData.h"
-#include "ProjectCleanerNotificationManager.h"
-#include "ProjectCleanerUtility.h"
 #include "Framework/Notifications/NotificationManager.h"
 #include "Editor/ContentBrowser/Public/ContentBrowserModule.h"
 
-#include "AssetQueryManager.h"
 
 DEFINE_LOG_CATEGORY(LogProjectCleaner);
 
 static const FName ProjectCleanerTabName("ProjectCleaner");
 
 #define LOCTEXT_NAMESPACE "FProjectCleanerModule"
-
-#pragma optimize("", off)
 
 void FProjectCleanerModule::StartupModule()
 {
@@ -117,15 +116,15 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 							.AutoWidth()
 							[
 								SNew(STextBlock)
-					        .AutoWrapText(true)
-					        .Text(LOCTEXT("Unused Assets:", "Unused Assets: "))
+						        .AutoWrapText(true)
+						        .Text(LOCTEXT("Unused Assets", "Unused Assets - "))
 							]
 							+ SHorizontalBox::Slot()
 							.AutoWidth()
 							[
 								SNew(STextBlock)
-					        .AutoWrapText(true)
-					        .Text_Lambda([this]() -> FText { return FText::AsNumber(CleaningStats.UnusedAssetsNum); })
+						        .AutoWrapText(true)
+						        .Text_Lambda([this]() -> FText { return FText::AsNumber(CleaningStats.UnusedAssetsNum); })
 							]
 
 						]
@@ -140,8 +139,8 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 							.AutoWidth()
 							[
 								SNew(STextBlock)
-					        .AutoWrapText(true)
-					        .Text(LOCTEXT("Total Size:", "Total Size: "))
+						        .AutoWrapText(true)
+						        .Text(LOCTEXT("Total Size", "Total Size - "))
 							]
 							+ SHorizontalBox::Slot()
 							.AutoWidth()
@@ -165,15 +164,15 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 							.AutoWidth()
 							[
 								SNew(STextBlock)
-                       .AutoWrapText(true)
-                       .Text(LOCTEXT("Empty Folders:", "Empty Folders: "))
+		                       .AutoWrapText(true)
+		                       .Text(LOCTEXT("Empty Folders", "Empty Folders - "))
 							]
 							+ SHorizontalBox::Slot()
 							.AutoWidth()
 							[
 								SNew(STextBlock)
-                           .AutoWrapText(true)
-                           .Text_Lambda([this]() -> FText { return FText::AsNumber(CleaningStats.EmptyFolders); })
+	                           .AutoWrapText(true)
+	                           .Text_Lambda([this]() -> FText { return FText::AsNumber(CleaningStats.EmptyFolders); })
 							]
 						]
 					]
@@ -196,37 +195,32 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 					[
 						SNew(SHorizontalBox)
 						+ SHorizontalBox::Slot()
-						// .AutoWidth()
 						.FillWidth(1.0f)
-						// .Padding(FMargin(0.0f, 0.0f, 20.0f, 0.0f))
 						[
 							SNew(SButton)
-                        .HAlign(HAlign_Center)
-                        .VAlign(VAlign_Center)
-                        .Text(FText::FromString("Refresh"))
-                        .OnClicked_Raw(this, &FProjectCleanerModule::RefreshBrowser)
+	                        .HAlign(HAlign_Center)
+	                        .VAlign(VAlign_Center)
+	                        .Text(FText::FromString("Refresh"))
+	                        .OnClicked_Raw(this, &FProjectCleanerModule::RefreshBrowser)
 						]
 						+ SHorizontalBox::Slot()
 						  .FillWidth(1.0f)
 						  .Padding(FMargin{40.0f, 0.0f, 40.0f, 0.0f})
-						// .AutoWidth()
 						[
 							SNew(SButton)
-                        .HAlign(HAlign_Center)
-                        .VAlign(VAlign_Center)
-                        .Text(FText::FromString("Delete Unused Assets"))
-						.OnClicked_Raw(this, &FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick)
+	                        .HAlign(HAlign_Center)
+	                        .VAlign(VAlign_Center)
+	                        .Text(FText::FromString("Delete Unused Assets"))
+							.OnClicked_Raw(this, &FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick)
 						]
 						+ SHorizontalBox::Slot()
 						.FillWidth(1.0f)
-						// .AutoWidth()
-						// .Padding(FMargin(20.0f, 0.0f))
 						[
 							SNew(SButton)
-                        .HAlign(HAlign_Center)
-                        .VAlign(VAlign_Center)
-                        .Text(FText::FromString("Delete Empty Folders"))
-						.OnClicked_Raw(this, &FProjectCleanerModule::OnDeleteEmptyFolderClick)
+	                        .HAlign(HAlign_Center)
+	                        .VAlign(VAlign_Center)
+	                        .Text(FText::FromString("Delete Empty Folders"))
+							.OnClicked_Raw(this, &FProjectCleanerModule::OnDeleteEmptyFolderClick)
 						]
 					]
 				]
@@ -448,7 +442,6 @@ void FProjectCleanerModule::UpdateContentBrowser() const
 	AssetRegistryModule.Get().SearchAllAssets(true);
 }
 
-#pragma optimize("", on)
 #undef LOCTEXT_NAMESPACE
 
 IMPLEMENT_MODULE(FProjectCleanerModule, ProjectCleaner)

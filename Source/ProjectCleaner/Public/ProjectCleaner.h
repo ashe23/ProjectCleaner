@@ -2,9 +2,11 @@
 
 #pragma once
 
-#include "Input/Reply.h"
 #include "StructsContainer.h"
 #include "UI/SProjectCleanerBrowser.h"
+
+// Engine Headers
+#include "Input/Reply.h"
 #include "Modules/ModuleInterface.h"
 #include "CoreMinimal.h"
 
@@ -39,9 +41,10 @@ public:
 	void PluginButtonClicked();
 	
 private:
-
+	void InitModuleComponents();
 	void AddToolbarExtension(FToolBarBuilder& Builder);
 	void AddMenuExtension(FMenuBuilder& Builder);
+	TSharedRef<SDockTab> OnSpawnPluginTab(const class FSpawnTabArgs& SpawnTabArgs);
 
 	FReply RefreshBrowser();
 	void UpdateStats();
@@ -72,11 +75,8 @@ private:
 	 */
 	static bool IsConfirmationWindowCanceled(EAppReturnType::Type Status);
 
-	// Stats
 	FCleaningStats CleaningStats;
 	FStandardCleanerText StandardCleanerText;
-private:
-	TSharedRef<SDockTab> OnSpawnPluginTab(const class FSpawnTabArgs& SpawnTabArgs);
 	TSharedPtr<class FUICommandList> PluginCommands;
 	TArray<FAssetData> UnusedAssets;
 	TArray<FNode> AdjacencyList;
@@ -85,8 +85,6 @@ private:
 	ProjectCleanerNotificationManager* NotificationManager;
 	TWeakPtr<SProjectCleanerBrowser> ProjectCleanerBrowserUI;
 	UDirectoryFilterSettings* DirectoryFilterSettings;
-private:
-	void InitModuleComponents();
 };
 
 

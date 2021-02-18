@@ -3,13 +3,13 @@
 
 #include "AssetFilterManager.h"
 #include "ProjectCleanerUtility.h"
+#include "StructsContainer.h"
 
 // Engine Headers
 #include "AssetQueryManager.h"
 #include "AssetRegistryModule.h"
 #include "AssetRegistry/Public/AssetData.h"
 #include "Engine/World.h"
-#pragma optimize("", off)
 
 void AssetFilterManager::RemoveLevelAssets(TArray<FAssetData>& AssetContainer)
 {
@@ -66,10 +66,3 @@ void AssetFilterManager::RemoveAllAssetsUsedInSourceFiles(TArray<FAssetData>& As
         return UsedInSourceFilesRelatedAssets.Contains(Val.PackageName);
     });
 }
-
-void AssetFilterManager::IsCyclic(FNode* Node, TArray<FNode>& AdjacencyList, TArray<FNode*>& Visited)
-{
-	Visited.AddUnique(Node);
-}
-
-#pragma optimize("", on)

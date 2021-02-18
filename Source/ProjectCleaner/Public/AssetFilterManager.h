@@ -40,6 +40,4 @@ public:
 	 * @param AdjacencyList 
 	 */
 	static void RemoveAllAssetsUsedInSourceFiles(TArray<FAssetData>& AssetContainer, TArray<FNode>& AdjacencyList);
-
-	static void IsCyclic(FNode* Node, TArray<FNode>& AdjacencyList, TArray<FNode*>& Visited);
 };

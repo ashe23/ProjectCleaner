@@ -11,8 +11,6 @@
 #include "Engine/World.h"
 #include "Misc/ScopedSlowTask.h"
 
-#pragma optimize("", off)
-
 void AssetQueryManager::GetUnusedAssets(TArray<FAssetData>& AssetContainer,
                                         UDirectoryFilterSettings* DirectoryFilterSettings,
                                         TArray<FNode>& AdjacencyList)
@@ -199,9 +197,6 @@ void AssetQueryManager::ApplyDirectoryFilters(TArray<FAssetData>& AssetContainer
 {
 	if (AssetContainer.Num() == 0) return;
 
-	// TArray<FNode> AdjacencyList;
-	// CreateAdjacencyList(AssetContainer, AdjacencyList);
-
 	// query list of assets in given directory paths in filter section
 	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
 	TArray<FAssetData> ProcessingAssets;
@@ -279,6 +274,3 @@ void AssetQueryManager::CreateAdjacencyList(TArray<FAssetData>& AssetContainer, 
 		AdjacencyList.Add(Node);
 	}
 }
-
-
-#pragma optimize("", on)

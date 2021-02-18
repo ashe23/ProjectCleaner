@@ -1,7 +1,6 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+﻿#include "ProjectCleanerUtility.h"
 
-
-#include "ProjectCleanerUtility.h"
+// Engine Headers
 #include "HAL/FileManager.h"
 #include "AssetRegistry/Public/AssetData.h"
 #include "AssetRegistryModule.h"
@@ -17,8 +16,6 @@
 #include "Misc/ScopedSlowTask.h"
 #include "IContentBrowserSingleton.h"
 #include "Editor/ContentBrowser/Public/ContentBrowserModule.h"
-
-#pragma optimize("", off)
 
 bool ProjectCleanerUtility::HasFiles(const FString& SearchPath)
 {
@@ -265,7 +262,6 @@ bool ProjectCleanerUtility::UsedInSourceFiles(const TArray<FString>& AllFiles, c
 {
 	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
 
-	// todo:ashe23 should also remove all related assets
 	for (const auto& File : AllFiles)
 	{
 		if (PlatformFile.FileExists(*File))
@@ -293,5 +289,3 @@ void ProjectCleanerUtility::SaveAllAssets()
 		false
 	);
 }
-
-#pragma optimize("", on)
