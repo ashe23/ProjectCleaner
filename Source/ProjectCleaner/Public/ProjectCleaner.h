@@ -3,7 +3,6 @@
 #pragma once
 
 #include "Input/Reply.h"
-#include "Brushes/SlateColorBrush.h"
 #include "StructsContainer.h"
 #include "UI/SProjectCleanerBrowser.h"
 #include "Modules/ModuleInterface.h"
@@ -24,9 +23,7 @@ DECLARE_LOG_CATEGORY_EXTERN(LogProjectCleaner, Log, All);
 class FProjectCleanerModule : public IModuleInterface
 {
 public:
-	FProjectCleanerModule() :
-			TipOneBrushColor(FSlateColorBrush{ FLinearColor{0.5625f, 0.9296875f, 0.5625f, 1.0f } }),
-			TipTwoBrushColor(FSlateColorBrush{ FLinearColor{1.0f, 0.039437f, 0.0f, 0.227f } })
+	FProjectCleanerModule()
 	{
 		NotificationManager = nullptr;
 		DirectoryFilterSettings = nullptr;
@@ -82,19 +79,12 @@ private:
 	TSharedRef<SDockTab> OnSpawnPluginTab(const class FSpawnTabArgs& SpawnTabArgs);
 	TSharedPtr<class FUICommandList> PluginCommands;
 	TArray<FAssetData> UnusedAssets;
+	TArray<FNode> AdjacencyList;
 	TArray<FString> EmptyFolders;
 	TArray<FString> NonProjectFiles;
 	ProjectCleanerNotificationManager* NotificationManager;
-	TSharedPtr<SWindow> TestWindow;
 	TWeakPtr<SProjectCleanerBrowser> ProjectCleanerBrowserUI;
 	UDirectoryFilterSettings* DirectoryFilterSettings;
-	// Slate styles
-	FSlateColorBrush TipOneBrushColor;
-	FSlateColorBrush TipTwoBrushColor;
-	
-	// test
-	TArray<FNode> AdjacencyList;
-
 private:
 	void InitModuleComponents();
 };

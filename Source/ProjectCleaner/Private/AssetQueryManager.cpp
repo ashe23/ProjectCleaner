@@ -2,7 +2,6 @@
 
 #include "AssetQueryManager.h"
 #include "AssetFilterManager.h"
-#include "ProjectCleanerUtility.h"
 #include "UI/SProjectCleanerBrowser.h"
 #include "StructsContainer.h"
 
@@ -67,49 +66,47 @@ void AssetQueryManager::GetRootAssets(TArray<FAssetData>& RootAssets, TArray<FAs
 {
 	FAssetRegistryModule& AssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
 
-	for (const auto& UnusedAsset : AssetContainer)
+	bool bCycleDetected = false;
+	for (const auto& Asset : AssetContainer)
 	{
-		TArray<FName> SoftRefs;
-		TArray<FName> HardRefs;
-		AssetRegistry.Get().GetReferencers(UnusedAsset.PackageName, SoftRefs, EAssetRegistryDependencyType::Soft);
-		AssetRegistry.Get().GetReferencers(UnusedAsset.PackageName, HardRefs, EAssetRegistryDependencyType::Hard);
+		TArray<FName> Refs;
+		TArray<FName> Deps;
 
-		// sometimes assets has self reference on itself, so we remove them from list
-		SoftRefs.RemoveAll([&](const FName& Val)
+		AssetRegistry.Get().GetReferencers(Asset.PackageName, Refs);
+		AssetRegistry.Get().GetDependencies(Asset.PackageName, Deps);
+
+		for (const auto& Ref : Refs)
 		{
-			return Val == UnusedAsset.PackageName;
-		});
-
-		HardRefs.RemoveAll([&](const FName& Val)
-		{
-			return Val == UnusedAsset.PackageName;
-		});
-
-		if (HardRefs.Num() > 0) continue;
-
-		if (SoftRefs.Num() > 0)
-		{
-			for (const auto& SoftRef : SoftRefs)
+			if (Deps.Contains(Ref) && Ref != Asset.PackageName)
 			{
-				TArray<FName> Refs;
-				AssetRegistry.Get().GetReferencers(SoftRef, Refs, EAssetRegistryDependencyType::Hard);
-
-				// if soft refs referencer has same asset and no other as hard ref => add to list
-				// This detects cycle
-				if (Refs.Num() == 1 && Refs.Contains(UnusedAsset.PackageName))
+				bCycleDetected = true;
+				FAssetData* AssetData = GetAssetData(Ref, AssetContainer);
+				if (AssetData)
 				{
-					FAssetData* AssetData = GetAssetData(SoftRef, AssetContainer);
-					if (AssetData && AssetData->IsValid())
-					{
-						RootAssets.AddUnique(*AssetData);
-						RootAssets.AddUnique(UnusedAsset);
-					}
+					RootAssets.AddUnique(*AssetData);
 				}
+				RootAssets.AddUnique(Asset);
 			}
 		}
-		else
+	}
+
+	if (!bCycleDetected)
+	{
+		for (const auto& Asset : AssetContainer)
 		{
-			RootAssets.AddUnique(UnusedAsset);
+			TArray<FName> Refs;
+
+			AssetRegistry.Get().GetReferencers(Asset.PackageName, Refs);
+
+			Refs.RemoveAll([&](const FName& Elem)
+			{
+				return Elem == Asset.PackageName;
+			});
+			
+			if (Refs.Num() == 0)
+			{
+				RootAssets.AddUnique(Asset);
+			}
 		}
 	}
 }

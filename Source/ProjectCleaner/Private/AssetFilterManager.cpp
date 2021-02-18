@@ -67,4 +67,9 @@ void AssetFilterManager::RemoveAllAssetsUsedInSourceFiles(TArray<FAssetData>& As
     });
 }
 
+void AssetFilterManager::IsCyclic(FNode* Node, TArray<FNode>& AdjacencyList, TArray<FNode*>& Visited)
+{
+	Visited.AddUnique(Node);
+}
+
 #pragma optimize("", on)

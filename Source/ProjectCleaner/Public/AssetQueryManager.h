@@ -48,7 +48,6 @@ public:
 	static void FindAllRelatedAssets(const FNode& Node,
 	                                 TArray<FName>& RelatedAssets,
 	                                 const TArray<FNode> AdjacencyList);
-private:
 	/**
 	* @brief Finds all assets in project
 	* @param AssetContainer Container for all game assets
