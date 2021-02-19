@@ -43,6 +43,9 @@ void AssetQueryManager::GetUnusedAssets(TArray<FAssetData>& AssetContainer,
 	// related assets and excluding them from deletion list
 	AssetFilterManager::RemoveAllAssetsUsedInSourceFiles(AssetContainer, AdjacencyList);
 
+	// making sure there is no any level assets in list
+	AssetFilterManager::RemoveLevelAssets(AssetContainer);
+
 	SlowTask.EnterProgressFrame(1.0f);
 }
 
