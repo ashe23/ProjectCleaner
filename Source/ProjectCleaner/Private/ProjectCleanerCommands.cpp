@@ -6,7 +6,12 @@
 
 void FProjectCleanerCommands::RegisterCommands()
 {
-	UI_COMMAND(PluginAction, "ProjectCleaner", "Delete unused assets and empty folders.", EUserInterfaceActionType::Button, FInputGesture());
+	UI_COMMAND(
+		PluginAction,
+		"ProjectCleaner",
+		"Delete unused assets and empty folders.",
+		EUserInterfaceActionType::Button, FInputGesture()
+	);
 }
 
 #undef LOCTEXT_NAMESPACE

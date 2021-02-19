@@ -118,7 +118,12 @@ int32 ProjectCleanerUtility::GetEmptyFoldersNum(TArray<FString>& EmptyFolders, T
 	NonProjectFiles.Empty();
 
 	const auto ProjectRoot = FPaths::ProjectContentDir();
-	GetAllEmptyDirectories(ProjectRoot / TEXT("*"), EmptyFolders, NonProjectFiles, true);
+	GetAllEmptyDirectories(
+		ProjectRoot / TEXT("*"),
+		EmptyFolders,
+		NonProjectFiles,
+		true
+	);
 
 	SlowTask.EnterProgressFrame(1.0f);
 
@@ -215,7 +220,7 @@ void ProjectCleanerUtility::FindNonProjectFiles(const FString& SearchPath, TArra
 void ProjectCleanerUtility::FindAllSourceFiles(TArray<FString>& AllFiles)
 {
 	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
-	
+
 	// 1) finding all source files in main project "Source" directory (<yourproject>/Source/*)
 	const auto ProjectSourceDir = FPaths::GameSourceDir();
 	TArray<FString> ProjectSourceFiles;
@@ -227,17 +232,17 @@ void ProjectCleanerUtility::FindAllSourceFiles(TArray<FString>& AllFiles)
 	// But we should include only "Source" directories in our scanning
 	const auto ProjectPluginsDir = FPaths::ProjectPluginsDir();
 	TArray<FString> ProjectPluginsFiles;
-	
+
 	// finding all installed plugins in "Plugins" directory
 	struct DirectoryVisitor : public IPlatformFile::FDirectoryVisitor
 	{
 		virtual bool Visit(const TCHAR* FilenameOrDirectory, bool bIsDirectory) override
 		{
-			if(bIsDirectory)
+			if (bIsDirectory)
 			{
 				InstalledPlugins.Add(FilenameOrDirectory);
 			}
-			
+
 			return true;
 		}
 
@@ -248,13 +253,13 @@ void ProjectCleanerUtility::FindAllSourceFiles(TArray<FString>& AllFiles)
 	PlatformFile.IterateDirectory(*ProjectPluginsDir, Visitor);
 
 	// for every installed plugin we scanning only "Source" directories
-	for(const auto& Dir : Visitor.InstalledPlugins)
+	for (const auto& Dir : Visitor.InstalledPlugins)
 	{
 		const FString PluginSourcePathDir = Dir + "/Source";
 		PlatformFile.FindFilesRecursively(ProjectPluginsFiles, *PluginSourcePathDir, TEXT(".cpp"));
 		PlatformFile.FindFilesRecursively(ProjectPluginsFiles, *PluginSourcePathDir, TEXT(".h"));
 	}
-	
+
 	AllFiles.Append(ProjectPluginsFiles);
 }
 
