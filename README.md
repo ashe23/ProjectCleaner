@@ -34,8 +34,8 @@ So if your engine freezes, dont worry its doing its work in background, just wai
 
 # Installation
 1) Create Plugins Folder in your project root directory
-2) Pick appropriate version in branches dropdown
-3) Download .zip file and extract to Plugins folder
+2) Download appropriate version of .zip in releases
+3) Extract to Plugins folder
 4) Open Project, and you are Done!
 
 # Installation from source
