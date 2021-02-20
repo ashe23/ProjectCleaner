@@ -1,5 +1,5 @@
 # ProjectCleaner
-Simple UE4 plugin for deleting all unused assets in project.
+Simple UE4 plugin for deleting all unused assets and empty folders in project.
 
 No more Migration and other hacky methods needed.
 
