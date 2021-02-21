@@ -13,7 +13,8 @@
 
 void AssetQueryManager::GetUnusedAssets(TArray<FAssetData>& AssetContainer,
                                         UDirectoryFilterSettings* DirectoryFilterSettings,
-                                        TArray<FNode>& AdjacencyList)
+                                        TArray<FNode>& AdjacencyList,
+                                        TArray<FString>& SourceCodeFilesContent)
 {
 	FScopedSlowTask SlowTask{3.0f, FText::FromString("Scanning project for unused assets...")};
 	SlowTask.MakeDialog();
@@ -27,6 +28,7 @@ void AssetQueryManager::GetUnusedAssets(TArray<FAssetData>& AssetContainer,
 	TSet<FName> Deps;
 	GetAllAssetNamesThatUsedInLevel(Deps);
 	AssetFilterManager::Difference(AssetContainer, Deps);
+
 	CreateAdjacencyList(AssetContainer, AdjacencyList);
 
 	SlowTask.EnterProgressFrame(1.0f);
@@ -41,10 +43,10 @@ void AssetQueryManager::GetUnusedAssets(TArray<FAssetData>& AssetContainer,
 
 	// 3) Filtering also assets that used in source code files via hardlinks, and for every single one, finding
 	// related assets and excluding them from deletion list
-	AssetFilterManager::RemoveAllAssetsUsedInSourceFiles(AssetContainer, AdjacencyList);
+	AssetFilterManager::RemoveAllAssetsUsedInSourceFiles(AssetContainer, AdjacencyList, SourceCodeFilesContent);
 
 	// making sure there is no any level assets in list
-	AssetFilterManager::RemoveLevelAssets(AssetContainer);
+	AssetFilterManager::RemoveLevelAssets(AssetContainer); // todo:ashe23 this is hacky
 
 	SlowTask.EnterProgressFrame(1.0f);
 }
@@ -67,6 +69,9 @@ void AssetQueryManager::GetRootAssets(TArray<FAssetData>& RootAssets, TArray<FAs
 {
 	FAssetRegistryModule& AssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
 
+	// first we deleting cycle assets
+	// like Skeletal mesh, skeleton, and physical assets
+	// those assets cant be deleted separately
 	bool bCycleDetected = false;
 	for (const auto& Asset : AssetContainer)
 	{
@@ -78,14 +83,13 @@ void AssetQueryManager::GetRootAssets(TArray<FAssetData>& RootAssets, TArray<FAs
 
 		for (const auto& Ref : Refs)
 		{
-			if (Deps.Contains(Ref) && Ref != Asset.PackageName)
+			if (IsCycle(Ref, Deps, Asset))
 			{
 				bCycleDetected = true;
-				FAssetData* AssetData = GetAssetData(Ref, AssetContainer);
-				if (AssetData)
-				{
-					RootAssets.AddUnique(*AssetData);
-				}
+				FAssetData* RefAssetData = GetAssetData(Ref, AssetContainer);				
+				if (!RefAssetData) continue;
+				
+				RootAssets.AddUnique(*RefAssetData);
 				RootAssets.AddUnique(Asset);
 			}
 		}
@@ -95,15 +99,16 @@ void AssetQueryManager::GetRootAssets(TArray<FAssetData>& RootAssets, TArray<FAs
 	{
 		for (const auto& Asset : AssetContainer)
 		{
+			if(RootAssets.Num() > 100) break; // todo:ashe23 chunk size
+			
 			TArray<FName> Refs;
-
 			AssetRegistry.Get().GetReferencers(Asset.PackageName, Refs);
 
 			Refs.RemoveAll([&](const FName& Elem)
 			{
 				return Elem == Asset.PackageName;
 			});
-			
+
 			if (Refs.Num() == 0)
 			{
 				RootAssets.AddUnique(Asset);
@@ -276,4 +281,9 @@ void AssetQueryManager::CreateAdjacencyList(TArray<FAssetData>& AssetContainer, 
 
 		AdjacencyList.Add(Node);
 	}
+}
+
+bool AssetQueryManager::IsCycle(const FName& Referencer, const TArray<FName>& Deps, const FAssetData& CurrentAsset)
+{
+	return Deps.Contains(Referencer) && Referencer != CurrentAsset.PackageName;
 }

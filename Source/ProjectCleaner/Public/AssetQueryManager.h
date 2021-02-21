@@ -20,10 +20,12 @@ public:
 	 * @param AssetContainer Container for all game assets
 	 * @param DirectoryFilterSettings Directories never scan
 	 * @param AdjacencyList Adjacency list for assets
+	 * @param SourceCodeFilesContent Source code files content
 	 */
 	static void GetUnusedAssets(TArray<FAssetData>& AssetContainer,
 	                            UDirectoryFilterSettings* DirectoryFilterSettings,
-	                            TArray<FNode>& AdjacencyList);
+	                            TArray<FNode>& AdjacencyList,
+	                            TArray<FString>& SourceCodeFilesContent);
 	/**
 	 * @brief Returns total size of given assets (in bytes)
 	 * @param AssetContainer Container for all game assets
@@ -114,4 +116,15 @@ public:
 	 * @param AdjacencyList 
 	 */
 	static void CreateAdjacencyList(TArray<FAssetData>& AssetContainer, TArray<FNode>& AdjacencyList);
+
+private:	
+	/**
+	 * Detects if given referencer is in dependencies of CurrentAsset.
+	 * @brief Detects Cycle
+	 * @param Referencer 
+	 * @param Deps 
+	 * @param CurrentAsset 
+	 * @return bool
+	 */
+	static bool IsCycle(const FName& Referencer, const TArray<FName>& Deps, const FAssetData& CurrentAsset);
 };

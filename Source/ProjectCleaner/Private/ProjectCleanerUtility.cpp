@@ -43,7 +43,6 @@ bool ProjectCleanerUtility::GetAllEmptyDirectories(const FString& SearchPath,
 		RemoveDevsAndCollectionsDirectories(ChildDirectories);
 	}
 
-
 	for (const auto& Dir : ChildDirectories)
 	{
 		// "*" needed for unreal`s IFileManager class, without it , its not working.  
@@ -109,7 +108,7 @@ void ProjectCleanerUtility::DeleteEmptyFolders(TArray<FString>& EmptyFolders)
 	EmptyFolders.Empty();
 }
 
-int32 ProjectCleanerUtility::GetEmptyFoldersNum(TArray<FString>& EmptyFolders, TArray<FString>& NonProjectFiles)
+int32 ProjectCleanerUtility::GetEmptyFoldersAndNonProjectFiles(TArray<FString>& EmptyFolders, TArray<FString>& NonProjectFiles)
 {
 	FScopedSlowTask SlowTask{1.0f, FText::FromString("Searching empty folders...")};
 	SlowTask.MakeDialog();
@@ -263,20 +262,32 @@ void ProjectCleanerUtility::FindAllSourceFiles(TArray<FString>& AllFiles)
 	AllFiles.Append(ProjectPluginsFiles);
 }
 
-bool ProjectCleanerUtility::UsedInSourceFiles(const TArray<FString>& AllFiles, const FName& Asset)
+void ProjectCleanerUtility::LoadSourceCodeFilesContent(TArray<FString>& AllSourceFiles,
+                                                       TArray<FString>& SourceCodeFilesContent)
 {
-	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
+	SourceCodeFilesContent.Reserve(AllSourceFiles.Num());
 
+	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
+	for (const auto& File : AllSourceFiles)
+	{
+		if (!PlatformFile.FileExists(*File)) continue;
+
+		FString FileContent;
+		FFileHelper::LoadFileToString(FileContent, *File);
+		SourceCodeFilesContent.Add(FileContent);
+	}
+}
+
+bool ProjectCleanerUtility::UsedInSourceFiles(const TArray<FString>& AllFiles, const FAssetData& Asset)
+{
 	for (const auto& File : AllFiles)
 	{
-		if (PlatformFile.FileExists(*File))
+		if (
+			(File.Find(Asset.PackageName.ToString()) != -1) ||
+			File.Find(Asset.PackagePath.ToString()) != -1
+		)
 		{
-			FString FileContent;
-			FFileHelper::LoadFileToString(FileContent, *File);
-			if (FileContent.Find(Asset.ToString()) != -1)
-			{
-				return true;
-			}
+			return true;
 		}
 	}
 

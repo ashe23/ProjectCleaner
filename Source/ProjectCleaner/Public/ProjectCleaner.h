@@ -82,6 +82,8 @@ private:
 	TArray<FNode> AdjacencyList;
 	TArray<FString> EmptyFolders;
 	TArray<FString> NonProjectFiles;
+	TArray<FString> AllSourceFiles;
+	TArray<FString> SourceCodeFilesContent;
 	ProjectCleanerNotificationManager* NotificationManager;
 	TWeakPtr<SProjectCleanerBrowser> ProjectCleanerBrowserUI;
 	UDirectoryFilterSettings* DirectoryFilterSettings;

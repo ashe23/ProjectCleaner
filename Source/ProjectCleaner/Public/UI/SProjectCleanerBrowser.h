@@ -1,12 +1,9 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
 #pragma once
 
 #include "CoreMinimal.h"
 #include "IDetailsView.h"
 #include "Widgets/SCompoundWidget.h"
 #include "Engine/EngineTypes.h"
-#include "Widgets/SBoxPanel.h"
 #include "SProjectCleanerBrowser.generated.h"
 
 

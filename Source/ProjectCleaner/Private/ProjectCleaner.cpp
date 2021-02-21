@@ -6,6 +6,8 @@
 #include "ProjectCleanerNotificationManager.h"
 #include "ProjectCleanerUtility.h"
 #include "AssetQueryManager.h"
+#include "Filters/Filter_NotUsedInAnyLevel.h"
+#include "Filters/Filter_ExcludedDirectories.h"
 
 // Engine Headers
 #include "IContentBrowserSingleton.h"
@@ -30,6 +32,7 @@ static const FName ProjectCleanerTabName("ProjectCleaner");
 
 #define LOCTEXT_NAMESPACE "FProjectCleanerModule"
 
+#pragma optimize("", off)
 void FProjectCleanerModule::StartupModule()
 {
 	// This code will execute after your module is loaded into memory; the exact timing is specified in the .uplugin file per-module
@@ -124,7 +127,10 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 							[
 								SNew(STextBlock)
 						        .AutoWrapText(true)
-						        .Text_Lambda([this]() -> FText { return FText::AsNumber(CleaningStats.UnusedAssetsNum); })
+						        .Text_Lambda([this]() -> FText
+								                {
+									                return FText::AsNumber(CleaningStats.UnusedAssetsNum);
+								                })
 							]
 
 						]
@@ -305,10 +311,23 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 		SNotificationItem::ECompletionState::CS_Pending
 	);
 
+	bool NotAllAssetDeleted = false;
 	while (UnusedAssets.Num() > 0)
 	{
 		AssetQueryManager::GetRootAssets(RootAssets, UnusedAssets);
-		CleaningStats.DeletedAssetCount += ProjectCleanerUtility::DeleteAssets(RootAssets);
+
+		if (RootAssets.Num() == 0)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Bug")); // todo:ashe23
+		}
+
+		const auto AssetsDeleted = ProjectCleanerUtility::DeleteAssets(RootAssets);
+		if (AssetsDeleted != RootAssets.Num())
+		{
+			NotAllAssetDeleted = true;
+		}
+		CleaningStats.DeletedAssetCount += AssetsDeleted;
+
 
 		NotificationManager->Update(NotificationRef, CleaningStats);
 
@@ -316,8 +335,13 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 		{
 			return RootAssets.Contains(Elem);
 		});
-
+		//
 		RootAssets.Reset();
+	}
+
+	if (NotAllAssetDeleted)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Not All assets deleted"));
 	}
 
 	NotificationManager->Update(NotificationRef, CleaningStats);
@@ -391,33 +415,51 @@ FReply FProjectCleanerModule::OnDeleteEmptyFolderClick()
 
 void FProjectCleanerModule::UpdateStats()
 {
-	AssetQueryManager::GetUnusedAssets(UnusedAssets, DirectoryFilterSettings, AdjacencyList);
-	ProjectCleanerUtility::GetEmptyFoldersNum(EmptyFolders, NonProjectFiles);
+	ProjectCleanerUtility::GetEmptyFoldersAndNonProjectFiles(EmptyFolders,NonProjectFiles);
+	ProjectCleanerUtility::FindAllSourceFiles(AllSourceFiles);
+	ProjectCleanerUtility::LoadSourceCodeFilesContent(AllSourceFiles, SourceCodeFilesContent);
+
+	UnusedAssets.Reset();
+	AssetQueryManager::GetAllAssets(UnusedAssets);
+	
+	// filters
+	Filter_NotUsedInAnyLevel NotUsedInAnyLevel;
+	NotUsedInAnyLevel.Apply(UnusedAssets);
+
+	Filter_ExcludedDirectories ExcludedDirectories(DirectoryFilterSettings, AdjacencyList);
+	ExcludedDirectories.Apply(UnusedAssets);
+
+	UE_LOG(LogTemp, Warning, TEXT("A"));
+
+	
+	// ======= Old working code ==========
+	// AssetQueryManager::GetUnusedAssets(UnusedAssets, DirectoryFilterSettings, AdjacencyList, SourceCodeFilesContent);
+	// ProjectCleanerUtility::GetEmptyFoldersNum(EmptyFolders, NonProjectFiles);
 
 
-	CleaningStats.UnusedAssetsNum = UnusedAssets.Num();
-	CleaningStats.UnusedAssetsTotalSize = AssetQueryManager::GetTotalSize(UnusedAssets);
-	CleaningStats.EmptyFolders = EmptyFolders.Num();
-	CleaningStats.TotalAssetNum = CleaningStats.UnusedAssetsNum;
-	CleaningStats.DeletedAssetCount = 0;
-
-	if (NonProjectFiles.Num() > 0)
-	{
-		UE_LOG(LogProjectCleaner, Warning, TEXT("Non UAsset file list:"));
-		for (const auto& Asset : NonProjectFiles)
-		{
-			UE_LOG(LogProjectCleaner, Warning, TEXT("%s"), *Asset);
-		}
-
-		FNotificationInfo Info(StandardCleanerText.NonUAssetFilesFound);
-		Info.ExpireDuration = 10.0f;
-		Info.Hyperlink = FSimpleDelegate::CreateStatic([]()
-		{
-			FGlobalTabmanager::Get()->InvokeTab(FName("OutputLog"));
-		});
-		Info.HyperlinkText = LOCTEXT("ShowOutputLogHyperlink", "Show Output Log");
-		FSlateNotificationManager::Get().AddNotification(Info);
-	}
+	// CleaningStats.UnusedAssetsNum = UnusedAssets.Num();
+	// CleaningStats.UnusedAssetsTotalSize = AssetQueryManager::GetTotalSize(UnusedAssets);
+	// CleaningStats.EmptyFolders = EmptyFolders.Num();
+	// CleaningStats.TotalAssetNum = CleaningStats.UnusedAssetsNum;
+	// CleaningStats.DeletedAssetCount = 0;
+	//
+	// if (NonProjectFiles.Num() > 0)
+	// {
+	// 	UE_LOG(LogProjectCleaner, Warning, TEXT("Non UAsset file list:"));
+	// 	for (const auto& Asset : NonProjectFiles)
+	// 	{
+	// 		UE_LOG(LogProjectCleaner, Warning, TEXT("%s"), *Asset);
+	// 	}
+	//
+	// 	FNotificationInfo Info(StandardCleanerText.NonUAssetFilesFound);
+	// 	Info.ExpireDuration = 10.0f;
+	// 	Info.Hyperlink = FSimpleDelegate::CreateStatic([]()
+	// 	{
+	// 		FGlobalTabmanager::Get()->InvokeTab(FName("OutputLog"));
+	// 	});
+	// 	Info.HyperlinkText = LOCTEXT("ShowOutputLogHyperlink", "Show Output Log");
+	// 	FSlateNotificationManager::Get().AddNotification(Info);
+	// }
 }
 
 void FProjectCleanerModule::InitCleaner()
@@ -431,17 +473,17 @@ void FProjectCleanerModule::InitCleaner()
 
 void FProjectCleanerModule::UpdateContentBrowser() const
 {
-	FContentBrowserModule& CBModule = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
 	TArray<FString> FocusFolders;
 	FocusFolders.Add("/Game");
-	CBModule.Get().SyncBrowserToFolders(FocusFolders);
-
 
 	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
 	AssetRegistryModule.Get().ScanPathsSynchronous(FocusFolders, true);
 	AssetRegistryModule.Get().SearchAllAssets(true);
-}
 
+	FContentBrowserModule& CBModule = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
+	CBModule.Get().SyncBrowserToFolders(FocusFolders);
+}
+#pragma optimize("", on)
 #undef LOCTEXT_NAMESPACE
 
 IMPLEMENT_MODULE(FProjectCleanerModule, ProjectCleaner)

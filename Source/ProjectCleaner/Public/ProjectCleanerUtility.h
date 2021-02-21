@@ -56,12 +56,12 @@ public:
 	static void DeleteEmptyFolders(TArray<FString>& EmptyFolders);
 
 	/**
-	 * @brief Returns total number of empty folders
+	 * @brief Returns total number of empty folders and finds all non project files
 	 * @param EmptyFolders 
 	 * @param NonProjectFiles 
 	 * @return Number of empty folders
 	 */
-	static int32 GetEmptyFoldersNum(TArray<FString>& EmptyFolders, TArray<FString>& NonProjectFiles);
+	static int32 GetEmptyFoldersAndNonProjectFiles(TArray<FString>& EmptyFolders, TArray<FString>& NonProjectFiles);
 
 	/**
 	 * @brief Fixup Redirectors , same as in content browser menu
@@ -88,13 +88,15 @@ public:
 	 */
 	static void FindAllSourceFiles(TArray<FString>& AllFiles);
 
+	static void LoadSourceCodeFilesContent(TArray<FString>& AllSourceFiles, TArray<FString>& SourceCodeFilesContent);
+
 	/**
 	 * @brief Check if given asset used in source codes (hardcoded path)
 	 * @param AllFiles 
 	 * @param Asset 
 	 * @return bool
 	 */
-	static bool UsedInSourceFiles(const TArray<FString>& AllFiles, const FName& Asset);
+	static bool UsedInSourceFiles(const TArray<FString>& AllFiles, const FAssetData& Asset);
 
 	/**
 	 * @brief Saves all unsaved assets

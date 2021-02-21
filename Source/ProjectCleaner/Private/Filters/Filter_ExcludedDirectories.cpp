@@ -1,0 +1,67 @@
+﻿#include "Filters/Filter_ExcludedDirectories.h"
+#include "UI/SProjectCleanerBrowser.h"
+
+// Engine Headers
+#include "AssetRegistry/Public/AssetData.h"
+#include "AssetRegistryModule.h"
+
+Filter_ExcludedDirectories::Filter_ExcludedDirectories(UDirectoryFilterSettings* DirectoryFilterSettings,
+                                                       TArray<FNode>& AdjacencyList)
+{
+	Settings = DirectoryFilterSettings;
+	this->AdjacencyList = AdjacencyList;
+}
+
+void Filter_ExcludedDirectories::Apply(TArray<FAssetData>& Assets)
+{
+	if (ShouldApplyDirectoryFilters())
+	{
+		ApplyDirectoryFilters();
+	}
+}
+
+bool Filter_ExcludedDirectories::ShouldApplyDirectoryFilters() const
+{
+	if (!Settings) return false;
+
+	return Settings->DirectoryPaths.Num() > 0;
+}
+
+void Filter_ExcludedDirectories::ApplyDirectoryFilters(TArray<FAssetData>& Assets)
+{
+	if (Assets.Num() == 0) return;
+
+	// query list of assets in given directory paths in filter section
+	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
+	TArray<FAssetData> ProcessingAssets;
+	for (const auto& Filter : Settings->DirectoryPaths)
+	{
+		TArray<FAssetData> AssetsInPath;
+		AssetRegistryModule.Get().GetAssetsByPath(FName{*Filter.Path}, AssetsInPath, true);
+
+		for (const auto& Asset : AssetsInPath)
+		{
+			ProcessingAssets.AddUnique(Asset);
+		}
+	}
+
+	// query all related assets that contains in given directory paths
+	TArray<FName> RelatedAssets;
+	for (const auto& Asset : ProcessingAssets)
+	{
+		const auto AssetNode = AdjacencyList.FindByPredicate([&](const FNode& Elem)
+		{
+			return Elem.Asset == Asset.PackageName;
+		});
+		if (AssetNode)
+		{
+			FindAllRelatedAssets(*AssetNode, RelatedAssets, AdjacencyList);
+		}
+	}
+
+	// remove them from deletion list
+	Assets.RemoveAll([&](const FAssetData& Elem)
+	{
+		return RelatedAssets.Contains(Elem.PackageName);
+	});
+}

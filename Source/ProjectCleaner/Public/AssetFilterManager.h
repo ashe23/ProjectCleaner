@@ -37,7 +37,10 @@ public:
 	 * @brief Removes all assets and their related assets from asset container,
 	 * if one of assets in chain has been used in source files via hardlink
 	 * @param AssetContainer 
-	 * @param AdjacencyList 
+	 * @param AdjacencyList
+	 * @param SourceCodeFilesContent
 	 */
-	static void RemoveAllAssetsUsedInSourceFiles(TArray<FAssetData>& AssetContainer, TArray<FNode>& AdjacencyList);
+	static void RemoveAllAssetsUsedInSourceFiles(TArray<FAssetData>& AssetContainer,
+	                                             TArray<FNode>& AdjacencyList,
+	                                             TArray<FString>& SourceCodeFilesContent);	
 };

@@ -10,6 +10,7 @@
 #include "AssetRegistryModule.h"
 #include "AssetRegistry/Public/AssetData.h"
 #include "Engine/World.h"
+#include "Misc/FileHelper.h"
 
 void AssetFilterManager::RemoveLevelAssets(TArray<FAssetData>& AssetContainer)
 {
@@ -33,10 +34,12 @@ void AssetFilterManager::Difference(TArray<FAssetData>& AssetContainer, TSet<FNa
 }
 
 void AssetFilterManager::RemoveAllAssetsUsedInSourceFiles(TArray<FAssetData>& AssetContainer,
-                                                          TArray<FNode>& AdjacencyList)
+                                                          TArray<FNode>& AdjacencyList,
+                                                          TArray<FString>& SourceCodeFilesContent)
 {
 	TArray<FString> AllSourceFiles;
 	ProjectCleanerUtility::FindAllSourceFiles(AllSourceFiles);
+	ProjectCleanerUtility::LoadSourceCodeFilesContent(AllSourceFiles, SourceCodeFilesContent);
 
 	TArray<FName> UsedInSourceFilesRelatedAssets;
 	UsedInSourceFilesRelatedAssets.Reserve(100);
@@ -44,13 +47,13 @@ void AssetFilterManager::RemoveAllAssetsUsedInSourceFiles(TArray<FAssetData>& As
 	for (const auto& Asset : AssetContainer)
 	{
 		// checking if current asset used in source files
-		if (ProjectCleanerUtility::UsedInSourceFiles(AllSourceFiles, Asset.PackageName))
+		if (ProjectCleanerUtility::UsedInSourceFiles(SourceCodeFilesContent, Asset))
 		{
 			// finding him in adjacency list
 			FNode* Node = AdjacencyList.FindByPredicate([&](const FNode& Elem)
-            {
-                return Elem.Asset == Asset.PackageName;
-            });
+			{
+				return Elem.Asset == Asset.PackageName;
+			});
 
 			// and if its valid finding all related assets 
 			if (Node)
@@ -60,9 +63,12 @@ void AssetFilterManager::RemoveAllAssetsUsedInSourceFiles(TArray<FAssetData>& As
 		}
 	}
 
+	if (UsedInSourceFilesRelatedAssets.Num() == 0) return;
+
+
 	// removing all assets we found
 	AssetContainer.RemoveAll([&](const FAssetData& Val)
-    {
-        return UsedInSourceFilesRelatedAssets.Contains(Val.PackageName);
-    });
+	{
+		return UsedInSourceFilesRelatedAssets.Contains(Val.PackageName);
+	});
 }
