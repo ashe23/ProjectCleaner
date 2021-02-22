@@ -9,12 +9,16 @@ class UDirectoryFilterSettings;
 class Filter_ExcludedDirectories : public IProjectCleanerFilter
 {
 public:
-	Filter_ExcludedDirectories(UDirectoryFilterSettings* DirectoryFilterSettings, TArray<FNode>& AdjacencyList);
+	Filter_ExcludedDirectories(UDirectoryFilterSettings* DirectoryFilterSettings, TArray<FNode>* List);
 	virtual void Apply(TArray<FAssetData>& Assets) override;
 private:
 	bool ShouldApplyDirectoryFilters() const;
 	void ApplyDirectoryFilters(TArray<FAssetData>& Assets);
-	
+	void FindAllRelatedAssets(const FNode& Node,
+	                          TArray<FName>& RelatedAssets,
+	                          const TArray<FNode>& List);
+	void CreateAdjacencyList(TArray<FAssetData>& Assets, TArray<FNode>& List);
+
 	UDirectoryFilterSettings* Settings;
-	TArray<FNode>& AdjacencyList;
+	TArray<FNode>* AdjacencyList;
 };
