@@ -8,6 +8,7 @@
 #include "AssetQueryManager.h"
 #include "Filters/Filter_NotUsedInAnyLevel.h"
 #include "Filters/Filter_ExcludedDirectories.h"
+#include "Filters/Filter_UsedInSourceCode.h"
 
 // Engine Headers
 #include "IContentBrowserSingleton.h"
@@ -421,15 +422,19 @@ void FProjectCleanerModule::UpdateStats()
 
 	UnusedAssets.Reset();
 	AssetQueryManager::GetAllAssets(UnusedAssets);
+	ProjectCleanerUtility::CreateAdjacencyList(UnusedAssets, AdjacencyList);
 	
 	// filters
 	Filter_NotUsedInAnyLevel NotUsedInAnyLevel;
 	NotUsedInAnyLevel.Apply(UnusedAssets);
 
-	Filter_ExcludedDirectories ExcludedDirectories(DirectoryFilterSettings, &AdjacencyList);
+	Filter_ExcludedDirectories ExcludedDirectories{DirectoryFilterSettings, AdjacencyList};
 	ExcludedDirectories.Apply(UnusedAssets);
 
-	// UE_LOG(LogTemp, Warning, TEXT("A"));
+	Filter_UsedInSourceCode UsedInSourceCode{SourceCodeFilesContent, AdjacencyList};
+	UsedInSourceCode.Apply(UnusedAssets);
+
+	UE_LOG(LogTemp, Warning, TEXT("A"));
 
 	
 	// ======= Old working code ==========

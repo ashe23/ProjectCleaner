@@ -102,4 +102,8 @@ public:
 	 * @brief Saves all unsaved assets
 	 */
 	static void SaveAllAssets();
+
+	static void CreateAdjacencyList(TArray<FAssetData>& Assets, TArray<FNode>& List);
+
+	static void FindAllRelatedAssets(const FNode& Node, TArray<FName>& RelatedAssets, const TArray<FNode>& List);
 };

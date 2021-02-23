@@ -108,7 +108,8 @@ void ProjectCleanerUtility::DeleteEmptyFolders(TArray<FString>& EmptyFolders)
 	EmptyFolders.Empty();
 }
 
-int32 ProjectCleanerUtility::GetEmptyFoldersAndNonProjectFiles(TArray<FString>& EmptyFolders, TArray<FString>& NonProjectFiles)
+int32 ProjectCleanerUtility::GetEmptyFoldersAndNonProjectFiles(TArray<FString>& EmptyFolders,
+                                                               TArray<FString>& NonProjectFiles)
 {
 	FScopedSlowTask SlowTask{1.0f, FText::FromString("Searching empty folders...")};
 	SlowTask.MakeDialog();
@@ -304,4 +305,69 @@ void ProjectCleanerUtility::SaveAllAssets()
 		false,
 		false
 	);
+}
+
+void ProjectCleanerUtility::CreateAdjacencyList(TArray<FAssetData>& Assets, TArray<FNode>& List)
+{
+	if (Assets.Num() == 0) return;
+
+	FAssetRegistryModule& AssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
+
+	for (const auto& Asset : Assets)
+	{
+		FNode Node;
+		Node.Asset = Asset.PackageName;
+		TArray<FName> Deps;
+		TArray<FName> Refs;
+		AssetRegistry.Get().GetDependencies(Asset.PackageName, Deps);
+		AssetRegistry.Get().GetReferencers(Asset.PackageName, Refs);
+
+		for (const auto& Dep : Deps)
+		{
+			FAssetData* UnusedAsset = Assets.FindByPredicate([&](const FAssetData& Elem)
+			{
+				return Elem.PackageName == Dep;
+			});
+			if (UnusedAsset && UnusedAsset->PackageName != Asset.PackageName)
+			{
+				Node.AdjacentAssets.AddUnique(Dep);
+			}
+		}
+
+		for (const auto& Ref : Refs)
+		{
+			FAssetData* UnusedAsset = Assets.FindByPredicate([&](const FAssetData& Elem)
+			{
+				return Elem.PackageName == Ref;
+			});
+			if (UnusedAsset && UnusedAsset->PackageName != Asset.PackageName)
+			{
+				Node.AdjacentAssets.AddUnique(Ref);
+			}
+		}
+
+		List.Add(Node);
+	}
+}
+
+void ProjectCleanerUtility::FindAllRelatedAssets(const FNode& Node,
+                                                 TArray<FName>& RelatedAssets,
+                                                 const TArray<FNode>& List)
+{
+	RelatedAssets.AddUnique(Node.Asset);
+	for (const auto& Adj : Node.AdjacentAssets)
+	{
+		if (!RelatedAssets.Contains(Adj))
+		{
+			const FNode* NodeRef = List.FindByPredicate([&](const FNode& Elem)
+			{
+				return Elem.Asset == Adj;
+			});
+
+			if (NodeRef)
+			{
+				FindAllRelatedAssets(*NodeRef, RelatedAssets, List);
+			}
+		}
+	}
 }
