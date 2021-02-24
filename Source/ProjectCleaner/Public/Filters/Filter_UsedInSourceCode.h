@@ -11,9 +11,8 @@ public:
 	Filter_UsedInSourceCode(TArray<FString>& SourceCodeFilesContents, TArray<FNode>& List);
 	virtual void Apply(TArray<FAssetData>& Assets) override;
 private:
-	bool UsedInSourceFiles(const FAssetData& Asset);
-	void RemoveAllAssetsUsedInSourceFiles(TArray<FAssetData>& AssetContainer);
-
+	bool UsedInSourceFiles(const FAssetData& Asset) const;
+	
 	TArray<FString>* Files;
 	TArray<FNode>* AdjacencyList;
 };

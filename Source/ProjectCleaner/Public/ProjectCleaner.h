@@ -49,6 +49,7 @@ private:
 	FReply RefreshBrowser();
 	void UpdateStats();
 	void InitCleaner();
+	void Reset();
 	/**
 	 * Sets content browser focus to root directory and refreshes asset registry
 	 * @brief Updates content browser

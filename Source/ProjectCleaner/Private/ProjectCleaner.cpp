@@ -416,11 +416,12 @@ FReply FProjectCleanerModule::OnDeleteEmptyFolderClick()
 
 void FProjectCleanerModule::UpdateStats()
 {
+	Reset();
+	
 	ProjectCleanerUtility::GetEmptyFoldersAndNonProjectFiles(EmptyFolders,NonProjectFiles);
 	ProjectCleanerUtility::FindAllSourceFiles(AllSourceFiles);
 	ProjectCleanerUtility::LoadSourceCodeFilesContent(AllSourceFiles, SourceCodeFilesContent);
 
-	UnusedAssets.Reset();
 	AssetQueryManager::GetAllAssets(UnusedAssets);
 	ProjectCleanerUtility::CreateAdjacencyList(UnusedAssets, AdjacencyList);
 	
@@ -434,9 +435,6 @@ void FProjectCleanerModule::UpdateStats()
 	Filter_UsedInSourceCode UsedInSourceCode{SourceCodeFilesContent, AdjacencyList};
 	UsedInSourceCode.Apply(UnusedAssets);
 
-	UE_LOG(LogTemp, Warning, TEXT("A"));
-
-	
 	// ======= Old working code ==========
 	// AssetQueryManager::GetUnusedAssets(UnusedAssets, DirectoryFilterSettings, AdjacencyList, SourceCodeFilesContent);
 	// ProjectCleanerUtility::GetEmptyFoldersNum(EmptyFolders, NonProjectFiles);
@@ -474,6 +472,16 @@ void FProjectCleanerModule::InitCleaner()
 	ProjectCleanerUtility::FixupRedirectors();
 
 	UpdateStats();
+}
+
+void FProjectCleanerModule::Reset()
+{
+	UnusedAssets.Reset();
+	AllSourceFiles.Reset();
+	SourceCodeFilesContent.Reset();
+	NonProjectFiles.Reset();
+	EmptyFolders.Reset();
+	AdjacencyList.Reset();
 }
 
 void FProjectCleanerModule::UpdateContentBrowser() const
