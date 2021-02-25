@@ -21,9 +21,9 @@ void Filter_UsedInSourceCode::Apply(TArray<FAssetData>& Assets)
 		{
 			// finding him in adjacency list
 			FNode* Node = AdjacencyList->FindByPredicate([&](const FNode& Elem)
-            {
-                return Elem.Asset == Asset.PackageName;
-            });
+			{
+				return Elem.Asset == Asset.PackageName;
+			});
 
 			// and if its valid finding all related assets 
 			if (Node)
@@ -37,18 +37,23 @@ void Filter_UsedInSourceCode::Apply(TArray<FAssetData>& Assets)
 
 	// removing all assets we found
 	Assets.RemoveAll([&](const FAssetData& Val)
-    {
-        return UsedInSourceFilesRelatedAssets.Contains(Val.PackageName);
-    });
+	{
+		return UsedInSourceFilesRelatedAssets.Contains(Val.PackageName);
+	});
 }
 
 bool Filter_UsedInSourceCode::UsedInSourceFiles(const FAssetData& Asset) const
 {
+	// todo:ashe23 change detection method
 	for (const auto& File : *Files)
 	{
+		FString f = Asset.AssetName.ToString();
+		f.InsertAt(0, TEXT("\""));
+		f.Append(TEXT("\""));
+		
 		if (
-			(File.Find(Asset.PackageName.ToString()) != -1) ||
-			File.Find(Asset.AssetName.ToString()) != -1
+			File.Contains(Asset.PackageName.ToString()) ||
+			File.Contains(f)
 		)
 		{
 			return true;
