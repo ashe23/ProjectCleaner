@@ -1,12 +1,14 @@
 ﻿#include "Filters/Filter_UsedInSourceCode.h"
+
+#include "ProjectCleaner.h"
 #include "ProjectCleanerUtility.h"
 #include "StructsContainer.h"
 
 #pragma optimize("", off)
-Filter_UsedInSourceCode::Filter_UsedInSourceCode(TArray<FString>& SourceCodeFilesContents, TArray<FNode>& List)
+Filter_UsedInSourceCode::Filter_UsedInSourceCode(TArray<FSourceCodeFile>& SourceFiles, TArray<FNode>& List)
 {
 	AdjacencyList = &List;
-	Files = &SourceCodeFilesContents;
+	this->SourceFiles = &SourceFiles;
 }
 
 void Filter_UsedInSourceCode::Apply(TArray<FAssetData>& Assets)
@@ -44,18 +46,19 @@ void Filter_UsedInSourceCode::Apply(TArray<FAssetData>& Assets)
 
 bool Filter_UsedInSourceCode::UsedInSourceFiles(const FAssetData& Asset) const
 {
-	// todo:ashe23 change detection method
-	for (const auto& File : *Files)
+	for (const auto& File : *SourceFiles)
 	{
-		FString f = Asset.AssetName.ToString();
-		f.InsertAt(0, TEXT("\""));
-		f.Append(TEXT("\""));
+		// Wrapping in quotes AssetName => "AssetName"
+		FString QuotedAssetName = Asset.AssetName.ToString();
+		QuotedAssetName.InsertAt(0, TEXT("\""));
+		QuotedAssetName.Append(TEXT("\""));
 		
 		if (
-			File.Contains(Asset.PackageName.ToString()) ||
-			File.Contains(f)
+			File.Content.Contains(Asset.PackageName.ToString()) ||
+			File.Content.Contains(QuotedAssetName)
 		)
 		{
+			UE_LOG(LogProjectCleaner, Warning, TEXT("\"%s\" asset used in \"%s\" file"), *Asset.AssetName.ToString(), *File.AbsoluteFilePath);
 			return true;
 		}
 	}

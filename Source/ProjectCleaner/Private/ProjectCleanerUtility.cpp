@@ -217,8 +217,11 @@ void ProjectCleanerUtility::FindNonProjectFiles(const FString& SearchPath, TArra
 	}
 }
 
-void ProjectCleanerUtility::FindAllSourceFiles(TArray<FString>& AllFiles)
+void ProjectCleanerUtility::FindAllSourceFiles(TArray<FSourceCodeFile>& SourceFiles)
 {
+	TArray<FString> AllFiles;
+	AllFiles.Reserve(200);
+	
 	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
 
 	// 1) finding all source files in main project "Source" directory (<yourproject>/Source/*)
@@ -261,6 +264,21 @@ void ProjectCleanerUtility::FindAllSourceFiles(TArray<FString>& AllFiles)
 	}
 
 	AllFiles.Append(ProjectPluginsFiles);
+
+	SourceFiles.Reserve(AllFiles.Num());
+	
+	for(const auto& File : AllFiles)
+	{
+		if (PlatformFile.FileExists(*File))
+		{
+			FSourceCodeFile SourceCodeFile;
+			SourceCodeFile.Name = FName{FPaths::GetCleanFilename(File)};
+			SourceCodeFile.RelativeFilePath = File;
+			SourceCodeFile.AbsoluteFilePath = FPaths::ConvertRelativePathToFull(File);
+			FFileHelper::LoadFileToString(SourceCodeFile.Content, *File);
+			SourceFiles.Add(SourceCodeFile);
+		}
+	}
 }
 
 void ProjectCleanerUtility::LoadSourceCodeFilesContent(TArray<FString>& AllSourceFiles,
@@ -293,6 +311,12 @@ bool ProjectCleanerUtility::UsedInSourceFiles(const TArray<FString>& AllFiles, c
 	}
 
 	return false;
+}
+
+void ProjectCleanerUtility::GetAllAssets(TArray<FAssetData>& Assets)
+{
+	FAssetRegistryModule& AssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
+	AssetRegistry.Get().GetAssetsByPath(FName{"/Game"}, Assets, true);
 }
 
 void ProjectCleanerUtility::SaveAllAssets()

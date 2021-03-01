@@ -4,15 +4,16 @@
 
 struct FNode;
 struct FAssetData;
+struct FSourceCodeFile;
 
 class Filter_UsedInSourceCode : public IProjectCleanerFilter
 {
 public:
-	Filter_UsedInSourceCode(TArray<FString>& SourceCodeFilesContents, TArray<FNode>& List);
+	Filter_UsedInSourceCode(TArray<FSourceCodeFile>& SourceFiles, TArray<FNode>& List);
 	virtual void Apply(TArray<FAssetData>& Assets) override;
 private:
 	bool UsedInSourceFiles(const FAssetData& Asset) const;
 	
-	TArray<FString>* Files;
+	TArray<FSourceCodeFile>* SourceFiles;
 	TArray<FNode>* AdjacencyList;
 };

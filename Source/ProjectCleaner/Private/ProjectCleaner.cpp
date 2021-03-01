@@ -419,10 +419,8 @@ void FProjectCleanerModule::UpdateStats()
 	Reset();
 	
 	ProjectCleanerUtility::GetEmptyFoldersAndNonProjectFiles(EmptyFolders,NonProjectFiles);
-	ProjectCleanerUtility::FindAllSourceFiles(AllSourceFiles);
-	ProjectCleanerUtility::LoadSourceCodeFilesContent(AllSourceFiles, SourceCodeFilesContent);
-
-	AssetQueryManager::GetAllAssets(UnusedAssets);
+	ProjectCleanerUtility::FindAllSourceFiles(SourceFiles);
+	ProjectCleanerUtility::GetAllAssets(UnusedAssets);
 	ProjectCleanerUtility::CreateAdjacencyList(UnusedAssets, AdjacencyList);
 	
 	// filters
@@ -432,7 +430,7 @@ void FProjectCleanerModule::UpdateStats()
 	Filter_ExcludedDirectories ExcludedDirectories{DirectoryFilterSettings, AdjacencyList};
 	ExcludedDirectories.Apply(UnusedAssets);
 
-	Filter_UsedInSourceCode UsedInSourceCode{SourceCodeFilesContent, AdjacencyList};
+	Filter_UsedInSourceCode UsedInSourceCode{SourceFiles, AdjacencyList};
 	UsedInSourceCode.Apply(UnusedAssets);
 
 	// ======= Old working code ==========
@@ -477,8 +475,9 @@ void FProjectCleanerModule::InitCleaner()
 void FProjectCleanerModule::Reset()
 {
 	UnusedAssets.Reset();
-	AllSourceFiles.Reset();
-	SourceCodeFilesContent.Reset();
+	// AllSourceFiles.Reset();
+	// SourceCodeFilesContent.Reset();
+	SourceFiles.Reset();
 	NonProjectFiles.Reset();
 	EmptyFolders.Reset();
 	AdjacencyList.Reset();

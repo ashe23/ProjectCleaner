@@ -38,7 +38,7 @@ void AssetFilterManager::RemoveAllAssetsUsedInSourceFiles(TArray<FAssetData>& As
                                                           TArray<FString>& SourceCodeFilesContent)
 {
 	TArray<FString> AllSourceFiles;
-	ProjectCleanerUtility::FindAllSourceFiles(AllSourceFiles);
+	// ProjectCleanerUtility::FindAllSourceFiles(AllSourceFiles);
 	ProjectCleanerUtility::LoadSourceCodeFilesContent(AllSourceFiles, SourceCodeFilesContent);
 
 	TArray<FName> UsedInSourceFilesRelatedAssets;

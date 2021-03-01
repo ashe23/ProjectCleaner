@@ -84,9 +84,9 @@ public:
 
 	/**
 	 * @brief Finds all ".h" and ".cpp" source files in Project "Source" and "Plugins" directories
-	 * @param AllFiles 
+	 * @param SourceFiles 
 	 */
-	static void FindAllSourceFiles(TArray<FString>& AllFiles);
+	static void FindAllSourceFiles(TArray<FSourceCodeFile>& SourceFiles);
 
 	static void LoadSourceCodeFilesContent(TArray<FString>& AllSourceFiles, TArray<FString>& SourceCodeFilesContent);
 
@@ -98,6 +98,7 @@ public:
 	 */
 	static bool UsedInSourceFiles(const TArray<FString>& AllFiles, const FAssetData& Asset);
 
+	static void GetAllAssets(TArray<FAssetData>& Assets);
 	/**
 	 * @brief Saves all unsaved assets
 	 */

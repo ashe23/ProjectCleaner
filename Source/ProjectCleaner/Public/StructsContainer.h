@@ -61,3 +61,11 @@ struct FNode
 
 	TArray<FName> AdjacentAssets;
 };
+
+struct FSourceCodeFile
+{
+	FName Name;
+	FString AbsoluteFilePath;
+	FString RelativeFilePath;
+	FString Content;
+};
