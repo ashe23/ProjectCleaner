@@ -5,7 +5,6 @@
 #include "ProjectCleanerCommands.h"
 #include "ProjectCleanerNotificationManager.h"
 #include "ProjectCleanerUtility.h"
-#include "AssetQueryManager.h"
 #include "Filters/Filter_NotUsedInAnyLevel.h"
 #include "Filters/Filter_ExcludedDirectories.h"
 #include "Filters/Filter_UsedInSourceCode.h"
