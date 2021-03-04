@@ -312,20 +312,21 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 		SNotificationItem::ECompletionState::CS_Pending
 	);
 
-	bool NotAllAssetDeleted = false;
-	while (UnusedAssets.Num() > 0)
+	bool bFailedWhileDeletingAsset = false;
+	while (UnusedAssets.Num() > 0 && !bFailedWhileDeletingAsset)
 	{
-		AssetQueryManager::GetRootAssets(RootAssets, UnusedAssets);
+		ProjectCleanerUtility::GetRootAssets(RootAssets, UnusedAssets);
 
 		if (RootAssets.Num() == 0)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("Bug")); // todo:ashe23
+			UE_LOG(LogTemp, Warning, TEXT("Error while deleting assets! Try to restart editor and try again.")); // todo:ashe23
+			break;
 		}
 
 		const auto AssetsDeleted = ProjectCleanerUtility::DeleteAssets(RootAssets);
 		if (AssetsDeleted != RootAssets.Num())
 		{
-			NotAllAssetDeleted = true;
+			bFailedWhileDeletingAsset = true;
 		}
 		CleaningStats.DeletedAssetCount += AssetsDeleted;
 
@@ -340,10 +341,6 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 		RootAssets.Reset();
 	}
 
-	if (NotAllAssetDeleted)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Not All assets deleted"));
-	}
 
 	NotificationManager->Update(NotificationRef, CleaningStats);
 
@@ -433,13 +430,8 @@ void FProjectCleanerModule::UpdateStats()
 	Filter_UsedInSourceCode UsedInSourceCode{SourceFiles, AdjacencyList};
 	UsedInSourceCode.Apply(UnusedAssets);
 
-	// ======= Old working code ==========
-	// AssetQueryManager::GetUnusedAssets(UnusedAssets, DirectoryFilterSettings, AdjacencyList, SourceCodeFilesContent);
-	// ProjectCleanerUtility::GetEmptyFoldersNum(EmptyFolders, NonProjectFiles);
-
-
 	CleaningStats.UnusedAssetsNum = UnusedAssets.Num();
-	CleaningStats.UnusedAssetsTotalSize = AssetQueryManager::GetTotalSize(UnusedAssets);
+	CleaningStats.UnusedAssetsTotalSize = ProjectCleanerUtility::GetTotalSize(UnusedAssets);
 	CleaningStats.EmptyFolders = EmptyFolders.Num();
 	CleaningStats.TotalAssetNum = CleaningStats.UnusedAssetsNum;
 	CleaningStats.DeletedAssetCount = 0;

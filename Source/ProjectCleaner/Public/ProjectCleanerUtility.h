@@ -107,4 +107,25 @@ public:
 	static void CreateAdjacencyList(TArray<FAssetData>& Assets, TArray<FNode>& List);
 
 	static void FindAllRelatedAssets(const FNode& Node, TArray<FName>& RelatedAssets, const TArray<FNode>& List);
+
+	static void GetRootAssets(TArray<FAssetData>& RootAssets, TArray<FAssetData>& Assets);
+	
+	/**
+	* Detects if given referencer is in dependencies of CurrentAsset.
+	* @brief Detects Cycle
+	* @param Referencer 
+	* @param Deps 
+	* @param CurrentAsset 
+	* @return bool
+	*/
+	static bool IsCycle(const FName& Referencer, const TArray<FName>& Deps, const FAssetData& CurrentAsset);
+
+	static FAssetData* GetAssetData(const FName& AssetName, TArray<FAssetData>& AssetContainer);
+
+	/**
+	* @brief Returns total size of given assets (in bytes)
+	* @param AssetContainer Container for all game assets
+	* @return 
+	*/
+	static int64 GetTotalSize(const TArray<FAssetData>& AssetContainer);
 };

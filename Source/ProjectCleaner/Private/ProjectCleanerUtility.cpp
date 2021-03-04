@@ -395,3 +395,82 @@ void ProjectCleanerUtility::FindAllRelatedAssets(const FNode& Node,
 		}
 	}
 }
+
+void ProjectCleanerUtility::GetRootAssets(TArray<FAssetData>& RootAssets, TArray<FAssetData>& Assets)
+{
+	FAssetRegistryModule& AssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
+
+	// first we deleting cycle assets
+	// like Skeletal mesh, skeleton, and physical assets
+	// those assets cant be deleted separately
+	bool bCycleDetected = false;
+	for (const auto& Asset : Assets)
+	{
+		TArray<FName> Refs;
+		TArray<FName> Deps;
+
+		AssetRegistry.Get().GetReferencers(Asset.PackageName, Refs);
+		AssetRegistry.Get().GetDependencies(Asset.PackageName, Deps);
+
+		for (const auto& Ref : Refs)
+		{
+			if (IsCycle(Ref, Deps, Asset))
+			{
+				bCycleDetected = true;
+				FAssetData* RefAssetData = GetAssetData(Ref, Assets);				
+				if (!RefAssetData) continue;
+				
+				RootAssets.AddUnique(*RefAssetData);
+				RootAssets.AddUnique(Asset);
+			}
+		}
+	}
+
+	if (!bCycleDetected)
+	{
+		for (const auto& Asset : Assets)
+		{
+			if(RootAssets.Num() > 100) break; // todo:ashe23 chunk size
+			
+			TArray<FName> Refs;
+			AssetRegistry.Get().GetReferencers(Asset.PackageName, Refs);
+
+			Refs.RemoveAll([&](const FName& Elem)
+            {
+                return Elem == Asset.PackageName;
+            });
+
+			if (Refs.Num() == 0)
+			{
+				RootAssets.AddUnique(Asset);
+			}
+		}
+	}
+}
+
+bool ProjectCleanerUtility::IsCycle(const FName& Referencer, const TArray<FName>& Deps, const FAssetData& CurrentAsset)
+{
+	return Deps.Contains(Referencer) && Referencer != CurrentAsset.PackageName;
+}
+
+FAssetData* ProjectCleanerUtility::GetAssetData(const FName& AssetName, TArray<FAssetData>& AssetContainer)
+{
+	return AssetContainer.FindByPredicate([&](const FAssetData& Val)
+    {
+        return Val.PackageName == AssetName;
+    });
+}
+
+int64 ProjectCleanerUtility::GetTotalSize(const TArray<FAssetData>& AssetContainer)
+{
+	int64 Size = 0;
+	for (const auto& Asset : AssetContainer)
+	{
+		FAssetRegistryModule& AssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
+		const auto AssetPackageData = AssetRegistry.Get().GetAssetPackageData(Asset.PackageName);
+		if (!AssetPackageData) continue;
+		Size += AssetPackageData->DiskSize;
+	}
+
+	return Size;
+}
