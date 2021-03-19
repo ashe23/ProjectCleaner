@@ -8,17 +8,19 @@
 // Engine Headers
 #include "Input/Reply.h"
 #include "Modules/ModuleInterface.h"
+#include "ContentBrowserDelegates.h"
 #include "CoreMinimal.h"
 
+class ProjectCleanerNotificationManager;
 class FToolBarBuilder;
+class STableViewBase;
 class FMenuBuilder;
 class ITableRow;
-class STableViewBase;
 class SDockTab;
-class ProjectCleanerNotificationManager;
+
+struct FSlateColorBrush;
 struct FAssetData;
 struct FSlateBrush;
-struct FSlateColorBrush;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogProjectCleaner, Log, All);
 
@@ -56,6 +58,9 @@ private:
 	 */
 	void UpdateContentBrowser() const;
 
+	FString GetStringValueForCustomColumn(FAssetData& AssetData, FName ColumnName) const;
+	FText GetDisplayTextForCustomColumn(FAssetData& AssetData, FName ColumnName) const;
+
 	// Button events Start //
 	FReply OnDeleteEmptyFolderClick();
 	FReply OnDeleteUnusedAssetsBtnClick();
@@ -87,6 +92,11 @@ private:
 	ProjectCleanerNotificationManager* NotificationManager;
 	TWeakPtr<SProjectCleanerBrowser> ProjectCleanerBrowserUI;
 	UDirectoryFilterSettings* DirectoryFilterSettings;
+	UNonUProjectFiles* NonUProjectFilesSettings;
+	UUnusedAssetsUIContainer* UnusedAssetsUIContainerSettings;
+
+	TSharedPtr<SWidget> OnGetAssetContextMenu(const TArray<FAssetData>& SelectedAssets);
+	void FindInContentBrowser() const;
 };
 
 
