@@ -1,5 +1,7 @@
 // Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
+using System;
+using System.IO;
 using UnrealBuildTool;
 
 public class ProjectCleaner : ModuleRules
@@ -7,7 +9,7 @@ public class ProjectCleaner : ModuleRules
 	public ProjectCleaner(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
-
+		
 		PublicIncludePaths.AddRange(
 			new string[]
 			{
@@ -29,6 +31,7 @@ public class ProjectCleaner : ModuleRules
 			new string[]
 			{
 				"Core",
+				"AssetManagerEditor",
 				// ... add other public dependencies that you statically link with here ...
 			}
 		);

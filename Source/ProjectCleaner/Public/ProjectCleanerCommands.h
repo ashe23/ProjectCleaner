@@ -11,7 +11,12 @@ class FProjectCleanerCommands : public TCommands<FProjectCleanerCommands>
 public:
 
 	FProjectCleanerCommands()
-		: TCommands<FProjectCleanerCommands>(TEXT("ProjectCleaner"), NSLOCTEXT("Contexts", "ProjectCleaner", "ProjectCleaner Plugin"), NAME_None, FProjectCleanerStyle::GetStyleSetName())
+		: TCommands<FProjectCleanerCommands>(
+			TEXT("ProjectCleaner"),
+			NSLOCTEXT("Contexts", "ProjectCleaner", "ProjectCleaner Plugin"),
+			NAME_None,
+			FProjectCleanerStyle::GetStyleSetName()
+		)
 	{
 	}
 
@@ -19,5 +24,5 @@ public:
 	virtual void RegisterCommands() override;
 
 public:
-	TSharedPtr< FUICommandInfo > PluginAction;
+	TSharedPtr<FUICommandInfo> PluginAction;
 };

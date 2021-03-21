@@ -4,6 +4,7 @@
 #include "IDetailsView.h"
 #include "Widgets/SCompoundWidget.h"
 #include "Engine/EngineTypes.h"
+#include "Editor/ContentBrowser/Public/ContentBrowserDelegates.h"
 #include "SProjectCleanerBrowser.generated.h"
 
 
@@ -39,7 +40,7 @@ class UUnusedAssetsUIContainer : public UObject
 	GENERATED_BODY()
 
 public:
-	TArray<FAssetData> UnusedAssets;
+	TArray<FAssetData>* UnusedAssets;
 };
 
 /**
@@ -69,8 +70,14 @@ public:
 private:
 	TSharedPtr<SWidget> OnGetAssetContextMenu(const TArray<FAssetData>& SelectedAssets);
 	void FindInContentBrowser() const;
+	bool IsAnythingSelected() const;
 	FString GetStringValueForCustomColumn(FAssetData& AssetData, FName ColumnName) const;
 	FText GetDisplayTextForCustomColumn(FAssetData& AssetData, FName ColumnName) const;
+
+	TSharedPtr<FUICommandList> Commands;
+
+	/** Delegate to interact with asset view */
+	FGetCurrentSelectionDelegate GetCurrentSelectionDelegate;
 	
 
 };

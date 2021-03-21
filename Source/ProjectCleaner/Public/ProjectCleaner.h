@@ -4,7 +4,7 @@
 
 #include "StructsContainer.h"
 #include "UI/SProjectCleanerBrowser.h"
-
+#include "UI/ProjectCleanerBrowserStatisticsUI.h"
 // Engine Headers
 #include "Input/Reply.h"
 #include "Modules/ModuleInterface.h"
@@ -97,6 +97,9 @@ private:
 
 	TSharedPtr<SWidget> OnGetAssetContextMenu(const TArray<FAssetData>& SelectedAssets);
 	void FindInContentBrowser() const;
+
+	// UI
+	TWeakPtr<SProjectCleanerBrowserStatisticsUI> ProjectCleanerBrowserStatisticsUI;
 };
 
 
