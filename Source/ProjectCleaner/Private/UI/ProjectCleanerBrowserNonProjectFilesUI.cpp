@@ -40,14 +40,13 @@ void SProjectCleanerBrowserNonProjectFilesUI::Construct(const FArguments& InArgs
 	}
 	NonUProjectFilesInfo->EmptyFolders = EmptyFoldersConverted;
 
-	TArray<TSharedPtr<FString>> Items;
-	
+
 	ChildSlot
 	[
 		SNew(SBorder)
 		.Padding(FMargin(40.0f, 20.0f, 40.0f, 20.0f))
 		.HAlign(HAlign_Fill)
-		.VAlign(VAlign_Fill)			
+		.VAlign(VAlign_Fill)
         .BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
 		[
 			SNew(SVerticalBox)
@@ -59,39 +58,26 @@ void SProjectCleanerBrowserNonProjectFilesUI::Construct(const FArguments& InArgs
 			+SVerticalBox::Slot()
 			.AutoHeight()
 			[
-				SNew(SListView<TSharedPtr<FString>>)
-				.ListItemsSource(&Items)
-				.SelectionMode(ESelectionMode::Single)
-				.OnGenerateRow(this, &SProjectCleanerBrowserNonProjectFilesUI::OnGenerateWidgetForUsedAssets)
-				.HeaderRow
-				(
-					SNew(SHeaderRow)
-					+SHeaderRow::Column(FName{"AssetName"})
-					[
-						SNew(STextBlock)
-						.Text(LOCTEXT("NameColumn", "Name"))
-					]
-					+SHeaderRow::Column(FName{"AssetPath"})
-                    [
-                        SNew(STextBlock)
-                        .Text(LOCTEXT("NameColumn", "Name"))
-                    ]
-                    +SHeaderRow::Column(FName{"SourceCodePath"})
-                    [
-                        SNew(STextBlock)
-                        .Text(LOCTEXT("NameColumn", "Name"))
-                    ]
-				)
+				SNew(SListView<TWeakObjectPtr<UAssetsUsedInSourceCode>>)
+				.ListItemsSource(&AssetsUsedInSourceCodes)
+				.OnGenerateRow(this, &SProjectCleanerBrowserNonProjectFilesUI::OnGenerateRow)
 			]
 		]
 	];
 }
 
-TSharedRef<SWidget> SProjectCleanerBrowserNonProjectFilesUI::OnGenerateWidgetForUsedAssets(
-	TSharedPtr<FString> InItem, const TSharedRef<STableViewBase>& OwnerTable)
+TSharedRef<ITableRow> SProjectCleanerBrowserNonProjectFilesUI::OnGenerateRow(TWeakObjectPtr<UDeviceProfile> InItem,
+	const TSharedRef<STableViewBase>& OwnerTable)
 {
-	return SNew(STextBlock).Text((*InItem));
+	return SNew( SAssetsUsedInSourceCodeSelectionRow, OwnerTable );
 }
+
+
+// TSharedRef<SWidget> SProjectCleanerBrowserNonProjectFilesUI::OnGenerateWidgetForUsedAssets(
+// 	TSharedPtr<FString> InItem, const TSharedRef<STableViewBase>& OwnerTable)
+// {
+// 	return SNew(STextBlock).Text((*InItem));
+// }
 
 #pragma optimize("", on)
 #undef LOCTEXT_NAMESPACE
