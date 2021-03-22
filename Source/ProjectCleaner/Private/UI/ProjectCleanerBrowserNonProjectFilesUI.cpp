@@ -51,7 +51,7 @@ void SProjectCleanerBrowserNonProjectFilesUI::Construct(const FArguments& InArgs
 	TestObj2->AssetPath = "/Game/Content/AA2";
 	TestObj2->SourceCodePath = "/Source/main1.cpp";
 	AssetsUsedInSourceCodes.Add(TestObj2);
-
+	
 	ChildSlot
 	[
 		SNew(SBorder)
@@ -60,40 +60,54 @@ void SProjectCleanerBrowserNonProjectFilesUI::Construct(const FArguments& InArgs
 		.VAlign(VAlign_Fill)
         .BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
 		[
-			SNew(SVerticalBox)
-			+ SVerticalBox::Slot()
-			.AutoHeight()
+			SNew(SSplitter)
+			.Orientation(EOrientation::Orient_Vertical)		
+			+SSplitter::Slot()
+			.Value(0.8f)
 			[
 				NonProjectFilesProperty.ToSharedRef()
 			]
-			+ SVerticalBox::Slot()			
-			.AutoHeight()
+			+SSplitter::Slot()
+			.Value(0.2f)
 			[
-				SNew(SListView<TWeakObjectPtr<UAssetsUsedInSourceCode>>)
-				.ListItemsSource(&AssetsUsedInSourceCodes)
-				.OnGenerateRow(this, &SProjectCleanerBrowserNonProjectFilesUI::OnGenerateRow)
-				.HeaderRow
-                    (
-                        SNew(SHeaderRow)
-                        + SHeaderRow::Column(FName("AssetName"))
-                        .FillWidth(0.3f)
-                        [
-                            SNew(STextBlock)
-                            .Text(LOCTEXT("NameColumn", "AssetName"))
-                        ]
-                        + SHeaderRow::Column(FName("AssetPath"))
-                        .FillWidth(0.3f)
-                        [
-                            SNew(STextBlock)
-                            .Text(LOCTEXT("NameColumn", "AssetPath"))
-                        ]
-                        + SHeaderRow::Column(FName("SourceCodePath"))
-                        .FillWidth(0.3f)
-                        [
-                            SNew(STextBlock)
-                            .Text(LOCTEXT("NameColumn", "SourceCodePath"))
-                        ]
-                    )
+				SNew(SVerticalBox)
+				+SVerticalBox::Slot()
+				.AutoHeight()
+				[
+					SNew(STextBlock)
+					.Text(LOCTEXT("assetsusedinsourcecode","Assets that used in source code files"))
+					.Font(FontInfo)
+				]
+				+SVerticalBox::Slot()
+				.Padding(FMargin{0.0f, 20.0f})
+				.AutoHeight()
+				[
+					SNew(SListView<TWeakObjectPtr<UAssetsUsedInSourceCode>>)
+					.ListItemsSource(&AssetsUsedInSourceCodes)
+					.OnGenerateRow(this, &SProjectCleanerBrowserNonProjectFilesUI::OnGenerateRow)
+					.HeaderRow
+	                    (
+	                        SNew(SHeaderRow)
+	                        + SHeaderRow::Column(FName("AssetName"))
+	                        .FillWidth(0.3f)
+	                        [
+	                            SNew(STextBlock)
+	                            .Text(LOCTEXT("NameColumn", "AssetName"))
+	                        ]
+	                        + SHeaderRow::Column(FName("AssetPath"))
+	                        .FillWidth(0.3f)
+	                        [
+	                            SNew(STextBlock)
+	                            .Text(LOCTEXT("PathColumn", "AssetPath"))
+	                        ]
+	                        + SHeaderRow::Column(FName("SourceCodePath"))
+	                        .FillWidth(0.3f)
+	                        [
+	                            SNew(STextBlock)
+	                            .Text(LOCTEXT("SourceCodePathColumn", "SourceCodePath"))
+	                        ]
+	                    )
+				]
 			]
 		]
 	];
@@ -105,13 +119,6 @@ TSharedRef<ITableRow> SProjectCleanerBrowserNonProjectFilesUI::OnGenerateRow(
 {
 	return SNew(SAssetsUsedInSourceCodeSelectionRow, OwnerTable).SelectedObjItem(InItem);
 }
-
-
-// TSharedRef<SWidget> SProjectCleanerBrowserNonProjectFilesUI::OnGenerateWidgetForUsedAssets(
-// 	TSharedPtr<FString> InItem, const TSharedRef<STableViewBase>& OwnerTable)
-// {
-// 	return SNew(STextBlock).Text((*InItem));
-// }
 
 #pragma optimize("", on)
 #undef LOCTEXT_NAMESPACE

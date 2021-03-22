@@ -112,11 +112,11 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 	FMargin CommonMargin = FMargin{40.0f,20.0f};
 	
 	return SNew(SDockTab)
-		.TabRole(ETabRole::NomadTab)
+		.TabRole(ETabRole::MajorTab)
 		[
 			SNew(SSplitter)
-			+SSplitter::Slot()
-			.Value(0.3f)			
+			+SSplitter::Slot()		
+			.Value(0.3f)
 			[
 				SAssignNew(ProjectCleanerBrowserStatisticsUI, SProjectCleanerBrowserStatisticsUI)
 				.UnusedAssets(CleaningStats.UnusedAssetsNum)
@@ -124,7 +124,7 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 				.EmptyFolders(CleaningStats.EmptyFolders)
 			]
 			+SSplitter::Slot()
-			.Value(0.7f)
+			.Value(0.7f)			
 			[
 				SAssignNew(ProjectCleanerBrowserNonProjectFilesUI, SProjectCleanerBrowserNonProjectFilesUI)
 				.NonProjectFiles(NonProjectFilesInfo)
