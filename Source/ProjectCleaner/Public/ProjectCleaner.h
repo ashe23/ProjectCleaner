@@ -5,6 +5,7 @@
 #include "StructsContainer.h"
 #include "UI/SProjectCleanerBrowser.h"
 #include "UI/ProjectCleanerBrowserStatisticsUI.h"
+#include "UI/ProjectCleanerBrowserNonProjectFilesUI.h"
 // Engine Headers
 #include "Input/Reply.h"
 #include "Modules/ModuleInterface.h"
@@ -100,6 +101,8 @@ private:
 
 	// UI
 	TWeakPtr<SProjectCleanerBrowserStatisticsUI> ProjectCleanerBrowserStatisticsUI;
+	TWeakPtr<SProjectCleanerBrowserNonProjectFilesUI> ProjectCleanerBrowserNonProjectFilesUI;
+	UNonProjectFilesInfo* NonProjectFilesInfo;
 };
 
 

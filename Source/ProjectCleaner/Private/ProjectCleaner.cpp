@@ -55,6 +55,9 @@ void FProjectCleanerModule::StartupModule()
 	DirectoryFilterSettings = GetMutableDefault<UDirectoryFilterSettings>();
 	NonUProjectFilesSettings = GetMutableDefault<UNonUProjectFiles>();
 	UnusedAssetsUIContainerSettings = GetMutableDefault<UUnusedAssetsUIContainer>();
+
+	// UI
+	NonProjectFilesInfo = GetMutableDefault<UNonProjectFilesInfo>();
 }
 
 void FProjectCleanerModule::ShutdownModule()
@@ -106,19 +109,28 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 		.UnusedAssets(UnusedAssetsUIContainerSettings);
 
 	// const auto ProjectCleanerBrowserStatisticsUI = SAssignNew(ProjectCleanerBrowserStatisticsUI, SProjectCleanerBrowserStatisticsUI);
-
+	FMargin CommonMargin = FMargin{40.0f,20.0f};
+	
 	return SNew(SDockTab)
 		.TabRole(ETabRole::NomadTab)
 		[
-			SAssignNew(ProjectCleanerBrowserStatisticsUI, SProjectCleanerBrowserStatisticsUI)
-			.UnusedAssets(CleaningStats.UnusedAssetsNum)
-			.TotalSize(CleaningStats.UnusedAssetsTotalSize)
-			.EmptyFolders(CleaningStats.EmptyFolders)
-			// SNew(SVerticalBox)			
-			// + SVerticalBox::Slot()
-			// [
-			// 	ProjectCleanerBrowserPtr
-			// ]
+			SNew(SVerticalBox)			
+			+ SVerticalBox::Slot()
+			.Padding(CommonMargin)
+			.AutoHeight()
+			[
+				SAssignNew(ProjectCleanerBrowserStatisticsUI, SProjectCleanerBrowserStatisticsUI)
+				.UnusedAssets(CleaningStats.UnusedAssetsNum)
+				.TotalSize(CleaningStats.UnusedAssetsTotalSize)
+				.EmptyFolders(CleaningStats.EmptyFolders)
+			]
+			+SVerticalBox::Slot()
+			.Padding(CommonMargin)
+			.AutoHeight()
+			[
+				SAssignNew(ProjectCleanerBrowserNonProjectFilesUI, SProjectCleanerBrowserNonProjectFilesUI)
+				.NonProjectFiles(NonProjectFilesInfo)
+			]
 		];
 }
 
@@ -363,6 +375,9 @@ void FProjectCleanerModule::UpdateStats()
 	UsedInSourceCode.Apply(UnusedAssets);
 
 	UnusedAssetsUIContainerSettings->UnusedAssets = &UnusedAssets;
+	NonProjectFilesInfo->Files = NonProjectFiles;
+	NonProjectFilesInfo->EmptyFolders = EmptyFolders;
+	
 	CleaningStats.UnusedAssetsNum = UnusedAssets.Num();
 	CleaningStats.UnusedAssetsTotalSize = ProjectCleanerUtility::GetTotalSize(UnusedAssets);
 	CleaningStats.EmptyFolders = EmptyFolders.Num();
