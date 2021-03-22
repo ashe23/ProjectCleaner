@@ -34,31 +34,48 @@ public:
 
 // todo:ashe23 TESTING
 class SAssetsUsedInSourceCodeSelectionRow
-: public SMultiColumnTableRow<TWeakObjectPtr<UAssetsUsedInSourceCode>>
+	: public SMultiColumnTableRow<TWeakObjectPtr<UAssetsUsedInSourceCode>>
 {
 public:
-	SLATE_BEGIN_ARGS(SAssetsUsedInSourceCodeSelectionRow) {}
+	SLATE_BEGIN_ARGS(SAssetsUsedInSourceCodeSelectionRow){}
+		SLATE_ARGUMENT( TWeakObjectPtr< UAssetsUsedInSourceCode >, SelectedObjItem )
+
 	SLATE_END_ARGS()
 
-	void Construct(const FArguments& InArgs, const TSharedRef< STableViewBase >& InOwnerTableView)
+	void Construct(const FArguments& InArgs, const TSharedRef<STableViewBase>& InOwnerTableView)
 	{
-		SMultiColumnTableRow< TWeakObjectPtr< UAssetsUsedInSourceCode > >::Construct(SMultiColumnTableRow< TWeakObjectPtr< UAssetsUsedInSourceCode > >::FArguments().Padding(FMargin(0.f,2.f,0.f,0.f)), InOwnerTableView);
+		SelectedObjItem = InArgs._SelectedObjItem;
+		SMultiColumnTableRow<TWeakObjectPtr<UAssetsUsedInSourceCode>>::Construct(
+			SMultiColumnTableRow<TWeakObjectPtr<UAssetsUsedInSourceCode>>::FArguments().Padding(
+				FMargin(0.f, 2.f, 0.f, 0.f)), InOwnerTableView);
 	}
 
-	virtual TSharedRef<SWidget> GenerateWidgetForColumn( const FName& ColumnName ) override
+	virtual TSharedRef<SWidget> GenerateWidgetForColumn(const FName& ColumnName) override
 	{
-		TSharedPtr< SWidget > ColumnWidget;
+		TSharedPtr<SWidget> ColumnWidget;		
 
-		ColumnWidget = SNew(STextBlock).Text(TEXT("AAA"));
+		if(ColumnName == TEXT("AssetName"))
+		{
+			FText t = FText::FromName(SelectedObjItem->AssetName);
+			ColumnWidget = SNew(STextBlock).Text(t);			
+		}
+		else if(ColumnName == TEXT("AssetPath"))
+		{
+			FText t = FText::FromName(SelectedObjItem->AssetPath);
+			ColumnWidget = SNew(STextBlock).Text(t);			
+		}
+		else if(ColumnName == TEXT("SourceCodePath"))
+		{
+			FText t = FText::FromName(SelectedObjItem->SourceCodePath);
+			ColumnWidget = SNew(STextBlock).Text(t);	
+		}
 
 		return ColumnWidget.ToSharedRef();
 	}
 
 private:
-	// TWeakObjectPtr<UAssetsUsedInSourceCode> AssetsUsedInSourceCode;
+	TWeakObjectPtr< UAssetsUsedInSourceCode > SelectedObjItem;
 };
-
-
 
 
 //todo:ashe23 TESTING END
@@ -80,5 +97,6 @@ private:
 	UNonProjectFilesInfo* NonUProjectFilesInfo = nullptr;
 
 	TArray<TWeakObjectPtr<UAssetsUsedInSourceCode>> AssetsUsedInSourceCodes;
-	TSharedRef< ITableRow > OnGenerateRow( TWeakObjectPtr<UDeviceProfile> InItem, const TSharedRef< STableViewBase >& OwnerTable );
+	TSharedRef<ITableRow> OnGenerateRow(TWeakObjectPtr<UAssetsUsedInSourceCode> InItem,
+	                                    const TSharedRef<STableViewBase>& OwnerTable);
 };

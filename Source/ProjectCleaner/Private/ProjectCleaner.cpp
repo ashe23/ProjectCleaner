@@ -114,19 +114,17 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 	return SNew(SDockTab)
 		.TabRole(ETabRole::NomadTab)
 		[
-			SNew(SVerticalBox)			
-			+ SVerticalBox::Slot()
-			.Padding(CommonMargin)
-			.AutoHeight()
+			SNew(SSplitter)
+			+SSplitter::Slot()
+			.Value(0.3f)			
 			[
 				SAssignNew(ProjectCleanerBrowserStatisticsUI, SProjectCleanerBrowserStatisticsUI)
 				.UnusedAssets(CleaningStats.UnusedAssetsNum)
 				.TotalSize(CleaningStats.UnusedAssetsTotalSize)
 				.EmptyFolders(CleaningStats.EmptyFolders)
 			]
-			+SVerticalBox::Slot()
-			.Padding(CommonMargin)
-			.AutoHeight()
+			+SSplitter::Slot()
+			.Value(0.7f)
 			[
 				SAssignNew(ProjectCleanerBrowserNonProjectFilesUI, SProjectCleanerBrowserNonProjectFilesUI)
 				.NonProjectFiles(NonProjectFilesInfo)

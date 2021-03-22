@@ -28,7 +28,7 @@ void SProjectCleanerBrowserStatisticsUI::Construct(const FArguments& InArgs)
 		SNew(SBorder)
 		.Padding(FMargin(40.0f, 20.0f, 40.0f, 20.0f))
 		.HAlign(HAlign_Fill)
-		.VAlign(VAlign_Fill)			
+		.VAlign(VAlign_Fill)		
         .BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
 		[
 			SNew(SOverlay)

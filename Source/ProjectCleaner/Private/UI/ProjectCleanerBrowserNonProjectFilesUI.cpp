@@ -9,7 +9,7 @@
 void SProjectCleanerBrowserNonProjectFilesUI::Construct(const FArguments& InArgs)
 {
 	FPropertyEditorModule& PropertyEditor = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
-	
+
 	FDetailsViewArgs NonProjectFilesSettings;
 	NonProjectFilesSettings.bUpdatesFromSelection = false;
 	NonProjectFilesSettings.bLockable = false;
@@ -26,20 +26,31 @@ void SProjectCleanerBrowserNonProjectFilesUI::Construct(const FArguments& InArgs
 		NonUProjectFilesInfo = InArgs._NonProjectFiles;
 		NonProjectFilesProperty->SetObject(NonUProjectFilesInfo);
 	}
-	
+
 	const FSlateFontInfo FontInfo = FSlateFontInfo(
-        FPaths::EngineContentDir() / TEXT("Slate/Fonts/Roboto-Light.ttf"),
-        20
-    );
+		FPaths::EngineContentDir() / TEXT("Slate/Fonts/Roboto-Light.ttf"),
+		20
+	);
 
 	// converting paths of directories to full path
 	TArray<FString> EmptyFoldersConverted;
-	for(auto& Folder : NonUProjectFilesInfo->EmptyFolders)
+	for (auto& Folder : NonUProjectFilesInfo->EmptyFolders)
 	{
-		EmptyFoldersConverted.AddUnique(FPaths::ConvertRelativePathToFull(Folder));		
+		EmptyFoldersConverted.AddUnique(FPaths::ConvertRelativePathToFull(Folder));
 	}
 	NonUProjectFilesInfo->EmptyFolders = EmptyFoldersConverted;
 
+	auto TestObj = NewObject<UAssetsUsedInSourceCode>();
+	TestObj->AssetName = "AA1";
+	TestObj->AssetPath = "/Game/Content/AA1";
+	TestObj->SourceCodePath = "/Source/main.cpp";
+	AssetsUsedInSourceCodes.Add(TestObj);
+	
+	auto TestObj2 = NewObject<UAssetsUsedInSourceCode>();
+	TestObj2->AssetName = "AA2";
+	TestObj2->AssetPath = "/Game/Content/AA2";
+	TestObj2->SourceCodePath = "/Source/main1.cpp";
+	AssetsUsedInSourceCodes.Add(TestObj2);
 
 	ChildSlot
 	[
@@ -50,26 +61,49 @@ void SProjectCleanerBrowserNonProjectFilesUI::Construct(const FArguments& InArgs
         .BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
 		[
 			SNew(SVerticalBox)
-			+SVerticalBox::Slot()
+			+ SVerticalBox::Slot()
 			.AutoHeight()
 			[
 				NonProjectFilesProperty.ToSharedRef()
 			]
-			+SVerticalBox::Slot()
+			+ SVerticalBox::Slot()			
 			.AutoHeight()
 			[
 				SNew(SListView<TWeakObjectPtr<UAssetsUsedInSourceCode>>)
 				.ListItemsSource(&AssetsUsedInSourceCodes)
 				.OnGenerateRow(this, &SProjectCleanerBrowserNonProjectFilesUI::OnGenerateRow)
+				.HeaderRow
+                    (
+                        SNew(SHeaderRow)
+                        + SHeaderRow::Column(FName("AssetName"))
+                        .FillWidth(0.3f)
+                        [
+                            SNew(STextBlock)
+                            .Text(LOCTEXT("NameColumn", "AssetName"))
+                        ]
+                        + SHeaderRow::Column(FName("AssetPath"))
+                        .FillWidth(0.3f)
+                        [
+                            SNew(STextBlock)
+                            .Text(LOCTEXT("NameColumn", "AssetPath"))
+                        ]
+                        + SHeaderRow::Column(FName("SourceCodePath"))
+                        .FillWidth(0.3f)
+                        [
+                            SNew(STextBlock)
+                            .Text(LOCTEXT("NameColumn", "SourceCodePath"))
+                        ]
+                    )
 			]
 		]
 	];
 }
 
-TSharedRef<ITableRow> SProjectCleanerBrowserNonProjectFilesUI::OnGenerateRow(TWeakObjectPtr<UDeviceProfile> InItem,
+TSharedRef<ITableRow> SProjectCleanerBrowserNonProjectFilesUI::OnGenerateRow(
+	TWeakObjectPtr<UAssetsUsedInSourceCode> InItem,
 	const TSharedRef<STableViewBase>& OwnerTable)
 {
-	return SNew( SAssetsUsedInSourceCodeSelectionRow, OwnerTable );
+	return SNew(SAssetsUsedInSourceCodeSelectionRow, OwnerTable).SelectedObjItem(InItem);
 }
 
 
