@@ -8,6 +8,7 @@
 #include "UI/ProjectCleanerBrowserNonProjectFilesUI.h"
 #include "UI/ProjectCleanerDirectoryExclusionUI.h"
 #include "UI/ProjectCleanerUnusedAssetsBrowserUI.h"
+#include "UI/ProjectCleanerNonProjectFilesUI.h"
 // Engine Headers
 #include "Input/Reply.h"
 #include "Modules/ModuleInterface.h"
@@ -106,6 +107,7 @@ private:
 	UExcludeDirectoriesFilterSettings* ExcludeDirectoryFilterSettings;
 
 	TWeakPtr<SProjectCleanerUnusedAssetsBrowserUI> ProjectCleanerUnusedAssetsBrowserUI;
+	TWeakPtr<SProjectCleanerNonProjectFilesUI> ProjectCleanerNonProjectFilesUI;
 	
 	UNonProjectFilesInfo* NonProjectFilesInfo;
 };

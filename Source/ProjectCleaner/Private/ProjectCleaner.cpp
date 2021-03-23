@@ -159,8 +159,8 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
                       .Padding(CommonMargin)
                       .AutoHeight()
                     [
-	                    SAssignNew(ProjectCleanerBrowserNonProjectFilesUI, SProjectCleanerBrowserNonProjectFilesUI)
-	                    .NonProjectFiles(NonProjectFilesInfo)
+	                   SAssignNew(ProjectCleanerNonProjectFilesUI, SProjectCleanerNonProjectFilesUI)
+	                   .NonProjectFiles(NonProjectFiles)
                     ]
                 ]
 			]
