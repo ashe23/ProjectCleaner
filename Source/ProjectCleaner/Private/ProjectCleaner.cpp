@@ -110,6 +110,8 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 	// const auto ProjectCleanerBrowserStatisticsUI = SAssignNew(ProjectCleanerBrowserStatisticsUI, SProjectCleanerBrowserStatisticsUI);
 	FMargin CommonMargin = FMargin{20.0f, 20.0f};
 
+
+	// todo:ashe23 move this to other place
 	TArray<FAssetData*> UnusedAssetsPtrs;
 	UnusedAssetsPtrs.Reserve(UnusedAssets.Num());
 	for(auto& Asset : UnusedAssets)
