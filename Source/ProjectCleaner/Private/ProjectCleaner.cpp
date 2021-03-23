@@ -110,6 +110,14 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 	// const auto ProjectCleanerBrowserStatisticsUI = SAssignNew(ProjectCleanerBrowserStatisticsUI, SProjectCleanerBrowserStatisticsUI);
 	FMargin CommonMargin = FMargin{20.0f, 20.0f};
 
+	TArray<FAssetData*> UnusedAssetsPtrs;
+	UnusedAssetsPtrs.Reserve(UnusedAssets.Num());
+	for(auto& Asset : UnusedAssets)
+	{
+		FAssetData* AssetDataPtr = &Asset;
+		UnusedAssetsPtrs.Add(AssetDataPtr);
+	}
+	
 	return SNew(SDockTab)
 		.TabRole(ETabRole::MajorTab)
 		[
@@ -142,6 +150,17 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 						.ExcludeDirectoriesFilterSettings(ExcludeDirectoryFilterSettings)
 					]
 				]
+				+ SScrollBox::Slot()
+                [
+                    SNew(SVerticalBox)
+                    + SVerticalBox::Slot()
+                      .Padding(CommonMargin)
+                      .AutoHeight()
+                    [
+	                    SAssignNew(ProjectCleanerBrowserNonProjectFilesUI, SProjectCleanerBrowserNonProjectFilesUI)
+	                    .NonProjectFiles(NonProjectFilesInfo)
+                    ]
+                ]
 			]
 			+ SSplitter::Slot()
 			.Value(0.65f)
@@ -149,9 +168,15 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 				SNew(SScrollBox)
 				+SScrollBox::Slot()
 				[
-					SAssignNew(ProjectCleanerBrowserNonProjectFilesUI, SProjectCleanerBrowserNonProjectFilesUI)
-					.NonProjectFiles(NonProjectFilesInfo)
-				]
+					SNew(SVerticalBox)
+	                + SVerticalBox::Slot()
+	                .Padding(CommonMargin)
+	                .AutoHeight()
+	                [
+						SAssignNew(ProjectCleanerUnusedAssetsBrowserUI, SProjectCleanerUnusedAssetsBrowserUI)
+						.UnusedAssets(UnusedAssetsPtrs)
+	                ]
+				]				
 			]
 		];
 }
