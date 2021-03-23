@@ -3,12 +3,14 @@
 #include "ProjectCleaner.h"
 #include "ProjectCleanerUtility.h"
 #include "StructsContainer.h"
+#include "UI/ProjectCleanerAssetsUsedInSourceCodeUI.h"
 
 #pragma optimize("", off)
-Filter_UsedInSourceCode::Filter_UsedInSourceCode(TArray<FSourceCodeFile>& SourceFiles, TArray<FNode>& List)
+Filter_UsedInSourceCode::Filter_UsedInSourceCode(TArray<FSourceCodeFile>& SourceFiles, TArray<FNode>& List, TArray<TWeakObjectPtr<UAssetsUsedInSourceCodeUIStruct>>& AssetsUsedInSourceCodeUIStructs)
 {
 	AdjacencyList = &List;
 	this->SourceFiles = &SourceFiles;
+	this->AssetsUsedInSourceCodeUIStructs = &AssetsUsedInSourceCodeUIStructs;
 }
 
 void Filter_UsedInSourceCode::Apply(TArray<FAssetData>& Assets)
@@ -58,6 +60,11 @@ bool Filter_UsedInSourceCode::UsedInSourceFiles(const FAssetData& Asset) const
 			File.Content.Contains(QuotedAssetName)
 		)
 		{
+			auto Obj = NewObject<UAssetsUsedInSourceCodeUIStruct>();
+			Obj->AssetName = Asset.AssetName.ToString();
+			Obj->AssetPath = Asset.PackageName.ToString();
+			Obj->SourceCodePath = File.AbsoluteFilePath;
+			AssetsUsedInSourceCodeUIStructs->Add(Obj);
 			UE_LOG(LogProjectCleaner, Warning, TEXT("\"%s\" asset used in \"%s\" file"), *Asset.AssetName.ToString(), *File.AbsoluteFilePath);
 			return true;
 		}

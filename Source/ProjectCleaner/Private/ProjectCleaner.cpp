@@ -142,16 +142,16 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 					]
 				]
 				+ SScrollBox::Slot()
-				[
-					SNew(SVerticalBox)
-					+ SVerticalBox::Slot()
-					  .Padding(CommonMargin)
-					  .AutoHeight()
-					[
-						SAssignNew(ProjectCleanerDirectoryExclusionUI, SProjectCleanerDirectoryExclusionUI)
-						.ExcludeDirectoriesFilterSettings(ExcludeDirectoryFilterSettings)
-					]
-				]
+                [
+                    SNew(SVerticalBox)
+                    + SVerticalBox::Slot()
+                      .Padding(CommonMargin)
+                      .AutoHeight()
+                    [
+                       SAssignNew(ProjectCleanerDirectoryExclusionUI, SProjectCleanerDirectoryExclusionUI)
+                       .ExcludeDirectoriesFilterSettings(ExcludeDirectoryFilterSettings)
+                    ]                    
+                ]
 				+ SScrollBox::Slot()
                 [
                     SNew(SVerticalBox)
@@ -161,8 +161,19 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
                     [
 	                   SAssignNew(ProjectCleanerNonProjectFilesUI, SProjectCleanerNonProjectFilesUI)
 	                   .NonProjectFiles(NonProjectFiles)
-                    ]
+                    ]                    
                 ]
+				+ SScrollBox::Slot()
+				[
+					SNew(SVerticalBox)
+					+ SVerticalBox::Slot()
+					  .Padding(CommonMargin)
+					  .AutoHeight()
+					[
+						SAssignNew(ProjectCleanerAssetsUsedInSourceCodeUI, SProjectCleanerAssetsUsedInSourceCodeUI)
+						.AssetsUsedInSourceCode(AssetsUsedInSourceCodeUIStructs)
+					]
+				]
 			]
 			+ SSplitter::Slot()
 			.Value(0.65f)
@@ -420,12 +431,12 @@ void FProjectCleanerModule::UpdateStats()
 	Filter_ExcludedDirectories ExcludedDirectories{ExcludeDirectoryFilterSettings, AdjacencyList};
 	ExcludedDirectories.Apply(UnusedAssets);
 
-	Filter_UsedInSourceCode UsedInSourceCode{SourceFiles, AdjacencyList};
+	Filter_UsedInSourceCode UsedInSourceCode{SourceFiles, AdjacencyList, AssetsUsedInSourceCodeUIStructs};
 	UsedInSourceCode.Apply(UnusedAssets);
 
-	UnusedAssetsUIContainerSettings->UnusedAssets = &UnusedAssets;
-	NonProjectFilesInfo->Files = NonProjectFiles;
-	NonProjectFilesInfo->EmptyFolders = EmptyFolders;
+	// UnusedAssetsUIContainerSettings->UnusedAssets = &UnusedAssets;
+	// NonProjectFilesInfo->Files = NonProjectFiles;
+	// NonProjectFilesInfo->EmptyFolders = EmptyFolders;
 
 	CleaningStats.UnusedAssetsNum = UnusedAssets.Num();
 	CleaningStats.UnusedAssetsTotalSize = ProjectCleanerUtility::GetTotalSize(UnusedAssets);

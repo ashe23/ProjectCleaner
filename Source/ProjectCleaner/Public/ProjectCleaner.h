@@ -9,11 +9,13 @@
 #include "UI/ProjectCleanerDirectoryExclusionUI.h"
 #include "UI/ProjectCleanerUnusedAssetsBrowserUI.h"
 #include "UI/ProjectCleanerNonProjectFilesUI.h"
+#include "UI/ProjectCleanerAssetsUsedInSourceCodeUI.h"
 // Engine Headers
 #include "Input/Reply.h"
 #include "Modules/ModuleInterface.h"
 #include "ContentBrowserDelegates.h"
 #include "CoreMinimal.h"
+
 
 class ProjectCleanerNotificationManager;
 class FToolBarBuilder;
@@ -108,6 +110,8 @@ private:
 
 	TWeakPtr<SProjectCleanerUnusedAssetsBrowserUI> ProjectCleanerUnusedAssetsBrowserUI;
 	TWeakPtr<SProjectCleanerNonProjectFilesUI> ProjectCleanerNonProjectFilesUI;
+	TWeakPtr<SProjectCleanerAssetsUsedInSourceCodeUI> ProjectCleanerAssetsUsedInSourceCodeUI;
+	TArray<TWeakObjectPtr<UAssetsUsedInSourceCodeUIStruct>> AssetsUsedInSourceCodeUIStructs;
 	
 	UNonProjectFilesInfo* NonProjectFilesInfo;
 };
