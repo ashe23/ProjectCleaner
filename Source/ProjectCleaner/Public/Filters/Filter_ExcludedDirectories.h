@@ -4,17 +4,17 @@
 
 struct FAssetData;
 struct FNode;
-class UDirectoryFilterSettings;
+class UExcludeDirectoriesFilterSettings;
 
 class Filter_ExcludedDirectories : public IProjectCleanerFilter
 {
 public:
-	Filter_ExcludedDirectories(UDirectoryFilterSettings* DirectoryFilterSettings, TArray<FNode>& List);
+	Filter_ExcludedDirectories(UExcludeDirectoriesFilterSettings* DirectoryFilterSettings, TArray<FNode>& List);
 	virtual void Apply(TArray<FAssetData>& Assets) override;
 private:
 	bool ShouldApplyDirectoryFilters() const;
 	void ApplyDirectoryFilters(TArray<FAssetData>& Assets);
 
-	UDirectoryFilterSettings* Settings;
+	UExcludeDirectoriesFilterSettings* Settings;
 	TArray<FNode>* AdjacencyList;
 };

@@ -52,7 +52,7 @@ void FProjectCleanerModule::StartupModule()
 
 	NotificationManager = new ProjectCleanerNotificationManager();
 
-	DirectoryFilterSettings = GetMutableDefault<UDirectoryFilterSettings>();
+	ExcludeDirectoryFilterSettings = GetMutableDefault<UExcludeDirectoriesFilterSettings>();
 	NonUProjectFilesSettings = GetMutableDefault<UNonUProjectFiles>();
 	UnusedAssetsUIContainerSettings = GetMutableDefault<UUnusedAssetsUIContainer>();
 
@@ -104,30 +104,54 @@ void FProjectCleanerModule::AddToolbarExtension(FToolBarBuilder& Builder)
 TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs)
 {
 	const auto ProjectCleanerBrowserPtr = SAssignNew(ProjectCleanerBrowserUI, SProjectCleanerBrowser)
-		.DirectoryFilterSettings(DirectoryFilterSettings)
 		.NonProjectFiles(NonUProjectFilesSettings)
 		.UnusedAssets(UnusedAssetsUIContainerSettings);
 
 	// const auto ProjectCleanerBrowserStatisticsUI = SAssignNew(ProjectCleanerBrowserStatisticsUI, SProjectCleanerBrowserStatisticsUI);
-	FMargin CommonMargin = FMargin{40.0f,20.0f};
-	
+	FMargin CommonMargin = FMargin{20.0f, 20.0f};
+
 	return SNew(SDockTab)
 		.TabRole(ETabRole::MajorTab)
 		[
 			SNew(SSplitter)
-			+SSplitter::Slot()		
-			.Value(0.3f)
+			+ SSplitter::Slot()
+			.Value(0.35f)
 			[
-				SAssignNew(ProjectCleanerBrowserStatisticsUI, SProjectCleanerBrowserStatisticsUI)
-				.UnusedAssets(CleaningStats.UnusedAssetsNum)
-				.TotalSize(CleaningStats.UnusedAssetsTotalSize)
-				.EmptyFolders(CleaningStats.EmptyFolders)
+				SNew(SScrollBox)
+				+ SScrollBox::Slot()
+				[
+					SNew(SVerticalBox)
+					+ SVerticalBox::Slot()
+					  .Padding(CommonMargin)
+					  .AutoHeight()
+					[
+						SAssignNew(ProjectCleanerBrowserStatisticsUI, SProjectCleanerBrowserStatisticsUI)
+						.UnusedAssets(CleaningStats.UnusedAssetsNum)
+						.TotalSize(CleaningStats.UnusedAssetsTotalSize)
+						.EmptyFolders(CleaningStats.EmptyFolders)
+					]
+				]
+				+ SScrollBox::Slot()
+				[
+					SNew(SVerticalBox)
+					+ SVerticalBox::Slot()
+					  .Padding(CommonMargin)
+					  .AutoHeight()
+					[
+						SAssignNew(ProjectCleanerDirectoryExclusionUI, SProjectCleanerDirectoryExclusionUI)
+						.ExcludeDirectoriesFilterSettings(ExcludeDirectoryFilterSettings)
+					]
+				]
 			]
-			+SSplitter::Slot()
-			.Value(0.7f)			
+			+ SSplitter::Slot()
+			.Value(0.65f)
 			[
-				SAssignNew(ProjectCleanerBrowserNonProjectFilesUI, SProjectCleanerBrowserNonProjectFilesUI)
-				.NonProjectFiles(NonProjectFilesInfo)
+				SNew(SScrollBox)
+				+SScrollBox::Slot()
+				[
+					SAssignNew(ProjectCleanerBrowserNonProjectFilesUI, SProjectCleanerBrowserNonProjectFilesUI)
+					.NonProjectFiles(NonProjectFilesInfo)
+				]
 			]
 		];
 }
@@ -366,7 +390,7 @@ void FProjectCleanerModule::UpdateStats()
 	Filter_NotUsedInAnyLevel NotUsedInAnyLevel;
 	NotUsedInAnyLevel.Apply(UnusedAssets);
 
-	Filter_ExcludedDirectories ExcludedDirectories{DirectoryFilterSettings, AdjacencyList};
+	Filter_ExcludedDirectories ExcludedDirectories{ExcludeDirectoryFilterSettings, AdjacencyList};
 	ExcludedDirectories.Apply(UnusedAssets);
 
 	Filter_UsedInSourceCode UsedInSourceCode{SourceFiles, AdjacencyList};
@@ -375,7 +399,7 @@ void FProjectCleanerModule::UpdateStats()
 	UnusedAssetsUIContainerSettings->UnusedAssets = &UnusedAssets;
 	NonProjectFilesInfo->Files = NonProjectFiles;
 	NonProjectFilesInfo->EmptyFolders = EmptyFolders;
-	
+
 	CleaningStats.UnusedAssetsNum = UnusedAssets.Num();
 	CleaningStats.UnusedAssetsTotalSize = ProjectCleanerUtility::GetTotalSize(UnusedAssets);
 	CleaningStats.EmptyFolders = EmptyFolders.Num();

@@ -1,5 +1,5 @@
 ﻿#include "Filters/Filter_ExcludedDirectories.h"
-#include "UI/SProjectCleanerBrowser.h"
+#include "UI/ProjectCleanerDirectoryExclusionUI.h"
 #include "StructsContainer.h"
 #include "ProjectCleanerUtility.h"
 
@@ -7,7 +7,7 @@
 #include "AssetRegistry/Public/AssetData.h"
 #include "AssetRegistryModule.h"
 
-Filter_ExcludedDirectories::Filter_ExcludedDirectories(UDirectoryFilterSettings* DirectoryFilterSettings,
+Filter_ExcludedDirectories::Filter_ExcludedDirectories(UExcludeDirectoriesFilterSettings* DirectoryFilterSettings,
                                                        TArray<FNode>& List)
 {
 	Settings = DirectoryFilterSettings;
@@ -26,7 +26,7 @@ bool Filter_ExcludedDirectories::ShouldApplyDirectoryFilters() const
 {
 	if (!Settings) return false;
 
-	return Settings->DirectoryPaths.Num() > 0;
+	return Settings->Paths.Num() > 0;
 }
 
 void Filter_ExcludedDirectories::ApplyDirectoryFilters(TArray<FAssetData>& Assets)
@@ -36,7 +36,7 @@ void Filter_ExcludedDirectories::ApplyDirectoryFilters(TArray<FAssetData>& Asset
 	// query list of assets in given directory paths in filter section
 	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
 	TArray<FAssetData> ProcessingAssets;
-	for (const auto& Filter : Settings->DirectoryPaths)
+	for (const auto& Filter : Settings->Paths)
 	{
 		TArray<FAssetData> AssetsInPath;
 		AssetRegistryModule.Get().GetAssetsByPath(FName{*Filter.Path}, AssetsInPath, true);

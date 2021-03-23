@@ -17,16 +17,6 @@ void SProjectCleanerBrowser::Construct(const FArguments& InArgs)
 
 	FProjectCleanerBrowserCommands::Register();
 
-	FDetailsViewArgs FolderFilterArgs;
-	FolderFilterArgs.bUpdatesFromSelection = false;
-	FolderFilterArgs.bLockable = false;
-	FolderFilterArgs.bAllowSearch = false;
-	FolderFilterArgs.bShowOptions = false;
-	FolderFilterArgs.bAllowFavoriteSystem = false;
-	FolderFilterArgs.NameAreaSettings = FDetailsViewArgs::HideNameArea;
-	FolderFilterArgs.ViewIdentifier = "ExcludeDirectoriesFromScan";
-
-
 	FDetailsViewArgs NonProjectFilesSettings;
 	NonProjectFilesSettings.bUpdatesFromSelection = false;
 	NonProjectFilesSettings.bLockable = false;
@@ -39,15 +29,8 @@ void SProjectCleanerBrowser::Construct(const FArguments& InArgs)
 	FDetailsViewArgs UnusedAssetsUIContainerSettings;
 	UnusedAssetsUIContainerSettings.ViewIdentifier = "UnusedAssetsUIContainerSettings";
 
-	DirectoryFilterProperty = PropertyEditor.CreateDetailView(FolderFilterArgs);
 	NonProjectFilesProperty = PropertyEditor.CreateDetailView(NonProjectFilesSettings);
 	UnusedAssetsUIContainerProperty = PropertyEditor.CreateDetailView(UnusedAssetsUIContainerSettings);
-
-	if (InArgs._DirectoryFilterSettings)
-	{
-		DirectoryFilterSettings = InArgs._DirectoryFilterSettings;
-		DirectoryFilterProperty->SetObject(DirectoryFilterSettings);
-	}
 
 	if (InArgs._NonProjectFiles)
 	{
@@ -125,22 +108,7 @@ void SProjectCleanerBrowser::Construct(const FArguments& InArgs)
 			  .AutoHeight()
 			[
 				ContentBrowser.Get().CreateAssetPicker(Config)
-			]
-			+ SVerticalBox::Slot()
-			  .Padding(FMargin(20))
-			  .AutoHeight()
-			[
-				SNew(SVerticalBox)
-				+ SVerticalBox::Slot()
-				.Padding(20)
-				[
-					SNew(SBorder)
-					.Padding(FMargin(20))
-					[
-						DirectoryFilterProperty.ToSharedRef()
-					]
-				]
-			]
+			]			
 			+ SVerticalBox::Slot()
 			  .Padding(FMargin{40})
 			  .AutoHeight()

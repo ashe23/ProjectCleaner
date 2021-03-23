@@ -9,16 +9,6 @@
 
 
 UCLASS()
-class UDirectoryFilterSettings : public UObject
-{
-
-	GENERATED_BODY()
-public:
-	UPROPERTY(DisplayName = "Directory", EditAnywhere, Category = "ExcludeThisDirectories", meta = (ContentDir))
-	TArray<FDirectoryPath> DirectoryPaths;
-};
-
-UCLASS()
 class UNonUProjectFiles : public UObject
 {
 	GENERATED_BODY()
@@ -40,7 +30,7 @@ class UUnusedAssetsUIContainer : public UObject
 	GENERATED_BODY()
 
 public:
-	TArray<FAssetData>* UnusedAssets;
+	TArray<FAssetData>* UnusedAssets;// todo:ashe23 pointer is bad
 };
 
 /**
@@ -50,7 +40,6 @@ class SProjectCleanerBrowser : public SCompoundWidget
 {
 public:
 	SLATE_BEGIN_ARGS(SProjectCleanerBrowser) {}
-		SLATE_ARGUMENT(UDirectoryFilterSettings*, DirectoryFilterSettings)
 		SLATE_ARGUMENT(UNonUProjectFiles*, NonProjectFiles)
 		SLATE_ARGUMENT(UUnusedAssetsUIContainer*, UnusedAssets)
 	SLATE_END_ARGS()
@@ -58,9 +47,6 @@ public:
 	typedef TSharedPtr<FString> FComboItemType;
 
 	void Construct(const FArguments& InArgs);
-
-	TSharedPtr<IDetailsView> DirectoryFilterProperty;
-	UDirectoryFilterSettings* DirectoryFilterSettings;
 
 	TSharedPtr<IDetailsView> NonProjectFilesProperty;
 	UNonUProjectFiles* NonUProjectFiles;

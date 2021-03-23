@@ -6,6 +6,7 @@
 #include "UI/SProjectCleanerBrowser.h"
 #include "UI/ProjectCleanerBrowserStatisticsUI.h"
 #include "UI/ProjectCleanerBrowserNonProjectFilesUI.h"
+#include "UI/ProjectCleanerDirectoryExclusionUI.h"
 // Engine Headers
 #include "Input/Reply.h"
 #include "Modules/ModuleInterface.h"
@@ -31,7 +32,6 @@ public:
 	FProjectCleanerModule()
 	{
 		NotificationManager = nullptr;
-		DirectoryFilterSettings = nullptr;
 	}
 	/** IModuleInterface implementation */
 	virtual void StartupModule() override;
@@ -92,7 +92,6 @@ private:
 	TArray<FSourceCodeFile> SourceFiles;
 	ProjectCleanerNotificationManager* NotificationManager;
 	TWeakPtr<SProjectCleanerBrowser> ProjectCleanerBrowserUI;
-	UDirectoryFilterSettings* DirectoryFilterSettings;
 	UNonUProjectFiles* NonUProjectFilesSettings;
 	UUnusedAssetsUIContainer* UnusedAssetsUIContainerSettings;
 
@@ -102,6 +101,8 @@ private:
 	// UI
 	TWeakPtr<SProjectCleanerBrowserStatisticsUI> ProjectCleanerBrowserStatisticsUI;
 	TWeakPtr<SProjectCleanerBrowserNonProjectFilesUI> ProjectCleanerBrowserNonProjectFilesUI;
+	TWeakPtr<SProjectCleanerDirectoryExclusionUI> ProjectCleanerDirectoryExclusionUI;
+	UExcludeDirectoriesFilterSettings* ExcludeDirectoryFilterSettings;
 	UNonProjectFilesInfo* NonProjectFilesInfo;
 };
 
