@@ -47,6 +47,8 @@ void SProjectCleanerUnusedAssetsBrowserUI::Construct(const FArguments& InArgs)
 	FARFilter Filter;
 	Filter.bRecursiveClasses = true;
 	Filter.RecursiveClassesExclusionSet.Add(UWorld::StaticClass()->GetFName());
+
+	// todo:ashe23 fix if unused assets is empty content browser shows all assets
 	for(const auto& Asset : UnusedAssets)
 	{
 		Filter.PackageNames.Add(Asset->PackageName);

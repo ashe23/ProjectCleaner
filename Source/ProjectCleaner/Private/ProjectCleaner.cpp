@@ -140,6 +140,45 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 						.TotalSize(CleaningStats.UnusedAssetsTotalSize)
 						.EmptyFolders(CleaningStats.EmptyFolders)
 					]
+					+ SVerticalBox::Slot()
+					.Padding(CommonMargin)
+	                .AutoHeight()
+	                [
+	                    SNew(SBorder)
+	                    .Padding(FMargin(10))
+	                    .BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
+	                    [
+	                        SNew(SHorizontalBox)
+	                        + SHorizontalBox::Slot()
+	                        .FillWidth(1.0f)
+	                        [
+	                            SNew(SButton)
+	                            .HAlign(HAlign_Center)
+	                            .VAlign(VAlign_Center)
+	                            .Text(FText::FromString("Refresh"))
+	                            .OnClicked_Raw(this, &FProjectCleanerModule::RefreshBrowser)
+	                        ]
+	                        + SHorizontalBox::Slot()
+	                          .FillWidth(1.0f)
+	                          .Padding(FMargin{40.0f, 0.0f, 40.0f, 0.0f})
+	                        [
+	                            SNew(SButton)
+	                            .HAlign(HAlign_Center)
+	                            .VAlign(VAlign_Center)
+	                            .Text(FText::FromString("Delete Unused Assets"))
+	                            .OnClicked_Raw(this, &FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick)
+	                        ]
+	                        + SHorizontalBox::Slot()
+	                        .FillWidth(1.0f)
+	                        [
+	                            SNew(SButton)
+	                            .HAlign(HAlign_Center)
+	                            .VAlign(VAlign_Center)
+	                            .Text(FText::FromString("Delete Empty Folders"))
+	                            .OnClicked_Raw(this, &FProjectCleanerModule::OnDeleteEmptyFolderClick)
+	                        ]
+	                    ]
+	                ]
 				]
 				+ SScrollBox::Slot()
                 [
