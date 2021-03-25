@@ -1,4 +1,5 @@
 ﻿#include "UI/ProjectCleanerNonProjectFilesUI.h"
+#include "StructsContainer.h"
 
 #define LOCTEXT_NAMESPACE "FProjectCleanerModule"
 
@@ -10,8 +11,8 @@ void SProjectCleanerNonProjectFilesUI::Construct(const FArguments& InArgs)
 	{
 		auto Obj = NewObject<UNonProjectFilesUIStruct>();
 		if(!Obj) continue;
-		Obj->FileName = FPaths::GetBaseFilename(NonProjectFile);
-		Obj->FilePath = NonProjectFile;
+		Obj->FileName = NonProjectFile.FileName;
+		Obj->FilePath = NonProjectFile.FilePath;
 		NonProjectFilesUIStructs.Add(Obj);		
 	}
 

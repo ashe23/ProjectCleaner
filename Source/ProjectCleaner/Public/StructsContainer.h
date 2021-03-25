@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include "CoreMinimal.h"
+#include "StructsContainer.generated.h"
 
 struct FCleaningStats
 {
@@ -68,4 +69,26 @@ struct FSourceCodeFile
 	FString AbsoluteFilePath;
 	FString RelativeFilePath;
 	FString Content;
+};
+
+USTRUCT()
+struct FNonProjectFile
+{
+	GENERATED_BODY()
+	
+	UPROPERTY()
+	FString FileName;
+	UPROPERTY()
+	FString FilePath;
+
+	FNonProjectFile()
+	{
+		FileName = FString{};
+		FilePath = FString{};
+	}
+
+	bool operator==(const FNonProjectFile& Lhs) const
+	{
+		return this->FileName == Lhs.FileName && this->FilePath == Lhs.FilePath;
+	}
 };

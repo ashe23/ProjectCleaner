@@ -9,6 +9,7 @@
 #include "Filters/Filter_ExcludedDirectories.h"
 #include "Filters/Filter_UsedInSourceCode.h"
 #include "UI/ProjectCleanerBrowserCommands.h"
+#include "UI/ProjectCleanerNonProjectFilesUI.h"
 // Engine Headers
 #include "IContentBrowserSingleton.h"
 #include "AssetRegistryModule.h"
@@ -446,7 +447,7 @@ void FProjectCleanerModule::UpdateStats()
 	ProjectCleanerUtility::GetAllAssets(UnusedAssets);
 	ProjectCleanerUtility::CreateAdjacencyList(UnusedAssets, AdjacencyList);
 
-	NonUProjectFilesSettings->Files.Append(NonProjectFiles);
+	// NonUProjectFilesSettings->Files.Append(NonProjectFiles);
 
 	TArray<FString> AbsEmptyFolders;
 	AbsEmptyFolders.Reserve(EmptyFolders.Num());
@@ -483,23 +484,23 @@ void FProjectCleanerModule::UpdateStats()
 	CleaningStats.TotalAssetNum = CleaningStats.UnusedAssetsNum;
 	CleaningStats.DeletedAssetCount = 0;
 
-	if (NonProjectFiles.Num() > 0)
-	{
-		UE_LOG(LogProjectCleaner, Warning, TEXT("Non UAsset file list:"));
-		for (const auto& Asset : NonProjectFiles)
-		{
-			UE_LOG(LogProjectCleaner, Warning, TEXT("%s"), *Asset);
-		}
-
-		FNotificationInfo Info(StandardCleanerText.NonUAssetFilesFound);
-		Info.ExpireDuration = 10.0f;
-		Info.Hyperlink = FSimpleDelegate::CreateStatic([]()
-		{
-			FGlobalTabmanager::Get()->InvokeTab(FName("OutputLog"));
-		});
-		Info.HyperlinkText = LOCTEXT("ShowOutputLogHyperlink", "Show Output Log");
-		FSlateNotificationManager::Get().AddNotification(Info);
-	}
+	// if (NonProjectFiles.Num() > 0)
+	// {
+	// 	UE_LOG(LogProjectCleaner, Warning, TEXT("Non UAsset file list:"));
+	// 	for (const auto& Asset : NonProjectFiles)
+	// 	{
+	// 		UE_LOG(LogProjectCleaner, Warning, TEXT("%s"), *Asset);
+	// 	}
+	//
+	// 	FNotificationInfo Info(StandardCleanerText.NonUAssetFilesFound);
+	// 	Info.ExpireDuration = 10.0f;
+	// 	Info.Hyperlink = FSimpleDelegate::CreateStatic([]()
+	// 	{
+	// 		FGlobalTabmanager::Get()->InvokeTab(FName("OutputLog"));
+	// 	});
+	// 	Info.HyperlinkText = LOCTEXT("ShowOutputLogHyperlink", "Show Output Log");
+	// 	FSlateNotificationManager::Get().AddNotification(Info);
+	// }
 }
 
 void FProjectCleanerModule::InitCleaner()

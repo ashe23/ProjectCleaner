@@ -3,7 +3,6 @@
 #pragma once
 
 #include "StructsContainer.h"
-
 // Engine Headers
 #include "CoreMinimal.h"
 
@@ -33,7 +32,7 @@ public:
 	 */
 	static bool GetAllEmptyDirectories(const FString& SearchPath,
 	                                   TArray<FString>& Directories,
-	                                   TArray<FString>& NonProjectFiles,
+	                                   TArray<struct FNonProjectFile>& NonProjectFiles,
 	                                   const bool bIsRootDirectory);
 
 	/**
@@ -61,7 +60,7 @@ public:
 	 * @param NonProjectFiles 
 	 * @return Number of empty folders
 	 */
-	static int32 GetEmptyFoldersAndNonProjectFiles(TArray<FString>& EmptyFolders, TArray<FString>& NonProjectFiles);
+	static int32 GetEmptyFoldersAndNonProjectFiles(TArray<FString>& EmptyFolders, TArray<struct FNonProjectFile>& NonProjectFiles);
 
 	/**
 	 * @brief Fixup Redirectors , same as in content browser menu
@@ -80,7 +79,7 @@ public:
 	 * @param SearchPath 
 	 * @param NonProjectFilesList 
 	 */
-	static void FindNonProjectFiles(const FString& SearchPath, TArray<FString>& NonProjectFilesList);
+	static void FindNonProjectFiles(const FString& SearchPath, TArray<struct FNonProjectFile>& NonProjectFiles);
 
 	/**
 	 * @brief Finds all ".h" and ".cpp" source files in Project "Source" and "Plugins" directories

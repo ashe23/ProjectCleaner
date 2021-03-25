@@ -91,8 +91,6 @@ private:
 	TSharedPtr<class FUICommandList> PluginCommands;
 	TArray<FAssetData> UnusedAssets;
 	TArray<FNode> AdjacencyList;
-	TArray<FString> EmptyFolders;
-	TArray<FString> NonProjectFiles;
 	TArray<FSourceCodeFile> SourceFiles;
 	ProjectCleanerNotificationManager* NotificationManager;
 	TWeakPtr<SProjectCleanerBrowser> ProjectCleanerBrowserUI;
@@ -114,6 +112,11 @@ private:
 	TArray<TWeakObjectPtr<UAssetsUsedInSourceCodeUIStruct>> AssetsUsedInSourceCodeUIStructs;
 	
 	UNonProjectFilesInfo* NonProjectFilesInfo;
+
+	// Refactor Start
+	TArray<FString> EmptyFolders;
+	TArray<struct FNonProjectFile> NonProjectFiles;
+	// Refactor End
 };
 
 

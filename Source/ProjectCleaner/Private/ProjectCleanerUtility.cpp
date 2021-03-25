@@ -1,5 +1,5 @@
 ﻿#include "ProjectCleanerUtility.h"
-
+#include "UI/ProjectCleanerNonProjectFilesUI.h"
 // Engine Headers
 #include "HAL/FileManager.h"
 #include "AssetRegistry/Public/AssetData.h"
@@ -25,7 +25,7 @@ bool ProjectCleanerUtility::HasFiles(const FString& SearchPath)
 
 bool ProjectCleanerUtility::GetAllEmptyDirectories(const FString& SearchPath,
                                                    TArray<FString>& Directories,
-                                                   TArray<FString>& NonProjectFiles,
+                                                   TArray<FNonProjectFile>& NonProjectFiles,
                                                    const bool bIsRootDirectory)
 {
 	bool AllSubDirsEmpty = true;
@@ -107,19 +107,16 @@ void ProjectCleanerUtility::DeleteEmptyFolders(TArray<FString>& EmptyFolders)
 }
 
 int32 ProjectCleanerUtility::GetEmptyFoldersAndNonProjectFiles(TArray<FString>& EmptyFolders,
-                                                               TArray<FString>& NonProjectFiles)
+                                                               TArray<struct FNonProjectFile>& NonProjectFiles)
 {
 	FScopedSlowTask SlowTask{1.0f, FText::FromString("Searching empty folders...")};
 	SlowTask.MakeDialog();
-
-	EmptyFolders.Empty();
-	NonProjectFiles.Empty();
 
 	const auto ProjectRoot = FPaths::ProjectContentDir();
 	GetAllEmptyDirectories(
 		ProjectRoot / TEXT("*"),
 		EmptyFolders,
-		NonProjectFiles,
+		NonProjectFiles,		
 		true
 	);
 
@@ -193,7 +190,7 @@ int32 ProjectCleanerUtility::DeleteAssets(TArray<FAssetData>& Assets)
 	return DeletedAssets;
 }
 
-void ProjectCleanerUtility::FindNonProjectFiles(const FString& SearchPath, TArray<FString>& NonProjectFilesList)
+void ProjectCleanerUtility::FindNonProjectFiles(const FString& SearchPath, TArray<FNonProjectFile>& NonProjectFiles)
 {
 	// Project Directories may contain non .uasset files, which wont be shown in content browser,
 	// Or there also case when assets saved in old engine versions not showing in new engine version content browser,
@@ -210,7 +207,10 @@ void ProjectCleanerUtility::FindNonProjectFiles(const FString& SearchPath, TArra
 			Path.RemoveFromEnd("*");
 			Path.Append(NonUAssetFile);
 			Path = FPaths::ConvertRelativePathToFull(Path);
-			NonProjectFilesList.AddUnique(Path);
+			FNonProjectFile NonProjectFile;
+			NonProjectFile.FileName = FPaths::GetBaseFilename(NonUAssetFile);
+			NonProjectFile.FilePath = Path;
+			NonProjectFiles.AddUnique(NonProjectFile);
 		}
 	}
 }

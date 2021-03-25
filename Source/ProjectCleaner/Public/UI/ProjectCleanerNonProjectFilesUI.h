@@ -66,7 +66,7 @@ class SProjectCleanerNonProjectFilesUI : public SCompoundWidget
 {
 public:
 	SLATE_BEGIN_ARGS(SProjectCleanerNonProjectFilesUI) {}
-		SLATE_ARGUMENT(TArray<FString>, NonProjectFiles);
+		SLATE_ARGUMENT(TArray<struct FNonProjectFile>, NonProjectFiles);
 	SLATE_END_ARGS()
 	
 	void Construct(const FArguments& InArgs);
@@ -75,6 +75,6 @@ private:
 	void OnMouseDoubleClick(TWeakObjectPtr<UNonProjectFilesUIStruct> Item);
 
 	TArray<TWeakObjectPtr<UNonProjectFilesUIStruct>> NonProjectFilesUIStructs;
-	TArray<FString> NonProjectFiles;
+	TArray<struct FNonProjectFile> NonProjectFiles;
 
 };
