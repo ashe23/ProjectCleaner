@@ -24,8 +24,5 @@ public:
 private:
 
 	static TSharedRef< class FSlateStyleSet > Create();
-
-private:
-
 	static TSharedPtr< class FSlateStyleSet > StyleInstance;
 };

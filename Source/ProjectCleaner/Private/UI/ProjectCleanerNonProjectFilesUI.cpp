@@ -79,7 +79,7 @@ TSharedRef<ITableRow> SProjectCleanerNonProjectFilesUI::OnGenerateRow(TWeakObjec
 
 void SProjectCleanerNonProjectFilesUI::OnMouseDoubleClick(TWeakObjectPtr<UNonProjectFilesUIStruct> Item)
 {
-	FPlatformProcess::ExploreFolder(*(FPaths::GetPath(Item.Get()->FilePath)));
+	FPlatformProcess::ExploreFolder(*(FPaths::GetPath(Item.Get()->FilePath)));// todo:ashe23 exception here
 }
 
 #undef LOCTEXT_NAMESPACE
