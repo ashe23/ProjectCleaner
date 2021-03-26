@@ -433,6 +433,12 @@ void FProjectCleanerModule::UpdateStats()
 		ProjectCleanerBrowserStatisticsUI.Pin()->SetStats(CleaningStats);
 	}
 
+	if (ProjectCleanerNonProjectFilesUI.IsValid())
+	{
+		// todo:ashe23 content ui not updating for SListView
+		ProjectCleanerNonProjectFilesUI.Pin()->SetNonProjectFiles(NonProjectFiles);		
+	}
+
 	// if (NonProjectFiles.Num() > 0)
 	// {
 	// 	UE_LOG(LogProjectCleaner, Warning, TEXT("Non UAsset file list:"));

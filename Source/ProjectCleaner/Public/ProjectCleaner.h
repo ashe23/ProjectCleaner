@@ -91,11 +91,10 @@ private:
 	UUnusedAssetsUIContainer* UnusedAssetsUIContainerSettings;
 
 	// UI
-	TWeakPtr<SProjectCleanerBrowserStatisticsUI> ProjectCleanerBrowserStatisticsUI;
-	TWeakPtr<SProjectCleanerBrowserNonProjectFilesUI> ProjectCleanerBrowserNonProjectFilesUI;
 	TWeakPtr<SProjectCleanerDirectoryExclusionUI> ProjectCleanerDirectoryExclusionUI;
 	UExcludeDirectoriesFilterSettings* ExcludeDirectoryFilterSettings;
 
+	TWeakPtr<SProjectCleanerBrowserStatisticsUI> ProjectCleanerBrowserStatisticsUI;
 	TWeakPtr<SProjectCleanerUnusedAssetsBrowserUI> ProjectCleanerUnusedAssetsBrowserUI;
 	TWeakPtr<SProjectCleanerNonProjectFilesUI> ProjectCleanerNonProjectFilesUI;
 	TWeakPtr<SProjectCleanerAssetsUsedInSourceCodeUI> ProjectCleanerAssetsUsedInSourceCodeUI;

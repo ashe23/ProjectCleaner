@@ -3,6 +3,8 @@
 
 #define LOCTEXT_NAMESPACE "FProjectCleanerModule"
 
+#pragma optimize("", off)
+
 void SProjectCleanerNonProjectFilesUI::Construct(const FArguments& InArgs)
 {
 	NonProjectFiles = InArgs._NonProjectFiles;
@@ -15,11 +17,6 @@ void SProjectCleanerNonProjectFilesUI::Construct(const FArguments& InArgs)
 		Obj->FilePath = NonProjectFile.FilePath;
 		NonProjectFilesUIStructs.Add(Obj);		
 	}
-
-	const FSlateFontInfo FontInfo = FSlateFontInfo(
-        FPaths::EngineContentDir() / TEXT("Slate/Fonts/Roboto-Light.ttf"),
-        20
-    );	
 	
 	ChildSlot
 	[
@@ -29,7 +26,7 @@ void SProjectCleanerNonProjectFilesUI::Construct(const FArguments& InArgs)
 		[
 			SNew(STextBlock)
             .AutoWrapText(true)
-            .Font(FontInfo)
+            .Font(FSlateFontInfo(FPaths::EngineContentDir() / TEXT("Slate/Fonts/Roboto-Light.ttf"),20))
             .Text(LOCTEXT("NonProjectFiles", "Non project files"))
 		]
 		+SVerticalBox::Slot()
@@ -72,15 +69,37 @@ void SProjectCleanerNonProjectFilesUI::Construct(const FArguments& InArgs)
 	];
 }
 
+void SProjectCleanerNonProjectFilesUI::SetNonProjectFiles(const TArray<FNonProjectFile> NewNonProjectFiles)
+{
+	NonProjectFiles = NewNonProjectFiles;
+	NonProjectFilesUIStructs.Reset();
+
+	for(const auto& NonProjectFile : NonProjectFiles)
+	{
+		auto Obj = NewObject<UNonProjectFilesUIStruct>();
+		if(!Obj) continue;
+		Obj->FileName = NonProjectFile.FileName;
+		Obj->FilePath = NonProjectFile.FilePath;
+		NonProjectFilesUIStructs.Add(Obj);		
+	}
+}
+
 TSharedRef<ITableRow> SProjectCleanerNonProjectFilesUI::OnGenerateRow(TWeakObjectPtr<UNonProjectFilesUIStruct> InItem,
-	const TSharedRef<STableViewBase>& OwnerTable)
+                                                                      const TSharedRef<STableViewBase>& OwnerTable)
 {
 	return SNew(SNonProjectFileUISelectionRow, OwnerTable).SelectedRowItem(InItem);
 }
 
 void SProjectCleanerNonProjectFilesUI::OnMouseDoubleClick(TWeakObjectPtr<UNonProjectFilesUIStruct> Item)
 {
-	FPlatformProcess::ExploreFolder(*(FPaths::GetPath(Item.Get()->FilePath)));// todo:ashe23 exception here
+	if(!Item.IsValid()) return;
+
+	const auto DirectoryPath = FPaths::GetPath(Item.Get()->FilePath);
+	if (FPaths::DirectoryExists(DirectoryPath))
+	{
+		FPlatformProcess::ExploreFolder(*DirectoryPath);
+	}
 }
+#pragma optimize("", on)
 
 #undef LOCTEXT_NAMESPACE

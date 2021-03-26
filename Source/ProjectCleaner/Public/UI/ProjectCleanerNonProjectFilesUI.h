@@ -70,6 +70,7 @@ public:
 	SLATE_END_ARGS()
 	
 	void Construct(const FArguments& InArgs);
+	void SetNonProjectFiles(const TArray<FNonProjectFile> NewNonProjectFiles);	
 private:
 	TSharedRef<ITableRow> OnGenerateRow(TWeakObjectPtr<UNonProjectFilesUIStruct> InItem, const TSharedRef<STableViewBase>& OwnerTable);
 	void OnMouseDoubleClick(TWeakObjectPtr<UNonProjectFilesUIStruct> Item);
