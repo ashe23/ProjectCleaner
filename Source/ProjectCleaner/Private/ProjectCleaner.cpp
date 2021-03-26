@@ -26,7 +26,6 @@
 #include "Framework/Notifications/NotificationManager.h"
 #include "Editor/ContentBrowser/Public/ContentBrowserModule.h"
 #include "ContentBrowserDelegates.h"
-#include "AssetManagerEditorModule.h"
 #include "Framework/Commands/UICommandList.h"
 #include "Toolkits/GlobalEditorCommonCommands.h"
 
@@ -54,7 +53,6 @@ void FProjectCleanerModule::StartupModule()
 	NotificationManager = new ProjectCleanerNotificationManager();
 
 	ExcludeDirectoryFilterSettings = GetMutableDefault<UExcludeDirectoriesFilterSettings>();
-	NonUProjectFilesSettings = GetMutableDefault<UNonUProjectFiles>();
 	UnusedAssetsUIContainerSettings = GetMutableDefault<UUnusedAssetsUIContainer>();
 
 	// UI
@@ -104,23 +102,17 @@ void FProjectCleanerModule::AddToolbarExtension(FToolBarBuilder& Builder)
 
 TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs)
 {
-	const auto ProjectCleanerBrowserPtr = SAssignNew(ProjectCleanerBrowserUI, SProjectCleanerBrowser)
-		.NonProjectFiles(NonUProjectFilesSettings)
-		.UnusedAssets(UnusedAssetsUIContainerSettings);
-
-	// const auto ProjectCleanerBrowserStatisticsUI = SAssignNew(ProjectCleanerBrowserStatisticsUI, SProjectCleanerBrowserStatisticsUI);
-	FMargin CommonMargin = FMargin{20.0f, 20.0f};
-
+	const FMargin CommonMargin = FMargin{20.0f, 20.0f};
 
 	// todo:ashe23 move this to other place
 	TArray<FAssetData*> UnusedAssetsPtrs;
 	UnusedAssetsPtrs.Reserve(UnusedAssets.Num());
-	for(auto& Asset : UnusedAssets)
+	for (auto& Asset : UnusedAssets)
 	{
 		FAssetData* AssetDataPtr = &Asset;
 		UnusedAssetsPtrs.Add(AssetDataPtr);
 	}
-	
+
 	return SNew(SDockTab)
 		.TabRole(ETabRole::MajorTab)
 		[
@@ -137,72 +129,70 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 					  .AutoHeight()
 					[
 						SAssignNew(ProjectCleanerBrowserStatisticsUI, SProjectCleanerBrowserStatisticsUI)
-						.UnusedAssets(CleaningStats.UnusedAssetsNum)
-						.TotalSize(CleaningStats.UnusedAssetsTotalSize)
-						.EmptyFolders(CleaningStats.EmptyFolders)
+						.Stats(CleaningStats)
 					]
 					+ SVerticalBox::Slot()
-					.Padding(CommonMargin)
-	                .AutoHeight()
-	                [
-	                    SNew(SBorder)
+					  .Padding(CommonMargin)
+					  .AutoHeight()
+					[
+						SNew(SBorder)
 	                    .Padding(FMargin(10))
 	                    .BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
-	                    [
-	                        SNew(SHorizontalBox)
-	                        + SHorizontalBox::Slot()
-	                        .FillWidth(1.0f)
-	                        [
-	                            SNew(SButton)
+						[
+							SNew(SHorizontalBox)
+							+ SHorizontalBox::Slot()
+							.FillWidth(1.0f)
+							[
+								SNew(SButton)
 	                            .HAlign(HAlign_Center)
 	                            .VAlign(VAlign_Center)
 	                            .Text(FText::FromString("Refresh"))
 	                            .OnClicked_Raw(this, &FProjectCleanerModule::RefreshBrowser)
-	                        ]
-	                        + SHorizontalBox::Slot()
-	                          .FillWidth(1.0f)
-	                          .Padding(FMargin{40.0f, 0.0f, 40.0f, 0.0f})
-	                        [
-	                            SNew(SButton)
+							]
+							+ SHorizontalBox::Slot()
+							  .FillWidth(1.0f)
+							  .Padding(FMargin{40.0f, 0.0f, 40.0f, 0.0f})
+							[
+								SNew(SButton)
 	                            .HAlign(HAlign_Center)
 	                            .VAlign(VAlign_Center)
 	                            .Text(FText::FromString("Delete Unused Assets"))
 	                            .OnClicked_Raw(this, &FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick)
-	                        ]
-	                        + SHorizontalBox::Slot()
-	                        .FillWidth(1.0f)
-	                        [
-	                            SNew(SButton)
+							]
+							+ SHorizontalBox::Slot()
+							.FillWidth(1.0f)
+							[
+								SNew(SButton)
 	                            .HAlign(HAlign_Center)
 	                            .VAlign(VAlign_Center)
 	                            .Text(FText::FromString("Delete Empty Folders"))
 	                            .OnClicked_Raw(this, &FProjectCleanerModule::OnDeleteEmptyFolderClick)
-	                        ]
-	                    ]
-	                ]
+							]
+						]
+					]
 				]
 				+ SScrollBox::Slot()
-                [
-                    SNew(SVerticalBox)
-                    + SVerticalBox::Slot()
-                      .Padding(CommonMargin)
-                      .AutoHeight()
-                    [
-                       SAssignNew(ProjectCleanerDirectoryExclusionUI, SProjectCleanerDirectoryExclusionUI)
-                       .ExcludeDirectoriesFilterSettings(ExcludeDirectoryFilterSettings)
-                    ]                    
-                ]
+				[
+					SNew(SVerticalBox)
+					+ SVerticalBox::Slot()
+					  .Padding(CommonMargin)
+					  .AutoHeight()
+					[
+						SAssignNew(ProjectCleanerDirectoryExclusionUI, SProjectCleanerDirectoryExclusionUI)
+						.ExcludeDirectoriesFilterSettings(ExcludeDirectoryFilterSettings)
+					]
+				]
 				+ SScrollBox::Slot()
-                [
-                    SNew(SVerticalBox)
-                    + SVerticalBox::Slot()
-                      .Padding(CommonMargin)
-                      .AutoHeight()
-                    [
-	                   SAssignNew(ProjectCleanerNonProjectFilesUI, SProjectCleanerNonProjectFilesUI)
-	                   .NonProjectFiles(NonProjectFiles)
-                    ]                    
-                ]
+				[
+					SNew(SVerticalBox)
+					+ SVerticalBox::Slot()
+					  .Padding(CommonMargin)
+					  .AutoHeight()
+					[
+						SAssignNew(ProjectCleanerNonProjectFilesUI, SProjectCleanerNonProjectFilesUI)
+						.NonProjectFiles(NonProjectFiles)
+					]
+				]
 				+ SScrollBox::Slot()
 				[
 					SNew(SVerticalBox)
@@ -219,17 +209,17 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 			.Value(0.65f)
 			[
 				SNew(SScrollBox)
-				+SScrollBox::Slot()
+				+ SScrollBox::Slot()
 				[
 					SNew(SVerticalBox)
-	                + SVerticalBox::Slot()
-	                .Padding(CommonMargin)
-	                .AutoHeight()
-	                [
+					+ SVerticalBox::Slot()
+					  .Padding(CommonMargin)
+					  .AutoHeight()
+					[
 						SAssignNew(ProjectCleanerUnusedAssetsBrowserUI, SProjectCleanerUnusedAssetsBrowserUI)
 						.UnusedAssets(UnusedAssetsPtrs)
-	                ]
-				]				
+					]
+				]
 			]
 		];
 }
@@ -371,32 +361,6 @@ bool FProjectCleanerModule::IsConfirmationWindowCanceled(EAppReturnType::Type St
 	return Status == EAppReturnType::Type::No || Status == EAppReturnType::Cancel;
 }
 
-TSharedPtr<SWidget> FProjectCleanerModule::OnGetAssetContextMenu(const TArray<FAssetData>& SelectedAssets)
-{
-	FMenuBuilder MenuBuilder(true, PluginCommands);
-
-	MenuBuilder.BeginSection(TEXT("Asset"), NSLOCTEXT("ReferenceViewerSchema", "AssetSectionLabel", "Asset"));
-	{
-		MenuBuilder.AddMenuEntry(FGlobalEditorCommonCommands::Get().FindInContentBrowser);
-		// MenuBuilder.AddMenuEntry(FAssetManagerEditorCommands::Get().OpenSelectedInAssetEditor);
-	}
-	MenuBuilder.EndSection();
-
-	// MenuBuilder.BeginSection(TEXT("References"), NSLOCTEXT("ReferenceViewerSchema", "ReferencesSectionLabel", "References"));
-	// {
-	// 	MenuBuilder.AddMenuEntry(FAssetManagerEditorCommands::Get().ViewReferences);
-	// 	MenuBuilder.AddMenuEntry(FAssetManagerEditorCommands::Get().ViewSizeMap);
-	// }
-	// MenuBuilder.EndSection();
-
-	return MenuBuilder.MakeWidget();
-}
-
-void FProjectCleanerModule::FindInContentBrowser() const
-{
-	UE_LOG(LogProjectCleaner, Warning, TEXT("Finding in content browser"));
-}
-
 FReply FProjectCleanerModule::OnDeleteEmptyFolderClick()
 {
 	if (EmptyFolders.Num() == 0)
@@ -418,7 +382,6 @@ FReply FProjectCleanerModule::OnDeleteEmptyFolderClick()
 	{
 		return FReply::Handled();
 	}
-
 
 	ProjectCleanerUtility::DeleteEmptyFolders(EmptyFolders);
 
@@ -447,23 +410,6 @@ void FProjectCleanerModule::UpdateStats()
 	ProjectCleanerUtility::GetAllAssets(UnusedAssets);
 	ProjectCleanerUtility::CreateAdjacencyList(UnusedAssets, AdjacencyList);
 
-	// NonUProjectFilesSettings->Files.Append(NonProjectFiles);
-
-	TArray<FString> AbsEmptyFolders;
-	AbsEmptyFolders.Reserve(EmptyFolders.Num());
-
-	for (auto& Folder : EmptyFolders)
-	{
-		AbsEmptyFolders.Add(FPaths::ConvertRelativePathToFull(Folder));
-	}
-
-	NonUProjectFilesSettings->EmptyFolders = AbsEmptyFolders;
-	TMap<FString, FString> T;
-	T.Add(TEXT("AA"), TEXT("BB"));
-	T.Add(TEXT("AAclass"), TEXT("BB.cpp"));
-	NonUProjectFilesSettings->UsedSourceFiles = T;
-
-
 	// filters
 	Filter_NotUsedInAnyLevel NotUsedInAnyLevel;
 	NotUsedInAnyLevel.Apply(UnusedAssets);
@@ -474,15 +420,18 @@ void FProjectCleanerModule::UpdateStats()
 	Filter_UsedInSourceCode UsedInSourceCode{SourceFiles, AdjacencyList, AssetsUsedInSourceCodeUIStructs};
 	UsedInSourceCode.Apply(UnusedAssets);
 
-	// UnusedAssetsUIContainerSettings->UnusedAssets = &UnusedAssets;
-	// NonProjectFilesInfo->Files = NonProjectFiles;
-	// NonProjectFilesInfo->EmptyFolders = EmptyFolders;
-
 	CleaningStats.UnusedAssetsNum = UnusedAssets.Num();
 	CleaningStats.UnusedAssetsTotalSize = ProjectCleanerUtility::GetTotalSize(UnusedAssets);
 	CleaningStats.EmptyFolders = EmptyFolders.Num();
+	CleaningStats.NonProjectFilesNum = NonProjectFiles.Num();
 	CleaningStats.TotalAssetNum = CleaningStats.UnusedAssetsNum;
 	CleaningStats.DeletedAssetCount = 0;
+
+	// UI updates should be here
+	if (ProjectCleanerBrowserStatisticsUI.IsValid())
+	{
+		ProjectCleanerBrowserStatisticsUI.Pin()->SetStats(CleaningStats);
+	}
 
 	// if (NonProjectFiles.Num() > 0)
 	// {
@@ -515,7 +464,6 @@ void FProjectCleanerModule::InitCleaner()
 void FProjectCleanerModule::Reset()
 {
 	UnusedAssets.Reset();
-	NonUProjectFilesSettings->Files.Reset();
 	SourceFiles.Reset();
 	NonProjectFiles.Reset();
 	EmptyFolders.Reset();
@@ -533,20 +481,6 @@ void FProjectCleanerModule::UpdateContentBrowser() const
 
 	FContentBrowserModule& CBModule = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
 	CBModule.Get().SyncBrowserToFolders(FocusFolders);
-}
-
-FString FProjectCleanerModule::GetStringValueForCustomColumn(FAssetData& AssetData, FName ColumnName) const
-{
-	FString OutValue;
-	IAssetManagerEditorModule::Get().GetStringValueForCustomColumn(AssetData, ColumnName, OutValue);
-	return OutValue;
-}
-
-FText FProjectCleanerModule::GetDisplayTextForCustomColumn(FAssetData& AssetData, FName ColumnName) const
-{
-	FText OutValue;
-	IAssetManagerEditorModule::Get().GetDisplayTextForCustomColumn(AssetData, ColumnName, OutValue);
-	return OutValue;
 }
 #pragma optimize("", on)
 #undef LOCTEXT_NAMESPACE

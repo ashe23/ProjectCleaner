@@ -1,32 +1,28 @@
 ﻿#pragma once
 
 // Engine Headers
-#include "CoreMinimal.h"
+#include "StructsContainer.h"
 #include "Widgets/SCompoundWidget.h"
+#include "CoreMinimal.h"
+
+struct FCleaningStats;
 
 /**
- * @brief Shows statistics info (UnusedAssets count, Total Size, EmptyFolder count)
+ * @brief Shows statistics info (UnusedAssets count, Total Size, EmptyFolder count, etc.)
  */
 class SProjectCleanerBrowserStatisticsUI : public SCompoundWidget
 {
 public:
 	SLATE_BEGIN_ARGS(SProjectCleanerBrowserStatisticsUI) {}
-		SLATE_ARGUMENT(int32, UnusedAssets)
-		SLATE_ARGUMENT(int64, TotalSize)
-		SLATE_ARGUMENT(int32, EmptyFolders)
+		SLATE_ARGUMENT(FCleaningStats, Stats);
 	SLATE_END_ARGS()
-	void Construct(const FArguments& InArgs);
+	void Construct(const FArguments& InArgs);	
+	void SetStats(const FCleaningStats& NewStats);
+	FCleaningStats GetStats() const;
 private:
 	/**
-	 * @brief Unused assets count
+	 * @brief Statistics data
 	 */
-	int32 UnusedAssets = 0;
-	/**
-	 * @brief Total size of unused assets
-	 */
-	int64 TotalSize = 0;
-	/**
-	 * @brief Empty folders count
-	 */
-	int32 EmptyFolders = 0;
+	FCleaningStats Stats;
+	
 };

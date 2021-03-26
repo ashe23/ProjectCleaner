@@ -8,6 +8,7 @@ struct FCleaningStats
 	int32 UnusedAssetsNum;
 	int32 EmptyFolders;
 	int64 UnusedAssetsTotalSize;
+	int32 NonProjectFilesNum;
 	int32 DeletedAssetCount;
 	int32 TotalAssetNum;
 
@@ -16,6 +17,7 @@ struct FCleaningStats
 		UnusedAssetsNum = 0;
 		EmptyFolders = 0;
 		UnusedAssetsTotalSize = 0;
+		NonProjectFilesNum = 0;
 		DeletedAssetCount = 0;
 		TotalAssetNum = 0;
 	}

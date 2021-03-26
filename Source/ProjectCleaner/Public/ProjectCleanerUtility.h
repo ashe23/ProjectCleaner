@@ -32,7 +32,7 @@ public:
 	 */
 	static bool GetAllEmptyDirectories(const FString& SearchPath,
 	                                   TArray<FString>& Directories,
-	                                   TArray<struct FNonProjectFile>& NonProjectFiles,
+	                                   TArray<FNonProjectFile>& NonProjectFiles,
 	                                   const bool bIsRootDirectory);
 
 	/**
@@ -60,7 +60,7 @@ public:
 	 * @param NonProjectFiles 
 	 * @return Number of empty folders
 	 */
-	static int32 GetEmptyFoldersAndNonProjectFiles(TArray<FString>& EmptyFolders, TArray<struct FNonProjectFile>& NonProjectFiles);
+	static int32 GetEmptyFoldersAndNonProjectFiles(TArray<FString>& EmptyFolders, TArray<FNonProjectFile>& NonProjectFiles);
 
 	/**
 	 * @brief Fixup Redirectors , same as in content browser menu
@@ -77,9 +77,9 @@ public:
 	/**
 	 * @brief Finds all non .uproject files
 	 * @param SearchPath 
-	 * @param NonProjectFilesList 
+	 * @param NonProjectFiles
 	 */
-	static void FindNonProjectFiles(const FString& SearchPath, TArray<struct FNonProjectFile>& NonProjectFiles);
+	static void FindNonProjectFiles(const FString& SearchPath, TArray<FNonProjectFile>& NonProjectFiles);
 
 	/**
 	 * @brief Finds all ".h" and ".cpp" source files in Project "Source" and "Plugins" directories

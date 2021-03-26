@@ -5,7 +5,7 @@
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Editor/ContentBrowser/Public/ContentBrowserModule.h"
-#include "AssetManagerEditorModule.h"
+// #include "AssetManagerEditorModule.h"
 #include "IContentBrowserSingleton.h"
 #include "ContentBrowserDelegates.h"
 #include "Toolkits/GlobalEditorCommonCommands.h"
@@ -163,18 +163,4 @@ bool SProjectCleanerBrowser::IsAnythingSelected() const
 
 	const TArray<FAssetData> CurrentSelection = GetCurrentSelectionDelegate.Execute();
 	return CurrentSelection.Num() > 0;
-}
-
-FString SProjectCleanerBrowser::GetStringValueForCustomColumn(FAssetData& AssetData, FName ColumnName) const
-{
-	FString OutValue;
-	IAssetManagerEditorModule::Get().GetStringValueForCustomColumn(AssetData, ColumnName, OutValue);
-	return OutValue;
-}
-
-FText SProjectCleanerBrowser::GetDisplayTextForCustomColumn(FAssetData& AssetData, FName ColumnName) const
-{
-	FText OutValue;
-	IAssetManagerEditorModule::Get().GetDisplayTextForCustomColumn(AssetData, ColumnName, OutValue);
-	return OutValue;
 }

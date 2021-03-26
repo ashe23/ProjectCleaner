@@ -4,19 +4,8 @@
 
 void SProjectCleanerBrowserStatisticsUI::Construct(const FArguments& InArgs)
 {
-	if (InArgs._UnusedAssets)
-	{
-		UnusedAssets = InArgs._UnusedAssets;
-	}
-	if (InArgs._TotalSize)
-	{
-		TotalSize = InArgs._TotalSize;
-	}
-	if (InArgs._EmptyFolders)
-	{
-		EmptyFolders = InArgs._EmptyFolders;
-	}
-
+	Stats = InArgs._Stats;
+	
 
 	const FSlateFontInfo FontInfo = FSlateFontInfo(
 		FPaths::EngineContentDir() / TEXT("Slate/Fonts/Roboto-Light.ttf"),
@@ -67,7 +56,7 @@ void SProjectCleanerBrowserStatisticsUI::Construct(const FArguments& InArgs)
 					[
 						SNew(STextBlock)
 	                    .AutoWrapText(true)
-	                    .Text_Lambda([this]() -> FText { return FText::AsNumber(UnusedAssets); })
+	                    .Text_Lambda([this]() -> FText { return FText::AsNumber(Stats.UnusedAssetsNum); })
 					]
 				]
 				+ SVerticalBox::Slot()
@@ -89,7 +78,7 @@ void SProjectCleanerBrowserStatisticsUI::Construct(const FArguments& InArgs)
 					[
 						SNew(STextBlock)
                         .AutoWrapText(true)
-                        .Text_Lambda([this]() -> FText { return FText::AsMemory(TotalSize); })
+                        .Text_Lambda([this]() -> FText { return FText::AsMemory(Stats.UnusedAssetsTotalSize); })
 					]
 				]
 				+ SVerticalBox::Slot()
@@ -111,12 +100,44 @@ void SProjectCleanerBrowserStatisticsUI::Construct(const FArguments& InArgs)
 					[
 						SNew(STextBlock)
                         .AutoWrapText(true)
-                        .Text_Lambda([this]() -> FText { return FText::AsNumber(EmptyFolders); })
+                        .Text_Lambda([this]() -> FText { return FText::AsNumber(Stats.EmptyFolders); })
 					]
-				]				
+				]
+				+ SVerticalBox::Slot()
+                .MaxHeight(20.0f)
+                .Padding(FMargin{0.0, 0.0f, 0.0f, 3.0f})
+                .HAlign(HAlign_Center)
+                [
+                    // Unused Assets
+                    SNew(SHorizontalBox)
+                    + SHorizontalBox::Slot()
+                    .AutoWidth()
+                    [
+                        SNew(STextBlock)
+                        .AutoWrapText(true)
+                        .Text(LOCTEXT("NonProjectFilesNum", "Non Project Files Count - "))
+                    ]
+                    + SHorizontalBox::Slot()
+                    .AutoWidth()
+                    [
+                        SNew(STextBlock)
+                        .AutoWrapText(true)
+                        .Text_Lambda([this]() -> FText { return FText::AsNumber(Stats.NonProjectFilesNum); })
+                    ]
+                ]
 			]
 		]
 	];
+}
+
+void SProjectCleanerBrowserStatisticsUI::SetStats(const FCleaningStats& NewStats)
+{
+	Stats = NewStats;
+}
+
+FCleaningStats SProjectCleanerBrowserStatisticsUI::GetStats() const
+{
+	return Stats;
 }
 
 #undef LOCTEXT_NAMESPACE

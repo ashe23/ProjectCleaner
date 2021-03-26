@@ -63,9 +63,6 @@ private:
 	 */
 	void UpdateContentBrowser() const;
 
-	FString GetStringValueForCustomColumn(FAssetData& AssetData, FName ColumnName) const;
-	FText GetDisplayTextForCustomColumn(FAssetData& AssetData, FName ColumnName) const;
-
 	// Button events Start //
 	FReply OnDeleteEmptyFolderClick();
 	FReply OnDeleteUnusedAssetsBtnClick();
@@ -89,16 +86,9 @@ private:
 	FCleaningStats CleaningStats;
 	FStandardCleanerText StandardCleanerText;
 	TSharedPtr<class FUICommandList> PluginCommands;
-	TArray<FAssetData> UnusedAssets;
-	TArray<FNode> AdjacencyList;
-	TArray<FSourceCodeFile> SourceFiles;
 	ProjectCleanerNotificationManager* NotificationManager;
 	TWeakPtr<SProjectCleanerBrowser> ProjectCleanerBrowserUI;
-	UNonUProjectFiles* NonUProjectFilesSettings;
 	UUnusedAssetsUIContainer* UnusedAssetsUIContainerSettings;
-
-	TSharedPtr<SWidget> OnGetAssetContextMenu(const TArray<FAssetData>& SelectedAssets);
-	void FindInContentBrowser() const;
 
 	// UI
 	TWeakPtr<SProjectCleanerBrowserStatisticsUI> ProjectCleanerBrowserStatisticsUI;
@@ -115,7 +105,10 @@ private:
 
 	// Refactor Start
 	TArray<FString> EmptyFolders;
+	TArray<FAssetData> UnusedAssets;
+	TArray<FNode> AdjacencyList;
 	TArray<struct FNonProjectFile> NonProjectFiles;
+	TArray<FSourceCodeFile> SourceFiles;
 	// Refactor End
 };
 

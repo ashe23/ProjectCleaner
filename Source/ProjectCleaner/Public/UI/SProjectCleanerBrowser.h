@@ -57,8 +57,6 @@ private:
 	TSharedPtr<SWidget> OnGetAssetContextMenu(const TArray<FAssetData>& SelectedAssets);
 	void FindInContentBrowser() const;
 	bool IsAnythingSelected() const;
-	FString GetStringValueForCustomColumn(FAssetData& AssetData, FName ColumnName) const;
-	FText GetDisplayTextForCustomColumn(FAssetData& AssetData, FName ColumnName) const;
 
 	TSharedPtr<FUICommandList> Commands;
 
