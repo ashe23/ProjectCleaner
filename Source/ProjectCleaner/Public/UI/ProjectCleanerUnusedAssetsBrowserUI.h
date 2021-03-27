@@ -21,7 +21,7 @@ private:
 	void FindInContentBrowser() const;
 	bool IsAnythingSelected() const;
 	void RefreshUIContent();
-	TSharedRef<SWidget> ContentBrowserWidgetRef = SNullWidget::NullWidget;
+	TSharedRef<SWidget> WidgetRef = SNullWidget::NullWidget;
 	/** Delegate to interact with asset view */
 	FGetCurrentSelectionDelegate GetCurrentSelectionDelegate;
 	TSharedPtr<FUICommandList> Commands;

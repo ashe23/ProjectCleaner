@@ -71,15 +71,21 @@ void SProjectCleanerNonProjectFilesUI::RefreshUIContent()
 			(
 				SNew(SHeaderRow)
 				+ SHeaderRow::Column(FName("FileName"))
+				.HAlignCell(HAlign_Center)
+				.VAlignCell(VAlign_Center)
+				.HAlignHeader(HAlign_Center)
+				.HeaderContentPadding(FMargin(10.0f))
 				.FillWidth(0.3f)
-				.HeaderContentPadding(FMargin{5.0f})
 				[
 					SNew(STextBlock)
 					.Text(LOCTEXT("NameColumn", "FileName"))
 				]
 				+ SHeaderRow::Column(FName("FilePath"))
+				.HAlignCell(HAlign_Center)
+				.VAlignCell(VAlign_Center)
+				.HAlignHeader(HAlign_Center)
+				.HeaderContentPadding(FMargin(10.0f))
 				.FillWidth(0.7f)
-				.HeaderContentPadding(FMargin{5.0f})
 				[
 					SNew(STextBlock)
 					.Text(LOCTEXT("PathColumn", "FilePath"))

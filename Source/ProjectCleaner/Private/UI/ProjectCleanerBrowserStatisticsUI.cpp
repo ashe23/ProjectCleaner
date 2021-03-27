@@ -15,7 +15,7 @@ void SProjectCleanerBrowserStatisticsUI::Construct(const FArguments& InArgs)
 	ChildSlot
 	[
 		SNew(SBorder)
-		.Padding(FMargin(40.0f, 20.0f, 40.0f, 20.0f))
+		.Padding(FMargin(10.0f))
 		.HAlign(HAlign_Fill)
 		.VAlign(VAlign_Fill)		
         .BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
@@ -115,7 +115,7 @@ void SProjectCleanerBrowserStatisticsUI::Construct(const FArguments& InArgs)
                     [
                         SNew(STextBlock)
                         .AutoWrapText(true)
-                        .Text(LOCTEXT("NonProjectFilesNum", "Non Project Files Count - "))
+                        .Text(LOCTEXT("NonProjectFilesNum", "Non Project Files - "))
                     ]
                     + SHorizontalBox::Slot()
                     .AutoWidth()
@@ -123,6 +123,28 @@ void SProjectCleanerBrowserStatisticsUI::Construct(const FArguments& InArgs)
                         SNew(STextBlock)
                         .AutoWrapText(true)
                         .Text_Lambda([this]() -> FText { return FText::AsNumber(Stats.NonProjectFilesNum); })
+                    ]
+                ]
+                + SVerticalBox::Slot()
+                .MaxHeight(20.0f)
+                .Padding(FMargin{0.0, 0.0f, 0.0f, 3.0f})
+                .HAlign(HAlign_Center)
+                [
+                    // Unused Assets
+                    SNew(SHorizontalBox)
+                    + SHorizontalBox::Slot()
+                    .AutoWidth()
+                    [
+                        SNew(STextBlock)
+                        .AutoWrapText(true)
+                        .Text(LOCTEXT("AssetsUsedInSourceCode", "Assets Used In Source Code Files - "))
+                    ]
+                    + SHorizontalBox::Slot()
+                    .AutoWidth()
+                    [
+                        SNew(STextBlock)
+                        .AutoWrapText(true)
+                        .Text_Lambda([this]() -> FText { return FText::AsNumber(Stats.AssetsUsedInSourceCodeFilesNum); })
                     ]
                 ]
 			]

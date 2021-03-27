@@ -90,6 +90,8 @@ void FProjectCleanerModule::AddMenuExtension(FMenuBuilder& Builder)
 
 FReply FProjectCleanerModule::RefreshBrowser()
 {
+	ProjectCleanerUtility::FixupRedirectors();
+	
 	UpdateStats();
 
 	return FReply::Handled();
@@ -433,10 +435,11 @@ void FProjectCleanerModule::UpdateStats()
 	CleaningStats.UnusedAssetsTotalSize = ProjectCleanerUtility::GetTotalSize(UnusedAssets);
 	CleaningStats.EmptyFolders = EmptyFolders.Num();
 	CleaningStats.NonProjectFilesNum = NonProjectFiles.Num();
+	CleaningStats.AssetsUsedInSourceCodeFilesNum = AssetsUsedInSourceCodeUIStructs.Num();
 	CleaningStats.TotalAssetNum = CleaningStats.UnusedAssetsNum;
 	CleaningStats.DeletedAssetCount = 0;
 
-	// UI updates should be here
+	// UI updates
 	if (ProjectCleanerBrowserStatisticsUI.IsValid())
 	{
 		ProjectCleanerBrowserStatisticsUI.Pin()->SetStats(CleaningStats);
@@ -451,6 +454,12 @@ void FProjectCleanerModule::UpdateStats()
 	{
 		ProjectCleanerUnusedAssetsBrowserUI.Pin()->SetUnusedAssets(UnusedAssetsPtrs);
 	}
+
+	if (ProjectCleanerAssetsUsedInSourceCodeUI.IsValid())
+	{
+		ProjectCleanerAssetsUsedInSourceCodeUI.Pin()->SetAssetsUsedInSourceCode(AssetsUsedInSourceCodeUIStructs);
+	}
+
 
 	SlowTask.EnterProgressFrame(1.0f);
 	// if (NonProjectFiles.Num() > 0)
@@ -487,6 +496,7 @@ void FProjectCleanerModule::Reset()
 	UnusedAssetsPtrs.Reset();
 	SourceFiles.Reset();
 	NonProjectFiles.Reset();
+	AssetsUsedInSourceCodeUIStructs.Reset();
 	EmptyFolders.Reset();
 	AdjacencyList.Reset();
 }

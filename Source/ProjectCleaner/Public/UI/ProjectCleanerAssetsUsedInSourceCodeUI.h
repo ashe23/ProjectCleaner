@@ -59,7 +59,7 @@ void Construct(const FArguments& InArgs, const TSharedRef<STableViewBase>& InOwn
 		}
 		else
 		{
-			ColumnWidget = SNew(STextBlock).Text(FText::FromString("No Data"));			
+			ColumnWidget = SNew(STextBlock).Text(FText::FromString("No Data"));	
 		}
 		
 		return ColumnWidget.ToSharedRef();
@@ -78,10 +78,12 @@ public:
 
 	
 	void Construct(const FArguments& InArgs);
-
+	void RefreshUIContent();
+	void SetAssetsUsedInSourceCode(TArray<TWeakObjectPtr<UAssetsUsedInSourceCodeUIStruct>>& NewAssetsUsedInSourceCode);
 private:
 	TSharedRef<ITableRow> OnGenerateRow(TWeakObjectPtr<UAssetsUsedInSourceCodeUIStruct> InItem, const TSharedRef<STableViewBase>& OwnerTable);
 	void OnMouseDoubleClick(TWeakObjectPtr<UAssetsUsedInSourceCodeUIStruct> Item);
+	TSharedRef<SWidget> WidgetRef =  SNullWidget::NullWidget;
 	
 	TArray<TWeakObjectPtr<UAssetsUsedInSourceCodeUIStruct>> AssetsUsedInSourceCode;	
 };

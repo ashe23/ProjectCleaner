@@ -20,22 +20,22 @@ void SProjectCleanerUnusedAssetsBrowserUI::Construct(const FArguments& InArgs)
 
 	Commands = MakeShareable(new FUICommandList);
 	Commands->MapAction(
-        FGlobalEditorCommonCommands::Get().FindInContentBrowser,
-        FUIAction(
-            FExecuteAction::CreateRaw(this, &SProjectCleanerUnusedAssetsBrowserUI::FindInContentBrowser),
-            FCanExecuteAction::CreateRaw(this, &SProjectCleanerUnusedAssetsBrowserUI::IsAnythingSelected)
-        )
-    );
+		FGlobalEditorCommonCommands::Get().FindInContentBrowser,
+		FUIAction(
+			FExecuteAction::CreateRaw(this, &SProjectCleanerUnusedAssetsBrowserUI::FindInContentBrowser),
+			FCanExecuteAction::CreateRaw(this, &SProjectCleanerUnusedAssetsBrowserUI::IsAnythingSelected)
+		)
+	);
 	Commands->MapAction(
-        FProjectCleanerBrowserCommands::Get().ViewReferences,
-        FUIAction()
-    );	
+		FProjectCleanerBrowserCommands::Get().ViewReferences,
+		FUIAction()
+	);	
 
 	RefreshUIContent();
 	
 	ChildSlot
 	[
-		ContentBrowserWidgetRef
+		WidgetRef
 	];
 }
 
@@ -50,17 +50,17 @@ TSharedPtr<SWidget> SProjectCleanerUnusedAssetsBrowserUI::OnGetAssetContextMenu(
 {
 	FMenuBuilder MenuBuilder{true, Commands};
 	MenuBuilder.BeginSection(
-        TEXT("Asset"),
-        NSLOCTEXT("ReferenceViewerSchema", "AssetSectionLabel", "Asset")
-    );
+		TEXT("Asset"),
+		NSLOCTEXT("ReferenceViewerSchema", "AssetSectionLabel", "Asset")
+	);
 	{
 		MenuBuilder.AddMenuEntry(FGlobalEditorCommonCommands::Get().FindInContentBrowser);
 	}
 	MenuBuilder.EndSection();
 	MenuBuilder.BeginSection(
-        TEXT("References"),
-        NSLOCTEXT("ReferenceViewerSchema", "ReferencesSectionLabel", "References")
-    );
+		TEXT("References"),
+		NSLOCTEXT("ReferenceViewerSchema", "ReferencesSectionLabel", "References")
+	);
 	{
 		MenuBuilder.AddMenuEntry(FProjectCleanerBrowserCommands::Get().ViewReferences);
 	}
@@ -78,7 +78,7 @@ void SProjectCleanerUnusedAssetsBrowserUI::FindInContentBrowser() const
 	if (CurrentSelection.Num() > 0)
 	{
 		FContentBrowserModule& ContentBrowserModule = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>(
-            "ContentBrowser");
+			"ContentBrowser");
 		ContentBrowserModule.Get().SyncBrowserToAssets(CurrentSelection);
 	}
 }
@@ -101,13 +101,13 @@ void SProjectCleanerUnusedAssetsBrowserUI::RefreshUIContent()
 	Config.bForceShowEngineContent = false;
 	Config.bShowBottomToolbar = true;
 	Config.bCanShowDevelopersFolder = false;
-	Config.bAllowDragging = false;
+	Config.bAllowDragging = false;	
 	Config.AssetShowWarningText = FText::FromName("No assets");
 	Config.GetCurrentSelectionDelegates.Add(&GetCurrentSelectionDelegate);
 	Config.OnGetAssetContextMenu = FOnGetAssetContextMenu::CreateRaw(
-        this,
-        &SProjectCleanerUnusedAssetsBrowserUI::OnGetAssetContextMenu
-    );
+		this,
+		&SProjectCleanerUnusedAssetsBrowserUI::OnGetAssetContextMenu
+	);
 
 
 	FARFilter Filter;
@@ -116,13 +116,13 @@ void SProjectCleanerUnusedAssetsBrowserUI::RefreshUIContent()
 		// this is needed when there is no assets to show ,
 		// asset picker will show remaining assets in content browser,
 		// we must not show them
-		Filter.TagsAndValues.Add(FName{"ProjectCleanerEmptyTag"}, FString{"ProjectCleanerEmptyTag"});		
+		Filter.TagsAndValues.Add(FName{"ProjectCleanerEmptyTag"}, FString{"ProjectCleanerEmptyTag"});
 	}
 	else
 	{
 		// excluding level assets from showing and filtering
 		Filter.bRecursiveClasses = true;
-		Filter.RecursiveClassesExclusionSet.Add(UWorld::StaticClass()->GetFName());		
+		Filter.RecursiveClassesExclusionSet.Add(UWorld::StaticClass()->GetFName());
 	}
 	
 	for(const auto& Asset : UnusedAssets)
@@ -134,27 +134,26 @@ void SProjectCleanerUnusedAssetsBrowserUI::RefreshUIContent()
 
 	FContentBrowserModule& ContentBrowser = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
 
-	ContentBrowserWidgetRef =
-	SNew(SVerticalBox)
+	WidgetRef = SNew(SVerticalBox)
 	+ SVerticalBox::Slot()
-    .AutoHeight()
-    .Padding(20.0f)
-    [
-        SNew(STextBlock)
-        .AutoWrapText(true)
-        .Font(FSlateFontInfo(FPaths::EngineContentDir() / TEXT("Slate/Fonts/Roboto-Light.ttf"),20))
-        .Text(LOCTEXT("UnusedAssets", "All Unused Assets"))
-    ]
-    + SVerticalBox::Slot()
-    .AutoHeight()
-    .Padding(20.0f)
-    [
-        ContentBrowser.Get().CreateAssetPicker(Config)
-    ];
+	.AutoHeight()
+	.Padding(20.0f)
+	[
+		SNew(STextBlock)
+		.AutoWrapText(true)
+		.Font(FSlateFontInfo(FPaths::EngineContentDir() / TEXT("Slate/Fonts/Roboto-Light.ttf"),20))
+		.Text(LOCTEXT("UnusedAssets", "All Unused Assets"))
+	]
+	+ SVerticalBox::Slot()
+	.AutoHeight()
+	.Padding(20.0f)
+	[
+		ContentBrowser.Get().CreateAssetPicker(Config)
+	];
 	
 	ChildSlot
 	[
-		ContentBrowserWidgetRef
+		WidgetRef
 	];
 }
 
