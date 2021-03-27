@@ -1,11 +1,12 @@
 ﻿#include "UI/ProjectCleanerUnusedAssetsBrowserUI.h"
+#include "UI/ProjectCleanerBrowserCommands.h"
+#include "ProjectCleaner.h"
 // Engine Headers
 #include "IContentBrowserSingleton.h"
-#include "ProjectCleaner.h"
+#include "ObjectTools.h"
 #include "Editor/ContentBrowser/Public/ContentBrowserModule.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Toolkits/GlobalEditorCommonCommands.h"
-#include "UI/ProjectCleanerBrowserCommands.h"
 
 #define LOCTEXT_NAMESPACE "FProjectCleanerModule"
 
@@ -25,11 +26,11 @@ void SProjectCleanerUnusedAssetsBrowserUI::Construct(const FArguments& InArgs)
 			FExecuteAction::CreateRaw(this, &SProjectCleanerUnusedAssetsBrowserUI::FindInContentBrowser),
 			FCanExecuteAction::CreateRaw(this, &SProjectCleanerUnusedAssetsBrowserUI::IsAnythingSelected)
 		)
-	);
-	Commands->MapAction(
-		FProjectCleanerBrowserCommands::Get().ViewReferences,
-		FUIAction()
 	);	
+	Commands->MapAction(FProjectCleanerBrowserCommands::Get().DeleteAsset, FUIAction(
+	FExecuteAction::CreateRaw(this, &SProjectCleanerUnusedAssetsBrowserUI::DeleteAsset),
+		FCanExecuteAction::CreateRaw(this, &SProjectCleanerUnusedAssetsBrowserUI::IsAnythingSelected)
+	));
 
 	RefreshUIContent();
 	
@@ -55,19 +56,20 @@ TSharedPtr<SWidget> SProjectCleanerUnusedAssetsBrowserUI::OnGetAssetContextMenu(
 	);
 	{
 		MenuBuilder.AddMenuEntry(FGlobalEditorCommonCommands::Get().FindInContentBrowser);
-	}
-	MenuBuilder.EndSection();
-	MenuBuilder.BeginSection(
-		TEXT("References"),
-		NSLOCTEXT("ReferenceViewerSchema", "ReferencesSectionLabel", "References")
-	);
-	{
-		MenuBuilder.AddMenuEntry(FProjectCleanerBrowserCommands::Get().ViewReferences);
+		MenuBuilder.AddMenuEntry(FProjectCleanerBrowserCommands::Get().DeleteAsset);
 	}
 	MenuBuilder.EndSection();
 
 
 	return MenuBuilder.MakeWidget();
+}
+
+void SProjectCleanerUnusedAssetsBrowserUI::OnAssetDblClicked(const FAssetData& AssetData) const
+{
+	TArray<FName> AssetNames;
+	AssetNames.Add(AssetData.ObjectPath);
+
+	GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->OpenEditorsForAssets(AssetNames);
 }
 
 void SProjectCleanerUnusedAssetsBrowserUI::FindInContentBrowser() const
@@ -91,6 +93,19 @@ bool SProjectCleanerUnusedAssetsBrowserUI::IsAnythingSelected() const
 	return CurrentSelection.Num() > 0;
 }
 
+void SProjectCleanerUnusedAssetsBrowserUI::DeleteAsset() const
+{
+	if (!GetCurrentSelectionDelegate.IsBound()) return;
+
+	TArray<FAssetData> CurrentSelection = GetCurrentSelectionDelegate.Execute();
+	if (CurrentSelection.Num() > 0)
+	{
+		ObjectTools::DeleteAssets(CurrentSelection);
+	}
+
+	// todo:ashe23 add delegate to refresh content
+}
+
 void SProjectCleanerUnusedAssetsBrowserUI::RefreshUIContent()
 {
 	FAssetPickerConfig Config;
@@ -104,11 +119,14 @@ void SProjectCleanerUnusedAssetsBrowserUI::RefreshUIContent()
 	Config.bAllowDragging = false;	
 	Config.AssetShowWarningText = FText::FromName("No assets");
 	Config.GetCurrentSelectionDelegates.Add(&GetCurrentSelectionDelegate);
+	Config.OnAssetDoubleClicked = FOnAssetDoubleClicked::CreateRaw(
+		this,
+		&SProjectCleanerUnusedAssetsBrowserUI::OnAssetDblClicked
+	);
 	Config.OnGetAssetContextMenu = FOnGetAssetContextMenu::CreateRaw(
 		this,
 		&SProjectCleanerUnusedAssetsBrowserUI::OnGetAssetContextMenu
 	);
-
 
 	FARFilter Filter;
 	if(UnusedAssets.Num() == 0)
@@ -130,7 +148,6 @@ void SProjectCleanerUnusedAssetsBrowserUI::RefreshUIContent()
 		Filter.PackageNames.Add(Asset->PackageName);
 	}
 	Config.Filter = Filter;
-	UE_LOG(LogProjectCleaner, Warning, TEXT("Refreshing UI content"));
 
 	FContentBrowserModule& ContentBrowser = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
 

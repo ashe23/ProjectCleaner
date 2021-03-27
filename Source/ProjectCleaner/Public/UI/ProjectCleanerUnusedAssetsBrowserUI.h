@@ -18,8 +18,10 @@ public:
 private:
 	// UI specific stuff start
 	TSharedPtr<SWidget> OnGetAssetContextMenu(const TArray<FAssetData>& SelectedAssets);
+	void OnAssetDblClicked(const FAssetData& AssetData) const;
 	void FindInContentBrowser() const;
 	bool IsAnythingSelected() const;
+	void DeleteAsset() const;
 	void RefreshUIContent();
 	TSharedRef<SWidget> WidgetRef = SNullWidget::NullWidget;
 	/** Delegate to interact with asset view */

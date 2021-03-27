@@ -14,9 +14,9 @@ FProjectCleanerBrowserCommands::FProjectCleanerBrowserCommands() : TCommands<FPr
 void FProjectCleanerBrowserCommands::RegisterCommands()
 {
 	UI_COMMAND(
-		ViewReferences,
-		"Reference Viewer...",
-		"Launches the reference viewer showing the selected assets' references",
+		DeleteAsset,
+		"Delete Asset...",
+		"Deletes Selected Asset",
 		EUserInterfaceActionType::Button,
 		FInputChord()
 	);
