@@ -32,8 +32,8 @@ public:
 		SMultiColumnTableRow<TWeakObjectPtr<UNonProjectFilesUIStruct>>::Construct(
 		SMultiColumnTableRow<TWeakObjectPtr<UNonProjectFilesUIStruct>>::FArguments()
 		.Padding(
-            FMargin(0.f, 2.f, 0.f, 0.f)),
-            InOwnerTableView
+			FMargin(0.f, 2.f, 0.f, 0.f)),
+			InOwnerTableView
 		);
 	}
 
@@ -43,15 +43,15 @@ public:
 
 		if(InColumnName == TEXT("FileName"))
 		{
-			ColumnWidget = SNew(STextBlock).Text(FText::FromString(SelectedRowItem->FileName));			
+			ColumnWidget = SNew(STextBlock).Text(FText::FromString(SelectedRowItem->FileName));
 		}
 		else if(InColumnName == TEXT("FilePath"))
 		{
-			ColumnWidget = SNew(STextBlock).Text(FText::FromString(SelectedRowItem->FilePath));			
+			ColumnWidget = SNew(STextBlock).Text(FText::FromString(SelectedRowItem->FilePath));
 		}
 		else
 		{
-			ColumnWidget = SNew(STextBlock).Text(FText::FromString("No Data"));			
+			ColumnWidget = SNew(STextBlock).Text(FText::FromString("No Data"));
 		}
 		
 		return ColumnWidget.ToSharedRef();
@@ -70,10 +70,12 @@ public:
 	SLATE_END_ARGS()
 	
 	void Construct(const FArguments& InArgs);
-	void SetNonProjectFiles(const TArray<FNonProjectFile> NewNonProjectFiles);	
+	void SetNonProjectFiles(const TArray<FNonProjectFile> NewNonProjectFiles);
+	void RefreshUIContent();
 private:
 	TSharedRef<ITableRow> OnGenerateRow(TWeakObjectPtr<UNonProjectFilesUIStruct> InItem, const TSharedRef<STableViewBase>& OwnerTable);
 	void OnMouseDoubleClick(TWeakObjectPtr<UNonProjectFilesUIStruct> Item);
+	TSharedRef<SWidget> WidgetRef = SNullWidget::NullWidget;
 
 	TArray<TWeakObjectPtr<UNonProjectFilesUIStruct>> NonProjectFilesUIStructs;
 	TArray<struct FNonProjectFile> NonProjectFiles;

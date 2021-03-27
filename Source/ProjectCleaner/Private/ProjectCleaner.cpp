@@ -444,11 +444,10 @@ void FProjectCleanerModule::UpdateStats()
 
 	if (ProjectCleanerNonProjectFilesUI.IsValid())
 	{
-		// todo:ashe23 content ui not updating for SListView
-		ProjectCleanerNonProjectFilesUI.Pin()->SetNonProjectFiles(NonProjectFiles);		
+		ProjectCleanerNonProjectFilesUI.Pin()->SetNonProjectFiles(NonProjectFiles);
 	}
 
-	if(ProjectCleanerUnusedAssetsBrowserUI.IsValid())
+	if (ProjectCleanerUnusedAssetsBrowserUI.IsValid())
 	{
 		ProjectCleanerUnusedAssetsBrowserUI.Pin()->SetUnusedAssets(UnusedAssetsPtrs);
 	}

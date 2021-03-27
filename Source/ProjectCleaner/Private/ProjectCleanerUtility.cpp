@@ -207,8 +207,9 @@ void ProjectCleanerUtility::FindNonProjectFiles(const FString& SearchPath, TArra
 			Path.RemoveFromEnd("*");
 			Path.Append(NonUAssetFile);
 			Path = FPaths::ConvertRelativePathToFull(Path);
+			
 			FNonProjectFile NonProjectFile;
-			NonProjectFile.FileName = FPaths::GetBaseFilename(NonUAssetFile);
+			NonProjectFile.FileName = FPaths::GetBaseFilename(NonUAssetFile) + "." + Extension;
 			NonProjectFile.FilePath = Path;
 			NonProjectFiles.AddUnique(NonProjectFile);
 		}
