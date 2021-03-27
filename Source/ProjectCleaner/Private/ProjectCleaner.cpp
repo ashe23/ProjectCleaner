@@ -54,10 +54,6 @@ void FProjectCleanerModule::StartupModule()
 	NotificationManager = new ProjectCleanerNotificationManager();
 
 	ExcludeDirectoryFilterSettings = GetMutableDefault<UExcludeDirectoriesFilterSettings>();
-	UnusedAssetsUIContainerSettings = GetMutableDefault<UUnusedAssetsUIContainer>();
-
-	// UI
-	NonProjectFilesInfo = GetMutableDefault<UNonProjectFilesInfo>();
 }
 
 void FProjectCleanerModule::ShutdownModule()

@@ -21,10 +21,26 @@ void SProjectCleanerDirectoryExclusionUI::Construct(const FArguments& InArgs)
 		ExcludeDirectoriesFilterSettings = InArgs._ExcludeDirectoriesFilterSettings;
 		ExcludeDirectoriesFilterSettingsProperty->SetObject(ExcludeDirectoriesFilterSettings);		
 	}
+
+	const auto FontInfo = FSlateFontInfo(FPaths::EngineContentDir() / TEXT("Slate/Fonts/Roboto-Light.ttf"), 20);
 	
 	ChildSlot
-	[	
-		ExcludeDirectoriesFilterSettingsProperty.ToSharedRef()
+	[
+		SNew(SVerticalBox)        
+		+ SVerticalBox::Slot()
+		.Padding(FMargin{0.0f, 10.0f})
+		.AutoHeight()
+		[
+			SNew(STextBlock)
+			.AutoWrapText(true)
+			.Font(FSlateFontInfo(FPaths::EngineContentDir() / TEXT("Slate/Fonts/Roboto-Light.ttf"), 8))
+			.Text(LOCTEXT("applyfilters", "Click \"Refresh\" button to Apply Filters"))
+		]
+		+ SVerticalBox::Slot()
+		.AutoHeight()
+		[
+			ExcludeDirectoriesFilterSettingsProperty.ToSharedRef()
+		]
 	];
 }
 

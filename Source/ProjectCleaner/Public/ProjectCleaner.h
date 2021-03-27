@@ -3,9 +3,7 @@
 #pragma once
 
 #include "StructsContainer.h"
-#include "UI/SProjectCleanerBrowser.h"
 #include "UI/ProjectCleanerBrowserStatisticsUI.h"
-#include "UI/ProjectCleanerBrowserNonProjectFilesUI.h"
 #include "UI/ProjectCleanerDirectoryExclusionUI.h"
 #include "UI/ProjectCleanerUnusedAssetsBrowserUI.h"
 #include "UI/ProjectCleanerNonProjectFilesUI.h"
@@ -33,20 +31,21 @@ DECLARE_LOG_CATEGORY_EXTERN(LogProjectCleaner, Log, All);
 class FProjectCleanerModule : public IModuleInterface
 {
 public:
-	FProjectCleanerModule()
+	FProjectCleanerModule(): NotificationManager(nullptr),
+	                         ExcludeDirectoryFilterSettings(nullptr)
 	{
-		NotificationManager = nullptr;
 	}
+
 	/** IModuleInterface implementation */
 	virtual void StartupModule() override;
 	virtual void ShutdownModule() override;
 
-	
+
 	/**
 	 * @brief Opens ProjectCleanerBrowser Main Tab
 	 */
 	void PluginButtonClicked();
-	
+
 private:
 	void InitModuleComponents();
 	void AddToolbarExtension(FToolBarBuilder& Builder);
@@ -88,8 +87,6 @@ private:
 	FStandardCleanerText StandardCleanerText;
 	TSharedPtr<class FUICommandList> PluginCommands;
 	ProjectCleanerNotificationManager* NotificationManager;
-	TWeakPtr<SProjectCleanerBrowser> ProjectCleanerBrowserUI;
-	UUnusedAssetsUIContainer* UnusedAssetsUIContainerSettings;
 
 	// UI
 	TWeakPtr<SProjectCleanerDirectoryExclusionUI> ProjectCleanerDirectoryExclusionUI;
@@ -100,8 +97,6 @@ private:
 	TWeakPtr<SProjectCleanerNonProjectFilesUI> ProjectCleanerNonProjectFilesUI;
 	TWeakPtr<SProjectCleanerAssetsUsedInSourceCodeUI> ProjectCleanerAssetsUsedInSourceCodeUI;
 	TArray<TWeakObjectPtr<UAssetsUsedInSourceCodeUIStruct>> AssetsUsedInSourceCodeUIStructs;
-	
-	UNonProjectFilesInfo* NonProjectFilesInfo;
 
 	// Refactor Start
 	TArray<FString> EmptyFolders;
@@ -112,5 +107,3 @@ private:
 	TArray<FSourceCodeFile> SourceFiles;
 	// Refactor End
 };
-
-
