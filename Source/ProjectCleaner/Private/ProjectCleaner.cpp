@@ -28,6 +28,7 @@
 #include "ContentBrowserDelegates.h"
 #include "Framework/Commands/UICommandList.h"
 #include "Toolkits/GlobalEditorCommonCommands.h"
+#include "Misc/ScopedSlowTask.h"
 
 
 DEFINE_LOG_CATEGORY(LogProjectCleaner);
@@ -102,19 +103,10 @@ void FProjectCleanerModule::AddToolbarExtension(FToolBarBuilder& Builder)
 
 TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs)
 {
-	const FMargin CommonMargin = FMargin{20.0f, 20.0f};
-
-	// todo:ashe23 move this to other place
-	TArray<FAssetData*> UnusedAssetsPtrs;
-	UnusedAssetsPtrs.Reserve(UnusedAssets.Num());
-	for (auto& Asset : UnusedAssets)
-	{
-		FAssetData* AssetDataPtr = &Asset;
-		UnusedAssetsPtrs.Add(AssetDataPtr);
-	}
+	const FMargin CommonMargin = FMargin{20.0f, 20.0f};	
 
 	return SNew(SDockTab)
-		.TabRole(ETabRole::MajorTab)
+		.TabRole(ETabRole::MajorTab)	
 		[
 			SNew(SSplitter)
 			+ SSplitter::Slot()
@@ -224,6 +216,11 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 		];
 }
 
+void FProjectCleanerModule::OnForegroundTab(TSharedPtr<SDockTab> ForegroundedTab, TSharedPtr<SDockTab> BackgroundedTab)
+{
+	UpdateStats();
+}
+
 void FProjectCleanerModule::InitModuleComponents()
 {
 	FProjectCleanerCommands::Register();
@@ -265,10 +262,12 @@ void FProjectCleanerModule::InitModuleComponents()
 
 	FGlobalTabmanager::Get()->RegisterNomadTabSpawner(
 		                        ProjectCleanerTabName,
-		                        FOnSpawnTab::CreateRaw(this, &FProjectCleanerModule::OnSpawnPluginTab)
+		                        FOnSpawnTab::CreateRaw(this, &FProjectCleanerModule::OnSpawnPluginTab)		                        
 	                        )
 	                        .SetDisplayName(LOCTEXT("FProjectCleanerTabTitle", "ProjectCleaner"))
 	                        .SetMenuType(ETabSpawnerMenuType::Hidden);
+
+	// FGlobalTabmanager::Get()->OnTabForegrounded_Subscribe(FOnActiveTabChanged::FDelegate::CreateRaw(this, &FProjectCleanerModule::OnForegroundTab));
 }
 
 FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
@@ -403,6 +402,9 @@ FReply FProjectCleanerModule::OnDeleteEmptyFolderClick()
 
 void FProjectCleanerModule::UpdateStats()
 {
+	FScopedSlowTask SlowTask{1.0f, FText::FromString("Loading...")};
+	SlowTask.MakeDialog();
+	
 	Reset();
 
 	ProjectCleanerUtility::GetEmptyFoldersAndNonProjectFiles(EmptyFolders, NonProjectFiles);
@@ -419,6 +421,13 @@ void FProjectCleanerModule::UpdateStats()
 
 	Filter_UsedInSourceCode UsedInSourceCode{SourceFiles, AdjacencyList, AssetsUsedInSourceCodeUIStructs};
 	UsedInSourceCode.Apply(UnusedAssets);
+
+	UnusedAssetsPtrs.Reserve(UnusedAssets.Num());
+	for (auto& Asset : UnusedAssets)
+	{
+		FAssetData* AssetDataPtr = &Asset;
+		UnusedAssetsPtrs.Add(AssetDataPtr);
+	}
 
 	CleaningStats.UnusedAssetsNum = UnusedAssets.Num();
 	CleaningStats.UnusedAssetsTotalSize = ProjectCleanerUtility::GetTotalSize(UnusedAssets);
@@ -439,6 +448,12 @@ void FProjectCleanerModule::UpdateStats()
 		ProjectCleanerNonProjectFilesUI.Pin()->SetNonProjectFiles(NonProjectFiles);		
 	}
 
+	if(ProjectCleanerUnusedAssetsBrowserUI.IsValid())
+	{
+		ProjectCleanerUnusedAssetsBrowserUI.Pin()->SetUnusedAssets(UnusedAssetsPtrs);
+	}
+
+	SlowTask.EnterProgressFrame(1.0f);
 	// if (NonProjectFiles.Num() > 0)
 	// {
 	// 	UE_LOG(LogProjectCleaner, Warning, TEXT("Non UAsset file list:"));
@@ -470,6 +485,7 @@ void FProjectCleanerModule::InitCleaner()
 void FProjectCleanerModule::Reset()
 {
 	UnusedAssets.Reset();
+	UnusedAssetsPtrs.Reset();
 	SourceFiles.Reset();
 	NonProjectFiles.Reset();
 	EmptyFolders.Reset();

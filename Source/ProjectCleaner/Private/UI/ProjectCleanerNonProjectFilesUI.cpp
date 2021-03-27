@@ -97,7 +97,7 @@ void SProjectCleanerNonProjectFilesUI::OnMouseDoubleClick(TWeakObjectPtr<UNonPro
 	const auto DirectoryPath = FPaths::GetPath(Item.Get()->FilePath);
 	if (FPaths::DirectoryExists(DirectoryPath))
 	{
-		FPlatformProcess::ExploreFolder(*DirectoryPath);
+		FPlatformProcess::ExploreFolder(*DirectoryPath);		
 	}
 }
 #pragma optimize("", on)

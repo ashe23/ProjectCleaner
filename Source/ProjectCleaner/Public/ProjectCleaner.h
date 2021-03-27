@@ -52,6 +52,7 @@ private:
 	void AddToolbarExtension(FToolBarBuilder& Builder);
 	void AddMenuExtension(FMenuBuilder& Builder);
 	TSharedRef<SDockTab> OnSpawnPluginTab(const class FSpawnTabArgs& SpawnTabArgs);
+	void OnForegroundTab(TSharedPtr<SDockTab> ForegroundedTab, TSharedPtr<SDockTab> BackgroundedTab);
 
 	FReply RefreshBrowser();
 	void UpdateStats();
@@ -105,6 +106,7 @@ private:
 	// Refactor Start
 	TArray<FString> EmptyFolders;
 	TArray<FAssetData> UnusedAssets;
+	TArray<FAssetData*> UnusedAssetsPtrs;
 	TArray<FNode> AdjacencyList;
 	TArray<struct FNonProjectFile> NonProjectFiles;
 	TArray<FSourceCodeFile> SourceFiles;

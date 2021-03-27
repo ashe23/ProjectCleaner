@@ -14,11 +14,14 @@ public:
 	SLATE_END_ARGS()
 	
 	void Construct(const FArguments& InArgs);
+	void SetUnusedAssets(TArray<FAssetData*>& NewUnusedAssets);
 private:
 	// UI specific stuff start
 	TSharedPtr<SWidget> OnGetAssetContextMenu(const TArray<FAssetData>& SelectedAssets);
 	void FindInContentBrowser() const;
 	bool IsAnythingSelected() const;
+	void RefreshUIContent();
+	TSharedRef<SWidget> ContentBrowserWidgetRef = SNullWidget::NullWidget;
 	/** Delegate to interact with asset view */
 	FGetCurrentSelectionDelegate GetCurrentSelectionDelegate;
 	TSharedPtr<FUICommandList> Commands;

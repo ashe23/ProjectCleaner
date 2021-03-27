@@ -18,7 +18,7 @@ void FProjectCleanerBrowserCommands::RegisterCommands()
 		"Reference Viewer...",
 		"Launches the reference viewer showing the selected assets' references",
 		EUserInterfaceActionType::Button,
-		FInputChord(EModifierKey::Shift | EModifierKey::Alt, EKeys::R)
+		FInputChord()
 	);
 }
 
