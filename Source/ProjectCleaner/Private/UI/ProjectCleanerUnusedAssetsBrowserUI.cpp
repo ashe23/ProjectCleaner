@@ -69,7 +69,7 @@ void SProjectCleanerUnusedAssetsBrowserUI::OnAssetDblClicked(const FAssetData& A
 	TArray<FName> AssetNames;
 	AssetNames.Add(AssetData.ObjectPath);
 
-	GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->OpenEditorsForAssets(AssetNames);
+	GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->OpenEditorsForAssets(AssetNames);	
 }
 
 void SProjectCleanerUnusedAssetsBrowserUI::FindInContentBrowser() const

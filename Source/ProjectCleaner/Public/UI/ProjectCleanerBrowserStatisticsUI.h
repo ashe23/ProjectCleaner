@@ -19,10 +19,12 @@ public:
 	void Construct(const FArguments& InArgs);	
 	void SetStats(const FCleaningStats& NewStats);
 	FCleaningStats GetStats() const;
+	void RefreshUIContent();
 private:
 	/**
 	 * @brief Statistics data
 	 */
 	FCleaningStats Stats;
+	TSharedRef<SWidget> WidgetRef = SNullWidget::NullWidget;
 	
 };
