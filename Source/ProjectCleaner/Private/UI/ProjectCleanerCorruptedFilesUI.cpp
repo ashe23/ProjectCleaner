@@ -20,7 +20,7 @@ void SProjectCleanerCorruptedFilesUI::Construct(const FArguments& InArgs)
 void SProjectCleanerCorruptedFilesUI::RefreshUIContent()
 {
 	FAssetPickerConfig Config;
-	Config.InitialAssetViewType = EAssetViewType::Tile;
+	Config.InitialAssetViewType = EAssetViewType::List;
 	Config.bAddFilterUI = true;
 	Config.bShowPathInColumnView = true;
 	Config.bSortByPathInColumnView = true;

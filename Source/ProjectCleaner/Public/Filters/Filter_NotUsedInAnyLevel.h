@@ -24,7 +24,7 @@ private:
 	 * @param Assets 
 	 * @param FilterSet 
 	 */
-	void Difference(TArray<FAssetData>& Assets, TSet<FName> FilterSet);
+	static void Difference(TArray<FAssetData>& Assets, TSet<FName> FilterSet);
 	
 	/**
 	 * @brief Container for all used assets in project

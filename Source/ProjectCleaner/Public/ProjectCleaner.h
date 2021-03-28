@@ -27,6 +27,7 @@ class SDockTab;
 struct FSlateColorBrush;
 struct FAssetData;
 struct FSlateBrush;
+struct FNonProjectFile;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogProjectCleaner, Log, All);
 
@@ -53,7 +54,6 @@ private:
 	void AddToolbarExtension(FToolBarBuilder& Builder);
 	void AddMenuExtension(FMenuBuilder& Builder);
 	TSharedRef<SDockTab> OnSpawnPluginTab(const class FSpawnTabArgs& SpawnTabArgs);
-	void OnForegroundTab(TSharedPtr<SDockTab> ForegroundedTab, TSharedPtr<SDockTab> BackgroundedTab);
 
 	FReply RefreshBrowser();
 	void UpdateStats();
@@ -105,15 +105,14 @@ private:
 	TArray<FString> EmptyFolders;
 	TArray<FAssetData> UnusedAssets;
 	TArray<FAssetData*> UnusedAssetsPtrs;
+	TArray<FAssetData*> CorruptedFilesPtrs;
 	TArray<FNode> AdjacencyList;
-	TArray<struct FNonProjectFile> NonProjectFiles;
+	TArray<FNonProjectFile> NonProjectFiles;
 	TArray<FSourceCodeFile> SourceFiles;
 	// Refactor End
 
-	// streable manager todo:ashe23
+	// Streamable Manager
 	struct FStreamableManager* StreamableManager;
-	void TestCallback();
-	TArray<FSoftObjectPath> PossiblyCorruptedAssetFiles;
-	FSoftObjectPath PathToObject;
+	void OnAssetsLoaded();
 	TArray<FSoftObjectPath> ObjectPaths;
 };

@@ -204,7 +204,7 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 					  .AutoHeight()
 					[
 						SAssignNew(ProjectCleanerCorruptedFilesUI, SProjectCleanerCorruptedFilesUI)
-						.CorruptedFiles(UnusedAssetsPtrs)
+						.CorruptedFiles(CorruptedFilesPtrs)
 					]
 				]
 			]
@@ -225,11 +225,6 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 				]
 			]
 		];
-}
-
-void FProjectCleanerModule::OnForegroundTab(TSharedPtr<SDockTab> ForegroundedTab, TSharedPtr<SDockTab> BackgroundedTab)
-{
-	UpdateStats();
 }
 
 void FProjectCleanerModule::InitModuleComponents()
@@ -277,8 +272,6 @@ void FProjectCleanerModule::InitModuleComponents()
 	                        )
 	                        .SetDisplayName(LOCTEXT("FProjectCleanerTabTitle", "ProjectCleaner"))
 	                        .SetMenuType(ETabSpawnerMenuType::Hidden);
-
-	// FGlobalTabmanager::Get()->OnTabForegrounded_Subscribe(FOnActiveTabChanged::FDelegate::CreateRaw(this, &FProjectCleanerModule::OnForegroundTab));
 }
 
 FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
@@ -317,16 +310,6 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 	{
 		ProjectCleanerUtility::GetRootAssets(RootAssets, UnusedAssets);
 
-		// // todo:ashe23 THIS IS FOR DEBUG PURPOSE ONLY
-		// for(auto& RootAsset : RootAssets)
-		// {
-		// 	auto LoadedRootAsset = RootAsset.GetAsset();
-		// 	if(!LoadedRootAsset)
-		// 	{
-		// 		PossiblyCorruptedAssetFiles.Add(&RootAsset);
-		// 	}			
-		// }
-
 		if (RootAssets.Num() == 0)
 		{
 			FNotificationInfo Info(LOCTEXT("CantFindAssetsToDelete",
@@ -363,15 +346,6 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 		FSlateNotificationManager::Get().AddNotification(Info);
 	}
 
-	// Corrupted files
-	if (PossiblyCorruptedAssetFiles.Num() > 0)
-	{
-		FNotificationInfo Info(LOCTEXT("ProjectContainsCorruptedFiles",
-		                               "Project possibly contains corrupted files! Please try to delete them manually!"));
-		Info.ExpireDuration = 5.0f;
-		FSlateNotificationManager::Get().AddNotification(Info);
-	}
-
 	NotificationManager->Update(NotificationRef, CleaningStats);
 
 	NotificationManager->CachedStats = CleaningStats;
@@ -402,36 +376,40 @@ bool FProjectCleanerModule::IsConfirmationWindowCanceled(EAppReturnType::Type St
 	return Status == EAppReturnType::Type::No || Status == EAppReturnType::Cancel;
 }
 
-void FProjectCleanerModule::TestCallback()
+void FProjectCleanerModule::OnAssetsLoaded()
 {
+	// first we loading all assets, to find which assets not loading correctly,
+	// that could be corrupted files - that wont be fixed with in engine tools
 	for (const auto& ObjectPath : ObjectPaths)
 	{
-		TSoftObjectPtr<UObject> Ass{ObjectPath};
-		auto obj = Ass.Get();
-		if (!obj)
+		TSoftObjectPtr<UObject> ObjectSoftPtr{ObjectPath};
+		if (!ObjectSoftPtr.Get())
 		{
-			PossiblyCorruptedAssetFiles.Add(ObjectPath);
+			// finding this asset in list
+			FAssetData* CorruptedAsset = UnusedAssets.FindByPredicate([&](const FAssetData& Asset)
+			{
+				return Asset.ObjectPath.IsEqual(ObjectPath.GetAssetPathName());
+			});
+			if (CorruptedAsset)
+			{
+				CorruptedFilesPtrs.Add(CorruptedAsset);
+			}
 		}
-	}
-
-	for (const auto& ObjectPath : ObjectPaths)
-	{
+		// unloading asset immediately
 		StreamableManager->Unload(ObjectPath);
 	}
 
 	UnusedAssets.RemoveAll([&](const FAssetData& Asset)
 	{
-		for (const auto& File : PossiblyCorruptedAssetFiles)
-		{
-			const auto AssetPath = File.GetAssetPathString();
-			if (AssetPath.Equals(Asset.ObjectPath.ToString()))
-			{
-				return true;
-			}
-		}
-
-		return false;
+		return CorruptedFilesPtrs.Contains(&Asset);
 	});
+	
+	UnusedAssetsPtrs.Reserve(UnusedAssets.Num());
+	for (auto& Asset : UnusedAssets)
+	{
+		FAssetData* AssetDataPtr = &Asset;
+		UnusedAssetsPtrs.Add(AssetDataPtr);
+	}
 
 
 	CleaningStats.UnusedAssetsNum = UnusedAssets.Num();
@@ -460,7 +438,7 @@ void FProjectCleanerModule::TestCallback()
 
 	if (ProjectCleanerCorruptedFilesUI.IsValid())
 	{
-		ProjectCleanerCorruptedFilesUI.Pin()->SetCorruptedFiles(UnusedAssetsPtrs);
+		ProjectCleanerCorruptedFilesUI.Pin()->SetCorruptedFiles(CorruptedFilesPtrs);
 	}
 
 	if (ProjectCleanerAssetsUsedInSourceCodeUI.IsValid())
@@ -531,12 +509,6 @@ void FProjectCleanerModule::UpdateStats()
 	Filter_UsedInSourceCode UsedInSourceCode{SourceFiles, AdjacencyList, AssetsUsedInSourceCodeUIStructs};
 	UsedInSourceCode.Apply(UnusedAssets);
 
-	UnusedAssetsPtrs.Reserve(UnusedAssets.Num());
-	for (auto& Asset : UnusedAssets)
-	{
-		FAssetData* AssetDataPtr = &Asset;
-		UnusedAssetsPtrs.Add(AssetDataPtr);
-	}
 
 	StreamableManager = &UAssetManager::GetStreamableManager();
 	ObjectPaths.Reserve(UnusedAssets.Num());
@@ -546,9 +518,13 @@ void FProjectCleanerModule::UpdateStats()
 		ObjectPaths.Add(FSoftObjectPath{Asset.ObjectPath});
 	}
 
-	StreamableManager->RequestAsyncLoad(ObjectPaths,
-	                                    FStreamableDelegate::CreateRaw(this, &FProjectCleanerModule::TestCallback));
+	StreamableManager->RequestSyncLoad(
+		ObjectPaths
+		// FStreamableDelegate::CreateRaw(this, &FProjectCleanerModule::OnAssetsLoaded)
+	);
 
+	OnAssetsLoaded();
+	
 	SlowTask.EnterProgressFrame(1.0f);
 	// if (NonProjectFiles.Num() > 0)
 	// {
@@ -582,12 +558,12 @@ void FProjectCleanerModule::Reset()
 {
 	UnusedAssets.Reset();
 	UnusedAssetsPtrs.Reset();
+	CorruptedFilesPtrs.Reset();
 	SourceFiles.Reset();
 	NonProjectFiles.Reset();
 	AssetsUsedInSourceCodeUIStructs.Reset();
 	EmptyFolders.Reset();
 	AdjacencyList.Reset();
-	PossiblyCorruptedAssetFiles.Reset();
 }
 
 void FProjectCleanerModule::UpdateContentBrowser() const

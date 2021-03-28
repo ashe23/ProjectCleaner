@@ -429,7 +429,7 @@ void ProjectCleanerUtility::GetRootAssets(TArray<FAssetData>& RootAssets, TArray
 	{
 		for (const auto& Asset : Assets)
 		{
-			if(RootAssets.Num() > 100) break; // todo:ashe23 chunk size
+			if(RootAssets.Num() > 100) break; // todo:ashe23 chunk size maybe should be shown in UI as parameter?
 			
 			TArray<FName> Refs;
 			AssetRegistry.Get().GetReferencers(Asset.PackageName, Refs);
