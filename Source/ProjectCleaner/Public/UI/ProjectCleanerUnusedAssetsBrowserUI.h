@@ -22,6 +22,7 @@ private:
 	void FindInContentBrowser() const;
 	bool IsAnythingSelected() const;
 	void DeleteAsset() const;
+	void ExcludeAssets() const;
 	void RefreshUIContent();
 	TSharedRef<SWidget> WidgetRef = SNullWidget::NullWidget;
 	/** Delegate to interact with asset view */

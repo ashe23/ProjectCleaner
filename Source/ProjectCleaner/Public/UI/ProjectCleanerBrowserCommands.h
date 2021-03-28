@@ -11,4 +11,5 @@ public:
 	virtual void RegisterCommands() override;
 
 	TSharedPtr<FUICommandInfo> DeleteAsset;
+	TSharedPtr<FUICommandInfo> ExcludeFromDeletion;
 };

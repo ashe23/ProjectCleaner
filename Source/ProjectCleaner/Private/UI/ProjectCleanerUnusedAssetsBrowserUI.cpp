@@ -57,6 +57,7 @@ TSharedPtr<SWidget> SProjectCleanerUnusedAssetsBrowserUI::OnGetAssetContextMenu(
 	{
 		MenuBuilder.AddMenuEntry(FGlobalEditorCommonCommands::Get().FindInContentBrowser);
 		MenuBuilder.AddMenuEntry(FProjectCleanerBrowserCommands::Get().DeleteAsset);
+		MenuBuilder.AddMenuEntry(FProjectCleanerBrowserCommands::Get().ExcludeFromDeletion);
 	}
 	MenuBuilder.EndSection();
 
@@ -104,6 +105,17 @@ void SProjectCleanerUnusedAssetsBrowserUI::DeleteAsset() const
 	}
 
 	// todo:ashe23 add delegate to refresh content
+}
+
+void SProjectCleanerUnusedAssetsBrowserUI::ExcludeAssets() const
+{
+	if (!GetCurrentSelectionDelegate.IsBound()) return;
+
+	TArray<FAssetData> CurrentSelection = GetCurrentSelectionDelegate.Execute();
+	if (CurrentSelection.Num() > 0)
+	{
+		// todo:ashe23 remove selected assets from list
+	}
 }
 
 void SProjectCleanerUnusedAssetsBrowserUI::RefreshUIContent()
