@@ -132,14 +132,14 @@ void SProjectCleanerBrowserStatisticsUI::RefreshUIContent()
 				[
 					SNew(STextBlock)
                         .AutoWrapText(true)
-                        .Text(LOCTEXT("NonProjectFilesNum", "Non Project Files - "))
+                        .Text(LOCTEXT("nonuassetfilesnum", "Non .uasset files - "))
 				]
 				+ SHorizontalBox::Slot()
 				.AutoWidth()
 				[
 					SNew(STextBlock)
                         .AutoWrapText(true)
-                        .Text_Lambda([this]() -> FText { return FText::AsNumber(Stats.NonProjectFilesNum); })
+                        .Text_Lambda([this]() -> FText { return FText::AsNumber(Stats.NonUassetFilesNum); })
 				]
 			]
 			+ SVerticalBox::Slot()

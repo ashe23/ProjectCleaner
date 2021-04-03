@@ -8,6 +8,7 @@
 #include "Widgets/Layout/SScrollBox.h"
 #include "Toolkits/GlobalEditorCommonCommands.h"
 
+
 #define LOCTEXT_NAMESPACE "FProjectCleanerModule"
 
 void SProjectCleanerUnusedAssetsBrowserUI::Construct(const FArguments& InArgs)

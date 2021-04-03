@@ -1,15 +1,16 @@
 ﻿#pragma once
 
 #include "CoreMinimal.h"
-#include "StructsContainer.generated.h"
+// #include "StructsContainer.generated.h"
 
 struct FCleaningStats
 {
 	int32 UnusedAssetsNum;
 	int32 EmptyFolders;
 	int64 UnusedAssetsTotalSize;
-	int32 NonProjectFilesNum;
+	int32 NonUassetFilesNum;
 	int32 AssetsUsedInSourceCodeFilesNum;
+	int32 CorruptedFilesNum;
 	int32 DeletedAssetCount;
 	int32 TotalAssetNum;
 
@@ -18,8 +19,9 @@ struct FCleaningStats
 		UnusedAssetsNum = 0;
 		EmptyFolders = 0;
 		UnusedAssetsTotalSize = 0;
-		NonProjectFilesNum = 0;
+		NonUassetFilesNum = 0;
 		AssetsUsedInSourceCodeFilesNum = 0;
+		CorruptedFilesNum = 0;
 		DeletedAssetCount = 0;
 		TotalAssetNum = 0;
 	}
@@ -73,26 +75,4 @@ struct FSourceCodeFile
 	FString AbsoluteFilePath;
 	FString RelativeFilePath;
 	FString Content;
-};
-
-USTRUCT()
-struct FNonProjectFile
-{
-	GENERATED_BODY()
-	
-	UPROPERTY()
-	FString FileName;
-	UPROPERTY()
-	FString FilePath;
-
-	FNonProjectFile()
-	{
-		FileName = FString{};
-		FilePath = FString{};
-	}
-
-	bool operator==(const FNonProjectFile& Lhs) const
-	{
-		return this->FileName == Lhs.FileName && this->FilePath == Lhs.FilePath;
-	}
 };

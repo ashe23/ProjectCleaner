@@ -9,7 +9,7 @@
 #include "Filters/Filter_ExcludedDirectories.h"
 #include "Filters/Filter_UsedInSourceCode.h"
 #include "UI/ProjectCleanerBrowserCommands.h"
-#include "UI/ProjectCleanerNonProjectFilesUI.h"
+#include "UI/ProjectCleanerNonUassetFilesUI.h"
 // Engine Headers
 #include "IContentBrowserSingleton.h"
 #include "AssetRegistryModule.h"
@@ -74,9 +74,14 @@ void FProjectCleanerModule::ShutdownModule()
 	delete NotificationManager;
 }
 
+bool FProjectCleanerModule::IsGameModule() const
+{
+	return false;
+}
+
 void FProjectCleanerModule::PluginButtonClicked()
 {
-	InitCleaner();
+	UpdateCleaner();
 
 	FGlobalTabmanager::Get()->InvokeTab(ProjectCleanerTabName);
 }
@@ -88,10 +93,8 @@ void FProjectCleanerModule::AddMenuExtension(FMenuBuilder& Builder)
 
 FReply FProjectCleanerModule::RefreshBrowser()
 {
-	ProjectCleanerUtility::FixupRedirectors();
-
-	UpdateStats();
-
+	UpdateCleaner();
+	
 	return FReply::Handled();
 }
 
@@ -103,6 +106,8 @@ void FProjectCleanerModule::AddToolbarExtension(FToolBarBuilder& Builder)
 
 TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs)
 {
+	UpdateCleaner();
+	
 	const FMargin CommonMargin = FMargin{20.0f, 20.0f};
 
 	return SNew(SDockTab)
@@ -181,8 +186,8 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 					  .Padding(CommonMargin)
 					  .AutoHeight()
 					[
-						SAssignNew(ProjectCleanerNonProjectFilesUI, SProjectCleanerNonProjectFilesUI)
-						.NonProjectFiles(NonProjectFiles)
+						SAssignNew(ProjectCleanerNonUassetFilesUI, SProjectCleanerNonUassetFilesUI)
+						.NonUassetFiles(NonUassetFiles)
 					]
 				]
 				+ SScrollBox::Slot()
@@ -306,35 +311,41 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 	);
 
 	bool bFailedWhileDeletingAsset = false;
-	while (UnusedAssets.Num() > 0 && !bFailedWhileDeletingAsset)
+	StreamableManager = &UAssetManager::GetStreamableManager();
+	while (UnusedAssets.Num() > 0)
 	{
 		ProjectCleanerUtility::GetRootAssets(RootAssets, UnusedAssets);
 
-		if (RootAssets.Num() == 0)
+		// Loading assets and finding corrupted files
+		TArray<FAssetData*> CorruptedFiles;
+		LoadAssetsSync(RootAssets, CorruptedFiles);
+		if (CorruptedFiles.Num() > 0)
 		{
-			FNotificationInfo Info(LOCTEXT("CantFindAssetsToDelete",
-			                               "Cant find any assets to delete! Try to restart editor and try again."));
-			Info.ExpireDuration = 5.0f;
-			FSlateNotificationManager::Get().AddNotification(Info);
+			CorruptedFilesPtrs.Append(CorruptedFiles);
 
-			UE_LOG(LogTemp, Warning, TEXT("Cant find any assets to delete! Try to restart editor and try again."));
-			break;
+			UnusedAssets.RemoveAll([&](const FAssetData& Asset)
+			{
+				return CorruptedFilesPtrs.Contains(&Asset);
+			});
+
+			RootAssets.RemoveAll([&](const FAssetData& Asset)
+			{
+				return CorruptedFilesPtrs.Contains(&Asset);
+			});
 		}
 
-		const auto AssetsDeleted = ProjectCleanerUtility::DeleteAssets(RootAssets);
-		if (AssetsDeleted != RootAssets.Num())
+		const auto DeletedAssets = ProjectCleanerUtility::DeleteAssets(RootAssets);
+		if (DeletedAssets != RootAssets.Num())
 		{
 			bFailedWhileDeletingAsset = true;
 		}
-		CleaningStats.DeletedAssetCount += AssetsDeleted;
-
+		CleaningStats.DeletedAssetCount += DeletedAssets;
 		NotificationManager->Update(NotificationRef, CleaningStats);
 
 		UnusedAssets.RemoveAll([&](const FAssetData& Elem)
 		{
 			return RootAssets.Contains(Elem);
 		});
-
 		RootAssets.Reset();
 	}
 
@@ -347,7 +358,6 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 	}
 
 	NotificationManager->Update(NotificationRef, CleaningStats);
-
 	NotificationManager->CachedStats = CleaningStats;
 	UpdateStats();
 
@@ -355,8 +365,8 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 	NotificationManager->CachedStats.EmptyFolders = CleaningStats.EmptyFolders;
 	ProjectCleanerUtility::DeleteEmptyFolders(EmptyFolders);
 	NotificationManager->Hide(NotificationRef);
-	UpdateStats();
 
+	UpdateStats();
 	UpdateContentBrowser();
 
 	return FReply::Handled();
@@ -403,7 +413,7 @@ void FProjectCleanerModule::OnAssetsLoaded()
 	{
 		return CorruptedFilesPtrs.Contains(&Asset);
 	});
-	
+
 	UnusedAssetsPtrs.Reserve(UnusedAssets.Num());
 	for (auto& Asset : UnusedAssets)
 	{
@@ -415,7 +425,7 @@ void FProjectCleanerModule::OnAssetsLoaded()
 	CleaningStats.UnusedAssetsNum = UnusedAssets.Num();
 	CleaningStats.UnusedAssetsTotalSize = ProjectCleanerUtility::GetTotalSize(UnusedAssets);
 	CleaningStats.EmptyFolders = EmptyFolders.Num();
-	CleaningStats.NonProjectFilesNum = NonProjectFiles.Num();
+	CleaningStats.NonUassetFilesNum = NonUassetFiles.Num();
 	CleaningStats.AssetsUsedInSourceCodeFilesNum = AssetsUsedInSourceCodeUIStructs.Num();
 	CleaningStats.TotalAssetNum = CleaningStats.UnusedAssetsNum;
 	CleaningStats.DeletedAssetCount = 0;
@@ -426,9 +436,9 @@ void FProjectCleanerModule::OnAssetsLoaded()
 		ProjectCleanerBrowserStatisticsUI.Pin()->SetStats(CleaningStats);
 	}
 
-	if (ProjectCleanerNonProjectFilesUI.IsValid())
+	if (ProjectCleanerNonUassetFilesUI.IsValid())
 	{
-		ProjectCleanerNonProjectFilesUI.Pin()->SetNonProjectFiles(NonProjectFiles);
+		ProjectCleanerNonUassetFilesUI.Pin()->SetNonUassetFiles(NonUassetFiles);
 	}
 
 	if (ProjectCleanerUnusedAssetsBrowserUI.IsValid())
@@ -444,6 +454,36 @@ void FProjectCleanerModule::OnAssetsLoaded()
 	if (ProjectCleanerAssetsUsedInSourceCodeUI.IsValid())
 	{
 		ProjectCleanerAssetsUsedInSourceCodeUI.Pin()->SetAssetsUsedInSourceCode(AssetsUsedInSourceCodeUIStructs);
+	}
+}
+
+void FProjectCleanerModule::LoadAssetsSync(const TArray<FAssetData>& Assets, TArray<FAssetData*>& CorruptedAssets)
+{
+	ObjectPaths.Reset();
+	CorruptedAssets.Reset();
+
+	for (const auto& Asset : Assets)
+	{
+		ObjectPaths.Add(FSoftObjectPath{Asset.ObjectPath});
+	}
+
+	StreamableManager->RequestSyncLoad(ObjectPaths);
+
+	for (const auto& ObjectPath : ObjectPaths)
+	{
+		TSoftObjectPtr<UObject> ObjectSoftPtr{ObjectPath};
+		if (!ObjectSoftPtr.Get())
+		{
+			// finding this asset in list
+			FAssetData* CorruptedAsset = UnusedAssets.FindByPredicate([&](const FAssetData& Asset)
+			{
+				return Asset.ObjectPath.IsEqual(ObjectPath.GetAssetPathName());
+			});
+			if (CorruptedAsset)
+			{
+				CorruptedAssets.Add(CorruptedAsset);
+			}
+		}
 	}
 }
 
@@ -489,81 +529,93 @@ FReply FProjectCleanerModule::OnDeleteEmptyFolderClick()
 
 void FProjectCleanerModule::UpdateStats()
 {
-	FScopedSlowTask SlowTask{1.0f, FText::FromString("Loading...")};
-	SlowTask.MakeDialog();
+	CleaningStats.UnusedAssetsNum = UnusedAssets.Num();
+	CleaningStats.EmptyFolders = EmptyFolders.Num();
+	CleaningStats.NonUassetFilesNum = NonUassetFiles.Num();
+	CleaningStats.CorruptedFilesNum = CorruptedFilesPtrs.Num();
+	CleaningStats.AssetsUsedInSourceCodeFilesNum = AssetsUsedInSourceCodeUIStructs.Num();
+	CleaningStats.UnusedAssetsTotalSize = ProjectCleanerUtility::GetTotalSize(UnusedAssets);
+	CleaningStats.TotalAssetNum = CleaningStats.UnusedAssetsNum;
 
-	Reset();
-
-	ProjectCleanerUtility::GetEmptyFoldersAndNonProjectFiles(EmptyFolders, NonProjectFiles);
-	ProjectCleanerUtility::FindAllSourceFiles(SourceFiles);
-	ProjectCleanerUtility::GetAllAssets(UnusedAssets);
-	ProjectCleanerUtility::CreateAdjacencyList(UnusedAssets, AdjacencyList);
-
-	// filters
-	Filter_NotUsedInAnyLevel NotUsedInAnyLevel;
-	NotUsedInAnyLevel.Apply(UnusedAssets);
-
-	Filter_ExcludedDirectories ExcludedDirectories{ExcludeDirectoryFilterSettings, AdjacencyList};
-	ExcludedDirectories.Apply(UnusedAssets);
-
-	Filter_UsedInSourceCode UsedInSourceCode{SourceFiles, AdjacencyList, AssetsUsedInSourceCodeUIStructs};
-	UsedInSourceCode.Apply(UnusedAssets);
-
-
-	StreamableManager = &UAssetManager::GetStreamableManager();
-	ObjectPaths.Reserve(UnusedAssets.Num());
-
-	for (const auto& Asset : UnusedAssets)
+	if (ProjectCleanerBrowserStatisticsUI.IsValid())
 	{
-		ObjectPaths.Add(FSoftObjectPath{Asset.ObjectPath});
+		ProjectCleanerBrowserStatisticsUI.Pin()->SetStats(CleaningStats);
 	}
 
-	StreamableManager->RequestSyncLoad(
-		ObjectPaths
-		// FStreamableDelegate::CreateRaw(this, &FProjectCleanerModule::OnAssetsLoaded)
-	);
+	if (ProjectCleanerUnusedAssetsBrowserUI.IsValid())
+	{
+		ProjectCleanerUnusedAssetsBrowserUI.Pin()->SetUnusedAssets(UnusedAssetsPtrs);
+	}
 
-	OnAssetsLoaded();
-	
-	SlowTask.EnterProgressFrame(1.0f);
-	// if (NonProjectFiles.Num() > 0)
-	// {
-	// 	UE_LOG(LogProjectCleaner, Warning, TEXT("Non UAsset file list:"));
-	// 	for (const auto& Asset : NonProjectFiles)
-	// 	{
-	// 		UE_LOG(LogProjectCleaner, Warning, TEXT("%s"), *Asset);
-	// 	}
-	//
-	// 	FNotificationInfo Info(StandardCleanerText.NonUAssetFilesFound);
-	// 	Info.ExpireDuration = 10.0f;
-	// 	Info.Hyperlink = FSimpleDelegate::CreateStatic([]()
-	// 	{
-	// 		FGlobalTabmanager::Get()->InvokeTab(FName("OutputLog"));
-	// 	});
-	// 	Info.HyperlinkText = LOCTEXT("ShowOutputLogHyperlink", "Show Output Log");
-	// 	FSlateNotificationManager::Get().AddNotification(Info);
-	// }
+	if (ProjectCleanerNonUassetFilesUI.IsValid())
+	{
+		ProjectCleanerNonUassetFilesUI.Pin()->SetNonUassetFiles(NonUassetFiles);
+	}
+
+	if (ProjectCleanerCorruptedFilesUI.IsValid())
+	{
+		ProjectCleanerCorruptedFilesUI.Pin()->SetCorruptedFiles(CorruptedFilesPtrs);
+	}
 }
 
-void FProjectCleanerModule::InitCleaner()
+void FProjectCleanerModule::UpdateCleaner()
 {
 	ProjectCleanerUtility::SaveAllAssets();
 
 	ProjectCleanerUtility::FixupRedirectors();
 
-	UpdateStats();
+	UpdateCleanerData();
 }
 
 void FProjectCleanerModule::Reset()
 {
 	UnusedAssets.Reset();
 	UnusedAssetsPtrs.Reset();
-	CorruptedFilesPtrs.Reset();
+	CorruptedFilesPtrs.Reset();// todo
 	SourceFiles.Reset();
-	NonProjectFiles.Reset();
+	NonUassetFiles.Reset();
+	// NonUassetFiles.Reset();
 	AssetsUsedInSourceCodeUIStructs.Reset();
 	EmptyFolders.Reset();
 	AdjacencyList.Reset();
+}
+
+void FProjectCleanerModule::UpdateCleanerData()
+{
+	FScopedSlowTask SlowTask{5.0f, FText::FromString("Scanning. Please wait...")};
+	SlowTask.MakeDialog();
+
+	Reset();
+
+	ProjectCleanerUtility::GetAllAssets(UnusedAssets);
+	ProjectCleanerUtility::CreateAdjacencyList(UnusedAssets, AdjacencyList);
+	SlowTask.EnterProgressFrame(1.0f);
+	
+	ProjectCleanerUtility::GetEmptyFoldersAndNonUassetFiles(EmptyFolders, NonUassetFiles);
+	SlowTask.EnterProgressFrame(1.0f);
+	
+	ProjectCleanerUtility::FindAllSourceFiles(SourceFiles);
+	SlowTask.EnterProgressFrame(1.0f);
+
+	Filter_NotUsedInAnyLevel NotUsedInAnyLevel;
+	NotUsedInAnyLevel.Apply(UnusedAssets);
+	Filter_ExcludedDirectories ExcludedDirectories{ExcludeDirectoryFilterSettings, AdjacencyList};
+	ExcludedDirectories.Apply(UnusedAssets);
+	Filter_UsedInSourceCode UsedInSourceCode{SourceFiles, AdjacencyList, AssetsUsedInSourceCodeUIStructs};
+	UsedInSourceCode.Apply(UnusedAssets);
+	SlowTask.EnterProgressFrame(1.0f);
+
+	// converting TArray<FAssetData> => TArray<FAssetData*> , for passing that data to UIs
+	UnusedAssetsPtrs.Reserve(UnusedAssets.Num());
+	for (auto& Asset : UnusedAssets)
+	{
+		FAssetData* AssetDataPtr = &Asset;
+		UnusedAssetsPtrs.Add(AssetDataPtr);
+	}
+
+	UpdateStats();
+	
+	SlowTask.EnterProgressFrame(1.0f);
 }
 
 void FProjectCleanerModule::UpdateContentBrowser() const
@@ -578,6 +630,7 @@ void FProjectCleanerModule::UpdateContentBrowser() const
 	FContentBrowserModule& CBModule = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
 	CBModule.Get().SyncBrowserToFolders(FocusFolders);
 }
+
 #pragma optimize("", on)
 #undef LOCTEXT_NAMESPACE
 

@@ -6,7 +6,7 @@
 #include "UI/ProjectCleanerBrowserStatisticsUI.h"
 #include "UI/ProjectCleanerDirectoryExclusionUI.h"
 #include "UI/ProjectCleanerUnusedAssetsBrowserUI.h"
-#include "UI/ProjectCleanerNonProjectFilesUI.h"
+#include "UI/ProjectCleanerNonUassetFilesUI.h"
 #include "UI/ProjectCleanerAssetsUsedInSourceCodeUI.h"
 #include "UI/ProjectCleanerCorruptedFilesUI.h"
 // Engine Headers
@@ -27,7 +27,7 @@ class SDockTab;
 struct FSlateColorBrush;
 struct FAssetData;
 struct FSlateBrush;
-struct FNonProjectFile;
+struct FNonUassetFile;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogProjectCleaner, Log, All);
 
@@ -35,13 +35,14 @@ class FProjectCleanerModule : public IModuleInterface
 {
 public:
 	FProjectCleanerModule(): NotificationManager(nullptr),
-	                         ExcludeDirectoryFilterSettings(nullptr)
+							 ExcludeDirectoryFilterSettings(nullptr)
 	{
 	}
 
 	/** IModuleInterface implementation */
 	virtual void StartupModule() override;
 	virtual void ShutdownModule() override;
+	virtual bool IsGameModule() const override;
 
 
 	/**
@@ -56,9 +57,23 @@ private:
 	TSharedRef<SDockTab> OnSpawnPluginTab(const class FSpawnTabArgs& SpawnTabArgs);
 
 	FReply RefreshBrowser();
+	
+	/**
+	 * @brief Updates Cleaning stats
+	 */
 	void UpdateStats();
-	void InitCleaner();
+	/**
+	 * @brief Saves all unsaved assets, fixes up redirectors and updates cleaner data
+	 */
+	void UpdateCleaner();
+	/**
+	 * @brief Resets all data containers
+	 */
 	void Reset();
+	/**
+	 * @brief Scans project for unused assets, empty folders, corrupted files and non .uasset files
+	 */
+	void UpdateCleanerData();
 	/**
 	 * Sets content browser focus to root directory and refreshes asset registry
 	 * @brief Updates content browser
@@ -96,23 +111,24 @@ private:
 
 	TWeakPtr<SProjectCleanerBrowserStatisticsUI> ProjectCleanerBrowserStatisticsUI;
 	TWeakPtr<SProjectCleanerUnusedAssetsBrowserUI> ProjectCleanerUnusedAssetsBrowserUI;
-	TWeakPtr<SProjectCleanerNonProjectFilesUI> ProjectCleanerNonProjectFilesUI;
+	TWeakPtr<SProjectCleanerNonUassetFilesUI> ProjectCleanerNonUassetFilesUI;
 	TWeakPtr<SProjectCleanerAssetsUsedInSourceCodeUI> ProjectCleanerAssetsUsedInSourceCodeUI;
 	TWeakPtr<SProjectCleanerCorruptedFilesUI> ProjectCleanerCorruptedFilesUI;
 	TArray<TWeakObjectPtr<UAssetsUsedInSourceCodeUIStruct>> AssetsUsedInSourceCodeUIStructs;
 
 	// Refactor Start
-	TArray<FString> EmptyFolders;
 	TArray<FAssetData> UnusedAssets;
 	TArray<FAssetData*> UnusedAssetsPtrs;
-	TArray<FAssetData*> CorruptedFilesPtrs;
+	TArray<FString> EmptyFolders;
 	TArray<FNode> AdjacencyList;
-	TArray<FNonProjectFile> NonProjectFiles;
+	TArray<FAssetData*> CorruptedFilesPtrs;
+	TArray<TWeakObjectPtr<UNonUassetFile>> NonUassetFiles;
 	TArray<FSourceCodeFile> SourceFiles;
 	// Refactor End
 
 	// Streamable Manager
 	struct FStreamableManager* StreamableManager;
-	void OnAssetsLoaded();
 	TArray<FSoftObjectPath> ObjectPaths;
+	void OnAssetsLoaded();
+	void LoadAssetsSync(const TArray<FAssetData>& Assets, TArray<FAssetData*>& CorruptedAssets);
 };

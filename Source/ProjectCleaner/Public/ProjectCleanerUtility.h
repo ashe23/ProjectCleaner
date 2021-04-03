@@ -26,13 +26,13 @@ public:
 	 * @brief Finds all empty folders in given path recursive version
 	 * @param SearchPath 
 	 * @param Directories 
-	 * @param NonProjectFiles 
+	 * @param NonUassetFiles 
 	 * @param bIsRootDirectory 
 	 * @return bool
 	 */
 	static bool GetAllEmptyDirectories(const FString& SearchPath,
 	                                   TArray<FString>& Directories,
-	                                   TArray<FNonProjectFile>& NonProjectFiles,
+	                                   TArray<TWeakObjectPtr<class UNonUassetFile>>& NonUassetFiles,
 	                                   const bool bIsRootDirectory);
 
 	/**
@@ -57,10 +57,10 @@ public:
 	/**
 	 * @brief Returns total number of empty folders and finds all non project files
 	 * @param EmptyFolders 
-	 * @param NonProjectFiles 
+	 * @param NonUassetFiles 
 	 * @return Number of empty folders
 	 */
-	static int32 GetEmptyFoldersAndNonProjectFiles(TArray<FString>& EmptyFolders, TArray<FNonProjectFile>& NonProjectFiles);
+	static int32 GetEmptyFoldersAndNonUassetFiles(TArray<FString>& EmptyFolders, TArray<TWeakObjectPtr<UNonUassetFile>>& NonUassetFiles);
 
 	/**
 	 * @brief Fixup Redirectors , same as in content browser menu
@@ -77,9 +77,9 @@ public:
 	/**
 	 * @brief Finds all non .uproject files
 	 * @param SearchPath 
-	 * @param NonProjectFiles
+	 * @param NonUassetFiles
 	 */
-	static void FindNonProjectFiles(const FString& SearchPath, TArray<FNonProjectFile>& NonProjectFiles);
+	static void FindNonProjectFiles(const FString& SearchPath, TArray<TWeakObjectPtr<UNonUassetFile>>& NonUassetFiles);
 
 	/**
 	 * @brief Finds all ".h" and ".cpp" source files in Project "Source" and "Plugins" directories
