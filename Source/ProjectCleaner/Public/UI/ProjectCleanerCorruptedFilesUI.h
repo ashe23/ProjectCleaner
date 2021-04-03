@@ -8,12 +8,12 @@ class SProjectCleanerCorruptedFilesUI : public SCompoundWidget
 {
 public:
 	SLATE_BEGIN_ARGS(SProjectCleanerCorruptedFilesUI) {}
-		SLATE_ARGUMENT(TArray<FAssetData*>, CorruptedFiles);
+		SLATE_ARGUMENT(TArray<FAssetData>, CorruptedFiles);
 	SLATE_END_ARGS()
 	void Construct(const FArguments& InArgs);
 	void RefreshUIContent();
-	void SetCorruptedFiles(TArray<FAssetData*> NewCorruptedFiles);
+	void SetCorruptedFiles(const TArray<FAssetData>& NewCorruptedFiles);
 private:
-	TArray<FAssetData*> CorruptedFiles;
+	TArray<FAssetData> CorruptedFiles;
 	TSharedRef<SWidget> WidgetRef = SNullWidget::NullWidget;
 };

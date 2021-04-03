@@ -5,7 +5,7 @@
 #include "Widgets/SCompoundWidget.h"
 #include "ProjectCleanerDirectoryExclusionUI.generated.h"
 
-UCLASS()
+UCLASS(Transient)
 class UExcludeDirectoriesFilterSettings : public UObject
 {
 	GENERATED_BODY()

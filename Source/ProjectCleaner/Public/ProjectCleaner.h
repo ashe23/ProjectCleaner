@@ -16,7 +16,6 @@
 #include "CoreMinimal.h"
 
 
-
 class ProjectCleanerNotificationManager;
 class FToolBarBuilder;
 class STableViewBase;
@@ -34,8 +33,10 @@ DECLARE_LOG_CATEGORY_EXTERN(LogProjectCleaner, Log, All);
 class FProjectCleanerModule : public IModuleInterface
 {
 public:
-	FProjectCleanerModule(): NotificationManager(nullptr),
-							 ExcludeDirectoryFilterSettings(nullptr)
+	FProjectCleanerModule():
+		NotificationManager(nullptr),
+		ExcludeDirectoryFilterSettings(nullptr),
+		StreamableManager(nullptr)
 	{
 	}
 
@@ -57,7 +58,7 @@ private:
 	TSharedRef<SDockTab> OnSpawnPluginTab(const class FSpawnTabArgs& SpawnTabArgs);
 
 	FReply RefreshBrowser();
-	
+
 	/**
 	 * @brief Updates Cleaning stats
 	 */
@@ -118,17 +119,21 @@ private:
 
 	// Refactor Start
 	TArray<FAssetData> UnusedAssets;
-	TArray<FAssetData*> UnusedAssetsPtrs;
 	TArray<FString> EmptyFolders;
 	TArray<FNode> AdjacencyList;
-	TArray<FAssetData*> CorruptedFilesPtrs;
+	TArray<FAssetData> CorruptedFiles;
 	TArray<TWeakObjectPtr<UNonUassetFile>> NonUassetFiles;
 	TArray<FSourceCodeFile> SourceFiles;
 	// Refactor End
 
 	// Streamable Manager
 	struct FStreamableManager* StreamableManager;
-	TArray<FSoftObjectPath> ObjectPaths;
 	void OnAssetsLoaded();
-	void LoadAssetsSync(const TArray<FAssetData>& Assets, TArray<FAssetData*>& CorruptedAssets);
+	void OpenCorruptedFilesWindow();
+	/**
+	 * @brief Loads given Assets synchronously and checking for corrupted files and adding them to list.
+	 * @param Assets
+	 * @param CorruptedAssets
+	 */
+	void FindCorruptedAssets(const TArray<FAssetData>& Assets, TArray<FAssetData>& CorruptedAssets);
 };

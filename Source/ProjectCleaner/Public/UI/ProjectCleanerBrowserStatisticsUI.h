@@ -5,8 +5,6 @@
 #include "Widgets/SCompoundWidget.h"
 #include "CoreMinimal.h"
 
-struct FCleaningStats;
-
 /**
  * @brief Shows statistics info (UnusedAssets count, Total Size, EmptyFolder count, etc.)
  */

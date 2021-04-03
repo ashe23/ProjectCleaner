@@ -13,7 +13,8 @@
 
 void SProjectCleanerUnusedAssetsBrowserUI::Construct(const FArguments& InArgs)
 {
-	UnusedAssets = InArgs._UnusedAssets;
+	// UnusedAssets = InArgs._UnusedAssets;
+	SetUnusedAssets(InArgs._UnusedAssets);
 
 	FProjectCleanerBrowserCommands::Register();
 	
@@ -34,16 +35,17 @@ void SProjectCleanerUnusedAssetsBrowserUI::Construct(const FArguments& InArgs)
 	));
 
 	RefreshUIContent();
-	
-	ChildSlot
-	[
-		WidgetRef
-	];
 }
 
-void SProjectCleanerUnusedAssetsBrowserUI::SetUnusedAssets(TArray<FAssetData*>& NewUnusedAssets)
+void SProjectCleanerUnusedAssetsBrowserUI::SetUnusedAssets(const TArray<FAssetData>& NewUnusedAssets)
 {
-	UnusedAssets = NewUnusedAssets;
+	UnusedAssets.Reset();
+	UnusedAssets.Reserve(NewUnusedAssets.Num());
+	for(const auto& Asset : NewUnusedAssets)
+	{
+		UnusedAssets.Add(Asset);
+	}
+	
 	RefreshUIContent();
 }
 
@@ -158,7 +160,7 @@ void SProjectCleanerUnusedAssetsBrowserUI::RefreshUIContent()
 	
 	for(const auto& Asset : UnusedAssets)
 	{
-		Filter.PackageNames.Add(Asset->PackageName);
+		Filter.PackageNames.Add(Asset.PackageName);
 	}
 	Config.Filter = Filter;
 

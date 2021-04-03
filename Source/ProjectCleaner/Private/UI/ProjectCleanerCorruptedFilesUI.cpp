@@ -7,14 +7,8 @@
 
 void SProjectCleanerCorruptedFilesUI::Construct(const FArguments& InArgs)
 {
-	CorruptedFiles = InArgs._CorruptedFiles;
-
+	SetCorruptedFiles(InArgs._CorruptedFiles);
 	RefreshUIContent();
-	
-	ChildSlot
-	[
-		WidgetRef
-	];
 }
 
 void SProjectCleanerCorruptedFilesUI::RefreshUIContent()
@@ -46,7 +40,7 @@ void SProjectCleanerCorruptedFilesUI::RefreshUIContent()
 	}
 	for(const auto& Asset : CorruptedFiles)
 	{
-		Filter.PackageNames.Add(Asset->PackageName);
+		Filter.PackageNames.Add(Asset.PackageName);
 	}
 	Config.Filter = Filter;
 	FContentBrowserModule& ContentBrowser = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
@@ -54,6 +48,7 @@ void SProjectCleanerCorruptedFilesUI::RefreshUIContent()
 	
 	WidgetRef = SNew(SVerticalBox)
 	+ SVerticalBox::Slot()
+	.Padding(FMargin{40.0f})
 	.AutoHeight()
 	[
 		SNew(SVerticalBox)
@@ -76,6 +71,7 @@ void SProjectCleanerCorruptedFilesUI::RefreshUIContent()
 		]
 	]
 	+ SVerticalBox::Slot()
+	.Padding(FMargin{40.0f})
 	.AutoHeight()
 	[
 		ContentBrowser.Get().CreateAssetPicker(Config)
@@ -87,10 +83,15 @@ void SProjectCleanerCorruptedFilesUI::RefreshUIContent()
 	];
 }
 
-void SProjectCleanerCorruptedFilesUI::SetCorruptedFiles(TArray<FAssetData*> NewCorruptedFiles)
+void SProjectCleanerCorruptedFilesUI::SetCorruptedFiles(const TArray<FAssetData>& NewCorruptedFiles)
 {
-	CorruptedFiles = NewCorruptedFiles;
+	if (NewCorruptedFiles.Num() == 0) return;
 
+	for(const auto& File : NewCorruptedFiles)
+	{
+		CorruptedFiles.Add(File);
+	}
+	
 	RefreshUIContent();
 }
 

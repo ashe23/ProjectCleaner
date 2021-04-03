@@ -12,8 +12,6 @@ void SProjectCleanerNonUassetFilesUI::SetNonUassetFiles(
 	const TArray<TWeakObjectPtr<UNonUassetFile>>& NewNonUassetFiles
 )
 {
-	if (NewNonUassetFiles.Num() == 0) return;
-
 	NonUassetFiles.Reset();
 	NonUassetFiles.Reserve(NewNonUassetFiles.Num());
 

@@ -202,6 +202,8 @@ void ProjectCleanerUtility::FindNonProjectFiles(const FString& SearchPath,
 	for (const auto& NonUAssetFile : NonUAssetFiles)
 	{
 		const auto Extension = FPaths::GetExtension(NonUAssetFile);
+		// todo:ashe23 deal with assets that are .uassets but not showing in content browser
+		// todo:ashe23 possible cases migrated from newer version of engine then yours
 		if (!Extension.Equals("uasset") && !Extension.Equals("umap"))
 		{
 			FString Path = SearchPath;

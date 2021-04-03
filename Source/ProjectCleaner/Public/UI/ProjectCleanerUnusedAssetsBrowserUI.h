@@ -10,11 +10,11 @@ class SProjectCleanerUnusedAssetsBrowserUI : public SCompoundWidget
 {
 public:
 	SLATE_BEGIN_ARGS(SProjectCleanerUnusedAssetsBrowserUI) {}
-		SLATE_ARGUMENT(TArray<FAssetData*>, UnusedAssets)
+		SLATE_ARGUMENT(TArray<FAssetData>, UnusedAssets)
 	SLATE_END_ARGS()
 	
 	void Construct(const FArguments& InArgs);
-	void SetUnusedAssets(TArray<FAssetData*>& NewUnusedAssets);
+	void SetUnusedAssets(const TArray<FAssetData>& NewUnusedAssets);
 private:
 	// UI specific stuff start
 	TSharedPtr<SWidget> OnGetAssetContextMenu(const TArray<FAssetData>& SelectedAssets);
@@ -24,11 +24,11 @@ private:
 	void DeleteAsset() const;
 	void ExcludeAssets() const;
 	void RefreshUIContent();
-	TSharedRef<SWidget> WidgetRef = SNullWidget::NullWidget;
 	/** Delegate to interact with asset view */
 	FGetCurrentSelectionDelegate GetCurrentSelectionDelegate;
 	TSharedPtr<FUICommandList> Commands;
 	// UI specific stuff end
 	
-	TArray<FAssetData*> UnusedAssets;
+	TArray<FAssetData> UnusedAssets;
+	TSharedRef<SWidget> WidgetRef = SNullWidget::NullWidget;
 };
