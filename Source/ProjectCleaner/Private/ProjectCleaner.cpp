@@ -314,6 +314,14 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 	{
 		ProjectCleanerUtility::GetRootAssets(RootAssets, UnusedAssets);
 
+		if (RootAssets.Num() == 0)
+		{
+			break;
+			// todo:ashe23 happens when megascans plugin enabled
+			// todo:ashe23 think what to do in this situation.
+			
+		}
+
 		// Loading assets and finding corrupted files
 		TArray<FAssetData> CorruptedFilesContainer;
 		FindCorruptedAssets(RootAssets, CorruptedFilesContainer);
@@ -338,13 +346,11 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 		{
 			bFailedWhileDeletingAsset = true;
 			CorruptedFiles.Append(RootAssets);
-		}
-		else
-		{
-			CleaningStats.DeletedAssetCount += DeletedAssets;
-			NotificationManager->Update(NotificationRef, CleaningStats);
+			break;
 		}
 		
+		CleaningStats.DeletedAssetCount += DeletedAssets;
+		NotificationManager->Update(NotificationRef, CleaningStats);	
 
 		UnusedAssets.RemoveAll([&](const FAssetData& Elem)
 		{
@@ -584,6 +590,8 @@ FReply FProjectCleanerModule::OnDeleteEmptyFolderClick()
 
 void FProjectCleanerModule::UpdateStats()
 {
+	CleaningStats.Reset();
+	
 	CleaningStats.UnusedAssetsNum = UnusedAssets.Num();
 	CleaningStats.EmptyFolders = EmptyFolders.Num();
 	CleaningStats.NonUassetFilesNum = NonUassetFiles.Num();

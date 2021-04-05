@@ -16,6 +16,16 @@ struct FCleaningStats
 
 	FCleaningStats()
 	{
+		Reset();
+	}
+
+	int32 GetPercentage() const
+	{
+		return (DeletedAssetCount * 100.0f) / TotalAssetNum;
+	}
+
+	void Reset()
+	{
 		UnusedAssetsNum = 0;
 		EmptyFolders = 0;
 		UnusedAssetsTotalSize = 0;
@@ -24,11 +34,6 @@ struct FCleaningStats
 		CorruptedFilesNum = 0;
 		DeletedAssetCount = 0;
 		TotalAssetNum = 0;
-	}
-
-	int32 GetPercentage() const
-	{
-		return (DeletedAssetCount * 100.0f) / TotalAssetNum;
 	}
 };
 

@@ -417,6 +417,7 @@ void ProjectCleanerUtility::GetRootAssets(TArray<FAssetData>& RootAssets, TArray
 		AssetRegistry.Get().GetReferencers(Asset.PackageName, Refs);
 		AssetRegistry.Get().GetDependencies(Asset.PackageName, Deps);
 
+		// todo:ashe23 take into account that assets might be referenced outside "/Game" content folder
 		for (const auto& Ref : Refs)
 		{
 			if (IsCycle(Ref, Deps, Asset))
