@@ -359,7 +359,7 @@ void ProjectCleanerUtility::CreateAdjacencyList(TArray<FAssetData>& Assets, TArr
 			});
 			if (UnusedAsset && UnusedAsset->PackageName != Asset.PackageName)
 			{
-				Node.AdjacentAssets.AddUnique(Dep);
+				Node.LinkedAssets.Add(Dep);
 			}
 		}
 
@@ -371,11 +371,32 @@ void ProjectCleanerUtility::CreateAdjacencyList(TArray<FAssetData>& Assets, TArr
 			});
 			if (UnusedAsset && UnusedAsset->PackageName != Asset.PackageName)
 			{
-				Node.AdjacentAssets.AddUnique(Ref);
+				Node.LinkedAssets.Add(Ref);
 			}
 		}
 
 		List.Add(Node);
+	}
+}
+
+void ProjectCleanerUtility::CreateAdjacencyListV2(TArray<FAssetData>& Assets, TArray<FNode>& List)
+{
+	if (Assets.Num() == 0) return;
+
+	FAssetRegistryModule& AssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
+	TArray<FName> Deps;
+	TArray<FName> Refs;
+	for (const auto& Asset : Assets)
+	{
+		FNode Node;
+		Node.Asset = Asset.PackageName;
+		AssetRegistry.Get().GetDependencies(Asset.PackageName, Deps);
+		AssetRegistry.Get().GetReferencers(Asset.PackageName, Refs);
+		Node.LinkedAssets.Append(Deps);
+		Node.LinkedAssets.Append(Refs);
+		List.Add(Node);
+		Deps.Empty();
+		Refs.Empty();
 	}
 }
 
@@ -384,7 +405,7 @@ void ProjectCleanerUtility::FindAllRelatedAssets(const FNode& Node,
                                                  const TArray<FNode>& List)
 {
 	RelatedAssets.AddUnique(Node.Asset);
-	for (const auto& Adj : Node.AdjacentAssets)
+	for (const auto& Adj : Node.LinkedAssets)
 	{
 		if (!RelatedAssets.Contains(Adj))
 		{

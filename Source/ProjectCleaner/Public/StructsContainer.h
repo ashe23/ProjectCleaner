@@ -71,7 +71,30 @@ struct FNode
 {
 	FName Asset;
 
-	TArray<FName> AdjacentAssets;
+	TSet<FName> LinkedAssets;
+
+	bool HasLinkedAssetsOutsideGameFolder() const
+	{
+		for (const auto& LinkedAsset: LinkedAssets)
+		{
+			FString PackageFileName;
+			FString PackageFile;
+			if (FPackageName::TryConvertLongPackageNameToFilename(LinkedAsset.ToString(), PackageFileName) &&
+                FPackageName::FindPackageFileWithoutExtension(PackageFileName, PackageFile))
+			{
+				const FString FilePathOnDisk = FPaths::ConvertRelativePathToFull(PackageFile);
+				const bool IsUnderEnginePluginContent =
+                    FPaths::IsUnderDirectory(FilePathOnDisk, FPaths::EnginePluginsDir());
+
+				if (IsUnderEnginePluginContent)
+				{
+					return true;
+				}
+			}
+		}
+
+		return false;
+	}
 };
 
 struct FSourceCodeFile

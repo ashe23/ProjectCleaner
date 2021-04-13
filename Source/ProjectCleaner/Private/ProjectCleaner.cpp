@@ -8,6 +8,7 @@
 #include "Filters/Filter_NotUsedInAnyLevel.h"
 #include "Filters/Filter_ExcludedDirectories.h"
 #include "Filters/Filter_UsedInSourceCode.h"
+#include "Filters/Filter_OutsideGameFolder.h"
 #include "UI/ProjectCleanerBrowserCommands.h"
 #include "UI/ProjectCleanerNonUassetFilesUI.h"
 // Engine Headers
@@ -647,23 +648,28 @@ void FProjectCleanerModule::UpdateCleanerData()
 	Reset();
 
 	ProjectCleanerUtility::GetAllAssets(UnusedAssets);
-	ProjectCleanerUtility::CreateAdjacencyList(UnusedAssets, AdjacencyList);
-	SlowTask.EnterProgressFrame(1.0f);
-	
-	ProjectCleanerUtility::GetEmptyFoldersAndNonUassetFiles(EmptyFolders, NonUassetFiles);
-	SlowTask.EnterProgressFrame(1.0f);
-	
-	ProjectCleanerUtility::FindAllSourceFiles(SourceFiles);
-	SlowTask.EnterProgressFrame(1.0f);
-
 	Filter_NotUsedInAnyLevel NotUsedInAnyLevel;
 	NotUsedInAnyLevel.Apply(UnusedAssets);
 	Filter_ExcludedDirectories ExcludedDirectories{ExcludeDirectoryFilterSettings, AdjacencyList};
 	ExcludedDirectories.Apply(UnusedAssets);
+
+	
+	ProjectCleanerUtility::CreateAdjacencyListV2(UnusedAssets, AdjacencyList);
+	SlowTask.EnterProgressFrame(1.0f);
+	
+	ProjectCleanerUtility::GetEmptyFoldersAndNonUassetFiles(EmptyFolders, NonUassetFiles);
+	SlowTask.EnterProgressFrame(1.0f);
+	//
+	ProjectCleanerUtility::FindAllSourceFiles(SourceFiles);
+	SlowTask.EnterProgressFrame(1.0f);
+	//
 	Filter_UsedInSourceCode UsedInSourceCode{SourceFiles, AdjacencyList, AssetsUsedInSourceCodeUIStructs};
 	UsedInSourceCode.Apply(UnusedAssets);
 	SlowTask.EnterProgressFrame(1.0f);
 	
+	Filter_OutsideGameFolder HasLinkedAssetsOutsideGameFolder{AdjacencyList};
+	HasLinkedAssetsOutsideGameFolder.Apply(UnusedAssets);
+
 	UpdateStats();
 	
 	SlowTask.EnterProgressFrame(1.0f);
