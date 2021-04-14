@@ -103,12 +103,12 @@ public:
 	 */
 	static void SaveAllAssets();
 
-	static void CreateAdjacencyList(TArray<FAssetData>& Assets, TArray<FNode>& List);
-	static void CreateAdjacencyListV2(TArray<FAssetData>& Assets, TArray<FNode>& List);
+	// static void CreateAdjacencyList(TArray<FAssetData>& Assets, TArray<FNode>& List);
+	static void CreateAdjacencyListV2(TArray<FAssetData>& Assets, TArray<FNode>& List, const bool OnlyProjectFiles);
 
 	static void FindAllRelatedAssets(const FNode& Node, TArray<FName>& RelatedAssets, const TArray<FNode>& List);
 
-	static void GetRootAssets(TArray<FAssetData>& RootAssets, TArray<FAssetData>& Assets);
+	static void GetRootAssets(TArray<FAssetData>& RootAssets, TArray<FAssetData>& Assets, TArray<FNode>& List);
 	
 	/**
 	* Detects if given referencer is in dependencies of CurrentAsset.

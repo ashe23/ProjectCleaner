@@ -15,6 +15,8 @@
 #include "IContentBrowserSingleton.h"
 #include "Editor/ContentBrowser/Public/ContentBrowserModule.h"
 
+#pragma optimize("", off)
+
 bool ProjectCleanerUtility::HasFiles(const FString& SearchPath)
 {
 	TArray<FString> Files;
@@ -336,50 +338,52 @@ void ProjectCleanerUtility::SaveAllAssets()
 	);
 }
 
-void ProjectCleanerUtility::CreateAdjacencyList(TArray<FAssetData>& Assets, TArray<FNode>& List)
-{
-	if (Assets.Num() == 0) return;
+// DEPRECATED
+// void ProjectCleanerUtility::CreateAdjacencyList(TArray<FAssetData>& Assets, TArray<FNode>& List)
+// {
+// 	if (Assets.Num() == 0) return;
+//
+// 	FAssetRegistryModule& AssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
+//
+// 	for (const auto& Asset : Assets)
+// 	{
+// 		FNode Node;
+// 		Node.Asset = Asset.PackageName;
+// 		TArray<FName> Deps;
+// 		TArray<FName> Refs;
+// 		AssetRegistry.Get().GetDependencies(Asset.PackageName, Deps);
+// 		AssetRegistry.Get().GetReferencers(Asset.PackageName, Refs);
+//
+// 		for (const auto& Dep : Deps)
+// 		{
+// 			FAssetData* UnusedAsset = Assets.FindByPredicate([&](const FAssetData& Elem)
+// 			{
+// 				return Elem.PackageName == Dep;
+// 			});
+// 			if (UnusedAsset && UnusedAsset->PackageName != Asset.PackageName)
+// 			{
+// 				Node.LinkedAssets.Add(Dep);
+// 			}
+// 		}
+//
+// 		for (const auto& Ref : Refs)
+// 		{
+// 			FAssetData* UnusedAsset = Assets.FindByPredicate([&](const FAssetData& Elem)
+// 			{
+// 				return Elem.PackageName == Ref;
+// 			});
+// 			if (UnusedAsset && UnusedAsset->PackageName != Asset.PackageName)
+// 			{
+// 				Node.LinkedAssets.Add(Ref);
+// 			}
+// 		}
+//
+// 		List.Add(Node);
+// 	}
+// }
 
-	FAssetRegistryModule& AssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
-
-	for (const auto& Asset : Assets)
-	{
-		FNode Node;
-		Node.Asset = Asset.PackageName;
-		TArray<FName> Deps;
-		TArray<FName> Refs;
-		AssetRegistry.Get().GetDependencies(Asset.PackageName, Deps);
-		AssetRegistry.Get().GetReferencers(Asset.PackageName, Refs);
-
-		for (const auto& Dep : Deps)
-		{
-			FAssetData* UnusedAsset = Assets.FindByPredicate([&](const FAssetData& Elem)
-			{
-				return Elem.PackageName == Dep;
-			});
-			if (UnusedAsset && UnusedAsset->PackageName != Asset.PackageName)
-			{
-				Node.LinkedAssets.Add(Dep);
-			}
-		}
-
-		for (const auto& Ref : Refs)
-		{
-			FAssetData* UnusedAsset = Assets.FindByPredicate([&](const FAssetData& Elem)
-			{
-				return Elem.PackageName == Ref;
-			});
-			if (UnusedAsset && UnusedAsset->PackageName != Asset.PackageName)
-			{
-				Node.LinkedAssets.Add(Ref);
-			}
-		}
-
-		List.Add(Node);
-	}
-}
-
-void ProjectCleanerUtility::CreateAdjacencyListV2(TArray<FAssetData>& Assets, TArray<FNode>& List)
+void ProjectCleanerUtility::CreateAdjacencyListV2(TArray<FAssetData>& Assets, TArray<FNode>& List,
+                                                  const bool OnlyProjectFiles)
 {
 	if (Assets.Num() == 0) return;
 
@@ -392,8 +396,43 @@ void ProjectCleanerUtility::CreateAdjacencyListV2(TArray<FAssetData>& Assets, TA
 		Node.Asset = Asset.PackageName;
 		AssetRegistry.Get().GetDependencies(Asset.PackageName, Deps);
 		AssetRegistry.Get().GetReferencers(Asset.PackageName, Refs);
-		Node.LinkedAssets.Append(Deps);
-		Node.LinkedAssets.Append(Refs);
+
+		// if flag given, removing all assets that are outside "Game" Folder
+		if (OnlyProjectFiles)
+		{
+			for (const auto& Dep : Deps)
+			{
+				const auto AssetRef = Assets.FindByPredicate([&](const FAssetData& Elem)
+				{
+					return Elem.PackageName.IsEqual(Dep);
+				});
+				if (AssetRef && !AssetRef->PackageName.IsEqual(Asset.PackageName))
+				{
+					Node.LinkedAssets.Add(Dep);
+					Node.Deps.Add(Dep);
+				}
+			}
+
+			for (const auto& Ref : Refs)
+			{
+				const auto AssetRef = Assets.FindByPredicate([&](const FAssetData& Elem)
+				{
+					return Elem.PackageName.IsEqual(Ref);
+				});
+				if (AssetRef && !AssetRef->PackageName.IsEqual(Asset.PackageName))
+				{
+					Node.LinkedAssets.Add(Ref);
+					Node.Refs.Add(Ref);
+				}
+			}
+		}
+		else
+		{
+			Node.LinkedAssets.Append(Deps);
+			Node.LinkedAssets.Append(Refs);
+			Node.Refs.Append(Refs);
+			Node.Deps.Append(Deps);
+		}
 		List.Add(Node);
 		Deps.Empty();
 		Refs.Empty();
@@ -422,57 +461,90 @@ void ProjectCleanerUtility::FindAllRelatedAssets(const FNode& Node,
 	}
 }
 
-void ProjectCleanerUtility::GetRootAssets(TArray<FAssetData>& RootAssets, TArray<FAssetData>& Assets)
+void ProjectCleanerUtility::GetRootAssets(TArray<FAssetData>& RootAssets, TArray<FAssetData>& Assets,
+                                          TArray<FNode>& List)
 {
-	FAssetRegistryModule& AssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
+	// 1) Traversing adjacency list and finding circular assets
+	TSet<FName> CircularAssets;
+	for (const auto& Node : List)
+	{
+		if (Node.IsCircular())
+		{		
+			CircularAssets.Add(Node.Asset);
+		}
+	}
+
+	if (CircularAssets.Num() > 0)
+	{
+		for(const auto& CircularAsset : CircularAssets)
+		{
+			FAssetData* AssetData = GetAssetData(CircularAsset, Assets);
+			if(!AssetData) continue;
+			RootAssets.Add(*AssetData);
+		}
+	}
+	else
+	{
+		for(const auto& Node : List)
+		{
+			if(RootAssets.Num() > 20) break;
+			
+			if(Node.Refs.Num() == 0)
+			{
+				FAssetData* AssetData = GetAssetData(Node.Asset, Assets);
+				if(!AssetData) continue;
+				RootAssets.Add(*AssetData);
+			}
+		}
+	}
 
 	// first we deleting cycle assets
 	// like Skeletal mesh, skeleton, and physical assets
 	// those assets cant be deleted separately
-	bool bCycleDetected = false;
-	for (const auto& Asset : Assets)
-	{
-		TArray<FName> Refs;
-		TArray<FName> Deps;
-
-		AssetRegistry.Get().GetReferencers(Asset.PackageName, Refs);
-		AssetRegistry.Get().GetDependencies(Asset.PackageName, Deps);
-
-		// todo:ashe23 take into account that assets might be referenced outside "/Game" content folder
-		for (const auto& Ref : Refs)
-		{
-			if (IsCycle(Ref, Deps, Asset))
-			{
-				bCycleDetected = true;
-				FAssetData* RefAssetData = GetAssetData(Ref, Assets);
-				if (!RefAssetData) continue;
-
-				RootAssets.AddUnique(*RefAssetData);
-				RootAssets.AddUnique(Asset);
-			}
-		}
-	}
-
-	if (!bCycleDetected)
-	{
-		for (const auto& Asset : Assets)
-		{
-			if (RootAssets.Num() > 100) break; // todo:ashe23 chunk size maybe should be shown in UI as parameter?
-
-			TArray<FName> Refs;
-			AssetRegistry.Get().GetReferencers(Asset.PackageName, Refs);
-
-			Refs.RemoveAll([&](const FName& Elem)
-			{
-				return Elem == Asset.PackageName;
-			});
-
-			if (Refs.Num() == 0)
-			{
-				RootAssets.AddUnique(Asset);
-			}
-		}
-	}
+	// bool bCycleDetected = false;
+	// for (const auto& Asset : Assets)
+	// {
+	// 	TArray<FName> Refs;
+	// 	TArray<FName> Deps;
+	//
+	// 	AssetRegistry.Get().GetReferencers(Asset.PackageName, Refs);
+	// 	AssetRegistry.Get().GetDependencies(Asset.PackageName, Deps);
+	//
+	// 	// todo:ashe23 take into account that assets might be referenced outside "/Game" content folder
+	// 	for (const auto& Ref : Refs)
+	// 	{
+	// 		if (IsCycle(Ref, Deps, Asset))
+	// 		{
+	// 			bCycleDetected = true;
+	// 			FAssetData* RefAssetData = GetAssetData(Ref, Assets);
+	// 			if (!RefAssetData) continue;
+	//
+	// 			RootAssets.AddUnique(*RefAssetData);
+	// 			RootAssets.AddUnique(Asset);
+	// 		}
+	// 	}
+	// }
+	//
+	// if (!bCycleDetected)
+	// {
+	// 	for (const auto& Asset : Assets)
+	// 	{
+	// 		if (RootAssets.Num() > 100) break; // todo:ashe23 chunk size maybe should be shown in UI as parameter?
+	//
+	// 		TArray<FName> Refs;
+	// 		AssetRegistry.Get().GetReferencers(Asset.PackageName, Refs);
+	//
+	// 		Refs.RemoveAll([&](const FName& Elem)
+	// 		{
+	// 			return Elem == Asset.PackageName;
+	// 		});
+	//
+	// 		if (Refs.Num() == 0)
+	// 		{
+	// 			RootAssets.AddUnique(Asset);
+	// 		}
+	// 	}
+	// }
 }
 
 bool ProjectCleanerUtility::IsCycle(const FName& Referencer, const TArray<FName>& Deps, const FAssetData& CurrentAsset)
@@ -501,3 +573,5 @@ int64 ProjectCleanerUtility::GetTotalSize(const TArray<FAssetData>& AssetContain
 
 	return Size;
 }
+
+#pragma optimize("", on)

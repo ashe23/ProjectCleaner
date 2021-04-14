@@ -1,11 +1,11 @@
-﻿#include "Filters/Filter_NotUsedInAnyLevel.h"
+﻿#include "Filters/Filter_UsedInAnyLevel.h"
 
 // Engine Headers
 #include "AssetRegistryModule.h"
 #include "AssetRegistry/Public/AssetData.h"
 #include "Engine/World.h"
 
-void Filter_NotUsedInAnyLevel::Apply(TArray<FAssetData>& Assets)
+void Filter_UsedInAnyLevel::Apply(TArray<FAssetData>& Assets)
 {
 	UsedAssets.Reserve(Assets.Num());
 	GetAllUsedAssets(UsedAssets);
@@ -13,7 +13,7 @@ void Filter_NotUsedInAnyLevel::Apply(TArray<FAssetData>& Assets)
 	Difference(Assets, UsedAssets);
 }
 
-void Filter_NotUsedInAnyLevel::GetAllUsedAssets(TSet<FName>& Assets) const
+void Filter_UsedInAnyLevel::GetAllUsedAssets(TSet<FName>& Assets) const
 {
 	FAssetRegistryModule& AssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
 
@@ -51,7 +51,7 @@ void Filter_NotUsedInAnyLevel::GetAllUsedAssets(TSet<FName>& Assets) const
 	}
 }
 
-void Filter_NotUsedInAnyLevel::Difference(TArray<FAssetData>& Assets, TSet<FName> FilterSet)
+void Filter_UsedInAnyLevel::Difference(TArray<FAssetData>& Assets, TSet<FName> FilterSet)
 {
 	Assets.RemoveAll([&](const FAssetData& Elem)
 	{

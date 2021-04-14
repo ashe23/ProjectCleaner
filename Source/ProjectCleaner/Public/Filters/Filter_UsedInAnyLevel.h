@@ -5,7 +5,7 @@
 /**
  * @brief This filter removes all assets that used in any level from given list of assets
  */
-class Filter_NotUsedInAnyLevel : public IProjectCleanerFilter
+class Filter_UsedInAnyLevel : public IProjectCleanerFilter
 {
 public:
 	/**

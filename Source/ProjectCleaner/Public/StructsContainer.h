@@ -21,6 +21,7 @@ struct FCleaningStats
 
 	int32 GetPercentage() const
 	{
+		if (TotalAssetNum == 0) return 0;
 		return (DeletedAssetCount * 100.0f) / TotalAssetNum;
 	}
 
@@ -71,25 +72,46 @@ struct FNode
 {
 	FName Asset;
 
+	/**
+	 * @brief List of all Dependecies and References for given asset
+	 */
 	TSet<FName> LinkedAssets;
+	TSet<FName> Refs;
+	TSet<FName> Deps;
 
 	bool HasLinkedAssetsOutsideGameFolder() const
 	{
-		for (const auto& LinkedAsset: LinkedAssets)
+		if (Refs.Num() == 0) return false;
+
+		for (const auto& Ref : Refs)
 		{
 			FString PackageFileName;
 			FString PackageFile;
-			if (FPackageName::TryConvertLongPackageNameToFilename(LinkedAsset.ToString(), PackageFileName) &&
-                FPackageName::FindPackageFileWithoutExtension(PackageFileName, PackageFile))
+			if (
+				FPackageName::TryConvertLongPackageNameToFilename(Ref.ToString(), PackageFileName) &&
+				FPackageName::FindPackageFileWithoutExtension(PackageFileName, PackageFile)
+			)
 			{
 				const FString FilePathOnDisk = FPaths::ConvertRelativePathToFull(PackageFile);
-				const bool IsUnderEnginePluginContent =
-                    FPaths::IsUnderDirectory(FilePathOnDisk, FPaths::EnginePluginsDir());
+				const bool UnderEnginePluginDir = FPaths::IsUnderDirectory(FilePathOnDisk, FPaths::EnginePluginsDir());
 
-				if (IsUnderEnginePluginContent)
+				if (UnderEnginePluginDir)
 				{
 					return true;
 				}
+			}
+		}
+
+		return false;
+	}
+
+	bool IsCircular() const
+	{
+		for(const auto& Ref : Refs)
+		{
+			if(Deps.Contains(Ref))
+			{
+				return true;
 			}
 		}
 

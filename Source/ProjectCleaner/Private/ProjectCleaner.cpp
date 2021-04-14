@@ -5,7 +5,7 @@
 #include "ProjectCleanerCommands.h"
 #include "ProjectCleanerNotificationManager.h"
 #include "ProjectCleanerUtility.h"
-#include "Filters/Filter_NotUsedInAnyLevel.h"
+#include "Filters/Filter_UsedInAnyLevel.h"
 #include "Filters/Filter_ExcludedDirectories.h"
 #include "Filters/Filter_UsedInSourceCode.h"
 #include "Filters/Filter_OutsideGameFolder.h"
@@ -200,17 +200,6 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 						.AssetsUsedInSourceCode(AssetsUsedInSourceCodeUIStructs)
 					]
 				]
-				// + SScrollBox::Slot()
-				// [
-				// 	SNew(SVerticalBox)
-				// 	+ SVerticalBox::Slot()
-				// 	  .Padding(CommonMargin)
-				// 	  .AutoHeight()
-				// 	[
-						// SAssignNew(ProjectCleanerCorruptedFilesUI, SProjectCleanerCorruptedFilesUI)
-						// .CorruptedFiles(CorruptedFilesPtrs)						
-				// 	]
-				// ]
 			]
 			+ SSplitter::Slot()
 			.Value(0.65f)
@@ -309,18 +298,15 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 		SNotificationItem::ECompletionState::CS_Pending
 	);
 
-	bool bFailedWhileDeletingAsset = false;
 	StreamableManager = &UAssetManager::GetStreamableManager();
-	while (UnusedAssets.Num() > 0)
+	
+	bool bFailedWhileDeletingAsset = false;
+	while(UnusedAssets.Num() > 0)
 	{
-		ProjectCleanerUtility::GetRootAssets(RootAssets, UnusedAssets);
-
-		if (RootAssets.Num() == 0)
+		ProjectCleanerUtility::GetRootAssets(RootAssets, UnusedAssets, AdjacencyList);
+		if(RootAssets.Num() == 0)
 		{
 			break;
-			// todo:ashe23 happens when megascans plugin enabled
-			// todo:ashe23 think what to do in this situation.
-			
 		}
 
 		// Loading assets and finding corrupted files
@@ -330,12 +316,12 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 		{
 			bFailedWhileDeletingAsset = true;
 			CorruptedFiles.Append(CorruptedFilesContainer);
-
+	
 			UnusedAssets.RemoveAll([&](const FAssetData& Asset)
 			{
 				return CorruptedFiles.Contains(Asset);
 			});
-
+	
 			RootAssets.RemoveAll([&](const FAssetData& Asset)
 			{
 				return CorruptedFiles.Contains(Asset);
@@ -349,44 +335,112 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 			CorruptedFiles.Append(RootAssets);
 			break;
 		}
-		
+
 		CleaningStats.DeletedAssetCount += DeletedAssets;
-		NotificationManager->Update(NotificationRef, CleaningStats);	
+		NotificationManager->Update(NotificationRef, CleaningStats);
 
 		UnusedAssets.RemoveAll([&](const FAssetData& Elem)
 		{
 			return RootAssets.Contains(Elem);
 		});
+
+		AdjacencyList.Empty();
+		ProjectCleanerUtility::CreateAdjacencyListV2(UnusedAssets, AdjacencyList, true);
 		
 		RootAssets.Reset();
 		CorruptedFilesContainer.Empty();
 	}
-
+	
 	if (bFailedWhileDeletingAsset)
 	{
 		if(CorruptedFiles.Num() > 0)
 		{
 			OpenCorruptedFilesWindow();
 		}
-
-		//
-		// FNotificationInfo Info(LOCTEXT("ErrorWhileDeleting",
-		// 							   "Error occured while deleting assets! Try to restart editor and try again."));
-		// Info.ExpireDuration = 5.0f;
-		// FSlateNotificationManager::Get().AddNotification(Info);
 	}
-
-	NotificationManager->Update(NotificationRef, CleaningStats);
+	
 	NotificationManager->CachedStats = CleaningStats;
-	UpdateCleanerData();
-
-	// Now Deleting Empty Folders
-	NotificationManager->CachedStats.EmptyFolders = CleaningStats.EmptyFolders;
-	ProjectCleanerUtility::DeleteEmptyFolders(EmptyFolders);
 	NotificationManager->Hide(NotificationRef);
-
 	UpdateCleanerData();
-	UpdateContentBrowser();
+
+	// bool bFailedWhileDeletingAsset = false;
+	// StreamableManager = &UAssetManager::GetStreamableManager();
+	// while (UnusedAssets.Num() > 0)
+	// {
+	// 	ProjectCleanerUtility::GetRootAssets(RootAssets, UnusedAssets);
+	//
+	// 	if (RootAssets.Num() == 0)
+	// 	{
+	// 		break;
+	// 		// todo:ashe23 happens when megascans plugin enabled
+	// 		// todo:ashe23 think what to do in this situation.
+	// 		
+	// 	}
+	//
+	// 	// Loading assets and finding corrupted files
+	// 	TArray<FAssetData> CorruptedFilesContainer;
+	// 	FindCorruptedAssets(RootAssets, CorruptedFilesContainer);
+	// 	if (CorruptedFilesContainer.Num() > 0)
+	// 	{
+	// 		bFailedWhileDeletingAsset = true;
+	// 		CorruptedFiles.Append(CorruptedFilesContainer);
+	//
+	// 		UnusedAssets.RemoveAll([&](const FAssetData& Asset)
+	// 		{
+	// 			return CorruptedFiles.Contains(Asset);
+	// 		});
+	//
+	// 		RootAssets.RemoveAll([&](const FAssetData& Asset)
+	// 		{
+	// 			return CorruptedFiles.Contains(Asset);
+	// 		});
+	// 	}
+	//
+	// 	const auto DeletedAssets = ProjectCleanerUtility::DeleteAssets(RootAssets);
+	// 	if (DeletedAssets != RootAssets.Num())
+	// 	{
+	// 		bFailedWhileDeletingAsset = true;
+	// 		CorruptedFiles.Append(RootAssets);
+	// 		break;
+	// 	}
+	// 	
+	// 	CleaningStats.DeletedAssetCount += DeletedAssets;
+	// 	NotificationManager->Update(NotificationRef, CleaningStats);	
+	//
+	// 	UnusedAssets.RemoveAll([&](const FAssetData& Elem)
+	// 	{
+	// 		return RootAssets.Contains(Elem);
+	// 	});
+	// 	
+	// 	RootAssets.Reset();
+	// 	CorruptedFilesContainer.Empty();
+	// }
+	//
+	// if (bFailedWhileDeletingAsset)
+	// {
+	// 	if(CorruptedFiles.Num() > 0)
+	// 	{
+	// 		OpenCorruptedFilesWindow();
+	// 	}
+	//
+	// 	//
+	// 	// FNotificationInfo Info(LOCTEXT("ErrorWhileDeleting",
+	// 	// 							   "Error occured while deleting assets! Try to restart editor and try again."));
+	// 	// Info.ExpireDuration = 5.0f;
+	// 	// FSlateNotificationManager::Get().AddNotification(Info);
+	// }
+	//
+	// NotificationManager->Update(NotificationRef, CleaningStats);
+	// NotificationManager->CachedStats = CleaningStats;
+	// UpdateCleanerData();
+	//
+	// // Now Deleting Empty Folders
+	// NotificationManager->CachedStats.EmptyFolders = CleaningStats.EmptyFolders;
+	// ProjectCleanerUtility::DeleteEmptyFolders(EmptyFolders);
+	// NotificationManager->Hide(NotificationRef);
+	//
+	// UpdateCleanerData();
+	// UpdateContentBrowser();
 
 	return FReply::Handled();
 }
@@ -642,34 +696,42 @@ void FProjectCleanerModule::Reset()
 
 void FProjectCleanerModule::UpdateCleanerData()
 {
-	FScopedSlowTask SlowTask{5.0f, FText::FromString("Scanning. Please wait...")};
+	FScopedSlowTask SlowTask{1.0f, FText::FromString("Scanning. Please wait...")};
 	SlowTask.MakeDialog();
 
 	Reset();
 
+	// Querying all assets in project
 	ProjectCleanerUtility::GetAllAssets(UnusedAssets);
-	Filter_NotUsedInAnyLevel NotUsedInAnyLevel;
-	NotUsedInAnyLevel.Apply(UnusedAssets);
+
+	// Filtering all assets that are used in any level
+	Filter_UsedInAnyLevel UsedInAnyLevel;
+	UsedInAnyLevel.Apply(UnusedAssets);
+
+	// Filtering assets that are under directories, which user mark excluded from removal
 	Filter_ExcludedDirectories ExcludedDirectories{ExcludeDirectoryFilterSettings, AdjacencyList};
 	ExcludedDirectories.Apply(UnusedAssets);
 
-	
-	ProjectCleanerUtility::CreateAdjacencyListV2(UnusedAssets, AdjacencyList);
-	SlowTask.EnterProgressFrame(1.0f);
-	
+	// Querying all empty folders and non .uasset files in project
 	ProjectCleanerUtility::GetEmptyFoldersAndNonUassetFiles(EmptyFolders, NonUassetFiles);
-	SlowTask.EnterProgressFrame(1.0f);
-	//
+	// Querying all source files in project (.h and .cpp files)
 	ProjectCleanerUtility::FindAllSourceFiles(SourceFiles);
-	SlowTask.EnterProgressFrame(1.0f);
-	//
+	
+	// Based on Remaining assets we create Relational list using AdjacencyList method
+	ProjectCleanerUtility::CreateAdjacencyListV2(UnusedAssets, AdjacencyList, false);
+
+	// Filtering all assets and their related assets, that used in source code files
 	Filter_UsedInSourceCode UsedInSourceCode{SourceFiles, AdjacencyList, AssetsUsedInSourceCodeUIStructs};
 	UsedInSourceCode.Apply(UnusedAssets);
-	SlowTask.EnterProgressFrame(1.0f);
-	
-	Filter_OutsideGameFolder HasLinkedAssetsOutsideGameFolder{AdjacencyList};
-	HasLinkedAssetsOutsideGameFolder.Apply(UnusedAssets);
+	// Filtering all assets that has refs to assets that are outside "Game" folder
+	Filter_OutsideGameFolder OutsideGameFolderAssetsFilter{AdjacencyList};
+	OutsideGameFolderAssetsFilter.Apply(UnusedAssets);
 
+	// here once more time we updating adjacencyList, its will be used when we delete assets
+	AdjacencyList.Empty();
+	AdjacencyList.Reserve(UnusedAssets.Num());
+	ProjectCleanerUtility::CreateAdjacencyListV2(UnusedAssets,AdjacencyList, true);
+	
 	UpdateStats();
 	
 	SlowTask.EnterProgressFrame(1.0f);
