@@ -65,7 +65,7 @@ bool Filter_UsedInSourceCode::UsedInSourceFiles(const FAssetData& Asset) const
 			Obj->AssetPath = Asset.PackageName.ToString();
 			Obj->SourceCodePath = File.AbsoluteFilePath;
 			AssetsUsedInSourceCodeUIStructs->Add(Obj);
-			UE_LOG(LogProjectCleaner, Warning, TEXT("\"%s\" asset used in \"%s\" file"), *Asset.AssetName.ToString(), *File.AbsoluteFilePath);
+			UE_LOG(LogProjectCleaner, Display, TEXT("\"%s\" asset used in \"%s\" file"), *Asset.AssetName.ToString(), *File.AbsoluteFilePath);
 			return true;
 		}
 	}

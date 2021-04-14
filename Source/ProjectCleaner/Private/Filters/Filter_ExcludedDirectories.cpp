@@ -7,8 +7,10 @@
 #include "AssetRegistry/Public/AssetData.h"
 #include "AssetRegistryModule.h"
 
-Filter_ExcludedDirectories::Filter_ExcludedDirectories(UExcludeDirectoriesFilterSettings* DirectoryFilterSettings,
-                                                       TArray<FNode>& List)
+Filter_ExcludedDirectories::Filter_ExcludedDirectories(
+	UExcludeDirectoriesFilterSettings* DirectoryFilterSettings,
+    TArray<FNode>& List
+)
 {
 	Settings = DirectoryFilterSettings;
 	this->AdjacencyList = &List;
@@ -32,6 +34,7 @@ bool Filter_ExcludedDirectories::ShouldApplyDirectoryFilters() const
 void Filter_ExcludedDirectories::ApplyDirectoryFilters(TArray<FAssetData>& Assets)
 {
 	if (Assets.Num() == 0) return;
+	if (!Settings) return;
 
 	// query list of assets in given directory paths in filter section
 	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");

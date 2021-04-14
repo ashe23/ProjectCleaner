@@ -3,7 +3,6 @@
 #pragma once
 
 #include "StructsContainer.h"
-
 // Engine Headers
 #include "Widgets/Notifications/SNotificationList.h"
 #include "CoreMinimal.h"

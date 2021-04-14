@@ -87,6 +87,11 @@ public:
 	 */
 	static void FindAllSourceFiles(TArray<FSourceCodeFile>& SourceFiles);
 
+	/**
+	 * @brief Loads source code files content to array
+	 * @param AllSourceFiles 
+	 * @param SourceCodeFilesContent 
+	 */
 	static void LoadSourceCodeFilesContent(TArray<FString>& AllSourceFiles, TArray<FString>& SourceCodeFilesContent);
 
 	/**
@@ -97,17 +102,38 @@ public:
 	 */
 	static bool UsedInSourceFiles(const TArray<FString>& AllFiles, const FAssetData& Asset);
 
+	/**
+	 * @brief Get all assets from "Game" Folder
+	 * @param Assets 
+	 */
 	static void GetAllAssets(TArray<FAssetData>& Assets);
 	/**
 	 * @brief Saves all unsaved assets
 	 */
 	static void SaveAllAssets();
 
-	// static void CreateAdjacencyList(TArray<FAssetData>& Assets, TArray<FNode>& List);
-	static void CreateAdjacencyListV2(TArray<FAssetData>& Assets, TArray<FNode>& List, const bool OnlyProjectFiles);
+	/**
+	 * @brief Create relational list for given Assets (Adjacency List)
+	 * @param Assets - Given assets
+	 * @param List - Adjacency List
+	 * @param OnlyProjectFiles - Include only Asset from "Game" folder
+	 */
+	static void CreateAdjacencyList(TArray<FAssetData>& Assets, TArray<FNode>& List, const bool OnlyProjectFiles);
 
+	/**
+	 * @brief Returns Related Assets for given Asset
+	 * @param Node 
+	 * @param RelatedAssets 
+	 * @param List 
+	 */
 	static void FindAllRelatedAssets(const FNode& Node, TArray<FName>& RelatedAssets, const TArray<FNode>& List);
 
+	/**
+	 * @brief Returns assets that has no references or circular assets
+	 * @param RootAssets 
+	 * @param Assets 
+	 * @param List 
+	 */
 	static void GetRootAssets(TArray<FAssetData>& RootAssets, TArray<FAssetData>& Assets, TArray<FNode>& List);
 	
 	/**
@@ -120,6 +146,12 @@ public:
 	*/
 	static bool IsCycle(const FName& Referencer, const TArray<FName>& Deps, const FAssetData& CurrentAsset);
 
+	/**
+	 * @brief Returns AssetData for given AssetName
+	 * @param AssetName 
+	 * @param AssetContainer 
+	 * @return 
+	 */
 	static FAssetData* GetAssetData(const FName& AssetName, TArray<FAssetData>& AssetContainer);
 
 	/**

@@ -89,12 +89,13 @@ void ProjectCleanerUtility::DeleteEmptyFolders(TArray<FString>& EmptyFolders)
 		if (IFileManager::Get().DirectoryExists(*EmptyFolder))
 		{
 			IFileManager::Get().DeleteDirectory(*EmptyFolder, false, true);
-			auto f = EmptyFolder.Replace(*FPaths::ProjectContentDir(), TEXT("/Game/"));
-			AssetRegistryModule.Get().RemovePath(f);
+			auto DirPath = EmptyFolder.Replace(*FPaths::ProjectContentDir(), TEXT("/Game/"));
+			AssetRegistryModule.Get().RemovePath(DirPath);
 		}
 	}
 
 
+	// todo:ashe23 move this part to other place?
 	TArray<FString> Paths;
 	Paths.Add("/Game");
 	AssetRegistryModule.Get().ScanPathsSynchronous(Paths, true);
@@ -204,7 +205,7 @@ void ProjectCleanerUtility::FindNonProjectFiles(const FString& SearchPath,
 	for (const auto& NonUAssetFile : NonUAssetFiles)
 	{
 		const auto Extension = FPaths::GetExtension(NonUAssetFile);
-		// todo:ashe23 deal with assets that are .uassets but not showing in content browser
+		// todo:ashe23 deal with assets that are .uasset but not showing in content browser
 		// todo:ashe23 possible cases migrated from newer version of engine then yours
 		if (!Extension.Equals("uasset") && !Extension.Equals("umap"))
 		{
@@ -338,52 +339,8 @@ void ProjectCleanerUtility::SaveAllAssets()
 	);
 }
 
-// DEPRECATED
-// void ProjectCleanerUtility::CreateAdjacencyList(TArray<FAssetData>& Assets, TArray<FNode>& List)
-// {
-// 	if (Assets.Num() == 0) return;
-//
-// 	FAssetRegistryModule& AssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
-//
-// 	for (const auto& Asset : Assets)
-// 	{
-// 		FNode Node;
-// 		Node.Asset = Asset.PackageName;
-// 		TArray<FName> Deps;
-// 		TArray<FName> Refs;
-// 		AssetRegistry.Get().GetDependencies(Asset.PackageName, Deps);
-// 		AssetRegistry.Get().GetReferencers(Asset.PackageName, Refs);
-//
-// 		for (const auto& Dep : Deps)
-// 		{
-// 			FAssetData* UnusedAsset = Assets.FindByPredicate([&](const FAssetData& Elem)
-// 			{
-// 				return Elem.PackageName == Dep;
-// 			});
-// 			if (UnusedAsset && UnusedAsset->PackageName != Asset.PackageName)
-// 			{
-// 				Node.LinkedAssets.Add(Dep);
-// 			}
-// 		}
-//
-// 		for (const auto& Ref : Refs)
-// 		{
-// 			FAssetData* UnusedAsset = Assets.FindByPredicate([&](const FAssetData& Elem)
-// 			{
-// 				return Elem.PackageName == Ref;
-// 			});
-// 			if (UnusedAsset && UnusedAsset->PackageName != Asset.PackageName)
-// 			{
-// 				Node.LinkedAssets.Add(Ref);
-// 			}
-// 		}
-//
-// 		List.Add(Node);
-// 	}
-// }
-
-void ProjectCleanerUtility::CreateAdjacencyListV2(TArray<FAssetData>& Assets, TArray<FNode>& List,
-                                                  const bool OnlyProjectFiles)
+void ProjectCleanerUtility::CreateAdjacencyList(TArray<FAssetData>& Assets, TArray<FNode>& List,
+                                                const bool OnlyProjectFiles)
 {
 	if (Assets.Num() == 0) return;
 
@@ -464,87 +421,42 @@ void ProjectCleanerUtility::FindAllRelatedAssets(const FNode& Node,
 void ProjectCleanerUtility::GetRootAssets(TArray<FAssetData>& RootAssets, TArray<FAssetData>& Assets,
                                           TArray<FNode>& List)
 {
-	// 1) Traversing adjacency list and finding circular assets
+	// first we deleting cycle assets
+	// like Skeletal mesh, skeleton, and physical assets
+	// those assets cant be deleted separately
+	constexpr int32 ChunkSize = 20; // todo:ashe23 maybe this should be in UI?
 	TSet<FName> CircularAssets;
 	for (const auto& Node : List)
 	{
 		if (Node.IsCircular())
-		{		
+		{
 			CircularAssets.Add(Node.Asset);
 		}
 	}
 
 	if (CircularAssets.Num() > 0)
 	{
-		for(const auto& CircularAsset : CircularAssets)
+		for (const auto& CircularAsset : CircularAssets)
 		{
 			FAssetData* AssetData = GetAssetData(CircularAsset, Assets);
-			if(!AssetData) continue;
+			if (!AssetData) continue;
 			RootAssets.Add(*AssetData);
 		}
 	}
 	else
 	{
-		for(const auto& Node : List)
+		for (const auto& Node : List)
 		{
-			if(RootAssets.Num() > 20) break;
-			
-			if(Node.Refs.Num() == 0)
+			if (RootAssets.Num() > ChunkSize) break;
+
+			if (Node.Refs.Num() == 0)
 			{
 				FAssetData* AssetData = GetAssetData(Node.Asset, Assets);
-				if(!AssetData) continue;
+				if (!AssetData) continue;
 				RootAssets.Add(*AssetData);
 			}
 		}
 	}
-
-	// first we deleting cycle assets
-	// like Skeletal mesh, skeleton, and physical assets
-	// those assets cant be deleted separately
-	// bool bCycleDetected = false;
-	// for (const auto& Asset : Assets)
-	// {
-	// 	TArray<FName> Refs;
-	// 	TArray<FName> Deps;
-	//
-	// 	AssetRegistry.Get().GetReferencers(Asset.PackageName, Refs);
-	// 	AssetRegistry.Get().GetDependencies(Asset.PackageName, Deps);
-	//
-	// 	// todo:ashe23 take into account that assets might be referenced outside "/Game" content folder
-	// 	for (const auto& Ref : Refs)
-	// 	{
-	// 		if (IsCycle(Ref, Deps, Asset))
-	// 		{
-	// 			bCycleDetected = true;
-	// 			FAssetData* RefAssetData = GetAssetData(Ref, Assets);
-	// 			if (!RefAssetData) continue;
-	//
-	// 			RootAssets.AddUnique(*RefAssetData);
-	// 			RootAssets.AddUnique(Asset);
-	// 		}
-	// 	}
-	// }
-	//
-	// if (!bCycleDetected)
-	// {
-	// 	for (const auto& Asset : Assets)
-	// 	{
-	// 		if (RootAssets.Num() > 100) break; // todo:ashe23 chunk size maybe should be shown in UI as parameter?
-	//
-	// 		TArray<FName> Refs;
-	// 		AssetRegistry.Get().GetReferencers(Asset.PackageName, Refs);
-	//
-	// 		Refs.RemoveAll([&](const FName& Elem)
-	// 		{
-	// 			return Elem == Asset.PackageName;
-	// 		});
-	//
-	// 		if (Refs.Num() == 0)
-	// 		{
-	// 			RootAssets.AddUnique(Asset);
-	// 		}
-	// 	}
-	// }
 }
 
 bool ProjectCleanerUtility::IsCycle(const FName& Referencer, const TArray<FName>& Deps, const FAssetData& CurrentAsset)

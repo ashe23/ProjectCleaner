@@ -22,6 +22,7 @@ class STableViewBase;
 class FMenuBuilder;
 class ITableRow;
 class SDockTab;
+class FUICommandList;
 
 struct FSlateColorBrush;
 struct FAssetData;
@@ -34,7 +35,6 @@ class FProjectCleanerModule : public IModuleInterface
 {
 public:
 	FProjectCleanerModule():
-		NotificationManager(nullptr),
 		ExcludeDirectoryFilterSettings(nullptr),
 		StreamableManager(nullptr)
 	{
@@ -46,19 +46,21 @@ public:
 	virtual bool IsGameModule() const override;
 
 
-	/**
-	 * @brief Opens ProjectCleanerBrowser Main Tab
-	 */
-	void PluginButtonClicked();
-
 private:
 	void InitModuleComponents();
 	void AddToolbarExtension(FToolBarBuilder& Builder);
 	void AddMenuExtension(FMenuBuilder& Builder);
+	/**
+	 * @brief Opens ProjectCleanerBrowser Main Tab
+	 */
+	void PluginButtonClicked();
 	TSharedRef<SDockTab> OnSpawnPluginTab(const class FSpawnTabArgs& SpawnTabArgs);
 
+	/** Button events */
 	FReply RefreshBrowser();
-
+	FReply OnDeleteUnusedAssetsBtnClick();
+	FReply OnDeleteEmptyFolderClick();
+	
 	/**
 	 * @brief Updates Cleaning stats
 	 */
@@ -81,11 +83,6 @@ private:
 	 */
 	void UpdateContentBrowser() const;
 
-	// Button events Start //
-	FReply OnDeleteEmptyFolderClick();
-	FReply OnDeleteUnusedAssetsBtnClick();
-	// Button events End //
-
 	/**
 	 * @brief Creates confirmation window with yes/no options
 	 * @param Title - Window Title
@@ -101,12 +98,9 @@ private:
 	 */
 	static bool IsConfirmationWindowCanceled(EAppReturnType::Type Status);
 
-	FCleaningStats CleaningStats;
-	FStandardCleanerText StandardCleanerText;
-	TSharedPtr<class FUICommandList> PluginCommands;
-	ProjectCleanerNotificationManager* NotificationManager;
-
-	// UI
+	/** UI */
+	TSharedPtr<FUICommandList> PluginCommands;
+	TSharedPtr<ProjectCleanerNotificationManager> NotificationManager;
 	TWeakPtr<SProjectCleanerDirectoryExclusionUI> ProjectCleanerDirectoryExclusionUI;
 	UExcludeDirectoriesFilterSettings* ExcludeDirectoryFilterSettings;
 
@@ -117,18 +111,18 @@ private:
 	TWeakPtr<SProjectCleanerCorruptedFilesUI> ProjectCleanerCorruptedFilesUI;
 	TArray<TWeakObjectPtr<UAssetsUsedInSourceCodeUIStruct>> AssetsUsedInSourceCodeUIStructs;
 
-	// Refactor Start
+	/** Data Containers */ 
 	TArray<FAssetData> UnusedAssets;
 	TArray<FString> EmptyFolders;
 	TArray<FNode> AdjacencyList;
 	TArray<FAssetData> CorruptedFiles;
 	TArray<TWeakObjectPtr<UNonUassetFile>> NonUassetFiles;
 	TArray<FSourceCodeFile> SourceFiles;
-	// Refactor End
+	FCleaningStats CleaningStats;
+	FStandardCleanerText StandardCleanerText;
 
-	// Streamable Manager
+	/** Streamable Manager */
 	struct FStreamableManager* StreamableManager;
-	void OnAssetsLoaded();
 	void OpenCorruptedFilesWindow();
 	/**
 	 * @brief Loads given Assets synchronously and checking for corrupted files and adding them to list.

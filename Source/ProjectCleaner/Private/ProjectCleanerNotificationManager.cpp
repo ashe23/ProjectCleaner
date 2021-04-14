@@ -1,5 +1,4 @@
 ﻿#include "ProjectCleanerNotificationManager.h"
-
 // Engine Headers
 #include "Framework/Notifications/NotificationManager.h"
 
