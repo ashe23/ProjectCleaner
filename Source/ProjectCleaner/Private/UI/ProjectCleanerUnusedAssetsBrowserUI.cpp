@@ -13,7 +13,7 @@
 
 void SProjectCleanerUnusedAssetsBrowserUI::Construct(const FArguments& InArgs)
 {
-	// UnusedAssets = InArgs._UnusedAssets;
+	// UnusedAssets = InArgs._UnusedAssets;	
 	SetUnusedAssets(InArgs._UnusedAssets);
 
 	FProjectCleanerBrowserCommands::Register();
@@ -114,10 +114,10 @@ void SProjectCleanerUnusedAssetsBrowserUI::ExcludeAssets() const
 {
 	if (!GetCurrentSelectionDelegate.IsBound()) return;
 
-	TArray<FAssetData> CurrentSelection = GetCurrentSelectionDelegate.Execute();
+	const TArray<FAssetData> CurrentSelection = GetCurrentSelectionDelegate.Execute();
 	if (CurrentSelection.Num() > 0)
 	{
-		// todo:ashe23 remove selected assets from list
+		// todo:ashe23 remove selected assets from list	
 	}
 }
 

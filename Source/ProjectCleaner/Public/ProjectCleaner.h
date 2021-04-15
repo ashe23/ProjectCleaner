@@ -46,6 +46,7 @@ public:
 	virtual bool IsGameModule() const override;
 
 
+	void ExcludeAssetsFromDeletionList(const TArray<FAssetData>& Assets) const;
 private:
 	void InitModuleComponents();
 	void AddToolbarExtension(FToolBarBuilder& Builder);
@@ -82,6 +83,8 @@ private:
 	 * @brief Updates content browser
 	 */
 	void UpdateContentBrowser() const;
+
+	void ScanProjectFiles();
 
 	/**
 	 * @brief Creates confirmation window with yes/no options

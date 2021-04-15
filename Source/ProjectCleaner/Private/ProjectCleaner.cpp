@@ -545,6 +545,8 @@ void FProjectCleanerModule::Reset()
 
 void FProjectCleanerModule::UpdateCleanerData()
 {
+	ScanProjectFiles();
+	return ;
 	FScopedSlowTask SlowTask{1.0f, FText::FromString("Scanning. Please wait...")};
 	SlowTask.MakeDialog();
 
@@ -597,6 +599,84 @@ void FProjectCleanerModule::UpdateContentBrowser() const
 
 	// FContentBrowserModule& CBModule = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
 	// CBModule.Get().SyncBrowserToFolders(FocusFolders);
+}
+
+void FProjectCleanerModule::ScanProjectFiles()
+{
+	const double StartTime = FPlatformTime::Seconds();
+	
+	struct DirectoryVisitor : IPlatformFile::FDirectoryVisitor
+	{
+		//This function is called for every file or directory it finds.
+		virtual bool Visit(const TCHAR* FilenameOrDirectory, bool bIsDirectory) override
+		{
+			if(bIsDirectory)
+			{
+				DirNum++;
+				const auto Path = FString{FilenameOrDirectory} / TEXT("*");
+				if (ProjectCleanerUtility::IsEmptyDirectory(Path))
+				{
+					EmptyDirs.Add(FilenameOrDirectory);
+				}
+				// todo:ashe23 Decide what to do with Developers and Collection folders	
+			}
+			else
+			{
+				FileNum++;
+				const auto Extension = FPaths::GetExtension(FilenameOrDirectory);
+				if (ProjectCleanerUtility::IsEngineExtension(Extension))
+				{
+					UassetFiles.Add(FilenameOrDirectory);
+				}
+				else
+				{
+					NonUassetFiles.Add(FilenameOrDirectory);
+				}
+			}
+			return true;
+		}
+		
+		int32 FileNum = 0;
+		int32 DirNum = 0;
+		TSet<FName> EmptyDirs;
+		TSet<FName> NonUassetFiles;
+		TSet<FName> UassetFiles;
+	};
+
+	DirectoryVisitor Visitor;
+	
+	if (IFileManager::Get().IterateDirectoryRecursively(*FPaths::ProjectContentDir(), Visitor))
+	{
+		UE_LOG(LogProjectCleaner, Display, TEXT("Found  %d files and %d dir"), Visitor.FileNum, Visitor.DirNum);
+		UE_LOG(LogProjectCleaner, Display, TEXT("Found %d empty folders"), Visitor.EmptyDirs.Num());
+	}
+
+
+	ProjectCleanerUtility::GetAllAssets(UnusedAssets);
+
+	TSet<FName> PossibleCorruptedFiles;
+	for (const auto& File : Visitor.UassetFiles)
+	{
+		const bool Contains = UnusedAssets.ContainsByPredicate([&](const FAssetData& Data)
+		{
+			const auto AbsPath = ProjectCleanerUtility::ConvertRelativeToAbsolutePath(Data.PackageName);
+			return AbsPath.Equals(File.ToString());
+		});
+		
+		if (!Contains)
+		{
+			PossibleCorruptedFiles.Add(File);
+		}
+	}
+	
+	const double TimeElapsed = FPlatformTime::Seconds() - StartTime;
+	UE_LOG(LogProjectCleaner, Display, TEXT("Time elapsed on scanning : %f"), TimeElapsed);
+}
+
+void FProjectCleanerModule::ExcludeAssetsFromDeletionList(const TArray<FAssetData>& Assets) const
+{
+	UE_LOG(LogProjectCleaner, Display, TEXT("Removing Assets from list %d"), Assets.Num());
+	//todo:ashe23
 }
 
 #pragma optimize("", on)

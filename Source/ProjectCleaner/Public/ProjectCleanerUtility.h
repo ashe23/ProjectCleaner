@@ -160,4 +160,12 @@ public:
 	* @return 
 	*/
 	static int64 GetTotalSize(const TArray<FAssetData>& AssetContainer);
+
+
+	/// REFACTORING START HERE
+	static bool IsEmptyDirectory(const FString& Path);
+
+	static bool IsEngineExtension(const FString& Extension);
+
+	static FString ConvertRelativeToAbsolutePath(const FName& PackageName);
 };

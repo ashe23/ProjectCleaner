@@ -486,4 +486,32 @@ int64 ProjectCleanerUtility::GetTotalSize(const TArray<FAssetData>& AssetContain
 	return Size;
 }
 
+bool ProjectCleanerUtility::IsEmptyDirectory(const FString& Path)
+{
+	TArray<FString> FilesAndDirs;
+	IFileManager::Get().FindFiles(FilesAndDirs, *Path,true, true);
+
+	return FilesAndDirs.Num() == 0;
+}
+
+bool ProjectCleanerUtility::IsEngineExtension(const FString& Extension)
+{
+	return Extension.Equals("uasset") || Extension.Equals("umap");
+}
+
+FString ProjectCleanerUtility::ConvertRelativeToAbsolutePath(const FName& PackageName)
+{	
+	FString PackageFileName;
+	FString PackageFile;
+	if (
+        FPackageName::TryConvertLongPackageNameToFilename(PackageName.ToString(), PackageFileName) &&
+        FPackageName::FindPackageFileWithoutExtension(PackageFileName, PackageFile)
+    )
+	{
+		return FPaths::ConvertRelativePathToFull(PackageFile);
+	}
+
+	return FString{};
+}
+
 #pragma optimize("", on)

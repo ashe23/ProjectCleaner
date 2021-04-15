@@ -2,6 +2,7 @@
 
 // Engine Headers
 #include "CoreMinimal.h"
+#include "ProjectCleaner.h"
 #include "Widgets/SCompoundWidget.h"
 #include "Editor/ContentBrowser/Public/ContentBrowserDelegates.h"
 // #include "ProjectCleanerUnusedAssetsBrowserUI.generated.h"
