@@ -44,7 +44,7 @@ void SProjectCleanerAssetsUsedInSourceCodeUI::RefreshUIContent()
 		.AutoHeight()
 		.Padding(FMargin{0.0f, 20.0f})
 		[
-			SNew(SListView<TWeakObjectPtr<UAssetsUsedInSourceCodeUIStruct>>)
+			SNew(SListView<TWeakObjectPtr<USourceCodeAsset>>)
 			.ListItemsSource(&AssetsUsedInSourceCode)
 			.SelectionMode(ESelectionMode::SingleToggle)
 			.OnGenerateRow(this, &SProjectCleanerAssetsUsedInSourceCodeUI::OnGenerateRow)
@@ -92,7 +92,7 @@ void SProjectCleanerAssetsUsedInSourceCodeUI::RefreshUIContent()
 }
 
 void SProjectCleanerAssetsUsedInSourceCodeUI::SetAssetsUsedInSourceCode(
-	TArray<TWeakObjectPtr<UAssetsUsedInSourceCodeUIStruct>>& NewAssetsUsedInSourceCode)
+	TArray<TWeakObjectPtr<USourceCodeAsset>>& NewAssetsUsedInSourceCode)
 {
 	AssetsUsedInSourceCode.Reset();
 	AssetsUsedInSourceCode.Reserve(NewAssetsUsedInSourceCode.Num());
@@ -103,12 +103,12 @@ void SProjectCleanerAssetsUsedInSourceCodeUI::SetAssetsUsedInSourceCode(
 }
 
 TSharedRef<ITableRow> SProjectCleanerAssetsUsedInSourceCodeUI::OnGenerateRow(
-	TWeakObjectPtr<UAssetsUsedInSourceCodeUIStruct> InItem, const TSharedRef<STableViewBase>& OwnerTable)
+	TWeakObjectPtr<USourceCodeAsset> InItem, const TSharedRef<STableViewBase>& OwnerTable)
 {
 	return SNew(SAssetUsedInSourceCodeUISelectionRow, OwnerTable).SelectedRowItem(InItem);
 }
 
-void SProjectCleanerAssetsUsedInSourceCodeUI::OnMouseDoubleClick(TWeakObjectPtr<UAssetsUsedInSourceCodeUIStruct> Item)
+void SProjectCleanerAssetsUsedInSourceCodeUI::OnMouseDoubleClick(TWeakObjectPtr<USourceCodeAsset> Item)
 {
 	FPlatformProcess::ExploreFolder(*(FPaths::GetPath(Item->SourceCodePath)));
 }

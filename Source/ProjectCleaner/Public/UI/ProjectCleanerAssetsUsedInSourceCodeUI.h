@@ -7,7 +7,7 @@
 
 
 UCLASS(Transient)
-class UAssetsUsedInSourceCodeUIStruct : public UObject
+class USourceCodeAsset : public UObject
 {
 	GENERATED_BODY()
 public:
@@ -22,19 +22,19 @@ public:
 };
 
 
-class SAssetUsedInSourceCodeUISelectionRow : public SMultiColumnTableRow<TWeakObjectPtr<UAssetsUsedInSourceCodeUIStruct>>
+class SAssetUsedInSourceCodeUISelectionRow : public SMultiColumnTableRow<TWeakObjectPtr<USourceCodeAsset>>
 {
 public:
 	SLATE_BEGIN_ARGS(SAssetUsedInSourceCodeUISelectionRow){}
-		SLATE_ARGUMENT(TWeakObjectPtr<UAssetsUsedInSourceCodeUIStruct>, SelectedRowItem)
+		SLATE_ARGUMENT(TWeakObjectPtr<USourceCodeAsset>, SelectedRowItem)
 	SLATE_END_ARGS()
 
 void Construct(const FArguments& InArgs, const TSharedRef<STableViewBase>& InOwnerTableView)
 	{
 		SelectedRowItem = InArgs._SelectedRowItem;
 
-		SMultiColumnTableRow<TWeakObjectPtr<UAssetsUsedInSourceCodeUIStruct>>::Construct(
-        SMultiColumnTableRow<TWeakObjectPtr<UAssetsUsedInSourceCodeUIStruct>>::FArguments()
+		SMultiColumnTableRow<TWeakObjectPtr<USourceCodeAsset>>::Construct(
+        SMultiColumnTableRow<TWeakObjectPtr<USourceCodeAsset>>::FArguments()
         .Padding(
             FMargin(0.f, 2.f, 0.f, 0.f)),
             InOwnerTableView
@@ -47,15 +47,15 @@ void Construct(const FArguments& InArgs, const TSharedRef<STableViewBase>& InOwn
 
 		if(InColumnName == TEXT("AssetName"))
 		{
-			ColumnWidget = SNew(STextBlock).Text(FText::FromString(SelectedRowItem->AssetName));			
+			ColumnWidget = SNew(STextBlock).Text(FText::FromString(SelectedRowItem->AssetName));
 		}
 		else if(InColumnName == TEXT("AssetPath"))
 		{
-			ColumnWidget = SNew(STextBlock).Text(FText::FromString(SelectedRowItem->AssetPath));			
+			ColumnWidget = SNew(STextBlock).Text(FText::FromString(SelectedRowItem->AssetPath));
 		}
 		else if(InColumnName == TEXT("SourceCodePath"))
 		{
-			ColumnWidget = SNew(STextBlock).Text(FText::FromString(SelectedRowItem->SourceCodePath));						
+			ColumnWidget = SNew(STextBlock).Text(FText::FromString(SelectedRowItem->SourceCodePath));
 		}
 		else
 		{
@@ -66,24 +66,24 @@ void Construct(const FArguments& InArgs, const TSharedRef<STableViewBase>& InOwn
 	}
 
 private:
-	TWeakObjectPtr<UAssetsUsedInSourceCodeUIStruct> SelectedRowItem;
+	TWeakObjectPtr<USourceCodeAsset> SelectedRowItem;
 };
 
 class SProjectCleanerAssetsUsedInSourceCodeUI : public SCompoundWidget
 {
 public:
 	SLATE_BEGIN_ARGS(SProjectCleanerAssetsUsedInSourceCodeUI) {}
-		SLATE_ARGUMENT(TArray<TWeakObjectPtr<UAssetsUsedInSourceCodeUIStruct>>, AssetsUsedInSourceCode)
+		SLATE_ARGUMENT(TArray<TWeakObjectPtr<USourceCodeAsset>>, AssetsUsedInSourceCode)
 	SLATE_END_ARGS()
 
 	
 	void Construct(const FArguments& InArgs);
 	void RefreshUIContent();
-	void SetAssetsUsedInSourceCode(TArray<TWeakObjectPtr<UAssetsUsedInSourceCodeUIStruct>>& NewAssetsUsedInSourceCode);
+	void SetAssetsUsedInSourceCode(TArray<TWeakObjectPtr<USourceCodeAsset>>& NewAssetsUsedInSourceCode);
 private:
-	TSharedRef<ITableRow> OnGenerateRow(TWeakObjectPtr<UAssetsUsedInSourceCodeUIStruct> InItem, const TSharedRef<STableViewBase>& OwnerTable);
-	void OnMouseDoubleClick(TWeakObjectPtr<UAssetsUsedInSourceCodeUIStruct> Item);
+	TSharedRef<ITableRow> OnGenerateRow(TWeakObjectPtr<USourceCodeAsset> InItem, const TSharedRef<STableViewBase>& OwnerTable);
+	void OnMouseDoubleClick(TWeakObjectPtr<USourceCodeAsset> Item);
 	TSharedRef<SWidget> WidgetRef =  SNullWidget::NullWidget;
 	
-	TArray<TWeakObjectPtr<UAssetsUsedInSourceCodeUIStruct>> AssetsUsedInSourceCode;	
+	TArray<TWeakObjectPtr<USourceCodeAsset>> AssetsUsedInSourceCode;
 };

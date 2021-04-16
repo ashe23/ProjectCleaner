@@ -1,7 +1,7 @@
 ﻿#include "Filters/Filter_OutsideGameFolder.h"
 #include "StructsContainer.h"
 
-
+// todo:ashe23 remove this class
 #pragma optimize("", off)
 Filter_OutsideGameFolder::Filter_OutsideGameFolder(TArray<FNode>& List)
 {

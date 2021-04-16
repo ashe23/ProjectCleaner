@@ -112,15 +112,16 @@ private:
 	TWeakPtr<SProjectCleanerNonUassetFilesUI> ProjectCleanerNonUassetFilesUI;
 	TWeakPtr<SProjectCleanerAssetsUsedInSourceCodeUI> ProjectCleanerAssetsUsedInSourceCodeUI;
 	TWeakPtr<SProjectCleanerCorruptedFilesUI> ProjectCleanerCorruptedFilesUI;
-	TArray<TWeakObjectPtr<UAssetsUsedInSourceCodeUIStruct>> AssetsUsedInSourceCodeUIStructs;
 
 	/** Data Containers */ 
 	TArray<FAssetData> UnusedAssets;
+	TArray<FAssetData> ExcludedAssets;
 	TArray<FString> EmptyFolders;
 	TArray<FNode> AdjacencyList;
 	TArray<FAssetData> CorruptedFiles;
 	TArray<TWeakObjectPtr<UNonUassetFile>> NonUassetFiles;
 	TArray<FSourceCodeFile> SourceFiles;
+	TArray<TWeakObjectPtr<USourceCodeAsset>> SourceCodeAssets;
 	FCleaningStats CleaningStats;
 	FStandardCleanerText StandardCleanerText;
 

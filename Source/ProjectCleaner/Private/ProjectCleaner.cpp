@@ -25,6 +25,7 @@
 #include "Framework/Notifications/NotificationManager.h"
 #include "ContentBrowserDelegates.h"
 #include "Engine/AssetManager.h"
+#include "Engine/MapBuildDataRegistry.h"
 #include "Engine/StreamableManager.h"
 #include "Framework/Commands/UICommandList.h"
 #include "Misc/ScopedSlowTask.h"
@@ -220,7 +221,7 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 					  .AutoHeight()
 					[
 						SAssignNew(ProjectCleanerAssetsUsedInSourceCodeUI, SProjectCleanerAssetsUsedInSourceCodeUI)
-						.AssetsUsedInSourceCode(AssetsUsedInSourceCodeUIStructs)
+						.AssetsUsedInSourceCode(SourceCodeAssets)
 					]
 				]
 			]
@@ -499,7 +500,7 @@ void FProjectCleanerModule::UpdateStats()
 	CleaningStats.UnusedAssetsNum = UnusedAssets.Num();
 	CleaningStats.EmptyFolders = EmptyFolders.Num();
 	CleaningStats.NonUassetFilesNum = NonUassetFiles.Num();
-	CleaningStats.AssetsUsedInSourceCodeFilesNum = AssetsUsedInSourceCodeUIStructs.Num();
+	CleaningStats.AssetsUsedInSourceCodeFilesNum = SourceCodeAssets.Num();
 	CleaningStats.UnusedAssetsTotalSize = ProjectCleanerUtility::GetTotalSize(UnusedAssets);
 	CleaningStats.TotalAssetNum = CleaningStats.UnusedAssetsNum;
 
@@ -520,7 +521,7 @@ void FProjectCleanerModule::UpdateStats()
 	
 	if (ProjectCleanerAssetsUsedInSourceCodeUI.IsValid())
 	{
-		ProjectCleanerAssetsUsedInSourceCodeUI.Pin()->SetAssetsUsedInSourceCode(AssetsUsedInSourceCodeUIStructs);
+		ProjectCleanerAssetsUsedInSourceCodeUI.Pin()->SetAssetsUsedInSourceCode(SourceCodeAssets);
 	}
 }
 
@@ -538,7 +539,7 @@ void FProjectCleanerModule::Reset()
 	UnusedAssets.Reset();
 	SourceFiles.Reset();
 	NonUassetFiles.Reset();
-	AssetsUsedInSourceCodeUIStructs.Reset();
+	SourceCodeAssets.Reset();
 	EmptyFolders.Reset();
 	AdjacencyList.Reset();
 }
@@ -572,7 +573,7 @@ void FProjectCleanerModule::UpdateCleanerData()
 	ProjectCleanerUtility::FindAllSourceFiles(SourceFiles);
 	
 	// Filtering all assets and their related assets, that used in source code files
-	Filter_UsedInSourceCode UsedInSourceCode{SourceFiles, AdjacencyList, AssetsUsedInSourceCodeUIStructs};
+	Filter_UsedInSourceCode UsedInSourceCode{SourceFiles, AdjacencyList, SourceCodeAssets};
 	UsedInSourceCode.Apply(UnusedAssets);
 	// Filtering all assets that has refs to assets that are outside "Game" folder
 	Filter_OutsideGameFolder OutsideGameFolderAssetsFilter{AdjacencyList};
@@ -603,22 +604,40 @@ void FProjectCleanerModule::UpdateContentBrowser() const
 
 void FProjectCleanerModule::ScanProjectFiles()
 {
+	Reset();
 	const double StartTime = FPlatformTime::Seconds();
-	
-	struct DirectoryVisitor : IPlatformFile::FDirectoryVisitor
+
+	// Creating Visitor Object to Travers "/Game" Folder recursively
+	// while traversing we
+	//		finding all empty folders
+	//		finding all non uasset files
+	//		and all uasset files
+	// after traversal
+	//		finding all assets but from asset registry
+	//			checking which assets are not in list, those assets are probably corrupted
+	//			Corrupted files are , uasset files that are failed to load,  and not showing in content browser
+	//			Possible reasons?
+	//				Asset not saved correctly
+	//				Asset migrated from other engine version
+	//		remove all assets that used in any level
+	//		remove all assets that has refs outside to "Game" folder
+	//		remove all assets that are used in source code
+	//		remove all assets from list that user filtered
+	struct CleanerDirectoryVisitor : IPlatformFile::FDirectoryVisitor
 	{
-		//This function is called for every file or directory it finds.
 		virtual bool Visit(const TCHAR* FilenameOrDirectory, bool bIsDirectory) override
 		{
 			if(bIsDirectory)
 			{
 				DirNum++;
 				const auto Path = FString{FilenameOrDirectory} / TEXT("*");
-				if (ProjectCleanerUtility::IsEmptyDirectory(Path))
+				const auto CollectionsPath = FPaths::ProjectContentDir() + TEXT("Collections");
+				const bool IsDeveloperFolder = FPaths::IsUnderDirectory(FilenameOrDirectory, FPaths::GameDevelopersDir());
+				const bool IsCollectionFolder = FPaths::IsUnderDirectory(FilenameOrDirectory, CollectionsPath);
+				if (ProjectCleanerUtility::IsEmptyDirectory(Path) && !IsDeveloperFolder && !IsCollectionFolder)
 				{
 					EmptyDirs.Add(FilenameOrDirectory);
 				}
-				// todo:ashe23 Decide what to do with Developers and Collection folders	
 			}
 			else
 			{
@@ -643,40 +662,39 @@ void FProjectCleanerModule::ScanProjectFiles()
 		TSet<FName> UassetFiles;
 	};
 
-	DirectoryVisitor Visitor;
-	
-	if (IFileManager::Get().IterateDirectoryRecursively(*FPaths::ProjectContentDir(), Visitor))
+	CleanerDirectoryVisitor Visitor;
+	FAssetRegistryModule& AssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
+	if (!IFileManager::Get().IterateDirectoryRecursively(*FPaths::ProjectContentDir(), Visitor))
 	{
-		UE_LOG(LogProjectCleaner, Display, TEXT("Found  %d files and %d dir"), Visitor.FileNum, Visitor.DirNum);
-		UE_LOG(LogProjectCleaner, Display, TEXT("Found %d empty folders"), Visitor.EmptyDirs.Num());
+		UE_LOG(LogProjectCleaner, Error, TEXT("Failed to scan project directories! Restart Editor and try again."));
+		return;
 	}
 
-
+	// at this point we got all empty folder non uasset , and uasset files
+	UnusedAssets.Reserve(Visitor.FileNum);
 	ProjectCleanerUtility::GetAllAssets(UnusedAssets);
-
-	TSet<FName> PossibleCorruptedFiles;
-	for (const auto& File : Visitor.UassetFiles)
-	{
-		const bool Contains = UnusedAssets.ContainsByPredicate([&](const FAssetData& Data)
-		{
-			const auto AbsPath = ProjectCleanerUtility::ConvertRelativeToAbsolutePath(Data.PackageName);
-			return AbsPath.Equals(File.ToString());
-		});
-		
-		if (!Contains)
-		{
-			PossibleCorruptedFiles.Add(File);
-		}
-	}
+	
+	// todo:ashe23 maybe we should load all assets and check for corrupted assets also,
+	// todo:ashe23 in this situation we should disable shader compilation
+	
+	TSet<FName> PossiblyCorruptedFiles;
+	ProjectCleanerUtility::CheckForCorruptedFiles(UnusedAssets, Visitor.UassetFiles, PossiblyCorruptedFiles);
+	ProjectCleanerUtility::RemoveUsedAssets(UnusedAssets);
+	ProjectCleanerUtility::RemoveAssetsWithExternalDependencies(UnusedAssets, AdjacencyList);
+	ProjectCleanerUtility::RemoveAssetsUsedInSourceCode(UnusedAssets, AdjacencyList, SourceFiles, SourceCodeAssets);
+	ProjectCleanerUtility::RemoveAssetsExcludedByUser(UnusedAssets, AdjacencyList, ExcludeDirectoryFilterSettings);
+	
 	
 	const double TimeElapsed = FPlatformTime::Seconds() - StartTime;
 	UE_LOG(LogProjectCleaner, Display, TEXT("Time elapsed on scanning : %f"), TimeElapsed);
+
+	UpdateStats();
 }
 
 void FProjectCleanerModule::ExcludeAssetsFromDeletionList(const TArray<FAssetData>& Assets) const
 {
 	UE_LOG(LogProjectCleaner, Display, TEXT("Removing Assets from list %d"), Assets.Num());
-	//todo:ashe23
+	// todo:ashe23
 }
 
 #pragma optimize("", on)

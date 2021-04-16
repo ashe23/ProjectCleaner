@@ -1,5 +1,7 @@
 ﻿#include "ProjectCleanerUtility.h"
 #include "UI/ProjectCleanerNonUassetFilesUI.h"
+#include "UI/ProjectCleanerAssetsUsedInSourceCodeUI.h"
+#include "UI/ProjectCleanerDirectoryExclusionUI.h"
 // Engine Headers
 #include "HAL/FileManager.h"
 #include "AssetRegistry/Public/AssetData.h"
@@ -343,6 +345,9 @@ void ProjectCleanerUtility::CreateAdjacencyList(TArray<FAssetData>& Assets, TArr
                                                 const bool OnlyProjectFiles)
 {
 	if (Assets.Num() == 0) return;
+	
+	List.Reset();
+	List.Reserve(Assets.Num());
 
 	FAssetRegistryModule& AssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
 	TArray<FName> Deps;
@@ -397,10 +402,10 @@ void ProjectCleanerUtility::CreateAdjacencyList(TArray<FAssetData>& Assets, TArr
 }
 
 void ProjectCleanerUtility::FindAllRelatedAssets(const FNode& Node,
-                                                 TArray<FName>& RelatedAssets,
+                                                 TSet<FName>& RelatedAssets,
                                                  const TArray<FNode>& List)
 {
-	RelatedAssets.AddUnique(Node.Asset);
+	RelatedAssets.Add(Node.Asset);
 	for (const auto& Adj : Node.LinkedAssets)
 	{
 		if (!RelatedAssets.Contains(Adj))
@@ -486,6 +491,8 @@ int64 ProjectCleanerUtility::GetTotalSize(const TArray<FAssetData>& AssetContain
 	return Size;
 }
 
+
+// REFACTOR START HERE
 bool ProjectCleanerUtility::IsEmptyDirectory(const FString& Path)
 {
 	TArray<FString> FilesAndDirs;
@@ -512,6 +519,199 @@ FString ProjectCleanerUtility::ConvertRelativeToAbsolutePath(const FName& Packag
 	}
 
 	return FString{};
+}
+
+bool ProjectCleanerUtility::UsedInSourceFiles(
+	const FAssetData& Asset,
+	TArray<FSourceCodeFile>& SourceFiles,
+	TArray<TWeakObjectPtr<USourceCodeAsset>>& SourceCodeFiles)
+{
+	for (const auto& File : SourceFiles)
+	{
+		// Wrapping in quotes AssetName => "AssetName"
+		FString QuotedAssetName = Asset.AssetName.ToString();
+		QuotedAssetName.InsertAt(0, TEXT("\""));
+		QuotedAssetName.Append(TEXT("\""));
+		
+		if (
+            File.Content.Contains(Asset.PackageName.ToString()) ||
+            File.Content.Contains(QuotedAssetName)
+        )
+		{
+			auto Obj = NewObject<USourceCodeAsset>();
+			Obj->AssetName = Asset.AssetName.ToString();
+			Obj->AssetPath = Asset.PackageName.ToString();
+			Obj->SourceCodePath = File.AbsoluteFilePath;
+			SourceCodeFiles.Add(Obj);
+			return true;
+		}
+	}
+
+	return false;
+}
+
+void ProjectCleanerUtility::CheckForCorruptedFiles(TArray<FAssetData>& Assets, TSet<FName>& UassetFiles, TSet<FName>& CorruptedFiles)
+{
+	CorruptedFiles.Reset();
+	CorruptedFiles.Reserve(Assets.Num());
+	
+	for (const auto& File : UassetFiles)
+	{
+		const bool ExistsInAssetRegistry = Assets.ContainsByPredicate([&](const FAssetData& Data)
+        {
+            const auto AbsPath = ConvertRelativeToAbsolutePath(Data.PackageName);
+            return AbsPath.Equals(File.ToString());
+        });
+		
+		if (!ExistsInAssetRegistry)
+		{
+			CorruptedFiles.Add(File);
+		}
+	}
+}
+
+void ProjectCleanerUtility::RemoveUsedAssets(TArray<FAssetData>& Assets)
+{
+	FAssetRegistryModule& AssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
+	
+	FARFilter Filter;
+	Filter.ClassNames.Add(UWorld::StaticClass()->GetFName());
+	Filter.PackagePaths.Add("/Game");
+	Filter.bRecursivePaths = true;
+
+	TSet<FName> UsedAssets;
+	UsedAssets.Reserve(Assets.Num());
+	TArray<FName> PackageNamesToProcess;
+	{
+		TArray<FAssetData> FoundAssets;
+		AssetRegistry.Get().GetAssets(Filter, FoundAssets);
+		for (const FAssetData& AssetData : FoundAssets)
+		{
+			PackageNamesToProcess.Add(AssetData.PackageName);
+			UsedAssets.Add(AssetData.PackageName);
+		}
+	}
+
+	TArray<FAssetIdentifier> AssetDependencies;
+	while (PackageNamesToProcess.Num() > 0)
+	{
+		const FName PackageName = PackageNamesToProcess.Pop(false);
+		AssetDependencies.Reset();
+		AssetRegistry.Get().GetDependencies(FAssetIdentifier(PackageName), AssetDependencies);
+		for (const FAssetIdentifier& Dependency : AssetDependencies)
+		{
+			bool bIsAlreadyInSet = false;
+			UsedAssets.Add(Dependency.PackageName, &bIsAlreadyInSet);
+			if (bIsAlreadyInSet == false && Dependency.IsValid())
+			{
+				PackageNamesToProcess.Add(Dependency.PackageName);
+			}
+		}
+	}
+
+	Assets.RemoveAll([&](const FAssetData& Elem)
+    {
+        return UsedAssets.Contains(Elem.PackageName);
+    });
+}
+
+void ProjectCleanerUtility::RemoveAssetsWithExternalDependencies(TArray<FAssetData>& Assets, TArray<FNode>& List)
+{
+	CreateAdjacencyList(Assets,List, false);
+	
+	TSet<FName> AssetsToRemove;
+	AssetsToRemove.Reserve(Assets.Num());
+	
+	for(const auto& Node : List)
+	{
+		if (Node.HasLinkedAssetsOutsideGameFolder())
+		{
+			AssetsToRemove.Add(Node.Asset);	
+		}
+	}
+
+	Assets.RemoveAll([&](const FAssetData& Asset)
+    {
+        return AssetsToRemove.Contains(Asset.PackageName);
+    });
+}
+
+void ProjectCleanerUtility::RemoveAssetsUsedInSourceCode(
+	TArray<FAssetData>& Assets,
+	TArray<FNode>& List,
+	TArray<FSourceCodeFile>& SourceCodeFiles,
+	TArray<TWeakObjectPtr<USourceCodeAsset>>& SourceCodeAssets)
+{
+	CreateAdjacencyList(Assets, List, true);
+    FindAllSourceFiles(SourceCodeFiles);
+
+	TSet<FName> RelatedAssets;
+	RelatedAssets.Reserve(Assets.Num());
+	for (const auto& Asset : Assets)
+	{
+		if (UsedInSourceFiles(Asset, SourceCodeFiles, SourceCodeAssets))
+		{
+			const auto Node = List.FindByPredicate([&](const FNode& Elem)
+            {
+                return Elem.Asset.IsEqual(Asset.PackageName);
+            });
+
+			if (Node)
+			{
+				FindAllRelatedAssets(*Node,RelatedAssets, List);
+			}
+		}
+	}
+
+	Assets.RemoveAll([&](const FAssetData& Elem)
+    {
+        return RelatedAssets.Contains(Elem.PackageName);
+    });
+}
+
+void ProjectCleanerUtility::RemoveAssetsExcludedByUser(
+	TArray<FAssetData>& Assets,
+	TArray<FNode>& List,
+	UExcludeDirectoriesFilterSettings* DirectoryFilterSettings)
+{
+	if(!DirectoryFilterSettings) return;
+
+	// updating adjacency list
+	CreateAdjacencyList(Assets, List, true);
+
+	FAssetRegistryModule& AssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
+	TSet<FAssetData> FilteredAssets;
+	FilteredAssets.Reserve(Assets.Num());
+	
+	TArray<FAssetData> AssetsInPath;
+	AssetsInPath.Reserve(100);
+	for (const auto& FilterPath : DirectoryFilterSettings->Paths)
+	{
+		AssetRegistry.Get().GetAssetsByPath(*FilterPath.Path, AssetsInPath, true);
+		FilteredAssets.Append(AssetsInPath);
+		AssetsInPath.Reset();
+	}
+	
+	// for filtered assets finding related assets
+	TSet<FName> RelatedAssets;
+	RelatedAssets.Reset();
+	RelatedAssets.Reserve(Assets.Num());
+	for(const auto& FilteredAsset : FilteredAssets)
+	{
+		const auto Node = List.FindByPredicate([&](const FNode& Elem)
+		{
+			return Elem.Asset.IsEqual(FilteredAsset.PackageName);
+		});
+		if (Node)
+		{
+			FindAllRelatedAssets(*Node, RelatedAssets, List);
+		}
+	}
+	
+	Assets.RemoveAll([&] (const FAssetData& Elem)
+	{
+		return RelatedAssets.Contains(Elem.PackageName);
+	});
 }
 
 #pragma optimize("", on)

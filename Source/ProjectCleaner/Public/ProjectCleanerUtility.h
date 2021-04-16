@@ -6,7 +6,10 @@
 // Engine Headers
 #include "CoreMinimal.h"
 
+
 struct FAssetData;
+class USourceCodeAsset;
+class UExcludeDirectoriesFilterSettings;
 
 
 /**
@@ -126,7 +129,7 @@ public:
 	 * @param RelatedAssets 
 	 * @param List 
 	 */
-	static void FindAllRelatedAssets(const FNode& Node, TArray<FName>& RelatedAssets, const TArray<FNode>& List);
+	static void FindAllRelatedAssets(const FNode& Node, TSet<FName>& RelatedAssets, const TArray<FNode>& List);
 
 	/**
 	 * @brief Returns assets that has no references or circular assets
@@ -168,4 +171,47 @@ public:
 	static bool IsEngineExtension(const FString& Extension);
 
 	static FString ConvertRelativeToAbsolutePath(const FName& PackageName);
+	
+	static bool UsedInSourceFiles(
+		const FAssetData& Asset,
+		TArray<FSourceCodeFile>& SourceFiles,
+		TArray<TWeakObjectPtr<USourceCodeAsset>>& SourceCodeFiles
+	);
+
+	/**
+	 * @brief Compares number of assets founded with DirectoryVisitor, with number of assets in AssetRegistry
+	 *	If that number is different, we may have corrupted files.
+	 *	This could happen if
+	 *		1) asset failed to save
+	 *		2) asset simply copied from other project with different version
+	 *		3) asset migrated from other project with different version
+	 *		4) other reasons that i dont know :)
+	 * @param Assets - Asset List founded with AssetRegistry
+	 * @param UassetFiles - Uasset files founded with DirectoryVisitor
+	 * @param CorruptedFiles - Container for corrupted files
+	 */
+	static void CheckForCorruptedFiles(TArray<FAssetData>& Assets, TSet<FName>& UassetFiles, TSet<FName>& CorruptedFiles);
+
+	/**
+	 * @brief Removing all used assets from given asset list
+	 * Used assets are those who are dependency for any level
+	 * @param Assets - Asset list
+	 */
+	static void RemoveUsedAssets(TArray<FAssetData>& Assets);
+
+	static void RemoveAssetsWithExternalDependencies(TArray<FAssetData>& Assets, TArray<FNode>& List);
+
+	static void RemoveAssetsUsedInSourceCode(
+			TArray<FAssetData>& Assets,
+			TArray<FNode>& List,
+			TArray<FSourceCodeFile>& SourceCodeFiles,
+			TArray<TWeakObjectPtr<USourceCodeAsset>>& SourceCodeAssets
+	);
+
+	static void RemoveAssetsExcludedByUser(
+		TArray<FAssetData>& Assets,
+		TArray<FNode>& List,
+		UExcludeDirectoriesFilterSettings* DirectoryFilterSettings);
+
+	
 };

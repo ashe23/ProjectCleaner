@@ -6,7 +6,7 @@
 #include "UI/ProjectCleanerAssetsUsedInSourceCodeUI.h"
 
 #pragma optimize("", off)
-Filter_UsedInSourceCode::Filter_UsedInSourceCode(TArray<FSourceCodeFile>& SourceFiles, TArray<FNode>& List, TArray<TWeakObjectPtr<UAssetsUsedInSourceCodeUIStruct>>& AssetsUsedInSourceCodeUIStructs)
+Filter_UsedInSourceCode::Filter_UsedInSourceCode(TArray<FSourceCodeFile>& SourceFiles, TArray<FNode>& List, TArray<TWeakObjectPtr<USourceCodeAsset>>& AssetsUsedInSourceCodeUIStructs)
 {
 	AdjacencyList = &List;
 	this->SourceFiles = &SourceFiles;
@@ -15,7 +15,7 @@ Filter_UsedInSourceCode::Filter_UsedInSourceCode(TArray<FSourceCodeFile>& Source
 
 void Filter_UsedInSourceCode::Apply(TArray<FAssetData>& Assets)
 {
-	TArray<FName> UsedInSourceFilesRelatedAssets;
+	TSet<FName> UsedInSourceFilesRelatedAssets;
 	UsedInSourceFilesRelatedAssets.Reserve(100);
 
 	for (const auto& Asset : Assets)
@@ -60,7 +60,7 @@ bool Filter_UsedInSourceCode::UsedInSourceFiles(const FAssetData& Asset) const
 			File.Content.Contains(QuotedAssetName)
 		)
 		{
-			auto Obj = NewObject<UAssetsUsedInSourceCodeUIStruct>();
+			auto Obj = NewObject<USourceCodeAsset>();
 			Obj->AssetName = Asset.AssetName.ToString();
 			Obj->AssetPath = Asset.PackageName.ToString();
 			Obj->SourceCodePath = File.AbsoluteFilePath;

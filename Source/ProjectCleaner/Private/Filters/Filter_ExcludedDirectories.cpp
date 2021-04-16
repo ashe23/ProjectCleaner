@@ -51,7 +51,7 @@ void Filter_ExcludedDirectories::ApplyDirectoryFilters(TArray<FAssetData>& Asset
 	}
 
 	// query all related assets that contains in given directory paths
-	TArray<FName> RelatedAssets;
+	TSet<FName> RelatedAssets;
 	for (const auto& Asset : ProcessingAssets)
 	{
 		const auto AssetNode = AdjacencyList->FindByPredicate([&](const FNode& Elem)
