@@ -7,7 +7,7 @@
 #include "UI/ProjectCleanerDirectoryExclusionUI.h"
 #include "UI/ProjectCleanerUnusedAssetsBrowserUI.h"
 #include "UI/ProjectCleanerNonUassetFilesUI.h"
-#include "UI/ProjectCleanerAssetsUsedInSourceCodeUI.h"
+#include "UI/ProjectCleanerSourceCodeAssetsUI.h"
 #include "UI/ProjectCleanerCorruptedFilesUI.h"
 // Engine Headers
 #include "Input/Reply.h"
@@ -104,22 +104,22 @@ private:
 	/** UI */
 	TSharedPtr<FUICommandList> PluginCommands;
 	TSharedPtr<ProjectCleanerNotificationManager> NotificationManager;
-	TWeakPtr<SProjectCleanerDirectoryExclusionUI> ProjectCleanerDirectoryExclusionUI;
+	TWeakPtr<SProjectCleanerDirectoryExclusionUI> DirectoryExclusionUI;
 	UExcludeDirectoriesFilterSettings* ExcludeDirectoryFilterSettings;
 
-	TWeakPtr<SProjectCleanerBrowserStatisticsUI> ProjectCleanerBrowserStatisticsUI;
-	TWeakPtr<SProjectCleanerUnusedAssetsBrowserUI> ProjectCleanerUnusedAssetsBrowserUI;
-	TWeakPtr<SProjectCleanerNonUassetFilesUI> ProjectCleanerNonUassetFilesUI;
-	TWeakPtr<SProjectCleanerAssetsUsedInSourceCodeUI> ProjectCleanerAssetsUsedInSourceCodeUI;
-	TWeakPtr<SProjectCleanerCorruptedFilesUI> ProjectCleanerCorruptedFilesUI;
+	TWeakPtr<SProjectCleanerBrowserStatisticsUI> StatisticsUI;
+	TWeakPtr<SProjectCleanerUnusedAssetsBrowserUI> UnusedAssetsBrowserUI;
+	TWeakPtr<SProjectCleanerNonUassetFilesUI> NonUassetFilesUI;
+	TWeakPtr<SProjectCleanerSourceCodeAssetsUI> SourceCodeAssetsUI;
+	TWeakPtr<SProjectCleanerCorruptedFilesUI> CorruptedFilesUI;
 
 	/** Data Containers */ 
 	TArray<FAssetData> UnusedAssets;
 	TArray<FAssetData> ExcludedAssets;
-	TArray<FString> EmptyFolders;
+	TSet<FName> EmptyFolders;
+	TSet<FName> NonUassetFiles;
 	TArray<FNode> AdjacencyList;
 	TArray<FAssetData> CorruptedFiles;
-	TArray<TWeakObjectPtr<UNonUassetFile>> NonUassetFiles;
 	TArray<FSourceCodeFile> SourceFiles;
 	TArray<TWeakObjectPtr<USourceCodeAsset>> SourceCodeAssets;
 	FCleaningStats CleaningStats;

@@ -1,8 +1,8 @@
-﻿#include "UI/ProjectCleanerAssetsUsedInSourceCodeUI.h"
+﻿#include "UI/ProjectCleanerSourceCodeAssetsUI.h"
 
 #define LOCTEXT_NAMESPACE "FProjectCleanerModule"
 
-void SProjectCleanerAssetsUsedInSourceCodeUI::Construct(const FArguments& InArgs)
+void SProjectCleanerSourceCodeAssetsUI::Construct(const FArguments& InArgs)
 {
 	AssetsUsedInSourceCode = InArgs._AssetsUsedInSourceCode;
 
@@ -14,7 +14,7 @@ void SProjectCleanerAssetsUsedInSourceCodeUI::Construct(const FArguments& InArgs
 	];
 }
 
-void SProjectCleanerAssetsUsedInSourceCodeUI::RefreshUIContent()
+void SProjectCleanerSourceCodeAssetsUI::RefreshUIContent()
 {
 	const FSlateFontInfo FontInfo = FSlateFontInfo(
 		FPaths::EngineContentDir() / TEXT("Slate/Fonts/Roboto-Light.ttf"),
@@ -47,8 +47,8 @@ void SProjectCleanerAssetsUsedInSourceCodeUI::RefreshUIContent()
 			SNew(SListView<TWeakObjectPtr<USourceCodeAsset>>)
 			.ListItemsSource(&AssetsUsedInSourceCode)
 			.SelectionMode(ESelectionMode::SingleToggle)
-			.OnGenerateRow(this, &SProjectCleanerAssetsUsedInSourceCodeUI::OnGenerateRow)
-			.OnMouseButtonDoubleClick_Raw(this, &SProjectCleanerAssetsUsedInSourceCodeUI::OnMouseDoubleClick)
+			.OnGenerateRow(this, &SProjectCleanerSourceCodeAssetsUI::OnGenerateRow)
+			.OnMouseButtonDoubleClick_Raw(this, &SProjectCleanerSourceCodeAssetsUI::OnMouseDoubleClick)
 			.HeaderRow
 			(
 				SNew(SHeaderRow)
@@ -91,7 +91,7 @@ void SProjectCleanerAssetsUsedInSourceCodeUI::RefreshUIContent()
 	];
 }
 
-void SProjectCleanerAssetsUsedInSourceCodeUI::SetAssetsUsedInSourceCode(
+void SProjectCleanerSourceCodeAssetsUI::SetAssetsUsedInSourceCode(
 	TArray<TWeakObjectPtr<USourceCodeAsset>>& NewAssetsUsedInSourceCode)
 {
 	AssetsUsedInSourceCode.Reset();
@@ -102,13 +102,13 @@ void SProjectCleanerAssetsUsedInSourceCodeUI::SetAssetsUsedInSourceCode(
 	RefreshUIContent();
 }
 
-TSharedRef<ITableRow> SProjectCleanerAssetsUsedInSourceCodeUI::OnGenerateRow(
+TSharedRef<ITableRow> SProjectCleanerSourceCodeAssetsUI::OnGenerateRow(
 	TWeakObjectPtr<USourceCodeAsset> InItem, const TSharedRef<STableViewBase>& OwnerTable)
 {
-	return SNew(SAssetUsedInSourceCodeUISelectionRow, OwnerTable).SelectedRowItem(InItem);
+	return SNew(SSourceCodeAssetsUISelectionRow, OwnerTable).SelectedRowItem(InItem);
 }
 
-void SProjectCleanerAssetsUsedInSourceCodeUI::OnMouseDoubleClick(TWeakObjectPtr<USourceCodeAsset> Item)
+void SProjectCleanerSourceCodeAssetsUI::OnMouseDoubleClick(TWeakObjectPtr<USourceCodeAsset> Item)
 {
 	FPlatformProcess::ExploreFolder(*(FPaths::GetPath(Item->SourceCodePath)));
 }

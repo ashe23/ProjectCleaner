@@ -1,6 +1,5 @@
 ﻿#include "ProjectCleanerUtility.h"
-#include "UI/ProjectCleanerNonUassetFilesUI.h"
-#include "UI/ProjectCleanerAssetsUsedInSourceCodeUI.h"
+#include "UI/ProjectCleanerSourceCodeAssetsUI.h"
 #include "UI/ProjectCleanerDirectoryExclusionUI.h"
 // Engine Headers
 #include "HAL/FileManager.h"
@@ -28,15 +27,12 @@ bool ProjectCleanerUtility::HasFiles(const FString& SearchPath)
 }
 
 bool ProjectCleanerUtility::GetAllEmptyDirectories(const FString& SearchPath,
-                                                   TArray<FString>& Directories,
-                                                   TArray<TWeakObjectPtr<UNonUassetFile>>& NonUassetFiles,
+                                                   TSet<FName>& Directories,
                                                    const bool bIsRootDirectory)
 {
 	bool AllSubDirsEmpty = true;
 	TArray<FString> ChildDirectories;
 	GetChildrenDirectories(SearchPath, ChildDirectories);
-
-	FindNonProjectFiles(SearchPath, NonUassetFiles);
 
 	// Your Project Root directory (<Your Project>/Content) also contains "Collections" and "Developers" folders
 	// we dont need them
@@ -51,10 +47,10 @@ bool ProjectCleanerUtility::GetAllEmptyDirectories(const FString& SearchPath,
 		auto NewPath = SearchPath;
 		NewPath.RemoveFromEnd(TEXT("*"));
 		NewPath += Dir / TEXT("*");
-		if (GetAllEmptyDirectories(NewPath, Directories, NonUassetFiles, false))
+		if (GetAllEmptyDirectories(NewPath, Directories, false))
 		{
 			NewPath.RemoveFromEnd(TEXT("*"));
-			Directories.Add(NewPath);
+			Directories.Add(*NewPath);
 		}
 		else
 		{
@@ -83,15 +79,15 @@ void ProjectCleanerUtility::RemoveDevsAndCollectionsDirectories(TArray<FString>&
 	});
 }
 
-void ProjectCleanerUtility::DeleteEmptyFolders(TArray<FString>& EmptyFolders)
+void ProjectCleanerUtility::DeleteEmptyFolders(TSet<FName>& EmptyFolders)
 {
 	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
 	for (auto& EmptyFolder : EmptyFolders)
 	{
-		if (IFileManager::Get().DirectoryExists(*EmptyFolder))
+		if (IFileManager::Get().DirectoryExists(*EmptyFolder.ToString()))
 		{
-			IFileManager::Get().DeleteDirectory(*EmptyFolder, false, true);
-			auto DirPath = EmptyFolder.Replace(*FPaths::ProjectContentDir(), TEXT("/Game/"));
+			IFileManager::Get().DeleteDirectory(*EmptyFolder.ToString(), false, true);
+			auto DirPath = EmptyFolder.ToString().Replace(*FPaths::ProjectContentDir(), TEXT("/Game/"));
 			AssetRegistryModule.Get().RemovePath(DirPath);
 		}
 	}
@@ -111,8 +107,7 @@ void ProjectCleanerUtility::DeleteEmptyFolders(TArray<FString>& EmptyFolders)
 	EmptyFolders.Empty();
 }
 
-int32 ProjectCleanerUtility::GetEmptyFoldersAndNonUassetFiles(TArray<FString>& EmptyFolders,
-                                                              TArray<TWeakObjectPtr<UNonUassetFile>>& NonUassetFiles)
+int32 ProjectCleanerUtility::GetEmptyFolders(TSet<FName>& EmptyFolders)
 {
 	FScopedSlowTask SlowTask{1.0f, FText::FromString("Searching empty folders...")};
 	SlowTask.MakeDialog();
@@ -121,7 +116,6 @@ int32 ProjectCleanerUtility::GetEmptyFoldersAndNonUassetFiles(TArray<FString>& E
 	GetAllEmptyDirectories(
 		ProjectRoot / TEXT("*"),
 		EmptyFolders,
-		NonUassetFiles,
 		true
 	);
 
@@ -195,37 +189,37 @@ int32 ProjectCleanerUtility::DeleteAssets(TArray<FAssetData>& Assets)
 	return DeletedAssets;
 }
 
-void ProjectCleanerUtility::FindNonProjectFiles(const FString& SearchPath,
-                                                TArray<TWeakObjectPtr<UNonUassetFile>>& NonUassetFiles)
-{
-	// Project Directories may contain non .uasset files, which wont be shown in content browser,
-	// Or there also case when assets saved in old engine versions not showing in new engine version content browser,
-	// those asset must be tracked and informed to user , so they can handle them manually
-	TArray<FString> NonUAssetFiles;
-	IFileManager::Get().FindFiles(NonUAssetFiles, *SearchPath, true, false);
-
-	for (const auto& NonUAssetFile : NonUAssetFiles)
-	{
-		const auto Extension = FPaths::GetExtension(NonUAssetFile);
-		// todo:ashe23 deal with assets that are .uasset but not showing in content browser
-		// todo:ashe23 possible cases migrated from newer version of engine then yours
-		if (!Extension.Equals("uasset") && !Extension.Equals("umap"))
-		{
-			FString Path = SearchPath;
-			Path.RemoveFromEnd("*");
-			Path.Append(NonUAssetFile);
-			Path = FPaths::ConvertRelativePathToFull(Path);
-
-			const auto& NonAssetFile = NewObject<UNonUassetFile>();
-			if (NonAssetFile->IsValidLowLevel())
-			{
-				NonAssetFile->FileName = FPaths::GetBaseFilename(NonUAssetFile) + "." + Extension;
-				NonAssetFile->FilePath = Path;
-				NonUassetFiles.AddUnique(NonAssetFile);
-			}
-		}
-	}
-}
+// void ProjectCleanerUtility::FindNonProjectFiles(const FString& SearchPath,
+//                                                 TArray<TWeakObjectPtr<UNonUassetFile>>& NonUassetFiles)
+// {
+// 	// Project Directories may contain non .uasset files, which wont be shown in content browser,
+// 	// Or there also case when assets saved in old engine versions not showing in new engine version content browser,
+// 	// those asset must be tracked and informed to user , so they can handle them manually
+// 	TArray<FString> NonUAssetFiles;
+// 	IFileManager::Get().FindFiles(NonUAssetFiles, *SearchPath, true, false);
+//
+// 	for (const auto& NonUAssetFile : NonUAssetFiles)
+// 	{
+// 		const auto Extension = FPaths::GetExtension(NonUAssetFile);
+// 		// todo:ashe23 deal with assets that are .uasset but not showing in content browser
+// 		// todo:ashe23 possible cases migrated from newer version of engine then yours
+// 		if (!Extension.Equals("uasset") && !Extension.Equals("umap"))
+// 		{
+// 			FString Path = SearchPath;
+// 			Path.RemoveFromEnd("*");
+// 			Path.Append(NonUAssetFile);
+// 			Path = FPaths::ConvertRelativePathToFull(Path);
+//
+// 			const auto& NonAssetFile = NewObject<UNonUassetFile>();
+// 			if (NonAssetFile->IsValidLowLevel())
+// 			{
+// 				NonAssetFile->FileName = FPaths::GetBaseFilename(NonUAssetFile) + "." + Extension;
+// 				NonAssetFile->FilePath = Path;
+// 				NonUassetFiles.AddUnique(NonAssetFile);
+// 			}
+// 		}
+// 	}
+// }
 
 void ProjectCleanerUtility::FindAllSourceFiles(TArray<FSourceCodeFile>& SourceFiles)
 {
@@ -555,15 +549,16 @@ void ProjectCleanerUtility::CheckForCorruptedFiles(TArray<FAssetData>& Assets, T
 	CorruptedFiles.Reset();
 	CorruptedFiles.Reserve(Assets.Num());
 	
+	TSet<FString> ConvertedAssets;
+	ConvertedAssets.Reserve(Assets.Num());
+	for(const auto& Asset : Assets)
+	{
+		ConvertedAssets.Add(ConvertRelativeToAbsolutePath(Asset.PackageName));
+	}
+	
 	for (const auto& File : UassetFiles)
 	{
-		const bool ExistsInAssetRegistry = Assets.ContainsByPredicate([&](const FAssetData& Data)
-        {
-            const auto AbsPath = ConvertRelativeToAbsolutePath(Data.PackageName);
-            return AbsPath.Equals(File.ToString());
-        });
-		
-		if (!ExistsInAssetRegistry)
+		if (!ConvertedAssets.Contains(File.ToString()))
 		{
 			CorruptedFiles.Add(File);
 		}

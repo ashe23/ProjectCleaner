@@ -29,13 +29,11 @@ public:
 	 * @brief Finds all empty folders in given path recursive version
 	 * @param SearchPath 
 	 * @param Directories 
-	 * @param NonUassetFiles 
 	 * @param bIsRootDirectory 
 	 * @return bool
 	 */
 	static bool GetAllEmptyDirectories(const FString& SearchPath,
-	                                   TArray<FString>& Directories,
-	                                   TArray<TWeakObjectPtr<class UNonUassetFile>>& NonUassetFiles,
+	                                   TSet<FName>& Directories,
 	                                   const bool bIsRootDirectory);
 
 	/**
@@ -55,15 +53,14 @@ public:
 	 * @brief Deletes Empty Folders
 	 * @param EmptyFolders 
 	 */
-	static void DeleteEmptyFolders(TArray<FString>& EmptyFolders);
+	static void DeleteEmptyFolders(TSet<FName>& EmptyFolders);
 
 	/**
 	 * @brief Returns total number of empty folders and finds all non project files
 	 * @param EmptyFolders 
-	 * @param NonUassetFiles 
 	 * @return Number of empty folders
 	 */
-	static int32 GetEmptyFoldersAndNonUassetFiles(TArray<FString>& EmptyFolders, TArray<TWeakObjectPtr<UNonUassetFile>>& NonUassetFiles);
+	static int32 GetEmptyFolders(TSet<FName>& EmptyFolders);
 
 	/**
 	 * @brief Fixup Redirectors , same as in content browser menu
@@ -82,7 +79,7 @@ public:
 	 * @param SearchPath 
 	 * @param NonUassetFiles
 	 */
-	static void FindNonProjectFiles(const FString& SearchPath, TArray<TWeakObjectPtr<UNonUassetFile>>& NonUassetFiles);
+	// static void FindNonProjectFiles(const FString& SearchPath, TArray<TWeakObjectPtr<UNonUassetFile>>& NonUassetFiles);
 
 	/**
 	 * @brief Finds all ".h" and ".cpp" source files in Project "Source" and "Plugins" directories
@@ -165,7 +162,7 @@ public:
 	static int64 GetTotalSize(const TArray<FAssetData>& AssetContainer);
 
 
-	/// REFACTORING START HERE
+	/// =================== REFACTORING START HERE ============================
 	static bool IsEmptyDirectory(const FString& Path);
 
 	static bool IsEngineExtension(const FString& Extension);
@@ -211,7 +208,6 @@ public:
 	static void RemoveAssetsExcludedByUser(
 		TArray<FAssetData>& Assets,
 		TArray<FNode>& List,
-		UExcludeDirectoriesFilterSettings* DirectoryFilterSettings);
-
-	
+		UExcludeDirectoriesFilterSettings* DirectoryFilterSettings
+	);
 };

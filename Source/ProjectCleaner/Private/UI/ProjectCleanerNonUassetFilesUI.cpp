@@ -8,20 +8,19 @@ void SProjectCleanerNonUassetFilesUI::Construct(const FArguments& InArgs)
 	RefreshUIContent();
 }
 
-void SProjectCleanerNonUassetFilesUI::SetNonUassetFiles(
-	const TArray<TWeakObjectPtr<UNonUassetFile>>& NewNonUassetFiles
-)
+void SProjectCleanerNonUassetFilesUI::SetNonUassetFiles(const TSet<FName>& NewNonUassetFile)
 {
 	NonUassetFiles.Reset();
-	NonUassetFiles.Reserve(NewNonUassetFiles.Num());
+	NonUassetFiles.Reserve(NewNonUassetFile.Num());
 
-	for (const auto& File : NewNonUassetFiles)
+	for(const auto& File :NewNonUassetFile)
 	{
-		if (File.IsValid())
-		{
-			NonUassetFiles.Add(File);
-		}
-	}
+		const auto& NonUassetFile = NewObject<UNonUassetFile>();
+		if(!NonUassetFile) continue;
+		NonUassetFile->FileName = FPaths::GetBaseFilename(File.ToString()) + "." + FPaths::GetExtension(File.ToString());
+		NonUassetFile->FilePath = File.ToString();
+		NonUassetFiles.AddUnique(NonUassetFile);
+	}	
 
 	RefreshUIContent();
 }

@@ -3,7 +3,7 @@
 // Engine Headers
 #include "CoreMinimal.h"
 #include "Widgets/SCompoundWidget.h"
-#include "ProjectCleanerAssetsUsedInSourceCodeUI.generated.h"
+#include "ProjectCleanerSourceCodeAssetsUI.generated.h"
 
 
 UCLASS(Transient)
@@ -22,10 +22,10 @@ public:
 };
 
 
-class SAssetUsedInSourceCodeUISelectionRow : public SMultiColumnTableRow<TWeakObjectPtr<USourceCodeAsset>>
+class SSourceCodeAssetsUISelectionRow : public SMultiColumnTableRow<TWeakObjectPtr<USourceCodeAsset>>
 {
 public:
-	SLATE_BEGIN_ARGS(SAssetUsedInSourceCodeUISelectionRow){}
+	SLATE_BEGIN_ARGS(SSourceCodeAssetsUISelectionRow){}
 		SLATE_ARGUMENT(TWeakObjectPtr<USourceCodeAsset>, SelectedRowItem)
 	SLATE_END_ARGS()
 
@@ -69,10 +69,10 @@ private:
 	TWeakObjectPtr<USourceCodeAsset> SelectedRowItem;
 };
 
-class SProjectCleanerAssetsUsedInSourceCodeUI : public SCompoundWidget
+class SProjectCleanerSourceCodeAssetsUI : public SCompoundWidget
 {
 public:
-	SLATE_BEGIN_ARGS(SProjectCleanerAssetsUsedInSourceCodeUI) {}
+	SLATE_BEGIN_ARGS(SProjectCleanerSourceCodeAssetsUI) {}
 		SLATE_ARGUMENT(TArray<TWeakObjectPtr<USourceCodeAsset>>, AssetsUsedInSourceCode)
 	SLATE_END_ARGS()
 
