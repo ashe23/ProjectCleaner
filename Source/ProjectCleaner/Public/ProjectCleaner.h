@@ -84,8 +84,6 @@ private:
 	 */
 	void UpdateContentBrowser() const;
 
-	void ScanProjectFiles();
-
 	/**
 	 * @brief Creates confirmation window with yes/no options
 	 * @param Title - Window Title

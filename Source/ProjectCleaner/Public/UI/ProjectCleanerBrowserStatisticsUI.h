@@ -14,7 +14,7 @@ public:
 	SLATE_BEGIN_ARGS(SProjectCleanerBrowserStatisticsUI) {}
 		SLATE_ARGUMENT(FCleaningStats, Stats);
 	SLATE_END_ARGS()
-	void Construct(const FArguments& InArgs);	
+	void Construct(const FArguments& InArgs);
 	void SetStats(const FCleaningStats& NewStats);
 	FCleaningStats GetStats() const;
 	void RefreshUIContent();

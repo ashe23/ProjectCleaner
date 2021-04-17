@@ -522,6 +522,9 @@ bool ProjectCleanerUtility::UsedInSourceFiles(
 {
 	for (const auto& File : SourceFiles)
 	{
+		//	todo:ashe23 BUG if asset has names like /Game/Maps/NewMaterial_Inst.NewMaterial_Inst
+		//	todo:ashe23								/Game/Maps/NewMaterial.NewMaterial
+		
 		// Wrapping in quotes AssetName => "AssetName"
 		FString QuotedAssetName = Asset.AssetName.ToString();
 		QuotedAssetName.InsertAt(0, TEXT("\""));

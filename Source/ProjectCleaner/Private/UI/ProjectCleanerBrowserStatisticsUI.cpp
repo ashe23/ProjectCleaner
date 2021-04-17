@@ -50,9 +50,9 @@ void SProjectCleanerBrowserStatisticsUI::RefreshUIContent()
 		[
 			SNew(SVerticalBox)
 			+ SVerticalBox::Slot()
-			  .MaxHeight(20.0f)
-			  .Padding(FMargin{0.0, 40.0f, 0.0f, 3.0f})
-			  .HAlign(HAlign_Center)
+			.MaxHeight(20.0f)
+			.Padding(FMargin{0.0, 40.0f, 0.0f, 3.0f})
+			.HAlign(HAlign_Center)
 			[
 				// Unused Assets
 				SNew(SHorizontalBox)
@@ -105,28 +105,6 @@ void SProjectCleanerBrowserStatisticsUI::RefreshUIContent()
 				[
 					SNew(STextBlock)
 						.AutoWrapText(true)
-						.Text(LOCTEXT("Empty Folders", "Empty Folders - "))
-				]
-				+ SHorizontalBox::Slot()
-				.AutoWidth()
-				[
-					SNew(STextBlock)
-						.AutoWrapText(true)
-						.Text_Lambda([this]() -> FText { return FText::AsNumber(Stats.EmptyFolders); })
-				]
-			]
-			+ SVerticalBox::Slot()
-			  .MaxHeight(20.0f)
-			  .Padding(FMargin{0.0, 0.0f, 0.0f, 3.0f})
-			  .HAlign(HAlign_Center)
-			[
-				// Unused Assets
-				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot()
-				.AutoWidth()
-				[
-					SNew(STextBlock)
-						.AutoWrapText(true)
 						.Text(LOCTEXT("nonuassetfilesnum", "Non .uasset files - "))
 				]
 				+ SHorizontalBox::Slot()
@@ -138,6 +116,58 @@ void SProjectCleanerBrowserStatisticsUI::RefreshUIContent()
 				]
 			]
 			+ SVerticalBox::Slot()
+			.MaxHeight(20.0f)
+			.Padding(FMargin{0.0, 0.0f, 0.0f, 3.0f})
+			.HAlign(HAlign_Center)
+			[
+				// Unused Assets
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				[
+					SNew(STextBlock)
+						.AutoWrapText(true)
+						.Text(LOCTEXT("sourcecodeassets", "Assets Used In Source Code Files - "))
+				]
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				[
+					SNew(STextBlock)
+						.AutoWrapText(true)
+						.Text_Lambda(
+						[this]() -> FText
+						{
+							return FText::AsNumber(Stats.SourceCodeAssetsNum);
+						})
+				]
+			]
+			+ SVerticalBox::Slot()
+			.MaxHeight(20.0f)
+			.Padding(FMargin{0.0, 0.0f, 0.0f, 3.0f})
+			.HAlign(HAlign_Center)
+			[
+				// Unused Assets
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				[
+					SNew(STextBlock)
+						.AutoWrapText(true)
+						.Text(LOCTEXT("corruptedfilesnum", "Corrupted Files Num - "))
+				]
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				[
+					SNew(STextBlock)
+						.AutoWrapText(true)
+						.Text_Lambda(
+						[this]() -> FText
+						{
+							return FText::AsNumber(Stats.CorruptedFilesNum);
+						})
+				]
+			]
+			+ SVerticalBox::Slot()
 			  .MaxHeight(20.0f)
 			  .Padding(FMargin{0.0, 0.0f, 0.0f, 3.0f})
 			  .HAlign(HAlign_Center)
@@ -149,20 +179,16 @@ void SProjectCleanerBrowserStatisticsUI::RefreshUIContent()
 				[
 					SNew(STextBlock)
 						.AutoWrapText(true)
-						.Text(LOCTEXT("AssetsUsedInSourceCode", "Assets Used In Source Code Files - "))
+						.Text(LOCTEXT("Empty Folders", "Empty Folders - "))
 				]
 				+ SHorizontalBox::Slot()
 				.AutoWidth()
 				[
 					SNew(STextBlock)
 						.AutoWrapText(true)
-						.Text_Lambda(
-						                [this]() -> FText
-						                {
-							                return FText::AsNumber(Stats.AssetsUsedInSourceCodeFilesNum);
-						                })
+						.Text_Lambda([this]() -> FText { return FText::AsNumber(Stats.EmptyFolders); })
 				]
-			]			
+			]
 		]
 	];
 

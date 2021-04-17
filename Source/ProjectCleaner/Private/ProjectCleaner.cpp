@@ -25,6 +25,7 @@
 #include "Framework/Commands/UICommandList.h"
 #include "Misc/ScopedSlowTask.h"
 #include "Widgets/SWeakWidget.h"
+#include "ShaderCompiler.h"
 
 DEFINE_LOG_CATEGORY(LogProjectCleaner);
 
@@ -421,7 +422,7 @@ void FProjectCleanerModule::OpenCorruptedFilesWindow()
 {
 	const auto CorruptedFilesWindow =
 	SNew(SWindow)
-	.Title(LOCTEXT("corruptedfileswindow", "Corrupted Files"))
+	.Title(LOCTEXT("corruptedfileswindow", "Failed to delete this assets"))
 	.ClientSize(FVector2D(800.0f, 800.0f))
 	.MinWidth(800.0f)
 	.MinHeight(800.0f)
@@ -467,7 +468,9 @@ void FProjectCleanerModule::FindCorruptedAssets(const TArray<FAssetData>& Assets
 	{
 		LoadedAssets.Add(FSoftObjectPath{Asset.ObjectPath});
 	}
-
+	
+	StreamableManager = &UAssetManager::GetStreamableManager();
+	if (!StreamableManager) return;
 	StreamableManager->RequestSyncLoad(LoadedAssets);
 
 	for (const auto& LoadedAsset : LoadedAssets)
@@ -495,8 +498,9 @@ void FProjectCleanerModule::UpdateStats()
 	CleaningStats.UnusedAssetsNum = UnusedAssets.Num();
 	CleaningStats.EmptyFolders = EmptyFolders.Num();
 	CleaningStats.NonUassetFilesNum = NonUassetFiles.Num();
-	CleaningStats.AssetsUsedInSourceCodeFilesNum = SourceCodeAssets.Num();
+	CleaningStats.SourceCodeAssetsNum = SourceCodeAssets.Num();
 	CleaningStats.UnusedAssetsTotalSize = ProjectCleanerUtility::GetTotalSize(UnusedAssets);
+	CleaningStats.CorruptedFilesNum = CorruptedFiles.Num();
 	CleaningStats.TotalAssetNum = CleaningStats.UnusedAssetsNum;
 
 	if (StatisticsUI.IsValid())
@@ -535,55 +539,21 @@ void FProjectCleanerModule::Reset()
 	SourceFiles.Reset();
 	NonUassetFiles.Reset();
 	SourceCodeAssets.Reset();
+	CorruptedFiles.Reset();
 	EmptyFolders.Reset();
 	AdjacencyList.Reset();
 }
 
 void FProjectCleanerModule::UpdateCleanerData()
 {
-	ScanProjectFiles();
-	return ;
-	// FScopedSlowTask SlowTask{1.0f, FText::FromString("Scanning. Please wait...")};
-	// SlowTask.MakeDialog();
-	
-	// SlowTask.EnterProgressFrame(1.0f);
-}
-
-void FProjectCleanerModule::UpdateContentBrowser() const
-{
-	TArray<FString> FocusFolders;
-	FocusFolders.Add("/Game");
-
-	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
-	AssetRegistryModule.Get().ScanPathsSynchronous(FocusFolders, true);
-	AssetRegistryModule.Get().SearchAllAssets(true);
-
-	// FContentBrowserModule& CBModule = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
-	// CBModule.Get().SyncBrowserToFolders(FocusFolders);
-}
-
-void FProjectCleanerModule::ScanProjectFiles()
-{
 	Reset();
+	
+	FScopedSlowTask SlowTask{1.0f, FText::FromString("Scanning. Please wait...")};
+	SlowTask.MakeDialog();
+	
 	const double StartTime = FPlatformTime::Seconds();
 
-	// Creating Visitor Object to Travers "/Game" Folder recursively
-	// while traversing we
-	//		finding all empty folders
-	//		finding all non uasset files
-	//		and all uasset files
-	// after traversal
-	//		finding all assets but from asset registry
-	//			checking which assets are not in list, those assets are probably corrupted
-	//			Corrupted files are , uasset files that are failed to load,  and not showing in content browser
-	//			Possible reasons?
-	//				Asset not saved correctly
-	//				Asset migrated from other engine version
-	//		remove all assets that used in any level
-	//		remove all assets that has refs outside to "Game" folder
-	//		remove all assets that are used in source code
-	//		remove all assets from list that user filtered
-	struct CleanerDirectoryVisitor : IPlatformFile::FDirectoryVisitor
+	struct FDirectoryVisitor : IPlatformFile::FDirectoryVisitor
 	{
 		virtual bool Visit(const TCHAR* FileName, bool bIsDirectory) override
 		{
@@ -601,27 +571,15 @@ void FProjectCleanerModule::ScanProjectFiles()
 				}
 			}
 			
-			// DirNum++;
-			// const auto Path = FString{FilenameOrDirectory} / TEXT("*");
-			// const auto CollectionsPath = FPaths::ProjectContentDir() + TEXT("Collections");
-			// const bool IsDeveloperFolder = FPaths::IsUnderDirectory(FilenameOrDirectory, FPaths::GameDevelopersDir());
-			// const bool IsCollectionFolder = FPaths::IsUnderDirectory(FilenameOrDirectory, CollectionsPath);
-			// if (ProjectCleanerUtility::IsEmptyDirectory(Path) && !IsDeveloperFolder && !IsCollectionFolder)
-			// {
-			// 	EmptyDirs.Add(FilenameOrDirectory);
-			// }
-			
 			return true;
 		}
 		
 		int32 FileNum = 0;
-		int32 DirNum = 0;
-		// TSet<FName> EmptyDirs;
 		TSet<FName> NonUassetFiles;
 		TSet<FName> UassetFiles;
 	};
 
-	CleanerDirectoryVisitor Visitor;
+	FDirectoryVisitor Visitor;
 	if (!IFileManager::Get().IterateDirectoryRecursively(*FPaths::ProjectContentDir(), Visitor))
 	{
 		UE_LOG(LogProjectCleaner, Error, TEXT("Failed to scan project directories! Restart Editor and try again."));
@@ -636,24 +594,33 @@ void FProjectCleanerModule::ScanProjectFiles()
 	UnusedAssets.Reserve(Visitor.FileNum);
 	ProjectCleanerUtility::GetAllAssets(UnusedAssets);
 	
-	// todo:ashe23 maybe we should load all assets and check for corrupted assets also,
-	// todo:ashe23 in this situation we should disable shader compilation
-	
-	TSet<FName> PossiblyCorruptedFiles;
-	
+	TSet<FName> PossiblyCorruptedFiles;	
 	ProjectCleanerUtility::CheckForCorruptedFiles(UnusedAssets, Visitor.UassetFiles, PossiblyCorruptedFiles);
 	
 	ProjectCleanerUtility::RemoveUsedAssets(UnusedAssets);
 	ProjectCleanerUtility::RemoveAssetsWithExternalDependencies(UnusedAssets, AdjacencyList);
 	ProjectCleanerUtility::RemoveAssetsUsedInSourceCode(UnusedAssets, AdjacencyList, SourceFiles, SourceCodeAssets);
-	
 	ProjectCleanerUtility::RemoveAssetsExcludedByUser(UnusedAssets, AdjacencyList, ExcludeDirectoryFilterSettings);
-	
 	
 	const double TimeElapsed = FPlatformTime::Seconds() - StartTime;
 	UE_LOG(LogProjectCleaner, Display, TEXT("Time elapsed on scanning : %f"), TimeElapsed);
 
 	UpdateStats();
+	
+	SlowTask.EnterProgressFrame(1.0f);
+}
+
+void FProjectCleanerModule::UpdateContentBrowser() const
+{
+	TArray<FString> FocusFolders;
+	FocusFolders.Add("/Game");
+
+	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
+	AssetRegistryModule.Get().ScanPathsSynchronous(FocusFolders, true);
+	AssetRegistryModule.Get().SearchAllAssets(true);
+
+	// FContentBrowserModule& CBModule = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
+	// CBModule.Get().SyncBrowserToFolders(FocusFolders);
 }
 
 void FProjectCleanerModule::ExcludeAssetsFromDeletionList(const TArray<FAssetData>& Assets) const
