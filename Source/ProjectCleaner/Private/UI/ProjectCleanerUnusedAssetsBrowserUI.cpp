@@ -97,10 +97,11 @@ void SProjectCleanerUnusedAssetsBrowserUI::DeleteAsset() const
 	const TArray<FAssetData> CurrentSelection = GetCurrentSelectionDelegate.Execute();
 	if (CurrentSelection.Num() > 0)
 	{
-		ObjectTools::DeleteAssets(CurrentSelection);
+		int32 DeletedAssetsNum = ObjectTools::DeleteAssets(CurrentSelection);
+		if (DeletedAssetsNum == 0) return;
+		OnUserDeletedAssets.ExecuteIfBound();
 	}
 
-	OnUserDeletedAssets.ExecuteIfBound();
 }
 
 void SProjectCleanerUnusedAssetsBrowserUI::RefreshUIContent()
