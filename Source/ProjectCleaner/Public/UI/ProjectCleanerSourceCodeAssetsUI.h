@@ -79,7 +79,7 @@ public:
 	
 	void Construct(const FArguments& InArgs);
 	void RefreshUIContent();
-	void SetAssetsUsedInSourceCode(TArray<TWeakObjectPtr<USourceCodeAsset>>& NewAssetsUsedInSourceCode);
+	void SetSourceCodeAssets(TArray<TWeakObjectPtr<USourceCodeAsset>>& NewAssetsUsedInSourceCode);
 private:
 	TSharedRef<ITableRow> OnGenerateRow(TWeakObjectPtr<USourceCodeAsset> InItem, const TSharedRef<STableViewBase>& OwnerTable);
 	void OnMouseDoubleClick(TWeakObjectPtr<USourceCodeAsset> Item);

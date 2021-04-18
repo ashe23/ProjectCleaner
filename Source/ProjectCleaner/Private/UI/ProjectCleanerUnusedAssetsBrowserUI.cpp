@@ -30,11 +30,7 @@ void SProjectCleanerUnusedAssetsBrowserUI::Construct(const FArguments& InArgs)
 	Commands->MapAction(FProjectCleanerBrowserCommands::Get().DeleteAsset, FUIAction(
 	FExecuteAction::CreateRaw(this, &SProjectCleanerUnusedAssetsBrowserUI::DeleteAsset),
 		FCanExecuteAction::CreateRaw(this, &SProjectCleanerUnusedAssetsBrowserUI::IsAnythingSelected)
-	));
-	Commands->MapAction(FProjectCleanerBrowserCommands::Get().ExcludeFromDeletion, FUIAction(
-    FExecuteAction::CreateRaw(this, &SProjectCleanerUnusedAssetsBrowserUI::ExcludeAssets),
-        FCanExecuteAction::CreateRaw(this, &SProjectCleanerUnusedAssetsBrowserUI::IsAnythingSelected)
-    ));
+	));	
 
 	RefreshUIContent();
 }
@@ -62,7 +58,6 @@ TSharedPtr<SWidget> SProjectCleanerUnusedAssetsBrowserUI::OnGetAssetContextMenu(
 	{
 		MenuBuilder.AddMenuEntry(FGlobalEditorCommonCommands::Get().FindInContentBrowser);
 		MenuBuilder.AddMenuEntry(FProjectCleanerBrowserCommands::Get().DeleteAsset);
-		MenuBuilder.AddMenuEntry(FProjectCleanerBrowserCommands::Get().ExcludeFromDeletion);
 	}
 	MenuBuilder.EndSection();
 
@@ -103,23 +98,13 @@ void SProjectCleanerUnusedAssetsBrowserUI::DeleteAsset() const
 {
 	if (!GetCurrentSelectionDelegate.IsBound()) return;
 
-	TArray<FAssetData> CurrentSelection = GetCurrentSelectionDelegate.Execute();
+	const TArray<FAssetData> CurrentSelection = GetCurrentSelectionDelegate.Execute();
 	if (CurrentSelection.Num() > 0)
 	{
 		ObjectTools::DeleteAssets(CurrentSelection);
 	}
 
-	// todo:ashe23 add delegate to refresh content
-}
-
-void SProjectCleanerUnusedAssetsBrowserUI::ExcludeAssets() const
-{
-	if (!GetCurrentSelectionDelegate.IsBound()) return;
-
-	const TArray<FAssetData> CurrentSelection = GetCurrentSelectionDelegate.Execute();
-	if (CurrentSelection.Num() == 0) return;
-	
-	OnAssetExcluded.ExecuteIfBound(CurrentSelection);
+	OnUserDeletedAssets.ExecuteIfBound();
 }
 
 void SProjectCleanerUnusedAssetsBrowserUI::RefreshUIContent()
@@ -166,8 +151,21 @@ void SProjectCleanerUnusedAssetsBrowserUI::RefreshUIContent()
 	Config.Filter = Filter;
 
 	FContentBrowserModule& ContentBrowser = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
-
 	WidgetRef = SNew(SVerticalBox)
+	+ SVerticalBox::Slot()
+    .AutoHeight()
+    .Padding(FMargin{0.0f, 0.0f, 0.0f, 20.0f})
+    [
+        SNew(SBorder)
+        .Padding(30.0f)
+        .BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
+        [
+	        SNew(STextBlock)
+		    .AutoWrapText(true)
+		    .Font(FSlateFontInfo(FPaths::EngineContentDir() / TEXT("Slate/Fonts/Roboto-Light.ttf"),20))
+		    .Text(LOCTEXT("cleanernotetext", "Unused assets are all assets, that are not used in any level.\nSo before starting make sure you delete all levels that never used in project."))
+        ]
+    ]
 	+ SVerticalBox::Slot()
 	.AutoHeight()
 	.Padding(20.0f)

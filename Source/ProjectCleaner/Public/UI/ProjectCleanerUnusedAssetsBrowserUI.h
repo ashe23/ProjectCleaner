@@ -5,7 +5,7 @@
 #include "Widgets/SCompoundWidget.h"
 #include "Editor/ContentBrowser/Public/ContentBrowserDelegates.h"
 
-DECLARE_DELEGATE_OneParam(FOnAssetExcluded, const TArray<FAssetData>& /* Excluded Assets */);
+DECLARE_DELEGATE(FOnUserDeletedAssets);
 
 class SProjectCleanerUnusedAssetsBrowserUI : public SCompoundWidget
 {
@@ -16,9 +16,9 @@ public:
 	
 	void Construct(const FArguments& InArgs);
 	void SetUnusedAssets(const TArray<FAssetData>& NewUnusedAssets);
-
+	
 	/** Delegates */
-	FOnAssetExcluded OnAssetExcluded;
+	FOnUserDeletedAssets OnUserDeletedAssets;
 private:
 	// UI specific stuff start
 	TSharedPtr<SWidget> OnGetAssetContextMenu(const TArray<FAssetData>& SelectedAssets);
@@ -26,7 +26,6 @@ private:
 	void FindInContentBrowser() const;
 	bool IsAnythingSelected() const;
 	void DeleteAsset() const;
-	void ExcludeAssets() const;
 	void RefreshUIContent();
 	/** Delegate to interact with asset view */
 	FGetCurrentSelectionDelegate GetCurrentSelectionDelegate;

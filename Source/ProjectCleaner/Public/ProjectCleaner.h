@@ -9,7 +9,6 @@
 #include "UI/ProjectCleanerNonUassetFilesUI.h"
 #include "UI/ProjectCleanerSourceCodeAssetsUI.h"
 #include "UI/ProjectCleanerCorruptedFilesUI.h"
-#include "UI/ProjectCleanerExcludedAssetsUI.h"
 // Engine Headers
 #include "Input/Reply.h"
 #include "Modules/ModuleInterface.h"
@@ -32,13 +31,11 @@ struct FNonUassetFile;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogProjectCleaner, Log, All);
 
-
 class FProjectCleanerModule : public IModuleInterface
 {
 public:
 	FProjectCleanerModule():
-		ExcludeDirectoryFilterSettings(nullptr),
-		StreamableManager(nullptr)
+		ExcludeDirectoryFilterSettings(nullptr)
 	{
 	}
 
@@ -47,14 +44,11 @@ public:
 	virtual void ShutdownModule() override;
 	virtual bool IsGameModule() const override;
 
-
-	/** Delegates */
-	void ExcludeAssetsFromDeletionList(const TArray<FAssetData>& Assets);
-	void IncludeAssetsToDeletionList(const TArray<FAssetData>& Assets);
 private:
 	void InitModuleComponents();
 	void AddToolbarExtension(FToolBarBuilder& Builder);
 	void AddMenuExtension(FMenuBuilder& Builder);
+	void OnUserDeletedAssets();
 	/**
 	 * @brief Opens ProjectCleanerBrowser Main Tab
 	 */
@@ -62,7 +56,7 @@ private:
 	TSharedRef<SDockTab> OnSpawnPluginTab(const class FSpawnTabArgs& SpawnTabArgs);
 
 	/** Button events */
-	FReply RefreshBrowser();
+	FReply OnRefreshBtnClick();
 	FReply OnDeleteUnusedAssetsBtnClick();
 	FReply OnDeleteEmptyFolderClick();
 	
@@ -87,6 +81,11 @@ private:
 	 * @brief Updates content browser
 	 */
 	void UpdateContentBrowser() const;
+	
+	/**
+	 * @brief Opens window with corrupted files in it
+	 */
+	void OpenCorruptedFilesWindow();
 
 	/**
 	 * @brief Creates confirmation window with yes/no options
@@ -106,19 +105,17 @@ private:
 	/** UI */
 	TSharedPtr<FUICommandList> PluginCommands;
 	TSharedPtr<ProjectCleanerNotificationManager> NotificationManager;
-	TWeakPtr<SProjectCleanerDirectoryExclusionUI> DirectoryExclusionUI;
 	UExcludeDirectoriesFilterSettings* ExcludeDirectoryFilterSettings;
 
-	TWeakPtr<SProjectCleanerBrowserStatisticsUI> StatisticsUI;
 	TWeakPtr<SProjectCleanerUnusedAssetsBrowserUI> UnusedAssetsBrowserUI;
-	TWeakPtr<SProjectCleanerExcludedAssetsUI> ExcludedAssetsUI;
 	TWeakPtr<SProjectCleanerNonUassetFilesUI> NonUassetFilesUI;
+	TWeakPtr<SProjectCleanerBrowserStatisticsUI> StatisticsUI;
 	TWeakPtr<SProjectCleanerSourceCodeAssetsUI> SourceCodeAssetsUI;
+	TWeakPtr<SProjectCleanerDirectoryExclusionUI> DirectoryExclusionUI;
 	TWeakPtr<SProjectCleanerCorruptedFilesUI> CorruptedFilesUI;
 
 	/** Data Containers */ 
 	TArray<FAssetData> UnusedAssets;
-	TSet<FAssetData> ExcludedAssets;
 	TSet<FName> EmptyFolders;
 	TSet<FName> NonUassetFiles;
 	TArray<FNode> AdjacencyList;
@@ -127,14 +124,4 @@ private:
 	TArray<TWeakObjectPtr<USourceCodeAsset>> SourceCodeAssets;
 	FCleaningStats CleaningStats;
 	FStandardCleanerText StandardCleanerText;
-
-	/** Streamable Manager */
-	struct FStreamableManager* StreamableManager;
-	void OpenCorruptedFilesWindow();
-	/**
-	 * @brief Loads given Assets synchronously and checking for corrupted files and adding them to list.
-	 * @param Assets
-	 * @param CorruptedAssets
-	 */
-	void FindCorruptedAssets(const TArray<FAssetData>& Assets, TArray<FAssetData>& CorruptedAssets);
 };

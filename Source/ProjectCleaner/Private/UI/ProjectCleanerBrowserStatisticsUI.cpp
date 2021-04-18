@@ -142,32 +142,6 @@ void SProjectCleanerBrowserStatisticsUI::RefreshUIContent()
 				]
 			]
 			+ SVerticalBox::Slot()
-			.MaxHeight(20.0f)
-			.Padding(FMargin{0.0, 0.0f, 0.0f, 3.0f})
-			.HAlign(HAlign_Center)
-			[
-				// Unused Assets
-				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot()
-				.AutoWidth()
-				[
-					SNew(STextBlock)
-						.AutoWrapText(true)
-						.Text(LOCTEXT("corruptedfilesnum", "Corrupted Files Num - "))
-				]
-				+ SHorizontalBox::Slot()
-				.AutoWidth()
-				[
-					SNew(STextBlock)
-						.AutoWrapText(true)
-						.Text_Lambda(
-						[this]() -> FText
-						{
-							return FText::AsNumber(Stats.CorruptedFilesNum);
-						})
-				]
-			]
-			+ SVerticalBox::Slot()
 			  .MaxHeight(20.0f)
 			  .Padding(FMargin{0.0, 0.0f, 0.0f, 3.0f})
 			  .HAlign(HAlign_Center)

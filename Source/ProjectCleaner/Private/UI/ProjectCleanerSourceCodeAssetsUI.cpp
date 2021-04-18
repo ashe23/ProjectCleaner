@@ -20,7 +20,6 @@ void SProjectCleanerSourceCodeAssetsUI::RefreshUIContent()
 		FPaths::EngineContentDir() / TEXT("Slate/Fonts/Roboto-Light.ttf"),
 		20
 	);
-
 	
 	WidgetRef = SNew(SVerticalBox)
 		+SVerticalBox::Slot()
@@ -91,7 +90,7 @@ void SProjectCleanerSourceCodeAssetsUI::RefreshUIContent()
 	];
 }
 
-void SProjectCleanerSourceCodeAssetsUI::SetAssetsUsedInSourceCode(
+void SProjectCleanerSourceCodeAssetsUI::SetSourceCodeAssets(
 	TArray<TWeakObjectPtr<USourceCodeAsset>>& NewAssetsUsedInSourceCode)
 {
 	AssetsUsedInSourceCode.Reset();
