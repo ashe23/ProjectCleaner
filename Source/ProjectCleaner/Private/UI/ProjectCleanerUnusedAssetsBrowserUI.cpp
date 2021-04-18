@@ -12,7 +12,6 @@
 
 void SProjectCleanerUnusedAssetsBrowserUI::Construct(const FArguments& InArgs)
 {
-	// UnusedAssets = InArgs._UnusedAssets;
 	SetUnusedAssets(InArgs._UnusedAssets);
 
 	FProjectCleanerBrowserCommands::Register();
@@ -118,10 +117,9 @@ void SProjectCleanerUnusedAssetsBrowserUI::ExcludeAssets() const
 	if (!GetCurrentSelectionDelegate.IsBound()) return;
 
 	const TArray<FAssetData> CurrentSelection = GetCurrentSelectionDelegate.Execute();
-	if (CurrentSelection.Num() > 0)
-	{
-		OnAssetExcluded.ExecuteIfBound(CurrentSelection);
-	}
+	if (CurrentSelection.Num() == 0) return;
+	
+	OnAssetExcluded.ExecuteIfBound(CurrentSelection);
 }
 
 void SProjectCleanerUnusedAssetsBrowserUI::RefreshUIContent()

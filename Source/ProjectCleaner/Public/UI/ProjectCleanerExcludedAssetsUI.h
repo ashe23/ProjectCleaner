@@ -5,6 +5,8 @@
 #include "Widgets/SCompoundWidget.h"
 #include "Editor/ContentBrowser/Public/ContentBrowserDelegates.h"
 
+DECLARE_DELEGATE_OneParam(FOnAssetIncluded, const TArray<FAssetData>& /* Excluded Assets */);
+
 class SProjectCleanerExcludedAssetsUI : public SCompoundWidget
 {
 public:
@@ -15,13 +17,16 @@ public:
 	void Construct(const FArguments& InArgs);
 	void RefreshUIContent();
 	void SetExcludedAssets(const TSet<FAssetData>& NewExcludedAssets);
+
+	/** Delegates */
+	FOnAssetIncluded OnAssetIncluded;
 private:
 	TSharedPtr<SWidget> OnGetAssetContextMenu(const TArray<FAssetData>& SelectedAssets);
 	FGetCurrentSelectionDelegate GetCurrentSelectionDelegate;
 	bool IsAnythingSelected() const;
 	void AddForDeletion();
 	
-	TArray<FAssetData> ExcludedAssets;
+	TSet<FAssetData> ExcludedAssets;
 	TSharedRef<SWidget> WidgetRef = SNullWidget::NullWidget;
 	TSharedPtr<FUICommandList> Commands;
 };

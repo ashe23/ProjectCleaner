@@ -25,7 +25,6 @@
 #include "Framework/Commands/UICommandList.h"
 #include "Misc/ScopedSlowTask.h"
 #include "Widgets/SWeakWidget.h"
-#include "ShaderCompiler.h"
 
 DEFINE_LOG_CATEGORY(LogProjectCleaner);
 
@@ -133,6 +132,10 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
                         .UnusedAssets(UnusedAssets);
 	UnusedAssetsBrowserRef->OnAssetExcluded = FOnAssetExcluded::CreateRaw(this, &FProjectCleanerModule::ExcludeAssetsFromDeletionList);
 
+	const auto ExcludedAssetsUIRef = SAssignNew(ExcludedAssetsUI, SProjectCleanerExcludedAssetsUI)
+                        .ExcludedAssets(ExcludedAssets);
+	ExcludedAssetsUIRef->OnAssetIncluded = FOnAssetIncluded::CreateRaw(this, &FProjectCleanerModule::IncludeAssetsToDeletionList);
+
 	return SNew(SDockTab)
 		.TabRole(ETabRole::MajorTab)
 		[
@@ -206,10 +209,10 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 				[
 					SNew(SVerticalBox)
 					+ SVerticalBox::Slot()
+					.Padding(CommonMargin)
 					.AutoHeight()
 					[
-						SAssignNew(ExcludedAssetsUI, SProjectCleanerExcludedAssetsUI)
-						.ExcludedAssets(ExcludedAssets)
+						ExcludedAssetsUIRef
 					]
 				]
 				+ SScrollBox::Slot()
@@ -643,12 +646,20 @@ void FProjectCleanerModule::UpdateContentBrowser() const
 
 void FProjectCleanerModule::ExcludeAssetsFromDeletionList(const TArray<FAssetData>& Assets)
 {
-	UnusedAssets.RemoveAll([&](const FAssetData& Asset)
+	
+	UpdateStats();
+}
+
+void FProjectCleanerModule::IncludeAssetsToDeletionList(const TArray<FAssetData>& Assets)
+{
+	if (Assets.Num() == 0) return;
+	
+	for (const auto& Asset : Assets)
 	{
-		return Assets.Contains(Asset);
-	});
-	// adding them to excluded
-	ExcludedAssets.Append(Assets);
+		UnusedAssets.AddUnique(Asset);
+	}
+
+	ExcludedAssets.Empty();
 
 	UpdateStats();
 }

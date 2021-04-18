@@ -62,7 +62,7 @@ void SProjectCleanerExcludedAssetsUI::RefreshUIContent()
 	
 	WidgetRef = SNew(SVerticalBox)
 	+ SVerticalBox::Slot()
-	.Padding(FMargin{40.0f})
+	.Padding(FMargin{0.0f, 20.0f})
 	.AutoHeight()
 	[
 		SNew(SVerticalBox)
@@ -76,7 +76,7 @@ void SProjectCleanerExcludedAssetsUI::RefreshUIContent()
 		]
 	]
 	+ SVerticalBox::Slot()
-	.Padding(FMargin{40.0f})
+	// .Padding(FMargin{40.0f})
 	.AutoHeight()
 	[
 		ContentBrowser.Get().CreateAssetPicker(Config)
@@ -90,12 +90,9 @@ void SProjectCleanerExcludedAssetsUI::RefreshUIContent()
 
 void SProjectCleanerExcludedAssetsUI::SetExcludedAssets(const TSet<FAssetData>& NewExcludedAssets)
 {
-	if (NewExcludedAssets.Num() == 0) return;
-
-	for(const auto& File : NewExcludedAssets)
-	{
-		ExcludedAssets.Add(File);
-	}
+	ExcludedAssets.Reset();
+	ExcludedAssets.Reserve(NewExcludedAssets.Num());
+	ExcludedAssets = NewExcludedAssets;
 	
 	RefreshUIContent();
 }
@@ -131,5 +128,7 @@ void SProjectCleanerExcludedAssetsUI::AddForDeletion()
 
 	const TArray<FAssetData> CurrentSelection = GetCurrentSelectionDelegate.Execute();
 
-	// todo:ashe23 return selected assets to deletion list
+	if (CurrentSelection.Num() == 0) return;
+	
+	OnAssetIncluded.ExecuteIfBound(CurrentSelection);
 }

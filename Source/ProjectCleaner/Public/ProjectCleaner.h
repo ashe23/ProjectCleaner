@@ -50,6 +50,7 @@ public:
 
 	/** Delegates */
 	void ExcludeAssetsFromDeletionList(const TArray<FAssetData>& Assets);
+	void IncludeAssetsToDeletionList(const TArray<FAssetData>& Assets);
 private:
 	void InitModuleComponents();
 	void AddToolbarExtension(FToolBarBuilder& Builder);
