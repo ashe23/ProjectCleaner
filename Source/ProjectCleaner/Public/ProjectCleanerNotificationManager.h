@@ -3,7 +3,6 @@
 #pragma once
 
 #include "StructsContainer.h"
-
 // Engine Headers
 #include "Widgets/Notifications/SNotificationList.h"
 #include "CoreMinimal.h"
@@ -43,14 +42,18 @@ public:
 	 * @param Stats 
 	 */
 	void Update(TWeakPtr<SNotificationItem> NotificationManager, const FCleaningStats& Stats) const;
-	void Hide(TWeakPtr<SNotificationItem> NotificationManager) const;
+
+	
+	/**
+	 * @brief Hides already existing notification
+	 * @param NotificationManager 
+	 * @param FinalText 
+	 */
+	void Hide(TWeakPtr<SNotificationItem> NotificationManager, const FText& FinalText) const;
 
 	/**
 	 * @brief Reset given notification
 	 * @param NotificationManager 
 	 */
 	static void Reset(TWeakPtr<SNotificationItem> NotificationManager);
-
-
-	FCleaningStats CachedStats;
 };

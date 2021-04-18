@@ -10,7 +10,7 @@ void FProjectCleanerCommands::RegisterCommands()
 		PluginAction,
 		"ProjectCleaner",
 		"Delete unused assets and empty folders.",
-		EUserInterfaceActionType::Button, FInputGesture()
+		EUserInterfaceActionType::Button, FInputChord()
 	);
 }
 

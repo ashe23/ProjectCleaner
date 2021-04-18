@@ -1,5 +1,7 @@
 // Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
+using System;
+using System.IO;
 using UnrealBuildTool;
 
 public class ProjectCleaner : ModuleRules
@@ -7,12 +9,11 @@ public class ProjectCleaner : ModuleRules
 	public ProjectCleaner(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
-
+		
 		PublicIncludePaths.AddRange(
 			new string[]
 			{
 				"Runtime/Slate/Public",
-				// ... add public include paths required here ...
 			}
 		);
 
@@ -20,7 +21,6 @@ public class ProjectCleaner : ModuleRules
 		PrivateIncludePaths.AddRange(
 			new string[]
 			{
-				// ... add other private include paths required here ...
 			}
 		);
 
@@ -29,7 +29,6 @@ public class ProjectCleaner : ModuleRules
 			new string[]
 			{
 				"Core",
-				// ... add other public dependencies that you statically link with here ...
 			}
 		);
 
@@ -49,7 +48,6 @@ public class ProjectCleaner : ModuleRules
 				"EditorStyle",
 				"PropertyEditor",
 				"UnrealEd",
-				// ... add private dependencies that you statically link with here ...	
 			}
 		);
 
@@ -57,7 +55,6 @@ public class ProjectCleaner : ModuleRules
 		DynamicallyLoadedModuleNames.AddRange(
 			new string[]
 			{
-				// ... add any modules that your module loads dynamically here ...
 			}
 		);
 	}
