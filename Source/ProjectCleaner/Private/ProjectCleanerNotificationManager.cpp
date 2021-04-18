@@ -52,23 +52,14 @@ void ProjectCleanerNotificationManager::Update(TWeakPtr<SNotificationItem> Notif
 	}
 }
 
-void ProjectCleanerNotificationManager::Hide(TWeakPtr<SNotificationItem> NotificationManager) const
+void ProjectCleanerNotificationManager::Hide(TWeakPtr<SNotificationItem> NotificationManager, const FText& FinalText) const
 {
 	if (!NotificationManager.IsValid()) return;
 
-	// Resetting old notification
+	NotificationManager.Pin()->SetText(FinalText);
 	NotificationManager.Pin()->SetCompletionState(SNotificationItem::CS_Success);
 	NotificationManager.Pin()->SetFadeOutDuration(5.0f);
-	NotificationManager.Pin()->ExpireAndFadeout();
-	NotificationManager.Reset();
-
-	// New notification about success
-	FNotificationInfo Info(FText::FromString(
-		FString::Printf(TEXT("Deleted %d asset and %d empty folder."), CachedStats.DeletedAssetCount,
-		                CachedStats.EmptyFolders)));
-	Info.ExpireDuration = 10.0f;
-
-	NotificationManager = FSlateNotificationManager::Get().AddNotification(Info);
+	NotificationManager.Pin()->Fadeout();
 }
 
 void ProjectCleanerNotificationManager::Reset(TWeakPtr<SNotificationItem> NotificationManager)

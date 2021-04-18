@@ -21,7 +21,7 @@ void SProjectCleanerCorruptedFilesUI::RefreshUIContent()
 	Config.bForceShowEngineContent = false;
 	Config.bShowBottomToolbar = true;
 	Config.bCanShowDevelopersFolder = false;
-	Config.bAllowDragging = false;	
+	Config.bAllowDragging = false;
 	Config.AssetShowWarningText = FText::FromName("No assets");
 
 	FARFilter Filter;
@@ -53,12 +53,12 @@ void SProjectCleanerCorruptedFilesUI::RefreshUIContent()
 	[
 		SNew(SVerticalBox)
 		+SVerticalBox::Slot()
-		.AutoHeight()    	
+		.AutoHeight()
 		[
 			SNew(STextBlock)
 			.AutoWrapText(true)
 			.Font(FSlateFontInfo(FPaths::EngineContentDir() / TEXT("Slate/Fonts/Roboto-Light.ttf"),20))
-			.Text(LOCTEXT("corruptedfiles", "Failed to delete these assets"))
+			.Text(LOCTEXT("corruptedfiles", "Assets below are failed to load and possibly corrupted"))
 		]
 		+SVerticalBox::Slot()
 		.AutoHeight()
@@ -66,8 +66,8 @@ void SProjectCleanerCorruptedFilesUI::RefreshUIContent()
 		[
 			SNew(STextBlock)
 			.AutoWrapText(true)
-			.Font(FSlateFontInfo(FPaths::EngineContentDir() / TEXT("Slate/Fonts/Roboto-Light.ttf"),8))
-			.Text(LOCTEXT("corruptedfilesfixtext", "To fix this files close the Editor and delete them manually from Windows Explorer"))
+			.Font(FSlateFontInfo(FPaths::EngineContentDir() / TEXT("Slate/Fonts/Roboto-Light.ttf"),10))
+			.Text(LOCTEXT("corruptedfilesfixtext", "To fix them:\n\t1.Close Editor\n\t2.Delete that files manually from Windows explorer"))
 		]
 	]
 	+ SVerticalBox::Slot()

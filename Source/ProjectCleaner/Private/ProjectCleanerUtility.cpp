@@ -14,7 +14,6 @@
 #include "FileHelpers.h"
 #include "Misc/ScopedSlowTask.h"
 #include "IContentBrowserSingleton.h"
-#include "Editor/ContentBrowser/Public/ContentBrowserModule.h"
 
 #pragma optimize("", off)
 
@@ -91,20 +90,6 @@ void ProjectCleanerUtility::DeleteEmptyFolders(TSet<FName>& EmptyFolders)
 			AssetRegistryModule.Get().RemovePath(DirPath);
 		}
 	}
-
-
-	// todo:ashe23 move this part to other place?
-	TArray<FString> Paths;
-	Paths.Add("/Game");
-	AssetRegistryModule.Get().ScanPathsSynchronous(Paths, true);
-	AssetRegistryModule.Get().SearchAllAssets(true);
-
-	FContentBrowserModule& CBModule = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
-	TArray<FString> FocusFolders;
-	FocusFolders.Add("/Game");
-	CBModule.Get().SetSelectedPaths(FocusFolders, true);
-
-	EmptyFolders.Empty();
 }
 
 int32 ProjectCleanerUtility::GetEmptyFolders(TSet<FName>& EmptyFolders)

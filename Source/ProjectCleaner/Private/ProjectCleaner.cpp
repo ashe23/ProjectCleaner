@@ -9,6 +9,7 @@
 #include "UI/ProjectCleanerNonUassetFilesUI.h"
 // Engine Headers
 #include "AssetRegistryModule.h"
+#include "ContentBrowserModule.h"
 #include "Misc/MessageDialog.h"
 #include "LevelEditor.h"
 #include "Framework/MultiBox/MultiBoxBuilder.h"
@@ -16,6 +17,7 @@
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "EditorStyleSet.h"
+#include "IContentBrowserSingleton.h"
 #include "GenericPlatform/GenericPlatformMisc.h"
 #include "AssetRegistry/Public/AssetData.h"
 #include "Framework/Notifications/NotificationManager.h"
@@ -222,7 +224,7 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 					  .AutoHeight()
 					[
 						SAssignNew(SourceCodeAssetsUI, SProjectCleanerSourceCodeAssetsUI)
-						.AssetsUsedInSourceCode(SourceCodeAssets)
+						.SourceCodeAssets(SourceCodeAssets)
 					]
 				]
 			]
@@ -339,15 +341,27 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 			OpenCorruptedFilesWindow();
 		}
 	}
+
+	NotificationManager->Hide(
+		CleaningNotificationPtr,
+		FText::FromString(FString::Printf(TEXT("Deleted %d assets."), CleaningStats.DeletedAssetCount))
+	);
 	
-	NotificationManager->CachedStats = CleaningStats;
 	UpdateCleanerData();
 	
 	// Delete all empty folder
-	ProjectCleanerUtility::DeleteEmptyFolders(EmptyFolders);
-	NotificationManager->CachedStats.EmptyFolders = EmptyFolders.Num();
-	NotificationManager->Hide(CleaningNotificationPtr);
-	
+	ProjectCleanerUtility::DeleteEmptyFolders(EmptyFolders);	
+	const FString PostFixText = CleaningStats.EmptyFolders > 1 ? TEXT(" empty folders") : TEXT(" empty folder");
+	const FString DisplayText = FString{"Deleted "} + FString::FromInt(CleaningStats.EmptyFolders) + PostFixText;
+	NotificationManager->AddTransient(
+        DisplayText,
+        SNotificationItem::ECompletionState::CS_Success,
+        10.0f
+    );
+
+	UpdateCleanerData();
+	UpdateContentBrowser();
+
 	return FReply::Handled();
 }
 
@@ -580,9 +594,9 @@ void FProjectCleanerModule::UpdateContentBrowser() const
 	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
 	AssetRegistryModule.Get().ScanPathsSynchronous(FocusFolders, true);
 	AssetRegistryModule.Get().SearchAllAssets(true);
-
-	// FContentBrowserModule& CBModule = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
-	// CBModule.Get().SyncBrowserToFolders(FocusFolders);
+	
+	FContentBrowserModule& CBModule = FModuleManager::Get().GetModuleChecked<FContentBrowserModule>("ContentBrowser");
+	CBModule.Get().SetSelectedPaths(FocusFolders, true);
 }
 
 

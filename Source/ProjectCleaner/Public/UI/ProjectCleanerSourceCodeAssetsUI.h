@@ -73,13 +73,13 @@ class SProjectCleanerSourceCodeAssetsUI : public SCompoundWidget
 {
 public:
 	SLATE_BEGIN_ARGS(SProjectCleanerSourceCodeAssetsUI) {}
-		SLATE_ARGUMENT(TArray<TWeakObjectPtr<USourceCodeAsset>>, AssetsUsedInSourceCode)
+		SLATE_ARGUMENT(TArray<TWeakObjectPtr<USourceCodeAsset>>, SourceCodeAssets)
 	SLATE_END_ARGS()
 
 	
 	void Construct(const FArguments& InArgs);
 	void RefreshUIContent();
-	void SetSourceCodeAssets(TArray<TWeakObjectPtr<USourceCodeAsset>>& NewAssetsUsedInSourceCode);
+	void SetSourceCodeAssets(TArray<TWeakObjectPtr<USourceCodeAsset>>& NewSourceCodeAssets);
 private:
 	TSharedRef<ITableRow> OnGenerateRow(TWeakObjectPtr<USourceCodeAsset> InItem, const TSharedRef<STableViewBase>& OwnerTable);
 	void OnMouseDoubleClick(TWeakObjectPtr<USourceCodeAsset> Item);

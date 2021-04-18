@@ -163,7 +163,7 @@ void SProjectCleanerUnusedAssetsBrowserUI::RefreshUIContent()
 	        SNew(STextBlock)
 		    .AutoWrapText(true)
 		    .Font(FSlateFontInfo(FPaths::EngineContentDir() / TEXT("Slate/Fonts/Roboto-Light.ttf"),20))
-		    .Text(LOCTEXT("cleanernotetext", "Unused assets are all assets, that are not used in any level.\nSo before starting make sure you delete all levels that never used in project."))
+		    .Text(LOCTEXT("cleanernotetext", "Unused assets are those, that are not used in any level.\nSo before starting make sure you delete all levels that never used in project."))
         ]
     ]
 	+ SVerticalBox::Slot()

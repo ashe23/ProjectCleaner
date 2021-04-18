@@ -4,7 +4,7 @@
 
 void SProjectCleanerSourceCodeAssetsUI::Construct(const FArguments& InArgs)
 {
-	AssetsUsedInSourceCode = InArgs._AssetsUsedInSourceCode;
+	AssetsUsedInSourceCode = InArgs._SourceCodeAssets;
 
 	RefreshUIContent();
  
@@ -91,12 +91,12 @@ void SProjectCleanerSourceCodeAssetsUI::RefreshUIContent()
 }
 
 void SProjectCleanerSourceCodeAssetsUI::SetSourceCodeAssets(
-	TArray<TWeakObjectPtr<USourceCodeAsset>>& NewAssetsUsedInSourceCode)
+	TArray<TWeakObjectPtr<USourceCodeAsset>>& NewSourceCodeAssets)
 {
 	AssetsUsedInSourceCode.Reset();
-	AssetsUsedInSourceCode.Reserve(NewAssetsUsedInSourceCode.Num());
+	AssetsUsedInSourceCode.Reserve(NewSourceCodeAssets.Num());
 	
-	AssetsUsedInSourceCode = NewAssetsUsedInSourceCode;
+	AssetsUsedInSourceCode = NewSourceCodeAssets;
 
 	RefreshUIContent();
 }
