@@ -7,7 +7,6 @@
 #include "Widgets/Layout/SScrollBox.h"
 #include "Toolkits/GlobalEditorCommonCommands.h"
 
-
 #define LOCTEXT_NAMESPACE "FProjectCleanerModule"
 
 void SProjectCleanerUnusedAssetsBrowserUI::Construct(const FArguments& InArgs)
@@ -26,11 +25,11 @@ void SProjectCleanerUnusedAssetsBrowserUI::Construct(const FArguments& InArgs)
 			FExecuteAction::CreateRaw(this, &SProjectCleanerUnusedAssetsBrowserUI::FindInContentBrowser),
 			FCanExecuteAction::CreateRaw(this, &SProjectCleanerUnusedAssetsBrowserUI::IsAnythingSelected)
 		)
-	);	
+	);
 	Commands->MapAction(FProjectCleanerBrowserCommands::Get().DeleteAsset, FUIAction(
 	FExecuteAction::CreateRaw(this, &SProjectCleanerUnusedAssetsBrowserUI::DeleteAsset),
 		FCanExecuteAction::CreateRaw(this, &SProjectCleanerUnusedAssetsBrowserUI::IsAnythingSelected)
-	));	
+	));
 
 	RefreshUIContent();
 }
@@ -47,8 +46,7 @@ void SProjectCleanerUnusedAssetsBrowserUI::SetUnusedAssets(const TArray<FAssetDa
 	RefreshUIContent();
 }
 
-TSharedPtr<SWidget> SProjectCleanerUnusedAssetsBrowserUI::OnGetAssetContextMenu(
-	const TArray<FAssetData>& SelectedAssets)
+TSharedPtr<SWidget> SProjectCleanerUnusedAssetsBrowserUI::OnGetAssetContextMenu(const TArray<FAssetData>& SelectedAssets)
 {
 	FMenuBuilder MenuBuilder{true, Commands};
 	MenuBuilder.BeginSection(
@@ -61,7 +59,6 @@ TSharedPtr<SWidget> SProjectCleanerUnusedAssetsBrowserUI::OnGetAssetContextMenu(
 	}
 	MenuBuilder.EndSection();
 
-
 	return MenuBuilder.MakeWidget();
 }
 
@@ -70,7 +67,7 @@ void SProjectCleanerUnusedAssetsBrowserUI::OnAssetDblClicked(const FAssetData& A
 	TArray<FName> AssetNames;
 	AssetNames.Add(AssetData.ObjectPath);
 
-	GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->OpenEditorsForAssets(AssetNames);	
+	GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->OpenEditorsForAssets(AssetNames);
 }
 
 void SProjectCleanerUnusedAssetsBrowserUI::FindInContentBrowser() const
@@ -80,9 +77,8 @@ void SProjectCleanerUnusedAssetsBrowserUI::FindInContentBrowser() const
 	const TArray<FAssetData> CurrentSelection = GetCurrentSelectionDelegate.Execute();
 	if (CurrentSelection.Num() > 0)
 	{
-		FContentBrowserModule& ContentBrowserModule = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>(
-			"ContentBrowser");
-		ContentBrowserModule.Get().SyncBrowserToAssets(CurrentSelection);
+		FContentBrowserModule& CBModule = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
+		CBModule.Get().SyncBrowserToAssets(CurrentSelection);
 	}
 }
 
@@ -153,19 +149,19 @@ void SProjectCleanerUnusedAssetsBrowserUI::RefreshUIContent()
 	FContentBrowserModule& ContentBrowser = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
 	WidgetRef = SNew(SVerticalBox)
 	+ SVerticalBox::Slot()
-    .AutoHeight()
-    .Padding(FMargin{0.0f, 0.0f, 0.0f, 20.0f})
-    [
-        SNew(SBorder)
-        .Padding(30.0f)
-        .BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
-        [
-	        SNew(STextBlock)
-		    .AutoWrapText(true)
-		    .Font(FSlateFontInfo(FPaths::EngineContentDir() / TEXT("Slate/Fonts/Roboto-Light.ttf"),20))
-		    .Text(LOCTEXT("cleanernotetext", "Unused assets are those, that are not used in any level.\nSo before starting make sure you delete all levels that never used in project."))
-        ]
-    ]
+	.AutoHeight()
+	.Padding(FMargin{0.0f, 0.0f, 0.0f, 20.0f})
+	[
+		SNew(SBorder)
+		.Padding(30.0f)
+		.BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
+		[
+			SNew(STextBlock)
+			.AutoWrapText(true)
+			.Font(FSlateFontInfo(FPaths::EngineContentDir() / TEXT("Slate/Fonts/Roboto-Light.ttf"),20))
+			.Text(LOCTEXT("cleanernotetext", "Unused assets are those, that are not used in any level.\nSo before starting make sure you delete all levels that never used in project."))
+		]
+	]
 	+ SVerticalBox::Slot()
 	.AutoHeight()
 	.Padding(20.0f)

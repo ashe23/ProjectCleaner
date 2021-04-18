@@ -33,8 +33,8 @@ public:
 	 * @return bool
 	 */
 	static bool GetAllEmptyDirectories(const FString& SearchPath,
-	                                   TSet<FName>& Directories,
-	                                   const bool bIsRootDirectory);
+										TSet<FName>& Directories,
+										const bool bIsRootDirectory);
 
 	/**
 	 * @brief Finds all child directions in given path
@@ -100,6 +100,7 @@ public:
 	 * @param Assets 
 	 */
 	static void GetAllAssets(TArray<FAssetData>& Assets);
+	
 	/**
 	 * @brief Saves all unsaved assets
 	 */
@@ -154,14 +155,34 @@ public:
 	*/
 	static int64 GetTotalSize(const TArray<FAssetData>& AssetContainer);
 
-
-	/// =================== REFACTORING START HERE ============================
+	/**
+	 * @brief Checks if folder in given path is empty or not
+	 * @param Path 
+	 * @return bool
+	 */
 	static bool IsEmptyDirectory(const FString& Path);
 
+	/**
+	 * @brief Checks if given extension is ".uasset" or ".umap"
+	 * @param Extension 
+	 * @return bool
+	 */
 	static bool IsEngineExtension(const FString& Extension);
 
+	/**
+	 * @brief Converts given relative path to absolute path
+	 * @param PackageName 
+	 * @return FString
+	 */
 	static FString ConvertRelativeToAbsolutePath(const FName& PackageName);
 	
+	/**
+	 * @brief Checks if given asset used in source code files or not
+	 * @param Asset 
+	 * @param SourceFiles 
+	 * @param SourceCodeFiles 
+	 * @return bool
+	 */
 	static bool UsedInSourceFiles(
 		const FAssetData& Asset,
 		TArray<FSourceCodeFile>& SourceFiles,
@@ -189,8 +210,21 @@ public:
 	 */
 	static void RemoveUsedAssets(TArray<FAssetData>& Assets);
 
+	/**
+	 * @brief Removes assets that has external ref assets outside "Game" folder
+	 * Example is Megascans plugin, whose default materials is in "Engine/Plugin/Content" folder
+	 * @param Assets 
+	 * @param List 
+	 */
 	static void RemoveAssetsWithExternalDependencies(TArray<FAssetData>& Assets, TArray<FNode>& List);
 
+	/**
+	 * @brief Removes from given assets list those ones, which used in source code files
+	 * @param Assets 
+	 * @param List 
+	 * @param SourceCodeFiles 
+	 * @param SourceCodeAssets 
+	 */
 	static void RemoveAssetsUsedInSourceCode(
 			TArray<FAssetData>& Assets,
 			TArray<FNode>& List,
@@ -198,6 +232,13 @@ public:
 			TArray<TWeakObjectPtr<USourceCodeAsset>>& SourceCodeAssets
 	);
 
+	/**
+	 * @brief Removes all assets that are under given path defined by user
+	 * Function also removes all related assets from list
+	 * @param Assets 
+	 * @param List 
+	 * @param DirectoryFilterSettings 
+	 */
 	static void RemoveAssetsExcludedByUser(
 		TArray<FAssetData>& Assets,
 		TArray<FNode>& List,

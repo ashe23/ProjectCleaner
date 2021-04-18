@@ -34,11 +34,11 @@ void Construct(const FArguments& InArgs, const TSharedRef<STableViewBase>& InOwn
 		SelectedRowItem = InArgs._SelectedRowItem;
 
 		SMultiColumnTableRow<TWeakObjectPtr<USourceCodeAsset>>::Construct(
-        SMultiColumnTableRow<TWeakObjectPtr<USourceCodeAsset>>::FArguments()
-        .Padding(
-            FMargin(0.f, 2.f, 0.f, 0.f)),
-            InOwnerTableView
-        );
+		SMultiColumnTableRow<TWeakObjectPtr<USourceCodeAsset>>::FArguments()
+		.Padding(
+			FMargin(0.f, 2.f, 0.f, 0.f)),
+			InOwnerTableView
+		);
 	}
 
 	virtual TSharedRef<SWidget> GenerateWidgetForColumn(const FName& InColumnName) override

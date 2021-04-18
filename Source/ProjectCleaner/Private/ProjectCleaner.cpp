@@ -33,7 +33,6 @@ static const FName ProjectCleanerTabName("ProjectCleaner");
 
 #define LOCTEXT_NAMESPACE "FProjectCleanerModule"
 
-#pragma optimize("", off)
 void FProjectCleanerModule::StartupModule()
 {
 	FProjectCleanerStyle::Initialize();
@@ -133,7 +132,7 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 	const FMargin CommonMargin = FMargin{20.0f, 20.0f};
 
 	const auto UnusedAssetsUIRef = SAssignNew(UnusedAssetsBrowserUI, SProjectCleanerUnusedAssetsBrowserUI)
-                        .UnusedAssets(UnusedAssets);
+						.UnusedAssets(UnusedAssets);
 	UnusedAssetsUIRef->OnUserDeletedAssets = FOnUserDeletedAssets::CreateRaw(this, &FProjectCleanerModule::OnUserDeletedAssets);
 
 	return SNew(SDockTab)
@@ -148,15 +147,15 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 				[
 					SNew(SVerticalBox)
 					+ SVerticalBox::Slot()
-					  .Padding(CommonMargin)
-					  .AutoHeight()
+					.Padding(CommonMargin)
+					.AutoHeight()
 					[
 						SAssignNew(StatisticsUI, SProjectCleanerBrowserStatisticsUI)
 						.Stats(CleaningStats)
 					]
 					+ SVerticalBox::Slot()
-					  .Padding(CommonMargin)
-					  .AutoHeight()
+					.Padding(CommonMargin)
+					.AutoHeight()
 					[
 						SNew(SBorder)
 						.Padding(FMargin(10))
@@ -198,8 +197,8 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 				[
 					SNew(SVerticalBox)
 					+ SVerticalBox::Slot()
-					  .Padding(CommonMargin)
-					  .AutoHeight()
+					.Padding(CommonMargin)
+					.AutoHeight()
 					[
 						SAssignNew(DirectoryExclusionUI, SProjectCleanerDirectoryExclusionUI)
 						.ExcludeDirectoriesFilterSettings(ExcludeDirectoryFilterSettings)
@@ -209,8 +208,8 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 				[
 					SNew(SVerticalBox)
 					+ SVerticalBox::Slot()
-					  .Padding(CommonMargin)
-					  .AutoHeight()
+					.Padding(CommonMargin)
+					.AutoHeight()
 					[
 						SAssignNew(NonUassetFilesUI, SProjectCleanerNonUassetFilesUI)
 						.NonUassetFiles(NonUassetFiles)
@@ -220,8 +219,8 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 				[
 					SNew(SVerticalBox)
 					+ SVerticalBox::Slot()
-					  .Padding(CommonMargin)
-					  .AutoHeight()
+					.Padding(CommonMargin)
+					.AutoHeight()
 					[
 						SAssignNew(SourceCodeAssetsUI, SProjectCleanerSourceCodeAssetsUI)
 						.SourceCodeAssets(SourceCodeAssets)
@@ -236,8 +235,8 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 				[
 					SNew(SVerticalBox)
 					+ SVerticalBox::Slot()
-					  .Padding(CommonMargin)
-					  .AutoHeight()
+					.Padding(CommonMargin)
+					.AutoHeight()
 					[
 						UnusedAssetsUIRef
 					]
@@ -354,10 +353,10 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 	const FString PostFixText = CleaningStats.EmptyFolders > 1 ? TEXT(" empty folders") : TEXT(" empty folder");
 	const FString DisplayText = FString{"Deleted "} + FString::FromInt(CleaningStats.EmptyFolders) + PostFixText;
 	NotificationManager->AddTransient(
-        DisplayText,
-        SNotificationItem::ECompletionState::CS_Success,
-        10.0f
-    );
+		DisplayText,
+		SNotificationItem::ECompletionState::CS_Success,
+		10.0f
+	);
 
 	UpdateCleanerData();
 	UpdateContentBrowser();
@@ -599,9 +598,6 @@ void FProjectCleanerModule::UpdateContentBrowser() const
 	CBModule.Get().SetSelectedPaths(FocusFolders, true);
 }
 
-
-
-#pragma optimize("", on)
 #undef LOCTEXT_NAMESPACE
 
 IMPLEMENT_MODULE(FProjectCleanerModule, ProjectCleaner)

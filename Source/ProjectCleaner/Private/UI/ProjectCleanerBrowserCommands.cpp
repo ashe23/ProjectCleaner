@@ -22,20 +22,20 @@ void FProjectCleanerBrowserCommands::RegisterCommands()
 	);
 
 	UI_COMMAND(
-        ExcludeFromDeletion,
-        "Dont delete this Asset...",
-        "Exclude asset from deletion list",
-        EUserInterfaceActionType::Button,
-        FInputChord()
-    );
+		ExcludeFromDeletion,
+		"Dont delete this Asset...",
+		"Exclude asset from deletion list",
+		EUserInterfaceActionType::Button,
+		FInputChord()
+	);
 
 	UI_COMMAND(
-        AddForDeletion,
-        "Delete asset...",
-        "Add asset to deletion list",
-        EUserInterfaceActionType::Button,
-        FInputChord()
-    );
+		AddForDeletion,
+		"Delete asset...",
+		"Add asset to deletion list",
+		EUserInterfaceActionType::Button,
+		FInputChord()
+	);
 }
 
 #undef LOCTEXT_NAMESPACE

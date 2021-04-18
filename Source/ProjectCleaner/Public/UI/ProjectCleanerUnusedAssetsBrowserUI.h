@@ -20,7 +20,6 @@ public:
 	/** Delegates */
 	FOnUserDeletedAssets OnUserDeletedAssets;
 private:
-	// UI specific stuff start
 	TSharedPtr<SWidget> OnGetAssetContextMenu(const TArray<FAssetData>& SelectedAssets);
 	void OnAssetDblClicked(const FAssetData& AssetData) const;
 	void FindInContentBrowser() const;
@@ -30,7 +29,6 @@ private:
 	/** Delegate to interact with asset view */
 	FGetCurrentSelectionDelegate GetCurrentSelectionDelegate;
 	TSharedPtr<FUICommandList> Commands;
-	// UI specific stuff end
 	
 	TArray<FAssetData> UnusedAssets;
 	TSharedRef<SWidget> WidgetRef = SNullWidget::NullWidget;

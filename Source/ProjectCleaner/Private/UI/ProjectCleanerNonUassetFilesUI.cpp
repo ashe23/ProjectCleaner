@@ -20,7 +20,7 @@ void SProjectCleanerNonUassetFilesUI::SetNonUassetFiles(const TSet<FName>& NewNo
 		NonUassetFile->FileName = FPaths::GetBaseFilename(File.ToString()) + "." + FPaths::GetExtension(File.ToString());
 		NonUassetFile->FilePath = File.ToString();
 		NonUassetFiles.AddUnique(NonUassetFile);
-	}	
+	}
 
 	RefreshUIContent();
 }

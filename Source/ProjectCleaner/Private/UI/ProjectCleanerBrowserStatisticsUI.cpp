@@ -37,8 +37,8 @@ void SProjectCleanerBrowserStatisticsUI::RefreshUIContent()
 		[
 			SNew(SHorizontalBox)
 			+ SHorizontalBox::Slot()
-			  .AutoWidth()
-			  .VAlign(VAlign_Top)
+			.AutoWidth()
+			.VAlign(VAlign_Top)
 			[
 				SNew(STextBlock)
 					.AutoWrapText(true)
@@ -72,9 +72,9 @@ void SProjectCleanerBrowserStatisticsUI::RefreshUIContent()
 				]
 			]
 			+ SVerticalBox::Slot()
-			  .MaxHeight(20.0f)
-			  .Padding(FMargin{0.0, 0.0f, 0.0f, 3.0f})
-			  .HAlign(HAlign_Center)
+			.MaxHeight(20.0f)
+			.Padding(FMargin{0.0, 0.0f, 0.0f, 3.0f})
+			.HAlign(HAlign_Center)
 			[
 				// Unused Assets
 				SNew(SHorizontalBox)
@@ -94,9 +94,9 @@ void SProjectCleanerBrowserStatisticsUI::RefreshUIContent()
 				]
 			]
 			+ SVerticalBox::Slot()
-			  .MaxHeight(20.0f)
-			  .Padding(FMargin{0.0, 0.0f, 0.0f, 3.0f})
-			  .HAlign(HAlign_Center)
+			.MaxHeight(20.0f)
+			.Padding(FMargin{0.0, 0.0f, 0.0f, 3.0f})
+			.HAlign(HAlign_Center)
 			[
 				// Unused Assets
 				SNew(SHorizontalBox)
@@ -142,9 +142,9 @@ void SProjectCleanerBrowserStatisticsUI::RefreshUIContent()
 				]
 			]
 			+ SVerticalBox::Slot()
-			  .MaxHeight(20.0f)
-			  .Padding(FMargin{0.0, 0.0f, 0.0f, 3.0f})
-			  .HAlign(HAlign_Center)
+			.MaxHeight(20.0f)
+			.Padding(FMargin{0.0, 0.0f, 0.0f, 3.0f})
+			.HAlign(HAlign_Center)
 			[
 				// Unused Assets
 				SNew(SHorizontalBox)

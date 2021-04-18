@@ -15,8 +15,6 @@
 #include "Misc/ScopedSlowTask.h"
 #include "IContentBrowserSingleton.h"
 
-#pragma optimize("", off)
-
 bool ProjectCleanerUtility::HasFiles(const FString& SearchPath)
 {
 	TArray<FString> Files;
@@ -26,8 +24,8 @@ bool ProjectCleanerUtility::HasFiles(const FString& SearchPath)
 }
 
 bool ProjectCleanerUtility::GetAllEmptyDirectories(const FString& SearchPath,
-                                                   TSet<FName>& Directories,
-                                                   const bool bIsRootDirectory)
+													TSet<FName>& Directories,
+													const bool bIsRootDirectory)
 {
 	bool AllSubDirsEmpty = true;
 	TArray<FString> ChildDirectories;
@@ -239,7 +237,7 @@ void ProjectCleanerUtility::FindAllSourceFiles(TArray<FSourceCodeFile>& SourceFi
 }
 
 void ProjectCleanerUtility::LoadSourceCodeFilesContent(TArray<FString>& AllSourceFiles,
-                                                       TArray<FString>& SourceCodeFilesContent)
+														TArray<FString>& SourceCodeFilesContent)
 {
 	SourceCodeFilesContent.Reserve(AllSourceFiles.Num());
 
@@ -289,7 +287,7 @@ void ProjectCleanerUtility::SaveAllAssets()
 }
 
 void ProjectCleanerUtility::CreateAdjacencyList(TArray<FAssetData>& Assets, TArray<FNode>& List,
-                                                const bool OnlyProjectFiles)
+												const bool OnlyProjectFiles)
 {
 	if (Assets.Num() == 0) return;
 	
@@ -349,8 +347,8 @@ void ProjectCleanerUtility::CreateAdjacencyList(TArray<FAssetData>& Assets, TArr
 }
 
 void ProjectCleanerUtility::FindAllRelatedAssets(const FNode& Node,
-                                                 TSet<FName>& RelatedAssets,
-                                                 const TArray<FNode>& List)
+												 TSet<FName>& RelatedAssets,
+												 const TArray<FNode>& List)
 {
 	RelatedAssets.Add(Node.Asset);
 	for (const auto& Adj : Node.LinkedAssets)
@@ -371,7 +369,7 @@ void ProjectCleanerUtility::FindAllRelatedAssets(const FNode& Node,
 }
 
 void ProjectCleanerUtility::GetRootAssets(TArray<FAssetData>& RootAssets, TArray<FAssetData>& Assets,
-                                          TArray<FNode>& List)
+										  TArray<FNode>& List)
 {
 	// first we deleting cycle assets
 	// like Skeletal mesh, skeleton, and physical assets
@@ -444,8 +442,6 @@ int64 ProjectCleanerUtility::GetTotalSize(const TArray<FAssetData>& AssetContain
 	return Size;
 }
 
-
-// REFACTOR START HERE
 bool ProjectCleanerUtility::IsEmptyDirectory(const FString& Path)
 {
 	TArray<FString> FilesAndDirs;
@@ -464,9 +460,9 @@ FString ProjectCleanerUtility::ConvertRelativeToAbsolutePath(const FName& Packag
 	FString PackageFileName;
 	FString PackageFile;
 	if (
-        FPackageName::TryConvertLongPackageNameToFilename(PackageName.ToString(), PackageFileName) &&
-        FPackageName::FindPackageFileWithoutExtension(PackageFileName, PackageFile)
-    )
+		FPackageName::TryConvertLongPackageNameToFilename(PackageName.ToString(), PackageFileName) &&
+		FPackageName::FindPackageFileWithoutExtension(PackageFileName, PackageFile)
+	)
 	{
 		return FPaths::ConvertRelativePathToFull(PackageFile);
 	}
@@ -489,9 +485,9 @@ bool ProjectCleanerUtility::UsedInSourceFiles(
 		QuotedAssetName.Append(TEXT("\""));
 		
 		if (
-            File.Content.Contains(Asset.PackageName.ToString()) ||
-            File.Content.Contains(QuotedAssetName)
-        )
+			File.Content.Contains(Asset.PackageName.ToString()) ||
+			File.Content.Contains(QuotedAssetName)
+		)
 		{
 			auto Obj = NewObject<USourceCodeAsset>();
 			Obj->AssetName = Asset.AssetName.ToString();
@@ -566,9 +562,9 @@ void ProjectCleanerUtility::RemoveUsedAssets(TArray<FAssetData>& Assets)
 	}
 
 	Assets.RemoveAll([&](const FAssetData& Elem)
-    {
-        return UsedAssets.Contains(Elem.PackageName);
-    });
+	{
+		return UsedAssets.Contains(Elem.PackageName);
+	});
 }
 
 void ProjectCleanerUtility::RemoveAssetsWithExternalDependencies(TArray<FAssetData>& Assets, TArray<FNode>& List)
@@ -587,9 +583,9 @@ void ProjectCleanerUtility::RemoveAssetsWithExternalDependencies(TArray<FAssetDa
 	}
 
 	Assets.RemoveAll([&](const FAssetData& Asset)
-    {
-        return AssetsToRemove.Contains(Asset.PackageName);
-    });
+	{
+		return AssetsToRemove.Contains(Asset.PackageName);
+	});
 }
 
 void ProjectCleanerUtility::RemoveAssetsUsedInSourceCode(
@@ -599,7 +595,7 @@ void ProjectCleanerUtility::RemoveAssetsUsedInSourceCode(
 	TArray<TWeakObjectPtr<USourceCodeAsset>>& SourceCodeAssets)
 {
 	CreateAdjacencyList(Assets, List, true);
-    FindAllSourceFiles(SourceCodeFiles);
+	FindAllSourceFiles(SourceCodeFiles);
 
 	TSet<FName> RelatedAssets;
 	RelatedAssets.Reserve(Assets.Num());
@@ -608,9 +604,9 @@ void ProjectCleanerUtility::RemoveAssetsUsedInSourceCode(
 		if (UsedInSourceFiles(Asset, SourceCodeFiles, SourceCodeAssets))
 		{
 			const auto Node = List.FindByPredicate([&](const FNode& Elem)
-            {
-                return Elem.Asset.IsEqual(Asset.PackageName);
-            });
+			{
+				return Elem.Asset.IsEqual(Asset.PackageName);
+			});
 
 			if (Node)
 			{
@@ -620,9 +616,9 @@ void ProjectCleanerUtility::RemoveAssetsUsedInSourceCode(
 	}
 
 	Assets.RemoveAll([&](const FAssetData& Elem)
-    {
-        return RelatedAssets.Contains(Elem.PackageName);
-    });
+	{
+		return RelatedAssets.Contains(Elem.PackageName);
+	});
 }
 
 void ProjectCleanerUtility::RemoveAssetsExcludedByUser(
@@ -669,5 +665,3 @@ void ProjectCleanerUtility::RemoveAssetsExcludedByUser(
 		return RelatedAssets.Contains(Elem.PackageName);
 	});
 }
-
-#pragma optimize("", on)
