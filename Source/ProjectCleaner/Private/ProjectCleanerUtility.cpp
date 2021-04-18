@@ -189,38 +189,6 @@ int32 ProjectCleanerUtility::DeleteAssets(TArray<FAssetData>& Assets)
 	return DeletedAssets;
 }
 
-// void ProjectCleanerUtility::FindNonProjectFiles(const FString& SearchPath,
-//                                                 TArray<TWeakObjectPtr<UNonUassetFile>>& NonUassetFiles)
-// {
-// 	// Project Directories may contain non .uasset files, which wont be shown in content browser,
-// 	// Or there also case when assets saved in old engine versions not showing in new engine version content browser,
-// 	// those asset must be tracked and informed to user , so they can handle them manually
-// 	TArray<FString> NonUAssetFiles;
-// 	IFileManager::Get().FindFiles(NonUAssetFiles, *SearchPath, true, false);
-//
-// 	for (const auto& NonUAssetFile : NonUAssetFiles)
-// 	{
-// 		const auto Extension = FPaths::GetExtension(NonUAssetFile);
-// 		// todo:ashe23 deal with assets that are .uasset but not showing in content browser
-// 		// todo:ashe23 possible cases migrated from newer version of engine then yours
-// 		if (!Extension.Equals("uasset") && !Extension.Equals("umap"))
-// 		{
-// 			FString Path = SearchPath;
-// 			Path.RemoveFromEnd("*");
-// 			Path.Append(NonUAssetFile);
-// 			Path = FPaths::ConvertRelativePathToFull(Path);
-//
-// 			const auto& NonAssetFile = NewObject<UNonUassetFile>();
-// 			if (NonAssetFile->IsValidLowLevel())
-// 			{
-// 				NonAssetFile->FileName = FPaths::GetBaseFilename(NonUAssetFile) + "." + Extension;
-// 				NonAssetFile->FilePath = Path;
-// 				NonUassetFiles.AddUnique(NonAssetFile);
-// 			}
-// 		}
-// 	}
-// }
-
 void ProjectCleanerUtility::FindAllSourceFiles(TArray<FSourceCodeFile>& SourceFiles)
 {
 	TArray<FString> AllFiles;
@@ -456,6 +424,12 @@ void ProjectCleanerUtility::GetRootAssets(TArray<FAssetData>& RootAssets, TArray
 			}
 		}
 	}
+
+	// todo:ashe23 not a good solution
+	if (RootAssets.Num() == 0 && Assets.Num() != 0)
+	{
+		RootAssets = Assets;
+	}
 }
 
 bool ProjectCleanerUtility::IsCycle(const FName& Referencer, const TArray<FName>& Deps, const FAssetData& CurrentAsset)
@@ -522,8 +496,7 @@ bool ProjectCleanerUtility::UsedInSourceFiles(
 {
 	for (const auto& File : SourceFiles)
 	{
-		//	todo:ashe23 BUG if asset has names like /Game/Maps/NewMaterial_Inst.NewMaterial_Inst
-		//	todo:ashe23								/Game/Maps/NewMaterial.NewMaterial
+		//	todo:ashe23 BUG with similar names
 		
 		// Wrapping in quotes AssetName => "AssetName"
 		FString QuotedAssetName = Asset.AssetName.ToString();

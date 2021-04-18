@@ -12,4 +12,5 @@ public:
 
 	TSharedPtr<FUICommandInfo> DeleteAsset;
 	TSharedPtr<FUICommandInfo> ExcludeFromDeletion;
+	TSharedPtr<FUICommandInfo> AddForDeletion;
 };

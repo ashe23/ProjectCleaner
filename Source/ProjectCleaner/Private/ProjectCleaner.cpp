@@ -67,21 +67,21 @@ void FProjectCleanerModule::InitModuleComponents()
 	PluginCommands = MakeShareable(new FUICommandList);
 
 	PluginCommands->MapAction(
-        FProjectCleanerCommands::Get().PluginAction,
-        FExecuteAction::CreateRaw(this, &FProjectCleanerModule::PluginButtonClicked),
-        FCanExecuteAction()
-    );
+		FProjectCleanerCommands::Get().PluginAction,
+		FExecuteAction::CreateRaw(this, &FProjectCleanerModule::PluginButtonClicked),
+		FCanExecuteAction()
+	);
 
 	FLevelEditorModule& LevelEditorModule = FModuleManager::LoadModuleChecked<FLevelEditorModule>("LevelEditor");
 
 	{
 		TSharedPtr<FExtender> MenuExtender = MakeShareable(new FExtender());
 		MenuExtender->AddMenuExtension(
-            "WindowLayout",
-            EExtensionHook::After,
-            PluginCommands,
-            FMenuExtensionDelegate::CreateRaw(this, &FProjectCleanerModule::AddMenuExtension)
-        );
+			"WindowLayout",
+			EExtensionHook::After,
+			PluginCommands,
+			FMenuExtensionDelegate::CreateRaw(this, &FProjectCleanerModule::AddMenuExtension)
+		);
 
 		LevelEditorModule.GetMenuExtensibilityManager()->AddExtender(MenuExtender);
 	}
@@ -89,21 +89,21 @@ void FProjectCleanerModule::InitModuleComponents()
 	{
 		TSharedPtr<FExtender> ToolbarExtender = MakeShareable(new FExtender);
 		ToolbarExtender->AddToolBarExtension(
-            "Settings",
-            EExtensionHook::After,
-            PluginCommands,
-            FToolBarExtensionDelegate::CreateRaw(this, &FProjectCleanerModule::AddToolbarExtension)
-        );
+			"Settings",
+			EExtensionHook::After,
+			PluginCommands,
+			FToolBarExtensionDelegate::CreateRaw(this, &FProjectCleanerModule::AddToolbarExtension)
+		);
 
 		LevelEditorModule.GetToolBarExtensibilityManager()->AddExtender(ToolbarExtender);
 	}
 
 	FGlobalTabmanager::Get()->RegisterNomadTabSpawner(
-                                ProjectCleanerTabName,
-                                FOnSpawnTab::CreateRaw(this, &FProjectCleanerModule::OnSpawnPluginTab)
-                            )
-                            .SetDisplayName(LOCTEXT("FProjectCleanerTabTitle", "ProjectCleaner"))
-                            .SetMenuType(ETabSpawnerMenuType::Hidden);
+								ProjectCleanerTabName,
+								FOnSpawnTab::CreateRaw(this, &FProjectCleanerModule::OnSpawnPluginTab)
+							)
+							.SetDisplayName(LOCTEXT("FProjectCleanerTabTitle", "ProjectCleaner"))
+							.SetMenuType(ETabSpawnerMenuType::Hidden);
 }
 
 void FProjectCleanerModule::AddMenuExtension(FMenuBuilder& Builder)
@@ -128,6 +128,10 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 	UpdateCleaner();
 	
 	const FMargin CommonMargin = FMargin{20.0f, 20.0f};
+
+	const auto UnusedAssetsBrowserRef = SAssignNew(UnusedAssetsBrowserUI, SProjectCleanerUnusedAssetsBrowserUI)
+                        .UnusedAssets(UnusedAssets);
+	UnusedAssetsBrowserRef->OnAssetExcluded = FOnAssetExcluded::CreateRaw(this, &FProjectCleanerModule::ExcludeAssetsFromDeletionList);
 
 	return SNew(SDockTab)
 		.TabRole(ETabRole::MajorTab)
@@ -202,6 +206,16 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 				[
 					SNew(SVerticalBox)
 					+ SVerticalBox::Slot()
+					.AutoHeight()
+					[
+						SAssignNew(ExcludedAssetsUI, SProjectCleanerExcludedAssetsUI)
+						.ExcludedAssets(ExcludedAssets)
+					]
+				]
+				+ SScrollBox::Slot()
+				[
+					SNew(SVerticalBox)
+					+ SVerticalBox::Slot()
 					  .Padding(CommonMargin)
 					  .AutoHeight()
 					[
@@ -232,8 +246,7 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 					  .Padding(CommonMargin)
 					  .AutoHeight()
 					[
-						SAssignNew(UnusedAssetsBrowserUI, SProjectCleanerUnusedAssetsBrowserUI)
-						.UnusedAssets(UnusedAssets)
+						UnusedAssetsBrowserRef
 					]
 				]
 			]
@@ -279,7 +292,7 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 	TArray<FAssetData> RootAssets;
 	RootAssets.Reserve(UnusedAssets.Num());
 
-	const auto NotificationRef = NotificationManager->Add(
+	const auto CleaningNotificationPtr = NotificationManager->Add(
 		StandardCleanerText.StartingCleanup.ToString(),
 		SNotificationItem::ECompletionState::CS_Pending
 	);
@@ -290,60 +303,49 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 	while(UnusedAssets.Num() > 0)
 	{
 		ProjectCleanerUtility::GetRootAssets(RootAssets, UnusedAssets, AdjacencyList);
-		if (RootAssets.Num() == 0)
+
+		// Before we delete assets
+		// Loading assets and find corrupted files
+		for(const auto& Asset : RootAssets)
 		{
-			// todo:ashe23 this should not happen, refactor this later
-			// just delete remaining assets
-			RootAssets = UnusedAssets;
+			const auto LoadedAsset = Asset.GetAsset();
+			if (!LoadedAsset)
+			{
+				CorruptedFiles.Add(Asset);
+			}
 		}
 
-		// Loading assets and find corrupted files
-		TArray<FAssetData> CorruptedFilesContainer;
-		FindCorruptedAssets(RootAssets, CorruptedFilesContainer);
-		if (CorruptedFilesContainer.Num() > 0)
+		if (CorruptedFiles.Num() > 0)
 		{
 			bFailedWhileDeletingAsset = true;
-			CorruptedFiles.Append(CorruptedFilesContainer);
-	
 			UnusedAssets.RemoveAll([&](const FAssetData& Asset)
 			{
 				return CorruptedFiles.Contains(Asset);
 			});
-	
+		
 			RootAssets.RemoveAll([&](const FAssetData& Asset)
 			{
 				return CorruptedFiles.Contains(Asset);
 			});
 		}
 
-		const auto DeletedAssets = ProjectCleanerUtility::DeleteAssets(RootAssets);
-		if (DeletedAssets != RootAssets.Num())
-		{
-			bFailedWhileDeletingAsset = true;
-			CorruptedFiles.Append(RootAssets);
-			break;
-		}
-
-		CleaningStats.DeletedAssetCount += DeletedAssets;
-		NotificationManager->Update(NotificationRef, CleaningStats);
-
+		// Remaining assets are valid so we trying to delete them
+		CleaningStats.DeletedAssetCount += ProjectCleanerUtility::DeleteAssets(RootAssets);
+		NotificationManager->Update(CleaningNotificationPtr, CleaningStats);
+		
 		UnusedAssets.RemoveAll([&](const FAssetData& Elem)
 		{
 			return RootAssets.Contains(Elem);
 		});
-
-		// after chunk of assets deleted, we must update adjacency list
-		AdjacencyList.Empty();
-		AdjacencyList.Reserve(UnusedAssets.Num());
-		ProjectCleanerUtility::CreateAdjacencyList(UnusedAssets, AdjacencyList, true);
 		
+		// after chunk of assets deleted, we must update adjacency list
+		ProjectCleanerUtility::CreateAdjacencyList(UnusedAssets, AdjacencyList, true);
 		RootAssets.Reset();
-		CorruptedFilesContainer.Empty();
 	}
 	
 	if (bFailedWhileDeletingAsset)
 	{
-		if(CorruptedFiles.Num() > 0)
+		if (CorruptedFiles.Num() > 0)
 		{
 			OpenCorruptedFilesWindow();
 		}
@@ -351,11 +353,11 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 	
 	NotificationManager->CachedStats = CleaningStats;
 	UpdateCleanerData();
-
+	
 	// Delete all empty folder
 	ProjectCleanerUtility::DeleteEmptyFolders(EmptyFolders);
 	NotificationManager->CachedStats.EmptyFolders = EmptyFolders.Num();
-	NotificationManager->Hide(NotificationRef);
+	NotificationManager->Hide(CleaningNotificationPtr);
 	
 	return FReply::Handled();
 }
@@ -371,18 +373,18 @@ FReply FProjectCleanerModule::OnDeleteEmptyFolderClick()
 	if (EmptyFolders.Num() == 0)
 	{
 		NotificationManager->AddTransient(
-            StandardCleanerText.NoEmptyFolderToDelete.ToString(),
-            SNotificationItem::ECompletionState::CS_Fail,
-            3.0f
-        );
+			StandardCleanerText.NoEmptyFolderToDelete.ToString(),
+			SNotificationItem::ECompletionState::CS_Fail,
+			3.0f
+		);
 
 		return FReply::Handled();
 	}
 
 	const auto ConfirmationWindowStatus = ShowConfirmationWindow(
-        StandardCleanerText.EmptyFolderWindowTitle,
-        StandardCleanerText.EmptyFolderWindowContent
-    );
+		StandardCleanerText.EmptyFolderWindowTitle,
+		StandardCleanerText.EmptyFolderWindowContent
+	);
 	if (IsConfirmationWindowCanceled(ConfirmationWindowStatus))
 	{
 		return FReply::Handled();
@@ -393,10 +395,10 @@ FReply FProjectCleanerModule::OnDeleteEmptyFolderClick()
 	const FString PostFixText = CleaningStats.EmptyFolders > 1 ? TEXT(" empty folders") : TEXT(" empty folder");
 	const FString DisplayText = FString{"Deleted "} + FString::FromInt(CleaningStats.EmptyFolders) + PostFixText;
 	NotificationManager->AddTransient(
-        DisplayText,
-        SNotificationItem::ECompletionState::CS_Success,
-        5.0f
-    );
+		DisplayText,
+		SNotificationItem::ECompletionState::CS_Success,
+		5.0f
+	);
 
 	UpdateCleanerData();
 	UpdateContentBrowser();
@@ -522,6 +524,11 @@ void FProjectCleanerModule::UpdateStats()
 	{
 		SourceCodeAssetsUI.Pin()->SetAssetsUsedInSourceCode(SourceCodeAssets);
 	}
+
+	if (ExcludedAssetsUI.IsValid())
+	{
+		ExcludedAssetsUI.Pin()->SetExcludedAssets(ExcludedAssets);
+	}
 }
 
 void FProjectCleanerModule::UpdateCleaner()
@@ -601,6 +608,17 @@ void FProjectCleanerModule::UpdateCleanerData()
 	ProjectCleanerUtility::RemoveAssetsWithExternalDependencies(UnusedAssets, AdjacencyList);
 	ProjectCleanerUtility::RemoveAssetsUsedInSourceCode(UnusedAssets, AdjacencyList, SourceFiles, SourceCodeAssets);
 	ProjectCleanerUtility::RemoveAssetsExcludedByUser(UnusedAssets, AdjacencyList, ExcludeDirectoryFilterSettings);
+
+	if (ExcludedAssets.Num() > 0)
+	{
+		UnusedAssets.RemoveAll([&](const FAssetData& Asset)
+		{
+			return ExcludedAssets.Contains(Asset);
+		});
+	}
+
+	// updating adjacency list
+	ProjectCleanerUtility::CreateAdjacencyList(UnusedAssets, AdjacencyList, true);
 	
 	const double TimeElapsed = FPlatformTime::Seconds() - StartTime;
 	UE_LOG(LogProjectCleaner, Display, TEXT("Time elapsed on scanning : %f"), TimeElapsed);
@@ -623,10 +641,16 @@ void FProjectCleanerModule::UpdateContentBrowser() const
 	// CBModule.Get().SyncBrowserToFolders(FocusFolders);
 }
 
-void FProjectCleanerModule::ExcludeAssetsFromDeletionList(const TArray<FAssetData>& Assets) const
+void FProjectCleanerModule::ExcludeAssetsFromDeletionList(const TArray<FAssetData>& Assets)
 {
-	UE_LOG(LogProjectCleaner, Display, TEXT("Removing Assets from list %d"), Assets.Num());
-	// todo:ashe23
+	UnusedAssets.RemoveAll([&](const FAssetData& Asset)
+	{
+		return Assets.Contains(Asset);
+	});
+	// adding them to excluded
+	ExcludedAssets.Append(Assets);
+
+	UpdateStats();
 }
 
 #pragma optimize("", on)

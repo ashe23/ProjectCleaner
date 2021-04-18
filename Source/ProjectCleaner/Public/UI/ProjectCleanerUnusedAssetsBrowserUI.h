@@ -2,10 +2,10 @@
 
 // Engine Headers
 #include "CoreMinimal.h"
-#include "ProjectCleaner.h"
 #include "Widgets/SCompoundWidget.h"
 #include "Editor/ContentBrowser/Public/ContentBrowserDelegates.h"
-// #include "ProjectCleanerUnusedAssetsBrowserUI.generated.h"
+
+DECLARE_DELEGATE_OneParam(FOnAssetExcluded, const TArray<FAssetData>& /* Excluded Assets */);
 
 class SProjectCleanerUnusedAssetsBrowserUI : public SCompoundWidget
 {
@@ -16,6 +16,9 @@ public:
 	
 	void Construct(const FArguments& InArgs);
 	void SetUnusedAssets(const TArray<FAssetData>& NewUnusedAssets);
+
+	/** Delegates */
+	FOnAssetExcluded OnAssetExcluded;
 private:
 	// UI specific stuff start
 	TSharedPtr<SWidget> OnGetAssetContextMenu(const TArray<FAssetData>& SelectedAssets);
@@ -32,4 +35,5 @@ private:
 	
 	TArray<FAssetData> UnusedAssets;
 	TSharedRef<SWidget> WidgetRef = SNullWidget::NullWidget;
+
 };

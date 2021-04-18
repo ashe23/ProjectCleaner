@@ -1,6 +1,5 @@
 ﻿#include "UI/ProjectCleanerUnusedAssetsBrowserUI.h"
 #include "UI/ProjectCleanerBrowserCommands.h"
-#include "ProjectCleaner.h"
 // Engine Headers
 #include "IContentBrowserSingleton.h"
 #include "ObjectTools.h"
@@ -13,7 +12,7 @@
 
 void SProjectCleanerUnusedAssetsBrowserUI::Construct(const FArguments& InArgs)
 {
-	// UnusedAssets = InArgs._UnusedAssets;	
+	// UnusedAssets = InArgs._UnusedAssets;
 	SetUnusedAssets(InArgs._UnusedAssets);
 
 	FProjectCleanerBrowserCommands::Register();
@@ -33,6 +32,10 @@ void SProjectCleanerUnusedAssetsBrowserUI::Construct(const FArguments& InArgs)
 	FExecuteAction::CreateRaw(this, &SProjectCleanerUnusedAssetsBrowserUI::DeleteAsset),
 		FCanExecuteAction::CreateRaw(this, &SProjectCleanerUnusedAssetsBrowserUI::IsAnythingSelected)
 	));
+	Commands->MapAction(FProjectCleanerBrowserCommands::Get().ExcludeFromDeletion, FUIAction(
+    FExecuteAction::CreateRaw(this, &SProjectCleanerUnusedAssetsBrowserUI::ExcludeAssets),
+        FCanExecuteAction::CreateRaw(this, &SProjectCleanerUnusedAssetsBrowserUI::IsAnythingSelected)
+    ));
 
 	RefreshUIContent();
 }
@@ -117,7 +120,7 @@ void SProjectCleanerUnusedAssetsBrowserUI::ExcludeAssets() const
 	const TArray<FAssetData> CurrentSelection = GetCurrentSelectionDelegate.Execute();
 	if (CurrentSelection.Num() > 0)
 	{
-		// todo:ashe23 remove selected assets from list	
+		OnAssetExcluded.ExecuteIfBound(CurrentSelection);
 	}
 }
 
@@ -144,7 +147,7 @@ void SProjectCleanerUnusedAssetsBrowserUI::RefreshUIContent()
 	);
 
 	FARFilter Filter;
-	if(UnusedAssets.Num() == 0)
+	if (UnusedAssets.Num() == 0)
 	{
 		// this is needed when there is no assets to show ,
 		// asset picker will show remaining assets in content browser,

@@ -28,6 +28,14 @@ void FProjectCleanerBrowserCommands::RegisterCommands()
         EUserInterfaceActionType::Button,
         FInputChord()
     );
+
+	UI_COMMAND(
+        AddForDeletion,
+        "Delete asset...",
+        "Add asset to deletion list",
+        EUserInterfaceActionType::Button,
+        FInputChord()
+    );
 }
 
 #undef LOCTEXT_NAMESPACE

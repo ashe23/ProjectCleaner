@@ -75,13 +75,6 @@ public:
 	static int32 DeleteAssets(TArray<FAssetData>& Assets);
 
 	/**
-	 * @brief Finds all non .uproject files
-	 * @param SearchPath 
-	 * @param NonUassetFiles
-	 */
-	// static void FindNonProjectFiles(const FString& SearchPath, TArray<TWeakObjectPtr<UNonUassetFile>>& NonUassetFiles);
-
-	/**
 	 * @brief Finds all ".h" and ".cpp" source files in Project "Source" and "Plugins" directories
 	 * @param SourceFiles 
 	 */

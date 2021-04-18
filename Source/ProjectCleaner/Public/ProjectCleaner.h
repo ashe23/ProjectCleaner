@@ -9,6 +9,7 @@
 #include "UI/ProjectCleanerNonUassetFilesUI.h"
 #include "UI/ProjectCleanerSourceCodeAssetsUI.h"
 #include "UI/ProjectCleanerCorruptedFilesUI.h"
+#include "UI/ProjectCleanerExcludedAssetsUI.h"
 // Engine Headers
 #include "Input/Reply.h"
 #include "Modules/ModuleInterface.h"
@@ -31,6 +32,7 @@ struct FNonUassetFile;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogProjectCleaner, Log, All);
 
+
 class FProjectCleanerModule : public IModuleInterface
 {
 public:
@@ -46,7 +48,8 @@ public:
 	virtual bool IsGameModule() const override;
 
 
-	void ExcludeAssetsFromDeletionList(const TArray<FAssetData>& Assets) const;
+	/** Delegates */
+	void ExcludeAssetsFromDeletionList(const TArray<FAssetData>& Assets);
 private:
 	void InitModuleComponents();
 	void AddToolbarExtension(FToolBarBuilder& Builder);
@@ -107,13 +110,14 @@ private:
 
 	TWeakPtr<SProjectCleanerBrowserStatisticsUI> StatisticsUI;
 	TWeakPtr<SProjectCleanerUnusedAssetsBrowserUI> UnusedAssetsBrowserUI;
+	TWeakPtr<SProjectCleanerExcludedAssetsUI> ExcludedAssetsUI;
 	TWeakPtr<SProjectCleanerNonUassetFilesUI> NonUassetFilesUI;
 	TWeakPtr<SProjectCleanerSourceCodeAssetsUI> SourceCodeAssetsUI;
 	TWeakPtr<SProjectCleanerCorruptedFilesUI> CorruptedFilesUI;
 
 	/** Data Containers */ 
 	TArray<FAssetData> UnusedAssets;
-	TArray<FAssetData> ExcludedAssets;
+	TSet<FAssetData> ExcludedAssets;
 	TSet<FName> EmptyFolders;
 	TSet<FName> NonUassetFiles;
 	TArray<FNode> AdjacencyList;

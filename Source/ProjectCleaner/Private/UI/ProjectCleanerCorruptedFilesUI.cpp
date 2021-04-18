@@ -58,7 +58,7 @@ void SProjectCleanerCorruptedFilesUI::RefreshUIContent()
 			SNew(STextBlock)
 			.AutoWrapText(true)
 			.Font(FSlateFontInfo(FPaths::EngineContentDir() / TEXT("Slate/Fonts/Roboto-Light.ttf"),20))
-			.Text(LOCTEXT("corruptedfiles", "Possibly Corrupted Files"))
+			.Text(LOCTEXT("corruptedfiles", "Failed to delete these assets"))
 		]
 		+SVerticalBox::Slot()
 		.AutoHeight()

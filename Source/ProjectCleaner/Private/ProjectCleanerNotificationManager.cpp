@@ -66,7 +66,7 @@ void ProjectCleanerNotificationManager::Hide(TWeakPtr<SNotificationItem> Notific
 	FNotificationInfo Info(FText::FromString(
 		FString::Printf(TEXT("Deleted %d asset and %d empty folder."), CachedStats.DeletedAssetCount,
 		                CachedStats.EmptyFolders)));
-	Info.ExpireDuration = 5.0f;
+	Info.ExpireDuration = 10.0f;
 
 	NotificationManager = FSlateNotificationManager::Get().AddNotification(Info);
 }
