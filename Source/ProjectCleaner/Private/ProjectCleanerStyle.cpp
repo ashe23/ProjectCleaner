@@ -30,6 +30,25 @@ FName FProjectCleanerStyle::GetStyleSetName()
 	return StyleSetName;
 }
 
+FName FProjectCleanerStyle::GetContextName()
+{
+	return FName(TEXT("ProjectCleaner.PluginAction"));
+}
+
+//void FProjectCleanerStyle::SetIcon(const FString& StyleName, const FString& ResourcePath)
+//{
+//	FSlateStyleSet* Style = StyleInstance.Get();
+//
+//	FString Name(GetContextName().ToString());
+//	Name = Name + "." + StyleName;
+//	Style->Set(*Name, new IMAGE_BRUSH(TEXT("ButtonIcon_40x"), Icon40x40));
+//
+//	Name += ".Small";
+//	Style->Set(*Name, new IMAGE_BRUSH(TEXT("ButtonIcon_20x"), Icon20x20));
+//
+//	FSlateApplication::Get().GetRenderer()->ReloadTextureResources();
+//}
+
 #define IMAGE_BRUSH( RelativePath, ... ) FSlateImageBrush( Style->RootToContentDir( RelativePath, TEXT(".png") ), __VA_ARGS__ )
 #define BOX_BRUSH( RelativePath, ... ) FSlateBoxBrush( Style->RootToContentDir( RelativePath, TEXT(".png") ), __VA_ARGS__ )
 #define BORDER_BRUSH( RelativePath, ... ) FSlateBorderBrush( Style->RootToContentDir( RelativePath, TEXT(".png") ), __VA_ARGS__ )
@@ -46,6 +65,7 @@ TSharedRef< FSlateStyleSet > FProjectCleanerStyle::Create()
 	Style->SetContentRoot(IPluginManager::Get().FindPlugin("ProjectCleaner")->GetBaseDir() / TEXT("Resources"));
 
 	Style->Set("ProjectCleaner.PluginAction", new IMAGE_BRUSH(TEXT("ButtonIcon_40x"), Icon40x40));
+	Style->Set("ProjectCleaner.PluginAction.Small", new IMAGE_BRUSH(TEXT("ButtonIcon_20x"), Icon20x20));
 
 	return Style;
 }

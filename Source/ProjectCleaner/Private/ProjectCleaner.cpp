@@ -122,7 +122,7 @@ void FProjectCleanerModule::AddToolbarExtension(FToolBarBuilder& Builder)
 
 void FProjectCleanerModule::PluginButtonClicked()
 {
-	FGlobalTabmanager::Get()->InvokeTab(ProjectCleanerTabName);
+	FGlobalTabmanager::Get()->TryInvokeTab(ProjectCleanerTabName);
 }
 
 TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs)

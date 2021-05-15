@@ -20,6 +20,9 @@ public:
 	static const ISlateStyle& Get();
 
 	static FName GetStyleSetName();
+	static FName GetContextName();
+
+	//static void SetIcon(const FString& StyleName, const FString& ResourcePath);
 
 private:
 

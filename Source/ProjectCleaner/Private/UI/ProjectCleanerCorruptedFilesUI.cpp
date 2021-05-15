@@ -21,6 +21,8 @@ void SProjectCleanerCorruptedFilesUI::RefreshUIContent()
 	Config.bForceShowEngineContent = false;
 	Config.bShowBottomToolbar = true;
 	Config.bCanShowDevelopersFolder = false;
+	Config.bForceShowEngineContent = false;
+	Config.bCanShowClasses = false;
 	Config.bAllowDragging = false;
 	Config.AssetShowWarningText = FText::FromName("No assets");
 
