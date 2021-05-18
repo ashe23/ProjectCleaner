@@ -49,6 +49,7 @@ private:
 	void AddToolbarExtension(FToolBarBuilder& Builder);
 	void AddMenuExtension(FMenuBuilder& Builder);
 	void OnUserDeletedAssets();
+	void OnUserExcludedAssets(const TArray<FAssetData>& Assets);
 	/**
 	 * @brief Opens ProjectCleanerBrowser Main Tab
 	 */
@@ -116,6 +117,7 @@ private:
 
 	/** Data Containers */ 
 	TArray<FAssetData> UnusedAssets;
+	TArray<FAssetData> ExcludedAssets;
 	TSet<FName> EmptyFolders;
 	TSet<FName> NonUassetFiles;
 	TArray<FNode> AdjacencyList;

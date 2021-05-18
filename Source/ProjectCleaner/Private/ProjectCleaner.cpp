@@ -115,6 +115,14 @@ void FProjectCleanerModule::OnUserDeletedAssets()
 	UpdateCleaner();
 }
 
+void FProjectCleanerModule::OnUserExcludedAssets(const TArray<FAssetData>& Assets)
+{
+	ExcludedAssets.Reserve(Assets.Num());
+	ExcludedAssets = Assets;
+
+	UpdateCleaner();
+}
+
 void FProjectCleanerModule::AddToolbarExtension(FToolBarBuilder& Builder)
 {
 	Builder.AddToolBarButton(FProjectCleanerCommands::Get().PluginAction);
@@ -133,7 +141,15 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 
 	const auto UnusedAssetsUIRef = SAssignNew(UnusedAssetsBrowserUI, SProjectCleanerUnusedAssetsBrowserUI)
 						.UnusedAssets(UnusedAssets);
-	UnusedAssetsUIRef->OnUserDeletedAssets = FOnUserDeletedAssets::CreateRaw(this, &FProjectCleanerModule::OnUserDeletedAssets);
+	UnusedAssetsUIRef->OnUserDeletedAssets = FOnUserDeletedAssets::CreateRaw(
+		this,
+		&FProjectCleanerModule::OnUserDeletedAssets
+	);
+
+	UnusedAssetsUIRef->OnUserExcludedAssets = FOnUserExcludedAssets::CreateRaw(
+		this,
+		&FProjectCleanerModule::OnUserExcludedAssets
+	);
 
 	return SNew(SDockTab)
 		.TabRole(ETabRole::MajorTab)
@@ -574,8 +590,15 @@ void FProjectCleanerModule::UpdateCleanerData()
 	ProjectCleanerUtility::RemoveAssetsUsedInSourceCode(UnusedAssets, AdjacencyList, SourceFiles, SourceCodeAssets);
 	ProjectCleanerUtility::RemoveAssetsExcludedByUser(UnusedAssets, AdjacencyList, ExcludeDirectoryFilterSettings);
 
+	// remove user excluded assets
+	UnusedAssets.RemoveAll([&](const FAssetData& Asset)
+	{
+		return ExcludedAssets.Contains(Asset);
+	});
+	
 	// updating adjacency list
 	ProjectCleanerUtility::CreateAdjacencyList(UnusedAssets, AdjacencyList, true);
+
 	
 	const double TimeElapsed = FPlatformTime::Seconds() - StartTime;
 	UE_LOG(LogProjectCleaner, Display, TEXT("Time elapsed on scanning : %f"), TimeElapsed);
