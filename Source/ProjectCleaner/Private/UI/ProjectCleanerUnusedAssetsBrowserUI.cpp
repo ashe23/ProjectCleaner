@@ -14,9 +14,6 @@ void SProjectCleanerUnusedAssetsBrowserUI::Construct(const FArguments& InArgs)
 	SetUnusedAssets(InArgs._UnusedAssets);
 
 	FProjectCleanerBrowserCommands::Register();
-	
-	FDetailsViewArgs UnusedAssetsUISettingsDetailsViewArgs;
-	UnusedAssetsUISettingsDetailsViewArgs.ViewIdentifier = "UnusedAssetsUISettings";
 
 	Commands = MakeShareable(new FUICommandList);
 	Commands->MapAction(

@@ -9,11 +9,13 @@
 #include "UI/ProjectCleanerNonUassetFilesUI.h"
 #include "UI/ProjectCleanerSourceCodeAssetsUI.h"
 #include "UI/ProjectCleanerCorruptedFilesUI.h"
+#include "UI/ProjectCleanerExcludedAssetsUI.h"
 // Engine Headers
 #include "Input/Reply.h"
 #include "Modules/ModuleInterface.h"
 #include "ContentBrowserDelegates.h"
 #include "CoreMinimal.h"
+
 
 
 class ProjectCleanerNotificationManager;
@@ -50,6 +52,7 @@ private:
 	void AddMenuExtension(FMenuBuilder& Builder);
 	void OnUserDeletedAssets();
 	void OnUserExcludedAssets(const TArray<FAssetData>& Assets);
+	void OnUserMarkUnused(const TArray<FAssetData>& Assets);
 	/**
 	 * @brief Opens ProjectCleanerBrowser Main Tab
 	 */
@@ -114,6 +117,7 @@ private:
 	TWeakPtr<SProjectCleanerSourceCodeAssetsUI> SourceCodeAssetsUI;
 	TWeakPtr<SProjectCleanerDirectoryExclusionUI> DirectoryExclusionUI;
 	TWeakPtr<SProjectCleanerCorruptedFilesUI> CorruptedFilesUI;
+	TWeakPtr<SProjectCleanerExcludedAssetsUI> ExcludedAssetsUI;
 
 	/** Data Containers */ 
 	TArray<FAssetData> UnusedAssets;

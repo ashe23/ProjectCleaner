@@ -30,9 +30,9 @@ void FProjectCleanerBrowserCommands::RegisterCommands()
 	);
 
 	UI_COMMAND(
-		AddForDeletion,
-		"Delete asset...",
-		"Add asset to deletion list",
+		MarkUnused,
+		"Mark unused...",
+		"Marks selected assets as unused",
 		EUserInterfaceActionType::Button,
 		FInputChord()
 	);

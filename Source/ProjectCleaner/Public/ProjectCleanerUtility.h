@@ -123,6 +123,19 @@ public:
 	static void FindAllRelatedAssets(const FNode& Node, TSet<FName>& RelatedAssets, const TArray<FNode>& List);
 
 	/**
+	 * @brief Returns Related Assets for given Assets
+	 * @param GivenAssets 
+	 * @param RelatedAssets
+	 * @param List
+	 * @param AllAssets
+	 */
+	static void FindAllRelatedAssets(
+		const TArray<FAssetData>& GivenAssets,
+		TArray<FAssetData>& RelatedAssets,
+		const TArray<FNode>& List,
+		TArray<FAssetData> AllAssets);
+
+	/**
 	 * @brief Returns assets that has no references or circular assets
 	 * @param RootAssets 
 	 * @param Assets 

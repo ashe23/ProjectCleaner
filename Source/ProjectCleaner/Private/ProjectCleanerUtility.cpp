@@ -368,8 +368,39 @@ void ProjectCleanerUtility::FindAllRelatedAssets(const FNode& Node,
 	}
 }
 
+void ProjectCleanerUtility::FindAllRelatedAssets(
+	const TArray<FAssetData>& GivenAssets,
+	TArray<FAssetData>& RelatedAssets,
+	const TArray<FNode>& List,
+	TArray<FAssetData> AllAssets)
+{
+	RelatedAssets.Reserve(List.Num());
+	
+	TSet<FName> LinkedAssets;
+	for (const auto& Asset : GivenAssets)
+	{
+		const auto Node = List.FindByPredicate([&](const FNode& Elem)
+		{
+			return Elem.Asset.IsEqual(Asset.PackageName);
+		});
+		if(!Node) continue;
+
+		FindAllRelatedAssets(*Node, LinkedAssets, List);
+
+		for(const auto& LinkedAsset : LinkedAssets)
+		{
+			const auto AssetData = GetAssetData(LinkedAsset, AllAssets);
+			if(!AssetData) continue;
+
+			RelatedAssets.AddUnique(*AssetData);
+		}
+
+		LinkedAssets.Reset();
+	}
+}
+
 void ProjectCleanerUtility::GetRootAssets(TArray<FAssetData>& RootAssets, TArray<FAssetData>& Assets,
-										  TArray<FNode>& List)
+                                          TArray<FNode>& List)
 {
 	// first we deleting cycle assets
 	// like Skeletal mesh, skeleton, and physical assets

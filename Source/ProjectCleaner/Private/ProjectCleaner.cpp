@@ -117,10 +117,35 @@ void FProjectCleanerModule::OnUserDeletedAssets()
 
 void FProjectCleanerModule::OnUserExcludedAssets(const TArray<FAssetData>& Assets)
 {
-	ExcludedAssets.Reserve(Assets.Num());
-	ExcludedAssets = Assets;
+	ProjectCleanerUtility::FindAllRelatedAssets(
+		Assets,
+		ExcludedAssets,
+		AdjacencyList,
+		UnusedAssets
+	);
 
-	UpdateCleaner();
+	UpdateCleanerData();
+}
+
+void FProjectCleanerModule::OnUserMarkUnused(const TArray<FAssetData>& Assets)
+{
+	if (!Assets.Num()) return;
+
+	TArray<FAssetData> RelatedAssets;
+	RelatedAssets.Reserve(UnusedAssets.Num());
+	ProjectCleanerUtility::FindAllRelatedAssets(
+		Assets,
+		RelatedAssets,
+		AdjacencyList,
+		UnusedAssets
+	);
+
+	ExcludedAssets.RemoveAll([&](const FAssetData& Elem)
+	{
+		return RelatedAssets.Contains(Elem);
+	});
+	
+	UpdateCleanerData();
 }
 
 void FProjectCleanerModule::AddToolbarExtension(FToolBarBuilder& Builder)
@@ -151,6 +176,13 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 		&FProjectCleanerModule::OnUserExcludedAssets
 	);
 
+	const auto ExcludedAssetsUIRef = SAssignNew(ExcludedAssetsUI, SProjectCleanerExcludedAssetsUI)
+									.ExcludedAssets(ExcludedAssets);
+	ExcludedAssetsUIRef->OnUserMarkUnused = FOnUserMarkUnused::CreateRaw(
+		this,
+		&FProjectCleanerModule::OnUserMarkUnused
+	);
+	
 	return SNew(SDockTab)
 		.TabRole(ETabRole::MajorTab)
 		[
@@ -240,6 +272,16 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 					[
 						SAssignNew(SourceCodeAssetsUI, SProjectCleanerSourceCodeAssetsUI)
 						.SourceCodeAssets(SourceCodeAssets)
+					]
+				]
+				+SScrollBox::Slot()
+				[
+					SNew(SVerticalBox)
+					+SVerticalBox::Slot()
+					.Padding(FMargin(5))
+					.AutoHeight()
+					[
+						ExcludedAssetsUIRef
 					]
 				]
 			]
@@ -510,6 +552,11 @@ void FProjectCleanerModule::UpdateStats()
 	{
 		SourceCodeAssetsUI.Pin()->SetSourceCodeAssets(SourceCodeAssets);
 	}
+
+	if (ExcludedAssetsUI.IsValid())
+	{
+		ExcludedAssetsUI.Pin()->SetExcludedAssets(ExcludedAssets);
+	}
 }
 
 void FProjectCleanerModule::UpdateCleaner()
@@ -530,6 +577,7 @@ void FProjectCleanerModule::Reset()
 	CorruptedFiles.Reset();
 	EmptyFolders.Reset();
 	AdjacencyList.Reset();
+	// todo:ashe23 should i Reset ExcludedAssets?
 }
 
 void FProjectCleanerModule::UpdateCleanerData()
@@ -580,6 +628,7 @@ void FProjectCleanerModule::UpdateCleanerData()
 	NonUassetFiles = Visitor.NonUassetFiles;
 	
 	UnusedAssets.Reserve(Visitor.FileNum);
+	ExcludedAssets.Reserve(Visitor.FileNum);
 	ProjectCleanerUtility::GetAllAssets(UnusedAssets);
 	
 	TSet<FName> PossiblyCorruptedFiles;	
