@@ -1,9 +1,9 @@
 // Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 #include "ProjectCleanerCommands.h"
+#include "ProjectCleanerStyle.h"
 // Engine Headers
 #include "Framework/Commands/Commands.h"
-#include "ProjectCleanerStyle.h"
 
 #define LOCTEXT_NAMESPACE "FProjectCleanerModule"
 
@@ -21,8 +21,9 @@ void FProjectCleanerCommands::RegisterCommands()
 	UI_COMMAND(
 		PluginAction,
 		"ProjectCleaner",
-		"Delete unused assets and empty folders.",
-		EUserInterfaceActionType::Button, FInputChord()
+		"Delete unused assets and empty folders",
+		EUserInterfaceActionType::Button,
+		FInputChord()
 	);
 
 	UI_COMMAND(

@@ -1,7 +1,6 @@
 ﻿// Copyright 2021. Ashot Barkhudaryan. All Rights Reserved.
 
 #include "UI/ProjectCleanerUnusedAssetsBrowserUI.h"
-#include "UI/ProjectCleanerBrowserCommands.h"
 #include "ProjectCleanerCommands.h"
 // Engine Headers
 #include "IContentBrowserSingleton.h"
@@ -124,13 +123,12 @@ void SProjectCleanerUnusedAssetsBrowserUI::DeleteAsset() const
 	if (!GetCurrentSelectionDelegate.IsBound()) return;
 
 	const TArray<FAssetData> CurrentSelection = GetCurrentSelectionDelegate.Execute();
-	if (CurrentSelection.Num() > 0)
-	{
-		const int32 DeletedAssetsNum = ObjectTools::DeleteAssets(CurrentSelection);
-		if (DeletedAssetsNum == 0) return;
-		OnUserDeletedAssets.ExecuteIfBound();
-	}
-
+	if (!CurrentSelection.Num()) return;
+	
+	const int32 DeletedAssetsNum = ObjectTools::DeleteAssets(CurrentSelection);
+	if (DeletedAssetsNum == 0) return;
+	if (!OnUserDeletedAssets.IsBound()) return;
+	OnUserDeletedAssets.Execute();
 }
 
 void SProjectCleanerUnusedAssetsBrowserUI::ExcludeAsset() const
@@ -139,8 +137,8 @@ void SProjectCleanerUnusedAssetsBrowserUI::ExcludeAsset() const
 
 	const TArray<FAssetData> SelectedAssets = GetCurrentSelectionDelegate.Execute();
 	if(!SelectedAssets.Num()) return;
+	
 	if(!OnUserExcludedAssets.IsBound()) return;
-
 	OnUserExcludedAssets.Execute(SelectedAssets);
 }
 

@@ -10,7 +10,7 @@ public:
 	FProjectCleanerCommands();
 	virtual void RegisterCommands() override;
 
-	/** Data **/
+	/** Commands **/
 	TSharedPtr<FUICommandInfo> PluginAction;
 	TSharedPtr<FUICommandInfo> DeleteAsset;
 	TSharedPtr<FUICommandInfo> ExcludeAsset;

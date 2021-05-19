@@ -593,7 +593,7 @@ void FProjectCleanerModule::UpdateCleanerData()
 	{
 		virtual bool Visit(const TCHAR* FileName, bool bIsDirectory) override
 		{
-			if(!bIsDirectory)
+			if (!bIsDirectory)
 			{
 				FileNum++;
 				const auto Extension = FPaths::GetExtension(FileName);
