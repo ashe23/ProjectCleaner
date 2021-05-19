@@ -1,6 +1,7 @@
-﻿#pragma once
+﻿// Copyright 2021. Ashot Barkhudaryan. All Rights Reserved.
 
-// Engine Headers
+#pragma once
+
 #include "CoreMinimal.h"
 #include "Widgets/SCompoundWidget.h"
 #include "ProjectCleanerSourceCodeAssetsUI.generated.h"
@@ -25,6 +26,7 @@ public:
 class SSourceCodeAssetsUISelectionRow : public SMultiColumnTableRow<TWeakObjectPtr<USourceCodeAsset>>
 {
 public:
+	
 	SLATE_BEGIN_ARGS(SSourceCodeAssetsUISelectionRow){}
 		SLATE_ARGUMENT(TWeakObjectPtr<USourceCodeAsset>, SelectedRowItem)
 	SLATE_END_ARGS()
@@ -45,15 +47,15 @@ void Construct(const FArguments& InArgs, const TSharedRef<STableViewBase>& InOwn
 	{
 		TSharedPtr<SWidget> ColumnWidget;
 
-		if(InColumnName == TEXT("AssetName"))
+		if (InColumnName == TEXT("AssetName"))
 		{
 			ColumnWidget = SNew(STextBlock).Text(FText::FromString(SelectedRowItem->AssetName));
 		}
-		else if(InColumnName == TEXT("AssetPath"))
+		else if (InColumnName == TEXT("AssetPath"))
 		{
 			ColumnWidget = SNew(STextBlock).Text(FText::FromString(SelectedRowItem->AssetPath));
 		}
-		else if(InColumnName == TEXT("SourceCodePath"))
+		else if (InColumnName == TEXT("SourceCodePath"))
 		{
 			ColumnWidget = SNew(STextBlock).Text(FText::FromString(SelectedRowItem->SourceCodePath));
 		}
@@ -72,18 +74,20 @@ private:
 class SProjectCleanerSourceCodeAssetsUI : public SCompoundWidget
 {
 public:
+	
 	SLATE_BEGIN_ARGS(SProjectCleanerSourceCodeAssetsUI) {}
 		SLATE_ARGUMENT(TArray<TWeakObjectPtr<USourceCodeAsset>>, SourceCodeAssets)
 	SLATE_END_ARGS()
 
-	
 	void Construct(const FArguments& InArgs);
-	void RefreshUIContent();
-	void SetSourceCodeAssets(TArray<TWeakObjectPtr<USourceCodeAsset>>& NewSourceCodeAssets);
+	void SetSourceCodeAssets(const TArray<TWeakObjectPtr<USourceCodeAsset>>& NewSourceCodeAssets);
 private:
-	TSharedRef<ITableRow> OnGenerateRow(TWeakObjectPtr<USourceCodeAsset> InItem, const TSharedRef<STableViewBase>& OwnerTable);
-	void OnMouseDoubleClick(TWeakObjectPtr<USourceCodeAsset> Item);
+	void RefreshUIContent();
+	TSharedRef<ITableRow> OnGenerateRow(
+		TWeakObjectPtr<USourceCodeAsset> InItem,
+		const TSharedRef<STableViewBase>& OwnerTable
+	) const;
+	void OnMouseDoubleClick(TWeakObjectPtr<USourceCodeAsset> Item) const;
+	TArray<TWeakObjectPtr<USourceCodeAsset>> SourceCodeAssets;
 	TSharedRef<SWidget> WidgetRef =  SNullWidget::NullWidget;
-	
-	TArray<TWeakObjectPtr<USourceCodeAsset>> AssetsUsedInSourceCode;
 };

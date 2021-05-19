@@ -1,50 +1,51 @@
-﻿#include "UI/ProjectCleanerSourceCodeAssetsUI.h"
+﻿// Copyright 2021. Ashot Barkhudaryan. All Rights Reserved.
+
+#include "UI/ProjectCleanerSourceCodeAssetsUI.h"
+#include "ProjectCleanerStyle.h"
 
 #define LOCTEXT_NAMESPACE "FProjectCleanerModule"
 
 void SProjectCleanerSourceCodeAssetsUI::Construct(const FArguments& InArgs)
 {
-	AssetsUsedInSourceCode = InArgs._SourceCodeAssets;
+	SetSourceCodeAssets(InArgs._SourceCodeAssets);
+}
+
+void SProjectCleanerSourceCodeAssetsUI::SetSourceCodeAssets(
+	const TArray<TWeakObjectPtr<USourceCodeAsset>>& NewSourceCodeAssets)
+{
+	SourceCodeAssets.Reset();
+	SourceCodeAssets.Reserve(NewSourceCodeAssets.Num());
+	SourceCodeAssets = NewSourceCodeAssets;
 
 	RefreshUIContent();
- 
-	ChildSlot
-	[
-		WidgetRef
-	];
 }
 
 void SProjectCleanerSourceCodeAssetsUI::RefreshUIContent()
-{
-	const FSlateFontInfo FontInfo = FSlateFontInfo(
-		FPaths::EngineContentDir() / TEXT("Slate/Fonts/Roboto-Light.ttf"),
-		20
-	);
-	
+{	
 	WidgetRef = SNew(SVerticalBox)
-		+SVerticalBox::Slot()
+		+ SVerticalBox::Slot()
 		.AutoHeight()
 		[
 			SNew(STextBlock)
 			.AutoWrapText(true)
-			.Font(FontInfo)
-			.Text(LOCTEXT("assetsusedinsourcecodefiles", "Assets used in source code files"))
+			.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
+			.Text(LOCTEXT("source_code_assets_title", "Assets used in source code files"))
 		]
-		+SVerticalBox::Slot()
+		+ SVerticalBox::Slot()
 		.Padding(FMargin{0.0f, 10.0f})
 		.AutoHeight()
 		[
 			SNew(STextBlock)
 			.AutoWrapText(true)
-			.Font(FSlateFontInfo(FPaths::EngineContentDir() / TEXT("Slate/Fonts/Roboto-Light.ttf"),8))
-			.Text(LOCTEXT("dblclickonrow", "Double click on row to open in Explorer"))
+			.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light10"))
+			.Text(LOCTEXT("dbl_click_on_row", "Double click on row to open in Explorer"))
 		]
-		+SVerticalBox::Slot()
+		+ SVerticalBox::Slot()
 		.AutoHeight()
 		.Padding(FMargin{0.0f, 20.0f})
 		[
 			SNew(SListView<TWeakObjectPtr<USourceCodeAsset>>)
-			.ListItemsSource(&AssetsUsedInSourceCode)
+			.ListItemsSource(&SourceCodeAssets)
 			.SelectionMode(ESelectionMode::SingleToggle)
 			.OnGenerateRow(this, &SProjectCleanerSourceCodeAssetsUI::OnGenerateRow)
 			.OnMouseButtonDoubleClick_Raw(this, &SProjectCleanerSourceCodeAssetsUI::OnMouseDoubleClick)
@@ -90,27 +91,21 @@ void SProjectCleanerSourceCodeAssetsUI::RefreshUIContent()
 	];
 }
 
-void SProjectCleanerSourceCodeAssetsUI::SetSourceCodeAssets(
-	TArray<TWeakObjectPtr<USourceCodeAsset>>& NewSourceCodeAssets)
-{
-	AssetsUsedInSourceCode.Reset();
-	AssetsUsedInSourceCode.Reserve(NewSourceCodeAssets.Num());
-	
-	AssetsUsedInSourceCode = NewSourceCodeAssets;
-
-	RefreshUIContent();
-}
-
 TSharedRef<ITableRow> SProjectCleanerSourceCodeAssetsUI::OnGenerateRow(
-	TWeakObjectPtr<USourceCodeAsset> InItem, const TSharedRef<STableViewBase>& OwnerTable)
+	TWeakObjectPtr<USourceCodeAsset> InItem,
+	const TSharedRef<STableViewBase>& OwnerTable) const
 {
 	return SNew(SSourceCodeAssetsUISelectionRow, OwnerTable).SelectedRowItem(InItem);
 }
 
-void SProjectCleanerSourceCodeAssetsUI::OnMouseDoubleClick(TWeakObjectPtr<USourceCodeAsset> Item)
+void SProjectCleanerSourceCodeAssetsUI::OnMouseDoubleClick(TWeakObjectPtr<USourceCodeAsset> Item) const
 {
-	FPlatformProcess::ExploreFolder(*(FPaths::GetPath(Item->SourceCodePath)));
+	if (!Item.IsValid()) return;
+	
+	const auto DirectoryPath = FPaths::GetPath(Item->SourceCodePath);
+	if (!FPaths::DirectoryExists(DirectoryPath)) return;
+	
+	FPlatformProcess::ExploreFolder(*DirectoryPath);		
 }
-
 
 #undef LOCTEXT_NAMESPACE

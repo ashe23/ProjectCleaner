@@ -73,7 +73,7 @@ struct FNode
 	FName Asset;
 
 	/**
-	 * @brief List of all Dependecies and References for given asset
+	 * @brief List of all Dependencies and References for given asset
 	 */
 	TSet<FName> LinkedAssets;
 	TSet<FName> Refs;

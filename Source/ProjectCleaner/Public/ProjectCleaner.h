@@ -1,4 +1,4 @@
-// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
+// Copyright 2021. Ashot Barkhudaryan. All Rights Reserved.
 
 #pragma once
 
@@ -15,8 +15,6 @@
 #include "Modules/ModuleInterface.h"
 #include "ContentBrowserDelegates.h"
 #include "CoreMinimal.h"
-
-
 
 class ProjectCleanerNotificationManager;
 class FToolBarBuilder;

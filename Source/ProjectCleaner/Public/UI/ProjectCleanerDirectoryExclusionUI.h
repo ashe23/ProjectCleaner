@@ -1,6 +1,7 @@
-﻿#pragma once
+﻿// Copyright 2021. Ashot Barkhudaryan. All Rights Reserved.
 
-// Engine Headers
+#pragma once
+
 #include "CoreMinimal.h"
 #include "Widgets/SCompoundWidget.h"
 #include "ProjectCleanerDirectoryExclusionUI.generated.h"
@@ -20,13 +21,15 @@ public:
 class SProjectCleanerDirectoryExclusionUI : public SCompoundWidget
 {
 public:
+	
 	SLATE_BEGIN_ARGS(SProjectCleanerDirectoryExclusionUI) {}
 		SLATE_ARGUMENT(UExcludeDirectoriesFilterSettings*, ExcludeDirectoriesFilterSettings)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
-
 private:
+
+	/** Data **/
 	TSharedPtr<IDetailsView> ExcludeDirectoriesFilterSettingsProperty;
 	UExcludeDirectoriesFilterSettings* ExcludeDirectoriesFilterSettings = nullptr;
 };

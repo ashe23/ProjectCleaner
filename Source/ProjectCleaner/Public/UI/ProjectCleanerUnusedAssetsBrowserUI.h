@@ -1,6 +1,7 @@
-﻿#pragma once
+﻿// Copyright 2021. Ashot Barkhudaryan. All Rights Reserved.
 
-// Engine Headers
+#pragma once
+
 #include "CoreMinimal.h"
 #include "Widgets/SCompoundWidget.h"
 #include "Editor/ContentBrowser/Public/ContentBrowserDelegates.h"
@@ -11,6 +12,7 @@ DECLARE_DELEGATE_OneParam(FOnUserExcludedAssets, const TArray<FAssetData>&);
 class SProjectCleanerUnusedAssetsBrowserUI : public SCompoundWidget
 {
 public:
+	
 	SLATE_BEGIN_ARGS(SProjectCleanerUnusedAssetsBrowserUI) {}
 		SLATE_ARGUMENT(TArray<FAssetData>, UnusedAssets)
 	SLATE_END_ARGS()
@@ -29,11 +31,10 @@ private:
 	void DeleteAsset() const;
 	void ExcludeAsset() const;
 	void RefreshUIContent();
-	/** Delegate to interact with asset view */
+
+	/** Data **/
 	FGetCurrentSelectionDelegate GetCurrentSelectionDelegate;
 	TSharedPtr<FUICommandList> Commands;
-	
 	TArray<FAssetData> UnusedAssets;
 	TSharedRef<SWidget> WidgetRef = SNullWidget::NullWidget;
-
 };

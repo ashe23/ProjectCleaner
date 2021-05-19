@@ -1,11 +1,13 @@
-﻿#include "UI/ProjectCleanerNonUassetFilesUI.h"
+﻿// Copyright 2021. Ashot Barkhudaryan. All Rights Reserved.
+
+#include "UI/ProjectCleanerNonUassetFilesUI.h"
+#include "ProjectCleanerStyle.h"
 
 #define LOCTEXT_NAMESPACE "FProjectCleanerModule"
 
 void SProjectCleanerNonUassetFilesUI::Construct(const FArguments& InArgs)
 {
 	SetNonUassetFiles(InArgs._NonUassetFiles);
-	RefreshUIContent();
 }
 
 void SProjectCleanerNonUassetFilesUI::SetNonUassetFiles(const TSet<FName>& NewNonUassetFile)
@@ -13,7 +15,7 @@ void SProjectCleanerNonUassetFilesUI::SetNonUassetFiles(const TSet<FName>& NewNo
 	NonUassetFiles.Reset();
 	NonUassetFiles.Reserve(NewNonUassetFile.Num());
 
-	for(const auto& File :NewNonUassetFile)
+	for (const auto& File: NewNonUassetFile)
 	{
 		const auto& NonUassetFile = NewObject<UNonUassetFile>();
 		if(!NonUassetFile) continue;
@@ -27,8 +29,6 @@ void SProjectCleanerNonUassetFilesUI::SetNonUassetFiles(const TSet<FName>& NewNo
 
 void SProjectCleanerNonUassetFilesUI::RefreshUIContent()
 {
-	const auto FontInfo = FSlateFontInfo(FPaths::EngineContentDir() / TEXT("Slate/Fonts/Roboto-Light.ttf"), 20);
-
 	WidgetRef =
 		SNew(SVerticalBox)
 		+ SVerticalBox::Slot()
@@ -36,21 +36,21 @@ void SProjectCleanerNonUassetFilesUI::RefreshUIContent()
 		[
 			SNew(STextBlock)
 			.AutoWrapText(true)
-			.Font(FontInfo)
-			.Text(LOCTEXT("nonuassetfiles", "Non .uasset files"))
+			.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
+			.Text(LOCTEXT("non_uasset_files", "Non .uasset files"))
 		]
 		+ SVerticalBox::Slot()
-		  .Padding(FMargin{0.0f, 10.0f})
-		  .AutoHeight()
+		.Padding(FMargin{0.0f, 10.0f})
+		.AutoHeight()
 		[
 			SNew(STextBlock)
 			.AutoWrapText(true)
-			.Font(FSlateFontInfo(FPaths::EngineContentDir() / TEXT("Slate/Fonts/Roboto-Light.ttf"), 8))
+			.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light10"))
 			.Text(LOCTEXT("dblclickonrow", "Double click on row to open in Explorer"))
 		]
 		+ SVerticalBox::Slot()
-		  .AutoHeight()
-		  .Padding(FMargin{0.0f, 20.0f})
+		.AutoHeight()
+		.Padding(FMargin{0.0f, 20.0f})
 		[
 			SNew(SListView<TWeakObjectPtr<UNonUassetFile>>)
 			.ListItemsSource(&NonUassetFiles)
@@ -102,10 +102,9 @@ void SProjectCleanerNonUassetFilesUI::OnMouseDoubleClick(TWeakObjectPtr<UNonUass
 	if (!Item.IsValid()) return;
 
 	const auto DirectoryPath = FPaths::GetPath(Item.Get()->FilePath);
-	if (FPaths::DirectoryExists(DirectoryPath))
-	{
-		FPlatformProcess::ExploreFolder(*DirectoryPath);
-	}
+	if (!FPaths::DirectoryExists(DirectoryPath)) return;
+	
+	FPlatformProcess::ExploreFolder(*DirectoryPath);
 }
 
 #undef LOCTEXT_NAMESPACE

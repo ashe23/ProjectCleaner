@@ -1,6 +1,7 @@
-﻿#pragma once
+﻿// Copyright 2021. Ashot Barkhudaryan. All Rights Reserved.
 
-// Engine Headers
+#pragma once
+
 #include "CoreMinimal.h"
 #include "Widgets/SCompoundWidget.h"
 #include "ProjectCleanerNonUassetFilesUI.generated.h"
@@ -11,16 +12,17 @@ class UNonUassetFile : public UObject
 {
 	GENERATED_BODY()
 public:
-	UPROPERTY(DisplayName = "FileName", VisibleAnywhere, Category="NonUassetFile")
+	UPROPERTY(DisplayName = "FileName", VisibleAnywhere, Category = "NonUassetFile")
 	FString FileName;
 
-	UPROPERTY(DisplayName = "FilePath", VisibleAnywhere, Category="NonUassetFile")
+	UPROPERTY(DisplayName = "FilePath", VisibleAnywhere, Category = "NonUassetFile")
 	FString FilePath;
 };
 
 class SNonUassetFileUISelectionRow : public SMultiColumnTableRow<TWeakObjectPtr<UNonUassetFile>>
 {
 public:
+	
 	SLATE_BEGIN_ARGS(SNonUassetFileUISelectionRow) {}
 		SLATE_ARGUMENT(TWeakObjectPtr<UNonUassetFile>, SelectedRowItem)
 	SLATE_END_ARGS()
@@ -65,20 +67,22 @@ private:
 class SProjectCleanerNonUassetFilesUI : public SCompoundWidget
 {
 public:
+	
 	SLATE_BEGIN_ARGS(SProjectCleanerNonUassetFilesUI) {}
 		SLATE_ARGUMENT(TSet<FName>, NonUassetFiles)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
 	void SetNonUassetFiles(const TSet<FName>& NewNonUassetFile);
-	void RefreshUIContent();
 private:
+	void RefreshUIContent();
 	TSharedRef<ITableRow> OnGenerateRow(
 		TWeakObjectPtr<UNonUassetFile> InItem,
 		const TSharedRef<STableViewBase>& OwnerTable
 	) const;
 	void OnMouseDoubleClick(TWeakObjectPtr<UNonUassetFile> Item) const;
 
+	/** Data **/
 	TArray<TWeakObjectPtr<UNonUassetFile>> NonUassetFiles;
 	TSharedRef<SWidget> WidgetRef = SNullWidget::NullWidget;
 };

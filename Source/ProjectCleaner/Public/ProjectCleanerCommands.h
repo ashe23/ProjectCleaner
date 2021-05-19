@@ -1,28 +1,18 @@
-// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
+// Copyright 2021. Ashot Barkhudaryan. All Rights Reserved.
 
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Framework/Commands/Commands.h"
-#include "ProjectCleanerStyle.h"
 
 class FProjectCleanerCommands : public TCommands<FProjectCleanerCommands>
 {
 public:
-
-	FProjectCleanerCommands()
-		: TCommands<FProjectCleanerCommands>(
-			TEXT("ProjectCleaner"),
-			NSLOCTEXT("Contexts", "ProjectCleaner", "ProjectCleaner Plugin"),
-			NAME_None,
-			FProjectCleanerStyle::GetStyleSetName()
-		)
-	{
-	}
-
-	// TCommands<> interface
+	FProjectCleanerCommands();
 	virtual void RegisterCommands() override;
 
-public:
+	/** Data **/
 	TSharedPtr<FUICommandInfo> PluginAction;
+	TSharedPtr<FUICommandInfo> DeleteAsset;
+	TSharedPtr<FUICommandInfo> ExcludeAsset;
+	TSharedPtr<FUICommandInfo> IncludeAsset;
 };

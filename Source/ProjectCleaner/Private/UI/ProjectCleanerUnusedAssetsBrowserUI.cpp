@@ -1,5 +1,8 @@
-﻿#include "UI/ProjectCleanerUnusedAssetsBrowserUI.h"
+﻿// Copyright 2021. Ashot Barkhudaryan. All Rights Reserved.
+
+#include "UI/ProjectCleanerUnusedAssetsBrowserUI.h"
 #include "UI/ProjectCleanerBrowserCommands.h"
+#include "ProjectCleanerCommands.h"
 // Engine Headers
 #include "IContentBrowserSingleton.h"
 #include "ObjectTools.h"
@@ -11,36 +14,52 @@
 
 void SProjectCleanerUnusedAssetsBrowserUI::Construct(const FArguments& InArgs)
 {
-	SetUnusedAssets(InArgs._UnusedAssets);
-
-	FProjectCleanerBrowserCommands::Register();
+	FProjectCleanerCommands::Register();
 
 	Commands = MakeShareable(new FUICommandList);
 	Commands->MapAction(
 		FGlobalEditorCommonCommands::Get().FindInContentBrowser,
 		FUIAction(
-			FExecuteAction::CreateRaw(this, &SProjectCleanerUnusedAssetsBrowserUI::FindInContentBrowser),
-			FCanExecuteAction::CreateRaw(this, &SProjectCleanerUnusedAssetsBrowserUI::IsAnythingSelected)
+			FExecuteAction::CreateRaw(
+				this,
+				&SProjectCleanerUnusedAssetsBrowserUI::FindInContentBrowser
+			),
+			FCanExecuteAction::CreateRaw(
+				this,
+				&SProjectCleanerUnusedAssetsBrowserUI::IsAnythingSelected
+			)
 		)
 	);
-	Commands->MapAction(FProjectCleanerBrowserCommands::Get().DeleteAsset,
+	Commands->MapAction(FProjectCleanerCommands::Get().DeleteAsset,
 		FUIAction
 		(
-	FExecuteAction::CreateRaw(this, &SProjectCleanerUnusedAssetsBrowserUI::DeleteAsset),
-			FCanExecuteAction::CreateRaw(this, &SProjectCleanerUnusedAssetsBrowserUI::IsAnythingSelected)
+	FExecuteAction::CreateRaw(
+	this,
+				&SProjectCleanerUnusedAssetsBrowserUI::DeleteAsset
+			),
+			FCanExecuteAction::CreateRaw(
+				this,
+				&SProjectCleanerUnusedAssetsBrowserUI::IsAnythingSelected
+			)
 		)
 	);
 
 	Commands->MapAction(
-		FProjectCleanerBrowserCommands::Get().ExcludeFromDeletion,
+		FProjectCleanerCommands::Get().ExcludeAsset,
 		FUIAction
 		(
-			FExecuteAction::CreateRaw(this,&SProjectCleanerUnusedAssetsBrowserUI::ExcludeAsset),
-			FCanExecuteAction::CreateRaw(this, &SProjectCleanerUnusedAssetsBrowserUI::IsAnythingSelected)
+			FExecuteAction::CreateRaw(
+				this,
+				&SProjectCleanerUnusedAssetsBrowserUI::ExcludeAsset
+			),
+			FCanExecuteAction::CreateRaw(
+				this,
+				&SProjectCleanerUnusedAssetsBrowserUI::IsAnythingSelected
+			)
 		)
 	);
-
-	RefreshUIContent();
+	
+	SetUnusedAssets(InArgs._UnusedAssets);
 }
 
 void SProjectCleanerUnusedAssetsBrowserUI::SetUnusedAssets(const TArray<FAssetData>& NewUnusedAssets)
@@ -64,8 +83,8 @@ TSharedPtr<SWidget> SProjectCleanerUnusedAssetsBrowserUI::OnGetAssetContextMenu(
 	);
 	{
 		MenuBuilder.AddMenuEntry(FGlobalEditorCommonCommands::Get().FindInContentBrowser);
-		MenuBuilder.AddMenuEntry(FProjectCleanerBrowserCommands::Get().DeleteAsset);
-		MenuBuilder.AddMenuEntry(FProjectCleanerBrowserCommands::Get().ExcludeFromDeletion);
+		MenuBuilder.AddMenuEntry(FProjectCleanerCommands::Get().DeleteAsset);
+		MenuBuilder.AddMenuEntry(FProjectCleanerCommands::Get().ExcludeAsset);
 	}
 	MenuBuilder.EndSection();
 
@@ -107,7 +126,7 @@ void SProjectCleanerUnusedAssetsBrowserUI::DeleteAsset() const
 	const TArray<FAssetData> CurrentSelection = GetCurrentSelectionDelegate.Execute();
 	if (CurrentSelection.Num() > 0)
 	{
-		int32 DeletedAssetsNum = ObjectTools::DeleteAssets(CurrentSelection);
+		const int32 DeletedAssetsNum = ObjectTools::DeleteAssets(CurrentSelection);
 		if (DeletedAssetsNum == 0) return;
 		OnUserDeletedAssets.ExecuteIfBound();
 	}
@@ -118,10 +137,11 @@ void SProjectCleanerUnusedAssetsBrowserUI::ExcludeAsset() const
 {
 	if(!GetCurrentSelectionDelegate.IsBound()) return;
 
-	const TArray<FAssetData> CurrentSelection = GetCurrentSelectionDelegate.Execute();
-	if(!CurrentSelection.Num()) return;
+	const TArray<FAssetData> SelectedAssets = GetCurrentSelectionDelegate.Execute();
+	if(!SelectedAssets.Num()) return;
+	if(!OnUserExcludedAssets.IsBound()) return;
 
-	OnUserExcludedAssets.ExecuteIfBound(CurrentSelection);
+	OnUserExcludedAssets.Execute(SelectedAssets);
 }
 
 void SProjectCleanerUnusedAssetsBrowserUI::RefreshUIContent()

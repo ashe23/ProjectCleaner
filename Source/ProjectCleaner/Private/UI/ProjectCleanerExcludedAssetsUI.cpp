@@ -99,7 +99,7 @@ void SProjectCleanerExcludedAssetsUI::RefreshUIContent()
 	WidgetRef = SNew(SVerticalBox)
 	+ SVerticalBox::Slot()
 	.AutoHeight()
-	.Padding(20.0f)
+	.Padding(FMargin(20.0f, 5.0f))
 	[
 		SNew(STextBlock)
 		.AutoWrapText(true)
@@ -108,7 +108,7 @@ void SProjectCleanerExcludedAssetsUI::RefreshUIContent()
 	]
 	+SVerticalBox::Slot()
 	.AutoHeight()
-	.Padding(20.0f)
+	.Padding(FMargin(20.0f, 0.0f))
 	[
 		SNew(STextBlock)
 		.AutoWrapText(true)

@@ -1,10 +1,12 @@
-﻿#include "UI/ProjectCleanerDirectoryExclusionUI.h"
+﻿// Copyright 2021. Ashot Barkhudaryan. All Rights Reserved.
+
+#include "UI/ProjectCleanerDirectoryExclusionUI.h"
+#include "ProjectCleanerStyle.h"
 
 #define LOCTEXT_NAMESPACE "FProjectCleanerModule"
 
 void SProjectCleanerDirectoryExclusionUI::Construct(const FArguments& InArgs)
 {
-
 	FPropertyEditorModule& PropertyEditor = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
 	FDetailsViewArgs DirectoryFilterDetailsViewArgs;
 	DirectoryFilterDetailsViewArgs.bUpdatesFromSelection = false;
@@ -16,13 +18,11 @@ void SProjectCleanerDirectoryExclusionUI::Construct(const FArguments& InArgs)
 	DirectoryFilterDetailsViewArgs.ViewIdentifier = "ExcludeDirectoriesFromScan";
 	
 	ExcludeDirectoriesFilterSettingsProperty = PropertyEditor.CreateDetailView(DirectoryFilterDetailsViewArgs);
-	if(InArgs._ExcludeDirectoriesFilterSettings)
+	if (InArgs._ExcludeDirectoriesFilterSettings)
 	{
 		ExcludeDirectoriesFilterSettings = InArgs._ExcludeDirectoriesFilterSettings;
 		ExcludeDirectoriesFilterSettingsProperty->SetObject(ExcludeDirectoriesFilterSettings);
 	}
-
-	const auto FontInfo = FSlateFontInfo(FPaths::EngineContentDir() / TEXT("Slate/Fonts/Roboto-Light.ttf"), 20);
 	
 	ChildSlot
 	[
@@ -33,7 +33,7 @@ void SProjectCleanerDirectoryExclusionUI::Construct(const FArguments& InArgs)
 		[
 			SNew(STextBlock)
 			.AutoWrapText(true)
-			.Font(FSlateFontInfo(FPaths::EngineContentDir() / TEXT("Slate/Fonts/Roboto-Light.ttf"), 8))
+			.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light10"))
 			.Text(LOCTEXT("applyfilters", "Click \"Refresh\" button to Apply Filters"))
 		]
 		+ SVerticalBox::Slot()
