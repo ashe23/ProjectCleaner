@@ -5,7 +5,6 @@
 #include "ProjectCleanerCommands.h"
 #include "ProjectCleanerNotificationManager.h"
 #include "ProjectCleanerUtility.h"
-#include "UI/ProjectCleanerBrowserCommands.h"
 #include "UI/ProjectCleanerNonUassetFilesUI.h"
 // Engine Headers
 #include "AssetRegistryModule.h"
@@ -19,7 +18,6 @@
 #include "EditorStyleSet.h"
 #include "IContentBrowserSingleton.h"
 #include "GenericPlatform/GenericPlatformMisc.h"
-#include "AssetRegistry/Public/AssetData.h"
 #include "Framework/Notifications/NotificationManager.h"
 #include "Engine/AssetManager.h"
 #include "Engine/MapBuildDataRegistry.h"
@@ -61,7 +59,6 @@ bool FProjectCleanerModule::IsGameModule() const
 void FProjectCleanerModule::InitModuleComponents()
 {
 	FProjectCleanerCommands::Register();
-	FProjectCleanerBrowserCommands::Register();
 
 	PluginCommands = MakeShareable(new FUICommandList);
 
@@ -127,9 +124,13 @@ void FProjectCleanerModule::OnUserExcludedAssets(const TArray<FAssetData>& Asset
 	UpdateCleanerData();
 }
 
-void FProjectCleanerModule::OnUserMarkUnused(const TArray<FAssetData>& Assets)
+void FProjectCleanerModule::OnUserIncludedAssets(const TArray<FAssetData>& Assets)
 {
 	if (!Assets.Num()) return;
+
+	// for given assets find all related assets
+	// remove all founded assets from exclude assets container
+	// update cleaner data
 
 	TArray<FAssetData> RelatedAssets;
 	RelatedAssets.Reserve(UnusedAssets.Num());
@@ -137,13 +138,23 @@ void FProjectCleanerModule::OnUserMarkUnused(const TArray<FAssetData>& Assets)
 		Assets,
 		RelatedAssets,
 		AdjacencyList,
-		UnusedAssets
+		ExcludedAssets
 	);
 
-	ExcludedAssets.RemoveAll([&](const FAssetData& Elem)
+	if (RelatedAssets.Num() > 0)
 	{
-		return RelatedAssets.Contains(Elem);
-	});
+		ExcludedAssets.RemoveAll([&](const FAssetData& Elem)
+		{
+			return RelatedAssets.Contains(Elem);
+		});
+	}
+	else
+	{
+		ExcludedAssets.RemoveAll([&](const FAssetData& Elem)
+		{
+			return Assets.Contains(Elem);
+		});
+	}
 	
 	UpdateCleanerData();
 }
@@ -178,9 +189,9 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 
 	const auto ExcludedAssetsUIRef = SAssignNew(ExcludedAssetsUI, SProjectCleanerExcludedAssetsUI)
 									.ExcludedAssets(ExcludedAssets);
-	ExcludedAssetsUIRef->OnUserMarkUnused = FOnUserMarkUnused::CreateRaw(
+	ExcludedAssetsUIRef->OnUserIncludedAssets = FOnUserIncludedAsset::CreateRaw(
 		this,
-		&FProjectCleanerModule::OnUserMarkUnused
+		&FProjectCleanerModule::OnUserIncludedAssets
 	);
 	
 	return SNew(SDockTab)
@@ -631,7 +642,7 @@ void FProjectCleanerModule::UpdateCleanerData()
 	ExcludedAssets.Reserve(Visitor.FileNum);
 	ProjectCleanerUtility::GetAllAssets(UnusedAssets);
 	
-	TSet<FName> PossiblyCorruptedFiles;	
+	TSet<FName> PossiblyCorruptedFiles;
 	ProjectCleanerUtility::CheckForCorruptedFiles(UnusedAssets, Visitor.UassetFiles, PossiblyCorruptedFiles);
 	
 	ProjectCleanerUtility::RemoveUsedAssets(UnusedAssets);
@@ -647,7 +658,6 @@ void FProjectCleanerModule::UpdateCleanerData()
 	
 	// updating adjacency list
 	ProjectCleanerUtility::CreateAdjacencyList(UnusedAssets, AdjacencyList, true);
-
 	
 	const double TimeElapsed = FPlatformTime::Seconds() - StartTime;
 	UE_LOG(LogProjectCleaner, Display, TEXT("Time elapsed on scanning : %f"), TimeElapsed);

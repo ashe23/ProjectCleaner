@@ -1,8 +1,9 @@
-﻿#include "UI/ProjectCleanerExcludedAssetsUI.h"
-#include "UI/ProjectCleanerBrowserCommands.h"
+﻿// Copyright 2021. Ashot Barkhudaryan. All Rights Reserved.
+
+#include "UI/ProjectCleanerExcludedAssetsUI.h"
+#include "ProjectCleanerCommands.h"
 // Engine Headers
 #include "IContentBrowserSingleton.h"
-#include "ObjectTools.h"
 #include "Editor/ContentBrowser/Public/ContentBrowserModule.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Toolkits/GlobalEditorCommonCommands.h"
@@ -13,7 +14,7 @@ void SProjectCleanerExcludedAssetsUI::Construct(const FArguments& InArgs)
 {
 	SetExcludedAssets(InArgs._ExcludedAssets);
 
-	FProjectCleanerBrowserCommands::Register();
+	FProjectCleanerCommands::Register();
 
 	Commands = MakeShareable(new FUICommandList);
 	Commands->MapAction(
@@ -25,10 +26,10 @@ void SProjectCleanerExcludedAssetsUI::Construct(const FArguments& InArgs)
 	);
 
 	Commands->MapAction(
-		FProjectCleanerBrowserCommands::Get().MarkUnused,
+		FProjectCleanerCommands::Get().IncludeAsset,
 		FUIAction
 		(
-			FExecuteAction::CreateRaw(this,&SProjectCleanerExcludedAssetsUI::MarkUnused),
+			FExecuteAction::CreateRaw(this,&SProjectCleanerExcludedAssetsUI::IncludeAssets),
 			FCanExecuteAction::CreateRaw(this, &SProjectCleanerExcludedAssetsUI::IsAnythingSelected)
 		)
 	);
@@ -137,7 +138,7 @@ TSharedPtr<SWidget> SProjectCleanerExcludedAssetsUI::OnGetAssetContextMenu(const
 	);
 	{
 		MenuBuilder.AddMenuEntry(FGlobalEditorCommonCommands::Get().FindInContentBrowser);
-		MenuBuilder.AddMenuEntry(FProjectCleanerBrowserCommands::Get().MarkUnused);
+		MenuBuilder.AddMenuEntry(FProjectCleanerCommands::Get().IncludeAsset);
 	}
 	MenuBuilder.EndSection();
 
@@ -172,15 +173,16 @@ bool SProjectCleanerExcludedAssetsUI::IsAnythingSelected() const
 	return CurrentSelection.Num() > 0;
 }
 
-void SProjectCleanerExcludedAssetsUI::MarkUnused() const
+void SProjectCleanerExcludedAssetsUI::IncludeAssets() const
 {
 	if (!GetCurrentSelectionDelegate.IsBound()) return;
 
 	const TArray<FAssetData> CurrentSelection = GetCurrentSelectionDelegate.Execute();
 	if(!CurrentSelection.Num()) return;
 
-	OnUserMarkUnused.ExecuteIfBound(CurrentSelection);
-}
+	if(!OnUserIncludedAssets.IsBound()) return;
 
+	OnUserIncludedAssets.Execute(CurrentSelection);
+}
 
 #undef LOCTEXT_NAMESPACE

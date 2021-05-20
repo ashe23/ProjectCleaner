@@ -50,7 +50,7 @@ private:
 	void AddMenuExtension(FMenuBuilder& Builder);
 	void OnUserDeletedAssets();
 	void OnUserExcludedAssets(const TArray<FAssetData>& Assets);
-	void OnUserMarkUnused(const TArray<FAssetData>& Assets);
+	void OnUserIncludedAssets(const TArray<FAssetData>& Assets);
 	/**
 	 * @brief Opens ProjectCleanerBrowser Main Tab
 	 */

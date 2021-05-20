@@ -3,7 +3,6 @@
 #include "UI/ProjectCleanerDirectoryExclusionUI.h"
 // Engine Headers
 #include "HAL/FileManager.h"
-#include "AssetRegistry/Public/AssetData.h"
 #include "AssetRegistryModule.h"
 #include "AssetToolsModule.h"
 #include "Misc/Paths.h"
@@ -13,7 +12,6 @@
 #include "Misc/FileHelper.h"
 #include "FileHelpers.h"
 #include "Misc/ScopedSlowTask.h"
-#include "IContentBrowserSingleton.h"
 
 bool ProjectCleanerUtility::HasFiles(const FString& SearchPath)
 {
@@ -405,7 +403,6 @@ void ProjectCleanerUtility::GetRootAssets(TArray<FAssetData>& RootAssets, TArray
 	// first we deleting cycle assets
 	// like Skeletal mesh, skeleton, and physical assets
 	// those assets cant be deleted separately
-	constexpr int32 ChunkSize = 20; // todo:ashe23 maybe this should be in UI?
 	TSet<FName> CircularAssets;
 	for (const auto& Node : List)
 	{
@@ -426,6 +423,7 @@ void ProjectCleanerUtility::GetRootAssets(TArray<FAssetData>& RootAssets, TArray
 	}
 	else
 	{
+		constexpr int32 ChunkSize = 20;
 		for (const auto& Node : List)
 		{
 			if (RootAssets.Num() > ChunkSize) break;

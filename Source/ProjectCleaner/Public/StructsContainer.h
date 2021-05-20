@@ -107,9 +107,9 @@ struct FNode
 
 	bool IsCircular() const
 	{
-		for(const auto& Ref : Refs)
+		for (const auto& Ref : Refs)
 		{
-			if(Deps.Contains(Ref))
+			if (Deps.Contains(Ref))
 			{
 				return true;
 			}
