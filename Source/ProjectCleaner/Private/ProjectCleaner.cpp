@@ -128,10 +128,6 @@ void FProjectCleanerModule::OnUserIncludedAssets(const TArray<FAssetData>& Asset
 {
 	if (!Assets.Num()) return;
 
-	// for given assets find all related assets
-	// remove all founded assets from exclude assets container
-	// update cleaner data
-
 	TArray<FAssetData> RelatedAssets;
 	RelatedAssets.Reserve(UnusedAssets.Num());
 	ProjectCleanerUtility::FindAllRelatedAssets(
@@ -649,15 +645,15 @@ void FProjectCleanerModule::UpdateCleanerData()
 	ProjectCleanerUtility::RemoveAssetsWithExternalDependencies(UnusedAssets, AdjacencyList);
 	ProjectCleanerUtility::RemoveAssetsUsedInSourceCode(UnusedAssets, AdjacencyList, SourceFiles, SourceCodeAssets);
 	ProjectCleanerUtility::RemoveAssetsExcludedByUser(UnusedAssets, AdjacencyList, ExcludeDirectoryFilterSettings);
-
+	
+	// updating adjacency list
+	ProjectCleanerUtility::CreateAdjacencyList(UnusedAssets, AdjacencyList, true);
+	
 	// remove user excluded assets
 	UnusedAssets.RemoveAll([&](const FAssetData& Asset)
 	{
 		return ExcludedAssets.Contains(Asset);
 	});
-	
-	// updating adjacency list
-	ProjectCleanerUtility::CreateAdjacencyList(UnusedAssets, AdjacencyList, true);
 	
 	const double TimeElapsed = FPlatformTime::Seconds() - StartTime;
 	UE_LOG(LogProjectCleaner, Display, TEXT("Time elapsed on scanning : %f"), TimeElapsed);
