@@ -1,4 +1,4 @@
-// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
+// Copyright 2021. Ashot Barkhudaryan. All Rights Reserved.
 
 #include "ProjectCleaner.h"
 #include "ProjectCleanerStyle.h"
