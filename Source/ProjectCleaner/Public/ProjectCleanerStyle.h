@@ -13,9 +13,7 @@ public:
 	static void ReloadTextures();
 	static const ISlateStyle& Get();
 	static FName GetStyleSetName();
-	static FName GetContextName();	
 private:
-
 	static TSharedRef< class FSlateStyleSet > Create();
 	static TSharedPtr< class FSlateStyleSet > StyleInstance;
 };

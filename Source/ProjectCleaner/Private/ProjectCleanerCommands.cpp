@@ -19,7 +19,7 @@ FProjectCleanerCommands::FProjectCleanerCommands() : TCommands<FProjectCleanerCo
 void FProjectCleanerCommands::RegisterCommands()
 {
 	UI_COMMAND(
-		PluginAction,
+		OpenCleanerWindow,
 		"ProjectCleaner",
 		"Delete unused assets and empty folders",
 		EUserInterfaceActionType::Button,
@@ -29,7 +29,7 @@ void FProjectCleanerCommands::RegisterCommands()
 	UI_COMMAND(
 		DeleteAsset,
 		"Delete Asset",
-		"Delete Selected Assets",
+		"Delete selected assets",
 		EUserInterfaceActionType::Button,
 		FInputChord()
 	);

@@ -11,7 +11,7 @@ public:
 	virtual void RegisterCommands() override;
 
 	/** Commands **/
-	TSharedPtr<FUICommandInfo> PluginAction;
+	TSharedPtr<FUICommandInfo> OpenCleanerWindow;
 	TSharedPtr<FUICommandInfo> DeleteAsset;
 	TSharedPtr<FUICommandInfo> ExcludeAsset;
 	TSharedPtr<FUICommandInfo> IncludeAsset;

@@ -30,11 +30,6 @@ FName FProjectCleanerStyle::GetStyleSetName()
 	return StyleSetName;
 }
 
-FName FProjectCleanerStyle::GetContextName()
-{
-	return FName(TEXT("ProjectCleaner.PluginAction"));
-}
-
 #define IMAGE_BRUSH( RelativePath, ... ) FSlateImageBrush( Style->RootToContentDir( RelativePath, TEXT(".png") ), __VA_ARGS__ )
 #define BOX_BRUSH( RelativePath, ... ) FSlateBoxBrush( Style->RootToContentDir( RelativePath, TEXT(".png") ), __VA_ARGS__ )
 #define BORDER_BRUSH( RelativePath, ... ) FSlateBorderBrush( Style->RootToContentDir( RelativePath, TEXT(".png") ), __VA_ARGS__ )
@@ -50,8 +45,8 @@ TSharedRef< FSlateStyleSet > FProjectCleanerStyle::Create()
 	Style->SetContentRoot(IPluginManager::Get().FindPlugin("ProjectCleaner")->GetBaseDir() / TEXT("Resources"));
 
 	// icons
-	Style->Set("ProjectCleaner.PluginAction", new IMAGE_BRUSH(TEXT("ButtonIcon_40x"), Icon40x40));
-	Style->Set("ProjectCleaner.PluginAction.Small", new IMAGE_BRUSH(TEXT("ButtonIcon_20x"), Icon20x20));
+	Style->Set("ProjectCleaner.OpenCleanerWindow", new IMAGE_BRUSH(TEXT("ButtonIcon_40x"), Icon40x40));
+	Style->Set("ProjectCleaner.OpenCleanerWindow.Small", new IMAGE_BRUSH(TEXT("ButtonIcon_20x"), Icon20x20));
 
 	// fonts
 	Style->Set("ProjectCleaner.Font.Light20", FCoreStyle::GetDefaultFontStyle("Light", 20));
