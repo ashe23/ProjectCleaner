@@ -44,15 +44,26 @@ public:
 	virtual void ShutdownModule() override;
 	virtual bool IsGameModule() const override;
 private:
+    /** Module **/	
 	void RegisterMenus();
-	// void InitModuleComponents();
-	// void AddToolbarExtension(FToolBarBuilder& Builder);
-	// void AddMenuExtension(FMenuBuilder& Builder);
-	// void OnUserDeletedAssets();
+	void PluginButtonClicked();
+	TSharedRef<SDockTab> OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs);
+
+	/** Cleaner **/
+	
+	/**
+	 * @brief Saves all unsaved assets, fixes up redirectors and updates cleaner data
+	 */
+	void UpdateCleaner();
+	
+	/**
+	 * @brief Scans project for unused assets, empty folders, corrupted files and non .uasset files
+	 */
+	void UpdateCleanerData();
+	
 	// void OnUserExcludedAssets(const TArray<FAssetData>& Assets);
 	// void OnUserIncludedAssets(const TArray<FAssetData>& Assets);	
-	void PluginButtonClicked();
-	TSharedRef<SDockTab> OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs) const;
+	// void OnUserDeletedAssets();
 
 	// /** Button events */
 	// FReply OnRefreshBtnClick();
@@ -64,17 +75,9 @@ private:
 	//  */
 	// void UpdateStats();
 	// /**
-	//  * @brief Saves all unsaved assets, fixes up redirectors and updates cleaner data
-	//  */
-	// void UpdateCleaner();
-	// /**
 	//  * @brief Resets all data containers
 	//  */
 	// void Reset();
-	// /**
-	//  * @brief Scans project for unused assets, empty folders, corrupted files and non .uasset files
-	//  */
-	// void UpdateCleanerData();
 	// /**
 	//  * Sets content browser focus to root directory and refreshes asset registry
 	//  * @brief Updates content browser
@@ -114,10 +117,10 @@ private:
 	// TWeakPtr<SProjectCleanerCorruptedFilesUI> CorruptedFilesUI;
 	// TWeakPtr<SProjectCleanerExcludedAssetsUI> ExcludedAssetsUI;
 	//
-	// /** Data Containers */ 
+	/** Data Containers */ 
 	// TArray<FAssetData> UnusedAssets;
 	// TArray<FAssetData> ExcludedAssets;
-	// TSet<FName> EmptyFolders;
+	TSet<FName> EmptyFolders;
 	// TSet<FName> NonUassetFiles;
 	// TArray<FNode> AdjacencyList;
 	// TArray<FAssetData> CorruptedFiles;

@@ -100,8 +100,10 @@ void FProjectCleanerModule::PluginButtonClicked()
 	FGlobalTabmanager::Get()->TryInvokeTab(ProjectCleanerTabName);
 }
 
-TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs) const
+TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs)
 {
+	UpdateCleaner();
+	
 	return SNew(SDockTab)
 		.TabRole(ETabRole::NomadTab)
 		[
@@ -110,57 +112,113 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 		];
 }
 
-// void FProjectCleanerModule::InitModuleComponents()
-// {
-// 	FProjectCleanerCommands::Register();
-//
-// 	PluginCommands = MakeShareable(new FUICommandList);
-//
-// 	PluginCommands->MapAction(
-// 		FProjectCleanerCommands::Get().PluginAction,
-// 		FExecuteAction::CreateRaw(this, &FProjectCleanerModule::PluginButtonClicked),
-// 		FCanExecuteAction()
-// 	);
-//
-// 	FLevelEditorModule& LevelEditorModule = FModuleManager::LoadModuleChecked<FLevelEditorModule>("LevelEditor");
-//
-// 	{
-// 		TSharedPtr<FExtender> MenuExtender = MakeShareable(new FExtender());
-// 		MenuExtender->AddMenuExtension(
-// 			"WindowLayout",
-// 			EExtensionHook::After,
-// 			PluginCommands,
-// 			FMenuExtensionDelegate::CreateRaw(this, &FProjectCleanerModule::AddMenuExtension)
-// 		);
-//
-// 		LevelEditorModule.GetMenuExtensibilityManager()->AddExtender(MenuExtender);
-// 	}
-//
-// 	{
-// 		TSharedPtr<FExtender> ToolbarExtender = MakeShareable(new FExtender);
-// 		ToolbarExtender->AddToolBarExtension(
-// 			"Settings",
-// 			EExtensionHook::After,
-// 			PluginCommands,
-// 			FToolBarExtensionDelegate::CreateRaw(this, &FProjectCleanerModule::AddToolbarExtension)
-// 		);
-//
-// 		LevelEditorModule.GetToolBarExtensibilityManager()->AddExtender(ToolbarExtender);
-// 	}
-//
-// 	FGlobalTabmanager::Get()->RegisterNomadTabSpawner(
-// 								ProjectCleanerTabName,
-// 								FOnSpawnTab::CreateRaw(this, &FProjectCleanerModule::OnSpawnPluginTab)
-// 							)
-// 							.SetDisplayName(LOCTEXT("FProjectCleanerTabTitle", "ProjectCleaner"))
-// 							.SetMenuType(ETabSpawnerMenuType::Hidden);
-// }
-//
-// void FProjectCleanerModule::AddMenuExtension(FMenuBuilder& Builder)
-// {
-// 	Builder.AddMenuEntry(FProjectCleanerCommands::Get().PluginAction);
-// }
-//
+void FProjectCleanerModule::UpdateCleaner()
+{
+	ProjectCleanerUtility::SaveAllAssets();
+
+	ProjectCleanerUtility::FixupRedirectors();
+
+	UpdateCleanerData();
+}
+
+void FProjectCleanerModule::UpdateCleanerData()
+{
+	// Reset();
+	
+	// FScopedSlowTask SlowTask{1.0f, FText::FromString("Scanning. Please wait...")};
+	// SlowTask.MakeDialog();
+	
+	const double StartTime = FPlatformTime::Seconds();
+
+	// scan project steps
+	// 1) scan for non uasset files
+	// 2) scan for uasset files
+	// 3) scan for empty folder
+	// 4) scan and cache source code files
+
+	struct FDirectoryVisitor : IPlatformFile::FDirectoryVisitor
+	{
+		FDirectoryVisitor(TSet<FName>& EmpFolders) : EmptyFolders(EmpFolders) {}
+		virtual bool Visit(const TCHAR* FileName, bool bIsDirectory) override
+		{
+			if (!bIsDirectory)
+			{
+				FileNum++;
+				const auto Extension = FPaths::GetExtension(FileName);
+				if (ProjectCleanerUtility::IsEngineExtension(Extension))
+				{
+					// UassetFiles.Add(FileName);
+				}
+				else
+				{
+					// NonUassetFiles.Add(FileName);
+				}				
+			}			
+			
+			return true;
+		}
+		
+		int32 FileNum = 0;
+		// TSet<FName>& NonUassetFiles;
+		// TSet<FName>& UassetFiles;
+		TSet<FName>& EmptyFolders;
+	};
+
+	EmptyFolders.Reserve(50);
+	FDirectoryVisitor Visitor{EmptyFolders};
+	if (!IFileManager::Get().IterateDirectoryRecursively(*FPaths::ProjectContentDir(), Visitor))
+	{
+		UE_LOG(LogProjectCleaner, Error, TEXT("Failed to scan project directories! Restart Editor and try again."));
+		return;
+	}
+
+	// at this point we got all non uasset and uasset files
+	// ProjectCleanerUtility::GetEmptyFolders(EmptyFolders);
+	//
+	// NonUassetFiles = Visitor.NonUassetFiles;
+	//
+	// UnusedAssets.Reserve(Visitor.FileNum);
+	// ExcludedAssets.Reserve(Visitor.FileNum);
+	// ProjectCleanerUtility::GetAllAssets(UnusedAssets);
+	//
+	// TSet<FName> PossiblyCorruptedFiles;
+	// ProjectCleanerUtility::CheckForCorruptedFiles(UnusedAssets, Visitor.UassetFiles, PossiblyCorruptedFiles);
+	//
+	// ProjectCleanerUtility::RemoveUsedAssets(UnusedAssets);
+	// ProjectCleanerUtility::RemoveAssetsWithExternalDependencies(UnusedAssets, AdjacencyList);
+	// ProjectCleanerUtility::RemoveAssetsUsedInSourceCode(UnusedAssets, AdjacencyList, SourceFiles, SourceCodeAssets);
+	// ProjectCleanerUtility::RemoveAssetsExcludedByUser(UnusedAssets, AdjacencyList, ExcludeDirectoryFilterSettings);
+	//
+	// // updating adjacency list
+	// ProjectCleanerUtility::CreateAdjacencyList(UnusedAssets, AdjacencyList, true);
+	//
+	// // remove user excluded assets
+	// UnusedAssets.RemoveAll([&](const FAssetData& Asset)
+	// {
+	// 	return ExcludedAssets.Contains(Asset);
+	// });
+
+	for (const auto& Path : EmptyFolders)
+	{
+		UE_LOG(LogProjectCleaner, Warning, TEXT("%s"), *Path.ToString());
+	}
+	TSet<FName> Emp;
+	ProjectCleanerUtility::GetEmptyFolders(Emp);
+	UE_LOG(LogProjectCleaner, Warning, TEXT("============"));
+
+	for (const auto& Path : Emp)
+	{
+		UE_LOG(LogProjectCleaner, Warning, TEXT("%s"), *Path.ToString());
+	}
+	
+	const double TimeElapsed = FPlatformTime::Seconds() - StartTime;
+	UE_LOG(LogProjectCleaner, Display, TEXT("Time elapsed on scanning : %f"), TimeElapsed);
+
+	// UpdateStats();
+	
+	// SlowTask.EnterProgressFrame(1.0f);
+}
+
 // void FProjectCleanerModule::OnUserDeletedAssets()
 // {
 // 	UpdateCleaner();
@@ -209,15 +267,7 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 // 	UpdateCleanerData();
 // }
 //
-// void FProjectCleanerModule::AddToolbarExtension(FToolBarBuilder& Builder)
-// {
-// 	Builder.AddToolBarButton(FProjectCleanerCommands::Get().PluginAction);
-// }
-//
-// void FProjectCleanerModule::PluginButtonClicked()
-// {
-// 	FGlobalTabmanager::Get()->TryInvokeTab(ProjectCleanerTabName);
-// }
+
 //
 // TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs)
 // {
@@ -363,6 +413,7 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 // 			]
 // 		];
 // }
+
 //
 // FReply FProjectCleanerModule::OnRefreshBtnClick()
 // {
@@ -620,14 +671,6 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 // 	}
 // }
 //
-// void FProjectCleanerModule::UpdateCleaner()
-// {
-// 	ProjectCleanerUtility::SaveAllAssets();
-//
-// 	ProjectCleanerUtility::FixupRedirectors();
-//
-// 	UpdateCleanerData();
-// }
 //
 // void FProjectCleanerModule::Reset()
 // {
@@ -641,82 +684,8 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 // 	// todo:ashe23 should i Reset ExcludedAssets?
 // }
 //
-// void FProjectCleanerModule::UpdateCleanerData()
-// {
-// 	Reset();
-// 	
-// 	FScopedSlowTask SlowTask{1.0f, FText::FromString("Scanning. Please wait...")};
-// 	SlowTask.MakeDialog();
-// 	
-// 	const double StartTime = FPlatformTime::Seconds();
-//
-// 	struct FDirectoryVisitor : IPlatformFile::FDirectoryVisitor
-// 	{
-// 		virtual bool Visit(const TCHAR* FileName, bool bIsDirectory) override
-// 		{
-// 			if (!bIsDirectory)
-// 			{
-// 				FileNum++;
-// 				const auto Extension = FPaths::GetExtension(FileName);
-// 				if (ProjectCleanerUtility::IsEngineExtension(Extension))
-// 				{
-// 					UassetFiles.Add(FileName);
-// 				}
-// 				else
-// 				{
-// 					NonUassetFiles.Add(FileName);
-// 				}
-// 			}
-// 			
-// 			return true;
-// 		}
-// 		
-// 		int32 FileNum = 0;
-// 		TSet<FName> NonUassetFiles;
-// 		TSet<FName> UassetFiles;
-// 	};
-//
-// 	FDirectoryVisitor Visitor;
-// 	if (!IFileManager::Get().IterateDirectoryRecursively(*FPaths::ProjectContentDir(), Visitor))
-// 	{
-// 		UE_LOG(LogProjectCleaner, Error, TEXT("Failed to scan project directories! Restart Editor and try again."));
-// 		return;
-// 	}
-//
-// 	// at this point we got all non uasset and uasset files
-// 	ProjectCleanerUtility::GetEmptyFolders(EmptyFolders);
-// 	
-// 	NonUassetFiles = Visitor.NonUassetFiles;
-// 	
-// 	UnusedAssets.Reserve(Visitor.FileNum);
-// 	ExcludedAssets.Reserve(Visitor.FileNum);
-// 	ProjectCleanerUtility::GetAllAssets(UnusedAssets);
-// 	
-// 	TSet<FName> PossiblyCorruptedFiles;
-// 	ProjectCleanerUtility::CheckForCorruptedFiles(UnusedAssets, Visitor.UassetFiles, PossiblyCorruptedFiles);
-// 	
-// 	ProjectCleanerUtility::RemoveUsedAssets(UnusedAssets);
-// 	ProjectCleanerUtility::RemoveAssetsWithExternalDependencies(UnusedAssets, AdjacencyList);
-// 	ProjectCleanerUtility::RemoveAssetsUsedInSourceCode(UnusedAssets, AdjacencyList, SourceFiles, SourceCodeAssets);
-// 	ProjectCleanerUtility::RemoveAssetsExcludedByUser(UnusedAssets, AdjacencyList, ExcludeDirectoryFilterSettings);
-// 	
-// 	// updating adjacency list
-// 	ProjectCleanerUtility::CreateAdjacencyList(UnusedAssets, AdjacencyList, true);
-// 	
-// 	// remove user excluded assets
-// 	UnusedAssets.RemoveAll([&](const FAssetData& Asset)
-// 	{
-// 		return ExcludedAssets.Contains(Asset);
-// 	});
-// 	
-// 	const double TimeElapsed = FPlatformTime::Seconds() - StartTime;
-// 	UE_LOG(LogProjectCleaner, Display, TEXT("Time elapsed on scanning : %f"), TimeElapsed);
-//
-// 	UpdateStats();
-// 	
-// 	SlowTask.EnterProgressFrame(1.0f);
-// }
-//
+
+
 // void FProjectCleanerModule::UpdateContentBrowser() const
 // {
 // 	TArray<FString> FocusFolders;
