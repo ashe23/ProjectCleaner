@@ -1,4 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Copyright 2021. Ashot Barkhudaryan. All Rights Reserved.
 
 #pragma once
 
@@ -6,11 +6,9 @@
 // Engine Headers
 #include "CoreMinimal.h"
 
-
 struct FAssetData;
 class USourceCodeAsset;
 class UExcludeDirectoriesFilterSettings;
-
 
 /**
  * This class responsible for different utility operations in unreal engine context
@@ -123,17 +121,11 @@ public:
 	static void FindAllRelatedAssets(const FNode& Node, TSet<FName>& RelatedAssets, const TArray<FNode>& List);
 
 	/**
-	 * @brief Returns Related Assets for given Assets
-	 * @param GivenAssets 
-	 * @param RelatedAssets
-	 * @param List
-	 * @param AllAssets
+	 * @brief Returns all uasset and non uasset files
+	 * @param UassetFiles 
+	 * @param NonUassetFiles 
 	 */
-	static void FindAllRelatedAssets(
-		const TArray<FAssetData>& GivenAssets,
-		TArray<FAssetData>& RelatedAssets,
-		const TArray<FNode>& List,
-		TArray<FAssetData> AllAssets);
+	static void FindAllUassetFiles(TSet<FName>& UassetFiles, TSet<FName>& NonUassetFiles);
 
 	/**
 	 * @brief Returns assets that has no references or circular assets
@@ -160,6 +152,22 @@ public:
 	 * @return 
 	 */
 	static FAssetData* GetAssetData(const FName& AssetName, TArray<FAssetData>& AssetContainer);
+	
+	/**
+	 * @brief Returns AssetData for given AssetName
+	 * @param AssetName 
+	 * @param List 
+	 * @return 
+	 */
+	static FAssetData* GetAssetData(const FName& AssetName, TArray<FNode>& List);
+
+	/**
+	 * @brief Returns assets link chain for given Assets
+	 * @param LinkedAssets 
+	 * @param Assets 
+	 * @param List 
+	 */
+	static void GetLinkedAssetsChain(TSet<FName>& LinkedAssets, const TArray<FAssetData>& Assets, TArray<FNode>& List);
 
 	/**
 	* @brief Returns total size of given assets (in bytes)
@@ -183,11 +191,18 @@ public:
 	static bool IsEngineExtension(const FString& Extension);
 
 	/**
-	 * @brief Converts given relative path to absolute path
+	 * @brief Converts given relative path to absolute
 	 * @param PackageName 
 	 * @return FString
 	 */
 	static FString ConvertRelativeToAbsolutePath(const FName& PackageName);
+
+	/**
+	 * @brief Converts given absolute path to relative
+	 * @param InPath 
+	 * @return FName
+	 */
+	static FName ConvertAbsolutePathToRelative(const FName& InPath);
 	
 	/**
 	 * @brief Checks if given asset used in source code files or not
@@ -215,6 +230,12 @@ public:
 	 * @param CorruptedFiles - Container for corrupted files
 	 */
 	static void CheckForCorruptedFiles(TArray<FAssetData>& Assets, TSet<FName>& UassetFiles, TSet<FName>& CorruptedFiles);
+	
+	static void FindCorruptedFiles(
+		const TArray<FAssetData>& RegistryAssets,
+		const TSet<FName>& AllUassetFiles,
+		TSet<FName>& CorruptedFiles
+	);
 
 	/**
 	 * @brief Removing all used assets from given asset list

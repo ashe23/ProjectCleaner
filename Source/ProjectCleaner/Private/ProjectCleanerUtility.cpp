@@ -1,4 +1,6 @@
-﻿#include "ProjectCleanerUtility.h"
+﻿// Copyright 2021. Ashot Barkhudaryan. All Rights Reserved.
+
+#include "ProjectCleanerUtility.h"
 #include "UI/ProjectCleanerSourceCodeAssetsUI.h"
 #include "UI/ProjectCleanerDirectoryExclusionUI.h"
 // Engine Headers
@@ -299,6 +301,8 @@ void ProjectCleanerUtility::CreateAdjacencyList(TArray<FAssetData>& Assets, TArr
 	{
 		FNode Node;
 		Node.Asset = Asset.PackageName;
+		const auto AssetData = GetAssetData(Asset.PackageName, Assets);
+		Node.AssetData = AssetData ? *AssetData : nullptr;
 		AssetRegistry.Get().GetDependencies(Asset.PackageName, Deps);
 		AssetRegistry.Get().GetReferencers(Asset.PackageName, Refs);
 
@@ -366,35 +370,37 @@ void ProjectCleanerUtility::FindAllRelatedAssets(const FNode& Node,
 	}
 }
 
-void ProjectCleanerUtility::FindAllRelatedAssets(
-	const TArray<FAssetData>& GivenAssets,
-	TArray<FAssetData>& RelatedAssets,
-	const TArray<FNode>& List,
-	TArray<FAssetData> AllAssets)
+void ProjectCleanerUtility::FindAllUassetFiles(TSet<FName>& UassetFiles, TSet<FName>& NonUassetFiles)
 {
-	RelatedAssets.Reserve(List.Num());
-	
-	TSet<FName> LinkedAssets;
-	for (const auto& Asset : GivenAssets)
+	struct FDirectoryVisitor : IPlatformFile::FDirectoryVisitor
 	{
-		const auto Node = List.FindByPredicate([&](const FNode& Elem)
+		FDirectoryVisitor(TSet<FName>& NonUFiles, TSet<FName>& UFiles) :
+			NonUassetFiles(NonUFiles),
+			UassetFiles(UFiles)
+		{}
+		virtual bool Visit(const TCHAR* FileName, bool bIsDirectory) override
 		{
-			return Elem.Asset.IsEqual(Asset.PackageName);
-		});
-		if(!Node) continue;
-
-		FindAllRelatedAssets(*Node, LinkedAssets, List);
-
-		for(const auto& LinkedAsset : LinkedAssets)
-		{
-			const auto AssetData = GetAssetData(LinkedAsset, AllAssets);
-			if(!AssetData) continue;
-
-			RelatedAssets.AddUnique(*AssetData);
+			if (!bIsDirectory)
+			{
+				if (IsEngineExtension(FPaths::GetExtension(FileName)))
+				{
+					UassetFiles.Add(FileName);					
+				}
+				else
+				{
+					NonUassetFiles.Add(FileName);
+				}				
+			}			
+			
+			return true;
 		}
+		
+		TSet<FName>& NonUassetFiles;
+		TSet<FName>& UassetFiles;
+	};
 
-		LinkedAssets.Reset();
-	}
+	FDirectoryVisitor Visitor{NonUassetFiles, UassetFiles};
+	IFileManager::Get().IterateDirectoryRecursively(*FPaths::ProjectContentDir(), Visitor);
 }
 
 void ProjectCleanerUtility::GetRootAssets(TArray<FAssetData>& RootAssets, TArray<FAssetData>& Assets,
@@ -402,7 +408,7 @@ void ProjectCleanerUtility::GetRootAssets(TArray<FAssetData>& RootAssets, TArray
 {
 	// first we deleting cycle assets
 	// like Skeletal mesh, skeleton, and physical assets
-	// those assets cant be deleted separately
+	// those assets must not be deleted separately
 	TSet<FName> CircularAssets;
 	for (const auto& Node : List)
 	{
@@ -457,6 +463,39 @@ FAssetData* ProjectCleanerUtility::GetAssetData(const FName& AssetName, TArray<F
 	});
 }
 
+FAssetData* ProjectCleanerUtility::GetAssetData(const FName& AssetName, TArray<FNode>& List)
+{
+	const auto Node = List.FindByPredicate([&](const FNode& Elem)
+	{
+		return Elem.Asset.IsEqual(AssetName);
+	});
+
+	return (Node) ? &Node->AssetData : nullptr;
+}
+
+void ProjectCleanerUtility::GetLinkedAssetsChain(
+	TSet<FName>& LinkedAssets,
+	const TArray<FAssetData>& Assets,
+	TArray<FNode>& List
+)
+{
+	TSet<FName> RelatedAssets;
+	LinkedAssets.Reserve(List.Num());
+	RelatedAssets.Reserve(List.Num());
+
+	for (const auto& Asset : Assets)
+	{
+		const auto Node = List.FindByPredicate([&](const FNode& Elem)
+		{
+			return Elem.Asset.IsEqual(Asset.PackageName);
+		});
+		if(!Node) continue;
+		FindAllRelatedAssets(*Node,RelatedAssets, List);
+		LinkedAssets.Append(RelatedAssets);
+		RelatedAssets.Reset();
+	}
+}
+
 int64 ProjectCleanerUtility::GetTotalSize(const TArray<FAssetData>& AssetContainer)
 {
 	int64 Size = 0;
@@ -499,6 +538,14 @@ FString ProjectCleanerUtility::ConvertRelativeToAbsolutePath(const FName& Packag
 	return FString{};
 }
 
+FName ProjectCleanerUtility::ConvertAbsolutePathToRelative(const FName& InPath)
+{
+	FString Path = InPath.ToString();
+	FPaths::NormalizeFilename(Path);
+	const auto Result = Path.Replace(*FPaths::ProjectContentDir(), TEXT("/Game/"));
+	return FName{*Result};
+}
+
 bool ProjectCleanerUtility::UsedInSourceFiles(
 	const FAssetData& Asset,
 	TArray<FSourceCodeFile>& SourceFiles,
@@ -507,6 +554,7 @@ bool ProjectCleanerUtility::UsedInSourceFiles(
 	for (const auto& File : SourceFiles)
 	{
 		//	todo:ashe23 BUG with similar names
+		//	todo:ashe23 what about config files?
 		
 		// Wrapping in quotes AssetName => "AssetName"
 		FString QuotedAssetName = Asset.AssetName.ToString();
@@ -549,6 +597,39 @@ void ProjectCleanerUtility::CheckForCorruptedFiles(TArray<FAssetData>& Assets, T
 			CorruptedFiles.Add(File);
 		}
 	}
+}
+
+void ProjectCleanerUtility::FindCorruptedFiles(
+	const TArray<FAssetData>& RegistryAssets,
+	const TSet<FName>& AllUassetFiles,
+	TSet<FName>& CorruptedFiles
+)
+{
+	if (RegistryAssets.Num() == AllUassetFiles.Num()) return;
+
+	TSet<FName> RelativeAssetPaths;
+	RelativeAssetPaths.Reserve(AllUassetFiles.Num());
+	for (const auto& UassetFile : AllUassetFiles)
+	{
+		// keeping only relative path without extension
+		const auto Extension = FPaths::GetExtension(UassetFile.ToString(), true);
+		auto PurePath = UassetFile.ToString();
+		PurePath.RemoveFromEnd(Extension);
+		RelativeAssetPaths.Add(ConvertAbsolutePathToRelative(FName{*PurePath}));
+	}
+
+	CorruptedFiles.Reserve(RelativeAssetPaths.Num());
+	for (const auto& Path : RelativeAssetPaths)
+	{
+		const bool IsInList = RegistryAssets.ContainsByPredicate([&](const FAssetData& Elem)
+		{
+			return Elem.PackageName.IsEqual(Path);
+		});
+		if (!IsInList)
+		{
+			CorruptedFiles.Add(Path);
+		}
+	}	
 }
 
 void ProjectCleanerUtility::RemoveUsedAssets(TArray<FAssetData>& Assets)

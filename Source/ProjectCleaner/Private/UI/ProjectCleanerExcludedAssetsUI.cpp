@@ -37,7 +37,7 @@ void SProjectCleanerExcludedAssetsUI::Construct(const FArguments& InArgs)
 	RefreshUIContent();
 }
 
-void SProjectCleanerExcludedAssetsUI::SetExcludedAssets(const TArray<FAssetData>& Assets)
+void SProjectCleanerExcludedAssetsUI::SetExcludedAssets(const TSet<FAssetData>& Assets)
 {
 	ExcludedAssets.Reset();
 	ExcludedAssets.Reserve(Assets.Num());
@@ -177,12 +177,12 @@ void SProjectCleanerExcludedAssetsUI::IncludeAssets() const
 {
 	if (!GetCurrentSelectionDelegate.IsBound()) return;
 
-	const TArray<FAssetData> CurrentSelection = GetCurrentSelectionDelegate.Execute();
-	if(!CurrentSelection.Num()) return;
+	const TArray<FAssetData> SelectedAssets = GetCurrentSelectionDelegate.Execute();
+	if(!SelectedAssets.Num()) return;
 
 	if(!OnUserIncludedAssets.IsBound()) return;
 
-	OnUserIncludedAssets.Execute(CurrentSelection);
+	OnUserIncludedAssets.Execute(SelectedAssets);
 }
 
 #undef LOCTEXT_NAMESPACE

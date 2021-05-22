@@ -35,8 +35,8 @@ DECLARE_LOG_CATEGORY_EXTERN(LogProjectCleaner, Log, All);
 class FProjectCleanerModule : public IModuleInterface
 {
 public:
-	FProjectCleanerModule()
-		// ExcludeDirectoryFilterSettings(nullptr)
+	FProjectCleanerModule():
+		ExcludeDirectoryFilterSettings(nullptr)
 	{
 	}
 	/** IModuleInterface implementation */
@@ -61,71 +61,76 @@ private:
 	 */
 	void UpdateCleanerData();
 	
-	// void OnUserExcludedAssets(const TArray<FAssetData>& Assets);
-	// void OnUserIncludedAssets(const TArray<FAssetData>& Assets);	
-	// void OnUserDeletedAssets();
+	/**
+	 * @brief Updates Cleaning stats
+	 */
+	void UpdateStats();
+	
+	/**
+	 * @brief Resets all data containers
+	 */
+	void Reset();
 
-	// /** Button events */
-	// FReply OnRefreshBtnClick();
-	// FReply OnDeleteUnusedAssetsBtnClick();
-	// FReply OnDeleteEmptyFolderClick();
-	//
-	// /**
-	//  * @brief Updates Cleaning stats
-	//  */
-	// void UpdateStats();
-	// /**
-	//  * @brief Resets all data containers
-	//  */
-	// void Reset();
-	// /**
-	//  * Sets content browser focus to root directory and refreshes asset registry
-	//  * @brief Updates content browser
-	//  */
-	// void UpdateContentBrowser() const;
+	/**
+	 * Sets content browser focus to root directory and refreshes asset registry
+	 * @brief Updates content browser
+	 */
+	void UpdateContentBrowser() const;
+	
+	/**
+	 * @brief Creates confirmation window with yes/no options
+	 * @param Title - Window Title
+	 * @param ContentText - Window content text
+	 * @return EAppReturnType::Type Window confirmation status
+	 */
+	EAppReturnType::Type ShowConfirmationWindow(const FText& Title, const FText& ContentText) const;
+	
+	/**
+	 * @brief Checks if confirmation window cancelled or not
+	 * @param Status EAppReturnType::Type
+	 * @return bool
+	 */
+	static bool IsConfirmationWindowCanceled(EAppReturnType::Type Status);
+	
+	/** Delegate functions **/
+	void OnUserDeletedAssets();
+	void OnUserExcludedAssets(const TArray<FAssetData>& Assets);
+	void OnUserIncludedAssets(const TArray<FAssetData>& Assets);	
+
+	/** Button events */
+	FReply OnRefreshBtnClick();
+	FReply OnDeleteUnusedAssetsBtnClick();
+	FReply OnDeleteEmptyFolderClick();
+	
 	//
 	// /**
 	//  * @brief Opens window with corrupted files in it
 	//  */
 	// void OpenCorruptedFilesWindow();
-	//
-	// /**
-	//  * @brief Creates confirmation window with yes/no options
-	//  * @param Title - Window Title
-	//  * @param ContentText - Window content text
-	//  * @return EAppReturnType::Type Window confirmation status
-	//  */
-	// EAppReturnType::Type ShowConfirmationWindow(const FText& Title, const FText& ContentText) const;
-	//
-	// /**
-	//  * @brief Checks if confirmation window cancelled or not
-	//  * @param Status EAppReturnType::Type
-	//  * @return bool
-	//  */
-	// static bool IsConfirmationWindowCanceled(EAppReturnType::Type Status);
-
+	
 	/** UI */
 	TSharedPtr<FUICommandList> PluginCommands;
-	// TSharedPtr<ProjectCleanerNotificationManager> NotificationManager;
-	// UExcludeDirectoriesFilterSettings* ExcludeDirectoryFilterSettings;
-	//
-	// TWeakPtr<SProjectCleanerUnusedAssetsBrowserUI> UnusedAssetsBrowserUI;
-	// TWeakPtr<SProjectCleanerNonUassetFilesUI> NonUassetFilesUI;
-	// TWeakPtr<SProjectCleanerBrowserStatisticsUI> StatisticsUI;
-	// TWeakPtr<SProjectCleanerSourceCodeAssetsUI> SourceCodeAssetsUI;
-	// TWeakPtr<SProjectCleanerDirectoryExclusionUI> DirectoryExclusionUI;
-	// TWeakPtr<SProjectCleanerCorruptedFilesUI> CorruptedFilesUI;
-	// TWeakPtr<SProjectCleanerExcludedAssetsUI> ExcludedAssetsUI;
-	//
+	TSharedPtr<ProjectCleanerNotificationManager> NotificationManager;
+	TWeakPtr<SProjectCleanerUnusedAssetsBrowserUI> UnusedAssetsBrowserUI;
+	TWeakPtr<SProjectCleanerNonUassetFilesUI> NonUassetFilesUI;
+	TWeakPtr<SProjectCleanerBrowserStatisticsUI> StatisticsUI;
+	TWeakPtr<SProjectCleanerSourceCodeAssetsUI> SourceCodeAssetsUI;
+	TWeakPtr<SProjectCleanerDirectoryExclusionUI> DirectoryExclusionUI;
+	TWeakPtr<SProjectCleanerCorruptedFilesUI> CorruptedFilesUI;
+	TWeakPtr<SProjectCleanerExcludedAssetsUI> ExcludedAssetsUI;
+	
 	/** Data Containers */ 
-	// TArray<FAssetData> UnusedAssets;
-	// TArray<FAssetData> ExcludedAssets;
+	TArray<FAssetData> UnusedAssets;
+	TSet<FAssetData> ExcludedAssets;
 	TSet<FName> EmptyFolders;
-	// TSet<FName> NonUassetFiles;
-	// TArray<FNode> AdjacencyList;
-	// TArray<FAssetData> CorruptedFiles;
-	// TArray<FSourceCodeFile> SourceFiles;
-	// TArray<TWeakObjectPtr<USourceCodeAsset>> SourceCodeAssets;
-	// FCleaningStats CleaningStats;
-	// FStandardCleanerText StandardCleanerText;
+	TSet<FName> NonUassetFiles;
+	TSet<FName> CorruptedFiles;
+	FCleaningStats CleaningStats;
+	TArray<TWeakObjectPtr<USourceCodeAsset>> SourceCodeAssets;
+	UExcludeDirectoriesFilterSettings* ExcludeDirectoryFilterSettings;
+	
+	/** Helper Containers **/
+	TArray<FNode> AdjacencyList;
+	TArray<FSourceCodeFile> SourceFiles;
+	FStandardCleanerText StandardCleanerText;
 };

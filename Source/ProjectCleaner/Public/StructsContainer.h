@@ -78,6 +78,7 @@ struct FNode
 	TSet<FName> LinkedAssets;
 	TSet<FName> Refs;
 	TSet<FName> Deps;
+	FAssetData AssetData;
 
 	bool HasLinkedAssetsOutsideGameFolder() const
 	{
