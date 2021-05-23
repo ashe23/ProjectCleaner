@@ -10,8 +10,7 @@ void SProjectCleanerSourceCodeAssetsUI::Construct(const FArguments& InArgs)
 	SetSourceCodeAssets(InArgs._SourceCodeAssets);
 }
 
-void SProjectCleanerSourceCodeAssetsUI::SetSourceCodeAssets(
-	const TArray<TWeakObjectPtr<USourceCodeAsset>>& NewSourceCodeAssets)
+void SProjectCleanerSourceCodeAssetsUI::SetSourceCodeAssets(const TArray<TWeakObjectPtr<USourceCodeAsset>>& NewSourceCodeAssets)
 {
 	SourceCodeAssets.Reset();
 	SourceCodeAssets.Reserve(NewSourceCodeAssets.Num());

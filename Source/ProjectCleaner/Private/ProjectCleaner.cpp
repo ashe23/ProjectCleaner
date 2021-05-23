@@ -5,13 +5,19 @@
 #include "ProjectCleanerCommands.h"
 #include "ProjectCleanerNotificationManager.h"
 #include "ProjectCleanerUtility.h"
+#include "UI/ProjectCleanerBrowserStatisticsUI.h"
+#include "UI/ProjectCleanerDirectoryExclusionUI.h"
+#include "UI/ProjectCleanerUnusedAssetsBrowserUI.h"
+#include "UI/ProjectCleanerNonUassetFilesUI.h"
+#include "UI/ProjectCleanerSourceCodeAssetsUI.h"
+#include "UI/ProjectCleanerCorruptedFilesUI.h"
+#include "UI/ProjectCleanerExcludedAssetsUI.h"
 // Engine Headers
 #include "AssetRegistryModule.h"
 #include "ToolMenus.h"
 #include "ContentBrowserModule.h"
 #include "Misc/MessageDialog.h"
 #include "LevelEditor.h"
-#include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "Widgets/Docking/SDockTab.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Layout/SScrollBox.h"
@@ -123,7 +129,7 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 		this,
 		&FProjectCleanerModule::OnUserIncludedAssets
 	);
-	
+
 	return SNew(SDockTab)
 	.TabRole(ETabRole::MajorTab)
 	[
@@ -196,6 +202,16 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 			+ SScrollBox::Slot()
 			[
 				SNew(SVerticalBox)
+				+SVerticalBox::Slot()
+				.Padding(FMargin(5))
+				.AutoHeight()
+				[
+					ExcludedAssetsUIRef
+				]
+			]
+			+ SScrollBox::Slot()
+			[
+				SNew(SVerticalBox)
 				+ SVerticalBox::Slot()
 				.Padding(CommonMargin)
 				.AutoHeight()
@@ -215,16 +231,17 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 					.SourceCodeAssets(SourceCodeAssets)
 				]
 			]
-			+SScrollBox::Slot()
+			+ SScrollBox::Slot()
 			[
 				SNew(SVerticalBox)
 				+SVerticalBox::Slot()
-				.Padding(FMargin(5))
+				.Padding(CommonMargin)
 				.AutoHeight()
 				[
-					ExcludedAssetsUIRef
+					SAssignNew(CorruptedFilesUI, SProjectCleanerCorruptedFilesUI)
+					.CorruptedFiles(CorruptedFiles)
 				]
-			]
+			]			
 		]
 		+ SSplitter::Slot()
 		.Value(0.65f)
@@ -274,7 +291,7 @@ void FProjectCleanerModule::UpdateCleanerData()
 	UnusedAssets.Reserve(UassetFiles.Num());
 	ProjectCleanerUtility::GetAllAssets(UnusedAssets);
 	
-	// 4) check for corrupted files
+	// 4) find corrupted files
 	ProjectCleanerUtility::FindCorruptedFiles(UnusedAssets, UassetFiles, CorruptedFiles);
 	
 	ProjectCleanerUtility::RemoveUsedAssets(UnusedAssets);
@@ -334,6 +351,11 @@ void FProjectCleanerModule::UpdateStats()
 	if (ExcludedAssetsUI.IsValid())
 	{
 		ExcludedAssetsUI.Pin()->SetExcludedAssets(ExcludedAssets);
+	}
+
+	if (CorruptedFilesUI.IsValid())
+	{
+		CorruptedFilesUI.Pin()->SetCorruptedFiles(CorruptedFiles);
 	}
 }
 
@@ -458,35 +480,34 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 		SNotificationItem::ECompletionState::CS_Pending
 	);
 	
-	bool bFailedWhileDeletingAsset = false;
 	while(UnusedAssets.Num() > 0)
 	{
 		ProjectCleanerUtility::GetRootAssets(RootAssets, UnusedAssets, AdjacencyList);
 
 		// Before we delete assets
 		// Loading assets and find corrupted files
+		// todo:ashe23 handle assets that failed to delete different way?
 		for(const auto& Asset : RootAssets)
 		{
 			const auto LoadedAsset = Asset.GetAsset();
-			// if (!LoadedAsset)
-			// {
-			// 	CorruptedFiles.Add(Asset);
-			// }
+			if (!LoadedAsset)
+			{
+				CorruptedFiles.Add(Asset.PackageName);
+			}
 		}
 
-		// if (CorruptedFiles.Num() > 0)
-		// {
-		// 	bFailedWhileDeletingAsset = true;
-		// 	UnusedAssets.RemoveAll([&](const FAssetData& Asset)
-		// 	{
-		// 		return CorruptedFiles.Contains(Asset);
-		// 	});
-		//
-		// 	RootAssets.RemoveAll([&](const FAssetData& Asset)
-		// 	{
-		// 		return CorruptedFiles.Contains(Asset);
-		// 	});
-		// }
+		if (CorruptedFiles.Num() > 0)
+		{
+			UnusedAssets.RemoveAll([&](const FAssetData& Asset)
+			{
+				return CorruptedFiles.Contains(Asset.PackageName);
+			});
+		
+			RootAssets.RemoveAll([&](const FAssetData& Asset)
+			{
+				return CorruptedFiles.Contains(Asset.PackageName);
+			});
+		}
 
 		// Remaining assets are valid so we trying to delete them
 		CleaningStats.DeletedAssetCount += ProjectCleanerUtility::DeleteAssets(RootAssets);
@@ -501,14 +522,6 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 		ProjectCleanerUtility::CreateAdjacencyList(UnusedAssets, AdjacencyList, true);
 		RootAssets.Reset();
 	}
-	
-	// if (bFailedWhileDeletingAsset)
-	// {
-	// 	if (CorruptedFiles.Num() > 0)
-	// 	{
-	// 		OpenCorruptedFilesWindow();
-	// 	}
-	// }
 
 	NotificationManager->Hide(
 		CleaningNotificationPtr,
@@ -577,55 +590,46 @@ FReply FProjectCleanerModule::OnDeleteEmptyFolderClick()
 	return FReply::Handled();
 }
 
-
-//
-// void FProjectCleanerModule::OpenCorruptedFilesWindow()
-// {
-// 	const auto CorruptedFilesWindow =
-// 	SNew(SWindow)
-// 	.Title(LOCTEXT("corruptedfileswindow", "Failed to delete this assets"))
-// 	.ClientSize(FVector2D(800.0f, 800.0f))
-// 	.MinWidth(800.0f)
-// 	.MinHeight(800.0f)
-// 	.SupportsMaximize(false)
-// 	.SupportsMinimize(false)
-// 	.SizingRule(ESizingRule::Autosized)
-// 	.AutoCenter(EAutoCenter::PrimaryWorkArea)
-// 	.IsInitiallyMaximized(false)
-// 	.bDragAnywhere(true)
-// 	[
-// 		SAssignNew(CorruptedFilesUI, SProjectCleanerCorruptedFilesUI)
-// 		.CorruptedFiles(CorruptedFiles)
-// 	];
-// 			
-// 	const TSharedPtr<SWindow> TopWindow = FSlateApplication::Get().GetActiveTopLevelWindow();
-// 	if (TopWindow.IsValid())
-// 	{
-// 		//Add as Native
-// 		FSlateApplication::Get().AddWindowAsNativeChild(
-// 			CorruptedFilesWindow,
-// 			TopWindow.ToSharedRef(),
-// 			true
-// 		);
-// 	}
-// 	else
-// 	{
-// 		//Default in case no top window
-// 		FSlateApplication::Get().AddWindow(CorruptedFilesWindow);
-// 	}
-// 			
-// 	if(GEngine && GEngine->GameViewport)
-// 	{
-// 		GEngine->GameViewport->AddViewportWidgetContent(SNew(SWeakWidget).PossiblyNullContent(CorruptedFilesWindow));
-// 	}
-// }
-//
-
-//
-//
-
-
-
+void FProjectCleanerModule::OpenCorruptedFilesWindow()
+{
+	const auto CorruptedFilesWindow =
+	SNew(SWindow)
+	.Title(LOCTEXT("corrupted_files_window", "Corrupted Files"))
+	.ClientSize(FVector2D(800.0f, 800.0f))
+	.MinWidth(800.0f)
+	.MinHeight(800.0f)
+	.SupportsMaximize(false)
+	.SupportsMinimize(false)
+	.SizingRule(ESizingRule::Autosized)
+	.AutoCenter(EAutoCenter::PrimaryWorkArea)
+	.IsInitiallyMaximized(false)
+	.bDragAnywhere(true)
+	[
+		SAssignNew(CorruptedFilesUI, SProjectCleanerCorruptedFilesUI)
+		.CorruptedFiles(CorruptedFiles)
+	];
+			
+	const TSharedPtr<SWindow> TopWindow = FSlateApplication::Get().GetActiveTopLevelWindow();
+	if (TopWindow.IsValid())
+	{
+		//Add as Native
+		FSlateApplication::Get().AddWindowAsNativeChild(
+			CorruptedFilesWindow,
+			TopWindow.ToSharedRef(),
+			true
+		);		
+	}
+	else
+	{
+		//Default in case no top window
+		FSlateApplication::Get().AddWindow(CorruptedFilesWindow);
+	}
+			
+	if(GEngine && GEngine->GameViewport)
+	{
+		GEngine->GameViewport->AddViewportWidgetContent(SNew(SWeakWidget).PossiblyNullContent(CorruptedFilesWindow));
+	}
+}
 
 #undef LOCTEXT_NAMESPACE
 

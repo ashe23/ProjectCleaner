@@ -605,8 +605,7 @@ void ProjectCleanerUtility::FindCorruptedFiles(
 	TSet<FName>& CorruptedFiles
 )
 {
-	if (RegistryAssets.Num() == AllUassetFiles.Num()) return;
-
+	// todo:ashe23 check asset engine version?
 	TSet<FName> RelativeAssetPaths;
 	RelativeAssetPaths.Reserve(AllUassetFiles.Num());
 	for (const auto& UassetFile : AllUassetFiles)

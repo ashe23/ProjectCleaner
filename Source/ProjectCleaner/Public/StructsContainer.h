@@ -1,4 +1,6 @@
-﻿#pragma once
+﻿// Copyright 2021. Ashot Barkhudaryan. All Rights Reserved.
+
+#pragma once
 
 #include "CoreMinimal.h"
 

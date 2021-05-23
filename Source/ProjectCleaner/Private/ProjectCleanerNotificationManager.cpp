@@ -1,7 +1,8 @@
-﻿#include "ProjectCleanerNotificationManager.h"
+﻿// Copyright 2021. Ashot Barkhudaryan. All Rights Reserved.
+
+#include "ProjectCleanerNotificationManager.h"
 // Engine Headers
 #include "Framework/Notifications/NotificationManager.h"
-
 
 TWeakPtr<SNotificationItem> ProjectCleanerNotificationManager::Add(const FString& Text,
                                                                    const SNotificationItem::ECompletionState

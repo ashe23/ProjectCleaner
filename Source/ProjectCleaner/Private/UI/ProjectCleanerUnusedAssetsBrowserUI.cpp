@@ -2,6 +2,7 @@
 
 #include "UI/ProjectCleanerUnusedAssetsBrowserUI.h"
 #include "ProjectCleanerCommands.h"
+#include "ProjectCleanerStyle.h"
 // Engine Headers
 #include "IContentBrowserSingleton.h"
 #include "ObjectTools.h"
@@ -147,11 +148,12 @@ void SProjectCleanerUnusedAssetsBrowserUI::RefreshUIContent()
 	FAssetPickerConfig Config;
 	Config.InitialAssetViewType = EAssetViewType::Tile;
 	Config.bAddFilterUI = true;
+	Config.bPreloadAssetsForContextMenu = false;
 	Config.bShowPathInColumnView = true;
 	Config.bSortByPathInColumnView = true;
 	Config.bForceShowEngineContent = false;
 	Config.bShowBottomToolbar = true;
-	Config.bCanShowDevelopersFolder = false;
+	Config.bCanShowDevelopersFolder = true;
 	Config.bForceShowEngineContent = false;
 	Config.bCanShowClasses = false;
 	Config.bAllowDragging = false;	
@@ -199,7 +201,7 @@ void SProjectCleanerUnusedAssetsBrowserUI::RefreshUIContent()
 		[
 			SNew(STextBlock)
 			.AutoWrapText(true)
-			.Font(FSlateFontInfo(FPaths::EngineContentDir() / TEXT("Slate/Fonts/Roboto-Light.ttf"),20))
+			.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
 			.Text(LOCTEXT("cleanernotetext", "Unused assets are those, that are not used in any level.\nSo before starting make sure you delete all levels that never used in project."))
 		]
 	]
@@ -209,7 +211,7 @@ void SProjectCleanerUnusedAssetsBrowserUI::RefreshUIContent()
 	[
 		SNew(STextBlock)
 		.AutoWrapText(true)
-		.Font(FSlateFontInfo(FPaths::EngineContentDir() / TEXT("Slate/Fonts/Roboto-Light.ttf"),20))
+		.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
 		.Text(LOCTEXT("UnusedAssets", "All Unused Assets"))
 	]
 	+ SVerticalBox::Slot()

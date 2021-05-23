@@ -2,6 +2,7 @@
 
 #include "UI/ProjectCleanerExcludedAssetsUI.h"
 #include "ProjectCleanerCommands.h"
+#include "ProjectCleanerStyle.h"
 // Engine Headers
 #include "IContentBrowserSingleton.h"
 #include "Editor/ContentBrowser/Public/ContentBrowserModule.h"
@@ -59,7 +60,7 @@ void SProjectCleanerExcludedAssetsUI::RefreshUIContent()
 	Config.bSortByPathInColumnView = true;
 	Config.bForceShowEngineContent = false;
 	Config.bShowBottomToolbar = true;
-	Config.bCanShowDevelopersFolder = false;
+	Config.bCanShowDevelopersFolder = true;
 	Config.bForceShowEngineContent = false;
 	Config.bCanShowClasses = false;
 	Config.bAllowDragging = false;	
@@ -104,7 +105,7 @@ void SProjectCleanerExcludedAssetsUI::RefreshUIContent()
 	[
 		SNew(STextBlock)
 		.AutoWrapText(true)
-		.Font(FSlateFontInfo(FPaths::EngineContentDir() / TEXT("Slate/Fonts/Roboto-Light.ttf"),20))
+		.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
 		.Text(LOCTEXT("excludedassets", "Excluded Assets"))
 	]
 	+SVerticalBox::Slot()
@@ -113,7 +114,7 @@ void SProjectCleanerExcludedAssetsUI::RefreshUIContent()
 	[
 		SNew(STextBlock)
 		.AutoWrapText(true)
-		.Font(FSlateFontInfo(FPaths::EngineContentDir() / TEXT("Slate/Fonts/Roboto-Light.ttf"),10))
+		.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light10"))
 		.Text(LOCTEXT("excludedassetsinfo", "When excluding assets, its related assets also excluded"))
 	]
 	+ SVerticalBox::Slot()

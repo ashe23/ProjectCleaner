@@ -7,8 +7,7 @@
 
 void SProjectCleanerBrowserStatisticsUI::Construct(const FArguments& InArgs)
 {
-	Stats = InArgs._Stats;
-	RefreshUIContent();
+	SetStats(InArgs._Stats);
 }
 
 void SProjectCleanerBrowserStatisticsUI::SetStats(const FCleaningStats& NewStats)
@@ -151,6 +150,27 @@ void SProjectCleanerBrowserStatisticsUI::RefreshUIContent()
 					SNew(STextBlock)
 					.AutoWrapText(true)
 					.Text_Lambda([this]() -> FText { return FText::AsNumber(Stats.EmptyFolders); })
+				]
+			]
+			+ SVerticalBox::Slot()
+			.MaxHeight(20.0f)
+			.Padding(FMargin{0.0, 0.0f, 0.0f, 3.0f})
+			.HAlign(HAlign_Center)
+			[
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				[
+					SNew(STextBlock)
+					.AutoWrapText(true)
+					.Text(LOCTEXT("corrupted_files_num", "Corrupted Files - "))
+				]
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				[
+					SNew(STextBlock)
+					.AutoWrapText(true)
+					.Text_Lambda([this]() -> FText { return FText::AsNumber(Stats.CorruptedFilesNum); })
 				]
 			]
 		]

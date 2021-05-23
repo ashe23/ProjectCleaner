@@ -3,13 +3,6 @@
 #pragma once
 
 #include "StructsContainer.h"
-#include "UI/ProjectCleanerBrowserStatisticsUI.h"
-#include "UI/ProjectCleanerDirectoryExclusionUI.h"
-#include "UI/ProjectCleanerUnusedAssetsBrowserUI.h"
-#include "UI/ProjectCleanerNonUassetFilesUI.h"
-#include "UI/ProjectCleanerSourceCodeAssetsUI.h"
-#include "UI/ProjectCleanerCorruptedFilesUI.h"
-#include "UI/ProjectCleanerExcludedAssetsUI.h"
 // Engine Headers
 #include "Input/Reply.h"
 #include "Modules/ModuleInterface.h"
@@ -24,6 +17,15 @@ class ITableRow;
 class SDockTab;
 class FUICommandList;
 class FSpawnTabArgs;
+class SProjectCleanerUnusedAssetsBrowserUI;
+class SProjectCleanerNonUassetFilesUI;
+class SProjectCleanerBrowserStatisticsUI;
+class SProjectCleanerSourceCodeAssetsUI;
+class SProjectCleanerDirectoryExclusionUI;
+class SProjectCleanerCorruptedFilesUI;
+class SProjectCleanerExcludedAssetsUI;
+class USourceCodeAsset;
+class UExcludeDirectoriesFilterSettings;
 
 struct FSlateColorBrush;
 struct FAssetData;
@@ -92,6 +94,11 @@ private:
 	 */
 	static bool IsConfirmationWindowCanceled(EAppReturnType::Type Status);
 	
+	/**
+	 * @brief Opens window with corrupted files in it
+	 */
+	void OpenCorruptedFilesWindow();
+	
 	/** Delegate functions **/
 	void OnUserDeletedAssets();
 	void OnUserExcludedAssets(const TArray<FAssetData>& Assets);
@@ -101,12 +108,6 @@ private:
 	FReply OnRefreshBtnClick();
 	FReply OnDeleteUnusedAssetsBtnClick();
 	FReply OnDeleteEmptyFolderClick();
-	
-	//
-	// /**
-	//  * @brief Opens window with corrupted files in it
-	//  */
-	// void OpenCorruptedFilesWindow();
 	
 	/** UI */
 	TSharedPtr<FUICommandList> PluginCommands;
