@@ -49,6 +49,7 @@ public class ProjectCleaner : ModuleRules
 				"PropertyEditor",
 				"UnrealEd",
 				"ToolMenus",
+				"AssetTools",
 			}
 		);
 

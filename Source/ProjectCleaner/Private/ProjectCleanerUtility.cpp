@@ -4,16 +4,92 @@
 #include "UI/ProjectCleanerSourceCodeAssetsUI.h"
 #include "UI/ProjectCleanerDirectoryExclusionUI.h"
 // Engine Headers
-#include "HAL/FileManager.h"
+#include "ObjectTools.h"
+#include "FileHelpers.h"
 #include "AssetRegistryModule.h"
 #include "AssetToolsModule.h"
-#include "Misc/Paths.h"
-#include "ObjectTools.h"
+#include "Engine/AssetManager.h"
 #include "UObject/ObjectRedirector.h"
+#include "HAL/FileManager.h"
 #include "HAL/PlatformFilemanager.h"
+#include "Misc/Paths.h"
 #include "Misc/FileHelper.h"
-#include "FileHelpers.h"
 #include "Misc/ScopedSlowTask.h"
+#include "Engine/AssetManagerSettings.h"
+
+void ProjectCleanerUtility::FindAllProjectFiles(TArray<FName>& AllProjectFiles)
+{
+	struct DirectoryVisitor : IPlatformFile::FDirectoryVisitor
+	{
+		DirectoryVisitor(TArray<FName>& Files) : AllFiles(Files) {}
+		virtual bool Visit(const TCHAR* FilenameOrDirectory, bool bIsDirectory) override
+		{
+			if(!bIsDirectory)
+			{
+				AllFiles.Add(ConvertAbsolutePathToRelative(FilenameOrDirectory));
+			}
+			return true;
+		}
+
+		TArray<FName>& AllFiles;
+	};
+
+	DirectoryVisitor Visitor{AllProjectFiles};
+	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
+	PlatformFile.IterateDirectoryRecursively(*FPaths::ProjectContentDir(), Visitor);
+}
+
+void ProjectCleanerUtility::FindInvalidProjectFiles(const FAssetRegistryModule* AssetRegistry, const TArray<FName>& AllProjectFiles, TSet<FName>& CorruptedFiles, TSet<FName>& NonUAssetFiles)
+{
+	if (!AssetRegistry) return;
+
+	CorruptedFiles.Reserve(AllProjectFiles.Num());
+	NonUAssetFiles.Reserve(AllProjectFiles.Num());
+	
+	for (const auto& ProjectFile : AllProjectFiles)
+    {
+    	auto FilePath = ProjectFile.ToString();
+    	if (IsEngineExtension(FPaths::GetExtension(FilePath, false)))
+    	{
+    		// Converting file path to objectpath
+    		// example "/Game/NewMaterial.uasset" => "/Game/NewMaterial.NewMaterial"
+    		auto FileName = FPaths::GetBaseFilename(FilePath);
+    		FilePath.RemoveFromEnd(FPaths::GetExtension(FilePath, true));
+    		FilePath.Append(TEXT(".") + FileName);
+    		const FName ObjectPath = FName{*FilePath};
+
+    		// Trying to find that file in AssetRegistry
+    		const auto AssetData = AssetRegistry->Get().GetAssetByObjectPath(ObjectPath);
+    		// Adding to CorruptedFiles list, if we cant find it in AssetRegistry
+    		if (AssetData.IsValid()) continue;
+    		CorruptedFiles.Add(ProjectFile);
+    	}
+    	else
+    	{
+    		NonUAssetFiles.Add(FName{*ConvertRelativeToAbsolutePath(ProjectFile)});
+    	}
+    }
+}
+
+void ProjectCleanerUtility::FindAllPrimaryAssets(UAssetManager& AssetManager, TSet<FName>& PrimaryAssetNames)
+{
+	PrimaryAssetNames.Reserve(10);
+	
+	const UAssetManagerSettings& Settings = AssetManager.GetSettings();
+	TArray<FPrimaryAssetId> PrimaryAssetIds;
+	TArray<FPrimaryAssetId> Ids;
+	for (const auto& Type : Settings.PrimaryAssetTypesToScan)
+	{
+		// for every asset types we getting primary asset id list
+		AssetManager.Get().GetPrimaryAssetIdList(Type.PrimaryAssetType, Ids);
+		PrimaryAssetIds.Append(Ids);
+		Ids.Reset();
+	}
+	for (const auto& Id : PrimaryAssetIds)
+	{
+		PrimaryAssetNames.Add(Id.PrimaryAssetName);
+	}
+}
 
 bool ProjectCleanerUtility::HasFiles(const FString& SearchPath)
 {

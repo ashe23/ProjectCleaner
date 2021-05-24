@@ -31,6 +31,7 @@
 #include "Framework/Commands/UICommandList.h"
 #include "Misc/ScopedSlowTask.h"
 #include "Widgets/SWeakWidget.h"
+#include "AssetViewUtils.h"
 
 DEFINE_LOG_CATEGORY(LogProjectCleaner);
 
@@ -119,7 +120,7 @@ void FProjectCleanerModule::PluginButtonClicked()
 	{
 		if (!NotificationManager) return;
 		NotificationManager->AddTransient(
-			TEXT("Asset Registry still working"),
+			TEXT("Asset Registry still working! Please wait..."),
 			SNotificationItem::CS_Fail,
 			3.0f
 		);
@@ -241,7 +242,7 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 				.AutoHeight()
 				[
 					SAssignNew(NonUassetFilesUI, SProjectCleanerNonUassetFilesUI)
-					.NonUassetFiles(NonUassetFiles)
+					.NonUassetFiles(NonUAssetFiles)
 				]
 			]
 			+ SScrollBox::Slot()
@@ -297,36 +298,28 @@ void FProjectCleanerModule::UpdateCleaner()
 void FProjectCleanerModule::UpdateCleanerData()
 {
 	Reset();
-
-	const auto AssetManager = UAssetManager::GetIfValid();
-	if (!AssetManager) return;
-	const UAssetManagerSettings* const Settings = &AssetManager->GetSettings();
-	// 1) Getting all primary asset types
-	TSet<FName> PrimaryAssetNames;
-	{
-		TArray<FPrimaryAssetId> PrimaryAssetIds;
-		TArray<FPrimaryAssetId> Ids;
-		for (const auto& Type : Settings->PrimaryAssetTypesToScan)
-		{
-			// for every asset types we getting primary asset id list
-			AssetManager->Get().GetPrimaryAssetIdList(Type.PrimaryAssetType, Ids);
-			PrimaryAssetIds.Append(Ids);
-			Ids.Reset();
-		}
-		for (const auto& Id : PrimaryAssetIds)
-		{
-			PrimaryAssetNames.Add(Id.PrimaryAssetName);
-		}
-	}
-	// 2) Get All Assets filtered by assets from primary list
-	if (!AssetRegistry) return;
-	AssetRegistry->Get().GetAssetsByPath(FName{"/Game"}, UnusedAssets, true);
 	
+	if (!AssetRegistry) return;
+
+	ProjectCleanerUtility::FindAllProjectFiles(AllProjectFiles);
+	ProjectCleanerUtility::FindInvalidProjectFiles(AssetRegistry, AllProjectFiles, CorruptedFiles, NonUAssetFiles);
+
+	UAssetManager& AssetManager = UAssetManager::Get();
+	ProjectCleanerUtility::FindAllPrimaryAssets(AssetManager, PrimaryAssetNames);
+	
+	
+	// Get all project assets
+	AssetRegistry->Get().GetAssetsByPath(FName{"/Game"}, UnusedAssets, true);
+
+	// Remove primary assets and map build files
+	// todo:ashe23 remove assets that are primary but outside of folder in given in settings
 	UnusedAssets.RemoveAll([&](const FAssetData& Elem)
 	{
-		return PrimaryAssetNames.Contains(Elem.PackageName);
+		return PrimaryAssetNames.Contains(Elem.PackageName) || Elem.AssetClass.IsEqual(UMapBuildDataRegistry::StaticClass()->GetFName());
 	});
 
+	UpdateStats();
+	
 	UE_LOG(LogProjectCleaner, Warning, TEXT("a"));
 }
 
@@ -336,7 +329,7 @@ void FProjectCleanerModule::UpdateStats()
 	
 	CleaningStats.UnusedAssetsNum = UnusedAssets.Num();
 	CleaningStats.EmptyFolders = EmptyFolders.Num();
-	CleaningStats.NonUassetFilesNum = NonUassetFiles.Num();
+	CleaningStats.NonUassetFilesNum = NonUAssetFiles.Num();
 	CleaningStats.SourceCodeAssetsNum = SourceCodeAssets.Num();
 	CleaningStats.UnusedAssetsTotalSize = ProjectCleanerUtility::GetTotalSize(UnusedAssets);
 	CleaningStats.CorruptedFilesNum = CorruptedFiles.Num();
@@ -354,7 +347,7 @@ void FProjectCleanerModule::UpdateStats()
 	
 	if (NonUassetFilesUI.IsValid())
 	{
-		NonUassetFilesUI.Pin()->SetNonUassetFiles(NonUassetFiles);
+		NonUassetFilesUI.Pin()->SetNonUassetFiles(NonUAssetFiles);
 	}
 	
 	if (SourceCodeAssetsUI.IsValid())
@@ -377,11 +370,12 @@ void FProjectCleanerModule::Reset()
 {
 	UnusedAssets.Reset();
 	SourceFiles.Reset();
-	NonUassetFiles.Reset();
+	NonUAssetFiles.Reset();
 	SourceCodeAssets.Reset();
 	CorruptedFiles.Reset();
 	EmptyFolders.Reset();
 	AdjacencyList.Reset();
+	AllProjectFiles.Reset();
 }
 
 void FProjectCleanerModule::UpdateContentBrowser() const

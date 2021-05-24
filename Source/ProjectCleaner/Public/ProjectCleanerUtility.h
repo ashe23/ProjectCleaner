@@ -9,12 +9,25 @@
 struct FAssetData;
 class USourceCodeAsset;
 class UExcludeDirectoriesFilterSettings;
+class FAssetRegistryModule;
 
 /**
  * This class responsible for different utility operations in unreal engine context
  */
 class PROJECTCLEANER_API ProjectCleanerUtility
 {
+public:
+	// REFACTORING START
+	static void FindAllProjectFiles(TArray<FName>& AllProjectFiles);
+	static void FindInvalidProjectFiles(const FAssetRegistryModule* AssetRegistry, const TArray<FName>& AllProjectFiles, TSet<FName>& CorruptedFiles, TSet<FName>& NonUAssetFiles);
+	static void FindAllPrimaryAssets(UAssetManager& AssetManager, TSet<FName>& PrimaryAssetNames);
+	/**
+	* @brief Checks if given extension is ".uasset" or ".umap"
+	* @param Extension 
+	* @return bool
+	*/
+	static bool IsEngineExtension(const FString& Extension);
+	// REFACTORING END
 public:
 	/**
 	 * @brief Check if given path contains files in it, non recursive
@@ -182,13 +195,6 @@ public:
 	 * @return bool
 	 */
 	static bool IsEmptyDirectory(const FString& Path);
-
-	/**
-	 * @brief Checks if given extension is ".uasset" or ".umap"
-	 * @param Extension 
-	 * @return bool
-	 */
-	static bool IsEngineExtension(const FString& Extension);
 
 	/**
 	 * @brief Converts given relative path to absolute

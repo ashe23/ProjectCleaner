@@ -123,7 +123,7 @@ private:
 	TArray<FAssetData> UnusedAssets;
 	TSet<FAssetData> ExcludedAssets;
 	TSet<FName> EmptyFolders;
-	TSet<FName> NonUassetFiles;
+	TSet<FName> NonUAssetFiles;
 	TSet<FName> CorruptedFiles;
 	FCleaningStats CleaningStats;
 	TArray<TWeakObjectPtr<USourceCodeAsset>> SourceCodeAssets;
@@ -133,6 +133,8 @@ private:
 	TArray<FNode> AdjacencyList;
 	TArray<FSourceCodeFile> SourceFiles;
 	FStandardCleanerText StandardCleanerText;
+	TArray<FName> AllProjectFiles;
+	TSet<FName> PrimaryAssetNames;
 
 	/** Other Engine Modules **/
 	FAssetRegistryModule* AssetRegistry;
