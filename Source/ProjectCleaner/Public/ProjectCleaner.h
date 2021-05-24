@@ -17,6 +17,7 @@ class ITableRow;
 class SDockTab;
 class FUICommandList;
 class FSpawnTabArgs;
+class FAssetRegistryModule;
 class SProjectCleanerUnusedAssetsBrowserUI;
 class SProjectCleanerNonUassetFilesUI;
 class SProjectCleanerBrowserStatisticsUI;
@@ -31,16 +32,14 @@ struct FSlateColorBrush;
 struct FAssetData;
 struct FSlateBrush;
 struct FNonUassetFile;
+struct FPrimaryAssetTypeInfo;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogProjectCleaner, Log, All);
 
 class FProjectCleanerModule : public IModuleInterface
 {
 public:
-	FProjectCleanerModule():
-		ExcludeDirectoryFilterSettings(nullptr)
-	{
-	}
+	FProjectCleanerModule();
 	/** IModuleInterface implementation */
 	virtual void StartupModule() override;
 	virtual void ShutdownModule() override;
@@ -134,4 +133,9 @@ private:
 	TArray<FNode> AdjacencyList;
 	TArray<FSourceCodeFile> SourceFiles;
 	FStandardCleanerText StandardCleanerText;
+
+	/** Other Engine Modules **/
+	FAssetRegistryModule* AssetRegistry;
+	void OnFilesLoaded();
+	bool bCanOpenTab = false;
 };

@@ -26,6 +26,7 @@
 #include "GenericPlatform/GenericPlatformMisc.h"
 #include "Framework/Notifications/NotificationManager.h"
 #include "Engine/AssetManager.h"
+#include "Engine/AssetManagerSettings.h"
 #include "Engine/MapBuildDataRegistry.h"
 #include "Framework/Commands/UICommandList.h"
 #include "Misc/ScopedSlowTask.h"
@@ -36,6 +37,12 @@ DEFINE_LOG_CATEGORY(LogProjectCleaner);
 static const FName ProjectCleanerTabName("ProjectCleaner");
 
 #define LOCTEXT_NAMESPACE "FProjectCleanerModule"
+
+FProjectCleanerModule::FProjectCleanerModule():
+	ExcludeDirectoryFilterSettings(nullptr),
+	AssetRegistry(nullptr)
+{
+}
 
 void FProjectCleanerModule::StartupModule()
 {
@@ -68,6 +75,11 @@ void FProjectCleanerModule::StartupModule()
 	// initializing some objects
 	NotificationManager = MakeShared<ProjectCleanerNotificationManager>();
 	ExcludeDirectoryFilterSettings = GetMutableDefault<UExcludeDirectoriesFilterSettings>();
+	AssetRegistry = &FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
+	if (AssetRegistry)
+	{
+		AssetRegistry->Get().OnFilesLoaded().AddRaw(this, &FProjectCleanerModule::OnFilesLoaded);
+	}
 }
 
 void FProjectCleanerModule::ShutdownModule()
@@ -77,6 +89,7 @@ void FProjectCleanerModule::ShutdownModule()
 	FProjectCleanerStyle::Shutdown();
 	FProjectCleanerCommands::Unregister();
 	FGlobalTabmanager::Get()->UnregisterNomadTabSpawner(ProjectCleanerTabName);
+	AssetRegistry = nullptr;
 }
 
 bool FProjectCleanerModule::IsGameModule() const
@@ -102,6 +115,17 @@ void FProjectCleanerModule::RegisterMenus()
 
 void FProjectCleanerModule::PluginButtonClicked()
 {
+	if (!bCanOpenTab)
+	{
+		if (!NotificationManager) return;
+		NotificationManager->AddTransient(
+			TEXT("Asset Registry still working"),
+			SNotificationItem::CS_Fail,
+			3.0f
+		);
+		return;
+	}
+	
 	FGlobalTabmanager::Get()->TryInvokeTab(ProjectCleanerTabName);
 }
 
@@ -273,47 +297,37 @@ void FProjectCleanerModule::UpdateCleaner()
 void FProjectCleanerModule::UpdateCleanerData()
 {
 	Reset();
-	
-	FScopedSlowTask SlowTask{1.0f, FText::FromString("Scanning. Please wait...")};
-	SlowTask.MakeDialog();
-	
-	const double StartTime = FPlatformTime::Seconds();
 
-	// project scanning steps
-	// 1) scan for empty folder
-	EmptyFolders.Reserve(100);
-	ProjectCleanerUtility::GetEmptyFolders(EmptyFolders);
-	// 2) scan for non uasset and uasset files using Directory traversal
-	TSet<FName> UassetFiles;
-	ProjectCleanerUtility::FindAllUassetFiles(UassetFiles, NonUassetFiles);
-
-	// 3) find all project files from asset registry
-	UnusedAssets.Reserve(UassetFiles.Num());
-	ProjectCleanerUtility::GetAllAssets(UnusedAssets);
-	
-	// 4) find corrupted files
-	ProjectCleanerUtility::FindCorruptedFiles(UnusedAssets, UassetFiles, CorruptedFiles);
-	
-	ProjectCleanerUtility::RemoveUsedAssets(UnusedAssets);
-	ProjectCleanerUtility::RemoveAssetsWithExternalDependencies(UnusedAssets, AdjacencyList);
-	ProjectCleanerUtility::RemoveAssetsUsedInSourceCode(UnusedAssets, AdjacencyList, SourceFiles, SourceCodeAssets);
-	ProjectCleanerUtility::RemoveAssetsExcludedByUser(UnusedAssets, AdjacencyList, ExcludeDirectoryFilterSettings);
-	
-	// updating adjacency list
-	ProjectCleanerUtility::CreateAdjacencyList(UnusedAssets, AdjacencyList, true);
-	
-	// remove user excluded assets
-	UnusedAssets.RemoveAll([&](const FAssetData& Asset)
+	const auto AssetManager = UAssetManager::GetIfValid();
+	if (!AssetManager) return;
+	const UAssetManagerSettings* const Settings = &AssetManager->GetSettings();
+	// 1) Getting all primary asset types
+	TSet<FName> PrimaryAssetNames;
 	{
-		return ExcludedAssets.Contains(Asset);
+		TArray<FPrimaryAssetId> PrimaryAssetIds;
+		TArray<FPrimaryAssetId> Ids;
+		for (const auto& Type : Settings->PrimaryAssetTypesToScan)
+		{
+			// for every asset types we getting primary asset id list
+			AssetManager->Get().GetPrimaryAssetIdList(Type.PrimaryAssetType, Ids);
+			PrimaryAssetIds.Append(Ids);
+			Ids.Reset();
+		}
+		for (const auto& Id : PrimaryAssetIds)
+		{
+			PrimaryAssetNames.Add(Id.PrimaryAssetName);
+		}
+	}
+	// 2) Get All Assets filtered by assets from primary list
+	if (!AssetRegistry) return;
+	AssetRegistry->Get().GetAssetsByPath(FName{"/Game"}, UnusedAssets, true);
+	
+	UnusedAssets.RemoveAll([&](const FAssetData& Elem)
+	{
+		return PrimaryAssetNames.Contains(Elem.PackageName);
 	});
-	
-	const double TimeElapsed = FPlatformTime::Seconds() - StartTime;
-	UE_LOG(LogProjectCleaner, Display, TEXT("Time elapsed on scanning : %f"), TimeElapsed);
 
-	UpdateStats();
-	
-	SlowTask.EnterProgressFrame(1.0f);
+	UE_LOG(LogProjectCleaner, Warning, TEXT("a"));
 }
 
 void FProjectCleanerModule::UpdateStats()
@@ -588,6 +602,12 @@ FReply FProjectCleanerModule::OnDeleteEmptyFolderClick()
 	UpdateContentBrowser();
 
 	return FReply::Handled();
+}
+
+void FProjectCleanerModule::OnFilesLoaded()
+{
+	UE_LOG(LogProjectCleaner, Warning, TEXT("AssetRegistry finished loading assets"));
+	bCanOpenTab = true;
 }
 
 void FProjectCleanerModule::OpenCorruptedFilesWindow()

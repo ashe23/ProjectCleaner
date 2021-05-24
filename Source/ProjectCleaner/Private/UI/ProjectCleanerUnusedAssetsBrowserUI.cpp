@@ -202,7 +202,7 @@ void SProjectCleanerUnusedAssetsBrowserUI::RefreshUIContent()
 			SNew(STextBlock)
 			.AutoWrapText(true)
 			.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
-			.Text(LOCTEXT("cleanernotetext", "Unused assets are those, that are not used in any level.\nSo before starting make sure you delete all levels that never used in project."))
+			.Text(LOCTEXT("cleanernotetext", "Unused asset definition.\n1.Not a primary asset.\n2.Asset and its related assets not used by primary asset."))
 		]
 	]
 	+ SVerticalBox::Slot()

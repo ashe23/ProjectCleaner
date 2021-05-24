@@ -119,7 +119,8 @@ void ProjectCleanerUtility::FixupRedirectors()
 	FARFilter Filter;
 	Filter.bRecursivePaths = true;
 	Filter.PackagePaths.Emplace(RootPath);
-	Filter.ClassNames.Emplace(TEXT("ObjectRedirector"));
+	// Filter.ClassNames.Emplace(TEXT("ObjectRedirector"));
+	Filter.ClassNames.Emplace(UObjectRedirector::StaticClass()->GetFName());
 
 	// Query for a list of assets
 	TArray<FAssetData> AssetList;
