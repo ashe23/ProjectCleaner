@@ -134,7 +134,7 @@ private:
 	TArray<FSourceCodeFile> SourceFiles;
 	FStandardCleanerText StandardCleanerText;
 	TArray<FName> AllProjectFiles;
-	TSet<FName> PrimaryAssetNames;
+	TSet<FName> PrimaryAssetClasses;
 
 	/** Other Engine Modules **/
 	FAssetRegistryModule* AssetRegistry;

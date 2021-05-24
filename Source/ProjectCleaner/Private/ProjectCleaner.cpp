@@ -305,17 +305,17 @@ void FProjectCleanerModule::UpdateCleanerData()
 	ProjectCleanerUtility::FindInvalidProjectFiles(AssetRegistry, AllProjectFiles, CorruptedFiles, NonUAssetFiles);
 
 	UAssetManager& AssetManager = UAssetManager::Get();
-	ProjectCleanerUtility::FindAllPrimaryAssets(AssetManager, PrimaryAssetNames);
-	
+	ProjectCleanerUtility::FindAllPrimaryAssetClasses(AssetManager, PrimaryAssetClasses);
 	
 	// Get all project assets
 	AssetRegistry->Get().GetAssetsByPath(FName{"/Game"}, UnusedAssets, true);
 
 	// Remove primary assets and map build files
-	// todo:ashe23 remove assets that are primary but outside of folder in given in settings
 	UnusedAssets.RemoveAll([&](const FAssetData& Elem)
 	{
-		return PrimaryAssetNames.Contains(Elem.PackageName) || Elem.AssetClass.IsEqual(UMapBuildDataRegistry::StaticClass()->GetFName());
+		return
+			PrimaryAssetClasses.Contains(Elem.AssetClass) ||
+			Elem.AssetClass.IsEqual(UMapBuildDataRegistry::StaticClass()->GetFName());
 	});
 
 	UpdateStats();

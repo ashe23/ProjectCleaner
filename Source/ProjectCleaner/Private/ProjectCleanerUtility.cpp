@@ -52,7 +52,7 @@ void ProjectCleanerUtility::FindInvalidProjectFiles(const FAssetRegistryModule* 
     	if (IsEngineExtension(FPaths::GetExtension(FilePath, false)))
     	{
     		// Converting file path to objectpath
-    		// example "/Game/NewMaterial.uasset" => "/Game/NewMaterial.NewMaterial"
+    		// example "/Game/NewMaterial.uasset" => "/Game/New Material.New Material"
     		auto FileName = FPaths::GetBaseFilename(FilePath);
     		FilePath.RemoveFromEnd(FPaths::GetExtension(FilePath, true));
     		FilePath.Append(TEXT(".") + FileName);
@@ -71,23 +71,23 @@ void ProjectCleanerUtility::FindInvalidProjectFiles(const FAssetRegistryModule* 
     }
 }
 
-void ProjectCleanerUtility::FindAllPrimaryAssets(UAssetManager& AssetManager, TSet<FName>& PrimaryAssetNames)
+void ProjectCleanerUtility::FindAllPrimaryAssetClasses(UAssetManager& AssetManager, TSet<FName>& PrimaryAssetClasses)
 {
-	PrimaryAssetNames.Reserve(10);
+	PrimaryAssetClasses.Reserve(10);
 	
-	const UAssetManagerSettings& Settings = AssetManager.GetSettings();
-	TArray<FPrimaryAssetId> PrimaryAssetIds;
+	const UAssetManagerSettings& Settings = AssetManager.GetSettings();	
 	TArray<FPrimaryAssetId> Ids;
 	for (const auto& Type : Settings.PrimaryAssetTypesToScan)
 	{
-		// for every asset types we getting primary asset id list
 		AssetManager.Get().GetPrimaryAssetIdList(Type.PrimaryAssetType, Ids);
-		PrimaryAssetIds.Append(Ids);
+		for(const auto& Id : Ids)
+		{
+			FAssetData Data;
+			AssetManager.Get().GetPrimaryAssetData(Id, Data);
+			if(!Data.IsValid()) continue;
+			PrimaryAssetClasses.Add(Data.AssetClass);
+		}
 		Ids.Reset();
-	}
-	for (const auto& Id : PrimaryAssetIds)
-	{
-		PrimaryAssetNames.Add(Id.PrimaryAssetName);
 	}
 }
 
