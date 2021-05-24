@@ -318,6 +318,12 @@ void FProjectCleanerModule::UpdateCleanerData()
 			Elem.AssetClass.IsEqual(UMapBuildDataRegistry::StaticClass()->GetFName());
 	});
 
+	ProjectCleanerUtility::GetEmptyFolders(EmptyFolders);
+	ProjectCleanerUtility::RemoveUsedAssets(UnusedAssets, PrimaryAssetClasses);
+	ProjectCleanerUtility::RemoveAssetsWithExternalDependencies(UnusedAssets, AdjacencyList);
+	ProjectCleanerUtility::RemoveAssetsUsedInSourceCode(UnusedAssets, AdjacencyList, SourceFiles, SourceCodeAssets);
+	ProjectCleanerUtility::RemoveAssetsExcludedByUser(UnusedAssets, AdjacencyList, ExcludeDirectoryFilterSettings);
+	
 	UpdateStats();
 	
 	UE_LOG(LogProjectCleaner, Warning, TEXT("a"));

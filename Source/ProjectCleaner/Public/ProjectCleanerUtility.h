@@ -248,7 +248,7 @@ public:
 	 * Used assets are those who are dependency for any level
 	 * @param Assets - Asset list
 	 */
-	static void RemoveUsedAssets(TArray<FAssetData>& Assets);
+	static void RemoveUsedAssets(TArray<FAssetData>& Assets, const TSet<FName>& PrimaryAssetClasses);
 
 	/**
 	 * @brief Removes assets that has external ref assets outside "Game" folder

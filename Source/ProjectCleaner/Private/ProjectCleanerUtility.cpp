@@ -52,7 +52,7 @@ void ProjectCleanerUtility::FindInvalidProjectFiles(const FAssetRegistryModule* 
     	if (IsEngineExtension(FPaths::GetExtension(FilePath, false)))
     	{
     		// Converting file path to objectpath
-    		// example "/Game/NewMaterial.uasset" => "/Game/New Material.New Material"
+    		// example "/Game/Name.uasset" => "/Game/Name.Name"
     		auto FileName = FPaths::GetBaseFilename(FilePath);
     		FilePath.RemoveFromEnd(FPaths::GetExtension(FilePath, true));
     		FilePath.Append(TEXT(".") + FileName);
@@ -708,12 +708,16 @@ void ProjectCleanerUtility::FindCorruptedFiles(
 	}	
 }
 
-void ProjectCleanerUtility::RemoveUsedAssets(TArray<FAssetData>& Assets)
+void ProjectCleanerUtility::RemoveUsedAssets(TArray<FAssetData>& Assets, const TSet<FName>& PrimaryAssetClasses)
 {
 	FAssetRegistryModule& AssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
 	
 	FARFilter Filter;
 	Filter.ClassNames.Add(UWorld::StaticClass()->GetFName());
+	for (const auto& AssetClass : PrimaryAssetClasses)
+	{
+		Filter.ClassNames.Add(AssetClass);
+	}
 	Filter.PackagePaths.Add("/Game");
 	Filter.bRecursivePaths = true;
 
