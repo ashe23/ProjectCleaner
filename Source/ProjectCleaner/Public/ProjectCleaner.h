@@ -131,6 +131,7 @@ private:
 	
 	/** Helper Containers **/
 	TArray<FNode> AdjacencyList;
+	FAssetsRelationalGraph RelationalGraph;
 	TArray<FSourceCodeFile> SourceFiles;
 	FStandardCleanerText StandardCleanerText;
 	TArray<FName> AllProjectFiles;

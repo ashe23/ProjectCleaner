@@ -320,11 +320,23 @@ void FProjectCleanerModule::UpdateCleanerData()
 
 	ProjectCleanerUtility::GetEmptyFolders(EmptyFolders);
 	ProjectCleanerUtility::RemoveUsedAssets(UnusedAssets, PrimaryAssetClasses);
-	ProjectCleanerUtility::RemoveAssetsWithExternalDependencies(UnusedAssets, AdjacencyList);
-	ProjectCleanerUtility::RemoveAssetsUsedInSourceCode(UnusedAssets, AdjacencyList, SourceFiles, SourceCodeAssets);
-	ProjectCleanerUtility::RemoveAssetsExcludedByUser(UnusedAssets, AdjacencyList, ExcludeDirectoryFilterSettings);
+	ProjectCleanerUtility::RemoveMegascansPluginAssetsIfActive(UnusedAssets);
 	
-	UpdateStats();
+	RelationalGraph.Reset();
+	RelationalGraph.Nodes.Reserve(UnusedAssets.Num());
+	for (const auto& UnusedAsset : UnusedAssets)
+	{
+		RelationalGraph.Add(UnusedAsset);
+	}
+	RelationalGraph.FindAssetsWithExternalDependencies();
+
+	// ExcludeDirectoryFilterSettings->Paths
+	
+	// ProjectCleanerUtility::RemoveAssetsWithExternalDependencies(UnusedAssets, AdjacencyList);
+	// ProjectCleanerUtility::RemoveAssetsUsedInSourceCode(UnusedAssets, AdjacencyList, SourceFiles, SourceCodeAssets);
+	// ProjectCleanerUtility::RemoveAssetsExcludedByUser(UnusedAssets, AdjacencyList, ExcludeDirectoryFilterSettings);
+	
+	// UpdateStats();
 	
 	UE_LOG(LogProjectCleaner, Warning, TEXT("a"));
 }

@@ -91,6 +91,17 @@ void ProjectCleanerUtility::FindAllPrimaryAssetClasses(UAssetManager& AssetManag
 	}
 }
 
+void ProjectCleanerUtility::RemoveMegascansPluginAssetsIfActive(TArray<FAssetData>& UnusedAssets)
+{
+	const bool IsMegascansLoaded = FModuleManager::Get().IsModuleLoaded("MegascansPlugin");
+	if (!IsMegascansLoaded) return;
+	
+	UnusedAssets.RemoveAll([&](const FAssetData& Elem)
+	{
+		return FPaths::IsUnderDirectory(Elem.PackagePath.ToString(), TEXT("/Game/MSPresets"));
+	});
+}
+
 bool ProjectCleanerUtility::HasFiles(const FString& SearchPath)
 {
 	TArray<FString> Files;
@@ -366,85 +377,85 @@ void ProjectCleanerUtility::SaveAllAssets()
 void ProjectCleanerUtility::CreateAdjacencyList(TArray<FAssetData>& Assets, TArray<FNode>& List,
 												const bool OnlyProjectFiles)
 {
-	if (Assets.Num() == 0) return;
-	
-	List.Reset();
-	List.Reserve(Assets.Num());
-
-	FAssetRegistryModule& AssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
-	TArray<FName> Deps;
-	TArray<FName> Refs;
-	for (const auto& Asset : Assets)
-	{
-		FNode Node;
-		Node.Asset = Asset.PackageName;
-		const auto AssetData = GetAssetData(Asset.PackageName, Assets);
-		Node.AssetData = AssetData ? *AssetData : nullptr;
-		AssetRegistry.Get().GetDependencies(Asset.PackageName, Deps);
-		AssetRegistry.Get().GetReferencers(Asset.PackageName, Refs);
-
-		// if flag given, removing all assets that are outside "Game" Folder
-		if (OnlyProjectFiles)
-		{
-			for (const auto& Dep : Deps)
-			{
-				const auto AssetRef = Assets.FindByPredicate([&](const FAssetData& Elem)
-				{
-					return Elem.PackageName.IsEqual(Dep);
-				});
-				if (AssetRef && !AssetRef->PackageName.IsEqual(Asset.PackageName))
-				{
-					Node.LinkedAssets.Add(Dep);
-					Node.Deps.Add(Dep);
-				}
-			}
-
-			for (const auto& Ref : Refs)
-			{
-				const auto AssetRef = Assets.FindByPredicate([&](const FAssetData& Elem)
-				{
-					return Elem.PackageName.IsEqual(Ref);
-				});
-				if (AssetRef && !AssetRef->PackageName.IsEqual(Asset.PackageName))
-				{
-					Node.LinkedAssets.Add(Ref);
-					Node.Refs.Add(Ref);
-				}
-			}
-		}
-		else
-		{
-			Node.LinkedAssets.Append(Deps);
-			Node.LinkedAssets.Append(Refs);
-			Node.Refs.Append(Refs);
-			Node.Deps.Append(Deps);
-		}
-		List.Add(Node);
-		Deps.Empty();
-		Refs.Empty();
-	}
+	// if (Assets.Num() == 0) return;
+	//
+	// List.Reset();
+	// List.Reserve(Assets.Num());
+	//
+	// FAssetRegistryModule& AssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
+	// TArray<FName> Deps;
+	// TArray<FName> Refs;
+	// for (const auto& Asset : Assets)
+	// {
+	// 	FNode Node;
+	// 	Node.Asset = Asset.PackageName;
+	// 	const auto AssetData = GetAssetData(Asset.PackageName, Assets);
+	// 	Node.AssetData = AssetData ? *AssetData : nullptr;
+	// 	AssetRegistry.Get().GetDependencies(Asset.PackageName, Deps);
+	// 	AssetRegistry.Get().GetReferencers(Asset.PackageName, Refs);
+	//
+	// 	// if flag given, removing all assets that are outside "Game" Folder
+	// 	if (OnlyProjectFiles)
+	// 	{
+	// 		for (const auto& Dep : Deps)
+	// 		{
+	// 			const auto AssetRef = Assets.FindByPredicate([&](const FAssetData& Elem)
+	// 			{
+	// 				return Elem.PackageName.IsEqual(Dep);
+	// 			});
+	// 			if (AssetRef && !AssetRef->PackageName.IsEqual(Asset.PackageName))
+	// 			{
+	// 				Node.LinkedAssets.Add(Dep);
+	// 				Node.Deps.Add(Dep);
+	// 			}
+	// 		}
+	//
+	// 		for (const auto& Ref : Refs)
+	// 		{
+	// 			const auto AssetRef = Assets.FindByPredicate([&](const FAssetData& Elem)
+	// 			{
+	// 				return Elem.PackageName.IsEqual(Ref);
+	// 			});
+	// 			if (AssetRef && !AssetRef->PackageName.IsEqual(Asset.PackageName))
+	// 			{
+	// 				Node.LinkedAssets.Add(Ref);
+	// 				Node.Refs.Add(Ref);
+	// 			}
+	// 		}
+	// 	}
+	// 	else
+	// 	{
+	// 		Node.LinkedAssets.Append(Deps);
+	// 		Node.LinkedAssets.Append(Refs);
+	// 		Node.Refs.Append(Refs);
+	// 		Node.Deps.Append(Deps);
+	// 	}
+	// 	List.Add(Node);
+	// 	Deps.Empty();
+	// 	Refs.Empty();
+	// }
 }
 
 void ProjectCleanerUtility::FindAllRelatedAssets(const FNode& Node,
 												 TSet<FName>& RelatedAssets,
 												 const TArray<FNode>& List)
 {
-	RelatedAssets.Add(Node.Asset);
-	for (const auto& Adj : Node.LinkedAssets)
-	{
-		if (!RelatedAssets.Contains(Adj))
-		{
-			const FNode* NodeRef = List.FindByPredicate([&](const FNode& Elem)
-			{
-				return Elem.Asset == Adj;
-			});
-
-			if (NodeRef)
-			{
-				FindAllRelatedAssets(*NodeRef, RelatedAssets, List);
-			}
-		}
-	}
+	// RelatedAssets.Add(Node.Asset);
+	// for (const auto& Adj : Node.LinkedAssets)
+	// {
+	// 	if (!RelatedAssets.Contains(Adj))
+	// 	{
+	// 		const FNode* NodeRef = List.FindByPredicate([&](const FNode& Elem)
+	// 		{
+	// 			return Elem.Asset == Adj;
+	// 		});
+	//
+	// 		if (NodeRef)
+	// 		{
+	// 			FindAllRelatedAssets(*NodeRef, RelatedAssets, List);
+	// 		}
+	// 	}
+	// }
 }
 
 void ProjectCleanerUtility::FindAllUassetFiles(TSet<FName>& UassetFiles, TSet<FName>& NonUassetFiles)
@@ -486,45 +497,45 @@ void ProjectCleanerUtility::GetRootAssets(TArray<FAssetData>& RootAssets, TArray
 	// first we deleting cycle assets
 	// like Skeletal mesh, skeleton, and physical assets
 	// those assets must not be deleted separately
-	TSet<FName> CircularAssets;
-	for (const auto& Node : List)
-	{
-		if (Node.IsCircular())
-		{
-			CircularAssets.Add(Node.Asset);
-		}
-	}
-
-	if (CircularAssets.Num() > 0)
-	{
-		for (const auto& CircularAsset : CircularAssets)
-		{
-			FAssetData* AssetData = GetAssetData(CircularAsset, Assets);
-			if (!AssetData) continue;
-			RootAssets.Add(*AssetData);
-		}
-	}
-	else
-	{
-		constexpr int32 ChunkSize = 20;
-		for (const auto& Node : List)
-		{
-			if (RootAssets.Num() > ChunkSize) break;
-
-			if (Node.Refs.Num() == 0)
-			{
-				FAssetData* AssetData = GetAssetData(Node.Asset, Assets);
-				if (!AssetData) continue;
-				RootAssets.Add(*AssetData);
-			}
-		}
-	}
-
-	// todo:ashe23 not a good solution
-	if (RootAssets.Num() == 0 && Assets.Num() != 0)
-	{
-		RootAssets = Assets;
-	}
+	// TSet<FName> CircularAssets;
+	// for (const auto& Node : List)
+	// {
+	// 	if (Node.IsCircular())
+	// 	{
+	// 		CircularAssets.Add(Node.Asset);
+	// 	}
+	// }
+	//
+	// if (CircularAssets.Num() > 0)
+	// {
+	// 	for (const auto& CircularAsset : CircularAssets)
+	// 	{
+	// 		FAssetData* AssetData = GetAssetData(CircularAsset, Assets);
+	// 		if (!AssetData) continue;
+	// 		RootAssets.Add(*AssetData);
+	// 	}
+	// }
+	// else
+	// {
+	// 	constexpr int32 ChunkSize = 20;
+	// 	for (const auto& Node : List)
+	// 	{
+	// 		if (RootAssets.Num() > ChunkSize) break;
+	//
+	// 		if (Node.Refs.Num() == 0)
+	// 		{
+	// 			FAssetData* AssetData = GetAssetData(Node.Asset, Assets);
+	// 			if (!AssetData) continue;
+	// 			RootAssets.Add(*AssetData);
+	// 		}
+	// 	}
+	// }
+	//
+	// // todo:ashe23 not a good solution
+	// if (RootAssets.Num() == 0 && Assets.Num() != 0)
+	// {
+	// 	RootAssets = Assets;
+	// }
 }
 
 bool ProjectCleanerUtility::IsCycle(const FName& Referencer, const TArray<FName>& Deps, const FAssetData& CurrentAsset)
@@ -542,12 +553,13 @@ FAssetData* ProjectCleanerUtility::GetAssetData(const FName& AssetName, TArray<F
 
 FAssetData* ProjectCleanerUtility::GetAssetData(const FName& AssetName, TArray<FNode>& List)
 {
-	const auto Node = List.FindByPredicate([&](const FNode& Elem)
-	{
-		return Elem.Asset.IsEqual(AssetName);
-	});
-
-	return (Node) ? &Node->AssetData : nullptr;
+	return nullptr;
+	// const auto Node = List.FindByPredicate([&](const FNode& Elem)
+	// {
+	// 	return Elem.Asset.IsEqual(AssetName);
+	// });
+	//
+	// return (Node) ? &Node->AssetData : nullptr;
 }
 
 void ProjectCleanerUtility::GetLinkedAssetsChain(
@@ -556,21 +568,21 @@ void ProjectCleanerUtility::GetLinkedAssetsChain(
 	TArray<FNode>& List
 )
 {
-	TSet<FName> RelatedAssets;
-	LinkedAssets.Reserve(List.Num());
-	RelatedAssets.Reserve(List.Num());
-
-	for (const auto& Asset : Assets)
-	{
-		const auto Node = List.FindByPredicate([&](const FNode& Elem)
-		{
-			return Elem.Asset.IsEqual(Asset.PackageName);
-		});
-		if(!Node) continue;
-		FindAllRelatedAssets(*Node,RelatedAssets, List);
-		LinkedAssets.Append(RelatedAssets);
-		RelatedAssets.Reset();
-	}
+	// TSet<FName> RelatedAssets;
+	// LinkedAssets.Reserve(List.Num());
+	// RelatedAssets.Reserve(List.Num());
+	//
+	// for (const auto& Asset : Assets)
+	// {
+	// 	const auto Node = List.FindByPredicate([&](const FNode& Elem)
+	// 	{
+	// 		return Elem.Asset.IsEqual(Asset.PackageName);
+	// 	});
+	// 	if(!Node) continue;
+	// 	FindAllRelatedAssets(*Node,RelatedAssets, List);
+	// 	LinkedAssets.Append(RelatedAssets);
+	// 	RelatedAssets.Reset();
+	// }
 }
 
 int64 ProjectCleanerUtility::GetTotalSize(const TArray<FAssetData>& AssetContainer)
@@ -759,23 +771,23 @@ void ProjectCleanerUtility::RemoveUsedAssets(TArray<FAssetData>& Assets, const T
 
 void ProjectCleanerUtility::RemoveAssetsWithExternalDependencies(TArray<FAssetData>& Assets, TArray<FNode>& List)
 {
-	CreateAdjacencyList(Assets,List, false);
-	
-	TSet<FName> AssetsToRemove;
-	AssetsToRemove.Reserve(Assets.Num());
-	
-	for(const auto& Node : List)
-	{
-		if (Node.HasLinkedAssetsOutsideGameFolder())
-		{
-			AssetsToRemove.Add(Node.Asset);	
-		}
-	}
-
-	Assets.RemoveAll([&](const FAssetData& Asset)
-	{
-		return AssetsToRemove.Contains(Asset.PackageName);
-	});
+	// CreateAdjacencyList(Assets,List, false);
+	//
+	// TSet<FName> AssetsToRemove;
+	// AssetsToRemove.Reserve(Assets.Num());
+	//
+	// for(const auto& Node : List)
+	// {
+	// 	if (Node.HasLinkedAssetsOutsideGameFolder())
+	// 	{
+	// 		AssetsToRemove.Add(Node.Asset);	
+	// 	}
+	// }
+	//
+	// Assets.RemoveAll([&](const FAssetData& Asset)
+	// {
+	// 	return AssetsToRemove.Contains(Asset.PackageName);
+	// });
 }
 
 void ProjectCleanerUtility::RemoveAssetsUsedInSourceCode(
@@ -784,31 +796,31 @@ void ProjectCleanerUtility::RemoveAssetsUsedInSourceCode(
 	TArray<FSourceCodeFile>& SourceCodeFiles,
 	TArray<TWeakObjectPtr<USourceCodeAsset>>& SourceCodeAssets)
 {
-	CreateAdjacencyList(Assets, List, true);
-	FindAllSourceFiles(SourceCodeFiles);
-
-	TSet<FName> RelatedAssets;
-	RelatedAssets.Reserve(Assets.Num());
-	for (const auto& Asset : Assets)
-	{
-		if (UsedInSourceFiles(Asset, SourceCodeFiles, SourceCodeAssets))
-		{
-			const auto Node = List.FindByPredicate([&](const FNode& Elem)
-			{
-				return Elem.Asset.IsEqual(Asset.PackageName);
-			});
-
-			if (Node)
-			{
-				FindAllRelatedAssets(*Node,RelatedAssets, List);
-			}
-		}
-	}
-
-	Assets.RemoveAll([&](const FAssetData& Elem)
-	{
-		return RelatedAssets.Contains(Elem.PackageName);
-	});
+	// CreateAdjacencyList(Assets, List, true);
+	// FindAllSourceFiles(SourceCodeFiles);
+	//
+	// TSet<FName> RelatedAssets;
+	// RelatedAssets.Reserve(Assets.Num());
+	// for (const auto& Asset : Assets)
+	// {
+	// 	if (UsedInSourceFiles(Asset, SourceCodeFiles, SourceCodeAssets))
+	// 	{
+	// 		const auto Node = List.FindByPredicate([&](const FNode& Elem)
+	// 		{
+	// 			return Elem.Asset.IsEqual(Asset.PackageName);
+	// 		});
+	//
+	// 		if (Node)
+	// 		{
+	// 			FindAllRelatedAssets(*Node,RelatedAssets, List);
+	// 		}
+	// 	}
+	// }
+	//
+	// Assets.RemoveAll([&](const FAssetData& Elem)
+	// {
+	// 	return RelatedAssets.Contains(Elem.PackageName);
+	// });
 }
 
 void ProjectCleanerUtility::RemoveAssetsExcludedByUser(
@@ -816,42 +828,42 @@ void ProjectCleanerUtility::RemoveAssetsExcludedByUser(
 	TArray<FNode>& List,
 	UExcludeDirectoriesFilterSettings* DirectoryFilterSettings)
 {
-	if(!DirectoryFilterSettings) return;
-
-	// updating adjacency list
-	CreateAdjacencyList(Assets, List, true);
-
-	FAssetRegistryModule& AssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
-	TSet<FAssetData> FilteredAssets;
-	FilteredAssets.Reserve(Assets.Num());
-	
-	TArray<FAssetData> AssetsInPath;
-	AssetsInPath.Reserve(100);
-	for (const auto& FilterPath : DirectoryFilterSettings->Paths)
-	{
-		AssetRegistry.Get().GetAssetsByPath(*FilterPath.Path, AssetsInPath, true);
-		FilteredAssets.Append(AssetsInPath);
-		AssetsInPath.Reset();
-	}
-	
-	// for filtered assets finding related assets
-	TSet<FName> RelatedAssets;
-	RelatedAssets.Reset();
-	RelatedAssets.Reserve(Assets.Num());
-	for(const auto& FilteredAsset : FilteredAssets)
-	{
-		const auto Node = List.FindByPredicate([&](const FNode& Elem)
-		{
-			return Elem.Asset.IsEqual(FilteredAsset.PackageName);
-		});
-		if (Node)
-		{
-			FindAllRelatedAssets(*Node, RelatedAssets, List);
-		}
-	}
-	
-	Assets.RemoveAll([&] (const FAssetData& Elem)
-	{
-		return RelatedAssets.Contains(Elem.PackageName);
-	});
+	// if(!DirectoryFilterSettings) return;
+	//
+	// // updating adjacency list
+	// CreateAdjacencyList(Assets, List, true);
+	//
+	// FAssetRegistryModule& AssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
+	// TSet<FAssetData> FilteredAssets;
+	// FilteredAssets.Reserve(Assets.Num());
+	//
+	// TArray<FAssetData> AssetsInPath;
+	// AssetsInPath.Reserve(100);
+	// for (const auto& FilterPath : DirectoryFilterSettings->Paths)
+	// {
+	// 	AssetRegistry.Get().GetAssetsByPath(*FilterPath.Path, AssetsInPath, true);
+	// 	FilteredAssets.Append(AssetsInPath);
+	// 	AssetsInPath.Reset();
+	// }
+	//
+	// // for filtered assets finding related assets
+	// TSet<FName> RelatedAssets;
+	// RelatedAssets.Reset();
+	// RelatedAssets.Reserve(Assets.Num());
+	// for(const auto& FilteredAsset : FilteredAssets)
+	// {
+	// 	const auto Node = List.FindByPredicate([&](const FNode& Elem)
+	// 	{
+	// 		return Elem.Asset.IsEqual(FilteredAsset.PackageName);
+	// 	});
+	// 	if (Node)
+	// 	{
+	// 		FindAllRelatedAssets(*Node, RelatedAssets, List);
+	// 	}
+	// }
+	//
+	// Assets.RemoveAll([&] (const FAssetData& Elem)
+	// {
+	// 	return RelatedAssets.Contains(Elem.PackageName);
+	// });
 }

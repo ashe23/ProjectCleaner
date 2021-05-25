@@ -21,6 +21,7 @@ public:
 	static void FindAllProjectFiles(TArray<FName>& AllProjectFiles);
 	static void FindInvalidProjectFiles(const FAssetRegistryModule* AssetRegistry, const TArray<FName>& AllProjectFiles, TSet<FName>& CorruptedFiles, TSet<FName>& NonUAssetFiles);
 	static void FindAllPrimaryAssetClasses(UAssetManager& AssetManager, TSet<FName>& PrimaryAssetClasses);
+	static void RemoveMegascansPluginAssetsIfActive(TArray<FAssetData>& UnusedAssets);
 	/**
 	* @brief Checks if given extension is ".uasset" or ".umap"
 	* @param Extension 
