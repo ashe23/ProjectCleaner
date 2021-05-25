@@ -74,12 +74,13 @@ struct FNode
 {
 	FNode(const FAssetData& Data) : AssetData(Data) {}
 	
-	// FName Asset; // todo:ashe23 remove this
 	const FAssetData& AssetData;
 	
 	TArray<FName> Refs; // todo:ashe23 for now its TArray just for debugging, on release it should be TSet
 	TArray<FName> Deps;
 	TArray<FName> LinkedAssets;
+	TArray<FName> Chain;
+	bool Visited = false;
 
 	bool operator==(const FNode& Other) const
 	{
@@ -152,18 +153,26 @@ struct FNode
 struct FAssetsRelationalGraph
 {
 	TArray<FNode> Nodes;
-	TArray<FNode> NodesWithExternalDependencies;
+	// TArray<FNode> NodesWithExternalDependencies;
 
 	void Reset()
 	{
 		Nodes.Reset();
-		NodesWithExternalDependencies.Reset();
+		// NodesWithExternalDependencies.Reset();
 	}
 
 	void Empty()
 	{
 		Nodes.Empty();
-		NodesWithExternalDependencies.Empty();
+		// NodesWithExternalDependencies.Empty();
+	}
+
+	void ClearVisited()
+	{
+		for (auto& Node : Nodes)
+		{
+			Node.Visited = false;
+		}
 	}
 
 	bool Contains(const FAssetData& Data) const
@@ -199,44 +208,50 @@ struct FAssetsRelationalGraph
 		Nodes.Add(Node);
 	}
 
-	FNode* Find(const FName& Asset)
+	FNode* FindByAssetName(const FName& AssetName)
 	{
 		return Nodes.FindByPredicate([&](const FNode& Elem)
 		{
-			return Elem.AssetData.AssetName.IsEqual(Asset);
+			return Elem.AssetData.AssetName.IsEqual(AssetName);
 		});
 	}
 
-	void GetLinkedAssetsChain(const FName& Asset, TArray<FName>& LinkedAssets)
+	FNode* FindByPackageName(const FName& PackageName)
 	{
-		const auto Node = Find(Asset);
-		if(!Node) return;
-
-		// LinkedAssets.Append(Node->LinkedAssets);
-		//
-		// for (const auto& LinkedAsset : LinkedAssets)
-		// {
-		// 	GetLinkedAssetsChain(LinkedAsset, LinkedAssets);
-		// }
+		return Nodes.FindByPredicate([&](const FNode& Elem)
+		{
+			return Elem.AssetData.PackageName.IsEqual(PackageName);
+		});
 	}
 
-	void FindAssetsWithExternalDependencies()
+	void RegenerateLinks()
 	{
-		NodesWithExternalDependencies.Reserve(Nodes.Num());
-		for (const auto& Node : Nodes)
+		for (auto& Node : Nodes)
 		{
-			if (Node.HasLinkedAssetsOutsideGameFolder())
-			{
-				NodesWithExternalDependencies.AddUnique(Node);
-			}
+			DFS(Node, Node);
+			ClearVisited();
 		}
 	}
+	
+	// void FindAssetsWithExternalDependencies()
+	// {
+	// 	NodesWithExternalDependencies.Reserve(Nodes.Num());
+	// 	for (const auto& Node : Nodes)
+	// 	{
+	// 		if (Node.HasLinkedAssetsOutsideGameFolder())
+	// 		{
+	// 			NodesWithExternalDependencies.AddUnique(Node);
+	// 		}
+	// 	}
+	// }
 private:
+	
 	enum class ERelatedAssetType
 	{
 		Reference,
 		Dependency
 	};
+	
 	void GetLinkedAssets(const FName& Asset, ERelatedAssetType AssetType, TArray<FName>& RelatedAssets) const
 	{
 		FAssetRegistryModule& AssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
@@ -255,6 +270,20 @@ private:
 		{
 			return Elem.IsEqual(Asset);
 		});
+	}
+
+	void DFS(FNode& Node, FNode& RootNode)
+	{
+		if (Node.Visited) return;
+
+		Node.Visited = true;
+		for (const auto& Asset : Node.LinkedAssets)
+		{
+			const auto AssetNode = FindByPackageName(Asset);
+			if(!AssetNode) continue;
+			RootNode.Chain.AddUnique(Asset);
+			DFS(*AssetNode, RootNode);
+		}
 	}
 };
 

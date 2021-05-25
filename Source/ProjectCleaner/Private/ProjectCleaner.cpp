@@ -321,16 +321,39 @@ void FProjectCleanerModule::UpdateCleanerData()
 	ProjectCleanerUtility::GetEmptyFolders(EmptyFolders);
 	ProjectCleanerUtility::RemoveUsedAssets(UnusedAssets, PrimaryAssetClasses);
 	ProjectCleanerUtility::RemoveMegascansPluginAssetsIfActive(UnusedAssets);
-	
+
+	// 1) filling graphs with unused assets data
 	RelationalGraph.Reset();
 	RelationalGraph.Nodes.Reserve(UnusedAssets.Num());
 	for (const auto& UnusedAsset : UnusedAssets)
 	{
 		RelationalGraph.Add(UnusedAsset);
 	}
-	RelationalGraph.FindAssetsWithExternalDependencies();
+	// 2) filling linked assets for every node in graph
+	RelationalGraph.RegenerateLinks();
 
-	// ExcludeDirectoryFilterSettings->Paths
+	TArray<FAssetData> FilteredAssets;
+	FilteredAssets.Reserve(UnusedAssets.Num());
+	if (ExcludeDirectoryFilterSettings)
+	{
+		TArray<FAssetData> IterationAssets;
+		for (const auto& FilterPath : ExcludeDirectoryFilterSettings->Paths)
+		{
+			AssetRegistry->Get().GetAssetsByPath(FName{*FilterPath.Path}, IterationAssets, true);
+			FilteredAssets.Append(IterationAssets);
+			IterationAssets.Reset();
+		}
+	}
+
+	for (const auto& FilteredAsset : FilteredAssets)
+	{
+		const auto Node = RelationalGraph.FindByPackageName(FilteredAsset.PackageName);
+		if(!Node) continue;
+		UnusedAssets.RemoveAll([&] (const FAssetData& Elem)
+		{
+			return Node->Chain.Contains(Elem.PackageName);
+		});
+	}
 	
 	// ProjectCleanerUtility::RemoveAssetsWithExternalDependencies(UnusedAssets, AdjacencyList);
 	// ProjectCleanerUtility::RemoveAssetsUsedInSourceCode(UnusedAssets, AdjacencyList, SourceFiles, SourceCodeAssets);
