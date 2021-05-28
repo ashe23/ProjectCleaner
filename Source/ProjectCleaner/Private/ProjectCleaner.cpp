@@ -12,6 +12,7 @@
 #include "UI/ProjectCleanerSourceCodeAssetsUI.h"
 #include "UI/ProjectCleanerCorruptedFilesUI.h"
 #include "UI/ProjectCleanerExcludedAssetsUI.h"
+#include "Graph/AssetRelationalMap.h"
 // Engine Headers
 #include "AssetRegistryModule.h"
 #include "ToolMenus.h"
@@ -39,7 +40,7 @@ static const FName ProjectCleanerTabName("ProjectCleaner");
 
 #define LOCTEXT_NAMESPACE "FProjectCleanerModule"
 
-FProjectCleanerModule::FProjectCleanerModule():
+FProjectCleanerModule::FProjectCleanerModule() :
 	ExcludeDirectoryFilterSettings(nullptr),
 	AssetRegistry(nullptr)
 {
@@ -126,7 +127,7 @@ void FProjectCleanerModule::PluginButtonClicked()
 		);
 		return;
 	}
-	
+
 	FGlobalTabmanager::Get()->TryInvokeTab(ProjectCleanerTabName);
 }
 
@@ -134,10 +135,10 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 {
 	UpdateCleaner();
 
-	const FMargin CommonMargin = FMargin{20.0f, 20.0f};
+	const FMargin CommonMargin = FMargin{ 20.0f, 20.0f };
 
 	const auto UnusedAssetsUIRef = SAssignNew(UnusedAssetsBrowserUI, SProjectCleanerUnusedAssetsBrowserUI)
-					.UnusedAssets(UnusedAssets);
+		.UnusedAssets(UnusedAssets);
 	UnusedAssetsUIRef->OnUserDeletedAssets = FOnUserDeletedAssets::CreateRaw(
 		this,
 		&FProjectCleanerModule::OnUserDeletedAssets
@@ -147,143 +148,143 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 		this,
 		&FProjectCleanerModule::OnUserExcludedAssets
 	);
-	
+
 	const auto ExcludedAssetsUIRef = SAssignNew(ExcludedAssetsUI, SProjectCleanerExcludedAssetsUI)
-									.ExcludedAssets(ExcludedAssets);
+		.ExcludedAssets(ExcludedAssets);
 	ExcludedAssetsUIRef->OnUserIncludedAssets = FOnUserIncludedAsset::CreateRaw(
 		this,
 		&FProjectCleanerModule::OnUserIncludedAssets
 	);
 
 	return SNew(SDockTab)
-	.TabRole(ETabRole::MajorTab)
-	[
-		SNew(SSplitter)
-		+ SSplitter::Slot()
+		.TabRole(ETabRole::MajorTab)
+		[
+			SNew(SSplitter)
+			+ SSplitter::Slot()
 		.Value(0.35f)
 		[
 			SNew(SScrollBox)
 			+ SScrollBox::Slot()
-			[
-				SNew(SVerticalBox)
-				+ SVerticalBox::Slot()
-				.Padding(CommonMargin)
-				.AutoHeight()
-				[
-					SAssignNew(StatisticsUI, SProjectCleanerBrowserStatisticsUI)
-					.Stats(CleaningStats)
-				]
-				+ SVerticalBox::Slot()
-				.Padding(CommonMargin)
-				.AutoHeight()
-				[
-					SNew(SBorder)
-					.Padding(FMargin(10))
-					.BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
-					[
-						SNew(SHorizontalBox)
-						+ SHorizontalBox::Slot()
-						.FillWidth(1.0f)
-						[
-							SNew(SButton)
-							.HAlign(HAlign_Center)
-							.VAlign(VAlign_Center)
-							.Text(FText::FromString("Refresh"))
-							.OnClicked_Raw(this, &FProjectCleanerModule::OnRefreshBtnClick)
-						]
-						+ SHorizontalBox::Slot()
-						  .FillWidth(1.0f)
-						  .Padding(FMargin{40.0f, 0.0f, 40.0f, 0.0f})
-						[
-							SNew(SButton)
-							.HAlign(HAlign_Center)
-							.VAlign(VAlign_Center)
-							.Text(FText::FromString("Delete Unused Assets"))
-							.OnClicked_Raw(this, &FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick)
-						]
-						+ SHorizontalBox::Slot()
-						.FillWidth(1.0f)
-						[
-							SNew(SButton)
-							.HAlign(HAlign_Center)
-							.VAlign(VAlign_Center)
-							.Text(FText::FromString("Delete Empty Folders"))
-							.OnClicked_Raw(this, &FProjectCleanerModule::OnDeleteEmptyFolderClick)
-						]
-					]
-				]
-			]
-			+ SScrollBox::Slot()
-			[
-				SNew(SVerticalBox)
-				+ SVerticalBox::Slot()
-				.Padding(CommonMargin)
-				.AutoHeight()
-				[
-					SAssignNew(DirectoryExclusionUI, SProjectCleanerDirectoryExclusionUI)
-					.ExcludeDirectoriesFilterSettings(ExcludeDirectoryFilterSettings)
-				]
-			]
-			+ SScrollBox::Slot()
-			[
-				SNew(SVerticalBox)
-				+SVerticalBox::Slot()
-				.Padding(FMargin(5))
-				.AutoHeight()
-				[
-					ExcludedAssetsUIRef
-				]
-			]
-			+ SScrollBox::Slot()
-			[
-				SNew(SVerticalBox)
-				+ SVerticalBox::Slot()
-				.Padding(CommonMargin)
-				.AutoHeight()
-				[
-					SAssignNew(NonUassetFilesUI, SProjectCleanerNonUassetFilesUI)
-					.NonUassetFiles(NonUAssetFiles)
-				]
-			]
-			+ SScrollBox::Slot()
-			[
-				SNew(SVerticalBox)
-				+ SVerticalBox::Slot()
-				.Padding(CommonMargin)
-				.AutoHeight()
-				[
-					SAssignNew(SourceCodeAssetsUI, SProjectCleanerSourceCodeAssetsUI)
-					.SourceCodeAssets(SourceCodeAssets)
-				]
-			]
-			+ SScrollBox::Slot()
-			[
-				SNew(SVerticalBox)
-				+SVerticalBox::Slot()
-				.Padding(CommonMargin)
-				.AutoHeight()
-				[
-					SAssignNew(CorruptedFilesUI, SProjectCleanerCorruptedFilesUI)
-					.CorruptedFiles(CorruptedFiles)
-				]
-			]			
+		[
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot()
+		.Padding(CommonMargin)
+		.AutoHeight()
+		[
+			SAssignNew(StatisticsUI, SProjectCleanerBrowserStatisticsUI)
+			.Stats(CleaningStats)
 		]
-		+ SSplitter::Slot()
+	+ SVerticalBox::Slot()
+		.Padding(CommonMargin)
+		.AutoHeight()
+		[
+			SNew(SBorder)
+			.Padding(FMargin(10))
+		.BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
+		[
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot()
+		.FillWidth(1.0f)
+		[
+			SNew(SButton)
+			.HAlign(HAlign_Center)
+		.VAlign(VAlign_Center)
+		.Text(FText::FromString("Refresh"))
+		.OnClicked_Raw(this, &FProjectCleanerModule::OnRefreshBtnClick)
+		]
+	+ SHorizontalBox::Slot()
+		.FillWidth(1.0f)
+		.Padding(FMargin{ 40.0f, 0.0f, 40.0f, 0.0f })
+		[
+			SNew(SButton)
+			.HAlign(HAlign_Center)
+		.VAlign(VAlign_Center)
+		.Text(FText::FromString("Delete Unused Assets"))
+		.OnClicked_Raw(this, &FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick)
+		]
+	+ SHorizontalBox::Slot()
+		.FillWidth(1.0f)
+		[
+			SNew(SButton)
+			.HAlign(HAlign_Center)
+		.VAlign(VAlign_Center)
+		.Text(FText::FromString("Delete Empty Folders"))
+		.OnClicked_Raw(this, &FProjectCleanerModule::OnDeleteEmptyFolderClick)
+		]
+		]
+		]
+		]
+	+ SScrollBox::Slot()
+		[
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot()
+		.Padding(CommonMargin)
+		.AutoHeight()
+		[
+			SAssignNew(DirectoryExclusionUI, SProjectCleanerDirectoryExclusionUI)
+			.ExcludeDirectoriesFilterSettings(ExcludeDirectoryFilterSettings)
+		]
+		]
+	+ SScrollBox::Slot()
+		[
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot()
+		.Padding(FMargin(5))
+		.AutoHeight()
+		[
+			ExcludedAssetsUIRef
+		]
+		]
+	+ SScrollBox::Slot()
+		[
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot()
+		.Padding(CommonMargin)
+		.AutoHeight()
+		[
+			SAssignNew(NonUassetFilesUI, SProjectCleanerNonUassetFilesUI)
+			.NonUassetFiles(NonUAssetFiles)
+		]
+		]
+	+ SScrollBox::Slot()
+		[
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot()
+		.Padding(CommonMargin)
+		.AutoHeight()
+		[
+			SAssignNew(SourceCodeAssetsUI, SProjectCleanerSourceCodeAssetsUI)
+			.SourceCodeAssets(SourceCodeAssets)
+		]
+		]
+	+ SScrollBox::Slot()
+		[
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot()
+		.Padding(CommonMargin)
+		.AutoHeight()
+		[
+			SAssignNew(CorruptedFilesUI, SProjectCleanerCorruptedFilesUI)
+			.CorruptedFiles(CorruptedFiles)
+		]
+		]
+		]
+	+ SSplitter::Slot()
 		.Value(0.65f)
 		[
 			SNew(SScrollBox)
 			+ SScrollBox::Slot()
-			[
-				SNew(SVerticalBox)
-				+ SVerticalBox::Slot()
-				.Padding(CommonMargin)
-				.AutoHeight()
-				[
-					UnusedAssetsUIRef
-				]
-			]
+		[
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot()
+		.Padding(CommonMargin)
+		.AutoHeight()
+		[
+			UnusedAssetsUIRef
 		]
-	];
+		]
+		]
+		];
 }
 
 void FProjectCleanerModule::UpdateCleaner()
@@ -298,7 +299,7 @@ void FProjectCleanerModule::UpdateCleaner()
 void FProjectCleanerModule::UpdateCleanerData()
 {
 	Reset();
-	
+
 	if (!AssetRegistry) return;
 
 	ProjectCleanerUtility::FindAllProjectFiles(AllProjectFiles);
@@ -306,9 +307,9 @@ void FProjectCleanerModule::UpdateCleanerData()
 
 	UAssetManager& AssetManager = UAssetManager::Get();
 	ProjectCleanerUtility::FindAllPrimaryAssetClasses(AssetManager, PrimaryAssetClasses);
-	
+
 	// Get all project assets
-	AssetRegistry->Get().GetAssetsByPath(FName{"/Game"}, UnusedAssets, true);
+	AssetRegistry->Get().GetAssetsByPath(FName{ "/Game" }, UnusedAssets, true);
 
 	// Remove primary assets and map build files
 	UnusedAssets.RemoveAll([&](const FAssetData& Elem)
@@ -322,15 +323,11 @@ void FProjectCleanerModule::UpdateCleanerData()
 	ProjectCleanerUtility::RemoveUsedAssets(UnusedAssets, PrimaryAssetClasses);
 	ProjectCleanerUtility::RemoveMegascansPluginAssetsIfActive(UnusedAssets);
 
-	// 1) filling graphs with unused assets data
-	RelationalGraph.Reset();
-	RelationalGraph.Nodes.Reserve(UnusedAssets.Num());
-	for (const auto& UnusedAsset : UnusedAssets)
-	{
-		RelationalGraph.Add(UnusedAsset);
-	}
-	// 2) filling linked assets for every node in graph
-	RelationalGraph.RegenerateLinks();
+	// 1) filling graphs with unused assets data and creating relational map between them
+	AssetRelationalMap RelationalMap;
+	RelationalMap.Fill(UnusedAssets);
+
+	// 2) Filling excluded assets by user (Directory Path filters, or Single assets filter, or by asset class)
 
 	TArray<FAssetData> FilteredAssets;
 	FilteredAssets.Reserve(UnusedAssets.Num());
@@ -344,30 +341,38 @@ void FProjectCleanerModule::UpdateCleanerData()
 			IterationAssets.Reset();
 		}
 	}
-
+	
 	for (const auto& FilteredAsset : FilteredAssets)
 	{
-		const auto Node = RelationalGraph.FindByPackageName(FilteredAsset.PackageName);
-		if(!Node) continue;
-		UnusedAssets.RemoveAll([&] (const FAssetData& Elem)
+		ExcludedAssets.Add(FilteredAsset);
+		const auto Node = RelationalMap.FindByPackageName(FilteredAsset.PackageName);
+		if (!Node) continue;
+		for (const auto& LinkedAsset : Node->LinkedAssets)
 		{
-			return Node->Chain.Contains(Elem.PackageName);
-		});
+			const auto ChainNodeAsset = RelationalMap.FindByPackageName(LinkedAsset);
+			if(!ChainNodeAsset) continue;
+			ExcludedAssets.Add(ChainNodeAsset->AssetData);
+		}
 	}
 	
+	UnusedAssets.RemoveAll([&] (const FAssetData& Elem)
+	{
+		return ExcludedAssets.Contains(Elem);
+	});
+
 	// ProjectCleanerUtility::RemoveAssetsWithExternalDependencies(UnusedAssets, AdjacencyList);
 	// ProjectCleanerUtility::RemoveAssetsUsedInSourceCode(UnusedAssets, AdjacencyList, SourceFiles, SourceCodeAssets);
 	// ProjectCleanerUtility::RemoveAssetsExcludedByUser(UnusedAssets, AdjacencyList, ExcludeDirectoryFilterSettings);
-	
-	// UpdateStats();
-	
+
+	UpdateStats();
+
 	UE_LOG(LogProjectCleaner, Warning, TEXT("a"));
 }
 
 void FProjectCleanerModule::UpdateStats()
 {
 	CleaningStats.Reset();
-	
+
 	CleaningStats.UnusedAssetsNum = UnusedAssets.Num();
 	CleaningStats.EmptyFolders = EmptyFolders.Num();
 	CleaningStats.NonUassetFilesNum = NonUAssetFiles.Num();
@@ -380,22 +385,22 @@ void FProjectCleanerModule::UpdateStats()
 	{
 		StatisticsUI.Pin()->SetStats(CleaningStats);
 	}
-	
+
 	if (UnusedAssetsBrowserUI.IsValid())
 	{
 		UnusedAssetsBrowserUI.Pin()->SetUnusedAssets(UnusedAssets);
 	}
-	
+
 	if (NonUassetFilesUI.IsValid())
 	{
 		NonUassetFilesUI.Pin()->SetNonUassetFiles(NonUAssetFiles);
 	}
-	
+
 	if (SourceCodeAssetsUI.IsValid())
 	{
 		SourceCodeAssetsUI.Pin()->SetSourceCodeAssets(SourceCodeAssets);
 	}
-	
+
 	if (ExcludedAssetsUI.IsValid())
 	{
 		ExcludedAssetsUI.Pin()->SetExcludedAssets(ExcludedAssets);
@@ -417,6 +422,7 @@ void FProjectCleanerModule::Reset()
 	EmptyFolders.Reset();
 	AdjacencyList.Reset();
 	AllProjectFiles.Reset();
+	ExcludedAssets.Reset();
 }
 
 void FProjectCleanerModule::UpdateContentBrowser() const
@@ -427,7 +433,7 @@ void FProjectCleanerModule::UpdateContentBrowser() const
 	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
 	AssetRegistryModule.Get().ScanPathsSynchronous(FocusFolders, true);
 	AssetRegistryModule.Get().SearchAllAssets(true);
-	
+
 	FContentBrowserModule& CBModule = FModuleManager::Get().GetModuleChecked<FContentBrowserModule>("ContentBrowser");
 	CBModule.Get().SetSelectedPaths(FocusFolders, true);
 }
@@ -457,11 +463,11 @@ void FProjectCleanerModule::OnUserExcludedAssets(const TArray<FAssetData>& Asset
 
 	TSet<FName> LinkedAssets;
 	ProjectCleanerUtility::GetLinkedAssetsChain(LinkedAssets, Assets, AdjacencyList);
-	
+
 	for (const auto& Asset : LinkedAssets)
 	{
 		const auto AssetData = ProjectCleanerUtility::GetAssetData(Asset, AdjacencyList);
-		if(!AssetData) continue;
+		if (!AssetData) continue;
 		ExcludedAssets.Add(*AssetData);
 	}
 
@@ -478,17 +484,17 @@ void FProjectCleanerModule::OnUserIncludedAssets(const TArray<FAssetData>& Asset
 	for (const auto& Asset : LinkedAssets)
 	{
 		const auto AssetData = ProjectCleanerUtility::GetAssetData(Asset, AdjacencyList);
-		if(!AssetData) continue;
+		if (!AssetData) continue;
 		ExcludedAssets.Remove(*AssetData);
 	}
-	
+
 	UpdateCleanerData();
 }
 
 FReply FProjectCleanerModule::OnRefreshBtnClick()
 {
 	UpdateCleaner();
-	
+
 	return FReply::Handled();
 }
 
@@ -499,7 +505,7 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 		UE_LOG(LogProjectCleaner, Error, TEXT("Notification Manager is not valid"));
 		return FReply::Handled();
 	}
-	
+
 	if (UnusedAssets.Num() == 0)
 	{
 		NotificationManager->AddTransient(
@@ -528,15 +534,15 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 		StandardCleanerText.StartingCleanup.ToString(),
 		SNotificationItem::ECompletionState::CS_Pending
 	);
-	
-	while(UnusedAssets.Num() > 0)
+
+	while (UnusedAssets.Num() > 0)
 	{
 		ProjectCleanerUtility::GetRootAssets(RootAssets, UnusedAssets, AdjacencyList);
 
 		// Before we delete assets
 		// Loading assets and find corrupted files
 		// todo:ashe23 handle assets that failed to delete different way?
-		for(const auto& Asset : RootAssets)
+		for (const auto& Asset : RootAssets)
 		{
 			const auto LoadedAsset = Asset.GetAsset();
 			if (!LoadedAsset)
@@ -548,25 +554,25 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 		if (CorruptedFiles.Num() > 0)
 		{
 			UnusedAssets.RemoveAll([&](const FAssetData& Asset)
-			{
-				return CorruptedFiles.Contains(Asset.PackageName);
-			});
-		
+				{
+					return CorruptedFiles.Contains(Asset.PackageName);
+				});
+
 			RootAssets.RemoveAll([&](const FAssetData& Asset)
-			{
-				return CorruptedFiles.Contains(Asset.PackageName);
-			});
+				{
+					return CorruptedFiles.Contains(Asset.PackageName);
+				});
 		}
 
 		// Remaining assets are valid so we trying to delete them
 		CleaningStats.DeletedAssetCount += ProjectCleanerUtility::DeleteAssets(RootAssets);
 		NotificationManager->Update(CleaningNotificationPtr, CleaningStats);
-		
+
 		UnusedAssets.RemoveAll([&](const FAssetData& Elem)
-		{
-			return RootAssets.Contains(Elem);
-		});
-		
+			{
+				return RootAssets.Contains(Elem);
+			});
+
 		// after chunk of assets deleted, we must update adjacency list
 		ProjectCleanerUtility::CreateAdjacencyList(UnusedAssets, AdjacencyList, true);
 		RootAssets.Reset();
@@ -576,13 +582,13 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 		CleaningNotificationPtr,
 		FText::FromString(FString::Printf(TEXT("Deleted %d assets."), CleaningStats.DeletedAssetCount))
 	);
-	
+
 	UpdateCleanerData();
-	
+
 	// Delete all empty folder
-	ProjectCleanerUtility::DeleteEmptyFolders(EmptyFolders);	
+	ProjectCleanerUtility::DeleteEmptyFolders(EmptyFolders);
 	const FString PostFixText = CleaningStats.EmptyFolders > 1 ? TEXT(" empty folders") : TEXT(" empty folder");
-	const FString DisplayText = FString{"Deleted "} + FString::FromInt(CleaningStats.EmptyFolders) + PostFixText;
+	const FString DisplayText = FString{ "Deleted " } + FString::FromInt(CleaningStats.EmptyFolders) + PostFixText;
 	NotificationManager->AddTransient(
 		DisplayText,
 		SNotificationItem::ECompletionState::CS_Success,
@@ -602,7 +608,7 @@ FReply FProjectCleanerModule::OnDeleteEmptyFolderClick()
 		UE_LOG(LogProjectCleaner, Error, TEXT("Notification Manager is not valid"));
 		return FReply::Handled();
 	}
-	
+
 	if (EmptyFolders.Num() == 0)
 	{
 		NotificationManager->AddTransient(
@@ -626,7 +632,7 @@ FReply FProjectCleanerModule::OnDeleteEmptyFolderClick()
 	ProjectCleanerUtility::DeleteEmptyFolders(EmptyFolders);
 
 	const FString PostFixText = CleaningStats.EmptyFolders > 1 ? TEXT(" empty folders") : TEXT(" empty folder");
-	const FString DisplayText = FString{"Deleted "} + FString::FromInt(CleaningStats.EmptyFolders) + PostFixText;
+	const FString DisplayText = FString{ "Deleted " } + FString::FromInt(CleaningStats.EmptyFolders) + PostFixText;
 	NotificationManager->AddTransient(
 		DisplayText,
 		SNotificationItem::ECompletionState::CS_Success,
@@ -648,22 +654,22 @@ void FProjectCleanerModule::OnFilesLoaded()
 void FProjectCleanerModule::OpenCorruptedFilesWindow()
 {
 	const auto CorruptedFilesWindow =
-	SNew(SWindow)
-	.Title(LOCTEXT("corrupted_files_window", "Corrupted Files"))
-	.ClientSize(FVector2D(800.0f, 800.0f))
-	.MinWidth(800.0f)
-	.MinHeight(800.0f)
-	.SupportsMaximize(false)
-	.SupportsMinimize(false)
-	.SizingRule(ESizingRule::Autosized)
-	.AutoCenter(EAutoCenter::PrimaryWorkArea)
-	.IsInitiallyMaximized(false)
-	.bDragAnywhere(true)
-	[
-		SAssignNew(CorruptedFilesUI, SProjectCleanerCorruptedFilesUI)
-		.CorruptedFiles(CorruptedFiles)
-	];
-			
+		SNew(SWindow)
+		.Title(LOCTEXT("corrupted_files_window", "Corrupted Files"))
+		.ClientSize(FVector2D(800.0f, 800.0f))
+		.MinWidth(800.0f)
+		.MinHeight(800.0f)
+		.SupportsMaximize(false)
+		.SupportsMinimize(false)
+		.SizingRule(ESizingRule::Autosized)
+		.AutoCenter(EAutoCenter::PrimaryWorkArea)
+		.IsInitiallyMaximized(false)
+		.bDragAnywhere(true)
+		[
+			SAssignNew(CorruptedFilesUI, SProjectCleanerCorruptedFilesUI)
+			.CorruptedFiles(CorruptedFiles)
+		];
+
 	const TSharedPtr<SWindow> TopWindow = FSlateApplication::Get().GetActiveTopLevelWindow();
 	if (TopWindow.IsValid())
 	{
@@ -672,15 +678,15 @@ void FProjectCleanerModule::OpenCorruptedFilesWindow()
 			CorruptedFilesWindow,
 			TopWindow.ToSharedRef(),
 			true
-		);		
+		);
 	}
 	else
 	{
 		//Default in case no top window
 		FSlateApplication::Get().AddWindow(CorruptedFilesWindow);
 	}
-			
-	if(GEngine && GEngine->GameViewport)
+
+	if (GEngine && GEngine->GameViewport)
 	{
 		GEngine->GameViewport->AddViewportWidgetContent(SNew(SWeakWidget).PossiblyNullContent(CorruptedFilesWindow));
 	}

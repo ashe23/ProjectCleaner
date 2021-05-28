@@ -2,6 +2,7 @@
 
 #include "UI/ProjectCleanerNonUassetFilesUI.h"
 #include "ProjectCleanerStyle.h"
+#include "ProjectCleanerUtility.h"
 
 #define LOCTEXT_NAMESPACE "FProjectCleanerModule"
 
@@ -20,7 +21,7 @@ void SProjectCleanerNonUassetFilesUI::SetNonUassetFiles(const TSet<FName>& NewNo
 		const auto& NonUassetFile = NewObject<UNonUassetFile>();
 		if(!NonUassetFile) continue;
 		NonUassetFile->FileName = FPaths::GetBaseFilename(File.ToString()) + "." + FPaths::GetExtension(File.ToString());
-		NonUassetFile->FilePath = FPaths::ConvertRelativePathToFull(File.ToString());
+		NonUassetFile->FilePath = ProjectCleanerUtility::ConvertRelativeToAbsPath(File).ToString();
 		NonUassetFiles.AddUnique(NonUassetFile);
 	}
 

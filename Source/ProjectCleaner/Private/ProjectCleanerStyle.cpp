@@ -49,6 +49,7 @@ TSharedRef< FSlateStyleSet > FProjectCleanerStyle::Create()
 	Style->Set("ProjectCleaner.OpenCleanerWindow.Small", new IMAGE_BRUSH(TEXT("ButtonIcon_20x"), Icon20x20));
 
 	// fonts
+	Style->Set("ProjectCleaner.Font.Light30", FCoreStyle::GetDefaultFontStyle("Light", 30));
 	Style->Set("ProjectCleaner.Font.Light20", FCoreStyle::GetDefaultFontStyle("Light", 20));
 	Style->Set("ProjectCleaner.Font.Light10", FCoreStyle::GetDefaultFontStyle("Light", 10));
 	Style->Set("ProjectCleaner.Font.Light8", FCoreStyle::GetDefaultFontStyle("Light", 8));

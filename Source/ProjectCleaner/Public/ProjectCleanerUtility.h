@@ -22,9 +22,14 @@ public:
 	static void FindInvalidProjectFiles(const FAssetRegistryModule* AssetRegistry, const TArray<FName>& AllProjectFiles, TSet<FName>& CorruptedFiles, TSet<FName>& NonUAssetFiles);
 	static void FindAllPrimaryAssetClasses(UAssetManager& AssetManager, TSet<FName>& PrimaryAssetClasses);
 	static void RemoveMegascansPluginAssetsIfActive(TArray<FAssetData>& UnusedAssets);
+	//static void RemoveExcludedAssetsByUser(TArray<FAssetData>& UnusedAssets, FAssetsRelationalGraph& Graph);
+	static FName ConvertRelativeToAbsPath(const FName& InPath);
+	static FName ConvertAbsToRelativePath(const FName& InPath);
+private:
+	static FName ConvertPath(FName Path, const FName& From, const FName& To);
 	/**
 	* @brief Checks if given extension is ".uasset" or ".umap"
-	* @param Extension 
+	* @param Extension
 	* @return bool
 	*/
 	static bool IsEngineExtension(const FString& Extension);
@@ -32,44 +37,44 @@ public:
 public:
 	/**
 	 * @brief Check if given path contains files in it, non recursive
-	 * @param SearchPath 
+	 * @param SearchPath
 	 * @return bool
 	 */
 	static bool HasFiles(const FString& SearchPath);
 
 	/**
 	 * @brief Finds all empty folders in given path recursive version
-	 * @param SearchPath 
-	 * @param Directories 
-	 * @param bIsRootDirectory 
+	 * @param SearchPath
+	 * @param Directories
+	 * @param bIsRootDirectory
 	 * @return bool
 	 */
 	static bool GetAllEmptyDirectories(const FString& SearchPath,
-										TSet<FName>& Directories,
-										const bool bIsRootDirectory);
+		TSet<FName>& Directories,
+		const bool bIsRootDirectory);
 
 	/**
 	 * @brief Finds all child directions in given path
-	 * @param SearchPath 
-	 * @param Output 
+	 * @param SearchPath
+	 * @param Output
 	 */
 	static void GetChildrenDirectories(const FString& SearchPath, TArray<FString>& Output);
 
 	/**
 	 * @brief Removes from given Directories "Developers" and "Collections" folders
-	 * @param Directories 
+	 * @param Directories
 	 */
 	static void RemoveDevsAndCollectionsDirectories(TArray<FString>& Directories);
 
 	/**
 	 * @brief Deletes Empty Folders
-	 * @param EmptyFolders 
+	 * @param EmptyFolders
 	 */
 	static void DeleteEmptyFolders(TSet<FName>& EmptyFolders);
 
 	/**
 	 * @brief Returns total number of empty folders and finds all non project files
-	 * @param EmptyFolders 
+	 * @param EmptyFolders
 	 * @return Number of empty folders
 	 */
 	static int32 GetEmptyFolders(TSet<FName>& EmptyFolders);
@@ -81,38 +86,38 @@ public:
 
 	/**
 	 * @brief Deletes given array of assets
-	 * @param Assets 
+	 * @param Assets
 	 * @return Number of deleted assets
 	 */
 	static int32 DeleteAssets(TArray<FAssetData>& Assets);
 
 	/**
 	 * @brief Finds all ".h" and ".cpp" source files in Project "Source" and "Plugins" directories
-	 * @param SourceFiles 
+	 * @param SourceFiles
 	 */
 	static void FindAllSourceFiles(TArray<FSourceCodeFile>& SourceFiles);
 
 	/**
 	 * @brief Loads source code files content to array
-	 * @param AllSourceFiles 
-	 * @param SourceCodeFilesContent 
+	 * @param AllSourceFiles
+	 * @param SourceCodeFilesContent
 	 */
 	static void LoadSourceCodeFilesContent(TArray<FString>& AllSourceFiles, TArray<FString>& SourceCodeFilesContent);
 
 	/**
 	 * @brief Check if given asset used in source codes (hardcoded path)
-	 * @param AllFiles 
-	 * @param Asset 
+	 * @param AllFiles
+	 * @param Asset
 	 * @return bool
 	 */
 	static bool UsedInSourceFiles(const TArray<FString>& AllFiles, const FAssetData& Asset);
 
 	/**
 	 * @brief Get all assets from "Game" Folder
-	 * @param Assets 
+	 * @param Assets
 	 */
 	static void GetAllAssets(TArray<FAssetData>& Assets);
-	
+
 	/**
 	 * @brief Saves all unsaved assets
 	 */
@@ -128,94 +133,94 @@ public:
 
 	/**
 	 * @brief Returns Related Assets for given Asset
-	 * @param Node 
-	 * @param RelatedAssets 
-	 * @param List 
+	 * @param Node
+	 * @param RelatedAssets
+	 * @param List
 	 */
 	static void FindAllRelatedAssets(const FNode& Node, TSet<FName>& RelatedAssets, const TArray<FNode>& List);
 
 	/**
 	 * @brief Returns all uasset and non uasset files
-	 * @param UassetFiles 
-	 * @param NonUassetFiles 
+	 * @param UassetFiles
+	 * @param NonUassetFiles
 	 */
 	static void FindAllUassetFiles(TSet<FName>& UassetFiles, TSet<FName>& NonUassetFiles);
 
 	/**
 	 * @brief Returns assets that has no references or circular assets
-	 * @param RootAssets 
-	 * @param Assets 
-	 * @param List 
+	 * @param RootAssets
+	 * @param Assets
+	 * @param List
 	 */
 	static void GetRootAssets(TArray<FAssetData>& RootAssets, TArray<FAssetData>& Assets, TArray<FNode>& List);
-	
+
 	/**
 	* Detects if given referencer is in dependencies of CurrentAsset.
 	* @brief Detects Cycle
-	* @param Referencer 
-	* @param Deps 
-	* @param CurrentAsset 
+	* @param Referencer
+	* @param Deps
+	* @param CurrentAsset
 	* @return bool
 	*/
 	static bool IsCycle(const FName& Referencer, const TArray<FName>& Deps, const FAssetData& CurrentAsset);
 
 	/**
 	 * @brief Returns AssetData for given AssetName
-	 * @param AssetName 
-	 * @param AssetContainer 
-	 * @return 
+	 * @param AssetName
+	 * @param AssetContainer
+	 * @return
 	 */
 	static FAssetData* GetAssetData(const FName& AssetName, TArray<FAssetData>& AssetContainer);
-	
+
 	/**
 	 * @brief Returns AssetData for given AssetName
-	 * @param AssetName 
-	 * @param List 
-	 * @return 
+	 * @param AssetName
+	 * @param List
+	 * @return
 	 */
 	static FAssetData* GetAssetData(const FName& AssetName, TArray<FNode>& List);
 
 	/**
 	 * @brief Returns assets link chain for given Assets
-	 * @param LinkedAssets 
-	 * @param Assets 
-	 * @param List 
+	 * @param LinkedAssets
+	 * @param Assets
+	 * @param List
 	 */
 	static void GetLinkedAssetsChain(TSet<FName>& LinkedAssets, const TArray<FAssetData>& Assets, TArray<FNode>& List);
 
 	/**
 	* @brief Returns total size of given assets (in bytes)
 	* @param AssetContainer Container for all game assets
-	* @return 
+	* @return
 	*/
 	static int64 GetTotalSize(const TArray<FAssetData>& AssetContainer);
 
 	/**
 	 * @brief Checks if folder in given path is empty or not
-	 * @param Path 
+	 * @param Path
 	 * @return bool
 	 */
 	static bool IsEmptyDirectory(const FString& Path);
 
 	/**
 	 * @brief Converts given relative path to absolute
-	 * @param PackageName 
+	 * @param PackageName
 	 * @return FString
 	 */
 	static FString ConvertRelativeToAbsolutePath(const FName& PackageName);
 
 	/**
 	 * @brief Converts given absolute path to relative
-	 * @param InPath 
+	 * @param InPath
 	 * @return FName
 	 */
 	static FName ConvertAbsolutePathToRelative(const FName& InPath);
-	
+
 	/**
 	 * @brief Checks if given asset used in source code files or not
-	 * @param Asset 
-	 * @param SourceFiles 
-	 * @param SourceCodeFiles 
+	 * @param Asset
+	 * @param SourceFiles
+	 * @param SourceCodeFiles
 	 * @return bool
 	 */
 	static bool UsedInSourceFiles(
@@ -237,7 +242,7 @@ public:
 	 * @param CorruptedFiles - Container for corrupted files
 	 */
 	static void CheckForCorruptedFiles(TArray<FAssetData>& Assets, TSet<FName>& UassetFiles, TSet<FName>& CorruptedFiles);
-	
+
 	static void FindCorruptedFiles(
 		const TArray<FAssetData>& RegistryAssets,
 		const TSet<FName>& AllUassetFiles,
@@ -254,31 +259,31 @@ public:
 	/**
 	 * @brief Removes assets that has external ref assets outside "Game" folder
 	 * Example is Megascans plugin, whose default materials is in "Engine/Plugin/Content" folder
-	 * @param Assets 
-	 * @param List 
+	 * @param Assets
+	 * @param List
 	 */
 	static void RemoveAssetsWithExternalDependencies(TArray<FAssetData>& Assets, TArray<FNode>& List);
 
 	/**
 	 * @brief Removes from given assets list those ones, which used in source code files
-	 * @param Assets 
-	 * @param List 
-	 * @param SourceCodeFiles 
-	 * @param SourceCodeAssets 
+	 * @param Assets
+	 * @param List
+	 * @param SourceCodeFiles
+	 * @param SourceCodeAssets
 	 */
 	static void RemoveAssetsUsedInSourceCode(
-			TArray<FAssetData>& Assets,
-			TArray<FNode>& List,
-			TArray<FSourceCodeFile>& SourceCodeFiles,
-			TArray<TWeakObjectPtr<USourceCodeAsset>>& SourceCodeAssets
+		TArray<FAssetData>& Assets,
+		TArray<FNode>& List,
+		TArray<FSourceCodeFile>& SourceCodeFiles,
+		TArray<TWeakObjectPtr<USourceCodeAsset>>& SourceCodeAssets
 	);
 
 	/**
 	 * @brief Removes all assets that are under given path defined by user
 	 * Function also removes all related assets from list
-	 * @param Assets 
-	 * @param List 
-	 * @param DirectoryFilterSettings 
+	 * @param Assets
+	 * @param List
+	 * @param DirectoryFilterSettings
 	 */
 	static void RemoveAssetsExcludedByUser(
 		TArray<FAssetData>& Assets,

@@ -20,7 +20,7 @@ void SProjectCleanerCorruptedFilesUI::SetCorruptedFiles(const TSet<FName>& NewCo
 	{
 		const auto& CorruptedFile = NewObject<UCorruptedFile>();
 		CorruptedFile->Name = FPaths::GetBaseFilename(File.ToString());
-		CorruptedFile->AbsolutePath = ProjectCleanerUtility::ConvertRelativeToAbsolutePath(File);
+		CorruptedFile->AbsolutePath = ProjectCleanerUtility::ConvertRelativeToAbsPath(File).ToString();
 		CorruptedFiles.AddUnique(CorruptedFile);
 	}
 

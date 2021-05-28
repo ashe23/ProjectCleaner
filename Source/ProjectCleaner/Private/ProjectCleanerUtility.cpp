@@ -24,7 +24,7 @@ void ProjectCleanerUtility::FindAllProjectFiles(TArray<FName>& AllProjectFiles)
 		DirectoryVisitor(TArray<FName>& Files) : AllFiles(Files) {}
 		virtual bool Visit(const TCHAR* FilenameOrDirectory, bool bIsDirectory) override
 		{
-			if(!bIsDirectory)
+			if (!bIsDirectory)
 			{
 				AllFiles.Add(ConvertAbsolutePathToRelative(FilenameOrDirectory));
 			}
@@ -66,7 +66,7 @@ void ProjectCleanerUtility::FindInvalidProjectFiles(const FAssetRegistryModule* 
     	}
     	else
     	{
-    		NonUAssetFiles.Add(FName{*ConvertRelativeToAbsolutePath(ProjectFile)});
+    		NonUAssetFiles.Add(ProjectFile);
     	}
     }
 }
@@ -100,6 +100,28 @@ void ProjectCleanerUtility::RemoveMegascansPluginAssetsIfActive(TArray<FAssetDat
 	{
 		return FPaths::IsUnderDirectory(Elem.PackagePath.ToString(), TEXT("/Game/MSPresets"));
 	});
+}
+
+FName ProjectCleanerUtility::ConvertRelativeToAbsPath(const FName& InPath)
+{
+	return ConvertPath(InPath, TEXT("/Game/"), *FPaths::ProjectContentDir());
+}
+
+FName ProjectCleanerUtility::ConvertAbsToRelativePath(const FName& InPath)
+{
+	return ConvertPath(InPath, *FPaths::ProjectContentDir(), TEXT("/Game/"));
+}
+
+FName ProjectCleanerUtility::ConvertPath(FName Path, const FName& From, const FName& To)
+{
+	FString ConvertedPath = Path.ToString();
+	FPaths::NormalizeFilename(ConvertedPath);
+	
+	const auto Result = ConvertedPath.Replace(
+		*From.ToString(),
+		*To.ToString()
+	);
+	return FName{ *Result };
 }
 
 bool ProjectCleanerUtility::HasFiles(const FString& SearchPath)

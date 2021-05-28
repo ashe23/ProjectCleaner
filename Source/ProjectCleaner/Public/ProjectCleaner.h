@@ -27,6 +27,7 @@ class SProjectCleanerCorruptedFilesUI;
 class SProjectCleanerExcludedAssetsUI;
 class USourceCodeAsset;
 class UExcludeDirectoriesFilterSettings;
+class AssetRelationalMap;
 
 struct FSlateColorBrush;
 struct FAssetData;
@@ -131,7 +132,7 @@ private:
 	
 	/** Helper Containers **/
 	TArray<FNode> AdjacencyList;
-	FAssetsRelationalGraph RelationalGraph;
+	// FAssetsRelationalGraph RelationalGraph;
 	TArray<FSourceCodeFile> SourceFiles;
 	FStandardCleanerText StandardCleanerText;
 	TArray<FName> AllProjectFiles;
