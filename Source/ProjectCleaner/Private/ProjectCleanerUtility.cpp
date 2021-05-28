@@ -291,6 +291,27 @@ void ProjectCleanerUtility::RemoveAssetsUsedIndirectly(
 	});
 }
 
+void ProjectCleanerUtility::RemoveAssetsWithExternalReferences(TArray<FAssetData>& UnusedAssets, AssetRelationalMap& RelationalMap)
+{
+	TSet<FName> FilteredAssets;
+	FilteredAssets.Reserve(UnusedAssets.Num());
+	
+	for (const auto& Node : RelationalMap.GetNodes())
+	{
+		if (!Node.HasExternalReferencers()) continue;
+
+		UE_LOG(LogTemp, Warning, TEXT("External Asset Reference Detected: %s"), *Node.AssetData.PackageName.ToString());
+
+		FilteredAssets.Add(Node.AssetData.PackageName);
+		FilteredAssets.Append(Node.LinkedAssets);
+	}
+
+	UnusedAssets.RemoveAll([&](const FAssetData& Elem)
+	{
+		return FilteredAssets.Contains(Elem.PackageName);
+	});
+}
+
 void ProjectCleanerUtility::RemoveAssetsExcludedByUser(
 	const FAssetRegistryModule* AssetRegistry,
 	TArray<FAssetData>& UnusedAssets,
@@ -631,69 +652,3 @@ void ProjectCleanerUtility::RemoveUsedAssets(TArray<FAssetData>& Assets, const T
 		return UsedAssets.Contains(Elem.PackageName);
 	});
 }
-
-//void ProjectCleanerUtility::RemoveAssetsWithExternalDependencies(TArray<FAssetData>& Assets, TArray<FNode>& List)
-//{
-//	// CreateAdjacencyList(Assets,List, false);
-//	//
-//	// TSet<FName> AssetsToRemove;
-//	// AssetsToRemove.Reserve(Assets.Num());
-//	//
-//	// for(const auto& Node : List)
-//	// {
-//	// 	if (Node.HasLinkedAssetsOutsideGameFolder())
-//	// 	{
-//	// 		AssetsToRemove.Add(Node.Asset);	
-//	// 	}
-//	// }
-//	//
-//	// Assets.RemoveAll([&](const FAssetData& Asset)
-//	// {
-//	// 	return AssetsToRemove.Contains(Asset.PackageName);
-//	// });
-//}
-
-//void ProjectCleanerUtility::RemoveAssetsExcludedByUser(
-//	TArray<FAssetData>& Assets,
-//	TArray<FNode>& List,
-//	UExcludeDirectoriesFilterSettings* DirectoryFilterSettings)
-//{
-//	// if(!DirectoryFilterSettings) return;
-//	//
-//	// // updating adjacency list
-//	// CreateAdjacencyList(Assets, List, true);
-//	//
-//	// FAssetRegistryModule& AssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
-//	// TSet<FAssetData> FilteredAssets;
-//	// FilteredAssets.Reserve(Assets.Num());
-//	//
-//	// TArray<FAssetData> AssetsInPath;
-//	// AssetsInPath.Reserve(100);
-//	// for (const auto& FilterPath : DirectoryFilterSettings->Paths)
-//	// {
-//	// 	AssetRegistry.Get().GetAssetsByPath(*FilterPath.Path, AssetsInPath, true);
-//	// 	FilteredAssets.Append(AssetsInPath);
-//	// 	AssetsInPath.Reset();
-//	// }
-//	//
-//	// // for filtered assets finding related assets
-//	// TSet<FName> RelatedAssets;
-//	// RelatedAssets.Reset();
-//	// RelatedAssets.Reserve(Assets.Num());
-//	// for(const auto& FilteredAsset : FilteredAssets)
-//	// {
-//	// 	const auto Node = List.FindByPredicate([&](const FNode& Elem)
-//	// 	{
-//	// 		return Elem.Asset.IsEqual(FilteredAsset.PackageName);
-//	// 	});
-//	// 	if (Node)
-//	// 	{
-//	// 		FindAllRelatedAssets(*Node, RelatedAssets, List);
-//	// 	}
-//	// }
-//	//
-//	// Assets.RemoveAll([&] (const FAssetData& Elem)
-//	// {
-//	// 	return RelatedAssets.Contains(Elem.PackageName);
-//	// });
-//}

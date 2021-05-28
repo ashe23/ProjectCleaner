@@ -314,6 +314,7 @@ void FProjectCleanerModule::UpdateCleanerData()
 	RelationalMap.Fill(UnusedAssets);
 
 	ProjectCleanerUtility::RemoveAssetsUsedIndirectly(UnusedAssets, RelationalMap, SourceCodeAssets);
+	ProjectCleanerUtility::RemoveAssetsWithExternalReferences(UnusedAssets, RelationalMap);
 
 	//ProjectCleanerUtility::RemoveAssetsExcludedByUser(
 	//	AssetRegistry,
@@ -322,10 +323,6 @@ void FProjectCleanerModule::UpdateCleanerData()
 	//	RelationalMap,
 	//	ExcludeDirectoryFilterSettings
 	//);
-
-	// ProjectCleanerUtility::RemoveAssetsWithExternalDependencies(UnusedAssets, AdjacencyList);
-	// ProjectCleanerUtility::RemoveAssetsUsedInSourceCode(UnusedAssets, AdjacencyList, SourceFiles, SourceCodeAssets);
-	// ProjectCleanerUtility::RemoveAssetsExcludedByUser(UnusedAssets, AdjacencyList, ExcludeDirectoryFilterSettings);
 
 	UpdateStats();
 

@@ -27,6 +27,7 @@ public:
 	static void RemovePrimaryAssets(TArray<FAssetData>& UnusedAssets, TSet<FName>& PrimaryAssetClasses);
 	static void RemoveMegascansPluginAssetsIfActive(TArray<FAssetData>& UnusedAssets);
 	static void RemoveAssetsUsedIndirectly(TArray<FAssetData>& UnusedAssets, AssetRelationalMap& RelationalMap, TArray<TWeakObjectPtr<USourceCodeAsset>>& SourceCodeAssets);
+	static void RemoveAssetsWithExternalReferences(TArray<FAssetData>& UnusedAssets, AssetRelationalMap& RelationalMap);
 	static void RemoveAssetsExcludedByUser(const FAssetRegistryModule* AssetRegistry, TArray<FAssetData>& UnusedAssets, TSet<FAssetData>& ExcludedAssets, AssetRelationalMap& RelationalMap, const UExcludeDirectoriesFilterSettings* DirectoryFilterSettings);
 	static FName ConvertRelativeToAbsPath(const FName& InPath);
 	static FName ConvertAbsToRelativePath(const FName& InPath);
@@ -98,25 +99,4 @@ public:
 	 * @param Assets - Asset list
 	 */
 	static void RemoveUsedAssets(TArray<FAssetData>& Assets, const TSet<FName>& PrimaryAssetClasses);
-
-	/**
-	 * @brief Removes assets that has external ref assets outside "Game" folder
-	 * Example is Megascans plugin, whose default materials is in "Engine/Plugin/Content" folder
-	 * @param Assets
-	 * @param List
-	 */
-	//static void RemoveAssetsWithExternalDependencies(TArray<FAssetData>& Assets, TArray<FNode>& List);
-
-	///**
-	// * @brief Removes all assets that are under given path defined by user
-	// * Function also removes all related assets from list
-	// * @param Assets
-	// * @param List
-	// * @param DirectoryFilterSettings
-	// */
-	//static void RemoveAssetsExcludedByUser(
-	//	TArray<FAssetData>& Assets,
-	//	TArray<FNode>& List,
-	//	UExcludeDirectoriesFilterSettings* DirectoryFilterSettings
-	//);
 };

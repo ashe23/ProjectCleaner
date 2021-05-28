@@ -19,6 +19,19 @@ struct FAssetNode
 	// helpers
 	TArray<FName> RelatedAssets; // (Refs + Deps)
 	bool Visited = false;
+
+	bool HasExternalReferencers() const
+	{
+		for (const auto& Ref : Refs)
+		{
+			if (!Ref.ToString().StartsWith("/Game"))
+			{
+				return true;
+			}
+		}
+		
+		return false;
+	}
 };
 
 class AssetRelationalMap
@@ -26,6 +39,7 @@ class AssetRelationalMap
 public:
 	void Fill(const TArray<FAssetData>& UnusedAssets);
 	FAssetNode* FindByPackageName(const FName& PackageName);
+	const TArray<FAssetNode>& GetNodes() const;
 private:
 	
 	

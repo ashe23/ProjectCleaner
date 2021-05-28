@@ -92,3 +92,8 @@ FAssetNode* AssetRelationalMap::FindByPackageName(const FName& PackageName)
 	});
 }
 
+const TArray<FAssetNode>& AssetRelationalMap::GetNodes() const
+{
+	return Nodes;
+}
+
