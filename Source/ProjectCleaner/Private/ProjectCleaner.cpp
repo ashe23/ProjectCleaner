@@ -12,7 +12,6 @@
 #include "UI/ProjectCleanerSourceCodeAssetsUI.h"
 #include "UI/ProjectCleanerCorruptedFilesUI.h"
 #include "UI/ProjectCleanerExcludedAssetsUI.h"
-#include "Graph/AssetRelationalMap.h"
 // Engine Headers
 #include "AssetRegistryModule.h"
 #include "ToolMenus.h"
@@ -27,12 +26,10 @@
 #include "GenericPlatform/GenericPlatformMisc.h"
 #include "Framework/Notifications/NotificationManager.h"
 #include "Engine/AssetManager.h"
-#include "Engine/AssetManagerSettings.h"
 #include "Engine/MapBuildDataRegistry.h"
 #include "Framework/Commands/UICommandList.h"
 #include "Misc/ScopedSlowTask.h"
 #include "Widgets/SWeakWidget.h"
-#include "AssetViewUtils.h"
 
 DEFINE_LOG_CATEGORY(LogProjectCleaner);
 
@@ -302,63 +299,29 @@ void FProjectCleanerModule::UpdateCleanerData()
 
 	if (!AssetRegistry) return;
 
-	ProjectCleanerUtility::FindAllProjectFiles(AllProjectFiles);
-	ProjectCleanerUtility::FindInvalidProjectFiles(AssetRegistry, AllProjectFiles, CorruptedFiles, NonUAssetFiles);
+	ProjectCleanerUtility::GetEmptyFolders(EmptyFolders);
+	ProjectCleanerUtility::GetAllProjectFiles(AllProjectFiles);
+	ProjectCleanerUtility::GetInvalidProjectFiles(AssetRegistry, AllProjectFiles, CorruptedFiles, NonUAssetFiles);
 
 	UAssetManager& AssetManager = UAssetManager::Get();
-	ProjectCleanerUtility::FindAllPrimaryAssetClasses(AssetManager, PrimaryAssetClasses);
-
-	// Get all project assets
-	AssetRegistry->Get().GetAssetsByPath(FName{ "/Game" }, UnusedAssets, true);
-
-	// Remove primary assets and map build files
-	UnusedAssets.RemoveAll([&](const FAssetData& Elem)
-	{
-		return
-			PrimaryAssetClasses.Contains(Elem.AssetClass) ||
-			Elem.AssetClass.IsEqual(UMapBuildDataRegistry::StaticClass()->GetFName());
-	});
-
-	ProjectCleanerUtility::GetEmptyFolders(EmptyFolders);
+	ProjectCleanerUtility::GetAllPrimaryAssetClasses(AssetManager, PrimaryAssetClasses);
+	ProjectCleanerUtility::GetAllAssets(AssetRegistry, UnusedAssets);
+	ProjectCleanerUtility::RemovePrimaryAssets(UnusedAssets, PrimaryAssetClasses);
 	ProjectCleanerUtility::RemoveUsedAssets(UnusedAssets, PrimaryAssetClasses);
 	ProjectCleanerUtility::RemoveMegascansPluginAssetsIfActive(UnusedAssets);
 
-	// 1) filling graphs with unused assets data and creating relational map between them
-	AssetRelationalMap RelationalMap;
+	// filling graphs with unused assets data and creating relational map between them
 	RelationalMap.Fill(UnusedAssets);
 
-	// 2) Filling excluded assets by user (Directory Path filters, or Single assets filter, or by asset class)
+	ProjectCleanerUtility::RemoveAssetsUsedIndirectly(UnusedAssets, RelationalMap, SourceCodeAssets);
 
-	TArray<FAssetData> FilteredAssets;
-	FilteredAssets.Reserve(UnusedAssets.Num());
-	if (ExcludeDirectoryFilterSettings)
-	{
-		TArray<FAssetData> IterationAssets;
-		for (const auto& FilterPath : ExcludeDirectoryFilterSettings->Paths)
-		{
-			AssetRegistry->Get().GetAssetsByPath(FName{*FilterPath.Path}, IterationAssets, true);
-			FilteredAssets.Append(IterationAssets);
-			IterationAssets.Reset();
-		}
-	}
-	
-	for (const auto& FilteredAsset : FilteredAssets)
-	{
-		ExcludedAssets.Add(FilteredAsset);
-		const auto Node = RelationalMap.FindByPackageName(FilteredAsset.PackageName);
-		if (!Node) continue;
-		for (const auto& LinkedAsset : Node->LinkedAssets)
-		{
-			const auto ChainNodeAsset = RelationalMap.FindByPackageName(LinkedAsset);
-			if(!ChainNodeAsset) continue;
-			ExcludedAssets.Add(ChainNodeAsset->AssetData);
-		}
-	}
-	
-	UnusedAssets.RemoveAll([&] (const FAssetData& Elem)
-	{
-		return ExcludedAssets.Contains(Elem);
-	});
+	//ProjectCleanerUtility::RemoveAssetsExcludedByUser(
+	//	AssetRegistry,
+	//	UnusedAssets,
+	//	ExcludedAssets,
+	//	RelationalMap,
+	//	ExcludeDirectoryFilterSettings
+	//);
 
 	// ProjectCleanerUtility::RemoveAssetsWithExternalDependencies(UnusedAssets, AdjacencyList);
 	// ProjectCleanerUtility::RemoveAssetsUsedInSourceCode(UnusedAssets, AdjacencyList, SourceFiles, SourceCodeAssets);
@@ -415,12 +378,10 @@ void FProjectCleanerModule::UpdateStats()
 void FProjectCleanerModule::Reset()
 {
 	UnusedAssets.Reset();
-	SourceFiles.Reset();
 	NonUAssetFiles.Reset();
 	SourceCodeAssets.Reset();
 	CorruptedFiles.Reset();
 	EmptyFolders.Reset();
-	AdjacencyList.Reset();
 	AllProjectFiles.Reset();
 	ExcludedAssets.Reset();
 }
@@ -460,17 +421,21 @@ void FProjectCleanerModule::OnUserDeletedAssets()
 void FProjectCleanerModule::OnUserExcludedAssets(const TArray<FAssetData>& Assets)
 {
 	if (!Assets.Num()) return;
+	
+	/*TArray<FAssetData> FilteredAssets;
+	FilteredAssets.Reserve(Assets.Num());
 
-	TSet<FName> LinkedAssets;
-	ProjectCleanerUtility::GetLinkedAssetsChain(LinkedAssets, Assets, AdjacencyList);
-
-	for (const auto& Asset : LinkedAssets)
+	for (const auto& Asset : Assets)
 	{
-		const auto AssetData = ProjectCleanerUtility::GetAssetData(Asset, AdjacencyList);
-		if (!AssetData) continue;
-		ExcludedAssets.Add(*AssetData);
-	}
-
+		ExcludedAssets.Add(Asset);
+		const auto Data = RelationalMap.FindByPackageName(Asset.PackageName);
+		if (!Data) continue;
+		for (const auto& LinkedAsset : Data->LinkedAssetsData)
+		{
+			ExcludedAssets.Add(*LinkedAsset);
+		}
+	}*/
+	
 	UpdateCleanerData();
 }
 
@@ -478,15 +443,19 @@ void FProjectCleanerModule::OnUserIncludedAssets(const TArray<FAssetData>& Asset
 {
 	if (!Assets.Num()) return;
 
-	TSet<FName> LinkedAssets;
-	ProjectCleanerUtility::GetLinkedAssetsChain(LinkedAssets, Assets, AdjacencyList);
+	/*TArray<FAssetData> FilteredAssets;
+	FilteredAssets.Reserve(Assets.Num());
 
-	for (const auto& Asset : LinkedAssets)
+	for (const auto& Asset : Assets)
 	{
-		const auto AssetData = ProjectCleanerUtility::GetAssetData(Asset, AdjacencyList);
-		if (!AssetData) continue;
-		ExcludedAssets.Remove(*AssetData);
-	}
+		ExcludedAssets.Remove(Asset);
+		const auto Data = RelationalMap.FindByPackageName(Asset.PackageName);
+		if (!Data) continue;
+		for (const auto& LinkedAsset : Data->LinkedAssetsData)
+		{
+			ExcludedAssets.Remove(*LinkedAsset);
+		}
+	}*/
 
 	UpdateCleanerData();
 }
@@ -537,7 +506,7 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 
 	while (UnusedAssets.Num() > 0)
 	{
-		ProjectCleanerUtility::GetRootAssets(RootAssets, UnusedAssets, AdjacencyList);
+		//ProjectCleanerUtility::GetRootAssets(RootAssets, UnusedAssets, AdjacencyList);
 
 		// Before we delete assets
 		// Loading assets and find corrupted files
@@ -574,7 +543,7 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 			});
 
 		// after chunk of assets deleted, we must update adjacency list
-		ProjectCleanerUtility::CreateAdjacencyList(UnusedAssets, AdjacencyList, true);
+		//ProjectCleanerUtility::CreateAdjacencyList(UnusedAssets, AdjacencyList, true);
 		RootAssets.Reset();
 	}
 
@@ -647,7 +616,6 @@ FReply FProjectCleanerModule::OnDeleteEmptyFolderClick()
 
 void FProjectCleanerModule::OnFilesLoaded()
 {
-	UE_LOG(LogProjectCleaner, Warning, TEXT("AssetRegistry finished loading assets"));
 	bCanOpenTab = true;
 }
 

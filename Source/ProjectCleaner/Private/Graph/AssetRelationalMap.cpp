@@ -1,4 +1,6 @@
-﻿#include "Graph/AssetRelationalMap.h"
+﻿// Copyright 2021. Ashot Barkhudaryan. All Rights Reserved.
+
+#include "Graph/AssetRelationalMap.h"
 #include "AssetRegistryModule.h"
 
 void AssetRelationalMap::Fill(const TArray<FAssetData>& UnusedAssets)
@@ -23,6 +25,16 @@ void AssetRelationalMap::Fill(const TArray<FAssetData>& UnusedAssets)
 	{
 		DFS(Node, Node);
 		ClearVisited();
+	}
+
+	for (auto& Node : Nodes)
+	{
+		for (const auto Rel : Node.LinkedAssets)
+		{
+			const auto Data = FindByPackageName(Rel);
+			if(!Data) continue;
+			Node.LinkedAssetsData.Add(&Data->AssetData);
+		}
 	}
 }
 

@@ -14,7 +14,10 @@ struct FAssetNode
 	TArray<FName> Refs;
 	TArray<FName> Deps;
 	TArray<FName> LinkedAssets;
-	TArray<FName> RelatedAssets; // Helper Array (Refs + Deps)
+	TArray<FAssetData*> LinkedAssetsData;
+
+	// helpers
+	TArray<FName> RelatedAssets; // (Refs + Deps)
 	bool Visited = false;
 };
 
@@ -24,6 +27,7 @@ public:
 	void Fill(const TArray<FAssetData>& UnusedAssets);
 	FAssetNode* FindByPackageName(const FName& PackageName);
 private:
+	
 	
 	void GetRelatedAssets(
 		const FName& PackageName,

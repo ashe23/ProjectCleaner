@@ -3,12 +3,14 @@
 #pragma once
 
 #include "StructsContainer.h"
+#include "Graph/AssetRelationalMap.h"
 // Engine Headers
 #include "Input/Reply.h"
 #include "Modules/ModuleInterface.h"
 #include "ContentBrowserDelegates.h"
 #include "CoreMinimal.h"
 
+class AssetRelationalMap;
 class ProjectCleanerNotificationManager;
 class FToolBarBuilder;
 class STableViewBase;
@@ -131,9 +133,7 @@ private:
 	UExcludeDirectoriesFilterSettings* ExcludeDirectoryFilterSettings;
 	
 	/** Helper Containers **/
-	TArray<FNode> AdjacencyList;
-	// FAssetsRelationalGraph RelationalGraph;
-	TArray<FSourceCodeFile> SourceFiles;
+	AssetRelationalMap RelationalMap;
 	FStandardCleanerText StandardCleanerText;
 	TArray<FName> AllProjectFiles;
 	TSet<FName> PrimaryAssetClasses;

@@ -104,7 +104,7 @@ void SProjectCleanerSourceCodeAssetsUI::OnMouseDoubleClick(TWeakObjectPtr<USourc
 	const auto DirectoryPath = FPaths::GetPath(Item->SourceCodePath);
 	if (!FPaths::DirectoryExists(DirectoryPath)) return;
 	
-	FPlatformProcess::ExploreFolder(*DirectoryPath);		
+	FPlatformProcess::ExploreFolder(*DirectoryPath);
 }
 
 #undef LOCTEXT_NAMESPACE
