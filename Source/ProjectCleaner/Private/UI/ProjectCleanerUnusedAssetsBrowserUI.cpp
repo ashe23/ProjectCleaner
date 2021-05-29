@@ -193,20 +193,6 @@ void SProjectCleanerUnusedAssetsBrowserUI::RefreshUIContent()
 	WidgetRef = SNew(SVerticalBox)
 	+ SVerticalBox::Slot()
 	.AutoHeight()
-	.Padding(FMargin{0.0f, 0.0f, 0.0f, 20.0f})
-	[
-		SNew(SBorder)
-		.Padding(30.0f)
-		.BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
-		[
-			SNew(STextBlock)
-			.AutoWrapText(true)
-			.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
-			.Text(LOCTEXT("cleanernotetext", "Unused asset definition.\n1.Not a primary asset.\n2.Asset and its related assets not used by primary asset."))
-		]
-	]
-	+ SVerticalBox::Slot()
-	.AutoHeight()
 	.Padding(20.0f)
 	[
 		SNew(STextBlock)

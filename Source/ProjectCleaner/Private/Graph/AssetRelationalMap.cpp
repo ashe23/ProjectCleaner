@@ -97,3 +97,8 @@ const TArray<FAssetNode>& AssetRelationalMap::GetNodes() const
 	return Nodes;
 }
 
+void AssetRelationalMap::Reset()
+{
+	Nodes.Empty();
+}
+

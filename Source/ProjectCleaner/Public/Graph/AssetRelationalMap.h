@@ -40,6 +40,7 @@ public:
 	void Fill(const TArray<FAssetData>& UnusedAssets);
 	FAssetNode* FindByPackageName(const FName& PackageName);
 	const TArray<FAssetNode>& GetNodes() const;
+	void Reset();
 private:
 	
 	

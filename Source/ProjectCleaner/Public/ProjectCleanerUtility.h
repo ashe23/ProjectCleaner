@@ -28,7 +28,14 @@ public:
 	static void RemoveMegascansPluginAssetsIfActive(TArray<FAssetData>& UnusedAssets);
 	static void RemoveAssetsUsedIndirectly(TArray<FAssetData>& UnusedAssets, AssetRelationalMap& RelationalMap, TArray<TWeakObjectPtr<USourceCodeAsset>>& SourceCodeAssets);
 	static void RemoveAssetsWithExternalReferences(TArray<FAssetData>& UnusedAssets, AssetRelationalMap& RelationalMap);
-	static void RemoveAssetsExcludedByUser(const FAssetRegistryModule* AssetRegistry, TArray<FAssetData>& UnusedAssets, TSet<FAssetData>& ExcludedAssets, AssetRelationalMap& RelationalMap, const UExcludeDirectoriesFilterSettings* DirectoryFilterSettings);
+	static void RemoveUsedAssets(TArray<FAssetData>& Assets, const TSet<FName>& PrimaryAssetClasses);
+	static void RemoveAssetsExcludedByUser(
+		const FAssetRegistryModule* AssetRegistry,
+		TArray<FAssetData>& UnusedAssets,
+		TSet<FAssetData>& ExcludedAssets,
+		TArray<FAssetData>& UserExcludedAssets,
+		AssetRelationalMap& RelationalMap,
+		const UExcludeDirectoriesFilterSettings* DirectoryFilterSettings);
 	static FName ConvertRelativeToAbsPath(const FName& InPath);
 	static FName ConvertAbsToRelativePath(const FName& InPath);
 private:
@@ -98,5 +105,5 @@ public:
 	 * Used assets are those who are dependency for any level
 	 * @param Assets - Asset list
 	 */
-	static void RemoveUsedAssets(TArray<FAssetData>& Assets, const TSet<FName>& PrimaryAssetClasses);
+	
 };

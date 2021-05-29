@@ -52,6 +52,10 @@ private:
 	void RegisterMenus();
 	void PluginButtonClicked();
 	TSharedRef<SDockTab> OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs);
+	TSharedRef<SDockTab> OnUnusedAssetTabSpawn(const FSpawnTabArgs& SpawnTabArgs);
+	TSharedRef<SDockTab> OnNonUAssetFilesTabSpawn(const FSpawnTabArgs& SpawnTabArgs);
+	TSharedRef<SDockTab> OnCorruptedFilesTabSpawn(const FSpawnTabArgs& SpawnTabArgs);
+	TSharedRef<SDockTab> OnSourceCodeAssetsTabSpawn(const FSpawnTabArgs& SpawnTabArgs);
 
 	/** Cleaner **/
 	
@@ -121,6 +125,8 @@ private:
 	TWeakPtr<SProjectCleanerDirectoryExclusionUI> DirectoryExclusionUI;
 	TWeakPtr<SProjectCleanerCorruptedFilesUI> CorruptedFilesUI;
 	TWeakPtr<SProjectCleanerExcludedAssetsUI> ExcludedAssetsUI;
+	TSharedPtr<FTabManager> TabManager;
+	TSharedPtr<FTabManager::FLayout> TabLayout;
 	
 	/** Data Containers */ 
 	TArray<FAssetData> UnusedAssets;
@@ -137,6 +143,7 @@ private:
 	FStandardCleanerText StandardCleanerText;
 	TArray<FName> AllProjectFiles;
 	TSet<FName> PrimaryAssetClasses;
+	TArray<FAssetData> UserExcludedAssets;
 
 	/** Other Engine Modules **/
 	FAssetRegistryModule* AssetRegistry;

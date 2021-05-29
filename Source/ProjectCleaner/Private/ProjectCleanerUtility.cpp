@@ -316,6 +316,7 @@ void ProjectCleanerUtility::RemoveAssetsExcludedByUser(
 	const FAssetRegistryModule* AssetRegistry,
 	TArray<FAssetData>& UnusedAssets,
 	TSet<FAssetData>& ExcludedAssets,
+	TArray<FAssetData>& UserExcludedAssets,
 	AssetRelationalMap& RelationalMap,
 	const UExcludeDirectoriesFilterSettings* DirectoryFilterSettings)
 {
@@ -336,6 +337,11 @@ void ProjectCleanerUtility::RemoveAssetsExcludedByUser(
 		);
 		FilteredAssets.Append(IterationAssets);
 		IterationAssets.Reset();
+	}
+
+	for (const auto& UserExcludedAsset : UserExcludedAssets)
+	{
+		FilteredAssets.AddUnique(UserExcludedAsset);
 	}
 
 	for (const auto& FilteredAsset : FilteredAssets)
