@@ -29,12 +29,14 @@
 #include "Engine/MapBuildDataRegistry.h"
 #include "Framework/Commands/UICommandList.h"
 #include "Misc/ScopedSlowTask.h"
-#include "Widgets/SWeakWidget.h"
 
 DEFINE_LOG_CATEGORY(LogProjectCleaner);
 
 static const FName ProjectCleanerTabName("ProjectCleaner");
-static const FName NonUassetTabName("NonUassetFiles");
+static const FName UnusedAssetsTab = FName{ TEXT("UnusedAssetsTab") };
+static const FName NonUassetFilesTab = FName{ TEXT("NonUassetFilesTab") };
+static const FName SourceCodeAssetTab = FName{ TEXT("SourceCodeAssetTab") };
+static const FName CorruptedFilesTab = FName{ TEXT("CorruptedFilesTab") };
 
 #define LOCTEXT_NAMESPACE "FProjectCleanerModule"
 
@@ -72,6 +74,46 @@ void FProjectCleanerModule::StartupModule()
 		.SetDisplayName(LOCTEXT("FProjectCleanerTabTitle", "ProjectCleaner"))
 		.SetMenuType(ETabSpawnerMenuType::Hidden);
 
+	// initializing tab manager
+	// this is for TabManager initialization only
+	const auto DummyTab = SNew(SDockTab).TabRole(ETabRole::NomadTab);
+	TabManager = FGlobalTabmanager::Get()->NewTabManager(DummyTab);
+	TabManager->SetCanDoDragOperation(false);
+	TabLayout = FTabManager::NewLayout("ProjectCleanerTabLayout")
+	->AddArea
+	(
+		FTabManager::NewPrimaryArea()
+		->SetOrientation(Orient_Vertical)
+		->Split
+		(
+			FTabManager::NewStack()
+			->SetSizeCoefficient(0.4f)
+			->SetHideTabWell(true)
+			->AddTab(UnusedAssetsTab, ETabState::OpenedTab)
+			->AddTab(NonUassetFilesTab, ETabState::OpenedTab)
+			->AddTab(SourceCodeAssetTab, ETabState::OpenedTab)
+			->AddTab(CorruptedFilesTab, ETabState::OpenedTab)
+			->SetForegroundTab(UnusedAssetsTab)
+		)
+	);
+
+	TabManager->RegisterTabSpawner(UnusedAssetsTab, FOnSpawnTab::CreateRaw(
+		this,
+		&FProjectCleanerModule::OnUnusedAssetTabSpawn)
+	);
+	TabManager->RegisterTabSpawner(NonUassetFilesTab, FOnSpawnTab::CreateRaw(
+		this,
+		&FProjectCleanerModule::OnNonUAssetFilesTabSpawn)
+	);
+	TabManager->RegisterTabSpawner(SourceCodeAssetTab, FOnSpawnTab::CreateRaw(
+		this,
+		&FProjectCleanerModule::OnSourceCodeAssetsTabSpawn)
+	);
+	TabManager->RegisterTabSpawner(CorruptedFilesTab, FOnSpawnTab::CreateRaw(
+		this,
+		&FProjectCleanerModule::OnCorruptedFilesTabSpawn)
+	);
+	
 	// initializing some objects
 	NotificationManager = MakeShared<ProjectCleanerNotificationManager>();
 	ExcludeDirectoryFilterSettings = GetMutableDefault<UExcludeDirectoriesFilterSettings>();
@@ -89,6 +131,10 @@ void FProjectCleanerModule::ShutdownModule()
 	FProjectCleanerStyle::Shutdown();
 	FProjectCleanerCommands::Unregister();
 	FGlobalTabmanager::Get()->UnregisterNomadTabSpawner(ProjectCleanerTabName);
+	TabManager->UnregisterTabSpawner(UnusedAssetsTab);
+	TabManager->UnregisterTabSpawner(NonUassetFilesTab);
+	TabManager->UnregisterTabSpawner(SourceCodeAssetTab);
+	TabManager->UnregisterTabSpawner(CorruptedFilesTab);
 	AssetRegistry = nullptr;
 }
 
@@ -131,43 +177,10 @@ void FProjectCleanerModule::PluginButtonClicked()
 
 TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs)
 {
-	const TSharedRef<SDockTab> NomadTab = SNew(SDockTab)
-		.TabRole(ETabRole::NomadTab);
-
-	if (!TabManager.IsValid())
-	{
-		TabManager = FGlobalTabmanager::Get()->NewTabManager(NomadTab);
-		TabManager->SetCanDoDragOperation(false);
-	}
-	else
-	{
-		ensure(TabManager.IsValid());
-	}
-
-	const FName UnusedAssetsTab = FName{ TEXT("UnusedAssetsTab") };
-	const FName NonUassetFilesTab = FName{ TEXT("NonUassetFilesTab") };
-	const FName SourceCodeAssetTab = FName{ TEXT("SourceCodeAssetTab") };
-	const FName CorruptedFilesTab = FName{ TEXT("CorruptedFilesTab") };
+	const auto NomadTab = SNew(SDockTab).TabRole(ETabRole::NomadTab);
 	
+	ensure(TabManager.IsValid());
 	
-	TabLayout = FTabManager::NewLayout("ProjectCleanerTabLayout")
-		->AddArea
-		(
-			FTabManager::NewPrimaryArea()
-			->SetOrientation(Orient_Vertical)
-			->Split
-			(
-				FTabManager::NewStack()
-				->SetSizeCoefficient(0.4f)
-				->SetHideTabWell(true)
-				->AddTab(UnusedAssetsTab, ETabState::OpenedTab)
-				->AddTab(NonUassetFilesTab, ETabState::OpenedTab)
-				->AddTab(SourceCodeAssetTab, ETabState::OpenedTab)
-				->AddTab(CorruptedFilesTab, ETabState::OpenedTab)
-				->SetForegroundTab(UnusedAssetsTab)
-			)
-		);
-
 	UpdateCleaner();
 
 	const auto ExcludedAssetsUIRef = SAssignNew(ExcludedAssetsUI, SProjectCleanerExcludedAssetsUI)
@@ -177,30 +190,13 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 		&FProjectCleanerModule::OnUserIncludedAssets
 	);
 	
-	TabManager->RegisterTabSpawner(UnusedAssetsTab, FOnSpawnTab::CreateRaw(
-		this,
-		&FProjectCleanerModule::OnUnusedAssetTabSpawn)
-	);
-	TabManager->RegisterTabSpawner(NonUassetFilesTab, FOnSpawnTab::CreateRaw(
-		this,
-		&FProjectCleanerModule::OnNonUAssetFilesTabSpawn)
-	);
-	TabManager->RegisterTabSpawner(SourceCodeAssetTab, FOnSpawnTab::CreateRaw(
-		this,
-		&FProjectCleanerModule::OnSourceCodeAssetsTabSpawn)
-	);
-	TabManager->RegisterTabSpawner(CorruptedFilesTab, FOnSpawnTab::CreateRaw(
-		this,
-		&FProjectCleanerModule::OnCorruptedFilesTabSpawn)
-	);
-	
 	const TSharedRef<SWidget> TabContents = TabManager->RestoreFrom(
 		TabLayout.ToSharedRef(),
 		TSharedPtr<SWindow>()
 	).ToSharedRef();
 
 	const FMargin CommonMargin = FMargin{ 20.0f, 20.0f };
-	
+
 	NomadTab->SetContent(
 		SNew(SBorder)
 		[
@@ -284,7 +280,8 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 			+ SSplitter::Slot()
 			.Value(0.65f)
 			[
-				SNew(SBorder)
+				SNew(SOverlay)
+				+ SOverlay::Slot()
 				.Padding(FMargin{20.0f})
 				[
 					TabContents
@@ -298,8 +295,10 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 
 TSharedRef<SDockTab> FProjectCleanerModule::OnUnusedAssetTabSpawn(const FSpawnTabArgs& SpawnTabArgs)
 {
-	const auto UnusedAssetsUIRef = SAssignNew(UnusedAssetsBrowserUI, SProjectCleanerUnusedAssetsBrowserUI)
+	const auto UnusedAssetsUIRef =
+		SAssignNew(UnusedAssetsBrowserUI, SProjectCleanerUnusedAssetsBrowserUI)
 		.UnusedAssets(UnusedAssets);
+	
 	UnusedAssetsUIRef->OnUserDeletedAssets = FOnUserDeletedAssets::CreateRaw(
 		this,
 		&FProjectCleanerModule::OnUserDeletedAssets
@@ -680,47 +679,6 @@ FReply FProjectCleanerModule::OnDeleteEmptyFolderClick()
 void FProjectCleanerModule::OnFilesLoaded()
 {
 	bCanOpenTab = true;
-}
-
-void FProjectCleanerModule::OpenCorruptedFilesWindow()
-{
-	const auto CorruptedFilesWindow =
-		SNew(SWindow)
-		.Title(LOCTEXT("corrupted_files_window", "Corrupted Files"))
-		.ClientSize(FVector2D(800.0f, 800.0f))
-		.MinWidth(800.0f)
-		.MinHeight(800.0f)
-		.SupportsMaximize(false)
-		.SupportsMinimize(false)
-		.SizingRule(ESizingRule::Autosized)
-		.AutoCenter(EAutoCenter::PrimaryWorkArea)
-		.IsInitiallyMaximized(false)
-		.bDragAnywhere(true)
-		[
-			SAssignNew(CorruptedFilesUI, SProjectCleanerCorruptedFilesUI)
-			.CorruptedFiles(CorruptedFiles)
-		];
-
-	const TSharedPtr<SWindow> TopWindow = FSlateApplication::Get().GetActiveTopLevelWindow();
-	if (TopWindow.IsValid())
-	{
-		//Add as Native
-		FSlateApplication::Get().AddWindowAsNativeChild(
-			CorruptedFilesWindow,
-			TopWindow.ToSharedRef(),
-			true
-		);
-	}
-	else
-	{
-		//Default in case no top window
-		FSlateApplication::Get().AddWindow(CorruptedFilesWindow);
-	}
-
-	if (GEngine && GEngine->GameViewport)
-	{
-		GEngine->GameViewport->AddViewportWidgetContent(SNew(SWeakWidget).PossiblyNullContent(CorruptedFilesWindow));
-	}
 }
 
 #undef LOCTEXT_NAMESPACE

@@ -29,63 +29,69 @@ void SProjectCleanerCorruptedFilesUI::SetCorruptedFiles(const TSet<FName>& NewCo
 
 void SProjectCleanerCorruptedFilesUI::RefreshUIContent()
 {
-	WidgetRef = SNew(SVerticalBox)
-	+ SVerticalBox::Slot()
-	.AutoHeight()
-	[
-		SNew(SVerticalBox)
-		+SVerticalBox::Slot()
-		.AutoHeight()
+	WidgetRef =
+		SNew(SOverlay)
+		+ SOverlay::Slot()
+		.Padding(20.0f)
 		[
-			SNew(STextBlock)
-			.AutoWrapText(true)
-			.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
-			.Text(LOCTEXT("corrupted_files", "Corrupted Files"))
-		]
-		+SVerticalBox::Slot()
-		.AutoHeight()
-		.Padding(FMargin{5.0f, 10.0f})
-		[
-			SNew(STextBlock)
-			.AutoWrapText(true)
-			.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light10"))
-			.Text(LOCTEXT("corrupted_files_fix_text", "To fix them:\n\t1.Close Editor\n\t2.Delete that files manually from Windows explorer"))
-		]
-	]
-	+ SVerticalBox::Slot()
-	.AutoHeight()
-	.Padding(FMargin{0.0f, 20.0f})
-	[
-		SNew(SListView<TWeakObjectPtr<UCorruptedFile>>)
-		.ListItemsSource(&CorruptedFiles)
-		.SelectionMode(ESelectionMode::SingleToggle)
-		.OnGenerateRow(this, &SProjectCleanerCorruptedFilesUI::OnGenerateRow)
-		.OnMouseButtonDoubleClick_Raw(this, &SProjectCleanerCorruptedFilesUI::OnMouseDoubleClick)
-		.HeaderRow
-		(
-			SNew(SHeaderRow)
-			+ SHeaderRow::Column(FName("Name"))
-			.HAlignCell(HAlign_Center)
-			.VAlignCell(VAlign_Center)
-			.HAlignHeader(HAlign_Center)
-			.HeaderContentPadding(FMargin(10.0f))
-			.FillWidth(0.3f)
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot()
+			.AutoHeight()
 			[
-				SNew(STextBlock)
-				.Text(LOCTEXT("NameColumn", "Name"))
+				SNew(SVerticalBox)
+				+SVerticalBox::Slot()
+				.AutoHeight()
+				[
+					SNew(STextBlock)
+					.AutoWrapText(true)
+					.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
+					.Text(LOCTEXT("corrupted_files", "Corrupted Files"))
+				]
+				+SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(FMargin{5.0f, 10.0f})
+				[
+					SNew(STextBlock)
+					.AutoWrapText(true)
+					.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light10"))
+					.Text(LOCTEXT("corrupted_files_fix_text", "To fix them:\n\t1.Close Editor\n\t2.Delete that files manually from Windows explorer"))
+				]
 			]
-			+ SHeaderRow::Column(FName("AbsolutePath"))
-			.HAlignCell(HAlign_Center)
-			.VAlignCell(VAlign_Center)
-			.HAlignHeader(HAlign_Center)
-			.HeaderContentPadding(FMargin(10.0f))
-			.FillWidth(0.7f)
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(FMargin{0.0f, 20.0f})
 			[
-				SNew(STextBlock)
-				.Text(LOCTEXT("PathColumn", "AbsolutePath"))
+				SNew(SListView<TWeakObjectPtr<UCorruptedFile>>)
+				.ListItemsSource(&CorruptedFiles)
+				.SelectionMode(ESelectionMode::SingleToggle)
+				.OnGenerateRow(this, &SProjectCleanerCorruptedFilesUI::OnGenerateRow)
+				.OnMouseButtonDoubleClick_Raw(this, &SProjectCleanerCorruptedFilesUI::OnMouseDoubleClick)
+				.HeaderRow
+				(
+					SNew(SHeaderRow)
+					+ SHeaderRow::Column(FName("Name"))
+					.HAlignCell(HAlign_Center)
+					.VAlignCell(VAlign_Center)
+					.HAlignHeader(HAlign_Center)
+					.HeaderContentPadding(FMargin(10.0f))
+					.FillWidth(0.3f)
+					[
+						SNew(STextBlock)
+						.Text(LOCTEXT("NameColumn", "Name"))
+					]
+					+ SHeaderRow::Column(FName("AbsolutePath"))
+					.HAlignCell(HAlign_Center)
+					.VAlignCell(VAlign_Center)
+					.HAlignHeader(HAlign_Center)
+					.HeaderContentPadding(FMargin(10.0f))
+					.FillWidth(0.7f)
+					[
+						SNew(STextBlock)
+						.Text(LOCTEXT("PathColumn", "AbsolutePath"))
+					]
+				)
 			]
-		)
-	];
+		];
 	
 	ChildSlot
 	[

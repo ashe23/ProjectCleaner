@@ -100,15 +100,10 @@ private:
 	 */
 	static bool IsConfirmationWindowCanceled(EAppReturnType::Type Status);
 	
-	/**
-	 * @brief Opens window with corrupted files in it
-	 */
-	void OpenCorruptedFilesWindow();
-	
 	/** Delegate functions **/
 	void OnUserDeletedAssets();
 	void OnUserExcludedAssets(const TArray<FAssetData>& Assets);
-	void OnUserIncludedAssets(const TArray<FAssetData>& Assets);	
+	void OnUserIncludedAssets(const TArray<FAssetData>& Assets);
 
 	/** Button events */
 	FReply OnRefreshBtnClick();

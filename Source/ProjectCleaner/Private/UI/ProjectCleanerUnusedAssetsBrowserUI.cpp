@@ -190,22 +190,26 @@ void SProjectCleanerUnusedAssetsBrowserUI::RefreshUIContent()
 	Config.Filter = Filter;
 
 	FContentBrowserModule& ContentBrowser = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
-	WidgetRef = SNew(SVerticalBox)
-	+ SVerticalBox::Slot()
-	.AutoHeight()
-	.Padding(20.0f)
-	[
-		SNew(STextBlock)
-		.AutoWrapText(true)
-		.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
-		.Text(LOCTEXT("UnusedAssets", "All Unused Assets"))
-	]
-	+ SVerticalBox::Slot()
-	.AutoHeight()
-	.Padding(20.0f)
-	[
-		ContentBrowser.Get().CreateAssetPicker(Config)
-	];
+	WidgetRef =
+		SNew(SOverlay)
+		+ SOverlay::Slot()
+		.Padding(20.0f)
+		[
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			[
+				SNew(STextBlock)
+				.AutoWrapText(true)
+				.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
+				.Text(LOCTEXT("UnusedAssets", "All Unused Assets"))
+			]
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			[
+				ContentBrowser.Get().CreateAssetPicker(Config)
+			]
+		];
 	
 	ChildSlot
 	[
