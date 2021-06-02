@@ -381,7 +381,7 @@ void FProjectCleanerModule::UpdateCleanerData()
 	ProjectCleanerUtility::RemoveMegascansPluginAssetsIfActive(UnusedAssets);
 
 	// filling graphs with unused assets data and creating relational map between them
-	RelationalMap.Fill(UnusedAssets);
+	RelationalMap.Rebuild(UnusedAssets);
 
 	ProjectCleanerUtility::RemoveAssetsUsedIndirectly(UnusedAssets, RelationalMap, SourceCodeAssets);
 	ProjectCleanerUtility::RemoveAssetsWithExternalReferences(UnusedAssets, RelationalMap);
@@ -568,44 +568,34 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 
 	while (UnusedAssets.Num() > 0)
 	{
-		//ProjectCleanerUtility::GetRootAssets(RootAssets, UnusedAssets, AdjacencyList);
-
-		// Before we delete assets
-		// Loading assets and find corrupted files
-		// todo:ashe23 handle assets that failed to delete different way?
-		for (const auto& Asset : RootAssets)
+		const auto CircularNodes = RelationalMap.GetCircularNodes();
+		if (RelationalMap.GetCircularNodes().Num() > 0)
 		{
-			const auto LoadedAsset = Asset.GetAsset();
-			if (!LoadedAsset)
+			for (const auto& CircularNode : CircularNodes)
 			{
-				CorruptedFiles.Add(Asset.PackageName);
+				RootAssets.AddUnique(CircularNode.AssetData);
 			}
 		}
-
-		if (CorruptedFiles.Num() > 0)
+		else
 		{
-			UnusedAssets.RemoveAll([&](const FAssetData& Asset)
-				{
-					return CorruptedFiles.Contains(Asset.PackageName);
-				});
-
-			RootAssets.RemoveAll([&](const FAssetData& Asset)
-				{
-					return CorruptedFiles.Contains(Asset.PackageName);
-				});
+			const auto RootNodes = RelationalMap.GetRootNodes();
+			for (const auto& RootNode : RootNodes)
+			{
+				RootAssets.AddUnique(RootNode.AssetData);
+			}
 		}
-
 		// Remaining assets are valid so we trying to delete them
-		CleaningStats.DeletedAssetCount += ProjectCleanerUtility::DeleteAssets(RootAssets);
+		CleaningStats.DeletedAssetCount += RootAssets.Num(); // todo:ashe23 For DEBUG
+		//CleaningStats.DeletedAssetCount += ProjectCleanerUtility::DeleteAssets(RootAssets);
 		NotificationManager->Update(CleaningNotificationPtr, CleaningStats);
 
 		UnusedAssets.RemoveAll([&](const FAssetData& Elem)
-			{
-				return RootAssets.Contains(Elem);
-			});
+		{
+			return RootAssets.Contains(Elem);
+		});
 
 		// after chunk of assets deleted, we must update adjacency list
-		//ProjectCleanerUtility::CreateAdjacencyList(UnusedAssets, AdjacencyList, true);
+		RelationalMap.Rebuild(UnusedAssets);
 		RootAssets.Reset();
 	}
 
@@ -617,6 +607,7 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 	UpdateCleanerData();
 
 	// Delete all empty folder
+	// todo:ashe23 code duplication
 	ProjectCleanerUtility::DeleteEmptyFolders(EmptyFolders);
 	const FString PostFixText = CleaningStats.EmptyFolders > 1 ? TEXT(" empty folders") : TEXT(" empty folder");
 	const FString DisplayText = FString{ "Deleted " } + FString::FromInt(CleaningStats.EmptyFolders) + PostFixText;

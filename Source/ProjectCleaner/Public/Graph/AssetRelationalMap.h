@@ -20,6 +20,11 @@ struct FAssetNode
 	TArray<FName> RelatedAssets; // (Refs + Deps)
 	bool Visited = false;
 
+	bool operator=(const FAssetNode& OtherNode) const
+	{
+		return AssetData == OtherNode.AssetData;
+	}
+
 	bool HasExternalReferencers() const
 	{
 		for (const auto& Ref : Refs)
@@ -29,7 +34,7 @@ struct FAssetNode
 				return true;
 			}
 		}
-		
+
 		return false;
 	}
 };
@@ -37,9 +42,11 @@ struct FAssetNode
 class AssetRelationalMap
 {
 public:
-	void Fill(const TArray<FAssetData>& UnusedAssets);
+	void Rebuild(const TArray<FAssetData>& UnusedAssets);
 	FAssetNode* FindByPackageName(const FName& PackageName);
 	const TArray<FAssetNode>& GetNodes() const;
+	const TArray<FAssetNode>& GetCircularNodes() const;
+	const TArray<FAssetNode>& GetRootNodes() const;
 	void Reset();
 private:
 	
@@ -50,8 +57,13 @@ private:
 		TArray<FName>& RelatedAssets
 	) const;
 	
+	void FindCircularNodes();
+	void FindRootNodes();
 	void DFS(FAssetNode& Node, FAssetNode& RootNode);
 	void ClearVisited();
+	bool IsCircularNode(const FAssetNode& Node) const;
 	
 	TArray<FAssetNode> Nodes;
+	TArray<FAssetNode> CircularNodes;
+	TArray<FAssetNode> RootNodes;
 };

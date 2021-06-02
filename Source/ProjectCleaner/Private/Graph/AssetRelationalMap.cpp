@@ -3,9 +3,13 @@
 #include "Graph/AssetRelationalMap.h"
 #include "AssetRegistryModule.h"
 
-void AssetRelationalMap::Fill(const TArray<FAssetData>& UnusedAssets)
+void AssetRelationalMap::Rebuild(const TArray<FAssetData>& UnusedAssets)
 {
+	Reset();
+	
 	Nodes.Reserve(UnusedAssets.Num());
+	RootNodes.Reserve(UnusedAssets.Num());
+	CircularNodes.Reserve(UnusedAssets.Num());
 
 	for (const auto& UnusedAsset : UnusedAssets)
 	{
@@ -35,6 +39,28 @@ void AssetRelationalMap::Fill(const TArray<FAssetData>& UnusedAssets)
 			if(!Data) continue;
 			Node.LinkedAssetsData.Add(&Data->AssetData);
 		}
+	}
+
+	FindCircularNodes();
+	FindRootNodes();
+}
+
+void AssetRelationalMap::FindCircularNodes()
+{
+	for (const auto& Node : Nodes)
+	{
+		if (!IsCircularNode(Node)) continue;
+		CircularNodes.AddUnique(Node);
+	}
+}
+
+void AssetRelationalMap::FindRootNodes()
+{
+	for (const auto& Node : Nodes)
+	{		
+		if (RootNodes.Num() > 20) break; // todo:ashe23 chunks size here
+		if (Node.Refs.Num() != 0) continue;
+		RootNodes.AddUnique(Node);
 	}
 }
 
@@ -84,6 +110,18 @@ void AssetRelationalMap::ClearVisited()
 	}
 }
 
+bool AssetRelationalMap::IsCircularNode(const FAssetNode& Node) const
+{
+	for (const auto& Ref : Node.Refs)
+	{
+		if (Node.Deps.Contains(Ref))
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
 FAssetNode* AssetRelationalMap::FindByPackageName(const FName& PackageName)
 {
 	return Nodes.FindByPredicate([&](const FAssetNode& Elem)
@@ -97,8 +135,20 @@ const TArray<FAssetNode>& AssetRelationalMap::GetNodes() const
 	return Nodes;
 }
 
+const TArray<FAssetNode>& AssetRelationalMap::GetCircularNodes() const
+{
+	return CircularNodes;
+}
+
+const TArray<FAssetNode>& AssetRelationalMap::GetRootNodes() const
+{
+	return RootNodes;
+}
+
 void AssetRelationalMap::Reset()
 {
-	Nodes.Empty();
+	Nodes.Reset();
+	RootNodes.Reset();
+	CircularNodes.Reset();
 }
 
