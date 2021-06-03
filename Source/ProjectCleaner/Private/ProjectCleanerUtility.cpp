@@ -55,35 +55,35 @@ void ProjectCleanerUtility::GetInvalidProjectFiles(const FAssetRegistryModule* A
 	NonUAssetFiles.Reserve(AllProjectFiles.Num());
 	
 	for (const auto& ProjectFile : AllProjectFiles)
-    {
-    	auto FilePath = ProjectFile.ToString();
-    	if (IsEngineExtension(FPaths::GetExtension(FilePath, false)))
-    	{
-    		// Converting file path to objectpath
-    		// example "/Game/Name.uasset" => "/Game/Name.Name"
-    		auto FileName = FPaths::GetBaseFilename(FilePath);
-    		FilePath.RemoveFromEnd(FPaths::GetExtension(FilePath, true));
-    		FilePath.Append(TEXT(".") + FileName);
-    		const FName ObjectPath = FName{*FilePath};
+	{
+		auto FilePath = ProjectFile.ToString();
+		if (IsEngineExtension(FPaths::GetExtension(FilePath, false)))
+		{
+			// Converting file path to objectpath
+			// example "/Game/Name.uasset" => "/Game/Name.Name"
+			auto FileName = FPaths::GetBaseFilename(FilePath);
+			FilePath.RemoveFromEnd(FPaths::GetExtension(FilePath, true));
+			FilePath.Append(TEXT(".") + FileName);
+			const FName ObjectPath = FName{*FilePath};
 
-    		// Trying to find that file in AssetRegistry
-    		const auto AssetData = AssetRegistry->Get().GetAssetByObjectPath(ObjectPath);
-    		// Adding to CorruptedFiles list, if we cant find it in AssetRegistry
-    		if (AssetData.IsValid()) continue;
-    		CorruptedFiles.Add(ProjectFile);
-    	}
-    	else
-    	{
-    		NonUAssetFiles.Add(ProjectFile);
-    	}
-    }
+			// Trying to find that file in AssetRegistry
+			const auto AssetData = AssetRegistry->Get().GetAssetByObjectPath(ObjectPath);
+			// Adding to CorruptedFiles list, if we cant find it in AssetRegistry
+			if (AssetData.IsValid()) continue;
+			CorruptedFiles.Add(ProjectFile);
+		}
+		else
+		{
+			NonUAssetFiles.Add(ProjectFile);
+		}
+	}
 }
 
 void ProjectCleanerUtility::GetAllPrimaryAssetClasses(UAssetManager& AssetManager, TSet<FName>& PrimaryAssetClasses)
 {
 	PrimaryAssetClasses.Reserve(10);
 	
-	const UAssetManagerSettings& Settings = AssetManager.GetSettings();	
+	const UAssetManagerSettings& Settings = AssetManager.GetSettings();
 	TArray<FPrimaryAssetId> Ids;
 	for (const auto& Type : Settings.PrimaryAssetTypesToScan)
 	{
@@ -143,7 +143,7 @@ bool ProjectCleanerUtility::GetAllEmptyDirectories(const FString& SearchPath,
 
 	for (const auto& Dir : ChildDirectories)
 	{
-		// "*" needed for unreal`s IFileManager class, without it , its not working.  
+		// "*" needed for unreal`s IFileManager class, without it , its not working.
 		auto NewPath = SearchPath;
 		NewPath.RemoveFromEnd(TEXT("*"));
 		NewPath += Dir / TEXT("*");
@@ -497,53 +497,6 @@ void ProjectCleanerUtility::SaveAllAssets()
 	);
 }
 
-//void ProjectCleanerUtility::GetRootAssets(TArray<FAssetData>& RootAssets, TArray<FAssetData>& Assets,
-//                                          TArray<FNode>& List)
-//{
-//	// first we deleting cycle assets
-//	// like Skeletal mesh, skeleton, and physical assets
-//	// those assets must not be deleted separately
-//	// TSet<FName> CircularAssets;
-//	// for (const auto& Node : List)
-//	// {
-//	// 	if (Node.IsCircular())
-//	// 	{
-//	// 		CircularAssets.Add(Node.Asset);
-//	// 	}
-//	// }
-//	//
-//	// if (CircularAssets.Num() > 0)
-//	// {
-//	// 	for (const auto& CircularAsset : CircularAssets)
-//	// 	{
-//	// 		FAssetData* AssetData = GetAssetData(CircularAsset, Assets);
-//	// 		if (!AssetData) continue;
-//	// 		RootAssets.Add(*AssetData);
-//	// 	}
-//	// }
-//	// else
-//	// {
-//	// 	constexpr int32 ChunkSize = 20;
-//	// 	for (const auto& Node : List)
-//	// 	{
-//	// 		if (RootAssets.Num() > ChunkSize) break;
-//	//
-//	// 		if (Node.Refs.Num() == 0)
-//	// 		{
-//	// 			FAssetData* AssetData = GetAssetData(Node.Asset, Assets);
-//	// 			if (!AssetData) continue;
-//	// 			RootAssets.Add(*AssetData);
-//	// 		}
-//	// 	}
-//	// }
-//	//
-//	// // todo:ashe23 not a good solution
-//	// if (RootAssets.Num() == 0 && Assets.Num() != 0)
-//	// {
-//	// 	RootAssets = Assets;
-//	// }
-//}
-
 int64 ProjectCleanerUtility::GetTotalSize(const TArray<FAssetData>& AssetContainer)
 {
 	int64 Size = 0;
@@ -585,7 +538,6 @@ const FSourceCodeFile* ProjectCleanerUtility::GetFileWhereAssetUsed(const FAsset
 
 	return nullptr;
 }
-
 
 FString ProjectCleanerUtility::ConvertRelativeToAbsolutePath(const FName& PackageName)
 {	

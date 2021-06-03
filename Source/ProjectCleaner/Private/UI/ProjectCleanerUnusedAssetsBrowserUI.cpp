@@ -195,19 +195,23 @@ void SProjectCleanerUnusedAssetsBrowserUI::RefreshUIContent()
 		+ SOverlay::Slot()
 		.Padding(20.0f)
 		[
-			SNew(SVerticalBox)
-			+ SVerticalBox::Slot()
-			.AutoHeight()
+			SNew(SScrollBox)
+			+ SScrollBox::Slot()
 			[
-				SNew(STextBlock)
-				.AutoWrapText(true)
-				.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
-				.Text(LOCTEXT("UnusedAssets", "All Unused Assets"))
-			]
-			+ SVerticalBox::Slot()
-			.AutoHeight()
-			[
-				ContentBrowser.Get().CreateAssetPicker(Config)
+				SNew(SVerticalBox)
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				[
+					SNew(STextBlock)
+					.AutoWrapText(true)
+					.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
+					.Text(LOCTEXT("UnusedAssets", "All Unused Assets"))
+				]
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				[
+					ContentBrowser.Get().CreateAssetPicker(Config)
+				]
 			]
 		];
 	

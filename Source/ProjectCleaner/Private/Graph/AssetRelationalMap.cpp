@@ -151,4 +151,3 @@ void AssetRelationalMap::Reset()
 	RootNodes.Reset();
 	CircularNodes.Reset();
 }
-

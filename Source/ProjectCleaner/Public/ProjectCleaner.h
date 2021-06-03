@@ -84,6 +84,8 @@ private:
 	 * @brief Updates content browser
 	 */
 	void UpdateContentBrowser() const;
+
+	void CleanEmptyFolders();
 	
 	/**
 	 * @brief Creates confirmation window with yes/no options

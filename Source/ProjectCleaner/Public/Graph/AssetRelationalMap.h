@@ -20,7 +20,7 @@ struct FAssetNode
 	TArray<FName> RelatedAssets; // (Refs + Deps)
 	bool Visited = false;
 
-	bool operator=(const FAssetNode& OtherNode) const
+	bool operator==(const FAssetNode& OtherNode) const
 	{
 		return AssetData == OtherNode.AssetData;
 	}
