@@ -3,6 +3,8 @@
 #include "UI/ProjectCleanerNonUassetFilesUI.h"
 #include "ProjectCleanerStyle.h"
 #include "ProjectCleanerUtility.h"
+// Engine Headers
+#include "Widgets/Layout/SScrollBox.h"
 
 #define LOCTEXT_NAMESPACE "FProjectCleanerModule"
 
@@ -57,35 +59,39 @@ void SProjectCleanerNonUassetFilesUI::RefreshUIContent()
 			.AutoHeight()
 			.Padding(FMargin{0.0f, 20.0f})
 			[
-				SNew(SListView<TWeakObjectPtr<UNonUassetFile>>)
-				.ListItemsSource(&NonUassetFiles)
-				.SelectionMode(ESelectionMode::SingleToggle)
-				.OnGenerateRow(this, &SProjectCleanerNonUassetFilesUI::OnGenerateRow)
-				.OnMouseButtonDoubleClick_Raw(this, &SProjectCleanerNonUassetFilesUI::OnMouseDoubleClick)
-				.HeaderRow
-				(
-					SNew(SHeaderRow)
-					+ SHeaderRow::Column(FName("FileName"))
-					.HAlignCell(HAlign_Center)
-					.VAlignCell(VAlign_Center)
-					.HAlignHeader(HAlign_Center)
-					.HeaderContentPadding(FMargin(10.0f))
-					.FillWidth(0.3f)
-					[
-						SNew(STextBlock)
-						.Text(LOCTEXT("NameColumn", "FileName"))
-					]
-					+ SHeaderRow::Column(FName("FilePath"))
-					.HAlignCell(HAlign_Center)
-					.VAlignCell(VAlign_Center)
-					.HAlignHeader(HAlign_Center)
-					.HeaderContentPadding(FMargin(10.0f))
-					.FillWidth(0.7f)
-					[
-						SNew(STextBlock)
-						.Text(LOCTEXT("PathColumn", "FilePath"))
-					]
-				)
+				SNew(SScrollBox)
+				+ SScrollBox::Slot()
+				[
+					SNew(SListView<TWeakObjectPtr<UNonUassetFile>>)
+					.ListItemsSource(&NonUassetFiles)
+					.SelectionMode(ESelectionMode::SingleToggle)
+					.OnGenerateRow(this, &SProjectCleanerNonUassetFilesUI::OnGenerateRow)
+					.OnMouseButtonDoubleClick_Raw(this, &SProjectCleanerNonUassetFilesUI::OnMouseDoubleClick)
+					.HeaderRow
+					(
+						SNew(SHeaderRow)
+						+ SHeaderRow::Column(FName("FileName"))
+						.HAlignCell(HAlign_Center)
+						.VAlignCell(VAlign_Center)
+						.HAlignHeader(HAlign_Center)
+						.HeaderContentPadding(FMargin(10.0f))
+						.FillWidth(0.3f)
+						[
+							SNew(STextBlock)
+							.Text(LOCTEXT("NameColumn", "FileName"))
+						]
+						+ SHeaderRow::Column(FName("FilePath"))
+						.HAlignCell(HAlign_Center)
+						.VAlignCell(VAlign_Center)
+						.HAlignHeader(HAlign_Center)
+						.HeaderContentPadding(FMargin(10.0f))
+						.FillWidth(0.7f)
+						[
+							SNew(STextBlock)
+							.Text(LOCTEXT("PathColumn", "FilePath"))
+						]
+					)
+				]
 			]
 		];
 

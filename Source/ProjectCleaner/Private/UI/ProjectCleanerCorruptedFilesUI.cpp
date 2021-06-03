@@ -3,6 +3,8 @@
 #include "UI/ProjectCleanerCorruptedFilesUI.h"
 #include "ProjectCleanerUtility.h"
 #include "ProjectCleanerStyle.h"
+// Engine Headers
+#include "Widgets/Layout/SScrollBox.h"
 
 #define LOCTEXT_NAMESPACE "FProjectCleanerModule"
 
@@ -61,35 +63,39 @@ void SProjectCleanerCorruptedFilesUI::RefreshUIContent()
 			.AutoHeight()
 			.Padding(FMargin{0.0f, 20.0f})
 			[
-				SNew(SListView<TWeakObjectPtr<UCorruptedFile>>)
-				.ListItemsSource(&CorruptedFiles)
-				.SelectionMode(ESelectionMode::SingleToggle)
-				.OnGenerateRow(this, &SProjectCleanerCorruptedFilesUI::OnGenerateRow)
-				.OnMouseButtonDoubleClick_Raw(this, &SProjectCleanerCorruptedFilesUI::OnMouseDoubleClick)
-				.HeaderRow
-				(
-					SNew(SHeaderRow)
-					+ SHeaderRow::Column(FName("Name"))
-					.HAlignCell(HAlign_Center)
-					.VAlignCell(VAlign_Center)
-					.HAlignHeader(HAlign_Center)
-					.HeaderContentPadding(FMargin(10.0f))
-					.FillWidth(0.3f)
-					[
-						SNew(STextBlock)
-						.Text(LOCTEXT("NameColumn", "Name"))
-					]
-					+ SHeaderRow::Column(FName("AbsolutePath"))
-					.HAlignCell(HAlign_Center)
-					.VAlignCell(VAlign_Center)
-					.HAlignHeader(HAlign_Center)
-					.HeaderContentPadding(FMargin(10.0f))
-					.FillWidth(0.7f)
-					[
-						SNew(STextBlock)
-						.Text(LOCTEXT("PathColumn", "AbsolutePath"))
-					]
-				)
+				SNew(SScrollBox)
+				+ SScrollBox::Slot()
+				[
+					SNew(SListView<TWeakObjectPtr<UCorruptedFile>>)
+					.ListItemsSource(&CorruptedFiles)
+					.SelectionMode(ESelectionMode::SingleToggle)
+					.OnGenerateRow(this, &SProjectCleanerCorruptedFilesUI::OnGenerateRow)
+					.OnMouseButtonDoubleClick_Raw(this, &SProjectCleanerCorruptedFilesUI::OnMouseDoubleClick)
+					.HeaderRow
+					(
+						SNew(SHeaderRow)
+						+ SHeaderRow::Column(FName("Name"))
+						.HAlignCell(HAlign_Center)
+						.VAlignCell(VAlign_Center)
+						.HAlignHeader(HAlign_Center)
+						.HeaderContentPadding(FMargin(10.0f))
+						.FillWidth(0.3f)
+						[
+							SNew(STextBlock)
+							.Text(LOCTEXT("NameColumn", "Name"))
+						]
+						+ SHeaderRow::Column(FName("AbsolutePath"))
+						.HAlignCell(HAlign_Center)
+						.VAlignCell(VAlign_Center)
+						.HAlignHeader(HAlign_Center)
+						.HeaderContentPadding(FMargin(10.0f))
+						.FillWidth(0.7f)
+						[
+							SNew(STextBlock)
+							.Text(LOCTEXT("PathColumn", "AbsolutePath"))
+						]
+					)
+				]
 			]
 		];
 	
