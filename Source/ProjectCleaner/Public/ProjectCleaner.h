@@ -27,6 +27,7 @@ class SProjectCleanerSourceCodeAssetsUI;
 class SProjectCleanerDirectoryExclusionUI;
 class SProjectCleanerCorruptedFilesUI;
 class SProjectCleanerExcludedAssetsUI;
+class SAssetsVisualizerGraph;
 class USourceCodeAsset;
 class UExcludeDirectoriesFilterSettings;
 class AssetRelationalMap;
@@ -56,6 +57,7 @@ private:
 	TSharedRef<SDockTab> OnNonUAssetFilesTabSpawn(const FSpawnTabArgs& SpawnTabArgs);
 	TSharedRef<SDockTab> OnCorruptedFilesTabSpawn(const FSpawnTabArgs& SpawnTabArgs);
 	TSharedRef<SDockTab> OnSourceCodeAssetsTabSpawn(const FSpawnTabArgs& SpawnTabArgs);
+	TSharedRef<SDockTab> OnAssetsVisualizerTabSpawn(const FSpawnTabArgs& SpawnTabArgs);
 
 	/** Cleaner **/
 	
@@ -122,6 +124,7 @@ private:
 	TWeakPtr<SProjectCleanerDirectoryExclusionUI> DirectoryExclusionUI;
 	TWeakPtr<SProjectCleanerCorruptedFilesUI> CorruptedFilesUI;
 	TWeakPtr<SProjectCleanerExcludedAssetsUI> ExcludedAssetsUI;
+	TWeakPtr<SAssetsVisualizerGraph> VisualizerUI;
 	TSharedPtr<FTabManager> TabManager;
 	TSharedPtr<FTabManager::FLayout> TabLayout;
 	

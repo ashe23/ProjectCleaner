@@ -84,7 +84,7 @@ TSharedPtr<SWidget> SProjectCleanerUnusedAssetsBrowserUI::OnGetAssetContextMenu(
 	{
 		MenuBuilder.AddMenuEntry(FGlobalEditorCommonCommands::Get().FindInContentBrowser);
 		MenuBuilder.AddMenuEntry(FProjectCleanerCommands::Get().DeleteAsset);
-		MenuBuilder.AddMenuEntry(FProjectCleanerCommands::Get().ExcludeAsset);
+		//MenuBuilder.AddMenuEntry(FProjectCleanerCommands::Get().ExcludeAsset);
 	}
 	MenuBuilder.EndSection();
 
