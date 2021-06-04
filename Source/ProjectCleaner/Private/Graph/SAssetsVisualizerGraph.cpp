@@ -11,8 +11,6 @@ void SAssetsVisualizerGraph::Construct(const FArguments& InArgs)
 	GraphObj->Schema = UAssetsVisualizerGraphSchema::StaticClass();
 	GraphObj->AddToRoot();
 
-	
-		
 	GraphEditorPtr = SNew(SGraphEditor)
 		.GraphToEdit(GraphObj);
 
@@ -21,7 +19,25 @@ void SAssetsVisualizerGraph::Construct(const FArguments& InArgs)
 	if (RootNode)
 	{
 		RootNode->Setup();
+		
 		GraphEditorPtr->SetNodeSelection(RootNode, true);
+	}
+
+	UAssetsVisualizerGraphNode* OtherNode = GraphObj->CreateReferenceNode();
+	if (OtherNode)
+	{
+		OtherNode->Setup();
+		GraphObj->Nodes.Add(OtherNode);
+	}
+
+	if (RootNode && OtherNode)
+	{
+		const auto RefPin = RootNode->GetRefPin();
+		const auto DepPin = OtherNode->GetDepPin();
+		if (RefPin && DepPin)
+		{
+			RefPin->MakeLinkTo(DepPin);
+		}
 	}
 
 	ChildSlot

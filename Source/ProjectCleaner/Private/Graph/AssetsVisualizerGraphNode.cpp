@@ -37,3 +37,13 @@ void UAssetsVisualizerGraphNode::Setup()
 	NodeComment = "Some Test Node Comment";
 	AllocateDefaultPins();
 }
+
+UEdGraphPin* UAssetsVisualizerGraphNode::GetDepPin()
+{
+	return DependencyPin;
+}
+
+UEdGraphPin* UAssetsVisualizerGraphNode::GetRefPin()
+{
+	return ReferencerPin;
+}

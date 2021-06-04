@@ -20,6 +20,8 @@ class UAssetsVisualizerGraphNode : public UEdGraphNode
 	// End UEdGraphNode implementation
 public:
 	void Setup();
+	UEdGraphPin* GetDepPin();
+	UEdGraphPin* GetRefPin();
 private:
 	UEdGraphPin* DependencyPin = nullptr;
 	UEdGraphPin* ReferencerPin = nullptr;
