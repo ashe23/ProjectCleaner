@@ -8,6 +8,7 @@
 #include "Input/Reply.h"
 #include "Modules/ModuleInterface.h"
 #include "ContentBrowserDelegates.h"
+#include "EdGraphUtilities.h"
 #include "CoreMinimal.h"
 
 class AssetRelationalMap;
@@ -31,6 +32,7 @@ class SAssetsVisualizerGraph;
 class USourceCodeAsset;
 class UExcludeDirectoriesFilterSettings;
 class AssetRelationalMap;
+class UAssetsVisualizerGraphNode;
 
 struct FSlateColorBrush;
 struct FAssetData;
@@ -39,6 +41,20 @@ struct FNonUassetFile;
 struct FPrimaryAssetTypeInfo;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogProjectCleaner, Log, All);
+
+class FProjectCleanerGraphPanelNodeFactory : public FGraphPanelNodeFactory
+{
+	virtual TSharedPtr<class SGraphNode> CreateNode(UEdGraphNode* Node) const override
+	{
+		if (UAssetsVisualizerGraphNode* DependencyNode = Cast<UAssetsVisualizerGraphNode>(Node))
+		{
+			return SNew(SAssetsVisualizerGraphNode, DependencyNode);
+		}
+
+		return nullptr;
+	}
+};
+
 
 class FProjectCleanerModule : public IModuleInterface
 {
@@ -58,6 +74,8 @@ private:
 	TSharedRef<SDockTab> OnCorruptedFilesTabSpawn(const FSpawnTabArgs& SpawnTabArgs);
 	TSharedRef<SDockTab> OnSourceCodeAssetsTabSpawn(const FSpawnTabArgs& SpawnTabArgs);
 	TSharedRef<SDockTab> OnAssetsVisualizerTabSpawn(const FSpawnTabArgs& SpawnTabArgs);
+	// testing
+	TSharedPtr<FProjectCleanerGraphPanelNodeFactory> Factory;
 
 	/** Cleaner **/
 	

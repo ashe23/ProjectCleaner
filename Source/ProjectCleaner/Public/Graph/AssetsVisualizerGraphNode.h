@@ -18,4 +18,9 @@ class UAssetsVisualizerGraphNode : public UEdGraphNode
 	virtual FText GetTooltipText() const override;
 	virtual void AllocateDefaultPins() override;
 	// End UEdGraphNode implementation
+public:
+	void Setup();
+private:
+	UEdGraphPin* DependencyPin = nullptr;
+	UEdGraphPin* ReferencerPin = nullptr;
 };

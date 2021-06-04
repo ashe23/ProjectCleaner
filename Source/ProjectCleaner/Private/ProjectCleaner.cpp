@@ -129,6 +129,10 @@ void FProjectCleanerModule::StartupModule()
 	{
 		AssetRegistry->Get().OnFilesLoaded().AddRaw(this, &FProjectCleanerModule::OnFilesLoaded);
 	}
+
+
+	Factory = MakeShareable(new FProjectCleanerGraphPanelNodeFactory());
+	FEdGraphUtilities::RegisterVisualNodeFactory(Factory);
 }
 
 void FProjectCleanerModule::ShutdownModule()

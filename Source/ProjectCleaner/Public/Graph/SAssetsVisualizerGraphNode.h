@@ -13,10 +13,10 @@ public:
 
 	SLATE_END_ARGS()
 
-	void Construct(const FArguments& InArgs);
+	void Construct(const FArguments& InArgs, class UAssetsVisualizerGraphNode* InNode);
 
 	// SGraphNode implementation
 	virtual void UpdateGraphNode() override;
-	virtual bool IsNodeEditable() const override { return false; }
+	virtual bool IsNodeEditable() const override { return false; }	
 	// End SGraphNode implementation
 };

@@ -16,7 +16,7 @@ class UAssetsVisualizerGraph : public UEdGraph
 
 public:
 	void RebuildGraph();
-private:
 	UAssetsVisualizerGraphNode* CreateReferenceNode();
+private:
 	FIntPoint CurrentGraphRootOrigin;
 };

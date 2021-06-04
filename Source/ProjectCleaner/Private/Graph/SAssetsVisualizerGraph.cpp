@@ -3,6 +3,7 @@
 #include "Graph/SAssetsVisualizerGraph.h"
 #include "Graph/AssetsVisualizerGraph.h"
 #include "Graph/AssetsVisualizerGraphSchema.h"
+#include "Graph/AssetsVisualizerGraphNode.h"
 
 void SAssetsVisualizerGraph::Construct(const FArguments& InArgs)
 {
@@ -10,8 +11,18 @@ void SAssetsVisualizerGraph::Construct(const FArguments& InArgs)
 	GraphObj->Schema = UAssetsVisualizerGraphSchema::StaticClass();
 	GraphObj->AddToRoot();
 
+	
+		
 	GraphEditorPtr = SNew(SGraphEditor)
 		.GraphToEdit(GraphObj);
+
+	// create root node
+	UAssetsVisualizerGraphNode* RootNode = GraphObj->CreateReferenceNode();
+	if (RootNode)
+	{
+		RootNode->Setup();
+		GraphEditorPtr->SetNodeSelection(RootNode, true);
+	}
 
 	ChildSlot
 	[
