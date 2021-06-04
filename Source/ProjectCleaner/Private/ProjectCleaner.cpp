@@ -382,17 +382,18 @@ void FProjectCleanerModule::UpdateCleanerData()
 
 	// filling graphs with unused assets data and creating relational map between them
 	RelationalMap.Rebuild(UnusedAssets);
-
 	ProjectCleanerUtility::RemoveAssetsUsedIndirectly(UnusedAssets, RelationalMap, SourceCodeAssets);
+	RelationalMap.Rebuild(UnusedAssets);
 	ProjectCleanerUtility::RemoveAssetsWithExternalReferences(UnusedAssets, RelationalMap);
-	ProjectCleanerUtility::RemoveAssetsExcludedByUser(
+	RelationalMap.Rebuild(UnusedAssets);
+	/*ProjectCleanerUtility::RemoveAssetsExcludedByUser(
 		AssetRegistry,
 		UnusedAssets,
 		ExcludedAssets,
 		UserExcludedAssets,
 		RelationalMap,
 		ExcludeDirectoryFilterSettings
-	);
+	);*/
 
 	UpdateStats();
 }
@@ -597,6 +598,8 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 				RootAssets.AddUnique(RootNode.AssetData);
 			}
 		}
+
+		// todo:ashe23 BUG not all assets deleted but circularnodes and rootassets are empty
 		// Remaining assets are valid so we trying to delete them
 		CleaningStats.DeletedAssetCount += ProjectCleanerUtility::DeleteAssets(RootAssets);
 		NotificationManager->Update(CleaningNotificationPtr, CleaningStats);
