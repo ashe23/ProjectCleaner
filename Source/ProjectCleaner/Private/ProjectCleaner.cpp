@@ -12,7 +12,6 @@
 #include "UI/ProjectCleanerSourceCodeAssetsUI.h"
 #include "UI/ProjectCleanerCorruptedFilesUI.h"
 #include "UI/ProjectCleanerExcludedAssetsUI.h"
-#include "Graph/SAssetsVisualizerGraph.h"
 // Engine Headers
 #include "AssetRegistryModule.h"
 #include "ToolMenus.h"
@@ -38,7 +37,6 @@ static const FName UnusedAssetsTab = FName{ TEXT("UnusedAssetsTab") };
 static const FName NonUassetFilesTab = FName{ TEXT("NonUassetFilesTab") };
 static const FName SourceCodeAssetTab = FName{ TEXT("SourceCodeAssetTab") };
 static const FName CorruptedFilesTab = FName{ TEXT("CorruptedFilesTab") };
-static const FName AssetsVisualizerTab = FName{ TEXT("AssetsVisualizerTab") };
 
 #define LOCTEXT_NAMESPACE "FProjectCleanerModule"
 
@@ -95,7 +93,6 @@ void FProjectCleanerModule::StartupModule()
 			->AddTab(NonUassetFilesTab, ETabState::OpenedTab)
 			->AddTab(SourceCodeAssetTab, ETabState::OpenedTab)
 			->AddTab(CorruptedFilesTab, ETabState::OpenedTab)
-			->AddTab(AssetsVisualizerTab, ETabState::OpenedTab)
 			->SetForegroundTab(UnusedAssetsTab)
 		)
 	);
@@ -116,10 +113,6 @@ void FProjectCleanerModule::StartupModule()
 		this,
 		&FProjectCleanerModule::OnCorruptedFilesTabSpawn)
 	);
-	TabManager->RegisterTabSpawner(AssetsVisualizerTab, FOnSpawnTab::CreateRaw(
-		this,
-		&FProjectCleanerModule::OnAssetsVisualizerTabSpawn
-	));
 	
 	// initializing some objects
 	NotificationManager = MakeShared<ProjectCleanerNotificationManager>();
@@ -129,10 +122,6 @@ void FProjectCleanerModule::StartupModule()
 	{
 		AssetRegistry->Get().OnFilesLoaded().AddRaw(this, &FProjectCleanerModule::OnFilesLoaded);
 	}
-
-
-	Factory = MakeShareable(new FProjectCleanerGraphPanelNodeFactory());
-	FEdGraphUtilities::RegisterVisualNodeFactory(Factory);
 }
 
 void FProjectCleanerModule::ShutdownModule()
@@ -146,7 +135,6 @@ void FProjectCleanerModule::ShutdownModule()
 	TabManager->UnregisterTabSpawner(NonUassetFilesTab);
 	TabManager->UnregisterTabSpawner(SourceCodeAssetTab);
 	TabManager->UnregisterTabSpawner(CorruptedFilesTab);
-	TabManager->UnregisterTabSpawner(AssetsVisualizerTab);
 	AssetRegistry = nullptr;
 }
 
@@ -363,18 +351,6 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSourceCodeAssetsTabSpawn(const FSp
 		[
 			SAssignNew(SourceCodeAssetsUI, SProjectCleanerSourceCodeAssetsUI)
 			.SourceCodeAssets(SourceCodeAssets)
-		];
-}
-
-TSharedRef<SDockTab> FProjectCleanerModule::OnAssetsVisualizerTabSpawn(const FSpawnTabArgs& SpawnTabArgs)
-{
-	return SNew(SDockTab)
-		.TabRole(ETabRole::PanelTab)
-		.OnCanCloseTab_Lambda([] {return false; })
-		.Label(NSLOCTEXT("AssetsVisualizer", "TabTitle", "Assets Visualizer"))
-		[
-			SAssignNew(VisualizerUI, SAssetsVisualizerGraph)
-			.RelationalMap(&RelationalMap)
 		];
 }
 
