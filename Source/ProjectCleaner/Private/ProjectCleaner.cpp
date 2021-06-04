@@ -374,6 +374,7 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnAssetsVisualizerTabSpawn(const FSp
 		.Label(NSLOCTEXT("AssetsVisualizer", "TabTitle", "Assets Visualizer"))
 		[
 			SAssignNew(VisualizerUI, SAssetsVisualizerGraph)
+			.RelationalMap(&RelationalMap)
 		];
 }
 
@@ -418,8 +419,6 @@ void FProjectCleanerModule::UpdateCleanerData()
 	);
 
 	UpdateStats();
-
-	UE_LOG(LogProjectCleaner, Warning, TEXT("a"));
 }
 
 void FProjectCleanerModule::UpdateStats()

@@ -19,10 +19,11 @@ class UAssetsVisualizerGraphNode : public UEdGraphNode
 	virtual void AllocateDefaultPins() override;
 	// End UEdGraphNode implementation
 public:
-	void Setup();
+	void Setup(const FText& Title, const float X, const float Y);
 	UEdGraphPin* GetDepPin();
 	UEdGraphPin* GetRefPin();
 private:
 	UEdGraphPin* DependencyPin = nullptr;
 	UEdGraphPin* ReferencerPin = nullptr;
+	FText NodeTitle;
 };

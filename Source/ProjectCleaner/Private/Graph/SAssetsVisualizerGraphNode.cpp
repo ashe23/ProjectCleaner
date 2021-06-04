@@ -46,7 +46,7 @@ void SAssetsVisualizerGraphNode::UpdateGraphNode()
 				.VAlign(VAlign_Center)
 				[
 					SNew(STextBlock)
-					.Text(FText::FromString("AAA"))
+					.Text(GraphNode->GetNodeTitle(ENodeTitleType::ListView))
 				]
 				+ SHorizontalBox::Slot()
 				.AutoWidth()

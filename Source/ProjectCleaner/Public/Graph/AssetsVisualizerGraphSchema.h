@@ -19,7 +19,6 @@ public:
 
 	virtual FVector2D ComputeSplineTangent(const FVector2D& Start, const FVector2D& End) const override
 	{
-		return 0.0f;
 		const int32 Tension = FMath::Abs<int32>(Start.X - End.X);
 		return Tension * FVector2D(1.0f, 0);
 	}

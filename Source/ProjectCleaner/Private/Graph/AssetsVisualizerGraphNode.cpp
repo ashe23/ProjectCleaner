@@ -5,7 +5,7 @@
 
 FText UAssetsVisualizerGraphNode::GetNodeTitle(ENodeTitleType::Type TitleType) const
 {
-	return FText::FromString(TEXT("BP_Suzan"));
+	return NodeTitle;
 }
 
 FLinearColor UAssetsVisualizerGraphNode::GetNodeTitleColor() const
@@ -29,12 +29,12 @@ void UAssetsVisualizerGraphNode::AllocateDefaultPins()
 	DependencyPin->PinType.PinCategory = FName{ "Test2" };
 }
 
-void UAssetsVisualizerGraphNode::Setup()
+void UAssetsVisualizerGraphNode::Setup(const FText& Title, const float X, const float Y)
 {
-	NodePosX = 200.0f;
-	NodePosY = 200.0f;
+	NodeTitle = Title;
+	NodePosX = X;
+	NodePosY = Y;
 
-	NodeComment = "Some Test Node Comment";
 	AllocateDefaultPins();
 }
 
