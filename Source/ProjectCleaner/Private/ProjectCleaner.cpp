@@ -5,6 +5,7 @@
 #include "ProjectCleanerCommands.h"
 #include "ProjectCleanerNotificationManager.h"
 #include "ProjectCleanerUtility.h"
+#include "ProjectCleanerHelper.h"
 #include "UI/ProjectCleanerBrowserStatisticsUI.h"
 #include "UI/ProjectCleanerDirectoryExclusionUI.h"
 #include "UI/ProjectCleanerUnusedAssetsBrowserUI.h"
@@ -14,6 +15,7 @@
 #include "UI/ProjectCleanerExcludedAssetsUI.h"
 // Engine Headers
 #include "AssetRegistryModule.h"
+#include "IAssetRegistry.h"
 #include "ToolMenus.h"
 #include "ContentBrowserModule.h"
 #include "Misc/MessageDialog.h"
@@ -29,6 +31,8 @@
 #include "Engine/MapBuildDataRegistry.h"
 #include "Framework/Commands/UICommandList.h"
 #include "Misc/ScopedSlowTask.h"
+#include "UObject/PackageFileSummary.h"
+#include "Serialization/CustomVersion.h"
 
 DEFINE_LOG_CATEGORY(LogProjectCleaner);
 
@@ -366,26 +370,35 @@ void FProjectCleanerModule::UpdateCleaner()
 void FProjectCleanerModule::UpdateCleanerData()
 {
 	Reset();
-
+	
 	if (!AssetRegistry) return;
+	
+	// 1) quering files and folder (FileManager)
+	// * Empty Folders
+	// * Project Files from "Content" folder
+	// * Config files from "Config" folder and all "Config" folders in installed "Plugins" folder
+	// * Source code files from "Source" folder and all "Source" folders in installed "Plugins" folder (.c, .cpp, .cs files)
 
-	ProjectCleanerUtility::GetEmptyFolders(EmptyFolders);
-	ProjectCleanerUtility::GetAllProjectFiles(AllProjectFiles);
-	ProjectCleanerUtility::GetInvalidProjectFiles(AssetRegistry, AllProjectFiles, CorruptedFiles, NonUAssetFiles);
+	ProjectCleanerHelper::GetEmptyFolders(EmptyFolders);
+	ProjectCleanerHelper::GetProjectFilesFromDisk(ProjectFilesFromDisk);
+	ProjectCleanerHelper::GetSourceCodeFilesFromDisk(SourceCodeFiles);
+	ProjectCleanerUtility::GetInvalidProjectFiles(AssetRegistry, ProjectFilesFromDisk, CorruptedFiles, NonUAssetFiles);
 
-	UAssetManager& AssetManager = UAssetManager::Get();
-	ProjectCleanerUtility::GetAllPrimaryAssetClasses(AssetManager, PrimaryAssetClasses);
-	ProjectCleanerUtility::GetAllAssets(AssetRegistry, UnusedAssets);
-	ProjectCleanerUtility::RemovePrimaryAssets(UnusedAssets, PrimaryAssetClasses);
-	ProjectCleanerUtility::RemoveUsedAssets(UnusedAssets, PrimaryAssetClasses);
-	ProjectCleanerUtility::RemoveMegascansPluginAssetsIfActive(UnusedAssets);
+
+
+	//UAssetManager& AssetManager = UAssetManager::Get();
+	//ProjectCleanerUtility::GetAllPrimaryAssetClasses(AssetManager, PrimaryAssetClasses);
+	//ProjectCleanerUtility::GetAllAssets(AssetRegistry, UnusedAssets);
+	//ProjectCleanerUtility::RemovePrimaryAssets(UnusedAssets, PrimaryAssetClasses);
+	//ProjectCleanerUtility::RemoveUsedAssets(UnusedAssets, PrimaryAssetClasses);
+	//ProjectCleanerUtility::RemoveMegascansPluginAssetsIfActive(UnusedAssets);
 
 	// filling graphs with unused assets data and creating relational map between them
-	RelationalMap.Rebuild(UnusedAssets);
-	ProjectCleanerUtility::RemoveAssetsUsedIndirectly(UnusedAssets, RelationalMap, SourceCodeAssets);
-	RelationalMap.Rebuild(UnusedAssets);
-	ProjectCleanerUtility::RemoveAssetsWithExternalReferences(UnusedAssets, RelationalMap);
-	RelationalMap.Rebuild(UnusedAssets);
+	//RelationalMap.Rebuild(UnusedAssets);
+	//ProjectCleanerUtility::RemoveAssetsUsedIndirectly(UnusedAssets, RelationalMap, SourceCodeAssets);
+	//RelationalMap.Rebuild(UnusedAssets);
+	//ProjectCleanerUtility::RemoveAssetsWithExternalReferences(UnusedAssets, RelationalMap);
+	//RelationalMap.Rebuild(UnusedAssets);
 	/*ProjectCleanerUtility::RemoveAssetsExcludedByUser(
 		AssetRegistry,
 		UnusedAssets,

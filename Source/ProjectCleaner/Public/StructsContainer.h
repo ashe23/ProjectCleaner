@@ -45,6 +45,11 @@ struct FSourceCodeFile
 	FName Name;
 	FString AbsoluteFilePath;
 	FString Content;
+
+	bool operator==(const FSourceCodeFile& Other) const
+	{
+		return Name.IsEqual(Other.Name);
+	}
 };
 
 struct FStandardCleanerText

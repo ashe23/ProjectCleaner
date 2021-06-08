@@ -130,15 +130,19 @@ private:
 	
 	/** Data Containers */ 
 	TArray<FAssetData> UnusedAssets;
-	TSet<FAssetData> ExcludedAssets;
 	TSet<FName> EmptyFolders;
 	TSet<FName> NonUAssetFiles;
 	TSet<FName> CorruptedFiles;
 	FCleaningStats CleaningStats;
 	TArray<TWeakObjectPtr<USourceCodeAsset>> SourceCodeAssets;
+
+
+	TSet<FAssetData> ExcludedAssets;
 	UExcludeDirectoriesFilterSettings* ExcludeDirectoryFilterSettings;
 	
 	/** Helper Containers **/
+	TSet<FName> ProjectFilesFromDisk;
+	TArray<FSourceCodeFile> SourceCodeFiles;
 	AssetRelationalMap RelationalMap;
 	FStandardCleanerText StandardCleanerText;
 	TArray<FName> AllProjectFiles;

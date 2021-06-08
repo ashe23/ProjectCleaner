@@ -9,7 +9,7 @@ public class ProjectCleaner : ModuleRules
 	public ProjectCleaner(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
-		
+
 		PublicIncludePaths.AddRange(
 			new string[]
 			{

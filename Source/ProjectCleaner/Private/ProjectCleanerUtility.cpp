@@ -36,6 +36,10 @@ void ProjectCleanerUtility::GetAllProjectFiles(TArray<FName>& AllProjectFiles)
 			{
 				AllFiles.Add(ConvertAbsolutePathToRelative(FilenameOrDirectory));
 			}
+			else
+			{
+
+			}
 			return true;
 		}
 
@@ -47,14 +51,14 @@ void ProjectCleanerUtility::GetAllProjectFiles(TArray<FName>& AllProjectFiles)
 	PlatformFile.IterateDirectoryRecursively(*FPaths::ProjectContentDir(), Visitor);
 }
 
-void ProjectCleanerUtility::GetInvalidProjectFiles(const FAssetRegistryModule* AssetRegistry, const TArray<FName>& AllProjectFiles, TSet<FName>& CorruptedFiles, TSet<FName>& NonUAssetFiles)
+void ProjectCleanerUtility::GetInvalidProjectFiles(const FAssetRegistryModule* AssetRegistry, const TSet<FName>& ProjectFilesFromDisk, TSet<FName>& CorruptedFiles, TSet<FName>& NonUAssetFiles)
 {
 	if (!AssetRegistry) return;
 
-	CorruptedFiles.Reserve(AllProjectFiles.Num());
-	NonUAssetFiles.Reserve(AllProjectFiles.Num());
+	CorruptedFiles.Reserve(ProjectFilesFromDisk.Num());
+	NonUAssetFiles.Reserve(ProjectFilesFromDisk.Num());
 	
-	for (const auto& ProjectFile : AllProjectFiles)
+	for (const auto& ProjectFile : ProjectFilesFromDisk)
 	{
 		auto FilePath = ProjectFile.ToString();
 		if (IsEngineExtension(FPaths::GetExtension(FilePath, false)))
@@ -109,62 +113,62 @@ void ProjectCleanerUtility::RemovePrimaryAssets(TArray<FAssetData>& UnusedAssets
 	});
 }
 
-int32 ProjectCleanerUtility::GetEmptyFolders(TSet<FName>& EmptyFolders)
-{
-	FScopedSlowTask SlowTask{ 1.0f, FText::FromString("Searching empty folders...") };
-	SlowTask.MakeDialog();
-
-	const auto ProjectRoot = FPaths::ProjectContentDir();
-	GetAllEmptyDirectories(
-		ProjectRoot / TEXT("*"),
-		EmptyFolders,
-		true
-	);
-
-	SlowTask.EnterProgressFrame(1.0f);
-
-	return EmptyFolders.Num();
-}
-
-bool ProjectCleanerUtility::GetAllEmptyDirectories(const FString& SearchPath,
-	TSet<FName>& Directories,
-	const bool bIsRootDirectory)
-{
-	bool AllSubDirsEmpty = true;
-	TArray<FString> ChildDirectories;
-	GetChildrenDirectories(SearchPath, ChildDirectories);
-
-	// Your Project Root directory (<Your Project>/Content) also contains "Collections" and "Developers" folders
-	// we dont need them
-	if (bIsRootDirectory)
-	{
-		RemoveDevsAndCollectionsDirectories(ChildDirectories);
-	}
-
-	for (const auto& Dir : ChildDirectories)
-	{
-		// "*" needed for unreal`s IFileManager class, without it , its not working.
-		auto NewPath = SearchPath;
-		NewPath.RemoveFromEnd(TEXT("*"));
-		NewPath += Dir / TEXT("*");
-		if (GetAllEmptyDirectories(NewPath, Directories, false))
-		{
-			NewPath.RemoveFromEnd(TEXT("*"));
-			Directories.Add(*NewPath);
-		}
-		else
-		{
-			AllSubDirsEmpty = false;
-		}
-	}
-
-	if (AllSubDirsEmpty && !HasFiles(SearchPath))
-	{
-		return true;
-	}
-
-	return false;
-}
+//int32 ProjectCleanerUtility::GetEmptyFolders(TSet<FName>& EmptyFolders)
+//{
+//	FScopedSlowTask SlowTask{ 1.0f, FText::FromString("Searching empty folders...") };
+//	SlowTask.MakeDialog();
+//
+//	const auto ProjectRoot = FPaths::ProjectContentDir();
+//	GetAllEmptyDirectories(
+//		ProjectRoot / TEXT("*"),
+//		EmptyFolders,
+//		true
+//	);
+//
+//	SlowTask.EnterProgressFrame(1.0f);
+//
+//	return EmptyFolders.Num();
+//}
+//
+//bool ProjectCleanerUtility::GetAllEmptyDirectories(const FString& SearchPath,
+//	TSet<FName>& Directories,
+//	const bool bIsRootDirectory)
+//{
+//	bool AllSubDirsEmpty = true;
+//	TArray<FString> ChildDirectories;
+//	GetChildrenDirectories(SearchPath, ChildDirectories);
+//
+//	// Your Project Root directory (<Your Project>/Content) also contains "Collections" and "Developers" folders
+//	// we dont need them
+//	if (bIsRootDirectory)
+//	{
+//		RemoveDevsAndCollectionsDirectories(ChildDirectories);
+//	}
+//
+//	for (const auto& Dir : ChildDirectories)
+//	{
+//		// "*" needed for unreal`s IFileManager class, without it , its not working.
+//		auto NewPath = SearchPath;
+//		NewPath.RemoveFromEnd(TEXT("*"));
+//		NewPath += Dir / TEXT("*");
+//		if (GetAllEmptyDirectories(NewPath, Directories, false))
+//		{
+//			NewPath.RemoveFromEnd(TEXT("*"));
+//			Directories.Add(*NewPath);
+//		}
+//		else
+//		{
+//			AllSubDirsEmpty = false;
+//		}
+//	}
+//
+//	if (AllSubDirsEmpty && !HasFiles(SearchPath))
+//	{
+//		return true;
+//	}
+//
+//	return false;
+//}
 
 void ProjectCleanerUtility::RemoveMegascansPluginAssetsIfActive(TArray<FAssetData>& UnusedAssets)
 {
@@ -384,26 +388,69 @@ FName ProjectCleanerUtility::ConvertPath(FName Path, const FName& From, const FN
 	return FName{ *Result };
 }
 
-bool ProjectCleanerUtility::HasFiles(const FString& SearchPath)
-{
-	TArray<FString> Files;
-	IFileManager::Get().FindFiles(Files, *SearchPath, true, false);
-
-	return Files.Num() > 0;
-}
-
-void ProjectCleanerUtility::GetChildrenDirectories(const FString& SearchPath, TArray<FString>& Output)
-{
-	IFileManager::Get().FindFiles(Output, *SearchPath, false, true);
-}
-
-void ProjectCleanerUtility::RemoveDevsAndCollectionsDirectories(TArray<FString>& Directories)
-{
-	Directories.RemoveAll([&](const FString& Val)
-	{
-		return Val.Contains("Developers") || Val.Contains("Collections");
-	});
-}
+//bool ProjectCleanerUtility::HasFiles(const FString& SearchPath)
+//{
+//	TArray<FString> Files;
+//	IFileManager::Get().FindFiles(Files, *SearchPath, true, false);
+//
+//	return Files.Num() > 0;
+//}
+//
+//bool ProjectCleanerUtility::HasFiles(const FName& SearchPath)
+//{
+//	return HasFiles(SearchPath.ToString());
+//}
+//
+//void ProjectCleanerUtility::GetSubFolders(const FString& Folder, TArray<FString>& Output)
+//{
+//	IFileManager::Get().FindFiles(Output, *Folder, false, true);
+//}
+//
+//void ProjectCleanerUtility::GetSubFolders(const FName& Folder, TArray<FString>& Output)
+//{
+//	GetSubFolders(Folder.ToString(), Output);
+//}
+//
+//bool ProjectCleanerUtility::IsEmptyFolder(const FName& Folder)
+//{		
+//	auto FolderPath = Folder.ToString() / TEXT("*");
+//	
+//	TArray<FString> SubFolders;
+//	GetSubFolders(FolderPath, SubFolders);
+//
+//	bool IsSubFoldersEmpty = true;
+//	TArray<FString> SubFolderFiles;
+//	for (const auto& SubFolder : SubFolders)
+//	{
+//		auto SubFolderPath = Folder.ToString() / TEXT("/");
+//		SubFolderPath.RemoveFromEnd(TEXT("*"));
+//		SubFolderPath += SubFolder / TEXT("*");
+//
+//		IFileManager::Get().FindFiles(SubFolderFiles, *SubFolderPath, true, true);
+//		
+//		if (SubFolderFiles.Num() != 0)
+//		{
+//			IsSubFoldersEmpty = false;
+//		}
+//
+//		SubFolderFiles.Reset();
+//	}
+//
+//	return IsSubFoldersEmpty;
+//}
+//
+//void ProjectCleanerUtility::GetChildrenDirectories(const FString& SearchPath, TArray<FString>& Output)
+//{
+//	IFileManager::Get().FindFiles(Output, *SearchPath, false, true);
+//}
+//
+//void ProjectCleanerUtility::RemoveDevsAndCollectionsDirectories(TArray<FString>& Directories)
+//{
+//	Directories.RemoveAll([&](const FString& Val)
+//	{
+//		return Val.Contains("Developers") || Val.Contains("Collections");
+//	});
+//}
 
 void ProjectCleanerUtility::DeleteEmptyFolders(TSet<FName>& EmptyFolders)
 {
