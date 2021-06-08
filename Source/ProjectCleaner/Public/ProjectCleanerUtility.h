@@ -19,11 +19,11 @@ class PROJECTCLEANER_API ProjectCleanerUtility
 {
 public:
 	static void GetAllAssets(const FAssetRegistryModule* AssetRegistry, TArray<FAssetData>& Assets);
-	static void GetAllProjectFiles(TArray<FName>& AllProjectFiles);
+	//static void GetAllProjectFiles(TArray<FName>& AllProjectFiles);
 	static void GetInvalidProjectFiles(const FAssetRegistryModule* AssetRegistry, const TSet<FName>& ProjectFilesFromDisk, TSet<FName>& CorruptedFiles, TSet<FName>& NonUAssetFiles);
 	static void GetAllPrimaryAssetClasses(UAssetManager& AssetManager, TSet<FName>& PrimaryAssetClasses);
 	//static int32 GetEmptyFolders(TSet<FName>& EmptyFolders);
-	static void RemovePrimaryAssets(TArray<FAssetData>& UnusedAssets, TSet<FName>& PrimaryAssetClasses);
+	//static void RemovePrimaryAssets(TArray<FAssetData>& UnusedAssets, TSet<FName>& PrimaryAssetClasses);
 	static void RemoveMegascansPluginAssetsIfActive(TArray<FAssetData>& UnusedAssets);
 	static void RemoveAssetsUsedIndirectly(TArray<FAssetData>& UnusedAssets, AssetRelationalMap& RelationalMap, TArray<TWeakObjectPtr<USourceCodeAsset>>& SourceCodeAssets);
 	static void RemoveAssetsWithExternalReferences(TArray<FAssetData>& UnusedAssets, AssetRelationalMap& RelationalMap);

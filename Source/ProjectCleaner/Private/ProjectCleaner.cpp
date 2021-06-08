@@ -208,53 +208,82 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 			+ SSplitter::Slot()
 			.Value(0.35f)
 			[
-				SNew(SScrollBox)
-				+ SScrollBox::Slot()
+				SNew(SOverlay)
+				+ SOverlay::Slot()
+				.Padding(FMargin{ 20.0f })
 				[
-					SNew(SVerticalBox)
-					+ SVerticalBox::Slot()
-					.Padding(CommonMargin)
-					.AutoHeight()
-					[
-						SAssignNew(StatisticsUI, SProjectCleanerBrowserStatisticsUI)
-						.Stats(CleaningStats)
-					]
-					+ SVerticalBox::Slot()
-					.Padding(CommonMargin)
-					.AutoHeight()
+					SNew(SScrollBox)
+					+ SScrollBox::Slot()
 					[
 						SNew(SBorder)
-						.Padding(FMargin(10))
 						.BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
 						[
-							SNew(SHorizontalBox)
-							+ SHorizontalBox::Slot()
-							.FillWidth(1.0f)
+							SNew(SVerticalBox)
+							+ SVerticalBox::Slot()
+							.Padding(CommonMargin)
+							.AutoHeight()
 							[
-								SNew(SButton)
-								.HAlign(HAlign_Center)
-								.VAlign(VAlign_Center)
-								.Text(FText::FromString("Refresh"))
-								.OnClicked_Raw(this, &FProjectCleanerModule::OnRefreshBtnClick)
+								SAssignNew(StatisticsUI, SProjectCleanerBrowserStatisticsUI)
+								.Stats(CleaningStats)
 							]
-							+ SHorizontalBox::Slot()
-							.FillWidth(1.0f)
-							.Padding(FMargin{ 40.0f, 0.0f, 40.0f, 0.0f })
+							+ SVerticalBox::Slot()
+							.Padding(CommonMargin)
+							.AutoHeight()
 							[
-								SNew(SButton)
-								.HAlign(HAlign_Center)
+								SNew(SHorizontalBox)
+								+ SHorizontalBox::Slot()
+								.MaxWidth(250.0f)
+								.HAlign(HAlign_Left)
 								.VAlign(VAlign_Center)
-								.Text(FText::FromString("Delete Unused Assets"))
-								.OnClicked_Raw(this, &FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick)
+								.Padding(2.f)
+								[
+									SNew(STextBlock)
+									.Text(LOCTEXT("scan_developer_and_collection_folders", "Scan Developer and Collection Folders"))
+								]
+								+ SHorizontalBox::Slot()
+								.AutoWidth()
+								.HAlign(HAlign_Left)
+								.VAlign(VAlign_Center)
+								.Padding(2.f)
+								[
+									SNew(SCheckBox)
+									.OnCheckStateChanged_Raw(this, &FProjectCleanerModule::OnScanDeveloperAndCollectionFolderChanged)
+									.IsChecked(ECheckBoxState::Unchecked)
+								]
 							]
-							+ SHorizontalBox::Slot()
-							.FillWidth(1.0f)
+							+ SVerticalBox::Slot()
+							.Padding(CommonMargin)
+							.AutoHeight()
 							[
-								SNew(SButton)
-								.HAlign(HAlign_Center)
-								.VAlign(VAlign_Center)
-								.Text(FText::FromString("Delete Empty Folders"))
-								.OnClicked_Raw(this, &FProjectCleanerModule::OnDeleteEmptyFolderClick)
+								SNew(SHorizontalBox)
+								+ SHorizontalBox::Slot()
+								.FillWidth(1.0f)
+								[
+									SNew(SButton)
+									.HAlign(HAlign_Center)
+									.VAlign(VAlign_Center)
+									.Text(FText::FromString("Refresh"))
+									.OnClicked_Raw(this, &FProjectCleanerModule::OnRefreshBtnClick)
+								]
+								+ SHorizontalBox::Slot()
+								.FillWidth(1.0f)
+								.Padding(FMargin{ 40.0f, 0.0f, 40.0f, 0.0f })
+								[
+									SNew(SButton)
+									.HAlign(HAlign_Center)
+									.VAlign(VAlign_Center)
+									.Text(FText::FromString("Delete Unused Assets"))
+									.OnClicked_Raw(this, &FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick)
+								]
+								+ SHorizontalBox::Slot()
+								.FillWidth(1.0f)
+								[
+									SNew(SButton)
+									.HAlign(HAlign_Center)
+									.VAlign(VAlign_Center)
+									.Text(FText::FromString("Delete Empty Folders"))
+									.OnClicked_Raw(this, &FProjectCleanerModule::OnDeleteEmptyFolderClick)
+								]
 							]
 						]
 					]
@@ -358,6 +387,20 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSourceCodeAssetsTabSpawn(const FSp
 		];
 }
 
+void FProjectCleanerModule::OnScanDeveloperAndCollectionFolderChanged(ECheckBoxState State)
+{
+	bScanDeveloperAndCollectionFolders = (State == ECheckBoxState::Checked);
+
+	UpdateCleanerData();
+
+	UE_LOG(LogProjectCleaner, Warning, TEXT("Changed State"));
+}
+
+ECheckBoxState FProjectCleanerModule::IsScanDeveloperAndCollectionCheckBoxChecked() const
+{
+	return bScanDeveloperAndCollectionFolders ?  ECheckBoxState::Checked : ECheckBoxState::Unchecked;
+}
+
 void FProjectCleanerModule::UpdateCleaner()
 {
 	ProjectCleanerUtility::SaveAllAssets();
@@ -373,25 +416,46 @@ void FProjectCleanerModule::UpdateCleanerData()
 	
 	if (!AssetRegistry) return;
 	
-	// 1) quering files and folder (FileManager)
+	// 1) Querying files and folder (FileManager)
 	// * Empty Folders
 	// * Project Files from "Content" folder
 	// * Config files from "Config" folder and all "Config" folders in installed "Plugins" folder
 	// * Source code files from "Source" folder and all "Source" folders in installed "Plugins" folder (.c, .cpp, .cs files)
-
 	ProjectCleanerHelper::GetEmptyFolders(EmptyFolders);
 	ProjectCleanerHelper::GetProjectFilesFromDisk(ProjectFilesFromDisk);
 	ProjectCleanerHelper::GetSourceCodeFilesFromDisk(SourceCodeFiles);
+
+	// 2) Filtering files that are not part of engine, or possibly corrupted (NonUassetFiles, CorruptedFiles)
 	ProjectCleanerUtility::GetInvalidProjectFiles(AssetRegistry, ProjectFilesFromDisk, CorruptedFiles, NonUAssetFiles);
 
+	// 3) Querying all primary asset classes (this is for later use, those type of asset and their dependencies wont be deleted)
+	UAssetManager& AssetManager = UAssetManager::Get();
+	ProjectCleanerUtility::GetAllPrimaryAssetClasses(AssetManager, PrimaryAssetClasses);
 
+	// 4) Now we get all assets from AssetRegistry
+	ProjectCleanerUtility::GetAllAssets(AssetRegistry, UnusedAssets);
 
-	//UAssetManager& AssetManager = UAssetManager::Get();
-	//ProjectCleanerUtility::GetAllPrimaryAssetClasses(AssetManager, PrimaryAssetClasses);
-	//ProjectCleanerUtility::GetAllAssets(AssetRegistry, UnusedAssets);
+	// 5) Removing assets from deletion list that are currently in use
+	// In use cases:
+	// * PrimaryAssets and Assets used by PrimaryAsset
+	// * Removing Megascans Assets if Plugin is active
+	ProjectCleanerUtility::RemoveUsedAssets(UnusedAssets, PrimaryAssetClasses);
+	ProjectCleanerUtility::RemoveMegascansPluginAssetsIfActive(UnusedAssets);
+
+	// 6) remove assets from collection and developer folders if user picked that option
+	if (!bScanDeveloperAndCollectionFolders)
+	{
+		const auto DeveloperFolder = ProjectCleanerUtility::ConvertAbsolutePathToRelative(FName{ FPaths::ProjectContentDir() + TEXT("Developers") });
+		const auto CollectionsFolder = ProjectCleanerUtility::ConvertAbsolutePathToRelative(FName{ FPaths::ProjectContentDir() + TEXT("Collections") });
+
+		UnusedAssets.RemoveAll([&](const FAssetData& Elem) {
+			return
+				Elem.PackagePath.ToString().Contains(DeveloperFolder.ToString()) ||
+				Elem.PackagePath.ToString().Contains(CollectionsFolder.ToString());
+		});
+	}
+
 	//ProjectCleanerUtility::RemovePrimaryAssets(UnusedAssets, PrimaryAssetClasses);
-	//ProjectCleanerUtility::RemoveUsedAssets(UnusedAssets, PrimaryAssetClasses);
-	//ProjectCleanerUtility::RemoveMegascansPluginAssetsIfActive(UnusedAssets);
 
 	// filling graphs with unused assets data and creating relational map between them
 	//RelationalMap.Rebuild(UnusedAssets);

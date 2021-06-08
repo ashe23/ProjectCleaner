@@ -25,31 +25,31 @@ void ProjectCleanerUtility::GetAllAssets(const FAssetRegistryModule* AssetRegist
 	AssetRegistry->Get().GetAssetsByPath(FName{ "/Game" }, Assets, true);
 }
 
-void ProjectCleanerUtility::GetAllProjectFiles(TArray<FName>& AllProjectFiles)
-{
-	struct DirectoryVisitor : IPlatformFile::FDirectoryVisitor
-	{
-		DirectoryVisitor(TArray<FName>& Files) : AllFiles(Files) {}
-		virtual bool Visit(const TCHAR* FilenameOrDirectory, bool bIsDirectory) override
-		{
-			if (!bIsDirectory)
-			{
-				AllFiles.Add(ConvertAbsolutePathToRelative(FilenameOrDirectory));
-			}
-			else
-			{
-
-			}
-			return true;
-		}
-
-		TArray<FName>& AllFiles;
-	};
-
-	DirectoryVisitor Visitor{AllProjectFiles};
-	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
-	PlatformFile.IterateDirectoryRecursively(*FPaths::ProjectContentDir(), Visitor);
-}
+//void ProjectCleanerUtility::GetAllProjectFiles(TArray<FName>& AllProjectFiles)
+//{
+//	struct DirectoryVisitor : IPlatformFile::FDirectoryVisitor
+//	{
+//		DirectoryVisitor(TArray<FName>& Files) : AllFiles(Files) {}
+//		virtual bool Visit(const TCHAR* FilenameOrDirectory, bool bIsDirectory) override
+//		{
+//			if (!bIsDirectory)
+//			{
+//				AllFiles.Add(ConvertAbsolutePathToRelative(FilenameOrDirectory));
+//			}
+//			else
+//			{
+//
+//			}
+//			return true;
+//		}
+//
+//		TArray<FName>& AllFiles;
+//	};
+//
+//	DirectoryVisitor Visitor{AllProjectFiles};
+//	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
+//	PlatformFile.IterateDirectoryRecursively(*FPaths::ProjectContentDir(), Visitor);
+//}
 
 void ProjectCleanerUtility::GetInvalidProjectFiles(const FAssetRegistryModule* AssetRegistry, const TSet<FName>& ProjectFilesFromDisk, TSet<FName>& CorruptedFiles, TSet<FName>& NonUAssetFiles)
 {
@@ -103,15 +103,15 @@ void ProjectCleanerUtility::GetAllPrimaryAssetClasses(UAssetManager& AssetManage
 	}
 }
 
-void ProjectCleanerUtility::RemovePrimaryAssets(TArray<FAssetData>& UnusedAssets, TSet<FName>& PrimaryAssetClasses)
-{
-	UnusedAssets.RemoveAll([&](const FAssetData& Elem)
-	{
-		return
-			PrimaryAssetClasses.Contains(Elem.AssetClass) ||
-			Elem.AssetClass.IsEqual(UMapBuildDataRegistry::StaticClass()->GetFName());
-	});
-}
+//void ProjectCleanerUtility::RemovePrimaryAssets(TArray<FAssetData>& UnusedAssets, TSet<FName>& PrimaryAssetClasses)
+//{
+//	UnusedAssets.RemoveAll([&](const FAssetData& Elem)
+//	{
+//		return
+//			PrimaryAssetClasses.Contains(Elem.AssetClass) ||
+//			Elem.AssetClass.IsEqual(UMapBuildDataRegistry::StaticClass()->GetFName());
+//	});
+//}
 
 //int32 ProjectCleanerUtility::GetEmptyFolders(TSet<FName>& EmptyFolders)
 //{
@@ -645,7 +645,7 @@ void ProjectCleanerUtility::RemoveUsedAssets(TArray<FAssetData>& Assets, const T
 		{
 			bool bIsAlreadyInSet = false;
 			UsedAssets.Add(Dependency.PackageName, &bIsAlreadyInSet);
-			if (bIsAlreadyInSet == false && Dependency.IsValid())
+			if (!bIsAlreadyInSet && Dependency.IsValid())
 			{
 				PackageNamesToProcess.Add(Dependency.PackageName);
 			}

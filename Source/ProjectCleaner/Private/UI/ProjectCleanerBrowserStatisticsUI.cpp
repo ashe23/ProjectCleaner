@@ -25,12 +25,7 @@ void SProjectCleanerBrowserStatisticsUI::RefreshUIContent()
 {
 	const float MaxHeight = 40.0f;
 	
-	WidgetRef = SNew(SBorder)
-	.Padding(FMargin(10.0f))
-	.HAlign(HAlign_Fill)
-	.VAlign(VAlign_Fill)
-	.BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
-	[
+	WidgetRef =
 		SNew(SOverlay)
 		+ SOverlay::Slot()
 		[
@@ -187,8 +182,7 @@ void SProjectCleanerBrowserStatisticsUI::RefreshUIContent()
 					.Text_Lambda([this]() -> FText { return FText::AsNumber(Stats.CorruptedFilesNum); })
 				]
 			]
-		]
-	];
+		];
 
 	ChildSlot
 	[

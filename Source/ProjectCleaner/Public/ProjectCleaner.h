@@ -58,6 +58,9 @@ private:
 	TSharedRef<SDockTab> OnNonUAssetFilesTabSpawn(const FSpawnTabArgs& SpawnTabArgs);
 	TSharedRef<SDockTab> OnCorruptedFilesTabSpawn(const FSpawnTabArgs& SpawnTabArgs);
 	TSharedRef<SDockTab> OnSourceCodeAssetsTabSpawn(const FSpawnTabArgs& SpawnTabArgs);
+	void OnScanDeveloperAndCollectionFolderChanged(ECheckBoxState State);
+	ECheckBoxState IsScanDeveloperAndCollectionCheckBoxChecked() const;
+	bool bScanDeveloperAndCollectionFolders = false;
 
 	/** Cleaner **/
 	
@@ -113,6 +116,7 @@ private:
 	FReply OnRefreshBtnClick();
 	FReply OnDeleteUnusedAssetsBtnClick();
 	FReply OnDeleteEmptyFolderClick();
+	
 	
 	/** UI */
 	TSharedPtr<FUICommandList> PluginCommands;
