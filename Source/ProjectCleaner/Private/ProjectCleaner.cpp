@@ -445,17 +445,8 @@ void FProjectCleanerModule::UpdateCleanerData()
 	// 6) remove assets from collection and developer folders if user picked that option
 	if (!bScanDeveloperAndCollectionFolders)
 	{
-		const auto DeveloperFolder = ProjectCleanerUtility::ConvertAbsolutePathToRelative(FName{ FPaths::ProjectContentDir() + TEXT("Developers") });
-		const auto CollectionsFolder = ProjectCleanerUtility::ConvertAbsolutePathToRelative(FName{ FPaths::ProjectContentDir() + TEXT("Collections") });
-
-		UnusedAssets.RemoveAll([&](const FAssetData& Elem) {
-			return
-				Elem.PackagePath.ToString().Contains(DeveloperFolder.ToString()) ||
-				Elem.PackagePath.ToString().Contains(CollectionsFolder.ToString());
-		});
+		ProjectCleanerUtility::RemoveContentFromDeveloperAndCollectionsFolders(UnusedAssets, EmptyFolders);
 	}
-
-	//ProjectCleanerUtility::RemovePrimaryAssets(UnusedAssets, PrimaryAssetClasses);
 
 	// filling graphs with unused assets data and creating relational map between them
 	//RelationalMap.Rebuild(UnusedAssets);

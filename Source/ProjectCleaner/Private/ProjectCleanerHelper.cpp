@@ -12,7 +12,11 @@
 void ProjectCleanerHelper::GetEmptyFolders(TSet<FName>& EmptyFolders)
 {
 	const auto ProjectRoot = FPaths::ProjectContentDir() / TEXT("*");
-	FindEmptyFolders(ProjectRoot, EmptyFolders, true);
+	FindEmptyFolders(ProjectRoot, EmptyFolders);
+
+	// remove Developers and Collections folder
+	EmptyFolders.Remove(FName{ FPaths::ProjectContentDir() + TEXT("Developers/") });
+	EmptyFolders.Remove(FName{ FPaths::ProjectContentDir() + TEXT("Collections/") });
 }
 
 void ProjectCleanerHelper::GetProjectFilesFromDisk(TSet<FName>& ProjectFiles)
@@ -107,21 +111,11 @@ void ProjectCleanerHelper::GetSourceCodeFilesFromDisk(TArray<FSourceCodeFile>& S
 }
 
 // private
-bool ProjectCleanerHelper::FindEmptyFolders(const FString& FolderPath, TSet<FName>& EmptyFolders, const bool IsProjectRootFolder)
+bool ProjectCleanerHelper::FindEmptyFolders(const FString& FolderPath, TSet<FName>& EmptyFolders)
 {
 	bool IsSubFoldersEmpty = true;
 	TArray<FString> SubFolders;
 	IFileManager::Get().FindFiles(SubFolders, *FolderPath, false, true);
-
-	// Your Project Root directory ({Your Project}/Content) also contains "Collections" and "Developers" folders
-	// we wont delete them
-	if (IsProjectRootFolder)
-	{
-		SubFolders.RemoveAll([&](const FString& Val)
-		{
-			return Val.Contains("Developers") || Val.Contains("Collections");
-		});
-	}
 
 	for (const auto& SubFolder : SubFolders)
 	{
@@ -129,7 +123,7 @@ bool ProjectCleanerHelper::FindEmptyFolders(const FString& FolderPath, TSet<FNam
 		auto NewPath = FolderPath;
 		NewPath.RemoveFromEnd(TEXT("*"));
 		NewPath += SubFolder / TEXT("*");
-		if (FindEmptyFolders(NewPath, EmptyFolders, false))
+		if (FindEmptyFolders(NewPath, EmptyFolders))
 		{
 			NewPath.RemoveFromEnd(TEXT("*"));
 			EmptyFolders.Add(*NewPath);

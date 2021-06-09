@@ -13,5 +13,5 @@ public:
 	static void GetProjectFilesFromDisk(TSet<FName>& ProjectFiles);
 	static void GetSourceCodeFilesFromDisk(TArray<FSourceCodeFile>& SourceCodeFiles);
 private:
-	static bool FindEmptyFolders(const FString& FolderPath, TSet<FName>& EmptyFolders, const bool IsProjectRootFolder);
+	static bool FindEmptyFolders(const FString& FolderPath, TSet<FName>& EmptyFolders);
 };
