@@ -103,7 +103,7 @@ void ProjectCleanerHelper::GetSourceCodeFilesFromDisk(TArray<FSourceCodeFile>& S
 		{
 			FSourceCodeFile SourceCodeFile;
 			SourceCodeFile.Name = FName{ FPaths::GetCleanFilename(File) };
-			SourceCodeFile.AbsoluteFilePath = File;
+			SourceCodeFile.AbsoluteFilePath = FPaths::ConvertRelativePathToFull(File);
 			FFileHelper::LoadFileToString(SourceCodeFile.Content, *File);
 			SourceCodeFiles.Add(SourceCodeFile);
 		}

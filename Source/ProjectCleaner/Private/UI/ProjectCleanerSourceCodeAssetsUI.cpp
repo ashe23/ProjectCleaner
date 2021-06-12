@@ -35,7 +35,7 @@ void SProjectCleanerSourceCodeAssetsUI::RefreshUIContent()
 				SNew(STextBlock)
 				.AutoWrapText(true)
 				.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
-				.Text(LOCTEXT("source_code_assets_title", "Assets used in source code files"))
+				.Text(LOCTEXT("source_code_assets_title", "Assets used in source code files or config files etc."))
 			]
 			+ SVerticalBox::Slot()
 			.Padding(FMargin{0.0f, 10.0f})
@@ -89,7 +89,7 @@ void SProjectCleanerSourceCodeAssetsUI::RefreshUIContent()
 						.FillWidth(0.6f)
 						[
 							SNew(STextBlock)
-							.Text(LOCTEXT("SourceCodePath", "SourceCode file path where asset used"))
+							.Text(LOCTEXT("SourceCodePath", "Source file path"))
 						]
 					)
 				]

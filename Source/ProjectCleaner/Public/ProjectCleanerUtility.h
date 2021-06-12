@@ -22,7 +22,7 @@ public:
 	static void GetInvalidProjectFiles(const FAssetRegistryModule* AssetRegistry, const TSet<FName>& ProjectFilesFromDisk, TSet<FName>& CorruptedFiles, TSet<FName>& NonUAssetFiles);
 	static void GetAllPrimaryAssetClasses(UAssetManager& AssetManager, TSet<FName>& PrimaryAssetClasses);
 	static void RemoveMegascansPluginAssetsIfActive(TArray<FAssetData>& UnusedAssets);
-	static void RemoveAssetsUsedIndirectly(TArray<FAssetData>& UnusedAssets, AssetRelationalMap& RelationalMap, TArray<TWeakObjectPtr<USourceCodeAsset>>& SourceCodeAssets);
+	static void RemoveAssetsUsedIndirectly(TArray<FAssetData>& UnusedAssets, AssetRelationalMap& RelationalMap, TArray<FSourceCodeFile> SourceCodeFiles, TArray<TWeakObjectPtr<USourceCodeAsset>>& SourceCodeAssets);
 	static void RemoveAssetsWithExternalReferences(TArray<FAssetData>& UnusedAssets, AssetRelationalMap& RelationalMap);
 	static void RemoveUsedAssets(TArray<FAssetData>& Assets, const TSet<FName>& PrimaryAssetClasses);
 	static void RemoveContentFromDeveloperAndCollectionsFolders(TArray<FAssetData>& UnusedAssets, TSet<FName>& EmptyFolders);

@@ -255,6 +255,13 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 							.Padding(CommonMargin)
 							.AutoHeight()
 							[
+								SAssignNew(DirectoryExclusionUI, SProjectCleanerDirectoryExclusionUI)
+								.ExcludeDirectoriesFilterSettings(ExcludeDirectoryFilterSettings)
+							]
+							+ SVerticalBox::Slot()
+							.Padding(CommonMargin)
+							.AutoHeight()
+							[
 								SNew(SHorizontalBox)
 								+ SHorizontalBox::Slot()
 								.FillWidth(1.0f)
@@ -295,8 +302,8 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 			//		.Padding(CommonMargin)
 			//		.AutoHeight()
 			//		[
-			//			SAssignNew(DirectoryExclusionUI, SProjectCleanerDirectoryExclusionUI)
-			//			.ExcludeDirectoriesFilterSettings(ExcludeDirectoryFilterSettings)
+						/*SAssignNew(DirectoryExclusionUI, SProjectCleanerDirectoryExclusionUI)
+						.ExcludeDirectoriesFilterSettings(ExcludeDirectoryFilterSettings)*/
 			//		]
 			//	]
 			//	+ SScrollBox::Slot()
@@ -449,8 +456,10 @@ void FProjectCleanerModule::UpdateCleanerData()
 	}
 
 	// filling graphs with unused assets data and creating relational map between them
-	//RelationalMap.Rebuild(UnusedAssets);
-	//ProjectCleanerUtility::RemoveAssetsUsedIndirectly(UnusedAssets, RelationalMap, SourceCodeAssets);
+	RelationalMap.Rebuild(UnusedAssets);
+	
+	// 7) removing assets that used indirectly (in source code, or config files etc.)
+	ProjectCleanerUtility::RemoveAssetsUsedIndirectly(UnusedAssets, RelationalMap, SourceCodeFiles, SourceCodeAssets);
 	//RelationalMap.Rebuild(UnusedAssets);
 	//ProjectCleanerUtility::RemoveAssetsWithExternalReferences(UnusedAssets, RelationalMap);
 	//RelationalMap.Rebuild(UnusedAssets);
@@ -462,6 +471,9 @@ void FProjectCleanerModule::UpdateCleanerData()
 		RelationalMap,
 		ExcludeDirectoryFilterSettings
 	);*/
+
+	// after all actions we rebuilding relational map to match unused assets
+	//RelationalMap.Rebuild(UnusedAssets);
 
 	UpdateStats();
 }
@@ -516,9 +528,12 @@ void FProjectCleanerModule::Reset()
 	SourceCodeAssets.Reset();
 	CorruptedFiles.Reset();
 	EmptyFolders.Reset();
-	AllProjectFiles.Reset();
+	//AllProjectFiles.Reset();
 	ExcludedAssets.Reset();
 	RelationalMap.Reset();
+	SourceCodeFiles.Reset();
+	PrimaryAssetClasses.Reset();
+	ProjectFilesFromDisk.Reset();
 }
 
 void FProjectCleanerModule::UpdateContentBrowser() const

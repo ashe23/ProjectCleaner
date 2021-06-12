@@ -91,77 +91,10 @@ void ProjectCleanerUtility::RemoveMegascansPluginAssetsIfActive(TArray<FAssetDat
 void ProjectCleanerUtility::RemoveAssetsUsedIndirectly(
 	TArray<FAssetData>& UnusedAssets,
 	AssetRelationalMap& RelationalMap,
+	TArray<FSourceCodeFile> SourceCodeFiles,
 	TArray<TWeakObjectPtr<USourceCodeAsset>>& SourceCodeAssets)
 {
-	// assets used indirectly are those used in source code files or config files
-	
-	// 1) find all source and config files
-	TArray<FString> AllFiles;
-	AllFiles.Reserve(200);
-
-	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
-
-	// 2) finding all source files in main project "Source" directory (<yourproject>/Source/*)
-	TArray<FString> FilesToScan;
-	PlatformFile.FindFilesRecursively(FilesToScan, *FPaths::GameSourceDir(), TEXT(".cs"));
-	PlatformFile.FindFilesRecursively(FilesToScan, *FPaths::GameSourceDir(), TEXT(".cpp"));
-	PlatformFile.FindFilesRecursively(FilesToScan, *FPaths::GameSourceDir(), TEXT(".h"));
-	PlatformFile.FindFilesRecursively(FilesToScan, *FPaths::ProjectConfigDir(), TEXT(".ini"));
-	AllFiles.Append(FilesToScan);
-
-	// 3) we should find all source files in plugins folder (<yourproject>/Plugins/*)
-	// But we should include only "Source" directories in our scanning
-	TArray<FString> ProjectPluginsFiles;
-	// finding all installed plugins in "Plugins" directory
-	struct DirectoryVisitor : public IPlatformFile::FDirectoryVisitor
-	{
-		virtual bool Visit(const TCHAR* FilenameOrDirectory, bool bIsDirectory) override
-		{
-			if (bIsDirectory)
-			{
-				InstalledPlugins.Add(FilenameOrDirectory);
-			}
-
-			return true;
-		}
-
-		TArray<FString> InstalledPlugins;
-	};
-
-	DirectoryVisitor Visitor;
-	PlatformFile.IterateDirectory(*FPaths::ProjectPluginsDir(), Visitor);
-
-	// 4) for every installed plugin we scanning only "Source" directories
-	for (const auto& Dir : Visitor.InstalledPlugins)
-	{
-		const FString PluginSourcePathDir = Dir + "/Source";
-		const FString PluginConfigPathDir = Dir + "/Config";
-		
-		PlatformFile.FindFilesRecursively(ProjectPluginsFiles, *PluginSourcePathDir, TEXT(".cs"));
-		PlatformFile.FindFilesRecursively(ProjectPluginsFiles, *PluginSourcePathDir, TEXT(".cpp"));
-		PlatformFile.FindFilesRecursively(ProjectPluginsFiles, *PluginSourcePathDir, TEXT(".h"));
-		PlatformFile.FindFilesRecursively(ProjectPluginsFiles, *PluginConfigPathDir, TEXT(".ini"));
-	}
-
-	AllFiles.Append(ProjectPluginsFiles);
-
-	// 5) loading file contents
-	TArray<FSourceCodeFile> SourceCodeFiles;
-	SourceCodeFiles.Reserve(AllFiles.Num());
-
-	for (const auto& File : AllFiles)
-	{
-		if (PlatformFile.FileExists(*File))
-		{
-			FSourceCodeFile SourceCodeFile;
-			SourceCodeFile.Name = FName{ FPaths::GetCleanFilename(File) };
-			SourceCodeFile.AbsoluteFilePath = File;
-			FFileHelper::LoadFileToString(SourceCodeFile.Content, *File);
-			SourceCodeFiles.Add(SourceCodeFile);
-		}
-	}
-
-	// 6) parsing files and checking if assets used there
+	// 1) parsing files and checking if assets used there
 	TSet<FName> FoundedAssets;
 	FoundedAssets.Reserve(UnusedAssets.Num());
 	
@@ -182,7 +115,7 @@ void ProjectCleanerUtility::RemoveAssetsUsedIndirectly(
 	TSet<FName> FilteredAssets;
 	FilteredAssets.Reserve(UnusedAssets.Num());
 	
-	// 7) for founded assets find all linked assets
+	// 2) for founded assets find all linked assets
 	for (const auto& FoundedAsset : FoundedAssets)
 	{
 		const auto AssetNode = RelationalMap.FindByPackageName(FoundedAsset);
@@ -195,7 +128,7 @@ void ProjectCleanerUtility::RemoveAssetsUsedIndirectly(
 		}
 	}
 	
-	// 8) remove founded assets from unused assets list
+	// 3) remove founded assets from unused assets list
 	UnusedAssets.RemoveAll([&](const FAssetData& Elem)
 	{
 		return FilteredAssets.Contains(Elem.PackageName);

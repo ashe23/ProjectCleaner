@@ -125,7 +125,7 @@ void SProjectCleanerBrowserStatisticsUI::RefreshUIContent()
 					SNew(STextBlock)
 					.AutoWrapText(true)
 					.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
-					.Text(LOCTEXT("sourcecode_assets", "Assets Used In Source Code Files - "))
+					.Text(LOCTEXT("sourcecode_assets", "Assets used Indirectly - "))
 				]
 				+ SHorizontalBox::Slot()
 				.AutoWidth()

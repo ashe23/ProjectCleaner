@@ -208,6 +208,7 @@ void SProjectCleanerUnusedAssetsBrowserUI::RefreshUIContent()
 					.Text(LOCTEXT("UnusedAssets", "All Unused Assets"))
 				]
 				+ SVerticalBox::Slot()
+				.Padding(FMargin{0.0f, 10.0f})
 				.AutoHeight()
 				[
 					ContentBrowser.Get().CreateAssetPicker(Config)

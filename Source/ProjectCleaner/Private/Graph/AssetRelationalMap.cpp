@@ -83,7 +83,7 @@ void AssetRelationalMap::GetRelatedAssets(
 	// todo:ashe23 maybe remove also assets that are outside "/Game" folder
 	RelatedAssets.RemoveAll([&] (const FName& Elem)
 	{
-		return Elem.IsEqual(PackageName);
+		return Elem.IsEqual(PackageName) || !Elem.ToString().StartsWith("/Game");
 	});
 }
 
