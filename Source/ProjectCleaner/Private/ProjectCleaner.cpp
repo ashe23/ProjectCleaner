@@ -580,7 +580,6 @@ void FProjectCleanerModule::Reset()
 	CorruptedFiles.Reset();
 	EmptyFolders.Reset();
 	LinkedAssets.Reset();
-	//AllProjectFiles.Reset();
 	ExcludedAssets.Reset();
 	RelationalMap.Reset();
 	SourceCodeFiles.Reset();
@@ -650,18 +649,6 @@ void FProjectCleanerModule::OnUserExcludedAssets(const TArray<FAssetData>& Asset
 void FProjectCleanerModule::OnUserIncludedAssets(const TArray<FAssetData>& Assets)
 {
 	if (!Assets.Num()) return;
-
-	/*TArray<FAssetData> FilteredAssets;
-	for (const auto& Asset : Assets)
-	{
-		const auto& Node = RelationalMap.FindByPackageName(Asset.PackageName);
-		if(!Node) continue;
-
-		for (const auto& LinkedAsset : Node->LinkedAssetsData)
-		{
-			FilteredAssets.AddUnique(*LinkedAsset);
-		}
-	}*/
 
 	UserExcludedAssets.RemoveAll([&](const FAssetData& Elem)
 	{

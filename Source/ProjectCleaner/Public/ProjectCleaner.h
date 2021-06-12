@@ -150,7 +150,6 @@ private:
 	TArray<FSourceCodeFile> SourceCodeFiles;
 	AssetRelationalMap RelationalMap;
 	FStandardCleanerText StandardCleanerText;
-	//TArray<FName> AllProjectFiles;
 	TSet<FName> PrimaryAssetClasses;
 	TArray<FAssetData> UserExcludedAssets;
 
