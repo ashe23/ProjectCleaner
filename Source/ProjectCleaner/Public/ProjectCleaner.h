@@ -142,6 +142,7 @@ private:
 
 
 	TSet<FAssetData> ExcludedAssets;
+	TArray<FAssetData> LinkedAssets;
 	UExcludeDirectoriesFilterSettings* ExcludeDirectoryFilterSettings;
 	
 	/** Helper Containers **/

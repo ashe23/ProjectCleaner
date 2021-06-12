@@ -14,6 +14,7 @@
 void SProjectCleanerExcludedAssetsUI::Construct(const FArguments& InArgs)
 {
 	SetExcludedAssets(InArgs._ExcludedAssets);
+	SetLinkedAssets(InArgs._LinkedAssets);
 
 	FProjectCleanerCommands::Register();
 
@@ -46,6 +47,19 @@ void SProjectCleanerExcludedAssetsUI::SetExcludedAssets(const TSet<FAssetData>& 
 	for(const auto& Asset : Assets)
 	{
 		ExcludedAssets.Add(Asset);
+	}
+
+	RefreshUIContent();
+}
+
+void SProjectCleanerExcludedAssetsUI::SetLinkedAssets(const TArray<FAssetData>& Assets)
+{
+	LinkedAssets.Reset();
+	LinkedAssets.Reserve(Assets.Num());
+
+	for (const auto& Asset : Assets)
+	{
+		LinkedAssets.Add(Asset);
 	}
 
 	RefreshUIContent();
@@ -97,11 +111,42 @@ void SProjectCleanerExcludedAssetsUI::RefreshUIContent()
 	}
 	Config.Filter = Filter;
 
+	// linked assets asset picker
+	FAssetPickerConfig LinkedAssetsConfig;
+	LinkedAssetsConfig.InitialAssetViewType = EAssetViewType::Tile;
+	LinkedAssetsConfig.bAddFilterUI = false;
+	LinkedAssetsConfig.bShowPathInColumnView = true;
+	LinkedAssetsConfig.bSortByPathInColumnView = true;
+	LinkedAssetsConfig.bForceShowEngineContent = false;
+	LinkedAssetsConfig.bShowBottomToolbar = false;
+	LinkedAssetsConfig.bCanShowDevelopersFolder = true;
+	LinkedAssetsConfig.bForceShowEngineContent = false;
+	LinkedAssetsConfig.bCanShowClasses = false;
+	LinkedAssetsConfig.bAllowDragging = false;
+	LinkedAssetsConfig.AssetShowWarningText = FText::FromName("No assets");
+
+	FARFilter LinkedAssetsFilter;
+	if (LinkedAssets.Num() == 0)
+	{
+		LinkedAssetsFilter.TagsAndValues.Add(FName{ "ProjectCleanerEmptyTag" }, FString{ "ProjectCleanerEmptyTag" });
+	}
+	else
+	{
+		LinkedAssetsFilter.bRecursiveClasses = true;
+		LinkedAssetsFilter.RecursiveClassesExclusionSet.Add(UWorld::StaticClass()->GetFName());
+	}
+	LinkedAssetsFilter.PackageNames.Reserve(LinkedAssets.Num());
+	for (const auto& Asset : LinkedAssets)
+	{
+		LinkedAssetsFilter.PackageNames.Add(Asset.PackageName);
+	}
+	LinkedAssetsConfig.Filter = LinkedAssetsFilter;
+
 	FContentBrowserModule& ContentBrowser = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
 	WidgetRef = SNew(SVerticalBox)
 	+ SVerticalBox::Slot()
 	.AutoHeight()
-	.Padding(FMargin(20.0f, 5.0f))
+	.Padding(FMargin(0.0f, 5.0f))
 	[
 		SNew(STextBlock)
 		.AutoWrapText(true)
@@ -110,7 +155,7 @@ void SProjectCleanerExcludedAssetsUI::RefreshUIContent()
 	]
 	+SVerticalBox::Slot()
 	.AutoHeight()
-	.Padding(FMargin(20.0f, 0.0f))
+	//.Padding(FMargin(20.0f, 0.0f))
 	[
 		SNew(STextBlock)
 		.AutoWrapText(true)
@@ -119,9 +164,24 @@ void SProjectCleanerExcludedAssetsUI::RefreshUIContent()
 	]
 	+ SVerticalBox::Slot()
 	.AutoHeight()
-	.Padding(20.0f)
+	//.Padding(20.0f)
 	[
 		ContentBrowser.Get().CreateAssetPicker(Config)
+	]
+	+ SVerticalBox::Slot()
+	.AutoHeight()
+	.Padding(FMargin(0.0f, 5.0f))
+	[
+		SNew(STextBlock)
+		.AutoWrapText(true)
+		.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
+		.Text(LOCTEXT("linked_assets", "Linked Assets"))
+	]
+	+ SVerticalBox::Slot()
+	.AutoHeight()
+	//.Padding(20.0f)
+	[
+		ContentBrowser.Get().CreateAssetPicker(LinkedAssetsConfig)
 	];
 	
 	ChildSlot

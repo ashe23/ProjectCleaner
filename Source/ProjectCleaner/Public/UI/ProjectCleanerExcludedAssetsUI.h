@@ -15,10 +15,12 @@ public:
 	
 	SLATE_BEGIN_ARGS(SProjectCleanerExcludedAssetsUI) {}
 		SLATE_ARGUMENT(TSet<FAssetData>, ExcludedAssets)
+		SLATE_ARGUMENT(TArray<FAssetData>, LinkedAssets)
 	SLATE_END_ARGS()
 	
 	void Construct(const FArguments& InArgs);
 	void SetExcludedAssets(const TSet<FAssetData>& Assets);
+	void SetLinkedAssets(const TArray<FAssetData>& Assets);
 	
 	FOnUserIncludedAsset OnUserIncludedAssets;
 private:
@@ -31,5 +33,6 @@ private:
 	FGetCurrentSelectionDelegate GetCurrentSelectionDelegate;
 	TSharedPtr<FUICommandList> Commands;
 	TSet<FAssetData> ExcludedAssets;
+	TSet<FAssetData> LinkedAssets;
 	TSharedRef<SWidget> WidgetRef = SNullWidget::NullWidget;
 };

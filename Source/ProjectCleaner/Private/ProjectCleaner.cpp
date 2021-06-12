@@ -188,7 +188,9 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 	UpdateCleaner();
 
 	const auto ExcludedAssetsUIRef = SAssignNew(ExcludedAssetsUI, SProjectCleanerExcludedAssetsUI)
-		.ExcludedAssets(ExcludedAssets);
+		.ExcludedAssets(ExcludedAssets)
+		.LinkedAssets(LinkedAssets);
+
 	ExcludedAssetsUIRef->OnUserIncludedAssets = FOnUserIncludedAsset::CreateRaw(
 		this,
 		&FProjectCleanerModule::OnUserIncludedAssets
@@ -291,6 +293,12 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 									.Text(FText::FromString("Delete Empty Folders"))
 									.OnClicked_Raw(this, &FProjectCleanerModule::OnDeleteEmptyFolderClick)
 								]
+							]
+							+ SVerticalBox::Slot()
+							.Padding(CommonMargin)
+							.AutoHeight()
+							[
+								ExcludedAssetsUIRef
 							]
 						]
 					]
@@ -460,6 +468,43 @@ void FProjectCleanerModule::UpdateCleanerData()
 	
 	// 7) removing assets that used indirectly (in source code, or config files etc.)
 	ProjectCleanerUtility::RemoveAssetsUsedIndirectly(UnusedAssets, RelationalMap, SourceCodeFiles, SourceCodeAssets);
+
+	TSet<FAssetData> FilteredAssets;
+	FilteredAssets.Reserve(UnusedAssets.Num());
+
+	for (const auto FilterPath : ExcludeDirectoryFilterSettings->Paths)
+	{
+		TArray<FAssetData> IterationAssets;
+		IterationAssets.Reserve(UnusedAssets.Num());
+		AssetRegistry->Get().GetAssetsByPath(FName{ *FilterPath.Path }, IterationAssets, true);
+		FilteredAssets.Append(IterationAssets);
+		IterationAssets.Reset();
+	}
+
+	for (const auto& Asset : UserExcludedAssets)
+	{
+		FilteredAssets.Add(Asset);
+	}
+
+	for (const auto& FilteredAsset : FilteredAssets)
+	{
+		ExcludedAssets.Add(FilteredAsset);
+		const auto Node = RelationalMap.FindByPackageName(FilteredAsset.PackageName);
+		if (!Node) continue;
+		for (const auto& LinkedAsset : Node->LinkedAssetsData)
+		{
+			LinkedAssets.Add(*LinkedAsset);
+		}
+	}
+
+	LinkedAssets.RemoveAll([&](const FAssetData& Elem) {
+		return ExcludedAssets.Contains(Elem);
+	});
+
+	UnusedAssets.RemoveAll([&] (const FAssetData& Elem) {
+		return ExcludedAssets.Contains(Elem) || LinkedAssets.Contains(Elem);
+	});
+	
 	//RelationalMap.Rebuild(UnusedAssets);
 	//ProjectCleanerUtility::RemoveAssetsWithExternalReferences(UnusedAssets, RelationalMap);
 	//RelationalMap.Rebuild(UnusedAssets);
@@ -473,7 +518,7 @@ void FProjectCleanerModule::UpdateCleanerData()
 	);*/
 
 	// after all actions we rebuilding relational map to match unused assets
-	//RelationalMap.Rebuild(UnusedAssets);
+	RelationalMap.Rebuild(UnusedAssets);
 
 	UpdateStats();
 }
@@ -513,6 +558,7 @@ void FProjectCleanerModule::UpdateStats()
 	if (ExcludedAssetsUI.IsValid())
 	{
 		ExcludedAssetsUI.Pin()->SetExcludedAssets(ExcludedAssets);
+		ExcludedAssetsUI.Pin()->SetLinkedAssets(LinkedAssets);
 	}
 
 	if (CorruptedFilesUI.IsValid())
@@ -528,6 +574,7 @@ void FProjectCleanerModule::Reset()
 	SourceCodeAssets.Reset();
 	CorruptedFiles.Reset();
 	EmptyFolders.Reset();
+	LinkedAssets.Reset();
 	//AllProjectFiles.Reset();
 	ExcludedAssets.Reset();
 	RelationalMap.Reset();
@@ -599,7 +646,7 @@ void FProjectCleanerModule::OnUserIncludedAssets(const TArray<FAssetData>& Asset
 {
 	if (!Assets.Num()) return;
 
-	TArray<FAssetData> FilteredAssets;
+	/*TArray<FAssetData> FilteredAssets;
 	for (const auto& Asset : Assets)
 	{
 		const auto& Node = RelationalMap.FindByPackageName(Asset.PackageName);
@@ -609,11 +656,11 @@ void FProjectCleanerModule::OnUserIncludedAssets(const TArray<FAssetData>& Asset
 		{
 			FilteredAssets.AddUnique(*LinkedAsset);
 		}
-	}
+	}*/
 
 	UserExcludedAssets.RemoveAll([&](const FAssetData& Elem)
 	{
-		return FilteredAssets.Contains(Elem);
+		return Assets.Contains(Elem);
 	});
 
 	UpdateCleanerData();
