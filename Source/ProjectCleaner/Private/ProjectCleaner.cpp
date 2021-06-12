@@ -477,6 +477,11 @@ void FProjectCleanerModule::UpdateCleanerData()
 		TArray<FAssetData> IterationAssets;
 		IterationAssets.Reserve(UnusedAssets.Num());
 		AssetRegistry->Get().GetAssetsByPath(FName{ *FilterPath.Path }, IterationAssets, true);
+
+		//we should add only unused assets
+		IterationAssets.RemoveAll([&](const FAssetData& Elem) {
+			return !UnusedAssets.Contains(Elem);
+		});
 		FilteredAssets.Append(IterationAssets);
 		IterationAssets.Reset();
 	}
