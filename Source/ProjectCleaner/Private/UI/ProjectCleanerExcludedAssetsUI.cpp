@@ -8,6 +8,7 @@
 #include "Editor/ContentBrowser/Public/ContentBrowserModule.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Toolkits/GlobalEditorCommonCommands.h"
+//#include "Layout/Visibility.h"
 
 #define LOCTEXT_NAMESPACE "FProjectCleanerModule"
 
@@ -155,7 +156,7 @@ void SProjectCleanerExcludedAssetsUI::RefreshUIContent()
 	]
 	+SVerticalBox::Slot()
 	.AutoHeight()
-	//.Padding(FMargin(20.0f, 0.0f))
+	.Padding(FMargin(0.0f, 10.0f))
 	[
 		SNew(STextBlock)
 		.AutoWrapText(true)
@@ -183,6 +184,9 @@ void SProjectCleanerExcludedAssetsUI::RefreshUIContent()
 	[
 		ContentBrowser.Get().CreateAssetPicker(LinkedAssetsConfig)
 	];
+
+	// todo:ashe23 maybe add later 
+	//WidgetRef->SetVisibility((ExcludedAssets.Num() > 0 ? EVisibility::Visible : EVisibility::Hidden));
 	
 	ChildSlot
 	[

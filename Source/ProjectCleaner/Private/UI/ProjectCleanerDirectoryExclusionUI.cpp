@@ -2,6 +2,7 @@
 
 #include "UI/ProjectCleanerDirectoryExclusionUI.h"
 #include "ProjectCleanerStyle.h"
+#include "ClassViewerModule.h"
 
 #define LOCTEXT_NAMESPACE "FProjectCleanerModule"
 

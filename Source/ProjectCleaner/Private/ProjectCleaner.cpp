@@ -15,6 +15,7 @@
 #include "UI/ProjectCleanerExcludedAssetsUI.h"
 // Engine Headers
 #include "AssetRegistryModule.h"
+#include "AssetToolsModule.h"
 #include "IAssetRegistry.h"
 #include "ToolMenus.h"
 #include "ContentBrowserModule.h"
@@ -294,6 +295,15 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 									.OnClicked_Raw(this, &FProjectCleanerModule::OnDeleteEmptyFolderClick)
 								]
 							]
+						]
+					]
+					+ SScrollBox::Slot()
+					.Padding(FMargin{0.0f, 20.0f})
+					[
+						SNew(SBorder)
+						.BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
+						[
+							SNew(SVerticalBox)
 							+ SVerticalBox::Slot()
 							.Padding(CommonMargin)
 							.AutoHeight()
@@ -302,6 +312,7 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 							]
 						]
 					]
+
 				]
 			//	+ SScrollBox::Slot()
 			//	[
@@ -312,16 +323,6 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 			//		[
 						/*SAssignNew(DirectoryExclusionUI, SProjectCleanerDirectoryExclusionUI)
 						.ExcludeDirectoriesFilterSettings(ExcludeDirectoryFilterSettings)*/
-			//		]
-			//	]
-			//	+ SScrollBox::Slot()
-			//	[
-			//		SNew(SVerticalBox)
-			//		+ SVerticalBox::Slot()
-			//		.Padding(FMargin(5))
-			//		.AutoHeight()
-			//		[
-			//			ExcludedAssetsUIRef
 			//		]
 			//	]
 			]
@@ -454,7 +455,7 @@ void FProjectCleanerModule::UpdateCleanerData()
 	// In use cases:
 	// * PrimaryAssets and Assets used by PrimaryAsset
 	// * Removing Megascans Assets if Plugin is active
-	ProjectCleanerUtility::RemoveUsedAssets(UnusedAssets, PrimaryAssetClasses);
+	ProjectCleanerUtility::RemoveUsedAssets(UnusedAssets, PrimaryAssetClasses, ExcludeDirectoryFilterSettings);
 	ProjectCleanerUtility::RemoveMegascansPluginAssetsIfActive(UnusedAssets);
 
 	// 6) remove assets from collection and developer folders if user picked that option
@@ -468,6 +469,16 @@ void FProjectCleanerModule::UpdateCleanerData()
 	
 	// 7) removing assets that used indirectly (in source code, or config files etc.)
 	ProjectCleanerUtility::RemoveAssetsUsedIndirectly(UnusedAssets, RelationalMap, SourceCodeFiles, SourceCodeAssets);
+	
+	// 8) User excluded assets
+	// This assets will be in Database, but wont be available for deletion
+	// * Excluded by path
+	//		all assets in given path and their linked assets will remain untouched
+	// * Excluded single asset from  "UnusedAssets" content browser, asset and all their linked assets will remain untouched
+	// * Excluded by asset class
+	//		all assets with specified class and all their linked assets will remain untouched
+	// Excplicitly excluded assets will be shown in "Excluded Assets" Content browser <- include asset action, removing selected assets from exclusion list
+	// Linked assets to those excluded assets will be shown in "Linked Assets" Content browser <- no action here, user just see , what we wont delete
 
 	TSet<FAssetData> FilteredAssets;
 	FilteredAssets.Reserve(UnusedAssets.Num());
@@ -487,6 +498,15 @@ void FProjectCleanerModule::UpdateCleanerData()
 	}
 
 	for (const auto& Asset : UserExcludedAssets)
+	{
+		FilteredAssets.Add(Asset);
+	}
+
+	TArray<FAssetData> AssetsExcludedByClass;
+	AssetsExcludedByClass.Reserve(UnusedAssets.Num());
+	RelationalMap.FindAssetsByClass(ExcludeDirectoryFilterSettings->Classes, AssetsExcludedByClass);
+
+	for (const auto& Asset : AssetsExcludedByClass)
 	{
 		FilteredAssets.Add(Asset);
 	}

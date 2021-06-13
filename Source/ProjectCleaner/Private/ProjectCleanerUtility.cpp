@@ -167,7 +167,6 @@ void ProjectCleanerUtility::RemoveAssetsExcludedByUser(
 	if (!AssetRegistry) return;
 	if (!DirectoryFilterSettings) return;
 
-	// todo:ashe23 maybe excluded assets should be keep old assets on refresh
 	TArray<FAssetData> FilteredAssets;
 	FilteredAssets.Reserve(UnusedAssets.Num());
 	
@@ -403,12 +402,22 @@ FName ProjectCleanerUtility::ConvertAbsolutePathToRelative(const FName& InPath)
 	return FName{*Result};
 }
 
-void ProjectCleanerUtility::RemoveUsedAssets(TArray<FAssetData>& Assets, const TSet<FName>& PrimaryAssetClasses)
+void ProjectCleanerUtility::RemoveUsedAssets(TArray<FAssetData>& Assets, const TSet<FName>& PrimaryAssetClasses, const UExcludeDirectoriesFilterSettings* ExcludeDirectoryFilterSettings)
 {
 	FAssetRegistryModule& AssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
 	
 	FARFilter Filter;
 	Filter.ClassNames.Add(UWorld::StaticClass()->GetFName());
+
+	//if (ExcludeDirectoryFilterSettings)
+	//{
+	//	for (const auto& ExcludedClass : ExcludeDirectoryFilterSettings->Classes)
+	//	{
+	//		if (!ExcludedClass) continue;
+	//		Filter.ClassNames.Add(ExcludedClass->GetFName());
+	//	}
+	//}
+
 	for (const auto& AssetClass : PrimaryAssetClasses)
 	{
 		Filter.ClassNames.Add(AssetClass);

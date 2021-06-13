@@ -51,6 +51,7 @@ public class ProjectCleaner : ModuleRules
 				"ToolMenus",
 				"AssetTools",
 				"GraphEditor",
+				"ClassViewer"
 			}
 		);
 

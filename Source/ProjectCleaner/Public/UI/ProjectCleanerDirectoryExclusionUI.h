@@ -11,8 +11,11 @@ class UExcludeDirectoriesFilterSettings : public UObject
 {
 	GENERATED_BODY()
 public:
-	UPROPERTY(DisplayName = "Directory", EditAnywhere, Category = "ExcludeThisDirectories", meta = (ContentDir))
+	UPROPERTY(DisplayName = "Paths", EditAnywhere, Category = "ExcludeOptions", meta = (ContentDir))
 	TArray<FDirectoryPath> Paths;
+
+	UPROPERTY(DisplayName = "Classes", EditAnywhere, Category = "ExcludeOptions")
+	TArray<UClass*> Classes;
 };
 
 /**

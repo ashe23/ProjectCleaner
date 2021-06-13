@@ -130,6 +130,18 @@ FAssetNode* AssetRelationalMap::FindByPackageName(const FName& PackageName)
 	});
 }
 
+void AssetRelationalMap::FindAssetsByClass(const TArray<UClass*> ExcludedClasses, TArray<FAssetData>& Assets)
+{
+	for (const auto& Node : Nodes)
+	{
+		const bool Contains = ExcludedClasses.ContainsByPredicate([&](const UClass* Elem) {
+			return Elem && Elem->GetFName().IsEqual(Node.AssetData.AssetClass);
+		});
+		if (!Contains) continue;
+		Assets.Add(Node.AssetData);
+	}
+}
+
 const TArray<FAssetNode>& AssetRelationalMap::GetNodes() const
 {
 	return Nodes;

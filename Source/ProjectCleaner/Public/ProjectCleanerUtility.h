@@ -24,7 +24,7 @@ public:
 	static void RemoveMegascansPluginAssetsIfActive(TArray<FAssetData>& UnusedAssets);
 	static void RemoveAssetsUsedIndirectly(TArray<FAssetData>& UnusedAssets, AssetRelationalMap& RelationalMap, TArray<FSourceCodeFile> SourceCodeFiles, TArray<TWeakObjectPtr<USourceCodeAsset>>& SourceCodeAssets);
 	static void RemoveAssetsWithExternalReferences(TArray<FAssetData>& UnusedAssets, AssetRelationalMap& RelationalMap);
-	static void RemoveUsedAssets(TArray<FAssetData>& Assets, const TSet<FName>& PrimaryAssetClasses);
+	static void RemoveUsedAssets(TArray<FAssetData>& Assets, const TSet<FName>& PrimaryAssetClasses, const UExcludeDirectoriesFilterSettings* ExcludeDirectoryFilterSettings);
 	static void RemoveContentFromDeveloperAndCollectionsFolders(TArray<FAssetData>& UnusedAssets, TSet<FName>& EmptyFolders);
 	static void RemoveAssetsExcludedByUser(
 		const FAssetRegistryModule* AssetRegistry,

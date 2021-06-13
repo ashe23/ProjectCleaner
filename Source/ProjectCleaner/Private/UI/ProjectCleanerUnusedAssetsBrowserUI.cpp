@@ -153,7 +153,7 @@ void SProjectCleanerUnusedAssetsBrowserUI::RefreshUIContent()
 	Config.bSortByPathInColumnView = true;
 	Config.bForceShowEngineContent = false;
 	Config.bShowBottomToolbar = true;
-	Config.bCanShowDevelopersFolder = true;
+	Config.bCanShowDevelopersFolder = true; // todo:ashe23 this must be based on user checkbox
 	Config.bForceShowEngineContent = false;
 	Config.bCanShowClasses = false;
 	Config.bAllowDragging = false;	

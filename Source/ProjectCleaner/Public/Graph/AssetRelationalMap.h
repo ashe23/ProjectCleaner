@@ -44,6 +44,7 @@ class AssetRelationalMap
 public:
 	void Rebuild(const TArray<FAssetData>& UnusedAssets);
 	FAssetNode* FindByPackageName(const FName& PackageName);
+	void FindAssetsByClass(const TArray<UClass*> ExcludedClasses, TArray<FAssetData>& Assets);
 	const TArray<FAssetNode>& GetNodes() const;
 	const TArray<FAssetNode>& GetCircularNodes() const;
 	const TArray<FAssetNode>& GetRootNodes() const;
