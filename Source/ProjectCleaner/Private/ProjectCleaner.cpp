@@ -467,7 +467,7 @@ void FProjectCleanerModule::UpdateCleanerData()
 	// In use cases:
 	// * PrimaryAssets and Assets used by PrimaryAsset
 	// * Removing Megascans Assets if Plugin is active
-	ProjectCleanerUtility::RemoveUsedAssets(UnusedAssets, PrimaryAssetClasses, ExcludeOptions);
+	ProjectCleanerUtility::RemoveUsedAssets(UnusedAssets, PrimaryAssetClasses);
 	ProjectCleanerUtility::RemoveMegascansPluginAssetsIfActive(UnusedAssets);
 
 	// 6) remove assets from Developers Contents folder if user picked that option	

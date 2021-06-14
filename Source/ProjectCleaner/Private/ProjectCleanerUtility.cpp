@@ -416,7 +416,7 @@ FName ProjectCleanerUtility::ConvertAbsolutePathToRelative(const FName& InPath)
 	return FName{*Result};
 }
 
-void ProjectCleanerUtility::RemoveUsedAssets(TArray<FAssetData>& Assets, const TSet<FName>& PrimaryAssetClasses, const UExcludeOptions* ExcludeOptions)
+void ProjectCleanerUtility::RemoveUsedAssets(TArray<FAssetData>& Assets, const TSet<FName>& PrimaryAssetClasses)
 {
 	FAssetRegistryModule& AssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
 	
