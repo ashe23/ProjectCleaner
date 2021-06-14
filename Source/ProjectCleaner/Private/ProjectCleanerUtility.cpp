@@ -2,7 +2,7 @@
 
 #include "ProjectCleanerUtility.h"
 #include "UI/ProjectCleanerSourceCodeAssetsUI.h"
-#include "UI/ProjectCleanerDirectoryExclusionUI.h"
+#include "UI/ProjectCleanerExcludeOptionsUI.h"
 #include "Graph/AssetRelationalMap.h"
 // Engine Headers
 #include "ObjectTools.h"
@@ -163,15 +163,15 @@ void ProjectCleanerUtility::RemoveAssetsExcludedByUser(
 	TArray<FAssetData>& LinkedAssets,
 	TArray<FAssetData>& UserExcludedAssets,
 	AssetRelationalMap& RelationalMap,
-	const UExcludeDirectoriesFilterSettings* DirectoryFilterSettings)
+	const UExcludeOptions* ExcludeOptions)
 {
 	if (!AssetRegistry) return;
-	if (!DirectoryFilterSettings) return;
+	if (!ExcludeOptions) return;
 
 	TSet<FAssetData> FilteredAssets;
 	FilteredAssets.Reserve(UnusedAssets.Num());
 	
-	for (const auto FilterPath : DirectoryFilterSettings->Paths)
+	for (const auto FilterPath : ExcludeOptions->Paths)
 	{
 		TArray<FAssetData> IterationAssets;
 		IterationAssets.Reserve(UnusedAssets.Num());
@@ -192,7 +192,7 @@ void ProjectCleanerUtility::RemoveAssetsExcludedByUser(
 
 	TArray<FAssetData> AssetsExcludedByClass;
 	AssetsExcludedByClass.Reserve(UnusedAssets.Num());
-	RelationalMap.FindAssetsByClass(DirectoryFilterSettings->Classes, AssetsExcludedByClass);
+	RelationalMap.FindAssetsByClass(ExcludeOptions->Classes, AssetsExcludedByClass);
 
 	for (const auto& Asset : AssetsExcludedByClass)
 	{
@@ -416,7 +416,7 @@ FName ProjectCleanerUtility::ConvertAbsolutePathToRelative(const FName& InPath)
 	return FName{*Result};
 }
 
-void ProjectCleanerUtility::RemoveUsedAssets(TArray<FAssetData>& Assets, const TSet<FName>& PrimaryAssetClasses, const UExcludeDirectoriesFilterSettings* ExcludeDirectoryFilterSettings)
+void ProjectCleanerUtility::RemoveUsedAssets(TArray<FAssetData>& Assets, const TSet<FName>& PrimaryAssetClasses, const UExcludeOptions* ExcludeOptions)
 {
 	FAssetRegistryModule& AssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
 	

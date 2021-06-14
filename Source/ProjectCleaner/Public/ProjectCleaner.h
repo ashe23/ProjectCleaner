@@ -25,12 +25,12 @@ class SProjectCleanerUnusedAssetsBrowserUI;
 class SProjectCleanerNonUassetFilesUI;
 class SProjectCleanerBrowserStatisticsUI;
 class SProjectCleanerSourceCodeAssetsUI;
-class SProjectCleanerDirectoryExclusionUI;
+class SProjectCleanerExcludeOptionsUI;
 class SProjectCleanerCorruptedFilesUI;
 class SProjectCleanerExcludedAssetsUI;
 class SAssetsVisualizerGraph;
 class USourceCodeAsset;
-class UExcludeDirectoriesFilterSettings;
+class UExcludeOptions;
 class AssetRelationalMap;
 
 struct FSlateColorBrush;
@@ -124,7 +124,7 @@ private:
 	TWeakPtr<SProjectCleanerNonUassetFilesUI> NonUassetFilesUI;
 	TWeakPtr<SProjectCleanerBrowserStatisticsUI> StatisticsUI;
 	TWeakPtr<SProjectCleanerSourceCodeAssetsUI> SourceCodeAssetsUI;
-	TWeakPtr<SProjectCleanerDirectoryExclusionUI> DirectoryExclusionUI;
+	TWeakPtr<SProjectCleanerExcludeOptionsUI> ExcludeOptionUI;
 	TWeakPtr<SProjectCleanerCorruptedFilesUI> CorruptedFilesUI;
 	TWeakPtr<SProjectCleanerExcludedAssetsUI> ExcludedAssetsUI;
 	TWeakPtr<SAssetsVisualizerGraph> VisualizerUI;
@@ -143,7 +143,7 @@ private:
 
 	TSet<FAssetData> ExcludedAssets;
 	TArray<FAssetData> LinkedAssets;
-	UExcludeDirectoriesFilterSettings* ExcludeDirectoryFilterSettings;
+	UExcludeOptions* ExcludeOptions;
 	
 	/** Helper Containers **/
 	TSet<FName> ProjectFilesFromDisk;

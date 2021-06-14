@@ -4,10 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "Widgets/SCompoundWidget.h"
-#include "ProjectCleanerDirectoryExclusionUI.generated.h"
+#include "ProjectCleanerExcludeOptionsUI.generated.h"
 
 UCLASS(Transient)
-class UExcludeDirectoriesFilterSettings : public UObject
+class UExcludeOptions : public UObject
 {
 	GENERATED_BODY()
 public:
@@ -19,20 +19,20 @@ public:
 };
 
 /**
- * @brief Shows Exclude Directories UI
+ * @brief Shows Exclude Options UI
  */
-class SProjectCleanerDirectoryExclusionUI : public SCompoundWidget
+class SProjectCleanerExcludeOptionsUI : public SCompoundWidget
 {
 public:
 	
-	SLATE_BEGIN_ARGS(SProjectCleanerDirectoryExclusionUI) {}
-		SLATE_ARGUMENT(UExcludeDirectoriesFilterSettings*, ExcludeDirectoriesFilterSettings)
+	SLATE_BEGIN_ARGS(SProjectCleanerExcludeOptionsUI) {}
+		SLATE_ARGUMENT(UExcludeOptions*, ExcludeOptions)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
 private:
 
 	/** Data **/
-	TSharedPtr<IDetailsView> ExcludeDirectoriesFilterSettingsProperty;
-	UExcludeDirectoriesFilterSettings* ExcludeDirectoriesFilterSettings = nullptr;
+	TSharedPtr<IDetailsView> ExcludeOptionsProperty;
+	UExcludeOptions* ExcludeOptions = nullptr;
 };

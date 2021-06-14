@@ -9,7 +9,7 @@
 struct FAssetData;
 class AssetRelationalMap;
 class USourceCodeAsset;
-class UExcludeDirectoriesFilterSettings;
+class UExcludeOptions;
 class FAssetRegistryModule;
 
 /**
@@ -24,7 +24,7 @@ public:
 	static void RemoveMegascansPluginAssetsIfActive(TArray<FAssetData>& UnusedAssets);
 	static void RemoveAssetsUsedIndirectly(TArray<FAssetData>& UnusedAssets, AssetRelationalMap& RelationalMap, TArray<FSourceCodeFile> SourceCodeFiles, TArray<TWeakObjectPtr<USourceCodeAsset>>& SourceCodeAssets);
 	static void RemoveAssetsWithExternalReferences(TArray<FAssetData>& UnusedAssets, AssetRelationalMap& RelationalMap); // todo:ashe23 remove this function?
-	static void RemoveUsedAssets(TArray<FAssetData>& Assets, const TSet<FName>& PrimaryAssetClasses, const UExcludeDirectoriesFilterSettings* ExcludeDirectoryFilterSettings);
+	static void RemoveUsedAssets(TArray<FAssetData>& Assets, const TSet<FName>& PrimaryAssetClasses, const UExcludeOptions* ExcludeOptions);
 	static void RemoveContentFromDeveloperFolder(TArray<FAssetData>& UnusedAssets, TSet<FName>& EmptyFolders);
 	static void RemoveAssetsExcludedByUser(
 		const FAssetRegistryModule* AssetRegistry,
@@ -33,7 +33,7 @@ public:
 		TArray<FAssetData>& LinkedAssets,
 		TArray<FAssetData>& UserExcludedAssets,
 		AssetRelationalMap& RelationalMap,
-		const UExcludeDirectoriesFilterSettings* DirectoryFilterSettings);
+		const UExcludeOptions* ExcludeOptions);
 	static FName ConvertRelativeToAbsPath(const FName& InPath);
 	static FString ConvertRelativeToAbsPath(const FString& InPath);
 	static FName ConvertAbsToRelativePath(const FName& InPath);

@@ -7,7 +7,7 @@
 #include "ProjectCleanerUtility.h"
 #include "ProjectCleanerHelper.h"
 #include "UI/ProjectCleanerBrowserStatisticsUI.h"
-#include "UI/ProjectCleanerDirectoryExclusionUI.h"
+#include "UI/ProjectCleanerExcludeOptionsUI.h"
 #include "UI/ProjectCleanerUnusedAssetsBrowserUI.h"
 #include "UI/ProjectCleanerNonUassetFilesUI.h"
 #include "UI/ProjectCleanerSourceCodeAssetsUI.h"
@@ -47,7 +47,7 @@ static const FName CorruptedFilesTab = FName{ TEXT("CorruptedFilesTab") };
 #define LOCTEXT_NAMESPACE "FProjectCleanerModule"
 
 FProjectCleanerModule::FProjectCleanerModule() :
-	ExcludeDirectoryFilterSettings(nullptr),
+	ExcludeOptions(nullptr),
 	AssetRegistry(nullptr)
 {
 }
@@ -80,7 +80,6 @@ void FProjectCleanerModule::StartupModule()
 		.SetDisplayName(LOCTEXT("FProjectCleanerTabTitle", "ProjectCleaner"))
 		.SetMenuType(ETabSpawnerMenuType::Hidden);
 
-	// initializing tab manager
 	// this is for TabManager initialization only
 	const auto DummyTab = SNew(SDockTab).TabRole(ETabRole::NomadTab);
 	TabManager = FGlobalTabmanager::Get()->NewTabManager(DummyTab);
@@ -122,7 +121,7 @@ void FProjectCleanerModule::StartupModule()
 	
 	// initializing some objects
 	NotificationManager = MakeShared<ProjectCleanerNotificationManager>();
-	ExcludeDirectoryFilterSettings = GetMutableDefault<UExcludeDirectoriesFilterSettings>();
+	ExcludeOptions = GetMutableDefault<UExcludeOptions>();
 	AssetRegistry = &FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
 	if (AssetRegistry)
 	{
@@ -318,8 +317,8 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 							.Padding(CommonMargin)
 							.AutoHeight()
 							[
-								SAssignNew(DirectoryExclusionUI, SProjectCleanerDirectoryExclusionUI)
-								.ExcludeDirectoriesFilterSettings(ExcludeDirectoryFilterSettings)
+								SAssignNew(ExcludeOptionUI, SProjectCleanerExcludeOptionsUI)
+								.ExcludeOptions(ExcludeOptions)
 							]
 						]
 					]
@@ -468,7 +467,7 @@ void FProjectCleanerModule::UpdateCleanerData()
 	// In use cases:
 	// * PrimaryAssets and Assets used by PrimaryAsset
 	// * Removing Megascans Assets if Plugin is active
-	ProjectCleanerUtility::RemoveUsedAssets(UnusedAssets, PrimaryAssetClasses, ExcludeDirectoryFilterSettings);
+	ProjectCleanerUtility::RemoveUsedAssets(UnusedAssets, PrimaryAssetClasses, ExcludeOptions);
 	ProjectCleanerUtility::RemoveMegascansPluginAssetsIfActive(UnusedAssets);
 
 	// 6) remove assets from Developers Contents folder if user picked that option	
@@ -503,7 +502,7 @@ void FProjectCleanerModule::UpdateCleanerData()
 		LinkedAssets,
 		UserExcludedAssets,
 		RelationalMap,
-		ExcludeDirectoryFilterSettings
+		ExcludeOptions
 	);
 	
 	// after all actions we rebuilding relational map to match unused assets
