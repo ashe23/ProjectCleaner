@@ -8,7 +8,6 @@
 #include "Input/Reply.h"
 #include "Modules/ModuleInterface.h"
 #include "ContentBrowserDelegates.h"
-#include "EdGraphUtilities.h"
 #include "CoreMinimal.h"
 
 class AssetRelationalMap;
@@ -28,7 +27,6 @@ class SProjectCleanerSourceCodeAssetsUI;
 class SProjectCleanerExcludeOptionsUI;
 class SProjectCleanerCorruptedFilesUI;
 class SProjectCleanerExcludedAssetsUI;
-class SAssetsVisualizerGraph;
 class USourceCodeAsset;
 class UExcludeOptions;
 class AssetRelationalMap;
@@ -127,7 +125,6 @@ private:
 	TWeakPtr<SProjectCleanerExcludeOptionsUI> ExcludeOptionUI;
 	TWeakPtr<SProjectCleanerCorruptedFilesUI> CorruptedFilesUI;
 	TWeakPtr<SProjectCleanerExcludedAssetsUI> ExcludedAssetsUI;
-	TWeakPtr<SAssetsVisualizerGraph> VisualizerUI;
 	TSharedPtr<FTabManager> TabManager;
 	TSharedPtr<FTabManager::FLayout> TabLayout;
 	

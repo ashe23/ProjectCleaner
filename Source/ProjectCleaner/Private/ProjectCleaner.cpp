@@ -482,10 +482,10 @@ void FProjectCleanerModule::UpdateCleanerData()
 
 	// filling graphs with unused assets data and creating relational map between them
 	RelationalMap.Rebuild(UnusedAssets);
-	
+
 	// 7) removing assets that used indirectly (in source code, or config files etc.)
 	ProjectCleanerUtility::RemoveAssetsUsedIndirectly(UnusedAssets, RelationalMap, SourceCodeFiles, SourceCodeAssets);
-	
+
 	// 8) User excluded assets
 	// This assets will be in Database, but wont be available for deletion
 	// * Excluded by path
@@ -493,7 +493,7 @@ void FProjectCleanerModule::UpdateCleanerData()
 	// * Excluded single asset from  "UnusedAssets" content browser, asset and all their linked assets will remain untouched
 	// * Excluded by asset class
 	//		all assets with specified class and all their linked assets will remain untouched
-	// Excplicitly excluded assets will be shown in "Excluded Assets" Content browser <- include asset action, removing selected assets from exclusion list
+	// Explicitly excluded assets will be shown in "Excluded Assets" Content browser <- include asset action, removing selected assets from exclusion list
 	// Linked assets to those excluded assets will be shown in "Linked Assets" Content browser <- no action here, user just see , what we wont delete
 	ProjectCleanerUtility::RemoveAssetsExcludedByUser(
 		AssetRegistry,
@@ -504,7 +504,7 @@ void FProjectCleanerModule::UpdateCleanerData()
 		RelationalMap,
 		ExcludeOptions
 	);
-	
+
 	// after all actions we rebuilding relational map to match unused assets
 	RelationalMap.Rebuild(UnusedAssets);
 
@@ -548,6 +548,7 @@ void FProjectCleanerModule::UpdateStats()
 	{
 		ExcludedAssetsUI.Pin()->SetExcludedAssets(ExcludedAssets);
 		ExcludedAssetsUI.Pin()->SetLinkedAssets(LinkedAssets);
+		ExcludedAssetsUI.Pin()->SetCleanerConfigs(CleanerConfigs);
 	}
 
 	if (CorruptedFilesUI.IsValid())
@@ -576,9 +577,8 @@ void FProjectCleanerModule::UpdateContentBrowser() const
 	TArray<FString> FocusFolders;
 	FocusFolders.Add("/Game");
 
-	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
-	AssetRegistryModule.Get().ScanPathsSynchronous(FocusFolders, true);
-	AssetRegistryModule.Get().SearchAllAssets(true);
+	AssetRegistry->Get().ScanPathsSynchronous(FocusFolders, true);
+	AssetRegistry->Get().SearchAllAssets(true);
 
 	FContentBrowserModule& CBModule = FModuleManager::Get().GetModuleChecked<FContentBrowserModule>("ContentBrowser");
 	CBModule.Get().SetSelectedPaths(FocusFolders, true);
