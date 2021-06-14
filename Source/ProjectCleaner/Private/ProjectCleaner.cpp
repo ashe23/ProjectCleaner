@@ -33,6 +33,7 @@
 #include "Framework/Commands/UICommandList.h"
 #include "Misc/ScopedSlowTask.h"
 #include "UObject/PackageFileSummary.h"
+#include "Settings/ContentBrowserSettings.h"
 #include "Serialization/CustomVersion.h"
 
 DEFINE_LOG_CATEGORY(LogProjectCleaner);
@@ -235,38 +236,6 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 							[
 								SNew(SHorizontalBox)
 								+ SHorizontalBox::Slot()
-								.MaxWidth(250.0f)
-								.HAlign(HAlign_Left)
-								.VAlign(VAlign_Center)
-								.Padding(2.f)
-								[
-									SNew(STextBlock)
-									.Text(LOCTEXT("scan_developer_and_collection_folders", "Scan Developer and Collection Folders"))
-								]
-								+ SHorizontalBox::Slot()
-								.AutoWidth()
-								.HAlign(HAlign_Left)
-								.VAlign(VAlign_Center)
-								.Padding(2.f)
-								[
-									SNew(SCheckBox)
-									.OnCheckStateChanged_Raw(this, &FProjectCleanerModule::OnScanDeveloperAndCollectionFolderChanged)
-									.IsChecked(ECheckBoxState::Unchecked)
-								]
-							]
-							+ SVerticalBox::Slot()
-							.Padding(CommonMargin)
-							.AutoHeight()
-							[
-								SAssignNew(DirectoryExclusionUI, SProjectCleanerDirectoryExclusionUI)
-								.ExcludeDirectoriesFilterSettings(ExcludeDirectoryFilterSettings)
-							]
-							+ SVerticalBox::Slot()
-							.Padding(CommonMargin)
-							.AutoHeight()
-							[
-								SNew(SHorizontalBox)
-								+ SHorizontalBox::Slot()
 								.FillWidth(1.0f)
 								[
 									SNew(SButton)
@@ -295,6 +264,63 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 									.OnClicked_Raw(this, &FProjectCleanerModule::OnDeleteEmptyFolderClick)
 								]
 							]
+							+ SVerticalBox::Slot()
+							.Padding(FMargin{ 20.0f, 5.0f })
+							.AutoHeight()
+							[
+								SNew(SHorizontalBox)
+								+ SHorizontalBox::Slot()
+								.MaxWidth(250.0f)
+								.HAlign(HAlign_Left)
+								.VAlign(VAlign_Center)
+								.Padding(2.f)
+								[
+									SNew(STextBlock)
+									.Text(LOCTEXT("scan_developer_contents", "Scan Developer Contents Folders"))
+								]
+								+ SHorizontalBox::Slot()
+								.AutoWidth()
+								.HAlign(HAlign_Left)
+								.VAlign(VAlign_Center)
+								.Padding(2.f)
+								[
+									SNew(SCheckBox)
+									.OnCheckStateChanged_Raw(this, &FProjectCleanerModule::OnScanDeveloperContentCheckboxChanged)
+									.IsChecked(CleanerConfigs.bScanDeveloperContentsFolder ? ECheckBoxState::Checked : ECheckBoxState::Unchecked)
+								]
+							]
+							+ SVerticalBox::Slot()
+							.Padding(FMargin{20.0f, 5.0f})
+							.AutoHeight()
+							[
+								SNew(SHorizontalBox)
+								+ SHorizontalBox::Slot()
+								.MaxWidth(250.0f)
+								.HAlign(HAlign_Left)
+								.VAlign(VAlign_Center)
+								.Padding(2.f)
+								[
+									SNew(STextBlock)
+									.Text(LOCTEXT("automatically_delete_empty_folders", "Remove Empty Folders After Assets Deleted"))
+								]
+								+ SHorizontalBox::Slot()
+								.AutoWidth()
+								.HAlign(HAlign_Left)
+								.VAlign(VAlign_Center)
+								.Padding(2.f)
+								[
+									SNew(SCheckBox)
+									.OnCheckStateChanged_Raw(this, &FProjectCleanerModule::OnAutomaticallyRemoveEmptyFoldersCheckboxChanged)
+									.IsChecked(CleanerConfigs.bAutomaticallyDeleteEmptyFolders ? ECheckBoxState::Checked : ECheckBoxState::Unchecked)
+								]
+							]
+							+ SVerticalBox::Slot()
+							.Padding(CommonMargin)
+							.AutoHeight()
+							[
+								SAssignNew(DirectoryExclusionUI, SProjectCleanerDirectoryExclusionUI)
+								.ExcludeDirectoriesFilterSettings(ExcludeDirectoryFilterSettings)
+							]
 						]
 					]
 					+ SScrollBox::Slot()
@@ -312,19 +338,7 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 							]
 						]
 					]
-
 				]
-			//	+ SScrollBox::Slot()
-			//	[
-			//		SNew(SVerticalBox)
-			//		+ SVerticalBox::Slot()
-			//		.Padding(CommonMargin)
-			//		.AutoHeight()
-			//		[
-						/*SAssignNew(DirectoryExclusionUI, SProjectCleanerDirectoryExclusionUI)
-						.ExcludeDirectoriesFilterSettings(ExcludeDirectoryFilterSettings)*/
-			//		]
-			//	]
 			]
 			+ SSplitter::Slot()
 			.Value(0.65f)
@@ -346,7 +360,8 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnUnusedAssetTabSpawn(const FSpawnTa
 {
 	const auto UnusedAssetsUIRef =
 		SAssignNew(UnusedAssetsBrowserUI, SProjectCleanerUnusedAssetsBrowserUI)
-		.UnusedAssets(UnusedAssets);
+		.UnusedAssets(UnusedAssets)
+		.CleanerConfigs(CleanerConfigs);
 	
 	UnusedAssetsUIRef->OnUserDeletedAssets = FOnUserDeletedAssets::CreateRaw(
 		this,
@@ -403,18 +418,16 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSourceCodeAssetsTabSpawn(const FSp
 		];
 }
 
-void FProjectCleanerModule::OnScanDeveloperAndCollectionFolderChanged(ECheckBoxState State)
+void FProjectCleanerModule::OnScanDeveloperContentCheckboxChanged(ECheckBoxState State)
 {
-	bScanDeveloperAndCollectionFolders = (State == ECheckBoxState::Checked);
+	CleanerConfigs.bScanDeveloperContentsFolder = (State == ECheckBoxState::Checked);
 
 	UpdateCleanerData();
-
-	UE_LOG(LogProjectCleaner, Warning, TEXT("Changed State"));
 }
 
-ECheckBoxState FProjectCleanerModule::IsScanDeveloperAndCollectionCheckBoxChecked() const
+void FProjectCleanerModule::OnAutomaticallyRemoveEmptyFoldersCheckboxChanged(ECheckBoxState State)
 {
-	return bScanDeveloperAndCollectionFolders ?  ECheckBoxState::Checked : ECheckBoxState::Unchecked;
+	CleanerConfigs.bAutomaticallyDeleteEmptyFolders = (State == ECheckBoxState::Checked);
 }
 
 void FProjectCleanerModule::UpdateCleaner()
@@ -458,11 +471,15 @@ void FProjectCleanerModule::UpdateCleanerData()
 	ProjectCleanerUtility::RemoveUsedAssets(UnusedAssets, PrimaryAssetClasses, ExcludeDirectoryFilterSettings);
 	ProjectCleanerUtility::RemoveMegascansPluginAssetsIfActive(UnusedAssets);
 
-	// 6) remove assets from collection and developer folders if user picked that option
-	if (!bScanDeveloperAndCollectionFolders)
+	// 6) remove assets from Developers Contents folder if user picked that option	
+	if (!CleanerConfigs.bScanDeveloperContentsFolder)
 	{
-		ProjectCleanerUtility::RemoveContentFromDeveloperAndCollectionsFolders(UnusedAssets, EmptyFolders);
+		ProjectCleanerUtility::RemoveContentFromDeveloperFolder(UnusedAssets, EmptyFolders);
 	}
+
+	// update content browser settings to show "Developers Contents"
+	GetMutableDefault<UContentBrowserSettings>()->SetDisplayDevelopersFolder(CleanerConfigs.bScanDeveloperContentsFolder, true);
+	GetMutableDefault<UContentBrowserSettings>()->PostEditChange();
 
 	// filling graphs with unused assets data and creating relational map between them
 	RelationalMap.Rebuild(UnusedAssets);
@@ -479,69 +496,16 @@ void FProjectCleanerModule::UpdateCleanerData()
 	//		all assets with specified class and all their linked assets will remain untouched
 	// Excplicitly excluded assets will be shown in "Excluded Assets" Content browser <- include asset action, removing selected assets from exclusion list
 	// Linked assets to those excluded assets will be shown in "Linked Assets" Content browser <- no action here, user just see , what we wont delete
-
-	TSet<FAssetData> FilteredAssets;
-	FilteredAssets.Reserve(UnusedAssets.Num());
-
-	for (const auto FilterPath : ExcludeDirectoryFilterSettings->Paths)
-	{
-		TArray<FAssetData> IterationAssets;
-		IterationAssets.Reserve(UnusedAssets.Num());
-		AssetRegistry->Get().GetAssetsByPath(FName{ *FilterPath.Path }, IterationAssets, true);
-
-		//we should add only unused assets
-		IterationAssets.RemoveAll([&](const FAssetData& Elem) {
-			return !UnusedAssets.Contains(Elem);
-		});
-		FilteredAssets.Append(IterationAssets);
-		IterationAssets.Reset();
-	}
-
-	for (const auto& Asset : UserExcludedAssets)
-	{
-		FilteredAssets.Add(Asset);
-	}
-
-	TArray<FAssetData> AssetsExcludedByClass;
-	AssetsExcludedByClass.Reserve(UnusedAssets.Num());
-	RelationalMap.FindAssetsByClass(ExcludeDirectoryFilterSettings->Classes, AssetsExcludedByClass);
-
-	for (const auto& Asset : AssetsExcludedByClass)
-	{
-		FilteredAssets.Add(Asset);
-	}
-
-	for (const auto& FilteredAsset : FilteredAssets)
-	{
-		ExcludedAssets.Add(FilteredAsset);
-		const auto Node = RelationalMap.FindByPackageName(FilteredAsset.PackageName);
-		if (!Node) continue;
-		for (const auto& LinkedAsset : Node->LinkedAssetsData)
-		{
-			LinkedAssets.Add(*LinkedAsset);
-		}
-	}
-
-	LinkedAssets.RemoveAll([&](const FAssetData& Elem) {
-		return ExcludedAssets.Contains(Elem);
-	});
-
-	UnusedAssets.RemoveAll([&] (const FAssetData& Elem) {
-		return ExcludedAssets.Contains(Elem) || LinkedAssets.Contains(Elem);
-	});
-	
-	//RelationalMap.Rebuild(UnusedAssets);
-	//ProjectCleanerUtility::RemoveAssetsWithExternalReferences(UnusedAssets, RelationalMap);
-	//RelationalMap.Rebuild(UnusedAssets);
-	/*ProjectCleanerUtility::RemoveAssetsExcludedByUser(
+	ProjectCleanerUtility::RemoveAssetsExcludedByUser(
 		AssetRegistry,
 		UnusedAssets,
 		ExcludedAssets,
+		LinkedAssets,
 		UserExcludedAssets,
 		RelationalMap,
 		ExcludeDirectoryFilterSettings
-	);*/
-
+	);
+	
 	// after all actions we rebuilding relational map to match unused assets
 	RelationalMap.Rebuild(UnusedAssets);
 
@@ -568,6 +532,7 @@ void FProjectCleanerModule::UpdateStats()
 	if (UnusedAssetsBrowserUI.IsValid())
 	{
 		UnusedAssetsBrowserUI.Pin()->SetUnusedAssets(UnusedAssets);
+		UnusedAssetsBrowserUI.Pin()->SetCleanerConfigs(CleanerConfigs);
 	}
 
 	if (NonUassetFilesUI.IsValid())
@@ -763,7 +728,10 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 
 	UpdateCleanerData();
 
-	CleanEmptyFolders();
+	if (CleanerConfigs.bAutomaticallyDeleteEmptyFolders)
+	{
+		CleanEmptyFolders();
+	}
 
 	return FReply::Handled();
 }

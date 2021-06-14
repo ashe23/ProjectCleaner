@@ -58,9 +58,8 @@ private:
 	TSharedRef<SDockTab> OnNonUAssetFilesTabSpawn(const FSpawnTabArgs& SpawnTabArgs);
 	TSharedRef<SDockTab> OnCorruptedFilesTabSpawn(const FSpawnTabArgs& SpawnTabArgs);
 	TSharedRef<SDockTab> OnSourceCodeAssetsTabSpawn(const FSpawnTabArgs& SpawnTabArgs);
-	void OnScanDeveloperAndCollectionFolderChanged(ECheckBoxState State);
-	ECheckBoxState IsScanDeveloperAndCollectionCheckBoxChecked() const;
-	bool bScanDeveloperAndCollectionFolders = false;
+	void OnScanDeveloperContentCheckboxChanged(ECheckBoxState State);
+	void OnAutomaticallyRemoveEmptyFoldersCheckboxChanged(ECheckBoxState State);
 
 	/** Cleaner **/
 	
@@ -138,6 +137,7 @@ private:
 	TSet<FName> NonUAssetFiles;
 	TSet<FName> CorruptedFiles;
 	FCleaningStats CleaningStats;
+	FCleanerConfigs CleanerConfigs;
 	TArray<TWeakObjectPtr<USourceCodeAsset>> SourceCodeAssets;
 
 

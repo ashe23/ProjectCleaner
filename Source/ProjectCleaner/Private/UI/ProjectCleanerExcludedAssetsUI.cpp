@@ -66,6 +66,13 @@ void SProjectCleanerExcludedAssetsUI::SetLinkedAssets(const TArray<FAssetData>& 
 	RefreshUIContent();
 }
 
+void SProjectCleanerExcludedAssetsUI::SetCleanerConfigs(const FCleanerConfigs& Configs)
+{
+	CleanerConfigs = Configs;
+
+	RefreshUIContent();
+}
+
 void SProjectCleanerExcludedAssetsUI::RefreshUIContent()
 {
 	FAssetPickerConfig Config;
@@ -75,7 +82,7 @@ void SProjectCleanerExcludedAssetsUI::RefreshUIContent()
 	Config.bSortByPathInColumnView = true;
 	Config.bForceShowEngineContent = false;
 	Config.bShowBottomToolbar = true;
-	Config.bCanShowDevelopersFolder = true;
+	Config.bCanShowDevelopersFolder = CleanerConfigs.bScanDeveloperContentsFolder;
 	Config.bForceShowEngineContent = false;
 	Config.bCanShowClasses = false;
 	Config.bAllowDragging = false;	
@@ -120,7 +127,7 @@ void SProjectCleanerExcludedAssetsUI::RefreshUIContent()
 	LinkedAssetsConfig.bSortByPathInColumnView = true;
 	LinkedAssetsConfig.bForceShowEngineContent = false;
 	LinkedAssetsConfig.bShowBottomToolbar = false;
-	LinkedAssetsConfig.bCanShowDevelopersFolder = true;
+	LinkedAssetsConfig.bCanShowDevelopersFolder = CleanerConfigs.bScanDeveloperContentsFolder;
 	LinkedAssetsConfig.bForceShowEngineContent = false;
 	LinkedAssetsConfig.bCanShowClasses = false;
 	LinkedAssetsConfig.bAllowDragging = false;

@@ -23,13 +23,14 @@ public:
 	static void GetAllPrimaryAssetClasses(UAssetManager& AssetManager, TSet<FName>& PrimaryAssetClasses);
 	static void RemoveMegascansPluginAssetsIfActive(TArray<FAssetData>& UnusedAssets);
 	static void RemoveAssetsUsedIndirectly(TArray<FAssetData>& UnusedAssets, AssetRelationalMap& RelationalMap, TArray<FSourceCodeFile> SourceCodeFiles, TArray<TWeakObjectPtr<USourceCodeAsset>>& SourceCodeAssets);
-	static void RemoveAssetsWithExternalReferences(TArray<FAssetData>& UnusedAssets, AssetRelationalMap& RelationalMap);
+	static void RemoveAssetsWithExternalReferences(TArray<FAssetData>& UnusedAssets, AssetRelationalMap& RelationalMap); // todo:ashe23 remove this function?
 	static void RemoveUsedAssets(TArray<FAssetData>& Assets, const TSet<FName>& PrimaryAssetClasses, const UExcludeDirectoriesFilterSettings* ExcludeDirectoryFilterSettings);
-	static void RemoveContentFromDeveloperAndCollectionsFolders(TArray<FAssetData>& UnusedAssets, TSet<FName>& EmptyFolders);
+	static void RemoveContentFromDeveloperFolder(TArray<FAssetData>& UnusedAssets, TSet<FName>& EmptyFolders);
 	static void RemoveAssetsExcludedByUser(
 		const FAssetRegistryModule* AssetRegistry,
 		TArray<FAssetData>& UnusedAssets,
 		TSet<FAssetData>& ExcludedAssets,
+		TArray<FAssetData>& LinkedAssets,
 		TArray<FAssetData>& UserExcludedAssets,
 		AssetRelationalMap& RelationalMap,
 		const UExcludeDirectoriesFilterSettings* DirectoryFilterSettings);

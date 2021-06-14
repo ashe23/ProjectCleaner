@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Widgets/SCompoundWidget.h"
+#include "StructsContainer.h"
 #include "Editor/ContentBrowser/Public/ContentBrowserDelegates.h"
 
 DECLARE_DELEGATE(FOnUserDeletedAssets);
@@ -15,10 +16,12 @@ public:
 	
 	SLATE_BEGIN_ARGS(SProjectCleanerUnusedAssetsBrowserUI) {}
 		SLATE_ARGUMENT(TArray<FAssetData>, UnusedAssets)
+		SLATE_ARGUMENT(FCleanerConfigs, CleanerConfigs)
 	SLATE_END_ARGS()
 	
 	void Construct(const FArguments& InArgs);
 	void SetUnusedAssets(const TArray<FAssetData>& NewUnusedAssets);
+	void SetCleanerConfigs(const FCleanerConfigs& Configs);
 	
 	/** Delegates */
 	FOnUserDeletedAssets OnUserDeletedAssets;
@@ -33,6 +36,7 @@ private:
 	void RefreshUIContent();
 
 	/** Data **/
+	FCleanerConfigs CleanerConfigs;
 	FGetCurrentSelectionDelegate GetCurrentSelectionDelegate;
 	TSharedPtr<FUICommandList> Commands;
 	TArray<FAssetData> UnusedAssets;

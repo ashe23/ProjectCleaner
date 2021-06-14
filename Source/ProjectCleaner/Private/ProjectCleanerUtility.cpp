@@ -160,6 +160,7 @@ void ProjectCleanerUtility::RemoveAssetsExcludedByUser(
 	const FAssetRegistryModule* AssetRegistry,
 	TArray<FAssetData>& UnusedAssets,
 	TSet<FAssetData>& ExcludedAssets,
+	TArray<FAssetData>& LinkedAssets,
 	TArray<FAssetData>& UserExcludedAssets,
 	AssetRelationalMap& RelationalMap,
 	const UExcludeDirectoriesFilterSettings* DirectoryFilterSettings)
@@ -167,41 +168,54 @@ void ProjectCleanerUtility::RemoveAssetsExcludedByUser(
 	if (!AssetRegistry) return;
 	if (!DirectoryFilterSettings) return;
 
-	TArray<FAssetData> FilteredAssets;
+	TSet<FAssetData> FilteredAssets;
 	FilteredAssets.Reserve(UnusedAssets.Num());
 	
-	TArray<FAssetData> IterationAssets;
-	for (const auto& FilterPath : DirectoryFilterSettings->Paths)
+	for (const auto FilterPath : DirectoryFilterSettings->Paths)
 	{
-		AssetRegistry->Get().GetAssetsByPath(
-			FName{ *FilterPath.Path },
-			IterationAssets,
-			true
-		);
+		TArray<FAssetData> IterationAssets;
+		IterationAssets.Reserve(UnusedAssets.Num());
+		AssetRegistry->Get().GetAssetsByPath(FName{ *FilterPath.Path }, IterationAssets, true);
+
+		//we should add only unused assets
+		IterationAssets.RemoveAll([&](const FAssetData& Elem) {
+			return !UnusedAssets.Contains(Elem);
+		});
 		FilteredAssets.Append(IterationAssets);
 		IterationAssets.Reset();
 	}
 
-	for (const auto& UserExcludedAsset : UserExcludedAssets)
+	for (const auto& Asset : UserExcludedAssets)
 	{
-		FilteredAssets.AddUnique(UserExcludedAsset);
+		FilteredAssets.Add(Asset);
+	}
+
+	TArray<FAssetData> AssetsExcludedByClass;
+	AssetsExcludedByClass.Reserve(UnusedAssets.Num());
+	RelationalMap.FindAssetsByClass(DirectoryFilterSettings->Classes, AssetsExcludedByClass);
+
+	for (const auto& Asset : AssetsExcludedByClass)
+	{
+		FilteredAssets.Add(Asset);
 	}
 
 	for (const auto& FilteredAsset : FilteredAssets)
 	{
 		ExcludedAssets.Add(FilteredAsset);
-		
 		const auto Node = RelationalMap.FindByPackageName(FilteredAsset.PackageName);
 		if (!Node) continue;
 		for (const auto& LinkedAsset : Node->LinkedAssetsData)
 		{
-			ExcludedAssets.Add(*LinkedAsset);
+			LinkedAssets.Add(*LinkedAsset);
 		}
 	}
 
-	UnusedAssets.RemoveAll([&](const FAssetData& Elem)
-	{
+	LinkedAssets.RemoveAll([&](const FAssetData& Elem) {
 		return ExcludedAssets.Contains(Elem);
+	});
+
+	UnusedAssets.RemoveAll([&](const FAssetData& Elem) {
+		return ExcludedAssets.Contains(Elem) || LinkedAssets.Contains(Elem);
 	});
 }
 
@@ -409,15 +423,6 @@ void ProjectCleanerUtility::RemoveUsedAssets(TArray<FAssetData>& Assets, const T
 	FARFilter Filter;
 	Filter.ClassNames.Add(UWorld::StaticClass()->GetFName());
 
-	//if (ExcludeDirectoryFilterSettings)
-	//{
-	//	for (const auto& ExcludedClass : ExcludeDirectoryFilterSettings->Classes)
-	//	{
-	//		if (!ExcludedClass) continue;
-	//		Filter.ClassNames.Add(ExcludedClass->GetFName());
-	//	}
-	//}
-
 	for (const auto& AssetClass : PrimaryAssetClasses)
 	{
 		Filter.ClassNames.Add(AssetClass);
@@ -461,7 +466,7 @@ void ProjectCleanerUtility::RemoveUsedAssets(TArray<FAssetData>& Assets, const T
 	});
 }
 
-void ProjectCleanerUtility::RemoveContentFromDeveloperAndCollectionsFolders(TArray<FAssetData>& UnusedAssets, TSet<FName>& EmptyFolders)
+void ProjectCleanerUtility::RemoveContentFromDeveloperFolder(TArray<FAssetData>& UnusedAssets, TSet<FName>& EmptyFolders)
 {
 	const FString DeveloperFolderAbsPath = FPaths::ProjectContentDir() + TEXT("Developers/");
 	const FString CollectionsFolderAbsPath = FPaths::ProjectContentDir() + TEXT("Collections/");

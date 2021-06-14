@@ -59,6 +59,7 @@ void SProjectCleanerUnusedAssetsBrowserUI::Construct(const FArguments& InArgs)
 		)
 	);
 	
+	SetCleanerConfigs(InArgs._CleanerConfigs);
 	SetUnusedAssets(InArgs._UnusedAssets);
 }
 
@@ -71,6 +72,13 @@ void SProjectCleanerUnusedAssetsBrowserUI::SetUnusedAssets(const TArray<FAssetDa
 		UnusedAssets.Add(Asset);
 	}
 	
+	RefreshUIContent();
+}
+
+void SProjectCleanerUnusedAssetsBrowserUI::SetCleanerConfigs(const FCleanerConfigs& Configs)
+{
+	CleanerConfigs = Configs;
+
 	RefreshUIContent();
 }
 
@@ -153,10 +161,11 @@ void SProjectCleanerUnusedAssetsBrowserUI::RefreshUIContent()
 	Config.bSortByPathInColumnView = true;
 	Config.bForceShowEngineContent = false;
 	Config.bShowBottomToolbar = true;
-	Config.bCanShowDevelopersFolder = true; // todo:ashe23 this must be based on user checkbox
+	Config.bCanShowDevelopersFolder = CleanerConfigs.bScanDeveloperContentsFolder;
 	Config.bForceShowEngineContent = false;
 	Config.bCanShowClasses = false;
-	Config.bAllowDragging = false;	
+	Config.bAllowDragging = false;
+	Config.bCanShowRealTimeThumbnails = false;
 	Config.AssetShowWarningText = FText::FromName("No assets");
 	Config.GetCurrentSelectionDelegates.Add(&GetCurrentSelectionDelegate);
 	Config.OnAssetDoubleClicked = FOnAssetDoubleClicked::CreateRaw(
