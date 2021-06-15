@@ -440,6 +440,9 @@ void FProjectCleanerModule::UpdateCleaner()
 
 void FProjectCleanerModule::UpdateCleanerData()
 {
+	FScopedSlowTask SlowTask{ 100.0f, FText::FromString("Scanning...") };
+	SlowTask.MakeDialog();
+
 	Reset();
 	
 	if (!AssetRegistry) return;
@@ -455,6 +458,8 @@ void FProjectCleanerModule::UpdateCleanerData()
 
 	// 2) Filtering files that are not part of engine, or possibly corrupted (NonUassetFiles, CorruptedFiles)
 	ProjectCleanerUtility::GetInvalidProjectFiles(AssetRegistry, ProjectFilesFromDisk, CorruptedFiles, NonUAssetFiles);
+
+	SlowTask.EnterProgressFrame(10.0f, FText::FromString("Finding invalid files..."));
 
 	// 3) Querying all primary asset classes (this is for later use, those type of asset and their dependencies wont be deleted)
 	UAssetManager& AssetManager = UAssetManager::Get();
@@ -507,6 +512,8 @@ void FProjectCleanerModule::UpdateCleanerData()
 
 	// after all actions we rebuilding relational map to match unused assets
 	RelationalMap.Rebuild(UnusedAssets);
+
+	SlowTask.EnterProgressFrame(90.0f, FText::FromString("Building assets relational map..."));
 
 	UpdateStats();
 }
