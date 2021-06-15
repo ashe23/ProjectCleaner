@@ -36,35 +36,35 @@ void SProjectCleanerCorruptedFilesUI::RefreshUIContent()
 		+ SOverlay::Slot()
 		.Padding(20.0f)
 		[
-			SNew(SVerticalBox)
-			+ SVerticalBox::Slot()
-			.AutoHeight()
+			SNew(SScrollBox)
+			+ SScrollBox::Slot()
 			[
 				SNew(SVerticalBox)
-				+SVerticalBox::Slot()
+				+ SVerticalBox::Slot()
 				.AutoHeight()
 				[
-					SNew(STextBlock)
-					.AutoWrapText(true)
-					.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
-					.Text(LOCTEXT("corrupted_files", "Corrupted Files"))
+					SNew(SVerticalBox)
+					+SVerticalBox::Slot()
+					.AutoHeight()
+					[
+						SNew(STextBlock)
+						.AutoWrapText(true)
+						.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
+						.Text(LOCTEXT("corrupted_files", "Corrupted Files"))
+					]
+					+SVerticalBox::Slot()
+					.AutoHeight()
+					.Padding(FMargin{5.0f, 10.0f})
+					[
+						SNew(STextBlock)
+						.AutoWrapText(true)
+						.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light10"))
+						.Text(LOCTEXT("corrupted_files_fix_text", "To fix them:\n\t1.Close Editor\n\t2.Delete that files manually from Windows explorer"))
+					]
 				]
-				+SVerticalBox::Slot()
+				+ SVerticalBox::Slot()
 				.AutoHeight()
-				.Padding(FMargin{5.0f, 10.0f})
-				[
-					SNew(STextBlock)
-					.AutoWrapText(true)
-					.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light10"))
-					.Text(LOCTEXT("corrupted_files_fix_text", "To fix them:\n\t1.Close Editor\n\t2.Delete that files manually from Windows explorer"))
-				]
-			]
-			+ SVerticalBox::Slot()
-			.AutoHeight()
-			.Padding(FMargin{0.0f, 20.0f})
-			[
-				SNew(SScrollBox)
-				+ SScrollBox::Slot()
+				.Padding(FMargin{0.0f, 20.0f})
 				[
 					SNew(SListView<TWeakObjectPtr<UCorruptedFile>>)
 					.ListItemsSource(&CorruptedFiles)

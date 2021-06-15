@@ -37,30 +37,30 @@ void SProjectCleanerNonUassetFilesUI::RefreshUIContent()
 		+ SOverlay::Slot()
 		.Padding(20.0f)
 		[
-			SNew(SVerticalBox)
-			+ SVerticalBox::Slot()
-			.AutoHeight()
+			SNew(SScrollBox)
+			+ SScrollBox::Slot()
 			[
-				SNew(STextBlock)
-				.AutoWrapText(true)
-				.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
-				.Text(LOCTEXT("non_uasset_files", "Non .uasset files"))
-			]
-			+ SVerticalBox::Slot()
-			.Padding(FMargin{0.0f, 10.0f})
-			.AutoHeight()
-			[
-				SNew(STextBlock)
-				.AutoWrapText(true)
-				.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light10"))
-				.Text(LOCTEXT("dblclickonrow", "Double click on row to open in Explorer"))
-			]
-			+ SVerticalBox::Slot()
-			.AutoHeight()
-			.Padding(FMargin{0.0f, 20.0f})
-			[
-				SNew(SScrollBox)
-				+ SScrollBox::Slot()
+				SNew(SVerticalBox)
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				[
+					SNew(STextBlock)
+					.AutoWrapText(true)
+					.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
+					.Text(LOCTEXT("non_uasset_files", "Non .uasset files"))
+				]
+				+ SVerticalBox::Slot()
+				.Padding(FMargin{0.0f, 10.0f})
+				.AutoHeight()
+				[
+					SNew(STextBlock)
+					.AutoWrapText(true)
+					.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light10"))
+					.Text(LOCTEXT("dblclickonrow", "Double click on row to open in Explorer"))
+				]
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(FMargin{0.0f, 20.0f})
 				[
 					SNew(SListView<TWeakObjectPtr<UNonUassetFile>>)
 					.ListItemsSource(&NonUassetFiles)

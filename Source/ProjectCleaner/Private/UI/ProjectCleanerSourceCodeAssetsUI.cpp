@@ -28,30 +28,30 @@ void SProjectCleanerSourceCodeAssetsUI::RefreshUIContent()
 		+ SOverlay::Slot()
 		.Padding(20.0f)
 		[
-			SNew(SVerticalBox)
-			+ SVerticalBox::Slot()
-			.AutoHeight()
+			SNew(SScrollBox)
+			+ SScrollBox::Slot()
 			[
-				SNew(STextBlock)
-				.AutoWrapText(true)
-				.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
-				.Text(LOCTEXT("source_code_assets_title", "Assets used in source code files or config files etc."))
-			]
-			+ SVerticalBox::Slot()
-			.Padding(FMargin{0.0f, 10.0f})
-			.AutoHeight()
-			[
-				SNew(STextBlock)
-				.AutoWrapText(true)
-				.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light10"))
-				.Text(LOCTEXT("dbl_click_on_row", "Double click on row to open in Explorer"))
-			]
-			+ SVerticalBox::Slot()
-			.AutoHeight()
-			.Padding(FMargin{0.0f, 20.0f})
-			[
-				SNew(SScrollBox)
-				+ SScrollBox::Slot()
+				SNew(SVerticalBox)
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				[
+					SNew(STextBlock)
+					.AutoWrapText(true)
+					.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
+					.Text(LOCTEXT("source_code_assets_title", "Assets used in source code files or config files etc."))
+				]
+				+ SVerticalBox::Slot()
+				.Padding(FMargin{0.0f, 10.0f})
+				.AutoHeight()
+				[
+					SNew(STextBlock)
+					.AutoWrapText(true)
+					.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light10"))
+					.Text(LOCTEXT("dbl_click_on_row", "Double click on row to open in Explorer"))
+				]
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(FMargin{0.0f, 20.0f})
 				[
 					SNew(SListView<TWeakObjectPtr<USourceCodeAsset>>)
 					.ListItemsSource(&SourceCodeAssets)
