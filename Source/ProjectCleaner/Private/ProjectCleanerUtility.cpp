@@ -55,6 +55,8 @@ void ProjectCleanerUtility::GetInvalidProjectFiles(const FAssetRegistryModule* A
 			NonUAssetFiles.Add(ProjectFile);
 		}
 	}
+
+	CorruptedFiles.Compact();
 }
 
 void ProjectCleanerUtility::GetAllPrimaryAssetClasses(UAssetManager& AssetManager, TSet<FName>& PrimaryAssetClasses)
@@ -271,6 +273,8 @@ void ProjectCleanerUtility::DeleteEmptyFolders(TSet<FName>& EmptyFolders)
 			AssetRegistryModule.Get().RemovePath(DirPath);
 		}
 	}
+
+	EmptyFolders.Reset();
 }
 
 void ProjectCleanerUtility::FixupRedirectors()
