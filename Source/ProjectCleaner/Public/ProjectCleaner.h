@@ -130,7 +130,7 @@ private:
 	
 	/** Data Containers */ 
 	TArray<FAssetData> UnusedAssets;
-	TSet<FName> EmptyFolders;
+	TArray<FString> EmptyFolders;
 	TSet<FName> NonUAssetFiles;
 	TSet<FName> CorruptedFiles;
 	FCleaningStats CleaningStats;

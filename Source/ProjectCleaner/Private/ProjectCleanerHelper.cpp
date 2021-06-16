@@ -9,14 +9,29 @@
 #include "Hal/FileManager.h"
 #include "Hal/FileManagerGeneric.h"
 
-void ProjectCleanerHelper::GetEmptyFolders(TSet<FName>& EmptyFolders)
+void ProjectCleanerHelper::GetEmptyFolders(TArray<FString>& EmptyFolders, const bool bScanDeveloperContents)
 {
-	const auto ProjectRoot = FPaths::ProjectContentDir() / TEXT("*");
-	FindEmptyFolders(ProjectRoot, EmptyFolders);
+	FindEmptyFolders(FPaths::ProjectContentDir() / TEXT("*"), EmptyFolders);
 
-	// remove Developers and Collections folder
-	EmptyFolders.Remove(FName{ FPaths::ProjectContentDir() + TEXT("Developers/") });
-	EmptyFolders.Remove(FName{ FPaths::ProjectContentDir() + TEXT("Collections/") });
+	if (bScanDeveloperContents)
+	{
+		EmptyFolders.RemoveAllSwap([&](const FString& Elem) {
+			return
+				Elem.Equals(FPaths::GameUserDeveloperDir()) ||
+				Elem.Equals(FPaths::GameUserDeveloperDir() + TEXT("Collections/")) ||
+				Elem.Equals(FPaths::ProjectContentDir() + TEXT("Collections/")) ||
+				Elem.Equals(FPaths::GameDevelopersDir());
+		});
+	}
+	else
+	{
+		EmptyFolders.RemoveAllSwap([&] (const FString& Elem)
+		{
+			return
+				Elem.StartsWith(FPaths::GameDevelopersDir()) ||
+				Elem.StartsWith(FPaths::ProjectContentDir() + TEXT("Collections/"));
+		});
+	}
 }
 
 void ProjectCleanerHelper::GetProjectFilesFromDisk(TSet<FName>& ProjectFiles)
@@ -111,7 +126,7 @@ void ProjectCleanerHelper::GetSourceCodeFilesFromDisk(TArray<FSourceCodeFile>& S
 }
 
 // private
-bool ProjectCleanerHelper::FindEmptyFolders(const FString& FolderPath, TSet<FName>& EmptyFolders)
+bool ProjectCleanerHelper::FindEmptyFolders(const FString& FolderPath, TArray<FString>& EmptyFolders)
 {
 	bool IsSubFoldersEmpty = true;
 	TArray<FString> SubFolders;
@@ -126,7 +141,7 @@ bool ProjectCleanerHelper::FindEmptyFolders(const FString& FolderPath, TSet<FNam
 		if (FindEmptyFolders(NewPath, EmptyFolders))
 		{
 			NewPath.RemoveFromEnd(TEXT("*"));
-			EmptyFolders.Add(*NewPath);
+			EmptyFolders.AddUnique(*NewPath);
 		}
 		else
 		{

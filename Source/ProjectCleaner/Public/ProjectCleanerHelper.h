@@ -9,9 +9,9 @@ struct FSourceCodeFile;
 class ProjectCleanerHelper
 {
 public:
-	static void GetEmptyFolders(TSet<FName>& EmptyFolders);
+	static void GetEmptyFolders(TArray<FString>& EmptyFolders, const bool bScanDeveloperContents);
 	static void GetProjectFilesFromDisk(TSet<FName>& ProjectFiles);
 	static void GetSourceCodeFilesFromDisk(TArray<FSourceCodeFile>& SourceCodeFiles);
 private:
-	static bool FindEmptyFolders(const FString& FolderPath, TSet<FName>& EmptyFolders);
+	static bool FindEmptyFolders(const FString& FolderPath, TArray<FString>& EmptyFolders);
 };

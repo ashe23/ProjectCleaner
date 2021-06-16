@@ -440,8 +440,8 @@ void FProjectCleanerModule::UpdateCleaner()
 
 void FProjectCleanerModule::UpdateCleanerData()
 {
-	FScopedSlowTask SlowTask{ 100.0f, FText::FromString("Scanning...") };
-	SlowTask.MakeDialog();
+	//FScopedSlowTask SlowTask{ 100.0f, FText::FromString("Scanning...") };
+	//SlowTask.MakeDialog();
 
 	Reset();
 	
@@ -452,44 +452,44 @@ void FProjectCleanerModule::UpdateCleanerData()
 	// * Project Files from "Content" folder
 	// * Config files from "Config" folder and all "Config" folders in installed "Plugins" folder
 	// * Source code files from "Source" folder and all "Source" folders in installed "Plugins" folder (.c, .cpp, .cs files)
-	ProjectCleanerHelper::GetEmptyFolders(EmptyFolders);
-	ProjectCleanerHelper::GetProjectFilesFromDisk(ProjectFilesFromDisk);
-	ProjectCleanerHelper::GetSourceCodeFilesFromDisk(SourceCodeFiles);
+	ProjectCleanerHelper::GetEmptyFolders(EmptyFolders, CleanerConfigs.bScanDeveloperContentsFolder);
+	//ProjectCleanerHelper::GetProjectFilesFromDisk(ProjectFilesFromDisk);
+	//ProjectCleanerHelper::GetSourceCodeFilesFromDisk(SourceCodeFiles);
 
 	// 2) Filtering files that are not part of engine, or possibly corrupted (NonUassetFiles, CorruptedFiles)
-	ProjectCleanerUtility::GetInvalidProjectFiles(AssetRegistry, ProjectFilesFromDisk, CorruptedFiles, NonUAssetFiles);
+	//ProjectCleanerUtility::GetInvalidProjectFiles(AssetRegistry, ProjectFilesFromDisk, CorruptedFiles, NonUAssetFiles);
 
-	SlowTask.EnterProgressFrame(10.0f, FText::FromString("Finding invalid files..."));
+	//SlowTask.EnterProgressFrame(10.0f, FText::FromString("Finding invalid files..."));
 
 	// 3) Querying all primary asset classes (this is for later use, those type of asset and their dependencies wont be deleted)
-	UAssetManager& AssetManager = UAssetManager::Get();
-	ProjectCleanerUtility::GetAllPrimaryAssetClasses(AssetManager, PrimaryAssetClasses);
+	//UAssetManager& AssetManager = UAssetManager::Get();
+	//ProjectCleanerUtility::GetAllPrimaryAssetClasses(AssetManager, PrimaryAssetClasses);
 
 	// 4) Now we get all assets from AssetRegistry
-	ProjectCleanerUtility::GetAllAssets(AssetRegistry, UnusedAssets);
+	//ProjectCleanerUtility::GetAllAssets(AssetRegistry, UnusedAssets);
 
 	// 5) Removing assets from deletion list that are currently in use
 	// In use cases:
 	// * PrimaryAssets and Assets used by PrimaryAsset
 	// * Removing Megascans Assets if Plugin is active
-	ProjectCleanerUtility::RemoveUsedAssets(UnusedAssets, PrimaryAssetClasses);
-	ProjectCleanerUtility::RemoveMegascansPluginAssetsIfActive(UnusedAssets);
+	//ProjectCleanerUtility::RemoveUsedAssets(UnusedAssets, PrimaryAssetClasses);
+	//ProjectCleanerUtility::RemoveMegascansPluginAssetsIfActive(UnusedAssets);
 
-	// 6) remove assets from Developers Contents folder if user picked that option	
-	if (!CleanerConfigs.bScanDeveloperContentsFolder)
-	{
-		ProjectCleanerUtility::RemoveContentFromDeveloperFolder(UnusedAssets, EmptyFolders);
-	}
+	// 6) remove assets from Developers Contents folder if user picked that option
+	//if (!CleanerConfigs.bScanDeveloperContentsFolder)
+	//{
+	//	ProjectCleanerUtility::RemoveContentFromDeveloperFolder(UnusedAssets, EmptyFolders);
+	//}
 
 	// update content browser settings to show "Developers Contents"
-	GetMutableDefault<UContentBrowserSettings>()->SetDisplayDevelopersFolder(CleanerConfigs.bScanDeveloperContentsFolder, true);
-	GetMutableDefault<UContentBrowserSettings>()->PostEditChange();
+	//GetMutableDefault<UContentBrowserSettings>()->SetDisplayDevelopersFolder(CleanerConfigs.bScanDeveloperContentsFolder, true);
+	//GetMutableDefault<UContentBrowserSettings>()->PostEditChange();
 
 	// filling graphs with unused assets data and creating relational map between them
-	RelationalMap.Rebuild(UnusedAssets);
+	//RelationalMap.Rebuild(UnusedAssets);
 
 	// 7) removing assets that used indirectly (in source code, or config files etc.)
-	ProjectCleanerUtility::RemoveAssetsUsedIndirectly(UnusedAssets, RelationalMap, SourceCodeFiles, SourceCodeAssets);
+	//ProjectCleanerUtility::RemoveAssetsUsedIndirectly(UnusedAssets, RelationalMap, SourceCodeFiles, SourceCodeAssets);
 
 	// 8) User excluded assets
 	// This assets will be in Database, but wont be available for deletion
@@ -500,20 +500,20 @@ void FProjectCleanerModule::UpdateCleanerData()
 	//		all assets with specified class and all their linked assets will remain untouched
 	// Explicitly excluded assets will be shown in "Excluded Assets" Content browser <- include asset action, removing selected assets from exclusion list
 	// Linked assets to those excluded assets will be shown in "Linked Assets" Content browser <- no action here, user just see , what we wont delete
-	ProjectCleanerUtility::RemoveAssetsExcludedByUser(
-		AssetRegistry,
-		UnusedAssets,
-		ExcludedAssets,
-		LinkedAssets,
-		UserExcludedAssets,
-		RelationalMap,
-		ExcludeOptions
-	);
+	//ProjectCleanerUtility::RemoveAssetsExcludedByUser(
+	//	AssetRegistry,
+	//	UnusedAssets,
+	//	ExcludedAssets,
+	//	LinkedAssets,
+	//	UserExcludedAssets,
+	//	RelationalMap,
+	//	ExcludeOptions
+	//);
 
 	// after all actions we rebuilding relational map to match unused assets
-	RelationalMap.Rebuild(UnusedAssets);
+	//RelationalMap.Rebuild(UnusedAssets);
 
-	SlowTask.EnterProgressFrame(90.0f, FText::FromString("Building assets relational map..."));
+	//SlowTask.EnterProgressFrame(90.0f, FText::FromString("Building assets relational map..."));
 
 	UpdateStats();
 }
@@ -593,7 +593,7 @@ void FProjectCleanerModule::UpdateContentBrowser() const
 
 void FProjectCleanerModule::CleanEmptyFolders()
 {
-	ProjectCleanerUtility::DeleteEmptyFolders(EmptyFolders);
+	//ProjectCleanerUtility::DeleteEmptyFolders(EmptyFolders);
 	const FString PostFixText = CleaningStats.EmptyFolders > 1 ? TEXT(" empty folders") : TEXT(" empty folder");
 	const FString DisplayText = FString{ "Deleted " } + FString::FromInt(CleaningStats.EmptyFolders) + PostFixText;
 	NotificationManager->AddTransient(
