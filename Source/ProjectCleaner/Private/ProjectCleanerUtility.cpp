@@ -261,21 +261,38 @@ FString ProjectCleanerUtility::ConvertPath(FString Path, const FString& From, co
 	return *Result;
 }
 
-void ProjectCleanerUtility::DeleteEmptyFolders(TSet<FName>& EmptyFolders)
-{
-	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
-	for (auto& EmptyFolder : EmptyFolders)
-	{
-		if (IFileManager::Get().DirectoryExists(*EmptyFolder.ToString()))
-		{
-			IFileManager::Get().DeleteDirectory(*EmptyFolder.ToString(), false, true);
-			auto DirPath = EmptyFolder.ToString().Replace(*FPaths::ProjectContentDir(), TEXT("/Game/"));
-			AssetRegistryModule.Get().RemovePath(DirPath);
-		}
-	}
-
-	EmptyFolders.Reset();
-}
+//bool ProjectCleanerUtility::DeleteEmptyFolders(const FAssetRegistryModule* AssetRegistry, TArray<FString>& EmptyFolders)
+//{
+//	if (EmptyFolders.Num() == 0) return false;
+//
+//	bool ErrorWhileDeleting = false;
+//	for (auto& EmptyFolder : EmptyFolders)
+//	{
+//		if (IFileManager::Get().DirectoryExists(*EmptyFolder))
+//		{
+//			// removing folder from disk
+//			if (!IFileManager::Get().DeleteDirectory(*EmptyFolder, false, true))
+//			{
+//				ErrorWhileDeleting = true;
+//				UE_LOG(LogTemp, Error, TEXT("Failed to delete %s folder."), *EmptyFolder);
+//				continue;
+//			}
+//
+//			auto FolderPath = EmptyFolder.Replace(*FPaths::ProjectContentDir(), TEXT("/Game/"));
+//
+//			// removing folder path from asset registry
+//			if (!AssetRegistry) continue;
+//			AssetRegistry->Get().RemovePath(FolderPath);
+//		}
+//	}
+//
+//	if (!ErrorWhileDeleting)
+//	{
+//		EmptyFolders.Empty();
+//	}
+//
+//	return !ErrorWhileDeleting;
+//}
 
 void ProjectCleanerUtility::FixupRedirectors()
 {

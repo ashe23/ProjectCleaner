@@ -593,7 +593,7 @@ void FProjectCleanerModule::UpdateContentBrowser() const
 
 void FProjectCleanerModule::CleanEmptyFolders()
 {
-	//ProjectCleanerUtility::DeleteEmptyFolders(EmptyFolders);
+	ProjectCleanerHelper::DeleteEmptyFolders(AssetRegistry, EmptyFolders);
 	const FString PostFixText = CleaningStats.EmptyFolders > 1 ? TEXT(" empty folders") : TEXT(" empty folder");
 	const FString DisplayText = FString{ "Deleted " } + FString::FromInt(CleaningStats.EmptyFolders) + PostFixText;
 	NotificationManager->AddTransient(

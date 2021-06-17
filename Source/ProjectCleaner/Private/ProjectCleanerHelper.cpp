@@ -5,13 +5,14 @@
 #include "StructsContainer.h"
 
 // Engine Headers
+#include "AssetRegistryModule.h"
 #include "Misc/FileHelper.h"
 #include "Hal/FileManager.h"
 #include "Hal/FileManagerGeneric.h"
 
 void ProjectCleanerHelper::GetEmptyFolders(TArray<FString>& EmptyFolders, const bool bScanDeveloperContents)
 {
-	FindEmptyFolders(FPaths::ProjectContentDir() / TEXT("*"), EmptyFolders);
+	FindAllEmptyFolders(FPaths::ProjectContentDir() / TEXT("*"), EmptyFolders);
 
 	if (bScanDeveloperContents)
 	{
@@ -125,8 +126,39 @@ void ProjectCleanerHelper::GetSourceCodeFilesFromDisk(TArray<FSourceCodeFile>& S
 	}
 }
 
+bool ProjectCleanerHelper::DeleteEmptyFolders(const FAssetRegistryModule* AssetRegistry, TArray<FString>& EmptyFolders)
+{
+	if (EmptyFolders.Num() == 0) return false;
+
+	bool ErrorWhileDeleting = false;
+	for (auto& EmptyFolder : EmptyFolders)
+	{
+		if (!IFileManager::Get().DirectoryExists(*EmptyFolder)) continue;
+
+		if (!IFileManager::Get().DeleteDirectory(*EmptyFolder, false, true))
+		{
+			ErrorWhileDeleting = true;
+			UE_LOG(LogTemp, Error, TEXT("Failed to delete %s folder."), *EmptyFolder);
+			continue;
+		}
+
+		auto FolderPath = EmptyFolder.Replace(*FPaths::ProjectContentDir(), TEXT("/Game/"));
+
+		// removing folder path from asset registry
+		if (!AssetRegistry) continue;
+		AssetRegistry->Get().RemovePath(FolderPath);
+	}
+
+	if (!ErrorWhileDeleting)
+	{
+		EmptyFolders.Empty();
+	}
+
+	return !ErrorWhileDeleting;
+}
+
 // private
-bool ProjectCleanerHelper::FindEmptyFolders(const FString& FolderPath, TArray<FString>& EmptyFolders)
+bool ProjectCleanerHelper::FindAllEmptyFolders(const FString& FolderPath, TArray<FString>& EmptyFolders)
 {
 	bool IsSubFoldersEmpty = true;
 	TArray<FString> SubFolders;
@@ -138,7 +170,7 @@ bool ProjectCleanerHelper::FindEmptyFolders(const FString& FolderPath, TArray<FS
 		auto NewPath = FolderPath;
 		NewPath.RemoveFromEnd(TEXT("*"));
 		NewPath += SubFolder / TEXT("*");
-		if (FindEmptyFolders(NewPath, EmptyFolders))
+		if (FindAllEmptyFolders(NewPath, EmptyFolders))
 		{
 			NewPath.RemoveFromEnd(TEXT("*"));
 			EmptyFolders.AddUnique(*NewPath);

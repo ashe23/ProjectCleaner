@@ -39,7 +39,7 @@ public:
 	static FName ConvertAbsToRelativePath(const FName& InPath);
 	static FString ConvertAbsToRelativePath(const FString& InPath);
 	static int32 DeleteAssets(TArray<FAssetData>& Assets);
-	static void DeleteEmptyFolders(TSet<FName>& EmptyFolders);
+	//static bool DeleteEmptyFolders(const FAssetRegistryModule* AssetRegistry, TArray<FString>& EmptyFolders);
 	static void FixupRedirectors();
 	static void SaveAllAssets();
 	static int64 GetTotalSize(const TArray<FAssetData>& AssetContainer);
