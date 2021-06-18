@@ -48,7 +48,9 @@ static const FName CorruptedFilesTab = FName{ TEXT("CorruptedFilesTab") };
 
 FProjectCleanerModule::FProjectCleanerModule() :
 	ExcludeOptions(nullptr),
-	AssetRegistry(nullptr)
+	AssetRegistry(nullptr),
+	AssetManager(nullptr),
+	ContentBrowser(nullptr)
 {
 }
 
@@ -127,6 +129,8 @@ void FProjectCleanerModule::StartupModule()
 	{
 		AssetRegistry->Get().OnFilesLoaded().AddRaw(this, &FProjectCleanerModule::OnFilesLoaded);
 	}
+
+	ContentBrowser = &FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
 }
 
 void FProjectCleanerModule::ShutdownModule()
@@ -463,7 +467,8 @@ void FProjectCleanerModule::UpdateCleanerData()
 
 	// 3) Querying all primary asset classes (this is for later use, those type of asset and their dependencies wont be deleted)
 	//UAssetManager& AssetManager = UAssetManager::Get();
-	//ProjectCleanerUtility::GetAllPrimaryAssetClasses(AssetManager, PrimaryAssetClasses);
+	AssetManager = &UAssetManager::Get();
+	ProjectCleanerUtility::GetAllPrimaryAssetClasses(*AssetManager, PrimaryAssetClasses);
 
 	// 4) Now we get all assets from AssetRegistry
 	//ProjectCleanerUtility::GetAllAssets(AssetRegistry, UnusedAssets);
@@ -581,14 +586,15 @@ void FProjectCleanerModule::Reset()
 
 void FProjectCleanerModule::UpdateContentBrowser() const
 {
+	if (!AssetRegistry) return;
+	if (!ContentBrowser) return;
+
 	TArray<FString> FocusFolders;
 	FocusFolders.Add("/Game");
 
 	AssetRegistry->Get().ScanPathsSynchronous(FocusFolders, true);
 	AssetRegistry->Get().SearchAllAssets(true);
-
-	FContentBrowserModule& CBModule = FModuleManager::Get().GetModuleChecked<FContentBrowserModule>("ContentBrowser");
-	CBModule.Get().SetSelectedPaths(FocusFolders, true);
+	ContentBrowser->Get().SetSelectedPaths(FocusFolders, true);
 }
 
 void FProjectCleanerModule::CleanEmptyFolders()

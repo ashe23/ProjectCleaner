@@ -19,7 +19,11 @@ class ITableRow;
 class SDockTab;
 class FUICommandList;
 class FSpawnTabArgs;
+// Other Engine Modules
 class FAssetRegistryModule;
+class FContentBrowserModule;
+class UAssetManager;
+
 class SProjectCleanerUnusedAssetsBrowserUI;
 class SProjectCleanerNonUassetFilesUI;
 class SProjectCleanerBrowserStatisticsUI;
@@ -152,6 +156,8 @@ private:
 
 	/** Other Engine Modules **/
 	FAssetRegistryModule* AssetRegistry;
+	UAssetManager* AssetManager;
+	FContentBrowserModule* ContentBrowser;
 	void OnFilesLoaded();
 	bool bCanOpenTab = false;
 };

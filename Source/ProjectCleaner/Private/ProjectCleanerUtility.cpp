@@ -62,8 +62,10 @@ void ProjectCleanerUtility::GetInvalidProjectFiles(const FAssetRegistryModule* A
 	NonUAssetFiles.Compact();
 }
 
-void ProjectCleanerUtility::GetAllPrimaryAssetClasses(UAssetManager& AssetManager, TSet<FName>& PrimaryAssetClasses)
+void ProjectCleanerUtility::GetAllPrimaryAssetClasses(const UAssetManager& AssetManager, TSet<FName>& PrimaryAssetClasses)
 {
+	if (!AssetManager.IsValid()) return;
+
 	PrimaryAssetClasses.Reserve(10);
 	
 	const UAssetManagerSettings& Settings = AssetManager.GetSettings();
