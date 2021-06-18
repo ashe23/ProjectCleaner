@@ -34,20 +34,11 @@ public:
 		TArray<FAssetData>& UserExcludedAssets,
 		AssetRelationalMap& RelationalMap,
 		const UExcludeOptions* ExcludeOptions);
-	//static FName ConvertRelativeToAbsPath(const FName& InPath);
-	//static FString ConvertRelativeToAbsPath(const FString& InPath);
-	//static FName ConvertAbsToRelativePath(const FName& InPath);
-	//static FString ConvertAbsToRelativePath(const FString& InPath);
 	static int32 DeleteAssets(TArray<FAssetData>& Assets);
-	//static bool DeleteEmptyFolders(const FAssetRegistryModule* AssetRegistry, TArray<FString>& EmptyFolders);
 	static void FixupRedirectors();
 	static void SaveAllAssets();
 	static int64 GetTotalSize(const TArray<FAssetData>& AssetContainer);
-	//static FString ConvertRelativeToAbsolutePath(const FName& PackageName);
-	//static FName ConvertAbsolutePathToRelative(const FName& InPath);
 private:
-	//static FName ConvertPath(FName Path, const FName& From, const FName& To);
-	//static FString ConvertPath(FString Path, const FString& From, const FString& To);
 	static bool IsEngineExtension(const FString& Extension);
 	static const FSourceCodeFile* GetFileWhereAssetUsed(const FAssetData& Asset, const TArray<FSourceCodeFile>& SourceCodeFiles);
 };

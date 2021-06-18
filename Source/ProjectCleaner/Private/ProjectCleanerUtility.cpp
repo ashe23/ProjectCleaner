@@ -226,79 +226,6 @@ void ProjectCleanerUtility::RemoveAssetsExcludedByUser(
 	});
 }
 
-//FName ProjectCleanerUtility::ConvertRelativeToAbsPath(const FName& InPath)
-//{
-//	return ConvertPath(InPath, TEXT("/Game/"), *FPaths::ProjectContentDir());
-//}
-//
-//FString ProjectCleanerUtility::ConvertRelativeToAbsPath(const FString& InPath)
-//{
-//	return ConvertPath(InPath, TEXT("/Game/"), *FPaths::ProjectContentDir());
-//}
-//
-//FName ProjectCleanerUtility::ConvertAbsToRelativePath(const FName& InPath)
-//{
-//	return ConvertPath(InPath, *FPaths::ProjectContentDir(), TEXT("/Game/"));
-//}
-//
-//FString ProjectCleanerUtility::ConvertAbsToRelativePath(const FString& InPath)
-//{
-//	return ConvertPath(InPath, *FPaths::ProjectContentDir(), TEXT("/Game/"));
-//}
-
-//FName ProjectCleanerUtility::ConvertPath(FName Path, const FName& From, const FName& To)
-//{
-//	FString ConvertedPath = Path.ToString();
-//	FPaths::NormalizeFilename(ConvertedPath);
-//	
-//	const auto Result = ConvertedPath.Replace(
-//		*From.ToString(),
-//		*To.ToString()
-//	);
-//	return FName{ *Result };
-//}
-//
-//FString ProjectCleanerUtility::ConvertPath(FString Path, const FString& From, const FString& To)
-//{
-//	FPaths::NormalizeFilename(Path);
-//
-//	const auto Result = Path.Replace(*From,*To);
-//	return *Result;
-//}
-
-//bool ProjectCleanerUtility::DeleteEmptyFolders(const FAssetRegistryModule* AssetRegistry, TArray<FString>& EmptyFolders)
-//{
-//	if (EmptyFolders.Num() == 0) return false;
-//
-//	bool ErrorWhileDeleting = false;
-//	for (auto& EmptyFolder : EmptyFolders)
-//	{
-//		if (IFileManager::Get().DirectoryExists(*EmptyFolder))
-//		{
-//			// removing folder from disk
-//			if (!IFileManager::Get().DeleteDirectory(*EmptyFolder, false, true))
-//			{
-//				ErrorWhileDeleting = true;
-//				UE_LOG(LogTemp, Error, TEXT("Failed to delete %s folder."), *EmptyFolder);
-//				continue;
-//			}
-//
-//			auto FolderPath = EmptyFolder.Replace(*FPaths::ProjectContentDir(), TEXT("/Game/"));
-//
-//			// removing folder path from asset registry
-//			if (!AssetRegistry) continue;
-//			AssetRegistry->Get().RemovePath(FolderPath);
-//		}
-//	}
-//
-//	if (!ErrorWhileDeleting)
-//	{
-//		EmptyFolders.Empty();
-//	}
-//
-//	return !ErrorWhileDeleting;
-//}
-
 void ProjectCleanerUtility::FixupRedirectors()
 {
 	FScopedSlowTask SlowTask{1.0f, FText::FromString("Fixing up Redirectors...")};
@@ -418,29 +345,6 @@ const FSourceCodeFile* ProjectCleanerUtility::GetFileWhereAssetUsed(const FAsset
 
 	return nullptr;
 }
-
-//FString ProjectCleanerUtility::ConvertRelativeToAbsolutePath(const FName& PackageName)
-//{	
-//	FString PackageFileName;
-//	FString PackageFile;
-//	if (
-//		FPackageName::TryConvertLongPackageNameToFilename(PackageName.ToString(), PackageFileName) &&
-//		FPackageName::FindPackageFileWithoutExtension(PackageFileName, PackageFile)
-//	)
-//	{
-//		return FPaths::ConvertRelativePathToFull(PackageFile);
-//	}
-//
-//	return FString{};
-//}
-
-//FName ProjectCleanerUtility::ConvertAbsolutePathToRelative(const FName& InPath)
-//{
-//	FString Path = InPath.ToString();
-//	FPaths::NormalizeFilename(Path);
-//	const auto Result = Path.Replace(*FPaths::ProjectContentDir(), TEXT("/Game/"));
-//	return FName{*Result};
-//}
 
 void ProjectCleanerUtility::RemoveUsedAssets(TArray<FAssetData>& Assets, const TSet<FName>& PrimaryAssetClasses)
 {
