@@ -406,5 +406,5 @@ void ProjectCleanerUtility::RemoveContentFromDeveloperFolder(TArray<FAssetData>&
 		return
 			FPaths::IsUnderDirectory(AssetAbsolutePath, DeveloperFolderPath) ||
 			FPaths::IsUnderDirectory(AssetAbsolutePath, CollectionsFolderPath);
-	});	
+	});
 }

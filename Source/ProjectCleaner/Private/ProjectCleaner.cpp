@@ -13,6 +13,7 @@
 #include "UI/ProjectCleanerSourceCodeAssetsUI.h"
 #include "UI/ProjectCleanerCorruptedFilesUI.h"
 #include "UI/ProjectCleanerExcludedAssetsUI.h"
+#include "UI/ProjectCleanerConfigsUI.h"
 // Engine Headers
 #include "AssetRegistryModule.h"
 #include "AssetToolsModule.h"
@@ -24,6 +25,7 @@
 #include "Widgets/Docking/SDockTab.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Layout/SScrollBox.h"
+#include "Widgets/Input/SEditableTextBox.h"
 #include "EditorStyleSet.h"
 #include "IContentBrowserSingleton.h"
 #include "GenericPlatform/GenericPlatformMisc.h"
@@ -48,6 +50,7 @@ static const FName CorruptedFilesTab = FName{ TEXT("CorruptedFilesTab") };
 
 FProjectCleanerModule::FProjectCleanerModule() :
 	ExcludeOptions(nullptr),
+	CleanerConfigs(nullptr),
 	AssetRegistry(nullptr),
 	AssetManager(nullptr),
 	ContentBrowser(nullptr)
@@ -124,6 +127,7 @@ void FProjectCleanerModule::StartupModule()
 	// initializing some objects
 	NotificationManager = MakeShared<ProjectCleanerNotificationManager>();
 	ExcludeOptions = GetMutableDefault<UExcludeOptions>();
+	CleanerConfigs = GetMutableDefault<UCleanerConfigs>();
 	AssetRegistry = &FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
 	if (AssetRegistry)
 	{
@@ -131,6 +135,7 @@ void FProjectCleanerModule::StartupModule()
 	}
 
 	ContentBrowser = &FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
+
 }
 
 void FProjectCleanerModule::ShutdownModule()
@@ -194,6 +199,7 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 
 	const auto ExcludedAssetsUIRef = SAssignNew(ExcludedAssetsUI, SProjectCleanerExcludedAssetsUI)
 		.ExcludedAssets(ExcludedAssets)
+		.CleanerConfigs(CleanerConfigs)
 		.LinkedAssets(LinkedAssets);
 
 	ExcludedAssetsUIRef->OnUserIncludedAssets = FOnUserIncludedAsset::CreateRaw(
@@ -205,8 +211,6 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 		TabLayout.ToSharedRef(),
 		TSharedPtr<SWindow>()
 	).ToSharedRef();
-
-	const FMargin CommonMargin = FMargin{ 20.0f, 20.0f };
 
 	NomadTab->SetContent(
 		SNew(SBorder)
@@ -227,14 +231,14 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 						[
 							SNew(SVerticalBox)
 							+ SVerticalBox::Slot()
-							.Padding(CommonMargin)
+							.Padding(FMargin{ 20.0f, 20.0f })
 							.AutoHeight()
 							[
 								SAssignNew(StatisticsUI, SProjectCleanerBrowserStatisticsUI)
 								.Stats(CleaningStats)
 							]
 							+ SVerticalBox::Slot()
-							.Padding(CommonMargin)
+							.Padding(FMargin{ 20.0f, 20.0f })
 							.AutoHeight()
 							[
 								SNew(SHorizontalBox)
@@ -268,57 +272,14 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 								]
 							]
 							+ SVerticalBox::Slot()
-							.Padding(FMargin{ 20.0f, 5.0f })
-							.AutoHeight()
-							[
-								SNew(SHorizontalBox)
-								+ SHorizontalBox::Slot()
-								.MaxWidth(250.0f)
-								.HAlign(HAlign_Left)
-								.VAlign(VAlign_Center)
-								.Padding(2.f)
-								[
-									SNew(STextBlock)
-									.Text(LOCTEXT("scan_developer_contents", "Scan Developer Contents Folders"))
-								]
-								+ SHorizontalBox::Slot()
-								.AutoWidth()
-								.HAlign(HAlign_Left)
-								.VAlign(VAlign_Center)
-								.Padding(2.f)
-								[
-									SNew(SCheckBox)
-									.OnCheckStateChanged_Raw(this, &FProjectCleanerModule::OnScanDeveloperContentCheckboxChanged)
-									.IsChecked(CleanerConfigs.bScanDeveloperContentsFolder ? ECheckBoxState::Checked : ECheckBoxState::Unchecked)
-								]
-							]
-							+ SVerticalBox::Slot()
 							.Padding(FMargin{20.0f, 5.0f})
 							.AutoHeight()
 							[
-								SNew(SHorizontalBox)
-								+ SHorizontalBox::Slot()
-								.MaxWidth(250.0f)
-								.HAlign(HAlign_Left)
-								.VAlign(VAlign_Center)
-								.Padding(2.f)
-								[
-									SNew(STextBlock)
-									.Text(LOCTEXT("automatically_delete_empty_folders", "Remove Empty Folders After Assets Deleted"))
-								]
-								+ SHorizontalBox::Slot()
-								.AutoWidth()
-								.HAlign(HAlign_Left)
-								.VAlign(VAlign_Center)
-								.Padding(2.f)
-								[
-									SNew(SCheckBox)
-									.OnCheckStateChanged_Raw(this, &FProjectCleanerModule::OnAutomaticallyRemoveEmptyFoldersCheckboxChanged)
-									.IsChecked(CleanerConfigs.bAutomaticallyDeleteEmptyFolders ? ECheckBoxState::Checked : ECheckBoxState::Unchecked)
-								]
+								SAssignNew(CleanerConfigsUI, SProjectCleanerConfigsUI)
+								.CleanerConfigs(CleanerConfigs)
 							]
 							+ SVerticalBox::Slot()
-							.Padding(CommonMargin)
+							.Padding(FMargin{20.0f, 5.0f})
 							.AutoHeight()
 							[
 								SAssignNew(ExcludeOptionUI, SProjectCleanerExcludeOptionsUI)
@@ -326,7 +287,7 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 							]
 						]
 					]
-					/*+ SScrollBox::Slot()
+					+ SScrollBox::Slot()
 					.Padding(FMargin{0.0f, 20.0f})
 					[
 						SNew(SBorder)
@@ -334,13 +295,13 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 						[
 							SNew(SVerticalBox)
 							+ SVerticalBox::Slot()
-							.Padding(CommonMargin)
+							.Padding(FMargin{20.0f, 10.0f})
 							.AutoHeight()
 							[
 								ExcludedAssetsUIRef
 							]
 						]
-					]*/
+					]
 				]
 			]
 			+ SSplitter::Slot()
@@ -423,14 +384,19 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSourceCodeAssetsTabSpawn(const FSp
 
 void FProjectCleanerModule::OnScanDeveloperContentCheckboxChanged(ECheckBoxState State)
 {
-	CleanerConfigs.bScanDeveloperContentsFolder = (State == ECheckBoxState::Checked);
+	CleanerConfigs->bScanDeveloperContents = (State == ECheckBoxState::Checked);
 
 	UpdateCleanerData();
 }
 
 void FProjectCleanerModule::OnAutomaticallyRemoveEmptyFoldersCheckboxChanged(ECheckBoxState State)
 {
-	CleanerConfigs.bAutomaticallyDeleteEmptyFolders = (State == ECheckBoxState::Checked);
+	CleanerConfigs->bAutomaticallyDeleteEmptyFolders = (State == ECheckBoxState::Checked);
+}
+
+void FProjectCleanerModule::OnChunkSizeTextCommited(const FText& Text, ETextCommit::Type CommitType)
+{
+	UE_LOG(LogProjectCleaner, Warning, TEXT("%s"), *Text.ToString());
 }
 
 void FProjectCleanerModule::UpdateCleaner()
@@ -450,13 +416,14 @@ void FProjectCleanerModule::UpdateCleanerData()
 	Reset();
 	
 	if (!AssetRegistry) return;
+	if (!CleanerConfigs) return;
 	
 	// 1) Querying files and folder (FileManager)
 	// * Empty Folders
 	// * Project Files from "Content" folder
 	// * Config files from "Config" folder and all "Config" folders in installed "Plugins" folder
 	// * Source code files from "Source" folder and all "Source" folders in installed "Plugins" folder (.c, .cpp, .cs files)
-	ProjectCleanerHelper::GetEmptyFolders(EmptyFolders, CleanerConfigs.bScanDeveloperContentsFolder);
+	ProjectCleanerHelper::GetEmptyFolders(EmptyFolders, CleanerConfigs->bScanDeveloperContents);
 	ProjectCleanerHelper::GetProjectFilesFromDisk(ProjectFilesFromDisk);
 	ProjectCleanerHelper::GetSourceCodeFilesFromDisk(SourceCodeFiles);
 
@@ -481,13 +448,13 @@ void FProjectCleanerModule::UpdateCleanerData()
 	ProjectCleanerUtility::RemoveMegascansPluginAssetsIfActive(UnusedAssets);
 
 	// 6) remove assets from Developers Contents folder if user picked that option
-	if (!CleanerConfigs.bScanDeveloperContentsFolder)
+	if (!CleanerConfigs->bScanDeveloperContents)
 	{
 		ProjectCleanerUtility::RemoveContentFromDeveloperFolder(UnusedAssets);
 	}
 
 	// update content browser settings to show "Developers Contents"
-	GetMutableDefault<UContentBrowserSettings>()->SetDisplayDevelopersFolder(CleanerConfigs.bScanDeveloperContentsFolder, true);
+	GetMutableDefault<UContentBrowserSettings>()->SetDisplayDevelopersFolder(CleanerConfigs->bScanDeveloperContents, true);
 	GetMutableDefault<UContentBrowserSettings>()->PostEditChange();
 
 	// filling graphs with unused assets data and creating relational map between them
@@ -741,7 +708,7 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 
 	UpdateCleanerData();
 
-	if (CleanerConfigs.bAutomaticallyDeleteEmptyFolders)
+	if (CleanerConfigs->bAutomaticallyDeleteEmptyFolders)
 	{
 		CleanEmptyFolders();
 	}

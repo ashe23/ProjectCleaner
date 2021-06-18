@@ -31,6 +31,8 @@ class SProjectCleanerSourceCodeAssetsUI;
 class SProjectCleanerExcludeOptionsUI;
 class SProjectCleanerCorruptedFilesUI;
 class SProjectCleanerExcludedAssetsUI;
+class SProjectCleanerConfigsUI;
+class UCleanerConfigs;
 class USourceCodeAsset;
 class UExcludeOptions;
 class AssetRelationalMap;
@@ -62,6 +64,7 @@ private:
 	TSharedRef<SDockTab> OnSourceCodeAssetsTabSpawn(const FSpawnTabArgs& SpawnTabArgs);
 	void OnScanDeveloperContentCheckboxChanged(ECheckBoxState State);
 	void OnAutomaticallyRemoveEmptyFoldersCheckboxChanged(ECheckBoxState State);
+	void OnChunkSizeTextCommited(const FText& Text, ETextCommit::Type CommitType);
 
 	/** Cleaner **/
 	
@@ -129,6 +132,8 @@ private:
 	TWeakPtr<SProjectCleanerExcludeOptionsUI> ExcludeOptionUI;
 	TWeakPtr<SProjectCleanerCorruptedFilesUI> CorruptedFilesUI;
 	TWeakPtr<SProjectCleanerExcludedAssetsUI> ExcludedAssetsUI;
+	TWeakPtr<SProjectCleanerConfigsUI> CleanerConfigsUI;
+
 	TSharedPtr<FTabManager> TabManager;
 	TSharedPtr<FTabManager::FLayout> TabLayout;
 	
@@ -138,13 +143,13 @@ private:
 	TSet<FString> NonUAssetFiles;
 	TSet<FString> CorruptedFiles;
 	FCleaningStats CleaningStats;
-	FCleanerConfigs CleanerConfigs;
 	TArray<TWeakObjectPtr<USourceCodeAsset>> SourceCodeAssets;
 
 
 	TSet<FAssetData> ExcludedAssets;
 	TArray<FAssetData> LinkedAssets;
 	UExcludeOptions* ExcludeOptions;
+	UCleanerConfigs* CleanerConfigs;
 	
 	/** Helper Containers **/
 	TSet<FString> ProjectFilesFromDisk;

@@ -50,14 +50,11 @@ public:
 	const TArray<FAssetNode>& GetRootNodes() const;
 	void Reset();
 private:
-	
-	
 	void GetRelatedAssets(
 		const FName& PackageName,
 		const ERelationType RelationType,
 		TArray<FName>& RelatedAssets
 	) const;
-	
 	void FindCircularNodes();
 	void FindRootNodes();
 	void DFS(FAssetNode& Node, FAssetNode& RootNode);

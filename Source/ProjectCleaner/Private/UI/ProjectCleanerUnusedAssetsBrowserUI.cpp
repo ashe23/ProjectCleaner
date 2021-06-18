@@ -1,6 +1,7 @@
 ﻿// Copyright 2021. Ashot Barkhudaryan. All Rights Reserved.
 
 #include "UI/ProjectCleanerUnusedAssetsBrowserUI.h"
+#include "UI/ProjectCleanerConfigsUI.h"
 #include "ProjectCleanerCommands.h"
 #include "ProjectCleanerStyle.h"
 // Engine Headers
@@ -75,8 +76,11 @@ void SProjectCleanerUnusedAssetsBrowserUI::SetUnusedAssets(const TArray<FAssetDa
 	RefreshUIContent();
 }
 
-void SProjectCleanerUnusedAssetsBrowserUI::SetCleanerConfigs(const FCleanerConfigs& Configs)
+void SProjectCleanerUnusedAssetsBrowserUI::SetCleanerConfigs(UCleanerConfigs* Configs)
 {
+	if (!Configs) return;
+	if (!Configs->IsValidLowLevel()) return;
+
 	CleanerConfigs = Configs;
 
 	RefreshUIContent();
@@ -161,7 +165,7 @@ void SProjectCleanerUnusedAssetsBrowserUI::RefreshUIContent()
 	Config.bSortByPathInColumnView = true;
 	Config.bForceShowEngineContent = false;
 	Config.bShowBottomToolbar = true;
-	Config.bCanShowDevelopersFolder = CleanerConfigs.bScanDeveloperContentsFolder;
+	Config.bCanShowDevelopersFolder = CleanerConfigs->bScanDeveloperContents;
 	Config.bForceShowEngineContent = false;
 	Config.bCanShowClasses = false;
 	Config.bAllowDragging = false;

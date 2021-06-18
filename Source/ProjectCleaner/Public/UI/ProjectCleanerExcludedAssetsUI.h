@@ -10,6 +10,8 @@
 
 DECLARE_DELEGATE_OneParam(FOnUserIncludedAsset, const TArray<FAssetData>&);
 
+class UCleanerConfigs;
+
 class SProjectCleanerExcludedAssetsUI : public SCompoundWidget
 {
 public:
@@ -17,13 +19,13 @@ public:
 	SLATE_BEGIN_ARGS(SProjectCleanerExcludedAssetsUI) {}
 		SLATE_ARGUMENT(TSet<FAssetData>, ExcludedAssets)
 		SLATE_ARGUMENT(TArray<FAssetData>, LinkedAssets)
-		SLATE_ARGUMENT(FCleanerConfigs, CleanerConfigs)
+		SLATE_ARGUMENT(UCleanerConfigs*, CleanerConfigs)
 	SLATE_END_ARGS()
 	
 	void Construct(const FArguments& InArgs);
 	void SetExcludedAssets(const TSet<FAssetData>& Assets);
 	void SetLinkedAssets(const TArray<FAssetData>& Assets);
-	void SetCleanerConfigs(const FCleanerConfigs& Configs);
+	void SetCleanerConfigs(UCleanerConfigs* Configs);
 	
 	FOnUserIncludedAsset OnUserIncludedAssets;
 private:
@@ -34,7 +36,7 @@ private:
 	bool IsAnythingSelected() const;
 	void IncludeAssets() const;
 
-	FCleanerConfigs CleanerConfigs;
+	UCleanerConfigs* CleanerConfigs;
 	FGetCurrentSelectionDelegate GetCurrentSelectionDelegate;
 	TSharedPtr<FUICommandList> Commands;
 	TSet<FAssetData> ExcludedAssets;

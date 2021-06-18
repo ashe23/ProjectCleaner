@@ -1,6 +1,7 @@
 ﻿// Copyright 2021. Ashot Barkhudaryan. All Rights Reserved.
 
 #include "UI/ProjectCleanerExcludedAssetsUI.h"
+#include "UI/ProjectCleanerConfigsUI.h"
 #include "ProjectCleanerCommands.h"
 #include "ProjectCleanerStyle.h"
 // Engine Headers
@@ -16,6 +17,7 @@ void SProjectCleanerExcludedAssetsUI::Construct(const FArguments& InArgs)
 {
 	SetExcludedAssets(InArgs._ExcludedAssets);
 	SetLinkedAssets(InArgs._LinkedAssets);
+	SetCleanerConfigs(InArgs._CleanerConfigs);
 
 	FProjectCleanerCommands::Register();
 
@@ -50,7 +52,7 @@ void SProjectCleanerExcludedAssetsUI::SetExcludedAssets(const TSet<FAssetData>& 
 		ExcludedAssets.Add(Asset);
 	}
 
-	RefreshUIContent();
+	//RefreshUIContent();
 }
 
 void SProjectCleanerExcludedAssetsUI::SetLinkedAssets(const TArray<FAssetData>& Assets)
@@ -63,14 +65,16 @@ void SProjectCleanerExcludedAssetsUI::SetLinkedAssets(const TArray<FAssetData>& 
 		LinkedAssets.Add(Asset);
 	}
 
-	RefreshUIContent();
+	//RefreshUIContent();
 }
 
-void SProjectCleanerExcludedAssetsUI::SetCleanerConfigs(const FCleanerConfigs& Configs)
+void SProjectCleanerExcludedAssetsUI::SetCleanerConfigs(UCleanerConfigs* Configs)
 {
+	if (!Configs) return;
+	if (!Configs->IsValidLowLevel()) return;
 	CleanerConfigs = Configs;
 
-	RefreshUIContent();
+	//RefreshUIContent();
 }
 
 void SProjectCleanerExcludedAssetsUI::RefreshUIContent()
@@ -82,7 +86,7 @@ void SProjectCleanerExcludedAssetsUI::RefreshUIContent()
 	Config.bSortByPathInColumnView = true;
 	Config.bForceShowEngineContent = false;
 	Config.bShowBottomToolbar = true;
-	Config.bCanShowDevelopersFolder = CleanerConfigs.bScanDeveloperContentsFolder;
+	Config.bCanShowDevelopersFolder = CleanerConfigs->bScanDeveloperContents;
 	Config.bForceShowEngineContent = false;
 	Config.bCanShowClasses = false;
 	Config.bAllowDragging = false;	
@@ -127,7 +131,7 @@ void SProjectCleanerExcludedAssetsUI::RefreshUIContent()
 	LinkedAssetsConfig.bSortByPathInColumnView = true;
 	LinkedAssetsConfig.bForceShowEngineContent = false;
 	LinkedAssetsConfig.bShowBottomToolbar = false;
-	LinkedAssetsConfig.bCanShowDevelopersFolder = CleanerConfigs.bScanDeveloperContentsFolder;
+	LinkedAssetsConfig.bCanShowDevelopersFolder = CleanerConfigs->bScanDeveloperContents;
 	LinkedAssetsConfig.bForceShowEngineContent = false;
 	LinkedAssetsConfig.bCanShowClasses = false;
 	LinkedAssetsConfig.bAllowDragging = false;

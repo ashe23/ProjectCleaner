@@ -40,18 +40,6 @@ struct FCleaningStats
 	}
 };
 
-struct FCleanerConfigs
-{
-	bool bScanDeveloperContentsFolder;
-	bool bAutomaticallyDeleteEmptyFolders;
-
-	FCleanerConfigs()
-	{
-		bScanDeveloperContentsFolder = false;
-		bAutomaticallyDeleteEmptyFolders = true;
-	}
-};
-
 struct FSourceCodeFile
 {
 	FName Name;

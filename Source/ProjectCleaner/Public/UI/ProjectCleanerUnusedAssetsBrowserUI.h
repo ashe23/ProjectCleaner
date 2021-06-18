@@ -10,18 +10,20 @@
 DECLARE_DELEGATE(FOnUserDeletedAssets);
 DECLARE_DELEGATE_OneParam(FOnUserExcludedAssets, const TArray<FAssetData>&);
 
+class UCleanerConfigs;
+
 class SProjectCleanerUnusedAssetsBrowserUI : public SCompoundWidget
 {
 public:
 	
 	SLATE_BEGIN_ARGS(SProjectCleanerUnusedAssetsBrowserUI) {}
 		SLATE_ARGUMENT(TArray<FAssetData>, UnusedAssets)
-		SLATE_ARGUMENT(FCleanerConfigs, CleanerConfigs)
+		SLATE_ARGUMENT(UCleanerConfigs*, CleanerConfigs)
 	SLATE_END_ARGS()
 	
 	void Construct(const FArguments& InArgs);
 	void SetUnusedAssets(const TArray<FAssetData>& NewUnusedAssets);
-	void SetCleanerConfigs(const FCleanerConfigs& Configs);
+	void SetCleanerConfigs(UCleanerConfigs* Configs);
 	
 	/** Delegates */
 	FOnUserDeletedAssets OnUserDeletedAssets;
@@ -36,7 +38,7 @@ private:
 	void RefreshUIContent();
 
 	/** Data **/
-	FCleanerConfigs CleanerConfigs;
+	UCleanerConfigs* CleanerConfigs;
 	FGetCurrentSelectionDelegate GetCurrentSelectionDelegate;
 	TSharedPtr<FUICommandList> Commands;
 	TArray<FAssetData> UnusedAssets;
