@@ -64,7 +64,7 @@ void SProjectCleanerCorruptedFilesUI::RefreshUIContent()
 			.FillWidth(0.7f)
 			[
 				SNew(STextBlock)
-				.Text(LOCTEXT("PathColumn", "AbsolutePath"))
+				.Text(LOCTEXT("PathColumn", "FilePath"))
 			]
 	);
 

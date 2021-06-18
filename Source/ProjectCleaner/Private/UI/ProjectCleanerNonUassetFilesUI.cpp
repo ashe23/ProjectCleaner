@@ -11,9 +11,11 @@
 void SProjectCleanerNonUassetFilesUI::Construct(const FArguments& InArgs)
 {
 	SetNonUassetFiles(InArgs._NonUassetFiles);
+
+	RefreshUIContent();
 }
 
-void SProjectCleanerNonUassetFilesUI::SetNonUassetFiles(const TSet<FName>& NewNonUassetFile)
+void SProjectCleanerNonUassetFilesUI::SetNonUassetFiles(const TSet<FString>& NewNonUassetFile)
 {
 	NonUassetFiles.Reset();
 	NonUassetFiles.Reserve(NewNonUassetFile.Num());
@@ -22,16 +24,50 @@ void SProjectCleanerNonUassetFilesUI::SetNonUassetFiles(const TSet<FName>& NewNo
 	{
 		const auto& NonUassetFile = NewObject<UNonUassetFile>();
 		if(!NonUassetFile) continue;
-		NonUassetFile->FileName = FPaths::GetBaseFilename(File.ToString()) + "." + FPaths::GetExtension(File.ToString());
-		NonUassetFile->FilePath = ProjectCleanerUtility::ConvertRelativeToAbsPath(File).ToString();
+		NonUassetFile->FileName = FPaths::GetBaseFilename(File) + "." + FPaths::GetExtension(File);
+		NonUassetFile->FilePath = File;
 		NonUassetFiles.AddUnique(NonUassetFile);
 	}
 
-	RefreshUIContent();
+	if (ListView.IsValid())
+	{
+		ListView->SetListItemsSource(NonUassetFiles);
+		ListView->RebuildList();
+	}
 }
 
 void SProjectCleanerNonUassetFilesUI::RefreshUIContent()
 {
+	ListView = SNew(SListView<TWeakObjectPtr<UNonUassetFile>>)
+		.ListItemsSource(&NonUassetFiles)
+		.SelectionMode(ESelectionMode::SingleToggle)
+		.OnGenerateRow(this, &SProjectCleanerNonUassetFilesUI::OnGenerateRow)
+		.OnMouseButtonDoubleClick_Raw(this, &SProjectCleanerNonUassetFilesUI::OnMouseDoubleClick)
+		.HeaderRow
+		(
+			SNew(SHeaderRow)
+			+ SHeaderRow::Column(FName("FileName"))
+			.HAlignCell(HAlign_Center)
+			.VAlignCell(VAlign_Center)
+			.HAlignHeader(HAlign_Center)
+			.HeaderContentPadding(FMargin(10.0f))
+			.FillWidth(0.3f)
+			[
+				SNew(STextBlock)
+				.Text(LOCTEXT("NameColumn", "FileName"))
+			]
+			+ SHeaderRow::Column(FName("FilePath"))
+			.HAlignCell(HAlign_Center)
+			.VAlignCell(VAlign_Center)
+			.HAlignHeader(HAlign_Center)
+			.HeaderContentPadding(FMargin(10.0f))
+			.FillWidth(0.7f)
+			[
+				SNew(STextBlock)
+				.Text(LOCTEXT("PathColumn", "FilePath"))
+			]
+	);
+
 	WidgetRef =
 		SNew(SOverlay)
 		+ SOverlay::Slot()
@@ -62,35 +98,7 @@ void SProjectCleanerNonUassetFilesUI::RefreshUIContent()
 				.AutoHeight()
 				.Padding(FMargin{0.0f, 20.0f})
 				[
-					SNew(SListView<TWeakObjectPtr<UNonUassetFile>>)
-					.ListItemsSource(&NonUassetFiles)
-					.SelectionMode(ESelectionMode::SingleToggle)
-					.OnGenerateRow(this, &SProjectCleanerNonUassetFilesUI::OnGenerateRow)
-					.OnMouseButtonDoubleClick_Raw(this, &SProjectCleanerNonUassetFilesUI::OnMouseDoubleClick)
-					.HeaderRow
-					(
-						SNew(SHeaderRow)
-						+ SHeaderRow::Column(FName("FileName"))
-						.HAlignCell(HAlign_Center)
-						.VAlignCell(VAlign_Center)
-						.HAlignHeader(HAlign_Center)
-						.HeaderContentPadding(FMargin(10.0f))
-						.FillWidth(0.3f)
-						[
-							SNew(STextBlock)
-							.Text(LOCTEXT("NameColumn", "FileName"))
-						]
-						+ SHeaderRow::Column(FName("FilePath"))
-						.HAlignCell(HAlign_Center)
-						.VAlignCell(VAlign_Center)
-						.HAlignHeader(HAlign_Center)
-						.HeaderContentPadding(FMargin(10.0f))
-						.FillWidth(0.7f)
-						[
-							SNew(STextBlock)
-							.Text(LOCTEXT("PathColumn", "FilePath"))
-						]
-					)
+					ListView.ToSharedRef()
 				]
 			]
 		];

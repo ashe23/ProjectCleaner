@@ -389,7 +389,7 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnNonUAssetFilesTabSpawn(const FSpaw
 		.Label(NSLOCTEXT("NonUAssetFilesTab", "TabTitle", "Non .uasset Files"))
 		[
 			SAssignNew(NonUassetFilesUI, SProjectCleanerNonUassetFilesUI)
-			//.NonUassetFiles(NonUAssetFiles)
+			.NonUassetFiles(NonUAssetFiles)
 		];
 }
 
@@ -543,7 +543,7 @@ void FProjectCleanerModule::UpdateStats()
 
 	if (NonUassetFilesUI.IsValid())
 	{
-		//NonUassetFilesUI.Pin()->SetNonUassetFiles(NonUAssetFiles);
+		NonUassetFilesUI.Pin()->SetNonUassetFiles(NonUAssetFiles);
 	}
 
 	if (SourceCodeAssetsUI.IsValid())
