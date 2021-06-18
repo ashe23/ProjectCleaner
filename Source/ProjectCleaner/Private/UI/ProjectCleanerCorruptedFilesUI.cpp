@@ -2,6 +2,7 @@
 
 #include "UI/ProjectCleanerCorruptedFilesUI.h"
 #include "ProjectCleanerUtility.h"
+#include "ProjectCleanerHelper.h"
 #include "ProjectCleanerStyle.h"
 // Engine Headers
 #include "Widgets/Layout/SScrollBox.h"
@@ -11,9 +12,11 @@
 void SProjectCleanerCorruptedFilesUI::Construct(const FArguments& InArgs)
 {
 	SetCorruptedFiles(InArgs._CorruptedFiles);
+
+	RefreshUIContent();
 }
 
-void SProjectCleanerCorruptedFilesUI::SetCorruptedFiles(const TSet<FName>& NewCorruptedFiles)
+void SProjectCleanerCorruptedFilesUI::SetCorruptedFiles(const TSet<FString>& NewCorruptedFiles)
 {
 	CorruptedFiles.Reset();
 	CorruptedFiles.Reserve(NewCorruptedFiles.Num());
@@ -21,16 +24,50 @@ void SProjectCleanerCorruptedFilesUI::SetCorruptedFiles(const TSet<FName>& NewCo
 	for (const auto File : NewCorruptedFiles)
 	{
 		const auto& CorruptedFile = NewObject<UCorruptedFile>();
-		CorruptedFile->Name = FPaths::GetBaseFilename(File.ToString());
-		CorruptedFile->AbsolutePath = ProjectCleanerUtility::ConvertRelativeToAbsPath(File).ToString();
+		CorruptedFile->Name = FPaths::GetBaseFilename(File);
+		CorruptedFile->AbsolutePath = File;
 		CorruptedFiles.AddUnique(CorruptedFile);
 	}
 
-	RefreshUIContent();
+	if (ListView.IsValid())
+	{
+		ListView->SetListItemsSource(CorruptedFiles);
+		ListView->RebuildList();
+	}
 }
 
 void SProjectCleanerCorruptedFilesUI::RefreshUIContent()
 {
+	ListView = SNew(SListView<TWeakObjectPtr<UCorruptedFile>>)
+		.ListItemsSource(&CorruptedFiles)
+		.SelectionMode(ESelectionMode::SingleToggle)
+		.OnGenerateRow(this, &SProjectCleanerCorruptedFilesUI::OnGenerateRow)
+		.OnMouseButtonDoubleClick_Raw(this, &SProjectCleanerCorruptedFilesUI::OnMouseDoubleClick)
+		.HeaderRow
+		(
+			SNew(SHeaderRow)
+			+ SHeaderRow::Column(FName("Name"))
+			.HAlignCell(HAlign_Center)
+			.VAlignCell(VAlign_Center)
+			.HAlignHeader(HAlign_Center)
+			.HeaderContentPadding(FMargin(10.0f))
+			.FillWidth(0.3f)
+			[
+				SNew(STextBlock)
+				.Text(LOCTEXT("NameColumn", "Name"))
+			]
+			+ SHeaderRow::Column(FName("AbsolutePath"))
+			.HAlignCell(HAlign_Center)
+			.VAlignCell(VAlign_Center)
+			.HAlignHeader(HAlign_Center)
+			.HeaderContentPadding(FMargin(10.0f))
+			.FillWidth(0.7f)
+			[
+				SNew(STextBlock)
+				.Text(LOCTEXT("PathColumn", "AbsolutePath"))
+			]
+	);
+
 	WidgetRef =
 		SNew(SOverlay)
 		+ SOverlay::Slot()
@@ -54,47 +91,36 @@ void SProjectCleanerCorruptedFilesUI::RefreshUIContent()
 					]
 					+SVerticalBox::Slot()
 					.AutoHeight()
+					.Padding(FMargin{200.0f, 10.0f})
+					[
+						SNew(SBorder)
+						.BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
+						.BorderBackgroundColor(FSlateColor{FLinearColor{1.0f, 0.8f, 0.0f ,1.0f}})
+						.Padding(FMargin{20.0f})
+						.VAlign(VAlign_Center)
+						.HAlign(HAlign_Center)
+						[
+							SNew(STextBlock)
+							.AutoWrapText(true)
+							.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light15"))
+							.Text(LOCTEXT("corrupted_files_tip_text", "Sometimes AssetRegistry not updated correctly and some assets may be shown as corrupted.\nThis Happens for example when you adding content from marketplace using Launcher(Add to Project).\nSo to be sure restart Engine and refresh list, see if assets remain in corrupted list."))
+						]
+					]
+					+SVerticalBox::Slot()
+					.AutoHeight()
 					.Padding(FMargin{5.0f, 10.0f})
 					[
 						SNew(STextBlock)
 						.AutoWrapText(true)
 						.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light10"))
-						.Text(LOCTEXT("corrupted_files_fix_text", "To fix them:\n\t1.Close Editor\n\t2.Delete that files manually from Windows explorer"))
+						.Text(LOCTEXT("corrupted_files_fix_text", "How to fix?:\n\t1.Close Editor\n\t2.Delete files manually from Windows explorer"))
 					]
 				]
 				+ SVerticalBox::Slot()
 				.AutoHeight()
-				.Padding(FMargin{0.0f, 20.0f})
+				.Padding(FMargin{ 0.0f, 20.0f })
 				[
-					SNew(SListView<TWeakObjectPtr<UCorruptedFile>>)
-					.ListItemsSource(&CorruptedFiles)
-					.SelectionMode(ESelectionMode::SingleToggle)
-					.OnGenerateRow(this, &SProjectCleanerCorruptedFilesUI::OnGenerateRow)
-					.OnMouseButtonDoubleClick_Raw(this, &SProjectCleanerCorruptedFilesUI::OnMouseDoubleClick)
-					.HeaderRow
-					(
-						SNew(SHeaderRow)
-						+ SHeaderRow::Column(FName("Name"))
-						.HAlignCell(HAlign_Center)
-						.VAlignCell(VAlign_Center)
-						.HAlignHeader(HAlign_Center)
-						.HeaderContentPadding(FMargin(10.0f))
-						.FillWidth(0.3f)
-						[
-							SNew(STextBlock)
-							.Text(LOCTEXT("NameColumn", "Name"))
-						]
-						+ SHeaderRow::Column(FName("AbsolutePath"))
-						.HAlignCell(HAlign_Center)
-						.VAlignCell(VAlign_Center)
-						.HAlignHeader(HAlign_Center)
-						.HeaderContentPadding(FMargin(10.0f))
-						.FillWidth(0.7f)
-						[
-							SNew(STextBlock)
-							.Text(LOCTEXT("PathColumn", "AbsolutePath"))
-						]
-					)
+					ListView.ToSharedRef()
 				]
 			]
 		];

@@ -1,6 +1,7 @@
 ﻿// Copyright 2021. Ashot Barkhudaryan. All Rights Reserved.
 
 #include "ProjectCleanerUtility.h"
+#include "ProjectCleanerHelper.h"
 #include "UI/ProjectCleanerSourceCodeAssetsUI.h"
 #include "UI/ProjectCleanerExcludeOptionsUI.h"
 #include "Graph/AssetRelationalMap.h"
@@ -25,7 +26,7 @@ void ProjectCleanerUtility::GetAllAssets(const FAssetRegistryModule* AssetRegist
 	AssetRegistry->Get().GetAssetsByPath(FName{ "/Game" }, Assets, true);
 }
 
-void ProjectCleanerUtility::GetInvalidProjectFiles(const FAssetRegistryModule* AssetRegistry, const TSet<FName>& ProjectFilesFromDisk, TSet<FName>& CorruptedFiles, TSet<FName>& NonUAssetFiles)
+void ProjectCleanerUtility::GetInvalidProjectFiles(const FAssetRegistryModule* AssetRegistry, const TSet<FString>& ProjectFilesFromDisk, TSet<FString>& CorruptedFiles, TSet<FString>& NonUAssetFiles)
 {
 	if (!AssetRegistry) return;
 
@@ -34,18 +35,19 @@ void ProjectCleanerUtility::GetInvalidProjectFiles(const FAssetRegistryModule* A
 	
 	for (const auto& ProjectFile : ProjectFilesFromDisk)
 	{
-		auto FilePath = ProjectFile.ToString();
-		if (IsEngineExtension(FPaths::GetExtension(FilePath, false)))
+		if (IsEngineExtension(FPaths::GetExtension(ProjectFile, false)))
 		{
-			// Converting file path to objectpath
+			// here we got absolute path "C:/MyProject/Content/material.uasset"
+			// we must first convert that path to In Engine Internal Path like "/Game/material.uasset"
+			const FString InternalFilePath = ProjectCleanerHelper::ConvertAbsolutePathToInternal(ProjectFile);
+			// Converting file path to objectpath (This is for searching in AssetRegistry)
 			// example "/Game/Name.uasset" => "/Game/Name.Name"
-			auto FileName = FPaths::GetBaseFilename(FilePath);
-			FilePath.RemoveFromEnd(FPaths::GetExtension(FilePath, true));
-			FilePath.Append(TEXT(".") + FileName);
-			const FName ObjectPath = FName{*FilePath};
+			auto ObjectPath = InternalFilePath;
+			ObjectPath.RemoveFromEnd(FPaths::GetExtension(InternalFilePath, true));
+			ObjectPath.Append(TEXT(".") + FPaths::GetBaseFilename(InternalFilePath));
 
 			// Trying to find that file in AssetRegistry
-			const auto AssetData = AssetRegistry->Get().GetAssetByObjectPath(ObjectPath);
+			const auto AssetData = AssetRegistry->Get().GetAssetByObjectPath(FName{ *ObjectPath });
 			// Adding to CorruptedFiles list, if we cant find it in AssetRegistry
 			if (AssetData.IsValid()) continue;
 			CorruptedFiles.Add(ProjectFile);
@@ -57,6 +59,7 @@ void ProjectCleanerUtility::GetInvalidProjectFiles(const FAssetRegistryModule* A
 	}
 
 	CorruptedFiles.Compact();
+	NonUAssetFiles.Compact();
 }
 
 void ProjectCleanerUtility::GetAllPrimaryAssetClasses(UAssetManager& AssetManager, TSet<FName>& PrimaryAssetClasses)

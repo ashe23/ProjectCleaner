@@ -12,8 +12,10 @@ class ProjectCleanerHelper
 public:
 	// query
 	static void GetEmptyFolders(TArray<FString>& EmptyFolders, const bool bScanDeveloperContents);
-	static void GetProjectFilesFromDisk(TSet<FName>& ProjectFiles);
+	static void GetProjectFilesFromDisk(TSet<FString>& ProjectFiles);
 	static void GetSourceCodeFilesFromDisk(TArray<FSourceCodeFile>& SourceCodeFiles);
+	// update
+	static FString ConvertAbsolutePathToInternal(const FString& InPath);
 	// delete
 	static bool DeleteEmptyFolders(const FAssetRegistryModule* AssetRegistry, TArray<FString>& EmptyFolders);
 private:

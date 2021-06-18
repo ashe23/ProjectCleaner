@@ -51,6 +51,7 @@ TSharedRef< FSlateStyleSet > FProjectCleanerStyle::Create()
 	// fonts
 	Style->Set("ProjectCleaner.Font.Light30", FCoreStyle::GetDefaultFontStyle("Light", 30));
 	Style->Set("ProjectCleaner.Font.Light20", FCoreStyle::GetDefaultFontStyle("Light", 20));
+	Style->Set("ProjectCleaner.Font.Light15", FCoreStyle::GetDefaultFontStyle("Light", 15));
 	Style->Set("ProjectCleaner.Font.Light10", FCoreStyle::GetDefaultFontStyle("Light", 10));
 	Style->Set("ProjectCleaner.Font.Light8", FCoreStyle::GetDefaultFontStyle("Light", 8));
 

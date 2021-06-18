@@ -7,8 +7,8 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FProjectClanerEmptyFoldersQuery, "ProjectCleaner.EmptyFolders.Query", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FProjectClanerEmptyFoldersDelete, "ProjectCleaner.EmptyFolders.Delete", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FProjectCleanerEmptyFoldersQuery, "ProjectCleaner.EmptyFolders.Query", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FProjectCleanerEmptyFoldersDelete, "ProjectCleaner.EmptyFolders.Delete", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 struct ProjectCleanerTestLogHelper 
 {
@@ -22,7 +22,7 @@ struct ProjectCleanerTestLogHelper
 };
 
 
-bool FProjectClanerEmptyFoldersQuery::RunTest(const FString& Parameters)
+bool FProjectCleanerEmptyFoldersQuery::RunTest(const FString& Parameters)
 {
 	TArray<FString> EmptyFolders;
 	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
@@ -131,7 +131,7 @@ bool FProjectClanerEmptyFoldersQuery::RunTest(const FString& Parameters)
 	return true;
 }
 
-bool FProjectClanerEmptyFoldersDelete::RunTest(const FString& Parameters)
+bool FProjectCleanerEmptyFoldersDelete::RunTest(const FString& Parameters)
 {
 	TArray<FString> EmptyFolders;
 	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();

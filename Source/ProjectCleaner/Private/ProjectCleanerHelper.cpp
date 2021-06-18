@@ -35,22 +35,22 @@ void ProjectCleanerHelper::GetEmptyFolders(TArray<FString>& EmptyFolders, const 
 	}
 }
 
-void ProjectCleanerHelper::GetProjectFilesFromDisk(TSet<FName>& ProjectFiles)
+void ProjectCleanerHelper::GetProjectFilesFromDisk(TSet<FString>& ProjectFiles)
 {
 	struct DirectoryVisitor : IPlatformFile::FDirectoryVisitor
 	{
-		DirectoryVisitor(TSet<FName>& Files) : AllFiles(Files) {}
+		DirectoryVisitor(TSet<FString>& Files) : AllFiles(Files) {}
 		virtual bool Visit(const TCHAR* FilenameOrDirectory, bool bIsDirectory) override
 		{
 			if (!bIsDirectory)
 			{
-				AllFiles.Add(ProjectCleanerUtility::ConvertAbsolutePathToRelative(FilenameOrDirectory));
+				AllFiles.Add(FPaths::ConvertRelativePathToFull(FilenameOrDirectory));
 			}
 			
 			return true;
 		}
 
-		TSet<FName>& AllFiles;
+		TSet<FString>& AllFiles;
 	};
 
 	DirectoryVisitor Visitor{ ProjectFiles };
@@ -75,7 +75,6 @@ void ProjectCleanerHelper::GetSourceCodeFilesFromDisk(TArray<FSourceCodeFile>& S
 	AllFiles.Append(FilesToScan);
 
 	// 3) we should find all source files in plugins folder (<yourproject>/Plugins/*)
-	// But we should include only "Source" directories in our scanning
 	TArray<FString> ProjectPluginsFiles;
 	// finding all installed plugins in "Plugins" directory
 	struct DirectoryVisitor : public IPlatformFile::FDirectoryVisitor
@@ -124,6 +123,14 @@ void ProjectCleanerHelper::GetSourceCodeFilesFromDisk(TArray<FSourceCodeFile>& S
 			SourceCodeFiles.Add(SourceCodeFile);
 		}
 	}
+}
+
+FString ProjectCleanerHelper::ConvertAbsolutePathToInternal(const FString& InPath)
+{
+	FString Path = InPath;
+	FPaths::NormalizeFilename(Path);
+	const FString ProjectContentDirAbsPath = FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir());
+	return Path.Replace(*ProjectContentDirAbsPath, *FString{ "/Game/" }, ESearchCase::IgnoreCase);
 }
 
 bool ProjectCleanerHelper::DeleteEmptyFolders(const FAssetRegistryModule* AssetRegistry, TArray<FString>& EmptyFolders)

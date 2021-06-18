@@ -66,11 +66,11 @@ class SProjectCleanerCorruptedFilesUI : public SCompoundWidget
 public:
 	
 	SLATE_BEGIN_ARGS(SProjectCleanerCorruptedFilesUI) {}
-		SLATE_ARGUMENT(TSet<FName>, CorruptedFiles);
+		SLATE_ARGUMENT(TSet<FString>, CorruptedFiles);
 	SLATE_END_ARGS()
 	
 	void Construct(const FArguments& InArgs);
-	void SetCorruptedFiles(const TSet<FName>& NewCorruptedFiles);
+	void SetCorruptedFiles(const TSet<FString>& NewCorruptedFiles);
 private:
 	void RefreshUIContent();
 	TSharedRef<ITableRow> OnGenerateRow(
@@ -81,5 +81,6 @@ private:
 
 	/** Data **/
 	TArray<TWeakObjectPtr<UCorruptedFile>> CorruptedFiles;
+	TSharedPtr<SListView<TWeakObjectPtr<UCorruptedFile>>> ListView;
 	TSharedRef<SWidget> WidgetRef = SNullWidget::NullWidget;
 };

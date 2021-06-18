@@ -131,8 +131,8 @@ private:
 	/** Data Containers */ 
 	TArray<FAssetData> UnusedAssets;
 	TArray<FString> EmptyFolders;
-	TSet<FName> NonUAssetFiles;
-	TSet<FName> CorruptedFiles;
+	TSet<FString> NonUAssetFiles;
+	TSet<FString> CorruptedFiles;
 	FCleaningStats CleaningStats;
 	FCleanerConfigs CleanerConfigs;
 	TArray<TWeakObjectPtr<USourceCodeAsset>> SourceCodeAssets;
@@ -143,7 +143,7 @@ private:
 	UExcludeOptions* ExcludeOptions;
 	
 	/** Helper Containers **/
-	TSet<FName> ProjectFilesFromDisk;
+	TSet<FString> ProjectFilesFromDisk;
 	TArray<FSourceCodeFile> SourceCodeFiles;
 	AssetRelationalMap RelationalMap;
 	FStandardCleanerText StandardCleanerText;

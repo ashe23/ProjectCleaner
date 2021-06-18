@@ -389,7 +389,7 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnNonUAssetFilesTabSpawn(const FSpaw
 		.Label(NSLOCTEXT("NonUAssetFilesTab", "TabTitle", "Non .uasset Files"))
 		[
 			SAssignNew(NonUassetFilesUI, SProjectCleanerNonUassetFilesUI)
-			.NonUassetFiles(NonUAssetFiles)
+			//.NonUassetFiles(NonUAssetFiles)
 		];
 }
 
@@ -453,11 +453,11 @@ void FProjectCleanerModule::UpdateCleanerData()
 	// * Config files from "Config" folder and all "Config" folders in installed "Plugins" folder
 	// * Source code files from "Source" folder and all "Source" folders in installed "Plugins" folder (.c, .cpp, .cs files)
 	ProjectCleanerHelper::GetEmptyFolders(EmptyFolders, CleanerConfigs.bScanDeveloperContentsFolder);
-	//ProjectCleanerHelper::GetProjectFilesFromDisk(ProjectFilesFromDisk);
-	//ProjectCleanerHelper::GetSourceCodeFilesFromDisk(SourceCodeFiles);
+	ProjectCleanerHelper::GetProjectFilesFromDisk(ProjectFilesFromDisk);
+	ProjectCleanerHelper::GetSourceCodeFilesFromDisk(SourceCodeFiles);
 
 	// 2) Filtering files that are not part of engine, or possibly corrupted (NonUassetFiles, CorruptedFiles)
-	//ProjectCleanerUtility::GetInvalidProjectFiles(AssetRegistry, ProjectFilesFromDisk, CorruptedFiles, NonUAssetFiles);
+	ProjectCleanerUtility::GetInvalidProjectFiles(AssetRegistry, ProjectFilesFromDisk, CorruptedFiles, NonUAssetFiles);
 
 	//SlowTask.EnterProgressFrame(10.0f, FText::FromString("Finding invalid files..."));
 
@@ -543,7 +543,7 @@ void FProjectCleanerModule::UpdateStats()
 
 	if (NonUassetFilesUI.IsValid())
 	{
-		NonUassetFilesUI.Pin()->SetNonUassetFiles(NonUAssetFiles);
+		//NonUassetFilesUI.Pin()->SetNonUassetFiles(NonUAssetFiles);
 	}
 
 	if (SourceCodeAssetsUI.IsValid())
