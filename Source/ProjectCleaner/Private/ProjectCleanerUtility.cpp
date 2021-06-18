@@ -226,45 +226,45 @@ void ProjectCleanerUtility::RemoveAssetsExcludedByUser(
 	});
 }
 
-FName ProjectCleanerUtility::ConvertRelativeToAbsPath(const FName& InPath)
-{
-	return ConvertPath(InPath, TEXT("/Game/"), *FPaths::ProjectContentDir());
-}
+//FName ProjectCleanerUtility::ConvertRelativeToAbsPath(const FName& InPath)
+//{
+//	return ConvertPath(InPath, TEXT("/Game/"), *FPaths::ProjectContentDir());
+//}
+//
+//FString ProjectCleanerUtility::ConvertRelativeToAbsPath(const FString& InPath)
+//{
+//	return ConvertPath(InPath, TEXT("/Game/"), *FPaths::ProjectContentDir());
+//}
+//
+//FName ProjectCleanerUtility::ConvertAbsToRelativePath(const FName& InPath)
+//{
+//	return ConvertPath(InPath, *FPaths::ProjectContentDir(), TEXT("/Game/"));
+//}
+//
+//FString ProjectCleanerUtility::ConvertAbsToRelativePath(const FString& InPath)
+//{
+//	return ConvertPath(InPath, *FPaths::ProjectContentDir(), TEXT("/Game/"));
+//}
 
-FString ProjectCleanerUtility::ConvertRelativeToAbsPath(const FString& InPath)
-{
-	return ConvertPath(InPath, TEXT("/Game/"), *FPaths::ProjectContentDir());
-}
-
-FName ProjectCleanerUtility::ConvertAbsToRelativePath(const FName& InPath)
-{
-	return ConvertPath(InPath, *FPaths::ProjectContentDir(), TEXT("/Game/"));
-}
-
-FString ProjectCleanerUtility::ConvertAbsToRelativePath(const FString& InPath)
-{
-	return ConvertPath(InPath, *FPaths::ProjectContentDir(), TEXT("/Game/"));
-}
-
-FName ProjectCleanerUtility::ConvertPath(FName Path, const FName& From, const FName& To)
-{
-	FString ConvertedPath = Path.ToString();
-	FPaths::NormalizeFilename(ConvertedPath);
-	
-	const auto Result = ConvertedPath.Replace(
-		*From.ToString(),
-		*To.ToString()
-	);
-	return FName{ *Result };
-}
-
-FString ProjectCleanerUtility::ConvertPath(FString Path, const FString& From, const FString& To)
-{
-	FPaths::NormalizeFilename(Path);
-
-	const auto Result = Path.Replace(*From,*To);
-	return *Result;
-}
+//FName ProjectCleanerUtility::ConvertPath(FName Path, const FName& From, const FName& To)
+//{
+//	FString ConvertedPath = Path.ToString();
+//	FPaths::NormalizeFilename(ConvertedPath);
+//	
+//	const auto Result = ConvertedPath.Replace(
+//		*From.ToString(),
+//		*To.ToString()
+//	);
+//	return FName{ *Result };
+//}
+//
+//FString ProjectCleanerUtility::ConvertPath(FString Path, const FString& From, const FString& To)
+//{
+//	FPaths::NormalizeFilename(Path);
+//
+//	const auto Result = Path.Replace(*From,*To);
+//	return *Result;
+//}
 
 //bool ProjectCleanerUtility::DeleteEmptyFolders(const FAssetRegistryModule* AssetRegistry, TArray<FString>& EmptyFolders)
 //{
@@ -419,28 +419,28 @@ const FSourceCodeFile* ProjectCleanerUtility::GetFileWhereAssetUsed(const FAsset
 	return nullptr;
 }
 
-FString ProjectCleanerUtility::ConvertRelativeToAbsolutePath(const FName& PackageName)
-{	
-	FString PackageFileName;
-	FString PackageFile;
-	if (
-		FPackageName::TryConvertLongPackageNameToFilename(PackageName.ToString(), PackageFileName) &&
-		FPackageName::FindPackageFileWithoutExtension(PackageFileName, PackageFile)
-	)
-	{
-		return FPaths::ConvertRelativePathToFull(PackageFile);
-	}
+//FString ProjectCleanerUtility::ConvertRelativeToAbsolutePath(const FName& PackageName)
+//{	
+//	FString PackageFileName;
+//	FString PackageFile;
+//	if (
+//		FPackageName::TryConvertLongPackageNameToFilename(PackageName.ToString(), PackageFileName) &&
+//		FPackageName::FindPackageFileWithoutExtension(PackageFileName, PackageFile)
+//	)
+//	{
+//		return FPaths::ConvertRelativePathToFull(PackageFile);
+//	}
+//
+//	return FString{};
+//}
 
-	return FString{};
-}
-
-FName ProjectCleanerUtility::ConvertAbsolutePathToRelative(const FName& InPath)
-{
-	FString Path = InPath.ToString();
-	FPaths::NormalizeFilename(Path);
-	const auto Result = Path.Replace(*FPaths::ProjectContentDir(), TEXT("/Game/"));
-	return FName{*Result};
-}
+//FName ProjectCleanerUtility::ConvertAbsolutePathToRelative(const FName& InPath)
+//{
+//	FString Path = InPath.ToString();
+//	FPaths::NormalizeFilename(Path);
+//	const auto Result = Path.Replace(*FPaths::ProjectContentDir(), TEXT("/Game/"));
+//	return FName{*Result};
+//}
 
 void ProjectCleanerUtility::RemoveUsedAssets(TArray<FAssetData>& Assets, const TSet<FName>& PrimaryAssetClasses)
 {
@@ -492,35 +492,15 @@ void ProjectCleanerUtility::RemoveUsedAssets(TArray<FAssetData>& Assets, const T
 	});
 }
 
-void ProjectCleanerUtility::RemoveContentFromDeveloperFolder(TArray<FAssetData>& UnusedAssets, TSet<FName>& EmptyFolders)
+void ProjectCleanerUtility::RemoveContentFromDeveloperFolder(TArray<FAssetData>& UnusedAssets)
 {
-	const FString DeveloperFolderAbsPath = FPaths::ProjectContentDir() + TEXT("Developers/");
-	const FString CollectionsFolderAbsPath = FPaths::ProjectContentDir() + TEXT("Collections/");
-	const FString DeveloperFolderRelPath = ConvertAbsToRelativePath(DeveloperFolderAbsPath);
-	const FString CollectionsFolderRelPath = ConvertAbsToRelativePath(CollectionsFolderAbsPath);
+	const FString DeveloperFolderPath = FPaths::ConvertRelativePathToFull(FPaths::GameDevelopersDir());
+	const FString CollectionsFolderPath = FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() + TEXT("Collections/"));
 
-	UnusedAssets.RemoveAll([&] (const FAssetData& Elem) {
+	UnusedAssets.RemoveAll([&](const FAssetData& Elem) {
+		const FString AssetAbsolutePath = ProjectCleanerHelper::ConvertInternalToAbsolutePath(Elem.PackagePath.ToString());
 		return
-			Elem.PackagePath.ToString().Contains(DeveloperFolderRelPath) ||
-			Elem.PackagePath.ToString().Contains(CollectionsFolderRelPath);
-	});
-
-	TSet<FName> FoldersToExclude;
-	FoldersToExclude.Reserve(EmptyFolders.Num());
-
-	for (const auto& EmptyFolder : EmptyFolders)
-	{
-		if (
-			EmptyFolder.ToString().StartsWith(DeveloperFolderAbsPath) ||
-			EmptyFolder.ToString().StartsWith(CollectionsFolderAbsPath)
-			)
-		{
-			FoldersToExclude.Add(EmptyFolder);
-		}
-	}
-
-	for (const auto& Folder : FoldersToExclude)
-	{
-		EmptyFolders.Remove(Folder);
-	}
+			FPaths::IsUnderDirectory(AssetAbsolutePath, DeveloperFolderPath) ||
+			FPaths::IsUnderDirectory(AssetAbsolutePath, CollectionsFolderPath);
+	});	
 }

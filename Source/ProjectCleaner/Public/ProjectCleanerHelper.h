@@ -16,8 +16,10 @@ public:
 	static void GetSourceCodeFilesFromDisk(TArray<FSourceCodeFile>& SourceCodeFiles);
 	// update
 	static FString ConvertAbsolutePathToInternal(const FString& InPath);
+	static FString ConvertInternalToAbsolutePath(const FString& InPath);
 	// delete
 	static bool DeleteEmptyFolders(const FAssetRegistryModule* AssetRegistry, TArray<FString>& EmptyFolders);
 private:
 	static bool FindAllEmptyFolders(const FString& FolderPath, TArray<FString>& EmptyFolders);
+	static FString ConvertPathInternal(const FString& From, const FString To, const FString& Path);
 };

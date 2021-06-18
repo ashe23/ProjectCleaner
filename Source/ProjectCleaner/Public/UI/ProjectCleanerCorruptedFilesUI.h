@@ -72,7 +72,7 @@ public:
 	void Construct(const FArguments& InArgs);
 	void SetCorruptedFiles(const TSet<FString>& NewCorruptedFiles);
 private:
-	void RefreshUIContent();
+	void InitUI();
 	TSharedRef<ITableRow> OnGenerateRow(
 		TWeakObjectPtr<UCorruptedFile> InItem,
 		const TSharedRef<STableViewBase>& OwnerTable

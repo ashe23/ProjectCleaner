@@ -13,7 +13,7 @@ void SProjectCleanerCorruptedFilesUI::Construct(const FArguments& InArgs)
 {
 	SetCorruptedFiles(InArgs._CorruptedFiles);
 
-	RefreshUIContent();
+	InitUI();
 }
 
 void SProjectCleanerCorruptedFilesUI::SetCorruptedFiles(const TSet<FString>& NewCorruptedFiles)
@@ -36,7 +36,7 @@ void SProjectCleanerCorruptedFilesUI::SetCorruptedFiles(const TSet<FString>& New
 	}
 }
 
-void SProjectCleanerCorruptedFilesUI::RefreshUIContent()
+void SProjectCleanerCorruptedFilesUI::InitUI()
 {
 	ListView = SNew(SListView<TWeakObjectPtr<UCorruptedFile>>)
 		.ListItemsSource(&CorruptedFiles)
@@ -89,31 +89,32 @@ void SProjectCleanerCorruptedFilesUI::RefreshUIContent()
 						.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
 						.Text(LOCTEXT("corrupted_files", "Corrupted Files"))
 					]
+					//+SVerticalBox::Slot()
+					//.AutoHeight()
+					//.Padding(FMargin{0.0f, 10.0f})
+					//[
+					//	SNew(STextBlock)
+					//	.AutoWrapText(true)
+					//	.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light15"))
+					//	.Text(LOCTEXT("corrupted_files_tip_text", "Sometimes AssetRegistry not updated correctly and some assets may be shown as corrupted.\For example,this happens when you adding content from marketplace using Launcher(Add to Project).\nSo to be sure, restart Engine and refresh, see if assets remain in corrupted list."))
+					//]
 					+SVerticalBox::Slot()
 					.AutoHeight()
-					.Padding(FMargin{200.0f, 10.0f})
-					[
-						SNew(SBorder)
-						.BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
-						.BorderBackgroundColor(FSlateColor{FLinearColor{1.0f, 0.8f, 0.0f ,1.0f}})
-						.Padding(FMargin{20.0f})
-						.VAlign(VAlign_Center)
-						.HAlign(HAlign_Center)
-						[
-							SNew(STextBlock)
-							.AutoWrapText(true)
-							.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light15"))
-							.Text(LOCTEXT("corrupted_files_tip_text", "Sometimes AssetRegistry not updated correctly and some assets may be shown as corrupted.\nThis Happens for example when you adding content from marketplace using Launcher(Add to Project).\nSo to be sure restart Engine and refresh list, see if assets remain in corrupted list."))
-						]
-					]
-					+SVerticalBox::Slot()
-					.AutoHeight()
-					.Padding(FMargin{5.0f, 10.0f})
+					.Padding(FMargin{0.0f, 10.0f})
 					[
 						SNew(STextBlock)
 						.AutoWrapText(true)
 						.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light10"))
 						.Text(LOCTEXT("corrupted_files_fix_text", "How to fix?:\n\t1.Close Editor\n\t2.Delete files manually from Windows explorer"))
+					]
+					+ SVerticalBox::Slot()
+					.Padding(FMargin{ 0.0f, 10.0f })
+					.AutoHeight()
+					[
+						SNew(STextBlock)
+						.AutoWrapText(true)
+						.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light10"))
+						.Text(LOCTEXT("dbl_click_on_row", "Double click on row to open in Explorer"))
 					]
 				]
 				+ SVerticalBox::Slot()

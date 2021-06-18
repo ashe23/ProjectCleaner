@@ -130,7 +130,15 @@ FString ProjectCleanerHelper::ConvertAbsolutePathToInternal(const FString& InPat
 	FString Path = InPath;
 	FPaths::NormalizeFilename(Path);
 	const FString ProjectContentDirAbsPath = FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir());
-	return Path.Replace(*ProjectContentDirAbsPath, *FString{ "/Game/" }, ESearchCase::IgnoreCase);
+	return ConvertPathInternal(ProjectContentDirAbsPath, FString{ "/Game/" }, Path);
+}
+
+FString ProjectCleanerHelper::ConvertInternalToAbsolutePath(const FString& InPath)
+{
+	FString Path = InPath;
+	FPaths::NormalizeFilename(Path);
+	const FString ProjectContentDirAbsPath = FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir());
+	return ConvertPathInternal(FString{ "/Game/" }, ProjectContentDirAbsPath, Path);
 }
 
 bool ProjectCleanerHelper::DeleteEmptyFolders(const FAssetRegistryModule* AssetRegistry, TArray<FString>& EmptyFolders)
@@ -197,4 +205,9 @@ bool ProjectCleanerHelper::FindAllEmptyFolders(const FString& FolderPath, TArray
 	}
 
 	return false;
+}
+
+FString ProjectCleanerHelper::ConvertPathInternal(const FString& From, const FString To, const FString& Path)
+{
+	return Path.Replace(*From, *To, ESearchCase::IgnoreCase);
 }

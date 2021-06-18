@@ -13,8 +13,12 @@ bool FProjectCleanerPathsTests::RunTest(const FString& Parameters)
 	const FString AssetAbsPath = ProjectContentDir + TEXT("Material");
 	const FString AssetInternalPath = FString{ TEXT("/Game/Material") };
 
-	const FString TestPath = ProjectCleanerHelper::ConvertAbsolutePathToInternal(AssetAbsPath);
-	TestEqual(TEXT("Path Converted from Absolute to Internal must"), TestPath, AssetInternalPath);
+	FString TestPathInternal = ProjectCleanerHelper::ConvertAbsolutePathToInternal(AssetAbsPath);
+	TestEqual(TEXT("Path Converted from Absolute to Internal must"), TestPathInternal, AssetInternalPath);
+
+
+	FString TestPathAbsolute = ProjectCleanerHelper::ConvertInternalToAbsolutePath(AssetInternalPath);
+	TestEqual(TEXT("Path Converted from Internal to Absolute must"), TestPathAbsolute, AssetAbsPath);
 
 	return true;
 }

@@ -326,7 +326,7 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 							]
 						]
 					]
-					+ SScrollBox::Slot()
+					/*+ SScrollBox::Slot()
 					.Padding(FMargin{0.0f, 20.0f})
 					[
 						SNew(SBorder)
@@ -340,7 +340,7 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 								ExcludedAssetsUIRef
 							]
 						]
-					]
+					]*/
 				]
 			]
 			+ SSplitter::Slot()
@@ -471,27 +471,27 @@ void FProjectCleanerModule::UpdateCleanerData()
 	ProjectCleanerUtility::GetAllPrimaryAssetClasses(*AssetManager, PrimaryAssetClasses);
 
 	// 4) Now we get all assets from AssetRegistry
-	//ProjectCleanerUtility::GetAllAssets(AssetRegistry, UnusedAssets);
+	ProjectCleanerUtility::GetAllAssets(AssetRegistry, UnusedAssets);
 
 	// 5) Removing assets from deletion list that are currently in use
 	// In use cases:
 	// * PrimaryAssets and Assets used by PrimaryAsset
 	// * Removing Megascans Assets if Plugin is active
-	//ProjectCleanerUtility::RemoveUsedAssets(UnusedAssets, PrimaryAssetClasses);
-	//ProjectCleanerUtility::RemoveMegascansPluginAssetsIfActive(UnusedAssets);
+	ProjectCleanerUtility::RemoveUsedAssets(UnusedAssets, PrimaryAssetClasses);
+	ProjectCleanerUtility::RemoveMegascansPluginAssetsIfActive(UnusedAssets);
 
 	// 6) remove assets from Developers Contents folder if user picked that option
-	//if (!CleanerConfigs.bScanDeveloperContentsFolder)
-	//{
-	//	ProjectCleanerUtility::RemoveContentFromDeveloperFolder(UnusedAssets, EmptyFolders);
-	//}
+	if (!CleanerConfigs.bScanDeveloperContentsFolder)
+	{
+		ProjectCleanerUtility::RemoveContentFromDeveloperFolder(UnusedAssets);
+	}
 
 	// update content browser settings to show "Developers Contents"
-	//GetMutableDefault<UContentBrowserSettings>()->SetDisplayDevelopersFolder(CleanerConfigs.bScanDeveloperContentsFolder, true);
-	//GetMutableDefault<UContentBrowserSettings>()->PostEditChange();
+	GetMutableDefault<UContentBrowserSettings>()->SetDisplayDevelopersFolder(CleanerConfigs.bScanDeveloperContentsFolder, true);
+	GetMutableDefault<UContentBrowserSettings>()->PostEditChange();
 
 	// filling graphs with unused assets data and creating relational map between them
-	//RelationalMap.Rebuild(UnusedAssets);
+	RelationalMap.Rebuild(UnusedAssets);
 
 	// 7) removing assets that used indirectly (in source code, or config files etc.)
 	//ProjectCleanerUtility::RemoveAssetsUsedIndirectly(UnusedAssets, RelationalMap, SourceCodeFiles, SourceCodeAssets);
@@ -551,6 +551,11 @@ void FProjectCleanerModule::UpdateStats()
 		NonUassetFilesUI.Pin()->SetNonUassetFiles(NonUAssetFiles);
 	}
 
+	if (CorruptedFilesUI.IsValid())
+	{
+		CorruptedFilesUI.Pin()->SetCorruptedFiles(CorruptedFiles);
+	}
+
 	if (SourceCodeAssetsUI.IsValid())
 	{
 		SourceCodeAssetsUI.Pin()->SetSourceCodeAssets(SourceCodeAssets);
@@ -563,10 +568,6 @@ void FProjectCleanerModule::UpdateStats()
 		ExcludedAssetsUI.Pin()->SetCleanerConfigs(CleanerConfigs);
 	}
 
-	if (CorruptedFilesUI.IsValid())
-	{
-		CorruptedFilesUI.Pin()->SetCorruptedFiles(CorruptedFiles);
-	}
 }
 
 void FProjectCleanerModule::Reset()
