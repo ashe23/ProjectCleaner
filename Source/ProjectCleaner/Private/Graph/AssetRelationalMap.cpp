@@ -1,9 +1,10 @@
 ﻿// Copyright 2021. Ashot Barkhudaryan. All Rights Reserved.
 
 #include "Graph/AssetRelationalMap.h"
+#include "UI/ProjectCleanerConfigsUI.h"
 #include "AssetRegistryModule.h"
 
-void AssetRelationalMap::Rebuild(const TArray<FAssetData>& UnusedAssets)
+void AssetRelationalMap::Rebuild(const TArray<FAssetData>& UnusedAssets, UCleanerConfigs* Configs)
 {
 	Reset();
 	
@@ -42,7 +43,7 @@ void AssetRelationalMap::Rebuild(const TArray<FAssetData>& UnusedAssets)
 	}
 
 	FindCircularNodes();
-	FindRootNodes();
+	FindRootNodes(Configs);
 }
 
 void AssetRelationalMap::FindCircularNodes()
@@ -54,11 +55,17 @@ void AssetRelationalMap::FindCircularNodes()
 	}
 }
 
-void AssetRelationalMap::FindRootNodes()
+void AssetRelationalMap::FindRootNodes(UCleanerConfigs* Configs)
 {
+	int32 DeletionLimit = 20;
+	if (Configs && Configs->IsValidLowLevel())
+	{
+		DeletionLimit = Configs->DeleteChunkLimit;
+	}
+
 	for (const auto& Node : Nodes)
 	{		
-		if (RootNodes.Num() > 20) break; // todo:ashe23 chunks size here
+		if (RootNodes.Num() > DeletionLimit) break; // todo:ashe23 chunks size here
 		if (Node.Refs.Num() != 0) continue;
 		RootNodes.AddUnique(Node);
 	}
@@ -80,7 +87,6 @@ void AssetRelationalMap::GetRelatedAssets(
 		AssetRegistry.Get().GetDependencies(PackageName, RelatedAssets);
 	}
 
-	// todo:ashe23 maybe remove also assets that are outside "/Game" folder
 	RelatedAssets.RemoveAll([&] (const FName& Elem)
 	{
 		return Elem.IsEqual(PackageName) || !Elem.ToString().StartsWith("/Game");
@@ -92,11 +98,11 @@ void AssetRelationalMap::DFS(FAssetNode& Node, FAssetNode& RootNode)
 	if (Node.Visited) return;
 	Node.Visited = true;
 
-	for (const auto Rel : Node.RelatedAssets)
+	for (const auto RelatedAsset : Node.RelatedAssets)
 	{
-		RootNode.LinkedAssets.AddUnique(Rel);
+		RootNode.LinkedAssets.AddUnique(RelatedAsset);
 
-		const auto AssetData = FindByPackageName(Rel);
+		const auto AssetData = FindByPackageName(RelatedAsset);
 		if(!AssetData) continue;
 		DFS(*AssetData, RootNode);
 	}

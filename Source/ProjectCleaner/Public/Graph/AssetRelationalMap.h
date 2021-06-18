@@ -2,6 +2,8 @@
 
 #pragma once
 
+class UCleanerConfigs;
+
 enum class ERelationType
 {
 	Reference,
@@ -42,7 +44,7 @@ struct FAssetNode
 class AssetRelationalMap
 {
 public:
-	void Rebuild(const TArray<FAssetData>& UnusedAssets);
+	void Rebuild(const TArray<FAssetData>& UnusedAssets, UCleanerConfigs* Configs);
 	FAssetNode* FindByPackageName(const FName& PackageName);
 	void FindAssetsByClass(const TArray<UClass*> ExcludedClasses, TArray<FAssetData>& Assets);
 	const TArray<FAssetNode>& GetNodes() const;
@@ -56,7 +58,7 @@ private:
 		TArray<FName>& RelatedAssets
 	) const;
 	void FindCircularNodes();
-	void FindRootNodes();
+	void FindRootNodes(UCleanerConfigs* Configs);
 	void DFS(FAssetNode& Node, FAssetNode& RootNode);
 	void ClearVisited();
 	bool IsCircularNode(const FAssetNode& Node) const;

@@ -394,11 +394,6 @@ void FProjectCleanerModule::OnAutomaticallyRemoveEmptyFoldersCheckboxChanged(ECh
 	CleanerConfigs->bAutomaticallyDeleteEmptyFolders = (State == ECheckBoxState::Checked);
 }
 
-void FProjectCleanerModule::OnChunkSizeTextCommited(const FText& Text, ETextCommit::Type CommitType)
-{
-	UE_LOG(LogProjectCleaner, Warning, TEXT("%s"), *Text.ToString());
-}
-
 void FProjectCleanerModule::UpdateCleaner()
 {
 	ProjectCleanerUtility::SaveAllAssets();
@@ -458,7 +453,7 @@ void FProjectCleanerModule::UpdateCleanerData()
 	GetMutableDefault<UContentBrowserSettings>()->PostEditChange();
 
 	// filling graphs with unused assets data and creating relational map between them
-	RelationalMap.Rebuild(UnusedAssets);
+	RelationalMap.Rebuild(UnusedAssets, CleanerConfigs);
 
 	// 7) removing assets that used indirectly (in source code, or config files etc.)
 	//ProjectCleanerUtility::RemoveAssetsUsedIndirectly(UnusedAssets, RelationalMap, SourceCodeFiles, SourceCodeAssets);
@@ -534,7 +529,6 @@ void FProjectCleanerModule::UpdateStats()
 		ExcludedAssetsUI.Pin()->SetLinkedAssets(LinkedAssets);
 		ExcludedAssetsUI.Pin()->SetCleanerConfigs(CleanerConfigs);
 	}
-
 }
 
 void FProjectCleanerModule::Reset()
@@ -670,23 +664,31 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 	while (UnusedAssets.Num() > 0)
 	{
 		const auto CircularNodes = RelationalMap.GetCircularNodes();
-		if (RelationalMap.GetCircularNodes().Num() > 0)
+		const auto RootNodes = RelationalMap.GetRootNodes();
+
+		if (CircularNodes.Num() > 0)
 		{
 			for (const auto& CircularNode : CircularNodes)
 			{
 				RootAssets.AddUnique(CircularNode.AssetData);
 			}
 		}
-		else
+		else if (RootNodes.Num() > 0)
 		{
-			const auto RootNodes = RelationalMap.GetRootNodes();
 			for (const auto& RootNode : RootNodes)
 			{
 				RootAssets.AddUnique(RootNode.AssetData);
 			}
 		}
+		else
+		{
+			for (const auto& Node : RelationalMap.GetNodes())
+			{
+				if (RootAssets.Num() >= CleanerConfigs->DeleteChunkLimit) break;
+				RootAssets.AddUnique(Node.AssetData);
+			}
+		}
 
-		// todo:ashe23 BUG not all assets deleted but circularnodes and rootassets are empty
 		// Remaining assets are valid so we trying to delete them
 		CleaningStats.DeletedAssetCount += ProjectCleanerUtility::DeleteAssets(RootAssets);
 		NotificationManager->Update(CleaningNotificationPtr, CleaningStats);
@@ -697,7 +699,7 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 		});
 
 		// after chunk of assets deleted, we must update adjacency list
-		RelationalMap.Rebuild(UnusedAssets);
+		RelationalMap.Rebuild(UnusedAssets, CleanerConfigs);
 		RootAssets.Reset();
 	}
 

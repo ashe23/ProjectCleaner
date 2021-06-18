@@ -64,7 +64,6 @@ private:
 	TSharedRef<SDockTab> OnSourceCodeAssetsTabSpawn(const FSpawnTabArgs& SpawnTabArgs);
 	void OnScanDeveloperContentCheckboxChanged(ECheckBoxState State);
 	void OnAutomaticallyRemoveEmptyFoldersCheckboxChanged(ECheckBoxState State);
-	void OnChunkSizeTextCommited(const FText& Text, ETextCommit::Type CommitType);
 
 	/** Cleaner **/
 	
