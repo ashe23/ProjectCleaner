@@ -49,8 +49,8 @@ static const FName CorruptedFilesTab = FName{ TEXT("CorruptedFilesTab") };
 #define LOCTEXT_NAMESPACE "FProjectCleanerModule"
 
 FProjectCleanerModule::FProjectCleanerModule() :
-	ExcludeOptions(nullptr),
 	CleanerConfigs(nullptr),
+	ExcludeOptions(nullptr),
 	AssetRegistry(nullptr),
 	AssetManager(nullptr),
 	ContentBrowser(nullptr)
@@ -324,7 +324,8 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnUnusedAssetTabSpawn(const FSpawnTa
 {
 	const auto UnusedAssetsUIRef =
 		SAssignNew(UnusedAssetsBrowserUI, SProjectCleanerUnusedAssetsBrowserUI)
-		.UnusedAssets(UnusedAssets)
+		.PrimaryAssetClasses(&PrimaryAssetClasses)
+		.UnusedAssets(&UnusedAssets)
 		.CleanerConfigs(CleanerConfigs);
 	
 	UnusedAssetsUIRef->OnUserDeletedAssets = FOnUserDeletedAssets::CreateRaw(
@@ -508,8 +509,7 @@ void FProjectCleanerModule::UpdateStats()
 
 	if (UnusedAssetsBrowserUI.IsValid())
 	{
-		UnusedAssetsBrowserUI.Pin()->SetUnusedAssets(UnusedAssets);
-		UnusedAssetsBrowserUI.Pin()->SetCleanerConfigs(CleanerConfigs);
+		UnusedAssetsBrowserUI.Pin()->SetUIData(UnusedAssets, CleanerConfigs, PrimaryAssetClasses);
 	}
 
 	if (NonUassetFilesUI.IsValid())

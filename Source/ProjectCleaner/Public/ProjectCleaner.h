@@ -132,9 +132,13 @@ private:
 	TWeakPtr<SProjectCleanerCorruptedFilesUI> CorruptedFilesUI;
 	TWeakPtr<SProjectCleanerExcludedAssetsUI> ExcludedAssetsUI;
 	TWeakPtr<SProjectCleanerConfigsUI> CleanerConfigsUI;
-
 	TSharedPtr<FTabManager> TabManager;
 	TSharedPtr<FTabManager::FLayout> TabLayout;
+
+	/** UI data*/
+	UCleanerConfigs* CleanerConfigs;
+	UExcludeOptions* ExcludeOptions;
+
 	
 	/** Data Containers */ 
 	TArray<FAssetData> UnusedAssets;
@@ -143,12 +147,10 @@ private:
 	TSet<FString> CorruptedFiles;
 	FCleaningStats CleaningStats;
 	TArray<TWeakObjectPtr<USourceCodeAsset>> SourceCodeAssets;
-
-
 	TSet<FAssetData> ExcludedAssets;
 	TArray<FAssetData> LinkedAssets;
-	UExcludeOptions* ExcludeOptions;
-	UCleanerConfigs* CleanerConfigs;
+
+
 	
 	/** Helper Containers **/
 	TSet<FString> ProjectFilesFromDisk;
