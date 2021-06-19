@@ -69,13 +69,13 @@ class SProjectCleanerNonUassetFilesUI : public SCompoundWidget
 public:
 	
 	SLATE_BEGIN_ARGS(SProjectCleanerNonUassetFilesUI) {}
-		SLATE_ARGUMENT(TSet<FString>, NonUassetFiles)
+		SLATE_ARGUMENT(TSet<FString>*, NonUassetFiles)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
 	void SetNonUassetFiles(const TSet<FString>& NewNonUassetFile);
 private:
-	void RefreshUIContent();
+	void InitUI();
 	TSharedRef<ITableRow> OnGenerateRow(
 		TWeakObjectPtr<UNonUassetFile> InItem,
 		const TSharedRef<STableViewBase>& OwnerTable
@@ -85,5 +85,4 @@ private:
 	/** Data **/
 	TArray<TWeakObjectPtr<UNonUassetFile>> NonUassetFiles;
 	TSharedPtr<SListView<TWeakObjectPtr<UNonUassetFile>>> ListView;
-	TSharedRef<SWidget> WidgetRef = SNullWidget::NullWidget;
 };

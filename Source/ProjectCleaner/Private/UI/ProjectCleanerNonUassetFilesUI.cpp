@@ -2,7 +2,6 @@
 
 #include "UI/ProjectCleanerNonUassetFilesUI.h"
 #include "ProjectCleanerStyle.h"
-#include "ProjectCleanerUtility.h"
 // Engine Headers
 #include "Widgets/Layout/SScrollBox.h"
 
@@ -10,9 +9,12 @@
 
 void SProjectCleanerNonUassetFilesUI::Construct(const FArguments& InArgs)
 {
-	SetNonUassetFiles(InArgs._NonUassetFiles);
+	if (InArgs._NonUassetFiles)
+	{
+		SetNonUassetFiles(*InArgs._NonUassetFiles);
+	}
 
-	RefreshUIContent();
+	InitUI();
 }
 
 void SProjectCleanerNonUassetFilesUI::SetNonUassetFiles(const TSet<FString>& NewNonUassetFile)
@@ -36,7 +38,7 @@ void SProjectCleanerNonUassetFilesUI::SetNonUassetFiles(const TSet<FString>& New
 	}
 }
 
-void SProjectCleanerNonUassetFilesUI::RefreshUIContent()
+void SProjectCleanerNonUassetFilesUI::InitUI()
 {
 	ListView = SNew(SListView<TWeakObjectPtr<UNonUassetFile>>)
 		.ListItemsSource(&NonUassetFiles)
@@ -68,7 +70,8 @@ void SProjectCleanerNonUassetFilesUI::RefreshUIContent()
 			]
 	);
 
-	WidgetRef =
+	ChildSlot
+	[
 		SNew(SOverlay)
 		+ SOverlay::Slot()
 		.Padding(20.0f)
@@ -92,7 +95,7 @@ void SProjectCleanerNonUassetFilesUI::RefreshUIContent()
 					SNew(STextBlock)
 					.AutoWrapText(true)
 					.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light10"))
-					.Text(LOCTEXT("dblclickonrow", "Double click on row to open in Explorer"))
+					.Text(LOCTEXT("non_uasset_files_dblclickonrow", "Double click on row to open in Explorer"))
 				]
 				+ SVerticalBox::Slot()
 				.AutoHeight()
@@ -101,11 +104,7 @@ void SProjectCleanerNonUassetFilesUI::RefreshUIContent()
 					ListView.ToSharedRef()
 				]
 			]
-		];
-
-	ChildSlot
-	[
-		WidgetRef
+		]
 	];
 }
 
