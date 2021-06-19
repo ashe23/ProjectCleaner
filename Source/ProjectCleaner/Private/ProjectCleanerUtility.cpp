@@ -98,13 +98,13 @@ void ProjectCleanerUtility::RemoveMegascansPluginAssetsIfActive(TArray<FAssetDat
 	});
 }
 
-void ProjectCleanerUtility::RemoveAssetsUsedIndirectly(
-	TArray<FAssetData>& UnusedAssets,
-	AssetRelationalMap& RelationalMap,
-	TArray<FSourceCodeFile> SourceCodeFiles,
-	TArray<TWeakObjectPtr<USourceCodeAsset>>& SourceCodeAssets)
+void ProjectCleanerUtility::RemoveAssetsUsedIndirectly(TArray<FAssetData>& UnusedAssets, AssetRelationalMap& RelationalMap, TArray<TWeakObjectPtr<USourceCodeAsset>>& SourceCodeAssets)
 {
-	// 1) parsing files and checking if assets used there
+	// 1) finding all source code files
+	TArray<FSourceCodeFile> SourceCodeFiles;
+	ProjectCleanerHelper::GetSourceCodeFilesFromDisk(SourceCodeFiles);
+
+	// 2) parsing files and checking if assets used there
 	TSet<FName> FoundedAssets;
 	FoundedAssets.Reserve(UnusedAssets.Num());
 	
@@ -123,11 +123,11 @@ void ProjectCleanerUtility::RemoveAssetsUsedIndirectly(
 		SourceCodeAssets.Add(Obj);
 	}
 
-	// 2) for founded assets find all linked assets
+	// 3) for founded assets find all linked assets
 	TSet<FName> LinkedAssets;
 	RelationalMap.FindAllLinkedAssets(FoundedAssets, LinkedAssets);
 	
-	// 3) remove founded assets from unused assets list
+	// 4) remove founded assets from unused assets list
 	UnusedAssets.RemoveAll([&](const FAssetData& Elem)
 	{
 		return LinkedAssets.Contains(Elem.PackageName);

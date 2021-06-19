@@ -11,7 +11,10 @@
 
 void SProjectCleanerSourceCodeAssetsUI::Construct(const FArguments& InArgs)
 {
-	SetSourceCodeAssets(InArgs._SourceCodeAssets);
+	if (InArgs._SourceCodeAssets)
+	{
+		SetSourceCodeAssets(*InArgs._SourceCodeAssets);
+	}
 
 	InitUI();
 }
@@ -20,7 +23,7 @@ void SProjectCleanerSourceCodeAssetsUI::SetSourceCodeAssets(const TArray<TWeakOb
 {
 	SourceCodeAssets.Reset();
 	SourceCodeAssets.Reserve(NewSourceCodeAssets.Num());
-	SourceCodeAssets = NewSourceCodeAssets;
+	SourceCodeAssets = MoveTempIfPossible(NewSourceCodeAssets);
 
 	if (ListView.IsValid())
 	{
@@ -71,7 +74,8 @@ void SProjectCleanerSourceCodeAssetsUI::InitUI()
 			]
 		);
 
-	WidgetRef =
+	ChildSlot
+	[
 		SNew(SOverlay)
 		+ SOverlay::Slot()
 		.Padding(20.0f)
@@ -113,11 +117,7 @@ void SProjectCleanerSourceCodeAssetsUI::InitUI()
 					ListView.ToSharedRef()
 				]
 			]
-		];
-
-	ChildSlot
-	[
-		WidgetRef
+		]
 	];
 }
 

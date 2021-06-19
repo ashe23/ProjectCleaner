@@ -12,16 +12,16 @@ class USourceCodeAsset : public UObject
 {
 	GENERATED_BODY()
 public:
-	UPROPERTY(DisplayName = "AssetName", VisibleAnywhere, Category="AssetsUsedInSourceCode")
+	UPROPERTY(DisplayName = "AssetName", VisibleAnywhere, Category="AssetUsedIndirectly")
 	FString AssetName;
 
-	UPROPERTY(DisplayName = "AssetPath", VisibleAnywhere, Category="AssetsUsedInSourceCode")
+	UPROPERTY(DisplayName = "AssetPath", VisibleAnywhere, Category="AssetUsedIndirectly")
 	FString AssetPath;
 
-	UPROPERTY(DisplayName = "SourceCodePath", VisibleAnywhere, Category="AssetsUsedInSourceCode")
+	UPROPERTY(DisplayName = "SourceCodePath", VisibleAnywhere, Category="AssetUsedIndirectly")
 	FString SourceCodePath;
 
-	UPROPERTY(DisplayName = "AssetData", VisibleAnywhere, Category="AssetsUsedInSourceCode")
+	UPROPERTY(DisplayName = "AssetData", VisibleAnywhere, Category="AssetUsedIndirectly")
 	FAssetData AssetData;
 };
 
@@ -79,19 +79,15 @@ class SProjectCleanerSourceCodeAssetsUI : public SCompoundWidget
 public:
 	
 	SLATE_BEGIN_ARGS(SProjectCleanerSourceCodeAssetsUI) {}
-		SLATE_ARGUMENT(TArray<TWeakObjectPtr<USourceCodeAsset>>, SourceCodeAssets)
+		SLATE_ARGUMENT(TArray<TWeakObjectPtr<USourceCodeAsset>>*, SourceCodeAssets)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
 	void SetSourceCodeAssets(const TArray<TWeakObjectPtr<USourceCodeAsset>>& NewSourceCodeAssets);
 private:
 	void InitUI();
-	TSharedRef<ITableRow> OnGenerateRow(
-		TWeakObjectPtr<USourceCodeAsset> InItem,
-		const TSharedRef<STableViewBase>& OwnerTable
-	) const;
+	TSharedRef<ITableRow> OnGenerateRow(TWeakObjectPtr<USourceCodeAsset> InItem, const TSharedRef<STableViewBase>& OwnerTable) const;
 	void OnMouseDoubleClick(TWeakObjectPtr<USourceCodeAsset> Item) const;
 	TArray<TWeakObjectPtr<USourceCodeAsset>> SourceCodeAssets;
 	TSharedPtr<SListView<TWeakObjectPtr<USourceCodeAsset>>> ListView;
-	TSharedRef<SWidget> WidgetRef =  SNullWidget::NullWidget;
 };

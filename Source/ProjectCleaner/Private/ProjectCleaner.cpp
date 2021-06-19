@@ -100,8 +100,8 @@ void FProjectCleanerModule::StartupModule()
 			->SetSizeCoefficient(0.4f)
 			->SetHideTabWell(true)
 			->AddTab(UnusedAssetsTab, ETabState::OpenedTab)
-			->AddTab(NonUassetFilesTab, ETabState::OpenedTab)
 			->AddTab(SourceCodeAssetTab, ETabState::OpenedTab)
+			->AddTab(NonUassetFilesTab, ETabState::OpenedTab)
 			->AddTab(CorruptedFilesTab, ETabState::OpenedTab)
 			->SetForegroundTab(UnusedAssetsTab)
 		)
@@ -111,13 +111,13 @@ void FProjectCleanerModule::StartupModule()
 		this,
 		&FProjectCleanerModule::OnUnusedAssetTabSpawn)
 	);
-	TabManager->RegisterTabSpawner(NonUassetFilesTab, FOnSpawnTab::CreateRaw(
-		this,
-		&FProjectCleanerModule::OnNonUAssetFilesTabSpawn)
-	);
 	TabManager->RegisterTabSpawner(SourceCodeAssetTab, FOnSpawnTab::CreateRaw(
 		this,
 		&FProjectCleanerModule::OnSourceCodeAssetsTabSpawn)
+	);
+	TabManager->RegisterTabSpawner(NonUassetFilesTab, FOnSpawnTab::CreateRaw(
+		this,
+		&FProjectCleanerModule::OnNonUAssetFilesTabSpawn)
 	);
 	TabManager->RegisterTabSpawner(CorruptedFilesTab, FOnSpawnTab::CreateRaw(
 		this,
@@ -146,8 +146,8 @@ void FProjectCleanerModule::ShutdownModule()
 	FProjectCleanerCommands::Unregister();
 	FGlobalTabmanager::Get()->UnregisterNomadTabSpawner(ProjectCleanerTabName);
 	TabManager->UnregisterTabSpawner(UnusedAssetsTab);
-	TabManager->UnregisterTabSpawner(NonUassetFilesTab);
 	TabManager->UnregisterTabSpawner(SourceCodeAssetTab);
+	TabManager->UnregisterTabSpawner(NonUassetFilesTab);
 	TabManager->UnregisterTabSpawner(CorruptedFilesTab);
 	AssetRegistry = nullptr;
 }
@@ -379,7 +379,7 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSourceCodeAssetsTabSpawn(const FSp
 		.Label(NSLOCTEXT("SourceCodeAssets", "TabTitle", "Assets Used Indirectly"))
 		[
 			SAssignNew(SourceCodeAssetsUI, SProjectCleanerSourceCodeAssetsUI)
-			.SourceCodeAssets(SourceCodeAssets)
+			.SourceCodeAssets(&SourceCodeAssets)
 		];
 }
 
@@ -414,32 +414,18 @@ void FProjectCleanerModule::UpdateCleanerData()
 	if (!AssetRegistry) return;
 	if (!CleanerConfigs) return;
 	
-	// 1) Querying files and folder (FileManager)
-	// * Empty Folders
-	// * Project Files from "Content" folder
-	// * Config files from "Config" folder and all "Config" folders in installed "Plugins" folder
-	// * Source code files from "Source" folder and all "Source" folders in installed "Plugins" folder (.c, .cpp, .cs files)
 	ProjectCleanerHelper::GetEmptyFolders(EmptyFolders, CleanerConfigs->bScanDeveloperContents);
 	ProjectCleanerHelper::GetProjectFilesFromDisk(ProjectFilesFromDisk);
-	ProjectCleanerHelper::GetSourceCodeFilesFromDisk(SourceCodeFiles);
 
-	// 2) Filtering files that are not part of engine, or possibly corrupted (NonUassetFiles, CorruptedFiles)
 	ProjectCleanerUtility::GetInvalidProjectFiles(AssetRegistry, ProjectFilesFromDisk, CorruptedFiles, NonUAssetFiles);
 
 	SlowTask.EnterProgressFrame(10.0f, FText::FromString("Finding invalid files..."));
-
-	// 3) Querying all primary asset classes (this is for later use, those type of asset and their dependencies wont be deleted)
-	//UAssetManager& AssetManager = UAssetManager::Get();
+	
 	AssetManager = &UAssetManager::Get();
 	ProjectCleanerUtility::GetAllPrimaryAssetClasses(*AssetManager, PrimaryAssetClasses);
 
-	// 4) Now we get all assets from AssetRegistry
 	ProjectCleanerUtility::GetAllAssets(AssetRegistry, UnusedAssets);
 
-	// 5) Removing assets from deletion list that are currently in use
-	// In use cases:
-	// * PrimaryAssets and Assets used by PrimaryAsset
-	// * Removing Megascans Assets if Plugin is active
 	ProjectCleanerUtility::RemoveUsedAssets(UnusedAssets, PrimaryAssetClasses);
 	ProjectCleanerUtility::RemoveMegascansPluginAssetsIfActive(UnusedAssets);
 
@@ -451,12 +437,10 @@ void FProjectCleanerModule::UpdateCleanerData()
 	// filling graphs with unused assets data and creating relational map between them
 	RelationalMap.Rebuild(UnusedAssets, CleanerConfigs);
 
-	// 6) removing assets that used indirectly (in source code, or config files etc.)
-	ProjectCleanerUtility::RemoveAssetsUsedIndirectly(UnusedAssets, RelationalMap, SourceCodeFiles, SourceCodeAssets);
+	ProjectCleanerUtility::RemoveAssetsUsedIndirectly(UnusedAssets, RelationalMap, SourceCodeAssets);
 
 	RelationalMap.Rebuild(UnusedAssets, CleanerConfigs);
 
-	// 7) remove assets from Developers Contents folder if user picked that option
 	ProjectCleanerUtility::RemoveContentFromDeveloperFolder(UnusedAssets, RelationalMap, CleanerConfigs, NotificationManager);
 
 	RelationalMap.Rebuild(UnusedAssets, CleanerConfigs);
@@ -545,7 +529,6 @@ void FProjectCleanerModule::Reset()
 	LinkedAssets.Reset();
 	ExcludedAssets.Reset();
 	RelationalMap.Reset();
-	SourceCodeFiles.Reset();
 	PrimaryAssetClasses.Reset();
 	ProjectFilesFromDisk.Reset();
 }

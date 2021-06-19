@@ -61,9 +61,18 @@ void SProjectCleanerUnusedAssetsBrowserUI::Construct(const FArguments& InArgs)
 		)
 	);
 	
-	SetCleanerConfigs(InArgs._CleanerConfigs);
-	SetUnusedAssets(*InArgs._UnusedAssets);
-	SetPrimaryAssetClasses(*InArgs._PrimaryAssetClasses);
+	if (InArgs._CleanerConfigs)
+	{
+		SetCleanerConfigs(InArgs._CleanerConfigs);
+	}
+	if (InArgs._UnusedAssets)
+	{
+		SetUnusedAssets(*InArgs._UnusedAssets);
+	}
+	if (InArgs._PrimaryAssetClasses)
+	{
+		SetPrimaryAssetClasses(*InArgs._PrimaryAssetClasses);
+	}
 
 	UpdateUI();
 }

@@ -154,7 +154,6 @@ private:
 	
 	/** Helper Containers **/
 	TSet<FString> ProjectFilesFromDisk;
-	TArray<FSourceCodeFile> SourceCodeFiles;
 	AssetRelationalMap RelationalMap;
 	FStandardCleanerText StandardCleanerText;
 	TSet<FName> PrimaryAssetClasses;
