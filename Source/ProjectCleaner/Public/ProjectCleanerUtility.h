@@ -6,10 +6,11 @@
 // Engine Headers
 #include "CoreMinimal.h"
 
-struct FAssetData;
-class AssetRelationalMap;
+class UCleanerConfigs;
 class USourceCodeAsset;
 class UExcludeOptions;
+class AssetRelationalMap;
+struct FAssetData;
 class FAssetRegistryModule;
 
 /**
@@ -25,7 +26,7 @@ public:
 	static void RemoveAssetsUsedIndirectly(TArray<FAssetData>& UnusedAssets, AssetRelationalMap& RelationalMap, TArray<FSourceCodeFile> SourceCodeFiles, TArray<TWeakObjectPtr<USourceCodeAsset>>& SourceCodeAssets);
 	static void RemoveAssetsWithExternalReferences(TArray<FAssetData>& UnusedAssets, AssetRelationalMap& RelationalMap); // todo:ashe23 remove this function?
 	static void RemoveUsedAssets(TArray<FAssetData>& Assets, const TSet<FName>& PrimaryAssetClasses);
-	static void RemoveContentFromDeveloperFolder(TArray<FAssetData>& UnusedAssets);
+	static void RemoveContentFromDeveloperFolder(TArray<FAssetData>& UnusedAssets, AssetRelationalMap& RelationalMap, UCleanerConfigs* CleanerConfigs, const TSharedPtr<ProjectCleanerNotificationManager> NotificationManager);
 	static void RemoveAssetsExcludedByUser(
 		const FAssetRegistryModule* AssetRegistry,
 		TArray<FAssetData>& UnusedAssets,

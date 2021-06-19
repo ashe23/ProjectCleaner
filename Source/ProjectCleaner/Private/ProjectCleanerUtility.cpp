@@ -2,9 +2,12 @@
 
 #include "ProjectCleanerUtility.h"
 #include "ProjectCleanerHelper.h"
+#include "ProjectCleanerNotificationManager.h"
+#include "UI/ProjectCleanerConfigsUI.h"
 #include "UI/ProjectCleanerSourceCodeAssetsUI.h"
 #include "UI/ProjectCleanerExcludeOptionsUI.h"
 #include "Graph/AssetRelationalMap.h"
+#include "StructsContainer.h"
 // Engine Headers
 #include "ObjectTools.h"
 #include "FileHelpers.h"
@@ -115,30 +118,19 @@ void ProjectCleanerUtility::RemoveAssetsUsedIndirectly(
 		auto Obj = NewObject<USourceCodeAsset>();
 		Obj->AssetName = UnusedAsset.AssetName.ToString();
 		Obj->AssetPath = UnusedAsset.PackageName.ToString();
+		Obj->AssetData = UnusedAsset;
 		Obj->SourceCodePath = File->AbsoluteFilePath;
 		SourceCodeAssets.Add(Obj);
 	}
 
-	TSet<FName> FilteredAssets;
-	FilteredAssets.Reserve(UnusedAssets.Num());
-	
 	// 2) for founded assets find all linked assets
-	for (const auto& FoundedAsset : FoundedAssets)
-	{
-		const auto AssetNode = RelationalMap.FindByPackageName(FoundedAsset);
-		if (!AssetNode) continue;
-
-		FilteredAssets.Add(FoundedAsset);
-		for (const auto& LinkedAsset : AssetNode->LinkedAssetsData)
-		{
-			FilteredAssets.Add(LinkedAsset->PackageName);
-		}
-	}
+	TSet<FName> LinkedAssets;
+	RelationalMap.FindAllLinkedAssets(FoundedAssets, LinkedAssets);
 	
 	// 3) remove founded assets from unused assets list
 	UnusedAssets.RemoveAll([&](const FAssetData& Elem)
 	{
-		return FilteredAssets.Contains(Elem.PackageName);
+		return LinkedAssets.Contains(Elem.PackageName);
 	});
 }
 
@@ -238,7 +230,6 @@ void ProjectCleanerUtility::FixupRedirectors()
 	FARFilter Filter;
 	Filter.bRecursivePaths = true;
 	Filter.PackagePaths.Emplace(RootPath);
-	// Filter.ClassNames.Emplace(TEXT("ObjectRedirector"));
 	Filter.ClassNames.Emplace(UObjectRedirector::StaticClass()->GetFName());
 
 	// Query for a list of assets
@@ -396,15 +387,44 @@ void ProjectCleanerUtility::RemoveUsedAssets(TArray<FAssetData>& Assets, const T
 	});
 }
 
-void ProjectCleanerUtility::RemoveContentFromDeveloperFolder(TArray<FAssetData>& UnusedAssets)
+void ProjectCleanerUtility::RemoveContentFromDeveloperFolder(TArray<FAssetData>& UnusedAssets, AssetRelationalMap& RelationalMap, UCleanerConfigs* CleanerConfigs, const TSharedPtr<ProjectCleanerNotificationManager> NotificationManager)
 {
-	const FString DeveloperFolderPath = FPaths::ConvertRelativePathToFull(FPaths::GameDevelopersDir());
-	const FString CollectionsFolderPath = FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() + TEXT("Collections/"));
+	if (!CleanerConfigs) return;
+	if (!CleanerConfigs->IsValidLowLevel()) return;
 
-	UnusedAssets.RemoveAll([&](const FAssetData& Elem) {
-		const FString AssetAbsolutePath = ProjectCleanerHelper::ConvertInternalToAbsolutePath(Elem.PackagePath.ToString());
-		return
-			FPaths::IsUnderDirectory(AssetAbsolutePath, DeveloperFolderPath) ||
-			FPaths::IsUnderDirectory(AssetAbsolutePath, CollectionsFolderPath);
-	});
+	{
+		TArray<FName> LinkedAssets;
+		LinkedAssets.Reserve(UnusedAssets.Num());
+
+		for (const auto& Node : RelationalMap.GetNodes())
+		{
+			if (Node.HasReferencersInDeveloperFolder())
+			{
+				LinkedAssets.Append(Node.LinkedAssets);
+			}
+		}
+
+		if (LinkedAssets.Num() > 0)
+		{
+			CleanerConfigs->bScanDeveloperContents = true;
+			if (NotificationManager.IsValid())
+			{
+				NotificationManager->AddTransient(TEXT("Some assets have referencers in Developer Contents Folder."), SNotificationItem::ECompletionState::CS_None, 5.0f);
+			}
+		}
+	}
+
+	if (!CleanerConfigs->bScanDeveloperContents)
+	{
+		const FString DeveloperFolderPath = FPaths::ConvertRelativePathToFull(FPaths::GameDevelopersDir());
+		const FString CollectionsFolderPath = FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() + TEXT("Collections/"));
+
+		UnusedAssets.RemoveAll([&](const FAssetData& Elem) {
+			const FString AssetAbsolutePath = ProjectCleanerHelper::ConvertInternalToAbsolutePath(Elem.PackagePath.ToString());
+			return
+				FPaths::IsUnderDirectory(AssetAbsolutePath, DeveloperFolderPath) ||
+				FPaths::IsUnderDirectory(AssetAbsolutePath, CollectionsFolderPath);
+		});
+	}
+
 }

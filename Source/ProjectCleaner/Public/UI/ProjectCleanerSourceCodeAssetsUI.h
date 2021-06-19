@@ -20,6 +20,9 @@ public:
 
 	UPROPERTY(DisplayName = "SourceCodePath", VisibleAnywhere, Category="AssetsUsedInSourceCode")
 	FString SourceCodePath;
+
+	UPROPERTY(DisplayName = "AssetData", VisibleAnywhere, Category="AssetsUsedInSourceCode")
+	FAssetData AssetData;
 };
 
 
@@ -31,7 +34,7 @@ public:
 		SLATE_ARGUMENT(TWeakObjectPtr<USourceCodeAsset>, SelectedRowItem)
 	SLATE_END_ARGS()
 
-void Construct(const FArguments& InArgs, const TSharedRef<STableViewBase>& InOwnerTableView)
+	void Construct(const FArguments& InArgs, const TSharedRef<STableViewBase>& InOwnerTableView)
 	{
 		SelectedRowItem = InArgs._SelectedRowItem;
 
@@ -82,12 +85,13 @@ public:
 	void Construct(const FArguments& InArgs);
 	void SetSourceCodeAssets(const TArray<TWeakObjectPtr<USourceCodeAsset>>& NewSourceCodeAssets);
 private:
-	void RefreshUIContent();
+	void InitUI();
 	TSharedRef<ITableRow> OnGenerateRow(
 		TWeakObjectPtr<USourceCodeAsset> InItem,
 		const TSharedRef<STableViewBase>& OwnerTable
 	) const;
 	void OnMouseDoubleClick(TWeakObjectPtr<USourceCodeAsset> Item) const;
 	TArray<TWeakObjectPtr<USourceCodeAsset>> SourceCodeAssets;
+	TSharedPtr<SListView<TWeakObjectPtr<USourceCodeAsset>>> ListView;
 	TSharedRef<SWidget> WidgetRef =  SNullWidget::NullWidget;
 };

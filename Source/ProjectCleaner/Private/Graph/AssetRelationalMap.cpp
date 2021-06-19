@@ -89,7 +89,8 @@ void AssetRelationalMap::GetRelatedAssets(
 
 	RelatedAssets.RemoveAll([&] (const FName& Elem)
 	{
-		return Elem.IsEqual(PackageName) || !Elem.ToString().StartsWith("/Game");
+		//return Elem.IsEqual(PackageName) || !Elem.ToString().StartsWith("/Game");
+		return Elem.IsEqual(PackageName);
 	});
 }
 
@@ -145,6 +146,24 @@ void AssetRelationalMap::FindAssetsByClass(const TArray<UClass*> ExcludedClasses
 		});
 		if (!Contains) continue;
 		Assets.Add(Node.AssetData);
+	}
+}
+
+void AssetRelationalMap::FindAllLinkedAssets(const TSet<FName>& Assets, TSet<FName>& LinkedAssets)
+{
+	if (Assets.Num() == 0) return;
+	LinkedAssets.Reserve(Assets.Num());
+
+	for (const auto& Asset : Assets)
+	{
+		const auto AssetNode = FindByPackageName(Asset);
+		if (!AssetNode) continue;
+
+		LinkedAssets.Add(Asset);
+		for (const auto& LinkedAsset : AssetNode->LinkedAssetsData)
+		{
+			LinkedAssets.Add(LinkedAsset->PackageName);
+		}
 	}
 }
 

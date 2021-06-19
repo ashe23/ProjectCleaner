@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include "ProjectCleanerHelper.h"
+
 class UCleanerConfigs;
 
 enum class ERelationType
@@ -39,6 +41,24 @@ struct FAssetNode
 
 		return false;
 	}
+
+	bool HasReferencersInDeveloperFolder() const
+	{
+		const FString DeveloperFolderPath = FPaths::ConvertRelativePathToFull(FPaths::GameDevelopersDir());
+		const FString CollectionsFolderPath = FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() + TEXT("Collections/"));
+
+		for (const auto& Ref : Refs)
+		{
+			const auto AbsPath = ProjectCleanerHelper::ConvertInternalToAbsolutePath(Ref.ToString());
+			const bool IsUnderDir = FPaths::IsUnderDirectory(AbsPath, DeveloperFolderPath) || FPaths::IsUnderDirectory(AbsPath, CollectionsFolderPath);
+			if (IsUnderDir)
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
 };
 
 class AssetRelationalMap
@@ -47,6 +67,7 @@ public:
 	void Rebuild(const TArray<FAssetData>& UnusedAssets, UCleanerConfigs* Configs);
 	FAssetNode* FindByPackageName(const FName& PackageName);
 	void FindAssetsByClass(const TArray<UClass*> ExcludedClasses, TArray<FAssetData>& Assets);
+	void FindAllLinkedAssets(const TSet<FName>& Assets, TSet<FName>& LinkedAssets);
 	const TArray<FAssetNode>& GetNodes() const;
 	const TArray<FAssetNode>& GetCircularNodes() const;
 	const TArray<FAssetNode>& GetRootNodes() const;

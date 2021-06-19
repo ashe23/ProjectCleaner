@@ -405,8 +405,8 @@ void FProjectCleanerModule::UpdateCleaner()
 
 void FProjectCleanerModule::UpdateCleanerData()
 {
-	//FScopedSlowTask SlowTask{ 100.0f, FText::FromString("Scanning...") };
-	//SlowTask.MakeDialog();
+	FScopedSlowTask SlowTask{ 100.0f, FText::FromString("Scanning...") };
+	SlowTask.MakeDialog();
 
 	Reset();
 	
@@ -425,7 +425,7 @@ void FProjectCleanerModule::UpdateCleanerData()
 	// 2) Filtering files that are not part of engine, or possibly corrupted (NonUassetFiles, CorruptedFiles)
 	ProjectCleanerUtility::GetInvalidProjectFiles(AssetRegistry, ProjectFilesFromDisk, CorruptedFiles, NonUAssetFiles);
 
-	//SlowTask.EnterProgressFrame(10.0f, FText::FromString("Finding invalid files..."));
+	SlowTask.EnterProgressFrame(10.0f, FText::FromString("Finding invalid files..."));
 
 	// 3) Querying all primary asset classes (this is for later use, those type of asset and their dependencies wont be deleted)
 	//UAssetManager& AssetManager = UAssetManager::Get();
@@ -442,11 +442,6 @@ void FProjectCleanerModule::UpdateCleanerData()
 	ProjectCleanerUtility::RemoveUsedAssets(UnusedAssets, PrimaryAssetClasses);
 	ProjectCleanerUtility::RemoveMegascansPluginAssetsIfActive(UnusedAssets);
 
-	// 6) remove assets from Developers Contents folder if user picked that option
-	if (!CleanerConfigs->bScanDeveloperContents)
-	{
-		ProjectCleanerUtility::RemoveContentFromDeveloperFolder(UnusedAssets);
-	}
 
 	// update content browser settings to show "Developers Contents"
 	GetMutableDefault<UContentBrowserSettings>()->SetDisplayDevelopersFolder(CleanerConfigs->bScanDeveloperContents, true);
@@ -455,8 +450,17 @@ void FProjectCleanerModule::UpdateCleanerData()
 	// filling graphs with unused assets data and creating relational map between them
 	RelationalMap.Rebuild(UnusedAssets, CleanerConfigs);
 
-	// 7) removing assets that used indirectly (in source code, or config files etc.)
-	//ProjectCleanerUtility::RemoveAssetsUsedIndirectly(UnusedAssets, RelationalMap, SourceCodeFiles, SourceCodeAssets);
+	// 6) removing assets that used indirectly (in source code, or config files etc.)
+	ProjectCleanerUtility::RemoveAssetsUsedIndirectly(UnusedAssets, RelationalMap, SourceCodeFiles, SourceCodeAssets);
+
+	RelationalMap.Rebuild(UnusedAssets, CleanerConfigs);
+
+	// 7) remove assets from Developers Contents folder if user picked that option
+	ProjectCleanerUtility::RemoveContentFromDeveloperFolder(UnusedAssets, RelationalMap, CleanerConfigs, NotificationManager);
+
+	RelationalMap.Rebuild(UnusedAssets, CleanerConfigs);
+
+	ProjectCleanerUtility::RemoveAssetsWithExternalReferences(UnusedAssets, RelationalMap);
 
 	// 8) User excluded assets
 	// This assets will be in Database, but wont be available for deletion
@@ -478,9 +482,9 @@ void FProjectCleanerModule::UpdateCleanerData()
 	//);
 
 	// after all actions we rebuilding relational map to match unused assets
-	//RelationalMap.Rebuild(UnusedAssets);
+	RelationalMap.Rebuild(UnusedAssets, CleanerConfigs);
 
-	//SlowTask.EnterProgressFrame(90.0f, FText::FromString("Building assets relational map..."));
+	SlowTask.EnterProgressFrame(90.0f, FText::FromString("Building assets relational map..."));
 
 	UpdateStats();
 }

@@ -63,6 +63,7 @@ struct FStandardCleanerText
 	FText NoEmptyFolderToDelete;
 	FText NonUAssetFilesFound;
 	FText SearchingEmptyFolders;
+	FText AssetsWithReferencersInDeveloperFolder;
 
 	FStandardCleanerText()
 	{
@@ -75,5 +76,6 @@ struct FStandardCleanerText
 		NoEmptyFolderToDelete = FText::FromString("There are no empty folders to delete!");
 		NonUAssetFilesFound = FText::FromString("Project contains non .uasset files. Check Output Log for more info.");
 		SearchingEmptyFolders = FText::FromString("Searching empty folders...");
+		AssetsWithReferencersInDeveloperFolder = FText::FromString("Some of assets has references in Developers folder. To view them click 'Scan Developers Folder' checkbox.");
 	}
 };

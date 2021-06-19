@@ -96,7 +96,7 @@ void SProjectCleanerCorruptedFilesUI::InitUI()
 					//	SNew(STextBlock)
 					//	.AutoWrapText(true)
 					//	.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light15"))
-					//	.Text(LOCTEXT("corrupted_files_tip_text", "Sometimes AssetRegistry not updated correctly and some assets may be shown as corrupted.\For example,this happens when you adding content from marketplace using Launcher(Add to Project).\nSo to be sure, restart Engine and refresh, see if assets remain in corrupted list."))
+					//	.Text(LOCTEXT("corrupted_files_tip_text", ""))
 					//]
 					+SVerticalBox::Slot()
 					.AutoHeight()
