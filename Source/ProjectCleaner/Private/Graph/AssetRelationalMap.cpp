@@ -62,7 +62,6 @@ void AssetRelationalMap::FindRootNodes()
 {
 	for (const auto& Node : Nodes)
 	{
-		if (RootNodes.Num() > 20) break;
 		if (Node.Refs.Num() != 0) continue;
 		RootNodes.AddUnique(Node);
 	}

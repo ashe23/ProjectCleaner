@@ -662,6 +662,7 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 		{
 			for (const auto& CircularNode : CircularNodes)
 			{
+				if (RootAssets.Num() >= CleanerConfigs->DeleteChunkLimit) break;
 				RootAssets.AddUnique(CircularNode.AssetData);
 			}
 		}
@@ -669,6 +670,7 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 		{
 			for (const auto& RootNode : RootNodes)
 			{
+				if (RootAssets.Num() >= CleanerConfigs->DeleteChunkLimit) break;
 				RootAssets.AddUnique(RootNode.AssetData);
 			}
 		}

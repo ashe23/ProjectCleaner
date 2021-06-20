@@ -180,7 +180,9 @@ void ProjectCleanerUtility::FixupRedirectors()
 		// loading asset if needed
 		for (const auto& Asset : AssetList)
 		{
-			Objects.Add(Asset.GetAsset());
+			const auto AssetObj = Asset.GetAsset();
+			if (!AssetObj) continue;
+			Objects.Add(AssetObj);
 		}
 
 		// converting them to redirectors
@@ -188,6 +190,7 @@ void ProjectCleanerUtility::FixupRedirectors()
 		for (auto Object : Objects)
 		{
 			const auto Redirector = CastChecked<UObjectRedirector>(Object);
+			if (!Redirector) continue;
 			Redirectors.Add(Redirector);
 		}
 
@@ -212,7 +215,9 @@ int32 ProjectCleanerUtility::DeleteAssets(TArray<FAssetData>& Assets)
 
 		for (const auto& Asset : Assets)
 		{
-			AssetObjects.Add(Asset.GetAsset());
+			const auto AssetObj = Asset.GetAsset();
+			if(!AssetObj) continue;
+			AssetObjects.Add(AssetObj);
 		}
 
 		DeletedAssets = ObjectTools::ForceDeleteObjects(AssetObjects, false);
