@@ -564,35 +564,49 @@ void FProjectCleanerModule::OnUserExcludedAssets(const TArray<FAssetData>& Asset
 	UpdateCleanerData();
 }
 
-void FProjectCleanerModule::OnUserIncludedAssets(const TArray<FAssetData>& Assets)
+void FProjectCleanerModule::OnUserIncludedAssets(const TArray<FAssetData>& Assets, const bool CleanFilters)
 {
 	if (!Assets.Num()) return;
 
-	TArray<FAssetData> CantIncludeAssets;
-	bool ShowNotification = false;
-	for (const auto& Asset : Assets)
+	if (CleanFilters)
 	{
-		for (const auto& DirPath : ExcludeOptions->Paths)
+		UserExcludedAssets.Empty();
+		ExcludedAssets.Empty();
+		LinkedAssets.Empty();
+		ExcludeOptions->Classes.Empty();
+		ExcludeOptions->Paths.Empty();
+	}
+	else
+	{
+		// if user tries to include assets that are filtered by path or class,
+		// we wont include them notify user about it
+		TArray<FAssetData> AssetsExcludedByFilter;
+		bool ShowNotification = false;
+		for (const auto& Asset : Assets)
 		{
-			if (Asset.PackagePath.ToString().Contains(DirPath.Path))
+			for (const auto& DirPath : ExcludeOptions->Paths)
 			{
-				CantIncludeAssets.Add(Asset);
-				ShowNotification = true;
+				if (Asset.PackagePath.ToString().Contains(DirPath.Path))
+				{
+					AssetsExcludedByFilter.Add(Asset);
+					ShowNotification = true;
+				}
 			}
 		}
-	}
 
-	if (ShowNotification)
-	{
-		NotificationManager->AddTransient(TEXT("Some assets filtered by path, cant include those assets."), SNotificationItem::CS_None, 3.0f);
+		if (ShowNotification)
+		{
+			NotificationManager->AddTransient(TEXT("Cant include some filtered assets.Clear 'ExcludeOptions' filters and try again"), SNotificationItem::CS_None, 3.0f);
+		}
+		
+		UserExcludedAssets.RemoveAll([&](const FAssetData& Elem)
+		{
+			return Assets.Contains(Elem) && !AssetsExcludedByFilter.Contains(Elem);
+		});
 	}
 	
-	UserExcludedAssets.RemoveAll([&](const FAssetData& Elem)
-	{
-		return Assets.Contains(Elem) && !CantIncludeAssets.Contains(Elem);
-	});
-
 	UpdateCleanerData();
+
 }
 
 FReply FProjectCleanerModule::OnRefreshBtnClick()

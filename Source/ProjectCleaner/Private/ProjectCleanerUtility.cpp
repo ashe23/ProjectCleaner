@@ -419,4 +419,6 @@ void ProjectCleanerUtility::RemoveAssetsExcludedByUser(
 	{
 		return ExcludedAssets.Contains(Elem) || LinkedAssets.Contains(Elem);
 	});
+
+	RelationalMap.Rebuild(UnusedAssets);
 }

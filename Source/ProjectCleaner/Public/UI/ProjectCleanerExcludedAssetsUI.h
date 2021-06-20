@@ -7,7 +7,7 @@
 #include "Widgets/SCompoundWidget.h"
 #include "Editor/ContentBrowser/Public/ContentBrowserDelegates.h"
 
-DECLARE_DELEGATE_OneParam(FOnUserIncludedAsset, const TArray<FAssetData>&);
+DECLARE_DELEGATE_TwoParams(FOnUserIncludedAsset, const TArray<FAssetData>&, const bool);
 
 class UCleanerConfigs;
 
@@ -35,11 +35,12 @@ private:
 	void FindInContentBrowser() const;
 	bool IsAnythingSelected() const;
 	void IncludeAssets() const;
+	FReply IncludeAllAssets() const;
 
+	/** Data **/
 	UCleanerConfigs* CleanerConfigs;
 	FGetCurrentSelectionDelegate GetCurrentSelectionDelegate;
 	TSharedPtr<FUICommandList> Commands;
 	TArray<FAssetData> ExcludedAssets;
 	TArray<FAssetData> LinkedAssets;
-	TSharedRef<SWidget> WidgetRef = SNullWidget::NullWidget;
 };

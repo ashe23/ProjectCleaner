@@ -113,7 +113,7 @@ private:
 	/** Delegate functions **/
 	void OnUserDeletedAssets();
 	void OnUserExcludedAssets(const TArray<FAssetData>& Assets);
-	void OnUserIncludedAssets(const TArray<FAssetData>& Assets);
+	void OnUserIncludedAssets(const TArray<FAssetData>& Assets, const bool CleanFilters);
 
 	/** Button events */
 	FReply OnRefreshBtnClick();

@@ -161,60 +161,76 @@ void SProjectCleanerExcludedAssetsUI::UpdateUI()
 	LinkedAssetsConfig.Filter = LinkedAssetsFilter;
 
 	FContentBrowserModule& ContentBrowser = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
-	WidgetRef = SNew(SVerticalBox)
-	+ SVerticalBox::Slot()
-	.AutoHeight()
-	.Padding(FMargin(0.0f, 5.0f))
-	[
-		SNew(STextBlock)
-		.AutoWrapText(true)
-		.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
-		.Text(LOCTEXT("excludedassets", "Excluded Assets"))
-	]
-	+SVerticalBox::Slot()
-	.AutoHeight()
-	.Padding(FMargin(0.0f, 10.0f))
-	[
-		SNew(STextBlock)
-		.AutoWrapText(true)
-		.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light10"))
-		.Text(LOCTEXT("excludedassetsinfo", "When excluding assets, all referencer and dependency assets also excluded"))
-	]
-	+ SVerticalBox::Slot()
-	.AutoHeight()
-	[
-		ContentBrowser.Get().CreateAssetPicker(Config)
-	]
-	+ SVerticalBox::Slot()
-	.AutoHeight()
-	.Padding(FMargin(0.0f, 5.0f))
-	[
-		SNew(STextBlock)
-		.AutoWrapText(true)
-		.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
-		.Text(LOCTEXT("linked_assets", "Linked Assets"))
-	]
-	+ SVerticalBox::Slot()
-	.AutoHeight()
-	.Padding(FMargin(0.0f, 10.0f))
-	[
-		SNew(STextBlock)
-		.AutoWrapText(true)
-		.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light10"))
-		.Text(LOCTEXT("excludedassets_linkedasset_info", "All referenced and dependency assets of excluded assets"))
-	]
-	+ SVerticalBox::Slot()
-	.AutoHeight()
-	[
-		ContentBrowser.Get().CreateAssetPicker(LinkedAssetsConfig)
-	];
 
 	// todo:ashe23 maybe add later 
 	//WidgetRef->SetVisibility((ExcludedAssets.Num() > 0 ? EVisibility::Visible : EVisibility::Hidden));
 	
 	ChildSlot
 	[
-		WidgetRef
+		SNew(SVerticalBox)
+		+ SVerticalBox::Slot()
+		.AutoHeight()
+		.Padding(FMargin(0.0f, 5.0f))
+		[
+			SNew(STextBlock)
+			.AutoWrapText(true)
+			.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
+			.Text(LOCTEXT("exclude_assets_title_text", "Excluded Assets"))
+		]
+		+ SVerticalBox::Slot()
+		.AutoHeight()
+		.Padding(FMargin(0.0f, 5.0f))
+		[
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot()
+			.MaxWidth(150.0f)
+			.FillWidth(0.3f)
+			[
+				SNew(SButton)
+				.HAlign(HAlign_Center)
+				.VAlign(VAlign_Center)
+				.ToolTipText(LOCTEXT("exclude_assets_tooltip_text", "Removes all assets from excluded list"))
+				.Text(FText::FromString("Include all assets"))
+				.OnClicked_Raw(this, &SProjectCleanerExcludedAssetsUI::IncludeAllAssets)
+			]
+		]
+		+SVerticalBox::Slot()
+		.AutoHeight()
+		.Padding(FMargin(0.0f, 10.0f))
+		[
+			SNew(STextBlock)
+			.AutoWrapText(true)
+			.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light10"))
+			.Text(LOCTEXT("exclude_assets_tip_info_text", "When excluding assets, all referencer and dependency assets also excluded"))
+		]
+		+ SVerticalBox::Slot()
+		.AutoHeight()
+		[
+			ContentBrowser.Get().CreateAssetPicker(Config)
+		]
+		+ SVerticalBox::Slot()
+		.AutoHeight()
+		.Padding(FMargin(0.0f, 5.0f))
+		[
+			SNew(STextBlock)
+			.AutoWrapText(true)
+			.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
+			.Text(LOCTEXT("exclude_assets_linked_assets_title_text", "Linked Assets"))
+		]
+		+ SVerticalBox::Slot()
+		.AutoHeight()
+		.Padding(FMargin(0.0f, 10.0f))
+		[
+			SNew(STextBlock)
+			.AutoWrapText(true)
+			.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light10"))
+			.Text(LOCTEXT("exclude_assets_linked_assets_tip_info_text", "All referenced and dependency assets of excluded assets"))
+		]
+		+ SVerticalBox::Slot()
+		.AutoHeight()
+		[
+			ContentBrowser.Get().CreateAssetPicker(LinkedAssetsConfig)
+		]
 	];
 }
 
@@ -271,7 +287,16 @@ void SProjectCleanerExcludedAssetsUI::IncludeAssets() const
 
 	if(!OnUserIncludedAssets.IsBound()) return;
 
-	OnUserIncludedAssets.Execute(SelectedAssets);
+	OnUserIncludedAssets.Execute(SelectedAssets, false);
+}
+
+FReply SProjectCleanerExcludedAssetsUI::IncludeAllAssets() const
+{
+	if (!GetCurrentSelectionDelegate.IsBound()) return FReply::Handled();
+	if (!OnUserIncludedAssets.IsBound()) return FReply::Handled();
+
+	OnUserIncludedAssets.Execute(ExcludedAssets, true);
+	return FReply::Handled();
 }
 
 #undef LOCTEXT_NAMESPACE
