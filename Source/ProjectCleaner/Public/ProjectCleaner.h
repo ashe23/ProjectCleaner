@@ -138,7 +138,6 @@ private:
 	/** UI data*/
 	UCleanerConfigs* CleanerConfigs;
 	UExcludeOptions* ExcludeOptions;
-
 	
 	/** Data Containers */ 
 	TArray<FAssetData> UnusedAssets;
@@ -146,18 +145,16 @@ private:
 	TSet<FString> NonUAssetFiles;
 	TSet<FString> CorruptedFiles;
 	FCleaningStats CleaningStats;
-	TArray<TWeakObjectPtr<USourceCodeAsset>> SourceCodeAssets;
-	TSet<FAssetData> ExcludedAssets;
+	TArray<FAssetData> ExcludedAssets;
 	TArray<FAssetData> LinkedAssets;
-
-
+	TArray<FAssetData> UserExcludedAssets;
+	TSet<FName> PrimaryAssetClasses;
+	TArray<TWeakObjectPtr<USourceCodeAsset>> SourceCodeAssets;
 	
 	/** Helper Containers **/
 	TSet<FString> ProjectFilesFromDisk;
 	AssetRelationalMap RelationalMap;
 	FStandardCleanerText StandardCleanerText;
-	TSet<FName> PrimaryAssetClasses;
-	TArray<FAssetData> UserExcludedAssets;
 
 	/** Other Engine Modules **/
 	FAssetRegistryModule* AssetRegistry;

@@ -15,9 +15,20 @@
 
 void SProjectCleanerExcludedAssetsUI::Construct(const FArguments& InArgs)
 {
-	SetExcludedAssets(InArgs._ExcludedAssets);
-	SetLinkedAssets(InArgs._LinkedAssets);
-	SetCleanerConfigs(InArgs._CleanerConfigs);
+	if (InArgs._ExcludedAssets)
+	{
+		SetExcludedAssets(*InArgs._ExcludedAssets);
+	}
+
+	if (InArgs._LinkedAssets)
+	{
+		SetLinkedAssets(*InArgs._LinkedAssets);
+	}
+
+	if (InArgs._CleanerConfigs)
+	{
+		SetCleanerConfigs(InArgs._CleanerConfigs);
+	}
 
 	FProjectCleanerCommands::Register();
 
@@ -39,33 +50,30 @@ void SProjectCleanerExcludedAssetsUI::Construct(const FArguments& InArgs)
 		)
 	);
 	
-	RefreshUIContent();
+	UpdateUI();
 }
 
-void SProjectCleanerExcludedAssetsUI::SetExcludedAssets(const TSet<FAssetData>& Assets)
+void SProjectCleanerExcludedAssetsUI::SetUIData(const TArray<FAssetData>& NewExcludedAssets, const TArray<FAssetData>& NewLinkedAssets, UCleanerConfigs* NewConfigs)
+{
+	SetExcludedAssets(NewExcludedAssets);
+	SetLinkedAssets(NewLinkedAssets);
+	SetCleanerConfigs(NewConfigs);
+
+	UpdateUI();
+}
+
+void SProjectCleanerExcludedAssetsUI::SetExcludedAssets(const TArray<FAssetData>& Assets)
 {
 	ExcludedAssets.Reset();
 	ExcludedAssets.Reserve(Assets.Num());
-	
-	for(const auto& Asset : Assets)
-	{
-		ExcludedAssets.Add(Asset);
-	}
-
-	//RefreshUIContent();
+	ExcludedAssets = MoveTempIfPossible(Assets);
 }
 
 void SProjectCleanerExcludedAssetsUI::SetLinkedAssets(const TArray<FAssetData>& Assets)
 {
 	LinkedAssets.Reset();
 	LinkedAssets.Reserve(Assets.Num());
-
-	for (const auto& Asset : Assets)
-	{
-		LinkedAssets.Add(Asset);
-	}
-
-	//RefreshUIContent();
+	LinkedAssets = MoveTempIfPossible(Assets);
 }
 
 void SProjectCleanerExcludedAssetsUI::SetCleanerConfigs(UCleanerConfigs* Configs)
@@ -73,11 +81,9 @@ void SProjectCleanerExcludedAssetsUI::SetCleanerConfigs(UCleanerConfigs* Configs
 	if (!Configs) return;
 	if (!Configs->IsValidLowLevel()) return;
 	CleanerConfigs = Configs;
-
-	//RefreshUIContent();
 }
 
-void SProjectCleanerExcludedAssetsUI::RefreshUIContent()
+void SProjectCleanerExcludedAssetsUI::UpdateUI()
 {
 	FAssetPickerConfig Config;
 	Config.InitialAssetViewType = EAssetViewType::Tile;
@@ -172,11 +178,10 @@ void SProjectCleanerExcludedAssetsUI::RefreshUIContent()
 		SNew(STextBlock)
 		.AutoWrapText(true)
 		.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light10"))
-		.Text(LOCTEXT("excludedassetsinfo", "When excluding assets, its related assets also excluded"))
+		.Text(LOCTEXT("excludedassetsinfo", "When excluding assets, all referencer and dependency assets also excluded"))
 	]
 	+ SVerticalBox::Slot()
 	.AutoHeight()
-	//.Padding(20.0f)
 	[
 		ContentBrowser.Get().CreateAssetPicker(Config)
 	]
@@ -191,7 +196,15 @@ void SProjectCleanerExcludedAssetsUI::RefreshUIContent()
 	]
 	+ SVerticalBox::Slot()
 	.AutoHeight()
-	//.Padding(20.0f)
+	.Padding(FMargin(0.0f, 10.0f))
+	[
+		SNew(STextBlock)
+		.AutoWrapText(true)
+		.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light10"))
+		.Text(LOCTEXT("excludedassets_linkedasset_info", "All referenced and dependency assets of excluded assets"))
+	]
+	+ SVerticalBox::Slot()
+	.AutoHeight()
 	[
 		ContentBrowser.Get().CreateAssetPicker(LinkedAssetsConfig)
 	];

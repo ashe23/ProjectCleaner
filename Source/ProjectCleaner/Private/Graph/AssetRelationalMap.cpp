@@ -4,13 +4,14 @@
 #include "UI/ProjectCleanerConfigsUI.h"
 #include "AssetRegistryModule.h"
 
-void AssetRelationalMap::Rebuild(const TArray<FAssetData>& UnusedAssets, UCleanerConfigs* Configs)
+void AssetRelationalMap::Rebuild(const TArray<FAssetData>& UnusedAssets)
 {
 	Reset();
 	
 	Nodes.Reserve(UnusedAssets.Num());
 	RootNodes.Reserve(UnusedAssets.Num());
 	CircularNodes.Reserve(UnusedAssets.Num());
+	AssetsWithExternalRefs.Reserve(UnusedAssets.Num());
 
 	for (const auto& UnusedAsset : UnusedAssets)
 	{
@@ -34,16 +35,18 @@ void AssetRelationalMap::Rebuild(const TArray<FAssetData>& UnusedAssets, UCleane
 
 	for (auto& Node : Nodes)
 	{
-		for (const auto Rel : Node.LinkedAssets)
+		for (const auto LinkedAsset : Node.LinkedAssets)
 		{
-			const auto Data = FindByPackageName(Rel);
+			const auto Data = FindByPackageName(LinkedAsset);
 			if(!Data) continue;
 			Node.LinkedAssetsData.Add(&Data->AssetData);
 		}
 	}
 
+	FindAssetsWithExternalRefs();
+
 	FindCircularNodes();
-	FindRootNodes(Configs);
+	FindRootNodes();
 }
 
 void AssetRelationalMap::FindCircularNodes()
@@ -55,19 +58,24 @@ void AssetRelationalMap::FindCircularNodes()
 	}
 }
 
-void AssetRelationalMap::FindRootNodes(UCleanerConfigs* Configs)
+void AssetRelationalMap::FindRootNodes()
 {
-	int32 DeletionLimit = 20;
-	if (Configs && Configs->IsValidLowLevel())
-	{
-		DeletionLimit = Configs->DeleteChunkLimit;
-	}
-
 	for (const auto& Node : Nodes)
-	{		
-		if (RootNodes.Num() > DeletionLimit) break; // todo:ashe23 chunks size here
+	{
+		if (RootNodes.Num() > 20) break;
 		if (Node.Refs.Num() != 0) continue;
 		RootNodes.AddUnique(Node);
+	}
+}
+
+void AssetRelationalMap::FindAssetsWithExternalRefs()
+{
+	for (auto& Node : Nodes)
+	{
+		if (Node.HasExternalReferencers())
+		{
+			AssetsWithExternalRefs.AddUnique(Node);
+		}
 	}
 }
 
@@ -89,7 +97,6 @@ void AssetRelationalMap::GetRelatedAssets(
 
 	RelatedAssets.RemoveAll([&] (const FName& Elem)
 	{
-		//return Elem.IsEqual(PackageName) || !Elem.ToString().StartsWith("/Game");
 		return Elem.IsEqual(PackageName);
 	});
 }
@@ -167,6 +174,29 @@ void AssetRelationalMap::FindAllLinkedAssets(const TSet<FName>& Assets, TSet<FNa
 	}
 }
 
+void AssetRelationalMap::FindAllLinkedAssets(const TArray<FAssetData>& Assets, TArray<FAssetData>& LinkedAssets)
+{
+	if (Assets.Num() == 0) return;
+	LinkedAssets.Reserve(Assets.Num());
+
+	for (const auto& Asset : Assets)
+	{
+		const auto AssetNode = FindByPackageName(Asset.PackageName);
+		if (!AssetNode) continue;
+
+		for (const auto& LinkedAssetData : AssetNode->LinkedAssetsData)
+		{
+			if (LinkedAssetData->ObjectPath.IsEqual(Asset.ObjectPath)) continue;
+			LinkedAssets.Add(*LinkedAssetData);
+		}
+	}
+
+	LinkedAssets.RemoveAll([&](const FAssetData& Elem)
+	{
+		return Assets.Contains(Elem);
+	});
+}
+
 const TArray<FAssetNode>& AssetRelationalMap::GetNodes() const
 {
 	return Nodes;
@@ -182,9 +212,15 @@ const TArray<FAssetNode>& AssetRelationalMap::GetRootNodes() const
 	return RootNodes;
 }
 
+const TArray<FAssetNode>& AssetRelationalMap::GetAssetsWithExternalRefs() const
+{
+	return AssetsWithExternalRefs;
+}
+
 void AssetRelationalMap::Reset()
 {
 	Nodes.Reset();
 	RootNodes.Reset();
 	CircularNodes.Reset();
+	AssetsWithExternalRefs.Reset();
 }

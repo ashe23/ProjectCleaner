@@ -64,13 +64,15 @@ struct FAssetNode
 class AssetRelationalMap
 {
 public:
-	void Rebuild(const TArray<FAssetData>& UnusedAssets, UCleanerConfigs* Configs);
+	void Rebuild(const TArray<FAssetData>& UnusedAssets);
 	FAssetNode* FindByPackageName(const FName& PackageName);
 	void FindAssetsByClass(const TArray<UClass*> ExcludedClasses, TArray<FAssetData>& Assets);
 	void FindAllLinkedAssets(const TSet<FName>& Assets, TSet<FName>& LinkedAssets);
+	void FindAllLinkedAssets(const TArray<FAssetData>& Assets, TArray<FAssetData>& LinkedAssets);
 	const TArray<FAssetNode>& GetNodes() const;
 	const TArray<FAssetNode>& GetCircularNodes() const;
 	const TArray<FAssetNode>& GetRootNodes() const;
+	const TArray<FAssetNode>& GetAssetsWithExternalRefs() const;
 	void Reset();
 private:
 	void GetRelatedAssets(
@@ -79,7 +81,8 @@ private:
 		TArray<FName>& RelatedAssets
 	) const;
 	void FindCircularNodes();
-	void FindRootNodes(UCleanerConfigs* Configs);
+	void FindRootNodes();
+	void FindAssetsWithExternalRefs();
 	void DFS(FAssetNode& Node, FAssetNode& RootNode);
 	void ClearVisited();
 	bool IsCircularNode(const FAssetNode& Node) const;
@@ -87,4 +90,5 @@ private:
 	TArray<FAssetNode> Nodes;
 	TArray<FAssetNode> CircularNodes;
 	TArray<FAssetNode> RootNodes;
+	TArray<FAssetNode> AssetsWithExternalRefs;
 };

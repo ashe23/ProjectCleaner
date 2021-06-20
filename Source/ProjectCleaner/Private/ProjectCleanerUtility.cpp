@@ -15,8 +15,6 @@
 #include "AssetToolsModule.h"
 #include "Engine/AssetManager.h"
 #include "UObject/ObjectRedirector.h"
-#include "HAL/FileManager.h"
-#include "HAL/PlatformFilemanager.h"
 #include "Misc/Paths.h"
 #include "Misc/FileHelper.h"
 #include "Misc/ScopedSlowTask.h"
@@ -132,90 +130,30 @@ void ProjectCleanerUtility::RemoveAssetsUsedIndirectly(TArray<FAssetData>& Unuse
 	{
 		return LinkedAssets.Contains(Elem.PackageName);
 	});
+
+	RelationalMap.Rebuild(UnusedAssets);
 }
 
 void ProjectCleanerUtility::RemoveAssetsWithExternalReferences(TArray<FAssetData>& UnusedAssets, AssetRelationalMap& RelationalMap)
 {
-	TSet<FName> FilteredAssets;
-	FilteredAssets.Reserve(UnusedAssets.Num());
-	
-	for (const auto& Node : RelationalMap.GetNodes())
+	const auto AssetsWithExternalRefs = RelationalMap.GetAssetsWithExternalRefs();
+	if (AssetsWithExternalRefs.Num() == 0) return;
+
+	TArray<FAssetData> Assets;
+	Assets.Reserve(AssetsWithExternalRefs.Num());
+
+	for (const auto& Node : AssetsWithExternalRefs)
 	{
-		if (!Node.HasExternalReferencers()) continue;
-
-		UE_LOG(LogTemp, Warning, TEXT("External Asset Reference Detected: %s"), *Node.AssetData.PackageName.ToString());
-
-		FilteredAssets.Add(Node.AssetData.PackageName);
-		FilteredAssets.Append(Node.LinkedAssets);
+		Assets.Add(Node.AssetData);
 	}
-
+	
 	UnusedAssets.RemoveAll([&](const FAssetData& Elem)
 	{
-		return FilteredAssets.Contains(Elem.PackageName);
-	});
-}
-
-void ProjectCleanerUtility::RemoveAssetsExcludedByUser(
-	const FAssetRegistryModule* AssetRegistry,
-	TArray<FAssetData>& UnusedAssets,
-	TSet<FAssetData>& ExcludedAssets,
-	TArray<FAssetData>& LinkedAssets,
-	TArray<FAssetData>& UserExcludedAssets,
-	AssetRelationalMap& RelationalMap,
-	const UExcludeOptions* ExcludeOptions)
-{
-	if (!AssetRegistry) return;
-	if (!ExcludeOptions) return;
-
-	TSet<FAssetData> FilteredAssets;
-	FilteredAssets.Reserve(UnusedAssets.Num());
-	
-	for (const auto FilterPath : ExcludeOptions->Paths)
-	{
-		TArray<FAssetData> IterationAssets;
-		IterationAssets.Reserve(UnusedAssets.Num());
-		AssetRegistry->Get().GetAssetsByPath(FName{ *FilterPath.Path }, IterationAssets, true);
-
-		//we should add only unused assets
-		IterationAssets.RemoveAll([&](const FAssetData& Elem) {
-			return !UnusedAssets.Contains(Elem);
-		});
-		FilteredAssets.Append(IterationAssets);
-		IterationAssets.Reset();
-	}
-
-	for (const auto& Asset : UserExcludedAssets)
-	{
-		FilteredAssets.Add(Asset);
-	}
-
-	TArray<FAssetData> AssetsExcludedByClass;
-	AssetsExcludedByClass.Reserve(UnusedAssets.Num());
-	RelationalMap.FindAssetsByClass(ExcludeOptions->Classes, AssetsExcludedByClass);
-
-	for (const auto& Asset : AssetsExcludedByClass)
-	{
-		FilteredAssets.Add(Asset);
-	}
-
-	for (const auto& FilteredAsset : FilteredAssets)
-	{
-		ExcludedAssets.Add(FilteredAsset);
-		const auto Node = RelationalMap.FindByPackageName(FilteredAsset.PackageName);
-		if (!Node) continue;
-		for (const auto& LinkedAsset : Node->LinkedAssetsData)
-		{
-			LinkedAssets.Add(*LinkedAsset);
-		}
-	}
-
-	LinkedAssets.RemoveAll([&](const FAssetData& Elem) {
-		return ExcludedAssets.Contains(Elem);
+		return Assets.Contains(Elem);
 	});
 
-	UnusedAssets.RemoveAll([&](const FAssetData& Elem) {
-		return ExcludedAssets.Contains(Elem) || LinkedAssets.Contains(Elem);
-	});
+	// todo:ashe23 add notification or seperate UI for those type of assets
+	RelationalMap.Rebuild(UnusedAssets);
 }
 
 void ProjectCleanerUtility::FixupRedirectors()
@@ -337,6 +275,26 @@ const FSourceCodeFile* ProjectCleanerUtility::GetFileWhereAssetUsed(const FAsset
 	return nullptr;
 }
 
+bool ProjectCleanerUtility::IsExcludedByPath(const FAssetData& AssetData, const UExcludeOptions& ExcludeOptions)
+{
+	return ExcludeOptions.Paths.ContainsByPredicate([&](const FDirectoryPath& DirectoryPath)
+	{
+		return AssetData.PackagePath.ToString().StartsWith(DirectoryPath.Path);
+	});
+}
+
+bool ProjectCleanerUtility::IsExcludedByClass(const FAssetData& AssetData, const UExcludeOptions& ExcludeOptions)
+{
+	const UBlueprint* BlueprintAsset = Cast<UBlueprint>(AssetData.GetAsset());
+	const FName ClassName = BlueprintAsset ? BlueprintAsset->GeneratedClass->GetFName() : AssetData.AssetClass;
+
+	return ExcludeOptions.Classes.ContainsByPredicate([&](const UClass* ElemClass)
+	{
+		if (!ElemClass) return false;
+		return ClassName.IsEqual(ElemClass->GetFName());
+	});
+}
+
 void ProjectCleanerUtility::RemoveUsedAssets(TArray<FAssetData>& Assets, const TSet<FName>& PrimaryAssetClasses)
 {
 	FAssetRegistryModule& AssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
@@ -427,4 +385,38 @@ void ProjectCleanerUtility::RemoveContentFromDeveloperFolder(TArray<FAssetData>&
 		});
 	}
 
+	RelationalMap.Rebuild(UnusedAssets);
+}
+
+void ProjectCleanerUtility::RemoveAssetsExcludedByUser(
+	TArray<FAssetData>& UnusedAssets,
+	AssetRelationalMap& RelationalMap,
+	const UExcludeOptions& ExcludeOptions,
+	TArray<FAssetData>& ExcludedAssets,
+	const TArray<FAssetData>& UserExcludedAssets,
+	TArray<FAssetData>& LinkedAssets)
+{
+	// 1) exclude all assets that user excluded manually
+	for (const auto& Asset : UserExcludedAssets)
+	{
+		ExcludedAssets.AddUnique(Asset);
+	}
+
+	// 2) exclude assets filtered by path or class
+	for (const auto& Asset : UnusedAssets)
+	{
+		const bool ExcludedByPath = IsExcludedByPath(Asset, ExcludeOptions);
+		const bool ExcludedByClass = IsExcludedByClass(Asset, ExcludeOptions);
+		
+		if (ExcludedByPath || ExcludedByClass)
+		{
+			ExcludedAssets.AddUnique(Asset);
+		}
+	}
+
+	RelationalMap.FindAllLinkedAssets(ExcludedAssets, LinkedAssets);
+	UnusedAssets.RemoveAll([&](const FAssetData& Elem)
+	{
+		return ExcludedAssets.Contains(Elem) || LinkedAssets.Contains(Elem);
+	});
 }

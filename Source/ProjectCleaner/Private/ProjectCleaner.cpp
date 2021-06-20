@@ -25,7 +25,6 @@
 #include "Widgets/Docking/SDockTab.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Layout/SScrollBox.h"
-#include "Widgets/Input/SEditableTextBox.h"
 #include "EditorStyleSet.h"
 #include "IContentBrowserSingleton.h"
 #include "GenericPlatform/GenericPlatformMisc.h"
@@ -34,9 +33,7 @@
 #include "Engine/MapBuildDataRegistry.h"
 #include "Framework/Commands/UICommandList.h"
 #include "Misc/ScopedSlowTask.h"
-#include "UObject/PackageFileSummary.h"
 #include "Settings/ContentBrowserSettings.h"
-#include "Serialization/CustomVersion.h"
 
 DEFINE_LOG_CATEGORY(LogProjectCleaner);
 
@@ -198,9 +195,9 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 	UpdateCleaner();
 
 	const auto ExcludedAssetsUIRef = SAssignNew(ExcludedAssetsUI, SProjectCleanerExcludedAssetsUI)
-		.ExcludedAssets(ExcludedAssets)
-		.CleanerConfigs(CleanerConfigs)
-		.LinkedAssets(LinkedAssets);
+		.ExcludedAssets(&ExcludedAssets)
+		.LinkedAssets(&LinkedAssets)
+		.CleanerConfigs(CleanerConfigs);
 
 	ExcludedAssetsUIRef->OnUserIncludedAssets = FOnUserIncludedAsset::CreateRaw(
 		this,
@@ -406,70 +403,47 @@ void FProjectCleanerModule::UpdateCleaner()
 
 void FProjectCleanerModule::UpdateCleanerData()
 {
-	FScopedSlowTask SlowTask{ 100.0f, FText::FromString("Scanning...") };
+	FScopedSlowTask SlowTask{ 2.0f, FText::FromString("Scanning...") };
 	SlowTask.MakeDialog();
 
 	Reset();
 	
 	if (!AssetRegistry) return;
 	if (!CleanerConfigs) return;
+	if (!ExcludeOptions) return;
 	
 	ProjectCleanerHelper::GetEmptyFolders(EmptyFolders, CleanerConfigs->bScanDeveloperContents);
 	ProjectCleanerHelper::GetProjectFilesFromDisk(ProjectFilesFromDisk);
-
 	ProjectCleanerUtility::GetInvalidProjectFiles(AssetRegistry, ProjectFilesFromDisk, CorruptedFiles, NonUAssetFiles);
 
-	SlowTask.EnterProgressFrame(10.0f, FText::FromString("Finding invalid files..."));
+	SlowTask.EnterProgressFrame(1.0f, FText::FromString("Finding invalid files..."));
 	
 	AssetManager = &UAssetManager::Get();
 	ProjectCleanerUtility::GetAllPrimaryAssetClasses(*AssetManager, PrimaryAssetClasses);
-
 	ProjectCleanerUtility::GetAllAssets(AssetRegistry, UnusedAssets);
-
 	ProjectCleanerUtility::RemoveUsedAssets(UnusedAssets, PrimaryAssetClasses);
 	ProjectCleanerUtility::RemoveMegascansPluginAssetsIfActive(UnusedAssets);
-
 
 	// update content browser settings to show "Developers Contents"
 	GetMutableDefault<UContentBrowserSettings>()->SetDisplayDevelopersFolder(CleanerConfigs->bScanDeveloperContents, true);
 	GetMutableDefault<UContentBrowserSettings>()->PostEditChange();
 
-	// filling graphs with unused assets data and creating relational map between them
-	RelationalMap.Rebuild(UnusedAssets, CleanerConfigs);
-
-	ProjectCleanerUtility::RemoveAssetsUsedIndirectly(UnusedAssets, RelationalMap, SourceCodeAssets);
-
-	RelationalMap.Rebuild(UnusedAssets, CleanerConfigs);
+	// filling graphs with unused assets data and creating relational map (adjacency list) between them
+	RelationalMap.Rebuild(UnusedAssets);
 
 	ProjectCleanerUtility::RemoveContentFromDeveloperFolder(UnusedAssets, RelationalMap, CleanerConfigs, NotificationManager);
-
-	RelationalMap.Rebuild(UnusedAssets, CleanerConfigs);
-
+	ProjectCleanerUtility::RemoveAssetsUsedIndirectly(UnusedAssets, RelationalMap, SourceCodeAssets);
 	ProjectCleanerUtility::RemoveAssetsWithExternalReferences(UnusedAssets, RelationalMap);
-
-	// 8) User excluded assets
-	// This assets will be in Database, but wont be available for deletion
-	// * Excluded by path
-	//		all assets in given path and their linked assets will remain untouched
-	// * Excluded single asset from  "UnusedAssets" content browser, asset and all their linked assets will remain untouched
-	// * Excluded by asset class
-	//		all assets with specified class and all their linked assets will remain untouched
-	// Explicitly excluded assets will be shown in "Excluded Assets" Content browser <- include asset action, removing selected assets from exclusion list
-	// Linked assets to those excluded assets will be shown in "Linked Assets" Content browser <- no action here, user just see , what we wont delete
-	//ProjectCleanerUtility::RemoveAssetsExcludedByUser(
-	//	AssetRegistry,
-	//	UnusedAssets,
-	//	ExcludedAssets,
-	//	LinkedAssets,
-	//	UserExcludedAssets,
-	//	RelationalMap,
-	//	ExcludeOptions
-	//);
-
-	// after all actions we rebuilding relational map to match unused assets
-	RelationalMap.Rebuild(UnusedAssets, CleanerConfigs);
-
-	SlowTask.EnterProgressFrame(90.0f, FText::FromString("Building assets relational map..."));
+	ProjectCleanerUtility::RemoveAssetsExcludedByUser(
+		UnusedAssets,
+		RelationalMap,
+		*ExcludeOptions,
+		ExcludedAssets,
+		UserExcludedAssets,
+		LinkedAssets
+	);
+	
+	SlowTask.EnterProgressFrame(1.0f, FText::FromString("Building assets relational map..."));
 
 	UpdateStats();
 }
@@ -513,9 +487,7 @@ void FProjectCleanerModule::UpdateStats()
 
 	if (ExcludedAssetsUI.IsValid())
 	{
-		ExcludedAssetsUI.Pin()->SetExcludedAssets(ExcludedAssets);
-		ExcludedAssetsUI.Pin()->SetLinkedAssets(LinkedAssets);
-		ExcludedAssetsUI.Pin()->SetCleanerConfigs(CleanerConfigs);
+		ExcludedAssetsUI.Pin()->SetUIData(ExcludedAssets, LinkedAssets, CleanerConfigs);
 	}
 }
 
@@ -596,9 +568,28 @@ void FProjectCleanerModule::OnUserIncludedAssets(const TArray<FAssetData>& Asset
 {
 	if (!Assets.Num()) return;
 
+	TArray<FAssetData> CantIncludeAssets;
+	bool ShowNotification = false;
+	for (const auto& Asset : Assets)
+	{
+		for (const auto& DirPath : ExcludeOptions->Paths)
+		{
+			if (Asset.PackagePath.ToString().Contains(DirPath.Path))
+			{
+				CantIncludeAssets.Add(Asset);
+				ShowNotification = true;
+			}
+		}
+	}
+
+	if (ShowNotification)
+	{
+		NotificationManager->AddTransient(TEXT("Some assets filtered by path, cant include those assets."), SNotificationItem::CS_None, 3.0f);
+	}
+	
 	UserExcludedAssets.RemoveAll([&](const FAssetData& Elem)
 	{
-		return Assets.Contains(Elem);
+		return Assets.Contains(Elem) && !CantIncludeAssets.Contains(Elem);
 	});
 
 	UpdateCleanerData();
@@ -686,7 +677,7 @@ FReply FProjectCleanerModule::OnDeleteUnusedAssetsBtnClick()
 		});
 
 		// after chunk of assets deleted, we must update adjacency list
-		RelationalMap.Rebuild(UnusedAssets, CleanerConfigs);
+		RelationalMap.Rebuild(UnusedAssets);
 		RootAssets.Reset();
 	}
 
