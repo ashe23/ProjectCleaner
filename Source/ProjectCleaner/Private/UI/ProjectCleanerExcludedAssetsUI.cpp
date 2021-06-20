@@ -162,9 +162,6 @@ void SProjectCleanerExcludedAssetsUI::UpdateUI()
 
 	FContentBrowserModule& ContentBrowser = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
 
-	// todo:ashe23 maybe add later 
-	//WidgetRef->SetVisibility((ExcludedAssets.Num() > 0 ? EVisibility::Visible : EVisibility::Hidden));
-	
 	ChildSlot
 	[
 		SNew(SVerticalBox)

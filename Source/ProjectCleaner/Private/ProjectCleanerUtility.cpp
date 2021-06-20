@@ -286,12 +286,27 @@ bool ProjectCleanerUtility::IsExcludedByPath(const FAssetData& AssetData, const 
 bool ProjectCleanerUtility::IsExcludedByClass(const FAssetData& AssetData, const UExcludeOptions& ExcludeOptions)
 {
 	const UBlueprint* BlueprintAsset = Cast<UBlueprint>(AssetData.GetAsset());
-	const FName ClassName = BlueprintAsset ? BlueprintAsset->GeneratedClass->GetFName() : AssetData.AssetClass;
+	const bool IsBlueprint = (BlueprintAsset != nullptr);
 
+	FName ClassName;
+	FName ParentClassName;
+
+	if (IsBlueprint && BlueprintAsset->GeneratedClass && BlueprintAsset->ParentClass)
+	{
+		ClassName = BlueprintAsset->GeneratedClass->GetFName();
+		ParentClassName = BlueprintAsset->ParentClass->GetFName();
+	}
+	else
+	{
+		ClassName = AssetData.AssetClass;
+	}
+	
 	return ExcludeOptions.Classes.ContainsByPredicate([&](const UClass* ElemClass)
 	{
 		if (!ElemClass) return false;
-		return ClassName.IsEqual(ElemClass->GetFName());
+		return
+		ClassName.IsEqual(ElemClass->GetFName()) ||
+		(IsBlueprint && (ClassName.IsEqual(ElemClass->GetFName()) || ParentClassName.IsEqual(ElemClass->GetFName())));
 	});
 }
 

@@ -38,7 +38,7 @@ private:
 	FReply IncludeAllAssets() const;
 
 	/** Data **/
-	UCleanerConfigs* CleanerConfigs;
+	UCleanerConfigs* CleanerConfigs = nullptr;
 	FGetCurrentSelectionDelegate GetCurrentSelectionDelegate;
 	TSharedPtr<FUICommandList> Commands;
 	TArray<FAssetData> ExcludedAssets;
