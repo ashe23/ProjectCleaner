@@ -4,19 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "Widgets/SCompoundWidget.h"
-#include "ProjectCleanerExcludeOptionsUI.generated.h"
 
-UCLASS(Transient)
-class UExcludeOptions : public UObject
-{
-	GENERATED_BODY()
-public:
-	UPROPERTY(DisplayName = "Paths", EditAnywhere, Category = "ExcludeOptions", meta = (ContentDir))
-	TArray<FDirectoryPath> Paths;
-
-	UPROPERTY(DisplayName = "Classes", EditAnywhere, Category = "ExcludeOptions")
-	TArray<UClass*> Classes;
-};
+class UExcludeOptions;
 
 /**
  * @brief Shows Exclude Options UI

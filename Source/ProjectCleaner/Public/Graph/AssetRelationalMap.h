@@ -3,6 +3,7 @@
 #pragma once
 
 #include "ProjectCleanerHelper.h"
+#include "ProjectCleanerUtility.h"
 
 class UCleanerConfigs;
 
@@ -49,7 +50,7 @@ struct FAssetNode
 
 		for (const auto& Ref : Refs)
 		{
-			const auto AbsPath = ProjectCleanerHelper::ConvertInternalToAbsolutePath(Ref.ToString());
+			const auto AbsPath = ProjectCleanerUtility::ConvertInternalToAbsolutePath(Ref.ToString());
 			const bool IsUnderDir = FPaths::IsUnderDirectory(AbsPath, DeveloperFolderPath) || FPaths::IsUnderDirectory(AbsPath, CollectionsFolderPath);
 			if (IsUnderDir)
 			{

@@ -3,6 +3,84 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "UI/ProjectCleanerSourceCodeAssetsUI.h"
+#include "StructsContainer.generated.h"
+
+UCLASS(Transient)
+class UCleanerConfigs : public UObject
+{
+	GENERATED_BODY()
+public:
+	UPROPERTY(DisplayName = "Scan Developer Contents Folders", EditAnywhere, Category = "CleanerConfigs")
+	bool bScanDeveloperContents = false;
+
+	UPROPERTY(DisplayName = "Remove Empty Folders After Assets Deleted", EditAnywhere, Category = "CleanerConfigs")
+	bool bAutomaticallyDeleteEmptyFolders = true;
+
+	UPROPERTY(DisplayName = "Deletion Chunk Limit", EditAnywhere, Category = "CleanerConfigs", meta = (ClampMin = "20", ClampMax = "1000", UIMin = "20", UIMax = "1000", ToolTip = "To prevent engine from freezing when deleting a lot of assets, we delete them by chunks.Here you can specify chunk limit.Pick lower values if your PC got low RAM capacity. Default is 20"))
+	int32 DeleteChunkLimit = 20;
+};
+
+UCLASS(Transient)
+class UExcludeOptions : public UObject
+{
+	GENERATED_BODY()
+public:
+	UPROPERTY(DisplayName = "Paths", EditAnywhere, Category = "ExcludeOptions", meta = (ContentDir))
+	TArray<FDirectoryPath> Paths;
+
+	UPROPERTY(DisplayName = "Classes", EditAnywhere, Category = "ExcludeOptions")
+	TArray<UClass*> Classes;
+};
+
+USTRUCT()
+struct FProjectCleanerData
+{
+	GENERATED_BODY()
+	
+	UPROPERTY()
+	TArray<FAssetData> UnusedAssets;
+	UPROPERTY()
+	TArray<FString> EmptyFolders;
+	UPROPERTY()
+	TSet<FString> NonEngineFiles;
+	UPROPERTY()
+	TSet<FString> CorruptedFiles;
+	UPROPERTY()
+	TArray<FString> ExcludedAssets;
+	UPROPERTY()
+	TArray<FString> UserExcludedAssets;
+	UPROPERTY()
+	TArray<FString> LinkedAssets;
+	UPROPERTY()
+	TArray<FString> PrimaryAssetClasses;
+	UPROPERTY()
+	TArray<TWeakObjectPtr<UIndirectAsset>> IndirectAssets;
+
+	void Reset()
+	{
+		UnusedAssets.Reset();
+		EmptyFolders.Reset();
+		NonEngineFiles.Reset();
+		CorruptedFiles.Reset();
+		ExcludedAssets.Reset();
+		LinkedAssets.Reset();
+		PrimaryAssetClasses.Reset();
+		IndirectAssets.Reset();
+	}
+
+	void Empty()
+	{
+		UnusedAssets.Empty();
+		EmptyFolders.Empty();
+		NonEngineFiles.Empty();
+		CorruptedFiles.Empty();
+		ExcludedAssets.Empty();
+		LinkedAssets.Empty();
+		PrimaryAssetClasses.Empty();
+		IndirectAssets.Empty();
+	}
+};
 
 struct FCleaningStats
 {

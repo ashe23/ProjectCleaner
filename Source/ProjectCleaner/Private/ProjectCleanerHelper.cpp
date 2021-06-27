@@ -10,53 +10,53 @@
 #include "Hal/FileManager.h"
 #include "Hal/FileManagerGeneric.h"
 
-void ProjectCleanerHelper::GetEmptyFolders(TArray<FString>& EmptyFolders, const bool bScanDeveloperContents)
-{
-	FindAllEmptyFolders(FPaths::ProjectContentDir() / TEXT("*"), EmptyFolders);
+//void ProjectCleanerHelper::GetEmptyFolders(TArray<FString>& EmptyFolders, const bool bScanDeveloperContents)
+//{
+//	FindAllEmptyFolders(FPaths::ProjectContentDir() / TEXT("*"), EmptyFolders);
+//
+//	if (bScanDeveloperContents)
+//	{
+//		EmptyFolders.RemoveAllSwap([&](const FString& Elem) {
+//			return
+//				Elem.Equals(FPaths::GameUserDeveloperDir()) ||
+//				Elem.Equals(FPaths::GameUserDeveloperDir() + TEXT("Collections/")) ||
+//				Elem.Equals(FPaths::ProjectContentDir() + TEXT("Collections/")) ||
+//				Elem.Equals(FPaths::GameDevelopersDir());
+//		});
+//	}
+//	else
+//	{
+//		EmptyFolders.RemoveAllSwap([&] (const FString& Elem)
+//		{
+//			return
+//				Elem.StartsWith(FPaths::GameDevelopersDir()) ||
+//				Elem.StartsWith(FPaths::ProjectContentDir() + TEXT("Collections/"));
+//		});
+//	}
+//}
 
-	if (bScanDeveloperContents)
-	{
-		EmptyFolders.RemoveAllSwap([&](const FString& Elem) {
-			return
-				Elem.Equals(FPaths::GameUserDeveloperDir()) ||
-				Elem.Equals(FPaths::GameUserDeveloperDir() + TEXT("Collections/")) ||
-				Elem.Equals(FPaths::ProjectContentDir() + TEXT("Collections/")) ||
-				Elem.Equals(FPaths::GameDevelopersDir());
-		});
-	}
-	else
-	{
-		EmptyFolders.RemoveAllSwap([&] (const FString& Elem)
-		{
-			return
-				Elem.StartsWith(FPaths::GameDevelopersDir()) ||
-				Elem.StartsWith(FPaths::ProjectContentDir() + TEXT("Collections/"));
-		});
-	}
-}
-
-void ProjectCleanerHelper::GetProjectFilesFromDisk(TSet<FString>& ProjectFiles)
-{
-	struct DirectoryVisitor : IPlatformFile::FDirectoryVisitor
-	{
-		DirectoryVisitor(TSet<FString>& Files) : AllFiles(Files) {}
-		virtual bool Visit(const TCHAR* FilenameOrDirectory, bool bIsDirectory) override
-		{
-			if (!bIsDirectory)
-			{
-				AllFiles.Add(FPaths::ConvertRelativePathToFull(FilenameOrDirectory));
-			}
-			
-			return true;
-		}
-
-		TSet<FString>& AllFiles;
-	};
-
-	DirectoryVisitor Visitor{ ProjectFiles };
-	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
-	PlatformFile.IterateDirectoryRecursively(*FPaths::ProjectContentDir(), Visitor);
-}
+//void ProjectCleanerHelper::GetProjectFilesFromDisk(TSet<FString>& ProjectFiles)
+//{
+//	struct DirectoryVisitor : IPlatformFile::FDirectoryVisitor
+//	{
+//		DirectoryVisitor(TSet<FString>& Files) : AllFiles(Files) {}
+//		virtual bool Visit(const TCHAR* FilenameOrDirectory, bool bIsDirectory) override
+//		{
+//			if (!bIsDirectory)
+//			{
+//				AllFiles.Add(FPaths::ConvertRelativePathToFull(FilenameOrDirectory));
+//			}
+//			
+//			return true;
+//		}
+//
+//		TSet<FString>& AllFiles;
+//	};
+//
+//	DirectoryVisitor Visitor{ ProjectFiles };
+//	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
+//	PlatformFile.IterateDirectoryRecursively(*FPaths::ProjectContentDir(), Visitor);
+//}
 
 void ProjectCleanerHelper::GetSourceCodeFilesFromDisk(TArray<FSourceCodeFile>& SourceCodeFiles)
 {
@@ -125,89 +125,89 @@ void ProjectCleanerHelper::GetSourceCodeFilesFromDisk(TArray<FSourceCodeFile>& S
 	}
 }
 
-FString ProjectCleanerHelper::ConvertAbsolutePathToInternal(const FString& InPath)
-{
-	FString Path = InPath;
-	FPaths::NormalizeFilename(Path);
-	const FString ProjectContentDirAbsPath = FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir());
-	return ConvertPathInternal(ProjectContentDirAbsPath, FString{ "/Game/" }, Path);
-}
+//FString ProjectCleanerHelper::ConvertAbsolutePathToInternal(const FString& InPath)
+//{
+//	FString Path = InPath;
+//	FPaths::NormalizeFilename(Path);
+//	const FString ProjectContentDirAbsPath = FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir());
+//	return ConvertPathInternal(ProjectContentDirAbsPath, FString{ "/Game/" }, Path);
+//}
+//
+//FString ProjectCleanerHelper::ConvertInternalToAbsolutePath(const FString& InPath)
+//{
+//	FString Path = InPath;
+//	FPaths::NormalizeFilename(Path);
+//	const FString ProjectContentDirAbsPath = FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir());
+//	return ConvertPathInternal(FString{ "/Game/" }, ProjectContentDirAbsPath, Path);
+//}
 
-FString ProjectCleanerHelper::ConvertInternalToAbsolutePath(const FString& InPath)
-{
-	FString Path = InPath;
-	FPaths::NormalizeFilename(Path);
-	const FString ProjectContentDirAbsPath = FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir());
-	return ConvertPathInternal(FString{ "/Game/" }, ProjectContentDirAbsPath, Path);
-}
-
-bool ProjectCleanerHelper::DeleteEmptyFolders(const FAssetRegistryModule* AssetRegistry, TArray<FString>& EmptyFolders)
-{
-	if (EmptyFolders.Num() == 0) return false;
-
-	bool ErrorWhileDeleting = false;
-	for (auto& EmptyFolder : EmptyFolders)
-	{
-		if (!IFileManager::Get().DirectoryExists(*EmptyFolder)) continue;
-
-		if (!IFileManager::Get().DeleteDirectory(*EmptyFolder, false, true))
-		{
-			ErrorWhileDeleting = true;
-			UE_LOG(LogTemp, Error, TEXT("Failed to delete %s folder."), *EmptyFolder);
-			continue;
-		}
-
-		auto FolderPath = EmptyFolder.Replace(*FPaths::ProjectContentDir(), TEXT("/Game/"));
-
-		// removing folder path from asset registry
-		if (!AssetRegistry) continue;
-		AssetRegistry->Get().RemovePath(FolderPath);
-	}
-
-	if (!ErrorWhileDeleting)
-	{
-		EmptyFolders.Empty();
-	}
-
-	return !ErrorWhileDeleting;
-}
+//bool ProjectCleanerHelper::DeleteEmptyFolders(const FAssetRegistryModule* AssetRegistry, TArray<FString>& EmptyFolders)
+//{
+//	if (EmptyFolders.Num() == 0) return false;
+//
+//	bool ErrorWhileDeleting = false;
+//	for (auto& EmptyFolder : EmptyFolders)
+//	{
+//		if (!IFileManager::Get().DirectoryExists(*EmptyFolder)) continue;
+//
+//		if (!IFileManager::Get().DeleteDirectory(*EmptyFolder, false, true))
+//		{
+//			ErrorWhileDeleting = true;
+//			UE_LOG(LogTemp, Error, TEXT("Failed to delete %s folder."), *EmptyFolder);
+//			continue;
+//		}
+//
+//		auto FolderPath = EmptyFolder.Replace(*FPaths::ProjectContentDir(), TEXT("/Game/"));
+//
+//		// removing folder path from asset registry
+//		if (!AssetRegistry) continue;
+//		AssetRegistry->Get().RemovePath(FolderPath);
+//	}
+//
+//	if (!ErrorWhileDeleting)
+//	{
+//		EmptyFolders.Empty();
+//	}
+//
+//	return !ErrorWhileDeleting;
+//}
 
 // private
-bool ProjectCleanerHelper::FindAllEmptyFolders(const FString& FolderPath, TArray<FString>& EmptyFolders)
-{
-	bool IsSubFoldersEmpty = true;
-	TArray<FString> SubFolders;
-	IFileManager::Get().FindFiles(SubFolders, *FolderPath, false, true);
+//bool ProjectCleanerHelper::FindAllEmptyFolders(const FString& FolderPath, TArray<FString>& EmptyFolders)
+//{
+//	bool IsSubFoldersEmpty = true;
+//	TArray<FString> SubFolders;
+//	IFileManager::Get().FindFiles(SubFolders, *FolderPath, false, true);
+//
+//	for (const auto& SubFolder : SubFolders)
+//	{
+//		// "*" needed for unreal`s IFileManager class, without it , its not working.
+//		auto NewPath = FolderPath;
+//		NewPath.RemoveFromEnd(TEXT("*"));
+//		NewPath += SubFolder / TEXT("*");
+//		if (FindAllEmptyFolders(NewPath, EmptyFolders))
+//		{
+//			NewPath.RemoveFromEnd(TEXT("*"));
+//			EmptyFolders.AddUnique(*NewPath);
+//		}
+//		else
+//		{
+//			IsSubFoldersEmpty = false;
+//		}
+//	}
+//
+//	TArray<FString> FilesInFolder;
+//	IFileManager::Get().FindFiles(FilesInFolder, *FolderPath, true, false);
+//
+//	if (IsSubFoldersEmpty && FilesInFolder.Num() == 0)
+//	{
+//		return true;
+//	}
+//
+//	return false;
+//}
 
-	for (const auto& SubFolder : SubFolders)
-	{
-		// "*" needed for unreal`s IFileManager class, without it , its not working.
-		auto NewPath = FolderPath;
-		NewPath.RemoveFromEnd(TEXT("*"));
-		NewPath += SubFolder / TEXT("*");
-		if (FindAllEmptyFolders(NewPath, EmptyFolders))
-		{
-			NewPath.RemoveFromEnd(TEXT("*"));
-			EmptyFolders.AddUnique(*NewPath);
-		}
-		else
-		{
-			IsSubFoldersEmpty = false;
-		}
-	}
-
-	TArray<FString> FilesInFolder;
-	IFileManager::Get().FindFiles(FilesInFolder, *FolderPath, true, false);
-
-	if (IsSubFoldersEmpty && FilesInFolder.Num() == 0)
-	{
-		return true;
-	}
-
-	return false;
-}
-
-FString ProjectCleanerHelper::ConvertPathInternal(const FString& From, const FString To, const FString& Path)
-{
-	return Path.Replace(*From, *To, ESearchCase::IgnoreCase);
-}
+//FString ProjectCleanerHelper::ConvertPathInternal(const FString& From, const FString To, const FString& Path)
+//{
+//	return Path.Replace(*From, *To, ESearchCase::IgnoreCase);
+//}

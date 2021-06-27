@@ -33,7 +33,7 @@ class SProjectCleanerCorruptedFilesUI;
 class SProjectCleanerExcludedAssetsUI;
 class SProjectCleanerConfigsUI;
 class UCleanerConfigs;
-class USourceCodeAsset;
+class UIndirectAsset;
 class UExcludeOptions;
 class AssetRelationalMap;
 
@@ -58,103 +58,103 @@ private:
 	void RegisterMenus();
 	void PluginButtonClicked();
 	TSharedRef<SDockTab> OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs);
-	TSharedRef<SDockTab> OnUnusedAssetTabSpawn(const FSpawnTabArgs& SpawnTabArgs);
-	TSharedRef<SDockTab> OnNonUAssetFilesTabSpawn(const FSpawnTabArgs& SpawnTabArgs);
-	TSharedRef<SDockTab> OnCorruptedFilesTabSpawn(const FSpawnTabArgs& SpawnTabArgs);
-	TSharedRef<SDockTab> OnSourceCodeAssetsTabSpawn(const FSpawnTabArgs& SpawnTabArgs);
-	void OnScanDeveloperContentCheckboxChanged(ECheckBoxState State);
-	void OnAutomaticallyRemoveEmptyFoldersCheckboxChanged(ECheckBoxState State);
+	//TSharedRef<SDockTab> OnUnusedAssetTabSpawn(const FSpawnTabArgs& SpawnTabArgs);
+	//TSharedRef<SDockTab> OnNonUAssetFilesTabSpawn(const FSpawnTabArgs& SpawnTabArgs);
+	//TSharedRef<SDockTab> OnCorruptedFilesTabSpawn(const FSpawnTabArgs& SpawnTabArgs);
+	//TSharedRef<SDockTab> OnSourceCodeAssetsTabSpawn(const FSpawnTabArgs& SpawnTabArgs);
+	//void OnScanDeveloperContentCheckboxChanged(ECheckBoxState State);
+	//void OnAutomaticallyRemoveEmptyFoldersCheckboxChanged(ECheckBoxState State);
 
 	/** Cleaner **/
 	
 	/**
 	 * @brief Saves all unsaved assets, fixes up redirectors and updates cleaner data
 	 */
-	void UpdateCleaner();
-	
-	/**
-	 * @brief Scans project for unused assets, empty folders, corrupted files and non .uasset files
-	 */
-	void UpdateCleanerData();
-	
-	/**
-	 * @brief Updates Cleaning stats
-	 */
-	void UpdateStats();
-	
-	/**
-	 * @brief Resets all data containers
-	 */
-	void Reset();
+	//void UpdateCleaner();
+	//
+	///**
+	// * @brief Scans project for unused assets, empty folders, corrupted files and non .uasset files
+	// */
+	//void UpdateCleanerData();
+	//
+	///**
+	// * @brief Updates Cleaning stats
+	// */
+	//void UpdateStats();
+	//
+	///**
+	// * @brief Resets all data containers
+	// */
+	//void Reset();
 
-	/**
-	 * Sets content browser focus to root directory and refreshes asset registry
-	 * @brief Updates content browser
-	 */
-	void UpdateContentBrowser() const;
+	///**
+	// * Sets content browser focus to root directory and refreshes asset registry
+	// * @brief Updates content browser
+	// */
+	//void UpdateContentBrowser() const;
 
-	void CleanEmptyFolders();
-	
-	/**
-	 * @brief Creates confirmation window with yes/no options
-	 * @param Title - Window Title
-	 * @param ContentText - Window content text
-	 * @return EAppReturnType::Type Window confirmation status
-	 */
-	EAppReturnType::Type ShowConfirmationWindow(const FText& Title, const FText& ContentText) const;
-	
-	/**
-	 * @brief Checks if confirmation window cancelled or not
-	 * @param Status EAppReturnType::Type
-	 * @return bool
-	 */
-	static bool IsConfirmationWindowCanceled(EAppReturnType::Type Status);
+	//void CleanEmptyFolders();
+	//
+	///**
+	// * @brief Creates confirmation window with yes/no options
+	// * @param Title - Window Title
+	// * @param ContentText - Window content text
+	// * @return EAppReturnType::Type Window confirmation status
+	// */
+	//EAppReturnType::Type ShowConfirmationWindow(const FText& Title, const FText& ContentText) const;
+	//
+	///**
+	// * @brief Checks if confirmation window cancelled or not
+	// * @param Status EAppReturnType::Type
+	// * @return bool
+	// */
+	//static bool IsConfirmationWindowCanceled(EAppReturnType::Type Status);
 	
 	/** Delegate functions **/
-	void OnUserDeletedAssets();
-	void OnUserExcludedAssets(const TArray<FAssetData>& Assets);
-	void OnUserIncludedAssets(const TArray<FAssetData>& Assets, const bool CleanFilters);
+	//void OnUserDeletedAssets();
+	//void OnUserExcludedAssets(const TArray<FAssetData>& Assets);
+	//void OnUserIncludedAssets(const TArray<FAssetData>& Assets, const bool CleanFilters);
 
-	/** Button events */
-	FReply OnRefreshBtnClick();
-	FReply OnDeleteUnusedAssetsBtnClick();
-	FReply OnDeleteEmptyFolderClick();
+	///** Button events */
+	//FReply OnRefreshBtnClick();
+	//FReply OnDeleteUnusedAssetsBtnClick();
+	//FReply OnDeleteEmptyFolderClick();
 	
 	
 	/** UI */
 	TSharedPtr<FUICommandList> PluginCommands;
 	TSharedPtr<ProjectCleanerNotificationManager> NotificationManager;
-	TWeakPtr<SProjectCleanerUnusedAssetsBrowserUI> UnusedAssetsBrowserUI;
-	TWeakPtr<SProjectCleanerNonUassetFilesUI> NonUassetFilesUI;
-	TWeakPtr<SProjectCleanerBrowserStatisticsUI> StatisticsUI;
-	TWeakPtr<SProjectCleanerSourceCodeAssetsUI> SourceCodeAssetsUI;
-	TWeakPtr<SProjectCleanerExcludeOptionsUI> ExcludeOptionUI;
-	TWeakPtr<SProjectCleanerCorruptedFilesUI> CorruptedFilesUI;
-	TWeakPtr<SProjectCleanerExcludedAssetsUI> ExcludedAssetsUI;
-	TWeakPtr<SProjectCleanerConfigsUI> CleanerConfigsUI;
-	TSharedPtr<FTabManager> TabManager;
-	TSharedPtr<FTabManager::FLayout> TabLayout;
+	//TWeakPtr<SProjectCleanerUnusedAssetsBrowserUI> UnusedAssetsBrowserUI;
+	//TWeakPtr<SProjectCleanerNonUassetFilesUI> NonUassetFilesUI;
+	//TWeakPtr<SProjectCleanerBrowserStatisticsUI> StatisticsUI;
+	//TWeakPtr<SProjectCleanerSourceCodeAssetsUI> SourceCodeAssetsUI;
+	//TWeakPtr<SProjectCleanerExcludeOptionsUI> ExcludeOptionUI;
+	//TWeakPtr<SProjectCleanerCorruptedFilesUI> CorruptedFilesUI;
+	//TWeakPtr<SProjectCleanerExcludedAssetsUI> ExcludedAssetsUI;
+	//TWeakPtr<SProjectCleanerConfigsUI> CleanerConfigsUI;
+	//TSharedPtr<FTabManager> TabManager;
+	//TSharedPtr<FTabManager::FLayout> TabLayout;
 
 	/** UI data*/
-	UCleanerConfigs* CleanerConfigs;
-	UExcludeOptions* ExcludeOptions;
+	//UCleanerConfigs* CleanerConfigs;
+	//UExcludeOptions* ExcludeOptions;
 	
 	/** Data Containers */ 
-	TArray<FAssetData> UnusedAssets;
-	TArray<FString> EmptyFolders;
-	TSet<FString> NonUAssetFiles;
-	TSet<FString> CorruptedFiles;
-	FCleaningStats CleaningStats;
-	TArray<FAssetData> ExcludedAssets;
-	TArray<FAssetData> LinkedAssets;
-	TArray<FAssetData> UserExcludedAssets;
-	TSet<FName> PrimaryAssetClasses;
-	TArray<TWeakObjectPtr<USourceCodeAsset>> SourceCodeAssets;
+	//TArray<FAssetData> UnusedAssets;
+	//TArray<FString> EmptyFolders;
+	//TSet<FString> NonUAssetFiles;
+	//TSet<FString> CorruptedFiles;
+	//FCleaningStats CleaningStats;
+	//TArray<FAssetData> ExcludedAssets;
+	//TArray<FAssetData> LinkedAssets;
+	//TArray<FAssetData> UserExcludedAssets;
+	//TSet<FName> PrimaryAssetClasses;
+	//TArray<TWeakObjectPtr<UIndirectAsset>> SourceCodeAssets;
 	
 	/** Helper Containers **/
-	TSet<FString> ProjectFilesFromDisk;
-	AssetRelationalMap RelationalMap;
-	FStandardCleanerText StandardCleanerText;
+	//TSet<FString> ProjectFilesFromDisk;
+	//AssetRelationalMap RelationalMap;
+	//FStandardCleanerText StandardCleanerText;
 
 	/** Other Engine Modules **/
 	FAssetRegistryModule* AssetRegistry;

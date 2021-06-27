@@ -1,7 +1,7 @@
 #include "CoreTypes.h"
 #include "Misc/AutomationTest.h"
 #include "Misc/Paths.h"
-#include "ProjectCleanerHelper.h"
+#include "ProjectCleanerUtility.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -13,13 +13,12 @@ bool FProjectCleanerPathsTests::RunTest(const FString& Parameters)
 	const FString AssetAbsPath = ProjectContentDir + TEXT("Material");
 	const FString AssetInternalPath = FString{ TEXT("/Game/Material") };
 
-	FString TestPathInternal = ProjectCleanerHelper::ConvertAbsolutePathToInternal(AssetAbsPath);
+	const FString TestPathInternal = ProjectCleanerUtility::ConvertAbsolutePathToInternal(AssetAbsPath);
+	const FString TestPathAbsolute = ProjectCleanerUtility::ConvertInternalToAbsolutePath(AssetInternalPath);
+
 	TestEqual(TEXT("Path Converted from Absolute to Internal must"), TestPathInternal, AssetInternalPath);
-
-
-	FString TestPathAbsolute = ProjectCleanerHelper::ConvertInternalToAbsolutePath(AssetInternalPath);
 	TestEqual(TEXT("Path Converted from Internal to Absolute must"), TestPathAbsolute, AssetAbsPath);
-
+	
 	return true;
 }
 

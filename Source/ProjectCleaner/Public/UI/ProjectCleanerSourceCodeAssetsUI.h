@@ -8,7 +8,7 @@
 
 
 UCLASS(Transient)
-class USourceCodeAsset : public UObject
+class UIndirectAsset : public UObject
 {
 	GENERATED_BODY()
 public:
@@ -26,20 +26,20 @@ public:
 };
 
 
-class SSourceCodeAssetsUISelectionRow : public SMultiColumnTableRow<TWeakObjectPtr<USourceCodeAsset>>
+class SSourceCodeAssetsUISelectionRow : public SMultiColumnTableRow<TWeakObjectPtr<UIndirectAsset>>
 {
 public:
 	
 	SLATE_BEGIN_ARGS(SSourceCodeAssetsUISelectionRow){}
-		SLATE_ARGUMENT(TWeakObjectPtr<USourceCodeAsset>, SelectedRowItem)
+		SLATE_ARGUMENT(TWeakObjectPtr<UIndirectAsset>, SelectedRowItem)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs, const TSharedRef<STableViewBase>& InOwnerTableView)
 	{
 		SelectedRowItem = InArgs._SelectedRowItem;
 
-		SMultiColumnTableRow<TWeakObjectPtr<USourceCodeAsset>>::Construct(
-		SMultiColumnTableRow<TWeakObjectPtr<USourceCodeAsset>>::FArguments()
+		SMultiColumnTableRow<TWeakObjectPtr<UIndirectAsset>>::Construct(
+		SMultiColumnTableRow<TWeakObjectPtr<UIndirectAsset>>::FArguments()
 		.Padding(
 			FMargin(0.f, 2.f, 0.f, 0.f)),
 			InOwnerTableView
@@ -71,7 +71,7 @@ public:
 	}
 
 private:
-	TWeakObjectPtr<USourceCodeAsset> SelectedRowItem;
+	TWeakObjectPtr<UIndirectAsset> SelectedRowItem;
 };
 
 class SProjectCleanerSourceCodeAssetsUI : public SCompoundWidget
@@ -79,15 +79,15 @@ class SProjectCleanerSourceCodeAssetsUI : public SCompoundWidget
 public:
 	
 	SLATE_BEGIN_ARGS(SProjectCleanerSourceCodeAssetsUI) {}
-		SLATE_ARGUMENT(TArray<TWeakObjectPtr<USourceCodeAsset>>*, SourceCodeAssets)
+		SLATE_ARGUMENT(TArray<TWeakObjectPtr<UIndirectAsset>>*, SourceCodeAssets)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
-	void SetSourceCodeAssets(const TArray<TWeakObjectPtr<USourceCodeAsset>>& NewSourceCodeAssets);
+	void SetSourceCodeAssets(const TArray<TWeakObjectPtr<UIndirectAsset>>& NewSourceCodeAssets);
 private:
 	void InitUI();
-	TSharedRef<ITableRow> OnGenerateRow(TWeakObjectPtr<USourceCodeAsset> InItem, const TSharedRef<STableViewBase>& OwnerTable) const;
-	void OnMouseDoubleClick(TWeakObjectPtr<USourceCodeAsset> Item) const;
-	TArray<TWeakObjectPtr<USourceCodeAsset>> SourceCodeAssets;
-	TSharedPtr<SListView<TWeakObjectPtr<USourceCodeAsset>>> ListView;
+	TSharedRef<ITableRow> OnGenerateRow(TWeakObjectPtr<UIndirectAsset> InItem, const TSharedRef<STableViewBase>& OwnerTable) const;
+	void OnMouseDoubleClick(TWeakObjectPtr<UIndirectAsset> Item) const;
+	TArray<TWeakObjectPtr<UIndirectAsset>> SourceCodeAssets;
+	TSharedPtr<SListView<TWeakObjectPtr<UIndirectAsset>>> ListView;
 };

@@ -1,6 +1,7 @@
 // Copyright 2021. Ashot Barkhudaryan. All Rights Reserved.
 
 #include "UI/ProjectCleanerConfigsUI.h"
+#include "StructsContainer.h"
 
 #define LOCTEXT_NAMESPACE "FProjectCleanerModule"
 

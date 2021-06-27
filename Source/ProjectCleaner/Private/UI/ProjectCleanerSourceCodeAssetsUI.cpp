@@ -19,7 +19,7 @@ void SProjectCleanerSourceCodeAssetsUI::Construct(const FArguments& InArgs)
 	InitUI();
 }
 
-void SProjectCleanerSourceCodeAssetsUI::SetSourceCodeAssets(const TArray<TWeakObjectPtr<USourceCodeAsset>>& NewSourceCodeAssets)
+void SProjectCleanerSourceCodeAssetsUI::SetSourceCodeAssets(const TArray<TWeakObjectPtr<UIndirectAsset>>& NewSourceCodeAssets)
 {
 	SourceCodeAssets.Reset();
 	SourceCodeAssets.Reserve(NewSourceCodeAssets.Num());
@@ -34,7 +34,7 @@ void SProjectCleanerSourceCodeAssetsUI::SetSourceCodeAssets(const TArray<TWeakOb
 
 void SProjectCleanerSourceCodeAssetsUI::InitUI()
 {
-	ListView = SNew(SListView<TWeakObjectPtr<USourceCodeAsset>>)
+	ListView = SNew(SListView<TWeakObjectPtr<UIndirectAsset>>)
 		.ListItemsSource(&SourceCodeAssets)
 		.SelectionMode(ESelectionMode::SingleToggle)
 		.OnGenerateRow(this, &SProjectCleanerSourceCodeAssetsUI::OnGenerateRow)
@@ -122,13 +122,13 @@ void SProjectCleanerSourceCodeAssetsUI::InitUI()
 }
 
 TSharedRef<ITableRow> SProjectCleanerSourceCodeAssetsUI::OnGenerateRow(
-	TWeakObjectPtr<USourceCodeAsset> InItem,
+	TWeakObjectPtr<UIndirectAsset> InItem,
 	const TSharedRef<STableViewBase>& OwnerTable) const
 {
 	return SNew(SSourceCodeAssetsUISelectionRow, OwnerTable).SelectedRowItem(InItem);
 }
 
-void SProjectCleanerSourceCodeAssetsUI::OnMouseDoubleClick(TWeakObjectPtr<USourceCodeAsset> Item) const
+void SProjectCleanerSourceCodeAssetsUI::OnMouseDoubleClick(TWeakObjectPtr<UIndirectAsset> Item) const
 {
 	if (!Item.IsValid()) return;
 
