@@ -1,7 +1,7 @@
 ﻿// Copyright 2021. Ashot Barkhudaryan. All Rights Reserved.
 
 #include "UI/ProjectCleanerExcludeOptionsUI.h"
-#include "ProjectCleanerStyle.h"
+#include "UI/ProjectCleanerStyle.h"
 #include "StructsContainer.h"
 #include "ClassViewerModule.h"
 

@@ -7,25 +7,19 @@
 #include "StructsContainer.h"
 #include "Widgets/SCompoundWidget.h"
 
-/**
- * @brief Shows statistics info (UnusedAssets count, Total Size, EmptyFolder count, etc.)
- */
 class SProjectCleanerBrowserStatisticsUI : public SCompoundWidget
 {
 public:
 	
 	SLATE_BEGIN_ARGS(SProjectCleanerBrowserStatisticsUI) {}
-		SLATE_ARGUMENT(FCleaningStats, Stats);
+		SLATE_ARGUMENT(FProjectCleanerData*, CleanerData);
 	SLATE_END_ARGS()
 	
 	void Construct(const FArguments& InArgs);
-	void SetStats(const FCleaningStats& NewStats);
-	FCleaningStats GetStats() const;
-
+	void SetStats(FProjectCleanerData& Data);
 private:
-	void RefreshUIContent();
-	
+	/* UI Callbacks */
+	FText GetUnusedAssetsNum() const;
 	/** Data **/
-	FCleaningStats Stats;
-	TSharedRef<SWidget> WidgetRef = SNullWidget::NullWidget;
+	FProjectCleanerData* CleanerData = nullptr;
 };

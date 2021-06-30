@@ -1,13 +1,13 @@
 ﻿// Copyright 2021. Ashot Barkhudaryan. All Rights Reserved.
 
-#include "UI/ProjectCleanerNonUassetFilesUI.h"
-#include "ProjectCleanerStyle.h"
+#include "UI/ProjectCleanerNonEngineFilesUI.h"
+#include "UI/ProjectCleanerStyle.h"
 // Engine Headers
 #include "Widgets/Layout/SScrollBox.h"
 
 #define LOCTEXT_NAMESPACE "FProjectCleanerModule"
 
-void SProjectCleanerNonUassetFilesUI::Construct(const FArguments& InArgs)
+void SProjectCleanerNonEngineFilesUI::Construct(const FArguments& InArgs)
 {
 	if (InArgs._NonUassetFiles)
 	{
@@ -17,14 +17,14 @@ void SProjectCleanerNonUassetFilesUI::Construct(const FArguments& InArgs)
 	InitUI();
 }
 
-void SProjectCleanerNonUassetFilesUI::SetNonUassetFiles(const TSet<FString>& NewNonUassetFile)
+void SProjectCleanerNonEngineFilesUI::SetNonUassetFiles(const TSet<FString>& NewNonUassetFile)
 {
 	NonUassetFiles.Reset();
 	NonUassetFiles.Reserve(NewNonUassetFile.Num());
 
 	for (const auto& File: NewNonUassetFile)
 	{
-		const auto& NonUassetFile = NewObject<UNonUassetFile>();
+		const auto& NonUassetFile = NewObject<UNonEngineFile>();
 		if(!NonUassetFile) continue;
 		NonUassetFile->FileName = FPaths::GetBaseFilename(File) + "." + FPaths::GetExtension(File);
 		NonUassetFile->FilePath = File;
@@ -38,13 +38,13 @@ void SProjectCleanerNonUassetFilesUI::SetNonUassetFiles(const TSet<FString>& New
 	}
 }
 
-void SProjectCleanerNonUassetFilesUI::InitUI()
+void SProjectCleanerNonEngineFilesUI::InitUI()
 {
-	ListView = SNew(SListView<TWeakObjectPtr<UNonUassetFile>>)
+	ListView = SNew(SListView<TWeakObjectPtr<UNonEngineFile>>)
 		.ListItemsSource(&NonUassetFiles)
 		.SelectionMode(ESelectionMode::SingleToggle)
-		.OnGenerateRow(this, &SProjectCleanerNonUassetFilesUI::OnGenerateRow)
-		.OnMouseButtonDoubleClick_Raw(this, &SProjectCleanerNonUassetFilesUI::OnMouseDoubleClick)
+		.OnGenerateRow(this, &SProjectCleanerNonEngineFilesUI::OnGenerateRow)
+		.OnMouseButtonDoubleClick_Raw(this, &SProjectCleanerNonEngineFilesUI::OnMouseDoubleClick)
 		.HeaderRow
 		(
 			SNew(SHeaderRow)
@@ -108,15 +108,15 @@ void SProjectCleanerNonUassetFilesUI::InitUI()
 	];
 }
 
-TSharedRef<ITableRow> SProjectCleanerNonUassetFilesUI::OnGenerateRow(
-	TWeakObjectPtr<UNonUassetFile> InItem,
+TSharedRef<ITableRow> SProjectCleanerNonEngineFilesUI::OnGenerateRow(
+	TWeakObjectPtr<UNonEngineFile> InItem,
 	const TSharedRef<STableViewBase>& OwnerTable
 ) const
 {
-	return SNew(SNonUassetFileUISelectionRow, OwnerTable).SelectedRowItem(InItem);
+	return SNew(SNonEngineFilesUISelectionRow, OwnerTable).SelectedRowItem(InItem);
 }
 
-void SProjectCleanerNonUassetFilesUI::OnMouseDoubleClick(TWeakObjectPtr<UNonUassetFile> Item) const
+void SProjectCleanerNonEngineFilesUI::OnMouseDoubleClick(TWeakObjectPtr<UNonEngineFile> Item) const
 {
 	if (!Item.IsValid()) return;
 

@@ -1,6 +1,6 @@
 ﻿// Copyright 2021. Ashot Barkhudaryan. All Rights Reserved.
 
-#include "ProjectCleanerNotificationManager.h"
+#include "UI/ProjectCleanerNotificationManager.h"
 // Engine Headers
 #include "Framework/Notifications/NotificationManager.h"
 
@@ -20,15 +20,14 @@ TWeakPtr<SNotificationItem> ProjectCleanerNotificationManager::Add(const FString
 	return NotificationManager;
 }
 
-void ProjectCleanerNotificationManager::AddTransient(const FString& Text,
-                                                     const SNotificationItem::ECompletionState
-                                                     CompletionState,
-                                                     const float ExpireDuration) const
+void ProjectCleanerNotificationManager::AddTransient(
+	const FText& Text,
+    const SNotificationItem::ECompletionState CompletionState,
+	const float ExpireDuration)
 {
-	FNotificationInfo Info(FText::FromString(Text));
+	FNotificationInfo Info(Text);
 	Info.bFireAndForget = true;
 	Info.ExpireDuration = ExpireDuration;
-
 
 	const TWeakPtr<SNotificationItem> NotificationManager = FSlateNotificationManager::Get().AddNotification(Info);
 	if (NotificationManager.IsValid())
@@ -38,20 +37,20 @@ void ProjectCleanerNotificationManager::AddTransient(const FString& Text,
 }
 
 
-void ProjectCleanerNotificationManager::Update(TWeakPtr<SNotificationItem> NotificationManager,
-                                               const FCleaningStats& Stats) const
-{
-	if (NotificationManager.IsValid())
-	{
-		NotificationManager.Pin()->SetText(FText::FromString(FString::Printf(
-				TEXT("Deleted %d of %d assets. %d %%"),
-				Stats.DeletedAssetCount,
-				Stats.TotalAssetNum,
-				Stats.GetPercentage()
-			)
-		));
-	}
-}
+// void ProjectCleanerNotificationManager::Update(TWeakPtr<SNotificationItem> NotificationManager,
+//                                                const FCleaningStats& Stats) const
+// {
+// 	if (NotificationManager.IsValid())
+// 	{
+// 		NotificationManager.Pin()->SetText(FText::FromString(FString::Printf(
+// 				TEXT("Deleted %d of %d assets. %d %%"),
+// 				Stats.DeletedAssetCount,
+// 				Stats.TotalAssetNum,
+// 				Stats.GetPercentage()
+// 			)
+// 		));
+// 	}
+// }
 
 void ProjectCleanerNotificationManager::Hide(TWeakPtr<SNotificationItem> NotificationManager, const FText& FinalText) const
 {

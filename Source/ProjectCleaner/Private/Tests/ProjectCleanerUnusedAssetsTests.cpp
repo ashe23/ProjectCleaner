@@ -1,9 +1,12 @@
 #include "CoreTypes.h"
 #include "Misc/AutomationTest.h"
 #include "FileHelpers.h"
+#include "GenericPlatform/GenericPlatformFile.h"
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "Factories/MaterialFactoryNew.h"
 #include "ObjectTools.h"
+#include "UI/ProjectCleanerStyle.h"
+#include "StructsContainer.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -13,6 +16,15 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FProjectCleanerUnusedAssetsTests, "ProjectClean
 // Handle creation and deletion of assets
 struct FCleanerAssetHelper
 {
+	static void CreateTestAssets()
+	{
+		
+	}
+	static void Cleanup()
+	{
+		
+	}
+	
 	template<typename TAssetClass, typename TFactoryClass>
 	static void CreateAsset(const FString& AssetName, const FString& PackagePath, UClass* AssetClass, UClass* FactoryClass)
 	{
@@ -32,7 +44,6 @@ struct FCleanerAssetHelper
 		{
 			AssetRegistryModule.AssetCreated(CreatedAsset);
 			Package->MarkPackageDirty();
-			UE_LOG(LogTemp, Display, TEXT("Created Assets"));
 		}
 		else
 		{
@@ -45,48 +56,73 @@ bool FProjectCleanerUnusedAssetsTests::RunTest(const FString& Parameters)
 {
 	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
 	const FString ProjectContentDir{"/Game"};
-
-	// TEST CASE 1 all assets are under / Game folder, all filters disabled, no excluded assets
+	auto ExcludeOptions = GetMutableDefault<UExcludeOptions>();
+	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
 	TArray<FAssetData> UnusedAssets;
-	{
-		FCleanerAssetHelper::CreateAsset<UMaterial, UMaterialFactoryNew>(TEXT("M_TestMaterial"), ProjectContentDir, UMaterial::StaticClass(), UMaterialFactoryNew::StaticClass());
-		AssetRegistryModule.Get().GetAssetsByPath(*ProjectContentDir, UnusedAssets);
 
-		TestEqual(TEXT("UnusedAssets num must"), UnusedAssets.Num(), 1);
-	}
+	// all TEST CASES
+	// Test Format
+	// CreateTestAssets()
+	// QueryAndTest()
+	// Cleanup()
+	
+	/**
+		1)Unused Assets must not contain any primary asset type
+		2)Unused Assets must not contain any dependent assets of primary asset types (Example: using material in level, material must not be in list)
+		3)Unused Assets must not contain any assets that are used indirectly (In source code or in config files)
+		4)Unused Assets must not contain any assets from MegascansPluginFolder(if its active)
+		5)Unused Assets must not contain any assets from DeveloperContents if 'Scan Developer Contents' checkbox is disabled
+			5.1) if some assets got dependant assets that are under DeveloperContents folder, then
+				5.1.1) Automatically turn 'Show DevelopersContents' flag to true
+				5.1.2) Show notification to user about it
+		6)Unused Assets must not contain any assets from excluded paths
+		7)Unused Assets must not contain any assets from excluded classes
+		8)Unused Assets must not contain any assets that are excluded by user
+	**/
+	
+	// TEST CASE 1 all assets are under / Game folder, all filters disabled, no excluded assets, no external dependencies, no megascans plugin
+	FCleanerAssetHelper::CreateAsset<UMaterial, UMaterialFactoryNew>(
+		TEXT("M_TestMaterial1"),
+		ProjectContentDir,
+		UMaterial::StaticClass(),
+		UMaterialFactoryNew::StaticClass()
+	);
+
+	// ProjectCleanerUtility::GetUnusedAssets(UnusedAssets, *ExcludeOptions);
+	TestEqual(TEXT("UnusedAssets num must"), UnusedAssets.Num(), 1);
+	
+	UnusedAssets.Reset();
+	
+	FCleanerAssetHelper::CreateAsset<UMaterial, UMaterialFactoryNew>(
+		TEXT("M_TestMaterial2"),
+		ProjectContentDir + TEXT("/TestFolder"),
+		UMaterial::StaticClass(),
+		UMaterialFactoryNew::StaticClass()
+	);
+	
+	// ProjectCleanerUtility::GetUnusedAssets(UnusedAssets, *ExcludeOptions);
+	TestEqual(TEXT("UnusedAssets num must"), UnusedAssets.Num(), 2);
+
+	// cleanup
+	ObjectTools::DeleteAssets(UnusedAssets, false);
+	PlatformFile.DeleteDirectory(*(FPaths::ProjectContentDir() + TEXT("TestFolder")));
+	AssetRegistryModule.Get().RemovePath(ProjectContentDir + TEXT("/TestFolder"));
+
+	// TEST CASE 2 all assets are under /Game folder, filter by class enabled, no excluded assets, no external deps, no megascans plugin
+	UnusedAssets.Empty();
+	ExcludeOptions->Classes.Add(UMaterial::StaticClass());
+	FCleanerAssetHelper::CreateAsset<UMaterial, UMaterialFactoryNew>(
+		TEXT("M_TestMaterial1"),
+		ProjectContentDir,
+		UMaterial::StaticClass(),
+		UMaterialFactoryNew::StaticClass()
+	);
+	// ProjectCleanerUtility::GetUnusedAssets(UnusedAssets, *ExcludeOptions);
+	TestEqual(TEXT("UnusedAssets num must"), UnusedAssets.Num(), 0);
 
 	// cleanup
 	ObjectTools::DeleteAssets(UnusedAssets, false);
 	
-	//FString MaterialBaseName = "M_Material";
-	//FString PackageName = "/Game/";
-	//PackageName += MaterialBaseName;
-	//UPackage* Package = CreatePackage(nullptr, *PackageName);
-
-	//auto MaterialFactory = NewObject<UMaterialFactoryNew>();
-	//UMaterial* UnrealMaterial = (UMaterial*)MaterialFactory->FactoryCreateNew(UMaterial::StaticClass(), Package, *MaterialBaseName, RF_Standalone | RF_Public, nullptr, GWarn);
-	//AssetRegistryModule.Get().AssetCreated(UnrealMaterial);
-	//Package->FullyLoad();
-	//Package->SetDirtyFlag(true);
-
-	//FEditorFileUtils::SaveDirtyPackages(
-	//	true,
-	//	true,
-	//	true,
-	//	false,
-	//	false,
-	//	false
-	//);
-
-	//TArray<FAssetData> Assets;
-	//AssetRegistryModule.Get().GetAssetsByPath(TEXT("/Game"), Assets);
-
-	//for (const auto& Asset : Assets)
-	//{
-	//	UE_LOG(LogTemp, Display, TEXT("%s"), *Asset.PackageName.ToString());
-	//}
-
-	//TestEqual(TEXT("Assets Num must"), Assets.Num(), 0);
 	return true;
 }
 

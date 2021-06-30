@@ -1,7 +1,7 @@
 #include "CoreTypes.h"
 #include "Misc/AutomationTest.h"
 #include "Misc/Paths.h"
-#include "ProjectCleanerUtility.h"
+#include "Core/ProjectCleanerUtility.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 

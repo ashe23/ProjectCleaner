@@ -2,8 +2,8 @@
 
 #include "UI/ProjectCleanerExcludedAssetsUI.h"
 #include "UI/ProjectCleanerConfigsUI.h"
-#include "ProjectCleanerCommands.h"
-#include "ProjectCleanerStyle.h"
+#include "UI/ProjectCleanerCommands.h"
+#include "UI/ProjectCleanerStyle.h"
 // Engine Headers
 #include "IContentBrowserSingleton.h"
 #include "Editor/ContentBrowser/Public/ContentBrowserModule.h"

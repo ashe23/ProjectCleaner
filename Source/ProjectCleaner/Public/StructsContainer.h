@@ -3,7 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "UI/ProjectCleanerSourceCodeAssetsUI.h"
+#include "Engine/EngineTypes.h"
+#include "AssetData.h"
 #include "StructsContainer.generated.h"
 
 UCLASS(Transient)
@@ -33,40 +34,49 @@ public:
 	TArray<UClass*> Classes;
 };
 
-USTRUCT()
-struct FProjectCleanerData
+UCLASS(Transient)
+class UIndirectAsset : public UObject
 {
 	GENERATED_BODY()
-	
-	UPROPERTY()
-	TArray<FAssetData> UnusedAssets;
-	UPROPERTY()
-	TArray<FString> EmptyFolders;
-	UPROPERTY()
-	TSet<FString> NonEngineFiles;
-	UPROPERTY()
-	TSet<FString> CorruptedFiles;
-	UPROPERTY()
-	TArray<FString> ExcludedAssets;
-	UPROPERTY()
-	TArray<FString> UserExcludedAssets;
-	UPROPERTY()
-	TArray<FString> LinkedAssets;
-	UPROPERTY()
-	TArray<FString> PrimaryAssetClasses;
-	UPROPERTY()
-	TArray<TWeakObjectPtr<UIndirectAsset>> IndirectAssets;
+public:
+	UPROPERTY(DisplayName = "AssetName", VisibleAnywhere, Category="AssetUsedIndirectly")
+	FString AssetName;
 
+	UPROPERTY(DisplayName = "AssetPath", VisibleAnywhere, Category="AssetUsedIndirectly")
+	FString AssetPath;
+
+	UPROPERTY(DisplayName = "FilePath where asset used", VisibleAnywhere, Category="AssetUsedIndirectly")
+	FString SourceCodePath;
+
+	UPROPERTY(DisplayName = "AssetData", VisibleAnywhere, Category="AssetUsedIndirectly")
+	FAssetData AssetData;
+};
+
+UCLASS(Transient)
+class UNonEngineFile : public UObject
+{
+	GENERATED_BODY()
+public:
+	UPROPERTY(DisplayName = "FileName", VisibleAnywhere, Category = "NonEngineFile")
+	FString FileName;
+
+	UPROPERTY(DisplayName = "FilePath", VisibleAnywhere, Category = "NonEngineFile")
+	FString FilePath;
+};
+
+struct FProjectCleanerData
+{
+	TArray<FAssetData> UnusedAssets;
+	TArray<FString> EmptyFolders;
+	TSet<FString> NonEngineFiles;
+	TSet<FString> CorruptedFiles;
+	
 	void Reset()
 	{
 		UnusedAssets.Reset();
 		EmptyFolders.Reset();
 		NonEngineFiles.Reset();
 		CorruptedFiles.Reset();
-		ExcludedAssets.Reset();
-		LinkedAssets.Reset();
-		PrimaryAssetClasses.Reset();
-		IndirectAssets.Reset();
 	}
 
 	void Empty()
@@ -75,48 +85,44 @@ struct FProjectCleanerData
 		EmptyFolders.Empty();
 		NonEngineFiles.Empty();
 		CorruptedFiles.Empty();
-		ExcludedAssets.Empty();
-		LinkedAssets.Empty();
-		PrimaryAssetClasses.Empty();
-		IndirectAssets.Empty();
 	}
 };
 
-struct FCleaningStats
-{
-	int32 UnusedAssetsNum;
-	int64 UnusedAssetsTotalSize;
-	int32 NonUassetFilesNum;
-	int32 SourceCodeAssetsNum;
-	int32 CorruptedFilesNum;
-	int32 EmptyFolders;
-	
-	int32 DeletedAssetCount;
-	int32 TotalAssetNum;
-
-	FCleaningStats()
-	{
-		Reset();
-	}
-
-	int32 GetPercentage() const
-	{
-		if (TotalAssetNum == 0) return 0;
-		return (DeletedAssetCount * 100.0f) / TotalAssetNum;
-	}
-
-	void Reset()
-	{
-		UnusedAssetsNum = 0;
-		EmptyFolders = 0;
-		UnusedAssetsTotalSize = 0;
-		NonUassetFilesNum = 0;
-		SourceCodeAssetsNum = 0;
-		CorruptedFilesNum = 0;
-		DeletedAssetCount = 0;
-		TotalAssetNum = 0;
-	}
-};
+// struct FCleaningStats
+// {
+// 	int32 UnusedAssetsNum;
+// 	int64 UnusedAssetsTotalSize;
+// 	int32 NonUassetFilesNum;
+// 	int32 SourceCodeAssetsNum;
+// 	int32 CorruptedFilesNum;
+// 	int32 EmptyFolders;
+// 	
+// 	int32 DeletedAssetCount;
+// 	int32 TotalAssetNum;
+//
+// 	FCleaningStats()
+// 	{
+// 		Reset();
+// 	}
+//
+// 	int32 GetPercentage() const
+// 	{
+// 		if (TotalAssetNum == 0) return 0;
+// 		return (DeletedAssetCount * 100.0f) / TotalAssetNum;
+// 	}
+//
+// 	void Reset()
+// 	{
+// 		UnusedAssetsNum = 0;
+// 		EmptyFolders = 0;
+// 		UnusedAssetsTotalSize = 0;
+// 		NonUassetFilesNum = 0;
+// 		SourceCodeAssetsNum = 0;
+// 		CorruptedFilesNum = 0;
+// 		DeletedAssetCount = 0;
+// 		TotalAssetNum = 0;
+// 	}
+// };
 
 struct FSourceCodeFile
 {
@@ -132,28 +138,15 @@ struct FSourceCodeFile
 
 struct FStandardCleanerText
 {
-	FText AssetsDeleteWindowTitle;
-	FText AssetsDeleteWindowContent;
-	FText EmptyFolderWindowTitle;
-	FText EmptyFolderWindowContent;
-	FText StartingCleanup;
-	FText NoAssetsToDelete;
-	FText NoEmptyFolderToDelete;
-	FText NonUAssetFilesFound;
-	FText SearchingEmptyFolders;
-	FText AssetsWithReferencersInDeveloperFolder;
-
-	FStandardCleanerText()
-	{
-		AssetsDeleteWindowTitle = FText::FromString("Confirm deletion");
-		AssetsDeleteWindowContent = FText::FromString("Are you sure you want to permanently delete unused assets?");
-		EmptyFolderWindowTitle = FText::FromString("Confirm deletion of empty folders");
-		EmptyFolderWindowContent = FText::FromString("Are you sure you want to delete all empty folders in project?");
-		StartingCleanup = FText::FromString("Starting Cleanup. This could take some time, please wait");
-		NoAssetsToDelete = FText::FromString("There are no assets to delete!");
-		NoEmptyFolderToDelete = FText::FromString("There are no empty folders to delete!");
-		NonUAssetFilesFound = FText::FromString("Project contains non .uasset files. Check Output Log for more info.");
-		SearchingEmptyFolders = FText::FromString("Searching empty folders...");
-		AssetsWithReferencersInDeveloperFolder = FText::FromString("Some of assets has references in Developers folder. To view them click 'Scan Developers Folder' checkbox.");
-	}
+	constexpr static TCHAR* AssetsDeleteWindowTitle = TEXT("Confirm deletion");
+	constexpr static TCHAR* AssetsDeleteWindowContent = TEXT("Are you sure you want to permanently delete unused assets?");
+	constexpr static TCHAR* EmptyFolderWindowTitle = TEXT("Confirm deletion of empty folders");
+	constexpr static TCHAR* EmptyFolderWindowContent = TEXT("Are you sure you want to delete all empty folders in project?");
+	constexpr static TCHAR* StartingCleanup = TEXT("Starting Cleanup. This could take some time, please wait");
+	constexpr static TCHAR* NoAssetsToDelete = TEXT("There are no assets to delete!");
+	constexpr static TCHAR* NoEmptyFolderToDelete = TEXT("There are no empty folders to delete!");
+	constexpr static TCHAR* NonUAssetFilesFound = TEXT("Project contains non engine files. Check Output Log for more info.");
+	constexpr static TCHAR* SearchingEmptyFolders = TEXT("Searching empty folders...");
+	constexpr static TCHAR* AssetsWithReferencersInDeveloperFolder = TEXT("Some of assets has references in Developers folder. To view them click 'Scan Developers Folder' checkbox.");
+	constexpr static TCHAR* AssetRegistryStillWorking = TEXT("Asset Registry still working! Please wait...");
 };

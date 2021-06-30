@@ -1,7 +1,6 @@
 // Copyright 2021. Ashot Barkhudaryan. All Rights Reserved.
 
 #include "ProjectCleanerHelper.h"
-#include "ProjectCleanerUtility.h"
 #include "StructsContainer.h"
 
 // Engine Headers

@@ -1,6 +1,6 @@
 #include "CoreTypes.h"
 #include "Misc/AutomationTest.h"
-#include "ProjectCleanerUtility.h"
+#include "Core/ProjectCleanerUtility.h"
 #include "Misc/FileHelper.h"
 
 #if WITH_DEV_AUTOMATION_TESTS

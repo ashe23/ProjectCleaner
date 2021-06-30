@@ -1,12 +1,11 @@
 ﻿// Copyright 2021. Ashot Barkhudaryan. All Rights Reserved.
 
-#include "ProjectCleanerUtility.h"
-#include "ProjectCleanerHelper.h"
-#include "ProjectCleanerNotificationManager.h"
+#include "Core/ProjectCleanerUtility.h"
+#include "Core/ProjectCleanerManager.h"
+#include "UI/ProjectCleanerNotificationManager.h"
 #include "UI/ProjectCleanerConfigsUI.h"
 #include "UI/ProjectCleanerSourceCodeAssetsUI.h"
 #include "UI/ProjectCleanerExcludeOptionsUI.h"
-#include "Graph/AssetRelationalMap.h"
 #include "StructsContainer.h"
 // Engine Headers
 #include "ObjectTools.h"
@@ -63,7 +62,7 @@ void ProjectCleanerUtility::GetInvalidFiles(TSet<FString>& CorruptedFiles, TSet<
 			// here we got absolute path "C:/MyProject/Content/material.uasset"
 			// we must first convert that path to In Engine Internal Path like "/Game/material.uasset"
 			const FString InternalFilePath = ConvertAbsolutePathToInternal(ProjectFile);
-			// Converting file path to objectpath (This is for searching in AssetRegistry)
+			// Converting file path to object path (This is for searching in AssetRegistry)
 			// example "/Game/Name.uasset" => "/Game/Name.Name"
 			FString ObjectPath = InternalFilePath;
 			ObjectPath.RemoveFromEnd(FPaths::GetExtension(InternalFilePath, true));
@@ -84,6 +83,21 @@ void ProjectCleanerUtility::GetInvalidFiles(TSet<FString>& CorruptedFiles, TSet<
 
 void ProjectCleanerUtility::GetUnusedAssets(TArray<FAssetData>& UnusedAssets)
 {
+	FAssetRegistryModule& AssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
+
+	// getting all assets
+	AssetRegistry.Get().GetAssetsByPath(FName{ "/Game" }, UnusedAssets, true);
+
+	// getting all used assets
+	TSet<FName> UsedAssets;
+	UsedAssets.Reserve(UnusedAssets.Num());
+	GetUsedAssets(UsedAssets);
+
+	// filtering all used assets, remaining is unused
+	UnusedAssets.RemoveAllSwap([&] (const FAssetData& Elem)
+	{
+		return UsedAssets.Contains(Elem.PackageName);
+	});
 }
 
 FString ProjectCleanerUtility::ConvertAbsolutePathToInternal(const FString& InPath)
@@ -134,7 +148,78 @@ bool ProjectCleanerUtility::DeleteEmptyFolders(TArray<FString>& EmptyFolders)
 	return !ErrorWhileDeleting;
 }
 
+void ProjectCleanerUtility::GetUsedAssets(TSet<FName>& UsedAssets)
+{
+	FAssetRegistryModule& AssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
+	TSet<FName> PrimaryAssetClasses;
+	GetPrimaryAssetClasses(PrimaryAssetClasses);
+	
+	FARFilter Filter;
+	Filter.ClassNames.Add(UWorld::StaticClass()->GetFName());
+	Filter.ClassNames.Append(PrimaryAssetClasses.Array());
+	Filter.PackagePaths.Add("/Game");
+	Filter.bRecursivePaths = true;
+	Filter.bRecursiveClasses = true;
+	
+	TArray<FName> PackageNamesToProcess;
+	{
+		TArray<FAssetData> FoundAssets;
+		AssetRegistry.Get().GetAssets(Filter, FoundAssets);
+		for (const FAssetData& AssetData : FoundAssets)
+		{
+			PackageNamesToProcess.Add(AssetData.PackageName);
+			UsedAssets.Add(AssetData.PackageName);
+		}
+	}
+
+	TArray<FAssetIdentifier> AssetDependencies;
+	while (PackageNamesToProcess.Num() > 0)
+	{
+		const FName PackageName = PackageNamesToProcess.Pop(false);
+		AssetDependencies.Reset();
+		AssetRegistry.Get().GetDependencies(FAssetIdentifier(PackageName), AssetDependencies);
+		for (const FAssetIdentifier& Dependency : AssetDependencies)
+		{
+			bool bIsAlreadyInSet = false;
+			UsedAssets.Add(Dependency.PackageName, &bIsAlreadyInSet);
+			if (!bIsAlreadyInSet && Dependency.IsValid())
+			{
+				PackageNamesToProcess.Add(Dependency.PackageName);
+			}
+		}
+	}
+}
+
 // Private
+void ProjectCleanerUtility::GetPrimaryAssetClasses(TSet<FName>& PrimaryAssetClasses)
+{
+	const auto& AssetManager = UAssetManager::Get();
+	if (!AssetManager.IsValid()) return;
+
+	PrimaryAssetClasses.Reserve(10);
+	
+	const UAssetManagerSettings& Settings = AssetManager.GetSettings();
+	TArray<FPrimaryAssetId> Ids;
+	for (const auto& Type : Settings.PrimaryAssetTypesToScan)
+	{
+		AssetManager.Get().GetPrimaryAssetIdList(Type.PrimaryAssetType, Ids);
+		for(const auto& Id : Ids)
+		{
+			FAssetData Data;
+			AssetManager.Get().GetPrimaryAssetData(Id, Data);
+			if(!Data.IsValid()) continue;
+			PrimaryAssetClasses.Add(Data.AssetClass);
+		}
+		Ids.Reset();
+	}
+}
+
+// void ProjectCleanerUtility::GetAllAssets(TArray<FAssetData>& Assets)
+// {
+// 	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
+// 	AssetRegistryModule.Get().GetAssetsByPath(FName{ "/Game" }, Assets, true);
+// }
+
 void ProjectCleanerUtility::GetProjectFilesFromDisk(TSet<FString>& ProjectFiles)
 {
 	struct DirectoryVisitor : IPlatformFile::FDirectoryVisitor
@@ -157,6 +242,33 @@ void ProjectCleanerUtility::GetProjectFilesFromDisk(TSet<FString>& ProjectFiles)
 	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
 	PlatformFile.IterateDirectoryRecursively(*FPaths::ProjectContentDir(), Visitor);
 }
+
+void ProjectCleanerUtility::RemoveAssetsUsedIndirectly(TArray<FAssetData>& UnusedAssets)
+{
+	/* YourProjectDirectory
+		Config +
+		Content
+		Plugins
+			SomePlugin
+				Binaries
+				Config +
+				Intermediate
+				Resources
+				Source +
+			SomeOtherPlugin
+				...
+		Intermediate
+		Saved
+		Script
+		Source +
+	*/
+	// So we scanning only folders marked with +
+	
+	// 1) Find files with this extensions(.cpp, .h, .cs, .ini)
+	// 2) for every unused asset check if that assets used in that file
+	//	2.1) if so add to Indirectly used assets
+}
+
 
 bool ProjectCleanerUtility::IsEngineExtension(const FString& Extension)
 {
@@ -202,84 +314,81 @@ FString ProjectCleanerUtility::ConvertPathInternal(const FString& From, const FS
 	return Path.Replace(*From, *To, ESearchCase::IgnoreCase);
 }
 
-//void ProjectCleanerUtility::GetAllUnusedAssets(TArray<FAssetData>& UnusedAssets)
-//{
-//}
+void ProjectCleanerUtility::RemoveMegascansPluginAssetsIfActive(TArray<FAssetData>& UnusedAssets)
+{
+	const bool IsMegascansLoaded = FModuleManager::Get().IsModuleLoaded("MegascansPlugin");
+	if (!IsMegascansLoaded) return;
+	
+	UnusedAssets.RemoveAll([&](const FAssetData& Elem)
+	{
+		return FPaths::IsUnderDirectory(Elem.PackagePath.ToString(), TEXT("/Game/MSPresets"));
+	});
+}
 
-//void ProjectCleanerUtility::GetAllAssets(const FAssetRegistryModule* AssetRegistry, TArray<FAssetData>& Assets)
-//{
-//	if (!AssetRegistry) return;
-//	AssetRegistry->Get().GetAssetsByPath(FName{ "/Game" }, Assets, true);
-//}
-//
-//void ProjectCleanerUtility::GetInvalidProjectFiles(const FAssetRegistryModule* AssetRegistry, const TSet<FString>& ProjectFilesFromDisk, TSet<FString>& CorruptedFiles, TSet<FString>& NonUAssetFiles)
-//{
-//	if (!AssetRegistry) return;
-//
-//	CorruptedFiles.Reserve(ProjectFilesFromDisk.Num());
-//	NonUAssetFiles.Reserve(ProjectFilesFromDisk.Num());
-//	
-//	for (const auto& ProjectFile : ProjectFilesFromDisk)
-//	{
-//		if (IsEngineExtension(FPaths::GetExtension(ProjectFile, false)))
-//		{
-//			// here we got absolute path "C:/MyProject/Content/material.uasset"
-//			// we must first convert that path to In Engine Internal Path like "/Game/material.uasset"
-//			const FString InternalFilePath = ProjectCleanerHelper::ConvertAbsolutePathToInternal(ProjectFile);
-//			// Converting file path to objectpath (This is for searching in AssetRegistry)
-//			// example "/Game/Name.uasset" => "/Game/Name.Name"
-//			auto ObjectPath = InternalFilePath;
-//			ObjectPath.RemoveFromEnd(FPaths::GetExtension(InternalFilePath, true));
-//			ObjectPath.Append(TEXT(".") + FPaths::GetBaseFilename(InternalFilePath));
-//
-//			// Trying to find that file in AssetRegistry
-//			const auto AssetData = AssetRegistry->Get().GetAssetByObjectPath(FName{ *ObjectPath });
-//			// Adding to CorruptedFiles list, if we cant find it in AssetRegistry
-//			if (AssetData.IsValid()) continue;
-//			CorruptedFiles.Add(ProjectFile);
-//		}
-//		else
-//		{
-//			NonUAssetFiles.Add(ProjectFile);
-//		}
-//	}
-//
-//	CorruptedFiles.Compact();
-//	NonUAssetFiles.Compact();
-//}
-//
-//void ProjectCleanerUtility::GetAllPrimaryAssetClasses(const UAssetManager& AssetManager, TSet<FName>& PrimaryAssetClasses)
-//{
-//	if (!AssetManager.IsValid()) return;
-//
-//	PrimaryAssetClasses.Reserve(10);
-//	
-//	const UAssetManagerSettings& Settings = AssetManager.GetSettings();
-//	TArray<FPrimaryAssetId> Ids;
-//	for (const auto& Type : Settings.PrimaryAssetTypesToScan)
-//	{
-//		AssetManager.Get().GetPrimaryAssetIdList(Type.PrimaryAssetType, Ids);
-//		for(const auto& Id : Ids)
-//		{
-//			FAssetData Data;
-//			AssetManager.Get().GetPrimaryAssetData(Id, Data);
-//			if(!Data.IsValid()) continue;
-//			PrimaryAssetClasses.Add(Data.AssetClass);
-//		}
-//		Ids.Reset();
-//	}
-//}
-//
-//void ProjectCleanerUtility::RemoveMegascansPluginAssetsIfActive(TArray<FAssetData>& UnusedAssets)
-//{
-//	const bool IsMegascansLoaded = FModuleManager::Get().IsModuleLoaded("MegascansPlugin");
-//	if (!IsMegascansLoaded) return;
-//	
-//	UnusedAssets.RemoveAll([&](const FAssetData& Elem)
-//	{
-//		return FPaths::IsUnderDirectory(Elem.PackagePath.ToString(), TEXT("/Game/MSPresets"));
-//	});
-//}
+void ProjectCleanerUtility::FindSourceAndConfigFiles()
+{
+	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
+
+	// 1) find all source and config files
+	TArray<FString> AllFiles;
+	AllFiles.Reserve(200); // reserving some space
+
+	// 2) finding all source files in main project "Source" directory (<yourproject>/Source/*)
+	TArray<FString> FilesToScan;
+	PlatformFile.FindFilesRecursively(FilesToScan, *FPaths::GameSourceDir(), TEXT(".cs"));
+	PlatformFile.FindFilesRecursively(FilesToScan, *FPaths::GameSourceDir(), TEXT(".cpp"));
+	PlatformFile.FindFilesRecursively(FilesToScan, *FPaths::GameSourceDir(), TEXT(".h"));
+	PlatformFile.FindFilesRecursively(FilesToScan, *FPaths::ProjectConfigDir(), TEXT(".ini"));
+	AllFiles.Append(FilesToScan);
+
+	// 3) we should find all source files in plugins folder (<yourproject>/Plugins/*)
+	TArray<FString> ProjectPluginsFiles;
+	// finding all installed plugins in "Plugins" directory
+	struct DirectoryVisitor : public IPlatformFile::FDirectoryVisitor
+	{
+		virtual bool Visit(const TCHAR* FilenameOrDirectory, bool bIsDirectory) override
+		{
+			if (bIsDirectory)
+			{
+				InstalledPlugins.Add(FilenameOrDirectory);
+			}
+
+			return true;
+		}
+
+		TArray<FString> InstalledPlugins;
+	};
+
+	DirectoryVisitor Visitor;
+	PlatformFile.IterateDirectory(*FPaths::ProjectPluginsDir(), Visitor);
+
+	// 4) for every installed plugin we scanning only "Source" and "Config" folders
+	for (const auto& Dir : Visitor.InstalledPlugins)
+	{
+		const FString PluginSourcePathDir = Dir + "/Source";
+		const FString PluginConfigPathDir = Dir + "/Config";
+
+		PlatformFile.FindFilesRecursively(ProjectPluginsFiles, *PluginSourcePathDir, TEXT(".cs"));
+		PlatformFile.FindFilesRecursively(ProjectPluginsFiles, *PluginSourcePathDir, TEXT(".cpp"));
+		PlatformFile.FindFilesRecursively(ProjectPluginsFiles, *PluginSourcePathDir, TEXT(".h"));
+		PlatformFile.FindFilesRecursively(ProjectPluginsFiles, *PluginConfigPathDir, TEXT(".ini"));
+	}
+
+	AllFiles.Append(ProjectPluginsFiles);
+
+	// 5) loading file contents
+	for (const auto& File : AllFiles)
+	{
+		if (PlatformFile.FileExists(*File))
+		{
+			FSourceCodeFile SourceCodeFile;
+			SourceCodeFile.Name = FName{ FPaths::GetCleanFilename(File) };
+			SourceCodeFile.AbsoluteFilePath = FPaths::ConvertRelativePathToFull(File);
+			FFileHelper::LoadFileToString(SourceCodeFile.Content, *File);
+		}
+	}
+}
+
 //
 //void ProjectCleanerUtility::RemoveAssetsUsedIndirectly(TArray<FAssetData>& UnusedAssets, AssetRelationalMap& RelationalMap, TArray<TWeakObjectPtr<UIndirectAsset>>& SourceCodeAssets)
 //{
@@ -462,90 +571,91 @@ FString ProjectCleanerUtility::ConvertPathInternal(const FString& From, const FS
 //	return nullptr;
 //}
 //
-//bool ProjectCleanerUtility::IsExcludedByPath(const FAssetData& AssetData, const UExcludeOptions& ExcludeOptions)
-//{
-//	return ExcludeOptions.Paths.ContainsByPredicate([&](const FDirectoryPath& DirectoryPath)
-//	{
-//		return AssetData.PackagePath.ToString().StartsWith(DirectoryPath.Path);
-//	});
-//}
+bool ProjectCleanerUtility::IsExcludedByPath(const FAssetData& AssetData, const UExcludeOptions& ExcludeOptions)
+{
+	return ExcludeOptions.Paths.ContainsByPredicate([&](const FDirectoryPath& DirectoryPath)
+	{
+		return AssetData.PackagePath.ToString().StartsWith(DirectoryPath.Path);
+	});
+}
+
+bool ProjectCleanerUtility::IsExcludedByClass(const FAssetData& AssetData, const UExcludeOptions& ExcludeOptions)
+{
+	const UBlueprint* BlueprintAsset = Cast<UBlueprint>(AssetData.GetAsset());
+	const bool IsBlueprint = (BlueprintAsset != nullptr);
+
+	FName ClassName;
+	FName ParentClassName;
+
+	if (IsBlueprint && BlueprintAsset->GeneratedClass && BlueprintAsset->ParentClass)
+	{
+		ClassName = BlueprintAsset->GeneratedClass->GetFName();
+		ParentClassName = BlueprintAsset->ParentClass->GetFName();
+	}
+	else
+	{
+		ClassName = AssetData.AssetClass;
+	}
+	
+	return ExcludeOptions.Classes.ContainsByPredicate([&](const UClass* ElemClass)
+	{
+		if (!ElemClass) return false;
+		return ClassName.IsEqual(ElemClass->GetFName()) ||
+		(IsBlueprint &&
+			(ClassName.IsEqual(ElemClass->GetFName()) || ParentClassName.IsEqual(ElemClass->GetFName()))
+		);
+	});
+}
 //
-//bool ProjectCleanerUtility::IsExcludedByClass(const FAssetData& AssetData, const UExcludeOptions& ExcludeOptions)
-//{
-//	const UBlueprint* BlueprintAsset = Cast<UBlueprint>(AssetData.GetAsset());
-//	const bool IsBlueprint = (BlueprintAsset != nullptr);
+// void ProjectCleanerUtility::RemoveUsedAssets(TArray<FAssetData>& Assets, const TSet<FName>& PrimaryAssetClasses)
+// {
+// 	FAssetRegistryModule& AssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
+// 	
+// 	FARFilter Filter;
+// 	Filter.ClassNames.Add(UWorld::StaticClass()->GetFName());
 //
-//	FName ClassName;
-//	FName ParentClassName;
+// 	for (const auto& AssetClass : PrimaryAssetClasses)
+// 	{
+// 		Filter.ClassNames.Add(AssetClass);
+// 	}
+// 	Filter.PackagePaths.Add("/Game");
+// 	Filter.bRecursivePaths = true;
 //
-//	if (IsBlueprint && BlueprintAsset->GeneratedClass && BlueprintAsset->ParentClass)
-//	{
-//		ClassName = BlueprintAsset->GeneratedClass->GetFName();
-//		ParentClassName = BlueprintAsset->ParentClass->GetFName();
-//	}
-//	else
-//	{
-//		ClassName = AssetData.AssetClass;
-//	}
-//	
-//	return ExcludeOptions.Classes.ContainsByPredicate([&](const UClass* ElemClass)
-//	{
-//		if (!ElemClass) return false;
-//		return
-//		ClassName.IsEqual(ElemClass->GetFName()) ||
-//		(IsBlueprint && (ClassName.IsEqual(ElemClass->GetFName()) || ParentClassName.IsEqual(ElemClass->GetFName())));
-//	});
-//}
+// 	TSet<FName> UsedAssets;
+// 	UsedAssets.Reserve(Assets.Num());
+// 	TArray<FName> PackageNamesToProcess;
+// 	{
+// 		TArray<FAssetData> FoundAssets;
+// 		AssetRegistry.Get().GetAssets(Filter, FoundAssets);
+// 		for (const FAssetData& AssetData : FoundAssets)
+// 		{
+// 			PackageNamesToProcess.Add(AssetData.PackageName);
+// 			UsedAssets.Add(AssetData.PackageName);
+// 		}
+// 	}
 //
-//void ProjectCleanerUtility::RemoveUsedAssets(TArray<FAssetData>& Assets, const TSet<FName>& PrimaryAssetClasses)
-//{
-//	FAssetRegistryModule& AssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
-//	
-//	FARFilter Filter;
-//	Filter.ClassNames.Add(UWorld::StaticClass()->GetFName());
+// 	TArray<FAssetIdentifier> AssetDependencies;
+// 	while (PackageNamesToProcess.Num() > 0)
+// 	{
+// 		const FName PackageName = PackageNamesToProcess.Pop(false);
+// 		AssetDependencies.Reset();
+// 		AssetRegistry.Get().GetDependencies(FAssetIdentifier(PackageName), AssetDependencies);
+// 		for (const FAssetIdentifier& Dependency : AssetDependencies)
+// 		{
+// 			bool bIsAlreadyInSet = false;
+// 			UsedAssets.Add(Dependency.PackageName, &bIsAlreadyInSet);
+// 			if (!bIsAlreadyInSet && Dependency.IsValid())
+// 			{
+// 				PackageNamesToProcess.Add(Dependency.PackageName);
+// 			}
+// 		}
+// 	}
 //
-//	for (const auto& AssetClass : PrimaryAssetClasses)
-//	{
-//		Filter.ClassNames.Add(AssetClass);
-//	}
-//	Filter.PackagePaths.Add("/Game");
-//	Filter.bRecursivePaths = true;
-//
-//	TSet<FName> UsedAssets;
-//	UsedAssets.Reserve(Assets.Num());
-//	TArray<FName> PackageNamesToProcess;
-//	{
-//		TArray<FAssetData> FoundAssets;
-//		AssetRegistry.Get().GetAssets(Filter, FoundAssets);
-//		for (const FAssetData& AssetData : FoundAssets)
-//		{
-//			PackageNamesToProcess.Add(AssetData.PackageName);
-//			UsedAssets.Add(AssetData.PackageName);
-//		}
-//	}
-//
-//	TArray<FAssetIdentifier> AssetDependencies;
-//	while (PackageNamesToProcess.Num() > 0)
-//	{
-//		const FName PackageName = PackageNamesToProcess.Pop(false);
-//		AssetDependencies.Reset();
-//		AssetRegistry.Get().GetDependencies(FAssetIdentifier(PackageName), AssetDependencies);
-//		for (const FAssetIdentifier& Dependency : AssetDependencies)
-//		{
-//			bool bIsAlreadyInSet = false;
-//			UsedAssets.Add(Dependency.PackageName, &bIsAlreadyInSet);
-//			if (!bIsAlreadyInSet && Dependency.IsValid())
-//			{
-//				PackageNamesToProcess.Add(Dependency.PackageName);
-//			}
-//		}
-//	}
-//
-//	Assets.RemoveAll([&](const FAssetData& Elem)
-//	{
-//		return UsedAssets.Contains(Elem.PackageName);
-//	});
-//}
+// 	Assets.RemoveAll([&](const FAssetData& Elem)
+// 	{
+// 		return UsedAssets.Contains(Elem.PackageName);
+// 	});
+// }
 //
 //void ProjectCleanerUtility::RemoveContentFromDeveloperFolder(TArray<FAssetData>& UnusedAssets, AssetRelationalMap& RelationalMap, UCleanerConfigs* CleanerConfigs, const TSharedPtr<ProjectCleanerNotificationManager> NotificationManager)
 //{

@@ -4,35 +4,22 @@
 
 #include "CoreMinimal.h"
 #include "Widgets/SCompoundWidget.h"
-#include "ProjectCleanerNonUassetFilesUI.generated.h"
+#include "StructsContainer.h"
 
-
-UCLASS(Transient)
-class UNonUassetFile : public UObject
-{
-	GENERATED_BODY()
-public:
-	UPROPERTY(DisplayName = "FileName", VisibleAnywhere, Category = "NonUassetFile")
-	FString FileName;
-
-	UPROPERTY(DisplayName = "FilePath", VisibleAnywhere, Category = "NonUassetFile")
-	FString FilePath;
-};
-
-class SNonUassetFileUISelectionRow : public SMultiColumnTableRow<TWeakObjectPtr<UNonUassetFile>>
+class SNonEngineFilesUISelectionRow : public SMultiColumnTableRow<TWeakObjectPtr<UNonEngineFile>>
 {
 public:
 	
-	SLATE_BEGIN_ARGS(SNonUassetFileUISelectionRow) {}
-		SLATE_ARGUMENT(TWeakObjectPtr<UNonUassetFile>, SelectedRowItem)
+	SLATE_BEGIN_ARGS(SNonEngineFilesUISelectionRow) {}
+		SLATE_ARGUMENT(TWeakObjectPtr<UNonEngineFile>, SelectedRowItem)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs, const TSharedRef<STableViewBase>& InOwnerTableView)
 	{
 		SelectedRowItem = InArgs._SelectedRowItem;
 
-		SMultiColumnTableRow<TWeakObjectPtr<UNonUassetFile>>::Construct(
-			SMultiColumnTableRow<TWeakObjectPtr<UNonUassetFile>>::FArguments()
+		SMultiColumnTableRow<TWeakObjectPtr<UNonEngineFile>>::Construct(
+			SMultiColumnTableRow<TWeakObjectPtr<UNonEngineFile>>::FArguments()
 			.Padding(
 				FMargin(0.f, 2.f, 0.f, 0.f)),
 			InOwnerTableView
@@ -60,15 +47,15 @@ public:
 	}
 
 private:
-	TWeakObjectPtr<UNonUassetFile> SelectedRowItem;
+	TWeakObjectPtr<UNonEngineFile> SelectedRowItem;
 };
 
 
-class SProjectCleanerNonUassetFilesUI : public SCompoundWidget
+class SProjectCleanerNonEngineFilesUI : public SCompoundWidget
 {
 public:
 	
-	SLATE_BEGIN_ARGS(SProjectCleanerNonUassetFilesUI) {}
+	SLATE_BEGIN_ARGS(SProjectCleanerNonEngineFilesUI) {}
 		SLATE_ARGUMENT(TSet<FString>*, NonUassetFiles)
 	SLATE_END_ARGS()
 
@@ -77,12 +64,12 @@ public:
 private:
 	void InitUI();
 	TSharedRef<ITableRow> OnGenerateRow(
-		TWeakObjectPtr<UNonUassetFile> InItem,
+		TWeakObjectPtr<UNonEngineFile> InItem,
 		const TSharedRef<STableViewBase>& OwnerTable
 	) const;
-	void OnMouseDoubleClick(TWeakObjectPtr<UNonUassetFile> Item) const;
+	void OnMouseDoubleClick(TWeakObjectPtr<UNonEngineFile> Item) const;
 
 	/** Data **/
-	TArray<TWeakObjectPtr<UNonUassetFile>> NonUassetFiles;
-	TSharedPtr<SListView<TWeakObjectPtr<UNonUassetFile>>> ListView;
+	TArray<TWeakObjectPtr<UNonEngineFile>> NonUassetFiles;
+	TSharedPtr<SListView<TWeakObjectPtr<UNonEngineFile>>> ListView;
 };

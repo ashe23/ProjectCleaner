@@ -10,9 +10,10 @@ class UCleanerConfigs;
 class UIndirectAsset;
 class UExcludeOptions;
 class AssetRelationalMap;
-struct FAssetData;
 class FAssetRegistryModule;
 class ProjectCleanerNotificationManager;
+struct FAssetData;
+struct FProjectCleanerData;
 
 /**
  * This class responsible for different utility operations in unreal engine context
@@ -31,22 +32,28 @@ public:
 	// delete
 	static bool DeleteEmptyFolders(TArray<FString>& EmptyFolders);
 private:
+	static void GetUsedAssets(TSet<FName>& UsedAssets);
+	static void GetPrimaryAssetClasses(TSet<FName>& PrimaryAssetClasses);
 	static void GetProjectFilesFromDisk(TSet<FString>& ProjectFiles);
+	static void RemoveAssetsUsedIndirectly(TArray<FAssetData>& UnusedAssets);
 	static bool IsEngineExtension(const FString& Extension);
 	static bool FindAllEmptyFolders(const FString& FolderPath, TArray<FString>& EmptyFolders);
 	static FString ConvertPathInternal(const FString& From, const FString To, const FString& Path);
+	static bool IsExcludedByPath(const FAssetData& AssetData, const UExcludeOptions& ExcludeOptions);
+	static bool IsExcludedByClass(const FAssetData& AssetData, const UExcludeOptions& ExcludeOptions);
+	static void RemoveMegascansPluginAssetsIfActive(TArray<FAssetData>& UnusedAssets);
+	static void FindSourceAndConfigFiles();
 
 	// Refactor END
 public:
+	// static void GetAllAssets(TArray<FAssetData>& Assets);
 	//static void GetAllUnusedAssets(TArray<FAssetData>& UnusedAssets);
-	//static void GetAllAssets(const FAssetRegistryModule* AssetRegistry, TArray<FAssetData>& Assets);
 	//static void GetInvalidProjectFiles(const FAssetRegistryModule* AssetRegistry, const TSet<FString>& ProjectFilesFromDisk, TSet<FString>& CorruptedFiles, TSet<FString>& NonUAssetFiles);
 	//static void GetAllPrimaryAssetClasses(const UAssetManager& AssetManager, TSet<FName>& PrimaryAssetClasses);
-	//static void RemoveMegascansPluginAssetsIfActive(TArray<FAssetData>& UnusedAssets);
 	//static void RemoveAssetsUsedIndirectly(TArray<FAssetData>& UnusedAssets, AssetRelationalMap& RelationalMap, TArray<TWeakObjectPtr<UIndirectAsset>>& SourceCodeAssets);
 	//static void RemoveAssetsWithExternalReferences(TArray<FAssetData>& UnusedAssets, AssetRelationalMap& RelationalMap);
-	//static void RemoveUsedAssets(TArray<FAssetData>& Assets, const TSet<FName>& PrimaryAssetClasses);
-	//static void RemoveContentFromDeveloperFolder(TArray<FAssetData>& UnusedAssets, AssetRelationalMap& RelationalMap, UCleanerConfigs* CleanerConfigs, const TSharedPtr<ProjectCleanerNotificationManager> NotificationManager);
+	// static void RemoveUsedAssets(TArray<FAssetData>& Assets, const TSet<FName>& PrimaryAssetClasses);
+	// static void RemoveContentFromDeveloperFolder(TArray<FAssetData>& UnusedAssets, AssetRelationalMap& RelationalMap, UCleanerConfigs* CleanerConfigs, const TSharedPtr<ProjectCleanerNotificationManager> NotificationManager);
 	//static void RemoveAssetsExcludedByUser(
 	//	TArray<FAssetData>& UnusedAssets,
 	//	AssetRelationalMap& RelationalMap,
@@ -60,7 +67,6 @@ public:
 	//static void SaveAllAssets();
 	//static int64 GetTotalSize(const TArray<FAssetData>& AssetContainer);
 private:
+
 	//static const FSourceCodeFile* GetFileWhereAssetUsed(const FAssetData& Asset, const TArray<FSourceCodeFile>& SourceCodeFiles);
-	//static bool IsExcludedByPath(const FAssetData& AssetData, const UExcludeOptions& ExcludeOptions);
-	//static bool IsExcludedByClass(const FAssetData& AssetData, const UExcludeOptions& ExcludeOptions);
 };

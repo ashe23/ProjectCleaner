@@ -1,31 +1,21 @@
 ﻿// Copyright 2021. Ashot Barkhudaryan. All Rights Reserved.
 
 #include "UI/ProjectCleanerBrowserStatisticsUI.h"
-#include "ProjectCleanerStyle.h"
+#include "UI/ProjectCleanerStyle.h"
 
 #define LOCTEXT_NAMESPACE "FProjectCleanerModule"
 
 void SProjectCleanerBrowserStatisticsUI::Construct(const FArguments& InArgs)
 {
-	SetStats(InArgs._Stats);
-}
+	if (InArgs._CleanerData)
+	{
+		CleanerData = InArgs._CleanerData;
+	}
 
-void SProjectCleanerBrowserStatisticsUI::SetStats(const FCleaningStats& NewStats)
-{
-	Stats = NewStats;
-	RefreshUIContent();
-}
-
-FCleaningStats SProjectCleanerBrowserStatisticsUI::GetStats() const
-{
-	return Stats;
-}
-
-void SProjectCleanerBrowserStatisticsUI::RefreshUIContent()
-{
 	const float MaxHeight = 40.0f;
 	
-	WidgetRef =
+	ChildSlot
+	[
 		SNew(SOverlay)
 		+ SOverlay::Slot()
 		[
@@ -37,7 +27,7 @@ void SProjectCleanerBrowserStatisticsUI::RefreshUIContent()
 				SNew(STextBlock)
 				.AutoWrapText(true)
 				.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light30"))
-				.Text(LOCTEXT("statistics", "Statistics"))
+				.Text(LOCTEXT("stat_title", "Statistics"))
 			]
 		]
 		+ SOverlay::Slot()
@@ -56,7 +46,7 @@ void SProjectCleanerBrowserStatisticsUI::RefreshUIContent()
 					SNew(STextBlock)
 					.AutoWrapText(true)
 					.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
-					.Text(LOCTEXT("unused_assets", "Unused Assets - "))
+					.Text(LOCTEXT("stat_unused_assets_num", "Unused Assets - "))
 				]
 				+ SHorizontalBox::Slot()
 				.AutoWidth()
@@ -64,7 +54,7 @@ void SProjectCleanerBrowserStatisticsUI::RefreshUIContent()
 					SNew(STextBlock)
 					.AutoWrapText(true)
 					.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
-					.Text_Lambda([this]() -> FText { return FText::AsNumber(Stats.UnusedAssetsNum); })
+					.Text_Raw(this, &SProjectCleanerBrowserStatisticsUI::GetUnusedAssetsNum)
 				]
 			]
 			+ SVerticalBox::Slot()
@@ -79,7 +69,7 @@ void SProjectCleanerBrowserStatisticsUI::RefreshUIContent()
 					SNew(STextBlock)
 					.AutoWrapText(true)
 					.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
-					.Text(LOCTEXT("total_size", "Total Size - "))
+					.Text(LOCTEXT("stat_total_size", "Total Size - "))
 				]
 				+ SHorizontalBox::Slot()
 				.AutoWidth()
@@ -87,7 +77,7 @@ void SProjectCleanerBrowserStatisticsUI::RefreshUIContent()
 					SNew(STextBlock)
 					.AutoWrapText(true)
 					.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
-					.Text_Lambda([this]() -> FText { return FText::AsMemory(Stats.UnusedAssetsTotalSize); })
+					.Text_Lambda([this]() -> FText { return FText::AsMemory(0); })
 				]
 			]
 			+ SVerticalBox::Slot()
@@ -102,7 +92,7 @@ void SProjectCleanerBrowserStatisticsUI::RefreshUIContent()
 					SNew(STextBlock)
 					.AutoWrapText(true)
 					.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
-					.Text(LOCTEXT("non_uasset_files_", "Non .uasset files - "))
+					.Text(LOCTEXT("stat_non_engine_files_num", "Non Engine files - "))
 				]
 				+ SHorizontalBox::Slot()
 				.AutoWidth()
@@ -110,7 +100,7 @@ void SProjectCleanerBrowserStatisticsUI::RefreshUIContent()
 					SNew(STextBlock)
 					.AutoWrapText(true)
 					.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
-					.Text_Lambda([this]() -> FText { return FText::AsNumber(Stats.NonUassetFilesNum); })
+					.Text_Lambda([this]() -> FText { return FText::AsNumber(CleanerData ? CleanerData->NonEngineFiles.Num() : 0); })
 				]
 			]
 			+ SVerticalBox::Slot()
@@ -125,7 +115,7 @@ void SProjectCleanerBrowserStatisticsUI::RefreshUIContent()
 					SNew(STextBlock)
 					.AutoWrapText(true)
 					.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
-					.Text(LOCTEXT("sourcecode_assets", "Assets used Indirectly - "))
+					.Text(LOCTEXT("stat_indirect_files_num", "Indirect Assets - "))
 				]
 				+ SHorizontalBox::Slot()
 				.AutoWidth()
@@ -133,7 +123,7 @@ void SProjectCleanerBrowserStatisticsUI::RefreshUIContent()
 					SNew(STextBlock)
 					.AutoWrapText(true)
 					.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
-					.Text_Lambda([this]() -> FText { return FText::AsNumber(Stats.SourceCodeAssetsNum); })
+					.Text_Lambda([this]() -> FText { return FText::AsNumber(0); })
 				]
 			]
 			+ SVerticalBox::Slot()
@@ -148,7 +138,7 @@ void SProjectCleanerBrowserStatisticsUI::RefreshUIContent()
 					SNew(STextBlock)
 					.AutoWrapText(true)
 					.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
-					.Text(LOCTEXT("empty_folders", "Empty Folders - "))
+					.Text(LOCTEXT("stat_empty_folders_num", "Empty Folders - "))
 				]
 				+ SHorizontalBox::Slot()
 				.AutoWidth()
@@ -156,7 +146,7 @@ void SProjectCleanerBrowserStatisticsUI::RefreshUIContent()
 					SNew(STextBlock)
 					.AutoWrapText(true)
 					.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
-					.Text_Lambda([this]() -> FText { return FText::AsNumber(Stats.EmptyFolders); })
+					.Text_Lambda([this]() -> FText { return FText::AsNumber(CleanerData ? CleanerData->EmptyFolders.Num() : 0); })
 				]
 			]
 			+ SVerticalBox::Slot()
@@ -171,7 +161,7 @@ void SProjectCleanerBrowserStatisticsUI::RefreshUIContent()
 					SNew(STextBlock)
 					.AutoWrapText(true)
 					.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
-					.Text(LOCTEXT("corrupted_files_num", "Corrupted Files - "))
+					.Text(LOCTEXT("stat_corrupted_files_num", "Corrupted Files - "))
 				]
 				+ SHorizontalBox::Slot()
 				.AutoWidth()
@@ -179,15 +169,23 @@ void SProjectCleanerBrowserStatisticsUI::RefreshUIContent()
 					SNew(STextBlock)
 					.AutoWrapText(true)
 					.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
-					.Text_Lambda([this]() -> FText { return FText::AsNumber(Stats.CorruptedFilesNum); })
+					.Text_Lambda([this]() -> FText { return FText::AsNumber(CleanerData ? CleanerData->UnusedAssets.Num() : 0); })
 				]
 			]
-		];
-
-	ChildSlot
-	[
-		WidgetRef
+		]
 	];
 }
+
+void SProjectCleanerBrowserStatisticsUI::SetStats(FProjectCleanerData& Data)
+{
+	CleanerData = &Data;
+}
+
+FText SProjectCleanerBrowserStatisticsUI::GetUnusedAssetsNum() const
+{
+	return FText::AsNumber(CleanerData ? CleanerData->UnusedAssets.Num() : 0);
+}
+
+
 
 #undef LOCTEXT_NAMESPACE

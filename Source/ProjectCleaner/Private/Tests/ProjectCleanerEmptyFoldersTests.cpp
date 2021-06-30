@@ -2,7 +2,7 @@
 #include "Misc/AutomationTest.h"
 #include "GenericPlatform/GenericPlatformFile.h"
 #include "Misc/Paths.h"
-#include "ProjectCleanerUtility.h"
+#include "Core/ProjectCleanerUtility.h"
 
 
 #if WITH_DEV_AUTOMATION_TESTS

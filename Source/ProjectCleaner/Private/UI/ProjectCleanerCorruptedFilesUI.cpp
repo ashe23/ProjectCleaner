@@ -1,9 +1,9 @@
 ﻿// Copyright 2021. Ashot Barkhudaryan. All Rights Reserved.
 
 #include "UI/ProjectCleanerCorruptedFilesUI.h"
-#include "ProjectCleanerUtility.h"
+#include "Core/ProjectCleanerUtility.h"
 #include "ProjectCleanerHelper.h"
-#include "ProjectCleanerStyle.h"
+#include "UI/ProjectCleanerStyle.h"
 // Engine Headers
 #include "Widgets/Layout/SScrollBox.h"
 

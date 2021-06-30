@@ -1,6 +1,6 @@
 // Copyright 2021. Ashot Barkhudaryan. All Rights Reserved.
 
-#include "ProjectCleanerStyle.h"
+#include "UI/ProjectCleanerStyle.h"
 #include "Framework/Application/SlateApplication.h"
 #include "Styling/SlateStyleRegistry.h"
 #include "Slate/SlateGameResources.h"

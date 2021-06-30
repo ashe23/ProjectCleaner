@@ -1,7 +1,7 @@
 // Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
-#include "ProjectCleanerCommands.h"
-#include "ProjectCleanerStyle.h"
+#include "UI/ProjectCleanerCommands.h"
+#include "UI/ProjectCleanerStyle.h"
 // Engine Headers
 #include "Framework/Commands/Commands.h"
 
@@ -21,7 +21,7 @@ void FProjectCleanerCommands::RegisterCommands()
 	UI_COMMAND(
 		OpenCleanerWindow,
 		"ProjectCleaner",
-		"Delete unused assets and empty folders",
+		"Open Cleaner Tab",
 		EUserInterfaceActionType::Button,
 		FInputChord()
 	);

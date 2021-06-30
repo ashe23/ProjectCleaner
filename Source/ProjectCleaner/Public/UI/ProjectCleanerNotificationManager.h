@@ -31,17 +31,17 @@ public:
 	 * @param CompletionState 
 	 * @param ExpireDuration 
 	 */
-	void AddTransient(const FString& Text,
+	static void AddTransient(const FText& Text,
 	                  const SNotificationItem::ECompletionState
 	                  CompletionState,
-	                  const float ExpireDuration = 3.0f) const;
+	                  const float ExpireDuration = 3.0f);
 
 	/**
 	 * @brief Updates content of given Notification
 	 * @param NotificationManager 
 	 * @param Stats 
 	 */
-	void Update(TWeakPtr<SNotificationItem> NotificationManager, const FCleaningStats& Stats) const;
+	// void Update(TWeakPtr<SNotificationItem> NotificationManager, const FCleaningStats& Stats) const;
 
 	
 	/**
