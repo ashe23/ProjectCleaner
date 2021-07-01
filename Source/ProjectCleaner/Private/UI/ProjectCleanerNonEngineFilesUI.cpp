@@ -9,31 +9,31 @@
 
 void SProjectCleanerNonEngineFilesUI::Construct(const FArguments& InArgs)
 {
-	if (InArgs._NonUassetFiles)
+	if (InArgs._NonEngineFiles)
 	{
-		SetNonUassetFiles(*InArgs._NonUassetFiles);
+		SetNonEngineFiles(*InArgs._NonEngineFiles);
 	}
 
 	InitUI();
 }
 
-void SProjectCleanerNonEngineFilesUI::SetNonUassetFiles(const TSet<FString>& NewNonUassetFile)
+void SProjectCleanerNonEngineFilesUI::SetNonEngineFiles(const TSet<FString>& NewNonEngineFile)
 {
-	NonUassetFiles.Reset();
-	NonUassetFiles.Reserve(NewNonUassetFile.Num());
+	NonEngineFiles.Reset();
+	NonEngineFiles.Reserve(NewNonEngineFile.Num());
 
-	for (const auto& File: NewNonUassetFile)
+	for (const auto& File: NewNonEngineFile)
 	{
 		const auto& NonUassetFile = NewObject<UNonEngineFile>();
 		if(!NonUassetFile) continue;
 		NonUassetFile->FileName = FPaths::GetBaseFilename(File) + "." + FPaths::GetExtension(File);
 		NonUassetFile->FilePath = File;
-		NonUassetFiles.AddUnique(NonUassetFile);
+		NonEngineFiles.AddUnique(NonUassetFile);
 	}
 
 	if (ListView.IsValid())
 	{
-		ListView->SetListItemsSource(NonUassetFiles);
+		ListView->SetListItemsSource(NonEngineFiles);
 		ListView->RebuildList();
 	}
 }
@@ -41,7 +41,7 @@ void SProjectCleanerNonEngineFilesUI::SetNonUassetFiles(const TSet<FString>& New
 void SProjectCleanerNonEngineFilesUI::InitUI()
 {
 	ListView = SNew(SListView<TWeakObjectPtr<UNonEngineFile>>)
-		.ListItemsSource(&NonUassetFiles)
+		.ListItemsSource(&NonEngineFiles)
 		.SelectionMode(ESelectionMode::SingleToggle)
 		.OnGenerateRow(this, &SProjectCleanerNonEngineFilesUI::OnGenerateRow)
 		.OnMouseButtonDoubleClick_Raw(this, &SProjectCleanerNonEngineFilesUI::OnMouseDoubleClick)
@@ -86,7 +86,7 @@ void SProjectCleanerNonEngineFilesUI::InitUI()
 					SNew(STextBlock)
 					.AutoWrapText(true)
 					.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
-					.Text(LOCTEXT("non_uasset_files", "Non .uasset files"))
+					.Text(LOCTEXT("non_engine_files", "Non Engine files"))
 				]
 				+ SVerticalBox::Slot()
 				.Padding(FMargin{0.0f, 10.0f})
@@ -95,7 +95,7 @@ void SProjectCleanerNonEngineFilesUI::InitUI()
 					SNew(STextBlock)
 					.AutoWrapText(true)
 					.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light10"))
-					.Text(LOCTEXT("non_uasset_files_dblclickonrow", "Double click on row to open in Explorer"))
+					.Text(LOCTEXT("non_engine_files_dblclickonrow", "Double click on row to open in Explorer"))
 				]
 				+ SVerticalBox::Slot()
 				.AutoHeight()
@@ -122,8 +122,9 @@ void SProjectCleanerNonEngineFilesUI::OnMouseDoubleClick(TWeakObjectPtr<UNonEngi
 
 	const auto DirectoryPath = FPaths::GetPath(Item.Get()->FilePath);
 	if (!FPaths::DirectoryExists(DirectoryPath)) return;
-	
-	FPlatformProcess::ExploreFolder(*DirectoryPath);
+
+	FPlatformProcess::LaunchFileInDefaultExternalApplication(*Item.Get()->FilePath);
+	// FPlatformProcess::ExploreFolder(*DirectoryPath);
 }
 
 #undef LOCTEXT_NAMESPACE

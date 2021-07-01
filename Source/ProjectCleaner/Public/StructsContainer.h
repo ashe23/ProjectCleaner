@@ -46,10 +46,32 @@ public:
 	FString AssetPath;
 
 	UPROPERTY(DisplayName = "FilePath where asset used", VisibleAnywhere, Category="AssetUsedIndirectly")
-	FString SourceCodePath;
+	FString FilePath;
+
+	UPROPERTY(DisplayName = "Line where asset used", VisibleAnywhere, Category="AssetUsedIndirectly")
+	int32 LineNum;
 
 	UPROPERTY(DisplayName = "AssetData", VisibleAnywhere, Category="AssetUsedIndirectly")
 	FAssetData AssetData;
+};
+
+UCLASS(Transient)
+class UCorruptedFile : public UObject
+{
+	GENERATED_BODY()
+public:
+	UPROPERTY(DisplayName = "Name", VisibleAnywhere, Category = "CorruptedFile")
+	FString Name;
+	UPROPERTY(DisplayName = "AbsolutePath", VisibleAnywhere, Category = "CorruptedFile")
+	FString AbsolutePath;
+};
+
+struct FIndirectFileInfo
+{
+	FAssetData AssetData;
+	FString FileName;
+	FString FilePath;
+	int32 LineNum;
 };
 
 UCLASS(Transient)
@@ -70,6 +92,17 @@ struct FProjectCleanerData
 	TArray<FString> EmptyFolders;
 	TSet<FString> NonEngineFiles;
 	TSet<FString> CorruptedFiles;
+	TArray<FIndirectFileInfo> IndirectFileInfos;
+	TSet<FName> PrimaryAssetClasses;
+	TArray<FAssetData> UserExcludedAssets;
+	TArray<FAssetData> ExcludedAssets;
+	TArray<FAssetData> LinkedAssets;
+	int64 TotalSize;
+
+	FProjectCleanerData()
+	{
+		TotalSize = 0;
+	}
 	
 	void Reset()
 	{
@@ -77,6 +110,11 @@ struct FProjectCleanerData
 		EmptyFolders.Reset();
 		NonEngineFiles.Reset();
 		CorruptedFiles.Reset();
+		IndirectFileInfos.Reset();
+		PrimaryAssetClasses.Reset();
+		ExcludedAssets.Reset();
+		LinkedAssets.Reset();
+		TotalSize = 0;
 	}
 
 	void Empty()
@@ -85,6 +123,11 @@ struct FProjectCleanerData
 		EmptyFolders.Empty();
 		NonEngineFiles.Empty();
 		CorruptedFiles.Empty();
+		IndirectFileInfos.Empty();
+		PrimaryAssetClasses.Empty();
+		ExcludedAssets.Empty();
+		LinkedAssets.Empty();
+		TotalSize = 0;
 	}
 };
 
@@ -123,18 +166,18 @@ struct FProjectCleanerData
 // 		TotalAssetNum = 0;
 // 	}
 // };
-
-struct FSourceCodeFile
-{
-	FName Name;
-	FString AbsoluteFilePath;
-	FString Content;
-
-	bool operator==(const FSourceCodeFile& Other) const
-	{
-		return Name.IsEqual(Other.Name);
-	}
-};
+//
+// struct FSourceCodeFile
+// {
+// 	FName Name;
+// 	FString AbsoluteFilePath;
+// 	FString Content;
+//
+// 	bool operator==(const FSourceCodeFile& Other) const
+// 	{
+// 		return Name.IsEqual(Other.Name);
+// 	}
+// };
 
 struct FStandardCleanerText
 {

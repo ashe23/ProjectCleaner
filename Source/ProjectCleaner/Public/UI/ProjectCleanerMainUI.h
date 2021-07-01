@@ -6,18 +6,11 @@
 #include "Core/ProjectCleanerManager.h"
 #include "Widgets/SCompoundWidget.h"
 
-class FTabManager;
-class FUICommandList;
-class ProjectCleanerManager;
-class SProjectCleanerBrowserStatisticsUI;
-class SProjectCleanerUnusedAssetsBrowserUI;
-struct FProjectCleanerData;
-
 class SProjectCleanerMainUI : public SCompoundWidget
 {
 public:
 	SLATE_BEGIN_ARGS(SProjectCleanerMainUI) {}
-		SLATE_ARGUMENT(FProjectCleanerData*, CleanerData)
+		SLATE_ARGUMENT(struct FProjectCleanerData*, CleanerData)
     SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
@@ -26,6 +19,7 @@ public:
 private:
 	/* Initializers */
 	void InitTabs();
+	void Update();
 	
 	/* Callbacks */
 	TSharedRef<SDockTab> OnUnusedAssetTabSpawn(const FSpawnTabArgs& SpawnTabArgs);
@@ -33,13 +27,27 @@ private:
 	TSharedRef<SDockTab> OnCorruptedFilesTabSpawn(const FSpawnTabArgs& SpawnTabArgs);
 	TSharedRef<SDockTab> OnIndirectAssetsTabSpawn(const FSpawnTabArgs& SpawnTabArgs);
 	
+	void OnUserDeletedAssets();
+	void OnUserExcludedAssets(const TArray<FAssetData>& Assets);
+	void OnUserIncludedAssets(const TArray<FAssetData>& Assets, const bool CleanFilters);
+	
+	/* Btn Callbacks*/
+	FReply OnRefreshBtnClick();
+	// FReply OnDeleteUnusedAssetsBtnClick();
+	// FReply OnDeleteEmptyFolderClick();
+	
 	/* UI Data */
-	TWeakPtr<SProjectCleanerBrowserStatisticsUI> StatisticsUI;
-	TWeakPtr<SProjectCleanerUnusedAssetsBrowserUI> UnusedAssetsBrowserUI;
-	TWeakPtr<SProjectCleanerUnusedAssetsBrowserUI> NonEngineFilesUI;
-	TSharedPtr<FTabManager> TabManager;
+	TWeakPtr<class SProjectCleanerBrowserStatisticsUI> StatisticsUI;
+	TWeakPtr<class SProjectCleanerUnusedAssetsBrowserUI> UnusedAssetsBrowserUI;
+	TWeakPtr<class SProjectCleanerNonEngineFilesUI> NonEngineFilesUI;
+	TWeakPtr<class SProjectCleanerConfigsUI> CleanerConfigsUI;
+	TWeakPtr<class SProjectCleanerCorruptedFilesUI> CorruptedFilesUI;
+	TWeakPtr<class SProjectCleanerIndirectAssetsUI> IndirectAssetsUI;
+	TWeakPtr<class SProjectCleanerExcludeOptionsUI> ExcludeOptionUI;
+	TWeakPtr<class SProjectCleanerExcludedAssetsUI> ExcludedAssetsUI;
+	TSharedPtr<class FTabManager> TabManager;
 	TSharedPtr<FTabManager::FLayout> TabLayout;
 
 	/* Data */
-	ProjectCleanerManager CleanerManager;
+	class ProjectCleanerManager CleanerManager;
 };

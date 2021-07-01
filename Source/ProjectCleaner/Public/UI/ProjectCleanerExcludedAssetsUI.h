@@ -5,6 +5,7 @@
 // Engine Headers
 #include "CoreMinimal.h"
 #include "Widgets/SCompoundWidget.h"
+#include "StructsContainer.h"
 #include "Editor/ContentBrowser/Public/ContentBrowserDelegates.h"
 
 DECLARE_DELEGATE_TwoParams(FOnUserIncludedAsset, const TArray<FAssetData>&, const bool);

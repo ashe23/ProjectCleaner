@@ -4,7 +4,7 @@
 #include "Core/ProjectCleanerManager.h"
 #include "UI/ProjectCleanerNotificationManager.h"
 #include "UI/ProjectCleanerConfigsUI.h"
-#include "UI/ProjectCleanerSourceCodeAssetsUI.h"
+#include "UI/ProjectCleanerIndirectAssetsUI.h"
 #include "UI/ProjectCleanerExcludeOptionsUI.h"
 #include "StructsContainer.h"
 // Engine Headers
@@ -98,6 +98,22 @@ void ProjectCleanerUtility::GetUnusedAssets(TArray<FAssetData>& UnusedAssets)
 	{
 		return UsedAssets.Contains(Elem.PackageName);
 	});
+
+	RemoveMegascansPluginAssetsIfActive(UnusedAssets);
+}
+
+int64 ProjectCleanerUtility::GetTotalSize(TArray<FAssetData>& UnusedAssets)
+{
+	int64 Size = 0;
+	for (const auto& Asset : UnusedAssets)
+	{
+		FAssetRegistryModule& AssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
+		const auto AssetPackageData = AssetRegistry.Get().GetAssetPackageData(Asset.PackageName);
+		if (!AssetPackageData) continue;
+		Size += AssetPackageData->DiskSize;
+	}
+
+	return Size;
 }
 
 FString ProjectCleanerUtility::ConvertAbsolutePathToInternal(const FString& InPath)
@@ -243,7 +259,7 @@ void ProjectCleanerUtility::GetProjectFilesFromDisk(TSet<FString>& ProjectFiles)
 	PlatformFile.IterateDirectoryRecursively(*FPaths::ProjectContentDir(), Visitor);
 }
 
-void ProjectCleanerUtility::RemoveAssetsUsedIndirectly(TArray<FAssetData>& UnusedAssets)
+void ProjectCleanerUtility::FindAssetsUsedIndirectly(const TArray<FAssetData>& UnusedAssets, TArray<FIndirectFileInfo>& IndirectFileInfos)
 {
 	/* YourProjectDirectory
 		Config +
@@ -267,6 +283,41 @@ void ProjectCleanerUtility::RemoveAssetsUsedIndirectly(TArray<FAssetData>& Unuse
 	// 1) Find files with this extensions(.cpp, .h, .cs, .ini)
 	// 2) for every unused asset check if that assets used in that file
 	//	2.1) if so add to Indirectly used assets
+	TArray<FString> AllFiles;
+	FindSourceAndConfigFiles(AllFiles);
+	
+	if (AllFiles.Num() == 0) return;
+
+	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
+	for (const auto& File : AllFiles)
+	{
+		if (!PlatformFile.FileExists(*File)) continue;
+
+		TArray<FString> Lines;
+		FFileHelper::LoadFileToStringArray(Lines, *File);
+
+		for (int32 LineNum = 0; LineNum < Lines.Num(); ++LineNum)
+		{
+			if (!Lines.IsValidIndex(LineNum)) continue;
+
+			for (const auto& UnusedAsset : UnusedAssets)
+			{
+				FString QuotedAssetName = UnusedAsset.AssetName.ToString();
+				QuotedAssetName.InsertAt(0, TEXT("\""));
+				QuotedAssetName.Append(TEXT("\""));
+				if (Lines[LineNum].Contains(UnusedAsset.PackageName.ToString()) || Lines[LineNum].Contains(QuotedAssetName))
+				{
+					FIndirectFileInfo Info;
+					Info.AssetData = UnusedAsset;
+					Info.FileName = FPaths::GetCleanFilename(File);
+					Info.FilePath = FPaths::ConvertRelativePathToFull(File);
+					Info.LineNum = LineNum + 1;
+					
+					IndirectFileInfos.Add(Info);
+				}
+			}
+		}
+	}
 }
 
 
@@ -319,18 +370,17 @@ void ProjectCleanerUtility::RemoveMegascansPluginAssetsIfActive(TArray<FAssetDat
 	const bool IsMegascansLoaded = FModuleManager::Get().IsModuleLoaded("MegascansPlugin");
 	if (!IsMegascansLoaded) return;
 	
-	UnusedAssets.RemoveAll([&](const FAssetData& Elem)
+	UnusedAssets.RemoveAllSwap([&](const FAssetData& Elem)
 	{
 		return FPaths::IsUnderDirectory(Elem.PackagePath.ToString(), TEXT("/Game/MSPresets"));
 	});
 }
 
-void ProjectCleanerUtility::FindSourceAndConfigFiles()
+void ProjectCleanerUtility::FindSourceAndConfigFiles(TArray<FString>& AllFiles)
 {
 	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
 
 	// 1) find all source and config files
-	TArray<FString> AllFiles;
 	AllFiles.Reserve(200); // reserving some space
 
 	// 2) finding all source files in main project "Source" directory (<yourproject>/Source/*)
@@ -375,18 +425,7 @@ void ProjectCleanerUtility::FindSourceAndConfigFiles()
 	}
 
 	AllFiles.Append(ProjectPluginsFiles);
-
-	// 5) loading file contents
-	for (const auto& File : AllFiles)
-	{
-		if (PlatformFile.FileExists(*File))
-		{
-			FSourceCodeFile SourceCodeFile;
-			SourceCodeFile.Name = FName{ FPaths::GetCleanFilename(File) };
-			SourceCodeFile.AbsoluteFilePath = FPaths::ConvertRelativePathToFull(File);
-			FFileHelper::LoadFileToString(SourceCodeFile.Content, *File);
-		}
-	}
+	AllFiles.Shrink();
 }
 
 //

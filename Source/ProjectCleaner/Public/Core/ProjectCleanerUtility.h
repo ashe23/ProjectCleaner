@@ -26,23 +26,24 @@ public:
 	static void GetEmptyFolders(TArray<FString>& EmptyFolders, const bool bScanDeveloperContents);
 	static void GetInvalidFiles(TSet<FString>& CorruptedFiles, TSet<FString>& NonEngineFiles);
 	static void GetUnusedAssets(TArray<FAssetData>& UnusedAssets);
+	static int64 GetTotalSize(TArray<FAssetData>& UnusedAssets);
+	static void GetPrimaryAssetClasses(TSet<FName>& PrimaryAssetClasses);
+	static bool IsExcludedByPath(const FAssetData& AssetData, const UExcludeOptions& ExcludeOptions);
+	static bool IsExcludedByClass(const FAssetData& AssetData, const UExcludeOptions& ExcludeOptions);
 	// update
+	static void FindAssetsUsedIndirectly(const TArray<FAssetData>& UnusedAssets, TArray<FIndirectFileInfo>& IndirectFileInfos);
 	static FString ConvertAbsolutePathToInternal(const FString& InPath);
 	static FString ConvertInternalToAbsolutePath(const FString& InPath);
 	// delete
 	static bool DeleteEmptyFolders(TArray<FString>& EmptyFolders);
 private:
 	static void GetUsedAssets(TSet<FName>& UsedAssets);
-	static void GetPrimaryAssetClasses(TSet<FName>& PrimaryAssetClasses);
 	static void GetProjectFilesFromDisk(TSet<FString>& ProjectFiles);
-	static void RemoveAssetsUsedIndirectly(TArray<FAssetData>& UnusedAssets);
 	static bool IsEngineExtension(const FString& Extension);
 	static bool FindAllEmptyFolders(const FString& FolderPath, TArray<FString>& EmptyFolders);
 	static FString ConvertPathInternal(const FString& From, const FString To, const FString& Path);
-	static bool IsExcludedByPath(const FAssetData& AssetData, const UExcludeOptions& ExcludeOptions);
-	static bool IsExcludedByClass(const FAssetData& AssetData, const UExcludeOptions& ExcludeOptions);
 	static void RemoveMegascansPluginAssetsIfActive(TArray<FAssetData>& UnusedAssets);
-	static void FindSourceAndConfigFiles();
+	static void FindSourceAndConfigFiles(TArray<FString>& AllFiles);	
 
 	// Refactor END
 public:

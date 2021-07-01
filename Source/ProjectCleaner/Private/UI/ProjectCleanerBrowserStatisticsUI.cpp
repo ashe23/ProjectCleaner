@@ -77,7 +77,7 @@ void SProjectCleanerBrowserStatisticsUI::Construct(const FArguments& InArgs)
 					SNew(STextBlock)
 					.AutoWrapText(true)
 					.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
-					.Text_Lambda([this]() -> FText { return FText::AsMemory(0); })
+					.Text_Raw(this, &SProjectCleanerBrowserStatisticsUI::GetTotalSize)
 				]
 			]
 			+ SVerticalBox::Slot()
@@ -100,7 +100,7 @@ void SProjectCleanerBrowserStatisticsUI::Construct(const FArguments& InArgs)
 					SNew(STextBlock)
 					.AutoWrapText(true)
 					.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
-					.Text_Lambda([this]() -> FText { return FText::AsNumber(CleanerData ? CleanerData->NonEngineFiles.Num() : 0); })
+					.Text_Raw(this, &SProjectCleanerBrowserStatisticsUI::GetNonEngineFilesNum)
 				]
 			]
 			+ SVerticalBox::Slot()
@@ -123,7 +123,7 @@ void SProjectCleanerBrowserStatisticsUI::Construct(const FArguments& InArgs)
 					SNew(STextBlock)
 					.AutoWrapText(true)
 					.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
-					.Text_Lambda([this]() -> FText { return FText::AsNumber(0); })
+					.Text(this, &SProjectCleanerBrowserStatisticsUI::GetIndirectAssetsNum)
 				]
 			]
 			+ SVerticalBox::Slot()
@@ -146,7 +146,7 @@ void SProjectCleanerBrowserStatisticsUI::Construct(const FArguments& InArgs)
 					SNew(STextBlock)
 					.AutoWrapText(true)
 					.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
-					.Text_Lambda([this]() -> FText { return FText::AsNumber(CleanerData ? CleanerData->EmptyFolders.Num() : 0); })
+					.Text_Raw(this, &SProjectCleanerBrowserStatisticsUI::GetEmptyFoldersNum)
 				]
 			]
 			+ SVerticalBox::Slot()
@@ -169,14 +169,14 @@ void SProjectCleanerBrowserStatisticsUI::Construct(const FArguments& InArgs)
 					SNew(STextBlock)
 					.AutoWrapText(true)
 					.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
-					.Text_Lambda([this]() -> FText { return FText::AsNumber(CleanerData ? CleanerData->UnusedAssets.Num() : 0); })
+					.Text_Raw(this, &SProjectCleanerBrowserStatisticsUI::GetCorruptedFilesNum)
 				]
 			]
 		]
 	];
 }
 
-void SProjectCleanerBrowserStatisticsUI::SetStats(FProjectCleanerData& Data)
+void SProjectCleanerBrowserStatisticsUI::SetData(FProjectCleanerData& Data)
 {
 	CleanerData = &Data;
 }
@@ -186,6 +186,30 @@ FText SProjectCleanerBrowserStatisticsUI::GetUnusedAssetsNum() const
 	return FText::AsNumber(CleanerData ? CleanerData->UnusedAssets.Num() : 0);
 }
 
+FText SProjectCleanerBrowserStatisticsUI::GetTotalSize() const
+{
+	return FText::AsMemory(CleanerData ? CleanerData->TotalSize : 0);
+}
+
+FText SProjectCleanerBrowserStatisticsUI::GetNonEngineFilesNum() const
+{
+	return FText::AsNumber(CleanerData ? CleanerData->NonEngineFiles.Num() : 0);
+}
+
+FText SProjectCleanerBrowserStatisticsUI::GetIndirectAssetsNum() const
+{
+	return FText::AsNumber(CleanerData ? CleanerData->IndirectFileInfos.Num() : 0);
+}
+
+FText SProjectCleanerBrowserStatisticsUI::GetEmptyFoldersNum() const
+{
+	return FText::AsNumber(CleanerData ? CleanerData->EmptyFolders.Num() : 0);
+}
+
+FText SProjectCleanerBrowserStatisticsUI::GetCorruptedFilesNum() const
+{
+	return FText::AsNumber(CleanerData ? CleanerData->CorruptedFiles.Num() : 0);
+}
 
 
 #undef LOCTEXT_NAMESPACE

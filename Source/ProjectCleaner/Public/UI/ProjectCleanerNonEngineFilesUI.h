@@ -56,11 +56,11 @@ class SProjectCleanerNonEngineFilesUI : public SCompoundWidget
 public:
 	
 	SLATE_BEGIN_ARGS(SProjectCleanerNonEngineFilesUI) {}
-		SLATE_ARGUMENT(TSet<FString>*, NonUassetFiles)
+		SLATE_ARGUMENT(TSet<FString>*, NonEngineFiles)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
-	void SetNonUassetFiles(const TSet<FString>& NewNonUassetFile);
+	void SetNonEngineFiles(const TSet<FString>& NewNonEngineFile);
 private:
 	void InitUI();
 	TSharedRef<ITableRow> OnGenerateRow(
@@ -70,6 +70,6 @@ private:
 	void OnMouseDoubleClick(TWeakObjectPtr<UNonEngineFile> Item) const;
 
 	/** Data **/
-	TArray<TWeakObjectPtr<UNonEngineFile>> NonUassetFiles;
+	TArray<TWeakObjectPtr<UNonEngineFile>> NonEngineFiles;
 	TSharedPtr<SListView<TWeakObjectPtr<UNonEngineFile>>> ListView;
 };

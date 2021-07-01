@@ -5,18 +5,7 @@
 // Engine Headers
 #include "CoreMinimal.h"
 #include "Widgets/SCompoundWidget.h"
-#include "ProjectCleanerCorruptedFilesUI.generated.h"
-
-UCLASS(Transient)
-class UCorruptedFile : public UObject
-{
-	GENERATED_BODY()
-public:
-	UPROPERTY(DisplayName = "Name", VisibleAnywhere, Category = "CorruptedFile")
-	FString Name;
-	UPROPERTY(DisplayName = "AbsolutePath", VisibleAnywhere, Category = "CorruptedFile")
-	FString AbsolutePath;
-};
+#include "StructsContainer.h"
 
 class SCorruptedFileUISelectionRow : public SMultiColumnTableRow<TWeakObjectPtr<UCorruptedFile>>
 {
@@ -66,7 +55,7 @@ class SProjectCleanerCorruptedFilesUI : public SCompoundWidget
 public:
 	
 	SLATE_BEGIN_ARGS(SProjectCleanerCorruptedFilesUI) {}
-		SLATE_ARGUMENT(TSet<FString>, CorruptedFiles);
+		SLATE_ARGUMENT(TSet<FString>*, CorruptedFiles);
 	SLATE_END_ARGS()
 	
 	void Construct(const FArguments& InArgs);
@@ -82,5 +71,4 @@ private:
 	/** Data **/
 	TArray<TWeakObjectPtr<UCorruptedFile>> CorruptedFiles;
 	TSharedPtr<SListView<TWeakObjectPtr<UCorruptedFile>>> ListView;
-	TSharedRef<SWidget> WidgetRef = SNullWidget::NullWidget;
 };

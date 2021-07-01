@@ -16,10 +16,16 @@ public:
 	SLATE_END_ARGS()
 	
 	void Construct(const FArguments& InArgs);
-	void SetStats(FProjectCleanerData& Data);
+	void SetData(FProjectCleanerData& Data);
 private:
 	/* UI Callbacks */
 	FText GetUnusedAssetsNum() const;
+	FText GetTotalSize() const;
+	FText GetNonEngineFilesNum() const;
+	FText GetIndirectAssetsNum() const;
+	FText GetEmptyFoldersNum() const;
+	FText GetCorruptedFilesNum() const;
+    
 	/** Data **/
 	FProjectCleanerData* CleanerData = nullptr;
 };

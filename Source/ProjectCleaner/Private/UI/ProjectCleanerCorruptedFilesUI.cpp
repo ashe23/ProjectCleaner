@@ -2,7 +2,6 @@
 
 #include "UI/ProjectCleanerCorruptedFilesUI.h"
 #include "Core/ProjectCleanerUtility.h"
-#include "ProjectCleanerHelper.h"
 #include "UI/ProjectCleanerStyle.h"
 // Engine Headers
 #include "Widgets/Layout/SScrollBox.h"
@@ -11,7 +10,10 @@
 
 void SProjectCleanerCorruptedFilesUI::Construct(const FArguments& InArgs)
 {
-	SetCorruptedFiles(InArgs._CorruptedFiles);
+	if (InArgs._CorruptedFiles)
+	{
+		SetCorruptedFiles(*InArgs._CorruptedFiles);
+	}
 
 	InitUI();
 }
@@ -68,7 +70,8 @@ void SProjectCleanerCorruptedFilesUI::InitUI()
 			]
 	);
 
-	WidgetRef =
+	ChildSlot
+	[
 		SNew(SOverlay)
 		+ SOverlay::Slot()
 		.Padding(20.0f)
@@ -114,7 +117,7 @@ void SProjectCleanerCorruptedFilesUI::InitUI()
 						SNew(STextBlock)
 						.AutoWrapText(true)
 						.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light10"))
-						.Text(LOCTEXT("dbl_click_on_row", "Double click on row to open in Explorer"))
+						.Text(LOCTEXT("corrupted_files_dbl_click_on_row", "Double click on row to open in Explorer"))
 					]
 				]
 				+ SVerticalBox::Slot()
@@ -124,11 +127,7 @@ void SProjectCleanerCorruptedFilesUI::InitUI()
 					ListView.ToSharedRef()
 				]
 			]
-		];
-	
-	ChildSlot
-	[
-		WidgetRef
+		]
 	];
 }
 

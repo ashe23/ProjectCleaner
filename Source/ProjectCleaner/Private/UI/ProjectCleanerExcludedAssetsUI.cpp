@@ -1,7 +1,6 @@
 ﻿// Copyright 2021. Ashot Barkhudaryan. All Rights Reserved.
 
 #include "UI/ProjectCleanerExcludedAssetsUI.h"
-#include "UI/ProjectCleanerConfigsUI.h"
 #include "UI/ProjectCleanerCommands.h"
 #include "UI/ProjectCleanerStyle.h"
 // Engine Headers
@@ -9,7 +8,6 @@
 #include "Editor/ContentBrowser/Public/ContentBrowserModule.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Toolkits/GlobalEditorCommonCommands.h"
-//#include "Layout/Visibility.h"
 
 #define LOCTEXT_NAMESPACE "FProjectCleanerModule"
 
@@ -79,12 +77,13 @@ void SProjectCleanerExcludedAssetsUI::SetLinkedAssets(const TArray<FAssetData>& 
 void SProjectCleanerExcludedAssetsUI::SetCleanerConfigs(UCleanerConfigs* Configs)
 {
 	if (!Configs) return;
-	if (!Configs->IsValidLowLevel()) return;
 	CleanerConfigs = Configs;
 }
 
 void SProjectCleanerExcludedAssetsUI::UpdateUI()
 {
+	if (!CleanerConfigs) return;
+	
 	FAssetPickerConfig Config;
 	Config.InitialAssetViewType = EAssetViewType::Tile;
 	Config.bAddFilterUI = true;

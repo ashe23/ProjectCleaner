@@ -5,6 +5,11 @@
 #include "UI/ProjectCleanerBrowserStatisticsUI.h"
 #include "UI/ProjectCleanerUnusedAssetsBrowserUI.h"
 #include "UI/ProjectCleanerNonEngineFilesUI.h"
+#include "UI/ProjectCleanerConfigsUI.h"
+#include "UI/ProjectCleanerCorruptedFilesUI.h"
+#include "UI/ProjectCleanerExcludeOptionsUI.h"
+#include "UI/ProjectCleanerIndirectAssetsUI.h"
+#include "UI/ProjectCleanerExcludedAssetsUI.h"
 // Engine Headers
 #include "ToolMenus.h"
 #include "Widgets/Input/SButton.h"
@@ -28,6 +33,16 @@ void SProjectCleanerMainUI::Construct(const FArguments& InArgs)
 		TabLayout.ToSharedRef(),
 		TSharedPtr<SWindow>()
 	).ToSharedRef();
+
+	const auto ExcludedAssetsUIRef = SAssignNew(ExcludedAssetsUI, SProjectCleanerExcludedAssetsUI)
+		.ExcludedAssets(&CleanerManager.GetCleanerData()->ExcludedAssets)
+		.LinkedAssets(&CleanerManager.GetCleanerData()->LinkedAssets)
+		.CleanerConfigs(CleanerManager.GetCleanerConfigs());
+	
+	ExcludedAssetsUIRef->OnUserIncludedAssets = FOnUserIncludedAsset::CreateRaw(
+		this,
+		&SProjectCleanerMainUI::OnUserIncludedAssets
+	);
 	
 	ChildSlot
 	[
@@ -67,7 +82,7 @@ void SProjectCleanerMainUI::Construct(const FArguments& InArgs)
 									.HAlign(HAlign_Center)
 									.VAlign(VAlign_Center)
 									.Text(FText::FromString("Refresh"))
-									// .OnClicked_Raw(this, &FProjectCleanerModule::OnRefreshBtnClick)
+									.OnClicked_Raw(this, &SProjectCleanerMainUI::OnRefreshBtnClick)
 								]
 								+ SHorizontalBox::Slot()
 								.FillWidth(1.0f)
@@ -89,37 +104,37 @@ void SProjectCleanerMainUI::Construct(const FArguments& InArgs)
 									// .OnClicked_Raw(this, &FProjectCleanerModule::OnDeleteEmptyFolderClick)
 								]
 							]
-							// + SVerticalBox::Slot()
-							// .Padding(FMargin{20.0f, 5.0f})
-							// .AutoHeight()
-							// [
-							// 	SAssignNew(CleanerConfigsUI, SProjectCleanerConfigsUI)
-							// 	// .CleanerConfigs(CleanerConfigs)
-							// ]
-							// + SVerticalBox::Slot()
-							// .Padding(FMargin{20.0f, 5.0f})
-							// .AutoHeight()
-							// [
-							// 	SAssignNew(ExcludeOptionUI, SProjectCleanerExcludeOptionsUI)
-							// 	// .ExcludeOptions(ExcludeOptions)
-							// ]
+							+ SVerticalBox::Slot()
+							.Padding(FMargin{20.0f, 5.0f})
+							.AutoHeight()
+							[
+								SAssignNew(CleanerConfigsUI, SProjectCleanerConfigsUI)
+								.CleanerConfigs(CleanerManager.GetCleanerConfigs())
+							]
+							+ SVerticalBox::Slot()
+							.Padding(FMargin{20.0f, 5.0f})
+							.AutoHeight()
+							[
+								SAssignNew(ExcludeOptionUI, SProjectCleanerExcludeOptionsUI)
+								.ExcludeOptions(CleanerManager.GetExcludeOptions())
+							]
 						]
 					]
-					// + SScrollBox::Slot()
-					// .Padding(FMargin{0.0f, 20.0f})
-					// [
-					// 	SNew(SBorder)
-					// 	.BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
-					// 	[
-					// 		SNew(SVerticalBox)
-					// 		+ SVerticalBox::Slot()
-					// 		.Padding(FMargin{20.0f, 10.0f})
-					// 		.AutoHeight()
-					// 		[
-					// 			ExcludedAssetsUIRef
-					// 		]
-					// 	]
-					// ]
+					+ SScrollBox::Slot()
+					.Padding(FMargin{0.0f, 20.0f})
+					[
+						SNew(SBorder)
+						.BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
+						[
+							SNew(SVerticalBox)
+							+ SVerticalBox::Slot()
+							.Padding(FMargin{20.0f, 10.0f})
+							.AutoHeight()
+							[
+								ExcludedAssetsUIRef
+							]
+						]
+					]
 				]
 			]
 			+ SSplitter::Slot()
@@ -146,7 +161,6 @@ SProjectCleanerMainUI::~SProjectCleanerMainUI()
 
 void SProjectCleanerMainUI::InitTabs()
 {
-	// this is for TabManager initialization only
 	const auto DummyTab = SNew(SDockTab).TabRole(ETabRole::NomadTab);
 	TabManager = FGlobalTabmanager::Get()->NewTabManager(DummyTab);
 	TabManager->SetCanDoDragOperation(false);
@@ -186,22 +200,139 @@ void SProjectCleanerMainUI::InitTabs()
 	);
 }
 
+void SProjectCleanerMainUI::Update()
+{
+	CleanerManager.UpdateData();
+
+	if (StatisticsUI.IsValid())
+	{
+		StatisticsUI.Pin()->SetData(*CleanerManager.GetCleanerData());
+	}
+
+	if (UnusedAssetsBrowserUI.IsValid())
+	{
+		UnusedAssetsBrowserUI.Pin()->SetUIData(
+			CleanerManager.GetCleanerData()->UnusedAssets,
+			CleanerManager.GetCleanerConfigs(),
+			CleanerManager.GetCleanerData()->PrimaryAssetClasses
+		);
+	}
+
+	if (NonEngineFilesUI.IsValid())
+	{
+		NonEngineFilesUI.Pin()->SetNonEngineFiles(CleanerManager.GetCleanerData()->NonEngineFiles);
+	}
+
+	if (CorruptedFilesUI.IsValid())
+	{
+		CorruptedFilesUI.Pin()->SetCorruptedFiles(CleanerManager.GetCleanerData()->CorruptedFiles);
+	}
+
+	if (IndirectAssetsUI.IsValid())
+	{
+		IndirectAssetsUI.Pin()->SetIndirectFiles(CleanerManager.GetCleanerData()->IndirectFileInfos);
+	}
+
+	if (ExcludedAssetsUI.IsValid())
+	{
+		ExcludedAssetsUI.Pin()->SetUIData(
+			CleanerManager.GetCleanerData()->ExcludedAssets,
+			CleanerManager.GetCleanerData()->LinkedAssets,
+			CleanerManager.GetCleanerConfigs()
+		);
+	}
+}
+
 TSharedRef<SDockTab> SProjectCleanerMainUI::OnUnusedAssetTabSpawn(const FSpawnTabArgs& SpawnTabArgs)
 {
-	return SNew(SDockTab).TabRole(ETabRole::PanelTab);
+	const auto UnusedAssetsUIRef =
+		SAssignNew(UnusedAssetsBrowserUI, SProjectCleanerUnusedAssetsBrowserUI)
+		.PrimaryAssetClasses(&CleanerManager.GetCleanerData()->PrimaryAssetClasses)
+		.UnusedAssets(&CleanerManager.GetCleanerData()->UnusedAssets)
+		.CleanerConfigs(CleanerManager.GetCleanerConfigs());
+	
+	UnusedAssetsUIRef->OnUserDeletedAssets = FOnUserDeletedAssets::CreateRaw(
+		this,
+		&SProjectCleanerMainUI::OnUserDeletedAssets
+	);
+	
+	UnusedAssetsUIRef->OnUserExcludedAssets = FOnUserExcludedAssets::CreateRaw(
+		this,
+		&SProjectCleanerMainUI::OnUserExcludedAssets
+	);
+	
+	return SNew(SDockTab)
+		.TabRole(ETabRole::PanelTab)
+		.OnCanCloseTab_Lambda([] {return false; })
+		.Label(NSLOCTEXT("UnusedAssetsTab", "TabTitle", "Unused Assets"))
+		[
+			UnusedAssetsUIRef
+		];
 }
 
 TSharedRef<SDockTab> SProjectCleanerMainUI::OnNonEngineFilesTabSpawn(const FSpawnTabArgs& SpawnTabArgs)
 {
-	return SNew(SDockTab).TabRole(ETabRole::PanelTab);
+	return SNew(SDockTab)
+		.TabRole(ETabRole::PanelTab)
+		.OnCanCloseTab_Lambda([] {return false; })
+		.Label(NSLOCTEXT("NonEngineFilesTab", "TabTitle", "Non Engine Files"))
+		[
+			SAssignNew(NonEngineFilesUI, SProjectCleanerNonEngineFilesUI)
+			.NonEngineFiles(&CleanerManager.GetCleanerData()->NonEngineFiles)
+		];
 }
 
 TSharedRef<SDockTab> SProjectCleanerMainUI::OnCorruptedFilesTabSpawn(const FSpawnTabArgs& SpawnTabArgs)
 {
-	return SNew(SDockTab).TabRole(ETabRole::PanelTab);
+	return SNew(SDockTab)
+		.TabRole(ETabRole::PanelTab)
+		.OnCanCloseTab_Lambda([] {return false; })
+		.Label(NSLOCTEXT("CorruptedFilesTab", "TabTitle", "Corrupted Files"))
+		[
+			SAssignNew(CorruptedFilesUI, SProjectCleanerCorruptedFilesUI)
+			.CorruptedFiles(&CleanerManager.GetCleanerData()->CorruptedFiles)
+		];
+
 }
 
 TSharedRef<SDockTab> SProjectCleanerMainUI::OnIndirectAssetsTabSpawn(const FSpawnTabArgs& SpawnTabArgs)
 {
-	return SNew(SDockTab).TabRole(ETabRole::PanelTab);
+	return SNew(SDockTab)
+		.TabRole(ETabRole::PanelTab)
+		.OnCanCloseTab_Lambda([] {return false; })
+		.Label(NSLOCTEXT("IndirectAssetsTab", "TabTitle", "Assets Used Indirectly"))
+		[
+			SAssignNew(IndirectAssetsUI, SProjectCleanerIndirectAssetsUI)
+			.IndirectFileInfos(&CleanerManager.GetCleanerData()->IndirectFileInfos)
+		];
 }
+
+void SProjectCleanerMainUI::OnUserDeletedAssets()
+{
+	// todo
+}
+
+void SProjectCleanerMainUI::OnUserExcludedAssets(const TArray<FAssetData>& Assets)
+{
+	if (!Assets.Num()) return;
+	
+	for (const auto& Asset : Assets)
+	{
+		CleanerManager.GetCleanerData()->UserExcludedAssets.AddUnique(Asset);
+	}
+	
+	Update();
+}
+
+void SProjectCleanerMainUI::OnUserIncludedAssets(const TArray<FAssetData>& Assets, const bool CleanFilters)
+{
+	// todo
+}
+
+FReply SProjectCleanerMainUI::OnRefreshBtnClick()
+{
+	Update();
+	
+	return FReply::Handled();
+}
+

@@ -41,7 +41,7 @@ private:
 	void SetUnusedAssets(const TArray<FAssetData>& NewUnusedAssets);
 	void SetCleanerConfigs(UCleanerConfigs* Configs);
 	void SetPrimaryAssetClasses(const TSet<FName>& NewPrimaryAssetClasses);
-	UCleanerConfigs* CleanerConfigs;
+	UCleanerConfigs* CleanerConfigs = nullptr;
 	TArray<FAssetData> UnusedAssets;
 	TSet<FName> PrimaryAssetClasses;
 
