@@ -22,8 +22,10 @@ public:
 	 * @param CompletionState 
 	 * @return 
 	 */
-	TWeakPtr<SNotificationItem> Add(const FString& Text,
-	                                const SNotificationItem::ECompletionState CompletionState) const;
+	static TWeakPtr<SNotificationItem> Add(
+		const FString& Text,
+		const SNotificationItem::ECompletionState CompletionState
+	);
 
 	/**
 	 * @brief Transient Notification , used when no later updates needed for it
@@ -31,17 +33,18 @@ public:
 	 * @param CompletionState 
 	 * @param ExpireDuration 
 	 */
-	static void AddTransient(const FText& Text,
-	                  const SNotificationItem::ECompletionState
-	                  CompletionState,
-	                  const float ExpireDuration = 3.0f);
+	static void AddTransient(
+		const FText& Text,
+	    const SNotificationItem::ECompletionState CompletionState,
+		const float ExpireDuration = 3.0f
+	);
 
 	/**
 	 * @brief Updates content of given Notification
-	 * @param NotificationManager 
-	 * @param Stats 
+	 * @param NotificationManager
+	 * @param Text
 	 */
-	// void Update(TWeakPtr<SNotificationItem> NotificationManager, const FCleaningStats& Stats) const;
+	static void Update(TWeakPtr<SNotificationItem> NotificationManager, const FText& Text);
 
 	
 	/**
@@ -49,7 +52,7 @@ public:
 	 * @param NotificationManager 
 	 * @param FinalText 
 	 */
-	void Hide(TWeakPtr<SNotificationItem> NotificationManager, const FText& FinalText) const;
+	static void Hide(TWeakPtr<SNotificationItem> NotificationManager, const FText& FinalText);
 
 	/**
 	 * @brief Reset given notification

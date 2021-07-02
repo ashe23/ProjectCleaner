@@ -4,9 +4,10 @@
 // Engine Headers
 #include "Framework/Notifications/NotificationManager.h"
 
-TWeakPtr<SNotificationItem> ProjectCleanerNotificationManager::Add(const FString& Text,
-                                                                   const SNotificationItem::ECompletionState
-                                                                   CompletionState) const
+TWeakPtr<SNotificationItem> ProjectCleanerNotificationManager::Add(
+	const FString& Text,
+	const SNotificationItem::ECompletionState CompletionState
+)
 {
 	FNotificationInfo Info(FText::FromString(Text));
 	Info.bFireAndForget = false;
@@ -37,22 +38,15 @@ void ProjectCleanerNotificationManager::AddTransient(
 }
 
 
-// void ProjectCleanerNotificationManager::Update(TWeakPtr<SNotificationItem> NotificationManager,
-//                                                const FCleaningStats& Stats) const
-// {
-// 	if (NotificationManager.IsValid())
-// 	{
-// 		NotificationManager.Pin()->SetText(FText::FromString(FString::Printf(
-// 				TEXT("Deleted %d of %d assets. %d %%"),
-// 				Stats.DeletedAssetCount,
-// 				Stats.TotalAssetNum,
-// 				Stats.GetPercentage()
-// 			)
-// 		));
-// 	}
-// }
+void ProjectCleanerNotificationManager::Update(TWeakPtr<SNotificationItem> NotificationManager, const FText& Text)
+{
+	if (NotificationManager.IsValid())
+	{
+		NotificationManager.Pin()->SetText(Text);
+	}
+}
 
-void ProjectCleanerNotificationManager::Hide(TWeakPtr<SNotificationItem> NotificationManager, const FText& FinalText) const
+void ProjectCleanerNotificationManager::Hide(TWeakPtr<SNotificationItem> NotificationManager, const FText& FinalText)
 {
 	if (!NotificationManager.IsValid()) return;
 

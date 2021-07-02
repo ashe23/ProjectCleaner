@@ -1,7 +1,6 @@
 ﻿// Copyright 2021. Ashot Barkhudaryan. All Rights Reserved.
 
 #include "UI/ProjectCleanerUnusedAssetsBrowserUI.h"
-#include "UI/ProjectCleanerConfigsUI.h"
 #include "UI/ProjectCleanerCommands.h"
 #include "UI/ProjectCleanerStyle.h"
 // Engine Headers
@@ -87,7 +86,6 @@ void SProjectCleanerUnusedAssetsBrowserUI::SetUnusedAssets(const TArray<FAssetDa
 void SProjectCleanerUnusedAssetsBrowserUI::SetCleanerConfigs(UCleanerConfigs* Configs)
 {
 	if (!Configs) return;
-	// if (!Configs->IsValidLowLevel()) return;
 
 	CleanerConfigs = Configs;
 }
@@ -111,7 +109,6 @@ void SProjectCleanerUnusedAssetsBrowserUI::SetUIData(const TArray<FAssetData>& N
 void SProjectCleanerUnusedAssetsBrowserUI::UpdateUI()
 {
 	if (!CleanerConfigs) return;
-	// if (!CleanerConfigs->IsValidLowLevel()) return;
 	if (!ContentBrowserModule) return;
 
 	FAssetPickerConfig AssetPickerConfig;
@@ -122,7 +119,7 @@ void SProjectCleanerUnusedAssetsBrowserUI::UpdateUI()
 	AssetPickerConfig.bSortByPathInColumnView = true;
 	AssetPickerConfig.bForceShowEngineContent = false;
 	AssetPickerConfig.bShowBottomToolbar = true;
-	// AssetPickerConfig.bCanShowDevelopersFolder = CleanerConfigs->bScanDeveloperContents;
+	AssetPickerConfig.bCanShowDevelopersFolder = CleanerConfigs->bScanDeveloperContents;
 	AssetPickerConfig.bCanShowClasses = false;
 	AssetPickerConfig.bAllowDragging = false;
 	AssetPickerConfig.bCanShowRealTimeThumbnails = false;

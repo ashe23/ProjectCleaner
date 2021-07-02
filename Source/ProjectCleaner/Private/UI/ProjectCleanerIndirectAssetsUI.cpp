@@ -155,15 +155,10 @@ void SProjectCleanerIndirectAssetsUI::OnMouseDoubleClick(TWeakObjectPtr<UIndirec
 	TArray<FAssetData> SelectedAssets;
 	SelectedAssets.Add(Item->AssetData);
 	
-	FContentBrowserModule& CBModule = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
-	CBModule.Get().SyncBrowserToAssets(SelectedAssets);
+	const auto DirectoryPath = FPaths::GetPath(Item.Get()->FilePath);
+	if (!FPaths::DirectoryExists(DirectoryPath)) return;
 
-	// if (!Item.IsValid()) return;
-
-	// const auto DirectoryPath = FPaths::GetPath(Item.Get()->FilePath);
-	// if (!FPaths::DirectoryExists(DirectoryPath)) return;
-
-	// FPlatformProcess::LaunchFileInDefaultExternalApplication(*Item.Get()->FilePath);
+	FPlatformProcess::ExploreFolder(*DirectoryPath);
 }
 
 #undef LOCTEXT_NAMESPACE

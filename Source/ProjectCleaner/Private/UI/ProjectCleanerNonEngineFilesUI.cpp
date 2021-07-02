@@ -123,8 +123,7 @@ void SProjectCleanerNonEngineFilesUI::OnMouseDoubleClick(TWeakObjectPtr<UNonEngi
 	const auto DirectoryPath = FPaths::GetPath(Item.Get()->FilePath);
 	if (!FPaths::DirectoryExists(DirectoryPath)) return;
 
-	FPlatformProcess::LaunchFileInDefaultExternalApplication(*Item.Get()->FilePath);
-	// FPlatformProcess::ExploreFolder(*DirectoryPath);
+	FPlatformProcess::ExploreFolder(*DirectoryPath);
 }
 
 #undef LOCTEXT_NAMESPACE

@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Widgets/SCompoundWidget.h"
+#include "StructsContainer.h"
 #include "IContentBrowserSingleton.h"
 
 DECLARE_DELEGATE(FOnUserDeletedAssets);

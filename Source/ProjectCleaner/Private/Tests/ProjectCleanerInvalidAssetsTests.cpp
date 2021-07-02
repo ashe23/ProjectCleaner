@@ -1,3 +1,5 @@
+// Copyright 2021. Ashot Barkhudaryan. All Rights Reserved.
+
 #include "CoreTypes.h"
 #include "Misc/AutomationTest.h"
 #include "Core/ProjectCleanerUtility.h"

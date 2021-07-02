@@ -1,4 +1,6 @@
-﻿#include "CoreTypes.h"
+﻿// Copyright 2021. Ashot Barkhudaryan. All Rights Reserved.
+
+#include "CoreTypes.h"
 #include "Misc/AutomationTest.h"
 
 #if WITH_DEV_AUTOMATION_TESTS

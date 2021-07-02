@@ -10,7 +10,7 @@ class SProjectCleanerMainUI : public SCompoundWidget
 {
 public:
 	SLATE_BEGIN_ARGS(SProjectCleanerMainUI) {}
-		SLATE_ARGUMENT(struct FProjectCleanerData*, CleanerData)
+		SLATE_ARGUMENT(ProjectCleanerManager*, CleanerManager)
     SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
@@ -19,22 +19,25 @@ public:
 private:
 	/* Initializers */
 	void InitTabs();
-	void Update();
+	void Update() const;
 	
 	/* Callbacks */
 	TSharedRef<SDockTab> OnUnusedAssetTabSpawn(const FSpawnTabArgs& SpawnTabArgs);
 	TSharedRef<SDockTab> OnNonEngineFilesTabSpawn(const FSpawnTabArgs& SpawnTabArgs);
 	TSharedRef<SDockTab> OnCorruptedFilesTabSpawn(const FSpawnTabArgs& SpawnTabArgs);
 	TSharedRef<SDockTab> OnIndirectAssetsTabSpawn(const FSpawnTabArgs& SpawnTabArgs);
-	
-	void OnUserDeletedAssets();
-	void OnUserExcludedAssets(const TArray<FAssetData>& Assets);
-	void OnUserIncludedAssets(const TArray<FAssetData>& Assets, const bool CleanFilters);
+
+	/* Delegates */
+	void OnUserDeletedAssets() const;
+	void OnUserExcludedAssets(const TArray<FAssetData>& Assets) const;
+	void OnUserIncludedAssets(const TArray<FAssetData>& Assets, const bool CleanFilters) const; 
 	
 	/* Btn Callbacks*/
-	FReply OnRefreshBtnClick();
-	// FReply OnDeleteUnusedAssetsBtnClick();
-	// FReply OnDeleteEmptyFolderClick();
+	FReply OnRefreshBtnClick() const;
+	FReply OnDeleteUnusedAssetsBtnClick() const;
+	FReply OnDeleteEmptyFolderClick() const;
+	EAppReturnType::Type ShowConfirmationWindow(const FText& Title, const FText& ContentText) const;
+	bool IsConfirmationWindowCanceled(EAppReturnType::Type Status) const;
 	
 	/* UI Data */
 	TWeakPtr<class SProjectCleanerBrowserStatisticsUI> StatisticsUI;
@@ -49,5 +52,5 @@ private:
 	TSharedPtr<FTabManager::FLayout> TabLayout;
 
 	/* Data */
-	class ProjectCleanerManager CleanerManager;
+	class ProjectCleanerManager* CleanerManager = nullptr;
 };

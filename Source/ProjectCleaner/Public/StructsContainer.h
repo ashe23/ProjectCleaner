@@ -99,11 +99,17 @@ struct FProjectCleanerData
 	TArray<FAssetData> LinkedAssets;
 	int64 TotalSize;
 
+	// Helpers for asset deletion stats
+	uint32 TotalAssetsNum;
+	uint32 DeletedAssetsNum;
+
 	FProjectCleanerData()
 	{
 		TotalSize = 0;
+		TotalAssetsNum = 0;
+		DeletedAssetsNum = 0;
 	}
-	
+
 	void Reset()
 	{
 		UnusedAssets.Reset();
@@ -115,6 +121,8 @@ struct FProjectCleanerData
 		ExcludedAssets.Reset();
 		LinkedAssets.Reset();
 		TotalSize = 0;
+		TotalAssetsNum = 0;
+		DeletedAssetsNum = 0;
 	}
 
 	void Empty()
@@ -128,56 +136,10 @@ struct FProjectCleanerData
 		ExcludedAssets.Empty();
 		LinkedAssets.Empty();
 		TotalSize = 0;
+		TotalAssetsNum = 0;
+		DeletedAssetsNum = 0;
 	}
 };
-
-// struct FCleaningStats
-// {
-// 	int32 UnusedAssetsNum;
-// 	int64 UnusedAssetsTotalSize;
-// 	int32 NonUassetFilesNum;
-// 	int32 SourceCodeAssetsNum;
-// 	int32 CorruptedFilesNum;
-// 	int32 EmptyFolders;
-// 	
-// 	int32 DeletedAssetCount;
-// 	int32 TotalAssetNum;
-//
-// 	FCleaningStats()
-// 	{
-// 		Reset();
-// 	}
-//
-// 	int32 GetPercentage() const
-// 	{
-// 		if (TotalAssetNum == 0) return 0;
-// 		return (DeletedAssetCount * 100.0f) / TotalAssetNum;
-// 	}
-//
-// 	void Reset()
-// 	{
-// 		UnusedAssetsNum = 0;
-// 		EmptyFolders = 0;
-// 		UnusedAssetsTotalSize = 0;
-// 		NonUassetFilesNum = 0;
-// 		SourceCodeAssetsNum = 0;
-// 		CorruptedFilesNum = 0;
-// 		DeletedAssetCount = 0;
-// 		TotalAssetNum = 0;
-// 	}
-// };
-//
-// struct FSourceCodeFile
-// {
-// 	FName Name;
-// 	FString AbsoluteFilePath;
-// 	FString Content;
-//
-// 	bool operator==(const FSourceCodeFile& Other) const
-// 	{
-// 		return Name.IsEqual(Other.Name);
-// 	}
-// };
 
 struct FStandardCleanerText
 {
@@ -192,4 +154,8 @@ struct FStandardCleanerText
 	constexpr static TCHAR* SearchingEmptyFolders = TEXT("Searching empty folders...");
 	constexpr static TCHAR* AssetsWithReferencersInDeveloperFolder = TEXT("Some of assets has references in Developers folder. To view them click 'Scan Developers Folder' checkbox.");
 	constexpr static TCHAR* AssetRegistryStillWorking = TEXT("Asset Registry still working! Please wait...");
+	constexpr static TCHAR* SomeAssetsHaveRefsInDevFolder = TEXT("Some assets have referencers in Developer Contents Folder.");
+	constexpr static TCHAR* CantIncludeSomeAssets = TEXT("Cant include some filtered assets.Clear 'ExcludeOptions' filters and try again.");
+	constexpr static TCHAR* FailedToDeleteSomeFolders = TEXT("Failed to delete some folders. See Output Log for more information.");
+	
 };
