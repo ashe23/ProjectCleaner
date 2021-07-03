@@ -100,9 +100,6 @@ void FProjectCleanerModule::PluginButtonClicked()
 		return;
 	}
 
-	ProjectCleanerUtility::FixupRedirectors();
-	ProjectCleanerUtility::SaveAllAssets();
-
 	FGlobalTabmanager::Get()->TryInvokeTab(ProjectCleanerTabName);
 }
 

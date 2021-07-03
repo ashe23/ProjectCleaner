@@ -310,7 +310,6 @@ void ProjectCleanerUtility::FindAssetsUsedIndirectly(const TArray<FAssetData>& U
 	}
 }
 
-
 bool ProjectCleanerUtility::IsEngineExtension(const FString& Extension)
 {
 	return Extension.Equals("uasset") || Extension.Equals("umap");
@@ -463,7 +462,7 @@ void ProjectCleanerUtility::FixupRedirectors()
 
 	SlowTask.EnterProgressFrame(1.0f);
 }
-//
+
 int32 ProjectCleanerUtility::DeleteAssets(TArray<FAssetData>& Assets)
 {
 	// first try to delete normally

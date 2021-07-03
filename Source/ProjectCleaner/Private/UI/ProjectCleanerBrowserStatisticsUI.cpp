@@ -2,6 +2,7 @@
 
 #include "UI/ProjectCleanerBrowserStatisticsUI.h"
 #include "UI/ProjectCleanerStyle.h"
+#include "Core/ProjectCleanerUtility.h"
 
 #define LOCTEXT_NAMESPACE "FProjectCleanerModule"
 
@@ -9,11 +10,11 @@ void SProjectCleanerBrowserStatisticsUI::Construct(const FArguments& InArgs)
 {
 	if (InArgs._CleanerData)
 	{
-		CleanerData = InArgs._CleanerData;
+		SetData(*InArgs._CleanerData);
 	}
 
 	const float MaxHeight = 40.0f;
-	
+
 	ChildSlot
 	[
 		SNew(SOverlay)
@@ -75,7 +76,7 @@ void SProjectCleanerBrowserStatisticsUI::Construct(const FArguments& InArgs)
 				.AutoWidth()
 				[
 					SNew(STextBlock)
-					.AutoWrapText(true)
+					.AutoWrapText(false)
 					.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
 					.Text_Raw(this, &SProjectCleanerBrowserStatisticsUI::GetTotalSize)
 				]

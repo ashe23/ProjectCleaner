@@ -41,6 +41,10 @@ void ProjectCleanerManager::UpdateData()
 {
 	FScopedSlowTask SlowTask{ 1.0f, FText::FromString("Scanning...") };
 	SlowTask.MakeDialog();
+
+	ProjectCleanerUtility::FixupRedirectors();
+	ProjectCleanerUtility::SaveAllAssets();
+	UpdateAssetRegistry();
 	
 	CleanerData.Empty();
 	AdjacencyList.Empty();
@@ -52,6 +56,7 @@ void ProjectCleanerManager::UpdateData()
 	ProjectCleanerUtility::FindAssetsUsedIndirectly(CleanerData.UnusedAssets, CleanerData.IndirectFileInfos);
 
 	GenerateAdjacencyList();
+	RemoveAssetsWithExternalReferencers();
 	RemoveAssetsFromDeveloperFolder();
 	RemoveIndirectAssets();
 	RemoveExcludedAssets();
@@ -95,11 +100,6 @@ void ProjectCleanerManager::DeleteUnusedAssets()
 		);
 		
 		ProjectCleanerNotificationManager::Update(ProgressNotification, ProgressText);
-	
-		AdjacencyList.RemoveAllSwap([&] (const FAssetNode& Elem)
-		{
-			return Chunk.Contains(Elem.AssetData);
-		});
 
 		CleanerData.UnusedAssets.RemoveAllSwap([&] (const FAssetData& Elem)
 		{
@@ -110,9 +110,10 @@ void ProjectCleanerManager::DeleteUnusedAssets()
 		
 		Chunk.Reset();
 	}
-	
-	const FText FinalText = FText::FromString(FString::Printf(TEXT("Deleted %d assets."), CleanerData.DeletedAssetsNum));
-	ProjectCleanerNotificationManager::Hide(ProgressNotification, FinalText);
+
+	const FString PostFixText = CleanerData.DeletedAssetsNum > 1 ? TEXT(" assets") : TEXT(" asset");
+	const FString FinalText = FString{ "Deleted " } + FString::FromInt(CleanerData.DeletedAssetsNum) + PostFixText;
+	ProjectCleanerNotificationManager::Hide(ProgressNotification, FText::FromString(FinalText));
 	
 	UpdateData();
 	
@@ -122,12 +123,15 @@ void ProjectCleanerManager::DeleteUnusedAssets()
 	}
 	else
 	{
-		UpdateContentBrowser();
+		UpdateAssetRegistry();
+		FocusOnGameFolder();
 	}
 }
 
 void ProjectCleanerManager::DeleteEmptyFolders()
 {
+	if (CleanerData.EmptyFolders.Num() == 0) return;
+	
 	const FString PostFixText = CleanerData.EmptyFolders.Num() > 1 ? TEXT(" empty folders") : TEXT(" empty folder");
  	const FString DisplayText = FString{ "Deleted " } + FString::FromInt(CleanerData.EmptyFolders.Num()) + PostFixText;
  	
@@ -148,18 +152,25 @@ void ProjectCleanerManager::DeleteEmptyFolders()
  		);
  	}
  
- 	UpdateContentBrowser();
+ 	UpdateAssetRegistry();
+	FocusOnGameFolder();
 }
 
-void ProjectCleanerManager::UpdateContentBrowser() const
+void ProjectCleanerManager::UpdateAssetRegistry() const
 {
 	FAssetRegistryModule& AssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
 	
+	TArray<FString> ScanFolders;
+	ScanFolders.Add("/Game");
+
+	AssetRegistry.Get().ScanPathsSynchronous(ScanFolders, true);
+	AssetRegistry.Get().SearchAllAssets(false);
+}
+
+void ProjectCleanerManager::FocusOnGameFolder() const
+{
 	TArray<FString> FocusFolders;
 	FocusFolders.Add("/Game");
-
-	AssetRegistry.Get().ScanPathsSynchronous(FocusFolders, true);
-	AssetRegistry.Get().SearchAllAssets(true);
 	
 	FContentBrowserModule& ContentBrowser = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
 	ContentBrowser.Get().SetSelectedPaths(FocusFolders, true);
@@ -320,6 +331,42 @@ bool ProjectCleanerManager::HasReferencersInDeveloperFolder(const FAssetNode& As
 	return false;
 }
 
+bool ProjectCleanerManager::HasExternalReferencers(const FAssetNode& AssetNode) const
+{
+	return AssetNode.Refs.ContainsByPredicate([&] (const FName& Elem)
+	{
+		return !Elem.ToString().StartsWith("/Game");
+	});
+}
+
+void ProjectCleanerManager::RemoveAssetsWithExternalReferencers()
+{
+	TSet<FAssetData> FilteredAssets;
+	FilteredAssets.Reserve(AdjacencyList.Num());
+	
+	for (const auto& AssetNode : AdjacencyList)
+	{
+		if (!HasExternalReferencers(AssetNode)) continue;
+		FilteredAssets.Add(AssetNode.AssetData);
+
+		for (const auto& LinkedAsset : AssetNode.LinkedAssets)
+		{
+			FilteredAssets.Add(LinkedAsset);
+		}
+	}
+	
+	CleanerData.UnusedAssets.RemoveAllSwap([&] (const FAssetData& Elem)
+	{
+		return FilteredAssets.Contains(Elem);
+	});
+
+	AdjacencyList.RemoveAllSwap([&](const FAssetNode& Elem)
+	{
+		return FilteredAssets.Contains(Elem.AssetData);
+	});
+}
+
+
 void ProjectCleanerManager::RemoveAssetsFromDeveloperFolder()
 {
 	for (const auto& Node : AdjacencyList)
@@ -340,6 +387,11 @@ void ProjectCleanerManager::RemoveAssetsFromDeveloperFolder()
 	{
 		CleanerData.UnusedAssets.RemoveAllSwap([&](const FAssetData& Elem) {
 			return IsUnderDeveloperFolder(Elem.PackagePath.ToString());
+		});
+
+		AdjacencyList.RemoveAllSwap([&] (const FAssetNode& Elem)
+		{
+			return IsUnderDeveloperFolder(Elem.AssetData.PackagePath.ToString());
 		});
 	}
 }

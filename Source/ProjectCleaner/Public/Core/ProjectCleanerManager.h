@@ -30,7 +30,8 @@ public:
 	void UpdateData();
 	void DeleteUnusedAssets();
 	void DeleteEmptyFolders();
-	void UpdateContentBrowser() const;
+	void UpdateAssetRegistry() const;
+	void FocusOnGameFolder() const;
 private:
 	void GetRelatedAssets(const FName& PackageName, const ERelationType RelationType, TArray<FName>& RelatedAssets) const;
 	void GetLinkedAssets(FAssetNode& Node, FAssetNode& RootNode, TSet<FName>& Visited);
@@ -42,6 +43,8 @@ private:
 	bool HasReferencers(const FAssetNode& AssetNode) const;
 	bool IsUnderDeveloperFolder(const FString& PackagePath) const;
 	bool HasReferencersInDeveloperFolder(const FAssetNode& AssetNode) const;
+	bool HasExternalReferencers(const FAssetNode& AssetNode) const;
+	void RemoveAssetsWithExternalReferencers();
 	void RemoveAssetsFromDeveloperFolder();
 	void RemoveIndirectAssets();
 	void RemoveExcludedAssets();

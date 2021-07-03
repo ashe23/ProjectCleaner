@@ -38,7 +38,7 @@ void SProjectCleanerIndirectAssetsUI::SetIndirectFiles(const TArray<FIndirectFil
 	if (ListView.IsValid())
 	{
 		ListView->SetListItemsSource(IndirectAssets);
-		ListView->RebuildList();
+		// ListView->RebuildList();
 	}
 }
 

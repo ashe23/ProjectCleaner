@@ -2,12 +2,11 @@
 
 #include "CoreTypes.h"
 #include "Misc/AutomationTest.h"
-#include "FileHelpers.h"
 #include "GenericPlatform/GenericPlatformFile.h"
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "Factories/MaterialFactoryNew.h"
 #include "ObjectTools.h"
-#include "UI/ProjectCleanerStyle.h"
+#include "Core/ProjectCleanerUtility.h"
 #include "StructsContainer.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -90,7 +89,7 @@ bool FProjectCleanerUnusedAssetsTests::RunTest(const FString& Parameters)
 		UMaterialFactoryNew::StaticClass()
 	);
 
-	// ProjectCleanerUtility::GetUnusedAssets(UnusedAssets, *ExcludeOptions);
+	ProjectCleanerUtility::GetUnusedAssets(UnusedAssets);
 	TestEqual(TEXT("UnusedAssets num must"), UnusedAssets.Num(), 1);
 	
 	UnusedAssets.Reset();
@@ -102,7 +101,7 @@ bool FProjectCleanerUnusedAssetsTests::RunTest(const FString& Parameters)
 		UMaterialFactoryNew::StaticClass()
 	);
 	
-	// ProjectCleanerUtility::GetUnusedAssets(UnusedAssets, *ExcludeOptions);
+	ProjectCleanerUtility::GetUnusedAssets(UnusedAssets);
 	TestEqual(TEXT("UnusedAssets num must"), UnusedAssets.Num(), 2);
 
 	// cleanup
@@ -119,7 +118,7 @@ bool FProjectCleanerUnusedAssetsTests::RunTest(const FString& Parameters)
 		UMaterial::StaticClass(),
 		UMaterialFactoryNew::StaticClass()
 	);
-	// ProjectCleanerUtility::GetUnusedAssets(UnusedAssets, *ExcludeOptions);
+	ProjectCleanerUtility::GetUnusedAssets(UnusedAssets);
 	TestEqual(TEXT("UnusedAssets num must"), UnusedAssets.Num(), 0);
 
 	// cleanup
