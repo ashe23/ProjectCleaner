@@ -16,84 +16,6 @@ void SProjectCleanerIndirectAssetsUI::Construct(const FArguments& InArgs)
 		SetIndirectFiles(*InArgs._IndirectFileInfos);
 	}
 
-	InitUI();
-}
-
-void SProjectCleanerIndirectAssetsUI::SetIndirectFiles(const TArray<FIndirectFileInfo>& NewIndirectFileInfos)
-{
-	IndirectAssets.Reset();
-	IndirectAssets.Reserve(NewIndirectFileInfos.Num());
-
-	for (const auto& IndirectFileInfo : NewIndirectFileInfos)
-	{
-		auto IndirectAsset = NewObject<UIndirectAsset>();
-		IndirectAsset->AssetName = IndirectFileInfo.AssetData.AssetName.ToString();
-		IndirectAsset->AssetPath = IndirectFileInfo.AssetData.PackagePath.ToString();
-		IndirectAsset->FilePath = IndirectFileInfo.FilePath;
-		IndirectAsset->LineNum = IndirectFileInfo.LineNum;
-		
-		IndirectAssets.Add(IndirectAsset);
-	}
-
-	if (ListView.IsValid())
-	{
-		ListView->SetListItemsSource(IndirectAssets);
-		// ListView->RebuildList();
-	}
-}
-
-void SProjectCleanerIndirectAssetsUI::InitUI()
-{
-	ListView = SNew(SListView<TWeakObjectPtr<UIndirectAsset>>)
-		.ListItemsSource(&IndirectAssets)
-		.SelectionMode(ESelectionMode::SingleToggle)
-		.OnGenerateRow(this, &SProjectCleanerIndirectAssetsUI::OnGenerateRow)
-		.OnMouseButtonDoubleClick_Raw(this, &SProjectCleanerIndirectAssetsUI::OnMouseDoubleClick)
-		.HeaderRow
-		(
-			SNew(SHeaderRow)
-			+ SHeaderRow::Column(FName("AssetName"))
-			.HAlignCell(HAlign_Center)
-			.VAlignCell(VAlign_Center)
-			.HAlignHeader(HAlign_Center)
-			.HeaderContentPadding(FMargin(10.0f))
-			.FillWidth(0.2f)
-			[
-				SNew(STextBlock)
-				.Text(LOCTEXT("AssetName", "Asset Name"))
-			]
-			+ SHeaderRow::Column(FName("AssetPath"))
-			.HAlignCell(HAlign_Center)
-			.VAlignCell(VAlign_Center)
-			.HAlignHeader(HAlign_Center)
-			.HeaderContentPadding(FMargin(10.0f))
-			.FillWidth(0.2f)
-			[
-				SNew(STextBlock)
-				.Text(LOCTEXT("AssetPath", "Asset Path"))
-			]
-			+ SHeaderRow::Column(FName("FilePath"))
-			.HAlignCell(HAlign_Center)
-			.VAlignCell(VAlign_Center)
-			.HAlignHeader(HAlign_Center)
-			.HeaderContentPadding(FMargin(10.0f))
-			.FillWidth(0.5f)
-			[
-				SNew(STextBlock)
-				.Text(LOCTEXT("FilePath", "File path"))
-			]
-			+ SHeaderRow::Column(FName("LineNum"))
-			.HAlignCell(HAlign_Center)
-			.VAlignCell(VAlign_Center)
-			.HAlignHeader(HAlign_Center)
-			.HeaderContentPadding(FMargin(10.0f))
-			.FillWidth(0.1f)
-			[
-				SNew(STextBlock)
-				.Text(LOCTEXT("LineNum", "Line Number"))
-			]
-		);
-
 	ChildSlot
 	[
 		SNew(SOverlay)
@@ -134,11 +56,81 @@ void SProjectCleanerIndirectAssetsUI::InitUI()
 				.AutoHeight()
 				.Padding(FMargin{0.0f, 20.0f})
 				[
-					ListView.ToSharedRef()
+					SAssignNew(ListView, SListView<TWeakObjectPtr<UIndirectAsset>>)
+					.ListItemsSource(&IndirectAssets)
+					.SelectionMode(ESelectionMode::SingleToggle)
+					.OnGenerateRow(this, &SProjectCleanerIndirectAssetsUI::OnGenerateRow)
+					.OnMouseButtonDoubleClick_Raw(this, &SProjectCleanerIndirectAssetsUI::OnMouseDoubleClick)
+					.HeaderRow
+					(
+						SNew(SHeaderRow)
+						+ SHeaderRow::Column(FName("AssetName"))
+						.HAlignCell(HAlign_Center)
+						.VAlignCell(VAlign_Center)
+						.HAlignHeader(HAlign_Center)
+						.HeaderContentPadding(FMargin(10.0f))
+						.FillWidth(0.2f)
+						[
+							SNew(STextBlock)
+							.Text(LOCTEXT("AssetName", "Asset Name"))
+						]
+						+ SHeaderRow::Column(FName("AssetPath"))
+						.HAlignCell(HAlign_Center)
+						.VAlignCell(VAlign_Center)
+						.HAlignHeader(HAlign_Center)
+						.HeaderContentPadding(FMargin(10.0f))
+						.FillWidth(0.2f)
+						[
+							SNew(STextBlock)
+							.Text(LOCTEXT("AssetPath", "Asset Path"))
+						]
+						+ SHeaderRow::Column(FName("FilePath"))
+						.HAlignCell(HAlign_Center)
+						.VAlignCell(VAlign_Center)
+						.HAlignHeader(HAlign_Center)
+						.HeaderContentPadding(FMargin(10.0f))
+						.FillWidth(0.5f)
+						[
+							SNew(STextBlock)
+							.Text(LOCTEXT("FilePath", "File path"))
+						]
+						+ SHeaderRow::Column(FName("LineNum"))
+						.HAlignCell(HAlign_Center)
+						.VAlignCell(VAlign_Center)
+						.HAlignHeader(HAlign_Center)
+						.HeaderContentPadding(FMargin(10.0f))
+						.FillWidth(0.1f)
+						[
+							SNew(STextBlock)
+							.Text(LOCTEXT("LineNum", "Line Number"))
+						]
+					)
 				]
 			]
 		]
 	];
+}
+
+void SProjectCleanerIndirectAssetsUI::SetIndirectFiles(const TArray<FIndirectFileInfo>& NewIndirectFileInfos)
+{
+	IndirectAssets.Reset();
+	IndirectAssets.Reserve(NewIndirectFileInfos.Num());
+
+	for (const auto& IndirectFileInfo : NewIndirectFileInfos)
+	{
+		auto IndirectAsset = NewObject<UIndirectAsset>();
+		IndirectAsset->AssetName = IndirectFileInfo.AssetData.AssetName.ToString();
+		IndirectAsset->AssetPath = IndirectFileInfo.AssetData.PackagePath.ToString();
+		IndirectAsset->FilePath = IndirectFileInfo.FilePath;
+		IndirectAsset->LineNum = IndirectFileInfo.LineNum;
+		
+		IndirectAssets.Add(IndirectAsset);
+	}
+	
+	if (ListView.IsValid())
+	{
+		ListView->RebuildList();
+	}
 }
 
 TSharedRef<ITableRow> SProjectCleanerIndirectAssetsUI::OnGenerateRow(
@@ -152,9 +144,6 @@ void SProjectCleanerIndirectAssetsUI::OnMouseDoubleClick(TWeakObjectPtr<UIndirec
 {
 	if (!Item.IsValid()) return;
 
-	TArray<FAssetData> SelectedAssets;
-	SelectedAssets.Add(Item->AssetData);
-	
 	const auto DirectoryPath = FPaths::GetPath(Item.Get()->FilePath);
 	if (!FPaths::DirectoryExists(DirectoryPath)) return;
 

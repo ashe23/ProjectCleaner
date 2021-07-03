@@ -14,62 +14,6 @@ void SProjectCleanerNonEngineFilesUI::Construct(const FArguments& InArgs)
 		SetNonEngineFiles(*InArgs._NonEngineFiles);
 	}
 
-	InitUI();
-}
-
-void SProjectCleanerNonEngineFilesUI::SetNonEngineFiles(const TSet<FString>& NewNonEngineFile)
-{
-	NonEngineFiles.Reset();
-	NonEngineFiles.Reserve(NewNonEngineFile.Num());
-
-	for (const auto& File: NewNonEngineFile)
-	{
-		const auto& NonUassetFile = NewObject<UNonEngineFile>();
-		if(!NonUassetFile) continue;
-		NonUassetFile->FileName = FPaths::GetBaseFilename(File) + "." + FPaths::GetExtension(File);
-		NonUassetFile->FilePath = File;
-		NonEngineFiles.AddUnique(NonUassetFile);
-	}
-
-	if (ListView.IsValid())
-	{
-		ListView->SetListItemsSource(NonEngineFiles);
-		ListView->RebuildList();
-	}
-}
-
-void SProjectCleanerNonEngineFilesUI::InitUI()
-{
-	ListView = SNew(SListView<TWeakObjectPtr<UNonEngineFile>>)
-		.ListItemsSource(&NonEngineFiles)
-		.SelectionMode(ESelectionMode::SingleToggle)
-		.OnGenerateRow(this, &SProjectCleanerNonEngineFilesUI::OnGenerateRow)
-		.OnMouseButtonDoubleClick_Raw(this, &SProjectCleanerNonEngineFilesUI::OnMouseDoubleClick)
-		.HeaderRow
-		(
-			SNew(SHeaderRow)
-			+ SHeaderRow::Column(FName("FileName"))
-			.HAlignCell(HAlign_Center)
-			.VAlignCell(VAlign_Center)
-			.HAlignHeader(HAlign_Center)
-			.HeaderContentPadding(FMargin(10.0f))
-			.FillWidth(0.3f)
-			[
-				SNew(STextBlock)
-				.Text(LOCTEXT("NameColumn", "FileName"))
-			]
-			+ SHeaderRow::Column(FName("FilePath"))
-			.HAlignCell(HAlign_Center)
-			.VAlignCell(VAlign_Center)
-			.HAlignHeader(HAlign_Center)
-			.HeaderContentPadding(FMargin(10.0f))
-			.FillWidth(0.7f)
-			[
-				SNew(STextBlock)
-				.Text(LOCTEXT("PathColumn", "FilePath"))
-			]
-	);
-
 	ChildSlot
 	[
 		SNew(SOverlay)
@@ -101,17 +45,64 @@ void SProjectCleanerNonEngineFilesUI::InitUI()
 				.AutoHeight()
 				.Padding(FMargin{0.0f, 20.0f})
 				[
-					ListView.ToSharedRef()
+					SAssignNew(ListView, SListView<TWeakObjectPtr<UNonEngineFile>>)
+					.ListItemsSource(&NonEngineFiles)
+					.SelectionMode(ESelectionMode::SingleToggle)
+					.OnGenerateRow(this, &SProjectCleanerNonEngineFilesUI::OnGenerateRow)
+					.OnMouseButtonDoubleClick_Raw(this, &SProjectCleanerNonEngineFilesUI::OnMouseDoubleClick)
+					.HeaderRow
+					(
+						SNew(SHeaderRow)
+						+ SHeaderRow::Column(FName("FileName"))
+						.HAlignCell(HAlign_Center)
+						.VAlignCell(VAlign_Center)
+						.HAlignHeader(HAlign_Center)
+						.HeaderContentPadding(FMargin(10.0f))
+						.FillWidth(0.3f)
+						[
+							SNew(STextBlock)
+							.Text(LOCTEXT("NameColumn", "FileName"))
+						]
+						+ SHeaderRow::Column(FName("FilePath"))
+						.HAlignCell(HAlign_Center)
+						.VAlignCell(VAlign_Center)
+						.HAlignHeader(HAlign_Center)
+						.HeaderContentPadding(FMargin(10.0f))
+						.FillWidth(0.7f)
+						[
+							SNew(STextBlock)
+							.Text(LOCTEXT("PathColumn", "FilePath"))
+						]
+					)
 				]
 			]
 		]
 	];
 }
 
+void SProjectCleanerNonEngineFilesUI::SetNonEngineFiles(const TSet<FString>& NewNonEngineFile)
+{
+	NonEngineFiles.Reset();
+	NonEngineFiles.Reserve(NewNonEngineFile.Num());
+
+	for (const auto& File: NewNonEngineFile)
+	{
+		const auto& NonUassetFile = NewObject<UNonEngineFile>();
+		if(!NonUassetFile) continue;
+		NonUassetFile->FileName = FPaths::GetBaseFilename(File) + "." + FPaths::GetExtension(File);
+		NonUassetFile->FilePath = File;
+		NonEngineFiles.AddUnique(NonUassetFile);
+	}
+
+	if (ListView.IsValid())
+	{
+		ListView->RebuildList();
+	}
+}
+
 TSharedRef<ITableRow> SProjectCleanerNonEngineFilesUI::OnGenerateRow(
 	TWeakObjectPtr<UNonEngineFile> InItem,
-	const TSharedRef<STableViewBase>& OwnerTable
-) const
+	const TSharedRef<STableViewBase>& OwnerTable) const
 {
 	return SNew(SNonEngineFilesUISelectionRow, OwnerTable).SelectedRowItem(InItem);
 }

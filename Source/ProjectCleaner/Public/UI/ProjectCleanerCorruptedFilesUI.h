@@ -34,7 +34,7 @@ public:
 		if (InColumnName == TEXT("Name"))
 		{
 			ColumnWidget = SNew(STextBlock).Text(FText::FromString(SelectedRowItem->Name));
-		}		
+		}
 		else if (InColumnName == TEXT("AbsolutePath"))
 		{
 			ColumnWidget = SNew(STextBlock).Text(FText::FromString(SelectedRowItem->AbsolutePath));
@@ -61,7 +61,6 @@ public:
 	void Construct(const FArguments& InArgs);
 	void SetCorruptedFiles(const TSet<FString>& NewCorruptedFiles);
 private:
-	void InitUI();
 	TSharedRef<ITableRow> OnGenerateRow(
 		TWeakObjectPtr<UCorruptedFile> InItem,
 		const TSharedRef<STableViewBase>& OwnerTable

@@ -20,6 +20,7 @@ private:
 	/* Initializers */
 	void InitTabs();
 	void Update() const;
+	void UpdateUIData() const;
 	
 	/* Callbacks */
 	TSharedRef<SDockTab> OnUnusedAssetTabSpawn(const FSpawnTabArgs& SpawnTabArgs);

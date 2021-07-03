@@ -62,7 +62,6 @@ public:
 	void Construct(const FArguments& InArgs);
 	void SetNonEngineFiles(const TSet<FString>& NewNonEngineFile);
 private:
-	void InitUI();
 	TSharedRef<ITableRow> OnGenerateRow(
 		TWeakObjectPtr<UNonEngineFile> InItem,
 		const TSharedRef<STableViewBase>& OwnerTable

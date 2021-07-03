@@ -69,8 +69,10 @@ public:
 	void Construct(const FArguments& InArgs);
 	void SetIndirectFiles(const TArray<FIndirectFileInfo>& NewIndirectFileInfos);
 private:
-	void InitUI();
-	TSharedRef<ITableRow> OnGenerateRow(TWeakObjectPtr<UIndirectAsset> InItem, const TSharedRef<STableViewBase>& OwnerTable) const;
+	TSharedRef<ITableRow> OnGenerateRow(
+		TWeakObjectPtr<UIndirectAsset> InItem,
+		const TSharedRef<STableViewBase>& OwnerTable
+	) const;
 	void OnMouseDoubleClick(TWeakObjectPtr<UIndirectAsset> Item) const;
 	TArray<TWeakObjectPtr<UIndirectAsset>> IndirectAssets;
 	TSharedPtr<SListView<TWeakObjectPtr<UIndirectAsset>>> ListView;

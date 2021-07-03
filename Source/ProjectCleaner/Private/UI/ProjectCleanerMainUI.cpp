@@ -213,7 +213,11 @@ void SProjectCleanerMainUI::InitTabs()
 void SProjectCleanerMainUI::Update() const
 {
 	CleanerManager->UpdateData();
+	UpdateUIData();
+}
 
+void SProjectCleanerMainUI::UpdateUIData() const
+{
 	if (StatisticsUI.IsValid())
 	{
 		StatisticsUI.Pin()->SetData(*CleanerManager->GetCleanerData());
@@ -413,7 +417,8 @@ FReply SProjectCleanerMainUI::OnDeleteUnusedAssetsBtnClick() const
 	}
 
 	CleanerManager->DeleteUnusedAssets();
-
+	UpdateUIData();
+	
 	return FReply::Handled();
 }
 
@@ -440,6 +445,7 @@ FReply SProjectCleanerMainUI::OnDeleteEmptyFolderClick() const
 	}
 
 	CleanerManager->DeleteEmptyFolders();
+	UpdateUIData();
 
 	return FReply::Handled();
 }

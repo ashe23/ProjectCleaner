@@ -15,61 +15,6 @@ void SProjectCleanerCorruptedFilesUI::Construct(const FArguments& InArgs)
 		SetCorruptedFiles(*InArgs._CorruptedFiles);
 	}
 
-	InitUI();
-}
-
-void SProjectCleanerCorruptedFilesUI::SetCorruptedFiles(const TSet<FString>& NewCorruptedFiles)
-{
-	CorruptedFiles.Reset();
-	CorruptedFiles.Reserve(NewCorruptedFiles.Num());
-
-	for (const auto File : NewCorruptedFiles)
-	{
-		const auto& CorruptedFile = NewObject<UCorruptedFile>();
-		CorruptedFile->Name = FPaths::GetBaseFilename(File);
-		CorruptedFile->AbsolutePath = File;
-		CorruptedFiles.AddUnique(CorruptedFile);
-	}
-
-	if (ListView.IsValid())
-	{
-		ListView->SetListItemsSource(CorruptedFiles);
-		ListView->RebuildList();
-	}
-}
-
-void SProjectCleanerCorruptedFilesUI::InitUI()
-{
-	ListView = SNew(SListView<TWeakObjectPtr<UCorruptedFile>>)
-		.ListItemsSource(&CorruptedFiles)
-		.SelectionMode(ESelectionMode::SingleToggle)
-		.OnGenerateRow(this, &SProjectCleanerCorruptedFilesUI::OnGenerateRow)
-		.OnMouseButtonDoubleClick_Raw(this, &SProjectCleanerCorruptedFilesUI::OnMouseDoubleClick)
-		.HeaderRow
-		(
-			SNew(SHeaderRow)
-			+ SHeaderRow::Column(FName("Name"))
-			.HAlignCell(HAlign_Center)
-			.VAlignCell(VAlign_Center)
-			.HAlignHeader(HAlign_Center)
-			.HeaderContentPadding(FMargin(10.0f))
-			.FillWidth(0.3f)
-			[
-				SNew(STextBlock)
-				.Text(LOCTEXT("NameColumn", "Name"))
-			]
-			+ SHeaderRow::Column(FName("AbsolutePath"))
-			.HAlignCell(HAlign_Center)
-			.VAlignCell(VAlign_Center)
-			.HAlignHeader(HAlign_Center)
-			.HeaderContentPadding(FMargin(10.0f))
-			.FillWidth(0.7f)
-			[
-				SNew(STextBlock)
-				.Text(LOCTEXT("PathColumn", "FilePath"))
-			]
-	);
-
 	ChildSlot
 	[
 		SNew(SOverlay)
@@ -92,15 +37,6 @@ void SProjectCleanerCorruptedFilesUI::InitUI()
 						.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
 						.Text(LOCTEXT("corrupted_files", "Corrupted Files"))
 					]
-					//+SVerticalBox::Slot()
-					//.AutoHeight()
-					//.Padding(FMargin{0.0f, 10.0f})
-					//[
-					//	SNew(STextBlock)
-					//	.AutoWrapText(true)
-					//	.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light15"))
-					//	.Text(LOCTEXT("corrupted_files_tip_text", ""))
-					//]
 					+SVerticalBox::Slot()
 					.AutoHeight()
 					.Padding(FMargin{0.0f, 10.0f})
@@ -124,11 +60,59 @@ void SProjectCleanerCorruptedFilesUI::InitUI()
 				.AutoHeight()
 				.Padding(FMargin{ 0.0f, 20.0f })
 				[
-					ListView.ToSharedRef()
+					SAssignNew(ListView, SListView<TWeakObjectPtr<UCorruptedFile>>)
+					.ListItemsSource(&CorruptedFiles)
+					.SelectionMode(ESelectionMode::SingleToggle)
+					.OnGenerateRow(this, &SProjectCleanerCorruptedFilesUI::OnGenerateRow)
+					.OnMouseButtonDoubleClick_Raw(this, &SProjectCleanerCorruptedFilesUI::OnMouseDoubleClick)
+					.HeaderRow
+					(
+						SNew(SHeaderRow)
+						+ SHeaderRow::Column(FName("Name"))
+						.HAlignCell(HAlign_Center)
+						.VAlignCell(VAlign_Center)
+						.HAlignHeader(HAlign_Center)
+						.HeaderContentPadding(FMargin(10.0f))
+						.FillWidth(0.3f)
+						[
+							SNew(STextBlock)
+							.Text(LOCTEXT("NameColumn", "Name"))
+						]
+						+ SHeaderRow::Column(FName("AbsolutePath"))
+						.HAlignCell(HAlign_Center)
+						.VAlignCell(VAlign_Center)
+						.HAlignHeader(HAlign_Center)
+						.HeaderContentPadding(FMargin(10.0f))
+						.FillWidth(0.7f)
+						[
+							SNew(STextBlock)
+							.Text(LOCTEXT("PathColumn", "FilePath"))
+						]
+					)
 				]
 			]
 		]
 	];
+}
+
+void SProjectCleanerCorruptedFilesUI::SetCorruptedFiles(const TSet<FString>& NewCorruptedFiles)
+{
+	CorruptedFiles.Reset();
+	CorruptedFiles.Reserve(NewCorruptedFiles.Num());
+
+	for (const auto File : NewCorruptedFiles)
+	{
+		const auto& CorruptedFile = NewObject<UCorruptedFile>();
+		CorruptedFile->Name = FPaths::GetBaseFilename(File);
+		CorruptedFile->AbsolutePath = File;
+		CorruptedFiles.AddUnique(CorruptedFile);
+	}
+
+	if (ListView.IsValid())
+	{
+		ListView->SetListItemsSource(CorruptedFiles);
+		ListView->RebuildList();
+	}
 }
 
 TSharedRef<ITableRow> SProjectCleanerCorruptedFilesUI::OnGenerateRow(TWeakObjectPtr<UCorruptedFile> InItem,
