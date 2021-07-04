@@ -15,7 +15,7 @@ Platform: Windows
 1) Create Plugins Folder in your project root directory
 2) Download appropriate version of .zip in releases
 3) Extract to Plugins folder
-4) Open Project, and you are Done!
+4) Open Project, and thats it!
 
 
 
