@@ -10,15 +10,16 @@
 	"DocsURL": "https://github.com/ashe23/ProjectCleaner",
 	"MarketplaceURL": "",
 	"SupportURL": "",
+	"EngineVersion": "4.26.0",
 	"CanContainContent": false,
+	"EnabledByDefault" : true,
 	"IsBetaVersion": false,
 	"IsExperimentalVersion": false,
-	"Installed": false,
 	"Modules": [
 		{
 			"Name": "ProjectCleaner",
 			"Type": "Editor",
-			"LoadingPhase": "Default",
+			"LoadingPhase": "PostDefault",
 			"WhitelistPlatforms": [ "Win64", "Win32"]
 		}
 	]

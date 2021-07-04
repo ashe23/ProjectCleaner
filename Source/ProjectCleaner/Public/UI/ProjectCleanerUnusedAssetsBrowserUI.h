@@ -31,8 +31,8 @@ public:
 	FOnUserExcludedAssets OnUserExcludedAssets;
 private:
 	void UpdateUI();
-	TSharedPtr<SWidget> OnGetAssetContextMenu(const TArray<FAssetData>& SelectedAssets);
-	void OnAssetDblClicked(const FAssetData& AssetData) const;
+	TSharedPtr<SWidget> OnGetAssetContextMenu(const TArray<FAssetData>& SelectedAssets) const;
+	static void OnAssetDblClicked(const FAssetData& AssetData);
 	void FindInContentBrowser() const;
 	bool IsAnythingSelected() const;
 	void DeleteAsset() const;

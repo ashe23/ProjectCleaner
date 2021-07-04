@@ -5,7 +5,6 @@
 #include "UI/ProjectCleanerCommands.h"
 #include "UI/ProjectCleanerNotificationManager.h"
 #include "UI/ProjectCleanerMainUI.h"
-#include "Core/ProjectCleanerUtility.h"
 // Engine Headers
 #include "ToolMenus.h"
 #include "AssetRegistryModule.h"

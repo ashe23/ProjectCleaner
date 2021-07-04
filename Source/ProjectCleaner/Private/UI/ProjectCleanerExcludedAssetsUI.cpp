@@ -97,8 +97,7 @@ void SProjectCleanerExcludedAssetsUI::UpdateUI()
 	Config.bAllowDragging = false;	
 	Config.AssetShowWarningText = FText::FromName("No assets");
 	Config.GetCurrentSelectionDelegates.Add(&GetCurrentSelectionDelegate);
-	Config.OnAssetDoubleClicked = FOnAssetDoubleClicked::CreateRaw(
-		this,
+	Config.OnAssetDoubleClicked = FOnAssetDoubleClicked::CreateStatic(
 		&SProjectCleanerExcludedAssetsUI::OnAssetDblClicked
 	);
 	Config.OnGetAssetContextMenu = FOnGetAssetContextMenu::CreateRaw(
@@ -230,7 +229,7 @@ void SProjectCleanerExcludedAssetsUI::UpdateUI()
 	];
 }
 
-TSharedPtr<SWidget> SProjectCleanerExcludedAssetsUI::OnGetAssetContextMenu(const TArray<FAssetData>& SelectedAssets)
+TSharedPtr<SWidget> SProjectCleanerExcludedAssetsUI::OnGetAssetContextMenu(const TArray<FAssetData>& SelectedAssets) const
 {
 	FMenuBuilder MenuBuilder{true, Commands};
 	MenuBuilder.BeginSection(
@@ -246,7 +245,7 @@ TSharedPtr<SWidget> SProjectCleanerExcludedAssetsUI::OnGetAssetContextMenu(const
 	return MenuBuilder.MakeWidget();
 }
 
-void SProjectCleanerExcludedAssetsUI::OnAssetDblClicked(const FAssetData& AssetData) const
+void SProjectCleanerExcludedAssetsUI::OnAssetDblClicked(const FAssetData& AssetData)
 {
 	TArray<FName> AssetNames;
 	AssetNames.Add(AssetData.ObjectPath);

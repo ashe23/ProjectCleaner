@@ -3,7 +3,6 @@
 #include "UI/ProjectCleanerExcludeOptionsUI.h"
 #include "UI/ProjectCleanerStyle.h"
 #include "StructsContainer.h"
-#include "ClassViewerModule.h"
 
 #define LOCTEXT_NAMESPACE "FProjectCleanerModule"
 

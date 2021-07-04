@@ -125,8 +125,7 @@ void SProjectCleanerUnusedAssetsBrowserUI::UpdateUI()
 	AssetPickerConfig.bCanShowRealTimeThumbnails = false;
 	AssetPickerConfig.AssetShowWarningText = FText::FromName("No assets");
 	AssetPickerConfig.GetCurrentSelectionDelegates.Add(&GetCurrentSelectionDelegate);
-	AssetPickerConfig.OnAssetDoubleClicked = FOnAssetDoubleClicked::CreateRaw(
-		this,
+	AssetPickerConfig.OnAssetDoubleClicked = FOnAssetDoubleClicked::CreateStatic(
 		&SProjectCleanerUnusedAssetsBrowserUI::OnAssetDblClicked
 	);
 	AssetPickerConfig.OnGetAssetContextMenu = FOnGetAssetContextMenu::CreateRaw(
@@ -186,7 +185,7 @@ void SProjectCleanerUnusedAssetsBrowserUI::UpdateUI()
 	];
 }
 
-TSharedPtr<SWidget> SProjectCleanerUnusedAssetsBrowserUI::OnGetAssetContextMenu(const TArray<FAssetData>& SelectedAssets)
+TSharedPtr<SWidget> SProjectCleanerUnusedAssetsBrowserUI::OnGetAssetContextMenu(const TArray<FAssetData>& SelectedAssets) const
 {
 	FMenuBuilder MenuBuilder{true, Commands};
 	MenuBuilder.BeginSection(
@@ -203,7 +202,7 @@ TSharedPtr<SWidget> SProjectCleanerUnusedAssetsBrowserUI::OnGetAssetContextMenu(
 	return MenuBuilder.MakeWidget();
 }
 
-void SProjectCleanerUnusedAssetsBrowserUI::OnAssetDblClicked(const FAssetData& AssetData) const
+void SProjectCleanerUnusedAssetsBrowserUI::OnAssetDblClicked(const FAssetData& AssetData)
 {
 	TArray<FName> AssetNames;
 	AssetNames.Add(AssetData.ObjectPath);
