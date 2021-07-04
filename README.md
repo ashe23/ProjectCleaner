@@ -42,12 +42,12 @@ This can be frustrating :( <br>
 So those files are shown seperately in Non Engine Files tab.
 
 ### Invalid assets detection
-This are Non engine(not .umap or .uasset) and corrupted files.
+These are Non engine(not .umap or .uasset) and corrupted files.
 Corrupted are those which exists in project folder, but for some reason doesnt exist in AssetRegistry and therefore not showing in ContentBrowser.
 All those files will be detected and shown in their tab.
 
 ### Asset used indirectly
-This are assets that used in source code files or in config files.<br>
+This are assets that used in source code files or config files.<br>
 Example:
 ```cpp
 static ConstructorHelpers::FObjectFinder<UMaterial> Material(TEXT("Material'/Game/NewMaterial.NewMaterial'"));
