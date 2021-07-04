@@ -38,7 +38,7 @@ private:
 	FReply OnDeleteUnusedAssetsBtnClick() const;
 	FReply OnDeleteEmptyFolderClick() const;
 	EAppReturnType::Type ShowConfirmationWindow(const FText& Title, const FText& ContentText) const;
-	bool IsConfirmationWindowCanceled(EAppReturnType::Type Status) const;
+	static bool IsConfirmationWindowCanceled(EAppReturnType::Type Status);
 	
 	/* UI Data */
 	TWeakPtr<class SProjectCleanerBrowserStatisticsUI> StatisticsUI;

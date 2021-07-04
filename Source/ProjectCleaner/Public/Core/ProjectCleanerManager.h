@@ -31,19 +31,19 @@ public:
 	void DeleteUnusedAssets();
 	void DeleteEmptyFolders();
 	void UpdateAssetRegistry() const;
-	void FocusOnGameFolder() const;
+	static void FocusOnGameFolder();
+	bool IsExcludedByPath(const FAssetData& AssetData);
+	bool IsExcludedByClass(const FAssetData& AssetData);
 private:
 	void GetRelatedAssets(const FName& PackageName, const ERelationType RelationType, TArray<FName>& RelatedAssets) const;
 	void GetLinkedAssets(FAssetNode& Node, FAssetNode& RootNode, TSet<FName>& Visited);
 	FAssetNode* FindByPackageName(const FName& PackageName);
 	void GenerateAdjacencyList();
-	bool IsExcludedByPath(const FAssetData& AssetData);
-	bool IsExcludedByClass(const FAssetData& AssetData);
-	bool IsCircular(const FAssetNode& AssetNode) const;
-	bool HasReferencers(const FAssetNode& AssetNode) const;
+	static bool IsCircular(const FAssetNode& AssetNode);
+	static bool HasReferencers(const FAssetNode& AssetNode);
 	bool IsUnderDeveloperFolder(const FString& PackagePath) const;
 	bool HasReferencersInDeveloperFolder(const FAssetNode& AssetNode) const;
-	bool HasExternalReferencers(const FAssetNode& AssetNode) const;
+	static bool HasExternalReferencers(const FAssetNode& AssetNode);
 	void RemoveAssetsWithExternalReferencers();
 	void RemoveAssetsFromDeveloperFolder();
 	void RemoveIndirectAssets();

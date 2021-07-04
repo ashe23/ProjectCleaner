@@ -167,7 +167,7 @@ void ProjectCleanerManager::UpdateAssetRegistry() const
 	AssetRegistry.Get().SearchAllAssets(false);
 }
 
-void ProjectCleanerManager::FocusOnGameFolder() const
+void ProjectCleanerManager::FocusOnGameFolder()
 {
 	TArray<FString> FocusFolders;
 	FocusFolders.Add("/Game");
@@ -191,7 +191,7 @@ void ProjectCleanerManager::GetRelatedAssets(const FName& PackageName, const ERe
 
 	RelatedAssets.RemoveAll([&] (const FName& Elem)
 	{
-		return Elem.IsEqual(PackageName); // todo:ashe23 remove non "Game" folder content?
+		return Elem.IsEqual(PackageName);
 	});
 }
 
@@ -294,7 +294,7 @@ bool ProjectCleanerManager::IsExcludedByClass(const FAssetData& AssetData)
 	});
 }
 
-bool ProjectCleanerManager::IsCircular(const FAssetNode& AssetNode) const
+bool ProjectCleanerManager::IsCircular(const FAssetNode& AssetNode)
 {
 	return AssetNode.Refs.ContainsByPredicate([&] (const FName& Elem)
 	{
@@ -302,7 +302,7 @@ bool ProjectCleanerManager::IsCircular(const FAssetNode& AssetNode) const
 	});
 }
 
-bool ProjectCleanerManager::HasReferencers(const FAssetNode& AssetNode) const
+bool ProjectCleanerManager::HasReferencers(const FAssetNode& AssetNode)
 {
 	return AssetNode.Refs.Num() > 0;
 }
@@ -331,7 +331,7 @@ bool ProjectCleanerManager::HasReferencersInDeveloperFolder(const FAssetNode& As
 	return false;
 }
 
-bool ProjectCleanerManager::HasExternalReferencers(const FAssetNode& AssetNode) const
+bool ProjectCleanerManager::HasExternalReferencers(const FAssetNode& AssetNode)
 {
 	return AssetNode.Refs.ContainsByPredicate([&] (const FName& Elem)
 	{

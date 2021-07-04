@@ -358,17 +358,19 @@ void SProjectCleanerMainUI::OnUserIncludedAssets(const TArray<FAssetData>& Asset
 		bool ShowNotification = false;
 		for (const auto& Asset : Assets)
 		{
-			for (const auto& DirPath : CleanerManager->GetExcludeOptions()->Paths)
+			if (CleanerManager->IsExcludedByClass(Asset))
 			{
-				if (Asset.PackagePath.ToString().Contains(DirPath.Path))
-				{
-					AssetsExcludedByFilter.Add(Asset);
-					ShowNotification = true;
-				}
+				AssetsExcludedByFilter.AddUnique(Asset);
+				ShowNotification = true;
 			}
-			// todo:ashe23 show notification when excluded by class
+			
+			if (CleanerManager->IsExcludedByPath(Asset))
+			{
+				ShowNotification = true;
+				AssetsExcludedByFilter.AddUnique(Asset);
+			}
 		}
-	
+
 		if (ShowNotification)
 		{
 			ProjectCleanerNotificationManager::AddTransient(
@@ -459,7 +461,7 @@ EAppReturnType::Type SProjectCleanerMainUI::ShowConfirmationWindow(const FText& 
 	);
 }
 
-bool SProjectCleanerMainUI::IsConfirmationWindowCanceled(EAppReturnType::Type Status) const
+bool SProjectCleanerMainUI::IsConfirmationWindowCanceled(EAppReturnType::Type Status)
 {
 	return Status == EAppReturnType::Type::No || Status == EAppReturnType::Cancel;
 }
