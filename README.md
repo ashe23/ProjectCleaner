@@ -53,7 +53,7 @@ Example:
 static ConstructorHelpers::FObjectFinder<UMaterial> Material(TEXT("Material'/Game/NewMaterial.NewMaterial'"));
 ```
 If you try to delete those assets , engine will not inform that those assets are in use.<br>
-Those assets have seperate tab, where it show Asset -> In which File its used -> And on which line
+Indirectly used assets have a seperate tab, where it show Asset -> In which File its used -> And on which line
 
 ![p2](https://user-images.githubusercontent.com/8270558/124383870-c1ab9f80-dcdf-11eb-9035-2daba351f9eb.png)
 
@@ -62,7 +62,7 @@ If you need to exclude some directories or assets from scanning, you can do it t
 
 ![p6](https://user-images.githubusercontent.com/8270558/124384045-b1e08b00-dce0-11eb-80ac-d802d322b55b.png)
 
-Also if you excluding assets, its related assets also will be excluded to prevent any link corruption.<br>
+Also if you exclude assets, its related assets also will be excluded to prevent any link corruption.<br>
 Example:<br>
 Lets say we got blueprint that uses static mesh and material
 ![2021-07-04_16-06-49](https://user-images.githubusercontent.com/8270558/124384391-020c1d00-dce2-11eb-8166-065828391079.png)
@@ -72,8 +72,8 @@ So if we exclude static mesh or material, all 3 assets will be excluded.
 ![2021-07-04_16-09-39](https://user-images.githubusercontent.com/8270558/124384436-48617c00-dce2-11eb-9918-5a74a052353a.png)
 
 ### Deletion chunk configuration
-If project have a lots of assets, it could freeze engine if we try to delete all at once.
-To prevent this you can specify deletion chunk maximum limit. Default is 20. So plugin deletes assets in chunks and progress will be shown in right bottom corner.
+If project have a lot of assets, it could freeze engine if we try to delete all at once.
+To prevent this you can specify deletion chunk maximum limit. So plugin deletes assets in chunks and progress will be shown in right bottom corner.
 ### Caution 
 In large projects it may take some time to locate and delete assets!
-So if your engine freezes, dont worry its doing its work in background, just wait until it finished.
+So if your engine freezes, dont worry its doing its work in background, just wait until it is finished.
