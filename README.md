@@ -47,7 +47,7 @@ Corrupted are those which exists in project folder, but for some reason doesnt e
 All those files will be detected and shown in their tab.
 
 ### Asset used indirectly
-This are assets that used in source code files or config files.<br>
+These are assets that used in source code files or config files.<br>
 Example:
 ```cpp
 static ConstructorHelpers::FObjectFinder<UMaterial> Material(TEXT("Material'/Game/NewMaterial.NewMaterial'"));
