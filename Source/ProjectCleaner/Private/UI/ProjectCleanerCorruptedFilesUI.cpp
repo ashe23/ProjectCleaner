@@ -1,100 +1,134 @@
-﻿#include "UI/ProjectCleanerCorruptedFilesUI.h"
+﻿// Copyright 2021. Ashot Barkhudaryan. All Rights Reserved.
+
+#include "UI/ProjectCleanerCorruptedFilesUI.h"
+#include "Core/ProjectCleanerUtility.h"
+#include "UI/ProjectCleanerStyle.h"
 // Engine Headers
-#include "IContentBrowserSingleton.h"
-#include "Editor/ContentBrowser/Public/ContentBrowserModule.h"
+#include "Widgets/Layout/SScrollBox.h"
 
 #define LOCTEXT_NAMESPACE "FProjectCleanerModule"
 
 void SProjectCleanerCorruptedFilesUI::Construct(const FArguments& InArgs)
 {
-	SetCorruptedFiles(InArgs._CorruptedFiles);
-	RefreshUIContent();
-}
-
-void SProjectCleanerCorruptedFilesUI::RefreshUIContent()
-{
-	FAssetPickerConfig Config;
-	Config.InitialAssetViewType = EAssetViewType::List;
-	Config.bAddFilterUI = true;
-	Config.bShowPathInColumnView = true;
-	Config.bSortByPathInColumnView = true;
-	Config.bForceShowEngineContent = false;
-	Config.bShowBottomToolbar = true;
-	Config.bCanShowDevelopersFolder = false;
-	Config.bForceShowEngineContent = false;
-	Config.bCanShowClasses = false;
-	Config.bAllowDragging = false;
-	Config.AssetShowWarningText = FText::FromName("No assets");
-
-	FARFilter Filter;
-	if(CorruptedFiles.Num() == 0)
+	if (InArgs._CorruptedFiles)
 	{
-		// this is needed when there is no assets to show ,
-		// asset picker will show remaining assets in content browser,
-		// we must not show them
-		Filter.TagsAndValues.Add(FName{"ProjectCleanerEmptyTag"}, FString{"ProjectCleanerEmptyTag"});
+		SetCorruptedFiles(*InArgs._CorruptedFiles);
 	}
-	else
-	{
-		// excluding level assets from showing and filtering
-		Filter.bRecursiveClasses = true;
-		Filter.RecursiveClassesExclusionSet.Add(UWorld::StaticClass()->GetFName());
-	}
-	for(const auto& Asset : CorruptedFiles)
-	{
-		Filter.PackageNames.Add(Asset.PackageName);
-	}
-	Config.Filter = Filter;
-	FContentBrowserModule& ContentBrowser = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
 
-	
-	WidgetRef = SNew(SVerticalBox)
-	+ SVerticalBox::Slot()
-	.Padding(FMargin{40.0f})
-	.AutoHeight()
-	[
-		SNew(SVerticalBox)
-		+SVerticalBox::Slot()
-		.AutoHeight()
-		[
-			SNew(STextBlock)
-			.AutoWrapText(true)
-			.Font(FSlateFontInfo(FPaths::EngineContentDir() / TEXT("Slate/Fonts/Roboto-Light.ttf"),20))
-			.Text(LOCTEXT("corruptedfiles", "Assets below are failed to load and possibly corrupted"))
-		]
-		+SVerticalBox::Slot()
-		.AutoHeight()
-		.Padding(FMargin{0.0f, 10.0f})
-		[
-			SNew(STextBlock)
-			.AutoWrapText(true)
-			.Font(FSlateFontInfo(FPaths::EngineContentDir() / TEXT("Slate/Fonts/Roboto-Light.ttf"),10))
-			.Text(LOCTEXT("corruptedfilesfixtext", "To fix them:\n\t1.Close Editor\n\t2.Delete that files manually from Windows explorer"))
-		]
-	]
-	+ SVerticalBox::Slot()
-	.Padding(FMargin{40.0f})
-	.AutoHeight()
-	[
-		ContentBrowser.Get().CreateAssetPicker(Config)
-	];
-	
 	ChildSlot
 	[
-		WidgetRef
+		SNew(SOverlay)
+		+ SOverlay::Slot()
+		.Padding(20.0f)
+		[
+			SNew(SScrollBox)
+			+ SScrollBox::Slot()
+			[
+				SNew(SVerticalBox)
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				[
+					SNew(SVerticalBox)
+					+SVerticalBox::Slot()
+					.AutoHeight()
+					[
+						SNew(STextBlock)
+						.AutoWrapText(true)
+						.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
+						.Text(LOCTEXT("corrupted_files", "Corrupted Files"))
+					]
+					+SVerticalBox::Slot()
+					.AutoHeight()
+					.Padding(FMargin{0.0f, 10.0f})
+					[
+						SNew(STextBlock)
+						.AutoWrapText(true)
+						.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light10"))
+						.Text(LOCTEXT("corrupted_files_fix_text", "How to fix?:\n\t1.Close Editor\n\t2.Delete files manually from Windows explorer"))
+					]
+					+ SVerticalBox::Slot()
+					.Padding(FMargin{ 0.0f, 10.0f })
+					.AutoHeight()
+					[
+						SNew(STextBlock)
+						.AutoWrapText(true)
+						.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light10"))
+						.Text(LOCTEXT("corrupted_files_dbl_click_on_row", "Double click on row to open in Explorer"))
+					]
+				]
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(FMargin{ 0.0f, 20.0f })
+				[
+					SAssignNew(ListView, SListView<TWeakObjectPtr<UCorruptedFile>>)
+					.ListItemsSource(&CorruptedFiles)
+					.SelectionMode(ESelectionMode::SingleToggle)
+					.OnGenerateRow(this, &SProjectCleanerCorruptedFilesUI::OnGenerateRow)
+					.OnMouseButtonDoubleClick_Raw(this, &SProjectCleanerCorruptedFilesUI::OnMouseDoubleClick)
+					.HeaderRow
+					(
+						SNew(SHeaderRow)
+						+ SHeaderRow::Column(FName("Name"))
+						.HAlignCell(HAlign_Center)
+						.VAlignCell(VAlign_Center)
+						.HAlignHeader(HAlign_Center)
+						.HeaderContentPadding(FMargin(10.0f))
+						.FillWidth(0.3f)
+						[
+							SNew(STextBlock)
+							.Text(LOCTEXT("NameColumn", "Name"))
+						]
+						+ SHeaderRow::Column(FName("AbsolutePath"))
+						.HAlignCell(HAlign_Center)
+						.VAlignCell(VAlign_Center)
+						.HAlignHeader(HAlign_Center)
+						.HeaderContentPadding(FMargin(10.0f))
+						.FillWidth(0.7f)
+						[
+							SNew(STextBlock)
+							.Text(LOCTEXT("PathColumn", "FilePath"))
+						]
+					)
+				]
+			]
+		]
 	];
 }
 
-void SProjectCleanerCorruptedFilesUI::SetCorruptedFiles(const TArray<FAssetData>& NewCorruptedFiles)
+void SProjectCleanerCorruptedFilesUI::SetCorruptedFiles(const TSet<FString>& NewCorruptedFiles)
 {
-	if (NewCorruptedFiles.Num() == 0) return;
+	CorruptedFiles.Reset();
+	CorruptedFiles.Reserve(NewCorruptedFiles.Num());
 
-	for(const auto& File : NewCorruptedFiles)
+	for (const auto File : NewCorruptedFiles)
 	{
-		CorruptedFiles.Add(File);
+		const auto& CorruptedFile = NewObject<UCorruptedFile>();
+		CorruptedFile->Name = FPaths::GetBaseFilename(File);
+		CorruptedFile->AbsolutePath = File;
+		CorruptedFiles.AddUnique(CorruptedFile);
 	}
+
+	if (ListView.IsValid())
+	{
+		ListView->SetListItemsSource(CorruptedFiles);
+		ListView->RebuildList();
+	}
+}
+
+TSharedRef<ITableRow> SProjectCleanerCorruptedFilesUI::OnGenerateRow(TWeakObjectPtr<UCorruptedFile> InItem,
+	const TSharedRef<STableViewBase>& OwnerTable) const
+{
+	return SNew(SCorruptedFileUISelectionRow, OwnerTable).SelectedRowItem(InItem);
+}
+
+void SProjectCleanerCorruptedFilesUI::OnMouseDoubleClick(TWeakObjectPtr<UCorruptedFile> Item) const
+{
+	if (!Item.IsValid()) return;
+
+	const auto DirectoryPath = FPaths::GetPath(Item.Get()->AbsolutePath);
+	if (!FPaths::DirectoryExists(DirectoryPath)) return;
 	
-	RefreshUIContent();
+	FPlatformProcess::ExploreFolder(*DirectoryPath);
 }
 
 #undef LOCTEXT_NAMESPACE

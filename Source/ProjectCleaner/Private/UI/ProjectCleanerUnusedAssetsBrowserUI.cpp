@@ -1,7 +1,9 @@
-﻿#include "UI/ProjectCleanerUnusedAssetsBrowserUI.h"
-#include "UI/ProjectCleanerBrowserCommands.h"
+﻿// Copyright 2021. Ashot Barkhudaryan. All Rights Reserved.
+
+#include "UI/ProjectCleanerUnusedAssetsBrowserUI.h"
+#include "UI/ProjectCleanerCommands.h"
+#include "UI/ProjectCleanerStyle.h"
 // Engine Headers
-#include "IContentBrowserSingleton.h"
 #include "ObjectTools.h"
 #include "Editor/ContentBrowser/Public/ContentBrowserModule.h"
 #include "Widgets/Layout/SScrollBox.h"
@@ -11,42 +13,179 @@
 
 void SProjectCleanerUnusedAssetsBrowserUI::Construct(const FArguments& InArgs)
 {
-	SetUnusedAssets(InArgs._UnusedAssets);
+	ContentBrowserModule = &FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
 
-	FProjectCleanerBrowserCommands::Register();
-	
-	FDetailsViewArgs UnusedAssetsUISettingsDetailsViewArgs;
-	UnusedAssetsUISettingsDetailsViewArgs.ViewIdentifier = "UnusedAssetsUISettings";
+	FProjectCleanerCommands::Register();
 
 	Commands = MakeShareable(new FUICommandList);
 	Commands->MapAction(
 		FGlobalEditorCommonCommands::Get().FindInContentBrowser,
 		FUIAction(
-			FExecuteAction::CreateRaw(this, &SProjectCleanerUnusedAssetsBrowserUI::FindInContentBrowser),
-			FCanExecuteAction::CreateRaw(this, &SProjectCleanerUnusedAssetsBrowserUI::IsAnythingSelected)
+			FExecuteAction::CreateRaw(
+				this,
+				&SProjectCleanerUnusedAssetsBrowserUI::FindInContentBrowser
+			),
+			FCanExecuteAction::CreateRaw(
+				this,
+				&SProjectCleanerUnusedAssetsBrowserUI::IsAnythingSelected
+			)
 		)
 	);
-	Commands->MapAction(FProjectCleanerBrowserCommands::Get().DeleteAsset, FUIAction(
-	FExecuteAction::CreateRaw(this, &SProjectCleanerUnusedAssetsBrowserUI::DeleteAsset),
-		FCanExecuteAction::CreateRaw(this, &SProjectCleanerUnusedAssetsBrowserUI::IsAnythingSelected)
-	));
+	Commands->MapAction(FProjectCleanerCommands::Get().DeleteAsset,
+		FUIAction
+		(
+	FExecuteAction::CreateRaw(
+				this,
+				&SProjectCleanerUnusedAssetsBrowserUI::DeleteAsset
+			),
+			FCanExecuteAction::CreateRaw(
+				this,
+				&SProjectCleanerUnusedAssetsBrowserUI::IsAnythingSelected
+			)
+		)
+	);
 
-	RefreshUIContent();
+	Commands->MapAction(
+		FProjectCleanerCommands::Get().ExcludeAsset,
+		FUIAction
+		(
+			FExecuteAction::CreateRaw(
+				this,
+				&SProjectCleanerUnusedAssetsBrowserUI::ExcludeAsset
+			),
+			FCanExecuteAction::CreateRaw(
+				this,
+				&SProjectCleanerUnusedAssetsBrowserUI::IsAnythingSelected
+			)
+		)
+	);
+	
+	if (InArgs._CleanerConfigs)
+	{
+		SetCleanerConfigs(InArgs._CleanerConfigs);
+	}
+	if (InArgs._UnusedAssets)
+	{
+		SetUnusedAssets(*InArgs._UnusedAssets);
+	}
+	if (InArgs._PrimaryAssetClasses)
+	{
+		SetPrimaryAssetClasses(*InArgs._PrimaryAssetClasses);
+	}
+
+	UpdateUI();
 }
 
 void SProjectCleanerUnusedAssetsBrowserUI::SetUnusedAssets(const TArray<FAssetData>& NewUnusedAssets)
 {
 	UnusedAssets.Reset();
 	UnusedAssets.Reserve(NewUnusedAssets.Num());
-	for(const auto& Asset : NewUnusedAssets)
-	{
-		UnusedAssets.Add(Asset);
-	}
-	
-	RefreshUIContent();
+	UnusedAssets = MoveTempIfPossible(NewUnusedAssets);
 }
 
-TSharedPtr<SWidget> SProjectCleanerUnusedAssetsBrowserUI::OnGetAssetContextMenu(const TArray<FAssetData>& SelectedAssets)
+void SProjectCleanerUnusedAssetsBrowserUI::SetCleanerConfigs(UCleanerConfigs* Configs)
+{
+	if (!Configs) return;
+
+	CleanerConfigs = Configs;
+}
+
+void SProjectCleanerUnusedAssetsBrowserUI::SetPrimaryAssetClasses(const TSet<FName>& NewPrimaryAssetClasses)
+{
+	PrimaryAssetClasses.Reset();
+	PrimaryAssetClasses.Reserve(NewPrimaryAssetClasses.Num());
+	PrimaryAssetClasses = MoveTempIfPossible(NewPrimaryAssetClasses);
+}
+
+void SProjectCleanerUnusedAssetsBrowserUI::SetUIData(const TArray<FAssetData>& NewUnusedAssets, UCleanerConfigs* NewConfigs, const TSet<FName>& NewPrimaryAssetClasses)
+{
+	SetUnusedAssets(NewUnusedAssets);
+	SetCleanerConfigs(NewConfigs);
+	SetPrimaryAssetClasses(NewPrimaryAssetClasses);
+
+	UpdateUI();
+}
+
+void SProjectCleanerUnusedAssetsBrowserUI::UpdateUI()
+{
+	if (!CleanerConfigs) return;
+	if (!ContentBrowserModule) return;
+
+	FAssetPickerConfig AssetPickerConfig;
+	AssetPickerConfig.InitialAssetViewType = EAssetViewType::Tile;
+	AssetPickerConfig.bAddFilterUI = true;
+	AssetPickerConfig.bPreloadAssetsForContextMenu = false;
+	AssetPickerConfig.bShowPathInColumnView = true;
+	AssetPickerConfig.bSortByPathInColumnView = true;
+	AssetPickerConfig.bForceShowEngineContent = false;
+	AssetPickerConfig.bShowBottomToolbar = true;
+	AssetPickerConfig.bCanShowDevelopersFolder = CleanerConfigs->bScanDeveloperContents;
+	AssetPickerConfig.bCanShowClasses = false;
+	AssetPickerConfig.bAllowDragging = false;
+	AssetPickerConfig.bCanShowRealTimeThumbnails = false;
+	AssetPickerConfig.AssetShowWarningText = FText::FromName("No assets");
+	AssetPickerConfig.GetCurrentSelectionDelegates.Add(&GetCurrentSelectionDelegate);
+	AssetPickerConfig.OnAssetDoubleClicked = FOnAssetDoubleClicked::CreateStatic(
+		&SProjectCleanerUnusedAssetsBrowserUI::OnAssetDblClicked
+	);
+	AssetPickerConfig.OnGetAssetContextMenu = FOnGetAssetContextMenu::CreateRaw(
+		this,
+		&SProjectCleanerUnusedAssetsBrowserUI::OnGetAssetContextMenu
+	);
+
+	FARFilter Filter;
+
+	if (UnusedAssets.Num() == 0)
+	{
+		// this is needed for disabling showing primary assets in browser, when there is no unused assets
+		Filter.TagsAndValues.Add(FName{ "ProjectCleanerEmptyTag" }, FString{ "ProjectCleanerEmptyTag" });
+	}
+	else
+	{
+		// excluding primary assets from showing and filtering
+		Filter.bRecursiveClasses = true;
+		Filter.RecursiveClassesExclusionSet.Reserve(PrimaryAssetClasses.Num());
+		Filter.PackageNames.Reserve(UnusedAssets.Num());
+		Filter.RecursiveClassesExclusionSet = MoveTempIfPossible(PrimaryAssetClasses);
+
+		for (const auto& Asset : UnusedAssets)
+		{
+			Filter.PackageNames.Add(Asset.PackageName);
+		}
+	}
+
+	AssetPickerConfig.Filter = Filter;
+
+	ChildSlot
+	[
+		SNew(SOverlay)
+		+ SOverlay::Slot()
+		.Padding(20.0f)
+		[
+			SNew(SScrollBox)
+			+ SScrollBox::Slot()
+			[
+				SNew(SVerticalBox)
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				[
+					SNew(STextBlock)
+					.AutoWrapText(true)
+					.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
+					.Text(LOCTEXT("UnusedAssets", "All Unused Assets"))
+				]
+				+ SVerticalBox::Slot()
+				.Padding(FMargin{ 0.0f, 10.0f })
+				.AutoHeight()
+				[
+					ContentBrowserModule->Get().CreateAssetPicker(AssetPickerConfig)
+				]
+			]
+		]
+	];
+}
+
+TSharedPtr<SWidget> SProjectCleanerUnusedAssetsBrowserUI::OnGetAssetContextMenu(const TArray<FAssetData>& SelectedAssets) const
 {
 	FMenuBuilder MenuBuilder{true, Commands};
 	MenuBuilder.BeginSection(
@@ -55,14 +194,15 @@ TSharedPtr<SWidget> SProjectCleanerUnusedAssetsBrowserUI::OnGetAssetContextMenu(
 	);
 	{
 		MenuBuilder.AddMenuEntry(FGlobalEditorCommonCommands::Get().FindInContentBrowser);
-		MenuBuilder.AddMenuEntry(FProjectCleanerBrowserCommands::Get().DeleteAsset);
+		MenuBuilder.AddMenuEntry(FProjectCleanerCommands::Get().DeleteAsset);
+		MenuBuilder.AddMenuEntry(FProjectCleanerCommands::Get().ExcludeAsset);
 	}
 	MenuBuilder.EndSection();
 
 	return MenuBuilder.MakeWidget();
 }
 
-void SProjectCleanerUnusedAssetsBrowserUI::OnAssetDblClicked(const FAssetData& AssetData) const
+void SProjectCleanerUnusedAssetsBrowserUI::OnAssetDblClicked(const FAssetData& AssetData)
 {
 	TArray<FName> AssetNames;
 	AssetNames.Add(AssetData.ObjectPath);
@@ -95,96 +235,23 @@ void SProjectCleanerUnusedAssetsBrowserUI::DeleteAsset() const
 	if (!GetCurrentSelectionDelegate.IsBound()) return;
 
 	const TArray<FAssetData> CurrentSelection = GetCurrentSelectionDelegate.Execute();
-	if (CurrentSelection.Num() > 0)
-	{
-		int32 DeletedAssetsNum = ObjectTools::DeleteAssets(CurrentSelection);
-		if (DeletedAssetsNum == 0) return;
-		OnUserDeletedAssets.ExecuteIfBound();
-	}
-
+	if (!CurrentSelection.Num()) return;
+	
+	const int32 DeletedAssetsNum = ObjectTools::DeleteAssets(CurrentSelection);
+	if (DeletedAssetsNum == 0) return;
+	if (!OnUserDeletedAssets.IsBound()) return;
+	OnUserDeletedAssets.Execute();
 }
 
-void SProjectCleanerUnusedAssetsBrowserUI::RefreshUIContent()
+void SProjectCleanerUnusedAssetsBrowserUI::ExcludeAsset() const
 {
-	FAssetPickerConfig Config;
-	Config.InitialAssetViewType = EAssetViewType::Tile;
-	Config.bAddFilterUI = true;
-	Config.bShowPathInColumnView = true;
-	Config.bSortByPathInColumnView = true;
-	Config.bForceShowEngineContent = false;
-	Config.bShowBottomToolbar = true;
-	Config.bCanShowDevelopersFolder = false;
-	Config.bForceShowEngineContent = false;
-	Config.bCanShowClasses = false;
-	Config.bAllowDragging = false;	
-	Config.AssetShowWarningText = FText::FromName("No assets");
-	Config.GetCurrentSelectionDelegates.Add(&GetCurrentSelectionDelegate);
-	Config.OnAssetDoubleClicked = FOnAssetDoubleClicked::CreateRaw(
-		this,
-		&SProjectCleanerUnusedAssetsBrowserUI::OnAssetDblClicked
-	);
-	Config.OnGetAssetContextMenu = FOnGetAssetContextMenu::CreateRaw(
-		this,
-		&SProjectCleanerUnusedAssetsBrowserUI::OnGetAssetContextMenu
-	);
+	if(!GetCurrentSelectionDelegate.IsBound()) return;
 
-	FARFilter Filter;
-	if (UnusedAssets.Num() == 0)
-	{
-		// this is needed when there is no assets to show ,
-		// asset picker will show remaining assets in content browser,
-		// we must not show them
-		Filter.TagsAndValues.Add(FName{"ProjectCleanerEmptyTag"}, FString{"ProjectCleanerEmptyTag"});
-	}
-	else
-	{
-		// excluding level assets from showing and filtering
-		Filter.bRecursiveClasses = true;
-		Filter.RecursiveClassesExclusionSet.Add(UWorld::StaticClass()->GetFName());
-	}
+	const TArray<FAssetData> SelectedAssets = GetCurrentSelectionDelegate.Execute();
+	if(!SelectedAssets.Num()) return;
 	
-	for(const auto& Asset : UnusedAssets)
-	{
-		Filter.PackageNames.Add(Asset.PackageName);
-	}
-	Config.Filter = Filter;
-
-	FContentBrowserModule& ContentBrowser = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
-	WidgetRef = SNew(SVerticalBox)
-	+ SVerticalBox::Slot()
-	.AutoHeight()
-	.Padding(FMargin{0.0f, 0.0f, 0.0f, 20.0f})
-	[
-		SNew(SBorder)
-		.Padding(30.0f)
-		.BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
-		[
-			SNew(STextBlock)
-			.AutoWrapText(true)
-			.Font(FSlateFontInfo(FPaths::EngineContentDir() / TEXT("Slate/Fonts/Roboto-Light.ttf"),20))
-			.Text(LOCTEXT("cleanernotetext", "Unused assets are those, that are not used in any level.\nSo before starting make sure you delete all levels that never used in project."))
-		]
-	]
-	+ SVerticalBox::Slot()
-	.AutoHeight()
-	.Padding(20.0f)
-	[
-		SNew(STextBlock)
-		.AutoWrapText(true)
-		.Font(FSlateFontInfo(FPaths::EngineContentDir() / TEXT("Slate/Fonts/Roboto-Light.ttf"),20))
-		.Text(LOCTEXT("UnusedAssets", "All Unused Assets"))
-	]
-	+ SVerticalBox::Slot()
-	.AutoHeight()
-	.Padding(20.0f)
-	[
-		ContentBrowser.Get().CreateAssetPicker(Config)
-	];
-	
-	ChildSlot
-	[
-		WidgetRef
-	];
+	if(!OnUserExcludedAssets.IsBound()) return;
+	OnUserExcludedAssets.Execute(SelectedAssets);
 }
 
 #undef LOCTEXT_NAMESPACE

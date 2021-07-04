@@ -1,28 +1,31 @@
-﻿#pragma once
+﻿// Copyright 2021. Ashot Barkhudaryan. All Rights Reserved.
+
+#pragma once
 
 // Engine Headers
+#include "CoreMinimal.h"
 #include "StructsContainer.h"
 #include "Widgets/SCompoundWidget.h"
-#include "CoreMinimal.h"
 
-/**
- * @brief Shows statistics info (UnusedAssets count, Total Size, EmptyFolder count, etc.)
- */
 class SProjectCleanerBrowserStatisticsUI : public SCompoundWidget
 {
 public:
-	SLATE_BEGIN_ARGS(SProjectCleanerBrowserStatisticsUI) {}
-		SLATE_ARGUMENT(FCleaningStats, Stats);
-	SLATE_END_ARGS()
-	void Construct(const FArguments& InArgs);
-	void SetStats(const FCleaningStats& NewStats);
-	FCleaningStats GetStats() const;
-	void RefreshUIContent();
-private:
-	/**
-	 * @brief Statistics data
-	 */
-	FCleaningStats Stats;
-	TSharedRef<SWidget> WidgetRef = SNullWidget::NullWidget;
 	
+	SLATE_BEGIN_ARGS(SProjectCleanerBrowserStatisticsUI) {}
+		SLATE_ARGUMENT(FProjectCleanerData*, CleanerData);
+	SLATE_END_ARGS()
+	
+	void Construct(const FArguments& InArgs);
+	void SetData(FProjectCleanerData& Data);
+private:
+	/* UI Callbacks */
+	FText GetUnusedAssetsNum() const;
+	FText GetTotalSize() const;
+	FText GetNonEngineFilesNum() const;
+	FText GetIndirectAssetsNum() const;
+	FText GetEmptyFoldersNum() const;
+	FText GetCorruptedFilesNum() const;
+    
+	/** Data **/
+	FProjectCleanerData* CleanerData = nullptr;
 };
