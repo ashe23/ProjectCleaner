@@ -3,7 +3,7 @@ Simple UE4 plugin for deleting all unused assets and empty folders in project.
 
 No more Migration and other hacky methods needed.
 
-Versions Supported: 4.25+ , UE5 comming soon 
+Versions Supported: 4.25+ , UE5 comming soon <br>
 Platform: Windows
 
 <img src="https://user-images.githubusercontent.com/8270558/124382914-d9ccf000-dcda-11eb-9256-441ac8eceb4b.png" />
