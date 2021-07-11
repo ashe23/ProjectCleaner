@@ -32,7 +32,8 @@ private:
 	/* Delegates */
 	void OnUserDeletedAssets() const;
 	void OnUserExcludedAssets(const TArray<FAssetData>& Assets) const;
-	void OnUserIncludedAssets(const TArray<FAssetData>& Assets, const bool CleanFilters) const; 
+	void OnUserIncludedAssets(const TArray<FAssetData>& Assets, const bool CleanFilters) const;
+	void OnUserExcludedAssetsOfType(const TArray<FAssetData>& Assets) const;
 	
 	/* Btn Callbacks*/
 	FReply OnRefreshBtnClick() const;

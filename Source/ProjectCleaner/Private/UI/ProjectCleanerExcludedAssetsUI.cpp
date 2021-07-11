@@ -246,7 +246,7 @@ void SProjectCleanerExcludedAssetsUI::UpdateUI()
 			]
 			+ SVerticalBox::Slot()
 			.AutoHeight()
-			.Padding(10.0f, 10.0f)
+			.Padding(10.0f, 14.0f)
 			[
 				SNew(SHorizontalBox)
 				+ SHorizontalBox::Slot()

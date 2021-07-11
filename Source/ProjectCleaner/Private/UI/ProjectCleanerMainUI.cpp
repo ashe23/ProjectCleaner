@@ -258,6 +258,11 @@ TSharedRef<SDockTab> SProjectCleanerMainUI::OnUnusedAssetTabSpawn(const FSpawnTa
 		this,
 		&SProjectCleanerMainUI::OnUserExcludedAssets
 	);
+
+	UnusedAssetsUIRef->OnUserExcludedAssetsOfType = FOnUserExcludedAssetsOfType::CreateRaw(
+		this,
+		&SProjectCleanerMainUI::OnUserExcludedAssetsOfType
+	);
 	
 	return SNew(SDockTab)
 		.TabRole(ETabRole::NomadTab)
@@ -401,6 +406,29 @@ void SProjectCleanerMainUI::OnUserIncludedAssets(const TArray<FAssetData>& Asset
 		{
 			return Assets.Contains(Elem) && !AssetsExcludedByFilter.Contains(Elem);
 		});
+	}
+
+	Update();
+}
+
+void SProjectCleanerMainUI::OnUserExcludedAssetsOfType(const TArray<FAssetData>& Assets) const
+{
+	if (!Assets.Num()) return;
+
+	for (const auto& Asset : Assets)
+	{
+		const auto LoadedAsset = Asset.GetAsset();
+		const auto BlueprintAsset = Cast<UBlueprint>(LoadedAsset);
+		if (BlueprintAsset && BlueprintAsset->GeneratedClass)
+		{
+			CleanerManager->GetExcludeOptions()->Classes.AddUnique(BlueprintAsset->GeneratedClass);
+		}
+		else
+		{
+			auto AssetClass = Asset.GetClass();
+			if(!AssetClass) continue;
+			CleanerManager->GetExcludeOptions()->Classes.AddUnique(AssetClass);
+		}
 	}
 
 	Update();

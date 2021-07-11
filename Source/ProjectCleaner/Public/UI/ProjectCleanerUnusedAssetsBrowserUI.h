@@ -9,6 +9,8 @@
 
 DECLARE_DELEGATE(FOnUserDeletedAssets);
 DECLARE_DELEGATE_OneParam(FOnUserExcludedAssets, const TArray<FAssetData>&);
+DECLARE_DELEGATE_OneParam(FOnUserExcludedAssetsOfType, const TArray<FAssetData>&);
+
 
 class UCleanerConfigs;
 
@@ -28,6 +30,7 @@ public:
 	/* Delegates */
 	FOnUserDeletedAssets OnUserDeletedAssets;
 	FOnUserExcludedAssets OnUserExcludedAssets;
+	FOnUserExcludedAssetsOfType OnUserExcludedAssetsOfType;
 private:
 	/* Data */
 	void SetUnusedAssets(const TArray<FAssetData>& NewUnusedAssets);
@@ -39,9 +42,11 @@ private:
 
 	/* UI */
 	TSharedPtr<FUICommandList> Commands;
+	void RegisterCommands();
 	void UpdateUI();
 	void DeleteAsset() const;
 	void ExcludeAsset() const;
+	void ExcludeAssetsOfType() const;
 	
 	/* AssetPicker */
 	struct FAssetPickerConfig AssetPickerConfig;

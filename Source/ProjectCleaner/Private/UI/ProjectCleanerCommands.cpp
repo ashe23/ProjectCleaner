@@ -35,17 +35,25 @@ void FProjectCleanerCommands::RegisterCommands()
 	);
 
 	UI_COMMAND(
+		IncludeAsset,
+		"Include Asset",
+		"Include selected assets to deletion list",
+		EUserInterfaceActionType::Button,
+		FInputChord()
+	);
+
+	UI_COMMAND(
 		ExcludeAsset,
 		"Exclude Asset",
 		"Exclude selected assets from deletion list",
 		EUserInterfaceActionType::Button,
 		FInputChord()
 	);
-
+	
 	UI_COMMAND(
-		IncludeAsset,
-		"Include Asset",
-		"Include selected assets to deletion list",
+		ExcludeByType,
+		"Exclude Assets of this type",
+		"Excludes all assets of this type",
 		EUserInterfaceActionType::Button,
 		FInputChord()
 	);
