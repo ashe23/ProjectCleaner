@@ -11,7 +11,6 @@ DECLARE_DELEGATE(FOnUserDeletedAssets);
 DECLARE_DELEGATE_OneParam(FOnUserExcludedAssets, const TArray<FAssetData>&);
 
 class UCleanerConfigs;
-class FContentBrowserModule;
 
 class SProjectCleanerUnusedAssetsBrowserUI : public SCompoundWidget
 {
@@ -26,21 +25,11 @@ public:
 	void Construct(const FArguments& InArgs);
 	void SetUIData(const TArray<FAssetData>& NewUnusedAssets, UCleanerConfigs* NewConfigs, const TSet<FName>& NewPrimaryAssetClasses);
 
-	/** Delegates */
+	/* Delegates */
 	FOnUserDeletedAssets OnUserDeletedAssets;
 	FOnUserExcludedAssets OnUserExcludedAssets;
 private:
-	void UpdateUI();
-	void UpdateFilter(const FString& Path);
-	TSharedPtr<SWidget> OnGetAssetContextMenu(const TArray<FAssetData>& SelectedAssets) const;
-	static void OnAssetDblClicked(const FAssetData& AssetData);
-	void OnPathSelected(const FString& Path);
-	void FindInContentBrowser() const;
-	bool IsAnythingSelected() const;
-	void DeleteAsset() const;
-	void ExcludeAsset() const;
-
-	/** Data **/
+	/* Data */
 	void SetUnusedAssets(const TArray<FAssetData>& NewUnusedAssets);
 	void SetCleanerConfigs(UCleanerConfigs* Configs);
 	void SetPrimaryAssetClasses(const TSet<FName>& NewPrimaryAssetClasses);
@@ -48,13 +37,28 @@ private:
 	TArray<FAssetData> UnusedAssets;
 	TSet<FName> PrimaryAssetClasses;
 
-	/** UI **/
-	FGetCurrentSelectionDelegate GetCurrentSelectionDelegate;
+	/* UI */
 	TSharedPtr<FUICommandList> Commands;
+	void UpdateUI();
+	void DeleteAsset() const;
+	void ExcludeAsset() const;
+	
+	/* AssetPicker */
 	struct FAssetPickerConfig AssetPickerConfig;
-	struct FPathPickerConfig PickerConfig;
 	struct FARFilter Filter;
+	FGetCurrentSelectionDelegate CurrentSelectionDelegate;
+	FRefreshAssetViewDelegate RefreshAssetViewDelegate;
+	void GenerateFilter();
+	TSharedPtr<SWidget> OnGetAssetContextMenu(const TArray<FAssetData>& SelectedAssets) const;
+	static void OnAssetDblClicked(const FAssetData& AssetData);
+	void FindInContentBrowser() const;
+	bool IsAnythingSelected() const;
+
+	/* PathPicker */
+	struct FPathPickerConfig PathPickerConfig;
+	FName SelectedPath = NAME_None;
+	void OnPathSelected(const FString& Path);
 
 	/* ContentBrowserModule */
-	FContentBrowserModule* ContentBrowserModule = nullptr;
+	class FContentBrowserModule* ContentBrowserModule = nullptr;
 };

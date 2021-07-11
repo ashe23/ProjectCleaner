@@ -74,18 +74,20 @@ void SProjectCleanerUnusedAssetsBrowserUI::Construct(const FArguments& InArgs)
 	}
 
 	AssetPickerConfig.InitialAssetViewType = EAssetViewType::Tile;
+	AssetPickerConfig.bCanShowFolders = true;
 	AssetPickerConfig.bAddFilterUI = true;
 	AssetPickerConfig.bPreloadAssetsForContextMenu = false;
-	AssetPickerConfig.bShowPathInColumnView = true;
 	AssetPickerConfig.bSortByPathInColumnView = true;
-	AssetPickerConfig.bForceShowEngineContent = false;
+	AssetPickerConfig.bShowPathInColumnView = true;
 	AssetPickerConfig.bShowBottomToolbar = true;
 	AssetPickerConfig.bCanShowDevelopersFolder = CleanerConfigs->bScanDeveloperContents;
 	AssetPickerConfig.bCanShowClasses = false;
 	AssetPickerConfig.bAllowDragging = false;
+	AssetPickerConfig.bForceShowEngineContent = false;
 	AssetPickerConfig.bCanShowRealTimeThumbnails = false;
 	AssetPickerConfig.AssetShowWarningText = FText::FromName("No assets");
-	AssetPickerConfig.GetCurrentSelectionDelegates.Add(&GetCurrentSelectionDelegate);
+	AssetPickerConfig.GetCurrentSelectionDelegates.Add(&CurrentSelectionDelegate);
+	AssetPickerConfig.RefreshAssetViewDelegates.Add(&RefreshAssetViewDelegate);
 	AssetPickerConfig.OnAssetDoubleClicked = FOnAssetDoubleClicked::CreateStatic(
 		&SProjectCleanerUnusedAssetsBrowserUI::OnAssetDblClicked
 	);
@@ -94,12 +96,14 @@ void SProjectCleanerUnusedAssetsBrowserUI::Construct(const FArguments& InArgs)
 		&SProjectCleanerUnusedAssetsBrowserUI::OnGetAssetContextMenu
 	);
 
-	PickerConfig.bAllowContextMenu = false;
-	PickerConfig.bAllowClassesFolder = false;
-	PickerConfig.bFocusSearchBoxWhenOpened = false;
-	PickerConfig.OnPathSelected.BindRaw(this, &SProjectCleanerUnusedAssetsBrowserUI::OnPathSelected);
-	PickerConfig.bAddDefaultPath = true;
-	
+	SelectedPath = FName{TEXT("/Game")};
+	PathPickerConfig.bAllowContextMenu = false;
+	PathPickerConfig.bAllowClassesFolder = false;
+	PathPickerConfig.bFocusSearchBoxWhenOpened = false;
+	PathPickerConfig.OnPathSelected.BindRaw(this, &SProjectCleanerUnusedAssetsBrowserUI::OnPathSelected);
+	PathPickerConfig.bAddDefaultPath = true;
+	PathPickerConfig.DefaultPath = SelectedPath.ToString();
+
 	UpdateUI();
 }
 
@@ -138,6 +142,29 @@ void SProjectCleanerUnusedAssetsBrowserUI::UpdateUI()
 	if (!CleanerConfigs) return;
 	if (!ContentBrowserModule) return;
 
+	GenerateFilter();
+	
+	ChildSlot
+	[
+		SNew(SSplitter)
+		.Style(FEditorStyle::Get(), "ContentBrowser.Splitter")
+		.PhysicalSplitterHandleSize(2.0f)
+		+ SSplitter::Slot()
+		.Value(0.3f)
+		[
+			ContentBrowserModule->Get().CreatePathPicker(PathPickerConfig)
+		]
+		+ SSplitter::Slot()
+		[
+			ContentBrowserModule->Get().CreateAssetPicker(AssetPickerConfig)
+		]
+	];
+}
+
+void SProjectCleanerUnusedAssetsBrowserUI::GenerateFilter()
+{
+	Filter.Clear();
+	
 	if (UnusedAssets.Num() == 0)
 	{
 		// this is needed for disabling showing primary assets in browser, when there is no unused assets
@@ -157,31 +184,12 @@ void SProjectCleanerUnusedAssetsBrowserUI::UpdateUI()
 		}
 	}
 
-	ChildSlot
-	[
-		SNew(SSplitter)
-		.Style(FEditorStyle::Get(), "ContentBrowser.Splitter")
-		.PhysicalSplitterHandleSize(2.0f)
-		+ SSplitter::Slot()
-		.Value(0.3f)
-		[
-			ContentBrowserModule->Get().CreatePathPicker(PickerConfig)
-		]
-		+ SSplitter::Slot()
-		[
-			ContentBrowserModule->Get().CreateAssetPicker(AssetPickerConfig)
-		]
-	];
-}
-
-void SProjectCleanerUnusedAssetsBrowserUI::UpdateFilter(const FString& Path)
-{
-	Filter.PackagePaths.Reset();
-	Filter.PackagePaths.Add(FName{Path});
+	if (!SelectedPath.IsNone())
+	{
+		Filter.PackagePaths.Add(SelectedPath);
+	}
 
 	AssetPickerConfig.Filter = Filter;
-	PickerConfig.DefaultPath = Path;
-	UpdateUI();
 }
 
 TSharedPtr<SWidget> SProjectCleanerUnusedAssetsBrowserUI::OnGetAssetContextMenu(const TArray<FAssetData>& SelectedAssets) const
@@ -213,14 +221,16 @@ void SProjectCleanerUnusedAssetsBrowserUI::OnAssetDblClicked(const FAssetData& A
 
 void SProjectCleanerUnusedAssetsBrowserUI::OnPathSelected(const FString& Path)
 {
-	UpdateFilter(Path);
+	SelectedPath = FName{Path};
+	PathPickerConfig.DefaultPath = Path;
+	UpdateUI();
 }
 
 void SProjectCleanerUnusedAssetsBrowserUI::FindInContentBrowser() const
 {
-	if (!GetCurrentSelectionDelegate.IsBound()) return;
+	if (!CurrentSelectionDelegate.IsBound()) return;
 
-	const TArray<FAssetData> CurrentSelection = GetCurrentSelectionDelegate.Execute();
+	const TArray<FAssetData> CurrentSelection = CurrentSelectionDelegate.Execute();
 	if (CurrentSelection.Num() > 0)
 	{
 		FContentBrowserModule& CBModule = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
@@ -230,17 +240,17 @@ void SProjectCleanerUnusedAssetsBrowserUI::FindInContentBrowser() const
 
 bool SProjectCleanerUnusedAssetsBrowserUI::IsAnythingSelected() const
 {
-	if (!GetCurrentSelectionDelegate.IsBound()) return false;
+	if (!CurrentSelectionDelegate.IsBound()) return false;
 
-	const TArray<FAssetData> CurrentSelection = GetCurrentSelectionDelegate.Execute();
+	const TArray<FAssetData> CurrentSelection = CurrentSelectionDelegate.Execute();
 	return CurrentSelection.Num() > 0;
 }
 
 void SProjectCleanerUnusedAssetsBrowserUI::DeleteAsset() const
 {
-	if (!GetCurrentSelectionDelegate.IsBound()) return;
+	if (!CurrentSelectionDelegate.IsBound()) return;
 
-	const TArray<FAssetData> CurrentSelection = GetCurrentSelectionDelegate.Execute();
+	const TArray<FAssetData> CurrentSelection = CurrentSelectionDelegate.Execute();
 	if (!CurrentSelection.Num()) return;
 	
 	const int32 DeletedAssetsNum = ObjectTools::DeleteAssets(CurrentSelection);
@@ -251,9 +261,9 @@ void SProjectCleanerUnusedAssetsBrowserUI::DeleteAsset() const
 
 void SProjectCleanerUnusedAssetsBrowserUI::ExcludeAsset() const
 {
-	if(!GetCurrentSelectionDelegate.IsBound()) return;
+	if(!CurrentSelectionDelegate.IsBound()) return;
 
-	const TArray<FAssetData> SelectedAssets = GetCurrentSelectionDelegate.Execute();
+	const TArray<FAssetData> SelectedAssets = CurrentSelectionDelegate.Execute();
 	if(!SelectedAssets.Num()) return;
 	
 	if(!OnUserExcludedAssets.IsBound()) return;

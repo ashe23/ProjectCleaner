@@ -63,8 +63,9 @@ void ProjectCleanerManager::UpdateData()
 	
 	CleanerData.TotalSize = ProjectCleanerUtility::GetTotalSize(CleanerData.UnusedAssets);
 
-	GetMutableDefault<UContentBrowserSettings>()->SetDisplayDevelopersFolder(CleanerConfigs->bScanDeveloperContents, true);
-	GetMutableDefault<UContentBrowserSettings>()->PostEditChange();
+	auto ContentBrowserSettings = GetMutableDefault<UContentBrowserSettings>();
+	ContentBrowserSettings->SetDisplayDevelopersFolder(CleanerConfigs->bScanDeveloperContents, true);
+	ContentBrowserSettings->PostEditChange();
 
 	SlowTask.EnterProgressFrame(1.0f);
 }
