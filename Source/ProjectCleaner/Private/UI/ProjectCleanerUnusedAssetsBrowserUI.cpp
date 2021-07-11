@@ -2,11 +2,11 @@
 
 #include "UI/ProjectCleanerUnusedAssetsBrowserUI.h"
 #include "UI/ProjectCleanerCommands.h"
-#include "UI/ProjectCleanerStyle.h"
 // Engine Headers
 #include "ObjectTools.h"
 #include "Editor/ContentBrowser/Public/ContentBrowserModule.h"
 #include "Widgets/Layout/SScrollBox.h"
+#include "Widgets/Layout/SScrollBorder.h"
 #include "Toolkits/GlobalEditorCommonCommands.h"
 
 #define LOCTEXT_NAMESPACE "FProjectCleanerModule"
@@ -73,6 +73,33 @@ void SProjectCleanerUnusedAssetsBrowserUI::Construct(const FArguments& InArgs)
 		SetPrimaryAssetClasses(*InArgs._PrimaryAssetClasses);
 	}
 
+	AssetPickerConfig.InitialAssetViewType = EAssetViewType::Tile;
+	AssetPickerConfig.bAddFilterUI = true;
+	AssetPickerConfig.bPreloadAssetsForContextMenu = false;
+	AssetPickerConfig.bShowPathInColumnView = true;
+	AssetPickerConfig.bSortByPathInColumnView = true;
+	AssetPickerConfig.bForceShowEngineContent = false;
+	AssetPickerConfig.bShowBottomToolbar = true;
+	AssetPickerConfig.bCanShowDevelopersFolder = CleanerConfigs->bScanDeveloperContents;
+	AssetPickerConfig.bCanShowClasses = false;
+	AssetPickerConfig.bAllowDragging = false;
+	AssetPickerConfig.bCanShowRealTimeThumbnails = false;
+	AssetPickerConfig.AssetShowWarningText = FText::FromName("No assets");
+	AssetPickerConfig.GetCurrentSelectionDelegates.Add(&GetCurrentSelectionDelegate);
+	AssetPickerConfig.OnAssetDoubleClicked = FOnAssetDoubleClicked::CreateStatic(
+		&SProjectCleanerUnusedAssetsBrowserUI::OnAssetDblClicked
+	);
+	AssetPickerConfig.OnGetAssetContextMenu = FOnGetAssetContextMenu::CreateRaw(
+		this,
+		&SProjectCleanerUnusedAssetsBrowserUI::OnGetAssetContextMenu
+	);
+
+	PickerConfig.bAllowContextMenu = false;
+	PickerConfig.bAllowClassesFolder = false;
+	PickerConfig.bFocusSearchBoxWhenOpened = false;
+	PickerConfig.OnPathSelected.BindRaw(this, &SProjectCleanerUnusedAssetsBrowserUI::OnPathSelected);
+	PickerConfig.bAddDefaultPath = true;
+	
 	UpdateUI();
 }
 
@@ -111,30 +138,6 @@ void SProjectCleanerUnusedAssetsBrowserUI::UpdateUI()
 	if (!CleanerConfigs) return;
 	if (!ContentBrowserModule) return;
 
-	FAssetPickerConfig AssetPickerConfig;
-	AssetPickerConfig.InitialAssetViewType = EAssetViewType::Tile;
-	AssetPickerConfig.bAddFilterUI = true;
-	AssetPickerConfig.bPreloadAssetsForContextMenu = false;
-	AssetPickerConfig.bShowPathInColumnView = true;
-	AssetPickerConfig.bSortByPathInColumnView = true;
-	AssetPickerConfig.bForceShowEngineContent = false;
-	AssetPickerConfig.bShowBottomToolbar = true;
-	AssetPickerConfig.bCanShowDevelopersFolder = CleanerConfigs->bScanDeveloperContents;
-	AssetPickerConfig.bCanShowClasses = false;
-	AssetPickerConfig.bAllowDragging = false;
-	AssetPickerConfig.bCanShowRealTimeThumbnails = false;
-	AssetPickerConfig.AssetShowWarningText = FText::FromName("No assets");
-	AssetPickerConfig.GetCurrentSelectionDelegates.Add(&GetCurrentSelectionDelegate);
-	AssetPickerConfig.OnAssetDoubleClicked = FOnAssetDoubleClicked::CreateStatic(
-		&SProjectCleanerUnusedAssetsBrowserUI::OnAssetDblClicked
-	);
-	AssetPickerConfig.OnGetAssetContextMenu = FOnGetAssetContextMenu::CreateRaw(
-		this,
-		&SProjectCleanerUnusedAssetsBrowserUI::OnGetAssetContextMenu
-	);
-
-	FARFilter Filter;
-
 	if (UnusedAssets.Num() == 0)
 	{
 		// this is needed for disabling showing primary assets in browser, when there is no unused assets
@@ -154,35 +157,31 @@ void SProjectCleanerUnusedAssetsBrowserUI::UpdateUI()
 		}
 	}
 
-	AssetPickerConfig.Filter = Filter;
-
 	ChildSlot
 	[
-		SNew(SOverlay)
-		+ SOverlay::Slot()
-		.Padding(20.0f)
+		SNew(SSplitter)
+		.Style(FEditorStyle::Get(), "ContentBrowser.Splitter")
+		.PhysicalSplitterHandleSize(2.0f)
+		+ SSplitter::Slot()
+		.Value(0.3f)
 		[
-			SNew(SScrollBox)
-			+ SScrollBox::Slot()
-			[
-				SNew(SVerticalBox)
-				+ SVerticalBox::Slot()
-				.AutoHeight()
-				[
-					SNew(STextBlock)
-					.AutoWrapText(true)
-					.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
-					.Text(LOCTEXT("UnusedAssets", "All Unused Assets"))
-				]
-				+ SVerticalBox::Slot()
-				.Padding(FMargin{ 0.0f, 10.0f })
-				.AutoHeight()
-				[
-					ContentBrowserModule->Get().CreateAssetPicker(AssetPickerConfig)
-				]
-			]
+			ContentBrowserModule->Get().CreatePathPicker(PickerConfig)
+		]
+		+ SSplitter::Slot()
+		[
+			ContentBrowserModule->Get().CreateAssetPicker(AssetPickerConfig)
 		]
 	];
+}
+
+void SProjectCleanerUnusedAssetsBrowserUI::UpdateFilter(const FString& Path)
+{
+	Filter.PackagePaths.Reset();
+	Filter.PackagePaths.Add(FName{Path});
+
+	AssetPickerConfig.Filter = Filter;
+	PickerConfig.DefaultPath = Path;
+	UpdateUI();
 }
 
 TSharedPtr<SWidget> SProjectCleanerUnusedAssetsBrowserUI::OnGetAssetContextMenu(const TArray<FAssetData>& SelectedAssets) const
@@ -204,10 +203,17 @@ TSharedPtr<SWidget> SProjectCleanerUnusedAssetsBrowserUI::OnGetAssetContextMenu(
 
 void SProjectCleanerUnusedAssetsBrowserUI::OnAssetDblClicked(const FAssetData& AssetData)
 {
+	if (!GEditor) return;
+	
 	TArray<FName> AssetNames;
 	AssetNames.Add(AssetData.ObjectPath);
 
 	GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->OpenEditorsForAssets(AssetNames);
+}
+
+void SProjectCleanerUnusedAssetsBrowserUI::OnPathSelected(const FString& Path)
+{
+	UpdateFilter(Path);
 }
 
 void SProjectCleanerUnusedAssetsBrowserUI::FindInContentBrowser() const

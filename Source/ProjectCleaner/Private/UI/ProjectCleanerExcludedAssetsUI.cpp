@@ -160,71 +160,116 @@ void SProjectCleanerExcludedAssetsUI::UpdateUI()
 
 	FContentBrowserModule& ContentBrowser = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
 
+	FPathPickerConfig PickerConfig;
+	PickerConfig.bAllowContextMenu = false;
+	PickerConfig.bAllowClassesFolder = false;
+	PickerConfig.bFocusSearchBoxWhenOpened = false;
+	
 	ChildSlot
 	[
-		SNew(SVerticalBox)
-		+ SVerticalBox::Slot()
-		.AutoHeight()
-		.Padding(FMargin(0.0f, 5.0f))
+		SNew(SSplitter)
+		.Style(FEditorStyle::Get(), "ContentBrowser.Splitter")
+		.PhysicalSplitterHandleSize(3.0f)
+		+ SSplitter::Slot()
+		.Value(0.2f)
 		[
-			SNew(STextBlock)
-			.AutoWrapText(true)
-			.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
-			.Text(LOCTEXT("exclude_assets_title_text", "Excluded Assets"))
+			ContentBrowser.Get().CreatePathPicker(PickerConfig)
 		]
-		+ SVerticalBox::Slot()
-		.AutoHeight()
-		.Padding(FMargin(0.0f, 5.0f))
+		+ SSplitter::Slot()
+		.Value(0.4f)
 		[
-			SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot()
-			.MaxWidth(150.0f)
-			.FillWidth(0.3f)
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(10.0f, 10.0f)
 			[
-				SNew(SButton)
-				.HAlign(HAlign_Center)
-				.VAlign(VAlign_Center)
-				.ToolTipText(LOCTEXT("exclude_assets_tooltip_text", "Removes all assets from excluded list"))
-				.Text(FText::FromString("Include all assets"))
-				.OnClicked_Raw(this, &SProjectCleanerExcludedAssetsUI::IncludeAllAssets)
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				.HAlign(HAlign_Left)
+				.VAlign(VAlign_Top)
+				[
+					SNew(STextBlock)
+					.AutoWrapText(true)
+					.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
+					.Text(LOCTEXT("exclude_assets_title_text", "Excluded Assets"))
+				]
+			]
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(10.0f, 10.0f)
+			[
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				.HAlign(HAlign_Left)
+				.VAlign(VAlign_Top)
+				[
+					SNew(SButton)
+					.HAlign(HAlign_Center)
+					.VAlign(VAlign_Center)
+					.ToolTipText(LOCTEXT("exclude_assets_tooltip_text", "Removes all assets from excluded list"))
+					.Text(FText::FromString("Include all assets"))
+					.OnClicked_Raw(this, &SProjectCleanerExcludedAssetsUI::IncludeAllAssets)
+				]
+			]
+			+ SVerticalBox::Slot()
+			.Padding(10.0f, 10.0f)
+			[
+				SNew(SBox)
+				.HeightOverride(300.0f)
+				.WidthOverride(300.0f)
+				[
+					ContentBrowser.Get().CreateAssetPicker(Config)
+				]
 			]
 		]
-		+SVerticalBox::Slot()
-		.AutoHeight()
-		.Padding(FMargin(0.0f, 10.0f))
+		+ SSplitter::Slot()
+		.Value(0.4f)
 		[
-			SNew(STextBlock)
-			.AutoWrapText(true)
-			.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light10"))
-			.Text(LOCTEXT("exclude_assets_tip_info_text", "When excluding assets, all referencer and dependency assets also excluded"))
-		]
-		+ SVerticalBox::Slot()
-		.AutoHeight()
-		[
-			ContentBrowser.Get().CreateAssetPicker(Config)
-		]
-		+ SVerticalBox::Slot()
-		.AutoHeight()
-		.Padding(FMargin(0.0f, 5.0f))
-		[
-			SNew(STextBlock)
-			.AutoWrapText(true)
-			.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
-			.Text(LOCTEXT("exclude_assets_linked_assets_title_text", "Linked Assets"))
-		]
-		+ SVerticalBox::Slot()
-		.AutoHeight()
-		.Padding(FMargin(0.0f, 10.0f))
-		[
-			SNew(STextBlock)
-			.AutoWrapText(true)
-			.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light10"))
-			.Text(LOCTEXT("exclude_assets_linked_assets_tip_info_text", "All referenced and dependency assets of excluded assets"))
-		]
-		+ SVerticalBox::Slot()
-		.AutoHeight()
-		[
-			ContentBrowser.Get().CreateAssetPicker(LinkedAssetsConfig)
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(10.0f, 10.0f)
+			[
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				.HAlign(HAlign_Left)
+				.VAlign(VAlign_Top)
+				[
+					SNew(STextBlock)
+					.AutoWrapText(true)
+					.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
+					.Text(LOCTEXT("exclude_assets_linked_assets_title_text", "Linked Assets"))
+				]
+			]
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(10.0f, 10.0f)
+			[
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				.HAlign(HAlign_Left)
+				.VAlign(VAlign_Top)
+				[
+					SNew(STextBlock)
+					.AutoWrapText(true)
+					.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light10"))
+					.Text(LOCTEXT("exclude_assets_linked_assets_tip_info_text", "All referenced and dependency assets of excluded assets"))
+				]
+			]
+			+SVerticalBox::Slot()
+			.Padding(10.0, 10.0f)
+			[
+				SNew(SBox)
+				.HeightOverride(300)
+				.WidthOverride(300)
+				[
+					ContentBrowser.Get().CreateAssetPicker(LinkedAssetsConfig)
+				]			
+			]
 		]
 	];
 }

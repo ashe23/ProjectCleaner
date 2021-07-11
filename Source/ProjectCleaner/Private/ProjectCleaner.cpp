@@ -8,7 +8,7 @@
 // Engine Headers
 #include "ToolMenus.h"
 #include "AssetRegistryModule.h"
-
+#include "Widgets/Layout/SScrollBox.h"
 
 DEFINE_LOG_CATEGORY(LogProjectCleaner);
 

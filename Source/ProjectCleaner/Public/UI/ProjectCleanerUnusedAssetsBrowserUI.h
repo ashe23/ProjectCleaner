@@ -31,8 +31,10 @@ public:
 	FOnUserExcludedAssets OnUserExcludedAssets;
 private:
 	void UpdateUI();
+	void UpdateFilter(const FString& Path);
 	TSharedPtr<SWidget> OnGetAssetContextMenu(const TArray<FAssetData>& SelectedAssets) const;
 	static void OnAssetDblClicked(const FAssetData& AssetData);
+	void OnPathSelected(const FString& Path);
 	void FindInContentBrowser() const;
 	bool IsAnythingSelected() const;
 	void DeleteAsset() const;
@@ -49,7 +51,9 @@ private:
 	/** UI **/
 	FGetCurrentSelectionDelegate GetCurrentSelectionDelegate;
 	TSharedPtr<FUICommandList> Commands;
-	TSharedRef<SWidget> WidgetRef = SNullWidget::NullWidget;
+	struct FAssetPickerConfig AssetPickerConfig;
+	struct FPathPickerConfig PickerConfig;
+	struct FARFilter Filter;
 
 	/* ContentBrowserModule */
 	FContentBrowserModule* ContentBrowserModule = nullptr;

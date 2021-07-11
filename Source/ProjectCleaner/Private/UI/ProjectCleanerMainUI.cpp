@@ -14,6 +14,7 @@
 // Engine Headers
 #include "ToolMenus.h"
 #include "AssetRegistry/AssetRegistryModule.h"
+#include "Components/SlateWrapperTypes.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Framework/Docking/TabManager.h"
@@ -23,6 +24,7 @@ static const FName UnusedAssetsTab = FName{ TEXT("UnusedAssetsTab") };
 static const FName IndirectAssetsTab = FName{ TEXT("IndirectAssetsTab") };
 static const FName NonEngineFilesTab = FName{ TEXT("NonEngineFilesTab") };
 static const FName CorruptedFilesTab = FName{ TEXT("CorruptedFilesTab") };
+static const FName ExcludedAssetsTab = FName{ TEXT("ExcludedAssetsTab") };
 
 void SProjectCleanerMainUI::Construct(const FArguments& InArgs)
 {
@@ -43,30 +45,28 @@ void SProjectCleanerMainUI::Construct(const FArguments& InArgs)
 		TabLayout.ToSharedRef(),
 		TSharedPtr<SWindow>()
 	).ToSharedRef();
-
-	const auto ExcludedAssetsUIRef = SAssignNew(ExcludedAssetsUI, SProjectCleanerExcludedAssetsUI)
-		.ExcludedAssets(&CleanerManager->GetCleanerData()->ExcludedAssets)
-		.LinkedAssets(&CleanerManager->GetCleanerData()->LinkedAssets)
-		.CleanerConfigs(CleanerManager->GetCleanerConfigs());
-	
-	ExcludedAssetsUIRef->OnUserIncludedAssets = FOnUserIncludedAsset::CreateRaw(
-		this,
-		&SProjectCleanerMainUI::OnUserIncludedAssets
-	);
 	
 	ChildSlot
 	[
-		SNew(SBorder)
+		SNew(SVerticalBox)
+		+ SVerticalBox::Slot()
+		.Padding(FMargin{ 20.0f })
+		.FillHeight(1.0f)
 		[
 			SNew(SSplitter)
+			.Style(FEditorStyle::Get(), "ContentBrowser.Splitter")
+			.PhysicalSplitterHandleSize(5.0f)
 			+ SSplitter::Slot()
 			.Value(0.35f)
 			[
-				SNew(SOverlay)
-				+ SOverlay::Slot()
-				.Padding(FMargin{ 20.0f })
+				SNew(SVerticalBox)
+				+ SVerticalBox::Slot()
+				.AutoHeight()
 				[
 					SNew(SScrollBox)
+					.ScrollWhenFocusChanges(EScrollWhenFocusChanges::AnimatedScroll)
+					.AnimateWheelScrolling(true)
+					.AllowOverscroll(EAllowOverscroll::No)
 					+ SScrollBox::Slot()
 					[
 						SNew(SBorder)
@@ -130,32 +130,11 @@ void SProjectCleanerMainUI::Construct(const FArguments& InArgs)
 							]
 						]
 					]
-					+ SScrollBox::Slot()
-					.Padding(FMargin{0.0f, 20.0f})
-					[
-						SNew(SBorder)
-						.BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
-						[
-							SNew(SVerticalBox)
-							+ SVerticalBox::Slot()
-							.Padding(FMargin{20.0f, 10.0f})
-							.AutoHeight()
-							[
-								ExcludedAssetsUIRef
-							]
-						]
-					]
 				]
 			]
 			+ SSplitter::Slot()
-			.Value(0.65f)
 			[
-				SNew(SOverlay)
-				+ SOverlay::Slot()
-				.Padding(FMargin{20.0f})
-				[
-					TabContents
-				]
+				TabContents
 			]
 		]
 	];
@@ -167,6 +146,7 @@ SProjectCleanerMainUI::~SProjectCleanerMainUI()
 	TabManager->UnregisterTabSpawner(IndirectAssetsTab);
 	TabManager->UnregisterTabSpawner(NonEngineFilesTab);
 	TabManager->UnregisterTabSpawner(CorruptedFilesTab);
+	TabManager->UnregisterTabSpawner(ExcludedAssetsTab);
 }
 
 void SProjectCleanerMainUI::InitTabs()
@@ -183,8 +163,8 @@ void SProjectCleanerMainUI::InitTabs()
 		(
 			FTabManager::NewStack()
 			->SetSizeCoefficient(0.4f)
-			->SetHideTabWell(true)
 			->AddTab(UnusedAssetsTab, ETabState::OpenedTab)
+			->AddTab(ExcludedAssetsTab, ETabState::OpenedTab)
 			->AddTab(IndirectAssetsTab, ETabState::OpenedTab)
 			->AddTab(NonEngineFilesTab, ETabState::OpenedTab)
 			->AddTab(CorruptedFilesTab, ETabState::OpenedTab)
@@ -195,6 +175,10 @@ void SProjectCleanerMainUI::InitTabs()
 	TabManager->RegisterTabSpawner(UnusedAssetsTab, FOnSpawnTab::CreateRaw(
 		this,
 		&SProjectCleanerMainUI::OnUnusedAssetTabSpawn)
+	);
+	TabManager->RegisterTabSpawner(ExcludedAssetsTab, FOnSpawnTab::CreateRaw(
+		this,
+		&SProjectCleanerMainUI::OnExcludedAssetsTabSpawn)
 	);
 	TabManager->RegisterTabSpawner(IndirectAssetsTab, FOnSpawnTab::CreateRaw(
 		this,
@@ -276,11 +260,44 @@ TSharedRef<SDockTab> SProjectCleanerMainUI::OnUnusedAssetTabSpawn(const FSpawnTa
 	);
 	
 	return SNew(SDockTab)
-		.TabRole(ETabRole::PanelTab)
-		.OnCanCloseTab_Lambda([] {return false; })
+		.TabRole(ETabRole::NomadTab)
+		.OnCanCloseTab_Lambda([] { return false; })
 		.Label(NSLOCTEXT("UnusedAssetsTab", "TabTitle", "Unused Assets"))
+		.ShouldAutosize(true)
 		[
-			UnusedAssetsUIRef
+			SNew(SOverlay)
+			+ SOverlay::Slot()
+			.Padding(20.0f)
+			[
+				UnusedAssetsUIRef
+			]
+		];
+}
+
+TSharedRef<SDockTab> SProjectCleanerMainUI::OnExcludedAssetsTabSpawn(const FSpawnTabArgs& SpawnTabArgs)
+{
+	const auto ExcludedAssetsUIRef = SAssignNew(ExcludedAssetsUI, SProjectCleanerExcludedAssetsUI)
+	.ExcludedAssets(&CleanerManager->GetCleanerData()->ExcludedAssets)
+	.LinkedAssets(&CleanerManager->GetCleanerData()->LinkedAssets)
+	.CleanerConfigs(CleanerManager->GetCleanerConfigs());
+	
+	ExcludedAssetsUIRef->OnUserIncludedAssets = FOnUserIncludedAsset::CreateRaw(
+		this,
+		&SProjectCleanerMainUI::OnUserIncludedAssets
+	);
+
+	return SNew(SDockTab)
+		.TabRole(ETabRole::NomadTab)
+		.OnCanCloseTab_Lambda([] { return false; })
+		.Label(NSLOCTEXT("ExcludedAssetsTab", "TabTitle", "Excluded Assets"))
+		.ShouldAutosize(true)
+		[
+			SNew(SOverlay)
+			+ SOverlay::Slot()
+			.Padding(20.0f)
+			[
+				ExcludedAssetsUIRef
+			]
 		];
 }
 

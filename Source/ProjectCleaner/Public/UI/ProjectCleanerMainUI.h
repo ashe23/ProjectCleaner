@@ -24,6 +24,7 @@ private:
 	
 	/* Callbacks */
 	TSharedRef<SDockTab> OnUnusedAssetTabSpawn(const FSpawnTabArgs& SpawnTabArgs);
+	TSharedRef<SDockTab> OnExcludedAssetsTabSpawn(const FSpawnTabArgs& SpawnTabArgs);
 	TSharedRef<SDockTab> OnNonEngineFilesTabSpawn(const FSpawnTabArgs& SpawnTabArgs);
 	TSharedRef<SDockTab> OnCorruptedFilesTabSpawn(const FSpawnTabArgs& SpawnTabArgs);
 	TSharedRef<SDockTab> OnIndirectAssetsTabSpawn(const FSpawnTabArgs& SpawnTabArgs);

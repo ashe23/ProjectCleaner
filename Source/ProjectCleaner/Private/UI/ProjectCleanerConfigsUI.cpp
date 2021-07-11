@@ -2,6 +2,7 @@
 
 #include "UI/ProjectCleanerConfigsUI.h"
 #include "StructsContainer.h"
+#include "Widgets/Layout/SScrollBox.h"
 
 #define LOCTEXT_NAMESPACE "FProjectCleanerModule"
 
@@ -39,9 +40,14 @@ void SProjectCleanerConfigsUI::InitUI()
 {
 	ChildSlot
 	[
-		SNew(SVerticalBox)
-		+ SVerticalBox::Slot()
-		.AutoHeight()
+		SNew(SScrollBox)
+		.ScrollWhenFocusChanges(EScrollWhenFocusChanges::AnimatedScroll)
+		.AnimateWheelScrolling(true)
+		.AllowOverscroll(EAllowOverscroll::No)
+		+ SScrollBox::Slot()
+		// SNew(SVerticalBox)
+		// + SVerticalBox::Slot()
+		// .AutoHeight()
 		[
 			ConfigsProperty.ToSharedRef()
 		]
