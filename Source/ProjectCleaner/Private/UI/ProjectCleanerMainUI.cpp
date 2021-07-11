@@ -236,6 +236,7 @@ void SProjectCleanerMainUI::UpdateUIData() const
 		ExcludedAssetsUI.Pin()->SetUIData(
 			CleanerManager->GetCleanerData()->ExcludedAssets,
 			CleanerManager->GetCleanerData()->LinkedAssets,
+			CleanerManager->GetCleanerData()->PrimaryAssetClasses,
 			CleanerManager->GetCleanerConfigs()
 		);
 	}
@@ -284,6 +285,7 @@ TSharedRef<SDockTab> SProjectCleanerMainUI::OnExcludedAssetsTabSpawn(const FSpaw
 	const auto ExcludedAssetsUIRef = SAssignNew(ExcludedAssetsUI, SProjectCleanerExcludedAssetsUI)
 	.ExcludedAssets(&CleanerManager->GetCleanerData()->ExcludedAssets)
 	.LinkedAssets(&CleanerManager->GetCleanerData()->LinkedAssets)
+	.PrimaryAssetClasses(&CleanerManager->GetCleanerData()->PrimaryAssetClasses)
 	.CleanerConfigs(CleanerManager->GetCleanerConfigs());
 	
 	ExcludedAssetsUIRef->OnUserIncludedAssets = FOnUserIncludedAsset::CreateRaw(

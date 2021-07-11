@@ -5,6 +5,7 @@
 #include "UI/ProjectCleanerStyle.h"
 // Engine Headers
 #include "IContentBrowserSingleton.h"
+#include "DSP/PassiveFilter.h"
 #include "Editor/ContentBrowser/Public/ContentBrowserModule.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Toolkits/GlobalEditorCommonCommands.h"
@@ -13,6 +14,8 @@
 
 void SProjectCleanerExcludedAssetsUI::Construct(const FArguments& InArgs)
 {
+	ContentBrowserModule = &FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
+	
 	if (InArgs._ExcludedAssets)
 	{
 		SetExcludedAssets(*InArgs._ExcludedAssets);
@@ -23,11 +26,33 @@ void SProjectCleanerExcludedAssetsUI::Construct(const FArguments& InArgs)
 		SetLinkedAssets(*InArgs._LinkedAssets);
 	}
 
+	if (InArgs._PrimaryAssetClasses)
+	{
+		SetPrimaryAssetClasses(*InArgs._PrimaryAssetClasses);
+	}
+
 	if (InArgs._CleanerConfigs)
 	{
 		SetCleanerConfigs(InArgs._CleanerConfigs);
 	}
+	
+	SelectedPath = FName{TEXT("/Game")};
+	RegisterCommands();
+	UpdateUI();
+}
 
+void SProjectCleanerExcludedAssetsUI::SetUIData(const TArray<FAssetData>& NewExcludedAssets, const TArray<FAssetData>& NewLinkedAssets, const TSet<FName>& NewPrimaryAssetClasses, UCleanerConfigs* NewConfigs)
+{
+	SetExcludedAssets(NewExcludedAssets);
+	SetLinkedAssets(NewLinkedAssets);
+	SetPrimaryAssetClasses(NewPrimaryAssetClasses);
+	SetCleanerConfigs(NewConfigs);
+
+	UpdateUI();
+}
+
+void SProjectCleanerExcludedAssetsUI::RegisterCommands()
+{
 	FProjectCleanerCommands::Register();
 
 	Commands = MakeShareable(new FUICommandList);
@@ -47,17 +72,6 @@ void SProjectCleanerExcludedAssetsUI::Construct(const FArguments& InArgs)
 			FCanExecuteAction::CreateRaw(this, &SProjectCleanerExcludedAssetsUI::IsAnythingSelected)
 		)
 	);
-	
-	UpdateUI();
-}
-
-void SProjectCleanerExcludedAssetsUI::SetUIData(const TArray<FAssetData>& NewExcludedAssets, const TArray<FAssetData>& NewLinkedAssets, UCleanerConfigs* NewConfigs)
-{
-	SetExcludedAssets(NewExcludedAssets);
-	SetLinkedAssets(NewLinkedAssets);
-	SetCleanerConfigs(NewConfigs);
-
-	UpdateUI();
 }
 
 void SProjectCleanerExcludedAssetsUI::SetExcludedAssets(const TArray<FAssetData>& Assets)
@@ -80,90 +94,23 @@ void SProjectCleanerExcludedAssetsUI::SetCleanerConfigs(UCleanerConfigs* Configs
 	CleanerConfigs = Configs;
 }
 
+void SProjectCleanerExcludedAssetsUI::SetPrimaryAssetClasses(const TSet<FName>& NewPrimaryAssetClasses)
+{
+	PrimaryAssetClasses.Reset();
+	PrimaryAssetClasses.Reserve(NewPrimaryAssetClasses.Num());
+	PrimaryAssetClasses = MoveTempIfPossible(NewPrimaryAssetClasses);
+}
+
 void SProjectCleanerExcludedAssetsUI::UpdateUI()
 {
 	if (!CleanerConfigs) return;
 	
-	FAssetPickerConfig Config;
-	Config.InitialAssetViewType = EAssetViewType::Tile;
-	Config.bAddFilterUI = true;
-	Config.bShowPathInColumnView = true;
-	Config.bSortByPathInColumnView = true;
-	Config.bForceShowEngineContent = false;
-	Config.bShowBottomToolbar = true;
-	Config.bCanShowDevelopersFolder = CleanerConfigs->bScanDeveloperContents;
-	Config.bForceShowEngineContent = false;
-	Config.bCanShowClasses = false;
-	Config.bAllowDragging = false;	
-	Config.AssetShowWarningText = FText::FromName("No assets");
-	Config.GetCurrentSelectionDelegates.Add(&GetCurrentSelectionDelegate);
-	Config.OnAssetDoubleClicked = FOnAssetDoubleClicked::CreateStatic(
-		&SProjectCleanerExcludedAssetsUI::OnAssetDblClicked
-	);
-	Config.OnGetAssetContextMenu = FOnGetAssetContextMenu::CreateRaw(
-		this,
-		&SProjectCleanerExcludedAssetsUI::OnGetAssetContextMenu
-	);
-
-	FARFilter Filter;
-	if (ExcludedAssets.Num() == 0)
-	{
-		// this is needed when there is no assets to show ,
-		// asset picker will show remaining assets in content browser,
-		// we must not show them
-		Filter.TagsAndValues.Add(FName{"ProjectCleanerEmptyTag"}, FString{"ProjectCleanerEmptyTag"});
-	}
-	else
-	{
-		// excluding level assets from showing and filtering
-		Filter.bRecursiveClasses = true;
-		Filter.RecursiveClassesExclusionSet.Add(UWorld::StaticClass()->GetFName());
-	}
-
-	Filter.PackageNames.Reserve(ExcludedAssets.Num());
-	for(const auto& Asset : ExcludedAssets)
-	{
-		Filter.PackageNames.Add(Asset.PackageName);
-	}
-	Config.Filter = Filter;
-
-	// linked assets asset picker
-	FAssetPickerConfig LinkedAssetsConfig;
-	LinkedAssetsConfig.InitialAssetViewType = EAssetViewType::Tile;
-	LinkedAssetsConfig.bAddFilterUI = false;
-	LinkedAssetsConfig.bShowPathInColumnView = true;
-	LinkedAssetsConfig.bSortByPathInColumnView = true;
-	LinkedAssetsConfig.bForceShowEngineContent = false;
-	LinkedAssetsConfig.bShowBottomToolbar = false;
-	LinkedAssetsConfig.bCanShowDevelopersFolder = CleanerConfigs->bScanDeveloperContents;
-	LinkedAssetsConfig.bForceShowEngineContent = false;
-	LinkedAssetsConfig.bCanShowClasses = false;
-	LinkedAssetsConfig.bAllowDragging = false;
-	LinkedAssetsConfig.AssetShowWarningText = FText::FromName("No assets");
-
-	FARFilter LinkedAssetsFilter;
-	if (LinkedAssets.Num() == 0)
-	{
-		LinkedAssetsFilter.TagsAndValues.Add(FName{ "ProjectCleanerEmptyTag" }, FString{ "ProjectCleanerEmptyTag" });
-	}
-	else
-	{
-		LinkedAssetsFilter.bRecursiveClasses = true;
-		LinkedAssetsFilter.RecursiveClassesExclusionSet.Add(UWorld::StaticClass()->GetFName());
-	}
-	LinkedAssetsFilter.PackageNames.Reserve(LinkedAssets.Num());
-	for (const auto& Asset : LinkedAssets)
-	{
-		LinkedAssetsFilter.PackageNames.Add(Asset.PackageName);
-	}
-	LinkedAssetsConfig.Filter = LinkedAssetsFilter;
-
-	FContentBrowserModule& ContentBrowser = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
-
-	FPathPickerConfig PickerConfig;
-	PickerConfig.bAllowContextMenu = false;
-	PickerConfig.bAllowClassesFolder = false;
-	PickerConfig.bFocusSearchBoxWhenOpened = false;
+	PathPickerConfig.bAllowContextMenu = false;
+	PathPickerConfig.bAllowClassesFolder = false;
+	PathPickerConfig.bFocusSearchBoxWhenOpened = false;
+	PathPickerConfig.OnPathSelected.BindRaw(this, &SProjectCleanerExcludedAssetsUI::OnPathSelected);
+	PathPickerConfig.bAddDefaultPath = true;
+	PathPickerConfig.DefaultPath = SelectedPath.ToString();
 	
 	ChildSlot
 	[
@@ -173,7 +120,7 @@ void SProjectCleanerExcludedAssetsUI::UpdateUI()
 		+ SSplitter::Slot()
 		.Value(0.2f)
 		[
-			ContentBrowser.Get().CreatePathPicker(PickerConfig)
+			ContentBrowserModule->Get().CreatePathPicker(PathPickerConfig)
 		]
 		+ SSplitter::Slot()
 		.Value(0.4f)
@@ -220,7 +167,7 @@ void SProjectCleanerExcludedAssetsUI::UpdateUI()
 				.HeightOverride(300.0f)
 				.WidthOverride(300.0f)
 				[
-					ContentBrowser.Get().CreateAssetPicker(Config)
+					GetExcludedAssetsView().ToSharedRef()
 				]
 			]
 		]
@@ -260,18 +207,117 @@ void SProjectCleanerExcludedAssetsUI::UpdateUI()
 					.Text(LOCTEXT("exclude_assets_linked_assets_tip_info_text", "All referenced and dependency assets of excluded assets"))
 				]
 			]
-			+SVerticalBox::Slot()
+			+ SVerticalBox::Slot()
 			.Padding(10.0, 10.0f)
 			[
 				SNew(SBox)
 				.HeightOverride(300)
 				.WidthOverride(300)
 				[
-					ContentBrowser.Get().CreateAssetPicker(LinkedAssetsConfig)
+					GetLinkedAssetsView().ToSharedRef()
 				]			
 			]
 		]
 	];
+}
+
+TSharedPtr<SWidget> SProjectCleanerExcludedAssetsUI::GetExcludedAssetsView()
+{
+	FAssetPickerConfig AssetPickerConfig;
+	AssetPickerConfig.InitialAssetViewType = EAssetViewType::Tile;
+	AssetPickerConfig.SelectionMode = ESelectionMode::SingleToggle;
+	AssetPickerConfig.bAddFilterUI = true;
+	AssetPickerConfig.bShowPathInColumnView = true;
+	AssetPickerConfig.bSortByPathInColumnView = true;
+	AssetPickerConfig.bForceShowEngineContent = false;
+	AssetPickerConfig.bShowBottomToolbar = true;
+	AssetPickerConfig.bCanShowDevelopersFolder = CleanerConfigs->bScanDeveloperContents;
+	AssetPickerConfig.bForceShowEngineContent = false;
+	AssetPickerConfig.bCanShowClasses = false;
+	AssetPickerConfig.bAllowDragging = false;
+	AssetPickerConfig.bCanShowFolders = false;
+	AssetPickerConfig.AssetShowWarningText = FText::FromName("No assets");
+	AssetPickerConfig.GetCurrentSelectionDelegates.Add(&GetCurrentSelectionDelegate);
+	AssetPickerConfig.OnAssetSelected = FOnAssetSelected::CreateStatic(
+		&SProjectCleanerExcludedAssetsUI::OnAssetSelected
+	);
+	AssetPickerConfig.OnAssetDoubleClicked = FOnAssetDoubleClicked::CreateStatic(
+		&SProjectCleanerExcludedAssetsUI::OnAssetDblClicked
+	);
+	AssetPickerConfig.OnGetAssetContextMenu = FOnGetAssetContextMenu::CreateRaw(
+		this,
+		&SProjectCleanerExcludedAssetsUI::OnGetAssetContextMenu
+	);
+
+	FARFilter Filter;
+	if (ExcludedAssets.Num() == 0)
+	{
+		// this is needed when there is no assets to show ,
+		// asset picker will show remaining assets in content browser,
+		// we must not show them
+		Filter.TagsAndValues.Add(FName{"ProjectCleanerEmptyTag"}, FString{"ProjectCleanerEmptyTag"});
+	}
+	else
+	{
+		// excluding level assets from showing and filtering
+		Filter.bRecursiveClasses = true;
+		Filter.RecursiveClassesExclusionSet.Reserve(PrimaryAssetClasses.Num());
+		Filter.RecursiveClassesExclusionSet = MoveTempIfPossible(PrimaryAssetClasses);
+	}
+
+	if (!SelectedPath.IsNone())
+	{
+		Filter.PackagePaths.Add(SelectedPath);
+	}
+
+	Filter.PackageNames.Reserve(ExcludedAssets.Num());
+	for(const auto& Asset : ExcludedAssets)
+	{
+		Filter.PackageNames.Add(Asset.PackageName);
+	}
+	AssetPickerConfig.Filter = Filter;
+
+	return ContentBrowserModule->Get().CreateAssetPicker(AssetPickerConfig);
+}
+
+TSharedPtr<SWidget> SProjectCleanerExcludedAssetsUI::GetLinkedAssetsView()
+{
+	FAssetPickerConfig AssetPickerConfig;
+	AssetPickerConfig.InitialAssetViewType = EAssetViewType::Tile;
+	AssetPickerConfig.SelectionMode = ESelectionMode::None;
+	AssetPickerConfig.bAddFilterUI = true;
+	AssetPickerConfig.bShowPathInColumnView = true;
+	AssetPickerConfig.bSortByPathInColumnView = true;
+	AssetPickerConfig.bForceShowEngineContent = false;
+	AssetPickerConfig.bShowBottomToolbar = true;
+	AssetPickerConfig.bCanShowDevelopersFolder = CleanerConfigs->bScanDeveloperContents;
+	AssetPickerConfig.bForceShowEngineContent = false;
+	AssetPickerConfig.bCanShowClasses = false;
+	AssetPickerConfig.bAllowDragging = false;
+	AssetPickerConfig.bCanShowFolders = false;
+	AssetPickerConfig.AssetShowWarningText = FText::FromName("No assets");
+
+	// todo:ashe23 on asset selected show only linked assets of current selected asset
+	
+	FARFilter Filter;
+	if (LinkedAssets.Num() == 0)
+	{
+		Filter.TagsAndValues.Add(FName{ "ProjectCleanerEmptyTag" }, FString{ "ProjectCleanerEmptyTag" });
+	}
+	else
+	{
+		Filter.bRecursiveClasses = true;
+		Filter.RecursiveClassesExclusionSet.Reserve(PrimaryAssetClasses.Num());
+		Filter.RecursiveClassesExclusionSet = MoveTempIfPossible(PrimaryAssetClasses);
+	}
+	Filter.PackageNames.Reserve(LinkedAssets.Num());
+	for (const auto& Asset : LinkedAssets)
+	{
+		Filter.PackageNames.Add(Asset.PackageName);
+	}
+	AssetPickerConfig.Filter = Filter;
+
+	return ContentBrowserModule->Get().CreateAssetPicker(AssetPickerConfig);
 }
 
 TSharedPtr<SWidget> SProjectCleanerExcludedAssetsUI::OnGetAssetContextMenu(const TArray<FAssetData>& SelectedAssets) const
@@ -296,6 +342,11 @@ void SProjectCleanerExcludedAssetsUI::OnAssetDblClicked(const FAssetData& AssetD
 	AssetNames.Add(AssetData.ObjectPath);
 
 	GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->OpenEditorsForAssets(AssetNames);
+}
+
+void SProjectCleanerExcludedAssetsUI::OnAssetSelected(const FAssetData& AssetData)
+{
+	AssetData.PrintAssetData();
 }
 
 void SProjectCleanerExcludedAssetsUI::FindInContentBrowser() const
@@ -337,6 +388,13 @@ FReply SProjectCleanerExcludedAssetsUI::IncludeAllAssets() const
 
 	OnUserIncludedAssets.Execute(ExcludedAssets, true);
 	return FReply::Handled();
+}
+
+void SProjectCleanerExcludedAssetsUI::OnPathSelected(const FString& Path)
+{
+	SelectedPath = FName{Path};
+	PathPickerConfig.DefaultPath = Path;
+	UpdateUI();
 }
 
 #undef LOCTEXT_NAMESPACE
