@@ -77,25 +77,76 @@ void ProjectCleanerUtility::GetInvalidFiles(TSet<FString>& CorruptedFiles, TSet<
 	}
 }
 
-void ProjectCleanerUtility::GetUnusedAssets(TArray<FAssetData>& UnusedAssets)
+void ProjectCleanerUtility::GetCorruptedAssets(FProjectCleanerData& CleanerData)
 {
+	CleanerData.CorruptedAssets.Reserve(CleanerData.ProjectAllAssetsFiles.Num());
+	for (const auto& File : CleanerData.ProjectAllAssetsFiles)
+	{
+		if (!IsEngineExtension(FPaths::GetExtension(File, false))) continue;
+		
+		// here we got absolute path "C:/MyProject/Content/material.uasset"
+		// we must first convert that path to In Engine Internal Path like "/Game/material.uasset"
+		const FString InternalFilePath = ConvertAbsolutePathToInternal(File);
+		// Converting file path to object path (This is for searching in AssetRegistry)
+		// example "/Game/Name.uasset" => "/Game/Name.Name"
+		FString ObjectPath = InternalFilePath;
+		ObjectPath.RemoveFromEnd(FPaths::GetExtension(InternalFilePath, true));
+		ObjectPath.Append(TEXT(".") + FPaths::GetBaseFilename(InternalFilePath));
+		
+		const bool IsInAssetRegistry = CleanerData.ProjectAllAssets.ContainsByPredicate([&](const FAssetData& Elem)
+		{
+			return Elem.ObjectPath.IsEqual(FName{ObjectPath});
+		});
+		if (!IsInAssetRegistry)
+		{
+			CleanerData.CorruptedAssets.Add(File);
+		}
+	}
+
+	CleanerData.CorruptedAssets.Shrink();
+}
+
+void ProjectCleanerUtility::GetNonEngineFiles(TSet<FString>& NonEngineFiles,const TSet<FString>& ProjectFiles)
+{
+	for (const auto& File : ProjectFiles)
+	{
+		if (!IsEngineExtension(FPaths::GetExtension(File, false)))
+		{
+			NonEngineFiles.Add(File);
+		}
+	}
+}
+
+void ProjectCleanerUtility::GetAllAssets(FProjectCleanerData& CleanerData)
+{
+	CleanerData.ProjectAllAssets.Reserve(CleanerData.ProjectAllAssetsFiles.Num());
 	FAssetRegistryModule& AssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
+	AssetRegistry.Get().GetAssetsByPath(FName{ "/Game" }, CleanerData.ProjectAllAssets, true);
+}
 
-	// getting all assets
-	AssetRegistry.Get().GetAssetsByPath(FName{ "/Game" }, UnusedAssets, true);
-
+void ProjectCleanerUtility::GetUnusedAssets(FProjectCleanerData& CleanerData)
+{
 	// getting all used assets
 	TSet<FName> UsedAssets;
-	UsedAssets.Reserve(UnusedAssets.Num());
+	UsedAssets.Reserve(CleanerData.ProjectAllAssets.Num());
 	GetUsedAssets(UsedAssets);
-
-	// filtering all used assets, remaining is unused
-	UnusedAssets.RemoveAllSwap([&] (const FAssetData& Elem)
+	
+	CleanerData.UnusedAssets.Reserve(CleanerData.ProjectAllAssets.Num());
+	for (const auto& Asset : CleanerData.ProjectAllAssets)
 	{
-		return UsedAssets.Contains(Elem.PackageName);
-	});
+		if (UsedAssets.Contains(Asset.PackageName) || !Asset.PackagePath.ToString().StartsWith("/Game")) continue;
+		CleanerData.UnusedAssets.AddUnique(Asset);
+	}
 
-	RemoveMegascansPluginAssetsIfActive(UnusedAssets);
+	// todo:ashe23 make as option?
+	const bool IsMegascansLoaded = FModuleManager::Get().IsModuleLoaded("MegascansPlugin");
+	if (!IsMegascansLoaded) return;
+	
+	CleanerData.UnusedAssets.RemoveAllSwap([&](const FAssetData& Elem)
+	{
+		return FPaths::IsUnderDirectory(Elem.PackagePath.ToString(), TEXT("/Game/MSPresets"));
+	}, false);
+	CleanerData.UnusedAssets.Shrink();
 }
 
 int64 ProjectCleanerUtility::GetTotalSize(TArray<FAssetData>& UnusedAssets)
@@ -274,7 +325,7 @@ void ProjectCleanerUtility::FindAssetsUsedIndirectly(const TArray<FAssetData>& U
 	// 2) for every unused asset check if that assets used in that file
 	//	2.1) if so add to Indirectly used assets
 	TArray<FString> AllFiles;
-	FindSourceAndConfigFiles(AllFiles);
+	GetSourceAndConfigFiles(AllFiles);
 	
 	if (AllFiles.Num() == 0) return;
 
@@ -349,23 +400,34 @@ bool ProjectCleanerUtility::FindAllEmptyFolders(const FString& FolderPath, TArra
 	return false;
 }
 
+bool ProjectCleanerUtility::IsUnderDeveloperFolder(const FString& PackagePath)
+{
+	const FString InPath = ConvertInternalToAbsolutePath(PackagePath);
+	const FString DeveloperFolderPath = FPaths::ConvertRelativePathToFull(FPaths::GameDevelopersDir());
+	const FString CollectionsFolderPath = FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() + TEXT("Collections/"));
+
+	return
+		FPaths::IsUnderDirectory(InPath, DeveloperFolderPath) ||
+		FPaths::IsUnderDirectory(InPath, CollectionsFolderPath);
+}
+
 FString ProjectCleanerUtility::ConvertPathInternal(const FString& From, const FString To, const FString& Path)
 {
 	return Path.Replace(*From, *To, ESearchCase::IgnoreCase);
 }
 
-void ProjectCleanerUtility::RemoveMegascansPluginAssetsIfActive(TArray<FAssetData>& UnusedAssets)
-{
-	const bool IsMegascansLoaded = FModuleManager::Get().IsModuleLoaded("MegascansPlugin");
-	if (!IsMegascansLoaded) return;
-	
-	UnusedAssets.RemoveAllSwap([&](const FAssetData& Elem)
-	{
-		return FPaths::IsUnderDirectory(Elem.PackagePath.ToString(), TEXT("/Game/MSPresets"));
-	});
-}
+// void ProjectCleanerUtility::RemoveMegascansPluginAssetsIfActive(TArray<FAssetData>& UnusedAssets)
+// {
+// 	const bool IsMegascansLoaded = FModuleManager::Get().IsModuleLoaded("MegascansPlugin");
+// 	if (!IsMegascansLoaded) return;
+// 	
+// 	UnusedAssets.RemoveAllSwap([&](const FAssetData& Elem)
+// 	{
+// 		return FPaths::IsUnderDirectory(Elem.PackagePath.ToString(), TEXT("/Game/MSPresets"));
+// 	});
+// }
 
-void ProjectCleanerUtility::FindSourceAndConfigFiles(TArray<FString>& AllFiles)
+void ProjectCleanerUtility::GetSourceAndConfigFiles(TArray<FString>& AllFiles)
 {
 	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
 
@@ -497,4 +559,15 @@ void ProjectCleanerUtility::SaveAllAssets()
 		false,
 		false
 	);
+}
+
+void ProjectCleanerUtility::UpdateAssetRegistry(bool bSyncScan = false)
+{
+	FAssetRegistryModule& AssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
+	
+	TArray<FString> ScanFolders;
+	ScanFolders.Add("/Game");
+
+	AssetRegistry.Get().ScanPathsSynchronous(ScanFolders, true);
+	AssetRegistry.Get().SearchAllAssets(bSyncScan);
 }

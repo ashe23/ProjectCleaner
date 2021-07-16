@@ -48,6 +48,7 @@ public class ProjectCleaner : ModuleRules
 				"UnrealEd",
 				"ToolMenus",
 				"AssetTools",
+				"DirectoryWatcher",
 			}
 		);
 

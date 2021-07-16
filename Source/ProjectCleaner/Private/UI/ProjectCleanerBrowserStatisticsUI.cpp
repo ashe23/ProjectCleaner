@@ -209,7 +209,7 @@ FText SProjectCleanerBrowserStatisticsUI::GetEmptyFoldersNum() const
 
 FText SProjectCleanerBrowserStatisticsUI::GetCorruptedFilesNum() const
 {
-	return FText::AsNumber(CleanerData ? CleanerData->CorruptedFiles.Num() : 0);
+	return FText::AsNumber(CleanerData ? CleanerData->CorruptedAssets.Num() : 0);
 }
 
 

@@ -2,24 +2,16 @@
 
 #include "ProjectCleaner.h"
 #include "UI/ProjectCleanerStyle.h"
-#include "UI/ProjectCleanerCommands.h"
-#include "UI/ProjectCleanerNotificationManager.h"
 #include "UI/ProjectCleanerMainUI.h"
+#include "UI/ProjectCleanerCommands.h"
 // Engine Headers
 #include "ToolMenus.h"
-#include "AssetRegistryModule.h"
-#include "Widgets/Layout/SScrollBox.h"
 
 DEFINE_LOG_CATEGORY(LogProjectCleaner);
 
 static const FName ProjectCleanerTabName("ProjectCleaner");
 
 #define LOCTEXT_NAMESPACE "FProjectCleanerModule"
-
-FProjectCleanerModule::FProjectCleanerModule() :
-	AssetRegistry(nullptr)
-{
-}
 
 void FProjectCleanerModule::StartupModule()
 {
@@ -48,19 +40,19 @@ void FProjectCleanerModule::StartupModule()
 		FOnSpawnTab::CreateRaw(this, &FProjectCleanerModule::OnSpawnPluginTab))
 		.SetDisplayName(LOCTEXT("FProjectCleanerTabTitle", "ProjectCleaner"))
 		.SetMenuType(ETabSpawnerMenuType::Hidden);
-	
-	// Registering AssetRegistry functions to monitor any changes
-	AssetRegistry = &FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
+
+	CleanerManager.Init();
 }
 
 void FProjectCleanerModule::ShutdownModule()
 {
+	CleanerManager.Exit();
+	
 	UToolMenus::UnRegisterStartupCallback(this);
 	UToolMenus::UnregisterOwner(this);
 	FProjectCleanerStyle::Shutdown();
 	FProjectCleanerCommands::Unregister();
 	FGlobalTabmanager::Get()->UnregisterNomadTabSpawner(ProjectCleanerTabName);
-	AssetRegistry = nullptr;
 }
 
 bool FProjectCleanerModule::IsGameModule() const
@@ -86,19 +78,6 @@ void FProjectCleanerModule::RegisterMenus()
 
 void FProjectCleanerModule::PluginButtonClicked()
 {
-	ensureMsgf(AssetRegistry != nullptr, TEXT("AssetRegistry is nullptr"));
-	
-	if (AssetRegistry->Get().IsLoadingAssets())
-	{
-		ProjectCleanerNotificationManager::AddTransient(
-			FText::FromString(FStandardCleanerText::AssetRegistryStillWorking),
-			SNotificationItem::CS_Fail,
-			3.0f
-		);
-		
-		return;
-	}
-
 	FGlobalTabmanager::Get()->TryInvokeTab(ProjectCleanerTabName);
 }
 

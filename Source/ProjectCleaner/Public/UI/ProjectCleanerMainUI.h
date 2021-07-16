@@ -10,7 +10,7 @@ class SProjectCleanerMainUI : public SCompoundWidget
 {
 public:
 	SLATE_BEGIN_ARGS(SProjectCleanerMainUI) {}
-		SLATE_ARGUMENT(ProjectCleanerManager*, CleanerManager)
+		SLATE_ARGUMENT(class ProjectCleanerManager*, CleanerManager)
     SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
@@ -55,5 +55,5 @@ private:
 	TSharedPtr<FTabManager::FLayout> TabLayout;
 
 	/* Data */
-	class ProjectCleanerManager* CleanerManager = nullptr;
+	ProjectCleanerManager* CleanerManager = nullptr;
 };

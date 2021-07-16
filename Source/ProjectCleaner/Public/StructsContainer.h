@@ -86,20 +86,43 @@ public:
 	FString FilePath;
 };
 
+struct FAssetNode
+{
+	TArray<FName> Refs;
+	TArray<FName> Deps;
+	TSet<FName> LinkedAssets;
+	bool bRootAsset = false;
+	bool bHasExternalRefs = false;
+	bool bIsCircular = false;
+	bool bIsInDevFolder = false;
+	bool bExcludedByPath = false;
+	bool bExcludedByClass = false;
+};
+
 struct FProjectCleanerData
 {
+	// UI data
 	TArray<FAssetData> UnusedAssets;
-	TArray<FString> EmptyFolders;
-	TSet<FString> NonEngineFiles;
-	TSet<FString> CorruptedFiles;
 	TArray<FIndirectFileInfo> IndirectFileInfos;
-	TSet<FName> PrimaryAssetClasses;
+	TSet<FString> CorruptedAssets;
+	TSet<FString> NonEngineFiles;
+	TArray<FString> EmptyFolders;
+
+	// Helper data
 	TArray<FAssetData> UserExcludedAssets;
 	TArray<FAssetData> ExcludedAssets;
 	TArray<FAssetData> LinkedAssets;
-	int64 TotalSize;
+	TMap<FAssetData, FAssetNode> AssetsRelationalMap;
+	TSet<FName> PrimaryAssetClasses;
+	// TSet<FAssetData> AssetsWithExternalReferencers;
 
+	// cache data
+	TArray<FAssetData> ProjectAllAssets;
+	TArray<FString> ProjectAllAssetsFiles;
+	TArray<FString> ProjectSourceAndConfigsFiles;
+	
 	// Helpers for asset deletion stats
+	int64 TotalSize;
 	uint32 TotalAssetsNum;
 	uint32 DeletedAssetsNum;
 
@@ -112,29 +135,26 @@ struct FProjectCleanerData
 
 	void Reset()
 	{
-		UnusedAssets.Reset();
-		EmptyFolders.Reset();
-		NonEngineFiles.Reset();
-		CorruptedFiles.Reset();
-		IndirectFileInfos.Reset();
-		PrimaryAssetClasses.Reset();
-		ExcludedAssets.Reset();
-		LinkedAssets.Reset();
-		TotalSize = 0;
-		TotalAssetsNum = 0;
-		DeletedAssetsNum = 0;
+		UnusedAssets.Empty();
+		IndirectFileInfos.Empty();
+		CorruptedAssets.Empty();
+		NonEngineFiles.Empty();
+		EmptyFolders.Empty();
 	}
-
+	
 	void Empty()
 	{
-		UnusedAssets.Empty();
-		EmptyFolders.Empty();
-		NonEngineFiles.Empty();
-		CorruptedFiles.Empty();
-		IndirectFileInfos.Empty();
-		PrimaryAssetClasses.Empty();
-		ExcludedAssets.Empty();
-		LinkedAssets.Empty();
+		// empty all containers
+		// AllAssets.Empty();
+		// UnusedAssets.Empty();
+		// EmptyFolders.Empty();
+		// CorruptedFiles.Empty();
+		// IndirectFileInfos.Empty();
+		// PrimaryAssetClasses.Empty();
+		// ExcludedAssets.Empty();
+		// LinkedAssets.Empty();
+		// AdjacencyList.Empty();
+		// AssetsWithExternalReferencers.Empty();
 		TotalSize = 0;
 		TotalAssetsNum = 0;
 		DeletedAssetsNum = 0;
@@ -153,7 +173,7 @@ struct FStandardCleanerText
 	constexpr static TCHAR* NonUAssetFilesFound = TEXT("Project contains non engine files. Check Output Log for more info.");
 	constexpr static TCHAR* SearchingEmptyFolders = TEXT("Searching empty folders...");
 	constexpr static TCHAR* AssetsWithReferencersInDeveloperFolder = TEXT("Some of assets has references in Developers folder. To view them click 'Scan Developers Folder' checkbox.");
-	constexpr static TCHAR* AssetRegistryStillWorking = TEXT("Asset Registry still working! Please wait...");
+	constexpr static TCHAR* AssetRegistryStillWorking = TEXT("Asset registry still working. Please wait...");
 	constexpr static TCHAR* SomeAssetsHaveRefsInDevFolder = TEXT("Some assets have referencers in Developer Contents Folder.");
 	constexpr static TCHAR* CantIncludeSomeAssets = TEXT("Cant include some filtered assets.Clear 'ExcludeOptions' filters and try again.");
 	constexpr static TCHAR* FailedToDeleteSomeFolders = TEXT("Failed to delete some folders. See Output Log for more information.");

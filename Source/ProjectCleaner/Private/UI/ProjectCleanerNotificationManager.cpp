@@ -4,21 +4,20 @@
 // Engine Headers
 #include "Framework/Notifications/NotificationManager.h"
 
-TWeakPtr<SNotificationItem> ProjectCleanerNotificationManager::Add(
+void ProjectCleanerNotificationManager::Add(
 	const FString& Text,
-	const SNotificationItem::ECompletionState CompletionState
+	const SNotificationItem::ECompletionState CompletionState,
+	TWeakPtr<SNotificationItem>& NotificationPtr
 )
 {
 	FNotificationInfo Info(FText::FromString(Text));
 	Info.bFireAndForget = false;
 
-	const TWeakPtr<SNotificationItem> NotificationManager = FSlateNotificationManager::Get().AddNotification(Info);
-	if (NotificationManager.IsValid())
+	NotificationPtr = FSlateNotificationManager::Get().AddNotification(Info);
+	if (NotificationPtr.IsValid())
 	{
-		NotificationManager.Pin()->SetCompletionState(CompletionState);
+		NotificationPtr.Pin()->SetCompletionState(CompletionState);
 	}
-
-	return NotificationManager;
 }
 
 void ProjectCleanerNotificationManager::AddTransient(

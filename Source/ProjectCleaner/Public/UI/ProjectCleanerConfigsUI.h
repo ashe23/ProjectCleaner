@@ -17,7 +17,6 @@ public:
 	void Construct(const FArguments& InArgs);
 	void SetCleanerConfigs(UCleanerConfigs* Configs);
 private:
-	void InitUI();
 	TSharedPtr<IDetailsView> ConfigsProperty;
 	UCleanerConfigs* CleanerConfigs = nullptr;
 };

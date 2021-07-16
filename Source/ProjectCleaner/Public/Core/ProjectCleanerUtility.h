@@ -22,26 +22,31 @@ class PROJECTCLEANER_API ProjectCleanerUtility
 {
 public:
 	// query
+	static bool FindAllEmptyFolders(const FString& FolderPath, TArray<FString>& EmptyFolders);
+	static bool IsUnderDeveloperFolder(const FString& PackagePath);	
 	static void GetEmptyFolders(TArray<FString>& EmptyFolders, const bool bScanDeveloperContents);
-	static void GetInvalidFiles(TSet<FString>& CorruptedFiles, TSet<FString>& NonEngineFiles);
-	static void GetUnusedAssets(TArray<FAssetData>& UnusedAssets);
+	static void GetInvalidFiles(TSet<FString>& CorruptedFiles, TSet<FString>& NonEngineFiles);// remove
+	static void GetCorruptedAssets(FProjectCleanerData& CleanerData);// remove
+	static void GetNonEngineFiles(TSet<FString>& NonEngineFiles, const TSet<FString>& ProjectFiles);
+	static void GetAllAssets(FProjectCleanerData& CleanerData);// remove
+	static void GetUnusedAssets(FProjectCleanerData& CleanerData);// remove
 	static int64 GetTotalSize(TArray<FAssetData>& UnusedAssets);
-	static void GetPrimaryAssetClasses(TSet<FName>& PrimaryAssetClasses);
+	static void GetPrimaryAssetClasses(TSet<FName>& PrimaryAssetClasses);// remove
+	static void GetSourceAndConfigFiles(TArray<FString>& AllFiles);
+	static void GetProjectFilesFromDisk(TSet<FString>& ProjectFiles);
 	// update
 	static void FindAssetsUsedIndirectly(const TArray<FAssetData>& UnusedAssets, TArray<FIndirectFileInfo>& IndirectFileInfos);
 	static FString ConvertAbsolutePathToInternal(const FString& InPath);
 	static FString ConvertInternalToAbsolutePath(const FString& InPath);
 	static void FixupRedirectors();
 	static void SaveAllAssets();
+	static void UpdateAssetRegistry(bool bSyncScan);
 	// delete
 	static bool DeleteEmptyFolders(TArray<FString>& EmptyFolders);
 	static int32 DeleteAssets(TArray<FAssetData>& Assets);
+	static bool IsEngineExtension(const FString& Extension);
 private:
 	static void GetUsedAssets(TSet<FName>& UsedAssets);
-	static void GetProjectFilesFromDisk(TSet<FString>& ProjectFiles);
-	static bool IsEngineExtension(const FString& Extension);
-	static bool FindAllEmptyFolders(const FString& FolderPath, TArray<FString>& EmptyFolders);
 	static FString ConvertPathInternal(const FString& From, const FString To, const FString& Path);
-	static void RemoveMegascansPluginAssetsIfActive(TArray<FAssetData>& UnusedAssets);
-	static void FindSourceAndConfigFiles(TArray<FString>& AllFiles);
+	// static void RemoveMegascansPluginAssetsIfActive(TArray<FAssetData>& UnusedAssets);
 };

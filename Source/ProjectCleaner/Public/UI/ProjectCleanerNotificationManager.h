@@ -21,9 +21,10 @@ public:
 	 * @param CompletionState 
 	 * @return 
 	 */
-	static TWeakPtr<SNotificationItem> Add(
+	static void Add(
 		const FString& Text,
-		const SNotificationItem::ECompletionState CompletionState
+		const SNotificationItem::ECompletionState CompletionState,
+		TWeakPtr<SNotificationItem>& NotificationPtr
 	);
 
 	/**

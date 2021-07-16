@@ -21,7 +21,7 @@ void FProjectCleanerCommands::RegisterCommands()
 	UI_COMMAND(
 		OpenCleanerWindow,
 		"ProjectCleaner",
-		"Open Cleaner Tab",
+		"Open Project Cleaner Manager",
 		EUserInterfaceActionType::Button,
 		FInputChord()
 	);
