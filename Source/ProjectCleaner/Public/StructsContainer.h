@@ -103,23 +103,24 @@ struct FProjectCleanerData
 {
 	// UI data
 	TArray<FAssetData> UnusedAssets;
-	TArray<FIndirectFileInfo> IndirectFileInfos;
-	TSet<FString> CorruptedAssets;
-	TSet<FString> NonEngineFiles;
-	TArray<FString> EmptyFolders;
+	TSet<FName> EmptyFolders;
+	TSet<FName> NonEngineFiles;
+	TSet<FName> CorruptedAssets;
+	TMap<FString, int32> IndirectlyUsedAssets;
 
 	// Helper data
-	TArray<FAssetData> UserExcludedAssets;
-	TArray<FAssetData> ExcludedAssets;
-	TArray<FAssetData> LinkedAssets;
-	TMap<FAssetData, FAssetNode> AssetsRelationalMap;
-	TSet<FName> PrimaryAssetClasses;
+	// TArray<FAssetData> UserExcludedAssets;
+	// TArray<FAssetData> ExcludedAssets;
+	// TArray<FAssetData> LinkedAssets;
+	// TMap<FAssetData, FAssetNode> AssetsRelationalMap;
 	// TSet<FAssetData> AssetsWithExternalReferencers;
 
 	// cache data
+	TSet<FName> PrimaryAssetClasses;
+	TSet<FName> UsedAssets;
 	TArray<FAssetData> ProjectAllAssets;
-	TArray<FString> ProjectAllAssetsFiles;
-	TArray<FString> ProjectSourceAndConfigsFiles;
+	TSet<FName> ProjectAllFiles;
+	TSet<FString> ProjectSourceAndConfigsFiles;
 	
 	// Helpers for asset deletion stats
 	int64 TotalSize;
@@ -136,7 +137,8 @@ struct FProjectCleanerData
 	void Reset()
 	{
 		UnusedAssets.Empty();
-		IndirectFileInfos.Empty();
+		ProjectAllAssets.Empty(); // todo:ashe23
+		// IndirectFileInfos.Empty();
 		CorruptedAssets.Empty();
 		NonEngineFiles.Empty();
 		EmptyFolders.Empty();

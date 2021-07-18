@@ -35,7 +35,7 @@ public:
 	static void GetSourceAndConfigFiles(TArray<FString>& AllFiles);
 	static void GetProjectFilesFromDisk(TSet<FString>& ProjectFiles);
 	// update
-	static void FindAssetsUsedIndirectly(const TArray<FAssetData>& UnusedAssets, TArray<FIndirectFileInfo>& IndirectFileInfos);
+	// static void FindAssetsUsedIndirectly(const TArray<FAssetData>& UnusedAssets, TArray<FIndirectFileInfo>& IndirectFileInfos);
 	static FString ConvertAbsolutePathToInternal(const FString& InPath);
 	static FString ConvertInternalToAbsolutePath(const FString& InPath);
 	static void FixupRedirectors();

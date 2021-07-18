@@ -78,16 +78,18 @@ void FProjectCleanerModule::RegisterMenus()
 
 void FProjectCleanerModule::PluginButtonClicked()
 {
-	FGlobalTabmanager::Get()->TryInvokeTab(ProjectCleanerTabName);
+	CleanerManager.UpdateData();
+	
+	// FGlobalTabmanager::Get()->TryInvokeTab(ProjectCleanerTabName);
 }
 
 TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs)
 {
-	return SNew(SDockTab).TabRole(ETabRole::NomadTab)
-	[
-		SAssignNew(CleanerMainUI, SProjectCleanerMainUI)
-		.CleanerManager(&CleanerManager)
-	];
+	return SNew(SDockTab).TabRole(ETabRole::NomadTab);
+	// [
+	// 	SAssignNew(CleanerMainUI, SProjectCleanerMainUI)
+	// 	.CleanerManager(&CleanerManager)
+	// ];
 }
 
 #undef LOCTEXT_NAMESPACE

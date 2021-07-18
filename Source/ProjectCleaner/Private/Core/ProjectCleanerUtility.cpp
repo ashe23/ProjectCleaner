@@ -79,31 +79,31 @@ void ProjectCleanerUtility::GetInvalidFiles(TSet<FString>& CorruptedFiles, TSet<
 
 void ProjectCleanerUtility::GetCorruptedAssets(FProjectCleanerData& CleanerData)
 {
-	CleanerData.CorruptedAssets.Reserve(CleanerData.ProjectAllAssetsFiles.Num());
-	for (const auto& File : CleanerData.ProjectAllAssetsFiles)
-	{
-		if (!IsEngineExtension(FPaths::GetExtension(File, false))) continue;
-		
-		// here we got absolute path "C:/MyProject/Content/material.uasset"
-		// we must first convert that path to In Engine Internal Path like "/Game/material.uasset"
-		const FString InternalFilePath = ConvertAbsolutePathToInternal(File);
-		// Converting file path to object path (This is for searching in AssetRegistry)
-		// example "/Game/Name.uasset" => "/Game/Name.Name"
-		FString ObjectPath = InternalFilePath;
-		ObjectPath.RemoveFromEnd(FPaths::GetExtension(InternalFilePath, true));
-		ObjectPath.Append(TEXT(".") + FPaths::GetBaseFilename(InternalFilePath));
-		
-		const bool IsInAssetRegistry = CleanerData.ProjectAllAssets.ContainsByPredicate([&](const FAssetData& Elem)
-		{
-			return Elem.ObjectPath.IsEqual(FName{ObjectPath});
-		});
-		if (!IsInAssetRegistry)
-		{
-			CleanerData.CorruptedAssets.Add(File);
-		}
-	}
-
-	CleanerData.CorruptedAssets.Shrink();
+	// CleanerData.CorruptedAssets.Reserve(CleanerData.ProjectAllAssetsFiles.Num());
+	// for (const auto& File : CleanerData.ProjectAllAssetsFiles)
+	// {
+	// 	if (!IsEngineExtension(FPaths::GetExtension(File, false))) continue;
+	// 	
+	// 	// here we got absolute path "C:/MyProject/Content/material.uasset"
+	// 	// we must first convert that path to In Engine Internal Path like "/Game/material.uasset"
+	// 	const FString InternalFilePath = ConvertAbsolutePathToInternal(File);
+	// 	// Converting file path to object path (This is for searching in AssetRegistry)
+	// 	// example "/Game/Name.uasset" => "/Game/Name.Name"
+	// 	FString ObjectPath = InternalFilePath;
+	// 	ObjectPath.RemoveFromEnd(FPaths::GetExtension(InternalFilePath, true));
+	// 	ObjectPath.Append(TEXT(".") + FPaths::GetBaseFilename(InternalFilePath));
+	// 	
+	// 	const bool IsInAssetRegistry = CleanerData.ProjectAllAssets.ContainsByPredicate([&](const FAssetData& Elem)
+	// 	{
+	// 		return Elem.ObjectPath.IsEqual(FName{ObjectPath});
+	// 	});
+	// 	if (!IsInAssetRegistry)
+	// 	{
+	// 		CleanerData.CorruptedAssets.Add(File);
+	// 	}
+	// }
+	//
+	// CleanerData.CorruptedAssets.Shrink();
 }
 
 void ProjectCleanerUtility::GetNonEngineFiles(TSet<FString>& NonEngineFiles,const TSet<FString>& ProjectFiles)
@@ -119,9 +119,9 @@ void ProjectCleanerUtility::GetNonEngineFiles(TSet<FString>& NonEngineFiles,cons
 
 void ProjectCleanerUtility::GetAllAssets(FProjectCleanerData& CleanerData)
 {
-	CleanerData.ProjectAllAssets.Reserve(CleanerData.ProjectAllAssetsFiles.Num());
-	FAssetRegistryModule& AssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
-	AssetRegistry.Get().GetAssetsByPath(FName{ "/Game" }, CleanerData.ProjectAllAssets, true);
+	// CleanerData.ProjectAllAssets.Reserve(CleanerData.ProjectAllAssetsFiles.Num());
+	// FAssetRegistryModule& AssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
+	// AssetRegistry.Get().GetAssetsByPath(FName{ "/Game" }, CleanerData.ProjectAllAssets, true);
 }
 
 void ProjectCleanerUtility::GetUnusedAssets(FProjectCleanerData& CleanerData)
@@ -300,66 +300,66 @@ void ProjectCleanerUtility::GetProjectFilesFromDisk(TSet<FString>& ProjectFiles)
 	PlatformFile.IterateDirectoryRecursively(*FPaths::ProjectContentDir(), Visitor);
 }
 
-void ProjectCleanerUtility::FindAssetsUsedIndirectly(const TArray<FAssetData>& UnusedAssets, TArray<FIndirectFileInfo>& IndirectFileInfos)
-{
-	/* YourProjectDirectory
-		Config +
-		Content
-		Plugins
-			SomePlugin
-				Binaries
-				Config +
-				Intermediate
-				Resources
-				Source +
-			SomeOtherPlugin
-				...
-		Intermediate
-		Saved
-		Script
-		Source +
-	*/
-	// So we scanning only folders marked with +
-	
-	// 1) Find files with this extensions(.cpp, .h, .cs, .ini)
-	// 2) for every unused asset check if that assets used in that file
-	//	2.1) if so add to Indirectly used assets
-	TArray<FString> AllFiles;
-	GetSourceAndConfigFiles(AllFiles);
-	
-	if (AllFiles.Num() == 0) return;
-
-	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
-	for (const auto& File : AllFiles)
-	{
-		if (!PlatformFile.FileExists(*File)) continue;
-
-		TArray<FString> Lines;
-		FFileHelper::LoadFileToStringArray(Lines, *File);
-
-		for (int32 LineNum = 0; LineNum < Lines.Num(); ++LineNum)
-		{
-			if (!Lines.IsValidIndex(LineNum)) continue;
-
-			for (const auto& UnusedAsset : UnusedAssets)
-			{
-				FString QuotedAssetName = UnusedAsset.AssetName.ToString();
-				QuotedAssetName.InsertAt(0, TEXT("\""));
-				QuotedAssetName.Append(TEXT("\""));
-				if (Lines[LineNum].Contains(UnusedAsset.PackageName.ToString()) || Lines[LineNum].Contains(QuotedAssetName))
-				{
-					FIndirectFileInfo Info;
-					Info.AssetData = UnusedAsset;
-					Info.FileName = FPaths::GetCleanFilename(File);
-					Info.FilePath = FPaths::ConvertRelativePathToFull(File);
-					Info.LineNum = LineNum + 1;
-					
-					IndirectFileInfos.Add(Info);
-				}
-			}
-		}
-	}
-}
+// void ProjectCleanerUtility::FindAssetsUsedIndirectly(const TArray<FAssetData>& UnusedAssets, TArray<FIndirectFileInfo>& IndirectFileInfos)
+// {
+// 	/* YourProjectDirectory
+// 		Config +
+// 		Content
+// 		Plugins
+// 			SomePlugin
+// 				Binaries
+// 				Config +
+// 				Intermediate
+// 				Resources
+// 				Source +
+// 			SomeOtherPlugin
+// 				...
+// 		Intermediate
+// 		Saved
+// 		Script
+// 		Source +
+// 	*/
+// 	// So we scanning only folders marked with +
+// 	
+// 	// 1) Find files with this extensions(.cpp, .h, .cs, .ini)
+// 	// 2) for every unused asset check if that assets used in that file
+// 	//	2.1) if so add to Indirectly used assets
+// 	TArray<FString> AllFiles;
+// 	GetSourceAndConfigFiles(AllFiles);
+// 	
+// 	if (AllFiles.Num() == 0) return;
+//
+// 	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
+// 	for (const auto& File : AllFiles)
+// 	{
+// 		if (!PlatformFile.FileExists(*File)) continue;
+//
+// 		TArray<FString> Lines;
+// 		FFileHelper::LoadFileToStringArray(Lines, *File);
+//
+// 		for (int32 LineNum = 0; LineNum < Lines.Num(); ++LineNum)
+// 		{
+// 			if (!Lines.IsValidIndex(LineNum)) continue;
+//
+// 			for (const auto& UnusedAsset : UnusedAssets)
+// 			{
+// 				FString QuotedAssetName = UnusedAsset.AssetName.ToString();
+// 				QuotedAssetName.InsertAt(0, TEXT("\""));
+// 				QuotedAssetName.Append(TEXT("\""));
+// 				if (Lines[LineNum].Contains(UnusedAsset.PackageName.ToString()) || Lines[LineNum].Contains(QuotedAssetName))
+// 				{
+// 					FIndirectFileInfo Info;
+// 					Info.AssetData = UnusedAsset;
+// 					Info.FileName = FPaths::GetCleanFilename(File);
+// 					Info.FilePath = FPaths::ConvertRelativePathToFull(File);
+// 					Info.LineNum = LineNum + 1;
+// 					
+// 					IndirectFileInfos.Add(Info);
+// 				}
+// 			}
+// 		}
+// 	}
+// }
 
 bool ProjectCleanerUtility::IsEngineExtension(const FString& Extension)
 {

@@ -77,10 +77,15 @@ private:
 	double ScanTime;
 	
 	/* Data functions */
+	void LoadInitialData();
+	void FindPrimaryAssetsAndItsDependencies();
+	
 	void FindEmptyFolders();
 	void FindSourceAndConfigFiles();
 	void FindProjectAssetsFilesFromDisk();
 	void FindNonEngineFiles();
+	
+
 	
 	void GetAllAssets();
 	void GetUnusedAssets();

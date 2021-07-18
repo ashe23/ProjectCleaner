@@ -24,7 +24,7 @@ private:
 	
 	/* UI data */
 	TSharedPtr<FUICommandList> PluginCommands;
-	TWeakPtr<class SProjectCleanerMainUI> CleanerMainUI;
+	// TWeakPtr<class SProjectCleanerMainUI> CleanerMainUI;
 
 	/* CleanerManager */
 	ProjectCleanerManager CleanerManager;
