@@ -366,6 +366,22 @@ bool ProjectCleanerUtility::IsEngineExtension(const FString& Extension)
 	return Extension.Equals("uasset") || Extension.Equals("umap");
 }
 
+bool ProjectCleanerUtility::IsEmptyFolder(const FString& InPath)
+{
+	const FString SearchPath = InPath / TEXT("*");
+	TArray<FString> Files;
+	IFileManager::Get().FindFiles(Files, *SearchPath, true, true);
+	return Files.Num() == 0;
+}
+
+bool ProjectCleanerUtility::HasFiles(const FString& InPath)
+{
+	const FString SearchPath = InPath / TEXT("*");
+	TArray<FString> Files;
+	IFileManager::Get().FindFiles(Files, *SearchPath, true, false);
+	return Files.Num() != 0;
+}
+
 bool ProjectCleanerUtility::FindAllEmptyFolders(const FString& FolderPath, TArray<FString>& EmptyFolders)
 {
 	bool IsSubFoldersEmpty = true;
@@ -549,10 +565,10 @@ int32 ProjectCleanerUtility::DeleteAssets(TArray<FAssetData>& Assets)
 	return DeletedAssets;
 }
 
-void ProjectCleanerUtility::SaveAllAssets()
+void ProjectCleanerUtility::SaveAllAssets(const bool PromptUser = true)
 {
 	FEditorFileUtils::SaveDirtyPackages(
-		true,
+		PromptUser,
 		true,
 		true,
 		false,

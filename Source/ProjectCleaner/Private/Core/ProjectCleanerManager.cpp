@@ -2,7 +2,6 @@
 
 #include "Core/ProjectCleanerManager.h"
 #include "Core/ProjectCleanerUtility.h"
-#include "Core/ProjectCleanerWorkers.h"
 #include "ProjectCleaner.h"
 #include "UI/ProjectCleanerNotificationManager.h"
 // Engine Headers
@@ -515,10 +514,14 @@
 // 	}
 // }
 
+FName ProjectCleanerManager::GameUserDeveloperDir = FName{FPaths::GameUserDeveloperDir()};
+FName ProjectCleanerManager::GameDevelopersDir = FName{FPaths::GameUserDeveloperDir() };
+FName ProjectCleanerManager::GameUserDeveloperCollectionsDir = FName{FPaths::GameUserDeveloperDir() + TEXT("Collections")};
+FName ProjectCleanerManager::CollectionsDir = FName{FPaths::ProjectContentDir() + TEXT("Collections")};
+
 ProjectCleanerManager::ProjectCleanerManager() :
 	CleanerConfigs(nullptr),
 	ExcludeOptions(nullptr),
-	ScanTime(0.0),
 	AssetRegistry(nullptr),
 	DirectoryWatcher(nullptr)
 {
@@ -534,18 +537,9 @@ ProjectCleanerManager::ProjectCleanerManager() :
 	ensure(DirectoryWatcher);
 }
 
-void ProjectCleanerManager::Init()
-{
-	AssetRegistry->Get().OnFilesLoaded().AddRaw(this, &ProjectCleanerManager::OnFilesLoaded);
-}
-
-void ProjectCleanerManager::Exit()
-{
-}
-
 void ProjectCleanerManager::UpdateData()
 {
-	if (bAssetRegistryWorking)
+	if (AssetRegistry->Get().IsLoadingAssets())
 	{
 		FNotificationInfo Info{FText::FromString(FStandardCleanerText::AssetRegistryStillWorking)};
 		Info.ExpireDuration = 3.0f;
@@ -554,69 +548,25 @@ void ProjectCleanerManager::UpdateData()
 		return;
 	}
 	
-	// ProjectCleanerUtility::FixupRedirectors();
-	// ProjectCleanerUtility::SaveAllAssets();
-	// ProjectCleanerUtility::UpdateAssetRegistry(false);
+	ProjectCleanerUtility::FixupRedirectors();
+	ProjectCleanerUtility::SaveAllAssets(true);
 	
-	
-	// if (!bInitialLoading)
-	// {
+	if (!bInitialLoading)
+	{
 		// Excluded assets calculation must be here
-		// just update exclusion data
-		// return;
-	// }
+		// todo:ashe23 just update exclusion data
+		return;
+	}
 	
 	CleanerData.Empty();
 
 	FScopedSlowTask SlowTask{ 3.0f, LOCTEXT("scanning_project_title", "Scanning. Please wait...") };
-	SlowTask.MakeDialog(true); // todo:ashe23 if user cancelled scanning, we should disable delete button to prevent any corruptions
+	SlowTask.MakeDialog(true);
 		
-	FScopedSlowTask ProjectScanTask(3.0f, LOCTEXT("scanning_project_files_and_folders", "Scanning project files and folders"));
 	LoadInitialData();
-	ProjectScanTask.EnterProgressFrame();
 	GetAllAssets();
-	ProjectScanTask.EnterProgressFrame();
 	FindPrimaryAssetsAndItsDependencies();
-	ProjectScanTask.EnterProgressFrame();
-
-	SlowTask.EnterProgressFrame();
-
-	// Corrupted Assets
-	FScopedSlowTask CorruptedAssetsTask(
-		CleanerData.ProjectAllFiles.Num(),
-		LOCTEXT("scanning_for_corrupted_assets", "Looking for corrupted assets")
-	);
-	TSet<FName> ObjectPaths;
-	ObjectPaths.Reserve(CleanerData.ProjectAllAssets.Num());
-	for (const auto& AssetData : CleanerData.ProjectAllAssets)
-	{
-		ObjectPaths.Add(AssetData.ObjectPath);
-	}
-	
-	for (const auto& File : CleanerData.ProjectAllFiles)
-	{
-		if (SlowTask.ShouldCancel())
-		{
-			bScanCancelledByUser = true;
-			break;
-		}
-		CorruptedAssetsTask.EnterProgressFrame();
-		if (!ProjectCleanerUtility::IsEngineExtension(FPaths::GetExtension(File.ToString(), false))) continue;
-		
-		// here we got absolute path "C:/MyProject/Content/material.uasset"
-		// we must first convert that path to In Engine Internal Path like "/Game/material.uasset"
-		const FString InternalFilePath = ProjectCleanerUtility::ConvertAbsolutePathToInternal(File.ToString());
-		// Converting file path to object path (This is for searching in AssetRegistry)
-		// example "/Game/Name.uasset" => "/Game/Name.Name"
-		FString ObjectPath = InternalFilePath;
-		ObjectPath.RemoveFromEnd(FPaths::GetExtension(InternalFilePath, true));
-		ObjectPath.Append(TEXT(".") + FPaths::GetBaseFilename(InternalFilePath));
-		
-		if (!ObjectPaths.Contains(FName{ObjectPath}))
-		{
-			CleanerData.CorruptedAssets.Add(File);
-		}
-	}
+	FindCorruptedAssets();
 
 	SlowTask.EnterProgressFrame();
 
@@ -634,13 +584,13 @@ void ProjectCleanerManager::UpdateData()
 		FString FileContent;
 		FFileHelper::LoadFileToString(FileContent, *File);
 
-		// search any sub string that has asset package path in it		
+		// search any sub string that has asset package path in it
 		static FRegexPattern Pattern(TEXT(R"(\/Game(.*)\b)"));
 		FRegexMatcher Matcher(Pattern, FileContent);
 		if (!Matcher.FindNext()) continue;
 		const FName FoundedAssetPackageName =  FName{Matcher.GetCaptureGroup(0)};
 
-		// if founded asset exist in assetregistry database, then we finding line number where its used
+		// if founded asset exist in AssetRegistry database, then we finding line number where its used
 		// if (!ObjectPaths.Contains(FoundedAssetPackageName)) continue;
 		const FAssetData* AssetData = CleanerData.ProjectAllAssets.FindByPredicate([&] (const FAssetData& Elem)
 		{
@@ -655,218 +605,26 @@ void ProjectCleanerManager::UpdateData()
 			if (!Lines.IsValidIndex(i)) continue;
 			if (!Lines[i].Contains(FoundedAssetPackageName.ToString())) continue;
 
-			// FIndirectFileInfo Info;
-			// Info.AssetData = *AssetData;
-			// Info.FileName = FPaths::GetCleanFilename(File);
-			// Info.FilePath = FPaths::ConvertRelativePathToFull(File);
-			// Info.LineNum = i + 1;
-			CleanerData.IndirectlyUsedAssets.Add(FPaths::ConvertRelativePathToFull(File), i + 1);
+			FIndirectAsset IndirectAsset;
+			IndirectAsset.File = FPaths::ConvertRelativePathToFull(File);
+			IndirectAsset.Line = i + 1;
+			CleanerData.IndirectlyUsedAssets.Add(*AssetData, IndirectAsset);
 		}
 	}
 
-	SlowTask.EnterProgressFrame();
+	SlowTask.EnterProgressFrame(1.0f);
 	
+	GetUnusedAssets();
 	CleanerData.TotalSize = ProjectCleanerUtility::GetTotalSize(CleanerData.UnusedAssets);
-	
-	
-	// bInitialLoading = false;
 
-	// starting file and folder scanning 
-
-
-	// FindEmptyFolders();
-	// FindSourceAndConfigFiles();
-	// ProjectScanTask.EnterProgressFrame();
-	// FindProjectAssetsFilesFromDisk();
-	// ProjectScanTask.EnterProgressFrame();
-	// FindNonEngineFiles();
-	// ProjectScanTask.EnterProgressFrame();
-	// GetPrimaryAssetClasses();
-	// GetAllAssets();
-	
-	// GetUnusedAssets();
-	
-	// ProjectScanTask.EnterProgressFrame();
-
-	// SlowTask.EnterProgressFrame(1.0f);
-
-	
-	// const double ElapsedTime = FPlatformTime::Seconds() - Start;
-	// UE_LOG(LogProjectCleaner, Warning, TEXT("Scan time %f seconds"), ElapsedTime);
-	// SlowTask.EnterProgressFrame(1.0f);
-
-	// Indirect Assets
-	// FScopedSlowTask IndirectAssetsTask(CleanerData.ProjectSourceAndConfigsFiles.Num(), LOCTEXT("scanning_for_indirect_assets", "Looking for indirectly used assets"));
-	// IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
-	// for (const auto& File : CleanerData.ProjectSourceAndConfigsFiles)
-	// {
-	// 	if (SlowTask.ShouldCancel())
-	// 	{
-	// 		bScanCancelledByUser = true;
-	// 		break;
-	// 	}
-	// 	IndirectAssetsTask.EnterProgressFrame();
-	// 	
-	// 	if (!PlatformFile.FileExists(*File)) continue;
-	//
-	// 	TArray<FString> Lines;
-	// 	FFileHelper::LoadFileToStringArray(Lines, *File); // todo:ashe23 optimize string search
-	//
-	// 	for (int32 LineNum = 0; LineNum < Lines.Num(); ++LineNum)
-	// 	{
-	// 		if (!Lines.IsValidIndex(LineNum)) continue;
-	//
-	// 		for (const auto& UnusedAsset : CleanerData.UnusedAssets)
-	// 		{
-	// 			FString QuotedAssetName = UnusedAsset.AssetName.ToString();
-	// 			QuotedAssetName.InsertAt(0, TEXT("\""));
-	// 			QuotedAssetName.Append(TEXT("\""));
-	// 			if (Lines[LineNum].Contains(UnusedAsset.PackageName.ToString()) || Lines[LineNum].Contains(QuotedAssetName))
-	// 			{
-	// 				FIndirectFileInfo Info;
-	// 				Info.AssetData = UnusedAsset;
-	// 				Info.FileName = FPaths::GetCleanFilename(File);
-	// 				Info.FilePath = FPaths::ConvertRelativePathToFull(File);
-	// 				Info.LineNum = LineNum + 1;
-	// 				
-	// 				CleanerData.IndirectFileInfos.Add(Info);
-	// 			}
-	// 		}
-	// 	}
-	// }
-	// SlowTask.EnterProgressFrame(1.0f);
-	
-	// AssetsRelationalMap
-	// GetUnusedAssets();
-	// TArray<FName> Stack;
-	// FScopedSlowTask AdjacencyListTask(CleanerData.UnusedAssets.Num(), LOCTEXT("generating_assets_relational_map", "Generating assets relational map"));
-	// for (const auto& UnusedAsset : CleanerData.UnusedAssets)
-	// {
-	// 	if (SlowTask.ShouldCancel())
-	// 	{
-	// 		bScanCancelledByUser = true;
-	// 		break;
-	// 	}
-	// 	AdjacencyListTask.EnterProgressFrame();
-	//
-	// 	FAssetNode Node;
-	// 	AssetRegistry->Get().GetReferencers(UnusedAsset.PackageName, Node.Refs);
-	// 	AssetRegistry->Get().GetDependencies(UnusedAsset.PackageName, Node.Deps);
-	//
-	// 	Node.Refs.Remove(UnusedAsset.PackageName);
-	// 	Node.Deps.Remove(UnusedAsset.PackageName);
-	//
-	// 	Stack.Add(UnusedAsset.PackageName);
-	// 	
-	// 	TArray<FAssetIdentifier> AssetDependencies;
-	// 	TArray<FAssetIdentifier> AssetReferencers;		
-	// 	
-	// 	while (Stack.Num() > 0)
-	// 	{
-	// 		const FName PackageName = Stack.Pop(false);
-	//
-	// 		AssetDependencies.Reset();
-	// 		AssetReferencers.Reset();
-	// 		AssetRegistry->Get().GetDependencies(FAssetIdentifier(PackageName), AssetDependencies);
-	// 		AssetRegistry->Get().GetReferencers(FAssetIdentifier(PackageName), AssetReferencers);
-	//
-	// 		AssetDependencies.RemoveAllSwap([&](const FAssetIdentifier& Elem)
-	// 		{
-	// 			return !Elem.PackageName.ToString().StartsWith("/Game");
-	// 		});
-	// 		AssetReferencers.RemoveAllSwap([&](const FAssetIdentifier& Elem)
-	// 		{
-	// 			return !Elem.PackageName.ToString().StartsWith("/Game");
-	// 		});
-	// 		
-	// 		for (const auto Dep : AssetDependencies)
-	// 		{
-	// 			bool bIsAlreadyInSet = false;
-	// 			Node.LinkedAssets.Add(Dep.PackageName, &bIsAlreadyInSet);
-	// 			if (!bIsAlreadyInSet && Dep.IsValid())
-	// 			{
-	// 				Stack.Add(Dep.PackageName);
-	// 			}
-	// 		}
-	// 		for (const auto Ref : AssetReferencers)
-	// 		{
-	// 			bool bIsAlreadyInSet = false;
-	// 			Node.LinkedAssets.Add(Ref.PackageName, &bIsAlreadyInSet);
-	// 			if (!bIsAlreadyInSet && Ref.IsValid())
-	// 			{
-	// 				Stack.Add(Ref.PackageName);
-	// 			}
-	// 		}
-	// 	}
-	//
-	// 	Node.Refs.RemoveAllSwap([&] (const FName& Elem)
-	// 	{
-	// 		return Elem.IsEqual(UnusedAsset.PackageName);
-	// 	}, false);
-	// 	Node.Deps.RemoveAllSwap([&] (const FName& Elem)
-	// 	{
-	// 		return Elem.IsEqual(UnusedAsset.PackageName);
-	// 	}, false);
-	//
-	// 	Node.Refs.Shrink();
-	// 	Node.Deps.Shrink();
-	// 	
-	// 	Node.bRootAsset = (Node.Refs.Num() == 0);
-	// 	Node.bHasExternalRefs = Node.Refs.ContainsByPredicate([&] (const FName& Elem)
-	// 	{
-	// 		return !Elem.ToString().StartsWith("/Game");
-	// 	});
-	// 	Node.bIsCircular = Node.Refs.ContainsByPredicate([&](const FName& Elem)
-	// 	{
-	// 		return Node.Deps.Contains(Elem);
-	// 	});
-	// 	Node.bIsInDevFolder = ProjectCleanerUtility::IsUnderDeveloperFolder(UnusedAsset.PackagePath.ToString());
-	// 	// Node.bExcludedByClass = IsExcludedByClass(UnusedAsset);
-	// 	// Node.bExcludedByPath = IsExcludedByPath(UnusedAsset);
-	// 	
-	// 	CleanerData.AssetsRelationalMap.Add(UnusedAsset, Node);
-	// }
-	//
-	// SlowTask.EnterProgressFrame(1.0f);
-	
-
-	// filtering assets
-	// TSet<FAssetData> FilteredAssets;
-	// FilteredAssets.Reserve(CleanerData.UnusedAssets.Num());
-	//
-	// for (const auto& Node : CleanerData.AssetsRelationalMap)
-	// {
-	// 	const bool UsedIndirectly = CleanerData.IndirectFileInfos.ContainsByPredicate([&] (const FIndirectFileInfo& Info)
-	// 	{
-	// 		return Info.AssetData == Node.Key;
-	// 	});
-	// 	if (
-	// 		Node.Value.bHasExternalRefs ||
-	// 		Node.Value.bIsInDevFolder ||
-	// 		// Node.Value.bExcludedByClass ||
-	// 		// Node.Value.bExcludedByPath ||
-	// 		UsedIndirectly)
-	// 	{
-	// 		for (const auto& LinkedAsset : Node.Value.LinkedAssets)
-	// 		{
-	// 			const FAssetData* AssetData = CleanerData.UnusedAssets.FindByPredicate([&] (const FAssetData& Elem)
-	// 			{
-	// 				return Elem.PackageName.IsEqual(LinkedAsset);
-	// 			});
-	// 			if(!AssetData) continue;
-	// 			FilteredAssets.Add(*AssetData);
-	// 		}
-	// 	}
-	// }
-	// FilteredAssets.Shrink();
-	
-	// CleanerData.TotalSize = ProjectCleanerUtility::GetTotalSize(CleanerData.UnusedAssets);
+	SlowTask.EnterProgressFrame(1.0f);
 
 	//todo:ashe23 Before change cache ContentBrowser settings and when user closed cleaner tab, return to old state
-	// auto ContentBrowserSettings = GetMutableDefault<UContentBrowserSettings>();
-	// ContentBrowserSettings->SetDisplayDevelopersFolder(CleanerConfigs->bScanDeveloperContents, true);
-	// ContentBrowserSettings->PostEditChange();
-	
+	auto ContentBrowserSettings = GetMutableDefault<UContentBrowserSettings>();
+	ContentBrowserSettings->SetDisplayDevelopersFolder(CleanerConfigs->bScanDeveloperContents, true);
+	ContentBrowserSettings->PostEditChange();
+	bInitialLoading = false;
+	// todo:ashe23 register delegates
 }
 
 FProjectCleanerData& ProjectCleanerManager::GetCleanerData()
@@ -885,6 +643,12 @@ UExcludeOptions* ProjectCleanerManager::GetExcludeOptions() const
 }
 
 void ProjectCleanerManager::LoadInitialData()
+{
+	FindEmptyFoldersAndNonEngineFiles();
+	FindSourceAndConfigFiles();
+}
+
+void ProjectCleanerManager::FindEmptyFoldersAndNonEngineFiles()
 {
 	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
 	
@@ -911,14 +675,6 @@ void ProjectCleanerManager::LoadInitialData()
 				if (!ProjectCleanerUtility::IsEngineExtension(FPaths::GetExtension(FullPath, false)))
 				{
 					NonEngineFiles.Add(FName{FullPath});
-					// FString ObjectPath = ProjectCleanerUtility::ConvertAbsolutePathToInternal(FullPath);
-					// ObjectPath.RemoveFromEnd(FPaths::GetExtension(FullPath, true));
-					// ObjectPath.Append(TEXT(".") + FPaths::GetBaseFilename(FullPath));
-					//
-					// if (!ObjectPaths.Contains(FName{ObjectPath}))
-					// {
-					// 	CorruptedAssets.Add(FName{ObjectPath});
-					// }
 				}
 				AllFiles.Add(FName{FullPath});
 			}
@@ -951,11 +707,6 @@ void ProjectCleanerManager::LoadInitialData()
 	PlatformFile.IterateDirectoryRecursively(*FPaths::ProjectContentDir(), Visitor);
 
 	// removing some paths
-	// todo:ashe23 bScanDeveloperContent refactor here
-	const FName GameUserDeveloperDir = FName{FPaths::GameUserDeveloperDir()};
-	const FName GameUserDeveloperCollectionsDir = FName{FPaths::GameUserDeveloperDir() + TEXT("Collections")};
-	const FName GameDevelopersDir = FName{FPaths::GameUserDeveloperDir() };
-	const FName CollectionsDir = FName{FPaths::ProjectContentDir() + TEXT("Collections")};
 	CleanerData.EmptyFolders.Remove(GameUserDeveloperDir);
 	CleanerData.EmptyFolders.Remove(GameUserDeveloperCollectionsDir);
 	CleanerData.EmptyFolders.Remove(GameDevelopersDir);
@@ -987,15 +738,12 @@ void ProjectCleanerManager::LoadInitialData()
 	{
 		CleanerData.EmptyFolders.Add(Folder);
 	}
-
-	FindSourceAndConfigFiles();
 }
 
 void ProjectCleanerManager::FindPrimaryAssetsAndItsDependencies()
 {
 	GetPrimaryAssetClasses();
 	
-	// TSet<FName> UsedAssets;
 	CleanerData.UsedAssets.Reserve(CleanerData.ProjectAllAssets.Num());
 	
 	FARFilter Filter;
@@ -1032,71 +780,101 @@ void ProjectCleanerManager::FindPrimaryAssetsAndItsDependencies()
 			}
 		}
 	}
-
-	// const bool IsMegascansLoaded = FModuleManager::Get().IsModuleLoaded("MegascansPlugin");
-	// if (!IsMegascansLoaded) return;
-	
-	// CleanerData.UnusedAssets.Reserve(CleanerData.ProjectAllAssets.Num());
-	// for (const auto& Asset : CleanerData.ProjectAllAssets)
-	// {
-	// 	if (
-	// 		UsedAssets.Contains(Asset.PackageName) ||
-	// 		!Asset.PackagePath.ToString().StartsWith("/Game") ||
-	// 		(IsMegascansLoaded && FPaths::IsUnderDirectory(Asset.PackagePath.ToString(), TEXT("/Game/MSPresets")))
-	// 	)
-	// 	{
-	// 		continue;
-	// 	}
-	// 	
-	// 	CleanerData.UnusedAssets.AddUnique(Asset);
-	// }
-	//
-	// // todo:ashe23 make as option?
-	// const bool IsMegascansLoaded = FModuleManager::Get().IsModuleLoaded("MegascansPlugin");
-	// if (!IsMegascansLoaded) return;
-	//
-	// CleanerData.UnusedAssets.RemoveAllSwap([&](const FAssetData& Elem)
-	// {
-	// 	return FPaths::IsUnderDirectory(Elem.PackagePath.ToString(), TEXT("/Game/MSPresets"));
-	// }, false);
-	// CleanerData.UnusedAssets.Shrink();
 }
 
-void ProjectCleanerManager::FindEmptyFolders()
+void ProjectCleanerManager::FindCorruptedAssets()
 {
-	// ProjectCleanerUtility::FindAllEmptyFolders(FPaths::ProjectContentDir() / TEXT("*"), CleanerData.EmptyFolders);
+	TSet<FName> ObjectPaths;
+	ObjectPaths.Reserve(CleanerData.ProjectAllAssets.Num());
+	for (const auto& AssetData : CleanerData.ProjectAllAssets)
+	{
+		ObjectPaths.Add(AssetData.ObjectPath);
+	}
+	
+	for (const auto& File : CleanerData.ProjectAllFiles)
+	{
+		if (!ProjectCleanerUtility::IsEngineExtension(FPaths::GetExtension(File.ToString(), false))) continue;
+		
+		// here we got absolute path "C:/MyProject/Content/material.uasset"
+		// we must first convert that path to In Engine Internal Path like "/Game/material.uasset"
+		const FString InternalFilePath = ProjectCleanerUtility::ConvertAbsolutePathToInternal(File.ToString());
+		// Converting file path to object path (This is for searching in AssetRegistry)
+		// example "/Game/Name.uasset" => "/Game/Name.Name"
+		FString ObjectPath = InternalFilePath;
+		ObjectPath.RemoveFromEnd(FPaths::GetExtension(InternalFilePath, true));
+		ObjectPath.Append(TEXT(".") + FPaths::GetBaseFilename(InternalFilePath));
+		
+		if (!ObjectPaths.Contains(FName{ObjectPath}))
+		{
+			CleanerData.CorruptedAssets.Add(File);
+		}
+	}
+}
 
-	// if (CleanerConfigs->bScanDeveloperContents)
-	// {
-	// 	CleanerData.EmptyFolders.RemoveAllSwap([&](const FString& Elem) {
-	// 		return
-	// 			Elem.Equals(FPaths::GameUserDeveloperDir()) ||
-	// 			Elem.Equals(FPaths::GameUserDeveloperDir() + TEXT("Collections/")) ||
-	// 			Elem.Equals(FPaths::ProjectContentDir() + TEXT("Collections/")) ||
-	// 			Elem.Equals(FPaths::GameDevelopersDir());
-	// 		}, false);
-	// }
-	// else
-	// {
-	// 	CleanerData.EmptyFolders.RemoveAllSwap([&](const FString& Elem)
-	// 		{
-	// 			return
-	// 				Elem.StartsWith(FPaths::GameDevelopersDir()) ||
-	// 				Elem.StartsWith(FPaths::ProjectContentDir() + TEXT("Collections/"));
-	// 		}, false);
-	// }
-	//
-	// CleanerData.EmptyFolders.Shrink();
+void ProjectCleanerManager::FindLinkedAssets(TSet<FName>& LinkedAssets)
+{
+	TArray<FName> Stack;
+	for (const auto& Asset : CleanerData.IndirectlyUsedAssets)
+	{
+		FAssetNode Node;
+		AssetRegistry->Get().GetReferencers(Asset.Key.PackageName, Node.Refs);
+		AssetRegistry->Get().GetDependencies(Asset.Key.PackageName, Node.Deps);
+	
+		Node.Refs.Remove(Asset.Key.PackageName);
+		Node.Deps.Remove(Asset.Key.PackageName);
+	
+		Stack.Add(Asset.Key.PackageName);
+		
+		TArray<FAssetIdentifier> AssetDependencies;
+		TArray<FAssetIdentifier> AssetReferencers;
+		
+		while (Stack.Num() > 0)
+		{
+			const FName PackageName = Stack.Pop(false);
+	
+			AssetDependencies.Reset();
+			AssetReferencers.Reset();
+			AssetRegistry->Get().GetDependencies(FAssetIdentifier(PackageName), AssetDependencies);
+			AssetRegistry->Get().GetReferencers(FAssetIdentifier(PackageName), AssetReferencers);
+	
+			AssetDependencies.RemoveAllSwap([&](const FAssetIdentifier& Elem)
+			{
+				return !Elem.PackageName.ToString().StartsWith("/Game");
+			});
+			AssetReferencers.RemoveAllSwap([&](const FAssetIdentifier& Elem)
+			{
+				return !Elem.PackageName.ToString().StartsWith("/Game");
+			});
+			
+			for (const auto Dep : AssetDependencies)
+			{
+				bool bIsAlreadyInSet = false;
+				LinkedAssets.Add(Dep.PackageName, &bIsAlreadyInSet);
+				if (!bIsAlreadyInSet && Dep.IsValid())
+				{
+					Stack.Add(Dep.PackageName);
+				}
+			}
+			for (const auto Ref : AssetReferencers)
+			{
+				bool bIsAlreadyInSet = false;
+				LinkedAssets.Add(Ref.PackageName, &bIsAlreadyInSet);
+				if (!bIsAlreadyInSet && Ref.IsValid())
+				{
+					Stack.Add(Ref.PackageName);
+				}
+			}
+		}
+	}
 }
 
 void ProjectCleanerManager::FindSourceAndConfigFiles()
 {
 	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
 	
-	// 1) find all source and config files
 	CleanerData.ProjectSourceAndConfigsFiles.Reserve(200); // reserving some space
 	
-	// 2) finding all source files in main project "Source" directory (<yourproject>/Source/*)
+	// 1) finding all source files in main project "Source" directory (<yourproject>/Source/*)
 	TArray<FString> FilesToScan;
 	PlatformFile.FindFilesRecursively(FilesToScan, *FPaths::GameSourceDir(), TEXT(".cs"));
 	PlatformFile.FindFilesRecursively(FilesToScan, *FPaths::GameSourceDir(), TEXT(".cpp"));
@@ -1104,7 +882,7 @@ void ProjectCleanerManager::FindSourceAndConfigFiles()
 	PlatformFile.FindFilesRecursively(FilesToScan, *FPaths::ProjectConfigDir(), TEXT(".ini"));
 	CleanerData.ProjectSourceAndConfigsFiles.Append(FilesToScan);
 	
-	// 3) we should find all source files in plugins folder (<yourproject>/Plugins/*)
+	// 2) we should find all source files in plugins folder (<yourproject>/Plugins/*)
 	TArray<FString> ProjectPluginsFiles;
 	// finding all installed plugins in "Plugins" directory
 	struct DirectoryVisitor : public IPlatformFile::FDirectoryVisitor
@@ -1125,7 +903,7 @@ void ProjectCleanerManager::FindSourceAndConfigFiles()
 	DirectoryVisitor Visitor;
 	PlatformFile.IterateDirectory(*FPaths::ProjectPluginsDir(), Visitor);
 	
-	// 4) for every installed plugin we scanning only "Source" and "Config" folders
+	// 3) for every installed plugin we scanning only "Source" and "Config" folders
 	for (const auto& Dir : Visitor.InstalledPlugins)
 	{
 		const FString PluginSourcePathDir = Dir + "/Source";
@@ -1139,40 +917,6 @@ void ProjectCleanerManager::FindSourceAndConfigFiles()
 	
 	CleanerData.ProjectSourceAndConfigsFiles.Append(ProjectPluginsFiles);
 	CleanerData.ProjectSourceAndConfigsFiles.Shrink();
-}
-
-void ProjectCleanerManager::FindProjectAssetsFilesFromDisk()
-{
-	// struct DirectoryVisitor : IPlatformFile::FDirectoryVisitor
-	// {
-	// 	DirectoryVisitor(TArray<FString>& Files) : AllFiles(Files) {}
-	// 	virtual bool Visit(const TCHAR* FilenameOrDirectory, bool bIsDirectory) override
-	// 	{
-	// 		if (!bIsDirectory)
-	// 		{
-	// 			AllFiles.AddUnique(FPaths::ConvertRelativePathToFull(FilenameOrDirectory));
-	// 		}
-	//
-	// 		return true;
-	// 	}
-	//
-	// 	TArray<FString>& AllFiles;
-	// };
-	//
-	// DirectoryVisitor Visitor{ CleanerData.ProjectAllAssetsFiles };
-	// IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
-	// PlatformFile.IterateDirectoryRecursively(*FPaths::ProjectContentDir(), Visitor);
-}
-
-void ProjectCleanerManager::FindNonEngineFiles()
-{
-	// CleanerData.NonEngineFiles.Reserve(CleanerData.ProjectAllAssetsFiles.Num());
-	// for (const auto& File : CleanerData.ProjectAllAssetsFiles)
-	// {
-	// 	if (ProjectCleanerUtility::IsEngineExtension(FPaths::GetExtension(File, false))) continue;
-	// 	// CleanerData.NonEngineFiles.Add(File);
-	// }
-	// CleanerData.NonEngineFiles.Shrink();
 }
 
 void ProjectCleanerManager::GetAllAssets()
@@ -1237,35 +981,14 @@ void ProjectCleanerManager::GetUnusedAssets()
 		return FPaths::IsUnderDirectory(Elem.PackagePath.ToString(), TEXT("/Game/MSPresets"));
 	}, false);
 	CleanerData.UnusedAssets.Shrink();
-}
 
-void ProjectCleanerManager::GetCorruptedAssets()
-{
-	// CleanerData.CorruptedAssets.Reserve(CleanerData.ProjectAllAssetsFiles.Num());
-	// for (const auto& File : CleanerData.ProjectAllAssetsFiles)
-	// {
-	// 	if (!ProjectCleanerUtility::IsEngineExtension(FPaths::GetExtension(File, false))) continue;
-	// 	
-	// 	// here we got absolute path "C:/MyProject/Content/material.uasset"
-	// 	// we must first convert that path to In Engine Internal Path like "/Game/material.uasset"
-	// 	const FString InternalFilePath = ProjectCleanerUtility::ConvertAbsolutePathToInternal(File);
-	// 	// Converting file path to object path (This is for searching in AssetRegistry)
-	// 	// example "/Game/Name.uasset" => "/Game/Name.Name"
-	// 	FString ObjectPath = InternalFilePath;
-	// 	ObjectPath.RemoveFromEnd(FPaths::GetExtension(InternalFilePath, true));
-	// 	ObjectPath.Append(TEXT(".") + FPaths::GetBaseFilename(InternalFilePath));
-	// 	
-	// 	const bool IsInAssetRegistry = CleanerData.ProjectAllAssets.ContainsByPredicate([&](const FAssetData& Elem)
-	// 	{
-	// 		return Elem.ObjectPath.IsEqual(FName{ObjectPath});
-	// 	});
-	// 	if (!IsInAssetRegistry)
-	// 	{
-	// 		// CleanerData.CorruptedAssets.Add(File);
-	// 	}
-	// }
-	//
-	// CleanerData.CorruptedAssets.Shrink();
+	TSet<FName> FilteredAssets;
+	FindLinkedAssets(FilteredAssets);
+
+	CleanerData.UnusedAssets.RemoveAllSwap([&] (const FAssetData& Elem)
+	{
+		return FilteredAssets.Contains(Elem.PackageName);
+	});
 }
 
 void ProjectCleanerManager::GetPrimaryAssetClasses()
@@ -1350,11 +1073,6 @@ void ProjectCleanerManager::RegisterDelegates()
 	// UE_LOG(LogTemp, Warning, TEXT("Working Dir : %s"), *WorkingDir);
 	// const auto Callback = IDirectoryWatcher::FDirectoryChanged::CreateRaw(this, &FProjectCleanerModule::OnDirectoryChanged);
 	// DirectoryWatcher->Get()->RegisterDirectoryChangedCallback_Handle(WorkingDir, Callback, WatcherDelegate, Flags);
-}
-
-void ProjectCleanerManager::OnFilesLoaded()
-{
-	bAssetRegistryWorking = false;
 }
 
 #undef LOCTEXT_NAMESPACE

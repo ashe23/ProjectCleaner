@@ -22,6 +22,8 @@ class PROJECTCLEANER_API ProjectCleanerUtility
 {
 public:
 	// query
+	static bool IsEmptyFolder(const FString& InPath);
+	static bool HasFiles(const FString& InPath);
 	static bool FindAllEmptyFolders(const FString& FolderPath, TArray<FString>& EmptyFolders);
 	static bool IsUnderDeveloperFolder(const FString& PackagePath);	
 	static void GetEmptyFolders(TArray<FString>& EmptyFolders, const bool bScanDeveloperContents);
@@ -39,7 +41,7 @@ public:
 	static FString ConvertAbsolutePathToInternal(const FString& InPath);
 	static FString ConvertInternalToAbsolutePath(const FString& InPath);
 	static void FixupRedirectors();
-	static void SaveAllAssets();
+	static void SaveAllAssets(const bool PromptUser);
 	static void UpdateAssetRegistry(bool bSyncScan);
 	// delete
 	static bool DeleteEmptyFolders(TArray<FString>& EmptyFolders);

@@ -40,14 +40,10 @@ void FProjectCleanerModule::StartupModule()
 		FOnSpawnTab::CreateRaw(this, &FProjectCleanerModule::OnSpawnPluginTab))
 		.SetDisplayName(LOCTEXT("FProjectCleanerTabTitle", "ProjectCleaner"))
 		.SetMenuType(ETabSpawnerMenuType::Hidden);
-
-	CleanerManager.Init();
 }
 
 void FProjectCleanerModule::ShutdownModule()
 {
-	CleanerManager.Exit();
-	
 	UToolMenus::UnRegisterStartupCallback(this);
 	UToolMenus::UnregisterOwner(this);
 	FProjectCleanerStyle::Shutdown();
@@ -78,7 +74,8 @@ void FProjectCleanerModule::RegisterMenus()
 
 void FProjectCleanerModule::PluginButtonClicked()
 {
-	CleanerManager.UpdateData();
+	DataManager.Update();
+	// CleanerManager.UpdateData();
 	
 	// FGlobalTabmanager::Get()->TryInvokeTab(ProjectCleanerTabName);
 }

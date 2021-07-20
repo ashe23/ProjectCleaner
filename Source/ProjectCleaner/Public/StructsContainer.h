@@ -15,6 +15,9 @@ public:
 	UPROPERTY(DisplayName = "Scan Developer Contents Folders", EditAnywhere, Category = "CleanerConfigs")
 	bool bScanDeveloperContents = false;
 
+	UPROPERTY(DisplayName = "Megascans base content(MSPreset) will be excluded automatically, if Megascans plugin is active", EditAnywhere, Category = "CleanerConfigs")
+	bool bExcludeMegascansPluginIfActive = true;
+	
 	UPROPERTY(DisplayName = "Remove Empty Folders After Assets Deleted", EditAnywhere, Category = "CleanerConfigs")
 	bool bAutomaticallyDeleteEmptyFolders = true;
 
@@ -99,6 +102,15 @@ struct FAssetNode
 	bool bExcludedByClass = false;
 };
 
+
+struct FIndirectAsset
+{
+	FString File;
+	int32 Line;
+
+	FIndirectAsset(): File(FString{}), Line(0) {}
+};
+
 struct FProjectCleanerData
 {
 	// UI data
@@ -106,13 +118,12 @@ struct FProjectCleanerData
 	TSet<FName> EmptyFolders;
 	TSet<FName> NonEngineFiles;
 	TSet<FName> CorruptedAssets;
-	TMap<FString, int32> IndirectlyUsedAssets;
+	TMap<FAssetData, FIndirectAsset> IndirectlyUsedAssets;
 
 	// Helper data
 	// TArray<FAssetData> UserExcludedAssets;
 	// TArray<FAssetData> ExcludedAssets;
 	// TArray<FAssetData> LinkedAssets;
-	// TMap<FAssetData, FAssetNode> AssetsRelationalMap;
 	// TSet<FAssetData> AssetsWithExternalReferencers;
 
 	// cache data
@@ -133,30 +144,20 @@ struct FProjectCleanerData
 		TotalAssetsNum = 0;
 		DeletedAssetsNum = 0;
 	}
-
-	void Reset()
-	{
-		UnusedAssets.Empty();
-		ProjectAllAssets.Empty(); // todo:ashe23
-		// IndirectFileInfos.Empty();
-		CorruptedAssets.Empty();
-		NonEngineFiles.Empty();
-		EmptyFolders.Empty();
-	}
 	
 	void Empty()
 	{
-		// empty all containers
-		// AllAssets.Empty();
-		// UnusedAssets.Empty();
-		// EmptyFolders.Empty();
-		// CorruptedFiles.Empty();
-		// IndirectFileInfos.Empty();
-		// PrimaryAssetClasses.Empty();
-		// ExcludedAssets.Empty();
-		// LinkedAssets.Empty();
-		// AdjacencyList.Empty();
-		// AssetsWithExternalReferencers.Empty();
+		UnusedAssets.Empty();
+		EmptyFolders.Empty();
+		NonEngineFiles.Empty();
+		CorruptedAssets.Empty();
+		IndirectlyUsedAssets.Empty();
+		PrimaryAssetClasses.Empty();
+		UsedAssets.Empty();
+		ProjectAllAssets.Empty();
+		ProjectAllFiles.Empty();
+		ProjectSourceAndConfigsFiles.Empty();
+		
 		TotalSize = 0;
 		TotalAssetsNum = 0;
 		DeletedAssetsNum = 0;
