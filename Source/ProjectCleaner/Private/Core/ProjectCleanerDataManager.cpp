@@ -13,15 +13,11 @@
 #include "Misc/FileHelper.h"
 #include "GenericPlatform/GenericPlatformFile.h"
 #include "HAL/PlatformFilemanager.h"
-// #include "Internationalization/Regex.h"
-
-FString ProjectCleanerDataManager::GameUserDeveloperDir = FPaths::GameUserDeveloperDir();
-FString ProjectCleanerDataManager::GameDevelopersDir = FPaths::GameUserDeveloperDir();
-FString ProjectCleanerDataManager::GameUserDeveloperCollectionsDir = FPaths::GameUserDeveloperDir() + TEXT("Collections");
-FString ProjectCleanerDataManager::CollectionsDir = FPaths::ProjectContentDir() + TEXT("Collections");
-FString ProjectCleanerDataManager::ProjectContentDir = FPaths::ProjectContentDir();
+#include "Internationalization/Regex.h"
 
 ProjectCleanerDataManager::ProjectCleanerDataManager() :
+	TotalProjectSize(0),
+	TotalUnusedAssetsSize(0),
 	AssetRegistry(nullptr),
 	DirectoryWatcher(nullptr),
 	CleanerConfigs(nullptr),
@@ -40,8 +36,94 @@ ProjectCleanerDataManager::ProjectCleanerDataManager() :
 	ensure(AssetRegistry);
 	ensure(DirectoryWatcher);
 
-	AbsoluteRootFolder = FName{*FPaths::ProjectContentDir()};
-	RelativeRootFolder = FName{*ProjectCleanerUtility::ConvertAbsolutePathToInternal(ProjectContentDir)};
+	
+	ContentDir_Absolute = FPaths::ProjectContentDir();
+	ContentDir_Relative = FName{*ProjectCleanerUtility::ConvertAbsolutePathToInternal(ContentDir_Absolute)};
+}
+
+const TArray<FAssetData>& ProjectCleanerDataManager::GetAllAssets() const
+{
+	return AllAssets;
+}
+
+const TSet<FName>& ProjectCleanerDataManager::GetUsedAssets() const
+{
+	return UsedAssets;
+}
+
+const TArray<FAssetData>& ProjectCleanerDataManager::GetUnusedAssets() const
+{
+	return UnusedAssets;
+}
+
+const TSet<FName>& ProjectCleanerDataManager::GetAllFiles() const
+{
+	return AllFiles;
+}
+
+const TSet<FName>& ProjectCleanerDataManager::GetNonEngineFiles() const
+{
+	return NonEngineFiles;
+}
+
+const TSet<FName>& ProjectCleanerDataManager::GetCorruptedAssets() const
+{
+	return CorruptedAssets;
+}
+
+const TSet<FName>& ProjectCleanerDataManager::GetEmptyFolders() const
+{
+	return EmptyFolders;
+}
+
+const TSet<FName>& ProjectCleanerDataManager::GetPrimaryAssetClasses() const
+{
+	return PrimaryAssetClasses;
+}
+
+const TMap<FAssetData, FIndirectAsset>& ProjectCleanerDataManager::GetIndirectlyUsedAssets() const
+{
+	return IndirectlyUsedAssets;
+}
+
+const TArray<FAssetData>& ProjectCleanerDataManager::GetUserExcludedAssets() const
+{
+	return UserExcludedAssets;
+}
+
+const TArray<FAssetData>& ProjectCleanerDataManager::GetExcludedAssets() const
+{
+	return ExcludedAssets;
+}
+
+const TArray<FAssetData>& ProjectCleanerDataManager::GetLinkedAssets() const
+{
+	return LinkedAssets1;
+}
+
+const TSet<FName>& ProjectCleanerDataManager::GetScanDirectories() const
+{
+	return ScanDirectories;
+}
+
+UCleanerConfigs* ProjectCleanerDataManager::GetCleanerConfigs() const
+{
+	return CleanerConfigs;
+}
+
+UExcludeOptions* ProjectCleanerDataManager::GetExcludeOptions() const
+{
+	return ExcludeOptions;
+}
+
+FString ProjectCleanerDataManager::GetAbsoluteContentDir() const
+{
+	return ContentDir_Absolute;
+}
+
+FName ProjectCleanerDataManager::GetRelativeContentDir() const
+{
+	return ContentDir_Relative;
 }
 
 void ProjectCleanerDataManager::Empty()
@@ -55,29 +137,41 @@ void ProjectCleanerDataManager::Empty()
 	EmptyFolders.Empty();
 	IndirectlyUsedAssets.Empty();
 	PrimaryAssetClasses.Empty();
+	ScanDirectories.Empty();
 }
 
 void ProjectCleanerDataManager::Update()
 {
 	Empty();
 
+	AssetRegistry->Get().GetAssetsByPath(ContentDir_Relative, AllAssets, true);
+	
 	FindPrimaryAssetClasses();
-	AssetRegistry->Get().GetAssetsByPath(RelativeRootFolder, AllAssets, true);
 	FindIndirectlyUsedAssets();
 	FindUsedAssets();
-	AnalyzeProjectDirectory();
+	FindInvalidFiles();
 	FindUnusedAssets();
 
-	UE_LOG(LogTemp, Warning, TEXT("A"));
+	FindEmptyFolders(ContentDir_Absolute / TEXT("*"));
+	RemoveForbiddenFolders();
+
+	TotalProjectSize = ProjectCleanerUtility::GetTotalSize(AllAssets);
+	TotalUnusedAssetsSize = ProjectCleanerUtility::GetTotalSize(UnusedAssets);
 }
 
-void ProjectCleanerDataManager::SetRootFolder(const FString& Folder)
+void ProjectCleanerDataManager::SetScanDirectories(TSet<FName>& Directories)
 {
-	if (!FPaths::ValidatePath(Folder)) return;
-	if (!FPlatformFileManager::Get().GetPlatformFile().DirectoryExists(*Folder)) return;
-	
-	AbsoluteRootFolder = FName{*Folder};
-	RelativeRootFolder = FName{*ProjectCleanerUtility::ConvertAbsolutePathToInternal(Folder)};
+	ScanDirectories = MoveTempIfPossible(Directories);
+}
+
+int64 ProjectCleanerDataManager::GetTotalProjectSize() const
+{
+	return TotalProjectSize;
+}
+
+int64 ProjectCleanerDataManager::GetTotalUnusedAssetsSize() const
+{
+	return TotalUnusedAssetsSize;
 }
 
 void ProjectCleanerDataManager::FindPrimaryAssetClasses()
@@ -112,7 +206,7 @@ void ProjectCleanerDataManager::FindUsedAssets()
 	FARFilter Filter;
 	Filter.ClassNames.Add(UWorld::StaticClass()->GetFName());
 	Filter.ClassNames.Append(PrimaryAssetClasses.Array());
-	Filter.PackagePaths.Add(RelativeRootFolder);
+	Filter.PackagePaths.Add(ContentDir_Relative);
 	Filter.bRecursivePaths = true;
 	Filter.bRecursiveClasses = true;
 	
@@ -136,7 +230,7 @@ void ProjectCleanerDataManager::FindUsedAssets()
 		for (const FAssetIdentifier& Dependency : AssetDependencies)
 		{
 			bool bIsAlreadyInSet = false;
-			if (!Dependency.PackageName.ToString().StartsWith(RelativeRootFolder.ToString())) continue;
+			if (!Dependency.PackageName.ToString().StartsWith(ContentDir_Relative.ToString())) continue;
 			
 			UsedAssets.Add(Dependency.PackageName, &bIsAlreadyInSet);
 			if (!bIsAlreadyInSet && Dependency.IsValid())
@@ -149,18 +243,36 @@ void ProjectCleanerDataManager::FindUsedAssets()
 
 void ProjectCleanerDataManager::FindUnusedAssets()
 {
-	TSet<FName> LinkedAssets;
-	FindLinkedAssets(LinkedAssets);
+	TSet<FName> FilteredAssets;
+	FilteredAssets.Reserve(AllAssets.Num());
+
+	for (const auto& IndirectAsset : IndirectlyUsedAssets)
+	{
+		FilteredAssets.Add(IndirectAsset.Key.PackageName);
+	}
+	
+	for (const auto& AssetData : AllAssets)
+	{
+		if (
+			HasExternalReferencers(AssetData.PackageName) ||
+			ExcludedByPath(AssetData.PackagePath) ||
+			ExcludedByClass(AssetData))
+		{
+			FilteredAssets.Add(AssetData.PackageName);
+		}
+	}
+
+	FilteredAssets.Shrink();
+	
+	TSet<FName> RelatedAssets; // todo:ashe23
+	FindLinkedAssets(FilteredAssets, RelatedAssets);
 	
 	for (const auto& AssetData : AllAssets)
 	{
 		if (UsedAssets.Contains(AssetData.PackageName)) continue;
-		if (!AssetData.PackageName.ToString().StartsWith(RelativeRootFolder.ToString())) continue;
+		if (!AssetData.PackageName.ToString().StartsWith(ContentDir_Relative.ToString())) continue;
 		if (IndirectlyUsedAssets.Contains(AssetData)) continue;
-		if (LinkedAssets.Contains(AssetData.PackageName)) continue;
-		// todo:ashe23 assets with external referencers
-		// todo:ashe23 excluded by path
-		// todo:ashe23 excluded by class
+		if (RelatedAssets.Contains(AssetData.PackageName)) continue;
 
 		UnusedAssets.Add(AssetData);
 	}
@@ -216,43 +328,43 @@ void ProjectCleanerDataManager::FindIndirectlyUsedAssets()
 	Files.Append(ProjectPluginsFiles);
 	Files.Shrink();
 
-	// for (const auto& File : Files)
-	// {
-	// 	if (!PlatformFile.FileExists(*File)) continue;
-	//
-	// 	FString FileContent;
-	// 	FFileHelper::LoadFileToString(FileContent, *File);
-	//
-	// 	// search any sub string that has asset package path in it
-	// 	static FRegexPattern Pattern(TEXT(R"(\/Game(.*)\b)"));
-	// 	FRegexMatcher Matcher(Pattern, FileContent);
-	// 	if (!Matcher.FindNext()) continue;
-	// 	const FName FoundedAssetPackageName =  FName{Matcher.GetCaptureGroup(0)};
-	//
-	// 	// if founded asset exist in AssetRegistry database, then we finding line number where its used
-	// 	// if (!ObjectPaths.Contains(FoundedAssetPackageName)) continue;
-	// 	const FAssetData* AssetData = AllAssets.FindByPredicate([&] (const FAssetData& Elem)
-	// 	{
-	// 		return Elem.ObjectPath.IsEqual(FoundedAssetPackageName);
-	// 	});
-	// 	if (!AssetData) continue;
-	//
-	// 	TArray<FString> Lines;
-	// 	FFileHelper::LoadFileToStringArray(Lines, *File);
-	// 	for (int32 i = 0; i < Lines.Num(); ++i)
-	// 	{
-	// 		if (!Lines.IsValidIndex(i)) continue;
-	// 		if (!Lines[i].Contains(FoundedAssetPackageName.ToString())) continue;
-	//
-	// 		FIndirectAsset IndirectAsset;
-	// 		IndirectAsset.File = FPaths::ConvertRelativePathToFull(File);
-	// 		IndirectAsset.Line = i + 1;
-	// 		IndirectlyUsedAssets.Add(*AssetData, IndirectAsset);
-	// 	}
-	// }
+	for (const auto& File : Files)
+	{
+		if (!PlatformFile.FileExists(*File)) continue;
+	
+		FString FileContent;
+		FFileHelper::LoadFileToString(FileContent, *File);
+	
+		// search any sub string that has asset package path in it
+		static FRegexPattern Pattern(TEXT(R"(\/Game(.*)\b)"));
+		FRegexMatcher Matcher(Pattern, FileContent);
+		if (!Matcher.FindNext()) continue;
+		const FName FoundedAssetPackageName =  FName{Matcher.GetCaptureGroup(0)};
+	
+		// if founded asset exist in AssetRegistry database, then we finding line number where its used
+		const FAssetData* AssetData = AllAssets.FindByPredicate([&] (const FAssetData& Elem)
+		{
+			return Elem.ObjectPath.IsEqual(FoundedAssetPackageName);
+		});
+		if (!AssetData) continue;
+		// if (UsedAssets.Contains(AssetData->PackageName)) continue;
+		
+		TArray<FString> Lines;
+		FFileHelper::LoadFileToStringArray(Lines, *File);
+		for (int32 i = 0; i < Lines.Num(); ++i)
+		{
+			if (!Lines.IsValidIndex(i)) continue;
+			if (!Lines[i].Contains(FoundedAssetPackageName.ToString())) continue;
+	
+			FIndirectAsset IndirectAsset;
+			IndirectAsset.File = FPaths::ConvertRelativePathToFull(File);
+			IndirectAsset.Line = i + 1;
+			IndirectlyUsedAssets.Add(*AssetData, IndirectAsset);
+		}
+	}
 }
 
-void ProjectCleanerDataManager::AnalyzeProjectDirectory()
+void ProjectCleanerDataManager::FindInvalidFiles()
 {
 	struct ProjectCleanerRootDirVisitor : IPlatformFile::FDirectoryVisitor
 	{
@@ -260,28 +372,20 @@ void ProjectCleanerDataManager::AnalyzeProjectDirectory()
 			TArray<FAssetData>& Assets,
 			TSet<FName>& Files,
 			TSet<FName>& NewNonEngineFiles,
-			TSet<FName>& NewEmptyFolders,
 			TSet<FName>& NewCorruptedAssets
 		) :
 		AllAssets(Assets),
 		AllFiles(Files),
 		NonEngineFiles(NewNonEngineFiles),
-		EmptyFolders(NewEmptyFolders),
 		CorruptedAssets(NewCorruptedAssets) {}
-		
 		
 		virtual bool Visit(const TCHAR* FilenameOrDirectory, bool bIsDirectory) override
 		{
 			const FString FullPath = FPaths::ConvertRelativePathToFull(FilenameOrDirectory);
-			if (bIsDirectory)
+			if (!bIsDirectory)
 			{
-				if (ProjectCleanerUtility::IsEmptyFolder(FullPath))
-				{
-					EmptyFolders.Add(FName{FullPath});
-				}
-			}
-			else
-			{
+				AllFiles.Add(FName{FullPath});
+				
 				if (ProjectCleanerUtility::IsEngineExtension(FPaths::GetExtension(FullPath, false)))
 				{
 					// here we got absolute path "C:/MyProject/Content/material.uasset"
@@ -307,8 +411,6 @@ void ProjectCleanerDataManager::AnalyzeProjectDirectory()
 				{
 					NonEngineFiles.Add(FName{FullPath});
 				}
-				
-				AllFiles.Add(FName{FullPath});
 			}
 
 			return true;
@@ -316,59 +418,96 @@ void ProjectCleanerDataManager::AnalyzeProjectDirectory()
 		TArray<FAssetData>& AllAssets;
 		TSet<FName>& AllFiles;
 		TSet<FName>& NonEngineFiles;
-		TSet<FName>& EmptyFolders;
 		TSet<FName>& CorruptedAssets;
 	};
 
-	ProjectCleanerRootDirVisitor Visitor{AllAssets, AllFiles, NonEngineFiles, EmptyFolders, CorruptedAssets};
-	FPlatformFileManager::Get().GetPlatformFile().IterateDirectoryRecursively(*AbsoluteRootFolder.ToString(), Visitor);
+	ProjectCleanerRootDirVisitor Visitor{AllAssets, AllFiles, NonEngineFiles, CorruptedAssets};
+	FPlatformFileManager::Get().GetPlatformFile().IterateDirectoryRecursively(*ContentDir_Absolute, Visitor);
+}
 
-	// finding empty folders trees
-	EmptyFolders.Remove(FName{*GameUserDeveloperDir});
-	EmptyFolders.Remove(FName{*GameUserDeveloperCollectionsDir});
-	EmptyFolders.Remove(FName{*GameDevelopersDir});
-	EmptyFolders.Remove(FName{*CollectionsDir});
-	
-	TSet<FName> NewEmptyFolders;
-	for (const auto& EmptyFolder : EmptyFolders)
+bool ProjectCleanerDataManager::FindEmptyFolders(const FString& FolderPath)
+{
+	bool IsSubFoldersEmpty = true;
+	TArray<FString> SubFolders;
+	IFileManager::Get().FindFiles(SubFolders, *FolderPath, false, true);
+
+	for (const auto& SubFolder : SubFolders)
 	{
-		FString EmptyFolderPath = EmptyFolder.ToString();
-
-		FString CurrentPath;
-		EmptyFolderPath.Split(TEXT("/"), &CurrentPath, nullptr, ESearchCase::IgnoreCase, ESearchDir::FromEnd);
-		CurrentPath += TEXT("/");
-
-		while (!ProjectCleanerUtility::HasFiles(CurrentPath) || !CurrentPath.Equals(AbsoluteRootFolder.ToString()))
+		// "*" needed for unreal`s IFileManager class, without it , its not working.
+		auto NewPath = FolderPath;
+		NewPath.RemoveFromEnd(TEXT("*"));
+		NewPath += SubFolder / TEXT("*");
+		if (FindEmptyFolders(NewPath))
 		{
-			CurrentPath.RemoveFromEnd(TEXT("/"));
-			NewEmptyFolders.Add(FName{*CurrentPath});
-			
-			FString Parent;
-			CurrentPath.Split(TEXT("/"), &Parent, nullptr, ESearchCase::IgnoreCase, ESearchDir::FromEnd);
-			CurrentPath = Parent;
-			CurrentPath += TEXT("/");
+			NewPath.RemoveFromEnd(TEXT("*"));
+			EmptyFolders.Add(*NewPath);
+		}
+		else
+		{
+			IsSubFoldersEmpty = false;
 		}
 	}
 
-	for (const auto& Folder : NewEmptyFolders)
+	TArray<FString> FilesInFolder;
+	IFileManager::Get().FindFiles(FilesInFolder, *FolderPath, true, false);
+
+	if (IsSubFoldersEmpty && FilesInFolder.Num() == 0)
 	{
-		EmptyFolders.Add(Folder);
+		return true;
+	}
+
+	return false;
+}
+
+void ProjectCleanerDataManager::RemoveForbiddenFolders()
+{
+	const FString CollectionsFolder = ContentDir_Absolute + TEXT("Collections/");
+	const FString DevelopersFolder = ContentDir_Absolute + TEXT("Developers/");
+	const FString UserDir = DevelopersFolder + FPaths::GameUserDeveloperFolderName() + TEXT("/");
+	const FString UserCollectionsDir = UserDir + TEXT("Collections/");
+	
+	EmptyFolders.Remove(FName{*CollectionsFolder});
+	EmptyFolders.Remove(FName{*DevelopersFolder});
+	EmptyFolders.Remove(FName{*UserDir});
+	EmptyFolders.Remove(FName{*UserCollectionsDir});
+
+	if (!CleanerConfigs->bScanDeveloperContents)
+	{
+		// find all folders that are under developer folders
+		TSet<FName> FilteredFolders;
+		FilteredFolders.Reserve(EmptyFolders.Num());
+
+		for (const auto& Folder : EmptyFolders)
+		{
+			if (
+				FPaths::IsUnderDirectory(Folder.ToString(), CollectionsFolder) ||
+				FPaths::IsUnderDirectory(Folder.ToString(), DevelopersFolder)
+			)
+			{
+				FilteredFolders.Add(Folder);
+			}
+		}
+
+		for (const auto& Folder : FilteredFolders)
+		{
+			EmptyFolders.Remove(Folder);
+		}
 	}
 }
 
-void ProjectCleanerDataManager::FindLinkedAssets(TSet<FName>& LinkedAssets)
+void ProjectCleanerDataManager::FindLinkedAssets(const TSet<FName>& FilteredAssets, TSet<FName>& LinkedAssets)
 {
 	TArray<FName> Stack;
-	for (const auto& Asset : IndirectlyUsedAssets)
+	for (const auto& Asset : FilteredAssets)
 	{
 		FAssetNode Node;
-		AssetRegistry->Get().GetReferencers(Asset.Key.PackageName, Node.Refs);
-		AssetRegistry->Get().GetDependencies(Asset.Key.PackageName, Node.Deps);
+		AssetRegistry->Get().GetReferencers(Asset, Node.Refs);
+		AssetRegistry->Get().GetDependencies(Asset, Node.Deps);
 	
-		Node.Refs.Remove(Asset.Key.PackageName);
-		Node.Deps.Remove(Asset.Key.PackageName);
+		Node.Refs.Remove(Asset);
+		Node.Deps.Remove(Asset);
 	
-		Stack.Add(Asset.Key.PackageName);
+		Stack.Add(Asset);
 		
 		TArray<FAssetIdentifier> AssetDependencies;
 		TArray<FAssetIdentifier> AssetReferencers;
@@ -384,11 +523,11 @@ void ProjectCleanerDataManager::FindLinkedAssets(TSet<FName>& LinkedAssets)
 	
 			AssetDependencies.RemoveAllSwap([&](const FAssetIdentifier& Elem)
 			{
-				return !Elem.PackageName.ToString().StartsWith(RelativeRootFolder.ToString());
+				return !Elem.PackageName.ToString().StartsWith(ContentDir_Relative.ToString());
 			});
 			AssetReferencers.RemoveAllSwap([&](const FAssetIdentifier& Elem)
 			{
-				return !Elem.PackageName.ToString().StartsWith(RelativeRootFolder.ToString());
+				return !Elem.PackageName.ToString().StartsWith(ContentDir_Relative.ToString());
 			});
 			
 			for (const auto Dep : AssetDependencies)
@@ -411,4 +550,55 @@ void ProjectCleanerDataManager::FindLinkedAssets(TSet<FName>& LinkedAssets)
 			}
 		}
 	}
+}
+
+bool ProjectCleanerDataManager::HasExternalReferencers(const FName& PackageName)
+{
+	TArray<FName> Refs;
+	AssetRegistry->Get().GetReferencers(PackageName, Refs);
+	return Refs.ContainsByPredicate([&] (const FName& Elem)
+	{
+		return !Elem.ToString().StartsWith(ContentDir_Relative.ToString());
+	});
+}
+
+bool ProjectCleanerDataManager::ExcludedByPath(const FName& PackagePath)
+{
+	return ExcludeOptions->Paths.ContainsByPredicate([&](const FDirectoryPath& DirectoryPath)
+	{
+		return PackagePath.ToString().StartsWith(DirectoryPath.Path);
+	});
+}
+
+bool ProjectCleanerDataManager::ExcludedByClass(const FAssetData& AssetData)
+{
+	// todo:ashe23 load asset if class is blueprint
+	const UBlueprint* BlueprintAsset = Cast<UBlueprint>(AssetData.GetAsset());
+	const bool IsBlueprint = (BlueprintAsset != nullptr);
+
+	FName ClassName;
+	FName ParentClassName;
+
+	if (IsBlueprint && BlueprintAsset->GeneratedClass && BlueprintAsset->ParentClass)
+	{
+		ClassName = BlueprintAsset->GeneratedClass->GetFName();
+		ParentClassName = BlueprintAsset->ParentClass->GetFName();
+	}
+	else
+	{
+		ClassName = AssetData.AssetClass;
+	}
+	
+	return ExcludeOptions->Classes.ContainsByPredicate([&](const UClass* ElemClass)
+	{
+		if (!ElemClass) return false;
+		return ClassName.IsEqual(ElemClass->GetFName()) ||
+		(IsBlueprint &&
+			(
+				ClassName.IsEqual(ElemClass->GetFName()) ||
+				ParentClassName.IsEqual(ElemClass->GetFName()) ||
+				ElemClass->GetFName().IsEqual(UBlueprint::StaticClass()->GetFName())
+			)
+		);
+	});
 }

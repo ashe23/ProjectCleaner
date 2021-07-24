@@ -5,7 +5,6 @@
 #include "Core/ProjectCleanerDataManager.h"
 // Engine Headers
 #include "Modules/ModuleInterface.h"
-// #include "Core/ProjectCleanerManager.h"
 #include "CoreMinimal.h"
 
 DECLARE_LOG_CATEGORY_EXTERN(LogProjectCleaner, Log, All);
@@ -25,9 +24,8 @@ private:
 	
 	/* UI data */
 	TSharedPtr<FUICommandList> PluginCommands;
-	// TWeakPtr<class SProjectCleanerMainUI> CleanerMainUI;
+	TWeakPtr<class SProjectCleanerMainUI> CleanerMainUI;
 
 	/* CleanerManager */
-	// ProjectCleanerManager CleanerManager;
 	ProjectCleanerDataManager DataManager;
 };

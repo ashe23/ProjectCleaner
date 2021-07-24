@@ -149,10 +149,10 @@ void ProjectCleanerUtility::GetUnusedAssets(FProjectCleanerData& CleanerData)
 	CleanerData.UnusedAssets.Shrink();
 }
 
-int64 ProjectCleanerUtility::GetTotalSize(TArray<FAssetData>& UnusedAssets)
+int64 ProjectCleanerUtility::GetTotalSize(TArray<FAssetData>& Assets)
 {
 	int64 Size = 0;
-	for (const auto& Asset : UnusedAssets)
+	for (const auto& Asset : Assets)
 	{
 		FAssetRegistryModule& AssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
 		const auto AssetPackageData = AssetRegistry.Get().GetAssetPackageData(Asset.PackageName);
@@ -364,22 +364,6 @@ void ProjectCleanerUtility::GetProjectFilesFromDisk(TSet<FString>& ProjectFiles)
 bool ProjectCleanerUtility::IsEngineExtension(const FString& Extension)
 {
 	return Extension.Equals("uasset") || Extension.Equals("umap");
-}
-
-bool ProjectCleanerUtility::IsEmptyFolder(const FString& InPath)
-{
-	const FString SearchPath = InPath / TEXT("*");
-	TArray<FString> Files;
-	IFileManager::Get().FindFiles(Files, *SearchPath, true, true);
-	return Files.Num() == 0;
-}
-
-bool ProjectCleanerUtility::HasFiles(const FString& InPath)
-{
-	const FString SearchPath = InPath / TEXT("*");
-	TArray<FString> Files;
-	IFileManager::Get().FindFiles(Files, *SearchPath, true, false);
-	return Files.Num() != 0;
 }
 
 bool ProjectCleanerUtility::FindAllEmptyFolders(const FString& FolderPath, TArray<FString>& EmptyFolders)

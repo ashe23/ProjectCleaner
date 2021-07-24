@@ -22,8 +22,6 @@ class PROJECTCLEANER_API ProjectCleanerUtility
 {
 public:
 	// query
-	static bool IsEmptyFolder(const FString& InPath);
-	static bool HasFiles(const FString& InPath);
 	static bool FindAllEmptyFolders(const FString& FolderPath, TArray<FString>& EmptyFolders);
 	static bool IsUnderDeveloperFolder(const FString& PackagePath);	
 	static void GetEmptyFolders(TArray<FString>& EmptyFolders, const bool bScanDeveloperContents);
@@ -32,7 +30,7 @@ public:
 	static void GetNonEngineFiles(TSet<FString>& NonEngineFiles, const TSet<FString>& ProjectFiles);
 	static void GetAllAssets(FProjectCleanerData& CleanerData);// remove
 	static void GetUnusedAssets(FProjectCleanerData& CleanerData);// remove
-	static int64 GetTotalSize(TArray<FAssetData>& UnusedAssets);
+	static int64 GetTotalSize(TArray<FAssetData>& Assets);
 	static void GetPrimaryAssetClasses(TSet<FName>& PrimaryAssetClasses);// remove
 	static void GetSourceAndConfigFiles(TArray<FString>& AllFiles);
 	static void GetProjectFilesFromDisk(TSet<FString>& ProjectFiles);
