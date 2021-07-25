@@ -26,6 +26,10 @@ namespace ProjectCleanerTestHelper
 	{
 		// creating separate automation folder for testing
 		FPlatformFileManager::Get().GetPlatformFile().CreateDirectory(*AutomationRootFolder_Abs);
+		FPlatformFileManager::Get().GetPlatformFile().CreateDirectory(*(AutomationRootFolder_Abs + TEXT("Collections/")));
+		FPlatformFileManager::Get().GetPlatformFile().CreateDirectory(*(AutomationRootFolder_Abs + TEXT("Developers/")));
+		FPlatformFileManager::Get().GetPlatformFile().CreateDirectory(*(AutomationRootFolder_Abs + TEXT("Developers/") + FPaths::GameUserDeveloperFolderName() + TEXT("/")));
+		FPlatformFileManager::Get().GetPlatformFile().CreateDirectory(*(AutomationRootFolder_Abs + TEXT("Developers/") + FPaths::GameUserDeveloperFolderName() + TEXT("/Collections/")));
 	}
 
 	void Cleanup()
@@ -93,85 +97,101 @@ namespace ProjectCleanerTestHelper
 			UE_LOG(LogTemp, Error, TEXT("Cant create asset"));
 		}
 	}
+
+	bool ContainsForbiddenFolders(const TSet<FName>& EmptyFolders)
+	{
+		const FString CollectionsFolder = AutomationRootFolder_Abs + TEXT("Collections/");
+		const FString DevelopersFolder = AutomationRootFolder_Abs + TEXT("Developers/");
+		const FString UserDir = DevelopersFolder + FPaths::GameUserDeveloperFolderName() + TEXT("/");
+		const FString UserCollectionsDir = UserDir + TEXT("Collections/");
+		
+		return
+		EmptyFolders.Contains(FName{*CollectionsFolder}) ||
+		EmptyFolders.Contains(FName{*DevelopersFolder}) ||
+		EmptyFolders.Contains(FName{*UserDir}) ||
+		EmptyFolders.Contains(FName{*UserCollectionsDir});
+	}
 };
 	
 bool FProjectCleanerDataManagerTest::RunTest(const FString& Parameters)
 {
+	using namespace ProjectCleanerTestHelper;
+	
 	// =========================
 	// GetAllAssetsByPath Tests
 	// =========================
 	
-	ProjectCleanerTestHelper::Init();
+	Init();
 
 	TArray<FAssetData> AllAssets;
-	ProjectCleanerDataManagerV2::GetAllAssetsByPath(ProjectCleanerTestHelper::AutomationRootFolder_Rel, AllAssets);
+	ProjectCleanerDataManagerV2::GetAllAssetsByPath(AutomationRootFolder_Rel, AllAssets);
 	TestEqual("[GetAllAssetsByPath] All assets must ", AllAssets.Num(), 0);
 
 	// Creating test assets
-	ProjectCleanerTestHelper::CreateAsset<UMaterial, UMaterialFactoryNew>(
+	CreateAsset<UMaterial, UMaterialFactoryNew>(
 		TEXT("M_TestMaterial"),
-		ProjectCleanerTestHelper::AutomationRootFolder_Rel.ToString(),
+		AutomationRootFolder_Rel.ToString(),
 		UMaterial::StaticClass()
 	);
 
 	AllAssets.Reset();
-	ProjectCleanerDataManagerV2::GetAllAssetsByPath(ProjectCleanerTestHelper::AutomationRootFolder_Rel, AllAssets);
+	ProjectCleanerDataManagerV2::GetAllAssetsByPath(AutomationRootFolder_Rel, AllAssets);
 	TestEqual("[GetAllAssetsByPath] All assets must ", AllAssets.Num(), 1);
 
 	ProjectCleanerUtility::DeleteAssets(AllAssets);
 	// Testing with lots of assets
 	for (int32 i = 0; i < 100; ++i)
 	{
-		ProjectCleanerTestHelper::CreateAsset<UMaterial, UMaterialFactoryNew>(
+		CreateAsset<UMaterial, UMaterialFactoryNew>(
 		FString::Printf(TEXT("M_TestMaterial_%d"), i),
-		ProjectCleanerTestHelper::AutomationRootFolder_Rel.ToString(),
+		AutomationRootFolder_Rel.ToString(),
 			UMaterial::StaticClass()
 		);
 	}
 	
 	AllAssets.Reset();
-	ProjectCleanerDataManagerV2::GetAllAssetsByPath(ProjectCleanerTestHelper::AutomationRootFolder_Rel, AllAssets);
+	ProjectCleanerDataManagerV2::GetAllAssetsByPath(AutomationRootFolder_Rel, AllAssets);
 	TestEqual("[GetAllAssetsByPath] All assets must ", AllAssets.Num(), 100);
 	ProjectCleanerUtility::DeleteAssets(AllAssets);
 
-	ProjectCleanerTestHelper::Cleanup();
+	Cleanup();
 
 
 	// ===========================
 	// GetInvalidFilesByPath Tests
 	// ===========================
 
-	ProjectCleanerTestHelper::Init();
+	Init();
 
-	ProjectCleanerDataManagerV2::GetAllAssetsByPath(ProjectCleanerTestHelper::AutomationRootFolder_Rel, AllAssets);
+	ProjectCleanerDataManagerV2::GetAllAssetsByPath(AutomationRootFolder_Rel, AllAssets);
 	TSet<FName> CorruptedAssets;
 	TSet<FName> NonEngineFiles;
-	ProjectCleanerDataManagerV2::GetInvalidFilesByPath(ProjectCleanerTestHelper::AutomationRootFolder_Abs, AllAssets, CorruptedAssets, NonEngineFiles);
+	ProjectCleanerDataManagerV2::GetInvalidFilesByPath(AutomationRootFolder_Abs, AllAssets, CorruptedAssets, NonEngineFiles);
 
 	TestEqual("[GetInvalidFilesByPath] Corrupted assets must ", CorruptedAssets.Num(), 0);
 	TestEqual("[GetInvalidFilesByPath] NonEngineFiles must ", NonEngineFiles.Num(), 0);
 
-	ProjectCleanerTestHelper::CreateCorruptedAssets();
-	ProjectCleanerTestHelper::CreateNonEngineFiles();
-	ProjectCleanerDataManagerV2::GetInvalidFilesByPath(ProjectCleanerTestHelper::AutomationRootFolder_Abs, AllAssets, CorruptedAssets, NonEngineFiles);
+	CreateCorruptedAssets();
+	CreateNonEngineFiles();
+	ProjectCleanerDataManagerV2::GetInvalidFilesByPath(AutomationRootFolder_Abs, AllAssets, CorruptedAssets, NonEngineFiles);
 
 	TestEqual("[GetInvalidFilesByPath] Corrupted assets must ", CorruptedAssets.Num(), 4);
 	TestEqual("[GetInvalidFilesByPath] NonEngineFiles must ", NonEngineFiles.Num(), 7);
 	
-	ProjectCleanerTestHelper::Cleanup();
+	Cleanup();
 
 	// =============================
 	// GetIndirectAssetsByPath Tests
 	// =============================
 
-	ProjectCleanerTestHelper::Init();
+	Init();
 
-	const FString SourceDir = ProjectCleanerTestHelper::AutomationRootFolder_Abs + TEXT("Source/");
-	const FString ConfigDir = ProjectCleanerTestHelper::AutomationRootFolder_Abs + TEXT("Config/");
-	const FString PluginsDir = ProjectCleanerTestHelper::AutomationRootFolder_Abs + TEXT("Plugins/");
+	const FString SourceDir = AutomationRootFolder_Abs + TEXT("Source/");
+	const FString ConfigDir = AutomationRootFolder_Abs + TEXT("Config/");
+	const FString PluginsDir = AutomationRootFolder_Abs + TEXT("Plugins/");
 
 	TMap<FName, FIndirectAsset> IndirectlyUsedAssets;
-	ProjectCleanerDataManagerV2::GetIndirectAssetsByPath(ProjectCleanerTestHelper::AutomationRootFolder_Abs, IndirectlyUsedAssets);
+	ProjectCleanerDataManagerV2::GetIndirectAssetsByPath(AutomationRootFolder_Abs, IndirectlyUsedAssets);
 	TestEqual("[GetIndirectAssetsByPath] Indirect assets must ", IndirectlyUsedAssets.Num(), 0);
 
 	
@@ -233,10 +253,153 @@ AppliedDefaultGraphicsPerformance=Maximum
 	FFileHelper::SaveStringToFile(PluginConfigFileContent,*(PluginsDir +TEXT("/SomePlugin/Config/FilterPlugin.ini")));
 	FFileHelper::SaveStringToFile(PluginSourceFileContent,*(PluginsDir +TEXT("/SomePlugin/Source/PlayerController.cpp")));
 
-	ProjectCleanerDataManagerV2::GetIndirectAssetsByPath(ProjectCleanerTestHelper::AutomationRootFolder_Abs, IndirectlyUsedAssets);
+	ProjectCleanerDataManagerV2::GetIndirectAssetsByPath(AutomationRootFolder_Abs, IndirectlyUsedAssets);
 	TestEqual("[GetIndirectAssetsByPath] Indirect assets must ", IndirectlyUsedAssets.Num(), 11);
 	
-	ProjectCleanerTestHelper::Cleanup();
+	Cleanup();
+
+	// ======================
+	// GetEmptyFolders Tests
+	// ======================
+	
+	Init();
+
+	TSet<FName> EmptyFolders;
+
+	// Tests when Scanning of Developer contents enabled
+	bool bScanDevContent = true;
+	ProjectCleanerDataManagerV2::GetEmptyFolders(AutomationRootFolder_Abs,EmptyFolders, bScanDevContent);
+	
+	// #TESTCASE 1 [Empty folders][No Folders]
+	TestEqual(TEXT("[Empty folders][No Folders] count"), EmptyFolders.Num(), 0);
+ 
+	// #TESTCASE 2 [Empty folders][Single empty folder]
+	FPlatformFileManager::Get().GetPlatformFile().CreateDirectory(*(AutomationRootFolder_Abs + TEXT("ef1/")));
+	
+	ProjectCleanerDataManagerV2::GetEmptyFolders(AutomationRootFolder_Abs,EmptyFolders, bScanDevContent);
+	
+	TestEqual(TEXT("Empty folders count"), EmptyFolders.Num(), 1);
+	TestFalse(TEXT("Empty folders must not contain forbidden folders"), ContainsForbiddenFolders(EmptyFolders));
+
+	Cleanup();
+	Init();
+	
+	// #TESTCASE 3 [Empty folders][Multiple single empty folders]
+	FPlatformFileManager::Get().GetPlatformFile().CreateDirectory(*(AutomationRootFolder_Abs + TEXT("ef1/")));
+	FPlatformFileManager::Get().GetPlatformFile().CreateDirectory(*(AutomationRootFolder_Abs + TEXT("ef2/")));
+	FPlatformFileManager::Get().GetPlatformFile().CreateDirectory(*(AutomationRootFolder_Abs + TEXT("ef3/")));
+	FPlatformFileManager::Get().GetPlatformFile().CreateDirectory(*(AutomationRootFolder_Abs + TEXT("ef4/")));
+	
+	ProjectCleanerDataManagerV2::GetEmptyFolders(AutomationRootFolder_Abs,EmptyFolders, bScanDevContent);
+	
+	TestEqual(TEXT("[Empty folders][Multiple single empty folders] count"), EmptyFolders.Num(), 4);
+	TestFalse(TEXT("Empty folders must not contain forbidden folders"), ContainsForbiddenFolders(EmptyFolders));
+
+	Cleanup();
+	Init();
+
+	
+	// #TESTCASE 4 [Empty folders][Single Empty folders with nested empty folders]
+	FPlatformFileManager::Get().GetPlatformFile().CreateDirectoryTree((*(AutomationRootFolder_Abs + TEXT("ef1/sef1/ssef1/sssef1/"))));
+	
+	ProjectCleanerDataManagerV2::GetEmptyFolders(AutomationRootFolder_Abs,EmptyFolders, bScanDevContent);
+	
+	TestEqual(TEXT("[Empty folders][Single Empty folders with nested empty folders] count"), EmptyFolders.Num(), 4);
+	TestFalse(TEXT("Empty folders must not contain forbidden folders"), ContainsForbiddenFolders(EmptyFolders));
+	
+	Cleanup();
+	Init();
+	
+	// #TESTCASE 5 [Empty folders][Multiple Empty folders with nested empty folders]
+	FPlatformFileManager::Get().GetPlatformFile().CreateDirectoryTree((*(AutomationRootFolder_Abs + TEXT("ef1/sef1/ssef1/sssef1/"))));
+	FPlatformFileManager::Get().GetPlatformFile().CreateDirectoryTree((*(AutomationRootFolder_Abs + TEXT("ef2/sef2/ssef2/sssef2/"))));
+	FPlatformFileManager::Get().GetPlatformFile().CreateDirectoryTree((*(AutomationRootFolder_Abs + TEXT("ef3/sef3/"))));
+
+	ProjectCleanerDataManagerV2::GetEmptyFolders(AutomationRootFolder_Abs,EmptyFolders, bScanDevContent);
+	
+	TestEqual(TEXT("[Empty folders][Multiple Empty folders with nested empty folders] count"), EmptyFolders.Num(), 10);
+	TestFalse(TEXT("Empty folders must not contain forbidden folders"), ContainsForbiddenFolders(EmptyFolders));
+
+	Cleanup();
+	Init();
+	
+	// #TESTCASE 6 [Empty folders][Multiple Empty folders with nested empty folders more complex case]
+	FPlatformFileManager::Get().GetPlatformFile().CreateDirectoryTree((*(AutomationRootFolder_Abs + TEXT("ef1/sef1/ssef1/sssef1"))));
+	FPlatformFileManager::Get().GetPlatformFile().CreateDirectoryTree((*(AutomationRootFolder_Abs + TEXT("ef2/sef2"))));
+	FPlatformFileManager::Get().GetPlatformFile().CreateDirectoryTree((*(AutomationRootFolder_Abs + TEXT("ef3/sef3//ssef3"))));
+	FPlatformFileManager::Get().GetPlatformFile().CreateDirectoryTree((*(AutomationRootFolder_Abs + TEXT("ef4"))));
+	FPlatformFileManager::Get().GetPlatformFile().CreateDirectoryTree((*(AutomationRootFolder_Abs + TEXT("ef5/sef5/ssef5/sssef5/ssssef5"))));
+	FPlatformFileManager::Get().GetPlatformFile().CreateDirectoryTree((*(AutomationRootFolder_Abs + TEXT("ef6"))));
+	FPlatformFileManager::Get().GetPlatformFile().CreateDirectoryTree((*(AutomationRootFolder_Abs + TEXT("ef7"))));
+	FPlatformFileManager::Get().GetPlatformFile().CreateDirectoryTree((*(AutomationRootFolder_Abs + TEXT("ef8"))));
+
+	ProjectCleanerDataManagerV2::GetEmptyFolders(AutomationRootFolder_Abs,EmptyFolders, bScanDevContent);
+	
+	TestEqual(TEXT("[Empty folders][Multiple Empty folders with nested empty folders more complex case] count"), EmptyFolders.Num(), 18);
+	TestFalse(TEXT("Empty folders must not contain forbidden folders"), ContainsForbiddenFolders(EmptyFolders));
+
+	Cleanup();
+	Init();
+	
+	// #TESTCASE 7 [Empty folders][Multiple Empty folders with nested empty folders, nested level 30]
+	FPlatformFileManager::Get().GetPlatformFile().CreateDirectoryTree((*(AutomationRootFolder_Abs + TEXT("ef1/ef1/ef1/ef1/ef1/ef1/ef1/ef1/ef1/ef1//ef1/ef1/ef1/ef1/ef1//ef1/ef1/ef1/ef1/ef1//ef1/ef1/ef1/ef1/ef1//ef1/ef1/ef1/ef1/ef1/"))));
+	
+	ProjectCleanerDataManagerV2::GetEmptyFolders(AutomationRootFolder_Abs,EmptyFolders, bScanDevContent);
+	
+    TestEqual(TEXT("[Empty folders][Multiple Empty folders with nested empty folders, nested level 30] count"), EmptyFolders.Num(), 30);
+	TestFalse(TEXT("Empty folders must not contain forbidden folders"), ContainsForbiddenFolders(EmptyFolders));
+
+	Cleanup();
+	Init();
+
+	// ===================================================
+	// Tests when Scanning of Developer contents disabled
+	bScanDevContent = false;
+ 
+	// #TESTCASE 1 [Empty folders][Single Folder in developer folder]
+	FPlatformFileManager::Get().GetPlatformFile().CreateDirectory((*(AutomationRootFolder_Abs + TEXT("Developers/ef1/"))));
+	
+	ProjectCleanerDataManagerV2::GetEmptyFolders(AutomationRootFolder_Abs,EmptyFolders, bScanDevContent);
+
+	TestEqual(TEXT("[Empty folders][Single Folders][Dev folder disabled] count"), EmptyFolders.Num(), 0);
+
+	Cleanup();
+	Init();
+	
+	// #TESTCASE 2 [Empty folders][Single Folder with Nested Empty folders in developer folder]
+	FPlatformFileManager::Get().GetPlatformFile().CreateDirectoryTree((*(AutomationRootFolder_Abs + TEXT("Developers/ef1/ef2/ef3/"))));
+	
+	ProjectCleanerDataManagerV2::GetEmptyFolders(AutomationRootFolder_Abs,EmptyFolders, bScanDevContent);
+	
+	TestEqual(TEXT("[Empty folders][Single Folder with Nested Empty folders in developer folder] count"), EmptyFolders.Num(), 0);
+
+	Cleanup();
+	Init();
+	
+	// #TESTCASE 3 [Empty folders][Single Folder with Nested Empty folders in developer folder and content folder]
+	FPlatformFileManager::Get().GetPlatformFile().CreateDirectory((*(AutomationRootFolder_Abs + TEXT("Developers/ef1/"))));
+	FPlatformFileManager::Get().GetPlatformFile().CreateDirectory((*(AutomationRootFolder_Abs + TEXT("ef2/"))));
+
+	ProjectCleanerDataManagerV2::GetEmptyFolders(AutomationRootFolder_Abs,EmptyFolders, bScanDevContent);
+	
+	TestEqual(TEXT("[Empty folders][Single Folder with Nested Empty folders in developer folder] count"), EmptyFolders.Num(), 1);
+
+	Cleanup();
+	Init();
+ 
+	// #TESTCASE 4 [Empty folders][Multiple Folders with Nested Empty folders in developer folder and content folder]
+	FPlatformFileManager::Get().GetPlatformFile().CreateDirectoryTree((*(AutomationRootFolder_Abs + TEXT("Developers/ef1/ef2/ef3/"))));
+	FPlatformFileManager::Get().GetPlatformFile().CreateDirectoryTree((*(AutomationRootFolder_Abs + TEXT("Developers/ef1/ef4/"))));
+	FPlatformFileManager::Get().GetPlatformFile().CreateDirectoryTree((*(AutomationRootFolder_Abs + TEXT("Developers/ef1/ef5/ef6/"))));
+	FPlatformFileManager::Get().GetPlatformFile().CreateDirectoryTree((*(AutomationRootFolder_Abs + TEXT("Developers/ef7/ef8/"))));
+	FPlatformFileManager::Get().GetPlatformFile().CreateDirectoryTree((*(AutomationRootFolder_Abs + TEXT("ef9/ef10/"))));
+	FPlatformFileManager::Get().GetPlatformFile().CreateDirectoryTree((*(AutomationRootFolder_Abs + TEXT("ef11/ef12/ef13/"))));
+
+	ProjectCleanerDataManagerV2::GetEmptyFolders(AutomationRootFolder_Abs,EmptyFolders, bScanDevContent);
+	
+	TestEqual(TEXT("[Empty folders][Multiple Folders with Nested Empty folders in developer folder and content folder] count"), EmptyFolders.Num(), 5);
+ 
+	Cleanup();
 	
 	return true;
 }

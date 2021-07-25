@@ -22,16 +22,23 @@
 
 ProjectCleanerManager::ProjectCleanerManager()
 {
+	CleanerConfigs = GetMutableDefault<UCleanerConfigs>();
 	AssetRegistry = &FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
+
+	ensure(CleanerConfigs);
+	// ensure(ExcludeOptions);
+	ensure(AssetRegistry);
+	// ensure(DirectoryWatcher);
 }
 
 void ProjectCleanerManager::Update()
 {
-	Clean();
+	// Clean();
 
 	ProjectCleanerDataManagerV2::GetAllAssetsByPath(TEXT("/Game"),AllAssets);
 	ProjectCleanerDataManagerV2::GetInvalidFilesByPath(FPaths::ProjectContentDir(), AllAssets, CorruptedAssets, NonEngineFiles);
 	ProjectCleanerDataManagerV2::GetIndirectAssetsByPath(FPaths::ProjectDir(), IndirectAssets);
+	ProjectCleanerDataManagerV2::GetEmptyFolders(FPaths::ProjectContentDir(), EmptyFolders, CleanerConfigs->bScanDeveloperContents);
 }
 
 const TArray<FAssetData>& ProjectCleanerManager::GetAllAssets() const
@@ -54,12 +61,18 @@ const TMap<FName, FIndirectAsset>& ProjectCleanerManager::GetIndirectAssets() co
 	return IndirectAssets;
 }
 
+const TSet<FName>& ProjectCleanerManager::GetEmptyFolders() const
+{
+	return EmptyFolders;
+}
+
 void ProjectCleanerManager::Clean()
 {
-	AllAssets.Empty();
-	CorruptedAssets.Empty();
-	NonEngineFiles.Empty();
-	IndirectAssets.Empty();
+	// AllAssets.Empty();
+	// CorruptedAssets.Empty();
+	// NonEngineFiles.Empty();
+	// IndirectAssets.Empty();
+	// EmptyFolders.Em
 }
 
 #undef LOCTEXT_NAMESPACE

@@ -21,6 +21,7 @@ public:
 	const TSet<FName>& GetCorruptedAssets() const;
 	const TSet<FName>& GetNonEngineFiles() const;
 	const TMap<FName, FIndirectAsset>& GetIndirectAssets() const;
+	const TSet<FName>& GetEmptyFolders() const;
 private:
 	
 	/**
@@ -54,5 +55,11 @@ private:
 	 */
 	TMap<FName, struct FIndirectAsset> IndirectAssets;
 
+	/**
+	 * @brief All Empty folders container
+	 */
+	TSet<FName> EmptyFolders;
+
+	class UCleanerConfigs* CleanerConfigs;
 	class FAssetRegistryModule* AssetRegistry;
 };

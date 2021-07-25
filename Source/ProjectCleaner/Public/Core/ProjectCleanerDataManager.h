@@ -10,6 +10,7 @@ struct FAssetData;
 class ProjectCleanerDataManagerV2
 {
 public:
+	
 	/**
 	 * @brief Returns all assets in given path using AssetRegistry
 	 * @param InPath - Relative path. Example "/Game"
@@ -37,6 +38,23 @@ public:
 	 * @param IndirectlyUsedAssets - Indirect assets container
 	 */
 	static void GetIndirectAssetsByPath(const FString& InPath, TMap<FName, FIndirectAsset>& IndirectlyUsedAssets);
+
+	/**
+	 * @brief Returns all empty folders in given path
+	 * @param InPath - Absolute path. Example "C:/dev/projects/project_name/content/"
+	 * @param EmptyFolders - Empty Folders container
+	 * @param bScanDevelopersContent - Flag should we include Developer Content or not
+	 */
+	static void GetEmptyFolders(const FString& InPath, TSet<FName>& EmptyFolders, const bool bScanDevelopersContent);
+
+private:
+	/**
+	 * @brief Finds all empty folders in given path recursively
+	 * @param FolderPath - Absolute path
+	 * @param EmptyFolders - Empty Folders container
+	 * @return bool
+	 */
+	static bool FindEmptyFolders(const FString& FolderPath, TSet<FName>& EmptyFolders);
 };
 
 

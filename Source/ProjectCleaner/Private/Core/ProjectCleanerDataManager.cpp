@@ -18,6 +18,7 @@
 
 void ProjectCleanerDataManagerV2::GetAllAssetsByPath(const FName& InPath, TArray<FAssetData>& AllAssets)
 {
+	AllAssets.Empty();
 	const auto& AssetRegistry = FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
 	AssetRegistry.Get().GetAssetsByPath(InPath, AllAssets, true);
 }
@@ -30,6 +31,9 @@ void ProjectCleanerDataManagerV2::GetInvalidFilesByPath(
 {
 	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
 	if (!PlatformFile.DirectoryExists(*InPath)) return;
+
+	CorruptedAssets.Empty();
+	NonEngineFiles.Empty();
 
 	struct ProjectCleanerDirVisitor : IPlatformFile::FDirectoryVisitor
 	{
@@ -88,8 +92,9 @@ void ProjectCleanerDataManagerV2::GetInvalidFilesByPath(
 void ProjectCleanerDataManagerV2::GetIndirectAssetsByPath(const FString& InPath, TMap<FName, FIndirectAsset>& IndirectlyUsedAssets)
 {
 	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
-
 	if (!PlatformFile.DirectoryExists(*InPath)) return;
+
+	IndirectlyUsedAssets.Empty();
 
 	const FString SourceDir = InPath + TEXT("Source/");
 	const FString ConfigDir = InPath + TEXT("Config/");
@@ -172,6 +177,83 @@ void ProjectCleanerDataManagerV2::GetIndirectAssetsByPath(const FString& InPath,
 			}
 		}
 	}
+}
+
+void ProjectCleanerDataManagerV2::GetEmptyFolders(const FString& InPath, TSet<FName>& EmptyFolders, const bool bScanDevelopersContent)
+{
+	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
+	if (!PlatformFile.DirectoryExists(*InPath)) return;
+
+	EmptyFolders.Empty();
+	
+	FindEmptyFolders(InPath / TEXT("*"), EmptyFolders);
+
+	const FString CollectionsFolder = InPath + TEXT("Collections/");
+	const FString DevelopersFolder = InPath + TEXT("Developers/");
+	const FString UserDir = DevelopersFolder + FPaths::GameUserDeveloperFolderName() + TEXT("/");
+	const FString UserCollectionsDir = UserDir + TEXT("Collections/");
+	
+	EmptyFolders.Remove(FName{*CollectionsFolder});
+	EmptyFolders.Remove(FName{*DevelopersFolder});
+	EmptyFolders.Remove(FName{*UserDir});
+	EmptyFolders.Remove(FName{*UserCollectionsDir});
+
+	if (!bScanDevelopersContent)
+	{
+		// find all folders that are under developer folders
+		TSet<FName> FilteredFolders;
+		FilteredFolders.Reserve(EmptyFolders.Num());
+
+		for (const auto& Folder : EmptyFolders)
+		{
+			if (
+				FPaths::IsUnderDirectory(Folder.ToString(), CollectionsFolder) ||
+				FPaths::IsUnderDirectory(Folder.ToString(), DevelopersFolder)
+			)
+			{
+				FilteredFolders.Add(Folder);
+			}
+		}
+
+		for (const auto& Folder : FilteredFolders)
+		{
+			EmptyFolders.Remove(Folder);
+		}
+	}
+}
+
+bool ProjectCleanerDataManagerV2::FindEmptyFolders(const FString& FolderPath, TSet<FName>& EmptyFolders)
+{
+	bool IsSubFoldersEmpty = true;
+	TArray<FString> SubFolders;
+	IFileManager::Get().FindFiles(SubFolders, *FolderPath, false, true);
+
+	for (const auto& SubFolder : SubFolders)
+	{
+		// "*" needed for unreal`s IFileManager class, without it , its not working.
+		auto NewPath = FolderPath;
+		NewPath.RemoveFromEnd(TEXT("*"));
+		NewPath += SubFolder / TEXT("*");
+		if (FindEmptyFolders(NewPath, EmptyFolders))
+		{
+			NewPath.RemoveFromEnd(TEXT("*"));
+			EmptyFolders.Add(*NewPath);
+		}
+		else
+		{
+			IsSubFoldersEmpty = false;
+		}
+	}
+
+	TArray<FString> FilesInFolder;
+	IFileManager::Get().FindFiles(FilesInFolder, *FolderPath, true, false);
+
+	if (IsSubFoldersEmpty && FilesInFolder.Num() == 0)
+	{
+		return true;
+	}
+
+	return false;
 }
 
 ProjectCleanerDataManager::ProjectCleanerDataManager() :
