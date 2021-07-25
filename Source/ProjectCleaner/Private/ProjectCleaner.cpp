@@ -4,8 +4,10 @@
 #include "UI/ProjectCleanerStyle.h"
 #include "UI/ProjectCleanerMainUI.h"
 #include "UI/ProjectCleanerCommands.h"
+#include "Core/ProjectCleanerUtility.h"
 // Engine Headers
 #include "ToolMenus.h"
+#include "AssetToolsModule.h"
 
 DEFINE_LOG_CATEGORY(LogProjectCleaner);
 
@@ -74,11 +76,16 @@ void FProjectCleanerModule::RegisterMenus()
 
 void FProjectCleanerModule::PluginButtonClicked()
 {
-	FGlobalTabmanager::Get()->TryInvokeTab(ProjectCleanerTabName);
+	// DataManager.Update();
+	// FGlobalTabmanager::Get()->TryInvokeTab(ProjectCleanerTabName);
 }
 
 TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs)
 {
+	// ProjectCleanerUtility::FixupRedirectors();
+	// ProjectCleanerUtility::SaveAllAssets(true);
+	
+	
 	return SNew(SDockTab).TabRole(ETabRole::NomadTab)
 	[
 		SAssignNew(CleanerMainUI, SProjectCleanerMainUI)

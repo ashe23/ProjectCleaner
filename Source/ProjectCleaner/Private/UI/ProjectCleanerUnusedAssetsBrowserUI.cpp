@@ -16,7 +16,7 @@ void SProjectCleanerUnusedAssetsBrowserUI::Construct(const FArguments& InArgs)
 {
 	if (InArgs._DataManager)
 	{
-		SetUIData(InArgs._DataManager);
+		SetDataManager(InArgs._DataManager);
 	}
 
 	ensure(DataManager);
@@ -48,7 +48,8 @@ void SProjectCleanerUnusedAssetsBrowserUI::Construct(const FArguments& InArgs)
 		&SProjectCleanerUnusedAssetsBrowserUI::OnGetAssetContextMenu
 	);
 
-	SelectedPath = FName{DataManager->GetRelativeContentDir()};
+	// SelectedPath = FName{DataManager->GetRelativeContentDir()};
+	SelectedPath = TEXT("/Game");
 	PathPickerConfig.bAllowContextMenu = false;
 	PathPickerConfig.bAllowClassesFolder = false;
 	PathPickerConfig.bFocusSearchBoxWhenOpened = false;
@@ -59,10 +60,10 @@ void SProjectCleanerUnusedAssetsBrowserUI::Construct(const FArguments& InArgs)
 	UpdateUI();
 }
 
-void SProjectCleanerUnusedAssetsBrowserUI::SetUIData(ProjectCleanerDataManager* Data)
+void SProjectCleanerUnusedAssetsBrowserUI::SetDataManager(ProjectCleanerDataManager* DataManagerPtr)
 {
-	if (!Data) return;
-	DataManager = Data;
+	if (!DataManagerPtr) return;
+	DataManager = DataManagerPtr;
 }
 
 void SProjectCleanerUnusedAssetsBrowserUI::RegisterCommands()
@@ -166,8 +167,8 @@ void SProjectCleanerUnusedAssetsBrowserUI::GenerateFilter()
 		// excluding primary assets from showing and filtering
 		Filter.bRecursiveClasses = true;
 		Filter.RecursiveClassesExclusionSet.Reserve(DataManager->GetPrimaryAssetClasses().Num());
-		Filter.PackageNames.Reserve(DataManager->GetUnusedAssets().Num());
 		Filter.RecursiveClassesExclusionSet = MoveTempIfPossible(DataManager->GetPrimaryAssetClasses());
+		Filter.PackageNames.Reserve(DataManager->GetUnusedAssets().Num());
 
 		for (const auto& Asset : DataManager->GetUnusedAssets())
 		{
@@ -215,6 +216,7 @@ void SProjectCleanerUnusedAssetsBrowserUI::OnPathSelected(const FString& Path)
 {
 	SelectedPath = FName{Path};
 	PathPickerConfig.DefaultPath = Path;
+	
 	UpdateUI();
 }
 

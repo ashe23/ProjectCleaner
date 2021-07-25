@@ -15,6 +15,76 @@
 #include "HAL/PlatformFilemanager.h"
 #include "Internationalization/Regex.h"
 
+
+void ProjectCleanerDataManagerV2::GetAllAssetsByPath(const FName& InPath, TArray<FAssetData>& AllAssets)
+{
+	const auto& AssetRegistry = FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
+	AssetRegistry.Get().GetAssetsByPath(InPath, AllAssets, true);
+}
+
+void ProjectCleanerDataManagerV2::GetInvalidFilesByPath(
+	const FString& InPath,
+	const TArray<FAssetData>& AllAssets,
+	TSet<FName>& CorruptedAssets,
+	TSet<FName>& NonEngineFiles)
+{
+	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
+	if (!PlatformFile.DirectoryExists(*InPath)) return;
+
+	struct ProjectCleanerDirVisitor : IPlatformFile::FDirectoryVisitor
+	{
+		ProjectCleanerDirVisitor(
+			const TArray<FAssetData>& Assets,
+			TSet<FName>& NewCorruptedAssets,
+			TSet<FName>& NewNonEngineFiles
+		) :
+		AllAssets(Assets),
+		CorruptedAssets(NewCorruptedAssets),
+		NonEngineFiles(NewNonEngineFiles) {}
+		
+		virtual bool Visit(const TCHAR* FilenameOrDirectory, bool bIsDirectory) override
+		{
+			const FString FullPath = FPaths::ConvertRelativePathToFull(FilenameOrDirectory);
+			if (!bIsDirectory)
+			{
+				if (ProjectCleanerUtility::IsEngineExtension(FPaths::GetExtension(FullPath, false)))
+				{
+					// here we got absolute path "C:/MyProject/Content/material.uasset"
+					// we must first convert that path to In Engine Internal Path like "/Game/material.uasset"
+					const FString InternalFilePath = ProjectCleanerUtility::ConvertAbsolutePathToInternal(FullPath);
+					// Converting file path to object path (This is for searching in AssetRegistry)
+					// example "/Game/Name.uasset" => "/Game/Name.Name"
+					FString ObjectPath = InternalFilePath;
+					ObjectPath.RemoveFromEnd(FPaths::GetExtension(InternalFilePath, true));
+					ObjectPath.Append(TEXT(".") + FPaths::GetBaseFilename(InternalFilePath));
+
+					const FName ObjectPathName = FName{*ObjectPath};
+					const bool IsInAssetRegistry = AllAssets.ContainsByPredicate([&] (const FAssetData& Elem)
+					{
+						return Elem.ObjectPath.IsEqual(ObjectPathName);
+					});
+					if (!IsInAssetRegistry)
+					{
+						CorruptedAssets.Add(ObjectPathName);
+					}
+				}
+				else
+				{
+					NonEngineFiles.Add(FName{FullPath});
+				}
+			}
+
+			return true;
+		}
+		const TArray<FAssetData>& AllAssets;
+		TSet<FName>& CorruptedAssets;
+		TSet<FName>& NonEngineFiles;
+	};
+
+	ProjectCleanerDirVisitor Visitor{AllAssets, CorruptedAssets, NonEngineFiles};
+	FPlatformFileManager::Get().GetPlatformFile().IterateDirectoryRecursively(*InPath, Visitor);
+}
+
 ProjectCleanerDataManager::ProjectCleanerDataManager() :
 	TotalProjectSize(0),
 	TotalUnusedAssetsSize(0),
@@ -38,7 +108,7 @@ ProjectCleanerDataManager::ProjectCleanerDataManager() :
 
 	
 	ContentDir_Absolute = FPaths::ProjectContentDir();
-	ContentDir_Relative = FName{*ProjectCleanerUtility::ConvertAbsolutePathToInternal(ContentDir_Absolute)};
+	ContentDir_Relative = TEXT("/Game");
 }
 
 const TArray<FAssetData>& ProjectCleanerDataManager::GetAllAssets() const
@@ -101,11 +171,6 @@ const TArray<FAssetData>& ProjectCleanerDataManager::GetLinkedAssets() const
 	return LinkedAssets1;
 }
 
-const TSet<FName>& ProjectCleanerDataManager::GetScanDirectories() const
-{
-	return ScanDirectories;
-}
-
 UCleanerConfigs* ProjectCleanerDataManager::GetCleanerConfigs() const
 {
 	return CleanerConfigs;
@@ -137,31 +202,42 @@ void ProjectCleanerDataManager::Empty()
 	EmptyFolders.Empty();
 	IndirectlyUsedAssets.Empty();
 	PrimaryAssetClasses.Empty();
-	ScanDirectories.Empty();
+	ExcludedAssets.Empty();
+	LinkedAssets1.Empty();
 }
 
 void ProjectCleanerDataManager::Update()
 {
 	Empty();
 
+	// all assets
 	AssetRegistry->Get().GetAssetsByPath(ContentDir_Relative, AllAssets, true);
-	
-	FindPrimaryAssetClasses();
-	FindIndirectlyUsedAssets();
-	FindUsedAssets();
-	FindInvalidFiles();
-	FindUnusedAssets();
 
+	// invalid assets
+	FindInvalidFiles();
+
+	// used assets
+	FindIndirectlyUsedAssets(); // todo:ashe23 this should be in used assets function maybe?
 	FindEmptyFolders(ContentDir_Absolute / TEXT("*"));
 	RemoveForbiddenFolders();
+	
+	FindPrimaryAssetClasses();
+	FindUsedAssets();
+
+	// filtered assets
+
+	// unused assets
+	FindUnusedAssets();
+
 
 	TotalProjectSize = ProjectCleanerUtility::GetTotalSize(AllAssets);
 	TotalUnusedAssetsSize = ProjectCleanerUtility::GetTotalSize(UnusedAssets);
-}
 
-void ProjectCleanerDataManager::SetScanDirectories(TSet<FName>& Directories)
-{
-	ScanDirectories = MoveTempIfPossible(Directories);
+	// registering delegates
+	// AssetRegistry->Get().OnAssetAdded().AddRaw(this, &ProjectCleanerDataManager::OnAssetAdded);
+	// AssetRegistry->Get().OnAssetRemoved().AddRaw(this, &FProjectCleanerModule::OnAssetRemoved);
+	// AssetRegistry->Get().OnAssetRenamed().AddRaw(this, &FProjectCleanerModule::OnAssetRenamed);
+	// AssetRegistry->Get().OnAssetUpdated().AddRaw(this, &FProjectCleanerModule::OnAssetUpdated);
 }
 
 int64 ProjectCleanerDataManager::GetTotalProjectSize() const
@@ -601,4 +677,14 @@ bool ProjectCleanerDataManager::ExcludedByClass(const FAssetData& AssetData)
 			)
 		);
 	});
+}
+
+// Automation testing functionality
+void ProjectCleanerDataManager::EnableTestMode()
+{
+	ContentDir_Absolute = FPaths::ProjectContentDir() +  TEXT("AutomatationTests/");
+	ContentDir_Relative = TEXT("/Game/AutomatationTests");
+	SourceDir = FPaths::ProjectContentDir() + TEXT("AutomatationTests/Source/");
+	ConfigDir = FPaths::ProjectContentDir() + TEXT("AutomatationTests/Config/");
+	PluginsDir = FPaths::ProjectContentDir() + TEXT("AutomatationTests/Plugins/");
 }

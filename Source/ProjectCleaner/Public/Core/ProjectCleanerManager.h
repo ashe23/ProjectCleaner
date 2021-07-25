@@ -2,51 +2,45 @@
 
 #pragma once
 
-#include "StructsContainer.h"
 #include "CoreMinimal.h"
 
-
-// Tracks for any changes in directory and asset registry
-// Calls DataManager function to monitor any changes
 class ProjectCleanerManager
 {
 public:
 	ProjectCleanerManager();
-	void UpdateData();
 
-	FProjectCleanerData& GetCleanerData();
-	UCleanerConfigs* GetCleanerConfigs() const;
-	UExcludeOptions* GetExcludeOptions() const;
-	static FName GameUserDeveloperDir;
-	static FName GameDevelopersDir;
-	static FName GameUserDeveloperCollectionsDir;
-	static FName CollectionsDir;
+	/**
+	 * @brief Updates data containers
+	 */
+	void Update();
+
+	/** Data Container getters **/
+	const TArray<FAssetData>& GetAllAssets() const;
+	const TSet<FName>& GetCorruptedAssets() const;
+	const TSet<FName>& GetNonEngineFiles() const;
 private:
-	FProjectCleanerData CleanerData;
-	UCleanerConfigs* CleanerConfigs;
-	UExcludeOptions* ExcludeOptions;
 	
-	/* Data functions */
-	void LoadInitialData();
-	void FindEmptyFoldersAndNonEngineFiles();
-	void FindPrimaryAssetsAndItsDependencies();
-	void FindSourceAndConfigFiles();
-	void FindCorruptedAssets();
-	void FindLinkedAssets(TSet<FName>& LinkedAssets);
-	void GetAllAssets();
-	void GetUnusedAssets();
-	void GetPrimaryAssetClasses();
+	/**
+	 * @brief Empties all data containers
+	 */
+	void Clean();
 
-	bool IsExcludedByPath(const FAssetData& AssetData);
-	bool IsExcludedByClass(const FAssetData& AssetData);
-
-	bool bInitialLoading = true;
-	bool bScanCancelledByUser = false;
+	/** Data Containers **/
 	
-	/* AssetRegistry */
+	/**
+	* @brief All assets in "/Game" folder
+	*/
+	TArray<FAssetData> AllAssets;
+
+	/**
+	* @brief Corrupted assets (assets with engine extension, but not available in AssetRegistry)
+	*/
+	TSet<FName> CorruptedAssets;
+
+	/**
+	* @brief All non engine files (not .uasset or .umap files)
+	*/
+	TSet<FName> NonEngineFiles;
+
 	class FAssetRegistryModule* AssetRegistry;
-	void RegisterDelegates();
-	
-	/* DirectoryWatcher */
-	class FDirectoryWatcherModule* DirectoryWatcher;
 };

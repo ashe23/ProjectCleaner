@@ -7,6 +7,31 @@
 
 struct FAssetData;
 
+class ProjectCleanerDataManagerV2
+{
+public:
+	/**
+	 * @brief Returns all assets in given path using AssetRegistry
+	 * @param InPath - Relative path. Example "/Game"
+	 * @param AllAssets - Asset Container
+	 */
+	static void GetAllAssetsByPath(const FName& InPath, TArray<FAssetData>& AllAssets);
+
+	/**
+	 * @brief Returns all corrupted assets and non engine files in given path
+	 * @param InPath - Absolute path. Example "C:/dev/projects/project_name/content/"
+	 * @param AllAssets - All assets in path
+	 * @param CorruptedAssets - Corrupted assets container
+	 * @param NonEngineFiles - Non engine files container
+	 */
+	static void GetInvalidFilesByPath(
+		const FString& InPath,
+		const TArray<FAssetData>& AllAssets,
+		TSet<FName>& CorruptedAssets,
+		TSet<FName>& NonEngineFiles);
+};
+
+
 /**
  * @brief Responsible for gathering and analyzing data in project
  *			* Unused assets
@@ -22,9 +47,6 @@ public:
 	
 	void Update();
 	
-	// setters
-	void SetScanDirectories(TSet<FName>& Directories);
-
 	// getters
 	int64 GetTotalProjectSize() const;
 	int64 GetTotalUnusedAssetsSize() const;
@@ -46,8 +68,9 @@ public:
 	FString GetAbsoluteContentDir() const;
 	FName GetRelativeContentDir() const;
 
+
+
 private:
-	
 	void Empty();
 	void FindPrimaryAssetClasses();
 	void FindUsedAssets();
@@ -88,9 +111,9 @@ private:
 	TArray<FAssetData> UnusedAssets;
 
 	/**
-	* @brief Contains all files from "Game" folder
+	* @brief Contains all files from "Game" folder, including non engine files
 	*/
-	TSet<FName> AllFiles;
+	TSet<FName> AllFiles; // todo:ashe23 remove candidate, unused mostly
 	
 	/**
 	* @brief All non engine files (not .uasset or .umap files)
@@ -106,6 +129,9 @@ private:
 	* @brief All empty folders in "Game" folder
 	*/
 	TSet<FName> EmptyFolders;
+
+	// todo:ashe23
+	TSet<FName> PossiblyIndirectAssets;
 	
 	/**
 	* @brief All assets that used indirectly (in source or config files)
@@ -140,11 +166,6 @@ private:
 	 */
 	TArray<FAssetData> LinkedAssets1;
 
-	/**
-	 * @brief If ScanDirectories is not empty we will only scan given directories
-	 */
-	TSet<FName> ScanDirectories;
-
 	class FAssetRegistryModule* AssetRegistry;
 	class FDirectoryWatcherModule* DirectoryWatcher;
 	class UCleanerConfigs* CleanerConfigs;
@@ -153,4 +174,15 @@ private:
 
 	FString ContentDir_Absolute;
 	FName ContentDir_Relative;
+private:
+	// This part is for automation testing,
+	// because scanning based on project content path,
+	// in tests we want create separate folder which wont conflict with already existing files and assets
+	// so we making that class as friend and below function need only there
+	friend class FProjectCleanerDataManagerEmptyFoldersTests;
+	void EnableTestMode();
+	
+	FString SourceDir;
+	FString ConfigDir;
+	FString PluginsDir;
 };

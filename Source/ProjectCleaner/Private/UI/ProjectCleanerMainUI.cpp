@@ -15,6 +15,7 @@
 #include "ToolMenus.h"
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "Components/SlateWrapperTypes.h"
+#include "Core/ProjectCleanerUtility.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Framework/Docking/TabManager.h"
@@ -31,7 +32,7 @@ void SProjectCleanerMainUI::Construct(const FArguments& InArgs)
 {
 	if (InArgs._DataManager)
 	{
-		DataManager = InArgs._DataManager;
+		SetDataManager(InArgs._DataManager);
 	}
 	
 	InitTabs();
@@ -242,6 +243,12 @@ void SProjectCleanerMainUI::UpdateUIData() const
 	// }
 }
 
+void SProjectCleanerMainUI::SetDataManager(ProjectCleanerDataManager* DataManagerPtr)
+{
+	if (!DataManagerPtr) return;
+	DataManager = DataManagerPtr;
+}
+
 TSharedRef<SDockTab> SProjectCleanerMainUI::OnUnusedAssetTabSpawn(const FSpawnTabArgs& SpawnTabArgs)
 {
 	const auto UnusedAssetsUIRef =
@@ -439,8 +446,11 @@ void SProjectCleanerMainUI::OnUserExcludedAssetsOfType(const TArray<FAssetData>&
 
 FReply SProjectCleanerMainUI::OnRefreshBtnClick() const
 {
-	// Update();
+	ProjectCleanerUtility::FixupRedirectors();
+	ProjectCleanerUtility::SaveAllAssets(true);
+	
 	DataManager->Update();
+	
 	return FReply::Handled();
 }
 

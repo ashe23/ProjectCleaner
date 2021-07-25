@@ -486,11 +486,9 @@ void ProjectCleanerUtility::FixupRedirectors()
 
 	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
 
-	const FName RootPath = TEXT("/Game");
-
 	FARFilter Filter;
 	Filter.bRecursivePaths = true;
-	Filter.PackagePaths.Emplace(RootPath);
+	Filter.PackagePaths.Emplace(TEXT("/Game"));
 	Filter.ClassNames.Emplace(UObjectRedirector::StaticClass()->GetFName());
 
 	// Query for a list of assets

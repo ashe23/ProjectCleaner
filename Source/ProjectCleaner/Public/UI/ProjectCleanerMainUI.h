@@ -21,6 +21,7 @@ private:
 	void InitTabs();
 	void Update() const;
 	void UpdateUIData() const;
+	void SetDataManager(ProjectCleanerDataManager* DataManagerPtr);
 	
 	/* Callbacks */
 	TSharedRef<SDockTab> OnUnusedAssetTabSpawn(const FSpawnTabArgs& SpawnTabArgs);

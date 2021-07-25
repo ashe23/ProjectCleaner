@@ -24,7 +24,7 @@ public:
 	SLATE_END_ARGS()
 	
 	void Construct(const FArguments& InArgs);
-	void SetUIData(ProjectCleanerDataManager* Data);
+	void SetDataManager(ProjectCleanerDataManager* DataManagerPtr);
 
 	/* Delegates */
 	FOnUserDeletedAssets OnUserDeletedAssets;
