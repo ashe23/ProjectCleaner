@@ -89,6 +89,21 @@ private:
 	*/
 	TArray<FAssetData> LinkedAssets;
 
+	/**
+	 * @brief All assets that have external referencers (outside "/Game" folder)
+	 */
+	TArray<FAssetData> AssetsWithExternalRefs;
+
+	/**
+	 * @brief All unused assets in "/Game" folder
+	 */
+	TArray<FAssetData> UnusedAssets;
+
+	TMap<FName, struct FLinkedAsset> AssetsRelationalMap; 
+
+	int64 TotalProjectSize = 0;
+	int64 TotalUnusedAssetsSize = 0;
+
 	class UCleanerConfigs* CleanerConfigs;
 	class UExcludeOptions* ExcludeOptions;
 	class FAssetRegistryModule* AssetRegistry;

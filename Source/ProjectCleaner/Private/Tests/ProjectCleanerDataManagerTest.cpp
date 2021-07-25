@@ -183,25 +183,7 @@ bool FProjectCleanerDataManagerTest::RunTest(const FString& Parameters)
 	// =============================
 	// GetIndirectAssetsByPath Tests
 	// =============================
-
-	Init();
-
-	const FString SourceDir = AutomationRootFolder_Abs + TEXT("Source/");
-	const FString ConfigDir = AutomationRootFolder_Abs + TEXT("Config/");
-	const FString PluginsDir = AutomationRootFolder_Abs + TEXT("Plugins/");
-
-	TMap<FName, FIndirectAsset> IndirectlyUsedAssets;
-	ProjectCleanerDataManagerV2::GetIndirectAssetsByPath(AutomationRootFolder_Abs, IndirectlyUsedAssets);
-	TestEqual("[GetIndirectAssetsByPath] Indirect assets must ", IndirectlyUsedAssets.Num(), 0);
-
 	
-	// Creating Source,Config and Plugins Directory and filling some data there
-	FPlatformFileManager::Get().GetPlatformFile().CreateDirectory(*SourceDir);
-	FPlatformFileManager::Get().GetPlatformFile().CreateDirectory(*ConfigDir);
-	FPlatformFileManager::Get().GetPlatformFile().CreateDirectory(*PluginsDir);
-	FPlatformFileManager::Get().GetPlatformFile().CreateDirectoryTree(*(PluginsDir + TEXT("/SomePlugin/Config/")));
-	FPlatformFileManager::Get().GetPlatformFile().CreateDirectoryTree(*(PluginsDir + TEXT("/SomePlugin/Source/")));
-
 	const FString ConfigFileContent = TEXT(R"(
 [/Script/EngineSettings.GameMapsSettings]
 GameDefaultMap=/Game/Maps/NewMap.NewMap
@@ -229,8 +211,6 @@ AppliedDefaultGraphicsPerformance=Maximum
 		// Material'/Game/NewFolder/TestMat.TestMat'
 	)");
 	
-	FFileHelper::SaveStringToFile(ConfigFileContent,*(ConfigDir + TEXT("DefaultEngine.ini")));
-	FFileHelper::SaveStringToFile(SourceFileContent,*(SourceDir + TEXT("Actor.cpp")));
 
 	// Create Plugins Dir hierarchy
 	const FString PluginSourceFileContent = TEXT(R"(
@@ -250,13 +230,14 @@ AppliedDefaultGraphicsPerformance=Maximum
 ;    /Game/Blueprints/SomeBP.SomeBP
 /Game/Test/SomeAsset.SomeAsset
 )");
-	FFileHelper::SaveStringToFile(PluginConfigFileContent,*(PluginsDir +TEXT("/SomePlugin/Config/FilterPlugin.ini")));
-	FFileHelper::SaveStringToFile(PluginSourceFileContent,*(PluginsDir +TEXT("/SomePlugin/Source/PlayerController.cpp")));
 
-	ProjectCleanerDataManagerV2::GetIndirectAssetsByPath(AutomationRootFolder_Abs, IndirectlyUsedAssets);
-	TestEqual("[GetIndirectAssetsByPath] Indirect assets must ", IndirectlyUsedAssets.Num(), 11);
+	TestTrue("[HasIndirectlyUsedAssets] must ", ProjectCleanerDataManagerV2::HasIndirectlyUsedAssets(SourceFileContent));
+	TestTrue("[HasIndirectlyUsedAssets] must ", ProjectCleanerDataManagerV2::HasIndirectlyUsedAssets(ConfigFileContent));
+	TestTrue("[HasIndirectlyUsedAssets] must ", ProjectCleanerDataManagerV2::HasIndirectlyUsedAssets(PluginSourceFileContent));
+	TestTrue("[HasIndirectlyUsedAssets] must ", ProjectCleanerDataManagerV2::HasIndirectlyUsedAssets(PluginConfigFileContent));
+	TestFalse("[HasIndirectlyUsedAssets] must ", ProjectCleanerDataManagerV2::HasIndirectlyUsedAssets(TEXT("")));
+	TestFalse("[HasIndirectlyUsedAssets] must ", ProjectCleanerDataManagerV2::HasIndirectlyUsedAssets(TEXT("asdfqwer")));
 	
-	Cleanup();
 
 	// ======================
 	// GetEmptyFolders Tests

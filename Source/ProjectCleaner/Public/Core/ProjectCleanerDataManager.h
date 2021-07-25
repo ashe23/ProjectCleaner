@@ -9,6 +9,7 @@ struct FAssetData;
 
 class ProjectCleanerDataManagerV2
 {
+	friend class FProjectCleanerDataManagerTest;
 public:
 	
 	/**
@@ -36,8 +37,13 @@ public:
 	 * @brief Returns all asset package names that used in source code and config files, under Source/, Config/ or Plugins/ Directories
 	 * @param InPath - Absolute path. Example "C:/dev/projects/project_name/content/"
 	 * @param IndirectlyUsedAssets - Indirect assets container
+	 * @param AllAssets - All assets in Project
 	 */
-	static void GetIndirectAssetsByPath(const FString& InPath, TMap<FName, FIndirectAsset>& IndirectlyUsedAssets);
+	static void GetIndirectAssetsByPath(
+		const FString& InPath,
+		TMap<FName, FIndirectAsset>& IndirectlyUsedAssets,
+		const TArray<FAssetData>& AllAssets
+	);
 
 	/**
 	 * @brief Returns all empty folders in given path
@@ -53,6 +59,8 @@ public:
 	 */
 	static void GetPrimaryAssetClasses(TSet<FName>& PrimaryAssetClasses);
 
+	static void GetLinkedAssets(const FName& PackageName, TSet<FName>& LinkedAssets);
+
 	/**
 	 * @brief Checks if given package is under exclude directories or not
 	 * @param PackagePath - Asset package path ("/Game/Folder/") 
@@ -61,7 +69,21 @@ public:
 	 */
 	static bool ExcludedByPath(const FName& PackagePath, const UExcludeOptions* ExcludeOptions);
 
+	/**
+	 * @brief Check if given asset excluded by class
+	 * @param AssetData - Given asset data
+	 * @param ExcludeOptions - Exclude options ptr
+	 * @return bool
+	 */
 	static bool ExcludedByClass(const FAssetData& AssetData, const UExcludeOptions* ExcludeOptions);
+
+	/**
+	* @brief Checks if given package has referencers outside given path
+	* @param PackageName
+	* @param InPath 
+	* @return bool
+	*/
+	static bool HasExternalReferencersInPath(const FName& PackageName, const FString& InPath);
 
 private:
 	/**
@@ -71,6 +93,14 @@ private:
 	 * @return bool
 	 */
 	static bool FindEmptyFolders(const FString& FolderPath, TSet<FName>& EmptyFolders);
+
+	/**
+	 * @brief Checks if given string contains indirectly used assets
+	 * @param FileContent - Given string to check, should be file content
+	 * @description - Checking is done via regular expression, by search all pattern that start with "/Game"
+	 * @return bool
+	 */
+	static bool HasIndirectlyUsedAssets(const FString& FileContent);
 };
 
 

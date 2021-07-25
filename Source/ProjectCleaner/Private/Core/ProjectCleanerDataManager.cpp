@@ -89,7 +89,11 @@ void ProjectCleanerDataManagerV2::GetInvalidFilesByPath(
 	FPlatformFileManager::Get().GetPlatformFile().IterateDirectoryRecursively(*InPath, Visitor);
 }
 
-void ProjectCleanerDataManagerV2::GetIndirectAssetsByPath(const FString& InPath, TMap<FName, FIndirectAsset>& IndirectlyUsedAssets)
+void ProjectCleanerDataManagerV2::GetIndirectAssetsByPath(
+	const FString& InPath,
+	TMap<FName, FIndirectAsset>& IndirectlyUsedAssets,
+	const TArray<FAssetData>& AllAssets
+)
 {
 	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
 	if (!PlatformFile.DirectoryExists(*InPath)) return;
@@ -153,27 +157,37 @@ void ProjectCleanerDataManagerV2::GetIndirectAssetsByPath(const FString& InPath,
 	
 		FString FileContent;
 		FFileHelper::LoadFileToString(FileContent, *File);
-	
-		// search any sub string that has asset package path in it
+		
+		if (!HasIndirectlyUsedAssets(FileContent)) continue;
+
 		static FRegexPattern Pattern(TEXT(R"(\/Game(.*)\b)"));
 		FRegexMatcher Matcher(Pattern, FileContent);
 		while (Matcher.FindNext())
 		{
-			const FName FoundedAssetPackageName =  FName{Matcher.GetCaptureGroup(0)};
-			if (!FoundedAssetPackageName.IsValid()) continue;
+			const FName FoundedAssetObjectPath =  FName{Matcher.GetCaptureGroup(0)};
+			if (!FoundedAssetObjectPath.IsValid()) continue;
 
+			const FAssetData* AssetData = AllAssets.FindByPredicate([&] (const FAssetData& Elem)
+			{
+				return
+					Elem.ObjectPath.IsEqual(FoundedAssetObjectPath) ||
+					Elem.PackageName.IsEqual(FoundedAssetObjectPath);
+			});
+
+			if (!AssetData) continue;
+			
 			// if founded asset is ok, we loading file by lines to determine on what line its used
 			TArray<FString> Lines;
 			FFileHelper::LoadFileToStringArray(Lines, *File);
 			for (int32 i = 0; i < Lines.Num(); ++i)
 			{
 				if (!Lines.IsValidIndex(i)) continue;
-				if (!Lines[i].Contains(FoundedAssetPackageName.ToString())) continue;
+				if (!Lines[i].Contains(FoundedAssetObjectPath.ToString())) continue;
 			
 				FIndirectAsset IndirectAsset;
 				IndirectAsset.File = FPaths::ConvertRelativePathToFull(File);
 				IndirectAsset.Line = i + 1;
-				IndirectlyUsedAssets.Add(FoundedAssetPackageName, IndirectAsset);
+				IndirectlyUsedAssets.Add(AssetData->PackageName, IndirectAsset);
 			}
 		}
 	}
@@ -247,6 +261,62 @@ void ProjectCleanerDataManagerV2::GetPrimaryAssetClasses(TSet<FName>& PrimaryAss
 	PrimaryAssetClasses.Shrink();
 }
 
+void ProjectCleanerDataManagerV2::GetLinkedAssets(const FName& PackageName, TSet<FName>& LinkedAssets)
+{
+	const auto& AssetRegistry = FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
+
+	LinkedAssets.Empty();
+	
+	TArray<FName> Stack;
+	Stack.Add(PackageName);
+	AssetRegistry.Get().GetReferencers(PackageName, Stack);
+	AssetRegistry.Get().GetDependencies(PackageName, Stack);
+	
+	TArray<FAssetIdentifier> AssetDependencies;
+	TArray<FAssetIdentifier> AssetReferencers;
+	
+	while (Stack.Num() > 0)
+	{
+		const FName CurrentPackageName = Stack.Pop(false);
+
+		AssetDependencies.Reset();
+		AssetReferencers.Reset();
+		AssetRegistry.Get().GetDependencies(FAssetIdentifier(CurrentPackageName), AssetDependencies);
+		AssetRegistry.Get().GetReferencers(FAssetIdentifier(CurrentPackageName), AssetReferencers);
+
+		AssetDependencies.RemoveAllSwap([&](const FAssetIdentifier& Elem)
+		{
+			return !Elem.PackageName.ToString().StartsWith(TEXT("/Game"));
+		}, false);
+		AssetReferencers.RemoveAllSwap([&](const FAssetIdentifier& Elem)
+		{
+			return !Elem.PackageName.ToString().StartsWith(TEXT("/Game"));
+		}, false);
+
+		AssetDependencies.Shrink();
+		AssetReferencers.Shrink();
+		
+		for (const auto Dep : AssetDependencies)
+		{
+			bool bIsAlreadyInSet = false;
+			LinkedAssets.Add(Dep.PackageName, &bIsAlreadyInSet);
+			if (!bIsAlreadyInSet && Dep.IsValid())
+			{
+				Stack.Add(Dep.PackageName);
+			}
+		}
+		for (const auto Ref : AssetReferencers)
+		{
+			bool bIsAlreadyInSet = false;
+			LinkedAssets.Add(Ref.PackageName, &bIsAlreadyInSet);
+			if (!bIsAlreadyInSet && Ref.IsValid())
+			{
+				Stack.Add(Ref.PackageName);
+			}
+		}
+	}
+}
+
 bool ProjectCleanerDataManagerV2::ExcludedByPath(const FName& PackagePath, const UExcludeOptions* ExcludeOptions)
 {
 	if (!ExcludeOptions) return false;
@@ -277,7 +347,7 @@ bool ProjectCleanerDataManagerV2::ExcludedByClass(const FAssetData& AssetData, c
 			if (!ElemClass) return false;
 			return
 				BlueprintAsset->ParentClass->GetFName().IsEqual(ElemClass->GetFName()) ||
-				BlueprintAsset->ParentClass->GetFName().IsEqual(ElemClass->GetFName()) ||
+				BlueprintAsset->GeneratedClass->GetFName().IsEqual(ElemClass->GetFName()) ||
 				ElemClass->GetFName().IsEqual(UBlueprint::StaticClass()->GetFName());
 		});
 	}
@@ -286,6 +356,18 @@ bool ProjectCleanerDataManagerV2::ExcludedByClass(const FAssetData& AssetData, c
 	{
 		if (!ElemClass) return false;
 		return AssetData.AssetClass.IsEqual(ElemClass->GetFName());
+	});
+}
+
+bool ProjectCleanerDataManagerV2::HasExternalReferencersInPath(const FName& PackageName, const FString& InPath)
+{
+	TArray<FName> Refs;
+	const auto& AssetRegistry = FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
+	AssetRegistry.Get().GetReferencers(PackageName, Refs);
+	
+	return Refs.ContainsByPredicate([&] (const FName& Elem)
+	{
+		return !Elem.ToString().StartsWith(InPath);
 	});
 }
 
@@ -323,6 +405,19 @@ bool ProjectCleanerDataManagerV2::FindEmptyFolders(const FString& FolderPath, TS
 	return false;
 }
 
+bool ProjectCleanerDataManagerV2::HasIndirectlyUsedAssets(const FString& FileContent)
+{
+	if (FileContent.IsEmpty()) return false;
+	
+	// search any sub string that has asset package path in it
+	static FRegexPattern Pattern(TEXT(R"(\/Game(.*)\b)"));
+	FRegexMatcher Matcher(Pattern, FileContent);
+	return Matcher.FindNext();
+}
+
+
+
+// Refactor end
 ProjectCleanerDataManager::ProjectCleanerDataManager() :
 	TotalProjectSize(0),
 	TotalUnusedAssetsSize(0),

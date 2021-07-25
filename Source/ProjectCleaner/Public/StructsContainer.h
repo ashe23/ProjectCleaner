@@ -111,6 +111,11 @@ struct FIndirectAsset
 	FIndirectAsset(): File(FString{}), Line(0) {}
 };
 
+struct FLinkedAsset
+{
+	TSet<FName> PackageNames;
+};
+
 struct FProjectCleanerData
 {
 	// UI data

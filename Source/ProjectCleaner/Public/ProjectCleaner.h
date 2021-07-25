@@ -2,12 +2,14 @@
 
 #pragma once
 
-#include "Core/ProjectCleanerDataManager.h"
+#include "Core/ProjectCleanerManager.h"
 // Engine Headers
 #include "Modules/ModuleInterface.h"
 #include "CoreMinimal.h"
 
 DECLARE_LOG_CATEGORY_EXTERN(LogProjectCleaner, Log, All);
+
+class ProjectCleanerManager;
 
 class FProjectCleanerModule : public IModuleInterface
 {
@@ -27,5 +29,6 @@ private:
 	TWeakPtr<class SProjectCleanerMainUI> CleanerMainUI;
 
 	/* CleanerManager */
-	ProjectCleanerDataManager DataManager;
+	ProjectCleanerManager CleanerManager;
+	// ProjectCleanerDataManager DataManager;
 };

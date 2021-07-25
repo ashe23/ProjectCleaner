@@ -1,6 +1,7 @@
 ﻿// Copyright 2021. Ashot Barkhudaryan. All Rights Reserved.
 
 #include "Core/ProjectCleanerManager.h"
+#include "Core/ProjectCleanerDataManager.h"
 #include "Core/ProjectCleanerUtility.h"
 #include "ProjectCleaner.h"
 #include "StructsContainer.h"
@@ -35,52 +36,112 @@ ProjectCleanerManager::ProjectCleanerManager()
 
 void ProjectCleanerManager::Update()
 {
-	// Clean();
+	Clean();
 
 	ProjectCleanerDataManagerV2::GetAllAssetsByPath(TEXT("/Game"),AllAssets);
 	ProjectCleanerDataManagerV2::GetInvalidFilesByPath(FPaths::ProjectContentDir(), AllAssets, CorruptedAssets, NonEngineFiles);
-	ProjectCleanerDataManagerV2::GetIndirectAssetsByPath(FPaths::ProjectDir(), IndirectAssets);
+	ProjectCleanerDataManagerV2::GetIndirectAssetsByPath(FPaths::ProjectDir(), IndirectAssets, AllAssets);
 	ProjectCleanerDataManagerV2::GetEmptyFolders(FPaths::ProjectContentDir(), EmptyFolders, CleanerConfigs->bScanDeveloperContents);
 	ProjectCleanerDataManagerV2::GetPrimaryAssetClasses(PrimaryAssetClasses);
 
+	// now getting all unused assets in project
+	TSet<FName> AllAssetsUsedByPrimaryAssets;
+	AllAssetsUsedByPrimaryAssets.Reserve(AllAssets.Num());
+
 	{
-		TSet<FName> FilteredAssets;
-		FilteredAssets.Reserve(AllAssets.Num());
+		FARFilter Filter;
+		Filter.ClassNames.Append(PrimaryAssetClasses.Array());
+		Filter.PackagePaths.Add(TEXT("/Game"));
+		Filter.bRecursivePaths = true;
+		Filter.bRecursiveClasses = true;
 
-		for (const auto& IndirectAsset : IndirectAssets)
+		TArray<FName> PackageNamesToProcess;
 		{
-			const bool IsInAssetRegistry = AllAssets.ContainsByPredicate([&] (const FAssetData& Elem)
+			TArray<FAssetData> FoundAssets;
+			AssetRegistry->Get().GetAssets(Filter, FoundAssets);
+			for (const FAssetData& AssetData : FoundAssets)
 			{
-				return Elem.PackageName.IsEqual(IndirectAsset.Key);
-			});
-
-			if (!IsInAssetRegistry) continue;
-			FilteredAssets.Add(IndirectAsset.Key);
-		}
-
-		for (const auto& UserExcludedAsset : UserExcludedAssets)
-		{
-			FilteredAssets.Add(UserExcludedAsset.PackageName);
-		}
-
-		// add excluded assets
-		for (const auto& Asset : AllAssets)
-		{
-			// todo:ashe23 assets with external refs
-			if (
-				ProjectCleanerDataManagerV2::ExcludedByPath(Asset.PackagePath, ExcludeOptions) ||
-				ProjectCleanerDataManagerV2::ExcludedByClass(Asset, ExcludeOptions)
-			)
-			{
-				FilteredAssets.Add(Asset.PackageName);
+				PackageNamesToProcess.Add(AssetData.PackageName);
+				AllAssetsUsedByPrimaryAssets.Add(AssetData.PackageName);
 			}
 		}
 
-		// for this filtered assets we must find linked assets
+		TArray<FAssetIdentifier> AssetDependencies;
+		while (PackageNamesToProcess.Num() > 0)
+		{
+			const FName PackageName = PackageNamesToProcess.Pop(false);
+			AssetDependencies.Reset();
+			AssetRegistry->Get().GetDependencies(FAssetIdentifier(PackageName), AssetDependencies);
+			for (const FAssetIdentifier& Dependency : AssetDependencies)
+			{
+				bool bIsAlreadyInSet = false;
+				if (!Dependency.PackageName.ToString().StartsWith(TEXT("/Game"))) continue;
 		
-		
-		
+				AllAssetsUsedByPrimaryAssets.Add(Dependency.PackageName, &bIsAlreadyInSet);
+				if (!bIsAlreadyInSet && Dependency.IsValid())
+				{
+					PackageNamesToProcess.Add(Dependency.PackageName);
+				}
+			}
+		}
 	}
+
+	// filling all assets that must be filtered
+	TSet<FName> FilteredAssets;
+	FilteredAssets.Reserve(AllAssets.Num());
+
+	for (const auto& IndirectAsset : IndirectAssets)
+	{
+		FilteredAssets.Add(IndirectAsset.Key);
+	}
+
+	for (const auto& UserExcludedAsset : UserExcludedAssets)
+	{
+		FilteredAssets.Add(UserExcludedAsset.PackageName);
+	}
+
+	for (const auto& Asset : AllAssets)
+	{
+		if (ProjectCleanerDataManagerV2::HasExternalReferencersInPath(Asset.PackageName, TEXT("/Game")))
+		{
+			AssetsWithExternalRefs.AddUnique(Asset);
+			FilteredAssets.Add(Asset.PackageName);
+		}
+		
+		if (
+			ProjectCleanerDataManagerV2::ExcludedByPath(Asset.PackagePath, ExcludeOptions) ||
+			ProjectCleanerDataManagerV2::ExcludedByClass(Asset, ExcludeOptions)
+		)
+		{
+			FilteredAssets.Add(Asset.PackageName);
+		}
+	}
+
+	// for all filtered assets we must find all linked assets
+	AssetsRelationalMap.Reserve(FilteredAssets.Num());
+	for (const auto& FilteredAsset : FilteredAssets)
+	{
+		FLinkedAsset LinkedAsset;
+		ProjectCleanerDataManagerV2::GetLinkedAssets(FilteredAsset, LinkedAsset.PackageNames);
+		AssetsRelationalMap.Add(FilteredAsset, LinkedAsset);
+	}
+
+	for (const auto& Asset : AllAssets)
+	{
+		if (AllAssetsUsedByPrimaryAssets.Contains(Asset.PackageName)) continue;
+		if (AssetsRelationalMap.Find(Asset.PackageName)) continue;
+
+		for (const auto& LinkedAsset : AssetsRelationalMap)
+		{
+			if (LinkedAsset.Value.PackageNames.Contains(Asset.PackageName)) continue;
+			UnusedAssets.AddUnique(Asset);
+		}
+		
+		UnusedAssets.AddUnique(Asset);
+	}
+
+	TotalProjectSize = ProjectCleanerUtility::GetTotalSize(AllAssets);
+	TotalUnusedAssetsSize = ProjectCleanerUtility::GetTotalSize(UnusedAssets);
 }
 
 const TArray<FAssetData>& ProjectCleanerManager::GetAllAssets() const
@@ -115,6 +176,7 @@ const TSet<FName>& ProjectCleanerManager::GetPrimaryAssetClasses() const
 
 void ProjectCleanerManager::Clean()
 {
+	AssetsWithExternalRefs.Empty();
 	// AllAssets.Empty();
 	// CorruptedAssets.Empty();
 	// NonEngineFiles.Empty();
