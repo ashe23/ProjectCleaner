@@ -85,6 +85,95 @@ void ProjectCleanerDataManagerV2::GetInvalidFilesByPath(
 	FPlatformFileManager::Get().GetPlatformFile().IterateDirectoryRecursively(*InPath, Visitor);
 }
 
+void ProjectCleanerDataManagerV2::GetIndirectAssetsByPath(const FString& InPath, TMap<FName, FIndirectAsset>& IndirectlyUsedAssets)
+{
+	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
+
+	if (!PlatformFile.DirectoryExists(*InPath)) return;
+
+	const FString SourceDir = InPath + TEXT("Source/");
+	const FString ConfigDir = InPath + TEXT("Config/");
+	const FString PluginsDir = InPath + TEXT("Plugins/");
+	
+	TSet<FString> Files;
+	Files.Reserve(200); // reserving some space
+	
+	// 1) finding all source files in main project "Source" directory (<yourproject>/Source/*)
+	TArray<FString> FilesToScan;
+	PlatformFile.FindFilesRecursively(FilesToScan, *SourceDir, TEXT(".cs"));
+	PlatformFile.FindFilesRecursively(FilesToScan, *SourceDir, TEXT(".cpp"));
+	PlatformFile.FindFilesRecursively(FilesToScan, *SourceDir, TEXT(".h"));
+	PlatformFile.FindFilesRecursively(FilesToScan, *ConfigDir, TEXT(".ini"));
+	Files.Append(FilesToScan);
+	
+	// 2) we should find all source files in plugins folder (<yourproject>/Plugins/*)
+	TArray<FString> ProjectPluginsFiles;
+	// finding all installed plugins in "Plugins" directory
+	struct DirectoryVisitor : public IPlatformFile::FDirectoryVisitor
+	{
+		virtual bool Visit(const TCHAR* FilenameOrDirectory, bool bIsDirectory) override
+		{
+			if (bIsDirectory)
+			{
+				InstalledPlugins.Add(FilenameOrDirectory);
+			}
+	
+			return true;
+		}
+	
+		TArray<FString> InstalledPlugins;
+	};
+	
+	DirectoryVisitor Visitor;
+	PlatformFile.IterateDirectory(*PluginsDir, Visitor);
+	
+	// 3) for every installed plugin we scanning only "Source" and "Config" folders
+	for (const auto& Dir : Visitor.InstalledPlugins)
+	{
+		const FString PluginSourcePathDir = Dir + "/Source";
+		const FString PluginConfigPathDir = Dir + "/Config";
+	
+		PlatformFile.FindFilesRecursively(ProjectPluginsFiles, *PluginSourcePathDir, TEXT(".cs"));
+		PlatformFile.FindFilesRecursively(ProjectPluginsFiles, *PluginSourcePathDir, TEXT(".cpp"));
+		PlatformFile.FindFilesRecursively(ProjectPluginsFiles, *PluginSourcePathDir, TEXT(".h"));
+		PlatformFile.FindFilesRecursively(ProjectPluginsFiles, *PluginConfigPathDir, TEXT(".ini"));
+	}
+	
+	Files.Append(ProjectPluginsFiles);
+	Files.Shrink();
+
+	for (const auto& File : Files)
+	{
+		if (!PlatformFile.FileExists(*File)) continue;
+	
+		FString FileContent;
+		FFileHelper::LoadFileToString(FileContent, *File);
+	
+		// search any sub string that has asset package path in it
+		static FRegexPattern Pattern(TEXT(R"(\/Game(.*)\b)"));
+		FRegexMatcher Matcher(Pattern, FileContent);
+		while (Matcher.FindNext())
+		{
+			const FName FoundedAssetPackageName =  FName{Matcher.GetCaptureGroup(0)};
+			if (!FoundedAssetPackageName.IsValid()) continue;
+
+			// if founded asset is ok, we loading file by lines to determine on what line its used
+			TArray<FString> Lines;
+			FFileHelper::LoadFileToStringArray(Lines, *File);
+			for (int32 i = 0; i < Lines.Num(); ++i)
+			{
+				if (!Lines.IsValidIndex(i)) continue;
+				if (!Lines[i].Contains(FoundedAssetPackageName.ToString())) continue;
+			
+				FIndirectAsset IndirectAsset;
+				IndirectAsset.File = FPaths::ConvertRelativePathToFull(File);
+				IndirectAsset.Line = i + 1;
+				IndirectlyUsedAssets.Add(FoundedAssetPackageName, IndirectAsset);
+			}
+		}
+	}
+}
+
 ProjectCleanerDataManager::ProjectCleanerDataManager() :
 	TotalProjectSize(0),
 	TotalUnusedAssetsSize(0),

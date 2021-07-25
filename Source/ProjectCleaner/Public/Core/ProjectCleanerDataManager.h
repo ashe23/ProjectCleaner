@@ -28,7 +28,15 @@ public:
 		const FString& InPath,
 		const TArray<FAssetData>& AllAssets,
 		TSet<FName>& CorruptedAssets,
-		TSet<FName>& NonEngineFiles);
+		TSet<FName>& NonEngineFiles
+	);
+
+	/**
+	 * @brief Returns all asset package names that used in source code and config files, under Source/, Config/ or Plugins/ Directories
+	 * @param InPath - Absolute path. Example "C:/dev/projects/project_name/content/"
+	 * @param IndirectlyUsedAssets - Indirect assets container
+	 */
+	static void GetIndirectAssetsByPath(const FString& InPath, TMap<FName, FIndirectAsset>& IndirectlyUsedAssets);
 };
 
 

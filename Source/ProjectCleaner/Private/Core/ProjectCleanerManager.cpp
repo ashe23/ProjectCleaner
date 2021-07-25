@@ -3,6 +3,7 @@
 #include "Core/ProjectCleanerManager.h"
 #include "Core/ProjectCleanerUtility.h"
 #include "ProjectCleaner.h"
+#include "StructsContainer.h"
 #include "UI/ProjectCleanerNotificationManager.h"
 // Engine Headers
 #include "AssetRegistryModule.h"
@@ -16,7 +17,6 @@
 #include "Framework/Notifications/NotificationManager.h"
 #include "Engine/AssetManagerSettings.h"
 #include "Engine/AssetManager.h"
-#include "Internationalization/Regex.h"
 
 #define LOCTEXT_NAMESPACE "FProjectCleanerModule"
 
@@ -31,6 +31,7 @@ void ProjectCleanerManager::Update()
 
 	ProjectCleanerDataManagerV2::GetAllAssetsByPath(TEXT("/Game"),AllAssets);
 	ProjectCleanerDataManagerV2::GetInvalidFilesByPath(FPaths::ProjectContentDir(), AllAssets, CorruptedAssets, NonEngineFiles);
+	ProjectCleanerDataManagerV2::GetIndirectAssetsByPath(FPaths::ProjectDir(), IndirectAssets);
 }
 
 const TArray<FAssetData>& ProjectCleanerManager::GetAllAssets() const
@@ -48,11 +49,17 @@ const TSet<FName>& ProjectCleanerManager::GetNonEngineFiles() const
 	return NonEngineFiles;
 }
 
+const TMap<FName, FIndirectAsset>& ProjectCleanerManager::GetIndirectAssets() const
+{
+	return IndirectAssets;
+}
+
 void ProjectCleanerManager::Clean()
 {
 	AllAssets.Empty();
 	CorruptedAssets.Empty();
 	NonEngineFiles.Empty();
+	IndirectAssets.Empty();
 }
 
 #undef LOCTEXT_NAMESPACE

@@ -4,9 +4,10 @@
 #include "ObjectTools.h"
 #include "Misc/AutomationTest.h"
 #include "Core/ProjectCleanerDataManager.h"
+#include "Core/ProjectCleanerUtility.h"
+#include "StructsContainer.h"
 #include "GenericPlatform/GenericPlatformFile.h"
 #include "AssetRegistry/AssetRegistryModule.h"
-#include "Core/ProjectCleanerUtility.h"
 #include "Misc/Paths.h"
 #include "Misc/FileHelper.h"
 #include "Factories/MaterialFactoryNew.h"
@@ -20,6 +21,7 @@ namespace ProjectCleanerTestHelper
 {
 	static const FString AutomationRootFolder_Abs = FPaths::ProjectContentDir() + TEXT("AutomationTests/");
 	static const FName AutomationRootFolder_Rel = TEXT("/Game/AutomationTests");
+	
 	void Init()
 	{
 		// creating separate automation folder for testing
@@ -155,6 +157,84 @@ bool FProjectCleanerDataManagerTest::RunTest(const FString& Parameters)
 
 	TestEqual("[GetInvalidFilesByPath] Corrupted assets must ", CorruptedAssets.Num(), 4);
 	TestEqual("[GetInvalidFilesByPath] NonEngineFiles must ", NonEngineFiles.Num(), 7);
+	
+	ProjectCleanerTestHelper::Cleanup();
+
+	// =============================
+	// GetIndirectAssetsByPath Tests
+	// =============================
+
+	ProjectCleanerTestHelper::Init();
+
+	const FString SourceDir = ProjectCleanerTestHelper::AutomationRootFolder_Abs + TEXT("Source/");
+	const FString ConfigDir = ProjectCleanerTestHelper::AutomationRootFolder_Abs + TEXT("Config/");
+	const FString PluginsDir = ProjectCleanerTestHelper::AutomationRootFolder_Abs + TEXT("Plugins/");
+
+	TMap<FName, FIndirectAsset> IndirectlyUsedAssets;
+	ProjectCleanerDataManagerV2::GetIndirectAssetsByPath(ProjectCleanerTestHelper::AutomationRootFolder_Abs, IndirectlyUsedAssets);
+	TestEqual("[GetIndirectAssetsByPath] Indirect assets must ", IndirectlyUsedAssets.Num(), 0);
+
+	
+	// Creating Source,Config and Plugins Directory and filling some data there
+	FPlatformFileManager::Get().GetPlatformFile().CreateDirectory(*SourceDir);
+	FPlatformFileManager::Get().GetPlatformFile().CreateDirectory(*ConfigDir);
+	FPlatformFileManager::Get().GetPlatformFile().CreateDirectory(*PluginsDir);
+	FPlatformFileManager::Get().GetPlatformFile().CreateDirectoryTree(*(PluginsDir + TEXT("/SomePlugin/Config/")));
+	FPlatformFileManager::Get().GetPlatformFile().CreateDirectoryTree(*(PluginsDir + TEXT("/SomePlugin/Source/")));
+
+	const FString ConfigFileContent = TEXT(R"(
+[/Script/EngineSettings.GameMapsSettings]
+GameDefaultMap=/Game/Maps/NewMap.NewMap
+EditorStartupMap=/Game/Maps/NewMap.NewMap
+
+[/Script/HardwareTargeting.HardwareTargetingSettings]
+TargetedHardwareClass=Desktop
+AppliedTargetedHardwareClass=Desktop
+DefaultGraphicsPerformance=Maximum
+AppliedDefaultGraphicsPerformance=Maximum
+
+[/Script/Engine.Engine]
++ActiveGameNameRedirects=(OldGameName="TP_Blank",NewGameName="/Script/PluginDev426")
++ActiveGameNameRedirects=(OldGameName="/Script/TP_Blank",NewGameName="/Script/PluginDev426")
++ActiveClassRedirects=(OldClassName="TP_BlankGameModeBase",NewClassName="PluginDev426GameModeBase")"
+);
+
+	const FString SourceFileContent = TEXT(R"(
+		static ConstructorHelpers::FObjectFinder<UMaterial> Material(TEXT("Material'/Game/NewMaterial.NewMaterial'"));
+		static ConstructorHelpers::FObjectFinder<UMaterial> Material(TEXT("/Game/NewMaterial1.NewMaterial1"));
+		static ConstructorHelpers::FObjectFinder<UStaticMesh> Material(TEXT("StaticMesh'/Game/SM_Monkey.SM_Monkey'"));
+		static ConstructorHelpers::FObjectFinder<UStaticMesh> Material(TEXT("/Game/SM_Monkey1.SM_Monkey1"));
+
+
+		// Material'/Game/NewFolder/TestMat.TestMat'
+	)");
+	
+	FFileHelper::SaveStringToFile(ConfigFileContent,*(ConfigDir + TEXT("DefaultEngine.ini")));
+	FFileHelper::SaveStringToFile(SourceFileContent,*(SourceDir + TEXT("Actor.cpp")));
+
+	// Create Plugins Dir hierarchy
+	const FString PluginSourceFileContent = TEXT(R"(
+		static ConstructorHelpers::FObjectFinder<UMaterial> Material(TEXT("Material'/Game/NewMaterial23.NewMaterial23'"));
+		static ConstructorHelpers::FObjectFinder<UStaticMesh> Material(TEXT("StaticMesh'/Game/SM_Monkey24.SM_Monkey24'"));
+		// Material'/Game/NewFolder/TestMat25.TestMat25'
+	)");
+	const FString PluginConfigFileContent = TEXT(R"(
+[FilterPlugin]
+; This section lists additional files which will be packaged along with your plugin. Paths should be listed relative to the root plugin directory, and
+; may include "...", "*", and "?" wildcards to match directories, files, and individual characters respectively.
+;
+; Examples:
+;    /README.txt
+;    /Extras/...
+;    /Binaries/ThirdParty/*.dll
+;    /Game/Blueprints/SomeBP.SomeBP
+/Game/Test/SomeAsset.SomeAsset
+)");
+	FFileHelper::SaveStringToFile(PluginConfigFileContent,*(PluginsDir +TEXT("/SomePlugin/Config/FilterPlugin.ini")));
+	FFileHelper::SaveStringToFile(PluginSourceFileContent,*(PluginsDir +TEXT("/SomePlugin/Source/PlayerController.cpp")));
+
+	ProjectCleanerDataManagerV2::GetIndirectAssetsByPath(ProjectCleanerTestHelper::AutomationRootFolder_Abs, IndirectlyUsedAssets);
+	TestEqual("[GetIndirectAssetsByPath] Indirect assets must ", IndirectlyUsedAssets.Num(), 11);
 	
 	ProjectCleanerTestHelper::Cleanup();
 	

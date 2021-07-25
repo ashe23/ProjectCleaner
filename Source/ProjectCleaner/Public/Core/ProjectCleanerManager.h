@@ -4,6 +4,8 @@
 
 #include "CoreMinimal.h"
 
+struct FIndirectAsset;
+
 class ProjectCleanerManager
 {
 public:
@@ -18,6 +20,7 @@ public:
 	const TArray<FAssetData>& GetAllAssets() const;
 	const TSet<FName>& GetCorruptedAssets() const;
 	const TSet<FName>& GetNonEngineFiles() const;
+	const TMap<FName, FIndirectAsset>& GetIndirectAssets() const;
 private:
 	
 	/**
@@ -41,6 +44,15 @@ private:
 	* @brief All non engine files (not .uasset or .umap files)
 	*/
 	TSet<FName> NonEngineFiles;
+
+	/**
+	 * @brief Indirectly used assets container
+	 *		Key - is Asset PackageName
+	 *		Value - FIndirectAsset - File path where its used
+	 *							   - Line number
+	 * 
+	 */
+	TMap<FName, struct FIndirectAsset> IndirectAssets;
 
 	class FAssetRegistryModule* AssetRegistry;
 };
