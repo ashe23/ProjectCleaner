@@ -401,6 +401,31 @@ AppliedDefaultGraphicsPerformance=Maximum
  
 	Cleanup();
 	
+	// ======================
+	// ExcludedByPath Tests
+	// ======================
+
+	UExcludeOptions* ExcludeOptions = GetMutableDefault<UExcludeOptions>();
+	FName PackagePath = TEXT("/Game/Blueprint");
+	
+	TestFalse(TEXT("[ExcludedByPath] must"),ProjectCleanerDataManagerV2::ExcludedByPath(PackagePath, ExcludeOptions));
+
+	ExcludeOptions->Paths.Add(FDirectoryPath{TEXT("/Game")});
+	TestTrue(TEXT("[ExcludedByPath] must"),ProjectCleanerDataManagerV2::ExcludedByPath(PackagePath, ExcludeOptions));
+	
+	ExcludeOptions->Paths.Add(FDirectoryPath{TEXT("/Game/Blueprint")});
+	TestTrue(TEXT("[ExcludedByPath] must"),ProjectCleanerDataManagerV2::ExcludedByPath(PackagePath, ExcludeOptions));
+
+	ExcludeOptions->Paths.Reset();
+	ExcludeOptions->Paths.Add(FDirectoryPath{TEXT("/Game/Blueprint")});
+	TestTrue(TEXT("[ExcludedByPath] must"),ProjectCleanerDataManagerV2::ExcludedByPath(TEXT("/Game/Blueprint/Controllers"), ExcludeOptions));
+	TestTrue(TEXT("[ExcludedByPath] must"),ProjectCleanerDataManagerV2::ExcludedByPath(TEXT("/Game/Blueprint/Controllers/SomeFolder"), ExcludeOptions));
+	TestTrue(TEXT("[ExcludedByPath] must"),ProjectCleanerDataManagerV2::ExcludedByPath(TEXT("/Game/Blueprint/OtherFolder"), ExcludeOptions));
+	TestTrue(TEXT("[ExcludedByPath] must"),ProjectCleanerDataManagerV2::ExcludedByPath(TEXT("/Game/Blueprint/OtherFolder/SomeOtherFolder"), ExcludeOptions));
+	TestTrue(TEXT("[ExcludedByPath] must"),ProjectCleanerDataManagerV2::ExcludedByPath(TEXT("/Game/Blueprint"), ExcludeOptions));
+	TestFalse(TEXT("[ExcludedByPath] must"),ProjectCleanerDataManagerV2::ExcludedByPath(TEXT("/Game"), ExcludeOptions));
+	
+	
 	return true;
 }
 #endif

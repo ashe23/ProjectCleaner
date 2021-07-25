@@ -47,6 +47,22 @@ public:
 	 */
 	static void GetEmptyFolders(const FString& InPath, TSet<FName>& EmptyFolders, const bool bScanDevelopersContent);
 
+	/**
+	 * @brief Returns all primary asset classes in project
+	 * @param PrimaryAssetClasses - Primary assets classes container
+	 */
+	static void GetPrimaryAssetClasses(TSet<FName>& PrimaryAssetClasses);
+
+	/**
+	 * @brief Checks if given package is under exclude directories or not
+	 * @param PackagePath - Asset package path ("/Game/Folder/") 
+	 * @param ExcludeOptions - Exclude options ptr 
+	 * @return bool
+	 */
+	static bool ExcludedByPath(const FName& PackagePath, const UExcludeOptions* ExcludeOptions);
+
+	static bool ExcludedByClass(const FAssetData& AssetData, const UExcludeOptions* ExcludeOptions);
+
 private:
 	/**
 	 * @brief Finds all empty folders in given path recursively

@@ -222,6 +222,73 @@ void ProjectCleanerDataManagerV2::GetEmptyFolders(const FString& InPath, TSet<FN
 	}
 }
 
+void ProjectCleanerDataManagerV2::GetPrimaryAssetClasses(TSet<FName>& PrimaryAssetClasses)
+{
+	const auto& AssetManager = UAssetManager::Get();
+	if (!AssetManager.IsValid()) return;
+
+	PrimaryAssetClasses.Reserve(10);
+	
+	const UAssetManagerSettings& Settings = AssetManager.GetSettings();
+	TArray<FPrimaryAssetId> Ids;
+	for (const auto& Type : Settings.PrimaryAssetTypesToScan)
+	{
+		AssetManager.Get().GetPrimaryAssetIdList(Type.PrimaryAssetType, Ids);
+		for(const auto& Id : Ids)
+		{
+			FAssetData Data;
+			AssetManager.Get().GetPrimaryAssetData(Id, Data);
+			if(!Data.IsValid()) continue;
+			PrimaryAssetClasses.Add(Data.AssetClass);
+		}
+		Ids.Reset();
+	}
+
+	PrimaryAssetClasses.Shrink();
+}
+
+bool ProjectCleanerDataManagerV2::ExcludedByPath(const FName& PackagePath, const UExcludeOptions* ExcludeOptions)
+{
+	if (!ExcludeOptions) return false;
+
+	return ExcludeOptions->Paths.ContainsByPredicate([&](const FDirectoryPath& DirectoryPath)
+	{
+		return PackagePath.ToString().StartsWith(DirectoryPath.Path);
+	});
+}
+
+bool ProjectCleanerDataManagerV2::ExcludedByClass(const FAssetData& AssetData, const UExcludeOptions* ExcludeOptions)
+{
+	if (!ExcludeOptions) return false;
+	
+	// checking if asset is blueprint
+	if (AssetData.AssetClass.IsEqual("Blueprint"))
+	{
+		const UBlueprint* BlueprintAsset = Cast<UBlueprint>(AssetData.GetAsset());
+		const bool IsBlueprint = (BlueprintAsset != nullptr);
+		
+		if (!IsBlueprint || !BlueprintAsset->GeneratedClass || !BlueprintAsset->ParentClass)
+		{
+			return false;
+		}
+		
+		return ExcludeOptions->Classes.ContainsByPredicate([&] (const UClass* ElemClass)
+		{
+			if (!ElemClass) return false;
+			return
+				BlueprintAsset->ParentClass->GetFName().IsEqual(ElemClass->GetFName()) ||
+				BlueprintAsset->ParentClass->GetFName().IsEqual(ElemClass->GetFName()) ||
+				ElemClass->GetFName().IsEqual(UBlueprint::StaticClass()->GetFName());
+		});
+	}
+	
+	return ExcludeOptions->Classes.ContainsByPredicate([&] (const UClass* ElemClass)
+	{
+		if (!ElemClass) return false;
+		return AssetData.AssetClass.IsEqual(ElemClass->GetFName());
+	});
+}
+
 bool ProjectCleanerDataManagerV2::FindEmptyFolders(const FString& FolderPath, TSet<FName>& EmptyFolders)
 {
 	bool IsSubFoldersEmpty = true;
