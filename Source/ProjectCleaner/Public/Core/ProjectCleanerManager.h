@@ -99,6 +99,9 @@ private:
 	 */
 	TArray<FAssetData> UnusedAssets;
 
+	/**
+	 * @brief Relational map of assets
+	 */
 	TMap<FName, struct FLinkedAsset> AssetsRelationalMap; 
 
 	int64 TotalProjectSize = 0;

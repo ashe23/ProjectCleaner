@@ -268,9 +268,16 @@ void ProjectCleanerDataManagerV2::GetLinkedAssets(const FName& PackageName, TSet
 	LinkedAssets.Empty();
 	
 	TArray<FName> Stack;
-	Stack.Add(PackageName);
 	AssetRegistry.Get().GetReferencers(PackageName, Stack);
 	AssetRegistry.Get().GetDependencies(PackageName, Stack);
+
+	// removing all assets that are not under "/Game" directory
+	Stack.RemoveAllSwap([&](const FName& Elem)
+	{
+		return !Elem.ToString().StartsWith(TEXT("/Game"));
+	}, false);
+	Stack.Shrink();
+
 	
 	TArray<FAssetIdentifier> AssetDependencies;
 	TArray<FAssetIdentifier> AssetReferencers;
@@ -292,7 +299,7 @@ void ProjectCleanerDataManagerV2::GetLinkedAssets(const FName& PackageName, TSet
 		{
 			return !Elem.PackageName.ToString().StartsWith(TEXT("/Game"));
 		}, false);
-
+		
 		AssetDependencies.Shrink();
 		AssetReferencers.Shrink();
 		

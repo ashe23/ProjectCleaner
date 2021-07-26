@@ -126,18 +126,25 @@ void ProjectCleanerManager::Update()
 		AssetsRelationalMap.Add(FilteredAsset, LinkedAsset);
 	}
 
+	// all assets that are not used by primary and not in filtered assets and their dependencies , goes as unused asset
 	for (const auto& Asset : AllAssets)
 	{
 		if (AllAssetsUsedByPrimaryAssets.Contains(Asset.PackageName)) continue;
-		if (AssetsRelationalMap.Find(Asset.PackageName)) continue;
-
+	
+		bool IsUsedAsset = false;
 		for (const auto& LinkedAsset : AssetsRelationalMap)
 		{
-			if (LinkedAsset.Value.PackageNames.Contains(Asset.PackageName)) continue;
+			if (LinkedAsset.Value.PackageNames.Contains(Asset.PackageName))
+			{
+				IsUsedAsset = true;
+				break;
+			}
+		}
+
+		if (!IsUsedAsset)
+		{
 			UnusedAssets.AddUnique(Asset);
 		}
-		
-		UnusedAssets.AddUnique(Asset);
 	}
 
 	TotalProjectSize = ProjectCleanerUtility::GetTotalSize(AllAssets);
