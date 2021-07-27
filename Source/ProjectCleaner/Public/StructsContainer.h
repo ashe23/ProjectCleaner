@@ -111,7 +111,7 @@ struct FIndirectAsset
 	FIndirectAsset(): File(FString{}), Line(0) {}
 };
 
-struct FLinkedAsset
+struct FLinkedAssets
 {
 	TSet<FName> PackageNames;
 };

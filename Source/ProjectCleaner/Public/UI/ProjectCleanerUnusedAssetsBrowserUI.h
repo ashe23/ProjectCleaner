@@ -4,7 +4,6 @@
 
 #include "CoreMinimal.h"
 #include "Widgets/SCompoundWidget.h"
-#include "StructsContainer.h"
 #include "IContentBrowserSingleton.h"
 
 DECLARE_DELEGATE(FOnUserDeletedAssets);
@@ -13,18 +12,18 @@ DECLARE_DELEGATE_OneParam(FOnUserExcludedAssetsOfType, const TArray<FAssetData>&
 
 
 class UCleanerConfigs;
-class ProjectCleanerDataManager;
+class ProjectCleanerManager;
 
 class SProjectCleanerUnusedAssetsBrowserUI : public SCompoundWidget
 {
 public:
 	
 	SLATE_BEGIN_ARGS(SProjectCleanerUnusedAssetsBrowserUI) {}
-		SLATE_ARGUMENT(ProjectCleanerDataManager*, DataManager)		
+		SLATE_ARGUMENT(ProjectCleanerManager*, CleanerManager)		
 	SLATE_END_ARGS()
 	
 	void Construct(const FArguments& InArgs);
-	void SetDataManager(ProjectCleanerDataManager* DataManagerPtr);
+	void SetCleanerManager(ProjectCleanerManager* CleanerManagerPtr);
 
 	/* Delegates */
 	FOnUserDeletedAssets OnUserDeletedAssets;
@@ -36,7 +35,7 @@ private:
 	void RegisterCommands();
 	void UpdateUI();
 	void DeleteAsset() const;
-	void ExcludeAsset() const;
+	void ExcludeAsset();
 	void ExcludeAssetsOfType() const;
 	
 	/* AssetPicker */
@@ -57,5 +56,5 @@ private:
 
 	/* ContentBrowserModule */
 	class FContentBrowserModule* ContentBrowserModule = nullptr;
-	class ProjectCleanerDataManager* DataManager = nullptr;
+	class ProjectCleanerManager* CleanerManager = nullptr;
 };

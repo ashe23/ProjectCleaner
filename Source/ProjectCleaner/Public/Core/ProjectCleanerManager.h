@@ -5,6 +5,9 @@
 #include "CoreMinimal.h"
 
 struct FIndirectAsset;
+struct FLinkedAssets;
+class UCleanerConfigs;
+class UExcludeOptions;
 
 class ProjectCleanerManager
 {
@@ -15,6 +18,7 @@ public:
 	 * @brief Updates data containers
 	 */
 	void Update();
+	void AddToUserExcludedAssets(const TArray<FAssetData>& NewUserExcludedAssets);
 
 	/** Data Container getters **/
 	const TArray<FAssetData>& GetAllAssets() const;
@@ -23,12 +27,20 @@ public:
 	const TMap<FName, FIndirectAsset>& GetIndirectAssets() const;
 	const TSet<FName>& GetEmptyFolders() const;
 	const TSet<FName>& GetPrimaryAssetClasses() const;
+	const TArray<FAssetData>& GetUnusedAssets() const;
+	const TMap<FName, FLinkedAssets>& GetExcludedAssets() const;
+	UCleanerConfigs* GetCleanerConfigs() const;
+	UExcludeOptions* GetExcludeOptions() const;
+	int64 GetTotalProjectSize() const;
+	int64 GetTotalUnusedAssetsSize() const;
 private:
 	
 	/**
 	 * @brief Empties all data containers
 	 */
 	void Clean();
+
+	void FindUnusedAssets();
 
 	/** Data Containers **/
 	
@@ -72,22 +84,16 @@ private:
 	TArray<FAssetData> UserExcludedAssets;
 
 	/**
-	 * @brief All excluded assets (included by path, by class and user excluded)
-	 */
-	TArray<FAssetData> ExcludedAssets;
-
-	/**
-	* @brief All linked assets of excluded assets (Dependencies and Referencers)
-	* @note This keeps assets that are not directly excluded, but connected one of excluded assets
+	* @brief Excluded assets and their linked assets map
 	* @example
 	*		Lets say we have 3 assets BP, Static_Mesh and Material. BP contains Static_Mesh and Static Mesh uses Material
 	*		Hierarchy BP --> Static_Mesh --> Material
 	*		Now if excluded asset is StaticMesh, then linked assets are BP and Material
-	*		ExcludedAssets : StaticMesh
+	*		ExcludedAsset : StaticMesh
 	*		LinkedAssets : BP, Material
 	* @reason This preventing breaking links between assets
 	*/
-	TArray<FAssetData> LinkedAssets;
+	TMap<FName, FLinkedAssets> ExcludedAssets;
 
 	/**
 	 * @brief All assets that have external referencers (outside "/Game" folder)
@@ -99,13 +105,8 @@ private:
 	 */
 	TArray<FAssetData> UnusedAssets;
 
-	/**
-	 * @brief Relational map of assets
-	 */
-	TMap<FName, struct FLinkedAsset> AssetsRelationalMap; 
-
 	int64 TotalProjectSize = 0;
-	int64 TotalUnusedAssetsSize = 0;
+	int64 TotalUnusedAssetsSize = 0; // todo:ashe23 move this variables to Stats UI
 
 	class UCleanerConfigs* CleanerConfigs;
 	class UExcludeOptions* ExcludeOptions;

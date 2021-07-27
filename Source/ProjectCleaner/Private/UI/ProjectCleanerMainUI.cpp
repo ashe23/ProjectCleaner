@@ -30,15 +30,16 @@ static const FName ExcludedAssetsTab = FName{ TEXT("ExcludedAssetsTab") };
 
 void SProjectCleanerMainUI::Construct(const FArguments& InArgs)
 {
-	if (InArgs._DataManager)
+	if (InArgs._CleanerManager)
 	{
-		SetDataManager(InArgs._DataManager);
+		SetCleanerManager(InArgs._CleanerManager);
 	}
 	
 	InitTabs();
 
-	ensure(DataManager);
-	DataManager->Update();
+	ensure(CleanerManager);
+
+	CleanerManager->Update();
 
 	ensure(TabManager.IsValid());
 
@@ -79,7 +80,7 @@ void SProjectCleanerMainUI::Construct(const FArguments& InArgs)
 							.AutoHeight()
 							[
 								SAssignNew(StatisticsUI, SProjectCleanerStatisticsUI)
-								.DataManager(DataManager)
+								.CleanerManager(CleanerManager)
 							]
 							+ SVerticalBox::Slot()
 							.Padding(FMargin{ 20.0f, 20.0f })
@@ -120,14 +121,14 @@ void SProjectCleanerMainUI::Construct(const FArguments& InArgs)
 							.AutoHeight()
 							[
 								SAssignNew(CleanerConfigsUI, SProjectCleanerConfigsUI)
-								.CleanerConfigs(DataManager->GetCleanerConfigs())
+								.CleanerConfigs(CleanerManager->GetCleanerConfigs())
 							]
 							+ SVerticalBox::Slot()
 							.Padding(FMargin{20.0f, 5.0f})
 							.AutoHeight()
 							[
 								SAssignNew(ExcludeOptionUI, SProjectCleanerExcludeOptionsUI)
-								.ExcludeOptions(DataManager->GetExcludeOptions())
+								.ExcludeOptions(CleanerManager->GetExcludeOptions())
 							]
 						]
 					]
@@ -243,17 +244,17 @@ void SProjectCleanerMainUI::UpdateUIData() const
 	// }
 }
 
-void SProjectCleanerMainUI::SetDataManager(ProjectCleanerDataManager* DataManagerPtr)
+void SProjectCleanerMainUI::SetCleanerManager(ProjectCleanerManager* CleanerManagerPtr)
 {
-	if (!DataManagerPtr) return;
-	DataManager = DataManagerPtr;
+	if (!CleanerManagerPtr) return;
+	CleanerManager = CleanerManagerPtr;
 }
 
 TSharedRef<SDockTab> SProjectCleanerMainUI::OnUnusedAssetTabSpawn(const FSpawnTabArgs& SpawnTabArgs)
 {
 	const auto UnusedAssetsUIRef =
 		SAssignNew(UnusedAssetsBrowserUI, SProjectCleanerUnusedAssetsBrowserUI)
-		.DataManager(DataManager);
+		.CleanerManager(CleanerManager);
 	
 	// UnusedAssetsUIRef->OnUserDeletedAssets = FOnUserDeletedAssets::CreateRaw(
 	// 	this,
@@ -287,31 +288,28 @@ TSharedRef<SDockTab> SProjectCleanerMainUI::OnUnusedAssetTabSpawn(const FSpawnTa
 
 TSharedRef<SDockTab> SProjectCleanerMainUI::OnExcludedAssetsTabSpawn(const FSpawnTabArgs& SpawnTabArgs)
 {
-	// const auto ExcludedAssetsUIRef = SAssignNew(ExcludedAssetsUI, SProjectCleanerExcludedAssetsUI)
-	// // .ExcludedAssets(&CleanerManager->GetCleanerData().ExcludedAssets)
-	// // .LinkedAssets(&CleanerManager->GetCleanerData().LinkedAssets)
-	// .PrimaryAssetClasses(&CleanerManager->GetCleanerData().PrimaryAssetClasses)
-	// .CleanerConfigs(CleanerManager->GetCleanerConfigs());
+	const auto ExcludedAssetsUIRef = SAssignNew(ExcludedAssetsUI, SProjectCleanerExcludedAssetsUI)
+	.CleanerManager(CleanerManager);
 	//
 	// // ExcludedAssetsUIRef->OnUserIncludedAssets = FOnUserIncludedAsset::CreateRaw(
 	// // 	this,
 	// // 	&SProjectCleanerMainUI::OnUserIncludedAssets
 	// // );
 	//
-	// return SNew(SDockTab)
-	// 	.TabRole(ETabRole::NomadTab)
-	// 	.OnCanCloseTab_Lambda([] { return false; })
-	// 	.Label(NSLOCTEXT("ExcludedAssetsTab", "TabTitle", "Excluded Assets"))
-	// 	.ShouldAutosize(true)
-	// 	[
-	// 		SNew(SOverlay)
-	// 		+ SOverlay::Slot()
-	// 		.Padding(20.0f)
-	// 		[
-	// 			ExcludedAssetsUIRef
-	// 		]
-	// 	];
-	return SNew(SDockTab);
+	return SNew(SDockTab)
+		.TabRole(ETabRole::NomadTab)
+		.OnCanCloseTab_Lambda([] { return false; })
+		.Label(NSLOCTEXT("ExcludedAssetsTab", "TabTitle", "Excluded Assets"))
+		.ShouldAutosize(true)
+		[
+			SNew(SOverlay)
+			+ SOverlay::Slot()
+			.Padding(20.0f)
+			[
+				ExcludedAssetsUIRef
+			]
+		];
+	// return SNew(SDockTab);
 }
 
 TSharedRef<SDockTab> SProjectCleanerMainUI::OnNonEngineFilesTabSpawn(const FSpawnTabArgs& SpawnTabArgs)
@@ -446,10 +444,10 @@ void SProjectCleanerMainUI::OnUserExcludedAssetsOfType(const TArray<FAssetData>&
 
 FReply SProjectCleanerMainUI::OnRefreshBtnClick() const
 {
-	ProjectCleanerUtility::FixupRedirectors();
-	ProjectCleanerUtility::SaveAllAssets(true);
+	// ProjectCleanerUtility::FixupRedirectors();
+	// ProjectCleanerUtility::SaveAllAssets(true);
 	
-	DataManager->Update();
+	CleanerManager->Update();
 	
 	return FReply::Handled();
 }

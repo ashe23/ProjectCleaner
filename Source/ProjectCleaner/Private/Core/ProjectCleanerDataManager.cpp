@@ -271,6 +271,7 @@ void ProjectCleanerDataManagerV2::GetLinkedAssets(const FName& PackageName, TSet
 	AssetRegistry.Get().GetReferencers(PackageName, Stack);
 	AssetRegistry.Get().GetDependencies(PackageName, Stack);
 
+	// todo:ashe23 remove self from list?
 	// removing all assets that are not under "/Game" directory
 	Stack.RemoveAllSwap([&](const FName& Elem)
 	{

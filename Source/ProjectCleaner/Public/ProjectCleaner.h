@@ -30,5 +30,4 @@ private:
 
 	/* CleanerManager */
 	ProjectCleanerManager CleanerManager;
-	// ProjectCleanerDataManager DataManager;
 };

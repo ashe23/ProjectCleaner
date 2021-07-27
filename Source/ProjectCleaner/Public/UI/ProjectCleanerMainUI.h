@@ -3,14 +3,14 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Core/ProjectCleanerDataManager.h"
+#include "Core/ProjectCleanerManager.h"
 #include "Widgets/SCompoundWidget.h"
 
 class SProjectCleanerMainUI : public SCompoundWidget
 {
 public:
 	SLATE_BEGIN_ARGS(SProjectCleanerMainUI) {}
-		SLATE_ARGUMENT(class ProjectCleanerDataManager*, DataManager)
+		SLATE_ARGUMENT(class ProjectCleanerManager*, CleanerManager)
     SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
@@ -21,7 +21,7 @@ private:
 	void InitTabs();
 	void Update() const;
 	void UpdateUIData() const;
-	void SetDataManager(ProjectCleanerDataManager* DataManagerPtr);
+	void SetCleanerManager(ProjectCleanerManager* CleanerManagerPtr);
 	
 	/* Callbacks */
 	TSharedRef<SDockTab> OnUnusedAssetTabSpawn(const FSpawnTabArgs& SpawnTabArgs);
@@ -56,5 +56,5 @@ private:
 	TSharedPtr<FTabManager::FLayout> TabLayout;
 
 	/* Data */
-	ProjectCleanerDataManager* DataManager = nullptr;
+	ProjectCleanerManager* CleanerManager = nullptr;
 };

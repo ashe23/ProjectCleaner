@@ -2,7 +2,8 @@
 
 #include "UI/ProjectCleanerUnusedAssetsBrowserUI.h"
 #include "UI/ProjectCleanerCommands.h"
-#include "Core/ProjectCleanerDataManager.h"
+#include "Core/ProjectCleanerManager.h"
+#include "StructsContainer.h"
 // Engine Headers
 #include "ObjectTools.h"
 #include "Editor/ContentBrowser/Public/ContentBrowserModule.h"
@@ -14,12 +15,12 @@
 
 void SProjectCleanerUnusedAssetsBrowserUI::Construct(const FArguments& InArgs)
 {
-	if (InArgs._DataManager)
+	if (InArgs._CleanerManager)
 	{
-		SetDataManager(InArgs._DataManager);
+		SetCleanerManager(InArgs._CleanerManager);
 	}
 
-	ensure(DataManager);
+	ensure(CleanerManager);
 	
 	ContentBrowserModule = &FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
 
@@ -32,7 +33,7 @@ void SProjectCleanerUnusedAssetsBrowserUI::Construct(const FArguments& InArgs)
 	AssetPickerConfig.bSortByPathInColumnView = true;
 	AssetPickerConfig.bShowPathInColumnView = true;
 	AssetPickerConfig.bShowBottomToolbar = true;
-	AssetPickerConfig.bCanShowDevelopersFolder = DataManager->GetCleanerConfigs()->bScanDeveloperContents;
+	AssetPickerConfig.bCanShowDevelopersFolder = CleanerManager->GetCleanerConfigs()->bScanDeveloperContents;
 	AssetPickerConfig.bCanShowClasses = false;
 	AssetPickerConfig.bAllowDragging = false;
 	AssetPickerConfig.bForceShowEngineContent = false;
@@ -48,7 +49,6 @@ void SProjectCleanerUnusedAssetsBrowserUI::Construct(const FArguments& InArgs)
 		&SProjectCleanerUnusedAssetsBrowserUI::OnGetAssetContextMenu
 	);
 
-	// SelectedPath = FName{DataManager->GetRelativeContentDir()};
 	SelectedPath = TEXT("/Game");
 	PathPickerConfig.bAllowContextMenu = false;
 	PathPickerConfig.bAllowClassesFolder = false;
@@ -60,10 +60,10 @@ void SProjectCleanerUnusedAssetsBrowserUI::Construct(const FArguments& InArgs)
 	UpdateUI();
 }
 
-void SProjectCleanerUnusedAssetsBrowserUI::SetDataManager(ProjectCleanerDataManager* DataManagerPtr)
+void SProjectCleanerUnusedAssetsBrowserUI::SetCleanerManager(ProjectCleanerManager* CleanerManagerPtr)
 {
-	if (!DataManagerPtr) return;
-	DataManager = DataManagerPtr;
+	if (!CleanerManagerPtr) return;
+	CleanerManager = CleanerManagerPtr;
 }
 
 void SProjectCleanerUnusedAssetsBrowserUI::RegisterCommands()
@@ -157,7 +157,7 @@ void SProjectCleanerUnusedAssetsBrowserUI::GenerateFilter()
 {
 	Filter.Clear();
 	
-	if (DataManager->GetUnusedAssets().Num() == 0)
+	if (CleanerManager->GetUnusedAssets().Num() == 0)
 	{
 		// this is needed for disabling showing primary assets in browser, when there is no unused assets
 		Filter.TagsAndValues.Add(FName{ "ProjectCleanerEmptyTag" }, FString{ "ProjectCleanerEmptyTag" });
@@ -166,11 +166,15 @@ void SProjectCleanerUnusedAssetsBrowserUI::GenerateFilter()
 	{
 		// excluding primary assets from showing and filtering
 		Filter.bRecursiveClasses = true;
-		Filter.RecursiveClassesExclusionSet.Reserve(DataManager->GetPrimaryAssetClasses().Num());
-		Filter.RecursiveClassesExclusionSet = MoveTempIfPossible(DataManager->GetPrimaryAssetClasses());
-		Filter.PackageNames.Reserve(DataManager->GetUnusedAssets().Num());
+		Filter.PackageNames.Reserve(CleanerManager->GetUnusedAssets().Num());
+		Filter.RecursiveClassesExclusionSet.Reserve(CleanerManager->GetPrimaryAssetClasses().Num());
 
-		for (const auto& Asset : DataManager->GetUnusedAssets())
+		for (const auto& AssetClass : CleanerManager->GetPrimaryAssetClasses())
+		{
+			Filter.RecursiveClassesExclusionSet.Add(AssetClass);
+		}
+
+		for (const auto& Asset : CleanerManager->GetUnusedAssets())
 		{
 			Filter.PackageNames.Add(Asset.PackageName);
 		}
@@ -254,13 +258,15 @@ void SProjectCleanerUnusedAssetsBrowserUI::DeleteAsset() const
 	// OnUserDeletedAssets.Execute();
 }
 
-void SProjectCleanerUnusedAssetsBrowserUI::ExcludeAsset() const
+void SProjectCleanerUnusedAssetsBrowserUI::ExcludeAsset()
 {
 	if(!CurrentSelectionDelegate.IsBound()) return;
 
 	const TArray<FAssetData> SelectedAssets = CurrentSelectionDelegate.Execute();
-	if(!SelectedAssets.Num()) return;
-	
+	CleanerManager->AddToUserExcludedAssets(SelectedAssets);
+
+	UpdateUI();
+
 	// if(!OnUserExcludedAssets.IsBound()) return;
 	// OnUserExcludedAssets.Execute(SelectedAssets);
 }

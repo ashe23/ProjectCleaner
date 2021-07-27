@@ -11,11 +11,11 @@ class SProjectCleanerStatisticsUI : public SCompoundWidget
 public:
 	
 	SLATE_BEGIN_ARGS(SProjectCleanerStatisticsUI) {}
-		SLATE_ARGUMENT(class ProjectCleanerDataManager*, DataManager);
+		SLATE_ARGUMENT(class ProjectCleanerManager*, CleanerManager);
 	SLATE_END_ARGS()
 	
 	void Construct(const FArguments& InArgs);
-	void SetDataManager(ProjectCleanerDataManager* DataManagerPtr);
+	void SetCleanerManager(ProjectCleanerManager* CleanerManagerPtr);
 private:
 	/* UI Callbacks */
 	FText GetAllAssetsNum() const;
@@ -28,5 +28,5 @@ private:
 	FText GetCorruptedAssetsNum() const;
     
 	/** Data **/
-	ProjectCleanerDataManager* DataManager = nullptr;
+	ProjectCleanerManager* CleanerManager = nullptr;
 };

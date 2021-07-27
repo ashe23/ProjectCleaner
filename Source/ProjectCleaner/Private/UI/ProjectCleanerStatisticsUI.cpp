@@ -1,16 +1,16 @@
 ﻿// Copyright 2021. Ashot Barkhudaryan. All Rights Reserved.
 
 #include "UI/ProjectCleanerStatisticsUI.h"
-#include "Core/ProjectCleanerDataManager.h"
 #include "UI/ProjectCleanerStyle.h"
+#include "Core/ProjectCleanerManager.h"
 
 #define LOCTEXT_NAMESPACE "FProjectCleanerModule"
 
 void SProjectCleanerStatisticsUI::Construct(const FArguments& InArgs)
 {
-	if (InArgs._DataManager)
+	if (InArgs._CleanerManager)
 	{
-		SetDataManager(InArgs._DataManager);
+		SetCleanerManager(InArgs._CleanerManager);
 	}
 
 	const float MaxHeight = 40.0f;
@@ -224,50 +224,50 @@ void SProjectCleanerStatisticsUI::Construct(const FArguments& InArgs)
 	];
 }
 
-void SProjectCleanerStatisticsUI::SetDataManager(ProjectCleanerDataManager* DataManagerPtr)
+void SProjectCleanerStatisticsUI::SetCleanerManager(ProjectCleanerManager* CleanerManagerPtr)
 {
-	if (!DataManagerPtr) return;
-	DataManager = DataManagerPtr;
+	if (!CleanerManagerPtr) return;
+	CleanerManager = CleanerManagerPtr;
 }
 
 FText SProjectCleanerStatisticsUI::GetAllAssetsNum() const
 {
-	return FText::AsNumber(DataManager->GetAllAssets().Num());
+	return FText::AsNumber(CleanerManager->GetAllAssets().Num());
 }
 
 FText SProjectCleanerStatisticsUI::GetUnusedAssetsNum() const
 {
-	return FText::AsNumber(DataManager->GetUnusedAssets().Num());
+	return FText::AsNumber(CleanerManager->GetUnusedAssets().Num());
 }
 
 FText SProjectCleanerStatisticsUI::GetTotalProjectSize() const
 {
-	return FText::AsMemory(DataManager->GetTotalProjectSize());
+	return FText::AsMemory(CleanerManager->GetTotalProjectSize());
 }
 
 FText SProjectCleanerStatisticsUI::GetTotalUnusedAssetsSize() const
 {
-	return FText::AsMemory(DataManager->GetTotalUnusedAssetsSize());
+	return FText::AsMemory(CleanerManager->GetTotalUnusedAssetsSize());
 }
 
 FText SProjectCleanerStatisticsUI::GetNonEngineFilesNum() const
 {
-	return FText::AsNumber(DataManager->GetNonEngineFiles().Num());
+	return FText::AsNumber(CleanerManager->GetNonEngineFiles().Num());
 }
 
 FText SProjectCleanerStatisticsUI::GetIndirectAssetsNum() const
 {
-	return FText::AsNumber(DataManager->GetIndirectlyUsedAssets().Num());
+	return FText::AsNumber(CleanerManager->GetIndirectAssets().Num());
 }
 
 FText SProjectCleanerStatisticsUI::GetEmptyFoldersNum() const
 {
-	return FText::AsNumber(DataManager->GetEmptyFolders().Num());
+	return FText::AsNumber(CleanerManager->GetEmptyFolders().Num());
 }
 
 FText SProjectCleanerStatisticsUI::GetCorruptedAssetsNum() const
 {
-	return FText::AsNumber(DataManager->GetCorruptedAssets().Num());
+	return FText::AsNumber(CleanerManager->GetCorruptedAssets().Num());
 }
 
 
