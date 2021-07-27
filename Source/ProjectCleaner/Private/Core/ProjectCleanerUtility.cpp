@@ -149,7 +149,7 @@ void ProjectCleanerUtility::GetUnusedAssets(FProjectCleanerData& CleanerData)
 	CleanerData.UnusedAssets.Shrink();
 }
 
-int64 ProjectCleanerUtility::GetTotalSize(TArray<FAssetData>& Assets)
+int64 ProjectCleanerUtility::GetTotalSize(const TArray<FAssetData>& Assets)
 {
 	int64 Size = 0;
 	for (const auto& Asset : Assets)

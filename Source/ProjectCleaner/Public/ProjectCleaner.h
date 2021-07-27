@@ -9,7 +9,7 @@
 
 DECLARE_LOG_CATEGORY_EXTERN(LogProjectCleaner, Log, All);
 
-class ProjectCleanerManager;
+// class ProjectCleanerManager;
 
 class FProjectCleanerModule : public IModuleInterface
 {
@@ -26,8 +26,8 @@ private:
 	
 	/* UI data */
 	TSharedPtr<FUICommandList> PluginCommands;
-	TWeakPtr<class SProjectCleanerMainUI> CleanerMainUI;
+	// TWeakPtr<class SProjectCleanerMainUI> CleanerMainUI;
 
 	/* CleanerManager */
-	ProjectCleanerManager CleanerManager;
+	// ProjectCleanerManager CleanerManager;
 };

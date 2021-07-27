@@ -40,8 +40,8 @@ void ProjectCleanerManager::Update()
 	{
 		ProjectCleanerNotificationManager::AddTransient(
 			FText::FromString(FStandardCleanerText::AssetRegistryStillWorking),
-			SNotificationItem::CS_Pending,
-			3.0f
+			SNotificationItem::CS_Fail,
+			2.0f
 		);
 		return;
 	}
@@ -58,9 +58,6 @@ void ProjectCleanerManager::Update()
 	ProjectCleanerDataManagerV2::GetPrimaryAssetClasses(PrimaryAssetClasses);
 	
 	FindUnusedAssets();
-	
-	TotalProjectSize = ProjectCleanerUtility::GetTotalSize(AllAssets);
-	TotalUnusedAssetsSize = ProjectCleanerUtility::GetTotalSize(UnusedAssets);
 }
 
 void ProjectCleanerManager::AddToUserExcludedAssets(const TArray<FAssetData>& NewUserExcludedAssets)
@@ -123,16 +120,6 @@ UCleanerConfigs* ProjectCleanerManager::GetCleanerConfigs() const
 UExcludeOptions* ProjectCleanerManager::GetExcludeOptions() const
 {
 	return ExcludeOptions;
-}
-
-int64 ProjectCleanerManager::GetTotalProjectSize() const
-{
-	return TotalProjectSize;
-}
-
-int64 ProjectCleanerManager::GetTotalUnusedAssetsSize() const
-{
-	return TotalUnusedAssetsSize;
 }
 
 void ProjectCleanerManager::Clean()
@@ -199,68 +186,74 @@ void ProjectCleanerManager::FindUnusedAssets()
 		}
 
 		// indirect assets and their linked assets
-		for (const auto& IndirectAsset : IndirectAssets)
-		{
-			UsedAssets.Add(IndirectAsset.Key);
-			TSet<FName> LinkedAssetsOfIndirectAsset;
-			ProjectCleanerDataManagerV2::GetLinkedAssets(IndirectAsset.Key, LinkedAssetsOfIndirectAsset);
-			UsedAssets.Append(LinkedAssetsOfIndirectAsset);
-		}
-
-		const bool IsMegascansLoaded = FModuleManager::Get().IsModuleLoaded("MegascansPlugin");		
-		for (const auto& Asset : AllAssets)
-		{
-			// Assets with external referencers
-			if (ProjectCleanerDataManagerV2::HasExternalReferencersInPath(Asset.PackageName, TEXT("/Game")))
-			{
-				AssetsWithExternalRefs.AddUnique(Asset);
-
-				TSet<FName> LinkedAssetsOfExternalAsset;
-				ProjectCleanerDataManagerV2::GetLinkedAssets(Asset.PackageName, LinkedAssetsOfExternalAsset);
-				UsedAssets.Append(LinkedAssetsOfExternalAsset);
-			}
-			
-			// MegascansContent
-			if (CleanerConfigs->bExcludeMegascansPluginIfActive && IsMegascansLoaded)
-			{
-				if (FPaths::IsUnderDirectory(Asset.PackagePath.ToString(), TEXT("/Game/MSPresets")))
-				{
-					UsedAssets.Add(Asset.PackageName);
-				}
-			}
-
-			// Excluded assets
-			if (
-				ProjectCleanerDataManagerV2::ExcludedByPath(Asset.PackagePath, ExcludeOptions) ||
-				ProjectCleanerDataManagerV2::ExcludedByClass(Asset, ExcludeOptions)
-			)
-			{
-				FLinkedAssets LinkedAssets;
-				ProjectCleanerDataManagerV2::GetLinkedAssets(Asset.PackageName, LinkedAssets.PackageNames);
-				ExcludedAssets.Add(Asset.PackageName, LinkedAssets);
-				
-				UsedAssets.Add(Asset.PackageName);
-				UsedAssets.Append(LinkedAssets.PackageNames);
-			}
-		}
+		// for (const auto& IndirectAsset : IndirectAssets)
+		// {
+		// 	UsedAssets.Add(IndirectAsset.Key);
+		// 	TSet<FName> LinkedAssetsOfIndirectAsset;
+		// 	ProjectCleanerDataManagerV2::GetLinkedAssets(IndirectAsset.Key, LinkedAssetsOfIndirectAsset);
+		// 	UsedAssets.Append(LinkedAssetsOfIndirectAsset);
+		// }
+		//
+		// FScopedSlowTask SlowTask{static_cast<float>(AllAssets.Num()), FText::FromString("Scanning...")};
+		// SlowTask.MakeDialog(true, false);
+		//
+		// TSet<FName> FilteredAssets;
+		// FilteredAssets.Reserve(AllAssets.Num());
+		//
+		// const bool IsMegascansLoaded = FModuleManager::Get().IsModuleLoaded("MegascansPlugin");		
+		// for (const auto& Asset : AllAssets)
+		// {
+		// 	SlowTask.EnterProgressFrame();
+		// 	// Assets with external referencers
+		// 	if (ProjectCleanerDataManagerV2::HasExternalReferencersInPath(Asset.PackageName, TEXT("/Game")))
+		// 	{
+		// 		AssetsWithExternalRefs.AddUnique(Asset);
+		// 		FilteredAssets.Add(Asset.PackageName);
+		// 	
+		// 		// TSet<FName> LinkedAssetsOfExternalAsset;
+		// 		// ProjectCleanerDataManagerV2::GetLinkedAssets(Asset.PackageName, LinkedAssetsOfExternalAsset);
+		// 		// UsedAssets.Append(LinkedAssetsOfExternalAsset);
+		// 	}
+		// 	
+		// 	// MegascansContent
+		// 	if (CleanerConfigs->bExcludeMegascansPluginIfActive && IsMegascansLoaded)
+		// 	{
+		// 		if (FPaths::IsUnderDirectory(Asset.PackagePath.ToString(), TEXT("/Game/MSPresets")))
+		// 		{
+		// 			UsedAssets.Add(Asset.PackageName);
+		// 		}
+		// 	}
+		//
+		// 	// Excluded assets
+		// 	if (
+		// 		ProjectCleanerDataManagerV2::ExcludedByPath(Asset.PackagePath, ExcludeOptions) ||
+		// 		ProjectCleanerDataManagerV2::ExcludedByClass(Asset, ExcludeOptions)
+		// 	)
+		// 	{
+		// 		ExcludedAssets.Add(Asset.PackageName);
+		// 		UsedAssets.Add(Asset.PackageName);
+		// 		FilteredAssets.Add(Asset.PackageName);
+		// 	}
+		// }
 	}
+
 
 	// also including User excluded assets
-	for (const auto& UserExcludedAsset : UserExcludedAssets)
-	{
-		FLinkedAssets LinkedAssets;
-		ProjectCleanerDataManagerV2::GetLinkedAssets(UserExcludedAsset.PackageName, LinkedAssets.PackageNames);
-		ExcludedAssets.Add(UserExcludedAsset.PackageName, LinkedAssets);
-		UsedAssets.Add(UserExcludedAsset.PackageName);
-		UsedAssets.Append(LinkedAssets.PackageNames);
-	}
-
-	// Filtering used assets from all assets we got unused assets
-	for (const auto& Asset : AllAssets)
-	{
-		if (UsedAssets.Contains(Asset.PackageName)) continue;
-		UnusedAssets.AddUnique(Asset);
-	}
+	// for (const auto& UserExcludedAsset : UserExcludedAssets)
+	// {
+	// 	ExcludedAssets.Add(UserExcludedAsset.PackageName);
+	// 	UsedAssets.Add(UserExcludedAsset.PackageName);
+	// 	// ProjectCleanerDataManagerV2::GetLinkedAssets(UserExcludedAsset.PackageName, LinkedAssets.PackageNames);
+	// 	// ExcludedAssets.Add(UserExcludedAsset.PackageName, LinkedAssets);
+	// 	// UsedAssets.Append(LinkedAssets.PackageNames);
+	// }
+	//
+	// // Filtering used assets from all assets we got unused assets
+	// for (const auto& Asset : AllAssets)
+	// {
+	// 	if (UsedAssets.Contains(Asset.PackageName)) continue;
+	// 	UnusedAssets.AddUnique(Asset);
+	// }
 }
 
 #undef LOCTEXT_NAMESPACE

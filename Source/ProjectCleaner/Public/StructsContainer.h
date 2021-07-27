@@ -15,7 +15,7 @@ public:
 	UPROPERTY(DisplayName = "Scan Developer Contents Folders", EditAnywhere, Category = "CleanerConfigs")
 	bool bScanDeveloperContents = false;
 
-	UPROPERTY(DisplayName = "Megascans base content(MSPreset) will be excluded automatically, if Megascans plugin is active", EditAnywhere, Category = "CleanerConfigs")
+	UPROPERTY(DisplayName = "Exclude Megascans Plugin Content", EditAnywhere, Category = "CleanerConfigs", meta = (ToolTip = "Megascans base content(MSPreset) will be excluded automatically, if Megascans plugin is active"))
 	bool bExcludeMegascansPluginIfActive = true;
 	
 	UPROPERTY(DisplayName = "Remove Empty Folders After Assets Deleted", EditAnywhere, Category = "CleanerConfigs")
@@ -107,8 +107,9 @@ struct FIndirectAsset
 {
 	FString File;
 	int32 Line;
+	FName RelativePath;
 
-	FIndirectAsset(): File(FString{}), Line(0) {}
+	FIndirectAsset(): File(FString{}), Line(0), RelativePath(NAME_None) {}
 };
 
 struct FLinkedAssets

@@ -10,7 +10,6 @@ class SProjectCleanerMainUI : public SCompoundWidget
 {
 public:
 	SLATE_BEGIN_ARGS(SProjectCleanerMainUI) {}
-		SLATE_ARGUMENT(class ProjectCleanerManager*, CleanerManager)
     SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
@@ -21,7 +20,6 @@ private:
 	void InitTabs();
 	void Update() const;
 	void UpdateUIData() const;
-	void SetCleanerManager(ProjectCleanerManager* CleanerManagerPtr);
 	
 	/* Callbacks */
 	TSharedRef<SDockTab> OnUnusedAssetTabSpawn(const FSpawnTabArgs& SpawnTabArgs);
@@ -37,7 +35,7 @@ private:
 	void OnUserExcludedAssetsOfType(const TArray<FAssetData>& Assets) const;
 	
 	/* Btn Callbacks */
-	FReply OnRefreshBtnClick() const;
+	FReply OnRefreshBtnClick();
 	FReply OnDeleteUnusedAssetsBtnClick() const;
 	FReply OnDeleteEmptyFolderClick() const;
 	EAppReturnType::Type ShowConfirmationWindow(const FText& Title, const FText& ContentText) const;
@@ -56,5 +54,5 @@ private:
 	TSharedPtr<FTabManager::FLayout> TabLayout;
 
 	/* Data */
-	ProjectCleanerManager* CleanerManager = nullptr;
+	ProjectCleanerManager CleanerManager;
 };

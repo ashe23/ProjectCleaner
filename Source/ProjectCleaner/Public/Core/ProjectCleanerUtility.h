@@ -30,7 +30,7 @@ public:
 	static void GetNonEngineFiles(TSet<FString>& NonEngineFiles, const TSet<FString>& ProjectFiles);
 	static void GetAllAssets(FProjectCleanerData& CleanerData);// remove
 	static void GetUnusedAssets(FProjectCleanerData& CleanerData);// remove
-	static int64 GetTotalSize(TArray<FAssetData>& Assets);
+	static int64 GetTotalSize(const TArray<FAssetData>& Assets);
 	static void GetPrimaryAssetClasses(TSet<FName>& PrimaryAssetClasses);// remove
 	static void GetSourceAndConfigFiles(TArray<FString>& AllFiles);
 	static void GetProjectFilesFromDisk(TSet<FString>& ProjectFiles);

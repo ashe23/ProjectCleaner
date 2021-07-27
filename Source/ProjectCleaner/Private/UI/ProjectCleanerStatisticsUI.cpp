@@ -3,6 +3,7 @@
 #include "UI/ProjectCleanerStatisticsUI.h"
 #include "UI/ProjectCleanerStyle.h"
 #include "Core/ProjectCleanerManager.h"
+#include "Core/ProjectCleanerUtility.h"
 
 #define LOCTEXT_NAMESPACE "FProjectCleanerModule"
 
@@ -242,12 +243,14 @@ FText SProjectCleanerStatisticsUI::GetUnusedAssetsNum() const
 
 FText SProjectCleanerStatisticsUI::GetTotalProjectSize() const
 {
-	return FText::AsMemory(CleanerManager->GetTotalProjectSize());
+	const int64 TotalProjectSize = ProjectCleanerUtility::GetTotalSize(CleanerManager->GetAllAssets());
+	return FText::AsMemory(TotalProjectSize);
 }
 
 FText SProjectCleanerStatisticsUI::GetTotalUnusedAssetsSize() const
 {
-	return FText::AsMemory(CleanerManager->GetTotalUnusedAssetsSize());
+	const int64 UnusedSize = ProjectCleanerUtility::GetTotalSize(CleanerManager->GetUnusedAssets());
+	return FText::AsMemory(UnusedSize);
 }
 
 FText SProjectCleanerStatisticsUI::GetNonEngineFilesNum() const

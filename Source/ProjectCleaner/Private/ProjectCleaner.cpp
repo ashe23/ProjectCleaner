@@ -4,7 +4,7 @@
 #include "UI/ProjectCleanerStyle.h"
 #include "UI/ProjectCleanerMainUI.h"
 #include "UI/ProjectCleanerCommands.h"
-#include "Core/ProjectCleanerUtility.h"
+// #include "Core/ProjectCleanerUtility.h"
 // Engine Headers
 #include "ToolMenus.h"
 #include "AssetToolsModule.h"
@@ -83,8 +83,7 @@ TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs
 {
 	return SNew(SDockTab).TabRole(ETabRole::NomadTab)
 	[
-		SAssignNew(CleanerMainUI, SProjectCleanerMainUI)
-		.CleanerManager(&CleanerManager)
+		SNew(SProjectCleanerMainUI)
 	];
 }
 

@@ -31,8 +31,6 @@ public:
 	const TMap<FName, FLinkedAssets>& GetExcludedAssets() const;
 	UCleanerConfigs* GetCleanerConfigs() const;
 	UExcludeOptions* GetExcludeOptions() const;
-	int64 GetTotalProjectSize() const;
-	int64 GetTotalUnusedAssetsSize() const;
 private:
 	
 	/**
@@ -104,9 +102,6 @@ private:
 	 * @brief All unused assets in "/Game" folder
 	 */
 	TArray<FAssetData> UnusedAssets;
-
-	int64 TotalProjectSize = 0;
-	int64 TotalUnusedAssetsSize = 0; // todo:ashe23 move this variables to Stats UI
 
 	class UCleanerConfigs* CleanerConfigs;
 	class UExcludeOptions* ExcludeOptions;

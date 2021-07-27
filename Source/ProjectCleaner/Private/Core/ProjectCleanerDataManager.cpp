@@ -186,6 +186,7 @@ void ProjectCleanerDataManagerV2::GetIndirectAssetsByPath(
 			
 				FIndirectAsset IndirectAsset;
 				IndirectAsset.File = FPaths::ConvertRelativePathToFull(File);
+				IndirectAsset.RelativePath = AssetData->PackagePath;
 				IndirectAsset.Line = i + 1;
 				IndirectlyUsedAssets.Add(AssetData->PackageName, IndirectAsset);
 			}
@@ -271,7 +272,7 @@ void ProjectCleanerDataManagerV2::GetLinkedAssets(const FName& PackageName, TSet
 	AssetRegistry.Get().GetReferencers(PackageName, Stack);
 	AssetRegistry.Get().GetDependencies(PackageName, Stack);
 
-	// todo:ashe23 remove self from list?
+	Stack.Remove(PackageName);
 	// removing all assets that are not under "/Game" directory
 	Stack.RemoveAllSwap([&](const FName& Elem)
 	{
@@ -322,6 +323,7 @@ void ProjectCleanerDataManagerV2::GetLinkedAssets(const FName& PackageName, TSet
 				Stack.Add(Ref.PackageName);
 			}
 		}
+		Stack.Remove(PackageName);
 	}
 }
 
