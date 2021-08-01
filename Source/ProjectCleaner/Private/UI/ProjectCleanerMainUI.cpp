@@ -10,17 +10,13 @@
 #include "UI/ProjectCleanerExcludeOptionsUI.h"
 #include "UI/ProjectCleanerIndirectAssetsUI.h"
 #include "UI/ProjectCleanerExcludedAssetsUI.h"
-#include "StructsContainer.h"
 // Engine Headers
 #include "ToolMenus.h"
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "Components/SlateWrapperTypes.h"
-#include "Core/ProjectCleanerUtility.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Framework/Docking/TabManager.h"
-#include "UI/ProjectCleanerNotificationManager.h"
-#include "Widgets/Notifications/SProgressBar.h"
 
 static const FName UnusedAssetsTab = FName{ TEXT("UnusedAssetsTab") };
 static const FName IndirectAssetsTab = FName{ TEXT("IndirectAssetsTab") };
@@ -201,20 +197,8 @@ void SProjectCleanerMainUI::UpdateUIData() const
 	{
 		UnusedAssetsBrowserUI.Pin()->UpdateUI();
 	}
-	// if (StatisticsUI.IsValid())
-	// {
-	// 	StatisticsUI.Pin()->SetData(CleanerManager->GetCleanerData());
-	// }
-	//
-	// if (UnusedAssetsBrowserUI.IsValid())
-	// {
-	// 	UnusedAssetsBrowserUI.Pin()->SetUIData(
-	// 		CleanerManager->GetCleanerData().UnusedAssets,
-	// 		CleanerManager->GetCleanerConfigs(),
-	// 		CleanerManager->GetCleanerData().PrimaryAssetClasses
-	// 	);
-	// }
-	//
+	
+	
 	// if (NonEngineFilesUI.IsValid())
 	// {
 	// 	// NonEngineFilesUI.Pin()->SetNonEngineFiles(CleanerManager->GetCleanerData().NonEngineFiles);

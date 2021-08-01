@@ -9,6 +9,20 @@ struct FExcludedAsset;
 class UCleanerConfigs;
 class UExcludeOptions;
 
+enum class EProjectCleanerManagerState
+{
+	Initial,
+	Cached,
+	FullScan
+};
+
+enum class EProjectCleanerManagerCacheState
+{
+	None,
+	Cached,
+	RescanRequired
+};
+
 class ProjectCleanerManager
 {
 public:
@@ -20,6 +34,7 @@ public:
 	void Update();
 	void AddToUserExcludedAssets(const TArray<FAssetData>& NewUserExcludedAssets);
 	void AddToExcludeClasses(const TArray<FAssetData>& ExcludedByTypeAssets);
+	void RemoveFromExcludedAssets(const TArray<FAssetData>& Assets);
 
 	/** Data Container getters **/
 	const TArray<FAssetData>& GetAllAssets() const;
@@ -29,22 +44,15 @@ public:
 	const TSet<FName>& GetEmptyFolders() const;
 	const TSet<FName>& GetPrimaryAssetClasses() const;
 	const TArray<FAssetData>& GetUnusedAssets() const;
-	const TMap<FName, FExcludedAsset>& GetExcludedAssets() const;
+	const TSet<FName>& GetExcludedAssets() const;
 	UCleanerConfigs* GetCleanerConfigs() const;
 	UExcludeOptions* GetExcludeOptions() const;
+	float GetUnusedAssetsPercent() const;
 private:
 	
-	/**
-	 * @brief Empties all data containers
-	 */
-	void Clean();
-
+	void LoadInitialData();
 	void FindUnusedAssets();
-	void FindExcludedAssets();
-	bool IsPrimaryAsset(const FAssetData& AssetData) const;
-	bool IsExcludedByClass(const FAssetData& AssetData) const;	
-	bool IsUnderDevelopersFolder(const FAssetData& AssetData) const;
-	bool IsUnderMegascansFolder(const FAssetData& AssetData) const;
+	bool IsExcludedByClass(const FAssetData& AssetData) const;
 
 	/** Data Containers **/
 	
@@ -97,7 +105,7 @@ private:
 	*		LinkedAssets : BP, Material
 	* @reason This preventing breaking links between assets
 	*/
-	TMap<FName, FExcludedAsset> ExcludedAssets;
+	TSet<FName> ExcludedAssets;
 
 	/**
 	 * @brief All assets that have external referencers (outside "/Game" folder)
@@ -109,9 +117,20 @@ private:
 	 */
 	TArray<FAssetData> UnusedAssets;
 
-	TMap<FName, struct FAssetCleanerInfo> AssetsInfoMap;
-
 	class UCleanerConfigs* CleanerConfigs;
 	class UExcludeOptions* ExcludeOptions;
+
+	/* Asset Registry */
 	class FAssetRegistryModule* AssetRegistry;
+	void OnAssetAdded(const FAssetData& AssetData);
+	void OnAssetRemoved(const FAssetData& AssetData);
+	void OnAssetUpdated(const FAssetData& AssetData);
+	void OnAssetRenamed(const FAssetData& AssetData, const FString& Name);
+
+	/* Directory Watcher Module */
+	class FDirectoryWatcherModule* DirectoryWatcher;
+	void OnDirectoryChanged(const TArray<struct FFileChangeData>& InFileChanges);
+
+	bool bIsActualData = false;
+	bool bDelegatesRegistered = false;
 };

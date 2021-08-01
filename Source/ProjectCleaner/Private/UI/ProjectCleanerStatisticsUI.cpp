@@ -5,6 +5,9 @@
 #include "Core/ProjectCleanerManager.h"
 #include "Core/ProjectCleanerUtility.h"
 
+// Engine Headers
+#include "Widgets/Notifications/SProgressBar.h"
+
 #define LOCTEXT_NAMESPACE "FProjectCleanerModule"
 
 void SProjectCleanerStatisticsUI::Construct(const FArguments& InArgs)
@@ -221,6 +224,64 @@ void SProjectCleanerStatisticsUI::Construct(const FArguments& InArgs)
 					.Text_Raw(this, &SProjectCleanerStatisticsUI::GetCorruptedAssetsNum)
 				]
 			]
+			+ SVerticalBox::Slot()
+			.MaxHeight(MaxHeight)
+			.Padding(FMargin{0.0, 0.0f, 0.0f, 3.0f})
+			.HAlign(HAlign_Center)
+			[
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				[
+					SNew(STextBlock)
+					.AutoWrapText(true)
+					.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
+					.Text(LOCTEXT("stat_excluded_assets_num", "Excluded Assets - "))
+				]
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				[
+					SNew(STextBlock)
+					.AutoWrapText(true)
+					.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
+					.Text_Raw(this, &SProjectCleanerStatisticsUI::GetExcludedAssetsNum)
+				]
+			]
+			+ SVerticalBox::Slot()
+			.MaxHeight(MaxHeight)
+			.Padding(FMargin{0.0, 10.0f, 0.0f, 3.0f})
+			.HAlign(HAlign_Fill)
+			.VAlign(VAlign_Fill)
+			.FillHeight(1.0f)
+			[
+				SNew(SHorizontalBox)
+				.ToolTipText(LOCTEXT("stat_unused_assets_percent_ratio_text", "Percentage of unused assets in project. (unused asssets num / all assets num ratio)"))
+				+ SHorizontalBox::Slot()
+				.FillWidth(1.0f)
+				.HAlign(HAlign_Fill)
+				.VAlign(VAlign_Fill)
+				[
+					SNew(SOverlay)
+					+ SOverlay::Slot()
+					.HAlign(HAlign_Fill)
+					.VAlign(VAlign_Fill)
+					[
+						SNew(SProgressBar)					
+						.Percent_Raw(this, &SProjectCleanerStatisticsUI::GetPercentRatio)
+						.FillColorAndOpacity_Raw(this, &SProjectCleanerStatisticsUI::GetProgressBarColor)
+					]
+					+ SOverlay::Slot()
+					.HAlign(HAlign_Center)
+					.VAlign(VAlign_Center)
+					[
+						SNew(STextBlock)
+						.AutoWrapText(false)
+						.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light15"))
+						.ColorAndOpacity(FLinearColor{0.0f, 0.0f, 0.0f, 1.0f})
+						.Text_Raw(this, &SProjectCleanerStatisticsUI::GetProgressBarText )
+					]
+				]
+			]
 		]
 	];
 }
@@ -273,5 +334,47 @@ FText SProjectCleanerStatisticsUI::GetCorruptedAssetsNum() const
 	return FText::AsNumber(CleanerManager->GetCorruptedAssets().Num());
 }
 
+FText SProjectCleanerStatisticsUI::GetExcludedAssetsNum() const
+{
+	return FText::AsNumber(CleanerManager->GetExcludedAssets().Num());
+}
+
+TOptional<float> SProjectCleanerStatisticsUI::GetPercentRatio() const
+{
+	const float Percent = CleanerManager->GetUnusedAssetsPercent();
+	return FMath::GetMappedRangeValueClamped(FVector2D{0.0f, 100.0f}, FVector2D{0.0f, 1.0f}, Percent);
+}
+
+FSlateColor SProjectCleanerStatisticsUI::GetProgressBarColor() const
+{
+	const float Percent = CleanerManager->GetUnusedAssetsPercent();
+
+	if (Percent > 0.0f && Percent < 10.0f)
+	{
+		return FSlateColor{FLinearColor{0.0f, 0.901f , 0.462f ,1.0f}}; // light green
+	}
+	if (Percent > 10.0f && Percent < 50.0f)
+	{
+		return FSlateColor{FLinearColor{1.0f, 0.933f , 0.345f ,1.0f}}; // light yellow
+	}
+	if (Percent > 50.0f && Percent < 80.0f)
+	{
+		return FSlateColor{FLinearColor{0.898f, 0.450f , 0.450f ,1.0f}}; // light red
+	}
+	
+	return FSlateColor{FLinearColor{0.766f, 0.156f , 0.156f ,1.0f}}; // bright red
+}
+
+FText SProjectCleanerStatisticsUI::GetProgressBarText() const
+{
+	return FText::FromString(
+		FString::Printf(
+			TEXT("%.1f %% (%d of %d) unused assets"),
+			CleanerManager->GetUnusedAssetsPercent(),
+			CleanerManager->GetUnusedAssets().Num(),
+			CleanerManager->GetAllAssets().Num()
+		)
+	);
+}
 
 #undef LOCTEXT_NAMESPACE

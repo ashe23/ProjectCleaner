@@ -12,17 +12,14 @@ class UCleanerConfigs : public UObject
 {
 	GENERATED_BODY()
 public:
-	UPROPERTY(DisplayName = "Scan Developer Content", EditAnywhere, Category = "CleanerConfigs")
+	UPROPERTY(DisplayName = "Scan Developer Content", EditAnywhere, Category = "CleanerConfigs", meta = (ToolTip = "Scan assets in 'Developers' folder. By Default false"))
 	bool bScanDeveloperContents = false;
 
-	UPROPERTY(DisplayName = "Scan Megascans Plugin Content", EditAnywhere, Category = "CleanerConfigs", meta = (ToolTip = "Megascans base content(MSPreset) will be excluded automatically, if Megascans plugin is active"))
+	UPROPERTY(DisplayName = "Scan Megascans Plugin Content", EditAnywhere, Category = "CleanerConfigs", meta = (ToolTip = "Scan assets in Megascans base content(MSPreset),if Megascans plugin is active. By Default false"))
 	bool bScanMegascansContent = false;
 	
 	UPROPERTY(DisplayName = "Remove Empty Folders After Assets Deleted", EditAnywhere, Category = "CleanerConfigs")
 	bool bAutomaticallyDeleteEmptyFolders = true;
-
-	UPROPERTY(DisplayName = "Deletion Chunk Limit", EditAnywhere, Category = "CleanerConfigs", meta = (ClampMin = "20", ClampMax = "1000", UIMin = "20", UIMax = "1000", ToolTip = "To prevent engine from freezing when deleting a lot of assets, we delete them by chunks.Here you can specify chunk limit.Pick lower values if your PC got low RAM capacity. Default is 20"))
-	int32 DeleteChunkLimit = 20;
 };
 
 UCLASS(Transient)
@@ -81,61 +78,6 @@ public:
 	FString FilePath;
 };
 
-struct FAssetCleanerInfo
-{
-	FAssetData AssetData;
-	TArray<FName> Refs;
-	TArray<FName> Deps;
-	TSet<FName> LinkedAssets;
-
-	bool IsCircular() const
-	{
-		return Refs.ContainsByPredicate([&](const FName& Ref)
-		{
-			return Deps.Contains(Ref);
-		});
-	}
-
-	bool HasExternalRefs() const
-	{
-		return Refs.ContainsByPredicate([](const FName& Ref)
-		{
-			return !Ref.ToString().StartsWith(TEXT("/Game"));
-		});
-	}
-
-	bool HasReferences() const
-	{
-		return Refs.Num() > 0;
-	}
-
-	bool HasLinkedAssets() const
-	{
-		return Refs.Num() > 0 && Deps.Num() > 0;
-	}
-
-	bool IsUnderDevelopersFolder() const
-	{
-		return AssetData.PackageName.ToString().StartsWith(TEXT("/Game/Developers"));
-	}
-
-	bool IsUnderMegascansFolder() const
-	{
-		return AssetData.PackageName.ToString().StartsWith(TEXT("/Game/MSPresets"));
-	}
-	
-	// TArray<FName> Refs;
-	// TArray<FName> Deps;
-	// TSet<FName> LinkedAssets;
-	// bool bRootAsset = false;
-	// bool bHasExternalRefs = false;
-	// bool bIsCircular = false;
-	// bool bIsInDevFolder = false;
-	// bool bExcludedByPath = false;
-	// bool bExcludedByClass = false;
-};
-
-
 struct FIndirectAsset
 {
 	FString File;
@@ -143,11 +85,6 @@ struct FIndirectAsset
 	FName RelativePath;
 
 	FIndirectAsset(): File(FString{}), Line(0), RelativePath(NAME_None) {}
-};
-
-struct FExcludedAsset
-{
-	TSet<FName> PackageNames;
 };
 
 struct FStandardCleanerText
@@ -162,7 +99,7 @@ struct FStandardCleanerText
 	constexpr static TCHAR* NonUAssetFilesFound = TEXT("Project contains non engine files. Check Output Log for more info.");
 	constexpr static TCHAR* SearchingEmptyFolders = TEXT("Searching empty folders...");
 	constexpr static TCHAR* AssetsWithReferencersInDeveloperFolder = TEXT("Some of assets has references in Developers folder. To view them click 'Scan Developers Folder' checkbox.");
-	constexpr static TCHAR* AssetRegistryStillWorking = TEXT("Asset registry still working. Please wait...");
+	constexpr static TCHAR* AssetRegistryStillWorking = TEXT("Asset registry still working. Please wait while scan completes");
 	constexpr static TCHAR* SomeAssetsHaveRefsInDevFolder = TEXT("Some assets have referencers in Developer Contents Folder.");
 	constexpr static TCHAR* CantIncludeSomeAssets = TEXT("Cant include some filtered assets.Clear 'ExcludeOptions' filters and try again.");
 	constexpr static TCHAR* FailedToDeleteSomeFolders = TEXT("Failed to delete some folders. See Output Log for more information.");

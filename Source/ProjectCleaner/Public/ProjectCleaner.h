@@ -2,14 +2,11 @@
 
 #pragma once
 
-#include "Core/ProjectCleanerManager.h"
 // Engine Headers
 #include "Modules/ModuleInterface.h"
 #include "CoreMinimal.h"
 
 DECLARE_LOG_CATEGORY_EXTERN(LogProjectCleaner, Log, All);
-
-// class ProjectCleanerManager;
 
 class FProjectCleanerModule : public IModuleInterface
 {
@@ -21,13 +18,9 @@ public:
 private:
     /* Module */	
 	void RegisterMenus();
-	void PluginButtonClicked();
-	TSharedRef<SDockTab> OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs);
+	static void PluginButtonClicked();
+	TSharedRef<SDockTab> OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs) const;
 	
 	/* UI data */
 	TSharedPtr<FUICommandList> PluginCommands;
-	// TWeakPtr<class SProjectCleanerMainUI> CleanerMainUI;
-
-	/* CleanerManager */
-	// ProjectCleanerManager CleanerManager;
 };

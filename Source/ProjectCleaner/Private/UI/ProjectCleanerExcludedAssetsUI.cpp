@@ -81,7 +81,7 @@ void SProjectCleanerExcludedAssetsUI::UpdateUI()
 			ContentBrowserModule->Get().CreatePathPicker(PathPickerConfig)
 		]
 		+ SSplitter::Slot()
-		.Value(0.4f)
+		.Value(0.8f)
 		[
 			SNew(SVerticalBox)
 			+ SVerticalBox::Slot()
@@ -129,53 +129,53 @@ void SProjectCleanerExcludedAssetsUI::UpdateUI()
 				]
 			]
 		]
-		+ SSplitter::Slot()
-		.Value(0.4f)
-		[
-			SNew(SVerticalBox)
-			+ SVerticalBox::Slot()
-			.AutoHeight()
-			.Padding(10.0f, 10.0f)
-			[
-				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot()
-				.AutoWidth()
-				.HAlign(HAlign_Left)
-				.VAlign(VAlign_Top)
-				[
-					SNew(STextBlock)
-					.AutoWrapText(true)
-					.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
-					.Text(LOCTEXT("exclude_assets_linked_assets_title_text", "Linked Assets"))
-				]
-			]
-			+ SVerticalBox::Slot()
-			.AutoHeight()
-			.Padding(10.0f, 14.0f)
-			[
-				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot()
-				.AutoWidth()
-				.HAlign(HAlign_Left)
-				.VAlign(VAlign_Top)
-				[
-					SNew(STextBlock)
-					.AutoWrapText(true)
-					.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light10"))
-					.Text(LOCTEXT("exclude_assets_linked_assets_tip_info_text", "All referenced and dependency assets of excluded assets"))
-				]
-			]
-			+ SVerticalBox::Slot()
-			.Padding(10.0, 10.0f)
-			[
-				SNew(SBox)
-				.HeightOverride(300)
-				.WidthOverride(300)
-				[
-					GetLinkedAssetsView().ToSharedRef()
-				]			
-			]
-		]
+		// + SSplitter::Slot()
+		// .Value(0.4f)
+		// [
+		// 	SNew(SVerticalBox)
+		// 	+ SVerticalBox::Slot()
+		// 	.AutoHeight()
+		// 	.Padding(10.0f, 10.0f)
+		// 	[
+		// 		SNew(SHorizontalBox)
+		// 		+ SHorizontalBox::Slot()
+		// 		.AutoWidth()
+		// 		.HAlign(HAlign_Left)
+		// 		.VAlign(VAlign_Top)
+		// 		[
+		// 			SNew(STextBlock)
+		// 			.AutoWrapText(true)
+		// 			.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
+		// 			.Text(LOCTEXT("exclude_assets_linked_assets_title_text", "Linked Assets"))
+		// 		]
+		// 	]
+		// 	+ SVerticalBox::Slot()
+		// 	.AutoHeight()
+		// 	.Padding(10.0f, 14.0f)
+		// 	[
+		// 		SNew(SHorizontalBox)
+		// 		+ SHorizontalBox::Slot()
+		// 		.AutoWidth()
+		// 		.HAlign(HAlign_Left)
+		// 		.VAlign(VAlign_Top)
+		// 		[
+		// 			SNew(STextBlock)
+		// 			.AutoWrapText(true)
+		// 			.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light10"))
+		// 			.Text(LOCTEXT("exclude_assets_linked_assets_tip_info_text", "All referenced and dependency assets of excluded assets"))
+		// 		]
+		// 	]
+		// 	+ SVerticalBox::Slot()
+		// 	.Padding(10.0, 10.0f)
+		// 	[
+		// 		SNew(SBox)
+		// 		.HeightOverride(300)
+		// 		.WidthOverride(300)
+		// 		[
+		// 			GetLinkedAssetsView().ToSharedRef()
+		// 		]			
+		// 	]
+		// ]
 	];
 }
 
@@ -193,13 +193,13 @@ TSharedPtr<SWidget> SProjectCleanerExcludedAssetsUI::GetExcludedAssetsView()
 	AssetPickerConfig.bForceShowEngineContent = false;
 	AssetPickerConfig.bCanShowClasses = false;
 	AssetPickerConfig.bAllowDragging = false;
-	AssetPickerConfig.bCanShowFolders = false;
+	AssetPickerConfig.bCanShowFolders = true;
 	AssetPickerConfig.AssetShowWarningText = FText::FromName("No assets");
 	AssetPickerConfig.GetCurrentSelectionDelegates.Add(&GetCurrentSelectionDelegate);
-	AssetPickerConfig.OnAssetSelected = FOnAssetSelected::CreateRaw(
-		this,
-		&SProjectCleanerExcludedAssetsUI::OnAssetSelected
-	);
+	// AssetPickerConfig.OnAssetSelected = FOnAssetSelected::CreateRaw(
+	// 	this,
+	// 	&SProjectCleanerExcludedAssetsUI::OnAssetSelected
+	// );
 	AssetPickerConfig.OnAssetDoubleClicked = FOnAssetDoubleClicked::CreateStatic(
 		&SProjectCleanerExcludedAssetsUI::OnAssetDblClicked
 	);
@@ -231,68 +231,68 @@ TSharedPtr<SWidget> SProjectCleanerExcludedAssetsUI::GetExcludedAssetsView()
 	Filter.PackageNames.Reserve(CleanerManager->GetExcludedAssets().Num());
 	for(const auto& Asset : CleanerManager->GetExcludedAssets())
 	{
-		Filter.PackageNames.Add(Asset.Key);
+		Filter.PackageNames.Add(Asset);
 	}
 	AssetPickerConfig.Filter = Filter;
 
 	return ContentBrowserModule->Get().CreateAssetPicker(AssetPickerConfig);
 }
 
-TSharedPtr<SWidget> SProjectCleanerExcludedAssetsUI::GetLinkedAssetsView()
-{
-	FAssetPickerConfig AssetPickerConfig;
-	AssetPickerConfig.InitialAssetViewType = EAssetViewType::Tile;
-	AssetPickerConfig.SelectionMode = ESelectionMode::None;
-	AssetPickerConfig.bAddFilterUI = true;
-	AssetPickerConfig.bShowPathInColumnView = true;
-	AssetPickerConfig.bSortByPathInColumnView = true;
-	AssetPickerConfig.bForceShowEngineContent = false;
-	AssetPickerConfig.bShowBottomToolbar = true;
-	AssetPickerConfig.bCanShowDevelopersFolder = CleanerManager->GetCleanerConfigs()->bScanDeveloperContents;
-	AssetPickerConfig.bForceShowEngineContent = false;
-	AssetPickerConfig.bCanShowClasses = false;
-	AssetPickerConfig.bAllowDragging = false;
-	AssetPickerConfig.bCanShowFolders = false;
-	AssetPickerConfig.AssetShowWarningText = FText::FromName("No assets");
-
-	FARFilter Filter;
-	if (CleanerManager->GetExcludedAssets().Num() == 0)
-	{
-		Filter.TagsAndValues.Add(FName{ "ProjectCleanerEmptyTag" }, FString{ "ProjectCleanerEmptyTag" });
-	}
-	else
-	{
-		Filter.bRecursiveClasses = true;
-		Filter.RecursiveClassesExclusionSet.Append(CleanerManager->GetPrimaryAssetClasses());
-	}
-
-	if (!SelectedAssetName.IsNone())
-	{
-		const FExcludedAsset* LinkedAssets = CleanerManager->GetExcludedAssets().Find(SelectedAssetName);
-		if (LinkedAssets)
-		{
-			for (const auto& LinkedAsset : LinkedAssets->PackageNames)
-			{
-				Filter.PackageNames.Add(LinkedAsset);
-			}
-		}
-	}
-	else
-	{
-		for (const auto& Asset : CleanerManager->GetExcludedAssets())
-		{
-			Filter.PackageNames.Reserve(Asset.Value.PackageNames.Num());
-			for (const auto& LinkedAssetName : Asset.Value.PackageNames)
-			{
-				Filter.PackageNames.Add(LinkedAssetName);
-			}
-		}
-	}
-	
-	AssetPickerConfig.Filter = Filter;
-
-	return ContentBrowserModule->Get().CreateAssetPicker(AssetPickerConfig);
-}
+// TSharedPtr<SWidget> SProjectCleanerExcludedAssetsUI::GetLinkedAssetsView()
+// {
+// 	FAssetPickerConfig AssetPickerConfig;
+// 	AssetPickerConfig.InitialAssetViewType = EAssetViewType::Tile;
+// 	AssetPickerConfig.SelectionMode = ESelectionMode::None;
+// 	AssetPickerConfig.bAddFilterUI = true;
+// 	AssetPickerConfig.bShowPathInColumnView = true;
+// 	AssetPickerConfig.bSortByPathInColumnView = true;
+// 	AssetPickerConfig.bForceShowEngineContent = false;
+// 	AssetPickerConfig.bShowBottomToolbar = true;
+// 	AssetPickerConfig.bCanShowDevelopersFolder = CleanerManager->GetCleanerConfigs()->bScanDeveloperContents;
+// 	AssetPickerConfig.bForceShowEngineContent = false;
+// 	AssetPickerConfig.bCanShowClasses = false;
+// 	AssetPickerConfig.bAllowDragging = false;
+// 	AssetPickerConfig.bCanShowFolders = false;
+// 	AssetPickerConfig.AssetShowWarningText = FText::FromName("No assets");
+//
+// 	FARFilter Filter;
+// 	if (CleanerManager->GetExcludedAssets().Num() == 0)
+// 	{
+// 		Filter.TagsAndValues.Add(FName{ "ProjectCleanerEmptyTag" }, FString{ "ProjectCleanerEmptyTag" });
+// 	}
+// 	else
+// 	{
+// 		Filter.bRecursiveClasses = true;
+// 		Filter.RecursiveClassesExclusionSet.Append(CleanerManager->GetPrimaryAssetClasses());
+// 	}
+//
+// 	if (!SelectedAssetName.IsNone())
+// 	{
+// 		const FExcludedAsset* LinkedAssets = CleanerManager->GetExcludedAssets().Find(SelectedAssetName);
+// 		if (LinkedAssets)
+// 		{
+// 			for (const auto& LinkedAsset : LinkedAssets->PackageNames)
+// 			{
+// 				Filter.PackageNames.Add(LinkedAsset);
+// 			}
+// 		}
+// 	}
+// 	else
+// 	{
+// 		for (const auto& Asset : CleanerManager->GetExcludedAssets())
+// 		{
+// 			Filter.PackageNames.Reserve(Asset.Value.PackageNames.Num());
+// 			for (const auto& LinkedAssetName : Asset.Value.PackageNames)
+// 			{
+// 				Filter.PackageNames.Add(LinkedAssetName);
+// 			}
+// 		}
+// 	}
+// 	
+// 	AssetPickerConfig.Filter = Filter;
+//
+// 	return ContentBrowserModule->Get().CreateAssetPicker(AssetPickerConfig);
+// }
 
 TSharedPtr<SWidget> SProjectCleanerExcludedAssetsUI::OnGetAssetContextMenu(const TArray<FAssetData>& SelectedAssets) const
 {
@@ -345,12 +345,15 @@ bool SProjectCleanerExcludedAssetsUI::IsAnythingSelected() const
 	return CurrentSelection.Num() > 0;
 }
 
-void SProjectCleanerExcludedAssetsUI::IncludeAssets() const
+void SProjectCleanerExcludedAssetsUI::IncludeAssets()
 {
 	if (!GetCurrentSelectionDelegate.IsBound()) return;
 
 	const TArray<FAssetData> SelectedAssets = GetCurrentSelectionDelegate.Execute();
-	if(!SelectedAssets.Num()) return;
+
+	CleanerManager->RemoveFromExcludedAssets(SelectedAssets);
+
+	UpdateUI();
 
 	// if(!OnUserIncludedAssets.IsBound()) return;
 	//

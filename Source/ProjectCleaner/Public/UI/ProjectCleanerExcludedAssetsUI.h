@@ -24,20 +24,20 @@ public:
 	
 	void Construct(const FArguments& InArgs);
 	void SetCleanerManager(ProjectCleanerManager* CleanerManagerPtr);
+	void UpdateUI();
 	
 	FOnUserIncludedAsset OnUserIncludedAssets;
 private:
 	
 	void RegisterCommands();
-	void UpdateUI();
 	TSharedPtr<SWidget> GetExcludedAssetsView();
-	TSharedPtr<SWidget> GetLinkedAssetsView();
+	// TSharedPtr<SWidget> GetLinkedAssetsView();
 	TSharedPtr<SWidget> OnGetAssetContextMenu(const TArray<FAssetData>& SelectedAssets) const;
 	static void OnAssetDblClicked(const FAssetData& AssetData);
 	void OnAssetSelected(const FAssetData& AssetData);
 	void FindInContentBrowser() const;
 	bool IsAnythingSelected() const;
-	void IncludeAssets() const;
+	void IncludeAssets();
 	FReply IncludeAllAssets() const;
 
 	/* Data */

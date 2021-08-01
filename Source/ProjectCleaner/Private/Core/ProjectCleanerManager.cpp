@@ -28,11 +28,12 @@ ProjectCleanerManager::ProjectCleanerManager()
 	ExcludeOptions = GetMutableDefault<UExcludeOptions>();
 	
 	AssetRegistry = &FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
+	DirectoryWatcher = &FModuleManager::LoadModuleChecked<FDirectoryWatcherModule>(TEXT("DirectoryWatcher"));
 
 	ensure(CleanerConfigs);
 	ensure(AssetRegistry);
 	ensure(ExcludeOptions);
-	// ensure(DirectoryWatcher);
+	ensure(DirectoryWatcher);
 }
 
 void ProjectCleanerManager::Update()
@@ -50,12 +51,32 @@ void ProjectCleanerManager::Update()
 	ProjectCleanerUtility::FixupRedirectors();
 	ProjectCleanerUtility::SaveAllAssets(true);
 
-	ProjectCleanerDataManagerV2::GetAllAssetsByPath(TEXT("/Game"),AllAssets);
-	ProjectCleanerDataManagerV2::GetInvalidFilesByPath(FPaths::ProjectContentDir(), AllAssets, CorruptedAssets, NonEngineFiles);
-	ProjectCleanerDataManagerV2::GetIndirectAssetsByPath(FPaths::ProjectDir(), IndirectAssets, AllAssets);
-	ProjectCleanerDataManagerV2::GetEmptyFolders(FPaths::ProjectContentDir(), EmptyFolders, CleanerConfigs->bScanDeveloperContents);
-	ProjectCleanerDataManagerV2::GetPrimaryAssetClasses(PrimaryAssetClasses);
-	ProjectCleanerDataManagerV2::GetAllAssetsWithExternalReferencers(AssetsWithExternalRefs, AllAssets);
+	if (!bIsActualData)
+	{
+		LoadInitialData();
+
+		if (!bDelegatesRegistered)
+		{
+			// Registering asset registry delegates to monitor any changes
+			AssetRegistry->Get().OnAssetAdded().AddRaw(this, &ProjectCleanerManager::OnAssetAdded);
+			AssetRegistry->Get().OnAssetRemoved().AddRaw(this, &ProjectCleanerManager::OnAssetRemoved);
+			AssetRegistry->Get().OnAssetRenamed().AddRaw(this, &ProjectCleanerManager::OnAssetRenamed);
+			AssetRegistry->Get().OnAssetUpdated().AddRaw(this, &ProjectCleanerManager::OnAssetUpdated);
+
+			// Registering directory watcher delegates
+			FDelegateHandle DelegateHandle;
+			DirectoryWatcher->Get()->RegisterDirectoryChangedCallback_Handle(
+				FPaths::GameSourceDir(),
+				IDirectoryWatcher::FDirectoryChanged::CreateRaw(
+					this,
+					&ProjectCleanerManager::OnDirectoryChanged
+				),
+				DelegateHandle,
+				0
+			);
+			// todo:ashe23 add watcher to Config and Plugins folder?
+		}
+	}
 
 	FindUnusedAssets();
 }
@@ -98,6 +119,34 @@ void ProjectCleanerManager::AddToExcludeClasses(const TArray<FAssetData>& Exclud
 	FindUnusedAssets();
 }
 
+void ProjectCleanerManager::RemoveFromExcludedAssets(const TArray<FAssetData>& Assets)
+{
+	UserExcludedAssets.RemoveAllSwap([&] (const FAssetData& Asset)
+	{
+		return Assets.Contains(Asset);
+	}, false);
+	UserExcludedAssets.Shrink();
+
+	// if asset is excluded by path or class show notification about conflict
+	bool bHasConflictWithFilters = false;
+	for (const auto& Asset : Assets)
+	{
+		// todo:ashe23 add exclude by path check
+		if (IsExcludedByClass(Asset))
+		{
+			bHasConflictWithFilters = true;
+		}
+	}
+
+	if (bHasConflictWithFilters)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Cant include assets, because of filter! Clear filter instead."));
+	}
+
+	FindUnusedAssets();
+	
+}
+
 const TArray<FAssetData>& ProjectCleanerManager::GetAllAssets() const
 {
 	return AllAssets;
@@ -133,7 +182,7 @@ const TArray<FAssetData>& ProjectCleanerManager::GetUnusedAssets() const
 	return UnusedAssets;
 }
 
-const TMap<FName, FExcludedAsset>& ProjectCleanerManager::GetExcludedAssets() const
+const TSet<FName>& ProjectCleanerManager::GetExcludedAssets() const
 {
 	return ExcludedAssets;
 }
@@ -148,17 +197,32 @@ UExcludeOptions* ProjectCleanerManager::GetExcludeOptions() const
 	return ExcludeOptions;
 }
 
-void ProjectCleanerManager::Clean()
+float ProjectCleanerManager::GetUnusedAssetsPercent() const
 {
-	AssetsInfoMap.Empty();
-	UnusedAssets.Empty();
-	// AssetsWithExternalRefs.Empty();
-	// ExcludedAssets.Empty();
+	if (AllAssets.Num() == 0) return 0.0f;
+
+	return UnusedAssets.Num() * 100.0f / AllAssets.Num();
+}
+
+void ProjectCleanerManager::LoadInitialData()
+{
+	ProjectCleanerDataManager::GetAllAssetsByPath(TEXT("/Game"),AllAssets);
+	ProjectCleanerDataManager::GetInvalidFilesByPath(FPaths::ProjectContentDir(), AllAssets, CorruptedAssets, NonEngineFiles);
+	ProjectCleanerDataManager::GetIndirectAssetsByPath(FPaths::ProjectDir(), IndirectAssets, AllAssets);
+	ProjectCleanerDataManager::GetEmptyFolders(FPaths::ProjectContentDir(), EmptyFolders, CleanerConfigs->bScanDeveloperContents);
+	ProjectCleanerDataManager::GetPrimaryAssetClasses(PrimaryAssetClasses);
+	ProjectCleanerDataManager::GetAllAssetsWithExternalReferencers(AssetsWithExternalRefs, AllAssets);
+
+	bIsActualData = true;
 }
 
 void ProjectCleanerManager::FindUnusedAssets()
 {
-	Clean();
+	UnusedAssets.Empty();
+	ExcludedAssets.Empty();
+	
+	FScopedSlowTask SlowTask(2.0f, FText::FromString(FStandardCleanerText::Scanning));
+	SlowTask.MakeDialog(true);
 	
 	// 1) Getting all used assets
 	//  We assume asset to be used, if one of those criteria apply to it
@@ -215,6 +279,7 @@ void ProjectCleanerManager::FindUnusedAssets()
 	for (const auto& Asset : UserExcludedAssets)
 	{
 		UsedAssets.Add(Asset.PackageName);
+		ExcludedAssets.Add(Asset.PackageName);
 	}
 
 	// excluded by path
@@ -233,6 +298,7 @@ void ProjectCleanerManager::FindUnusedAssets()
 		for (const auto& Asset : AllExcludedAssets)
 		{
 			UsedAssets.Add(Asset.PackageName);
+			ExcludedAssets.Add(Asset.PackageName);
 		}
 	}
 
@@ -244,6 +310,7 @@ void ProjectCleanerManager::FindUnusedAssets()
 		{
 			ExcludedByClassAssets.Add(Asset.PackageName);
 			UsedAssets.Add(Asset.PackageName);
+			ExcludedAssets.Add(Asset.PackageName);
 		}
 	}
 
@@ -280,82 +347,31 @@ void ProjectCleanerManager::FindUnusedAssets()
 			}
 		}
 	}
+	SlowTask.EnterProgressFrame();
 
 	// unused assets
 	const bool IsMegascansLoaded = FModuleManager::Get().IsModuleLoaded("MegascansPlugin");
 	for (const auto& Asset : AllAssets)
 	{
 		if (UsedAssetsDeps.Contains(Asset.PackageName)) continue;
-		if (IsMegascansLoaded && !CleanerConfigs->bScanMegascansContent && IsUnderMegascansFolder(Asset)) continue;
+		if (
+			IsMegascansLoaded &&
+			!CleanerConfigs->bScanMegascansContent &&
+			ProjectCleanerDataManager::IsUnderMegascansFolder(Asset)
+		) continue;
+		
 		UnusedAssets.Add(Asset);
 	}
 	
-	
 	const double End = FPlatformTime::Seconds() - Start;
+	SlowTask.EnterProgressFrame();
 
 	UE_LOG(LogTemp, Warning, TEXT("%f"), End);
 }
 
-void ProjectCleanerManager::FindExcludedAssets()
-{
-	// ExcludedAssets.Empty();
-	//
-	// // excluded by user
-	// for (const auto& Asset : UserExcludedAssets)
-	// {
-	// 	FExcludedAsset ExcludedAsset;
-	// 	ProjectCleanerDataManagerV2::GetAllRefsAndDeps(Asset.PackageName, ExcludedAsset.PackageNames);
-	// 	ExcludedAssets.Add(Asset.PackageName, ExcludedAsset);
-	// }
-	//
-	// // excluded by path
-	// TArray<FAssetData> TempContainer;
-	// for (const auto& ExcludedPath : ExcludeOptions->Paths)
-	// {
-	// 	AssetRegistry->Get().GetAssetsByPath(FName{*ExcludedPath.Path}, TempContainer, true);
-	//
-	// 	for (const auto& Asset : TempContainer)
-	// 	{
-	// 		FExcludedAsset ExcludedAsset;
-	// 		ProjectCleanerDataManagerV2::GetAllRefsAndDeps(Asset.PackageName, ExcludedAsset.PackageNames);
-	// 		ExcludedAssets.Add(Asset.PackageName, ExcludedAsset);
-	// 	}
-	//
-	// 	TempContainer.Reset();
-	// }
-	//
-	// TempContainer.Empty();
-	//
-	// // excluded by class
-	// for (const auto& ExcludedClass : ExcludeOptions->Classes)
-	// {
-	// 	if (!ExcludedClass) continue;
-	// 	AssetRegistry->Get().GetAssetsByClass(ExcludedClass->GetFName(), TempContainer);
-	//
-	// 	TempContainer.RemoveAllSwap([] (const FAssetData& Asset)
-	// 	{
-	// 		return !Asset.PackagePath.ToString().StartsWith("/Game");
-	// 	}, false);
-	//
-	// 	for (const auto& Asset : TempContainer)
-	// 	{
-	// 		FExcludedAsset ExcludedAsset;
-	// 		ProjectCleanerDataManagerV2::GetAllRefsAndDeps(Asset.PackageName, ExcludedAsset.PackageNames);
-	// 		ExcludedAssets.Add(Asset.PackageName, ExcludedAsset);
-	// 	}
-	// 	
-	// 	TempContainer.Reset();
-	// }
-}
-
-bool ProjectCleanerManager::IsPrimaryAsset(const FAssetData& AssetData) const
-{
-	return PrimaryAssetClasses.Contains(ProjectCleanerDataManagerV2::GetClassName(AssetData));
-}
-
 bool ProjectCleanerManager::IsExcludedByClass(const FAssetData& AssetData) const
 {
-	const FName ClassName = ProjectCleanerDataManagerV2::GetClassName(AssetData);
+	const FName ClassName = ProjectCleanerDataManager::GetClassName(AssetData);
 
 	TSet<FName> ExcludedClassNames;
 	for (const auto& ExcludedClass : ExcludeOptions->Classes)
@@ -367,14 +383,28 @@ bool ProjectCleanerManager::IsExcludedByClass(const FAssetData& AssetData) const
 	return ExcludedClassNames.Contains(ClassName);
 }
 
-bool ProjectCleanerManager::IsUnderDevelopersFolder(const FAssetData& AssetData) const
+void ProjectCleanerManager::OnAssetAdded(const FAssetData& AssetData)
 {
-	return AssetData.PackagePath.ToString().StartsWith(TEXT("/Game/Developers"));
+	bIsActualData = false;
 }
 
-bool ProjectCleanerManager::IsUnderMegascansFolder(const FAssetData& AssetData) const
+void ProjectCleanerManager::OnAssetRemoved(const FAssetData& AssetData)
 {
-	return AssetData.PackagePath.ToString().StartsWith(TEXT("/Game/MSPresets"));
+	bIsActualData = false;
 }
 
+void ProjectCleanerManager::OnAssetUpdated(const FAssetData& AssetData)
+{
+	bIsActualData = false;
+}
+
+void ProjectCleanerManager::OnAssetRenamed(const FAssetData& AssetData, const FString& Name)
+{
+	bIsActualData = false;
+}
+
+void ProjectCleanerManager::OnDirectoryChanged(const TArray<FFileChangeData>& InFileChanges)
+{
+	bIsActualData = false;
+}
 #undef LOCTEXT_NAMESPACE

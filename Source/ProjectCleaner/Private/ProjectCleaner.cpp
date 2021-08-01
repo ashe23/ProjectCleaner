@@ -4,7 +4,6 @@
 #include "UI/ProjectCleanerStyle.h"
 #include "UI/ProjectCleanerMainUI.h"
 #include "UI/ProjectCleanerCommands.h"
-// #include "Core/ProjectCleanerUtility.h"
 // Engine Headers
 #include "ToolMenus.h"
 #include "AssetToolsModule.h"
@@ -26,7 +25,7 @@ void FProjectCleanerModule::StartupModule()
 	PluginCommands = MakeShareable(new FUICommandList);
 	PluginCommands->MapAction(
 		FProjectCleanerCommands::Get().OpenCleanerWindow,
-		FExecuteAction::CreateRaw(this, &FProjectCleanerModule::PluginButtonClicked),
+		FExecuteAction::CreateStatic(&FProjectCleanerModule::PluginButtonClicked),
 		FCanExecuteAction()
 	);
 
@@ -79,7 +78,7 @@ void FProjectCleanerModule::PluginButtonClicked()
 	FGlobalTabmanager::Get()->TryInvokeTab(ProjectCleanerTabName);
 }
 
-TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs)
+TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs) const
 {
 	return SNew(SDockTab).TabRole(ETabRole::NomadTab)
 	[
