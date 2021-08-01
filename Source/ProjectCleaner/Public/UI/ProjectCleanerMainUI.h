@@ -18,8 +18,7 @@ public:
 private:
 	/* Initializers */
 	void InitTabs();
-	void Update() const;
-	void UpdateUIData() const;
+	void OnCleanerManagerUpdated() const;
 	
 	/* Callbacks */
 	TSharedRef<SDockTab> OnUnusedAssetTabSpawn(const FSpawnTabArgs& SpawnTabArgs);
@@ -27,16 +26,10 @@ private:
 	TSharedRef<SDockTab> OnNonEngineFilesTabSpawn(const FSpawnTabArgs& SpawnTabArgs);
 	TSharedRef<SDockTab> OnCorruptedFilesTabSpawn(const FSpawnTabArgs& SpawnTabArgs);
 	TSharedRef<SDockTab> OnIndirectAssetsTabSpawn(const FSpawnTabArgs& SpawnTabArgs);
-
-	/* Delegates */
-	void OnUserDeletedAssets() const;
-	void OnUserExcludedAssets(const TArray<FAssetData>& Assets) const;
-	void OnUserIncludedAssets(const TArray<FAssetData>& Assets, const bool CleanFilters) const;
-	void OnUserExcludedAssetsOfType(const TArray<FAssetData>& Assets) const;
 	
 	/* Btn Callbacks */
 	FReply OnRefreshBtnClick();
-	FReply OnDeleteUnusedAssetsBtnClick() const;
+	FReply OnDeleteUnusedAssetsBtnClick();
 	FReply OnDeleteEmptyFolderClick() const;
 	EAppReturnType::Type ShowConfirmationWindow(const FText& Title, const FText& ContentText) const;
 	static bool IsConfirmationWindowCanceled(EAppReturnType::Type Status);

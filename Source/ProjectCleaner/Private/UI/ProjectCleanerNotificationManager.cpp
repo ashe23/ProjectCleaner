@@ -5,12 +5,12 @@
 #include "Framework/Notifications/NotificationManager.h"
 
 void ProjectCleanerNotificationManager::Add(
-	const FString& Text,
+	const FText& Text,
 	const SNotificationItem::ECompletionState CompletionState,
 	TWeakPtr<SNotificationItem>& NotificationPtr
 )
 {
-	FNotificationInfo Info(FText::FromString(Text));
+	FNotificationInfo Info(Text);
 	Info.bFireAndForget = false;
 
 	NotificationPtr = FSlateNotificationManager::Get().AddNotification(Info);

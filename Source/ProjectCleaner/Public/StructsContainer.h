@@ -101,8 +101,9 @@ struct FStandardCleanerText
 	constexpr static TCHAR* AssetsWithReferencersInDeveloperFolder = TEXT("Some of assets has references in Developers folder. To view them click 'Scan Developers Folder' checkbox.");
 	constexpr static TCHAR* AssetRegistryStillWorking = TEXT("Asset registry still working. Please wait while scan completes");
 	constexpr static TCHAR* SomeAssetsHaveRefsInDevFolder = TEXT("Some assets have referencers in Developer Contents Folder.");
-	constexpr static TCHAR* CantIncludeSomeAssets = TEXT("Cant include some filtered assets.Clear 'ExcludeOptions' filters and try again.");
+	constexpr static TCHAR* CantIncludeSomeAssets = TEXT("Cant include selected assets, because they excluded by 'Exclude Options' filter.");
 	constexpr static TCHAR* FailedToDeleteSomeFolders = TEXT("Failed to delete some folders. See Output Log for more information.");
-	constexpr static TCHAR* Scanning = TEXT("Scanning assets and their referencers and dependencies...");
+	constexpr static TCHAR* SearchingForUnusedAssets = TEXT("Searching for unused assets...");
+	constexpr static TCHAR* LoadingInitialData = TEXT("Loading initial data...");
 	
 };

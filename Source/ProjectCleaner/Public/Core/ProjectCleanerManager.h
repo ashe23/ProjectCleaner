@@ -9,32 +9,25 @@ struct FExcludedAsset;
 class UCleanerConfigs;
 class UExcludeOptions;
 
-enum class EProjectCleanerManagerState
-{
-	Initial,
-	Cached,
-	FullScan
-};
 
-enum class EProjectCleanerManagerCacheState
-{
-	None,
-	Cached,
-	RescanRequired
-};
+DECLARE_DELEGATE(FOnCleanerManagerUpdated);
 
 class ProjectCleanerManager
 {
 public:
 	ProjectCleanerManager();
+	~ProjectCleanerManager();
 
 	/**
 	 * @brief Updates data containers
 	 */
 	void Update();
-	void AddToUserExcludedAssets(const TArray<FAssetData>& NewUserExcludedAssets);
-	void AddToExcludeClasses(const TArray<FAssetData>& ExcludedByTypeAssets);
-	void RemoveFromExcludedAssets(const TArray<FAssetData>& Assets);
+	void ExcludeSelectedAssets(const TArray<FAssetData>& NewUserExcludedAssets);
+	void ExcludedSelectedAssetsByType(const TArray<FAssetData>& ExcludedByTypeAssets);
+	void IncludeSelectedAssets(const TArray<FAssetData>& Assets);
+	void IncludeAllAssets();
+	void DeleteSelectedAssets(const TArray<FAssetData>& Assets);
+	void DeleteAllUnusedAssets();
 
 	/** Data Container getters **/
 	const TArray<FAssetData>& GetAllAssets() const;
@@ -48,13 +41,23 @@ public:
 	UCleanerConfigs* GetCleanerConfigs() const;
 	UExcludeOptions* GetExcludeOptions() const;
 	float GetUnusedAssetsPercent() const;
+
+	/* Delegates */
+	FOnCleanerManagerUpdated OnCleanerManagerUpdated;
 private:
 	
 	void LoadInitialData();
 	void FindUnusedAssets();
 	bool IsExcludedByClass(const FAssetData& AssetData) const;
+	bool IsExcludedByPath(const FAssetData& AssetData) const;
+	void GetDeletionChunk(TArray<FAssetData>& Chunk);
+	FText GetDeletionProgressText(const int32 DeletedAssetNum) const;
 
 	/** Data Containers **/
+	
+	bool bIsActualData = false;
+	
+	bool bDelegatesRegistered = false;
 	
 	/**
 	* @brief All assets in "/Game" folder
@@ -122,6 +125,14 @@ private:
 
 	/* Asset Registry */
 	class FAssetRegistryModule* AssetRegistry;
+	
+	FDelegateHandle AssetAddedDelegate;
+	FDelegateHandle AssetRemovedDelegate;
+	FDelegateHandle AssetUpdatedDelegate;
+	FDelegateHandle AssetRenamedDelegate;
+	
+	void RegisterAssetRegistryDelegates();
+	void UnRegisterAssetRegistryDelegates() const;
 	void OnAssetAdded(const FAssetData& AssetData);
 	void OnAssetRemoved(const FAssetData& AssetData);
 	void OnAssetUpdated(const FAssetData& AssetData);
@@ -129,8 +140,12 @@ private:
 
 	/* Directory Watcher Module */
 	class FDirectoryWatcherModule* DirectoryWatcher;
+	
+	FDelegateHandle SourceDirDelegateHandle;
+	FDelegateHandle ConfigDirDelegateHandle;
+	FDelegateHandle PluginsDirDelegateHandle;
+	
+	void RegisterDirectoryWatcherDelegates();
+	void UnRegisterDirectoryWatcherDelegates() const;
 	void OnDirectoryChanged(const TArray<struct FFileChangeData>& InFileChanges);
-
-	bool bIsActualData = false;
-	bool bDelegatesRegistered = false;
 };

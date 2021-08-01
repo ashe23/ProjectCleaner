@@ -5,11 +5,8 @@
 // Engine Headers
 #include "CoreMinimal.h"
 #include "Widgets/SCompoundWidget.h"
-#include "StructsContainer.h"
 #include "Editor/ContentBrowser/Public/ContentBrowserDelegates.h"
 #include "IContentBrowserSingleton.h"
-
-DECLARE_DELEGATE_TwoParams(FOnUserIncludedAsset, const TArray<FAssetData>&, const bool);
 
 class UCleanerConfigs;
 class ProjectCleanerManager;
@@ -25,31 +22,25 @@ public:
 	void Construct(const FArguments& InArgs);
 	void SetCleanerManager(ProjectCleanerManager* CleanerManagerPtr);
 	void UpdateUI();
-	
-	FOnUserIncludedAsset OnUserIncludedAssets;
 private:
 	
 	void RegisterCommands();
 	TSharedPtr<SWidget> GetExcludedAssetsView();
-	// TSharedPtr<SWidget> GetLinkedAssetsView();
 	TSharedPtr<SWidget> OnGetAssetContextMenu(const TArray<FAssetData>& SelectedAssets) const;
 	static void OnAssetDblClicked(const FAssetData& AssetData);
-	void OnAssetSelected(const FAssetData& AssetData);
 	void FindInContentBrowser() const;
 	bool IsAnythingSelected() const;
-	void IncludeAssets();
+	void IncludeAssets() const;
 	FReply IncludeAllAssets() const;
 
 	/* Data */
-	// UCleanerConfigs* CleanerConfigs = nullptr;
 	FGetCurrentSelectionDelegate GetCurrentSelectionDelegate;
 	TSharedPtr<FUICommandList> Commands;
 
 	/* PathPickerConfig */
 	FName SelectedPath;
-	void OnPathSelected(const FString& Path);
 	struct FPathPickerConfig PathPickerConfig;
-	FName SelectedAssetName;
+	void OnPathSelected(const FString& Path);
 
 	/* ProjectCleanerManager */
 	ProjectCleanerManager* CleanerManager = nullptr;

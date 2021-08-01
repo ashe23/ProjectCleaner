@@ -5,7 +5,6 @@
 #include "Core/ProjectCleanerManager.h"
 #include "StructsContainer.h"
 // Engine Headers
-#include "ObjectTools.h"
 #include "Editor/ContentBrowser/Public/ContentBrowserModule.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SScrollBorder.h"
@@ -183,7 +182,8 @@ void SProjectCleanerUnusedAssetsBrowserUI::GenerateFilter()
 	{
 		Filter.PackagePaths.Add(SelectedPath);
 	}
-
+	
+	AssetPickerConfig.bCanShowDevelopersFolder = CleanerManager->GetCleanerConfigs()->bScanDeveloperContents;
 	AssetPickerConfig.Filter = Filter;
 }
 
@@ -228,11 +228,10 @@ void SProjectCleanerUnusedAssetsBrowserUI::FindInContentBrowser() const
 	if (!CurrentSelectionDelegate.IsBound()) return;
 
 	const TArray<FAssetData> CurrentSelection = CurrentSelectionDelegate.Execute();
-	if (CurrentSelection.Num() > 0)
-	{
-		FContentBrowserModule& CBModule = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
-		CBModule.Get().SyncBrowserToAssets(CurrentSelection);
-	}
+	if (CurrentSelection.Num() == 0) return;
+	
+	FContentBrowserModule& CBModule = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
+	CBModule.Get().SyncBrowserToAssets(CurrentSelection);
 }
 
 bool SProjectCleanerUnusedAssetsBrowserUI::IsAnythingSelected() const
@@ -248,43 +247,23 @@ void SProjectCleanerUnusedAssetsBrowserUI::DeleteAsset() const
 	if (!CurrentSelectionDelegate.IsBound()) return;
 
 	const TArray<FAssetData> CurrentSelection = CurrentSelectionDelegate.Execute();
-	if (!CurrentSelection.Num()) return;
-
-	// todo:ashe23 uncomment after refactoring of asset deletion logic
-	const int32 DeletedAssetsNum = ObjectTools::DeleteAssets(CurrentSelection);
-	// if (DeletedAssetsNum == 0) return;
-	// if (!OnUserDeletedAssets.IsBound()) return;
-	// OnUserDeletedAssets.Execute();
+	CleanerManager->DeleteSelectedAssets(CurrentSelection);
 }
 
-void SProjectCleanerUnusedAssetsBrowserUI::ExcludeAsset()
+void SProjectCleanerUnusedAssetsBrowserUI::ExcludeAsset() const
 {
-	if(!CurrentSelectionDelegate.IsBound()) return;
+	if (!CurrentSelectionDelegate.IsBound()) return;
 
 	const TArray<FAssetData> SelectedAssets = CurrentSelectionDelegate.Execute();
-	CleanerManager->AddToUserExcludedAssets(SelectedAssets);
-
-	UpdateUI();
-
-	// if(!OnUserExcludedAssets.IsBound()) return;
-	// OnUserExcludedAssets.Execute(SelectedAssets);
+	CleanerManager->ExcludeSelectedAssets(SelectedAssets);
 }
 
-void SProjectCleanerUnusedAssetsBrowserUI::ExcludeAssetsOfType()
+void SProjectCleanerUnusedAssetsBrowserUI::ExcludeAssetsOfType() const
 {
-	if(!CurrentSelectionDelegate.IsBound()) return;
+	if (!CurrentSelectionDelegate.IsBound()) return;
 	
 	const TArray<FAssetData> SelectedAssets = CurrentSelectionDelegate.Execute();
-	CleanerManager->AddToExcludeClasses(SelectedAssets);
-
-	UpdateUI();
-	
-	// if(!SelectedAssets.Num()) return;
-
-	// UE_LOG(LogTemp, Warning, TEXT("Excluding assets of selected types."));
-	
-	// if (!OnUserExcludedAssetsOfType.IsBound()) return;
-	// OnUserExcludedAssetsOfType.Execute(SelectedAssets);
+	CleanerManager->ExcludedSelectedAssetsByType(SelectedAssets);
 }
 
 #undef LOCTEXT_NAMESPACE

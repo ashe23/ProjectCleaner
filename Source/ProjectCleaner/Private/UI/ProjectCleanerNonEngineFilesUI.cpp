@@ -86,6 +86,13 @@ void SProjectCleanerNonEngineFilesUI::SetCleanerManager(ProjectCleanerManager* C
 	if (!CleanerManagerPtr) return;
 	CleanerManager = CleanerManagerPtr;
 	
+	UpdateUI();
+}
+
+void SProjectCleanerNonEngineFilesUI::UpdateUI()
+{
+	if (!CleanerManager) return;
+	
 	NonEngineFiles.Reset();
 	NonEngineFiles.Reserve(CleanerManager->GetNonEngineFiles().Num());
 

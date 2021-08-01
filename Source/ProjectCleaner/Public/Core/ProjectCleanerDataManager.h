@@ -80,21 +80,21 @@ public:
 	 */
 	static bool IsUnderMegascansFolder(const FAssetData& AssetData);
 
-	// /**
-	//  * @brief Checks if given package is under exclude directories or not
-	//  * @param PackagePath - Asset package path ("/Game/Folder/") 
-	//  * @param ExcludeOptions - Exclude options ptr 
-	//  * @return bool
-	//  */
-	// static bool ExcludedByPath(const FName& PackagePath, const UExcludeOptions* ExcludeOptions);
-	//
-	// /**
-	//  * @brief Check if given asset excluded by class
-	//  * @param AssetData - Given asset data
-	//  * @param ExcludeOptions - Exclude options ptr
-	//  * @return bool
-	//  */
-	// static bool ExcludedByClass(const FAssetData& AssetData, const UExcludeOptions* ExcludeOptions);
+	/**
+	 * @brief Checks if given asset is circular or not
+	 * @explanation If assets refs exists in deps or vice versa, then its cyclic
+	 * @param AssetData 
+	 * @return bool 
+	 */
+	static bool IsCircularAsset(const FAssetData& AssetData);
+
+	/**
+	 * @brief Checks if given assets is root or not
+	 * @explanation Root assets dont have referencers
+	 * @param AssetData 
+	 * @return bool
+	 */
+	static bool IsRootAsset(const FAssetData& AssetData);
 
 private:
 	/**

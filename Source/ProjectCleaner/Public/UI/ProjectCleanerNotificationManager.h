@@ -22,7 +22,7 @@ public:
 	 * @return 
 	 */
 	static void Add(
-		const FString& Text,
+		const FText& Text,
 		const SNotificationItem::ECompletionState CompletionState,
 		TWeakPtr<SNotificationItem>& NotificationPtr
 	);

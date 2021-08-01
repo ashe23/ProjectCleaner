@@ -101,6 +101,13 @@ void SProjectCleanerCorruptedFilesUI::SetCleanerManager(ProjectCleanerManager* C
 	if (!CleanerManagerPtr) return;
 	CleanerManager = CleanerManagerPtr;
 	
+	UpdateUI();
+}
+
+void SProjectCleanerCorruptedFilesUI::UpdateUI()
+{
+	if (!CleanerManager) return;
+	
 	CorruptedFiles.Reset();
 	CorruptedFiles.Reserve(CleanerManager->GetCorruptedAssets().Num());
 
@@ -108,7 +115,7 @@ void SProjectCleanerCorruptedFilesUI::SetCleanerManager(ProjectCleanerManager* C
 	{
 		const auto& CorruptedFile = NewObject<UCorruptedFile>();
 		CorruptedFile->Name = FPaths::GetBaseFilename(File.ToString());
-		CorruptedFile->AbsolutePath = File.ToString();
+		CorruptedFile->AbsolutePath = ProjectCleanerUtility::ConvertInternalToAbsolutePath(File.ToString());
 		CorruptedFiles.AddUnique(CorruptedFile);
 	}
 
@@ -120,7 +127,7 @@ void SProjectCleanerCorruptedFilesUI::SetCleanerManager(ProjectCleanerManager* C
 }
 
 TSharedRef<ITableRow> SProjectCleanerCorruptedFilesUI::OnGenerateRow(TWeakObjectPtr<UCorruptedFile> InItem,
-	const TSharedRef<STableViewBase>& OwnerTable) const
+                                                                     const TSharedRef<STableViewBase>& OwnerTable) const
 {
 	return SNew(SCorruptedFileUISelectionRow, OwnerTable).SelectedRowItem(InItem);
 }

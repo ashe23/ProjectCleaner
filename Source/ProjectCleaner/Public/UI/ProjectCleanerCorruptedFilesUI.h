@@ -62,6 +62,7 @@ public:
 	
 	void Construct(const FArguments& InArgs);
 	void SetCleanerManager(ProjectCleanerManager* CleanerManagerPtr);
+	void UpdateUI();
 private:
 	TSharedRef<ITableRow> OnGenerateRow(
 		TWeakObjectPtr<UCorruptedFile> InItem,

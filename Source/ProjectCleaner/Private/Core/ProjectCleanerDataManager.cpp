@@ -320,48 +320,53 @@ bool ProjectCleanerDataManager::IsUnderMegascansFolder(const FAssetData& AssetDa
 	return AssetData.PackagePath.ToString().StartsWith(TEXT("/Game/MSPresets"));
 }
 
-// bool ProjectCleanerDataManagerV2::ExcludedByPath(const FName& PackagePath, const UExcludeOptions* ExcludeOptions)
-// {
-// 	if (!ExcludeOptions) return false;
-//
-// 	return ExcludeOptions->Paths.ContainsByPredicate([&](const FDirectoryPath& DirectoryPath)
-// 	{
-// 		return PackagePath.ToString().StartsWith(DirectoryPath.Path);
-// 	});
-// }
-//
-// bool ProjectCleanerDataManagerV2::ExcludedByClass(const FAssetData& AssetData, const UExcludeOptions* ExcludeOptions)
-// {
-// 	if (!ExcludeOptions) return false;
-// 	
-// 	// checking if asset is blueprint
-// 	if (AssetData.AssetClass.IsEqual("Blueprint"))
-// 	{
-// 		const UBlueprint* BlueprintAsset = Cast<UBlueprint>(AssetData.GetAsset());
-// 		const bool IsBlueprint = (BlueprintAsset != nullptr);
-// 		
-// 		if (!IsBlueprint || !BlueprintAsset->GeneratedClass || !BlueprintAsset->ParentClass)
-// 		{
-// 			return false;
-// 		}
-// 		
-// 		return ExcludeOptions->Classes.ContainsByPredicate([&] (const UClass* ElemClass)
-// 		{
-// 			if (!ElemClass) return false;
-// 			return
-// 				BlueprintAsset->ParentClass->GetFName().IsEqual(ElemClass->GetFName()) ||
-// 				BlueprintAsset->GeneratedClass->GetFName().IsEqual(ElemClass->GetFName()) ||
-// 				ElemClass->GetFName().IsEqual(UBlueprint::StaticClass()->GetFName());
-// 		});
-// 	}
-// 	
-// 	return ExcludeOptions->Classes.ContainsByPredicate([&] (const UClass* ElemClass)
-// 	{
-// 		if (!ElemClass) return false;
-// 		return AssetData.AssetClass.IsEqual(ElemClass->GetFName());
-// 	});
-// }
+bool ProjectCleanerDataManager::IsCircularAsset(const FAssetData& AssetData)
+{
+	const auto& AssetRegistry = FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
 
+	TArray<FName> Refs;
+	TArray<FName> Deps;
+	
+	AssetRegistry.Get().GetReferencers(AssetData.PackageName, Refs);
+	AssetRegistry.Get().GetDependencies(AssetData.PackageName, Deps);
+
+	Refs.RemoveAllSwap([&] (const FName& Ref)
+	{
+		return !Ref.ToString().StartsWith(TEXT("/Game")) || Ref.IsEqual(AssetData.PackageName);
+	}, false);
+
+	Deps.RemoveAllSwap([&] (const FName& Dep)
+	{
+		return !Dep.ToString().StartsWith(TEXT("/Game")) || Dep.IsEqual(AssetData.PackageName);
+	}, false);
+
+	Refs.Shrink();
+	Deps.Shrink();
+
+	for (const auto& Ref : Refs)
+	{
+		if (Deps.Contains(Ref))
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool ProjectCleanerDataManager::IsRootAsset(const FAssetData& AssetData)
+{
+	const auto& AssetRegistry = FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
+	
+	TArray<FName> Refs;
+	AssetRegistry.Get().GetReferencers(AssetData.PackageName, Refs);
+	Refs.RemoveAllSwap([&] (const FName& Ref)
+	{
+		return !Ref.ToString().StartsWith(TEXT("/Game")) || Ref.IsEqual(AssetData.PackageName);
+	});
+
+	return Refs.Num() > 0;
+}
 
 bool ProjectCleanerDataManager::FindEmptyFolders(const FString& FolderPath, TSet<FName>& EmptyFolders)
 {

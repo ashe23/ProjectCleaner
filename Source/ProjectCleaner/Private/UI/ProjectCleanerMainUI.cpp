@@ -10,6 +10,8 @@
 #include "UI/ProjectCleanerExcludeOptionsUI.h"
 #include "UI/ProjectCleanerIndirectAssetsUI.h"
 #include "UI/ProjectCleanerExcludedAssetsUI.h"
+#include "Core/ProjectCleanerManager.h"
+#include "UI/ProjectCleanerNotificationManager.h"
 // Engine Headers
 #include "ToolMenus.h"
 #include "AssetRegistry/AssetRegistryModule.h"
@@ -29,7 +31,11 @@ void SProjectCleanerMainUI::Construct(const FArguments& InArgs)
 	InitTabs();
 
 	CleanerManager.Update();
-
+	CleanerManager.OnCleanerManagerUpdated = FOnCleanerManagerUpdated::CreateRaw(
+		this,
+		&SProjectCleanerMainUI::OnCleanerManagerUpdated
+	);
+	
 	ensure(TabManager.IsValid());
 
 	const TSharedRef<SWidget> TabContents = TabManager->RestoreFrom(
@@ -185,67 +191,36 @@ void SProjectCleanerMainUI::InitTabs()
 	);
 }
 
-void SProjectCleanerMainUI::Update() const
-{
-	// CleanerManager->UpdateData();
-	// UpdateUIData();
-}
-
-void SProjectCleanerMainUI::UpdateUIData() const
+void SProjectCleanerMainUI::OnCleanerManagerUpdated() const
 {
 	if (UnusedAssetsBrowserUI.IsValid())
 	{
 		UnusedAssetsBrowserUI.Pin()->UpdateUI();
 	}
-	
-	
-	// if (NonEngineFilesUI.IsValid())
-	// {
-	// 	// NonEngineFilesUI.Pin()->SetNonEngineFiles(CleanerManager->GetCleanerData().NonEngineFiles);
-	// }
-	//
-	// if (CorruptedFilesUI.IsValid())
-	// {
-	// 	// CorruptedFilesUI.Pin()->SetCorruptedFiles(CleanerManager->GetCleanerData().CorruptedAssets);
-	// }
-	//
-	// if (IndirectAssetsUI.IsValid())
-	// {
-	// 	// IndirectAssetsUI.Pin()->SetIndirectFiles(CleanerManager->GetCleanerData().IndirectFileInfos);
-	// }
-	//
-	// if (ExcludedAssetsUI.IsValid())
-	// {
-	// 	// ExcludedAssetsUI.Pin()->SetUIData(
-	// 	// 	CleanerManager->GetCleanerData().ExcludedAssets,
-	// 	// 	CleanerManager->GetCleanerData().LinkedAssets,
-	// 	// 	CleanerManager->GetCleanerData().PrimaryAssetClasses,
-	// 	// 	CleanerManager->GetCleanerConfigs()
-	// 	// );
-	// }
+
+	if (ExcludedAssetsUI.IsValid())
+	{
+		ExcludedAssetsUI.Pin()->UpdateUI();
+	}
+
+	if (IndirectAssetsUI.IsValid())
+	{
+		IndirectAssetsUI.Pin()->UpdateUI();
+	}
+
+	if (NonEngineFilesUI.IsValid())
+	{
+		NonEngineFilesUI.Pin()->UpdateUI();
+	}
+
+	if (CorruptedFilesUI.IsValid())
+	{
+		CorruptedFilesUI.Pin()->UpdateUI();
+	}
 }
 
 TSharedRef<SDockTab> SProjectCleanerMainUI::OnUnusedAssetTabSpawn(const FSpawnTabArgs& SpawnTabArgs)
 {
-	const auto UnusedAssetsUIRef =
-		SAssignNew(UnusedAssetsBrowserUI, SProjectCleanerUnusedAssetsBrowserUI)
-		.CleanerManager(&CleanerManager);
-	
-	// UnusedAssetsUIRef->OnUserDeletedAssets = FOnUserDeletedAssets::CreateRaw(
-	// 	this,
-	// 	&SProjectCleanerMainUI::OnUserDeletedAssets
-	// );
-	//
-	// UnusedAssetsUIRef->OnUserExcludedAssets = FOnUserExcludedAssets::CreateRaw(
-	// 	this,
-	// 	&SProjectCleanerMainUI::OnUserExcludedAssets
-	// );
-	//
-	// UnusedAssetsUIRef->OnUserExcludedAssetsOfType = FOnUserExcludedAssetsOfType::CreateRaw(
-	// 	this,
-	// 	&SProjectCleanerMainUI::OnUserExcludedAssetsOfType
-	// );
-	
 	return SNew(SDockTab)
 		.TabRole(ETabRole::NomadTab)
 		.OnCanCloseTab_Lambda([] { return false; })
@@ -256,21 +231,14 @@ TSharedRef<SDockTab> SProjectCleanerMainUI::OnUnusedAssetTabSpawn(const FSpawnTa
 			+ SOverlay::Slot()
 			.Padding(20.0f)
 			[
-				UnusedAssetsUIRef
+				SAssignNew(UnusedAssetsBrowserUI, SProjectCleanerUnusedAssetsBrowserUI)
+				.CleanerManager(&CleanerManager)
 			]
 		];
 }
 
 TSharedRef<SDockTab> SProjectCleanerMainUI::OnExcludedAssetsTabSpawn(const FSpawnTabArgs& SpawnTabArgs)
 {
-	const auto ExcludedAssetsUIRef = SAssignNew(ExcludedAssetsUI, SProjectCleanerExcludedAssetsUI)
-	.CleanerManager(&CleanerManager);
-	//
-	// // ExcludedAssetsUIRef->OnUserIncludedAssets = FOnUserIncludedAsset::CreateRaw(
-	// // 	this,
-	// // 	&SProjectCleanerMainUI::OnUserIncludedAssets
-	// // );
-	//
 	return SNew(SDockTab)
 		.TabRole(ETabRole::NomadTab)
 		.OnCanCloseTab_Lambda([] { return false; })
@@ -281,10 +249,10 @@ TSharedRef<SDockTab> SProjectCleanerMainUI::OnExcludedAssetsTabSpawn(const FSpaw
 			+ SOverlay::Slot()
 			.Padding(20.0f)
 			[
-				ExcludedAssetsUIRef
+				SAssignNew(ExcludedAssetsUI, SProjectCleanerExcludedAssetsUI)
+				.CleanerManager(&CleanerManager)
 			]
 		];
-	// return SNew(SDockTab);
 }
 
 TSharedRef<SDockTab> SProjectCleanerMainUI::OnNonEngineFilesTabSpawn(const FSpawnTabArgs& SpawnTabArgs)
@@ -297,7 +265,6 @@ TSharedRef<SDockTab> SProjectCleanerMainUI::OnNonEngineFilesTabSpawn(const FSpaw
 			SAssignNew(NonEngineFilesUI, SProjectCleanerNonEngineFilesUI)
 			.CleanerManager(&CleanerManager)
 		];
-	// return SNew(SDockTab);
 }
 
 TSharedRef<SDockTab> SProjectCleanerMainUI::OnCorruptedFilesTabSpawn(const FSpawnTabArgs& SpawnTabArgs)
@@ -310,7 +277,6 @@ TSharedRef<SDockTab> SProjectCleanerMainUI::OnCorruptedFilesTabSpawn(const FSpaw
 			SAssignNew(CorruptedFilesUI, SProjectCleanerCorruptedFilesUI)
 			.CleanerManager(&CleanerManager)
 		];
-	// return SNew(SDockTab);
 }
 
 TSharedRef<SDockTab> SProjectCleanerMainUI::OnIndirectAssetsTabSpawn(const FSpawnTabArgs& SpawnTabArgs)
@@ -323,134 +289,38 @@ TSharedRef<SDockTab> SProjectCleanerMainUI::OnIndirectAssetsTabSpawn(const FSpaw
 			SAssignNew(IndirectAssetsUI, SProjectCleanerIndirectAssetsUI)
 			.CleanerManager(&CleanerManager)
 		];
-	// return SNew(SDockTab);
-}
-
-void SProjectCleanerMainUI::OnUserDeletedAssets() const
-{
-	Update();
-}
-
-void SProjectCleanerMainUI::OnUserExcludedAssets(const TArray<FAssetData>& Assets) const
-{
-	if (!Assets.Num()) return;
-	
-	// for (const auto& Asset : Assets)
-	// {
-	// 	// CleanerManager->GetCleanerData().UserExcludedAssets.AddUnique(Asset);
-	// }
-	
-	// Update();
-}
-
-void SProjectCleanerMainUI::OnUserIncludedAssets(const TArray<FAssetData>& Assets, const bool CleanFilters) const
-{
-	// if (!Assets.Num()) return;
-	//
-	// if (CleanFilters)
-	// {
-	// 	// CleanerManager->GetCleanerData().UserExcludedAssets.Empty();
-	// 	// CleanerManager->GetCleanerData().ExcludedAssets.Empty();
-	// 	// CleanerManager->GetCleanerData().LinkedAssets.Empty();
-	// 	// CleanerManager->GetExcludeOptions()->Classes.Empty();
-	// 	// CleanerManager->GetExcludeOptions()->Paths.Empty();
-	// }
-	// else
-	// {
-	// 	// if user tries to include assets that are filtered by path or class,
-	// 	// we wont include them and notify user about it
-	// 	TArray<FAssetData> AssetsExcludedByFilter;
-	// 	bool ShowNotification = false;
-	// 	for (const auto& Asset : Assets)
-	// 	{
-	// 		// if (CleanerManager->IsExcludedByClass(Asset))
-	// 		// {
-	// 		// 	AssetsExcludedByFilter.AddUnique(Asset);
-	// 		// 	ShowNotification = true;
-	// 		// }
-	// 		//
-	// 		// if (CleanerManager->IsExcludedByPath(Asset))
-	// 		// {
-	// 		// 	ShowNotification = true;
-	// 		// 	AssetsExcludedByFilter.AddUnique(Asset);
-	// 		// }
-	// 	}
-	//
-	// 	if (ShowNotification)
-	// 	{
-	// 		ProjectCleanerNotificationManager::AddTransient(
-	// 			FText::FromString(FStandardCleanerText::CantIncludeSomeAssets),
-	// 			SNotificationItem::CS_None,
-	// 			3.0f
-	// 		);
-	// 	}
-	// 	
-	// 	// CleanerManager->GetCleanerData().UserExcludedAssets.RemoveAllSwap([&](const FAssetData& Elem)
-	// 	// {
-	// 	// 	return Assets.Contains(Elem) && !AssetsExcludedByFilter.Contains(Elem);
-	// 	// });
-	// }
-	//
-	// Update();
-}
-
-void SProjectCleanerMainUI::OnUserExcludedAssetsOfType(const TArray<FAssetData>& Assets) const
-{
-	// if (!Assets.Num()) return;
-	//
-	// for (const auto& Asset : Assets)
-	// {
-	// 	const auto LoadedAsset = Asset.GetAsset();
-	// 	const auto BlueprintAsset = Cast<UBlueprint>(LoadedAsset);
-	// 	if (BlueprintAsset && BlueprintAsset->GeneratedClass)
-	// 	{
-	// 		CleanerManager->GetExcludeOptions()->Classes.AddUnique(BlueprintAsset->GeneratedClass);
-	// 	}
-	// 	else
-	// 	{
-	// 		auto AssetClass = Asset.GetClass();
-	// 		if(!AssetClass) continue;
-	// 		CleanerManager->GetExcludeOptions()->Classes.AddUnique(AssetClass);
-	// 	}
-	// }
-	//
-	// Update();
 }
 
 FReply SProjectCleanerMainUI::OnRefreshBtnClick()
 {
-	
 	CleanerManager.Update();
 
-	UpdateUIData();
-	
 	return FReply::Handled();
 }
 
-FReply SProjectCleanerMainUI::OnDeleteUnusedAssetsBtnClick() const
+FReply SProjectCleanerMainUI::OnDeleteUnusedAssetsBtnClick()
 {
-	// if (CleanerManager->GetCleanerData().UnusedAssets.Num() == 0)
-	// {
-	// 	ProjectCleanerNotificationManager::AddTransient(
-	// 		FText::FromString(FStandardCleanerText::NoAssetsToDelete),
-	// 		SNotificationItem::ECompletionState::CS_Fail,
-	// 		3.0f
-	// 	);
-	//
-	// 	return FReply::Handled();
-	// }
-	//
-	// const auto ConfirmationWindowStatus = ShowConfirmationWindow(
-	// 	FText::FromString(FStandardCleanerText::AssetsDeleteWindowTitle),
-	// 	FText::FromString(FStandardCleanerText::AssetsDeleteWindowContent)
-	// );
-	// if (IsConfirmationWindowCanceled(ConfirmationWindowStatus))
-	// {
-	// 	return FReply::Handled();
-	// }
-	//
-	// // CleanerManager->DeleteUnusedAssets();
-	// UpdateUIData();
+	if (CleanerManager.GetUnusedAssets().Num() == 0)
+	{
+		ProjectCleanerNotificationManager::AddTransient(
+			FText::FromString(FStandardCleanerText::NoAssetsToDelete),
+			SNotificationItem::ECompletionState::CS_Fail,
+			3.0f
+		);
+	
+		return FReply::Handled();
+	}
+	
+	const auto ConfirmationWindowStatus = ShowConfirmationWindow(
+		FText::FromString(FStandardCleanerText::AssetsDeleteWindowTitle),
+		FText::FromString(FStandardCleanerText::AssetsDeleteWindowContent)
+	);
+	if (IsConfirmationWindowCanceled(ConfirmationWindowStatus))
+	{
+		return FReply::Handled();
+	}
+
+	CleanerManager.DeleteAllUnusedAssets();
 	
 	return FReply::Handled();
 }

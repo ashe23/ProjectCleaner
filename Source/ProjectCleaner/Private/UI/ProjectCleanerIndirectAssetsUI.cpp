@@ -117,6 +117,13 @@ void SProjectCleanerIndirectAssetsUI::SetCleanerManager(ProjectCleanerManager* C
 	if (!CleanerManagerPtr) return;
 	CleanerManager = CleanerManagerPtr;
 	
+	UpdateUI();
+}
+
+void SProjectCleanerIndirectAssetsUI::UpdateUI()
+{
+	if (!CleanerManager) return;
+
 	IndirectAssets.Reset();
 	IndirectAssets.Reserve(CleanerManager->GetIndirectAssets().Num());
 
