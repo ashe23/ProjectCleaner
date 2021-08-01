@@ -166,14 +166,13 @@ void SProjectCleanerUnusedAssetsBrowserUI::GenerateFilter()
 	{
 		// excluding primary assets from showing and filtering
 		Filter.bRecursiveClasses = true;
-		Filter.PackageNames.Reserve(CleanerManager->GetUnusedAssets().Num());
 		Filter.RecursiveClassesExclusionSet.Reserve(CleanerManager->GetPrimaryAssetClasses().Num());
-
 		for (const auto& AssetClass : CleanerManager->GetPrimaryAssetClasses())
 		{
 			Filter.RecursiveClassesExclusionSet.Add(AssetClass);
 		}
 
+		Filter.PackageNames.Reserve(CleanerManager->GetUnusedAssets().Num());
 		for (const auto& Asset : CleanerManager->GetUnusedAssets())
 		{
 			Filter.PackageNames.Add(Asset.PackageName);
@@ -252,7 +251,7 @@ void SProjectCleanerUnusedAssetsBrowserUI::DeleteAsset() const
 	if (!CurrentSelection.Num()) return;
 
 	// todo:ashe23 uncomment after refactoring of asset deletion logic
-	// const int32 DeletedAssetsNum = ObjectTools::DeleteAssets(CurrentSelection);
+	const int32 DeletedAssetsNum = ObjectTools::DeleteAssets(CurrentSelection);
 	// if (DeletedAssetsNum == 0) return;
 	// if (!OnUserDeletedAssets.IsBound()) return;
 	// OnUserDeletedAssets.Execute();
@@ -271,14 +270,18 @@ void SProjectCleanerUnusedAssetsBrowserUI::ExcludeAsset()
 	// OnUserExcludedAssets.Execute(SelectedAssets);
 }
 
-void SProjectCleanerUnusedAssetsBrowserUI::ExcludeAssetsOfType() const
+void SProjectCleanerUnusedAssetsBrowserUI::ExcludeAssetsOfType()
 {
 	if(!CurrentSelectionDelegate.IsBound()) return;
 	
 	const TArray<FAssetData> SelectedAssets = CurrentSelectionDelegate.Execute();
-	if(!SelectedAssets.Num()) return;
+	CleanerManager->AddToExcludeClasses(SelectedAssets);
 
-	UE_LOG(LogTemp, Warning, TEXT("Excluding assets of selected types."));
+	UpdateUI();
+	
+	// if(!SelectedAssets.Num()) return;
+
+	// UE_LOG(LogTemp, Warning, TEXT("Excluding assets of selected types."));
 	
 	// if (!OnUserExcludedAssetsOfType.IsBound()) return;
 	// OnUserExcludedAssetsOfType.Execute(SelectedAssets);

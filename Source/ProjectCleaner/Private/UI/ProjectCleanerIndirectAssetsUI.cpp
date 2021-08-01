@@ -123,7 +123,7 @@ void SProjectCleanerIndirectAssetsUI::SetCleanerManager(ProjectCleanerManager* C
 	for (const auto& IndirectFile : CleanerManager->GetIndirectAssets())
 	{
 		auto IndirectAsset = NewObject<UIndirectAsset>();
-		IndirectAsset->AssetName = IndirectFile.Key.ToString();
+		IndirectAsset->AssetName = IndirectFile.Key.AssetName.ToString();
 		IndirectAsset->AssetPath = IndirectFile.Value.RelativePath.ToString();
 		IndirectAsset->FilePath = IndirectFile.Value.File;
 		IndirectAsset->LineNum = IndirectFile.Value.Line;

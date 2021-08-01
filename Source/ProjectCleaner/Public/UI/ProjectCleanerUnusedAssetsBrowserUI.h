@@ -24,6 +24,7 @@ public:
 	
 	void Construct(const FArguments& InArgs);
 	void SetCleanerManager(ProjectCleanerManager* CleanerManagerPtr);
+	void UpdateUI();
 
 	/* Delegates */
 	FOnUserDeletedAssets OnUserDeletedAssets;
@@ -33,10 +34,9 @@ private:
 	/* UI */
 	TSharedPtr<FUICommandList> Commands;
 	void RegisterCommands();
-	void UpdateUI();
 	void DeleteAsset() const;
 	void ExcludeAsset();
-	void ExcludeAssetsOfType() const;
+	void ExcludeAssetsOfType();
 	
 	/* AssetPicker */
 	struct FAssetPickerConfig AssetPickerConfig;

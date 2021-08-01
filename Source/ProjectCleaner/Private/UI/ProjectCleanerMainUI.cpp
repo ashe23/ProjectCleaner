@@ -197,6 +197,10 @@ void SProjectCleanerMainUI::Update() const
 
 void SProjectCleanerMainUI::UpdateUIData() const
 {
+	if (UnusedAssetsBrowserUI.IsValid())
+	{
+		UnusedAssetsBrowserUI.Pin()->UpdateUI();
+	}
 	// if (StatisticsUI.IsValid())
 	// {
 	// 	StatisticsUI.Pin()->SetData(CleanerManager->GetCleanerData());
@@ -431,10 +435,10 @@ void SProjectCleanerMainUI::OnUserExcludedAssetsOfType(const TArray<FAssetData>&
 
 FReply SProjectCleanerMainUI::OnRefreshBtnClick()
 {
-	// ProjectCleanerUtility::FixupRedirectors();
-	// ProjectCleanerUtility::SaveAllAssets(true);
 	
 	CleanerManager.Update();
+
+	UpdateUIData();
 	
 	return FReply::Handled();
 }

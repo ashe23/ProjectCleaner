@@ -268,7 +268,7 @@ TSharedPtr<SWidget> SProjectCleanerExcludedAssetsUI::GetLinkedAssetsView()
 
 	if (!SelectedAssetName.IsNone())
 	{
-		const FLinkedAssets* LinkedAssets = CleanerManager->GetExcludedAssets().Find(SelectedAssetName);
+		const FExcludedAsset* LinkedAssets = CleanerManager->GetExcludedAssets().Find(SelectedAssetName);
 		if (LinkedAssets)
 		{
 			for (const auto& LinkedAsset : LinkedAssets->PackageNames)

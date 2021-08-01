@@ -12,11 +12,11 @@ class UCleanerConfigs : public UObject
 {
 	GENERATED_BODY()
 public:
-	UPROPERTY(DisplayName = "Scan Developer Contents Folders", EditAnywhere, Category = "CleanerConfigs")
+	UPROPERTY(DisplayName = "Scan Developer Content", EditAnywhere, Category = "CleanerConfigs")
 	bool bScanDeveloperContents = false;
 
-	UPROPERTY(DisplayName = "Exclude Megascans Plugin Content", EditAnywhere, Category = "CleanerConfigs", meta = (ToolTip = "Megascans base content(MSPreset) will be excluded automatically, if Megascans plugin is active"))
-	bool bExcludeMegascansPluginIfActive = true;
+	UPROPERTY(DisplayName = "Scan Megascans Plugin Content", EditAnywhere, Category = "CleanerConfigs", meta = (ToolTip = "Megascans base content(MSPreset) will be excluded automatically, if Megascans plugin is active"))
+	bool bScanMegascansContent = false;
 	
 	UPROPERTY(DisplayName = "Remove Empty Folders After Assets Deleted", EditAnywhere, Category = "CleanerConfigs")
 	bool bAutomaticallyDeleteEmptyFolders = true;
@@ -69,14 +69,6 @@ public:
 	FString AbsolutePath;
 };
 
-struct FIndirectFileInfo
-{
-	FAssetData AssetData;
-	FString FileName;
-	FString FilePath;
-	int32 LineNum;
-};
-
 UCLASS(Transient)
 class UNonEngineFile : public UObject
 {
@@ -89,17 +81,58 @@ public:
 	FString FilePath;
 };
 
-struct FAssetNode
+struct FAssetCleanerInfo
 {
+	FAssetData AssetData;
 	TArray<FName> Refs;
 	TArray<FName> Deps;
 	TSet<FName> LinkedAssets;
-	bool bRootAsset = false;
-	bool bHasExternalRefs = false;
-	bool bIsCircular = false;
-	bool bIsInDevFolder = false;
-	bool bExcludedByPath = false;
-	bool bExcludedByClass = false;
+
+	bool IsCircular() const
+	{
+		return Refs.ContainsByPredicate([&](const FName& Ref)
+		{
+			return Deps.Contains(Ref);
+		});
+	}
+
+	bool HasExternalRefs() const
+	{
+		return Refs.ContainsByPredicate([](const FName& Ref)
+		{
+			return !Ref.ToString().StartsWith(TEXT("/Game"));
+		});
+	}
+
+	bool HasReferences() const
+	{
+		return Refs.Num() > 0;
+	}
+
+	bool HasLinkedAssets() const
+	{
+		return Refs.Num() > 0 && Deps.Num() > 0;
+	}
+
+	bool IsUnderDevelopersFolder() const
+	{
+		return AssetData.PackageName.ToString().StartsWith(TEXT("/Game/Developers"));
+	}
+
+	bool IsUnderMegascansFolder() const
+	{
+		return AssetData.PackageName.ToString().StartsWith(TEXT("/Game/MSPresets"));
+	}
+	
+	// TArray<FName> Refs;
+	// TArray<FName> Deps;
+	// TSet<FName> LinkedAssets;
+	// bool bRootAsset = false;
+	// bool bHasExternalRefs = false;
+	// bool bIsCircular = false;
+	// bool bIsInDevFolder = false;
+	// bool bExcludedByPath = false;
+	// bool bExcludedByClass = false;
 };
 
 
@@ -112,62 +145,9 @@ struct FIndirectAsset
 	FIndirectAsset(): File(FString{}), Line(0), RelativePath(NAME_None) {}
 };
 
-struct FLinkedAssets
+struct FExcludedAsset
 {
 	TSet<FName> PackageNames;
-};
-
-struct FProjectCleanerData
-{
-	// UI data
-	TArray<FAssetData> UnusedAssets;
-	TSet<FName> EmptyFolders;
-	TSet<FName> NonEngineFiles;
-	TSet<FName> CorruptedAssets;
-	TMap<FAssetData, FIndirectAsset> IndirectlyUsedAssets;
-
-	// Helper data
-	// TArray<FAssetData> UserExcludedAssets;
-	// TArray<FAssetData> ExcludedAssets;
-	// TArray<FAssetData> LinkedAssets;
-	// TSet<FAssetData> AssetsWithExternalReferencers;
-
-	// cache data
-	TSet<FName> PrimaryAssetClasses;
-	TSet<FName> UsedAssets;
-	TArray<FAssetData> ProjectAllAssets;
-	TSet<FName> ProjectAllFiles;
-	TSet<FString> ProjectSourceAndConfigsFiles;
-	
-	// Helpers for asset deletion stats
-	int64 TotalSize;
-	uint32 TotalAssetsNum;
-	uint32 DeletedAssetsNum;
-
-	FProjectCleanerData()
-	{
-		TotalSize = 0;
-		TotalAssetsNum = 0;
-		DeletedAssetsNum = 0;
-	}
-	
-	void Empty()
-	{
-		UnusedAssets.Empty();
-		EmptyFolders.Empty();
-		NonEngineFiles.Empty();
-		CorruptedAssets.Empty();
-		IndirectlyUsedAssets.Empty();
-		PrimaryAssetClasses.Empty();
-		UsedAssets.Empty();
-		ProjectAllAssets.Empty();
-		ProjectAllFiles.Empty();
-		ProjectSourceAndConfigsFiles.Empty();
-		
-		TotalSize = 0;
-		TotalAssetsNum = 0;
-		DeletedAssetsNum = 0;
-	}
 };
 
 struct FStandardCleanerText
@@ -186,5 +166,6 @@ struct FStandardCleanerText
 	constexpr static TCHAR* SomeAssetsHaveRefsInDevFolder = TEXT("Some assets have referencers in Developer Contents Folder.");
 	constexpr static TCHAR* CantIncludeSomeAssets = TEXT("Cant include some filtered assets.Clear 'ExcludeOptions' filters and try again.");
 	constexpr static TCHAR* FailedToDeleteSomeFolders = TEXT("Failed to delete some folders. See Output Log for more information.");
+	constexpr static TCHAR* Scanning = TEXT("Scanning assets and their referencers and dependencies...");
 	
 };

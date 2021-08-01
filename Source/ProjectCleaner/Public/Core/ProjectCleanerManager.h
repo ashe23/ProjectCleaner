@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 
 struct FIndirectAsset;
-struct FLinkedAssets;
+struct FExcludedAsset;
 class UCleanerConfigs;
 class UExcludeOptions;
 
@@ -19,16 +19,17 @@ public:
 	 */
 	void Update();
 	void AddToUserExcludedAssets(const TArray<FAssetData>& NewUserExcludedAssets);
+	void AddToExcludeClasses(const TArray<FAssetData>& ExcludedByTypeAssets);
 
 	/** Data Container getters **/
 	const TArray<FAssetData>& GetAllAssets() const;
 	const TSet<FName>& GetCorruptedAssets() const;
 	const TSet<FName>& GetNonEngineFiles() const;
-	const TMap<FName, FIndirectAsset>& GetIndirectAssets() const;
+	const TMap<FAssetData, FIndirectAsset>& GetIndirectAssets() const;
 	const TSet<FName>& GetEmptyFolders() const;
 	const TSet<FName>& GetPrimaryAssetClasses() const;
 	const TArray<FAssetData>& GetUnusedAssets() const;
-	const TMap<FName, FLinkedAssets>& GetExcludedAssets() const;
+	const TMap<FName, FExcludedAsset>& GetExcludedAssets() const;
 	UCleanerConfigs* GetCleanerConfigs() const;
 	UExcludeOptions* GetExcludeOptions() const;
 private:
@@ -39,6 +40,11 @@ private:
 	void Clean();
 
 	void FindUnusedAssets();
+	void FindExcludedAssets();
+	bool IsPrimaryAsset(const FAssetData& AssetData) const;
+	bool IsExcludedByClass(const FAssetData& AssetData) const;	
+	bool IsUnderDevelopersFolder(const FAssetData& AssetData) const;
+	bool IsUnderMegascansFolder(const FAssetData& AssetData) const;
 
 	/** Data Containers **/
 	
@@ -64,7 +70,7 @@ private:
 	 *							   - Line number
 	 * 
 	 */
-	TMap<FName, struct FIndirectAsset> IndirectAssets;
+	TMap<FAssetData, struct FIndirectAsset> IndirectAssets;
 
 	/**
 	 * @brief All empty folders in "Game" folder
@@ -91,7 +97,7 @@ private:
 	*		LinkedAssets : BP, Material
 	* @reason This preventing breaking links between assets
 	*/
-	TMap<FName, FLinkedAssets> ExcludedAssets;
+	TMap<FName, FExcludedAsset> ExcludedAssets;
 
 	/**
 	 * @brief All assets that have external referencers (outside "/Game" folder)
@@ -102,6 +108,8 @@ private:
 	 * @brief All unused assets in "/Game" folder
 	 */
 	TArray<FAssetData> UnusedAssets;
+
+	TMap<FName, struct FAssetCleanerInfo> AssetsInfoMap;
 
 	class UCleanerConfigs* CleanerConfigs;
 	class UExcludeOptions* ExcludeOptions;

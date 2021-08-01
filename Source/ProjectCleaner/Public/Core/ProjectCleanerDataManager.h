@@ -41,7 +41,7 @@ public:
 	 */
 	static void GetIndirectAssetsByPath(
 		const FString& InPath,
-		TMap<FName, FIndirectAsset>& IndirectlyUsedAssets,
+		TMap<FAssetData, FIndirectAsset>& IndirectlyUsedAssets,
 		const TArray<FAssetData>& AllAssets
 	);
 
@@ -59,31 +59,35 @@ public:
 	 */
 	static void GetPrimaryAssetClasses(TSet<FName>& PrimaryAssetClasses);
 
-	static void GetLinkedAssets(const FName& PackageName, TSet<FName>& LinkedAssets);
+	static void GetAllRefsAndDeps(const FName& PackageName, TSet<FName>& LinkedAssets);
 
-	/**
-	 * @brief Checks if given package is under exclude directories or not
-	 * @param PackagePath - Asset package path ("/Game/Folder/") 
-	 * @param ExcludeOptions - Exclude options ptr 
-	 * @return bool
-	 */
-	static bool ExcludedByPath(const FName& PackagePath, const UExcludeOptions* ExcludeOptions);
+	static void GetAllAssetsWithExternalReferencers(TArray<FAssetData>& AssetsWithExternalRefs, const TArray<FAssetData>& AllAssets);
 
-	/**
-	 * @brief Check if given asset excluded by class
-	 * @param AssetData - Given asset data
-	 * @param ExcludeOptions - Exclude options ptr
-	 * @return bool
-	 */
-	static bool ExcludedByClass(const FAssetData& AssetData, const UExcludeOptions* ExcludeOptions);
+	static FName GetClassName(const FAssetData& AssetData);
 
-	/**
-	* @brief Checks if given package has referencers outside given path
-	* @param PackageName
-	* @param InPath 
-	* @return bool
-	*/
-	static bool HasExternalReferencersInPath(const FName& PackageName, const FString& InPath);
+	// /**
+	//  * @brief Checks if given package is under exclude directories or not
+	//  * @param PackagePath - Asset package path ("/Game/Folder/") 
+	//  * @param ExcludeOptions - Exclude options ptr 
+	//  * @return bool
+	//  */
+	// static bool ExcludedByPath(const FName& PackagePath, const UExcludeOptions* ExcludeOptions);
+	//
+	// /**
+	//  * @brief Check if given asset excluded by class
+	//  * @param AssetData - Given asset data
+	//  * @param ExcludeOptions - Exclude options ptr
+	//  * @return bool
+	//  */
+	// static bool ExcludedByClass(const FAssetData& AssetData, const UExcludeOptions* ExcludeOptions);
+	//
+	// /**
+	// * @brief Checks if given package has referencers outside given path
+	// * @param PackageName
+	// * @param InPath 
+	// * @return bool
+	// */
+	// static bool HasExternalReferencersInPath(const FName& PackageName, const FString& InPath);
 
 private:
 	/**

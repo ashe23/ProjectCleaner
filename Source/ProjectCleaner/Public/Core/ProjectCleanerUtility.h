@@ -26,10 +26,10 @@ public:
 	static bool IsUnderDeveloperFolder(const FString& PackagePath);	
 	static void GetEmptyFolders(TArray<FString>& EmptyFolders, const bool bScanDeveloperContents);
 	static void GetInvalidFiles(TSet<FString>& CorruptedFiles, TSet<FString>& NonEngineFiles);// remove
-	static void GetCorruptedAssets(FProjectCleanerData& CleanerData);// remove
+	// static void GetCorruptedAssets(FProjectCleanerData& CleanerData);// remove
 	static void GetNonEngineFiles(TSet<FString>& NonEngineFiles, const TSet<FString>& ProjectFiles);
-	static void GetAllAssets(FProjectCleanerData& CleanerData);// remove
-	static void GetUnusedAssets(FProjectCleanerData& CleanerData);// remove
+	// static void GetAllAssets(FProjectCleanerData& CleanerData);// remove
+	// static void GetUnusedAssets(FProjectCleanerData& CleanerData);// remove
 	static int64 GetTotalSize(const TArray<FAssetData>& Assets);
 	static void GetPrimaryAssetClasses(TSet<FName>& PrimaryAssetClasses);// remove
 	static void GetSourceAndConfigFiles(TArray<FString>& AllFiles);

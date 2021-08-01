@@ -91,7 +91,7 @@ void ProjectCleanerDataManagerV2::GetInvalidFilesByPath(
 
 void ProjectCleanerDataManagerV2::GetIndirectAssetsByPath(
 	const FString& InPath,
-	TMap<FName, FIndirectAsset>& IndirectlyUsedAssets,
+	TMap<FAssetData, FIndirectAsset>& IndirectlyUsedAssets,
 	const TArray<FAssetData>& AllAssets
 )
 {
@@ -188,7 +188,7 @@ void ProjectCleanerDataManagerV2::GetIndirectAssetsByPath(
 				IndirectAsset.File = FPaths::ConvertRelativePathToFull(File);
 				IndirectAsset.RelativePath = AssetData->PackagePath;
 				IndirectAsset.Line = i + 1;
-				IndirectlyUsedAssets.Add(AssetData->PackageName, IndirectAsset);
+				IndirectlyUsedAssets.Add(*AssetData, IndirectAsset);
 			}
 		}
 	}
@@ -242,144 +242,186 @@ void ProjectCleanerDataManagerV2::GetPrimaryAssetClasses(TSet<FName>& PrimaryAss
 	const auto& AssetManager = UAssetManager::Get();
 	if (!AssetManager.IsValid()) return;
 
-	PrimaryAssetClasses.Reserve(10);
+	// PrimaryAssetClasses.Reserve(10);
 	
 	const UAssetManagerSettings& Settings = AssetManager.GetSettings();
-	TArray<FPrimaryAssetId> Ids;
-	for (const auto& Type : Settings.PrimaryAssetTypesToScan)
-	{
-		AssetManager.Get().GetPrimaryAssetIdList(Type.PrimaryAssetType, Ids);
-		for(const auto& Id : Ids)
-		{
-			FAssetData Data;
-			AssetManager.Get().GetPrimaryAssetData(Id, Data);
-			if(!Data.IsValid()) continue;
-			PrimaryAssetClasses.Add(Data.AssetClass);
-		}
-		Ids.Reset();
-	}
+	TArray<FPrimaryAssetTypeInfo> AssetTypeInfos;
+	AssetManager.Get().GetPrimaryAssetTypeInfoList(AssetTypeInfos);
 
-	PrimaryAssetClasses.Shrink();
+	for (const auto& AssetTypeInfo : AssetTypeInfos)
+	{
+		UClass* AssetTypeCLass = AssetTypeInfo.AssetBaseClassLoaded;
+		if (!AssetTypeCLass) continue;
+		FName ClassName = AssetTypeCLass->GetFName();
+		PrimaryAssetClasses.Add(ClassName);
+	}
+	
+	// TArray<FPrimaryAssetId> Ids;
+	// for (const auto& Type : Settings.PrimaryAssetTypesToScan)
+	// {
+	// 	AssetManager.Get().GetPrimaryAssetIdList(Type.PrimaryAssetType, Ids);
+	// 	for(const auto& Id : Ids)
+	// 	{
+	// 		FAssetData Data;
+	// 		AssetManager.Get().GetPrimaryAssetData(Id, Data);
+	// 		if(!Data.IsValid()) continue;
+	// 		PrimaryAssetClasses.Add(Data.AssetClass);
+	// 	}
+	// 	Ids.Reset();
+	// }
+
+	// PrimaryAssetClasses.Shrink();
 }
 
-void ProjectCleanerDataManagerV2::GetLinkedAssets(const FName& PackageName, TSet<FName>& LinkedAssets)
+void ProjectCleanerDataManagerV2::GetAllRefsAndDeps(const FName& PackageName, TSet<FName>& LinkedAssets)
 {
 	const auto& AssetRegistry = FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
 
 	LinkedAssets.Empty();
 	
 	TArray<FName> Stack;
-	AssetRegistry.Get().GetReferencers(PackageName, Stack);
-	AssetRegistry.Get().GetDependencies(PackageName, Stack);
+	Stack.Add(PackageName);
 
-	Stack.Remove(PackageName);
-	// removing all assets that are not under "/Game" directory
-	Stack.RemoveAllSwap([&](const FName& Elem)
-	{
-		return !Elem.ToString().StartsWith(TEXT("/Game"));
-	}, false);
-	Stack.Shrink();
-
-	
-	TArray<FAssetIdentifier> AssetDependencies;
-	TArray<FAssetIdentifier> AssetReferencers;
+	TArray<FName> Refs;
+	TArray<FName> Deps;
 	
 	while (Stack.Num() > 0)
 	{
 		const FName CurrentPackageName = Stack.Pop(false);
+		AssetRegistry.Get().GetReferencers(CurrentPackageName, Refs);
+		AssetRegistry.Get().GetDependencies(CurrentPackageName, Deps);
 
-		AssetDependencies.Reset();
-		AssetReferencers.Reset();
-		AssetRegistry.Get().GetDependencies(FAssetIdentifier(CurrentPackageName), AssetDependencies);
-		AssetRegistry.Get().GetReferencers(FAssetIdentifier(CurrentPackageName), AssetReferencers);
+		Refs.RemoveAllSwap([](const FName& Elem)
+		{
+			return !Elem.ToString().StartsWith(TEXT("/Game"));
+		}, false);
 
-		AssetDependencies.RemoveAllSwap([&](const FAssetIdentifier& Elem)
+		Deps.RemoveAllSwap([](const FName& Elem)
 		{
-			return !Elem.PackageName.ToString().StartsWith(TEXT("/Game"));
+			return !Elem.ToString().StartsWith(TEXT("/Game"));
 		}, false);
-		AssetReferencers.RemoveAllSwap([&](const FAssetIdentifier& Elem)
-		{
-			return !Elem.PackageName.ToString().StartsWith(TEXT("/Game"));
-		}, false);
-		
-		AssetDependencies.Shrink();
-		AssetReferencers.Shrink();
-		
-		for (const auto Dep : AssetDependencies)
+
+		for (const auto Dep : Deps)
 		{
 			bool bIsAlreadyInSet = false;
-			LinkedAssets.Add(Dep.PackageName, &bIsAlreadyInSet);
+			LinkedAssets.Add(Dep, &bIsAlreadyInSet);
 			if (!bIsAlreadyInSet && Dep.IsValid())
 			{
-				Stack.Add(Dep.PackageName);
+				Stack.Add(Dep);
 			}
 		}
-		for (const auto Ref : AssetReferencers)
+		for (const auto Ref : Refs)
 		{
 			bool bIsAlreadyInSet = false;
-			LinkedAssets.Add(Ref.PackageName, &bIsAlreadyInSet);
+			LinkedAssets.Add(Ref, &bIsAlreadyInSet);
 			if (!bIsAlreadyInSet && Ref.IsValid())
 			{
-				Stack.Add(Ref.PackageName);
+				Stack.Add(Ref);
 			}
 		}
-		Stack.Remove(PackageName);
+
+		Refs.Reset();
+		Deps.Reset();
+	}
+
+	LinkedAssets.Remove(PackageName);
+}
+
+void ProjectCleanerDataManagerV2::GetAllAssetsWithExternalReferencers(TArray<FAssetData>& AssetsWithExternalRefs,
+	const TArray<FAssetData>& AllAssets)
+{
+	const auto& AssetRegistry = FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
+	
+	AssetsWithExternalRefs.Empty();
+	TArray<FName> Refs;
+	for (const auto& Asset : AllAssets)
+	{
+		AssetRegistry.Get().GetReferencers(Asset.PackageName, Refs);
+
+		const bool HasExternalRefs = Refs.ContainsByPredicate([](const FName& Ref)
+		{
+			return !Ref.ToString().StartsWith(TEXT("/Game"));
+		});
+
+		if (HasExternalRefs)
+		{
+			AssetsWithExternalRefs.AddUnique(Asset);
+		}
+
+		Refs.Reset();
 	}
 }
 
-bool ProjectCleanerDataManagerV2::ExcludedByPath(const FName& PackagePath, const UExcludeOptions* ExcludeOptions)
+FName ProjectCleanerDataManagerV2::GetClassName(const FAssetData& AssetData)
 {
-	if (!ExcludeOptions) return false;
-
-	return ExcludeOptions->Paths.ContainsByPredicate([&](const FDirectoryPath& DirectoryPath)
-	{
-		return PackagePath.ToString().StartsWith(DirectoryPath.Path);
-	});
-}
-
-bool ProjectCleanerDataManagerV2::ExcludedByClass(const FAssetData& AssetData, const UExcludeOptions* ExcludeOptions)
-{
-	if (!ExcludeOptions) return false;
-	
-	// checking if asset is blueprint
+	FName ClassName;
 	if (AssetData.AssetClass.IsEqual("Blueprint"))
 	{
-		const UBlueprint* BlueprintAsset = Cast<UBlueprint>(AssetData.GetAsset());
-		const bool IsBlueprint = (BlueprintAsset != nullptr);
-		
-		if (!IsBlueprint || !BlueprintAsset->GeneratedClass || !BlueprintAsset->ParentClass)
-		{
-			return false;
-		}
-		
-		return ExcludeOptions->Classes.ContainsByPredicate([&] (const UClass* ElemClass)
-		{
-			if (!ElemClass) return false;
-			return
-				BlueprintAsset->ParentClass->GetFName().IsEqual(ElemClass->GetFName()) ||
-				BlueprintAsset->GeneratedClass->GetFName().IsEqual(ElemClass->GetFName()) ||
-				ElemClass->GetFName().IsEqual(UBlueprint::StaticClass()->GetFName());
-		});
+		const auto GeneratedClassName = AssetData.TagsAndValues.FindTag(TEXT("GeneratedClass")).GetValue();
+		const FString ClassObjectPath = FPackageName::ExportTextPathToObjectPath(*GeneratedClassName);
+		ClassName = FName{*FPackageName::ObjectPathToObjectName(ClassObjectPath)};
 	}
-	
-	return ExcludeOptions->Classes.ContainsByPredicate([&] (const UClass* ElemClass)
+	else
 	{
-		if (!ElemClass) return false;
-		return AssetData.AssetClass.IsEqual(ElemClass->GetFName());
-	});
+		ClassName = FName{*AssetData.AssetClass.ToString()};
+	}
+
+	return ClassName;
 }
 
-bool ProjectCleanerDataManagerV2::HasExternalReferencersInPath(const FName& PackageName, const FString& InPath)
-{
-	TArray<FName> Refs;
-	const auto& AssetRegistry = FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
-	AssetRegistry.Get().GetReferencers(PackageName, Refs);
-	
-	return Refs.ContainsByPredicate([&] (const FName& Elem)
-	{
-		return !Elem.ToString().StartsWith(InPath);
-	});
-}
+// bool ProjectCleanerDataManagerV2::ExcludedByPath(const FName& PackagePath, const UExcludeOptions* ExcludeOptions)
+// {
+// 	if (!ExcludeOptions) return false;
+//
+// 	return ExcludeOptions->Paths.ContainsByPredicate([&](const FDirectoryPath& DirectoryPath)
+// 	{
+// 		return PackagePath.ToString().StartsWith(DirectoryPath.Path);
+// 	});
+// }
+//
+// bool ProjectCleanerDataManagerV2::ExcludedByClass(const FAssetData& AssetData, const UExcludeOptions* ExcludeOptions)
+// {
+// 	if (!ExcludeOptions) return false;
+// 	
+// 	// checking if asset is blueprint
+// 	if (AssetData.AssetClass.IsEqual("Blueprint"))
+// 	{
+// 		const UBlueprint* BlueprintAsset = Cast<UBlueprint>(AssetData.GetAsset());
+// 		const bool IsBlueprint = (BlueprintAsset != nullptr);
+// 		
+// 		if (!IsBlueprint || !BlueprintAsset->GeneratedClass || !BlueprintAsset->ParentClass)
+// 		{
+// 			return false;
+// 		}
+// 		
+// 		return ExcludeOptions->Classes.ContainsByPredicate([&] (const UClass* ElemClass)
+// 		{
+// 			if (!ElemClass) return false;
+// 			return
+// 				BlueprintAsset->ParentClass->GetFName().IsEqual(ElemClass->GetFName()) ||
+// 				BlueprintAsset->GeneratedClass->GetFName().IsEqual(ElemClass->GetFName()) ||
+// 				ElemClass->GetFName().IsEqual(UBlueprint::StaticClass()->GetFName());
+// 		});
+// 	}
+// 	
+// 	return ExcludeOptions->Classes.ContainsByPredicate([&] (const UClass* ElemClass)
+// 	{
+// 		if (!ElemClass) return false;
+// 		return AssetData.AssetClass.IsEqual(ElemClass->GetFName());
+// 	});
+// }
+//
+// bool ProjectCleanerDataManagerV2::HasExternalReferencersInPath(const FName& PackageName, const FString& InPath)
+// {
+// 	TArray<FName> Refs;
+// 	const auto& AssetRegistry = FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
+// 	AssetRegistry.Get().GetReferencers(PackageName, Refs);
+// 	
+// 	return Refs.ContainsByPredicate([&] (const FName& Elem)
+// 	{
+// 		return !Elem.ToString().StartsWith(InPath);
+// 	});
+// }
 
 bool ProjectCleanerDataManagerV2::FindEmptyFolders(const FString& FolderPath, TSet<FName>& EmptyFolders)
 {
@@ -916,59 +958,59 @@ void ProjectCleanerDataManager::RemoveForbiddenFolders()
 
 void ProjectCleanerDataManager::FindLinkedAssets(const TSet<FName>& FilteredAssets, TSet<FName>& LinkedAssets)
 {
-	TArray<FName> Stack;
-	for (const auto& Asset : FilteredAssets)
-	{
-		FAssetNode Node;
-		AssetRegistry->Get().GetReferencers(Asset, Node.Refs);
-		AssetRegistry->Get().GetDependencies(Asset, Node.Deps);
-	
-		Node.Refs.Remove(Asset);
-		Node.Deps.Remove(Asset);
-	
-		Stack.Add(Asset);
-		
-		TArray<FAssetIdentifier> AssetDependencies;
-		TArray<FAssetIdentifier> AssetReferencers;
-		
-		while (Stack.Num() > 0)
-		{
-			const FName PackageName = Stack.Pop(false);
-	
-			AssetDependencies.Reset();
-			AssetReferencers.Reset();
-			AssetRegistry->Get().GetDependencies(FAssetIdentifier(PackageName), AssetDependencies);
-			AssetRegistry->Get().GetReferencers(FAssetIdentifier(PackageName), AssetReferencers);
-	
-			AssetDependencies.RemoveAllSwap([&](const FAssetIdentifier& Elem)
-			{
-				return !Elem.PackageName.ToString().StartsWith(ContentDir_Relative.ToString());
-			});
-			AssetReferencers.RemoveAllSwap([&](const FAssetIdentifier& Elem)
-			{
-				return !Elem.PackageName.ToString().StartsWith(ContentDir_Relative.ToString());
-			});
-			
-			for (const auto Dep : AssetDependencies)
-			{
-				bool bIsAlreadyInSet = false;
-				LinkedAssets.Add(Dep.PackageName, &bIsAlreadyInSet);
-				if (!bIsAlreadyInSet && Dep.IsValid())
-				{
-					Stack.Add(Dep.PackageName);
-				}
-			}
-			for (const auto Ref : AssetReferencers)
-			{
-				bool bIsAlreadyInSet = false;
-				LinkedAssets.Add(Ref.PackageName, &bIsAlreadyInSet);
-				if (!bIsAlreadyInSet && Ref.IsValid())
-				{
-					Stack.Add(Ref.PackageName);
-				}
-			}
-		}
-	}
+	// TArray<FName> Stack;
+	// for (const auto& Asset : FilteredAssets)
+	// {
+	// 	FAssetNode Node;
+	// 	AssetRegistry->Get().GetReferencers(Asset, Node.Refs);
+	// 	AssetRegistry->Get().GetDependencies(Asset, Node.Deps);
+	//
+	// 	Node.Refs.Remove(Asset);
+	// 	Node.Deps.Remove(Asset);
+	//
+	// 	Stack.Add(Asset);
+	// 	
+	// 	TArray<FAssetIdentifier> AssetDependencies;
+	// 	TArray<FAssetIdentifier> AssetReferencers;
+	// 	
+	// 	while (Stack.Num() > 0)
+	// 	{
+	// 		const FName PackageName = Stack.Pop(false);
+	//
+	// 		AssetDependencies.Reset();
+	// 		AssetReferencers.Reset();
+	// 		AssetRegistry->Get().GetDependencies(FAssetIdentifier(PackageName), AssetDependencies);
+	// 		AssetRegistry->Get().GetReferencers(FAssetIdentifier(PackageName), AssetReferencers);
+	//
+	// 		AssetDependencies.RemoveAllSwap([&](const FAssetIdentifier& Elem)
+	// 		{
+	// 			return !Elem.PackageName.ToString().StartsWith(ContentDir_Relative.ToString());
+	// 		});
+	// 		AssetReferencers.RemoveAllSwap([&](const FAssetIdentifier& Elem)
+	// 		{
+	// 			return !Elem.PackageName.ToString().StartsWith(ContentDir_Relative.ToString());
+	// 		});
+	// 		
+	// 		for (const auto Dep : AssetDependencies)
+	// 		{
+	// 			bool bIsAlreadyInSet = false;
+	// 			LinkedAssets.Add(Dep.PackageName, &bIsAlreadyInSet);
+	// 			if (!bIsAlreadyInSet && Dep.IsValid())
+	// 			{
+	// 				Stack.Add(Dep.PackageName);
+	// 			}
+	// 		}
+	// 		for (const auto Ref : AssetReferencers)
+	// 		{
+	// 			bool bIsAlreadyInSet = false;
+	// 			LinkedAssets.Add(Ref.PackageName, &bIsAlreadyInSet);
+	// 			if (!bIsAlreadyInSet && Ref.IsValid())
+	// 			{
+	// 				Stack.Add(Ref.PackageName);
+	// 			}
+	// 		}
+	// 	}
+	// }
 }
 
 bool ProjectCleanerDataManager::HasExternalReferencers(const FName& PackageName)
