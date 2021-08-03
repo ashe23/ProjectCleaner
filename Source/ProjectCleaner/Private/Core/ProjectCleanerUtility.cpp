@@ -179,33 +179,39 @@ FString ProjectCleanerUtility::ConvertInternalToAbsolutePath(const FString& InPa
 	return ConvertPathInternal(FString{ "/Game/" }, ProjectContentDirAbsPath, Path);
 }
 
-bool ProjectCleanerUtility::DeleteEmptyFolders(TArray<FString>& EmptyFolders)
+bool ProjectCleanerUtility::DeleteEmptyFolders(TSet<FName>& EmptyFolders)
 {
 	if (EmptyFolders.Num() == 0) return false;
 
 	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
 	
 	bool ErrorWhileDeleting = false;
+	TSet<FString> FailedToDeleteFolders;
 	for (auto& EmptyFolder : EmptyFolders)
 	{
-		if (!IFileManager::Get().DirectoryExists(*EmptyFolder)) continue;
+		const FString EmptyFolderStr = EmptyFolder.ToString();
+		if (!IFileManager::Get().DirectoryExists(*EmptyFolderStr)) continue;
 
-		if (!IFileManager::Get().DeleteDirectory(*EmptyFolder, false, true))
+		if (!IFileManager::Get().DeleteDirectory(*EmptyFolderStr, false, true))
 		{
 			ErrorWhileDeleting = true;
-			UE_LOG(LogProjectCleaner, Error, TEXT("Failed to delete %s folder."), *EmptyFolder);
+			UE_LOG(LogProjectCleaner, Error, TEXT("Failed to delete %s folder."), *EmptyFolderStr);
+			FailedToDeleteFolders.Add(EmptyFolderStr);
 			continue;
 		}
 
-		auto FolderPath = EmptyFolder.Replace(*FPaths::ProjectContentDir(), TEXT("/Game/"));
-
 		// removing folder path from asset registry
-		AssetRegistryModule.Get().RemovePath(FolderPath);
+		AssetRegistryModule.Get().RemovePath(ConvertAbsolutePathToInternal(EmptyFolderStr));
 	}
 
+	EmptyFolders.Empty();
+	
 	if (!ErrorWhileDeleting)
 	{
-		EmptyFolders.Empty();
+		for (const auto& Folder : FailedToDeleteFolders)
+		{
+			EmptyFolders.Add(FName{*Folder});
+		}
 	}
 
 	return !ErrorWhileDeleting;

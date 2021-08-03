@@ -169,10 +169,11 @@ void ProjectCleanerManager::DeleteSelectedAssets(const TArray<FAssetData>& Asset
 void ProjectCleanerManager::DeleteAllUnusedAssets()
 {
 	int32 DeletedAssetsNum = 0;
+	const int32 Total = UnusedAssets.Num();
 	
 	TWeakPtr<SNotificationItem> DeletionProgressNotification;
 	ProjectCleanerNotificationManager::Add(
-		GetDeletionProgressText(DeletedAssetsNum),
+		GetDeletionProgressText(DeletedAssetsNum, Total),
 		SNotificationItem::CS_Pending,
 		DeletionProgressNotification
 	);
@@ -181,9 +182,10 @@ void ProjectCleanerManager::DeleteAllUnusedAssets()
 	while (UnusedAssets.Num() > 0)
 	{
 		GetDeletionChunk(DeletionChunk);
+		
 		DeletedAssetsNum += ProjectCleanerUtility::DeleteAssets(DeletionChunk);
-		ProjectCleanerNotificationManager::Update(DeletionProgressNotification, GetDeletionProgressText(DeletedAssetsNum));
-
+		ProjectCleanerNotificationManager::Update(DeletionProgressNotification, GetDeletionProgressText(DeletedAssetsNum, Total));
+	
 		UnusedAssets.RemoveAllSwap([&] (const FAssetData& Asset)
 		{
 			return DeletionChunk.Contains(Asset); 
@@ -191,12 +193,35 @@ void ProjectCleanerManager::DeleteAllUnusedAssets()
 		
 		DeletionChunk.Reset();
 	}
-
+	
 	ProjectCleanerNotificationManager::Hide(DeletionProgressNotification, FText::FromString(TEXT("Assets deleted successfully")));
 
 	if (CleanerConfigs->bAutomaticallyDeleteEmptyFolders)
 	{
-		// todo:ashe23
+		// After assets deleted we should update empty folder data
+		ProjectCleanerDataManager::GetEmptyFolders(FPaths::ProjectContentDir(), EmptyFolders, CleanerConfigs->bScanDeveloperContents);
+		if (!ProjectCleanerUtility::DeleteEmptyFolders(EmptyFolders))
+		{
+			ProjectCleanerNotificationManager::AddTransient(
+				FText::FromString(FStandardCleanerText::FailedToDeleteSomeFolders),
+				SNotificationItem::CS_Fail,
+				5.0f
+			);
+		}
+	}
+
+	Update();
+}
+
+void ProjectCleanerManager::DeleteAllEmptyFolders()
+{
+	if (!ProjectCleanerUtility::DeleteEmptyFolders(EmptyFolders))
+	{
+		ProjectCleanerNotificationManager::AddTransient(
+			FText::FromString(FStandardCleanerText::FailedToDeleteSomeFolders),
+			SNotificationItem::CS_Fail,
+			5.0f
+		);
 	}
 
 	Update();
@@ -466,50 +491,44 @@ bool ProjectCleanerManager::IsExcludedByPath(const FAssetData& AssetData) const
 
 void ProjectCleanerManager::GetDeletionChunk(TArray<FAssetData>& Chunk)
 {
-	bool bCircularAssetsDetected = false;
-	bool bRootAssetsDetected = false;
-
-	for (int32 Index = 0; Index < UnusedAssets.Num(); ++Index)
+	// 1. Searching for circular assets, this assets must be deleted at first
+	for (const auto& Asset : UnusedAssets)
 	{
-		const int32 ChunkLimit = 500;
-		if (ProjectCleanerDataManager::IsCircularAsset(UnusedAssets[Index]))
+		if (ProjectCleanerDataManager::IsCircularAsset(Asset))
 		{
-			Chunk.AddUnique(UnusedAssets[Index]);
-			if (!bCircularAssetsDetected)
-			{
-				bCircularAssetsDetected = true;
-			}
+			Chunk.AddUnique(Asset);
 		}
+	}
 
-		if (bCircularAssetsDetected)
-		{
-			continue;
-		}
-		
-		if (Chunk.Num() > ChunkLimit)
-		{
-			break;
-		}
+	if (Chunk.Num() > 0)
+	{
+		return;
+	}
 
-		if (ProjectCleanerDataManager::IsRootAsset(UnusedAssets[Index]))
+	// 2. If circular assets not detected, then searching for root assets	
+	for (const auto& Asset : UnusedAssets)
+	{
+		if (ProjectCleanerDataManager::IsRootAsset(Asset))
 		{
-			Chunk.AddUnique(UnusedAssets[Index]);
-			if (!bRootAssetsDetected)
-			{
-				bRootAssetsDetected = true;
-			}
+			Chunk.Add(Asset);
 		}
-		
-		if (!bCircularAssetsDetected && !bRootAssetsDetected)
-		{
-			Chunk.AddUnique(UnusedAssets[Index]);
-		}
+	}
+
+	if (Chunk.Num() > 0)
+	{
+		return;
+	}
+
+	// 3. If we did not detected circular or root assets, just deleting remaining
+	for (const auto& Asset : UnusedAssets)
+	{
+		Chunk.Add(Asset);
 	}
 }
 
-FText ProjectCleanerManager::GetDeletionProgressText(const int32 DeletedAssetNum) const
+FText ProjectCleanerManager::GetDeletionProgressText(const int32 DeletedAssetNum, const int32 Total) const
 {
-	const int32 Percent = AllAssets.Num() > 0 ? (DeletedAssetNum * 100.0f) / AllAssets.Num() : 0;
+	const int32 Percent = Total > 0 ? (DeletedAssetNum * 100.0f) / Total : 0;
 	return FText::FromString(
 		FString::Printf(
 		TEXT("Deleted %d of %d assets. %d %%"),

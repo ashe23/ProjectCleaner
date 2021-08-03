@@ -28,6 +28,7 @@ public:
 	void IncludeAllAssets();
 	void DeleteSelectedAssets(const TArray<FAssetData>& Assets);
 	void DeleteAllUnusedAssets();
+	void DeleteAllEmptyFolders();
 
 	/** Data Container getters **/
 	const TArray<FAssetData>& GetAllAssets() const;
@@ -51,7 +52,7 @@ private:
 	bool IsExcludedByClass(const FAssetData& AssetData) const;
 	bool IsExcludedByPath(const FAssetData& AssetData) const;
 	void GetDeletionChunk(TArray<FAssetData>& Chunk);
-	FText GetDeletionProgressText(const int32 DeletedAssetNum) const;
+	FText GetDeletionProgressText(const int32 DeletedAssetNum, const int32 Total) const;
 
 	/** Data Containers **/
 	

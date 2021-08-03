@@ -30,7 +30,7 @@ private:
 	/* Btn Callbacks */
 	FReply OnRefreshBtnClick();
 	FReply OnDeleteUnusedAssetsBtnClick();
-	FReply OnDeleteEmptyFolderClick() const;
+	FReply OnDeleteEmptyFolderClick();
 	EAppReturnType::Type ShowConfirmationWindow(const FText& Title, const FText& ContentText) const;
 	static bool IsConfirmationWindowCanceled(EAppReturnType::Type Status);
 	

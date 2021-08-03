@@ -102,7 +102,7 @@ struct FStandardCleanerText
 	constexpr static TCHAR* AssetRegistryStillWorking = TEXT("Asset registry still working. Please wait while scan completes");
 	constexpr static TCHAR* SomeAssetsHaveRefsInDevFolder = TEXT("Some assets have referencers in Developer Contents Folder.");
 	constexpr static TCHAR* CantIncludeSomeAssets = TEXT("Cant include selected assets, because they excluded by 'Exclude Options' filter.");
-	constexpr static TCHAR* FailedToDeleteSomeFolders = TEXT("Failed to delete some folders. See Output Log for more information.");
+	constexpr static TCHAR* FailedToDeleteSomeFolders = TEXT("Failed to delete some folders. Open 'Output Log' for more information.");
 	constexpr static TCHAR* SearchingForUnusedAssets = TEXT("Searching for unused assets...");
 	constexpr static TCHAR* LoadingInitialData = TEXT("Loading initial data...");
 	

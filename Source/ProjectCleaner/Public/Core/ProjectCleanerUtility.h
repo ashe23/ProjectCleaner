@@ -42,7 +42,7 @@ public:
 	static void SaveAllAssets(const bool PromptUser);
 	static void UpdateAssetRegistry(bool bSyncScan);
 	// delete
-	static bool DeleteEmptyFolders(TArray<FString>& EmptyFolders);
+	static bool DeleteEmptyFolders(TSet<FName>& EmptyFolders);
 	static int32 DeleteAssets(TArray<FAssetData>& Assets);
 	static bool IsEngineExtension(const FString& Extension);
 private:

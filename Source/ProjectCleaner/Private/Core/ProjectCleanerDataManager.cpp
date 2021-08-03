@@ -365,7 +365,7 @@ bool ProjectCleanerDataManager::IsRootAsset(const FAssetData& AssetData)
 		return !Ref.ToString().StartsWith(TEXT("/Game")) || Ref.IsEqual(AssetData.PackageName);
 	});
 
-	return Refs.Num() > 0;
+	return Refs.Num() == 0;
 }
 
 bool ProjectCleanerDataManager::FindEmptyFolders(const FString& FolderPath, TSet<FName>& EmptyFolders)

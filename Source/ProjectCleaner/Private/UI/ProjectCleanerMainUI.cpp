@@ -325,30 +325,29 @@ FReply SProjectCleanerMainUI::OnDeleteUnusedAssetsBtnClick()
 	return FReply::Handled();
 }
 
-FReply SProjectCleanerMainUI::OnDeleteEmptyFolderClick() const
+FReply SProjectCleanerMainUI::OnDeleteEmptyFolderClick()
 {
-	// if (CleanerManager->GetCleanerData().EmptyFolders.Num() == 0)
-	// {
-	// 	ProjectCleanerNotificationManager::AddTransient(
-	// 		FText::FromString(FStandardCleanerText::NoEmptyFolderToDelete),
-	// 		SNotificationItem::ECompletionState::CS_Fail,
-	// 		3.0f
-	// 	);
-	// 	
-	// 	return FReply::Handled();
-	// }
-	//
-	// const auto ConfirmationWindowStatus = ShowConfirmationWindow(
-	// 	FText::FromString(FStandardCleanerText::EmptyFolderWindowTitle),
-	// 	FText::FromString(FStandardCleanerText::EmptyFolderWindowContent)
-	// );
-	// if (IsConfirmationWindowCanceled(ConfirmationWindowStatus))
-	// {
-	// 	return FReply::Handled();
-	// }
-	//
-	// // CleanerManager->DeleteEmptyFolders();
-	// UpdateUIData();
+	if (CleanerManager.GetEmptyFolders().Num() == 0)
+	{
+		ProjectCleanerNotificationManager::AddTransient(
+			FText::FromString(FStandardCleanerText::NoEmptyFolderToDelete),
+			SNotificationItem::ECompletionState::CS_Fail,
+			3.0f
+		);
+		
+		return FReply::Handled();
+	}
+	
+	const auto ConfirmationWindowStatus = ShowConfirmationWindow(
+		FText::FromString(FStandardCleanerText::EmptyFolderWindowTitle),
+		FText::FromString(FStandardCleanerText::EmptyFolderWindowContent)
+	);
+	if (IsConfirmationWindowCanceled(ConfirmationWindowStatus))
+	{
+		return FReply::Handled();
+	}
+
+	CleanerManager.DeleteAllEmptyFolders();
 
 	return FReply::Handled();
 }
