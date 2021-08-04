@@ -14,7 +14,6 @@
 #include "UI/ProjectCleanerNotificationManager.h"
 // Engine Headers
 #include "ToolMenus.h"
-#include "AssetRegistry/AssetRegistryModule.h"
 #include "Components/SlateWrapperTypes.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Layout/SScrollBox.h"
@@ -28,13 +27,18 @@ static const FName ExcludedAssetsTab = FName{ TEXT("ExcludedAssetsTab") };
 
 void SProjectCleanerMainUI::Construct(const FArguments& InArgs)
 {
-	InitTabs();
+	if (InArgs._CleanerManager)
+	{
+		SetCleanerManager(InArgs._CleanerManager);
+	}
 
-	CleanerManager.Update();
-	CleanerManager.OnCleanerManagerUpdated = FOnCleanerManagerUpdated::CreateRaw(
+	ensure(CleanerManager);
+	CleanerManager->OnCleanerManagerUpdated = FOnCleanerManagerUpdated::CreateRaw(
 		this,
 		&SProjectCleanerMainUI::OnCleanerManagerUpdated
 	);
+	
+	InitTabs();
 	
 	ensure(TabManager.IsValid());
 
@@ -75,7 +79,7 @@ void SProjectCleanerMainUI::Construct(const FArguments& InArgs)
 							.AutoHeight()
 							[
 								SAssignNew(StatisticsUI, SProjectCleanerStatisticsUI)
-								.CleanerManager(&CleanerManager)
+								.CleanerManager(CleanerManager)
 							]
 							+ SVerticalBox::Slot()
 							.Padding(FMargin{ 20.0f, 20.0f })
@@ -116,14 +120,14 @@ void SProjectCleanerMainUI::Construct(const FArguments& InArgs)
 							.AutoHeight()
 							[
 								SAssignNew(CleanerConfigsUI, SProjectCleanerConfigsUI)
-								.CleanerConfigs(CleanerManager.GetCleanerConfigs())
+								.CleanerConfigs(CleanerManager->GetCleanerConfigs())
 							]
 							+ SVerticalBox::Slot()
 							.Padding(FMargin{20.0f, 5.0f})
 							.AutoHeight()
 							[
 								SAssignNew(ExcludeOptionUI, SProjectCleanerExcludeOptionsUI)
-								.ExcludeOptions(CleanerManager.GetExcludeOptions())
+								.ExcludeOptions(CleanerManager->GetExcludeOptions())
 							]
 						]
 					]
@@ -144,6 +148,13 @@ SProjectCleanerMainUI::~SProjectCleanerMainUI()
 	TabManager->UnregisterTabSpawner(NonEngineFilesTab);
 	TabManager->UnregisterTabSpawner(CorruptedFilesTab);
 	TabManager->UnregisterTabSpawner(ExcludedAssetsTab);
+	CleanerManager->OnCleanerManagerUpdated.Unbind();
+}
+
+void SProjectCleanerMainUI::SetCleanerManager(ProjectCleanerManager* CleanerManagerPtr)
+{
+	if (!CleanerManagerPtr) return;
+	CleanerManager = CleanerManagerPtr;
 }
 
 void SProjectCleanerMainUI::InitTabs()
@@ -232,7 +243,7 @@ TSharedRef<SDockTab> SProjectCleanerMainUI::OnUnusedAssetTabSpawn(const FSpawnTa
 			.Padding(20.0f)
 			[
 				SAssignNew(UnusedAssetsBrowserUI, SProjectCleanerUnusedAssetsBrowserUI)
-				.CleanerManager(&CleanerManager)
+				.CleanerManager(CleanerManager)
 			]
 		];
 }
@@ -250,7 +261,7 @@ TSharedRef<SDockTab> SProjectCleanerMainUI::OnExcludedAssetsTabSpawn(const FSpaw
 			.Padding(20.0f)
 			[
 				SAssignNew(ExcludedAssetsUI, SProjectCleanerExcludedAssetsUI)
-				.CleanerManager(&CleanerManager)
+				.CleanerManager(CleanerManager)
 			]
 		];
 }
@@ -263,7 +274,7 @@ TSharedRef<SDockTab> SProjectCleanerMainUI::OnNonEngineFilesTabSpawn(const FSpaw
 		.Label(NSLOCTEXT("NonEngineFilesTab", "TabTitle", "Non Engine Files"))
 		[
 			SAssignNew(NonEngineFilesUI, SProjectCleanerNonEngineFilesUI)
-			.CleanerManager(&CleanerManager)
+			.CleanerManager(CleanerManager)
 		];
 }
 
@@ -275,7 +286,7 @@ TSharedRef<SDockTab> SProjectCleanerMainUI::OnCorruptedFilesTabSpawn(const FSpaw
 		.Label(NSLOCTEXT("CorruptedAssetsTab", "TabTitle", "Corrupted Assets"))
 		[
 			SAssignNew(CorruptedFilesUI, SProjectCleanerCorruptedFilesUI)
-			.CleanerManager(&CleanerManager)
+			.CleanerManager(CleanerManager)
 		];
 }
 
@@ -287,20 +298,20 @@ TSharedRef<SDockTab> SProjectCleanerMainUI::OnIndirectAssetsTabSpawn(const FSpaw
 		.Label(NSLOCTEXT("IndirectAssetsTab", "TabTitle", "Assets Used Indirectly"))
 		[
 			SAssignNew(IndirectAssetsUI, SProjectCleanerIndirectAssetsUI)
-			.CleanerManager(&CleanerManager)
+			.CleanerManager(CleanerManager)
 		];
 }
 
-FReply SProjectCleanerMainUI::OnRefreshBtnClick()
+FReply SProjectCleanerMainUI::OnRefreshBtnClick() const
 {
-	CleanerManager.Update();
+	CleanerManager->Update();
 
 	return FReply::Handled();
 }
 
-FReply SProjectCleanerMainUI::OnDeleteUnusedAssetsBtnClick()
+FReply SProjectCleanerMainUI::OnDeleteUnusedAssetsBtnClick() const
 {
-	if (CleanerManager.GetUnusedAssets().Num() == 0)
+	if (CleanerManager->GetUnusedAssets().Num() == 0)
 	{
 		ProjectCleanerNotificationManager::AddTransient(
 			FText::FromString(FStandardCleanerText::NoAssetsToDelete),
@@ -311,23 +322,23 @@ FReply SProjectCleanerMainUI::OnDeleteUnusedAssetsBtnClick()
 		return FReply::Handled();
 	}
 	
-	const auto ConfirmationWindowStatus = ShowConfirmationWindow(
+	const auto ConfirmationWindowStatus = ProjectCleanerNotificationManager::ShowConfirmationWindow(
 		FText::FromString(FStandardCleanerText::AssetsDeleteWindowTitle),
 		FText::FromString(FStandardCleanerText::AssetsDeleteWindowContent)
 	);
-	if (IsConfirmationWindowCanceled(ConfirmationWindowStatus))
+	if (ProjectCleanerNotificationManager::IsConfirmationWindowCanceled(ConfirmationWindowStatus))
 	{
 		return FReply::Handled();
 	}
-
-	CleanerManager.DeleteAllUnusedAssets();
+	
+	CleanerManager->DeleteAllUnusedAssets();
 	
 	return FReply::Handled();
 }
 
-FReply SProjectCleanerMainUI::OnDeleteEmptyFolderClick()
+FReply SProjectCleanerMainUI::OnDeleteEmptyFolderClick() const
 {
-	if (CleanerManager.GetEmptyFolders().Num() == 0)
+	if (CleanerManager->GetEmptyFolders().Num() == 0)
 	{
 		ProjectCleanerNotificationManager::AddTransient(
 			FText::FromString(FStandardCleanerText::NoEmptyFolderToDelete),
@@ -338,30 +349,16 @@ FReply SProjectCleanerMainUI::OnDeleteEmptyFolderClick()
 		return FReply::Handled();
 	}
 	
-	const auto ConfirmationWindowStatus = ShowConfirmationWindow(
+	const auto ConfirmationWindowStatus = ProjectCleanerNotificationManager::ShowConfirmationWindow(
 		FText::FromString(FStandardCleanerText::EmptyFolderWindowTitle),
 		FText::FromString(FStandardCleanerText::EmptyFolderWindowContent)
 	);
-	if (IsConfirmationWindowCanceled(ConfirmationWindowStatus))
+	if (ProjectCleanerNotificationManager::IsConfirmationWindowCanceled(ConfirmationWindowStatus))
 	{
 		return FReply::Handled();
 	}
-
-	CleanerManager.DeleteAllEmptyFolders();
+	
+	CleanerManager->DeleteAllEmptyFolders();
 
 	return FReply::Handled();
-}
-
-EAppReturnType::Type SProjectCleanerMainUI::ShowConfirmationWindow(const FText& Title, const FText& ContentText) const
-{
-	return FMessageDialog::Open(
-		EAppMsgType::YesNo,
-		ContentText,
-		&Title
-	);
-}
-
-bool SProjectCleanerMainUI::IsConfirmationWindowCanceled(EAppReturnType::Type Status)
-{
-	return Status == EAppReturnType::Type::No || Status == EAppReturnType::Cancel;
 }

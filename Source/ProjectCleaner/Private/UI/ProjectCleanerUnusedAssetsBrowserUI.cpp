@@ -263,7 +263,7 @@ void SProjectCleanerUnusedAssetsBrowserUI::ExcludeAssetsOfType() const
 	if (!CurrentSelectionDelegate.IsBound()) return;
 	
 	const TArray<FAssetData> SelectedAssets = CurrentSelectionDelegate.Execute();
-	CleanerManager->ExcludedSelectedAssetsByType(SelectedAssets);
+	CleanerManager->ExcludeSelectedAssetsByType(SelectedAssets);
 }
 
 #undef LOCTEXT_NAMESPACE

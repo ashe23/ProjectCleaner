@@ -43,7 +43,7 @@ public:
 	static void UpdateAssetRegistry(bool bSyncScan);
 	// delete
 	static bool DeleteEmptyFolders(TSet<FName>& EmptyFolders);
-	static int32 DeleteAssets(TArray<FAssetData>& Assets);
+	static int32 DeleteAssets(TArray<FAssetData>& Assets, const bool ForceDelete);
 	static bool IsEngineExtension(const FString& Extension);
 private:
 	// static void GetUsedAssets(TSet<FName>& UsedAssets);

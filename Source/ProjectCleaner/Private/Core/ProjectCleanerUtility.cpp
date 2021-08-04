@@ -206,7 +206,7 @@ bool ProjectCleanerUtility::DeleteEmptyFolders(TSet<FName>& EmptyFolders)
 
 	EmptyFolders.Empty();
 	
-	if (!ErrorWhileDeleting)
+	if (ErrorWhileDeleting)
 	{
 		for (const auto& Folder : FailedToDeleteFolders)
 		{
@@ -529,24 +529,24 @@ void ProjectCleanerUtility::FixupRedirectors()
 	SlowTask.EnterProgressFrame(1.0f);
 }
 
-int32 ProjectCleanerUtility::DeleteAssets(TArray<FAssetData>& Assets)
+int32 ProjectCleanerUtility::DeleteAssets(TArray<FAssetData>& Assets, const bool ForceDelete)
 {
 	// first try to delete normally
 	int32 DeletedAssets = ObjectTools::DeleteAssets(Assets, false);
 
 	// if normally not working try to force delete
-	if (DeletedAssets == 0)
+	if (DeletedAssets == 0 && ForceDelete)
 	{
 		TArray<UObject*> AssetObjects;
 		AssetObjects.Reserve(Assets.Num());
-
+	
 		for (const auto& Asset : Assets)
 		{
 			const auto AssetObj = Asset.GetAsset();
 			if(!AssetObj) continue;
 			AssetObjects.Add(AssetObj);
 		}
-
+	
 		DeletedAssets = ObjectTools::ForceDeleteObjects(AssetObjects, false);
 	}
 

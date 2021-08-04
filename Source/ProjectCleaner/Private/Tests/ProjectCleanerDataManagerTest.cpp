@@ -138,7 +138,7 @@ bool FProjectCleanerDataManagerTest::RunTest(const FString& Parameters)
 	ProjectCleanerDataManager::GetAllAssetsByPath(AutomationRootFolder_Rel, AllAssets);
 	TestEqual("[GetAllAssetsByPath] All assets must ", AllAssets.Num(), 1);
 
-	ProjectCleanerUtility::DeleteAssets(AllAssets);
+	ProjectCleanerUtility::DeleteAssets(AllAssets, false);
 	// Testing with lots of assets
 	for (int32 i = 0; i < 100; ++i)
 	{
@@ -152,7 +152,7 @@ bool FProjectCleanerDataManagerTest::RunTest(const FString& Parameters)
 	AllAssets.Reset();
 	ProjectCleanerDataManager::GetAllAssetsByPath(AutomationRootFolder_Rel, AllAssets);
 	TestEqual("[GetAllAssetsByPath] All assets must ", AllAssets.Num(), 100);
-	ProjectCleanerUtility::DeleteAssets(AllAssets);
+	ProjectCleanerUtility::DeleteAssets(AllAssets, false);
 
 	Cleanup();
 

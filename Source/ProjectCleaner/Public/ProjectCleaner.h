@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "Core/ProjectCleanerManager.h"
 // Engine Headers
 #include "Modules/ModuleInterface.h"
 #include "CoreMinimal.h"
@@ -18,9 +19,12 @@ public:
 private:
     /* Module */	
 	void RegisterMenus();
-	static void PluginButtonClicked();
-	TSharedRef<SDockTab> OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs) const;
+	void PluginButtonClicked() const;
+	TSharedRef<SDockTab> OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs);
 	
 	/* UI data */
 	TSharedPtr<FUICommandList> PluginCommands;
+
+	/* Cleaner Manager */
+	class ProjectCleanerManager CleanerManager;
 };

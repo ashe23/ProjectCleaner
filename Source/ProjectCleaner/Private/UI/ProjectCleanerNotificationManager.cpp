@@ -62,3 +62,17 @@ void ProjectCleanerNotificationManager::Reset(TWeakPtr<SNotificationItem> Notifi
 	NotificationManager.Pin()->ExpireAndFadeout();
 	NotificationManager.Reset();
 }
+
+EAppReturnType::Type ProjectCleanerNotificationManager::ShowConfirmationWindow(const FText& Title, const FText& ContentText)
+{
+	return FMessageDialog::Open(
+		EAppMsgType::YesNo,
+		ContentText,
+		&Title
+	);
+}
+
+bool ProjectCleanerNotificationManager::IsConfirmationWindowCanceled(EAppReturnType::Type Status)
+{
+	return Status == EAppReturnType::Type::No || Status == EAppReturnType::Cancel;
+}

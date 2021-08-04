@@ -10,17 +10,19 @@ class SProjectCleanerMainUI : public SCompoundWidget
 {
 public:
 	SLATE_BEGIN_ARGS(SProjectCleanerMainUI) {}
+		SLATE_ARGUMENT(ProjectCleanerManager*, CleanerManager)
     SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
 	virtual ~SProjectCleanerMainUI() override;
+	void SetCleanerManager(ProjectCleanerManager* CleanerManagerPtr);
 
 private:
 	/* Initializers */
 	void InitTabs();
 	void OnCleanerManagerUpdated() const;
 	
-	/* Callbacks */
+	/* Tab Callbacks */
 	TSharedRef<SDockTab> OnUnusedAssetTabSpawn(const FSpawnTabArgs& SpawnTabArgs);
 	TSharedRef<SDockTab> OnExcludedAssetsTabSpawn(const FSpawnTabArgs& SpawnTabArgs);
 	TSharedRef<SDockTab> OnNonEngineFilesTabSpawn(const FSpawnTabArgs& SpawnTabArgs);
@@ -28,11 +30,9 @@ private:
 	TSharedRef<SDockTab> OnIndirectAssetsTabSpawn(const FSpawnTabArgs& SpawnTabArgs);
 	
 	/* Btn Callbacks */
-	FReply OnRefreshBtnClick();
-	FReply OnDeleteUnusedAssetsBtnClick();
-	FReply OnDeleteEmptyFolderClick();
-	EAppReturnType::Type ShowConfirmationWindow(const FText& Title, const FText& ContentText) const;
-	static bool IsConfirmationWindowCanceled(EAppReturnType::Type Status);
+	FReply OnRefreshBtnClick() const;
+	FReply OnDeleteUnusedAssetsBtnClick() const;
+	FReply OnDeleteEmptyFolderClick() const;
 	
 	/* UI Data */
 	TWeakPtr<class SProjectCleanerStatisticsUI> StatisticsUI;
@@ -46,6 +46,6 @@ private:
 	TSharedPtr<class FTabManager> TabManager;
 	TSharedPtr<FTabManager::FLayout> TabLayout;
 
-	/* Data */
-	ProjectCleanerManager CleanerManager;
+	/* CleanerManager */
+	ProjectCleanerManager* CleanerManager = nullptr;
 };

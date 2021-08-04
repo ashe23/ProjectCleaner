@@ -20,6 +20,9 @@ public:
 	
 	UPROPERTY(DisplayName = "Remove Empty Folders After Assets Deleted", EditAnywhere, Category = "CleanerConfigs")
 	bool bAutomaticallyDeleteEmptyFolders = true;
+
+	UPROPERTY(DisplayName = "Try to force delete assets, if simple deletion failed", EditAnywhere, Category = "CleanerConfigs", meta = (ToolTip = "If assets failed to delete normally, we could try to force delete them. By Default false"))
+	bool bForceDeleteAssets = false;
 };
 
 UCLASS(Transient)
