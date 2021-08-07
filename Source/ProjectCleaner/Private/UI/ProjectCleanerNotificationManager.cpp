@@ -45,12 +45,12 @@ void ProjectCleanerNotificationManager::Update(TWeakPtr<SNotificationItem> Notif
 	}
 }
 
-void ProjectCleanerNotificationManager::Hide(TWeakPtr<SNotificationItem> NotificationManager, const FText& FinalText)
+void ProjectCleanerNotificationManager::Hide(TWeakPtr<SNotificationItem> NotificationManager, const SNotificationItem::ECompletionState CompletionState, const FText& FinalText)
 {
 	if (!NotificationManager.IsValid()) return;
 
 	NotificationManager.Pin()->SetText(FinalText);
-	NotificationManager.Pin()->SetCompletionState(SNotificationItem::CS_Success);
+	NotificationManager.Pin()->SetCompletionState(CompletionState);
 	NotificationManager.Pin()->SetFadeOutDuration(5.0f);
 	NotificationManager.Pin()->Fadeout();
 }

@@ -17,7 +17,8 @@ public:
 	/**
 	 * @brief Create new persistent notification, will be in memory until Reset function call
 	 * @param Text 
-	 * @param CompletionState 
+	 * @param CompletionState
+	 * @param NotificationPtr
 	 * @return 
 	 */
 	static void Add(
@@ -47,10 +48,11 @@ public:
 
 	/**
 	 * @brief Hides already existing notification
-	 * @param NotificationManager 
+	 * @param NotificationManager
+	 * @param CompletionState
 	 * @param FinalText 
 	 */
-	static void Hide(TWeakPtr<SNotificationItem> NotificationManager, const FText& FinalText);
+	static void Hide(TWeakPtr<SNotificationItem> NotificationManager, const SNotificationItem::ECompletionState CompletionState, const FText& FinalText);
 
 	/**
 	 * @brief Reset given notification

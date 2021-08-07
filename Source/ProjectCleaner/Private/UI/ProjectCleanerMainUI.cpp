@@ -234,7 +234,7 @@ TSharedRef<SDockTab> SProjectCleanerMainUI::OnUnusedAssetTabSpawn(const FSpawnTa
 {
 	return SNew(SDockTab)
 		.TabRole(ETabRole::NomadTab)
-		.OnCanCloseTab_Lambda([] { return false; })
+		// .OnCanCloseTab_Lambda([] { return false; })
 		.Label(NSLOCTEXT("UnusedAssetsTab", "TabTitle", "Unused Assets"))
 		.ShouldAutosize(true)
 		[
@@ -250,9 +250,9 @@ TSharedRef<SDockTab> SProjectCleanerMainUI::OnUnusedAssetTabSpawn(const FSpawnTa
 
 TSharedRef<SDockTab> SProjectCleanerMainUI::OnExcludedAssetsTabSpawn(const FSpawnTabArgs& SpawnTabArgs)
 {
-	return SNew(SDockTab)
+	return SNew(SDockTab)		
 		.TabRole(ETabRole::NomadTab)
-		.OnCanCloseTab_Lambda([] { return false; })
+		// .OnCanCloseTab_Lambda([] { return false; })
 		.Label(NSLOCTEXT("ExcludedAssetsTab", "TabTitle", "Excluded Assets"))
 		.ShouldAutosize(true)
 		[
@@ -269,8 +269,8 @@ TSharedRef<SDockTab> SProjectCleanerMainUI::OnExcludedAssetsTabSpawn(const FSpaw
 TSharedRef<SDockTab> SProjectCleanerMainUI::OnNonEngineFilesTabSpawn(const FSpawnTabArgs& SpawnTabArgs)
 {
 	return SNew(SDockTab)
-		.TabRole(ETabRole::PanelTab)
-		.OnCanCloseTab_Lambda([] {return false; })
+		.TabRole(ETabRole::NomadTab)
+		// .OnCanCloseTab_Lambda([] {return false; })
 		.Label(NSLOCTEXT("NonEngineFilesTab", "TabTitle", "Non Engine Files"))
 		[
 			SAssignNew(NonEngineFilesUI, SProjectCleanerNonEngineFilesUI)
@@ -281,8 +281,8 @@ TSharedRef<SDockTab> SProjectCleanerMainUI::OnNonEngineFilesTabSpawn(const FSpaw
 TSharedRef<SDockTab> SProjectCleanerMainUI::OnCorruptedFilesTabSpawn(const FSpawnTabArgs& SpawnTabArgs)
 {
 	return SNew(SDockTab)
-		.TabRole(ETabRole::PanelTab)
-		.OnCanCloseTab_Lambda([] {return false; })
+		.TabRole(ETabRole::NomadTab)
+		// .OnCanCloseTab_Lambda([] {return false; })
 		.Label(NSLOCTEXT("CorruptedAssetsTab", "TabTitle", "Corrupted Assets"))
 		[
 			SAssignNew(CorruptedFilesUI, SProjectCleanerCorruptedFilesUI)
@@ -293,8 +293,8 @@ TSharedRef<SDockTab> SProjectCleanerMainUI::OnCorruptedFilesTabSpawn(const FSpaw
 TSharedRef<SDockTab> SProjectCleanerMainUI::OnIndirectAssetsTabSpawn(const FSpawnTabArgs& SpawnTabArgs)
 {
 	return SNew(SDockTab)
-		.TabRole(ETabRole::PanelTab)
-		.OnCanCloseTab_Lambda([] {return false; })
+		.TabRole(ETabRole::NomadTab)
+		// .OnCanCloseTab_Lambda([] {return false; })
 		.Label(NSLOCTEXT("IndirectAssetsTab", "TabTitle", "Assets Used Indirectly"))
 		[
 			SAssignNew(IndirectAssetsUI, SProjectCleanerIndirectAssetsUI)

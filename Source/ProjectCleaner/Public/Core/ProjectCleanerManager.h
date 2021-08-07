@@ -19,15 +19,14 @@ public:
 	ProjectCleanerManager();
 	~ProjectCleanerManager();
 
-	void Init();
-	void Exit();
-
 	/**
 	 * @brief Updates data containers
 	 */
 	void Update();
 	void ExcludeSelectedAssets(const TArray<FAssetData>& NewUserExcludedAssets);
 	void ExcludeSelectedAssetsByType(const TArray<FAssetData>& ExcludedByTypeAssets);
+	void ExcludePath(const FString& InPath);
+	void IncludePath(const FString& InPath);
 	void IncludeSelectedAssets(const TArray<FAssetData>& Assets);
 	void IncludeAllAssets();
 	void DeleteSelectedAssets(const TArray<FAssetData>& Assets);
@@ -60,11 +59,6 @@ private:
 	FText GetDeletionProgressText(const int32 DeletedAssetNum, const int32 Total) const;
 
 	/** Data Containers **/
-
-	// bool bShouldPerformFullScan = true;
-	// bool bIsActualData = false;
-	// bool bAssetRegistryChanged = false;
-	// bool bDelegatesRegistered = false;
 	
 	/**
 	* @brief All assets in "/Game" folder
@@ -132,28 +126,6 @@ private:
 
 	/* Asset Registry */
 	FAssetRegistryModule* AssetRegistry;
-	FDelegateHandle DelegateHandle;
-	void OnFilesLoaded();
-	// FDelegateHandle AssetAddedDelegate;
-	// FDelegateHandle AssetRemovedDelegate;
-	// // FDelegateHandle AssetUpdatedDelegate;
-	// FDelegateHandle AssetRenamedDelegate;
-	
-	// void RegisterAssetRegistryDelegates();
-	// void UnRegisterAssetRegistryDelegates() const;
-	// void OnAssetAdded(const FAssetData& AssetData);
-	// void OnAssetRemoved(const FAssetData& AssetData);
-	// // void OnAssetUpdated(const FAssetData& AssetData);
-	// void OnAssetRenamed(const FAssetData& AssetData, const FString& Name);
 
-	/* Directory Watcher Module */
-	// class FDirectoryWatcherModule* DirectoryWatcher;
-	//
-	// FDelegateHandle SourceDirDelegateHandle;
-	// FDelegateHandle ConfigDirDelegateHandle;
-	// FDelegateHandle PluginsDirDelegateHandle;
-	//
-	// void RegisterDirectoryWatcherDelegates();
-	// void UnRegisterDirectoryWatcherDelegates() const;
-	// void OnDirectoryChanged(const TArray<struct FFileChangeData>& InFileChanges);
+	const class UContentBrowserSettings* CachedCBSettings;
 };

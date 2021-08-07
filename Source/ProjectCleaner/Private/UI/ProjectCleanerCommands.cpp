@@ -41,6 +41,14 @@ void FProjectCleanerCommands::RegisterCommands()
 		EUserInterfaceActionType::Button,
 		FInputChord()
 	);
+	
+	UI_COMMAND(
+		IncludePath,
+		"Include Assets in path",
+		"Include all assets in selected path",
+		EUserInterfaceActionType::Button,
+		FInputChord()
+	);
 
 	UI_COMMAND(
 		ExcludeAsset,
@@ -54,6 +62,14 @@ void FProjectCleanerCommands::RegisterCommands()
 		ExcludeByType,
 		"Exclude Assets of this type",
 		"Excludes all assets of this type",
+		EUserInterfaceActionType::Button,
+		FInputChord()
+	);
+
+	UI_COMMAND(
+		ExcludePath,
+		"Exclude Assets in path",
+		"Excludes all assets in selected path",
 		EUserInterfaceActionType::Button,
 		FInputChord()
 	);

@@ -18,11 +18,11 @@ public:
 	UPROPERTY(DisplayName = "Scan Megascans Plugin Content", EditAnywhere, Category = "CleanerConfigs", meta = (ToolTip = "Scan assets in Megascans base content(MSPreset),if Megascans plugin is active. By Default false"))
 	bool bScanMegascansContent = false;
 	
-	UPROPERTY(DisplayName = "Remove Empty Folders After Assets Deleted", EditAnywhere, Category = "CleanerConfigs")
+	UPROPERTY(DisplayName = "Delete Empty Folders After Assets Deleted", EditAnywhere, Category = "CleanerConfigs")
 	bool bAutomaticallyDeleteEmptyFolders = true;
 
-	UPROPERTY(DisplayName = "Try to force delete assets, if simple deletion failed", EditAnywhere, Category = "CleanerConfigs", meta = (ToolTip = "If assets failed to delete normally, we could try to force delete them. By Default false"))
-	bool bForceDeleteAssets = false;
+	UPROPERTY(DisplayName = "Force Delete Assets", EditAnywhere, Category = "CleanerConfigs", meta = (ToolTip = "If assets failed to delete normally, we could try to force delete them. By Default false"))
+	bool bForceDeleteAssets = true;
 };
 
 UCLASS(Transient)
@@ -106,7 +106,10 @@ struct FStandardCleanerText
 	constexpr static TCHAR* SomeAssetsHaveRefsInDevFolder = TEXT("Some assets have referencers in Developer Contents Folder.");
 	constexpr static TCHAR* CantIncludeSomeAssets = TEXT("Cant include selected assets, because they excluded by 'Exclude Options' filter.");
 	constexpr static TCHAR* FailedToDeleteSomeFolders = TEXT("Failed to delete some folders. Open 'Output Log' for more information.");
+	constexpr static TCHAR* FailedToDeleteSomeAssets = TEXT("Failed to delete some assets. Try to check 'Force Delete assets' option");
 	constexpr static TCHAR* SearchingForUnusedAssets = TEXT("Searching for unused assets...");
-	constexpr static TCHAR* LoadingInitialData = TEXT("Loading initial data...");
+	constexpr static TCHAR* Scanning = TEXT("Scanning...");
+	constexpr static TCHAR* AssetsSuccessfullyDeleted = TEXT("Assets deleted successfully");
+	constexpr static TCHAR* LoadingAssetsObjects = TEXT("Loading assets objects...");
 	
 };

@@ -57,18 +57,29 @@ void SProjectCleanerExcludedAssetsUI::RegisterCommands()
 			FCanExecuteAction::CreateRaw(this, &SProjectCleanerExcludedAssetsUI::IsAnythingSelected)
 		)
 	);
+
+	Commands->MapAction(
+		FProjectCleanerCommands::Get().IncludePath,
+		FUIAction
+		(
+			FExecuteAction::CreateRaw(this,&SProjectCleanerExcludedAssetsUI::IncludePath)
+		)
+	);
 }
 
 void SProjectCleanerExcludedAssetsUI::UpdateUI()
 {
 	if (!CleanerManager->GetCleanerConfigs()) return;
 	
-	PathPickerConfig.bAllowContextMenu = false;
+	PathPickerConfig.bAllowContextMenu = true;
 	PathPickerConfig.bAllowClassesFolder = false;
 	PathPickerConfig.bFocusSearchBoxWhenOpened = false;
 	PathPickerConfig.OnPathSelected.BindRaw(this, &SProjectCleanerExcludedAssetsUI::OnPathSelected);
 	PathPickerConfig.bAddDefaultPath = true;
 	PathPickerConfig.DefaultPath = SelectedPath.ToString();
+	PathPickerConfig.OnGetFolderContextMenu = FOnGetFolderContextMenu::CreateSP(
+		this, &SProjectCleanerExcludedAssetsUI::OnGetFolderContextMenu
+	);
 	
 	ChildSlot
 	[
@@ -190,13 +201,23 @@ TSharedPtr<SWidget> SProjectCleanerExcludedAssetsUI::GetExcludedAssetsView()
 TSharedPtr<SWidget> SProjectCleanerExcludedAssetsUI::OnGetAssetContextMenu(const TArray<FAssetData>& SelectedAssets) const
 {
 	FMenuBuilder MenuBuilder{true, Commands};
-	MenuBuilder.BeginSection(
-		TEXT("Asset"),
-		NSLOCTEXT("ReferenceViewerSchema", "AssetSectionLabel", "Asset")
-	);
+	MenuBuilder.BeginSection(TEXT("Asset"),LOCTEXT("AssetSectionLabel", "Asset"));
 	{
 		MenuBuilder.AddMenuEntry(FGlobalEditorCommonCommands::Get().FindInContentBrowser);
 		MenuBuilder.AddMenuEntry(FProjectCleanerCommands::Get().IncludeAsset);
+	}
+	MenuBuilder.EndSection();
+
+	return MenuBuilder.MakeWidget();
+}
+
+TSharedPtr<SWidget> SProjectCleanerExcludedAssetsUI::OnGetFolderContextMenu(const TArray<FString>& SelectedPaths,
+	FContentBrowserMenuExtender_SelectedPaths InMenuExtender, FOnCreateNewFolder InOnCreateNewFolder) const
+{
+	FMenuBuilder MenuBuilder(true, Commands);
+	MenuBuilder.BeginSection(TEXT("Include"), LOCTEXT("include_by_path", "Path"));
+	{
+		MenuBuilder.AddMenuEntry(FProjectCleanerCommands::Get().IncludePath);
 	}
 	MenuBuilder.EndSection();
 
@@ -238,6 +259,11 @@ void SProjectCleanerExcludedAssetsUI::IncludeAssets() const
 	const TArray<FAssetData> SelectedAssets = GetCurrentSelectionDelegate.Execute();
 
 	CleanerManager->IncludeSelectedAssets(SelectedAssets);
+}
+
+void SProjectCleanerExcludedAssetsUI::IncludePath() const
+{
+	CleanerManager->IncludePath(SelectedPath.ToString());
 }
 
 FReply SProjectCleanerExcludedAssetsUI::IncludeAllAssets() const

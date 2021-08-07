@@ -3,10 +3,8 @@
 #include "Core/ProjectCleanerDataManager.h"
 #include "Core/ProjectCleanerUtility.h"
 // Engine Headers
-#include "Settings/ContentBrowserSettings.h"
 #include "AssetRegistry/AssetData.h"
 #include "AssetRegistry/AssetRegistryModule.h"
-#include "Engine/World.h"
 #include "Engine/AssetManager.h"
 #include "Engine/AssetManagerSettings.h"
 #include "Misc/Paths.h"
@@ -241,10 +239,7 @@ void ProjectCleanerDataManager::GetPrimaryAssetClasses(TSet<FName>& PrimaryAsset
 {
 	const auto& AssetManager = UAssetManager::Get();
 	if (!AssetManager.IsValid()) return;
-
-	// PrimaryAssetClasses.Reserve(10);
 	
-	const UAssetManagerSettings& Settings = AssetManager.GetSettings();
 	TArray<FPrimaryAssetTypeInfo> AssetTypeInfos;
 	AssetManager.Get().GetPrimaryAssetTypeInfoList(AssetTypeInfos);
 
@@ -255,22 +250,6 @@ void ProjectCleanerDataManager::GetPrimaryAssetClasses(TSet<FName>& PrimaryAsset
 		FName ClassName = AssetTypeCLass->GetFName();
 		PrimaryAssetClasses.Add(ClassName);
 	}
-	
-	// TArray<FPrimaryAssetId> Ids;
-	// for (const auto& Type : Settings.PrimaryAssetTypesToScan)
-	// {
-	// 	AssetManager.Get().GetPrimaryAssetIdList(Type.PrimaryAssetType, Ids);
-	// 	for(const auto& Id : Ids)
-	// 	{
-	// 		FAssetData Data;
-	// 		AssetManager.Get().GetPrimaryAssetData(Id, Data);
-	// 		if(!Data.IsValid()) continue;
-	// 		PrimaryAssetClasses.Add(Data.AssetClass);
-	// 	}
-	// 	Ids.Reset();
-	// }
-
-	// PrimaryAssetClasses.Shrink();
 }
 
 void ProjectCleanerDataManager::GetAllAssetsWithExternalReferencers(TArray<FAssetData>& AssetsWithExternalRefs,

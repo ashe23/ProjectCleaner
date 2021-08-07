@@ -28,8 +28,7 @@ void FProjectCleanerModule::StartupModule()
 	PluginCommands = MakeShareable(new FUICommandList);
 	PluginCommands->MapAction(
 		FProjectCleanerCommands::Get().OpenCleanerWindow,
-		FExecuteAction::CreateRaw(this, &FProjectCleanerModule::PluginButtonClicked),
-		FCanExecuteAction()
+		FExecuteAction::CreateRaw(this, &FProjectCleanerModule::PluginButtonClicked)
 	);
 
 	UToolMenus::RegisterStartupCallback(
@@ -44,9 +43,6 @@ void FProjectCleanerModule::StartupModule()
 		FOnSpawnTab::CreateRaw(this, &FProjectCleanerModule::OnSpawnPluginTab))
 		.SetDisplayName(LOCTEXT("FProjectCleanerTabTitle", "ProjectCleaner"))
 		.SetMenuType(ETabSpawnerMenuType::Hidden);
-
-	// initialize CleanerManager
-	CleanerManager.Init();
 }
 
 void FProjectCleanerModule::ShutdownModule()
@@ -56,8 +52,6 @@ void FProjectCleanerModule::ShutdownModule()
 	FProjectCleanerStyle::Shutdown();
 	FProjectCleanerCommands::Unregister();
 	FGlobalTabmanager::Get()->UnregisterNomadTabSpawner(ProjectCleanerTabName);
-
-	// CleanerManager.Exit();
 }
 
 bool FProjectCleanerModule::IsGameModule() const
@@ -81,7 +75,7 @@ void FProjectCleanerModule::RegisterMenus()
 	Entry.SetCommandList(PluginCommands);
 }
 
-void FProjectCleanerModule::PluginButtonClicked() const
+void FProjectCleanerModule::PluginButtonClicked()
 {
 	if (!CleanerManager.GetAssetRegistry())
 	{
@@ -98,13 +92,14 @@ void FProjectCleanerModule::PluginButtonClicked() const
 		return;
 	}
 	
+	CleanerManager.Update();
+	
 	FGlobalTabmanager::Get()->TryInvokeTab(ProjectCleanerTabName);
 }
 
 TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs)
 {
-	// todo:ashe23 [BUG] cant close editor if plugin tab opened
-	return SNew(SDockTab).TabRole(ETabRole::NomadTab)
+	return SNew(SDockTab).TabRole(ETabRole::MajorTab)
 	[
 		SNew(SProjectCleanerMainUI)
 		.CleanerManager(&CleanerManager)

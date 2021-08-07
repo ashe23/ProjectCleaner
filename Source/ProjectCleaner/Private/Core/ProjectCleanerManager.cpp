@@ -10,13 +10,9 @@
 #include "AssetRegistryModule.h"
 #include "Misc/ScopedSlowTask.h"
 #include "Settings/ContentBrowserSettings.h"
-#include "ContentBrowserModule.h"
-#include "IContentBrowserSingleton.h"
 #include "IDirectoryWatcher.h"
-#include "DirectoryWatcherModule.h"
 #include "ObjectTools.h"
 #include "Misc/FileHelper.h"
-#include "Framework/Notifications/NotificationManager.h"
 #include "Engine/AssetManagerSettings.h"
 #include "Engine/AssetManager.h"
 #include "Engine/MapBuildDataRegistry.h"
@@ -28,42 +24,34 @@ ProjectCleanerManager::ProjectCleanerManager()
 	CleanerConfigs = GetMutableDefault<UCleanerConfigs>();
 	ExcludeOptions = GetMutableDefault<UExcludeOptions>();
 	AssetRegistry = &FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
-	// DirectoryWatcher = &FModuleManager::LoadModuleChecked<FDirectoryWatcherModule>(TEXT("DirectoryWatcher"));
 
+	CachedCBSettings = GetDefault<UContentBrowserSettings>();
+	
 	ensure(CleanerConfigs);
 	ensure(ExcludeOptions);
 	ensure(AssetRegistry);
-	// ensure(DirectoryWatcher);
 }
 
 ProjectCleanerManager::~ProjectCleanerManager()
 {
-	
-	// UnRegisterAssetRegistryDelegates();
-	// UnRegisterDirectoryWatcherDelegates();
-
 	AssetRegistry = nullptr;
-	// DirectoryWatcher = nullptr;
-}
-
-void ProjectCleanerManager::Init()
-{
-	DelegateHandle = AssetRegistry->Get().OnFilesLoaded().AddRaw(this, &ProjectCleanerManager::OnFilesLoaded);
-}
-
-void ProjectCleanerManager::Exit()
-{
 }
 
 void ProjectCleanerManager::Update()
 {
+	FScopedSlowTask SlowTask(
+		2.0f,
+		FText::FromString(FStandardCleanerText::Scanning)
+	);
 	ProjectCleanerUtility::FixupRedirectors();
 	ProjectCleanerUtility::SaveAllAssets(true);
 
-	const double Start = FPlatformTime::Seconds();
+	SlowTask.EnterProgressFrame();
 	
 	LoadData();
 	FindUnusedAssets();
+
+	SlowTask.EnterProgressFrame();
 
 	// Broadcast to all bounded object that data is updated
 	if (OnCleanerManagerUpdated.IsBound())
@@ -71,8 +59,7 @@ void ProjectCleanerManager::Update()
 		OnCleanerManagerUpdated.Execute();
 	}
 	
-	const double End = FPlatformTime::Seconds() - Start;
-	UE_LOG(LogProjectCleaner, Warning, TEXT("ProjectCleaner Updated. Scan Took : %f"), End);
+	UE_LOG(LogProjectCleaner, Warning, TEXT("ProjectCleaner Updated"));
 }
 
 void ProjectCleanerManager::ExcludeSelectedAssets(const TArray<FAssetData>& NewUserExcludedAssets)
@@ -113,6 +100,38 @@ void ProjectCleanerManager::ExcludeSelectedAssetsByType(const TArray<FAssetData>
 	Update();
 }
 
+void ProjectCleanerManager::ExcludePath(const FString& InPath)
+{
+	if (InPath.IsEmpty()) return;
+
+	FDirectoryPath DirectoryPath;
+	DirectoryPath.Path = InPath;
+
+	const bool bAlreadyExcluded = ExcludeOptions->Paths.ContainsByPredicate([&] (const FDirectoryPath& DirPath)
+	{
+		return DirPath.Path.Equals(InPath); 
+	});
+	
+	if (!bAlreadyExcluded)
+	{
+		ExcludeOptions->Paths.Add(DirectoryPath);
+	}
+
+	Update();
+}
+
+void ProjectCleanerManager::IncludePath(const FString& InPath)
+{
+	if (InPath.IsEmpty()) return;
+
+	ExcludeOptions->Paths.RemoveAll([&] (const FDirectoryPath& DirPath)
+	{
+		return DirPath.Path.Equals(InPath);
+	});
+
+	Update();
+}
+
 void ProjectCleanerManager::IncludeSelectedAssets(const TArray<FAssetData>& Assets)
 {
 	UserExcludedAssets.RemoveAllSwap([&] (const FAssetData& Asset)
@@ -139,7 +158,7 @@ void ProjectCleanerManager::IncludeSelectedAssets(const TArray<FAssetData>& Asse
 			5.0f
 		);
 	}
-	// todo:ashe23 update only when something changed
+	
 	Update();
 }
 
@@ -148,15 +167,23 @@ void ProjectCleanerManager::DeleteSelectedAssets(const TArray<FAssetData>& Asset
 	if (Assets.Num() == 0) return;
 
 	const int32 DeletedAssetsNum = ObjectTools::DeleteAssets(Assets);
-	if (DeletedAssetsNum == 0) return;
 
-	// bIsActualData = false;
+	if (DeletedAssetsNum != Assets.Num())
+	{
+		ProjectCleanerNotificationManager::AddTransient(
+			FText::FromString(FStandardCleanerText::FailedToDeleteSomeAssets),
+			SNotificationItem::CS_Fail,
+			3.0f
+		);
+	}
 
 	Update();
 }
 
 void ProjectCleanerManager::DeleteAllUnusedAssets()
 {
+	Update();
+	
 	int32 DeletedAssetsNum = 0;
 	const int32 Total = UnusedAssets.Num();
 	
@@ -173,7 +200,10 @@ void ProjectCleanerManager::DeleteAllUnusedAssets()
 		GetDeletionChunk(DeletionChunk);
 		
 		DeletedAssetsNum += ProjectCleanerUtility::DeleteAssets(DeletionChunk, CleanerConfigs->bForceDeleteAssets);
-		ProjectCleanerNotificationManager::Update(DeletionProgressNotification, GetDeletionProgressText(DeletedAssetsNum, Total));
+		ProjectCleanerNotificationManager::Update(
+			DeletionProgressNotification,
+			GetDeletionProgressText(DeletedAssetsNum, Total)
+		);
 	
 		UnusedAssets.RemoveAllSwap([&] (const FAssetData& Asset)
 		{
@@ -185,24 +215,24 @@ void ProjectCleanerManager::DeleteAllUnusedAssets()
 
 	if (Total != DeletedAssetsNum)
 	{
-		UE_LOG(LogProjectCleaner, Error, TEXT("Some asset failed to delete!"));
+		ProjectCleanerNotificationManager::Hide(
+			DeletionProgressNotification,
+			SNotificationItem::CS_Fail,
+			FText::FromString(FStandardCleanerText::FailedToDeleteSomeAssets)
+		);
 	}
-	
-	
-	ProjectCleanerNotificationManager::Hide(DeletionProgressNotification, FText::FromString(TEXT("Assets deleted successfully")));
+	else
+	{
+		ProjectCleanerNotificationManager::Hide(
+			DeletionProgressNotification,
+			SNotificationItem::CS_Success,
+			FText::FromString(FStandardCleanerText::AssetsSuccessfullyDeleted)
+		);
+	}
 
 	if (CleanerConfigs->bAutomaticallyDeleteEmptyFolders)
 	{
-		// After assets deleted we should update empty folder data
-		ProjectCleanerDataManager::GetEmptyFolders(FPaths::ProjectContentDir(), EmptyFolders, CleanerConfigs->bScanDeveloperContents);
-		if (!ProjectCleanerUtility::DeleteEmptyFolders(EmptyFolders))
-		{
-			ProjectCleanerNotificationManager::AddTransient(
-				FText::FromString(FStandardCleanerText::FailedToDeleteSomeFolders),
-				SNotificationItem::CS_Fail,
-				5.0f
-			);
-		}
+		DeleteAllEmptyFolders();
 	}
 
 	Update();
@@ -210,6 +240,9 @@ void ProjectCleanerManager::DeleteAllUnusedAssets()
 
 void ProjectCleanerManager::DeleteAllEmptyFolders()
 {
+	ProjectCleanerDataManager::GetEmptyFolders(FPaths::ProjectContentDir(), EmptyFolders, CleanerConfigs->bScanDeveloperContents);
+	if (EmptyFolders.Num() == 0) return;
+	
 	if (!ProjectCleanerUtility::DeleteEmptyFolders(EmptyFolders))
 	{
 		ProjectCleanerNotificationManager::AddTransient(
@@ -302,9 +335,6 @@ void ProjectCleanerManager::LoadData()
 	ProjectCleanerDataManager::GetEmptyFolders(FPaths::ProjectContentDir(), EmptyFolders, CleanerConfigs->bScanDeveloperContents);
 	ProjectCleanerDataManager::GetPrimaryAssetClasses(PrimaryAssetClasses);
 	ProjectCleanerDataManager::GetAllAssetsWithExternalReferencers(AssetsWithExternalRefs, AllAssets);
-
-	// bShouldPerformFullScan = false;
-	// bIsActualData = true;
 }
 
 void ProjectCleanerManager::FindUnusedAssets()
@@ -328,7 +358,7 @@ void ProjectCleanerManager::FindUnusedAssets()
 
 	
 
-	// 1. Used assets
+	// Used assets
 	TArray<FAssetData> PrimaryAssets;
 	{
 		FARFilter Filter;
@@ -408,7 +438,7 @@ void ProjectCleanerManager::FindUnusedAssets()
 
 	SlowTask.EnterProgressFrame();
 	
-	// 2. Used Assets dependencies
+	// Used Assets dependencies
 	TSet<FName> UsedAssetsDeps;
 	TArray<FName> Stack;
 	for (const auto& Asset : UsedAssets)
@@ -443,7 +473,9 @@ void ProjectCleanerManager::FindUnusedAssets()
 	
 	SlowTask.EnterProgressFrame();
 
-	// 3. Unused assets
+	// Unused assets
+	UnusedAssets.Reserve(AllAssets.Num());
+	
 	const bool IsMegascansLoaded = FModuleManager::Get().IsModuleLoaded("MegascansPlugin");
 	for (const auto& Asset : AllAssets)
 	{
@@ -456,10 +488,8 @@ void ProjectCleanerManager::FindUnusedAssets()
 		
 		UnusedAssets.Add(Asset);
 	}
-	
-	
-	SlowTask.EnterProgressFrame();
 
+	SlowTask.EnterProgressFrame();
 }
 
 bool ProjectCleanerManager::IsExcludedByClass(const FAssetData& AssetData) const
@@ -486,38 +516,33 @@ bool ProjectCleanerManager::IsExcludedByPath(const FAssetData& AssetData) const
 
 void ProjectCleanerManager::GetDeletionChunk(TArray<FAssetData>& Chunk)
 {
-	// 1. Searching for circular assets, this assets must be deleted at first
+	bool bDetectedPrimaryAssets = false;
+	bool bDetectedRootAssets = false;
+
 	for (const auto& Asset : UnusedAssets)
 	{
+		constexpr int32 DeleteChunkLimit = 100;
+		// 1. Searching for circular assets, this assets must be deleted at first
 		if (ProjectCleanerDataManager::IsCircularAsset(Asset))
+		{
+			bDetectedPrimaryAssets = true;
+			Chunk.AddUnique(Asset);
+		}
+
+		if (!bDetectedPrimaryAssets && Chunk.Num() >= DeleteChunkLimit) break;
+
+		// 2. If circular assets not detected, then searching for root assets
+		if (!bDetectedPrimaryAssets && ProjectCleanerDataManager::IsRootAsset(Asset))
+		{
+			bDetectedRootAssets = true;
+			Chunk.AddUnique(Asset);
+		}
+
+		// 3. If we did not detected circular or root assets, just deleting remaining
+		if (!bDetectedPrimaryAssets && !bDetectedRootAssets)
 		{
 			Chunk.AddUnique(Asset);
 		}
-	}
-
-	if (Chunk.Num() > 0)
-	{
-		return;
-	}
-
-	// 2. If circular assets not detected, then searching for root assets	
-	for (const auto& Asset : UnusedAssets)
-	{
-		if (ProjectCleanerDataManager::IsRootAsset(Asset))
-		{
-			Chunk.Add(Asset);
-		}
-	}
-
-	if (Chunk.Num() > 0)
-	{
-		return;
-	}
-
-	// 3. If we did not detected circular or root assets, just deleting remaining
-	for (const auto& Asset : UnusedAssets)
-	{
-		Chunk.Add(Asset);
 	}
 }
 
@@ -532,147 +557,6 @@ FText ProjectCleanerManager::GetDeletionProgressText(const int32 DeletedAssetNum
 			Percent
 		)
 	);
-}
-
-// void ProjectCleanerManager::OnAssetAdded(const FAssetData& AssetData)
-// {
-// 	bIsActualData = false;
-// 	UE_LOG(LogProjectCleaner, Warning, TEXT("Delegate[AssetAdded] - Added: %s"), *AssetData.AssetName.ToString());
-// }
-//
-// void ProjectCleanerManager::OnAssetRemoved(const FAssetData& AssetData)
-// {
-// 	bIsActualData = false;
-// 	UE_LOG(LogProjectCleaner, Warning, TEXT("Delegate[AssetRemoved] - Removed: %s"), *AssetData.AssetName.ToString());
-// }
-//
-// // void ProjectCleanerManager::OnAssetUpdated(const FAssetData& AssetData)
-// // {
-// // 	bIsActualData = false;
-// // 	UE_LOG(LogProjectCleaner, Warning, TEXT("Delegate[AssetUpdated] - Updated: %s"), *AssetData.AssetName.ToString());
-// // }
-//
-// void ProjectCleanerManager::OnAssetRenamed(const FAssetData& AssetData, const FString& Name)
-// {
-// 	bIsActualData = false;
-// 	UE_LOG(LogProjectCleaner, Warning, TEXT("Delegate[AssetRenamed] - Renamed: from %s => %s"), *AssetData.AssetName.ToString(), *Name);
-// }
-//
-// void ProjectCleanerManager::RegisterDirectoryWatcherDelegates()
-// {
-// 	DirectoryWatcher->Get()->RegisterDirectoryChangedCallback_Handle(
-// 		FPaths::GameSourceDir(),
-// 		IDirectoryWatcher::FDirectoryChanged::CreateRaw(
-// 			this,
-// 			&ProjectCleanerManager::OnDirectoryChanged
-// 		),
-// 		SourceDirDelegateHandle,
-// 		0
-// 	);
-// 	DirectoryWatcher->Get()->RegisterDirectoryChangedCallback_Handle(
-// 		FPaths::ProjectConfigDir(),
-// 		IDirectoryWatcher::FDirectoryChanged::CreateRaw(
-// 			this,
-// 			&ProjectCleanerManager::OnDirectoryChanged
-// 		),
-// 		ConfigDirDelegateHandle,
-// 		0
-// 	);
-// 	DirectoryWatcher->Get()->RegisterDirectoryChangedCallback_Handle(
-// 		FPaths::ProjectPluginsDir(),
-// 		IDirectoryWatcher::FDirectoryChanged::CreateRaw(
-// 			this,
-// 			&ProjectCleanerManager::OnDirectoryChanged
-// 		),
-// 		PluginsDirDelegateHandle,
-// 		0
-// 	);
-// }
-//
-// void ProjectCleanerManager::UnRegisterDirectoryWatcherDelegates() const
-// {
-// 	if (!DirectoryWatcher) return;
-// 	
-// 	if (SourceDirDelegateHandle.IsValid())
-// 	{
-// 		DirectoryWatcher->Get()->UnregisterDirectoryChangedCallback_Handle(FPaths::GameSourceDir(), SourceDirDelegateHandle);
-// 	}
-// 	if (ConfigDirDelegateHandle.IsValid())
-// 	{
-// 		DirectoryWatcher->Get()->UnregisterDirectoryChangedCallback_Handle(FPaths::ProjectConfigDir(), ConfigDirDelegateHandle);
-// 	}
-// 	if (PluginsDirDelegateHandle.IsValid())
-// 	{
-// 		DirectoryWatcher->Get()->UnregisterDirectoryChangedCallback_Handle(FPaths::ProjectPluginsDir(), PluginsDirDelegateHandle);
-// 	}
-// }
-//
-// void ProjectCleanerManager::OnDirectoryChanged(const TArray<FFileChangeData>& InFileChanges)
-// {
-// 	bIsActualData = false;
-//
-// 	for (const auto& FileChangeData : InFileChanges)
-// 	{
-// 		switch(FileChangeData.Action)
-// 		{
-// 			case FFileChangeData::EFileChangeAction::FCA_Added:
-// 				UE_LOG(LogProjectCleaner, Warning, TEXT("Deleaget[DirectoryWatcher] FileAdded: %s"), *FileChangeData.Filename);
-// 				break;
-// 			case FFileChangeData::EFileChangeAction::FCA_Removed:
-// 				UE_LOG(LogProjectCleaner, Warning, TEXT("Deleaget[DirectoryWatcher] FileRemoved: %s"), *FileChangeData.Filename);
-// 				break;
-// 			case FFileChangeData::EFileChangeAction::FCA_Modified:
-// 				UE_LOG(LogProjectCleaner, Warning, TEXT("Deleaget[DirectoryWatcher] FileModified: %s"), *FileChangeData.Filename);
-// 				break;
-// 			case FFileChangeData::EFileChangeAction::FCA_Unknown:
-// 			default:
-// 				UE_LOG(LogProjectCleaner, Warning, TEXT("Unknown action"));
-// 				break;
-// 		}
-// 	}
-// }
-//
-// void ProjectCleanerManager::RegisterAssetRegistryDelegates()
-// {
-// 	AssetAddedDelegate = AssetRegistry->Get().OnAssetAdded().AddRaw(this, &ProjectCleanerManager::OnAssetAdded);
-// 	AssetRemovedDelegate = AssetRegistry->Get().OnAssetRemoved().AddRaw(this, &ProjectCleanerManager::OnAssetRemoved);
-// 	AssetRenamedDelegate = AssetRegistry->Get().OnAssetRenamed().AddRaw(this, &ProjectCleanerManager::OnAssetRenamed);
-// 	// AssetUpdatedDelegate = AssetRegistry->Get().OnAssetUpdated().AddRaw(this, &ProjectCleanerManager::OnAssetUpdated);
-// }
-//
-// void ProjectCleanerManager::UnRegisterAssetRegistryDelegates() const
-// {
-// 	if (!AssetRegistry) return;
-// 	
-// 	if (AssetAddedDelegate.IsValid())
-// 	{
-// 		AssetRegistry->Get().OnAssetAdded().Remove(AssetAddedDelegate);
-// 	}
-// 	if (AssetRemovedDelegate.IsValid())
-// 	{
-// 		AssetRegistry->Get().OnAssetRemoved().Remove(AssetRemovedDelegate);
-// 	}
-// 	// if (AssetUpdatedDelegate.IsValid())
-// 	// {
-// 	// 	AssetRegistry->Get().OnAssetUpdated().Remove(AssetUpdatedDelegate);
-// 	// }
-// 	if (AssetRenamedDelegate.IsValid())
-// 	{
-// 		AssetRegistry->Get().OnAssetUpdated().Remove(AssetRenamedDelegate);
-// 	}
-// }
-
-void ProjectCleanerManager::OnFilesLoaded()
-{
-	if (DelegateHandle.IsValid())
-	{
-		AssetRegistry->Get().OnFilesLoaded().Remove(DelegateHandle);
-	}
-	
-	Update();
-	
-	// RegisterAssetRegistryDelegates();
-	// RegisterDirectoryWatcherDelegates();
 }
 
 #undef LOCTEXT_NAMESPACE

@@ -49,13 +49,16 @@ void SProjectCleanerUnusedAssetsBrowserUI::Construct(const FArguments& InArgs)
 	);
 
 	SelectedPath = TEXT("/Game");
-	PathPickerConfig.bAllowContextMenu = false;
+	PathPickerConfig.bAllowContextMenu = true;
 	PathPickerConfig.bAllowClassesFolder = false;
 	PathPickerConfig.bFocusSearchBoxWhenOpened = false;
 	PathPickerConfig.OnPathSelected.BindRaw(this, &SProjectCleanerUnusedAssetsBrowserUI::OnPathSelected);
 	PathPickerConfig.bAddDefaultPath = true;
 	PathPickerConfig.DefaultPath = SelectedPath.ToString();
-
+	PathPickerConfig.OnGetFolderContextMenu = FOnGetFolderContextMenu::CreateSP(
+		this, &SProjectCleanerUnusedAssetsBrowserUI::OnGetFolderContextMenu
+	);
+	
 	UpdateUI();
 }
 
@@ -127,6 +130,17 @@ void SProjectCleanerUnusedAssetsBrowserUI::RegisterCommands()
 			)
 		)
 	);
+
+	Commands->MapAction(
+		FProjectCleanerCommands::Get().ExcludePath,
+		FUIAction
+		(
+			FExecuteAction::CreateRaw(
+				this,
+				&SProjectCleanerUnusedAssetsBrowserUI::ExcludePath
+			)
+		)
+	);
 }
 
 void SProjectCleanerUnusedAssetsBrowserUI::UpdateUI()
@@ -187,13 +201,23 @@ void SProjectCleanerUnusedAssetsBrowserUI::GenerateFilter()
 	AssetPickerConfig.Filter = Filter;
 }
 
+TSharedPtr<SWidget> SProjectCleanerUnusedAssetsBrowserUI::OnGetFolderContextMenu(const TArray<FString>& SelectedPaths,
+	FContentBrowserMenuExtender_SelectedPaths InMenuExtender, FOnCreateNewFolder InOnCreateNewFolder) const
+{
+	FMenuBuilder MenuBuilder(true, Commands);
+	MenuBuilder.BeginSection(TEXT("Exclude"),LOCTEXT("exclude_by_path", "Path"));
+	{
+		MenuBuilder.AddMenuEntry(FProjectCleanerCommands::Get().ExcludePath);
+	}
+	MenuBuilder.EndSection();
+
+	return MenuBuilder.MakeWidget();
+}
+
 TSharedPtr<SWidget> SProjectCleanerUnusedAssetsBrowserUI::OnGetAssetContextMenu(const TArray<FAssetData>& SelectedAssets) const
 {
 	FMenuBuilder MenuBuilder{true, Commands};
-	MenuBuilder.BeginSection(
-		TEXT("Asset"),
-		NSLOCTEXT("ReferenceViewerSchema", "AssetSectionLabel", "Asset")
-	);
+	MenuBuilder.BeginSection(TEXT("Asset"),LOCTEXT("AssetSectionLabel", "Asset"));
 	{
 		MenuBuilder.AddMenuEntry(FGlobalEditorCommonCommands::Get().FindInContentBrowser);
 		MenuBuilder.AddMenuEntry(FProjectCleanerCommands::Get().DeleteAsset);
@@ -264,6 +288,12 @@ void SProjectCleanerUnusedAssetsBrowserUI::ExcludeAssetsOfType() const
 	
 	const TArray<FAssetData> SelectedAssets = CurrentSelectionDelegate.Execute();
 	CleanerManager->ExcludeSelectedAssetsByType(SelectedAssets);
+}
+
+void SProjectCleanerUnusedAssetsBrowserUI::ExcludePath()
+{
+	CleanerManager->ExcludePath(SelectedPath.ToString());
+	UE_LOG(LogTemp, Warning, TEXT("%s"), *SelectedPath.ToString());
 }
 
 #undef LOCTEXT_NAMESPACE

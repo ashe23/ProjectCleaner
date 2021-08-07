@@ -27,10 +27,12 @@ private:
 	void RegisterCommands();
 	TSharedPtr<SWidget> GetExcludedAssetsView();
 	TSharedPtr<SWidget> OnGetAssetContextMenu(const TArray<FAssetData>& SelectedAssets) const;
+	TSharedPtr<SWidget> OnGetFolderContextMenu(const TArray<FString>& SelectedPaths, FContentBrowserMenuExtender_SelectedPaths InMenuExtender, FOnCreateNewFolder InOnCreateNewFolder) const;
 	static void OnAssetDblClicked(const FAssetData& AssetData);
 	void FindInContentBrowser() const;
 	bool IsAnythingSelected() const;
 	void IncludeAssets() const;
+	void IncludePath() const;
 	FReply IncludeAllAssets() const;
 
 	/* Data */

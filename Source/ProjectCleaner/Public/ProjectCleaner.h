@@ -17,9 +17,9 @@ public:
 	virtual void ShutdownModule() override;
 	virtual bool IsGameModule() const override;
 private:
-    /* Module */	
+    /* Module */
 	void RegisterMenus();
-	void PluginButtonClicked() const;
+	void PluginButtonClicked();
 	TSharedRef<SDockTab> OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs);
 	
 	/* UI data */
