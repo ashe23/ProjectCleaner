@@ -47,12 +47,16 @@ public:
 	float GetUnusedAssetsPercent() const;
 	const FAssetRegistryModule* GetAssetRegistry() const;
 
-	/* Delegates */
+	/**
+	 * @brief Delegate, called when data updates
+	 */
 	FOnCleanerManagerUpdated OnCleanerManagerUpdated;
 private:
 	
 	void LoadData();
 	void FindUnusedAssets();
+	void FindUsedAssets(TSet<FName>& UsedAssets);
+	void FindUsedAssetsDependencies(const TSet<FName>& UsedAssets, TSet<FName>& UsedAssetsDeps) const;
 	bool IsExcludedByClass(const FAssetData& AssetData) const;
 	bool IsExcludedByPath(const FAssetData& AssetData) const;
 	void GetDeletionChunk(TArray<FAssetData>& Chunk);
@@ -95,19 +99,18 @@ private:
 	TSet<FName> PrimaryAssetClasses;
 
 	/**
+	 * @brief All primary assets in project
+	 */
+	TArray<FAssetData> PrimaryAssets;
+	
+	/**
 	 * @brief  Assets that user manually excluded from UnusedAssetTab
 	 */
 	TArray<FAssetData> UserExcludedAssets;
 
 	/**
-	* @brief Excluded assets and their linked assets map
-	* @example
-	*		Lets say we have 3 assets BP, Static_Mesh and Material. BP contains Static_Mesh and Static Mesh uses Material
-	*		Hierarchy BP --> Static_Mesh --> Material
-	*		Now if excluded asset is StaticMesh, then linked assets are BP and Material
-	*		ExcludedAsset : StaticMesh
-	*		LinkedAssets : BP, Material
-	* @reason This preventing breaking links between assets
+	* @brief Excluded assets
+	* 
 	*/
 	TSet<FName> ExcludedAssets;
 
@@ -121,11 +124,10 @@ private:
 	 */
 	TArray<FAssetData> UnusedAssets;
 
+
 	class UCleanerConfigs* CleanerConfigs;
 	class UExcludeOptions* ExcludeOptions;
 
 	/* Asset Registry */
 	FAssetRegistryModule* AssetRegistry;
-
-	const class UContentBrowserSettings* CachedCBSettings;
 };

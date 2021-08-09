@@ -83,10 +83,13 @@ public:
 	/**
 	 * @brief Checks if given asset is circular or not
 	 * @explanation If assets refs exists in deps or vice versa, then its cyclic
-	 * @param AssetData 
+	 * @param AssetData
+	 * @param Refs
+	 * @param Deps
+	 * @param CommonAssets
 	 * @return bool 
 	 */
-	static bool IsCircularAsset(const FAssetData& AssetData);
+	static bool IsCircularAsset(const FAssetData& AssetData, TArray<FName>& Refs, TArray<FName>& Deps, TArray<FName>& CommonAssets);
 
 	/**
 	 * @brief Checks if given assets is root or not

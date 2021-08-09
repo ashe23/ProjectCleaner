@@ -7,8 +7,7 @@
 void ProjectCleanerNotificationManager::Add(
 	const FText& Text,
 	const SNotificationItem::ECompletionState CompletionState,
-	TWeakPtr<SNotificationItem>& NotificationPtr
-)
+	TWeakPtr<SNotificationItem>& NotificationPtr)
 {
 	FNotificationInfo Info(Text);
 	Info.bFireAndForget = false;
@@ -45,7 +44,10 @@ void ProjectCleanerNotificationManager::Update(TWeakPtr<SNotificationItem> Notif
 	}
 }
 
-void ProjectCleanerNotificationManager::Hide(TWeakPtr<SNotificationItem> NotificationManager, const SNotificationItem::ECompletionState CompletionState, const FText& FinalText)
+void ProjectCleanerNotificationManager::Hide(
+	TWeakPtr<SNotificationItem> NotificationManager,
+	const SNotificationItem::ECompletionState CompletionState,
+	const FText& FinalText)
 {
 	if (!NotificationManager.IsValid()) return;
 

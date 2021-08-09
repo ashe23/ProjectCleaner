@@ -5,7 +5,6 @@
 #include "Misc/AutomationTest.h"
 #include "Core/ProjectCleanerDataManager.h"
 #include "Core/ProjectCleanerUtility.h"
-#include "StructsContainer.h"
 #include "GenericPlatform/GenericPlatformFile.h"
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "Misc/Paths.h"

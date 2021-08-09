@@ -299,12 +299,12 @@ bool ProjectCleanerDataManager::IsUnderMegascansFolder(const FAssetData& AssetDa
 	return AssetData.PackagePath.ToString().StartsWith(TEXT("/Game/MSPresets"));
 }
 
-bool ProjectCleanerDataManager::IsCircularAsset(const FAssetData& AssetData)
+bool ProjectCleanerDataManager::IsCircularAsset(const FAssetData& AssetData, TArray<FName>& Refs, TArray<FName>& Deps, TArray<FName>& CommonAssets)
 {
 	const auto& AssetRegistry = FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
 
-	TArray<FName> Refs;
-	TArray<FName> Deps;
+	// TArray<FName> Refs;
+	// TArray<FName> Deps;
 	
 	AssetRegistry.Get().GetReferencers(AssetData.PackageName, Refs);
 	AssetRegistry.Get().GetDependencies(AssetData.PackageName, Deps);
@@ -326,11 +326,11 @@ bool ProjectCleanerDataManager::IsCircularAsset(const FAssetData& AssetData)
 	{
 		if (Deps.Contains(Ref))
 		{
-			return true;
+			CommonAssets.AddUnique(Ref);
 		}
 	}
 
-	return false;
+	return CommonAssets.Num() > 0;
 }
 
 bool ProjectCleanerDataManager::IsRootAsset(const FAssetData& AssetData)

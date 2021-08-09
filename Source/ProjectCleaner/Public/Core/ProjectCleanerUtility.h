@@ -27,6 +27,7 @@ public:
 	static void FixupRedirectors();
 	static void SaveAllAssets(const bool PromptUser);
 	static void UpdateAssetRegistry(bool bSyncScan);
+	static void FocusOnGameFolder();
 	static bool DeleteEmptyFolders(TSet<FName>& EmptyFolders);
 	static int32 DeleteAssets(TArray<FAssetData>& Assets, const bool ForceDelete);
 	static bool IsEngineExtension(const FString& Extension);

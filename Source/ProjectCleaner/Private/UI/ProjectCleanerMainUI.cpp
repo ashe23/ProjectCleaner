@@ -149,6 +149,7 @@ SProjectCleanerMainUI::~SProjectCleanerMainUI()
 	TabManager->UnregisterTabSpawner(CorruptedFilesTab);
 	TabManager->UnregisterTabSpawner(ExcludedAssetsTab);
 	CleanerManager->OnCleanerManagerUpdated.Unbind();
+	CleanerManager = nullptr;
 }
 
 void SProjectCleanerMainUI::SetCleanerManager(ProjectCleanerManager* CleanerManagerPtr)
@@ -234,7 +235,6 @@ TSharedRef<SDockTab> SProjectCleanerMainUI::OnUnusedAssetTabSpawn(const FSpawnTa
 {
 	return SNew(SDockTab)
 		.TabRole(ETabRole::NomadTab)
-		// .OnCanCloseTab_Lambda([] { return false; })
 		.Label(NSLOCTEXT("UnusedAssetsTab", "TabTitle", "Unused Assets"))
 		.ShouldAutosize(true)
 		[
@@ -252,7 +252,6 @@ TSharedRef<SDockTab> SProjectCleanerMainUI::OnExcludedAssetsTabSpawn(const FSpaw
 {
 	return SNew(SDockTab)		
 		.TabRole(ETabRole::NomadTab)
-		// .OnCanCloseTab_Lambda([] { return false; })
 		.Label(NSLOCTEXT("ExcludedAssetsTab", "TabTitle", "Excluded Assets"))
 		.ShouldAutosize(true)
 		[
@@ -270,7 +269,6 @@ TSharedRef<SDockTab> SProjectCleanerMainUI::OnNonEngineFilesTabSpawn(const FSpaw
 {
 	return SNew(SDockTab)
 		.TabRole(ETabRole::NomadTab)
-		// .OnCanCloseTab_Lambda([] {return false; })
 		.Label(NSLOCTEXT("NonEngineFilesTab", "TabTitle", "Non Engine Files"))
 		[
 			SAssignNew(NonEngineFilesUI, SProjectCleanerNonEngineFilesUI)
@@ -282,7 +280,6 @@ TSharedRef<SDockTab> SProjectCleanerMainUI::OnCorruptedFilesTabSpawn(const FSpaw
 {
 	return SNew(SDockTab)
 		.TabRole(ETabRole::NomadTab)
-		// .OnCanCloseTab_Lambda([] {return false; })
 		.Label(NSLOCTEXT("CorruptedAssetsTab", "TabTitle", "Corrupted Assets"))
 		[
 			SAssignNew(CorruptedFilesUI, SProjectCleanerCorruptedFilesUI)
@@ -294,8 +291,7 @@ TSharedRef<SDockTab> SProjectCleanerMainUI::OnIndirectAssetsTabSpawn(const FSpaw
 {
 	return SNew(SDockTab)
 		.TabRole(ETabRole::NomadTab)
-		// .OnCanCloseTab_Lambda([] {return false; })
-		.Label(NSLOCTEXT("IndirectAssetsTab", "TabTitle", "Assets Used Indirectly"))
+		.Label(NSLOCTEXT("IndirectAssetsTab", "TabTitle", "Indirectly used assets"))
 		[
 			SAssignNew(IndirectAssetsUI, SProjectCleanerIndirectAssetsUI)
 			.CleanerManager(CleanerManager)

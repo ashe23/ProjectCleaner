@@ -21,7 +21,7 @@ public:
 	UPROPERTY(DisplayName = "Delete Empty Folders After Assets Deleted", EditAnywhere, Category = "CleanerConfigs")
 	bool bAutomaticallyDeleteEmptyFolders = true;
 
-	UPROPERTY(DisplayName = "Force Delete Assets", EditAnywhere, Category = "CleanerConfigs", meta = (ToolTip = "If assets failed to delete normally, we could try to force delete them. By Default false"))
+	UPROPERTY(DisplayName = "Force Delete Assets", EditAnywhere, Category = "CleanerConfigs", meta = (ToolTip = "If assets failed to delete normally, we could try to force delete them. By Default true"))
 	bool bForceDeleteAssets = true;
 };
 
@@ -99,17 +99,12 @@ struct FStandardCleanerText
 	constexpr static TCHAR* StartingCleanup = TEXT("Starting Cleanup. This could take some time, please wait");
 	constexpr static TCHAR* NoAssetsToDelete = TEXT("There are no assets to delete!");
 	constexpr static TCHAR* NoEmptyFolderToDelete = TEXT("There are no empty folders to delete!");
-	constexpr static TCHAR* NonUAssetFilesFound = TEXT("Project contains non engine files. Check Output Log for more info.");
-	constexpr static TCHAR* SearchingEmptyFolders = TEXT("Searching empty folders...");
-	constexpr static TCHAR* AssetsWithReferencersInDeveloperFolder = TEXT("Some of assets has references in Developers folder. To view them click 'Scan Developers Folder' checkbox.");
 	constexpr static TCHAR* AssetRegistryStillWorking = TEXT("Asset registry still working. Please wait while scan completes");
-	constexpr static TCHAR* SomeAssetsHaveRefsInDevFolder = TEXT("Some assets have referencers in Developer Contents Folder.");
 	constexpr static TCHAR* CantIncludeSomeAssets = TEXT("Cant include selected assets, because they excluded by 'Exclude Options' filter.");
 	constexpr static TCHAR* FailedToDeleteSomeFolders = TEXT("Failed to delete some folders. Open 'Output Log' for more information.");
 	constexpr static TCHAR* FailedToDeleteSomeAssets = TEXT("Failed to delete some assets. Try to check 'Force Delete assets' option");
 	constexpr static TCHAR* SearchingForUnusedAssets = TEXT("Searching for unused assets...");
 	constexpr static TCHAR* Scanning = TEXT("Scanning...");
 	constexpr static TCHAR* AssetsSuccessfullyDeleted = TEXT("Assets deleted successfully");
-	constexpr static TCHAR* LoadingAssetsObjects = TEXT("Loading assets objects...");
-	
+	constexpr static TCHAR* LoadingAssets = TEXT("Loading assets...");
 };

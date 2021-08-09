@@ -5,6 +5,7 @@
 #include "Core/ProjectCleanerManager.h"
 #include "StructsContainer.h"
 // Engine Headers
+#include "AssetRegistry/AssetRegistryModule.h"
 #include "Editor/ContentBrowser/Public/ContentBrowserModule.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SScrollBorder.h"
@@ -146,6 +147,7 @@ void SProjectCleanerUnusedAssetsBrowserUI::RegisterCommands()
 void SProjectCleanerUnusedAssetsBrowserUI::UpdateUI()
 {
 	if (!ContentBrowserModule) return;
+	if (!CleanerManager->GetCleanerConfigs()) return;
 
 	GenerateFilter();
 	
@@ -177,14 +179,6 @@ void SProjectCleanerUnusedAssetsBrowserUI::GenerateFilter()
 	}
 	else
 	{
-		// excluding primary assets from showing and filtering
-		Filter.bRecursiveClasses = true;
-		Filter.RecursiveClassesExclusionSet.Reserve(CleanerManager->GetPrimaryAssetClasses().Num());
-		for (const auto& AssetClass : CleanerManager->GetPrimaryAssetClasses())
-		{
-			Filter.RecursiveClassesExclusionSet.Add(AssetClass);
-		}
-
 		Filter.PackageNames.Reserve(CleanerManager->GetUnusedAssets().Num());
 		for (const auto& Asset : CleanerManager->GetUnusedAssets())
 		{
@@ -217,7 +211,7 @@ TSharedPtr<SWidget> SProjectCleanerUnusedAssetsBrowserUI::OnGetFolderContextMenu
 TSharedPtr<SWidget> SProjectCleanerUnusedAssetsBrowserUI::OnGetAssetContextMenu(const TArray<FAssetData>& SelectedAssets) const
 {
 	FMenuBuilder MenuBuilder{true, Commands};
-	MenuBuilder.BeginSection(TEXT("Asset"),LOCTEXT("AssetSectionLabel", "Asset"));
+	MenuBuilder.BeginSection(TEXT("Asset"), LOCTEXT("AssetSectionLabel", "Asset"));
 	{
 		MenuBuilder.AddMenuEntry(FGlobalEditorCommonCommands::Get().FindInContentBrowser);
 		MenuBuilder.AddMenuEntry(FProjectCleanerCommands::Get().DeleteAsset);
@@ -290,10 +284,9 @@ void SProjectCleanerUnusedAssetsBrowserUI::ExcludeAssetsOfType() const
 	CleanerManager->ExcludeSelectedAssetsByType(SelectedAssets);
 }
 
-void SProjectCleanerUnusedAssetsBrowserUI::ExcludePath()
+void SProjectCleanerUnusedAssetsBrowserUI::ExcludePath() const
 {
 	CleanerManager->ExcludePath(SelectedPath.ToString());
-	UE_LOG(LogTemp, Warning, TEXT("%s"), *SelectedPath.ToString());
 }
 
 #undef LOCTEXT_NAMESPACE

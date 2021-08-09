@@ -8,12 +8,14 @@
 #include "FileHelpers.h"
 #include "AssetRegistryModule.h"
 #include "AssetToolsModule.h"
+#include "IContentBrowserSingleton.h"
 #include "Engine/AssetManager.h"
+#include "Engine/MapBuildDataRegistry.h"
 #include "UObject/ObjectRedirector.h"
 #include "Misc/Paths.h"
 #include "Misc/FileHelper.h"
 #include "Misc/ScopedSlowTask.h"
-#include "Engine/MapBuildDataRegistry.h"
+#include "Editor/ContentBrowser/Public/ContentBrowserModule.h"
 
 int64 ProjectCleanerUtility::GetTotalSize(const TArray<FAssetData>& Assets)
 {
@@ -151,7 +153,7 @@ int32 ProjectCleanerUtility::DeleteAssets(TArray<FAssetData>& Assets, const bool
 		
 		FScopedSlowTask SlowTask(
 		Assets.Num(),
-		FText::FromString(FStandardCleanerText::LoadingAssetsObjects)
+		FText::FromString(FStandardCleanerText::LoadingAssets)
 		);
 		for (const auto& Asset : Assets)
 		{
@@ -186,6 +188,15 @@ void ProjectCleanerUtility::UpdateAssetRegistry(bool bSyncScan = false)
 	TArray<FString> ScanFolders;
 	ScanFolders.Add("/Game");
 
-	AssetRegistry.Get().ScanPathsSynchronous(ScanFolders, true);
+	// AssetRegistry.Get().ScanPathsSynchronous(ScanFolders, true);
 	AssetRegistry.Get().SearchAllAssets(bSyncScan);
+}
+
+void ProjectCleanerUtility::FocusOnGameFolder()
+{
+	TArray<FString> FocusFolders;
+	FocusFolders.Add(TEXT("/Game"));
+	
+	FContentBrowserModule& CBModule = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
+	CBModule.Get().SyncBrowserToFolders(FocusFolders);
 }

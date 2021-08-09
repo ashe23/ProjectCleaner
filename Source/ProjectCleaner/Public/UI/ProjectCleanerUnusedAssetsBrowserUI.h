@@ -28,7 +28,7 @@ private:
 	void DeleteAsset() const;
 	void ExcludeAsset() const;
 	void ExcludeAssetsOfType() const;
-	void ExcludePath();
+	void ExcludePath() const;
 	
 	/* AssetPicker */
 	struct FAssetPickerConfig AssetPickerConfig;
@@ -37,7 +37,11 @@ private:
 	FRefreshAssetViewDelegate RefreshAssetViewDelegate;
 	
 	void GenerateFilter();
-	TSharedPtr<SWidget> OnGetFolderContextMenu(const TArray<FString>& SelectedPaths, FContentBrowserMenuExtender_SelectedPaths InMenuExtender, FOnCreateNewFolder InOnCreateNewFolder) const;
+	TSharedPtr<SWidget> OnGetFolderContextMenu(
+		const TArray<FString>& SelectedPaths,
+		FContentBrowserMenuExtender_SelectedPaths InMenuExtender,
+		FOnCreateNewFolder InOnCreateNewFolder
+	) const;
 	TSharedPtr<SWidget> OnGetAssetContextMenu(const TArray<FAssetData>& SelectedAssets) const;
 	static void OnAssetDblClicked(const FAssetData& AssetData);
 	void FindInContentBrowser() const;
