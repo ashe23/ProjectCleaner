@@ -16,13 +16,13 @@ public:
 	bool bScanDeveloperContents = false;
 
 	UPROPERTY(DisplayName = "Scan Megascans Plugin Content", EditAnywhere, Category = "CleanerConfigs", meta = (ToolTip = "Scan assets in Megascans base content(MSPreset),if Megascans plugin is active. By Default false"))
-	bool bScanMegascansContent = false;
+	bool bScanMegascansContent = false;// todo:ashe23 not sure about this
 	
 	UPROPERTY(DisplayName = "Delete Empty Folders After Assets Deleted", EditAnywhere, Category = "CleanerConfigs")
 	bool bAutomaticallyDeleteEmptyFolders = true;
 
 	UPROPERTY(DisplayName = "Force Delete Assets", EditAnywhere, Category = "CleanerConfigs", meta = (ToolTip = "If assets failed to delete normally, we could try to force delete them. By Default true"))
-	bool bForceDeleteAssets = true;
+	bool bForceDeleteAssets = true; // todo:ashe23 not sure about this
 };
 
 UCLASS(Transient)

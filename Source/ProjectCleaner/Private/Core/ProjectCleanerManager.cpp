@@ -238,20 +238,20 @@ void ProjectCleanerManager::DeleteAllUnusedAssets()
 
 	// Cleaning empty packages
 	const TSet<FName> EmptyPackages = AssetRegistry->Get().GetCachedEmptyPackages();
-    TArray<UPackage*> AssetPackages;
-    for (const auto& EmptyPackage : EmptyPackages)
-    {
-    	UPackage* Package = FindPackage(nullptr, *EmptyPackage.ToString());
-    	if (Package && Package->IsValidLowLevel())
-    	{
-    		AssetPackages.Add(Package);
-    	}
-    }
-    
-    if (AssetPackages.Num() > 0)
-    {
-    	ObjectTools::CleanupAfterSuccessfulDelete(AssetPackages);
-    }
+	TArray<UPackage*> AssetPackages;
+	for (const auto& EmptyPackage : EmptyPackages)
+	{
+		UPackage* Package = FindPackage(nullptr, *EmptyPackage.ToString());
+		if (Package && Package->IsValidLowLevel())
+		{
+			AssetPackages.Add(Package);
+		}
+	}
+	
+	if (AssetPackages.Num() > 0)
+	{
+		ObjectTools::CleanupAfterSuccessfulDelete(AssetPackages);
+	}
 	
 	ProjectCleanerUtility::UpdateAssetRegistry(true);
 	

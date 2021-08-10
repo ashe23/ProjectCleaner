@@ -135,7 +135,7 @@ void ProjectCleanerUtility::FixupRedirectors()
 		FAssetToolsModule& AssetToolsModule = FModuleManager::LoadModuleChecked<FAssetToolsModule>(TEXT("AssetTools"));
 		AssetToolsModule.Get().FixupReferencers(Redirectors);
 	}
-
+	UE_LOG(LogProjectCleaner, Display, TEXT("Redirectors fixed!"));
 	SlowTask.EnterProgressFrame(1.0f);
 }
 
