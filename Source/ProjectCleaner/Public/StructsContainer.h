@@ -107,4 +107,6 @@ struct FStandardCleanerText
 	constexpr static TCHAR* Scanning = TEXT("Scanning...");
 	constexpr static TCHAR* AssetsSuccessfullyDeleted = TEXT("Assets deleted successfully");
 	constexpr static TCHAR* LoadingAssets = TEXT("Loading assets...");
+	constexpr static TCHAR* FixingUpRedirectors = TEXT("Fixing up redirectors...");
+	constexpr static TCHAR* FixingUpRedirectorsConverting = TEXT("Converting assets objects to redirectors...");
 };

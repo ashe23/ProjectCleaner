@@ -16,6 +16,7 @@
 #include "Misc/FileHelper.h"
 #include "Misc/ScopedSlowTask.h"
 #include "Editor/ContentBrowser/Public/ContentBrowserModule.h"
+#include "Internationalization/Regex.h"
 
 int64 ProjectCleanerUtility::GetTotalSize(const TArray<FAssetData>& Assets)
 {
@@ -29,6 +30,25 @@ int64 ProjectCleanerUtility::GetTotalSize(const TArray<FAssetData>& Assets)
 	}
 
 	return Size;
+}
+
+FName ProjectCleanerUtility::GetClassName(const FAssetData& AssetData)
+{
+	if (!AssetData.IsValid()) return NAME_None;
+	
+	FName ClassName;
+	if (AssetData.AssetClass.IsEqual("Blueprint"))
+	{
+		const auto GeneratedClassName = AssetData.TagsAndValues.FindTag(TEXT("GeneratedClass")).GetValue();
+		const FString ClassObjectPath = FPackageName::ExportTextPathToObjectPath(*GeneratedClassName);
+		ClassName = FName{*FPackageName::ObjectPathToObjectName(ClassObjectPath)};
+	}
+	else
+	{
+		ClassName = FName{*AssetData.AssetClass.ToString()};
+	}
+
+	return ClassName;
 }
 
 FString ProjectCleanerUtility::ConvertAbsolutePathToInternal(const FString& InPath)
@@ -85,9 +105,53 @@ bool ProjectCleanerUtility::DeleteEmptyFolders(TSet<FName>& EmptyFolders)
 	return !ErrorWhileDeleting;
 }
 
+bool ProjectCleanerUtility::FindEmptyFoldersInPath(const FString& FolderPath, TSet<FName>& EmptyFolders)
+{
+	bool IsSubFoldersEmpty = true;
+	TArray<FString> SubFolders;
+	IFileManager::Get().FindFiles(SubFolders, *FolderPath, false, true);
+
+	for (const auto& SubFolder : SubFolders)
+	{
+		// "*" needed for unreal`s IFileManager class, without it , its not working.
+		auto NewPath = FolderPath;
+		NewPath.RemoveFromEnd(TEXT("*"));
+		NewPath += SubFolder / TEXT("*");
+		if (FindEmptyFoldersInPath(NewPath, EmptyFolders))
+		{
+			NewPath.RemoveFromEnd(TEXT("*"));
+			EmptyFolders.Add(*NewPath);
+		}
+		else
+		{
+			IsSubFoldersEmpty = false;
+		}
+	}
+
+	TArray<FString> FilesInFolder;
+	IFileManager::Get().FindFiles(FilesInFolder, *FolderPath, true, false);
+
+	if (IsSubFoldersEmpty && FilesInFolder.Num() == 0)
+	{
+		return true;
+	}
+
+	return false;
+}
+
 bool ProjectCleanerUtility::IsEngineExtension(const FString& Extension)
 {
 	return Extension.Equals("uasset") || Extension.Equals("umap");
+}
+
+bool ProjectCleanerUtility::HasIndirectlyUsedAssets(const FString& FileContent)
+{
+	if (FileContent.IsEmpty()) return false;
+	
+	// search any sub string that has asset package path in it
+	static FRegexPattern Pattern(TEXT(R"(\/Game(.*)\b)"));
+	FRegexMatcher Matcher(Pattern, FileContent);
+	return Matcher.FindNext();
 }
 
 FString ProjectCleanerUtility::ConvertPathInternal(const FString& From, const FString To, const FString& Path)
@@ -135,7 +199,7 @@ void ProjectCleanerUtility::FixupRedirectors()
 		FAssetToolsModule& AssetToolsModule = FModuleManager::LoadModuleChecked<FAssetToolsModule>(TEXT("AssetTools"));
 		AssetToolsModule.Get().FixupReferencers(Redirectors);
 	}
-	UE_LOG(LogProjectCleaner, Display, TEXT("Redirectors fixed!"));
+	
 	SlowTask.EnterProgressFrame(1.0f);
 }
 

@@ -22,6 +22,7 @@ class PROJECTCLEANER_API ProjectCleanerUtility
 {
 public:
 	static int64 GetTotalSize(const TArray<FAssetData>& Assets);
+	static FName GetClassName(const FAssetData& AssetData);
 	static FString ConvertAbsolutePathToInternal(const FString& InPath);
 	static FString ConvertInternalToAbsolutePath(const FString& InPath);
 	static void FixupRedirectors();
@@ -29,8 +30,10 @@ public:
 	static void UpdateAssetRegistry(bool bSyncScan);
 	static void FocusOnGameFolder();
 	static bool DeleteEmptyFolders(TSet<FName>& EmptyFolders);
+	static bool FindEmptyFoldersInPath(const FString& FolderPath, TSet<FName>& EmptyFolders);
 	static int32 DeleteAssets(TArray<FAssetData>& Assets, const bool ForceDelete);
 	static bool IsEngineExtension(const FString& Extension);
+	static bool HasIndirectlyUsedAssets(const FString& FileContent);
 private:
 	static FString ConvertPathInternal(const FString& From, const FString To, const FString& Path);
 };

@@ -24,8 +24,34 @@ int32 UProjectCleanerCLICommandlet::Main(const FString& Params)
 	UE_LOG(LogProjectCleanerCLI, Display, TEXT("===================================="));
 
 	ParseCommandLinesArguments(Params);
+
+	if (ProjectHasRedirectors())
+	{
+		UE_LOG(LogProjectCleanerCLI, Error, TEXT("Project contains redirectors. Please fix up them before procceding."));
+		UE_LOG(LogProjectCleanerCLI, Error, TEXT("Run 'UE4Editor-Cmd.exe <GameName or uproject> -run=ResavePackages -fixupredirects -autocheckout -projectonly -unattended'"));
+		return 1;
+	}
 	
-	// ProjectCleanerUtility::FixupRedirectors();
+	if (IsArgumentsValid())
+	{
+		ProjectCleanerDataManagerV2 CleanerDataManagerV2;
+		CleanerDataManagerV2.SetSilentMode(true);
+		CleanerDataManagerV2.AnalyzeProject();
+		CleanerDataManagerV2.PrintInfo();
+		
+		// CleanerDataManagerV2.DeleteAllUnusedAssets()
+		// CleanerDataManagerV2.DeleteEmptyFolders()
+		
+		// if -check flag enabled, we should scan and give info only, no any deletion operation
+		// else
+		//  delete assets
+		//  delete empty folders
+		//  show deletion info
+
+		// AnalyzeProject
+		// GetUnusedAssets()
+		// GetEmptyFolders()
+	}
 	
 	return 0;
 }
@@ -209,4 +235,13 @@ void UProjectCleanerCLICommandlet::ShowArgumentsInLog()
 	UE_LOG(LogProjectCleanerCLI, Display, TEXT("	ExcludeAssets [Assets paths to exclude from scanning] - %s"), ExcludedAssets.Num() > 0 ? *UKismetStringLibrary::JoinStringArray(ExcludedAssets, TEXT(",")) : TEXT("[]"));
 	UE_LOG(LogProjectCleanerCLI, Display, TEXT("	ExcludeAssetsInPath [Paths to exclude from scanning] - %s"), ExcludedPaths.Num() > 0 ? *UKismetStringLibrary::JoinStringArray(ExcludedPaths, TEXT(",")) : TEXT("[]"));
 	UE_LOG(LogProjectCleanerCLI, Display, TEXT("	ExcludeAssetsWithClass [Asset Classes to exclude from scanning] - %s"), ExcludedClasses.Num() > 0 ? *UKismetStringLibrary::JoinStringArray(ExcludedClasses, TEXT(",")) : TEXT("[]"));
+}
+
+bool UProjectCleanerCLICommandlet::ProjectHasRedirectors() const
+{
+	const auto AssetRegistry = &FModuleManager::LoadModuleChecked<FAssetRegistryModule>(AssetRegistryConstants::ModuleName);
+ 	TArray<FAssetData> RedirectAssets;
+ 	AssetRegistry->Get().GetAssetsByClass(UObjectRedirector::StaticClass()->GetFName(), RedirectAssets);
+
+	return RedirectAssets.Num() > 0;
 }

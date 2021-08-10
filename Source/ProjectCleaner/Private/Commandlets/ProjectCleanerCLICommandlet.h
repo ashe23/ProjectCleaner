@@ -22,6 +22,7 @@ private:
 	void ParseCommandLinesArguments(const FString& Params);
 	bool IsArgumentsValid() const;
 	void ShowArgumentsInLog();
+	bool ProjectHasRedirectors() const;
 
 	bool bArgumentsValid = false;
 	bool bCheckOnly = false;

@@ -2,11 +2,79 @@
 
 #pragma once
 
-#include "StructsContainer.h"
 #include "CoreMinimal.h"
 
 struct FAssetData;
+class FAssetToolsModule;
+class FAssetRegistryModule;
+class IPlatformFile;
 
+class ProjectCleanerDataManagerV2
+{
+public:
+
+	// ctor/dtor
+	ProjectCleanerDataManagerV2();
+	~ProjectCleanerDataManagerV2();
+
+	void AnalyzeProject();
+	void SetSilentMode(const bool SilentMode);
+	void SetScanDeveloperContents(const bool bScan);
+	void PrintInfo();
+	// void SetExcludedPaths();
+	// void SetExcludedClasses();
+	
+private:
+	
+	/* Private Functions */
+	void FixupRedirectors() const;
+	void FindAllAssets();
+	void FindInvalidFilesAndAssets();
+	void FindIndirectAssets();
+	void FindEmptyFolders(const bool bScanDevelopersContent);
+	void FindPrimaryAssetClasses();
+	void FindAssetsWithExternalReferencers();
+	void FindUnusedAssets();
+	void FindUsedAssets(TSet<FName>& UsedAssets);
+	void FindUsedAssetsDependencies(const TSet<FName>& UsedAssets, TSet<FName>& UsedAssetsDeps) const;
+	void FindExcludedAssets(TSet<FName>& UsedAssets);
+
+	/* Check Functions */
+	bool IsExcludedByClass(const FAssetData& AssetData) const;
+	
+	/* Data Containers */
+	TArray<FAssetData> AllAssets;
+	TArray<FAssetData> UnusedAssets;
+	TArray<FAssetData> PrimaryAssets;
+	TArray<FAssetData> UserExcludedAssets;
+	TArray<FAssetData> AssetsWithExternalRefs;
+	TSet<FName> CorruptedAssets;
+	TSet<FName> NonEngineFiles;
+	TSet<FName> EmptyFolders;
+	TSet<FName> PrimaryAssetClasses;
+	TSet<FName> ExcludedAssets;
+	TMap<FAssetData, struct FIndirectAsset> IndirectAssets;
+
+	/* Configs */
+	bool bSilentMode;
+	bool bScanDeveloperContents;
+	TSet<FName> ExcludedPaths;
+	TSet<FName> ExcludedClasses;
+
+	/* Engine Modules */
+	FAssetRegistryModule* AssetRegistry;
+	FAssetToolsModule* AssetTools;
+	IPlatformFile* PlatformFile;
+
+	/* Constants */
+	const FName RelativeRoot;
+};
+
+// ==============================
+// Refactor
+// ==============================
+// ==============================
+// ==============================
 class ProjectCleanerDataManager
 {
 	friend class FProjectCleanerDataManagerTest;
