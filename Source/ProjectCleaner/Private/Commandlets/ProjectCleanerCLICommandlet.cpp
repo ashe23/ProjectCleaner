@@ -1,7 +1,7 @@
 ﻿// Copyright 2021. Ashot Barkhudaryan. All Rights Reserved.
 
 
-#include "CleanProjectCommandlet.h"
+#include "ProjectCleanerCLICommandlet.h"
 #include "Misc/ScopedSlowTask.h"
 #include "Kismet/KismetStringLibrary.h"
 #include "ObjectTools.h"

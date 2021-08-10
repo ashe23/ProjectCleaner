@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "Commandlets/Commandlet.h"
 #include "StructsContainer.h"
-#include "CleanProjectCommandlet.generated.h"
+#include "ProjectCleanerCLICommandlet.generated.h"
 
 /**
  * Commandlet for cleaning project via CLI
