@@ -17,7 +17,7 @@ void SProjectCleanerStatisticsUI::Construct(const FArguments& InArgs)
 		SetCleanerManager(InArgs._CleanerManager);
 	}
 
-	const float MaxHeight = 40.0f;
+	constexpr float MaxHeight = 40.0f;
 
 	ChildSlot
 	[
@@ -286,7 +286,7 @@ void SProjectCleanerStatisticsUI::Construct(const FArguments& InArgs)
 	];
 }
 
-void SProjectCleanerStatisticsUI::SetCleanerManager(ProjectCleanerManager* CleanerManagerPtr)
+void SProjectCleanerStatisticsUI::SetCleanerManager(FProjectCleanerManager* CleanerManagerPtr)
 {
 	if (!CleanerManagerPtr) return;
 	CleanerManager = CleanerManagerPtr;

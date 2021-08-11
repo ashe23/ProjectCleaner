@@ -96,7 +96,7 @@ void SProjectCleanerCorruptedFilesUI::Construct(const FArguments& InArgs)
 	];
 }
 
-void SProjectCleanerCorruptedFilesUI::SetCleanerManager(ProjectCleanerManager* CleanerManagerPtr)
+void SProjectCleanerCorruptedFilesUI::SetCleanerManager(FProjectCleanerManager* CleanerManagerPtr)
 {
 	if (!CleanerManagerPtr) return;
 	CleanerManager = CleanerManagerPtr;

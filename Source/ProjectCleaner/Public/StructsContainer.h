@@ -7,6 +7,22 @@
 #include "AssetData.h"
 #include "StructsContainer.generated.h"
 
+class ICleanerUIActions
+{
+public:
+	virtual ~ICleanerUIActions() {};
+	
+	virtual void ExcludeSelectedAssets(const TArray<FAssetData>& Assets) = 0;
+	virtual void ExcludeSelectedAssetsByType(const TArray<FAssetData>& Assets) = 0;
+	virtual void IncludeSelectedAssets(const TArray<FAssetData>& Assets) = 0;
+	virtual void IncludeAllAssets() = 0;
+	virtual void ExcludePath(const FString& InPath) = 0;
+	virtual void IncludePath(const FString& InPath) = 0;
+	virtual int32 DeleteSelectedAssets(const TArray<FAssetData>& Assets) = 0;
+	virtual void DeleteAllUnusedAssets() = 0;
+	virtual void DeleteEmptyFolders() = 0;
+};
+
 UCLASS(Transient)
 class UCleanerConfigs : public UObject
 {
@@ -15,25 +31,13 @@ public:
 	UPROPERTY(DisplayName = "Scan Developer Content", EditAnywhere, Category = "CleanerConfigs", meta = (ToolTip = "Scan assets in 'Developers' folder. By Default false"))
 	bool bScanDeveloperContents = false;
 
-	UPROPERTY(DisplayName = "Scan Megascans Plugin Content", EditAnywhere, Category = "CleanerConfigs", meta = (ToolTip = "Scan assets in Megascans base content(MSPreset),if Megascans plugin is active. By Default false"))
-	bool bScanMegascansContent = false;// todo:ashe23 not sure about this
-	
 	UPROPERTY(DisplayName = "Delete Empty Folders After Assets Deleted", EditAnywhere, Category = "CleanerConfigs")
 	bool bAutomaticallyDeleteEmptyFolders = true;
-
-	UPROPERTY(DisplayName = "Force Delete Assets", EditAnywhere, Category = "CleanerConfigs", meta = (ToolTip = "If assets failed to delete normally, we could try to force delete them. By Default true"))
-	bool bForceDeleteAssets = true; // todo:ashe23 not sure about this
-};
-
-UCLASS(Transient)
-class UExcludeOptions : public UObject
-{
-	GENERATED_BODY()
-public:
-	UPROPERTY(DisplayName = "Paths", EditAnywhere, Category = "ExcludeOptions", meta = (ContentDir))
+	
+	UPROPERTY(DisplayName = "Paths", EditAnywhere, Category = "CleanerConfigs|ExcludeOptions", meta = (ContentDir))
 	TArray<FDirectoryPath> Paths;
 
-	UPROPERTY(DisplayName = "Classes", EditAnywhere, Category = "ExcludeOptions")
+	UPROPERTY(DisplayName = "Classes", EditAnywhere, Category = "CleanerConfigs|ExcludeOptions")
 	TArray<UClass*> Classes;
 };
 

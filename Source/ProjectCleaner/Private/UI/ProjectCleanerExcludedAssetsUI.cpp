@@ -63,7 +63,7 @@ void SProjectCleanerExcludedAssetsUI::Construct(const FArguments& InArgs)
 	UpdateUI();
 }
 
-void SProjectCleanerExcludedAssetsUI::SetCleanerManager(ProjectCleanerManager* CleanerManagerPtr)
+void SProjectCleanerExcludedAssetsUI::SetCleanerManager(FProjectCleanerManager* CleanerManagerPtr)
 {
 	if (!CleanerManagerPtr) return;
 	CleanerManager = CleanerManagerPtr;
@@ -210,7 +210,7 @@ void SProjectCleanerExcludedAssetsUI::FindInContentBrowser() const
 	const TArray<FAssetData> CurrentSelection = GetCurrentSelectionDelegate.Execute();
 	if (CurrentSelection.Num() > 0)
 	{
-		FContentBrowserModule& CBModule = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
+		const FContentBrowserModule& CBModule = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
 		CBModule.Get().SyncBrowserToAssets(CurrentSelection);
 	}
 }

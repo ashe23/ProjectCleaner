@@ -10,12 +10,12 @@ class SProjectCleanerMainUI : public SCompoundWidget
 {
 public:
 	SLATE_BEGIN_ARGS(SProjectCleanerMainUI) {}
-		SLATE_ARGUMENT(ProjectCleanerManager*, CleanerManager)
+		SLATE_ARGUMENT(FProjectCleanerManager*, CleanerManager)
     SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
 	virtual ~SProjectCleanerMainUI() override;
-	void SetCleanerManager(ProjectCleanerManager* CleanerManagerPtr);
+	void SetCleanerManager(FProjectCleanerManager* CleanerManagerPtr);
 
 private:
 	/* Initializers */
@@ -41,11 +41,10 @@ private:
 	TWeakPtr<class SProjectCleanerConfigsUI> CleanerConfigsUI;
 	TWeakPtr<class SProjectCleanerCorruptedFilesUI> CorruptedFilesUI;
 	TWeakPtr<class SProjectCleanerIndirectAssetsUI> IndirectAssetsUI;
-	TWeakPtr<class SProjectCleanerExcludeOptionsUI> ExcludeOptionUI;
 	TWeakPtr<class SProjectCleanerExcludedAssetsUI> ExcludedAssetsUI;
 	TSharedPtr<class FTabManager> TabManager;
 	TSharedPtr<FTabManager::FLayout> TabLayout;
 
 	/* CleanerManager */
-	ProjectCleanerManager* CleanerManager = nullptr;
+	FProjectCleanerManager* CleanerManager = nullptr;
 };

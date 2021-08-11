@@ -112,7 +112,7 @@ void SProjectCleanerIndirectAssetsUI::Construct(const FArguments& InArgs)
 	];
 }
 
-void SProjectCleanerIndirectAssetsUI::SetCleanerManager(ProjectCleanerManager* CleanerManagerPtr)
+void SProjectCleanerIndirectAssetsUI::SetCleanerManager(FProjectCleanerManager* CleanerManagerPtr)
 {
 	if (!CleanerManagerPtr) return;
 	CleanerManager = CleanerManagerPtr;
@@ -129,7 +129,7 @@ void SProjectCleanerIndirectAssetsUI::UpdateUI()
 
 	for (const auto& IndirectFile : CleanerManager->GetIndirectAssets())
 	{
-		auto IndirectAsset = NewObject<UIndirectAsset>();
+		const auto IndirectAsset = NewObject<UIndirectAsset>();
 		IndirectAsset->AssetName = IndirectFile.Key.AssetName.ToString();
 		IndirectAsset->AssetPath = IndirectFile.Value.RelativePath.ToString();
 		IndirectAsset->FilePath = IndirectFile.Value.File;

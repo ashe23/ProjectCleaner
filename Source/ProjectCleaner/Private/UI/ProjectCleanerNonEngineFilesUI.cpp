@@ -81,7 +81,7 @@ void SProjectCleanerNonEngineFilesUI::Construct(const FArguments& InArgs)
 	];
 }
 
-void SProjectCleanerNonEngineFilesUI::SetCleanerManager(ProjectCleanerManager* CleanerManagerPtr)
+void SProjectCleanerNonEngineFilesUI::SetCleanerManager(FProjectCleanerManager* CleanerManagerPtr)
 {
 	if (!CleanerManagerPtr) return;
 	CleanerManager = CleanerManagerPtr;

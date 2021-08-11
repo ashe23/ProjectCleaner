@@ -6,7 +6,7 @@
 #include "Widgets/SCompoundWidget.h"
 #include "StructsContainer.h"
 
-class ProjectCleanerManager;
+class FProjectCleanerManager;
 
 class SNonEngineFilesUISelectionRow : public SMultiColumnTableRow<TWeakObjectPtr<UNonEngineFile>>
 {
@@ -58,11 +58,11 @@ class SProjectCleanerNonEngineFilesUI : public SCompoundWidget
 public:
 	
 	SLATE_BEGIN_ARGS(SProjectCleanerNonEngineFilesUI) {}
-		SLATE_ARGUMENT(ProjectCleanerManager*, CleanerManager)
+		SLATE_ARGUMENT(FProjectCleanerManager*, CleanerManager)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
-	void SetCleanerManager(ProjectCleanerManager* CleanerManagerPtr);
+	void SetCleanerManager(FProjectCleanerManager* CleanerManagerPtr);
 	void UpdateUI();
 private:
 	TSharedRef<ITableRow> OnGenerateRow(
@@ -74,5 +74,5 @@ private:
 	/** Data **/
 	TArray<TWeakObjectPtr<UNonEngineFile>> NonEngineFiles;
 	TSharedPtr<SListView<TWeakObjectPtr<UNonEngineFile>>> ListView;
-	ProjectCleanerManager* CleanerManager = nullptr;
+	FProjectCleanerManager* CleanerManager = nullptr;
 };

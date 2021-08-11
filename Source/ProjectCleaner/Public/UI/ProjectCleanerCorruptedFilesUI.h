@@ -7,7 +7,7 @@
 #include "Widgets/SCompoundWidget.h"
 #include "StructsContainer.h"
 
-class ProjectCleanerManager;
+class FProjectCleanerManager;
 
 class SCorruptedFileUISelectionRow : public SMultiColumnTableRow<TWeakObjectPtr<UCorruptedFile>>
 {
@@ -57,11 +57,11 @@ class SProjectCleanerCorruptedFilesUI : public SCompoundWidget
 public:
 	
 	SLATE_BEGIN_ARGS(SProjectCleanerCorruptedFilesUI) {}
-		SLATE_ARGUMENT(ProjectCleanerManager*, CleanerManager);
+		SLATE_ARGUMENT(FProjectCleanerManager*, CleanerManager);
 	SLATE_END_ARGS()
 	
 	void Construct(const FArguments& InArgs);
-	void SetCleanerManager(ProjectCleanerManager* CleanerManagerPtr);
+	void SetCleanerManager(FProjectCleanerManager* CleanerManagerPtr);
 	void UpdateUI();
 private:
 	TSharedRef<ITableRow> OnGenerateRow(
@@ -73,5 +73,5 @@ private:
 	/** Data **/
 	TArray<TWeakObjectPtr<UCorruptedFile>> CorruptedFiles;
 	TSharedPtr<SListView<TWeakObjectPtr<UCorruptedFile>>> ListView;
-	ProjectCleanerManager* CleanerManager = nullptr;
+	FProjectCleanerManager* CleanerManager = nullptr;
 };

@@ -7,18 +7,18 @@
 #include "IContentBrowserSingleton.h"
 
 class UCleanerConfigs;
-class ProjectCleanerManager;
+class FProjectCleanerManager;
 
 class SProjectCleanerUnusedAssetsBrowserUI : public SCompoundWidget
 {
 public:
 	
 	SLATE_BEGIN_ARGS(SProjectCleanerUnusedAssetsBrowserUI) {}
-		SLATE_ARGUMENT(ProjectCleanerManager*, CleanerManager)		
+		SLATE_ARGUMENT(FProjectCleanerManager*, CleanerManager)		
 	SLATE_END_ARGS()
 	
 	void Construct(const FArguments& InArgs);
-	void SetCleanerManager(ProjectCleanerManager* CleanerManagerPtr);
+	void SetCleanerManager(FProjectCleanerManager* CleanerManagerPtr);
 	void UpdateUI();
 
 private:
@@ -54,5 +54,5 @@ private:
 
 	/* ContentBrowserModule */
 	class FContentBrowserModule* ContentBrowserModule = nullptr;
-	class ProjectCleanerManager* CleanerManager = nullptr;
+	class FProjectCleanerManager* CleanerManager = nullptr;
 };

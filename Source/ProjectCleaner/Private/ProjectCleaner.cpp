@@ -77,12 +77,13 @@ void FProjectCleanerModule::RegisterMenus()
 
 void FProjectCleanerModule::PluginButtonClicked()
 {
-	if (!CleanerManager.GetAssetRegistry())
+	
+	if (!CleanerManager.GetDataManager().GetAssetRegistry())
 	{
 		return;
 	}
 
-	if (CleanerManager.GetAssetRegistry()->Get().IsLoadingAssets())
+	if (CleanerManager.GetDataManager().GetAssetRegistry()->Get().IsLoadingAssets())
 	{
 		ProjectCleanerNotificationManager::AddTransient(
 			FText::FromString(FStandardCleanerText::AssetRegistryStillWorking),

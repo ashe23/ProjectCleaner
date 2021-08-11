@@ -7,7 +7,6 @@
 #include "UI/ProjectCleanerNonEngineFilesUI.h"
 #include "UI/ProjectCleanerConfigsUI.h"
 #include "UI/ProjectCleanerCorruptedFilesUI.h"
-#include "UI/ProjectCleanerExcludeOptionsUI.h"
 #include "UI/ProjectCleanerIndirectAssetsUI.h"
 #include "UI/ProjectCleanerExcludedAssetsUI.h"
 #include "Core/ProjectCleanerManager.h"
@@ -122,13 +121,6 @@ void SProjectCleanerMainUI::Construct(const FArguments& InArgs)
 								SAssignNew(CleanerConfigsUI, SProjectCleanerConfigsUI)
 								.CleanerConfigs(CleanerManager->GetCleanerConfigs())
 							]
-							+ SVerticalBox::Slot()
-							.Padding(FMargin{20.0f, 5.0f})
-							.AutoHeight()
-							[
-								SAssignNew(ExcludeOptionUI, SProjectCleanerExcludeOptionsUI)
-								.ExcludeOptions(CleanerManager->GetExcludeOptions())
-							]
 						]
 					]
 				]
@@ -152,7 +144,7 @@ SProjectCleanerMainUI::~SProjectCleanerMainUI()
 	CleanerManager = nullptr;
 }
 
-void SProjectCleanerMainUI::SetCleanerManager(ProjectCleanerManager* CleanerManagerPtr)
+void SProjectCleanerMainUI::SetCleanerManager(FProjectCleanerManager* CleanerManagerPtr)
 {
 	if (!CleanerManagerPtr) return;
 	CleanerManager = CleanerManagerPtr;
@@ -354,7 +346,7 @@ FReply SProjectCleanerMainUI::OnDeleteEmptyFolderClick() const
 		return FReply::Handled();
 	}
 	
-	CleanerManager->DeleteAllEmptyFolders();
+	CleanerManager->DeleteEmptyFolders();
 
 	return FReply::Handled();
 }

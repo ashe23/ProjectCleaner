@@ -6,7 +6,7 @@
 #include "Widgets/SCompoundWidget.h"
 #include "StructsContainer.h"
 
-class ProjectCleanerManager;
+class FProjectCleanerManager;
 
 class SIndirectAssetsUISelectionRow : public SMultiColumnTableRow<TWeakObjectPtr<UIndirectAsset>>
 {
@@ -65,11 +65,11 @@ class SProjectCleanerIndirectAssetsUI : public SCompoundWidget
 public:
 	
 	SLATE_BEGIN_ARGS(SProjectCleanerIndirectAssetsUI) {}
-		SLATE_ARGUMENT(ProjectCleanerManager* , CleanerManager)
+		SLATE_ARGUMENT(FProjectCleanerManager* , CleanerManager)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
-	void SetCleanerManager(ProjectCleanerManager* CleanerManagerPtr);
+	void SetCleanerManager(FProjectCleanerManager* CleanerManagerPtr);
 	void UpdateUI();
 private:
 	TSharedRef<ITableRow> OnGenerateRow(
@@ -79,5 +79,5 @@ private:
 	void OnMouseDoubleClick(TWeakObjectPtr<UIndirectAsset> Item) const;
 	TArray<TWeakObjectPtr<UIndirectAsset>> IndirectAssets;
 	TSharedPtr<SListView<TWeakObjectPtr<UIndirectAsset>>> ListView;
-	ProjectCleanerManager* CleanerManager = nullptr;
+	FProjectCleanerManager* CleanerManager = nullptr;
 };

@@ -30,7 +30,7 @@ int32 UProjectCleanerCLICommandlet::Main(const FString& Params)
 	
 	if (IsArgumentsValid())
 	{
-		ProjectCleanerDataManagerV2 CleanerDataManagerV2;
+		FProjectCleanerDataManager CleanerDataManagerV2;
 		CleanerDataManagerV2.SetSilentMode(true);
 		CleanerDataManagerV2.AnalyzeProject();
 		

@@ -34,6 +34,7 @@ public:
 	static bool FindEmptyFoldersInPath(const FString& FolderPath, TSet<FName>& EmptyFolders);
 	static int32 DeleteAssets(TArray<FAssetData>& Assets, const bool ForceDelete);
 	static bool IsEngineExtension(const FString& Extension);
+	static bool IsUnderMegascansFolder(const FAssetData& AssetData);
 	static bool HasIndirectlyUsedAssets(const FString& FileContent);
 private:
 	static FString ConvertPathInternal(const FString& From, const FString To, const FString& Path);

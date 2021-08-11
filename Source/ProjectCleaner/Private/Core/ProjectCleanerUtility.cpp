@@ -157,6 +157,11 @@ bool ProjectCleanerUtility::IsEngineExtension(const FString& Extension)
 	return Extension.Equals("uasset") || Extension.Equals("umap");
 }
 
+bool ProjectCleanerUtility::IsUnderMegascansFolder(const FAssetData& AssetData)
+{
+	return AssetData.PackagePath.ToString().StartsWith(TEXT("/Game/MSPresets"));
+}
+
 bool ProjectCleanerUtility::HasIndirectlyUsedAssets(const FString& FileContent)
 {
 	if (FileContent.IsEmpty()) return false;
