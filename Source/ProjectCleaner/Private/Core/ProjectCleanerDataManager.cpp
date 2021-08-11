@@ -1,14 +1,13 @@
 ﻿// Copyright 2021. Ashot Barkhudaryan. All Rights Reserved.
 
-#include "ProjectCleaner.h"
-#include "StructsContainer.h"
 #include "Core/ProjectCleanerDataManager.h"
+#include "ProjectCleaner.h"
 #include "Core/ProjectCleanerUtility.h"
+#include "UI/ProjectCleanerNotificationManager.h"
 // Engine Headers
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "AssetToolsModule.h"
-#include "DirectoryWatcherModule.h"
-#include "IDirectoryWatcher.h"
+#include "ObjectTools.h"
 #include "PackageTools.h"
 #include "AssetRegistry/AssetData.h"
 #include "Engine/AssetManager.h"
@@ -24,6 +23,7 @@
 ProjectCleanerDataManagerV2::ProjectCleanerDataManagerV2() :
 	bSilentMode(false),
 	bScanDeveloperContents(false),
+	bAutomaticallyDeleteEmptyFolders(true),
 	AssetRegistry(nullptr),
 	AssetTools(nullptr),
 	PlatformFile(nullptr),
@@ -72,6 +72,23 @@ void ProjectCleanerDataManagerV2::PrintInfo()
 	UE_LOG(LogProjectCleaner, Display, TEXT("Non Engine Files - %d"), NonEngineFiles.Num());
 	UE_LOG(LogProjectCleaner, Display, TEXT("IndirectAssets - %d"), IndirectAssets.Num());
 	UE_LOG(LogProjectCleaner, Display, TEXT("Empty Folders - %d"), EmptyFolders.Num());
+}
+
+void ProjectCleanerDataManagerV2::CleanProject()
+{
+	DeleteUnusedAssets();
+
+	if (bAutomaticallyDeleteEmptyFolders)
+	{
+		DeleteEmptyFolders();
+	}
+
+	AnalyzeProject();
+
+	if (!IsRunningCommandlet())
+	{
+		ProjectCleanerUtility::FocusOnGameFolder();
+	}
 }
 
 void ProjectCleanerDataManagerV2::FixupRedirectors() const
@@ -518,6 +535,246 @@ void ProjectCleanerDataManagerV2::FindExcludedAssets(TSet<FName>& UsedAssets)
 			{
 				ExcludedAssets.Add(Asset.PackageName);
 			}
+		}
+	}
+}
+
+void ProjectCleanerDataManagerV2::AnalyzeUnusedAssets()
+{
+	UnusedAssetsInfos.Empty();
+	UnusedAssetsInfos.Reserve(UnusedAssets.Num());
+	
+	TArray<FName> Refs;
+	TArray<FName> Deps;
+	
+	for (const auto& UnusedAsset : UnusedAssets)
+	{
+		FUnusedAssetInfo UnusedAssetInfo;
+
+		AssetRegistry->Get().GetReferencers(UnusedAsset.PackageName, Refs);
+		AssetRegistry->Get().GetDependencies(UnusedAsset.PackageName, Deps);
+		
+		Refs.RemoveAllSwap([&] (const FName& Ref)
+		{
+			return !Ref.ToString().StartsWith(RelativeRoot.ToString()) || Ref.IsEqual(UnusedAsset.PackageName);
+		}, false);
+
+		Deps.RemoveAllSwap([&] (const FName& Dep)
+		{
+			return !Dep.ToString().StartsWith(RelativeRoot.ToString()) || Dep.IsEqual(UnusedAsset.PackageName);
+		}, false);
+
+		Refs.Shrink();
+		Deps.Shrink();
+
+		for (const auto& Ref : Refs)
+		{
+			UnusedAssetInfo.Refs.Add(Ref);
+		}
+		for (const auto& Dep : Deps)
+		{
+			UnusedAssetInfo.Deps.Add(Dep);
+		}
+
+		TSet<FName> CommonAssets = UnusedAssetInfo.Refs.Intersect(UnusedAssetInfo.Deps);
+		if (CommonAssets.Num() > 0)
+		{
+			UnusedAssetInfo.UnusedAssetType = EUnusedAssetType::CircularAsset;
+			
+			for (const auto& CommonAsset : CommonAssets)
+			{
+				const FString ObjectPath = CommonAsset.ToString() + TEXT(".") + FPaths::GetBaseFilename(*CommonAsset.ToString());
+				const FAssetData AssetData = AssetRegistry->Get().GetAssetByObjectPath(FName{*ObjectPath});
+				if (AssetData.IsValid())
+				{
+					UnusedAssetInfo.CommonAssets.Add(AssetData);
+				}
+			}
+		}
+
+		if (Refs.Num() == 0)
+		{
+			UnusedAssetInfo.UnusedAssetType = EUnusedAssetType::RootAsset;
+		}
+
+		UnusedAssetsInfos.Add(UnusedAsset, UnusedAssetInfo);
+		
+		Refs.Reset();
+		Deps.Reset();
+	}
+}
+
+void ProjectCleanerDataManagerV2::GetDeletionAssetsBucket(TArray<FAssetData>& Bucket, const int32 BucketSize)
+{
+	AnalyzeUnusedAssets();
+
+	// todo:ashe23 refactor this part later
+
+	// 1. Searching Circular assets first
+	for (const auto& UnusedAssetInfo : UnusedAssetsInfos)
+	{
+		if (UnusedAssetInfo.Value.UnusedAssetType == EUnusedAssetType::CircularAsset)
+		{
+			Bucket.AddUnique(UnusedAssetInfo.Key);
+			Bucket.Append(UnusedAssetInfo.Value.CommonAssets);
+			break;
+		}
+	}
+
+	if (Bucket.Num() > 0)
+	{
+		return;
+	}
+
+	// 2. Searching Root assets next
+	for (const auto& UnusedAssetInfo : UnusedAssetsInfos)
+	{
+		if (Bucket.Num() >= BucketSize) break;
+		if (UnusedAssetInfo.Value.UnusedAssetType != EUnusedAssetType::RootAsset) continue;
+		
+		Bucket.AddUnique(UnusedAssetInfo.Key);
+	}
+
+	if (Bucket.Num() > 0)
+	{
+		return;
+	}
+
+	// 3. Searching for Default assets
+	for (const auto& UnusedAssetInfo : UnusedAssetsInfos)
+	{
+		if (Bucket.Num() >= BucketSize) break;
+		Bucket.AddUnique(UnusedAssetInfo.Key);
+	}
+}
+
+void ProjectCleanerDataManagerV2::DeleteUnusedAssets()
+{
+	constexpr int32 BucketSize = 100;
+	
+	if (IsRunningCommandlet())
+	{
+		int32 DeletedAssetsNum = 0;
+		const int32 Total = UnusedAssets.Num();
+		
+		TArray<FAssetData> Bucket;
+		Bucket.Reserve(BucketSize);
+		
+		while (UnusedAssets.Num() > 0)
+		{
+			GetDeletionAssetsBucket(Bucket, BucketSize);
+
+			DeletedAssetsNum += ProjectCleanerUtility::DeleteAssets(Bucket, true);
+	
+			UnusedAssets.RemoveAllSwap([&] (const FAssetData& Asset)
+			{
+				return Bucket.Contains(Asset); 
+			}, false);
+		
+			Bucket.Reset();
+		}
+
+		if (Total != DeletedAssetsNum)
+		{
+			UE_LOG(LogProjectCleaner, Warning, TEXT("%s"), FStandardCleanerText::FailedToDeleteSomeAssets);
+		}
+		else
+		{
+			UE_LOG(LogProjectCleaner, Display, TEXT("%s"), FStandardCleanerText::AssetsSuccessfullyDeleted);
+		}
+	}
+	else
+	{
+		int32 DeletedAssetsNum = 0;
+		const int32 Total = UnusedAssets.Num();
+
+		TWeakPtr<SNotificationItem> DeletionProgressNotification;
+		ProjectCleanerNotificationManager::Add(
+			ProjectCleanerUtility::GetDeletionProgressText(DeletedAssetsNum, Total),
+			SNotificationItem::CS_Pending,
+			DeletionProgressNotification
+		);
+	
+		TArray<FAssetData> Bucket;
+		Bucket.Reserve(BucketSize);
+		
+		FScopedSlowTask DeleteSlowTask(
+			UnusedAssets.Num(),
+			FText::FromString(FStandardCleanerText::DeletingUnusedAssets)
+		);
+		DeleteSlowTask.MakeDialog();
+		
+		while (UnusedAssets.Num() > 0)
+		{
+			GetDeletionAssetsBucket(Bucket, BucketSize);
+			DeleteSlowTask.EnterProgressFrame(Bucket.Num());
+
+			DeletedAssetsNum += ProjectCleanerUtility::DeleteAssets(Bucket, true);
+			ProjectCleanerNotificationManager::Update(
+				DeletionProgressNotification,
+				ProjectCleanerUtility::GetDeletionProgressText(DeletedAssetsNum, Total)
+			);
+	
+			UnusedAssets.RemoveAllSwap([&] (const FAssetData& Asset)
+			{
+				return Bucket.Contains(Asset); 
+			}, false);			
+
+			Bucket.Reset();
+		}
+
+		if (Total != DeletedAssetsNum)
+		{
+			ProjectCleanerNotificationManager::Hide(
+				DeletionProgressNotification,
+				SNotificationItem::CS_Fail,
+				FText::FromString(FStandardCleanerText::FailedToDeleteSomeAssets)
+			);
+		}
+		else
+		{
+			ProjectCleanerNotificationManager::Hide(
+				DeletionProgressNotification,
+				SNotificationItem::CS_Success,
+				FText::FromString(FStandardCleanerText::AssetsSuccessfullyDeleted)
+			);
+		}
+
+		// Cleaning empty packages
+		const TSet<FName> EmptyPackages = AssetRegistry->Get().GetCachedEmptyPackages();
+		TArray<UPackage*> AssetPackages;
+		for (const auto& EmptyPackage : EmptyPackages)
+		{
+			UPackage* Package = FindPackage(nullptr, *EmptyPackage.ToString());
+			if (Package && Package->IsValidLowLevel())
+			{
+				AssetPackages.Add(Package);
+			}
+		}
+	
+		if (AssetPackages.Num() > 0)
+		{
+			ObjectTools::CleanupAfterSuccessfulDelete(AssetPackages);
+		}
+	}
+}
+
+void ProjectCleanerDataManagerV2::DeleteEmptyFolders()
+{
+	ProjectCleanerDataManager::GetEmptyFolders(FPaths::ProjectContentDir(), EmptyFolders, bScanDeveloperContents);
+	if (EmptyFolders.Num() == 0) return;
+
+	if (!ProjectCleanerUtility::DeleteEmptyFolders(EmptyFolders))
+	{
+		UE_LOG(LogProjectCleaner, Error, TEXT("%s"), *FStandardCleanerText::FailedToDeleteSomeFolders);
+
+		if (!IsRunningCommandlet())
+		{
+			ProjectCleanerNotificationManager::AddTransient(
+				FText::FromString(FStandardCleanerText::FailedToDeleteSomeFolders),
+				SNotificationItem::CS_Fail,
+				5.0f
+			);
 		}
 	}
 }

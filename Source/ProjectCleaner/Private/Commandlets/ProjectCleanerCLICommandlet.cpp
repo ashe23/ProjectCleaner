@@ -1,14 +1,10 @@
 ﻿// Copyright 2021. Ashot Barkhudaryan. All Rights Reserved.
 
-
 #include "ProjectCleanerCLICommandlet.h"
 #include "Misc/ScopedSlowTask.h"
 #include "Kismet/KismetStringLibrary.h"
-#include "ObjectTools.h"
 #include "AssetRegistry/AssetRegistryModule.h"
-#include "Core/ProjectCleanerUtility.h"
 #include "Core/ProjectCleanerDataManager.h"
-#include "Engine/MapBuildDataRegistry.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogProjectCleanerCLI, Display, All);
 
@@ -37,20 +33,26 @@ int32 UProjectCleanerCLICommandlet::Main(const FString& Params)
 		ProjectCleanerDataManagerV2 CleanerDataManagerV2;
 		CleanerDataManagerV2.SetSilentMode(true);
 		CleanerDataManagerV2.AnalyzeProject();
+		
+		UE_LOG(LogProjectCleanerCLI, Display, TEXT("===================================="));
+		UE_LOG(LogProjectCleanerCLI, Display, TEXT("=========  Before Cleanup    ======="));
+		UE_LOG(LogProjectCleanerCLI, Display, TEXT("===================================="));
 		CleanerDataManagerV2.PrintInfo();
-		
-		// CleanerDataManagerV2.DeleteAllUnusedAssets()
-		// CleanerDataManagerV2.DeleteEmptyFolders()
-		
-		// if -check flag enabled, we should scan and give info only, no any deletion operation
-		// else
-		//  delete assets
-		//  delete empty folders
-		//  show deletion info
+		UE_LOG(LogProjectCleanerCLI, Display, TEXT("===================================="));
+		UE_LOG(LogProjectCleanerCLI, Display, TEXT(""));
+		UE_LOG(LogProjectCleanerCLI, Display, TEXT(""));
 
-		// AnalyzeProject
-		// GetUnusedAssets()
-		// GetEmptyFolders()
+		
+		CleanerDataManagerV2.CleanProject();
+
+		
+		UE_LOG(LogProjectCleanerCLI, Display, TEXT(""));
+		UE_LOG(LogProjectCleanerCLI, Display, TEXT(""));
+		UE_LOG(LogProjectCleanerCLI, Display, TEXT("===================================="));
+		UE_LOG(LogProjectCleanerCLI, Display, TEXT("=========  After Cleanup    ========"));
+		UE_LOG(LogProjectCleanerCLI, Display, TEXT("===================================="));
+		CleanerDataManagerV2.PrintInfo();
+		UE_LOG(LogProjectCleanerCLI, Display, TEXT("===================================="));
 	}
 	
 	return 0;

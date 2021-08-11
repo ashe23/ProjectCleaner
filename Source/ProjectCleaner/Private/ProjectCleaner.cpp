@@ -10,7 +10,6 @@
 #include "ToolMenus.h"
 #include "AssetToolsModule.h"
 #include "AssetRegistry/AssetRegistryModule.h"
-#include "Misc/CommandLine.h"
 
 DEFINE_LOG_CATEGORY(LogProjectCleaner);
 
@@ -78,9 +77,6 @@ void FProjectCleanerModule::RegisterMenus()
 
 void FProjectCleanerModule::PluginButtonClicked()
 {
-	FString Token = TEXT("UCleanProjectCommandlet");
-	UClass* ClassName = FindObject<UClass>(ANY_PACKAGE,*Token,false);
-	const bool bTestFlag = FParse::Param(FCommandLine::Get(), TEXT("testFlag"));
 	if (!CleanerManager.GetAssetRegistry())
 	{
 		return;

@@ -51,6 +51,19 @@ FName ProjectCleanerUtility::GetClassName(const FAssetData& AssetData)
 	return ClassName;
 }
 
+FText ProjectCleanerUtility::GetDeletionProgressText(const int32 DeletedAssetNum, const int32 Total)
+{
+	const int32 Percent = Total > 0 ? (DeletedAssetNum * 100.0f) / Total : 0;
+	return FText::FromString(
+		FString::Printf(
+		TEXT("Deleted %d of %d assets. %d %%"),
+			DeletedAssetNum,
+			Total,
+			Percent
+		)
+	);
+}
+
 FString ProjectCleanerUtility::ConvertAbsolutePathToInternal(const FString& InPath)
 {
 	FString Path = InPath;

@@ -4,7 +4,6 @@
 
 #include "CoreMinimal.h"
 #include "Commandlets/Commandlet.h"
-#include "StructsContainer.h"
 #include "ProjectCleanerCLICommandlet.generated.h"
 
 /**

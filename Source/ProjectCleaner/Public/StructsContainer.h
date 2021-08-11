@@ -90,6 +90,24 @@ struct FIndirectAsset
 	FIndirectAsset(): File(FString{}), Line(0), RelativePath(NAME_None) {}
 };
 
+enum class EUnusedAssetType
+{
+	Default,
+	RootAsset,
+	CircularAsset,
+};
+
+struct FUnusedAssetInfo
+{
+	EUnusedAssetType UnusedAssetType;
+	
+	TSet<FName> Refs;
+	TSet<FName> Deps;
+	TArray<FAssetData> CommonAssets;
+
+	FUnusedAssetInfo() : UnusedAssetType(EUnusedAssetType::Default) {}
+};
+
 struct FStandardCleanerText
 {
 	constexpr static TCHAR* AssetsDeleteWindowTitle = TEXT("Confirm deletion");
@@ -97,6 +115,7 @@ struct FStandardCleanerText
 	constexpr static TCHAR* EmptyFolderWindowTitle = TEXT("Confirm deletion of empty folders");
 	constexpr static TCHAR* EmptyFolderWindowContent = TEXT("Are you sure you want to delete all empty folders in project?");
 	constexpr static TCHAR* StartingCleanup = TEXT("Starting Cleanup. This could take some time, please wait");
+	constexpr static TCHAR* DeletingUnusedAssets = TEXT("Deleting unused assets...");
 	constexpr static TCHAR* NoAssetsToDelete = TEXT("There are no assets to delete!");
 	constexpr static TCHAR* NoEmptyFolderToDelete = TEXT("There are no empty folders to delete!");
 	constexpr static TCHAR* AssetRegistryStillWorking = TEXT("Asset registry still working. Please wait while scan completes");

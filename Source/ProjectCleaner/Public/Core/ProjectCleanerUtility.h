@@ -23,6 +23,7 @@ class PROJECTCLEANER_API ProjectCleanerUtility
 public:
 	static int64 GetTotalSize(const TArray<FAssetData>& Assets);
 	static FName GetClassName(const FAssetData& AssetData);
+	static FText GetDeletionProgressText(const int32 DeletedAssetNum, const int32 Total);
 	static FString ConvertAbsolutePathToInternal(const FString& InPath);
 	static FString ConvertInternalToAbsolutePath(const FString& InPath);
 	static void FixupRedirectors();

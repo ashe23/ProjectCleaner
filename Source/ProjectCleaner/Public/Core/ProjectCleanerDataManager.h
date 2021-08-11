@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "StructsContainer.h"
 
 struct FAssetData;
 class FAssetToolsModule;
@@ -24,9 +25,10 @@ public:
 	// void SetExcludedPaths();
 	// void SetExcludedClasses();
 	
+	void CleanProject();
+	
 private:
 	
-	/* Private Functions */
 	void FixupRedirectors() const;
 	void FindAllAssets();
 	void FindInvalidFilesAndAssets();
@@ -38,6 +40,11 @@ private:
 	void FindUsedAssets(TSet<FName>& UsedAssets);
 	void FindUsedAssetsDependencies(const TSet<FName>& UsedAssets, TSet<FName>& UsedAssetsDeps) const;
 	void FindExcludedAssets(TSet<FName>& UsedAssets);
+	void AnalyzeUnusedAssets();
+	void GetDeletionAssetsBucket(TArray<FAssetData>& Bucket, const int32 BucketSize);
+
+	void DeleteUnusedAssets();
+	void DeleteEmptyFolders();
 
 	/* Check Functions */
 	bool IsExcludedByClass(const FAssetData& AssetData) const;
@@ -53,11 +60,13 @@ private:
 	TSet<FName> EmptyFolders;
 	TSet<FName> PrimaryAssetClasses;
 	TSet<FName> ExcludedAssets;
-	TMap<FAssetData, struct FIndirectAsset> IndirectAssets;
+	TMap<FAssetData, FIndirectAsset> IndirectAssets;
+	TMap<FAssetData, FUnusedAssetInfo> UnusedAssetsInfos;
 
 	/* Configs */
 	bool bSilentMode;
 	bool bScanDeveloperContents;
+	bool bAutomaticallyDeleteEmptyFolders;
 	TSet<FName> ExcludedPaths;
 	TSet<FName> ExcludedClasses;
 
