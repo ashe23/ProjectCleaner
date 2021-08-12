@@ -18,6 +18,7 @@
 #include "GenericPlatform/GenericPlatformFile.h"
 #include "HAL/PlatformFilemanager.h"
 #include "Internationalization/Regex.h"
+#include "Settings/ContentBrowserSettings.h"
 
 FProjectCleanerDataManager::FProjectCleanerDataManager() :
 	bSilentMode(false),
@@ -42,6 +43,8 @@ FProjectCleanerDataManager::~FProjectCleanerDataManager()
 
 void FProjectCleanerDataManager::AnalyzeProject()
 {
+	if (IsLoadingAssets(false)) return;
+	
 	FixupRedirectors();
 	ProjectCleanerUtility::SaveAllAssets(!bSilentMode);
 	FindAllAssets();
@@ -51,16 +54,6 @@ void FProjectCleanerDataManager::AnalyzeProject()
 	FindPrimaryAssetClasses();
 	FindAssetsWithExternalReferencers();
 	FindUnusedAssets();
-}
-
-void FProjectCleanerDataManager::SetSilentMode(const bool SilentMode)
-{
-	bSilentMode = SilentMode;
-}
-
-void FProjectCleanerDataManager::SetScanDeveloperContents(const bool bScan)
-{
-	bScanDeveloperContents = bScan;
 }
 
 void FProjectCleanerDataManager::PrintInfo()
@@ -110,15 +103,12 @@ void FProjectCleanerDataManager::ExcludeSelectedAssetsByType(const TArray<FAsset
 	}
 }
 
-void FProjectCleanerDataManager::IncludeSelectedAssets(const TArray<FAssetData>& Assets)
+bool FProjectCleanerDataManager::IncludeSelectedAssets(const TArray<FAssetData>& Assets)
 {
-	if (!Assets.Num() == 0) return;
-
-	UserExcludedAssets.RemoveAllSwap([&] (const FAssetData& Asset)
+	if (Assets.Num() == 0)
 	{
-		return Assets.Contains(Asset);
-	}, false);
-	UserExcludedAssets.Shrink();
+		return false;
+	}
 	
 	bool bHasConflictWithFilters = false;
 	for (const auto& Asset : Assets)
@@ -128,15 +118,19 @@ void FProjectCleanerDataManager::IncludeSelectedAssets(const TArray<FAssetData>&
 			bHasConflictWithFilters = true;
 		}
 	}
-	
+
 	if (bHasConflictWithFilters)
 	{
-		ProjectCleanerNotificationManager::AddTransient(
-			FText::FromString(FStandardCleanerText::CantIncludeSomeAssets),
-			SNotificationItem::CS_Fail,
-			10.0f
-		);
+		return false;
 	}
+
+	UserExcludedAssets.RemoveAllSwap([&] (const FAssetData& Asset)
+	{
+		return Assets.Contains(Asset);
+	}, false);
+	UserExcludedAssets.Shrink();
+
+	return true;
 }
 
 void FProjectCleanerDataManager::IncludeAllAssets()
@@ -147,36 +141,42 @@ void FProjectCleanerDataManager::IncludeAllAssets()
 	ExcludedAssets.Empty();
 }
 
-void FProjectCleanerDataManager::ExcludePath(const FString& InPath)
+bool FProjectCleanerDataManager::ExcludePath(const FString& InPath)
 {
+	if (InPath.IsEmpty()) return false;
+	
+	ExcludedPaths.Add(FName{*InPath});
+
+	return true;
 }
 
-void FProjectCleanerDataManager::IncludePath(const FString& InPath)
+bool FProjectCleanerDataManager::IncludePath(const FString& InPath)
 {
+	if (InPath.IsEmpty()) return false;
+
+	for (const auto& ExcludedPath : ExcludedPaths)
+	{
+		if (ExcludedPath.ToString().Equals(InPath)) continue;
+		
+		if (InPath.StartsWith(ExcludedPath.ToString()))
+		{
+			return false;
+		}
+	}
+	
+	ExcludedPaths.Remove(FName{*InPath});
+
+	return true;
 }
 
 int32 FProjectCleanerDataManager::DeleteSelectedAssets(const TArray<FAssetData>& Assets)
 {
-	if (Assets.Num() == 0) return 0;
-	
-	const int32 DeletedAssetsNum = ObjectTools::DeleteAssets(Assets);
-	if (DeletedAssetsNum == 0) return 0;
-	
-	if (DeletedAssetsNum != Assets.Num())
-	{
-		ProjectCleanerNotificationManager::AddTransient(
-			FText::FromString(FStandardCleanerText::FailedToDeleteSomeAssets),
-			SNotificationItem::CS_Fail,
-			3.0f
-		);
-	}
-
-	return DeletedAssetsNum;
+	return ObjectTools::DeleteAssets(Assets);
 }
 
 void FProjectCleanerDataManager::DeleteAllUnusedAssets()
 {
-	constexpr int32 BucketSize = 100;
+	constexpr int32 BucketSize = 20;
 	
 	if (IsRunningCommandlet())
 	{
@@ -285,24 +285,15 @@ void FProjectCleanerDataManager::DeleteAllUnusedAssets()
 	}
 }
 
-void FProjectCleanerDataManager::DeleteEmptyFolders()
+int32 FProjectCleanerDataManager::DeleteEmptyFolders()
 {
 	FindEmptyFolders(bScanDeveloperContents);
-	if (EmptyFolders.Num() == 0) return;
-
-	if (!ProjectCleanerUtility::DeleteEmptyFolders(EmptyFolders))
+	if (EmptyFolders.Num() == 0)
 	{
-		UE_LOG(LogProjectCleaner, Error, TEXT("%s"), *FStandardCleanerText::FailedToDeleteSomeFolders);
-
-		if (!IsRunningCommandlet())
-		{
-			ProjectCleanerNotificationManager::AddTransient(
-				FText::FromString(FStandardCleanerText::FailedToDeleteSomeFolders),
-				SNotificationItem::CS_Fail,
-				5.0f
-			);
-		}
+		return 0;
 	}
+
+	return ProjectCleanerUtility::DeleteEmptyFolders(EmptyFolders);
 }
 
 const FAssetRegistryModule* FProjectCleanerDataManager::GetAssetRegistry() const
@@ -355,16 +346,22 @@ void FProjectCleanerDataManager::SetCleanerConfigs(const UCleanerConfigs* Cleane
 	if (!CleanerConfigs) return;
 
 	bScanDeveloperContents = CleanerConfigs->bScanDeveloperContents;
+	
+	const auto Settings = GetMutableDefault<UContentBrowserSettings>();
+	Settings->SetDisplayDevelopersFolder(bScanDeveloperContents);
+	Settings->PostEditChange();
+	
 	bAutomaticallyDeleteEmptyFolders = CleanerConfigs->bAutomaticallyDeleteEmptyFolders;
 
-	
 	ExcludedPaths.Empty();
-	ExcludedPaths.Reserve(CleanerConfigs->Paths.Num());
 	ExcludedClasses.Empty();
+	ExcludedPaths.Reserve(CleanerConfigs->Paths.Num());
 	ExcludedClasses.Reserve(CleanerConfigs->Classes.Num());
 	
 	for (const auto& DirectoryPath : CleanerConfigs->Paths)
 	{
+		if (DirectoryPath.Path.IsEmpty()) continue;
+		
 		ExcludedPaths.Add(FName{*DirectoryPath.Path});
 	}
 	for (const auto& ExcludedClass : CleanerConfigs->Classes)
@@ -374,6 +371,17 @@ void FProjectCleanerDataManager::SetCleanerConfigs(const UCleanerConfigs* Cleane
 	}
 }
 
+void FProjectCleanerDataManager::SetSilentMode(const bool SilentMode)
+{
+	bSilentMode = SilentMode;
+}
+
+void FProjectCleanerDataManager::SetScanDeveloperContents(const bool bScan)
+{
+	bScanDeveloperContents = bScan;
+}
+
+// PRIVATE Functions
 void FProjectCleanerDataManager::FixupRedirectors() const
 {
 	FScopedSlowTask FixRedirectorsTask{
@@ -492,6 +500,8 @@ void FProjectCleanerDataManager::FindInvalidFilesAndAssets()
 
 void FProjectCleanerDataManager::FindIndirectAssets()
 {
+	IndirectAssets.Empty();
+	
 	const FString SourceDir = FPaths::ProjectDir() + TEXT("Source/");
 	const FString ConfigDir = FPaths::ProjectDir() + TEXT("Config/");
 	const FString PluginsDir = FPaths::ProjectDir() + TEXT("Plugins/");
@@ -827,9 +837,16 @@ void FProjectCleanerDataManager::AnalyzeUnusedAssets()
 	
 	TArray<FName> Refs;
 	TArray<FName> Deps;
+
+	FScopedSlowTask AnalyzeTask(
+		UnusedAssets.Num(),
+		FText::FromString(FStandardCleanerText::AnalyzingAssets)
+	);
 	
 	for (const auto& UnusedAsset : UnusedAssets)
 	{
+		AnalyzeTask.EnterProgressFrame();
+		
 		FUnusedAssetInfo UnusedAssetInfo;
 
 		AssetRegistry->Get().GetReferencers(UnusedAsset.PackageName, Refs);
@@ -890,8 +907,21 @@ void FProjectCleanerDataManager::GetDeletionAssetsBucket(TArray<FAssetData>& Buc
 	AnalyzeUnusedAssets();
 
 	// todo:ashe23 refactor this part later
+	// 1. Searching Root assets
+	for (const auto& UnusedAssetInfo : UnusedAssetsInfos)
+	{
+		if (Bucket.Num() >= BucketSize) break;
+		if (UnusedAssetInfo.Value.UnusedAssetType != EUnusedAssetType::RootAsset) continue;
+		
+		Bucket.AddUnique(UnusedAssetInfo.Key);
+	}
 
-	// 1. Searching Circular assets first
+	if (Bucket.Num() > 0)
+	{
+		return;
+	}
+
+	// 2. Searching Circular assets
 	for (const auto& UnusedAssetInfo : UnusedAssetsInfos)
 	{
 		if (UnusedAssetInfo.Value.UnusedAssetType == EUnusedAssetType::CircularAsset)
@@ -907,20 +937,6 @@ void FProjectCleanerDataManager::GetDeletionAssetsBucket(TArray<FAssetData>& Buc
 		return;
 	}
 
-	// 2. Searching Root assets next
-	for (const auto& UnusedAssetInfo : UnusedAssetsInfos)
-	{
-		if (Bucket.Num() >= BucketSize) break;
-		if (UnusedAssetInfo.Value.UnusedAssetType != EUnusedAssetType::RootAsset) continue;
-		
-		Bucket.AddUnique(UnusedAssetInfo.Key);
-	}
-
-	if (Bucket.Num() > 0)
-	{
-		return;
-	}
-
 	// 3. Searching for Default assets
 	for (const auto& UnusedAssetInfo : UnusedAssetsInfos)
 	{
@@ -928,8 +944,6 @@ void FProjectCleanerDataManager::GetDeletionAssetsBucket(TArray<FAssetData>& Buc
 		Bucket.AddUnique(UnusedAssetInfo.Key);
 	}
 }
-
-
 
 bool FProjectCleanerDataManager::IsExcludedByClass(const FAssetData& AssetData) const
 {
@@ -949,5 +963,24 @@ bool FProjectCleanerDataManager::IsExcludedByPath(const FAssetData& AssetData) c
 			return true;
 		}
 	}
+	
 	return false;
+}
+
+bool FProjectCleanerDataManager::IsLoadingAssets(const bool bShowNotification) const
+{
+	if (!AssetRegistry) return true;
+
+	const bool bIsAssetRegistryWorking = AssetRegistry->Get().IsLoadingAssets();
+
+	if (bShowNotification && bIsAssetRegistryWorking && !IsRunningCommandlet())
+	{
+		ProjectCleanerNotificationManager::AddTransient(
+			FText::FromString(FStandardCleanerText::AssetRegistryStillWorking),
+			SNotificationItem::CS_Fail,
+			3.0f
+		);
+	}
+	
+	return bIsAssetRegistryWorking;
 }

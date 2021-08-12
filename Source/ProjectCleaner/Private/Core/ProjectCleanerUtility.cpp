@@ -11,7 +11,6 @@
 #include "IContentBrowserSingleton.h"
 #include "Engine/AssetManager.h"
 #include "Engine/MapBuildDataRegistry.h"
-#include "UObject/ObjectRedirector.h"
 #include "Misc/Paths.h"
 #include "Misc/FileHelper.h"
 #include "Misc/ScopedSlowTask.h"
@@ -80,14 +79,14 @@ FString ProjectCleanerUtility::ConvertInternalToAbsolutePath(const FString& InPa
 	return ConvertPathInternal(FString{ "/Game/" }, ProjectContentDirAbsPath, Path);
 }
 
-bool ProjectCleanerUtility::DeleteEmptyFolders(TSet<FName>& EmptyFolders)
+int32 ProjectCleanerUtility::DeleteEmptyFolders(TSet<FName>& EmptyFolders)
 {
-	if (EmptyFolders.Num() == 0) return false;
+	const FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
 
-	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
-	
+	int32 DeletedFoldersNum = 0;
 	bool ErrorWhileDeleting = false;
 	TSet<FString> FailedToDeleteFolders;
+	
 	for (auto& EmptyFolder : EmptyFolders)
 	{
 		const FString EmptyFolderStr = EmptyFolder.ToString();
@@ -101,11 +100,13 @@ bool ProjectCleanerUtility::DeleteEmptyFolders(TSet<FName>& EmptyFolders)
 			continue;
 		}
 
+		DeletedFoldersNum++;
 		// removing folder path from asset registry
 		AssetRegistryModule.Get().RemovePath(ConvertAbsolutePathToInternal(EmptyFolderStr));
 	}
 
 	EmptyFolders.Empty();
+	EmptyFolders.Reserve(FailedToDeleteFolders.Num());
 	
 	if (ErrorWhileDeleting)
 	{
@@ -115,7 +116,7 @@ bool ProjectCleanerUtility::DeleteEmptyFolders(TSet<FName>& EmptyFolders)
 		}
 	}
 
-	return !ErrorWhileDeleting;
+	return DeletedFoldersNum;
 }
 
 bool ProjectCleanerUtility::FindEmptyFoldersInPath(const FString& FolderPath, TSet<FName>& EmptyFolders)
@@ -177,50 +178,6 @@ FString ProjectCleanerUtility::ConvertPathInternal(const FString& From, const FS
 	return Path.Replace(*From, *To, ESearchCase::IgnoreCase);
 }
 
-void ProjectCleanerUtility::FixupRedirectors()
-{
-	FScopedSlowTask SlowTask{1.0f, FText::FromString("Fixing up Redirectors...")};
-	SlowTask.MakeDialog();
-
-	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
-
-	FARFilter Filter;
-	Filter.bRecursivePaths = true;
-	Filter.PackagePaths.Emplace(TEXT("/Game"));
-	Filter.ClassNames.Emplace(UObjectRedirector::StaticClass()->GetFName());
-
-	// Query for a list of assets
-	TArray<FAssetData> AssetList;
-	AssetRegistryModule.Get().GetAssets(Filter, AssetList);
-
-	if (AssetList.Num() > 0)
-	{
-		TArray<UObject*> Objects;
-		// loading asset if needed
-		for (const auto& Asset : AssetList)
-		{
-			const auto AssetObj = Asset.GetAsset();
-			if (!AssetObj) continue;
-			Objects.Add(AssetObj);
-		}
-
-		// converting them to redirectors
-		TArray<UObjectRedirector*> Redirectors;
-		for (auto Object : Objects)
-		{
-			const auto Redirector = CastChecked<UObjectRedirector>(Object);
-			if (!Redirector) continue;
-			Redirectors.Add(Redirector);
-		}
-
-		// Fix up all founded redirectors
-		FAssetToolsModule& AssetToolsModule = FModuleManager::LoadModuleChecked<FAssetToolsModule>(TEXT("AssetTools"));
-		AssetToolsModule.Get().FixupReferencers(Redirectors);
-	}
-	
-	SlowTask.EnterProgressFrame(1.0f);
-}
-
 int32 ProjectCleanerUtility::DeleteAssets(TArray<FAssetData>& Assets, const bool ForceDelete)
 {
 	const int32 GivenAssetsNum = Assets.Num();
@@ -265,7 +222,7 @@ void ProjectCleanerUtility::SaveAllAssets(const bool PromptUser = true)
 
 void ProjectCleanerUtility::UpdateAssetRegistry(bool bSyncScan = false)
 {
-	FAssetRegistryModule& AssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
+	const FAssetRegistryModule& AssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
 	
 	TArray<FString> ScanFolders;
 	ScanFolders.Add("/Game");
@@ -279,6 +236,6 @@ void ProjectCleanerUtility::FocusOnGameFolder()
 	TArray<FString> FocusFolders;
 	FocusFolders.Add(TEXT("/Game"));
 	
-	FContentBrowserModule& CBModule = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
+	const FContentBrowserModule& CBModule = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
 	CBModule.Get().SyncBrowserToFolders(FocusFolders);
 }

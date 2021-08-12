@@ -52,7 +52,7 @@ void FProjectCleanerCommands::RegisterCommands()
 
 	UI_COMMAND(
 		ExcludeAsset,
-		"Exclude Asset",
+		"Exclude Assets",
 		"Exclude selected assets from deletion list",
 		EUserInterfaceActionType::Button,
 		FInputChord()

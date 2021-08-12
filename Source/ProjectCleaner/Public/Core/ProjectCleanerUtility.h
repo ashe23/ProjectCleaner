@@ -26,11 +26,10 @@ public:
 	static FText GetDeletionProgressText(const int32 DeletedAssetNum, const int32 Total);
 	static FString ConvertAbsolutePathToInternal(const FString& InPath);
 	static FString ConvertInternalToAbsolutePath(const FString& InPath);
-	static void FixupRedirectors();
 	static void SaveAllAssets(const bool PromptUser);
 	static void UpdateAssetRegistry(bool bSyncScan);
 	static void FocusOnGameFolder();
-	static bool DeleteEmptyFolders(TSet<FName>& EmptyFolders);
+	static int32 DeleteEmptyFolders(TSet<FName>& EmptyFolders);
 	static bool FindEmptyFoldersInPath(const FString& FolderPath, TSet<FName>& EmptyFolders);
 	static int32 DeleteAssets(TArray<FAssetData>& Assets, const bool ForceDelete);
 	static bool IsEngineExtension(const FString& Extension);

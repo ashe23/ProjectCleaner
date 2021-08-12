@@ -228,7 +228,6 @@ void SProjectCleanerExcludedAssetsUI::IncludeAssets() const
 	if (!GetCurrentSelectionDelegate.IsBound()) return;
 
 	const TArray<FAssetData> SelectedAssets = GetCurrentSelectionDelegate.Execute();
-
 	CleanerManager->IncludeSelectedAssets(SelectedAssets);
 }
 

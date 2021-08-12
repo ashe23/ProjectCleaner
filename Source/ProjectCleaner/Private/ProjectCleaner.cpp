@@ -77,22 +77,6 @@ void FProjectCleanerModule::RegisterMenus()
 
 void FProjectCleanerModule::PluginButtonClicked()
 {
-	
-	if (!CleanerManager.GetDataManager().GetAssetRegistry())
-	{
-		return;
-	}
-
-	if (CleanerManager.GetDataManager().GetAssetRegistry()->Get().IsLoadingAssets())
-	{
-		ProjectCleanerNotificationManager::AddTransient(
-			FText::FromString(FStandardCleanerText::AssetRegistryStillWorking),
-			SNotificationItem::CS_Fail,
-			3.0f
-		);
-		return;
-	}
-	
 	CleanerManager.Update();
 	
 	FGlobalTabmanager::Get()->TryInvokeTab(ProjectCleanerTabName);

@@ -18,23 +18,21 @@ public:
 	FProjectCleanerDataManager();
 	virtual ~FProjectCleanerDataManager() override;
 
+	bool IsLoadingAssets(const bool bShowNotification) const;
 	void AnalyzeProject();
-	void SetSilentMode(const bool SilentMode);
-	void SetScanDeveloperContents(const bool bScan);
 	void PrintInfo();
-	
 	void CleanProject();
 
 	// UI Actions
 	virtual void ExcludeSelectedAssets(const TArray<FAssetData>& Assets) override;
 	virtual void ExcludeSelectedAssetsByType(const TArray<FAssetData>& Assets) override;
-	virtual void IncludeSelectedAssets(const TArray<FAssetData>& Assets) override;
+	virtual bool IncludeSelectedAssets(const TArray<FAssetData>& Assets) override;
 	virtual void IncludeAllAssets() override;
-	virtual void ExcludePath(const FString& InPath) override;
-	virtual void IncludePath(const FString& InPath) override;
+	virtual bool ExcludePath(const FString& InPath) override;
+	virtual bool IncludePath(const FString& InPath) override;
 	virtual int32 DeleteSelectedAssets(const TArray<FAssetData>& Assets) override;
 	virtual void DeleteAllUnusedAssets() override;
-	virtual void DeleteEmptyFolders() override;
+	virtual int32 DeleteEmptyFolders() override;
 
 	// getters
 	const FAssetRegistryModule* GetAssetRegistry() const;
@@ -49,7 +47,8 @@ public:
 	
 	// setters
 	void SetCleanerConfigs(const UCleanerConfigs* CleanerConfigs);
-	
+	void SetSilentMode(const bool SilentMode);
+	void SetScanDeveloperContents(const bool bScan);
 	
 private:
 	

@@ -22,13 +22,13 @@ public:
 	void Update();
 	virtual void ExcludeSelectedAssets(const TArray<FAssetData>& Assets) override;
 	virtual void ExcludeSelectedAssetsByType(const TArray<FAssetData>& Assets) override;
-	virtual void ExcludePath(const FString& InPath) override;
-	virtual void IncludePath(const FString& InPath) override;
-	virtual void IncludeSelectedAssets(const TArray<FAssetData>& Assets) override;
+	virtual bool ExcludePath(const FString& InPath) override;
+	virtual bool IncludePath(const FString& InPath) override;
+	virtual bool IncludeSelectedAssets(const TArray<FAssetData>& Assets) override;
 	virtual void IncludeAllAssets() override;
 	virtual int32 DeleteSelectedAssets(const TArray<FAssetData>& Assets) override;
 	virtual void DeleteAllUnusedAssets() override;
-	virtual void DeleteEmptyFolders() override;
+	virtual int32 DeleteEmptyFolders() override;
 
 	// getters
 	const FProjectCleanerDataManager& GetDataManager() const;
@@ -42,7 +42,6 @@ public:
 	const TSet<FName>& GetPrimaryAssetClasses() const;
 	UCleanerConfigs* GetCleanerConfigs() const;
 	float GetUnusedAssetsPercent() const;
-
 
 	/**
 	 * @brief Delegate, called when data updates

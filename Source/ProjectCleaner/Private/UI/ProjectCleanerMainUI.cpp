@@ -13,7 +13,9 @@
 #include "UI/ProjectCleanerNotificationManager.h"
 // Engine Headers
 #include "ToolMenus.h"
+#include "AssetRegistry/AssetRegistryModule.h"
 #include "Components/SlateWrapperTypes.h"
+#include "Components/WidgetSwitcher.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Framework/Docking/TabManager.h"
@@ -23,6 +25,8 @@ static const FName IndirectAssetsTab = FName{ TEXT("IndirectAssetsTab") };
 static const FName NonEngineFilesTab = FName{ TEXT("NonEngineFilesTab") };
 static const FName CorruptedFilesTab = FName{ TEXT("CorruptedFilesTab") };
 static const FName ExcludedAssetsTab = FName{ TEXT("ExcludedAssetsTab") };
+
+#define LOCTEXT_NAMESPACE "FProjectCleanerModule"
 
 void SProjectCleanerMainUI::Construct(const FArguments& InArgs)
 {
@@ -48,86 +52,110 @@ void SProjectCleanerMainUI::Construct(const FArguments& InArgs)
 	
 	ChildSlot
 	[
-		SNew(SVerticalBox)
-		+ SVerticalBox::Slot()
-		.Padding(FMargin{ 20.0f })
-		.FillHeight(1.0f)
+		SNew(SWidgetSwitcher)
+		.IsEnabled(this, &SProjectCleanerMainUI::IsWidgetEnabled)
+		.WidgetIndex_Raw(this , &SProjectCleanerMainUI::GetDefaultWidgetIndex)
+		+ SWidgetSwitcher::Slot()
+		.HAlign(HAlign_Fill)
+		.VAlign(VAlign_Fill)
 		[
-			SNew(SSplitter)
-			.Style(FEditorStyle::Get(), "ContentBrowser.Splitter")
-			.PhysicalSplitterHandleSize(5.0f)
-			+ SSplitter::Slot()
-			.Value(0.35f)
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot()
+			.Padding(FMargin{ 20.0f })
+			.FillHeight(1.0f)
 			[
-				SNew(SVerticalBox)
-				+ SVerticalBox::Slot()
-				.AutoHeight()
+				SNew(SSplitter)
+				.Style(FEditorStyle::Get(), "ContentBrowser.Splitter")
+				.PhysicalSplitterHandleSize(5.0f)
+				+ SSplitter::Slot()
+				.Value(0.35f)
 				[
-					SNew(SScrollBox)
-					.ScrollWhenFocusChanges(EScrollWhenFocusChanges::AnimatedScroll)
-					.AnimateWheelScrolling(true)
-					.AllowOverscroll(EAllowOverscroll::No)
-					+ SScrollBox::Slot()
+					SNew(SVerticalBox)
+					+ SVerticalBox::Slot()
+					.AutoHeight()
 					[
-						SNew(SBorder)
-						.BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
+						SNew(SScrollBox)
+						.ScrollWhenFocusChanges(EScrollWhenFocusChanges::AnimatedScroll)
+						.AnimateWheelScrolling(true)
+						.AllowOverscroll(EAllowOverscroll::No)
+						+ SScrollBox::Slot()
 						[
-							SNew(SVerticalBox)
-							+ SVerticalBox::Slot()
-							.Padding(FMargin{ 20.0f, 20.0f })
-							.AutoHeight()
+							SNew(SBorder)
+							.BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
 							[
-								SAssignNew(StatisticsUI, SProjectCleanerStatisticsUI)
-								.CleanerManager(CleanerManager)
-							]
-							+ SVerticalBox::Slot()
-							.Padding(FMargin{ 20.0f, 20.0f })
-							.AutoHeight()
-							[
-								SNew(SHorizontalBox)
-								+ SHorizontalBox::Slot()
-								.FillWidth(1.0f)
+								SNew(SVerticalBox)
+								+ SVerticalBox::Slot()
+								.Padding(FMargin{ 20.0f, 20.0f })
+								.AutoHeight()
 								[
-									SNew(SButton)
-									.HAlign(HAlign_Center)
-									.VAlign(VAlign_Center)
-									.Text(FText::FromString("Refresh"))
-									.OnClicked_Raw(this, &SProjectCleanerMainUI::OnRefreshBtnClick)
+									SAssignNew(StatisticsUI, SProjectCleanerStatisticsUI)
+									.CleanerManager(CleanerManager)
 								]
-								+ SHorizontalBox::Slot()
-								.FillWidth(1.0f)
-								.Padding(FMargin{ 40.0f, 0.0f, 40.0f, 0.0f })
+								+ SVerticalBox::Slot()
+								.Padding(FMargin{ 20.0f, 20.0f })
+								.AutoHeight()
 								[
-									SNew(SButton)
-									.HAlign(HAlign_Center)
-									.VAlign(VAlign_Center)
-									.Text(FText::FromString("Delete Unused Assets"))
-									.OnClicked_Raw(this, &SProjectCleanerMainUI::OnDeleteUnusedAssetsBtnClick)
+									SNew(SHorizontalBox)
+									+ SHorizontalBox::Slot()
+									.FillWidth(1.0f)
+									[
+										SNew(SButton)
+										.HAlign(HAlign_Center)
+										.VAlign(VAlign_Center)
+										.Text(FText::FromString("Refresh"))
+										.OnClicked_Raw(this, &SProjectCleanerMainUI::OnRefreshBtnClick)
+									]
+									+ SHorizontalBox::Slot()
+									.FillWidth(1.0f)
+									.Padding(FMargin{ 40.0f, 0.0f, 40.0f, 0.0f })
+									[
+										SNew(SButton)
+										.HAlign(HAlign_Center)
+										.VAlign(VAlign_Center)
+										.Text(FText::FromString("Delete Unused Assets"))
+										.OnClicked_Raw(this, &SProjectCleanerMainUI::OnDeleteUnusedAssetsBtnClick)
+									]
+									+ SHorizontalBox::Slot()
+									.FillWidth(1.0f)
+									[
+										SNew(SButton)
+										.HAlign(HAlign_Center)
+										.VAlign(VAlign_Center)
+										.Text(FText::FromString("Delete Empty Folders"))
+										.OnClicked_Raw(this, &SProjectCleanerMainUI::OnDeleteEmptyFolderClick)
+									]
 								]
-								+ SHorizontalBox::Slot()
-								.FillWidth(1.0f)
+								+ SVerticalBox::Slot()
+								.Padding(FMargin{20.0f, 5.0f})
+								.AutoHeight()
 								[
-									SNew(SButton)
-									.HAlign(HAlign_Center)
-									.VAlign(VAlign_Center)
-									.Text(FText::FromString("Delete Empty Folders"))
-									.OnClicked_Raw(this, &SProjectCleanerMainUI::OnDeleteEmptyFolderClick)
+									SAssignNew(CleanerConfigsUI, SProjectCleanerConfigsUI)
+									.CleanerConfigs(CleanerManager->GetCleanerConfigs())
 								]
-							]
-							+ SVerticalBox::Slot()
-							.Padding(FMargin{20.0f, 5.0f})
-							.AutoHeight()
-							[
-								SAssignNew(CleanerConfigsUI, SProjectCleanerConfigsUI)
-								.CleanerConfigs(CleanerManager->GetCleanerConfigs())
 							]
 						]
 					]
 				]
+				+ SSplitter::Slot()
+				[
+					TabContents
+				]
 			]
-			+ SSplitter::Slot()
+		]
+		+ SWidgetSwitcher::Slot()
+		.HAlign(HAlign_Fill)
+		.VAlign(VAlign_Fill)
+		[
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot()
+			.FillWidth(1.0f)
+			.HAlign(HAlign_Center)
+			.VAlign(VAlign_Center)
 			[
-				TabContents
+				SNew(STextBlock)
+				.Justification(ETextJustify::Center)
+				.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light30"))
+				.Text(LOCTEXT("project_cleaner_asset_registry_still_working", "Asset registry still working. Please wait while scan completes"))
 			]
 		]
 	];
@@ -221,6 +249,21 @@ void SProjectCleanerMainUI::OnCleanerManagerUpdated() const
 	{
 		CorruptedFilesUI.Pin()->UpdateUI();
 	}
+}
+
+bool SProjectCleanerMainUI::IsWidgetEnabled() const
+{
+	return !CleanerManager->GetDataManager().IsLoadingAssets(false);
+}
+
+int32 SProjectCleanerMainUI::GetDefaultWidgetIndex() const
+{
+	if (CleanerManager->GetDataManager().IsLoadingAssets(false))
+	{
+		return 1;
+	}
+
+	return 0;
 }
 
 TSharedRef<SDockTab> SProjectCleanerMainUI::OnUnusedAssetTabSpawn(const FSpawnTabArgs& SpawnTabArgs)
@@ -350,3 +393,5 @@ FReply SProjectCleanerMainUI::OnDeleteEmptyFolderClick() const
 
 	return FReply::Handled();
 }
+
+#undef LOCTEXT_NAMESPACE

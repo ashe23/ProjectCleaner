@@ -21,6 +21,9 @@ private:
 	/* Initializers */
 	void InitTabs();
 	void OnCleanerManagerUpdated() const;
+
+	bool IsWidgetEnabled() const;
+	int32 GetDefaultWidgetIndex() const;
 	
 	/* Tab Callbacks */
 	TSharedRef<SDockTab> OnUnusedAssetTabSpawn(const FSpawnTabArgs& SpawnTabArgs);

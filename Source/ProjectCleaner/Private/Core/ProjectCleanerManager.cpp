@@ -2,8 +2,10 @@
 
 #include "Core/ProjectCleanerManager.h"
 #include "StructsContainer.h"
+#include "UI/ProjectCleanerNotificationManager.h"
 // Engine Headers
 #include "AssetRegistryModule.h"
+#include "Core/ProjectCleanerUtility.h"
 #include "Misc/ScopedSlowTask.h"
 #include "Misc/FileHelper.h"
 #include "Engine/AssetManagerSettings.h"
@@ -24,6 +26,8 @@ FProjectCleanerManager::~FProjectCleanerManager()
 
 void FProjectCleanerManager::Update()
 {
+	if (DataManager.IsLoadingAssets(true)) return;
+	
 	FScopedSlowTask UpdateTask(1.0f, FText::FromString(FStandardCleanerText::Scanning));
 	UpdateTask.MakeDialog();
 
@@ -70,9 +74,12 @@ void FProjectCleanerManager::ExcludeSelectedAssetsByType(const TArray<FAssetData
 	Update();
 }
 
-void FProjectCleanerManager::ExcludePath(const FString& InPath)
+bool FProjectCleanerManager::ExcludePath(const FString& InPath)
 {
-	if (InPath.IsEmpty()) return;
+	if (!DataManager.ExcludePath(InPath))
+	{
+		return false;
+	}
 	
 	FDirectoryPath DirectoryPath;
 	DirectoryPath.Path = InPath;
@@ -88,11 +95,21 @@ void FProjectCleanerManager::ExcludePath(const FString& InPath)
 	}
 	
 	Update();
+
+	return true;
 }
 
-void FProjectCleanerManager::IncludePath(const FString& InPath)
+bool FProjectCleanerManager::IncludePath(const FString& InPath)
 {
-	if (InPath.IsEmpty()) return;
+	if (!DataManager.IncludePath(InPath))
+	{
+		ProjectCleanerNotificationManager::AddTransient(
+			FText::FromString(FStandardCleanerText::CantIncludePath),
+			SNotificationItem::CS_Fail,
+			10.0f
+		);
+		return false;
+	}
 	
 	CleanerConfigs->Paths.RemoveAll([&] (const FDirectoryPath& DirPath)
 	{
@@ -100,34 +117,79 @@ void FProjectCleanerManager::IncludePath(const FString& InPath)
 	});
 	
 	Update();
+
+	return true;
 }
 
-void FProjectCleanerManager::IncludeSelectedAssets(const TArray<FAssetData>& Assets)
+bool FProjectCleanerManager::IncludeSelectedAssets(const TArray<FAssetData>& Assets)
 {
-	DataManager.IncludeSelectedAssets(Assets);
+	if (!DataManager.IncludeSelectedAssets(Assets))
+	{
+		ProjectCleanerNotificationManager::AddTransient(
+			FText::FromString(FStandardCleanerText::CantIncludeSomeAssets),
+			SNotificationItem::CS_Fail,
+			10.0f
+		);
+		return false;
+	}
 	
 	Update();
+
+	return true;
 }
 
 int32 FProjectCleanerManager::DeleteSelectedAssets(const TArray<FAssetData>& Assets)
 {
-	const int32 DeletedAssets = DataManager.DeleteSelectedAssets(Assets);
-	if (DeletedAssets > 0)
+	const int32 AssetNum = Assets.Num();
+	const int32 DeletedAssetsNum = DataManager.DeleteSelectedAssets(Assets);
+
+	if (DeletedAssetsNum != 0 && DeletedAssetsNum != AssetNum)
+	{
+		ProjectCleanerNotificationManager::AddTransient(
+			FText::FromString(FStandardCleanerText::FailedToDeleteSomeAssets),
+			SNotificationItem::CS_Fail,
+			3.0f
+		);
+	}
+
+	if (DeletedAssetsNum > 0)
 	{
 		Update();
 	}
 
-	return DeletedAssets;
+	return DeletedAssetsNum;
 }
 
 void FProjectCleanerManager::DeleteAllUnusedAssets()
 {
-	DataManager.DeleteAllUnusedAssets();
+	DataManager.CleanProject();
 }
 
-void FProjectCleanerManager::DeleteEmptyFolders()
+int32 FProjectCleanerManager::DeleteEmptyFolders()
 {
-	DataManager.DeleteEmptyFolders();
+	const int32 EmptyFoldersNum = DataManager.GetEmptyFolders().Num();
+	const int32 DeletedFoldersNum = DataManager.DeleteEmptyFolders();
+
+	if (DeletedFoldersNum != EmptyFoldersNum)
+	{
+		ProjectCleanerNotificationManager::AddTransient(
+			FText::FromString(FStandardCleanerText::FailedToDeleteSomeFolders),
+			SNotificationItem::CS_Fail,
+			5.0f
+		);
+	}
+	else
+	{
+		ProjectCleanerNotificationManager::AddTransient(
+			FText::FromString(FStandardCleanerText::FoldersSuccessfullyDeleted),
+			SNotificationItem::CS_Success,
+			5.0f
+		);
+	}
+
+	ProjectCleanerUtility::FocusOnGameFolder();
+	
+	return DeletedFoldersNum;
 }
 
 const FProjectCleanerDataManager& FProjectCleanerManager::GetDataManager() const
@@ -195,62 +257,5 @@ void FProjectCleanerManager::IncludeAllAssets()
 
 	Update();
 }
-//
-// const TArray<FAssetData>& ProjectCleanerManager::GetAllAssets() const
-// {
-// 	return AllAssets;
-// }
-//
-// const TSet<FName>& ProjectCleanerManager::GetCorruptedAssets() const
-// {
-// 	return CorruptedAssets;
-// }
-//
-// const TSet<FName>& ProjectCleanerManager::GetNonEngineFiles() const
-// {
-// 	return NonEngineFiles;
-// }
-//
-// const TMap<FAssetData, FIndirectAsset>& ProjectCleanerManager::GetIndirectAssets() const
-// {
-// 	return IndirectAssets;
-// }
-//
-// const TSet<FName>& ProjectCleanerManager::GetEmptyFolders() const
-// {
-// 	return EmptyFolders;
-// }
-//
-// const TSet<FName>& ProjectCleanerManager::GetPrimaryAssetClasses() const
-// {
-// 	return PrimaryAssetClasses;
-// }
-//
-// const TArray<FAssetData>& ProjectCleanerManager::GetUnusedAssets() const
-// {
-// 	return UnusedAssets;
-// }
-//
-// const TSet<FName>& ProjectCleanerManager::GetExcludedAssets() const
-// {
-// 	return ExcludedAssets;
-// }
-//
-// UCleanerConfigs* ProjectCleanerManager::GetCleanerConfigs() const
-// {
-// 	return CleanerConfigs;
-// }
-//
-// UExcludeOptions* ProjectCleanerManager::GetExcludeOptions() const
-// {
-// 	return ExcludeOptions;
-// }
-
-
-
-// const FAssetRegistryModule* ProjectCleanerManager::GetAssetRegistry() const
-// {
-// 	return AssetRegistry;
-// }
 
 #undef LOCTEXT_NAMESPACE

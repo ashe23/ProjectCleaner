@@ -10,17 +10,17 @@
 class ICleanerUIActions
 {
 public:
-	virtual ~ICleanerUIActions() {};
+	virtual ~ICleanerUIActions() {}
 	
 	virtual void ExcludeSelectedAssets(const TArray<FAssetData>& Assets) = 0;
 	virtual void ExcludeSelectedAssetsByType(const TArray<FAssetData>& Assets) = 0;
-	virtual void IncludeSelectedAssets(const TArray<FAssetData>& Assets) = 0;
+	virtual bool IncludeSelectedAssets(const TArray<FAssetData>& Assets) = 0;
 	virtual void IncludeAllAssets() = 0;
-	virtual void ExcludePath(const FString& InPath) = 0;
-	virtual void IncludePath(const FString& InPath) = 0;
+	virtual bool ExcludePath(const FString& InPath) = 0;
+	virtual bool IncludePath(const FString& InPath) = 0;
 	virtual int32 DeleteSelectedAssets(const TArray<FAssetData>& Assets) = 0;
 	virtual void DeleteAllUnusedAssets() = 0;
-	virtual void DeleteEmptyFolders() = 0;
+	virtual int32 DeleteEmptyFolders() = 0;
 };
 
 UCLASS(Transient)
@@ -118,18 +118,19 @@ struct FStandardCleanerText
 	constexpr static TCHAR* AssetsDeleteWindowContent = TEXT("Are you sure you want to permanently delete unused assets?");
 	constexpr static TCHAR* EmptyFolderWindowTitle = TEXT("Confirm deletion of empty folders");
 	constexpr static TCHAR* EmptyFolderWindowContent = TEXT("Are you sure you want to delete all empty folders in project?");
-	constexpr static TCHAR* StartingCleanup = TEXT("Starting Cleanup. This could take some time, please wait");
 	constexpr static TCHAR* DeletingUnusedAssets = TEXT("Deleting unused assets...");
 	constexpr static TCHAR* NoAssetsToDelete = TEXT("There are no assets to delete!");
 	constexpr static TCHAR* NoEmptyFolderToDelete = TEXT("There are no empty folders to delete!");
-	constexpr static TCHAR* AssetRegistryStillWorking = TEXT("Asset registry still working. Please wait while scan completes");
-	constexpr static TCHAR* CantIncludeSomeAssets = TEXT("Cant include selected assets, because they excluded by 'Exclude Options' filter.");
+	constexpr static TCHAR* AssetRegistryStillWorking = TEXT("Please wait, AssetRegistry is loading assets");
+	constexpr static TCHAR* CantIncludeSomeAssets = TEXT("Cant include selected assets, because they are excluded by 'Exclude Options' filter.");
+	constexpr static TCHAR* CantIncludePath = TEXT("Cant include selected path, because they are excluded by 'Exclude Options' filter.");
 	constexpr static TCHAR* FailedToDeleteSomeFolders = TEXT("Failed to delete some folders. Open 'Output Log' for more information.");
-	constexpr static TCHAR* FailedToDeleteSomeAssets = TEXT("Failed to delete some assets. Try to check 'Force Delete assets' option");
+	constexpr static TCHAR* FailedToDeleteSomeAssets = TEXT("Failed to delete some assets");
 	constexpr static TCHAR* SearchingForUnusedAssets = TEXT("Searching for unused assets...");
 	constexpr static TCHAR* Scanning = TEXT("Scanning...");
 	constexpr static TCHAR* AssetsSuccessfullyDeleted = TEXT("Assets deleted successfully");
+	constexpr static TCHAR* FoldersSuccessfullyDeleted = TEXT("Empty folders deleted successfully");
 	constexpr static TCHAR* LoadingAssets = TEXT("Loading assets...");
 	constexpr static TCHAR* FixingUpRedirectors = TEXT("Fixing up redirectors...");
-	constexpr static TCHAR* FixingUpRedirectorsConverting = TEXT("Converting assets objects to redirectors...");
+	constexpr static TCHAR* AnalyzingAssets = TEXT("Analyzing unused assets...");
 };
