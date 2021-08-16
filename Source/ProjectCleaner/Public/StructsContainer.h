@@ -19,7 +19,7 @@ public:
 	virtual bool ExcludePath(const FString& InPath) = 0;
 	virtual bool IncludePath(const FString& InPath) = 0;
 	virtual int32 DeleteSelectedAssets(const TArray<FAssetData>& Assets) = 0;
-	virtual void DeleteAllUnusedAssets() = 0;
+	virtual int32 DeleteAllUnusedAssets() = 0;
 	virtual int32 DeleteEmptyFolders() = 0;
 };
 
@@ -119,6 +119,7 @@ struct FStandardCleanerText
 	constexpr static TCHAR* EmptyFolderWindowTitle = TEXT("Confirm deletion of empty folders");
 	constexpr static TCHAR* EmptyFolderWindowContent = TEXT("Are you sure you want to delete all empty folders in project?");
 	constexpr static TCHAR* DeletingUnusedAssets = TEXT("Deleting unused assets...");
+	constexpr static TCHAR* DeletingEmptyFolders = TEXT("Deleting empty folders...");
 	constexpr static TCHAR* NoAssetsToDelete = TEXT("There are no assets to delete!");
 	constexpr static TCHAR* NoEmptyFolderToDelete = TEXT("There are no empty folders to delete!");
 	constexpr static TCHAR* AssetRegistryStillWorking = TEXT("Please wait, AssetRegistry is loading assets");
@@ -133,4 +134,7 @@ struct FStandardCleanerText
 	constexpr static TCHAR* LoadingAssets = TEXT("Loading assets...");
 	constexpr static TCHAR* FixingUpRedirectors = TEXT("Fixing up redirectors...");
 	constexpr static TCHAR* AnalyzingAssets = TEXT("Analyzing unused assets...");
+	constexpr static TCHAR* PreparingAssetsForDeletion = TEXT("Preparing assets for deletion...");
+	constexpr static TCHAR* RestartEditorTitle = TEXT("Confirm Restart Editor");
+	constexpr static TCHAR* RestartEditorContent = TEXT("To finish project cleaning,its recommended to Restart Editor. Proceed??");
 };

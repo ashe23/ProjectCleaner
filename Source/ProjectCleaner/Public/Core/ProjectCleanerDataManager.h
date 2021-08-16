@@ -21,7 +21,11 @@ public:
 	bool IsLoadingAssets(const bool bShowNotification) const;
 	void AnalyzeProject();
 	void PrintInfo();
-	void CleanProject();
+
+	// cli
+	void SetExcludeClasses(const TArray<FString>& Classes);
+	void SetExcludePaths(const TArray<FString>& Paths);
+	void SetUserExcludedAssets(const TArray<FString>& Assets);
 
 	// UI Actions
 	virtual void ExcludeSelectedAssets(const TArray<FAssetData>& Assets) override;
@@ -31,7 +35,7 @@ public:
 	virtual bool ExcludePath(const FString& InPath) override;
 	virtual bool IncludePath(const FString& InPath) override;
 	virtual int32 DeleteSelectedAssets(const TArray<FAssetData>& Assets) override;
-	virtual void DeleteAllUnusedAssets() override;
+	virtual int32 DeleteAllUnusedAssets() override;
 	virtual int32 DeleteEmptyFolders() override;
 
 	// getters
@@ -64,7 +68,10 @@ private:
 	void FindUsedAssetsDependencies(const TSet<FName>& UsedAssets, TSet<FName>& UsedAssetsDeps) const;
 	void FindExcludedAssets(TSet<FName>& UsedAssets);
 	void AnalyzeUnusedAssets();
-	void GetDeletionAssetsBucket(TArray<FAssetData>& Bucket, const int32 BucketSize);
+	void FillBucketWithAssets(TArray<FAssetData>& Bucket, const int32 BucketSize);
+	bool PrepareBucketForDeletion(const TArray<FAssetData>& Bucket, TArray<UObject*>& LoadedAssets);
+	int32 DeleteBucket(const TArray<UObject*>& LoadedAssets);
+	void CleanupAfterDelete();
 
 	/* Check Functions */
 	bool IsExcludedByClass(const FAssetData& AssetData) const;
@@ -90,6 +97,7 @@ private:
 	bool bAutomaticallyDeleteEmptyFolders;
 	TSet<FName> ExcludedPaths;
 	TSet<FName> ExcludedClasses;
+	bool bCancelledByUser;
 
 	/* Engine Modules */
 	FAssetRegistryModule* AssetRegistry;

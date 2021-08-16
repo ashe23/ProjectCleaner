@@ -50,6 +50,7 @@ public class ProjectCleaner : ModuleRules
 				"UnrealEd",
 				"ToolMenus",
 				"AssetTools",
+				"RenderCore",
 			}
 		);
 

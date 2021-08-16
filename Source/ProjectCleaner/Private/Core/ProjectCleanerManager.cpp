@@ -5,11 +5,11 @@
 #include "UI/ProjectCleanerNotificationManager.h"
 // Engine Headers
 #include "AssetRegistryModule.h"
-#include "Core/ProjectCleanerUtility.h"
 #include "Misc/ScopedSlowTask.h"
 #include "Misc/FileHelper.h"
 #include "Engine/AssetManagerSettings.h"
 #include "Engine/AssetManager.h"
+#include "ShaderCompiler.h"
 
 #define LOCTEXT_NAMESPACE "FProjectCleanerModule"
 
@@ -152,33 +152,67 @@ int32 FProjectCleanerManager::DeleteSelectedAssets(const TArray<FAssetData>& Ass
 		);
 	}
 
-	if (DeletedAssetsNum > 0)
-	{
-		Update();
-	}
-
 	return DeletedAssetsNum;
 }
 
-void FProjectCleanerManager::DeleteAllUnusedAssets()
+int32 FProjectCleanerManager::DeleteAllUnusedAssets()
 {
-	DataManager.CleanProject();
+	const int32 UnusedAssetsNum = DataManager.GetUnusedAssets().Num();
+	const int32 DeleteAssetsNum = DataManager.DeleteAllUnusedAssets();
+
+	if (UnusedAssetsNum != DeleteAssetsNum)
+	{
+		ProjectCleanerNotificationManager::AddTransient(
+			FText::FromString(FStandardCleanerText::FailedToDeleteSomeAssets),
+			SNotificationItem::CS_Fail,
+			10.0f
+		);
+	}
+	else
+	{
+		ProjectCleanerNotificationManager::AddTransient(
+			FText::FromString(FStandardCleanerText::AssetsSuccessfullyDeleted),
+			SNotificationItem::CS_Success,
+			10.0f
+		);
+	}
+	
+	if (CleanerConfigs->bAutomaticallyDeleteEmptyFolders)
+	{
+		DeleteEmptyFolders();
+	}
+
+	// show window to restart editor, if any shader compilation still exists
+	// if (GShaderCompilingManager && GShaderCompilingManager->IsCompiling())
+	// {
+	// 	// GShaderCompilingManager->FinishAllCompilation();
+	// 	// FlushRenderingCommands();
+	// 	// if (GShaderCompilingManager->HasShaderJobs())
+	// 	// {
+	// 	// 	const auto ConfirmationWindowStatus = ProjectCleanerNotificationManager::ShowConfirmationWindow(
+	// 	// 		FText::FromString(FStandardCleanerText::RestartEditorTitle),
+	// 	// 		FText::FromString(FStandardCleanerText::RestartEditorContent)
+	// 	// 	);
+	// 	// 	if (!ProjectCleanerNotificationManager::IsConfirmationWindowCanceled(ConfirmationWindowStatus))
+	// 	// 	{
+	// 	// 		FUnrealEdMisc::Get().RestartEditor(true);
+	// 	// 		return DeleteAssetsNum;
+	// 	// 	}
+	// 	// }
+	// 	// else
+	// 	// {
+	// 	// 	GShaderCompilingManager->ProcessAsyncResults(false, false);
+	// 	// }
+	// }
+
+	return DeleteAssetsNum;
 }
 
 int32 FProjectCleanerManager::DeleteEmptyFolders()
 {
-	const int32 EmptyFoldersNum = DataManager.GetEmptyFolders().Num();
 	const int32 DeletedFoldersNum = DataManager.DeleteEmptyFolders();
 
-	if (DeletedFoldersNum != EmptyFoldersNum)
-	{
-		ProjectCleanerNotificationManager::AddTransient(
-			FText::FromString(FStandardCleanerText::FailedToDeleteSomeFolders),
-			SNotificationItem::CS_Fail,
-			5.0f
-		);
-	}
-	else
+	if (DeletedFoldersNum > 0)
 	{
 		ProjectCleanerNotificationManager::AddTransient(
 			FText::FromString(FStandardCleanerText::FoldersSuccessfullyDeleted),
@@ -186,8 +220,6 @@ int32 FProjectCleanerManager::DeleteEmptyFolders()
 			5.0f
 		);
 	}
-
-	ProjectCleanerUtility::FocusOnGameFolder();
 	
 	return DeletedFoldersNum;
 }

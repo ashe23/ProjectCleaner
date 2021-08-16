@@ -30,29 +30,32 @@ int32 UProjectCleanerCLICommandlet::Main(const FString& Params)
 	
 	if (IsArgumentsValid())
 	{
-		FProjectCleanerDataManager CleanerDataManagerV2;
-		CleanerDataManagerV2.SetSilentMode(true);
-		CleanerDataManagerV2.AnalyzeProject();
+		FProjectCleanerDataManager CleanerDataManager;
+		CleanerDataManager.SetSilentMode(true);
+		CleanerDataManager.SetExcludePaths(ExcludedPaths);
+		CleanerDataManager.SetExcludeClasses(ExcludedClasses);
+		CleanerDataManager.AnalyzeProject();
 		
-		UE_LOG(LogProjectCleanerCLI, Display, TEXT("===================================="));
-		UE_LOG(LogProjectCleanerCLI, Display, TEXT("=========  Before Cleanup    ======="));
-		UE_LOG(LogProjectCleanerCLI, Display, TEXT("===================================="));
-		CleanerDataManagerV2.PrintInfo();
-		UE_LOG(LogProjectCleanerCLI, Display, TEXT("===================================="));
-		UE_LOG(LogProjectCleanerCLI, Display, TEXT(""));
-		UE_LOG(LogProjectCleanerCLI, Display, TEXT(""));
-
-		
-		CleanerDataManagerV2.CleanProject();
-
-		
-		UE_LOG(LogProjectCleanerCLI, Display, TEXT(""));
-		UE_LOG(LogProjectCleanerCLI, Display, TEXT(""));
-		UE_LOG(LogProjectCleanerCLI, Display, TEXT("===================================="));
-		UE_LOG(LogProjectCleanerCLI, Display, TEXT("=========  After Cleanup    ========"));
-		UE_LOG(LogProjectCleanerCLI, Display, TEXT("===================================="));
-		CleanerDataManagerV2.PrintInfo();
-		UE_LOG(LogProjectCleanerCLI, Display, TEXT("===================================="));
+		if (bCheckOnly)
+		{
+			UE_LOG(LogProjectCleanerCLI, Display, TEXT("===================================="));
+			UE_LOG(LogProjectCleanerCLI, Display, TEXT("========= Statistics    ============"));
+			UE_LOG(LogProjectCleanerCLI, Display, TEXT("===================================="));
+			CleanerDataManager.PrintInfo();
+			UE_LOG(LogProjectCleanerCLI, Display, TEXT("===================================="));
+			UE_LOG(LogProjectCleanerCLI, Display, TEXT(""));
+		}
+		else
+		{
+			// CleanerDataManager.CleanProject(); todo:ashe23
+			UE_LOG(LogProjectCleanerCLI, Display, TEXT(""));
+			UE_LOG(LogProjectCleanerCLI, Display, TEXT(""));
+			UE_LOG(LogProjectCleanerCLI, Display, TEXT("===================================="));
+			UE_LOG(LogProjectCleanerCLI, Display, TEXT("=========  After Cleanup    ========"));
+			UE_LOG(LogProjectCleanerCLI, Display, TEXT("===================================="));
+			CleanerDataManager.PrintInfo();
+			UE_LOG(LogProjectCleanerCLI, Display, TEXT("===================================="));
+		}
 	}
 	
 	return 0;
@@ -77,9 +80,9 @@ void UProjectCleanerCLICommandlet::ParseCommandLinesArguments(const FString& Par
 	// -Check - false
 	// -ScanDevContent - false
 	// -DeleteEmptyFolders - true
-	// -ExcludeAssets - empty
-	// -ExcludeAssetsInPath - empty
-	// -ExcludeAssetWithClass - empty
+	// -ExcludeAssets - empty // todo:ashe23
+	// -ExcludeAssetsInPath - empty 
+	// -ExcludeAssetWithClass - empty // todo:ashe23
 	if (Switches.Num() == 0 && Parameters.Num() == 1 && Tokens.Num() == 0) // Parameters contain -run=ProjectCleanerCLI - argument only
 	{
 		bArgumentsValid = true;
@@ -97,17 +100,17 @@ void UProjectCleanerCLICommandlet::ParseCommandLinesArguments(const FString& Par
 	
 	for (const auto& Switch : Switches)
 	{
-		if (Switch.Equals(TEXT("Check")))
+		if (Switch.Equals(TEXT("Check"), ESearchCase::IgnoreCase))
 		{
 			bCheckOnly = true;
 		}
 
-		if (Switch.Equals(TEXT("ScanDevContent")))
+		if (Switch.Equals(TEXT("ScanDevContent"), ESearchCase::IgnoreCase))
 		{
 			bScanDeveloperContents = true;
 		}
 
-		if (Switch.Equals(TEXT("DeleteEmptyFolders")))
+		if (Switch.Equals(TEXT("DeleteEmptyFolders"), ESearchCase::IgnoreCase))
 		{
 			bAutomaticallyDeleteEmptyFolders = true;
 		}
@@ -121,7 +124,7 @@ void UProjectCleanerCLICommandlet::ParseCommandLinesArguments(const FString& Par
 	
 	for (const auto Param : Parameters)
 	{
-		if (Param.Key.Equals(TEXT("ExcludeAssets")))
+		if (Param.Key.Equals(TEXT("ExcludeAssets"), ESearchCase::IgnoreCase))
 		{
 			// parsing string arguments to array
 			TArray<FString> ParsedArray;
@@ -142,7 +145,7 @@ void UProjectCleanerCLICommandlet::ParseCommandLinesArguments(const FString& Par
 			}
 		}
 
-		if (Param.Key.Equals(TEXT("ExcludeAssetsInPath")))
+		if (Param.Key.Equals(TEXT("ExcludeAssetsInPath"), ESearchCase::IgnoreCase))
 		{
 			// parsing string arguments to array
 			TArray<FString> ParsedArray;
@@ -161,7 +164,7 @@ void UProjectCleanerCLICommandlet::ParseCommandLinesArguments(const FString& Par
 			}
 		}
 
-		if (Param.Key.Equals(TEXT("ExcludeAssetsWithClass")))
+		if (Param.Key.Equals(TEXT("ExcludeAssetsWithClass"), ESearchCase::IgnoreCase))
 		{
 			TArray<FString> ParsedArray;
 			Param.Value.ParseIntoArray(ParsedArray, TEXT(","), true);

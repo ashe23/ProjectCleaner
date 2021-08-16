@@ -369,7 +369,7 @@ FText SProjectCleanerStatisticsUI::GetProgressBarText() const
 {
 	return FText::FromString(
 		FString::Printf(
-			TEXT("%.1f %% (%d of %d) unused assets"),
+			TEXT("%.2f %% (%d of %d) unused assets"),
 			CleanerManager->GetUnusedAssetsPercent(),
 			CleanerManager->GetUnusedAssets().Num(),
 			CleanerManager->GetAllAssets().Num()

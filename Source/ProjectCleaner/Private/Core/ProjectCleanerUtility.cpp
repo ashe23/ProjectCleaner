@@ -1,15 +1,12 @@
 ﻿// Copyright 2021. Ashot Barkhudaryan. All Rights Reserved.
 
 #include "Core/ProjectCleanerUtility.h"
-#include "StructsContainer.h"
-#include "ProjectCleaner.h"
 // Engine Headers
 #include "ObjectTools.h"
 #include "FileHelpers.h"
 #include "AssetRegistryModule.h"
 #include "AssetToolsModule.h"
 #include "IContentBrowserSingleton.h"
-#include "Engine/AssetManager.h"
 #include "Engine/MapBuildDataRegistry.h"
 #include "Misc/Paths.h"
 #include "Misc/FileHelper.h"
@@ -50,15 +47,26 @@ FName ProjectCleanerUtility::GetClassName(const FAssetData& AssetData)
 	return ClassName;
 }
 
-FText ProjectCleanerUtility::GetDeletionProgressText(const int32 DeletedAssetNum, const int32 Total)
+FText ProjectCleanerUtility::GetDeletionProgressText(const int32 DeletedAssetNum, const int32 Total, const bool bShowPercent)
 {
-	const int32 Percent = Total > 0 ? (DeletedAssetNum * 100.0f) / Total : 0;
+	if (bShowPercent)
+	{
+		const int32 Percent = Total > 0 ? (DeletedAssetNum * 100.0f) / Total : 0;
+		return FText::FromString(
+			FString::Printf(
+			TEXT("Deleted %d of %d assets. %d %%"),
+				DeletedAssetNum,
+				Total,
+				Percent
+			)
+		);
+	}
+	
 	return FText::FromString(
 		FString::Printf(
-		TEXT("Deleted %d of %d assets. %d %%"),
+		TEXT("Deleted %d of %d assets"),
 			DeletedAssetNum,
-			Total,
-			Percent
+			Total
 		)
 	);
 }
@@ -79,45 +87,45 @@ FString ProjectCleanerUtility::ConvertInternalToAbsolutePath(const FString& InPa
 	return ConvertPathInternal(FString{ "/Game/" }, ProjectContentDirAbsPath, Path);
 }
 
-int32 ProjectCleanerUtility::DeleteEmptyFolders(TSet<FName>& EmptyFolders)
-{
-	const FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
-
-	int32 DeletedFoldersNum = 0;
-	bool ErrorWhileDeleting = false;
-	TSet<FString> FailedToDeleteFolders;
-	
-	for (auto& EmptyFolder : EmptyFolders)
-	{
-		const FString EmptyFolderStr = EmptyFolder.ToString();
-		if (!IFileManager::Get().DirectoryExists(*EmptyFolderStr)) continue;
-
-		if (!IFileManager::Get().DeleteDirectory(*EmptyFolderStr, false, true))
-		{
-			ErrorWhileDeleting = true;
-			UE_LOG(LogProjectCleaner, Error, TEXT("Failed to delete %s folder."), *EmptyFolderStr);
-			FailedToDeleteFolders.Add(EmptyFolderStr);
-			continue;
-		}
-
-		DeletedFoldersNum++;
-		// removing folder path from asset registry
-		AssetRegistryModule.Get().RemovePath(ConvertAbsolutePathToInternal(EmptyFolderStr));
-	}
-
-	EmptyFolders.Empty();
-	EmptyFolders.Reserve(FailedToDeleteFolders.Num());
-	
-	if (ErrorWhileDeleting)
-	{
-		for (const auto& Folder : FailedToDeleteFolders)
-		{
-			EmptyFolders.Add(FName{*Folder});
-		}
-	}
-
-	return DeletedFoldersNum;
-}
+// int32 ProjectCleanerUtility::DeleteEmptyFolders(TSet<FName>& EmptyFolders)
+// {
+// 	const FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
+//
+// 	int32 DeletedFoldersNum = 0;
+// 	bool ErrorWhileDeleting = false;
+// 	TSet<FString> FailedToDeleteFolders;
+// 	
+// 	for (auto& EmptyFolder : EmptyFolders)
+// 	{
+// 		const FString EmptyFolderStr = EmptyFolder.ToString();
+// 		if (!IFileManager::Get().DirectoryExists(*EmptyFolderStr)) continue;
+//
+// 		if (!IFileManager::Get().DeleteDirectory(*EmptyFolderStr, false, true))
+// 		{
+// 			ErrorWhileDeleting = true;
+// 			UE_LOG(LogProjectCleaner, Error, TEXT("Failed to delete %s folder."), *EmptyFolderStr);
+// 			FailedToDeleteFolders.Add(EmptyFolderStr);
+// 			continue;
+// 		}
+//
+// 		DeletedFoldersNum++;
+// 		// removing folder path from asset registry
+// 		AssetRegistryModule.Get().RemovePath(ConvertAbsolutePathToInternal(EmptyFolderStr));
+// 	}
+//
+// 	EmptyFolders.Empty();
+// 	EmptyFolders.Reserve(FailedToDeleteFolders.Num());
+// 	
+// 	if (ErrorWhileDeleting)
+// 	{
+// 		for (const auto& Folder : FailedToDeleteFolders)
+// 		{
+// 			EmptyFolders.Add(FName{*Folder});
+// 		}
+// 	}
+//
+// 	return DeletedFoldersNum;
+// }
 
 bool ProjectCleanerUtility::FindEmptyFoldersInPath(const FString& FolderPath, TSet<FName>& EmptyFolders)
 {
@@ -185,18 +193,18 @@ int32 ProjectCleanerUtility::DeleteAssets(TArray<FAssetData>& Assets, const bool
 	int32 DeletedAssets = ObjectTools::DeleteAssets(Assets, false);
 
 	// if normally not working try to force delete
-	if (DeletedAssets != GivenAssetsNum && ForceDelete)
+	if (ForceDelete && DeletedAssets != GivenAssetsNum)
 	{
 		TArray<UObject*> AssetObjects;
 		AssetObjects.Reserve(Assets.Num());
 		
-		FScopedSlowTask SlowTask(
-		Assets.Num(),
-		FText::FromString(FStandardCleanerText::LoadingAssets)
-		);
+		// FScopedSlowTask SlowTask(
+		// Assets.Num(),
+		// FText::FromString(FStandardCleanerText::LoadingAssets)
+		// );
 		for (const auto& Asset : Assets)
 		{
-			SlowTask.EnterProgressFrame();
+			// SlowTask.EnterProgressFrame();
 			const auto AssetObj = Asset.GetAsset();
 			if(!AssetObj) continue;
 			AssetObjects.Add(AssetObj);
@@ -227,7 +235,7 @@ void ProjectCleanerUtility::UpdateAssetRegistry(bool bSyncScan = false)
 	TArray<FString> ScanFolders;
 	ScanFolders.Add("/Game");
 
-	// AssetRegistry.Get().ScanPathsSynchronous(ScanFolders, true);
+	AssetRegistry.Get().ScanPathsSynchronous(ScanFolders, true);
 	AssetRegistry.Get().SearchAllAssets(bSyncScan);
 }
 

@@ -27,7 +27,7 @@ public:
 	virtual bool IncludeSelectedAssets(const TArray<FAssetData>& Assets) override;
 	virtual void IncludeAllAssets() override;
 	virtual int32 DeleteSelectedAssets(const TArray<FAssetData>& Assets) override;
-	virtual void DeleteAllUnusedAssets() override;
+	virtual int32 DeleteAllUnusedAssets() override;
 	virtual int32 DeleteEmptyFolders() override;
 
 	// getters
