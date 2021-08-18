@@ -111,7 +111,7 @@ struct FStandardCleanerText
 	constexpr static TCHAR* FailedToDeleteSomeAssets = TEXT("Failed to delete some assets");
 	constexpr static TCHAR* SearchingForUnusedAssets = TEXT("Searching for unused assets...");
 	constexpr static TCHAR* Scanning = TEXT("Scanning...");
-	constexpr static TCHAR* AssetsSuccessfullyDeleted = TEXT("Assets deleted successfully");
+	constexpr static TCHAR* UnusedAssetsSuccessfullyDeleted = TEXT("Unused assets deleted successfully");
 	constexpr static TCHAR* FoldersSuccessfullyDeleted = TEXT("Empty folders deleted successfully");
 	constexpr static TCHAR* LoadingAssets = TEXT("Loading assets...");
 	constexpr static TCHAR* FixingUpRedirectors = TEXT("Fixing up redirectors...");

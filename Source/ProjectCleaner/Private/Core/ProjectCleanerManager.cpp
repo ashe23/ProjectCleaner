@@ -171,7 +171,7 @@ int32 FProjectCleanerManager::DeleteAllUnusedAssets()
 	else
 	{
 		ProjectCleanerNotificationManager::AddTransient(
-			FText::FromString(FStandardCleanerText::AssetsSuccessfullyDeleted),
+			FText::FromString(FStandardCleanerText::UnusedAssetsSuccessfullyDeleted),
 			SNotificationItem::CS_Success,
 			10.0f
 		);

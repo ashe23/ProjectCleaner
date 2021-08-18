@@ -574,9 +574,17 @@ void FProjectCleanerDataManager::FindIndirectAssets()
 		FRegexMatcher Matcher(Pattern, FileContent);
 		while (Matcher.FindNext())
 		{
-			const FName FoundedAssetObjectPath =  FName{Matcher.GetCaptureGroup(0)};
+			FName FoundedAssetObjectPath =  FName{Matcher.GetCaptureGroup(0)};
 			if (!FoundedAssetObjectPath.IsValid()) continue;
 
+			// if ObjectPath ends with "_C" , then its probably blueprint, so we trim that
+			if (FoundedAssetObjectPath.ToString().EndsWith("_C"))
+			{
+				FString TrimmedObjectPath = FoundedAssetObjectPath.ToString();
+				TrimmedObjectPath.RemoveFromEnd("_C");
+				
+				FoundedAssetObjectPath = FName{*TrimmedObjectPath};
+			}
 			const FAssetData* AssetData = AllAssets.FindByPredicate([&] (const FAssetData& Elem)
 			{
 				return
