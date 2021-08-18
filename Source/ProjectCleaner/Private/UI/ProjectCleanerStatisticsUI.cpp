@@ -4,7 +4,6 @@
 #include "UI/ProjectCleanerStyle.h"
 #include "Core/ProjectCleanerManager.h"
 #include "Core/ProjectCleanerUtility.h"
-
 // Engine Headers
 #include "Widgets/Notifications/SProgressBar.h"
 
@@ -266,7 +265,7 @@ void SProjectCleanerStatisticsUI::Construct(const FArguments& InArgs)
 					.HAlign(HAlign_Fill)
 					.VAlign(VAlign_Fill)
 					[
-						SNew(SProgressBar)					
+						SNew(SProgressBar)
 						.Percent_Raw(this, &SProjectCleanerStatisticsUI::GetPercentRatio)
 						.FillColorAndOpacity_Raw(this, &SProjectCleanerStatisticsUI::GetProgressBarColor)
 					]

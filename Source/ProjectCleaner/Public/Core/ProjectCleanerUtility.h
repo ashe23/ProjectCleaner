@@ -6,14 +6,9 @@
 // Engine Headers
 #include "CoreMinimal.h"
 
-class UCleanerConfigs;
 class UIndirectAsset;
-class UExcludeOptions;
-class AssetRelationalMap;
 class FAssetRegistryModule;
-class ProjectCleanerNotificationManager;
 struct FAssetData;
-struct FProjectCleanerData;
 
 /**
  * This class responsible for different utility operations in unreal engine context

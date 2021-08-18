@@ -2,10 +2,10 @@
 
 #pragma once
 
+#include "StructsContainer.h"
 // Engine Headers
 #include "CoreMinimal.h"
 #include "Widgets/SCompoundWidget.h"
-#include "StructsContainer.h"
 
 class FProjectCleanerManager;
 

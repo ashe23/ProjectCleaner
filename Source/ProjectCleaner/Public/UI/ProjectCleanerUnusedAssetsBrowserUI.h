@@ -14,7 +14,7 @@ class SProjectCleanerUnusedAssetsBrowserUI : public SCompoundWidget
 public:
 	
 	SLATE_BEGIN_ARGS(SProjectCleanerUnusedAssetsBrowserUI) {}
-		SLATE_ARGUMENT(FProjectCleanerManager*, CleanerManager)		
+		SLATE_ARGUMENT(FProjectCleanerManager*, CleanerManager)
 	SLATE_END_ARGS()
 	
 	void Construct(const FArguments& InArgs);

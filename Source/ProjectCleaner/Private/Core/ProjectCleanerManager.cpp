@@ -26,7 +26,7 @@ FProjectCleanerManager::~FProjectCleanerManager()
 
 void FProjectCleanerManager::Update()
 {
-	if (DataManager.IsLoadingAssets(true)) return;
+	if (DataManager.IsLoadingAssets()) return;
 	
 	FScopedSlowTask UpdateTask(1.0f, FText::FromString(FStandardCleanerText::Scanning));
 	UpdateTask.MakeDialog();
@@ -182,8 +182,15 @@ int32 FProjectCleanerManager::DeleteAllUnusedAssets()
 		DeleteEmptyFolders();
 	}
 	
+	// todo:ashe23 This part is hacky
+	// Because assets loaded before deletion, in the cleanup end , we got a lot of shaders to compile,
+	// I dig into engine codes and couldn't find any interface to pause/resume shader compilations, besides
+	// GShaderCompilingManager->Shutdown(), which completely shut down current and future shader compilations.
+	// So we just restarting editor after cleaning finished.
+	// 
+	// PS. If someone has better understanding about this, or has better solution, would much appreciate for help :)
+	
 	// show window to restart editor, if any shader compilation still exists
-	// todo:ashe23 this is a bit hacky, but there is no any interface to pause/resume shader compilation
 	if (GShaderCompilingManager && GShaderCompilingManager->IsCompiling())
 	{
 		if (GShaderCompilingManager->HasShaderJobs())

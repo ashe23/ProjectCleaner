@@ -16,10 +16,10 @@
 
 int64 ProjectCleanerUtility::GetTotalSize(const TArray<FAssetData>& Assets)
 {
+	const FAssetRegistryModule& AssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>(AssetRegistryConstants::ModuleName);
 	int64 Size = 0;
 	for (const auto& Asset : Assets)
 	{
-		FAssetRegistryModule& AssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
 		const auto AssetPackageData = AssetRegistry.Get().GetAssetPackageData(Asset.PackageName);
 		if (!AssetPackageData) continue;
 		Size += AssetPackageData->DiskSize;
@@ -86,46 +86,6 @@ FString ProjectCleanerUtility::ConvertInternalToAbsolutePath(const FString& InPa
 	const FString ProjectContentDirAbsPath = FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir());
 	return ConvertPathInternal(FString{ "/Game/" }, ProjectContentDirAbsPath, Path);
 }
-
-// int32 ProjectCleanerUtility::DeleteEmptyFolders(TSet<FName>& EmptyFolders)
-// {
-// 	const FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
-//
-// 	int32 DeletedFoldersNum = 0;
-// 	bool ErrorWhileDeleting = false;
-// 	TSet<FString> FailedToDeleteFolders;
-// 	
-// 	for (auto& EmptyFolder : EmptyFolders)
-// 	{
-// 		const FString EmptyFolderStr = EmptyFolder.ToString();
-// 		if (!IFileManager::Get().DirectoryExists(*EmptyFolderStr)) continue;
-//
-// 		if (!IFileManager::Get().DeleteDirectory(*EmptyFolderStr, false, true))
-// 		{
-// 			ErrorWhileDeleting = true;
-// 			UE_LOG(LogProjectCleaner, Error, TEXT("Failed to delete %s folder."), *EmptyFolderStr);
-// 			FailedToDeleteFolders.Add(EmptyFolderStr);
-// 			continue;
-// 		}
-//
-// 		DeletedFoldersNum++;
-// 		// removing folder path from asset registry
-// 		AssetRegistryModule.Get().RemovePath(ConvertAbsolutePathToInternal(EmptyFolderStr));
-// 	}
-//
-// 	EmptyFolders.Empty();
-// 	EmptyFolders.Reserve(FailedToDeleteFolders.Num());
-// 	
-// 	if (ErrorWhileDeleting)
-// 	{
-// 		for (const auto& Folder : FailedToDeleteFolders)
-// 		{
-// 			EmptyFolders.Add(FName{*Folder});
-// 		}
-// 	}
-//
-// 	return DeletedFoldersNum;
-// }
 
 bool ProjectCleanerUtility::FindEmptyFoldersInPath(const FString& FolderPath, TSet<FName>& EmptyFolders)
 {
@@ -198,13 +158,8 @@ int32 ProjectCleanerUtility::DeleteAssets(TArray<FAssetData>& Assets, const bool
 		TArray<UObject*> AssetObjects;
 		AssetObjects.Reserve(Assets.Num());
 		
-		// FScopedSlowTask SlowTask(
-		// Assets.Num(),
-		// FText::FromString(FStandardCleanerText::LoadingAssets)
-		// );
 		for (const auto& Asset : Assets)
 		{
-			// SlowTask.EnterProgressFrame();
 			const auto AssetObj = Asset.GetAsset();
 			if(!AssetObj) continue;
 			AssetObjects.Add(AssetObj);
@@ -230,7 +185,7 @@ void ProjectCleanerUtility::SaveAllAssets(const bool PromptUser = true)
 
 void ProjectCleanerUtility::UpdateAssetRegistry(bool bSyncScan = false)
 {
-	const FAssetRegistryModule& AssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
+	const FAssetRegistryModule& AssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>(AssetRegistryConstants::ModuleName);
 	
 	TArray<FString> ScanFolders;
 	ScanFolders.Add("/Game");

@@ -6,7 +6,6 @@
 #include "Core/ProjectCleanerDataManager.h"
 
 struct FIndirectAsset;
-struct FExcludedAsset;
 class UCleanerConfigs;
 class FAssetRegistryModule;
 

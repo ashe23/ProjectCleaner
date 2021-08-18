@@ -94,24 +94,6 @@ struct FIndirectAsset
 	FIndirectAsset(): File(FString{}), Line(0), RelativePath(NAME_None) {}
 };
 
-enum class EUnusedAssetType
-{
-	Default,
-	RootAsset,
-	CircularAsset,
-};
-
-struct FUnusedAssetInfo
-{
-	EUnusedAssetType UnusedAssetType;
-	
-	TSet<FName> Refs;
-	TSet<FName> Deps;
-	TArray<FAssetData> CommonAssets;
-
-	FUnusedAssetInfo() : UnusedAssetType(EUnusedAssetType::Default) {}
-};
-
 struct FStandardCleanerText
 {
 	constexpr static TCHAR* AssetsDeleteWindowTitle = TEXT("Confirm deletion");

@@ -4,8 +4,6 @@
 #include "UI/ProjectCleanerStyle.h"
 #include "UI/ProjectCleanerMainUI.h"
 #include "UI/ProjectCleanerCommands.h"
-#include "UI/ProjectCleanerNotificationManager.h"
-#include "StructsContainer.h"
 // Engine Headers
 #include "ToolMenus.h"
 #include "AssetToolsModule.h"

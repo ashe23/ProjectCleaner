@@ -32,30 +32,31 @@ int32 UProjectCleanerCLICommandlet::Main(const FString& Params)
 	{
 		FProjectCleanerDataManager CleanerDataManager;
 		CleanerDataManager.SetSilentMode(true);
+		CleanerDataManager.SetUserExcludedAssets(ExcludedAssets);
 		CleanerDataManager.SetExcludePaths(ExcludedPaths);
 		CleanerDataManager.SetExcludeClasses(ExcludedClasses);
 		CleanerDataManager.AnalyzeProject();
 		
+		UE_LOG(LogProjectCleanerCLI, Display, TEXT("===================================="));
+		UE_LOG(LogProjectCleanerCLI, Display, TEXT("========= Statistics    ============"));
+		UE_LOG(LogProjectCleanerCLI, Display, TEXT("===================================="));
+		CleanerDataManager.PrintInfo();
+		UE_LOG(LogProjectCleanerCLI, Display, TEXT("===================================="));
+		UE_LOG(LogProjectCleanerCLI, Display, TEXT(""));
+
 		if (bCheckOnly)
 		{
-			UE_LOG(LogProjectCleanerCLI, Display, TEXT("===================================="));
-			UE_LOG(LogProjectCleanerCLI, Display, TEXT("========= Statistics    ============"));
-			UE_LOG(LogProjectCleanerCLI, Display, TEXT("===================================="));
-			CleanerDataManager.PrintInfo();
-			UE_LOG(LogProjectCleanerCLI, Display, TEXT("===================================="));
-			UE_LOG(LogProjectCleanerCLI, Display, TEXT(""));
+			return 0;
 		}
-		else
-		{
-			// CleanerDataManager.CleanProject(); todo:ashe23
-			UE_LOG(LogProjectCleanerCLI, Display, TEXT(""));
-			UE_LOG(LogProjectCleanerCLI, Display, TEXT(""));
-			UE_LOG(LogProjectCleanerCLI, Display, TEXT("===================================="));
-			UE_LOG(LogProjectCleanerCLI, Display, TEXT("=========  After Cleanup    ========"));
-			UE_LOG(LogProjectCleanerCLI, Display, TEXT("===================================="));
-			CleanerDataManager.PrintInfo();
-			UE_LOG(LogProjectCleanerCLI, Display, TEXT("===================================="));
-		}
+		
+		UE_LOG(LogProjectCleanerCLI, Display, TEXT("Deleted: %d assets"), CleanerDataManager.DeleteAllUnusedAssets());
+		UE_LOG(LogProjectCleanerCLI, Display, TEXT("Deleted: %d empty folders"), CleanerDataManager.DeleteEmptyFolders());
+		UE_LOG(LogProjectCleanerCLI, Display, TEXT("===================================="));
+		UE_LOG(LogProjectCleanerCLI, Display, TEXT("=========  After Cleanup    ========"));
+		UE_LOG(LogProjectCleanerCLI, Display, TEXT("===================================="));
+		CleanerDataManager.PrintInfo();
+		UE_LOG(LogProjectCleanerCLI, Display, TEXT("===================================="));
+		
 	}
 	
 	return 0;
@@ -82,7 +83,7 @@ void UProjectCleanerCLICommandlet::ParseCommandLinesArguments(const FString& Par
 	// -DeleteEmptyFolders - true
 	// -ExcludeAssets - empty // todo:ashe23
 	// -ExcludeAssetsInPath - empty 
-	// -ExcludeAssetWithClass - empty // todo:ashe23
+	// -ExcludeAssetWithClass - empty
 	if (Switches.Num() == 0 && Parameters.Num() == 1 && Tokens.Num() == 0) // Parameters contain -run=ProjectCleanerCLI - argument only
 	{
 		bArgumentsValid = true;
@@ -214,7 +215,7 @@ void UProjectCleanerCLICommandlet::ParseCommandLinesArguments(const FString& Par
 		UE_LOG(LogProjectCleanerCLI, Display, TEXT(""));
 		UE_LOG(LogProjectCleanerCLI, Warning, TEXT("Tip: ObjectPaths must be of format /Game/Materials/NewMaterial.NewMaterial"));
 		UE_LOG(LogProjectCleanerCLI, Warning, TEXT("Tip: Paths must be of format /Game/Materials"));
-		UE_LOG(LogProjectCleanerCLI, Warning, TEXT("Tip: Classes must be of format UMaterial, UTexture2D, UBlueprint etc."));
+		UE_LOG(LogProjectCleanerCLI, Warning, TEXT("Tip: Classes must be of format Material, Texture2D, Blueprint, ParticleSystem etc."));
 	}
 	else
 	{

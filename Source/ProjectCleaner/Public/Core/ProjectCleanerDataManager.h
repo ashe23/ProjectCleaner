@@ -18,7 +18,7 @@ public:
 	FProjectCleanerDataManager();
 	virtual ~FProjectCleanerDataManager() override;
 
-	bool IsLoadingAssets(const bool bShowNotification) const;
+	bool IsLoadingAssets() const;
 	void AnalyzeProject();
 	void PrintInfo();
 
@@ -45,9 +45,9 @@ public:
 	const TSet<FName>& GetExcludedAssets() const;
 	const TSet<FName>& GetCorruptedAssets() const;
 	const TSet<FName>& GetNonEngineFiles() const;
-	const TMap<FAssetData, FIndirectAsset>& GetIndirectAssets() const;
 	const TSet<FName>& GetEmptyFolders() const;
 	const TSet<FName>& GetPrimaryAssetClasses() const;
+	const TMap<FAssetData, FIndirectAsset>& GetIndirectAssets() const;
 	
 	// setters
 	void SetCleanerConfigs(const UCleanerConfigs* CleanerConfigs);
@@ -67,7 +67,6 @@ private:
 	void FindUsedAssets(TSet<FName>& UsedAssets);
 	void FindUsedAssetsDependencies(const TSet<FName>& UsedAssets, TSet<FName>& UsedAssetsDeps) const;
 	void FindExcludedAssets(TSet<FName>& UsedAssets);
-	void AnalyzeUnusedAssets();
 	void FillBucketWithAssets(TArray<FAssetData>& Bucket, const int32 BucketSize);
 	bool PrepareBucketForDeletion(const TArray<FAssetData>& Bucket, TArray<UObject*>& LoadedAssets);
 	int32 DeleteBucket(const TArray<UObject*>& LoadedAssets);
@@ -89,7 +88,6 @@ private:
 	TSet<FName> PrimaryAssetClasses;
 	TSet<FName> ExcludedAssets;
 	TMap<FAssetData, FIndirectAsset> IndirectAssets;
-	TMap<FAssetData, FUnusedAssetInfo> UnusedAssetsInfos;
 
 	/* Configs */
 	bool bSilentMode;

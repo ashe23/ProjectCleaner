@@ -13,7 +13,6 @@
 #include "UI/ProjectCleanerNotificationManager.h"
 // Engine Headers
 #include "ToolMenus.h"
-#include "AssetRegistry/AssetRegistryModule.h"
 #include "Components/SlateWrapperTypes.h"
 #include "Components/WidgetSwitcher.h"
 #include "Widgets/Input/SButton.h"
@@ -253,12 +252,12 @@ void SProjectCleanerMainUI::OnCleanerManagerUpdated() const
 
 bool SProjectCleanerMainUI::IsWidgetEnabled() const
 {
-	return !CleanerManager->GetDataManager().IsLoadingAssets(false);
+	return !CleanerManager->GetDataManager().IsLoadingAssets();
 }
 
 int32 SProjectCleanerMainUI::GetDefaultWidgetIndex() const
 {
-	if (CleanerManager->GetDataManager().IsLoadingAssets(false))
+	if (CleanerManager->GetDataManager().IsLoadingAssets())
 	{
 		return 1;
 	}
