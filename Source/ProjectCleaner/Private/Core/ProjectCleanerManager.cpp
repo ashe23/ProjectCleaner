@@ -181,29 +181,24 @@ int32 FProjectCleanerManager::DeleteAllUnusedAssets()
 	{
 		DeleteEmptyFolders();
 	}
-
+	
 	// show window to restart editor, if any shader compilation still exists
-	// if (GShaderCompilingManager && GShaderCompilingManager->IsCompiling())
-	// {
-	// 	// GShaderCompilingManager->FinishAllCompilation();
-	// 	// FlushRenderingCommands();
-	// 	// if (GShaderCompilingManager->HasShaderJobs())
-	// 	// {
-	// 	// 	const auto ConfirmationWindowStatus = ProjectCleanerNotificationManager::ShowConfirmationWindow(
-	// 	// 		FText::FromString(FStandardCleanerText::RestartEditorTitle),
-	// 	// 		FText::FromString(FStandardCleanerText::RestartEditorContent)
-	// 	// 	);
-	// 	// 	if (!ProjectCleanerNotificationManager::IsConfirmationWindowCanceled(ConfirmationWindowStatus))
-	// 	// 	{
-	// 	// 		FUnrealEdMisc::Get().RestartEditor(true);
-	// 	// 		return DeleteAssetsNum;
-	// 	// 	}
-	// 	// }
-	// 	// else
-	// 	// {
-	// 	// 	GShaderCompilingManager->ProcessAsyncResults(false, false);
-	// 	// }
-	// }
+	// todo:ashe23 this is a bit hacky, but there is no any interface to pause/resume shader compilation
+	if (GShaderCompilingManager && GShaderCompilingManager->IsCompiling())
+	{
+		if (GShaderCompilingManager->HasShaderJobs())
+		{
+			const auto ConfirmationWindowStatus = ProjectCleanerNotificationManager::ShowConfirmationWindow(
+				FText::FromString(FStandardCleanerText::RestartEditorTitle),
+				FText::FromString(FStandardCleanerText::RestartEditorContent)
+			);
+			if (!ProjectCleanerNotificationManager::IsConfirmationWindowCanceled(ConfirmationWindowStatus))
+			{
+				FUnrealEdMisc::Get().RestartEditor(true);
+				return DeleteAssetsNum;
+			}
+		}
+	}
 
 	return DeleteAssetsNum;
 }

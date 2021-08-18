@@ -136,5 +136,5 @@ struct FStandardCleanerText
 	constexpr static TCHAR* AnalyzingAssets = TEXT("Analyzing unused assets...");
 	constexpr static TCHAR* PreparingAssetsForDeletion = TEXT("Preparing assets for deletion...");
 	constexpr static TCHAR* RestartEditorTitle = TEXT("Confirm Restart Editor");
-	constexpr static TCHAR* RestartEditorContent = TEXT("To finish project cleaning,its recommended to Restart Editor. Proceed??");
+	constexpr static TCHAR* RestartEditorContent = TEXT("To finish project cleaning,its recommended to Restart Editor. Proceed?");
 };
