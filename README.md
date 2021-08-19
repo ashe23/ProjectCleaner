@@ -28,8 +28,8 @@ Plugin available on marketplace [Marketplace URL](https://www.unrealengine.com/m
 # Features
 * Unused assets detection ([Unused assets Docs](https://github.com/ashe23/ProjectCleaner/wiki/Unused-assets))
 * Empty folders detection
-* Non Engine files detection
-* Corrupted assets detection
-* Indirectly used assets detection
+* Non Engine files detection ([Non Engine Files Docs](https://github.com/ashe23/ProjectCleaner/wiki/Non-Engine-Files))
+* Corrupted assets detection ([Corrupted assets Docs](https://github.com/ashe23/ProjectCleaner/wiki/Corrupted-Assets))
+* Indirectly used assets detection ([Indirectly used assets Docs](https://github.com/ashe23/ProjectCleaner/wiki/Indirectly-used-assets))
 * Configurable options for scanning
-* Command line interface
+* Command line interface ([CLI docs](https://github.com/ashe23/ProjectCleaner/wiki/Command-line-interface))
