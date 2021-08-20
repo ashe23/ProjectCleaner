@@ -4,7 +4,7 @@ UE4 plugin for managing unused assets and empty folders in project.
 No more Migration and other hacky methods needed.
 
 Versions Supported: 4.25+<br>
-Version for UE5 early access now available [DownloadLink](https://github.com/ashe23/ProjectCleaner/releases/download/v1.5/ProjectCleaner5ea.zip) [UE5 Docs](https://github.com/ashe23/ProjectCleaner/wiki/Unreal-Engine-5-Support)
+Version for UE5 early access now available [UE5 Docs](https://github.com/ashe23/ProjectCleaner/wiki/Unreal-Engine-5-Support)<br>
 Platform: Windows
 
 <img src="https://user-images.githubusercontent.com/8270558/130083020-6fa213fd-c39d-41b4-bbca-a8c9f8a635c6.png" />
