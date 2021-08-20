@@ -725,6 +725,30 @@ void FProjectCleanerDataManager::FindUnusedAssets()
 
 void FProjectCleanerDataManager::FindUsedAssets(TSet<FName>& UsedAssets)
 {
+	TSet<FName> DerivedFromPrimaryAssets;
+	{
+		const TSet<FName> ExcludedClassNames;
+		AssetRegistry->Get().GetDerivedClassNames(PrimaryAssetClasses.Array(), ExcludedClassNames, DerivedFromPrimaryAssets);
+	}
+	
+	FARFilter Filter_BP;
+	Filter_BP.ClassNames.Add(UBlueprint::StaticClass()->GetFName());
+	Filter_BP.PackagePaths.Add(TEXT("/Game"));
+	Filter_BP.bRecursiveClasses = true;
+	Filter_BP.bRecursivePaths = true;
+
+	TArray<FAssetData> BlueprintAssets;
+	AssetRegistry->Get().GetAssets(Filter_BP, BlueprintAssets);
+
+	for (const auto& BP_Asset : BlueprintAssets)
+	{
+		const FName BP_ClassName = ProjectCleanerUtility::GetClassName(BP_Asset);
+		if (DerivedFromPrimaryAssets.Contains(BP_ClassName))
+		{
+			UsedAssets.Add(BP_Asset.PackageName);
+		}
+	}
+	
 	FARFilter Filter;
 	Filter.bRecursiveClasses = true;
 	Filter.bRecursivePaths = true;
