@@ -7,7 +7,6 @@
 #include "AssetRegistryModule.h"
 #include "Misc/ScopedSlowTask.h"
 #include "Misc/FileHelper.h"
-#include "Engine/AssetManagerSettings.h"
 #include "Engine/AssetManager.h"
 #include "ShaderCompiler.h"
 
