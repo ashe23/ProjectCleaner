@@ -154,7 +154,6 @@ void SProjectCleanerUnusedAssetsBrowserUI::UpdateUI()
 	ChildSlot
 	[
 		SNew(SSplitter)
-		.Style(FEditorStyle::Get(), "ContentBrowser.Splitter")
 		.PhysicalSplitterHandleSize(2.0f)
 		+ SSplitter::Slot()
 		.Value(0.3f)

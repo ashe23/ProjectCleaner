@@ -7,7 +7,6 @@
 #include "StructsContainer.h"
 // Engine Headers
 #include "IContentBrowserSingleton.h"
-#include "DSP/PassiveFilter.h"
 #include "Editor/ContentBrowser/Public/ContentBrowserModule.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Toolkits/GlobalEditorCommonCommands.h"
@@ -110,7 +109,6 @@ void SProjectCleanerExcludedAssetsUI::UpdateUI()
 	ChildSlot
 	[
 		SNew(SSplitter)
-		.Style(FEditorStyle::Get(), "ContentBrowser.Splitter")
 		.PhysicalSplitterHandleSize(3.0f)
 		+ SSplitter::Slot()
 		.Value(0.2f)
