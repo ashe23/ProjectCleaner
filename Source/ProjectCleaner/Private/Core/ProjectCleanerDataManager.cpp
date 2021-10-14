@@ -570,7 +570,7 @@ void FProjectCleanerDataManager::FindIndirectAssets()
 		
 		if (!ProjectCleanerUtility::HasIndirectlyUsedAssets(FileContent)) continue;
 
-		static FRegexPattern Pattern(TEXT(R"(\/Game(.*)\b)"));
+		static FRegexPattern Pattern(TEXT(R"(\/Game([A-Za-z0-9_.\/]+)\b)"));
 		FRegexMatcher Matcher(Pattern, FileContent);
 		while (Matcher.FindNext())
 		{
