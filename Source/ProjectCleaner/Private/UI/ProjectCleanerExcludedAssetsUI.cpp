@@ -7,7 +7,6 @@
 #include "StructsContainer.h"
 // Engine Headers
 #include "IContentBrowserSingleton.h"
-#include "DSP/PassiveFilter.h"
 #include "Editor/ContentBrowser/Public/ContentBrowserModule.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Toolkits/GlobalEditorCommonCommands.h"

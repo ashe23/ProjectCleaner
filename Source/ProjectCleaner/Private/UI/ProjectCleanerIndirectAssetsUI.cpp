@@ -51,7 +51,7 @@ void SProjectCleanerIndirectAssetsUI::Construct(const FArguments& InArgs)
 					SNew(STextBlock)
 					.AutoWrapText(true)
 					.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light10"))
-					.Text(LOCTEXT("indirect_assets_dbl_click_on_row", "Double click on row to navigate in content browser"))
+					.Text(LOCTEXT("indirect_assets_dbl_click_on_row", "Double click on row to open in Explorer"))
 				]
 				+ SVerticalBox::Slot()
 				.AutoHeight()

@@ -276,7 +276,7 @@ void SProjectCleanerStatisticsUI::Construct(const FArguments& InArgs)
 						SNew(STextBlock)
 						.AutoWrapText(false)
 						.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light15"))
-						.ColorAndOpacity(FLinearColor{0.0f, 0.0f, 0.0f, 1.0f})
+						.ColorAndOpacity(FLinearColor{ 0.0f, 0.0f, 0.0f, 1.0f })
 						.Text_Raw(this, &SProjectCleanerStatisticsUI::GetProgressBarText )
 					]
 				]
@@ -350,18 +350,18 @@ FSlateColor SProjectCleanerStatisticsUI::GetProgressBarColor() const
 
 	if (Percent > 0.0f && Percent < 10.0f)
 	{
-		return FSlateColor{FLinearColor{0.0f, 0.901f , 0.462f ,1.0f}}; // light green
+		return FSlateColor{ FLinearColor{0.0f, 0.901f , 0.462f ,1.0f} }; // light green
 	}
 	if (Percent > 10.0f && Percent < 50.0f)
 	{
-		return FSlateColor{FLinearColor{1.0f, 0.933f , 0.345f ,1.0f}}; // light yellow
+		return FSlateColor{ FLinearColor{1.0f, 0.933f , 0.345f ,1.0f} }; // light yellow
 	}
 	if (Percent > 50.0f && Percent < 80.0f)
 	{
-		return FSlateColor{FLinearColor{0.898f, 0.450f , 0.450f ,1.0f}}; // light red
+		return FSlateColor{ FLinearColor{0.898f, 0.450f , 0.450f ,1.0f} }; // light red
 	}
-	
-	return FSlateColor{FLinearColor{0.766f, 0.156f , 0.156f ,1.0f}}; // bright red
+
+	return FSlateColor{ FLinearColor{0.766f, 0.156f , 0.156f ,1.0f} }; // bright red
 }
 
 FText SProjectCleanerStatisticsUI::GetProgressBarText() const

@@ -570,26 +570,26 @@ void FProjectCleanerDataManager::FindIndirectAssets()
 		
 		if (!ProjectCleanerUtility::HasIndirectlyUsedAssets(FileContent)) continue;
 
-		static FRegexPattern Pattern(TEXT(R"(\/Game(.*)\b)"));
+		static FRegexPattern Pattern(TEXT(R"(\/Game([A-Za-z0-9_.\/]+)\b)"));
 		FRegexMatcher Matcher(Pattern, FileContent);
 		while (Matcher.FindNext())
 		{
-			FName FoundedAssetObjectPath =  FName{Matcher.GetCaptureGroup(0)};
-			if (!FoundedAssetObjectPath.IsValid()) continue;
+			FString FoundedAssetObjectPath =  Matcher.GetCaptureGroup(0);
+		
 
 			// if ObjectPath ends with "_C" , then its probably blueprint, so we trim that
-			if (FoundedAssetObjectPath.ToString().EndsWith("_C"))
+			if (FoundedAssetObjectPath.EndsWith("_C"))
 			{
-				FString TrimmedObjectPath = FoundedAssetObjectPath.ToString();
+				FString TrimmedObjectPath = FoundedAssetObjectPath;
 				TrimmedObjectPath.RemoveFromEnd("_C");
 				
-				FoundedAssetObjectPath = FName{*TrimmedObjectPath};
+				FoundedAssetObjectPath = TrimmedObjectPath;
 			}
 			const FAssetData* AssetData = AllAssets.FindByPredicate([&] (const FAssetData& Elem)
 			{
 				return
-					Elem.ObjectPath.IsEqual(FoundedAssetObjectPath) ||
-					Elem.PackageName.IsEqual(FoundedAssetObjectPath);
+					Elem.ObjectPath.ToString()==(FoundedAssetObjectPath) ||
+					Elem.PackageName.ToString()==(FoundedAssetObjectPath);
 			});
 
 			if (!AssetData) continue;
@@ -600,7 +600,7 @@ void FProjectCleanerDataManager::FindIndirectAssets()
 			for (int32 i = 0; i < Lines.Num(); ++i)
 			{
 				if (!Lines.IsValidIndex(i)) continue;
-				if (!Lines[i].Contains(FoundedAssetObjectPath.ToString())) continue;
+				if (!Lines[i].Contains(FoundedAssetObjectPath)) continue;
 			
 				FIndirectAsset IndirectAsset;
 				IndirectAsset.File = FPaths::ConvertRelativePathToFull(File);
@@ -611,6 +611,7 @@ void FProjectCleanerDataManager::FindIndirectAssets()
 		}
 	}
 }
+
 
 void FProjectCleanerDataManager::FindEmptyFolders(const bool bScanDevelopersContent)
 {

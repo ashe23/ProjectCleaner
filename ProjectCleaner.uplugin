@@ -1,8 +1,8 @@
 {
 	"FileVersion": 3,
 	"Version": 1,
-	"VersionName": "1.5",
-	"FriendlyName": "ProjectCleaner",	
+	"VersionName": "1.5.1",
+	"FriendlyName": "ProjectCleaner",
 	"Description": "UE4 plugin for managing unused assets in project.",
 	"Category": "ProjectManagementTools",
 	"CreatedBy": "Ashot Barkhudaryan",
@@ -12,15 +12,16 @@
 	"SupportURL": "",
 	"EngineVersion": "4.27.0",
 	"CanContainContent": false,
-	"EnabledByDefault" : true,
-	"IsBetaVersion": false,
-	"IsExperimentalVersion": false,
+	"Installed": true,
 	"Modules": [
 		{
 			"Name": "ProjectCleaner",
 			"Type": "Editor",
 			"LoadingPhase": "PostDefault",
-			"WhitelistPlatforms": [ "Win64", "Win32"]
+			"WhitelistPlatforms": [
+				"Win64",
+				"Win32"
+			]
 		}
 	]
 }
