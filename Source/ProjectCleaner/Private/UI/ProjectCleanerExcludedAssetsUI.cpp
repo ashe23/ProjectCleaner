@@ -109,6 +109,7 @@ void SProjectCleanerExcludedAssetsUI::UpdateUI()
 	ChildSlot
 	[
 		SNew(SSplitter)
+		.Style(FEditorStyle::Get(), "ContentBrowser.Splitter")
 		.PhysicalSplitterHandleSize(3.0f)
 		+ SSplitter::Slot()
 		.Value(0.2f)

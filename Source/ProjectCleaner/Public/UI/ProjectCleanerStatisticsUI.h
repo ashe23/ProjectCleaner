@@ -28,6 +28,7 @@ private:
 	FText GetCorruptedAssetsNum() const;
 	FText GetExcludedAssetsNum() const;
 	TOptional<float> GetPercentRatio() const;
+	FSlateColor GetProgressBarColor() const;
 	FText GetProgressBarText() const;
 	
 	/** Data **/

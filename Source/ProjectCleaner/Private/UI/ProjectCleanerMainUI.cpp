@@ -64,6 +64,7 @@ void SProjectCleanerMainUI::Construct(const FArguments& InArgs)
 			.FillHeight(1.0f)
 			[
 				SNew(SSplitter)
+				.Style(FEditorStyle::Get(), "ContentBrowser.Splitter")
 				.PhysicalSplitterHandleSize(5.0f)
 				+ SSplitter::Slot()
 				.Value(0.35f)

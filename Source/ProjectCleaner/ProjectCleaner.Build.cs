@@ -7,15 +7,15 @@ public class ProjectCleaner : ModuleRules
 	public ProjectCleaner(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
-		
+
 		PublicIncludePaths.AddRange(
 			new string[]
 			{
 				"Runtime/Slate/Public",
 			}
 		);
-				
-		
+
+
 		PrivateIncludePaths.AddRange(
 			new string[]
 			{
@@ -23,45 +23,42 @@ public class ProjectCleaner : ModuleRules
 				"ProjectCleaner/Private/Commandlets",
 			}
 		);
-			
-		
+
+
 		PublicDependencyModuleNames.AddRange(
 			new string[]
 			{
 				"Core",
-				// ... add other public dependencies that you statically link with here ...
 			}
-			);
-			
-		
+		);
+
+
 		PrivateDependencyModuleNames.AddRange(
 			new string[]
 			{
 				"Projects",
 				"InputCore",
-				"EditorFramework",
 				"UnrealEd",
-				"ToolMenus",
+				"LevelEditor",
 				"CoreUObject",
 				"Engine",
 				"Slate",
-				"SlateCore",				
-				"LevelEditor",
+				"SlateCore",
 				"ContentBrowser",
 				"EditorStyle",
 				"PropertyEditor",
+				"UnrealEd",
+				"ToolMenus",
 				"AssetTools",
 				"AssetRegistry"
-				// ... add private dependencies that you statically link with here ...	
 			}
-			);
-		
-		
+		);
+
+
 		DynamicallyLoadedModuleNames.AddRange(
 			new string[]
 			{
-				// ... add any modules that your module loads dynamically here ...
 			}
-			);
+		);
 	}
 }
