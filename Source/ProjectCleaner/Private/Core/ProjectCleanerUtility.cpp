@@ -136,7 +136,7 @@ bool ProjectCleanerUtility::HasIndirectlyUsedAssets(const FString& FileContent)
 	if (FileContent.IsEmpty()) return false;
 	
 	// search any sub string that has asset package path in it
-	static FRegexPattern Pattern(TEXT(R"(\/Game(.*)\b)"));
+	static FRegexPattern Pattern(TEXT(R"(\/Game([A-Za-z0-9_.\/]+)\b)"));
 	FRegexMatcher Matcher(Pattern, FileContent);
 	return Matcher.FindNext();
 }
