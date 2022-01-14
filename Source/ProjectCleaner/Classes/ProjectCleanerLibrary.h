@@ -1,0 +1,59 @@
+// Copyright 2021. Ashot Barkhudaryan. All Rights Reserved.
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Kismet/BlueprintFunctionLibrary.h"
+#include "ProjectCleanerLibrary.generated.h"
+
+USTRUCT(BlueprintType)
+struct FProjectCleanerConfigs
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere)
+	bool bScanDeveloperContents = false;
+
+	UPROPERTY(EditAnywhere)
+	bool bAutomaticallyDeleteEmptyFolders = true;
+	
+	UPROPERTY(DisplayName = "Paths", EditAnywhere, Category = "CleanerConfigs|ExcludeOptions", meta = (ContentDir))
+	TArray<FDirectoryPath> ExcludedPaths;
+
+	UPROPERTY(DisplayName = "Classes", EditAnywhere, Category = "CleanerConfigs|ExcludeOptions")
+	TArray<UClass*> ExcludedClasses;
+
+	UPROPERTY(DisplayName = "Excluded Assets", EditAnywhere, Category = "CleanerConfigs|ExcludeOptions")
+	TArray<UObject*> ExcludedAssets;
+};
+
+UENUM(BlueprintType)
+enum class EProjectCleanerPathReturnType : uint8
+{
+	EPT_Absolute UMETA(DisplayName = "Absolute"), // C:/dev/MyProject/Content/NewMaterial.uasset
+	EPT_Relative UMETA(DisplayName = "Relative"), // Content/NewMaterial.uasset
+	EPT_Game     UMETA(DisplayName = "Game"),     // /Game/NewMaterial.NewMaterial
+};
+
+/**
+ * 
+ */
+UCLASS(meta = (ScriptName = "ProjectCleanerAPI"))
+class PROJECTCLEANER_API UProjectCleanerLibrary : public UBlueprintFunctionLibrary
+{
+	GENERATED_BODY()
+
+public:
+	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerAPI", meta = (ToolTip = "Return all unused assets (FAssetData structure)"))
+	static TArray<FAssetData> GetUnusedAssets(const FProjectCleanerConfigs& CleanerConfigs);
+
+	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerAPI", meta = (ToolTip = "Return all unused assets paths based on given path type"))
+	static TArray<FString> GetUnusedAssetsPaths(const FProjectCleanerConfigs& CleanerConfigs, EProjectCleanerPathReturnType PathType);
+
+	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerAPI|Util")
+	static FString GetAssetPathByPathType(const FAssetData& AssetData, EProjectCleanerPathReturnType PathType);
+private:
+
+	// Fills ProjectCleanerDataManager settings based on CleanerConfigs
+	static void FillCleanerConfigs(class FProjectCleanerDataManager& DataManager, const FProjectCleanerConfigs& CleanerConfigs);
+};
