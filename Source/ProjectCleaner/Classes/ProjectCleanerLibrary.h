@@ -11,16 +11,16 @@ struct FProjectCleanerConfigs
 {
 	GENERATED_BODY()
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(DisplayName = "Scan Developer Contents", EditAnywhere, Category = "CleanerConfigs")
 	bool bScanDeveloperContents = false;
 	
-	UPROPERTY(DisplayName = "Paths", EditAnywhere, Category = "CleanerConfigs|ExcludeOptions", meta = (ContentDir))
+	UPROPERTY(DisplayName = "Excluded Paths", EditAnywhere, Category = "CleanerConfigs", meta = (ContentDir))
 	TArray<FDirectoryPath> ExcludedPaths;
 
-	UPROPERTY(DisplayName = "Classes", EditAnywhere, Category = "CleanerConfigs|ExcludeOptions")
+	UPROPERTY(DisplayName = "Excluded Classes", EditAnywhere, Category = "CleanerConfigs")
 	TArray<UClass*> ExcludedClasses;
 
-	UPROPERTY(DisplayName = "Excluded Assets", EditAnywhere, Category = "CleanerConfigs|ExcludeOptions")
+	UPROPERTY(DisplayName = "Excluded Assets", EditAnywhere, Category = "CleanerConfigs")
 	TArray<UObject*> ExcludedAssets;
 };
 
