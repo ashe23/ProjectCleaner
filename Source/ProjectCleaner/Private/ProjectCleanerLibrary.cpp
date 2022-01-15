@@ -1,9 +1,10 @@
 // Copyright 2021. Ashot Barkhudaryan. All Rights Reserved.
 
-
 #include "ProjectCleanerLibrary.h"
 #include "Core/ProjectCleanerDataManager.h"
 #include "Core/ProjectCleanerUtility.h"
+// Engine Headers
+#include "Misc/FileHelper.h"
 
 TArray<FAssetData> UProjectCleanerLibrary::GetUnusedAssets(const FProjectCleanerConfigs& CleanerConfigs)
 {
@@ -58,6 +59,124 @@ FString UProjectCleanerLibrary::GetAssetPathByPathType(const FAssetData& AssetDa
 	FPaths::RemoveDuplicateSlashes(FinalPath);
 
 	return FinalPath;
+}
+
+TArray<FString> UProjectCleanerLibrary::GetEmptyFolders(const FProjectCleanerConfigs& CleanerConfigs)
+{
+	FProjectCleanerDataManager DataManager;
+
+	FillCleanerConfigs(DataManager, CleanerConfigs);
+
+	const TSet<FName>& EmptyFoldersSet = DataManager.GetEmptyFolders();
+
+	TArray<FString> EmptyFolders;
+	EmptyFolders.Reserve(EmptyFoldersSet.Num());
+
+	for (const auto& Folder : EmptyFoldersSet)
+	{
+		EmptyFolders.Add(Folder.ToString());
+	}
+
+	return EmptyFolders;
+}
+
+TArray<FString> UProjectCleanerLibrary::GetNonEngineFiles(const FProjectCleanerConfigs& CleanerConfigs)
+{
+	FProjectCleanerDataManager DataManager;
+
+	FillCleanerConfigs(DataManager, CleanerConfigs);
+
+	const TSet<FName>& NonEngineFilesSet = DataManager.GetNonEngineFiles();
+
+	TArray<FString> NonEngineFiles;
+	NonEngineFiles.Reserve(NonEngineFiles.Num());
+
+	for (const auto& File : NonEngineFilesSet)
+	{
+		NonEngineFiles.Add(File.ToString());
+	}
+
+	return NonEngineFiles;
+}
+
+TArray<FString> UProjectCleanerLibrary::GetCorruptedFiles(const FProjectCleanerConfigs& CleanerConfigs)
+{
+	FProjectCleanerDataManager DataManager;
+
+	FillCleanerConfigs(DataManager, CleanerConfigs);
+
+	const TSet<FName>& CorruptedAssetsSet = DataManager.GetCorruptedAssets();
+
+	TArray<FString> CorruptedAssets;
+	CorruptedAssets.Reserve(CorruptedAssetsSet.Num());
+
+	for (const auto& Asset : CorruptedAssetsSet)
+	{
+		CorruptedAssets.Add(Asset.ToString());
+	}
+
+	return CorruptedAssets;
+}
+
+TArray<FString> UProjectCleanerLibrary::GetIndirectlyUsedAssets(const FProjectCleanerConfigs& CleanerConfigs)
+{
+	FProjectCleanerDataManager DataManager;
+
+	FillCleanerConfigs(DataManager, CleanerConfigs);
+
+	const auto& IndirectlyUsedAssetsMap = DataManager.GetIndirectAssets();
+
+	TArray<FString> IndirectAssets;
+	IndirectAssets.Reserve(IndirectlyUsedAssetsMap.Num());
+
+	for (const auto& Asset : IndirectlyUsedAssetsMap)
+	{
+		IndirectAssets.Add(GetAssetPathByPathType(Asset.Key, EProjectCleanerPathReturnType::EPT_Game));
+	}
+
+	return IndirectAssets;
+}
+
+bool UProjectCleanerLibrary::ExportToFile(const TArray<FString>& List, const FString& FileName)
+{
+	if (FileName.IsEmpty())
+	{
+		UE_LOG(LogProjectCleaner, Error, TEXT("Empty FileName"));
+		return false;
+	}
+
+	const FString SaveDir = FPaths::ProjectSavedDir() + TEXT("/ProjectCleaner/");
+	const FString SavePath = SaveDir + FileName;
+	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
+
+	// check if Saved/ProjectCleaner directory exists and create one if not
+	if (!PlatformFile.DirectoryExists(*SaveDir))
+	{
+		if (!PlatformFile.CreateDirectory(*SaveDir))
+		{
+			UE_LOG(LogProjectCleaner, Error, TEXT("Failed to create %s directory"), *SaveDir);
+			return false;
+		}
+	}
+
+	// check if file already exists?
+	if (PlatformFile.FileExists(*SavePath))
+	{
+		if (!PlatformFile.DeleteFile(*SavePath))
+		{
+			UE_LOG(LogProjectCleaner, Error, TEXT("Failed to delete %s file"), *SavePath);
+			return false;
+		}
+	}
+
+	// Saving file
+	if (!FFileHelper::SaveStringArrayToFile(List, *SavePath))
+	{
+		UE_LOG(LogProjectCleaner, Error, TEXT("Failed to create %s file"), *SavePath);
+		return false;
+	}
+
+	return true;
 }
 
 void UProjectCleanerLibrary::FillCleanerConfigs(FProjectCleanerDataManager& DataManager, const FProjectCleanerConfigs& CleanerConfigs)

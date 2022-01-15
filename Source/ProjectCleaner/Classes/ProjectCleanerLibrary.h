@@ -52,6 +52,22 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerAPI|Util")
 	static FString GetAssetPathByPathType(const FAssetData& AssetData, EProjectCleanerPathReturnType PathType);
+
+	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerAPI", meta = (ToolTip = "Return all empty folders in project"))
+	static TArray<FString> GetEmptyFolders(const FProjectCleanerConfigs& CleanerConfigs);
+
+	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerAPI", meta = (ToolTip = "Return all non engine files in project"))
+	static TArray<FString> GetNonEngineFiles(const FProjectCleanerConfigs& CleanerConfigs);
+
+	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerAPI", meta = (ToolTip = "Return all corrupted files in project"))
+	static TArray<FString> GetCorruptedFiles(const FProjectCleanerConfigs& CleanerConfigs);
+
+	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerAPI", meta = (ToolTip = "Return all indirectly used assets in project"))
+	static TArray<FString> GetIndirectlyUsedAssets(const FProjectCleanerConfigs& CleanerConfigs);
+
+	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerAPI|Util", meta = (ToolTip = "Save result of API calls in directory Saved/ProjectCleaner"))
+	static bool ExportToFile(const TArray<FString>& List, const FString& FileName);
+	
 private:
 
 	// Fills ProjectCleanerDataManager settings based on CleanerConfigs
