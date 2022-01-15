@@ -45,6 +45,8 @@ FString UProjectCleanerLibrary::GetAssetPathByPathType(const FAssetData& AssetDa
 	{
 		return FinalPath;
 	}
+
+	FinalPath = FPaths::ConvertRelativePathToFull(FinalPath);
 	// Converts C:/dev/MyProject/Content/MyFolder/NewMaterial.NewMaterial => C:/dev/MyProject/Content/MyFolder/NewMaterial.uasset
 	FinalPath.Append(TEXT("/"));
 	FinalPath.Append(AssetData.AssetName.ToString());
@@ -74,7 +76,7 @@ TArray<FString> UProjectCleanerLibrary::GetEmptyFolders(const FProjectCleanerCon
 
 	for (const auto& Folder : EmptyFoldersSet)
 	{
-		EmptyFolders.Add(Folder.ToString());
+		EmptyFolders.Add(FPaths::ConvertRelativePathToFull(Folder.ToString()));
 	}
 
 	return EmptyFolders;
