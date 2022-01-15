@@ -112,7 +112,7 @@ TArray<FString> UProjectCleanerLibrary::GetCorruptedFiles(const FProjectCleanerC
 
 	for (const auto& Asset : CorruptedAssetsSet)
 	{
-		CorruptedAssets.Add(Asset.ToString());
+		CorruptedAssets.Add(ProjectCleanerUtility::ConvertInternalToAbsolutePath(Asset.ToString()));
 	}
 
 	return CorruptedAssets;
@@ -213,6 +213,7 @@ void UProjectCleanerLibrary::FillCleanerConfigs(FProjectCleanerDataManager& Data
 	DataManager.SetUserExcludedAssets(ExcludedAssets);
 	DataManager.SetExcludePaths(ExcludedPaths);
 	DataManager.SetExcludeClasses(ExcludedClasses);
+	DataManager.SetScanDeveloperContents(CleanerConfigs.bScanDeveloperContents);
 
 	DataManager.AnalyzeProject();
 }

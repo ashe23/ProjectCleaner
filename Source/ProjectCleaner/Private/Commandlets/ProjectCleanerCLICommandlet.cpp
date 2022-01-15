@@ -35,6 +35,7 @@ int32 UProjectCleanerCLICommandlet::Main(const FString& Params)
 		CleanerDataManager.SetUserExcludedAssets(ExcludedAssets);
 		CleanerDataManager.SetExcludePaths(ExcludedPaths);
 		CleanerDataManager.SetExcludeClasses(ExcludedClasses);
+		CleanerDataManager.SetScanDeveloperContents(bScanDeveloperContents);
 		CleanerDataManager.AnalyzeProject();
 		
 		UE_LOG(LogProjectCleanerCLI, Display, TEXT("===================================="));

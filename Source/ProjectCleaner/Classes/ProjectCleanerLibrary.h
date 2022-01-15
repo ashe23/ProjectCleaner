@@ -13,9 +13,6 @@ struct FProjectCleanerConfigs
 
 	UPROPERTY(EditAnywhere)
 	bool bScanDeveloperContents = false;
-
-	UPROPERTY(EditAnywhere)
-	bool bAutomaticallyDeleteEmptyFolders = true;
 	
 	UPROPERTY(DisplayName = "Paths", EditAnywhere, Category = "CleanerConfigs|ExcludeOptions", meta = (ContentDir))
 	TArray<FDirectoryPath> ExcludedPaths;
