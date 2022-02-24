@@ -8,6 +8,7 @@
 #include "ToolMenus.h"
 #include "AssetToolsModule.h"
 #include "AssetRegistry/AssetRegistryModule.h"
+#include "Settings/ContentBrowserSettings.h"
 
 DEFINE_LOG_CATEGORY(LogProjectCleaner);
 
@@ -76,6 +77,10 @@ void FProjectCleanerModule::RegisterMenus()
 void FProjectCleanerModule::PluginButtonClicked()
 {
 	CleanerManager.Update();
+	
+	const auto Settings = GetMutableDefault<UContentBrowserSettings>();
+	Settings->bShowAllFolder = false;
+	Settings->PostEditChange();
 	
 	FGlobalTabmanager::Get()->TryInvokeTab(ProjectCleanerTabName);
 }
