@@ -20,7 +20,7 @@ public:
 private:
 	void ParseCommandLinesArguments(const FString& Params);
 	bool IsArgumentsValid() const;
-	void ShowArgumentsInLog();
+	void ShowArgumentsInLog() const;
 	bool ProjectHasRedirectors() const;
 
 	bool bArgumentsValid = false;

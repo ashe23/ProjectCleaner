@@ -20,7 +20,7 @@ public:
 
 	bool IsLoadingAssets() const;
 	void AnalyzeProject();
-	void PrintInfo();
+	void PrintInfo() const;
 
 	// cli
 	void SetExcludeClasses(const TArray<FString>& Classes);

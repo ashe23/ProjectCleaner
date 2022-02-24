@@ -40,8 +40,8 @@ private:
 	void IncludeAssets() const;
 	void IncludePath() const;
 	FReply IncludeAllAssets() const;
-	struct FARFilter Filter;
-	struct FAssetPickerConfig AssetPickerConfig;
+	FARFilter Filter;
+	FAssetPickerConfig AssetPickerConfig;
 
 	/* Data */
 	FGetCurrentSelectionDelegate GetCurrentSelectionDelegate;
@@ -49,7 +49,7 @@ private:
 
 	/* PathPickerConfig */
 	FName SelectedPath;
-	struct FPathPickerConfig PathPickerConfig;
+	FPathPickerConfig PathPickerConfig;
 	void OnPathSelected(const FString& Path);
 
 	/* ProjectCleanerManager */

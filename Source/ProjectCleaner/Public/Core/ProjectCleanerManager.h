@@ -47,6 +47,6 @@ public:
 	 */
 	FOnCleanerManagerUpdated OnCleanerManagerUpdated;
 private:
-	class UCleanerConfigs* CleanerConfigs;
+	UCleanerConfigs* CleanerConfigs;
 	FProjectCleanerDataManager DataManager;
 };

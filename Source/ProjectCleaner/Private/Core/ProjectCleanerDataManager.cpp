@@ -59,7 +59,7 @@ void FProjectCleanerDataManager::AnalyzeProject()
 	FindUnusedAssets();
 }
 
-void FProjectCleanerDataManager::PrintInfo()
+void FProjectCleanerDataManager::PrintInfo() const
 {
 	UE_LOG(LogProjectCleaner, Display, TEXT("All Assets - %d"), AllAssets.Num());
 	UE_LOG(LogProjectCleaner, Display, TEXT("Unused Assets - %d"), UnusedAssets.Num());
@@ -242,7 +242,7 @@ int32 FProjectCleanerDataManager::DeleteAllUnusedAssets()
 	}
 	
 	// Cleaning empty packages
-	const TSet<FName> EmptyPackages = AssetRegistry->Get().GetCachedEmptyPackages();
+	const TSet<FName> EmptyPackages = AssetRegistry->Get().GetCachedEmptyPackagesCopy();
 	TArray<UPackage*> AssetPackages;
 	for (const auto& EmptyPackage : EmptyPackages)
 	{

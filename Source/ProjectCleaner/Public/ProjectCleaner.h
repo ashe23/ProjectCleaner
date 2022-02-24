@@ -26,5 +26,5 @@ private:
 	TSharedPtr<FUICommandList> PluginCommands;
 
 	/* Cleaner Manager */
-	class FProjectCleanerManager CleanerManager;
+	FProjectCleanerManager CleanerManager;
 };

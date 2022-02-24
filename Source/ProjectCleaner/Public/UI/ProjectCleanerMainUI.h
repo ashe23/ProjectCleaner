@@ -45,7 +45,7 @@ private:
 	TWeakPtr<class SProjectCleanerCorruptedFilesUI> CorruptedFilesUI;
 	TWeakPtr<class SProjectCleanerIndirectAssetsUI> IndirectAssetsUI;
 	TWeakPtr<class SProjectCleanerExcludedAssetsUI> ExcludedAssetsUI;
-	TSharedPtr<class FTabManager> TabManager;
+	TSharedPtr<FTabManager> TabManager;
 	TSharedPtr<FTabManager::FLayout> TabLayout;
 
 	/* CleanerManager */

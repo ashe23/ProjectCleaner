@@ -31,8 +31,8 @@ private:
 	void ExcludePath() const;
 	
 	/* AssetPicker */
-	struct FAssetPickerConfig AssetPickerConfig;
-	struct FARFilter Filter;
+	FAssetPickerConfig AssetPickerConfig;
+	FARFilter Filter;
 	FGetCurrentSelectionDelegate CurrentSelectionDelegate;
 	FRefreshAssetViewDelegate RefreshAssetViewDelegate;
 	
@@ -48,11 +48,11 @@ private:
 	bool IsAnythingSelected() const;
 
 	/* PathPicker */
-	struct FPathPickerConfig PathPickerConfig;
+	FPathPickerConfig PathPickerConfig;
 	FName SelectedPath = NAME_None;
 	void OnPathSelected(const FString& Path);
 
 	/* ContentBrowserModule */
 	class FContentBrowserModule* ContentBrowserModule = nullptr;
-	class FProjectCleanerManager* CleanerManager = nullptr;
+	FProjectCleanerManager* CleanerManager = nullptr;
 };

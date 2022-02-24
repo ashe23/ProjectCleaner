@@ -3,7 +3,6 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Engine/EngineTypes.h"
 #include "AssetData.h"
 #include "StructsContainer.generated.h"
 
@@ -96,27 +95,27 @@ struct FIndirectAsset
 
 struct FStandardCleanerText
 {
-	constexpr static TCHAR* AssetsDeleteWindowTitle = TEXT("Confirm deletion");
-	constexpr static TCHAR* AssetsDeleteWindowContent = TEXT("Are you sure you want to permanently delete unused assets?");
-	constexpr static TCHAR* EmptyFolderWindowTitle = TEXT("Confirm deletion of empty folders");
-	constexpr static TCHAR* EmptyFolderWindowContent = TEXT("Are you sure you want to delete all empty folders in project?");
-	constexpr static TCHAR* DeletingUnusedAssets = TEXT("Deleting unused assets...");
-	constexpr static TCHAR* DeletingEmptyFolders = TEXT("Deleting empty folders...");
-	constexpr static TCHAR* NoAssetsToDelete = TEXT("There are no assets to delete!");
-	constexpr static TCHAR* NoEmptyFolderToDelete = TEXT("There are no empty folders to delete!");
-	constexpr static TCHAR* AssetRegistryStillWorking = TEXT("Please wait, AssetRegistry is loading assets");
-	constexpr static TCHAR* CantIncludeSomeAssets = TEXT("Cant include selected assets, because they are excluded by 'Exclude Options' filter.");
-	constexpr static TCHAR* CantIncludePath = TEXT("Cant include selected path, because they are excluded by 'Exclude Options' filter.");
-	constexpr static TCHAR* FailedToDeleteSomeFolders = TEXT("Failed to delete some folders. Open 'Output Log' for more information.");
-	constexpr static TCHAR* FailedToDeleteSomeAssets = TEXT("Failed to delete some assets");
-	constexpr static TCHAR* SearchingForUnusedAssets = TEXT("Searching for unused assets...");
-	constexpr static TCHAR* Scanning = TEXT("Scanning...");
-	constexpr static TCHAR* UnusedAssetsSuccessfullyDeleted = TEXT("Unused assets deleted successfully");
-	constexpr static TCHAR* FoldersSuccessfullyDeleted = TEXT("Empty folders deleted successfully");
-	constexpr static TCHAR* LoadingAssets = TEXT("Loading assets...");
-	constexpr static TCHAR* FixingUpRedirectors = TEXT("Fixing up redirectors...");
-	constexpr static TCHAR* AnalyzingAssets = TEXT("Analyzing unused assets...");
-	constexpr static TCHAR* PreparingAssetsForDeletion = TEXT("Preparing assets for deletion...");
-	constexpr static TCHAR* RestartEditorTitle = TEXT("Confirm Restart Editor");
-	constexpr static TCHAR* RestartEditorContent = TEXT("To finish project cleaning,its recommended to Restart Editor. Proceed?");
+	inline const static TCHAR* AssetsDeleteWindowTitle = TEXT("Confirm deletion");
+	inline const static TCHAR* AssetsDeleteWindowContent = TEXT("Are you sure you want to permanently delete unused assets?");
+	inline const static TCHAR* EmptyFolderWindowTitle = TEXT("Confirm deletion of empty folders");
+	inline const static TCHAR* EmptyFolderWindowContent = TEXT("Are you sure you want to delete all empty folders in project?");
+	inline const static TCHAR* DeletingUnusedAssets = TEXT("Deleting unused assets...");
+	inline const static TCHAR* DeletingEmptyFolders = TEXT("Deleting empty folders...");
+	inline const static TCHAR* NoAssetsToDelete = TEXT("There are no assets to delete!");
+	inline const static TCHAR* NoEmptyFolderToDelete = TEXT("There are no empty folders to delete!");
+	inline const static TCHAR* AssetRegistryStillWorking = TEXT("Please wait, AssetRegistry is loading assets");
+	inline const static TCHAR* CantIncludeSomeAssets = TEXT("Cant include selected assets, because they are excluded by 'Exclude Options' filter.");
+	inline const static TCHAR* CantIncludePath = TEXT("Cant include selected path, because they are excluded by 'Exclude Options' filter.");
+	inline const static TCHAR* FailedToDeleteSomeFolders = TEXT("Failed to delete some folders. Open 'Output Log' for more information.");
+	inline const static TCHAR* FailedToDeleteSomeAssets = TEXT("Failed to delete some assets");
+	inline const static TCHAR* SearchingForUnusedAssets = TEXT("Searching for unused assets...");
+	inline const static TCHAR* Scanning = TEXT("Scanning...");
+	inline const static TCHAR* UnusedAssetsSuccessfullyDeleted = TEXT("Unused assets deleted successfully");
+	inline const static TCHAR* FoldersSuccessfullyDeleted = TEXT("Empty folders deleted successfully");
+	inline const static TCHAR* LoadingAssets = TEXT("Loading assets...");
+	inline const static TCHAR* FixingUpRedirectors = TEXT("Fixing up redirectors...");
+	inline const static TCHAR* AnalyzingAssets = TEXT("Analyzing unused assets...");
+	inline const static TCHAR* PreparingAssetsForDeletion = TEXT("Preparing assets for deletion...");
+	inline const static TCHAR* RestartEditorTitle = TEXT("Confirm Restart Editor");
+	inline const static TCHAR* RestartEditorContent = TEXT("To finish project cleaning,its recommended to Restart Editor. Proceed?");
 };

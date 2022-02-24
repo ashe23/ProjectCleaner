@@ -3,6 +3,7 @@
 #include "ProjectCleanerLibrary.h"
 #include "Core/ProjectCleanerDataManager.h"
 #include "Core/ProjectCleanerUtility.h"
+#include "ProjectCleaner.h"
 // Engine Headers
 #include "Misc/FileHelper.h"
 
@@ -210,7 +211,6 @@ void UProjectCleanerLibrary::FillCleanerConfigs(FProjectCleanerDataManager& Data
 		ExcludedClasses.AddUnique(ExcludedClass->GetFName().ToString());
 	}
 
-	// todo:ashe23 add scandevfolder option
 	DataManager.SetSilentMode(true);
 	DataManager.SetUserExcludedAssets(ExcludedAssets);
 	DataManager.SetExcludePaths(ExcludedPaths);

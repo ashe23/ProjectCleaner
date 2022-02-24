@@ -234,7 +234,7 @@ bool UProjectCleanerCLICommandlet::IsArgumentsValid() const
 	return bArgumentsValid;
 }
 
-void UProjectCleanerCLICommandlet::ShowArgumentsInLog()
+void UProjectCleanerCLICommandlet::ShowArgumentsInLog() const
 {
 	UE_LOG(LogProjectCleanerCLI, Display, TEXT(""));
 	UE_LOG(LogProjectCleanerCLI, Display, TEXT(""));
