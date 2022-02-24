@@ -34,4 +34,5 @@ Plugin available on marketplace [Marketplace URL](https://www.unrealengine.com/m
 * Indirectly used assets detection ([Indirectly used assets Docs](https://github.com/ashe23/ProjectCleaner/wiki/Indirectly-used-assets))
 * Configurable options for scanning
 * Command line interface ([CLI docs](https://github.com/ashe23/ProjectCleaner/wiki/Command-line-interface))
-* Beta version for UE5 ([UE5 Docs](https://github.com/ashe23/ProjectCleaner/wiki/Unreal-Engine-5-Support))
+* Beta version for UE5 Early Access ([UE5 Docs](https://github.com/ashe23/ProjectCleaner/wiki/Unreal-Engine-5-Support))
+* Beta version for UE5 Preview ([UE5 Preview](https://github.com/ashe23/ProjectCleaner/releases/tag/v1.6.0))
