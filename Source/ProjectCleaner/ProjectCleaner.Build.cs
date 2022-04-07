@@ -51,7 +51,8 @@ public class ProjectCleaner : ModuleRules
 				"EditorStyle",
 				"PropertyEditor",
 				"AssetTools",
-				"AssetRegistry"
+				"AssetRegistry",
+				"ContentBrowserData",
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);

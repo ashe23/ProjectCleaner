@@ -7,6 +7,7 @@
 #include "StructsContainer.h"
 // Engine Headers
 #include "IContentBrowserSingleton.h"
+#include "IContentBrowserDataModule.h"
 #include "Editor/ContentBrowser/Public/ContentBrowserModule.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Toolkits/GlobalEditorCommonCommands.h"
@@ -23,6 +24,9 @@ void SProjectCleanerExcludedAssetsUI::Construct(const FArguments& InArgs)
 	ensure(CleanerManager);
 	
 	ContentBrowserModule = &FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
+	
+	FName CurrentlySelectedVirtualPath;
+	IContentBrowserDataModule::Get().GetSubsystem()->ConvertInternalPathToVirtual(FStringView(SelectedPath), CurrentlySelectedVirtualPath);
 	
 	RegisterCommands();
 
@@ -47,64 +51,22 @@ void SProjectCleanerExcludedAssetsUI::Construct(const FArguments& InArgs)
 		this,
 		&SProjectCleanerExcludedAssetsUI::OnGetAssetContextMenu
 	);
+	AssetPickerConfig.OnFolderEntered = FOnPathSelected::CreateSP(this, &SProjectCleanerExcludedAssetsUI::OnFolderEntered);
+	AssetPickerConfig.SetFilterDelegates.Add(&SetFilterDelegate);
+	AssetPickerConfig.Filter.PackagePaths.Add(CurrentlySelectedVirtualPath);
 
-	SelectedPath = FName{TEXT("/Game")};
 	PathPickerConfig.bAllowContextMenu = true;
 	PathPickerConfig.bAllowClassesFolder = false;
 	PathPickerConfig.bFocusSearchBoxWhenOpened = false;
 	PathPickerConfig.OnPathSelected.BindRaw(this, &SProjectCleanerExcludedAssetsUI::OnPathSelected);
 	PathPickerConfig.bAddDefaultPath = true;
-	PathPickerConfig.DefaultPath = SelectedPath.ToString();
+	PathPickerConfig.DefaultPath = SelectedPath;
 	PathPickerConfig.OnGetFolderContextMenu = FOnGetFolderContextMenu::CreateSP(
 		this, &SProjectCleanerExcludedAssetsUI::OnGetFolderContextMenu
 	);
+	PathPickerConfig.SetPathsDelegates.Add(&SetPathsDelegate);
 	
 	UpdateUI();
-}
-
-void SProjectCleanerExcludedAssetsUI::SetCleanerManager(FProjectCleanerManager* CleanerManagerPtr)
-{
-	if (!CleanerManagerPtr) return;
-	CleanerManager = CleanerManagerPtr;
-}
-
-void SProjectCleanerExcludedAssetsUI::RegisterCommands()
-{
-	FProjectCleanerCommands::Register();
-
-	Commands = MakeShareable(new FUICommandList);
-	Commands->MapAction(
-		FGlobalEditorCommonCommands::Get().FindInContentBrowser,
-		FUIAction(
-			FExecuteAction::CreateRaw(this, &SProjectCleanerExcludedAssetsUI::FindInContentBrowser),
-			FCanExecuteAction::CreateRaw(this, &SProjectCleanerExcludedAssetsUI::IsAnythingSelected)
-		)
-	);
-
-	Commands->MapAction(
-		FProjectCleanerCommands::Get().IncludeAsset,
-		FUIAction
-		(
-			FExecuteAction::CreateRaw(this,&SProjectCleanerExcludedAssetsUI::IncludeAssets),
-			FCanExecuteAction::CreateRaw(this, &SProjectCleanerExcludedAssetsUI::IsAnythingSelected)
-		)
-	);
-
-	Commands->MapAction(
-		FProjectCleanerCommands::Get().IncludePath,
-		FUIAction
-		(
-			FExecuteAction::CreateRaw(this,&SProjectCleanerExcludedAssetsUI::IncludePath)
-		)
-	);
-}
-
-void SProjectCleanerExcludedAssetsUI::UpdateUI()
-{
-	if (!ContentBrowserModule) return;
-	if (!CleanerManager->GetCleanerConfigs()) return;
-	
-	GenerateFilter();
 	
 	ChildSlot
 	[
@@ -165,6 +127,51 @@ void SProjectCleanerExcludedAssetsUI::UpdateUI()
 			]
 		]
 	];
+}
+
+void SProjectCleanerExcludedAssetsUI::SetCleanerManager(FProjectCleanerManager* CleanerManagerPtr)
+{
+	if (!CleanerManagerPtr) return;
+	CleanerManager = CleanerManagerPtr;
+}
+
+void SProjectCleanerExcludedAssetsUI::RegisterCommands()
+{
+	FProjectCleanerCommands::Register();
+
+	Commands = MakeShareable(new FUICommandList);
+	Commands->MapAction(
+		FGlobalEditorCommonCommands::Get().FindInContentBrowser,
+		FUIAction(
+			FExecuteAction::CreateRaw(this, &SProjectCleanerExcludedAssetsUI::FindInContentBrowser),
+			FCanExecuteAction::CreateRaw(this, &SProjectCleanerExcludedAssetsUI::IsAnythingSelected)
+		)
+	);
+
+	Commands->MapAction(
+		FProjectCleanerCommands::Get().IncludeAsset,
+		FUIAction
+		(
+			FExecuteAction::CreateRaw(this,&SProjectCleanerExcludedAssetsUI::IncludeAssets),
+			FCanExecuteAction::CreateRaw(this, &SProjectCleanerExcludedAssetsUI::IsAnythingSelected)
+		)
+	);
+
+	Commands->MapAction(
+		FProjectCleanerCommands::Get().IncludePath,
+		FUIAction
+		(
+			FExecuteAction::CreateRaw(this,&SProjectCleanerExcludedAssetsUI::IncludePath)
+		)
+	);
+}
+
+void SProjectCleanerExcludedAssetsUI::UpdateUI()
+{
+	if (!ContentBrowserModule) return;
+	if (!CleanerManager->GetCleanerConfigs()) return;
+	
+	GenerateFilter();
 }
 
 TSharedPtr<SWidget> SProjectCleanerExcludedAssetsUI::OnGetAssetContextMenu(const TArray<FAssetData>& SelectedAssets) const
@@ -231,7 +238,7 @@ void SProjectCleanerExcludedAssetsUI::IncludeAssets() const
 
 void SProjectCleanerExcludedAssetsUI::IncludePath() const
 {
-	CleanerManager->IncludePath(SelectedPath.ToString());
+	CleanerManager->IncludePath(SelectedPath);
 }
 
 FReply SProjectCleanerExcludedAssetsUI::IncludeAllAssets() const
@@ -243,7 +250,11 @@ FReply SProjectCleanerExcludedAssetsUI::IncludeAllAssets() const
 
 void SProjectCleanerExcludedAssetsUI::GenerateFilter()
 {
+	FName CurrentlySelectedVirtualPath;
+	IContentBrowserDataModule::Get().GetSubsystem()->ConvertInternalPathToVirtual(FStringView(SelectedPath), CurrentlySelectedVirtualPath);
+	
 	Filter.Clear();
+	Filter.PackagePaths.Add(CurrentlySelectedVirtualPath);
 	
 	if (CleanerManager->GetExcludedAssets().Num() == 0)
 	{
@@ -258,22 +269,29 @@ void SProjectCleanerExcludedAssetsUI::GenerateFilter()
 			Filter.PackageNames.Add(Asset);
 		}
 	}
-
-	if (!SelectedPath.IsNone())
-	{
-		Filter.PackagePaths.Add(SelectedPath);
-	}
 	
 	AssetPickerConfig.bCanShowDevelopersFolder = CleanerManager->GetCleanerConfigs()->bScanDeveloperContents;
-	AssetPickerConfig.Filter = Filter;
+
+	if (SetFilterDelegate.IsBound())
+	{
+		SetFilterDelegate.Execute(Filter);
+	}
 }
 
 void SProjectCleanerExcludedAssetsUI::OnPathSelected(const FString& Path)
 {
-	SelectedPath = FName{Path};
-	PathPickerConfig.DefaultPath = Path;
+	SelectedPath = Path;
 	
 	UpdateUI();
+}
+
+void SProjectCleanerExcludedAssetsUI::OnFolderEntered(const FString& NewPath)
+{
+	SelectedPath = NewPath;
+
+	TArray<FString> NewPaths;
+	NewPaths.Add(NewPath);
+	SetPathsDelegate.Execute(NewPaths);
 }
 
 #undef LOCTEXT_NAMESPACE

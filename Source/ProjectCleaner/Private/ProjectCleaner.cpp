@@ -78,10 +78,6 @@ void FProjectCleanerModule::PluginButtonClicked()
 {
 	CleanerManager.Update();
 	
-	const auto Settings = GetMutableDefault<UContentBrowserSettings>();
-	Settings->bShowAllFolder = false;
-	Settings->PostEditChange();
-	
 	FGlobalTabmanager::Get()->TryInvokeTab(ProjectCleanerTabName);
 }
 

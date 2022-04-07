@@ -42,15 +42,18 @@ private:
 	FReply IncludeAllAssets() const;
 	FARFilter Filter;
 	FAssetPickerConfig AssetPickerConfig;
+	FSetPathPickerPathsDelegate SetPathsDelegate;
+	FSetARFilterDelegate SetFilterDelegate;
 
 	/* Data */
 	FGetCurrentSelectionDelegate GetCurrentSelectionDelegate;
 	TSharedPtr<FUICommandList> Commands;
 
 	/* PathPickerConfig */
-	FName SelectedPath;
+	FString SelectedPath;
 	FPathPickerConfig PathPickerConfig;
 	void OnPathSelected(const FString& Path);
+	void OnFolderEntered(const FString& NewPath);
 
 	/* ProjectCleanerManager */
 	FProjectCleanerManager* CleanerManager = nullptr;
