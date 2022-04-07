@@ -35,6 +35,9 @@ private:
 	FARFilter Filter;
 	FGetCurrentSelectionDelegate CurrentSelectionDelegate;
 	FRefreshAssetViewDelegate RefreshAssetViewDelegate;
+	FSetPathPickerPathsDelegate SetPathsDelegate;
+	FSetARFilterDelegate SetFilterDelegate;
+	void OnFolderEntered(const FString& NewPath);
 	
 	void GenerateFilter();
 	TSharedPtr<SWidget> OnGetFolderContextMenu(
@@ -49,7 +52,7 @@ private:
 
 	/* PathPicker */
 	FPathPickerConfig PathPickerConfig;
-	FName SelectedPath = NAME_None;
+	FString SelectedPath;
 	void OnPathSelected(const FString& Path);
 
 	/* ContentBrowserModule */

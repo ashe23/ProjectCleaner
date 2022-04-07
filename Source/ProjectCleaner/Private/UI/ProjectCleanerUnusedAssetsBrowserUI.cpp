@@ -5,6 +5,7 @@
 #include "Core/ProjectCleanerManager.h"
 #include "StructsContainer.h"
 // Engine Headers
+#include "IContentBrowserDataModule.h"
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "Editor/ContentBrowser/Public/ContentBrowserModule.h"
 #include "Widgets/Layout/SScrollBox.h"
@@ -23,7 +24,10 @@ void SProjectCleanerUnusedAssetsBrowserUI::Construct(const FArguments& InArgs)
 	ensure(CleanerManager);
 	
 	ContentBrowserModule = &FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
-
+	
+	FName CurrentlySelectedVirtualPath;
+	IContentBrowserDataModule::Get().GetSubsystem()->ConvertInternalPathToVirtual(FStringView(SelectedPath), CurrentlySelectedVirtualPath);
+	
 	RegisterCommands();
 
 	AssetPickerConfig.InitialAssetViewType = EAssetViewType::Tile;
@@ -48,19 +52,37 @@ void SProjectCleanerUnusedAssetsBrowserUI::Construct(const FArguments& InArgs)
 		this,
 		&SProjectCleanerUnusedAssetsBrowserUI::OnGetAssetContextMenu
 	);
+	AssetPickerConfig.OnFolderEntered = FOnPathSelected::CreateSP(this, &SProjectCleanerUnusedAssetsBrowserUI::OnFolderEntered);
+	AssetPickerConfig.SetFilterDelegates.Add(&SetFilterDelegate);
+	AssetPickerConfig.Filter.PackagePaths.Add(CurrentlySelectedVirtualPath);
 
-	SelectedPath = TEXT("/Game");
 	PathPickerConfig.bAllowContextMenu = true;
 	PathPickerConfig.bAllowClassesFolder = false;
 	PathPickerConfig.bFocusSearchBoxWhenOpened = false;
-	PathPickerConfig.OnPathSelected.BindRaw(this, &SProjectCleanerUnusedAssetsBrowserUI::OnPathSelected);
+	PathPickerConfig.OnPathSelected = FOnPathSelected::CreateSP(this, &SProjectCleanerUnusedAssetsBrowserUI::OnPathSelected);
 	PathPickerConfig.bAddDefaultPath = true;
-	PathPickerConfig.DefaultPath = SelectedPath.ToString();
+	PathPickerConfig.DefaultPath = SelectedPath;
 	PathPickerConfig.OnGetFolderContextMenu = FOnGetFolderContextMenu::CreateSP(
 		this, &SProjectCleanerUnusedAssetsBrowserUI::OnGetFolderContextMenu
 	);
+	PathPickerConfig.SetPathsDelegates.Add(&SetPathsDelegate);
 	
 	UpdateUI();
+	
+	ChildSlot
+	[
+		SNew(SSplitter)
+		.PhysicalSplitterHandleSize(2.0f)
+		+ SSplitter::Slot()
+		.Value(0.3f)
+		[
+			ContentBrowserModule->Get().CreatePathPicker(PathPickerConfig)
+		]
+		+ SSplitter::Slot()
+		[
+			ContentBrowserModule->Get().CreateAssetPicker(AssetPickerConfig)
+		]
+	];
 }
 
 void SProjectCleanerUnusedAssetsBrowserUI::SetCleanerManager(FProjectCleanerManager* CleanerManagerPtr)
@@ -150,26 +172,24 @@ void SProjectCleanerUnusedAssetsBrowserUI::UpdateUI()
 	if (!CleanerManager->GetCleanerConfigs()) return;
 
 	GenerateFilter();
-	
-	ChildSlot
-	[
-		SNew(SSplitter)
-		.PhysicalSplitterHandleSize(2.0f)
-		+ SSplitter::Slot()
-		.Value(0.3f)
-		[
-			ContentBrowserModule->Get().CreatePathPicker(PathPickerConfig)
-		]
-		+ SSplitter::Slot()
-		[
-			ContentBrowserModule->Get().CreateAssetPicker(AssetPickerConfig)
-		]
-	];
+}
+
+void SProjectCleanerUnusedAssetsBrowserUI::OnFolderEntered(const FString& NewPath)
+{
+	SelectedPath = NewPath;
+
+	TArray<FString> NewPaths;
+	NewPaths.Add(NewPath);
+	SetPathsDelegate.Execute(NewPaths);
 }
 
 void SProjectCleanerUnusedAssetsBrowserUI::GenerateFilter()
 {
+	FName CurrentlySelectedVirtualPath;
+	IContentBrowserDataModule::Get().GetSubsystem()->ConvertInternalPathToVirtual(FStringView(SelectedPath), CurrentlySelectedVirtualPath);
+	
 	Filter.Clear();
+	Filter.PackagePaths.Add(CurrentlySelectedVirtualPath);
 	
 	if (CleanerManager->GetUnusedAssets().Num() == 0)
 	{
@@ -184,14 +204,13 @@ void SProjectCleanerUnusedAssetsBrowserUI::GenerateFilter()
 			Filter.PackageNames.Add(Asset.PackageName);
 		}
 	}
-
-	if (!SelectedPath.IsNone())
-	{
-		Filter.PackagePaths.Add(SelectedPath);
-	}
 	
 	AssetPickerConfig.bCanShowDevelopersFolder = CleanerManager->GetCleanerConfigs()->bScanDeveloperContents;
-	AssetPickerConfig.Filter = Filter;
+	
+	if (SetFilterDelegate.IsBound())
+	{
+		SetFilterDelegate.Execute(Filter);
+	}
 }
 
 TSharedPtr<SWidget> SProjectCleanerUnusedAssetsBrowserUI::OnGetFolderContextMenu(const TArray<FString>& SelectedPaths,
@@ -234,8 +253,7 @@ void SProjectCleanerUnusedAssetsBrowserUI::OnAssetDblClicked(const FAssetData& A
 
 void SProjectCleanerUnusedAssetsBrowserUI::OnPathSelected(const FString& Path)
 {
-	SelectedPath = FName{Path};
-	PathPickerConfig.DefaultPath = Path;
+	SelectedPath = Path;
 	
 	UpdateUI();
 }
@@ -285,7 +303,7 @@ void SProjectCleanerUnusedAssetsBrowserUI::ExcludeAssetsOfType() const
 
 void SProjectCleanerUnusedAssetsBrowserUI::ExcludePath() const
 {
-	CleanerManager->ExcludePath(SelectedPath.ToString());
+	CleanerManager->ExcludePath(SelectedPath);
 }
 
 #undef LOCTEXT_NAMESPACE
