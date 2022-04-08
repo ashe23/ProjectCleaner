@@ -1,5 +1,5 @@
 # ProjectCleaner
-UE4 plugin for managing unused assets and empty folders in project.
+Unreal engine plugin for managing unused assets and empty folders in project.
 
 No more Migration and other hacky methods needed.
 
