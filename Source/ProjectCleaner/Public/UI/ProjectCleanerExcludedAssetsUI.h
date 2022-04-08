@@ -50,7 +50,7 @@ private:
 	TSharedPtr<FUICommandList> Commands;
 
 	/* PathPickerConfig */
-	FString SelectedPath;
+	FString SelectedPath = TEXT("/Game");
 	FPathPickerConfig PathPickerConfig;
 	void OnPathSelected(const FString& Path);
 	void OnFolderEntered(const FString& NewPath);

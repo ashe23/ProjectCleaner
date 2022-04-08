@@ -53,7 +53,6 @@ void SProjectCleanerExcludedAssetsUI::Construct(const FArguments& InArgs)
 	);
 	AssetPickerConfig.OnFolderEntered = FOnPathSelected::CreateSP(this, &SProjectCleanerExcludedAssetsUI::OnFolderEntered);
 	AssetPickerConfig.SetFilterDelegates.Add(&SetFilterDelegate);
-	AssetPickerConfig.Filter.PackagePaths.Add(CurrentlySelectedVirtualPath);
 
 	PathPickerConfig.bAllowContextMenu = true;
 	PathPickerConfig.bAllowClassesFolder = false;
@@ -271,6 +270,7 @@ void SProjectCleanerExcludedAssetsUI::GenerateFilter()
 	}
 	
 	AssetPickerConfig.bCanShowDevelopersFolder = CleanerManager->GetCleanerConfigs()->bScanDeveloperContents;
+	AssetPickerConfig.Filter = Filter;
 
 	if (SetFilterDelegate.IsBound())
 	{

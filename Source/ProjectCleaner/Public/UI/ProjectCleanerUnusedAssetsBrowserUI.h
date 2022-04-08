@@ -52,7 +52,7 @@ private:
 
 	/* PathPicker */
 	FPathPickerConfig PathPickerConfig;
-	FString SelectedPath;
+	FString SelectedPath = TEXT("/Game");
 	void OnPathSelected(const FString& Path);
 
 	/* ContentBrowserModule */
