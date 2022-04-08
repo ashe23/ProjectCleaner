@@ -3,14 +3,10 @@ UE4 plugin for managing unused assets and empty folders in project.
 
 No more Migration and other hacky methods needed.
 
-Versions Supported: 4.25+<br>
-Version for UE5 early access now available [UE5 Docs](https://github.com/ashe23/ProjectCleaner/wiki/Unreal-Engine-5-Support)<br>
+Versions Supported: 4.25, 4.26, 4.27, 5.0  
 Platform: Windows
 
-<img src="https://user-images.githubusercontent.com/8270558/130083020-6fa213fd-c39d-41b4-bbca-a8c9f8a635c6.png" />
-
-  
-[comment]: <img src="https://user-images.githubusercontent.com/8270558/124383180-07feff80-dcdc-11eb-90b7-ffbf4a770cbf.png" width="600" height="320" />
+<img src="https://user-images.githubusercontent.com/8270558/162420930-760e035b-6e91-43c4-9cd0-0e0beddf8d31.png" />
 
 # Installation
 Plugin available on marketplace [Marketplace URL](https://www.unrealengine.com/marketplace/en-US/product/4d7f5dc837fc4b009bb91e678adf9fd0)
@@ -34,5 +30,3 @@ Plugin available on marketplace [Marketplace URL](https://www.unrealengine.com/m
 * Indirectly used assets detection ([Indirectly used assets Docs](https://github.com/ashe23/ProjectCleaner/wiki/Indirectly-used-assets))
 * Configurable options for scanning
 * Command line interface ([CLI docs](https://github.com/ashe23/ProjectCleaner/wiki/Command-line-interface))
-* Beta version for UE5 Early Access ([UE5 Docs](https://github.com/ashe23/ProjectCleaner/wiki/Unreal-Engine-5-Support))
-* Beta version for UE5 Preview ([UE5 Preview](https://github.com/ashe23/ProjectCleaner/releases/tag/v1.6.0))
