@@ -22,22 +22,29 @@ public:
 	virtual int32 DeleteEmptyFolders() = 0;
 };
 
-UCLASS(Transient)
+UCLASS(Transient, Config=EditorPerProjectUserSettings)
 class UCleanerConfigs : public UObject
 {
 	GENERATED_BODY()
 public:
-	UPROPERTY(DisplayName = "Scan Developer Content", EditAnywhere, Category = "CleanerConfigs", meta = (ToolTip = "Scan assets in 'Developers' folder. By Default false"))
+	UPROPERTY(DisplayName = "Scan Developer Content", EditAnywhere, Config, Category = "CleanerConfigs", meta = (ToolTip = "Scan assets in 'Developers' folder. By Default false"))
 	bool bScanDeveloperContents = false;
 
-	UPROPERTY(DisplayName = "Delete Empty Folders After Assets Deleted", EditAnywhere, Category = "CleanerConfigs")
+	UPROPERTY(DisplayName = "Delete Empty Folders After Assets Deleted", EditAnywhere, Config, Category = "CleanerConfigs")
 	bool bAutomaticallyDeleteEmptyFolders = true;
 	
-	UPROPERTY(DisplayName = "Paths", EditAnywhere, Category = "CleanerConfigs|ExcludeOptions", meta = (ContentDir))
+	UPROPERTY(DisplayName = "Paths", EditAnywhere, Config, Category = "CleanerConfigs|ExcludeOptions", meta = (ContentDir))
 	TArray<FDirectoryPath> Paths;
 
-	UPROPERTY(DisplayName = "Classes", EditAnywhere, Category = "CleanerConfigs|ExcludeOptions")
+	UPROPERTY(DisplayName = "Classes", EditAnywhere, Config, Category = "CleanerConfigs|ExcludeOptions")
 	TArray<UClass*> Classes;
+
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override
+	{
+		Super::PostEditChangeProperty(PropertyChangedEvent);
+
+		SaveConfig();
+	}
 };
 
 UCLASS(Transient)

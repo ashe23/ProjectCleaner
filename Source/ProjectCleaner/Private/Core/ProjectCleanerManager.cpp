@@ -17,6 +17,8 @@ FProjectCleanerManager::FProjectCleanerManager()
 	CleanerConfigs = GetMutableDefault<UCleanerConfigs>();
 	
 	ensure(CleanerConfigs);
+
+	CleanerConfigs->LoadConfig();
 }
 
 FProjectCleanerManager::~FProjectCleanerManager()
@@ -40,6 +42,8 @@ void FProjectCleanerManager::Update()
 	{
 		OnCleanerManagerUpdated.Execute();
 	}
+	
+	CleanerConfigs->PostEditChange();
 }
 
 void FProjectCleanerManager::ExcludeSelectedAssets(const TArray<FAssetData>& Assets)
