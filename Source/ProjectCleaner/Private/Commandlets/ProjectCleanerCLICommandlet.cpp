@@ -127,7 +127,7 @@ void UProjectCleanerCLICommandlet::ParseCommandLinesArguments(const FString& Par
 	TSet<FString> InvalidPaths;
 	TSet<FString> InvalidClasses;
 	
-	for (const auto Param : Parameters)
+	for (const auto& Param : Parameters)
 	{
 		if (Param.Key.Equals(TEXT("ExcludeAssets"), ESearchCase::IgnoreCase))
 		{

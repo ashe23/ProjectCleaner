@@ -20,7 +20,7 @@ int64 ProjectCleanerUtility::GetTotalSize(const TArray<FAssetData>& Assets)
 	int64 Size = 0;
 	for (const auto& Asset : Assets)
 	{
-		const auto AssetPackageData = AssetRegistry.Get().GetAssetPackageData(Asset.PackageName);
+		const auto AssetPackageData = AssetRegistry.Get().GetAssetPackageDataCopy(Asset.PackageName);
 		if (!AssetPackageData) continue;
 		Size += AssetPackageData->DiskSize;
 	}
