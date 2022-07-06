@@ -3,8 +3,8 @@ Unreal engine plugin for managing unused assets and empty folders in project.
 
 No more Migration and other hacky methods needed.
 
-Versions Supported: 4.25, 4.26, 4.27, 5.0  
-Platform: Windows
+Versions Supported: 4.27+   
+Platform: Windows and Linux
 
 <img src="https://user-images.githubusercontent.com/8270558/162420930-760e035b-6e91-43c4-9cd0-0e0beddf8d31.png" />
 
