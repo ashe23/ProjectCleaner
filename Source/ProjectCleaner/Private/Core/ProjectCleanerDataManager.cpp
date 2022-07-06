@@ -242,7 +242,7 @@ int32 FProjectCleanerDataManager::DeleteAllUnusedAssets()
 	}
 	
 	// Cleaning empty packages
-	const TSet<FName> EmptyPackages = AssetRegistry->Get().GetCachedEmptyPackagesCopy();
+	const TSet<FName> EmptyPackages = AssetRegistry->Get().GetCachedEmptyPackages();
 	TArray<UPackage*> AssetPackages;
 	for (const auto& EmptyPackage : EmptyPackages)
 	{
