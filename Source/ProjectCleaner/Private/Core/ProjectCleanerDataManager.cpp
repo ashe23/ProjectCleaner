@@ -16,7 +16,7 @@
 #include "Misc/FileHelper.h"
 #include "Misc/ScopedSlowTask.h"
 #include "GenericPlatform/GenericPlatformFile.h"
-#include "HAL/PlatformFilemanager.h"
+#include "HAL/PlatformFileManager.h"
 #include "Internationalization/Regex.h"
 #include "Settings/ContentBrowserSettings.h"
 
@@ -242,7 +242,7 @@ int32 FProjectCleanerDataManager::DeleteAllUnusedAssets()
 	}
 	
 	// Cleaning empty packages
-	const TSet<FName> EmptyPackages = AssetRegistry->Get().GetCachedEmptyPackages();
+	const TSet<FName> EmptyPackages = AssetRegistry->Get().GetCachedEmptyPackagesCopy();
 	TArray<UPackage*> AssetPackages;
 	for (const auto& EmptyPackage : EmptyPackages)
 	{
