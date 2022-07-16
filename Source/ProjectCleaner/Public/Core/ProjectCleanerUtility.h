@@ -19,6 +19,8 @@ public:
 	static int64 GetTotalSize(const TArray<FAssetData>& Assets);
 	static FName GetClassName(const FAssetData& AssetData);
 	static FText GetDeletionProgressText(const int32 DeletedAssetNum, const int32 Total, const bool bShowPercent);
+	static FString GetExternalActorsFolderPath();
+	static FString GetExternalObjectsFolderPath();
 	static FString ConvertAbsolutePathToInternal(const FString& InPath);
 	static FString ConvertInternalToAbsolutePath(const FString& InPath);
 	static void SaveAllAssets(const bool PromptUser);
@@ -28,6 +30,7 @@ public:
 	static int32 DeleteAssets(TArray<FAssetData>& Assets, const bool ForceDelete);
 	static bool IsEngineExtension(const FString& Extension);
 	static bool IsUnderMegascansFolder(const FAssetData& AssetData);
+	static bool IsUnderExternalGameFolder(const FString& Path);
 	static bool HasIndirectlyUsedAssets(const FString& FileContent);
 private:
 	static FString ConvertPathInternal(const FString& From, const FString To, const FString& Path);

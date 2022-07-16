@@ -445,6 +445,13 @@ void FProjectCleanerDataManager::FindAllAssets()
 	AllAssets.Empty();
 	AllAssets.Reserve(AssetRegistry->Get().GetAllocatedSize());
 	AssetRegistry->Get().GetAssetsByPath(RelativeRoot, AllAssets, true);
+
+	// filtering assets that are in '/Game/__ExternalActors__' and '/Game/__ExternalObjects__' folders
+	FARFilter Filter;
+	Filter.bRecursivePaths = true;
+	Filter.PackagePaths.Add(FName{*ProjectCleanerUtility::GetExternalActorsFolderPath()});
+	Filter.PackagePaths.Add(FName{*ProjectCleanerUtility::GetExternalObjectsFolderPath()});
+	AssetRegistry->Get().UseFilterToExcludeAssets(AllAssets, Filter);
 }
 
 void FProjectCleanerDataManager::FindInvalidFilesAndAssets()
@@ -479,6 +486,11 @@ void FProjectCleanerDataManager::FindInvalidFilesAndAssets()
 					ObjectPath.RemoveFromEnd(FPaths::GetExtension(InternalFilePath, true));
 					ObjectPath.Append(TEXT(".") + FPaths::GetBaseFilename(InternalFilePath));
 
+					if (ProjectCleanerUtility::IsUnderExternalGameFolder(ObjectPath))
+					{
+						return false;
+					}
+					
 					const FName ObjectPathName = FName{*ObjectPath};
 					const bool IsInAssetRegistry = AllAssets.ContainsByPredicate([&] (const FAssetData& Elem)
 					{
@@ -680,9 +692,9 @@ void FProjectCleanerDataManager::FindAssetsWithExternalReferencers()
 	{
 		AssetRegistry->Get().GetReferencers(Asset.PackageName, Refs);
 
-		const bool HasExternalRefs = Refs.ContainsByPredicate([](const FName& Ref)
+		const bool HasExternalRefs = Refs.ContainsByPredicate([&](const FName& Ref)
 		{
-			return !Ref.ToString().StartsWith(TEXT("/Game"));
+			return !Ref.ToString().StartsWith(TEXT("/Game")) || ProjectCleanerUtility::IsUnderExternalGameFolder(Ref.ToString());
 		});
 
 		if (HasExternalRefs)

@@ -131,6 +131,23 @@ bool ProjectCleanerUtility::IsUnderMegascansFolder(const FAssetData& AssetData)
 	return AssetData.PackagePath.ToString().StartsWith(TEXT("/Game/MSPresets"));
 }
 
+FString ProjectCleanerUtility::GetExternalActorsFolderPath()
+{
+	return FString::Printf(TEXT("/Game/%s"), FPackagePath::GetExternalActorsFolderName());
+}
+
+FString ProjectCleanerUtility::GetExternalObjectsFolderPath()
+{
+	return FString::Printf(TEXT("/Game/%s"), FPackagePath::GetExternalObjectsFolderName());
+}
+
+bool ProjectCleanerUtility::IsUnderExternalGameFolder(const FString& Path)
+{
+	if (Path.IsEmpty()) return false;
+
+	return  Path.StartsWith(GetExternalActorsFolderPath()) || Path.StartsWith(GetExternalObjectsFolderPath());
+}
+
 bool ProjectCleanerUtility::HasIndirectlyUsedAssets(const FString& FileContent)
 {
 	if (FileContent.IsEmpty()) return false;
