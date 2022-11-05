@@ -50,7 +50,9 @@ public class ProjectCleaner : ModuleRules
 				"UnrealEd",
 				"ToolMenus",
 				"AssetTools",
-				"AssetRegistry"
+				"AssetRegistry",
+				"Blutility",
+				"UMGEditor"
 			}
 		);
 

@@ -19,6 +19,8 @@
 #include "HAL/PlatformFileManager.h"
 #include "Internationalization/Regex.h"
 #include "Settings/ContentBrowserSettings.h"
+#include "EditorUtilityBlueprint.h"
+#include "EditorUtilityWidgetBlueprint.h"
 
 FProjectCleanerDataManager::FProjectCleanerDataManager() :
 	bSilentMode(false),
@@ -59,7 +61,7 @@ void FProjectCleanerDataManager::AnalyzeProject()
 	FindUnusedAssets();
 }
 
-void FProjectCleanerDataManager::PrintInfo()
+void FProjectCleanerDataManager::PrintInfo() const
 {
 	UE_LOG(LogProjectCleaner, Display, TEXT("All Assets - %d"), AllAssets.Num());
 	UE_LOG(LogProjectCleaner, Display, TEXT("Unused Assets - %d"), UnusedAssets.Num());
@@ -665,11 +667,15 @@ void FProjectCleanerDataManager::FindPrimaryAssetClasses()
 
 	for (const auto& AssetTypeInfo : AssetTypeInfos)
 	{
-		UClass* AssetTypeCLass = AssetTypeInfo.AssetBaseClassLoaded;
+		const UClass* AssetTypeCLass = AssetTypeInfo.AssetBaseClassLoaded;
 		if (!AssetTypeCLass) continue;
 		FName ClassName = AssetTypeCLass->GetFName();
 		PrimaryAssetClasses.Add(ClassName);
 	}
+
+	// marking EditorUtility assets as primary also, because they may not be used in any level , but still have specific logic that user written for in editor usage
+	PrimaryAssetClasses.Add(UEditorUtilityBlueprint::StaticClass()->GetFName());
+	PrimaryAssetClasses.Add(UEditorUtilityWidgetBlueprint::StaticClass()->GetFName());
 }
 
 void FProjectCleanerDataManager::FindAssetsWithExternalReferencers()
