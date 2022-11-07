@@ -19,6 +19,8 @@
 #include "HAL/PlatformFileManager.h"
 #include "Internationalization/Regex.h"
 #include "Settings/ContentBrowserSettings.h"
+#include "EditorUtilityBlueprint.h"
+#include "EditorUtilityWidgetBlueprint.h"
 
 FProjectCleanerDataManager::FProjectCleanerDataManager() :
 	bSilentMode(false),
@@ -677,11 +679,14 @@ void FProjectCleanerDataManager::FindPrimaryAssetClasses()
 
 	for (const auto& AssetTypeInfo : AssetTypeInfos)
 	{
-		UClass* AssetTypeCLass = AssetTypeInfo.AssetBaseClassLoaded;
+		const UClass* AssetTypeCLass = AssetTypeInfo.AssetBaseClassLoaded;
 		if (!AssetTypeCLass) continue;
 		FName ClassName = AssetTypeCLass->GetFName();
 		PrimaryAssetClasses.Add(ClassName);
 	}
+
+	PrimaryAssetClasses.Add(UEditorUtilityBlueprint::StaticClass()->GetFName());
+	PrimaryAssetClasses.Add(UEditorUtilityWidgetBlueprint::StaticClass()->GetFName());
 }
 
 void FProjectCleanerDataManager::FindAssetsWithExternalReferencers()

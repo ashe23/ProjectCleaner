@@ -53,6 +53,8 @@ public class ProjectCleaner : ModuleRules
 				"AssetTools",
 				"AssetRegistry",
 				"ContentBrowserData",
+				"Blutility",
+				"UMGEditor"
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);
