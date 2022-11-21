@@ -135,5 +135,5 @@ bool UProjectCleanerAssetLibrary::IsEngineExtension(const FString& Extension)
 
 bool UProjectCleanerAssetLibrary::IsUnderMegascansFolder(const FString& AssetPackagePath)
 {
-	return AssetPackagePath.StartsWith(ProjectCleanerConstants::PathMegascansPlugin);
+	return AssetPackagePath.StartsWith(ProjectCleanerConstants::PathMegascans) || AssetPackagePath.StartsWith(ProjectCleanerConstants::PathMegascansPresets);
 }

@@ -17,9 +17,11 @@ namespace ProjectCleanerConstants
 	// messages
 	static const FString MsgFixingRedirectors{TEXT("Fixing up redirectors... ")};
 	static const FString MsgLoadingAssets{TEXT("Loading Assets... ")};
+	static const FString MsgAssetRegistryStillWorking{TEXT("The AssetRegistry is still working. Please wait for the scan to finish")};
 
 	// path
 	static const FString PathRelativeRoot{TEXT("/Game")};
-	static const FString PathMegascansPlugin{TEXT("/Game/MSPresets")};
+	static const FString PathMegascans{TEXT("/Game/Megascans")};
+	static const FString PathMegascansPresets{TEXT("/Game/MSPresets")};
 	
 }
