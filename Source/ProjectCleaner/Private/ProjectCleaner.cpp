@@ -1,4 +1,4 @@
-// Copyright 2021. Ashot Barkhudaryan. All Rights Reserved.
+// Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "ProjectCleaner.h"
 #include "ProjectCleanerStyles.h"
