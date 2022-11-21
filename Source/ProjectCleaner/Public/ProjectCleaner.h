@@ -1,30 +1,28 @@
-// Copyright 2021. Ashot Barkhudaryan. All Rights Reserved.
+// Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #pragma once
 
-#include "Core/ProjectCleanerManager.h"
-// Engine Headers
 #include "Modules/ModuleInterface.h"
 #include "CoreMinimal.h"
 
 DECLARE_LOG_CATEGORY_EXTERN(LogProjectCleaner, Log, All);
 
-class FProjectCleanerModule : public IModuleInterface
+class FProjectCleanerModule final : public IModuleInterface
 {
 public:
-	/* IModuleInterface implementation */
 	virtual void StartupModule() override;
 	virtual void ShutdownModule() override;
 	virtual bool IsGameModule() const override;
 private:
-	/* Module */
+	static void RegisterStyles();
+	void RegisterCmds();
 	void RegisterMenus();
-	void PluginButtonClicked();
-	TSharedRef<SDockTab> OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs);
-	
-	/* UI data */
-	TSharedPtr<FUICommandList> PluginCommands;
+	void RegisterTabs() const;
 
-	/* Cleaner Manager */
-	class FProjectCleanerManager CleanerManager;
+	static void UnregisterStyles();
+	static void UnregisterCmds();
+	void UnregisterMenus();
+	static void UnregisterTabs();
+
+	TSharedPtr<FUICommandList> Cmds;
 };

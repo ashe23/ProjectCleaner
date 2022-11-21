@@ -1,9 +1,9 @@
 // Copyright 2021. Ashot Barkhudaryan. All Rights Reserved.
 
 #include "ProjectCleaner.h"
-#include "UI/ProjectCleanerStyle.h"
-#include "UI/ProjectCleanerMainUI.h"
-#include "UI/ProjectCleanerCommands.h"
+#include "ProjectCleanerStyles.h"
+#include "ProjectCleanerCmds.h"
+#include "ProjectCleanerConstants.h"
 // Engine Headers
 #include "ToolMenus.h"
 #include "AssetToolsModule.h"
@@ -11,45 +11,22 @@
 
 DEFINE_LOG_CATEGORY(LogProjectCleaner);
 
-static const FName ProjectCleanerTabName("ProjectCleaner");
-
 #define LOCTEXT_NAMESPACE "FProjectCleanerModule"
 
 void FProjectCleanerModule::StartupModule()
 {
-	// initializing styles
-	FProjectCleanerStyle::Initialize();
-	FProjectCleanerStyle::ReloadTextures();
-	FProjectCleanerCommands::Register();
-
-	// Registering plugin commands
-	PluginCommands = MakeShareable(new FUICommandList);
-	PluginCommands->MapAction(
-		FProjectCleanerCommands::Get().OpenCleanerWindow,
-		FExecuteAction::CreateRaw(this, &FProjectCleanerModule::PluginButtonClicked)
-	);
-
-	UToolMenus::RegisterStartupCallback(
-		FSimpleMulticastDelegate::FDelegate::CreateRaw(
-			this,
-			&FProjectCleanerModule::RegisterMenus
-		)
-	);
-
-	FGlobalTabmanager::Get()->RegisterNomadTabSpawner(
-		ProjectCleanerTabName,
-		FOnSpawnTab::CreateRaw(this, &FProjectCleanerModule::OnSpawnPluginTab))
-		.SetDisplayName(LOCTEXT("FProjectCleanerTabTitle", "ProjectCleaner"))
-		.SetMenuType(ETabSpawnerMenuType::Hidden);
+	RegisterStyles();
+	RegisterCmds();
+	RegisterMenus();
+	RegisterTabs();
 }
 
 void FProjectCleanerModule::ShutdownModule()
 {
-	UToolMenus::UnRegisterStartupCallback(this);
-	UToolMenus::UnregisterOwner(this);
-	FProjectCleanerStyle::Shutdown();
-	FProjectCleanerCommands::Unregister();
-	FGlobalTabmanager::Get()->UnregisterNomadTabSpawner(ProjectCleanerTabName);
+	UnregisterTabs();
+	UnregisterMenus();
+	UnregisterCmds();
+	UnregisterStyles();
 }
 
 bool FProjectCleanerModule::IsGameModule() const
@@ -57,36 +34,79 @@ bool FProjectCleanerModule::IsGameModule() const
 	return false;
 }
 
+void FProjectCleanerModule::RegisterStyles()
+{
+	FProjectCleanerStyles::Initialize();
+	FProjectCleanerStyles::ReloadTextures();
+	FProjectCleanerCmds::Register();
+}
+
+void FProjectCleanerModule::RegisterCmds()
+{
+	Cmds = MakeShareable(new FUICommandList);
+	Cmds->MapAction(
+		FProjectCleanerCmds::Get().Cmd_OpenCleanerWindow,
+		FExecuteAction::CreateLambda([&]()
+		{
+			FGlobalTabmanager::Get()->TryInvokeTab(ProjectCleanerConstants::TabProjectCleaner);
+		})
+	);
+}
+
 void FProjectCleanerModule::RegisterMenus()
 {
-	FToolMenuOwnerScoped OwnerScoped(this);
+	UToolMenus::RegisterStartupCallback(
+		FSimpleMulticastDelegate::FDelegate::CreateLambda([&]()
+			{
+				FToolMenuOwnerScoped OwnerScoped(this);
 
-	UToolMenu* Menu = UToolMenus::Get()->ExtendMenu("LevelEditor.MainMenu.Window");
-	FToolMenuSection& Section = Menu->FindOrAddSection("WindowLayout");
-	Section.AddMenuEntryWithCommandList(FProjectCleanerCommands::Get().OpenCleanerWindow, PluginCommands);
+				UToolMenu* Menu = UToolMenus::Get()->ExtendMenu("LevelEditor.MainMenu.Window");
+				FToolMenuSection& Section = Menu->FindOrAddSection("WindowLayout");
+				Section.AddMenuEntryWithCommandList(FProjectCleanerCmds::Get().Cmd_OpenCleanerWindow, Cmds);
 
-	UToolMenu* ToolbarMenu = UToolMenus::Get()->ExtendMenu("LevelEditor.LevelEditorToolBar");
-	FToolMenuSection& ToolbarSection = ToolbarMenu->FindOrAddSection("Settings");
-	FToolMenuEntry& Entry = ToolbarSection.AddEntry(
-		FToolMenuEntry::InitToolBarButton(FProjectCleanerCommands::Get().OpenCleanerWindow)
+				UToolMenu* ToolbarMenu = UToolMenus::Get()->ExtendMenu("LevelEditor.LevelEditorToolBar");
+				FToolMenuSection& ToolbarSection = ToolbarMenu->FindOrAddSection("Settings");
+				FToolMenuEntry& Entry = ToolbarSection.AddEntry(
+					FToolMenuEntry::InitToolBarButton(FProjectCleanerCmds::Get().Cmd_OpenCleanerWindow)
+				);
+				Entry.SetCommandList(Cmds);
+			}
+		)
 	);
-	Entry.SetCommandList(PluginCommands);
 }
 
-void FProjectCleanerModule::PluginButtonClicked()
+void FProjectCleanerModule::RegisterTabs() const
 {
-	CleanerManager.Update();
-	
-	FGlobalTabmanager::Get()->TryInvokeTab(ProjectCleanerTabName);
+	FGlobalTabmanager::Get()->RegisterNomadTabSpawner(
+		                        ProjectCleanerConstants::TabProjectCleaner,
+		                        FOnSpawnTab::CreateLambda([&](const FSpawnTabArgs& SpawnTabArgs)
+		                        {
+			                        return SNew(SDockTab).TabRole(MajorTab);
+		                        }))
+	                        .SetDisplayName(LOCTEXT("FProjectCleanerTabTitle", "ProjectCleaner"))
+	                        .SetMenuType(ETabSpawnerMenuType::Hidden)
+	                        .SetIcon(FSlateIcon(FProjectCleanerStyles::GetStyleSetName(), "ProjectCleaner.IconBin20"));
 }
 
-TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs)
+void FProjectCleanerModule::UnregisterMenus()
 {
-	return SNew(SDockTab).TabRole(ETabRole::MajorTab)
-	[
-		SNew(SProjectCleanerMainUI)
-		.CleanerManager(&CleanerManager)
-	];
+	UToolMenus::UnRegisterStartupCallback(this);
+	UToolMenus::UnregisterOwner(this);
+}
+
+void FProjectCleanerModule::UnregisterTabs()
+{
+	FGlobalTabmanager::Get()->UnregisterNomadTabSpawner(ProjectCleanerConstants::TabProjectCleaner);
+}
+
+void FProjectCleanerModule::UnregisterStyles()
+{
+	FProjectCleanerStyles::Shutdown();
+}
+
+void FProjectCleanerModule::UnregisterCmds()
+{
+	FProjectCleanerCmds::Unregister();
 }
 
 #undef LOCTEXT_NAMESPACE
