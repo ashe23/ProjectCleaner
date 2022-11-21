@@ -46,12 +46,12 @@ TSharedRef<FSlateStyleSet> FProjectCleanerStyles::Create()
 	Style->SetContentRoot(IPluginManager::Get().FindPlugin(ProjectCleanerConstants::ModuleName.ToString())->GetBaseDir() / TEXT("Resources"));
 
 	// icons
-	Style->Set("ProjectCleaner.IconBin20", new IMAGE_BRUSH(TEXT("IconBin256"), Icon20x20));
-	Style->Set("ProjectCleaner.IconBin40", new IMAGE_BRUSH(TEXT("IconBin256"), Icon40x40));
+	Style->Set("ProjectCleaner.IconBin20", new IMAGE_BRUSH(TEXT("IconBin20"), Icon20x20));
+	Style->Set("ProjectCleaner.IconBin40", new IMAGE_BRUSH(TEXT("IconBin40"), Icon40x40));
 
 	// cmds
-	Style->Set("ProjectCleaner.Cmd_OpenCleanerWindow", new IMAGE_BRUSH(TEXT("IconBin256"), Icon40x40));
-	Style->Set("ProjectCleaner.Cmd_OpenCleanerWindow.Small", new IMAGE_BRUSH(TEXT("IconBin256"), Icon20x20));
+	Style->Set("ProjectCleaner.Cmd_OpenCleanerWindow", new IMAGE_BRUSH(TEXT("IconBin40"), Icon40x40));
+	Style->Set("ProjectCleaner.Cmd_OpenCleanerWindow.Small", new IMAGE_BRUSH(TEXT("IconBin20"), Icon20x20));
 
 	// fonts
 	Style->Set("ProjectCleaner.Font.Light30", FCoreStyle::GetDefaultFontStyle("Light", 30));
