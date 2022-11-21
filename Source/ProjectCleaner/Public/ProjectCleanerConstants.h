@@ -13,4 +13,13 @@ namespace ProjectCleanerConstants
 
 	// tabs
 	static const FName TabProjectCleaner{TEXT("TabProjectCleaner")};
+
+	// messages
+	static const FString MsgFixingRedirectors{TEXT("Fixing up redirectors... ")};
+	static const FString MsgLoadingAssets{TEXT("Loading Assets... ")};
+
+	// path
+	static const FString PathRelativeRoot{TEXT("/Game")};
+	static const FString PathMegascansPlugin{TEXT("/Game/MSPresets")};
+	
 }
