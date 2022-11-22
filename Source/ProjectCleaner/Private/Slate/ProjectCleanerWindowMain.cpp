@@ -8,6 +8,7 @@
 #include "Widgets/Input/SHyperlink.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SWidgetSwitcher.h"
+#include "Widgets/Notifications/SProgressBar.h"
 
 static constexpr int32 WidgetIndexNone = 0;
 static constexpr int32 WidgetIndexLoading = 1;
@@ -64,7 +65,6 @@ void SProjectCleanerWindowMain::Construct(const FArguments& InArgs)
 							[
 								SNew(SVerticalBox)
 								+ SVerticalBox::Slot()
-								// .Padding(FMargin{0.0f, 0.0f, 0.0f, 0.0f})
 								.AutoHeight()
 								[
 									SNew(SHorizontalBox)
@@ -78,7 +78,7 @@ void SProjectCleanerWindowMain::Construct(const FArguments& InArgs)
 										.Justification(ETextJustify::Center)
 										.Text(FText::FromString(TEXT("Stats")))
 										.ColorAndOpacity(FLinearColor{FColor::FromHex(TEXT("#3498DB"))})
-										.ToolTipText(FText::FromString(TEXT("Below statistics shows total number of assets in project, also number of files and folders in Content folder")))
+										.ToolTipText(FText::FromString(TEXT("Total number of files in Content folder")))
 										.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light30"))
 									]
 								]
@@ -94,9 +94,8 @@ void SProjectCleanerWindowMain::Construct(const FArguments& InArgs)
 										SNew(STextBlock)
 										.AutoWrapText(true)
 										.Justification(ETextJustify::Center)
-										.Text_Raw(this, &SProjectCleanerWindowMain::GetNumAllAssets)
+										.Text(FText::FromString(TEXT("Assets - 271 (234.55 MiB)")))
 										.ColorAndOpacity(FLinearColor{FColor::FromHex(TEXT("#27AE60"))})
-										.ToolTipText(FText::FromString(TEXT("Total number of assets in project")))
 										.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
 									]
 								]
@@ -113,8 +112,92 @@ void SProjectCleanerWindowMain::Construct(const FArguments& InArgs)
 										.AutoWrapText(true)
 										.Justification(ETextJustify::Center)
 										.ColorAndOpacity(FLinearColor{FColor::FromHex(TEXT("#BDC3C7"))})
-										.Text_Raw(this, &SProjectCleanerWindowMain::GetNumUsedAssets)
-										.ToolTipText(FText::FromString(TEXT("Number of used assets")))
+										.Text(FText::FromString(TEXT("Used - 70 (150.55 MiB)")))
+										.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light15"))
+									]
+								]
+								+ SVerticalBox::Slot()
+								  .Padding(FMargin{60.0f, 0.0f, 0.0f, 0.0f})
+								  .AutoHeight()
+								[
+									SNew(SHorizontalBox)
+									+ SHorizontalBox::Slot()
+									  .AutoWidth()
+									  .HAlign(HAlign_Left)
+									[
+										SNew(STextBlock)
+										.AutoWrapText(true)
+										.Justification(ETextJustify::Center)
+										.ColorAndOpacity(FLinearColor{FColor::FromHex(TEXT("#7F8C8D"))})
+										.Text(FText::FromString(TEXT("Primary assets - 20")))
+										.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light15"))
+									]
+								]
+								+ SVerticalBox::Slot()
+								  .Padding(FMargin{60.0f, 0.0f, 0.0f, 0.0f})
+								  .AutoHeight()
+								[
+									SNew(SHorizontalBox)
+									+ SHorizontalBox::Slot()
+									  .AutoWidth()
+									  .HAlign(HAlign_Left)
+									[
+										SNew(STextBlock)
+										.AutoWrapText(true)
+										.Justification(ETextJustify::Center)
+										.ColorAndOpacity(FLinearColor{FColor::FromHex(TEXT("#7F8C8D"))})
+										.Text(FText::FromString(TEXT("Used by primary assets - 20")))
+										.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light15"))
+									]
+								]
+								+ SVerticalBox::Slot()
+								  .Padding(FMargin{60.0f, 0.0f, 0.0f, 0.0f})
+								  .AutoHeight()
+								[
+									SNew(SHorizontalBox)
+									+ SHorizontalBox::Slot()
+									  .AutoWidth()
+									  .HAlign(HAlign_Left)
+									[
+										SNew(STextBlock)
+										.AutoWrapText(true)
+										.Justification(ETextJustify::Center)
+										.ColorAndOpacity(FLinearColor{FColor::FromHex(TEXT("#7F8C8D"))})
+										.Text(FText::FromString(TEXT("Used indirectly - 30")))
+										.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light15"))
+									]
+								]
+								+ SVerticalBox::Slot()
+								  .Padding(FMargin{60.0f, 0.0f, 0.0f, 0.0f})
+								  .AutoHeight()
+								[
+									SNew(SHorizontalBox)
+									+ SHorizontalBox::Slot()
+									  .AutoWidth()
+									  .HAlign(HAlign_Left)
+									[
+										SNew(STextBlock)
+										.AutoWrapText(true)
+										.Justification(ETextJustify::Center)
+										.ColorAndOpacity(FLinearColor{FColor::FromHex(TEXT("#7F8C8D"))})
+										.Text(FText::FromString(TEXT("Excluded - 16")))
+										.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light15"))
+									]
+								]
+								+ SVerticalBox::Slot()
+								  .Padding(FMargin{60.0f, 0.0f, 0.0f, 0.0f})
+								  .AutoHeight()
+								[
+									SNew(SHorizontalBox)
+									+ SHorizontalBox::Slot()
+									  .AutoWidth()
+									  .HAlign(HAlign_Left)
+									[
+										SNew(STextBlock)
+										.AutoWrapText(true)
+										.Justification(ETextJustify::Center)
+										.ColorAndOpacity(FLinearColor{FColor::FromHex(TEXT("#7F8C8D"))})
+										.Text(FText::FromString(TEXT("Ignored - 16")))
 										.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light15"))
 									]
 								]
@@ -131,8 +214,74 @@ void SProjectCleanerWindowMain::Construct(const FArguments& InArgs)
 										.AutoWrapText(true)
 										.Justification(ETextJustify::Center)
 										.ColorAndOpacity(FLinearColor{FColor::FromHex(TEXT("#BDC3C7"))})
-										.Text_Raw(this, &SProjectCleanerWindowMain::GetNumUnusedAssets)
-										.ToolTipText(FText::FromString(TEXT("Number of unused assets")))
+										.Text(FText::FromString(TEXT("Unused - 23 (44.55 MiB)")))
+										.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light15"))
+									]
+								]
+								+ SVerticalBox::Slot()
+								.MaxHeight(40.0f)
+								.Padding(FMargin{20.0f})
+								.HAlign(HAlign_Fill)
+								.VAlign(VAlign_Fill)
+								.AutoHeight()
+								[
+									SNew(SHorizontalBox)
+									+ SHorizontalBox::Slot()
+									.FillWidth(1.0f)
+									.HAlign(HAlign_Fill)
+									.VAlign(VAlign_Fill)
+									[
+										SNew(SOverlay)
+										+ SOverlay::Slot()
+										.HAlign(HAlign_Fill)
+										.VAlign(VAlign_Fill)
+										[
+											SNew(SProgressBar)
+											.Percent(0.5f)
+										]
+										+ SOverlay::Slot()
+										.HAlign(HAlign_Center)
+										.VAlign(VAlign_Center)
+										[
+											SNew(STextBlock)
+											.AutoWrapText(false)
+											.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light15"))
+											.ColorAndOpacity(FLinearColor{ 0.0f, 0.0f, 0.0f, 1.0f })
+											.Text(FText::FromString(TEXT("38.32% (123 of 240) unused")))
+										]
+									]
+								]
+								+ SVerticalBox::Slot()
+								  .Padding(FMargin{10.0f, 0.0f})
+								  .AutoHeight()
+								[
+									SNew(SHorizontalBox)
+									+ SHorizontalBox::Slot()
+									  .AutoWidth()
+									  .HAlign(HAlign_Left)
+									[
+										SNew(STextBlock)
+										.AutoWrapText(true)
+										.Justification(ETextJustify::Center)
+										.Text(FText::FromString(TEXT("Files - 25 (44.55 MiB)")))
+										.ColorAndOpacity(FLinearColor{FColor::FromHex(TEXT("#27AE60"))})
+										.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
+									]
+								]
+								+ SVerticalBox::Slot()
+								  .Padding(FMargin{40.0f, 0.0f, 0.0f, 0.0f})
+								  .AutoHeight()
+								[
+									SNew(SHorizontalBox)
+									+ SHorizontalBox::Slot()
+									  .AutoWidth()
+									  .HAlign(HAlign_Left)
+									[
+										SNew(STextBlock)
+										.AutoWrapText(true)
+										.Justification(ETextJustify::Center)
+										.ColorAndOpacity(FLinearColor{FColor::FromHex(TEXT("#BDC3C7"))})
+										.Text(FText::FromString(TEXT("Non engine files - 21 (44.55 MiB)")))
 										.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light15"))
 									]
 								]
@@ -149,26 +298,7 @@ void SProjectCleanerWindowMain::Construct(const FArguments& InArgs)
 										.AutoWrapText(true)
 										.Justification(ETextJustify::Center)
 										.ColorAndOpacity(FLinearColor{FColor::FromHex(TEXT("#BDC3C7"))})
-										.Text_Raw(this, &SProjectCleanerWindowMain::GetNumExcludedAssets)
-										.ToolTipText(FText::FromString(TEXT("Number of excluded assets by user")))
-										.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light15"))
-									]
-								]
-								+ SVerticalBox::Slot()
-								  .Padding(FMargin{40.0f, 0.0f, 0.0f, 0.0f})
-								  .AutoHeight()
-								[
-									SNew(SHorizontalBox)
-									+ SHorizontalBox::Slot()
-									  .AutoWidth()
-									  .HAlign(HAlign_Left)
-									[
-										SNew(STextBlock)
-										.AutoWrapText(true)
-										.Justification(ETextJustify::Center)
-										.ColorAndOpacity(FLinearColor{FColor::FromHex(TEXT("#BDC3C7"))})
-										.Text_Raw(this, &SProjectCleanerWindowMain::GetNumIndirectAssets)
-										.ToolTipText(FText::FromString(TEXT("Number of indirectly used assets")))
+										.Text(FText::FromString(TEXT("Corrupted engine files - 3 (44.55 MiB)")))
 										.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light15"))
 									]
 								]
@@ -184,9 +314,8 @@ void SProjectCleanerWindowMain::Construct(const FArguments& InArgs)
 										SNew(STextBlock)
 										.AutoWrapText(true)
 										.Justification(ETextJustify::Center)
-										.Text_Raw(this, &SProjectCleanerWindowMain::GetSizeTotal)
+										.Text(FText::FromString(TEXT("Folders - 100")))
 										.ColorAndOpacity(FLinearColor{FColor::FromHex(TEXT("#27AE60"))})
-										.ToolTipText(FText::FromString(TEXT("Total size of assets in project")))
 										.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
 									]
 								]
@@ -203,135 +332,8 @@ void SProjectCleanerWindowMain::Construct(const FArguments& InArgs)
 										.AutoWrapText(true)
 										.Justification(ETextJustify::Center)
 										.ColorAndOpacity(FLinearColor{FColor::FromHex(TEXT("#BDC3C7"))})
-										.Text_Raw(this, &SProjectCleanerWindowMain::GetSizeUsed)
-										.ToolTipText(FText::FromString(TEXT("Total size of used assets in project")))
+										.Text(FText::FromString(TEXT("Empty - 5")))
 										.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light15"))
-									]
-								]
-								+ SVerticalBox::Slot()
-								  .Padding(FMargin{40.0f, 0.0f, 0.0f, 0.0f})
-								  .AutoHeight()
-								[
-									SNew(SHorizontalBox)
-									+ SHorizontalBox::Slot()
-									  .AutoWidth()
-									  .HAlign(HAlign_Left)
-									[
-										SNew(STextBlock)
-										.AutoWrapText(true)
-										.Justification(ETextJustify::Center)
-										.ColorAndOpacity(FLinearColor{FColor::FromHex(TEXT("#BDC3C7"))})
-										.Text_Raw(this, &SProjectCleanerWindowMain::GetSizeUnused)
-										.ToolTipText(FText::FromString(TEXT("Total size of unused assets in project")))
-										.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light15"))
-									]
-								]
-								+ SVerticalBox::Slot()
-								  .Padding(FMargin{40.0f, 0.0f, 0.0f, 0.0f})
-								  .AutoHeight()
-								[
-									SNew(SHorizontalBox)
-									+ SHorizontalBox::Slot()
-									  .AutoWidth()
-									  .HAlign(HAlign_Left)
-									[
-										SNew(STextBlock)
-										.AutoWrapText(true)
-										.Justification(ETextJustify::Center)
-										.ColorAndOpacity(FLinearColor{FColor::FromHex(TEXT("#BDC3C7"))})
-										.Text_Raw(this, &SProjectCleanerWindowMain::GetSizeExcluded)
-										.ToolTipText(FText::FromString(TEXT("Total size of excluded assets in project")))
-										.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light15"))
-									]
-								]
-								+ SVerticalBox::Slot()
-								  .Padding(FMargin{40.0f, 0.0f, 0.0f, 0.0f})
-								  .AutoHeight()
-								[
-									SNew(SHorizontalBox)
-									+ SHorizontalBox::Slot()
-									  .AutoWidth()
-									  .HAlign(HAlign_Left)
-									[
-										SNew(STextBlock)
-										.AutoWrapText(true)
-										.Justification(ETextJustify::Center)
-										.ColorAndOpacity(FLinearColor{FColor::FromHex(TEXT("#BDC3C7"))})
-										.Text_Raw(this, &SProjectCleanerWindowMain::GetSizeIndirect)
-										.ToolTipText(FText::FromString(TEXT("Total size of indirectly used assets in project")))
-										.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light15"))
-									]
-								]
-								+ SVerticalBox::Slot()
-								  .Padding(FMargin{10.0f, 0.0f})
-								  .AutoHeight()
-								[
-									SNew(SHorizontalBox)
-									+ SHorizontalBox::Slot()
-									  .AutoWidth()
-									  .HAlign(HAlign_Left)
-									[
-										SNew(STextBlock)
-										.AutoWrapText(true)
-										.Justification(ETextJustify::Center)
-										.Text_Raw(this, &SProjectCleanerWindowMain::GetNumAllFolders)
-										.ColorAndOpacity(FLinearColor{FColor::FromHex(TEXT("#27AE60"))})
-										.ToolTipText(FText::FromString(TEXT("Total number of folders in project")))
-										.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
-									]
-								]
-								+ SVerticalBox::Slot()
-								  .Padding(FMargin{40.0f, 0.0f, 0.0f, 0.0f})
-								  .AutoHeight()
-								[
-									SNew(SHorizontalBox)
-									+ SHorizontalBox::Slot()
-									  .AutoWidth()
-									  .HAlign(HAlign_Left)
-									[
-										SNew(STextBlock)
-										.AutoWrapText(true)
-										.Justification(ETextJustify::Center)
-										.Text_Raw(this, &SProjectCleanerWindowMain::GetNumEmptyFolders)
-										.ColorAndOpacity(FLinearColor{FColor::FromHex(TEXT("#BDC3C7"))})
-										.ToolTipText(FText::FromString(TEXT("Total number of empty folders in project")))
-										.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light15"))
-									]
-								]
-								+ SVerticalBox::Slot()
-								  .Padding(FMargin{10.0f, 0.0f})
-								  .AutoHeight()
-								[
-									SNew(SHorizontalBox)
-									+ SHorizontalBox::Slot()
-									  .AutoWidth()
-									  .HAlign(HAlign_Left)
-									[
-										SNew(STextBlock)
-										.AutoWrapText(true)
-										.Justification(ETextJustify::Center)
-										.Text_Raw(this, &SProjectCleanerWindowMain::GetNumExternalFiles)
-										.ColorAndOpacity(FLinearColor{FColor::FromHex(TEXT("#27AE60"))})
-										.ToolTipText(FText::FromString(TEXT("Total number of external files in project, that are inside 'Content' folder")))
-										.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
-									]
-								]
-								+ SVerticalBox::Slot()
-								  .Padding(FMargin{10.0f, 0.0f})
-								  .AutoHeight()
-								[
-									SNew(SHorizontalBox)
-									+ SHorizontalBox::Slot()
-									  .AutoWidth()
-									  .HAlign(HAlign_Left)
-									[
-										SNew(STextBlock)
-										.AutoWrapText(true)
-										.Justification(ETextJustify::Center)
-										.Text_Raw(this, &SProjectCleanerWindowMain::GetNumCorruptedAssets)
-										.ColorAndOpacity(FLinearColor{FColor::FromHex(TEXT("#27AE60"))})
-										.ToolTipText(FText::FromString(TEXT("Total number of possibly corrupted assets in project")))
-										.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
 									]
 								]
 							]
