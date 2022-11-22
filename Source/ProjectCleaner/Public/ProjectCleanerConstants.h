@@ -23,5 +23,7 @@ namespace ProjectCleanerConstants
 	static const FString PathRelativeRoot{TEXT("/Game")};
 	static const FString PathMegascans{TEXT("/Game/Megascans")};
 	static const FString PathMegascansPresets{TEXT("/Game/MSPresets")};
-	
+
+	// url
+	static const FString UrlWiki{TEXT("https://github.com/ashe23/ProjectCleaner/wiki")};
 }

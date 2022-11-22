@@ -4,6 +4,7 @@
 #include "ProjectCleanerStyles.h"
 #include "ProjectCleanerCmds.h"
 #include "ProjectCleanerConstants.h"
+#include "Slate/ProjectCleanerWindowMain.h"
 // Engine Headers
 #include "ToolMenus.h"
 #include "AssetToolsModule.h"
@@ -79,9 +80,12 @@ void FProjectCleanerModule::RegisterTabs() const
 {
 	FGlobalTabmanager::Get()->RegisterNomadTabSpawner(
 		                        ProjectCleanerConstants::TabProjectCleaner,
-		                        FOnSpawnTab::CreateLambda([&](const FSpawnTabArgs& SpawnTabArgs)
+		                        FOnSpawnTab::CreateLambda([](const FSpawnTabArgs& SpawnTabArgs) -> TSharedRef<SDockTab>
 		                        {
-			                        return SNew(SDockTab).TabRole(MajorTab);
+			                        return SNew(SDockTab).TabRole(MajorTab)
+			                        [
+				                        SNew(SProjectCleanerWindowMain)
+			                        ];
 		                        }))
 	                        .SetDisplayName(LOCTEXT("FProjectCleanerTabTitle", "ProjectCleaner"))
 	                        .SetMenuType(ETabSpawnerMenuType::Hidden)
