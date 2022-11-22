@@ -53,6 +53,7 @@ void SProjectCleanerWindowMain::Construct(const FArguments& InArgs)
 					SNew(SVerticalBox)
 					+ SVerticalBox::Slot()
 					.AutoHeight()
+					.Padding(FMargin{0.0f, 0.0f, 10.0f, 0.0f})
 					[
 						SNew(SScrollBox)
 						.ScrollWhenFocusChanges(EScrollWhenFocusChanges::AnimatedScroll)
@@ -62,6 +63,7 @@ void SProjectCleanerWindowMain::Construct(const FArguments& InArgs)
 						[
 							SNew(SBorder)
 							.BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
+							.Padding(FMargin{10.0f})
 							[
 								SNew(SVerticalBox)
 								+ SVerticalBox::Slot()
