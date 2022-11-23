@@ -17,6 +17,7 @@ public:
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
+	virtual ~SProjectCleanerWindowMain() override;
 private:
 	FText GetNumAllAssets() const;
 	FText GetNumUsedAssets() const;
@@ -37,4 +38,6 @@ private:
 	static int32 GetWidgetIndex();
 
 	TWeakObjectPtr<UProjectCleanerScanSettings> ScanSettings;
+	TSharedPtr<FTabManager> TabManager;
+	TSharedPtr<FTabManager::FLayout> TabLayout;
 };

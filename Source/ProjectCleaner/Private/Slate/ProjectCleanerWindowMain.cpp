@@ -6,12 +6,15 @@
 #include "ProjectCleanerConstants.h"
 #include "Libs/ProjectCleanerAssetLibrary.h"
 // Engine Headers
+#include "ContentBrowserModule.h"
+#include "IContentBrowserSingleton.h"
 #include "Widgets/Input/SHyperlink.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SWidgetSwitcher.h"
 
 static constexpr int32 WidgetIndexNone = 0;
 static constexpr int32 WidgetIndexLoading = 1;
+static const FName TabUnusedAssets{TEXT("TabUnusedAssets")};
 
 void SProjectCleanerWindowMain::Construct(const FArguments& InArgs)
 {
@@ -19,6 +22,7 @@ void SProjectCleanerWindowMain::Construct(const FArguments& InArgs)
 	check(ScanSettings.Get())
 
 	FPropertyEditorModule& PropertyEditor = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
+	const FContentBrowserModule& ContentBrowserModule = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
 
 	FDetailsViewArgs DetailsViewArgs;
 	DetailsViewArgs.bUpdatesFromSelection = false;
@@ -33,6 +37,79 @@ void SProjectCleanerWindowMain::Construct(const FArguments& InArgs)
 
 	const TSharedPtr<IDetailsView> ScanSettingsProperty = PropertyEditor.CreateDetailView(DetailsViewArgs);
 	ScanSettingsProperty->SetObject(ScanSettings.Get());
+
+	FAssetPickerConfig AssetPickerConfig;
+	AssetPickerConfig.InitialAssetViewType = EAssetViewType::Tile;
+	AssetPickerConfig.bCanShowFolders = true;
+	AssetPickerConfig.bAddFilterUI = true;
+	AssetPickerConfig.bPreloadAssetsForContextMenu = false;
+	AssetPickerConfig.bSortByPathInColumnView = true;
+	AssetPickerConfig.bShowPathInColumnView = true;
+	AssetPickerConfig.bShowBottomToolbar = true;
+	AssetPickerConfig.bCanShowDevelopersFolder = true; // todo:ashe23
+	AssetPickerConfig.bCanShowClasses = false;
+	AssetPickerConfig.bAllowDragging = false;
+	AssetPickerConfig.bForceShowEngineContent = false;
+	AssetPickerConfig.bCanShowRealTimeThumbnails = false;
+	AssetPickerConfig.AssetShowWarningText = FText::FromName("No assets");
+
+	FPathPickerConfig PathPickerConfig;
+	PathPickerConfig.bAllowContextMenu = true;
+	PathPickerConfig.bAllowClassesFolder = false;
+	PathPickerConfig.bFocusSearchBoxWhenOpened = false;
+	PathPickerConfig.bAddDefaultPath = true;
+	PathPickerConfig.DefaultPath = TEXT("/Game");
+
+	const auto DummyTab = SNew(SDockTab).TabRole(NomadTab);
+	TabManager = FGlobalTabmanager::Get()->NewTabManager(DummyTab);
+	TabManager->SetCanDoDragOperation(false);
+	TabLayout = FTabManager::NewLayout("ProjectCleanerTabLayout")
+		->AddArea
+		(
+			FTabManager::NewPrimaryArea()
+			->SetOrientation(Orient_Vertical)
+			->Split
+			(
+				FTabManager::NewStack()
+				->SetSizeCoefficient(0.4f)
+				->AddTab(TabUnusedAssets, ETabState::OpenedTab)
+				->SetForegroundTab(TabUnusedAssets)
+			)
+		);
+
+	TabManager->RegisterTabSpawner(
+		TabUnusedAssets,
+		FOnSpawnTab::CreateLambda([&](const FSpawnTabArgs& SpawnTabArgs) -> TSharedRef<SDockTab>
+		{
+			return
+				SNew(SDockTab)
+				.TabRole(NomadTab)
+				.Label(FText::FromString(TEXT("Unused Assets")))
+				.ShouldAutosize(true)
+				[
+					SNew(SVerticalBox)
+					+ SVerticalBox::Slot()
+					.Padding(20.0f)
+					.AutoHeight()
+					[
+						SNew(SSplitter)
+						.Style(FEditorStyle::Get(), "ContentBrowser.Splitter")
+						.PhysicalSplitterHandleSize(2.0f)
+						+ SSplitter::Slot()
+						.Value(0.3f)
+						[
+							ContentBrowserModule.Get().CreatePathPicker(PathPickerConfig)
+						]
+						+ SSplitter::Slot()
+						[
+							ContentBrowserModule.Get().CreateAssetPicker(AssetPickerConfig)
+						]
+					]
+				];
+		})
+	);
+
+	const TSharedRef<SWidget> TabContents = TabManager->RestoreFrom(TabLayout.ToSharedRef(), TSharedPtr<SWindow>()).ToSharedRef();
 
 	ChildSlot
 	[
@@ -274,8 +351,14 @@ void SProjectCleanerWindowMain::Construct(const FArguments& InArgs)
 				]
 				+ SSplitter::Slot()
 				[
-					SNew(STextBlock)
-					.Text(FText::FromString(TEXT("Content Browser TODO")))
+					SNew(SScrollBox)
+					.ScrollWhenFocusChanges(EScrollWhenFocusChanges::NoScroll)
+					.AnimateWheelScrolling(true)
+					.AllowOverscroll(EAllowOverscroll::No)
+					+ SScrollBox::Slot()
+					[
+						TabContents
+					]
 				]
 			]
 		]
@@ -296,6 +379,11 @@ void SProjectCleanerWindowMain::Construct(const FArguments& InArgs)
 			]
 		]
 	];
+}
+
+SProjectCleanerWindowMain::~SProjectCleanerWindowMain()
+{
+	TabManager->UnregisterTabSpawner(TabUnusedAssets);
 }
 
 FText SProjectCleanerWindowMain::GetNumAllAssets() const
