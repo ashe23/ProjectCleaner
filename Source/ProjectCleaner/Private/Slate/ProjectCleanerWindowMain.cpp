@@ -90,7 +90,7 @@ void SProjectCleanerWindowMain::Construct(const FArguments& InArgs)
 								  .HAlign(HAlign_Center)
 								[
 									SNew(STextBlock)
-									.AutoWrapText(true)
+									.AutoWrapText(false)
 									.Justification(ETextJustify::Center)
 									.Text(FText::FromString(TEXT("Project Content Stats")))
 									.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light23"))
@@ -239,7 +239,7 @@ void SProjectCleanerWindowMain::Construct(const FArguments& InArgs)
 										SNew(STextBlock)
 										.Justification(ETextJustify::Center)
 										.ColorAndOpacity(FLinearColor{FColor::White})
-										.Text(FText::FromString(TEXT("Delete Unused Assets")))
+										.Text(FText::FromString(TEXT("Clean Project")))
 									]
 								]
 								+ SHorizontalBox::Slot()
@@ -252,7 +252,7 @@ void SProjectCleanerWindowMain::Construct(const FArguments& InArgs)
 										SNew(STextBlock)
 										.Justification(ETextJustify::Center)
 										.ColorAndOpacity(FLinearColor{FColor::White})
-										.Text(FText::FromString(TEXT("Delete Empty Folder")))
+										.Text(FText::FromString(TEXT("Delete Empty Folders")))
 									]
 								]
 							]
