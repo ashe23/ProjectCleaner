@@ -1,6 +1,7 @@
 ﻿// Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "Slate/ProjectCleanerWindowMain.h"
+#include "ProjectCleanerTypes.h"
 #include "ProjectCleanerStyles.h"
 #include "ProjectCleanerConstants.h"
 #include "Libs/ProjectCleanerAssetLibrary.h"
@@ -8,13 +9,31 @@
 #include "Widgets/Input/SHyperlink.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SWidgetSwitcher.h"
-#include "Widgets/Notifications/SProgressBar.h"
 
 static constexpr int32 WidgetIndexNone = 0;
 static constexpr int32 WidgetIndexLoading = 1;
 
 void SProjectCleanerWindowMain::Construct(const FArguments& InArgs)
 {
+	ScanSettings = GetMutableDefault<UProjectCleanerScanSettings>();
+	check(ScanSettings.Get())
+
+	FPropertyEditorModule& PropertyEditor = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
+
+	FDetailsViewArgs DetailsViewArgs;
+	DetailsViewArgs.bUpdatesFromSelection = false;
+	DetailsViewArgs.bLockable = false;
+	DetailsViewArgs.bShowScrollBar = true;
+	DetailsViewArgs.bAllowSearch = false;
+	DetailsViewArgs.bShowOptions = false;
+	DetailsViewArgs.bAllowFavoriteSystem = false;
+	DetailsViewArgs.bShowPropertyMatrixButton = false;
+	DetailsViewArgs.NameAreaSettings = FDetailsViewArgs::HideNameArea;
+	DetailsViewArgs.ViewIdentifier = "ProjectCleanerStatSettings";
+
+	const TSharedPtr<IDetailsView> ScanSettingsProperty = PropertyEditor.CreateDetailView(DetailsViewArgs);
+	ScanSettingsProperty->SetObject(ScanSettings.Get());
+
 	ChildSlot
 	[
 		SNew(SWidgetSwitcher)
@@ -52,8 +71,196 @@ void SProjectCleanerWindowMain::Construct(const FArguments& InArgs)
 				[
 					SNew(SVerticalBox)
 					+ SVerticalBox::Slot()
-					.AutoHeight()
-					.Padding(FMargin{0.0f, 0.0f, 10.0f, 0.0f})
+					  .AutoHeight()
+					  .Padding(FMargin{0.0f, 0.0f, 10.0f, 0.0f})
+					[
+						SNew(SBorder)
+						.BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
+						.Padding(FMargin{10.0f})
+						[
+							SNew(SVerticalBox)
+							+ SVerticalBox::Slot()
+							  .AutoHeight()
+							  .Padding(FMargin{15.0f})
+							[
+								SNew(SHorizontalBox)
+								+ SHorizontalBox::Slot()
+								  .FillWidth(1.0f)
+								  .VAlign(VAlign_Center)
+								  .HAlign(HAlign_Center)
+								[
+									SNew(STextBlock)
+									.AutoWrapText(true)
+									.Justification(ETextJustify::Center)
+									.Text(FText::FromString(TEXT("Project Content Stats")))
+									.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light23"))
+								]
+							]
+							+ SVerticalBox::Slot()
+							  .Padding(FMargin{10.0f, 0.0f})
+							  .AutoHeight()
+							[
+								SNew(SHorizontalBox)
+								+ SHorizontalBox::Slot()
+								  .AutoWidth()
+								  .HAlign(HAlign_Left)
+								[
+									SNew(STextBlock)
+									.AutoWrapText(true)
+									.Justification(ETextJustify::Center)
+									.Text(FText::FromString(TEXT("Assets - 271 (234.55 MiB)")))
+									.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light15"))
+								]
+							]
+							+ SVerticalBox::Slot()
+							  .Padding(FMargin{40.0f, 0.0f, 0.0f, 0.0f})
+							  .AutoHeight()
+							[
+								SNew(SHorizontalBox)
+								+ SHorizontalBox::Slot()
+								  .AutoWidth()
+								  .HAlign(HAlign_Left)
+								[
+									SNew(STextBlock)
+									.AutoWrapText(true)
+									.Justification(ETextJustify::Center)
+									.Text(FText::FromString(TEXT("Used - 70 (150.55 MiB)")))
+									.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light13"))
+								]
+							]
+							+ SVerticalBox::Slot()
+							  .Padding(FMargin{40.0f, 0.0f, 0.0f, 0.0f})
+							  .AutoHeight()
+							[
+								SNew(SHorizontalBox)
+								+ SHorizontalBox::Slot()
+								  .AutoWidth()
+								  .HAlign(HAlign_Left)
+								[
+									SNew(STextBlock)
+									.AutoWrapText(true)
+									.Justification(ETextJustify::Center)
+									.Text(FText::FromString(TEXT("Excluded - 70 (150.55 MiB)")))
+									.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light13"))
+								]
+							]
+							+ SVerticalBox::Slot()
+							  .Padding(FMargin{40.0f, 0.0f, 0.0f, 0.0f})
+							  .AutoHeight()
+							[
+								SNew(SHorizontalBox)
+								+ SHorizontalBox::Slot()
+								  .AutoWidth()
+								  .HAlign(HAlign_Left)
+								[
+									SNew(STextBlock)
+									.AutoWrapText(true)
+									.Justification(ETextJustify::Center)
+									.ColorAndOpacity(FLinearColor{FColor::FromHex(TEXT("#E74C3C"))})
+									.Text(FText::FromString(TEXT("Unused - 23 (44.55 MiB)")))
+									.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light13"))
+								]
+							]
+							+ SVerticalBox::Slot()
+							  .Padding(FMargin{10.0f, 0.0f})
+							  .AutoHeight()
+							[
+								SNew(SHorizontalBox)
+								+ SHorizontalBox::Slot()
+								  .AutoWidth()
+								  .HAlign(HAlign_Left)
+								[
+									SNew(STextBlock)
+									.AutoWrapText(true)
+									.Justification(ETextJustify::Center)
+									.Text(FText::FromString(TEXT("Non Engine Files - 23 (123 MiB)")))
+									.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light15"))
+								]
+							]
+							+ SVerticalBox::Slot()
+							  .Padding(FMargin{10.0f, 0.0f})
+							  .AutoHeight()
+							[
+								SNew(SHorizontalBox)
+								+ SHorizontalBox::Slot()
+								  .AutoWidth()
+								  .HAlign(HAlign_Left)
+								[
+									SNew(STextBlock)
+									.AutoWrapText(true)
+									.Justification(ETextJustify::Center)
+									.Text(FText::FromString(TEXT("Corrupted Engine Files - 4 (23 MiB)")))
+									.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light15"))
+								]
+							]
+							+ SVerticalBox::Slot()
+							  .Padding(FMargin{10.0f, 0.0f})
+							  .AutoHeight()
+							[
+								SNew(SHorizontalBox)
+								+ SHorizontalBox::Slot()
+								  .AutoWidth()
+								  .HAlign(HAlign_Left)
+								[
+									SNew(STextBlock)
+									.AutoWrapText(true)
+									.Justification(ETextJustify::Center)
+									.Text(FText::FromString(TEXT("Empty Folders - 55")))
+									.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light15"))
+								]
+							]
+							+ SVerticalBox::Slot()
+							  .Padding(FMargin{10.0f, 20.0f})
+							  .AutoHeight()
+							[
+								SNew(SHorizontalBox)
+								+ SHorizontalBox::Slot()
+								  .FillWidth(1.0f)
+								  .Padding(FMargin{0.0f, 0.0f, 5.0f, 0.0f})
+								[
+									SNew(SButton)
+									.ContentPadding(FMargin{5})
+									.ButtonColorAndOpacity(FLinearColor{FColor::FromHex(TEXT("#3a86ff"))})
+									[
+										SNew(STextBlock)
+										.Justification(ETextJustify::Center)
+										.ColorAndOpacity(FLinearColor{FColor::White})
+										.Text(FText::FromString(TEXT("Scan Project")))
+									]
+								]
+								+ SHorizontalBox::Slot()
+								  .FillWidth(1.0f)
+								  .Padding(FMargin{0.0f, 0.0f, 5.0f, 0.0f})
+								[
+									SNew(SButton)
+									.ContentPadding(FMargin{5})
+									.ButtonColorAndOpacity(FLinearColor{FColor::FromHex(TEXT("#e63946"))})
+									[
+										SNew(STextBlock)
+										.Justification(ETextJustify::Center)
+										.ColorAndOpacity(FLinearColor{FColor::White})
+										.Text(FText::FromString(TEXT("Delete Unused Assets")))
+									]
+								]
+								+ SHorizontalBox::Slot()
+								.FillWidth(1.0f)
+								[
+									SNew(SButton)
+									.ContentPadding(FMargin{5})
+									.ButtonColorAndOpacity(FLinearColor{FColor::FromHex(TEXT("#e63946"))})
+									[
+										SNew(STextBlock)
+										.Justification(ETextJustify::Center)
+										.ColorAndOpacity(FLinearColor{FColor::White})
+										.Text(FText::FromString(TEXT("Delete Empty Folder")))
+									]
+								]
+							]
+						]
+					]
+					+ SVerticalBox::Slot()
+					  .FillHeight(1.0f)
+					  .Padding(FMargin{0.0f, 10.0f, 10.0f, 0.0f})
 					[
 						SNew(SScrollBox)
 						.ScrollWhenFocusChanges(EScrollWhenFocusChanges::AnimatedScroll)
@@ -61,285 +268,7 @@ void SProjectCleanerWindowMain::Construct(const FArguments& InArgs)
 						.AllowOverscroll(EAllowOverscroll::No)
 						+ SScrollBox::Slot()
 						[
-							SNew(SBorder)
-							.BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
-							.Padding(FMargin{10.0f})
-							[
-								SNew(SVerticalBox)
-								// + SVerticalBox::Slot()
-								// .AutoHeight()
-								// [
-								// 	SNew(SHorizontalBox)
-								// 	+ SHorizontalBox::Slot()
-								// 	  .FillWidth(1.0f)
-								// 	  .VAlign(VAlign_Center)
-								// 	  .HAlign(HAlign_Center)
-								// 	[
-								// 		SNew(STextBlock)
-								// 		.AutoWrapText(true)
-								// 		.Justification(ETextJustify::Center)
-								// 		.Text(FText::FromString(TEXT("Stats")))
-								// 		.ColorAndOpacity(FLinearColor{FColor::FromHex(TEXT("#3498DB"))})
-								// 		.ToolTipText(FText::FromString(TEXT("Total number of files in Content folder")))
-								// 		.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light30"))
-								// 	]
-								// ]
-								+ SVerticalBox::Slot()
-								  .Padding(FMargin{10.0f, 0.0f})
-								  .AutoHeight()
-								[
-									SNew(SHorizontalBox)
-									+ SHorizontalBox::Slot()
-									  .AutoWidth()
-									  .HAlign(HAlign_Left)
-									[
-										SNew(STextBlock)
-										.AutoWrapText(true)
-										.Justification(ETextJustify::Center)
-										.Text(FText::FromString(TEXT("Assets - 271 (234.55 MiB)")))
-										.ColorAndOpacity(FLinearColor{FColor::FromHex(TEXT("#3498DB"))})
-										.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
-									]
-								]
-								+ SVerticalBox::Slot()
-								  .Padding(FMargin{40.0f, 0.0f, 0.0f, 0.0f})
-								  .AutoHeight()
-								[
-									SNew(SHorizontalBox)
-									+ SHorizontalBox::Slot()
-									  .AutoWidth()
-									  .HAlign(HAlign_Left)
-									[
-										SNew(STextBlock)
-										.AutoWrapText(true)
-										.Justification(ETextJustify::Center)
-										.ColorAndOpacity(FLinearColor{FColor::FromHex(TEXT("#27AE60"))})
-										.Text(FText::FromString(TEXT("Used - 70 (150.55 MiB)")))
-										.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light15"))
-									]
-								]
-								+ SVerticalBox::Slot()
-								  .Padding(FMargin{60.0f, 0.0f, 0.0f, 0.0f})
-								  .AutoHeight()
-								[
-									SNew(SHorizontalBox)
-									+ SHorizontalBox::Slot()
-									  .AutoWidth()
-									  .HAlign(HAlign_Left)
-									[
-										SNew(STextBlock)
-										.AutoWrapText(true)
-										.Justification(ETextJustify::Center)
-										.ColorAndOpacity(FLinearColor{FColor::FromHex(TEXT("#7F8C8D"))})
-										.Text(FText::FromString(TEXT("Primary assets - 20")))
-										.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light15"))
-									]
-								]
-								+ SVerticalBox::Slot()
-								  .Padding(FMargin{60.0f, 0.0f, 0.0f, 0.0f})
-								  .AutoHeight()
-								[
-									SNew(SHorizontalBox)
-									+ SHorizontalBox::Slot()
-									  .AutoWidth()
-									  .HAlign(HAlign_Left)
-									[
-										SNew(STextBlock)
-										.AutoWrapText(true)
-										.Justification(ETextJustify::Center)
-										.ColorAndOpacity(FLinearColor{FColor::FromHex(TEXT("#7F8C8D"))})
-										.Text(FText::FromString(TEXT("Used by primary assets - 20")))
-										.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light15"))
-									]
-								]
-								+ SVerticalBox::Slot()
-								  .Padding(FMargin{60.0f, 0.0f, 0.0f, 0.0f})
-								  .AutoHeight()
-								[
-									SNew(SHorizontalBox)
-									+ SHorizontalBox::Slot()
-									  .AutoWidth()
-									  .HAlign(HAlign_Left)
-									[
-										SNew(STextBlock)
-										.AutoWrapText(true)
-										.Justification(ETextJustify::Center)
-										.ColorAndOpacity(FLinearColor{FColor::FromHex(TEXT("#7F8C8D"))})
-										.Text(FText::FromString(TEXT("Used indirectly - 30")))
-										.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light15"))
-									]
-								]
-								+ SVerticalBox::Slot()
-								  .Padding(FMargin{60.0f, 0.0f, 0.0f, 0.0f})
-								  .AutoHeight()
-								[
-									SNew(SHorizontalBox)
-									+ SHorizontalBox::Slot()
-									  .AutoWidth()
-									  .HAlign(HAlign_Left)
-									[
-										SNew(STextBlock)
-										.AutoWrapText(true)
-										.Justification(ETextJustify::Center)
-										.ColorAndOpacity(FLinearColor{FColor::FromHex(TEXT("#7F8C8D"))})
-										.Text(FText::FromString(TEXT("Excluded - 16")))
-										.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light15"))
-									]
-								]
-								+ SVerticalBox::Slot()
-								  .Padding(FMargin{60.0f, 0.0f, 0.0f, 0.0f})
-								  .AutoHeight()
-								[
-									SNew(SHorizontalBox)
-									+ SHorizontalBox::Slot()
-									  .AutoWidth()
-									  .HAlign(HAlign_Left)
-									[
-										SNew(STextBlock)
-										.AutoWrapText(true)
-										.Justification(ETextJustify::Center)
-										.ColorAndOpacity(FLinearColor{FColor::FromHex(TEXT("#7F8C8D"))})
-										.Text(FText::FromString(TEXT("Ignored - 16")))
-										.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light15"))
-									]
-								]
-								+ SVerticalBox::Slot()
-								  .Padding(FMargin{40.0f, 0.0f, 0.0f, 0.0f})
-								  .AutoHeight()
-								[
-									SNew(SHorizontalBox)
-									+ SHorizontalBox::Slot()
-									  .AutoWidth()
-									  .HAlign(HAlign_Left)
-									[
-										SNew(STextBlock)
-										.AutoWrapText(true)
-										.Justification(ETextJustify::Center)
-										.ColorAndOpacity(FLinearColor{FColor::FromHex(TEXT("#E74C3C"))})
-										.Text(FText::FromString(TEXT("Unused - 23 (44.55 MiB)")))
-										.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light15"))
-									]
-								]
-								// + SVerticalBox::Slot()
-								// .MaxHeight(40.0f)
-								// .Padding(FMargin{20.0f})
-								// .HAlign(HAlign_Fill)
-								// .VAlign(VAlign_Fill)
-								// .AutoHeight()
-								// [
-								// 	SNew(SHorizontalBox)
-								// 	+ SHorizontalBox::Slot()
-								// 	.FillWidth(1.0f)
-								// 	.HAlign(HAlign_Fill)
-								// 	.VAlign(VAlign_Fill)
-								// 	[
-								// 		SNew(SOverlay)
-								// 		+ SOverlay::Slot()
-								// 		.HAlign(HAlign_Fill)
-								// 		.VAlign(VAlign_Fill)
-								// 		[
-								// 			SNew(SProgressBar)
-								// 			.FillColorAndOpacity(FLinearColor{FColor::Red})
-								// 			.Percent(0.5f)
-								// 		]
-								// 		+ SOverlay::Slot()
-								// 		.HAlign(HAlign_Center)
-								// 		.VAlign(VAlign_Center)
-								// 		[
-								// 			SNew(STextBlock)
-								// 			.AutoWrapText(false)
-								// 			.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light10"))
-								// 			.ColorAndOpacity(FLinearColor{ 0.0f, 0.0f, 0.0f, 1.0f })
-								// 			.Text(FText::FromString(TEXT("38.32% (123 of 240) unused assets")))
-								// 		]
-								// 	]
-								// ]
-								+ SVerticalBox::Slot()
-								  .Padding(FMargin{10.0f, 0.0f})
-								  .AutoHeight()
-								[
-									SNew(SHorizontalBox)
-									+ SHorizontalBox::Slot()
-									  .AutoWidth()
-									  .HAlign(HAlign_Left)
-									[
-										SNew(STextBlock)
-										.AutoWrapText(true)
-										.Justification(ETextJustify::Center)
-										.Text(FText::FromString(TEXT("Files - 25 (44.55 MiB)")))
-										.ColorAndOpacity(FLinearColor{FColor::FromHex(TEXT("#3498DB"))})
-										.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
-									]
-								]
-								+ SVerticalBox::Slot()
-								  .Padding(FMargin{40.0f, 0.0f, 0.0f, 0.0f})
-								  .AutoHeight()
-								[
-									SNew(SHorizontalBox)
-									+ SHorizontalBox::Slot()
-									  .AutoWidth()
-									  .HAlign(HAlign_Left)
-									[
-										SNew(STextBlock)
-										.AutoWrapText(true)
-										.Justification(ETextJustify::Center)
-										.ColorAndOpacity(FLinearColor{FColor::FromHex(TEXT("#BDC3C7"))})
-										.Text(FText::FromString(TEXT("Non engine files - 21 (44.55 MiB)")))
-										.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light15"))
-									]
-								]
-								+ SVerticalBox::Slot()
-								  .Padding(FMargin{40.0f, 0.0f, 0.0f, 0.0f})
-								  .AutoHeight()
-								[
-									SNew(SHorizontalBox)
-									+ SHorizontalBox::Slot()
-									  .AutoWidth()
-									  .HAlign(HAlign_Left)
-									[
-										SNew(STextBlock)
-										.AutoWrapText(true)
-										.Justification(ETextJustify::Center)
-										.ColorAndOpacity(FLinearColor{FColor::FromHex(TEXT("#E74C3C"))})
-										.Text(FText::FromString(TEXT("Corrupted engine files - 3 (44.55 MiB)")))
-										.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light15"))
-									]
-								]
-								+ SVerticalBox::Slot()
-								  .Padding(FMargin{10.0f, 0.0f})
-								  .AutoHeight()
-								[
-									SNew(SHorizontalBox)
-									+ SHorizontalBox::Slot()
-									  .AutoWidth()
-									  .HAlign(HAlign_Left)
-									[
-										SNew(STextBlock)
-										.AutoWrapText(true)
-										.Justification(ETextJustify::Center)
-										.Text(FText::FromString(TEXT("Folders - 100")))
-										.ColorAndOpacity(FLinearColor{FColor::FromHex(TEXT("#3498DB"))})
-										.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
-									]
-								]
-								+ SVerticalBox::Slot()
-								  .Padding(FMargin{40.0f, 0.0f, 0.0f, 0.0f})
-								  .AutoHeight()
-								[
-									SNew(SHorizontalBox)
-									+ SHorizontalBox::Slot()
-									  .AutoWidth()
-									  .HAlign(HAlign_Left)
-									[
-										SNew(STextBlock)
-										.AutoWrapText(true)
-										.Justification(ETextJustify::Center)
-										.ColorAndOpacity(FLinearColor{FColor::FromHex(TEXT("#E74C3C"))})
-										.Text(FText::FromString(TEXT("Empty - 5")))
-										.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light15"))
-									]
-								]
-							]
+							ScanSettingsProperty.ToSharedRef()
 						]
 					]
 				]
