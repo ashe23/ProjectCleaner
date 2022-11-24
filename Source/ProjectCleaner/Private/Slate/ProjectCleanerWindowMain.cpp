@@ -174,7 +174,7 @@ void SProjectCleanerWindowMain::Construct(const FArguments& InArgs)
 				[
 					SNew(SVerticalBox)
 					+ SVerticalBox::Slot()
-					  .Padding(20.0f)
+					  .Padding(20.0f, 10.0f, 0.0f, 0.0f)
 					  .AutoHeight()
 					[
 						SNew(SHorizontalBox)
