@@ -6,8 +6,25 @@
 #include "Widgets/SCompoundWidget.h"
 
 class UProjectCleanerScanSettings;
+class UProjectCleanerStatListItem;
 
-class SProjectCleanerWindowMain : public SCompoundWidget
+class SProjectCleanerStatListItem final : public SMultiColumnTableRow<TWeakObjectPtr<UProjectCleanerStatListItem>>
+{
+public:
+	SLATE_BEGIN_ARGS(SProjectCleanerStatListItem)
+		{
+		}
+
+		SLATE_ARGUMENT(TWeakObjectPtr<UProjectCleanerStatListItem>, ListItem)
+	SLATE_END_ARGS()
+
+	void Construct(const FArguments& InArgs, const TSharedRef<STableViewBase>& InOwnerTableView);
+	virtual TSharedRef<SWidget> GenerateWidgetForColumn(const FName& InColumnName) override;
+private:
+	TWeakObjectPtr<UProjectCleanerStatListItem> ListItem;
+};
+
+class SProjectCleanerWindowMain final : public SCompoundWidget
 {
 public:
 	SLATE_BEGIN_ARGS(SProjectCleanerWindowMain)
@@ -37,7 +54,13 @@ private:
 	static bool IsWidgetEnabled();
 	static int32 GetWidgetIndex();
 
+	TSharedRef<ITableRow> OnGenerateRow(const TWeakObjectPtr<UProjectCleanerStatListItem> InItem, const TSharedRef<STableViewBase>& OwnerTable) const;
+	TSharedPtr<SHeaderRow> GetHeaderRow() const;
+
 	TWeakObjectPtr<UProjectCleanerScanSettings> ScanSettings;
 	TSharedPtr<FTabManager> TabManager;
 	TSharedPtr<FTabManager::FLayout> TabLayout;
+
+	TSharedPtr<SListView<TWeakObjectPtr<UProjectCleanerStatListItem>>> ListView;
+	TArray<TWeakObjectPtr<UProjectCleanerStatListItem>> ListItems;
 };

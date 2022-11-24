@@ -16,6 +16,48 @@ static constexpr int32 WidgetIndexNone = 0;
 static constexpr int32 WidgetIndexLoading = 1;
 static const FName TabUnusedAssets{TEXT("TabUnusedAssets")};
 
+void SProjectCleanerStatListItem::Construct(const FArguments& InArgs, const TSharedRef<STableViewBase>& InOwnerTableView)
+{
+	ListItem = InArgs._ListItem;
+
+	SMultiColumnTableRow<TWeakObjectPtr<UProjectCleanerStatListItem>>::Construct(
+		SMultiColumnTableRow<TWeakObjectPtr<UProjectCleanerStatListItem>>::FArguments()
+		.Padding(FMargin{0.0f, 2.0f, 0.0f, 0.0f}),
+		InOwnerTableView
+	);
+}
+
+TSharedRef<SWidget> SProjectCleanerStatListItem::GenerateWidgetForColumn(const FName& InColumnName)
+{
+	if (InColumnName.IsEqual(TEXT("Name")))
+	{
+		return
+			SNew(STextBlock)
+				.AutoWrapText(false)
+				.Justification(ETextJustify::Center)
+				.Text(FText::FromString(ListItem->Name))
+				.ColorAndOpacity(FLinearColor{FColor::FromHex(TEXT("#00a6fb"))})
+				.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light13"));
+	}
+
+	if (InColumnName.IsEqual(TEXT("Category")))
+	{
+		return SNew(STextBlock).Text(FText::FromString(ListItem->Category)).ColorAndOpacity(ListItem->Color);
+	}
+
+	if (InColumnName.IsEqual(TEXT("Count")))
+	{
+		return SNew(STextBlock).Text(FText::FromString(ListItem->Count)).ColorAndOpacity(ListItem->Color);
+	}
+
+	if (InColumnName.IsEqual(TEXT("Size")))
+	{
+		return SNew(STextBlock).Text(FText::FromString(ListItem->Size)).ColorAndOpacity(ListItem->Color);
+	}
+
+	return SNew(STextBlock).Text(FText::FromString(TEXT("")));
+}
+
 void SProjectCleanerWindowMain::Construct(const FArguments& InArgs)
 {
 	ScanSettings = GetMutableDefault<UProjectCleanerScanSettings>();
@@ -89,8 +131,8 @@ void SProjectCleanerWindowMain::Construct(const FArguments& InArgs)
 				[
 					SNew(SVerticalBox)
 					+ SVerticalBox::Slot()
-					.Padding(20.0f)
-					.AutoHeight()
+					  .Padding(20.0f)
+					  .AutoHeight()
 					[
 						SNew(SSplitter)
 						.Style(FEditorStyle::Get(), "ContentBrowser.Splitter")
@@ -110,6 +152,73 @@ void SProjectCleanerWindowMain::Construct(const FArguments& InArgs)
 	);
 
 	const TSharedRef<SWidget> TabContents = TabManager->RestoreFrom(TabLayout.ToSharedRef(), TSharedPtr<SWindow>()).ToSharedRef();
+
+	const TWeakObjectPtr<UProjectCleanerStatListItem> ListItemAssets = NewObject<UProjectCleanerStatListItem>();
+	ListItemAssets->Name = TEXT("Assets");
+	ListItems.Add(ListItemAssets);
+
+	const TWeakObjectPtr<UProjectCleanerStatListItem> ListItemUsed = NewObject<UProjectCleanerStatListItem>();
+	ListItemUsed->Category = TEXT("Used");
+	ListItemUsed->Count = TEXT("100");
+	ListItemUsed->Size = TEXT("100.23 MiB");
+	ListItems.Add(ListItemUsed);
+
+	const TWeakObjectPtr<UProjectCleanerStatListItem> ListItemExcluded = NewObject<UProjectCleanerStatListItem>();
+	ListItemExcluded->Category = TEXT("Excluded");
+	ListItemExcluded->Count = TEXT("0");
+	ListItemExcluded->Size = TEXT("0.00 MiB");
+	ListItemExcluded->Color = FLinearColor{FColor::FromHex(TEXT("#f9c74f"))};
+	ListItems.Add(ListItemExcluded);
+
+	const TWeakObjectPtr<UProjectCleanerStatListItem> ListItemUnused = NewObject<UProjectCleanerStatListItem>();
+	ListItemUnused->Category = TEXT("Unused");
+	ListItemUnused->Count = TEXT("20");
+	ListItemUnused->Size = TEXT("20.08 MiB");
+	ListItemUnused->Color = FLinearColor{FColor::FromHex(TEXT("#f94144"))};
+	ListItems.Add(ListItemUnused);
+
+	const TWeakObjectPtr<UProjectCleanerStatListItem> ListItemTotal = NewObject<UProjectCleanerStatListItem>();
+	ListItemTotal->Category = TEXT("Total");
+	ListItemTotal->Count = TEXT("120");
+	ListItemTotal->Size = TEXT("120.23 MiB");
+	ListItemTotal->Color = FLinearColor{FColor::FromHex(TEXT("#43aa8b"))};
+	ListItems.Add(ListItemTotal);
+
+	const TWeakObjectPtr<UProjectCleanerStatListItem> ListItemCategoryFiles = NewObject<UProjectCleanerStatListItem>();
+	ListItemCategoryFiles->Name = TEXT("Files");
+	ListItems.Add(ListItemCategoryFiles);
+
+	const TWeakObjectPtr<UProjectCleanerStatListItem> ListItemNonEngineFiles = NewObject<UProjectCleanerStatListItem>();
+	ListItemNonEngineFiles->Category = TEXT("Non Engine Files");
+	ListItemNonEngineFiles->Count = TEXT("23");
+	ListItemNonEngineFiles->Size = TEXT("23.45 MiB");
+	ListItems.Add(ListItemNonEngineFiles);
+
+	const TWeakObjectPtr<UProjectCleanerStatListItem> ListItemCorruptedFiles = NewObject<UProjectCleanerStatListItem>();
+	ListItemCorruptedFiles->Category = TEXT("Corrupted Files");
+	ListItemCorruptedFiles->Count = TEXT("2");
+	ListItemCorruptedFiles->Size = TEXT("2.45 MiB");
+	ListItemCorruptedFiles->Color = FLinearColor{FColor::FromHex(TEXT("#f94144"))};
+	ListItems.Add(ListItemCorruptedFiles);
+
+	const TWeakObjectPtr<UProjectCleanerStatListItem> ListItemCategoryFolders = NewObject<UProjectCleanerStatListItem>();
+	ListItemCategoryFolders->Name = TEXT("Folders");
+	ListItems.Add(ListItemCategoryFolders);
+
+	const TWeakObjectPtr<UProjectCleanerStatListItem> ListItemFoldersEmpty = NewObject<UProjectCleanerStatListItem>();
+	ListItemFoldersEmpty->Category = TEXT("Empty");
+	ListItemFoldersEmpty->Count = TEXT("23");
+	ListItemFoldersEmpty->Size = TEXT("");
+	ListItemFoldersEmpty->Color = FLinearColor{FColor::FromHex(TEXT("#f94144"))};
+	ListItems.Add(ListItemFoldersEmpty);
+
+	const TWeakObjectPtr<UProjectCleanerStatListItem> ListItemFoldersTotal = NewObject<UProjectCleanerStatListItem>();
+	ListItemFoldersTotal->Category = TEXT("Total");
+	ListItemFoldersTotal->Count = TEXT("120");
+	ListItemFoldersTotal->Size = TEXT("");
+	ListItemFoldersTotal->Color = FLinearColor{FColor::FromHex(TEXT("#43aa8b"))};
+	ListItems.Add(ListItemFoldersTotal);
+
 
 	ChildSlot
 	[
@@ -177,114 +286,11 @@ void SProjectCleanerWindowMain::Construct(const FArguments& InArgs)
 							  .Padding(FMargin{10.0f, 0.0f})
 							  .AutoHeight()
 							[
-								SNew(SHorizontalBox)
-								+ SHorizontalBox::Slot()
-								  .AutoWidth()
-								  .HAlign(HAlign_Left)
-								[
-									SNew(STextBlock)
-									.AutoWrapText(true)
-									.Justification(ETextJustify::Center)
-									.Text(FText::FromString(TEXT("Assets - 271 (234.55 MiB)")))
-									.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light15"))
-								]
-							]
-							+ SVerticalBox::Slot()
-							  .Padding(FMargin{40.0f, 0.0f, 0.0f, 0.0f})
-							  .AutoHeight()
-							[
-								SNew(SHorizontalBox)
-								+ SHorizontalBox::Slot()
-								  .AutoWidth()
-								  .HAlign(HAlign_Left)
-								[
-									SNew(STextBlock)
-									.AutoWrapText(true)
-									.Justification(ETextJustify::Center)
-									.Text(FText::FromString(TEXT("Used - 70 (150.55 MiB)")))
-									.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light13"))
-								]
-							]
-							+ SVerticalBox::Slot()
-							  .Padding(FMargin{40.0f, 0.0f, 0.0f, 0.0f})
-							  .AutoHeight()
-							[
-								SNew(SHorizontalBox)
-								+ SHorizontalBox::Slot()
-								  .AutoWidth()
-								  .HAlign(HAlign_Left)
-								[
-									SNew(STextBlock)
-									.AutoWrapText(true)
-									.Justification(ETextJustify::Center)
-									.Text(FText::FromString(TEXT("Excluded - 70 (150.55 MiB)")))
-									.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light13"))
-								]
-							]
-							+ SVerticalBox::Slot()
-							  .Padding(FMargin{40.0f, 0.0f, 0.0f, 0.0f})
-							  .AutoHeight()
-							[
-								SNew(SHorizontalBox)
-								+ SHorizontalBox::Slot()
-								  .AutoWidth()
-								  .HAlign(HAlign_Left)
-								[
-									SNew(STextBlock)
-									.AutoWrapText(true)
-									.Justification(ETextJustify::Center)
-									.ColorAndOpacity(FLinearColor{FColor::FromHex(TEXT("#E74C3C"))})
-									.Text(FText::FromString(TEXT("Unused - 23 (44.55 MiB)")))
-									.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light13"))
-								]
-							]
-							+ SVerticalBox::Slot()
-							  .Padding(FMargin{10.0f, 0.0f})
-							  .AutoHeight()
-							[
-								SNew(SHorizontalBox)
-								+ SHorizontalBox::Slot()
-								  .AutoWidth()
-								  .HAlign(HAlign_Left)
-								[
-									SNew(STextBlock)
-									.AutoWrapText(true)
-									.Justification(ETextJustify::Center)
-									.Text(FText::FromString(TEXT("Non Engine Files - 23 (123 MiB)")))
-									.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light15"))
-								]
-							]
-							+ SVerticalBox::Slot()
-							  .Padding(FMargin{10.0f, 0.0f})
-							  .AutoHeight()
-							[
-								SNew(SHorizontalBox)
-								+ SHorizontalBox::Slot()
-								  .AutoWidth()
-								  .HAlign(HAlign_Left)
-								[
-									SNew(STextBlock)
-									.AutoWrapText(true)
-									.Justification(ETextJustify::Center)
-									.Text(FText::FromString(TEXT("Corrupted Engine Files - 4 (23 MiB)")))
-									.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light15"))
-								]
-							]
-							+ SVerticalBox::Slot()
-							  .Padding(FMargin{10.0f, 0.0f})
-							  .AutoHeight()
-							[
-								SNew(SHorizontalBox)
-								+ SHorizontalBox::Slot()
-								  .AutoWidth()
-								  .HAlign(HAlign_Left)
-								[
-									SNew(STextBlock)
-									.AutoWrapText(true)
-									.Justification(ETextJustify::Center)
-									.Text(FText::FromString(TEXT("Empty Folders - 55")))
-									.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light15"))
-								]
+								SAssignNew(ListView, SListView<TWeakObjectPtr<UProjectCleanerStatListItem>>)
+							  	.ListItemsSource(&ListItems)
+							  	.SelectionMode(ESelectionMode::None)
+							  	.OnGenerateRow(this, &SProjectCleanerWindowMain::OnGenerateRow)
+							  	.HeaderRow(GetHeaderRow())
 							]
 							+ SVerticalBox::Slot()
 							  .Padding(FMargin{10.0f, 20.0f})
@@ -478,4 +484,51 @@ bool SProjectCleanerWindowMain::IsWidgetEnabled()
 int32 SProjectCleanerWindowMain::GetWidgetIndex()
 {
 	return UProjectCleanerAssetLibrary::AssetRegistryIsLoadingAssets() ? WidgetIndexLoading : WidgetIndexNone;
+}
+
+TSharedRef<ITableRow> SProjectCleanerWindowMain::OnGenerateRow(const TWeakObjectPtr<UProjectCleanerStatListItem> InItem, const TSharedRef<STableViewBase>& OwnerTable) const
+{
+	return SNew(SProjectCleanerStatListItem, OwnerTable).ListItem(InItem);
+}
+
+TSharedPtr<SHeaderRow> SProjectCleanerWindowMain::GetHeaderRow() const
+{
+	return
+		SNew(SHeaderRow)
+		+ SHeaderRow::Column(FName{TEXT("Name")})
+		  .HAlignCell(HAlign_Center)
+		  .VAlignCell(VAlign_Center)
+		  .HAlignHeader(HAlign_Center)
+		  .HeaderContentPadding(FMargin(10.0f))
+		[
+			SNew(STextBlock)
+			.Text(FText::FromString(TEXT("Name")))
+		]
+		+ SHeaderRow::Column(FName{TEXT("Category")})
+		  .HAlignCell(HAlign_Center)
+		  .VAlignCell(VAlign_Center)
+		  .HAlignHeader(HAlign_Center)
+		  .HeaderContentPadding(FMargin(10.0f))
+		[
+			SNew(STextBlock)
+			.Text(FText::FromString(TEXT("Category")))
+		]
+		+ SHeaderRow::Column(FName{TEXT("Count")})
+		  .HAlignCell(HAlign_Center)
+		  .VAlignCell(VAlign_Center)
+		  .HAlignHeader(HAlign_Center)
+		  .HeaderContentPadding(FMargin(10.0f))
+		[
+			SNew(STextBlock)
+			.Text(FText::FromString(TEXT("Count")))
+		]
+		+ SHeaderRow::Column(FName{TEXT("Size")})
+		  .HAlignCell(HAlign_Center)
+		  .VAlignCell(VAlign_Center)
+		  .HAlignHeader(HAlign_Center)
+		  .HeaderContentPadding(FMargin(10.0f))
+		[
+			SNew(STextBlock)
+			.Text(FText::FromString(TEXT("Size")))
+		];
 }

@@ -6,7 +6,7 @@
 #include "ProjectCleanerTypes.generated.h"
 
 UCLASS(Transient, Config=EditorPerProjectUserSettings)
-class UProjectCleanerScanSettings : public UObject
+class UProjectCleanerScanSettings final : public UObject
 {
 	GENERATED_BODY()
 public:
@@ -28,4 +28,16 @@ public:
 
 	UPROPERTY(DisplayName="Classes", EditAnywhere, Config, Category="ScanSettings|ExcludeOptions", meta=(ToolTip="Exclude assets and their dependencies of specified classes"))
 	TArray<UClass*> Classes;
+};
+
+UCLASS(Transient)
+class UProjectCleanerStatListItem final : public UObject
+{
+	GENERATED_BODY()
+public:
+	FString Name;
+	FString Category;
+	FString Count;
+	FString Size;
+	FLinearColor Color = FLinearColor::White;
 };
