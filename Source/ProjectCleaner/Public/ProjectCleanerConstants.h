@@ -13,6 +13,11 @@ namespace ProjectCleanerConstants
 
 	// tabs
 	static const FName TabProjectCleaner{TEXT("TabProjectCleaner")};
+	static const FName TabUnusedAssets{TEXT("TabUnusedAssets")};
+	static const FName TabExcludedAssets{TEXT("TabExcludedAssets")};
+	static const FName TabIndirectAssets{TEXT("TabIndirectAssets")};
+	static const FName TabNonEngineFiles{TEXT("TabNonEngineFiles")};
+	static const FName TabCorruptedFiles{TEXT("TabCorruptedFiles")};
 
 	// messages
 	static const FString MsgFixingRedirectors{TEXT("Fixing up redirectors... ")};

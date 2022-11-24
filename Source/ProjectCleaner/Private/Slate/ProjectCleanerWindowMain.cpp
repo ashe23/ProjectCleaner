@@ -14,7 +14,6 @@
 
 static constexpr int32 WidgetIndexNone = 0;
 static constexpr int32 WidgetIndexLoading = 1;
-static const FName TabUnusedAssets{TEXT("TabUnusedAssets")};
 
 void SProjectCleanerStatListItem::Construct(const FArguments& InArgs, const TSharedRef<STableViewBase>& InOwnerTableView)
 {
@@ -114,13 +113,17 @@ void SProjectCleanerWindowMain::Construct(const FArguments& InArgs)
 			(
 				FTabManager::NewStack()
 				->SetSizeCoefficient(0.4f)
-				->AddTab(TabUnusedAssets, ETabState::OpenedTab)
-				->SetForegroundTab(TabUnusedAssets)
+				->AddTab(ProjectCleanerConstants::TabUnusedAssets, ETabState::OpenedTab)
+				->AddTab(ProjectCleanerConstants::TabExcludedAssets, ETabState::OpenedTab)
+				->AddTab(ProjectCleanerConstants::TabIndirectAssets, ETabState::OpenedTab)
+				->AddTab(ProjectCleanerConstants::TabNonEngineFiles, ETabState::OpenedTab)
+				->AddTab(ProjectCleanerConstants::TabCorruptedFiles, ETabState::OpenedTab)
+				->SetForegroundTab(ProjectCleanerConstants::TabUnusedAssets)
 			)
 		);
 
 	TabManager->RegisterTabSpawner(
-		TabUnusedAssets,
+		ProjectCleanerConstants::TabUnusedAssets,
 		FOnSpawnTab::CreateLambda([&](const FSpawnTabArgs& SpawnTabArgs) -> TSharedRef<SDockTab>
 		{
 			return
@@ -128,6 +131,10 @@ void SProjectCleanerWindowMain::Construct(const FArguments& InArgs)
 				.TabRole(NomadTab)
 				.Label(FText::FromString(TEXT("Unused Assets")))
 				.ShouldAutosize(true)
+				.OnCanCloseTab_Lambda([]()
+				{
+					return false;
+				})
 				[
 					SNew(SVerticalBox)
 					+ SVerticalBox::Slot()
@@ -146,6 +153,141 @@ void SProjectCleanerWindowMain::Construct(const FArguments& InArgs)
 						[
 							ContentBrowserModule.Get().CreateAssetPicker(AssetPickerConfig)
 						]
+					]
+				];
+		})
+	);
+
+	TabManager->RegisterTabSpawner(
+		ProjectCleanerConstants::TabExcludedAssets,
+		FOnSpawnTab::CreateLambda([&](const FSpawnTabArgs& SpawnTabArgs) -> TSharedRef<SDockTab>
+		{
+			return
+				SNew(SDockTab)
+				.TabRole(NomadTab)
+				.Label(FText::FromString(TEXT("Excluded Assets")))
+				.ShouldAutosize(true)
+				.OnCanCloseTab_Lambda([]()
+				{
+					return false;
+				})
+				[
+					SNew(SVerticalBox)
+					+ SVerticalBox::Slot()
+					  .Padding(20.0f)
+					  .AutoHeight()
+					[
+						SNew(SHorizontalBox)
+						+ SHorizontalBox::Slot()
+						  .AutoWidth()
+						  .HAlign(HAlign_Left)
+						  .VAlign(VAlign_Center)
+						[
+							SNew(SButton)
+							.ContentPadding(FMargin{5})
+							.ButtonColorAndOpacity(FLinearColor{FColor::FromHex(TEXT("#3a86ff"))})
+							[
+								SNew(STextBlock)
+								.Justification(ETextJustify::Center)
+								.ColorAndOpacity(FLinearColor{FColor::White})
+								.Text(FText::FromString(TEXT("Include All Assets")))
+							]
+						]
+					]
+					+ SVerticalBox::Slot()
+					  .Padding(20.0f)
+					  .AutoHeight()
+					[
+						SNew(SSplitter)
+						.Style(FEditorStyle::Get(), "ContentBrowser.Splitter")
+						.PhysicalSplitterHandleSize(2.0f)
+						+ SSplitter::Slot()
+						.Value(0.3f)
+						[
+							ContentBrowserModule.Get().CreatePathPicker(PathPickerConfig)
+						]
+						+ SSplitter::Slot()
+						[
+							ContentBrowserModule.Get().CreateAssetPicker(AssetPickerConfig)
+						]
+					]
+				];
+		})
+	);
+
+	TabManager->RegisterTabSpawner(
+		ProjectCleanerConstants::TabIndirectAssets,
+		FOnSpawnTab::CreateLambda([&](const FSpawnTabArgs& SpawnTabArgs) -> TSharedRef<SDockTab>
+		{
+			return
+				SNew(SDockTab)
+				.TabRole(NomadTab)
+				.Label(FText::FromString(TEXT("Indirect Assets")))
+				.ShouldAutosize(true)
+				.OnCanCloseTab_Lambda([]()
+				{
+					return false;
+				})
+				[
+					SNew(SVerticalBox)
+					+ SVerticalBox::Slot()
+					  .Padding(20.0f)
+					  .AutoHeight()
+					[
+						SNew(STextBlock)
+						.Text(FText::FromString(TEXT("Indirectly used assets list")))
+					]
+				];
+		})
+	);
+
+	TabManager->RegisterTabSpawner(
+		ProjectCleanerConstants::TabNonEngineFiles,
+		FOnSpawnTab::CreateLambda([&](const FSpawnTabArgs& SpawnTabArgs) -> TSharedRef<SDockTab>
+		{
+			return
+				SNew(SDockTab)
+				.TabRole(NomadTab)
+				.Label(FText::FromString(TEXT("NonEngine Files")))
+				.ShouldAutosize(true)
+				.OnCanCloseTab_Lambda([]()
+				{
+					return false;
+				})
+				[
+					SNew(SVerticalBox)
+					+ SVerticalBox::Slot()
+					  .Padding(20.0f)
+					  .AutoHeight()
+					[
+						SNew(STextBlock)
+						.Text(FText::FromString(TEXT("NonEngine files list")))
+					]
+				];
+		})
+	);
+
+	TabManager->RegisterTabSpawner(
+		ProjectCleanerConstants::TabCorruptedFiles,
+		FOnSpawnTab::CreateLambda([&](const FSpawnTabArgs& SpawnTabArgs) -> TSharedRef<SDockTab>
+		{
+			return
+				SNew(SDockTab)
+				.TabRole(NomadTab)
+				.Label(FText::FromString(TEXT("Corrupted Files")))
+				.ShouldAutosize(true)
+				.OnCanCloseTab_Lambda([]()
+				{
+					return false;
+				})
+				[
+					SNew(SVerticalBox)
+					+ SVerticalBox::Slot()
+					  .Padding(20.0f)
+					  .AutoHeight()
+					[
+						SNew(STextBlock)
+						.Text(FText::FromString(TEXT("Corrupted files list")))
 					]
 				];
 		})
@@ -278,7 +420,7 @@ void SProjectCleanerWindowMain::Construct(const FArguments& InArgs)
 									SNew(STextBlock)
 									.AutoWrapText(false)
 									.Justification(ETextJustify::Center)
-									.Text(FText::FromString(TEXT("Project Content Stats")))
+									.Text(FText::FromString(TEXT("Statistics")))
 									.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light23"))
 								]
 							]
@@ -389,7 +531,11 @@ void SProjectCleanerWindowMain::Construct(const FArguments& InArgs)
 
 SProjectCleanerWindowMain::~SProjectCleanerWindowMain()
 {
-	TabManager->UnregisterTabSpawner(TabUnusedAssets);
+	TabManager->UnregisterTabSpawner(ProjectCleanerConstants::TabUnusedAssets);
+	TabManager->UnregisterTabSpawner(ProjectCleanerConstants::TabExcludedAssets);
+	TabManager->UnregisterTabSpawner(ProjectCleanerConstants::TabIndirectAssets);
+	TabManager->UnregisterTabSpawner(ProjectCleanerConstants::TabNonEngineFiles);
+	TabManager->UnregisterTabSpawner(ProjectCleanerConstants::TabCorruptedFiles);
 }
 
 FText SProjectCleanerWindowMain::GetNumAllAssets() const
