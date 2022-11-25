@@ -86,20 +86,7 @@ void FProjectCleanerModule::RegisterTabs() const
 		                        {
 			                        return SNew(SDockTab).TabRole(MajorTab)
 			                        [
-			                        	SNew(SVerticalBox)
-			                        	+ SVerticalBox::Slot()
-			                        	.FillHeight(1.0f)
-			                        	.Padding(FMargin{20.0f})
-			                        	[
-											// SNew(SProjectCleanerAssetTreeView)
-											SNew(SProjectCleanerStats)
-			                        	]
-			                        	+ SVerticalBox::Slot()
-			                        	.FillHeight(1.0f)
-			                        	.Padding(FMargin{20.0f})
-			                        	[
-			                        		SNew(SProjectCleanerAssetBrowser)
-			                        	]
+			                        	SNew(SProjectCleanerWindowMain)
 			                        ];
 		                        }))
 	                        .SetDisplayName(LOCTEXT("FProjectCleanerTabTitle", "ProjectCleaner"))
