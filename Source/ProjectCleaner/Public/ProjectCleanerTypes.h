@@ -50,6 +50,7 @@ class UProjectCleanerStatTreeItem : public UObject
 public:
 	UProjectCleanerStatTreeItem(){}
 
+	FString PathFull;
 	FString Path;
 	FString Size;
 	FString Files;
@@ -57,4 +58,7 @@ public:
 	FString Unused;
 	FString Empty;
 	float Progress = 0.0f;
+
+	TWeakObjectPtr<UProjectCleanerStatTreeItem> ParentDir;
+	TArray<TWeakObjectPtr<UProjectCleanerStatTreeItem>> SubDirs;
 };

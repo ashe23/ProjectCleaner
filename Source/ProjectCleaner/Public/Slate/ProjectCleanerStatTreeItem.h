@@ -109,6 +109,8 @@ public:
 	void Construct(const FArguments& Args);
 
 private:
+	void UpdateTreeItems();
+	
 	TSharedRef<ITableRow> OnGenerateRow(TWeakObjectPtr<UProjectCleanerStatTreeItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const;
 	void OnGetChildren(TWeakObjectPtr<UProjectCleanerStatTreeItem> Item, TArray<TWeakObjectPtr<UProjectCleanerStatTreeItem>>& OutChildren);
 
