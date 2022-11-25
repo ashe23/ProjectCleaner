@@ -41,3 +41,15 @@ public:
 	FString Size;
 	FLinearColor Color = FLinearColor::White;
 };
+
+UCLASS(Transient)
+class UProjectCleanerStatTreeItem : public UObject
+{
+	GENERATED_BODY()
+	
+public:
+	UProjectCleanerStatTreeItem(){}
+
+	FString Path;
+	FString Size;
+};

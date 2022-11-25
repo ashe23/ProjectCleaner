@@ -5,6 +5,7 @@
 #include "ProjectCleanerCmds.h"
 #include "ProjectCleanerConstants.h"
 #include "Slate/ProjectCleanerWindowMain.h"
+#include "Slate/ProjectCleanerStatTreeItem.h"
 // Engine Headers
 #include "ToolMenus.h"
 #include "AssetToolsModule.h"
@@ -84,7 +85,13 @@ void FProjectCleanerModule::RegisterTabs() const
 		                        {
 			                        return SNew(SDockTab).TabRole(MajorTab)
 			                        [
-				                        SNew(SProjectCleanerWindowMain)
+			                        	SNew(SBox)
+			                        	.WidthOverride(256)
+			                        	.HeightOverride(256)
+			                        	.Padding(FMargin{50.0f})
+			                        	[
+											SNew(SProjectCleanerStats)
+			                        	]
 			                        ];
 		                        }))
 	                        .SetDisplayName(LOCTEXT("FProjectCleanerTabTitle", "ProjectCleaner"))
