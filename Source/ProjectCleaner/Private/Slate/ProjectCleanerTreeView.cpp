@@ -22,9 +22,9 @@ void SProjectCleanerTreeView::Construct(const FArguments& InArgs)
 		.OnSelectionChanged(this, &SProjectCleanerTreeView::OnTreeViewSelectionChange)
 		.OnExpansionChanged(this, &SProjectCleanerTreeView::OnTreeViewExpansionChange);
 	}
-	
+
 	TreeItemsUpdate();
-	
+
 	ChildSlot
 	[
 		SNew(SScrollBox)
@@ -51,14 +51,19 @@ void SProjectCleanerTreeView::TreeItemsUpdate()
 	TSet<FString> ExcludeDirs;
 	ExcludeDirs.Add(FPaths::GameDevelopersDir()); // todo:ashe23 must be excluded by option
 	ExcludeDirs.Add(RootDir + TEXT("Collections/"));
-	
+
 	// todo:ashe23 for ue5 exclude __ExternalActors__ and __ExternalObjects__ folders
 
 	TArray<TSharedPtr<FProjectCleanerTreeItem>> Stack;
 
 	const TSharedPtr<FProjectCleanerTreeItem> RootTreeItem = MakeShareable(new FProjectCleanerTreeItem(RootDir, TEXT("/Game"), TEXT("Content")));
 	if (!RootTreeItem.IsValid()) return;
-	
+
+	TSet<FString> AllSubDirs;
+	UProjectCleanerLibrary::GetSubDirectories(RootTreeItem->DirPathAbs, true, AllSubDirs, ExcludeDirs);
+
+	RootTreeItem->FoldersTotal = AllSubDirs.Num();
+
 	Stack.Push(RootTreeItem);
 
 	while (Stack.Num() > 0)
@@ -66,20 +71,24 @@ void SProjectCleanerTreeView::TreeItemsUpdate()
 		const auto CurrentItem = Stack.Pop();
 
 		TSet<FString> SubDirs;
-		UProjectCleanerLibrary::GetSubDirectories(CurrentItem->DirPathAbs, SubDirs, ExcludeDirs);
+		UProjectCleanerLibrary::GetSubDirectories(CurrentItem->DirPathAbs, false, SubDirs, ExcludeDirs);
 
 		for (const auto& SubDir : SubDirs)
 		{
 			const TSharedPtr<FProjectCleanerTreeItem> SubDirItem = MakeShareable(new FProjectCleanerTreeItem(SubDir, TEXT(""), FPaths::GetPathLeaf(SubDir)));
 			if (!SubDirItem.IsValid()) continue;
-			
+
+			UProjectCleanerLibrary::GetSubDirectories(SubDirItem->DirPathAbs, true, AllSubDirs, ExcludeDirs);
+
+			SubDirItem->FoldersTotal = AllSubDirs.Num();
+
 			CurrentItem->SubDirectories.Add(SubDirItem);
 			Stack.Push(SubDirItem);
 		}
 	}
-	
+
 	TreeItems.Add(RootTreeItem);
-	
+
 	RootTreeItem->bExpanded = true;
 	TreeView->SetItemExpansion(RootTreeItem, true);
 	// TreeView->RequestTreeRefresh();
@@ -95,18 +104,18 @@ TSharedRef<SHeaderRow> SProjectCleanerTreeView::GetTreeViewHeaderRow() const
 	return
 		SNew(SHeaderRow)
 		+ SHeaderRow::Column(TEXT("Name"))
-		.HAlignHeader(HAlign_Center)
-		.VAlignHeader(VAlign_Center)
-		.HeaderContentPadding(FMargin{5.0f})
+		  .HAlignHeader(HAlign_Center)
+		  .VAlignHeader(VAlign_Center)
+		  .HeaderContentPadding(FMargin{5.0f})
 		[
 			SNew(STextBlock)
 			.Text(FText::FromString(TEXT("Name")))
 			.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light15"))
 		]
 		+ SHeaderRow::Column(TEXT("FoldersTotal"))
-		.HAlignHeader(HAlign_Center)
-		.VAlignHeader(VAlign_Center)
-		.HeaderContentPadding(FMargin{5.0f})
+		  .HAlignHeader(HAlign_Center)
+		  .VAlignHeader(VAlign_Center)
+		  .HeaderContentPadding(FMargin{5.0f})
 		[
 			SNew(STextBlock)
 			.Text(FText::FromString(TEXT("Folders")))
@@ -117,7 +126,7 @@ TSharedRef<SHeaderRow> SProjectCleanerTreeView::GetTreeViewHeaderRow() const
 void SProjectCleanerTreeView::OnTreeViewItemMouseDblClick(TSharedPtr<FProjectCleanerTreeItem> Item) const
 {
 	if (!Item.IsValid()) return;
-	
+
 	ToggleExpansionRecursive(Item, !Item->bExpanded);
 }
 
@@ -129,7 +138,7 @@ void SProjectCleanerTreeView::OnTreeViewGetChildren(TSharedPtr<FProjectCleanerTr
 void SProjectCleanerTreeView::OnTreeViewSelectionChange(TSharedPtr<FProjectCleanerTreeItem> Item, ESelectInfo::Type SelectType) const
 {
 	if (!Item.IsValid()) return;
-	
+
 	UE_LOG(LogProjectCleaner, Warning, TEXT("Selection Change"));
 }
 
@@ -137,10 +146,10 @@ void SProjectCleanerTreeView::OnTreeViewExpansionChange(TSharedPtr<FProjectClean
 {
 	if (!Item.IsValid()) return;
 	if (!TreeView.IsValid()) return;
-	
+
 	Item->bExpanded = bExpanded;
-	
-	TreeView->SetItemExpansion(Item, bExpanded);		
+
+	TreeView->SetItemExpansion(Item, bExpanded);
 }
 
 void SProjectCleanerTreeView::ToggleExpansionRecursive(TSharedPtr<FProjectCleanerTreeItem> Item, const bool bExpanded) const

@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "ProjectCleaner/Public/ProjectCleanerLibrary.h"
 #include "Widgets/SCompoundWidget.h"
 
 struct FProjectCleanerTreeItem
@@ -103,7 +104,7 @@ public:
 				[
 					SNew(STextBlock)
 					.Justification(ETextJustify::Center)
-					.Text(FText::FromString(FString::Printf(TEXT("%d"), TreeItem->SubDirectories.Num())))// todo:ashe23 total directories num recursively
+					.Text(FText::FromString(FString::Printf(TEXT("%d"), TreeItem->FoldersTotal)))
 				];
 		}
 

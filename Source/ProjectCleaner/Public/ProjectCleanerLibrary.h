@@ -11,6 +11,6 @@ class UProjectCleanerLibrary final : public UBlueprintFunctionLibrary
 {
 	GENERATED_BODY()
 public:
-	UFUNCTION(BlueprintCallable, Category="ProjectCleaner", meta=(ToolTip="Returns all subdirectories for given directory. Non Recursive. Specify Exclude Directories that you want to exclude"))
-	static void GetSubDirectories(const FString& RootDir, TSet<FString>& SubDirectories, TSet<FString>& ExcludeDirectories);
+	UFUNCTION(BlueprintCallable, Category="ProjectCleaner", meta=(ToolTip="Returns all subdirectories for given directory. Specify Exclude Directories that you want to exclude"))
+	static void GetSubDirectories(const FString& RootDir, const bool bRecursive, TSet<FString>& SubDirectories, const TSet<FString>& ExcludeDirectories);
 };

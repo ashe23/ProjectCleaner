@@ -8,11 +8,13 @@ public:
 	IPlatformFile& PlatformFile;
 	FRWLock FoundFilesLock;
 	TSet<FString>& FoundDirectories;
+	const TSet<FString>& ExcludedDirectories;
 
-	FFindDirectoriesVisitor(IPlatformFile& InPlatformFile, TSet<FString>& InDirectories)
+	FFindDirectoriesVisitor(IPlatformFile& InPlatformFile, TSet<FString>& InDirectories, const TSet<FString>& InExcludedDirectories)
 		: FDirectoryVisitor(EDirectoryVisitorFlags::ThreadSafe)
 		  , PlatformFile(InPlatformFile)
 		  , FoundDirectories(InDirectories)
+		  , ExcludedDirectories(InExcludedDirectories)
 	{
 	}
 
@@ -20,14 +22,31 @@ public:
 	{
 		if (bIsDirectory)
 		{
-			FRWScopeLock ScopeLock(FoundFilesLock, SLT_Write);
-			FoundDirectories.Emplace(FString::Printf(TEXT("%s/"), FilenameOrDirectory));
+			const FString CurrentDirectory = FString::Printf(TEXT("%s/"), FilenameOrDirectory);
+			
+			// if current directory is in excluded list or under of any excluded directory list , then we ignore it
+			bool bFiltered = false;
+			for (const auto& ExcludedDir : ExcludedDirectories)
+			{
+				if (CurrentDirectory.Equals(ExcludedDir) || FPaths::IsUnderDirectory(CurrentDirectory, ExcludedDir))
+				{
+					bFiltered = true;
+				}
+				
+			}
+			
+			if (!bFiltered)
+			{
+				FRWScopeLock ScopeLock(FoundFilesLock, SLT_Write);
+				FoundDirectories.Emplace(CurrentDirectory);
+			}
+			
 		}
 		return true;
 	}
 };
 
-void UProjectCleanerLibrary::GetSubDirectories(const FString& RootDir, TSet<FString>& SubDirectories, TSet<FString>& ExcludeDirectories)
+void UProjectCleanerLibrary::GetSubDirectories(const FString& RootDir, const bool bRecursive, TSet<FString>& SubDirectories, const TSet<FString>& ExcludeDirectories)
 {
 	if (RootDir.IsEmpty()) return;
 	if (!FPaths::DirectoryExists(RootDir)) return;
@@ -35,11 +54,14 @@ void UProjectCleanerLibrary::GetSubDirectories(const FString& RootDir, TSet<FStr
 	SubDirectories.Reset();
 
 	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
-	FFindDirectoriesVisitor FindDirectoriesVisitor(PlatformFile, SubDirectories);
-	PlatformFile.IterateDirectory(*RootDir, FindDirectoriesVisitor);
+	FFindDirectoriesVisitor FindDirectoriesVisitor(PlatformFile, SubDirectories, ExcludeDirectories);
 
-	if (ExcludeDirectories.Num() > 0)
+	if (bRecursive)
 	{
-		SubDirectories = SubDirectories.Difference(ExcludeDirectories); 
+		PlatformFile.IterateDirectoryRecursively(*RootDir, FindDirectoriesVisitor);
+	}
+	else
+	{
+		PlatformFile.IterateDirectory(*RootDir, FindDirectoriesVisitor);
 	}
 }
