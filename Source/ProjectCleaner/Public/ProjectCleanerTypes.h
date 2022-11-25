@@ -52,4 +52,9 @@ public:
 
 	FString Path;
 	FString Size;
+	FString Files;
+	FString Folders;
+	FString Unused;
+	FString Empty;
+	float Progress = 0.0f;
 };
