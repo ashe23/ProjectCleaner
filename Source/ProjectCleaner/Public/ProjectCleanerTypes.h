@@ -62,3 +62,5 @@ public:
 	TWeakObjectPtr<UProjectCleanerStatTreeItem> ParentDir;
 	TArray<TWeakObjectPtr<UProjectCleanerStatTreeItem>> SubDirs;
 };
+
+

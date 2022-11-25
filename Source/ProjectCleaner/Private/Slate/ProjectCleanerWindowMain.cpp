@@ -5,6 +5,7 @@
 #include "ProjectCleanerStyles.h"
 #include "ProjectCleanerConstants.h"
 #include "Libs/ProjectCleanerAssetLibrary.h"
+#include "Slate/ProjectCleanerTreeView.h"
 // Engine Headers
 #include "Widgets/Input/SHyperlink.h"
 #include "Widgets/Layout/SScrollBox.h"
@@ -24,9 +25,20 @@ void SProjectCleanerWindowMain::Construct(const FArguments& InArgs)
 		  .HAlign(HAlign_Fill)
 		  .VAlign(VAlign_Fill)
 		[
-			// todo:ashe23 main UI here
-			SNew(STextBlock)
-			.Text(FText::FromString(TEXT("AA")))
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot()
+			  .FillHeight(1.0f)
+			  .Padding(FMargin{5.0f})
+			[
+				SNew(SScrollBox)
+				.ScrollWhenFocusChanges(EScrollWhenFocusChanges::NoScroll)
+				.AnimateWheelScrolling(true)
+				.AllowOverscroll(EAllowOverscroll::No)
+				+ SScrollBox::Slot()
+				[
+					SNew(SProjectCleanerTreeView)
+				]
+			]
 		]
 		+ SWidgetSwitcher::Slot()
 		  .HAlign(HAlign_Fill)
@@ -49,7 +61,6 @@ void SProjectCleanerWindowMain::Construct(const FArguments& InArgs)
 
 SProjectCleanerWindowMain::~SProjectCleanerWindowMain()
 {
-	
 }
 
 bool SProjectCleanerWindowMain::IsWidgetEnabled()
