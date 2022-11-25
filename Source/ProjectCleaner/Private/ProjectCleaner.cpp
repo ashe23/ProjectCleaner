@@ -6,6 +6,7 @@
 #include "ProjectCleanerConstants.h"
 #include "Slate/ProjectCleanerWindowMain.h"
 #include "Slate/ProjectCleanerStatTreeItem.h"
+#include "Slate/ProjectCleanerAssetBrowser.h"
 // Engine Headers
 #include "ToolMenus.h"
 #include "AssetToolsModule.h"
@@ -85,12 +86,19 @@ void FProjectCleanerModule::RegisterTabs() const
 		                        {
 			                        return SNew(SDockTab).TabRole(MajorTab)
 			                        [
-			                        	SNew(SBox)
-			                        	.WidthOverride(256)
-			                        	.HeightOverride(256)
-			                        	.Padding(FMargin{50.0f})
+			                        	SNew(SVerticalBox)
+			                        	+ SVerticalBox::Slot()
+			                        	.FillHeight(1.0f)
+			                        	.Padding(FMargin{20.0f})
 			                        	[
+											// SNew(SProjectCleanerAssetTreeView)
 											SNew(SProjectCleanerStats)
+			                        	]
+			                        	+ SVerticalBox::Slot()
+			                        	.FillHeight(1.0f)
+			                        	.Padding(FMargin{20.0f})
+			                        	[
+			                        		SNew(SProjectCleanerAssetBrowser)
 			                        	]
 			                        ];
 		                        }))
