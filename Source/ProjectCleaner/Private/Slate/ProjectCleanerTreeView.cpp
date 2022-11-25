@@ -18,6 +18,7 @@ void SProjectCleanerTreeView::Construct(const FArguments& InArgs)
 		.OnGenerateRow(this, &SProjectCleanerTreeView::OnTreeViewGenerateRow)
 		.OnGetChildren(this, &SProjectCleanerTreeView::OnTreeViewGetChildren)
 		.HeaderRow(GetTreeViewHeaderRow())
+		.OnMouseButtonDoubleClick(this, &SProjectCleanerTreeView::OnTreeViewItemMouseDblClick)
 		.OnSelectionChanged(this, &SProjectCleanerTreeView::OnTreeViewSelectionChange)
 		.OnExpansionChanged(this, &SProjectCleanerTreeView::OnTreeViewExpansionChange);
 	}
@@ -113,6 +114,13 @@ TSharedRef<SHeaderRow> SProjectCleanerTreeView::GetTreeViewHeaderRow() const
 		];
 }
 
+void SProjectCleanerTreeView::OnTreeViewItemMouseDblClick(TSharedPtr<FProjectCleanerTreeItem> Item) const
+{
+	if (!Item.IsValid()) return;
+	
+	ToggleExpansionRecursive(Item, !Item->bExpanded);
+}
+
 void SProjectCleanerTreeView::OnTreeViewGetChildren(TSharedPtr<FProjectCleanerTreeItem> Item, TArray<TSharedPtr<FProjectCleanerTreeItem>>& OutChildren) const
 {
 	OutChildren.Append(Item->SubDirectories);
@@ -133,4 +141,17 @@ void SProjectCleanerTreeView::OnTreeViewExpansionChange(TSharedPtr<FProjectClean
 	Item->bExpanded = bExpanded;
 	
 	TreeView->SetItemExpansion(Item, bExpanded);		
+}
+
+void SProjectCleanerTreeView::ToggleExpansionRecursive(TSharedPtr<FProjectCleanerTreeItem> Item, const bool bExpanded) const
+{
+	if (!Item.IsValid()) return;
+	if (!TreeView.IsValid()) return;
+
+	TreeView->SetItemExpansion(Item, bExpanded);
+
+	for (const auto& SubDir : Item->SubDirectories)
+	{
+		ToggleExpansionRecursive(SubDir, bExpanded);
+	}
 }
