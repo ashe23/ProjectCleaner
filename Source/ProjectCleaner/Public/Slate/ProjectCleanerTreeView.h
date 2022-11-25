@@ -33,6 +33,7 @@ struct FProjectCleanerTreeItem
 	int32 NumUnused = 0;
 	int32 FoldersTotal = 0;
 	int32 FoldersEmpty = 0;
+	bool bExpanded = false;
 	TArray<TSharedPtr<FProjectCleanerTreeItem>> SubDirectories;
 };
 
@@ -60,11 +61,13 @@ public:
 	{
 		if (InColumnName.IsEqual(TEXT("Name")))
 		{
+			const FString FolderIcon = TreeItem->bExpanded ? TEXT("ContentBrowser.AssetTreeFolderOpen") : TEXT("ContentBrowser.AssetTreeFolderClosed");
+
 			return
 				SNew(SHorizontalBox)
 				+ SHorizontalBox::Slot()
 				  .AutoWidth()
-				  .Padding(FMargin{5.0f})
+				  .Padding(FMargin{2.0f})
 				[
 					SNew(SExpanderArrow, SharedThis(this))
 					.IndentAmount(20)
@@ -75,9 +78,10 @@ public:
 				  .Padding(0, 0, 2, 0)
 				  .VAlign(VAlign_Center)
 				[
+
 					// Folder Icon
 					SNew(SImage)
-					.Image(FEditorStyle::GetBrush("ContentBrowser.AssetTreeFolderOpen"))
+					.Image(this, &SProjectCleanerTreeItem::GetFolderIcon)
 					.ColorAndOpacity(FLinearColor::Gray)
 				]
 				+ SHorizontalBox::Slot()
@@ -99,7 +103,7 @@ public:
 				[
 					SNew(STextBlock)
 					.Justification(ETextJustify::Center)
-					.Text(FText::FromString(FString::Printf(TEXT("%d"), TreeItem->SubDirectories.Num())))
+					.Text(FText::FromString(FString::Printf(TEXT("%d"), TreeItem->SubDirectories.Num())))// todo:ashe23 total directories num recursively
 				];
 		}
 
@@ -107,6 +111,11 @@ public:
 	}
 
 private:
+	const FSlateBrush* GetFolderIcon() const
+	{
+		// todo:ashe23 handle developer folder icon separetly
+		return FEditorStyle::GetBrush(TreeItem->bExpanded ? TEXT("ContentBrowser.AssetTreeFolderOpen") : TEXT("ContentBrowser.AssetTreeFolderClosed"));
+	}
 	TSharedPtr<FProjectCleanerTreeItem> TreeItem;
 };
 
@@ -127,7 +136,9 @@ private:
 
 	TSharedRef<ITableRow> OnTreeViewGenerateRow(TSharedPtr<FProjectCleanerTreeItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const;
 	TSharedRef<SHeaderRow> GetTreeViewHeaderRow() const;
-	void OnTreeViewGetChildren(TSharedPtr<FProjectCleanerTreeItem> Item, TArray<TSharedPtr<FProjectCleanerTreeItem>>& OutChildren);
+	void OnTreeViewGetChildren(TSharedPtr<FProjectCleanerTreeItem> Item, TArray<TSharedPtr<FProjectCleanerTreeItem>>& OutChildren) const;
+	void OnTreeViewSelectionChange(TSharedPtr<FProjectCleanerTreeItem> Item, ESelectInfo::Type SelectType) const;
+	void OnTreeViewExpansionChange(TSharedPtr<FProjectCleanerTreeItem> Item, bool bExpanded) const;
 
 	TArray<TSharedPtr<FProjectCleanerTreeItem>> TreeItems;
 	TSharedPtr<STreeView<TSharedPtr<FProjectCleanerTreeItem>>> TreeView;

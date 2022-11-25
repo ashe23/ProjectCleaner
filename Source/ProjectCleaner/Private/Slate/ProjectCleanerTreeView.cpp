@@ -4,11 +4,24 @@
 #include "ProjectCleanerLibrary.h"
 #include "ProjectCleaner/Public/ProjectCleanerLibrary.h"
 // Engine Headers
+#include "ProjectCleaner.h"
 #include "ProjectCleanerStyles.h"
 #include "Widgets/Layout/SScrollBox.h"
 
 void SProjectCleanerTreeView::Construct(const FArguments& InArgs)
 {
+	if (!TreeView.IsValid())
+	{
+		SAssignNew(TreeView, STreeView<TSharedPtr<FProjectCleanerTreeItem>>)
+		.TreeItemsSource(&TreeItems)
+		.SelectionMode(ESelectionMode::SingleToggle)
+		.OnGenerateRow(this, &SProjectCleanerTreeView::OnTreeViewGenerateRow)
+		.OnGetChildren(this, &SProjectCleanerTreeView::OnTreeViewGetChildren)
+		.HeaderRow(GetTreeViewHeaderRow())
+		.OnSelectionChanged(this, &SProjectCleanerTreeView::OnTreeViewSelectionChange)
+		.OnExpansionChanged(this, &SProjectCleanerTreeView::OnTreeViewExpansionChange);
+	}
+	
 	TreeItemsUpdate();
 	
 	ChildSlot
@@ -23,11 +36,7 @@ void SProjectCleanerTreeView::Construct(const FArguments& InArgs)
 			+ SVerticalBox::Slot()
 			.AutoHeight()
 			[
-				SNew(STreeView<TSharedPtr<FProjectCleanerTreeItem>>)
-				.TreeItemsSource(&TreeItems)
-				.OnGenerateRow(this, &SProjectCleanerTreeView::OnTreeViewGenerateRow)
-				.OnGetChildren(this, &SProjectCleanerTreeView::OnTreeViewGetChildren)
-				.HeaderRow(GetTreeViewHeaderRow())
+				TreeView.ToSharedRef()
 			]
 		]
 	];
@@ -38,7 +47,6 @@ void SProjectCleanerTreeView::TreeItemsUpdate()
 	TreeItems.Reset();
 
 	const FString RootDir = FPaths::ProjectContentDir();
-
 	TSet<FString> ExcludeDirs;
 	ExcludeDirs.Add(FPaths::GameDevelopersDir()); // todo:ashe23 must be excluded by option
 	ExcludeDirs.Add(RootDir + TEXT("Collections/"));
@@ -70,11 +78,10 @@ void SProjectCleanerTreeView::TreeItemsUpdate()
 	}
 	
 	TreeItems.Add(RootTreeItem);
-
-	if (TreeView.IsValid())
-	{
-		TreeView->RequestTreeRefresh();
-	}
+	
+	RootTreeItem->bExpanded = true;
+	TreeView->SetItemExpansion(RootTreeItem, true);
+	// TreeView->RequestTreeRefresh();
 }
 
 TSharedRef<ITableRow> SProjectCleanerTreeView::OnTreeViewGenerateRow(TSharedPtr<FProjectCleanerTreeItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const
@@ -106,7 +113,24 @@ TSharedRef<SHeaderRow> SProjectCleanerTreeView::GetTreeViewHeaderRow() const
 		];
 }
 
-void SProjectCleanerTreeView::OnTreeViewGetChildren(TSharedPtr<FProjectCleanerTreeItem> Item, TArray<TSharedPtr<FProjectCleanerTreeItem>>& OutChildren)
+void SProjectCleanerTreeView::OnTreeViewGetChildren(TSharedPtr<FProjectCleanerTreeItem> Item, TArray<TSharedPtr<FProjectCleanerTreeItem>>& OutChildren) const
 {
 	OutChildren.Append(Item->SubDirectories);
+}
+
+void SProjectCleanerTreeView::OnTreeViewSelectionChange(TSharedPtr<FProjectCleanerTreeItem> Item, ESelectInfo::Type SelectType) const
+{
+	if (!Item.IsValid()) return;
+	
+	UE_LOG(LogProjectCleaner, Warning, TEXT("Selection Change"));
+}
+
+void SProjectCleanerTreeView::OnTreeViewExpansionChange(TSharedPtr<FProjectCleanerTreeItem> Item, bool bExpanded) const
+{
+	if (!Item.IsValid()) return;
+	if (!TreeView.IsValid()) return;
+	
+	Item->bExpanded = bExpanded;
+	
+	TreeView->SetItemExpansion(Item, bExpanded);		
 }
