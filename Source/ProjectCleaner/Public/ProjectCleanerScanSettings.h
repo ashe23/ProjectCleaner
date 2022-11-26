@@ -20,7 +20,7 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Config, Category = "ScanSettings", meta=(ToolTip="Automatically delete empty folders after deleting unused assets"))
 	bool bAutomaticallyDeleteEmptyFolders = true;
 
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Config, Category="ScanSettings", DisplayName="Used Assets Classes",
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ScanSettings", DisplayName="Used Assets Classes",
 		meta=(ToolTip="List of asset classes that are considered used in project. This type of assets and their dependencies will never be scanned and wont be deleted."))
 	TArray<TSoftClassPtr<UObject>> UsedAssetClasses;
 
