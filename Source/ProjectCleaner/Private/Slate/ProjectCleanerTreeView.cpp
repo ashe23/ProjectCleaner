@@ -37,6 +37,41 @@ void SProjectCleanerTreeView::Construct(const FArguments& InArgs)
 			+ SVerticalBox::Slot()
 			.AutoHeight()
 			[
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				[
+					SNew(SImage)
+					.Image(FEditorStyle::GetBrush("ContentBrowser.AssetTreeFolderOpen"))
+					.ColorAndOpacity(FProjectCleanerStyles::Get().GetSlateColor("ProjectCleaner.Color.Red"))
+				]
+				+ SHorizontalBox::Slot()
+				.Padding(FMargin{0.0f, 2.0f, 0.0f, 0.0f})
+				.AutoWidth()
+				[
+					SNew(STextBlock)
+					.Text(FText::FromString(TEXT(" - Empty Folders")))
+				]
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				.Padding(FMargin{5.0f, 0.0f, 0.0f, 0.0f})
+				[
+					SNew(SImage)
+					.Image(FEditorStyle::GetBrush("ContentBrowser.AssetTreeFolderOpen"))
+					.ColorAndOpacity(FProjectCleanerStyles::Get().GetSlateColor("ProjectCleaner.Color.Yellow"))
+				]
+				+ SHorizontalBox::Slot()
+				.Padding(FMargin{0.0f, 2.0f, 0.0f, 0.0f})
+				.AutoWidth()
+				[
+					SNew(STextBlock)
+					.Text(FText::FromString(TEXT(" - Excluded Folders")))
+				]
+			]
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(FMargin{0.0f, 5.0f})
+			[
 				TreeView.ToSharedRef()
 			]
 		]
