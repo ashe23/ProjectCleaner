@@ -5,6 +5,8 @@
 #include "CoreMinimal.h"
 #include "Widgets/SCompoundWidget.h"
 
+class UProjectCleanerScanSettings;
+
 class SProjectCleanerWindowMain final : public SCompoundWidget
 {
 public:
@@ -19,4 +21,6 @@ public:
 private:
 	static bool IsWidgetEnabled();
 	static int32 GetWidgetIndex();
+
+	TWeakObjectPtr<UProjectCleanerScanSettings> ScanSettings;
 };
