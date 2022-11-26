@@ -6,6 +6,7 @@
 // Engine Headers
 #include "ProjectCleaner.h"
 #include "ProjectCleanerStyles.h"
+#include "Widgets/Input/SSearchBox.h"
 #include "Widgets/Layout/SScrollBox.h"
 
 void SProjectCleanerTreeView::Construct(const FArguments& InArgs)
@@ -36,6 +37,16 @@ void SProjectCleanerTreeView::Construct(const FArguments& InArgs)
 			SNew(SVerticalBox)
 			+ SVerticalBox::Slot()
 			.AutoHeight()
+			.Padding(FMargin{0.0f, 0.0f, 0.0f, 5.0f})
+			[
+				SNew(SSearchBox)
+				.HintText(FText::FromString(TEXT("Search Folders...")))
+				.OnTextChanged(this, &SProjectCleanerTreeView::OnTreeViewSearchBoxTextChanged)
+				.OnTextCommitted(this, &SProjectCleanerTreeView::OnTreeViewSearchBoxTextCommitted)
+			]
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(FMargin{0.0f, 0.0f, 0.0f, 5.0f})
 			[
 				SNew(SHorizontalBox)
 				+ SHorizontalBox::Slot()
@@ -46,31 +57,31 @@ void SProjectCleanerTreeView::Construct(const FArguments& InArgs)
 					.ColorAndOpacity(FProjectCleanerStyles::Get().GetSlateColor("ProjectCleaner.Color.Red"))
 				]
 				+ SHorizontalBox::Slot()
-				.Padding(FMargin{0.0f, 2.0f, 0.0f, 0.0f})
-				.AutoWidth()
+				  .Padding(FMargin{0.0f, 2.0f, 0.0f, 0.0f})
+				  .AutoWidth()
 				[
 					SNew(STextBlock)
 					.Text(FText::FromString(TEXT(" - Empty Folders")))
 				]
 				+ SHorizontalBox::Slot()
-				.AutoWidth()
-				.Padding(FMargin{5.0f, 0.0f, 0.0f, 0.0f})
+				  .AutoWidth()
+				  .Padding(FMargin{5.0f, 0.0f, 0.0f, 0.0f})
 				[
 					SNew(SImage)
 					.Image(FEditorStyle::GetBrush("ContentBrowser.AssetTreeFolderOpen"))
 					.ColorAndOpacity(FProjectCleanerStyles::Get().GetSlateColor("ProjectCleaner.Color.Yellow"))
 				]
 				+ SHorizontalBox::Slot()
-				.Padding(FMargin{0.0f, 2.0f, 0.0f, 0.0f})
-				.AutoWidth()
+				  .Padding(FMargin{0.0f, 2.0f, 0.0f, 0.0f})
+				  .AutoWidth()
 				[
 					SNew(STextBlock)
 					.Text(FText::FromString(TEXT(" - Excluded Folders")))
 				]
 			]
 			+ SVerticalBox::Slot()
-			.AutoHeight()
-			.Padding(FMargin{0.0f, 5.0f})
+			  .AutoHeight()
+			  .Padding(FMargin{0.0f, 5.0f})
 			[
 				TreeView.ToSharedRef()
 			]
@@ -81,9 +92,9 @@ void SProjectCleanerTreeView::Construct(const FArguments& InArgs)
 void SProjectCleanerTreeView::TreeItemsUpdate()
 {
 	TreeItems.Reset();
-	
+
 	TArray<FAssetData> Assets;
-	
+
 	const FString RootDir = FPaths::ProjectContentDir();
 	TSet<FString> ExcludeDirs;
 	ExcludeDirs.Add(FPaths::GameDevelopersDir()); // todo:ashe23 must be excluded by option
@@ -98,7 +109,7 @@ void SProjectCleanerTreeView::TreeItemsUpdate()
 
 	TSet<FString> AllSubDirs;
 	UProjectCleanerLibrary::GetSubDirectories(RootTreeItem->DirPathAbs, true, AllSubDirs, ExcludeDirs);
-	
+
 	TSet<FString> CachedEmptyFolders;
 	UProjectCleanerLibrary::GetEmptyDirectories(RootDir, CachedEmptyFolders, ExcludeDirs);
 	UProjectCleanerLibrary::GetAssetsInPath(UProjectCleanerLibrary::PathConvertToRel(RootDir), true, Assets);
@@ -133,7 +144,7 @@ void SProjectCleanerTreeView::TreeItemsUpdate()
 			UProjectCleanerLibrary::GetSubDirectories(SubDirItem->DirPathAbs, true, AllSubDirs, ExcludeDirs);
 			TSet<FString> EmptyFolders;
 			UProjectCleanerLibrary::GetEmptyDirectories(SubDirItem->DirPathAbs, EmptyFolders, ExcludeDirs);
-			
+
 			SubDirItem->FoldersTotal = AllSubDirs.Num();
 			SubDirItem->FoldersEmpty = EmptyFolders.Num();
 			SubDirItem->bIsEmpty = CachedEmptyFolders.Contains(SubDirItem->DirPathAbs);
@@ -263,6 +274,16 @@ void SProjectCleanerTreeView::OnTreeViewExpansionChange(TSharedPtr<FProjectClean
 	Item->bExpanded = bExpanded;
 
 	TreeView->SetItemExpansion(Item, bExpanded);
+}
+
+void SProjectCleanerTreeView::OnTreeViewSearchBoxTextChanged(const FText& InSearchText)
+{
+	UE_LOG(LogProjectCleaner, Warning, TEXT("Search Text Changed: %s"), *InSearchText.ToString());
+}
+
+void SProjectCleanerTreeView::OnTreeViewSearchBoxTextCommitted(const FText& InSearchText, ETextCommit::Type InCommitType)
+{
+	UE_LOG(LogProjectCleaner, Warning, TEXT("Search Text Committed: %s"), *InSearchText.ToString());
 }
 
 void SProjectCleanerTreeView::ToggleExpansionRecursive(TSharedPtr<FProjectCleanerTreeItem> Item, const bool bExpanded) const
