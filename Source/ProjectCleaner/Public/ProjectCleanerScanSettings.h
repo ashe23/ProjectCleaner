@@ -5,6 +5,8 @@
 #include "CoreMinimal.h"
 #include "ProjectCleanerScanSettings.generated.h"
 
+DECLARE_DELEGATE(FProjectCleanerScanSettingsChangeDelegate);
+
 UCLASS(Transient, Config=EditorPerProjectUserSettings)
 class UProjectCleanerScanSettings final : public UObject
 {
@@ -12,7 +14,9 @@ class UProjectCleanerScanSettings final : public UObject
 public:
 	UProjectCleanerScanSettings();
 
+#if WITH_EDITOR
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+#endif
 
 	UPROPERTY(DisplayName="Scan Developer Content", EditAnywhere, Config, Category="ScanSettings", meta=(ToolTip="Scan assets in 'Developers' folder. By Default false"))
 	bool bScanDeveloperContents = false;
@@ -33,4 +37,8 @@ public:
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Config, Category="ExcludeOptions", meta=(ToolTip="Exclude from scanning specified assets and their dependencies"))
 	TArray<TSoftObjectPtr<UObject>> ExcludedAssets;
+
+	FProjectCleanerScanSettingsChangeDelegate& OnChange();
+private:
+	FProjectCleanerScanSettingsChangeDelegate OnChangeDelegate;
 };

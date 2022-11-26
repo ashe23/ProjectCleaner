@@ -104,7 +104,7 @@ void SProjectCleanerTreeView::TreeItemsUpdate()
 
 	TArray<TSharedPtr<FProjectCleanerTreeItem>> Stack;
 
-	const TSharedPtr<FProjectCleanerTreeItem> RootTreeItem = MakeShareable(new FProjectCleanerTreeItem(RootDir, TEXT("/Game"), TEXT("Content")));
+	const TSharedPtr<FProjectCleanerTreeItem> RootTreeItem = MakeShareable(new FProjectCleanerTreeItem(RootDir, UProjectCleanerLibrary::PathConvertToRel(RootDir), TEXT("Content")));
 	if (!RootTreeItem.IsValid()) return;
 
 	TSet<FString> AllSubDirs;

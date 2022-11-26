@@ -12,9 +12,21 @@ UProjectCleanerScanSettings::UProjectCleanerScanSettings()
 	UsedAssetClasses.Add(UEditorUtilityWidgetBlueprint::StaticClass());
 }
 
+#if WITH_EDITOR
 void UProjectCleanerScanSettings::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
 	Super::PostEditChangeProperty(PropertyChangedEvent);
 
 	SaveConfig();
+
+	if (OnChangeDelegate.IsBound())
+	{
+		OnChangeDelegate.Execute();
+	}
+}
+#endif
+
+FProjectCleanerScanSettingsChangeDelegate& UProjectCleanerScanSettings::OnChange()
+{
+	return OnChangeDelegate;
 }

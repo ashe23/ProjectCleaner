@@ -4,6 +4,7 @@
 
 #include "ContentBrowserModule.h"
 #include "IContentBrowserSingleton.h"
+#include "ProjectCleanerConstants.h"
 #include "ProjectCleanerStyles.h"
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "Widgets/Layout/SScrollBox.h"
@@ -30,7 +31,7 @@ void SProjectCleanerAssetBrowser::Construct(const FArguments& InArgs)
 	AssetPickerConfig.AssetShowWarningText = FText::FromName("No assets");
 
 	FARFilter Filter;
-	Filter.PackagePaths.Add(TEXT("/Game"));
+	Filter.PackagePaths.Add(FName{*ProjectCleanerConstants::PathRelativeRoot});
 	Filter.bRecursivePaths = true;
 
 	TArray<FAssetData> AssetData;

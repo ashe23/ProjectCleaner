@@ -5,6 +5,7 @@
 #include "ProjectCleanerStyles.h"
 #include "ProjectCleanerConstants.h"
 #include "ProjectCleanerScanSettings.h"
+#include "ProjectCleanerLibrary.h"
 #include "Libs/ProjectCleanerAssetLibrary.h"
 // Engine Headers
 #include "Widgets/Input/SHyperlink.h"
