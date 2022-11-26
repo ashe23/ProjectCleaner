@@ -419,6 +419,11 @@ bool UProjectCleanerLibrary::IsUnderMegascansFolder(const FString& AssetPackageP
 	return AssetPackagePath.StartsWith(ProjectCleanerConstants::PathMegascans) || AssetPackagePath.StartsWith(ProjectCleanerConstants::PathMegascansPresets);
 }
 
+bool UProjectCleanerLibrary::IsAssetRegistryWorking()
+{
+	return FModuleManager::LoadModuleChecked<FAssetRegistryModule>(AssetRegistryConstants::ModuleName).Get().IsLoadingAssets();
+}
+
 FString UProjectCleanerLibrary::ConvertPathInternal(const FString& From, const FString& To, const FString& Path)
 {
 	return Path.Replace(*From, *To, ESearchCase::IgnoreCase);

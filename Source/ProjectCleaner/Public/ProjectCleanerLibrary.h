@@ -55,6 +55,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category="ProjectCleaner", meta=(ToolTip="Checks if given asset path is under megascans plugin folder or not"))
 	static bool IsUnderMegascansFolder(const FString& AssetPackagePath);
+
+	UFUNCTION(BlueprintCallable, Category="ProjectCleaner", meta=(ToolTip="Checks AssetRegistry is still working"))
+	static bool IsAssetRegistryWorking();
 private:
 	static FString ConvertPathInternal(const FString& From, const FString& To, const FString& Path);
 };
