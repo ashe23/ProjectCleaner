@@ -2,6 +2,7 @@
 
 #include "Slate/ProjectCleanerWindowMain.h"
 #include "Slate/ProjectCleanerTreeView.h"
+#include "Slate/ProjectCleanerAssetBrowser.h"
 #include "ProjectCleanerStyles.h"
 #include "ProjectCleanerConstants.h"
 #include "ProjectCleanerScanSettings.h"
@@ -20,9 +21,6 @@ void SProjectCleanerWindowMain::Construct(const FArguments& InArgs)
 {
 	ScanSettings = GetMutableDefault<UProjectCleanerScanSettings>();
 	check(ScanSettings.IsValid());
-
-	TArray<FProjectCleanerIndirectAsset> Assets;
-	UProjectCleanerLibrary::GetAssetsIndirect(Assets);
 	
 	FPropertyEditorModule& PropertyEditor = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
 	FDetailsViewArgs DetailsViewArgs;
@@ -125,6 +123,19 @@ void SProjectCleanerWindowMain::Construct(const FArguments& InArgs)
 						+ SScrollBox::Slot()
 						[
 							SNew(SProjectCleanerTreeView)
+						]
+					]
+					+ SVerticalBox::Slot()
+					.FillHeight(1.0f)
+					.Padding(FMargin{5.0f})
+					[
+						SNew(SScrollBox)
+						.ScrollWhenFocusChanges(EScrollWhenFocusChanges::NoScroll)
+						.AnimateWheelScrolling(true)
+						.AllowOverscroll(EAllowOverscroll::No)
+						+ SScrollBox::Slot()
+						[
+							SNew(SProjectCleanerAssetBrowser)
 						]
 					]
 				]

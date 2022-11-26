@@ -37,6 +37,7 @@ FName FProjectCleanerStyles::GetStyleSetName()
 #define TTF_FONT( RelativePath, ... ) FSlateFontInfo( Style->RootToContentDir( RelativePath, TEXT(".ttf") ), __VA_ARGS__ )
 #define OTF_FONT( RelativePath, ... ) FSlateFontInfo( Style->RootToContentDir( RelativePath, TEXT(".otf") ), __VA_ARGS__ )
 
+const FVector2D Icon8x8(8.0f, 8.0f);
 const FVector2D Icon20x20(20.0f, 20.0f);
 const FVector2D Icon40x40(40.0f, 40.0f);
 
@@ -48,6 +49,9 @@ TSharedRef<FSlateStyleSet> FProjectCleanerStyles::Create()
 	// icons
 	Style->Set("ProjectCleaner.IconBin20", new IMAGE_BRUSH(TEXT("IconBin20"), Icon20x20));
 	Style->Set("ProjectCleaner.IconBin40", new IMAGE_BRUSH(TEXT("IconBin40"), Icon40x40));
+	Style->Set("ProjectCleaner.IconCircle8", new IMAGE_BRUSH(TEXT("IconCircle8"), Icon8x8));
+	Style->Set("ProjectCleaner.IconCircle20", new IMAGE_BRUSH(TEXT("IconCircle20"), Icon20x20));
+	Style->Set("ProjectCleaner.IconCircle40", new IMAGE_BRUSH(TEXT("IconCircle40"), Icon40x40));
 
 	// cmds
 	Style->Set("ProjectCleaner.Cmd_OpenCleanerWindow", new IMAGE_BRUSH(TEXT("IconBin40"), Icon40x40));
@@ -62,6 +66,9 @@ TSharedRef<FSlateStyleSet> FProjectCleanerStyles::Create()
 	Style->Set("ProjectCleaner.Font.Light13", FCoreStyle::GetDefaultFontStyle("Light", 13));
 	Style->Set("ProjectCleaner.Font.Light10", FCoreStyle::GetDefaultFontStyle("Light", 10));
 	Style->Set("ProjectCleaner.Font.Light8", FCoreStyle::GetDefaultFontStyle("Light", 8));
+	Style->Set("ProjectCleaner.Font.Light7", FCoreStyle::GetDefaultFontStyle("Light", 7));
+	Style->Set("ProjectCleaner.Font.Light6", FCoreStyle::GetDefaultFontStyle("Light", 6));
+	Style->Set("ProjectCleaner.Font.Light5", FCoreStyle::GetDefaultFontStyle("Light", 5));
 
 	// pallet colors
 	Style->Set("ProjectCleaner.Color.Blue", FLinearColor{FColor::FromHex(TEXT("#227c9d"))});

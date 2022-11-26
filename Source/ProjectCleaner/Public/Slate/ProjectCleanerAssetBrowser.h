@@ -24,7 +24,7 @@ public:
 
 	void Construct(const FArguments& InArgs);
 private:
-	TSharedRef<ITableRow> OnGenerateWidgetForTileView(TSharedPtr<FTestData> InItem, const TSharedRef<STableViewBase>& OwnerTable);
+	TSharedRef<ITableRow> OnGenerateWidgetForTileView(TSharedPtr<FTestData> InItem, const TSharedRef<STableViewBase>& OwnerTable) const;
 
 	TArray<TSharedPtr<FTestData>> Items;
 };

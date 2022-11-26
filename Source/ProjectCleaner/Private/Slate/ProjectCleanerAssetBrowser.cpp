@@ -1,34 +1,17 @@
 ﻿// Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "Slate/ProjectCleanerAssetBrowser.h"
-
-#include "ContentBrowserModule.h"
-#include "IContentBrowserSingleton.h"
 #include "ProjectCleanerConstants.h"
 #include "ProjectCleanerStyles.h"
+// Engine Headers
 #include "AssetRegistry/AssetRegistryModule.h"
+#include "Internationalization/BreakIterator.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Views/STileView.h"
 
 void SProjectCleanerAssetBrowser::Construct(const FArguments& InArgs)
 {
 	const FAssetRegistryModule& AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
-	const FContentBrowserModule& ContentBrowserModule = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
-
-	FAssetPickerConfig AssetPickerConfig;
-	AssetPickerConfig.InitialAssetViewType = EAssetViewType::Tile;
-	AssetPickerConfig.bCanShowFolders = true;
-	AssetPickerConfig.bAddFilterUI = true;
-	AssetPickerConfig.bPreloadAssetsForContextMenu = false;
-	AssetPickerConfig.bSortByPathInColumnView = true;
-	AssetPickerConfig.bShowPathInColumnView = true;
-	AssetPickerConfig.bShowBottomToolbar = true;
-	AssetPickerConfig.bCanShowDevelopersFolder = true;
-	AssetPickerConfig.bCanShowClasses = false;
-	AssetPickerConfig.bAllowDragging = false;
-	AssetPickerConfig.bForceShowEngineContent = false;
-	AssetPickerConfig.bCanShowRealTimeThumbnails = false;
-	AssetPickerConfig.AssetShowWarningText = FText::FromName("No assets");
 
 	FARFilter Filter;
 	Filter.PackagePaths.Add(FName{*ProjectCleanerConstants::PathRelativeRoot});
@@ -45,116 +28,94 @@ void SProjectCleanerAssetBrowser::Construct(const FArguments& InArgs)
 
 	ChildSlot
 	[
-		SNew(SSplitter)
-		.PhysicalSplitterHandleSize(5.0f)
-		.Style(FEditorStyle::Get(), "ContentBrowser.Splitter")
-		+ SSplitter::Slot()
-		[
-			SNew(SVerticalBox)
-			+ SVerticalBox::Slot()
-			.AutoHeight()
-			[
-				SNew(STextBlock)
-				.Text(FText::FromString(TEXT("Excluded Assets")))
-				.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
-			]
-			+ SVerticalBox::Slot()
-			.AutoHeight()
-			[
-				SNew(SScrollBox)
-				.ScrollWhenFocusChanges(EScrollWhenFocusChanges::NoScroll)
-				.AnimateWheelScrolling(true)
-				.AllowOverscroll(EAllowOverscroll::No)
-				+ SScrollBox::Slot()
-				[
-					ContentBrowserModule.Get().CreateAssetPicker(AssetPickerConfig)
-				]
-			]
-		]
-		+ SSplitter::Slot()
-		[
-			SNew(SVerticalBox)
-			+ SVerticalBox::Slot()
-			.AutoHeight()
-			[
-				SNew(STextBlock)
-				.Text(FText::FromString(TEXT("Unused Assets")))
-				.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light20"))
-			]
-			+ SVerticalBox::Slot()
-			.AutoHeight()
-			[
-				SNew(SScrollBox)
-				.ScrollWhenFocusChanges(EScrollWhenFocusChanges::NoScroll)
-				.AnimateWheelScrolling(true)
-				.AllowOverscroll(EAllowOverscroll::No)
-				+ SScrollBox::Slot()
-				[
-					ContentBrowserModule.Get().CreateAssetPicker(AssetPickerConfig)
-				]
-			]
-		]
-		// [
-		// 	SNew(STileView< TSharedPtr<FTestData>>)
-		// 	.ItemWidth(109)
-		// 	.ItemHeight(128)
-		// 	.ListItemsSource(&Items)
-		// 	.SelectionMode(ESelectionMode::Multi)
-		// 	.OnGenerateTile(this, &SProjectCleanerAssetBrowser::OnGenerateWidgetForTileView)
-		// ]
+		SNew(STileView< TSharedPtr<FTestData>>)
+			.ItemWidth(100)
+			.ItemHeight(166)
+			.ListItemsSource(&Items)
+			.SelectionMode(ESelectionMode::Multi)
+			.OnGenerateTile(this, &SProjectCleanerAssetBrowser::OnGenerateWidgetForTileView)
 	];
 }
 
-TSharedRef<ITableRow> SProjectCleanerAssetBrowser::OnGenerateWidgetForTileView(TSharedPtr<FTestData> InItem, const TSharedRef<STableViewBase>& OwnerTable)
+TSharedRef<ITableRow> SProjectCleanerAssetBrowser::OnGenerateWidgetForTileView(TSharedPtr<FTestData> InItem, const TSharedRef<STableViewBase>& OwnerTable) const
 {
-	const TSharedPtr<FAssetThumbnail> AssetThumbnail = MakeShareable(new FAssetThumbnail(InItem->AssetData, 108, 108, nullptr));
-	const FAssetThumbnailConfig ThumbnailConfig;
+	const TSharedPtr<FAssetThumbnail> AssetThumbnail = MakeShareable(new FAssetThumbnail(InItem->AssetData, 100, 100, nullptr));
+	FAssetThumbnailConfig ThumbnailConfig;
+	ThumbnailConfig.bAllowFadeIn = true;
 
-	const bool RandBool = FMath::RandBool();
 	return SNew(STableRow< TSharedPtr<FTestData> >, OwnerTable)
-	[
-		SNew(SBorder)
-		.Padding(2)
-		.BorderImage(FEditorStyle::GetBrush("NoBorder"))
-		.ColorAndOpacity(FLinearColor{1.0f, 1.0f, 1.0f, RandBool ? 0.2f : 1.0f})
+		.Padding(FMargin{5.0f})
 		[
-			SNew(SVerticalBox)
-			+ SVerticalBox::Slot()
-			  .AutoHeight()
-			  .HAlign(HAlign_Center)
+			SNew(SBorder)
+			.Padding(0.0f)
+			.BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
+			.ColorAndOpacity(FLinearColor{1.0f, 1.0f, 1.0f, 1.0f})
 			[
-				SNew(SBox)
-				.Padding(0)
-				.WidthOverride(108)
-				.HeightOverride(108)
+				SNew(SVerticalBox)
+				+ SVerticalBox::Slot()
+				  .AutoHeight()
+				  .HAlign(HAlign_Center)
 				[
-					AssetThumbnail->MakeThumbnailWidget(ThumbnailConfig)
+					SNew(SBox)
+					.Padding(0)
+					.WidthOverride(100)
+					.HeightOverride(100)
+					[
+						AssetThumbnail->MakeThumbnailWidget(ThumbnailConfig)
+					]
 				]
-				// [
-				// 	// Drop shadow border
-				// 	// SNew(SBorder)
-				// 	// .Padding(4.f)
-				// 	// .BorderBackgroundColor(RandBool ? FLinearColor::White : FLinearColor::Red)
-				// 	// [
-				// 	// 	SNew(SOverlay)
-				// 	// 	+ SOverlay::Slot()
-				// 	// 	.HAlign(HAlign_Fill)
-				// 	// 	.VAlign(VAlign_Fill)
-				// 	// 	[
-				// 	// 	]
-				// 	// ]
-				// ]
+				+ SVerticalBox::Slot()
+				  .FillHeight(1.0f)
+				  .HAlign(HAlign_Fill)
+				  .VAlign(VAlign_Fill)
+				[
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot()
+					  .FillWidth(1.0f)
+					  .HAlign(HAlign_Fill)
+					  .VAlign(VAlign_Fill)
+					  .Padding(FMargin{3.0f, 2.0f})
+					[
+						SNew(STextBlock)
+						.WrapTextAt(100.0f)
+						.LineBreakPolicy(FBreakIterator::CreateCamelCaseBreakIterator())
+						.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light8"))
+						.Text(FText::FromString(InItem->AssetData.AssetName.ToString()))
+					]
+				]
+				+ SVerticalBox::Slot()
+				  .FillHeight(1.0f)
+				  .HAlign(HAlign_Fill)
+				  .VAlign(VAlign_Bottom)
+				[
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot()
+					  .FillWidth(1.0f)
+					  .HAlign(HAlign_Left)
+					  .VAlign(VAlign_Center)
+					  .Padding(FMargin{3.0f, 2.0f})
+					[
+						SNew(STextBlock)
+						// .ColorAndOpacity(FProjectCleanerStyles::Get().GetSlateColor("ProjectCleaner.Color.White"))
+						.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light7"))
+						.Text(FText::FromString(InItem->AssetData.AssetClass.ToString()))
+					]
+					+ SHorizontalBox::Slot()
+					  .AutoWidth()
+					  .HAlign(HAlign_Center)
+					  .VAlign(VAlign_Center)
+					  .Padding(FMargin{3.0f, 2.0f})
+					[
+						SNew(SBox)
+						.WidthOverride(8.0f)
+						.HeightOverride(8.0f)
+						[
+							SNew(SImage)
+							.Image(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconCircle8"))
+							.ColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Yellow"))
+						]
+					]
+				]
 			]
-			+ SVerticalBox::Slot()
-			  .FillHeight(1.0f)
-			  .HAlign(HAlign_Center)
-			  .VAlign(VAlign_Center)
-			[
-				SNew(STextBlock)
-				.AutoWrapText(true)
-				.WrapTextAt(0.7f)
-				.Text(FText::FromString(InItem->AssetData.AssetName.ToString()))
-			]
-		]
-	];
+		];
 }
