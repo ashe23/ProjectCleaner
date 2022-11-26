@@ -11,6 +11,51 @@
 #include "Engine/AssetManager.h"
 #include "Misc/ScopedSlowTask.h"
 
+class FFindCorruptedFilesVisitor final : public IPlatformFile::FDirectoryVisitor
+{
+public:
+	IPlatformFile& PlatformFile;
+	TSet<FString>& CorruptedFiles;
+
+	FFindCorruptedFilesVisitor(IPlatformFile& InPlatformFile, TSet<FString>& InCorruptedFiles)
+		: FDirectoryVisitor(EDirectoryVisitorFlags::None),
+		  PlatformFile(InPlatformFile),
+		  CorruptedFiles(InCorruptedFiles)
+	{
+	}
+
+	virtual bool Visit(const TCHAR* FilenameOrDirectory, bool bIsDirectory) override
+	{
+		if (!bIsDirectory)
+		{
+			const FString FullPath = FPaths::ConvertRelativePathToFull(FilenameOrDirectory);
+			if (UProjectCleanerLibrary::IsEngineExtension(FPaths::GetExtension(FullPath, false)))
+			{
+				// here we got absolute path "C:/MyProject/Content/material.uasset"
+				// we must first convert that path to In Engine Internal Path like "/Game/material.uasset"
+				const FString InternalFilePath = UProjectCleanerLibrary::PathConvertToRel(FullPath);
+				// Converting file path to object path (This is for searching in AssetRegistry)
+				// example "/Game/Name.uasset" => "/Game/Name.Name"
+				FString ObjectPath = InternalFilePath;
+				ObjectPath.RemoveFromEnd(FPaths::GetExtension(InternalFilePath, true));
+				ObjectPath.Append(TEXT(".") + FPaths::GetBaseFilename(InternalFilePath));
+
+				const FName ObjectPathName = FName{*ObjectPath};
+
+				const FAssetRegistryModule& ModuleAssetRegistry = FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
+				
+				const FAssetData AssetData = ModuleAssetRegistry.Get().GetAssetByObjectPath(ObjectPathName);
+				if (!AssetData.IsValid())
+				{
+					CorruptedFiles.Add(FullPath);
+				}
+			}
+		}
+
+		return true;
+	}
+};
+
 class FFindNonEngineFilesVisitor final : public IPlatformFile::FDirectoryVisitor
 {
 public:
@@ -19,7 +64,8 @@ public:
 	TSet<FString>& NonEngineFiles;
 
 	FFindNonEngineFilesVisitor(IPlatformFile& InPlatformFile, TSet<FString>& InNonEngineFiles)
-		: FDirectoryVisitor(EDirectoryVisitorFlags::ThreadSafe), PlatformFile(InPlatformFile),
+		: FDirectoryVisitor(EDirectoryVisitorFlags::ThreadSafe),
+		  PlatformFile(InPlatformFile),
 		  NonEngineFiles(InNonEngineFiles)
 	{
 	}
@@ -264,6 +310,16 @@ void UProjectCleanerLibrary::GetNonEngineFiles(TSet<FString>& NonEngineFiles)
 	FFindNonEngineFilesVisitor FindNonEngineFilesVisitor(PlatformFile, NonEngineFiles);
 
 	PlatformFile.IterateDirectoryRecursively(*FPaths::ProjectContentDir(), FindNonEngineFilesVisitor);
+}
+
+void UProjectCleanerLibrary::GetCorruptedFiles(TSet<FString>& CorruptedFiles)
+{
+	CorruptedFiles.Reset();
+
+	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
+	FFindCorruptedFilesVisitor FindCorruptedFilesVisitor(PlatformFile, CorruptedFiles);
+
+	PlatformFile.IterateDirectoryRecursively(*FPaths::ProjectContentDir(), FindCorruptedFilesVisitor);
 }
 
 void UProjectCleanerLibrary::FixupRedirectors()

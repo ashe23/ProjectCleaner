@@ -40,6 +40,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category="ProjectCleaner", meta=(ToolTip="Returns all non engine files under Content directory"))
 	static void GetNonEngineFiles(TSet<FString>& NonEngineFiles);
 
+	UFUNCTION(BlueprintCallable, Category="ProjectCleaner",
+		meta=(ToolTip=
+			"Returns all corrupted files under Content directory. Corrupted files are engine .uasset or .umap files that for some reason failed to load and are not registered in AssetRegistry"))
+	static void GetCorruptedFiles(TSet<FString>& CorruptedFiles);
+
 	static void FixupRedirectors();
 	static void SaveAllAssets(const bool bPromptUser = true);
 	static void UpdateAssetRegistry(const bool bSyncScan = false);
