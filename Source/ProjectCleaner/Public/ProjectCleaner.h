@@ -13,6 +13,7 @@ public:
 	virtual void StartupModule() override;
 	virtual void ShutdownModule() override;
 	virtual bool IsGameModule() const override;
+	virtual bool SupportsDynamicReloading() override;
 private:
 	static void RegisterStyles();
 	void RegisterCmds();

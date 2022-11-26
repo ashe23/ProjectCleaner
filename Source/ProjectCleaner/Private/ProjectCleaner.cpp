@@ -37,6 +37,11 @@ bool FProjectCleanerModule::IsGameModule() const
 	return false;
 }
 
+bool FProjectCleanerModule::SupportsDynamicReloading()
+{
+	return false;
+}
+
 void FProjectCleanerModule::RegisterStyles()
 {
 	FProjectCleanerStyles::Initialize();
