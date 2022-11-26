@@ -11,9 +11,9 @@ class UProjectCleanerScanSettings final : public UObject
 	GENERATED_BODY()
 public:
 	UProjectCleanerScanSettings();
-	
+
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
-	
+
 	UPROPERTY(DisplayName="Scan Developer Content", EditAnywhere, Config, Category="ScanSettings", meta=(ToolTip="Scan assets in 'Developers' folder. By Default false"))
 	bool bScanDeveloperContents = false;
 
@@ -24,12 +24,13 @@ public:
 		meta=(ToolTip="List of asset classes that are considered used in project. This type of assets and their dependencies will never be scanned and wont be deleted."))
 	TArray<TSoftClassPtr<UObject>> UsedAssetClasses;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Config, Category="ExcludeOptions", meta=(ContentDir, ToolTip="Exclude assets and their dependencies inside specified paths"))
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Config, Category="ExcludeOptions", DisplayName="Excluded Folders",
+		meta=(ContentDir, ToolTip="Exclude from scanning assets and their dependencies inside this folders"))
 	TArray<FDirectoryPath> ExcludedDirectories;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Config, Category="ExcludeOptions", meta=(ToolTip="Exclude assets and their dependencies of specified classes"))
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Config, Category="ExcludeOptions", meta=(ToolTip="Exclude from scanning assets and their dependencies of specified classes"))
 	TArray<TSoftClassPtr<UObject>> ExcludedClasses;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Config, Category="ExcludeOptions", meta=(ToolTip="Exclude specified assets and their dependencies from scanning"))
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Config, Category="ExcludeOptions", meta=(ToolTip="Exclude from scanning specified assets and their dependencies"))
 	TArray<TSoftObjectPtr<UObject>> ExcludedAssets;
 };
