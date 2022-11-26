@@ -46,13 +46,15 @@ void SProjectCleanerTreeView::Construct(const FArguments& InArgs)
 void SProjectCleanerTreeView::TreeItemsUpdate()
 {
 	TreeItems.Reset();
-
+	
+	TArray<FAssetData> Assets;
+	
 	const FString RootDir = FPaths::ProjectContentDir();
 	TSet<FString> ExcludeDirs;
 	ExcludeDirs.Add(FPaths::GameDevelopersDir()); // todo:ashe23 must be excluded by option
 	ExcludeDirs.Add(RootDir + TEXT("Collections/"));
-
 	// todo:ashe23 for ue5 exclude __ExternalActors__ and __ExternalObjects__ folders
+
 
 	TArray<TSharedPtr<FProjectCleanerTreeItem>> Stack;
 
@@ -61,8 +63,16 @@ void SProjectCleanerTreeView::TreeItemsUpdate()
 
 	TSet<FString> AllSubDirs;
 	UProjectCleanerLibrary::GetSubDirectories(RootTreeItem->DirPathAbs, true, AllSubDirs, ExcludeDirs);
+	
+	TSet<FString> CachedEmptyFolders;
+	UProjectCleanerLibrary::GetEmptyDirectories(RootDir, CachedEmptyFolders, ExcludeDirs);
+	UProjectCleanerLibrary::GetAssetsInPath(UProjectCleanerLibrary::PathConvertToRel(RootDir), true, Assets);
 
+	RootTreeItem->AssetsTotal = Assets.Num();
+	RootTreeItem->SizeTotal = UProjectCleanerLibrary::GetAssetsTotalSize(Assets);
 	RootTreeItem->FoldersTotal = AllSubDirs.Num();
+	RootTreeItem->FoldersEmpty = CachedEmptyFolders.Num();
+	RootTreeItem->bIsEmpty = CachedEmptyFolders.Contains(RootDir);
 
 	Stack.Push(RootTreeItem);
 
@@ -75,12 +85,28 @@ void SProjectCleanerTreeView::TreeItemsUpdate()
 
 		for (const auto& SubDir : SubDirs)
 		{
-			const TSharedPtr<FProjectCleanerTreeItem> SubDirItem = MakeShareable(new FProjectCleanerTreeItem(SubDir, TEXT(""), FPaths::GetPathLeaf(SubDir)));
+			const TSharedPtr<FProjectCleanerTreeItem> SubDirItem = MakeShareable(
+				new FProjectCleanerTreeItem(
+					SubDir,
+					UProjectCleanerLibrary::PathConvertToRel(SubDir),
+					FPaths::GetPathLeaf(SubDir)
+				)
+			);
 			if (!SubDirItem.IsValid()) continue;
 
+			// folders
 			UProjectCleanerLibrary::GetSubDirectories(SubDirItem->DirPathAbs, true, AllSubDirs, ExcludeDirs);
-
+			TSet<FString> EmptyFolders;
+			UProjectCleanerLibrary::GetEmptyDirectories(SubDirItem->DirPathAbs, EmptyFolders, ExcludeDirs);
+			
 			SubDirItem->FoldersTotal = AllSubDirs.Num();
+			SubDirItem->FoldersEmpty = EmptyFolders.Num();
+			SubDirItem->bIsEmpty = CachedEmptyFolders.Contains(SubDirItem->DirPathAbs);
+
+			// assets
+			UProjectCleanerLibrary::GetAssetsInPath(SubDirItem->DirPathRel, true, Assets);
+			SubDirItem->AssetsTotal = Assets.Num();
+			SubDirItem->SizeTotal = UProjectCleanerLibrary::GetAssetsTotalSize(Assets);
 
 			CurrentItem->SubDirectories.Add(SubDirItem);
 			Stack.Push(SubDirItem);
@@ -110,6 +136,7 @@ TSharedRef<SHeaderRow> SProjectCleanerTreeView::GetTreeViewHeaderRow() const
 		[
 			SNew(STextBlock)
 			.Text(FText::FromString(TEXT("Name")))
+			.ColorAndOpacity(FLinearColor{FColor::FromHex(TEXT("#17c3b2"))})
 			.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light15"))
 		]
 		+ SHeaderRow::Column(TEXT("FoldersTotal"))
@@ -118,7 +145,58 @@ TSharedRef<SHeaderRow> SProjectCleanerTreeView::GetTreeViewHeaderRow() const
 		  .HeaderContentPadding(FMargin{5.0f})
 		[
 			SNew(STextBlock)
-			.Text(FText::FromString(TEXT("Folders")))
+			.Text(FText::FromString(TEXT("Folders (Total)")))
+			.ColorAndOpacity(FLinearColor{FColor::FromHex(TEXT("#17c3b2"))})
+			.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light15"))
+		]
+		+ SHeaderRow::Column(TEXT("FoldersEmpty"))
+		  .HAlignHeader(HAlign_Center)
+		  .VAlignHeader(VAlign_Center)
+		  .HeaderContentPadding(FMargin{5.0f})
+		[
+			SNew(STextBlock)
+			.Text(FText::FromString(TEXT("Folders (Empty)")))
+			.ColorAndOpacity(FLinearColor{FColor::FromHex(TEXT("#17c3b2"))})
+			.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light15"))
+		]
+		+ SHeaderRow::Column(TEXT("AssetsTotal"))
+		  .HAlignHeader(HAlign_Center)
+		  .VAlignHeader(VAlign_Center)
+		  .HeaderContentPadding(FMargin{5.0f})
+		[
+			SNew(STextBlock)
+			.Text(FText::FromString(TEXT("Assets (Total)")))
+			.ColorAndOpacity(FLinearColor{FColor::FromHex(TEXT("#17c3b2"))})
+			.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light15"))
+		]
+		+ SHeaderRow::Column(TEXT("AssetsUnused"))
+		  .HAlignHeader(HAlign_Center)
+		  .VAlignHeader(VAlign_Center)
+		  .HeaderContentPadding(FMargin{5.0f})
+		[
+			SNew(STextBlock)
+			.Text(FText::FromString(TEXT("Assets (Unused)")))
+			.ColorAndOpacity(FLinearColor{FColor::FromHex(TEXT("#17c3b2"))})
+			.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light15"))
+		]
+		+ SHeaderRow::Column(TEXT("SizeTotal"))
+		  .HAlignHeader(HAlign_Center)
+		  .VAlignHeader(VAlign_Center)
+		  .HeaderContentPadding(FMargin{5.0f})
+		[
+			SNew(STextBlock)
+			.Text(FText::FromString(TEXT("Size (Total)")))
+			.ColorAndOpacity(FLinearColor{FColor::FromHex(TEXT("#17c3b2"))})
+			.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light15"))
+		]
+		+ SHeaderRow::Column(TEXT("SizeUnused"))
+		  .HAlignHeader(HAlign_Center)
+		  .VAlignHeader(VAlign_Center)
+		  .HeaderContentPadding(FMargin{5.0f})
+		[
+			SNew(STextBlock)
+			.Text(FText::FromString(TEXT("Size (Unused)")))
+			.ColorAndOpacity(FLinearColor{FColor::FromHex(TEXT("#17c3b2"))})
 			.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light15"))
 		];
 }

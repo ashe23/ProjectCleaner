@@ -30,11 +30,12 @@ struct FProjectCleanerTreeItem
 	FString DirName;
 	int64 SizeTotal = 0;
 	int64 SizeUnused = 0;
-	int32 NumTotal = 0;
-	int32 NumUnused = 0;
+	int32 AssetsTotal = 0;
+	int32 AssetsUnused = 0;
 	int32 FoldersTotal = 0;
 	int32 FoldersEmpty = 0;
 	bool bExpanded = false;
+	bool bIsEmpty = false;
 	TArray<TSharedPtr<FProjectCleanerTreeItem>> SubDirectories;
 };
 
@@ -83,7 +84,7 @@ public:
 					// Folder Icon
 					SNew(SImage)
 					.Image(this, &SProjectCleanerTreeItem::GetFolderIcon)
-					.ColorAndOpacity(FLinearColor::Gray)
+					.ColorAndOpacity(this, &SProjectCleanerTreeItem::GetFolderColor)
 				]
 				+ SHorizontalBox::Slot()
 				  .AutoWidth()
@@ -107,6 +108,81 @@ public:
 					.Text(FText::FromString(FString::Printf(TEXT("%d"), TreeItem->FoldersTotal)))
 				];
 		}
+		
+		if (InColumnName.IsEqual(TEXT("FoldersEmpty")))
+		{
+			return
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot()
+				  .FillWidth(1.0f)
+				  .HAlign(HAlign_Center)
+				  .VAlign(VAlign_Center)
+				[
+					SNew(STextBlock)
+					.Justification(ETextJustify::Center)
+					.Text(FText::FromString(FString::Printf(TEXT("%d"), TreeItem->FoldersEmpty)))
+				];
+		}
+
+		if (InColumnName.IsEqual(TEXT("AssetsTotal")))
+		{
+			return
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot()
+				  .FillWidth(1.0f)
+				  .HAlign(HAlign_Center)
+				  .VAlign(VAlign_Center)
+				[
+					SNew(STextBlock)
+					.Justification(ETextJustify::Center)
+					.Text(FText::FromString(FString::Printf(TEXT("%d"), TreeItem->AssetsTotal)))
+				];
+		}
+
+		if (InColumnName.IsEqual(TEXT("AssetsUnused")))
+		{
+			return
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot()
+				  .FillWidth(1.0f)
+				  .HAlign(HAlign_Center)
+				  .VAlign(VAlign_Center)
+				[
+					SNew(STextBlock)
+					.Justification(ETextJustify::Center)
+					.Text(FText::FromString(FString::Printf(TEXT("%d"), TreeItem->AssetsUnused)))
+				];
+		}
+
+		if (InColumnName.IsEqual(TEXT("SizeTotal")))
+		{
+			return
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot()
+				  .FillWidth(1.0f)
+				  .HAlign(HAlign_Center)
+				  .VAlign(VAlign_Center)
+				[
+					SNew(STextBlock)
+					.Justification(ETextJustify::Center)
+					.Text(FText::AsMemory(TreeItem->SizeTotal))
+				];
+		}
+
+		if (InColumnName.IsEqual(TEXT("SizeUnused")))
+		{
+			return
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot()
+				  .FillWidth(1.0f)
+				  .HAlign(HAlign_Center)
+				  .VAlign(VAlign_Center)
+				[
+					SNew(STextBlock)
+					.Justification(ETextJustify::Center)
+					.Text(FText::AsMemory(TreeItem->SizeUnused))
+				];
+		}
 
 		return SNew(STextBlock).Text(FText::FromString(TEXT("")));
 	}
@@ -116,6 +192,10 @@ private:
 	{
 		// todo:ashe23 handle developer folder icon separetly
 		return FEditorStyle::GetBrush(TreeItem->bExpanded ? TEXT("ContentBrowser.AssetTreeFolderOpen") : TEXT("ContentBrowser.AssetTreeFolderClosed"));
+	}
+	FSlateColor GetFolderColor() const
+	{
+		return TreeItem->bIsEmpty ? FLinearColor{FColor::FromHex(TEXT("#fe6d73"))} : FLinearColor::Gray;
 	}
 	TSharedPtr<FProjectCleanerTreeItem> TreeItem;
 };
@@ -141,8 +221,8 @@ private:
 	void OnTreeViewGetChildren(TSharedPtr<FProjectCleanerTreeItem> Item, TArray<TSharedPtr<FProjectCleanerTreeItem>>& OutChildren) const;
 	void OnTreeViewSelectionChange(TSharedPtr<FProjectCleanerTreeItem> Item, ESelectInfo::Type SelectType) const;
 	void OnTreeViewExpansionChange(TSharedPtr<FProjectCleanerTreeItem> Item, bool bExpanded) const;
-
 	void ToggleExpansionRecursive(TSharedPtr<FProjectCleanerTreeItem> Item, const bool bExpanded) const;
+
 
 	TArray<TSharedPtr<FProjectCleanerTreeItem>> TreeItems;
 	TSharedPtr<STreeView<TSharedPtr<FProjectCleanerTreeItem>>> TreeView;
