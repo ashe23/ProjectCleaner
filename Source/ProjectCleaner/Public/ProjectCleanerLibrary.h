@@ -37,11 +37,19 @@ public:
 		meta=(ToolTip="Converts given absolute to relative. Example C:/{Your_Project_Path_To_Content_Folder}/StarterContent => /Game/StarterContent"))
 	static FString PathConvertToRel(const FString& InAbsPath);
 
-	// Fixing up all redirectors in project
+	UFUNCTION(BlueprintCallable, Category="ProjectCleaner", meta=(ToolTip="Returns all non engine files under Content directory"))
+	static void GetNonEngineFiles(TSet<FString>& NonEngineFiles);
+
 	static void FixupRedirectors();
 	static void SaveAllAssets(const bool bPromptUser = true);
 	static void UpdateAssetRegistry(const bool bSyncScan = false);
 	static void FocusOnDirectory(const FString& InRelPath);
+
+	UFUNCTION(BlueprintCallable, Category="ProjectCleaner", meta=(ToolTip="Checks if given extension is engine extension or not (.uasset or .umap)"))
+	static bool IsEngineExtension(const FString& Extension);
+
+	UFUNCTION(BlueprintCallable, Category="ProjectCleaner", meta=(ToolTip="Checks if given asset path is under megascans plugin folder or not"))
+	static bool IsUnderMegascansFolder(const FString& AssetPackagePath);
 private:
 	static FString ConvertPathInternal(const FString& From, const FString& To, const FString& Path);
 };

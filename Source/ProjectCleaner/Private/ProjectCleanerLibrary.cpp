@@ -11,6 +11,35 @@
 #include "Engine/AssetManager.h"
 #include "Misc/ScopedSlowTask.h"
 
+class FFindNonEngineFilesVisitor final : public IPlatformFile::FDirectoryVisitor
+{
+public:
+	IPlatformFile& PlatformFile;
+	FRWLock FoundFilesLock;
+	TSet<FString>& NonEngineFiles;
+
+	FFindNonEngineFilesVisitor(IPlatformFile& InPlatformFile, TSet<FString>& InNonEngineFiles)
+		: FDirectoryVisitor(EDirectoryVisitorFlags::ThreadSafe), PlatformFile(InPlatformFile),
+		  NonEngineFiles(InNonEngineFiles)
+	{
+	}
+
+	virtual bool Visit(const TCHAR* FilenameOrDirectory, bool bIsDirectory) override
+	{
+		if (!bIsDirectory)
+		{
+			const FString FullPath = FPaths::ConvertRelativePathToFull(FilenameOrDirectory);
+			if (!UProjectCleanerLibrary::IsEngineExtension(FPaths::GetExtension(FullPath, false)))
+			{
+				FRWScopeLock ScopeLock(FoundFilesLock, SLT_Write);
+				NonEngineFiles.Add(FullPath);
+			}
+		}
+
+		return true;
+	}
+};
+
 class FFindEmptyDirectoriesVisitor final : public IPlatformFile::FDirectoryVisitor
 {
 public:
@@ -18,7 +47,7 @@ public:
 	FRWLock FoundFilesLock;
 	TSet<FString>& EmptyDirectories;
 	const TSet<FString>& ExcludedDirectories;
-public:
+
 	FFindEmptyDirectoriesVisitor(IPlatformFile& InPlatformFile, TSet<FString>& InEmptyDirectories, const TSet<FString>& InExcludedDirectories)
 		: FDirectoryVisitor(EDirectoryVisitorFlags::ThreadSafe)
 		  , PlatformFile(InPlatformFile)
@@ -227,6 +256,16 @@ FString UProjectCleanerLibrary::PathConvertToRel(const FString& InAbsPath)
 	return ConvertPathInternal(ProjectContentDirAbsPath, FString{"/Game/"}, Path);
 }
 
+void UProjectCleanerLibrary::GetNonEngineFiles(TSet<FString>& NonEngineFiles)
+{
+	NonEngineFiles.Reset();
+
+	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
+	FFindNonEngineFilesVisitor FindNonEngineFilesVisitor(PlatformFile, NonEngineFiles);
+
+	PlatformFile.IterateDirectoryRecursively(*FPaths::ProjectContentDir(), FindNonEngineFilesVisitor);
+}
+
 void UProjectCleanerLibrary::FixupRedirectors()
 {
 	const FAssetRegistryModule& ModuleAssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>(AssetRegistryConstants::ModuleName);
@@ -312,6 +351,16 @@ void UProjectCleanerLibrary::FocusOnDirectory(const FString& InRelPath)
 
 	const FContentBrowserModule& ModuleContentBrowser = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
 	ModuleContentBrowser.Get().SyncBrowserToFolders(FocusFolders);
+}
+
+bool UProjectCleanerLibrary::IsEngineExtension(const FString& Extension)
+{
+	return Extension.ToLower().Equals(TEXT("uasset")) || Extension.ToLower().Equals(TEXT("umap"));
+}
+
+bool UProjectCleanerLibrary::IsUnderMegascansFolder(const FString& AssetPackagePath)
+{
+	return AssetPackagePath.StartsWith(ProjectCleanerConstants::PathMegascans) || AssetPackagePath.StartsWith(ProjectCleanerConstants::PathMegascansPresets);
 }
 
 FString UProjectCleanerLibrary::ConvertPathInternal(const FString& From, const FString& To, const FString& Path)
