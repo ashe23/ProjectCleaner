@@ -3,8 +3,11 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "ProjectCleanerTypes.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "ProjectCleanerLibrary.generated.h"
+
+struct FProjectCleanerIndirectAsset;
 
 UCLASS(DisplayName="ProjectCleanerLibrary", meta=(ToolTip="Project Cleaner collection of helper functions"))
 class UProjectCleanerLibrary final : public UBlueprintFunctionLibrary
@@ -29,6 +32,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category="ProjectCleaner", meta=(ToolTip="Returns total size of given assets array"))
 	static int64 GetAssetsTotalSize(const TArray<FAssetData>& Assets);
 
+	UFUNCTION(BlueprintCallable, Category="ProjectCleaner", meta=(ToolTip="Returns all assets that used indirectly (source code, config files etc)"))
+	static void GetAssetsIndirect(TArray<FProjectCleanerIndirectAsset>& IndirectAssets);
+	
 	UFUNCTION(BlueprintCallable, Category="ProjectCleaner",
 		meta=(ToolTip="Converts given relative to absolute. Example /Game/StarterContent => C:/{Your_Project_Path_To_Content_Folder}/StarterContent"))
 	static FString PathConvertToAbs(const FString& InRelPath);
@@ -45,6 +51,7 @@ public:
 			"Returns all corrupted files under Content directory. Corrupted files are engine .uasset or .umap files that for some reason failed to load and are not registered in AssetRegistry"))
 	static void GetCorruptedFiles(TSet<FString>& CorruptedFiles);
 
+
 	static void FixupRedirectors();
 	static void SaveAllAssets(const bool bPromptUser = true);
 	static void UpdateAssetRegistry(const bool bSyncScan = false);
@@ -58,6 +65,8 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category="ProjectCleaner", meta=(ToolTip="Checks AssetRegistry is still working"))
 	static bool IsAssetRegistryWorking();
+
+	static bool HasIndirectlyUsedAssets(const FString& FileContent);
 private:
 	static FString ConvertPathInternal(const FString& From, const FString& To, const FString& Path);
 };
