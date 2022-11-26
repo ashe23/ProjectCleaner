@@ -136,7 +136,7 @@ TSharedRef<SHeaderRow> SProjectCleanerTreeView::GetTreeViewHeaderRow() const
 		[
 			SNew(STextBlock)
 			.Text(FText::FromString(TEXT("Name")))
-			.ColorAndOpacity(FLinearColor{FColor::FromHex(TEXT("#17c3b2"))})
+			.ColorAndOpacity(FProjectCleanerStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
 			.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light15"))
 		]
 		+ SHeaderRow::Column(TEXT("FoldersTotal"))
@@ -146,7 +146,7 @@ TSharedRef<SHeaderRow> SProjectCleanerTreeView::GetTreeViewHeaderRow() const
 		[
 			SNew(STextBlock)
 			.Text(FText::FromString(TEXT("Folders (Total)")))
-			.ColorAndOpacity(FLinearColor{FColor::FromHex(TEXT("#17c3b2"))})
+			.ColorAndOpacity(FProjectCleanerStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
 			.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light15"))
 		]
 		+ SHeaderRow::Column(TEXT("FoldersEmpty"))
@@ -156,7 +156,7 @@ TSharedRef<SHeaderRow> SProjectCleanerTreeView::GetTreeViewHeaderRow() const
 		[
 			SNew(STextBlock)
 			.Text(FText::FromString(TEXT("Folders (Empty)")))
-			.ColorAndOpacity(FLinearColor{FColor::FromHex(TEXT("#17c3b2"))})
+			.ColorAndOpacity(FProjectCleanerStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
 			.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light15"))
 		]
 		+ SHeaderRow::Column(TEXT("AssetsTotal"))
@@ -166,7 +166,7 @@ TSharedRef<SHeaderRow> SProjectCleanerTreeView::GetTreeViewHeaderRow() const
 		[
 			SNew(STextBlock)
 			.Text(FText::FromString(TEXT("Assets (Total)")))
-			.ColorAndOpacity(FLinearColor{FColor::FromHex(TEXT("#17c3b2"))})
+			.ColorAndOpacity(FProjectCleanerStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
 			.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light15"))
 		]
 		+ SHeaderRow::Column(TEXT("AssetsUnused"))
@@ -176,7 +176,7 @@ TSharedRef<SHeaderRow> SProjectCleanerTreeView::GetTreeViewHeaderRow() const
 		[
 			SNew(STextBlock)
 			.Text(FText::FromString(TEXT("Assets (Unused)")))
-			.ColorAndOpacity(FLinearColor{FColor::FromHex(TEXT("#17c3b2"))})
+			.ColorAndOpacity(FProjectCleanerStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
 			.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light15"))
 		]
 		+ SHeaderRow::Column(TEXT("SizeTotal"))
@@ -186,7 +186,7 @@ TSharedRef<SHeaderRow> SProjectCleanerTreeView::GetTreeViewHeaderRow() const
 		[
 			SNew(STextBlock)
 			.Text(FText::FromString(TEXT("Size (Total)")))
-			.ColorAndOpacity(FLinearColor{FColor::FromHex(TEXT("#17c3b2"))})
+			.ColorAndOpacity(FProjectCleanerStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
 			.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light15"))
 		]
 		+ SHeaderRow::Column(TEXT("SizeUnused"))
@@ -196,7 +196,7 @@ TSharedRef<SHeaderRow> SProjectCleanerTreeView::GetTreeViewHeaderRow() const
 		[
 			SNew(STextBlock)
 			.Text(FText::FromString(TEXT("Size (Unused)")))
-			.ColorAndOpacity(FLinearColor{FColor::FromHex(TEXT("#17c3b2"))})
+			.ColorAndOpacity(FProjectCleanerStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
 			.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light15"))
 		];
 }

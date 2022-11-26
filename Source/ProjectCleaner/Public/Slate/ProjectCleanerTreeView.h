@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "ProjectCleanerStyles.h"
 #include "ProjectCleaner/Public/ProjectCleanerLibrary.h"
 #include "Widgets/SCompoundWidget.h"
 
@@ -195,7 +196,7 @@ private:
 	}
 	FSlateColor GetFolderColor() const
 	{
-		return TreeItem->bIsEmpty ? FLinearColor{FColor::FromHex(TEXT("#fe6d73"))} : FLinearColor::Gray;
+		return TreeItem->bIsEmpty ? FProjectCleanerStyles::Get().GetSlateColor("ProjectCleaner.Color.Red") : FLinearColor::Gray;
 	}
 	TSharedPtr<FProjectCleanerTreeItem> TreeItem;
 };
