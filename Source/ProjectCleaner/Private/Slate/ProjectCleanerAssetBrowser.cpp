@@ -6,6 +6,7 @@
 // Engine Headers
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "Internationalization/BreakIterator.h"
+#include "Widgets/Input/SSearchBox.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Views/STileView.h"
 
@@ -28,12 +29,77 @@ void SProjectCleanerAssetBrowser::Construct(const FArguments& InArgs)
 
 	ChildSlot
 	[
-		SNew(STileView< TSharedPtr<FTestData>>)
-			.ItemWidth(100)
-			.ItemHeight(166)
-			.ListItemsSource(&Items)
-			.SelectionMode(ESelectionMode::Multi)
-			.OnGenerateTile(this, &SProjectCleanerAssetBrowser::OnGenerateWidgetForTileView)
+		SNew(SVerticalBox)
+		+ SVerticalBox::Slot()
+		.AutoHeight()
+		.Padding(FMargin{0.0f, 0.0f, 0.0f, 5.0f})
+		[
+			SNew(SSearchBox)
+			.HintText(FText::FromString(TEXT("Search Assets...")))
+			// .OnTextChanged(this, &SProjectCleanerTreeView::OnTreeViewSearchBoxTextChanged)
+			// .OnTextCommitted(this, &SProjectCleanerTreeView::OnTreeViewSearchBoxTextCommitted)
+		]
+		+ SVerticalBox::Slot()
+		.AutoHeight()
+		.Padding(FMargin{0.0f, 0.0f, 0.0f, 5.0f})
+		[
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			[
+				SNew(SImage)
+				.Image(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconCircle20"))
+				.ColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Yellow"))
+			]
+			+ SHorizontalBox::Slot()
+			  .Padding(FMargin{0.0f, 2.0f, 0.0f, 0.0f})
+			  .AutoWidth()
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString(TEXT(" - Excluded Asset")))
+			]
+			+ SHorizontalBox::Slot()
+			  .AutoWidth()
+			  .Padding(FMargin{5.0f, 0.0f, 0.0f, 0.0f})
+			[
+				SNew(SImage)
+				.Image(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconCircle20"))
+				.ColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Blue"))
+			]
+			+ SHorizontalBox::Slot()
+			  .Padding(FMargin{0.0f, 2.0f, 0.0f, 0.0f})
+			  .AutoWidth()
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString(TEXT(" - Used Indirectly")))
+			]
+			+ SHorizontalBox::Slot()
+			  .AutoWidth()
+			  .Padding(FMargin{5.0f, 0.0f, 0.0f, 0.0f})
+			[
+				SNew(SImage)
+				.Image(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconCircle20"))
+				.ColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Red"))
+			]
+			+ SHorizontalBox::Slot()
+			  .Padding(FMargin{0.0f, 2.0f, 0.0f, 0.0f})
+			  .AutoWidth()
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString(TEXT(" - In Developers Folder")))
+			]
+		]
+		+ SVerticalBox::Slot()
+		.AutoHeight()
+		.Padding(FMargin{0.0f, 5.0f})
+		[
+			SNew(STileView< TSharedPtr<FTestData>>)
+				.ItemWidth(100)
+				.ItemHeight(166)
+				.ListItemsSource(&Items)
+				.SelectionMode(ESelectionMode::Multi)
+				.OnGenerateTile(this, &SProjectCleanerAssetBrowser::OnGenerateWidgetForTileView)
+		]
 	];
 }
 
