@@ -13,6 +13,7 @@ public:
 	static void ReloadTextures();
 	static const ISlateStyle& Get();
 	static FName GetStyleSetName();
+	static FSlateFontInfo GetFont(const FString& FontType, const uint32 FontSize);
 private:
 	static TSharedRef<FSlateStyleSet> Create();
 	static TSharedPtr<FSlateStyleSet> StyleInstance;

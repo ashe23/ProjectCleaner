@@ -22,5 +22,7 @@ private:
 	static bool IsWidgetEnabled();
 	static int32 GetWidgetIndex();
 
+	FReply OnBtnScanProjectClicked() const;
+
 	TWeakObjectPtr<UProjectCleanerScanSettings> ScanSettings;
 };

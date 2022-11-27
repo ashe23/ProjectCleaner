@@ -145,7 +145,7 @@ TSharedRef<ITableRow> SProjectCleanerAssetBrowser::OnGenerateWidgetForTileView(T
 						SNew(STextBlock)
 						.WrapTextAt(100.0f)
 						.LineBreakPolicy(FBreakIterator::CreateCamelCaseBreakIterator())
-						.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light8"))
+						.Font(FProjectCleanerStyles::GetFont("Light", 8))
 						.Text(FText::FromString(InItem->AssetData.AssetName.ToString()))
 					]
 				]
@@ -162,8 +162,7 @@ TSharedRef<ITableRow> SProjectCleanerAssetBrowser::OnGenerateWidgetForTileView(T
 					  .Padding(FMargin{3.0f, 2.0f})
 					[
 						SNew(STextBlock)
-						// .ColorAndOpacity(FProjectCleanerStyles::Get().GetSlateColor("ProjectCleaner.Color.White"))
-						.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light7"))
+						.Font(FProjectCleanerStyles::GetFont("Light", 7))
 						.Text(FText::FromString(InItem->AssetData.AssetClass.ToString()))
 					]
 					+ SHorizontalBox::Slot()

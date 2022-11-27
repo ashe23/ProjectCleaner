@@ -4,12 +4,11 @@
 #include "Slate/ProjectCleanerTreeView.h"
 #include "Slate/ProjectCleanerAssetBrowser.h"
 #include "ProjectCleanerStyles.h"
+#include "ProjectCleanerLibrary.h"
 #include "ProjectCleanerConstants.h"
 #include "ProjectCleanerScanSettings.h"
-#include "ProjectCleanerLibrary.h"
-#include "ProjectCleanerTypes.h"
-#include "Libs/ProjectCleanerAssetLibrary.h"
 // Engine Headers
+#include "ProjectCleaner.h"
 #include "Widgets/Input/SHyperlink.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SWidgetSwitcher.h"
@@ -57,28 +56,56 @@ void SProjectCleanerWindowMain::Construct(const FArguments& InArgs)
 					SNew(SHorizontalBox)
 					+ SHorizontalBox::Slot()
 					.AutoWidth()
+					.Padding(FMargin{0.0f, 0.0f, 5.0f, 0.0f})
 					[
 						SNew(SButton)
+						.ContentPadding(FMargin{5.0f})
+						.ButtonColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Blue"))
+						.OnClicked_Raw(this, &SProjectCleanerWindowMain::OnBtnScanProjectClicked)
 						[
 							SNew(STextBlock)
+							.Justification(ETextJustify::Center)
+							.ToolTipText(FText::FromString(TEXT("Scan project for unused assets, empty folders, non engine files or corrupted assets")))
+							.ColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.White"))
+							.ShadowOffset(FVector2D{1.5f, 1.5f})
+							.ShadowColorAndOpacity(FLinearColor::Black)
+							.Font(FProjectCleanerStyles::GetFont("Bold", 10))
 							.Text(FText::FromString(TEXT("Scan Project")))
 						]
 					]
 					+ SHorizontalBox::Slot()
 					.AutoWidth()
+					.Padding(FMargin{0.0f, 0.0f, 5.0f, 0.0f})
 					[
 						SNew(SButton)
+						.ContentPadding(FMargin{5.0f})
+						.ButtonColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Red"))
 						[
 							SNew(STextBlock)
+							.Justification(ETextJustify::Center)
+							.ToolTipText(FText::FromString(TEXT("Remove all unused assets and empty folders in project. This wont delete any excluded asset")))
+							.ColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.White"))
+							.ShadowOffset(FVector2D{1.5f, 1.5f})
+							.ShadowColorAndOpacity(FLinearColor::Black)
+							.Font(FProjectCleanerStyles::GetFont("Bold", 10))
 							.Text(FText::FromString(TEXT("Clean Project")))
 						]
 					]
 					+ SHorizontalBox::Slot()
 					.AutoWidth()
+					.Padding(FMargin{0.0f, 0.0f, 5.0f, 0.0f})
 					[
 						SNew(SButton)
+						.ContentPadding(FMargin{5.0f})
+						.ButtonColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Red"))
 						[
 							SNew(STextBlock)
+							.Justification(ETextJustify::Center)
+							.ToolTipText(FText::FromString(TEXT("Remove all empty folders in project")))
+							.ColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.White"))
+							.ShadowOffset(FVector2D{1.5f, 1.5f})
+							.ShadowColorAndOpacity(FLinearColor::Black)
+							.Font(FProjectCleanerStyles::GetFont("Bold", 10))
 							.Text(FText::FromString(TEXT("Delete Empty Folders")))
 						]
 					]
@@ -153,7 +180,7 @@ void SProjectCleanerWindowMain::Construct(const FArguments& InArgs)
 			[
 				SNew(STextBlock)
 				.Justification(ETextJustify::Center)
-				.Font(FProjectCleanerStyles::Get().GetFontStyle("ProjectCleaner.Font.Light30"))
+				.Font(FProjectCleanerStyles::GetFont("Light", 30))
 				.Text(FText::FromString(ProjectCleanerConstants::MsgAssetRegistryStillWorking))
 			]
 		]
@@ -166,10 +193,16 @@ SProjectCleanerWindowMain::~SProjectCleanerWindowMain()
 
 bool SProjectCleanerWindowMain::IsWidgetEnabled()
 {
-	return !UProjectCleanerAssetLibrary::AssetRegistryIsLoadingAssets();
+	return !UProjectCleanerLibrary::IsAssetRegistryWorking();
 }
 
 int32 SProjectCleanerWindowMain::GetWidgetIndex()
 {
-	return UProjectCleanerAssetLibrary::AssetRegistryIsLoadingAssets() ? WidgetIndexLoading : WidgetIndexNone;
+	return UProjectCleanerLibrary::IsAssetRegistryWorking() ? WidgetIndexLoading : WidgetIndexNone;
+}
+
+FReply SProjectCleanerWindowMain::OnBtnScanProjectClicked() const
+{
+	UE_LOG(LogProjectCleaner, Warning, TEXT("Scan btn clicked!"));
+	return FReply::Handled();
 }

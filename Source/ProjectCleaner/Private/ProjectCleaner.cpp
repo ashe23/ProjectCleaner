@@ -5,8 +5,6 @@
 #include "ProjectCleanerCmds.h"
 #include "ProjectCleanerConstants.h"
 #include "Slate/ProjectCleanerWindowMain.h"
-#include "Slate/ProjectCleanerStatTreeItem.h"
-#include "Slate/ProjectCleanerAssetBrowser.h"
 // Engine Headers
 #include "ToolMenus.h"
 #include "AssetToolsModule.h"
