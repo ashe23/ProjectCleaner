@@ -60,8 +60,8 @@ void SProjectCleanerWindowMain::Construct(const FArguments& InArgs)
 					[
 						SNew(SButton)
 						.ContentPadding(FMargin{5.0f})
-						.ButtonColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Blue"))
 						.OnClicked_Raw(this, &SProjectCleanerWindowMain::OnBtnScanProjectClicked)
+						.ButtonColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Blue"))
 						[
 							SNew(STextBlock)
 							.Justification(ETextJustify::Center)
@@ -79,6 +79,7 @@ void SProjectCleanerWindowMain::Construct(const FArguments& InArgs)
 					[
 						SNew(SButton)
 						.ContentPadding(FMargin{5.0f})
+						.OnClicked_Raw(this, &SProjectCleanerWindowMain::OnBtnCleanProjectClicked)
 						.ButtonColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Red"))
 						[
 							SNew(STextBlock)
@@ -97,6 +98,7 @@ void SProjectCleanerWindowMain::Construct(const FArguments& InArgs)
 					[
 						SNew(SButton)
 						.ContentPadding(FMargin{5.0f})
+						.OnClicked_Raw(this, &SProjectCleanerWindowMain::OnBtnDeleteEmptyFoldersClicked)
 						.ButtonColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Red"))
 						[
 							SNew(STextBlock)
@@ -204,5 +206,17 @@ int32 SProjectCleanerWindowMain::GetWidgetIndex()
 FReply SProjectCleanerWindowMain::OnBtnScanProjectClicked() const
 {
 	UE_LOG(LogProjectCleaner, Warning, TEXT("Scan btn clicked!"));
+	return FReply::Handled();
+}
+
+FReply SProjectCleanerWindowMain::OnBtnCleanProjectClicked() const
+{
+	UE_LOG(LogProjectCleaner, Warning, TEXT("Clean btn clicked!"));
+	return FReply::Handled();
+}
+
+FReply SProjectCleanerWindowMain::OnBtnDeleteEmptyFoldersClicked() const
+{
+	UE_LOG(LogProjectCleaner, Warning, TEXT("Delete btn clicked!"));
 	return FReply::Handled();
 }

@@ -23,6 +23,8 @@ private:
 	static int32 GetWidgetIndex();
 
 	FReply OnBtnScanProjectClicked() const;
+	FReply OnBtnCleanProjectClicked() const;
+	FReply OnBtnDeleteEmptyFoldersClicked() const;
 
 	TWeakObjectPtr<UProjectCleanerScanSettings> ScanSettings;
 };
