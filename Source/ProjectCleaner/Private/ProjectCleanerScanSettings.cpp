@@ -1,7 +1,6 @@
 ﻿// Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "ProjectCleanerScanSettings.h"
-#include "ProjectCleanerLibrary.h"
 // Engine Headers
 // #include "EditorUtilityBlueprint.h"
 // #include "EditorUtilityWidgetBlueprint.h"
@@ -19,7 +18,7 @@ void UProjectCleanerScanSettings::PostEditChangeProperty(FPropertyChangedEvent& 
 
 	if (OnChangeDelegate.IsBound())
 	{
-		OnChangeDelegate.Execute();
+		OnChangeDelegate.Broadcast();
 	}
 }
 #endif

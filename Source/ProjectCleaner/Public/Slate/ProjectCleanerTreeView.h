@@ -4,8 +4,9 @@
 
 #include "CoreMinimal.h"
 #include "ProjectCleanerStyles.h"
-#include "ProjectCleaner/Public/ProjectCleanerLibrary.h"
 #include "Widgets/SCompoundWidget.h"
+
+class UProjectCleanerScanSettings;
 
 struct FProjectCleanerTreeItem
 {
@@ -191,7 +192,7 @@ public:
 private:
 	const FSlateBrush* GetFolderIcon() const
 	{
-		// todo:ashe23 handle developer folder icon separetly
+		// todo:ashe23 handle developer folder icon separate
 		return FEditorStyle::GetBrush(TreeItem->bExpanded ? TEXT("ContentBrowser.AssetTreeFolderOpen") : TEXT("ContentBrowser.AssetTreeFolderClosed"));
 	}
 	FSlateColor GetFolderColor() const
@@ -208,6 +209,7 @@ class SProjectCleanerTreeView final : public SCompoundWidget
 public:
 	SLATE_BEGIN_ARGS(SProjectCleanerTreeView)
 		{
+		// todo:ashe23 pass list items as argument
 		}
 
 	SLATE_END_ARGS()
@@ -227,6 +229,7 @@ private:
 	void ToggleExpansionRecursive(TSharedPtr<FProjectCleanerTreeItem> Item, const bool bExpanded) const;
 
 
+	TWeakObjectPtr<UProjectCleanerScanSettings> ScanSettings;
 	TArray<TSharedPtr<FProjectCleanerTreeItem>> TreeItems;
 	TSharedPtr<STreeView<TSharedPtr<FProjectCleanerTreeItem>>> TreeView;
 };

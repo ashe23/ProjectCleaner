@@ -64,19 +64,6 @@ TSharedRef<FSlateStyleSet> FProjectCleanerStyles::Create()
 	Style->Set("ProjectCleaner.Cmd_OpenCleanerWindow", new IMAGE_BRUSH(TEXT("IconBin40"), Icon40x40));
 	Style->Set("ProjectCleaner.Cmd_OpenCleanerWindow.Small", new IMAGE_BRUSH(TEXT("IconBin20"), Icon20x20));
 
-	// fonts
-	// Style->Set("ProjectCleaner.Font.Light30", FCoreStyle::GetDefaultFontStyle("Light", 30));
-	// Style->Set("ProjectCleaner.Font.Light25", FCoreStyle::GetDefaultFontStyle("Light", 25));
-	// Style->Set("ProjectCleaner.Font.Light23", FCoreStyle::GetDefaultFontStyle("Light", 23));
-	// Style->Set("ProjectCleaner.Font.Light20", FCoreStyle::GetDefaultFontStyle("Light", 20));
-	// Style->Set("ProjectCleaner.Font.Light15", FCoreStyle::GetDefaultFontStyle("Light", 15));
-	// Style->Set("ProjectCleaner.Font.Light13", FCoreStyle::GetDefaultFontStyle("Light", 13));
-	// Style->Set("ProjectCleaner.Font.Light10", FCoreStyle::GetDefaultFontStyle("Light", 10));
-	// Style->Set("ProjectCleaner.Font.Light8", FCoreStyle::GetDefaultFontStyle("Light", 8));
-	// Style->Set("ProjectCleaner.Font.Light7", FCoreStyle::GetDefaultFontStyle("Light", 7));
-	// Style->Set("ProjectCleaner.Font.Light6", FCoreStyle::GetDefaultFontStyle("Light", 6));
-	// Style->Set("ProjectCleaner.Font.Light5", FCoreStyle::GetDefaultFontStyle("Light", 5));
-
 	// pallet colors
 	Style->Set("ProjectCleaner.Color.Blue", FLinearColor{FColor::FromHex(TEXT("#227c9d"))});
 	Style->Set("ProjectCleaner.Color.Green", FLinearColor{FColor::FromHex(TEXT("#17c3b2"))});

@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "ProjectCleanerScanSettings.generated.h"
 
-DECLARE_DELEGATE(FProjectCleanerScanSettingsChangeDelegate);
+DECLARE_MULTICAST_DELEGATE(FProjectCleanerScanSettingsChangeDelegate);
 
 UCLASS(Transient, Config=EditorPerProjectUserSettings)
 class UProjectCleanerScanSettings final : public UObject

@@ -21,7 +21,7 @@ void SProjectCleanerWindowMain::Construct(const FArguments& InArgs)
 	ScanSettings = GetMutableDefault<UProjectCleanerScanSettings>();
 	check(ScanSettings.IsValid());
 
-	ScanSettings->OnChange().BindLambda([&]()
+	ScanSettings->OnChange().AddLambda([&]()
 	{
 		UE_LOG(LogProjectCleaner, Warning, TEXT("Scan settings changed!"));
 	});

@@ -2,7 +2,7 @@
 
 #include "Slate/ProjectCleanerTreeView.h"
 #include "ProjectCleanerLibrary.h"
-#include "ProjectCleaner/Public/ProjectCleanerLibrary.h"
+#include "ProjectCleanerScanSettings.h"
 // Engine Headers
 #include "ProjectCleaner.h"
 #include "ProjectCleanerStyles.h"
@@ -11,6 +11,14 @@
 
 void SProjectCleanerTreeView::Construct(const FArguments& InArgs)
 {
+	ScanSettings = GetMutableDefault<UProjectCleanerScanSettings>();
+	check(ScanSettings.IsValid());
+
+	ScanSettings->OnChange().AddLambda([&]()
+	{
+		UE_LOG(LogProjectCleaner, Warning, TEXT("Scan settings changed!"));
+	});
+	
 	if (!TreeView.IsValid())
 	{
 		SAssignNew(TreeView, STreeView<TSharedPtr<FProjectCleanerTreeItem>>)
@@ -36,8 +44,8 @@ void SProjectCleanerTreeView::Construct(const FArguments& InArgs)
 		[
 			SNew(SVerticalBox)
 			+ SVerticalBox::Slot()
-			.AutoHeight()
-			.Padding(FMargin{0.0f, 0.0f, 0.0f, 5.0f})
+			  .AutoHeight()
+			  .Padding(FMargin{0.0f, 0.0f, 0.0f, 5.0f})
 			[
 				SNew(SSearchBox)
 				.HintText(FText::FromString(TEXT("Search Folders...")))
@@ -45,8 +53,8 @@ void SProjectCleanerTreeView::Construct(const FArguments& InArgs)
 				.OnTextCommitted(this, &SProjectCleanerTreeView::OnTreeViewSearchBoxTextCommitted)
 			]
 			+ SVerticalBox::Slot()
-			.AutoHeight()
-			.Padding(FMargin{0.0f, 0.0f, 0.0f, 5.0f})
+			  .AutoHeight()
+			  .Padding(FMargin{0.0f, 0.0f, 0.0f, 5.0f})
 			[
 				SNew(SHorizontalBox)
 				+ SHorizontalBox::Slot()
@@ -173,8 +181,8 @@ TSharedRef<ITableRow> SProjectCleanerTreeView::OnTreeViewGenerateRow(TSharedPtr<
 
 TSharedRef<SHeaderRow> SProjectCleanerTreeView::GetTreeViewHeaderRow() const
 {
-	const uint32 HeaderRowFontSize = 12;
-	
+	constexpr uint32 HeaderRowFontSize = 12;
+
 	return
 		SNew(SHeaderRow)
 		+ SHeaderRow::Column(TEXT("Name"))
@@ -185,7 +193,7 @@ TSharedRef<SHeaderRow> SProjectCleanerTreeView::GetTreeViewHeaderRow() const
 			SNew(STextBlock)
 			.Text(FText::FromString(TEXT("Name")))
 			.ColorAndOpacity(FProjectCleanerStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
-			.Font(FProjectCleanerStyles::GetFont("Light",HeaderRowFontSize))
+			.Font(FProjectCleanerStyles::GetFont("Light", HeaderRowFontSize))
 		]
 		+ SHeaderRow::Column(TEXT("FoldersTotal"))
 		  .HAlignHeader(HAlign_Center)
@@ -195,7 +203,7 @@ TSharedRef<SHeaderRow> SProjectCleanerTreeView::GetTreeViewHeaderRow() const
 			SNew(STextBlock)
 			.Text(FText::FromString(TEXT("Folders (Total)")))
 			.ColorAndOpacity(FProjectCleanerStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
-			.Font(FProjectCleanerStyles::GetFont("Light",HeaderRowFontSize))
+			.Font(FProjectCleanerStyles::GetFont("Light", HeaderRowFontSize))
 		]
 		+ SHeaderRow::Column(TEXT("FoldersEmpty"))
 		  .HAlignHeader(HAlign_Center)
@@ -205,7 +213,7 @@ TSharedRef<SHeaderRow> SProjectCleanerTreeView::GetTreeViewHeaderRow() const
 			SNew(STextBlock)
 			.Text(FText::FromString(TEXT("Folders (Empty)")))
 			.ColorAndOpacity(FProjectCleanerStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
-			.Font(FProjectCleanerStyles::GetFont("Light",HeaderRowFontSize))
+			.Font(FProjectCleanerStyles::GetFont("Light", HeaderRowFontSize))
 		]
 		+ SHeaderRow::Column(TEXT("AssetsTotal"))
 		  .HAlignHeader(HAlign_Center)
@@ -215,7 +223,7 @@ TSharedRef<SHeaderRow> SProjectCleanerTreeView::GetTreeViewHeaderRow() const
 			SNew(STextBlock)
 			.Text(FText::FromString(TEXT("Assets (Total)")))
 			.ColorAndOpacity(FProjectCleanerStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
-			.Font(FProjectCleanerStyles::GetFont("Light",HeaderRowFontSize))
+			.Font(FProjectCleanerStyles::GetFont("Light", HeaderRowFontSize))
 		]
 		+ SHeaderRow::Column(TEXT("AssetsUnused"))
 		  .HAlignHeader(HAlign_Center)
@@ -225,7 +233,7 @@ TSharedRef<SHeaderRow> SProjectCleanerTreeView::GetTreeViewHeaderRow() const
 			SNew(STextBlock)
 			.Text(FText::FromString(TEXT("Assets (Unused)")))
 			.ColorAndOpacity(FProjectCleanerStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
-			.Font(FProjectCleanerStyles::GetFont("Light",HeaderRowFontSize))
+			.Font(FProjectCleanerStyles::GetFont("Light", HeaderRowFontSize))
 		]
 		+ SHeaderRow::Column(TEXT("SizeTotal"))
 		  .HAlignHeader(HAlign_Center)
@@ -235,7 +243,7 @@ TSharedRef<SHeaderRow> SProjectCleanerTreeView::GetTreeViewHeaderRow() const
 			SNew(STextBlock)
 			.Text(FText::FromString(TEXT("Size (Total)")))
 			.ColorAndOpacity(FProjectCleanerStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
-			.Font(FProjectCleanerStyles::GetFont("Light",HeaderRowFontSize))
+			.Font(FProjectCleanerStyles::GetFont("Light", HeaderRowFontSize))
 		]
 		+ SHeaderRow::Column(TEXT("SizeUnused"))
 		  .HAlignHeader(HAlign_Center)
@@ -245,7 +253,7 @@ TSharedRef<SHeaderRow> SProjectCleanerTreeView::GetTreeViewHeaderRow() const
 			SNew(STextBlock)
 			.Text(FText::FromString(TEXT("Size (Unused)")))
 			.ColorAndOpacity(FProjectCleanerStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
-			.Font(FProjectCleanerStyles::GetFont("Light",HeaderRowFontSize))
+			.Font(FProjectCleanerStyles::GetFont("Light", HeaderRowFontSize))
 		];
 }
 
