@@ -1,13 +1,18 @@
 ﻿// Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "ProjectCleanerScanSettings.h"
+#include "ProjectCleanerLibrary.h"
 // Engine Headers
 #include "EditorUtilityBlueprint.h"
 #include "EditorUtilityWidgetBlueprint.h"
+#include "ProjectCleaner/Public/ProjectCleanerLibrary.h"
 
 UProjectCleanerScanSettings::UProjectCleanerScanSettings()
 {
-	UsedAssetClasses.Add(UWorld::StaticClass()); // todo::ashe23 change to primary assets classes later
+	TArray<UClass*> PrimaryAssetClasses;
+	UProjectCleanerLibrary::GetPrimaryAssetClasses(PrimaryAssetClasses);
+
+	UsedAssetClasses.Append(PrimaryAssetClasses);
 	UsedAssetClasses.Add(UEditorUtilityBlueprint::StaticClass());
 	UsedAssetClasses.Add(UEditorUtilityWidgetBlueprint::StaticClass());
 }
