@@ -3,18 +3,11 @@
 #include "ProjectCleanerScanSettings.h"
 #include "ProjectCleanerLibrary.h"
 // Engine Headers
-#include "EditorUtilityBlueprint.h"
-#include "EditorUtilityWidgetBlueprint.h"
-#include "ProjectCleaner/Public/ProjectCleanerLibrary.h"
+// #include "EditorUtilityBlueprint.h"
+// #include "EditorUtilityWidgetBlueprint.h"
 
 UProjectCleanerScanSettings::UProjectCleanerScanSettings()
 {
-	TArray<UClass*> PrimaryAssetClasses;
-	UProjectCleanerLibrary::GetPrimaryAssetClasses(PrimaryAssetClasses);
-
-	UsedAssetClasses.Append(PrimaryAssetClasses);
-	UsedAssetClasses.Add(UEditorUtilityBlueprint::StaticClass());
-	UsedAssetClasses.Add(UEditorUtilityWidgetBlueprint::StaticClass());
 }
 
 #if WITH_EDITOR
