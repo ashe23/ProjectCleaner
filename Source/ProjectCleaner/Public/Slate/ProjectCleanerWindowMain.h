@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "ProjectCleanerScanner.h"
 #include "Widgets/SCompoundWidget.h"
 
 class UProjectCleanerScanSettings;
@@ -27,4 +28,5 @@ private:
 	FReply OnBtnDeleteEmptyFoldersClicked() const;
 
 	TWeakObjectPtr<UProjectCleanerScanSettings> ScanSettings;
+	FProjectCleanerScanner ProjectCleanerScanner;
 };

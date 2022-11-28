@@ -21,9 +21,11 @@ void SProjectCleanerWindowMain::Construct(const FArguments& InArgs)
 	ScanSettings = GetMutableDefault<UProjectCleanerScanSettings>();
 	check(ScanSettings.IsValid());
 
+	ProjectCleanerScanner.Scan(ScanSettings);
+
 	ScanSettings->OnChange().AddLambda([&]()
 	{
-		UE_LOG(LogProjectCleaner, Warning, TEXT("Scan settings changed!"));
+		ProjectCleanerScanner.Scan(ScanSettings);
 	});
 	
 	FPropertyEditorModule& PropertyEditor = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");

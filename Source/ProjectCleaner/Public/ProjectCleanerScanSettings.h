@@ -18,7 +18,7 @@ public:
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif
 
-	UPROPERTY(DisplayName="Scan Developer Content", EditAnywhere, Config, Category="ScanSettings", meta=(ToolTip="Scan assets in 'Developers' folder. By Default false"))
+	UPROPERTY(DisplayName="Scan Developers Content", EditAnywhere, Config, Category="ScanSettings", meta=(ToolTip="Scan assets in 'Developers' folder. By Default false"))
 	bool bScanDeveloperContents = false;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Config, Category="ExcludeOptions", DisplayName="Excluded Folders",
@@ -28,8 +28,8 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Config, Category="ExcludeOptions", meta=(ToolTip="Exclude from scanning assets of specified classes"))
 	TArray<TSoftClassPtr<UObject>> ExcludedClasses;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Config, Category="ExcludeOptions", meta=(ToolTip="Exclude from scanning specified assets"))
-	TArray<TSoftObjectPtr<UObject>> ExcludedAssets;
+	// UPROPERTY(BlueprintReadWrite, EditAnywhere, Config, Category="ExcludeOptions", meta=(ToolTip="Exclude from scanning specified assets"))
+	// TArray<TSoftObjectPtr<UObject>> ExcludedAssets;
 
 	FProjectCleanerScanSettingsChangeDelegate& OnChange();
 private:
