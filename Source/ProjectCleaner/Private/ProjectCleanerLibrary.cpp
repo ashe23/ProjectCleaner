@@ -218,60 +218,60 @@
 // 	PlatformFile.IterateDirectoryRecursively(*InAbsPath, FindEmptyDirectoriesVisitor);
 // }
 
-void UProjectCleanerLibrary::GetPrimaryAssetClasses(TArray<UClass*>& PrimaryAssetClasses)
-{
-	PrimaryAssetClasses.Reset();
-
-	const auto& AssetManager = UAssetManager::Get();
-	if (!AssetManager.IsValid()) return;
-
-	TArray<FPrimaryAssetTypeInfo> AssetTypeInfos;
-	AssetManager.Get().GetPrimaryAssetTypeInfoList(AssetTypeInfos);
-
-	for (const auto& AssetTypeInfo : AssetTypeInfos)
-	{
-		if (!AssetTypeInfo.AssetBaseClassLoaded) continue;
-
-		PrimaryAssetClasses.Add(AssetTypeInfo.AssetBaseClassLoaded);
-	}
-}
-
-void UProjectCleanerLibrary::GetPrimaryAssetClassNames(TArray<FName>& ClassNames)
-{
-	ClassNames.Reset();
-	
-	TArray<UClass*> Classes;
-	GetPrimaryAssetClasses(Classes);
-
-	for (const auto& AssetClass : Classes)
-	{
-		if (!AssetClass) continue;
-		
-		ClassNames.Add(AssetClass->GetFName());
-	}
-}
-
-void UProjectCleanerLibrary::GetPrimaryAssets(TArray<FAssetData>& PrimaryAssets)
-{
-	PrimaryAssets.Reset();
-
-	TArray<UClass*> PrimaryAssetClasses;
-	GetPrimaryAssetClasses(PrimaryAssetClasses);
-
-	FARFilter Filter;
-	Filter.bRecursivePaths = true;
-	Filter.bRecursiveClasses = true;
-	Filter.PackagePaths.Add(FName{*ProjectCleanerConstants::PathRelativeRoot});
-	// Filter.ClassNames.Add(UMapBuildDataRegistry::StaticClass()->GetFName());
-
-	for (const auto& PrimaryAssetClass : PrimaryAssetClasses)
-	{
-		Filter.ClassNames.Add(PrimaryAssetClass->GetFName());
-	}
-
-	const FAssetRegistryModule& ModuleAssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>(AssetRegistryConstants::ModuleName);
-	ModuleAssetRegistry.Get().GetAssets(Filter, PrimaryAssets);
-}
+// void UProjectCleanerLibrary::GetPrimaryAssetClasses(TArray<UClass*>& PrimaryAssetClasses)
+// {
+// 	PrimaryAssetClasses.Reset();
+//
+// 	const auto& AssetManager = UAssetManager::Get();
+// 	if (!AssetManager.IsValid()) return;
+//
+// 	TArray<FPrimaryAssetTypeInfo> AssetTypeInfos;
+// 	AssetManager.Get().GetPrimaryAssetTypeInfoList(AssetTypeInfos);
+//
+// 	for (const auto& AssetTypeInfo : AssetTypeInfos)
+// 	{
+// 		if (!AssetTypeInfo.AssetBaseClassLoaded) continue;
+//
+// 		PrimaryAssetClasses.Add(AssetTypeInfo.AssetBaseClassLoaded);
+// 	}
+// }
+//
+// void UProjectCleanerLibrary::GetPrimaryAssetClassNames(TArray<FName>& ClassNames)
+// {
+// 	ClassNames.Reset();
+// 	
+// 	TArray<UClass*> Classes;
+// 	GetPrimaryAssetClasses(Classes);
+//
+// 	for (const auto& AssetClass : Classes)
+// 	{
+// 		if (!AssetClass) continue;
+// 		
+// 		ClassNames.Add(AssetClass->GetFName());
+// 	}
+// }
+//
+// void UProjectCleanerLibrary::GetPrimaryAssets(TArray<FAssetData>& PrimaryAssets)
+// {
+// 	PrimaryAssets.Reset();
+//
+// 	TArray<UClass*> PrimaryAssetClasses;
+// 	GetPrimaryAssetClasses(PrimaryAssetClasses);
+//
+// 	FARFilter Filter;
+// 	Filter.bRecursivePaths = true;
+// 	Filter.bRecursiveClasses = true;
+// 	Filter.PackagePaths.Add(FName{*ProjectCleanerConstants::PathRelativeRoot});
+// 	// Filter.ClassNames.Add(UMapBuildDataRegistry::StaticClass()->GetFName());
+//
+// 	for (const auto& PrimaryAssetClass : PrimaryAssetClasses)
+// 	{
+// 		Filter.ClassNames.Add(PrimaryAssetClass->GetFName());
+// 	}
+//
+// 	const FAssetRegistryModule& ModuleAssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>(AssetRegistryConstants::ModuleName);
+// 	ModuleAssetRegistry.Get().GetAssets(Filter, PrimaryAssets);
+// }
 
 // void UProjectCleanerLibrary::GetAssetsInPath(const FString& InRelPath, const bool bRecursive, TArray<FAssetData>& Assets)
 // {

@@ -20,13 +20,13 @@ public:
 	// UFUNCTION(BlueprintCallable, Category="ProjectCleaner", meta=(ToolTip="Returns all empty folders in given path"))
 	// static void GetEmptyDirectories(const FString& InAbsPath, TSet<FString>& EmptyDirectories, const TSet<FString>& ExcludeDirectories);
 
-	UFUNCTION(BlueprintCallable, Category="ProjectCleaner", meta=(ToolTip="Returns all primary asset classes in project. This list is same as in AssetManager->Primary Asset Types To Scan"))
-	static void GetPrimaryAssetClasses(TArray<UClass*>& PrimaryAssetClasses);
-
-	static void GetPrimaryAssetClassNames(TArray<FName>& ClassNames);
-
-	UFUNCTION(BlueprintCallable, Category="ProjectCleaner", meta=(ToolTip="Returns all primary assets in project"))
-	static void GetPrimaryAssets(TArray<FAssetData>& PrimaryAssets);
+	// UFUNCTION(BlueprintCallable, Category="ProjectCleaner", meta=(ToolTip="Returns all primary asset classes in project. This list is same as in AssetManager->Primary Asset Types To Scan"))
+	// static void GetPrimaryAssetClasses(TArray<UClass*>& PrimaryAssetClasses);
+	//
+	// static void GetPrimaryAssetClassNames(TArray<FName>& ClassNames);
+	//
+	// UFUNCTION(BlueprintCallable, Category="ProjectCleaner", meta=(ToolTip="Returns all primary assets in project"))
+	// static void GetPrimaryAssets(TArray<FAssetData>& PrimaryAssets);
 
 	// UFUNCTION(BlueprintCallable, Category="ProjectCleaner", meta=(ToolTip="Returns all assets in directory. Specify ExcludeFilter for exclusion"))
 	// static void GetAssetsInPath(const FString& InRelPath, const bool bRecursive, TArray<FAssetData>& Assets);

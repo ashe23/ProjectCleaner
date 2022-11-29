@@ -13,6 +13,7 @@
 #include "EditorUtilityBlueprint.h"
 #include "EditorUtilityWidget.h"
 #include "EditorUtilityWidgetBlueprint.h"
+#include "Engine/AssetManager.h"
 #include "Engine/MapBuildDataRegistry.h"
 
 class FContentFolderVisitor final : public IPlatformFile::FDirectoryVisitor
@@ -185,10 +186,7 @@ void FProjectCleanerScanner::Scan(const TWeakObjectPtr<UProjectCleanerScanSettin
 	// todo:ashe23 add slow task
 
 	// 1. getting all assets inside Content folder from AssetRegistry
-	FARFilter Filter;
-	Filter.bRecursivePaths = true;
-	Filter.PackagePaths.Add(FName{*ProjectCleanerConstants::PathRelativeRoot});
-	ModuleAssetRegistry.Get().GetAssets(Filter, AssetsAll);
+	ModuleAssetRegistry.Get().GetAssetsByPath(FName{*ProjectCleanerConstants::PathRelativeRoot}, AssetsAll, true);
 
 	// 2. scanning Content folder
 	if (!ScanSettings->bScanDeveloperContents)
@@ -208,15 +206,28 @@ void FProjectCleanerScanner::Scan(const TWeakObjectPtr<UProjectCleanerScanSettin
 		// 3.3. has external refs outside Content folder
 		// 3.4. is in blacklist (list of asset classes, that we wont touch, things like EditorWidgetUtility assets, they used only in editor and we cant really determine its used or not)
 		// 3.5. excluded by user
+
+	
 	FindAssetsPrimary();
 	FindAssetsIndirect();
 	FindAssetsWithExternalRefs();
 	FindAssetsBlackListed();
-	FindAssetsExcluded();
+	// FindAssetsExcluded();
 	FindAssetsUsed();
+
+	// 4. filtering all used assets from all assets gives us all unused assets in project
+	AssetsUnused.Reserve(AssetsAll.Num());
 	
-	// 4. filtering all used assets and their dependencies gives us all unused assets in project
-	FindAssetsUnused();
+	for (const auto& Asset : AssetsAll)
+	{
+		if (AssetsUsed.Contains(Asset)) continue;
+
+		AssetsUnused.AddUnique(Asset);
+	}
+
+	AssetsUnused.Shrink();
+	
+	// FindAssetsUnused();
 	// ModuleAssetRegistry.Get().UseFilterToExcludeAssets();
 
 
@@ -245,35 +256,64 @@ void FProjectCleanerScanner::FindAssetsPrimary()
 {
 	const FAssetRegistryModule& ModuleAssetRegistry = FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
 
-	TArray<UClass*> PrimaryAssetClasses;
-	TArray<FName> PrimaryAssetClassNames;
-	UProjectCleanerLibrary::GetPrimaryAssetClassNames(PrimaryAssetClassNames);
-	UProjectCleanerLibrary::GetPrimaryAssetClasses(PrimaryAssetClasses);
-	UProjectCleanerLibrary::GetPrimaryAssets(AssetsPrimary);
-
-	TSet<FName> DerivedFromPrimaryAssets;
+	TSet<FString> PrimaryAssetClassList;
 	{
-		const TSet<FName> ExcludedClassNames;
-		ModuleAssetRegistry.Get().GetDerivedClassNames(PrimaryAssetClassNames, ExcludedClassNames, DerivedFromPrimaryAssets);
-	}
-	
-	FARFilter Filter_BP;
-	Filter_BP.ClassNames.Add(UBlueprint::StaticClass()->GetFName());
-	Filter_BP.PackagePaths.Add(FName{*ProjectCleanerConstants::PathRelativeRoot});
-	Filter_BP.bRecursiveClasses = true;
-	Filter_BP.bRecursivePaths = true;
+		// getting list of primary asset classes that are defined in AssetManager
+		TArray<FName> PrimaryAssetClassNames;
+		const auto& AssetManager = UAssetManager::Get();
+		if (!AssetManager.IsValid()) return;
 
-	TArray<FAssetData> BlueprintAssets;
-	ModuleAssetRegistry.Get().GetAssets(Filter_BP, BlueprintAssets);
+		TArray<FPrimaryAssetTypeInfo> AssetTypeInfos;
+		AssetManager.Get().GetPrimaryAssetTypeInfoList(AssetTypeInfos);
 
-	for (const auto& BP_Asset : BlueprintAssets)
-	{
-		const FName BP_ClassName = FName{*UProjectCleanerLibrary::GetAssetClassName(BP_Asset)};
-		if (DerivedFromPrimaryAssets.Contains(BP_ClassName))
+		for (const auto& AssetTypeInfo : AssetTypeInfos)
 		{
-			AssetsPrimary.AddUnique(BP_Asset);
+			if (!AssetTypeInfo.AssetBaseClassLoaded) continue;
+
+			PrimaryAssetClassNames.AddUnique(AssetTypeInfo.AssetBaseClassLoaded->GetFName());
+		}
+
+		// getting list of primary assets classes that are derived from main primary assets
+		TSet<FName> DerivedFromPrimaryAssets;
+		{
+			const TSet<FName> ExcludedClassNames;
+			ModuleAssetRegistry.Get().GetDerivedClassNames(PrimaryAssetClassNames, ExcludedClassNames, DerivedFromPrimaryAssets);
+		}
+
+		for (const auto& DerivedClassName : DerivedFromPrimaryAssets)
+		{
+			PrimaryAssetClassList.Add(DerivedClassName.ToString());
 		}
 	}
+
+	for (const auto& Asset : AssetsAll)
+	{
+		const FString AssetClassName = UProjectCleanerLibrary::GetAssetClassName(Asset);
+		if (PrimaryAssetClassList.Contains(AssetClassName))
+		{
+			AssetsPrimary.Add(Asset);
+		}
+	}
+	
+
+	//
+	// FARFilter Filter_BP;
+	// Filter_BP.ClassNames.Add(UBlueprint::StaticClass()->GetFName());
+	// Filter_BP.PackagePaths.Add(FName{*ProjectCleanerConstants::PathRelativeRoot});
+	// Filter_BP.bRecursiveClasses = true;
+	// Filter_BP.bRecursivePaths = true;
+	//
+	// TArray<FAssetData> BlueprintAssets;
+	// ModuleAssetRegistry.Get().GetAssets(Filter_BP, BlueprintAssets);
+	//
+	// for (const auto& BP_Asset : BlueprintAssets)
+	// {
+	// 	const FName BP_ClassName = FName{*UProjectCleanerLibrary::GetAssetClassName(BP_Asset)};
+	// 	if (DerivedFromPrimaryAssets.Contains(BP_ClassName))
+	// 	{
+	// 		AssetsPrimary.AddUnique(BP_Asset);
+	// 	}
+	// }
 	
 	// FARFilter Filter;
 	// Filter.bRecursiveClasses = true;
@@ -505,6 +545,8 @@ void FProjectCleanerScanner::FindAssetsExcluded()
 
 void FProjectCleanerScanner::FindAssetsUsed()
 {
+	const FAssetRegistryModule& ModuleAssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>(AssetRegistryConstants::ModuleName);
+	
 	AssetsUsed.Reserve(AssetsAll.Num());
 
 	for (const auto& PrimaryAsset : AssetsPrimary)
@@ -527,21 +569,35 @@ void FProjectCleanerScanner::FindAssetsUsed()
 		AssetsUsed.AddUnique(BlackListedAsset);
 	}
 
-	for (const auto& ExcludedAsset : AssetsExcluded)
+	// for (const auto& ExcludedAsset : AssetsExcluded)
+	// {
+	// 	AssetsUsed.AddUnique(ExcludedAsset);
+	// }
+
+	if (!ScanSettings->bScanDeveloperContents)
 	{
-		AssetsUsed.AddUnique(ExcludedAsset);
+		TArray<FAssetData> DeveloperContentAssets;
+		ModuleAssetRegistry.Get().GetAssetsByPath(FName{*ProjectCleanerConstants::PathRelativeDevelopers}, DeveloperContentAssets, true);
+
+		for (const auto& DeveloperContentAsset : DeveloperContentAssets)
+		{
+			AssetsUsed.AddUnique(DeveloperContentAsset);
+		}
 	}
-	
-	AssetsUsed.Shrink();
-}
 
-void FProjectCleanerScanner::FindAssetsUnused()
-{
-	const FAssetRegistryModule& ModuleAssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>(AssetRegistryConstants::ModuleName);
-	
-	AssetsUnused.Reserve(AssetsAll.Num());
+	const bool IsMegascansLoaded = FModuleManager::Get().IsModuleLoaded(FName{*ProjectCleanerConstants::PluginMegascans});
+	if (IsMegascansLoaded)
+	{
+		TArray<FAssetData> MegascansPresetAssets;
+		ModuleAssetRegistry.Get().GetAssetsByPath(FName{*ProjectCleanerConstants::PathMegascansPresets}, MegascansPresetAssets, true);
 
-	// finding all dependency assets (refs and deps) of used assets
+		for (const auto& MegascansAsset : MegascansPresetAssets)
+		{
+			AssetsUsed.AddUnique(MegascansAsset);
+		}
+	}
+
+	// finding all linked assets (refs and deps) of used assets
 	TSet<FName> UsedAssetsDeps;
 	TArray<FName> Stack;
 	for (const auto& Asset : AssetsUsed)
@@ -573,12 +629,62 @@ void FProjectCleanerScanner::FindAssetsUnused()
 			}
 		}
 	}
+
+	for (const auto& Asset : AssetsAll)
+	{
+		if (UsedAssetsDeps.Contains(Asset.PackageName))
+		{
+			AssetsUsed.AddUnique(Asset);
+		}
+	}
+	
+	AssetsUsed.Shrink();
+}
+
+void FProjectCleanerScanner::FindAssetsUnused()
+{
+	const FAssetRegistryModule& ModuleAssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>(AssetRegistryConstants::ModuleName);
+	
+	AssetsUnused.Reserve(AssetsAll.Num());
+
+	// // finding all dependency assets (refs and deps) of used assets
+	// TSet<FName> UsedAssetsDeps;
+	// TArray<FName> Stack;
+	// for (const auto& Asset : AssetsUsed)
+	// {
+	// 	UsedAssetsDeps.Add(Asset.PackageName);
+	// 	Stack.Add(Asset.PackageName);
+	//
+	// 	TArray<FName> Deps;
+	// 	while (Stack.Num() > 0)
+	// 	{
+	// 		const auto CurrentPackageName = Stack.Pop(false);
+	// 		Deps.Reset();
+	//
+	// 		ModuleAssetRegistry.Get().GetDependencies(CurrentPackageName, Deps);
+	//
+	// 		Deps.RemoveAllSwap([&] (const FName& Dep)
+	// 		{
+	// 			return !Dep.ToString().StartsWith(*ProjectCleanerConstants::PathRelativeRoot);
+	// 		}, false);
+	//
+	// 		for (const auto& Dep : Deps)
+	// 		{
+	// 			bool bIsAlreadyInSet = false;
+	// 			UsedAssetsDeps.Add(Dep, &bIsAlreadyInSet);
+	// 			if (!bIsAlreadyInSet)
+	// 			{
+	// 				Stack.Add(Dep);
+	// 			}
+	// 		}
+	// 	}
+	// }
 	const bool IsMegascansLoaded = FModuleManager::Get().IsModuleLoaded("MegascansPlugin");
 	
 	for (const auto& Asset: AssetsAll)
 	{
 		if (AssetsUsed.Contains(Asset)) continue;
-		if (UsedAssetsDeps.Contains(Asset.PackageName)) continue;
+		// if (UsedAssetsDeps.Contains(Asset.PackageName)) continue;
 		if (IsMegascansLoaded && UProjectCleanerLibrary::IsUnderMegascansFolder(Asset.PackagePath.ToString())) continue;
 		// assets under developers folder
 
