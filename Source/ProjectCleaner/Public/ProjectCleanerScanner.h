@@ -15,6 +15,10 @@ struct FProjectCleanerScanner
 	const TSet<FString>& GetFoldersEmpty() const;
 	const TSet<FString>& GetFoldersForbiddenToDelete() const;
 	const TSet<FString>& GetFoldersForbiddenToScan() const;
+
+	const TSet<FString>& GetFilesCorrupted() const;
+	const TSet<FString>& GetFilesNonEngine() const;
+	
 	const TArray<FAssetData>& GetAssetsAll() const;
 	const TArray<FAssetData>& GetAssetsUnused() const;
 	const TArray<FProjectCleanerIndirectAsset>& GetAssetsIndirect() const;

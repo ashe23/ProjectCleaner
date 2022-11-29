@@ -3,13 +3,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "ProjectCleanerTypes.generated.h"
 
-USTRUCT(BlueprintType)
 struct FProjectCleanerIndirectAsset
 {
-	GENERATED_BODY()
-
 	bool operator==(const FProjectCleanerIndirectAsset& Other) const
 	{
 		return LineNum == Other.LineNum && FilePath.Equals(Other.FilePath);
@@ -23,4 +19,22 @@ struct FProjectCleanerIndirectAsset
 	FAssetData AssetData;
 	int32 LineNum;
 	FString FilePath;
+};
+
+struct FProjectCleanerFileViewItem
+{
+	FString FileName;
+	FString FileExt;
+	FString FilePath;
+	int64 FileSize;
+	
+	bool operator==(const FProjectCleanerFileViewItem& Other) const
+	{
+		return FilePath.Equals(Other.FilePath);
+	}
+
+	bool operator!=(const FProjectCleanerFileViewItem& Other) const
+	{
+		return !FilePath.Equals(Other.FilePath);
+	}
 };

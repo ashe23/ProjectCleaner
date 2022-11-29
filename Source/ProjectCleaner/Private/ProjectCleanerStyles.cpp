@@ -42,11 +42,6 @@ FSlateFontInfo FProjectCleanerStyles::GetFont(const FString& FontType, const uin
 #define TTF_FONT( RelativePath, ... ) FSlateFontInfo( Style->RootToContentDir( RelativePath, TEXT(".ttf") ), __VA_ARGS__ )
 #define OTF_FONT( RelativePath, ... ) FSlateFontInfo( Style->RootToContentDir( RelativePath, TEXT(".otf") ), __VA_ARGS__ )
 
-const FVector2D Icon8x8(8.0f, 8.0f);
-const FVector2D Icon16x16(16.0f, 16.0f);
-const FVector2D Icon10x10(10.0f, 10.0f);
-const FVector2D Icon20x20(20.0f, 20.0f);
-const FVector2D Icon40x40(40.0f, 40.0f);
 
 TSharedRef<FSlateStyleSet> FProjectCleanerStyles::Create()
 {
@@ -54,19 +49,29 @@ TSharedRef<FSlateStyleSet> FProjectCleanerStyles::Create()
 	Style->SetContentRoot(IPluginManager::Get().FindPlugin(ProjectCleanerConstants::ModuleName.ToString())->GetBaseDir() / TEXT("Resources"));
 
 	// icons
-	Style->Set("ProjectCleaner.IconBin20", new IMAGE_BRUSH(TEXT("IconBin20"), Icon20x20));
-	Style->Set("ProjectCleaner.IconBin40", new IMAGE_BRUSH(TEXT("IconBin40"), Icon40x40));
-	Style->Set("ProjectCleaner.IconCircle8", new IMAGE_BRUSH(TEXT("IconCircle8"), Icon8x8));
-	Style->Set("ProjectCleaner.IconCircle10", new IMAGE_BRUSH(TEXT("IconCircle10"), Icon10x10));
-	Style->Set("ProjectCleaner.IconCircle20", new IMAGE_BRUSH(TEXT("IconCircle20"), Icon20x20));
-	Style->Set("ProjectCleaner.IconCircle40", new IMAGE_BRUSH(TEXT("IconCircle40"), Icon40x40));
-	Style->Set("ProjectCleaner.IconTabIndirect16", new IMAGE_BRUSH(TEXT("IconTabIndirect16"), Icon16x16));
-	Style->Set("ProjectCleaner.IconTabIndirect20", new IMAGE_BRUSH(TEXT("IconTabIndirect20"), Icon20x20));
-	Style->Set("ProjectCleaner.IconTabIndirect40", new IMAGE_BRUSH(TEXT("IconTabIndirect40"), Icon40x40));
+	Style->Set("ProjectCleaner.IconBin16", new IMAGE_BRUSH(TEXT("IconBin16"), FVector2D{16.0f, 16.0f}));
+	Style->Set("ProjectCleaner.IconBin20", new IMAGE_BRUSH(TEXT("IconBin20"), FVector2D{20.0f, 20.0f}));
+	Style->Set("ProjectCleaner.IconBin40", new IMAGE_BRUSH(TEXT("IconBin40"), FVector2D{40.0f, 40.0f}));
+	Style->Set("ProjectCleaner.IconCircle8", new IMAGE_BRUSH(TEXT("IconCircle8"), FVector2D{8.0f, 8.0f}));
+	Style->Set("ProjectCleaner.IconCircle10", new IMAGE_BRUSH(TEXT("IconCircle10"), FVector2D{10.0f, 10.0f}));
+	Style->Set("ProjectCleaner.IconCircle20", new IMAGE_BRUSH(TEXT("IconCircle20"), FVector2D{20.0f, 20.0f}));
+	Style->Set("ProjectCleaner.IconCircle40", new IMAGE_BRUSH(TEXT("IconCircle40"), FVector2D{40.0f, 40.0f}));
+	Style->Set("ProjectCleaner.IconTabUnused16", new IMAGE_BRUSH(TEXT("IconTabUnused16"), FVector2D{16.0f, 16.0f}));
+	Style->Set("ProjectCleaner.IconTabUnused20", new IMAGE_BRUSH(TEXT("IconTabUnused20"), FVector2D{20.0f, 20.0f}));
+	Style->Set("ProjectCleaner.IconTabUnused40", new IMAGE_BRUSH(TEXT("IconTabUnused40"), FVector2D{40.0f, 40.0f}));
+	Style->Set("ProjectCleaner.IconTabIndirect16", new IMAGE_BRUSH(TEXT("IconTabIndirect16"), FVector2D{16.0f, 16.0f}));
+	Style->Set("ProjectCleaner.IconTabIndirect20", new IMAGE_BRUSH(TEXT("IconTabIndirect20"), FVector2D{20.0f, 20.0f}));
+	Style->Set("ProjectCleaner.IconTabIndirect40", new IMAGE_BRUSH(TEXT("IconTabIndirect40"), FVector2D{40.0f, 40.0f}));
+	Style->Set("ProjectCleaner.IconTabCorrupted16", new IMAGE_BRUSH(TEXT("IconTabCorrupted16"), FVector2D{16.0f, 16.0f}));
+	Style->Set("ProjectCleaner.IconTabCorrupted20", new IMAGE_BRUSH(TEXT("IconTabCorrupted20"), FVector2D{20.0f, 20.0f}));
+	Style->Set("ProjectCleaner.IconTabCorrupted40", new IMAGE_BRUSH(TEXT("IconTabCorrupted40"), FVector2D{40.0f, 40.0f}));
+	Style->Set("ProjectCleaner.IconTabNonEngine16", new IMAGE_BRUSH(TEXT("IconTabNonEngine16"), FVector2D{16.0f, 16.0f}));
+	Style->Set("ProjectCleaner.IconTabNonEngine20", new IMAGE_BRUSH(TEXT("IconTabNonEngine20"), FVector2D{20.0f, 20.0f}));
+	Style->Set("ProjectCleaner.IconTabNonEngine40", new IMAGE_BRUSH(TEXT("IconTabNonEngine40"), FVector2D{40.0f, 40.0f}));
 
 	// cmds
-	Style->Set("ProjectCleaner.Cmd_OpenCleanerWindow", new IMAGE_BRUSH(TEXT("IconBin40"), Icon40x40));
-	Style->Set("ProjectCleaner.Cmd_OpenCleanerWindow.Small", new IMAGE_BRUSH(TEXT("IconBin20"), Icon20x20));
+	Style->Set("ProjectCleaner.Cmd_OpenCleanerWindow", new IMAGE_BRUSH(TEXT("IconBin40"), FVector2D{40.0f, 40.0f}));
+	Style->Set("ProjectCleaner.Cmd_OpenCleanerWindow.Small", new IMAGE_BRUSH(TEXT("IconBin20"), FVector2D{20.0f, 20.0f}));
 
 	// pallet colors
 	Style->Set("ProjectCleaner.Color.Blue", FLinearColor{FColor::FromHex(TEXT("#227c9d"))});

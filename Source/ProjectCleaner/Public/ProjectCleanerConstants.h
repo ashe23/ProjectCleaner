@@ -35,7 +35,9 @@ namespace ProjectCleanerConstants
 	static const FString PluginMegascans{TEXT("MegascansPlugin")};
 	static const FString PluginMegascansMsPresetsFolder{TEXT("MSPresets")};
 	
-
 	// url
 	static const FString UrlWiki{TEXT("https://github.com/ashe23/ProjectCleaner/wiki")};
+
+	// misc
+	static constexpr int32 HeaderRowFontSize = 12;
 }

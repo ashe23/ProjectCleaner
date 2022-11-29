@@ -288,6 +288,16 @@ const TSet<FString>& FProjectCleanerScanner::GetFoldersForbiddenToScan() const
 	return FoldersForbiddenToScan;
 }
 
+const TSet<FString>& FProjectCleanerScanner::GetFilesCorrupted() const
+{
+	return FilesCorrupted;
+}
+
+const TSet<FString>& FProjectCleanerScanner::GetFilesNonEngine() const
+{
+	return FilesNonEngine;
+}
+
 const TArray<FAssetData>& FProjectCleanerScanner::GetAssetsAll() const
 {
 	return AssetsAll;

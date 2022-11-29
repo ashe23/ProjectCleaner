@@ -4,6 +4,7 @@
 #include "Slate/ProjectCleanerTreeView.h"
 #include "Slate/ProjectCleanerAssetBrowser.h"
 #include "Slate/ProjectCleanerWindowIndirectAssets.h"
+#include "Slate/ProjectCleanerFileListView.h"
 #include "ProjectCleanerStyles.h"
 #include "ProjectCleanerLibrary.h"
 #include "ProjectCleanerConstants.h"
@@ -281,6 +282,7 @@ TSharedRef<SDockTab> SProjectCleanerWindowMain::OnTabSpawnUnusedAssets(const FSp
 		.TabRole(NomadTab)
 		.Label(FText::FromString(TEXT("Unused Assets")))
 		.ShouldAutosize(true)
+		.Icon(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconTabUnused16"))
 		.OnCanCloseTab_Lambda([]()
 		{
 			return false;
@@ -288,11 +290,6 @@ TSharedRef<SDockTab> SProjectCleanerWindowMain::OnTabSpawnUnusedAssets(const FSp
 		[
 			SNew(STextBlock)
 			.Text(FText::FromString(TEXT("Unused assets tab")))
-			// SNew(SOverlay)
-			// + SOverlay::Slot()
-			// .Padding(20.0f)
-			// [
-			// ]
 		];
 }
 
@@ -321,18 +318,16 @@ TSharedRef<SDockTab> SProjectCleanerWindowMain::OnTabSpawnCorruptedAssets(const 
 		.TabRole(NomadTab)
 		.Label(FText::FromString(TEXT("Corrupted Assets")))
 		.ShouldAutosize(true)
+		.Icon(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconTabCorrupted16"))
 		.OnCanCloseTab_Lambda([]()
 		{
 			return false;
 		})
 		[
-			SNew(SOverlay)
-			+ SOverlay::Slot()
-			.Padding(20.0f)
-			[
-				SNew(STextBlock)
-				.Text(FText::FromString(TEXT("Corrupted assets tab")))
-			]
+			SNew(SProjectCleanerFileListView)
+			.Title(TEXT("List of possibly corrupted assets, that exist in Content folder, but not loaded by engine"))
+			.Description(TEXT("In order to fix, try to reload project and see if its loaded. Otherwise close editor and remove them manually from explorer"))
+			.Files(ProjectCleanerScanner->GetFilesCorrupted())
 		];
 }
 
@@ -343,18 +338,15 @@ TSharedRef<SDockTab> SProjectCleanerWindowMain::OnTabSpawnNonEngineFiles(const F
 		.TabRole(NomadTab)
 		.Label(FText::FromString(TEXT("Non Engine Files")))
 		.ShouldAutosize(true)
+		.Icon(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconTabNonEngine16"))
 		.OnCanCloseTab_Lambda([]()
 		{
 			return false;
 		})
 		[
-			SNew(SOverlay)
-			+ SOverlay::Slot()
-			.Padding(20.0f)
-			[
-				SNew(STextBlock)
-				.Text(FText::FromString(TEXT("Non Engine Files tab")))
-			]
+			SNew(SProjectCleanerFileListView)
+			.Title(TEXT("List of Non Engine files, that are inside Content folder"))
+			.Files(ProjectCleanerScanner->GetFilesNonEngine())
 		];
 }
 
