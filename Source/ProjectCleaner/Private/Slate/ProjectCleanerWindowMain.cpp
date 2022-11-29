@@ -3,6 +3,7 @@
 #include "Slate/ProjectCleanerWindowMain.h"
 #include "Slate/ProjectCleanerTreeView.h"
 #include "Slate/ProjectCleanerAssetBrowser.h"
+#include "Slate/ProjectCleanerWindowIndirectAssets.h"
 #include "ProjectCleanerStyles.h"
 #include "ProjectCleanerLibrary.h"
 #include "ProjectCleanerConstants.h"
@@ -284,7 +285,6 @@ TSharedRef<SDockTab> SProjectCleanerWindowMain::OnTabSpawnUnusedAssets(const FSp
 		{
 			return false;
 		})
-	.TabWellContentBackground()
 		[
 			SNew(STextBlock)
 			.Text(FText::FromString(TEXT("Unused assets tab")))
@@ -303,18 +303,14 @@ TSharedRef<SDockTab> SProjectCleanerWindowMain::OnTabSpawnIndirectAssets(const F
 		.TabRole(NomadTab)
 		.Label(FText::FromString(TEXT("Indirect Assets")))
 		.ShouldAutosize(true)
+		.Icon(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconTabIndirect16"))
 		.OnCanCloseTab_Lambda([]()
 		{
 			return false;
 		})
 		[
-			SNew(SOverlay)
-			+ SOverlay::Slot()
-			.Padding(20.0f)
-			[
-				SNew(STextBlock)
-				.Text(FText::FromString(TEXT("Indirect assets tab")))
-			]
+			SNew(SProjectCleanerWindowIndirectAssets)
+			.ListItems(ProjectCleanerScanner->GetAssetsIndirect())
 		];
 }
 

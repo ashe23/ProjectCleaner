@@ -43,6 +43,7 @@ FSlateFontInfo FProjectCleanerStyles::GetFont(const FString& FontType, const uin
 #define OTF_FONT( RelativePath, ... ) FSlateFontInfo( Style->RootToContentDir( RelativePath, TEXT(".otf") ), __VA_ARGS__ )
 
 const FVector2D Icon8x8(8.0f, 8.0f);
+const FVector2D Icon16x16(16.0f, 16.0f);
 const FVector2D Icon10x10(10.0f, 10.0f);
 const FVector2D Icon20x20(20.0f, 20.0f);
 const FVector2D Icon40x40(40.0f, 40.0f);
@@ -59,6 +60,9 @@ TSharedRef<FSlateStyleSet> FProjectCleanerStyles::Create()
 	Style->Set("ProjectCleaner.IconCircle10", new IMAGE_BRUSH(TEXT("IconCircle10"), Icon10x10));
 	Style->Set("ProjectCleaner.IconCircle20", new IMAGE_BRUSH(TEXT("IconCircle20"), Icon20x20));
 	Style->Set("ProjectCleaner.IconCircle40", new IMAGE_BRUSH(TEXT("IconCircle40"), Icon40x40));
+	Style->Set("ProjectCleaner.IconTabIndirect16", new IMAGE_BRUSH(TEXT("IconTabIndirect16"), Icon16x16));
+	Style->Set("ProjectCleaner.IconTabIndirect20", new IMAGE_BRUSH(TEXT("IconTabIndirect20"), Icon20x20));
+	Style->Set("ProjectCleaner.IconTabIndirect40", new IMAGE_BRUSH(TEXT("IconTabIndirect40"), Icon40x40));
 
 	// cmds
 	Style->Set("ProjectCleaner.Cmd_OpenCleanerWindow", new IMAGE_BRUSH(TEXT("IconBin40"), Icon40x40));

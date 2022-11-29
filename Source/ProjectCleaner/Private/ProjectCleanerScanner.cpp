@@ -222,7 +222,7 @@ void FProjectCleanerScanner::Scan(const TWeakObjectPtr<UProjectCleanerScanSettin
 	//
 	//
 	// FindAssetsPrimary();
-	// FindAssetsIndirect();
+	FindAssetsIndirect();
 	// FindAssetsWithExternalRefs();
 	// FindAssetsBlackListed();
 	// // FindAssetsExcluded();
@@ -296,6 +296,11 @@ const TArray<FAssetData>& FProjectCleanerScanner::GetAssetsAll() const
 const TArray<FAssetData>& FProjectCleanerScanner::GetAssetsUnused() const
 {
 	return AssetsUnused;
+}
+
+const TArray<FProjectCleanerIndirectAsset>& FProjectCleanerScanner::GetAssetsIndirect() const
+{
+	return AssetsIndirect;
 }
 
 void FProjectCleanerScanner::FindAssetsPrimary()

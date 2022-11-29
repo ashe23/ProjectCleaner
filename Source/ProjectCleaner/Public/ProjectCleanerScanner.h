@@ -17,6 +17,7 @@ struct FProjectCleanerScanner
 	const TSet<FString>& GetFoldersForbiddenToScan() const;
 	const TArray<FAssetData>& GetAssetsAll() const;
 	const TArray<FAssetData>& GetAssetsUnused() const;
+	const TArray<FProjectCleanerIndirectAsset>& GetAssetsIndirect() const;
 private:
 	void FindAssetsPrimary();
 	void FindAssetsIndirect();

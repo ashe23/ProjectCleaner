@@ -29,6 +29,22 @@ void FProjectCleanerCmds::RegisterCommands()
 	);
 
 	UI_COMMAND(
+		Cmd_ShowInContentBrowser,
+		"Show in ContentBrowser",
+		"Show Asset in ContentBrowser",
+		EUserInterfaceActionType::Button,
+		FInputChord()
+	);
+
+	UI_COMMAND(
+		Cmd_OpenAsset,
+		"Open Asset",
+		"Open Asset Editor",
+		EUserInterfaceActionType::Button,
+		FInputChord()
+	);
+
+	UI_COMMAND(
 		DeleteAsset,
 		"Delete Asset",
 		"Delete selected assets",
