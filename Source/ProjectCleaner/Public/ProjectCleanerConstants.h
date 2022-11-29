@@ -26,13 +26,14 @@ namespace ProjectCleanerConstants
 	static const FString MsgAssetRegistryStillWorking{TEXT("The AssetRegistry is still working. Please wait for the scan to finish")};
 
 	// path
-	static const FString PathRelativeRoot{TEXT("/Game")};
-	static const FString PathRelativeDevelopers{TEXT("/Game/Developers")};
-	static const FString PathMegascans{TEXT("/Game/Megascans")};
-	static const FString PathMegascansPresets{TEXT("/Game/MSPresets")};
+	static const FString PathRelRoot{TEXT("/Game")};
+	static const FString PathRelDevelopers{TEXT("/Game/Developers")};
+	static const FString PathRelMegascans{TEXT("/Game/Megascans")};
+	static const FString PathRelMegascansPresets{TEXT("/Game/MSPresets")};
 
 	// plugins
 	static const FString PluginMegascans{TEXT("MegascansPlugin")};
+	static const FString PluginMegascansMsPresetsFolder{TEXT("MSPresets")};
 	
 
 	// url

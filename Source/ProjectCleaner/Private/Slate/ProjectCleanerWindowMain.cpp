@@ -21,11 +21,12 @@ void SProjectCleanerWindowMain::Construct(const FArguments& InArgs)
 	ScanSettings = GetMutableDefault<UProjectCleanerScanSettings>();
 	check(ScanSettings.IsValid());
 
-	ProjectCleanerScanner.Scan(ScanSettings);
+	ProjectCleanerScanner = MakeShareable(new FProjectCleanerScanner());
+	ProjectCleanerScanner->Scan(ScanSettings);
 
 	ScanSettings->OnChange().AddLambda([&]()
 	{
-		ProjectCleanerScanner.Scan(ScanSettings);
+		ProjectCleanerScanner->Scan(ScanSettings);
 	});
 	
 	FPropertyEditorModule& PropertyEditor = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
@@ -159,6 +160,7 @@ void SProjectCleanerWindowMain::Construct(const FArguments& InArgs)
 						+ SScrollBox::Slot()
 						[
 							SNew(SProjectCleanerTreeView)
+							.Scanner(ProjectCleanerScanner)
 						]
 					]
 					+ SVerticalBox::Slot()
@@ -212,7 +214,8 @@ int32 SProjectCleanerWindowMain::GetWidgetIndex()
 
 FReply SProjectCleanerWindowMain::OnBtnScanProjectClicked() const
 {
-	UE_LOG(LogProjectCleaner, Warning, TEXT("Scan btn clicked!"));
+	ProjectCleanerScanner->Scan(ScanSettings);
+	
 	return FReply::Handled();
 }
 

@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "ProjectCleanerScanner.h"
 #include "ProjectCleanerStyles.h"
 #include "Widgets/SCompoundWidget.h"
 
@@ -10,12 +11,12 @@ class UProjectCleanerScanSettings;
 
 struct FProjectCleanerTreeItem
 {
-	FProjectCleanerTreeItem(const FString& PathAbs, const FString& PathRel, const FString& Name) :
-		DirPathAbs(PathAbs),
-		DirPathRel(PathRel),
-		DirName(Name)
-	{
-	}
+	// FProjectCleanerTreeItem(const FString& PathAbs, const FString& PathRel, const FString& Name) :
+	// 	DirPathAbs(PathAbs),
+	// 	DirPathRel(PathRel),
+	// 	DirName(Name)
+	// {
+	// }
 
 	bool operator==(const FProjectCleanerTreeItem& Other) const
 	{
@@ -41,7 +42,7 @@ struct FProjectCleanerTreeItem
 	TArray<TSharedPtr<FProjectCleanerTreeItem>> SubDirectories;
 };
 
-class SProjectCleanerTreeItem : public SMultiColumnTableRow<TSharedPtr<FProjectCleanerTreeItem>>
+class SProjectCleanerTreeItem final : public SMultiColumnTableRow<TSharedPtr<FProjectCleanerTreeItem>>
 {
 public:
 	SLATE_BEGIN_ARGS(SProjectCleanerTreeItem)
@@ -110,7 +111,7 @@ public:
 					.Text(FText::FromString(FString::Printf(TEXT("%d"), TreeItem->FoldersTotal)))
 				];
 		}
-		
+
 		if (InColumnName.IsEqual(TEXT("FoldersEmpty")))
 		{
 			return
@@ -195,10 +196,12 @@ private:
 		// todo:ashe23 handle developer folder icon separate
 		return FEditorStyle::GetBrush(TreeItem->bExpanded ? TEXT("ContentBrowser.AssetTreeFolderOpen") : TEXT("ContentBrowser.AssetTreeFolderClosed"));
 	}
+
 	FSlateColor GetFolderColor() const
 	{
 		return TreeItem->bIsEmpty ? FProjectCleanerStyles::Get().GetSlateColor("ProjectCleaner.Color.Red") : FLinearColor::Gray;
 	}
+
 	TSharedPtr<FProjectCleanerTreeItem> TreeItem;
 };
 
@@ -209,9 +212,9 @@ class SProjectCleanerTreeView final : public SCompoundWidget
 public:
 	SLATE_BEGIN_ARGS(SProjectCleanerTreeView)
 		{
-		// todo:ashe23 pass list items as argument
 		}
 
+		SLATE_ARGUMENT(TSharedPtr<FProjectCleanerScanner>, Scanner)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
@@ -232,4 +235,5 @@ private:
 	TWeakObjectPtr<UProjectCleanerScanSettings> ScanSettings;
 	TArray<TSharedPtr<FProjectCleanerTreeItem>> TreeItems;
 	TSharedPtr<STreeView<TSharedPtr<FProjectCleanerTreeItem>>> TreeView;
+	TSharedPtr<FProjectCleanerScanner> Scanner;
 };

@@ -5,12 +5,17 @@
 #include "ProjectCleanerScanSettings.h"
 // Engine Headers
 #include "ProjectCleaner.h"
+#include "ProjectCleanerConstants.h"
 #include "ProjectCleanerStyles.h"
 #include "Widgets/Input/SSearchBox.h"
 #include "Widgets/Layout/SScrollBox.h"
 
 void SProjectCleanerTreeView::Construct(const FArguments& InArgs)
 {
+	if (!InArgs._Scanner.IsValid()) return;
+
+	Scanner = InArgs._Scanner;
+
 	ScanSettings = GetMutableDefault<UProjectCleanerScanSettings>();
 	check(ScanSettings.IsValid());
 
@@ -18,7 +23,7 @@ void SProjectCleanerTreeView::Construct(const FArguments& InArgs)
 	{
 		UE_LOG(LogProjectCleaner, Warning, TEXT("Scan settings changed!"));
 	});
-	
+
 	if (!TreeView.IsValid())
 	{
 		SAssignNew(TreeView, STreeView<TSharedPtr<FProjectCleanerTreeItem>>)
@@ -99,79 +104,73 @@ void SProjectCleanerTreeView::Construct(const FArguments& InArgs)
 
 void SProjectCleanerTreeView::TreeItemsUpdate()
 {
+	if (!Scanner.IsValid()) return;
+
 	TreeItems.Reset();
 
-	// TArray<FAssetData> Assets;
-	//
-	// const FString RootDir = FPaths::ProjectContentDir();
-	// TSet<FString> ExcludeDirs;
-	// ExcludeDirs.Add(FPaths::GameDevelopersDir()); // todo:ashe23 must be excluded by option
-	// ExcludeDirs.Add(RootDir + TEXT("Collections/"));
-	// // todo:ashe23 for ue5 exclude __ExternalActors__ and __ExternalObjects__ folders
-	//
-	//
-	// TArray<TSharedPtr<FProjectCleanerTreeItem>> Stack;
-	//
-	// const TSharedPtr<FProjectCleanerTreeItem> RootTreeItem = MakeShareable(new FProjectCleanerTreeItem(RootDir, UProjectCleanerLibrary::PathConvertToRel(RootDir), TEXT("Content")));
-	// if (!RootTreeItem.IsValid()) return;
-	//
-	// TSet<FString> AllSubDirs;
-	// UProjectCleanerLibrary::GetSubDirectories(RootTreeItem->DirPathAbs, true, AllSubDirs, ExcludeDirs);
-	//
-	// TSet<FString> CachedEmptyFolders;
-	// UProjectCleanerLibrary::GetEmptyDirectories(RootDir, CachedEmptyFolders, ExcludeDirs);
-	// UProjectCleanerLibrary::GetAssetsInPath(UProjectCleanerLibrary::PathConvertToRel(RootDir), true, Assets);
-	//
-	// RootTreeItem->AssetsTotal = Assets.Num();
-	// RootTreeItem->SizeTotal = UProjectCleanerLibrary::GetAssetsTotalSize(Assets);
-	// RootTreeItem->FoldersTotal = AllSubDirs.Num();
-	// RootTreeItem->FoldersEmpty = CachedEmptyFolders.Num();
-	// RootTreeItem->bIsEmpty = CachedEmptyFolders.Contains(RootDir);
-	//
-	// Stack.Push(RootTreeItem);
-	//
-	// while (Stack.Num() > 0)
-	// {
-	// 	const auto CurrentItem = Stack.Pop();
-	//
-	// 	TSet<FString> SubDirs;
-	// 	UProjectCleanerLibrary::GetSubDirectories(CurrentItem->DirPathAbs, false, SubDirs, ExcludeDirs);
-	//
-	// 	for (const auto& SubDir : SubDirs)
-	// 	{
-	// 		const TSharedPtr<FProjectCleanerTreeItem> SubDirItem = MakeShareable(
-	// 			new FProjectCleanerTreeItem(
-	// 				SubDir,
-	// 				UProjectCleanerLibrary::PathConvertToRel(SubDir),
-	// 				FPaths::GetPathLeaf(SubDir)
-	// 			)
-	// 		);
-	// 		if (!SubDirItem.IsValid()) continue;
-	//
-	// 		// folders
-	// 		UProjectCleanerLibrary::GetSubDirectories(SubDirItem->DirPathAbs, true, AllSubDirs, ExcludeDirs);
-	// 		TSet<FString> EmptyFolders;
-	// 		UProjectCleanerLibrary::GetEmptyDirectories(SubDirItem->DirPathAbs, EmptyFolders, ExcludeDirs);
-	//
-	// 		SubDirItem->FoldersTotal = AllSubDirs.Num();
-	// 		SubDirItem->FoldersEmpty = EmptyFolders.Num();
-	// 		SubDirItem->bIsEmpty = CachedEmptyFolders.Contains(SubDirItem->DirPathAbs);
-	//
-	// 		// assets
-	// 		UProjectCleanerLibrary::GetAssetsInPath(SubDirItem->DirPathRel, true, Assets);
-	// 		SubDirItem->AssetsTotal = Assets.Num();
-	// 		SubDirItem->SizeTotal = UProjectCleanerLibrary::GetAssetsTotalSize(Assets);
-	//
-	// 		CurrentItem->SubDirectories.Add(SubDirItem);
-	// 		Stack.Push(SubDirItem);
-	// 	}
-	// }
-	//
-	// TreeItems.Add(RootTreeItem);
-	//
+	// creating root item (Content folder)
+	const TSharedPtr<FProjectCleanerTreeItem> RootTreeItem = MakeShareable(new FProjectCleanerTreeItem());
+	if (!RootTreeItem.IsValid()) return;
+
+	RootTreeItem->DirPathAbs = FPaths::ProjectContentDir();
+	RootTreeItem->DirPathRel = ProjectCleanerConstants::PathRelRoot;
+	RootTreeItem->DirName = TEXT("Content");
+
+	// RootTreeItem->FoldersTotal = Scanner->GetFoldersAll().Num();
+	// RootTreeItem->FoldersEmpty = Scanner->GetFoldersEmpty().Num();
 	// RootTreeItem->bExpanded = true;
-	// TreeView->SetItemExpansion(RootTreeItem, true);
-	// TreeView->RequestTreeRefresh();
+	// RootTreeItem->bIsEmpty = Scanner->GetFoldersEmpty().Num() == 0;
+	// RootTreeItem->AssetsTotal = Scanner->GetAssetsAll().Num();
+	// RootTreeItem->AssetsUnused = Scanner->GetAssetsUnused().Num();
+	// RootTreeItem->SizeTotal = UProjectCleanerLibrary::GetAssetsTotalSize(Scanner->GetAssetsAll());
+	// RootTreeItem->SizeUnused = UProjectCleanerLibrary::GetAssetsTotalSize(Scanner->GetAssetsUnused());
+	//
+	TArray<TSharedPtr<FProjectCleanerTreeItem>> Stack;
+	Stack.Push(RootTreeItem);
+
+	while (Stack.Num() > 0)
+	{
+		const auto CurrentItem = Stack.Pop();
+
+		TArray<FString> SubDirs;
+		IFileManager::Get().FindFiles(SubDirs, *(CurrentItem->DirPathAbs / TEXT("*")), false, true);
+
+		for (const auto& SubDir : SubDirs)
+		{
+			const FString PathAbsSubDir = CurrentItem->DirPathAbs.EndsWith(TEXT("/")) ? CurrentItem->DirPathAbs + SubDir : CurrentItem->DirPathAbs + TEXT("/") + SubDir; 
+			if (Scanner->GetFoldersForbiddenToScan().Contains(PathAbsSubDir)) continue;
+
+			const TSharedPtr<FProjectCleanerTreeItem> SubDirItem = MakeShareable(new FProjectCleanerTreeItem());
+			if (!SubDirItem.IsValid()) continue;
+
+			SubDirItem->DirPathAbs = PathAbsSubDir;
+			SubDirItem->DirPathRel = UProjectCleanerLibrary::PathConvertToRel(PathAbsSubDir);
+			SubDirItem->DirName = SubDir;
+
+			// // folders
+			// UProjectCleanerLibrary::GetSubDirectories(SubDirItem->DirPathAbs, true, AllSubDirs, ExcludeDirs);
+			// TSet<FString> EmptyFolders;
+			// UProjectCleanerLibrary::GetEmptyDirectories(SubDirItem->DirPathAbs, EmptyFolders, ExcludeDirs);
+			//
+			// SubDirItem->FoldersTotal = AllSubDirs.Num();
+			// SubDirItem->FoldersEmpty = EmptyFolders.Num();
+			// SubDirItem->bIsEmpty = CachedEmptyFolders.Contains(SubDirItem->DirPathAbs);
+			//
+			// // assets
+			// UProjectCleanerLibrary::GetAssetsInPath(SubDirItem->DirPathRel, true, Assets);
+			// SubDirItem->AssetsTotal = Assets.Num();
+			// SubDirItem->SizeTotal = UProjectCleanerLibrary::GetAssetsTotalSize(Assets);
+
+			CurrentItem->SubDirectories.Add(SubDirItem);
+			Stack.Push(SubDirItem);
+		}
+	}
+
+	TreeItems.Add(RootTreeItem);
+
+	RootTreeItem->bExpanded = true;
+	TreeView->SetItemExpansion(RootTreeItem, true);
+	TreeView->RequestTreeRefresh();
 }
 
 TSharedRef<ITableRow> SProjectCleanerTreeView::OnTreeViewGenerateRow(TSharedPtr<FProjectCleanerTreeItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const

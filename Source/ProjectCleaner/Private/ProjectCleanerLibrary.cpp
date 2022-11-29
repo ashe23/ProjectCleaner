@@ -484,7 +484,7 @@ void UProjectCleanerLibrary::FixupRedirectors()
 
 	FARFilter Filter;
 	Filter.bRecursivePaths = true;
-	Filter.PackagePaths.Emplace(ProjectCleanerConstants::PathRelativeRoot);
+	Filter.PackagePaths.Emplace(ProjectCleanerConstants::PathRelRoot);
 	Filter.ClassNames.Emplace(UObjectRedirector::StaticClass()->GetFName());
 
 	// Getting all redirectors in given path
@@ -541,7 +541,7 @@ void UProjectCleanerLibrary::UpdateAssetRegistry(const bool bSyncScan)
 	const FAssetRegistryModule& ModuleAssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>(AssetRegistryConstants::ModuleName);
 
 	TArray<FString> ScanFolders;
-	ScanFolders.Add(ProjectCleanerConstants::PathRelativeRoot);
+	ScanFolders.Add(ProjectCleanerConstants::PathRelRoot);
 
 	ModuleAssetRegistry.Get().ScanPathsSynchronous(ScanFolders, true);
 	ModuleAssetRegistry.Get().SearchAllAssets(bSyncScan);
@@ -565,7 +565,7 @@ void UProjectCleanerLibrary::FocusOnDirectory(const FString& InRelPath)
 
 bool UProjectCleanerLibrary::IsUnderMegascansFolder(const FString& AssetPackagePath)
 {
-	return AssetPackagePath.StartsWith(ProjectCleanerConstants::PathMegascans) || AssetPackagePath.StartsWith(ProjectCleanerConstants::PathMegascansPresets);
+	return AssetPackagePath.StartsWith(ProjectCleanerConstants::PathRelMegascans) || AssetPackagePath.StartsWith(ProjectCleanerConstants::PathRelMegascansPresets);
 }
 
 bool UProjectCleanerLibrary::IsAssetRegistryWorking()

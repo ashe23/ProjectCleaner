@@ -28,5 +28,5 @@ private:
 	FReply OnBtnDeleteEmptyFoldersClicked() const;
 
 	TWeakObjectPtr<UProjectCleanerScanSettings> ScanSettings;
-	FProjectCleanerScanner ProjectCleanerScanner;
+	TSharedPtr<FProjectCleanerScanner> ProjectCleanerScanner;
 };

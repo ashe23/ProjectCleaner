@@ -11,6 +11,12 @@ struct FProjectCleanerScanner
 {
 	void Scan(const TWeakObjectPtr<UProjectCleanerScanSettings>& InScanSettings);
 	void Reset();
+	const TSet<FString>& GetFoldersAll() const;
+	const TSet<FString>& GetFoldersEmpty() const;
+	const TSet<FString>& GetFoldersForbiddenToDelete() const;
+	const TSet<FString>& GetFoldersForbiddenToScan() const;
+	const TArray<FAssetData>& GetAssetsAll() const;
+	const TArray<FAssetData>& GetAssetsUnused() const;
 private:
 	void FindAssetsPrimary();
 	void FindAssetsIndirect();
@@ -20,13 +26,17 @@ private:
 	void FindAssetsUsed();
 	void FindAssetsUnused();
 	bool HasIndirectAsset(const FString& FileContent) const;
+
+	// all folder in content folder minus forbidden folders
+	TSet<FString> FoldersAll;
+	TSet<FString> FoldersEmpty;
+	TSet<FString> FoldersForbiddenToDelete;
+	TSet<FString> FoldersForbiddenToScan;
 	
 	TSet<FString> FilesAll;
 	TSet<FString> FilesCorrupted;
 	TSet<FString> FilesNonEngine;
-	TSet<FString> FoldersAll;
-	TSet<FString> FoldersEmpty;
-	TSet<FString> FoldersIgnored;
+	
 	TArray<FAssetData> AssetsAll;
 	TArray<FAssetData> AssetsUsed;
 	TArray<FAssetData> AssetsUnused;
