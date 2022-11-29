@@ -21,6 +21,8 @@ void SProjectCleanerWindowMain::Construct(const FArguments& InArgs)
 	ScanSettings = GetMutableDefault<UProjectCleanerScanSettings>();
 	check(ScanSettings.IsValid());
 
+	TabsRegister();
+
 	ProjectCleanerScanner = MakeShareable(new FProjectCleanerScanner());
 	ProjectCleanerScanner->Scan(ScanSettings);
 
@@ -28,7 +30,7 @@ void SProjectCleanerWindowMain::Construct(const FArguments& InArgs)
 	{
 		ProjectCleanerScanner->Scan(ScanSettings);
 	});
-	
+
 	FPropertyEditorModule& PropertyEditor = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
 	FDetailsViewArgs DetailsViewArgs;
 	DetailsViewArgs.bUpdatesFromSelection = false;
@@ -38,10 +40,10 @@ void SProjectCleanerWindowMain::Construct(const FArguments& InArgs)
 	DetailsViewArgs.bAllowFavoriteSystem = false;
 	DetailsViewArgs.NameAreaSettings = FDetailsViewArgs::HideNameArea;
 	DetailsViewArgs.ViewIdentifier = "ProjectCleanerScanSettings";
-	
+
 	const TSharedRef<IDetailsView> ScanSettingsProperty = PropertyEditor.CreateDetailView(DetailsViewArgs);
 	ScanSettingsProperty->SetObject(ScanSettings.Get());
-	
+
 	ChildSlot
 	[
 		SNew(SWidgetSwitcher)
@@ -53,18 +55,18 @@ void SProjectCleanerWindowMain::Construct(const FArguments& InArgs)
 		[
 			SNew(SVerticalBox)
 			+ SVerticalBox::Slot()
-			.AutoHeight()
-			.Padding(FMargin{10.0f})
+			  .AutoHeight()
+			  .Padding(FMargin{10.0f})
 			[
 				SNew(SVerticalBox)
 				+ SVerticalBox::Slot()
-				.AutoHeight()
-				.Padding(FMargin{5.0f})
+				  .AutoHeight()
+				  .Padding(FMargin{5.0f})
 				[
 					SNew(SHorizontalBox)
 					+ SHorizontalBox::Slot()
-					.AutoWidth()
-					.Padding(FMargin{0.0f, 0.0f, 5.0f, 0.0f})
+					  .AutoWidth()
+					  .Padding(FMargin{0.0f, 0.0f, 5.0f, 0.0f})
 					[
 						SNew(SButton)
 						.ContentPadding(FMargin{5.0f})
@@ -82,8 +84,8 @@ void SProjectCleanerWindowMain::Construct(const FArguments& InArgs)
 						]
 					]
 					+ SHorizontalBox::Slot()
-					.AutoWidth()
-					.Padding(FMargin{0.0f, 0.0f, 5.0f, 0.0f})
+					  .AutoWidth()
+					  .Padding(FMargin{0.0f, 0.0f, 5.0f, 0.0f})
 					[
 						SNew(SButton)
 						.ContentPadding(FMargin{5.0f})
@@ -101,8 +103,8 @@ void SProjectCleanerWindowMain::Construct(const FArguments& InArgs)
 						]
 					]
 					+ SHorizontalBox::Slot()
-					.AutoWidth()
-					.Padding(FMargin{0.0f, 0.0f, 5.0f, 0.0f})
+					  .AutoWidth()
+					  .Padding(FMargin{0.0f, 0.0f, 5.0f, 0.0f})
 					[
 						SNew(SButton)
 						.ContentPadding(FMargin{5.0f})
@@ -122,8 +124,8 @@ void SProjectCleanerWindowMain::Construct(const FArguments& InArgs)
 				]
 			]
 			+ SVerticalBox::Slot()
-			.FillHeight(1.0f)
-			.Padding(FMargin{10.0f})
+			  .FillHeight(1.0f)
+			  .Padding(FMargin{10.0f})
 			[
 				SNew(SSplitter)
 				.Style(FEditorStyle::Get(), "ContentBrowser.Splitter")
@@ -148,34 +150,36 @@ void SProjectCleanerWindowMain::Construct(const FArguments& InArgs)
 				]
 				+ SSplitter::Slot()
 				[
-					SNew(SVerticalBox)
-					+ SVerticalBox::Slot()
-					  .FillHeight(1.0f)
-					  .Padding(FMargin{5.0f})
-					[
-						SNew(SScrollBox)
-						.ScrollWhenFocusChanges(EScrollWhenFocusChanges::NoScroll)
-						.AnimateWheelScrolling(true)
-						.AllowOverscroll(EAllowOverscroll::No)
-						+ SScrollBox::Slot()
-						[
-							SNew(SProjectCleanerTreeView)
-							.Scanner(ProjectCleanerScanner)
-						]
-					]
-					+ SVerticalBox::Slot()
-					.FillHeight(1.0f)
-					.Padding(FMargin{5.0f})
-					[
-						SNew(SScrollBox)
-						.ScrollWhenFocusChanges(EScrollWhenFocusChanges::NoScroll)
-						.AnimateWheelScrolling(true)
-						.AllowOverscroll(EAllowOverscroll::No)
-						+ SScrollBox::Slot()
-						[
-							SNew(SProjectCleanerAssetBrowser)
-						]
-					]
+					TabManager->RestoreFrom(TabLayout.ToSharedRef(), TSharedPtr<SWindow>()).ToSharedRef()
+					// // todo:ashe23 tabs here
+					// SNew(SVerticalBox)
+					// + SVerticalBox::Slot()
+					//   .FillHeight(1.0f)
+					//   .Padding(FMargin{5.0f})
+					// [
+					// 	SNew(SScrollBox)
+					// 	.ScrollWhenFocusChanges(EScrollWhenFocusChanges::NoScroll)
+					// 	.AnimateWheelScrolling(true)
+					// 	.AllowOverscroll(EAllowOverscroll::No)
+					// 	+ SScrollBox::Slot()
+					// 	[
+					// 		SNew(SProjectCleanerTreeView)
+					// 		.Scanner(ProjectCleanerScanner)
+					// 	]
+					// ]
+					// + SVerticalBox::Slot()
+					//   .FillHeight(1.0f)
+					//   .Padding(FMargin{5.0f})
+					// [
+					// 	SNew(SScrollBox)
+					// 	.ScrollWhenFocusChanges(EScrollWhenFocusChanges::NoScroll)
+					// 	.AnimateWheelScrolling(true)
+					// 	.AllowOverscroll(EAllowOverscroll::No)
+					// 	+ SScrollBox::Slot()
+					// 	[
+					// 		SNew(SProjectCleanerAssetBrowser)
+					// 	]
+					// ]
 				]
 			]
 		]
@@ -200,6 +204,7 @@ void SProjectCleanerWindowMain::Construct(const FArguments& InArgs)
 
 SProjectCleanerWindowMain::~SProjectCleanerWindowMain()
 {
+	TabsUnregister();
 }
 
 bool SProjectCleanerWindowMain::IsWidgetEnabled()
@@ -212,10 +217,155 @@ int32 SProjectCleanerWindowMain::GetWidgetIndex()
 	return UProjectCleanerLibrary::IsAssetRegistryWorking() ? WidgetIndexLoading : WidgetIndexNone;
 }
 
+void SProjectCleanerWindowMain::TabsRegister()
+{
+	const auto DummyTab = SNew(SDockTab).TabRole(NomadTab);
+	TabManager = FGlobalTabmanager::Get()->NewTabManager(DummyTab);
+	TabManager->SetCanDoDragOperation(false);
+	TabLayout = FTabManager::NewLayout("ProjectCleanerTabLayout")
+		->AddArea
+		(
+			FTabManager::NewPrimaryArea()
+			->SetOrientation(Orient_Vertical)
+			->Split
+			(
+				FTabManager::NewStack()
+				->SetSizeCoefficient(0.4f)
+				->AddTab(ProjectCleanerConstants::TabUnusedAssets, ETabState::OpenedTab)
+				->AddTab(ProjectCleanerConstants::TabIndirectAssets, ETabState::OpenedTab)
+				->AddTab(ProjectCleanerConstants::TabCorruptedAssets, ETabState::OpenedTab)
+				->AddTab(ProjectCleanerConstants::TabNonEngineFiles, ETabState::OpenedTab)
+				->SetForegroundTab(ProjectCleanerConstants::TabUnusedAssets)
+			)
+		);
+
+	TabManager->RegisterTabSpawner(
+		ProjectCleanerConstants::TabUnusedAssets,
+		FOnSpawnTab::CreateRaw(
+			this,
+			&SProjectCleanerWindowMain::OnTabSpawnUnusedAssets)
+	);
+	TabManager->RegisterTabSpawner(
+		ProjectCleanerConstants::TabIndirectAssets,
+		FOnSpawnTab::CreateRaw(
+			this,
+			&SProjectCleanerWindowMain::OnTabSpawnIndirectAssets)
+	);
+	TabManager->RegisterTabSpawner(
+		ProjectCleanerConstants::TabCorruptedAssets,
+		FOnSpawnTab::CreateRaw(
+			this,
+			&SProjectCleanerWindowMain::OnTabSpawnCorruptedAssets)
+	);
+	TabManager->RegisterTabSpawner(
+		ProjectCleanerConstants::TabNonEngineFiles,
+		FOnSpawnTab::CreateRaw(
+			this,
+			&SProjectCleanerWindowMain::OnTabSpawnNonEngineFiles)
+	);
+}
+
+void SProjectCleanerWindowMain::TabsUnregister()
+{
+	FGlobalTabmanager::Get()->UnregisterNomadTabSpawner(ProjectCleanerConstants::TabUnusedAssets);
+	FGlobalTabmanager::Get()->UnregisterNomadTabSpawner(ProjectCleanerConstants::TabIndirectAssets);
+	FGlobalTabmanager::Get()->UnregisterNomadTabSpawner(ProjectCleanerConstants::TabCorruptedAssets);
+	FGlobalTabmanager::Get()->UnregisterNomadTabSpawner(ProjectCleanerConstants::TabNonEngineFiles);
+}
+
+TSharedRef<SDockTab> SProjectCleanerWindowMain::OnTabSpawnUnusedAssets(const FSpawnTabArgs& Args) const
+{
+	return
+		SNew(SDockTab)
+		.TabRole(NomadTab)
+		.Label(FText::FromString(TEXT("Unused Assets")))
+		.ShouldAutosize(true)
+		.OnCanCloseTab_Lambda([]()
+		{
+			return false;
+		})
+	.TabWellContentBackground()
+		[
+			SNew(STextBlock)
+			.Text(FText::FromString(TEXT("Unused assets tab")))
+			// SNew(SOverlay)
+			// + SOverlay::Slot()
+			// .Padding(20.0f)
+			// [
+			// ]
+		];
+}
+
+TSharedRef<SDockTab> SProjectCleanerWindowMain::OnTabSpawnIndirectAssets(const FSpawnTabArgs& Args) const
+{
+	return
+		SNew(SDockTab)
+		.TabRole(NomadTab)
+		.Label(FText::FromString(TEXT("Indirect Assets")))
+		.ShouldAutosize(true)
+		.OnCanCloseTab_Lambda([]()
+		{
+			return false;
+		})
+		[
+			SNew(SOverlay)
+			+ SOverlay::Slot()
+			.Padding(20.0f)
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString(TEXT("Indirect assets tab")))
+			]
+		];
+}
+
+TSharedRef<SDockTab> SProjectCleanerWindowMain::OnTabSpawnCorruptedAssets(const FSpawnTabArgs& Args) const
+{
+	return
+		SNew(SDockTab)
+		.TabRole(NomadTab)
+		.Label(FText::FromString(TEXT("Corrupted Assets")))
+		.ShouldAutosize(true)
+		.OnCanCloseTab_Lambda([]()
+		{
+			return false;
+		})
+		[
+			SNew(SOverlay)
+			+ SOverlay::Slot()
+			.Padding(20.0f)
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString(TEXT("Corrupted assets tab")))
+			]
+		];
+}
+
+TSharedRef<SDockTab> SProjectCleanerWindowMain::OnTabSpawnNonEngineFiles(const FSpawnTabArgs& Args) const
+{
+	return
+		SNew(SDockTab)
+		.TabRole(NomadTab)
+		.Label(FText::FromString(TEXT("Non Engine Files")))
+		.ShouldAutosize(true)
+		.OnCanCloseTab_Lambda([]()
+		{
+			return false;
+		})
+		[
+			SNew(SOverlay)
+			+ SOverlay::Slot()
+			.Padding(20.0f)
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString(TEXT("Non Engine Files tab")))
+			]
+		];
+}
+
 FReply SProjectCleanerWindowMain::OnBtnScanProjectClicked() const
 {
 	ProjectCleanerScanner->Scan(ScanSettings);
-	
+
 	return FReply::Handled();
 }
 
