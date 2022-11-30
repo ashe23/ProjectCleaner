@@ -1,10 +1,10 @@
 ﻿// Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "Slate/ProjectCleanerWindowMain.h"
-#include "Slate/ProjectCleanerTreeView.h"
-#include "Slate/ProjectCleanerAssetBrowser.h"
 #include "Slate/ProjectCleanerWindowIndirectAssets.h"
 #include "Slate/ProjectCleanerFileListView.h"
+#include "Slate/ProjectCleanerAssetBrowser.h"
+#include "Slate/TreeView/SProjectCleanerTreeView.h"
 #include "ProjectCleanerStyles.h"
 #include "ProjectCleanerLibrary.h"
 #include "ProjectCleanerConstants.h"
@@ -45,7 +45,7 @@ void SProjectCleanerWindowMain::Construct(const FArguments& InArgs)
 
 	const TSharedRef<IDetailsView> ScanSettingsProperty = PropertyEditor.CreateDetailView(DetailsViewArgs);
 	ScanSettingsProperty->SetObject(ScanSettings.Get());
-
+	
 	ChildSlot
 	[
 		SNew(SWidgetSwitcher)
@@ -153,35 +153,6 @@ void SProjectCleanerWindowMain::Construct(const FArguments& InArgs)
 				+ SSplitter::Slot()
 				[
 					TabManager->RestoreFrom(TabLayout.ToSharedRef(), TSharedPtr<SWindow>()).ToSharedRef()
-					// // todo:ashe23 tabs here
-					// SNew(SVerticalBox)
-					// + SVerticalBox::Slot()
-					//   .FillHeight(1.0f)
-					//   .Padding(FMargin{5.0f})
-					// [
-					// 	SNew(SScrollBox)
-					// 	.ScrollWhenFocusChanges(EScrollWhenFocusChanges::NoScroll)
-					// 	.AnimateWheelScrolling(true)
-					// 	.AllowOverscroll(EAllowOverscroll::No)
-					// 	+ SScrollBox::Slot()
-					// 	[
-					// 		SNew(SProjectCleanerTreeView)
-					// 		.Scanner(ProjectCleanerScanner)
-					// 	]
-					// ]
-					// + SVerticalBox::Slot()
-					//   .FillHeight(1.0f)
-					//   .Padding(FMargin{5.0f})
-					// [
-					// 	SNew(SScrollBox)
-					// 	.ScrollWhenFocusChanges(EScrollWhenFocusChanges::NoScroll)
-					// 	.AnimateWheelScrolling(true)
-					// 	.AllowOverscroll(EAllowOverscroll::No)
-					// 	+ SScrollBox::Slot()
-					// 	[
-					// 		SNew(SProjectCleanerAssetBrowser)
-					// 	]
-					// ]
 				]
 			]
 		]
@@ -288,8 +259,36 @@ TSharedRef<SDockTab> SProjectCleanerWindowMain::OnTabSpawnUnusedAssets(const FSp
 			return false;
 		})
 		[
-			SNew(STextBlock)
-			.Text(FText::FromString(TEXT("Unused assets tab")))
+			SNew(SOverlay)
+			+ SOverlay::Slot()
+			[
+				SNew(SSplitter)
+				.Orientation(Orient_Vertical)
+				.Style(FEditorStyle::Get(), "ContentBrowser.Splitter")
+				.PhysicalSplitterHandleSize(5.0f)
+				+ SSplitter::Slot()
+				.Value(0.4f)
+				[
+					SNew(SVerticalBox)
+					+ SVerticalBox::Slot()
+					.FillHeight(1.0f)
+					[
+						SNew(SProjectCleanerTreeView)
+						.RootFolder(FPaths::ProjectContentDir())
+					]
+				]
+				+ SSplitter::Slot()
+				.Value(0.6f)
+				[
+					SNew(SVerticalBox)
+					+ SVerticalBox::Slot()
+					.FillHeight(1.0f)
+					[
+						SNew(SProjectCleanerTreeView)
+						.RootFolder(FPaths::ProjectContentDir())
+					]
+				]
+			]
 		];
 }
 

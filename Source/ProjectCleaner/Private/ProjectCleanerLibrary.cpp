@@ -292,6 +292,92 @@
 // 	ModuleAssetRegistry.Get().GetAssets(Filter, Assets);
 // }
 
+void UProjectCleanerLibrary::GetSubFolders(const FString& InDirPath, const bool bRecursive, TSet<FString>& SubFolders)
+{
+	if (InDirPath.IsEmpty()) return;
+	if (!FPaths::DirectoryExists(InDirPath)) return;
+
+	TArray<FString> SubDirs;
+
+	if (bRecursive)
+	{
+		IFileManager::Get().FindFilesRecursive(SubDirs, *(InDirPath / TEXT("*")),TEXT("*.*"), false, true);
+	}
+	else
+	{
+		IFileManager::Get().FindFiles(SubDirs, *(InDirPath / TEXT("*")), false, true);
+	}
+
+	SubFolders.Reset();
+	SubFolders.Reserve(SubDirs.Num());
+
+	for (const auto& SubDir : SubDirs)
+	{
+		SubFolders.Add(InDirPath / SubDir);
+	}
+}
+
+int32 UProjectCleanerLibrary::GetSubFoldersNum(const FString& InDirPath, const bool bRecursive)
+{
+	TSet<FString> SubFolders;
+	GetSubFolders(InDirPath, bRecursive, SubFolders);
+
+	return SubFolders.Num();
+}
+
+void UProjectCleanerLibrary::GetEmptyFolders(const FString& InDirPath, TSet<FString>& EmptyFolders)
+{
+	EmptyFolders.Reset();
+
+	class FFindEmptyFoldersVisitor final : public IPlatformFile::FDirectoryVisitor
+	{
+	public:
+		TSet<FString> EmptyFolders;
+
+		explicit FFindEmptyFoldersVisitor(const TSet<FString>& InEmptyFolders) : FDirectoryVisitor(EDirectoryVisitorFlags::None), EmptyFolders(InEmptyFolders)
+		{
+		}
+
+		virtual bool Visit(const TCHAR* FilenameOrDirectory, bool bIsDirectory) override
+		{
+			const FString FullPath = FPaths::ConvertRelativePathToFull(FilenameOrDirectory);
+
+			if (bIsDirectory)
+			{
+				TArray<FString> Files;
+				IFileManager::Get().FindFilesRecursive(Files, *FullPath, TEXT("*.*"), true, false);
+
+				if (Files.Num() == 0)
+				{
+					EmptyFolders.Add(FullPath);
+				}
+			}
+
+			return true;
+		}
+	};
+
+	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
+	FFindEmptyFoldersVisitor EmptyFoldersVisitor(EmptyFolders);
+	PlatformFile.IterateDirectoryRecursively(*InDirPath, EmptyFoldersVisitor);
+}
+
+int32 UProjectCleanerLibrary::GetEmptyFoldersNum(const FString& InDirPath)
+{
+	TSet<FString> EmptyFolders;
+	GetEmptyFolders(InDirPath, EmptyFolders);
+
+	return EmptyFolders.Num();
+}
+
+bool UProjectCleanerLibrary::IsEmptyFolder(const FString& InDirPath)
+{
+	TArray<FString> Files;
+	IFileManager::Get().FindFilesRecursive(Files, *(InDirPath / TEXT("*")),TEXT("*.*"), true, false);
+
+	return Files.Num() == 0;
+}
+
 int64 UProjectCleanerLibrary::GetAssetsTotalSize(const TArray<FAssetData>& Assets)
 {
 	const FAssetRegistryModule& ModuleAssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>(AssetRegistryConstants::ModuleName);

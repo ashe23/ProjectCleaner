@@ -14,6 +14,12 @@ class UProjectCleanerLibrary final : public UBlueprintFunctionLibrary
 {
 	GENERATED_BODY()
 public:
+	static void GetSubFolders(const FString& InDirPath, const bool bRecursive, TSet<FString>& SubFolders);
+	static int32 GetSubFoldersNum(const FString& InDirPath, const bool bRecursive);
+	static void GetEmptyFolders(const FString& InDirPath, TSet<FString>& EmptyFolders);
+	static int32 GetEmptyFoldersNum(const FString& InDirPath);
+	static bool IsEmptyFolder(const FString& InDirPath);
+	
 	// UFUNCTION(BlueprintCallable, Category="ProjectCleaner", meta=(ToolTip="Returns all subdirectories for given directory. Specify Exclude Directories that you want to exclude"))
 	// static void GetSubDirectories(const FString& RootDir, const bool bRecursive, TSet<FString>& SubDirectories, const TSet<FString>& ExcludeDirectories);
 	//
