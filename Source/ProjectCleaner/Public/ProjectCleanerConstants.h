@@ -33,7 +33,7 @@ namespace ProjectCleanerConstants
 	static const FString PathRelMegascansPresets{TEXT("/Game/MSPresets")};
 
 	// plugins
-	static const FString PluginMegascans{TEXT("MegascansPlugin")};
+	static const FName PluginMegascans{TEXT("MegascansPlugin")};
 	static const FString PluginMegascansMsPresetsFolder{TEXT("MSPresets")};
 	
 	// url

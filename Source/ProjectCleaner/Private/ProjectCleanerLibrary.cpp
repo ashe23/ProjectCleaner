@@ -5,9 +5,14 @@
 // Engine Headers
 #include "AssetToolsModule.h"
 #include "ContentBrowserModule.h"
+#include "EditorUtilityBlueprint.h"
+#include "EditorUtilityWidget.h"
+#include "EditorUtilityWidgetBlueprint.h"
 #include "IContentBrowserSingleton.h"
 #include "FileHelpers.h"
+#include "ProjectCleanerScanSettings.h"
 #include "AssetRegistry/AssetRegistryModule.h"
+#include "DSP/PassiveFilter.h"
 #include "Engine/AssetManager.h"
 #include "Engine/MapBuildDataRegistry.h"
 #include "Internationalization/Regex.h"
@@ -431,24 +436,53 @@ void UProjectCleanerLibrary::GetAssetsCorrupted(TSet<FString>& FilesCorrupted)
 	PlatformFile.IterateDirectoryRecursively(*FPaths::ProjectContentDir(), FindCorruptedFilesVisitor);
 }
 
-void UProjectCleanerLibrary::GetPrimaryAssetClasses(TArray<UClass*>& PrimaryAssetClasses, const bool bIncludeDerivedClasses)
+void UProjectCleanerLibrary::GetAssetsWithExternalRefs(TArray<FAssetData>& Assets)
+{
+	Assets.Reset();
+
+	TArray<FAssetData> AllAssets;
+
+	const FAssetRegistryModule& ModuleAssetRegistry = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(AssetRegistryConstants::ModuleName);
+	ModuleAssetRegistry.Get().GetAssetsByPath(FName{ProjectCleanerConstants::PathRelRoot}, AllAssets, true);
+	
+	TArray<FName> Refs;
+	for (const auto& Asset : AllAssets)
+	{
+		ModuleAssetRegistry.Get().GetReferencers(Asset.PackageName, Refs);
+
+		const bool HasExternalRefs = Refs.ContainsByPredicate([](const FName& Ref)
+		{
+			return !Ref.ToString().StartsWith(ProjectCleanerConstants::PathRelRoot);
+		});
+
+		if (HasExternalRefs)
+		{
+			Assets.AddUnique(Asset);
+		}
+
+		Refs.Reset();
+	}
+}
+
+void UProjectCleanerLibrary::GetPrimaryAssetClasses(TArray<FName>& PrimaryAssetClasses, const bool bIncludeDerivedClasses)
 {
 	const FAssetRegistryModule& ModuleAssetRegistry = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(AssetRegistryConstants::ModuleName);
-	
-	TSet<FString> PrimaryAssetClassList;
+
+	PrimaryAssetClasses.Reset();
+
 	// getting list of primary asset classes that are defined in AssetManager
-	TArray<FName> PrimaryAssetClassNames;
 	const auto& AssetManager = UAssetManager::Get();
 	if (!AssetManager.IsValid()) return;
 
 	TArray<FPrimaryAssetTypeInfo> AssetTypeInfos;
 	AssetManager.Get().GetPrimaryAssetTypeInfoList(AssetTypeInfos);
+	PrimaryAssetClasses.Reserve(AssetTypeInfos.Num());
 
 	for (const auto& AssetTypeInfo : AssetTypeInfos)
 	{
 		if (!AssetTypeInfo.AssetBaseClassLoaded) continue;
 
-		PrimaryAssetClassNames.AddUnique(AssetTypeInfo.AssetBaseClassLoaded->GetFName());
+		PrimaryAssetClasses.AddUnique(AssetTypeInfo.AssetBaseClassLoaded->GetFName());
 	}
 
 	if (bIncludeDerivedClasses)
@@ -457,31 +491,332 @@ void UProjectCleanerLibrary::GetPrimaryAssetClasses(TArray<UClass*>& PrimaryAsse
 		TSet<FName> DerivedFromPrimaryAssets;
 		{
 			const TSet<FName> ExcludedClassNames;
-			ModuleAssetRegistry.Get().GetDerivedClassNames(PrimaryAssetClassNames, ExcludedClassNames, DerivedFromPrimaryAssets);
+			ModuleAssetRegistry.Get().GetDerivedClassNames(PrimaryAssetClasses, ExcludedClassNames, DerivedFromPrimaryAssets);
 		}
 
 		for (const auto& DerivedClassName : DerivedFromPrimaryAssets)
 		{
-			PrimaryAssetClassList.Add(DerivedClassName.ToString());
+			PrimaryAssetClasses.AddUnique(DerivedClassName);
 		}
 	}
-	// todo:ashe23
+}
+
+void UProjectCleanerLibrary::GetLinkedAssets(const TArray<FAssetData>& Assets, TArray<FAssetData>& LinkedAssets)
+{
+	const FAssetRegistryModule& ModuleAssetRegistry = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(AssetRegistryConstants::ModuleName);
+
+	LinkedAssets.Reset();
+	
+	TSet<FName> UsedAssetsDeps;
+	TArray<FName> Stack;
+	for (const auto& Asset : Assets)
+	{
+		UsedAssetsDeps.Add(Asset.PackageName);
+		Stack.Add(Asset.PackageName);
+
+		TArray<FName> Deps;
+		while (Stack.Num() > 0)
+		{
+			const auto CurrentPackageName = Stack.Pop(false);
+			Deps.Reset();
+
+			ModuleAssetRegistry.Get().GetDependencies(CurrentPackageName, Deps);
+
+			Deps.RemoveAllSwap([&](const FName& Dep)
+			{
+				return !Dep.ToString().StartsWith(*ProjectCleanerConstants::PathRelRoot);
+			}, false);
+
+			for (const auto& Dep : Deps)
+			{
+				bool bIsAlreadyInSet = false;
+				UsedAssetsDeps.Add(Dep, &bIsAlreadyInSet);
+				if (!bIsAlreadyInSet)
+				{
+					Stack.Add(Dep);
+				}
+			}
+		}
+	}
+
+	FARFilter Filter;
+	Filter.bRecursivePaths = true;
+	Filter.PackagePaths.Add(FName{*ProjectCleanerConstants::PathRelRoot});
+	
+	for (const auto& Dep : UsedAssetsDeps)
+	{
+		Filter.PackageNames.Add(Dep);
+	}
+
+	ModuleAssetRegistry.Get().GetAssets(Filter, LinkedAssets);
 }
 
 void UProjectCleanerLibrary::GetAssetsUsed(TArray<FAssetData>& AssetsUsed)
 {
+	const FAssetRegistryModule& ModuleAssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>(AssetRegistryConstants::ModuleName);
+	const UProjectCleanerScanSettings* ScanSettings = GetDefault<UProjectCleanerScanSettings>();
+	if (!ScanSettings) return;
+	
+	AssetsUsed.Reset();
+
+	TArray<FAssetData> AssetsPrimary;
+	TArray<FAssetData> AssetsIndirect;
+	TArray<FAssetData> AssetsWithExternalRefs;
+	TArray<FAssetData> AssetsInDeveloperFolder;
+	TArray<FAssetData> AssetsInMSPresets;
+	TArray<FAssetData> AssetsBlackListed;
+
+	GetAssetsPrimary(AssetsPrimary, true);
+	GetAssetsIndirect(AssetsIndirect);
+	GetAssetsWithExternalRefs(AssetsWithExternalRefs);
+	// todo:ashe23 excluded assets
+	// todo:ashe23 Megascans plugin assets
+	// todo:ashe23 for ue5 add __ExternalObject__ and __ExternalActors__ folders
+
+	// finding all blacklisted assets that are considered used
+	FARFilter Filter;
+	Filter.bRecursivePaths = true;
+	Filter.bRecursiveClasses = true;
+	Filter.PackagePaths.Add(FName{ProjectCleanerConstants::PathRelRoot});
+	Filter.ClassNames.Add(UEditorUtilityWidget::StaticClass()->GetFName());
+	Filter.ClassNames.Add(UEditorUtilityBlueprint::StaticClass()->GetFName());
+	Filter.ClassNames.Add(UEditorUtilityWidgetBlueprint::StaticClass()->GetFName());
+	Filter.ClassNames.Add(UMapBuildDataRegistry::StaticClass()->GetFName());
+	ModuleAssetRegistry.Get().GetAssets(Filter, AssetsBlackListed);
+
+	if (!ScanSettings->bScanDeveloperContents)
+	{
+		ModuleAssetRegistry.Get().GetAssetsByPath(FName{*ProjectCleanerConstants::PathRelDevelopers}, AssetsInDeveloperFolder, true);
+	}
+
+	if (FModuleManager::Get().IsModuleLoaded(ProjectCleanerConstants::PluginMegascans))
+	{
+		ModuleAssetRegistry.Get().GetAssetsByPath(FName{*ProjectCleanerConstants::PathRelMegascansPresets}, AssetsInMSPresets, true);
+	}
+
+	for (const auto& Asset : AssetsPrimary)
+	{
+		AssetsUsed.AddUnique(Asset);
+	}
+	for (const auto& Asset : AssetsIndirect)
+	{
+		AssetsUsed.AddUnique(Asset);
+	}
+	for (const auto& Asset : AssetsWithExternalRefs)
+	{
+		AssetsUsed.AddUnique(Asset);
+	}
+	for (const auto& Asset : AssetsInDeveloperFolder)
+	{
+		AssetsUsed.AddUnique(Asset);
+	}
+	for (const auto& Asset : AssetsInMSPresets)
+	{
+		AssetsUsed.AddUnique(Asset);
+	}
+	for (const auto& Asset : AssetsBlackListed)
+	{
+		AssetsUsed.AddUnique(Asset);
+	}
+
+	TArray<FAssetData> LinkedAssets;
+	GetLinkedAssets(AssetsUsed, LinkedAssets);
+
+	for (const auto& Asset : LinkedAssets)
+	{
+		AssetsUsed.AddUnique(Asset);
+	}
 }
 
 void UProjectCleanerLibrary::GetAssetsUnused(TArray<FAssetData>& AssetsUnused)
 {
+	AssetsUnused.Reset();
+
+	TArray<FAssetData> UsedAssets;
+	GetAssetsUsed(UsedAssets);
+
+	TArray<FAssetData> AllAssets;
+	const FAssetRegistryModule& ModuleAssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>(AssetRegistryConstants::ModuleName);
+	ModuleAssetRegistry.Get().GetAssetsByPath(FName{*ProjectCleanerConstants::PathRelRoot}, AllAssets, true);
+	
+	AssetsUnused.Reserve(UsedAssets.Num());
+
+	for (const auto& Asset : AllAssets)
+	{
+		if (UsedAssets.Contains(Asset)) continue;
+
+		AssetsUnused.AddUnique(Asset);
+	}
+
+	AssetsUnused.Shrink();
 }
 
 void UProjectCleanerLibrary::GetAssetsIndirect(TArray<FAssetData>& AssetsIndirect)
 {
+	AssetsIndirect.Reset();
+
+	TArray<FProjectCleanerIndirectAsset> IndirectAssets;
+	GetAssetsIndirectAdvanced(IndirectAssets);
+
+	AssetsIndirect.Reserve(IndirectAssets.Num());
+	for (const auto& Info : IndirectAssets)
+	{
+		AssetsIndirect.AddUnique(Info.AssetData);
+	}
+}
+
+void UProjectCleanerLibrary::GetAssetsIndirectAdvanced(TArray<FProjectCleanerIndirectAsset>& AssetsIndirect)
+{
+	AssetsIndirect.Reset();
+
+	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
+	const FAssetRegistryModule& ModuleAssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>(AssetRegistryConstants::ModuleName);
+
+	const FString SourceDir = FPaths::ProjectDir() + TEXT("Source/");
+	const FString ConfigDir = FPaths::ProjectDir() + TEXT("Config/");
+	const FString PluginsDir = FPaths::ProjectDir() + TEXT("Plugins/");
+
+	TSet<FString> Files;
+	Files.Reserve(200); // reserving some space
+
+	// 1) finding all source files in main project "Source" directory (<yourproject>/Source/*)
+	TArray<FString> FilesToScan;
+	PlatformFile.FindFilesRecursively(FilesToScan, *SourceDir, TEXT(".cs"));
+	PlatformFile.FindFilesRecursively(FilesToScan, *SourceDir, TEXT(".cpp"));
+	PlatformFile.FindFilesRecursively(FilesToScan, *SourceDir, TEXT(".h"));
+	PlatformFile.FindFilesRecursively(FilesToScan, *ConfigDir, TEXT(".ini"));
+	Files.Append(FilesToScan);
+
+	// 2) we should find all source files in plugins folder (<yourproject>/Plugins/*)
+	TArray<FString> ProjectPluginsFiles;
+	// finding all installed plugins in "Plugins" directory
+	struct DirectoryVisitor : public IPlatformFile::FDirectoryVisitor
+	{
+		virtual bool Visit(const TCHAR* FilenameOrDirectory, bool bIsDirectory) override
+		{
+			if (bIsDirectory)
+			{
+				InstalledPlugins.Add(FilenameOrDirectory);
+			}
+
+			return true;
+		}
+
+		TArray<FString> InstalledPlugins;
+	};
+
+	DirectoryVisitor Visitor;
+	PlatformFile.IterateDirectory(*PluginsDir, Visitor);
+
+	// 3) for every installed plugin we scanning only "Source" and "Config" folders
+	for (const auto& Dir : Visitor.InstalledPlugins)
+	{
+		const FString PluginSourcePathDir = Dir + "/Source";
+		const FString PluginConfigPathDir = Dir + "/Config";
+
+		PlatformFile.FindFilesRecursively(ProjectPluginsFiles, *PluginSourcePathDir, TEXT(".cs"));
+		PlatformFile.FindFilesRecursively(ProjectPluginsFiles, *PluginSourcePathDir, TEXT(".cpp"));
+		PlatformFile.FindFilesRecursively(ProjectPluginsFiles, *PluginSourcePathDir, TEXT(".h"));
+		PlatformFile.FindFilesRecursively(ProjectPluginsFiles, *PluginConfigPathDir, TEXT(".ini"));
+	}
+
+	Files.Append(ProjectPluginsFiles);
+	Files.Shrink();
+
+	TArray<FAssetData> AllAssets;
+	AllAssets.Reserve(ModuleAssetRegistry.Get().GetAllocatedSize());
+	ModuleAssetRegistry.Get().GetAssetsByPath(FName{*ProjectCleanerConstants::PathRelRoot}, AllAssets, true);
+
+	for (const auto& File : Files)
+	{
+		if (!PlatformFile.FileExists(*File)) continue;
+
+		FString FileContent;
+		FFileHelper::LoadFileToString(FileContent, *File);
+
+		if (!HasIndirectlyUsedAssets(FileContent)) continue;
+
+		static FRegexPattern Pattern(TEXT(R"(\/Game([A-Za-z0-9_.\/]+)\b)"));
+		FRegexMatcher Matcher(Pattern, FileContent);
+		while (Matcher.FindNext())
+		{
+			FString FoundedAssetObjectPath = Matcher.GetCaptureGroup(0);
+
+
+			// if ObjectPath ends with "_C" , then its probably blueprint, so we trim that
+			if (FoundedAssetObjectPath.EndsWith("_C"))
+			{
+				FString TrimmedObjectPath = FoundedAssetObjectPath;
+				TrimmedObjectPath.RemoveFromEnd("_C");
+
+				FoundedAssetObjectPath = TrimmedObjectPath;
+			}
+
+
+			const FAssetData* AssetData = AllAssets.FindByPredicate([&](const FAssetData& Elem)
+			{
+				return
+					Elem.ObjectPath.ToString() == (FoundedAssetObjectPath) ||
+					Elem.PackageName.ToString() == (FoundedAssetObjectPath);
+			});
+
+			if (!AssetData) continue;
+
+			// if founded asset is ok, we loading file by lines to determine on what line its used
+			TArray<FString> Lines;
+			FFileHelper::LoadFileToStringArray(Lines, *File);
+			for (int32 i = 0; i < Lines.Num(); ++i)
+			{
+				if (!Lines.IsValidIndex(i)) continue;
+				if (!Lines[i].Contains(FoundedAssetObjectPath)) continue;
+
+				FProjectCleanerIndirectAsset IndirectAsset;
+				IndirectAsset.AssetData = *AssetData;
+				IndirectAsset.FilePath = FPaths::ConvertRelativePathToFull(File);
+				IndirectAsset.LineNum = i + 1;
+				AssetsIndirect.AddUnique(IndirectAsset);
+			}
+		}
+	}
 }
 
 void UProjectCleanerLibrary::GetAssetsPrimary(TArray<FAssetData>& AssetsPrimary, const bool bIncludeDerivedClasses)
 {
+	AssetsPrimary.Reset();
+	
+	const FAssetRegistryModule& ModuleAssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>(AssetRegistryConstants::ModuleName);
+
+	TArray<FName> PrimaryAssetClasses;
+	GetPrimaryAssetClasses(PrimaryAssetClasses, bIncludeDerivedClasses);
+
+	FARFilter Filter;
+	Filter.bRecursiveClasses = true;
+	Filter.bRecursivePaths = true;
+	Filter.PackagePaths.Add(FName{ProjectCleanerConstants::PathRelRoot});
+	
+	for (const auto& ClassName : PrimaryAssetClasses)
+	{
+		Filter.ClassNames.Add(ClassName);
+	}
+	ModuleAssetRegistry.Get().GetAssets(Filter, AssetsPrimary);
+
+	FARFilter FilterBlueprint;
+	FilterBlueprint.bRecursivePaths = true;
+	FilterBlueprint.bRecursiveClasses = true;
+	FilterBlueprint.PackagePaths.Add(FName{ProjectCleanerConstants::PathRelRoot});
+	FilterBlueprint.ClassNames.Add(UBlueprint::StaticClass()->GetFName());
+
+	TArray<FAssetData> BlueprintAssets;
+	ModuleAssetRegistry.Get().GetAssets(FilterBlueprint, BlueprintAssets);
+
+	for (const auto& BlueprintAsset : BlueprintAssets)
+	{
+		const FName BlueprintClass = FName{*GetAssetClassName(BlueprintAsset)};
+		if (PrimaryAssetClasses.Contains(BlueprintClass))
+		{
+			AssetsPrimary.AddUnique(BlueprintAsset);
+		}
+	}
 }
 
 int64 UProjectCleanerLibrary::GetAssetsTotalSize(const TArray<FAssetData>& Assets)
@@ -497,121 +832,6 @@ int64 UProjectCleanerLibrary::GetAssetsTotalSize(const TArray<FAssetData>& Asset
 
 	return Size;
 }
-
-// void UProjectCleanerLibrary::GetAssetsIndirect(TArray<FProjectCleanerIndirectAsset>& IndirectAssets)
-// {
-// 	IndirectAssets.Reset();
-//
-// 	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
-// 	const FAssetRegistryModule& ModuleAssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>(AssetRegistryConstants::ModuleName);
-// 	
-// 	const FString SourceDir = FPaths::ProjectDir() + TEXT("Source/");
-// 	const FString ConfigDir = FPaths::ProjectDir() + TEXT("Config/");
-// 	const FString PluginsDir = FPaths::ProjectDir() + TEXT("Plugins/");
-// 	
-// 	TSet<FString> Files;
-// 	Files.Reserve(200); // reserving some space
-// 	
-// 	// 1) finding all source files in main project "Source" directory (<yourproject>/Source/*)
-// 	TArray<FString> FilesToScan;
-// 	PlatformFile.FindFilesRecursively(FilesToScan, *SourceDir, TEXT(".cs"));
-// 	PlatformFile.FindFilesRecursively(FilesToScan, *SourceDir, TEXT(".cpp"));
-// 	PlatformFile.FindFilesRecursively(FilesToScan, *SourceDir, TEXT(".h"));
-// 	PlatformFile.FindFilesRecursively(FilesToScan, *ConfigDir, TEXT(".ini"));
-// 	Files.Append(FilesToScan);
-// 	
-// 	// 2) we should find all source files in plugins folder (<yourproject>/Plugins/*)
-// 	TArray<FString> ProjectPluginsFiles;
-// 	// finding all installed plugins in "Plugins" directory
-// 	struct DirectoryVisitor : public IPlatformFile::FDirectoryVisitor
-// 	{
-// 		virtual bool Visit(const TCHAR* FilenameOrDirectory, bool bIsDirectory) override
-// 		{
-// 			if (bIsDirectory)
-// 			{
-// 				InstalledPlugins.Add(FilenameOrDirectory);
-// 			}
-// 	
-// 			return true;
-// 		}
-// 	
-// 		TArray<FString> InstalledPlugins;
-// 	};
-// 	
-// 	DirectoryVisitor Visitor;
-// 	PlatformFile.IterateDirectory(*PluginsDir, Visitor);
-// 	
-// 	// 3) for every installed plugin we scanning only "Source" and "Config" folders
-// 	for (const auto& Dir : Visitor.InstalledPlugins)
-// 	{
-// 		const FString PluginSourcePathDir = Dir + "/Source";
-// 		const FString PluginConfigPathDir = Dir + "/Config";
-// 	
-// 		PlatformFile.FindFilesRecursively(ProjectPluginsFiles, *PluginSourcePathDir, TEXT(".cs"));
-// 		PlatformFile.FindFilesRecursively(ProjectPluginsFiles, *PluginSourcePathDir, TEXT(".cpp"));
-// 		PlatformFile.FindFilesRecursively(ProjectPluginsFiles, *PluginSourcePathDir, TEXT(".h"));
-// 		PlatformFile.FindFilesRecursively(ProjectPluginsFiles, *PluginConfigPathDir, TEXT(".ini"));
-// 	}
-// 	
-// 	Files.Append(ProjectPluginsFiles);
-// 	Files.Shrink();
-//
-// 	TArray<FAssetData> AllAssets;
-// 	AllAssets.Reserve(ModuleAssetRegistry.Get().GetAllocatedSize());
-// 	ModuleAssetRegistry.Get().GetAssetsByPath(FName{*ProjectCleanerConstants::PathRelativeRoot}, AllAssets, true);
-//
-// 	for (const auto& File : Files)
-// 	{
-// 		if (!PlatformFile.FileExists(*File)) continue;
-// 	
-// 		FString FileContent;
-// 		FFileHelper::LoadFileToString(FileContent, *File);
-// 		
-// 		if (!HasIndirectlyUsedAssets(FileContent)) continue;
-//
-// 		static FRegexPattern Pattern(TEXT(R"(\/Game([A-Za-z0-9_.\/]+)\b)"));
-// 		FRegexMatcher Matcher(Pattern, FileContent);
-// 		while (Matcher.FindNext())
-// 		{
-// 			FString FoundedAssetObjectPath =  Matcher.GetCaptureGroup(0);
-// 		
-//
-// 			// if ObjectPath ends with "_C" , then its probably blueprint, so we trim that
-// 			if (FoundedAssetObjectPath.EndsWith("_C"))
-// 			{
-// 				FString TrimmedObjectPath = FoundedAssetObjectPath;
-// 				TrimmedObjectPath.RemoveFromEnd("_C");
-// 				
-// 				FoundedAssetObjectPath = TrimmedObjectPath;
-// 			}
-//
-// 			
-// 			const FAssetData* AssetData = AllAssets.FindByPredicate([&] (const FAssetData& Elem)
-// 			{
-// 				return
-// 					Elem.ObjectPath.ToString()==(FoundedAssetObjectPath) ||
-// 					Elem.PackageName.ToString()==(FoundedAssetObjectPath);
-// 			});
-//
-// 			if (!AssetData) continue;
-// 			
-// 			// if founded asset is ok, we loading file by lines to determine on what line its used
-// 			TArray<FString> Lines;
-// 			FFileHelper::LoadFileToStringArray(Lines, *File);
-// 			for (int32 i = 0; i < Lines.Num(); ++i)
-// 			{
-// 				if (!Lines.IsValidIndex(i)) continue;
-// 				if (!Lines[i].Contains(FoundedAssetObjectPath)) continue;
-// 			
-// 				FProjectCleanerIndirectAsset IndirectAsset;
-// 				IndirectAsset.AssetData = *AssetData;
-// 				IndirectAsset.FilePath = FPaths::ConvertRelativePathToFull(File);
-// 				IndirectAsset.LineNum = i + 1;
-// 				IndirectAssets.Add(IndirectAsset);
-// 			}
-// 		}
-// 	}
-// }
 
 FString UProjectCleanerLibrary::PathConvertToAbs(const FString& InRelPath)
 {
@@ -642,26 +862,6 @@ FString UProjectCleanerLibrary::GetAssetClassName(const FAssetData& AssetData)
 
 	return AssetData.AssetClass.ToString();
 }
-
-// void UProjectCleanerLibrary::GetNonEngineFiles(TSet<FString>& NonEngineFiles)
-// {
-// 	NonEngineFiles.Reset();
-//
-// 	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
-// 	FFindNonEngineFilesVisitor FindNonEngineFilesVisitor(PlatformFile, NonEngineFiles);
-//
-// 	PlatformFile.IterateDirectoryRecursively(*FPaths::ProjectContentDir(), FindNonEngineFilesVisitor);
-// }
-
-// void UProjectCleanerLibrary::GetAssetsCorrupted(TSet<FString>& CorruptedAssets)
-// {
-// 	CorruptedAssets.Reset();
-//
-// 	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
-// 	FFindCorruptedFilesVisitor FindCorruptedFilesVisitor(PlatformFile, CorruptedAssets);
-//
-// 	PlatformFile.IterateDirectoryRecursively(*FPaths::ProjectContentDir(), FindCorruptedFilesVisitor);
-// }
 
 void UProjectCleanerLibrary::FixupRedirectors()
 {
@@ -771,15 +971,15 @@ bool UProjectCleanerLibrary::IsAssetRegistryWorking()
 	return FModuleManager::LoadModuleChecked<FAssetRegistryModule>(AssetRegistryConstants::ModuleName).Get().IsLoadingAssets();
 }
 
-// bool UProjectCleanerLibrary::HasIndirectlyUsedAssets(const FString& FileContent)
-// {
-// 	if (FileContent.IsEmpty()) return false;
-//
-// 	// search any sub string that has asset package path in it
-// 	static FRegexPattern Pattern(TEXT(R"(\/Game([A-Za-z0-9_.\/]+)\b)"));
-// 	FRegexMatcher Matcher(Pattern, FileContent);
-// 	return Matcher.FindNext();
-// }
+bool UProjectCleanerLibrary::HasIndirectlyUsedAssets(const FString& FileContent)
+{
+	if (FileContent.IsEmpty()) return false;
+
+	// search any sub string that has asset package path in it
+	static FRegexPattern Pattern(TEXT(R"(\/Game([A-Za-z0-9_.\/]+)\b)"));
+	FRegexMatcher Matcher(Pattern, FileContent);
+	return Matcher.FindNext();
+}
 
 FString UProjectCleanerLibrary::ConvertPathInternal(const FString& From, const FString& To, const FString& Path)
 {

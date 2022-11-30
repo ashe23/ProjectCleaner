@@ -169,10 +169,10 @@ void FProjectCleanerScanner::Scan(const TWeakObjectPtr<UProjectCleanerScanSettin
 	FoldersForbiddenToDelete.Add(FPaths::GameUserDeveloperDir() / TEXT("Collections"));
 	// todo:ashe23 for ue5 add __ExternalObject__ and __ExternalActors__ folders
 	
-	if (FModuleManager::Get().IsModuleLoaded(FName{*ProjectCleanerConstants::PluginMegascans}))
-	{
-		FoldersForbiddenToDelete.Add(FPaths::ProjectContentDir() / ProjectCleanerConstants::PluginMegascansMsPresetsFolder);
-	}
+	// if (FModuleManager::Get().IsModuleLoaded(ProjectCleanerConstants::PluginMegascans))
+	// {
+	// 	FoldersForbiddenToDelete.Add(FPaths::ProjectContentDir() / ProjectCleanerConstants::PluginMegascansMsPresetsFolder);
+	// }
 
 	FoldersForbiddenToScan.Add(FPaths::ProjectContentDir() / TEXT("Collections"));
 	FoldersForbiddenToScan.Add(FPaths::GameUserDeveloperDir() / TEXT("Collections"));
@@ -646,17 +646,17 @@ void FProjectCleanerScanner::FindAssetsUsed()
 		}
 	}
 
-	const bool IsMegascansLoaded = FModuleManager::Get().IsModuleLoaded(FName{*ProjectCleanerConstants::PluginMegascans});
-	if (IsMegascansLoaded)
-	{
-		TArray<FAssetData> MegascansPresetAssets;
-		ModuleAssetRegistry.Get().GetAssetsByPath(FName{*ProjectCleanerConstants::PathRelMegascansPresets}, MegascansPresetAssets, true);
-
-		for (const auto& MegascansAsset : MegascansPresetAssets)
-		{
-			AssetsUsed.AddUnique(MegascansAsset);
-		}
-	}
+	// const bool IsMegascansLoaded = FModuleManager::Get().IsModuleLoaded(FName{*ProjectCleanerConstants::PluginMegascans});
+	// if (IsMegascansLoaded)
+	// {
+	// 	TArray<FAssetData> MegascansPresetAssets;
+	// 	ModuleAssetRegistry.Get().GetAssetsByPath(FName{*ProjectCleanerConstants::PathRelMegascansPresets}, MegascansPresetAssets, true);
+	//
+	// 	for (const auto& MegascansAsset : MegascansPresetAssets)
+	// 	{
+	// 		AssetsUsed.AddUnique(MegascansAsset);
+	// 	}
+	// }
 
 	// finding all linked assets (refs and deps) of used assets
 	TSet<FName> UsedAssetsDeps;
