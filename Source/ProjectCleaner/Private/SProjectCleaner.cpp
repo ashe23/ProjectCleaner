@@ -6,7 +6,6 @@
 #include "ProjectCleanerConstants.h"
 #include "ProjectCleanerStyles.h"
 #include "ProjectCleanerLibrary.h"
-#include "ProjectCleanerCmds.h"
 #include "ProjectCleaner.h"
 // Engine Headers
 #include "Widgets/Layout/SScrollBox.h"
@@ -18,17 +17,6 @@ static constexpr int32 WidgetIndexLoading = 1;
 void SProjectCleaner::Construct(const FArguments& InArgs, const TSharedRef<SDockTab>& ConstructUnderMajorTab, const TSharedPtr<SWindow>& ConstructUnderWindow)
 {
 	ScanSettings = GetMutableDefault<UProjectCleanerScanSettings>();
-
-	// Cmds = MakeShareable(new FUICommandList);
-	// Cmds->MapAction(
-	// 	FProjectCleanerCmds::Get().OpenDocs,
-	// 	FUIAction(
-	// 		FExecuteAction::CreateLambda([]()
-	// 		{
-	// 			UE_LOG(LogProjectCleaner, Warning, TEXT("Opening Help docs"))
-	// 		})
-	// 	)
-	// );
 
 	FPropertyEditorModule& PropertyEditor = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
 	FDetailsViewArgs DetailsViewArgs;
@@ -140,8 +128,8 @@ void SProjectCleaner::Construct(const FArguments& InArgs, const TSharedRef<SDock
 	ChildSlot
 	[
 		SNew(SWidgetSwitcher)
-		.IsEnabled_Static(IsWidgetEnabled)
-		.WidgetIndex_Static(GetWidgetIndex)
+		.IsEnabled_Static(WidgetEnabled)
+		.WidgetIndex_Static(WidgetGetIndex)
 		+ SWidgetSwitcher::Slot()
 		  .HAlign(HAlign_Fill)
 		  .VAlign(VAlign_Fill)
@@ -188,12 +176,12 @@ SProjectCleaner::~SProjectCleaner()
 	FGlobalTabmanager::Get()->UnregisterTabSpawner(ProjectCleanerConstants::TabNonEngineFiles);
 }
 
-bool SProjectCleaner::IsWidgetEnabled()
+bool SProjectCleaner::WidgetEnabled()
 {
 	return !UProjectCleanerLibrary::IsAssetRegistryWorking();
 }
 
-int32 SProjectCleaner::GetWidgetIndex()
+int32 SProjectCleaner::WidgetGetIndex()
 {
 	return UProjectCleanerLibrary::IsAssetRegistryWorking() ? WidgetIndexLoading : WidgetIndexNone;
 }
@@ -221,6 +209,21 @@ void SProjectCleaner::MenuBarFillHelp(FMenuBuilder& MenuBuilder, const TSharedPt
 	MenuBuilder.EndSection();
 }
 
+FReply SProjectCleaner::OnBtnScanProjectClick() const
+{
+	return FReply::Handled();
+}
+
+FReply SProjectCleaner::OnBtnCleanProjectClick() const
+{
+	return FReply::Handled();
+}
+
+FReply SProjectCleaner::OnBtnDeleteEmptyFoldersClick() const
+{
+	return FReply::Handled();
+}
+
 TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnScanSettings(const FSpawnTabArgs& Args) const
 {
 	return
@@ -228,15 +231,11 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnScanSettings(const FSpawnTabArgs
 		.TabRole(PanelTab)
 		.Label(FText::FromString(TEXT("Scan Settings")))
 		.Icon(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconSettings16"))
-		// .OnCanCloseTab_Lambda([]()
-		// {
-		// 	return false;
-		// })
 		[
 			SNew(SVerticalBox)
 			+ SVerticalBox::Slot()
 			  .AutoHeight()
-			  .Padding(FMargin{0.0f, 0.0f, 0.0f, 10.0f})
+			  .Padding(FMargin{5.0f})
 			[
 				SNew(SHorizontalBox)
 				+ SHorizontalBox::Slot()
@@ -245,7 +244,7 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnScanSettings(const FSpawnTabArgs
 				[
 					SNew(SButton)
 					.ContentPadding(FMargin{5.0f})
-					// .OnClicked_Raw(this, &SProjectCleanerWindowMain::OnBtnScanProjectClicked)
+					.OnClicked_Raw(this, &SProjectCleaner::OnBtnScanProjectClick)
 					.ButtonColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Blue"))
 					[
 						SNew(STextBlock)
@@ -264,7 +263,7 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnScanSettings(const FSpawnTabArgs
 				[
 					SNew(SButton)
 					.ContentPadding(FMargin{5.0f})
-					// .OnClicked_Raw(this, &SProjectCleanerWindowMain::OnBtnCleanProjectClicked)
+					.OnClicked_Raw(this, &SProjectCleaner::OnBtnCleanProjectClick)
 					.ButtonColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Red"))
 					[
 						SNew(STextBlock)
@@ -283,7 +282,7 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnScanSettings(const FSpawnTabArgs
 				[
 					SNew(SButton)
 					.ContentPadding(FMargin{5.0f})
-					// .OnClicked_Raw(this, &SProjectCleanerWindowMain::OnBtnDeleteEmptyFoldersClicked)
+					.OnClicked_Raw(this, &SProjectCleaner::OnBtnDeleteEmptyFoldersClick)
 					.ButtonColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Red"))
 					[
 						SNew(STextBlock)
@@ -298,11 +297,10 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnScanSettings(const FSpawnTabArgs
 				]
 			]
 			+ SVerticalBox::Slot()
+			.Padding(FMargin{5.0f})
 			.FillHeight(1.0f)
 			[
 				SNew(SBox)
-				// .WidthOverride(500.0f)
-				// .HeightOverride(500.0f)
 				[
 					SNew(SScrollBox)
 					.ScrollWhenFocusChanges(EScrollWhenFocusChanges::NoScroll)
@@ -324,58 +322,23 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnUnusedAssets(const FSpawnTabArgs
 		.TabRole(PanelTab)
 		.Label(FText::FromString(TEXT("Unused Assets")))
 		.Icon(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconTabUnused16"))
-		// .OnCanCloseTab_Lambda([]()
-		// {
-		// 	return false;
-		// })
 		[
 			SNew(SVerticalBox)
 			+ SVerticalBox::Slot()
+			.Padding(FMargin{5.0f})
 			.FillHeight(1.0f)
 			[
 				SNew(SSplitter)
 				.Orientation(Orient_Vertical)
 				+ SSplitter::Slot()
 				[
-					SNew(SVerticalBox)
-					+ SVerticalBox::Slot()
-					.FillHeight(1.0f)
-					[
-						SNew(SBox)
-						// .WidthOverride(500.0f)
-						// .HeightOverride(500.0f)
-						[
-							SNew(SScrollBox)
-							.ScrollWhenFocusChanges(EScrollWhenFocusChanges::NoScroll)
-							.AnimateWheelScrolling(true)
-							.AllowOverscroll(EAllowOverscroll::No)
-							+ SScrollBox::Slot()
-							[
-								ScanSettingsProperty.ToSharedRef()
-							]
-						]
-					]
+					SNew(SProjectCleanerTreeView)
+					.RootFolder(FPaths::ProjectContentDir())
 				]
 				+ SSplitter::Slot()
 				[
-					SNew(SVerticalBox)
-					+ SVerticalBox::Slot()
-					.FillHeight(1.0f)
-					[
-						SNew(SBox)
-						// .WidthOverride(500.0f)
-						// .HeightOverride(500.0f)
-						[
-							SNew(SScrollBox)
-							.ScrollWhenFocusChanges(EScrollWhenFocusChanges::NoScroll)
-							.AnimateWheelScrolling(true)
-							.AllowOverscroll(EAllowOverscroll::No)
-							+ SScrollBox::Slot()
-							[
-								ScanSettingsProperty.ToSharedRef()
-							]
-						]
-					]
+					SNew(STextBlock)
+					.Text(FText::FromString(TEXT("Assets")))
 				]
 			]
 		];
@@ -388,30 +351,9 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnIndirectAssets(const FSpawnTabAr
 		.TabRole(PanelTab)
 		.Label(FText::FromString(TEXT("Indirect Assets")))
 		.Icon(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconTabIndirect16"))
-		// .OnCanCloseTab_Lambda([]()
-		// {
-		// 	return false;
-		// })
 		[
-			SNew(SVerticalBox)
-			+ SVerticalBox::Slot()
-			.FillHeight(1.0f)
-			[
-				SNew(SBox)
-				// .WidthOverride(500.0f)
-				// .HeightOverride(500.0f)
-				[
-					SNew(SScrollBox)
-					.ScrollWhenFocusChanges(EScrollWhenFocusChanges::NoScroll)
-					.AnimateWheelScrolling(true)
-					.AllowOverscroll(EAllowOverscroll::No)
-					+ SScrollBox::Slot()
-					[
-						ScanSettingsProperty.ToSharedRef()
-					]
-				]
-			]
-
+			SNew(STextBlock)
+			.Text(FText::FromString(TEXT("Assets")))
 		];
 }
 
@@ -422,29 +364,9 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnCorruptedAssets(const FSpawnTabA
 		.TabRole(PanelTab)
 		.Label(FText::FromString(TEXT("Corrupted Assets")))
 		.Icon(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconTabCorrupted16"))
-		// .OnCanCloseTab_Lambda([]()
-		// {
-		// 	return false;
-		// })
 		[
-			SNew(SVerticalBox)
-			+ SVerticalBox::Slot()
-			.FillHeight(1.0f)
-			[
-				SNew(SBox)
-				// .WidthOverride(500.0f)
-				// .HeightOverride(500.0f)
-				[
-					SNew(SScrollBox)
-					.ScrollWhenFocusChanges(EScrollWhenFocusChanges::NoScroll)
-					.AnimateWheelScrolling(true)
-					.AllowOverscroll(EAllowOverscroll::No)
-					+ SScrollBox::Slot()
-					[
-						ScanSettingsProperty.ToSharedRef()
-					]
-				]
-			]
+			SNew(STextBlock)
+			.Text(FText::FromString(TEXT("Assets")))
 		];
 }
 
@@ -456,23 +378,7 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnNonEngineFiles(const FSpawnTabAr
 		.Label(FText::FromString(TEXT("NonEngine Files")))
 		.Icon(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconTabNonEngine16"))
 		[
-			SNew(SVerticalBox)
-			+ SVerticalBox::Slot()
-			.FillHeight(1.0f)
-			[
-				SNew(SBox)
-				// .WidthOverride(500.0f)
-				// .HeightOverride(500.0f)
-				[
-					SNew(SScrollBox)
-					.ScrollWhenFocusChanges(EScrollWhenFocusChanges::NoScroll)
-					.AnimateWheelScrolling(true)
-					.AllowOverscroll(EAllowOverscroll::No)
-					+ SScrollBox::Slot()
-					[
-						ScanSettingsProperty.ToSharedRef()
-					]
-				]
-			]
+			SNew(STextBlock)
+			.Text(FText::FromString(TEXT("Assets")))
 		];
 }

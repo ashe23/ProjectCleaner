@@ -21,11 +21,15 @@ public:
 	void Construct(const FArguments& InArgs, const TSharedRef<SDockTab>& ConstructUnderMajorTab, const TSharedPtr<SWindow>& ConstructUnderWindow);
 	virtual ~SProjectCleaner() override;
 private:
-	static bool IsWidgetEnabled();
-	static int32 GetWidgetIndex();
+	static bool WidgetEnabled();
+	static int32 WidgetGetIndex();
 
 	static void MenuBarFillTabs(FMenuBuilder& MenuBuilder, const TSharedPtr<FTabManager> TabManager);
 	static void MenuBarFillHelp(FMenuBuilder& MenuBuilder, const TSharedPtr<FTabManager> TabManager);
+
+	FReply OnBtnScanProjectClick() const;
+	FReply OnBtnCleanProjectClick() const;
+	FReply OnBtnDeleteEmptyFoldersClick() const;
 
 	TSharedRef<SDockTab> OnTabSpawnScanSettings(const FSpawnTabArgs& Args) const;
 	TSharedRef<SDockTab> OnTabSpawnUnusedAssets(const FSpawnTabArgs& Args) const;
@@ -35,7 +39,6 @@ private:
 	TSharedPtr<FTabManager> TabManager;
 	TSharedPtr<FTabManager::FLayout> TabLayout;
 
-	// TSharedPtr<FUICommandList> Cmds;
 	TWeakObjectPtr<UProjectCleanerScanSettings> ScanSettings;
 	TSharedPtr<IDetailsView> ScanSettingsProperty;
 };
