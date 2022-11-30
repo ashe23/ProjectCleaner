@@ -1,6 +1,6 @@
 ﻿// Copyright Ashot Barkhudaryan. All Rights Reserved.
 
-#include "Slate/ProjectCleanerFileListView.h"
+#include "Slate/SProjectCleanerFileListView.h"
 #include "ProjectCleanerStyles.h"
 // Engine Headers
 #include "ProjectCleanerConstants.h"
@@ -34,7 +34,7 @@ void SProjectCleanerFileListView::Construct(const FArguments& InArgs)
 		.HeaderRow(GetListHeaderRow());
 	}
 
-	const FString TotalSizeStr = FString::Printf(TEXT("%d items. Total Size: %s"), ListItems.Num(), *FText::AsMemory(TotalSize).ToString());
+	const FString TotalSizeStr = FString::Printf(TEXT("%d item%s. Total Size: %s"), ListItems.Num(), ListItems.Num() > 1 ? TEXT("s") : TEXT(""), *FText::AsMemory(TotalSize).ToString());
 
 	ListView->RequestListRefresh();
 
@@ -42,7 +42,7 @@ void SProjectCleanerFileListView::Construct(const FArguments& InArgs)
 	[
 		SNew(SOverlay)
 		+ SOverlay::Slot()
-		.Padding(20.0f)
+		.Padding(FMargin{5.0f})
 		[
 			SNew(SVerticalBox)
 			+ SVerticalBox::Slot()
@@ -53,6 +53,10 @@ void SProjectCleanerFileListView::Construct(const FArguments& InArgs)
 				.AutoWrapText(true)
 				.Font(FProjectCleanerStyles::GetFont("Light", 15))
 				.Text(FText::FromString(InArgs._Title))
+				.Visibility_Lambda([&]()
+				{
+					return InArgs._Title.IsEmpty() ? EVisibility::Hidden : EVisibility::Visible;
+				})
 			]
 			+ SVerticalBox::Slot()
 			  .Padding(FMargin{0.0f, 0.0f, 0.0f, 10.0f})
@@ -62,6 +66,10 @@ void SProjectCleanerFileListView::Construct(const FArguments& InArgs)
 				.AutoWrapText(true)
 				.Font(FProjectCleanerStyles::GetFont("Light", 10))
 				.Text(FText::FromString(InArgs._Description))
+				.Visibility_Lambda([&]()
+				{
+					return InArgs._Description.IsEmpty() ? EVisibility::Hidden : EVisibility::Visible;
+				})
 			]
 			+ SVerticalBox::Slot()
 			  .Padding(FMargin{0.0f, 10.0f})
@@ -71,14 +79,6 @@ void SProjectCleanerFileListView::Construct(const FArguments& InArgs)
 				.AutoWrapText(true)
 				.Font(FProjectCleanerStyles::GetFont("Light", 8))
 				.Text(FText::FromString(TEXT("Double click on row to open in Explorer")))
-			]
-			+ SVerticalBox::Slot()
-			.AutoHeight()
-			[
-				SNew(STextBlock)
-				.AutoWrapText(true)
-				.Font(FProjectCleanerStyles::GetFont("Light", 8))
-				.Text(FText::FromString(TotalSizeStr))
 			]
 			+ SVerticalBox::Slot()
 			  .FillHeight(1.0f)
@@ -92,6 +92,14 @@ void SProjectCleanerFileListView::Construct(const FArguments& InArgs)
 				[
 					ListView.ToSharedRef()
 				]
+			]
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			[
+				SNew(STextBlock)
+				.AutoWrapText(true)
+				.Font(FProjectCleanerStyles::GetFont("Light", 8))
+				.Text(FText::FromString(TotalSizeStr))
 			]
 		]
 	];

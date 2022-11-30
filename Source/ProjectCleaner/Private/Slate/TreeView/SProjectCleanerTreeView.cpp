@@ -10,6 +10,7 @@
 #include "ProjectCleanerLibrary.h"
 #include "Widgets/Input/SSearchBox.h"
 #include "Widgets/Layout/SScrollBox.h"
+#include "Widgets/Layout/SSeparator.h"
 
 void SProjectCleanerTreeView::Construct(const FArguments& InArgs)
 {
@@ -40,16 +41,7 @@ void SProjectCleanerTreeView::Construct(const FArguments& InArgs)
 		SNew(SVerticalBox)
 		+ SVerticalBox::Slot()
 		  .AutoHeight()
-		  .Padding(FMargin{0.0f, 0.0f, 0.0f, 5.0f})
-		[
-			SNew(SSearchBox)
-			.HintText(FText::FromString(TEXT("Search Folders...")))
-			.OnTextChanged(this, &SProjectCleanerTreeView::OnTreeViewSearchBoxTextChanged)
-			.OnTextCommitted(this, &SProjectCleanerTreeView::OnTreeViewSearchBoxTextCommitted)
-		]
-		+ SVerticalBox::Slot()
-		  .AutoHeight()
-		  .Padding(FMargin{0.0f, 0.0f, 0.0f, 5.0f})
+		  .Padding(FMargin{0.0f, 0.0f, 0.0f, 10.0f})
 		[
 			SNew(SHorizontalBox)
 			+ SHorizontalBox::Slot()
@@ -83,6 +75,22 @@ void SProjectCleanerTreeView::Construct(const FArguments& InArgs)
 			]
 		]
 		+ SVerticalBox::Slot()
+		  .AutoHeight()
+		  .Padding(FMargin{0.0f, 0.0f, 0.0f, 5.0f})
+		[
+			SNew(SSeparator)
+			.Thickness(5.0f)
+		]
+		+ SVerticalBox::Slot()
+		  .AutoHeight()
+		  .Padding(FMargin{0.0f, 0.0f, 0.0f, 5.0f})
+		[
+			SNew(SSearchBox)
+			.HintText(FText::FromString(TEXT("Search Folders...")))
+			.OnTextChanged(this, &SProjectCleanerTreeView::OnTreeViewSearchBoxTextChanged)
+			.OnTextCommitted(this, &SProjectCleanerTreeView::OnTreeViewSearchBoxTextCommitted)
+		]
+		+ SVerticalBox::Slot()
 		  .FillHeight(1.0f)
 		  .Padding(FMargin{0.0f, 5.0f})
 		[
@@ -100,6 +108,12 @@ void SProjectCleanerTreeView::Construct(const FArguments& InArgs)
 
 void SProjectCleanerTreeView::TreeItemsUpdate()
 {
+	if (ForbiddenFolders.Contains(RootFolder))
+	{
+		UE_LOG(LogProjectCleaner, Warning, TEXT("Root folder cant be in forbidden list"));
+		return;
+	}
+		
 	TreeItems.Reset();
 
 	// creating root item
@@ -129,6 +143,8 @@ void SProjectCleanerTreeView::TreeItemsUpdate()
 
 		for (const auto& SubFolder : SubFolders)
 		{
+			if (ForbiddenFolders.Contains(SubFolder)) continue;
+			
 			const TSharedPtr<FProjectCleanerTreeViewItem> SubDirItem = MakeShareable(new FProjectCleanerTreeViewItem());
 			if (!SubDirItem.IsValid()) continue;
 
@@ -138,7 +154,7 @@ void SProjectCleanerTreeView::TreeItemsUpdate()
 			SubDirItem->FoldersTotal = UProjectCleanerLibrary::GetSubFoldersNum(SubFolder, true);
 			SubDirItem->FoldersEmpty = UProjectCleanerLibrary::GetEmptyFoldersNum(SubFolder);
 			SubDirItem->bDeveloperFolder = SubFolder.Equals(FPaths::ProjectContentDir() / TEXT("Developers"));
-			SubDirItem->bEmpty = UProjectCleanerLibrary::IsEmptyFolder(RootFolder);
+			SubDirItem->bEmpty = UProjectCleanerLibrary::IsEmptyFolder(SubFolder);
 
 			CurrentItem->SubDirectories.Add(SubDirItem);
 			Stack.Push(SubDirItem);
@@ -236,7 +252,7 @@ void SProjectCleanerTreeView::OnTreeViewSearchBoxTextCommitted(const FText& InSe
 
 TSharedRef<ITableRow> SProjectCleanerTreeView::OnTreeViewGenerateRow(TSharedPtr<FProjectCleanerTreeViewItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const
 {
-	return SNew(SProjectCleanerTreeViewItem, OwnerTable).TreeItem(Item);
+	return SNew(SProjectCleanerTreeViewItem, OwnerTable).ToolTipText(FText::FromString(Item->DirPathRel)).TreeItem(Item);
 }
 
 void SProjectCleanerTreeView::OnTreeViewItemMouseDblClick(TSharedPtr<FProjectCleanerTreeViewItem> Item) const

@@ -19,6 +19,14 @@ public:
 	static void GetEmptyFolders(const FString& InDirPath, TSet<FString>& EmptyFolders);
 	static int32 GetEmptyFoldersNum(const FString& InDirPath);
 	static bool IsEmptyFolder(const FString& InDirPath);
+	static void GetNonEngineFiles(TSet<FString>& FilesNonEngine);
+
+	static void GetAssetsUsed(TArray<FAssetData>& AssetsUsed);
+	static void GetAssetsUnused(TArray<FAssetData>& AssetsUnused);
+	static void GetAssetsPrimary(TArray<FAssetData>& AssetsPrimary, const bool bIncludeDerivedClasses = false);
+	static void GetAssetsIndirect(TArray<FAssetData>& AssetsIndirect);
+	static void GetAssetsCorrupted(TSet<FString>& FilesCorrupted);
+	static void GetPrimaryAssetClasses(TArray<UClass*>& PrimaryAssetClasses, const bool bIncludeDerivedClasses = false);
 	
 	// UFUNCTION(BlueprintCallable, Category="ProjectCleaner", meta=(ToolTip="Returns all subdirectories for given directory. Specify Exclude Directories that you want to exclude"))
 	// static void GetSubDirectories(const FString& RootDir, const bool bRecursive, TSet<FString>& SubDirectories, const TSet<FString>& ExcludeDirectories);
@@ -68,7 +76,7 @@ public:
 	static void FocusOnDirectory(const FString& InRelPath);
 
 	// UFUNCTION(BlueprintCallable, Category="ProjectCleaner", meta=(ToolTip="Checks if given extension is engine extension or not (.uasset or .umap)"))
-	// static bool IsEngineExtension(const FString& Extension);
+	static bool IsEngineExtension(const FString& Extension);
 
 	UFUNCTION(BlueprintCallable, Category="ProjectCleaner", meta=(ToolTip="Checks if given asset path is under megascans plugin folder or not"))
 	static bool IsUnderMegascansFolder(const FString& AssetPackagePath);

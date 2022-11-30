@@ -2,6 +2,7 @@
 
 #include "Slate/SProjectCleaner.h"
 #include "Slate/TreeView/SProjectCleanerTreeView.h"
+#include "Slate/SProjectCleanerFileListView.h"
 #include "ProjectCleanerScanSettings.h"
 #include "ProjectCleanerConstants.h"
 #include "ProjectCleanerStyles.h"
@@ -317,6 +318,16 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnScanSettings(const FSpawnTabArgs
 
 TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnUnusedAssets(const FSpawnTabArgs& Args) const
 {
+	TSet<FString> ForbiddenFolders;
+	ForbiddenFolders.Add(FPaths::ProjectContentDir() / TEXT("Collections"));
+	ForbiddenFolders.Add(FPaths::GameUserDeveloperDir() / TEXT("Collections"));
+	// todo:ashe23 for ue5 add __ExternalObject__ and __ExternalActors__ folders
+	
+	if (!ScanSettings->bScanDeveloperContents)
+	{
+		ForbiddenFolders.Add(FPaths::ProjectContentDir() / TEXT("Developers"));
+	}
+	
 	return
 		SNew(SDockTab)
 		.TabRole(PanelTab)
@@ -329,11 +340,14 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnUnusedAssets(const FSpawnTabArgs
 			.FillHeight(1.0f)
 			[
 				SNew(SSplitter)
+				.Style(FEditorStyle::Get(), "ContentBrowser.Splitter")
+				.PhysicalSplitterHandleSize(5.0f)
 				.Orientation(Orient_Vertical)
 				+ SSplitter::Slot()
 				[
 					SNew(SProjectCleanerTreeView)
 					.RootFolder(FPaths::ProjectContentDir())
+					.ForbiddenFolders(ForbiddenFolders)
 				]
 				+ SSplitter::Slot()
 				[
@@ -359,26 +373,40 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnIndirectAssets(const FSpawnTabAr
 
 TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnCorruptedAssets(const FSpawnTabArgs& Args) const
 {
+	// todo:ashe23 how to handle large number of files ?
+	
+	TSet<FString> FilesCorrupted;
+	UProjectCleanerLibrary::GetAssetsCorrupted(FilesCorrupted);
+	
 	return
 		SNew(SDockTab)
 		.TabRole(PanelTab)
 		.Label(FText::FromString(TEXT("Corrupted Assets")))
 		.Icon(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconTabCorrupted16"))
 		[
-			SNew(STextBlock)
-			.Text(FText::FromString(TEXT("Assets")))
+			SNew(SProjectCleanerFileListView)
+			.Title(TEXT("List of possibly corrupted assets, that exist in Content folder, but not loaded by engine"))
+			.Description(TEXT("In order to fix, try to reload project and see if its loaded. Otherwise close editor and remove them manually from explorer"))
+			.Files(FilesCorrupted)
 		];
 }
 
 TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnNonEngineFiles(const FSpawnTabArgs& Args) const
 {
+	// todo:ashe23 how to handle large number of files ?
+	
+	TSet<FString> FilesNonEngine;
+	UProjectCleanerLibrary::GetNonEngineFiles(FilesNonEngine);
+	
 	return
 		SNew(SDockTab)
 		.TabRole(PanelTab)
 		.Label(FText::FromString(TEXT("NonEngine Files")))
 		.Icon(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconTabNonEngine16"))
 		[
-			SNew(STextBlock)
-			.Text(FText::FromString(TEXT("Assets")))
+			SNew(SProjectCleanerFileListView)
+			.Title(TEXT("List of Non Engine files inside Content folder"))
+			.Description(TEXT("Sometimes you will see empty folder in ContentBrowser, which you cant delete. Its because its contains some non engine files visible only in Explorer. So make sure you delete all unnecessary files from list below to cleanup empty folders."))
+			.Files(FilesNonEngine)
 		];
 }

@@ -14,61 +14,16 @@
 #include "Misc/FileHelper.h"
 #include "Misc/ScopedSlowTask.h"
 
-// class FFindCorruptedFilesVisitor final : public IPlatformFile::FDirectoryVisitor
-// {
-// public:
-// 	IPlatformFile& PlatformFile;
-// 	TSet<FString>& CorruptedFiles;
-//
-// 	FFindCorruptedFilesVisitor(IPlatformFile& InPlatformFile, TSet<FString>& InCorruptedFiles)
-// 		: FDirectoryVisitor(EDirectoryVisitorFlags::None),
-// 		  PlatformFile(InPlatformFile),
-// 		  CorruptedFiles(InCorruptedFiles)
-// 	{
-// 	}
-//
-// 	virtual bool Visit(const TCHAR* FilenameOrDirectory, bool bIsDirectory) override
-// 	{
-// 		if (!bIsDirectory)
-// 		{
-// 			const FString FullPath = FPaths::ConvertRelativePathToFull(FilenameOrDirectory);
-// 			if (UProjectCleanerLibrary::IsEngineExtension(FPaths::GetExtension(FullPath, false)))
-// 			{
-// 				// here we got absolute path "C:/MyProject/Content/material.uasset"
-// 				// we must first convert that path to In Engine Internal Path like "/Game/material.uasset"
-// 				const FString InternalFilePath = UProjectCleanerLibrary::PathConvertToRel(FullPath);
-// 				// Converting file path to object path (This is for searching in AssetRegistry)
-// 				// example "/Game/Name.uasset" => "/Game/Name.Name"
-// 				FString ObjectPath = InternalFilePath;
-// 				ObjectPath.RemoveFromEnd(FPaths::GetExtension(InternalFilePath, true));
-// 				ObjectPath.Append(TEXT(".") + FPaths::GetBaseFilename(InternalFilePath));
-//
-// 				const FName ObjectPathName = FName{*ObjectPath};
-//
-// 				const FAssetRegistryModule& ModuleAssetRegistry = FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
-//
-// 				// if its does not exist in asset registry, then something wrong with asset
-// 				const FAssetData AssetData = ModuleAssetRegistry.Get().GetAssetByObjectPath(ObjectPathName);
-// 				if (!AssetData.IsValid())
-// 				{
-// 					CorruptedFiles.Add(FullPath);
-// 				}
-// 			}
-// 		}
-//
-// 		return true;
-// 	}
-// };
+
 //
 // class FFindNonEngineFilesVisitor final : public IPlatformFile::FDirectoryVisitor
 // {
 // public:
 // 	IPlatformFile& PlatformFile;
-// 	FRWLock FoundFilesLock;
 // 	TSet<FString>& NonEngineFiles;
 //
 // 	FFindNonEngineFilesVisitor(IPlatformFile& InPlatformFile, TSet<FString>& InNonEngineFiles)
-// 		: FDirectoryVisitor(EDirectoryVisitorFlags::ThreadSafe),
+// 		: FDirectoryVisitor(EDirectoryVisitorFlags::None),
 // 		  PlatformFile(InPlatformFile),
 // 		  NonEngineFiles(InNonEngineFiles)
 // 	{
@@ -81,7 +36,6 @@
 // 			const FString FullPath = FPaths::ConvertRelativePathToFull(FilenameOrDirectory);
 // 			if (!UProjectCleanerLibrary::IsEngineExtension(FPaths::GetExtension(FullPath, false)))
 // 			{
-// 				FRWScopeLock ScopeLock(FoundFilesLock, SLT_Write);
 // 				NonEngineFiles.Add(FullPath);
 // 			}
 // 		}
@@ -297,23 +251,37 @@ void UProjectCleanerLibrary::GetSubFolders(const FString& InDirPath, const bool 
 	if (InDirPath.IsEmpty()) return;
 	if (!FPaths::DirectoryExists(InDirPath)) return;
 
-	TArray<FString> SubDirs;
+	SubFolders.Reset();
+
+	class FFindFoldersVisitor final : public IPlatformFile::FDirectoryVisitor
+	{
+	public:
+		TSet<FString>& Folders;
+
+		explicit FFindFoldersVisitor(TSet<FString>& InFolders) : FDirectoryVisitor(EDirectoryVisitorFlags::None), Folders(InFolders)
+		{
+		}
+
+		virtual bool Visit(const TCHAR* FilenameOrDirectory, bool bIsDirectory) override
+		{
+			if (bIsDirectory)
+			{
+				Folders.Add(FilenameOrDirectory);
+			}
+			return true;
+		}
+	};
+
+	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
+	FFindFoldersVisitor FindFoldersVisitor(SubFolders);
 
 	if (bRecursive)
 	{
-		IFileManager::Get().FindFilesRecursive(SubDirs, *(InDirPath / TEXT("*")),TEXT("*.*"), false, true);
+		PlatformFile.IterateDirectoryRecursively(*InDirPath, FindFoldersVisitor);
 	}
 	else
 	{
-		IFileManager::Get().FindFiles(SubDirs, *(InDirPath / TEXT("*")), false, true);
-	}
-
-	SubFolders.Reset();
-	SubFolders.Reserve(SubDirs.Num());
-
-	for (const auto& SubDir : SubDirs)
-	{
-		SubFolders.Add(InDirPath / SubDir);
+		PlatformFile.IterateDirectory(*InDirPath, FindFoldersVisitor);
 	}
 }
 
@@ -332,9 +300,9 @@ void UProjectCleanerLibrary::GetEmptyFolders(const FString& InDirPath, TSet<FStr
 	class FFindEmptyFoldersVisitor final : public IPlatformFile::FDirectoryVisitor
 	{
 	public:
-		TSet<FString> EmptyFolders;
+		TSet<FString>& EmptyFolders;
 
-		explicit FFindEmptyFoldersVisitor(const TSet<FString>& InEmptyFolders) : FDirectoryVisitor(EDirectoryVisitorFlags::None), EmptyFolders(InEmptyFolders)
+		explicit FFindEmptyFoldersVisitor(TSet<FString>& InEmptyFolders) : FDirectoryVisitor(EDirectoryVisitorFlags::None), EmptyFolders(InEmptyFolders)
 		{
 		}
 
@@ -373,9 +341,147 @@ int32 UProjectCleanerLibrary::GetEmptyFoldersNum(const FString& InDirPath)
 bool UProjectCleanerLibrary::IsEmptyFolder(const FString& InDirPath)
 {
 	TArray<FString> Files;
-	IFileManager::Get().FindFilesRecursive(Files, *(InDirPath / TEXT("*")),TEXT("*.*"), true, false);
+	IFileManager::Get().FindFilesRecursive(Files, *InDirPath,TEXT("*.*"), true, false);
 
 	return Files.Num() == 0;
+}
+
+void UProjectCleanerLibrary::GetNonEngineFiles(TSet<FString>& FilesNonEngine)
+{
+	FilesNonEngine.Reset();
+
+	class FFindNonEngineFilesVisitor final : public IPlatformFile::FDirectoryVisitor
+	{
+	public:
+		TSet<FString>& Files;
+
+		explicit FFindNonEngineFilesVisitor(TSet<FString>& InFiles) : FDirectoryVisitor(EDirectoryVisitorFlags::None), Files(InFiles)
+		{
+		}
+
+		virtual bool Visit(const TCHAR* FilenameOrDirectory, bool bIsDirectory) override
+		{
+			const FString FullPath = FPaths::ConvertRelativePathToFull(FilenameOrDirectory);
+
+			if (!bIsDirectory && !IsEngineExtension(FPaths::GetExtension(FullPath, false)))
+			{
+				Files.Add(FullPath);
+			}
+
+
+			return true;
+		}
+	};
+
+	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
+	FFindNonEngineFilesVisitor FindNonEngineFilesVisitor(FilesNonEngine);
+	PlatformFile.IterateDirectoryRecursively(*FPaths::ProjectContentDir(), FindNonEngineFilesVisitor);
+}
+
+void UProjectCleanerLibrary::GetAssetsCorrupted(TSet<FString>& FilesCorrupted)
+{
+	FilesCorrupted.Reset();
+
+	class FFindCorruptedFilesVisitor final : public IPlatformFile::FDirectoryVisitor
+	{
+	public:
+		TSet<FString>& CorruptedFiles;
+
+		explicit FFindCorruptedFilesVisitor(TSet<FString>& InCorruptedFiles)
+			: FDirectoryVisitor(EDirectoryVisitorFlags::None),
+			  CorruptedFiles(InCorruptedFiles)
+		{
+		}
+
+		virtual bool Visit(const TCHAR* FilenameOrDirectory, bool bIsDirectory) override
+		{
+			if (!bIsDirectory)
+			{
+				const FString FullPath = FPaths::ConvertRelativePathToFull(FilenameOrDirectory);
+				if (IsEngineExtension(FPaths::GetExtension(FullPath, false)))
+				{
+					// here we got absolute path "C:/MyProject/Content/material.uasset"
+					// we must first convert that path to In Engine Internal Path like "/Game/material.uasset"
+					const FString InternalFilePath = PathConvertToRel(FullPath);
+					// Converting file path to object path (This is for searching in AssetRegistry)
+					// example "/Game/Name.uasset" => "/Game/Name.Name"
+					FString ObjectPath = InternalFilePath;
+					ObjectPath.RemoveFromEnd(FPaths::GetExtension(InternalFilePath, true));
+					ObjectPath.Append(TEXT(".") + FPaths::GetBaseFilename(InternalFilePath));
+
+					const FName ObjectPathName = FName{*ObjectPath};
+
+					const FAssetRegistryModule& ModuleAssetRegistry = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(AssetRegistryConstants::ModuleName);
+
+					// if its does not exist in asset registry, then something wrong with asset
+					const FAssetData AssetData = ModuleAssetRegistry.Get().GetAssetByObjectPath(ObjectPathName);
+					if (!AssetData.IsValid())
+					{
+						CorruptedFiles.Add(FullPath);
+					}
+				}
+			}
+
+			return true;
+		}
+	};
+
+	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
+	FFindCorruptedFilesVisitor FindCorruptedFilesVisitor(FilesCorrupted);
+	PlatformFile.IterateDirectoryRecursively(*FPaths::ProjectContentDir(), FindCorruptedFilesVisitor);
+}
+
+void UProjectCleanerLibrary::GetPrimaryAssetClasses(TArray<UClass*>& PrimaryAssetClasses, const bool bIncludeDerivedClasses)
+{
+	const FAssetRegistryModule& ModuleAssetRegistry = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(AssetRegistryConstants::ModuleName);
+	
+	TSet<FString> PrimaryAssetClassList;
+	// getting list of primary asset classes that are defined in AssetManager
+	TArray<FName> PrimaryAssetClassNames;
+	const auto& AssetManager = UAssetManager::Get();
+	if (!AssetManager.IsValid()) return;
+
+	TArray<FPrimaryAssetTypeInfo> AssetTypeInfos;
+	AssetManager.Get().GetPrimaryAssetTypeInfoList(AssetTypeInfos);
+
+	for (const auto& AssetTypeInfo : AssetTypeInfos)
+	{
+		if (!AssetTypeInfo.AssetBaseClassLoaded) continue;
+
+		PrimaryAssetClassNames.AddUnique(AssetTypeInfo.AssetBaseClassLoaded->GetFName());
+	}
+
+	if (bIncludeDerivedClasses)
+	{
+		// getting list of primary assets classes that are derived from main primary assets
+		TSet<FName> DerivedFromPrimaryAssets;
+		{
+			const TSet<FName> ExcludedClassNames;
+			ModuleAssetRegistry.Get().GetDerivedClassNames(PrimaryAssetClassNames, ExcludedClassNames, DerivedFromPrimaryAssets);
+		}
+
+		for (const auto& DerivedClassName : DerivedFromPrimaryAssets)
+		{
+			PrimaryAssetClassList.Add(DerivedClassName.ToString());
+		}
+	}
+	// todo:ashe23
+}
+
+void UProjectCleanerLibrary::GetAssetsUsed(TArray<FAssetData>& AssetsUsed)
+{
+}
+
+void UProjectCleanerLibrary::GetAssetsUnused(TArray<FAssetData>& AssetsUnused)
+{
+}
+
+void UProjectCleanerLibrary::GetAssetsIndirect(TArray<FAssetData>& AssetsIndirect)
+{
+}
+
+void UProjectCleanerLibrary::GetAssetsPrimary(TArray<FAssetData>& AssetsPrimary, const bool bIncludeDerivedClasses)
+{
 }
 
 int64 UProjectCleanerLibrary::GetAssetsTotalSize(const TArray<FAssetData>& Assets)
@@ -644,10 +750,16 @@ void UProjectCleanerLibrary::FocusOnDirectory(const FString& InRelPath)
 	ModuleContentBrowser.Get().SyncBrowserToFolders(FocusFolders);
 }
 
-// bool UProjectCleanerLibrary::IsEngineExtension(const FString& Extension)
-// {
-// 	return Extension.ToLower().Equals(TEXT("uasset")) || Extension.ToLower().Equals(TEXT("umap"));
-// }
+bool UProjectCleanerLibrary::IsEngineExtension(const FString& Extension)
+{
+	TSet<FString> EngineExtensions;
+	EngineExtensions.Reserve(3);
+	EngineExtensions.Add(TEXT("uasset"));
+	EngineExtensions.Add(TEXT("umap"));
+	EngineExtensions.Add(TEXT("collection"));
+
+	return EngineExtensions.Contains(Extension.ToLower());
+}
 
 bool UProjectCleanerLibrary::IsUnderMegascansFolder(const FString& AssetPackagePath)
 {
