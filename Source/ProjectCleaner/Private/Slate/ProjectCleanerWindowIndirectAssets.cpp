@@ -23,7 +23,7 @@ void SProjectCleanerWindowIndirectAssets::Construct(const FArguments& InArgs)
 
 	Cmds = MakeShareable(new FUICommandList);
 	Cmds->MapAction(
-		FProjectCleanerCmds::Get().Cmd_ShowInContentBrowser,
+		FProjectCleanerCmds::Get().ShowInContentBrowser,
 		FUIAction(
 			FExecuteAction::CreateLambda([&]()
 			{
@@ -38,7 +38,7 @@ void SProjectCleanerWindowIndirectAssets::Construct(const FArguments& InArgs)
 	);
 
 	Cmds->MapAction(
-		FProjectCleanerCmds::Get().Cmd_OpenAsset,
+		FProjectCleanerCmds::Get().OpenAsset,
 		FUIAction(
 			FExecuteAction::CreateLambda([&]()
 			{
@@ -174,8 +174,8 @@ TSharedPtr<SWidget> SProjectCleanerWindowIndirectAssets::OnListContextMenu() con
 	FMenuBuilder MenuBuilder{true, Cmds};
 	MenuBuilder.BeginSection(TEXT("Actions"));
 	{
-		MenuBuilder.AddMenuEntry(FProjectCleanerCmds::Get().Cmd_ShowInContentBrowser);
-		MenuBuilder.AddMenuEntry(FProjectCleanerCmds::Get().Cmd_OpenAsset);
+		MenuBuilder.AddMenuEntry(FProjectCleanerCmds::Get().ShowInContentBrowser);
+		MenuBuilder.AddMenuEntry(FProjectCleanerCmds::Get().OpenAsset);
 	}
 	MenuBuilder.EndSection();
 

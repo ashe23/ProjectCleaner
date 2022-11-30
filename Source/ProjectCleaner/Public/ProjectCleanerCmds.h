@@ -10,9 +10,10 @@ public:
 	FProjectCleanerCmds();
 	virtual void RegisterCommands() override;
 
-	TSharedPtr<FUICommandInfo> Cmd_OpenCleanerWindow;
-	TSharedPtr<FUICommandInfo> Cmd_ShowInContentBrowser;
-	TSharedPtr<FUICommandInfo> Cmd_OpenAsset;
+	TSharedPtr<FUICommandInfo> OpenProjectCleanerWindow;
+	TSharedPtr<FUICommandInfo> ShowInContentBrowser;
+	TSharedPtr<FUICommandInfo> OpenAsset;
+	TSharedPtr<FUICommandInfo> OpenDocs;
 	
 	TSharedPtr<FUICommandInfo> DeleteAsset;
 	TSharedPtr<FUICommandInfo> IncludeAsset;

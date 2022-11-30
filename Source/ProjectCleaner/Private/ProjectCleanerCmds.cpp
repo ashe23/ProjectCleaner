@@ -21,7 +21,7 @@ FProjectCleanerCmds::FProjectCleanerCmds() : TCommands<FProjectCleanerCmds>(
 void FProjectCleanerCmds::RegisterCommands()
 {
 	UI_COMMAND(
-		Cmd_OpenCleanerWindow,
+		OpenProjectCleanerWindow,
 		"ProjectCleaner",
 		"Open Project Cleaner Window",
 		EUserInterfaceActionType::Button,
@@ -29,7 +29,7 @@ void FProjectCleanerCmds::RegisterCommands()
 	);
 
 	UI_COMMAND(
-		Cmd_ShowInContentBrowser,
+		ShowInContentBrowser,
 		"Show in ContentBrowser",
 		"Show Asset in ContentBrowser",
 		EUserInterfaceActionType::Button,
@@ -37,9 +37,17 @@ void FProjectCleanerCmds::RegisterCommands()
 	);
 
 	UI_COMMAND(
-		Cmd_OpenAsset,
+		OpenAsset,
 		"Open Asset",
 		"Open Asset Editor",
+		EUserInterfaceActionType::Button,
+		FInputChord()
+	);
+
+	UI_COMMAND(
+		OpenDocs,
+		"Documentation",
+		"Open ProjectCleaner documentation page on github",
 		EUserInterfaceActionType::Button,
 		FInputChord()
 	);

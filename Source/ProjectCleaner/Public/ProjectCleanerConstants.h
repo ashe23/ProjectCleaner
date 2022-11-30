@@ -13,6 +13,7 @@ namespace ProjectCleanerConstants
 
 	// tabs
 	static const FName TabProjectCleaner{TEXT("TabProjectCleaner")};
+	static const FName TabScanSettings{TEXT("TabScanSettings")};
 	static const FName TabUnusedAssets{TEXT("TabUnusedAssets")};
 	static const FName TabCorruptedAssets{TEXT("TabCorruptedFiles")};
 	// static const FName TabExcludedAssets{TEXT("TabExcludedAssets")};

@@ -4,7 +4,7 @@
 #include "ProjectCleanerStyles.h"
 #include "ProjectCleanerCmds.h"
 #include "ProjectCleanerConstants.h"
-#include "Slate/ProjectCleanerWindowMain.h"
+#include "Slate/SProjectCleaner.h"
 // Engine Headers
 #include "ToolMenus.h"
 #include "AssetToolsModule.h"
@@ -51,7 +51,7 @@ void FProjectCleanerModule::RegisterCmds()
 {
 	Cmds = MakeShareable(new FUICommandList);
 	Cmds->MapAction(
-		FProjectCleanerCmds::Get().Cmd_OpenCleanerWindow,
+		FProjectCleanerCmds::Get().OpenProjectCleanerWindow,
 		FExecuteAction::CreateLambda([&]()
 		{
 			FGlobalTabmanager::Get()->TryInvokeTab(ProjectCleanerConstants::TabProjectCleaner);
@@ -68,12 +68,12 @@ void FProjectCleanerModule::RegisterMenus()
 
 				UToolMenu* Menu = UToolMenus::Get()->ExtendMenu("LevelEditor.MainMenu.Window");
 				FToolMenuSection& Section = Menu->FindOrAddSection("WindowLayout");
-				Section.AddMenuEntryWithCommandList(FProjectCleanerCmds::Get().Cmd_OpenCleanerWindow, Cmds);
+				Section.AddMenuEntryWithCommandList(FProjectCleanerCmds::Get().OpenProjectCleanerWindow, Cmds);
 
 				UToolMenu* ToolbarMenu = UToolMenus::Get()->ExtendMenu("LevelEditor.LevelEditorToolBar");
 				FToolMenuSection& ToolbarSection = ToolbarMenu->FindOrAddSection("Settings");
 				FToolMenuEntry& Entry = ToolbarSection.AddEntry(
-					FToolMenuEntry::InitToolBarButton(FProjectCleanerCmds::Get().Cmd_OpenCleanerWindow)
+					FToolMenuEntry::InitToolBarButton(FProjectCleanerCmds::Get().OpenProjectCleanerWindow)
 				);
 				Entry.SetCommandList(Cmds);
 			}
@@ -83,18 +83,20 @@ void FProjectCleanerModule::RegisterMenus()
 
 void FProjectCleanerModule::RegisterTabs() const
 {
-	FGlobalTabmanager::Get()->RegisterNomadTabSpawner(
+	FGlobalTabmanager::Get()->RegisterTabSpawner(
 		                        ProjectCleanerConstants::TabProjectCleaner,
-		                        FOnSpawnTab::CreateLambda([](const FSpawnTabArgs& SpawnTabArgs) -> TSharedRef<SDockTab>
+		                        FOnSpawnTab::CreateLambda([&](const FSpawnTabArgs& SpawnTabArgs) -> TSharedRef<SDockTab>
 		                        {
-			                        return SNew(SDockTab).TabRole(MajorTab)
-			                        [
-			                        	SNew(SProjectCleanerWindowMain)
-			                        ];
+		                        	const TSharedRef<SDockTab> DockTab = SNew(SDockTab).TabRole(MajorTab);
+		                        	const TSharedRef<SProjectCleaner> Frontend = SNew(SProjectCleaner, DockTab, SpawnTabArgs.GetOwnerWindow());
+		                        	
+		                        	DockTab->SetContent(Frontend);
+		                        	
+			                        return DockTab;
 		                        }))
 	                        .SetDisplayName(LOCTEXT("FProjectCleanerTabTitle", "ProjectCleaner"))
 	                        .SetMenuType(ETabSpawnerMenuType::Hidden)
-	                        .SetIcon(FSlateIcon(FProjectCleanerStyles::GetStyleSetName(), "ProjectCleaner.IconBin20"));
+	                        .SetIcon(FSlateIcon(FProjectCleanerStyles::GetStyleSetName(), "ProjectCleaner.IconBin16"));
 }
 
 void FProjectCleanerModule::UnregisterMenus()
@@ -105,7 +107,7 @@ void FProjectCleanerModule::UnregisterMenus()
 
 void FProjectCleanerModule::UnregisterTabs()
 {
-	FGlobalTabmanager::Get()->UnregisterNomadTabSpawner(ProjectCleanerConstants::TabProjectCleaner);
+	FGlobalTabmanager::Get()->UnregisterTabSpawner(ProjectCleanerConstants::TabProjectCleaner);
 }
 
 void FProjectCleanerModule::UnregisterStyles()
