@@ -7,6 +7,7 @@
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "ProjectCleanerLibrary.generated.h"
 
+class UProjectCleanerScanSettings;
 struct FProjectCleanerIndirectAsset;
 
 UCLASS(DisplayName="ProjectCleanerLibrary", meta=(ToolTip="Project Cleaner collection of helper functions"))
@@ -14,13 +15,35 @@ class UProjectCleanerLibrary final : public UBlueprintFunctionLibrary
 {
 	GENERATED_BODY()
 public:
+	static bool IsAssetRegistryWorking();
+	static bool IsUnderFolder(const FString& InFolderPathAbs, const FString& RootFolder);
+	static bool IsUnderForbiddenFolders(const FString& InFolderPathAbs, const TSet<FString>& ForbiddenFolders);
+	static bool IsEngineFileExtension(const FString& Extension);
+	static bool IsCorruptedEngineFile(const FString& InFilePathAbs);
+	static bool HasIndirectlyUsedAssets(const FString& FileContent);
+
+	static FString GetAssetClassName(const FAssetData& AssetData);
+	static FString PathConvertToAbs(const FString& InRelPath);
+	static FString PathConvertToRel(const FString& InAbsPath);
+	
+	static int64 GetAssetsTotalSize(const TArray<FAssetData>& Assets);
+
+	static void FixupRedirectors();
+	static void SaveAllAssets(const bool bPromptUser = true);
+	static void UpdateAssetRegistry(const bool bSyncScan = false);
+	static void FocusOnDirectory(const FString& InRelPath);
+	
+	// === REFACTOR ==
 	static void GetSubFolders(const FString& InDirPath, const bool bRecursive, TSet<FString>& SubFolders);
 	static int32 GetSubFoldersNum(const FString& InDirPath, const bool bRecursive);
 	static void GetEmptyFolders(const FString& InDirPath, TSet<FString>& EmptyFolders);
 	static int32 GetEmptyFoldersNum(const FString& InDirPath);
 	static bool IsEmptyFolder(const FString& InDirPath);
 	static void GetNonEngineFiles(TSet<FString>& FilesNonEngine);
+	static void GetForbiddenFolders(TSet<FString>& ForbiddenFolders);
 
+	static void GetAssetsByPath(const FString& InDirPathAbs, const bool bRecursive, TArray<FAssetData>& Assets);
+	static int32 GetAssetsByPathNum(const FString& InDirPathAbs, const bool bRecursive, TArray<FAssetData>& Assets);
 	static void GetAssetsUsed(TArray<FAssetData>& AssetsUsed);
 	static void GetAssetsUnused(TArray<FAssetData>& AssetsUnused);
 	static void GetAssetsPrimary(TArray<FAssetData>& AssetsPrimary, const bool bIncludeDerivedClasses = false);
@@ -31,35 +54,6 @@ public:
 	
 	static void GetPrimaryAssetClasses(TArray<FName>& PrimaryAssetClasses, const bool bIncludeDerivedClasses = false);
 	static void GetLinkedAssets(const TArray<FAssetData>& Assets, TArray<FAssetData>& LinkedAssets);
-	
-
-	UFUNCTION(BlueprintCallable, Category="ProjectCleaner", meta=(ToolTip="Returns total size of given assets array"))
-	static int64 GetAssetsTotalSize(const TArray<FAssetData>& Assets);
-
-	UFUNCTION(BlueprintCallable, Category="ProjectCleaner",
-		meta=(ToolTip="Converts given relative to absolute. Example /Game/StarterContent => C:/{Your_Project_Path_To_Content_Folder}/StarterContent"))
-	static FString PathConvertToAbs(const FString& InRelPath);
-
-	UFUNCTION(BlueprintCallable, Category="ProjectCleaner",
-		meta=(ToolTip="Converts given absolute to relative. Example C:/{Your_Project_Path_To_Content_Folder}/StarterContent => /Game/StarterContent"))
-	static FString PathConvertToRel(const FString& InAbsPath);
-
-	static FString GetAssetClassName(const FAssetData& AssetData);
-	static void FixupRedirectors();
-	static void SaveAllAssets(const bool bPromptUser = true);
-	static void UpdateAssetRegistry(const bool bSyncScan = false);
-	static void FocusOnDirectory(const FString& InRelPath);
-
-	// UFUNCTION(BlueprintCallable, Category="ProjectCleaner", meta=(ToolTip="Checks if given extension is engine extension or not (.uasset or .umap)"))
-	static bool IsEngineExtension(const FString& Extension);
-
-	UFUNCTION(BlueprintCallable, Category="ProjectCleaner", meta=(ToolTip="Checks if given asset path is under megascans plugin folder or not"))
-	static bool IsUnderMegascansFolder(const FString& AssetPackagePath);
-
-	UFUNCTION(BlueprintCallable, Category="ProjectCleaner", meta=(ToolTip="Checks AssetRegistry is still working"))
-	static bool IsAssetRegistryWorking();
-
-	static bool HasIndirectlyUsedAssets(const FString& FileContent);
 private:
 	static FString ConvertPathInternal(const FString& From, const FString& To, const FString& Path);
 };

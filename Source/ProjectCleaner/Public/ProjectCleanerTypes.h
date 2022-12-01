@@ -54,7 +54,7 @@ struct FProjectCleanerTreeViewItem
 	bool bExpanded = false;
 	bool bExcluded = false;
 	bool bEmpty = false;
-	TArray<TSharedPtr<FProjectCleanerTreeViewItem>> SubDirectories;
+	TArray<TSharedPtr<FProjectCleanerTreeViewItem>> SubFolders;
 
 	bool operator==(const FProjectCleanerTreeViewItem& Other) const
 	{

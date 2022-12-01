@@ -27,18 +27,18 @@ namespace ProjectCleanerConstants
 	static const FString MsgAssetRegistryStillWorking{TEXT("The AssetRegistry is still working. Please wait for the scan to finish")};
 
 	// path
-	static const FString PathRelRoot{TEXT("/Game")};
-	static const FString PathRelDevelopers{TEXT("/Game/Developers")};
-	static const FString PathRelMegascans{TEXT("/Game/Megascans")};
-	static const FString PathRelMegascansPresets{TEXT("/Game/MSPresets")};
+	static const FName PathRelRoot{TEXT("/Game")};
+	static const FName PathRelDevelopers{TEXT("/Game/Developers")};
+	static const FName PathRelMegascans{TEXT("/Game/Megascans")};
+	static const FName PathRelMegascansPresets{TEXT("/Game/MSPresets")};
 
 	// plugins
 	static const FName PluginMegascans{TEXT("MegascansPlugin")};
-	static const FString PluginMegascansMsPresetsFolder{TEXT("MSPresets")};
+	static const FName PluginMegascansMsPresetsFolder{TEXT("MSPresets")};
 	
 	// url
 	static const FString UrlWiki{TEXT("https://github.com/ashe23/ProjectCleaner/wiki")};
 
 	// misc
-	static constexpr int32 HeaderRowFontSize = 12;
+	static constexpr int32 HeaderRowFontSize = 10;
 }

@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Widgets/SCompoundWidget.h"
 
+class UProjectCleanerScanSettings;
 struct FProjectCleanerTreeViewItem;
 
 // Responsible for showing project folder structure as tree view with additional information about every folder and its content
@@ -14,13 +15,14 @@ public:
 	SLATE_BEGIN_ARGS(SProjectCleanerTreeView)
 		{
 		}
-		SLATE_ARGUMENT(FString, RootFolder)
-		SLATE_ARGUMENT(TSet<FString>, ForbiddenFolders)
+		// SLATE_ARGUMENT(FString, RootFolder)
+		// SLATE_ARGUMENT(TSet<FString>, ForbiddenFolders)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
 private:
 	void TreeItemsUpdate();
+	TSharedPtr<FProjectCleanerTreeViewItem> TreeItemCreate(const FString& InDirPathAbs) const;
 
 	TSharedRef<ITableRow> OnTreeViewGenerateRow(TSharedPtr<FProjectCleanerTreeViewItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const;
 	TSharedRef<SHeaderRow> GetTreeViewHeaderRow() const;
@@ -32,8 +34,7 @@ private:
 	void OnTreeViewSearchBoxTextCommitted(const FText& InSearchText, ETextCommit::Type InCommitType);
 	void ToggleExpansionRecursive(TSharedPtr<FProjectCleanerTreeViewItem> Item, const bool bExpanded) const;
 
-	FString RootFolder;
-	TSet<FString> ForbiddenFolders;
+	TWeakObjectPtr<UProjectCleanerScanSettings> ScanSettings;
 	TArray<TSharedPtr<FProjectCleanerTreeViewItem>> TreeItems;
 	TSharedPtr<STreeView<TSharedPtr<FProjectCleanerTreeViewItem>>> TreeView;
 };

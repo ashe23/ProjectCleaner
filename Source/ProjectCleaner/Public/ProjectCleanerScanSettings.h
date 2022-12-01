@@ -28,8 +28,7 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Config, Category="ExcludeOptions", meta=(ToolTip="Exclude from scanning assets of specified classes"))
 	TArray<TSoftClassPtr<UObject>> ExcludedClasses;
 
-	// UPROPERTY(BlueprintReadWrite, EditAnywhere, Config, Category="ExcludeOptions", meta=(ToolTip="Exclude from scanning specified assets"))
-	// TArray<TSoftObjectPtr<UObject>> ExcludedAssets;
+	TArray<FAssetData> ExcludedAssets;
 
 	FProjectCleanerScanSettingsChangeDelegate& OnChange();
 private:

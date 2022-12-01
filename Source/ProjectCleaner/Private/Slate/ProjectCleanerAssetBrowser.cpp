@@ -15,7 +15,7 @@ void SProjectCleanerAssetBrowser::Construct(const FArguments& InArgs)
 	const FAssetRegistryModule& AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
 
 	FARFilter Filter;
-	Filter.PackagePaths.Add(FName{*ProjectCleanerConstants::PathRelRoot});
+	Filter.PackagePaths.Add(ProjectCleanerConstants::PathRelRoot);
 	Filter.bRecursivePaths = true;
 
 	TArray<FAssetData> AssetData;

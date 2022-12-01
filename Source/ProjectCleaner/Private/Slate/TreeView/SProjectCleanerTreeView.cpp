@@ -6,6 +6,7 @@
 #include "ProjectCleanerConstants.h"
 #include "ProjectCleanerTypes.h"
 #include "ProjectCleanerStyles.h"
+#include "ProjectCleanerScanSettings.h"
 // Engine Headers
 #include "ProjectCleanerLibrary.h"
 #include "Widgets/Input/SSearchBox.h"
@@ -14,11 +15,19 @@
 
 void SProjectCleanerTreeView::Construct(const FArguments& InArgs)
 {
-	if (InArgs._RootFolder.IsEmpty()) return;
+	ScanSettings = GetMutableDefault<UProjectCleanerScanSettings>();
+	if (!ScanSettings.IsValid()) return;
 
-	RootFolder = InArgs._RootFolder;
-	ForbiddenFolders = InArgs._ForbiddenFolders;
-
+	ScanSettings->OnChange().AddLambda([&]()
+	{
+		TreeItemsUpdate();
+		
+		if (TreeView.IsValid())
+		{
+			TreeView->RequestTreeRefresh();
+		}
+	});
+	
 	if (!TreeView.IsValid())
 	{
 		SAssignNew(TreeView, STreeView<TSharedPtr<FProjectCleanerTreeViewItem>>)
@@ -108,60 +117,89 @@ void SProjectCleanerTreeView::Construct(const FArguments& InArgs)
 
 void SProjectCleanerTreeView::TreeItemsUpdate()
 {
-	if (ForbiddenFolders.Contains(RootFolder))
+	// TreeItems.Reset();
+	//
+	// // creating root item
+	// const TSharedPtr<FProjectCleanerTreeViewItem> RootTreeItem = TreeItemCreate(FPaths::ProjectContentDir());
+	// if (!RootTreeItem) return;
+	//
+	// // traversing and filling its child items
+	// TArray<TSharedPtr<FProjectCleanerTreeViewItem>> Stack;
+	// Stack.Push(RootTreeItem);
+	// TreeItems.Add(RootTreeItem);
+	//
+	// while (Stack.Num() > 0)
+	// {
+	// 	const auto CurrentItem = Stack.Pop();
+	//
+	// 	TSet<FString> SubFolders;
+	// 	UProjectCleanerLibrary::GetSubFolders(CurrentItem->DirPathAbs, false, SubFolders);
+	//
+	// 	for (const auto& SubFolder : SubFolders)
+	// 	{
+	// 		const TSharedPtr<FProjectCleanerTreeViewItem> SubDirItem = TreeItemCreate(SubFolder);
+	// 		if (!SubDirItem.IsValid()) continue;
+	//
+	// 		CurrentItem->SubFolders.Add(SubDirItem);
+	// 		Stack.Push(SubDirItem);
+	// 	}
+	// }
+	//
+	// TreeView->SetItemExpansion(RootTreeItem, true);
+}
+
+TSharedPtr<FProjectCleanerTreeViewItem> SProjectCleanerTreeView::TreeItemCreate(const FString& InDirPathAbs) const
+{
+	if (!FPaths::DirectoryExists(InDirPathAbs)) return {};
+
+	TSet<FString> ForbiddenFolders;
+	UProjectCleanerLibrary::GetForbiddenFolders(ForbiddenFolders);
+
+	for (const auto& ForbiddenFolder : ForbiddenFolders)
 	{
-		UE_LOG(LogProjectCleaner, Warning, TEXT("Root folder cant be in forbidden list"));
-		return;
-	}
-		
-	TreeItems.Reset();
-
-	// creating root item
-	const TSharedPtr<FProjectCleanerTreeViewItem> RootTreeItem = MakeShareable(new FProjectCleanerTreeViewItem);
-	if (!RootTreeItem) return;
-
-	RootTreeItem->DirPathAbs = RootFolder;
-	RootTreeItem->DirPathRel = UProjectCleanerLibrary::PathConvertToRel(RootFolder);
-	RootTreeItem->DirName = RootFolder.Equals(FPaths::ProjectContentDir()) ? TEXT("Content") : FPaths::GetPathLeaf(RootFolder);
-	RootTreeItem->FoldersTotal = UProjectCleanerLibrary::GetSubFoldersNum(RootFolder, true);
-	RootTreeItem->FoldersEmpty = UProjectCleanerLibrary::GetEmptyFoldersNum(RootFolder);
-	RootTreeItem->bDeveloperFolder = RootFolder.Equals(FPaths::ProjectContentDir() / TEXT("Developers"));
-	RootTreeItem->bEmpty = UProjectCleanerLibrary::IsEmptyFolder(RootFolder);
-	RootTreeItem->bExpanded = true;
-
-	// traversing and filling its child items
-	TArray<TSharedPtr<FProjectCleanerTreeViewItem>> Stack;
-	Stack.Push(RootTreeItem);
-	TreeItems.Add(RootTreeItem);
-
-	while (Stack.Num() > 0)
-	{
-		const auto CurrentItem = Stack.Pop();
-
-		TSet<FString> SubFolders;
-		UProjectCleanerLibrary::GetSubFolders(CurrentItem->DirPathAbs, false, SubFolders);
-
-		for (const auto& SubFolder : SubFolders)
+		if (InDirPathAbs.Equals(ForbiddenFolder) || FPaths::IsUnderDirectory(InDirPathAbs, ForbiddenFolder))
 		{
-			if (ForbiddenFolders.Contains(SubFolder)) continue;
-			
-			const TSharedPtr<FProjectCleanerTreeViewItem> SubDirItem = MakeShareable(new FProjectCleanerTreeViewItem());
-			if (!SubDirItem.IsValid()) continue;
+			return {};
+		}
+	}
+	
+	const TSharedPtr<FProjectCleanerTreeViewItem> TreeItem = MakeShareable(new FProjectCleanerTreeViewItem());
+	if (!TreeItem.IsValid()) return {};
 
-			SubDirItem->DirPathAbs = SubFolder;
-			SubDirItem->DirPathRel = UProjectCleanerLibrary::PathConvertToRel(SubFolder);
-			SubDirItem->DirName = FPaths::GetPathLeaf(SubFolder);
-			SubDirItem->FoldersTotal = UProjectCleanerLibrary::GetSubFoldersNum(SubFolder, true);
-			SubDirItem->FoldersEmpty = UProjectCleanerLibrary::GetEmptyFoldersNum(SubFolder);
-			SubDirItem->bDeveloperFolder = SubFolder.Equals(FPaths::ProjectContentDir() / TEXT("Developers"));
-			SubDirItem->bEmpty = UProjectCleanerLibrary::IsEmptyFolder(SubFolder);
+	const bool bIsProjectContentFolder = InDirPathAbs.Equals(FPaths::ProjectContentDir());
+	const bool bIsProjectDeveloperFolder = InDirPathAbs.Equals(FPaths::ProjectContentDir() / TEXT("Developers"));
 
-			CurrentItem->SubDirectories.Add(SubDirItem);
-			Stack.Push(SubDirItem);
+	TArray<FAssetData> AssetsTotal;
+	TArray<FAssetData> AssetsUnused;
+	TArray<FAssetData> AssetsUnusedTotal;
+	UProjectCleanerLibrary::GetAssetsUnused(AssetsUnusedTotal);
+
+	
+	
+	TreeItem->DirPathAbs = InDirPathAbs;
+	TreeItem->DirPathRel = UProjectCleanerLibrary::PathConvertToRel(InDirPathAbs);
+	TreeItem->DirName = bIsProjectContentFolder ? TEXT("Content") : FPaths::GetPathLeaf(InDirPathAbs);
+	TreeItem->FoldersTotal = UProjectCleanerLibrary::GetSubFoldersNum(InDirPathAbs, true);
+	TreeItem->FoldersEmpty = UProjectCleanerLibrary::GetEmptyFoldersNum(InDirPathAbs);
+	TreeItem->AssetsTotal = UProjectCleanerLibrary::GetAssetsByPathNum(InDirPathAbs, true, AssetsTotal);
+	TreeItem->AssetsUnused = AssetsUnused.Num();
+	TreeItem->bDeveloperFolder = bIsProjectDeveloperFolder;
+	TreeItem->bEmpty = UProjectCleanerLibrary::IsEmptyFolder(InDirPathAbs);
+	TreeItem->bExpanded = bIsProjectContentFolder;
+	TreeItem->bExcluded = false;
+	
+	for (const auto& Folder : ScanSettings->ExcludedDirectories)
+	{
+		if (!FPaths::DirectoryExists(UProjectCleanerLibrary::PathConvertToAbs(Folder.Path))) continue;
+
+		if (InDirPathAbs.Equals(Folder.Path))
+		{
+			TreeItem->bExcluded = true;
+			break;
 		}
 	}
 
-	TreeView->SetItemExpansion(RootTreeItem, true);
+	return TreeItem;
 }
 
 TSharedRef<SHeaderRow> SProjectCleanerTreeView::GetTreeViewHeaderRow() const
@@ -264,7 +302,7 @@ void SProjectCleanerTreeView::OnTreeViewItemMouseDblClick(TSharedPtr<FProjectCle
 
 void SProjectCleanerTreeView::OnTreeViewGetChildren(TSharedPtr<FProjectCleanerTreeViewItem> Item, TArray<TSharedPtr<FProjectCleanerTreeViewItem>>& OutChildren) const
 {
-	OutChildren.Append(Item->SubDirectories);
+	OutChildren.Append(Item->SubFolders);
 }
 
 void SProjectCleanerTreeView::OnTreeViewSelectionChange(TSharedPtr<FProjectCleanerTreeViewItem> Item, ESelectInfo::Type SelectType) const
@@ -291,7 +329,7 @@ void SProjectCleanerTreeView::ToggleExpansionRecursive(TSharedPtr<FProjectCleane
 
 	TreeView->SetItemExpansion(Item, bExpanded);
 
-	for (const auto& SubDir : Item->SubDirectories)
+	for (const auto& SubDir : Item->SubFolders)
 	{
 		ToggleExpansionRecursive(SubDir, bExpanded);
 	}

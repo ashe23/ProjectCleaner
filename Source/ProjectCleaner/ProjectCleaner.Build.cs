@@ -45,6 +45,7 @@ public class ProjectCleaner : ModuleRules
 				"Slate",
 				"SlateCore",
 				"ContentBrowser",
+				"ContentBrowserData",
 				"EditorStyle",
 				"PropertyEditor",
 				"UnrealEd",

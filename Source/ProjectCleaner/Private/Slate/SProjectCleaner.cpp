@@ -4,11 +4,17 @@
 #include "Slate/TreeView/SProjectCleanerTreeView.h"
 #include "Slate/SProjectCleanerFileListView.h"
 #include "ProjectCleanerScanSettings.h"
+#include "ProjectCleanerScanner.h"
 #include "ProjectCleanerConstants.h"
 #include "ProjectCleanerStyles.h"
 #include "ProjectCleanerLibrary.h"
 #include "ProjectCleaner.h"
 // Engine Headers
+#include "ContentBrowserModule.h"
+#include "ContentBrowserItem.h"
+#include "FrontendFilterBase.h"
+#include "IContentBrowserSingleton.h"
+#include "Kismet/KismetSystemLibrary.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SWidgetSwitcher.h"
 
@@ -18,6 +24,15 @@ static constexpr int32 WidgetIndexLoading = 1;
 void SProjectCleaner::Construct(const FArguments& InArgs, const TSharedRef<SDockTab>& ConstructUnderMajorTab, const TSharedPtr<SWindow>& ConstructUnderWindow)
 {
 	ScanSettings = GetMutableDefault<UProjectCleanerScanSettings>();
+	if (!ScanSettings.IsValid()) return;
+
+	Scanner = MakeShareable(new FProjectCleanerScanner);
+	if (!Scanner.IsValid()) return;
+
+	ScanSettings->OnChange().AddLambda([&]()
+	{
+		Scanner.Get()->Scan(ScanSettings);
+	});
 
 	FPropertyEditorModule& PropertyEditor = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
 	FDetailsViewArgs DetailsViewArgs;
@@ -202,16 +217,25 @@ void SProjectCleaner::MenuBarFillTabs(FMenuBuilder& MenuBuilder, const TSharedPt
 void SProjectCleaner::MenuBarFillHelp(FMenuBuilder& MenuBuilder, const TSharedPtr<FTabManager> TabManager)
 {
 	FUIAction Action;
-	Action.ExecuteAction = FExecuteAction::CreateLambda([]() { UE_LOG(LogProjectCleaner, Warning, TEXT("todo:ashe23 Open docs")) });
+	Action.ExecuteAction = FExecuteAction::CreateLambda([]()
+	{
+		if (FPlatformProcess::CanLaunchURL(*ProjectCleanerConstants::UrlWiki))
+		{
+			FPlatformProcess::LaunchURL(*ProjectCleanerConstants::UrlWiki, nullptr, nullptr);
+		}
+	});
 
 	MenuBuilder.BeginSection("SectionHelp", FText::FromString(TEXT("Help")));
-	// MenuBuilder.AddMenuEntry(FProjectCleanerCmds::Get().OpenDocs); // todo:ashe23 not calling callback
-	MenuBuilder.AddMenuEntry(FText::FromString(TEXT("Docs")), FText::FromString(TEXT("Open docs")), FSlateIcon(), Action, NAME_None);
+	MenuBuilder.AddMenuEntry(FText::FromString(TEXT("Documentation")), FText::FromString(TEXT("Open documentation page")), FSlateIcon(), Action, NAME_None);
 	MenuBuilder.EndSection();
 }
 
 FReply SProjectCleaner::OnBtnScanProjectClick() const
 {
+	if (!Scanner.IsValid()) return FReply::Handled();
+		
+	Scanner.Get()->Scan(ScanSettings);
+	
 	return FReply::Handled();
 }
 
@@ -298,8 +322,8 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnScanSettings(const FSpawnTabArgs
 				]
 			]
 			+ SVerticalBox::Slot()
-			.Padding(FMargin{5.0f})
-			.FillHeight(1.0f)
+			  .Padding(FMargin{5.0f})
+			  .FillHeight(1.0f)
 			[
 				SNew(SBox)
 				[
@@ -318,16 +342,68 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnScanSettings(const FSpawnTabArgs
 
 TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnUnusedAssets(const FSpawnTabArgs& Args) const
 {
-	TSet<FString> ForbiddenFolders;
-	ForbiddenFolders.Add(FPaths::ProjectContentDir() / TEXT("Collections"));
-	ForbiddenFolders.Add(FPaths::GameUserDeveloperDir() / TEXT("Collections"));
-	// todo:ashe23 for ue5 add __ExternalObject__ and __ExternalActors__ folders
-	
-	if (!ScanSettings->bScanDeveloperContents)
+	const FContentBrowserModule& ModuleContentBrowser = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
+
+	class FFrontendFilter_ProjectCleaner : public FFrontendFilter
 	{
-		ForbiddenFolders.Add(FPaths::ProjectContentDir() / TEXT("Developers"));
-	}
-	
+	public:
+		FFrontendFilter_ProjectCleaner(TSharedPtr<FFrontendFilterCategory> InCategory) : FFrontendFilter(InCategory)
+		{
+		}
+
+		virtual FString GetName() const override { return TEXT("ProjectCleanerAssets"); }
+		virtual FText GetDisplayName() const override { return FText::FromString(TEXT("ProjectCleanerAssets")); }
+		virtual FText GetToolTipText() const override { return FText::FromString(TEXT("ProjectCleanerAssets ToolTip")); }
+		virtual FLinearColor GetColor() const override { return FLinearColor{FColor::FromHex(TEXT("#06d6a0"))}; }
+
+		virtual bool PassesFilter(const FContentBrowserItem& InItem) const override
+		{
+			FAssetData AssetData;
+			if (InItem.Legacy_TryGetAssetData(AssetData))
+			{
+				return AssetData.AssetClass.IsEqual(UStaticMesh::StaticClass()->GetFName());
+			}
+
+			return false;
+		}
+	};
+
+	FAssetPickerConfig AssetPickerConfig;
+	AssetPickerConfig.SelectionMode = ESelectionMode::Multi;
+	AssetPickerConfig.InitialAssetViewType = EAssetViewType::Tile;
+	AssetPickerConfig.bCanShowFolders = false;
+	AssetPickerConfig.bAddFilterUI = true;
+	AssetPickerConfig.bPreloadAssetsForContextMenu = false;
+	AssetPickerConfig.bSortByPathInColumnView = false;
+	AssetPickerConfig.bShowPathInColumnView = false;
+	AssetPickerConfig.bShowBottomToolbar = false;
+	// AssetPickerConfig.bCanShowDevelopersFolder = ScanSettings->bScanDeveloperContents;
+	AssetPickerConfig.bCanShowDevelopersFolder = false;
+	AssetPickerConfig.bCanShowClasses = false;
+	AssetPickerConfig.bAllowDragging = false;
+	AssetPickerConfig.bForceShowEngineContent = false;
+	AssetPickerConfig.bCanShowRealTimeThumbnails = false;
+	AssetPickerConfig.AssetShowWarningText = FText::FromName("No assets");
+
+	TSharedPtr<FFrontendFilterCategory> ProjectCleanerCategory = MakeShareable(
+		new FFrontendFilterCategory(
+			FText::FromString(TEXT("ProjectCleaner Filters")),
+			FText::FromString(TEXT("ProjectCleaner Filter Tooltip"))
+		)
+	);
+	AssetPickerConfig.ExtraFrontendFilters.Add(MakeShareable(new FFrontendFilter_ProjectCleaner(ProjectCleanerCategory)));
+
+	// AssetPickerConfig.GetCurrentSelectionDelegates.Add(&CurrentSelectionDelegate);
+	// AssetPickerConfig.RefreshAssetViewDelegates.Add(&RefreshAssetViewDelegate);
+	// AssetPickerConfig.OnAssetDoubleClicked = FOnAssetDoubleClicked::CreateStatic(
+	// 	&SProjectCleanerUnusedAssetsBrowserUI::OnAssetDblClicked
+	// );
+	// AssetPickerConfig.OnGetAssetContextMenu = FOnGetAssetContextMenu::CreateRaw(
+	// 	this,
+	// 	&SProjectCleanerUnusedAssetsBrowserUI::OnGetAssetContextMenu
+	// );
+
+
 	return
 		SNew(SDockTab)
 		.TabRole(PanelTab)
@@ -336,8 +412,8 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnUnusedAssets(const FSpawnTabArgs
 		[
 			SNew(SVerticalBox)
 			+ SVerticalBox::Slot()
-			.Padding(FMargin{5.0f})
-			.FillHeight(1.0f)
+			  .Padding(FMargin{5.0f})
+			  .FillHeight(1.0f)
 			[
 				SNew(SSplitter)
 				.Style(FEditorStyle::Get(), "ContentBrowser.Splitter")
@@ -346,13 +422,15 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnUnusedAssets(const FSpawnTabArgs
 				+ SSplitter::Slot()
 				[
 					SNew(SProjectCleanerTreeView)
-					.RootFolder(FPaths::ProjectContentDir())
-					.ForbiddenFolders(ForbiddenFolders)
 				]
 				+ SSplitter::Slot()
 				[
-					SNew(STextBlock)
-					.Text(FText::FromString(TEXT("Assets")))
+					SNew(SVerticalBox)
+					+ SVerticalBox::Slot()
+					.Padding(FMargin{0.0f, 5.0f})
+					[
+						ModuleContentBrowser.Get().CreateAssetPicker(AssetPickerConfig)
+					]
 				]
 			]
 		];
@@ -374,10 +452,10 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnIndirectAssets(const FSpawnTabAr
 TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnCorruptedAssets(const FSpawnTabArgs& Args) const
 {
 	// todo:ashe23 how to handle large number of files ?
-	
+
 	TSet<FString> FilesCorrupted;
 	UProjectCleanerLibrary::GetAssetsCorrupted(FilesCorrupted);
-	
+
 	return
 		SNew(SDockTab)
 		.TabRole(PanelTab)
@@ -394,10 +472,10 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnCorruptedAssets(const FSpawnTabA
 TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnNonEngineFiles(const FSpawnTabArgs& Args) const
 {
 	// todo:ashe23 how to handle large number of files ?
-	
+
 	TSet<FString> FilesNonEngine;
 	UProjectCleanerLibrary::GetNonEngineFiles(FilesNonEngine);
-	
+
 	return
 		SNew(SDockTab)
 		.TabRole(PanelTab)
@@ -406,7 +484,8 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnNonEngineFiles(const FSpawnTabAr
 		[
 			SNew(SProjectCleanerFileListView)
 			.Title(TEXT("List of Non Engine files inside Content folder"))
-			.Description(TEXT("Sometimes you will see empty folder in ContentBrowser, which you cant delete. Its because its contains some non engine files visible only in Explorer. So make sure you delete all unnecessary files from list below to cleanup empty folders."))
+			.Description(TEXT(
+				                                 "Sometimes you will see empty folder in ContentBrowser, which you cant delete. Its because its contains some non engine files visible only in Explorer. So make sure you delete all unnecessary files from list below to cleanup empty folders."))
 			.Files(FilesNonEngine)
 		];
 }

@@ -1,9 +1,6 @@
 ﻿// Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "ProjectCleanerScanSettings.h"
-// Engine Headers
-// #include "EditorUtilityBlueprint.h"
-// #include "EditorUtilityWidgetBlueprint.h"
 
 UProjectCleanerScanSettings::UProjectCleanerScanSettings()
 {

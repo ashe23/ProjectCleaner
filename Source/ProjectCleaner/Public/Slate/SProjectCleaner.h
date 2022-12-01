@@ -36,9 +36,10 @@ private:
 	TSharedRef<SDockTab> OnTabSpawnIndirectAssets(const FSpawnTabArgs& Args) const;
 	TSharedRef<SDockTab> OnTabSpawnCorruptedAssets(const FSpawnTabArgs& Args) const;
 	TSharedRef<SDockTab> OnTabSpawnNonEngineFiles(const FSpawnTabArgs& Args) const;
+	
 	TSharedPtr<FTabManager> TabManager;
 	TSharedPtr<FTabManager::FLayout> TabLayout;
-
-	TWeakObjectPtr<UProjectCleanerScanSettings> ScanSettings;
 	TSharedPtr<IDetailsView> ScanSettingsProperty;
+	TWeakObjectPtr<UProjectCleanerScanSettings> ScanSettings;
+	TSharedPtr<FProjectCleanerScanner> Scanner;
 };
