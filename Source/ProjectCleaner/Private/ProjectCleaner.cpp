@@ -68,12 +68,12 @@ void FProjectCleanerModule::RegisterMenus()
 
 				UToolMenu* Menu = UToolMenus::Get()->ExtendMenu("LevelEditor.MainMenu.Window");
 				FToolMenuSection& Section = Menu->AddSection(
-					"SectionAssetManagementTools" ,
+					"SectionAssetManagementTools",
 					FText::FromString(TEXT("Asset Management Tools")),
 					FToolMenuInsert("WindowLayout", EToolMenuInsertType::After)
 				);
 				Section.AddMenuEntryWithCommandList(FProjectCleanerCmds::Get().OpenProjectCleanerWindow, Cmds);
-			
+
 				UToolMenu* ToolbarMenu = UToolMenus::Get()->ExtendMenu("LevelEditor.LevelEditorToolBar");
 				FToolMenuSection& ToolbarSection = ToolbarMenu->FindOrAddSection("Settings");
 				FToolMenuEntry& Entry = ToolbarSection.AddEntry(
@@ -91,14 +91,14 @@ void FProjectCleanerModule::RegisterTabs() const
 		                        ProjectCleanerConstants::TabProjectCleaner,
 		                        FOnSpawnTab::CreateLambda([&](const FSpawnTabArgs& SpawnTabArgs) -> TSharedRef<SDockTab>
 		                        {
-		                        	const TSharedRef<SDockTab> DockTab = SNew(SDockTab).TabRole(MajorTab);
-		                        	const TSharedRef<SProjectCleaner> Frontend = SNew(SProjectCleaner, DockTab, SpawnTabArgs.GetOwnerWindow());
-		                        	
-		                        	DockTab->SetContent(Frontend);
-		                        	
+			                        const TSharedRef<SDockTab> DockTab = SNew(SDockTab).TabRole(MajorTab);
+			                        const TSharedRef<SProjectCleaner> Frontend = SNew(SProjectCleaner, DockTab, SpawnTabArgs.GetOwnerWindow());
+
+			                        DockTab->SetContent(Frontend);
+
 			                        return DockTab;
 		                        }))
-	                        .SetDisplayName(LOCTEXT("FProjectCleanerTabTitle", "ProjectCleaner"))
+	                        .SetDisplayName(LOCTEXT("FProjectCleanerTabTitle", "Project Cleaner"))
 	                        .SetMenuType(ETabSpawnerMenuType::Hidden)
 	                        .SetIcon(FSlateIcon(FProjectCleanerStyles::GetStyleSetName(), "ProjectCleaner.IconBin16"));
 }
