@@ -67,9 +67,13 @@ void FProjectCleanerModule::RegisterMenus()
 				FToolMenuOwnerScoped OwnerScoped(this);
 
 				UToolMenu* Menu = UToolMenus::Get()->ExtendMenu("LevelEditor.MainMenu.Window");
-				FToolMenuSection& Section = Menu->FindOrAddSection("WindowLayout");
+				FToolMenuSection& Section = Menu->AddSection(
+					"SectionAssetManagementTools" ,
+					FText::FromString(TEXT("Asset Management Tools")),
+					FToolMenuInsert("WindowLayout", EToolMenuInsertType::After)
+				);
 				Section.AddMenuEntryWithCommandList(FProjectCleanerCmds::Get().OpenProjectCleanerWindow, Cmds);
-
+			
 				UToolMenu* ToolbarMenu = UToolMenus::Get()->ExtendMenu("LevelEditor.LevelEditorToolBar");
 				FToolMenuSection& ToolbarSection = ToolbarMenu->FindOrAddSection("Settings");
 				FToolMenuEntry& Entry = ToolbarSection.AddEntry(

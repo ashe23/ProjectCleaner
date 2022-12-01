@@ -76,7 +76,7 @@ struct FProjectCleanerFolderInfo
 	bool bEmpty = false;
 	bool bExcluded = false;
 	bool bDevFolder = false;
-	
+
 	TSet<FString> SubFolders;
 	TSet<FString> SubFoldersAll;
 	TSet<FString> SubFoldersEmpty;

@@ -22,7 +22,7 @@ void FProjectCleanerCmds::RegisterCommands()
 {
 	UI_COMMAND(
 		OpenProjectCleanerWindow,
-		"ProjectCleaner",
+		"Project Cleaner",
 		"Open Project Cleaner Window",
 		EUserInterfaceActionType::Button,
 		FInputChord()
