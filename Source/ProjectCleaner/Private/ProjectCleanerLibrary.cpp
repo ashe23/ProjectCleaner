@@ -5,15 +5,10 @@
 // Engine Headers
 #include "AssetToolsModule.h"
 #include "ContentBrowserModule.h"
-#include "EditorUtilityBlueprint.h"
-#include "EditorUtilityWidget.h"
-#include "EditorUtilityWidgetBlueprint.h"
 #include "IContentBrowserSingleton.h"
 #include "FileHelpers.h"
-#include "ProjectCleanerScanSettings.h"
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "Engine/AssetManager.h"
-#include "Engine/MapBuildDataRegistry.h"
 #include "Internationalization/Regex.h"
 #include "Misc/FileHelper.h"
 #include "Misc/ScopedSlowTask.h"
@@ -30,13 +25,13 @@ bool UProjectCleanerLibrary::IsUnderFolder(const FString& InFolderPathAbs, const
 	return InFolderPathAbs.Equals(RootFolder) || FPaths::IsUnderDirectory(InFolderPathAbs, RootFolder);
 }
 
-bool UProjectCleanerLibrary::IsUnderForbiddenFolders(const FString& InFolderPathAbs, const TSet<FString>& ForbiddenFolders)
+bool UProjectCleanerLibrary::IsUnderAnyFolder(const FString& InFolderPathAbs, const TSet<FString>& Folders)
 {
-	if (InFolderPathAbs.IsEmpty() || ForbiddenFolders.Num() == 0) return false;
+	if (InFolderPathAbs.IsEmpty() || Folders.Num() == 0) return false;
 
-	for (const auto& ForbiddenFolder : ForbiddenFolders)
+	for (const auto& Folder : Folders)
 	{
-		if (IsUnderFolder(InFolderPathAbs, ForbiddenFolder)) return true;
+		if (IsUnderFolder(InFolderPathAbs, Folder)) return true;
 	}
 
 	return false;
@@ -69,239 +64,6 @@ bool UProjectCleanerLibrary::IsCorruptedEngineFile(const FString& InFilePathAbs)
 
 	// if its does not exist in asset registry, then something wrong with asset
 	return !AssetData.IsValid();
-}
-
-// === REFACTOR===
-void UProjectCleanerLibrary::GetSubFolders(const FString& InDirPath, const bool bRecursive, TSet<FString>& SubFolders)
-{
-	if (InDirPath.IsEmpty()) return;
-	if (!FPaths::DirectoryExists(InDirPath)) return;
-
-	SubFolders.Reset();
-
-	class FFindFoldersVisitor final : public IPlatformFile::FDirectoryVisitor
-	{
-	public:
-		TSet<FString>& Folders;
-
-		explicit FFindFoldersVisitor(TSet<FString>& InFolders) : FDirectoryVisitor(EDirectoryVisitorFlags::None), Folders(InFolders)
-		{
-		}
-
-		virtual bool Visit(const TCHAR* FilenameOrDirectory, bool bIsDirectory) override
-		{
-			if (bIsDirectory)
-			{
-				Folders.Add(FilenameOrDirectory);
-			}
-			return true;
-		}
-	};
-
-	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
-	FFindFoldersVisitor FindFoldersVisitor(SubFolders);
-
-	if (bRecursive)
-	{
-		PlatformFile.IterateDirectoryRecursively(*InDirPath, FindFoldersVisitor);
-	}
-	else
-	{
-		PlatformFile.IterateDirectory(*InDirPath, FindFoldersVisitor);
-	}
-}
-
-int32 UProjectCleanerLibrary::GetSubFoldersNum(const FString& InDirPath, const bool bRecursive)
-{
-	TSet<FString> SubFolders;
-	GetSubFolders(InDirPath, bRecursive, SubFolders);
-
-	return SubFolders.Num();
-}
-
-void UProjectCleanerLibrary::GetEmptyFolders(const FString& InDirPath, TSet<FString>& EmptyFolders)
-{
-	EmptyFolders.Reset();
-
-	class FFindEmptyFoldersVisitor final : public IPlatformFile::FDirectoryVisitor
-	{
-	public:
-		TSet<FString>& EmptyFolders;
-
-		explicit FFindEmptyFoldersVisitor(TSet<FString>& InEmptyFolders) : FDirectoryVisitor(EDirectoryVisitorFlags::None), EmptyFolders(InEmptyFolders)
-		{
-		}
-
-		virtual bool Visit(const TCHAR* FilenameOrDirectory, bool bIsDirectory) override
-		{
-			const FString FullPath = FPaths::ConvertRelativePathToFull(FilenameOrDirectory);
-
-			if (bIsDirectory)
-			{
-				TArray<FString> Files;
-				IFileManager::Get().FindFilesRecursive(Files, *FullPath, TEXT("*.*"), true, false);
-
-				if (Files.Num() == 0)
-				{
-					EmptyFolders.Add(FullPath);
-				}
-			}
-
-			return true;
-		}
-	};
-
-	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
-	FFindEmptyFoldersVisitor EmptyFoldersVisitor(EmptyFolders);
-	PlatformFile.IterateDirectoryRecursively(*InDirPath, EmptyFoldersVisitor);
-}
-
-int32 UProjectCleanerLibrary::GetEmptyFoldersNum(const FString& InDirPath)
-{
-	TSet<FString> EmptyFolders;
-	GetEmptyFolders(InDirPath, EmptyFolders);
-
-	return EmptyFolders.Num();
-}
-
-bool UProjectCleanerLibrary::IsEmptyFolder(const FString& InDirPath)
-{
-	TArray<FString> Files;
-	IFileManager::Get().FindFilesRecursive(Files, *InDirPath,TEXT("*.*"), true, false);
-
-	return Files.Num() == 0;
-}
-
-void UProjectCleanerLibrary::GetNonEngineFiles(TSet<FString>& FilesNonEngine)
-{
-	FilesNonEngine.Reset();
-
-	class FFindNonEngineFilesVisitor final : public IPlatformFile::FDirectoryVisitor
-	{
-	public:
-		TSet<FString>& Files;
-
-		explicit FFindNonEngineFilesVisitor(TSet<FString>& InFiles) : FDirectoryVisitor(EDirectoryVisitorFlags::None), Files(InFiles)
-		{
-		}
-
-		virtual bool Visit(const TCHAR* FilenameOrDirectory, bool bIsDirectory) override
-		{
-			const FString FullPath = FPaths::ConvertRelativePathToFull(FilenameOrDirectory);
-
-			if (!bIsDirectory && !IsEngineFileExtension(FPaths::GetExtension(FullPath, false)))
-			{
-				Files.Add(FullPath);
-			}
-
-
-			return true;
-		}
-	};
-
-	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
-	FFindNonEngineFilesVisitor FindNonEngineFilesVisitor(FilesNonEngine);
-	PlatformFile.IterateDirectoryRecursively(*FPaths::ProjectContentDir(), FindNonEngineFilesVisitor);
-}
-
-void UProjectCleanerLibrary::GetForbiddenFolders(TSet<FString>& ForbiddenFolders)
-{
-	ForbiddenFolders.Reset();
-
-	// following folders will never be scanned nor deleted
-	ForbiddenFolders.Add(FPaths::ProjectContentDir() / TEXT("Collections"));
-	ForbiddenFolders.Add(FPaths::GameUserDeveloperDir() / TEXT("Collections"));
-
-	const UProjectCleanerScanSettings* ScanSettings = GetDefault<UProjectCleanerScanSettings>();
-	if (!ScanSettings) return;
-
-	if (!ScanSettings->bScanDeveloperContents)
-	{
-		ForbiddenFolders.Add(FPaths::ProjectContentDir() / TEXT("Developers"));
-	}
-}
-
-void UProjectCleanerLibrary::GetAssetsByPath(const FString& InDirPathAbs, const bool bRecursive, TArray<FAssetData>& Assets)
-{
-	if (InDirPathAbs.IsEmpty()) return;
-	if (!FPaths::DirectoryExists(InDirPathAbs)) return;
-
-	Assets.Reset();
-
-	const FAssetRegistryModule& ModuleAssetRegistry = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(AssetRegistryConstants::ModuleName);
-	ModuleAssetRegistry.Get().GetAssetsByPath(FName{*PathConvertToRel(InDirPathAbs)}, Assets, bRecursive);
-	TSet<FString> ForbiddenFolders;
-	GetForbiddenFolders(ForbiddenFolders);
-
-	FARFilter Filter;
-	Filter.bRecursivePaths = true;
-
-	for (const auto& ForbiddenFolder : ForbiddenFolders)
-	{
-		Filter.PackagePaths.Add(FName{*PathConvertToRel(ForbiddenFolder)});
-	}
-
-	ModuleAssetRegistry.Get().UseFilterToExcludeAssets(Assets, Filter);
-}
-
-int32 UProjectCleanerLibrary::GetAssetsByPathNum(const FString& InDirPathAbs, const bool bRecursive, TArray<FAssetData>& Assets)
-{
-	GetAssetsByPath(InDirPathAbs, bRecursive, Assets);
-
-	return Assets.Num();
-}
-
-void UProjectCleanerLibrary::GetAssetsCorrupted(TSet<FString>& FilesCorrupted)
-{
-	FilesCorrupted.Reset();
-
-	class FFindCorruptedFilesVisitor final : public IPlatformFile::FDirectoryVisitor
-	{
-	public:
-		TSet<FString>& CorruptedFiles;
-
-		explicit FFindCorruptedFilesVisitor(TSet<FString>& InCorruptedFiles)
-			: FDirectoryVisitor(EDirectoryVisitorFlags::None),
-			  CorruptedFiles(InCorruptedFiles)
-		{
-		}
-
-		virtual bool Visit(const TCHAR* FilenameOrDirectory, bool bIsDirectory) override
-		{
-			if (!bIsDirectory)
-			{
-				const FString FullPath = FPaths::ConvertRelativePathToFull(FilenameOrDirectory);
-				if (IsEngineFileExtension(FPaths::GetExtension(FullPath, false)))
-				{
-					// here we got absolute path "C:/MyProject/Content/material.uasset"
-					// we must first convert that path to In Engine Internal Path like "/Game/material.uasset"
-					const FString InternalFilePath = PathConvertToRel(FullPath);
-					// Converting file path to object path (This is for searching in AssetRegistry)
-					// example "/Game/Name.uasset" => "/Game/Name.Name"
-					FString ObjectPath = InternalFilePath;
-					ObjectPath.RemoveFromEnd(FPaths::GetExtension(InternalFilePath, true));
-					ObjectPath.Append(TEXT(".") + FPaths::GetBaseFilename(InternalFilePath));
-
-					const FName ObjectPathName = FName{*ObjectPath};
-
-					const FAssetRegistryModule& ModuleAssetRegistry = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(AssetRegistryConstants::ModuleName);
-
-					// if its does not exist in asset registry, then something wrong with asset
-					const FAssetData AssetData = ModuleAssetRegistry.Get().GetAssetByObjectPath(ObjectPathName);
-					if (!AssetData.IsValid())
-					{
-						CorruptedFiles.Add(FullPath);
-					}
-				}
-			}
-
-			return true;
-		}
-	};
-
-	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
-	FFindCorruptedFilesVisitor FindCorruptedFilesVisitor(FilesCorrupted);
-	PlatformFile.IterateDirectoryRecursively(*FPaths::ProjectContentDir(), FindCorruptedFilesVisitor);
 }
 
 void UProjectCleanerLibrary::GetAssetsWithExternalRefs(TArray<FAssetData>& Assets)
@@ -417,106 +179,6 @@ void UProjectCleanerLibrary::GetLinkedAssets(const TArray<FAssetData>& Assets, T
 	}
 
 	ModuleAssetRegistry.Get().GetAssets(Filter, LinkedAssets);
-}
-
-void UProjectCleanerLibrary::GetAssetsUsed(TArray<FAssetData>& AssetsUsed)
-{
-	const FAssetRegistryModule& ModuleAssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>(AssetRegistryConstants::ModuleName);
-	const UProjectCleanerScanSettings* ScanSettings = GetDefault<UProjectCleanerScanSettings>();
-	if (!ScanSettings) return;
-
-	AssetsUsed.Reset();
-
-	TArray<FAssetData> AssetsPrimary;
-	TArray<FAssetData> AssetsIndirect;
-	TArray<FAssetData> AssetsWithExternalRefs;
-	TArray<FAssetData> AssetsInDeveloperFolder;
-	TArray<FAssetData> AssetsInMSPresets;
-	TArray<FAssetData> AssetsBlackListed;
-
-	GetAssetsPrimary(AssetsPrimary, true);
-	GetAssetsIndirect(AssetsIndirect);
-	GetAssetsWithExternalRefs(AssetsWithExternalRefs);
-	// todo:ashe23 excluded assets
-	// todo:ashe23 Megascans plugin assets
-	// todo:ashe23 for ue5 add __ExternalObject__ and __ExternalActors__ folders
-
-	// finding all blacklisted assets that are considered used
-	FARFilter Filter;
-	Filter.bRecursivePaths = true;
-	Filter.bRecursiveClasses = true;
-	Filter.PackagePaths.Add(FName{ProjectCleanerConstants::PathRelRoot});
-	Filter.ClassNames.Add(UEditorUtilityWidget::StaticClass()->GetFName());
-	Filter.ClassNames.Add(UEditorUtilityBlueprint::StaticClass()->GetFName());
-	Filter.ClassNames.Add(UEditorUtilityWidgetBlueprint::StaticClass()->GetFName());
-	Filter.ClassNames.Add(UMapBuildDataRegistry::StaticClass()->GetFName());
-	ModuleAssetRegistry.Get().GetAssets(Filter, AssetsBlackListed);
-
-	if (!ScanSettings->bScanDeveloperContents)
-	{
-		ModuleAssetRegistry.Get().GetAssetsByPath(ProjectCleanerConstants::PathRelDevelopers, AssetsInDeveloperFolder, true);
-	}
-
-	if (FModuleManager::Get().IsModuleLoaded(ProjectCleanerConstants::PluginMegascans))
-	{
-		ModuleAssetRegistry.Get().GetAssetsByPath(ProjectCleanerConstants::PathRelMegascansPresets, AssetsInMSPresets, true);
-	}
-
-	for (const auto& Asset : AssetsPrimary)
-	{
-		AssetsUsed.AddUnique(Asset);
-	}
-	for (const auto& Asset : AssetsIndirect)
-	{
-		AssetsUsed.AddUnique(Asset);
-	}
-	for (const auto& Asset : AssetsWithExternalRefs)
-	{
-		AssetsUsed.AddUnique(Asset);
-	}
-	for (const auto& Asset : AssetsInDeveloperFolder)
-	{
-		AssetsUsed.AddUnique(Asset);
-	}
-	for (const auto& Asset : AssetsInMSPresets)
-	{
-		AssetsUsed.AddUnique(Asset);
-	}
-	for (const auto& Asset : AssetsBlackListed)
-	{
-		AssetsUsed.AddUnique(Asset);
-	}
-
-	TArray<FAssetData> LinkedAssets;
-	GetLinkedAssets(AssetsUsed, LinkedAssets);
-
-	for (const auto& Asset : LinkedAssets)
-	{
-		AssetsUsed.AddUnique(Asset);
-	}
-}
-
-void UProjectCleanerLibrary::GetAssetsUnused(TArray<FAssetData>& AssetsUnused)
-{
-	AssetsUnused.Reset();
-
-	TArray<FAssetData> UsedAssets;
-	GetAssetsUsed(UsedAssets);
-
-	TArray<FAssetData> AllAssets;
-	const FAssetRegistryModule& ModuleAssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>(AssetRegistryConstants::ModuleName);
-	ModuleAssetRegistry.Get().GetAssetsByPath(ProjectCleanerConstants::PathRelRoot, AllAssets, true);
-
-	AssetsUnused.Reserve(UsedAssets.Num());
-
-	for (const auto& Asset : AllAssets)
-	{
-		if (UsedAssets.Contains(Asset)) continue;
-
-		AssetsUnused.AddUnique(Asset);
-	}
-
-	AssetsUnused.Shrink();
 }
 
 void UProjectCleanerLibrary::GetAssetsIndirect(TArray<FAssetData>& AssetsIndirect)

@@ -24,6 +24,7 @@ namespace ProjectCleanerConstants
 	static const FString MsgFixingRedirectors{TEXT("Fixing up redirectors... ")};
 	static const FString MsgLoadingRedirectors{TEXT("Loading redirectors... ")};
 	static const FString MsgLoadingAssets{TEXT("Loading Assets... ")};
+	static const FString MsgScanning{TEXT("Scanning... ")};
 	static const FString MsgAssetRegistryStillWorking{TEXT("The AssetRegistry is still working. Please wait for the scan to finish")};
 
 	// path

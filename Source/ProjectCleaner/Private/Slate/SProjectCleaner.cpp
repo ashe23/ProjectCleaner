@@ -371,7 +371,35 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnUnusedAssets(const FSpawnTabArgs
 		}
 	};
 
+	FGetCurrentSelectionDelegate CurrentSelectionDelegate;
+	FRefreshAssetViewDelegate RefreshAssetViewDelegate;
+
 	FAssetPickerConfig AssetPickerConfig;
+	FARFilter Filter;
+		
+	if (Scanner.Get()->GetAssetsUnused().Num() == 0)
+	{
+		// this is needed for disabling showing primary assets in browser, when there is no unused assets
+		Filter.TagsAndValues.Add(FName{ "ProjectCleanerEmptyTag" }, FString{ "ProjectCleanerEmptyTag" });
+	}
+	else
+	{
+		Filter.PackageNames.Reserve(Scanner.Get()->GetAssetsUnused().Num());
+		for (const auto& Asset : Scanner.Get()->GetAssetsUnused())
+		{
+			Filter.PackageNames.Add(Asset.PackageName);
+		}
+	}
+
+	// todo:ashe23 change later
+	Filter.PackagePaths.Add(ProjectCleanerConstants::PathRelRoot);
+
+	// if (!SelectedPath.IsNone())
+	// {
+	// 	Filter.PackagePaths.Add(SelectedPath);
+	// }
+	
+	AssetPickerConfig.Filter = Filter;
 	AssetPickerConfig.SelectionMode = ESelectionMode::Multi;
 	AssetPickerConfig.InitialAssetViewType = EAssetViewType::Tile;
 	AssetPickerConfig.bCanShowFolders = false;
@@ -379,9 +407,8 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnUnusedAssets(const FSpawnTabArgs
 	AssetPickerConfig.bPreloadAssetsForContextMenu = false;
 	AssetPickerConfig.bSortByPathInColumnView = false;
 	AssetPickerConfig.bShowPathInColumnView = false;
-	AssetPickerConfig.bShowBottomToolbar = false;
-	// AssetPickerConfig.bCanShowDevelopersFolder = ScanSettings->bScanDeveloperContents;
-	AssetPickerConfig.bCanShowDevelopersFolder = false;
+	AssetPickerConfig.bShowBottomToolbar = true;
+	AssetPickerConfig.bCanShowDevelopersFolder = ScanSettings->bScanDeveloperContents;
 	AssetPickerConfig.bCanShowClasses = false;
 	AssetPickerConfig.bAllowDragging = false;
 	AssetPickerConfig.bForceShowEngineContent = false;
@@ -396,8 +423,11 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnUnusedAssets(const FSpawnTabArgs
 	);
 	AssetPickerConfig.ExtraFrontendFilters.Add(MakeShareable(new FFrontendFilter_ProjectCleaner(ProjectCleanerCategory)));
 
-	// AssetPickerConfig.GetCurrentSelectionDelegates.Add(&CurrentSelectionDelegate);
-	// AssetPickerConfig.RefreshAssetViewDelegates.Add(&RefreshAssetViewDelegate);
+	AssetPickerConfig.GetCurrentSelectionDelegates.Add(&CurrentSelectionDelegate);
+	AssetPickerConfig.RefreshAssetViewDelegates.Add(&RefreshAssetViewDelegate);
+
+	
+	
 	// AssetPickerConfig.OnAssetDoubleClicked = FOnAssetDoubleClicked::CreateStatic(
 	// 	&SProjectCleanerUnusedAssetsBrowserUI::OnAssetDblClicked
 	// );
@@ -456,10 +486,6 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnIndirectAssets(const FSpawnTabAr
 TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnCorruptedAssets(const FSpawnTabArgs& Args) const
 {
 	// todo:ashe23 how to handle large number of files ?
-
-	TSet<FString> FilesCorrupted;
-	UProjectCleanerLibrary::GetAssetsCorrupted(FilesCorrupted);
-
 	return
 		SNew(SDockTab)
 		.TabRole(PanelTab)
@@ -469,17 +495,13 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnCorruptedAssets(const FSpawnTabA
 			SNew(SProjectCleanerFileListView)
 			.Title(TEXT("List of possibly corrupted assets, that exist in Content folder, but not loaded by engine"))
 			.Description(TEXT("In order to fix, try to reload project and see if its loaded. Otherwise close editor and remove them manually from explorer"))
-			.Files(FilesCorrupted)
+			.Files(Scanner.Get()->GetFilesCorrupted())
 		];
 }
 
 TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnNonEngineFiles(const FSpawnTabArgs& Args) const
 {
 	// todo:ashe23 how to handle large number of files ?
-
-	TSet<FString> FilesNonEngine;
-	UProjectCleanerLibrary::GetNonEngineFiles(FilesNonEngine);
-
 	return
 		SNew(SDockTab)
 		.TabRole(PanelTab)
@@ -490,6 +512,6 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnNonEngineFiles(const FSpawnTabAr
 			.Title(TEXT("List of Non Engine files inside Content folder"))
 			.Description(TEXT(
 				                                 "Sometimes you will see empty folder in ContentBrowser, which you cant delete. Its because its contains some non engine files visible only in Explorer. So make sure you delete all unnecessary files from list below to cleanup empty folders."))
-			.Files(FilesNonEngine)
+			.Files(Scanner.Get()->GetFilesCorrupted())
 		];
 }
