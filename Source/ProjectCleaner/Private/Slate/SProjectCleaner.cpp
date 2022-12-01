@@ -14,6 +14,7 @@
 #include "ContentBrowserItem.h"
 #include "FrontendFilterBase.h"
 #include "IContentBrowserSingleton.h"
+#include "ProjectCleanerApi.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SWidgetSwitcher.h"
@@ -29,10 +30,12 @@ void SProjectCleaner::Construct(const FArguments& InArgs, const TSharedRef<SDock
 	Scanner = MakeShareable(new FProjectCleanerScanner);
 	if (!Scanner.IsValid()) return;
 
-	ScanSettings->OnChange().AddLambda([&]()
-	{
-		Scanner.Get()->Scan(ScanSettings);
-	});
+	Scanner.Get()->Scan(ScanSettings);
+
+	// ScanSettings->OnChange().AddLambda([&]()
+	// {
+	// 	Scanner.Get()->Scan(ScanSettings);
+	// });
 
 	FPropertyEditorModule& PropertyEditor = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
 	FDetailsViewArgs DetailsViewArgs;
@@ -233,9 +236,9 @@ void SProjectCleaner::MenuBarFillHelp(FMenuBuilder& MenuBuilder, const TSharedPt
 FReply SProjectCleaner::OnBtnScanProjectClick() const
 {
 	if (!Scanner.IsValid()) return FReply::Handled();
-		
+
 	Scanner.Get()->Scan(ScanSettings);
-	
+
 	return FReply::Handled();
 }
 
@@ -422,6 +425,7 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnUnusedAssets(const FSpawnTabArgs
 				+ SSplitter::Slot()
 				[
 					SNew(SProjectCleanerTreeView)
+					.Scanner(Scanner)
 				]
 				+ SSplitter::Slot()
 				[

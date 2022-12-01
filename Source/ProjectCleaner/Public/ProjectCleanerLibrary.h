@@ -32,6 +32,7 @@ public:
 	static void SaveAllAssets(const bool bPromptUser = true);
 	static void UpdateAssetRegistry(const bool bSyncScan = false);
 	static void FocusOnDirectory(const FString& InRelPath);
+	static void GetLinkedAssets(const TArray<FAssetData>& Assets, TArray<FAssetData>& LinkedAssets);
 	
 	// === REFACTOR ==
 	static void GetSubFolders(const FString& InDirPath, const bool bRecursive, TSet<FString>& SubFolders);
@@ -53,7 +54,6 @@ public:
 	static void GetAssetsWithExternalRefs(TArray<FAssetData>& Assets);
 	
 	static void GetPrimaryAssetClasses(TArray<FName>& PrimaryAssetClasses, const bool bIncludeDerivedClasses = false);
-	static void GetLinkedAssets(const TArray<FAssetData>& Assets, TArray<FAssetData>& LinkedAssets);
 private:
 	static FString ConvertPathInternal(const FString& From, const FString& To, const FString& Path);
 };

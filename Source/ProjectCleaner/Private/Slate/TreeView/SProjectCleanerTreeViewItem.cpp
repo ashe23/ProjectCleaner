@@ -1,6 +1,8 @@
 ﻿// Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "Slate/TreeView/SProjectCleanerTreeViewItem.h"
+
+#include "ProjectCleanerLibrary.h"
 #include "ProjectCleanerTypes.h"
 #include "ProjectCleanerStyles.h"
 
@@ -10,7 +12,7 @@ void SProjectCleanerTreeViewItem::Construct(const FArguments& InArgs, const TSha
 
 	SMultiColumnTableRow<TSharedPtr<FProjectCleanerTreeViewItem>>::Construct(
 		SMultiColumnTableRow<TSharedPtr<FProjectCleanerTreeViewItem>>::FArguments()
-		.ToolTipText(FText::FromString(TreeItem->DirPathRel)),
+		.ToolTipText(FText::FromString(TreeItem->FolderPathRel)),
 		OwnerTable
 	);
 }
@@ -44,7 +46,7 @@ TSharedRef<SWidget> SProjectCleanerTreeViewItem::GenerateWidgetForColumn(const F
 			  .AutoWidth()
 			  .Padding(FMargin{5.0f})
 			[
-				SNew(STextBlock).Text(FText::FromString(TreeItem->DirName))
+				SNew(STextBlock).Text(FText::FromString(TreeItem->FolderName))
 			];
 	}
 
@@ -143,7 +145,7 @@ TSharedRef<SWidget> SProjectCleanerTreeViewItem::GenerateWidgetForColumn(const F
 
 const FSlateBrush* SProjectCleanerTreeViewItem::GetFolderIcon() const
 {
-	if (TreeItem->bDeveloperFolder)
+	if (TreeItem->bDevFolder)
 	{
 		return FEditorStyle::GetBrush(TEXT("ContentBrowser.AssetTreeFolderDeveloper"));
 	}

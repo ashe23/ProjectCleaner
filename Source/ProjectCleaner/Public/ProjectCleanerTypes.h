@@ -41,28 +41,56 @@ struct FProjectCleanerFileViewItem
 
 struct FProjectCleanerTreeViewItem
 {
-	FString DirPathAbs;
-	FString DirPathRel;
-	FString DirName;
+	FString FolderPathAbs;
+	FString FolderPathRel;
+	FString FolderName;
+	int32 FoldersTotal = 0;
+	int32 FoldersEmpty = 0;
 	int64 SizeTotal = 0;
 	int64 SizeUnused = 0;
 	int32 AssetsTotal = 0;
 	int32 AssetsUnused = 0;
-	int32 FoldersTotal = 0;
-	int32 FoldersEmpty = 0;
-	bool bDeveloperFolder = false;
+	bool bDevFolder = false;
 	bool bExpanded = false;
 	bool bExcluded = false;
 	bool bEmpty = false;
-	TArray<TSharedPtr<FProjectCleanerTreeViewItem>> SubFolders;
+	TArray<TSharedPtr<FProjectCleanerTreeViewItem>> SubItems;
 
 	bool operator==(const FProjectCleanerTreeViewItem& Other) const
 	{
-		return DirPathAbs.Equals(Other.DirPathAbs);
+		return FolderPathAbs.Equals(Other.FolderPathAbs);
 	}
 
 	bool operator!=(const FProjectCleanerTreeViewItem& Other) const
 	{
-		return !DirPathAbs.Equals(Other.DirPathAbs);
+		return !FolderPathAbs.Equals(Other.FolderPathAbs);
+	}
+};
+
+struct FProjectCleanerFolderInfo
+{
+	FString FolderPathAbs;
+	FString FolderPathRel;
+	FString FolderName;
+
+	bool bEmpty = false;
+	bool bExcluded = false;
+	bool bDevFolder = false;
+	
+	TSet<FString> SubFolders;
+	TSet<FString> SubFoldersAll;
+	TSet<FString> SubFoldersEmpty;
+
+	TArray<FAssetData> AssetsTotal;
+	TArray<FAssetData> AssetsUnused;
+
+	bool operator==(const FProjectCleanerFolderInfo& Other) const
+	{
+		return FolderPathAbs.Equals(Other.FolderPathAbs);
+	}
+
+	bool operator!=(const FProjectCleanerFolderInfo& Other) const
+	{
+		return !FolderPathAbs.Equals(Other.FolderPathAbs);
 	}
 };

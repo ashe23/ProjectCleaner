@@ -23,11 +23,12 @@ public:
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Config, Category="ExcludeOptions", DisplayName="Excluded Folders",
 		meta=(ContentDir, ToolTip="Exclude from scanning assets inside this folders"))
-	TArray<FDirectoryPath> ExcludedDirectories;
+	TArray<FDirectoryPath> ExcludedFolders;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Config, Category="ExcludeOptions", meta=(ToolTip="Exclude from scanning assets of specified classes"))
 	TArray<TSoftClassPtr<UObject>> ExcludedClasses;
 
+	UPROPERTY(Config)
 	TArray<FAssetData> ExcludedAssets;
 
 	FProjectCleanerScanSettingsChangeDelegate& OnChange();

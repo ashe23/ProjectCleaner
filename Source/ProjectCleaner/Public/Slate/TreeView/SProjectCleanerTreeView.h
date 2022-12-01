@@ -7,6 +7,7 @@
 
 class UProjectCleanerScanSettings;
 struct FProjectCleanerTreeViewItem;
+struct FProjectCleanerScanner;
 
 // Responsible for showing project folder structure as tree view with additional information about every folder and its content
 class SProjectCleanerTreeView final : public SCompoundWidget
@@ -15,8 +16,8 @@ public:
 	SLATE_BEGIN_ARGS(SProjectCleanerTreeView)
 		{
 		}
-		// SLATE_ARGUMENT(FString, RootFolder)
-		// SLATE_ARGUMENT(TSet<FString>, ForbiddenFolders)
+
+		SLATE_ARGUMENT(TSharedPtr<FProjectCleanerScanner>, Scanner)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
@@ -34,6 +35,7 @@ private:
 	void OnTreeViewSearchBoxTextCommitted(const FText& InSearchText, ETextCommit::Type InCommitType);
 	void ToggleExpansionRecursive(TSharedPtr<FProjectCleanerTreeViewItem> Item, const bool bExpanded) const;
 
+	TSharedPtr<FProjectCleanerScanner> Scanner;
 	TWeakObjectPtr<UProjectCleanerScanSettings> ScanSettings;
 	TArray<TSharedPtr<FProjectCleanerTreeViewItem>> TreeItems;
 	TSharedPtr<STreeView<TSharedPtr<FProjectCleanerTreeViewItem>>> TreeView;
