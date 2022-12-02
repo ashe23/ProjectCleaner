@@ -23,6 +23,7 @@ TSharedRef<SWidget> SProjectCleanerTreeViewItem::GenerateWidgetForColumn(const F
 	{
 		return
 			SNew(SHorizontalBox)
+			.ToolTipText(FText::FromString(TreeItem->FolderPathRel))
 			+ SHorizontalBox::Slot()
 			  .AutoWidth()
 			  .Padding(FMargin{2.0f})
@@ -54,6 +55,7 @@ TSharedRef<SWidget> SProjectCleanerTreeViewItem::GenerateWidgetForColumn(const F
 	{
 		return
 			SNew(SHorizontalBox)
+			.ToolTipText(FText::FromString(TEXT("Number of folders in this path")))
 			+ SHorizontalBox::Slot()
 			  .FillWidth(1.0f)
 			  .HAlign(HAlign_Center)
@@ -69,6 +71,7 @@ TSharedRef<SWidget> SProjectCleanerTreeViewItem::GenerateWidgetForColumn(const F
 	{
 		return
 			SNew(SHorizontalBox)
+			.ToolTipText(FText::FromString(TEXT("Number of empty folders in this path")))
 			+ SHorizontalBox::Slot()
 			  .FillWidth(1.0f)
 			  .HAlign(HAlign_Center)
@@ -84,6 +87,7 @@ TSharedRef<SWidget> SProjectCleanerTreeViewItem::GenerateWidgetForColumn(const F
 	{
 		return
 			SNew(SHorizontalBox)
+			.ToolTipText(FText::FromString(TEXT("Number of assets in this path")))
 			+ SHorizontalBox::Slot()
 			  .FillWidth(1.0f)
 			  .HAlign(HAlign_Center)
@@ -99,6 +103,7 @@ TSharedRef<SWidget> SProjectCleanerTreeViewItem::GenerateWidgetForColumn(const F
 	{
 		return
 			SNew(SHorizontalBox)
+			.ToolTipText(FText::FromString(TEXT("Number of unused assets in this path")))
 			+ SHorizontalBox::Slot()
 			  .FillWidth(1.0f)
 			  .HAlign(HAlign_Center)
@@ -114,6 +119,7 @@ TSharedRef<SWidget> SProjectCleanerTreeViewItem::GenerateWidgetForColumn(const F
 	{
 		return
 			SNew(SHorizontalBox)
+			.ToolTipText(FText::FromString(TEXT("Total size of all assets in this path")))
 			+ SHorizontalBox::Slot()
 			  .FillWidth(1.0f)
 			  .HAlign(HAlign_Center)
@@ -129,6 +135,7 @@ TSharedRef<SWidget> SProjectCleanerTreeViewItem::GenerateWidgetForColumn(const F
 	{
 		return
 			SNew(SHorizontalBox)
+			.ToolTipText(FText::FromString(TEXT("Total size of unused assets in this path")))
 			+ SHorizontalBox::Slot()
 			  .FillWidth(1.0f)
 			  .HAlign(HAlign_Center)

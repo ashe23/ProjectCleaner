@@ -18,21 +18,21 @@
 class FContentFolderVisitor final : public IPlatformFile::FDirectoryVisitor
 {
 public:
-	TSet<FString>& FoldersAll;
+	// TSet<FString>& FoldersAll;
 	TSet<FString>& FoldersEmpty;
 	TSet<FString>& FilesCorrupted;
 	TSet<FString>& FilesNonEngine;
 	const TSet<FString>& FoldersBlacklist;
 
 	FContentFolderVisitor(
-		TSet<FString>& InFoldersAll,
+		// TSet<FString>& InFoldersAll,
 		TSet<FString>& InFoldersEmpty,
 		TSet<FString>& InFilesCorrupted,
 		TSet<FString>& InFilesNonEngine,
 		const TSet<FString>& InFoldersBlacklist
 	)
 		: FDirectoryVisitor(EDirectoryVisitorFlags::None),
-		  FoldersAll(InFoldersAll),
+		  // FoldersAll(InFoldersAll),
 		  FoldersEmpty(InFoldersEmpty),
 		  FilesCorrupted(InFilesCorrupted),
 		  FilesNonEngine(InFilesNonEngine),
@@ -48,7 +48,7 @@ public:
 		{
 			if (UProjectCleanerLibrary::IsUnderAnyFolder(FullPath, FoldersBlacklist)) return true;
 
-			FoldersAll.Add(FullPath);
+			// FoldersAll.Add(FullPath);
 
 			TArray<FString> Files;
 			IFileManager::Get().FindFilesRecursive(Files, *FullPath, TEXT("*.*"), true, false);
@@ -106,7 +106,7 @@ void FProjectCleanerScanner::Scan(const TWeakObjectPtr<UProjectCleanerScanSettin
 	DataInit();
 
 	FContentFolderVisitor ContentFolderVisitor{
-		FoldersAll,
+		// FoldersAll,
 		FoldersEmpty,
 		FilesCorrupted,
 		FilesNonEngine,
@@ -197,6 +197,48 @@ void FProjectCleanerScanner::GetSubFolders(const FString& InFolderPathAbs, TSet<
 	}
 }
 
+bool FProjectCleanerScanner::IsFolderEmpty(const FString& InFolderPathAbs) const
+{
+	return FoldersEmpty.Contains(InFolderPathAbs);
+}
+
+int32 FProjectCleanerScanner::GetFoldersTotalNum(const FString& InFolderPathAbs) const
+{
+	if (InFolderPathAbs.IsEmpty()) return 0;
+	if (!FPaths::DirectoryExists(InFolderPathAbs)) return 0;
+
+	TArray<FString> AllFolders;
+	IFileManager::Get().FindFilesRecursive(AllFolders, *InFolderPathAbs, TEXT("*.*"), false, true);
+
+	TSet<FString> Folders;
+	Folders.Reserve(AllFolders.Num());
+	for (const auto& Folder : AllFolders)
+	{
+		if (UProjectCleanerLibrary::IsUnderAnyFolder(Folder, FoldersBlacklist)) continue;
+
+		Folders.Add(Folder);
+	}
+
+	return Folders.Num();
+}
+
+int32 FProjectCleanerScanner::GetFoldersEmptyNum(const FString& InFolderPathAbs) const
+{
+	if (InFolderPathAbs.IsEmpty()) return 0;
+	if (!FPaths::DirectoryExists(InFolderPathAbs)) return 0;
+	
+	int32 Num = 0;
+	for (const auto& EmptyFolder : FoldersEmpty)
+	{
+		if (UProjectCleanerLibrary::IsUnderFolder(EmptyFolder, InFolderPathAbs))
+		{
+			Num++;
+		}
+	}
+
+	return Num;
+}
+
 const TSet<FString>& FProjectCleanerScanner::GetFoldersBlacklist() const
 {
 	return FoldersBlacklist;
@@ -262,7 +304,7 @@ void FProjectCleanerScanner::DataInit()
 
 void FProjectCleanerScanner::DataReset()
 {
-	FoldersAll.Reset();
+	// FoldersAll.Reset();
 	FoldersEmpty.Reset();
 	FoldersBlacklist.Reset();
 

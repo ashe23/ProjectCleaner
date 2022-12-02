@@ -167,14 +167,14 @@ TSharedPtr<FProjectCleanerTreeViewItem> SProjectCleanerTreeView::TreeItemCreate(
 	TreeItem->FolderPathAbs = InFolderPathAbs;
 	TreeItem->FolderPathRel = UProjectCleanerLibrary::PathConvertToRel(InFolderPathAbs);
 	TreeItem->FolderName = bIsProjectContentFolder ? TEXT("Content") : FPaths::GetPathLeaf(InFolderPathAbs);
-	// TreeItem->FoldersTotal = Scanner.Get()->GetFoldersTotalNum(InFolderPathAbs);
-	// TreeItem->FoldersEmpty = Scanner.Get()->GetFoldersEmptyNum(InFolderPathAbs);
+	TreeItem->FoldersTotal = Scanner.Get()->GetFoldersTotalNum(InFolderPathAbs);
+	TreeItem->FoldersEmpty = Scanner.Get()->GetFoldersEmptyNum(InFolderPathAbs);
 	// TreeItem->AssetsTotal = Scanner.Get()->GetAssetsUnusedNum(InFolderPathAbs);
 	// TreeItem->AssetsUnused = Scanner.Get()->GetAssetsUnusedNum(InFolderPathAbs);
 	// TreeItem->SizeTotal = Scanner.Get()->GetSizeTotal(InFolderPathAbs);
 	// TreeItem->SizeUnused = Scanner.Get()->GetSizeUnused(InFolderPathAbs);
 	TreeItem->bDevFolder = bIsProjectDeveloperFolder;
-	// TreeItem->bEmpty = Scanner.Get()->IsEmptyFolder(InFolderPathAbs);
+	TreeItem->bEmpty = Scanner.Get()->IsFolderEmpty(InFolderPathAbs);
 	TreeItem->bExpanded = bIsProjectContentFolder;
 	// TreeItem->bExcluded = Scanner.Get()->IsExcludedFolder(InFolderPathAbs);;
 	
@@ -192,6 +192,7 @@ TSharedRef<SHeaderRow> SProjectCleanerTreeView::GetTreeViewHeaderRow() const
 		[
 			SNew(STextBlock)
 			.Text(FText::FromString(TEXT("Name")))
+			.ToolTipText(FText::FromString(TEXT("Folder Name")))
 			.ColorAndOpacity(FProjectCleanerStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
 			.Font(FProjectCleanerStyles::GetFont("Light", ProjectCleanerConstants::HeaderRowFontSize))
 		]
@@ -201,6 +202,7 @@ TSharedRef<SHeaderRow> SProjectCleanerTreeView::GetTreeViewHeaderRow() const
 		  .HeaderContentPadding(FMargin{5.0f})
 		[
 			SNew(STextBlock)
+			.ToolTipText(FText::FromString(TEXT("Total number of folders")))
 			.Text(FText::FromString(TEXT("Folders (Total)")))
 			.ColorAndOpacity(FProjectCleanerStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
 			.Font(FProjectCleanerStyles::GetFont("Light", ProjectCleanerConstants::HeaderRowFontSize))
@@ -211,6 +213,7 @@ TSharedRef<SHeaderRow> SProjectCleanerTreeView::GetTreeViewHeaderRow() const
 		  .HeaderContentPadding(FMargin{5.0f})
 		[
 			SNew(STextBlock)
+			.ToolTipText(FText::FromString(TEXT("Total number of empty folders")))
 			.Text(FText::FromString(TEXT("Folders (Empty)")))
 			.ColorAndOpacity(FProjectCleanerStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
 			.Font(FProjectCleanerStyles::GetFont("Light", ProjectCleanerConstants::HeaderRowFontSize))
@@ -221,6 +224,7 @@ TSharedRef<SHeaderRow> SProjectCleanerTreeView::GetTreeViewHeaderRow() const
 		  .HeaderContentPadding(FMargin{5.0f})
 		[
 			SNew(STextBlock)
+			.ToolTipText(FText::FromString(TEXT("Total number of assets")))
 			.Text(FText::FromString(TEXT("Assets (Total)")))
 			.ColorAndOpacity(FProjectCleanerStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
 			.Font(FProjectCleanerStyles::GetFont("Light", ProjectCleanerConstants::HeaderRowFontSize))
@@ -231,6 +235,7 @@ TSharedRef<SHeaderRow> SProjectCleanerTreeView::GetTreeViewHeaderRow() const
 		  .HeaderContentPadding(FMargin{5.0f})
 		[
 			SNew(STextBlock)
+			.ToolTipText(FText::FromString(TEXT("Total number of unused assets")))
 			.Text(FText::FromString(TEXT("Assets (Unused)")))
 			.ColorAndOpacity(FProjectCleanerStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
 			.Font(FProjectCleanerStyles::GetFont("Light", ProjectCleanerConstants::HeaderRowFontSize))
@@ -241,6 +246,7 @@ TSharedRef<SHeaderRow> SProjectCleanerTreeView::GetTreeViewHeaderRow() const
 		  .HeaderContentPadding(FMargin{5.0f})
 		[
 			SNew(STextBlock)
+			.ToolTipText(FText::FromString(TEXT("Total size of all assets")))
 			.Text(FText::FromString(TEXT("Size (Total)")))
 			.ColorAndOpacity(FProjectCleanerStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
 			.Font(FProjectCleanerStyles::GetFont("Light", ProjectCleanerConstants::HeaderRowFontSize))
@@ -251,6 +257,7 @@ TSharedRef<SHeaderRow> SProjectCleanerTreeView::GetTreeViewHeaderRow() const
 		  .HeaderContentPadding(FMargin{5.0f})
 		[
 			SNew(STextBlock)
+			.ToolTipText(FText::FromString(TEXT("Total size of unused assets")))
 			.Text(FText::FromString(TEXT("Size (Unused)")))
 			.ColorAndOpacity(FProjectCleanerStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
 			.Font(FProjectCleanerStyles::GetFont("Light", ProjectCleanerConstants::HeaderRowFontSize))
@@ -269,7 +276,7 @@ void SProjectCleanerTreeView::OnTreeViewSearchBoxTextCommitted(const FText& InSe
 
 TSharedRef<ITableRow> SProjectCleanerTreeView::OnTreeViewGenerateRow(TSharedPtr<FProjectCleanerTreeViewItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const
 {
-	return SNew(SProjectCleanerTreeViewItem, OwnerTable).ToolTipText(FText::FromString(Item->FolderPathRel)).TreeItem(Item);
+	return SNew(SProjectCleanerTreeViewItem, OwnerTable).TreeItem(Item);
 }
 
 void SProjectCleanerTreeView::OnTreeViewItemMouseDblClick(TSharedPtr<FProjectCleanerTreeViewItem> Item) const

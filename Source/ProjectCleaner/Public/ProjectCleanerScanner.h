@@ -20,6 +20,11 @@ struct FProjectCleanerScanner
 
 	void GetSubFolders(const FString& InFolderPathAbs, TSet<FString>& SubFolders) const;
 
+	bool IsFolderEmpty(const FString& InFolderPathAbs) const;
+	
+	int32 GetFoldersTotalNum(const FString& InFolderPathAbs) const;
+	int32 GetFoldersEmptyNum(const FString& InFolderPathAbs) const;
+	
 	const TSet<FString>& GetFoldersBlacklist() const;
 	const TSet<FString>& GetFilesCorrupted() const;
 	const TSet<FString>& GetFilesNonEngine() const;
@@ -30,7 +35,7 @@ private:
 	void DataInit();
 	void DataReset();
 
-	TSet<FString> FoldersAll;
+	// TSet<FString> FoldersAll;
 	TSet<FString> FoldersEmpty;
 	TSet<FString> FoldersBlacklist;
 
