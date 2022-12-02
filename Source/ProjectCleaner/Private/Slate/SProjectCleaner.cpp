@@ -522,6 +522,6 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnNonEngineFiles(const FSpawnTabAr
 			.Title(TEXT("List of Non Engine files inside Content folder"))
 			.Description(TEXT(
 				                                 "Sometimes you will see empty folder in ContentBrowser, which you cant delete. Its because its contains some non engine files visible only in Explorer. So make sure you delete all unnecessary files from list below to cleanup empty folders."))
-			.Files(Scanner.Get()->GetFilesCorrupted())
+			.Files(Scanner.Get()->GetFilesNonEngine())
 		];
 }
