@@ -48,7 +48,7 @@ public:
 			return SNew(STextBlock).Text(FText::FromString(ListItem->FilePath));
 		}
 
-		return SNew(STextBlock).Text(FText::FromString("No Data"));
+		return SNew(STextBlock).Text(FText::FromString("No Files"));
 	}
 
 private:
@@ -68,7 +68,9 @@ public:
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
+	void UpdateView(const TSet<FString>& Files);
 private:
+	FText GetTotalSizeTxt() const;
 	TSharedPtr<SHeaderRow> GetListHeaderRow() const;
 	void OnListItemDblClick(TSharedPtr<FProjectCleanerFileViewItem> Item) const;
 	TSharedRef<ITableRow> OnGenerateRow(
@@ -78,4 +80,8 @@ private:
 
 	TArray<TSharedPtr<FProjectCleanerFileViewItem>> ListItems;
 	TSharedPtr<SListView<TSharedPtr<FProjectCleanerFileViewItem>>> ListView;
+
+	FString Title;
+	FString Description;
+	int64 TotalSize = 0;
 };

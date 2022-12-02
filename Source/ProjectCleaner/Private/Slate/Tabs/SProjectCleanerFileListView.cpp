@@ -1,6 +1,6 @@
 ﻿// Copyright Ashot Barkhudaryan. All Rights Reserved.
 
-#include "Slate/SProjectCleanerFileListView.h"
+#include "Slate/Tabs/SProjectCleanerFileListView.h"
 #include "ProjectCleanerStyles.h"
 // Engine Headers
 #include "ProjectCleanerConstants.h"
@@ -8,35 +8,10 @@
 
 void SProjectCleanerFileListView::Construct(const FArguments& InArgs)
 {
-	int64 TotalSize = 0;
-	for (const auto& File : InArgs._Files)
-	{
-		const TSharedPtr<FProjectCleanerFileViewItem> NewItem = MakeShareable(new FProjectCleanerFileViewItem);
-		if (!NewItem) continue;
-
-		NewItem->FilePath = File;
-		NewItem->FileName = FPaths::GetPathLeaf(File);
-		NewItem->FileExt = FPaths::GetExtension(File, true);
-		NewItem->FileSize = IFileManager::Get().FileSize(*File);
-
-		TotalSize += NewItem->FileSize;
-
-		ListItems.Add(NewItem);
-	}
-
-	if (!ListView)
-	{
-		SAssignNew(ListView, SListView<TSharedPtr<FProjectCleanerFileViewItem>>)
-		.ListItemsSource(&ListItems)
-		.SelectionMode(ESelectionMode::SingleToggle)
-		.OnGenerateRow(this, &SProjectCleanerFileListView::OnGenerateRow)
-		.OnMouseButtonDoubleClick_Raw(this, &SProjectCleanerFileListView::OnListItemDblClick)
-		.HeaderRow(GetListHeaderRow());
-	}
-
-	const FString TotalSizeStr = FString::Printf(TEXT("%d item%s. Total Size: %s"), ListItems.Num(), ListItems.Num() > 1 ? TEXT("s") : TEXT(""), *FText::AsMemory(TotalSize).ToString());
-
-	ListView->RequestListRefresh();
+	Title = InArgs._Title;
+	Description = InArgs._Description;
+	
+	UpdateView(InArgs._Files);
 
 	ChildSlot
 	[
@@ -55,7 +30,7 @@ void SProjectCleanerFileListView::Construct(const FArguments& InArgs)
 				.Text(FText::FromString(InArgs._Title))
 				.Visibility_Lambda([&]()
 				{
-					return InArgs._Title.IsEmpty() ? EVisibility::Hidden : EVisibility::Visible;
+					return Title.IsEmpty() ? EVisibility::Collapsed : EVisibility::Visible;
 				})
 			]
 			+ SVerticalBox::Slot()
@@ -68,7 +43,7 @@ void SProjectCleanerFileListView::Construct(const FArguments& InArgs)
 				.Text(FText::FromString(InArgs._Description))
 				.Visibility_Lambda([&]()
 				{
-					return InArgs._Description.IsEmpty() ? EVisibility::Hidden : EVisibility::Visible;
+					return Description.IsEmpty() ? EVisibility::Collapsed : EVisibility::Visible;
 				})
 			]
 			+ SVerticalBox::Slot()
@@ -99,10 +74,52 @@ void SProjectCleanerFileListView::Construct(const FArguments& InArgs)
 				SNew(STextBlock)
 				.AutoWrapText(true)
 				.Font(FProjectCleanerStyles::GetFont("Light", 8))
-				.Text(FText::FromString(TotalSizeStr))
+				.Text_Raw(this, &SProjectCleanerFileListView::GetTotalSizeTxt)
 			]
 		]
 	];
+}
+
+void SProjectCleanerFileListView::UpdateView(const TSet<FString>& Files)
+{
+	if (!ListView)
+	{
+		SAssignNew(ListView, SListView<TSharedPtr<FProjectCleanerFileViewItem>>)
+		.ListItemsSource(&ListItems)
+		.SelectionMode(ESelectionMode::SingleToggle)
+		.OnGenerateRow(this, &SProjectCleanerFileListView::OnGenerateRow)
+		.OnMouseButtonDoubleClick_Raw(this, &SProjectCleanerFileListView::OnListItemDblClick)
+		.HeaderRow(GetListHeaderRow());
+	}
+	
+	TotalSize = 0;
+	ListItems.Reset();
+	
+	for (const auto& File : Files)
+	{
+		const TSharedPtr<FProjectCleanerFileViewItem> NewItem = MakeShareable(new FProjectCleanerFileViewItem);
+		if (!NewItem) continue;
+
+		NewItem->FilePath = File;
+		NewItem->FileName = FPaths::GetPathLeaf(File);
+		NewItem->FileExt = FPaths::GetExtension(File, true);
+		NewItem->FileSize = IFileManager::Get().FileSize(*File);
+
+		TotalSize += NewItem->FileSize;
+
+		ListItems.Add(NewItem);
+	}
+
+	if (ListView.IsValid())
+	{
+		ListView->RequestListRefresh();
+	}
+}
+
+FText SProjectCleanerFileListView::GetTotalSizeTxt() const
+{
+	const FString TotalSizeStr = FString::Printf(TEXT("%d item%s. Total Size: %s"), ListItems.Num(), ListItems.Num() > 1 ? TEXT("s") : TEXT(""), *FText::AsMemory(TotalSize).ToString());
+	return FText::FromString(TotalSizeStr);
 }
 
 TSharedPtr<SHeaderRow> SProjectCleanerFileListView::GetListHeaderRow() const

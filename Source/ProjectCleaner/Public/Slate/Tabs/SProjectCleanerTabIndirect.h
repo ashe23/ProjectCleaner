@@ -7,6 +7,7 @@
 #include "Widgets/SCompoundWidget.h"
 
 struct FProjectCleanerIndirectAsset;
+struct FProjectCleanerScanner;
 
 class SProjectCleanerTabIndirectItem final : public SMultiColumnTableRow<TSharedPtr<FProjectCleanerIndirectAsset>>
 {
@@ -88,11 +89,11 @@ public:
 	SLATE_BEGIN_ARGS(SProjectCleanerTabIndirect)
 		{
 		}
-
+		SLATE_ARGUMENT(TSharedPtr<FProjectCleanerScanner>, Scanner)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
-	void ListUpdate();
+	void UpdateView();
 private:
 	void CmdsRegister();
 	
@@ -105,6 +106,7 @@ private:
 	) const;
 
 	TSharedPtr<FUICommandList> Cmds;
+	TSharedPtr<FProjectCleanerScanner> Scanner;
 	TArray<TSharedPtr<FProjectCleanerIndirectAsset>> ListItems;
 	TSharedPtr<SListView<TSharedPtr<FProjectCleanerIndirectAsset>>> ListView;
 };

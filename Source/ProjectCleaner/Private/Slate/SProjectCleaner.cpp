@@ -1,20 +1,16 @@
 ﻿// Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "Slate/SProjectCleaner.h"
-#include "Slate/TreeView/SProjectCleanerTreeView.h"
-#include "Slate/SProjectCleanerFileListView.h"
+#include "Slate/Tabs/SProjectCleanerFileListView.h"
 #include "Slate/Tabs/SProjectCleanerTabIndirect.h"
+#include "Slate/Tabs/SProjectCleanerTabUnused.h"
 #include "ProjectCleanerScanSettings.h"
 #include "ProjectCleanerScanner.h"
 #include "ProjectCleanerConstants.h"
 #include "ProjectCleanerStyles.h"
 #include "ProjectCleanerLibrary.h"
-#include "ProjectCleaner.h"
 // Engine Headers
 #include "ContentBrowserModule.h"
-#include "ContentBrowserItem.h"
-#include "FrontendFilterBase.h"
-#include "IContentBrowserSingleton.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SWidgetSwitcher.h"
@@ -186,6 +182,29 @@ void SProjectCleaner::Construct(const FArguments& InArgs, const TSharedRef<SDock
 	TabManager->SetMenuMultiBox(MenuBarBuilder.GetMultiBox());
 }
 
+void SProjectCleaner::UpdateView() const
+{
+	if (TabUnused.IsValid())
+	{
+		TabUnused.Pin().Get()->UpdateView();
+	}
+	
+	if (TabIndirect.IsValid())
+	{
+		TabIndirect.Pin().Get()->UpdateView();
+	}
+
+	if (TabCorrupted.IsValid())
+	{
+		TabCorrupted.Pin().Get()->UpdateView(Scanner->GetFilesCorrupted());
+	}
+
+	if (TabNonEngine.IsValid())
+	{
+		TabNonEngine.Pin().Get()->UpdateView(Scanner->GetFilesNonEngine());
+	}
+}
+
 SProjectCleaner::~SProjectCleaner()
 {
 	FGlobalTabmanager::Get()->UnregisterTabSpawner(ProjectCleanerConstants::TabScanSettings);
@@ -239,15 +258,7 @@ FReply SProjectCleaner::OnBtnScanProjectClick()
 
 	Scanner.Get()->Scan(ScanSettings);
 
-	if (ProjectCleanerTreeView.IsValid())
-	{
-		ProjectCleanerTreeView.Get()->TreeItemsUpdate();
-	}
-
-	// if (!SelectedPath.IsNone())
-	// {
-	// 	Filter.PackagePaths.Add(SelectedPath);
-	// }
+	UpdateView();
 
 	return FReply::Handled();
 }
@@ -260,11 +271,6 @@ FReply SProjectCleaner::OnBtnCleanProjectClick() const
 FReply SProjectCleaner::OnBtnDeleteEmptyFoldersClick() const
 {
 	return FReply::Handled();
-}
-
-void SProjectCleaner::OnTreeViewSelectionChange(const TSharedPtr<FProjectCleanerTreeViewItem>& Item)
-{
-	UE_LOG(LogProjectCleaner, Warning, TEXT("%s"), *Item->FolderPathRel);
 }
 
 TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnScanSettings(const FSpawnTabArgs& Args)
@@ -341,6 +347,14 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnScanSettings(const FSpawnTabArgs
 			]
 			+ SVerticalBox::Slot()
 			  .Padding(FMargin{5.0f})
+			  .AutoHeight()
+			  [
+			  	SNew(STextBlock)
+			  	.Font(FProjectCleanerStyles::GetFont("Light", 8))
+			  	.Text(FText::FromString(TEXT("Please Scan Project after changing scan settings")))
+			  ]
+			+ SVerticalBox::Slot()
+			  .Padding(FMargin{5.0f})
 			  .FillHeight(1.0f)
 			[
 				SNew(SBox)
@@ -360,128 +374,18 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnScanSettings(const FSpawnTabArgs
 
 TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnUnusedAssets(const FSpawnTabArgs& Args)
 {
-	const FContentBrowserModule& ModuleContentBrowser = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
-
-	class FFrontendFilter_ProjectCleaner : public FFrontendFilter
-	{
-	public:
-		explicit FFrontendFilter_ProjectCleaner(TSharedPtr<FFrontendFilterCategory> InCategory) : FFrontendFilter(InCategory)
-		{
-		}
-
-		virtual FString GetName() const override { return TEXT("ProjectCleanerAssets"); }
-		virtual FText GetDisplayName() const override { return FText::FromString(TEXT("ProjectCleanerAssets")); }
-		virtual FText GetToolTipText() const override { return FText::FromString(TEXT("ProjectCleanerAssets ToolTip")); }
-		virtual FLinearColor GetColor() const override { return FLinearColor{FColor::FromHex(TEXT("#06d6a0"))}; }
-
-		virtual bool PassesFilter(const FContentBrowserItem& InItem) const override
-		{
-			FAssetData AssetData;
-			if (InItem.Legacy_TryGetAssetData(AssetData))
-			{
-				return AssetData.AssetClass.IsEqual(UStaticMesh::StaticClass()->GetFName());
-			}
-
-			return false;
-		}
-	};
-
-	FGetCurrentSelectionDelegate CurrentSelectionDelegate;
-
-	FARFilter Filter;
-	if (Scanner.Get()->GetAssetsUnused().Num() == 0)
-	{
-		// this is needed for disabling showing primary assets in browser, when there is no unused assets
-		Filter.TagsAndValues.Add(FName{ "ProjectCleanerEmptyTag" }, FString{ "ProjectCleanerEmptyTag" });
-	}
-	else
-	{
-		Filter.PackageNames.Reserve(Scanner.Get()->GetAssetsUnused().Num());
-		for (const auto& Asset : Scanner.Get()->GetAssetsUnused())
-		{
-			Filter.PackageNames.Add(Asset.PackageName);
-		}
-	}
-
-	// todo:ashe23 change later
-	Filter.PackagePaths.Add(ProjectCleanerConstants::PathRelRoot);
-	
-	FAssetPickerConfig AssetPickerConfig;
-	AssetPickerConfig.Filter = Filter;
-	AssetPickerConfig.SelectionMode = ESelectionMode::Multi;
-	AssetPickerConfig.InitialAssetViewType = EAssetViewType::Tile;
-	AssetPickerConfig.bCanShowFolders = false;
-	AssetPickerConfig.bAddFilterUI = true;
-	AssetPickerConfig.bPreloadAssetsForContextMenu = false;
-	AssetPickerConfig.bSortByPathInColumnView = false;
-	AssetPickerConfig.bShowPathInColumnView = false;
-	AssetPickerConfig.bShowBottomToolbar = true;
-	AssetPickerConfig.bCanShowDevelopersFolder = ScanSettings->bScanDeveloperContents;
-	AssetPickerConfig.bCanShowClasses = false;
-	AssetPickerConfig.bAllowDragging = false;
-	AssetPickerConfig.bForceShowEngineContent = false;
-	AssetPickerConfig.bCanShowRealTimeThumbnails = false;
-	AssetPickerConfig.AssetShowWarningText = FText::FromName("No assets");
-
-	const TSharedPtr<FFrontendFilterCategory> ProjectCleanerCategory = MakeShareable(
-		new FFrontendFilterCategory(
-			FText::FromString(TEXT("ProjectCleaner Filters")),
-			FText::FromString(TEXT("ProjectCleaner Filter Tooltip"))
-		)
-	);
-	AssetPickerConfig.ExtraFrontendFilters.Add(MakeShareable(new FFrontendFilter_ProjectCleaner(ProjectCleanerCategory)));
-
-	AssetPickerConfig.GetCurrentSelectionDelegates.Add(&CurrentSelectionDelegate);
-	// AssetPickerConfig.RefreshAssetViewDelegates.Add(&RefreshAssetViewDelegate);
-
-	
-	
-	// AssetPickerConfig.OnAssetDoubleClicked = FOnAssetDoubleClicked::CreateStatic(
-	// 	&SProjectCleanerUnusedAssetsBrowserUI::OnAssetDblClicked
-	// );
-	// AssetPickerConfig.OnGetAssetContextMenu = FOnGetAssetContextMenu::CreateRaw(
-	// 	this,
-	// 	&SProjectCleanerUnusedAssetsBrowserUI::OnGetAssetContextMenu
-	// );
-
-	FProjectCleanerTreeViewSelectionChangeDelegate SelectionChangeDelegate;
-	SelectionChangeDelegate.BindRaw(this, &SProjectCleaner::OnTreeViewSelectionChange);
-
 	return
 		SNew(SDockTab)
 		.TabRole(PanelTab)
 		.Label(FText::FromString(TEXT("Unused Assets")))
 		.Icon(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconTabUnused16"))
 		[
-			SNew(SVerticalBox)
-			+ SVerticalBox::Slot()
-			  .Padding(FMargin{5.0f})
-			  .FillHeight(1.0f)
-			[
-				SNew(SSplitter)
-				.Style(FEditorStyle::Get(), "ContentBrowser.Splitter")
-				.PhysicalSplitterHandleSize(5.0f)
-				.Orientation(Orient_Vertical)
-				+ SSplitter::Slot()
-				[
-					SAssignNew(ProjectCleanerTreeView, SProjectCleanerTreeView)
-					.OnSelectionChange(SelectionChangeDelegate)
-					.Scanner(Scanner)
-				]
-				+ SSplitter::Slot()
-				[
-					SNew(SVerticalBox)
-					+ SVerticalBox::Slot()
-					.Padding(FMargin{0.0f, 5.0f})
-					[
-						ModuleContentBrowser.Get().CreateAssetPicker(AssetPickerConfig)
-					]
-				]
-			]
+			SAssignNew(TabUnused, SProjectCleanerTabUnused)
+			.Scanner(Scanner)
 		];
 }
 
-TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnIndirectAssets(const FSpawnTabArgs& Args) const
+TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnIndirectAssets(const FSpawnTabArgs& Args)
 {
 	return
 		SNew(SDockTab)
@@ -489,39 +393,38 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnIndirectAssets(const FSpawnTabAr
 		.Label(FText::FromString(TEXT("Indirect Assets")))
 		.Icon(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconTabIndirect16"))
 		[
-			SNew(SProjectCleanerTabIndirect)
+			SAssignNew(TabIndirect, SProjectCleanerTabIndirect)
+			.Scanner(Scanner)
 		];
 }
 
-TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnCorruptedAssets(const FSpawnTabArgs& Args) const
+TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnCorruptedAssets(const FSpawnTabArgs& Args)
 {
-	// todo:ashe23 how to handle large number of files ?
 	return
 		SNew(SDockTab)
 		.TabRole(PanelTab)
 		.Label(FText::FromString(TEXT("Corrupted Assets")))
 		.Icon(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconTabCorrupted16"))
 		[
-			SNew(SProjectCleanerFileListView)
+			SAssignNew(TabCorrupted, SProjectCleanerFileListView)
 			.Title(TEXT("List of possibly corrupted assets, that exist in Content folder, but not loaded by engine"))
 			.Description(TEXT("In order to fix, try to reload project and see if its loaded. Otherwise close editor and remove them manually from explorer"))
 			.Files(Scanner.Get()->GetFilesCorrupted())
 		];
 }
 
-TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnNonEngineFiles(const FSpawnTabArgs& Args) const
+TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnNonEngineFiles(const FSpawnTabArgs& Args)
 {
-	// todo:ashe23 how to handle large number of files ?
 	return
 		SNew(SDockTab)
 		.TabRole(PanelTab)
 		.Label(FText::FromString(TEXT("NonEngine Files")))
 		.Icon(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconTabNonEngine16"))
 		[
-			SNew(SProjectCleanerFileListView)
+			SAssignNew(TabNonEngine, SProjectCleanerFileListView)
 			.Title(TEXT("List of Non Engine files inside Content folder"))
 			.Description(TEXT(
-				                                 "Sometimes you will see empty folder in ContentBrowser, which you cant delete. Its because its contains some non engine files visible only in Explorer. So make sure you delete all unnecessary files from list below to cleanup empty folders."))
+				                                                     "Sometimes you will see empty folder in ContentBrowser, which you cant delete. Its because its contains some non engine files visible only in Explorer. So make sure you delete all unnecessary files from list below to cleanup empty folders."))
 			.Files(Scanner.Get()->GetFilesNonEngine())
 		];
 }

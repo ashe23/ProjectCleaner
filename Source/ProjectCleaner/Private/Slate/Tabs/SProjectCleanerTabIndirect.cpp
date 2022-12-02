@@ -6,12 +6,16 @@
 #include "ProjectCleanerLibrary.h"
 // Engine Headers
 #include "ProjectCleanerConstants.h"
+#include "ProjectCleanerScanner.h"
 #include "Widgets/Layout/SScrollBox.h"
 
 void SProjectCleanerTabIndirect::Construct(const FArguments& InArgs)
 {
+	Scanner = InArgs._Scanner;
+	if (!Scanner.IsValid()) return;
+	
 	CmdsRegister();
-	ListUpdate();
+	UpdateView();
 	
 	ChildSlot
 	[
@@ -70,14 +74,13 @@ void SProjectCleanerTabIndirect::Construct(const FArguments& InArgs)
 	];
 }
 
-void SProjectCleanerTabIndirect::ListUpdate()
+void SProjectCleanerTabIndirect::UpdateView()
 {
+	if (!Scanner.IsValid()) return;
+	
 	ListItems.Reset();
 	
-	TArray<FProjectCleanerIndirectAsset> IndirectAssets;
-	UProjectCleanerLibrary::GetAssetsIndirectAdvanced(IndirectAssets);
-
-	for (const auto& IndirectAsset : IndirectAssets)
+	for (const auto& IndirectAsset : Scanner->GetAssetsIndirectAdvanced())
 	{
 		const TSharedPtr<FProjectCleanerIndirectAsset> NewItem = MakeShareable(new FProjectCleanerIndirectAsset);
 		if (!NewItem) continue;
@@ -99,7 +102,10 @@ void SProjectCleanerTabIndirect::ListUpdate()
 		.HeaderRow(GetListHeaderRow());
 	}
 
-	ListView->RequestListRefresh();
+	if (ListView)
+	{
+		ListView->RequestListRefresh();
+	}
 }
 
 void SProjectCleanerTabIndirect::CmdsRegister()

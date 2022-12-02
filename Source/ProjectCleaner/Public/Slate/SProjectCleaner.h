@@ -9,6 +9,9 @@
 
 class UProjectCleanerScanSettings;
 class SProjectCleanerTreeView;
+class SProjectCleanerTabUnused;
+class SProjectCleanerTabIndirect;
+class SProjectCleanerFileListView;
 
 // Plugins Main UserInterface
 class SProjectCleaner final : public SCompoundWidget
@@ -21,6 +24,7 @@ public:
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs, const TSharedRef<SDockTab>& ConstructUnderMajorTab, const TSharedPtr<SWindow>& ConstructUnderWindow);
+	void UpdateView() const;
 	virtual ~SProjectCleaner() override;
 private:
 	static bool WidgetEnabled();
@@ -33,18 +37,21 @@ private:
 	FReply OnBtnCleanProjectClick() const;
 	FReply OnBtnDeleteEmptyFoldersClick() const;
 
-	void OnTreeViewSelectionChange(const TSharedPtr<FProjectCleanerTreeViewItem>& Item);
-
 	TSharedRef<SDockTab> OnTabSpawnScanSettings(const FSpawnTabArgs& Args);
 	TSharedRef<SDockTab> OnTabSpawnUnusedAssets(const FSpawnTabArgs& Args);
-	TSharedRef<SDockTab> OnTabSpawnIndirectAssets(const FSpawnTabArgs& Args) const;
-	TSharedRef<SDockTab> OnTabSpawnCorruptedAssets(const FSpawnTabArgs& Args) const;
-	TSharedRef<SDockTab> OnTabSpawnNonEngineFiles(const FSpawnTabArgs& Args) const;
+	TSharedRef<SDockTab> OnTabSpawnIndirectAssets(const FSpawnTabArgs& Args);
+	TSharedRef<SDockTab> OnTabSpawnCorruptedAssets(const FSpawnTabArgs& Args);
+	TSharedRef<SDockTab> OnTabSpawnNonEngineFiles(const FSpawnTabArgs& Args);
 	
 	TSharedPtr<FTabManager> TabManager;
 	TSharedPtr<FTabManager::FLayout> TabLayout;
-	TSharedPtr<IDetailsView> ScanSettingsProperty;
-	TWeakObjectPtr<UProjectCleanerScanSettings> ScanSettings;
 	TSharedPtr<FProjectCleanerScanner> Scanner;
-	TSharedPtr<SProjectCleanerTreeView> ProjectCleanerTreeView;
+	TSharedPtr<IDetailsView> ScanSettingsProperty;
+	
+	TWeakObjectPtr<UProjectCleanerScanSettings> ScanSettings;
+	
+	TWeakPtr<SProjectCleanerTabUnused> TabUnused;
+	TWeakPtr<SProjectCleanerTabIndirect> TabIndirect;
+	TWeakPtr<SProjectCleanerFileListView> TabCorrupted;
+	TWeakPtr<SProjectCleanerFileListView> TabNonEngine;
 };
