@@ -27,7 +27,7 @@ void SProjectCleanerTabIndirect::Construct(const FArguments& InArgs)
 				SNew(STextBlock)
 				.AutoWrapText(true)
 				.Font(FProjectCleanerStyles::GetFont("Light", 15))
-				.Text(FText::FromString(TEXT("List of assets that used in source code, config or other files indirectly")))
+				.Text(FText::FromString(TEXT("List of assets used in source code, config or other files indirectly")))
 			]
 			+ SVerticalBox::Slot()
 			.AutoHeight()
