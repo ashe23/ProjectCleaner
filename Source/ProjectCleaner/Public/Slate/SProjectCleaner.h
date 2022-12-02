@@ -4,9 +4,11 @@
 
 #include "CoreMinimal.h"
 #include "ProjectCleanerScanner.h"
+#include "IContentBrowserSingleton.h"
 #include "Widgets/SCompoundWidget.h"
 
 class UProjectCleanerScanSettings;
+class SProjectCleanerTreeView;
 
 // Plugins Main UserInterface
 class SProjectCleaner final : public SCompoundWidget
@@ -27,12 +29,14 @@ private:
 	static void MenuBarFillTabs(FMenuBuilder& MenuBuilder, const TSharedPtr<FTabManager> TabManager);
 	static void MenuBarFillHelp(FMenuBuilder& MenuBuilder, const TSharedPtr<FTabManager> TabManager);
 
-	FReply OnBtnScanProjectClick() const;
+	FReply OnBtnScanProjectClick();
 	FReply OnBtnCleanProjectClick() const;
 	FReply OnBtnDeleteEmptyFoldersClick() const;
 
-	TSharedRef<SDockTab> OnTabSpawnScanSettings(const FSpawnTabArgs& Args) const;
-	TSharedRef<SDockTab> OnTabSpawnUnusedAssets(const FSpawnTabArgs& Args) const;
+	void OnTreeViewSelectionChange(const TSharedPtr<FProjectCleanerTreeViewItem>& Item);
+
+	TSharedRef<SDockTab> OnTabSpawnScanSettings(const FSpawnTabArgs& Args);
+	TSharedRef<SDockTab> OnTabSpawnUnusedAssets(const FSpawnTabArgs& Args);
 	TSharedRef<SDockTab> OnTabSpawnIndirectAssets(const FSpawnTabArgs& Args) const;
 	TSharedRef<SDockTab> OnTabSpawnCorruptedAssets(const FSpawnTabArgs& Args) const;
 	TSharedRef<SDockTab> OnTabSpawnNonEngineFiles(const FSpawnTabArgs& Args) const;
@@ -42,4 +46,5 @@ private:
 	TSharedPtr<IDetailsView> ScanSettingsProperty;
 	TWeakObjectPtr<UProjectCleanerScanSettings> ScanSettings;
 	TSharedPtr<FProjectCleanerScanner> Scanner;
+	TSharedPtr<SProjectCleanerTreeView> ProjectCleanerTreeView;
 };

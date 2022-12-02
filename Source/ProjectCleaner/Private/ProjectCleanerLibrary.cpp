@@ -480,6 +480,12 @@ void UProjectCleanerLibrary::FocusOnDirectory(const FString& InRelPath)
 	ModuleContentBrowser.Get().SyncBrowserToFolders(FocusFolders);
 }
 
+void UProjectCleanerLibrary::FocusOnAssets(const TArray<FAssetData>& Assets)
+{
+	const FContentBrowserModule& ModuleContentBrowser = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
+	ModuleContentBrowser.Get().SyncBrowserToAssets(Assets);
+}
+
 bool UProjectCleanerLibrary::HasIndirectlyUsedAssets(const FString& FileContent)
 {
 	if (FileContent.IsEmpty()) return false;

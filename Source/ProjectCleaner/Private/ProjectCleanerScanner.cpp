@@ -178,6 +178,25 @@ void FProjectCleanerScanner::Scan(const TWeakObjectPtr<UProjectCleanerScanSettin
 	ModuleAssetRegistry->Get().UseFilterToExcludeAssets(AssetsUnused, Filter);
 }
 
+void FProjectCleanerScanner::GetSubFolders(const FString& InFolderPathAbs, TSet<FString>& SubFolders) const
+{
+	TArray<FString> Folders;
+	IFileManager::Get().FindFiles(Folders, *(InFolderPathAbs / TEXT("*")), false, true);
+
+	for (const auto& Folder : Folders)
+	{
+		const FString FolderAbsPath = InFolderPathAbs / Folder;
+		if (UProjectCleanerLibrary::IsUnderAnyFolder(FolderAbsPath, FoldersBlacklist)) continue;
+		
+		SubFolders.Add(FolderAbsPath);
+	}
+}
+
+const TSet<FString>& FProjectCleanerScanner::GetFoldersBlacklist() const
+{
+	return FoldersBlacklist;
+}
+
 const TSet<FString>& FProjectCleanerScanner::GetFilesCorrupted() const
 {
 	return FilesCorrupted;

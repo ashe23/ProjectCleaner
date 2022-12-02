@@ -35,6 +35,14 @@ void FProjectCleanerCmds::RegisterCommands()
 		EUserInterfaceActionType::Button,
 		FInputChord()
 	);
+	
+	UI_COMMAND(
+		OpenFile,
+		"Open File",
+		"Open file in default editor program",
+		EUserInterfaceActionType::Button,
+		FInputChord()
+	);
 
 	UI_COMMAND(
 		OpenAsset,

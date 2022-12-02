@@ -18,7 +18,7 @@ struct FProjectCleanerScanner
 
 	void Scan(const TWeakObjectPtr<UProjectCleanerScanSettings>& InScanSettings);
 
-	// void GetSubFolders(const FString& InFolderPathAbs, TSet<FString>& SubFolders);
+	void GetSubFolders(const FString& InFolderPathAbs, TSet<FString>& SubFolders) const;
 	//
 	// int32 GetFoldersTotalNum(const FString& InFolderPathAbs) const;
 	// int32 GetFoldersEmptyNum(const FString& InFolderPathAbs) const;
@@ -34,6 +34,7 @@ struct FProjectCleanerScanner
 	//
 	// const TMap<FString, FProjectCleanerFolderInfo>& GetFoldersTreeInfo();
 	// const TSet<FString>& GetForbiddenFoldersToScan();
+	const TSet<FString>& GetFoldersBlacklist() const;
 	const TSet<FString>& GetFilesCorrupted() const;
 	const TSet<FString>& GetFilesNonEngine() const;
 	const TArray<FAssetData>& GetAssetsUnused() const;

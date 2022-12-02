@@ -1,4 +1,4 @@
-// Copyright Ashot Barkhudaryan. All Rights Reserved.
+﻿// Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #pragma once
 
@@ -6,10 +6,12 @@
 #include "ProjectCleanerTypes.h"
 #include "Widgets/SCompoundWidget.h"
 
-class SProjectCleanerIndirectAssetListItem final : public SMultiColumnTableRow<TSharedPtr<FProjectCleanerIndirectAsset>>
+struct FProjectCleanerIndirectAsset;
+
+class SProjectCleanerTabIndirectItem final : public SMultiColumnTableRow<TSharedPtr<FProjectCleanerIndirectAsset>>
 {
 public:
-	SLATE_BEGIN_ARGS(SProjectCleanerIndirectAssetListItem)
+	SLATE_BEGIN_ARGS(SProjectCleanerTabIndirectItem)
 		{
 		}
 
@@ -30,7 +32,31 @@ public:
 	{
 		if (InColumnName.IsEqual(TEXT("AssetName")))
 		{
-			return SNew(STextBlock).Text(FText::FromString(ListItem->AssetData.AssetName.ToString()));
+			const TSharedPtr<FAssetThumbnail> AssetThumbnail = MakeShareable(new FAssetThumbnail(ListItem->AssetData, 16, 16, nullptr));
+			const FAssetThumbnailConfig ThumbnailConfig;
+
+			return
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot()
+				.Padding(FMargin{0.0f, 0.0f, 5.0f, 0.0f})
+				.AutoWidth()
+				[
+					SNew(SBox)
+					.WidthOverride(16)
+					.HeightOverride(16)
+					[
+						AssetThumbnail->MakeThumbnailWidget(ThumbnailConfig)
+					]
+				]
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				.HAlign(HAlign_Center)
+				.VAlign(VAlign_Center)
+				[
+					SNew(STextBlock)
+					.Justification(ETextJustify::Center)
+					.Text(FText::FromString(ListItem->AssetData.AssetName.ToString()))
+				];
 		}
 
 		if (InColumnName.IsEqual(TEXT("AssetPath")))
@@ -55,18 +81,21 @@ private:
 	TSharedPtr<FProjectCleanerIndirectAsset> ListItem;
 };
 
-class SProjectCleanerWindowIndirectAssets final : public SCompoundWidget
+
+class SProjectCleanerTabIndirect final : public SCompoundWidget
 {
 public:
-	SLATE_BEGIN_ARGS(SProjectCleanerWindowIndirectAssets)
+	SLATE_BEGIN_ARGS(SProjectCleanerTabIndirect)
 		{
 		}
 
-		SLATE_ARGUMENT(TArray<FProjectCleanerIndirectAsset>, ListItems)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
+	void ListUpdate();
 private:
+	void CmdsRegister();
+	
 	TSharedPtr<SHeaderRow> GetListHeaderRow() const;
 	TSharedPtr<SWidget> OnListContextMenu() const;
 	void OnListItemDblClick(TSharedPtr<FProjectCleanerIndirectAsset> Item) const;

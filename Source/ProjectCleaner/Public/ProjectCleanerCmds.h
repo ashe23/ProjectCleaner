@@ -13,6 +13,7 @@ public:
 	TSharedPtr<FUICommandInfo> OpenProjectCleanerWindow;
 	TSharedPtr<FUICommandInfo> ShowInContentBrowser;
 	TSharedPtr<FUICommandInfo> OpenAsset;
+	TSharedPtr<FUICommandInfo> OpenFile;
 	TSharedPtr<FUICommandInfo> OpenDocs;
 	
 	TSharedPtr<FUICommandInfo> DeleteAsset;

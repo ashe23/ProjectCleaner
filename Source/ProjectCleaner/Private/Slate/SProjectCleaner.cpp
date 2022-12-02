@@ -3,6 +3,7 @@
 #include "Slate/SProjectCleaner.h"
 #include "Slate/TreeView/SProjectCleanerTreeView.h"
 #include "Slate/SProjectCleanerFileListView.h"
+#include "Slate/Tabs/SProjectCleanerTabIndirect.h"
 #include "ProjectCleanerScanSettings.h"
 #include "ProjectCleanerScanner.h"
 #include "ProjectCleanerConstants.h"
@@ -14,7 +15,6 @@
 #include "ContentBrowserItem.h"
 #include "FrontendFilterBase.h"
 #include "IContentBrowserSingleton.h"
-#include "ProjectCleanerApi.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SWidgetSwitcher.h"
@@ -233,11 +233,21 @@ void SProjectCleaner::MenuBarFillHelp(FMenuBuilder& MenuBuilder, const TSharedPt
 	MenuBuilder.EndSection();
 }
 
-FReply SProjectCleaner::OnBtnScanProjectClick() const
+FReply SProjectCleaner::OnBtnScanProjectClick()
 {
 	if (!Scanner.IsValid()) return FReply::Handled();
 
 	Scanner.Get()->Scan(ScanSettings);
+
+	if (ProjectCleanerTreeView.IsValid())
+	{
+		ProjectCleanerTreeView.Get()->TreeItemsUpdate();
+	}
+
+	// if (!SelectedPath.IsNone())
+	// {
+	// 	Filter.PackagePaths.Add(SelectedPath);
+	// }
 
 	return FReply::Handled();
 }
@@ -252,7 +262,12 @@ FReply SProjectCleaner::OnBtnDeleteEmptyFoldersClick() const
 	return FReply::Handled();
 }
 
-TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnScanSettings(const FSpawnTabArgs& Args) const
+void SProjectCleaner::OnTreeViewSelectionChange(const TSharedPtr<FProjectCleanerTreeViewItem>& Item)
+{
+	UE_LOG(LogProjectCleaner, Warning, TEXT("%s"), *Item->FolderPathRel);
+}
+
+TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnScanSettings(const FSpawnTabArgs& Args)
 {
 	return
 		SNew(SDockTab)
@@ -343,14 +358,14 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnScanSettings(const FSpawnTabArgs
 		];
 }
 
-TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnUnusedAssets(const FSpawnTabArgs& Args) const
+TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnUnusedAssets(const FSpawnTabArgs& Args)
 {
 	const FContentBrowserModule& ModuleContentBrowser = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
 
 	class FFrontendFilter_ProjectCleaner : public FFrontendFilter
 	{
 	public:
-		FFrontendFilter_ProjectCleaner(TSharedPtr<FFrontendFilterCategory> InCategory) : FFrontendFilter(InCategory)
+		explicit FFrontendFilter_ProjectCleaner(TSharedPtr<FFrontendFilterCategory> InCategory) : FFrontendFilter(InCategory)
 		{
 		}
 
@@ -372,11 +387,8 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnUnusedAssets(const FSpawnTabArgs
 	};
 
 	FGetCurrentSelectionDelegate CurrentSelectionDelegate;
-	FRefreshAssetViewDelegate RefreshAssetViewDelegate;
 
-	FAssetPickerConfig AssetPickerConfig;
 	FARFilter Filter;
-		
 	if (Scanner.Get()->GetAssetsUnused().Num() == 0)
 	{
 		// this is needed for disabling showing primary assets in browser, when there is no unused assets
@@ -393,12 +405,8 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnUnusedAssets(const FSpawnTabArgs
 
 	// todo:ashe23 change later
 	Filter.PackagePaths.Add(ProjectCleanerConstants::PathRelRoot);
-
-	// if (!SelectedPath.IsNone())
-	// {
-	// 	Filter.PackagePaths.Add(SelectedPath);
-	// }
 	
+	FAssetPickerConfig AssetPickerConfig;
 	AssetPickerConfig.Filter = Filter;
 	AssetPickerConfig.SelectionMode = ESelectionMode::Multi;
 	AssetPickerConfig.InitialAssetViewType = EAssetViewType::Tile;
@@ -415,7 +423,7 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnUnusedAssets(const FSpawnTabArgs
 	AssetPickerConfig.bCanShowRealTimeThumbnails = false;
 	AssetPickerConfig.AssetShowWarningText = FText::FromName("No assets");
 
-	TSharedPtr<FFrontendFilterCategory> ProjectCleanerCategory = MakeShareable(
+	const TSharedPtr<FFrontendFilterCategory> ProjectCleanerCategory = MakeShareable(
 		new FFrontendFilterCategory(
 			FText::FromString(TEXT("ProjectCleaner Filters")),
 			FText::FromString(TEXT("ProjectCleaner Filter Tooltip"))
@@ -424,7 +432,7 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnUnusedAssets(const FSpawnTabArgs
 	AssetPickerConfig.ExtraFrontendFilters.Add(MakeShareable(new FFrontendFilter_ProjectCleaner(ProjectCleanerCategory)));
 
 	AssetPickerConfig.GetCurrentSelectionDelegates.Add(&CurrentSelectionDelegate);
-	AssetPickerConfig.RefreshAssetViewDelegates.Add(&RefreshAssetViewDelegate);
+	// AssetPickerConfig.RefreshAssetViewDelegates.Add(&RefreshAssetViewDelegate);
 
 	
 	
@@ -436,6 +444,8 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnUnusedAssets(const FSpawnTabArgs
 	// 	&SProjectCleanerUnusedAssetsBrowserUI::OnGetAssetContextMenu
 	// );
 
+	FProjectCleanerTreeViewSelectionChangeDelegate SelectionChangeDelegate;
+	SelectionChangeDelegate.BindRaw(this, &SProjectCleaner::OnTreeViewSelectionChange);
 
 	return
 		SNew(SDockTab)
@@ -454,7 +464,8 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnUnusedAssets(const FSpawnTabArgs
 				.Orientation(Orient_Vertical)
 				+ SSplitter::Slot()
 				[
-					SNew(SProjectCleanerTreeView)
+					SAssignNew(ProjectCleanerTreeView, SProjectCleanerTreeView)
+					.OnSelectionChange(SelectionChangeDelegate)
 					.Scanner(Scanner)
 				]
 				+ SSplitter::Slot()
@@ -478,8 +489,7 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnIndirectAssets(const FSpawnTabAr
 		.Label(FText::FromString(TEXT("Indirect Assets")))
 		.Icon(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconTabIndirect16"))
 		[
-			SNew(STextBlock)
-			.Text(FText::FromString(TEXT("Assets")))
+			SNew(SProjectCleanerTabIndirect)
 		];
 }
 

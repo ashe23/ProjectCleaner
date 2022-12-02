@@ -37,6 +37,7 @@ public:
 	static void SaveAllAssets(const bool bPromptUser = true);
 	static void UpdateAssetRegistry(const bool bSyncScan = false);
 	static void FocusOnDirectory(const FString& InRelPath);
+	static void FocusOnAssets(const TArray<FAssetData>& Assets);
 	static void GetLinkedAssets(const TArray<FAssetData>& Assets, TArray<FAssetData>& LinkedAssets);
 
 private:
