@@ -11,37 +11,15 @@ void UProjectCleanerScanSettings::PostEditChangeProperty(FPropertyChangedEvent& 
 {
 	Super::PostEditChangeProperty(PropertyChangedEvent);
 
-	// todo:ashe23 save only if settings are valid
-	bool bIsValidSettings = true;
-	for (const auto& ExcludedFolder : ExcludedFolders)
+	SaveConfig();
+	
+	if (bAutoScan)
 	{
-		if (!FPaths::DirectoryExists(ExcludedFolder.Path))
-		{
-			bIsValidSettings = false;
-			break;
-		}
-	}
-
-	for (const auto& ExcludedClass : ExcludedClasses)
-	{
-		if (!ExcludedClass.IsValid())
-		{
-			bIsValidSettings = false;
-			break;
-		}
-	}
-
-	if (bIsValidSettings)
-	{
-		SaveConfig();
-		
 		if (OnChangeDelegate.IsBound())
 		{
 			OnChangeDelegate.Broadcast();
 		}
 	}
-	
-
 }
 #endif
 
