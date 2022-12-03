@@ -39,7 +39,4 @@ public:
 	static void FocusOnDirectory(const FString& InRelPath);
 	static void FocusOnAssets(const TArray<FAssetData>& Assets);
 	static void GetLinkedAssets(const TArray<FAssetData>& Assets, TArray<FAssetData>& LinkedAssets);
-
-private:
-	static FString ConvertPathInternal(const FString& From, const FString& To, const FString& Path);
 };

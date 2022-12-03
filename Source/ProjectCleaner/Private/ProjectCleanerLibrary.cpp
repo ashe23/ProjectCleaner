@@ -365,18 +365,45 @@ int64 UProjectCleanerLibrary::GetAssetsTotalSize(const TArray<FAssetData>& Asset
 
 FString UProjectCleanerLibrary::PathConvertToAbs(const FString& InRelPath)
 {
+	if (InRelPath.IsEmpty()) return {};
+
 	FString Path = InRelPath;
-	FPaths::NormalizeFilename(Path);
-	const FString ProjectContentDirAbsPath = FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir());
-	return ConvertPathInternal(FString{"/Game/"}, ProjectContentDirAbsPath, Path);
+	FPaths::RemoveDuplicateSlashes(Path);
+	FPaths::NormalizeDirectoryName(Path);
+
+	if (!Path.StartsWith(ProjectCleanerConstants::PathRelRoot.ToString())) return {};
+
+	// /Game => C:/{OurProjectPath}/Content
+	// /Game/MyFolder => C:/{OurProjectPath}/Content/MyFolder
+	// /Game/MyFile.uasset => C:/{OurProjectPath}/Content/MyFile.uasset
+
+	const FString From = ProjectCleanerConstants::PathRelRoot.ToString();
+	const FString To = FPaths::ProjectDir() / ProjectCleanerConstants::FolderContent.ToString();
+
+	return Path.Replace(*From, *To, ESearchCase::CaseSensitive);;
 }
 
 FString UProjectCleanerLibrary::PathConvertToRel(const FString& InAbsPath)
 {
+	if (InAbsPath.IsEmpty()) return {};
+
 	FString Path = InAbsPath;
-	FPaths::NormalizeFilename(Path);
-	const FString ProjectContentDirAbsPath = FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir());
-	return ConvertPathInternal(ProjectContentDirAbsPath, FString{"/Game/"}, Path);
+	FPaths::RemoveDuplicateSlashes(Path);
+	FPaths::NormalizeDirectoryName(Path);
+
+	const FString ProjectContentDir = FPaths::ProjectDir() / ProjectCleanerConstants::FolderContent.ToString();
+
+	if (!Path.StartsWith(ProjectContentDir)) return {};
+
+	// C:/{OurProjectPath}/Content => /Game
+	// C:/{OurProjectPath}/Content/ => /Game
+	// C:/{OurProjectPath}/Content/MyFolder => /Game/MyFolder
+	// C:/{OurProjectPath}/Content/MyFile.uasset => /Game/MyFile.uasset
+
+	const FString From = ProjectContentDir;
+	const FString To = ProjectCleanerConstants::PathRelRoot.ToString();
+
+	return Path.Replace(*From, *To, ESearchCase::CaseSensitive);
 }
 
 FString UProjectCleanerLibrary::GetAssetClassName(const FAssetData& AssetData)
@@ -494,9 +521,4 @@ bool UProjectCleanerLibrary::HasIndirectlyUsedAssets(const FString& FileContent)
 	static FRegexPattern Pattern(TEXT(R"(\/Game([A-Za-z0-9_.\/]+)\b)"));
 	FRegexMatcher Matcher(Pattern, FileContent);
 	return Matcher.FindNext();
-}
-
-FString UProjectCleanerLibrary::ConvertPathInternal(const FString& From, const FString& To, const FString& Path)
-{
-	return Path.Replace(*From, *To, ESearchCase::IgnoreCase);
 }
