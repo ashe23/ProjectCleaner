@@ -20,6 +20,7 @@ class SProjectCleanerTreeViewItem final : public SMultiColumnTableRow<TSharedPtr
 private:
 	const FSlateBrush* GetFolderIcon() const;
 	FSlateColor GetFolderColor() const;
+	FSlateColor GetProgressBarColor() const;
 
 	TSharedPtr<FProjectCleanerTreeViewItem> TreeItem;
 };

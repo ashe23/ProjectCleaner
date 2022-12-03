@@ -1,10 +1,11 @@
 ﻿// Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "Slate/TreeView/SProjectCleanerTreeViewItem.h"
-
-#include "ProjectCleanerLibrary.h"
 #include "ProjectCleanerTypes.h"
 #include "ProjectCleanerStyles.h"
+// Engine Headers
+#include "Kismet/KismetMathLibrary.h"
+#include "Widgets/Notifications/SProgressBar.h"
 
 void SProjectCleanerTreeViewItem::Construct(const FArguments& InArgs, const TSharedRef<STableViewBase>& OwnerTable)
 {
@@ -147,6 +148,37 @@ TSharedRef<SWidget> SProjectCleanerTreeViewItem::GenerateWidgetForColumn(const F
 			];
 	}
 
+	if (InColumnName.IsEqual(TEXT("Percent")))
+	{
+		return
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot()
+			  .Padding(FMargin{20.0f, 5.0f})
+			  .FillWidth(1.0f)
+			  .HAlign(HAlign_Fill)
+			  .VAlign(VAlign_Fill)
+			[
+				SNew(SOverlay)
+				+ SOverlay::Slot()
+				  .HAlign(HAlign_Fill)
+				  .VAlign(VAlign_Fill)
+				[
+					SNew(SProgressBar)
+					.Percent(TreeItem->PercentUnusedNormalized)
+					.FillColorAndOpacity_Raw(this, &SProjectCleanerTreeViewItem::GetProgressBarColor)
+				]
+				+ SOverlay::Slot()
+				  .HAlign(HAlign_Center)
+				  .VAlign(VAlign_Center)
+				[
+					SNew(STextBlock)
+					.AutoWrapText(false)
+					.ColorAndOpacity(FLinearColor{0.0f, 0.0f, 0.0f, 1.0f})
+					.Text(FText::FromString(FString::Printf(TEXT("%.2f %%"), TreeItem->PercentUnused)))
+				]
+			];
+	}
+
 	return SNew(STextBlock).Text(FText::FromString(TEXT("")));
 }
 
@@ -173,4 +205,18 @@ FSlateColor SProjectCleanerTreeViewItem::GetFolderColor() const
 	}
 
 	return FSlateColor{FLinearColor::Gray};
+}
+
+FSlateColor SProjectCleanerTreeViewItem::GetProgressBarColor() const
+{
+	// const FLinearColor Green = FProjectCleanerStyles::Get().GetSlateColor("ProjectCleaner.Color.Green").GetSpecifiedColor();
+	// const FLinearColor Yellow = FProjectCleanerStyles::Get().GetSlateColor("ProjectCleaner.Color.Yellow").GetSpecifiedColor();
+	// const FLinearColor Red = FProjectCleanerStyles::Get().GetSlateColor("ProjectCleaner.Color.Red").GetSpecifiedColor();
+
+	const FLinearColor Color1 = TreeItem->PercentUnusedNormalized < 0.5f ? FLinearColor::Green : FLinearColor::Yellow;
+	const FLinearColor Color2 = TreeItem->PercentUnusedNormalized >= 0.5f ? FLinearColor::Yellow : FLinearColor::Red;
+	const FLinearColor CurrentColor = UKismetMathLibrary::LinearColorLerp(FLinearColor::Green, FLinearColor::Red, TreeItem->PercentUnusedNormalized);
+	const FLinearColor TargetColor = UKismetMathLibrary::LinearColorLerp(Color1, Color2, TreeItem->PercentUnusedNormalized);
+	
+	return FSlateColor{CurrentColor};
 }

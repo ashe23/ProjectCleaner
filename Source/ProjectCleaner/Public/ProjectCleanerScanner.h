@@ -4,6 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "ProjectCleanerTypes.h"
+#include "ProjectCleanerDelegates.h"
+#include "AssetRegistry/AssetRegistryModule.h"
 
 class FAssetRegistryModule;
 class UProjectCleanerScanSettings;
@@ -14,28 +16,43 @@ struct FProjectCleanerIndirectAsset;
  */
 struct FProjectCleanerScanner
 {
-	FProjectCleanerScanner();
+	explicit FProjectCleanerScanner(const TWeakObjectPtr<UProjectCleanerScanSettings>& InScanSettings)
+		: ScanSettings(InScanSettings),
+		  ModuleAssetRegistry(FModuleManager::LoadModuleChecked<FAssetRegistryModule>(AssetRegistryConstants::ModuleName))
+	{
+		ScannerInit();
+	}
 
-	void Scan(const TWeakObjectPtr<UProjectCleanerScanSettings>& InScanSettings);
+	void Scan();
 
 	void GetSubFolders(const FString& InFolderPathAbs, TSet<FString>& SubFolders) const;
 
 	bool IsFolderEmpty(const FString& InFolderPathAbs) const;
-	
+	bool IsFolderExcluded(const FString& InFolderPathAbs) const;
+
 	int32 GetFoldersTotalNum(const FString& InFolderPathAbs) const;
 	int32 GetFoldersEmptyNum(const FString& InFolderPathAbs) const;
-	
+	int32 GetAssetTotalNum(const FString& InFolderPathAbs) const;
+	int32 GetAssetUnusedNum(const FString& InFolderPathAbs) const;
+	int64 GetSizeTotal(const FString& InFolderPathAbs) const;
+	int64 GetSizeUnused(const FString& InFolderPathAbs) const;
+
 	const TSet<FString>& GetFoldersBlacklist() const;
 	const TSet<FString>& GetFilesCorrupted() const;
 	const TSet<FString>& GetFilesNonEngine() const;
 	const TArray<FAssetData>& GetAssetsUnused() const;
 	const TArray<FAssetData>& GetAssetsIndirect() const;
 	const TArray<FProjectCleanerIndirectAsset>& GetAssetsIndirectAdvanced() const;
+
+	FProjectCleanerDelegateScanFinished& OnScanFinished();
 private:
+	void ScannerInit();
 	void DataInit();
 	void DataReset();
 
-	// TSet<FString> FoldersAll;
+	static int32 GetNumFor(const FString& InFolderPathAbs, const TArray<FAssetData>& Assets);
+	static int64 GetSizeFor(const FString& InFolderPathAbs, const TArray<FAssetData>& Assets);
+
 	TSet<FString> FoldersEmpty;
 	TSet<FString> FoldersBlacklist;
 
@@ -51,5 +68,7 @@ private:
 	TArray<FAssetData> AssetsUnused;
 
 	TWeakObjectPtr<UProjectCleanerScanSettings> ScanSettings;
-	FAssetRegistryModule* ModuleAssetRegistry = nullptr;
+	FAssetRegistryModule& ModuleAssetRegistry;
+
+	FProjectCleanerDelegateScanFinished DelegateScanFinished;
 };

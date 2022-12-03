@@ -33,10 +33,16 @@ namespace ProjectCleanerConstants
 	static const FName PathRelMegascans{TEXT("/Game/Megascans")};
 	static const FName PathRelMegascansPresets{TEXT("/Game/MSPresets")};
 
+	// folders
+	static const FName FolderContent{TEXT("Content")};
+	static const FName FolderDevelopers{TEXT("Developers")};
+	static const FName FolderCollections{TEXT("Collections")};
+	static const FName FolderMsPresets{TEXT("MSPresets")};
+
 	// plugins
-	static const FName PluginMegascans{TEXT("MegascansPlugin")};
-	static const FName PluginMegascansMsPresetsFolder{TEXT("MSPresets")};
-	
+	static const FName PluginNameMegascans{TEXT("MegascansPlugin")};
+	// static const FName PluginMegascansMsPresetsFolder{TEXT("MSPresets")};
+
 	// url
 	static const FString UrlWiki{TEXT("https://github.com/ashe23/ProjectCleaner/wiki")};
 

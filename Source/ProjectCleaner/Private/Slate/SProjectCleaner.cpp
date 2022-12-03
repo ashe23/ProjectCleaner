@@ -10,7 +10,6 @@
 #include "ProjectCleanerStyles.h"
 #include "ProjectCleanerLibrary.h"
 // Engine Headers
-#include "ContentBrowserModule.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SWidgetSwitcher.h"
@@ -23,16 +22,11 @@ void SProjectCleaner::Construct(const FArguments& InArgs, const TSharedRef<SDock
 	ScanSettings = GetMutableDefault<UProjectCleanerScanSettings>();
 	if (!ScanSettings.IsValid()) return;
 
-	Scanner = MakeShareable(new FProjectCleanerScanner);
+	Scanner = MakeShareable(new FProjectCleanerScanner(ScanSettings));
 	if (!Scanner.IsValid()) return;
 
-	Scanner.Get()->Scan(ScanSettings);
-
-	// ScanSettings->OnChange().AddLambda([&]()
-	// {
-	// 	Scanner.Get()->Scan(ScanSettings);
-	// });
-
+	Scanner.Get()->Scan();
+	
 	FPropertyEditorModule& PropertyEditor = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
 	FDetailsViewArgs DetailsViewArgs;
 	DetailsViewArgs.bUpdatesFromSelection = false;
@@ -182,29 +176,6 @@ void SProjectCleaner::Construct(const FArguments& InArgs, const TSharedRef<SDock
 	TabManager->SetMenuMultiBox(MenuBarBuilder.GetMultiBox());
 }
 
-void SProjectCleaner::UpdateView() const
-{
-	if (TabUnused.IsValid())
-	{
-		TabUnused.Pin().Get()->UpdateView();
-	}
-	
-	if (TabIndirect.IsValid())
-	{
-		TabIndirect.Pin().Get()->UpdateView();
-	}
-
-	if (TabCorrupted.IsValid())
-	{
-		TabCorrupted.Pin().Get()->UpdateView(Scanner->GetFilesCorrupted());
-	}
-
-	if (TabNonEngine.IsValid())
-	{
-		TabNonEngine.Pin().Get()->UpdateView(Scanner->GetFilesNonEngine());
-	}
-}
-
 SProjectCleaner::~SProjectCleaner()
 {
 	FGlobalTabmanager::Get()->UnregisterTabSpawner(ProjectCleanerConstants::TabScanSettings);
@@ -252,13 +223,11 @@ void SProjectCleaner::MenuBarFillHelp(FMenuBuilder& MenuBuilder, const TSharedPt
 	MenuBuilder.EndSection();
 }
 
-FReply SProjectCleaner::OnBtnScanProjectClick()
+FReply SProjectCleaner::OnBtnScanProjectClick() const
 {
 	if (!Scanner.IsValid()) return FReply::Handled();
 
-	Scanner.Get()->Scan(ScanSettings);
-
-	UpdateView();
+	Scanner.Get()->Scan();
 
 	return FReply::Handled();
 }
@@ -298,7 +267,7 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnScanSettings(const FSpawnTabArgs
 					[
 						SNew(STextBlock)
 						.Justification(ETextJustify::Center)
-						.ToolTipText(FText::FromString(TEXT("Scan project for unused assets, empty folders, non engine files or corrupted assets")))
+						.ToolTipText(FText::FromString(TEXT("Scan the project with the specified scan settings.")))
 						.ColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.White"))
 						.ShadowOffset(FVector2D{1.5f, 1.5f})
 						.ShadowColorAndOpacity(FLinearColor::Black)
@@ -317,7 +286,7 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnScanSettings(const FSpawnTabArgs
 					[
 						SNew(STextBlock)
 						.Justification(ETextJustify::Center)
-						.ToolTipText(FText::FromString(TEXT("Remove all unused assets and empty folders in project. This wont delete any excluded asset")))
+						.ToolTipText(FText::FromString(TEXT("Remove all unused assets from the project. This won't delete any excluded assets.")))
 						.ColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.White"))
 						.ShadowOffset(FVector2D{1.5f, 1.5f})
 						.ShadowColorAndOpacity(FLinearColor::Black)
@@ -336,7 +305,7 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnScanSettings(const FSpawnTabArgs
 					[
 						SNew(STextBlock)
 						.Justification(ETextJustify::Center)
-						.ToolTipText(FText::FromString(TEXT("Remove all empty folders in project")))
+						.ToolTipText(FText::FromString(TEXT("Remove all empty folders in the project.")))
 						.ColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.White"))
 						.ShadowOffset(FVector2D{1.5f, 1.5f})
 						.ShadowColorAndOpacity(FLinearColor::Black)
@@ -345,14 +314,6 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnScanSettings(const FSpawnTabArgs
 					]
 				]
 			]
-			+ SVerticalBox::Slot()
-			  .Padding(FMargin{5.0f})
-			  .AutoHeight()
-			  [
-			  	SNew(STextBlock)
-			  	.Font(FProjectCleanerStyles::GetFont("Light", 8))
-			  	.Text(FText::FromString(TEXT("Please Scan Project after changing scan settings")))
-			  ]
 			+ SVerticalBox::Slot()
 			  .Padding(FMargin{5.0f})
 			  .FillHeight(1.0f)
@@ -406,25 +367,28 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnCorruptedAssets(const FSpawnTabA
 		.Label(FText::FromString(TEXT("Corrupted Assets")))
 		.Icon(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconTabCorrupted16"))
 		[
+			// todo:ashe23 separate tab view
 			SAssignNew(TabCorrupted, SProjectCleanerFileListView)
-			.Title(TEXT("List of possibly corrupted assets, that exist in Content folder, but not loaded by engine"))
-			.Description(TEXT("In order to fix, try to reload project and see if its loaded. Otherwise close editor and remove them manually from explorer"))
+			.Title(TEXT("List of potentially corrupted assets found in the Content folder but not loaded by the engine."))
+			.Description(TEXT("In order to fix it, try to reload the project and see if it's loaded. Otherwise, close the editor and remove them manually from Explorer."))
 			.Files(Scanner.Get()->GetFilesCorrupted())
 		];
 }
 
 TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnNonEngineFiles(const FSpawnTabArgs& Args)
 {
+	const FString Description = TEXT(
+		"Sometimes you will see an empty folder in ContentBrowser, which you can't delete. It's because it contains some non-engine files that are visible only in Explorer. So make sure you delete all unnecessary files from the list below to clean up empty folders.");
 	return
 		SNew(SDockTab)
 		.TabRole(PanelTab)
 		.Label(FText::FromString(TEXT("NonEngine Files")))
 		.Icon(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconTabNonEngine16"))
 		[
+			// todo:ashe23 separate tab view
 			SAssignNew(TabNonEngine, SProjectCleanerFileListView)
-			.Title(TEXT("List of Non Engine files inside Content folder"))
-			.Description(TEXT(
-				                                                     "Sometimes you will see empty folder in ContentBrowser, which you cant delete. Its because its contains some non engine files visible only in Explorer. So make sure you delete all unnecessary files from list below to cleanup empty folders."))
+			.Title(TEXT("List of NonEngine files inside the Content folder"))
+			.Description(Description)
 			.Files(Scanner.Get()->GetFilesNonEngine())
 		];
 }

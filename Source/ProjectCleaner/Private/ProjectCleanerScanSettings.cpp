@@ -12,18 +12,18 @@ void UProjectCleanerScanSettings::PostEditChangeProperty(FPropertyChangedEvent& 
 	Super::PostEditChangeProperty(PropertyChangedEvent);
 
 	SaveConfig();
-	
+
 	if (bAutoScan)
 	{
-		if (OnChangeDelegate.IsBound())
+		if (DelegateScanSettingsChanged.IsBound())
 		{
-			OnChangeDelegate.Broadcast();
+			DelegateScanSettingsChanged.Broadcast();
 		}
 	}
 }
 #endif
 
-FProjectCleanerScanSettingsChangeDelegate& UProjectCleanerScanSettings::OnChange()
+FProjectCleanerDelegateScanSettingsChanged& UProjectCleanerScanSettings::OnChange()
 {
-	return OnChangeDelegate;
+	return DelegateScanSettingsChanged;
 }

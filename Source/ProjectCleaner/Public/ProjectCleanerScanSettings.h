@@ -3,9 +3,10 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "ProjectCleanerDelegates.h"
 #include "ProjectCleanerScanSettings.generated.h"
 
-DECLARE_MULTICAST_DELEGATE(FProjectCleanerScanSettingsChangeDelegate);
+// DECLARE_MULTICAST_DELEGATE(FProjectCleanerScanSettingsChangeDelegate);
 
 UCLASS(Transient, Config=EditorPerProjectUserSettings)
 class UProjectCleanerScanSettings final : public UObject
@@ -38,7 +39,7 @@ public:
 	UPROPERTY(Config)
 	TArray<FAssetData> ExcludedAssets;
 
-	FProjectCleanerScanSettingsChangeDelegate& OnChange();
+	FProjectCleanerDelegateScanSettingsChanged& OnChange();
 private:
-	FProjectCleanerScanSettingsChangeDelegate OnChangeDelegate;
+	FProjectCleanerDelegateScanSettingsChanged DelegateScanSettingsChanged;
 };

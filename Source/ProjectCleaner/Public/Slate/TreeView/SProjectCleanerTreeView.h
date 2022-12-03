@@ -9,8 +9,6 @@ class UProjectCleanerScanSettings;
 struct FProjectCleanerTreeViewItem;
 struct FProjectCleanerScanner;
 
-DECLARE_DELEGATE_OneParam(FProjectCleanerTreeViewSelectionChangeDelegate, const TSharedPtr<FProjectCleanerTreeViewItem>&)
-
 // Responsible for showing project folder structure as tree view with additional information about every folder and its content
 class SProjectCleanerTreeView final : public SCompoundWidget
 {
@@ -18,13 +16,13 @@ public:
 	SLATE_BEGIN_ARGS(SProjectCleanerTreeView)
 		{
 		}
-		SLATE_ARGUMENT(FProjectCleanerTreeViewSelectionChangeDelegate, OnSelectionChange)
+
 		SLATE_ARGUMENT(TSharedPtr<FProjectCleanerScanner>, Scanner)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
 	void TreeItemsUpdate();
-	
+
 private:
 	TSharedPtr<FProjectCleanerTreeViewItem> TreeItemCreate(const FString& InDirPathAbs) const;
 
@@ -42,5 +40,5 @@ private:
 	TWeakObjectPtr<UProjectCleanerScanSettings> ScanSettings;
 	TArray<TSharedPtr<FProjectCleanerTreeViewItem>> TreeItems;
 	TSharedPtr<STreeView<TSharedPtr<FProjectCleanerTreeViewItem>>> TreeView;
-	FProjectCleanerTreeViewSelectionChangeDelegate OnSelectionChangeDelegate;
+	TSet<TSharedPtr<FProjectCleanerTreeViewItem>> TreeItemsExpanded;
 };

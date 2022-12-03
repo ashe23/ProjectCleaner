@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "ProjectCleanerScanner.h"
+#include "ProjectCleanerDelegates.h"
 #include "IContentBrowserSingleton.h"
 #include "Widgets/SCompoundWidget.h"
 
@@ -24,7 +25,6 @@ public:
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs, const TSharedRef<SDockTab>& ConstructUnderMajorTab, const TSharedPtr<SWindow>& ConstructUnderWindow);
-	void UpdateView() const;
 	virtual ~SProjectCleaner() override;
 private:
 	static bool WidgetEnabled();
@@ -33,7 +33,7 @@ private:
 	static void MenuBarFillTabs(FMenuBuilder& MenuBuilder, const TSharedPtr<FTabManager> TabManager);
 	static void MenuBarFillHelp(FMenuBuilder& MenuBuilder, const TSharedPtr<FTabManager> TabManager);
 
-	FReply OnBtnScanProjectClick();
+	FReply OnBtnScanProjectClick() const;
 	FReply OnBtnCleanProjectClick() const;
 	FReply OnBtnDeleteEmptyFoldersClick() const;
 

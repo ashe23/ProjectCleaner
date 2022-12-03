@@ -54,6 +54,9 @@ struct FProjectCleanerTreeViewItem
 	bool bExpanded = false;
 	bool bExcluded = false;
 	bool bEmpty = false;
+	float PercentUnused = 0.0f; // 0 - 100 range
+	float PercentUnusedNormalized = 0.0f; // 0 - 1 range
+	
 	TArray<TSharedPtr<FProjectCleanerTreeViewItem>> SubItems;
 
 	bool operator==(const FProjectCleanerTreeViewItem& Other) const

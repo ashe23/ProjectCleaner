@@ -3,13 +3,13 @@
 #include "Slate/TreeView/SProjectCleanerTreeView.h"
 #include "Slate/TreeView/SProjectCleanerTreeViewItem.h"
 #include "ProjectCleaner.h"
-#include "ProjectCleanerConstants.h"
 #include "ProjectCleanerTypes.h"
 #include "ProjectCleanerStyles.h"
-#include "ProjectCleanerScanSettings.h"
-#include "ProjectCleanerScanner.h"
-// Engine Headers
 #include "ProjectCleanerLibrary.h"
+#include "ProjectCleanerScanner.h"
+#include "ProjectCleanerConstants.h"
+#include "ProjectCleanerScanSettings.h"
+// Engine Headers
 #include "Widgets/Input/SSearchBox.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SSeparator.h"
@@ -17,31 +17,17 @@
 void SProjectCleanerTreeView::Construct(const FArguments& InArgs)
 {
 	Scanner = InArgs._Scanner;
-	OnSelectionChangeDelegate = InArgs._OnSelectionChange;
-	
 	if (!Scanner.IsValid()) return;
-	
+
+	Scanner->OnScanFinished().AddLambda([&]()
+	{
+		UE_LOG(LogProjectCleaner, Warning, TEXT("TreeView: ScanFinished!"))
+		TreeItemsUpdate();
+	});
+
 	ScanSettings = GetMutableDefault<UProjectCleanerScanSettings>();
 	if (!ScanSettings.IsValid()) return;
 
-	// ScanSettings->OnChange().AddLambda([&]()
-	// {
-	// 	TreeItemsUpdate();
-	// });
-	
-	if (!TreeView.IsValid())
-	{
-		SAssignNew(TreeView, STreeView<TSharedPtr<FProjectCleanerTreeViewItem>>)
-		.TreeItemsSource(&TreeItems)
-		.SelectionMode(ESelectionMode::SingleToggle)
-		.OnGenerateRow(this, &SProjectCleanerTreeView::OnTreeViewGenerateRow)
-		.OnGetChildren(this, &SProjectCleanerTreeView::OnTreeViewGetChildren)
-		.HeaderRow(GetTreeViewHeaderRow())
-		.OnMouseButtonDoubleClick(this, &SProjectCleanerTreeView::OnTreeViewItemMouseDblClick)
-		.OnSelectionChanged(this, &SProjectCleanerTreeView::OnTreeViewSelectionChange)
-		.OnExpansionChanged(this, &SProjectCleanerTreeView::OnTreeViewExpansionChange);
-	}
-	
 	TreeItemsUpdate();
 
 	ChildSlot
@@ -118,36 +104,60 @@ void SProjectCleanerTreeView::TreeItemsUpdate()
 {
 	if (!Scanner.IsValid()) return;
 	
-	TreeItems.Reset();
+	if (!TreeView.IsValid())
+	{
+		SAssignNew(TreeView, STreeView<TSharedPtr<FProjectCleanerTreeViewItem>>)
+		.TreeItemsSource(&TreeItems)
+		.SelectionMode(ESelectionMode::SingleToggle)
+		.OnGenerateRow(this, &SProjectCleanerTreeView::OnTreeViewGenerateRow)
+		.OnGetChildren(this, &SProjectCleanerTreeView::OnTreeViewGetChildren)
+		.HeaderRow(GetTreeViewHeaderRow())
+		.OnMouseButtonDoubleClick(this, &SProjectCleanerTreeView::OnTreeViewItemMouseDblClick)
+		.OnSelectionChanged(this, &SProjectCleanerTreeView::OnTreeViewSelectionChange)
+		.OnExpansionChanged(this, &SProjectCleanerTreeView::OnTreeViewExpansionChange);
+	}
 	
+	// // keep already expanded items
+	// TreeItemsExpanded.Reset();
+	// TreeView->GetExpandedItems(TreeItemsExpanded);
+
+	TreeItems.Reset();
+
 	// creating root item
 	const TSharedPtr<FProjectCleanerTreeViewItem> RootTreeItem = TreeItemCreate(FPaths::ProjectContentDir());
 	if (!RootTreeItem) return;
-	
+
 	// traversing and filling its child items
 	TArray<TSharedPtr<FProjectCleanerTreeViewItem>> Stack;
 	Stack.Push(RootTreeItem);
 	TreeItems.Add(RootTreeItem);
-	
+
 	while (Stack.Num() > 0)
 	{
 		const auto CurrentItem = Stack.Pop();
-	
+
 		TSet<FString> SubFolders;
 		Scanner.Get()->GetSubFolders(CurrentItem->FolderPathAbs, SubFolders);
-	
+
 		for (const auto& SubFolder : SubFolders)
 		{
 			const TSharedPtr<FProjectCleanerTreeViewItem> SubDirItem = TreeItemCreate(SubFolder);
 			if (!SubDirItem.IsValid()) continue;
-	
+
 			CurrentItem->SubItems.Add(SubDirItem);
 			Stack.Push(SubDirItem);
 		}
 	}
-	
+
 	if (TreeView.IsValid())
 	{
+		// for (const auto& TreeItem : TreeItems)
+		// {
+		// 	TreeView->SetItemExpansion(TreeItem, TreeItem->bExpanded);
+		// }
+		//
+		// TreeItemsExpanded.Reset();
+		// TreeView->GetExpandedItems(TreeItemsExpanded);
 		TreeView->SetItemExpansion(RootTreeItem, true);
 		TreeView->RequestTreeRefresh();
 	}
@@ -156,28 +166,37 @@ void SProjectCleanerTreeView::TreeItemsUpdate()
 TSharedPtr<FProjectCleanerTreeViewItem> SProjectCleanerTreeView::TreeItemCreate(const FString& InFolderPathAbs) const
 {
 	if (UProjectCleanerLibrary::IsUnderAnyFolder(InFolderPathAbs, Scanner.Get()->GetFoldersBlacklist())) return {};
-	
+
 	const TSharedPtr<FProjectCleanerTreeViewItem> TreeItem = MakeShareable(new FProjectCleanerTreeViewItem());
 	if (!TreeItem.IsValid()) return {};
-	
+
 	const bool bIsProjectContentFolder = InFolderPathAbs.Equals(FPaths::ProjectContentDir());
 	const bool bIsProjectDeveloperFolder = InFolderPathAbs.Equals(FPaths::ProjectContentDir() / TEXT("Developers"));
 
-	// todo:ashe23 fill data from scanner
 	TreeItem->FolderPathAbs = InFolderPathAbs;
 	TreeItem->FolderPathRel = UProjectCleanerLibrary::PathConvertToRel(InFolderPathAbs);
 	TreeItem->FolderName = bIsProjectContentFolder ? TEXT("Content") : FPaths::GetPathLeaf(InFolderPathAbs);
 	TreeItem->FoldersTotal = Scanner.Get()->GetFoldersTotalNum(InFolderPathAbs);
 	TreeItem->FoldersEmpty = Scanner.Get()->GetFoldersEmptyNum(InFolderPathAbs);
-	// TreeItem->AssetsTotal = Scanner.Get()->GetAssetsUnusedNum(InFolderPathAbs);
-	// TreeItem->AssetsUnused = Scanner.Get()->GetAssetsUnusedNum(InFolderPathAbs);
-	// TreeItem->SizeTotal = Scanner.Get()->GetSizeTotal(InFolderPathAbs);
-	// TreeItem->SizeUnused = Scanner.Get()->GetSizeUnused(InFolderPathAbs);
+	TreeItem->AssetsTotal = Scanner.Get()->GetAssetTotalNum(InFolderPathAbs);
+	TreeItem->AssetsUnused = Scanner.Get()->GetAssetUnusedNum(InFolderPathAbs);
+	TreeItem->SizeTotal = Scanner.Get()->GetSizeTotal(InFolderPathAbs);
+	TreeItem->SizeUnused = Scanner.Get()->GetSizeUnused(InFolderPathAbs);
 	TreeItem->bDevFolder = bIsProjectDeveloperFolder;
 	TreeItem->bEmpty = Scanner.Get()->IsFolderEmpty(InFolderPathAbs);
-	TreeItem->bExpanded = bIsProjectContentFolder;
-	// TreeItem->bExcluded = Scanner.Get()->IsExcludedFolder(InFolderPathAbs);;
+	TreeItem->bExcluded = Scanner.Get()->IsFolderExcluded(InFolderPathAbs);
+	TreeItem->PercentUnused = TreeItem->AssetsTotal == 0 ? 0.0f : TreeItem->AssetsUnused * 100.0f / TreeItem->AssetsTotal;
+	TreeItem->PercentUnusedNormalized = FMath::GetMappedRangeValueClamped(FVector2D{0.0f, 100.0f}, FVector2D{0.0f, 1.0f}, TreeItem->PercentUnused);
 	
+	TreeItem->bExpanded = bIsProjectContentFolder;
+	// for (const auto& ExpandedItem : TreeItemsExpanded)
+	// {
+	// 	if (ExpandedItem->FolderPathRel.Equals(TreeItem->FolderPathRel))
+	// 	{
+	// 		TreeItem->bExpanded = true;
+	// 	}
+	// }
+	//
 	return TreeItem;
 }
 
@@ -261,6 +280,17 @@ TSharedRef<SHeaderRow> SProjectCleanerTreeView::GetTreeViewHeaderRow() const
 			.Text(FText::FromString(TEXT("Size (Unused)")))
 			.ColorAndOpacity(FProjectCleanerStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
 			.Font(FProjectCleanerStyles::GetFont("Light", ProjectCleanerConstants::HeaderRowFontSize))
+		]
+		+ SHeaderRow::Column(TEXT("Percent"))
+		  .HAlignHeader(HAlign_Center)
+		  .VAlignHeader(VAlign_Center)
+		  .HeaderContentPadding(FMargin{5.0f})
+		[
+			SNew(STextBlock)
+			.ToolTipText(FText::FromString(TEXT("Percent of unused number relative to total number of assets in folder")))
+			.Text(FText::FromString(TEXT("% of Unused")))
+			.ColorAndOpacity(FProjectCleanerStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
+			.Font(FProjectCleanerStyles::GetFont("Light", ProjectCleanerConstants::HeaderRowFontSize))
 		];
 }
 
@@ -297,12 +327,10 @@ void SProjectCleanerTreeView::OnTreeViewSelectionChange(TSharedPtr<FProjectClean
 {
 	if (!Item.IsValid()) return;
 
-	// must notify content browser about path change
-	// UE_LOG(LogProjectCleaner, Warning, TEXT("Selection Change"));
-	if (OnSelectionChangeDelegate.IsBound())
-	{
-		OnSelectionChangeDelegate.Execute(Item);
-	}
+	// if (OnSelectionChangeDelegate.IsBound())
+	// {
+	// 	OnSelectionChangeDelegate.Execute(Item);
+	// }
 }
 
 void SProjectCleanerTreeView::OnTreeViewExpansionChange(TSharedPtr<FProjectCleanerTreeViewItem> Item, bool bExpanded) const
