@@ -176,6 +176,8 @@ void FProjectCleanerScanner::Scan()
 	}
 
 	ModuleAssetRegistry.Get().UseFilterToExcludeAssets(AssetsUnused, Filter);
+	// ModuleAssetRegistry.Get().GetAssets(Filter, AssetsExcluded);
+	// todo:ashe23 get excluded assets
 
 	SlowTask.EnterProgressFrame(1.0f);
 
@@ -307,6 +309,11 @@ const TArray<FAssetData>& FProjectCleanerScanner::GetAssetsIndirect() const
 	return AssetsIndirect;
 }
 
+const TArray<FAssetData>& FProjectCleanerScanner::GetAssetsExcluded() const
+{
+	return AssetsExcluded;
+}
+
 const TArray<FProjectCleanerIndirectAsset>& FProjectCleanerScanner::GetAssetsIndirectAdvanced() const
 {
 	return AssetsIndirectAdvanced;
@@ -363,7 +370,6 @@ void FProjectCleanerScanner::DataInit()
 
 void FProjectCleanerScanner::DataReset()
 {
-	// FoldersAll.Reset();
 	FoldersEmpty.Reset();
 	FoldersBlacklist.Reset();
 
@@ -373,6 +379,7 @@ void FProjectCleanerScanner::DataReset()
 	AssetsAll.Reset();
 	AssetsPrimary.Reset();
 	AssetsIndirect.Reset();
+	AssetsExcluded.Reset();
 	AssetsIndirectAdvanced.Reset();
 	AssetsWithExternalRefs.Reset();
 	AssetsBlacklist.Reset();
@@ -383,7 +390,6 @@ int32 FProjectCleanerScanner::GetNumFor(const FString& InFolderPathAbs, const TA
 {
 	if (InFolderPathAbs.IsEmpty()) return 0;
 	if (!FPaths::DirectoryExists(InFolderPathAbs)) return 0;
-
 
 	int32 Num = 0;
 	for (const auto& Asset : Assets)

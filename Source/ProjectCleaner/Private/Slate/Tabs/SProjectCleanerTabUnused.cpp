@@ -17,6 +17,9 @@
 void SProjectCleanerTabUnused::Construct(const FArguments& InArgs)
 {
 	Scanner = InArgs._Scanner;
+	ScanSettings = GetMutableDefault<UProjectCleanerScanSettings>();
+
+	if (!ScanSettings.IsValid()) return;
 	if (!Scanner.IsValid()) return;
 
 	Scanner->OnScanFinished().AddLambda([]()
@@ -24,25 +27,30 @@ void SProjectCleanerTabUnused::Construct(const FArguments& InArgs)
 		UE_LOG(LogProjectCleaner, Warning, TEXT("TabUnused: Scan Finished delegate called!"));
 	});
 
-	ScanSettings = GetMutableDefault<UProjectCleanerScanSettings>();
-	if (!ScanSettings.IsValid()) return;
-
 	PathSelected = ProjectCleanerConstants::PathRelRoot.ToString();
-
-	if (!ProjectCleanerTreeView)
-	{
-		SAssignNew(ProjectCleanerTreeView, SProjectCleanerTreeView).Scanner(Scanner);
-	}
 
 	UpdateView();
 }
 
 void SProjectCleanerTabUnused::UpdateView()
 {
-	if (!Scanner.IsValid() || !ScanSettings.IsValid()) return;
+	if (!ScanSettings.IsValid() || !Scanner.IsValid()) return;
 
-	ProjectCleanerTreeView->TreeItemsUpdate();
+	// making sure tree view is valid
+	if (!ProjectCleanerTreeView)
+	{
+		SAssignNew(ProjectCleanerTreeView, SProjectCleanerTreeView).Scanner(Scanner);
 
+		ProjectCleanerTreeView->OnPathChange().AddLambda([&](const FString& InFolderPathRel)
+		{
+			PathSelected = InFolderPathRel;
+			UpdateView();
+			UE_LOG(LogProjectCleaner, Warning, TEXT("Path Changed To: %s"), *InFolderPathRel);
+		});
+	}
+
+	// ProjectCleanerTreeView->TreeItemsUpdate();
+	
 	const FContentBrowserModule& ModuleContentBrowser = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
 
 	class FFrontendFilter_ProjectCleaner : public FFrontendFilter
@@ -82,6 +90,7 @@ void SProjectCleanerTabUnused::UpdateView()
 	};
 
 
+	// todo:ashe23 we must show excluded assets also
 	FARFilter Filter;
 	if (Scanner.Get()->GetAssetsUnused().Num() == 0)
 	{
@@ -107,7 +116,6 @@ void SProjectCleanerTabUnused::UpdateView()
 	);
 	const auto FrontendFilter = MakeShareable(new FFrontendFilter_ProjectCleaner(ProjectCleanerCategory, PathSelected));
 
-	// FGetCurrentSelectionDelegate CurrentSelectionDelegate;
 	FAssetPickerConfig AssetPickerConfig;
 	AssetPickerConfig.Filter = Filter;
 	AssetPickerConfig.SelectionMode = ESelectionMode::Multi;
@@ -124,9 +132,9 @@ void SProjectCleanerTabUnused::UpdateView()
 	AssetPickerConfig.bForceShowEngineContent = false;
 	AssetPickerConfig.bCanShowRealTimeThumbnails = false;
 	AssetPickerConfig.AssetShowWarningText = FText::FromName("No assets");
-
 	AssetPickerConfig.ExtraFrontendFilters.Add(FrontendFilter);
 
+	// FGetCurrentSelectionDelegate CurrentSelectionDelegate;
 	// AssetPickerConfig.GetCurrentSelectionDelegates.Add(&CurrentSelectionDelegate);
 	// AssetPickerConfig.RefreshAssetViewDelegates.Add(&RefreshAssetViewDelegate);
 

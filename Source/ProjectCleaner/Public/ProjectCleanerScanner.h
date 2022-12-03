@@ -42,6 +42,7 @@ struct FProjectCleanerScanner
 	const TSet<FString>& GetFilesNonEngine() const;
 	const TArray<FAssetData>& GetAssetsUnused() const;
 	const TArray<FAssetData>& GetAssetsIndirect() const;
+	const TArray<FAssetData>& GetAssetsExcluded() const;
 	const TArray<FProjectCleanerIndirectAsset>& GetAssetsIndirectAdvanced() const;
 
 	FProjectCleanerDelegateScanFinished& OnScanFinished();
@@ -62,6 +63,7 @@ private:
 	TArray<FAssetData> AssetsAll;
 	TArray<FAssetData> AssetsPrimary;
 	TArray<FAssetData> AssetsIndirect;
+	TArray<FAssetData> AssetsExcluded;
 	TArray<FProjectCleanerIndirectAsset> AssetsIndirectAdvanced;
 	TArray<FAssetData> AssetsWithExternalRefs;
 	TArray<FAssetData> AssetsBlacklist;
