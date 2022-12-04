@@ -39,4 +39,7 @@ public:
 	static void FocusOnDirectory(const FString& InRelPath);
 	static void FocusOnAssets(const TArray<FAssetData>& Assets);
 	static void GetLinkedAssets(const TArray<FAssetData>& Assets, TArray<FAssetData>& LinkedAssets);
+
+	static EAppReturnType::Type ShowConfirmationWindow(const FText& Title, const FText& ContentText, const EAppMsgType::Type MsgType = EAppMsgType::YesNo);
+	static bool ConfirmationWindowCancelled(const EAppReturnType::Type ReturnType);
 };

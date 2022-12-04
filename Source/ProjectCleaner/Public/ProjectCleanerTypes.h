@@ -56,7 +56,7 @@ struct FProjectCleanerTreeViewItem
 	bool bEmpty = false;
 	float PercentUnused = 0.0f; // 0 - 100 range
 	float PercentUnusedNormalized = 0.0f; // 0 - 1 range
-	
+
 	TArray<TSharedPtr<FProjectCleanerTreeViewItem>> SubItems;
 
 	bool operator==(const FProjectCleanerTreeViewItem& Other) const
@@ -70,30 +70,20 @@ struct FProjectCleanerTreeViewItem
 	}
 };
 
-struct FProjectCleanerFolderInfo
+struct FProjectCleanerTabNonEngineListItem
 {
-	FString FolderPathAbs;
-	FString FolderPathRel;
-	FString FolderName;
+	FString FileName;
+	FString FileExtension;
+	FString FilePathAbs;
+	int64 FileSize;
 
-	bool bEmpty = false;
-	bool bExcluded = false;
-	bool bDevFolder = false;
-
-	TSet<FString> SubFolders;
-	TSet<FString> SubFoldersAll;
-	TSet<FString> SubFoldersEmpty;
-
-	TArray<FAssetData> AssetsTotal;
-	TArray<FAssetData> AssetsUnused;
-
-	bool operator==(const FProjectCleanerFolderInfo& Other) const
+	bool operator==(const FProjectCleanerTabNonEngineListItem& Other) const
 	{
-		return FolderPathAbs.Equals(Other.FolderPathAbs);
+		return FilePathAbs.Equals(Other.FilePathAbs);
 	}
 
-	bool operator!=(const FProjectCleanerFolderInfo& Other) const
+	bool operator!=(const FProjectCleanerTabNonEngineListItem& Other) const
 	{
-		return !FolderPathAbs.Equals(Other.FolderPathAbs);
+		return !FilePathAbs.Equals(Other.FilePathAbs);
 	}
 };

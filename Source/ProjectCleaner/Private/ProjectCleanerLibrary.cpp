@@ -181,6 +181,16 @@ void UProjectCleanerLibrary::GetLinkedAssets(const TArray<FAssetData>& Assets, T
 	ModuleAssetRegistry.Get().GetAssets(Filter, LinkedAssets);
 }
 
+EAppReturnType::Type UProjectCleanerLibrary::ShowConfirmationWindow(const FText& Title, const FText& ContentText, const EAppMsgType::Type MsgType)
+{
+	return FMessageDialog::Open(MsgType, ContentText, &Title);
+}
+
+bool UProjectCleanerLibrary::ConfirmationWindowCancelled(const EAppReturnType::Type ReturnType)
+{
+	return ReturnType == EAppReturnType::Type::No || ReturnType == EAppReturnType::Cancel;
+}
+
 void UProjectCleanerLibrary::GetAssetsIndirect(TArray<FAssetData>& AssetsIndirect)
 {
 	AssetsIndirect.Reset();

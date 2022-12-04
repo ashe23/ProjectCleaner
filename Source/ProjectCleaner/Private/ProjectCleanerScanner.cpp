@@ -85,8 +85,21 @@ public:
 	}
 };
 
+FProjectCleanerScanner::FProjectCleanerScanner(const TWeakObjectPtr<UProjectCleanerScanSettings>& InScanSettings)
+	: ScanSettings(InScanSettings),
+	  ModuleAssetRegistry(FModuleManager::LoadModuleChecked<FAssetRegistryModule>(AssetRegistryConstants::ModuleName))
+{
+	ScanSettings->OnChange().AddLambda([&]()
+	{
+		// Scan();
+		UE_LOG(LogProjectCleaner, Warning, TEXT("Scanner: ScanSettings Changed!"));
+	});
+}
+
 void FProjectCleanerScanner::Scan()
 {
+
+	return;
 	if (UProjectCleanerLibrary::IsAssetRegistryWorking()) return;
 
 	UProjectCleanerLibrary::FixupRedirectors();
@@ -187,6 +200,26 @@ void FProjectCleanerScanner::Scan()
 	}
 }
 
+void FProjectCleanerScanner::CleanProject()
+{
+	UE_LOG(LogProjectCleaner, Warning, TEXT("Cleaning project"));
+
+	if (DelegateCleanFinished.IsBound())
+	{
+		DelegateCleanFinished.Broadcast();
+	}
+}
+
+void FProjectCleanerScanner::DeleteEmptyFolders()
+{
+	UE_LOG(LogProjectCleaner, Warning, TEXT("Deleting empty folders"));
+
+	if (DelegateEmptyFoldersDeleted.IsBound())
+	{
+		DelegateEmptyFoldersDeleted.Broadcast();
+	}
+}
+
 void FProjectCleanerScanner::GetSubFolders(const FString& InFolderPathAbs, TSet<FString>& SubFolders) const
 {
 	TArray<FString> Folders;
@@ -282,6 +315,11 @@ int64 FProjectCleanerScanner::GetSizeTotal(const FString& InFolderPathAbs) const
 int64 FProjectCleanerScanner::GetSizeUnused(const FString& InFolderPathAbs) const
 {
 	return GetSizeFor(InFolderPathAbs, AssetsUnused);
+}
+
+const TSet<FString>& FProjectCleanerScanner::GetFoldersEmpty() const
+{
+	return FoldersEmpty;
 }
 
 const TSet<FString>& FProjectCleanerScanner::GetFoldersBlacklist() const

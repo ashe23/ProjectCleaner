@@ -1,16 +1,18 @@
 ﻿// Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "Slate/SProjectCleaner.h"
-#include "Slate/Tabs/SProjectCleanerFileListView.h"
-#include "Slate/Tabs/SProjectCleanerTabIndirect.h"
-#include "Slate/Tabs/SProjectCleanerTabUnused.h"
+// #include "Slate/Tabs/SProjectCleanerFileListView.h"
+#include "Slate/Tabs/SProjectCleanerTabScanSettings.h"
+// #include "Slate/Tabs/SProjectCleanerTabIndirect.h"
+// #include "Slate/Tabs/SProjectCleanerTabUnused.h"
 #include "ProjectCleanerScanSettings.h"
 #include "ProjectCleanerScanner.h"
 #include "ProjectCleanerConstants.h"
 #include "ProjectCleanerStyles.h"
 #include "ProjectCleanerLibrary.h"
+// #include "ProjectCleaner.h"
 // Engine Headers
-#include "Kismet/KismetSystemLibrary.h"
+// #include "Kismet/KismetSystemLibrary.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SWidgetSwitcher.h"
 
@@ -21,25 +23,10 @@ void SProjectCleaner::Construct(const FArguments& InArgs, const TSharedRef<SDock
 {
 	ScanSettings = GetMutableDefault<UProjectCleanerScanSettings>();
 	if (!ScanSettings.IsValid()) return;
-
+	
 	Scanner = MakeShareable(new FProjectCleanerScanner(ScanSettings));
 	if (!Scanner.IsValid()) return;
-
-	Scanner.Get()->Scan();
 	
-	FPropertyEditorModule& PropertyEditor = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
-	FDetailsViewArgs DetailsViewArgs;
-	DetailsViewArgs.bUpdatesFromSelection = false;
-	DetailsViewArgs.bLockable = false;
-	DetailsViewArgs.bAllowSearch = false;
-	DetailsViewArgs.bShowOptions = false;
-	DetailsViewArgs.bAllowFavoriteSystem = false;
-	DetailsViewArgs.NameAreaSettings = FDetailsViewArgs::HideNameArea;
-	DetailsViewArgs.ViewIdentifier = "ProjectCleanerScanSettings";
-
-	ScanSettingsProperty = PropertyEditor.CreateDetailView(DetailsViewArgs);
-	ScanSettingsProperty->SetObject(ScanSettings.Get());
-
 	TabManager = FGlobalTabmanager::Get()->NewTabManager(ConstructUnderMajorTab);
 	const TSharedRef<FWorkspaceItem> AppMenuGroup = TabManager->AddLocalWorkspaceMenuCategory(FText::FromString(TEXT("ProjectCleaner")));
 
@@ -223,24 +210,22 @@ void SProjectCleaner::MenuBarFillHelp(FMenuBuilder& MenuBuilder, const TSharedPt
 	MenuBuilder.EndSection();
 }
 
-FReply SProjectCleaner::OnBtnScanProjectClick() const
-{
-	if (!Scanner.IsValid()) return FReply::Handled();
-
-	Scanner.Get()->Scan();
-
-	return FReply::Handled();
-}
-
-FReply SProjectCleaner::OnBtnCleanProjectClick() const
-{
-	return FReply::Handled();
-}
-
-FReply SProjectCleaner::OnBtnDeleteEmptyFoldersClick() const
-{
-	return FReply::Handled();
-}
+// FReply SProjectCleaner::OnBtnScanProjectClick() const
+// {
+// 	// FProjectCleanerModule::GetScanner()->Scan();
+// 	
+// 	return FReply::Handled();
+// }
+//
+// FReply SProjectCleaner::OnBtnCleanProjectClick() const
+// {
+// 	return FReply::Handled();
+// }
+//
+// FReply SProjectCleaner::OnBtnDeleteEmptyFoldersClick() const
+// {
+// 	return FReply::Handled();
+// }
 
 TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnScanSettings(const FSpawnTabArgs& Args)
 {
@@ -250,86 +235,7 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnScanSettings(const FSpawnTabArgs
 		.Label(FText::FromString(TEXT("Scan Settings")))
 		.Icon(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconSettings16"))
 		[
-			SNew(SVerticalBox)
-			+ SVerticalBox::Slot()
-			  .AutoHeight()
-			  .Padding(FMargin{5.0f})
-			[
-				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot()
-				  .AutoWidth()
-				  .Padding(FMargin{0.0f, 0.0f, 5.0f, 0.0f})
-				[
-					SNew(SButton)
-					.ContentPadding(FMargin{5.0f})
-					.OnClicked_Raw(this, &SProjectCleaner::OnBtnScanProjectClick)
-					.ButtonColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Blue"))
-					[
-						SNew(STextBlock)
-						.Justification(ETextJustify::Center)
-						.ToolTipText(FText::FromString(TEXT("Scan the project with the specified scan settings.")))
-						.ColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.White"))
-						.ShadowOffset(FVector2D{1.5f, 1.5f})
-						.ShadowColorAndOpacity(FLinearColor::Black)
-						.Font(FProjectCleanerStyles::GetFont("Bold", 10))
-						.Text(FText::FromString(TEXT("Scan Project")))
-					]
-				]
-				+ SHorizontalBox::Slot()
-				  .AutoWidth()
-				  .Padding(FMargin{0.0f, 0.0f, 5.0f, 0.0f})
-				[
-					SNew(SButton)
-					.ContentPadding(FMargin{5.0f})
-					.OnClicked_Raw(this, &SProjectCleaner::OnBtnCleanProjectClick)
-					.ButtonColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Red"))
-					[
-						SNew(STextBlock)
-						.Justification(ETextJustify::Center)
-						.ToolTipText(FText::FromString(TEXT("Remove all unused assets from the project. This won't delete any excluded assets.")))
-						.ColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.White"))
-						.ShadowOffset(FVector2D{1.5f, 1.5f})
-						.ShadowColorAndOpacity(FLinearColor::Black)
-						.Font(FProjectCleanerStyles::GetFont("Bold", 10))
-						.Text(FText::FromString(TEXT("Clean Project")))
-					]
-				]
-				+ SHorizontalBox::Slot()
-				  .AutoWidth()
-				  .Padding(FMargin{0.0f, 0.0f, 5.0f, 0.0f})
-				[
-					SNew(SButton)
-					.ContentPadding(FMargin{5.0f})
-					.OnClicked_Raw(this, &SProjectCleaner::OnBtnDeleteEmptyFoldersClick)
-					.ButtonColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Red"))
-					[
-						SNew(STextBlock)
-						.Justification(ETextJustify::Center)
-						.ToolTipText(FText::FromString(TEXT("Remove all empty folders in the project.")))
-						.ColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.White"))
-						.ShadowOffset(FVector2D{1.5f, 1.5f})
-						.ShadowColorAndOpacity(FLinearColor::Black)
-						.Font(FProjectCleanerStyles::GetFont("Bold", 10))
-						.Text(FText::FromString(TEXT("Delete Empty Folders")))
-					]
-				]
-			]
-			+ SVerticalBox::Slot()
-			  .Padding(FMargin{5.0f})
-			  .FillHeight(1.0f)
-			[
-				SNew(SBox)
-				[
-					SNew(SScrollBox)
-					.ScrollWhenFocusChanges(EScrollWhenFocusChanges::NoScroll)
-					.AnimateWheelScrolling(true)
-					.AllowOverscroll(EAllowOverscroll::No)
-					+ SScrollBox::Slot()
-					[
-						ScanSettingsProperty.ToSharedRef()
-					]
-				]
-			]
+			SAssignNew(TabScanSettings, SProjectCleanerTabScanSettings).Scanner(Scanner)
 		];
 }
 
@@ -341,8 +247,9 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnUnusedAssets(const FSpawnTabArgs
 		.Label(FText::FromString(TEXT("Unused Assets")))
 		.Icon(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconTabUnused16"))
 		[
-			SAssignNew(TabUnused, SProjectCleanerTabUnused)
-			.Scanner(Scanner)
+			SNew(STextBlock)
+			// SAssignNew(TabUnused, SProjectCleanerTabUnused)
+			// .Scanner(Scanner)
 		];
 }
 
@@ -354,8 +261,9 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnIndirectAssets(const FSpawnTabAr
 		.Label(FText::FromString(TEXT("Indirect Assets")))
 		.Icon(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconTabIndirect16"))
 		[
-			SAssignNew(TabIndirect, SProjectCleanerTabIndirect)
-			.Scanner(Scanner)
+			SNew(STextBlock)
+			// SAssignNew(TabIndirect, SProjectCleanerTabIndirect)
+			// .Scanner(Scanner)
 		];
 }
 
@@ -367,11 +275,12 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnCorruptedAssets(const FSpawnTabA
 		.Label(FText::FromString(TEXT("Corrupted Assets")))
 		.Icon(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconTabCorrupted16"))
 		[
-			// todo:ashe23 separate tab view
-			SAssignNew(TabCorrupted, SProjectCleanerFileListView)
-			.Title(TEXT("List of potentially corrupted assets found in the Content folder but not loaded by the engine."))
-			.Description(TEXT("In order to fix it, try to reload the project and see if it's loaded. Otherwise, close the editor and remove them manually from Explorer."))
-			.Files(Scanner.Get()->GetFilesCorrupted())
+			SNew(STextBlock)
+			// // todo:ashe23 separate tab view
+			// SAssignNew(TabCorrupted, SProjectCleanerFileListView)
+			// .Title(TEXT("List of potentially corrupted assets found in the Content folder but not loaded by the engine."))
+			// .Description(TEXT("In order to fix it, try to reload the project and see if it's loaded. Otherwise, close the editor and remove them manually from Explorer."))
+			// .Files(Scanner.Get()->GetFilesCorrupted())
 		];
 }
 
@@ -385,10 +294,11 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnNonEngineFiles(const FSpawnTabAr
 		.Label(FText::FromString(TEXT("NonEngine Files")))
 		.Icon(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconTabNonEngine16"))
 		[
-			// todo:ashe23 separate tab view
-			SAssignNew(TabNonEngine, SProjectCleanerFileListView)
-			.Title(TEXT("List of NonEngine files inside the Content folder"))
-			.Description(Description)
-			.Files(Scanner.Get()->GetFilesNonEngine())
+			SNew(STextBlock)
+			// // todo:ashe23 separate tab view
+			// SAssignNew(TabNonEngine, SProjectCleanerFileListView)
+			// .Title(TEXT("List of NonEngine files inside the Content folder"))
+			// .Description(Description)
+			// .Files(Scanner.Get()->GetFilesNonEngine())
 		];
 }

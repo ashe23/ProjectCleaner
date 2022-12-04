@@ -4,12 +4,13 @@
 
 #include "CoreMinimal.h"
 #include "ProjectCleanerScanner.h"
-#include "ProjectCleanerDelegates.h"
-#include "IContentBrowserSingleton.h"
+// #include "ProjectCleanerDelegates.h"
+// #include "IContentBrowserSingleton.h"
 #include "Widgets/SCompoundWidget.h"
 
 class UProjectCleanerScanSettings;
 class SProjectCleanerTreeView;
+class SProjectCleanerTabScanSettings;
 class SProjectCleanerTabUnused;
 class SProjectCleanerTabIndirect;
 class SProjectCleanerFileListView;
@@ -33,9 +34,9 @@ private:
 	static void MenuBarFillTabs(FMenuBuilder& MenuBuilder, const TSharedPtr<FTabManager> TabManager);
 	static void MenuBarFillHelp(FMenuBuilder& MenuBuilder, const TSharedPtr<FTabManager> TabManager);
 
-	FReply OnBtnScanProjectClick() const;
-	FReply OnBtnCleanProjectClick() const;
-	FReply OnBtnDeleteEmptyFoldersClick() const;
+	// FReply OnBtnScanProjectClick() const;
+	// FReply OnBtnCleanProjectClick() const;
+	// FReply OnBtnDeleteEmptyFoldersClick() const;
 
 	TSharedRef<SDockTab> OnTabSpawnScanSettings(const FSpawnTabArgs& Args);
 	TSharedRef<SDockTab> OnTabSpawnUnusedAssets(const FSpawnTabArgs& Args);
@@ -45,11 +46,11 @@ private:
 	
 	TSharedPtr<FTabManager> TabManager;
 	TSharedPtr<FTabManager::FLayout> TabLayout;
-	TSharedPtr<FProjectCleanerScanner> Scanner;
-	TSharedPtr<IDetailsView> ScanSettingsProperty;
 	
+	TSharedPtr<FProjectCleanerScanner> Scanner;
 	TWeakObjectPtr<UProjectCleanerScanSettings> ScanSettings;
 	
+	TWeakPtr<SProjectCleanerTabScanSettings> TabScanSettings;
 	TWeakPtr<SProjectCleanerTabUnused> TabUnused;
 	TWeakPtr<SProjectCleanerTabIndirect> TabIndirect;
 	TWeakPtr<SProjectCleanerFileListView> TabCorrupted;

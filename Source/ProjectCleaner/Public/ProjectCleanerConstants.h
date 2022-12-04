@@ -26,6 +26,10 @@ namespace ProjectCleanerConstants
 	static const FString MsgLoadingAssets{TEXT("Loading Assets... ")};
 	static const FString MsgScanning{TEXT("Scanning... ")};
 	static const FString MsgAssetRegistryStillWorking{TEXT("The AssetRegistry is still working. Please wait for the scan to finish")};
+	static const FString MsgConfirmCleanProjectTitle{TEXT("Confirm project cleaning")};
+	static const FString MsgConfirmCleanProject{TEXT("Are you sure you want to permanently delete unused assets?")};
+	static const FString MsgConfirmDeleteEmptyFoldersTitle{TEXT("Confirm empty folders cleaning")};
+	static const FString MsgConfirmDeleteEmptyFolders{TEXT("Are you sure you want to delete all empty folders in project?")};
 
 	// path
 	static const FName PathRelRoot{TEXT("/Game")};

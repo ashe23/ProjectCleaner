@@ -16,17 +16,13 @@ struct FProjectCleanerIndirectAsset;
  */
 struct FProjectCleanerScanner
 {
-	explicit FProjectCleanerScanner(const TWeakObjectPtr<UProjectCleanerScanSettings>& InScanSettings)
-		: ScanSettings(InScanSettings),
-		  ModuleAssetRegistry(FModuleManager::LoadModuleChecked<FAssetRegistryModule>(AssetRegistryConstants::ModuleName))
-	{
-		ScannerInit();
-	}
-
+	explicit FProjectCleanerScanner(const TWeakObjectPtr<UProjectCleanerScanSettings>& InScanSettings);
+	
 	void Scan();
-
+	void CleanProject();
+	void DeleteEmptyFolders();
+	
 	void GetSubFolders(const FString& InFolderPathAbs, TSet<FString>& SubFolders) const;
-
 	bool IsFolderEmpty(const FString& InFolderPathAbs) const;
 	bool IsFolderExcluded(const FString& InFolderPathAbs) const;
 
@@ -37,6 +33,7 @@ struct FProjectCleanerScanner
 	int64 GetSizeTotal(const FString& InFolderPathAbs) const;
 	int64 GetSizeUnused(const FString& InFolderPathAbs) const;
 
+	const TSet<FString>& GetFoldersEmpty() const;
 	const TSet<FString>& GetFoldersBlacklist() const;
 	const TSet<FString>& GetFilesCorrupted() const;
 	const TSet<FString>& GetFilesNonEngine() const;
@@ -73,4 +70,6 @@ private:
 	FAssetRegistryModule& ModuleAssetRegistry;
 
 	FProjectCleanerDelegateScanFinished DelegateScanFinished;
+	FProjectCleanerDelegateCleanFinished DelegateCleanFinished;
+	FProjectCleanerDelegateEmptyFoldersDeleted DelegateEmptyFoldersDeleted;
 };
