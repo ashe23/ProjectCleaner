@@ -19,21 +19,18 @@
 class FContentFolderVisitor final : public IPlatformFile::FDirectoryVisitor
 {
 public:
-	// TSet<FString>& FoldersAll;
 	TSet<FString>& FoldersEmpty;
 	TSet<FString>& FilesCorrupted;
 	TSet<FString>& FilesNonEngine;
 	const TSet<FString>& FoldersBlacklist;
 
 	FContentFolderVisitor(
-		// TSet<FString>& InFoldersAll,
 		TSet<FString>& InFoldersEmpty,
 		TSet<FString>& InFilesCorrupted,
 		TSet<FString>& InFilesNonEngine,
 		const TSet<FString>& InFoldersBlacklist
 	)
 		: FDirectoryVisitor(EDirectoryVisitorFlags::None),
-		  // FoldersAll(InFoldersAll),
 		  FoldersEmpty(InFoldersEmpty),
 		  FilesCorrupted(InFilesCorrupted),
 		  FilesNonEngine(InFilesNonEngine),
@@ -48,8 +45,6 @@ public:
 		if (bIsDirectory)
 		{
 			if (UProjectCleanerLibrary::IsUnderAnyFolder(FullPath, FoldersBlacklist)) return true;
-
-			// FoldersAll.Add(FullPath);
 
 			TArray<FString> Files;
 			IFileManager::Get().FindFilesRecursive(Files, *FullPath, TEXT("*.*"), true, false);
@@ -91,27 +86,31 @@ FProjectCleanerScanner::FProjectCleanerScanner(const TWeakObjectPtr<UProjectClea
 {
 	ScanSettings->OnChange().AddLambda([&]()
 	{
-		// Scan();
 		UE_LOG(LogProjectCleaner, Warning, TEXT("Scanner: ScanSettings Changed!"));
 	});
 }
 
 void FProjectCleanerScanner::Scan()
 {
-
-	return;
 	if (UProjectCleanerLibrary::IsAssetRegistryWorking()) return;
 
+	// making sure all redirectors fixed and assets saved when we start scanning
 	UProjectCleanerLibrary::FixupRedirectors();
-	UProjectCleanerLibrary::SaveAllAssets();
+	UProjectCleanerLibrary::SaveAllAssets(); // todo:ashe23 silent mode if cli mode
 
-	FScopedSlowTask SlowTask{2.0f, FText::FromString(ProjectCleanerConstants::MsgScanning)};
-	SlowTask.MakeDialog();
+	FScopedSlowTask SlowTask{3.0f, FText::FromString(ProjectCleanerConstants::MsgScanning)};
+	SlowTask.MakeDialog(false, false);
 
-	DataInit();
+	// resetting old data
+	DataReset();
+
+	SlowTask.EnterProgressFrame(1.0f, FText::FromString(ProjectCleanerConstants::MsgLoadingAssetsBlacklist));
+
+	FindBlacklistedFoldersAndAssets();
+
+	SlowTask.EnterProgressFrame(1.0f, FText::FromString(ProjectCleanerConstants::MsgScanningContentFolder));
 
 	FContentFolderVisitor ContentFolderVisitor{
-		// FoldersAll,
 		FoldersEmpty,
 		FilesCorrupted,
 		FilesNonEngine,
@@ -120,79 +119,15 @@ void FProjectCleanerScanner::Scan()
 	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
 	PlatformFile.IterateDirectoryRecursively(*FPaths::ProjectContentDir(), ContentFolderVisitor);
 
-	SlowTask.EnterProgressFrame(1.0f);
+	SlowTask.EnterProgressFrame(1.0f, FText::FromString(ProjectCleanerConstants::MsgLoadingAssetsUnused));
 
-	// 1. getting all assets in project
-	ModuleAssetRegistry.Get().GetAssetsByPath(ProjectCleanerConstants::PathRelRoot, AssetsAll, true);
-
-	// 2. getting all used assets in project
-	UProjectCleanerLibrary::GetAssetsIndirectAdvanced(AssetsIndirectAdvanced);
-
-	AssetsIndirect.Reserve(AssetsIndirectAdvanced.Num());
-	for (const auto& IndirectAsset : AssetsIndirectAdvanced)
-	{
-		AssetsIndirect.AddUnique(IndirectAsset.AssetData);
-	}
-
-	UProjectCleanerLibrary::GetAssetsPrimary(AssetsPrimary, true);
-	UProjectCleanerLibrary::GetAssetsWithExternalRefs(AssetsWithExternalRefs);
-
-	TArray<FAssetData> UsedAssets;
-	UsedAssets.Append(AssetsPrimary);
-	UsedAssets.Append(AssetsIndirect);
-	UsedAssets.Append(AssetsWithExternalRefs);
-	UsedAssets.Append(AssetsBlacklist);
-	UsedAssets.Append(ScanSettings->ExcludedAssets);
-
-	// 3. getting all used assets linked assets (refs and deps)
-	TArray<FAssetData> LinkedAssets;
-	UProjectCleanerLibrary::GetLinkedAssets(UsedAssets, LinkedAssets);
-	for (const auto& LinkedAsset : LinkedAssets)
-	{
-		UsedAssets.AddUnique(LinkedAsset);
-	}
-
-	// 4. now filtering all used assets from all assets and we get unused assets in project
-	AssetsUnused.Append(AssetsAll);
-
-	FARFilter Filter;
-	Filter.bRecursivePaths = true;
-
-	// filtering blacklisted folder
-	for (const auto& FolderBlacklist : FoldersBlacklist)
-	{
-		Filter.PackagePaths.AddUnique(FName{*UProjectCleanerLibrary::PathConvertToRel(FolderBlacklist)});
-	}
-
-	// filtering excluded by folders
-	for (const auto& ExcludedFolder : ScanSettings->ExcludedFolders)
-	{
-		if (ExcludedFolder.Path.IsEmpty()) continue;
-		if (!FPaths::DirectoryExists(UProjectCleanerLibrary::PathConvertToAbs(ExcludedFolder.Path))) continue;
-
-		Filter.PackagePaths.AddUnique(FName{*ExcludedFolder.Path});
-	}
-
-	// filtering excluded by class
-	for (const auto& ExcludedClass : ScanSettings->ExcludedClasses)
-	{
-		if (!ExcludedClass.LoadSynchronous()) continue;
-
-		Filter.ClassNames.AddUnique(ExcludedClass->GetFName());
-	}
-
-	for (const auto& Asset : UsedAssets)
-	{
-		if (!Asset.IsValid()) continue;
-
-		Filter.ObjectPaths.AddUnique(Asset.ObjectPath);
-	}
-
-	ModuleAssetRegistry.Get().UseFilterToExcludeAssets(AssetsUnused, Filter);
-	// ModuleAssetRegistry.Get().GetAssets(Filter, AssetsExcluded);
-	// todo:ashe23 get excluded assets
-
-	SlowTask.EnterProgressFrame(1.0f);
+	FindAssetsAll();
+	FindAssetsPrimary();
+	FindAssetsIndirect();
+	FindAssetsExcluded();
+	FindAssetsWithExternalRefs();
+	FindAssetsUsed();
+	FindAssetsUnused();
 
 	if (DelegateScanFinished.IsBound())
 	{
@@ -362,48 +297,14 @@ FProjectCleanerDelegateScanFinished& FProjectCleanerScanner::OnScanFinished()
 	return DelegateScanFinished;
 }
 
-void FProjectCleanerScanner::ScannerInit()
+FProjectCleanerDelegateCleanFinished& FProjectCleanerScanner::OnCleanFinished()
 {
-	if (!ScanSettings.IsValid()) return;
-
-	ScanSettings->OnChange().AddLambda([&]()
-	{
-		Scan();
-		UE_LOG(LogProjectCleaner, Warning, TEXT("Scanner: ScanSettings Changed!"));
-	});
+	return DelegateCleanFinished;
 }
 
-void FProjectCleanerScanner::DataInit()
+FProjectCleanerDelegateEmptyFoldersDeleted& FProjectCleanerScanner::OnEmptyFoldersDeleted()
 {
-	// 1. reset old data
-	DataReset();
-
-	// 2. fill blacklist folders
-	FoldersBlacklist.Add(FPaths::ProjectContentDir() / ProjectCleanerConstants::FolderCollections.ToString());
-	FoldersBlacklist.Add(FPaths::GameUserDeveloperDir() / ProjectCleanerConstants::FolderCollections.ToString());
-	// todo:ashe23 for ue5 add __ExternalObject__ and __ExternalActors__ folders
-
-	if (FModuleManager::Get().IsModuleLoaded(ProjectCleanerConstants::PluginNameMegascans))
-	{
-		FoldersBlacklist.Add(FPaths::ProjectContentDir() / ProjectCleanerConstants::FolderMsPresets.ToString());
-	}
-
-	if (!ScanSettings->bScanDeveloperContents)
-	{
-		FoldersBlacklist.Add(FPaths::ProjectContentDir() / ProjectCleanerConstants::FolderDevelopers.ToString());
-	}
-
-	// 3. fill blacklist assets
-	FARFilter Filter;
-	Filter.bRecursivePaths = true;
-	Filter.bRecursiveClasses = true;
-	Filter.PackagePaths.Add(ProjectCleanerConstants::PathRelRoot);
-	Filter.ClassNames.Add(UEditorUtilityWidget::StaticClass()->GetFName());
-	Filter.ClassNames.Add(UEditorUtilityBlueprint::StaticClass()->GetFName());
-	Filter.ClassNames.Add(UEditorUtilityWidgetBlueprint::StaticClass()->GetFName());
-	Filter.ClassNames.Add(UMapBuildDataRegistry::StaticClass()->GetFName());
-
-	ModuleAssetRegistry.Get().GetAssets(Filter, AssetsBlacklist);
+	return DelegateEmptyFoldersDeleted;
 }
 
 void FProjectCleanerScanner::DataReset()
@@ -421,7 +322,160 @@ void FProjectCleanerScanner::DataReset()
 	AssetsIndirectAdvanced.Reset();
 	AssetsWithExternalRefs.Reset();
 	AssetsBlacklist.Reset();
+	AssetsUsed.Reset();
 	AssetsUnused.Reset();
+}
+
+void FProjectCleanerScanner::FindBlacklistedFoldersAndAssets()
+{
+	// filling blacklisted folders
+	FoldersBlacklist.Add(FPaths::ProjectContentDir() / ProjectCleanerConstants::FolderCollections.ToString());
+	FoldersBlacklist.Add(FPaths::GameUserDeveloperDir() / ProjectCleanerConstants::FolderCollections.ToString());
+	// todo:ashe23 for ue5 add __ExternalObject__ and __ExternalActors__ folders
+
+	if (FModuleManager::Get().IsModuleLoaded(ProjectCleanerConstants::PluginNameMegascans))
+	{
+		FoldersBlacklist.Add(FPaths::ProjectContentDir() / ProjectCleanerConstants::FolderMsPresets.ToString());
+	}
+
+	if (!ScanSettings->bScanDeveloperContents)
+	{
+		FoldersBlacklist.Add(FPaths::ProjectContentDir() / ProjectCleanerConstants::FolderDevelopers.ToString());
+	}
+
+	// filling blacklisted assets
+	FARFilter FilterBlacklistAssets;
+	FilterBlacklistAssets.bRecursivePaths = true;
+	FilterBlacklistAssets.bRecursiveClasses = true;
+	FilterBlacklistAssets.PackagePaths.Add(ProjectCleanerConstants::PathRelRoot);
+	FilterBlacklistAssets.ClassNames.Add(UEditorUtilityWidget::StaticClass()->GetFName());
+	FilterBlacklistAssets.ClassNames.Add(UEditorUtilityBlueprint::StaticClass()->GetFName());
+	FilterBlacklistAssets.ClassNames.Add(UEditorUtilityWidgetBlueprint::StaticClass()->GetFName());
+	FilterBlacklistAssets.ClassNames.Add(UMapBuildDataRegistry::StaticClass()->GetFName());
+	ModuleAssetRegistry.Get().GetAssets(FilterBlacklistAssets, AssetsBlacklist);
+}
+
+void FProjectCleanerScanner::FindAssetsAll()
+{
+	ModuleAssetRegistry.Get().GetAssetsByPath(ProjectCleanerConstants::PathRelRoot, AssetsAll, true);
+}
+
+void FProjectCleanerScanner::FindAssetsPrimary()
+{
+	UProjectCleanerLibrary::GetAssetsPrimary(AssetsPrimary, true);
+}
+
+void FProjectCleanerScanner::FindAssetsIndirect()
+{
+	UProjectCleanerLibrary::GetAssetsIndirectAdvanced(AssetsIndirectAdvanced);
+	AssetsIndirect.Reserve(AssetsIndirectAdvanced.Num());
+	for (const auto& IndirectAsset : AssetsIndirectAdvanced)
+	{
+		AssetsIndirect.AddUnique(IndirectAsset.AssetData);
+	}
+}
+
+void FProjectCleanerScanner::FindAssetsExcluded()
+{
+	AssetsExcluded.Reserve(AssetsAll.Num());
+
+	for (const auto& Asset : AssetsAll)
+	{
+		// excluded by path
+		const FString PackagePathAbs = UProjectCleanerLibrary::PathConvertToAbs(Asset.PackagePath.ToString());
+		for (const auto& ExcludedFolder : ScanSettings->ExcludedFolders)
+		{
+			const FString ExcludedFolderPathAbs = UProjectCleanerLibrary::PathConvertToAbs(ExcludedFolder.Path);
+
+			if (UProjectCleanerLibrary::IsUnderFolder(PackagePathAbs, ExcludedFolderPathAbs))
+			{
+				AssetsExcluded.AddUnique(Asset);
+			}
+		}
+
+		// excluded by class
+		const FString AssetClassName = UProjectCleanerLibrary::GetAssetClassName(Asset);
+		for (const auto& ExcludedClass : ScanSettings->ExcludedClasses)
+		{
+			if (!ExcludedClass.LoadSynchronous()) continue;
+
+			const FString ExcludedClassName = ExcludedClass->GetName();
+
+			if (ExcludedClassName.Equals(AssetClassName))
+			{
+				AssetsExcluded.AddUnique(Asset);
+			}
+		}
+	}
+
+	for (const auto& ExcludedAsset : ScanSettings->ExcludedAssets)
+	{
+		AssetsExcluded.AddUnique(ExcludedAsset);
+	}
+
+	AssetsExcluded.Shrink();
+}
+
+void FProjectCleanerScanner::FindAssetsWithExternalRefs()
+{
+	UProjectCleanerLibrary::GetAssetsWithExternalRefs(AssetsWithExternalRefs);
+}
+
+void FProjectCleanerScanner::FindAssetsUsed()
+{
+	AssetsUsed.Reserve(AssetsAll.Num());
+
+	for (const auto& Asset : AssetsPrimary)
+	{
+		AssetsUsed.AddUnique(Asset);
+	}
+
+	for (const auto& Asset : AssetsIndirect)
+	{
+		AssetsUsed.AddUnique(Asset);
+	}
+
+	for (const auto& Asset : AssetsWithExternalRefs)
+	{
+		AssetsUsed.AddUnique(Asset);
+	}
+
+	for (const auto& Asset : AssetsBlacklist)
+	{
+		AssetsUsed.AddUnique(Asset);
+	}
+
+	for (const auto& Asset : AssetsExcluded)
+	{
+		AssetsUsed.AddUnique(Asset);
+	}
+
+	TArray<FAssetData> LinkedAssets;
+	UProjectCleanerLibrary::GetLinkedAssets(AssetsUsed, LinkedAssets);
+	for (const auto& LinkedAsset : LinkedAssets)
+	{
+		AssetsUsed.AddUnique(LinkedAsset);
+	}
+}
+
+void FProjectCleanerScanner::FindAssetsUnused()
+{
+	AssetsUnused.Append(AssetsAll);
+
+	FARFilter Filter;
+	Filter.bRecursivePaths = true;
+
+	for (const auto& FolderBlacklist : FoldersBlacklist)
+	{
+		Filter.PackagePaths.AddUnique(FName{*UProjectCleanerLibrary::PathConvertToRel(FolderBlacklist)});
+	}
+
+	for (const auto& Asset : AssetsUsed)
+	{
+		Filter.ObjectPaths.AddUnique(Asset.ObjectPath);
+	}
+
+	ModuleAssetRegistry.Get().UseFilterToExcludeAssets(AssetsUnused, Filter);
 }
 
 int32 FProjectCleanerScanner::GetNumFor(const FString& InFolderPathAbs, const TArray<FAssetData>& Assets)

@@ -24,7 +24,10 @@ namespace ProjectCleanerConstants
 	static const FString MsgFixingRedirectors{TEXT("Fixing up redirectors... ")};
 	static const FString MsgLoadingRedirectors{TEXT("Loading redirectors... ")};
 	static const FString MsgLoadingAssets{TEXT("Loading Assets... ")};
+	static const FString MsgLoadingAssetsBlacklist{TEXT("Loading blacklisted folders and assets...")};
+	static const FString MsgLoadingAssetsUnused{TEXT("Scanning for unused assets...")};
 	static const FString MsgScanning{TEXT("Scanning... ")};
+	static const FString MsgScanningContentFolder{TEXT("Scanning Content Folder... ")};
 	static const FString MsgAssetRegistryStillWorking{TEXT("The AssetRegistry is still working. Please wait for the scan to finish")};
 	static const FString MsgConfirmCleanProjectTitle{TEXT("Confirm project cleaning")};
 	static const FString MsgConfirmCleanProject{TEXT("Are you sure you want to permanently delete unused assets?")};

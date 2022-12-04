@@ -17,12 +17,12 @@ struct FProjectCleanerIndirectAsset;
 struct FProjectCleanerScanner
 {
 	explicit FProjectCleanerScanner(const TWeakObjectPtr<UProjectCleanerScanSettings>& InScanSettings);
-	
+
 	void Scan();
 	void CleanProject();
 	void DeleteEmptyFolders();
-	
 	void GetSubFolders(const FString& InFolderPathAbs, TSet<FString>& SubFolders) const;
+
 	bool IsFolderEmpty(const FString& InFolderPathAbs) const;
 	bool IsFolderExcluded(const FString& InFolderPathAbs) const;
 
@@ -37,16 +37,26 @@ struct FProjectCleanerScanner
 	const TSet<FString>& GetFoldersBlacklist() const;
 	const TSet<FString>& GetFilesCorrupted() const;
 	const TSet<FString>& GetFilesNonEngine() const;
+
 	const TArray<FAssetData>& GetAssetsUnused() const;
 	const TArray<FAssetData>& GetAssetsIndirect() const;
 	const TArray<FAssetData>& GetAssetsExcluded() const;
+
 	const TArray<FProjectCleanerIndirectAsset>& GetAssetsIndirectAdvanced() const;
 
 	FProjectCleanerDelegateScanFinished& OnScanFinished();
+	FProjectCleanerDelegateCleanFinished& OnCleanFinished();
+	FProjectCleanerDelegateEmptyFoldersDeleted& OnEmptyFoldersDeleted();
 private:
-	void ScannerInit();
-	void DataInit();
 	void DataReset();
+	void FindBlacklistedFoldersAndAssets();
+	void FindAssetsAll();
+	void FindAssetsPrimary();
+	void FindAssetsIndirect();
+	void FindAssetsExcluded();
+	void FindAssetsWithExternalRefs();
+	void FindAssetsUsed();
+	void FindAssetsUnused();
 
 	static int32 GetNumFor(const FString& InFolderPathAbs, const TArray<FAssetData>& Assets);
 	static int64 GetSizeFor(const FString& InFolderPathAbs, const TArray<FAssetData>& Assets);
@@ -64,6 +74,7 @@ private:
 	TArray<FProjectCleanerIndirectAsset> AssetsIndirectAdvanced;
 	TArray<FAssetData> AssetsWithExternalRefs;
 	TArray<FAssetData> AssetsBlacklist;
+	TArray<FAssetData> AssetsUsed;
 	TArray<FAssetData> AssetsUnused;
 
 	TWeakObjectPtr<UProjectCleanerScanSettings> ScanSettings;
