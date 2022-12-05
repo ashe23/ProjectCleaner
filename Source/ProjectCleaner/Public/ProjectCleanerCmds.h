@@ -17,11 +17,13 @@ public:
 	TSharedPtr<FUICommandInfo> TabNonEngineTryOpenFile;
 	TSharedPtr<FUICommandInfo> TabNonEngineDeleteFile;
 
-	TSharedPtr<FUICommandInfo> ShowInContentBrowser;
-	TSharedPtr<FUICommandInfo> OpenAsset;
-	TSharedPtr<FUICommandInfo> OpenFile;
-	TSharedPtr<FUICommandInfo> OpenDocs;
+	// tab_indirect context menu
+	TSharedPtr<FUICommandInfo> TabIndirectNavigateInContentBrowser;
+	TSharedPtr<FUICommandInfo> TabIndirectOpenAsset;
+	TSharedPtr<FUICommandInfo> TabIndirectOpenFile;
+
 	
+	TSharedPtr<FUICommandInfo> OpenDocs;
 	TSharedPtr<FUICommandInfo> DeleteAsset;
 	TSharedPtr<FUICommandInfo> IncludeAsset;
 	TSharedPtr<FUICommandInfo> IncludePath;

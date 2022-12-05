@@ -13,10 +13,81 @@ void SProjectCleanerTabIndirect::Construct(const FArguments& InArgs)
 {
 	Scanner = InArgs._Scanner;
 	if (!Scanner.IsValid()) return;
-	
-	CmdsRegister();
-	UpdateView();
-	
+
+	Scanner->OnScanFinished().AddLambda([&]()
+	{
+		ListUpdate();
+	});
+
+	Cmds = MakeShareable(new FUICommandList);
+	Cmds->MapAction(
+		FProjectCleanerCmds::Get().TabIndirectOpenFile,
+		FUIAction(
+			FExecuteAction::CreateLambda([&]()
+			{
+				if (!GEditor) return;
+				if (!ListView.IsValid()) return;
+
+				const auto& SelectedItems = ListView->GetSelectedItems();
+				if (SelectedItems.Num() == 0) return;
+
+				const FString FilePath = SelectedItems[0]->FilePath;
+				if (FilePath.IsEmpty() || !FPaths::FileExists(FilePath)) return;
+
+				FPlatformProcess::LaunchFileInDefaultExternalApplication(*FilePath);
+			})
+		)
+	);
+
+	Cmds->MapAction(
+		FProjectCleanerCmds::Get().TabIndirectOpenAsset,
+		FUIAction(
+			FExecuteAction::CreateLambda([&]()
+			{
+				if (!GEditor) return;
+				if (!ListView.IsValid()) return;
+
+				const auto& SelectedItems = ListView->GetSelectedItems();
+				if (SelectedItems.Num() == 0) return;
+
+				TArray<UObject*> Assets;
+				Assets.Reserve(SelectedItems.Num());
+
+				for (const auto& Item : SelectedItems)
+				{
+					Assets.Add(Item->AssetData.GetAsset());
+				}
+
+				GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->OpenEditorForAssets(Assets);
+			})
+		)
+	);
+
+	Cmds->MapAction(
+		FProjectCleanerCmds::Get().TabIndirectNavigateInContentBrowser,
+		FUIAction(
+			FExecuteAction::CreateLambda([&]()
+			{
+				if (!ListView.IsValid()) return;
+
+				const auto& SelectedItems = ListView->GetSelectedItems();
+				if (SelectedItems.Num() == 0) return;
+
+				TArray<FAssetData> Assets;
+				Assets.Reserve(SelectedItems.Num());
+
+				for (const auto& SelectedItem : SelectedItems)
+				{
+					Assets.Add(SelectedItem->AssetData);
+				}
+
+				UProjectCleanerLibrary::FocusOnAssets(Assets);
+			})
+		)
+	);
+
+	ListUpdate();
+
 	ChildSlot
 	[
 		SNew(SOverlay)
@@ -31,7 +102,24 @@ void SProjectCleanerTabIndirect::Construct(const FArguments& InArgs)
 				SNew(STextBlock)
 				.AutoWrapText(true)
 				.Font(FProjectCleanerStyles::GetFont("Light", 15))
-				.Text(FText::FromString(TEXT("List of assets used in source code, config or other files indirectly")))
+				.Text(FText::FromString(ProjectCleanerConstants::MsgTabIndirectTitle))
+			]
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			[
+				SNew(STextBlock)
+				.AutoWrapText(true)
+				.Font(FProjectCleanerStyles::GetFont("Light", 10))
+				.Text(FText::FromString(ProjectCleanerConstants::MsgTabIndirectDesc))
+			]
+			+ SVerticalBox::Slot()
+			  .Padding(FMargin{0.0f, 10.0f, 0.0f, 0.0f})
+			  .AutoHeight()
+			[
+				SNew(STextBlock)
+				.AutoWrapText(true)
+				.Font(FProjectCleanerStyles::GetFont("Light", 8))
+				.Text(FText::FromString(ProjectCleanerConstants::MsgNavigateToExplorer))
 			]
 			+ SVerticalBox::Slot()
 			.AutoHeight()
@@ -39,15 +127,7 @@ void SProjectCleanerTabIndirect::Construct(const FArguments& InArgs)
 				SNew(STextBlock)
 				.AutoWrapText(true)
 				.Font(FProjectCleanerStyles::GetFont("Light", 8))
-				.Text(FText::FromString(TEXT("Double click on row to open file location in Explorer")))
-			]
-			+ SVerticalBox::Slot()
-			.AutoHeight()
-			[
-				SNew(STextBlock)
-				.AutoWrapText(true)
-				.Font(FProjectCleanerStyles::GetFont("Light", 8))
-				.Text(FText::FromString(TEXT("Right click on row to open context menu")))
+				.Text(FText::FromString(ProjectCleanerConstants::MsgHintContextMenu))
 			]
 			+ SVerticalBox::Slot()
 			  .FillHeight(1.0f)
@@ -74,12 +154,12 @@ void SProjectCleanerTabIndirect::Construct(const FArguments& InArgs)
 	];
 }
 
-void SProjectCleanerTabIndirect::UpdateView()
+void SProjectCleanerTabIndirect::ListUpdate()
 {
 	if (!Scanner.IsValid()) return;
-	
+
 	ListItems.Reset();
-	
+
 	for (const auto& IndirectAsset : Scanner->GetAssetsIndirectAdvanced())
 	{
 		const TSharedPtr<FProjectCleanerIndirectAsset> NewItem = MakeShareable(new FProjectCleanerIndirectAsset);
@@ -106,80 +186,95 @@ void SProjectCleanerTabIndirect::UpdateView()
 	{
 		ListView->RequestListRefresh();
 	}
+
+	ListSort();
 }
 
-void SProjectCleanerTabIndirect::CmdsRegister()
+void SProjectCleanerTabIndirect::ListSort()
 {
-	Cmds = MakeShareable(new FUICommandList);
-	
-	Cmds->MapAction(
-		FProjectCleanerCmds::Get().OpenFile,
-		FUIAction(
-			FExecuteAction::CreateLambda([&]()
+	if (ListSortMode == EColumnSortMode::Ascending)
+	{
+		ListItems.Sort([&]
+		(
+			const TSharedPtr<FProjectCleanerIndirectAsset>& Data1,
+			const TSharedPtr<FProjectCleanerIndirectAsset>& Data2)
 			{
-				if (!GEditor) return;
-				if (!ListView.IsValid()) return;
-
-				const auto& SelectedItems = ListView->GetSelectedItems();
-				if (SelectedItems.Num() == 0) return;
-
-				const FString FilePath = SelectedItems[0]->FilePath;
-				if (!FPaths::FileExists(FilePath)) return;
-				
-				FPlatformProcess::LaunchFileInDefaultExternalApplication(*FilePath);
-			})
-		)
-	);
-
-	Cmds->MapAction(
-		FProjectCleanerCmds::Get().OpenAsset,
-		FUIAction(
-			FExecuteAction::CreateLambda([&]()
-			{
-				if (!GEditor) return;
-				if (!ListView.IsValid()) return;
-
-				const auto& SelectedItems = ListView->GetSelectedItems();
-				if (SelectedItems.Num() == 0) return;
-
-				TArray<UObject*> Assets;
-				Assets.Reserve(SelectedItems.Num());
-
-				for (const auto& Item : SelectedItems)
+				if (ListSortColumn.IsEqual(TEXT("AssetName")))
 				{
-					Assets.Add(Item->AssetData.GetAsset());
+					return Data1->AssetData.AssetName.Compare(Data2->AssetData.AssetName) < 0;
 				}
 
-				GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->OpenEditorForAssets(Assets);
-			})
-		)
-	);
-	
-	Cmds->MapAction(
-		FProjectCleanerCmds::Get().ShowInContentBrowser,
-		FUIAction(
-			FExecuteAction::CreateLambda([&]()
-			{
-				if (!ListView.IsValid()) return;
-
-				const auto& SelectedItems = ListView->GetSelectedItems();
-				if (SelectedItems.Num() == 0) return;
-
-				TArray<FAssetData> Assets;
-				Assets.Reserve(SelectedItems.Num());
-				
-				for (const auto& SelectedItem : SelectedItems)
+				if (ListSortColumn.IsEqual(TEXT("AssetPath")))
 				{
-					Assets.Add(SelectedItem->AssetData);
+					return Data1->AssetData.PackagePath.Compare(Data2->AssetData.PackagePath) < 0;
 				}
-				
-				UProjectCleanerLibrary::FocusOnAssets(Assets);
-			})
-		)
-	);
+
+				if (ListSortColumn.IsEqual(TEXT("FilePath")))
+				{
+					return Data1->FilePath.Compare(Data2->FilePath) < 0;
+				}
+
+				return Data1->AssetData.PackagePath.Compare(Data2->AssetData.PackagePath) < 0;
+			}
+		);
+	}
+
+	if (ListSortMode == EColumnSortMode::Descending)
+	{
+		ListItems.Sort([&]
+		(
+			const TSharedPtr<FProjectCleanerIndirectAsset>& Data1,
+			const TSharedPtr<FProjectCleanerIndirectAsset>& Data2)
+			{
+				if (ListSortColumn.IsEqual(TEXT("AssetName")))
+				{
+					return Data1->AssetData.AssetName.Compare(Data2->AssetData.AssetName) > 0;
+				}
+
+				if (ListSortColumn.IsEqual(TEXT("AssetPath")))
+				{
+					return Data1->AssetData.PackagePath.Compare(Data2->AssetData.PackagePath) > 0;
+				}
+
+				if (ListSortColumn.IsEqual(TEXT("FilePath")))
+				{
+					return Data1->FilePath.Compare(Data2->FilePath) > 0;
+				}
+
+				return Data1->AssetData.PackagePath.Compare(Data2->AssetData.PackagePath) > 0;
+			}
+		);
+	}
 }
 
-TSharedPtr<SHeaderRow> SProjectCleanerTabIndirect::GetListHeaderRow() const
+void SProjectCleanerTabIndirect::OnListSort(EColumnSortPriority::Type SortPriority, const FName& Name, EColumnSortMode::Type SortMode)
+{
+	switch (ListSortMode)
+	{
+		case EColumnSortMode::Ascending:
+			ListSortMode = EColumnSortMode::Descending;
+			break;
+		case EColumnSortMode::Descending:
+			ListSortMode = EColumnSortMode::Ascending;
+			break;
+		case EColumnSortMode::None:
+			ListSortMode = EColumnSortMode::Ascending;
+			break;
+		default:
+			ListSortMode = EColumnSortMode::Descending;
+	}
+
+	ListSortColumn = Name;
+
+	ListSort();
+
+	if (ListView.IsValid())
+	{
+		ListView->RequestListRefresh();
+	}
+}
+
+TSharedPtr<SHeaderRow> SProjectCleanerTabIndirect::GetListHeaderRow()
 {
 	return
 		SNew(SHeaderRow)
@@ -189,6 +284,7 @@ TSharedPtr<SHeaderRow> SProjectCleanerTabIndirect::GetListHeaderRow() const
 		  .HAlignHeader(HAlign_Center)
 		  .HeaderContentPadding(FMargin(10.0f))
 		  .FillWidth(0.2f)
+		  .OnSort_Raw(this, &SProjectCleanerTabIndirect::OnListSort)
 		[
 			SNew(STextBlock)
 			.ColorAndOpacity(FProjectCleanerStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
@@ -196,11 +292,12 @@ TSharedPtr<SHeaderRow> SProjectCleanerTabIndirect::GetListHeaderRow() const
 			.Text(FText::FromString(TEXT("Asset Name")))
 		]
 		+ SHeaderRow::Column(FName("AssetPath"))
-		  .HAlignCell(HAlign_Center)
+		  .HAlignCell(HAlign_Left)
 		  .VAlignCell(VAlign_Center)
 		  .HAlignHeader(HAlign_Center)
 		  .HeaderContentPadding(FMargin(10.0f))
 		  .FillWidth(0.2f)
+		  .OnSort_Raw(this, &SProjectCleanerTabIndirect::OnListSort)
 		[
 			SNew(STextBlock)
 			.ColorAndOpacity(FProjectCleanerStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
@@ -208,11 +305,12 @@ TSharedPtr<SHeaderRow> SProjectCleanerTabIndirect::GetListHeaderRow() const
 			.Text(FText::FromString(TEXT("Asset Path")))
 		]
 		+ SHeaderRow::Column(FName("FilePath"))
-		  .HAlignCell(HAlign_Center)
+		  .HAlignCell(HAlign_Left)
 		  .VAlignCell(VAlign_Center)
 		  .HAlignHeader(HAlign_Center)
 		  .HeaderContentPadding(FMargin(10.0f))
 		  .FillWidth(0.5f)
+		  .OnSort_Raw(this, &SProjectCleanerTabIndirect::OnListSort)
 		[
 			SNew(STextBlock)
 			.ColorAndOpacity(FProjectCleanerStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
@@ -236,11 +334,11 @@ TSharedPtr<SHeaderRow> SProjectCleanerTabIndirect::GetListHeaderRow() const
 TSharedPtr<SWidget> SProjectCleanerTabIndirect::OnListContextMenu() const
 {
 	FMenuBuilder MenuBuilder{true, Cmds};
-	MenuBuilder.BeginSection(TEXT("Actions"));
+	MenuBuilder.BeginSection(TEXT("Actions"), FText::FromString(TEXT("Actions")));
 	{
-		MenuBuilder.AddMenuEntry(FProjectCleanerCmds::Get().OpenAsset);
-		MenuBuilder.AddMenuEntry(FProjectCleanerCmds::Get().OpenFile);
-		MenuBuilder.AddMenuEntry(FProjectCleanerCmds::Get().ShowInContentBrowser);
+		MenuBuilder.AddMenuEntry(FProjectCleanerCmds::Get().TabIndirectOpenAsset);
+		MenuBuilder.AddMenuEntry(FProjectCleanerCmds::Get().TabIndirectOpenFile);
+		MenuBuilder.AddMenuEntry(FProjectCleanerCmds::Get().TabIndirectNavigateInContentBrowser);
 	}
 	MenuBuilder.EndSection();
 

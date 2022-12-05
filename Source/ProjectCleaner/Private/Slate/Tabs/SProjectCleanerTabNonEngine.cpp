@@ -143,6 +143,14 @@ void SProjectCleanerTabNonEngine::ListUpdate()
 				.Text(FText::FromString(ProjectCleanerConstants::MsgNavigateToExplorer))
 			]
 			+ SVerticalBox::Slot()
+			.AutoHeight()
+			[
+				SNew(STextBlock)
+				.AutoWrapText(true)
+				.Font(FProjectCleanerStyles::GetFont("Light", 8))
+				.Text(FText::FromString(ProjectCleanerConstants::MsgHintContextMenu))
+			]
+			+ SVerticalBox::Slot()
 			  .FillHeight(1.0f)
 			  .Padding(FMargin{0.0f, 5.0f})
 			[

@@ -13,7 +13,6 @@ class SProjectCleanerTabCorrupted;
 class SProjectCleanerTabNonEngine;
 class SProjectCleanerTabUnused;
 class SProjectCleanerTabIndirect;
-class SProjectCleanerFileListView;
 
 // Plugins Main UserInterface
 class SProjectCleaner final : public SCompoundWidget

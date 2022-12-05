@@ -39,8 +39,8 @@ public:
 			return
 				SNew(SHorizontalBox)
 				+ SHorizontalBox::Slot()
-				.Padding(FMargin{0.0f, 0.0f, 5.0f, 0.0f})
-				.AutoWidth()
+				  .Padding(FMargin{0.0f, 0.0f, 5.0f, 0.0f})
+				  .AutoWidth()
 				[
 					SNew(SBox)
 					.WidthOverride(16)
@@ -50,9 +50,9 @@ public:
 					]
 				]
 				+ SHorizontalBox::Slot()
-				.AutoWidth()
-				.HAlign(HAlign_Center)
-				.VAlign(VAlign_Center)
+				  .AutoWidth()
+				  .HAlign(HAlign_Center)
+				  .VAlign(VAlign_Center)
 				[
 					SNew(STextBlock)
 					.Justification(ETextJustify::Center)
@@ -89,15 +89,16 @@ public:
 	SLATE_BEGIN_ARGS(SProjectCleanerTabIndirect)
 		{
 		}
+
 		SLATE_ARGUMENT(TSharedPtr<FProjectCleanerScanner>, Scanner)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
-	void UpdateView();
 private:
-	void CmdsRegister();
-	
-	TSharedPtr<SHeaderRow> GetListHeaderRow() const;
+	void ListUpdate();
+	void ListSort();
+	void OnListSort(EColumnSortPriority::Type SortPriority, const FName& Name, EColumnSortMode::Type SortMode);
+	TSharedPtr<SHeaderRow> GetListHeaderRow();
 	TSharedPtr<SWidget> OnListContextMenu() const;
 	void OnListItemDblClick(TSharedPtr<FProjectCleanerIndirectAsset> Item) const;
 	TSharedRef<ITableRow> OnGenerateRow(
@@ -105,6 +106,9 @@ private:
 		const TSharedRef<STableViewBase>& OwnerTable
 	) const;
 
+	int64 TotalSize = 0;
+	FName ListSortColumn{TEXT("AssetPath")};
+	TEnumAsByte<EColumnSortMode::Type> ListSortMode = EColumnSortMode::Descending;
 	TSharedPtr<FUICommandList> Cmds;
 	TSharedPtr<FProjectCleanerScanner> Scanner;
 	TArray<TSharedPtr<FProjectCleanerIndirectAsset>> ListItems;

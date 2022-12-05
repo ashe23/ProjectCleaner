@@ -46,7 +46,7 @@ void FProjectCleanerCmds::RegisterCommands()
 	
 
 	UI_COMMAND(
-		ShowInContentBrowser,
+		TabIndirectNavigateInContentBrowser,
 		"Show in ContentBrowser",
 		"Show Asset in ContentBrowser",
 		EUserInterfaceActionType::Button,
@@ -54,7 +54,7 @@ void FProjectCleanerCmds::RegisterCommands()
 	);
 
 	UI_COMMAND(
-		OpenFile,
+		TabIndirectOpenFile,
 		"Open File",
 		"Open file in default editor program",
 		EUserInterfaceActionType::Button,
@@ -62,7 +62,7 @@ void FProjectCleanerCmds::RegisterCommands()
 	);
 	
 	UI_COMMAND(
-		OpenAsset,
+		TabIndirectOpenAsset,
 		"Open Asset",
 		"Open Asset Editor",
 		EUserInterfaceActionType::Button,

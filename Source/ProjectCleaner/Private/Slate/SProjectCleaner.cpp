@@ -2,6 +2,7 @@
 
 #include "Slate/SProjectCleaner.h"
 #include "Slate/Tabs/SProjectCleanerTabScanSettings.h"
+#include "Slate/Tabs/SProjectCleanerTabIndirect.h"
 #include "Slate/Tabs/SProjectCleanerTabCorrupted.h"
 #include "Slate/Tabs/SProjectCleanerTabNonEngine.h"
 #include "ProjectCleanerScanSettings.h"
@@ -279,9 +280,7 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnIndirectAssets(const FSpawnTabAr
 		.Label(FText::FromString(TEXT("Indirect Assets")))
 		.Icon(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconTabIndirect16"))
 		[
-			SNew(STextBlock)
-			// SAssignNew(TabIndirect, SProjectCleanerTabIndirect)
-			// .Scanner(Scanner)
+			SAssignNew(TabIndirect, SProjectCleanerTabIndirect).Scanner(Scanner)
 		];
 }
 
@@ -294,12 +293,6 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnCorruptedAssets(const FSpawnTabA
 		.Icon(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconTabCorrupted16"))
 		[
 			SAssignNew(TabCorrupted, SProjectCleanerTabCorrupted).Scanner(Scanner)
-			// SNew(STextBlock)
-			// // // todo:ashe23 separate tab view
-			// // SAssignNew(TabCorrupted, SProjectCleanerFileListView)
-			// // .Title(TEXT("List of potentially corrupted assets found in the Content folder but not loaded by the engine."))
-			// // .Description(TEXT("In order to fix it, try to reload the project and see if it's loaded. Otherwise, close the editor and remove them manually from Explorer."))
-			// // .Files(Scanner.Get()->GetFilesCorrupted())
 		];
 }
 
