@@ -25,6 +25,6 @@ private:
 
 	FString PathSelected;
 	TSharedPtr<FProjectCleanerScanner> Scanner;
-	TWeakObjectPtr<UProjectCleanerScanSettings> ScanSettings;
+	// const TWeakObjectPtr<UProjectCleanerScanSettings> ScanSettings;
 	TSharedPtr<SProjectCleanerTreeView> ProjectCleanerTreeView;
 };

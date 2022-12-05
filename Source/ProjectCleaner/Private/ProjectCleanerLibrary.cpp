@@ -401,7 +401,7 @@ FString UProjectCleanerLibrary::PathConvertToRel(const FString& InAbsPath)
 {
 	if (InAbsPath.IsEmpty()) return {};
 
-	FString Path = InAbsPath;
+	FString Path = FPaths::ConvertRelativePathToFull(InAbsPath);
 	FPaths::RemoveDuplicateSlashes(Path);
 	FPaths::NormalizeDirectoryName(Path);
 

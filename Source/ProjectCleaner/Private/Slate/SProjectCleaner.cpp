@@ -2,6 +2,7 @@
 
 #include "Slate/SProjectCleaner.h"
 #include "Slate/Tabs/SProjectCleanerTabScanSettings.h"
+#include "Slate/Tabs/SProjectCleanerTabUnused.h"
 #include "Slate/Tabs/SProjectCleanerTabIndirect.h"
 #include "Slate/Tabs/SProjectCleanerTabCorrupted.h"
 #include "Slate/Tabs/SProjectCleanerTabNonEngine.h"
@@ -266,9 +267,7 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnUnusedAssets(const FSpawnTabArgs
 		.Label(FText::FromString(TEXT("Unused Assets")))
 		.Icon(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconTabUnused16"))
 		[
-			SNew(STextBlock)
-			// SAssignNew(TabUnused, SProjectCleanerTabUnused)
-			// .Scanner(Scanner)
+			SAssignNew(TabUnused, SProjectCleanerTabUnused).Scanner(Scanner)
 		];
 }
 

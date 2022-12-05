@@ -329,18 +329,18 @@ void FProjectCleanerScanner::DataReset()
 void FProjectCleanerScanner::FindBlacklistedFoldersAndAssets()
 {
 	// filling blacklisted folders
-	FoldersBlacklist.Add(FPaths::ProjectContentDir() / ProjectCleanerConstants::FolderCollections.ToString());
-	FoldersBlacklist.Add(FPaths::GameUserDeveloperDir() / ProjectCleanerConstants::FolderCollections.ToString());
+	FoldersBlacklist.Add(FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / ProjectCleanerConstants::FolderCollections.ToString()));
+	FoldersBlacklist.Add(FPaths::ConvertRelativePathToFull(FPaths::GameUserDeveloperDir() / ProjectCleanerConstants::FolderCollections.ToString()));
 	// todo:ashe23 for ue5 add __ExternalObject__ and __ExternalActors__ folders
 
 	if (FModuleManager::Get().IsModuleLoaded(ProjectCleanerConstants::PluginNameMegascans))
 	{
-		FoldersBlacklist.Add(FPaths::ProjectContentDir() / ProjectCleanerConstants::FolderMsPresets.ToString());
+		FoldersBlacklist.Add(FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / ProjectCleanerConstants::FolderMsPresets.ToString()));
 	}
 
 	if (!ScanSettings->bScanDeveloperContents)
 	{
-		FoldersBlacklist.Add(FPaths::ProjectContentDir() / ProjectCleanerConstants::FolderDevelopers.ToString());
+		FoldersBlacklist.Add(FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / ProjectCleanerConstants::FolderDevelopers.ToString()));
 	}
 
 	// filling blacklisted assets
@@ -467,7 +467,8 @@ void FProjectCleanerScanner::FindAssetsUnused()
 
 	for (const auto& FolderBlacklist : FoldersBlacklist)
 	{
-		Filter.PackagePaths.AddUnique(FName{*UProjectCleanerLibrary::PathConvertToRel(FolderBlacklist)});
+		const FString FolderPathRel = UProjectCleanerLibrary::PathConvertToRel(FolderBlacklist);
+		Filter.PackagePaths.AddUnique(FName{*FolderPathRel});
 	}
 
 	for (const auto& Asset : AssetsUsed)

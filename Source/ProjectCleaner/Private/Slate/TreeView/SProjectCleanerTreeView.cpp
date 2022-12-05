@@ -19,14 +19,14 @@ void SProjectCleanerTreeView::Construct(const FArguments& InArgs)
 	Scanner = InArgs._Scanner;
 	if (!Scanner.IsValid()) return;
 
+	ScanSettings = GetMutableDefault<UProjectCleanerScanSettings>();
+	if (!ScanSettings.IsValid()) return;
+	
 	Scanner->OnScanFinished().AddLambda([&]()
 	{
 		UE_LOG(LogProjectCleaner, Warning, TEXT("TreeView: ScanFinished!"))
 		TreeItemsUpdate();
 	});
-
-	ScanSettings = GetMutableDefault<UProjectCleanerScanSettings>();
-	if (!ScanSettings.IsValid()) return;
 
 	TreeItemsUpdate();
 
@@ -120,8 +120,13 @@ void SProjectCleanerTreeView::TreeItemsUpdate()
 	TreeItems.Reset();
 
 	// creating root item
-	const TSharedPtr<FProjectCleanerTreeViewItem> RootTreeItem = TreeItemCreate(FPaths::ProjectContentDir());
+	const TSharedPtr<FProjectCleanerTreeViewItem> RootTreeItem = TreeItemCreate(FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir()));
 	if (!RootTreeItem) return;
+
+	if (!LastSelectedItem.IsValid())
+	{
+		LastSelectedItem = RootTreeItem;
+	}
 
 	// traversing and filling its child items
 	TArray<TSharedPtr<FProjectCleanerTreeViewItem>> Stack;
@@ -151,8 +156,8 @@ void SProjectCleanerTreeView::TreeItemsUpdate()
 		
 		// we must always expand root item
 		TreeView->SetItemExpansion(RootTreeItem, true);
-		
-		if (TreeItemsExpanded.Num() != 0)
+
+		if (TreeItemsExpanded.Num() > 0)
 		{
 			for (const auto& Item : TreeItems)
 			{
@@ -160,6 +165,11 @@ void SProjectCleanerTreeView::TreeItemsUpdate()
 				{
 					Item->bExpanded = true;
 					TreeView->SetItemExpansion(Item, true);
+				}
+
+				if (LastSelectedItem.IsValid() && Item == LastSelectedItem)
+				{
+					TreeView->SetItemSelection(Item, true);
 				}
 			}
 
@@ -185,7 +195,7 @@ TSharedPtr<FProjectCleanerTreeViewItem> SProjectCleanerTreeView::TreeItemCreate(
 	const bool bIsProjectContentFolder = InFolderPathAbs.Equals(FPaths::ProjectContentDir());
 	const bool bIsProjectDeveloperFolder = InFolderPathAbs.Equals(FPaths::ProjectContentDir() / ProjectCleanerConstants::FolderDevelopers.ToString());
 
-	TreeItem->FolderPathAbs = InFolderPathAbs;
+	TreeItem->FolderPathAbs = FPaths::ConvertRelativePathToFull(InFolderPathAbs);
 	TreeItem->FolderPathRel = UProjectCleanerLibrary::PathConvertToRel(InFolderPathAbs);
 	TreeItem->FolderName = bIsProjectContentFolder ? ProjectCleanerConstants::FolderContent.ToString() : FPaths::GetPathLeaf(InFolderPathAbs);
 	TreeItem->FoldersTotal = Scanner.Get()->GetFoldersTotalNum(InFolderPathAbs);
@@ -333,6 +343,9 @@ void SProjectCleanerTreeView::OnTreeViewGetChildren(TSharedPtr<FProjectCleanerTr
 void SProjectCleanerTreeView::OnTreeViewSelectionChange(TSharedPtr<FProjectCleanerTreeViewItem> Item, ESelectInfo::Type SelectType)
 {
 	if (!Item.IsValid()) return;
+
+	LastSelectedItem.Reset();
+	LastSelectedItem = Item;
 
 	if (DelegatePathChanged.IsBound())
 	{

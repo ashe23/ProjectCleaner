@@ -24,6 +24,7 @@ public:
 	static bool HasIndirectlyUsedAssets(const FString& FileContent);
 	static bool ConfirmationWindowCancelled(const EAppReturnType::Type ReturnType);
 
+	// todo:ashe23 add wrapper function to default project paths
 	static FString GetAssetClassName(const FAssetData& AssetData);
 	static FString PathConvertToAbs(const FString& InRelPath);
 	static FString PathConvertToRel(const FString& InAbsPath);

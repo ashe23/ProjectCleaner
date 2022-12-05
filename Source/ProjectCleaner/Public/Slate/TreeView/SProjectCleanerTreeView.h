@@ -38,6 +38,7 @@ private:
 	void ToggleExpansionRecursive(TSharedPtr<FProjectCleanerTreeViewItem> Item, const bool bExpanded);
 
 	TSharedPtr<FProjectCleanerScanner> Scanner;
+	TSharedPtr<FProjectCleanerTreeViewItem> LastSelectedItem;
 	TWeakObjectPtr<UProjectCleanerScanSettings> ScanSettings;
 	TArray<TSharedPtr<FProjectCleanerTreeViewItem>> TreeItems;
 	TSharedPtr<STreeView<TSharedPtr<FProjectCleanerTreeViewItem>>> TreeView;

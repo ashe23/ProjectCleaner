@@ -13,6 +13,15 @@ enum class EProjectCleanerModalStatus : uint8
 	OK UMETA(DisplayName = "OK"),
 };
 
+// Path type relative to Content folder
+// todo:ashe23 change path related functions to this type, to be more verbose and correct in code
+UENUM(BlueprintType)
+enum class EProjectCleanerPathType: uint8
+{
+	Relative UMETA(DisplayName = "Relative"), // /Game/SomePath
+	Absolute UMETA(DisplayName = "Absolute")  // C:/{myproject_location}/Content/SomePath
+};
+
 struct FProjectCleanerIndirectAsset
 {
 	bool operator==(const FProjectCleanerIndirectAsset& Other) const

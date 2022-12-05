@@ -7,12 +7,11 @@
 #include "Widgets/SCompoundWidget.h"
 
 class UProjectCleanerScanSettings;
-class SProjectCleanerTreeView;
 class SProjectCleanerTabScanSettings;
-class SProjectCleanerTabCorrupted;
-class SProjectCleanerTabNonEngine;
 class SProjectCleanerTabUnused;
 class SProjectCleanerTabIndirect;
+class SProjectCleanerTabCorrupted;
+class SProjectCleanerTabNonEngine;
 
 // Plugins Main UserInterface
 class SProjectCleaner final : public SCompoundWidget
