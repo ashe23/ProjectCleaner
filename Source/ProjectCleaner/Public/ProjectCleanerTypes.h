@@ -96,3 +96,21 @@ struct FProjectCleanerTabNonEngineListItem
 		return !FilePathAbs.Equals(Other.FilePathAbs);
 	}
 };
+
+struct FProjectCleanerTabCorruptedListItem
+{
+	FString FileName;
+	FString FileExtension;
+	FString FilePathAbs;
+	int64 FileSize;
+
+	bool operator==(const FProjectCleanerTabCorruptedListItem& Other) const
+	{
+		return FilePathAbs.Equals(Other.FilePathAbs);
+	}
+
+	bool operator!=(const FProjectCleanerTabCorruptedListItem& Other) const
+	{
+		return !FilePathAbs.Equals(Other.FilePathAbs);
+	}
+};

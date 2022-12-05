@@ -2,6 +2,7 @@
 
 #include "Slate/SProjectCleaner.h"
 #include "Slate/Tabs/SProjectCleanerTabScanSettings.h"
+#include "Slate/Tabs/SProjectCleanerTabCorrupted.h"
 #include "Slate/Tabs/SProjectCleanerTabNonEngine.h"
 #include "ProjectCleanerScanSettings.h"
 #include "ProjectCleanerScanner.h"
@@ -14,6 +15,7 @@
 
 static constexpr int32 WidgetIndexNone = 0;
 static constexpr int32 WidgetIndexLoading = 1;
+static constexpr int32 WidgetIndexInPlayMode = 2;
 
 void SProjectCleaner::Construct(const FArguments& InArgs, const TSharedRef<SDockTab>& ConstructUnderMajorTab, const TSharedPtr<SWindow>& ConstructUnderWindow)
 {
@@ -154,6 +156,22 @@ void SProjectCleaner::Construct(const FArguments& InArgs, const TSharedRef<SDock
 				.Text(FText::FromString(ProjectCleanerConstants::MsgAssetRegistryStillWorking))
 			]
 		]
+		+ SWidgetSwitcher::Slot()
+		  .HAlign(HAlign_Fill)
+		  .VAlign(VAlign_Fill)
+		[
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot()
+			  .FillWidth(1.0f)
+			  .HAlign(HAlign_Center)
+			  .VAlign(VAlign_Center)
+			[
+				SNew(STextBlock)
+				.Justification(ETextJustify::Center)
+				.Font(FProjectCleanerStyles::GetFont("Light", 30))
+				.Text(FText::FromString(ProjectCleanerConstants::MsgPlayModeActive))
+			]
+		]
 	];
 
 	TabManager->SetMenuMultiBox(MenuBarBuilder.GetMultiBox());
@@ -170,12 +188,32 @@ SProjectCleaner::~SProjectCleaner()
 
 bool SProjectCleaner::WidgetEnabled()
 {
-	return !UProjectCleanerLibrary::IsAssetRegistryWorking();
+	if (UProjectCleanerLibrary::IsAssetRegistryWorking())
+	{
+		return false;
+	}
+
+	if (GEditor && (GEditor->PlayWorld || GIsPlayInEditorWorld))
+	{
+		return false;
+	}
+
+	return true;
 }
 
 int32 SProjectCleaner::WidgetGetIndex()
 {
-	return UProjectCleanerLibrary::IsAssetRegistryWorking() ? WidgetIndexLoading : WidgetIndexNone;
+	if (UProjectCleanerLibrary::IsAssetRegistryWorking())
+	{
+		return WidgetIndexLoading;
+	}
+
+	if (GEditor && (GEditor->PlayWorld || GIsPlayInEditorWorld))
+	{
+		return WidgetIndexInPlayMode;
+	}
+
+	return WidgetIndexNone;
 }
 
 void SProjectCleaner::MenuBarFillTabs(FMenuBuilder& MenuBuilder, const TSharedPtr<FTabManager> TabManager)
@@ -202,7 +240,8 @@ void SProjectCleaner::MenuBarFillHelp(FMenuBuilder& MenuBuilder, const TSharedPt
 	});
 
 	MenuBuilder.BeginSection("SectionHelp", FText::FromString(TEXT("Help")));
-	MenuBuilder.AddMenuEntry(FText::FromString(TEXT("Documentation")), FText::FromString(TEXT("Open documentation page")), FSlateIcon(), Action, NAME_None);
+	MenuBuilder.AddMenuSeparator(FName{TEXT("Docs")});
+	MenuBuilder.AddMenuEntry(FText::FromString(TEXT("Wiki")), FText::FromString(TEXT("Open wiki page on github")), FSlateIcon(), Action, NAME_None);
 	MenuBuilder.EndSection();
 }
 
@@ -254,12 +293,13 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnCorruptedAssets(const FSpawnTabA
 		.Label(FText::FromString(TEXT("Corrupted Assets")))
 		.Icon(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconTabCorrupted16"))
 		[
-			SNew(STextBlock)
-			// // todo:ashe23 separate tab view
-			// SAssignNew(TabCorrupted, SProjectCleanerFileListView)
-			// .Title(TEXT("List of potentially corrupted assets found in the Content folder but not loaded by the engine."))
-			// .Description(TEXT("In order to fix it, try to reload the project and see if it's loaded. Otherwise, close the editor and remove them manually from Explorer."))
-			// .Files(Scanner.Get()->GetFilesCorrupted())
+			SAssignNew(TabCorrupted, SProjectCleanerTabCorrupted).Scanner(Scanner)
+			// SNew(STextBlock)
+			// // // todo:ashe23 separate tab view
+			// // SAssignNew(TabCorrupted, SProjectCleanerFileListView)
+			// // .Title(TEXT("List of potentially corrupted assets found in the Content folder but not loaded by the engine."))
+			// // .Description(TEXT("In order to fix it, try to reload the project and see if it's loaded. Otherwise, close the editor and remove them manually from Explorer."))
+			// // .Files(Scanner.Get()->GetFilesCorrupted())
 		];
 }
 

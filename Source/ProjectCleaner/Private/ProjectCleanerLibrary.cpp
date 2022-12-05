@@ -55,6 +55,8 @@ bool UProjectCleanerLibrary::IsCorruptedEngineFile(const FString& InFilePathAbs)
 	// here we got absolute path "C:/MyProject/Content/material.uasset"
 	// we must first convert that path to In Engine Internal Path like "/Game/material.uasset"
 	const FString RelativePath = PathConvertToRel(InFilePathAbs);
+	if (RelativePath.IsEmpty()) return false;
+	
 	// Converting file path to object path (This is for searching in AssetRegistry)
 	// example "/Game/Name.uasset" => "/Game/Name.Name"
 	FString ObjectPath = RelativePath;
@@ -403,7 +405,7 @@ FString UProjectCleanerLibrary::PathConvertToRel(const FString& InAbsPath)
 	FPaths::RemoveDuplicateSlashes(Path);
 	FPaths::NormalizeDirectoryName(Path);
 
-	const FString ProjectContentDir = FPaths::ProjectDir() / ProjectCleanerConstants::FolderContent.ToString();
+	const FString ProjectContentDir = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() / ProjectCleanerConstants::FolderContent.ToString());
 
 	if (!Path.StartsWith(ProjectContentDir)) return {};
 

@@ -9,6 +9,7 @@
 class UProjectCleanerScanSettings;
 class SProjectCleanerTreeView;
 class SProjectCleanerTabScanSettings;
+class SProjectCleanerTabCorrupted;
 class SProjectCleanerTabNonEngine;
 class SProjectCleanerTabUnused;
 class SProjectCleanerTabIndirect;
@@ -48,6 +49,6 @@ private:
 	TWeakPtr<SProjectCleanerTabScanSettings> TabScanSettings;
 	TWeakPtr<SProjectCleanerTabUnused> TabUnused;
 	TWeakPtr<SProjectCleanerTabIndirect> TabIndirect;
-	TWeakPtr<SProjectCleanerFileListView> TabCorrupted;
+	TWeakPtr<SProjectCleanerTabCorrupted> TabCorrupted;
 	TWeakPtr<SProjectCleanerTabNonEngine> TabNonEngine;
 };
