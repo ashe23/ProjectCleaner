@@ -6,6 +6,8 @@
 #include "ProjectCleanerTypes.h"
 #include "Widgets/SCompoundWidget.h"
 
+struct FProjectCleanerScanner;
+
 class SProjectCleanerTabNonEngineListItem final : public SMultiColumnTableRow<TSharedPtr<FProjectCleanerTabNonEngineListItem>>
 {
 public:
@@ -45,7 +47,16 @@ public:
 
 		if (InColumnName.IsEqual(TEXT("FilePath")))
 		{
-			return SNew(STextBlock).Text(FText::FromString(ListItem->FilePathAbs));
+			return
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot()
+				  .AutoWidth()
+				  .Padding(FMargin{10.0f, 0.0f, 0.0f, 0.0f})
+				[
+					SNew(STextBlock)
+					.Justification(ETextJustify::Left)
+					.Text(FText::FromString(ListItem->FilePathAbs))
+				];
 		}
 
 		return SNew(STextBlock).Text(FText::FromString("No Files"));
@@ -61,20 +72,29 @@ public:
 	SLATE_BEGIN_ARGS(SProjectCleanerTabNonEngine)
 		{
 		}
-		
+
+		SLATE_ARGUMENT(TSharedPtr<FProjectCleanerScanner>, Scanner)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
 private:
+	void ListUpdate();
+	void ListSort();
+	void OnListSort(EColumnSortPriority::Type SortPriority, const FName& Name, EColumnSortMode::Type SortMode);
 	FText GetTotalSizeTxt() const;
-	TSharedPtr<SHeaderRow> GetListHeaderRow() const;
+	TSharedPtr<SHeaderRow> GetListHeaderRow();
 	void OnListItemDblClick(TSharedPtr<FProjectCleanerTabNonEngineListItem> Item) const;
 	TSharedRef<ITableRow> OnGenerateRow(
 		TSharedPtr<FProjectCleanerTabNonEngineListItem> InItem,
 		const TSharedRef<STableViewBase>& OwnerTable
 	) const;
+	TSharedPtr<SWidget> OnListContextMenu() const;
 
 	int64 TotalSize = 0;
+	FName ListSortColumn{TEXT("FileSize")};
+	TEnumAsByte<EColumnSortMode::Type> ListSortMode = EColumnSortMode::Descending;
+	TSharedPtr<FUICommandList> Cmds;
+	TSharedPtr<FProjectCleanerScanner> Scanner;
 	TArray<TSharedPtr<FProjectCleanerTabNonEngineListItem>> ListItems;
 	TSharedPtr<SListView<TSharedPtr<FProjectCleanerTabNonEngineListItem>>> ListView;
 };

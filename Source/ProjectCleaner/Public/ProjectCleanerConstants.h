@@ -33,6 +33,11 @@ namespace ProjectCleanerConstants
 	static const FString MsgConfirmCleanProject{TEXT("Are you sure you want to permanently delete unused assets?")};
 	static const FString MsgConfirmDeleteEmptyFoldersTitle{TEXT("Confirm empty folders cleaning")};
 	static const FString MsgConfirmDeleteEmptyFolders{TEXT("Are you sure you want to delete all empty folders in project?")};
+	static const FString MsgTabNonEngineTitle{TEXT("List of NonEngine files inside Content folder")};
+	static const FString MsgTabNonEngineDesc{TEXT("Make sure you delete all unnecessary files, in order to remove empty folders. This files wont be visible in ContentBrowser")};
+	static const FString MsgNavigateToExplorer{TEXT("Double click on row to navigate file in FileExplorer")};
+	static const FString MsgFileDeleteSuccess{TEXT("File deleted successfully")};
+	static const FString MsgFileDeleteError{TEXT("Failed to delete file")};
 
 	// path
 	static const FName PathRelRoot{TEXT("/Game")};

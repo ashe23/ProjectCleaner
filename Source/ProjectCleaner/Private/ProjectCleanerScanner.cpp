@@ -1,6 +1,7 @@
 ﻿// Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "ProjectCleanerScanner.h"
+#include "ProjectCleaner.h"
 #include "ProjectCleanerLibrary.h"
 #include "ProjectCleanerConstants.h"
 #include "ProjectCleanerScanSettings.h"
@@ -11,7 +12,6 @@
 #include "EditorUtilityBlueprint.h"
 #include "EditorUtilityWidget.h"
 #include "EditorUtilityWidgetBlueprint.h"
-#include "ProjectCleaner.h"
 #include "Engine/AssetManager.h"
 #include "Engine/MapBuildDataRegistry.h"
 #include "Misc/ScopedSlowTask.h"

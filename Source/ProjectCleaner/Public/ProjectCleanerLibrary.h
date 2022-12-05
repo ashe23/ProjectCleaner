@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "ProjectCleanerTypes.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
+#include "Widgets/Notifications/SNotificationList.h"
 #include "ProjectCleanerLibrary.generated.h"
 
 class UProjectCleanerScanSettings;
@@ -21,6 +22,7 @@ public:
 	static bool IsEngineFileExtension(const FString& Extension);
 	static bool IsCorruptedEngineFile(const FString& InFilePathAbs);
 	static bool HasIndirectlyUsedAssets(const FString& FileContent);
+	static bool ConfirmationWindowCancelled(const EAppReturnType::Type ReturnType);
 
 	static FString GetAssetClassName(const FAssetData& AssetData);
 	static FString PathConvertToAbs(const FString& InRelPath);
@@ -41,5 +43,11 @@ public:
 	static void GetLinkedAssets(const TArray<FAssetData>& Assets, TArray<FAssetData>& LinkedAssets);
 
 	static EAppReturnType::Type ShowConfirmationWindow(const FText& Title, const FText& ContentText, const EAppMsgType::Type MsgType = EAppMsgType::YesNo);
-	static bool ConfirmationWindowCancelled(const EAppReturnType::Type ReturnType);
+
+	static void ShowModal(const FString& Msg, const EProjectCleanerModalStatus ModalStatus = EProjectCleanerModalStatus::None, const float Duration = 2.0f);
+	static void ShowModalOutputLog(const FString& Msg, const EProjectCleanerModalStatus ModalStatus = EProjectCleanerModalStatus::None, const float Duration = 2.0f);
+private:
+	static SNotificationItem::ECompletionState GetCompletionStateFromModalStatus(const EProjectCleanerModalStatus ModalStatus);
 };
+
+

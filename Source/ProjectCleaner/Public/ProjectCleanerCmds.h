@@ -10,7 +10,13 @@ public:
 	FProjectCleanerCmds();
 	virtual void RegisterCommands() override;
 
+	// general
 	TSharedPtr<FUICommandInfo> OpenProjectCleanerWindow;
+
+	// tabs context menu
+	TSharedPtr<FUICommandInfo> TabNonEngineTryOpenFile;
+	TSharedPtr<FUICommandInfo> TabNonEngineDeleteFile;
+	
 	TSharedPtr<FUICommandInfo> ShowInContentBrowser;
 	TSharedPtr<FUICommandInfo> OpenAsset;
 	TSharedPtr<FUICommandInfo> OpenFile;

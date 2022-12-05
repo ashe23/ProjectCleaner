@@ -1,18 +1,14 @@
 ﻿// Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "Slate/SProjectCleaner.h"
-// #include "Slate/Tabs/SProjectCleanerFileListView.h"
 #include "Slate/Tabs/SProjectCleanerTabScanSettings.h"
-// #include "Slate/Tabs/SProjectCleanerTabIndirect.h"
-// #include "Slate/Tabs/SProjectCleanerTabUnused.h"
+#include "Slate/Tabs/SProjectCleanerTabNonEngine.h"
 #include "ProjectCleanerScanSettings.h"
 #include "ProjectCleanerScanner.h"
 #include "ProjectCleanerConstants.h"
 #include "ProjectCleanerStyles.h"
 #include "ProjectCleanerLibrary.h"
-// #include "ProjectCleaner.h"
 // Engine Headers
-// #include "Kismet/KismetSystemLibrary.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SWidgetSwitcher.h"
 
@@ -23,10 +19,10 @@ void SProjectCleaner::Construct(const FArguments& InArgs, const TSharedRef<SDock
 {
 	ScanSettings = GetMutableDefault<UProjectCleanerScanSettings>();
 	if (!ScanSettings.IsValid()) return;
-	
+
 	Scanner = MakeShareable(new FProjectCleanerScanner(ScanSettings));
 	if (!Scanner.IsValid()) return;
-	
+
 	TabManager = FGlobalTabmanager::Get()->NewTabManager(ConstructUnderMajorTab);
 	const TSharedRef<FWorkspaceItem> AppMenuGroup = TabManager->AddLocalWorkspaceMenuCategory(FText::FromString(TEXT("ProjectCleaner")));
 
@@ -210,23 +206,6 @@ void SProjectCleaner::MenuBarFillHelp(FMenuBuilder& MenuBuilder, const TSharedPt
 	MenuBuilder.EndSection();
 }
 
-// FReply SProjectCleaner::OnBtnScanProjectClick() const
-// {
-// 	// FProjectCleanerModule::GetScanner()->Scan();
-// 	
-// 	return FReply::Handled();
-// }
-//
-// FReply SProjectCleaner::OnBtnCleanProjectClick() const
-// {
-// 	return FReply::Handled();
-// }
-//
-// FReply SProjectCleaner::OnBtnDeleteEmptyFoldersClick() const
-// {
-// 	return FReply::Handled();
-// }
-
 TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnScanSettings(const FSpawnTabArgs& Args)
 {
 	return
@@ -286,19 +265,12 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnCorruptedAssets(const FSpawnTabA
 
 TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnNonEngineFiles(const FSpawnTabArgs& Args)
 {
-	const FString Description = TEXT(
-		"Sometimes you will see an empty folder in ContentBrowser, which you can't delete. It's because it contains some non-engine files that are visible only in Explorer. So make sure you delete all unnecessary files from the list below to clean up empty folders.");
 	return
 		SNew(SDockTab)
 		.TabRole(PanelTab)
 		.Label(FText::FromString(TEXT("NonEngine Files")))
 		.Icon(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconTabNonEngine16"))
 		[
-			SNew(STextBlock)
-			// // todo:ashe23 separate tab view
-			// SAssignNew(TabNonEngine, SProjectCleanerFileListView)
-			// .Title(TEXT("List of NonEngine files inside the Content folder"))
-			// .Description(Description)
-			// .Files(Scanner.Get()->GetFilesNonEngine())
+			SAssignNew(TabNonEngine, SProjectCleanerTabNonEngine).Scanner(Scanner)
 		];
 }

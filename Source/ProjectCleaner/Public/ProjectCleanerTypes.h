@@ -4,6 +4,15 @@
 
 #include "CoreMinimal.h"
 
+UENUM(BlueprintType)
+enum class EProjectCleanerModalStatus : uint8
+{
+	None UMETA(DisplayName = "None"),
+	Pending UMETA(DisplayName = "Pending"),
+	Error UMETA(DisplayName = "Error"),
+	OK UMETA(DisplayName = "OK"),
+};
+
 struct FProjectCleanerIndirectAsset
 {
 	bool operator==(const FProjectCleanerIndirectAsset& Other) const

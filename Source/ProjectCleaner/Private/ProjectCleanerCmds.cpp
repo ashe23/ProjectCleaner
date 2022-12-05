@@ -29,13 +29,30 @@ void FProjectCleanerCmds::RegisterCommands()
 	);
 
 	UI_COMMAND(
+		TabNonEngineTryOpenFile,
+		"Try open file",
+		"Try to open file in default system program",
+		EUserInterfaceActionType::Button,
+		FInputChord()
+	);
+
+	UI_COMMAND(
+		TabNonEngineDeleteFile,
+		"Delete file",
+		"Delete selected file from FileExplorer",
+		EUserInterfaceActionType::Button,
+		FInputChord()
+	);
+	
+
+	UI_COMMAND(
 		ShowInContentBrowser,
 		"Show in ContentBrowser",
 		"Show Asset in ContentBrowser",
 		EUserInterfaceActionType::Button,
 		FInputChord()
 	);
-	
+
 	UI_COMMAND(
 		OpenFile,
 		"Open File",
@@ -43,7 +60,7 @@ void FProjectCleanerCmds::RegisterCommands()
 		EUserInterfaceActionType::Button,
 		FInputChord()
 	);
-
+	
 	UI_COMMAND(
 		OpenAsset,
 		"Open Asset",

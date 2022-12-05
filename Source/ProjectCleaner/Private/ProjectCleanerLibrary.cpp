@@ -9,9 +9,11 @@
 #include "FileHelpers.h"
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "Engine/AssetManager.h"
+#include "Framework/Notifications/NotificationManager.h"
 #include "Internationalization/Regex.h"
 #include "Misc/FileHelper.h"
 #include "Misc/ScopedSlowTask.h"
+#include "Widgets/Notifications/SNotificationList.h"
 
 bool UProjectCleanerLibrary::IsAssetRegistryWorking()
 {
@@ -531,4 +533,49 @@ bool UProjectCleanerLibrary::HasIndirectlyUsedAssets(const FString& FileContent)
 	static FRegexPattern Pattern(TEXT(R"(\/Game([A-Za-z0-9_.\/]+)\b)"));
 	FRegexMatcher Matcher(Pattern, FileContent);
 	return Matcher.FindNext();
+}
+
+void UProjectCleanerLibrary::ShowModal(const FString& Msg, const EProjectCleanerModalStatus ModalStatus, const float Duration)
+{
+	FNotificationInfo Info{FText::FromString(Msg)};
+	Info.ExpireDuration = Duration;
+
+	const auto NotificationPtr = FSlateNotificationManager::Get().AddNotification(Info);
+	if (!NotificationPtr.IsValid()) return;
+
+	NotificationPtr.Get()->SetCompletionState(GetCompletionStateFromModalStatus(ModalStatus));
+}
+
+void UProjectCleanerLibrary::ShowModalOutputLog(const FString& Msg, const EProjectCleanerModalStatus ModalStatus, const float Duration)
+{
+	FNotificationInfo Info{FText::FromString(Msg)};
+	Info.ExpireDuration = Duration;
+	Info.Hyperlink = FSimpleDelegate::CreateLambda([]()
+	{
+		FGlobalTabmanager::Get()->TryInvokeTab(FName{TEXT("OutputLog")});
+	});
+	Info.HyperlinkText = FText::FromString(TEXT("Show OutputLog..."));
+
+	const auto NotificationPtr = FSlateNotificationManager::Get().AddNotification(Info);
+	if (!NotificationPtr.IsValid()) return;
+
+	NotificationPtr.Get()->SetCompletionState(GetCompletionStateFromModalStatus(ModalStatus));
+}
+
+SNotificationItem::ECompletionState UProjectCleanerLibrary::GetCompletionStateFromModalStatus(const EProjectCleanerModalStatus ModalStatus)
+{
+	if (ModalStatus == EProjectCleanerModalStatus::Pending)
+	{
+		return SNotificationItem::CS_Pending;
+	}
+	if (ModalStatus == EProjectCleanerModalStatus::Error)
+	{
+		return SNotificationItem::CS_Fail;
+	}
+	if (ModalStatus == EProjectCleanerModalStatus::OK)
+	{
+		return SNotificationItem::CS_Success;
+	}
+
+	return SNotificationItem::CS_None;
 }
