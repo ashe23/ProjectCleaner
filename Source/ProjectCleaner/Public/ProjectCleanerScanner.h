@@ -23,16 +23,18 @@ struct FProjectCleanerScanner
 	void DeleteEmptyFolders();
 	void GetSubFolders(const FString& InFolderPathAbs, TSet<FString>& SubFolders) const;
 
-	bool IsProjectScanned() const;
+	EProjectCleanerScannerState GetScannerState() const;
+	EProjectCleanerScannerDataState GetScannerDataState() const;
+	
 	bool IsFolderEmpty(const FString& InFolderPathAbs) const;
 	bool IsFolderExcluded(const FString& InFolderPathAbs) const;
 
-	int32 GetFoldersTotalNum(const FString& InFolderPathAbs) const;
-	int32 GetFoldersEmptyNum(const FString& InFolderPathAbs) const;
-	int32 GetAssetTotalNum(const FString& InFolderPathAbs) const;
-	int32 GetAssetUnusedNum(const FString& InFolderPathAbs) const;
 	int64 GetSizeTotal(const FString& InFolderPathAbs) const;
 	int64 GetSizeUnused(const FString& InFolderPathAbs) const;
+	int32 GetAssetTotalNum(const FString& InFolderPathAbs) const;
+	int32 GetAssetUnusedNum(const FString& InFolderPathAbs) const;
+	int32 GetFoldersTotalNum(const FString& InFolderPathAbs) const;
+	int32 GetFoldersEmptyNum(const FString& InFolderPathAbs) const;
 
 	const TSet<FString>& GetFoldersEmpty() const;
 	const TSet<FString>& GetFoldersBlacklist() const;
@@ -62,8 +64,6 @@ private:
 	static int32 GetNumFor(const FString& InFolderPathAbs, const TArray<FAssetData>& Assets);
 	static int64 GetSizeFor(const FString& InFolderPathAbs, const TArray<FAssetData>& Assets);
 
-	bool bProjectScanned = false;
-	
 	TSet<FString> FoldersEmpty;
 	TSet<FString> FoldersBlacklist;
 
@@ -82,6 +82,8 @@ private:
 
 	TWeakObjectPtr<UProjectCleanerScanSettings> ScanSettings;
 	FAssetRegistryModule& ModuleAssetRegistry;
+	EProjectCleanerScannerState ScannerState = EProjectCleanerScannerState::Idle;
+	EProjectCleanerScannerDataState ScannerDataState = EProjectCleanerScannerDataState::NotScanned;
 
 	FProjectCleanerDelegateScanFinished DelegateScanFinished;
 	FProjectCleanerDelegateCleanFinished DelegateCleanFinished;

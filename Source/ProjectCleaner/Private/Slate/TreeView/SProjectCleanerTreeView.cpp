@@ -115,7 +115,7 @@ void SProjectCleanerTreeView::TreeItemsUpdate()
 	}
 
 	if (!Scanner.IsValid()) return;
-	if (!Scanner->IsProjectScanned()) return;
+	if (Scanner->GetScannerDataState() != EProjectCleanerScannerDataState::Actual) return;
 
 	ItemsExpanded.Reset();
 	ItemsSelected.Reset();

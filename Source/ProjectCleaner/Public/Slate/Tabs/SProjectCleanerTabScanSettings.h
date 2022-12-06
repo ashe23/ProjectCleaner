@@ -28,7 +28,9 @@ private:
 	FReply OnBtnCleanProjectClick() const;
 	FReply OnBtnDeleteEmptyFoldersClick() const;
 
-	FText GetProjectScanStatusText() const;
+	EVisibility GetBtnScanProjectStatusVisibility() const;
+	FText GetBtnScanProjectToolTipText() const;
+
 
 	TSharedPtr<FProjectCleanerScanner> Scanner;
 	TSharedPtr<IDetailsView> ScanSettingsProperty;

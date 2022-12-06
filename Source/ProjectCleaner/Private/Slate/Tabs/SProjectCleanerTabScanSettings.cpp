@@ -7,7 +7,9 @@
 #include "ProjectCleanerScanSettings.h"
 // Engine Headers
 #include "ProjectCleanerConstants.h"
+#include "Widgets/Images/SThrobber.h"
 #include "Widgets/Layout/SScrollBox.h"
+#include "Widgets/Layout/SSeparator.h"
 
 void SProjectCleanerTabScanSettings::Construct(const FArguments& InArgs)
 {
@@ -48,14 +50,32 @@ void SProjectCleanerTabScanSettings::Construct(const FArguments& InArgs)
 				.IsEnabled_Raw(this, &SProjectCleanerTabScanSettings::BtnScanProjectEnabled)
 				.ButtonColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Blue"))
 				[
-					SNew(STextBlock)
-					.Justification(ETextJustify::Center)
-					.ToolTipText(FText::FromString(TEXT("Scan the project with the specified scan settings.")))
-					.ColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.White"))
-					.ShadowOffset(FVector2D{1.5f, 1.5f})
-					.ShadowColorAndOpacity(FLinearColor::Black)
-					.Font(FProjectCleanerStyles::GetFont("Bold", 10))
-					.Text(FText::FromString(TEXT("Scan Project")))
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot()
+					.AutoWidth()
+					[
+						SNew(STextBlock)
+						.Justification(ETextJustify::Center)
+						.ToolTipText(FText::FromString(TEXT("Scan the project with the specified scan settings.")))
+						.ColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.White"))
+						.ShadowOffset(FVector2D{1.5f, 1.5f})
+						.ShadowColorAndOpacity(FLinearColor::Black)
+						.Font(FProjectCleanerStyles::GetFont("Bold", 10))
+						.Text(FText::FromString(TEXT("Scan Project")))
+					]
+					+ SHorizontalBox::Slot()
+					.AutoWidth()
+					[
+						SNew(SBox)
+						.WidthOverride(16.0f)
+						.HeightOverride(16.0f)
+						[
+							SNew(SImage)
+							.Visibility_Raw(this, &SProjectCleanerTabScanSettings::GetBtnScanProjectStatusVisibility)
+							.ToolTipText_Raw(this, &SProjectCleanerTabScanSettings::GetBtnScanProjectToolTipText)
+							.Image(FProjectCleanerStyles::Get().GetBrush(TEXT("ProjectCleaner.IconWarning16")))
+						]
+					]
 				]
 			]
 			+ SHorizontalBox::Slot()
@@ -103,9 +123,8 @@ void SProjectCleanerTabScanSettings::Construct(const FArguments& InArgs)
 		  .Padding(FMargin{5.0f})
 		  .AutoHeight()
 		[
-			SNew(STextBlock)
-			.Font(FProjectCleanerStyles::GetFont("Bold", 10))
-			.Text_Raw(this, &SProjectCleanerTabScanSettings::GetProjectScanStatusText)
+			SNew(SSeparator)
+			.Thickness(5.0f)
 		]
 		+ SVerticalBox::Slot()
 		  .Padding(FMargin{5.0f})
@@ -133,12 +152,12 @@ bool SProjectCleanerTabScanSettings::BtnScanProjectEnabled() const
 
 bool SProjectCleanerTabScanSettings::BtnCleanProjectEnabled() const
 {
-	return Scanner.IsValid() && Scanner->GetAssetsUnused().Num() > 0;
+	return Scanner.IsValid() && Scanner->GetAssetsUnused().Num() > 0 && Scanner->GetScannerDataState() == EProjectCleanerScannerDataState::Actual;
 }
 
 bool SProjectCleanerTabScanSettings::BtnDeleteEmptyFoldersEnabled() const
 {
-	return Scanner.IsValid() && Scanner->GetFoldersEmpty().Num() > 0;
+	return Scanner.IsValid() && Scanner->GetFoldersEmpty().Num() > 0 && Scanner->GetScannerDataState() == EProjectCleanerScannerDataState::Actual;
 }
 
 FReply SProjectCleanerTabScanSettings::OnBtnScanProjectClick() const
@@ -180,9 +199,26 @@ FReply SProjectCleanerTabScanSettings::OnBtnDeleteEmptyFoldersClick() const
 	return FReply::Handled();
 }
 
-FText SProjectCleanerTabScanSettings::GetProjectScanStatusText() const
+EVisibility SProjectCleanerTabScanSettings::GetBtnScanProjectStatusVisibility() const
 {
-	if (!Scanner.IsValid()) return {};
+	if (!Scanner.IsValid()) return EVisibility::Collapsed;
 
-	return FText::FromString(FString::Printf(TEXT("%s"), Scanner->IsProjectScanned() ? TEXT("") : TEXT("Project not scanned")));
+	return Scanner->GetScannerDataState() != EProjectCleanerScannerDataState::Actual ? EVisibility::Visible : EVisibility::Collapsed;
+}
+
+FText SProjectCleanerTabScanSettings::GetBtnScanProjectToolTipText() const
+{
+	if (!Scanner.IsValid()) return FText::FromString(TEXT(""));
+
+	if (Scanner->GetScannerDataState() == EProjectCleanerScannerDataState::NotScanned)
+	{
+		return FText::FromString(TEXT("Project never scanned"));
+	}
+
+	if (Scanner->GetScannerDataState() == EProjectCleanerScannerDataState::Obsolete)
+	{
+		return FText::FromString(TEXT("Re-Scan required. Asset Registry has been updated."));
+	}
+
+	return FText::FromString(TEXT(""));
 }

@@ -84,15 +84,47 @@ FProjectCleanerScanner::FProjectCleanerScanner(const TWeakObjectPtr<UProjectClea
 	: ScanSettings(InScanSettings),
 	  ModuleAssetRegistry(FModuleManager::LoadModuleChecked<FAssetRegistryModule>(AssetRegistryConstants::ModuleName))
 {
+	if (!ScanSettings.IsValid()) return;
+	
 	ScanSettings->OnChange().AddLambda([&]()
 	{
 		UE_LOG(LogProjectCleaner, Warning, TEXT("Scanner: ScanSettings Changed!"));
+	});
+
+	ModuleAssetRegistry.Get().OnAssetAdded().AddLambda([&](const FAssetData& AssetData)
+	{
+		ScannerDataState = EProjectCleanerScannerDataState::Obsolete;
+	});
+
+	ModuleAssetRegistry.Get().OnAssetRemoved().AddLambda([&](const FAssetData& AssetData)
+	{
+		ScannerDataState = EProjectCleanerScannerDataState::Obsolete;
+	});
+
+	ModuleAssetRegistry.Get().OnAssetRenamed().AddLambda([&](const FAssetData& AssetData, const FString& NewName)
+	{
+		ScannerDataState = EProjectCleanerScannerDataState::Obsolete;
+	});
+
+	ModuleAssetRegistry.Get().OnAssetUpdated().AddLambda([&](const FAssetData& AssetData)
+	{
+		ScannerDataState = EProjectCleanerScannerDataState::Obsolete;
+	});
+
+	ModuleAssetRegistry.Get().OnPathAdded().AddLambda([&](const FString& Path)
+	{
+		ScannerDataState = EProjectCleanerScannerDataState::Obsolete;
+	});
+
+	ModuleAssetRegistry.Get().OnPathRemoved().AddLambda([&](const FString& Path)
+	{
+		ScannerDataState = EProjectCleanerScannerDataState::Obsolete;
 	});
 }
 
 void FProjectCleanerScanner::Scan()
 {
-	bProjectScanned = false;
+	ScannerDataState = EProjectCleanerScannerDataState::NotScanned;
 	
 	if (UProjectCleanerLibrary::AssetRegistryWorking()) return;
 
@@ -131,8 +163,8 @@ void FProjectCleanerScanner::Scan()
 	FindAssetsUsed();
 	FindAssetsUnused();
 
-	bProjectScanned = true;
-	
+	ScannerDataState = EProjectCleanerScannerDataState::Actual;
+
 	if (DelegateScanFinished.IsBound())
 	{
 		DelegateScanFinished.Broadcast();
@@ -173,9 +205,14 @@ void FProjectCleanerScanner::GetSubFolders(const FString& InFolderPathAbs, TSet<
 	}
 }
 
-bool FProjectCleanerScanner::IsProjectScanned() const
+EProjectCleanerScannerState FProjectCleanerScanner::GetScannerState() const
 {
-	return bProjectScanned;
+	return ScannerState;
+}
+
+EProjectCleanerScannerDataState FProjectCleanerScanner::GetScannerDataState() const
+{
+	return ScannerDataState;
 }
 
 bool FProjectCleanerScanner::IsFolderEmpty(const FString& InFolderPathAbs) const
@@ -338,18 +375,18 @@ void FProjectCleanerScanner::DataReset()
 void FProjectCleanerScanner::FindBlacklistedFoldersAndAssets()
 {
 	// filling blacklisted folders
-	FoldersBlacklist.Add(FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / ProjectCleanerConstants::FolderCollections.ToString()));
-	FoldersBlacklist.Add(FPaths::ConvertRelativePathToFull(FPaths::GameUserDeveloperDir() / ProjectCleanerConstants::FolderCollections.ToString()));
+	FoldersBlacklist.Add(UProjectCleanerLibrary::PathGetCollectionsFolder(true));
+	FoldersBlacklist.Add(UProjectCleanerLibrary::PathGetDeveloperCollectionFolder(true));
 	// todo:ashe23 for ue5 add __ExternalObject__ and __ExternalActors__ folders
 
 	if (FModuleManager::Get().IsModuleLoaded(ProjectCleanerConstants::PluginNameMegascans))
 	{
-		FoldersBlacklist.Add(FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / ProjectCleanerConstants::FolderMsPresets.ToString()));
+		FoldersBlacklist.Add(UProjectCleanerLibrary::PathGetMsPresetsFolder(true));
 	}
 
 	if (!ScanSettings->bScanDeveloperContents)
 	{
-		FoldersBlacklist.Add(FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / ProjectCleanerConstants::FolderDevelopers.ToString()));
+		FoldersBlacklist.Add(UProjectCleanerLibrary::PathGetDevelopersFolder(true));
 	}
 
 	// filling blacklisted assets

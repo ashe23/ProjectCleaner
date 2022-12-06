@@ -14,6 +14,20 @@ enum class EProjectCleanerModalStatus : uint8
 	OK UMETA(DisplayName = "OK"),
 };
 
+UENUM(BlueprintType)
+enum class EProjectCleanerScannerState : uint8
+{
+	Idle,
+	Scanning
+};
+
+enum class EProjectCleanerScannerDataState : uint8
+{
+	NotScanned,
+	Obsolete,
+	Actual
+};
+
 USTRUCT(BlueprintType)
 struct FProjectCleanerIndirectAsset
 {
