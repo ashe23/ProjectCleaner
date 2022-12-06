@@ -168,20 +168,67 @@ FString UProjectCleanerLibrary::PathGetMsPresetsFolder(const bool bAbsolutePath)
 	return ProjectCleanerConstants::PathRelMegascansPresets.ToString();
 }
 
-bool UProjectCleanerLibrary::IsUnderFolder(const FString& InFolderPathAbs, const FString& RootFolder)
+FString UProjectCleanerLibrary::PathConvertToAbs(const FString& InRelPath)
 {
-	if (InFolderPathAbs.IsEmpty() || RootFolder.IsEmpty()) return false;
+	if (InRelPath.IsEmpty()) return {};
 
-	return InFolderPathAbs.Equals(RootFolder) || FPaths::IsUnderDirectory(InFolderPathAbs, RootFolder);
+	FString Path = InRelPath;
+	FPaths::RemoveDuplicateSlashes(Path);
+	FPaths::NormalizeDirectoryName(Path);
+
+	if (Path.StartsWith(PathGetContentFolder(true))) return Path;
+	if (!Path.StartsWith(ProjectCleanerConstants::PathRelRoot.ToString())) return {};
+
+	// /Game => C:/{OurProjectPath}/Content
+	// /Game/MyFolder => C:/{OurProjectPath}/Content/MyFolder
+	// /Game/MyFile.uasset => C:/{OurProjectPath}/Content/MyFile.uasset
+
+	const FString From = ProjectCleanerConstants::PathRelRoot.ToString();
+	const FString To = PathGetContentFolder(true);
+
+	return Path.Replace(*From, *To, ESearchCase::CaseSensitive);;
 }
 
-bool UProjectCleanerLibrary::IsUnderAnyFolder(const FString& InFolderPathAbs, const TSet<FString>& Folders)
+FString UProjectCleanerLibrary::PathConvertToRel(const FString& InAbsPath)
 {
-	if (InFolderPathAbs.IsEmpty() || Folders.Num() == 0) return false;
+	if (InAbsPath.IsEmpty()) return {};
+
+	FString Path = FPaths::ConvertRelativePathToFull(InAbsPath);
+	FPaths::RemoveDuplicateSlashes(Path);
+	FPaths::NormalizeDirectoryName(Path);
+
+	const FString ProjectContentDir = PathGetContentFolder(true);
+	if (Path.StartsWith(ProjectCleanerConstants::PathRelRoot.ToString())) return Path;
+	if (!Path.StartsWith(ProjectContentDir)) return {};
+
+	// C:/{OurProjectPath}/Content => /Game
+	// C:/{OurProjectPath}/Content/ => /Game
+	// C:/{OurProjectPath}/Content/MyFolder => /Game/MyFolder
+	// C:/{OurProjectPath}/Content/MyFile.uasset => /Game/MyFile.uasset
+
+	const FString From = ProjectContentDir;
+	const FString To = ProjectCleanerConstants::PathRelRoot.ToString();
+
+	return Path.Replace(*From, *To, ESearchCase::CaseSensitive);
+}
+
+bool UProjectCleanerLibrary::PathIsUnderFolder(const FString& InSearchFolderPath, const FString& InRootFolderPath)
+{
+	const FString SearchFolderPathAbs = PathConvertToAbs(InSearchFolderPath);
+	const FString RootFolderPathAbs = PathConvertToAbs(InRootFolderPath);
+
+	if (SearchFolderPathAbs.IsEmpty() || RootFolderPathAbs.IsEmpty()) return false;
+
+	return SearchFolderPathAbs.Equals(RootFolderPathAbs) || FPaths::IsUnderDirectory(SearchFolderPathAbs, RootFolderPathAbs);
+}
+
+bool UProjectCleanerLibrary::PathIsUnderFolders(const FString& InSearchFolderPath, const TSet<FString>& Folders)
+{
+	if (InSearchFolderPath.IsEmpty() || Folders.Num() == 0) return false;
 
 	for (const auto& Folder : Folders)
 	{
-		if (IsUnderFolder(InFolderPathAbs, Folder)) return true;
+		if (PathIsUnderFolder(InSearchFolderPath, Folder)) return true;
 	}
 
 	return false;
@@ -525,48 +572,6 @@ int64 UProjectCleanerLibrary::GetAssetsTotalSize(const TArray<FAssetData>& Asset
 	return Size;
 }
 
-FString UProjectCleanerLibrary::PathConvertToAbs(const FString& InRelPath)
-{
-	if (InRelPath.IsEmpty()) return {};
-
-	FString Path = InRelPath;
-	FPaths::RemoveDuplicateSlashes(Path);
-	FPaths::NormalizeDirectoryName(Path);
-
-	if (!Path.StartsWith(ProjectCleanerConstants::PathRelRoot.ToString())) return {};
-
-	// /Game => C:/{OurProjectPath}/Content
-	// /Game/MyFolder => C:/{OurProjectPath}/Content/MyFolder
-	// /Game/MyFile.uasset => C:/{OurProjectPath}/Content/MyFile.uasset
-
-	const FString From = ProjectCleanerConstants::PathRelRoot.ToString();
-	const FString To = PathGetContentFolder(true);
-
-	return Path.Replace(*From, *To, ESearchCase::CaseSensitive);;
-}
-
-FString UProjectCleanerLibrary::PathConvertToRel(const FString& InAbsPath)
-{
-	if (InAbsPath.IsEmpty()) return {};
-
-	FString Path = FPaths::ConvertRelativePathToFull(InAbsPath);
-	FPaths::RemoveDuplicateSlashes(Path);
-	FPaths::NormalizeDirectoryName(Path);
-
-	const FString ProjectContentDir = PathGetContentFolder(true);
-
-	if (!Path.StartsWith(ProjectContentDir)) return {};
-
-	// C:/{OurProjectPath}/Content => /Game
-	// C:/{OurProjectPath}/Content/ => /Game
-	// C:/{OurProjectPath}/Content/MyFolder => /Game/MyFolder
-	// C:/{OurProjectPath}/Content/MyFile.uasset => /Game/MyFile.uasset
-
-	const FString From = ProjectContentDir;
-	const FString To = ProjectCleanerConstants::PathRelRoot.ToString();
-
-	return Path.Replace(*From, *To, ESearchCase::CaseSensitive);
-}
 
 FString UProjectCleanerLibrary::GetAssetClassName(const FAssetData& AssetData)
 {

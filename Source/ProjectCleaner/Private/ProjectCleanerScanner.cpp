@@ -44,7 +44,7 @@ public:
 
 		if (bIsDirectory)
 		{
-			if (UProjectCleanerLibrary::IsUnderAnyFolder(FullPath, FoldersBlacklist)) return true;
+			if (UProjectCleanerLibrary::PathIsUnderFolders(FullPath, FoldersBlacklist)) return true;
 
 			TArray<FString> Files;
 			IFileManager::Get().FindFilesRecursive(Files, *FullPath, TEXT("*.*"), true, false);
@@ -62,7 +62,7 @@ public:
 		FString Path;
 		FPaths::Split(FullPath, Path, FileName, FileExtension);
 
-		if (UProjectCleanerLibrary::IsUnderAnyFolder(Path, FoldersBlacklist)) return true;
+		if (UProjectCleanerLibrary::PathIsUnderFolders(Path, FoldersBlacklist)) return true;
 
 		if (UProjectCleanerLibrary::IsEngineFileExtension(FileExtension))
 		{
@@ -167,7 +167,7 @@ void FProjectCleanerScanner::GetSubFolders(const FString& InFolderPathAbs, TSet<
 	for (const auto& Folder : Folders)
 	{
 		const FString FolderAbsPath = InFolderPathAbs / Folder;
-		if (UProjectCleanerLibrary::IsUnderAnyFolder(FolderAbsPath, FoldersBlacklist)) continue;
+		if (UProjectCleanerLibrary::PathIsUnderFolders(FolderAbsPath, FoldersBlacklist)) continue;
 
 		SubFolders.Add(FolderAbsPath);
 	}
@@ -195,7 +195,7 @@ bool FProjectCleanerScanner::IsFolderExcluded(const FString& InFolderPathAbs) co
 
 		const FString ExcludedAbsPath = UProjectCleanerLibrary::PathConvertToAbs(ExcludedFolder.Path);
 		if (!FPaths::DirectoryExists(ExcludedAbsPath)) continue;
-		if (UProjectCleanerLibrary::IsUnderFolder(InFolderPathAbs, ExcludedAbsPath))
+		if (UProjectCleanerLibrary::PathIsUnderFolder(InFolderPathAbs, ExcludedAbsPath))
 		{
 			return true;
 		}
@@ -215,7 +215,7 @@ int32 FProjectCleanerScanner::GetFoldersTotalNum(const FString& InFolderPathAbs)
 	int Num = 0;
 	for (const auto& Folder : AllFolders)
 	{
-		if (UProjectCleanerLibrary::IsUnderAnyFolder(Folder, FoldersBlacklist)) continue;
+		if (UProjectCleanerLibrary::PathIsUnderFolders(Folder, FoldersBlacklist)) continue;
 
 		++Num;
 	}
@@ -232,7 +232,7 @@ int32 FProjectCleanerScanner::GetFoldersEmptyNum(const FString& InFolderPathAbs)
 	for (const auto& EmptyFolder : FoldersEmpty)
 	{
 		if (EmptyFolder.Equals(InFolderPathAbs)) continue;
-		if (UProjectCleanerLibrary::IsUnderFolder(EmptyFolder, InFolderPathAbs))
+		if (UProjectCleanerLibrary::PathIsUnderFolder(EmptyFolder, InFolderPathAbs))
 		{
 			++Num;
 		}
@@ -396,7 +396,7 @@ void FProjectCleanerScanner::FindAssetsExcluded()
 		{
 			const FString ExcludedFolderPathAbs = UProjectCleanerLibrary::PathConvertToAbs(ExcludedFolder.Path);
 
-			if (UProjectCleanerLibrary::IsUnderFolder(PackagePathAbs, ExcludedFolderPathAbs))
+			if (UProjectCleanerLibrary::PathIsUnderFolder(PackagePathAbs, ExcludedFolderPathAbs))
 			{
 				AssetsExcluded.AddUnique(Asset);
 			}
@@ -497,7 +497,7 @@ int32 FProjectCleanerScanner::GetNumFor(const FString& InFolderPathAbs, const TA
 	for (const auto& Asset : Assets)
 	{
 		const FString AssetPackagePathAbs = UProjectCleanerLibrary::PathConvertToAbs(Asset.PackagePath.ToString());
-		if (!UProjectCleanerLibrary::IsUnderFolder(AssetPackagePathAbs, InFolderPathAbs)) continue;
+		if (!UProjectCleanerLibrary::PathIsUnderFolder(AssetPackagePathAbs, InFolderPathAbs)) continue;
 
 		++Num;
 	}
@@ -516,7 +516,7 @@ int64 FProjectCleanerScanner::GetSizeFor(const FString& InFolderPathAbs, const T
 	for (const auto& Asset : Assets)
 	{
 		const FString AssetPackagePathAbs = UProjectCleanerLibrary::PathConvertToAbs(Asset.PackagePath.ToString());
-		if (!UProjectCleanerLibrary::IsUnderFolder(AssetPackagePathAbs, InFolderPathAbs)) continue;
+		if (!UProjectCleanerLibrary::PathIsUnderFolder(AssetPackagePathAbs, InFolderPathAbs)) continue;
 
 		const auto AssetPackageData = ModuleAssetRegistry.Get().GetAssetPackageData(Asset.PackageName);
 		if (!AssetPackageData) continue;

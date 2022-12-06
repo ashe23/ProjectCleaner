@@ -34,35 +34,45 @@ public:
 	// todo:ashe23 for ue5 add __ExternalObject__ and __ExternalActors__ folder paths
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner|Paths", meta=(ToolTip="Returns absolute or relative path to project Content folder (/Game)"))
 	static FString PathGetContentFolder(const bool bAbsolutePath);
+
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner|Paths", meta=(ToolTip="Returns absolute or relative path to project Developers folder (/Game/Developers)"))
 	static FString PathGetDevelopersFolder(const bool bAbsolutePath);
+
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner|Paths", meta=(ToolTip="Returns absolute or relative path to current user Developers folder (/Game/Developers/{user_name})"))
 	static FString PathGetDeveloperFolder(const bool bAbsolutePath);
+
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner|Paths", meta=(ToolTip="Returns absolute or relative path to project Collections folder (/Game/Collections)"))
 	static FString PathGetCollectionsFolder(const bool bAbsolutePath);
+
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner|Paths",
 		meta=(ToolTip="Returns absolute or relative path to project Developer Collections folder (/Game/Developers/{user_name}/Collections)"))
 	static FString PathGetDeveloperCollectionFolder(const bool bAbsolutePath);
+
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner|Paths", meta=(ToolTip="Returns absolute or relative path to MSPresets path (/Game/MSPresets)"))
 	static FString PathGetMsPresetsFolder(const bool bAbsolutePath);
+
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner|Paths",
 		meta=(ToolTip="Convert given relative path to absolute. If given path is not under /Game folder, then empty string will be returned"))
 	static FString PathConvertToAbs(const FString& InRelPath);
+
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner|Paths",
 		meta=(ToolTip="Convert given absolute path to relative. If given path is not under Content folder, then empty string will be returned"))
 	static FString PathConvertToRel(const FString& InAbsPath);
 
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner|Paths", meta=(ToolTip="Check if given path in under folder or not"))
+	static bool PathIsUnderFolder(const FString& InSearchFolderPath, const FString& InRootFolderPath);
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner|Paths", meta=(ToolTip="Check if given path in under any of given folders or not"))
+	static bool PathIsUnderFolders(const FString& InSearchFolderPath, const TSet<FString>& Folders);
+
 	// Misc
 	// Utility
 	// Notification
-	static bool IsUnderFolder(const FString& InFolderPathAbs, const FString& RootFolder);
-	static bool IsUnderAnyFolder(const FString& InFolderPathAbs, const TSet<FString>& Folders);
 	static bool IsEngineFileExtension(const FString& Extension);
 	static bool IsCorruptedEngineFile(const FString& InFilePathAbs);
 	static bool HasIndirectlyUsedAssets(const FString& FileContent);
 	static bool ConfirmationWindowCancelled(const EAppReturnType::Type ReturnType);
 
-	// todo:ashe23 add wrapper function to default project paths
 	static FString GetAssetClassName(const FAssetData& AssetData);
 
 	static int64 GetAssetsTotalSize(const TArray<FAssetData>& Assets);
