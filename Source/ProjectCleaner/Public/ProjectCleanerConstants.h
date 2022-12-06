@@ -37,7 +37,9 @@ namespace ProjectCleanerConstants
 	static const FString MsgTabNonEngineTitle{TEXT("List of NonEngine files inside Content folder.")};
 	static const FString MsgTabNonEngineDesc{TEXT("Make sure you delete all unnecessary files in order to remove empty folders. These files won't be visible in ContentBrowser.")};
 	static const FString MsgTabCorruptedTitle{TEXT("List of potentially corrupted assets found in the Content folder but not loaded by the engine.")};
-	static const FString MsgTabCorruptedDesc{TEXT("In order to fix it, try to reload the project and see if it's loaded. Check OutputLog for more information. If nothing helps, close the editor and remove them manually from Explorer.")};
+	static const FString MsgTabCorruptedDesc{
+		TEXT("In order to fix it, try to reload the project and see if it's loaded. Check OutputLog for more information. If nothing helps, close the editor and remove them manually from Explorer.")
+	};
 	static const FString MsgTabIndirectTitle{TEXT("List of assets used in source code, config or other files indirectly.")};
 	static const FString MsgTabIndirectDesc{TEXT("The following assets are considered used and will remain untouched.")};
 	static const FString MsgNavigateToExplorer{TEXT("Double click on row to navigate file in FileExplorer")};
@@ -48,6 +50,7 @@ namespace ProjectCleanerConstants
 	// path
 	static const FName PathRelRoot{TEXT("/Game")};
 	static const FName PathRelDevelopers{TEXT("/Game/Developers")};
+	static const FName PathRelCollections{TEXT("/Game/Collections")};
 	static const FName PathRelMegascans{TEXT("/Game/Megascans")};
 	static const FName PathRelMegascansPresets{TEXT("/Game/MSPresets")};
 

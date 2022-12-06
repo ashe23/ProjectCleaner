@@ -190,7 +190,7 @@ SProjectCleaner::~SProjectCleaner()
 
 bool SProjectCleaner::WidgetEnabled()
 {
-	if (UProjectCleanerLibrary::IsAssetRegistryWorking())
+	if (UProjectCleanerLibrary::AssetRegistryWorking())
 	{
 		return false;
 	}
@@ -205,7 +205,7 @@ bool SProjectCleaner::WidgetEnabled()
 
 int32 SProjectCleaner::WidgetGetIndex()
 {
-	if (UProjectCleanerLibrary::IsAssetRegistryWorking())
+	if (UProjectCleanerLibrary::AssetRegistryWorking())
 	{
 		return WidgetIndexLoading;
 	}

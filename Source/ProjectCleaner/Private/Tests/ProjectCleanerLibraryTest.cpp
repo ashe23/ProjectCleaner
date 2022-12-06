@@ -24,7 +24,7 @@ struct FProjectCleanerTestCase
 
 bool FProjectCleanerLibraryPathConvertToAbsTest::RunTest(const FString& Parameters)
 {
-	const FString ProjectDir = FPaths::ProjectDir();
+	const FString ProjectDir = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir());
 
 	TArray<FProjectCleanerTestCase> TestCases;
 	TestCases.Add(FProjectCleanerTestCase{TEXT(""), TEXT("")});
@@ -56,7 +56,7 @@ bool FProjectCleanerLibraryPathConvertToAbsTest::RunTest(const FString& Paramete
 
 bool FProjectCleanerLibraryPathConvertToRelTest::RunTest(const FString& Parameters)
 {
-	const FString ProjectDir = FPaths::ProjectDir();
+	const FString ProjectDir = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir());
 
 	TArray<FProjectCleanerTestCase> TestCases;
 	TestCases.Add(FProjectCleanerTestCase{TEXT(""), TEXT("")});
@@ -86,6 +86,6 @@ bool FProjectCleanerLibraryPathConvertToRelTest::RunTest(const FString& Paramete
 			return false;
 		}
 	}
-	
+
 	return true;
 }

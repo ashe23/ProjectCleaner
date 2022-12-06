@@ -15,9 +15,157 @@
 #include "Misc/ScopedSlowTask.h"
 #include "Widgets/Notifications/SNotificationList.h"
 
-bool UProjectCleanerLibrary::IsAssetRegistryWorking()
+bool UProjectCleanerLibrary::AssetRegistryWorking()
 {
 	return FModuleManager::LoadModuleChecked<FAssetRegistryModule>(AssetRegistryConstants::ModuleName).Get().IsLoadingAssets();
+}
+
+void UProjectCleanerLibrary::AssetRegistryUpdate(const bool bSyncScan)
+{
+	const FAssetRegistryModule& ModuleAssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>(AssetRegistryConstants::ModuleName);
+
+	TArray<FString> ScanFolders;
+	ScanFolders.Add(ProjectCleanerConstants::PathRelRoot.ToString());
+
+	ModuleAssetRegistry.Get().ScanPathsSynchronous(ScanFolders, true);
+	ModuleAssetRegistry.Get().SearchAllAssets(bSyncScan);
+}
+
+void UProjectCleanerLibrary::AssetRegistryFixupRedirectors(const FString& InPathRel)
+{
+	if (InPathRel.IsEmpty() || !InPathRel.StartsWith(ProjectCleanerConstants::PathRelRoot.ToString())) return;
+
+	const FAssetRegistryModule& ModuleAssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>(AssetRegistryConstants::ModuleName);
+	const FAssetToolsModule& ModuleAssetTools = FModuleManager::LoadModuleChecked<FAssetToolsModule>(TEXT("AssetTools"));
+
+	FScopedSlowTask FixRedirectorsTask{
+		1.0f,
+		FText::FromString(ProjectCleanerConstants::MsgFixingRedirectors)
+	};
+	FixRedirectorsTask.MakeDialog();
+
+	FARFilter Filter;
+	Filter.bRecursivePaths = true;
+	Filter.PackagePaths.Emplace(InPathRel);
+	Filter.ClassNames.Emplace(UObjectRedirector::StaticClass()->GetFName());
+
+	// Getting all redirectors in given path
+	TArray<FAssetData> AssetList;
+	ModuleAssetRegistry.Get().GetAssets(Filter, AssetList);
+
+	if (AssetList.Num() == 0) return;
+
+	FScopedSlowTask FixRedirectorsLoadingTask(
+		AssetList.Num(),
+		FText::FromString(ProjectCleanerConstants::MsgLoadingRedirectors)
+	);
+	FixRedirectorsLoadingTask.MakeDialog();
+
+	TArray<UObjectRedirector*> Redirectors;
+	Redirectors.Reserve(AssetList.Num());
+
+	for (const auto& Asset : AssetList)
+	{
+		FixRedirectorsLoadingTask.EnterProgressFrame();
+
+		UObject* AssetObj = Asset.GetAsset();
+		if (!AssetObj) continue;
+
+		UObjectRedirector* Redirector = CastChecked<UObjectRedirector>(AssetObj);
+		if (!Redirector) continue;
+
+		Redirectors.Add(Redirector);
+	}
+
+	Redirectors.Shrink();
+
+	// Fix up all founded redirectors
+	ModuleAssetTools.Get().FixupReferencers(Redirectors);
+
+	FixRedirectorsTask.EnterProgressFrame(1.0f);
+}
+
+void UProjectCleanerLibrary::AssetsSaveAll(const bool bPromptUser)
+{
+	FEditorFileUtils::SaveDirtyPackages(
+		bPromptUser,
+		true,
+		true,
+		false,
+		false,
+		false
+	);
+}
+
+FString UProjectCleanerLibrary::PathGetContentFolder(const bool bAbsolutePath)
+{
+	if (bAbsolutePath)
+	{
+		return FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() / ProjectCleanerConstants::FolderContent.ToString());
+	}
+
+	return ProjectCleanerConstants::PathRelRoot.ToString();
+}
+
+FString UProjectCleanerLibrary::PathGetDevelopersFolder(const bool bAbsolutePath)
+{
+	if (bAbsolutePath)
+	{
+		return FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / ProjectCleanerConstants::FolderDevelopers.ToString());
+	}
+
+	return ProjectCleanerConstants::PathRelDevelopers.ToString();
+}
+
+FString UProjectCleanerLibrary::PathGetDeveloperFolder(const bool bAbsolutePath)
+{
+	if (bAbsolutePath)
+	{
+		return FPaths::ConvertRelativePathToFull(PathGetDevelopersFolder(true) / FPaths::GameUserDeveloperFolderName());
+	}
+
+	return FString::Printf(TEXT("%s/%s"), *ProjectCleanerConstants::PathRelDevelopers.ToString(), *FPaths::GameUserDeveloperFolderName());
+}
+
+FString UProjectCleanerLibrary::PathGetCollectionsFolder(const bool bAbsolutePath)
+{
+	if (bAbsolutePath)
+	{
+		return FPaths::ConvertRelativePathToFull(PathGetContentFolder(true) / ProjectCleanerConstants::FolderCollections.ToString());
+	}
+
+	return ProjectCleanerConstants::PathRelCollections.ToString();
+}
+
+FString UProjectCleanerLibrary::PathGetDeveloperCollectionFolder(const bool bAbsolutePath)
+{
+	if (bAbsolutePath)
+	{
+		return FPaths::ConvertRelativePathToFull(
+			FString::Printf(
+				TEXT("%s/%s"),
+				*PathGetDeveloperFolder(true),
+				*ProjectCleanerConstants::FolderCollections.ToString()
+			)
+		);
+	}
+
+	return FString::Printf(
+		TEXT("%s/%s/%s"),
+		*ProjectCleanerConstants::PathRelDevelopers.ToString(),
+		*FPaths::GameUserDeveloperFolderName(),
+		*ProjectCleanerConstants::FolderCollections.ToString()
+	);
+}
+
+FString UProjectCleanerLibrary::PathGetMsPresetsFolder(const bool bAbsolutePath)
+{
+	if (bAbsolutePath)
+	{
+		return FPaths::ConvertRelativePathToFull(PathGetContentFolder(true) / ProjectCleanerConstants::FolderMsPresets.ToString());
+	}
+
+	return ProjectCleanerConstants::PathRelMegascansPresets.ToString();
 }
 
 bool UProjectCleanerLibrary::IsUnderFolder(const FString& InFolderPathAbs, const FString& RootFolder)
@@ -56,7 +204,7 @@ bool UProjectCleanerLibrary::IsCorruptedEngineFile(const FString& InFilePathAbs)
 	// we must first convert that path to In Engine Internal Path like "/Game/material.uasset"
 	const FString RelativePath = PathConvertToRel(InFilePathAbs);
 	if (RelativePath.IsEmpty()) return false;
-	
+
 	// Converting file path to object path (This is for searching in AssetRegistry)
 	// example "/Game/Name.uasset" => "/Game/Name.Name"
 	FString ObjectPath = RelativePath;
@@ -392,7 +540,7 @@ FString UProjectCleanerLibrary::PathConvertToAbs(const FString& InRelPath)
 	// /Game/MyFile.uasset => C:/{OurProjectPath}/Content/MyFile.uasset
 
 	const FString From = ProjectCleanerConstants::PathRelRoot.ToString();
-	const FString To = FPaths::ProjectDir() / ProjectCleanerConstants::FolderContent.ToString();
+	const FString To = PathGetContentFolder(true);
 
 	return Path.Replace(*From, *To, ESearchCase::CaseSensitive);;
 }
@@ -405,7 +553,7 @@ FString UProjectCleanerLibrary::PathConvertToRel(const FString& InAbsPath)
 	FPaths::RemoveDuplicateSlashes(Path);
 	FPaths::NormalizeDirectoryName(Path);
 
-	const FString ProjectContentDir = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() / ProjectCleanerConstants::FolderContent.ToString());
+	const FString ProjectContentDir = PathGetContentFolder(true);
 
 	if (!Path.StartsWith(ProjectContentDir)) return {};
 
@@ -434,81 +582,6 @@ FString UProjectCleanerLibrary::GetAssetClassName(const FAssetData& AssetData)
 	return AssetData.AssetClass.ToString();
 }
 
-void UProjectCleanerLibrary::FixupRedirectors()
-{
-	const FAssetRegistryModule& ModuleAssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>(AssetRegistryConstants::ModuleName);
-	const FAssetToolsModule& ModuleAssetTools = FModuleManager::LoadModuleChecked<FAssetToolsModule>(TEXT("AssetTools"));
-
-	FScopedSlowTask FixRedirectorsTask{
-		1.0f,
-		FText::FromString(ProjectCleanerConstants::MsgFixingRedirectors)
-	};
-	FixRedirectorsTask.MakeDialog();
-
-	FARFilter Filter;
-	Filter.bRecursivePaths = true;
-	Filter.PackagePaths.Emplace(ProjectCleanerConstants::PathRelRoot);
-	Filter.ClassNames.Emplace(UObjectRedirector::StaticClass()->GetFName());
-
-	// Getting all redirectors in given path
-	TArray<FAssetData> AssetList;
-	ModuleAssetRegistry.Get().GetAssets(Filter, AssetList);
-
-	if (AssetList.Num() > 0)
-	{
-		FScopedSlowTask FixRedirectorsLoadingTask(
-			AssetList.Num(),
-			FText::FromString(ProjectCleanerConstants::MsgLoadingRedirectors)
-		);
-		FixRedirectorsLoadingTask.MakeDialog();
-
-		TArray<UObjectRedirector*> Redirectors;
-		Redirectors.Reserve(AssetList.Num());
-
-		for (const auto& Asset : AssetList)
-		{
-			FixRedirectorsLoadingTask.EnterProgressFrame();
-
-			UObject* AssetObj = Asset.GetAsset();
-			if (!AssetObj) continue;
-
-			const auto Redirector = CastChecked<UObjectRedirector>(AssetObj);
-			if (!Redirector) continue;
-
-			Redirectors.Add(Redirector);
-		}
-
-		Redirectors.Shrink();
-
-		// Fix up all founded redirectors
-		ModuleAssetTools.Get().FixupReferencers(Redirectors);
-	}
-
-	FixRedirectorsTask.EnterProgressFrame(1.0f);
-}
-
-void UProjectCleanerLibrary::SaveAllAssets(const bool bPromptUser)
-{
-	FEditorFileUtils::SaveDirtyPackages(
-		bPromptUser,
-		true,
-		true,
-		false,
-		false,
-		false
-	);
-}
-
-void UProjectCleanerLibrary::UpdateAssetRegistry(const bool bSyncScan)
-{
-	const FAssetRegistryModule& ModuleAssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>(AssetRegistryConstants::ModuleName);
-
-	TArray<FString> ScanFolders;
-	ScanFolders.Add(ProjectCleanerConstants::PathRelRoot.ToString());
-
-	ModuleAssetRegistry.Get().ScanPathsSynchronous(ScanFolders, true);
-	ModuleAssetRegistry.Get().SearchAllAssets(bSyncScan);
-}
 
 void UProjectCleanerLibrary::FocusOnDirectory(const FString& InRelPath)
 {

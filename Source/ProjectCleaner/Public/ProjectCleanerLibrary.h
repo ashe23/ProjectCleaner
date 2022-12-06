@@ -16,7 +16,45 @@ class UProjectCleanerLibrary final : public UBlueprintFunctionLibrary
 {
 	GENERATED_BODY()
 public:
-	static bool IsAssetRegistryWorking();
+	// AssetRegistry
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner|AssetRegistry", meta=(ToolTip="Checks if AssetRegistry currently working"))
+	static bool AssetRegistryWorking();
+
+	UFUNCTION(BlueprintCallable, Category="ProjectCleaner|AssetRegistry", meta=(ToolTip="Updates AssetRegistry by scanning for assets on disk"))
+	static void AssetRegistryUpdate(const bool bSyncScan = false);
+
+	UFUNCTION(BlueprintCallable, Category="ProjectCleaner|AssetRegistry", meta=(ToolTip="Fixes all redirectors in given relative path ('/Game/...')"))
+	static void AssetRegistryFixupRedirectors(const FString& InPathRel);
+
+	// Assets
+	UFUNCTION(BlueprintCallable, Category="ProjectCleaner|Assets", meta=(ToolTip="Saves all unsaved assets in project"))
+	static void AssetsSaveAll(const bool bPromptUser = true);
+
+	// Paths
+	// todo:ashe23 for ue5 add __ExternalObject__ and __ExternalActors__ folder paths
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner|Paths", meta=(ToolTip="Returns absolute or relative path to project Content folder (/Game)"))
+	static FString PathGetContentFolder(const bool bAbsolutePath);
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner|Paths", meta=(ToolTip="Returns absolute or relative path to project Developers folder (/Game/Developers)"))
+	static FString PathGetDevelopersFolder(const bool bAbsolutePath);
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner|Paths", meta=(ToolTip="Returns absolute or relative path to current user Developers folder (/Game/Developers/{user_name})"))
+	static FString PathGetDeveloperFolder(const bool bAbsolutePath);
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner|Paths", meta=(ToolTip="Returns absolute or relative path to project Collections folder (/Game/Collections)"))
+	static FString PathGetCollectionsFolder(const bool bAbsolutePath);
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner|Paths",
+		meta=(ToolTip="Returns absolute or relative path to project Developer Collections folder (/Game/Developers/{user_name}/Collections)"))
+	static FString PathGetDeveloperCollectionFolder(const bool bAbsolutePath);
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner|Paths", meta=(ToolTip="Returns absolute or relative path to MSPresets path (/Game/MSPresets)"))
+	static FString PathGetMsPresetsFolder(const bool bAbsolutePath);
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner|Paths",
+		meta=(ToolTip="Convert given relative path to absolute. If given path is not under /Game folder, then empty string will be returned"))
+	static FString PathConvertToAbs(const FString& InRelPath);
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner|Paths",
+		meta=(ToolTip="Convert given absolute path to relative. If given path is not under Content folder, then empty string will be returned"))
+	static FString PathConvertToRel(const FString& InAbsPath);
+
+	// Misc
+	// Utility
+	// Notification
 	static bool IsUnderFolder(const FString& InFolderPathAbs, const FString& RootFolder);
 	static bool IsUnderAnyFolder(const FString& InFolderPathAbs, const TSet<FString>& Folders);
 	static bool IsEngineFileExtension(const FString& Extension);
@@ -26,8 +64,6 @@ public:
 
 	// todo:ashe23 add wrapper function to default project paths
 	static FString GetAssetClassName(const FAssetData& AssetData);
-	static FString PathConvertToAbs(const FString& InRelPath);
-	static FString PathConvertToRel(const FString& InAbsPath);
 
 	static int64 GetAssetsTotalSize(const TArray<FAssetData>& Assets);
 
@@ -36,9 +72,6 @@ public:
 	static void GetAssetsIndirectAdvanced(TArray<FProjectCleanerIndirectAsset>& AssetsIndirect);
 	static void GetAssetsPrimary(TArray<FAssetData>& AssetsPrimary, const bool bIncludeDerivedClasses = false);
 	static void GetPrimaryAssetClasses(TArray<FName>& PrimaryAssetClasses, const bool bIncludeDerivedClasses = false);
-	static void FixupRedirectors();
-	static void SaveAllAssets(const bool bPromptUser = true);
-	static void UpdateAssetRegistry(const bool bSyncScan = false);
 	static void FocusOnDirectory(const FString& InRelPath);
 	static void FocusOnAssets(const TArray<FAssetData>& Assets);
 	static void GetLinkedAssets(const TArray<FAssetData>& Assets, TArray<FAssetData>& LinkedAssets);
@@ -50,5 +83,3 @@ public:
 private:
 	static SNotificationItem::ECompletionState GetCompletionStateFromModalStatus(const EProjectCleanerModalStatus ModalStatus);
 };
-
-

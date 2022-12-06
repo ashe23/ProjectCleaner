@@ -94,11 +94,11 @@ void FProjectCleanerScanner::Scan()
 {
 	bProjectScanned = false;
 	
-	if (UProjectCleanerLibrary::IsAssetRegistryWorking()) return;
+	if (UProjectCleanerLibrary::AssetRegistryWorking()) return;
 
 	// making sure all redirectors fixed and assets saved when we start scanning
-	UProjectCleanerLibrary::FixupRedirectors();
-	UProjectCleanerLibrary::SaveAllAssets(); // todo:ashe23 silent mode if cli mode
+	UProjectCleanerLibrary::AssetRegistryFixupRedirectors(ProjectCleanerConstants::PathRelRoot.ToString());
+	UProjectCleanerLibrary::AssetsSaveAll(); // todo:ashe23 silent mode if cli mode
 
 	FScopedSlowTask SlowTask{3.0f, FText::FromString(ProjectCleanerConstants::MsgScanning)};
 	SlowTask.MakeDialog(false, false);
