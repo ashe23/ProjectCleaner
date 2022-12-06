@@ -57,11 +57,11 @@ void SProjectCleanerTabNonEngine::Construct(const FArguments& InArgs)
 
 				if (IFileManager::Get().Delete(*FilePath))
 				{
-					UProjectCleanerLibrary::ShowModal(ProjectCleanerConstants::MsgFileDeleteSuccess, EProjectCleanerModalStatus::OK, 3.0f);
+					UProjectCleanerLibrary::NotificationShow(ProjectCleanerConstants::MsgFileDeleteSuccess, EProjectCleanerModalStatus::OK, 3.0f);
 				}
 				else
 				{
-					UProjectCleanerLibrary::ShowModalOutputLog(ProjectCleanerConstants::MsgFileDeleteError, EProjectCleanerModalStatus::Error, 4.0f);
+					UProjectCleanerLibrary::NotificationShowWithOutputLog(ProjectCleanerConstants::MsgFileDeleteError, EProjectCleanerModalStatus::Error, 4.0f);
 				}
 
 				ListUpdate();

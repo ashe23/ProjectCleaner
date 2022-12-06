@@ -150,7 +150,7 @@ FReply SProjectCleanerTabScanSettings::OnBtnScanProjectClick() const
 
 FReply SProjectCleanerTabScanSettings::OnBtnCleanProjectClick() const
 {
-	const auto ConfirmationStatus = UProjectCleanerLibrary::ShowConfirmationWindow(
+	const auto ConfirmationStatus = UProjectCleanerLibrary::ConfirmationWindowShow(
 		FText::FromString(ProjectCleanerConstants::MsgConfirmCleanProjectTitle),
 		FText::FromString(ProjectCleanerConstants::MsgConfirmCleanProject)
 	);
@@ -166,7 +166,7 @@ FReply SProjectCleanerTabScanSettings::OnBtnCleanProjectClick() const
 
 FReply SProjectCleanerTabScanSettings::OnBtnDeleteEmptyFoldersClick() const
 {
-	const auto ConfirmationStatus = UProjectCleanerLibrary::ShowConfirmationWindow(
+	const auto ConfirmationStatus = UProjectCleanerLibrary::ConfirmationWindowShow(
 		FText::FromString(ProjectCleanerConstants::MsgConfirmDeleteEmptyFoldersTitle),
 		FText::FromString(ProjectCleanerConstants::MsgConfirmDeleteEmptyFolders)
 	);

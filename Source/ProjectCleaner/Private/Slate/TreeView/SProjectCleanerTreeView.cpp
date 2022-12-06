@@ -105,7 +105,7 @@ void SProjectCleanerTreeView::TreeItemsUpdate()
 	{
 		SAssignNew(TreeView, STreeView<TSharedPtr<FProjectCleanerTreeViewItem>>)
 		.TreeItemsSource(&TreeItems)
-		.SelectionMode(ESelectionMode::SingleToggle)
+		.SelectionMode(ESelectionMode::Multi)
 		.OnGenerateRow(this, &SProjectCleanerTreeView::OnTreeViewGenerateRow)
 		.OnGetChildren(this, &SProjectCleanerTreeView::OnTreeViewGetChildren)
 		.HeaderRow(GetTreeViewHeaderRow())
@@ -171,7 +171,7 @@ FProjectCleanerDelegatePathChanged& SProjectCleanerTreeView::OnPathChange()
 
 TSharedPtr<FProjectCleanerTreeViewItem> SProjectCleanerTreeView::TreeItemCreate(const FString& InFolderPathAbs) const
 {
-	if (UProjectCleanerLibrary::IsUnderAnyFolder(InFolderPathAbs, Scanner.Get()->GetFoldersBlacklist())) return {};
+	if (UProjectCleanerLibrary::PathIsUnderFolders(InFolderPathAbs, Scanner.Get()->GetFoldersBlacklist())) return {};
 
 	const TSharedPtr<FProjectCleanerTreeViewItem> TreeItem = MakeShareable(new FProjectCleanerTreeViewItem());
 	if (!TreeItem.IsValid()) return {};

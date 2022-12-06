@@ -64,9 +64,9 @@ public:
 
 		if (UProjectCleanerLibrary::PathIsUnderFolders(Path, FoldersBlacklist)) return true;
 
-		if (UProjectCleanerLibrary::IsEngineFileExtension(FileExtension))
+		if (UProjectCleanerLibrary::FileHasEngineExtension(FileExtension))
 		{
-			if (UProjectCleanerLibrary::IsCorruptedEngineFile(FullPath))
+			if (UProjectCleanerLibrary::FileIsCorrupted(FullPath))
 			{
 				FilesCorrupted.Add(FullPath);
 			}
@@ -371,12 +371,12 @@ void FProjectCleanerScanner::FindAssetsAll()
 
 void FProjectCleanerScanner::FindAssetsPrimary()
 {
-	UProjectCleanerLibrary::GetAssetsPrimary(AssetsPrimary, true);
+	UProjectCleanerLibrary::AssetsGetPrimary(AssetsPrimary, true);
 }
 
 void FProjectCleanerScanner::FindAssetsIndirect()
 {
-	UProjectCleanerLibrary::GetAssetsIndirectAdvanced(AssetsIndirectAdvanced);
+	UProjectCleanerLibrary::AssetsGetIndirectAdvanced(AssetsIndirectAdvanced);
 	AssetsIndirect.Reserve(AssetsIndirectAdvanced.Num());
 	for (const auto& IndirectAsset : AssetsIndirectAdvanced)
 	{
@@ -403,7 +403,7 @@ void FProjectCleanerScanner::FindAssetsExcluded()
 		}
 
 		// excluded by class
-		const FString AssetClassName = UProjectCleanerLibrary::GetAssetClassName(Asset);
+		const FString AssetClassName = UProjectCleanerLibrary::AssetGetClassName(Asset);
 		for (const auto& ExcludedClass : ScanSettings->ExcludedClasses)
 		{
 			if (!ExcludedClass.LoadSynchronous()) continue;
@@ -427,7 +427,7 @@ void FProjectCleanerScanner::FindAssetsExcluded()
 
 void FProjectCleanerScanner::FindAssetsWithExternalRefs()
 {
-	UProjectCleanerLibrary::GetAssetsWithExternalRefs(AssetsWithExternalRefs);
+	UProjectCleanerLibrary::AssetsGetWithExternalRefs(AssetsWithExternalRefs);
 }
 
 void FProjectCleanerScanner::FindAssetsUsed()
@@ -460,7 +460,7 @@ void FProjectCleanerScanner::FindAssetsUsed()
 	}
 
 	TArray<FAssetData> LinkedAssets;
-	UProjectCleanerLibrary::GetLinkedAssets(AssetsUsed, LinkedAssets);
+	UProjectCleanerLibrary::AssetsGetLinked(AssetsUsed, LinkedAssets);
 	for (const auto& LinkedAsset : LinkedAssets)
 	{
 		AssetsUsed.AddUnique(LinkedAsset);
