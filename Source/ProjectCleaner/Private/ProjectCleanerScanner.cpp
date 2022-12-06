@@ -92,6 +92,8 @@ FProjectCleanerScanner::FProjectCleanerScanner(const TWeakObjectPtr<UProjectClea
 
 void FProjectCleanerScanner::Scan()
 {
+	bProjectScanned = false;
+	
 	if (UProjectCleanerLibrary::IsAssetRegistryWorking()) return;
 
 	// making sure all redirectors fixed and assets saved when we start scanning
@@ -129,6 +131,8 @@ void FProjectCleanerScanner::Scan()
 	FindAssetsUsed();
 	FindAssetsUnused();
 
+	bProjectScanned = true;
+	
 	if (DelegateScanFinished.IsBound())
 	{
 		DelegateScanFinished.Broadcast();
@@ -167,6 +171,11 @@ void FProjectCleanerScanner::GetSubFolders(const FString& InFolderPathAbs, TSet<
 
 		SubFolders.Add(FolderAbsPath);
 	}
+}
+
+bool FProjectCleanerScanner::IsProjectScanned() const
+{
+	return bProjectScanned;
 }
 
 bool FProjectCleanerScanner::IsFolderEmpty(const FString& InFolderPathAbs) const

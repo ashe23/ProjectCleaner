@@ -37,11 +37,11 @@ private:
 	void OnTreeViewSearchBoxTextCommitted(const FText& InSearchText, ETextCommit::Type InCommitType);
 	void ToggleExpansionRecursive(TSharedPtr<FProjectCleanerTreeViewItem> Item, const bool bExpanded);
 
+	TSet<TSharedPtr<FProjectCleanerTreeViewItem>> ItemsExpanded;
+	TArray<TSharedPtr<FProjectCleanerTreeViewItem>> ItemsSelected;
 	TSharedPtr<FProjectCleanerScanner> Scanner;
-	TSharedPtr<FProjectCleanerTreeViewItem> LastSelectedItem;
 	TWeakObjectPtr<UProjectCleanerScanSettings> ScanSettings;
 	TArray<TSharedPtr<FProjectCleanerTreeViewItem>> TreeItems;
 	TSharedPtr<STreeView<TSharedPtr<FProjectCleanerTreeViewItem>>> TreeView;
-	TSet<TSharedPtr<FProjectCleanerTreeViewItem>> TreeItemsExpanded;
 	FProjectCleanerDelegatePathChanged DelegatePathChanged;
 };

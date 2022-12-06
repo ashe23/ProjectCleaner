@@ -23,6 +23,7 @@ struct FProjectCleanerScanner
 	void DeleteEmptyFolders();
 	void GetSubFolders(const FString& InFolderPathAbs, TSet<FString>& SubFolders) const;
 
+	bool IsProjectScanned() const;
 	bool IsFolderEmpty(const FString& InFolderPathAbs) const;
 	bool IsFolderExcluded(const FString& InFolderPathAbs) const;
 
@@ -61,6 +62,8 @@ private:
 	static int32 GetNumFor(const FString& InFolderPathAbs, const TArray<FAssetData>& Assets);
 	static int64 GetSizeFor(const FString& InFolderPathAbs, const TArray<FAssetData>& Assets);
 
+	bool bProjectScanned = false;
+	
 	TSet<FString> FoldersEmpty;
 	TSet<FString> FoldersBlacklist;
 
@@ -83,4 +86,5 @@ private:
 	FProjectCleanerDelegateScanFinished DelegateScanFinished;
 	FProjectCleanerDelegateCleanFinished DelegateCleanFinished;
 	FProjectCleanerDelegateEmptyFoldersDeleted DelegateEmptyFoldersDeleted;
+	
 };

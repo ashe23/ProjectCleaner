@@ -28,6 +28,8 @@ private:
 	FReply OnBtnCleanProjectClick() const;
 	FReply OnBtnDeleteEmptyFoldersClick() const;
 
+	FText GetProjectScanStatusText() const;
+
 	TSharedPtr<FProjectCleanerScanner> Scanner;
 	TSharedPtr<IDetailsView> ScanSettingsProperty;
 	TWeakObjectPtr<UProjectCleanerScanSettings> ScanSettings;

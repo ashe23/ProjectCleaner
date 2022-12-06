@@ -21,10 +21,9 @@ void SProjectCleanerTreeView::Construct(const FArguments& InArgs)
 
 	ScanSettings = GetMutableDefault<UProjectCleanerScanSettings>();
 	if (!ScanSettings.IsValid()) return;
-	
+
 	Scanner->OnScanFinished().AddLambda([&]()
 	{
-		UE_LOG(LogProjectCleaner, Warning, TEXT("TreeView: ScanFinished!"))
 		TreeItemsUpdate();
 	});
 
@@ -102,8 +101,6 @@ void SProjectCleanerTreeView::Construct(const FArguments& InArgs)
 
 void SProjectCleanerTreeView::TreeItemsUpdate()
 {
-	if (!Scanner.IsValid()) return;
-
 	if (!TreeView.IsValid())
 	{
 		SAssignNew(TreeView, STreeView<TSharedPtr<FProjectCleanerTreeViewItem>>)
@@ -117,21 +114,35 @@ void SProjectCleanerTreeView::TreeItemsUpdate()
 		.OnExpansionChanged(this, &SProjectCleanerTreeView::OnTreeViewExpansionChange);
 	}
 
+	if (!Scanner.IsValid()) return;
+	if (!Scanner->IsProjectScanned()) return;
+
+	ItemsExpanded.Reset();
+	ItemsSelected.Reset();
+	TreeView->GetExpandedItems(ItemsExpanded);
+	TreeView->GetSelectedItems(ItemsSelected);
+
 	TreeItems.Reset();
 
 	// creating root item
 	const TSharedPtr<FProjectCleanerTreeViewItem> RootTreeItem = TreeItemCreate(FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir()));
 	if (!RootTreeItem) return;
 
-	if (!LastSelectedItem.IsValid())
-	{
-		LastSelectedItem = RootTreeItem;
-	}
-
 	// traversing and filling its child items
 	TArray<TSharedPtr<FProjectCleanerTreeViewItem>> Stack;
 	Stack.Push(RootTreeItem);
 	TreeItems.Add(RootTreeItem);
+
+	if (ItemsExpanded.Num() == 0)
+	{
+		TreeView->SetItemExpansion(RootTreeItem, true);
+	}
+
+	if (ItemsSelected.Num() == 0)
+	{
+		TreeView->SetItemSelection(RootTreeItem, true);
+		TreeView->SetItemHighlighted(RootTreeItem, true);
+	}
 
 	while (Stack.Num() > 0)
 	{
@@ -150,34 +161,7 @@ void SProjectCleanerTreeView::TreeItemsUpdate()
 		}
 	}
 
-	if (TreeView.IsValid())
-	{
-		TreeView->ClearExpandedItems();
-		
-		// we must always expand root item
-		TreeView->SetItemExpansion(RootTreeItem, true);
-
-		if (TreeItemsExpanded.Num() > 0)
-		{
-			for (const auto& Item : TreeItems)
-			{
-				if (TreeItemsExpanded.Contains(Item))
-				{
-					Item->bExpanded = true;
-					TreeView->SetItemExpansion(Item, true);
-				}
-
-				if (LastSelectedItem.IsValid() && Item == LastSelectedItem)
-				{
-					TreeView->SetItemSelection(Item, true);
-				}
-			}
-
-			TreeItemsExpanded.Reset();
-		}
-		
-		TreeView->RequestTreeRefresh();
-	}
+	TreeView->RequestTreeRefresh();
 }
 
 FProjectCleanerDelegatePathChanged& SProjectCleanerTreeView::OnPathChange()
@@ -210,7 +194,27 @@ TSharedPtr<FProjectCleanerTreeViewItem> SProjectCleanerTreeView::TreeItemCreate(
 	TreeItem->PercentUnused = TreeItem->AssetsTotal == 0 ? 0.0f : TreeItem->AssetsUnused * 100.0f / TreeItem->AssetsTotal;
 	TreeItem->PercentUnusedNormalized = FMath::GetMappedRangeValueClamped(FVector2D{0.0f, 100.0f}, FVector2D{0.0f, 1.0f}, TreeItem->PercentUnused);
 	TreeItem->bExpanded = bIsProjectContentFolder;
-	
+
+	for (const auto& ExpandedItem : ItemsExpanded)
+	{
+		if (ExpandedItem->FolderPathAbs.Equals(TreeItem->FolderPathAbs))
+		{
+			TreeItem->bExpanded = true;
+			TreeView->SetItemExpansion(TreeItem, true);
+			break;
+		}
+	}
+
+	for (const auto& SelectedItem : ItemsSelected)
+	{
+		if (SelectedItem->FolderPathAbs.Equals(TreeItem->FolderPathAbs))
+		{
+			TreeView->SetItemSelection(TreeItem, true);
+			TreeView->SetItemHighlighted(TreeItem, true);
+			break;
+		}
+	}
+
 	return TreeItem;
 }
 
@@ -329,8 +333,8 @@ void SProjectCleanerTreeView::OnTreeViewItemMouseDblClick(TSharedPtr<FProjectCle
 
 	ToggleExpansionRecursive(Item, !Item->bExpanded);
 
-	TreeItemsExpanded.Reset();
-	TreeView->GetExpandedItems(TreeItemsExpanded);
+	// TreeItemsExpanded.Reset();
+	// TreeView->GetExpandedItems(TreeItemsExpanded);
 }
 
 void SProjectCleanerTreeView::OnTreeViewGetChildren(TSharedPtr<FProjectCleanerTreeViewItem> Item, TArray<TSharedPtr<FProjectCleanerTreeViewItem>>& OutChildren) const
@@ -344,8 +348,8 @@ void SProjectCleanerTreeView::OnTreeViewSelectionChange(TSharedPtr<FProjectClean
 {
 	if (!Item.IsValid()) return;
 
-	LastSelectedItem.Reset();
-	LastSelectedItem = Item;
+	// LastSelectedItem.Reset();
+	// LastSelectedItem = Item;
 
 	if (DelegatePathChanged.IsBound())
 	{
@@ -362,8 +366,8 @@ void SProjectCleanerTreeView::OnTreeViewExpansionChange(TSharedPtr<FProjectClean
 
 	TreeView->SetItemExpansion(Item, bExpanded);
 
-	TreeItemsExpanded.Reset();
-	TreeView->GetExpandedItems(TreeItemsExpanded);
+	// TreeItemsExpanded.Reset();
+	// TreeView->GetExpandedItems(TreeItemsExpanded);
 }
 
 void SProjectCleanerTreeView::ToggleExpansionRecursive(TSharedPtr<FProjectCleanerTreeViewItem> Item, const bool bExpanded)

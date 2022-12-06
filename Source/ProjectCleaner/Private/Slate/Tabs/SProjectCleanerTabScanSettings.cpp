@@ -101,6 +101,14 @@ void SProjectCleanerTabScanSettings::Construct(const FArguments& InArgs)
 		]
 		+ SVerticalBox::Slot()
 		  .Padding(FMargin{5.0f})
+		  .AutoHeight()
+		[
+			SNew(STextBlock)
+			.Font(FProjectCleanerStyles::GetFont("Bold", 10))
+			.Text_Raw(this, &SProjectCleanerTabScanSettings::GetProjectScanStatusText)
+		]
+		+ SVerticalBox::Slot()
+		  .Padding(FMargin{5.0f})
 		  .FillHeight(1.0f)
 		[
 			SNew(SBox)
@@ -170,4 +178,11 @@ FReply SProjectCleanerTabScanSettings::OnBtnDeleteEmptyFoldersClick() const
 	Scanner->DeleteEmptyFolders();
 
 	return FReply::Handled();
+}
+
+FText SProjectCleanerTabScanSettings::GetProjectScanStatusText() const
+{
+	if (!Scanner.IsValid()) return {};
+
+	return FText::FromString(FString::Printf(TEXT("%s"), Scanner->IsProjectScanned() ? TEXT("") : TEXT("Project not scanned")));
 }
