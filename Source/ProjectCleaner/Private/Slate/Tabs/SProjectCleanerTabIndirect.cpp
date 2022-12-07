@@ -148,7 +148,7 @@ void SProjectCleanerTabIndirect::Construct(const FArguments& InArgs)
 				SNew(STextBlock)
 				.AutoWrapText(true)
 				.Font(FProjectCleanerStyles::GetFont("Light", 8))
-				.Text(FText::FromString(FString::Printf(TEXT("%d item%s"), ListItems.Num(), ListItems.Num() > 1 ? TEXT("s") : TEXT(""))))
+				.Text_Raw(this, &SProjectCleanerTabIndirect::GetTextTotalSize)
 			]
 		]
 	];
@@ -159,6 +159,7 @@ void SProjectCleanerTabIndirect::ListUpdate()
 	if (!Scanner.IsValid()) return;
 
 	ListItems.Reset();
+	TotalSize = UProjectCleanerLibrary::AssetsGetTotalSize(Scanner->GetAssetsIndirect());
 
 	for (const auto& IndirectAsset : Scanner->GetAssetsIndirectAdvanced())
 	{
@@ -358,4 +359,16 @@ void SProjectCleanerTabIndirect::OnListItemDblClick(TSharedPtr<FProjectCleanerIn
 TSharedRef<ITableRow> SProjectCleanerTabIndirect::OnGenerateRow(TSharedPtr<FProjectCleanerIndirectAsset> InItem, const TSharedRef<STableViewBase>& OwnerTable) const
 {
 	return SNew(SProjectCleanerTabIndirectItem, OwnerTable).ListItem(InItem);
+}
+
+FText SProjectCleanerTabIndirect::GetTextTotalSize() const
+{
+	return FText::FromString(
+		FString::Printf(
+			TEXT("%d item%s. Total Size: %s"),
+			ListItems.Num(),
+			ListItems.Num() > 1 ? TEXT("s") : TEXT(""),
+			*FText::AsMemory(TotalSize).ToString()
+		)
+	);
 }

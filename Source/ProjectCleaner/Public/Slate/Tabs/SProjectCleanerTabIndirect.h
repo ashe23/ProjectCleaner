@@ -105,6 +105,7 @@ private:
 		TSharedPtr<FProjectCleanerIndirectAsset> InItem,
 		const TSharedRef<STableViewBase>& OwnerTable
 	) const;
+	FText GetTextTotalSize() const;
 
 	int64 TotalSize = 0;
 	FName ListSortColumn{TEXT("AssetPath")};
