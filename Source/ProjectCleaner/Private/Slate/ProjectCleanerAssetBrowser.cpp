@@ -4,37 +4,33 @@
 #include "ProjectCleanerConstants.h"
 #include "ProjectCleanerStyles.h"
 // Engine Headers
+#include "ProjectCleanerScanner.h"
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "Internationalization/BreakIterator.h"
 #include "Widgets/Input/SSearchBox.h"
 #include "Widgets/Layout/SScrollBox.h"
-#include "Widgets/Views/STileView.h"
+
 
 void SProjectCleanerAssetBrowser::Construct(const FArguments& InArgs)
 {
-	const FAssetRegistryModule& AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
+	Scanner = InArgs._Scanner;
+	if (!Scanner.IsValid()) return;
 
-	AssetThumbnailPool = MakeShareable( new FAssetThumbnailPool(1024, false) );
-
-	FARFilter Filter;
-	Filter.PackagePaths.Add(ProjectCleanerConstants::PathRelRoot);
-	Filter.bRecursivePaths = true;
-
-	TArray<FAssetData> AssetData;
-	AssetRegistryModule.Get().GetAssets(Filter, AssetData);
-
-
-	for (const auto& Asset : AssetData)
+	Scanner.Get()->OnScanFinished().AddLambda([&]()
 	{
-		Items.Add(MakeShareable(new FTestData(Asset)));
-	}
+		UpdateView();
+	});
+
+	AssetThumbnailPool = MakeShareable(new FAssetThumbnailPool(1024, false));
+
+	UpdateView();
 
 	ChildSlot
 	[
 		SNew(SVerticalBox)
 		+ SVerticalBox::Slot()
-		.AutoHeight()
-		.Padding(FMargin{0.0f, 0.0f, 0.0f, 5.0f})
+		  .AutoHeight()
+		  .Padding(FMargin{0.0f, 0.0f, 0.0f, 5.0f})
 		[
 			SNew(SSearchBox)
 			.HintText(FText::FromString(TEXT("Search Assets...")))
@@ -42,8 +38,8 @@ void SProjectCleanerAssetBrowser::Construct(const FArguments& InArgs)
 			// .OnTextCommitted(this, &SProjectCleanerTreeView::OnTreeViewSearchBoxTextCommitted)
 		]
 		+ SVerticalBox::Slot()
-		.AutoHeight()
-		.Padding(FMargin{0.0f, 0.0f, 0.0f, 5.0f})
+		  .AutoHeight()
+		  .Padding(FMargin{0.0f, 0.0f, 0.0f, 5.0f})
 		[
 			SNew(SHorizontalBox)
 			+ SHorizontalBox::Slot()
@@ -107,8 +103,8 @@ void SProjectCleanerAssetBrowser::Construct(const FArguments& InArgs)
 			]
 		]
 		+ SVerticalBox::Slot()
-		.FillHeight(1.0f)
-		.Padding(FMargin{0.0f, 5.0f})
+		  .FillHeight(1.0f)
+		  .Padding(FMargin{0.0f, 5.0f})
 		[
 			SNew(SScrollBox)
 			.ScrollWhenFocusChanges(EScrollWhenFocusChanges::NoScroll)
@@ -116,12 +112,12 @@ void SProjectCleanerAssetBrowser::Construct(const FArguments& InArgs)
 			.AllowOverscroll(EAllowOverscroll::No)
 			+ SScrollBox::Slot()
 			[
-				SNew(STileView< TSharedPtr<FTestData>>)
-					.ItemWidth(100)
-					.ItemHeight(166)
-					.ListItemsSource(&Items)
-					.SelectionMode(ESelectionMode::Multi)
-					.OnGenerateTile(this, &SProjectCleanerAssetBrowser::OnGenerateWidgetForTileView)
+				SAssignNew(ListView, STileView<TSharedPtr<FTestData>>)
+				.ItemWidth(100)
+				.ItemHeight(166)
+				.ListItemsSource(&Items)
+				.SelectionMode(ESelectionMode::Multi)
+				.OnGenerateTile(this, &SProjectCleanerAssetBrowser::OnGenerateWidgetForTileView)
 			]
 		]
 	];
@@ -132,6 +128,25 @@ void SProjectCleanerAssetBrowser::Tick(const FGeometry& AllottedGeometry, const 
 	SCompoundWidget::Tick(AllottedGeometry, InCurrentTime, InDeltaTime);
 
 	AssetThumbnailPool->Tick(InDeltaTime);
+}
+
+void SProjectCleanerAssetBrowser::UpdateView()
+{
+	if (!Scanner.IsValid()) return;
+	if (Scanner->GetAssetsUnused().Num() == 0) return;
+
+	Items.Reset();
+	Items.Reserve(Scanner->GetAssetsUnused().Num());
+
+	for (const auto& Asset : Scanner->GetAssetsUnused())
+	{
+		Items.Add(MakeShareable(new FTestData(Asset)));
+	}
+
+	if (ListView.IsValid())
+	{
+		ListView->RequestListRefresh();
+	}
 }
 
 TSharedRef<ITableRow> SProjectCleanerAssetBrowser::OnGenerateWidgetForTileView(TSharedPtr<FTestData> InItem, const TSharedRef<STableViewBase>& OwnerTable) const

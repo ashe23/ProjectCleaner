@@ -7,6 +7,7 @@
 
 struct FProjectCleanerScanner;
 class SProjectCleanerTreeView;
+class SProjectCleanerAssetBrowser;
 class UProjectCleanerScanSettings;
 
 class SProjectCleanerTabUnused final : public SCompoundWidget
@@ -29,4 +30,5 @@ private:
 	TSharedPtr<FProjectCleanerScanner> Scanner;
 	TWeakObjectPtr<UProjectCleanerScanSettings> ScanSettings;
 	TSharedPtr<SProjectCleanerTreeView> ProjectCleanerTreeView;
+	TSharedPtr<SProjectCleanerAssetBrowser> ProjectCleanerAssetBrowser;
 };

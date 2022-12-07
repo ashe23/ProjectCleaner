@@ -48,7 +48,12 @@ void SProjectCleanerTabUnused::UpdateView()
 		{
 			SelectedPaths.Reset();
 			SelectedPaths.Append(InSelectedPaths);
-			UpdateView();
+
+			if (ProjectCleanerAssetBrowser.IsValid())
+			{
+				ProjectCleanerAssetBrowser.Get()->UpdateView();
+			}
+			// UpdateView();
 			UE_LOG(LogProjectCleaner, Warning, TEXT("Selected Paths Num: %d"), SelectedPaths.Num());
 		});
 
@@ -221,7 +226,8 @@ void SProjectCleanerTabUnused::UpdateView()
 				  .Padding(FMargin{0.0f, 5.0f})
 				  .FillHeight(1.0f)
 				[
-					SNew(SProjectCleanerAssetBrowser)
+					SAssignNew(ProjectCleanerAssetBrowser, SProjectCleanerAssetBrowser)
+					.Scanner(Scanner)
 					// ModuleContentBrowser.Get().CreateAssetPicker(AssetPickerConfig)
 				]
 			]
