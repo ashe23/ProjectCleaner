@@ -22,13 +22,18 @@ public:
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
-	void TreeItemsUpdate();
-	FProjectCleanerDelegatePathChanged& OnPathChange();
+	FProjectCleanerDelegatePathSelected& OnPathSelected();
+	FProjectCleanerDelegatePathExcluded& OnPathExcluded();
+	FProjectCleanerDelegatePathIncluded& OnPathIncluded();
+	FProjectCleanerDelegatePathCleaned& OnPathCleaned();
 private:
+	void TreeItemsUpdate();
 	TSharedPtr<FProjectCleanerTreeViewItem> TreeItemCreate(const FString& InDirPathAbs) const;
-
 	TSharedRef<ITableRow> OnTreeViewGenerateRow(TSharedPtr<FProjectCleanerTreeViewItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const;
 	TSharedRef<SHeaderRow> GetTreeViewHeaderRow() const;
+	TSharedRef<SWidget> GetTreeViewOptionsBtnContent() const;
+	FSlateColor GetTreeViewOptionsBtnForegroundColor() const;
+
 	void OnTreeViewItemMouseDblClick(TSharedPtr<FProjectCleanerTreeViewItem> Item);
 	void OnTreeViewGetChildren(TSharedPtr<FProjectCleanerTreeViewItem> Item, TArray<TSharedPtr<FProjectCleanerTreeViewItem>>& OutChildren) const;
 	void OnTreeViewSelectionChange(TSharedPtr<FProjectCleanerTreeViewItem> Item, ESelectInfo::Type SelectType);
@@ -37,11 +42,17 @@ private:
 	void OnTreeViewSearchBoxTextCommitted(const FText& InSearchText, ETextCommit::Type InCommitType);
 	void ToggleExpansionRecursive(TSharedPtr<FProjectCleanerTreeViewItem> Item, const bool bExpanded);
 
+	
 	TSet<TSharedPtr<FProjectCleanerTreeViewItem>> ItemsExpanded;
 	TArray<TSharedPtr<FProjectCleanerTreeViewItem>> ItemsSelected;
+	TSharedPtr<SComboButton> ViewOptionsComboButton;
 	TSharedPtr<FProjectCleanerScanner> Scanner;
 	TWeakObjectPtr<UProjectCleanerScanSettings> ScanSettings;
 	TArray<TSharedPtr<FProjectCleanerTreeViewItem>> TreeItems;
 	TSharedPtr<STreeView<TSharedPtr<FProjectCleanerTreeViewItem>>> TreeView;
-	FProjectCleanerDelegatePathChanged DelegatePathChanged;
+
+	FProjectCleanerDelegatePathSelected DelegatePathSelected;
+	FProjectCleanerDelegatePathExcluded DelegatePathExcluded;
+	FProjectCleanerDelegatePathIncluded DelegatePathIncluded;
+	FProjectCleanerDelegatePathCleaned DelegatePathCleaned;
 };

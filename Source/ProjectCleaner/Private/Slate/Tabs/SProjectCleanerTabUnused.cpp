@@ -5,7 +5,7 @@
 #include "ProjectCleaner.h"
 #include "ProjectCleanerScanner.h"
 #include "ProjectCleanerConstants.h"
-// #include "ProjectCleanerScanSettings.h"
+#include "ProjectCleanerScanSettings.h"
 // Engine Headers
 // #include "ContentBrowserModule.h"
 // #include "ContentBrowserItem.h"
@@ -18,16 +18,16 @@ void SProjectCleanerTabUnused::Construct(const FArguments& InArgs)
 {
 	Scanner = InArgs._Scanner;
 	if (!Scanner.IsValid()) return;
-	
-	// ScanSettings = GetDefault<UProjectCleanerScanSettings>();
-	// if (!ScanSettings.IsValid()) return;
 
-	Scanner->OnScanFinished().AddLambda([]()
+	ScanSettings = GetMutableDefault<UProjectCleanerScanSettings>();
+	if (!ScanSettings.IsValid()) return;
+
+	Scanner->OnScanFinished().AddLambda([&]()
 	{
-		UE_LOG(LogProjectCleaner, Warning, TEXT("TabUnused: Scan Finished delegate called!"));
+		UpdateView();
 	});
 
-	PathSelected = ProjectCleanerConstants::PathRelRoot.ToString();
+	SelectedPaths.Add(ProjectCleanerConstants::PathRelRoot.ToString());
 
 	UpdateView();
 }
@@ -35,24 +35,26 @@ void SProjectCleanerTabUnused::Construct(const FArguments& InArgs)
 void SProjectCleanerTabUnused::UpdateView()
 {
 	if (!Scanner.IsValid()) return;
-	
-	// if (!ScanSettings.IsValid() || !Scanner.IsValid()) return;
+	if (!ScanSettings.IsValid()) return;
+	if (Scanner->GetScannerDataState() != EProjectCleanerScannerDataState::Actual) return;
 
 	// making sure tree view is valid
-	if (!ProjectCleanerTreeView)
+	if (!ProjectCleanerTreeView.IsValid())
 	{
 		SAssignNew(ProjectCleanerTreeView, SProjectCleanerTreeView).Scanner(Scanner);
 
-		ProjectCleanerTreeView->OnPathChange().AddLambda([&](const FString& InFolderPathRel)
+		ProjectCleanerTreeView->OnPathSelected().AddLambda([&](const TSet<FString>& InSelectedPaths)
 		{
-			PathSelected = InFolderPathRel;
-			UE_LOG(LogProjectCleaner, Warning, TEXT("Path Changed To: %s"), *InFolderPathRel);
-			// UpdateView();
+			SelectedPaths.Reset();
+			SelectedPaths.Append(InSelectedPaths);
+			UE_LOG(LogProjectCleaner, Warning, TEXT("Selected Paths Num: %d"), SelectedPaths.Num());
 		});
 	}
 
+	// creating asset view
+
 	// ProjectCleanerTreeView->TreeItemsUpdate();
-	
+
 	// const FContentBrowserModule& ModuleContentBrowser = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
 	//
 	// class FFrontendFilter_ProjectCleaner : public FFrontendFilter

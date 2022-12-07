@@ -96,6 +96,35 @@ void SProjectCleanerTreeView::Construct(const FArguments& InArgs)
 				TreeView.ToSharedRef()
 			]
 		]
+		+ SVerticalBox::Slot()
+		  .AutoHeight()
+		  .HAlign(HAlign_Right)
+		  .VAlign(VAlign_Center)
+		  .Padding(FMargin{0.0f, 5.0f})
+		[
+			SNew(SComboButton)
+			.ContentPadding(0)
+			.ForegroundColor_Raw(this, &SProjectCleanerTreeView::GetTreeViewOptionsBtnForegroundColor)
+			.ButtonStyle(FEditorStyle::Get(), "ToggleButton")
+			.OnGetMenuContent(this, &SProjectCleanerTreeView::GetTreeViewOptionsBtnContent)
+			.ButtonContent()
+			[
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot()
+				  .AutoWidth()
+				  .VAlign(VAlign_Center)
+				[
+					SNew(SImage).Image(FEditorStyle::GetBrush("GenericViewButton"))
+				]
+				+ SHorizontalBox::Slot()
+				  .AutoWidth()
+				  .Padding(2, 0, 0, 0)
+				  .VAlign(VAlign_Center)
+				[
+					SNew(STextBlock).Text(FText::FromString(TEXT("View Options")))
+				]
+			]
+		]
 	];
 }
 
@@ -117,10 +146,12 @@ void SProjectCleanerTreeView::TreeItemsUpdate()
 	if (!Scanner.IsValid()) return;
 	if (Scanner->GetScannerDataState() != EProjectCleanerScannerDataState::Actual) return;
 
+	// caching expanded and selected items in order to keep them , when we updating data
 	ItemsExpanded.Reset();
 	ItemsSelected.Reset();
 	TreeView->GetExpandedItems(ItemsExpanded);
 	TreeView->GetSelectedItems(ItemsSelected);
+	TreeView->ClearHighlightedItems();
 
 	TreeItems.Reset();
 
@@ -141,7 +172,6 @@ void SProjectCleanerTreeView::TreeItemsUpdate()
 	if (ItemsSelected.Num() == 0)
 	{
 		TreeView->SetItemSelection(RootTreeItem, true);
-		TreeView->SetItemHighlighted(RootTreeItem, true);
 	}
 
 	while (Stack.Num() > 0)
@@ -164,9 +194,24 @@ void SProjectCleanerTreeView::TreeItemsUpdate()
 	TreeView->RequestTreeRefresh();
 }
 
-FProjectCleanerDelegatePathChanged& SProjectCleanerTreeView::OnPathChange()
+FProjectCleanerDelegatePathSelected& SProjectCleanerTreeView::OnPathSelected()
 {
-	return DelegatePathChanged;
+	return DelegatePathSelected;
+}
+
+FProjectCleanerDelegatePathExcluded& SProjectCleanerTreeView::OnPathExcluded()
+{
+	return DelegatePathExcluded;
+}
+
+FProjectCleanerDelegatePathIncluded& SProjectCleanerTreeView::OnPathIncluded()
+{
+	return DelegatePathIncluded;
+}
+
+FProjectCleanerDelegatePathCleaned& SProjectCleanerTreeView::OnPathCleaned()
+{
+	return DelegatePathCleaned;
 }
 
 TSharedPtr<FProjectCleanerTreeViewItem> SProjectCleanerTreeView::TreeItemCreate(const FString& InFolderPathAbs) const
@@ -312,6 +357,126 @@ TSharedRef<SHeaderRow> SProjectCleanerTreeView::GetTreeViewHeaderRow() const
 		];
 }
 
+TSharedRef<SWidget> SProjectCleanerTreeView::GetTreeViewOptionsBtnContent() const
+{
+	const TSharedPtr<FExtender> Extender;
+	FMenuBuilder MenuBuilder(true, nullptr, Extender, true);
+	MenuBuilder.AddMenuSeparator(NAME_None);
+	MenuBuilder.AddMenuEntry(
+		FText::FromString(TEXT("Show Lines")),
+		FText::FromString(TEXT("Show Lines in tree view")),
+		FSlateIcon(),
+		FUIAction(
+			FExecuteAction::CreateLambda([&]
+			{
+				if (!ViewOptionsComboButton.IsValid()) return;
+
+				ViewOptionsComboButton->SetEnabled(!ViewOptionsComboButton->IsEnabled());
+				UE_LOG(LogProjectCleaner, Warning, TEXT("Show lines btn clicked"));
+			}),
+			FCanExecuteAction::CreateLambda([] { return true; })
+			// FIsActionChecked::CreateSP(this, &SOutputLog::IsWordWrapEnabled)
+		),
+		NAME_None,
+		EUserInterfaceActionType::ToggleButton
+	);
+	MenuBuilder.AddMenuSeparator(NAME_None);
+	MenuBuilder.AddMenuEntry(
+		FText::FromString(TEXT("Show Empty Folders")),
+		FText::FromString(TEXT("Show Empty Folders in tree view")),
+		FSlateIcon(),
+		FUIAction(
+			FExecuteAction::CreateLambda([&]
+			{
+				// if (!ViewOptionsComboButton.IsValid()) return;
+				//
+				// ViewOptionsComboButton->SetEnabled(!ViewOptionsComboButton->IsEnabled());
+				UE_LOG(LogProjectCleaner, Warning, TEXT("Show empty folders btn clicked"));
+				// This is a toggle, hence that it is inverted
+				// SetWordWrapEnabled(IsWordWrapEnabled() ? ECheckBoxState::Unchecked : ECheckBoxState::Checked);
+			}),
+			FCanExecuteAction::CreateLambda([] { return true; })
+			// FIsActionChecked::CreateSP(this, &SOutputLog::IsWordWrapEnabled)
+		),
+		NAME_None,
+		EUserInterfaceActionType::ToggleButton
+	);
+	MenuBuilder.AddMenuEntry(
+		FText::FromString(TEXT("Show Excluded Folders")),
+		FText::FromString(TEXT("Show Excluded Folders in tree view")),
+		FSlateIcon(),
+		FUIAction(
+			FExecuteAction::CreateLambda([&]
+			{
+				// if (!ViewOptionsComboButton.IsValid()) return;
+				//
+				// ViewOptionsComboButton->SetEnabled(!ViewOptionsComboButton->IsEnabled());
+				UE_LOG(LogProjectCleaner, Warning, TEXT("Show Excluded folders btn clicked"));
+				// This is a toggle, hence that it is inverted
+				// SetWordWrapEnabled(IsWordWrapEnabled() ? ECheckBoxState::Unchecked : ECheckBoxState::Checked);
+			}),
+			FCanExecuteAction::CreateLambda([] { return true; })
+			// FIsActionChecked::CreateSP(this, &SOutputLog::IsWordWrapEnabled)
+		),
+		NAME_None,
+		EUserInterfaceActionType::ToggleButton
+	);
+
+	MenuBuilder.AddMenuEntry(
+		FText::FromString(TEXT("Show Folders NonEngine")),
+		FText::FromString(TEXT("Show Folders that contains non engine files in it")),
+		FSlateIcon(),
+		FUIAction(
+			FExecuteAction::CreateLambda([&]
+			{
+				// if (!ViewOptionsComboButton.IsValid()) return;
+				//
+				// ViewOptionsComboButton->SetEnabled(!ViewOptionsComboButton->IsEnabled());
+				UE_LOG(LogProjectCleaner, Warning, TEXT("Show NonEngine folders btn clicked"));
+				// This is a toggle, hence that it is inverted
+				// SetWordWrapEnabled(IsWordWrapEnabled() ? ECheckBoxState::Unchecked : ECheckBoxState::Checked);
+			}),
+			FCanExecuteAction::CreateLambda([] { return true; })
+			// FIsActionChecked::CreateSP(this, &SOutputLog::IsWordWrapEnabled)
+		),
+		NAME_None,
+		EUserInterfaceActionType::ToggleButton
+	);
+
+	MenuBuilder.AddMenuEntry(
+		FText::FromString(TEXT("Show Folders Corrupted")),
+		FText::FromString(TEXT("Show Folders that contains corrupted files in it")),
+		FSlateIcon(),
+		FUIAction(
+			FExecuteAction::CreateLambda([&]
+			{
+				// if (!ViewOptionsComboButton.IsValid()) return;
+				//
+				// ViewOptionsComboButton->SetEnabled(!ViewOptionsComboButton->IsEnabled());
+				UE_LOG(LogProjectCleaner, Warning, TEXT("Show Corrupted folders btn clicked"));
+				// This is a toggle, hence that it is inverted
+				// SetWordWrapEnabled(IsWordWrapEnabled() ? ECheckBoxState::Unchecked : ECheckBoxState::Checked);
+			}),
+			FCanExecuteAction::CreateLambda([] { return true; })
+			// FIsActionChecked::CreateSP(this, &SOutputLog::IsWordWrapEnabled)
+		),
+		NAME_None,
+		EUserInterfaceActionType::ToggleButton
+	);
+
+	return MenuBuilder.MakeWidget();
+}
+
+FSlateColor SProjectCleanerTreeView::GetTreeViewOptionsBtnForegroundColor() const
+{
+	static const FName InvertedForegroundName("InvertedForeground");
+	static const FName DefaultForegroundName("DefaultForeground");
+
+	if (!ViewOptionsComboButton.IsValid()) return FEditorStyle::GetSlateColor(DefaultForegroundName);
+
+	return ViewOptionsComboButton->IsHovered() ? FEditorStyle::GetSlateColor(InvertedForegroundName) : FEditorStyle::GetSlateColor(DefaultForegroundName);
+}
+
 void SProjectCleanerTreeView::OnTreeViewSearchBoxTextChanged(const FText& InSearchText)
 {
 	UE_LOG(LogProjectCleaner, Warning, TEXT("Search Text Changed: %s"), *InSearchText.ToString());
@@ -332,9 +497,6 @@ void SProjectCleanerTreeView::OnTreeViewItemMouseDblClick(TSharedPtr<FProjectCle
 	if (!Item.IsValid()) return;
 
 	ToggleExpansionRecursive(Item, !Item->bExpanded);
-
-	// TreeItemsExpanded.Reset();
-	// TreeView->GetExpandedItems(TreeItemsExpanded);
 }
 
 void SProjectCleanerTreeView::OnTreeViewGetChildren(TSharedPtr<FProjectCleanerTreeViewItem> Item, TArray<TSharedPtr<FProjectCleanerTreeViewItem>>& OutChildren) const
@@ -348,12 +510,18 @@ void SProjectCleanerTreeView::OnTreeViewSelectionChange(TSharedPtr<FProjectClean
 {
 	if (!Item.IsValid()) return;
 
-	// LastSelectedItem.Reset();
-	// LastSelectedItem = Item;
-
-	if (DelegatePathChanged.IsBound())
+	// todo:ashe23 optimize this, callback called multiple times, because of tree items update
+	const auto SelectedItems = TreeView->GetSelectedItems();
+	TSet<FString> SelectedPaths;
+	SelectedPaths.Reserve(SelectedItems.Num());
+	for (const auto& SelectedItem : SelectedItems)
 	{
-		DelegatePathChanged.Broadcast(Item->FolderPathRel);
+		SelectedPaths.Add(SelectedItem->FolderPathRel);
+	}
+
+	if (DelegatePathSelected.IsBound())
+	{
+		DelegatePathSelected.Broadcast(SelectedPaths);
 	}
 }
 
@@ -365,9 +533,6 @@ void SProjectCleanerTreeView::OnTreeViewExpansionChange(TSharedPtr<FProjectClean
 	Item->bExpanded = bExpanded;
 
 	TreeView->SetItemExpansion(Item, bExpanded);
-
-	// TreeItemsExpanded.Reset();
-	// TreeView->GetExpandedItems(TreeItemsExpanded);
 }
 
 void SProjectCleanerTreeView::ToggleExpansionRecursive(TSharedPtr<FProjectCleanerTreeViewItem> Item, const bool bExpanded)

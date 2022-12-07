@@ -23,8 +23,8 @@ public:
 private:
 	void UpdateView();
 
-	FString PathSelected;
+	TSet<FString> SelectedPaths;
 	TSharedPtr<FProjectCleanerScanner> Scanner;
-	// const TWeakObjectPtr<UProjectCleanerScanSettings> ScanSettings;
+	TWeakObjectPtr<UProjectCleanerScanSettings> ScanSettings;
 	TSharedPtr<SProjectCleanerTreeView> ProjectCleanerTreeView;
 };

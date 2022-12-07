@@ -11,10 +11,10 @@ DECLARE_MULTICAST_DELEGATE(FProjectCleanerDelegateCleanFinished);
 DECLARE_MULTICAST_DELEGATE(FProjectCleanerDelegateEmptyFoldersDeleted);
 
 // STreeView
-DECLARE_MULTICAST_DELEGATE_OneParam(FProjectCleanerDelegatePathChanged, const FString& PathRel);
-DECLARE_MULTICAST_DELEGATE_OneParam(FProjectCleanerDelegatePathExcluded, const FString& PathRel);
-DECLARE_MULTICAST_DELEGATE_OneParam(FProjectCleanerDelegatePathIncluded, const FString& PathRel);
-DECLARE_MULTICAST_DELEGATE_OneParam(FProjectCleanerDelegatePathCleaned, const FString& PathRel);
+DECLARE_MULTICAST_DELEGATE_OneParam(FProjectCleanerDelegatePathSelected, const TSet<FString>& SelectedPaths);
+DECLARE_MULTICAST_DELEGATE_OneParam(FProjectCleanerDelegatePathExcluded, const TSet<FString>& ExcludedPaths);
+DECLARE_MULTICAST_DELEGATE_OneParam(FProjectCleanerDelegatePathIncluded, const TSet<FString>& IncludedPaths);
+DECLARE_MULTICAST_DELEGATE_OneParam(FProjectCleanerDelegatePathCleaned, const TSet<FString>& CleanedPaths);
 
 // ContentBrowser
 DECLARE_MULTICAST_DELEGATE_OneParam(FProjectCleanerDelegateAssetsDeleted, const TArray<FAssetData>& Assets);

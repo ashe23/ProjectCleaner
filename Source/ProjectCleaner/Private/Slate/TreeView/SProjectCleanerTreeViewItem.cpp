@@ -20,6 +20,8 @@ void SProjectCleanerTreeViewItem::Construct(const FArguments& InArgs, const TSha
 
 TSharedRef<SWidget> SProjectCleanerTreeViewItem::GenerateWidgetForColumn(const FName& InColumnName)
 {
+	// todo:ashe23 expander must be toggle configurable
+	
 	if (InColumnName.IsEqual(TEXT("Name")))
 	{
 		return
