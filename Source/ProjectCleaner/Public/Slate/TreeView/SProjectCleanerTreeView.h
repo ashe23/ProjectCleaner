@@ -30,6 +30,7 @@ private:
 	void TreeItemsUpdate();
 	TSharedPtr<FProjectCleanerTreeViewItem> TreeItemCreate(const FString& InDirPathAbs) const;
 	TSharedRef<ITableRow> OnTreeViewGenerateRow(TSharedPtr<FProjectCleanerTreeViewItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const;
+	TSharedPtr<SWidget> GetTreeItemContextMenu() const;
 	TSharedRef<SHeaderRow> GetTreeViewHeaderRow() const;
 	TSharedRef<SWidget> GetTreeViewOptionsBtnContent() const;
 	FSlateColor GetTreeViewOptionsBtnForegroundColor() const;
@@ -42,7 +43,7 @@ private:
 	void OnTreeViewSearchBoxTextCommitted(const FText& InSearchText, ETextCommit::Type InCommitType);
 	void ToggleExpansionRecursive(TSharedPtr<FProjectCleanerTreeViewItem> Item, const bool bExpanded);
 
-	
+	TSharedPtr<FUICommandList> Cmds;
 	TSet<TSharedPtr<FProjectCleanerTreeViewItem>> ItemsExpanded;
 	TArray<TSharedPtr<FProjectCleanerTreeViewItem>> ItemsSelected;
 	TSharedPtr<SComboButton> ViewOptionsComboButton;

@@ -43,7 +43,7 @@ void FProjectCleanerCmds::RegisterCommands()
 		EUserInterfaceActionType::Button,
 		FInputChord()
 	);
-	
+
 
 	UI_COMMAND(
 		TabIndirectNavigateInContentBrowser,
@@ -60,7 +60,7 @@ void FProjectCleanerCmds::RegisterCommands()
 		EUserInterfaceActionType::Button,
 		FInputChord()
 	);
-	
+
 	UI_COMMAND(
 		TabIndirectOpenAsset,
 		"Open Asset",
@@ -70,60 +70,76 @@ void FProjectCleanerCmds::RegisterCommands()
 	);
 
 	UI_COMMAND(
-		OpenDocs,
-		"Documentation",
-		"Open ProjectCleaner documentation page on github",
+		TabUnusedPathExclude,
+		"Exclude",
+		"Exclude path from scanning",
 		EUserInterfaceActionType::Button,
 		FInputChord()
 	);
 
 	UI_COMMAND(
-		DeleteAsset,
-		"Delete Asset",
-		"Delete selected assets",
+		TabUnusedPathInclude,
+		"Include",
+		"Remove path from excluded list",
 		EUserInterfaceActionType::Button,
 		FInputChord()
 	);
 
 	UI_COMMAND(
-		IncludeAsset,
-		"Include Asset",
-		"Include selected assets to deletion list",
+		TabUnusedPathClean,
+		"Clean",
+		"Remove all unused assets in this path",
 		EUserInterfaceActionType::Button,
 		FInputChord()
 	);
 
-	UI_COMMAND(
-		IncludePath,
-		"Include Assets in path",
-		"Include all assets in selected path",
-		EUserInterfaceActionType::Button,
-		FInputChord()
-	);
-
-	UI_COMMAND(
-		ExcludeAsset,
-		"Exclude Assets",
-		"Exclude selected assets from deletion list",
-		EUserInterfaceActionType::Button,
-		FInputChord()
-	);
-
-	UI_COMMAND(
-		ExcludeByType,
-		"Exclude Assets of this type",
-		"Excludes all assets of this type",
-		EUserInterfaceActionType::Button,
-		FInputChord()
-	);
-
-	UI_COMMAND(
-		ExcludePath,
-		"Exclude Assets in path",
-		"Excludes all assets in selected path",
-		EUserInterfaceActionType::Button,
-		FInputChord()
-	);
+	// UI_COMMAND(
+	// 	DeleteAsset,
+	// 	"Delete Asset",
+	// 	"Delete selected assets",
+	// 	EUserInterfaceActionType::Button,
+	// 	FInputChord()
+	// );
+	//
+	// UI_COMMAND(
+	// 	IncludeAsset,
+	// 	"Include Asset",
+	// 	"Include selected assets to deletion list",
+	// 	EUserInterfaceActionType::Button,
+	// 	FInputChord()
+	// );
+	//
+	// UI_COMMAND(
+	// 	IncludePath,
+	// 	"Include Assets in path",
+	// 	"Include all assets in selected path",
+	// 	EUserInterfaceActionType::Button,
+	// 	FInputChord()
+	// );
+	//
+	// UI_COMMAND(
+	// 	ExcludeAsset,
+	// 	"Exclude Assets",
+	// 	"Exclude selected assets from deletion list",
+	// 	EUserInterfaceActionType::Button,
+	// 	FInputChord()
+	// );
+	//
+	// UI_COMMAND(
+	// 	ExcludeByType,
+	// 	"Exclude Assets of this type",
+	// 	"Excludes all assets of this type",
+	// 	EUserInterfaceActionType::Button,
+	// 	FInputChord()
+	// );
+	//
+	// UI_COMMAND(
+	// 	ExcludePath,
+	// 	"Exclude Assets in path",
+	// 	"Excludes all assets in selected path",
+	// 	EUserInterfaceActionType::Button,
+	// 	FInputChord()
+	// );
 }
 
 #undef LOCTEXT_NAMESPACE

@@ -10,6 +10,7 @@
 #include "ProjectCleanerConstants.h"
 #include "ProjectCleanerScanSettings.h"
 // Engine Headers
+#include "ProjectCleanerCmds.h"
 #include "Widgets/Input/SSearchBox.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SSeparator.h"
@@ -21,6 +22,35 @@ void SProjectCleanerTreeView::Construct(const FArguments& InArgs)
 
 	ScanSettings = GetMutableDefault<UProjectCleanerScanSettings>();
 	if (!ScanSettings.IsValid()) return;
+
+	Cmds = MakeShareable(new FUICommandList);
+	Cmds->MapAction(
+		FProjectCleanerCmds::Get().TabUnusedPathExclude,
+		FUIAction(
+			FExecuteAction::CreateLambda([&]()
+			{
+				UE_LOG(LogProjectCleaner, Warning, TEXT("Excluding paths"));
+			})
+		)
+	);
+	Cmds->MapAction(
+		FProjectCleanerCmds::Get().TabUnusedPathInclude,
+		FUIAction(
+			FExecuteAction::CreateLambda([&]()
+			{
+				UE_LOG(LogProjectCleaner, Warning, TEXT("Including paths"));
+			})
+		)
+	);
+	Cmds->MapAction(
+		FProjectCleanerCmds::Get().TabUnusedPathClean,
+		FUIAction(
+			FExecuteAction::CreateLambda([&]()
+			{
+				UE_LOG(LogProjectCleaner, Warning, TEXT("Cleaning paths"));
+			})
+		)
+	);
 
 	Scanner->OnScanFinished().AddLambda([&]()
 	{
@@ -137,6 +167,7 @@ void SProjectCleanerTreeView::TreeItemsUpdate()
 		.SelectionMode(ESelectionMode::Multi)
 		.OnGenerateRow(this, &SProjectCleanerTreeView::OnTreeViewGenerateRow)
 		.OnGetChildren(this, &SProjectCleanerTreeView::OnTreeViewGetChildren)
+		.OnContextMenuOpening_Raw(this, &SProjectCleanerTreeView::GetTreeItemContextMenu)
 		.HeaderRow(GetTreeViewHeaderRow())
 		.OnMouseButtonDoubleClick(this, &SProjectCleanerTreeView::OnTreeViewItemMouseDblClick)
 		.OnSelectionChanged(this, &SProjectCleanerTreeView::OnTreeViewSelectionChange)
@@ -490,6 +521,20 @@ void SProjectCleanerTreeView::OnTreeViewSearchBoxTextCommitted(const FText& InSe
 TSharedRef<ITableRow> SProjectCleanerTreeView::OnTreeViewGenerateRow(TSharedPtr<FProjectCleanerTreeViewItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const
 {
 	return SNew(SProjectCleanerTreeViewItem, OwnerTable).TreeItem(Item);
+}
+
+TSharedPtr<SWidget> SProjectCleanerTreeView::GetTreeItemContextMenu() const
+{
+	FMenuBuilder MenuBuilder{true, Cmds};
+	MenuBuilder.BeginSection(TEXT("Actions"), FText::FromString(TEXT("Path Actions")));
+	{
+		MenuBuilder.AddMenuEntry(FProjectCleanerCmds::Get().TabUnusedPathExclude);
+		MenuBuilder.AddMenuEntry(FProjectCleanerCmds::Get().TabUnusedPathInclude);
+		MenuBuilder.AddMenuEntry(FProjectCleanerCmds::Get().TabUnusedPathClean);
+	}
+	MenuBuilder.EndSection();
+
+	return MenuBuilder.MakeWidget();
 }
 
 void SProjectCleanerTreeView::OnTreeViewItemMouseDblClick(TSharedPtr<FProjectCleanerTreeViewItem> Item)
