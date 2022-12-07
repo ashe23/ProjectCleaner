@@ -97,15 +97,12 @@ public:
 private:
 	void ListUpdate();
 	void ListSort();
+	void OnListItemDblClick(TSharedPtr<FProjectCleanerIndirectAsset> Item) const;
 	void OnListSort(EColumnSortPriority::Type SortPriority, const FName& Name, EColumnSortMode::Type SortMode);
 	TSharedPtr<SHeaderRow> GetListHeaderRow();
 	TSharedPtr<SWidget> OnListContextMenu() const;
-	void OnListItemDblClick(TSharedPtr<FProjectCleanerIndirectAsset> Item) const;
-	TSharedRef<ITableRow> OnGenerateRow(
-		TSharedPtr<FProjectCleanerIndirectAsset> InItem,
-		const TSharedRef<STableViewBase>& OwnerTable
-	) const;
-	FText GetTextTotalSize() const;
+	TSharedRef<ITableRow> OnListGenerateRow(TSharedPtr<FProjectCleanerIndirectAsset> InItem, const TSharedRef<STableViewBase>& OwnerTable) const;
+	FText GetListTextSummary() const;
 
 	int64 TotalSize = 0;
 	FName ListSortColumn{TEXT("AssetPath")};

@@ -55,6 +55,9 @@ void SProjectCleanerTabIndirect::Construct(const FArguments& InArgs)
 
 				for (const auto& Item : SelectedItems)
 				{
+					if (!Item.IsValid()) continue;
+					if (!Item->AssetData.IsValid()) continue;
+
 					Assets.Add(Item->AssetData.GetAsset());
 				}
 
@@ -148,7 +151,7 @@ void SProjectCleanerTabIndirect::Construct(const FArguments& InArgs)
 				SNew(STextBlock)
 				.AutoWrapText(true)
 				.Font(FProjectCleanerStyles::GetFont("Light", 8))
-				.Text_Raw(this, &SProjectCleanerTabIndirect::GetTextTotalSize)
+				.Text_Raw(this, &SProjectCleanerTabIndirect::GetListTextSummary)
 			]
 		]
 	];
@@ -158,36 +161,35 @@ void SProjectCleanerTabIndirect::ListUpdate()
 {
 	if (!Scanner.IsValid()) return;
 
-	ListItems.Reset();
-	TotalSize = UProjectCleanerLibrary::AssetsGetTotalSize(Scanner->GetAssetsIndirect());
-
-	for (const auto& IndirectAsset : Scanner->GetAssetsIndirectAdvanced())
-	{
-		const TSharedPtr<FProjectCleanerIndirectAsset> NewItem = MakeShareable(new FProjectCleanerIndirectAsset);
-		if (!NewItem) continue;
-
-		NewItem->AssetData = IndirectAsset.AssetData;
-		NewItem->FilePath = IndirectAsset.FilePath;
-		NewItem->LineNum = IndirectAsset.LineNum;
-		ListItems.Add(NewItem);
-	}
-
-	if (!ListView)
+	if (!ListView.IsValid())
 	{
 		SAssignNew(ListView, SListView<TSharedPtr<FProjectCleanerIndirectAsset>>)
 		.ListItemsSource(&ListItems)
 		.SelectionMode(ESelectionMode::SingleToggle)
-		.OnGenerateRow(this, &SProjectCleanerTabIndirect::OnGenerateRow)
+		.OnGenerateRow(this, &SProjectCleanerTabIndirect::OnListGenerateRow)
 		.OnMouseButtonDoubleClick_Raw(this, &SProjectCleanerTabIndirect::OnListItemDblClick)
 		.OnContextMenuOpening_Raw(this, &SProjectCleanerTabIndirect::OnListContextMenu)
 		.HeaderRow(GetListHeaderRow());
 	}
 
-	if (ListView)
+	if (Scanner->GetScannerDataState() == EProjectCleanerScannerDataState::Actual)
 	{
-		ListView->RequestListRefresh();
+		ListItems.Reset();
+		TotalSize = UProjectCleanerLibrary::AssetsGetTotalSize(Scanner->GetAssetsIndirect());
+
+		for (const auto& IndirectAsset : Scanner->GetAssetsIndirectAdvanced())
+		{
+			const TSharedPtr<FProjectCleanerIndirectAsset> NewItem = MakeShareable(new FProjectCleanerIndirectAsset);
+			if (!NewItem) continue;
+
+			NewItem->AssetData = IndirectAsset.AssetData;
+			NewItem->FilePath = IndirectAsset.FilePath;
+			NewItem->LineNum = IndirectAsset.LineNum;
+			ListItems.Add(NewItem);
+		}
 	}
 
+	ListView->RequestListRefresh();
 	ListSort();
 }
 
@@ -246,6 +248,16 @@ void SProjectCleanerTabIndirect::ListSort()
 			}
 		);
 	}
+}
+
+void SProjectCleanerTabIndirect::OnListItemDblClick(TSharedPtr<FProjectCleanerIndirectAsset> Item) const
+{
+	if (!Item.IsValid()) return;
+
+	const FString DirPath = FPaths::GetPath(Item->FilePath);
+	if (!FPaths::DirectoryExists(DirPath)) return;
+
+	FPlatformProcess::ExploreFolder(*DirPath);
 }
 
 void SProjectCleanerTabIndirect::OnListSort(EColumnSortPriority::Type SortPriority, const FName& Name, EColumnSortMode::Type SortMode)
@@ -346,22 +358,12 @@ TSharedPtr<SWidget> SProjectCleanerTabIndirect::OnListContextMenu() const
 	return MenuBuilder.MakeWidget();
 }
 
-void SProjectCleanerTabIndirect::OnListItemDblClick(TSharedPtr<FProjectCleanerIndirectAsset> Item) const
-{
-	if (!Item.IsValid()) return;
-
-	const FString DirPath = FPaths::GetPath(Item->FilePath);
-	if (!FPaths::DirectoryExists(DirPath)) return;
-
-	FPlatformProcess::ExploreFolder(*DirPath);
-}
-
-TSharedRef<ITableRow> SProjectCleanerTabIndirect::OnGenerateRow(TSharedPtr<FProjectCleanerIndirectAsset> InItem, const TSharedRef<STableViewBase>& OwnerTable) const
+TSharedRef<ITableRow> SProjectCleanerTabIndirect::OnListGenerateRow(TSharedPtr<FProjectCleanerIndirectAsset> InItem, const TSharedRef<STableViewBase>& OwnerTable) const
 {
 	return SNew(SProjectCleanerTabIndirectItem, OwnerTable).ListItem(InItem);
 }
 
-FText SProjectCleanerTabIndirect::GetTextTotalSize() const
+FText SProjectCleanerTabIndirect::GetListTextSummary() const
 {
 	return FText::FromString(
 		FString::Printf(
