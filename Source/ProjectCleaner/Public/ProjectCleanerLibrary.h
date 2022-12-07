@@ -100,6 +100,9 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner|File", meta=(ToolTip="Checks if given file content constains indirectly used assets"))
 	static bool FileContainsIndirectAssets(const FString& FileContent);
 
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner|File", meta=(ToolTip="Returns total disk size of given files"))
+	static int64 FilesGetTotalSize(const TArray<FString>& Files);
+
 
 	// Confirmation Windows
 

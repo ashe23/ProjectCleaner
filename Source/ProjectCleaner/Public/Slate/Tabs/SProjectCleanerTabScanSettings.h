@@ -30,6 +30,13 @@ private:
 
 	EVisibility GetBtnScanProjectStatusVisibility() const;
 	FText GetBtnScanProjectToolTipText() const;
+	FText GetStatsTextAssetsTotal() const;
+	FText GetStatsTextAssetsIndirect() const;
+	FText GetStatsTextAssetsExcluded() const;
+	FText GetStatsTextAssetsUnused() const;
+	FText GetStatsTextFilesNonEngine() const;
+	FText GetStatsTextFilesCorrupted() const;
+	FText GetStatsTextFoldersEmpty() const;
 
 
 	TSharedPtr<FProjectCleanerScanner> Scanner;

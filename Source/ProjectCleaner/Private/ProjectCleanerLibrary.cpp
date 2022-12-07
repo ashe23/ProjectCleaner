@@ -590,6 +590,21 @@ bool UProjectCleanerLibrary::FileContainsIndirectAssets(const FString& FileConte
 	return Matcher.FindNext();
 }
 
+int64 UProjectCleanerLibrary::FilesGetTotalSize(const TArray<FString>& Files)
+{
+	if (Files.Num() == 0) return 0;
+
+	int64 TotalSize = 0;
+	for (const auto& File : Files)
+	{
+		if (File.IsEmpty() || !FPaths::FileExists(File)) continue;
+
+		TotalSize += IFileManager::Get().FileSize(*File);
+	}
+
+	return TotalSize;
+}
+
 // Confirmation Windows
 
 EAppReturnType::Type UProjectCleanerLibrary::ConfirmationWindowShow(const FText& Title, const FText& ContentText, const EAppMsgType::Type MsgType)

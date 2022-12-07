@@ -318,6 +318,11 @@ const TSet<FString>& FProjectCleanerScanner::GetFilesNonEngine() const
 	return FilesNonEngine;
 }
 
+const TArray<FAssetData>& FProjectCleanerScanner::GetAssetsAll() const
+{
+	return AssetsAll;
+}
+
 const TArray<FAssetData>& FProjectCleanerScanner::GetAssetsUnused() const
 {
 	return AssetsUnused;

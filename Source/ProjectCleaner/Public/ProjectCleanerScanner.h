@@ -41,6 +41,7 @@ struct FProjectCleanerScanner
 	const TSet<FString>& GetFilesCorrupted() const;
 	const TSet<FString>& GetFilesNonEngine() const;
 
+	const TArray<FAssetData>& GetAssetsAll() const;
 	const TArray<FAssetData>& GetAssetsUnused() const;
 	const TArray<FAssetData>& GetAssetsIndirect() const;
 	const TArray<FAssetData>& GetAssetsExcluded() const;

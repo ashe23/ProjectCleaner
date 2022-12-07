@@ -128,6 +128,69 @@ void SProjectCleanerTabScanSettings::Construct(const FArguments& InArgs)
 		]
 		+ SVerticalBox::Slot()
 		  .Padding(FMargin{5.0f})
+		  .AutoHeight()
+		[
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			[
+				SNew(STextBlock)
+				.Font(FProjectCleanerStyles::GetFont("Bold", 13))
+				.Text(this, &SProjectCleanerTabScanSettings::GetStatsTextAssetsTotal)
+			]
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			[
+				SNew(STextBlock)
+				.Font(FProjectCleanerStyles::GetFont("Bold", 13))
+				.Text(this, &SProjectCleanerTabScanSettings::GetStatsTextAssetsIndirect)
+			]
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			[
+				SNew(STextBlock)
+				.Font(FProjectCleanerStyles::GetFont("Bold", 13))
+				.Text(this, &SProjectCleanerTabScanSettings::GetStatsTextAssetsExcluded)
+			]
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			[
+				SNew(STextBlock)
+				.ColorAndOpacity(FProjectCleanerStyles::Get().GetSlateColor("ProjectCleaner.Color.Red"))
+				.Font(FProjectCleanerStyles::GetFont("Bold", 13))
+				.Text(this, &SProjectCleanerTabScanSettings::GetStatsTextAssetsUnused)
+			]
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			[
+				SNew(STextBlock)
+				.Font(FProjectCleanerStyles::GetFont("Bold", 13))
+				.Text(this, &SProjectCleanerTabScanSettings::GetStatsTextFilesCorrupted)
+			]
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			[
+				SNew(STextBlock)
+				.Font(FProjectCleanerStyles::GetFont("Bold", 13))
+				.Text(this, &SProjectCleanerTabScanSettings::GetStatsTextFilesNonEngine)
+			]
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			[
+				SNew(STextBlock)
+				.Font(FProjectCleanerStyles::GetFont("Bold", 13))
+				.Text(this, &SProjectCleanerTabScanSettings::GetStatsTextFoldersEmpty)
+			]
+		]
+		+ SVerticalBox::Slot()
+		  .Padding(FMargin{5.0f})
+		  .AutoHeight()
+		[
+			SNew(SSeparator)
+			.Thickness(5.0f)
+		]
+		+ SVerticalBox::Slot()
+		  .Padding(FMargin{5.0f})
 		  .FillHeight(1.0f)
 		[
 			SNew(SBox)
@@ -221,4 +284,71 @@ FText SProjectCleanerTabScanSettings::GetBtnScanProjectToolTipText() const
 	}
 
 	return FText::FromString(TEXT(""));
+}
+
+FText SProjectCleanerTabScanSettings::GetStatsTextAssetsTotal() const
+{
+	if (!Scanner.IsValid()) return FText::FromString(TEXT(""));
+
+	const int32 AssetsTotalNum = Scanner->GetAssetTotalNum(UProjectCleanerLibrary::PathGetContentFolder(true));
+	const int64 AssetsTotalSize = Scanner->GetSizeTotal(UProjectCleanerLibrary::PathGetContentFolder(true));
+
+	return FText::FromString(FString::Printf(TEXT("Assets Total - %d (%s)"), AssetsTotalNum, *FText::AsMemory(AssetsTotalSize).ToString()));
+}
+
+FText SProjectCleanerTabScanSettings::GetStatsTextAssetsIndirect() const
+{
+	if (!Scanner.IsValid()) return FText::FromString(TEXT(""));
+
+	const auto IndirectAssets = Scanner->GetAssetsIndirect();
+	const int64 TotalSize = UProjectCleanerLibrary::AssetsGetTotalSize(IndirectAssets);
+
+	return FText::FromString(FString::Printf(TEXT("Assets Indirect - %d (%s)"), IndirectAssets.Num(), *FText::AsMemory(TotalSize).ToString()));
+}
+
+FText SProjectCleanerTabScanSettings::GetStatsTextAssetsExcluded() const
+{
+	if (!Scanner.IsValid()) return FText::FromString(TEXT(""));
+
+	const auto ExcludedAssets = Scanner->GetAssetsExcluded();
+	const int64 TotalSize = UProjectCleanerLibrary::AssetsGetTotalSize(ExcludedAssets);
+
+	return FText::FromString(FString::Printf(TEXT("Assets Excluded - %d (%s)"), ExcludedAssets.Num(), *FText::AsMemory(TotalSize).ToString()));
+}
+
+FText SProjectCleanerTabScanSettings::GetStatsTextFilesNonEngine() const
+{
+	if (!Scanner.IsValid()) return FText::FromString(TEXT(""));
+
+	const auto FilesNonEngine = Scanner->GetFilesNonEngine();
+	const int64 TotalSize = UProjectCleanerLibrary::FilesGetTotalSize(FilesNonEngine.Array());
+
+	return FText::FromString(FString::Printf(TEXT("Files NonEngine - %d (%s)"), FilesNonEngine.Num(), *FText::AsMemory(TotalSize).ToString()));
+}
+
+FText SProjectCleanerTabScanSettings::GetStatsTextFilesCorrupted() const
+{
+	if (!Scanner.IsValid()) return FText::FromString(TEXT(""));
+
+	const auto FilesCorrupted = Scanner->GetFilesCorrupted();
+	const int64 TotalSize = UProjectCleanerLibrary::FilesGetTotalSize(FilesCorrupted.Array());
+
+	return FText::FromString(FString::Printf(TEXT("Files Corrupted - %d (%s)"), FilesCorrupted.Num(), *FText::AsMemory(TotalSize).ToString()));
+}
+
+FText SProjectCleanerTabScanSettings::GetStatsTextFoldersEmpty() const
+{
+	if (!Scanner.IsValid()) return FText::FromString(TEXT(""));
+
+	return FText::FromString(FString::Printf(TEXT("Folders Empty - %d"), Scanner->GetFoldersEmpty().Num()));
+}
+
+FText SProjectCleanerTabScanSettings::GetStatsTextAssetsUnused() const
+{
+	if (!Scanner.IsValid()) return FText::FromString(TEXT(""));
+
+	const int32 AssetsTotalNum = Scanner->GetAssetUnusedNum(UProjectCleanerLibrary::PathGetContentFolder(true));
+	const int64 AssetsTotalSize = Scanner->GetSizeUnused(UProjectCleanerLibrary::PathGetContentFolder(true));
+
+	return FText::FromString(FString::Printf(TEXT("Assets Unused - %d (%s)"), AssetsTotalNum, *FText::AsMemory(AssetsTotalSize).ToString()));
 }
