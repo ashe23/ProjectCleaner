@@ -18,42 +18,6 @@ void SProjectCleanerTabCorrupted::Construct(const FArguments& InArgs)
 	});
 
 	ListUpdate();
-}
-
-void SProjectCleanerTabCorrupted::ListUpdate()
-{
-	if (!Scanner.IsValid()) return;
-
-	ListItems.Reset();
-	TotalSize = 0;
-
-	for (const auto& CorruptedFile : Scanner->GetFilesCorrupted())
-	{
-		const TSharedPtr<FProjectCleanerTabCorruptedListItem> NewItem = MakeShareable(new FProjectCleanerTabCorruptedListItem);
-		if (!NewItem) continue;
-
-		if (CorruptedFile.IsEmpty() || !FPaths::FileExists(CorruptedFile)) continue;
-
-		NewItem->FileName = FPaths::GetCleanFilename(CorruptedFile);
-		NewItem->FileExtension = FPaths::GetExtension(CorruptedFile, true);
-		NewItem->FilePathAbs = CorruptedFile;
-		NewItem->FileSize = IFileManager::Get().FileSize(*CorruptedFile);
-		TotalSize += NewItem->FileSize;
-
-		ListItems.Add(NewItem);
-	}
-
-	if (!ListView.IsValid())
-	{
-		SAssignNew(ListView, SListView<TSharedPtr<FProjectCleanerTabCorruptedListItem>>)
-		.ListItemsSource(&ListItems)
-		.SelectionMode(ESelectionMode::SingleToggle)
-		.OnGenerateRow(this, &SProjectCleanerTabCorrupted::OnGenerateRow)
-		.OnMouseButtonDoubleClick_Raw(this, &SProjectCleanerTabCorrupted::OnListItemDblClick)
-		.HeaderRow(GetListHeaderRow());
-	}
-
-	ListSort();
 
 	ChildSlot
 	[
@@ -108,11 +72,49 @@ void SProjectCleanerTabCorrupted::ListUpdate()
 				SNew(STextBlock)
 				.AutoWrapText(true)
 				.Font(FProjectCleanerStyles::GetFont("Light", 8))
-				.Text_Raw(this, &SProjectCleanerTabCorrupted::GetTotalSizeTxt)
+				.Text_Raw(this, &SProjectCleanerTabCorrupted::GetListTextSummary)
 			]
 		]
 	];
+}
 
+void SProjectCleanerTabCorrupted::ListUpdate()
+{
+	if (!Scanner.IsValid()) return;
+
+	if (!ListView.IsValid())
+	{
+		SAssignNew(ListView, SListView<TSharedPtr<FProjectCleanerTabCorruptedListItem>>)
+		.ListItemsSource(&ListItems)
+		.SelectionMode(ESelectionMode::SingleToggle)
+		.OnGenerateRow(this, &SProjectCleanerTabCorrupted::OnListGenerateRow)
+		.OnMouseButtonDoubleClick_Raw(this, &SProjectCleanerTabCorrupted::OnListItemDblClick)
+		.HeaderRow(GetListHeaderRow());
+	}
+
+	if (Scanner->GetScannerDataState() == EProjectCleanerScannerDataState::Actual)
+	{
+		ListItems.Reset();
+		TotalSize = 0;
+
+		for (const auto& CorruptedFile : Scanner->GetFilesCorrupted())
+		{
+			const TSharedPtr<FProjectCleanerTabCorruptedListItem> NewItem = MakeShareable(new FProjectCleanerTabCorruptedListItem);
+			if (!NewItem) continue;
+
+			if (CorruptedFile.IsEmpty() || !FPaths::FileExists(CorruptedFile)) continue;
+
+			NewItem->FileName = FPaths::GetCleanFilename(CorruptedFile);
+			NewItem->FileExtension = FPaths::GetExtension(CorruptedFile, true);
+			NewItem->FilePathAbs = CorruptedFile;
+			NewItem->FileSize = IFileManager::Get().FileSize(*CorruptedFile);
+			TotalSize += NewItem->FileSize;
+
+			ListItems.Add(NewItem);
+		}
+	}
+
+	ListSort();
 	ListView->RequestListRefresh();
 }
 
@@ -210,16 +212,14 @@ void SProjectCleanerTabCorrupted::OnListSort(EColumnSortPriority::Type SortPrior
 	}
 }
 
-FText SProjectCleanerTabCorrupted::GetTotalSizeTxt() const
+void SProjectCleanerTabCorrupted::OnListItemDblClick(TSharedPtr<FProjectCleanerTabCorruptedListItem> Item) const
 {
-	return FText::FromString(
-		FString::Printf(
-			TEXT("%d item%s. Total Size: %s"),
-			ListItems.Num(),
-			ListItems.Num() > 1 ? TEXT("s") : TEXT(""),
-			*FText::AsMemory(TotalSize).ToString()
-		)
-	);
+	if (!Item.IsValid()) return;
+
+	const FString DirPath = FPaths::GetPath(Item->FilePathAbs);
+	if (DirPath.IsEmpty() || !FPaths::DirectoryExists(DirPath)) return;
+
+	FPlatformProcess::ExploreFolder(*DirPath);
 }
 
 TSharedPtr<SHeaderRow> SProjectCleanerTabCorrupted::GetListHeaderRow()
@@ -280,17 +280,19 @@ TSharedPtr<SHeaderRow> SProjectCleanerTabCorrupted::GetListHeaderRow()
 		];
 }
 
-void SProjectCleanerTabCorrupted::OnListItemDblClick(TSharedPtr<FProjectCleanerTabCorruptedListItem> Item) const
-{
-	if (!Item.IsValid()) return;
-
-	const FString DirPath = FPaths::GetPath(Item->FilePathAbs);
-	if (DirPath.IsEmpty() || !FPaths::DirectoryExists(DirPath)) return;
-
-	FPlatformProcess::ExploreFolder(*DirPath);
-}
-
-TSharedRef<ITableRow> SProjectCleanerTabCorrupted::OnGenerateRow(TSharedPtr<FProjectCleanerTabCorruptedListItem> InItem, const TSharedRef<STableViewBase>& OwnerTable) const
+TSharedRef<ITableRow> SProjectCleanerTabCorrupted::OnListGenerateRow(TSharedPtr<FProjectCleanerTabCorruptedListItem> InItem, const TSharedRef<STableViewBase>& OwnerTable) const
 {
 	return SNew(SProjectCleanerTabCorruptedListItem, OwnerTable).ListItem(InItem);
+}
+
+FText SProjectCleanerTabCorrupted::GetListTextSummary() const
+{
+	return FText::FromString(
+		FString::Printf(
+			TEXT("%d item%s. Total Size: %s"),
+			ListItems.Num(),
+			ListItems.Num() > 1 ? TEXT("s") : TEXT(""),
+			*FText::AsMemory(TotalSize).ToString()
+		)
+	);
 }

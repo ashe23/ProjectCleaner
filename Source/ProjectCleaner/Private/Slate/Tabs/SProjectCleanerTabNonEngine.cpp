@@ -4,7 +4,6 @@
 #include "ProjectCleanerStyles.h"
 #include "ProjectCleanerConstants.h"
 #include "ProjectCleanerScanner.h"
-#include "ProjectCleaner.h"
 #include "ProjectCleanerCmds.h"
 #include "ProjectCleanerLibrary.h"
 // Engine Headers
@@ -64,49 +63,12 @@ void SProjectCleanerTabNonEngine::Construct(const FArguments& InArgs)
 					UProjectCleanerLibrary::NotificationShowWithOutputLog(ProjectCleanerConstants::MsgFileDeleteError, EProjectCleanerModalStatus::Error, 4.0f);
 				}
 
-				ListUpdate();
+				Scanner->Scan();
 			})
 		)
 	);
 
 	ListUpdate();
-}
-
-void SProjectCleanerTabNonEngine::ListUpdate()
-{
-	if (!Scanner.IsValid()) return;
-
-	ListItems.Reset();
-	TotalSize = 0;
-
-	for (const auto& NonEngineFile : Scanner->GetFilesNonEngine())
-	{
-		const TSharedPtr<FProjectCleanerTabNonEngineListItem> NewItem = MakeShareable(new FProjectCleanerTabNonEngineListItem);
-		if (!NewItem) continue;
-
-		if (NonEngineFile.IsEmpty() || !FPaths::FileExists(NonEngineFile)) continue;
-
-		NewItem->FileName = FPaths::GetCleanFilename(NonEngineFile);
-		NewItem->FileExtension = FPaths::GetExtension(NonEngineFile, true);
-		NewItem->FilePathAbs = NonEngineFile;
-		NewItem->FileSize = IFileManager::Get().FileSize(*NonEngineFile);
-		TotalSize += NewItem->FileSize;
-
-		ListItems.Add(NewItem);
-	}
-
-	if (!ListView.IsValid())
-	{
-		SAssignNew(ListView, SListView<TSharedPtr<FProjectCleanerTabNonEngineListItem>>)
-		.ListItemsSource(&ListItems)
-		.SelectionMode(ESelectionMode::SingleToggle)
-		.OnGenerateRow(this, &SProjectCleanerTabNonEngine::OnGenerateRow)
-		.OnMouseButtonDoubleClick_Raw(this, &SProjectCleanerTabNonEngine::OnListItemDblClick)
-		.OnContextMenuOpening_Raw(this, &SProjectCleanerTabNonEngine::OnListContextMenu)
-		.HeaderRow(GetListHeaderRow());
-	}
-
-	ListSort();
 
 	ChildSlot
 	[
@@ -169,11 +131,50 @@ void SProjectCleanerTabNonEngine::ListUpdate()
 				SNew(STextBlock)
 				.AutoWrapText(true)
 				.Font(FProjectCleanerStyles::GetFont("Light", 8))
-				.Text_Raw(this, &SProjectCleanerTabNonEngine::GetTotalSizeTxt)
+				.Text_Raw(this, &SProjectCleanerTabNonEngine::GetListTextSummary)
 			]
 		]
 	];
+}
 
+void SProjectCleanerTabNonEngine::ListUpdate()
+{
+	if (!Scanner.IsValid()) return;
+
+	if (!ListView.IsValid())
+	{
+		SAssignNew(ListView, SListView<TSharedPtr<FProjectCleanerTabNonEngineListItem>>)
+		.ListItemsSource(&ListItems)
+		.SelectionMode(ESelectionMode::SingleToggle)
+		.OnGenerateRow(this, &SProjectCleanerTabNonEngine::OnListGenerateRow)
+		.OnMouseButtonDoubleClick_Raw(this, &SProjectCleanerTabNonEngine::OnListItemDblClick)
+		.OnContextMenuOpening_Raw(this, &SProjectCleanerTabNonEngine::OnListContextMenu)
+		.HeaderRow(GetListHeaderRow());
+	}
+
+	if (Scanner->GetScannerDataState() == EProjectCleanerScannerDataState::Actual)
+	{
+		ListItems.Reset();
+		TotalSize = 0;
+
+		for (const auto& NonEngineFile : Scanner->GetFilesNonEngine())
+		{
+			const TSharedPtr<FProjectCleanerTabNonEngineListItem> NewItem = MakeShareable(new FProjectCleanerTabNonEngineListItem);
+			if (!NewItem) continue;
+
+			if (NonEngineFile.IsEmpty() || !FPaths::FileExists(NonEngineFile)) continue;
+
+			NewItem->FileName = FPaths::GetCleanFilename(NonEngineFile);
+			NewItem->FileExtension = FPaths::GetExtension(NonEngineFile, true);
+			NewItem->FilePathAbs = NonEngineFile;
+			NewItem->FileSize = IFileManager::Get().FileSize(*NonEngineFile);
+			TotalSize += NewItem->FileSize;
+
+			ListItems.Add(NewItem);
+		}
+	}
+
+	ListSort();
 	ListView->RequestListRefresh();
 }
 
@@ -271,16 +272,14 @@ void SProjectCleanerTabNonEngine::OnListSort(EColumnSortPriority::Type SortPrior
 	}
 }
 
-FText SProjectCleanerTabNonEngine::GetTotalSizeTxt() const
+void SProjectCleanerTabNonEngine::OnListItemDblClick(TSharedPtr<FProjectCleanerTabNonEngineListItem> Item) const
 {
-	return FText::FromString(
-		FString::Printf(
-			TEXT("%d item%s. Total Size: %s"),
-			ListItems.Num(),
-			ListItems.Num() > 1 ? TEXT("s") : TEXT(""),
-			*FText::AsMemory(TotalSize).ToString()
-		)
-	);
+	if (!Item.IsValid()) return;
+
+	const FString DirPath = FPaths::GetPath(Item->FilePathAbs);
+	if (DirPath.IsEmpty() || !FPaths::DirectoryExists(DirPath)) return;
+
+	FPlatformProcess::ExploreFolder(*DirPath);
 }
 
 TSharedPtr<SHeaderRow> SProjectCleanerTabNonEngine::GetListHeaderRow()
@@ -341,21 +340,6 @@ TSharedPtr<SHeaderRow> SProjectCleanerTabNonEngine::GetListHeaderRow()
 		];
 }
 
-void SProjectCleanerTabNonEngine::OnListItemDblClick(TSharedPtr<FProjectCleanerTabNonEngineListItem> Item) const
-{
-	if (!Item.IsValid()) return;
-
-	const FString DirPath = FPaths::GetPath(Item->FilePathAbs);
-	if (DirPath.IsEmpty() || !FPaths::DirectoryExists(DirPath)) return;
-
-	FPlatformProcess::ExploreFolder(*DirPath);
-}
-
-TSharedRef<ITableRow> SProjectCleanerTabNonEngine::OnGenerateRow(TSharedPtr<FProjectCleanerTabNonEngineListItem> InItem, const TSharedRef<STableViewBase>& OwnerTable) const
-{
-	return SNew(SProjectCleanerTabNonEngineListItem, OwnerTable).ListItem(InItem);
-}
-
 TSharedPtr<SWidget> SProjectCleanerTabNonEngine::OnListContextMenu() const
 {
 	FMenuBuilder MenuBuilder{true, Cmds};
@@ -367,4 +351,21 @@ TSharedPtr<SWidget> SProjectCleanerTabNonEngine::OnListContextMenu() const
 	MenuBuilder.EndSection();
 
 	return MenuBuilder.MakeWidget();
+}
+
+TSharedRef<ITableRow> SProjectCleanerTabNonEngine::OnListGenerateRow(TSharedPtr<FProjectCleanerTabNonEngineListItem> InItem, const TSharedRef<STableViewBase>& OwnerTable) const
+{
+	return SNew(SProjectCleanerTabNonEngineListItem, OwnerTable).ListItem(InItem);
+}
+
+FText SProjectCleanerTabNonEngine::GetListTextSummary() const
+{
+	return FText::FromString(
+		FString::Printf(
+			TEXT("%d item%s. Total Size: %s"),
+			ListItems.Num(),
+			ListItems.Num() > 1 ? TEXT("s") : TEXT(""),
+			*FText::AsMemory(TotalSize).ToString()
+		)
+	);
 }

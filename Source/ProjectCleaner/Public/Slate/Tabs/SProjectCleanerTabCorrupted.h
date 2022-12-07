@@ -60,7 +60,7 @@ public:
 					.Text(FText::FromString(ListItem->FilePathAbs))
 				];
 		}
-	
+
 		return SNew(STextBlock).Text(FText::FromString("No Files"));
 	}
 
@@ -83,13 +83,10 @@ private:
 	void ListUpdate();
 	void ListSort();
 	void OnListSort(EColumnSortPriority::Type SortPriority, const FName& Name, EColumnSortMode::Type SortMode);
-	FText GetTotalSizeTxt() const;
-	TSharedPtr<SHeaderRow> GetListHeaderRow();
 	void OnListItemDblClick(TSharedPtr<FProjectCleanerTabCorruptedListItem> Item) const;
-	TSharedRef<ITableRow> OnGenerateRow(
-		TSharedPtr<FProjectCleanerTabCorruptedListItem> InItem,
-		const TSharedRef<STableViewBase>& OwnerTable
-	) const;
+	TSharedPtr<SHeaderRow> GetListHeaderRow();
+	TSharedRef<ITableRow> OnListGenerateRow(TSharedPtr<FProjectCleanerTabCorruptedListItem> InItem, const TSharedRef<STableViewBase>& OwnerTable) const;
+	FText GetListTextSummary() const;
 
 	int64 TotalSize = 0;
 	FName ListSortColumn{TEXT("FileSize")};

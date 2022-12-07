@@ -124,13 +124,14 @@ FProjectCleanerScanner::FProjectCleanerScanner(const TWeakObjectPtr<UProjectClea
 
 void FProjectCleanerScanner::Scan()
 {
-	ScannerDataState = EProjectCleanerScannerDataState::NotScanned;
-	
 	if (UProjectCleanerLibrary::AssetRegistryWorking()) return;
 
 	// making sure all redirectors fixed and assets saved when we start scanning
 	UProjectCleanerLibrary::AssetRegistryFixupRedirectors(ProjectCleanerConstants::PathRelRoot.ToString());
 	UProjectCleanerLibrary::AssetsSaveAll(); // todo:ashe23 silent mode if cli mode
+	
+	ScannerDataState = EProjectCleanerScannerDataState::NotScanned;
+	ScannerState = EProjectCleanerScannerState::Scanning;
 
 	FScopedSlowTask SlowTask{3.0f, FText::FromString(ProjectCleanerConstants::MsgScanning)};
 	SlowTask.MakeDialog(false, false);
@@ -164,6 +165,7 @@ void FProjectCleanerScanner::Scan()
 	FindAssetsUnused();
 
 	ScannerDataState = EProjectCleanerScannerDataState::Actual;
+	ScannerState = EProjectCleanerScannerState::Idle;
 
 	if (DelegateScanFinished.IsBound())
 	{

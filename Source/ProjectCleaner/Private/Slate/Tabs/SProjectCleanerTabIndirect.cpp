@@ -189,8 +189,8 @@ void SProjectCleanerTabIndirect::ListUpdate()
 		}
 	}
 
-	ListView->RequestListRefresh();
 	ListSort();
+	ListView->RequestListRefresh();
 }
 
 void SProjectCleanerTabIndirect::ListSort()
@@ -250,16 +250,6 @@ void SProjectCleanerTabIndirect::ListSort()
 	}
 }
 
-void SProjectCleanerTabIndirect::OnListItemDblClick(TSharedPtr<FProjectCleanerIndirectAsset> Item) const
-{
-	if (!Item.IsValid()) return;
-
-	const FString DirPath = FPaths::GetPath(Item->FilePath);
-	if (!FPaths::DirectoryExists(DirPath)) return;
-
-	FPlatformProcess::ExploreFolder(*DirPath);
-}
-
 void SProjectCleanerTabIndirect::OnListSort(EColumnSortPriority::Type SortPriority, const FName& Name, EColumnSortMode::Type SortMode)
 {
 	switch (ListSortMode)
@@ -285,6 +275,16 @@ void SProjectCleanerTabIndirect::OnListSort(EColumnSortPriority::Type SortPriori
 	{
 		ListView->RequestListRefresh();
 	}
+}
+
+void SProjectCleanerTabIndirect::OnListItemDblClick(TSharedPtr<FProjectCleanerIndirectAsset> Item) const
+{
+	if (!Item.IsValid()) return;
+
+	const FString DirPath = FPaths::GetPath(Item->FilePath);
+	if (!FPaths::DirectoryExists(DirPath)) return;
+
+	FPlatformProcess::ExploreFolder(*DirPath);
 }
 
 TSharedPtr<SHeaderRow> SProjectCleanerTabIndirect::GetListHeaderRow()

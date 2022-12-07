@@ -81,14 +81,11 @@ private:
 	void ListUpdate();
 	void ListSort();
 	void OnListSort(EColumnSortPriority::Type SortPriority, const FName& Name, EColumnSortMode::Type SortMode);
-	FText GetTotalSizeTxt() const;
-	TSharedPtr<SHeaderRow> GetListHeaderRow();
 	void OnListItemDblClick(TSharedPtr<FProjectCleanerTabNonEngineListItem> Item) const;
-	TSharedRef<ITableRow> OnGenerateRow(
-		TSharedPtr<FProjectCleanerTabNonEngineListItem> InItem,
-		const TSharedRef<STableViewBase>& OwnerTable
-	) const;
+	TSharedPtr<SHeaderRow> GetListHeaderRow();
 	TSharedPtr<SWidget> OnListContextMenu() const;
+	TSharedRef<ITableRow> OnListGenerateRow(TSharedPtr<FProjectCleanerTabNonEngineListItem> InItem, const TSharedRef<STableViewBase>& OwnerTable) const;
+	FText GetListTextSummary() const;
 
 	int64 TotalSize = 0;
 	FName ListSortColumn{TEXT("FileSize")};

@@ -280,7 +280,7 @@ FText SProjectCleanerTabScanSettings::GetBtnScanProjectToolTipText() const
 
 	if (Scanner->GetScannerDataState() == EProjectCleanerScannerDataState::Obsolete)
 	{
-		return FText::FromString(TEXT("Re-Scan required. Asset Registry has been updated."));
+		return FText::FromString(TEXT("Rescan required. Asset Registry has been updated."));
 	}
 
 	return FText::FromString(TEXT(""));

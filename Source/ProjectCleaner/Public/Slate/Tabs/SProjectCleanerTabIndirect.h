@@ -97,8 +97,8 @@ public:
 private:
 	void ListUpdate();
 	void ListSort();
-	void OnListItemDblClick(TSharedPtr<FProjectCleanerIndirectAsset> Item) const;
 	void OnListSort(EColumnSortPriority::Type SortPriority, const FName& Name, EColumnSortMode::Type SortMode);
+	void OnListItemDblClick(TSharedPtr<FProjectCleanerIndirectAsset> Item) const;
 	TSharedPtr<SHeaderRow> GetListHeaderRow();
 	TSharedPtr<SWidget> OnListContextMenu() const;
 	TSharedRef<ITableRow> OnListGenerateRow(TSharedPtr<FProjectCleanerIndirectAsset> InItem, const TSharedRef<STableViewBase>& OwnerTable) const;
