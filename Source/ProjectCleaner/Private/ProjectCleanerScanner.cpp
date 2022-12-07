@@ -391,10 +391,10 @@ void FProjectCleanerScanner::FindBlacklistedFoldersAndAssets()
 		FoldersBlacklist.Add(UProjectCleanerLibrary::PathGetMsPresetsFolder(true));
 	}
 
-	if (!ScanSettings->bScanDeveloperContents)
-	{
-		FoldersBlacklist.Add(UProjectCleanerLibrary::PathGetDevelopersFolder(true));
-	}
+	// if (!ScanSettings->bScanDeveloperContents)
+	// {
+	// 	FoldersBlacklist.Add(UProjectCleanerLibrary::PathGetDevelopersFolder(true));
+	// }
 
 	// filling blacklisted assets
 	FARFilter FilterBlacklistAssets;

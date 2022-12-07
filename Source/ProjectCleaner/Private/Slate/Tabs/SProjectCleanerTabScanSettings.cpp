@@ -50,32 +50,40 @@ void SProjectCleanerTabScanSettings::Construct(const FArguments& InArgs)
 				.IsEnabled_Raw(this, &SProjectCleanerTabScanSettings::BtnScanProjectEnabled)
 				.ButtonColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Blue"))
 				[
-					SNew(SHorizontalBox)
-					+ SHorizontalBox::Slot()
-					.AutoWidth()
-					[
-						SNew(STextBlock)
-						.Justification(ETextJustify::Center)
-						.ToolTipText(FText::FromString(TEXT("Scan the project with the specified scan settings.")))
-						.ColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.White"))
-						.ShadowOffset(FVector2D{1.5f, 1.5f})
-						.ShadowColorAndOpacity(FLinearColor::Black)
-						.Font(FProjectCleanerStyles::GetFont("Bold", 10))
-						.Text(FText::FromString(TEXT("Scan Project")))
-					]
-					+ SHorizontalBox::Slot()
-					.AutoWidth()
-					[
-						SNew(SBox)
-						.WidthOverride(16.0f)
-						.HeightOverride(16.0f)
-						[
-							SNew(SImage)
-							.Visibility_Raw(this, &SProjectCleanerTabScanSettings::GetBtnScanProjectStatusVisibility)
-							.ToolTipText_Raw(this, &SProjectCleanerTabScanSettings::GetBtnScanProjectToolTipText)
-							.Image(FProjectCleanerStyles::Get().GetBrush(TEXT("ProjectCleaner.IconWarning16")))
-						]
-					]
+					SNew(STextBlock)
+					.Justification(ETextJustify::Center)
+					.ToolTipText(FText::FromString(TEXT("Scan the project with the specified scan settings.")))
+					.ColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.White"))
+					.ShadowOffset(FVector2D{1.5f, 1.5f})
+					.ShadowColorAndOpacity(FLinearColor::Black)
+					.Font(FProjectCleanerStyles::GetFont("Bold", 10))
+					.Text(FText::FromString(TEXT("Scan Project")))
+					// SNew(SHorizontalBox)
+					// + SHorizontalBox::Slot()
+					// .AutoWidth()
+					// [
+					// 	SNew(STextBlock)
+					// 	.Justification(ETextJustify::Center)
+					// 	.ToolTipText(FText::FromString(TEXT("Scan the project with the specified scan settings.")))
+					// 	.ColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.White"))
+					// 	.ShadowOffset(FVector2D{1.5f, 1.5f})
+					// 	.ShadowColorAndOpacity(FLinearColor::Black)
+					// 	.Font(FProjectCleanerStyles::GetFont("Bold", 10))
+					// 	.Text(FText::FromString(TEXT("Scan Project")))
+					// ]
+					// + SHorizontalBox::Slot()
+					// .AutoWidth()
+					// [
+					// 	SNew(SBox)
+					// 	.WidthOverride(16.0f)
+					// 	.HeightOverride(16.0f)
+					// 	[
+					// 		SNew(SImage)
+					// 		.Visibility_Raw(this, &SProjectCleanerTabScanSettings::GetBtnScanProjectStatusVisibility)
+					// 		.ToolTipText_Raw(this, &SProjectCleanerTabScanSettings::GetBtnScanProjectToolTipText)
+					// 		.Image(FProjectCleanerStyles::Get().GetBrush(TEXT("ProjectCleaner.IconWarning16")))
+					// 	]
+					// ]
 				]
 			]
 			+ SHorizontalBox::Slot()
@@ -123,6 +131,35 @@ void SProjectCleanerTabScanSettings::Construct(const FArguments& InArgs)
 		  .Padding(FMargin{5.0f})
 		  .AutoHeight()
 		[
+			SNew(SHorizontalBox)
+			.Visibility_Raw(this, &SProjectCleanerTabScanSettings::GetBtnScanProjectStatusVisibility)
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			.Padding(FMargin{0.0f, 0.0f, 5.0f, 0.0f})
+			[
+				SNew(SBox)
+				.WidthOverride(16.0f)
+				.HeightOverride(16.0f)
+				[
+					SNew(SImage)
+					.Image(FProjectCleanerStyles::Get().GetBrush(TEXT("ProjectCleaner.IconWarning16")))
+				]
+			]
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			.Padding(FMargin{0.0f, 3.0f, 0.0f, 0.0f})
+			[
+				SNew(STextBlock)
+				.Justification(ETextJustify::Left)
+				.ColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Yellow"))
+				.Font(FProjectCleanerStyles::GetFont("Light", 12))
+				.Text_Raw(this, &SProjectCleanerTabScanSettings::GetBtnScanProjectToolTipText)
+			]
+		]
+		+ SVerticalBox::Slot()
+		  .Padding(FMargin{5.0f})
+		  .AutoHeight()
+		[
 			SNew(SSeparator)
 			.Thickness(5.0f)
 		]
@@ -162,6 +199,7 @@ void SProjectCleanerTabScanSettings::Construct(const FArguments& InArgs)
 			]
 			+ SVerticalBox::Slot()
 			.AutoHeight()
+			.Padding(FMargin{0.0f, 5.0f, 0.0f, 0.0f})
 			[
 				SNew(STextBlock)
 				.Font(FProjectCleanerStyles::GetFont("Bold", 13))
@@ -176,6 +214,7 @@ void SProjectCleanerTabScanSettings::Construct(const FArguments& InArgs)
 			]
 			+ SVerticalBox::Slot()
 			.AutoHeight()
+			.Padding(FMargin{0.0f, 5.0f, 0.0f, 0.0f})
 			[
 				SNew(STextBlock)
 				.Font(FProjectCleanerStyles::GetFont("Bold", 13))
@@ -188,6 +227,31 @@ void SProjectCleanerTabScanSettings::Construct(const FArguments& InArgs)
 		[
 			SNew(SSeparator)
 			.Thickness(5.0f)
+		]
+		+ SVerticalBox::Slot()
+		  .Padding(FMargin{5.0f})
+		  .AutoHeight()
+		[
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			[
+				SNew(SButton)
+				.ContentPadding(FMargin{5.0f})
+				// .OnClicked_Raw(this, &SProjectCleanerTabScanSettings::OnBtnDeleteEmptyFoldersClick)
+				// .IsEnabled_Raw(this, &SProjectCleanerTabScanSettings::BtnDeleteEmptyFoldersEnabled)
+				.ButtonColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Red"))
+				[
+					SNew(STextBlock)
+					.Justification(ETextJustify::Center)
+					.ToolTipText(FText::FromString(TEXT("Reset Scan Settings")))
+					.ColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.White"))
+					.ShadowOffset(FVector2D{1.5f, 1.5f})
+					.ShadowColorAndOpacity(FLinearColor::Black)
+					.Font(FProjectCleanerStyles::GetFont("Bold", 10))
+					.Text(FText::FromString(TEXT("Reset Exclude Options")))
+				]
+			]
 		]
 		+ SVerticalBox::Slot()
 		  .Padding(FMargin{5.0f})

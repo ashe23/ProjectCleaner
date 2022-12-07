@@ -13,13 +13,13 @@ void UProjectCleanerScanSettings::PostEditChangeProperty(FPropertyChangedEvent& 
 
 	SaveConfig();
 
-	if (bAutoScan)
-	{
-		if (DelegateScanSettingsChanged.IsBound())
-		{
-			DelegateScanSettingsChanged.Broadcast();
-		}
-	}
+	// if (bAutoScan)
+	// {
+	// 	if (DelegateScanSettingsChanged.IsBound())
+	// 	{
+	// 		DelegateScanSettingsChanged.Broadcast();
+	// 	}
+	// }
 }
 #endif
 

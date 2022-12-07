@@ -12,7 +12,6 @@
 #include "ProjectCleanerStyles.h"
 #include "ProjectCleanerLibrary.h"
 // Engine Headers
-#include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SWidgetSwitcher.h"
 
 static constexpr int32 WidgetIndexNone = 0;
@@ -115,6 +114,12 @@ void SProjectCleaner::Construct(const FArguments& InArgs, const TSharedRef<SDock
 		"Window"
 	);
 	MenuBarBuilder.AddPullDownMenu(
+		FText::FromString(TEXT("Settings")),
+		FText::GetEmpty(),
+		FNewMenuDelegate::CreateStatic(&SProjectCleaner::MenuBarFillSettings, TabManager),
+		"Window"
+	);
+	MenuBarBuilder.AddPullDownMenu(
 		FText::FromString(TEXT("Help")),
 		FText::GetEmpty(),
 		FNewMenuDelegate::CreateStatic(&SProjectCleaner::MenuBarFillHelp, TabManager),
@@ -179,6 +184,15 @@ void SProjectCleaner::Construct(const FArguments& InArgs, const TSharedRef<SDock
 	TabManager->SetMenuMultiBox(MenuBarBuilder.GetMultiBox());
 }
 
+void SProjectCleaner::Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime)
+{
+	SCompoundWidget::Tick(AllottedGeometry, InCurrentTime, InDeltaTime);
+
+	if (!Scanner.IsValid()) return;
+
+	TabsRenderOpacity = Scanner->GetScannerDataState() == EProjectCleanerScannerDataState::Actual ? 1.0f : 0.2f;
+}
+
 SProjectCleaner::~SProjectCleaner()
 {
 	FGlobalTabmanager::Get()->UnregisterTabSpawner(ProjectCleanerConstants::TabScanSettings);
@@ -230,6 +244,24 @@ void SProjectCleaner::MenuBarFillTabs(FMenuBuilder& MenuBuilder, const TSharedPt
 	TabManager->PopulateLocalTabSpawnerMenu(MenuBuilder);
 }
 
+void SProjectCleaner::MenuBarFillSettings(FMenuBuilder& MenuBuilder, const TSharedPtr<FTabManager> TabManager)
+{
+	FUIAction Action;
+	Action.ExecuteAction = FExecuteAction::CreateLambda([]()
+	{
+		// if (FPlatformProcess::CanLaunchURL(*ProjectCleanerConstants::UrlWiki))
+		// {
+		// 	FPlatformProcess::LaunchURL(*ProjectCleanerConstants::UrlWiki, nullptr, nullptr);
+		// }
+	});
+	
+	MenuBuilder.BeginSection("SectionHelp", FText::FromString(TEXT("Scan Settings")));
+	MenuBuilder.AddMenuEntry(FText::FromString(TEXT("Auto Scan")), FText::FromString(TEXT("Open wiki page on github")), FSlateIcon(), Action, NAME_None, EUserInterfaceActionType::ToggleButton);
+	MenuBuilder.AddMenuEntry(FText::FromString(TEXT("Auto Delete Empty Folders")), FText::FromString(TEXT("Open wiki page on github")), FSlateIcon(), Action, NAME_None, EUserInterfaceActionType::ToggleButton);
+	MenuBuilder.AddMenuEntry(FText::FromString(TEXT("Scan Developers Content")), FText::FromString(TEXT("Open wiki page on github")), FSlateIcon(), Action, NAME_None, EUserInterfaceActionType::ToggleButton);
+	MenuBuilder.EndSection();
+}
+
 void SProjectCleaner::MenuBarFillHelp(FMenuBuilder& MenuBuilder, const TSharedPtr<FTabManager> TabManager)
 {
 	FUIAction Action;
@@ -242,7 +274,6 @@ void SProjectCleaner::MenuBarFillHelp(FMenuBuilder& MenuBuilder, const TSharedPt
 	});
 
 	MenuBuilder.BeginSection("SectionHelp", FText::FromString(TEXT("Help")));
-	MenuBuilder.AddMenuSeparator(FName{TEXT("Docs")});
 	MenuBuilder.AddMenuEntry(FText::FromString(TEXT("Wiki")), FText::FromString(TEXT("Open wiki page on github")), FSlateIcon(), Action, NAME_None);
 	MenuBuilder.EndSection();
 }
@@ -267,7 +298,10 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnUnusedAssets(const FSpawnTabArgs
 		.Label(FText::FromString(TEXT("Unused Assets")))
 		.Icon(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconTabUnused16"))
 		[
-			SAssignNew(TabUnused, SProjectCleanerTabUnused).Scanner(Scanner)
+			SAssignNew(TabUnused, SProjectCleanerTabUnused)
+			.Scanner(Scanner)
+			.RenderOpacity(TabsRenderOpacity)
+			.IsEnabled(this, &SProjectCleaner::TabsEnabled)
 		];
 }
 
@@ -279,7 +313,10 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnIndirectAssets(const FSpawnTabAr
 		.Label(FText::FromString(TEXT("Indirect Assets")))
 		.Icon(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconTabIndirect16"))
 		[
-			SAssignNew(TabIndirect, SProjectCleanerTabIndirect).Scanner(Scanner)
+			SAssignNew(TabIndirect, SProjectCleanerTabIndirect)
+			.Scanner(Scanner)
+			.RenderOpacity(TabsRenderOpacity)
+			.IsEnabled(this, &SProjectCleaner::TabsEnabled)
 		];
 }
 
@@ -291,7 +328,10 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnCorruptedAssets(const FSpawnTabA
 		.Label(FText::FromString(TEXT("Corrupted Assets")))
 		.Icon(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconTabCorrupted16"))
 		[
-			SAssignNew(TabCorrupted, SProjectCleanerTabCorrupted).Scanner(Scanner)
+			SAssignNew(TabCorrupted, SProjectCleanerTabCorrupted)
+			.Scanner(Scanner)
+			.RenderOpacity(TabsRenderOpacity)
+			.IsEnabled(this, &SProjectCleaner::TabsEnabled)
 		];
 }
 
@@ -303,6 +343,14 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnNonEngineFiles(const FSpawnTabAr
 		.Label(FText::FromString(TEXT("NonEngine Files")))
 		.Icon(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconTabNonEngine16"))
 		[
-			SAssignNew(TabNonEngine, SProjectCleanerTabNonEngine).Scanner(Scanner)
+			SAssignNew(TabNonEngine, SProjectCleanerTabNonEngine)
+			.Scanner(Scanner)
+			.RenderOpacity(TabsRenderOpacity)
+			.IsEnabled(this, &SProjectCleaner::TabsEnabled)
 		];
+}
+
+bool SProjectCleaner::TabsEnabled() const
+{
+	return Scanner.IsValid() && Scanner->GetScannerDataState() == EProjectCleanerScannerDataState::Actual;
 }

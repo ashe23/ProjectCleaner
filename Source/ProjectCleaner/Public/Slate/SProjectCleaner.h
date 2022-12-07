@@ -24,12 +24,15 @@ public:
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs, const TSharedRef<SDockTab>& ConstructUnderMajorTab, const TSharedPtr<SWindow>& ConstructUnderWindow);
+	virtual void Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime) override;
 	virtual ~SProjectCleaner() override;
+
 private:
 	static bool WidgetEnabled();
 	static int32 WidgetGetIndex();
 
 	static void MenuBarFillTabs(FMenuBuilder& MenuBuilder, const TSharedPtr<FTabManager> TabManager);
+	static void MenuBarFillSettings(FMenuBuilder& MenuBuilder, const TSharedPtr<FTabManager> TabManager);
 	static void MenuBarFillHelp(FMenuBuilder& MenuBuilder, const TSharedPtr<FTabManager> TabManager);
 
 	TSharedRef<SDockTab> OnTabSpawnScanSettings(const FSpawnTabArgs& Args);
@@ -37,6 +40,8 @@ private:
 	TSharedRef<SDockTab> OnTabSpawnIndirectAssets(const FSpawnTabArgs& Args);
 	TSharedRef<SDockTab> OnTabSpawnCorruptedAssets(const FSpawnTabArgs& Args);
 	TSharedRef<SDockTab> OnTabSpawnNonEngineFiles(const FSpawnTabArgs& Args);
+
+	bool TabsEnabled() const;
 
 	TSharedPtr<FTabManager> TabManager;
 	TSharedPtr<FTabManager::FLayout> TabLayout;
@@ -49,4 +54,8 @@ private:
 	TWeakPtr<SProjectCleanerTabIndirect> TabIndirect;
 	TWeakPtr<SProjectCleanerTabCorrupted> TabCorrupted;
 	TWeakPtr<SProjectCleanerTabNonEngine> TabNonEngine;
+
+	float TabsRenderOpacity = 1.0f;
 };
+
+

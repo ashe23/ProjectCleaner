@@ -4,19 +4,11 @@
 #include "ProjectCleanerStyles.h"
 #include "ProjectCleanerCmds.h"
 #include "ProjectCleanerConstants.h"
-// #include "ProjectCleanerScanner.h"
-// #include "ProjectCleanerScanSettings.h"
 #include "Slate/SProjectCleaner.h"
 // Engine Headers
 #include "ToolMenus.h"
-#include "AssetToolsModule.h"
-#include "AssetRegistry/AssetRegistryModule.h"
 
 DEFINE_LOG_CATEGORY(LogProjectCleaner);
-
-#define LOCTEXT_NAMESPACE "FProjectCleanerModule"
-
-// TSharedPtr<FProjectCleanerScanner> FProjectCleanerModule::ScannerInstance = nullptr;
 
 void FProjectCleanerModule::StartupModule()
 {
@@ -24,7 +16,6 @@ void FProjectCleanerModule::StartupModule()
 	RegisterCmds();
 	RegisterMenus();
 	RegisterTabs();
-	// RegisterScanner();
 }
 
 void FProjectCleanerModule::ShutdownModule()
@@ -33,7 +24,6 @@ void FProjectCleanerModule::ShutdownModule()
 	UnregisterMenus();
 	UnregisterCmds();
 	UnregisterStyles();
-	// UnregisterScanner();
 }
 
 bool FProjectCleanerModule::IsGameModule() const
@@ -45,11 +35,6 @@ bool FProjectCleanerModule::SupportsDynamicReloading()
 {
 	return false;
 }
-
-// const TSharedPtr<FProjectCleanerScanner>& FProjectCleanerModule::GetScanner()
-// {
-// 	return ScannerInstance;
-// }
 
 void FProjectCleanerModule::RegisterStyles()
 {
@@ -109,19 +94,10 @@ void FProjectCleanerModule::RegisterTabs() const
 
 			                        return DockTab;
 		                        }))
-	                        .SetDisplayName(LOCTEXT("FProjectCleanerTabTitle", "Project Cleaner"))
+	                        .SetDisplayName(FText::FromString(ProjectCleanerConstants::ModuleTitle.ToString()))
 	                        .SetMenuType(ETabSpawnerMenuType::Hidden)
 	                        .SetIcon(FSlateIcon(FProjectCleanerStyles::GetStyleSetName(), "ProjectCleaner.IconBin16"));
 }
-
-// void FProjectCleanerModule::RegisterScanner() const
-// {
-// 	if (!ScannerInstance.IsValid())
-// 	{
-// 		const TWeakObjectPtr<UProjectCleanerScanSettings> ScanSettings = GetMutableDefault<UProjectCleanerScanSettings>();
-// 		ScannerInstance = MakeShareable(new FProjectCleanerScanner(ScanSettings));
-// 	}
-// }
 
 void FProjectCleanerModule::UnregisterMenus()
 {
@@ -134,12 +110,6 @@ void FProjectCleanerModule::UnregisterTabs()
 	FGlobalTabmanager::Get()->UnregisterTabSpawner(ProjectCleanerConstants::TabProjectCleaner);
 }
 
-// void FProjectCleanerModule::UnregisterScanner() const
-// {
-// 	ensure(ScannerInstance.IsUnique());
-// 	ScannerInstance.Reset();
-// }
-
 void FProjectCleanerModule::UnregisterStyles()
 {
 	FProjectCleanerStyles::Shutdown();
@@ -149,7 +119,5 @@ void FProjectCleanerModule::UnregisterCmds()
 {
 	FProjectCleanerCmds::Unregister();
 }
-
-#undef LOCTEXT_NAMESPACE
 
 IMPLEMENT_MODULE(FProjectCleanerModule, ProjectCleaner)
