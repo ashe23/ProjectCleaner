@@ -7,10 +7,10 @@
 #include "ProjectCleanerConstants.h"
 #include "ProjectCleanerScanSettings.h"
 // Engine Headers
-// #include "ContentBrowserModule.h"
-// #include "ContentBrowserItem.h"
-// #include "FrontendFilterBase.h"
-// #include "IContentBrowserSingleton.h"
+#include "ContentBrowserModule.h"
+#include "ContentBrowserItem.h"
+#include "FrontendFilterBase.h"
+#include "IContentBrowserSingleton.h"
 #include "ProjectCleanerStyles.h"
 #include "Widgets/Layout/SSeparator.h"
 
@@ -47,6 +47,7 @@ void SProjectCleanerTabUnused::UpdateView()
 		{
 			SelectedPaths.Reset();
 			SelectedPaths.Append(InSelectedPaths);
+			UpdateView();
 			UE_LOG(LogProjectCleaner, Warning, TEXT("Selected Paths Num: %d"), SelectedPaths.Num());
 		});
 
@@ -67,10 +68,10 @@ void SProjectCleanerTabUnused::UpdateView()
 	}
 
 	// creating asset view
-
+	UpdateFilter();
 	// ProjectCleanerTreeView->TreeItemsUpdate();
 
-	// const FContentBrowserModule& ModuleContentBrowser = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
+	const FContentBrowserModule& ModuleContentBrowser = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
 	//
 	// class FFrontendFilter_ProjectCleaner : public FFrontendFilter
 	// {
@@ -135,22 +136,22 @@ void SProjectCleanerTabUnused::UpdateView()
 	// );
 	// const auto FrontendFilter = MakeShareable(new FFrontendFilter_ProjectCleaner(ProjectCleanerCategory, PathSelected));
 	//
-	// FAssetPickerConfig AssetPickerConfig;
-	// AssetPickerConfig.Filter = Filter;
-	// AssetPickerConfig.SelectionMode = ESelectionMode::Multi;
-	// AssetPickerConfig.InitialAssetViewType = EAssetViewType::Tile;
-	// AssetPickerConfig.bCanShowFolders = false;
-	// AssetPickerConfig.bAddFilterUI = true;
-	// AssetPickerConfig.bPreloadAssetsForContextMenu = false;
-	// AssetPickerConfig.bSortByPathInColumnView = false;
-	// AssetPickerConfig.bShowPathInColumnView = false;
-	// AssetPickerConfig.bShowBottomToolbar = true;
-	// AssetPickerConfig.bCanShowDevelopersFolder = ScanSettings->bScanDeveloperContents;
-	// AssetPickerConfig.bCanShowClasses = false;
-	// AssetPickerConfig.bAllowDragging = false;
-	// AssetPickerConfig.bForceShowEngineContent = false;
-	// AssetPickerConfig.bCanShowRealTimeThumbnails = false;
-	// AssetPickerConfig.AssetShowWarningText = FText::FromName("No assets");
+	FAssetPickerConfig AssetPickerConfig;
+	AssetPickerConfig.Filter = Filter;
+	AssetPickerConfig.SelectionMode = ESelectionMode::Multi;
+	AssetPickerConfig.InitialAssetViewType = EAssetViewType::Tile;
+	AssetPickerConfig.bCanShowFolders = false;
+	AssetPickerConfig.bAddFilterUI = true;
+	AssetPickerConfig.bPreloadAssetsForContextMenu = false;
+	AssetPickerConfig.bSortByPathInColumnView = false;
+	AssetPickerConfig.bShowPathInColumnView = false;
+	AssetPickerConfig.bShowBottomToolbar = true;
+	AssetPickerConfig.bCanShowDevelopersFolder = ScanSettings->bScanDeveloperContents;
+	AssetPickerConfig.bCanShowClasses = false;
+	AssetPickerConfig.bAllowDragging = false;
+	AssetPickerConfig.bForceShowEngineContent = false;
+	AssetPickerConfig.bCanShowRealTimeThumbnails = false;
+	AssetPickerConfig.AssetShowWarningText = FText::FromName("No assets");
 	// AssetPickerConfig.ExtraFrontendFilters.Add(FrontendFilter);
 
 	// FGetCurrentSelectionDelegate CurrentSelectionDelegate;
@@ -180,47 +181,77 @@ void SProjectCleanerTabUnused::UpdateView()
 			[
 				ProjectCleanerTreeView.ToSharedRef()
 			]
-			// + SSplitter::Slot()
-			// [
-			// 	SNew(SVerticalBox)
-			// 	+ SVerticalBox::Slot()
-			// 	  .Padding(FMargin{0.0f, 5.0f})
-			// 	  .AutoHeight()
-			// 	[
-			// 		SNew(SHorizontalBox)
-			// 		+ SHorizontalBox::Slot()
-			// 		.AutoWidth()
-			// 		[
-			// 			SNew(SButton)
-			// 			.ContentPadding(FMargin{5.0f})
-			// 			// .OnClicked_Raw(this, &SProjectCleaner::OnBtnCleanProjectClick)
-			// 			.ButtonColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Blue"))
-			// 			[
-			// 				SNew(STextBlock)
-			// 				.Justification(ETextJustify::Center)
-			// 				.ToolTipText(FText::FromString(TEXT("Include all excluded assets and mark them as unused")))
-			// 				.ColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.White"))
-			// 				.ShadowOffset(FVector2D{1.5f, 1.5f})
-			// 				.ShadowColorAndOpacity(FLinearColor::Black)
-			// 				.Font(FProjectCleanerStyles::GetFont("Bold", 10))
-			// 				.Text(FText::FromString(TEXT("Include all excluded assets")))
-			// 			]
-			// 		]
-			// 	]
-			// 	+ SVerticalBox::Slot()
-			// 	  .Padding(FMargin{0.0f, 5.0f})
-			// 	  .AutoHeight()
-			// 	[
-			// 		SNew(SSeparator)
-			// 		.Thickness(5.0f)
-			// 	]
-			// 	+ SVerticalBox::Slot()
-			// 	  .Padding(FMargin{0.0f, 5.0f})
-			// 	  .FillHeight(1.0f)
-			// 	[
-			// 		ModuleContentBrowser.Get().CreateAssetPicker(AssetPickerConfig)
-			// 	]
-			// ]
+			+ SSplitter::Slot()
+			[
+				SNew(SVerticalBox)
+				+ SVerticalBox::Slot()
+				  .Padding(FMargin{0.0f, 5.0f})
+				  .AutoHeight()
+				[
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot()
+					.AutoWidth()
+					[
+						SNew(SButton)
+						.ContentPadding(FMargin{5.0f})
+						// .OnClicked_Raw(this, &SProjectCleaner::OnBtnCleanProjectClick)
+						.ButtonColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Blue"))
+						[
+							SNew(STextBlock)
+							.Justification(ETextJustify::Center)
+							.ToolTipText(FText::FromString(TEXT("Include all excluded assets and mark them as unused")))
+							.ColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.White"))
+							.ShadowOffset(FVector2D{1.5f, 1.5f})
+							.ShadowColorAndOpacity(FLinearColor::Black)
+							.Font(FProjectCleanerStyles::GetFont("Bold", 10))
+							.Text(FText::FromString(TEXT("Include all excluded assets")))
+						]
+					]
+				]
+				+ SVerticalBox::Slot()
+				  .Padding(FMargin{0.0f, 5.0f})
+				  .AutoHeight()
+				[
+					SNew(SSeparator)
+					.Thickness(5.0f)
+				]
+				+ SVerticalBox::Slot()
+				  .Padding(FMargin{0.0f, 5.0f})
+				  .FillHeight(1.0f)
+				[
+					ModuleContentBrowser.Get().CreateAssetPicker(AssetPickerConfig)
+				]
+			]
 		]
 	];
+}
+
+void SProjectCleanerTabUnused::UpdateFilter()
+{
+	Filter.Clear();
+
+	if (Scanner->GetAssetsUnused().Num() == 0)
+	{
+		// this is needed for disabling showing primary assets in browser, when there is no unused assets
+		Filter.TagsAndValues.Add(FName{"ProjectCleanerEmptyTag"}, FString{"ProjectCleanerEmptyTag"});
+
+		return;
+	}
+
+	for (const auto& UnusedAsset : Scanner->GetAssetsUnused())
+	{
+		Filter.ObjectPaths.Add(UnusedAsset.ObjectPath);
+	}
+
+	if (SelectedPaths.Num() == 0)
+	{
+		Filter.PackagePaths.Add(ProjectCleanerConstants::PathRelRoot);
+	}
+	else
+	{
+		for (const auto& SelectedPath : SelectedPaths)
+		{
+			Filter.PackagePaths.Add(FName{*SelectedPath});
+		}
+	}
 }

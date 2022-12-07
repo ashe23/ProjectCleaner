@@ -22,7 +22,9 @@ public:
 	void Construct(const FArguments& InArgs);
 private:
 	void UpdateView();
+	void UpdateFilter();
 
+	FARFilter Filter;
 	TSet<FString> SelectedPaths;
 	TSharedPtr<FProjectCleanerScanner> Scanner;
 	TWeakObjectPtr<UProjectCleanerScanSettings> ScanSettings;
