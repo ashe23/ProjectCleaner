@@ -14,6 +14,8 @@ void SProjectCleanerAssetBrowser::Construct(const FArguments& InArgs)
 {
 	const FAssetRegistryModule& AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
 
+	AssetThumbnailPool = MakeShareable( new FAssetThumbnailPool(1024, false) );
+
 	FARFilter Filter;
 	Filter.PackagePaths.Add(ProjectCleanerConstants::PathRelRoot);
 	Filter.bRecursivePaths = true;
@@ -47,9 +49,14 @@ void SProjectCleanerAssetBrowser::Construct(const FArguments& InArgs)
 			+ SHorizontalBox::Slot()
 			.AutoWidth()
 			[
-				SNew(SImage)
-				.Image(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconCircle20"))
-				.ColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Yellow"))
+				SNew(SBox)
+				.WidthOverride(16.0f)
+				.HeightOverride(16.0f)
+				[
+					SNew(SImage)
+					.Image(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconCircle16"))
+					.ColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Yellow"))
+				]
 			]
 			+ SHorizontalBox::Slot()
 			  .Padding(FMargin{0.0f, 2.0f, 0.0f, 0.0f})
@@ -62,9 +69,14 @@ void SProjectCleanerAssetBrowser::Construct(const FArguments& InArgs)
 			  .AutoWidth()
 			  .Padding(FMargin{5.0f, 0.0f, 0.0f, 0.0f})
 			[
-				SNew(SImage)
-				.Image(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconCircle20"))
-				.ColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Blue"))
+				SNew(SBox)
+				.WidthOverride(16.0f)
+				.HeightOverride(16.0f)
+				[
+					SNew(SImage)
+					.Image(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconCircle16"))
+					.ColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Blue"))
+				]
 			]
 			+ SHorizontalBox::Slot()
 			  .Padding(FMargin{0.0f, 2.0f, 0.0f, 0.0f})
@@ -77,9 +89,14 @@ void SProjectCleanerAssetBrowser::Construct(const FArguments& InArgs)
 			  .AutoWidth()
 			  .Padding(FMargin{5.0f, 0.0f, 0.0f, 0.0f})
 			[
-				SNew(SImage)
-				.Image(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconCircle20"))
-				.ColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Red"))
+				SNew(SBox)
+				.WidthOverride(16.0f)
+				.HeightOverride(16.0f)
+				[
+					SNew(SImage)
+					.Image(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconCircle16"))
+					.ColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Red"))
+				]
 			]
 			+ SHorizontalBox::Slot()
 			  .Padding(FMargin{0.0f, 2.0f, 0.0f, 0.0f})
@@ -90,22 +107,36 @@ void SProjectCleanerAssetBrowser::Construct(const FArguments& InArgs)
 			]
 		]
 		+ SVerticalBox::Slot()
-		.AutoHeight()
+		.FillHeight(1.0f)
 		.Padding(FMargin{0.0f, 5.0f})
 		[
-			SNew(STileView< TSharedPtr<FTestData>>)
-				.ItemWidth(100)
-				.ItemHeight(166)
-				.ListItemsSource(&Items)
-				.SelectionMode(ESelectionMode::Multi)
-				.OnGenerateTile(this, &SProjectCleanerAssetBrowser::OnGenerateWidgetForTileView)
+			SNew(SScrollBox)
+			.ScrollWhenFocusChanges(EScrollWhenFocusChanges::NoScroll)
+			.AnimateWheelScrolling(true)
+			.AllowOverscroll(EAllowOverscroll::No)
+			+ SScrollBox::Slot()
+			[
+				SNew(STileView< TSharedPtr<FTestData>>)
+					.ItemWidth(100)
+					.ItemHeight(166)
+					.ListItemsSource(&Items)
+					.SelectionMode(ESelectionMode::Multi)
+					.OnGenerateTile(this, &SProjectCleanerAssetBrowser::OnGenerateWidgetForTileView)
+			]
 		]
 	];
 }
 
+void SProjectCleanerAssetBrowser::Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime)
+{
+	SCompoundWidget::Tick(AllottedGeometry, InCurrentTime, InDeltaTime);
+
+	AssetThumbnailPool->Tick(InDeltaTime);
+}
+
 TSharedRef<ITableRow> SProjectCleanerAssetBrowser::OnGenerateWidgetForTileView(TSharedPtr<FTestData> InItem, const TSharedRef<STableViewBase>& OwnerTable) const
 {
-	const TSharedPtr<FAssetThumbnail> AssetThumbnail = MakeShareable(new FAssetThumbnail(InItem->AssetData, 100, 100, nullptr));
+	const TSharedPtr<FAssetThumbnail> AssetThumbnail = MakeShareable(new FAssetThumbnail(InItem->AssetData, 90, 90, AssetThumbnailPool));
 	FAssetThumbnailConfig ThumbnailConfig;
 	ThumbnailConfig.bAllowFadeIn = true;
 
@@ -124,8 +155,8 @@ TSharedRef<ITableRow> SProjectCleanerAssetBrowser::OnGenerateWidgetForTileView(T
 				[
 					SNew(SBox)
 					.Padding(0)
-					.WidthOverride(100)
-					.HeightOverride(100)
+					.WidthOverride(90)
+					.HeightOverride(90)
 					[
 						AssetThumbnail->MakeThumbnailWidget(ThumbnailConfig)
 					]
@@ -145,7 +176,7 @@ TSharedRef<ITableRow> SProjectCleanerAssetBrowser::OnGenerateWidgetForTileView(T
 						SNew(STextBlock)
 						.WrapTextAt(100.0f)
 						.LineBreakPolicy(FBreakIterator::CreateCamelCaseBreakIterator())
-						.Font(FProjectCleanerStyles::GetFont("Light", 8))
+						.Font(FProjectCleanerStyles::GetFont("Light", 10))
 						.Text(FText::FromString(InItem->AssetData.AssetName.ToString()))
 					]
 				]
@@ -162,7 +193,7 @@ TSharedRef<ITableRow> SProjectCleanerAssetBrowser::OnGenerateWidgetForTileView(T
 					  .Padding(FMargin{3.0f, 2.0f})
 					[
 						SNew(STextBlock)
-						.Font(FProjectCleanerStyles::GetFont("Light", 7))
+						.Font(FProjectCleanerStyles::GetFont("Light", 8))
 						.Text(FText::FromString(InItem->AssetData.AssetClass.ToString()))
 					]
 					+ SHorizontalBox::Slot()
@@ -172,11 +203,11 @@ TSharedRef<ITableRow> SProjectCleanerAssetBrowser::OnGenerateWidgetForTileView(T
 					  .Padding(FMargin{3.0f, 2.0f})
 					[
 						SNew(SBox)
-						.WidthOverride(8.0f)
-						.HeightOverride(8.0f)
+						.WidthOverride(16.0f)
+						.HeightOverride(16.0f)
 						[
 							SNew(SImage)
-							.Image(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconCircle8"))
+							.Image(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconCircle16"))
 							.ColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Yellow"))
 						]
 					]

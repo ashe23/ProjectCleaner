@@ -24,7 +24,7 @@ private:
 	void UpdateView();
 	void UpdateFilter();
 
-	FARFilter Filter;
+	// FARFilter Filter;
 	TSet<FString> SelectedPaths;
 	TSharedPtr<FProjectCleanerScanner> Scanner;
 	TWeakObjectPtr<UProjectCleanerScanSettings> ScanSettings;

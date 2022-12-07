@@ -57,6 +57,7 @@ TSharedRef<FSlateStyleSet> FProjectCleanerStyles::Create()
 	Style->Set("ProjectCleaner.IconSettings40", new IMAGE_BRUSH(TEXT("IconSettings40"), FVector2D{40.0f, 40.0f}));
 	Style->Set("ProjectCleaner.IconCircle8", new IMAGE_BRUSH(TEXT("IconCircle8"), FVector2D{8.0f, 8.0f}));
 	Style->Set("ProjectCleaner.IconCircle10", new IMAGE_BRUSH(TEXT("IconCircle10"), FVector2D{10.0f, 10.0f}));
+	Style->Set("ProjectCleaner.IconCircle16", new IMAGE_BRUSH(TEXT("IconCircle16"), FVector2D{16.0f, 16.0f}));
 	Style->Set("ProjectCleaner.IconCircle20", new IMAGE_BRUSH(TEXT("IconCircle20"), FVector2D{20.0f, 20.0f}));
 	Style->Set("ProjectCleaner.IconCircle40", new IMAGE_BRUSH(TEXT("IconCircle40"), FVector2D{40.0f, 40.0f}));
 	Style->Set("ProjectCleaner.IconTabUnused16", new IMAGE_BRUSH(TEXT("IconTabUnused16"), FVector2D{16.0f, 16.0f}));

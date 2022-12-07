@@ -10,6 +10,7 @@ struct FTestData
 	FTestData(const FAssetData& Data) : AssetData(Data)
 	{
 	}
+
 	FAssetData AssetData;
 };
 
@@ -23,8 +24,9 @@ public:
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
+	void Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime) override;
 private:
 	TSharedRef<ITableRow> OnGenerateWidgetForTileView(TSharedPtr<FTestData> InItem, const TSharedRef<STableViewBase>& OwnerTable) const;
-
+	TSharedPtr<FAssetThumbnailPool> AssetThumbnailPool;
 	TArray<TSharedPtr<FTestData>> Items;
 };
