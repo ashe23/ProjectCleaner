@@ -5,9 +5,9 @@
 #include "CoreMinimal.h"
 #include "ProjectCleanerTypes.h"
 
-// SProjectCleaner
-DECLARE_MULTICAST_DELEGATE(FProjectCleanerDelegateExcludeSettingsChanged);
-DECLARE_MULTICAST_DELEGATE(FProjectCleanerDelegateScanSettingsChanged);
+// Settings
+DECLARE_MULTICAST_DELEGATE_OneParam(FProjectCleanerDelegateScanSettingsChanged, const FName& PropertyName);
+DECLARE_MULTICAST_DELEGATE_OneParam(FProjectCleanerDelegateExcludeSettingsChanged, const FName& PropertyName);
 
 // Scanner
 DECLARE_MULTICAST_DELEGATE_OneParam(FProjectCleanerDelegateScanDataStateChanged, const EProjectCleanerScannerDataState DataState);

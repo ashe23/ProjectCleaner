@@ -5,7 +5,7 @@
 #include "ProjectCleaner.h"
 #include "ProjectCleanerScanner.h"
 #include "ProjectCleanerConstants.h"
-#include "ProjectCleanerScanSettings.h"
+#include "Settings/ProjectCleanerScanSettings.h"
 // Engine Headers
 // #include "ContentBrowserModule.h"
 // #include "ContentBrowserItem.h"

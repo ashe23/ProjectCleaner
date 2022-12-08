@@ -12,12 +12,6 @@ class UProjectCleanerExcludeSettings final : public UObject
 	GENERATED_BODY()
 
 public:
-	UProjectCleanerExcludeSettings();
-
-#if WITH_EDITOR
-	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
-#endif
-
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Config, Category="Exclude Settings", DisplayName="Excluded Folders",
 		meta=(ContentDir, ToolTip="Exclude assets contained within these folders from scanning."))
 	TArray<FDirectoryPath> ExcludedFolders;
@@ -29,6 +23,11 @@ public:
 	TArray<TSoftObjectPtr<UObject>> ExcludedAssets;
 
 	FProjectCleanerDelegateExcludeSettingsChanged& OnChange();
+
+protected:
+#if WITH_EDITOR
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+#endif
 
 private:
 	FProjectCleanerDelegateExcludeSettingsChanged DelegateExcludeSettingChanged;

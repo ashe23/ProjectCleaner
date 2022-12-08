@@ -1,12 +1,7 @@
 ﻿// Copyright Ashot Barkhudaryan. All Rights Reserved.
 
-#include "ProjectCleanerScanSettings.h"
-
-#include "ProjectCleaner.h"
-
-UProjectCleanerScanSettings::UProjectCleanerScanSettings()
-{
-}
+#include "Settings/ProjectCleanerScanSettings.h"
+#include "ProjectCleanerDelegates.h"
 
 #if WITH_EDITOR
 void UProjectCleanerScanSettings::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
@@ -17,7 +12,7 @@ void UProjectCleanerScanSettings::PostEditChangeProperty(FPropertyChangedEvent& 
 
 	if (DelegateScanSettingsChanged.IsBound())
 	{
-		DelegateScanSettingsChanged.Broadcast();
+		DelegateScanSettingsChanged.Broadcast(PropertyChangedEvent.GetPropertyName());
 	}
 }
 #endif

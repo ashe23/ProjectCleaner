@@ -8,7 +8,7 @@
 #include "ProjectCleanerLibrary.h"
 #include "ProjectCleanerScanner.h"
 #include "ProjectCleanerConstants.h"
-#include "ProjectCleanerScanSettings.h"
+#include "Settings/ProjectCleanerScanSettings.h"
 // Engine Headers
 #include "ProjectCleanerCmds.h"
 #include "Widgets/Input/SSearchBox.h"

@@ -4,8 +4,8 @@
 #include "ProjectCleanerStyles.h"
 #include "ProjectCleanerScanner.h"
 #include "ProjectCleanerLibrary.h"
-#include "ProjectCleanerScanSettings.h"
-#include "ProjectCleanerExcludeSettings.h"
+#include "Settings/ProjectCleanerScanSettings.h"
+#include "Settings/ProjectCleanerExcludeSettings.h"
 // Engine Headers
 #include "ProjectCleanerConstants.h"
 #include "Widgets/Layout/SScrollBox.h"

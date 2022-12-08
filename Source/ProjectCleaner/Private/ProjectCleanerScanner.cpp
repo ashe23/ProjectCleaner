@@ -5,8 +5,8 @@
 #include "ProjectCleanerTypes.h"
 #include "ProjectCleanerLibrary.h"
 #include "ProjectCleanerConstants.h"
-#include "ProjectCleanerScanSettings.h"
-#include "ProjectCleanerExcludeSettings.h"
+#include "Settings/ProjectCleanerScanSettings.h"
+#include "Settings/ProjectCleanerExcludeSettings.h"
 // Engine Headers
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "Internationalization/Regex.h"
@@ -82,14 +82,13 @@ public:
 	}
 };
 
-FProjectCleanerScanner::FProjectCleanerScanner(const TWeakObjectPtr<UProjectCleanerScanSettings>& InScanSettings, const TWeakObjectPtr<UProjectCleanerExcludeSettings>& InExcludeSettings)
+FProjectCleanerScanner::FProjectCleanerScanner(UProjectCleanerScanSettings* InScanSettings, UProjectCleanerExcludeSettings* InExcludeSettings)
 	: ScanSettings(InScanSettings),
 	  ExcludeSettings(InExcludeSettings),
 	  ModuleAssetRegistry(FModuleManager::LoadModuleChecked<FAssetRegistryModule>(AssetRegistryConstants::ModuleName))
 {
-	if (!ScanSettings.IsValid()) return;
-	if (!ExcludeSettings.IsValid()) return;
-
+	if (!ScanSettings || !ExcludeSettings) return;
+	
 	ExcludeSettings->OnChange().AddLambda([&]()
 	{
 		if (ScanSettings->bAutoScan)
@@ -97,21 +96,21 @@ FProjectCleanerScanner::FProjectCleanerScanner(const TWeakObjectPtr<UProjectClea
 			Scan();
 		}
 	});
-
-	ScanSettings->OnChange().AddLambda([&]()
-	{
-		if (ScanSettings->bAutoScan)
-		{
-			Scan();
-			return;
-		}
-
-		ScannerDataState = EProjectCleanerScannerDataState::NotScanned;
-		if (DelegateScanDataStateChanged.IsBound())
-		{
-			DelegateScanDataStateChanged.Broadcast(ScannerDataState);
-		}
-	});
+	
+	// ScanSettings->OnChange().AddLambda([&]()
+	// {
+	// 	if (ScanSettings->bAutoScan)
+	// 	{
+	// 		Scan();
+	// 		return;
+	// 	}
+	//
+	// 	ScannerDataState = EProjectCleanerScannerDataState::NotScanned;
+	// 	if (DelegateScanDataStateChanged.IsBound())
+	// 	{
+	// 		DelegateScanDataStateChanged.Broadcast(ScannerDataState);
+	// 	}
+	// });
 }
 
 void FProjectCleanerScanner::Scan()

@@ -6,13 +6,14 @@
 #include "Slate/Tabs/SProjectCleanerTabIndirect.h"
 #include "Slate/Tabs/SProjectCleanerTabCorrupted.h"
 #include "Slate/Tabs/SProjectCleanerTabNonEngine.h"
-#include "ProjectCleanerScanSettings.h"
-#include "ProjectCleanerExcludeSettings.h"
+#include "Settings/ProjectCleanerScanSettings.h"
+#include "Settings/ProjectCleanerExcludeSettings.h"
 #include "ProjectCleanerScanner.h"
 #include "ProjectCleanerConstants.h"
 #include "ProjectCleanerStyles.h"
 #include "ProjectCleanerLibrary.h"
 // Engine Headers
+#include "ProjectCleaner.h"
 #include "Widgets/Layout/SWidgetSwitcher.h"
 
 static constexpr int32 WidgetIndexNone = 0;
@@ -22,26 +23,14 @@ static constexpr int32 WidgetIndexInPlayMode = 2;
 void SProjectCleaner::Construct(const FArguments& InArgs, const TSharedRef<SDockTab>& ConstructUnderMajorTab, const TSharedPtr<SWindow>& ConstructUnderWindow)
 {
 	ScanSettings = GetMutableDefault<UProjectCleanerScanSettings>();
-	if (!ScanSettings.IsValid()) return;
-
 	ExcludeSettings = GetMutableDefault<UProjectCleanerExcludeSettings>();
-	if (!ExcludeSettings.IsValid()) return;
+	
+	check(ScanSettings);
+	check(ExcludeSettings);
 
 	Scanner = MakeShareable(new FProjectCleanerScanner(ScanSettings, ExcludeSettings));
 	if (!Scanner.IsValid()) return;
 
-	Scanner->OnDataStateChanged().AddLambda([&](const EProjectCleanerScannerDataState DataState)
-	{
-		TabsRenderOpacity = DataState == EProjectCleanerScannerDataState::Scanned ? 1.0f : 0.2f;
-		bTabsEnabled = DataState == EProjectCleanerScannerDataState::Scanned;
-	});
-
-	// if auto scan option is enabled then we should start scanning project when ProjectCleaner window opened
-	if (ScanSettings->bAutoScan)
-	{
-		Scanner->Scan();
-	}
-	
 	TabsRenderOpacity = Scanner->GetScannerDataState() == EProjectCleanerScannerDataState::Scanned ? 1.0f : 0.2f;
 	bTabsEnabled = Scanner->GetScannerDataState() == EProjectCleanerScannerDataState::Scanned;
 
@@ -205,9 +194,6 @@ void SProjectCleaner::Construct(const FArguments& InArgs, const TSharedRef<SDock
 
 SProjectCleaner::~SProjectCleaner()
 {
-	ScanSettings.Reset();
-	ExcludeSettings.Reset();
-
 	FGlobalTabmanager::Get()->UnregisterTabSpawner(ProjectCleanerConstants::TabScanSettings);
 	FGlobalTabmanager::Get()->UnregisterTabSpawner(ProjectCleanerConstants::TabUnusedAssets);
 	FGlobalTabmanager::Get()->UnregisterTabSpawner(ProjectCleanerConstants::TabIndirectAssets);
@@ -267,7 +253,7 @@ void SProjectCleaner::MenuBarFillSettings(FMenuBuilder& MenuBuilder, const TShar
 	});
 	ActionAutoScan.CanExecuteAction = FCanExecuteAction::CreateLambda([&]()
 	{
-		return ScanSettings.IsValid();
+		return ScanSettings != nullptr;
 	});
 	ActionAutoScan.GetActionCheckState = FGetActionCheckState::CreateLambda([&]()
 	{
@@ -291,7 +277,7 @@ void SProjectCleaner::MenuBarFillSettings(FMenuBuilder& MenuBuilder, const TShar
 	});
 	ActionAutoDeleteEmptyFolders.CanExecuteAction = FCanExecuteAction::CreateLambda([&]()
 	{
-		return ScanSettings.IsValid();
+		return ScanSettings != nullptr;
 	});
 	ActionAutoDeleteEmptyFolders.GetActionCheckState = FGetActionCheckState::CreateLambda([&]()
 	{
@@ -314,7 +300,7 @@ void SProjectCleaner::MenuBarFillSettings(FMenuBuilder& MenuBuilder, const TShar
 	});
 	ActionScanDevContent.CanExecuteAction = FCanExecuteAction::CreateLambda([&]()
 	{
-		return ScanSettings.IsValid();
+		return ScanSettings != nullptr;
 	});
 	ActionScanDevContent.GetActionCheckState = FGetActionCheckState::CreateLambda([&]()
 	{
@@ -356,7 +342,8 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnScanSettings(const FSpawnTabArgs
 		.Label(FText::FromString(TEXT("Scan Settings")))
 		.Icon(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconSettings16"))
 		[
-			SAssignNew(TabScanSettings, SProjectCleanerTabScanSettings).Scanner(Scanner)
+			SNew(STextBlock)
+			// SAssignNew(TabScanSettings, SProjectCleanerTabScanSettings).Scanner(Scanner)
 		];
 }
 
@@ -368,10 +355,11 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnUnusedAssets(const FSpawnTabArgs
 		.Label(FText::FromString(TEXT("Unused Assets")))
 		.Icon(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconTabUnused16"))
 		[
-			SAssignNew(TabUnused, SProjectCleanerTabUnused)
-			.Scanner(Scanner)
-			.RenderOpacity(TabsRenderOpacity)
-			.IsEnabled(this, &SProjectCleaner::TabsEnabled)
+			SNew(STextBlock)
+			// SAssignNew(TabUnused, SProjectCleanerTabUnused)
+			// .Scanner(Scanner)
+			// .RenderOpacity(TabsRenderOpacity)
+			// .IsEnabled(this, &SProjectCleaner::TabsEnabled)
 		];
 }
 
@@ -383,10 +371,11 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnIndirectAssets(const FSpawnTabAr
 		.Label(FText::FromString(TEXT("Indirect Assets")))
 		.Icon(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconTabIndirect16"))
 		[
-			SAssignNew(TabIndirect, SProjectCleanerTabIndirect)
-			.Scanner(Scanner)
-			.RenderOpacity(TabsRenderOpacity)
-			.IsEnabled(this, &SProjectCleaner::TabsEnabled)
+			SNew(STextBlock)
+			// SAssignNew(TabIndirect, SProjectCleanerTabIndirect)
+			// .Scanner(Scanner)
+			// .RenderOpacity(TabsRenderOpacity)
+			// .IsEnabled(this, &SProjectCleaner::TabsEnabled)
 		];
 }
 
@@ -398,10 +387,11 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnCorruptedAssets(const FSpawnTabA
 		.Label(FText::FromString(TEXT("Corrupted Assets")))
 		.Icon(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconTabCorrupted16"))
 		[
-			SAssignNew(TabCorrupted, SProjectCleanerTabCorrupted)
-			.Scanner(Scanner)
-			.RenderOpacity(TabsRenderOpacity)
-			.IsEnabled(this, &SProjectCleaner::TabsEnabled)
+			SNew(STextBlock)
+			// SAssignNew(TabCorrupted, SProjectCleanerTabCorrupted)
+			// .Scanner(Scanner)
+			// .RenderOpacity(TabsRenderOpacity)
+			// .IsEnabled(this, &SProjectCleaner::TabsEnabled)
 		];
 }
 
@@ -413,10 +403,11 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnNonEngineFiles(const FSpawnTabAr
 		.Label(FText::FromString(TEXT("NonEngine Files")))
 		.Icon(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconTabNonEngine16"))
 		[
-			SAssignNew(TabNonEngine, SProjectCleanerTabNonEngine)
-			.Scanner(Scanner)
-			.RenderOpacity(TabsRenderOpacity)
-			.IsEnabled(this, &SProjectCleaner::TabsEnabled)
+			SNew(STextBlock)
+			// SAssignNew(TabNonEngine, SProjectCleanerTabNonEngine)
+			// .Scanner(Scanner)
+			// .RenderOpacity(TabsRenderOpacity)
+			// .IsEnabled(this, &SProjectCleaner::TabsEnabled)
 		];
 }
 

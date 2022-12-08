@@ -1,10 +1,7 @@
 ﻿// Copyright Ashot Barkhudaryan. All Rights Reserved.
 
-#include "ProjectCleanerExcludeSettings.h"
+#include "Settings/ProjectCleanerExcludeSettings.h"
 
-UProjectCleanerExcludeSettings::UProjectCleanerExcludeSettings()
-{
-}
 
 #if WITH_EDITOR
 void UProjectCleanerExcludeSettings::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
@@ -15,7 +12,7 @@ void UProjectCleanerExcludeSettings::PostEditChangeProperty(FPropertyChangedEven
 
 	if (DelegateExcludeSettingChanged.IsBound())
 	{
-		DelegateExcludeSettingChanged.Broadcast();
+		DelegateExcludeSettingChanged.Broadcast(PropertyChangedEvent.GetPropertyName());
 	}
 }
 #endif

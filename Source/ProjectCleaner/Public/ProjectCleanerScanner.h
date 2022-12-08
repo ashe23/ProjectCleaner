@@ -16,7 +16,7 @@ struct FProjectCleanerIndirectAsset;
  */
 struct FProjectCleanerScanner
 {
-	explicit FProjectCleanerScanner(const TWeakObjectPtr<UProjectCleanerScanSettings>& InScanSettings, const TWeakObjectPtr<UProjectCleanerExcludeSettings>& InExcludeSettings);
+	explicit FProjectCleanerScanner(UProjectCleanerScanSettings* InScanSettings, UProjectCleanerExcludeSettings* InExcludeSettings);
 
 	void Scan();
 	void CleanProject();
@@ -25,7 +25,7 @@ struct FProjectCleanerScanner
 
 	EProjectCleanerScannerState GetScannerState() const;
 	EProjectCleanerScannerDataState GetScannerDataState() const;
-	
+
 	bool IsFolderEmpty(const FString& InFolderPathAbs) const;
 	bool IsFolderExcluded(const FString& InFolderPathAbs) const;
 
@@ -52,6 +52,7 @@ struct FProjectCleanerScanner
 	FProjectCleanerDelegateScanFinished& OnScanFinished();
 	FProjectCleanerDelegateCleanFinished& OnCleanFinished();
 	FProjectCleanerDelegateEmptyFoldersDeleted& OnEmptyFoldersDeleted();
+
 private:
 	void DataReset();
 	void FindBlacklistedFoldersAndAssets();
@@ -85,8 +86,8 @@ private:
 	TArray<FAssetData> AssetsUsed;
 	TArray<FAssetData> AssetsUnused;
 
-	TWeakObjectPtr<UProjectCleanerScanSettings> ScanSettings;
-	TWeakObjectPtr<UProjectCleanerExcludeSettings> ExcludeSettings;
+	UProjectCleanerScanSettings* ScanSettings;
+	UProjectCleanerExcludeSettings* ExcludeSettings;
 	FAssetRegistryModule& ModuleAssetRegistry;
 	EProjectCleanerScannerState ScannerState = EProjectCleanerScannerState::Idle;
 	EProjectCleanerScannerDataState ScannerDataState = EProjectCleanerScannerDataState::NotScanned;

@@ -3,15 +3,16 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "ProjectCleanerScanner.h"
 #include "Widgets/SCompoundWidget.h"
 
 class UProjectCleanerScanSettings;
+class UProjectCleanerExcludeSettings;
 class SProjectCleanerTabScanSettings;
 class SProjectCleanerTabUnused;
 class SProjectCleanerTabIndirect;
 class SProjectCleanerTabCorrupted;
 class SProjectCleanerTabNonEngine;
+struct FProjectCleanerScanner;
 
 // Plugins Main UserInterface
 class SProjectCleaner final : public SCompoundWidget
@@ -46,17 +47,14 @@ private:
 	TSharedPtr<FTabManager::FLayout> TabLayout;
 	TSharedPtr<FProjectCleanerScanner> Scanner;
 
-	TWeakObjectPtr<UProjectCleanerScanSettings> ScanSettings;
-	TWeakObjectPtr<UProjectCleanerExcludeSettings> ExcludeSettings;
-
 	TWeakPtr<SProjectCleanerTabScanSettings> TabScanSettings;
 	TWeakPtr<SProjectCleanerTabUnused> TabUnused;
 	TWeakPtr<SProjectCleanerTabIndirect> TabIndirect;
 	TWeakPtr<SProjectCleanerTabCorrupted> TabCorrupted;
 	TWeakPtr<SProjectCleanerTabNonEngine> TabNonEngine;
 
-	float TabsRenderOpacity = 1.0f;
+	float TabsRenderOpacity = 0.2f;
 	bool bTabsEnabled = false;
+	UProjectCleanerScanSettings* ScanSettings = nullptr;
+	UProjectCleanerExcludeSettings* ExcludeSettings = nullptr;
 };
-
-
