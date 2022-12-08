@@ -100,10 +100,16 @@ FProjectCleanerScanner::FProjectCleanerScanner(const TWeakObjectPtr<UProjectClea
 
 	ScanSettings->OnChange().AddLambda([&]()
 	{
-		// todo:ashe23 how to handle this case?
 		if (ScanSettings->bAutoScan)
 		{
 			Scan();
+			return;
+		}
+
+		ScannerDataState = EProjectCleanerScannerDataState::NotScanned;
+		if (DelegateScanDataStateChanged.IsBound())
+		{
+			DelegateScanDataStateChanged.Broadcast(ScannerDataState);
 		}
 	});
 }
@@ -467,15 +473,15 @@ void FProjectCleanerScanner::FindAssetsExcluded()
 		}
 	}
 
-	// todo:ashe23
 	for (const auto& ExcludedAsset : ExcludeSettings->ExcludedAssets)
 	{
 		if (!ExcludedAsset.LoadSynchronous()) continue;
 
-		const FString AssetPath = ExcludedAsset.ToSoftObjectPath().GetAssetPathString();
-		break;
-		
-		// AssetsExcluded.AddUnique(ExcludedAsset);
+		const FName AssetObjectPath = ExcludedAsset.ToSoftObjectPath().GetAssetPathName();
+		const FAssetData AssetData = ModuleAssetRegistry.Get().GetAssetByObjectPath(AssetObjectPath);
+		if (!AssetData.IsValid()) continue;
+
+		AssetsExcluded.AddUnique(AssetData);
 	}
 
 	AssetsExcluded.Shrink();
