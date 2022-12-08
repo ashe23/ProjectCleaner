@@ -15,14 +15,9 @@ void UProjectCleanerScanSettings::PostEditChangeProperty(FPropertyChangedEvent& 
 
 	SaveConfig();
 
-	UE_LOG(LogProjectCleaner, Warning, TEXT("Scan Settings Changed"));
-	
-	if (bAutoScan)
+	if (DelegateScanSettingsChanged.IsBound())
 	{
-		if (DelegateScanSettingsChanged.IsBound())
-		{
-			DelegateScanSettingsChanged.Broadcast();
-		}
+		DelegateScanSettingsChanged.Broadcast();
 	}
 }
 #endif

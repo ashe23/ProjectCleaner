@@ -7,6 +7,7 @@
 #include "Slate/Tabs/SProjectCleanerTabCorrupted.h"
 #include "Slate/Tabs/SProjectCleanerTabNonEngine.h"
 #include "ProjectCleanerScanSettings.h"
+#include "ProjectCleanerExcludeSettings.h"
 #include "ProjectCleanerScanner.h"
 #include "ProjectCleanerConstants.h"
 #include "ProjectCleanerStyles.h"
@@ -23,8 +24,26 @@ void SProjectCleaner::Construct(const FArguments& InArgs, const TSharedRef<SDock
 	ScanSettings = GetMutableDefault<UProjectCleanerScanSettings>();
 	if (!ScanSettings.IsValid()) return;
 
-	Scanner = MakeShareable(new FProjectCleanerScanner(ScanSettings));
+	ExcludeSettings = GetMutableDefault<UProjectCleanerExcludeSettings>();
+	if (!ExcludeSettings.IsValid()) return;
+
+	Scanner = MakeShareable(new FProjectCleanerScanner(ScanSettings, ExcludeSettings));
 	if (!Scanner.IsValid()) return;
+
+	Scanner->OnDataStateChanged().AddLambda([&](const EProjectCleanerScannerDataState DataState)
+	{
+		TabsRenderOpacity = DataState == EProjectCleanerScannerDataState::Scanned ? 1.0f : 0.2f;
+		bTabsEnabled = DataState == EProjectCleanerScannerDataState::Scanned;
+	});
+
+	// if auto scan option is enabled then we should start scanning project when ProjectCleaner window opened
+	if (ScanSettings->bAutoScan)
+	{
+		Scanner->Scan();
+	}
+	
+	TabsRenderOpacity = Scanner->GetScannerDataState() == EProjectCleanerScannerDataState::Scanned ? 1.0f : 0.2f;
+	bTabsEnabled = Scanner->GetScannerDataState() == EProjectCleanerScannerDataState::Scanned;
 
 	TabManager = FGlobalTabmanager::Get()->NewTabManager(ConstructUnderMajorTab);
 	const TSharedRef<FWorkspaceItem> AppMenuGroup = TabManager->AddLocalWorkspaceMenuCategory(FText::FromString(TEXT("ProjectCleaner")));
@@ -184,17 +203,11 @@ void SProjectCleaner::Construct(const FArguments& InArgs, const TSharedRef<SDock
 	TabManager->SetMenuMultiBox(MenuBarBuilder.GetMultiBox());
 }
 
-void SProjectCleaner::Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime)
-{
-	SCompoundWidget::Tick(AllottedGeometry, InCurrentTime, InDeltaTime);
-
-	if (!Scanner.IsValid()) return;
-
-	TabsRenderOpacity = Scanner->GetScannerDataState() == EProjectCleanerScannerDataState::Actual ? 1.0f : 0.2f;
-}
-
 SProjectCleaner::~SProjectCleaner()
 {
+	ScanSettings.Reset();
+	ExcludeSettings.Reset();
+
 	FGlobalTabmanager::Get()->UnregisterTabSpawner(ProjectCleanerConstants::TabScanSettings);
 	FGlobalTabmanager::Get()->UnregisterTabSpawner(ProjectCleanerConstants::TabUnusedAssets);
 	FGlobalTabmanager::Get()->UnregisterTabSpawner(ProjectCleanerConstants::TabIndirectAssets);
@@ -409,5 +422,5 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnNonEngineFiles(const FSpawnTabAr
 
 bool SProjectCleaner::TabsEnabled() const
 {
-	return Scanner.IsValid() && Scanner->GetScannerDataState() == EProjectCleanerScannerDataState::Actual;
+	return bTabsEnabled;
 }

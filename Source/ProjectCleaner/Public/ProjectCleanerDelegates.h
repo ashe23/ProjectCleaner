@@ -3,11 +3,15 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "ProjectCleanerTypes.h"
 
 // SProjectCleaner
 DECLARE_MULTICAST_DELEGATE(FProjectCleanerDelegateExcludeSettingsChanged);
-DECLARE_MULTICAST_DELEGATE(FProjectCleanerDelegateScanFinished);
 DECLARE_MULTICAST_DELEGATE(FProjectCleanerDelegateScanSettingsChanged);
+
+// Scanner
+DECLARE_MULTICAST_DELEGATE_OneParam(FProjectCleanerDelegateScanDataStateChanged, const EProjectCleanerScannerDataState DataState);
+DECLARE_MULTICAST_DELEGATE(FProjectCleanerDelegateScanFinished);
 DECLARE_MULTICAST_DELEGATE(FProjectCleanerDelegateCleanFinished);
 DECLARE_MULTICAST_DELEGATE(FProjectCleanerDelegateEmptyFoldersDeleted);
 

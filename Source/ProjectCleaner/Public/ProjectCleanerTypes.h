@@ -25,7 +25,7 @@ enum class EProjectCleanerScannerDataState : uint8
 {
 	NotScanned,
 	Obsolete,
-	Actual
+	Scanned
 };
 
 USTRUCT(BlueprintType)
@@ -37,7 +37,7 @@ struct FProjectCleanerIndirectAsset
 	{
 		return LineNum == Other.LineNum && FilePath.Equals(Other.FilePath);
 	}
-	
+
 	bool operator!=(const FProjectCleanerIndirectAsset& Other) const
 	{
 		return LineNum != Other.LineNum || !FilePath.Equals(Other.FilePath);

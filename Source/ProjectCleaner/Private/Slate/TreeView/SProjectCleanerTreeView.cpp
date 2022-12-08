@@ -175,7 +175,7 @@ void SProjectCleanerTreeView::TreeItemsUpdate()
 	}
 
 	if (!Scanner.IsValid()) return;
-	if (Scanner->GetScannerDataState() != EProjectCleanerScannerDataState::Actual) return;
+	// if (Scanner->GetScannerDataState() != EProjectCleanerScannerDataState::Actual) return;
 
 	// caching expanded and selected items in order to keep them , when we updating data
 	ItemsExpanded.Reset();

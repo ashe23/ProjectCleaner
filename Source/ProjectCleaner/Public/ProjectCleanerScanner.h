@@ -3,12 +3,12 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "ProjectCleanerTypes.h"
 #include "ProjectCleanerDelegates.h"
 #include "AssetRegistry/AssetRegistryModule.h"
 
 class FAssetRegistryModule;
 class UProjectCleanerScanSettings;
+class UProjectCleanerExcludeSettings;
 struct FProjectCleanerIndirectAsset;
 
 /**
@@ -16,7 +16,7 @@ struct FProjectCleanerIndirectAsset;
  */
 struct FProjectCleanerScanner
 {
-	explicit FProjectCleanerScanner(const TWeakObjectPtr<UProjectCleanerScanSettings>& InScanSettings);
+	explicit FProjectCleanerScanner(const TWeakObjectPtr<UProjectCleanerScanSettings>& InScanSettings, const TWeakObjectPtr<UProjectCleanerExcludeSettings>& InExcludeSettings);
 
 	void Scan();
 	void CleanProject();
@@ -48,6 +48,7 @@ struct FProjectCleanerScanner
 
 	const TArray<FProjectCleanerIndirectAsset>& GetAssetsIndirectAdvanced() const;
 
+	FProjectCleanerDelegateScanDataStateChanged& OnDataStateChanged();
 	FProjectCleanerDelegateScanFinished& OnScanFinished();
 	FProjectCleanerDelegateCleanFinished& OnCleanFinished();
 	FProjectCleanerDelegateEmptyFoldersDeleted& OnEmptyFoldersDeleted();
@@ -61,6 +62,9 @@ private:
 	void FindAssetsWithExternalRefs();
 	void FindAssetsUsed();
 	void FindAssetsUnused();
+
+	void AssetRegistryDelegatesRegister();
+	void AssetRegistryDelegatesUnregister() const;
 
 	static int32 GetNumFor(const FString& InFolderPathAbs, const TArray<FAssetData>& Assets);
 	static int64 GetSizeFor(const FString& InFolderPathAbs, const TArray<FAssetData>& Assets);
@@ -82,12 +86,20 @@ private:
 	TArray<FAssetData> AssetsUnused;
 
 	TWeakObjectPtr<UProjectCleanerScanSettings> ScanSettings;
+	TWeakObjectPtr<UProjectCleanerExcludeSettings> ExcludeSettings;
 	FAssetRegistryModule& ModuleAssetRegistry;
 	EProjectCleanerScannerState ScannerState = EProjectCleanerScannerState::Idle;
 	EProjectCleanerScannerDataState ScannerDataState = EProjectCleanerScannerDataState::NotScanned;
 
+	FProjectCleanerDelegateScanDataStateChanged DelegateScanDataStateChanged;
 	FProjectCleanerDelegateScanFinished DelegateScanFinished;
 	FProjectCleanerDelegateCleanFinished DelegateCleanFinished;
 	FProjectCleanerDelegateEmptyFoldersDeleted DelegateEmptyFoldersDeleted;
-	
+
+	FDelegateHandle DelegateHandleAssetAdded;
+	FDelegateHandle DelegateHandleAssetRemoved;
+	FDelegateHandle DelegateHandleAssetRenamed;
+	FDelegateHandle DelegateHandleAssetUpdated;
+	FDelegateHandle DelegateHandlePathAdded;
+	FDelegateHandle DelegateHandlePathRemoved;
 };

@@ -37,7 +37,7 @@ void SProjectCleanerTabUnused::UpdateView()
 {
 	if (!Scanner.IsValid()) return;
 	if (!ScanSettings.IsValid()) return;
-	if (Scanner->GetScannerDataState() != EProjectCleanerScannerDataState::Actual) return;
+	// if (Scanner->GetScannerDataState() != EProjectCleanerScannerDataState::Actual) return;
 
 	// making sure tree view is valid
 	if (!ProjectCleanerTreeView.IsValid())
@@ -215,21 +215,21 @@ void SProjectCleanerTabUnused::UpdateView()
 						]
 					]
 				]
-				+ SVerticalBox::Slot()
-				  .Padding(FMargin{0.0f, 5.0f})
-				  .AutoHeight()
-				[
-					SNew(SSeparator)
-					.Thickness(5.0f)
-				]
-				+ SVerticalBox::Slot()
-				  .Padding(FMargin{0.0f, 5.0f})
-				  .FillHeight(1.0f)
-				[
-					SAssignNew(ProjectCleanerAssetBrowser, SProjectCleanerAssetBrowser)
-					.Scanner(Scanner)
-					// ModuleContentBrowser.Get().CreateAssetPicker(AssetPickerConfig)
-				]
+				// + SVerticalBox::Slot()
+				//   .Padding(FMargin{0.0f, 5.0f})
+				//   .AutoHeight()
+				// [
+				// 	SNew(SSeparator)
+				// 	.Thickness(5.0f)
+				// ]
+				// + SVerticalBox::Slot()
+				//   .Padding(FMargin{0.0f, 5.0f})
+				//   .FillHeight(1.0f)
+				// [
+				// 	SAssignNew(ProjectCleanerAssetBrowser, SProjectCleanerAssetBrowser)
+				// 	.Scanner(Scanner)
+				// 	// ModuleContentBrowser.Get().CreateAssetPicker(AssetPickerConfig)
+				// ]
 			]
 		]
 	];

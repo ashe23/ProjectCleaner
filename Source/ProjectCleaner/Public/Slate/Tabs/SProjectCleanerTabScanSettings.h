@@ -42,7 +42,6 @@ private:
 
 
 	TSharedPtr<FProjectCleanerScanner> Scanner;
-	TSharedPtr<IDetailsView> ScanSettingsProperty;
 	TWeakObjectPtr<UProjectCleanerScanSettings> ScanSettings;
 	
 	TWeakObjectPtr<UProjectCleanerExcludeSettings> ExcludeSettings;

@@ -32,9 +32,6 @@ void SProjectCleanerTabScanSettings::Construct(const FArguments& InArgs)
 	DetailsViewArgs.NameAreaSettings = FDetailsViewArgs::HideNameArea;
 	DetailsViewArgs.ViewIdentifier = "ProjectCleanerExcludeSettings";
 
-	ScanSettingsProperty = PropertyEditor.CreateDetailView(DetailsViewArgs);
-	ScanSettingsProperty->SetObject(ScanSettings.Get());
-
 	ExcludeSettingsProperty = PropertyEditor.CreateDetailView(DetailsViewArgs);
 	ExcludeSettingsProperty->SetObject(ExcludeSettings.Get());
 
@@ -258,12 +255,12 @@ bool SProjectCleanerTabScanSettings::BtnScanProjectEnabled() const
 
 bool SProjectCleanerTabScanSettings::BtnCleanProjectEnabled() const
 {
-	return Scanner.IsValid() && Scanner->GetAssetsUnused().Num() > 0 && Scanner->GetScannerDataState() == EProjectCleanerScannerDataState::Actual;
+	return Scanner.IsValid() && Scanner->GetAssetsUnused().Num() > 0 && Scanner->GetScannerDataState() == EProjectCleanerScannerDataState::Scanned;
 }
 
 bool SProjectCleanerTabScanSettings::BtnDeleteEmptyFoldersEnabled() const
 {
-	return Scanner.IsValid() && Scanner->GetFoldersEmpty().Num() > 0 && Scanner->GetScannerDataState() == EProjectCleanerScannerDataState::Actual;
+	return Scanner.IsValid() && Scanner->GetFoldersEmpty().Num() > 0 && Scanner->GetScannerDataState() == EProjectCleanerScannerDataState::Scanned;
 }
 
 FReply SProjectCleanerTabScanSettings::OnBtnScanProjectClick() const
@@ -319,7 +316,7 @@ EVisibility SProjectCleanerTabScanSettings::GetBtnScanProjectStatusVisibility() 
 {
 	if (!Scanner.IsValid()) return EVisibility::Collapsed;
 
-	return Scanner->GetScannerDataState() != EProjectCleanerScannerDataState::Actual ? EVisibility::Visible : EVisibility::Collapsed;
+	return Scanner->GetScannerDataState() != EProjectCleanerScannerDataState::Scanned ? EVisibility::Visible : EVisibility::Collapsed;
 }
 
 FText SProjectCleanerTabScanSettings::GetBtnScanProjectToolTipText() const
@@ -328,12 +325,12 @@ FText SProjectCleanerTabScanSettings::GetBtnScanProjectToolTipText() const
 
 	if (Scanner->GetScannerDataState() == EProjectCleanerScannerDataState::NotScanned)
 	{
-		return FText::FromString(TEXT("Project never scanned"));
+		return FText::FromString(TEXT("Project not scanned"));
 	}
 
 	if (Scanner->GetScannerDataState() == EProjectCleanerScannerDataState::Obsolete)
 	{
-		return FText::FromString(TEXT("Rescan required. Asset Registry has been updated."));
+		return FText::FromString(TEXT("Rescan required. AssetRegistry has been updated."));
 	}
 
 	return FText::FromString(TEXT(""));

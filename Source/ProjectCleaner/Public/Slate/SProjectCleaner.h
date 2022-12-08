@@ -24,7 +24,6 @@ public:
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs, const TSharedRef<SDockTab>& ConstructUnderMajorTab, const TSharedPtr<SWindow>& ConstructUnderWindow);
-	virtual void Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime) override;
 	virtual ~SProjectCleaner() override;
 
 private:
@@ -48,6 +47,7 @@ private:
 	TSharedPtr<FProjectCleanerScanner> Scanner;
 
 	TWeakObjectPtr<UProjectCleanerScanSettings> ScanSettings;
+	TWeakObjectPtr<UProjectCleanerExcludeSettings> ExcludeSettings;
 
 	TWeakPtr<SProjectCleanerTabScanSettings> TabScanSettings;
 	TWeakPtr<SProjectCleanerTabUnused> TabUnused;
@@ -56,6 +56,7 @@ private:
 	TWeakPtr<SProjectCleanerTabNonEngine> TabNonEngine;
 
 	float TabsRenderOpacity = 1.0f;
+	bool bTabsEnabled = false;
 };
 
 

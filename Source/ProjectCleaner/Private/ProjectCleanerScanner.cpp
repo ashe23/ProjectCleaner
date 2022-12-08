@@ -2,9 +2,11 @@
 
 #include "ProjectCleanerScanner.h"
 #include "ProjectCleaner.h"
+#include "ProjectCleanerTypes.h"
 #include "ProjectCleanerLibrary.h"
 #include "ProjectCleanerConstants.h"
 #include "ProjectCleanerScanSettings.h"
+#include "ProjectCleanerExcludeSettings.h"
 // Engine Headers
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "Internationalization/Regex.h"
@@ -80,58 +82,51 @@ public:
 	}
 };
 
-FProjectCleanerScanner::FProjectCleanerScanner(const TWeakObjectPtr<UProjectCleanerScanSettings>& InScanSettings)
+FProjectCleanerScanner::FProjectCleanerScanner(const TWeakObjectPtr<UProjectCleanerScanSettings>& InScanSettings, const TWeakObjectPtr<UProjectCleanerExcludeSettings>& InExcludeSettings)
 	: ScanSettings(InScanSettings),
+	  ExcludeSettings(InExcludeSettings),
 	  ModuleAssetRegistry(FModuleManager::LoadModuleChecked<FAssetRegistryModule>(AssetRegistryConstants::ModuleName))
 {
 	if (!ScanSettings.IsValid()) return;
-	
+	if (!ExcludeSettings.IsValid()) return;
+
+	ExcludeSettings->OnChange().AddLambda([&]()
+	{
+		if (ScanSettings->bAutoScan)
+		{
+			Scan();
+		}
+	});
+
 	ScanSettings->OnChange().AddLambda([&]()
 	{
-		UE_LOG(LogProjectCleaner, Warning, TEXT("Scanner: ScanSettings Changed!"));
-	});
-
-	ModuleAssetRegistry.Get().OnAssetAdded().AddLambda([&](const FAssetData& AssetData)
-	{
-		ScannerDataState = EProjectCleanerScannerDataState::Obsolete;
-	});
-
-	ModuleAssetRegistry.Get().OnAssetRemoved().AddLambda([&](const FAssetData& AssetData)
-	{
-		ScannerDataState = EProjectCleanerScannerDataState::Obsolete;
-	});
-
-	ModuleAssetRegistry.Get().OnAssetRenamed().AddLambda([&](const FAssetData& AssetData, const FString& NewName)
-	{
-		ScannerDataState = EProjectCleanerScannerDataState::Obsolete;
-	});
-
-	ModuleAssetRegistry.Get().OnAssetUpdated().AddLambda([&](const FAssetData& AssetData)
-	{
-		ScannerDataState = EProjectCleanerScannerDataState::Obsolete;
-	});
-
-	ModuleAssetRegistry.Get().OnPathAdded().AddLambda([&](const FString& Path)
-	{
-		ScannerDataState = EProjectCleanerScannerDataState::Obsolete;
-	});
-
-	ModuleAssetRegistry.Get().OnPathRemoved().AddLambda([&](const FString& Path)
-	{
-		ScannerDataState = EProjectCleanerScannerDataState::Obsolete;
+		// todo:ashe23 how to handle this case?
+		if (ScanSettings->bAutoScan)
+		{
+			Scan();
+		}
 	});
 }
 
 void FProjectCleanerScanner::Scan()
 {
-	if (UProjectCleanerLibrary::AssetRegistryWorking()) return;
+	ScannerState = EProjectCleanerScannerState::Scanning;
+	ScannerDataState = EProjectCleanerScannerDataState::NotScanned;
+	AssetRegistryDelegatesUnregister();
+
+	if (DelegateScanDataStateChanged.IsBound())
+	{
+		DelegateScanDataStateChanged.Broadcast(ScannerDataState);
+	}
+
+	if (UProjectCleanerLibrary::AssetRegistryWorking())
+	{
+		ModuleAssetRegistry.Get().WaitForCompletion();
+	}
 
 	// making sure all redirectors fixed and assets saved when we start scanning
 	UProjectCleanerLibrary::AssetRegistryFixupRedirectors(ProjectCleanerConstants::PathRelRoot.ToString());
 	UProjectCleanerLibrary::AssetsSaveAll(); // todo:ashe23 silent mode if cli mode
-	
-	ScannerDataState = EProjectCleanerScannerDataState::NotScanned;
-	ScannerState = EProjectCleanerScannerState::Scanning;
 
 	FScopedSlowTask SlowTask{3.0f, FText::FromString(ProjectCleanerConstants::MsgScanning)};
 	SlowTask.MakeDialog(false, false);
@@ -164,8 +159,14 @@ void FProjectCleanerScanner::Scan()
 	FindAssetsUsed();
 	FindAssetsUnused();
 
-	ScannerDataState = EProjectCleanerScannerDataState::Actual;
 	ScannerState = EProjectCleanerScannerState::Idle;
+	ScannerDataState = EProjectCleanerScannerDataState::Scanned;
+	AssetRegistryDelegatesRegister();
+
+	if (DelegateScanDataStateChanged.IsBound())
+	{
+		DelegateScanDataStateChanged.Broadcast(ScannerDataState);
+	}
 
 	if (DelegateScanFinished.IsBound())
 	{
@@ -228,17 +229,17 @@ bool FProjectCleanerScanner::IsFolderExcluded(const FString& InFolderPathAbs) co
 	if (!FPaths::DirectoryExists(InFolderPathAbs)) return false;
 	if (!ScanSettings.IsValid()) return false;
 
-	// for (const auto& ExcludedFolder : ScanSettings->ExcludedFolders)
-	// {
-	// 	if (ExcludedFolder.Path.IsEmpty()) continue;
-	//
-	// 	const FString ExcludedAbsPath = UProjectCleanerLibrary::PathConvertToAbs(ExcludedFolder.Path);
-	// 	if (!FPaths::DirectoryExists(ExcludedAbsPath)) continue;
-	// 	if (UProjectCleanerLibrary::PathIsUnderFolder(InFolderPathAbs, ExcludedAbsPath))
-	// 	{
-	// 		return true;
-	// 	}
-	// }
+	for (const auto& ExcludedFolder : ExcludeSettings->ExcludedFolders)
+	{
+		if (ExcludedFolder.Path.IsEmpty()) continue;
+
+		const FString ExcludedAbsPath = UProjectCleanerLibrary::PathConvertToAbs(ExcludedFolder.Path);
+		if (!FPaths::DirectoryExists(ExcludedAbsPath)) continue;
+		if (UProjectCleanerLibrary::PathIsUnderFolder(InFolderPathAbs, ExcludedAbsPath))
+		{
+			return true;
+		}
+	}
 
 	return false;
 }
@@ -345,6 +346,11 @@ const TArray<FProjectCleanerIndirectAsset>& FProjectCleanerScanner::GetAssetsInd
 	return AssetsIndirectAdvanced;
 }
 
+FProjectCleanerDelegateScanDataStateChanged& FProjectCleanerScanner::OnDataStateChanged()
+{
+	return DelegateScanDataStateChanged;
+}
+
 FProjectCleanerDelegateScanFinished& FProjectCleanerScanner::OnScanFinished()
 {
 	return DelegateScanFinished;
@@ -391,10 +397,10 @@ void FProjectCleanerScanner::FindBlacklistedFoldersAndAssets()
 		FoldersBlacklist.Add(UProjectCleanerLibrary::PathGetMsPresetsFolder(true));
 	}
 
-	// if (!ScanSettings->bScanDeveloperContents)
-	// {
-	// 	FoldersBlacklist.Add(UProjectCleanerLibrary::PathGetDevelopersFolder(true));
-	// }
+	if (!ScanSettings->bScanDeveloperContents)
+	{
+		FoldersBlacklist.Add(UProjectCleanerLibrary::PathGetDevelopersFolder(true));
+	}
 
 	// filling blacklisted assets
 	FARFilter FilterBlacklistAssets;
@@ -432,39 +438,45 @@ void FProjectCleanerScanner::FindAssetsExcluded()
 {
 	AssetsExcluded.Reserve(AssetsAll.Num());
 
-	// for (const auto& Asset : AssetsAll)
-	// {
-	// 	// excluded by path
-	// 	const FString PackagePathAbs = UProjectCleanerLibrary::PathConvertToAbs(Asset.PackagePath.ToString());
-	// 	for (const auto& ExcludedFolder : ScanSettings->ExcludedFolders)
-	// 	{
-	// 		const FString ExcludedFolderPathAbs = UProjectCleanerLibrary::PathConvertToAbs(ExcludedFolder.Path);
-	//
-	// 		if (UProjectCleanerLibrary::PathIsUnderFolder(PackagePathAbs, ExcludedFolderPathAbs))
-	// 		{
-	// 			AssetsExcluded.AddUnique(Asset);
-	// 		}
-	// 	}
-	//
-	// 	// excluded by class
-	// 	const FString AssetClassName = UProjectCleanerLibrary::AssetGetClassName(Asset);
-	// 	for (const auto& ExcludedClass : ScanSettings->ExcludedClasses)
-	// 	{
-	// 		if (!ExcludedClass.LoadSynchronous()) continue;
-	//
-	// 		const FString ExcludedClassName = ExcludedClass->GetName();
-	//
-	// 		if (ExcludedClassName.Equals(AssetClassName))
-	// 		{
-	// 			AssetsExcluded.AddUnique(Asset);
-	// 		}
-	// 	}
-	// }
-	//
-	// for (const auto& ExcludedAsset : ScanSettings->ExcludedAssets)
-	// {
-	// 	AssetsExcluded.AddUnique(ExcludedAsset);
-	// }
+	for (const auto& Asset : AssetsAll)
+	{
+		// excluded by path
+		const FString PackagePathAbs = UProjectCleanerLibrary::PathConvertToAbs(Asset.PackagePath.ToString());
+		for (const auto& ExcludedFolder : ExcludeSettings->ExcludedFolders)
+		{
+			const FString ExcludedFolderPathAbs = UProjectCleanerLibrary::PathConvertToAbs(ExcludedFolder.Path);
+
+			if (UProjectCleanerLibrary::PathIsUnderFolder(PackagePathAbs, ExcludedFolderPathAbs))
+			{
+				AssetsExcluded.AddUnique(Asset);
+			}
+		}
+
+		// excluded by class
+		const FString AssetClassName = UProjectCleanerLibrary::AssetGetClassName(Asset);
+		for (const auto& ExcludedClass : ExcludeSettings->ExcludedClasses)
+		{
+			if (!ExcludedClass.LoadSynchronous()) continue;
+
+			const FString ExcludedClassName = ExcludedClass->GetName();
+
+			if (ExcludedClassName.Equals(AssetClassName))
+			{
+				AssetsExcluded.AddUnique(Asset);
+			}
+		}
+	}
+
+	// todo:ashe23
+	for (const auto& ExcludedAsset : ExcludeSettings->ExcludedAssets)
+	{
+		if (!ExcludedAsset.LoadSynchronous()) continue;
+
+		const FString AssetPath = ExcludedAsset.ToSoftObjectPath().GetAssetPathString();
+		break;
+		
+		// AssetsExcluded.AddUnique(ExcludedAsset);
+	}
 
 	AssetsExcluded.Shrink();
 }
@@ -530,6 +542,102 @@ void FProjectCleanerScanner::FindAssetsUnused()
 	}
 
 	ModuleAssetRegistry.Get().UseFilterToExcludeAssets(AssetsUnused, Filter);
+}
+
+void FProjectCleanerScanner::AssetRegistryDelegatesRegister()
+{
+	DelegateHandleAssetAdded = ModuleAssetRegistry.Get().OnAssetAdded().AddLambda([&](const FAssetData& AssetData)
+	{
+		ScannerDataState = EProjectCleanerScannerDataState::Obsolete;
+
+		if (DelegateScanDataStateChanged.IsBound())
+		{
+			DelegateScanDataStateChanged.Broadcast(ScannerDataState);
+		}
+	});
+
+	DelegateHandleAssetRemoved = ModuleAssetRegistry.Get().OnAssetRemoved().AddLambda([&](const FAssetData& AssetData)
+	{
+		ScannerDataState = EProjectCleanerScannerDataState::Obsolete;
+
+		if (DelegateScanDataStateChanged.IsBound())
+		{
+			DelegateScanDataStateChanged.Broadcast(ScannerDataState);
+		}
+	});
+
+	DelegateHandleAssetRenamed = ModuleAssetRegistry.Get().OnAssetRenamed().AddLambda([&](const FAssetData& AssetData, const FString& NewName)
+	{
+		ScannerDataState = EProjectCleanerScannerDataState::Obsolete;
+
+		if (DelegateScanDataStateChanged.IsBound())
+		{
+			DelegateScanDataStateChanged.Broadcast(ScannerDataState);
+		}
+	});
+
+	DelegateHandleAssetUpdated = ModuleAssetRegistry.Get().OnAssetUpdated().AddLambda([&](const FAssetData& AssetData)
+	{
+		ScannerDataState = EProjectCleanerScannerDataState::Obsolete;
+
+		if (DelegateScanDataStateChanged.IsBound())
+		{
+			DelegateScanDataStateChanged.Broadcast(ScannerDataState);
+		}
+	});
+
+	DelegateHandlePathAdded = ModuleAssetRegistry.Get().OnPathAdded().AddLambda([&](const FString& Path)
+	{
+		ScannerDataState = EProjectCleanerScannerDataState::Obsolete;
+
+		if (DelegateScanDataStateChanged.IsBound())
+		{
+			DelegateScanDataStateChanged.Broadcast(ScannerDataState);
+		}
+	});
+
+	DelegateHandlePathRemoved = ModuleAssetRegistry.Get().OnPathRemoved().AddLambda([&](const FString& Path)
+	{
+		ScannerDataState = EProjectCleanerScannerDataState::Obsolete;
+
+		if (DelegateScanDataStateChanged.IsBound())
+		{
+			DelegateScanDataStateChanged.Broadcast(ScannerDataState);
+		}
+	});
+}
+
+void FProjectCleanerScanner::AssetRegistryDelegatesUnregister() const
+{
+	if (DelegateHandleAssetAdded.IsValid())
+	{
+		ModuleAssetRegistry.Get().OnAssetAdded().Remove(DelegateHandleAssetAdded);
+	}
+
+	if (DelegateHandleAssetRemoved.IsValid())
+	{
+		ModuleAssetRegistry.Get().OnAssetRemoved().Remove(DelegateHandleAssetRemoved);
+	}
+
+	if (DelegateHandleAssetRenamed.IsValid())
+	{
+		ModuleAssetRegistry.Get().OnAssetRenamed().Remove(DelegateHandleAssetRenamed);
+	}
+
+	if (DelegateHandleAssetUpdated.IsValid())
+	{
+		ModuleAssetRegistry.Get().OnAssetUpdated().Remove(DelegateHandleAssetUpdated);
+	}
+
+	if (DelegateHandlePathAdded.IsValid())
+	{
+		ModuleAssetRegistry.Get().OnPathAdded().Remove(DelegateHandlePathAdded);
+	}
+
+	if (DelegateHandlePathRemoved.IsValid())
+	{
+		ModuleAssetRegistry.Get().OnPathRemoved().Remove(DelegateHandlePathRemoved);
+	}
 }
 
 int32 FProjectCleanerScanner::GetNumFor(const FString& InFolderPathAbs, const TArray<FAssetData>& Assets)

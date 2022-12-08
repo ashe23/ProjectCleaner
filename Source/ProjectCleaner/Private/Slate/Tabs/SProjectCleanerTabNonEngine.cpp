@@ -152,7 +152,7 @@ void SProjectCleanerTabNonEngine::ListUpdate()
 		.HeaderRow(GetListHeaderRow());
 	}
 
-	if (Scanner->GetScannerDataState() == EProjectCleanerScannerDataState::Actual)
+	// if (Scanner->GetScannerDataState() == EProjectCleanerScannerDataState::Actual)
 	{
 		ListItems.Reset();
 		TotalSize = 0;
