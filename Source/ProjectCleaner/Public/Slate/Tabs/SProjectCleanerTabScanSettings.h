@@ -6,6 +6,7 @@
 #include "Widgets/SCompoundWidget.h"
 
 class UProjectCleanerScanSettings;
+class UProjectCleanerExcludeSettings;
 struct FProjectCleanerScanner;
 
 class SProjectCleanerTabScanSettings final : public SCompoundWidget
@@ -27,6 +28,7 @@ private:
 	FReply OnBtnScanProjectClick() const;
 	FReply OnBtnCleanProjectClick() const;
 	FReply OnBtnDeleteEmptyFoldersClick() const;
+	FReply OnBtnResetExcludeSettingsClick() const;
 
 	EVisibility GetBtnScanProjectStatusVisibility() const;
 	FText GetBtnScanProjectToolTipText() const;
@@ -42,4 +44,7 @@ private:
 	TSharedPtr<FProjectCleanerScanner> Scanner;
 	TSharedPtr<IDetailsView> ScanSettingsProperty;
 	TWeakObjectPtr<UProjectCleanerScanSettings> ScanSettings;
+	
+	TWeakObjectPtr<UProjectCleanerExcludeSettings> ExcludeSettings;
+	TSharedPtr<IDetailsView> ExcludeSettingsProperty;
 };

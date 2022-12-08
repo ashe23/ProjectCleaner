@@ -108,15 +108,15 @@ void SProjectCleaner::Construct(const FArguments& InArgs, const TSharedRef<SDock
 
 	FMenuBarBuilder MenuBarBuilder = FMenuBarBuilder(TSharedPtr<FUICommandList>());
 	MenuBarBuilder.AddPullDownMenu(
-		FText::FromString(TEXT("Tabs")),
+		FText::FromString(TEXT("Settings")),
 		FText::GetEmpty(),
-		FNewMenuDelegate::CreateStatic(&SProjectCleaner::MenuBarFillTabs, TabManager),
+		FNewMenuDelegate::CreateRaw(this, &SProjectCleaner::MenuBarFillSettings, TabManager),
 		"Window"
 	);
 	MenuBarBuilder.AddPullDownMenu(
-		FText::FromString(TEXT("Settings")),
+		FText::FromString(TEXT("Tabs")),
 		FText::GetEmpty(),
-		FNewMenuDelegate::CreateStatic(&SProjectCleaner::MenuBarFillSettings, TabManager),
+		FNewMenuDelegate::CreateStatic(&SProjectCleaner::MenuBarFillTabs, TabManager),
 		"Window"
 	);
 	MenuBarBuilder.AddPullDownMenu(
@@ -232,45 +232,102 @@ int32 SProjectCleaner::WidgetGetIndex()
 	return WidgetIndexNone;
 }
 
-void SProjectCleaner::MenuBarFillTabs(FMenuBuilder& MenuBuilder, const TSharedPtr<FTabManager> TabManager)
+void SProjectCleaner::MenuBarFillTabs(FMenuBuilder& MenuBuilder, const TSharedPtr<FTabManager> TabManagerPtr)
 {
-	if (!TabManager.IsValid()) return;
+	if (!TabManagerPtr.IsValid()) return;
 
 
 #if !WITH_EDITOR
 	FGlobalTabmanager::Get()->PopulateTabSpawnerMenu(MenuBuilder, WorkspaceMenu::GetMenuStructure().GetStructureRoot());
 #endif
 
-	TabManager->PopulateLocalTabSpawnerMenu(MenuBuilder);
+	TabManagerPtr->PopulateLocalTabSpawnerMenu(MenuBuilder);
 }
 
-void SProjectCleaner::MenuBarFillSettings(FMenuBuilder& MenuBuilder, const TSharedPtr<FTabManager> TabManager)
+void SProjectCleaner::MenuBarFillSettings(FMenuBuilder& MenuBuilder, const TSharedPtr<FTabManager> TabManagerPtr) const
 {
-	FUIAction Action;
-	Action.ExecuteAction = FExecuteAction::CreateLambda([]()
+	FUIAction ActionAutoScan;
+	ActionAutoScan.ExecuteAction = FExecuteAction::CreateLambda([&]()
 	{
-		// if (FPlatformProcess::CanLaunchURL(*ProjectCleanerConstants::UrlWiki))
-		// {
-		// 	FPlatformProcess::LaunchURL(*ProjectCleanerConstants::UrlWiki, nullptr, nullptr);
-		// }
+		ScanSettings->bAutoScan = !ScanSettings->bAutoScan;
+		ScanSettings->PostEditChange();
 	});
-	
+	ActionAutoScan.CanExecuteAction = FCanExecuteAction::CreateLambda([&]()
+	{
+		return ScanSettings.IsValid();
+	});
+	ActionAutoScan.GetActionCheckState = FGetActionCheckState::CreateLambda([&]()
+	{
+		return ScanSettings->bAutoScan ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
+	});
 	MenuBuilder.BeginSection("SectionHelp", FText::FromString(TEXT("Scan Settings")));
-	MenuBuilder.AddMenuEntry(FText::FromString(TEXT("Auto Scan")), FText::FromString(TEXT("Open wiki page on github")), FSlateIcon(), Action, NAME_None, EUserInterfaceActionType::ToggleButton);
-	MenuBuilder.AddMenuEntry(FText::FromString(TEXT("Auto Delete Empty Folders")), FText::FromString(TEXT("Open wiki page on github")), FSlateIcon(), Action, NAME_None, EUserInterfaceActionType::ToggleButton);
-	MenuBuilder.AddMenuEntry(FText::FromString(TEXT("Scan Developers Content")), FText::FromString(TEXT("Open wiki page on github")), FSlateIcon(), Action, NAME_None, EUserInterfaceActionType::ToggleButton);
+	MenuBuilder.AddMenuEntry(
+		FText::FromString(TEXT("Auto Scan")),
+		FText::FromString(TEXT("Automatically scan the project when exclude settings change. On large projects, this can be unfavorable. By default, it is disabled.")),
+		FSlateIcon(),
+		ActionAutoScan,
+		NAME_None,
+		EUserInterfaceActionType::ToggleButton
+	);
+
+	FUIAction ActionAutoDeleteEmptyFolders;
+	ActionAutoDeleteEmptyFolders.ExecuteAction = FExecuteAction::CreateLambda([&]()
+	{
+		ScanSettings->bAutoDeleteEmptyFolders = !ScanSettings->bAutoDeleteEmptyFolders;
+		ScanSettings->PostEditChange();
+	});
+	ActionAutoDeleteEmptyFolders.CanExecuteAction = FCanExecuteAction::CreateLambda([&]()
+	{
+		return ScanSettings.IsValid();
+	});
+	ActionAutoDeleteEmptyFolders.GetActionCheckState = FGetActionCheckState::CreateLambda([&]()
+	{
+		return ScanSettings->bAutoDeleteEmptyFolders ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
+	});
+	MenuBuilder.AddMenuEntry(
+		FText::FromString(TEXT("Auto Delete Empty Folders")),
+		FText::FromString(TEXT("Automatically delete empty folders after cleaning a project of unused assets. By default, it is enabled.")),
+		FSlateIcon(),
+		ActionAutoDeleteEmptyFolders,
+		NAME_None,
+		EUserInterfaceActionType::ToggleButton
+	);
+
+	FUIAction ActionScanDevContent;
+	ActionScanDevContent.ExecuteAction = FExecuteAction::CreateLambda([&]()
+	{
+		ScanSettings->bScanDeveloperContents = !ScanSettings->bScanDeveloperContents;
+		ScanSettings->PostEditChange();
+	});
+	ActionScanDevContent.CanExecuteAction = FCanExecuteAction::CreateLambda([&]()
+	{
+		return ScanSettings.IsValid();
+	});
+	ActionScanDevContent.GetActionCheckState = FGetActionCheckState::CreateLambda([&]()
+	{
+		return ScanSettings->bScanDeveloperContents ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
+	});
+	MenuBuilder.AddMenuEntry(
+		FText::FromString(TEXT("Scan Developers Content")),
+		FText::FromString(TEXT("Scan the 'Developers' folder for unused assets. By default, it is disabled.")),
+		FSlateIcon(),
+		ActionScanDevContent,
+		NAME_None,
+		EUserInterfaceActionType::ToggleButton
+	);
 	MenuBuilder.EndSection();
 }
 
-void SProjectCleaner::MenuBarFillHelp(FMenuBuilder& MenuBuilder, const TSharedPtr<FTabManager> TabManager)
+void SProjectCleaner::MenuBarFillHelp(FMenuBuilder& MenuBuilder, const TSharedPtr<FTabManager> TabManagerPtr)
 {
 	FUIAction Action;
 	Action.ExecuteAction = FExecuteAction::CreateLambda([]()
 	{
-		if (FPlatformProcess::CanLaunchURL(*ProjectCleanerConstants::UrlWiki))
-		{
-			FPlatformProcess::LaunchURL(*ProjectCleanerConstants::UrlWiki, nullptr, nullptr);
-		}
+		FPlatformProcess::LaunchURL(*ProjectCleanerConstants::UrlWiki, nullptr, nullptr);
+	});
+	Action.CanExecuteAction = FCanExecuteAction::CreateLambda([]()
+	{
+		return FPlatformProcess::CanLaunchURL(*ProjectCleanerConstants::UrlWiki);
 	});
 
 	MenuBuilder.BeginSection("SectionHelp", FText::FromString(TEXT("Help")));

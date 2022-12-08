@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 
 // SProjectCleaner
+DECLARE_MULTICAST_DELEGATE(FProjectCleanerDelegateExcludeSettingsChanged);
 DECLARE_MULTICAST_DELEGATE(FProjectCleanerDelegateScanFinished);
 DECLARE_MULTICAST_DELEGATE(FProjectCleanerDelegateScanSettingsChanged);
 DECLARE_MULTICAST_DELEGATE(FProjectCleanerDelegateCleanFinished);

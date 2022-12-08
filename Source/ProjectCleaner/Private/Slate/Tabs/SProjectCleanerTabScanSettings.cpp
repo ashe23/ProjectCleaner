@@ -5,9 +5,9 @@
 #include "ProjectCleanerScanner.h"
 #include "ProjectCleanerLibrary.h"
 #include "ProjectCleanerScanSettings.h"
+#include "ProjectCleanerExcludeSettings.h"
 // Engine Headers
 #include "ProjectCleanerConstants.h"
-#include "Widgets/Images/SThrobber.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SSeparator.h"
 
@@ -19,6 +19,9 @@ void SProjectCleanerTabScanSettings::Construct(const FArguments& InArgs)
 	ScanSettings = GetMutableDefault<UProjectCleanerScanSettings>();
 	if (!ScanSettings.IsValid()) return;
 
+	ExcludeSettings = GetMutableDefault<UProjectCleanerExcludeSettings>();
+	if (!ExcludeSettings.IsValid()) return;
+
 	FPropertyEditorModule& PropertyEditor = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
 	FDetailsViewArgs DetailsViewArgs;
 	DetailsViewArgs.bUpdatesFromSelection = false;
@@ -27,10 +30,13 @@ void SProjectCleanerTabScanSettings::Construct(const FArguments& InArgs)
 	DetailsViewArgs.bShowOptions = false;
 	DetailsViewArgs.bAllowFavoriteSystem = false;
 	DetailsViewArgs.NameAreaSettings = FDetailsViewArgs::HideNameArea;
-	DetailsViewArgs.ViewIdentifier = "ProjectCleanerScanSettings";
+	DetailsViewArgs.ViewIdentifier = "ProjectCleanerExcludeSettings";
 
 	ScanSettingsProperty = PropertyEditor.CreateDetailView(DetailsViewArgs);
 	ScanSettingsProperty->SetObject(ScanSettings.Get());
+
+	ExcludeSettingsProperty = PropertyEditor.CreateDetailView(DetailsViewArgs);
+	ExcludeSettingsProperty->SetObject(ExcludeSettings.Get());
 
 	ChildSlot
 	[
@@ -58,32 +64,6 @@ void SProjectCleanerTabScanSettings::Construct(const FArguments& InArgs)
 					.ShadowColorAndOpacity(FLinearColor::Black)
 					.Font(FProjectCleanerStyles::GetFont("Bold", 10))
 					.Text(FText::FromString(TEXT("Scan Project")))
-					// SNew(SHorizontalBox)
-					// + SHorizontalBox::Slot()
-					// .AutoWidth()
-					// [
-					// 	SNew(STextBlock)
-					// 	.Justification(ETextJustify::Center)
-					// 	.ToolTipText(FText::FromString(TEXT("Scan the project with the specified scan settings.")))
-					// 	.ColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.White"))
-					// 	.ShadowOffset(FVector2D{1.5f, 1.5f})
-					// 	.ShadowColorAndOpacity(FLinearColor::Black)
-					// 	.Font(FProjectCleanerStyles::GetFont("Bold", 10))
-					// 	.Text(FText::FromString(TEXT("Scan Project")))
-					// ]
-					// + SHorizontalBox::Slot()
-					// .AutoWidth()
-					// [
-					// 	SNew(SBox)
-					// 	.WidthOverride(16.0f)
-					// 	.HeightOverride(16.0f)
-					// 	[
-					// 		SNew(SImage)
-					// 		.Visibility_Raw(this, &SProjectCleanerTabScanSettings::GetBtnScanProjectStatusVisibility)
-					// 		.ToolTipText_Raw(this, &SProjectCleanerTabScanSettings::GetBtnScanProjectToolTipText)
-					// 		.Image(FProjectCleanerStyles::Get().GetBrush(TEXT("ProjectCleaner.IconWarning16")))
-					// 	]
-					// ]
 				]
 			]
 			+ SHorizontalBox::Slot()
@@ -134,8 +114,8 @@ void SProjectCleanerTabScanSettings::Construct(const FArguments& InArgs)
 			SNew(SHorizontalBox)
 			.Visibility_Raw(this, &SProjectCleanerTabScanSettings::GetBtnScanProjectStatusVisibility)
 			+ SHorizontalBox::Slot()
-			.AutoWidth()
-			.Padding(FMargin{0.0f, 0.0f, 5.0f, 0.0f})
+			  .AutoWidth()
+			  // .Padding(FMargin{0.0f, 0.0f, 5.0f, 0.0f})
 			[
 				SNew(SBox)
 				.WidthOverride(16.0f)
@@ -146,13 +126,13 @@ void SProjectCleanerTabScanSettings::Construct(const FArguments& InArgs)
 				]
 			]
 			+ SHorizontalBox::Slot()
-			.AutoWidth()
-			.Padding(FMargin{0.0f, 3.0f, 0.0f, 0.0f})
+			  .AutoWidth()
+			  .Padding(FMargin{5.0f, 2.0f, 0.0f, 0.0f})
 			[
 				SNew(STextBlock)
 				.Justification(ETextJustify::Left)
 				.ColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Yellow"))
-				.Font(FProjectCleanerStyles::GetFont("Light", 12))
+				// .Font(FProjectCleanerStyles::GetFont("Light", 11))
 				.Text_Raw(this, &SProjectCleanerTabScanSettings::GetBtnScanProjectToolTipText)
 			]
 		]
@@ -198,8 +178,8 @@ void SProjectCleanerTabScanSettings::Construct(const FArguments& InArgs)
 				.Text(this, &SProjectCleanerTabScanSettings::GetStatsTextAssetsUnused)
 			]
 			+ SVerticalBox::Slot()
-			.AutoHeight()
-			.Padding(FMargin{0.0f, 5.0f, 0.0f, 0.0f})
+			  .AutoHeight()
+			  .Padding(FMargin{0.0f, 5.0f, 0.0f, 0.0f})
 			[
 				SNew(STextBlock)
 				.Font(FProjectCleanerStyles::GetFont("Bold", 13))
@@ -213,8 +193,8 @@ void SProjectCleanerTabScanSettings::Construct(const FArguments& InArgs)
 				.Text(this, &SProjectCleanerTabScanSettings::GetStatsTextFilesNonEngine)
 			]
 			+ SVerticalBox::Slot()
-			.AutoHeight()
-			.Padding(FMargin{0.0f, 5.0f, 0.0f, 0.0f})
+			  .AutoHeight()
+			  .Padding(FMargin{0.0f, 5.0f, 0.0f, 0.0f})
 			[
 				SNew(STextBlock)
 				.Font(FProjectCleanerStyles::GetFont("Bold", 13))
@@ -238,18 +218,17 @@ void SProjectCleanerTabScanSettings::Construct(const FArguments& InArgs)
 			[
 				SNew(SButton)
 				.ContentPadding(FMargin{5.0f})
-				// .OnClicked_Raw(this, &SProjectCleanerTabScanSettings::OnBtnDeleteEmptyFoldersClick)
-				// .IsEnabled_Raw(this, &SProjectCleanerTabScanSettings::BtnDeleteEmptyFoldersEnabled)
+				.OnClicked_Raw(this, &SProjectCleanerTabScanSettings::OnBtnResetExcludeSettingsClick)
 				.ButtonColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Red"))
 				[
 					SNew(STextBlock)
 					.Justification(ETextJustify::Center)
-					.ToolTipText(FText::FromString(TEXT("Reset Scan Settings")))
+					.ToolTipText(FText::FromString(TEXT("Clears all fields in exclude settings")))
 					.ColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.White"))
 					.ShadowOffset(FVector2D{1.5f, 1.5f})
 					.ShadowColorAndOpacity(FLinearColor::Black)
 					.Font(FProjectCleanerStyles::GetFont("Bold", 10))
-					.Text(FText::FromString(TEXT("Reset Exclude Options")))
+					.Text(FText::FromString(TEXT("Reset Exclude Settings")))
 				]
 			]
 		]
@@ -265,7 +244,7 @@ void SProjectCleanerTabScanSettings::Construct(const FArguments& InArgs)
 				.AllowOverscroll(EAllowOverscroll::No)
 				+ SScrollBox::Slot()
 				[
-					ScanSettingsProperty.ToSharedRef()
+					ExcludeSettingsProperty.ToSharedRef()
 				]
 			]
 		]
@@ -322,6 +301,16 @@ FReply SProjectCleanerTabScanSettings::OnBtnDeleteEmptyFoldersClick() const
 	}
 
 	Scanner->DeleteEmptyFolders();
+
+	return FReply::Handled();
+}
+
+FReply SProjectCleanerTabScanSettings::OnBtnResetExcludeSettingsClick() const
+{
+	ExcludeSettings->ExcludedAssets.Reset();
+	ExcludeSettings->ExcludedClasses.Reset();
+	ExcludeSettings->ExcludedFolders.Reset();
+	ExcludeSettings->PostEditChange();
 
 	return FReply::Handled();
 }

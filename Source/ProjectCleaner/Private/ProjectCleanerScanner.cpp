@@ -228,17 +228,17 @@ bool FProjectCleanerScanner::IsFolderExcluded(const FString& InFolderPathAbs) co
 	if (!FPaths::DirectoryExists(InFolderPathAbs)) return false;
 	if (!ScanSettings.IsValid()) return false;
 
-	for (const auto& ExcludedFolder : ScanSettings->ExcludedFolders)
-	{
-		if (ExcludedFolder.Path.IsEmpty()) continue;
-
-		const FString ExcludedAbsPath = UProjectCleanerLibrary::PathConvertToAbs(ExcludedFolder.Path);
-		if (!FPaths::DirectoryExists(ExcludedAbsPath)) continue;
-		if (UProjectCleanerLibrary::PathIsUnderFolder(InFolderPathAbs, ExcludedAbsPath))
-		{
-			return true;
-		}
-	}
+	// for (const auto& ExcludedFolder : ScanSettings->ExcludedFolders)
+	// {
+	// 	if (ExcludedFolder.Path.IsEmpty()) continue;
+	//
+	// 	const FString ExcludedAbsPath = UProjectCleanerLibrary::PathConvertToAbs(ExcludedFolder.Path);
+	// 	if (!FPaths::DirectoryExists(ExcludedAbsPath)) continue;
+	// 	if (UProjectCleanerLibrary::PathIsUnderFolder(InFolderPathAbs, ExcludedAbsPath))
+	// 	{
+	// 		return true;
+	// 	}
+	// }
 
 	return false;
 }
@@ -432,39 +432,39 @@ void FProjectCleanerScanner::FindAssetsExcluded()
 {
 	AssetsExcluded.Reserve(AssetsAll.Num());
 
-	for (const auto& Asset : AssetsAll)
-	{
-		// excluded by path
-		const FString PackagePathAbs = UProjectCleanerLibrary::PathConvertToAbs(Asset.PackagePath.ToString());
-		for (const auto& ExcludedFolder : ScanSettings->ExcludedFolders)
-		{
-			const FString ExcludedFolderPathAbs = UProjectCleanerLibrary::PathConvertToAbs(ExcludedFolder.Path);
-
-			if (UProjectCleanerLibrary::PathIsUnderFolder(PackagePathAbs, ExcludedFolderPathAbs))
-			{
-				AssetsExcluded.AddUnique(Asset);
-			}
-		}
-
-		// excluded by class
-		const FString AssetClassName = UProjectCleanerLibrary::AssetGetClassName(Asset);
-		for (const auto& ExcludedClass : ScanSettings->ExcludedClasses)
-		{
-			if (!ExcludedClass.LoadSynchronous()) continue;
-
-			const FString ExcludedClassName = ExcludedClass->GetName();
-
-			if (ExcludedClassName.Equals(AssetClassName))
-			{
-				AssetsExcluded.AddUnique(Asset);
-			}
-		}
-	}
-
-	for (const auto& ExcludedAsset : ScanSettings->ExcludedAssets)
-	{
-		AssetsExcluded.AddUnique(ExcludedAsset);
-	}
+	// for (const auto& Asset : AssetsAll)
+	// {
+	// 	// excluded by path
+	// 	const FString PackagePathAbs = UProjectCleanerLibrary::PathConvertToAbs(Asset.PackagePath.ToString());
+	// 	for (const auto& ExcludedFolder : ScanSettings->ExcludedFolders)
+	// 	{
+	// 		const FString ExcludedFolderPathAbs = UProjectCleanerLibrary::PathConvertToAbs(ExcludedFolder.Path);
+	//
+	// 		if (UProjectCleanerLibrary::PathIsUnderFolder(PackagePathAbs, ExcludedFolderPathAbs))
+	// 		{
+	// 			AssetsExcluded.AddUnique(Asset);
+	// 		}
+	// 	}
+	//
+	// 	// excluded by class
+	// 	const FString AssetClassName = UProjectCleanerLibrary::AssetGetClassName(Asset);
+	// 	for (const auto& ExcludedClass : ScanSettings->ExcludedClasses)
+	// 	{
+	// 		if (!ExcludedClass.LoadSynchronous()) continue;
+	//
+	// 		const FString ExcludedClassName = ExcludedClass->GetName();
+	//
+	// 		if (ExcludedClassName.Equals(AssetClassName))
+	// 		{
+	// 			AssetsExcluded.AddUnique(Asset);
+	// 		}
+	// 	}
+	// }
+	//
+	// for (const auto& ExcludedAsset : ScanSettings->ExcludedAssets)
+	// {
+	// 	AssetsExcluded.AddUnique(ExcludedAsset);
+	// }
 
 	AssetsExcluded.Shrink();
 }
