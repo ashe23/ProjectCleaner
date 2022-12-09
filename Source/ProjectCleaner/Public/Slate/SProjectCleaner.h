@@ -42,6 +42,7 @@ private:
 	TSharedRef<SDockTab> OnTabSpawnNonEngineFiles(const FSpawnTabArgs& Args);
 
 	bool TabsEnabled() const;
+	void TabsUpdateRenderOpacity() const;
 
 	TSharedPtr<FTabManager> TabManager;
 	TSharedPtr<FTabManager::FLayout> TabLayout;

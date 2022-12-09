@@ -152,26 +152,23 @@ void SProjectCleanerTabNonEngine::ListUpdate()
 		.HeaderRow(GetListHeaderRow());
 	}
 
-	// if (Scanner->GetScannerDataState() == EProjectCleanerScannerDataState::Actual)
+	ListItems.Reset();
+	TotalSize = 0;
+
+	for (const auto& NonEngineFile : Scanner->GetFilesNonEngine())
 	{
-		ListItems.Reset();
-		TotalSize = 0;
+		const TSharedPtr<FProjectCleanerTabNonEngineListItem> NewItem = MakeShareable(new FProjectCleanerTabNonEngineListItem);
+		if (!NewItem) continue;
 
-		for (const auto& NonEngineFile : Scanner->GetFilesNonEngine())
-		{
-			const TSharedPtr<FProjectCleanerTabNonEngineListItem> NewItem = MakeShareable(new FProjectCleanerTabNonEngineListItem);
-			if (!NewItem) continue;
+		if (NonEngineFile.IsEmpty() || !FPaths::FileExists(NonEngineFile)) continue;
 
-			if (NonEngineFile.IsEmpty() || !FPaths::FileExists(NonEngineFile)) continue;
+		NewItem->FileName = FPaths::GetCleanFilename(NonEngineFile);
+		NewItem->FileExtension = FPaths::GetExtension(NonEngineFile, true);
+		NewItem->FilePathAbs = NonEngineFile;
+		NewItem->FileSize = IFileManager::Get().FileSize(*NonEngineFile);
+		TotalSize += NewItem->FileSize;
 
-			NewItem->FileName = FPaths::GetCleanFilename(NonEngineFile);
-			NewItem->FileExtension = FPaths::GetExtension(NonEngineFile, true);
-			NewItem->FilePathAbs = NonEngineFile;
-			NewItem->FileSize = IFileManager::Get().FileSize(*NonEngineFile);
-			TotalSize += NewItem->FileSize;
-
-			ListItems.Add(NewItem);
-		}
+		ListItems.Add(NewItem);
 	}
 
 	ListSort();

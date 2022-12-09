@@ -23,10 +23,7 @@ public:
 	{
 		ListItem = InArgs._ListItem;
 
-		SMultiColumnTableRow<TSharedPtr<FProjectCleanerIndirectAsset>>::Construct(
-			SMultiColumnTableRow<TSharedPtr<FProjectCleanerIndirectAsset>>::FArguments(),
-			InTable
-		);
+		SMultiColumnTableRow::Construct(SMultiColumnTableRow::FArguments(), InTable);
 	}
 
 	virtual TSharedRef<SWidget> GenerateWidgetForColumn(const FName& InColumnName) override
@@ -94,6 +91,7 @@ public:
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
+
 private:
 	void ListUpdate();
 	void ListSort();

@@ -172,21 +172,18 @@ void SProjectCleanerTabIndirect::ListUpdate()
 		.HeaderRow(GetListHeaderRow());
 	}
 
-	// if (Scanner->GetScannerDataState() == EProjectCleanerScannerDataState::Actual)
+	ListItems.Reset();
+	TotalSize = UProjectCleanerLibrary::AssetsGetTotalSize(Scanner->GetAssetsIndirect());
+
+	for (const auto& IndirectAsset : Scanner->GetAssetsIndirectAdvanced())
 	{
-		ListItems.Reset();
-		TotalSize = UProjectCleanerLibrary::AssetsGetTotalSize(Scanner->GetAssetsIndirect());
+		const TSharedPtr<FProjectCleanerIndirectAsset> NewItem = MakeShareable(new FProjectCleanerIndirectAsset);
+		if (!NewItem) continue;
 
-		for (const auto& IndirectAsset : Scanner->GetAssetsIndirectAdvanced())
-		{
-			const TSharedPtr<FProjectCleanerIndirectAsset> NewItem = MakeShareable(new FProjectCleanerIndirectAsset);
-			if (!NewItem) continue;
-
-			NewItem->AssetData = IndirectAsset.AssetData;
-			NewItem->FilePath = IndirectAsset.FilePath;
-			NewItem->LineNum = IndirectAsset.LineNum;
-			ListItems.Add(NewItem);
-		}
+		NewItem->AssetData = IndirectAsset.AssetData;
+		NewItem->FilePath = IndirectAsset.FilePath;
+		NewItem->LineNum = IndirectAsset.LineNum;
+		ListItems.Add(NewItem);
 	}
 
 	ListSort();

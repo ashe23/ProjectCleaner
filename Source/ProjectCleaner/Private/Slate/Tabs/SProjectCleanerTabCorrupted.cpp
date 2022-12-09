@@ -92,26 +92,24 @@ void SProjectCleanerTabCorrupted::ListUpdate()
 		.HeaderRow(GetListHeaderRow());
 	}
 
-	// if (Scanner->GetScannerDataState() == EProjectCleanerScannerDataState::Actual)
+	
+	ListItems.Reset();
+	TotalSize = 0;
+
+	for (const auto& CorruptedFile : Scanner->GetFilesCorrupted())
 	{
-		ListItems.Reset();
-		TotalSize = 0;
+		const TSharedPtr<FProjectCleanerTabCorruptedListItem> NewItem = MakeShareable(new FProjectCleanerTabCorruptedListItem);
+		if (!NewItem) continue;
 
-		for (const auto& CorruptedFile : Scanner->GetFilesCorrupted())
-		{
-			const TSharedPtr<FProjectCleanerTabCorruptedListItem> NewItem = MakeShareable(new FProjectCleanerTabCorruptedListItem);
-			if (!NewItem) continue;
+		if (CorruptedFile.IsEmpty() || !FPaths::FileExists(CorruptedFile)) continue;
 
-			if (CorruptedFile.IsEmpty() || !FPaths::FileExists(CorruptedFile)) continue;
+		NewItem->FileName = FPaths::GetCleanFilename(CorruptedFile);
+		NewItem->FileExtension = FPaths::GetExtension(CorruptedFile, true);
+		NewItem->FilePathAbs = CorruptedFile;
+		NewItem->FileSize = IFileManager::Get().FileSize(*CorruptedFile);
+		TotalSize += NewItem->FileSize;
 
-			NewItem->FileName = FPaths::GetCleanFilename(CorruptedFile);
-			NewItem->FileExtension = FPaths::GetExtension(CorruptedFile, true);
-			NewItem->FilePathAbs = CorruptedFile;
-			NewItem->FileSize = IFileManager::Get().FileSize(*CorruptedFile);
-			TotalSize += NewItem->FileSize;
-
-			ListItems.Add(NewItem);
-		}
+		ListItems.Add(NewItem);
 	}
 
 	ListSort();

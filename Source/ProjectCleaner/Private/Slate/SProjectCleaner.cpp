@@ -13,7 +13,6 @@
 #include "ProjectCleanerStyles.h"
 #include "ProjectCleanerLibrary.h"
 // Engine Headers
-#include "ProjectCleaner.h"
 #include "Widgets/Layout/SWidgetSwitcher.h"
 
 static constexpr int32 WidgetIndexNone = 0;
@@ -40,6 +39,8 @@ void SProjectCleaner::Construct(const FArguments& InArgs, const TSharedRef<SDock
 	{
 		TabsRenderOpacity = NewStatus == EProjectCleanerScannerStatus::ScanFinished ? 1.0f : 0.2f;
 		bTabsEnabled = NewStatus == EProjectCleanerScannerStatus::ScanFinished;
+
+		TabsUpdateRenderOpacity();
 	});
 
 	TabsRenderOpacity = Scanner->GetStatus() == EProjectCleanerScannerStatus::ScanFinished ? 1.0f : 0.2f;
@@ -381,11 +382,10 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnIndirectAssets(const FSpawnTabAr
 		.Label(FText::FromString(TEXT("Indirect Assets")))
 		.Icon(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconTabIndirect16"))
 		[
-			SNew(STextBlock)
-			// SAssignNew(TabIndirect, SProjectCleanerTabIndirect)
-			// .Scanner(Scanner)
-			// .RenderOpacity(TabsRenderOpacity)
-			// .IsEnabled(this, &SProjectCleaner::TabsEnabled)
+			SAssignNew(TabIndirect, SProjectCleanerTabIndirect)
+			.Scanner(Scanner)
+			.RenderOpacity(TabsRenderOpacity)
+			.IsEnabled(this, &SProjectCleaner::TabsEnabled)
 		];
 }
 
@@ -397,11 +397,10 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnCorruptedAssets(const FSpawnTabA
 		.Label(FText::FromString(TEXT("Corrupted Assets")))
 		.Icon(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconTabCorrupted16"))
 		[
-			SNew(STextBlock)
-			// SAssignNew(TabCorrupted, SProjectCleanerTabCorrupted)
-			// .Scanner(Scanner)
-			// .RenderOpacity(TabsRenderOpacity)
-			// .IsEnabled(this, &SProjectCleaner::TabsEnabled)
+			SAssignNew(TabCorrupted, SProjectCleanerTabCorrupted)
+			.Scanner(Scanner)
+			.RenderOpacity(TabsRenderOpacity)
+			.IsEnabled(this, &SProjectCleaner::TabsEnabled)
 		];
 }
 
@@ -413,15 +412,37 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnNonEngineFiles(const FSpawnTabAr
 		.Label(FText::FromString(TEXT("NonEngine Files")))
 		.Icon(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconTabNonEngine16"))
 		[
-			SNew(STextBlock)
-			// SAssignNew(TabNonEngine, SProjectCleanerTabNonEngine)
-			// .Scanner(Scanner)
-			// .RenderOpacity(TabsRenderOpacity)
-			// .IsEnabled(this, &SProjectCleaner::TabsEnabled)
+			SAssignNew(TabNonEngine, SProjectCleanerTabNonEngine)
+			.Scanner(Scanner)
+			.RenderOpacity(TabsRenderOpacity)
+			.IsEnabled(this, &SProjectCleaner::TabsEnabled)
 		];
 }
 
 bool SProjectCleaner::TabsEnabled() const
 {
 	return bTabsEnabled;
+}
+
+void SProjectCleaner::TabsUpdateRenderOpacity() const
+{
+	if (TabUnused.IsValid())
+	{
+		TabUnused.Pin()->SetRenderOpacity(TabsRenderOpacity);	
+	}
+	
+	if (TabIndirect.IsValid())
+	{
+		TabIndirect.Pin()->SetRenderOpacity(TabsRenderOpacity);
+	}
+
+	if (TabCorrupted.IsValid())
+	{
+		TabCorrupted.Pin()->SetRenderOpacity(TabsRenderOpacity);
+	}
+
+	if (TabNonEngine.IsValid())
+	{
+		TabNonEngine.Pin()->SetRenderOpacity(TabsRenderOpacity);
+	}
 }
