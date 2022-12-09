@@ -9,6 +9,7 @@
 #include "ProjectCleanerScanner.h"
 #include "ProjectCleanerConstants.h"
 #include "Settings/ProjectCleanerScanSettings.h"
+#include "Settings/ProjectCleanerTreeViewSettings.h"
 // Engine Headers
 #include "ProjectCleanerCmds.h"
 #include "Widgets/Input/SSearchBox.h"
@@ -21,7 +22,10 @@ void SProjectCleanerTreeView::Construct(const FArguments& InArgs)
 	if (!Scanner.IsValid()) return;
 
 	ScanSettings = GetMutableDefault<UProjectCleanerScanSettings>();
-	if (!ScanSettings.IsValid()) return;
+	TreeViewSettings = GetMutableDefault<UProjectCleanerTreeViewSettings>();
+
+	check(ScanSettings);
+	check(TreeViewSettings);
 
 	Cmds = MakeShareable(new FUICommandList);
 	Cmds->MapAction(
@@ -160,6 +164,8 @@ void SProjectCleanerTreeView::Construct(const FArguments& InArgs)
 
 void SProjectCleanerTreeView::TreeItemsUpdate()
 {
+	if (!TreeViewSettings) return;
+	
 	if (!TreeView.IsValid())
 	{
 		SAssignNew(TreeView, STreeView<TSharedPtr<FProjectCleanerTreeViewItem>>)
@@ -175,7 +181,6 @@ void SProjectCleanerTreeView::TreeItemsUpdate()
 	}
 
 	if (!Scanner.IsValid()) return;
-	// if (Scanner->GetScannerDataState() != EProjectCleanerScannerDataState::Actual) return;
 
 	// caching expanded and selected items in order to keep them , when we updating data
 	ItemsExpanded.Reset();
@@ -187,7 +192,7 @@ void SProjectCleanerTreeView::TreeItemsUpdate()
 	TreeItems.Reset();
 
 	// creating root item
-	const TSharedPtr<FProjectCleanerTreeViewItem> RootTreeItem = TreeItemCreate(FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir()));
+	const TSharedPtr<FProjectCleanerTreeViewItem> RootTreeItem = TreeItemCreate(UProjectCleanerLibrary::PathGetContentFolder(true));
 	if (!RootTreeItem) return;
 
 	// traversing and filling its child items
@@ -252,8 +257,8 @@ TSharedPtr<FProjectCleanerTreeViewItem> SProjectCleanerTreeView::TreeItemCreate(
 	const TSharedPtr<FProjectCleanerTreeViewItem> TreeItem = MakeShareable(new FProjectCleanerTreeViewItem());
 	if (!TreeItem.IsValid()) return {};
 
-	const bool bIsProjectContentFolder = InFolderPathAbs.Equals(FPaths::ProjectContentDir());
-	const bool bIsProjectDeveloperFolder = InFolderPathAbs.Equals(FPaths::ProjectContentDir() / ProjectCleanerConstants::FolderDevelopers.ToString());
+	const bool bIsProjectContentFolder = InFolderPathAbs.Equals(UProjectCleanerLibrary::PathGetContentFolder(true));
+	const bool bIsProjectDeveloperFolder = InFolderPathAbs.Equals(UProjectCleanerLibrary::PathGetDevelopersFolder(true));
 
 	TreeItem->FolderPathAbs = FPaths::ConvertRelativePathToFull(InFolderPathAbs);
 	TreeItem->FolderPathRel = UProjectCleanerLibrary::PathConvertToRel(InFolderPathAbs);
@@ -270,6 +275,10 @@ TSharedPtr<FProjectCleanerTreeViewItem> SProjectCleanerTreeView::TreeItemCreate(
 	TreeItem->PercentUnused = TreeItem->AssetsTotal == 0 ? 0.0f : TreeItem->AssetsUnused * 100.0f / TreeItem->AssetsTotal;
 	TreeItem->PercentUnusedNormalized = FMath::GetMappedRangeValueClamped(FVector2D{0.0f, 100.0f}, FVector2D{0.0f, 1.0f}, TreeItem->PercentUnused);
 	TreeItem->bExpanded = bIsProjectContentFolder;
+
+	// do not filter root folder
+	if (!TreeViewSettings->bShowFoldersEmpty && !bIsProjectContentFolder && TreeItem->bEmpty) return {};
+	if (!TreeViewSettings->bShowFoldersExcluded && !bIsProjectContentFolder && TreeItem->bExcluded) return {};
 
 	for (const auto& ExpandedItem : ItemsExpanded)
 	{
@@ -388,109 +397,85 @@ TSharedRef<SHeaderRow> SProjectCleanerTreeView::GetTreeViewHeaderRow() const
 		];
 }
 
-TSharedRef<SWidget> SProjectCleanerTreeView::GetTreeViewOptionsBtnContent() const
+TSharedRef<SWidget> SProjectCleanerTreeView::GetTreeViewOptionsBtnContent()
 {
 	const TSharedPtr<FExtender> Extender;
 	FMenuBuilder MenuBuilder(true, nullptr, Extender, true);
-	MenuBuilder.AddMenuSeparator(NAME_None);
+
+	FUIAction ActionShowLines;
+	ActionShowLines.ExecuteAction = FExecuteAction::CreateLambda([&]()
+	{
+		TreeViewSettings->bShowLines = !TreeViewSettings->bShowLines;
+		TreeViewSettings->PostEditChange();
+
+		TreeItemsUpdate();
+	});
+	ActionShowLines.CanExecuteAction = FCanExecuteAction::CreateLambda([&]()
+	{
+		return TreeViewSettings != nullptr;
+	});
+	ActionShowLines.GetActionCheckState = FGetActionCheckState::CreateLambda([&]()
+	{
+		return TreeViewSettings->bShowLines ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
+	});
+	MenuBuilder.AddMenuSeparator(TEXT("View"));
 	MenuBuilder.AddMenuEntry(
 		FText::FromString(TEXT("Show Lines")),
-		FText::FromString(TEXT("Show Lines in tree view")),
+		FText::FromString(TEXT("Show tree view organizer lines")),
 		FSlateIcon(),
-		FUIAction(
-			FExecuteAction::CreateLambda([&]
-			{
-				if (!ViewOptionsComboButton.IsValid()) return;
-
-				ViewOptionsComboButton->SetEnabled(!ViewOptionsComboButton->IsEnabled());
-				UE_LOG(LogProjectCleaner, Warning, TEXT("Show lines btn clicked"));
-			}),
-			FCanExecuteAction::CreateLambda([] { return true; })
-			// FIsActionChecked::CreateSP(this, &SOutputLog::IsWordWrapEnabled)
-		),
+		ActionShowLines,
 		NAME_None,
 		EUserInterfaceActionType::ToggleButton
 	);
-	MenuBuilder.AddMenuSeparator(NAME_None);
+
+
+	FUIAction ActionShowEmptyFolders;
+	ActionShowEmptyFolders.ExecuteAction = FExecuteAction::CreateLambda([&]()
+	{
+		TreeViewSettings->bShowFoldersEmpty = !TreeViewSettings->bShowFoldersEmpty;
+		TreeViewSettings->PostEditChange();
+		
+		TreeItemsUpdate();
+	});
+	ActionShowEmptyFolders.CanExecuteAction = FCanExecuteAction::CreateLambda([&]()
+	{
+		return TreeViewSettings != nullptr;
+	});
+	ActionShowEmptyFolders.GetActionCheckState = FGetActionCheckState::CreateLambda([&]()
+	{
+		return TreeViewSettings->bShowFoldersEmpty ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
+	});
+	MenuBuilder.AddMenuSeparator(TEXT("Folders"));
 	MenuBuilder.AddMenuEntry(
 		FText::FromString(TEXT("Show Empty Folders")),
-		FText::FromString(TEXT("Show Empty Folders in tree view")),
+		FText::FromString(TEXT("Show Empty Folders")),
 		FSlateIcon(),
-		FUIAction(
-			FExecuteAction::CreateLambda([&]
-			{
-				// if (!ViewOptionsComboButton.IsValid()) return;
-				//
-				// ViewOptionsComboButton->SetEnabled(!ViewOptionsComboButton->IsEnabled());
-				UE_LOG(LogProjectCleaner, Warning, TEXT("Show empty folders btn clicked"));
-				// This is a toggle, hence that it is inverted
-				// SetWordWrapEnabled(IsWordWrapEnabled() ? ECheckBoxState::Unchecked : ECheckBoxState::Checked);
-			}),
-			FCanExecuteAction::CreateLambda([] { return true; })
-			// FIsActionChecked::CreateSP(this, &SOutputLog::IsWordWrapEnabled)
-		),
+		ActionShowEmptyFolders,
 		NAME_None,
 		EUserInterfaceActionType::ToggleButton
 	);
+
+	FUIAction ActionShowExcludedFolders;
+	ActionShowExcludedFolders.ExecuteAction = FExecuteAction::CreateLambda([&]()
+	{
+		TreeViewSettings->bShowFoldersExcluded = !TreeViewSettings->bShowFoldersExcluded;
+		TreeViewSettings->PostEditChange();
+		
+		TreeItemsUpdate();
+	});
+	ActionShowExcludedFolders.CanExecuteAction = FCanExecuteAction::CreateLambda([&]()
+	{
+		return TreeViewSettings != nullptr;
+	});
+	ActionShowExcludedFolders.GetActionCheckState = FGetActionCheckState::CreateLambda([&]()
+	{
+		return TreeViewSettings->bShowFoldersExcluded ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
+	});
 	MenuBuilder.AddMenuEntry(
 		FText::FromString(TEXT("Show Excluded Folders")),
-		FText::FromString(TEXT("Show Excluded Folders in tree view")),
+		FText::FromString(TEXT("Show Excluded Folders")),
 		FSlateIcon(),
-		FUIAction(
-			FExecuteAction::CreateLambda([&]
-			{
-				// if (!ViewOptionsComboButton.IsValid()) return;
-				//
-				// ViewOptionsComboButton->SetEnabled(!ViewOptionsComboButton->IsEnabled());
-				UE_LOG(LogProjectCleaner, Warning, TEXT("Show Excluded folders btn clicked"));
-				// This is a toggle, hence that it is inverted
-				// SetWordWrapEnabled(IsWordWrapEnabled() ? ECheckBoxState::Unchecked : ECheckBoxState::Checked);
-			}),
-			FCanExecuteAction::CreateLambda([] { return true; })
-			// FIsActionChecked::CreateSP(this, &SOutputLog::IsWordWrapEnabled)
-		),
-		NAME_None,
-		EUserInterfaceActionType::ToggleButton
-	);
-
-	MenuBuilder.AddMenuEntry(
-		FText::FromString(TEXT("Show Folders NonEngine")),
-		FText::FromString(TEXT("Show Folders that contains non engine files in it")),
-		FSlateIcon(),
-		FUIAction(
-			FExecuteAction::CreateLambda([&]
-			{
-				// if (!ViewOptionsComboButton.IsValid()) return;
-				//
-				// ViewOptionsComboButton->SetEnabled(!ViewOptionsComboButton->IsEnabled());
-				UE_LOG(LogProjectCleaner, Warning, TEXT("Show NonEngine folders btn clicked"));
-				// This is a toggle, hence that it is inverted
-				// SetWordWrapEnabled(IsWordWrapEnabled() ? ECheckBoxState::Unchecked : ECheckBoxState::Checked);
-			}),
-			FCanExecuteAction::CreateLambda([] { return true; })
-			// FIsActionChecked::CreateSP(this, &SOutputLog::IsWordWrapEnabled)
-		),
-		NAME_None,
-		EUserInterfaceActionType::ToggleButton
-	);
-
-	MenuBuilder.AddMenuEntry(
-		FText::FromString(TEXT("Show Folders Corrupted")),
-		FText::FromString(TEXT("Show Folders that contains corrupted files in it")),
-		FSlateIcon(),
-		FUIAction(
-			FExecuteAction::CreateLambda([&]
-			{
-				// if (!ViewOptionsComboButton.IsValid()) return;
-				//
-				// ViewOptionsComboButton->SetEnabled(!ViewOptionsComboButton->IsEnabled());
-				UE_LOG(LogProjectCleaner, Warning, TEXT("Show Corrupted folders btn clicked"));
-				// This is a toggle, hence that it is inverted
-				// SetWordWrapEnabled(IsWordWrapEnabled() ? ECheckBoxState::Unchecked : ECheckBoxState::Checked);
-			}),
-			FCanExecuteAction::CreateLambda([] { return true; })
-			// FIsActionChecked::CreateSP(this, &SOutputLog::IsWordWrapEnabled)
-		),
+		ActionShowExcludedFolders,
 		NAME_None,
 		EUserInterfaceActionType::ToggleButton
 	);

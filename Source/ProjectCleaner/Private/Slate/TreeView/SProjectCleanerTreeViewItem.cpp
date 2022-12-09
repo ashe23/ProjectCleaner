@@ -3,6 +3,7 @@
 #include "Slate/TreeView/SProjectCleanerTreeViewItem.h"
 #include "ProjectCleanerTypes.h"
 #include "ProjectCleanerStyles.h"
+#include "Settings/ProjectCleanerTreeViewSettings.h"
 // Engine Headers
 #include "Kismet/KismetMathLibrary.h"
 #include "Widgets/Notifications/SProgressBar.h"
@@ -11,17 +12,11 @@ void SProjectCleanerTreeViewItem::Construct(const FArguments& InArgs, const TSha
 {
 	TreeItem = InArgs._TreeItem;
 
-	SMultiColumnTableRow<TSharedPtr<FProjectCleanerTreeViewItem>>::Construct(
-		SMultiColumnTableRow<TSharedPtr<FProjectCleanerTreeViewItem>>::FArguments()
-		.ToolTipText(FText::FromString(TreeItem->FolderPathRel)),
-		OwnerTable
-	);
+	SMultiColumnTableRow::Construct(SMultiColumnTableRow::FArguments().ToolTipText(FText::FromString(TreeItem->FolderPathRel)), OwnerTable);
 }
 
 TSharedRef<SWidget> SProjectCleanerTreeViewItem::GenerateWidgetForColumn(const FName& InColumnName)
 {
-	// todo:ashe23 expander must be toggle configurable
-	
 	if (InColumnName.IsEqual(TEXT("Name")))
 	{
 		return
@@ -32,19 +27,18 @@ TSharedRef<SWidget> SProjectCleanerTreeViewItem::GenerateWidgetForColumn(const F
 			  .Padding(FMargin{2.0f})
 			[
 				SNew(SExpanderArrow, SharedThis(this))
-				.IndentAmount(20)
-				.ShouldDrawWires(true)
+					.IndentAmount(20)
+					.ShouldDrawWires(GetDefault<UProjectCleanerTreeViewSettings>()->bShowLines)
 			]
 			+ SHorizontalBox::Slot()
 			  .AutoWidth()
 			  .Padding(0, 0, 2, 0)
 			  .VAlign(VAlign_Center)
 			[
-
 				// Folder Icon
 				SNew(SImage)
-				.Image(this, &SProjectCleanerTreeViewItem::GetFolderIcon)
-				.ColorAndOpacity(this, &SProjectCleanerTreeViewItem::GetFolderColor)
+					.Image(this, &SProjectCleanerTreeViewItem::GetFolderIcon)
+					.ColorAndOpacity(this, &SProjectCleanerTreeViewItem::GetFolderColor)
 			]
 			+ SHorizontalBox::Slot()
 			  .AutoWidth()
@@ -219,6 +213,6 @@ FSlateColor SProjectCleanerTreeViewItem::GetProgressBarColor() const
 	const FLinearColor Color2 = TreeItem->PercentUnusedNormalized >= 0.5f ? FLinearColor::Yellow : FLinearColor::Red;
 	const FLinearColor CurrentColor = UKismetMathLibrary::LinearColorLerp(FLinearColor::Green, FLinearColor::Red, TreeItem->PercentUnusedNormalized);
 	const FLinearColor TargetColor = UKismetMathLibrary::LinearColorLerp(Color1, Color2, TreeItem->PercentUnusedNormalized);
-	
+
 	return FSlateColor{CurrentColor};
 }

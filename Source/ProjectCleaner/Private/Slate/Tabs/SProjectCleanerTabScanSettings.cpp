@@ -162,6 +162,7 @@ void SProjectCleanerTabScanSettings::Construct(const FArguments& InArgs)
 			[
 				SNew(STextBlock)
 				.Font(FProjectCleanerStyles::GetFont("Bold", 13))
+				.ColorAndOpacity(FProjectCleanerStyles::Get().GetSlateColor("ProjectCleaner.Color.Yellow"))
 				.Text(this, &SProjectCleanerTabScanSettings::GetStatsTextAssetsExcluded)
 			]
 			+ SVerticalBox::Slot()
@@ -193,6 +194,7 @@ void SProjectCleanerTabScanSettings::Construct(const FArguments& InArgs)
 			[
 				SNew(STextBlock)
 				.Font(FProjectCleanerStyles::GetFont("Bold", 13))
+				.ColorAndOpacity(FProjectCleanerStyles::Get().GetSlateColor("ProjectCleaner.Color.Red"))
 				.Text(this, &SProjectCleanerTabScanSettings::GetStatsTextFoldersEmpty)
 			]
 		]

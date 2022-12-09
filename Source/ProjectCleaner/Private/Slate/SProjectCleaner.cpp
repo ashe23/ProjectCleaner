@@ -366,11 +366,10 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnUnusedAssets(const FSpawnTabArgs
 		.Label(FText::FromString(TEXT("Unused Assets")))
 		.Icon(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconTabUnused16"))
 		[
-			SNew(STextBlock)
-			// SAssignNew(TabUnused, SProjectCleanerTabUnused)
-			// .Scanner(Scanner)
-			// .RenderOpacity(TabsRenderOpacity)
-			// .IsEnabled(this, &SProjectCleaner::TabsEnabled)
+			SAssignNew(TabUnused, SProjectCleanerTabUnused)
+			.Scanner(Scanner)
+			.RenderOpacity(TabsRenderOpacity)
+			.IsEnabled(this, &SProjectCleaner::TabsEnabled)
 		];
 }
 

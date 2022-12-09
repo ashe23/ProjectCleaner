@@ -7,6 +7,7 @@
 #include "Widgets/SCompoundWidget.h"
 
 class UProjectCleanerScanSettings;
+class UProjectCleanerTreeViewSettings;
 struct FProjectCleanerTreeViewItem;
 struct FProjectCleanerScanner;
 
@@ -26,13 +27,14 @@ public:
 	FProjectCleanerDelegatePathExcluded& OnPathExcluded();
 	FProjectCleanerDelegatePathIncluded& OnPathIncluded();
 	FProjectCleanerDelegatePathCleaned& OnPathCleaned();
+
 private:
 	void TreeItemsUpdate();
 	TSharedPtr<FProjectCleanerTreeViewItem> TreeItemCreate(const FString& InDirPathAbs) const;
 	TSharedRef<ITableRow> OnTreeViewGenerateRow(TSharedPtr<FProjectCleanerTreeViewItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const;
 	TSharedPtr<SWidget> GetTreeItemContextMenu() const;
 	TSharedRef<SHeaderRow> GetTreeViewHeaderRow() const;
-	TSharedRef<SWidget> GetTreeViewOptionsBtnContent() const;
+	TSharedRef<SWidget> GetTreeViewOptionsBtnContent();
 	FSlateColor GetTreeViewOptionsBtnForegroundColor() const;
 
 	void OnTreeViewItemMouseDblClick(TSharedPtr<FProjectCleanerTreeViewItem> Item);
@@ -48,7 +50,8 @@ private:
 	TArray<TSharedPtr<FProjectCleanerTreeViewItem>> ItemsSelected;
 	TSharedPtr<SComboButton> ViewOptionsComboButton;
 	TSharedPtr<FProjectCleanerScanner> Scanner;
-	TWeakObjectPtr<UProjectCleanerScanSettings> ScanSettings;
+	UProjectCleanerScanSettings* ScanSettings = nullptr;
+	UProjectCleanerTreeViewSettings* TreeViewSettings = nullptr;
 	TArray<TSharedPtr<FProjectCleanerTreeViewItem>> TreeItems;
 	TSharedPtr<STreeView<TSharedPtr<FProjectCleanerTreeViewItem>>> TreeView;
 

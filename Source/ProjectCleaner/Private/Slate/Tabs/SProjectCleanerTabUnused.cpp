@@ -6,6 +6,7 @@
 #include "ProjectCleanerScanner.h"
 #include "ProjectCleanerConstants.h"
 #include "Settings/ProjectCleanerScanSettings.h"
+#include "Settings/ProjectCleanerExcludeSettings.h"
 // Engine Headers
 // #include "ContentBrowserModule.h"
 // #include "ContentBrowserItem.h"
@@ -21,7 +22,10 @@ void SProjectCleanerTabUnused::Construct(const FArguments& InArgs)
 	if (!Scanner.IsValid()) return;
 
 	ScanSettings = GetMutableDefault<UProjectCleanerScanSettings>();
-	if (!ScanSettings.IsValid()) return;
+	ExcludeSettings = GetMutableDefault<UProjectCleanerExcludeSettings>();
+
+	check(ScanSettings);
+	check(ExcludeSettings);
 
 	Scanner->OnScanFinished().AddLambda([&]()
 	{
@@ -36,8 +40,7 @@ void SProjectCleanerTabUnused::Construct(const FArguments& InArgs)
 void SProjectCleanerTabUnused::UpdateView()
 {
 	if (!Scanner.IsValid()) return;
-	if (!ScanSettings.IsValid()) return;
-	// if (Scanner->GetScannerDataState() != EProjectCleanerScannerDataState::Actual) return;
+	if (!ScanSettings) return;
 
 	// making sure tree view is valid
 	if (!ProjectCleanerTreeView.IsValid())
@@ -49,10 +52,10 @@ void SProjectCleanerTabUnused::UpdateView()
 			SelectedPaths.Reset();
 			SelectedPaths.Append(InSelectedPaths);
 
-			if (ProjectCleanerAssetBrowser.IsValid())
-			{
-				ProjectCleanerAssetBrowser.Get()->UpdateView();
-			}
+			// if (ProjectCleanerAssetBrowser.IsValid())
+			// {
+			// 	ProjectCleanerAssetBrowser.Get()->UpdateView();
+			// }
 			// UpdateView();
 			UE_LOG(LogProjectCleaner, Warning, TEXT("Selected Paths Num: %d"), SelectedPaths.Num());
 		});
@@ -188,49 +191,49 @@ void SProjectCleanerTabUnused::UpdateView()
 			[
 				ProjectCleanerTreeView.ToSharedRef()
 			]
-			+ SSplitter::Slot()
-			[
-				SNew(SVerticalBox)
-				+ SVerticalBox::Slot()
-				  .Padding(FMargin{0.0f, 5.0f})
-				  .AutoHeight()
-				[
-					SNew(SHorizontalBox)
-					+ SHorizontalBox::Slot()
-					.AutoWidth()
-					[
-						SNew(SButton)
-						.ContentPadding(FMargin{5.0f})
-						// .OnClicked_Raw(this, &SProjectCleaner::OnBtnCleanProjectClick)
-						.ButtonColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Blue"))
-						[
-							SNew(STextBlock)
-							.Justification(ETextJustify::Center)
-							.ToolTipText(FText::FromString(TEXT("Include all excluded assets and mark them as unused")))
-							.ColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.White"))
-							.ShadowOffset(FVector2D{1.5f, 1.5f})
-							.ShadowColorAndOpacity(FLinearColor::Black)
-							.Font(FProjectCleanerStyles::GetFont("Bold", 10))
-							.Text(FText::FromString(TEXT("Include all excluded assets")))
-						]
-					]
-				]
-				// + SVerticalBox::Slot()
-				//   .Padding(FMargin{0.0f, 5.0f})
-				//   .AutoHeight()
-				// [
-				// 	SNew(SSeparator)
-				// 	.Thickness(5.0f)
-				// ]
-				// + SVerticalBox::Slot()
-				//   .Padding(FMargin{0.0f, 5.0f})
-				//   .FillHeight(1.0f)
-				// [
-				// 	SAssignNew(ProjectCleanerAssetBrowser, SProjectCleanerAssetBrowser)
-				// 	.Scanner(Scanner)
-				// 	// ModuleContentBrowser.Get().CreateAssetPicker(AssetPickerConfig)
-				// ]
-			]
+			// + SSplitter::Slot()
+			// [
+			// 	SNew(SVerticalBox)
+			// 	+ SVerticalBox::Slot()
+			// 	  .Padding(FMargin{0.0f, 5.0f})
+			// 	  .AutoHeight()
+			// 	[
+			// 		SNew(SHorizontalBox)
+			// 		+ SHorizontalBox::Slot()
+			// 		.AutoWidth()
+			// 		[
+			// 			SNew(SButton)
+			// 			.ContentPadding(FMargin{5.0f})
+			// 			// .OnClicked_Raw(this, &SProjectCleaner::OnBtnCleanProjectClick)
+			// 			.ButtonColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Blue"))
+			// 			[
+			// 				SNew(STextBlock)
+			// 				.Justification(ETextJustify::Center)
+			// 				.ToolTipText(FText::FromString(TEXT("Include all excluded assets and mark them as unused")))
+			// 				.ColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.White"))
+			// 				.ShadowOffset(FVector2D{1.5f, 1.5f})
+			// 				.ShadowColorAndOpacity(FLinearColor::Black)
+			// 				.Font(FProjectCleanerStyles::GetFont("Bold", 10))
+			// 				.Text(FText::FromString(TEXT("Include all excluded assets")))
+			// 			]
+			// 		]
+			// 	]
+			// 	// + SVerticalBox::Slot()
+			// 	//   .Padding(FMargin{0.0f, 5.0f})
+			// 	//   .AutoHeight()
+			// 	// [
+			// 	// 	SNew(SSeparator)
+			// 	// 	.Thickness(5.0f)
+			// 	// ]
+			// 	// + SVerticalBox::Slot()
+			// 	//   .Padding(FMargin{0.0f, 5.0f})
+			// 	//   .FillHeight(1.0f)
+			// 	// [
+			// 	// 	SAssignNew(ProjectCleanerAssetBrowser, SProjectCleanerAssetBrowser)
+			// 	// 	.Scanner(Scanner)
+			// 	// 	// ModuleContentBrowser.Get().CreateAssetPicker(AssetPickerConfig)
+			// 	// ]
+			// ]
 		]
 	];
 }

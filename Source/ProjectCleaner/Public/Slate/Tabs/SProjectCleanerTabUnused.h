@@ -9,6 +9,7 @@ struct FProjectCleanerScanner;
 class SProjectCleanerTreeView;
 class SProjectCleanerAssetBrowser;
 class UProjectCleanerScanSettings;
+class UProjectCleanerExcludeSettings;
 
 class SProjectCleanerTabUnused final : public SCompoundWidget
 {
@@ -21,14 +22,15 @@ public:
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
+
 private:
 	void UpdateView();
 	void UpdateFilter();
 
-	// FARFilter Filter;
 	TSet<FString> SelectedPaths;
 	TSharedPtr<FProjectCleanerScanner> Scanner;
-	TWeakObjectPtr<UProjectCleanerScanSettings> ScanSettings;
 	TSharedPtr<SProjectCleanerTreeView> ProjectCleanerTreeView;
 	TSharedPtr<SProjectCleanerAssetBrowser> ProjectCleanerAssetBrowser;
+	UProjectCleanerScanSettings* ScanSettings = nullptr;
+	UProjectCleanerExcludeSettings* ExcludeSettings = nullptr;
 };
