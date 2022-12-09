@@ -9,6 +9,7 @@
 #include "Internationalization/BreakIterator.h"
 #include "Widgets/Input/SSearchBox.h"
 #include "Widgets/Layout/SScrollBox.h"
+#include "Widgets/Layout/SSeparator.h"
 
 
 void SProjectCleanerAssetBrowser::Construct(const FArguments& InArgs)
@@ -38,70 +39,76 @@ void SProjectCleanerAssetBrowser::Construct(const FArguments& InArgs)
 			// .OnTextCommitted(this, &SProjectCleanerTreeView::OnTreeViewSearchBoxTextCommitted)
 		]
 		+ SVerticalBox::Slot()
-		  .AutoHeight()
-		  .Padding(FMargin{0.0f, 0.0f, 0.0f, 5.0f})
+		.AutoHeight()
 		[
-			SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot()
-			.AutoWidth()
-			[
-				SNew(SBox)
-				.WidthOverride(16.0f)
-				.HeightOverride(16.0f)
-				[
-					SNew(SImage)
-					.Image(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconCircle16"))
-					.ColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Yellow"))
-				]
-			]
-			+ SHorizontalBox::Slot()
-			  .Padding(FMargin{0.0f, 2.0f, 0.0f, 0.0f})
-			  .AutoWidth()
-			[
-				SNew(STextBlock)
-				.Text(FText::FromString(TEXT(" - Excluded Asset")))
-			]
-			+ SHorizontalBox::Slot()
-			  .AutoWidth()
-			  .Padding(FMargin{5.0f, 0.0f, 0.0f, 0.0f})
-			[
-				SNew(SBox)
-				.WidthOverride(16.0f)
-				.HeightOverride(16.0f)
-				[
-					SNew(SImage)
-					.Image(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconCircle16"))
-					.ColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Blue"))
-				]
-			]
-			+ SHorizontalBox::Slot()
-			  .Padding(FMargin{0.0f, 2.0f, 0.0f, 0.0f})
-			  .AutoWidth()
-			[
-				SNew(STextBlock)
-				.Text(FText::FromString(TEXT(" - Used Indirectly")))
-			]
-			+ SHorizontalBox::Slot()
-			  .AutoWidth()
-			  .Padding(FMargin{5.0f, 0.0f, 0.0f, 0.0f})
-			[
-				SNew(SBox)
-				.WidthOverride(16.0f)
-				.HeightOverride(16.0f)
-				[
-					SNew(SImage)
-					.Image(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconCircle16"))
-					.ColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Red"))
-				]
-			]
-			+ SHorizontalBox::Slot()
-			  .Padding(FMargin{0.0f, 2.0f, 0.0f, 0.0f})
-			  .AutoWidth()
-			[
-				SNew(STextBlock)
-				.Text(FText::FromString(TEXT(" - In Developers Folder")))
-			]
+			SNew(SSeparator)
+			.Thickness(5.0f)
 		]
+		// + SVerticalBox::Slot()
+		//   .AutoHeight()
+		//   .Padding(FMargin{0.0f, 0.0f, 0.0f, 5.0f})
+		// [
+		// 	// SNew(SHorizontalBox)
+		// 	// + SHorizontalBox::Slot()
+		// 	// .AutoWidth()
+		// 	// [
+		// 	// 	SNew(SBox)
+		// 	// 	.WidthOverride(16.0f)
+		// 	// 	.HeightOverride(16.0f)
+		// 	// 	[
+		// 	// 		SNew(SImage)
+		// 	// 		.Image(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconCircle16"))
+		// 	// 		.ColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Yellow"))
+		// 	// 	]
+		// 	// ]
+		// 	// + SHorizontalBox::Slot()
+		// 	//   .Padding(FMargin{0.0f, 2.0f, 0.0f, 0.0f})
+		// 	//   .AutoWidth()
+		// 	// [
+		// 	// 	SNew(STextBlock)
+		// 	// 	.Text(FText::FromString(TEXT(" - Excluded Asset")))
+		// 	// ]
+		// 	// + SHorizontalBox::Slot()
+		// 	//   .AutoWidth()
+		// 	//   .Padding(FMargin{5.0f, 0.0f, 0.0f, 0.0f})
+		// 	// [
+		// 	// 	SNew(SBox)
+		// 	// 	.WidthOverride(16.0f)
+		// 	// 	.HeightOverride(16.0f)
+		// 	// 	[
+		// 	// 		SNew(SImage)
+		// 	// 		.Image(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconCircle16"))
+		// 	// 		.ColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Blue"))
+		// 	// 	]
+		// 	// ]
+		// 	// + SHorizontalBox::Slot()
+		// 	//   .Padding(FMargin{0.0f, 2.0f, 0.0f, 0.0f})
+		// 	//   .AutoWidth()
+		// 	// [
+		// 	// 	SNew(STextBlock)
+		// 	// 	.Text(FText::FromString(TEXT(" - Used Indirectly")))
+		// 	// ]
+		// 	// + SHorizontalBox::Slot()
+		// 	//   .AutoWidth()
+		// 	//   .Padding(FMargin{5.0f, 0.0f, 0.0f, 0.0f})
+		// 	// [
+		// 	// 	SNew(SBox)
+		// 	// 	.WidthOverride(16.0f)
+		// 	// 	.HeightOverride(16.0f)
+		// 	// 	[
+		// 	// 		SNew(SImage)
+		// 	// 		.Image(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconCircle16"))
+		// 	// 		.ColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Red"))
+		// 	// 	]
+		// 	// ]
+		// 	// + SHorizontalBox::Slot()
+		// 	//   .Padding(FMargin{0.0f, 2.0f, 0.0f, 0.0f})
+		// 	//   .AutoWidth()
+		// 	// [
+		// 	// 	SNew(STextBlock)
+		// 	// 	.Text(FText::FromString(TEXT(" - In Developers Folder")))
+		// 	// ]
+		// ]
 		+ SVerticalBox::Slot()
 		  .FillHeight(1.0f)
 		  .Padding(FMargin{0.0f, 5.0f})
@@ -126,6 +133,8 @@ void SProjectCleanerAssetBrowser::Construct(const FArguments& InArgs)
 void SProjectCleanerAssetBrowser::Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime)
 {
 	SCompoundWidget::Tick(AllottedGeometry, InCurrentTime, InDeltaTime);
+
+	if (!AssetThumbnailPool.IsValid()) return;
 
 	AssetThumbnailPool->Tick(InDeltaTime);
 }
@@ -160,7 +169,7 @@ TSharedRef<ITableRow> SProjectCleanerAssetBrowser::OnGenerateWidgetForTileView(T
 		[
 			SNew(SBorder)
 			.Padding(0.0f)
-			.BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
+			// .BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
 			.ColorAndOpacity(FLinearColor{1.0f, 1.0f, 1.0f, 1.0f})
 			[
 				SNew(SVerticalBox)
@@ -211,21 +220,21 @@ TSharedRef<ITableRow> SProjectCleanerAssetBrowser::OnGenerateWidgetForTileView(T
 						.Font(FProjectCleanerStyles::GetFont("Light", 8))
 						.Text(FText::FromString(InItem->AssetData.AssetClass.ToString()))
 					]
-					+ SHorizontalBox::Slot()
-					  .AutoWidth()
-					  .HAlign(HAlign_Center)
-					  .VAlign(VAlign_Center)
-					  .Padding(FMargin{3.0f, 2.0f})
-					[
-						SNew(SBox)
-						.WidthOverride(16.0f)
-						.HeightOverride(16.0f)
-						[
-							SNew(SImage)
-							.Image(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconCircle16"))
-							.ColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Yellow"))
-						]
-					]
+					// + SHorizontalBox::Slot()
+					//   .AutoWidth()
+					//   .HAlign(HAlign_Center)
+					//   .VAlign(VAlign_Center)
+					//   .Padding(FMargin{3.0f, 2.0f})
+					// [
+					// 	SNew(SBox)
+					// 	.WidthOverride(16.0f)
+					// 	.HeightOverride(16.0f)
+					// 	[
+					// 		SNew(SImage)
+					// 		.Image(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconCircle16"))
+					// 		.ColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Yellow"))
+					// 	]
+					// ]
 				]
 			]
 		];
