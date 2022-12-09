@@ -88,41 +88,37 @@ FProjectCleanerScanner::FProjectCleanerScanner(UProjectCleanerScanSettings* InSc
 	  ModuleAssetRegistry(FModuleManager::LoadModuleChecked<FAssetRegistryModule>(AssetRegistryConstants::ModuleName))
 {
 	if (!ScanSettings || !ExcludeSettings) return;
-	
-	ExcludeSettings->OnChange().AddLambda([&]()
+
+	ExcludeSettings->OnChange().AddLambda([&](const FName& PropertyName)
 	{
+		if (!ScanSettings) return;
+
+		StatusUpdate(EProjectCleanerScannerStatus::ExcludeSettingsUpdated);
+
 		if (ScanSettings->bAutoScan)
 		{
 			Scan();
 		}
 	});
-	
-	// ScanSettings->OnChange().AddLambda([&]()
-	// {
-	// 	if (ScanSettings->bAutoScan)
-	// 	{
-	// 		Scan();
-	// 		return;
-	// 	}
-	//
-	// 	ScannerDataState = EProjectCleanerScannerDataState::NotScanned;
-	// 	if (DelegateScanDataStateChanged.IsBound())
-	// 	{
-	// 		DelegateScanDataStateChanged.Broadcast(ScannerDataState);
-	// 	}
-	// });
+
+	ScanSettings->OnChange().AddLambda([&](const FName& PropertyName)
+	{
+		if (!ScanSettings) return;
+		if (PropertyName.IsEqual(TEXT("bAutoDeleteEmptyFolders"))) return; // todo:ashe32 post edit change weirdly not returning changed property name
+
+		StatusUpdate(EProjectCleanerScannerStatus::ScanSettingsUpdated);
+
+		if (ScanSettings->bAutoScan)
+		{
+			Scan();
+		}
+	});
 }
 
 void FProjectCleanerScanner::Scan()
 {
-	ScannerState = EProjectCleanerScannerState::Scanning;
-	ScannerDataState = EProjectCleanerScannerDataState::NotScanned;
+	StatusUpdate(EProjectCleanerScannerStatus::Scanning);
 	AssetRegistryDelegatesUnregister();
-
-	if (DelegateScanDataStateChanged.IsBound())
-	{
-		DelegateScanDataStateChanged.Broadcast(ScannerDataState);
-	}
 
 	if (UProjectCleanerLibrary::AssetRegistryWorking())
 	{
@@ -164,14 +160,8 @@ void FProjectCleanerScanner::Scan()
 	FindAssetsUsed();
 	FindAssetsUnused();
 
-	ScannerState = EProjectCleanerScannerState::Idle;
-	ScannerDataState = EProjectCleanerScannerDataState::Scanned;
+	StatusUpdate(EProjectCleanerScannerStatus::ScanFinished);
 	AssetRegistryDelegatesRegister();
-
-	if (DelegateScanDataStateChanged.IsBound())
-	{
-		DelegateScanDataStateChanged.Broadcast(ScannerDataState);
-	}
 
 	if (DelegateScanFinished.IsBound())
 	{
@@ -213,14 +203,9 @@ void FProjectCleanerScanner::GetSubFolders(const FString& InFolderPathAbs, TSet<
 	}
 }
 
-EProjectCleanerScannerState FProjectCleanerScanner::GetScannerState() const
+EProjectCleanerScannerStatus FProjectCleanerScanner::GetStatus() const
 {
-	return ScannerState;
-}
-
-EProjectCleanerScannerDataState FProjectCleanerScanner::GetScannerDataState() const
-{
-	return ScannerDataState;
+	return ScannerStatus;
 }
 
 bool FProjectCleanerScanner::IsFolderEmpty(const FString& InFolderPathAbs) const
@@ -232,7 +217,7 @@ bool FProjectCleanerScanner::IsFolderExcluded(const FString& InFolderPathAbs) co
 {
 	if (InFolderPathAbs.IsEmpty()) return false;
 	if (!FPaths::DirectoryExists(InFolderPathAbs)) return false;
-	if (!ScanSettings.IsValid()) return false;
+	if (!ScanSettings) return false;
 
 	for (const auto& ExcludedFolder : ExcludeSettings->ExcludedFolders)
 	{
@@ -351,9 +336,9 @@ const TArray<FProjectCleanerIndirectAsset>& FProjectCleanerScanner::GetAssetsInd
 	return AssetsIndirectAdvanced;
 }
 
-FProjectCleanerDelegateScanDataStateChanged& FProjectCleanerScanner::OnDataStateChanged()
+FProjectCleanerDelegateScannerStatusChanged& FProjectCleanerScanner::OnStatusChanged()
 {
-	return DelegateScanDataStateChanged;
+	return DelegateScannerStatusChanged;
 }
 
 FProjectCleanerDelegateScanFinished& FProjectCleanerScanner::OnScanFinished()
@@ -369,6 +354,16 @@ FProjectCleanerDelegateCleanFinished& FProjectCleanerScanner::OnCleanFinished()
 FProjectCleanerDelegateEmptyFoldersDeleted& FProjectCleanerScanner::OnEmptyFoldersDeleted()
 {
 	return DelegateEmptyFoldersDeleted;
+}
+
+void FProjectCleanerScanner::StatusUpdate(const EProjectCleanerScannerStatus Status)
+{
+	ScannerStatus = Status;
+
+	if (DelegateScannerStatusChanged.IsBound())
+	{
+		DelegateScannerStatusChanged.Broadcast(Status);
+	}
 }
 
 void FProjectCleanerScanner::DataReset()
@@ -553,62 +548,62 @@ void FProjectCleanerScanner::AssetRegistryDelegatesRegister()
 {
 	DelegateHandleAssetAdded = ModuleAssetRegistry.Get().OnAssetAdded().AddLambda([&](const FAssetData& AssetData)
 	{
-		ScannerDataState = EProjectCleanerScannerDataState::Obsolete;
-
-		if (DelegateScanDataStateChanged.IsBound())
-		{
-			DelegateScanDataStateChanged.Broadcast(ScannerDataState);
-		}
+		// ScannerDataState = EProjectCleanerScannerDataState::Obsolete;
+		//
+		// if (DelegateScanDataStateChanged.IsBound())
+		// {
+		// 	DelegateScanDataStateChanged.Broadcast(ScannerDataState);
+		// }
 	});
 
 	DelegateHandleAssetRemoved = ModuleAssetRegistry.Get().OnAssetRemoved().AddLambda([&](const FAssetData& AssetData)
 	{
-		ScannerDataState = EProjectCleanerScannerDataState::Obsolete;
-
-		if (DelegateScanDataStateChanged.IsBound())
-		{
-			DelegateScanDataStateChanged.Broadcast(ScannerDataState);
-		}
+		// ScannerDataState = EProjectCleanerScannerDataState::Obsolete;
+		//
+		// if (DelegateScanDataStateChanged.IsBound())
+		// {
+		// 	DelegateScanDataStateChanged.Broadcast(ScannerDataState);
+		// }
 	});
 
 	DelegateHandleAssetRenamed = ModuleAssetRegistry.Get().OnAssetRenamed().AddLambda([&](const FAssetData& AssetData, const FString& NewName)
 	{
-		ScannerDataState = EProjectCleanerScannerDataState::Obsolete;
-
-		if (DelegateScanDataStateChanged.IsBound())
-		{
-			DelegateScanDataStateChanged.Broadcast(ScannerDataState);
-		}
+		// ScannerDataState = EProjectCleanerScannerDataState::Obsolete;
+		//
+		// if (DelegateScanDataStateChanged.IsBound())
+		// {
+		// 	DelegateScanDataStateChanged.Broadcast(ScannerDataState);
+		// }
 	});
 
 	DelegateHandleAssetUpdated = ModuleAssetRegistry.Get().OnAssetUpdated().AddLambda([&](const FAssetData& AssetData)
 	{
-		ScannerDataState = EProjectCleanerScannerDataState::Obsolete;
-
-		if (DelegateScanDataStateChanged.IsBound())
-		{
-			DelegateScanDataStateChanged.Broadcast(ScannerDataState);
-		}
+		// ScannerDataState = EProjectCleanerScannerDataState::Obsolete;
+		//
+		// if (DelegateScanDataStateChanged.IsBound())
+		// {
+		// 	DelegateScanDataStateChanged.Broadcast(ScannerDataState);
+		// }
 	});
 
 	DelegateHandlePathAdded = ModuleAssetRegistry.Get().OnPathAdded().AddLambda([&](const FString& Path)
 	{
-		ScannerDataState = EProjectCleanerScannerDataState::Obsolete;
-
-		if (DelegateScanDataStateChanged.IsBound())
-		{
-			DelegateScanDataStateChanged.Broadcast(ScannerDataState);
-		}
+		// ScannerDataState = EProjectCleanerScannerDataState::Obsolete;
+		//
+		// if (DelegateScanDataStateChanged.IsBound())
+		// {
+		// 	DelegateScanDataStateChanged.Broadcast(ScannerDataState);
+		// }
 	});
 
 	DelegateHandlePathRemoved = ModuleAssetRegistry.Get().OnPathRemoved().AddLambda([&](const FString& Path)
 	{
-		ScannerDataState = EProjectCleanerScannerDataState::Obsolete;
-
-		if (DelegateScanDataStateChanged.IsBound())
-		{
-			DelegateScanDataStateChanged.Broadcast(ScannerDataState);
-		}
+		// ScannerDataState = EProjectCleanerScannerDataState::Obsolete;
+		//
+		// if (DelegateScanDataStateChanged.IsBound())
+		// {
+		// 	DelegateScanDataStateChanged.Broadcast(ScannerDataState);
+		// }
 	});
 }
 

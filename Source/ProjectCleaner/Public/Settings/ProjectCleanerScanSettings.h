@@ -13,7 +13,7 @@ class UProjectCleanerScanSettings final : public UObject
 
 public:
 	UPROPERTY(EditAnywhere, Config, Category="ScanSettings",
-		meta=(ToolTip="Automatically scan the project when scan settings change. On large projects, this can be unfavorable. By default, it is disabled."))
+		meta=(ToolTip="Automatically scan the project when settings change. On large projects, this can be unfavorable. By default, it is disabled."))
 	bool bAutoScan = false;
 
 	UPROPERTY(DisplayName="Auto Delete Empty Folders", EditAnywhere, Config, Category="ScanSettings",

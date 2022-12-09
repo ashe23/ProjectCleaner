@@ -20,6 +20,7 @@ public:
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
+
 private:
 	bool BtnScanProjectEnabled() const;
 	bool BtnCleanProjectEnabled() const;
@@ -42,8 +43,8 @@ private:
 
 
 	TSharedPtr<FProjectCleanerScanner> Scanner;
-	TWeakObjectPtr<UProjectCleanerScanSettings> ScanSettings;
-	
-	TWeakObjectPtr<UProjectCleanerExcludeSettings> ExcludeSettings;
 	TSharedPtr<IDetailsView> ExcludeSettingsProperty;
+
+	UProjectCleanerScanSettings* ScanSettings = nullptr;
+	UProjectCleanerExcludeSettings* ExcludeSettings = nullptr;
 };

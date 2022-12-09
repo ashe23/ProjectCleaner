@@ -17,10 +17,10 @@ void SProjectCleanerTabScanSettings::Construct(const FArguments& InArgs)
 	if (!Scanner.IsValid()) return;
 
 	ScanSettings = GetMutableDefault<UProjectCleanerScanSettings>();
-	if (!ScanSettings.IsValid()) return;
-
 	ExcludeSettings = GetMutableDefault<UProjectCleanerExcludeSettings>();
-	if (!ExcludeSettings.IsValid()) return;
+
+	check(ScanSettings);
+	check(ExcludeSettings);
 
 	FPropertyEditorModule& PropertyEditor = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
 	FDetailsViewArgs DetailsViewArgs;
@@ -33,7 +33,7 @@ void SProjectCleanerTabScanSettings::Construct(const FArguments& InArgs)
 	DetailsViewArgs.ViewIdentifier = "ProjectCleanerExcludeSettings";
 
 	ExcludeSettingsProperty = PropertyEditor.CreateDetailView(DetailsViewArgs);
-	ExcludeSettingsProperty->SetObject(ExcludeSettings.Get());
+	ExcludeSettingsProperty->SetObject(ExcludeSettings);
 
 	ChildSlot
 	[
@@ -111,8 +111,7 @@ void SProjectCleanerTabScanSettings::Construct(const FArguments& InArgs)
 			SNew(SHorizontalBox)
 			.Visibility_Raw(this, &SProjectCleanerTabScanSettings::GetBtnScanProjectStatusVisibility)
 			+ SHorizontalBox::Slot()
-			  .AutoWidth()
-			  // .Padding(FMargin{0.0f, 0.0f, 5.0f, 0.0f})
+			.AutoWidth()
 			[
 				SNew(SBox)
 				.WidthOverride(16.0f)
@@ -129,7 +128,6 @@ void SProjectCleanerTabScanSettings::Construct(const FArguments& InArgs)
 				SNew(STextBlock)
 				.Justification(ETextJustify::Left)
 				.ColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Yellow"))
-				// .Font(FProjectCleanerStyles::GetFont("Light", 11))
 				.Text_Raw(this, &SProjectCleanerTabScanSettings::GetBtnScanProjectToolTipText)
 			]
 		]
@@ -255,12 +253,12 @@ bool SProjectCleanerTabScanSettings::BtnScanProjectEnabled() const
 
 bool SProjectCleanerTabScanSettings::BtnCleanProjectEnabled() const
 {
-	return Scanner.IsValid() && Scanner->GetAssetsUnused().Num() > 0 && Scanner->GetScannerDataState() == EProjectCleanerScannerDataState::Scanned;
+	return Scanner.IsValid() && Scanner->GetAssetsUnused().Num() > 0 && Scanner->GetStatus() == EProjectCleanerScannerStatus::ScanFinished;
 }
 
 bool SProjectCleanerTabScanSettings::BtnDeleteEmptyFoldersEnabled() const
 {
-	return Scanner.IsValid() && Scanner->GetFoldersEmpty().Num() > 0 && Scanner->GetScannerDataState() == EProjectCleanerScannerDataState::Scanned;
+	return Scanner.IsValid() && Scanner->GetFoldersEmpty().Num() > 0 && Scanner->GetStatus() == EProjectCleanerScannerStatus::ScanFinished;
 }
 
 FReply SProjectCleanerTabScanSettings::OnBtnScanProjectClick() const
@@ -316,21 +314,32 @@ EVisibility SProjectCleanerTabScanSettings::GetBtnScanProjectStatusVisibility() 
 {
 	if (!Scanner.IsValid()) return EVisibility::Collapsed;
 
-	return Scanner->GetScannerDataState() != EProjectCleanerScannerDataState::Scanned ? EVisibility::Visible : EVisibility::Collapsed;
+	return Scanner->GetStatus() != EProjectCleanerScannerStatus::ScanFinished ? EVisibility::Visible : EVisibility::Collapsed;
 }
 
 FText SProjectCleanerTabScanSettings::GetBtnScanProjectToolTipText() const
 {
 	if (!Scanner.IsValid()) return FText::FromString(TEXT(""));
 
-	if (Scanner->GetScannerDataState() == EProjectCleanerScannerDataState::NotScanned)
+	// todo:ashe23 maybe move this part to library class and replace texts with string constants literals
+	if (Scanner->GetStatus() == EProjectCleanerScannerStatus::NeverScanned)
 	{
-		return FText::FromString(TEXT("Project not scanned"));
+		return FText::FromString(TEXT("Project Never Scanned"));
 	}
 
-	if (Scanner->GetScannerDataState() == EProjectCleanerScannerDataState::Obsolete)
+	if (Scanner->GetStatus() == EProjectCleanerScannerStatus::ScanSettingsUpdated)
 	{
-		return FText::FromString(TEXT("Rescan required. AssetRegistry has been updated."));
+		return FText::FromString(TEXT("Project Scan Required. Scan Settings has been updated"));
+	}
+
+	if (Scanner->GetStatus() == EProjectCleanerScannerStatus::ExcludeSettingsUpdated)
+	{
+		return FText::FromString(TEXT("Project Scan Required. Exclude Settings has been updated"));
+	}
+
+	if (Scanner->GetStatus() == EProjectCleanerScannerStatus::AssetRegistryUpdated)
+	{
+		return FText::FromString(TEXT("Project Scan Required. AssetRegistry has been updated"));
 	}
 
 	return FText::FromString(TEXT(""));

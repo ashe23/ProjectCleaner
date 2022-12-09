@@ -24,15 +24,26 @@ void SProjectCleaner::Construct(const FArguments& InArgs, const TSharedRef<SDock
 {
 	ScanSettings = GetMutableDefault<UProjectCleanerScanSettings>();
 	ExcludeSettings = GetMutableDefault<UProjectCleanerExcludeSettings>();
-	
+
 	check(ScanSettings);
 	check(ExcludeSettings);
 
 	Scanner = MakeShareable(new FProjectCleanerScanner(ScanSettings, ExcludeSettings));
 	if (!Scanner.IsValid()) return;
 
-	TabsRenderOpacity = Scanner->GetScannerDataState() == EProjectCleanerScannerDataState::Scanned ? 1.0f : 0.2f;
-	bTabsEnabled = Scanner->GetScannerDataState() == EProjectCleanerScannerDataState::Scanned;
+	if (ScanSettings->bAutoScan)
+	{
+		Scanner->Scan();
+	}
+
+	Scanner->OnStatusChanged().AddLambda([&](const EProjectCleanerScannerStatus NewStatus)
+	{
+		TabsRenderOpacity = NewStatus == EProjectCleanerScannerStatus::ScanFinished ? 1.0f : 0.2f;
+		bTabsEnabled = NewStatus == EProjectCleanerScannerStatus::ScanFinished;
+	});
+
+	TabsRenderOpacity = Scanner->GetStatus() == EProjectCleanerScannerStatus::ScanFinished ? 1.0f : 0.2f;
+	bTabsEnabled = Scanner->GetStatus() == EProjectCleanerScannerStatus::ScanFinished;
 
 	TabManager = FGlobalTabmanager::Get()->NewTabManager(ConstructUnderMajorTab);
 	const TSharedRef<FWorkspaceItem> AppMenuGroup = TabManager->AddLocalWorkspaceMenuCategory(FText::FromString(TEXT("ProjectCleaner")));
@@ -262,7 +273,7 @@ void SProjectCleaner::MenuBarFillSettings(FMenuBuilder& MenuBuilder, const TShar
 	MenuBuilder.BeginSection("SectionHelp", FText::FromString(TEXT("Scan Settings")));
 	MenuBuilder.AddMenuEntry(
 		FText::FromString(TEXT("Auto Scan")),
-		FText::FromString(TEXT("Automatically scan the project when exclude settings change. On large projects, this can be unfavorable. By default, it is disabled.")),
+		FText::FromString(TEXT("Automatically scan the project when settings change. On large projects, this can be unfavorable. By default, it is disabled.")),
 		FSlateIcon(),
 		ActionAutoScan,
 		NAME_None,
@@ -342,8 +353,7 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnScanSettings(const FSpawnTabArgs
 		.Label(FText::FromString(TEXT("Scan Settings")))
 		.Icon(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconSettings16"))
 		[
-			SNew(STextBlock)
-			// SAssignNew(TabScanSettings, SProjectCleanerTabScanSettings).Scanner(Scanner)
+			SAssignNew(TabScanSettings, SProjectCleanerTabScanSettings).Scanner(Scanner)
 		];
 }
 
