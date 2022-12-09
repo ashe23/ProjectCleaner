@@ -10,6 +10,7 @@
 #include "ProjectCleanerConstants.h"
 #include "Settings/ProjectCleanerScanSettings.h"
 #include "Settings/ProjectCleanerTreeViewSettings.h"
+#include "Settings/ProjectCleanerExcludeSettings.h"
 // Engine Headers
 #include "ProjectCleanerCmds.h"
 #include "Widgets/Input/SSearchBox.h"
@@ -33,7 +34,28 @@ void SProjectCleanerTreeView::Construct(const FArguments& InArgs)
 		FUIAction(
 			FExecuteAction::CreateLambda([&]()
 			{
-				UE_LOG(LogProjectCleaner, Warning, TEXT("Excluding paths"));
+				if (!TreeView.IsValid()) return;
+
+				const auto SelectedItems = TreeView->GetSelectedItems();
+				UProjectCleanerExcludeSettings* ExcludeSettings = GetMutableDefault<UProjectCleanerExcludeSettings>();
+				if (!ExcludeSettings) return;
+
+				for (const auto& SelectedItem : SelectedItems)
+				{
+					if (!SelectedItem.IsValid()) continue;
+					const bool bAlreadyExist = ExcludeSettings->ExcludedFolders.ContainsByPredicate([&](const FDirectoryPath& Dir)
+					{
+						return Dir.Path.Equals(SelectedItem->FolderPathRel);
+					});
+
+					if (bAlreadyExist) continue;
+
+					ExcludeSettings->ExcludedFolders.Add(FDirectoryPath{SelectedItem->FolderPathRel});
+				}
+
+				// todo:ashe23 handle this correctly
+				ExcludeSettings->PostEditChange();
+				Scanner->Scan();
 			})
 		)
 	);
@@ -42,7 +64,34 @@ void SProjectCleanerTreeView::Construct(const FArguments& InArgs)
 		FUIAction(
 			FExecuteAction::CreateLambda([&]()
 			{
-				UE_LOG(LogProjectCleaner, Warning, TEXT("Including paths"));
+				if (!TreeView.IsValid()) return;
+
+				const auto SelectedItems = TreeView->GetSelectedItems();
+				UProjectCleanerExcludeSettings* ExcludeSettings = GetMutableDefault<UProjectCleanerExcludeSettings>();
+				if (!ExcludeSettings) return;
+
+				for (const auto& SelectedItem : SelectedItems)
+				{
+					if (!SelectedItem.IsValid()) continue;
+
+					int32 RemoveIndex = -1;
+					for (int32 i = 0; i < ExcludeSettings->ExcludedFolders.Num(); ++i)
+					{
+						if (SelectedItem->FolderPathRel.Equals(ExcludeSettings->ExcludedFolders[i].Path))
+						{
+							RemoveIndex = i;
+							break;
+						}
+					}
+
+					if (ExcludeSettings->ExcludedFolders.IsValidIndex(RemoveIndex))
+					{
+						ExcludeSettings->ExcludedFolders.RemoveAtSwap(RemoveIndex);
+					}
+				}
+
+				ExcludeSettings->PostEditChange();
+				Scanner->Scan();
 			})
 		)
 	);
@@ -51,6 +100,7 @@ void SProjectCleanerTreeView::Construct(const FArguments& InArgs)
 		FUIAction(
 			FExecuteAction::CreateLambda([&]()
 			{
+				// todo:ashe23 implement later
 				UE_LOG(LogProjectCleaner, Warning, TEXT("Cleaning paths"));
 			})
 		)
@@ -165,7 +215,7 @@ void SProjectCleanerTreeView::Construct(const FArguments& InArgs)
 void SProjectCleanerTreeView::TreeItemsUpdate()
 {
 	if (!TreeViewSettings) return;
-	
+
 	if (!TreeView.IsValid())
 	{
 		SAssignNew(TreeView, STreeView<TSharedPtr<FProjectCleanerTreeViewItem>>)
@@ -434,7 +484,7 @@ TSharedRef<SWidget> SProjectCleanerTreeView::GetTreeViewOptionsBtnContent()
 	{
 		TreeViewSettings->bShowFoldersEmpty = !TreeViewSettings->bShowFoldersEmpty;
 		TreeViewSettings->PostEditChange();
-		
+
 		TreeItemsUpdate();
 	});
 	ActionShowEmptyFolders.CanExecuteAction = FCanExecuteAction::CreateLambda([&]()
@@ -460,7 +510,7 @@ TSharedRef<SWidget> SProjectCleanerTreeView::GetTreeViewOptionsBtnContent()
 	{
 		TreeViewSettings->bShowFoldersExcluded = !TreeViewSettings->bShowFoldersExcluded;
 		TreeViewSettings->PostEditChange();
-		
+
 		TreeItemsUpdate();
 	});
 	ActionShowExcludedFolders.CanExecuteAction = FCanExecuteAction::CreateLambda([&]()

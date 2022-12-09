@@ -47,33 +47,33 @@ void SProjectCleanerTabUnused::UpdateView()
 	{
 		SAssignNew(ProjectCleanerTreeView, SProjectCleanerTreeView).Scanner(Scanner);
 
-		ProjectCleanerTreeView->OnPathSelected().AddLambda([&](const TSet<FString>& InSelectedPaths)
-		{
-			SelectedPaths.Reset();
-			SelectedPaths.Append(InSelectedPaths);
-
-			// if (ProjectCleanerAssetBrowser.IsValid())
-			// {
-			// 	ProjectCleanerAssetBrowser.Get()->UpdateView();
-			// }
-			// UpdateView();
-			UE_LOG(LogProjectCleaner, Warning, TEXT("Selected Paths Num: %d"), SelectedPaths.Num());
-		});
-
-		ProjectCleanerTreeView->OnPathExcluded().AddLambda([&](const TSet<FString>& InExcludedPaths)
-		{
-			UE_LOG(LogProjectCleaner, Warning, TEXT("Excluded Paths Num: %d"), InExcludedPaths.Num());
-		});
-
-		ProjectCleanerTreeView->OnPathIncluded().AddLambda([&](const TSet<FString>& InIncludedPaths)
-		{
-			UE_LOG(LogProjectCleaner, Warning, TEXT("Included Paths Num: %d"), InIncludedPaths.Num());
-		});
-
-		ProjectCleanerTreeView->OnPathCleaned().AddLambda([&](const TSet<FString>& InCleanedPaths)
-		{
-			UE_LOG(LogProjectCleaner, Warning, TEXT("Cleaned Paths Num: %d"), InCleanedPaths.Num());
-		});
+		// ProjectCleanerTreeView->OnPathSelected().AddLambda([&](const TSet<FString>& InSelectedPaths)
+		// {
+		// 	SelectedPaths.Reset();
+		// 	SelectedPaths.Append(InSelectedPaths);
+		//
+		// 	// if (ProjectCleanerAssetBrowser.IsValid())
+		// 	// {
+		// 	// 	ProjectCleanerAssetBrowser.Get()->UpdateView();
+		// 	// }
+		// 	// UpdateView();
+		// 	UE_LOG(LogProjectCleaner, Warning, TEXT("Selected Paths Num: %d"), SelectedPaths.Num());
+		// });
+		//
+		// ProjectCleanerTreeView->OnPathExcluded().AddLambda([&](const TSet<FString>& InExcludedPaths)
+		// {
+		// 	UE_LOG(LogProjectCleaner, Warning, TEXT("Excluded Paths Num: %d"), InExcludedPaths.Num());
+		// });
+		//
+		// ProjectCleanerTreeView->OnPathIncluded().AddLambda([&](const TSet<FString>& InIncludedPaths)
+		// {
+		// 	UE_LOG(LogProjectCleaner, Warning, TEXT("Included Paths Num: %d"), InIncludedPaths.Num());
+		// });
+		//
+		// ProjectCleanerTreeView->OnPathCleaned().AddLambda([&](const TSet<FString>& InCleanedPaths)
+		// {
+		// 	UE_LOG(LogProjectCleaner, Warning, TEXT("Cleaned Paths Num: %d"), InCleanedPaths.Num());
+		// });
 	}
 
 	// creating asset view
