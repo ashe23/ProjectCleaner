@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "ProjectCleanerDelegates.h"
+// #include "ProjectCleanerDelegates.h"
 #include "ProjectCleanerExcludeSettings.generated.h"
 
 UCLASS(Config=EditorPerProjectUserSettings)
@@ -22,12 +22,12 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Config, Category="Exclude Settings", meta=(ToolTip="List of excluded assets."))
 	TArray<TSoftObjectPtr<UObject>> ExcludedAssets;
 
-	FProjectCleanerDelegateExcludeSettingsChanged& OnChange();
-protected:
-#if WITH_EDITOR
-	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
-#endif
+// 	FProjectCleanerDelegateExcludeSettingsChanged& OnChange();
+// protected:
+// #if WITH_EDITOR
+// 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+// #endif
 
-private:
-	FProjectCleanerDelegateExcludeSettingsChanged DelegateExcludeSettingsChanged;
+// private:
+// 	FProjectCleanerDelegateExcludeSettingsChanged DelegateExcludeSettingsChanged;
 };

@@ -92,22 +92,22 @@ void FProjectCleanerModule::RegisterTabs() const
 			                        const TSharedRef<SProjectCleaner> Frontend = SNew(SProjectCleaner, DockTab, SpawnTabArgs.GetOwnerWindow());
 
 			                        DockTab->SetContent(Frontend);
-			                        DockTab->SetOnTabActivated(
-				                        SDockTab::FOnTabActivatedCallback::CreateLambda([](TSharedRef<SDockTab>, ETabActivationCause)
-				                        {
-					                        if (!GEditor) return;
-
-					                        GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>()->NotifyMainTabActivated();
-				                        })
-			                        );
-			                        DockTab->SetOnTabClosed(
-				                        SDockTab::FOnTabClosedCallback::CreateLambda([](TSharedRef<SDockTab>)
-				                        {
-					                        if (!GEditor) return;
-
-					                        GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>()->NotifyMainTabClosed();
-				                        })
-			                        );
+			                        // DockTab->SetOnTabActivated(
+				                       //  SDockTab::FOnTabActivatedCallback::CreateLambda([](TSharedRef<SDockTab>, ETabActivationCause)
+				                       //  {
+					                      //   if (!GEditor) return;
+			                        //
+					                      //   GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>()->NotifyMainTabActivated();
+				                       //  })
+			                        // );
+			                        // DockTab->SetOnTabClosed(
+				                       //  SDockTab::FOnTabClosedCallback::CreateLambda([](TSharedRef<SDockTab>)
+				                       //  {
+					                      //   if (!GEditor) return;
+			                        //
+					                      //   GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>()->NotifyMainTabClosed();
+				                       //  })
+			                        // );
 
 			                        return DockTab;
 		                        }))

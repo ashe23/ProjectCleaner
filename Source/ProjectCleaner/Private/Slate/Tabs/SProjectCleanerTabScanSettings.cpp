@@ -3,10 +3,12 @@
 #include "Slate/Tabs/SProjectCleanerTabScanSettings.h"
 #include "ProjectCleanerStyles.h"
 #include "ProjectCleanerLibrary.h"
+#include "ProjectCleanerSubsystem.h"
 #include "Settings/ProjectCleanerExcludeSettings.h"
 // Engine Headers
 #include "ProjectCleanerConstants.h"
-#include "ProjectCleanerSubsystem.h"
+#include "Libs/ProjectCleanerLibNotification.h"
+#include "Libs/ProjectCleanerLibPath.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SSeparator.h"
 
@@ -94,33 +96,33 @@ void SProjectCleanerTabScanSettings::Construct(const FArguments& InArgs)
 				]
 			]
 		]
-		+ SVerticalBox::Slot()
-		  .Padding(FMargin{5.0f})
-		  .AutoHeight()
-		[
-			SNew(SHorizontalBox)
-			.Visibility_Raw(this, &SProjectCleanerTabScanSettings::GetBtnScanProjectStatusVisibility)
-			+ SHorizontalBox::Slot()
-			.AutoWidth()
-			[
-				SNew(SBox)
-				.WidthOverride(16.0f)
-				.HeightOverride(16.0f)
-				[
-					SNew(SImage)
-					.Image(FProjectCleanerStyles::Get().GetBrush(TEXT("ProjectCleaner.IconWarning16")))
-				]
-			]
-			+ SHorizontalBox::Slot()
-			  .AutoWidth()
-			  .Padding(FMargin{5.0f, 2.0f, 0.0f, 0.0f})
-			[
-				SNew(STextBlock)
-				.Justification(ETextJustify::Left)
-				.ColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Yellow"))
-				.Text_Raw(this, &SProjectCleanerTabScanSettings::GetBtnScanProjectToolTipText)
-			]
-		]
+		// + SVerticalBox::Slot()
+		//   .Padding(FMargin{5.0f})
+		//   .AutoHeight()
+		// [
+		// 	SNew(SHorizontalBox)
+		// 	.Visibility_Raw(this, &SProjectCleanerTabScanSettings::GetInfoBoxVisibility)
+		// 	+ SHorizontalBox::Slot()
+		// 	.AutoWidth()
+		// 	[
+		// 		SNew(SBox)
+		// 		.WidthOverride(16.0f)
+		// 		.HeightOverride(16.0f)
+		// 		[
+		// 			SNew(SImage)
+		// 			.Image(FProjectCleanerStyles::Get().GetBrush(TEXT("ProjectCleaner.IconWarning16")))
+		// 		]
+		// 	]
+		// 	+ SHorizontalBox::Slot()
+		// 	  .AutoWidth()
+		// 	  .Padding(FMargin{5.0f, 2.0f, 0.0f, 0.0f})
+		// 	[
+		// 		SNew(STextBlock)
+		// 		.Justification(ETextJustify::Left)
+		// 		.ColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Yellow"))
+		// 		.Text_Raw(this, &SProjectCleanerTabScanSettings::GetInfoBoxText)
+		// 	]
+		// ]
 		+ SVerticalBox::Slot()
 		  .Padding(FMargin{5.0f})
 		  .AutoHeight()
@@ -242,14 +244,14 @@ bool SProjectCleanerTabScanSettings::BtnCleanProjectEnabled() const
 {
 	if (!GEditor) return false;
 
-	return GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>()->GetScanDataState() == EProjectCleanerScanDataState::Actual;
+	return GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>()->GetAssetsUnused().Num() > 0;
 }
 
 bool SProjectCleanerTabScanSettings::BtnCleanEmptyFoldersEnabled() const
 {
 	if (!GEditor) return false;
 
-	return GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>()->GetScanDataState() == EProjectCleanerScanDataState::Actual;
+	return GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>()->GetFoldersEmpty().Num() > 0;
 }
 
 FReply SProjectCleanerTabScanSettings::OnBtnScanProjectClick() const
@@ -263,14 +265,14 @@ FReply SProjectCleanerTabScanSettings::OnBtnScanProjectClick() const
 
 FReply SProjectCleanerTabScanSettings::OnBtnCleanProjectClick() const
 {
-	// const auto ConfirmationStatus = UProjectCleanerLibrary::ConfirmationWindowShow(
-	// 	FText::FromString(ProjectCleanerConstants::MsgConfirmCleanProjectTitle),
-	// 	FText::FromString(ProjectCleanerConstants::MsgConfirmCleanProject)
-	// );
-	// if (UProjectCleanerLibrary::ConfirmationWindowCancelled(ConfirmationStatus))
-	// {
-	// 	return FReply::Handled();
-	// }
+	const auto ConfirmationStatus = UProjectCleanerLibNotification::CreateConfirmationWindow(
+		FText::FromString(ProjectCleanerConstants::MsgConfirmCleanProjectTitle),
+		FText::FromString(ProjectCleanerConstants::MsgConfirmCleanProject)
+	);
+	if (UProjectCleanerLibNotification::ConfirmationWindowCancelled(ConfirmationStatus))
+	{
+		return FReply::Handled();
+	}
 
 	// Scanner->CleanProject();
 
@@ -279,14 +281,15 @@ FReply SProjectCleanerTabScanSettings::OnBtnCleanProjectClick() const
 
 FReply SProjectCleanerTabScanSettings::OnBtnDeleteEmptyFoldersClick() const
 {
-	// const auto ConfirmationStatus = UProjectCleanerLibrary::ConfirmationWindowShow(
-	// 	FText::FromString(ProjectCleanerConstants::MsgConfirmDeleteEmptyFoldersTitle),
-	// 	FText::FromString(ProjectCleanerConstants::MsgConfirmDeleteEmptyFolders)
-	// );
-	// if (UProjectCleanerLibrary::ConfirmationWindowCancelled(ConfirmationStatus))
-	// {
-	// 	return FReply::Handled();
-	// }
+	const auto ConfirmationStatus = UProjectCleanerLibNotification::CreateConfirmationWindow(
+		FText::FromString(ProjectCleanerConstants::MsgConfirmDeleteEmptyFoldersTitle),
+		FText::FromString(ProjectCleanerConstants::MsgConfirmDeleteEmptyFolders)
+	);
+	if (UProjectCleanerLibNotification::ConfirmationWindowCancelled(ConfirmationStatus))
+	{
+		return FReply::Handled();
+	}
+
 
 	// Scanner->DeleteEmptyFolders();
 
@@ -303,110 +306,76 @@ FReply SProjectCleanerTabScanSettings::OnBtnResetExcludeSettingsClick() const
 	ExcludeSettings->ExcludedFolders.Empty();
 	ExcludeSettings->PostEditChange();
 
+	GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>()->ProjectScan();
+
 	return FReply::Handled();
 }
 
-EVisibility SProjectCleanerTabScanSettings::GetBtnScanProjectStatusVisibility() const
-{
-	if (!GEditor) return EVisibility::Collapsed;
-
-	return GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>()->GetScanDataState() == EProjectCleanerScanDataState::Actual ? EVisibility::Collapsed : EVisibility::Visible;
-}
-
-FText SProjectCleanerTabScanSettings::GetBtnScanProjectToolTipText() const
-{
-	if (!GEditor) return FText::FromString(TEXT(""));
-
-	const EProjectCleanerScanDataState DataState = GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>()->GetScanDataState();
-
-	if (DataState == EProjectCleanerScanDataState::None)
-	{
-		return FText::FromString(TEXT("Project Scan Required."));
-	}
-
-	if (DataState == EProjectCleanerScanDataState::ObsoleteByAssetRegistry)
-	{
-		return FText::FromString(TEXT("Project Scan Required. Asset Registry has been updated."));
-	}
-
-	if (DataState == EProjectCleanerScanDataState::ObsoleteBySettings)
-	{
-		return FText::FromString(TEXT("Project Scan Required. Exclude Settings has been updated."));
-	}
-
-	return FText::FromString(TEXT(""));
-}
+// EVisibility SProjectCleanerTabScanSettings::GetInfoBoxVisibility() const
+// {
+// 	if (!GEditor) return EVisibility::Collapsed;
+//
+// 	return GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>()->GetAssetsUnused().Num() > 0 ? EVisibility::Collapsed : EVisibility::Visible;
+// }
+//
+// FText SProjectCleanerTabScanSettings::GetInfoBoxText() const
+// {
+// 	if (!GEditor) return FText::FromString(TEXT(""));
+//
+// 	
+//
+// 	return FText::FromString(TEXT(""));
+// }
 
 FText SProjectCleanerTabScanSettings::GetStatsTextAssetsTotal() const
 {
-	return FText::FromString(TEXT(""));
-	// if (!Scanner.IsValid()) return FText::FromString(TEXT(""));
-	//
-	// const int32 AssetsTotalNum = Scanner->GetAssetTotalNum(UProjectCleanerLibrary::PathGetContentFolder(true));
-	// const int64 AssetsTotalSize = Scanner->GetSizeTotal(UProjectCleanerLibrary::PathGetContentFolder(true));
-	//
-	// return FText::FromString(FString::Printf(TEXT("Assets Total - %d (%s)"), AssetsTotalNum, *FText::AsMemory(AssetsTotalSize).ToString()));
+	const auto Assets = GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>()->GetAssetsAll();
+	const int64 TotalSize = GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>()->GetAssetsTotalSize(Assets);
+
+	return FText::FromString(FString::Printf(TEXT("Assets Total - %d (%s)"), Assets.Num(), *FText::AsMemory(TotalSize).ToString()));
 }
 
 FText SProjectCleanerTabScanSettings::GetStatsTextAssetsIndirect() const
 {
-	return FText::FromString(TEXT(""));
-	// if (!Scanner.IsValid()) return FText::FromString(TEXT(""));
-	//
-	// const auto IndirectAssets = Scanner->GetAssetsIndirect();
-	// const int64 TotalSize = UProjectCleanerLibrary::AssetsGetTotalSize(IndirectAssets);
-	//
-	// return FText::FromString(FString::Printf(TEXT("Assets Indirect - %d (%s)"), IndirectAssets.Num(), *FText::AsMemory(TotalSize).ToString()));
+	const auto Assets = GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>()->GetAssetsIndirect();
+	const int64 TotalSize = GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>()->GetAssetsTotalSize(Assets);
+
+	return FText::FromString(FString::Printf(TEXT("Assets Indirect - %d (%s)"), Assets.Num(), *FText::AsMemory(TotalSize).ToString()));
 }
 
 FText SProjectCleanerTabScanSettings::GetStatsTextAssetsExcluded() const
 {
-	return FText::FromString(TEXT(""));
-	// if (!Scanner.IsValid()) return FText::FromString(TEXT(""));
-	//
-	// const auto ExcludedAssets = Scanner->GetAssetsExcluded();
-	// const int64 TotalSize = UProjectCleanerLibrary::AssetsGetTotalSize(ExcludedAssets);
-	//
-	// return FText::FromString(FString::Printf(TEXT("Assets Excluded - %d (%s)"), ExcludedAssets.Num(), *FText::AsMemory(TotalSize).ToString()));
-}
+	const auto Assets = GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>()->GetAssetsExcluded();
+	const int64 TotalSize = GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>()->GetAssetsTotalSize(Assets);
 
-FText SProjectCleanerTabScanSettings::GetStatsTextFilesNonEngine() const
-{
-	return FText::FromString(TEXT(""));
-	// if (!Scanner.IsValid()) return FText::FromString(TEXT(""));
-	//
-	// const auto FilesNonEngine = Scanner->GetFilesNonEngine();
-	// const int64 TotalSize = UProjectCleanerLibrary::FilesGetTotalSize(FilesNonEngine.Array());
-	//
-	// return FText::FromString(FString::Printf(TEXT("Files NonEngine - %d (%s)"), FilesNonEngine.Num(), *FText::AsMemory(TotalSize).ToString()));
-}
-
-FText SProjectCleanerTabScanSettings::GetStatsTextFilesCorrupted() const
-{
-	return FText::FromString(TEXT(""));
-	// if (!Scanner.IsValid()) return FText::FromString(TEXT(""));
-	//
-	// const auto FilesCorrupted = Scanner->GetFilesCorrupted();
-	// const int64 TotalSize = UProjectCleanerLibrary::FilesGetTotalSize(FilesCorrupted.Array());
-	//
-	// return FText::FromString(FString::Printf(TEXT("Files Corrupted - %d (%s)"), FilesCorrupted.Num(), *FText::AsMemory(TotalSize).ToString()));
-}
-
-FText SProjectCleanerTabScanSettings::GetStatsTextFoldersEmpty() const
-{
-	return FText::FromString(TEXT(""));
-	// if (!Scanner.IsValid()) return FText::FromString(TEXT(""));
-	//
-	// return FText::FromString(FString::Printf(TEXT("Folders Empty - %d"), Scanner->GetFoldersEmpty().Num()));
+	return FText::FromString(FString::Printf(TEXT("Assets Excluded - %d (%s)"), Assets.Num(), *FText::AsMemory(TotalSize).ToString()));
 }
 
 FText SProjectCleanerTabScanSettings::GetStatsTextAssetsUnused() const
 {
-	return FText::FromString(TEXT(""));
-	// if (!Scanner.IsValid()) return FText::FromString(TEXT(""));
-	//
-	// const int32 AssetsTotalNum = Scanner->GetAssetUnusedNum(UProjectCleanerLibrary::PathGetContentFolder(true));
-	// const int64 AssetsTotalSize = Scanner->GetSizeUnused(UProjectCleanerLibrary::PathGetContentFolder(true));
-	//
-	// return FText::FromString(FString::Printf(TEXT("Assets Unused - %d (%s)"), AssetsTotalNum, *FText::AsMemory(AssetsTotalSize).ToString()));
+	const auto Assets = GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>()->GetAssetsUnused();
+	const int64 TotalSize = GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>()->GetAssetsTotalSize(Assets);
+
+	return FText::FromString(FString::Printf(TEXT("Assets Unused - %d (%s)"), Assets.Num(), *FText::AsMemory(TotalSize).ToString()));
+}
+
+FText SProjectCleanerTabScanSettings::GetStatsTextFilesNonEngine() const
+{
+	const auto FilesNonEngine = GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>()->GetFilesNonEngine();
+	const int64 TotalSize = UProjectCleanerLibPath::FilesGetTotalSize(FilesNonEngine.Array());
+
+	return FText::FromString(FString::Printf(TEXT("Files NonEngine - %d (%s)"), FilesNonEngine.Num(), *FText::AsMemory(TotalSize).ToString()));
+}
+
+FText SProjectCleanerTabScanSettings::GetStatsTextFilesCorrupted() const
+{
+	const auto FilesCorrupted = GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>()->GetFilesCorrupted();
+	const int64 TotalSize = UProjectCleanerLibPath::FilesGetTotalSize(FilesCorrupted.Array());
+
+	return FText::FromString(FString::Printf(TEXT("Files Corrupted - %d (%s)"), FilesCorrupted.Num(), *FText::AsMemory(TotalSize).ToString()));
+}
+
+FText SProjectCleanerTabScanSettings::GetStatsTextFoldersEmpty() const
+{
+	return FText::FromString(FString::Printf(TEXT("Folders Empty - %d"), GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>()->GetFoldersEmpty().Num()));
 }

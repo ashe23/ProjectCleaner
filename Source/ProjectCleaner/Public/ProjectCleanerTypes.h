@@ -38,63 +38,37 @@ enum class EProjectCleanerScanState : uint8
 };
 
 UENUM(BlueprintType)
-enum class EProjectCleanerScanDataState : uint8
-{
-	None,
-	ObsoleteByAssetRegistry,
-	ObsoleteBySettings,
-	Actual
-};
-
-UENUM(BlueprintType)
 enum class EProjectCleanerScanMethod : uint8
 {
 	Editor,
 	Cli
 };
 
-struct FProjectCleanerScanSettings
+USTRUCT(BlueprintType)
+struct FProjectCleanerIndirectAsset
 {
-	EProjectCleanerScanMethod ScanMethod = EProjectCleanerScanMethod::Editor;
-	TSet<FString> ExcludedFolders;
-	TSet<UClass*> ExcludedClasses;
-	TSet<FAssetData> ExcludedAssets;
+	GENERATED_BODY()
+
+	bool operator==(const FProjectCleanerIndirectAsset& Other) const
+	{
+		return LineNum == Other.LineNum && FilePath.Equals(Other.FilePath);
+	}
+
+	bool operator!=(const FProjectCleanerIndirectAsset& Other) const
+	{
+		return LineNum != Other.LineNum || !FilePath.Equals(Other.FilePath);
+	}
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="Indirect Asset")
+	FAssetData AssetData;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="Indirect Asset")
+	int32 LineNum;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="Indirect Asset")
+	FString FilePath;
 };
 
-struct FProjectCleanerScanResult
-{
-	TArray<FAssetData> AssetsUnused;
-	TArray<FAssetData> AssetsIndirect;
-};
-
-
-//
-
-//
-// USTRUCT(BlueprintType)
-// struct FProjectCleanerIndirectAsset
-// {
-// 	GENERATED_BODY()
-//
-// 	bool operator==(const FProjectCleanerIndirectAsset& Other) const
-// 	{
-// 		return LineNum == Other.LineNum && FilePath.Equals(Other.FilePath);
-// 	}
-//
-// 	bool operator!=(const FProjectCleanerIndirectAsset& Other) const
-// 	{
-// 		return LineNum != Other.LineNum || !FilePath.Equals(Other.FilePath);
-// 	}
-//
-// 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="Indirect Asset")
-// 	FAssetData AssetData;
-//
-// 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="Indirect Asset")
-// 	int32 LineNum;
-//
-// 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="Indirect Asset")
-// 	FString FilePath;
-// };
 //
 // struct FProjectCleanerFileViewItem
 // {

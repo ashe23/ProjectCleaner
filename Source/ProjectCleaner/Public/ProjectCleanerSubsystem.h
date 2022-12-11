@@ -7,6 +7,7 @@
 #include "ProjectCleanerSubsystem.generated.h"
 
 class FAssetRegistryModule;
+class FAssetToolsModule;
 
 UCLASS(Config=EditorPerProjectUserSettings)
 class UProjectCleanerSubsystem final : public UEditorSubsystem
@@ -30,26 +31,62 @@ protected:
 public:
 	void ProjectScan();
 	void CheckEditorState();
+	void GetLinkedAssets(const TArray<FAssetData>& Assets, TArray<FAssetData>& LinkedAssets) const;
 
-	void NotifyMainTabActivated();
-	void NotifyMainTabClosed();
+	FString GetAssetClassName(const FAssetData& AssetData) const;
+
+	const TArray<FAssetData>& GetAssetsAll() const;
+	const TArray<FAssetData>& GetAssetsIndirect() const;
+	const TArray<FAssetData>& GetAssetsExcluded() const;
+	const TArray<FAssetData>& GetAssetsUnused() const;
+	int64 GetAssetsTotalSize(const TArray<FAssetData>& Assets) const;
+
+	const TSet<FString>& GetFilesNonEngine() const;
+	const TSet<FString>& GetFilesCorrupted() const;
+
+	const TSet<FString>& GetFoldersEmpty() const;
 
 	EProjectCleanerEditorState GetEditorState() const;
 	EProjectCleanerScanState GetScanState() const;
-	EProjectCleanerScanDataState GetScanDataState() const;
+
 private:
-	void AssetRegistryDelegatesRegister();
-	void AssetRegistryDelegatesUnregister();
+	void FixupRedirectors() const;
+
+	void FindAssetsAll();
+	void FindAssetsPrimary();
+	void FindAssetsExcluded();
+	void FindAssetsWithExternalRefs();
+	void FindAssetsIndirect();
+	void FindAssetsBlacklisted();
+	void FindAssetsUsed();
+	void FindAssetsUnused();
+
+	void ScanContentFolder();
+
+	void ContainersReset();
+	void ContainersShrink();
+	void ContainersEmpty();
 
 	EProjectCleanerEditorState EditorState = EProjectCleanerEditorState::Idle;
 	EProjectCleanerScanState ScanState = EProjectCleanerScanState::Idle;
-	EProjectCleanerScanDataState ScanDataState = EProjectCleanerScanDataState::None;
 
 	FAssetRegistryModule* ModuleAssetRegistry;
-	FDelegateHandle DelegateHandleAssetAdded;
-	FDelegateHandle DelegateHandleAssetRemoved;
-	FDelegateHandle DelegateHandleAssetRenamed;
-	FDelegateHandle DelegateHandleAssetUpdated;
-	FDelegateHandle DelegateHandlePathAdded;
-	FDelegateHandle DelegateHandlePathRemoved;
+	FAssetToolsModule* ModuleAssetTools;
+	IPlatformFile* PlatformFile;
+
+	TArray<FAssetData> AssetsAll;
+	TArray<FAssetData> AssetsPrimary;
+	TArray<FAssetData> AssetsExcluded;
+	TArray<FAssetData> AssetsUsed;
+	TArray<FAssetData> AssetsUnused;
+	TArray<FAssetData> AssetsIndirect;
+	TArray<FAssetData> AssetsBlacklisted;
+	TArray<FAssetData> AssetsWithExternalRefs;
+	TArray<FProjectCleanerIndirectAsset> IndirectAssetsInfo;
+
+	TSet<FString> FilesNonEngine;
+	TSet<FString> FilesCorrupted;
+
+	TSet<FString> FoldersEmpty;
+	TSet<FString> FoldersBlacklisted;
 };

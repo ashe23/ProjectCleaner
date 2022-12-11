@@ -23,6 +23,8 @@ void SProjectCleaner::Construct(const FArguments& InArgs, const TSharedRef<SDock
 	SubsystemPtr = GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>();
 	check(SubsystemPtr);
 
+	SubsystemPtr->ProjectScan();
+
 	TabManager = FGlobalTabmanager::Get()->NewTabManager(ConstructUnderMajorTab);
 	const TSharedRef<FWorkspaceItem> AppMenuGroup = TabManager->AddLocalWorkspaceMenuCategory(FText::FromString(TEXT("ProjectCleaner")));
 
@@ -256,8 +258,6 @@ void SProjectCleaner::MenuBarFillTabs(FMenuBuilder& MenuBuilder, const TSharedPt
 
 void SProjectCleaner::MenuBarFillSettings(FMenuBuilder& MenuBuilder, const TSharedPtr<FTabManager> TabManagerPtr) const
 {
-	MenuBuilder.BeginSection("SectionScanSettings", FText::FromString(TEXT("Scan Settings")));
-
 	FUIAction ActionAutoDeleteEmptyFolders;
 	ActionAutoDeleteEmptyFolders.ExecuteAction = FExecuteAction::CreateLambda([&]()
 	{
@@ -272,6 +272,8 @@ void SProjectCleaner::MenuBarFillSettings(FMenuBuilder& MenuBuilder, const TShar
 	{
 		return SubsystemPtr->bAutoCleanEmptyFolders ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
 	});
+
+	MenuBuilder.BeginSection(NAME_None);
 	MenuBuilder.AddMenuEntry(
 		FText::FromString(TEXT("Auto Clean Empty Folders")),
 		FText::FromString(TEXT("Automatically delete empty folders after cleaning a project of unused assets. By default, it is enabled.")),
@@ -280,29 +282,6 @@ void SProjectCleaner::MenuBarFillSettings(FMenuBuilder& MenuBuilder, const TShar
 		NAME_None,
 		EUserInterfaceActionType::ToggleButton
 	);
-
-	// FUIAction ActionScanDevContent;
-	// ActionScanDevContent.ExecuteAction = FExecuteAction::CreateLambda([&]()
-	// {
-	// 	// GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>()->ToggleConfigScanDevFolder();
-	// 	// GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>()->ScanProject();
-	// });
-	// ActionScanDevContent.CanExecuteAction = FCanExecuteAction::CreateLambda([&]()
-	// {
-	// 	return GEditor && GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>();
-	// });
-	// ActionScanDevContent.GetActionCheckState = FGetActionCheckState::CreateLambda([&]()
-	// {
-	// 	// return GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>()->bScanDevFolder ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
-	// });
-	// MenuBuilder.AddMenuEntry(
-	// 	FText::FromString(TEXT("Scan Developers Folder")),
-	// 	FText::FromString(TEXT("Scan the 'Developers' folder for unused assets. By default, it is disabled.")),
-	// 	FSlateIcon(),
-	// 	ActionScanDevContent,
-	// 	NAME_None,
-	// 	EUserInterfaceActionType::ToggleButton
-	// );
 	MenuBuilder.EndSection();
 }
 

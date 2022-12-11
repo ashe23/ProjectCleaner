@@ -26,7 +26,7 @@ namespace ProjectCleanerConstants
 	static const FString MsgLoadingRedirectors{TEXT("Loading redirectors... ")};
 	static const FString MsgLoadingAssets{TEXT("Loading Assets... ")};
 	static const FString MsgLoadingAssetsBlacklist{TEXT("Loading blacklisted folders and assets...")};
-	static const FString MsgLoadingAssetsUnused{TEXT("Scanning for unused assets...")};
+	static const FString MsgScanningAssetsUnused{TEXT("Scanning for unused assets...")};
 	static const FString MsgScanning{TEXT("Scanning... ")};
 	static const FString MsgCleaning{TEXT("Cleaning... ")};
 	static const FString MsgScanningContentFolder{TEXT("Scanning Content Folder... ")};

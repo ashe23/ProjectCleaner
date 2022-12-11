@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 
 // Settings
-DECLARE_MULTICAST_DELEGATE_OneParam(FProjectCleanerDelegateExcludeSettingsChanged, const FName& PropertyName);
+// DECLARE_MULTICAST_DELEGATE_OneParam(FProjectCleanerDelegateExcludeSettingsChanged, const FName& PropertyName);
 
 // // Scanner
 // DECLARE_MULTICAST_DELEGATE(FProjectCleanerDelegateScanFinished);

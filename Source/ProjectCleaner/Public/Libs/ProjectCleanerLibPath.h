@@ -20,4 +20,10 @@ public:
 	static FString FolderDeveloperCollections(const EProjectCleanerPathType PathType);
 	static FString FolderMsPresets(const EProjectCleanerPathType PathType);
 	static FString Convert(const FString& InPath, const EProjectCleanerPathType ToPathType);
+	static bool IsUnderFolder(const FString& InSearchFolderPath, const FString& InRootFolderPath);
+	static bool IsUnderFolders(const FString& InSearchFolderPath, const TSet<FString>& Folders);
+	static bool FileHasEngineExtension(const FString& Extension);
+	static bool FileIsCorrupted(const FString& InFilePathAbs);
+	static bool FileContainsIndirectAssets(const FString& FileContent);
+	static int64 FilesGetTotalSize(const TArray<FString>& Files);
 };

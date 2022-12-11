@@ -25,8 +25,8 @@ private:
 	FReply OnBtnDeleteEmptyFoldersClick() const;
 	FReply OnBtnResetExcludeSettingsClick() const;
 
-	EVisibility GetBtnScanProjectStatusVisibility() const;
-	FText GetBtnScanProjectToolTipText() const;
+	// EVisibility GetInfoBoxVisibility() const;
+	// FText GetInfoBoxText() const;
 	FText GetStatsTextAssetsTotal() const;
 	FText GetStatsTextAssetsIndirect() const;
 	FText GetStatsTextAssetsExcluded() const;
