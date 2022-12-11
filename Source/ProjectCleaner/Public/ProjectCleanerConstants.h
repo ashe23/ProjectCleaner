@@ -19,6 +19,7 @@ namespace ProjectCleanerConstants
 	static const FName TabCorruptedAssets{TEXT("TabCorruptedFiles")};
 	static const FName TabIndirectAssets{TEXT("TabIndirectAssets")};
 	static const FName TabNonEngineFiles{TEXT("TabNonEngineFiles")};
+	static const FName TabOutputLog{TEXT("OutputLog")};
 
 	// messages
 	static const FString MsgFixingRedirectors{TEXT("Fixing up redirectors... ")};
@@ -46,6 +47,7 @@ namespace ProjectCleanerConstants
 	static const FString MsgFileDeleteSuccess{TEXT("File deleted successfully")};
 	static const FString MsgFileDeleteError{TEXT("Failed to delete file")};
 	static const FString MsgHintContextMenu{TEXT("Right click on row to open context menu")};
+	static const FString MsgOutputLogTitle{TEXT("Show OutputLog...")};
 
 	// path
 	static const FName PathRelRoot{TEXT("/Game")};

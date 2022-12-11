@@ -12,14 +12,14 @@ enum class EProjectCleanerPathType: uint8
 	Relative
 };
 
-// UENUM(BlueprintType)
-// enum class EProjectCleanerModalStatus : uint8
-// {
-// 	None UMETA(DisplayName = "None"),
-// 	Pending UMETA(DisplayName = "Pending"),
-// 	Error UMETA(DisplayName = "Error"),
-// 	OK UMETA(DisplayName = "OK"),
-// };
+UENUM(BlueprintType)
+enum class EProjectCleanerModalStatus : uint8
+{
+	None UMETA(DisplayName = "None"),
+	Pending UMETA(DisplayName = "Pending"),
+	Error UMETA(DisplayName = "Error"),
+	OK UMETA(DisplayName = "OK"),
+};
 //
 // UENUM(BlueprintType)
 // enum class EProjectCleanerEditorState : uint8
