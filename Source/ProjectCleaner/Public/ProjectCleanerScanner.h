@@ -2,9 +2,26 @@
 
 #pragma once
 
-#include "CoreMinimal.h"
-// #include "ProjectCleanerDelegates.h"
+// #include "CoreMinimal.h"
 // #include "AssetRegistry/AssetRegistryModule.h"
+//
+// struct FProjectCleanerScanSettings;
+// struct FProjectCleanerScanResult;
+//
+// struct FProjectCleanerScanner
+// {
+// 	explicit FProjectCleanerScanner(const FProjectCleanerScanSettings& InScanSettings, FProjectCleanerScanResult& InScanResult);
+//
+// 	const FProjectCleanerScanResult& GetScanResult();
+//
+// private:
+// 	const FProjectCleanerScanSettings& ScanSettings;
+// 	FProjectCleanerScanResult& ScanResult;
+// 	FAssetRegistryModule& ModuleAssetRegistry;
+// };
+
+
+// #include "ProjectCleanerDelegates.h"
 //
 // class FAssetRegistryModule;
 // class UProjectCleanerScanSettings;

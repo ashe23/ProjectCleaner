@@ -20,37 +20,56 @@ enum class EProjectCleanerModalStatus : uint8
 	Error UMETA(DisplayName = "Error"),
 	OK UMETA(DisplayName = "OK"),
 };
+
+UENUM(BlueprintType)
+enum class EProjectCleanerEditorState : uint8
+{
+	Idle,
+	PlayMode,
+	AssetRegistryWorking
+};
+
+UENUM(BlueprintType)
+enum class EProjectCleanerScanState : uint8
+{
+	Idle,
+	Scanning,
+	Cleaning
+};
+
+UENUM(BlueprintType)
+enum class EProjectCleanerScanDataState : uint8
+{
+	None,
+	ObsoleteByAssetRegistry,
+	ObsoleteBySettings,
+	Actual
+};
+
+UENUM(BlueprintType)
+enum class EProjectCleanerScanMethod : uint8
+{
+	Editor,
+	Cli
+};
+
+struct FProjectCleanerScanSettings
+{
+	EProjectCleanerScanMethod ScanMethod = EProjectCleanerScanMethod::Editor;
+	TSet<FString> ExcludedFolders;
+	TSet<UClass*> ExcludedClasses;
+	TSet<FAssetData> ExcludedAssets;
+};
+
+struct FProjectCleanerScanResult
+{
+	TArray<FAssetData> AssetsUnused;
+	TArray<FAssetData> AssetsIndirect;
+};
+
+
 //
-// UENUM(BlueprintType)
-// enum class EProjectCleanerEditorState : uint8
-// {
-// 	None,
-// 	PlayMode,
-// 	AssetRegistryWorking
-// };
-//
-// UENUM(BlueprintType)
-// enum class EProjectCleanerScanState : uint8
-// {
-// 	Idle,
-// 	Scanning,
-// 	Cleaning
-// };
-//
-// UENUM(BlueprintType)
-// enum class EProjectCleanerScanDataState : uint8
-// {
-// 	None,
-// 	Obsolete,
-// 	Actual
-// };
-//
-// UENUM(BlueprintType)
-// enum class EProjectCleanerScanMethod : uint8
-// {
-// 	Editor,
-// 	Cli
-// };
+
 //
 // USTRUCT(BlueprintType)
 // struct FProjectCleanerIndirectAsset

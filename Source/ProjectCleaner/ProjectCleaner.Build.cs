@@ -54,7 +54,7 @@ public class ProjectCleaner : ModuleRules
 				"AssetRegistry",
 				"Blutility",
 				"UMGEditor",
-				"EditorSubsystem"
+				"EditorSubsystem",
 			}
 		);
 

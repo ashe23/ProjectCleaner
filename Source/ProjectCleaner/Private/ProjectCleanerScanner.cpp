@@ -1,6 +1,20 @@
 ﻿// Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "ProjectCleanerScanner.h"
+// #include "ProjectCleanerTypes.h"
+// // Engine Headers
+//
+// FProjectCleanerScanner::FProjectCleanerScanner(const FProjectCleanerScanSettings& InScanSettings, FProjectCleanerScanResult& InScanResult)
+// 	: ScanSettings(InScanSettings),
+// 	  ScanResult(InScanResult),
+// 	  ModuleAssetRegistry(FModuleManager::LoadModuleChecked<FAssetRegistryModule>(AssetRegistryConstants::ModuleName))
+// {
+// }
+//
+// const FProjectCleanerScanResult& FProjectCleanerScanner::GetScanResult()
+// {
+// }
+
 // #include "ProjectCleaner.h"
 // #include "ProjectCleanerTypes.h"
 // #include "ProjectCleanerLibrary.h"

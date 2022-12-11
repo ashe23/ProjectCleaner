@@ -28,6 +28,7 @@ namespace ProjectCleanerConstants
 	static const FString MsgLoadingAssetsBlacklist{TEXT("Loading blacklisted folders and assets...")};
 	static const FString MsgLoadingAssetsUnused{TEXT("Scanning for unused assets...")};
 	static const FString MsgScanning{TEXT("Scanning... ")};
+	static const FString MsgCleaning{TEXT("Cleaning... ")};
 	static const FString MsgScanningContentFolder{TEXT("Scanning Content Folder... ")};
 	static const FString MsgAssetRegistryStillWorking{TEXT("The AssetRegistry is still working. Please wait for the scan to finish")};
 	static const FString MsgPlayModeActive{TEXT("Please stop play mode in the editor before doing any operations in the plugin.")};
