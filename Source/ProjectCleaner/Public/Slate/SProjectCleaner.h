@@ -5,14 +5,14 @@
 #include "CoreMinimal.h"
 #include "Widgets/SCompoundWidget.h"
 
-class UProjectCleanerScanSettings;
-class UProjectCleanerExcludeSettings;
+// class UProjectCleanerScanSettings;
+// class UProjectCleanerExcludeSettings;
 class SProjectCleanerTabScanSettings;
 class SProjectCleanerTabUnused;
 class SProjectCleanerTabIndirect;
 class SProjectCleanerTabCorrupted;
 class SProjectCleanerTabNonEngine;
-struct FProjectCleanerScanner;
+// struct FProjectCleanerScanner;
 
 // Plugins Main UserInterface
 class SProjectCleaner final : public SCompoundWidget
@@ -41,21 +41,16 @@ private:
 	TSharedRef<SDockTab> OnTabSpawnCorruptedAssets(const FSpawnTabArgs& Args);
 	TSharedRef<SDockTab> OnTabSpawnNonEngineFiles(const FSpawnTabArgs& Args);
 
-	bool TabsEnabled() const;
-	void TabsUpdateRenderOpacity() const;
+	// bool TabsEnabled() const;
+	// void TabsUpdateRenderOpacity() const;
 
 	TSharedPtr<FTabManager> TabManager;
 	TSharedPtr<FTabManager::FLayout> TabLayout;
-	TSharedPtr<FProjectCleanerScanner> Scanner;
+	// TSharedPtr<FProjectCleanerScanner> Scanner;
 
-	TWeakPtr<SProjectCleanerTabScanSettings> TabScanSettings;
-	TWeakPtr<SProjectCleanerTabUnused> TabUnused;
-	TWeakPtr<SProjectCleanerTabIndirect> TabIndirect;
-	TWeakPtr<SProjectCleanerTabCorrupted> TabCorrupted;
-	TWeakPtr<SProjectCleanerTabNonEngine> TabNonEngine;
-
-	float TabsRenderOpacity = 0.2f;
-	bool bTabsEnabled = false;
-	UProjectCleanerScanSettings* ScanSettings = nullptr;
-	UProjectCleanerExcludeSettings* ExcludeSettings = nullptr;
+	// TWeakPtr<SProjectCleanerTabScanSettings> TabScanSettings;
+	// TWeakPtr<SProjectCleanerTabUnused> TabUnused;
+	// TWeakPtr<SProjectCleanerTabIndirect> TabIndirect;
+	// TWeakPtr<SProjectCleanerTabCorrupted> TabCorrupted;
+	// TWeakPtr<SProjectCleanerTabNonEngine> TabNonEngine;
 };

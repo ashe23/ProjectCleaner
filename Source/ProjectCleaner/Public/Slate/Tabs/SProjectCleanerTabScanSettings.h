@@ -5,9 +5,9 @@
 #include "CoreMinimal.h"
 #include "Widgets/SCompoundWidget.h"
 
-class UProjectCleanerScanSettings;
-class UProjectCleanerExcludeSettings;
-struct FProjectCleanerScanner;
+// class UProjectCleanerScanSettings;
+// class UProjectCleanerExcludeSettings;
+// struct FProjectCleanerScanner;
 
 class SProjectCleanerTabScanSettings final : public SCompoundWidget
 {
@@ -16,13 +16,13 @@ public:
 		{
 		}
 
-		SLATE_ARGUMENT(TSharedPtr<FProjectCleanerScanner>, Scanner)
+		// SLATE_ARGUMENT(TSharedPtr<FProjectCleanerScanner>, Scanner)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
 
 private:
-	bool BtnScanProjectEnabled() const;
+	// bool BtnScanProjectEnabled() const;
 	bool BtnCleanProjectEnabled() const;
 	bool BtnDeleteEmptyFoldersEnabled() const;
 
@@ -42,9 +42,9 @@ private:
 	FText GetStatsTextFoldersEmpty() const;
 
 
-	TSharedPtr<FProjectCleanerScanner> Scanner;
-	TSharedPtr<IDetailsView> ExcludeSettingsProperty;
+	// TSharedPtr<FProjectCleanerScanner> Scanner;
+	// TSharedPtr<IDetailsView> ExcludeSettingsProperty;
 
-	UProjectCleanerScanSettings* ScanSettings = nullptr;
-	UProjectCleanerExcludeSettings* ExcludeSettings = nullptr;
+	// UProjectCleanerScanSettings* ScanSettings = nullptr;
+	// UProjectCleanerExcludeSettings* ExcludeSettings = nullptr;
 };

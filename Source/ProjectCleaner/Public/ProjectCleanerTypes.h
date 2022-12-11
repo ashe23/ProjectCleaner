@@ -14,15 +14,35 @@ enum class EProjectCleanerModalStatus : uint8
 	OK UMETA(DisplayName = "OK"),
 };
 
-UENUM()
-enum class EProjectCleanerScannerStatus : uint8
+UENUM(BlueprintType)
+enum class EProjectCleanerEditorState : uint8
 {
-	NeverScanned,
+	None,
+	PlayMode,
+	AssetRegistryWorking
+};
+
+UENUM(BlueprintType)
+enum class EProjectCleanerScanState : uint8
+{
+	Idle,
 	Scanning,
-	ScanFinished,
-	ScanSettingsUpdated,
-	ExcludeSettingsUpdated,
-	AssetRegistryUpdated
+	Cleaning
+};
+
+UENUM(BlueprintType)
+enum class EProjectCleanerScanDataState : uint8
+{
+	None,
+	Obsolete,
+	Actual
+};
+
+UENUM(BlueprintType)
+enum class EProjectCleanerScanMethod : uint8
+{
+	Editor,
+	Cli
 };
 
 USTRUCT(BlueprintType)
