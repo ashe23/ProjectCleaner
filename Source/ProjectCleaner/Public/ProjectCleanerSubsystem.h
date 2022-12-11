@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "ProjectCleanerTypes.h"
+#include "ProjectCleanerDelegates.h"
 #include "ProjectCleanerSubsystem.generated.h"
 
 class FAssetRegistryModule;
@@ -41,13 +42,27 @@ public:
 	const TArray<FAssetData>& GetAssetsUnused() const;
 	int64 GetAssetsTotalSize(const TArray<FAssetData>& Assets) const;
 
+	const TArray<FProjectCleanerIndirectAsset>& GetIndirectAssetsInfo() const;
+
 	const TSet<FString>& GetFilesNonEngine() const;
 	const TSet<FString>& GetFilesCorrupted() const;
-
 	const TSet<FString>& GetFoldersEmpty() const;
+
+	bool IsFolderEmpty(const FString& InFolderPathAbs) const;
+	bool IsFolderExcluded(const FString& InFolderPathAbs) const;
+	int64 GetSizeTotal(const FString& InFolderPathAbs) const;
+	int64 GetSizeUnused(const FString& InFolderPathAbs) const;
+	int32 GetAssetTotalNum(const FString& InFolderPathAbs) const;
+	int32 GetAssetUnusedNum(const FString& InFolderPathAbs) const;
+	int32 GetFoldersTotalNum(const FString& InFolderPathAbs) const;
+	int32 GetFoldersEmptyNum(const FString& InFolderPathAbs) const;
+	void GetSubFolders(const FString& InFolderPathAbs, TSet<FString>& SubFolders) const;
+
 
 	EProjectCleanerEditorState GetEditorState() const;
 	EProjectCleanerScanState GetScanState() const;
+
+	FProjectCleanerDelegateScanFinished& OnScanFinished();
 
 private:
 	void FixupRedirectors() const;
@@ -66,6 +81,9 @@ private:
 	void ContainersReset();
 	void ContainersShrink();
 	void ContainersEmpty();
+
+	int32 GetNumFor(const FString& InFolderPathAbs, const TArray<FAssetData>& Assets) const;
+	int64 GetSizeFor(const FString& InFolderPathAbs, const TArray<FAssetData>& Assets) const;
 
 	EProjectCleanerEditorState EditorState = EProjectCleanerEditorState::Idle;
 	EProjectCleanerScanState ScanState = EProjectCleanerScanState::Idle;
@@ -89,4 +107,6 @@ private:
 
 	TSet<FString> FoldersEmpty;
 	TSet<FString> FoldersBlacklisted;
+
+	FProjectCleanerDelegateScanFinished DelegateScanFinished;
 };

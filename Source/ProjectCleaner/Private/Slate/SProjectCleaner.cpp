@@ -338,7 +338,7 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnIndirectAssets(const FSpawnTabAr
 		.Label(FText::FromString(TEXT("Indirect Assets")))
 		.Icon(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconTabIndirect16"))
 		[
-			SNew(STextBlock)
+			SNew(SProjectCleanerTabIndirect)
 			// SAssignNew(TabIndirect, SProjectCleanerTabIndirect)
 			// .Scanner(Scanner)
 			// .RenderOpacity(TabsRenderOpacity)
@@ -354,7 +354,7 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnCorruptedAssets(const FSpawnTabA
 		.Label(FText::FromString(TEXT("Corrupted Assets")))
 		.Icon(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconTabCorrupted16"))
 		[
-			SNew(STextBlock)
+			SNew(SProjectCleanerTabCorrupted)
 			// SAssignNew(TabCorrupted, SProjectCleanerTabCorrupted)
 			// .Scanner(Scanner)
 			// .RenderOpacity(TabsRenderOpacity)
@@ -370,7 +370,7 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnNonEngineFiles(const FSpawnTabAr
 		.Label(FText::FromString(TEXT("NonEngine Files")))
 		.Icon(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconTabNonEngine16"))
 		[
-			SNew(STextBlock)
+			SNew(SProjectCleanerTabNonEngine)
 			// SAssignNew(TabNonEngine, SProjectCleanerTabNonEngine)
 			// .Scanner(Scanner)
 			// .RenderOpacity(TabsRenderOpacity)

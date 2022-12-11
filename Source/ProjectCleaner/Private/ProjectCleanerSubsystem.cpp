@@ -34,6 +34,7 @@ void UProjectCleanerSubsystem::Deinitialize()
 	Super::Deinitialize();
 
 	ContainersEmpty();
+	DelegateScanFinished.RemoveAll(this);
 }
 
 #if WITH_EDITOR
@@ -85,6 +86,11 @@ void UProjectCleanerSubsystem::ProjectScan()
 	ContainersShrink();
 
 	ScanState = EProjectCleanerScanState::Idle;
+
+	if (DelegateScanFinished.IsBound())
+	{
+		DelegateScanFinished.Broadcast();
+	}
 }
 
 void UProjectCleanerSubsystem::CheckEditorState()
@@ -202,6 +208,11 @@ int64 UProjectCleanerSubsystem::GetAssetsTotalSize(const TArray<FAssetData>& Ass
 	return Size;
 }
 
+const TArray<FProjectCleanerIndirectAsset>& UProjectCleanerSubsystem::GetIndirectAssetsInfo() const
+{
+	return IndirectAssetsInfo;
+}
+
 const TSet<FString>& UProjectCleanerSubsystem::GetFilesNonEngine() const
 {
 	return FilesNonEngine;
@@ -217,6 +228,102 @@ const TSet<FString>& UProjectCleanerSubsystem::GetFoldersEmpty() const
 	return FoldersEmpty;
 }
 
+bool UProjectCleanerSubsystem::IsFolderEmpty(const FString& InFolderPathAbs) const
+{
+	return FoldersEmpty.Contains(InFolderPathAbs);
+}
+
+bool UProjectCleanerSubsystem::IsFolderExcluded(const FString& InFolderPathAbs) const
+{
+	if (InFolderPathAbs.IsEmpty()) return false;
+	if (!FPaths::DirectoryExists(InFolderPathAbs)) return false;
+
+	for (const auto& ExcludedFolder : GetDefault<UProjectCleanerExcludeSettings>()->ExcludedFolders)
+	{
+		if (ExcludedFolder.Path.IsEmpty()) continue;
+
+		const FString ExcludedAbsPath = UProjectCleanerLibPath::Convert(ExcludedFolder.Path, EProjectCleanerPathType::Absolute);
+		if (!FPaths::DirectoryExists(ExcludedAbsPath)) continue;
+		if (UProjectCleanerLibPath::IsUnderFolder(InFolderPathAbs, ExcludedAbsPath))
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+int64 UProjectCleanerSubsystem::GetSizeTotal(const FString& InFolderPathAbs) const
+{
+	return GetSizeFor(InFolderPathAbs, AssetsAll);
+}
+
+int64 UProjectCleanerSubsystem::GetSizeUnused(const FString& InFolderPathAbs) const
+{
+	return GetSizeFor(InFolderPathAbs, AssetsUnused);
+}
+
+int32 UProjectCleanerSubsystem::GetAssetTotalNum(const FString& InFolderPathAbs) const
+{
+	return GetNumFor(InFolderPathAbs, AssetsAll);
+}
+
+int32 UProjectCleanerSubsystem::GetAssetUnusedNum(const FString& InFolderPathAbs) const
+{
+	return GetNumFor(InFolderPathAbs, AssetsUnused);
+}
+
+int32 UProjectCleanerSubsystem::GetFoldersTotalNum(const FString& InFolderPathAbs) const
+{
+	if (InFolderPathAbs.IsEmpty()) return 0;
+	if (!FPaths::DirectoryExists(InFolderPathAbs)) return 0;
+
+	TArray<FString> AllFolders;
+	IFileManager::Get().FindFilesRecursive(AllFolders, *InFolderPathAbs, TEXT("*.*"), false, true);
+
+	int Num = 0;
+	for (const auto& Folder : AllFolders)
+	{
+		if (UProjectCleanerLibPath::IsUnderFolders(Folder, FoldersBlacklisted)) continue;
+
+		++Num;
+	}
+
+	return Num;
+}
+
+int32 UProjectCleanerSubsystem::GetFoldersEmptyNum(const FString& InFolderPathAbs) const
+{
+	if (InFolderPathAbs.IsEmpty()) return 0;
+	if (!FPaths::DirectoryExists(InFolderPathAbs)) return 0;
+
+	int32 Num = 0;
+	for (const auto& EmptyFolder : FoldersEmpty)
+	{
+		if (EmptyFolder.Equals(InFolderPathAbs)) continue;
+		if (UProjectCleanerLibPath::IsUnderFolder(EmptyFolder, InFolderPathAbs))
+		{
+			++Num;
+		}
+	}
+
+	return Num;
+}
+
+void UProjectCleanerSubsystem::GetSubFolders(const FString& InFolderPathAbs, TSet<FString>& SubFolders) const
+{
+	TArray<FString> Folders;
+	IFileManager::Get().FindFiles(Folders, *(InFolderPathAbs / TEXT("*")), false, true);
+
+	for (const auto& Folder : Folders)
+	{
+		const FString FolderAbsPath = InFolderPathAbs / Folder;
+		if (UProjectCleanerLibPath::IsUnderFolders(FolderAbsPath, FoldersBlacklisted)) continue;
+
+		SubFolders.Add(FolderAbsPath);
+	}
+}
+
 EProjectCleanerEditorState UProjectCleanerSubsystem::GetEditorState() const
 {
 	return EditorState;
@@ -225,6 +332,11 @@ EProjectCleanerEditorState UProjectCleanerSubsystem::GetEditorState() const
 EProjectCleanerScanState UProjectCleanerSubsystem::GetScanState() const
 {
 	return ScanState;
+}
+
+FProjectCleanerDelegateScanFinished& UProjectCleanerSubsystem::OnScanFinished()
+{
+	return DelegateScanFinished;
 }
 
 void UProjectCleanerSubsystem::FixupRedirectors() const
@@ -729,4 +841,40 @@ void UProjectCleanerSubsystem::ContainersEmpty()
 
 	FoldersEmpty.Empty();
 	FoldersBlacklisted.Empty();
+}
+
+int32 UProjectCleanerSubsystem::GetNumFor(const FString& InFolderPathAbs, const TArray<FAssetData>& Assets) const
+{
+	if (InFolderPathAbs.IsEmpty()) return 0;
+	if (!FPaths::DirectoryExists(InFolderPathAbs)) return 0;
+
+	int32 Num = 0;
+	for (const auto& Asset : Assets)
+	{
+		const FString AssetPackagePathAbs = UProjectCleanerLibPath::Convert(Asset.PackagePath.ToString(), EProjectCleanerPathType::Absolute);
+		if (!UProjectCleanerLibPath::IsUnderFolder(AssetPackagePathAbs, InFolderPathAbs)) continue;
+
+		++Num;
+	}
+
+	return Num;
+}
+
+int64 UProjectCleanerSubsystem::GetSizeFor(const FString& InFolderPathAbs, const TArray<FAssetData>& Assets) const
+{
+	if (InFolderPathAbs.IsEmpty()) return 0;
+	if (!FPaths::DirectoryExists(InFolderPathAbs)) return 0;
+
+	int64 Size = 0;
+	for (const auto& Asset : Assets)
+	{
+		const FString AssetPackagePathAbs = UProjectCleanerLibPath::Convert(Asset.PackagePath.ToString(), EProjectCleanerPathType::Absolute);
+		if (!UProjectCleanerLibPath::IsUnderFolder(AssetPackagePathAbs, InFolderPathAbs)) continue;
+
+		const auto AssetPackageData = ModuleAssetRegistry->Get().GetAssetPackageData(Asset.PackageName);
+		if (!AssetPackageData) continue;
+		Size += AssetPackageData->DiskSize;
+	}
+
+	return Size;
 }

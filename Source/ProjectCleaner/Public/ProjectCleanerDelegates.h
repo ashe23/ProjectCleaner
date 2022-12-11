@@ -8,7 +8,7 @@
 // DECLARE_MULTICAST_DELEGATE_OneParam(FProjectCleanerDelegateExcludeSettingsChanged, const FName& PropertyName);
 
 // // Scanner
-// DECLARE_MULTICAST_DELEGATE(FProjectCleanerDelegateScanFinished);
+DECLARE_MULTICAST_DELEGATE(FProjectCleanerDelegateScanFinished);
 // DECLARE_MULTICAST_DELEGATE(FProjectCleanerDelegateCleanFinished);
 // DECLARE_MULTICAST_DELEGATE(FProjectCleanerDelegateEmptyFoldersDeleted);
 //
