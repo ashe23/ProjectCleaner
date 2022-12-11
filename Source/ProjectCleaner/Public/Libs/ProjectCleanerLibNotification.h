@@ -16,6 +16,8 @@ class UProjectCleanerLibNotification final : public UBlueprintFunctionLibrary
 public:
 	static void Show(const FString& Msg, const EProjectCleanerModalStatus ModalStatus, const float Duration = 2.0f);
 	static void ShowOutputLog(const FString& Msg, const EProjectCleanerModalStatus ModalStatus, const float Duration = 2.0f);
+	static EAppReturnType::Type CreateConfirmationWindow(const FText& Title, const FText& ContentText, const EAppMsgType::Type MsgType = EAppMsgType::YesNo);
+	static bool ConfirmationWindowCancelled(const EAppReturnType::Type ReturnType);
 private:
 	static SNotificationItem::ECompletionState GetCompletionStateFromModalStatus(const EProjectCleanerModalStatus ModalStatus);
 };
