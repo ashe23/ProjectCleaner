@@ -4,6 +4,7 @@
 #include "ProjectCleaner.h"
 #include "ProjectCleanerConstants.h"
 #include "Libs/ProjectCleanerLibPath.h"
+#include "Libs/ProjectCleanerLibAsset.h"
 // Engine Headers
 #include "AssetToolsModule.h"
 #include "AssetRegistry/AssetRegistryModule.h"
@@ -11,6 +12,7 @@
 #include "EditorUtilityWidget.h"
 #include "EditorUtilityWidgetBlueprint.h"
 #include "FileHelpers.h"
+#include "Engine/AssetManager.h"
 #include "Engine/MapBuildDataRegistry.h"
 #include "Misc/ScopedSlowTask.h"
 
@@ -23,7 +25,7 @@ FProjectCleanerScanner::FProjectCleanerScanner(const EProjectCleanerScanMethod I
 {
 }
 
-void FProjectCleanerScanner::Scan(const FProjectCleanerScanSettings& ScanSettings)
+void FProjectCleanerScanner::Scan(const FProjectCleanerScanSettings& InScanSettings)
 {
 	if (ModuleAssetRegistry.Get().IsLoadingAssets())
 	{
@@ -37,6 +39,13 @@ void FProjectCleanerScanner::Scan(const FProjectCleanerScanSettings& ScanSetting
 		return;
 	}
 
+	// we only scan Content (/Game) folder
+	const FString ScanPathRel = UProjectCleanerLibPath::Convert(InScanSettings.ScanPath, EProjectCleanerPathType::Relative);
+	if (ScanPathRel.IsEmpty() || !ScanPathRel.StartsWith(ProjectCleanerConstants::PathRelRoot.ToString()))
+	{
+		UE_LOG(LogProjectCleaner, Error, TEXT("Invalid Scan Path %s. Only Content folder allowed to scan"), *InScanSettings.ScanPath);
+		return;
+	}
 
 	RunPreScanActions();
 
@@ -44,12 +53,15 @@ void FProjectCleanerScanner::Scan(const FProjectCleanerScanSettings& ScanSetting
 	FindForbiddenAssets();
 	FindForbiddenFolders();
 
-	
+	// 2. searching for used assets
+	FindAssetsUsed();
+	ModuleAssetRegistry.Get().GetAssetsByPath(ProjectCleanerConstants::PathRelRoot, ScanResult.AssetsAll, true);
+
 
 	RunPostScanActions();
 }
 
-void FProjectCleanerScanner::GetScanResult(FProjectCleanerScanResult& ScanResult)
+void FProjectCleanerScanner::GetScanResult(FProjectCleanerScanResult& InScanResult)
 {
 }
 
@@ -81,6 +93,70 @@ void FProjectCleanerScanner::FindForbiddenAssets()
 	Filter.ClassNames.Add(UMapBuildDataRegistry::StaticClass()->GetFName());
 
 	ModuleAssetRegistry.Get().GetAssets(Filter, AssetsForbidden);
+}
+
+void FProjectCleanerScanner::FindAssetsUsed()
+{
+	// 1. searching for primary assets
+
+	TArray<FAssetData> AssetsPrimary;
+	TArray<FName> PrimaryAssetClasses;
+
+	// 1.1 getting list of primary asset classes that are defined in AssetManager
+	const auto& AssetManager = UAssetManager::Get();
+	if (!AssetManager.IsValid()) return;
+
+	TArray<FPrimaryAssetTypeInfo> AssetTypeInfos;
+	AssetManager.Get().GetPrimaryAssetTypeInfoList(AssetTypeInfos);
+	PrimaryAssetClasses.Reserve(AssetTypeInfos.Num());
+
+	for (const auto& AssetTypeInfo : AssetTypeInfos)
+	{
+		if (!AssetTypeInfo.AssetBaseClassLoaded) continue;
+
+		PrimaryAssetClasses.AddUnique(AssetTypeInfo.AssetBaseClassLoaded->GetFName());
+	}
+
+	// 1.2 getting list of primary assets classes that are derived from main primary assets
+	TSet<FName> DerivedFromPrimaryAssets;
+	{
+		const TSet<FName> ExcludedClassNames;
+		ModuleAssetRegistry.Get().GetDerivedClassNames(PrimaryAssetClasses, ExcludedClassNames, DerivedFromPrimaryAssets);
+	}
+
+	for (const auto& DerivedClassName : DerivedFromPrimaryAssets)
+	{
+		PrimaryAssetClasses.AddUnique(DerivedClassName);
+	}
+
+	FARFilter Filter;
+	Filter.bRecursiveClasses = true;
+	Filter.bRecursivePaths = true;
+	Filter.PackagePaths.Add(FName{ProjectCleanerConstants::PathRelRoot});
+
+	for (const auto& ClassName : PrimaryAssetClasses)
+	{
+		Filter.ClassNames.Add(ClassName);
+	}
+	ModuleAssetRegistry.Get().GetAssets(Filter, AssetsPrimary);
+
+	FARFilter FilterBlueprint;
+	FilterBlueprint.bRecursivePaths = true;
+	FilterBlueprint.bRecursiveClasses = true;
+	FilterBlueprint.PackagePaths.Add(ProjectCleanerConstants::PathRelRoot);
+	FilterBlueprint.ClassNames.Add(UBlueprint::StaticClass()->GetFName());
+
+	TArray<FAssetData> BlueprintAssets;
+	ModuleAssetRegistry.Get().GetAssets(FilterBlueprint, BlueprintAssets);
+
+	for (const auto& BlueprintAsset : BlueprintAssets)
+	{
+		const FName BlueprintClass = FName{*UProjectCleanerLibAsset::GetAssetClassName(BlueprintAsset)};
+		if (PrimaryAssetClasses.Contains(BlueprintClass))
+		{
+			AssetsPrimary.AddUnique(BlueprintAsset);
+		}
+	}
 }
 
 void FProjectCleanerScanner::RunPreScanActions()
@@ -134,6 +210,8 @@ void FProjectCleanerScanner::RunPreScanActions()
 	FEditorFileUtils::SaveDirtyPackages(false, true, true, false, false, false);
 
 	ScanState = EProjectCleanerScanState::Scanning;
+
+	ScanResult.Reset();
 }
 
 void FProjectCleanerScanner::RunPostScanActions()

@@ -85,48 +85,45 @@ void FProjectCleanerModule::RegisterMenus()
 
 void FProjectCleanerModule::RegisterTabs() const
 {
-	FProjectCleanerScanner Scanner{EProjectCleanerScanMethod::Editor};
+	FGlobalTabmanager::Get()->RegisterTabSpawner(
+		                        ProjectCleanerConstants::TabProjectCleaner,
+		                        FOnSpawnTab::CreateLambda([&](const FSpawnTabArgs& SpawnTabArgs) -> TSharedRef<SDockTab>
+		                        {
+			                        FProjectCleanerScanner Scanner{EProjectCleanerScanMethod::Editor};
 
-	FProjectCleanerScanSettings ScanSettings;
-	ScanSettings.ScanPath = UProjectCleanerLibPath::FolderContent(EProjectCleanerPathType::Absolute);
-	Scanner.Scan(ScanSettings);
+			                        FProjectCleanerScanSettings ScanSettings;
+			                        ScanSettings.ScanPath = ProjectCleanerConstants::PathRelRoot.ToString();
+			                        Scanner.Scan(ScanSettings);
 
-	FProjectCleanerScanResult ScanResult;
-	Scanner.GetScanResult(ScanResult);
+			                        FProjectCleanerScanResult ScanResult;
+			                        Scanner.GetScanResult(ScanResult);
+		                        	
+			                        const TSharedRef<SDockTab> DockTab = SNew(SDockTab).TabRole(MajorTab);
+			                        // const TSharedRef<SProjectCleaner> Frontend = SNew(SProjectCleaner, DockTab, SpawnTabArgs.GetOwnerWindow());
+			                        //
+			                        // DockTab->SetContent(Frontend);
+			                        // DockTab->SetOnTabActivated(
+			                        //  SDockTab::FOnTabActivatedCallback::CreateLambda([](TSharedRef<SDockTab>, ETabActivationCause)
+			                        //  {
+			                        //   if (!GEditor) return;
+			                        //
+			                        //   GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>()->NotifyMainTabActivated();
+			                        //  })
+			                        // );
+			                        // DockTab->SetOnTabClosed(
+			                        //  SDockTab::FOnTabClosedCallback::CreateLambda([](TSharedRef<SDockTab>)
+			                        //  {
+			                        //   if (!GEditor) return;
+			                        //
+			                        //   GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>()->NotifyMainTabClosed();
+			                        //  })
+			                        // );
 
-
-	return;
-
-	// FGlobalTabmanager::Get()->RegisterTabSpawner(
-	// 	                        ProjectCleanerConstants::TabProjectCleaner,
-	// 	                        FOnSpawnTab::CreateLambda([&](const FSpawnTabArgs& SpawnTabArgs) -> TSharedRef<SDockTab>
-	// 	                        {
-	// 		                        const TSharedRef<SDockTab> DockTab = SNew(SDockTab).TabRole(MajorTab);
-	// 		                        // const TSharedRef<SProjectCleaner> Frontend = SNew(SProjectCleaner, DockTab, SpawnTabArgs.GetOwnerWindow());
-	// 		                        //
-	// 		                        // DockTab->SetContent(Frontend);
-	// 		                        // DockTab->SetOnTabActivated(
-	// 		                        //  SDockTab::FOnTabActivatedCallback::CreateLambda([](TSharedRef<SDockTab>, ETabActivationCause)
-	// 		                        //  {
-	// 		                        //   if (!GEditor) return;
-	// 		                        //
-	// 		                        //   GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>()->NotifyMainTabActivated();
-	// 		                        //  })
-	// 		                        // );
-	// 		                        // DockTab->SetOnTabClosed(
-	// 		                        //  SDockTab::FOnTabClosedCallback::CreateLambda([](TSharedRef<SDockTab>)
-	// 		                        //  {
-	// 		                        //   if (!GEditor) return;
-	// 		                        //
-	// 		                        //   GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>()->NotifyMainTabClosed();
-	// 		                        //  })
-	// 		                        // );
-	//
-	// 		                        return DockTab;
-	// 	                        }))
-	//                         .SetDisplayName(FText::FromString(ProjectCleanerConstants::ModuleTitle.ToString()))
-	//                         .SetMenuType(ETabSpawnerMenuType::Hidden)
-	//                         .SetIcon(FSlateIcon(FProjectCleanerStyles::GetStyleSetName(), "ProjectCleaner.IconBin16"));
+			                        return DockTab;
+		                        }))
+	                        .SetDisplayName(FText::FromString(ProjectCleanerConstants::ModuleTitle.ToString()))
+	                        .SetMenuType(ETabSpawnerMenuType::Hidden)
+	                        .SetIcon(FSlateIcon(FProjectCleanerStyles::GetStyleSetName(), "ProjectCleaner.IconBin16"));
 }
 
 void FProjectCleanerModule::UnregisterMenus()

@@ -10,6 +10,7 @@ class FAssetToolsModule;
 
 struct FProjectCleanerScanSettings
 {
+	// bool bRecursiveScan = false; // todo:ashe23 maybe add this option? 
 	FString ScanPath;
 	// TArray<FString> ExcludeFolders;
 	// TArray<UClass*> ExcludedClasses;
@@ -24,18 +25,29 @@ struct FProjectCleanerScanResult
 	TArray<FAssetData> AssetsUsed;
 	TArray<FAssetData> AssetsExcluded;
 	TArray<FAssetData> AssetsUnused;
+
+	void Reset()
+	{
+		FoldersAll.Reset();
+		FoldersEmpty.Reset();
+		AssetsAll.Reset();
+		AssetsUsed.Reset();
+		AssetsExcluded.Reset();
+		AssetsUnused.Reset();
+	}
 };
 
 struct FProjectCleanerScanner
 {
 	explicit FProjectCleanerScanner(const EProjectCleanerScanMethod InScanMethod);
 
-	void Scan(const FProjectCleanerScanSettings& ScanSettings);
-	void GetScanResult(FProjectCleanerScanResult& ScanResult);
+	void Scan(const FProjectCleanerScanSettings& InScanSettings);
+	void GetScanResult(FProjectCleanerScanResult& InScanResult);
 
 protected:
 	void FindForbiddenFolders();
 	void FindForbiddenAssets();
+	void FindAssetsUsed();
 
 	void RunPreScanActions();
 	void RunPostScanActions();
@@ -43,11 +55,11 @@ protected:
 private:
 	// private data
 	TArray<FAssetData> AssetsForbidden;
-
 	TSet<FString> FoldersForbidden;
 
 	EProjectCleanerScanMethod ScanMethod;
 	EProjectCleanerScanState ScanState;
+	FProjectCleanerScanResult ScanResult;
 
 	// Engine Modules
 	FAssetRegistryModule& ModuleAssetRegistry;
