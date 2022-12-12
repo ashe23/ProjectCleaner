@@ -44,6 +44,17 @@ enum class EProjectCleanerScanMethod : uint8
 	Cli
 };
 
+struct FProjectCleanerScanSettings
+{
+	FString ScanPath;
+	
+};
+
+struct FProjectCleanerScanResult
+{
+	
+};
+
 USTRUCT(BlueprintType)
 struct FProjectCleanerIndirectAsset
 {
