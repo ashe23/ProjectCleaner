@@ -26,4 +26,5 @@ public:
 	static bool FileIsCorrupted(const FString& InFilePathAbs);
 	static bool FileContainsIndirectAssets(const FString& FileContent);
 	static int64 FilesGetTotalSize(const TArray<FString>& Files);
+	static FString Normalize(const FString& InPath);
 };

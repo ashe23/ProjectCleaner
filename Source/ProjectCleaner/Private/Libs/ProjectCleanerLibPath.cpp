@@ -85,9 +85,7 @@ FString UProjectCleanerLibPath::Convert(const FString& InPath, const EProjectCle
 		return {};
 	}
 
-	FString Path = InPath;
-	FPaths::RemoveDuplicateSlashes(Path);
-	FPaths::NormalizeDirectoryName(Path);
+	const FString Path = Normalize(InPath);
 
 	if (
 		!Path.StartsWith(ProjectCleanerConstants::PathRelRoot.ToString()) &&
@@ -178,4 +176,13 @@ int64 UProjectCleanerLibPath::FilesGetTotalSize(const TArray<FString>& Files)
 	}
 
 	return TotalSize;
+}
+
+FString UProjectCleanerLibPath::Normalize(const FString& InPath)
+{
+	FString Path = InPath;
+	FPaths::RemoveDuplicateSlashes(Path);
+	FPaths::NormalizeDirectoryName(Path);
+
+	return Path;
 }
