@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Widgets/SCompoundWidget.h"
+#include "Widgets/Views/STileView.h"
 
 class UProjectCleanerSubsystem;
 
@@ -43,6 +44,11 @@ struct FProjectCleanerTreeViewItem
 	}
 };
 
+struct FProjectCleanerAssetBrowserItem
+{
+	FAssetData AssetData;
+};
+
 class SProjectCleanerTreeViewItem final : public SMultiColumnTableRow<TSharedPtr<FProjectCleanerTreeViewItem>>
 {
 	SLATE_BEGIN_ARGS(SProjectCleanerTreeViewItem)
@@ -73,6 +79,7 @@ public:
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
+	virtual void Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime) override;
 
 private:
 	void RegisterCmds();
@@ -91,6 +98,10 @@ private:
 	TSharedRef<SWidget> GetTreeViewOptionsBtnContent();
 	TSharedRef<SHeaderRow> GetTreeViewHeaderRow() const;
 
+	TSharedRef<ITableRow> OnGenerateWidgetForTileView(TSharedPtr<FProjectCleanerAssetBrowserItem> InItem, const TSharedRef<STableViewBase>& OwnerTable) const;
+	void AssetBrowserItemsUpdate();
+
+	bool IsUnderSelectedPaths(const FString& InFolderRel) const;
 	bool IsFolderEmpty(const FString& InFolderPath) const;
 	bool IsFolderExcluded(const FString& InFolderPath) const;
 	int32 GetFoldersTotalNum(const FString& InFolderPath) const;
@@ -107,5 +118,9 @@ private:
 	TArray<TSharedPtr<FProjectCleanerTreeViewItem>> TreeViewItemsSelected;
 	TArray<TSharedPtr<FProjectCleanerTreeViewItem>> TreeViewItems;
 	TSharedPtr<STreeView<TSharedPtr<FProjectCleanerTreeViewItem>>> TreeView;
+	TSharedPtr<FAssetThumbnailPool> AssetThumbnailPool;
+	TSharedPtr<STileView<TSharedPtr<FProjectCleanerAssetBrowserItem>>> AssetBrowserListView;
+	TArray<TSharedPtr<FProjectCleanerAssetBrowserItem>> AssetBrowserListItems;
+	TSet<FString> SelectedPaths;
 	UProjectCleanerSubsystem* SubsystemPtr = nullptr;
 };

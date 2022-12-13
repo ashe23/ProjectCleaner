@@ -6,6 +6,7 @@
 #include "ProjectCleanerConstants.h"
 #include "ProjectCleanerSubsystem.h"
 // Engine Headers
+#include "Internationalization/BreakIterator.h"
 #include "Widgets/Layout/SSeparator.h"
 #include "Widgets/Input/SSearchBox.h"
 #include "Widgets/Layout/SScrollBox.h"
@@ -228,13 +229,18 @@ void SProjectCleanerTabUnusedAssets::Construct(const FArguments& InArgs)
 	SubsystemPtr = GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>();
 	if (!SubsystemPtr) return;
 
+	AssetThumbnailPool = MakeShareable(new FAssetThumbnailPool(1024, false));
+	SelectedPaths.Add(ProjectCleanerConstants::PathRelRoot.ToString());
+
 	SubsystemPtr->OnProjectScanned().AddLambda([&]()
 	{
 		TreeViewItemsUpdate();
+		AssetBrowserItemsUpdate();
 	});
 
 	RegisterCmds();
 	TreeViewItemsUpdate();
+	AssetBrowserItemsUpdate();
 
 	ChildSlot
 	[
@@ -346,12 +352,52 @@ void SProjectCleanerTabUnusedAssets::Construct(const FArguments& InArgs)
 			]
 			+ SSplitter::Slot()
 			[
-				SNew(STextBlock)
-				.Text(FText::FromString(TEXT("Assets Browser")))
-				// SAssignNew(ProjectCleanerAssetBrowser, SProjectCleanerAssetBrowser).Scanner(Scanner)
+				SNew(SVerticalBox)
+				+ SVerticalBox::Slot()
+				  .AutoHeight()
+				  .Padding(FMargin{0.0f, 0.0f, 0.0f, 5.0f})
+				[
+					SNew(SSearchBox)
+					.HintText(FText::FromString(TEXT("Search Assets...")))
+					// .OnTextChanged(this, &SProjectCleanerTreeView::OnTreeViewSearchBoxTextChanged)
+					// .OnTextCommitted(this, &SProjectCleanerTreeView::OnTreeViewSearchBoxTextCommitted)
+				]
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				[
+					SNew(SSeparator)
+					.Thickness(5.0f)
+				]
+				+ SVerticalBox::Slot()
+				  .FillHeight(1.0f)
+				  .Padding(FMargin{0.0f, 5.0f})
+				[
+					SNew(SScrollBox)
+					.ScrollWhenFocusChanges(EScrollWhenFocusChanges::NoScroll)
+					.AnimateWheelScrolling(true)
+					.AllowOverscroll(EAllowOverscroll::No)
+					+ SScrollBox::Slot()
+					[
+						SAssignNew(AssetBrowserListView, STileView<TSharedPtr<FProjectCleanerAssetBrowserItem>>)
+						.ItemWidth(100)
+						.ItemHeight(166)
+						.ListItemsSource(&AssetBrowserListItems)
+						.SelectionMode(ESelectionMode::Multi)
+						.OnGenerateTile(this, &SProjectCleanerTabUnusedAssets::OnGenerateWidgetForTileView)
+					]
+				]
 			]
 		]
 	];
+}
+
+void SProjectCleanerTabUnusedAssets::Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime)
+{
+	SCompoundWidget::Tick(AllottedGeometry, InCurrentTime, InDeltaTime);
+
+	if (!AssetThumbnailPool.IsValid()) return;
+
+	AssetThumbnailPool->Tick(InDeltaTime);
 }
 
 void SProjectCleanerTabUnusedAssets::RegisterCmds()
@@ -456,21 +502,21 @@ void SProjectCleanerTabUnusedAssets::OnTreeViewGetChildren(TSharedPtr<FProjectCl
 
 void SProjectCleanerTabUnusedAssets::OnTreeViewSelectionChange(TSharedPtr<FProjectCleanerTreeViewItem> Item, ESelectInfo::Type SelectType)
 {
-	// 	if (!Item.IsValid()) return;
-	//
-	// 	// todo:ashe23 optimize this, callback called multiple times, because of tree items update
-	// 	const auto SelectedItems = TreeView->GetSelectedItems();
-	// 	TSet<FString> SelectedPaths;
-	// 	SelectedPaths.Reserve(SelectedItems.Num());
-	// 	for (const auto& SelectedItem : SelectedItems)
-	// 	{
-	// 		SelectedPaths.Add(SelectedItem->FolderPathRel);
-	// 	}
-	//
-	// 	if (DelegatePathSelected.IsBound())
-	// 	{
-	// 		DelegatePathSelected.Broadcast(SelectedPaths);
-	// 	}
+	if (!Item.IsValid()) return;
+	if (!TreeView.IsValid()) return;
+
+	const auto SelectedItems = TreeView->GetSelectedItems();
+	SelectedPaths.Reset();
+	SelectedPaths.Reserve(SelectedItems.Num());
+
+	for (const auto& SelectedItem : SelectedItems)
+	{
+		if (!SelectedItem.IsValid()) continue;
+
+		SelectedPaths.Add(SelectedItem->FolderPathRel);
+	}
+
+	AssetBrowserItemsUpdate();
 }
 
 void SProjectCleanerTabUnusedAssets::OnTreeViewExpansionChange(TSharedPtr<FProjectCleanerTreeViewItem> Item, bool bExpanded)
@@ -550,6 +596,7 @@ TSharedPtr<FProjectCleanerTreeViewItem> SProjectCleanerTabUnusedAssets::TreeView
 		}
 	}
 
+	// todo:ashe23 add to selected paths?
 	for (const auto& SelectedItem : TreeViewItemsSelected)
 	{
 		if (SelectedItem->FolderPathAbs.Equals(TreeItem->FolderPathAbs))
@@ -657,6 +704,127 @@ TSharedRef<SHeaderRow> SProjectCleanerTabUnusedAssets::GetTreeViewHeaderRow() co
 		];
 }
 
+TSharedRef<ITableRow> SProjectCleanerTabUnusedAssets::OnGenerateWidgetForTileView(TSharedPtr<FProjectCleanerAssetBrowserItem> InItem, const TSharedRef<STableViewBase>& OwnerTable) const
+{
+	const TSharedPtr<FAssetThumbnail> AssetThumbnail = MakeShareable(new FAssetThumbnail(InItem->AssetData, 90, 90, AssetThumbnailPool));
+	FAssetThumbnailConfig ThumbnailConfig;
+	ThumbnailConfig.bAllowFadeIn = true;
+
+	return
+		SNew(STableRow< TSharedPtr<FProjectCleanerAssetBrowserItem> >, OwnerTable)
+		.Padding(FMargin{5.0f})
+		[
+			SNew(SBorder)
+			.Padding(0.0f)
+			// .BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
+			.ColorAndOpacity(FLinearColor{1.0f, 1.0f, 1.0f, 1.0f})
+			[
+				SNew(SVerticalBox)
+				+ SVerticalBox::Slot()
+				  .AutoHeight()
+				  .HAlign(HAlign_Center)
+				[
+					SNew(SBox)
+					.Padding(0)
+					.WidthOverride(90)
+					.HeightOverride(90)
+					[
+						AssetThumbnail->MakeThumbnailWidget(ThumbnailConfig)
+					]
+				]
+				+ SVerticalBox::Slot()
+				  .FillHeight(1.0f)
+				  .HAlign(HAlign_Fill)
+				  .VAlign(VAlign_Fill)
+				[
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot()
+					  .FillWidth(1.0f)
+					  .HAlign(HAlign_Fill)
+					  .VAlign(VAlign_Fill)
+					  .Padding(FMargin{3.0f, 2.0f})
+					[
+						SNew(STextBlock)
+						.WrapTextAt(100.0f)
+						.LineBreakPolicy(FBreakIterator::CreateCamelCaseBreakIterator())
+						.Font(FProjectCleanerStyles::GetFont("Light", 10))
+						.Text(FText::FromString(InItem->AssetData.AssetName.ToString()))
+					]
+				]
+				+ SVerticalBox::Slot()
+				  .FillHeight(1.0f)
+				  .HAlign(HAlign_Fill)
+				  .VAlign(VAlign_Bottom)
+				[
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot()
+					  .FillWidth(1.0f)
+					  .HAlign(HAlign_Left)
+					  .VAlign(VAlign_Center)
+					  .Padding(FMargin{3.0f, 2.0f})
+					[
+						SNew(STextBlock)
+						.Font(FProjectCleanerStyles::GetFont("Light", 8))
+						.Text(FText::FromString(InItem->AssetData.AssetClass.ToString()))
+					]
+					// + SHorizontalBox::Slot()
+					//   .AutoWidth()
+					//   .HAlign(HAlign_Center)
+					//   .VAlign(VAlign_Center)
+					//   .Padding(FMargin{3.0f, 2.0f})
+					// [
+					// 	SNew(SBox)
+					// 	.WidthOverride(16.0f)
+					// 	.HeightOverride(16.0f)
+					// 	[
+					// 		SNew(SImage)
+					// 		.Image(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconCircle16"))
+					// 		.ColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Yellow"))
+					// 	]
+					// ]
+				]
+			]
+		];
+}
+
+void SProjectCleanerTabUnusedAssets::AssetBrowserItemsUpdate()
+{
+	if (!SubsystemPtr) return;
+
+	AssetBrowserListItems.Reset();
+	AssetBrowserListItems.Reserve(SubsystemPtr->GetAssetsUnused().Num());
+
+	for (const auto& Asset : SubsystemPtr->GetAssetsUnused())
+	{
+		if (!IsUnderSelectedPaths(Asset.PackagePath.ToString())) continue;
+
+		TSharedPtr<FProjectCleanerAssetBrowserItem> NewItem = MakeShareable(new FProjectCleanerAssetBrowserItem);
+		if (!NewItem.IsValid()) continue;
+
+		NewItem->AssetData = Asset;
+
+		AssetBrowserListItems.Add(NewItem);
+	}
+
+	if (AssetBrowserListView.IsValid())
+	{
+		AssetBrowserListView->RequestListRefresh();
+	}
+}
+
+bool SProjectCleanerTabUnusedAssets::IsUnderSelectedPaths(const FString& InFolderRel) const
+{
+	for (const auto& SelectedPath : SelectedPaths)
+	{
+		if (SelectedPath.StartsWith(InFolderRel))
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
 bool SProjectCleanerTabUnusedAssets::IsFolderEmpty(const FString& InFolderPath) const
 {
 	return SubsystemPtr->GetFoldersEmpty().Contains(InFolderPath);
@@ -698,7 +866,7 @@ int32 SProjectCleanerTabUnusedAssets::GetFoldersTotalNum(const FString& InFolder
 int32 SProjectCleanerTabUnusedAssets::GetFoldersEmptyNum(const FString& InFolderPath) const
 {
 	if (!SubsystemPtr->bShowFoldersEmpty) return 0;
-	
+
 	int32 Num = 0;
 
 	for (const auto& Folder : SubsystemPtr->GetFoldersEmpty())
