@@ -26,6 +26,15 @@ void UProjectCleanerSubsystem::Deinitialize()
 	// todo:ashe23 clean cached data
 }
 
+#if WITH_EDITOR
+void UProjectCleanerSubsystem::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+{
+	Super::PostEditChangeProperty(PropertyChangedEvent);
+
+	SaveConfig();
+}
+#endif
+
 int64 UProjectCleanerSubsystem::GetAssetsTotalSize(const TArray<FAssetData>& Assets) const
 {
 	if (!ModuleAssetRegistry) return 0;
@@ -95,4 +104,28 @@ const TSet<FString>& UProjectCleanerSubsystem::GetFilesCorrupted() const
 const TSet<FString>& UProjectCleanerSubsystem::GetFilesNonEngine() const
 {
 	return FilesNonEngine;
+}
+
+bool UProjectCleanerSubsystem::IsAssetRegistryWorking() const
+{
+	if (!ModuleAssetRegistry) return false;
+
+	return ModuleAssetRegistry->Get().IsLoadingAssets();
+}
+
+bool UProjectCleanerSubsystem::IsEditorInPlayMode() const
+{
+	if (!GEditor) return false;
+
+	return GEditor->PlayWorld || GIsPlayInEditorWorld;
+}
+
+bool UProjectCleanerSubsystem::IsScanningProject() const
+{
+	return bScanningProject;
+}
+
+bool UProjectCleanerSubsystem::IsCleaningProject() const
+{
+	return bCleaningProject;
 }

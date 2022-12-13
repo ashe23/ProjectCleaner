@@ -4,11 +4,16 @@
 #include "Slate/Tabs/SProjectCleanerTabScanSettings.h"
 #include "ProjectCleanerConstants.h"
 #include "ProjectCleanerStyles.h"
+#include "ProjectCleanerSubsystem.h"
 // Engine Headers
 #include "Widgets/Layout/SWidgetSwitcher.h"
 
 void SProjectCleaner::Construct(const FArguments& InArgs, const TSharedRef<SDockTab>& ConstructUnderMajorTab, const TSharedPtr<SWindow>& ConstructUnderWindow)
 {
+	if (!GEditor) return;
+	SubsystemPtr = GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>();
+	if (!SubsystemPtr) return;
+
 	TabManager = FGlobalTabmanager::Get()->NewTabManager(ConstructUnderMajorTab);
 	const TSharedRef<FWorkspaceItem> AppMenuGroup = TabManager->AddLocalWorkspaceMenuCategory(FText::FromString(ProjectCleanerConstants::ModuleName.ToString()));
 
@@ -40,41 +45,35 @@ void SProjectCleaner::Construct(const FArguments& InArgs, const TSharedRef<SDock
 	          .SetIcon(FSlateIcon(FProjectCleanerStyles::GetStyleSetName(), "ProjectCleaner.IconSettings16"))
 	          .SetGroup(AppMenuGroup);
 
-	// FMenuBarBuilder MenuBarBuilder = FMenuBarBuilder(TSharedPtr<FUICommandList>());
-	// MenuBarBuilder.AddPullDownMenu(
-	// 	FText::FromString(TEXT("Settings")),
-	// 	FText::GetEmpty(),
-	// 	FNewMenuDelegate::CreateRaw(this, &SProjectCleaner::MenuBarFillSettings, TabManager),
-	// 	"Window"
-	// );
-	// MenuBarBuilder.AddPullDownMenu(
-	// 	FText::FromString(TEXT("Tabs")),
-	// 	FText::GetEmpty(),
-	// 	FNewMenuDelegate::CreateStatic(&SProjectCleaner::MenuBarFillTabs, TabManager),
-	// 	"Window"
-	// );
-	// MenuBarBuilder.AddPullDownMenu(
-	// 	FText::FromString(TEXT("Help")),
-	// 	FText::GetEmpty(),
-	// 	FNewMenuDelegate::CreateStatic(&SProjectCleaner::MenuBarFillHelp, TabManager),
-	// 	"Window"
-	// );
+	FMenuBarBuilder MenuBarBuilder = FMenuBarBuilder(TSharedPtr<FUICommandList>());
+	MenuBarBuilder.AddPullDownMenu(
+		FText::FromString(TEXT("Settings")),
+		FText::GetEmpty(),
+		FNewMenuDelegate::CreateRaw(this, &SProjectCleaner::CreateMenuBarSettings, TabManager),
+		"Window"
+	);
+	MenuBarBuilder.AddPullDownMenu(
+		FText::FromString(TEXT("Tabs")),
+		FText::GetEmpty(),
+		FNewMenuDelegate::CreateRaw(this, &SProjectCleaner::CreateMenuBarTabs, TabManager),
+		"Window"
+	);
 
 	ChildSlot
 	[
 		SNew(SWidgetSwitcher)
-		// .IsEnabled_Raw(this, &SProjectCleaner::WidgetEnabled)
-		// .WidgetIndex_Raw(this, &SProjectCleaner::WidgetGetIndex)
+		.IsEnabled_Raw(this, &SProjectCleaner::WidgetEnabled)
+		.WidgetIndex_Raw(this, &SProjectCleaner::WidgetGetIndex)
 		+ SWidgetSwitcher::Slot()
 		  .HAlign(HAlign_Fill)
 		  .VAlign(VAlign_Fill)
 		[
 			SNew(SVerticalBox)
-			// + SVerticalBox::Slot()
-			// .AutoHeight()
-			// [
-			// 	MenuBarBuilder.MakeWidget()
-			// ]
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			[
+				MenuBarBuilder.MakeWidget()
+			]
 			+ SVerticalBox::Slot()
 			.FillHeight(1.0f)
 			[
@@ -94,10 +93,12 @@ void SProjectCleaner::Construct(const FArguments& InArgs, const TSharedRef<SDock
 				SNew(STextBlock)
 				.Justification(ETextJustify::Center)
 				.Font(FProjectCleanerStyles::GetFont("Light", 30))
-				// .Text_Raw(this, &SProjectCleaner::WidgetText)
+				.Text_Raw(this, &SProjectCleaner::WidgetText)
 			]
 		]
 	];
+
+	TabManager->SetMenuMultiBox(MenuBarBuilder.GetMultiBox());
 }
 
 SProjectCleaner::~SProjectCleaner()
@@ -107,6 +108,109 @@ SProjectCleaner::~SProjectCleaner()
 	// FGlobalTabmanager::Get()->UnregisterTabSpawner(ProjectCleanerConstants::TabIndirectAssets);
 	// FGlobalTabmanager::Get()->UnregisterTabSpawner(ProjectCleanerConstants::TabCorruptedAssets);
 	// FGlobalTabmanager::Get()->UnregisterTabSpawner(ProjectCleanerConstants::TabNonEngineFiles);
+}
+
+bool SProjectCleaner::WidgetEnabled() const
+{
+	if (!SubsystemPtr) return false;
+
+	if (
+		SubsystemPtr->IsAssetRegistryWorking() ||
+		SubsystemPtr->IsEditorInPlayMode() ||
+		SubsystemPtr->IsScanningProject() ||
+		SubsystemPtr->IsCleaningProject()
+	)
+	{
+		return false;
+	}
+
+	return true;
+}
+
+int32 SProjectCleaner::WidgetGetIndex() const
+{
+	if (!SubsystemPtr) return ProjectCleanerConstants::WidgetIndexWorking;
+
+	if (
+		SubsystemPtr->IsAssetRegistryWorking() ||
+		SubsystemPtr->IsEditorInPlayMode() ||
+		SubsystemPtr->IsScanningProject() ||
+		SubsystemPtr->IsCleaningProject()
+	)
+	{
+		return ProjectCleanerConstants::WidgetIndexWorking;
+	}
+
+	return ProjectCleanerConstants::WidgetIndexIdle;
+}
+
+FText SProjectCleaner::WidgetText() const
+{
+	if (!SubsystemPtr) return FText::FromString(TEXT(""));
+
+	if (SubsystemPtr->IsAssetRegistryWorking())
+	{
+		return FText::FromString(TEXT("The AssetRegistry is still working. Please wait for the scan to finish"));
+	}
+
+	if (SubsystemPtr->IsEditorInPlayMode())
+	{
+		return FText::FromString(TEXT("Please stop play mode in the editor before doing any operations in the plugin."));
+	}
+
+	if (SubsystemPtr->IsScanningProject())
+	{
+		return FText::FromString(TEXT("Scanning Project ..."));
+	}
+
+	if (SubsystemPtr->IsCleaningProject())
+	{
+		return FText::FromString(TEXT("Cleaning Project ..."));
+	}
+
+	return FText::FromString(TEXT(""));
+}
+
+void SProjectCleaner::CreateMenuBarSettings(FMenuBuilder& MenuBuilder, const TSharedPtr<FTabManager> TabManagerPtr)
+{
+	FUIAction ActionAutoDeleteEmptyFolders;
+	ActionAutoDeleteEmptyFolders.ExecuteAction = FExecuteAction::CreateLambda([&]()
+	{
+		if (!SubsystemPtr) return;
+
+		SubsystemPtr->bAutoCleanEmptyFolders = !SubsystemPtr->bAutoCleanEmptyFolders;
+		SubsystemPtr->PostEditChange();
+	});
+	ActionAutoDeleteEmptyFolders.CanExecuteAction = FCanExecuteAction::CreateLambda([&]()
+	{
+		return SubsystemPtr != nullptr;
+	});
+	ActionAutoDeleteEmptyFolders.GetActionCheckState = FGetActionCheckState::CreateLambda([&]()
+	{
+		return SubsystemPtr && SubsystemPtr->bAutoCleanEmptyFolders ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
+	});
+
+	MenuBuilder.BeginSection(NAME_None);
+	MenuBuilder.AddMenuEntry(
+		FText::FromString(TEXT("Auto Clean Empty Folders")),
+		FText::FromString(TEXT("Automatically delete empty folders after cleaning a project of unused assets. By default, it is enabled.")),
+		FSlateIcon(),
+		ActionAutoDeleteEmptyFolders,
+		NAME_None,
+		EUserInterfaceActionType::ToggleButton
+	);
+	MenuBuilder.EndSection();
+}
+
+void SProjectCleaner::CreateMenuBarTabs(FMenuBuilder& MenuBuilder, const TSharedPtr<FTabManager> TabManagerPtr)
+{
+	if (!TabManagerPtr.IsValid()) return;
+
+#if !WITH_EDITOR
+	FGlobalTabmanager::Get()->PopulateTabSpawnerMenu(MenuBuilder, WorkspaceMenu::GetMenuStructure().GetStructureRoot());
+#endif
+
+	TabManagerPtr->PopulateLocalTabSpawnerMenu(MenuBuilder);
 }
 
 TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnScanSettings(const FSpawnTabArgs& Args) const

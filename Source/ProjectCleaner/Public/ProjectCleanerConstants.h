@@ -19,4 +19,8 @@ namespace ProjectCleanerConstants
 	static const FName TabIndirectAssets{TEXT("TabIndirectAssets")};
 	static const FName TabCorruptedAssets{TEXT("TabCorruptedAssets")};
 	static const FName TabNonEngineFiles{TEXT("TabNonEngineFiles")};
+
+	// widget index
+	static int32 WidgetIndexIdle = 0;
+	static int32 WidgetIndexWorking = 1;
 }
