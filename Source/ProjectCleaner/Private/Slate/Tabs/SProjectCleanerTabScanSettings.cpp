@@ -302,7 +302,7 @@ FSlateColor SProjectCleanerTabScanSettings::GetTextColorAssetsUnused() const
 
 FSlateColor SProjectCleanerTabScanSettings::GetTextColorAssetsExcluded() const
 {
-	return AssetsExcludedNum > 0 ? FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Violet") : FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.White");
+	return AssetsExcludedNum > 0 ? FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Yellow") : FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.White");
 }
 
 FSlateColor SProjectCleanerTabScanSettings::GetTextColorFoldersEmpty() const

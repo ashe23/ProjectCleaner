@@ -8,10 +8,14 @@
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "Internationalization/Regex.h"
 #include "Misc/FileHelper.h"
+#include "Misc/ScopedSlowTask.h"
 #include "EditorUtilityBlueprint.h"
 #include "EditorUtilityWidget.h"
 #include "EditorUtilityWidgetBlueprint.h"
+#include "FileHelpers.h"
 #include "Engine/MapBuildDataRegistry.h"
+#include "Engine/AssetManager.h"
+#include "Settings/ProjectCleanerExcludeSettings.h"
 
 UProjectCleanerSubsystem::UProjectCleanerSubsystem()
 	:
@@ -30,7 +34,7 @@ void UProjectCleanerSubsystem::Deinitialize()
 {
 	Super::Deinitialize();
 
-	// todo:ashe23 clean cached data
+	ResetData();
 }
 
 #if WITH_EDITOR
@@ -73,6 +77,54 @@ int64 UProjectCleanerSubsystem::GetFilesTotalSize(const TSet<FString>& Files) co
 	return TotalSize;
 }
 
+void UProjectCleanerSubsystem::GetLinkedAssets(const TArray<FAssetData>& Assets, TArray<FAssetData>& LinkedAssets)
+{
+	LinkedAssets.Reset();
+
+	TSet<FName> UsedAssetsDeps;
+	TArray<FName> Stack;
+	for (const auto& Asset : Assets)
+	{
+		UsedAssetsDeps.Add(Asset.PackageName);
+		Stack.Add(Asset.PackageName);
+
+		TArray<FName> Deps;
+		while (Stack.Num() > 0)
+		{
+			const auto CurrentPackageName = Stack.Pop(false);
+			Deps.Reset();
+
+			ModuleAssetRegistry->Get().GetDependencies(CurrentPackageName, Deps);
+
+			Deps.RemoveAllSwap([&](const FName& Dep)
+			{
+				return !Dep.ToString().StartsWith(*ProjectCleanerConstants::PathRelRoot.ToString());
+			}, false);
+
+			for (const auto& Dep : Deps)
+			{
+				bool bIsAlreadyInSet = false;
+				UsedAssetsDeps.Add(Dep, &bIsAlreadyInSet);
+				if (!bIsAlreadyInSet)
+				{
+					Stack.Add(Dep);
+				}
+			}
+		}
+	}
+
+	FARFilter Filter;
+	Filter.bRecursivePaths = true;
+	Filter.PackagePaths.Add(ProjectCleanerConstants::PathRelRoot);
+
+	for (const auto& Dep : UsedAssetsDeps)
+	{
+		Filter.PackageNames.Add(Dep);
+	}
+
+	ModuleAssetRegistry->Get().GetAssets(Filter, LinkedAssets);
+}
+
 bool UProjectCleanerSubsystem::FileContainsIndirectAssets(const FString& FileContent)
 {
 	if (FileContent.IsEmpty()) return false;
@@ -98,8 +150,7 @@ bool UProjectCleanerSubsystem::FileIsCorrupted(const FString& InFilePathAbs)
 {
 	if (!FPaths::FileExists(InFilePathAbs)) return false;
 
-	const FString NormalizedPath = PathNormalize(InFilePathAbs);
-	const FString RelativePath = NormalizedPath.Replace(*(FPaths::ProjectDir() / TEXT("Content")), *ProjectCleanerConstants::PathRelRoot.ToString(), ESearchCase::CaseSensitive);
+	const FString RelativePath = PathConvertToRel(InFilePathAbs);
 
 	// here we got absolute path "C:/MyProject/Content/material.uasset"
 	// we must first convert that path to In Engine Internal Path like "/Game/material.uasset"
@@ -118,6 +169,31 @@ bool UProjectCleanerSubsystem::FileIsCorrupted(const FString& InFilePathAbs)
 	return !AssetData.IsValid();
 }
 
+bool UProjectCleanerSubsystem::FolderIsExcluded(const FString& InPath)
+{
+	const UProjectCleanerExcludeSettings* ExcludeSettings = GetDefault<UProjectCleanerExcludeSettings>();
+	ensure(ExcludeSettings);
+
+	const FString PathRelative = PathConvertToRel(InPath);
+
+	if (PathRelative.IsEmpty()) return false;
+
+	for (const auto& ExcludedFolder : ExcludeSettings->ExcludedFolders)
+	{
+		if (ExcludedFolder.Path.Equals(PathRelative, ESearchCase::CaseSensitive))
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool UProjectCleanerSubsystem::FolderIsEmpty(const FString& InPath)
+{
+	return FoldersEmpty.Contains(PathConvertToAbs(InPath));
+}
+
 FString UProjectCleanerSubsystem::PathNormalize(const FString& InPath)
 {
 	FString Path = InPath;
@@ -125,6 +201,34 @@ FString UProjectCleanerSubsystem::PathNormalize(const FString& InPath)
 	FPaths::NormalizeDirectoryName(Path);
 
 	return Path;
+}
+
+FString UProjectCleanerSubsystem::PathConvertToAbs(const FString& InPath)
+{
+	const FString NormalizedPath = PathNormalize(InPath);
+
+	return NormalizedPath.Replace(*ProjectCleanerConstants::PathRelRoot.ToString(), *(FPaths::ProjectDir() / TEXT("Content")), ESearchCase::CaseSensitive);
+}
+
+FString UProjectCleanerSubsystem::PathConvertToRel(const FString& InPath)
+{
+	const FString NormalizedPath = PathNormalize(InPath);
+
+	return NormalizedPath.Replace(*(FPaths::ProjectDir() / TEXT("Content")), *ProjectCleanerConstants::PathRelRoot.ToString(), ESearchCase::CaseSensitive);
+}
+
+FString UProjectCleanerSubsystem::GetAssetClassName(const FAssetData& AssetData) const
+{
+	if (!AssetData.IsValid()) return {};
+
+	if (AssetData.AssetClass.IsEqual("Blueprint"))
+	{
+		const auto GeneratedClassName = AssetData.TagsAndValues.FindTag(TEXT("GeneratedClass")).GetValue();
+		const FString ClassObjectPath = FPackageName::ExportTextPathToObjectPath(*GeneratedClassName);
+		return FPackageName::ObjectPathToObjectName(ClassObjectPath);
+	}
+
+	return AssetData.AssetClass.ToString();
 }
 
 const TArray<FAssetData>& UProjectCleanerSubsystem::GetAssetsAll() const
@@ -199,20 +303,23 @@ void UProjectCleanerSubsystem::ProjectScan()
 	if (!PlatformFile) return;
 
 	ResetData();
-	// todo;ashe23 fixup redirectors
-	// save all assets
+	FixupRedirectors();
+	FEditorFileUtils::SaveDirtyPackages(false, true, true, false, false, false);
+
 	bScanningProject = true;
 
 	FindFoldersForbidden();
 	FindFoldersTotal();
-	FindFoldersEmpty();
 	FindFilesCorrupted();
 	FindFilesNonEngine();
 	FindAssetsForbidden();
 	FindAssetsAll();
+	FindAssetsPrimary();
 	FindAssetsIndirect();
 	FindAssetsExcluded();
+	FindAssetsUsed();
 	FindAssetsUnused();
+	FindFoldersEmpty();
 
 	bScanningProject = false;
 
@@ -346,10 +453,119 @@ void UProjectCleanerSubsystem::FindAssetsIndirect()
 
 void UProjectCleanerSubsystem::FindAssetsExcluded()
 {
+	const UProjectCleanerExcludeSettings* ExcludeSettings = GetDefault<UProjectCleanerExcludeSettings>();
+	ensure(ExcludeSettings);
+
+	TArray<FAssetData> AssetsExcludedByPath;
+	TArray<FAssetData> AssetsExcludedByClass;
+	AssetsExcludedByPath.Reserve(AssetsAll.Num());
+	AssetsExcludedByClass.Reserve(AssetsAll.Num());
+
+	FARFilter FilterByPath;
+	FilterByPath.bRecursivePaths = ExcludeSettings->ExcludedFolders.Num() > 0;
+	for (const auto& ExcludedFolder : ExcludeSettings->ExcludedFolders)
+	{
+		if (ExcludedFolder.Path.IsEmpty()) continue;
+
+		FilterByPath.PackagePaths.Add(FName{*ExcludedFolder.Path});
+	}
+	ModuleAssetRegistry->Get().GetAssets(FilterByPath, AssetsExcludedByPath);
+
+	FARFilter FilterByClass;
+	FilterByClass.bRecursivePaths = ExcludeSettings->ExcludedClasses.Num() > 0;
+	FilterByClass.bRecursiveClasses = ExcludeSettings->ExcludedClasses.Num() > 0;
+
+	if (ExcludeSettings->ExcludedClasses.Num() > 0)
+	{
+		FilterByClass.PackagePaths.Add(ProjectCleanerConstants::PathRelRoot);
+	}
+	for (const auto& ExcludedClass : ExcludeSettings->ExcludedClasses)
+	{
+		if (!ExcludedClass.LoadSynchronous()) continue;
+
+		FilterByClass.ClassNames.Add(ExcludedClass->GetFName());
+	}
+	ModuleAssetRegistry->Get().GetAssets(FilterByClass, AssetsExcludedByClass);
+
+	AssetsExcludedByPath.Shrink();
+	AssetsExcludedByClass.Shrink();
+
+	AssetsExcluded.Reserve(AssetsExcludedByPath.Num() + AssetsExcludedByClass.Num() + ExcludeSettings->ExcludedAssets.Num());
+
+	for (const auto& AssetExcludedByPath : AssetsExcludedByPath)
+	{
+		AssetsExcluded.AddUnique(AssetExcludedByPath);
+	}
+
+	for (const auto& AssetExcludedByClass : AssetsExcludedByClass)
+	{
+		AssetsExcluded.AddUnique(AssetExcludedByClass);
+	}
+
+	for (const auto& ExcludedAsset : ExcludeSettings->ExcludedAssets)
+	{
+		if (!ExcludedAsset.LoadSynchronous()) continue;
+
+		const FName ObjectPath = ExcludedAsset.ToSoftObjectPath().GetAssetPathName();
+		const FAssetData AssetData = ModuleAssetRegistry->Get().GetAssetByObjectPath(ObjectPath);
+		if (!AssetData.IsValid()) continue;
+
+		AssetsExcluded.AddUnique(AssetData);
+	}
+}
+
+void UProjectCleanerSubsystem::FindAssetsUsed()
+{
+	AssetsUsed.Reserve(AssetsAll.Num());
+
+	for (const auto& Asset : AssetsPrimary)
+	{
+		AssetsUsed.AddUnique(Asset);
+	}
+
+	for (const auto& Asset : AssetsIndirect)
+	{
+		AssetsUsed.AddUnique(Asset);
+	}
+
+	for (const auto& Asset : AssetsWithExternalRefs)
+	{
+		AssetsUsed.AddUnique(Asset);
+	}
+
+	for (const auto& Asset : AssetsForbidden)
+	{
+		AssetsUsed.AddUnique(Asset);
+	}
+
+	for (const auto& Asset : AssetsExcluded)
+	{
+		AssetsUsed.AddUnique(Asset);
+	}
+
+	TArray<FAssetData> LinkedAssets;
+	GetLinkedAssets(AssetsUsed, LinkedAssets);
+
+	for (const auto& Asset : LinkedAssets)
+	{
+		AssetsUsed.AddUnique(Asset);
+	}
+
+	AssetsUsed.Shrink();
 }
 
 void UProjectCleanerSubsystem::FindAssetsUnused()
 {
+	AssetsUnused.Reserve(AssetsAll.Num());
+
+	for (const auto& Asset : AssetsAll)
+	{
+		if (AssetsUsed.Contains(Asset)) continue;
+
+		AssetsUnused.AddUnique(Asset);
+	}
+
+	AssetsUnused.Shrink();
 }
 
 void UProjectCleanerSubsystem::FindAssetsForbidden()
@@ -366,9 +582,93 @@ void UProjectCleanerSubsystem::FindAssetsForbidden()
 	ModuleAssetRegistry->Get().GetAssets(Filter, AssetsForbidden);
 }
 
+void UProjectCleanerSubsystem::FindAssetsPrimary()
+{
+	TArray<FName> PrimaryAssetClasses;
+
+	// getting list of primary asset classes that are defined in AssetManager
+	const auto& AssetManager = UAssetManager::Get();
+	if (!AssetManager.IsValid()) return;
+
+	TArray<FPrimaryAssetTypeInfo> AssetTypeInfos;
+	AssetManager.Get().GetPrimaryAssetTypeInfoList(AssetTypeInfos);
+	PrimaryAssetClasses.Reserve(AssetTypeInfos.Num());
+
+	for (const auto& AssetTypeInfo : AssetTypeInfos)
+	{
+		if (!AssetTypeInfo.AssetBaseClassLoaded) continue;
+
+		PrimaryAssetClasses.AddUnique(AssetTypeInfo.AssetBaseClassLoaded->GetFName());
+	}
+
+	// getting list of primary assets classes that are derived from main primary assets
+	TSet<FName> DerivedFromPrimaryAssets;
+	{
+		const TSet<FName> ExcludedClassNames;
+		ModuleAssetRegistry->Get().GetDerivedClassNames(PrimaryAssetClasses, ExcludedClassNames, DerivedFromPrimaryAssets);
+	}
+
+	for (const auto& DerivedClassName : DerivedFromPrimaryAssets)
+	{
+		PrimaryAssetClasses.AddUnique(DerivedClassName);
+	}
+
+	FARFilter Filter;
+	Filter.bRecursiveClasses = true;
+	Filter.bRecursivePaths = true;
+	Filter.PackagePaths.Add(ProjectCleanerConstants::PathRelRoot);
+
+	for (const auto& ClassName : PrimaryAssetClasses)
+	{
+		Filter.ClassNames.Add(ClassName);
+	}
+	ModuleAssetRegistry->Get().GetAssets(Filter, AssetsPrimary);
+
+	FARFilter FilterBlueprint;
+	FilterBlueprint.bRecursivePaths = true;
+	FilterBlueprint.bRecursiveClasses = true;
+	FilterBlueprint.PackagePaths.Add(ProjectCleanerConstants::PathRelRoot);
+	FilterBlueprint.ClassNames.Add(UBlueprint::StaticClass()->GetFName());
+
+	TArray<FAssetData> BlueprintAssets;
+	ModuleAssetRegistry->Get().GetAssets(FilterBlueprint, BlueprintAssets);
+
+	for (const auto& BlueprintAsset : BlueprintAssets)
+	{
+		const FName BlueprintClass = FName{*GetAssetClassName(BlueprintAsset)};
+		if (PrimaryAssetClasses.Contains(BlueprintClass))
+		{
+			AssetsPrimary.AddUnique(BlueprintAsset);
+		}
+	}
+}
+
+void UProjectCleanerSubsystem::FindAssetsWithExternalRefs()
+{
+	TArray<FName> Refs;
+	for (const auto& Asset : AssetsAll)
+	{
+		ModuleAssetRegistry->Get().GetReferencers(Asset.PackageName, Refs);
+
+		const bool HasExternalRefs = Refs.ContainsByPredicate([](const FName& Ref)
+		{
+			return !Ref.ToString().StartsWith(ProjectCleanerConstants::PathRelRoot.ToString());
+		});
+
+		if (HasExternalRefs)
+		{
+			AssetsWithExternalRefs.AddUnique(Asset);
+		}
+
+		Refs.Reset();
+	}
+}
+
 void UProjectCleanerSubsystem::FindFoldersForbidden()
 {
 	FoldersForbidden.Add(FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / TEXT("Collections")));
+	FoldersForbidden.Add(FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / TEXT("Developers")));
+	FoldersForbidden.Add(FPaths::ConvertRelativePathToFull(FPaths::GameDevelopersDir() / FPaths::GameUserDeveloperFolderName()));
 	FoldersForbidden.Add(FPaths::ConvertRelativePathToFull(FPaths::GameUserDeveloperDir() / TEXT("Collections")));
 	// todo:ashe23 for ue5 add __ExternalObject__ and __ExternalActors__ folders
 
@@ -384,12 +684,7 @@ void UProjectCleanerSubsystem::FindFoldersTotal()
 
 	IFileManager::Get().FindFilesRecursive(Folders, *FPaths::ProjectContentDir(), TEXT("*.*"), false, true);
 
-	for (const auto& Folder : Folders)
-	{
-		if (FoldersForbidden.Contains(Folder)) continue;
-
-		FoldersTotal.Add(FPaths::ConvertRelativePathToFull(Folder));
-	}
+	FoldersTotal.Append(Folders);
 }
 
 void UProjectCleanerSubsystem::FindFoldersEmpty()
@@ -397,6 +692,9 @@ void UProjectCleanerSubsystem::FindFoldersEmpty()
 	TArray<FString> Files;
 	for (const auto& Folder : FoldersTotal)
 	{
+		if (FoldersForbidden.Contains(Folder)) continue;
+		if (FolderIsExcluded(Folder)) continue;
+
 		IFileManager::Get().FindFilesRecursive(Files, *Folder, TEXT("*.*"), true, false);
 
 		if (Files.Num() > 0) continue;
@@ -438,12 +736,64 @@ void UProjectCleanerSubsystem::ResetData()
 	AssetsAll.Reset();
 	AssetsIndirect.Reset();
 	AssetsExcluded.Reset();
+	AssetsUsed.Reset();
 	AssetsUnused.Reset();
 	AssetsForbidden.Reset();
+	AssetsPrimary.Reset();
+	AssetsWithExternalRefs.Reset();
 	AssetsIndirectInfos.Reset();
 	FoldersTotal.Reset();
 	FoldersEmpty.Reset();
 	FoldersForbidden.Reset();
 	FilesCorrupted.Reset();
 	FilesNonEngine.Reset();
+}
+
+void UProjectCleanerSubsystem::FixupRedirectors()
+{
+	FScopedSlowTask FixRedirectorsTask{
+		1.0f,
+		FText::FromString(TEXT("Fixing redirectors.."))
+	};
+	FixRedirectorsTask.MakeDialog();
+
+	FARFilter Filter;
+	Filter.bRecursivePaths = true;
+	Filter.PackagePaths.Add(ProjectCleanerConstants::PathRelRoot);
+	Filter.ClassNames.Add(UObjectRedirector::StaticClass()->GetFName());
+
+	// Getting all redirectors in given path
+	TArray<FAssetData> AssetList;
+	ModuleAssetRegistry->Get().GetAssets(Filter, AssetList);
+
+	if (AssetList.Num() == 0) return;
+
+	FScopedSlowTask FixRedirectorsLoadingTask(
+		AssetList.Num(),
+		FText::FromString(TEXT("Loading redirectors..."))
+	);
+	FixRedirectorsLoadingTask.MakeDialog();
+
+	TArray<UObjectRedirector*> Redirectors;
+	Redirectors.Reserve(AssetList.Num());
+
+	for (const auto& Asset : AssetList)
+	{
+		FixRedirectorsLoadingTask.EnterProgressFrame();
+
+		UObject* AssetObj = Asset.GetAsset();
+		if (!AssetObj) continue;
+
+		UObjectRedirector* Redirector = CastChecked<UObjectRedirector>(AssetObj);
+		if (!Redirector) continue;
+
+		Redirectors.Add(Redirector);
+	}
+
+	Redirectors.Shrink();
+
+	// Fix up all founded redirectors
+	ModuleAssetTools->Get().FixupReferencers(Redirectors);
+
+	FixRedirectorsTask.EnterProgressFrame(1.0f);
 }

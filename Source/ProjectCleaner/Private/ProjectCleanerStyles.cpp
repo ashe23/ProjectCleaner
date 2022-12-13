@@ -87,6 +87,7 @@ TSharedRef<FSlateStyleSet> FProjectCleanerStyles::Create()
 	Style->Set("ProjectCleaner.Color.White", FLinearColor{FColor::FromHex(TEXT("#fef9ef"))});
 	Style->Set("ProjectCleaner.Color.Red", FLinearColor{FColor::FromHex(TEXT("#fe6d73"))});
 	Style->Set("ProjectCleaner.Color.Violet", FLinearColor{FColor::FromHex(TEXT("#932f6d"))});
+	Style->Set("ProjectCleaner.Color.Gray", FLinearColor{FColor::FromHex(TEXT("#adb5bd"))});
 
 	return Style;
 }
