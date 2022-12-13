@@ -173,7 +173,7 @@ FText SProjectCleaner::WidgetText() const
 	return FText::FromString(TEXT(""));
 }
 
-void SProjectCleaner::CreateMenuBarSettings(FMenuBuilder& MenuBuilder, const TSharedPtr<FTabManager> TabManagerPtr)
+void SProjectCleaner::CreateMenuBarSettings(FMenuBuilder& MenuBuilder, const TSharedPtr<FTabManager> TabManagerPtr) const
 {
 	FUIAction ActionAutoDeleteEmptyFolders;
 	ActionAutoDeleteEmptyFolders.ExecuteAction = FExecuteAction::CreateLambda([&]()
@@ -204,7 +204,7 @@ void SProjectCleaner::CreateMenuBarSettings(FMenuBuilder& MenuBuilder, const TSh
 	MenuBuilder.EndSection();
 }
 
-void SProjectCleaner::CreateMenuBarTabs(FMenuBuilder& MenuBuilder, const TSharedPtr<FTabManager> TabManagerPtr)
+void SProjectCleaner::CreateMenuBarTabs(FMenuBuilder& MenuBuilder, const TSharedPtr<FTabManager> TabManagerPtr) const
 {
 	if (!TabManagerPtr.IsValid()) return;
 
