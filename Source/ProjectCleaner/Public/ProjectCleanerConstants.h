@@ -23,4 +23,7 @@ namespace ProjectCleanerConstants
 	// widget index
 	static int32 WidgetIndexIdle = 0;
 	static int32 WidgetIndexWorking = 1;
+
+	// paths
+	static FName PathRelRoot{TEXT("/Game")};
 }

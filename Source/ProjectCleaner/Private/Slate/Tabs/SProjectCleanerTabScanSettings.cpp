@@ -10,6 +10,15 @@
 
 void SProjectCleanerTabScanSettings::Construct(const FArguments& InArgs)
 {
+	if (!GEditor) return;
+	SubsystemPtr = GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>();
+	if (!SubsystemPtr) return;
+
+	SubsystemPtr->OnProjectScanned().AddLambda([&]()
+	{
+		UpdateData();
+	});
+
 	FPropertyEditorModule& PropertyEditor = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
 	FDetailsViewArgs DetailsViewArgs;
 	DetailsViewArgs.bUpdatesFromSelection = false;
@@ -39,7 +48,7 @@ void SProjectCleanerTabScanSettings::Construct(const FArguments& InArgs)
 			[
 				SNew(SButton)
 				.ContentPadding(FMargin{5.0f})
-				// .OnClicked_Raw(this, &SProjectCleanerTabScanSettings::OnBtnScanProjectClick)
+				.OnClicked_Raw(this, &SProjectCleanerTabScanSettings::OnBtnScanProjectClick)
 				.ButtonColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Blue"))
 				[
 					SNew(STextBlock)
@@ -219,8 +228,6 @@ void SProjectCleanerTabScanSettings::Construct(const FArguments& InArgs)
 
 void SProjectCleanerTabScanSettings::UpdateData()
 {
-	if (!GEditor) return;
-	const UProjectCleanerSubsystem* SubsystemPtr = GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>();
 	if (!SubsystemPtr) return;
 
 	AssetsTotalNum = SubsystemPtr->GetAssetsAll().Num();
@@ -237,6 +244,15 @@ void SProjectCleanerTabScanSettings::UpdateData()
 	FilesCorruptedSize = SubsystemPtr->GetFilesTotalSize(SubsystemPtr->GetFilesCorrupted());
 	FilesNonEngineNum = SubsystemPtr->GetFilesNonEngine().Num();
 	FilesNonEngineSize = SubsystemPtr->GetFilesTotalSize(SubsystemPtr->GetFilesNonEngine());
+}
+
+FReply SProjectCleanerTabScanSettings::OnBtnScanProjectClick() const
+{
+	if (!SubsystemPtr) return FReply::Handled();
+
+	SubsystemPtr->ProjectScan();
+
+	return FReply::Handled();
 }
 
 FText SProjectCleanerTabScanSettings::GetTextAssetsTotal() const

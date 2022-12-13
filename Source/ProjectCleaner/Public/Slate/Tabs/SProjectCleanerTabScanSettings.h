@@ -5,6 +5,8 @@
 #include "CoreMinimal.h"
 #include "Widgets/SCompoundWidget.h"
 
+class UProjectCleanerSubsystem;
+
 class SProjectCleanerTabScanSettings final : public SCompoundWidget
 {
 public:
@@ -18,7 +20,9 @@ public:
 
 protected:
 	void UpdateData();
-	
+
+	FReply OnBtnScanProjectClick() const;
+
 	FText GetTextAssetsTotal() const;
 	FText GetTextAssetsIndirect() const;
 	FText GetTextAssetsExcluded() const;
@@ -48,4 +52,6 @@ private:
 	int64 AssetsUnusedSize = 0;
 	int64 FilesCorruptedSize = 0;
 	int64 FilesNonEngineSize = 0;
+
+	UProjectCleanerSubsystem* SubsystemPtr = nullptr;
 };
