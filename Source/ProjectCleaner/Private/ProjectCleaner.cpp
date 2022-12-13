@@ -4,11 +4,8 @@
 #include "ProjectCleanerStyles.h"
 #include "ProjectCleanerCmds.h"
 #include "ProjectCleanerConstants.h"
-// #include "Slate/SProjectCleaner.h"
-#include "ProjectCleanerScanner.h"
 // Engine Headers
 #include "ToolMenus.h"
-#include "Libs/ProjectCleanerLibPath.h"
 
 DEFINE_LOG_CATEGORY(LogProjectCleaner);
 
@@ -89,35 +86,10 @@ void FProjectCleanerModule::RegisterTabs() const
 		                        ProjectCleanerConstants::TabProjectCleaner,
 		                        FOnSpawnTab::CreateLambda([&](const FSpawnTabArgs& SpawnTabArgs) -> TSharedRef<SDockTab>
 		                        {
-			                        FProjectCleanerScanner Scanner{EProjectCleanerScanMethod::Editor};
-
-			                        FProjectCleanerScanSettings ScanSettings;
-			                        ScanSettings.ScanPath = ProjectCleanerConstants::PathRelRoot.ToString();
-			                        Scanner.Scan(ScanSettings);
-
-			                        FProjectCleanerScanResult ScanResult;
-			                        Scanner.GetScanResult(ScanResult);
-		                        	
 			                        const TSharedRef<SDockTab> DockTab = SNew(SDockTab).TabRole(MajorTab);
 			                        // const TSharedRef<SProjectCleaner> Frontend = SNew(SProjectCleaner, DockTab, SpawnTabArgs.GetOwnerWindow());
-			                        //
+
 			                        // DockTab->SetContent(Frontend);
-			                        // DockTab->SetOnTabActivated(
-			                        //  SDockTab::FOnTabActivatedCallback::CreateLambda([](TSharedRef<SDockTab>, ETabActivationCause)
-			                        //  {
-			                        //   if (!GEditor) return;
-			                        //
-			                        //   GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>()->NotifyMainTabActivated();
-			                        //  })
-			                        // );
-			                        // DockTab->SetOnTabClosed(
-			                        //  SDockTab::FOnTabClosedCallback::CreateLambda([](TSharedRef<SDockTab>)
-			                        //  {
-			                        //   if (!GEditor) return;
-			                        //
-			                        //   GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>()->NotifyMainTabClosed();
-			                        //  })
-			                        // );
 
 			                        return DockTab;
 		                        }))
