@@ -65,8 +65,10 @@ private:
 	void FindAssetsIndirect();
 	void FindAssetsExcluded();
 	void FindAssetsUnused();
+	void FindAssetsForbidden();
 	void FindFoldersTotal();
 	void FindFoldersEmpty();
+	void FindFoldersForbidden();
 	void FindFilesCorrupted();
 	void FindFilesNonEngine();
 	void ResetData();
@@ -75,9 +77,11 @@ private:
 	TArray<FAssetData> AssetsIndirect;
 	TArray<FAssetData> AssetsExcluded;
 	TArray<FAssetData> AssetsUnused;
+	TArray<FAssetData> AssetsForbidden;
 	TArray<FProjectCleanerIndirectAsset> AssetsIndirectInfos;
 	TSet<FString> FoldersTotal;
 	TSet<FString> FoldersEmpty;
+	TSet<FString> FoldersForbidden;
 	TSet<FString> FilesCorrupted;
 	TSet<FString> FilesNonEngine;
 

@@ -8,6 +8,10 @@
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "Internationalization/Regex.h"
 #include "Misc/FileHelper.h"
+#include "EditorUtilityBlueprint.h"
+#include "EditorUtilityWidget.h"
+#include "EditorUtilityWidgetBlueprint.h"
+#include "Engine/MapBuildDataRegistry.h"
 
 UProjectCleanerSubsystem::UProjectCleanerSubsystem()
 	:
@@ -191,16 +195,20 @@ void UProjectCleanerSubsystem::ProjectScan()
 {
 	if (!CanScanProject()) return;
 	if (!ModuleAssetRegistry) return;
+	if (!ModuleAssetTools) return;
+	if (!PlatformFile) return;
 
 	ResetData();
 	// todo;ashe23 fixup redirectors
 	// save all assets
 	bScanningProject = true;
 
+	FindFoldersForbidden();
 	FindFoldersTotal();
 	FindFoldersEmpty();
 	FindFilesCorrupted();
 	FindFilesNonEngine();
+	FindAssetsForbidden();
 	FindAssetsAll();
 	FindAssetsIndirect();
 	FindAssetsExcluded();
@@ -226,7 +234,7 @@ bool UProjectCleanerSubsystem::CanScanProject() const
 
 void UProjectCleanerSubsystem::FindAssetsAll()
 {
-	ModuleAssetRegistry->Get().GetAssetsByPath(ProjectCleanerConstants::PathRelRoot, AssetsAll);
+	ModuleAssetRegistry->Get().GetAssetsByPath(ProjectCleanerConstants::PathRelRoot, AssetsAll, true);
 }
 
 void UProjectCleanerSubsystem::FindAssetsIndirect()
@@ -344,20 +352,85 @@ void UProjectCleanerSubsystem::FindAssetsUnused()
 {
 }
 
+void UProjectCleanerSubsystem::FindAssetsForbidden()
+{
+	FARFilter Filter;
+	Filter.bRecursivePaths = true;
+	Filter.bRecursiveClasses = true;
+	Filter.PackagePaths.Add(ProjectCleanerConstants::PathRelRoot);
+	Filter.ClassNames.Add(UEditorUtilityWidget::StaticClass()->GetFName());
+	Filter.ClassNames.Add(UEditorUtilityBlueprint::StaticClass()->GetFName());
+	Filter.ClassNames.Add(UEditorUtilityWidgetBlueprint::StaticClass()->GetFName());
+	Filter.ClassNames.Add(UMapBuildDataRegistry::StaticClass()->GetFName());
+
+	ModuleAssetRegistry->Get().GetAssets(Filter, AssetsForbidden);
+}
+
+void UProjectCleanerSubsystem::FindFoldersForbidden()
+{
+	FoldersForbidden.Add(FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / TEXT("Collections")));
+	FoldersForbidden.Add(FPaths::ConvertRelativePathToFull(FPaths::GameUserDeveloperDir() / TEXT("Collections")));
+	// todo:ashe23 for ue5 add __ExternalObject__ and __ExternalActors__ folders
+
+	if (FModuleManager::Get().IsModuleLoaded(TEXT("MegascansPlugin")))
+	{
+		FoldersForbidden.Add(FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / TEXT("MSPresets")));
+	}
+}
+
 void UProjectCleanerSubsystem::FindFoldersTotal()
 {
+	TArray<FString> Folders;
+
+	IFileManager::Get().FindFilesRecursive(Folders, *FPaths::ProjectContentDir(), TEXT("*.*"), false, true);
+
+	for (const auto& Folder : Folders)
+	{
+		if (FoldersForbidden.Contains(Folder)) continue;
+
+		FoldersTotal.Add(FPaths::ConvertRelativePathToFull(Folder));
+	}
 }
 
 void UProjectCleanerSubsystem::FindFoldersEmpty()
 {
+	TArray<FString> Files;
+	for (const auto& Folder : FoldersTotal)
+	{
+		IFileManager::Get().FindFilesRecursive(Files, *Folder, TEXT("*.*"), true, false);
+
+		if (Files.Num() > 0) continue;
+
+		FoldersEmpty.Add(Folder);
+		Files.Reset();
+	}
 }
 
 void UProjectCleanerSubsystem::FindFilesCorrupted()
 {
+	TArray<FString> Files;
+	IFileManager::Get().FindFilesRecursive(Files, *FPaths::ProjectContentDir(), TEXT("*.*"), true, false);
+
+	for (const auto& File : Files)
+	{
+		if (!FileHasEngineExtension(FPaths::GetExtension(File))) continue;
+		if (!FileIsCorrupted(File)) continue;
+
+		FilesCorrupted.Add(File);
+	}
 }
 
 void UProjectCleanerSubsystem::FindFilesNonEngine()
 {
+	TArray<FString> Files;
+	IFileManager::Get().FindFilesRecursive(Files, *FPaths::ProjectContentDir(), TEXT("*.*"), true, false);
+
+	for (const auto& File : Files)
+	{
+		if (FileHasEngineExtension(FPaths::GetExtension(File))) continue;
+
+		FilesNonEngine.Add(File);
+	}
 }
 
 void UProjectCleanerSubsystem::ResetData()
@@ -366,9 +439,11 @@ void UProjectCleanerSubsystem::ResetData()
 	AssetsIndirect.Reset();
 	AssetsExcluded.Reset();
 	AssetsUnused.Reset();
+	AssetsForbidden.Reset();
 	AssetsIndirectInfos.Reset();
 	FoldersTotal.Reset();
 	FoldersEmpty.Reset();
+	FoldersForbidden.Reset();
 	FilesCorrupted.Reset();
 	FilesNonEngine.Reset();
 }
