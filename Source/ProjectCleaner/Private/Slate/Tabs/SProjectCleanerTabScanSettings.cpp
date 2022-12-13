@@ -193,7 +193,7 @@ void SProjectCleanerTabScanSettings::Construct(const FArguments& InArgs)
 			[
 				SNew(SButton)
 				.ContentPadding(FMargin{5.0f})
-				// .OnClicked_Raw(this, &SProjectCleanerTabScanSettings::OnBtnResetExcludeSettingsClick)
+				.OnClicked_Raw(this, &SProjectCleanerTabScanSettings::OnBtnResetExcludeSettingsClick)
 				.ButtonColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Blue"))
 				[
 					SNew(STextBlock)
@@ -252,6 +252,23 @@ FReply SProjectCleanerTabScanSettings::OnBtnScanProjectClick() const
 
 	SubsystemPtr->ProjectScan();
 
+	return FReply::Handled();
+}
+
+FReply SProjectCleanerTabScanSettings::OnBtnResetExcludeSettingsClick() const
+{
+	if (!SubsystemPtr) return FReply::Handled();
+
+	UProjectCleanerExcludeSettings* ExcludeSettings = GetMutableDefault<UProjectCleanerExcludeSettings>();
+	if (!ExcludeSettings) return FReply::Handled();
+
+	ExcludeSettings->ExcludedFolders.Empty();
+	ExcludeSettings->ExcludedClasses.Empty();
+	ExcludeSettings->ExcludedAssets.Empty();
+	ExcludeSettings->PostEditChange();
+
+	SubsystemPtr->ProjectScan();
+	
 	return FReply::Handled();
 }
 

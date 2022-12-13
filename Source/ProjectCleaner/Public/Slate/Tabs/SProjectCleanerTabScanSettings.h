@@ -22,6 +22,7 @@ protected:
 	void UpdateData();
 
 	FReply OnBtnScanProjectClick() const;
+	FReply OnBtnResetExcludeSettingsClick() const;
 
 	FText GetTextAssetsTotal() const;
 	FText GetTextAssetsIndirect() const;

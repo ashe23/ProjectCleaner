@@ -14,6 +14,8 @@ void SProjectCleaner::Construct(const FArguments& InArgs, const TSharedRef<SDock
 	SubsystemPtr = GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>();
 	if (!SubsystemPtr) return;
 
+	SubsystemPtr->ProjectScan();
+
 	TabManager = FGlobalTabmanager::Get()->NewTabManager(ConstructUnderMajorTab);
 	const TSharedRef<FWorkspaceItem> AppMenuGroup = TabManager->AddLocalWorkspaceMenuCategory(FText::FromString(ProjectCleanerConstants::ModuleName.ToString()));
 
