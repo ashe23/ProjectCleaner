@@ -4,6 +4,7 @@
 #include "ProjectCleanerStyles.h"
 #include "ProjectCleanerCmds.h"
 #include "ProjectCleanerConstants.h"
+#include "Slate/SProjectCleaner.h"
 // Engine Headers
 #include "ToolMenus.h"
 
@@ -87,9 +88,9 @@ void FProjectCleanerModule::RegisterTabs() const
 		                        FOnSpawnTab::CreateLambda([&](const FSpawnTabArgs& SpawnTabArgs) -> TSharedRef<SDockTab>
 		                        {
 			                        const TSharedRef<SDockTab> DockTab = SNew(SDockTab).TabRole(MajorTab);
-			                        // const TSharedRef<SProjectCleaner> Frontend = SNew(SProjectCleaner, DockTab, SpawnTabArgs.GetOwnerWindow());
+			                        const TSharedRef<SProjectCleaner> Frontend = SNew(SProjectCleaner, DockTab, SpawnTabArgs.GetOwnerWindow());
 
-			                        // DockTab->SetContent(Frontend);
+			                        DockTab->SetContent(Frontend);
 
 			                        return DockTab;
 		                        }))
