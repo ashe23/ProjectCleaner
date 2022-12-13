@@ -6,6 +6,7 @@
 #include "ProjectCleanerStyles.h"
 #include "ProjectCleanerSubsystem.h"
 // Engine Headers
+#include "Slate/Tabs/SProjectCleanerTabUnusedAssets.h"
 #include "Widgets/Layout/SWidgetSwitcher.h"
 
 void SProjectCleaner::Construct(const FArguments& InArgs, const TSharedRef<SDockTab>& ConstructUnderMajorTab, const TSharedPtr<SWindow>& ConstructUnderWindow)
@@ -45,6 +46,11 @@ void SProjectCleaner::Construct(const FArguments& InArgs, const TSharedRef<SDock
 	          .SetTooltipText(FText::FromString(TEXT("Open Scan Settings Tab")))
 	          .SetDisplayName(FText::FromString(TEXT("Scan Settings")))
 	          .SetIcon(FSlateIcon(FProjectCleanerStyles::GetStyleSetName(), "ProjectCleaner.IconSettings16"))
+	          .SetGroup(AppMenuGroup);
+	TabManager->RegisterTabSpawner(ProjectCleanerConstants::TabUnusedAssets, FOnSpawnTab::CreateRaw(this, &SProjectCleaner::OnTabSpawnUnusedAssets))
+	          .SetTooltipText(FText::FromString(TEXT("Open Unused Assets Tab")))
+	          .SetDisplayName(FText::FromString(TEXT("Unused Assets")))
+	          .SetIcon(FSlateIcon(FProjectCleanerStyles::GetStyleSetName(), "ProjectCleaner.IconTabUnused16"))
 	          .SetGroup(AppMenuGroup);
 
 	FMenuBarBuilder MenuBarBuilder = FMenuBarBuilder(TSharedPtr<FUICommandList>());
@@ -106,7 +112,7 @@ void SProjectCleaner::Construct(const FArguments& InArgs, const TSharedRef<SDock
 SProjectCleaner::~SProjectCleaner()
 {
 	FGlobalTabmanager::Get()->UnregisterTabSpawner(ProjectCleanerConstants::TabScanSettings);
-	// FGlobalTabmanager::Get()->UnregisterTabSpawner(ProjectCleanerConstants::TabUnusedAssets);
+	FGlobalTabmanager::Get()->UnregisterTabSpawner(ProjectCleanerConstants::TabUnusedAssets);
 	// FGlobalTabmanager::Get()->UnregisterTabSpawner(ProjectCleanerConstants::TabIndirectAssets);
 	// FGlobalTabmanager::Get()->UnregisterTabSpawner(ProjectCleanerConstants::TabCorruptedAssets);
 	// FGlobalTabmanager::Get()->UnregisterTabSpawner(ProjectCleanerConstants::TabNonEngineFiles);
@@ -224,5 +230,17 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnScanSettings(const FSpawnTabArgs
 		.Icon(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconSettings16"))
 		[
 			SNew(SProjectCleanerTabScanSettings)
+		];
+}
+
+TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnUnusedAssets(const FSpawnTabArgs& Args) const
+{
+	return
+		SNew(SDockTab)
+		.TabRole(PanelTab)
+		.Label(FText::FromString(TEXT("Unused Assets")))
+		.Icon(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconTabUnused16"))
+		[
+			SNew(SProjectCleanerTabUnusedAssets)
 		];
 }

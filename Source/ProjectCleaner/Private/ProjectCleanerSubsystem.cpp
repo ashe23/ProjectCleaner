@@ -196,7 +196,7 @@ bool UProjectCleanerSubsystem::FolderIsEmpty(const FString& InPath)
 
 FString UProjectCleanerSubsystem::PathNormalize(const FString& InPath)
 {
-	FString Path = InPath;
+	FString Path = FPaths::ConvertRelativePathToFull(InPath);
 	FPaths::RemoveDuplicateSlashes(Path);
 	FPaths::NormalizeDirectoryName(Path);
 
@@ -307,6 +307,8 @@ void UProjectCleanerSubsystem::ProjectScan()
 	FEditorFileUtils::SaveDirtyPackages(false, true, true, false, false, false);
 
 	bScanningProject = true;
+
+	// todo:ashe23 add slow task
 
 	FindFoldersForbidden();
 	FindFoldersTotal();
@@ -542,6 +544,8 @@ void UProjectCleanerSubsystem::FindAssetsUsed()
 	{
 		AssetsUsed.AddUnique(Asset);
 	}
+
+	// todo:ashe23 filter MSPresets assets
 
 	TArray<FAssetData> LinkedAssets;
 	GetLinkedAssets(AssetsUsed, LinkedAssets);

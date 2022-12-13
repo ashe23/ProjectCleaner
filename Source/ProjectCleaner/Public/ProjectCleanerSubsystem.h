@@ -68,6 +68,15 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Config, Category="ProjectCleaner")
 	bool bAutoCleanEmptyFolders = true;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Config, Category="ProjectCleaner")
+	bool bShowTreeViewLines = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Config, Category="ProjectCleaner")
+	bool bShowFoldersEmpty = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Config, Category="ProjectCleaner")
+	bool bShowFoldersExcluded = true;
+
 private:
 	bool CanScanProject() const;
 	void FindAssetsAll();
