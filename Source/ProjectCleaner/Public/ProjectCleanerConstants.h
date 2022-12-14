@@ -26,6 +26,7 @@ namespace ProjectCleanerConstants
 
 	// paths
 	static FName PathRelRoot{TEXT("/Game")};
+	static FName PathRelMSPresets{TEXT("/Game/MSPresets")};
 
 	// ui settings
 	static constexpr int32 HeaderRowFontSize = 10;

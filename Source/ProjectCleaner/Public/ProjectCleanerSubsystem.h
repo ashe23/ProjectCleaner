@@ -45,6 +45,8 @@ public:
 	FString PathConvertToRel(const FString& InPath);
 	FString GetAssetClassName(const FAssetData& AssetData) const;
 
+	UClass* GetAssetClass(const FAssetData& AssetData) const;
+
 	const TArray<FAssetData>& GetAssetsAll() const;
 	const TArray<FAssetData>& GetAssetsIndirect() const;
 	const TArray<FAssetData>& GetAssetsExcluded() const;

@@ -12,4 +12,8 @@ public:
 
 	// general
 	TSharedPtr<FUICommandInfo> OpenProjectCleanerWindow;
+	
+	TSharedPtr<FUICommandInfo> PathExclude;
+	TSharedPtr<FUICommandInfo> AssetExclude;
+	TSharedPtr<FUICommandInfo> AssetExcludeByType;
 };

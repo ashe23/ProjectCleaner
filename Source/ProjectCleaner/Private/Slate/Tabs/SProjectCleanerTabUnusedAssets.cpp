@@ -1,18 +1,20 @@
 ﻿// Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "Slate/Tabs/SProjectCleanerTabUnusedAssets.h"
+#include "Settings/ProjectCleanerExcludeSettings.h"
 #include "ProjectCleanerStyles.h"
 #include "ProjectCleanerCmds.h"
 #include "ProjectCleanerConstants.h"
 #include "ProjectCleanerSubsystem.h"
 // Engine Headers
+#include "AssetToolsModule.h"
+#include "IAssetTools.h"
 #include "Internationalization/BreakIterator.h"
 #include "Widgets/Layout/SSeparator.h"
 #include "Widgets/Input/SSearchBox.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Notifications/SProgressBar.h"
 #include "Kismet/KismetMathLibrary.h"
-#include "Settings/ProjectCleanerExcludeSettings.h"
 
 void SProjectCleanerTreeViewItem::Construct(const FArguments& InArgs, const TSharedRef<STableViewBase>& OwnerTable)
 {
@@ -238,6 +240,10 @@ void SProjectCleanerTabUnusedAssets::Construct(const FArguments& InArgs)
 		AssetBrowserItemsUpdate();
 	});
 
+	const FAssetToolsModule& AssetToolsModule = FModuleManager::LoadModuleChecked<FAssetToolsModule>(TEXT("AssetTools"));
+	TArray<FAdvancedAssetCategory> AdvancedAssetCategories;
+	AssetToolsModule.Get().GetAllAdvancedAssetCategories(AdvancedAssetCategories);
+
 	RegisterCmds();
 	TreeViewItemsUpdate();
 	AssetBrowserItemsUpdate();
@@ -355,19 +361,42 @@ void SProjectCleanerTabUnusedAssets::Construct(const FArguments& InArgs)
 				SNew(SVerticalBox)
 				+ SVerticalBox::Slot()
 				  .AutoHeight()
-				  .Padding(FMargin{0.0f, 0.0f, 0.0f, 5.0f})
+				  .Padding(FMargin{0.0f, 5.0f, 0.0f, 5.0f})
 				[
-					SNew(SSearchBox)
-					.HintText(FText::FromString(TEXT("Search Assets...")))
-					// .OnTextChanged(this, &SProjectCleanerTreeView::OnTreeViewSearchBoxTextChanged)
-					// .OnTextCommitted(this, &SProjectCleanerTreeView::OnTreeViewSearchBoxTextCommitted)
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot()
+					.AutoWidth()
+					[
+						SAssignNew(FilterComboButtonPtr, SComboButton)
+						.ComboButtonStyle(FEditorStyle::Get(), "GenericFilters.ComboButtonStyle")
+						.ForegroundColor(FLinearColor::White)
+						.ToolTipText(FText::FromString(TEXT("Add an asset filter.")))
+						// .OnGetMenuContent(this, &SProjectCleanerTabUnusedAssets::AssetBrowserMakeFilterMenu)
+						.HasDownArrow(true)
+						.ContentPadding(FMargin(1, 0))
+						.AddMetaData<FTagMetaData>(FTagMetaData(TEXT("ContentBrowserFiltersCombo")))
+						.ButtonContent()
+						[
+							SNew(STextBlock)
+							.TextStyle(FEditorStyle::Get(), "GenericFilters.TextStyle")
+							.Text(FText::FromString(TEXT("Filters")))
+						]
+					]
+					+ SHorizontalBox::Slot()
+					.FillWidth(1.0f)
+					[
+						SNew(SSearchBox)
+						.HintText(FText::FromString(TEXT("Search Assets...")))
+						// .OnTextChanged(this, &SProjectCleanerTreeView::OnTreeViewSearchBoxTextChanged)
+						// .OnTextCommitted(this, &SProjectCleanerTreeView::OnTreeViewSearchBoxTextCommitted)
+					]
 				]
-				+ SVerticalBox::Slot()
-				.AutoHeight()
-				[
-					SNew(SSeparator)
-					.Thickness(5.0f)
-				]
+				// + SVerticalBox::Slot()
+				// .AutoHeight()
+				// [
+				// 	SNew(SSeparator)
+				// 	.Thickness(5.0f)
+				// ]
 				+ SVerticalBox::Slot()
 				  .FillHeight(1.0f)
 				  .Padding(FMargin{0.0f, 5.0f})
@@ -384,6 +413,36 @@ void SProjectCleanerTabUnusedAssets::Construct(const FArguments& InArgs)
 						.ListItemsSource(&AssetBrowserListItems)
 						.SelectionMode(ESelectionMode::Multi)
 						.OnGenerateTile(this, &SProjectCleanerTabUnusedAssets::OnGenerateWidgetForTileView)
+						.OnContextMenuOpening(this, &SProjectCleanerTabUnusedAssets::GetAssetBrowserItemContextMenu)
+					]
+				]
+				+ SVerticalBox::Slot()
+				  .AutoHeight()
+				  .HAlign(HAlign_Right)
+				  .VAlign(VAlign_Center)
+				  .Padding(FMargin{0.0f, 5.0f})
+				[
+					SNew(SComboButton)
+					.ContentPadding(0)
+					.ForegroundColor_Raw(this, &SProjectCleanerTabUnusedAssets::GetTreeViewOptionsBtnForegroundColor)
+					.ButtonStyle(FEditorStyle::Get(), "ToggleButton")
+					.OnGetMenuContent(this, &SProjectCleanerTabUnusedAssets::GetTreeViewOptionsBtnContent) // todo:ashe23 change content
+					.ButtonContent()
+					[
+						SNew(SHorizontalBox)
+						+ SHorizontalBox::Slot()
+						  .AutoWidth()
+						  .VAlign(VAlign_Center)
+						[
+							SNew(SImage).Image(FEditorStyle::GetBrush("GenericViewButton"))
+						]
+						+ SHorizontalBox::Slot()
+						  .AutoWidth()
+						  .Padding(2, 0, 0, 0)
+						  .VAlign(VAlign_Center)
+						[
+							SNew(STextBlock).Text(FText::FromString(TEXT("View Options")))
+						]
 					]
 				]
 			]
@@ -402,7 +461,96 @@ void SProjectCleanerTabUnusedAssets::Tick(const FGeometry& AllottedGeometry, con
 
 void SProjectCleanerTabUnusedAssets::RegisterCmds()
 {
-	// todo:ashe23
+	Cmds = MakeShareable(new FUICommandList);
+
+	FUIAction ActionPathExclude;
+	ActionPathExclude.ExecuteAction = FExecuteAction::CreateLambda([&]()
+	{
+		if (!TreeView.IsValid()) return;
+		if (!SubsystemPtr) return;
+
+		UProjectCleanerExcludeSettings* ExcludeSettings = GetMutableDefault<UProjectCleanerExcludeSettings>();
+		if (!ExcludeSettings) return;
+
+		const auto Items = TreeView->GetSelectedItems();
+		for (const auto& Item : Items)
+		{
+			if (!FPaths::DirectoryExists(Item->FolderPathAbs)) continue;
+
+			ExcludeSettings->ExcludedFolders.Add(FDirectoryPath{Item->FolderPathRel});
+		}
+
+		ExcludeSettings->PostEditChange();
+
+		SubsystemPtr->ProjectScan();
+	});
+	ActionPathExclude.CanExecuteAction = FCanExecuteAction::CreateLambda([&]()
+	{
+		return TreeView.IsValid() && TreeView.Get()->GetSelectedItems().Num() > 0;
+	});
+
+	Cmds->MapAction(FProjectCleanerCmds::Get().PathExclude, ActionPathExclude);
+
+	FUIAction ActionAssetExclude;
+	ActionAssetExclude.ExecuteAction = FExecuteAction::CreateLambda([&]()
+	{
+		if (!SubsystemPtr) return;
+		if (!AssetBrowserListView.IsValid()) return;
+
+		UProjectCleanerExcludeSettings* ExcludeSettings = GetMutableDefault<UProjectCleanerExcludeSettings>();
+		if (!ExcludeSettings) return;
+
+		const auto SelectedItems = AssetBrowserListView->GetSelectedItems();
+		for (const auto& SelectedItem : SelectedItems)
+		{
+			if (!SelectedItem.IsValid()) continue;
+			if (!SelectedItem->AssetData.GetAsset()) continue;
+			
+			ExcludeSettings->ExcludedAssets.AddUnique(SelectedItem->AssetData.GetAsset());
+		}
+
+		ExcludeSettings->PostEditChange();
+
+		SubsystemPtr->ProjectScan();
+	});
+	ActionAssetExclude.CanExecuteAction = FCanExecuteAction::CreateLambda([&]()
+	{
+		return AssetBrowserListView.IsValid() && AssetBrowserListView.Get()->GetSelectedItems().Num() > 0;
+	});
+
+	Cmds->MapAction(FProjectCleanerCmds::Get().AssetExclude, ActionAssetExclude);
+
+	FUIAction ActionAssetExcludeByType;
+	ActionAssetExcludeByType.ExecuteAction = FExecuteAction::CreateLambda([&]()
+	{
+		if (!SubsystemPtr) return;
+		if (!AssetBrowserListView.IsValid()) return;
+
+		UProjectCleanerExcludeSettings* ExcludeSettings = GetMutableDefault<UProjectCleanerExcludeSettings>();
+		if (!ExcludeSettings) return;
+
+		const auto SelectedItems = AssetBrowserListView->GetSelectedItems();
+		for (const auto& SelectedItem : SelectedItems)
+		{
+			if (!SelectedItem.IsValid()) continue;
+			if (!SelectedItem->AssetData.GetAsset()) continue;
+			
+			const UClass* AssetClass = SubsystemPtr->GetAssetClass(SelectedItem->AssetData);
+			if (!AssetClass) continue;
+			
+			ExcludeSettings->ExcludedClasses.AddUnique(AssetClass);
+		}
+
+		ExcludeSettings->PostEditChange();
+
+		SubsystemPtr->ProjectScan();
+	});
+	ActionAssetExcludeByType.CanExecuteAction = FCanExecuteAction::CreateLambda([&]()
+	{
+		return AssetBrowserListView.IsValid() && AssetBrowserListView.Get()->GetSelectedItems().Num() > 0;
+	});
+
+	Cmds->MapAction(FProjectCleanerCmds::Get().AssetExcludeByType, ActionAssetExcludeByType);
 }
 
 TSharedRef<ITableRow> SProjectCleanerTabUnusedAssets::OnTreeViewGenerateRow(TSharedPtr<FProjectCleanerTreeViewItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const
@@ -475,15 +623,47 @@ void SProjectCleanerTabUnusedAssets::TreeViewItemsUpdate()
 		}
 	}
 
+	// if (!TreeViewSearchText.IsEmpty())
+	// {
+	// 	TArray<int32> Indices;
+	// 	for (int32 i = 0; i < TreeViewItems.Num(); ++i)
+	// 	{
+	// 		const int32 SearchIndex = TreeViewItems[i]->FolderName.Find(TreeViewSearchText);
+	// 		if (SearchIndex == INDEX_NONE)
+	// 		{
+	// 			Indices.Add(i);
+	// 			// TreeViewItems.RemoveSingleSwap(Item, false);
+	// 			// TreeView->SetItem(TreeItem, false);
+	// 		}
+	// 	}
+	//
+	// 	for (const auto& Index : Indices)
+	// 	{
+	// 		if (!TreeViewItems.IsValidIndex(Index)) continue;
+	// 		TreeViewItems.RemoveAtSwap(Index, 1, false);
+	// 	}
+	//
+	// 	TreeViewItems.Shrink();
+	// }
+
+
 	TreeView->RequestTreeRefresh();
 }
 
 void SProjectCleanerTabUnusedAssets::OnTreeViewSearchBoxTextChanged(const FText& InSearchText)
 {
+	TreeViewSearchText.Reset();
+	TreeViewSearchText = InSearchText.ToString();
+
+	TreeViewItemsUpdate();
 }
 
 void SProjectCleanerTabUnusedAssets::OnTreeViewSearchBoxTextCommitted(const FText& InSearchText, ETextCommit::Type InCommitType)
 {
+	TreeViewSearchText.Reset();
+	TreeViewSearchText = InSearchText.ToString();
+
+	TreeViewItemsUpdate();
 }
 
 void SProjectCleanerTabUnusedAssets::OnTreeViewItemMouseDblClick(TSharedPtr<FProjectCleanerTreeViewItem> Item)
@@ -519,7 +699,7 @@ void SProjectCleanerTabUnusedAssets::OnTreeViewSelectionChange(TSharedPtr<FProje
 	AssetBrowserItemsUpdate();
 }
 
-void SProjectCleanerTabUnusedAssets::OnTreeViewExpansionChange(TSharedPtr<FProjectCleanerTreeViewItem> Item, bool bExpanded)
+void SProjectCleanerTabUnusedAssets::OnTreeViewExpansionChange(TSharedPtr<FProjectCleanerTreeViewItem> Item, bool bExpanded) const
 {
 	if (!Item.IsValid()) return;
 	if (!TreeView.IsValid()) return;
@@ -547,9 +727,7 @@ TSharedPtr<SWidget> SProjectCleanerTabUnusedAssets::GetTreeViewItemContextMenu()
 	FMenuBuilder MenuBuilder{true, Cmds};
 	MenuBuilder.BeginSection(TEXT("Actions"), FText::FromString(TEXT("Path Actions")));
 	{
-		// MenuBuilder.AddMenuEntry(FProjectCleanerCmds::Get().TabUnusedPathExclude);
-		// MenuBuilder.AddMenuEntry(FProjectCleanerCmds::Get().TabUnusedPathInclude);
-		// MenuBuilder.AddMenuEntry(FProjectCleanerCmds::Get().TabUnusedPathClean);
+		MenuBuilder.AddMenuEntry(FProjectCleanerCmds::Get().PathExclude);
 	}
 	MenuBuilder.EndSection();
 
@@ -565,6 +743,7 @@ TSharedPtr<FProjectCleanerTreeViewItem> SProjectCleanerTabUnusedAssets::TreeView
 
 	const bool bIsProjectContentFolder = InFolderPathAbs.Equals(FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() / TEXT("Content")));
 	const bool bIsProjectDeveloperFolder = InFolderPathAbs.Equals(FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() / TEXT("Developers")));
+
 
 	TreeItem->FolderPathAbs = FPaths::ConvertRelativePathToFull(InFolderPathAbs);
 	TreeItem->FolderPathRel = SubsystemPtr->PathConvertToRel(InFolderPathAbs);
@@ -606,6 +785,7 @@ TSharedPtr<FProjectCleanerTreeViewItem> SProjectCleanerTabUnusedAssets::TreeView
 			break;
 		}
 	}
+
 
 	return TreeItem;
 }
@@ -712,11 +892,13 @@ TSharedRef<ITableRow> SProjectCleanerTabUnusedAssets::OnGenerateWidgetForTileVie
 
 	return
 		SNew(STableRow< TSharedPtr<FProjectCleanerAssetBrowserItem> >, OwnerTable)
+		.Style(FEditorStyle::Get(), "ContentBrowser.AssetListView.TableRow")
 		.Padding(FMargin{5.0f})
 		[
 			SNew(SBorder)
-			.Padding(0.0f)
-			// .BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
+			// .Padding(4.0f)
+			.BorderImage(FEditorStyle::GetBrush("ContentBrowser.ThumbnailShadow"))
+			// .BorderBackgroundColor(FLinearColor::Gray)
 			.ColorAndOpacity(FLinearColor{1.0f, 1.0f, 1.0f, 1.0f})
 			[
 				SNew(SVerticalBox)
@@ -787,6 +969,19 @@ TSharedRef<ITableRow> SProjectCleanerTabUnusedAssets::OnGenerateWidgetForTileVie
 		];
 }
 
+TSharedPtr<SWidget> SProjectCleanerTabUnusedAssets::GetAssetBrowserItemContextMenu() const
+{
+	FMenuBuilder MenuBuilder{true, Cmds};
+	MenuBuilder.BeginSection(TEXT("Actions"), FText::FromString(TEXT("Asset Actions")));
+	{
+		MenuBuilder.AddMenuEntry(FProjectCleanerCmds::Get().AssetExclude);
+		MenuBuilder.AddMenuEntry(FProjectCleanerCmds::Get().AssetExcludeByType);
+	}
+	MenuBuilder.EndSection();
+
+	return MenuBuilder.MakeWidget();
+}
+
 void SProjectCleanerTabUnusedAssets::AssetBrowserItemsUpdate()
 {
 	if (!SubsystemPtr) return;
@@ -811,6 +1006,10 @@ void SProjectCleanerTabUnusedAssets::AssetBrowserItemsUpdate()
 		AssetBrowserListView->RequestListRefresh();
 	}
 }
+
+// TSharedRef<SWidget> SProjectCleanerTabUnusedAssets::AssetBrowserMakeFilterMenu()
+// {
+// }
 
 bool SProjectCleanerTabUnusedAssets::IsUnderSelectedPaths(const FString& InFolderRel) const
 {

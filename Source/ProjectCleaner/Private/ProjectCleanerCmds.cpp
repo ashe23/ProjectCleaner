@@ -25,6 +25,30 @@ void FProjectCleanerCmds::RegisterCommands()
 		EUserInterfaceActionType::Button,
 		FInputChord()
 	);
+
+	UI_COMMAND(
+		PathExclude,
+		"Exclude Path",
+		"Exclude selected paths",
+		EUserInterfaceActionType::Button,
+		FInputChord()
+	);
+
+	UI_COMMAND(
+		AssetExclude,
+		"Exclude Asset",
+		"Exclude selected assets",
+		EUserInterfaceActionType::Button,
+		FInputChord()
+	);
+
+	UI_COMMAND(
+		AssetExcludeByType,
+		"Exclude Assets By Type",
+		"Exclude assets of selected types",
+		EUserInterfaceActionType::Button,
+		FInputChord()
+	);
 }
 
 #undef LOCTEXT_NAMESPACE

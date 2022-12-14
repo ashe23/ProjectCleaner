@@ -231,6 +231,21 @@ FString UProjectCleanerSubsystem::GetAssetClassName(const FAssetData& AssetData)
 	return AssetData.AssetClass.ToString();
 }
 
+UClass* UProjectCleanerSubsystem::GetAssetClass(const FAssetData& AssetData) const
+{
+	if (!AssetData.IsValid()) return nullptr;
+
+	if (AssetData.AssetClass.IsEqual("Blueprint"))
+	{
+		const UBlueprint* BlueprintAsset = Cast<UBlueprint>(AssetData.GetAsset());
+		if (!BlueprintAsset) return nullptr;
+
+		return BlueprintAsset->GeneratedClass;
+	}
+
+	return AssetData.GetClass();
+}
+
 const TArray<FAssetData>& UProjectCleanerSubsystem::GetAssetsAll() const
 {
 	return AssetsAll;
@@ -487,8 +502,8 @@ void UProjectCleanerSubsystem::FindAssetsExcluded()
 
 		FilterByClass.ClassNames.Add(ExcludedClass->GetFName());
 	}
-	ModuleAssetRegistry->Get().GetAssets(FilterByClass, AssetsExcludedByClass);
-
+	ModuleAssetRegistry->Get().GetAssets(FilterByClass, AssetsExcludedByClass); // todo:ashe23 not working correctly with blueprint assets
+	
 	AssetsExcludedByPath.Shrink();
 	AssetsExcludedByClass.Shrink();
 
@@ -545,7 +560,16 @@ void UProjectCleanerSubsystem::FindAssetsUsed()
 		AssetsUsed.AddUnique(Asset);
 	}
 
-	// todo:ashe23 filter MSPresets assets
+	if (FModuleManager::Get().IsModuleLoaded(TEXT("MegascansPlugin")))
+	{
+		TArray<FAssetData> AssetsMsPresets;
+		ModuleAssetRegistry->Get().GetAssetsByPath(ProjectCleanerConstants::PathRelMSPresets, AssetsMsPresets, true);
+
+		for (const auto& Asset : AssetsMsPresets)
+		{
+			AssetsUsed.AddUnique(Asset);
+		}
+	}
 
 	TArray<FAssetData> LinkedAssets;
 	GetLinkedAssets(AssetsUsed, LinkedAssets);

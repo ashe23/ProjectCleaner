@@ -7,6 +7,7 @@
 #include "Widgets/Views/STileView.h"
 
 class UProjectCleanerSubsystem;
+class SFilterList;
 
 struct FProjectCleanerTreeViewItem
 {
@@ -90,7 +91,7 @@ private:
 	void OnTreeViewItemMouseDblClick(TSharedPtr<FProjectCleanerTreeViewItem> Item);
 	void OnTreeViewGetChildren(TSharedPtr<FProjectCleanerTreeViewItem> Item, TArray<TSharedPtr<FProjectCleanerTreeViewItem>>& OutChildren) const;
 	void OnTreeViewSelectionChange(TSharedPtr<FProjectCleanerTreeViewItem> Item, ESelectInfo::Type SelectType);
-	void OnTreeViewExpansionChange(TSharedPtr<FProjectCleanerTreeViewItem> Item, bool bExpanded);
+	void OnTreeViewExpansionChange(TSharedPtr<FProjectCleanerTreeViewItem> Item, bool bExpanded) const;
 	void TreeViewToggleExpansionRecursive(TSharedPtr<FProjectCleanerTreeViewItem> Item, const bool bExpanded);
 	TSharedPtr<SWidget> GetTreeViewItemContextMenu() const;
 	TSharedPtr<FProjectCleanerTreeViewItem> TreeViewItemCreate(const FString& InFolderPathAbs) const;
@@ -99,7 +100,9 @@ private:
 	TSharedRef<SHeaderRow> GetTreeViewHeaderRow() const;
 
 	TSharedRef<ITableRow> OnGenerateWidgetForTileView(TSharedPtr<FProjectCleanerAssetBrowserItem> InItem, const TSharedRef<STableViewBase>& OwnerTable) const;
+	TSharedPtr<SWidget> GetAssetBrowserItemContextMenu() const;
 	void AssetBrowserItemsUpdate();
+	// TSharedRef<SWidget> AssetBrowserMakeFilterMenu();
 
 	bool IsUnderSelectedPaths(const FString& InFolderRel) const;
 	bool IsFolderEmpty(const FString& InFolderPath) const;
@@ -112,6 +115,7 @@ private:
 	int64 GetSizeUnused(const FString& InFolderPath) const;
 
 private:
+	FString TreeViewSearchText;
 	TSharedPtr<FUICommandList> Cmds;
 	TSharedPtr<SComboButton> TreeViewOptionsComboButton;
 	TSet<TSharedPtr<FProjectCleanerTreeViewItem>> TreeViewItemsExpanded;
@@ -122,5 +126,7 @@ private:
 	TSharedPtr<STileView<TSharedPtr<FProjectCleanerAssetBrowserItem>>> AssetBrowserListView;
 	TArray<TSharedPtr<FProjectCleanerAssetBrowserItem>> AssetBrowserListItems;
 	TSet<FString> SelectedPaths;
+	TSharedPtr<SComboButton> FilterComboButtonPtr;
+	TSharedPtr<SFilterList> FilterListPtr;
 	UProjectCleanerSubsystem* SubsystemPtr = nullptr;
 };
