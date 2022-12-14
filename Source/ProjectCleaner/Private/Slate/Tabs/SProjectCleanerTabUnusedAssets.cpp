@@ -816,7 +816,7 @@ bool SProjectCleanerTabUnusedAssets::IsUnderSelectedPaths(const FString& InFolde
 {
 	for (const auto& SelectedPath : SelectedPaths)
 	{
-		if (SelectedPath.StartsWith(InFolderRel))
+		if (InFolderRel.StartsWith(SelectedPath))
 		{
 			return true;
 		}
