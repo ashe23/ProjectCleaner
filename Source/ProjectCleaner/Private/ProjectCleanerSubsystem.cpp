@@ -28,6 +28,10 @@ UProjectCleanerSubsystem::UProjectCleanerSubsystem()
 void UProjectCleanerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
+
+	ModuleAssetRegistry->Get().WaitForCompletion();
+
+	ProjectScan();
 }
 
 void UProjectCleanerSubsystem::Deinitialize()
@@ -45,6 +49,16 @@ void UProjectCleanerSubsystem::PostEditChangeProperty(FPropertyChangedEvent& Pro
 	SaveConfig();
 }
 #endif
+
+FProjectCleanerScanResult UProjectCleanerSubsystem::ScanProject(const FProjectCleanerScanSettings& ScanSettings)
+{
+	if (DelegateProjectScanned.IsBound())
+	{
+		DelegateProjectScanned.Broadcast();
+	}
+
+	return FProjectCleanerScanResult{};
+}
 
 int64 UProjectCleanerSubsystem::GetAssetsTotalSize(const TArray<FAssetData>& Assets) const
 {
@@ -315,6 +329,123 @@ bool UProjectCleanerSubsystem::AssetExcluded(const FAssetData& AssetData) const
 	return AssetExcludedByPath(AssetData) || AssetExcludedByClass(AssetData) || AssetExcludedByObject(AssetData);
 }
 
+bool UProjectCleanerSubsystem::AssetUnused(const FAssetData& AssetData) const
+{
+	return AssetsUnused.Contains(AssetData);
+}
+
+bool UProjectCleanerSubsystem::AssetUsed(const FAssetData& AssetData) const
+{
+	return AssetsUsed.Contains(AssetData);
+}
+
+void UProjectCleanerSubsystem::FillFolderInfos()
+{
+	FolderInfos.Reset();
+
+	const FString RootFolderPathAbs = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() / TEXT("Content"));
+
+	const FProjectCleanerFolderInfo RootFolderInfo = CreateFolderInfo(RootFolderPathAbs);
+
+	FolderInfos.AddUnique(RootFolderInfo);
+	TArray<FProjectCleanerFolderInfo> Stack;
+
+	Stack.Push(RootFolderInfo);
+
+	while (Stack.Num() > 0)
+	{
+		const auto CurrentItem = Stack.Pop();
+
+		for (const auto& FolderChild : CurrentItem.FoldersChild)
+		{
+			const auto FolderChildItem = CreateFolderInfo(FolderChild);
+			Stack.Push(FolderChildItem);
+			FolderInfos.AddUnique(FolderChildItem);
+		}
+	}
+}
+
+FProjectCleanerFolderInfo UProjectCleanerSubsystem::CreateFolderInfo(const FString& InFolderPathAbs) const
+{
+	// todo:ashe23 scan project before doing this
+
+	const bool bRootFolder = InFolderPathAbs.Equals(FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() / TEXT("Content")));
+
+	FProjectCleanerFolderInfo FolderInfo;
+	FolderInfo.FolderName = bRootFolder ? TEXT("Content") : FPaths::GetPathLeaf(InFolderPathAbs);
+	FolderInfo.FolderPathAbs = PathConvertToAbs(InFolderPathAbs);
+	FolderInfo.FolderPathRel = PathConvertToRel(InFolderPathAbs);
+
+	IFileManager::Get().FindFilesRecursive(FolderInfo.FoldersTotal, *InFolderPathAbs, TEXT("*.*"), false, true);
+	IFileManager::Get().FindFilesRecursive(FolderInfo.FilesTotal, *InFolderPathAbs, TEXT("*.*"), true, false);
+
+	{
+		TArray<FString> Files;
+		for (const auto& Folder : FolderInfo.FoldersTotal)
+		{
+			IFileManager::Get().FindFilesRecursive(Files, *(InFolderPathAbs / Folder), TEXT("*.*"), true, false);
+
+			if (Files.Num() == 0)
+			{
+				FolderInfo.FoldersEmpty.AddUnique(FPaths::ConvertRelativePathToFull(InFolderPathAbs / Folder));
+			}
+			Files.Reset();
+		}
+	}
+
+	TArray<FString> ChildSubFolders;
+	IFileManager::Get().FindFiles(ChildSubFolders, *(InFolderPathAbs / TEXT("*")), false, true);
+	for (const auto& Folder : ChildSubFolders)
+	{
+		FolderInfo.FoldersChild.AddUnique(FPaths::ConvertRelativePathToFull(InFolderPathAbs / Folder));
+	}
+
+	TArray<FString> ChildSubFiles;
+	IFileManager::Get().FindFiles(ChildSubFiles, *(InFolderPathAbs / TEXT("*")), true, false);
+	for (const auto& File : ChildSubFiles)
+	{
+		FolderInfo.FilesChild.AddUnique(FPaths::ConvertRelativePathToFull(InFolderPathAbs / File));
+	}
+
+	ModuleAssetRegistry->Get().GetAssetsByPath(FName{*FolderInfo.FolderPathRel}, FolderInfo.AssetsTotal, true);
+	ModuleAssetRegistry->Get().GetAssetsByPath(FName{*FolderInfo.FolderPathRel}, FolderInfo.AssetsChild, false);
+
+	for (const auto& Asset : FolderInfo.AssetsTotal)
+	{
+		if (AssetUsed(Asset))
+		{
+			FolderInfo.AssetsUsedTotal.AddUnique(Asset);
+
+			if (Asset.PackagePath.ToString().Equals(FolderInfo.FolderPathRel))
+			{
+				FolderInfo.AssetsUsedChild.AddUnique(Asset);
+			}
+		}
+
+		if (AssetUnused(Asset))
+		{
+			FolderInfo.AssetsUnusedTotal.AddUnique(Asset);
+
+			if (Asset.PackagePath.ToString().Equals(FolderInfo.FolderPathRel))
+			{
+				FolderInfo.AssetsUnusedChild.AddUnique(Asset);
+			}
+		}
+
+		if (AssetExcluded(Asset))
+		{
+			FolderInfo.AssetsExcludedTotal.AddUnique(Asset);
+
+			if (Asset.PackagePath.ToString().Equals(FolderInfo.FolderPathRel))
+			{
+				FolderInfo.AssetsExcludedChild.AddUnique(Asset);
+			}
+		}
+	}
+
+	return FolderInfo;
+}
+
 bool UProjectCleanerSubsystem::AssetExcludedByPath(const FAssetData& AssetData) const
 {
 	const UProjectCleanerExcludeSettings* ExcludeSettings = GetDefault<UProjectCleanerExcludeSettings>();
@@ -401,6 +532,7 @@ void UProjectCleanerSubsystem::ProjectScan()
 	FindAssetsUsed();
 	FindAssetsUnused();
 	FindFoldersEmpty();
+	// FillFolderInfos();
 
 	bScanningProject = false;
 

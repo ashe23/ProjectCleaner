@@ -9,7 +9,7 @@
 class FAssetRegistryModule;
 class FAssetToolsModule;
 
-DECLARE_MULTICAST_DELEGATE(FProjectCleanerDelegateProjectScanned)
+DECLARE_MULTICAST_DELEGATE(FProjectCleanerDelegateProjectScanned);
 
 UCLASS(Config=EditorPerProjectUserSettings)
 class UProjectCleanerSubsystem final : public UEditorSubsystem
@@ -25,6 +25,9 @@ public:
 #if WITH_EDITOR
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif
+
+	UFUNCTION(BlueprintCallable, Category="ProjectCleaner")
+	FProjectCleanerScanResult ScanProject(const FProjectCleanerScanSettings& ScanSettings);
 
 	UFUNCTION(BlueprintCallable, Category="ProjectCleaner", meta=(Tooltip="Returns total size of given assets"))
 	int64 GetAssetsTotalSize(const TArray<FAssetData>& Assets) const;
@@ -62,7 +65,13 @@ public:
 	bool ScanningProject() const;
 	bool CleaningProject() const;
 	bool AssetExcluded(const FAssetData& AssetData) const;
+	bool AssetUnused(const FAssetData& AssetData) const;
+	bool AssetUsed(const FAssetData& AssetData) const;
 
+	UFUNCTION(BlueprintCallable, Category="ProjectCleaner")
+	void FillFolderInfos();
+
+	FProjectCleanerFolderInfo CreateFolderInfo(const FString& InFolderPathAbs) const;
 	void ProjectScan();
 
 	FProjectCleanerDelegateProjectScanned& OnProjectScanned();
@@ -91,7 +100,7 @@ private:
 	bool AssetExcludedByPath(const FAssetData& AssetData) const;
 	bool AssetExcludedByClass(const FAssetData& AssetData) const;
 	bool AssetExcludedByObject(const FAssetData& AssetData) const;
-	
+
 	void FindAssetsAll();
 	void FindAssetsIndirect();
 	void FindAssetsExcluded();
@@ -118,6 +127,7 @@ private:
 	TArray<FAssetData> AssetsPrimary;
 	TArray<FAssetData> AssetsWithExternalRefs;
 	TArray<FProjectCleanerIndirectAsset> AssetsIndirectInfos;
+	TArray<FProjectCleanerFolderInfo> FolderInfos;
 	TSet<FString> FoldersTotal;
 	TSet<FString> FoldersEmpty;
 	TSet<FString> FoldersForbidden;

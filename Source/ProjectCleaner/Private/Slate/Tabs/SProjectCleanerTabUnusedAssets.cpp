@@ -237,11 +237,11 @@ void SProjectCleanerTabUnusedAssets::Construct(const FArguments& InArgs)
 	SelectedPaths.Add(ProjectCleanerConstants::PathRelRoot.ToString());
 
 	// if project scanned we should update ui
-	SubsystemPtr->OnProjectScanned().AddLambda([&]()
-	{
-		TreeViewItemsUpdate();
-		AssetBrowserItemsUpdate();
-	});
+	// SubsystemPtr->OnProjectScanned().AddLambda([&]()
+	// {
+	// 	TreeViewItemsUpdate();
+	// 	AssetBrowserItemsUpdate();
+	// });
 
 	// const FAssetToolsModule& AssetToolsModule = FModuleManager::LoadModuleChecked<FAssetToolsModule>(TEXT("AssetTools"));
 	// TArray<FAdvancedAssetCategory> AdvancedAssetCategories;

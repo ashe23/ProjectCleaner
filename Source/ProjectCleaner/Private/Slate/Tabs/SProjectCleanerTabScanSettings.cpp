@@ -14,10 +14,7 @@ void SProjectCleanerTabScanSettings::Construct(const FArguments& InArgs)
 	SubsystemPtr = GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>();
 	if (!SubsystemPtr) return;
 
-	SubsystemPtr->OnProjectScanned().AddLambda([&]()
-	{
-		UpdateData();
-	});
+	// SubsystemPtr->OnProjectScanned().AddDynamic(this, &SProjectCleanerTabScanSettings::UpdateData);
 
 	FPropertyEditorModule& PropertyEditor = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
 	FDetailsViewArgs DetailsViewArgs;
@@ -268,7 +265,7 @@ FReply SProjectCleanerTabScanSettings::OnBtnResetExcludeSettingsClick() const
 	ExcludeSettings->PostEditChange();
 
 	SubsystemPtr->ProjectScan();
-	
+
 	return FReply::Handled();
 }
 
