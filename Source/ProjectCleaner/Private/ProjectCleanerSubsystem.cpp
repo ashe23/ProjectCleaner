@@ -52,10 +52,32 @@ void UProjectCleanerSubsystem::PostEditChangeProperty(FPropertyChangedEvent& Pro
 
 FProjectCleanerScanResult UProjectCleanerSubsystem::ScanProject(const FProjectCleanerScanSettings& ScanSettings)
 {
-	if (DelegateProjectScanned.IsBound())
-	{
-		DelegateProjectScanned.Broadcast();
-	}
+	// todo:ashe23 new version of scanner, think about some caching methods
+	// 0. pre scan actions
+	//		- make sure asset registry is not working
+	//		- make sure editor is not in play mode
+	//		- make sure all redirectors are fixed
+	//		- make sure all assets are saved
+	//		- cache all required assets??
+	//		- OnScanFailed delegate must be called here, with text message what really failed
+	//		- query general file and folders number and reserve some space
+
+	// 1. gathering all assets from asset registry that are inside Content folder
+
+	// 2. traversing every asset and checking if its used.
+	//		Below used asset cases:
+	//		- primary asset or its dependency
+	//		- indirect asset or its dependency
+	//		- has external refs outside "/Game" folder
+	//		- forbidden asset or its dependency
+	//		- excluded asset or its dependency
+	//		- megascans asset (if plugin enabled), but those assets are in category of external ref, maybe merge them??
+
+	// 3. All - Used = Unused assets in project
+
+	// 4. post scan actions
+	//		- shrink data containers
+	//		- broadcast OnScanFinished delegate with results
 
 	return FProjectCleanerScanResult{};
 }

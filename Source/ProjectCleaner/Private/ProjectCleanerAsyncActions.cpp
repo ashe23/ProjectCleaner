@@ -3,6 +3,7 @@
 #include "ProjectCleanerAsyncActions.h"
 
 #include "ProjectCleaner.h"
+#include "ProjectCleanerSubsystem.h"
 
 void UProjectCleanerScanAction::Activate()
 {
@@ -25,8 +26,8 @@ UProjectCleanerScanAction* UProjectCleanerScanAction::ScanProject(const FProject
 
 void UProjectCleanerScanAction::ExecuteScanProject()
 {
-	FPlatformProcess::Sleep(2.0f);
-
+	ScanResult = GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>()->ScanProject(ScanSettings);
+	
 	if (OnScanFinished.IsBound())
 	{
 		OnScanFinished.Broadcast(ScanResult);
