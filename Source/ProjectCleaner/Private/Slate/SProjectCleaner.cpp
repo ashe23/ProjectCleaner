@@ -216,6 +216,8 @@ void SProjectCleaner::CreateMenuBarSettings(FMenuBuilder& MenuBuilder, const TSh
 
 		SubsystemPtr->bScanFolderDevelopers = !SubsystemPtr->bScanFolderDevelopers;
 		SubsystemPtr->PostEditChange();
+
+		SubsystemPtr->ProjectScan();
 	});
 	ActionScanDevFolder.CanExecuteAction = FCanExecuteAction::CreateLambda([&]()
 	{
@@ -242,6 +244,8 @@ void SProjectCleaner::CreateMenuBarSettings(FMenuBuilder& MenuBuilder, const TSh
 
 		SubsystemPtr->bScanFolderCollections = !SubsystemPtr->bScanFolderCollections;
 		SubsystemPtr->PostEditChange();
+
+		SubsystemPtr->ProjectScan();
 	});
 	ActionScanCollectionFolder.CanExecuteAction = FCanExecuteAction::CreateLambda([&]()
 	{

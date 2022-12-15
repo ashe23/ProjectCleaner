@@ -207,14 +207,14 @@ FString UProjectCleanerSubsystem::PathConvertToAbs(const FString& InPath) const
 {
 	const FString NormalizedPath = PathNormalize(InPath);
 
-	return NormalizedPath.Replace(*ProjectCleanerConstants::PathRelRoot.ToString(), *(FPaths::ProjectDir() / TEXT("Content")), ESearchCase::CaseSensitive);
+	return NormalizedPath.Replace(*ProjectCleanerConstants::PathRelRoot.ToString(), *FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() / TEXT("Content")), ESearchCase::CaseSensitive);
 }
 
 FString UProjectCleanerSubsystem::PathConvertToRel(const FString& InPath) const
 {
 	const FString NormalizedPath = PathNormalize(InPath);
 
-	return NormalizedPath.Replace(*(FPaths::ProjectDir() / TEXT("Content")), *ProjectCleanerConstants::PathRelRoot.ToString(), ESearchCase::CaseSensitive);
+	return NormalizedPath.Replace(*FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() / TEXT("Content")), *ProjectCleanerConstants::PathRelRoot.ToString(), ESearchCase::CaseSensitive);
 }
 
 FString UProjectCleanerSubsystem::GetAssetClassName(const FAssetData& AssetData) const
@@ -713,15 +713,22 @@ void UProjectCleanerSubsystem::FindAssetsWithExternalRefs()
 
 void UProjectCleanerSubsystem::FindFoldersForbidden()
 {
-	FoldersForbidden.Add(FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / TEXT("Collections")));
-	FoldersForbidden.Add(FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / TEXT("Developers")));
-	FoldersForbidden.Add(FPaths::ConvertRelativePathToFull(FPaths::GameDevelopersDir() / FPaths::GameUserDeveloperFolderName()));
-	FoldersForbidden.Add(FPaths::ConvertRelativePathToFull(FPaths::GameUserDeveloperDir() / TEXT("Collections")));
-	// todo:ashe23 for ue5 add __ExternalObject__ and __ExternalActors__ folders
-
 	if (FModuleManager::Get().IsModuleLoaded(TEXT("MegascansPlugin")))
 	{
 		FoldersForbidden.Add(FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / TEXT("MSPresets")));
+	}
+	// todo:ashe23 for ue5 add __ExternalObject__ and __ExternalActors__ folders
+
+	if (!bScanFolderCollections)
+	{
+		FoldersForbidden.Add(FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / TEXT("Collections")));
+		FoldersForbidden.Add(FPaths::ConvertRelativePathToFull(FPaths::GameUserDeveloperDir() / TEXT("Collections")));
+	}
+
+	if (!bScanFolderDevelopers)
+	{
+		FoldersForbidden.Add(FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / TEXT("Developers")));
+		FoldersForbidden.Add(FPaths::ConvertRelativePathToFull(FPaths::GameDevelopersDir() / FPaths::GameUserDeveloperFolderName()));
 	}
 }
 
@@ -729,9 +736,15 @@ void UProjectCleanerSubsystem::FindFoldersTotal()
 {
 	TArray<FString> Folders;
 
-	IFileManager::Get().FindFilesRecursive(Folders, *FPaths::ProjectContentDir(), TEXT("*.*"), false, true);
+	IFileManager::Get().FindFilesRecursive(Folders, *FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir()), TEXT("*.*"), false, true);
 
-	FoldersTotal.Append(Folders);
+	FoldersTotal.Reserve(Folders.Num());
+	for (const auto& Folder : Folders)
+	{
+		if (FoldersForbidden.Contains(Folder)) continue;
+
+		FoldersTotal.Add(FPaths::ConvertRelativePathToFull(Folder));
+	}
 }
 
 void UProjectCleanerSubsystem::FindFoldersEmpty()
@@ -746,7 +759,7 @@ void UProjectCleanerSubsystem::FindFoldersEmpty()
 
 		if (Files.Num() > 0) continue;
 
-		FoldersEmpty.Add(Folder);
+		FoldersEmpty.Add(FPaths::ConvertRelativePathToFull(Folder));
 		Files.Reset();
 	}
 }
@@ -758,10 +771,11 @@ void UProjectCleanerSubsystem::FindFilesCorrupted()
 
 	for (const auto& File : Files)
 	{
-		if (!FileHasEngineExtension(FPaths::GetExtension(File))) continue;
-		if (!FileIsCorrupted(File)) continue;
+		const FString FilePathAbs = FPaths::ConvertRelativePathToFull(File);
+		if (!FileHasEngineExtension(FPaths::GetExtension(FilePathAbs))) continue;
+		if (!FileIsCorrupted(FilePathAbs)) continue;
 
-		FilesCorrupted.Add(File);
+		FilesCorrupted.Add(FilePathAbs);
 	}
 }
 
@@ -772,9 +786,10 @@ void UProjectCleanerSubsystem::FindFilesNonEngine()
 
 	for (const auto& File : Files)
 	{
-		if (FileHasEngineExtension(FPaths::GetExtension(File))) continue;
+		const FString FilePathAbs = FPaths::ConvertRelativePathToFull(File);
+		if (FileHasEngineExtension(FPaths::GetExtension(FilePathAbs))) continue;
 
-		FilesNonEngine.Add(File);
+		FilesNonEngine.Add(FilePathAbs);
 	}
 }
 

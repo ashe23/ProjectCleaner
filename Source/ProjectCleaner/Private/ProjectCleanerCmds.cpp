@@ -35,6 +35,14 @@ void FProjectCleanerCmds::RegisterCommands()
 	);
 
 	UI_COMMAND(
+		PathShowInExplorer,
+		"Open File Explorer",
+		"Open selected path if file explorer",
+		EUserInterfaceActionType::Button,
+		FInputChord()
+	);
+
+	UI_COMMAND(
 		AssetExclude,
 		"Exclude Asset",
 		"Exclude selected assets",

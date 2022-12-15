@@ -494,6 +494,26 @@ void SProjectCleanerTabUnusedAssets::CommandsRegister()
 
 	Cmds->MapAction(FProjectCleanerCmds::Get().PathExclude, ActionPathExclude);
 
+	FUIAction ActionPathShowExplorer;
+	ActionPathShowExplorer.ExecuteAction = FExecuteAction::CreateLambda([&]()
+	{
+		if (!TreeView.IsValid()) return;
+
+		const auto Items = TreeView->GetSelectedItems();
+		for (const auto& Item : Items)
+		{
+			if (!FPaths::DirectoryExists(Item->FolderPathAbs)) continue;
+
+			FPlatformProcess::ExploreFolder(*Item->FolderPathAbs);
+		}
+	});
+	ActionPathShowExplorer.CanExecuteAction = FCanExecuteAction::CreateLambda([&]()
+	{
+		return TreeView.IsValid() && TreeView.Get()->GetSelectedItems().Num() > 0;
+	});
+
+	Cmds->MapAction(FProjectCleanerCmds::Get().PathShowInExplorer, ActionPathShowExplorer);
+
 	FUIAction ActionAssetExclude;
 	ActionAssetExclude.ExecuteAction = FExecuteAction::CreateLambda([&]()
 	{
@@ -671,6 +691,7 @@ void SProjectCleanerTabUnusedAssets::OnTreeViewSearchBoxTextCommitted(const FTex
 void SProjectCleanerTabUnusedAssets::OnTreeViewItemMouseDblClick(TSharedPtr<FProjectCleanerTreeViewItem> Item)
 {
 	if (!Item.IsValid()) return;
+	if (Item->SubItems.Num() == 0) return;
 
 	TreeViewToggleExpansionRecursive(Item, !Item->bExpanded);
 }
@@ -730,6 +751,7 @@ TSharedPtr<SWidget> SProjectCleanerTabUnusedAssets::GetTreeViewItemContextMenu()
 	MenuBuilder.BeginSection(TEXT("Actions"), FText::FromString(TEXT("Path Actions")));
 	{
 		MenuBuilder.AddMenuEntry(FProjectCleanerCmds::Get().PathExclude);
+		MenuBuilder.AddMenuEntry(FProjectCleanerCmds::Get().PathShowInExplorer);
 	}
 	MenuBuilder.EndSection();
 
@@ -740,12 +762,25 @@ TSharedPtr<FProjectCleanerTreeViewItem> SProjectCleanerTabUnusedAssets::TreeView
 {
 	if (!SubsystemPtr) return {};
 
-	const TSharedPtr<FProjectCleanerTreeViewItem> TreeItem = MakeShareable(new FProjectCleanerTreeViewItem());
-	if (!TreeItem.IsValid()) return {};
+	if (!SubsystemPtr->bScanFolderDevelopers && FPaths::IsUnderDirectory(InFolderPathAbs, FPaths::ConvertRelativePathToFull(FPaths::GameDevelopersDir())))
+	{
+		return {};
+	}
+
+	if (
+		!SubsystemPtr->bScanFolderCollections &&
+		FPaths::IsUnderDirectory(InFolderPathAbs, FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / TEXT("Collections"))) ||
+		FPaths::IsUnderDirectory(InFolderPathAbs, FPaths::ConvertRelativePathToFull(FPaths::GameUserDeveloperDir() / TEXT("Collections")))
+	)
+	{
+		return {};
+	}
 
 	const bool bIsProjectContentFolder = InFolderPathAbs.Equals(FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() / TEXT("Content")));
 	const bool bIsProjectDeveloperFolder = InFolderPathAbs.Equals(FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() / TEXT("Developers")));
 
+	const TSharedPtr<FProjectCleanerTreeViewItem> TreeItem = MakeShareable(new FProjectCleanerTreeViewItem());
+	if (!TreeItem.IsValid()) return {};
 
 	TreeItem->FolderPathAbs = FPaths::ConvertRelativePathToFull(InFolderPathAbs);
 	TreeItem->FolderPathRel = SubsystemPtr->PathConvertToRel(InFolderPathAbs);
