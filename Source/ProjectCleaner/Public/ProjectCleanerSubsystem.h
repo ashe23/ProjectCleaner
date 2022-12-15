@@ -57,11 +57,11 @@ public:
 	const TSet<FString>& GetFilesCorrupted() const;
 	const TSet<FString>& GetFilesNonEngine() const;
 
-	bool IsAssetRegistryWorking() const;
-	bool IsEditorInPlayMode() const;
-	bool IsScanningProject() const;
-	bool IsCleaningProject() const;
-	bool IsAssetExcluded(const FAssetData& AssetData) const;
+	bool AssetRegistryWorking() const;
+	bool EditorInPlayMode() const;
+	bool ScanningProject() const;
+	bool CleaningProject() const;
+	bool AssetExcluded(const FAssetData& AssetData) const;
 
 	void ProjectScan();
 
@@ -88,9 +88,9 @@ public:
 
 private:
 	bool CanScanProject() const;
-	bool IsAssetExcludedByPath(const FAssetData& AssetData) const;
-	bool IsAssetExcludedByClass(const FAssetData& AssetData) const;
-	bool IsAssetExcludedByObject(const FAssetData& AssetData) const;
+	bool AssetExcludedByPath(const FAssetData& AssetData) const;
+	bool AssetExcludedByClass(const FAssetData& AssetData) const;
+	bool AssetExcludedByObject(const FAssetData& AssetData) const;
 	
 	void FindAssetsAll();
 	void FindAssetsIndirect();

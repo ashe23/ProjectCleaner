@@ -123,10 +123,10 @@ bool SProjectCleaner::WidgetEnabled() const
 	if (!SubsystemPtr) return false;
 
 	if (
-		SubsystemPtr->IsAssetRegistryWorking() ||
-		SubsystemPtr->IsEditorInPlayMode() ||
-		SubsystemPtr->IsScanningProject() ||
-		SubsystemPtr->IsCleaningProject()
+		SubsystemPtr->AssetRegistryWorking() ||
+		SubsystemPtr->EditorInPlayMode() ||
+		SubsystemPtr->ScanningProject() ||
+		SubsystemPtr->CleaningProject()
 	)
 	{
 		return false;
@@ -140,10 +140,10 @@ int32 SProjectCleaner::WidgetGetIndex() const
 	if (!SubsystemPtr) return ProjectCleanerConstants::WidgetIndexWorking;
 
 	if (
-		SubsystemPtr->IsAssetRegistryWorking() ||
-		SubsystemPtr->IsEditorInPlayMode() ||
-		SubsystemPtr->IsScanningProject() ||
-		SubsystemPtr->IsCleaningProject()
+		SubsystemPtr->AssetRegistryWorking() ||
+		SubsystemPtr->EditorInPlayMode() ||
+		SubsystemPtr->ScanningProject() ||
+		SubsystemPtr->CleaningProject()
 	)
 	{
 		return ProjectCleanerConstants::WidgetIndexWorking;
@@ -156,22 +156,22 @@ FText SProjectCleaner::WidgetText() const
 {
 	if (!SubsystemPtr) return FText::FromString(TEXT(""));
 
-	if (SubsystemPtr->IsAssetRegistryWorking())
+	if (SubsystemPtr->AssetRegistryWorking())
 	{
 		return FText::FromString(TEXT("The AssetRegistry is still working. Please wait for the scan to finish"));
 	}
 
-	if (SubsystemPtr->IsEditorInPlayMode())
+	if (SubsystemPtr->EditorInPlayMode())
 	{
 		return FText::FromString(TEXT("Please stop play mode in the editor before doing any operations in the plugin."));
 	}
 
-	if (SubsystemPtr->IsScanningProject())
+	if (SubsystemPtr->ScanningProject())
 	{
 		return FText::FromString(TEXT("Scanning Project ..."));
 	}
 
-	if (SubsystemPtr->IsCleaningProject())
+	if (SubsystemPtr->CleaningProject())
 	{
 		return FText::FromString(TEXT("Cleaning Project ..."));
 	}

@@ -286,36 +286,36 @@ const TSet<FString>& UProjectCleanerSubsystem::GetFilesNonEngine() const
 	return FilesNonEngine;
 }
 
-bool UProjectCleanerSubsystem::IsAssetRegistryWorking() const
+bool UProjectCleanerSubsystem::AssetRegistryWorking() const
 {
 	if (!ModuleAssetRegistry) return false;
 
 	return ModuleAssetRegistry->Get().IsLoadingAssets();
 }
 
-bool UProjectCleanerSubsystem::IsEditorInPlayMode() const
+bool UProjectCleanerSubsystem::EditorInPlayMode() const
 {
 	if (!GEditor) return false;
 
 	return GEditor->PlayWorld || GIsPlayInEditorWorld;
 }
 
-bool UProjectCleanerSubsystem::IsScanningProject() const
+bool UProjectCleanerSubsystem::ScanningProject() const
 {
 	return bScanningProject;
 }
 
-bool UProjectCleanerSubsystem::IsCleaningProject() const
+bool UProjectCleanerSubsystem::CleaningProject() const
 {
 	return bCleaningProject;
 }
 
-bool UProjectCleanerSubsystem::IsAssetExcluded(const FAssetData& AssetData) const
+bool UProjectCleanerSubsystem::AssetExcluded(const FAssetData& AssetData) const
 {
-	return IsAssetExcludedByPath(AssetData) || IsAssetExcludedByClass(AssetData) || IsAssetExcludedByObject(AssetData);
+	return AssetExcludedByPath(AssetData) || AssetExcludedByClass(AssetData) || AssetExcludedByObject(AssetData);
 }
 
-bool UProjectCleanerSubsystem::IsAssetExcludedByPath(const FAssetData& AssetData) const
+bool UProjectCleanerSubsystem::AssetExcludedByPath(const FAssetData& AssetData) const
 {
 	const UProjectCleanerExcludeSettings* ExcludeSettings = GetDefault<UProjectCleanerExcludeSettings>();
 	if (!ExcludeSettings) return false;
@@ -335,7 +335,7 @@ bool UProjectCleanerSubsystem::IsAssetExcludedByPath(const FAssetData& AssetData
 	return false;
 }
 
-bool UProjectCleanerSubsystem::IsAssetExcludedByClass(const FAssetData& AssetData) const
+bool UProjectCleanerSubsystem::AssetExcludedByClass(const FAssetData& AssetData) const
 {
 	const UProjectCleanerExcludeSettings* ExcludeSettings = GetDefault<UProjectCleanerExcludeSettings>();
 	if (!ExcludeSettings) return false;
@@ -356,7 +356,7 @@ bool UProjectCleanerSubsystem::IsAssetExcludedByClass(const FAssetData& AssetDat
 	return false;
 }
 
-bool UProjectCleanerSubsystem::IsAssetExcludedByObject(const FAssetData& AssetData) const
+bool UProjectCleanerSubsystem::AssetExcludedByObject(const FAssetData& AssetData) const
 {
 	const UProjectCleanerExcludeSettings* ExcludeSettings = GetDefault<UProjectCleanerExcludeSettings>();
 	if (!ExcludeSettings) return false;
@@ -417,7 +417,7 @@ FProjectCleanerDelegateProjectScanned& UProjectCleanerSubsystem::OnProjectScanne
 
 bool UProjectCleanerSubsystem::CanScanProject() const
 {
-	return !IsAssetRegistryWorking() && !IsEditorInPlayMode() && !IsScanningProject() && !IsCleaningProject();
+	return !AssetRegistryWorking() && !EditorInPlayMode() && !ScanningProject() && !CleaningProject();
 }
 
 void UProjectCleanerSubsystem::FindAssetsAll()
@@ -541,7 +541,7 @@ void UProjectCleanerSubsystem::FindAssetsExcluded()
 
 	for (const auto& Asset : AssetsAll)
 	{
-		if (IsAssetExcluded(Asset))
+		if (AssetExcluded(Asset))
 		{
 			AssetsExcluded.AddUnique(Asset);
 		}
