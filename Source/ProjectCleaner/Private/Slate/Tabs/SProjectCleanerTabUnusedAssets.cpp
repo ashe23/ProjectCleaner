@@ -232,19 +232,22 @@ void SProjectCleanerTabUnusedAssets::Construct(const FArguments& InArgs)
 	if (!SubsystemPtr) return;
 
 	AssetThumbnailPool = MakeShareable(new FAssetThumbnailPool(1024, false));
+
+	// by default Content (/Game) folder must be selected
 	SelectedPaths.Add(ProjectCleanerConstants::PathRelRoot.ToString());
 
+	// if project scanned we should update ui
 	SubsystemPtr->OnProjectScanned().AddLambda([&]()
 	{
 		TreeViewItemsUpdate();
 		AssetBrowserItemsUpdate();
 	});
 
-	const FAssetToolsModule& AssetToolsModule = FModuleManager::LoadModuleChecked<FAssetToolsModule>(TEXT("AssetTools"));
-	TArray<FAdvancedAssetCategory> AdvancedAssetCategories;
-	AssetToolsModule.Get().GetAllAdvancedAssetCategories(AdvancedAssetCategories);
+	// const FAssetToolsModule& AssetToolsModule = FModuleManager::LoadModuleChecked<FAssetToolsModule>(TEXT("AssetTools"));
+	// TArray<FAdvancedAssetCategory> AdvancedAssetCategories;
+	// AssetToolsModule.Get().GetAllAdvancedAssetCategories(AdvancedAssetCategories);
 
-	RegisterCmds();
+	CommandsRegister();
 	TreeViewItemsUpdate();
 	AssetBrowserItemsUpdate();
 
@@ -459,7 +462,7 @@ void SProjectCleanerTabUnusedAssets::Tick(const FGeometry& AllottedGeometry, con
 	AssetThumbnailPool->Tick(InDeltaTime);
 }
 
-void SProjectCleanerTabUnusedAssets::RegisterCmds()
+void SProjectCleanerTabUnusedAssets::CommandsRegister()
 {
 	Cmds = MakeShareable(new FUICommandList);
 

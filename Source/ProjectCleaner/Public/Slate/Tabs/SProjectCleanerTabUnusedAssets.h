@@ -83,7 +83,7 @@ public:
 	virtual void Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime) override;
 
 private:
-	void RegisterCmds();
+	void CommandsRegister();
 	TSharedRef<ITableRow> OnTreeViewGenerateRow(TSharedPtr<FProjectCleanerTreeViewItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const;
 	void TreeViewItemsUpdate();
 	void OnTreeViewSearchBoxTextChanged(const FText& InSearchText);

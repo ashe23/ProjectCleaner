@@ -194,7 +194,7 @@ bool UProjectCleanerSubsystem::FolderIsEmpty(const FString& InPath)
 	return FoldersEmpty.Contains(PathConvertToAbs(InPath));
 }
 
-FString UProjectCleanerSubsystem::PathNormalize(const FString& InPath)
+FString UProjectCleanerSubsystem::PathNormalize(const FString& InPath) const
 {
 	FString Path = FPaths::ConvertRelativePathToFull(InPath);
 	FPaths::RemoveDuplicateSlashes(Path);
@@ -203,14 +203,14 @@ FString UProjectCleanerSubsystem::PathNormalize(const FString& InPath)
 	return Path;
 }
 
-FString UProjectCleanerSubsystem::PathConvertToAbs(const FString& InPath)
+FString UProjectCleanerSubsystem::PathConvertToAbs(const FString& InPath) const
 {
 	const FString NormalizedPath = PathNormalize(InPath);
 
 	return NormalizedPath.Replace(*ProjectCleanerConstants::PathRelRoot.ToString(), *(FPaths::ProjectDir() / TEXT("Content")), ESearchCase::CaseSensitive);
 }
 
-FString UProjectCleanerSubsystem::PathConvertToRel(const FString& InPath)
+FString UProjectCleanerSubsystem::PathConvertToRel(const FString& InPath) const
 {
 	const FString NormalizedPath = PathNormalize(InPath);
 
@@ -308,6 +308,70 @@ bool UProjectCleanerSubsystem::IsScanningProject() const
 bool UProjectCleanerSubsystem::IsCleaningProject() const
 {
 	return bCleaningProject;
+}
+
+bool UProjectCleanerSubsystem::IsAssetExcluded(const FAssetData& AssetData) const
+{
+	return IsAssetExcludedByPath(AssetData) || IsAssetExcludedByClass(AssetData) || IsAssetExcludedByObject(AssetData);
+}
+
+bool UProjectCleanerSubsystem::IsAssetExcludedByPath(const FAssetData& AssetData) const
+{
+	const UProjectCleanerExcludeSettings* ExcludeSettings = GetDefault<UProjectCleanerExcludeSettings>();
+	if (!ExcludeSettings) return false;
+
+	for (const auto& ExcludedFolder : ExcludeSettings->ExcludedFolders)
+	{
+		const FString FolderPathRel = PathConvertToAbs(ExcludedFolder.Path);
+		const FString AssetPathRel = PathConvertToAbs(AssetData.PackagePath.ToString());
+
+		if (FolderPathRel.IsEmpty() || AssetPathRel.IsEmpty()) continue;
+		if (FPaths::IsUnderDirectory(AssetPathRel, FolderPathRel))
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool UProjectCleanerSubsystem::IsAssetExcludedByClass(const FAssetData& AssetData) const
+{
+	const UProjectCleanerExcludeSettings* ExcludeSettings = GetDefault<UProjectCleanerExcludeSettings>();
+	if (!ExcludeSettings) return false;
+
+	const FString AssetClassName = GetAssetClassName(AssetData);
+
+	for (const auto& ExcludedClass : ExcludeSettings->ExcludedClasses)
+	{
+		if (!ExcludedClass.LoadSynchronous()) continue;
+
+		const FString ExcludedClassName = ExcludedClass->GetName();
+		if (AssetClassName.Equals(ExcludedClassName))
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool UProjectCleanerSubsystem::IsAssetExcludedByObject(const FAssetData& AssetData) const
+{
+	const UProjectCleanerExcludeSettings* ExcludeSettings = GetDefault<UProjectCleanerExcludeSettings>();
+	if (!ExcludeSettings) return false;
+
+	for (const auto& ExcludedAsset : ExcludeSettings->ExcludedAssets)
+	{
+		if (!ExcludedAsset.LoadSynchronous()) continue;
+
+		if (ExcludedAsset.ToSoftObjectPath() == AssetData.ToSoftObjectPath())
+		{
+			return true;
+		}
+	}
+
+	return false;
 }
 
 void UProjectCleanerSubsystem::ProjectScan()
@@ -473,62 +537,17 @@ void UProjectCleanerSubsystem::FindAssetsExcluded()
 	const UProjectCleanerExcludeSettings* ExcludeSettings = GetDefault<UProjectCleanerExcludeSettings>();
 	ensure(ExcludeSettings);
 
-	TArray<FAssetData> AssetsExcludedByPath;
-	TArray<FAssetData> AssetsExcludedByClass;
-	AssetsExcludedByPath.Reserve(AssetsAll.Num());
-	AssetsExcludedByClass.Reserve(AssetsAll.Num());
+	AssetsExcluded.Reserve(AssetsAll.Num());
 
-	FARFilter FilterByPath;
-	FilterByPath.bRecursivePaths = ExcludeSettings->ExcludedFolders.Num() > 0;
-	for (const auto& ExcludedFolder : ExcludeSettings->ExcludedFolders)
+	for (const auto& Asset : AssetsAll)
 	{
-		if (ExcludedFolder.Path.IsEmpty()) continue;
-
-		FilterByPath.PackagePaths.Add(FName{*ExcludedFolder.Path});
-	}
-	ModuleAssetRegistry->Get().GetAssets(FilterByPath, AssetsExcludedByPath);
-
-	FARFilter FilterByClass;
-	FilterByClass.bRecursivePaths = ExcludeSettings->ExcludedClasses.Num() > 0;
-	FilterByClass.bRecursiveClasses = ExcludeSettings->ExcludedClasses.Num() > 0;
-
-	if (ExcludeSettings->ExcludedClasses.Num() > 0)
-	{
-		FilterByClass.PackagePaths.Add(ProjectCleanerConstants::PathRelRoot);
-	}
-	for (const auto& ExcludedClass : ExcludeSettings->ExcludedClasses)
-	{
-		if (!ExcludedClass.LoadSynchronous()) continue;
-
-		FilterByClass.ClassNames.Add(ExcludedClass->GetFName());
-	}
-	ModuleAssetRegistry->Get().GetAssets(FilterByClass, AssetsExcludedByClass); // todo:ashe23 not working correctly with blueprint assets
-	
-	AssetsExcludedByPath.Shrink();
-	AssetsExcludedByClass.Shrink();
-
-	AssetsExcluded.Reserve(AssetsExcludedByPath.Num() + AssetsExcludedByClass.Num() + ExcludeSettings->ExcludedAssets.Num());
-
-	for (const auto& AssetExcludedByPath : AssetsExcludedByPath)
-	{
-		AssetsExcluded.AddUnique(AssetExcludedByPath);
+		if (IsAssetExcluded(Asset))
+		{
+			AssetsExcluded.AddUnique(Asset);
+		}
 	}
 
-	for (const auto& AssetExcludedByClass : AssetsExcludedByClass)
-	{
-		AssetsExcluded.AddUnique(AssetExcludedByClass);
-	}
-
-	for (const auto& ExcludedAsset : ExcludeSettings->ExcludedAssets)
-	{
-		if (!ExcludedAsset.LoadSynchronous()) continue;
-
-		const FName ObjectPath = ExcludedAsset.ToSoftObjectPath().GetAssetPathName();
-		const FAssetData AssetData = ModuleAssetRegistry->Get().GetAssetByObjectPath(ObjectPath);
-		if (!AssetData.IsValid()) continue;
-
-		AssetsExcluded.AddUnique(AssetData);
-	}
+	AssetsExcluded.Shrink();
 }
 
 void UProjectCleanerSubsystem::FindAssetsUsed()

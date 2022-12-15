@@ -40,9 +40,9 @@ public:
 	bool FolderIsExcluded(const FString& InPath);
 	bool FolderIsEmpty(const FString& InPath);
 
-	FString PathNormalize(const FString& InPath);
-	FString PathConvertToAbs(const FString& InPath);
-	FString PathConvertToRel(const FString& InPath);
+	FString PathNormalize(const FString& InPath) const;
+	FString PathConvertToAbs(const FString& InPath) const;
+	FString PathConvertToRel(const FString& InPath) const;
 	FString GetAssetClassName(const FAssetData& AssetData) const;
 
 	UClass* GetAssetClass(const FAssetData& AssetData) const;
@@ -61,6 +61,7 @@ public:
 	bool IsEditorInPlayMode() const;
 	bool IsScanningProject() const;
 	bool IsCleaningProject() const;
+	bool IsAssetExcluded(const FAssetData& AssetData) const;
 
 	void ProjectScan();
 
@@ -87,6 +88,10 @@ public:
 
 private:
 	bool CanScanProject() const;
+	bool IsAssetExcludedByPath(const FAssetData& AssetData) const;
+	bool IsAssetExcludedByClass(const FAssetData& AssetData) const;
+	bool IsAssetExcludedByObject(const FAssetData& AssetData) const;
+	
 	void FindAssetsAll();
 	void FindAssetsIndirect();
 	void FindAssetsExcluded();
