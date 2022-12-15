@@ -70,6 +70,12 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Config, Category="ProjectCleaner")
 	bool bAutoCleanEmptyFolders = true;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Config, Category="ProjectCleaner", DisplayName="Scan Developers Folder")
+	bool bScanFolderDevelopers = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Config, Category="ProjectCleaner", DisplayName="Scan Collections Folder")
+	bool bScanFolderCollections = true;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Config, Category="ProjectCleaner")
 	bool bShowTreeViewLines = true;
 

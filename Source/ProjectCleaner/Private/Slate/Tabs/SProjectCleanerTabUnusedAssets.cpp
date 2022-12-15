@@ -505,7 +505,7 @@ void SProjectCleanerTabUnusedAssets::RegisterCmds()
 		{
 			if (!SelectedItem.IsValid()) continue;
 			if (!SelectedItem->AssetData.GetAsset()) continue;
-			
+
 			ExcludeSettings->ExcludedAssets.AddUnique(SelectedItem->AssetData.GetAsset());
 		}
 
@@ -534,10 +534,10 @@ void SProjectCleanerTabUnusedAssets::RegisterCmds()
 		{
 			if (!SelectedItem.IsValid()) continue;
 			if (!SelectedItem->AssetData.GetAsset()) continue;
-			
+
 			const UClass* AssetClass = SubsystemPtr->GetAssetClass(SelectedItem->AssetData);
 			if (!AssetClass) continue;
-			
+
 			ExcludeSettings->ExcludedClasses.AddUnique(AssetClass);
 		}
 
@@ -645,7 +645,6 @@ void SProjectCleanerTabUnusedAssets::TreeViewItemsUpdate()
 	//
 	// 	TreeViewItems.Shrink();
 	// }
-
 
 	TreeView->RequestTreeRefresh();
 }
@@ -891,7 +890,7 @@ TSharedRef<ITableRow> SProjectCleanerTabUnusedAssets::OnGenerateWidgetForTileVie
 	ThumbnailConfig.bAllowFadeIn = true;
 
 	return
-		SNew(STableRow< TSharedPtr<FProjectCleanerAssetBrowserItem> >, OwnerTable)
+		SNew(STableRow<TSharedPtr<FProjectCleanerAssetBrowserItem>>, OwnerTable)
 		.Style(FEditorStyle::Get(), "ContentBrowser.AssetListView.TableRow")
 		.Padding(FMargin{5.0f})
 		[
@@ -991,7 +990,7 @@ void SProjectCleanerTabUnusedAssets::AssetBrowserItemsUpdate()
 
 	for (const auto& Asset : SubsystemPtr->GetAssetsUnused())
 	{
-		if (!IsUnderSelectedPaths(Asset.PackagePath.ToString())) continue;
+		// if (!IsUnderSelectedPaths(Asset.PackagePath.ToString())) continue;
 
 		TSharedPtr<FProjectCleanerAssetBrowserItem> NewItem = MakeShareable(new FProjectCleanerAssetBrowserItem);
 		if (!NewItem.IsValid()) continue;
