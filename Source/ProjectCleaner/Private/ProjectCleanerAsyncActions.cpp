@@ -27,9 +27,8 @@ UProjectCleanerScanAction* UProjectCleanerScanAction::ScanProject(const FProject
 void UProjectCleanerScanAction::ExecuteScanProject()
 {
 	ScanResult = GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>()->ScanProject(ScanSettings);
-	
-	if (OnScanFinished.IsBound())
-	{
-		OnScanFinished.Broadcast(ScanResult);
-	}
+
+	// ScanResult.bSuccess ? OnScanFailed.Broadcast() : OnScanFinished.Broadcast();
+
+	OutScanResult.Broadcast(ScanResult);
 }

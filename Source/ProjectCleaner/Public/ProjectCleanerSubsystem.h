@@ -26,9 +26,10 @@ public:
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif
 
-	UFUNCTION(BlueprintCallable, Category="ProjectCleaner")
+	// functions visible only in c++
 	FProjectCleanerScanResult ScanProject(const FProjectCleanerScanSettings& ScanSettings);
 
+	// function exposed to blueprints
 	UFUNCTION(BlueprintCallable, Category="ProjectCleaner", meta=(Tooltip="Returns total size of given assets"))
 	int64 GetAssetsTotalSize(const TArray<FAssetData>& Assets) const;
 
@@ -116,7 +117,10 @@ private:
 	void FindFilesNonEngine();
 	void ResetData();
 	void FixupRedirectors();
-
+private:
+	// refactored functions
+	void ExecutePreScanActions();
+	void ExecutePostScanActions();
 private:
 	TArray<FAssetData> AssetsAll;
 	TArray<FAssetData> AssetsIndirect;

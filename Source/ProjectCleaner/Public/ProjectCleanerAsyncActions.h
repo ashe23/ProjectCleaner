@@ -6,7 +6,10 @@
 #include "ProjectCleanerTypes.h"
 #include "ProjectCleanerAsyncActions.generated.h"
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FProjectCleanerDelegateScanFinished, const FProjectCleanerScanResult&, ScanResult);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FProjectCleanerOutputPin);
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FProjectCleanerOutputResult, const FProjectCleanerScanResult&, ScanResult);
+
 
 UCLASS()
 class UProjectCleanerScanAction final : public UBlueprintAsyncActionBase
@@ -25,9 +28,11 @@ private:
 
 public:
 	UPROPERTY(BlueprintAssignable)
-	FProjectCleanerDelegateScanFinished OnScanFailed;
+	FProjectCleanerOutputPin OnScanFailed;
 	UPROPERTY(BlueprintAssignable)
-	FProjectCleanerDelegateScanFinished OnScanFinished;
+	FProjectCleanerOutputPin OnScanFinished;
+	UPROPERTY(BlueprintAssignable)
+	FProjectCleanerOutputResult OutScanResult;
 
 private:
 	FProjectCleanerScanSettings ScanSettings;

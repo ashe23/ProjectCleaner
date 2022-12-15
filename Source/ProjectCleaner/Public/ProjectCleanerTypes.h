@@ -63,6 +63,14 @@ struct FProjectCleanerFolderInfo
 	}
 };
 
+UENUM(BlueprintType)
+enum class EProjectCleanerScanFailReason : uint8
+{
+	None,
+	AssetRegistryWorking,
+	EditorInPlayMode,
+};
+
 USTRUCT(BlueprintType)
 struct FProjectCleanerScanSettings
 {
@@ -85,6 +93,10 @@ USTRUCT(BlueprintType)
 struct FProjectCleanerScanResult
 {
 	GENERATED_BODY()
+
+	bool bSuccess;
+	
+	FString ErrorMsg;
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanResult")
 	TArray<FAssetData> AssetsTotal;

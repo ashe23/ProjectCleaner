@@ -52,14 +52,36 @@ void UProjectCleanerSubsystem::PostEditChangeProperty(FPropertyChangedEvent& Pro
 
 FProjectCleanerScanResult UProjectCleanerSubsystem::ScanProject(const FProjectCleanerScanSettings& ScanSettings)
 {
+	FProjectCleanerScanResult ScanResult;
+
+	if (AssetRegistryWorking())
+	{
+		ScanResult.bSuccess = false;
+		ScanResult.ErrorMsg = TEXT("Cant start scanning because AssetRegistry still working.");
+
+		return ScanResult;
+	}
+
+	if (EditorInPlayMode())
+	{
+		ScanResult.bSuccess = false;
+		ScanResult.ErrorMsg = TEXT("Cant start scanning because editor is in play mode.");
+
+		return ScanResult;
+	}
+
+	ScanResult.bSuccess = true;
 	// todo:ashe23 new version of scanner, think about some caching methods
+	// - make sure asset registry is not working
+	// - make sure editor is not in play mode
+	// - make sure we are not scanning project currently
+	// - make sure we are not cleaning project currently
+	// - OnScanFailed delegate must be called here, with text message what really failed
+
 	// 0. pre scan actions
-	//		- make sure asset registry is not working
-	//		- make sure editor is not in play mode
 	//		- make sure all redirectors are fixed
 	//		- make sure all assets are saved
 	//		- cache all required assets??
-	//		- OnScanFailed delegate must be called here, with text message what really failed
 	//		- query general file and folders number and reserve some space
 
 	// 1. gathering all assets from asset registry that are inside Content folder
@@ -79,7 +101,7 @@ FProjectCleanerScanResult UProjectCleanerSubsystem::ScanProject(const FProjectCl
 	//		- shrink data containers
 	//		- broadcast OnScanFinished delegate with results
 
-	return FProjectCleanerScanResult{};
+	return ScanResult;
 }
 
 int64 UProjectCleanerSubsystem::GetAssetsTotalSize(const TArray<FAssetData>& Assets) const
@@ -1012,4 +1034,12 @@ void UProjectCleanerSubsystem::FixupRedirectors()
 	ModuleAssetTools->Get().FixupReferencers(Redirectors);
 
 	FixRedirectorsTask.EnterProgressFrame(1.0f);
+}
+
+void UProjectCleanerSubsystem::ExecutePreScanActions()
+{
+}
+
+void UProjectCleanerSubsystem::ExecutePostScanActions()
+{
 }
