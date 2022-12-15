@@ -485,7 +485,7 @@ void SProjectCleanerTabUnusedAssets::CommandsRegister()
 
 		ExcludeSettings->PostEditChange();
 
-		SubsystemPtr->ProjectScan();
+		// SubsystemPtr->ProjectScan();
 	});
 	ActionPathExclude.CanExecuteAction = FCanExecuteAction::CreateLambda([&]()
 	{
@@ -534,7 +534,7 @@ void SProjectCleanerTabUnusedAssets::CommandsRegister()
 
 		ExcludeSettings->PostEditChange();
 
-		SubsystemPtr->ProjectScan();
+		// SubsystemPtr->ProjectScan();
 	});
 	ActionAssetExclude.CanExecuteAction = FCanExecuteAction::CreateLambda([&]()
 	{
@@ -546,27 +546,27 @@ void SProjectCleanerTabUnusedAssets::CommandsRegister()
 	FUIAction ActionAssetExcludeByType;
 	ActionAssetExcludeByType.ExecuteAction = FExecuteAction::CreateLambda([&]()
 	{
-		if (!SubsystemPtr) return;
-		if (!AssetBrowserListView.IsValid()) return;
-
-		UProjectCleanerExcludeSettings* ExcludeSettings = GetMutableDefault<UProjectCleanerExcludeSettings>();
-		if (!ExcludeSettings) return;
-
-		const auto SelectedItems = AssetBrowserListView->GetSelectedItems();
-		for (const auto& SelectedItem : SelectedItems)
-		{
-			if (!SelectedItem.IsValid()) continue;
-			if (!SelectedItem->AssetData.GetAsset()) continue;
-
-			const UClass* AssetClass = SubsystemPtr->GetAssetClass(SelectedItem->AssetData);
-			if (!AssetClass) continue;
-
-			ExcludeSettings->ExcludedClasses.AddUnique(AssetClass);
-		}
-
-		ExcludeSettings->PostEditChange();
-
-		SubsystemPtr->ProjectScan();
+		// if (!SubsystemPtr) return;
+		// if (!AssetBrowserListView.IsValid()) return;
+		//
+		// UProjectCleanerExcludeSettings* ExcludeSettings = GetMutableDefault<UProjectCleanerExcludeSettings>();
+		// if (!ExcludeSettings) return;
+		//
+		// const auto SelectedItems = AssetBrowserListView->GetSelectedItems();
+		// for (const auto& SelectedItem : SelectedItems)
+		// {
+		// 	if (!SelectedItem.IsValid()) continue;
+		// 	if (!SelectedItem->AssetData.GetAsset()) continue;
+		//
+		// 	const UClass* AssetClass = SubsystemPtr->GetAssetClass(SelectedItem->AssetData);
+		// 	if (!AssetClass) continue;
+		//
+		// 	ExcludeSettings->ExcludedClasses.AddUnique(AssetClass);
+		// }
+		//
+		// ExcludeSettings->PostEditChange();
+		//
+		// SubsystemPtr->ProjectScan();
 	});
 	ActionAssetExcludeByType.CanExecuteAction = FCanExecuteAction::CreateLambda([&]()
 	{
@@ -783,7 +783,7 @@ TSharedPtr<FProjectCleanerTreeViewItem> SProjectCleanerTabUnusedAssets::TreeView
 	if (!TreeItem.IsValid()) return {};
 
 	TreeItem->FolderPathAbs = FPaths::ConvertRelativePathToFull(InFolderPathAbs);
-	TreeItem->FolderPathRel = SubsystemPtr->PathConvertToRel(InFolderPathAbs);
+	// TreeItem->FolderPathRel = SubsystemPtr->PathConvertToRel(InFolderPathAbs);
 	TreeItem->FolderName = bIsProjectContentFolder ? TEXT("Content") : FPaths::GetPathLeaf(InFolderPathAbs);
 	TreeItem->FoldersTotal = GetFoldersTotalNum(InFolderPathAbs);
 	TreeItem->FoldersEmpty = GetFoldersEmptyNum(InFolderPathAbs);
@@ -1021,27 +1021,27 @@ TSharedPtr<SWidget> SProjectCleanerTabUnusedAssets::GetAssetBrowserItemContextMe
 
 void SProjectCleanerTabUnusedAssets::AssetBrowserItemsUpdate()
 {
-	if (!SubsystemPtr) return;
-
-	AssetBrowserListItems.Reset();
-	AssetBrowserListItems.Reserve(SubsystemPtr->GetAssetsUnused().Num());
-
-	for (const auto& Asset : SubsystemPtr->GetAssetsUnused())
-	{
-		// if (!IsUnderSelectedPaths(Asset.PackagePath.ToString())) continue;
-
-		TSharedPtr<FProjectCleanerAssetBrowserItem> NewItem = MakeShareable(new FProjectCleanerAssetBrowserItem);
-		if (!NewItem.IsValid()) continue;
-
-		NewItem->AssetData = Asset;
-
-		AssetBrowserListItems.Add(NewItem);
-	}
-
-	if (AssetBrowserListView.IsValid())
-	{
-		AssetBrowserListView->RequestListRefresh();
-	}
+	// if (!SubsystemPtr) return;
+	//
+	// AssetBrowserListItems.Reset();
+	// AssetBrowserListItems.Reserve(SubsystemPtr->GetAssetsUnused().Num());
+	//
+	// for (const auto& Asset : SubsystemPtr->GetAssetsUnused())
+	// {
+	// 	// if (!IsUnderSelectedPaths(Asset.PackagePath.ToString())) continue;
+	//
+	// 	TSharedPtr<FProjectCleanerAssetBrowserItem> NewItem = MakeShareable(new FProjectCleanerAssetBrowserItem);
+	// 	if (!NewItem.IsValid()) continue;
+	//
+	// 	NewItem->AssetData = Asset;
+	//
+	// 	AssetBrowserListItems.Add(NewItem);
+	// }
+	//
+	// if (AssetBrowserListView.IsValid())
+	// {
+	// 	AssetBrowserListView->RequestListRefresh();
+	// }
 }
 
 // TSharedRef<SWidget> SProjectCleanerTabUnusedAssets::AssetBrowserMakeFilterMenu()
@@ -1063,20 +1063,21 @@ bool SProjectCleanerTabUnusedAssets::IsUnderSelectedPaths(const FString& InFolde
 
 bool SProjectCleanerTabUnusedAssets::IsFolderEmpty(const FString& InFolderPath) const
 {
-	return SubsystemPtr->GetFoldersEmpty().Contains(InFolderPath);
+	return false;
+	// return SubsystemPtr->GetFoldersEmpty().Contains(InFolderPath);
 }
 
 bool SProjectCleanerTabUnusedAssets::IsFolderExcluded(const FString& InFolderPath) const
 {
-	for (const auto& ExcludedFolder : GetDefault<UProjectCleanerExcludeSettings>()->ExcludedFolders)
-	{
-		const FString ExcludedFolderPathAbs = SubsystemPtr->PathConvertToAbs(ExcludedFolder.Path);
-
-		if (FPaths::IsUnderDirectory(InFolderPath, ExcludedFolderPathAbs))
-		{
-			return true;
-		}
-	}
+	// for (const auto& ExcludedFolder : GetDefault<UProjectCleanerExcludeSettings>()->ExcludedFolders)
+	// {
+	// 	const FString ExcludedFolderPathAbs = SubsystemPtr->PathConvertToAbs(ExcludedFolder.Path);
+	//
+	// 	if (FPaths::IsUnderDirectory(InFolderPath, ExcludedFolderPathAbs))
+	// 	{
+	// 		return true;
+	// 	}
+	// }
 
 	return false;
 }
@@ -1085,16 +1086,16 @@ int32 SProjectCleanerTabUnusedAssets::GetFoldersTotalNum(const FString& InFolder
 {
 	int32 Num = 0;
 
-	for (const auto& Folder : SubsystemPtr->GetFoldersTotal())
-	{
-		if (!SubsystemPtr->bShowFoldersEmpty && IsFolderEmpty(Folder)) continue;
-		if (!SubsystemPtr->bShowFoldersExcluded && IsFolderExcluded(Folder)) continue;
-		if (Folder.Equals(InFolderPath)) continue;
-		if (FPaths::IsUnderDirectory(Folder, InFolderPath))
-		{
-			++Num;
-		}
-	}
+	// for (const auto& Folder : SubsystemPtr->GetFoldersTotal())
+	// {
+	// 	if (!SubsystemPtr->bShowFoldersEmpty && IsFolderEmpty(Folder)) continue;
+	// 	if (!SubsystemPtr->bShowFoldersExcluded && IsFolderExcluded(Folder)) continue;
+	// 	if (Folder.Equals(InFolderPath)) continue;
+	// 	if (FPaths::IsUnderDirectory(Folder, InFolderPath))
+	// 	{
+	// 		++Num;
+	// 	}
+	// }
 
 	return Num;
 }
@@ -1105,13 +1106,13 @@ int32 SProjectCleanerTabUnusedAssets::GetFoldersEmptyNum(const FString& InFolder
 
 	int32 Num = 0;
 
-	for (const auto& Folder : SubsystemPtr->GetFoldersEmpty())
-	{
-		if (FPaths::IsUnderDirectory(Folder, InFolderPath) && !Folder.Equals(InFolderPath))
-		{
-			++Num;
-		}
-	}
+	// for (const auto& Folder : SubsystemPtr->GetFoldersEmpty())
+	// {
+	// 	if (FPaths::IsUnderDirectory(Folder, InFolderPath) && !Folder.Equals(InFolderPath))
+	// 	{
+	// 		++Num;
+	// 	}
+	// }
 
 	return Num;
 }
@@ -1120,14 +1121,14 @@ int32 SProjectCleanerTabUnusedAssets::GetAssetsTotalNum(const FString& InFolderP
 {
 	int32 Num = 0;
 
-	for (const auto& Asset : SubsystemPtr->GetAssetsAll())
-	{
-		const FString AssetPathAbs = SubsystemPtr->PathConvertToAbs(Asset.PackagePath.ToString());
-		if (FPaths::IsUnderDirectory(AssetPathAbs, InFolderPath))
-		{
-			++Num;
-		}
-	}
+	// for (const auto& Asset : SubsystemPtr->GetAssetsAll())
+	// {
+	// 	const FString AssetPathAbs = SubsystemPtr->PathConvertToAbs(Asset.PackagePath.ToString());
+	// 	if (FPaths::IsUnderDirectory(AssetPathAbs, InFolderPath))
+	// 	{
+	// 		++Num;
+	// 	}
+	// }
 
 	return Num;
 }
@@ -1136,54 +1137,56 @@ int32 SProjectCleanerTabUnusedAssets::GetAssetsUnusedNum(const FString& InFolder
 {
 	int32 Num = 0;
 
-	for (const auto& Asset : SubsystemPtr->GetAssetsUnused())
-	{
-		const FString AssetPathAbs = SubsystemPtr->PathConvertToAbs(Asset.PackagePath.ToString());
-		if (FPaths::IsUnderDirectory(AssetPathAbs, InFolderPath))
-		{
-			++Num;
-		}
-	}
+	// for (const auto& Asset : SubsystemPtr->GetAssetsUnused())
+	// {
+	// 	const FString AssetPathAbs = SubsystemPtr->PathConvertToAbs(Asset.PackagePath.ToString());
+	// 	if (FPaths::IsUnderDirectory(AssetPathAbs, InFolderPath))
+	// 	{
+	// 		++Num;
+	// 	}
+	// }
 
 	return Num;
 }
 
 int64 SProjectCleanerTabUnusedAssets::GetSizeTotal(const FString& InFolderPath) const
 {
-	TArray<FAssetData> FilteredAssets;
-	FilteredAssets.Reserve(SubsystemPtr->GetAssetsAll().Num());
-
-	for (const auto& Asset : SubsystemPtr->GetAssetsAll())
-	{
-		const FString AssetPathAbs = SubsystemPtr->PathConvertToAbs(Asset.PackagePath.ToString());
-		if (FPaths::IsUnderDirectory(AssetPathAbs, InFolderPath))
-		{
-			FilteredAssets.Add(Asset);
-		}
-	}
-
-	FilteredAssets.Shrink();
-
-	return SubsystemPtr->GetAssetsTotalSize(FilteredAssets);
+	return 0;
+	// TArray<FAssetData> FilteredAssets;
+	// FilteredAssets.Reserve(SubsystemPtr->GetAssetsAll().Num());
+	//
+	// for (const auto& Asset : SubsystemPtr->GetAssetsAll())
+	// {
+	// 	const FString AssetPathAbs = SubsystemPtr->PathConvertToAbs(Asset.PackagePath.ToString());
+	// 	if (FPaths::IsUnderDirectory(AssetPathAbs, InFolderPath))
+	// 	{
+	// 		FilteredAssets.Add(Asset);
+	// 	}
+	// }
+	//
+	// FilteredAssets.Shrink();
+	//
+	// return SubsystemPtr->GetAssetsTotalSize(FilteredAssets);
 }
 
 int64 SProjectCleanerTabUnusedAssets::GetSizeUnused(const FString& InFolderPath) const
 {
-	TArray<FAssetData> FilteredAssets;
-	FilteredAssets.Reserve(SubsystemPtr->GetAssetsUnused().Num());
-
-	for (const auto& Asset : SubsystemPtr->GetAssetsUnused())
-	{
-		const FString AssetPathAbs = SubsystemPtr->PathConvertToAbs(Asset.PackagePath.ToString());
-		if (FPaths::IsUnderDirectory(AssetPathAbs, InFolderPath))
-		{
-			FilteredAssets.Add(Asset);
-		}
-	}
-
-	FilteredAssets.Shrink();
-
-	return SubsystemPtr->GetAssetsTotalSize(FilteredAssets);
+	return 0;
+	// TArray<FAssetData> FilteredAssets;
+	// FilteredAssets.Reserve(SubsystemPtr->GetAssetsUnused().Num());
+	//
+	// for (const auto& Asset : SubsystemPtr->GetAssetsUnused())
+	// {
+	// 	const FString AssetPathAbs = SubsystemPtr->PathConvertToAbs(Asset.PackagePath.ToString());
+	// 	if (FPaths::IsUnderDirectory(AssetPathAbs, InFolderPath))
+	// 	{
+	// 		FilteredAssets.Add(Asset);
+	// 	}
+	// }
+	//
+	// FilteredAssets.Shrink();
+	//
+	// return SubsystemPtr->GetAssetsTotalSize(FilteredAssets);
 }
 
 FSlateColor SProjectCleanerTabUnusedAssets::GetTreeViewOptionsBtnForegroundColor() const

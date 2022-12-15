@@ -15,7 +15,7 @@ void SProjectCleaner::Construct(const FArguments& InArgs, const TSharedRef<SDock
 	SubsystemPtr = GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>();
 	if (!SubsystemPtr) return;
 
-	SubsystemPtr->ProjectScan();
+	// SubsystemPtr->ProjectScan();
 
 	TabManager = FGlobalTabmanager::Get()->NewTabManager(ConstructUnderMajorTab);
 	const TSharedRef<FWorkspaceItem> AppMenuGroup = TabManager->AddLocalWorkspaceMenuCategory(FText::FromString(ProjectCleanerConstants::ModuleName.ToString()));
@@ -122,15 +122,15 @@ bool SProjectCleaner::WidgetEnabled() const
 {
 	if (!SubsystemPtr) return false;
 
-	if (
-		SubsystemPtr->AssetRegistryWorking() ||
-		SubsystemPtr->EditorInPlayMode() ||
-		SubsystemPtr->ScanningProject() ||
-		SubsystemPtr->CleaningProject()
-	)
-	{
-		return false;
-	}
+	// if (
+	// 	SubsystemPtr->AssetRegistryWorking() ||
+	// 	SubsystemPtr->EditorInPlayMode() ||
+	// 	SubsystemPtr->ScanningProject() ||
+	// 	SubsystemPtr->CleaningProject()
+	// )
+	// {
+	// 	return false;
+	// }
 
 	return true;
 }
@@ -139,15 +139,15 @@ int32 SProjectCleaner::WidgetGetIndex() const
 {
 	if (!SubsystemPtr) return ProjectCleanerConstants::WidgetIndexWorking;
 
-	if (
-		SubsystemPtr->AssetRegistryWorking() ||
-		SubsystemPtr->EditorInPlayMode() ||
-		SubsystemPtr->ScanningProject() ||
-		SubsystemPtr->CleaningProject()
-	)
-	{
-		return ProjectCleanerConstants::WidgetIndexWorking;
-	}
+	// if (
+	// 	SubsystemPtr->AssetRegistryWorking() ||
+	// 	SubsystemPtr->EditorInPlayMode() ||
+	// 	// SubsystemPtr->ScanningProject() ||
+	// 	// SubsystemPtr->CleaningProject()
+	// )
+	// {
+	// 	return ProjectCleanerConstants::WidgetIndexWorking;
+	// }
 
 	return ProjectCleanerConstants::WidgetIndexIdle;
 }
@@ -166,15 +166,15 @@ FText SProjectCleaner::WidgetText() const
 		return FText::FromString(TEXT("Please stop play mode in the editor before doing any operations in the plugin."));
 	}
 
-	if (SubsystemPtr->ScanningProject())
-	{
-		return FText::FromString(TEXT("Scanning Project ..."));
-	}
-
-	if (SubsystemPtr->CleaningProject())
-	{
-		return FText::FromString(TEXT("Cleaning Project ..."));
-	}
+	// if (SubsystemPtr->ScanningProject())
+	// {
+	// 	return FText::FromString(TEXT("Scanning Project ..."));
+	// }
+	//
+	// if (SubsystemPtr->CleaningProject())
+	// {
+	// 	return FText::FromString(TEXT("Cleaning Project ..."));
+	// }
 
 	return FText::FromString(TEXT(""));
 }
@@ -217,7 +217,7 @@ void SProjectCleaner::CreateMenuBarSettings(FMenuBuilder& MenuBuilder, const TSh
 		SubsystemPtr->bScanFolderDevelopers = !SubsystemPtr->bScanFolderDevelopers;
 		SubsystemPtr->PostEditChange();
 
-		SubsystemPtr->ProjectScan();
+		// SubsystemPtr->ProjectScan();
 	});
 	ActionScanDevFolder.CanExecuteAction = FCanExecuteAction::CreateLambda([&]()
 	{
@@ -245,7 +245,7 @@ void SProjectCleaner::CreateMenuBarSettings(FMenuBuilder& MenuBuilder, const TSh
 		SubsystemPtr->bScanFolderCollections = !SubsystemPtr->bScanFolderCollections;
 		SubsystemPtr->PostEditChange();
 
-		SubsystemPtr->ProjectScan();
+		// SubsystemPtr->ProjectScan();
 	});
 	ActionScanCollectionFolder.CanExecuteAction = FCanExecuteAction::CreateLambda([&]()
 	{

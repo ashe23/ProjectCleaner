@@ -227,27 +227,27 @@ void SProjectCleanerTabScanSettings::UpdateData()
 {
 	if (!SubsystemPtr) return;
 
-	AssetsTotalNum = SubsystemPtr->GetAssetsAll().Num();
-	AssetsTotalSize = SubsystemPtr->GetAssetsTotalSize(SubsystemPtr->GetAssetsAll());
-	AssetsIndirectNum = SubsystemPtr->GetAssetsIndirect().Num();
-	AssetsIndirectSize = SubsystemPtr->GetAssetsTotalSize(SubsystemPtr->GetAssetsIndirect());
-	AssetsExcludedNum = SubsystemPtr->GetAssetsExcluded().Num();
-	AssetsExcludedSize = SubsystemPtr->GetAssetsTotalSize(SubsystemPtr->GetAssetsExcluded());
-	AssetsUnusedNum = SubsystemPtr->GetAssetsUnused().Num();
-	AssetsUnusedSize = SubsystemPtr->GetAssetsTotalSize(SubsystemPtr->GetAssetsUnused());
-	FoldersTotalNum = SubsystemPtr->GetFoldersTotal().Num();
-	FoldersEmptyNum = SubsystemPtr->GetFoldersEmpty().Num();
-	FilesCorruptedNum = SubsystemPtr->GetFilesCorrupted().Num();
-	FilesCorruptedSize = SubsystemPtr->GetFilesTotalSize(SubsystemPtr->GetFilesCorrupted());
-	FilesNonEngineNum = SubsystemPtr->GetFilesNonEngine().Num();
-	FilesNonEngineSize = SubsystemPtr->GetFilesTotalSize(SubsystemPtr->GetFilesNonEngine());
+	// AssetsTotalNum = SubsystemPtr->GetAssetsAll().Num();
+	// AssetsTotalSize = SubsystemPtr->GetAssetsTotalSize(SubsystemPtr->GetAssetsAll());
+	// AssetsIndirectNum = SubsystemPtr->GetAssetsIndirect().Num();
+	// AssetsIndirectSize = SubsystemPtr->GetAssetsTotalSize(SubsystemPtr->GetAssetsIndirect());
+	// AssetsExcludedNum = SubsystemPtr->GetAssetsExcluded().Num();
+	// AssetsExcludedSize = SubsystemPtr->GetAssetsTotalSize(SubsystemPtr->GetAssetsExcluded());
+	// AssetsUnusedNum = SubsystemPtr->GetAssetsUnused().Num();
+	// AssetsUnusedSize = SubsystemPtr->GetAssetsTotalSize(SubsystemPtr->GetAssetsUnused());
+	// FoldersTotalNum = SubsystemPtr->GetFoldersTotal().Num();
+	// FoldersEmptyNum = SubsystemPtr->GetFoldersEmpty().Num();
+	// FilesCorruptedNum = SubsystemPtr->GetFilesCorrupted().Num();
+	// FilesCorruptedSize = SubsystemPtr->GetFilesTotalSize(SubsystemPtr->GetFilesCorrupted());
+	// FilesNonEngineNum = SubsystemPtr->GetFilesNonEngine().Num();
+	// FilesNonEngineSize = SubsystemPtr->GetFilesTotalSize(SubsystemPtr->GetFilesNonEngine());
 }
 
 FReply SProjectCleanerTabScanSettings::OnBtnScanProjectClick() const
 {
 	if (!SubsystemPtr) return FReply::Handled();
 
-	SubsystemPtr->ProjectScan();
+	// SubsystemPtr->ProjectScan();
 
 	return FReply::Handled();
 }
@@ -264,7 +264,7 @@ FReply SProjectCleanerTabScanSettings::OnBtnResetExcludeSettingsClick() const
 	ExcludeSettings->ExcludedAssets.Empty();
 	ExcludeSettings->PostEditChange();
 
-	SubsystemPtr->ProjectScan();
+	// SubsystemPtr->ProjectScan();
 
 	return FReply::Handled();
 }

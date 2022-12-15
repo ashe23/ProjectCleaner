@@ -1,15 +1,11 @@
 ﻿// Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "ProjectCleanerAsyncActions.h"
-
-#include "ProjectCleaner.h"
 #include "ProjectCleanerSubsystem.h"
 
 void UProjectCleanerScanAction::Activate()
 {
 	Super::Activate();
-
-	UE_LOG(LogProjectCleaner, Warning, TEXT("Scanning project"));
 
 	ExecuteScanProject();
 }
@@ -26,9 +22,10 @@ UProjectCleanerScanAction* UProjectCleanerScanAction::ScanProject(const FProject
 
 void UProjectCleanerScanAction::ExecuteScanProject()
 {
-	ScanResult = GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>()->ScanProject(ScanSettings);
+	if (!GEditor) return;
+	UProjectCleanerSubsystem* Subsystem = GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>();
+	if (!Subsystem) return;
 
-	// ScanResult.bSuccess ? OnScanFailed.Broadcast() : OnScanFinished.Broadcast();
-
-	OutScanResult.Broadcast(ScanResult);
+	ScanData = Subsystem->ProjectScan(ScanSettings);
+	ScanData.ScanResult == EProjectCleanerScanResult::Success ? OnScanFinished.Broadcast(ScanData) : OnScanFailed.Broadcast(ScanData);
 }
