@@ -790,11 +790,11 @@ bool UProjectCleanerSubsystem::AssetExcludedByPath(const FAssetData& AssetData) 
 
 	for (const auto& ExcludedFolder : ExcludeSettings->ExcludedFolders)
 	{
-		const FString FolderPathRel = PathConvertToAbs(ExcludedFolder.Path);
-		const FString AssetPathRel = PathConvertToAbs(AssetData.PackagePath.ToString());
+		const FString FolderPathAbs = PathConvertToAbs(ExcludedFolder.Path);
+		const FString AssetPathAbs = PathConvertToAbs(AssetData.PackagePath.ToString());
 
-		if (FolderPathRel.IsEmpty() || AssetPathRel.IsEmpty()) continue;
-		if (FPaths::IsUnderDirectory(AssetPathRel, FolderPathRel))
+		if (FolderPathAbs.IsEmpty() || AssetPathAbs.IsEmpty()) continue;
+		if (FPaths::IsUnderDirectory(AssetPathAbs, FolderPathAbs))
 		{
 			return true;
 		}
