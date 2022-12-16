@@ -63,7 +63,7 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category="ProjectCleaner", meta=(Tooltip="Returns total size of given files"))
 	int64 GetFilesTotalSize(const TSet<FString>& Files) const;
-	
+
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Returns asset class name"))
 	FString GetAssetClassName(const FAssetData& AssetData) const;
 
@@ -78,18 +78,21 @@ public:
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Returns asset class including blueprint assets."))
 	UClass* GetAssetClass(const FAssetData& AssetData) const;
-	
+
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Check if given file has engine file extension."))
 	bool FileHasEngineExtension(const FString& InFilePath) const;
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Checks if file is corrupted. Check in AssetRegistry."))
 	bool FileIsCorrupted(const FString& InFilePathAbs) const;
-	
+
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Checks if folder is empty or not"))
 	bool FolderIsEmpty(const FString& InFolderPath) const;
 
 	// C++ only functions
 	FProjectCleanerScanData ProjectScan(const FProjectCleanerScanSettings& ScanSettings);
+	void GetAssetsByPath(const FString& InFolderPathRel, const bool bRecursive, TArray<FAssetData>& Assets) const;
+	int32 GetAssetsByPathNum(const FString& InFolderPathRel, const bool bRecursive) const;
+	int64 GetAssetsByPathSize(const FString& InFolderPathRel, const bool bRecursive) const;
 	void GetAssetsExcluded(TArray<FAssetData>& AssetsExcluded) const;
 	bool AssetIsExcluded(const FAssetData& AssetData) const;
 	bool AssetRegistryWorking() const;
@@ -122,6 +125,8 @@ private:
 
 	bool bScanningProject = false;
 	bool bCleaningProject = false;
+
+	// FProjectCleanerScanData ScanData;
 
 	IPlatformFile* PlatformFile;
 	FAssetRegistryModule* ModuleAssetRegistry;

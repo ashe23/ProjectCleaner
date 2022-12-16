@@ -227,9 +227,8 @@ void SProjectCleanerTabScanSettings::UpdateData()
 {
 	if (!SubsystemPtr) return;
 
-	
-	// AssetsTotalNum = SubsystemPtr->GetAssetsAll().Num();
-	// AssetsTotalSize = SubsystemPtr->GetAssetsTotalSize(SubsystemPtr->GetAssetsAll());
+	AssetsTotalNum = SubsystemPtr->GetAssetsByPathNum(ProjectCleanerConstants::PathRelRoot.ToString(), true);
+	AssetsTotalSize = SubsystemPtr->GetAssetsByPathSize(ProjectCleanerConstants::PathRelRoot.ToString(), true);
 	// AssetsIndirectNum = SubsystemPtr->GetAssetsIndirect().Num();
 	// AssetsIndirectSize = SubsystemPtr->GetAssetsTotalSize(SubsystemPtr->GetAssetsIndirect());
 	// AssetsExcludedNum = SubsystemPtr->GetAssetsExcluded().Num();

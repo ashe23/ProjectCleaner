@@ -679,7 +679,7 @@ FProjectCleanerScanData UProjectCleanerSubsystem::ProjectScan(const FProjectClea
 	// };
 	// SlowTaskScan.MakeDialog();
 
-	
+
 	// todo:ashe23 new version of scanner, think about some caching methods
 	// - make sure asset registry is not working
 	// - make sure editor is not in play mode
@@ -714,6 +714,32 @@ FProjectCleanerScanData UProjectCleanerSubsystem::ProjectScan(const FProjectClea
 	bScanningProject = false;
 
 	return ScanData;
+}
+
+void UProjectCleanerSubsystem::GetAssetsByPath(const FString& InFolderPathRel, const bool bRecursive, TArray<FAssetData>& Assets) const
+{
+	if (InFolderPathRel.IsEmpty()) return;
+	if (!InFolderPathRel.StartsWith(ProjectCleanerConstants::PathRelRoot.ToString())) return;
+
+	Assets.Reset();
+
+	ModuleAssetRegistry->Get().GetAssetsByPath(FName{*InFolderPathRel}, Assets, bRecursive);
+}
+
+int32 UProjectCleanerSubsystem::GetAssetsByPathNum(const FString& InFolderPathRel, const bool bRecursive) const
+{
+	TArray<FAssetData> Assets;
+	GetAssetsByPath(InFolderPathRel, bRecursive, Assets);
+
+	return Assets.Num();
+}
+
+int64 UProjectCleanerSubsystem::GetAssetsByPathSize(const FString& InFolderPathRel, const bool bRecursive) const
+{
+	TArray<FAssetData> Assets;
+	GetAssetsByPath(InFolderPathRel, bRecursive, Assets);
+
+	return GetAssetsTotalSize(Assets);
 }
 
 void UProjectCleanerSubsystem::GetAssetsExcluded(TArray<FAssetData>& AssetsExcluded) const

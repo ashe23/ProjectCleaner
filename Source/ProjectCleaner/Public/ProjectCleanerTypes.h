@@ -89,6 +89,21 @@ struct FProjectCleanerIndirectAssetInfo
 	FString FilePath;
 };
 
+// /Game
+// - all sub_folders inside this folder (recursive)
+// - sub_folders inside this folder (only immidiate children)
+// - all empty sub_folders inside this folder (recursive)
+// - all non engine files inside this folder (recursive)
+// - all corrupted files inside this folder (recursive)
+// - all assets inside this folder (recursive)
+// - all unused assets inside this folder (recursive)
+// - all used assets inside this folder (recursive)
+// - all excluded assets inside this folder (recursive)
+// - all assets immidiate
+// - all unused assets immidiate
+// - all used assets immidiate
+// - all excluded assets immidiate
+
 struct FProjectCleanerFolderInfo
 {
 	FString FolderName;
