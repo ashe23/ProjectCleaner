@@ -26,71 +26,75 @@ public:
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif
 
-	bool IsAssetUnused(const FAssetData& AssetData) const;
-	
-	// functions visible only in c++
-	FProjectCleanerScanData ProjectScan(const FProjectCleanerScanSettings& ScanSettings);
-	
+	// Blueprint exposed functions
 
 	UFUNCTION(BlueprintCallable, Category="ProjectCleaner", meta=(Tooltip="Returns scan result as string"))
 	static FString ScanResultToString(const EProjectCleanerScanResult ScanResult);
 
-	UFUNCTION(BlueprintCallable, Category="ProjectCleaner", meta=(ToolTip="Return all primary assets in project"))
-	void GetAssetsPrimary(TArray<FAssetData>& Assets);
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Returns all primary assets in project"))
+	void GetAssetsPrimary(TArray<FAssetData>& AssetsPrimary) const;
 
-	UFUNCTION(BlueprintCallable, Category="ProjectCleaner", meta=(ToolTip="Returns asset class name"))
-	FString GetAssetClassName(const FAssetData& AssetData) const;
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Returns all indirect assets in project"))
+	void GetAssetsIndirect(TArray<FAssetData>& AssetsIndirect) const;
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Returns all used assets in project"))
+	void GetAssetsUsed(TArray<FAssetData>& AssetsUsed) const;
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Returns all unused assets in project"))
+	void GetAssetsUnused(TArray<FAssetData>& AssetsUnused) const;
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Returns all indirect assets infos"))
+	void GetAssetsIndirectInfo(TArray<FProjectCleanerIndirectAssetInfo>& Infos) const;
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Returns all dependency assets for given assets"))
+	void GetAssetsDependencies(const TArray<FAssetData>& Assets, TArray<FAssetData>& Dependencies) const;
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Returns all assets that have external referencers outside Content folder"))
+	void GetAssetsWithExternalRefs(TArray<FAssetData>& Assets) const;
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Returns all corrupted files inside Content folder"))
+	void GetFilesCorrupted(TArray<FString>& FilesCorrupted) const;
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Returns all non engine files inside Content folder"))
+	void GetFilesNonEngine(TArray<FString>& FilesNonEngine) const;
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(Tooltip="Returns total size of given assets"))
+	int64 GetAssetsTotalSize(const TArray<FAssetData>& Assets) const;
+
+	UFUNCTION(BlueprintCallable, Category="ProjectCleaner", meta=(Tooltip="Returns total size of given files"))
+	int64 GetFilesTotalSize(const TSet<FString>& Files) const;
 	
-	UFUNCTION(BlueprintCallable, Category="ProjectCleaner", meta=(ToolTip="Returns asset class"))
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Returns asset class name"))
+	FString GetAssetClassName(const FAssetData& AssetData) const;
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Returns normalized path"))
+	FString PathNormalize(const FString& InPath) const;
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Returns absolute path. /Game/MyFolder => {ContentDir}/MyFolder"))
+	FString PathConvertToAbs(const FString& InPath) const;
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Returns relative path. {ContentDir/MyFolder} => /Game/MyFolder"))
+	FString PathConvertToRel(const FString& InPath) const;
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Returns asset class including blueprint assets."))
 	UClass* GetAssetClass(const FAssetData& AssetData) const;
 	
-	// ============ REFACTOR =============
-	// function exposed to blueprints
-	// UFUNCTION(BlueprintCallable, Category="ProjectCleaner", meta=(Tooltip="Returns total size of given assets"))
-	// int64 GetAssetsTotalSize(const TArray<FAssetData>& Assets) const;
-	//
-	// UFUNCTION(BlueprintCallable, Category="ProjectCleaner", meta=(Tooltip="Returns total size of given files"))
-	// int64 GetFilesTotalSize(const TSet<FString>& Files) const;
-	//
-	// void GetLinkedAssets(const TArray<FAssetData>& Assets, TArray<FAssetData>& LinkedAssets);
-	//
-	// bool FileContainsIndirectAssets(const FString& FileContent);
-	// bool FileHasEngineExtension(const FString& Extension);
-	// bool FileIsCorrupted(const FString& InFilePathAbs);
-	// bool FolderIsExcluded(const FString& InPath);
-	// bool FolderIsEmpty(const FString& InPath);
-	//
-	// FString PathNormalize(const FString& InPath) const;
-	// FString PathConvertToAbs(const FString& InPath) const;
-	// FString PathConvertToRel(const FString& InPath) const;
-	//
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Check if given file has engine file extension."))
+	bool FileHasEngineExtension(const FString& InFilePath) const;
 
-	// const TArray<FAssetData>& GetAssetsAll() const;
-	// const TArray<FAssetData>& GetAssetsIndirect() const;
-	// const TArray<FAssetData>& GetAssetsExcluded() const;
-	// const TArray<FAssetData>& GetAssetsUnused() const;
-	//
-	// const TSet<FString>& GetFoldersTotal() const;
-	// const TSet<FString>& GetFoldersEmpty() const;
-	// const TSet<FString>& GetFilesCorrupted() const;
-	// const TSet<FString>& GetFilesNonEngine() const;
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Checks if file is corrupted. Check in AssetRegistry."))
+	bool FileIsCorrupted(const FString& InFilePathAbs) const;
+	
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Checks if folder is empty or not"))
+	bool FolderIsEmpty(const FString& InFolderPath) const;
 
+	// C++ only functions
+	FProjectCleanerScanData ProjectScan(const FProjectCleanerScanSettings& ScanSettings);
+	void GetAssetsExcluded(TArray<FAssetData>& AssetsExcluded) const;
+	bool AssetIsExcluded(const FAssetData& AssetData) const;
 	bool AssetRegistryWorking() const;
-	bool EditorInPlayMode() const;
-	// bool ScanningProject() const;
-	// bool CleaningProject() const;
-	// bool AssetExcluded(const FAssetData& AssetData) const;
-	// bool AssetUnused(const FAssetData& AssetData) const;
-	// bool AssetUsed(const FAssetData& AssetData) const;
-	//
-	// UFUNCTION(BlueprintCallable, Category="ProjectCleaner")
-	// void FillFolderInfos();
-	//
-	// FProjectCleanerFolderInfo CreateFolderInfo(const FString& InFolderPathAbs) const;
-	// void ProjectScan();
-	//
-	// FProjectCleanerDelegateProjectScanned& OnProjectScanned();
-
+	static bool EditorInPlayMode();
+	
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Config, Category="ProjectCleaner")
 	bool bAutoCleanEmptyFolders = true;
@@ -111,48 +115,10 @@ public:
 	bool bShowFoldersExcluded = true;
 
 private:
-	// bool CanScanProject() const;
-	// bool AssetExcludedByPath(const FAssetData& AssetData) const;
-	// bool AssetExcludedByClass(const FAssetData& AssetData) const;
-	// bool AssetExcludedByObject(const FAssetData& AssetData) const;
-
-	// void FindAssetsAll();
-	// void FindAssetsIndirect();
-	// void FindAssetsExcluded();
-	// void FindAssetsUsed();
-	// void FindAssetsUnused();
-	// void FindAssetsForbidden();
-	// void FindAssetsPrimary();
-	// void FindAssetsWithExternalRefs();
-	// void FindFoldersTotal();
-	// void FindFoldersEmpty();
-	// void FindFoldersForbidden();
-	// void FindFilesCorrupted();
-	// void FindFilesNonEngine();
-	// void ResetData();
+	bool AssetExcludedByPath(const FAssetData& AssetData) const;
+	bool AssetExcludedByClass(const FAssetData& AssetData) const;
+	bool AssetExcludedByObject(const FAssetData& AssetData) const;
 	void FixupRedirectors() const;
-
-private:
-	// // refactored functions
-	// void ExecutePreScanActions();
-	// void ExecutePostScanActions();
-
-private:
-	// TArray<FAssetData> AssetsAll;
-	// TArray<FAssetData> AssetsIndirect;
-	// TArray<FAssetData> AssetsExcluded;
-	// TArray<FAssetData> AssetsUsed;
-	// TArray<FAssetData> AssetsUnused;
-	// TArray<FAssetData> AssetsForbidden;
-	// TArray<FAssetData> AssetsPrimary;
-	// TArray<FAssetData> AssetsWithExternalRefs;
-	// TArray<FProjectCleanerIndirectAsset> AssetsIndirectInfos;
-	// TArray<FProjectCleanerFolderInfo> FolderInfos;
-	// TSet<FString> FoldersTotal;
-	// TSet<FString> FoldersEmpty;
-	// TSet<FName> FoldersForbidden;
-	// TSet<FString> FilesCorrupted;
-	// TSet<FString> FilesNonEngine;
 
 	bool bScanningProject = false;
 	bool bCleaningProject = false;
@@ -160,6 +126,4 @@ private:
 	IPlatformFile* PlatformFile;
 	FAssetRegistryModule* ModuleAssetRegistry;
 	FAssetToolsModule* ModuleAssetTools;
-
-	// FProjectCleanerDelegateProjectScanned DelegateProjectScanned;
 };

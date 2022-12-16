@@ -62,30 +62,19 @@ struct FProjectCleanerScanData
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanData")
 	TArray<FString> FilesNonEngine;
-
-	// void Empty()
-	// {
-	// 	// AssetsAll.Empty();
-	// 	// AssetsUsed.Empty();
-	// 	AssetsUnused.Empty();
-	// 	FoldersAll.Empty();
-	// 	FoldersEmpty.Empty();
-	// 	FilesCorrupted.Empty();
-	// 	FilesNonEngine.Empty();
-	// }
 };
 
 USTRUCT(BlueprintType)
-struct FProjectCleanerIndirectAsset
+struct FProjectCleanerIndirectAssetInfo
 {
 	GENERATED_BODY()
 
-	bool operator==(const FProjectCleanerIndirectAsset& Other) const
+	bool operator==(const FProjectCleanerIndirectAssetInfo& Other) const
 	{
 		return LineNum == Other.LineNum && FilePath.Equals(Other.FilePath);
 	}
 
-	bool operator!=(const FProjectCleanerIndirectAsset& Other) const
+	bool operator!=(const FProjectCleanerIndirectAssetInfo& Other) const
 	{
 		return LineNum != Other.LineNum || !FilePath.Equals(Other.FilePath);
 	}
