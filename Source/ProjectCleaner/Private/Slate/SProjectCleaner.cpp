@@ -122,15 +122,10 @@ bool SProjectCleaner::WidgetEnabled() const
 {
 	if (!SubsystemPtr) return false;
 
-	// if (
-	// 	SubsystemPtr->AssetRegistryWorking() ||
-	// 	SubsystemPtr->EditorInPlayMode() ||
-	// 	SubsystemPtr->ScanningProject() ||
-	// 	SubsystemPtr->CleaningProject()
-	// )
-	// {
-	// 	return false;
-	// }
+	if (SubsystemPtr->AssetRegistryWorking() || SubsystemPtr->EditorInPlayMode())
+	{
+		return false;
+	}
 
 	return true;
 }
@@ -139,15 +134,10 @@ int32 SProjectCleaner::WidgetGetIndex() const
 {
 	if (!SubsystemPtr) return ProjectCleanerConstants::WidgetIndexWorking;
 
-	// if (
-	// 	SubsystemPtr->AssetRegistryWorking() ||
-	// 	SubsystemPtr->EditorInPlayMode() ||
-	// 	// SubsystemPtr->ScanningProject() ||
-	// 	// SubsystemPtr->CleaningProject()
-	// )
-	// {
-	// 	return ProjectCleanerConstants::WidgetIndexWorking;
-	// }
+	if (SubsystemPtr->AssetRegistryWorking() || SubsystemPtr->EditorInPlayMode())
+	{
+		return ProjectCleanerConstants::WidgetIndexWorking;
+	}
 
 	return ProjectCleanerConstants::WidgetIndexIdle;
 }

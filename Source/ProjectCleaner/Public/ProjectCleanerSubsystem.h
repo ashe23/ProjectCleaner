@@ -94,7 +94,7 @@ public:
 	bool AssetIsExcluded(const FAssetData& AssetData) const;
 	bool AssetRegistryWorking() const;
 	static bool EditorInPlayMode();
-	
+
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Config, Category="ProjectCleaner")
 	bool bAutoCleanEmptyFolders = true;

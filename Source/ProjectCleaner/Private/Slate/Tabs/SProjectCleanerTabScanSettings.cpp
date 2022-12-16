@@ -227,6 +227,7 @@ void SProjectCleanerTabScanSettings::UpdateData()
 {
 	if (!SubsystemPtr) return;
 
+	
 	// AssetsTotalNum = SubsystemPtr->GetAssetsAll().Num();
 	// AssetsTotalSize = SubsystemPtr->GetAssetsTotalSize(SubsystemPtr->GetAssetsAll());
 	// AssetsIndirectNum = SubsystemPtr->GetAssetsIndirect().Num();
