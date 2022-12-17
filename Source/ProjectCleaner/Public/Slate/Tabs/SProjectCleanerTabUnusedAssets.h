@@ -103,7 +103,7 @@ private:
 	TSharedPtr<SWidget> GetAssetBrowserItemContextMenu() const;
 	void AssetBrowserItemsUpdate();
 	FText GetAssetBrowserItemsTotalText() const;
-	// TSharedRef<SWidget> AssetBrowserMakeFilterMenu();
+	TSharedRef<SWidget> AssetBrowserMakeFilterMenu();
 
 	bool IsUnderSelectedPaths(const FString& InFolderRel) const;
 	int32 GetFoldersTotalNum(const FString& InFolderPath) const;

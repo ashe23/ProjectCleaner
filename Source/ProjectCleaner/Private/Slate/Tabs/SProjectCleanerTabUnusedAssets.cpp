@@ -8,7 +8,9 @@
 #include "ProjectCleanerSubsystem.h"
 // Engine Headers
 #include "AssetToolsModule.h"
+#include "ContentBrowserModule.h"
 #include "IAssetTools.h"
+#include "IContentBrowserSingleton.h"
 #include "Internationalization/BreakIterator.h"
 #include "Widgets/Layout/SSeparator.h"
 #include "Widgets/Input/SSearchBox.h"
@@ -250,6 +252,32 @@ void SProjectCleanerTabUnusedAssets::Construct(const FArguments& InArgs)
 	TreeViewItemsUpdate();
 	AssetBrowserItemsUpdate();
 
+	const FContentBrowserModule& ModuleContentBrowser = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
+	
+	FAssetPickerConfig AssetPickerConfig;
+	AssetPickerConfig.InitialAssetViewType = EAssetViewType::Tile;
+	AssetPickerConfig.bCanShowFolders = true;
+	AssetPickerConfig.bAddFilterUI = true;
+	AssetPickerConfig.bPreloadAssetsForContextMenu = false;
+	AssetPickerConfig.bSortByPathInColumnView = true;
+	AssetPickerConfig.bShowPathInColumnView = true;
+	AssetPickerConfig.bShowBottomToolbar = true;
+	AssetPickerConfig.bCanShowDevelopersFolder = true;
+	AssetPickerConfig.bCanShowClasses = false;
+	AssetPickerConfig.bAllowDragging = false;
+	AssetPickerConfig.bForceShowEngineContent = false;
+	AssetPickerConfig.bCanShowRealTimeThumbnails = false;
+	AssetPickerConfig.AssetShowWarningText = FText::FromName("No assets");
+	// AssetPickerConfig.GetCurrentSelectionDelegates.Add(&CurrentSelectionDelegate);
+	// AssetPickerConfig.RefreshAssetViewDelegates.Add(&RefreshAssetViewDelegate);
+	// AssetPickerConfig.OnAssetDoubleClicked = FOnAssetDoubleClicked::CreateStatic(
+	// 	&SProjectCleanerUnusedAssetsBrowserUI::OnAssetDblClicked
+	// );
+	// AssetPickerConfig.OnGetAssetContextMenu = FOnGetAssetContextMenu::CreateRaw(
+	// 	this,
+	// 	&SProjectCleanerUnusedAssetsBrowserUI::OnGetAssetContextMenu
+	// );
+
 	ChildSlot
 	[
 		SNew(SVerticalBox)
@@ -373,7 +401,7 @@ void SProjectCleanerTabUnusedAssets::Construct(const FArguments& InArgs)
 						.ComboButtonStyle(FEditorStyle::Get(), "GenericFilters.ComboButtonStyle")
 						.ForegroundColor(FLinearColor::White)
 						.ToolTipText(FText::FromString(TEXT("Add an asset filter.")))
-						// .OnGetMenuContent(this, &SProjectCleanerTabUnusedAssets::AssetBrowserMakeFilterMenu)
+						.OnGetMenuContent(this, &SProjectCleanerTabUnusedAssets::AssetBrowserMakeFilterMenu)
 						.HasDownArrow(true)
 						.ContentPadding(FMargin(1, 0))
 						.AddMetaData<FTagMetaData>(FTagMetaData(TEXT("ContentBrowserFiltersCombo")))
@@ -424,44 +452,46 @@ void SProjectCleanerTabUnusedAssets::Construct(const FArguments& InArgs)
 				  .VAlign(VAlign_Center)
 				  .Padding(FMargin{0.0f, 5.0f})
 				[
-					SNew(SHorizontalBox)
-					+ SHorizontalBox::Slot()
-					  .FillWidth(1.0f)
-					  .HAlign(HAlign_Left)
-					  .VAlign(VAlign_Center)
-					[
-						SNew(STextBlock)
-						.Justification(ETextJustify::Center)
-						.Text_Raw(this, &SProjectCleanerTabUnusedAssets::GetAssetBrowserItemsTotalText)
-					]
-					+ SHorizontalBox::Slot()
-					  .AutoWidth()
-					  .HAlign(HAlign_Right)
-					  .VAlign(VAlign_Center)
-					[
-						SNew(SComboButton)
-						.ContentPadding(0)
-						.ForegroundColor_Raw(this, &SProjectCleanerTabUnusedAssets::GetTreeViewOptionsBtnForegroundColor)
-						.ButtonStyle(FEditorStyle::Get(), "ToggleButton")
-						.OnGetMenuContent(this, &SProjectCleanerTabUnusedAssets::GetTreeViewOptionsBtnContent) // todo:ashe23 change content
-						.ButtonContent()
-						[
-							SNew(SHorizontalBox)
-							+ SHorizontalBox::Slot()
-							  .AutoWidth()
-							  .VAlign(VAlign_Center)
-							[
-								SNew(SImage).Image(FEditorStyle::GetBrush("GenericViewButton"))
-							]
-							+ SHorizontalBox::Slot()
-							  .AutoWidth()
-							  .Padding(2, 0, 0, 0)
-							  .VAlign(VAlign_Center)
-							[
-								SNew(STextBlock).Text(FText::FromString(TEXT("View Options")))
-							]
-						]
-					]
+					ModuleContentBrowser.Get().CreateAssetPicker(AssetPickerConfig)
+					
+					// SNew(SHorizontalBox)
+					// + SHorizontalBox::Slot()
+					//   .FillWidth(1.0f)
+					//   .HAlign(HAlign_Left)
+					//   .VAlign(VAlign_Center)
+					// [
+					// 	SNew(STextBlock)
+					// 	.Justification(ETextJustify::Center)
+					// 	.Text_Raw(this, &SProjectCleanerTabUnusedAssets::GetAssetBrowserItemsTotalText)
+					// ]
+					// + SHorizontalBox::Slot()
+					//   .AutoWidth()
+					//   .HAlign(HAlign_Right)
+					//   .VAlign(VAlign_Center)
+					// [
+					// 	SNew(SComboButton)
+					// 	.ContentPadding(0)
+					// 	.ForegroundColor_Raw(this, &SProjectCleanerTabUnusedAssets::GetTreeViewOptionsBtnForegroundColor)
+					// 	.ButtonStyle(FEditorStyle::Get(), "ToggleButton")
+					// 	.OnGetMenuContent(this, &SProjectCleanerTabUnusedAssets::GetTreeViewOptionsBtnContent) // todo:ashe23 change content
+					// 	.ButtonContent()
+					// 	[
+					// 		SNew(SHorizontalBox)
+					// 		+ SHorizontalBox::Slot()
+					// 		  .AutoWidth()
+					// 		  .VAlign(VAlign_Center)
+					// 		[
+					// 			SNew(SImage).Image(FEditorStyle::GetBrush("GenericViewButton"))
+					// 		]
+					// 		+ SHorizontalBox::Slot()
+					// 		  .AutoWidth()
+					// 		  .Padding(2, 0, 0, 0)
+					// 		  .VAlign(VAlign_Center)
+					// 		[
+					// 			SNew(STextBlock).Text(FText::FromString(TEXT("View Options")))
+					// 		]
+					// 	]
+					// ]
 				]
 			]
 		]
@@ -1050,9 +1080,28 @@ FText SProjectCleanerTabUnusedAssets::GetAssetBrowserItemsTotalText() const
 	return FText::FromString(FString::Printf(TEXT("%d item%s"), AssetBrowserListItems.Num(), AssetBrowserListItems.Num() == 1 ? TEXT("") : TEXT("s")));
 }
 
-// TSharedRef<SWidget> SProjectCleanerTabUnusedAssets::AssetBrowserMakeFilterMenu()
-// {
-// }
+TSharedRef<SWidget> SProjectCleanerTabUnusedAssets::AssetBrowserMakeFilterMenu()
+{
+	FMenuBuilder MenuBuilder(true, nullptr, nullptr, true);
+
+	MenuBuilder.BeginSection("ContentBrowserResetFilters");
+	{
+		MenuBuilder.AddMenuEntry(
+			FText::FromString(TEXT("Reset Filters")),
+			FText::FromString(TEXT("Resets current filter selection")),
+			FSlateIcon(),
+			FUIAction()
+		);
+	}
+	MenuBuilder.EndSection();
+
+	return
+		SNew(SVerticalBox)
+		+ SVerticalBox::Slot()
+		[
+			MenuBuilder.MakeWidget()
+		];
+}
 
 bool SProjectCleanerTabUnusedAssets::IsUnderSelectedPaths(const FString& InFolderRel) const
 {

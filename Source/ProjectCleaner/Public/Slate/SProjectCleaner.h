@@ -28,6 +28,7 @@ private:
 	void CreateMenuBarTabs(FMenuBuilder& MenuBuilder, const TSharedPtr<FTabManager> TabManagerPtr) const;
 	
 	TSharedRef<SDockTab> OnTabSpawnScanSettings(const FSpawnTabArgs& Args) const;
+	TSharedRef<SDockTab> OnTabSpawnScanInfo(const FSpawnTabArgs& Args) const;
 	TSharedRef<SDockTab> OnTabSpawnUnusedAssets(const FSpawnTabArgs& Args) const;
 
 	TSharedPtr<FTabManager> TabManager;
