@@ -3,7 +3,6 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "ProjectCleanerConstants.h"
 #include "ProjectCleanerTypes.generated.h"
 
 UENUM(BlueprintType)
@@ -11,7 +10,6 @@ enum class EProjectCleanerScanResult : uint8
 {
 	None,
 	Success,
-	// InvalidScanSettings,
 	AssetRegistryWorking,
 	EditorInPlayMode,
 	ScanningInProgress,
@@ -42,11 +40,23 @@ struct FProjectCleanerScanData
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanData")
 	EProjectCleanerScanResult ScanResult = EProjectCleanerScanResult::None;
 
-	// UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanData")
-	// TArray<FAssetData> AssetsAll;
-	//
-	// UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanData")
-	// TArray<FAssetData> AssetsUsed;
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanData")
+	TArray<FAssetData> AssetsTotal;
+	
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanData")
+	TArray<FAssetData> AssetsUsed;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanData")
+	TArray<FAssetData> AssetsPrimary;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanData")
+	TArray<FAssetData> AssetsIndirect;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanData")
+	TArray<FAssetData> AssetsExcluded;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanData")
+	TArray<FAssetData> AssetsUsedDependencies;
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanData")
 	TArray<FAssetData> AssetsUnused;
@@ -88,88 +98,3 @@ struct FProjectCleanerIndirectAssetInfo
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="Indirect Asset")
 	FString FilePath;
 };
-
-// /Game
-// - all sub_folders inside this folder (recursive)
-// - sub_folders inside this folder (only immidiate children)
-// - all empty sub_folders inside this folder (recursive)
-// - all non engine files inside this folder (recursive)
-// - all corrupted files inside this folder (recursive)
-// - all assets inside this folder (recursive)
-// - all unused assets inside this folder (recursive)
-// - all used assets inside this folder (recursive)
-// - all excluded assets inside this folder (recursive)
-// - all assets immidiate
-// - all unused assets immidiate
-// - all used assets immidiate
-// - all excluded assets immidiate
-
-struct FProjectCleanerFolderInfo
-{
-	FString FolderName;
-	FString FolderPathAbs;
-	FString FolderPathRel;
-
-	TArray<FString> FoldersTotal; // all folders inside this folder (recursive)
-	TArray<FString> FoldersChild; // first level of child folders
-	TArray<FString> FoldersEmpty;
-
-	TArray<FString> FilesTotal; // all files inside this files
-	TArray<FString> FilesChild; // first level of child files
-
-	TArray<FAssetData> AssetsTotal;
-	TArray<FAssetData> AssetsChild;
-	TArray<FAssetData> AssetsUnusedTotal;
-	TArray<FAssetData> AssetsUnusedChild;
-	TArray<FAssetData> AssetsUsedTotal;
-	TArray<FAssetData> AssetsUsedChild;
-	TArray<FAssetData> AssetsExcludedTotal;
-	TArray<FAssetData> AssetsExcludedChild;
-
-	bool operator==(const FProjectCleanerFolderInfo& Other) const
-	{
-		return FolderPathAbs == Other.FolderPathAbs;
-	}
-
-	bool operator!=(const FProjectCleanerFolderInfo& Other) const
-	{
-		return FolderPathAbs != Other.FolderPathAbs;
-	}
-};
-
-
-// USTRUCT(BlueprintType)
-// struct FProjectCleanerScanResult
-// {
-// 	GENERATED_BODY()
-//
-// 	// UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanResult")
-// 	// bool bSuccess = false;
-//
-// 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanResult")
-// 	EProjectCleanerScanFailReason FailReason = EProjectCleanerScanFailReason::None;
-//
-// 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanResult")
-// 	FString ErrorMsg;
-//
-// 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanResult")
-// 	TArray<FAssetData> AssetsTotal;
-//
-// 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanResult")
-// 	TArray<FAssetData> AssetsUsed;
-//
-// 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanResult")
-// 	TArray<FAssetData> AssetsUnused;
-//
-// 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanResult")
-// 	TArray<FString> FilesCorrupted;
-//
-// 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanResult")
-// 	TArray<FString> FilesNonEngine;
-//
-// 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanResult")
-// 	TArray<FString> FoldersTotal;
-//
-// 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanResult")
-// 	TArray<FString> FoldersEmpty;
-// };

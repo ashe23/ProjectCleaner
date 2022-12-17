@@ -1,18 +1,18 @@
 ﻿// Copyright Ashot Barkhudaryan. All Rights Reserved.
 
-#include "ProjectCleanerAsyncActions.h"
+#include "Actions/ProjectCleanerActionScanAsync.h"
 #include "ProjectCleanerSubsystem.h"
 
-void UProjectCleanerScanAction::Activate()
+void UProjectCleanerActionScanAsync::Activate()
 {
 	Super::Activate();
 
 	ExecuteScanProject();
 }
 
-UProjectCleanerScanAction* UProjectCleanerScanAction::ScanProject(const FProjectCleanerScanSettings& ScanSettings)
+UProjectCleanerActionScanAsync* UProjectCleanerActionScanAsync::ScanProject(const FProjectCleanerScanSettings& ScanSettings)
 {
-	UProjectCleanerScanAction* BlueprintNode = NewObject<UProjectCleanerScanAction>();
+	UProjectCleanerActionScanAsync* BlueprintNode = NewObject<UProjectCleanerActionScanAsync>();
 	if (!BlueprintNode) return nullptr;
 
 	BlueprintNode->ScanSettings = ScanSettings;
@@ -20,7 +20,7 @@ UProjectCleanerScanAction* UProjectCleanerScanAction::ScanProject(const FProject
 	return BlueprintNode;
 }
 
-void UProjectCleanerScanAction::ExecuteScanProject()
+void UProjectCleanerActionScanAsync::ExecuteScanProject()
 {
 	if (!GEditor) return;
 	UProjectCleanerSubsystem* Subsystem = GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>();

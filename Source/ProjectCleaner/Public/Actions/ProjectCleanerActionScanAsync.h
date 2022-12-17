@@ -4,21 +4,20 @@
 
 #include "Kismet/BlueprintAsyncActionBase.h"
 #include "ProjectCleanerTypes.h"
-#include "ProjectCleanerAsyncActions.generated.h"
+#include "ProjectCleanerActionScanAsync.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FProjectCleanerScanDelegate, const FProjectCleanerScanData&, ScanData);
 
-
 UCLASS()
-class UProjectCleanerScanAction final : public UBlueprintAsyncActionBase
+class UProjectCleanerActionScanAsync final : public UBlueprintAsyncActionBase
 {
 	GENERATED_BODY()
 
 public:
 	virtual void Activate() override;
 
-	UFUNCTION(BlueprintCallable, Category="ProjectCleanerScanner", meta=(ToolTip="Scans project for unused assets", BlueprintInternalUseOnly="true"))
-	static UProjectCleanerScanAction* ScanProject(const FProjectCleanerScanSettings& ScanSettings);
+	UFUNCTION(BlueprintCallable, Category="ProjectCleanerScanner", meta=(ToolTip="Scans project for unused assets, empty folders and other scan data info.", BlueprintInternalUseOnly="true"))
+	static UProjectCleanerActionScanAsync* ScanProject(const FProjectCleanerScanSettings& ScanSettings);
 
 private:
 	UFUNCTION()
@@ -29,6 +28,7 @@ public:
 	FProjectCleanerScanDelegate OnScanFailed;
 	UPROPERTY(BlueprintAssignable)
 	FProjectCleanerScanDelegate OnScanFinished;
+
 private:
 	FProjectCleanerScanSettings ScanSettings;
 	FProjectCleanerScanData ScanData;

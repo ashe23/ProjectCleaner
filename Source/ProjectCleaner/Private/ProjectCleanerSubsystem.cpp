@@ -53,7 +53,6 @@ FString UProjectCleanerSubsystem::ScanResultToString(const EProjectCleanerScanRe
 		case EProjectCleanerScanResult::EditorInPlayMode: return TEXT("Cant scan project because Editor is in Play mode");
 		case EProjectCleanerScanResult::ScanningInProgress: return TEXT("Scanning in progress");
 		case EProjectCleanerScanResult::CleaningInProgress: return TEXT("Cleaning in progress");
-		// case EProjectCleanerScanResult::InvalidScanSettings: return TEXT("Invalid Scan Settings");
 		case EProjectCleanerScanResult::FailedToSaveAssets: return TEXT("Cant scan project because failed to save some assets");
 		default: return TEXT("");
 	}
@@ -654,12 +653,6 @@ FProjectCleanerScanData UProjectCleanerSubsystem::ProjectScan(const FProjectClea
 		ScanData.ScanResult = EProjectCleanerScanResult::CleaningInProgress;
 		return ScanData;
 	}
-
-	// if (!ScanSettings.IsValid())
-	// {
-	// 	ScanData.ScanResult = EProjectCleanerScanResult::InvalidScanSettings;
-	// 	return ScanData;
-	// }
 
 	GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->CloseAllAssetEditors();
 	FixupRedirectors();
