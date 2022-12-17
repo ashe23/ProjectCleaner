@@ -356,6 +356,19 @@ bool UProjectCleanerSubsystem::EditorInPlayMode()
 	return GEditor->PlayWorld || GIsPlayInEditorWorld;
 }
 
+bool UProjectCleanerSubsystem::FolderIsExcluded(const FString& InFolderPath) const
+{
+	for (const auto& ExcludedFolder : GetDefault<UProjectCleanerExcludeSettings>()->ExcludedFolders)
+	{
+		if (FPaths::IsUnderDirectory(PathConvertToAbs(InFolderPath), PathConvertToAbs(ExcludedFolder.Path)))
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
 FProjectCleanerDelegateProjectScanned& UProjectCleanerSubsystem::OnProjectScanned()
 {
 	return DelegateProjectScanned;
@@ -789,7 +802,7 @@ void UProjectCleanerSubsystem::FindFolders()
 		
 		ScanData.FoldersAll.AddUnique(FolderPathAbs);
 		
-		if (FolderIsEmpty(FolderPathAbs))
+		if (FolderIsEmpty(FolderPathAbs) && !FolderIsExcluded(FolderPathAbs))
 		{
 			ScanData.FoldersEmpty.AddUnique(FolderPathAbs);
 		}

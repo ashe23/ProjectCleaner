@@ -102,11 +102,10 @@ private:
 	TSharedRef<ITableRow> OnGenerateWidgetForTileView(TSharedPtr<FProjectCleanerAssetBrowserItem> InItem, const TSharedRef<STableViewBase>& OwnerTable) const;
 	TSharedPtr<SWidget> GetAssetBrowserItemContextMenu() const;
 	void AssetBrowserItemsUpdate();
+	FText GetAssetBrowserItemsTotalText() const;
 	// TSharedRef<SWidget> AssetBrowserMakeFilterMenu();
 
 	bool IsUnderSelectedPaths(const FString& InFolderRel) const;
-	bool IsFolderEmpty(const FString& InFolderPath) const;
-	bool IsFolderExcluded(const FString& InFolderPath) const;
 	int32 GetFoldersTotalNum(const FString& InFolderPath) const;
 	int32 GetFoldersEmptyNum(const FString& InFolderPath) const;
 	int32 GetAssetsTotalNum(const FString& InFolderPath) const;

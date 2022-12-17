@@ -62,6 +62,7 @@ public:
 	bool ScanningInProgress() const;
 	bool CleaningInProgress() const;
 	static bool EditorInPlayMode();
+	bool FolderIsExcluded(const FString& InFolderPath) const;
 	FProjectCleanerDelegateProjectScanned& OnProjectScanned();
 
 private:
