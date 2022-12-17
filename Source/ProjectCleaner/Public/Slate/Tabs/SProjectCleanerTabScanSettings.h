@@ -22,11 +22,18 @@ protected:
 	void UpdateData();
 
 	FReply OnBtnScanProjectClick() const;
+	FReply OnBtnCleanProjectClick() const;
+	FReply OnBtnCleanEmptyFoldersClick() const;
 	FReply OnBtnResetExcludeSettingsClick() const;
 
+	bool BtnCleanProjectEnabled() const;
+	bool BtnCleanEmptyFolderEnabled() const;
+
 	FText GetTextAssetsTotal() const;
+	FText GetTextAssetsUsed() const;
 	FText GetTextAssetsIndirect() const;
 	FText GetTextAssetsExcluded() const;
+	FText GetTextAssetsPrimary() const;
 	FText GetTextAssetsUnused() const;
 	FText GetTextFoldersTotal() const;
 	FText GetTextFoldersEmpty() const;
@@ -39,18 +46,22 @@ protected:
 
 private:
 	int32 AssetsTotalNum = 0;
+	int32 AssetsPrimaryNum = 0;
 	int32 AssetsIndirectNum = 0;
 	int32 AssetsExcludedNum = 0;
 	int32 AssetsUnusedNum = 0;
+	int32 AssetsUsedNum = 0;
 	int32 FoldersTotalNum = 0;
 	int32 FoldersEmptyNum = 0;
 	int32 FilesCorruptedNum = 0;
 	int32 FilesNonEngineNum = 0;
 
 	int64 AssetsTotalSize = 0;
+	int64 AssetsPrimarySize = 0;
 	int64 AssetsIndirectSize = 0;
 	int64 AssetsExcludedSize = 0;
 	int64 AssetsUnusedSize = 0;
+	int64 AssetsUsedSize = 0;
 	int64 FilesCorruptedSize = 0;
 	int64 FilesNonEngineSize = 0;
 

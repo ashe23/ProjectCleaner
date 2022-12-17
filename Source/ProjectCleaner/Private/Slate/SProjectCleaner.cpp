@@ -15,7 +15,7 @@ void SProjectCleaner::Construct(const FArguments& InArgs, const TSharedRef<SDock
 	SubsystemPtr = GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>();
 	if (!SubsystemPtr) return;
 
-	// SubsystemPtr->ProjectScan();
+	SubsystemPtr->ProjectScan();
 
 	TabManager = FGlobalTabmanager::Get()->NewTabManager(ConstructUnderMajorTab);
 	const TSharedRef<FWorkspaceItem> AppMenuGroup = TabManager->AddLocalWorkspaceMenuCategory(FText::FromString(ProjectCleanerConstants::ModuleName.ToString()));
@@ -194,62 +194,6 @@ void SProjectCleaner::CreateMenuBarSettings(FMenuBuilder& MenuBuilder, const TSh
 		FText::FromString(TEXT("Automatically delete empty folders after cleaning a project of unused assets. By default, it is enabled.")),
 		FSlateIcon(),
 		ActionAutoDeleteEmptyFolders,
-		NAME_None,
-		EUserInterfaceActionType::ToggleButton
-	);
-	MenuBuilder.EndSection();
-
-	FUIAction ActionScanDevFolder;
-	ActionScanDevFolder.ExecuteAction = FExecuteAction::CreateLambda([&]()
-	{
-		if (!SubsystemPtr) return;
-
-		SubsystemPtr->bScanFolderDevelopers = !SubsystemPtr->bScanFolderDevelopers;
-		SubsystemPtr->PostEditChange();
-
-		// SubsystemPtr->ProjectScan();
-	});
-	ActionScanDevFolder.CanExecuteAction = FCanExecuteAction::CreateLambda([&]()
-	{
-		return SubsystemPtr != nullptr;
-	});
-	ActionScanDevFolder.GetActionCheckState = FGetActionCheckState::CreateLambda([&]()
-	{
-		return SubsystemPtr && SubsystemPtr->bScanFolderDevelopers ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
-	});
-	MenuBuilder.BeginSection(TEXT("SectionScan"), FText::FromString(TEXT("Scan Settings")));
-	MenuBuilder.AddMenuEntry(
-		FText::FromString(TEXT("Scan Developers Folder")),
-		FText::FromString(TEXT("")),
-		FSlateIcon(),
-		ActionScanDevFolder,
-		NAME_None,
-		EUserInterfaceActionType::ToggleButton
-	);
-
-	FUIAction ActionScanCollectionFolder;
-	ActionScanCollectionFolder.ExecuteAction = FExecuteAction::CreateLambda([&]()
-	{
-		if (!SubsystemPtr) return;
-
-		SubsystemPtr->bScanFolderCollections = !SubsystemPtr->bScanFolderCollections;
-		SubsystemPtr->PostEditChange();
-
-		// SubsystemPtr->ProjectScan();
-	});
-	ActionScanCollectionFolder.CanExecuteAction = FCanExecuteAction::CreateLambda([&]()
-	{
-		return SubsystemPtr != nullptr;
-	});
-	ActionScanCollectionFolder.GetActionCheckState = FGetActionCheckState::CreateLambda([&]()
-	{
-		return SubsystemPtr && SubsystemPtr->bScanFolderCollections ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
-	});
-	MenuBuilder.AddMenuEntry(
-		FText::FromString(TEXT("Scan Collections Folders")),
-		FText::FromString(TEXT("")),
-		FSlateIcon(),
-		ActionScanCollectionFolder,
 		NAME_None,
 		EUserInterfaceActionType::ToggleButton
 	);

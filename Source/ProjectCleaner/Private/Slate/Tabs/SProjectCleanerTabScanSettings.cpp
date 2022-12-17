@@ -14,7 +14,10 @@ void SProjectCleanerTabScanSettings::Construct(const FArguments& InArgs)
 	SubsystemPtr = GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>();
 	if (!SubsystemPtr) return;
 
-	// SubsystemPtr->OnProjectScanned().AddDynamic(this, &SProjectCleanerTabScanSettings::UpdateData);
+	SubsystemPtr->OnProjectScanned().AddLambda([&]()
+	{
+		UpdateData();
+	});
 
 	FPropertyEditorModule& PropertyEditor = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
 	FDetailsViewArgs DetailsViewArgs;
@@ -64,13 +67,13 @@ void SProjectCleanerTabScanSettings::Construct(const FArguments& InArgs)
 			[
 				SNew(SButton)
 				.ContentPadding(FMargin{5.0f})
-				// .OnClicked_Raw(this, &SProjectCleanerTabScanSettings::OnBtnCleanProjectClick)
-				// .IsEnabled_Raw(this, &SProjectCleanerTabScanSettings::BtnCleanProjectEnabled)
+				.OnClicked_Raw(this, &SProjectCleanerTabScanSettings::OnBtnCleanProjectClick)
+				.IsEnabled_Raw(this, &SProjectCleanerTabScanSettings::BtnCleanProjectEnabled)
 				.ButtonColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Red"))
 				[
 					SNew(STextBlock)
 					.Justification(ETextJustify::Center)
-					.ToolTipText(FText::FromString(TEXT("Remove all unused assets from the project. This won't delete any excluded assets.")))
+					.ToolTipText(FText::FromString(TEXT("Remove all unused assets from the project.")))
 					.ColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.White"))
 					.ShadowOffset(FVector2D{1.5f, 1.5f})
 					.ShadowColorAndOpacity(FLinearColor::Black)
@@ -84,8 +87,8 @@ void SProjectCleanerTabScanSettings::Construct(const FArguments& InArgs)
 			[
 				SNew(SButton)
 				.ContentPadding(FMargin{5.0f})
-				// .OnClicked_Raw(this, &SProjectCleanerTabScanSettings::OnBtnDeleteEmptyFoldersClick)
-				// .IsEnabled_Raw(this, &SProjectCleanerTabScanSettings::BtnCleanEmptyFoldersEnabled)
+				.OnClicked_Raw(this, &SProjectCleanerTabScanSettings::OnBtnCleanEmptyFoldersClick)
+				.IsEnabled_Raw(this, &SProjectCleanerTabScanSettings::BtnCleanEmptyFolderEnabled)
 				.ButtonColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Red"))
 				[
 					SNew(STextBlock)
@@ -123,13 +126,31 @@ void SProjectCleanerTabScanSettings::Construct(const FArguments& InArgs)
 			[
 				SNew(STextBlock)
 				.Font(FProjectCleanerStyles::GetFont("Bold", 13))
+				.ColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.GreenBright"))
+				.Text_Raw(this, &SProjectCleanerTabScanSettings::GetTextAssetsUsed)
+			]
+			+ SVerticalBox::Slot()
+			  .AutoHeight()
+			  .Padding(FMargin{20.0f, 0.0f, 0.0f, 0.0f})
+			[
+				SNew(STextBlock)
+				.Font(FProjectCleanerStyles::GetFont("Bold", 11))
+				.Text_Raw(this, &SProjectCleanerTabScanSettings::GetTextAssetsPrimary)
+			]
+			+ SVerticalBox::Slot()
+			  .AutoHeight()
+			  .Padding(FMargin{20.0f, 0.0f, 0.0f, 0.0f})
+			[
+				SNew(STextBlock)
+				.Font(FProjectCleanerStyles::GetFont("Bold", 11))
 				.Text_Raw(this, &SProjectCleanerTabScanSettings::GetTextAssetsIndirect)
 			]
 			+ SVerticalBox::Slot()
-			.AutoHeight()
+			  .AutoHeight()
+			  .Padding(FMargin{20.0f, 0.0f, 0.0f, 0.0f})
 			[
 				SNew(STextBlock)
-				.Font(FProjectCleanerStyles::GetFont("Bold", 13))
+				.Font(FProjectCleanerStyles::GetFont("Bold", 11))
 				.ColorAndOpacity_Raw(this, &SProjectCleanerTabScanSettings::GetTextColorAssetsExcluded)
 				.Text_Raw(this, &SProjectCleanerTabScanSettings::GetTextAssetsExcluded)
 			]
@@ -227,29 +248,63 @@ void SProjectCleanerTabScanSettings::UpdateData()
 {
 	if (!SubsystemPtr) return;
 
-	AssetsTotalNum = SubsystemPtr->GetAssetsByPathNum(ProjectCleanerConstants::PathRelRoot.ToString(), true);
-	AssetsTotalSize = SubsystemPtr->GetAssetsByPathSize(ProjectCleanerConstants::PathRelRoot.ToString(), true);
-	// AssetsIndirectNum = SubsystemPtr->GetAssetsIndirect().Num();
-	// AssetsIndirectSize = SubsystemPtr->GetAssetsTotalSize(SubsystemPtr->GetAssetsIndirect());
-	// AssetsExcludedNum = SubsystemPtr->GetAssetsExcluded().Num();
-	// AssetsExcludedSize = SubsystemPtr->GetAssetsTotalSize(SubsystemPtr->GetAssetsExcluded());
-	// AssetsUnusedNum = SubsystemPtr->GetAssetsUnused().Num();
-	// AssetsUnusedSize = SubsystemPtr->GetAssetsTotalSize(SubsystemPtr->GetAssetsUnused());
-	// FoldersTotalNum = SubsystemPtr->GetFoldersTotal().Num();
-	// FoldersEmptyNum = SubsystemPtr->GetFoldersEmpty().Num();
-	// FilesCorruptedNum = SubsystemPtr->GetFilesCorrupted().Num();
-	// FilesCorruptedSize = SubsystemPtr->GetFilesTotalSize(SubsystemPtr->GetFilesCorrupted());
-	// FilesNonEngineNum = SubsystemPtr->GetFilesNonEngine().Num();
-	// FilesNonEngineSize = SubsystemPtr->GetFilesTotalSize(SubsystemPtr->GetFilesNonEngine());
+	const FProjectCleanerScanData& ScanData = SubsystemPtr->GetScanData();
+
+	AssetsTotalNum = ScanData.AssetsAll.Num();
+	AssetsTotalSize = SubsystemPtr->GetAssetsTotalSize(ScanData.AssetsAll);
+	AssetsPrimaryNum = ScanData.AssetsPrimary.Num();
+	AssetsPrimarySize = SubsystemPtr->GetAssetsTotalSize(ScanData.AssetsPrimary);
+	AssetsIndirectNum = ScanData.AssetsIndirect.Num();
+	AssetsIndirectSize = SubsystemPtr->GetAssetsTotalSize(ScanData.AssetsIndirect);
+	AssetsExcludedNum = ScanData.AssetsExcluded.Num();
+	AssetsExcludedSize = SubsystemPtr->GetAssetsTotalSize(ScanData.AssetsExcluded);
+	AssetsUnusedNum = ScanData.AssetsUnused.Num();
+	AssetsUnusedSize = SubsystemPtr->GetAssetsTotalSize(ScanData.AssetsUnused);
+	AssetsUsedNum = ScanData.AssetsUsed.Num();
+	AssetsUsedSize = SubsystemPtr->GetAssetsTotalSize(ScanData.AssetsUsed);
+	FoldersTotalNum = ScanData.FoldersAll.Num();
+	FoldersEmptyNum = ScanData.FoldersEmpty.Num();
+	FilesCorruptedNum = ScanData.FilesCorrupted.Num();
+	FilesCorruptedSize = SubsystemPtr->GetFilesTotalSize(ScanData.FilesCorrupted);
+	FilesNonEngineNum = ScanData.FilesNonEngine.Num();
+	FilesNonEngineSize = SubsystemPtr->GetFilesTotalSize(ScanData.FilesNonEngine);
 }
 
 FReply SProjectCleanerTabScanSettings::OnBtnScanProjectClick() const
 {
 	if (!SubsystemPtr) return FReply::Handled();
 
-	// SubsystemPtr->ProjectScan();
+	SubsystemPtr->ProjectScan();
 
 	return FReply::Handled();
+}
+
+FReply SProjectCleanerTabScanSettings::OnBtnCleanProjectClick() const
+{
+	if (!SubsystemPtr) return FReply::Handled();
+
+	// SubsystemPtr->ProjectClean();
+
+	return FReply::Handled();
+}
+
+FReply SProjectCleanerTabScanSettings::OnBtnCleanEmptyFoldersClick() const
+{
+	if (!SubsystemPtr) return FReply::Handled();
+
+	// SubsystemPtr->ProjectClean();
+
+	return FReply::Handled();
+}
+
+bool SProjectCleanerTabScanSettings::BtnCleanProjectEnabled() const
+{
+	return SubsystemPtr && SubsystemPtr->CanScanProject() && SubsystemPtr->GetScanData().AssetsUnused.Num() > 0;
+}
+
+bool SProjectCleanerTabScanSettings::BtnCleanEmptyFolderEnabled() const
+{
+	return SubsystemPtr && SubsystemPtr->CanScanProject() && SubsystemPtr->GetScanData().FoldersEmpty.Num() > 0;
 }
 
 FReply SProjectCleanerTabScanSettings::OnBtnResetExcludeSettingsClick() const
@@ -264,7 +319,7 @@ FReply SProjectCleanerTabScanSettings::OnBtnResetExcludeSettingsClick() const
 	ExcludeSettings->ExcludedAssets.Empty();
 	ExcludeSettings->PostEditChange();
 
-	// SubsystemPtr->ProjectScan();
+	SubsystemPtr->ProjectScan();
 
 	return FReply::Handled();
 }
@@ -274,14 +329,24 @@ FText SProjectCleanerTabScanSettings::GetTextAssetsTotal() const
 	return FText::FromString(FString::Printf(TEXT("Assets Total - %d (%s)"), AssetsTotalNum, *FText::AsMemory(AssetsTotalSize).ToString()));
 }
 
+FText SProjectCleanerTabScanSettings::GetTextAssetsUsed() const
+{
+	return FText::FromString(FString::Printf(TEXT("Assets Used - %d (%s)"), AssetsUsedNum, *FText::AsMemory(AssetsUsedSize).ToString()));
+}
+
 FText SProjectCleanerTabScanSettings::GetTextAssetsIndirect() const
 {
-	return FText::FromString(FString::Printf(TEXT("Assets Indirect - %d (%s)"), AssetsIndirectNum, *FText::AsMemory(AssetsIndirectSize).ToString()));
+	return FText::FromString(FString::Printf(TEXT("Indirect - %d (%s)"), AssetsIndirectNum, *FText::AsMemory(AssetsIndirectSize).ToString()));
 }
 
 FText SProjectCleanerTabScanSettings::GetTextAssetsExcluded() const
 {
-	return FText::FromString(FString::Printf(TEXT("Assets Excluded - %d (%s)"), AssetsExcludedNum, *FText::AsMemory(AssetsExcludedSize).ToString()));
+	return FText::FromString(FString::Printf(TEXT("Excluded - %d (%s)"), AssetsExcludedNum, *FText::AsMemory(AssetsExcludedSize).ToString()));
+}
+
+FText SProjectCleanerTabScanSettings::GetTextAssetsPrimary() const
+{
+	return FText::FromString(FString::Printf(TEXT("Primary - %d (%s)"), AssetsPrimaryNum, *FText::AsMemory(AssetsPrimarySize).ToString()));
 }
 
 FText SProjectCleanerTabScanSettings::GetTextAssetsUnused() const

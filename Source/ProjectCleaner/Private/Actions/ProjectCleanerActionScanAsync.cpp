@@ -26,6 +26,7 @@ void UProjectCleanerActionScanAsync::ExecuteScanProject()
 	UProjectCleanerSubsystem* Subsystem = GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>();
 	if (!Subsystem) return;
 
-	ScanData = Subsystem->ProjectScan(ScanSettings);
+	Subsystem->ProjectScan(ScanSettings);
+	ScanData = Subsystem->GetScanData();
 	ScanData.ScanResult == EProjectCleanerScanResult::Success ? OnScanFinished.Broadcast(ScanData) : OnScanFailed.Broadcast(ScanData);
 }

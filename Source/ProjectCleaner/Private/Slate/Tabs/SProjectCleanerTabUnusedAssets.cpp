@@ -762,20 +762,6 @@ TSharedPtr<FProjectCleanerTreeViewItem> SProjectCleanerTabUnusedAssets::TreeView
 {
 	if (!SubsystemPtr) return {};
 
-	if (!SubsystemPtr->bScanFolderDevelopers && FPaths::IsUnderDirectory(InFolderPathAbs, FPaths::ConvertRelativePathToFull(FPaths::GameDevelopersDir())))
-	{
-		return {};
-	}
-
-	if (
-		!SubsystemPtr->bScanFolderCollections &&
-		FPaths::IsUnderDirectory(InFolderPathAbs, FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / TEXT("Collections"))) ||
-		FPaths::IsUnderDirectory(InFolderPathAbs, FPaths::ConvertRelativePathToFull(FPaths::GameUserDeveloperDir() / TEXT("Collections")))
-	)
-	{
-		return {};
-	}
-
 	const bool bIsProjectContentFolder = InFolderPathAbs.Equals(FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() / TEXT("Content")));
 	const bool bIsProjectDeveloperFolder = InFolderPathAbs.Equals(FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() / TEXT("Developers")));
 
