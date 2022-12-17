@@ -41,6 +41,9 @@ struct FProjectCleanerScanData
 	EProjectCleanerScanResult ScanResult = EProjectCleanerScanResult::None;
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanData")
+	FString ScanResultMsg;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanData")
 	TArray<FAssetData> AssetsTotal;
 	
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanData")

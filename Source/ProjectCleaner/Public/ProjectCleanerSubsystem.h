@@ -28,9 +28,6 @@ public:
 
 	// Blueprint exposed functions
 
-	UFUNCTION(BlueprintCallable, Category="ProjectCleaner", meta=(Tooltip="Returns scan result as string"))
-	static FString ScanResultToString(const EProjectCleanerScanResult ScanResult);
-
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Returns all primary assets in project"))
 	void GetAssetsPrimary(TArray<FAssetData>& AssetsPrimary) const;
 
@@ -97,6 +94,8 @@ public:
 	bool AssetIsExcluded(const FAssetData& AssetData) const;
 	bool AssetRegistryWorking() const;
 	static bool EditorInPlayMode();
+private:
+	static FString ScanResultToString(const EProjectCleanerScanResult ScanResult);
 
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Config, Category="ProjectCleaner")

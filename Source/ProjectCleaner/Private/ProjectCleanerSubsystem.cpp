@@ -633,24 +633,28 @@ FProjectCleanerScanData UProjectCleanerSubsystem::ProjectScan(const FProjectClea
 	if (AssetRegistryWorking())
 	{
 		ScanData.ScanResult = EProjectCleanerScanResult::AssetRegistryWorking;
+		ScanData.ScanResultMsg = ScanResultToString(ScanData.ScanResult);
 		return ScanData;
 	}
 
 	if (EditorInPlayMode())
 	{
 		ScanData.ScanResult = EProjectCleanerScanResult::EditorInPlayMode;
+		ScanData.ScanResultMsg = ScanResultToString(ScanData.ScanResult);
 		return ScanData;
 	}
 
 	if (bScanningProject)
 	{
 		ScanData.ScanResult = EProjectCleanerScanResult::ScanningInProgress;
+		ScanData.ScanResultMsg = ScanResultToString(ScanData.ScanResult);
 		return ScanData;
 	}
 
 	if (bCleaningProject)
 	{
 		ScanData.ScanResult = EProjectCleanerScanResult::CleaningInProgress;
+		ScanData.ScanResultMsg = ScanResultToString(ScanData.ScanResult);
 		return ScanData;
 	}
 
@@ -660,6 +664,7 @@ FProjectCleanerScanData UProjectCleanerSubsystem::ProjectScan(const FProjectClea
 	if (!FEditorFileUtils::SaveDirtyPackages(false, true, true, false, false, false))
 	{
 		ScanData.ScanResult = EProjectCleanerScanResult::FailedToSaveAssets;
+		ScanData.ScanResultMsg = ScanResultToString(ScanData.ScanResult);
 		return ScanData;
 	}
 
