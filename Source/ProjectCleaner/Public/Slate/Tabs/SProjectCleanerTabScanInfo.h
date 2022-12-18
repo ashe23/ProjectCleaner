@@ -3,6 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "IContentBrowserSingleton.h"
+#include "ContentBrowserDelegates.h"
 #include "Widgets/SCompoundWidget.h"
 
 class UProjectCleanerSubsystem;
@@ -17,10 +19,23 @@ public:
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
-private:
-	void UpdateView();
-	void UpdateTreeView();
-	void UpdateAssetBrowser();
 
-	UProjectCleanerSubsystem* Subsystem = nullptr;
+private:
+	void CommandsRegister();
+
+	void TreeViewUpdate();
+
+	FARFilter AssetBrowserCreateFilter() const;
+	TSharedPtr<SWidget> AssetBrowserContextMenuCreate(const TArray<FAssetData>& SelectedAssets) const;
+
+	bool bFilterExcludeActive = false;
+	bool bFilterPrimaryActive = false;
+	
+	TSharedPtr<FUICommandList> Cmds;
+	FGetCurrentSelectionDelegate AssetBrowserDelegateSelection;
+	FRefreshAssetViewDelegate AssetBrowserDelegateRefreshView;
+	FSetARFilterDelegate AssetBrowserDelegateFilter;
+	// FAssetPickerConfig AssetPickerConfig;
+	// FARFilter Filter;
+	UProjectCleanerSubsystem* SubsystemPtr = nullptr;
 };

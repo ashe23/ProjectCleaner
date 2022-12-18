@@ -601,7 +601,7 @@ void UProjectCleanerSubsystem::FindAssetsExcluded()
 	{
 		SlowTask.EnterProgressFrame(1.0f, FText::FromString(FString::Printf(TEXT("%s"), *Asset.AssetName.ToString())));
 
-		if (AssetIsExcluded(Asset))
+		if (AssetIsExcluded(Asset) && !ScanData.AssetsPrimary.Contains(Asset)) // todo:ashe23 correctly filter excluded assets, must not show primary or forbidden assets in content browser
 		{
 			ScanData.AssetsExcluded.AddUnique(Asset);
 		}
