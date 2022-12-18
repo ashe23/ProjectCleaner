@@ -3,7 +3,6 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "IContentBrowserSingleton.h"
 #include "ContentBrowserDelegates.h"
 #include "Widgets/SCompoundWidget.h"
 
@@ -35,7 +34,5 @@ private:
 	FGetCurrentSelectionDelegate AssetBrowserDelegateSelection;
 	FRefreshAssetViewDelegate AssetBrowserDelegateRefreshView;
 	FSetARFilterDelegate AssetBrowserDelegateFilter;
-	// FAssetPickerConfig AssetPickerConfig;
-	// FARFilter Filter;
 	UProjectCleanerSubsystem* SubsystemPtr = nullptr;
 };

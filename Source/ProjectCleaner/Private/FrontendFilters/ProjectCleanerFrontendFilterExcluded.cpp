@@ -25,7 +25,7 @@ FText FFrontendFilterExcludedAssets::GetToolTipText() const
 
 FLinearColor FFrontendFilterExcludedAssets::GetColor() const
 {
-	return FLinearColor::Yellow;
+	return FLinearColor{FColor::FromHex(TEXT("#ffcb77"))};
 }
 
 void FFrontendFilterExcludedAssets::ActiveStateChanged(bool bActive)

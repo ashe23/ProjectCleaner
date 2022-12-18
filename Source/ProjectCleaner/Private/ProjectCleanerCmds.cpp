@@ -43,6 +43,14 @@ void FProjectCleanerCmds::RegisterCommands()
 	);
 
 	UI_COMMAND(
+		AssetLocateInBrowser,
+		"Locate in ContentBrowser",
+		"Show selected assets in main ContentBrowser",
+		EUserInterfaceActionType::Button,
+		FInputChord()
+	);
+
+	UI_COMMAND(
 		AssetExclude,
 		"Exclude Asset",
 		"Exclude selected assets",
@@ -54,6 +62,22 @@ void FProjectCleanerCmds::RegisterCommands()
 		AssetExcludeByType,
 		"Exclude Assets By Type",
 		"Exclude assets of selected types",
+		EUserInterfaceActionType::Button,
+		FInputChord()
+	);
+
+	UI_COMMAND(
+		AssetDelete,
+		"Delete",
+		"Delete selected assets",
+		EUserInterfaceActionType::Button,
+		FInputChord()
+	);
+
+	UI_COMMAND(
+		AssetDeleteLinked,
+		"Delete Linked",
+		"Delete selected assets plus all unused linked assets",
 		EUserInterfaceActionType::Button,
 		FInputChord()
 	);
