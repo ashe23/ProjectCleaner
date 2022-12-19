@@ -24,14 +24,6 @@ void SProjectCleanerTabScanInfo::Construct(const FArguments& InArgs)
 	const FContentBrowserModule& ModuleContentBrowser = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
 
 	CommandsRegister();
-	
-	// SubsystemPtr->OnProjectScanned().AddRaw([this]()
-	// {
-	// 	if (AssetBrowserDelegateFilter.IsBound())
-	// 	{
-	// 		AssetBrowserDelegateFilter.Execute(AssetBrowserCreateFilter());
-	// 	}
-	// });
 
 	FAssetPickerConfig AssetPickerConfig;
 	AssetPickerConfig.bAllowNullSelection = false;

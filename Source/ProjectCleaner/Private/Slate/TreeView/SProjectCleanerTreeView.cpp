@@ -195,73 +195,71 @@ void SProjectCleanerTreeView::CommandsRegister()
 
 void SProjectCleanerTreeView::ItemsUpdate()
 {
-	// if (!SubsystemPtr) return;
-	//
-	// Items.Reset();
-	//
-	// if (!TreeView.IsValid())
-	// {
-	// 	SAssignNew(TreeView, STreeView<TSharedPtr<FProjectCleanerTreeViewItem>>)
-	// 	.TreeItemsSource(&Items)
-	// 	.SelectionMode(ESelectionMode::Multi)
-	// 	.OnGenerateRow(this, &SProjectCleanerTreeView::OnGenerateRow)
-	// 	.OnGetChildren(this, &SProjectCleanerTreeView::OnGetChildren)
-	// 	.OnContextMenuOpening_Raw(this, &SProjectCleanerTreeView::GetItemContextMenu)
-	// 	.HeaderRow(GetHeaderRow())
-	// 	.OnMouseButtonDoubleClick(this, &SProjectCleanerTreeView::OnItemMouseDblClick)
-	// 	.OnSelectionChanged(this, &SProjectCleanerTreeView::OnSelectionChange)
-	// 	.OnExpansionChanged(this, &SProjectCleanerTreeView::OnExpansionChange);
-	// }
-	//
-	// // caching expanded and selected items in order to keep them , when we updating data
-	// ItemsExpanded.Reset();
-	// ItemsSelected.Reset();
-	// TreeView->GetExpandedItems(ItemsExpanded);
-	// TreeView->GetSelectedItems(ItemsSelected);
-	// TreeView->ClearHighlightedItems();
-	//
-	// const TSharedPtr<FProjectCleanerTreeViewItem> RootItem = ItemCreate(FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() / TEXT("Content")));
-	// if (!RootItem) return;
-	//
-	// // traversing and filling its child items
-	// TArray<TSharedPtr<FProjectCleanerTreeViewItem>> Temp;
-	// TArray<TSharedPtr<FProjectCleanerTreeViewItem>> Stack;
-	// Stack.Push(RootItem);
-	// Items.AddUnique(RootItem);
-	//
-	// // if (ItemsExpanded.Num() == 0)
-	// // {
-	// // 	TreeView->SetItemExpansion(RootItem, true);
-	// // }
-	// //
-	// // if (ItemsSelected.Num() == 0)
-	// // {
-	// // 	TreeView->SetItemSelection(RootItem, true);
-	// // }
-	//
-	// while (Stack.Num() > 0)
-	// {
-	// 	const auto CurrentItem = Stack.Pop();
-	//
-	// 	TArray<FString> SubFolders;
-	// 	IFileManager::Get().FindFiles(SubFolders, *(CurrentItem->FolderPathAbs / TEXT("*")), false, true);
-	//
-	// 	CurrentItem->SubItems.Reserve(SubFolders.Num());
-	//
-	// 	for (const auto& SubFolder : SubFolders)
-	// 	{
-	// 		const TSharedPtr<FProjectCleanerTreeViewItem> SubDirItem = ItemCreate(CurrentItem->FolderPathAbs / SubFolder);
-	// 		if (!SubDirItem.IsValid()) continue;
-	//
-	// 		CurrentItem->SubItems.Add(SubDirItem);
-	// 		Temp.Add(SubDirItem);
-	// 		Stack.Push(SubDirItem);
-	// 	}
-	// }
-	//
-	// // todo:ashe23 code below causes engine to crash 
-	//
-	// TreeView->RequestTreeRefresh();
+	if (!SubsystemPtr) return;
+	
+	Items.Reset();
+	
+	if (!TreeView.IsValid())
+	{
+		SAssignNew(TreeView, STreeView<TSharedPtr<FProjectCleanerTreeViewItem>>)
+		.TreeItemsSource(&Items)
+		.SelectionMode(ESelectionMode::Multi)
+		.OnGenerateRow(this, &SProjectCleanerTreeView::OnGenerateRow)
+		.OnGetChildren(this, &SProjectCleanerTreeView::OnGetChildren)
+		.OnContextMenuOpening_Raw(this, &SProjectCleanerTreeView::GetItemContextMenu)
+		.HeaderRow(GetHeaderRow())
+		.OnMouseButtonDoubleClick(this, &SProjectCleanerTreeView::OnItemMouseDblClick)
+		.OnSelectionChanged(this, &SProjectCleanerTreeView::OnSelectionChange)
+		.OnExpansionChanged(this, &SProjectCleanerTreeView::OnExpansionChange);
+	}
+	
+	// caching expanded and selected items in order to keep them , when we updating data
+	ItemsExpanded.Reset();
+	ItemsSelected.Reset();
+	TreeView->GetExpandedItems(ItemsExpanded);
+	TreeView->GetSelectedItems(ItemsSelected);
+	TreeView->ClearHighlightedItems();
+	
+	const TSharedPtr<FProjectCleanerTreeViewItem> RootItem = ItemCreate(FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() / TEXT("Content")));
+	if (!RootItem) return;
+	
+	// traversing and filling its child items
+	TArray<TSharedPtr<FProjectCleanerTreeViewItem>> Temp;
+	TArray<TSharedPtr<FProjectCleanerTreeViewItem>> Stack;
+	Stack.Push(RootItem);
+	Items.AddUnique(RootItem);
+	
+	if (ItemsExpanded.Num() == 0)
+	{
+		TreeView->SetItemExpansion(RootItem, true);
+	}
+	
+	if (ItemsSelected.Num() == 0)
+	{
+		TreeView->SetItemSelection(RootItem, true);
+	}
+	
+	while (Stack.Num() > 0)
+	{
+		const auto CurrentItem = Stack.Pop();
+	
+		TArray<FString> SubFolders;
+		IFileManager::Get().FindFiles(SubFolders, *(CurrentItem->FolderPathAbs / TEXT("*")), false, true);
+	
+		CurrentItem->SubItems.Reserve(SubFolders.Num());
+	
+		for (const auto& SubFolder : SubFolders)
+		{
+			const TSharedPtr<FProjectCleanerTreeViewItem> SubDirItem = ItemCreate(CurrentItem->FolderPathAbs / SubFolder);
+			if (!SubDirItem.IsValid()) continue;
+	
+			CurrentItem->SubItems.Add(SubDirItem);
+			Temp.Add(SubDirItem);
+			Stack.Push(SubDirItem);
+		}
+	}
+	
+	TreeView->RequestTreeRefresh();
 }
 
 TSharedPtr<FProjectCleanerTreeViewItem> SProjectCleanerTreeView::ItemCreate(const FString& InFolderPathAbs) const
@@ -294,26 +292,26 @@ TSharedPtr<FProjectCleanerTreeViewItem> SProjectCleanerTreeView::ItemCreate(cons
 	if (!SubsystemPtr->bShowFoldersEmpty && !bIsProjectContentFolder && TreeItem->bEmpty) return {};
 	if (!SubsystemPtr->bShowFoldersExcluded && !bIsProjectContentFolder && TreeItem->bExcluded) return {};
 
-	// for (const auto& ExpandedItem : ItemsExpanded)
-	// {
-	// 	if (ExpandedItem->FolderPathAbs.Equals(TreeItem->FolderPathAbs))
-	// 	{
-	// 		TreeItem->bExpanded = true;
-	// 		TreeView->SetItemExpansion(TreeItem, true);
-	// 		break;
-	// 	}
-	// }
-	//
-	// // todo:ashe23 add to selected paths?
-	// for (const auto& SelectedItem : ItemsSelected)
-	// {
-	// 	if (SelectedItem->FolderPathAbs.Equals(TreeItem->FolderPathAbs))
-	// 	{
-	// 		TreeView->SetItemSelection(TreeItem, true);
-	// 		TreeView->SetItemHighlighted(TreeItem, true);
-	// 		break;
-	// 	}
-	// }
+	for (const auto& ExpandedItem : ItemsExpanded)
+	{
+		if (ExpandedItem->FolderPathAbs.Equals(TreeItem->FolderPathAbs))
+		{
+			TreeItem->bExpanded = true;
+			TreeView->SetItemExpansion(TreeItem, true);
+			break;
+		}
+	}
+	
+	// todo:ashe23 add to selected paths?
+	for (const auto& SelectedItem : ItemsSelected)
+	{
+		if (SelectedItem->FolderPathAbs.Equals(TreeItem->FolderPathAbs))
+		{
+			TreeView->SetItemSelection(TreeItem, true);
+			TreeView->SetItemHighlighted(TreeItem, true);
+			break;
+		}
+	}
 
 	return TreeItem;
 }

@@ -17,7 +17,7 @@
 		{
 			"Name": "ProjectCleaner",
 			"Type": "Editor",
-			"LoadingPhase": "PostEngineInit",
+			"LoadingPhase": "PostDefault",
 			"WhitelistPlatforms": [
 				"Win64",
 				"Win32",

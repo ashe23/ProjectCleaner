@@ -36,7 +36,7 @@ struct FProjectCleanerIndirectAssetInfo
 	FAssetData AssetData;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="Indirect Asset")
-	int32 LineNum;
+	int32 LineNum = 0;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="Indirect Asset")
 	FString FilePath;

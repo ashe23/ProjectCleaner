@@ -227,11 +227,11 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnScanSettings(const FSpawnTabArgs
 TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnScanInfo(const FSpawnTabArgs& Args) const
 {
 	return
-	SNew(SDockTab)
-	.TabRole(PanelTab)
-	.Label(FText::FromString(TEXT("Scan Info")))
-	.Icon(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconTabScanInfo16"))
-	[
-		SNew(SProjectCleanerTabScanInfo)
-	];
+		SNew(SDockTab)
+		.TabRole(PanelTab)
+		.Label(FText::FromString(TEXT("Scan Info")))
+		.Icon(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconTabScanInfo16"))
+		[
+			SNew(SProjectCleanerTabScanInfo)
+		];
 }
