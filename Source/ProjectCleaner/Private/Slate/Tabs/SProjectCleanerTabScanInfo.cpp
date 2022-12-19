@@ -5,6 +5,7 @@
 #include "FrontendFilters/ProjectCleanerFrontendFilterExcluded.h"
 #include "FrontendFilters/ProjectCleanerFrontendFilterPrimary.h"
 #include "FrontendFilters/ProjectCleanerFrontendFilterUsed.h"
+#include "FrontendFilters/ProjectCleanerFrontendFilterIndirect.h"
 #include "ProjectCleanerCmds.h"
 #include "ProjectCleanerSubsystem.h"
 // Engine Headers
@@ -87,6 +88,7 @@ void SProjectCleanerTabScanInfo::Construct(const FArguments& InArgs)
 	const TSharedPtr<FFrontendFilterExcludedAssets> FilterExcluded = MakeShareable(new FFrontendFilterExcludedAssets(DefaultCategory));
 	const TSharedPtr<FFrontendFilterPrimaryAssets> FilterPrimary = MakeShareable(new FFrontendFilterPrimaryAssets(DefaultCategory));
 	const TSharedPtr<FFrontendFilterUsedAssets> FilterUsed = MakeShareable(new FFrontendFilterUsedAssets(DefaultCategory));
+	const TSharedPtr<FFrontendFilterIndirectAssets> FilterIndirect = MakeShareable(new FFrontendFilterIndirectAssets(DefaultCategory));
 
 	FilterExcluded->OnFilterChange().AddLambda([&](const bool bActive)
 	{
@@ -112,10 +114,19 @@ void SProjectCleanerTabScanInfo::Construct(const FArguments& InArgs)
 			AssetBrowserDelegateFilter.Execute(AssetBrowserCreateFilter());
 		}
 	});
+	FilterIndirect->OnFilterChange().AddLambda([&](const bool bActive)
+	{
+		bFilterIndirectActive = bActive;
+		if (AssetBrowserDelegateFilter.IsBound())
+		{
+			AssetBrowserDelegateFilter.Execute(AssetBrowserCreateFilter());
+		}
+	});
 
 	AssetPickerConfig.ExtraFrontendFilters.Add(FilterExcluded.ToSharedRef());
 	AssetPickerConfig.ExtraFrontendFilters.Add(FilterPrimary.ToSharedRef());
 	AssetPickerConfig.ExtraFrontendFilters.Add(FilterUsed.ToSharedRef());
+	AssetPickerConfig.ExtraFrontendFilters.Add(FilterIndirect.ToSharedRef());
 
 	ChildSlot
 	[
@@ -446,6 +457,14 @@ FARFilter SProjectCleanerTabScanInfo::AssetBrowserCreateFilter() const
 			}
 		}
 
+		if (bFilterIndirectActive)
+		{
+			for (const auto& Asset : SubsystemPtr->GetScanData().AssetsIndirect)
+			{
+				Filter.PackageNames.Emplace(Asset.PackageName);
+			}
+		}
+
 		return Filter;
 	}
 
@@ -469,15 +488,15 @@ FARFilter SProjectCleanerTabScanInfo::AssetBrowserCreateFilter() const
 
 bool SProjectCleanerTabScanInfo::FilterAnyEnabled() const
 {
-	return bFilterExcludeActive || bFilterPrimaryActive || bFilterUsedActive;
+	return bFilterExcludeActive || bFilterPrimaryActive || bFilterUsedActive || bFilterIndirectActive;
 }
 
 bool SProjectCleanerTabScanInfo::FilterAllDisabled() const
 {
-	return !bFilterExcludeActive && !bFilterPrimaryActive && !bFilterUsedActive;
+	return !bFilterExcludeActive && !bFilterPrimaryActive && !bFilterUsedActive && !bFilterIndirectActive;
 }
 
 bool SProjectCleanerTabScanInfo::FilterAllEnabled() const
 {
-	return bFilterExcludeActive && bFilterPrimaryActive && bFilterUsedActive;
+	return bFilterExcludeActive && bFilterPrimaryActive && bFilterUsedActive && bFilterIndirectActive;
 }

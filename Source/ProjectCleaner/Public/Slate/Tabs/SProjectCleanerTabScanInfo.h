@@ -33,6 +33,7 @@ private:
 	bool bFilterExcludeActive = false;
 	bool bFilterPrimaryActive = false;
 	bool bFilterUsedActive = false;
+	bool bFilterIndirectActive = false;
 	
 	TSharedPtr<FUICommandList> Cmds;
 	FGetCurrentSelectionDelegate AssetBrowserDelegateSelection;
