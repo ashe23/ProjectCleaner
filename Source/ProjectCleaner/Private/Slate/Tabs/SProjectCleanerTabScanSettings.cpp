@@ -14,11 +14,6 @@ void SProjectCleanerTabScanSettings::Construct(const FArguments& InArgs)
 	SubsystemPtr = GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>();
 	if (!SubsystemPtr) return;
 
-	SubsystemPtr->OnProjectScanned().AddLambda([&]()
-	{
-		UpdateData();
-	});
-
 	FPropertyEditorModule& PropertyEditor = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
 	FDetailsViewArgs DetailsViewArgs;
 	DetailsViewArgs.bUpdatesFromSelection = false;
@@ -242,11 +237,17 @@ void SProjectCleanerTabScanSettings::Construct(const FArguments& InArgs)
 			]
 		]
 	];
+
+	SubsystemPtr->OnProjectScanned().AddLambda([&]()
+	{
+		UpdateData();
+	});
 }
 
 void SProjectCleanerTabScanSettings::UpdateData()
 {
 	if (!SubsystemPtr) return;
+	if (!SubsystemPtr->IsValidLowLevel()) return;
 
 	const FProjectCleanerScanData& ScanData = SubsystemPtr->GetScanData();
 

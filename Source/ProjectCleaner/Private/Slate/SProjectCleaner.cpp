@@ -2,12 +2,11 @@
 
 #include "Slate/SProjectCleaner.h"
 #include "Slate/Tabs/SProjectCleanerTabScanSettings.h"
+#include "Slate/Tabs/SProjectCleanerTabScanInfo.h"
 #include "ProjectCleanerConstants.h"
 #include "ProjectCleanerStyles.h"
 #include "ProjectCleanerSubsystem.h"
 // Engine Headers
-#include "Slate/Tabs/SProjectCleanerTabScanInfo.h"
-#include "Slate/Tabs/SProjectCleanerTabUnusedAssets.h"
 #include "Widgets/Layout/SWidgetSwitcher.h"
 
 void SProjectCleaner::Construct(const FArguments& InArgs, const TSharedRef<SDockTab>& ConstructUnderMajorTab, const TSharedPtr<SWindow>& ConstructUnderWindow)
@@ -16,7 +15,7 @@ void SProjectCleaner::Construct(const FArguments& InArgs, const TSharedRef<SDock
 	SubsystemPtr = GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>();
 	if (!SubsystemPtr) return;
 
-	SubsystemPtr->ProjectScan();
+	// SubsystemPtr->ProjectScan();
 
 	TabManager = FGlobalTabmanager::Get()->NewTabManager(ConstructUnderMajorTab);
 	const TSharedRef<FWorkspaceItem> AppMenuGroup = TabManager->AddLocalWorkspaceMenuCategory(FText::FromString(ProjectCleanerConstants::ModuleName.ToString()));
@@ -235,16 +234,4 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnScanInfo(const FSpawnTabArgs& Ar
 	[
 		SNew(SProjectCleanerTabScanInfo)
 	];
-}
-
-TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnUnusedAssets(const FSpawnTabArgs& Args) const
-{
-	return
-		SNew(SDockTab)
-		.TabRole(PanelTab)
-		.Label(FText::FromString(TEXT("Scan Info")))
-		.Icon(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconTabScanInfo16"))
-		[
-			SNew(SProjectCleanerTabScanInfo)
-		];
 }

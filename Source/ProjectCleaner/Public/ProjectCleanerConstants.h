@@ -16,7 +16,6 @@ namespace ProjectCleanerConstants
 	static const FName TabProjectCleaner{TEXT("TabProjectCleaner")};
 	static const FName TabScanSettings{TEXT("TabScanSettings")};
 	static const FName TabScanInfo{TEXT("TabScanInfo")};
-	static const FName TabUnusedAssets{TEXT("TabUnusedAssets")};
 	static const FName TabIndirectAssets{TEXT("TabIndirectAssets")};
 	static const FName TabCorruptedAssets{TEXT("TabCorruptedAssets")};
 	static const FName TabNonEngineFiles{TEXT("TabNonEngineFiles")};

@@ -147,8 +147,11 @@ int64 UProjectCleanerSubsystem::GetAssetsTotalSize(const TArray<FAssetData>& Ass
 
 	for (const auto& Asset : Assets)
 	{
+		if (!Asset.IsValid()) continue;
+		
 		const auto AssetPackageData = ModuleAssetRegistry->Get().GetAssetPackageData(Asset.PackageName);
 		if (!AssetPackageData) continue;
+		
 		Size += AssetPackageData->DiskSize;
 	}
 

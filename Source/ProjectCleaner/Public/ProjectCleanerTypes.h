@@ -101,3 +101,34 @@ struct FProjectCleanerScanData
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanData")
 	TArray<FString> FilesNonEngine;
 };
+
+struct FProjectCleanerTreeViewItem
+{
+	FString FolderPathAbs;
+	FString FolderPathRel;
+	FString FolderName;
+	int32 FoldersTotal = 0;
+	int32 FoldersEmpty = 0;
+	int64 SizeTotal = 0;
+	int64 SizeUnused = 0;
+	int32 AssetsTotal = 0;
+	int32 AssetsUnused = 0;
+	bool bDevFolder = false;
+	bool bExpanded = false;
+	bool bExcluded = false;
+	bool bEmpty = false;
+	float PercentUnused = 0.0f; // 0 - 100 range
+	float PercentUnusedNormalized = 0.0f; // 0 - 1 range
+
+	TArray<TSharedPtr<FProjectCleanerTreeViewItem>> SubItems;
+
+	bool operator==(const FProjectCleanerTreeViewItem& Other) const
+	{
+		return FolderPathAbs.Equals(Other.FolderPathAbs);
+	}
+
+	bool operator!=(const FProjectCleanerTreeViewItem& Other) const
+	{
+		return !FolderPathAbs.Equals(Other.FolderPathAbs);
+	}
+};

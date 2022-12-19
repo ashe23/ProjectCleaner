@@ -6,3 +6,4 @@
 
 DECLARE_MULTICAST_DELEGATE(FProjectCleanerDelegateProjectScanned);
 DECLARE_MULTICAST_DELEGATE_OneParam(FProjectCleanerDelegateFilterChanged, const bool)
+DECLARE_DELEGATE_OneParam(FProjectCleanerDelegateTreeViewPathSelected, const TSet<FString>&)

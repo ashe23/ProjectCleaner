@@ -1,6 +1,7 @@
 ﻿// Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "Slate/Tabs/SProjectCleanerTabScanInfo.h"
+#include "Slate/TreeView/SProjectCleanerTreeView.h"
 #include "Settings/ProjectCleanerExcludeSettings.h"
 #include "FrontendFilters/ProjectCleanerFrontendFilterExcluded.h"
 #include "FrontendFilters/ProjectCleanerFrontendFilterPrimary.h"
@@ -12,6 +13,7 @@
 #include "ContentBrowserModule.h"
 #include "IContentBrowserSingleton.h"
 #include "ObjectTools.h"
+#include "ProjectCleaner.h"
 
 void SProjectCleanerTabScanInfo::Construct(const FArguments& InArgs)
 {
@@ -22,14 +24,14 @@ void SProjectCleanerTabScanInfo::Construct(const FArguments& InArgs)
 	const FContentBrowserModule& ModuleContentBrowser = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
 
 	CommandsRegister();
-
-	SubsystemPtr->OnProjectScanned().AddLambda([&]()
-	{
-		if (AssetBrowserDelegateFilter.IsBound())
-		{
-			AssetBrowserDelegateFilter.Execute(AssetBrowserCreateFilter());
-		}
-	});
+	
+	// SubsystemPtr->OnProjectScanned().AddRaw([this]()
+	// {
+	// 	if (AssetBrowserDelegateFilter.IsBound())
+	// 	{
+	// 		AssetBrowserDelegateFilter.Execute(AssetBrowserCreateFilter());
+	// 	}
+	// });
 
 	FAssetPickerConfig AssetPickerConfig;
 	AssetPickerConfig.bAllowNullSelection = false;
@@ -141,9 +143,8 @@ void SProjectCleanerTabScanInfo::Construct(const FArguments& InArgs)
 			.Orientation(Orient_Vertical)
 			+ SSplitter::Slot()
 			[
-				SNew(STextBlock)
-				.Text(FText::FromString(TEXT("TreeView")))
-				// todo:ashe23
+				SNew(SProjectCleanerTreeView)
+				.OnPathSelected_Raw(this, &SProjectCleanerTabScanInfo::OnTreeViewPathSelected)
 			]
 			+ SSplitter::Slot()
 			[
@@ -157,75 +158,14 @@ void SProjectCleanerTabScanInfo::Construct(const FArguments& InArgs)
 			]
 		]
 	];
-}
-
-void SProjectCleanerTabScanInfo::TreeViewUpdate()
-{
+	
+	SubsystemPtr->OnProjectScanned().AddRaw(this, &SProjectCleanerTabScanInfo::OnProjectScanned);
 }
 
 void SProjectCleanerTabScanInfo::CommandsRegister()
 {
 	Cmds = MakeShareable(new FUICommandList);
-	Cmds->MapAction
-	(
-		FProjectCleanerCmds::Get().PathExclude,
-		FUIAction
-		(
-			FExecuteAction::CreateLambda([&]()
-			{
-				// if (!TreeView.IsValid()) return;
-				// if (!SubsystemPtr) return;
-				//
-				// UProjectCleanerExcludeSettings* ExcludeSettings = GetMutableDefault<UProjectCleanerExcludeSettings>();
-				// if (!ExcludeSettings) return;
-				//
-				// const auto Items = TreeView->GetSelectedItems();
-				// for (const auto& Item : Items)
-				// {
-				// 	if (!FPaths::DirectoryExists(Item->FolderPathAbs)) continue;
-				//
-				// 	ExcludeSettings->ExcludedFolders.Add(FDirectoryPath{Item->FolderPathRel});
-				// }
-				//
-				// ExcludeSettings->PostEditChange();
-				//
-				// SubsystemPtr->ProjectScan();
-			}),
-			FCanExecuteAction::CreateLambda([&]
-			{
-				return false;
-				// return TreeView.IsValid() && TreeView.Get()->GetSelectedItems().Num() > 0;
-			}),
-			FIsActionChecked::CreateLambda([] { return true; }),
-			FIsActionButtonVisible::CreateLambda([&]() { return false; })
-		)
-	);
-	Cmds->MapAction
-	(
-		FProjectCleanerCmds::Get().PathShowInExplorer,
-		FUIAction
-		(
-			FExecuteAction::CreateLambda([&]()
-			{
-				// if (!TreeView.IsValid()) return;
-				//
-				// const auto Items = TreeView->GetSelectedItems();
-				// for (const auto& Item : Items)
-				// {
-				// 	if (!FPaths::DirectoryExists(Item->FolderPathAbs)) continue;
-				//
-				// 	FPlatformProcess::ExploreFolder(*Item->FolderPathAbs);
-				// }
-			}),
-			FCanExecuteAction::CreateLambda([&]
-			{
-				return false;
-				// return TreeView.IsValid() && TreeView.Get()->GetSelectedItems().Num() > 0;
-			}),
-			FIsActionChecked::CreateLambda([] { return true; }),
-			FIsActionButtonVisible::CreateLambda([&]() { return false; })
-		)
-	);
+
 	Cmds->MapAction
 	(
 		FProjectCleanerCmds::Get().AssetLocateInBrowser,
@@ -425,9 +365,35 @@ void SProjectCleanerTabScanInfo::CommandsRegister()
 	);
 }
 
+void SProjectCleanerTabScanInfo::OnProjectScanned() const
+{
+	if (AssetBrowserDelegateFilter.IsBound())
+	{
+		AssetBrowserDelegateFilter.Execute(AssetBrowserCreateFilter());
+	}
+}
+
+void SProjectCleanerTabScanInfo::OnTreeViewPathSelected(const TSet<FString>& InSelectedPaths)
+{
+	SelectedPaths = InSelectedPaths;
+	
+	if (AssetBrowserDelegateFilter.IsBound())
+	{
+		AssetBrowserDelegateFilter.Execute(AssetBrowserCreateFilter());
+	}
+}
+
 FARFilter SProjectCleanerTabScanInfo::AssetBrowserCreateFilter() const
 {
 	FARFilter Filter;
+
+	if (SelectedPaths.Num() > 0)
+	{
+		for (const auto& SelectedPath : SelectedPaths)
+		{
+			Filter.PackagePaths.AddUnique(FName{*SelectedPath});
+		}
+	}
 
 	if (FilterAnyEnabled())
 	{

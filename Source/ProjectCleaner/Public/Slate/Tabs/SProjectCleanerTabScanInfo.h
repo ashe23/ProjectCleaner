@@ -7,6 +7,7 @@
 #include "Widgets/SCompoundWidget.h"
 
 class UProjectCleanerSubsystem;
+class SProjectCleanerTreeView;
 
 class SProjectCleanerTabScanInfo final : public SCompoundWidget
 {
@@ -21,9 +22,8 @@ public:
 
 private:
 	void CommandsRegister();
-
-	void TreeViewUpdate();
-
+	void OnProjectScanned() const;
+	void OnTreeViewPathSelected(const TSet<FString>& InSelectedPaths);
 	FARFilter AssetBrowserCreateFilter() const;
 
 	bool FilterAnyEnabled() const;
@@ -34,7 +34,8 @@ private:
 	bool bFilterPrimaryActive = false;
 	bool bFilterUsedActive = false;
 	bool bFilterIndirectActive = false;
-	
+
+	TSet<FString> SelectedPaths;
 	TSharedPtr<FUICommandList> Cmds;
 	FGetCurrentSelectionDelegate AssetBrowserDelegateSelection;
 	FRefreshAssetViewDelegate AssetBrowserDelegateRefreshView;
