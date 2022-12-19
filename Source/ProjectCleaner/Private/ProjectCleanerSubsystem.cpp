@@ -91,6 +91,54 @@ void UProjectCleanerSubsystem::GetAssetsDependencies(const TArray<FAssetData>& A
 	ModuleAssetRegistry->Get().GetAssets(Filter, Dependencies);
 }
 
+void UProjectCleanerSubsystem::GetAssetsReferencers(const TArray<FAssetData>& Assets, TArray<FAssetData>& Referencers) const
+{
+	Referencers.Reset();
+
+	TSet<FName> UsedAssetsRefs;
+	TArray<FName> Stack;
+	for (const auto& Asset : Assets)
+	{
+		UsedAssetsRefs.Add(Asset.PackageName);
+		Stack.Add(Asset.PackageName);
+
+		TArray<FName> Refs;
+		while (Stack.Num() > 0)
+		{
+			const auto CurrentPackageName = Stack.Pop(false);
+			Refs.Reset();
+
+			ModuleAssetRegistry->Get().GetReferencers(CurrentPackageName, Refs);
+
+			Refs.RemoveAllSwap([&](const FName& Ref)
+			{
+				return !Ref.ToString().StartsWith(*ProjectCleanerConstants::PathRelRoot.ToString());
+			}, false);
+
+			for (const auto& Ref : Refs)
+			{
+				bool bIsAlreadyInSet = false;
+				UsedAssetsRefs.Add(Ref, &bIsAlreadyInSet);
+				if (!bIsAlreadyInSet)
+				{
+					Stack.Add(Ref);
+				}
+			}
+		}
+	}
+
+	FARFilter Filter;
+	Filter.bRecursivePaths = true;
+	Filter.PackagePaths.Add(ProjectCleanerConstants::PathRelRoot);
+
+	for (const auto& Ref : UsedAssetsRefs)
+	{
+		Filter.PackageNames.Add(Ref);
+	}
+
+	ModuleAssetRegistry->Get().GetAssets(Filter, Referencers);
+}
+
 int64 UProjectCleanerSubsystem::GetAssetsTotalSize(const TArray<FAssetData>& Assets) const
 {
 	if (!ModuleAssetRegistry) return 0;
@@ -307,7 +355,7 @@ void UProjectCleanerSubsystem::ProjectScan(const FProjectCleanerScanSettings& In
 	SlowTaskScan.EnterProgressFrame(1.0f);
 
 	FindFolders();
-	
+
 	bScanningProject = false;
 	ScanData.ScanResult = EProjectCleanerScanResult::Success;
 
@@ -601,7 +649,7 @@ void UProjectCleanerSubsystem::FindAssetsExcluded()
 	{
 		SlowTask.EnterProgressFrame(1.0f, FText::FromString(FString::Printf(TEXT("%s"), *Asset.AssetName.ToString())));
 
-		if (AssetIsExcluded(Asset) && !ScanData.AssetsPrimary.Contains(Asset)) // todo:ashe23 correctly filter excluded assets, must not show primary or forbidden assets in content browser
+		if (AssetIsExcluded(Asset))
 		{
 			ScanData.AssetsExcluded.AddUnique(Asset);
 		}
@@ -667,7 +715,8 @@ void UProjectCleanerSubsystem::FindAssetsUsed()
 	SlowTask.EnterProgressFrame(1.0f, FText::FromString(TEXT("Searching for used assets dependencies...")));
 
 	ScanData.AssetsUsed.Reserve(
-		ScanData.AssetsPrimary.Num() + ScanData.AssetsIndirect.Num() + AssetsWithExternalRefs.Num() + AssetsEditor.Num() + AssetsMegascans.Num() + ScanData.AssetsExcluded.Num());
+		ScanData.AssetsPrimary.Num() + ScanData.AssetsIndirect.Num() + AssetsWithExternalRefs.Num() + AssetsEditor.Num() + AssetsMegascans.Num() + ScanData.AssetsExcluded.Num()
+	);
 
 	for (const auto& Asset : ScanData.AssetsPrimary)
 	{
@@ -799,9 +848,9 @@ void UProjectCleanerSubsystem::FindFolders()
 	for (const auto& Folder : Folders)
 	{
 		const FString FolderPathAbs = FPaths::ConvertRelativePathToFull(Folder);
-		
+
 		ScanData.FoldersAll.AddUnique(FolderPathAbs);
-		
+
 		if (FolderIsEmpty(FolderPathAbs) && !FolderIsExcluded(FolderPathAbs))
 		{
 			ScanData.FoldersEmpty.AddUnique(FolderPathAbs);

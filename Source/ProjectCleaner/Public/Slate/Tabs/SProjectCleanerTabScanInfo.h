@@ -25,7 +25,6 @@ private:
 	void TreeViewUpdate();
 
 	FARFilter AssetBrowserCreateFilter() const;
-	TSharedPtr<SWidget> AssetBrowserContextMenuCreate(const TArray<FAssetData>& SelectedAssets) const;
 
 	bool bFilterExcludeActive = false;
 	bool bFilterPrimaryActive = false;

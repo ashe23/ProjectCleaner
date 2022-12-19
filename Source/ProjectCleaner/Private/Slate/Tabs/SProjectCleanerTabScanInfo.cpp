@@ -10,6 +10,7 @@
 // #include "FrontendFilterBase.h"
 #include "IContentBrowserSingleton.h"
 #include "ObjectTools.h"
+#include "FrontendFilters/ProjectCleanerFrontendFilterPrimary.h"
 #include "Settings/ProjectCleanerExcludeSettings.h"
 #include "Toolkits/GlobalEditorCommonCommands.h"
 
@@ -58,11 +59,27 @@ void SProjectCleanerTabScanInfo::Construct(const FArguments& InArgs)
 
 		GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->OpenEditorsForAssets(AssetNames);
 	});
-	AssetPickerConfig.OnGetAssetContextMenu = FOnGetAssetContextMenu::CreateRaw(this, &SProjectCleanerTabScanInfo::AssetBrowserContextMenuCreate);
+	AssetPickerConfig.OnGetAssetContextMenu = FOnGetAssetContextMenu::CreateLambda([&](const TArray<FAssetData>& SelectedAssets)
+	{
+		FMenuBuilder MenuBuilder{true, Cmds};
+		MenuBuilder.BeginSection(TEXT("Asset"), FText::FromName(TEXT("Asset Actions")));
+		{
+			MenuBuilder.AddMenuEntry(FProjectCleanerCmds::Get().AssetLocateInBrowser);
+			MenuBuilder.AddMenuEntry(FProjectCleanerCmds::Get().AssetExclude);
+			MenuBuilder.AddMenuEntry(FProjectCleanerCmds::Get().AssetExcludeByType);
+			MenuBuilder.AddMenuEntry(FProjectCleanerCmds::Get().AssetDelete);
+			MenuBuilder.AddMenuEntry(FProjectCleanerCmds::Get().AssetDeleteLinked);
+		}
+		MenuBuilder.EndSection();
+
+		return MenuBuilder.MakeWidget();
+	});
 	AssetPickerConfig.Filter = AssetBrowserCreateFilter();
 
 	const TSharedPtr<FFrontendFilterCategory> DefaultCategory = MakeShareable(new FFrontendFilterCategory(FText::FromString(TEXT("ProjectCleaner Filters")), FText::FromString(TEXT(""))));
 	const TSharedPtr<FFrontendFilterExcludedAssets> FilterExcluded = MakeShareable(new FFrontendFilterExcludedAssets(DefaultCategory));
+	const TSharedPtr<FFrontendFilterPrimaryAssets> FilterPrimary = MakeShareable(new FFrontendFilterPrimaryAssets(DefaultCategory));
+
 	FilterExcluded->OnFilterChange().AddLambda([&](const bool bActive)
 	{
 		bFilterExcludeActive = bActive;
@@ -71,7 +88,17 @@ void SProjectCleanerTabScanInfo::Construct(const FArguments& InArgs)
 			AssetBrowserDelegateFilter.Execute(AssetBrowserCreateFilter());
 		}
 	});
+	FilterPrimary->OnFilterChange().AddLambda([&](const bool bActive)
+	{
+		bFilterPrimaryActive = bActive;
+		if (AssetBrowserDelegateFilter.IsBound())
+		{
+			AssetBrowserDelegateFilter.Execute(AssetBrowserCreateFilter());
+		}
+	});
+
 	AssetPickerConfig.ExtraFrontendFilters.Add(FilterExcluded.ToSharedRef());
+	AssetPickerConfig.ExtraFrontendFilters.Add(FilterPrimary.ToSharedRef());
 
 	ChildSlot
 	[
@@ -92,7 +119,13 @@ void SProjectCleanerTabScanInfo::Construct(const FArguments& InArgs)
 			]
 			+ SSplitter::Slot()
 			[
-				ModuleContentBrowser.Get().CreateAssetPicker(AssetPickerConfig)
+				SNew(SVerticalBox)
+				+ SVerticalBox::Slot()
+				  .FillHeight(1.0f)
+				  .Padding(FMargin{0.0f, 5.0f})
+				[
+					ModuleContentBrowser.Get().CreateAssetPicker(AssetPickerConfig)
+				]
 			]
 		]
 	];
@@ -105,201 +138,235 @@ void SProjectCleanerTabScanInfo::TreeViewUpdate()
 void SProjectCleanerTabScanInfo::CommandsRegister()
 {
 	Cmds = MakeShareable(new FUICommandList);
-
-
-	FUIAction ActionPathExclude;
-	ActionPathExclude.ExecuteAction = FExecuteAction::CreateLambda([&]()
-	{
-		// if (!TreeView.IsValid()) return;
-		// if (!SubsystemPtr) return;
-		//
-		// UProjectCleanerExcludeSettings* ExcludeSettings = GetMutableDefault<UProjectCleanerExcludeSettings>();
-		// if (!ExcludeSettings) return;
-		//
-		// const auto Items = TreeView->GetSelectedItems();
-		// for (const auto& Item : Items)
-		// {
-		// 	if (!FPaths::DirectoryExists(Item->FolderPathAbs)) continue;
-		//
-		// 	ExcludeSettings->ExcludedFolders.Add(FDirectoryPath{Item->FolderPathRel});
-		// }
-		//
-		// ExcludeSettings->PostEditChange();
-		//
-		// SubsystemPtr->ProjectScan();
-	});
-	ActionPathExclude.CanExecuteAction = FCanExecuteAction::CreateLambda([&]()
-	{
-		return false;
-		// return TreeView.IsValid() && TreeView.Get()->GetSelectedItems().Num() > 0;
-	});
-
-	Cmds->MapAction(FProjectCleanerCmds::Get().PathExclude, ActionPathExclude);
-
-	FUIAction ActionPathShowExplorer;
-	ActionPathShowExplorer.ExecuteAction = FExecuteAction::CreateLambda([&]()
-	{
-		// if (!TreeView.IsValid()) return;
-		//
-		// const auto Items = TreeView->GetSelectedItems();
-		// for (const auto& Item : Items)
-		// {
-		// 	if (!FPaths::DirectoryExists(Item->FolderPathAbs)) continue;
-		//
-		// 	FPlatformProcess::ExploreFolder(*Item->FolderPathAbs);
-		// }
-	});
-	ActionPathShowExplorer.CanExecuteAction = FCanExecuteAction::CreateLambda([&]()
-	{
-		return false;
-		// return TreeView.IsValid() && TreeView.Get()->GetSelectedItems().Num() > 0;
-	});
-
-	Cmds->MapAction(FProjectCleanerCmds::Get().PathShowInExplorer, ActionPathShowExplorer);
-
-	FUIAction ActionAssetLocate;
-	ActionAssetLocate.ExecuteAction = FExecuteAction::CreateLambda([&]()
-	{
-		const FContentBrowserModule& ModuleContentBrowser = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
-		ModuleContentBrowser.Get().SyncBrowserToAssets(AssetBrowserDelegateSelection.Execute());
-	});
-	ActionAssetLocate.CanExecuteAction = FCanExecuteAction::CreateLambda([&]()
-	{
-		return AssetBrowserDelegateSelection.IsBound() && AssetBrowserDelegateSelection.Execute().Num() > 0;
-	});
-
-	Cmds->MapAction(FProjectCleanerCmds::Get().AssetLocateInBrowser, ActionAssetLocate);
-
-	FUIAction ActionAssetExclude;
-	ActionAssetExclude.ExecuteAction = FExecuteAction::CreateLambda([&]()
-	{
-		if (!SubsystemPtr) return;
-
-		UProjectCleanerExcludeSettings* ExcludeSettings = GetMutableDefault<UProjectCleanerExcludeSettings>();
-		if (!ExcludeSettings) return;
-
-		const auto SelectedItems = AssetBrowserDelegateSelection.Execute();
-		for (const auto& SelectedItem : SelectedItems)
-		{
-			if (!SelectedItem.IsValid()) continue;
-			if (!SelectedItem.GetAsset()) continue;
-
-			ExcludeSettings->ExcludedAssets.AddUnique(SelectedItem.GetAsset());
-		}
-
-		ExcludeSettings->PostEditChange();
-
-		SubsystemPtr->ProjectScan();
-	});
-	ActionAssetExclude.CanExecuteAction = FCanExecuteAction::CreateLambda([&]()
-	{
-		return AssetBrowserDelegateSelection.IsBound() && AssetBrowserDelegateSelection.Execute().Num() > 0;
-	});
-	ActionAssetExclude.IsActionVisibleDelegate = FIsActionButtonVisible::CreateLambda([&]()
-	{
-		return !bFilterExcludeActive && !bFilterPrimaryActive;
-	});
-
-	Cmds->MapAction(FProjectCleanerCmds::Get().AssetExclude, ActionAssetExclude);
-
-	FUIAction ActionAssetExcludeByType;
-	ActionAssetExcludeByType.ExecuteAction = FExecuteAction::CreateLambda([&]()
-	{
-		if (!SubsystemPtr) return;
-
-		UProjectCleanerExcludeSettings* ExcludeSettings = GetMutableDefault<UProjectCleanerExcludeSettings>();
-		if (!ExcludeSettings) return;
-
-		const auto SelectedItems = AssetBrowserDelegateSelection.Execute();
-		for (const auto& SelectedItem : SelectedItems)
-		{
-			if (!SelectedItem.IsValid()) continue;
-			if (!SelectedItem.GetAsset()) continue;
-
-			const UClass* AssetClass = SubsystemPtr->GetAssetClass(SelectedItem);
-			if (!AssetClass) continue;
-
-			ExcludeSettings->ExcludedClasses.AddUnique(AssetClass);
-		}
-
-		ExcludeSettings->PostEditChange();
-
-		SubsystemPtr->ProjectScan();
-	});
-	ActionAssetExcludeByType.CanExecuteAction = FCanExecuteAction::CreateLambda([&]()
-	{
-		return AssetBrowserDelegateSelection.IsBound() && AssetBrowserDelegateSelection.Execute().Num() > 0;
-	});
-	ActionAssetExcludeByType.IsActionVisibleDelegate = FIsActionButtonVisible::CreateLambda([&]()
-	{
-		return !bFilterExcludeActive && !bFilterPrimaryActive;
-	});
-
-	Cmds->MapAction(FProjectCleanerCmds::Get().AssetExcludeByType, ActionAssetExcludeByType);
-
-	FUIAction ActionAssetDelete;
-	ActionAssetDelete.ExecuteAction = FExecuteAction::CreateLambda([&]()
-	{
-		if (ObjectTools::DeleteAssets(AssetBrowserDelegateSelection.Execute()) > 0)
-		{
-			SubsystemPtr->ProjectScan();
-		}
-	});
-	ActionAssetDelete.CanExecuteAction = FCanExecuteAction::CreateLambda([&]()
-	{
-		return AssetBrowserDelegateSelection.IsBound() && AssetBrowserDelegateSelection.Execute().Num() > 0;
-	});
-	ActionAssetDelete.IsActionVisibleDelegate = FIsActionButtonVisible::CreateLambda([&]()
-	{
-		return !bFilterExcludeActive && !bFilterPrimaryActive;
-	});
-
-	Cmds->MapAction(FProjectCleanerCmds::Get().AssetDelete, ActionAssetDelete);
-
-	FUIAction ActionAssetDeleteLinked;
-	ActionAssetDeleteLinked.ExecuteAction = FExecuteAction::CreateLambda([&]()
-	{
-		if (!SubsystemPtr) return;
-
-		const auto SelectedAssets = AssetBrowserDelegateSelection.Execute();
-
-		TArray<FAssetData> Dependencies;
-		SubsystemPtr->GetAssetsDependencies(SelectedAssets, Dependencies);
-		// todo:ashe23 recursive get referencers and dependencies and filter only unused
-
-		TArray<FAssetData> LinkedAssets;
-		LinkedAssets.Reserve(Dependencies.Num() + SelectedAssets.Num());
-
-		for (const auto& Asset : SelectedAssets)
-		{
-			LinkedAssets.AddUnique(Asset);
-		}
-		
-		for (const auto& Asset : Dependencies)
-		{
-			if (SubsystemPtr->GetScanData().AssetsUnused.Contains(Asset))
+	Cmds->MapAction
+	(
+		FProjectCleanerCmds::Get().PathExclude,
+		FUIAction
+		(
+			FExecuteAction::CreateLambda([&]()
 			{
-				LinkedAssets.AddUnique(Asset);
-			}
-		}
+				// if (!TreeView.IsValid()) return;
+				// if (!SubsystemPtr) return;
+				//
+				// UProjectCleanerExcludeSettings* ExcludeSettings = GetMutableDefault<UProjectCleanerExcludeSettings>();
+				// if (!ExcludeSettings) return;
+				//
+				// const auto Items = TreeView->GetSelectedItems();
+				// for (const auto& Item : Items)
+				// {
+				// 	if (!FPaths::DirectoryExists(Item->FolderPathAbs)) continue;
+				//
+				// 	ExcludeSettings->ExcludedFolders.Add(FDirectoryPath{Item->FolderPathRel});
+				// }
+				//
+				// ExcludeSettings->PostEditChange();
+				//
+				// SubsystemPtr->ProjectScan();
+			}),
+			FCanExecuteAction::CreateLambda([&]
+			{
+				return false;
+				// return TreeView.IsValid() && TreeView.Get()->GetSelectedItems().Num() > 0;
+			}),
+			FIsActionChecked::CreateLambda([] { return true; }),
+			FIsActionButtonVisible::CreateLambda([&]() { return false; })
+		)
+	);
+	Cmds->MapAction
+	(
+		FProjectCleanerCmds::Get().PathShowInExplorer,
+		FUIAction
+		(
+			FExecuteAction::CreateLambda([&]()
+			{
+				// if (!TreeView.IsValid()) return;
+				//
+				// const auto Items = TreeView->GetSelectedItems();
+				// for (const auto& Item : Items)
+				// {
+				// 	if (!FPaths::DirectoryExists(Item->FolderPathAbs)) continue;
+				//
+				// 	FPlatformProcess::ExploreFolder(*Item->FolderPathAbs);
+				// }
+			}),
+			FCanExecuteAction::CreateLambda([&]
+			{
+				return false;
+				// return TreeView.IsValid() && TreeView.Get()->GetSelectedItems().Num() > 0;
+			}),
+			FIsActionChecked::CreateLambda([] { return true; }),
+			FIsActionButtonVisible::CreateLambda([&]() { return false; })
+		)
+	);
+	Cmds->MapAction
+	(
+		FProjectCleanerCmds::Get().AssetLocateInBrowser,
+		FUIAction
+		(
+			FExecuteAction::CreateLambda([&]()
+			{
+				const FContentBrowserModule& ModuleContentBrowser = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
+				ModuleContentBrowser.Get().SyncBrowserToAssets(AssetBrowserDelegateSelection.Execute());
+			}),
+			FCanExecuteAction::CreateLambda([&]
+			{
+				return AssetBrowserDelegateSelection.IsBound() && AssetBrowserDelegateSelection.Execute().Num() > 0;
+			}),
+			FIsActionChecked::CreateLambda([] { return true; }),
+			FIsActionButtonVisible::CreateLambda([&]() { return true; })
+		)
+	);
+	Cmds->MapAction
+	(
+		FProjectCleanerCmds::Get().AssetExclude,
+		FUIAction
+		(
+			FExecuteAction::CreateLambda([&]()
+			{
+				if (!SubsystemPtr) return;
 
-		LinkedAssets.Shrink();
+				UProjectCleanerExcludeSettings* ExcludeSettings = GetMutableDefault<UProjectCleanerExcludeSettings>();
+				if (!ExcludeSettings) return;
 
-		if (ObjectTools::DeleteAssets(LinkedAssets) > 0)
-		{
-			SubsystemPtr->ProjectScan();
-		}
-	});
-	ActionAssetDeleteLinked.CanExecuteAction = FCanExecuteAction::CreateLambda([&]()
-	{
-		return AssetBrowserDelegateSelection.IsBound() && AssetBrowserDelegateSelection.Execute().Num() > 0;
-	});
-	ActionAssetDeleteLinked.IsActionVisibleDelegate = FIsActionButtonVisible::CreateLambda([&]()
-	{
-		return !bFilterExcludeActive && !bFilterPrimaryActive;
-	});
+				const auto SelectedItems = AssetBrowserDelegateSelection.Execute();
+				for (const auto& SelectedItem : SelectedItems)
+				{
+					if (!SelectedItem.IsValid()) continue;
+					if (!SelectedItem.GetAsset()) continue;
 
-	Cmds->MapAction(FProjectCleanerCmds::Get().AssetDeleteLinked, ActionAssetDeleteLinked);
+					ExcludeSettings->ExcludedAssets.AddUnique(SelectedItem.GetAsset());
+				}
+
+				ExcludeSettings->PostEditChange();
+
+				SubsystemPtr->ProjectScan();
+			}),
+			FCanExecuteAction::CreateLambda([&]
+			{
+				return SubsystemPtr && AssetBrowserDelegateSelection.IsBound() && AssetBrowserDelegateSelection.Execute().Num() > 0;
+			}),
+			FIsActionChecked::CreateLambda([] { return true; }),
+			FIsActionButtonVisible::CreateLambda([&]() { return !bFilterExcludeActive && !bFilterPrimaryActive; })
+		)
+	);
+	Cmds->MapAction
+	(
+		FProjectCleanerCmds::Get().AssetExcludeByType,
+		FUIAction
+		(
+			FExecuteAction::CreateLambda([&]()
+			{
+				if (!SubsystemPtr) return;
+
+				UProjectCleanerExcludeSettings* ExcludeSettings = GetMutableDefault<UProjectCleanerExcludeSettings>();
+				if (!ExcludeSettings) return;
+
+				const auto SelectedItems = AssetBrowserDelegateSelection.Execute();
+				for (const auto& SelectedItem : SelectedItems)
+				{
+					if (!SelectedItem.IsValid()) continue;
+					if (!SelectedItem.GetAsset()) continue;
+
+					const UClass* AssetClass = SubsystemPtr->GetAssetClass(SelectedItem);
+					if (!AssetClass) continue;
+
+					ExcludeSettings->ExcludedClasses.AddUnique(AssetClass);
+				}
+
+				ExcludeSettings->PostEditChange();
+
+				SubsystemPtr->ProjectScan();
+			}),
+			FCanExecuteAction::CreateLambda([&]
+			{
+				return SubsystemPtr && AssetBrowserDelegateSelection.IsBound() && AssetBrowserDelegateSelection.Execute().Num() > 0;
+			}),
+			FIsActionChecked::CreateLambda([] { return true; }),
+			FIsActionButtonVisible::CreateLambda([&]() { return !bFilterExcludeActive && !bFilterPrimaryActive; })
+		)
+	);
+	Cmds->MapAction
+	(
+		FProjectCleanerCmds::Get().AssetDelete,
+		FUIAction
+		(
+			FExecuteAction::CreateLambda([&]()
+			{
+				if (ObjectTools::DeleteAssets(AssetBrowserDelegateSelection.Execute()) > 0)
+				{
+					SubsystemPtr->ProjectScan();
+				}
+			}),
+			FCanExecuteAction::CreateLambda([&]
+			{
+				return SubsystemPtr && AssetBrowserDelegateSelection.IsBound() && AssetBrowserDelegateSelection.Execute().Num() > 0;
+			}),
+			FIsActionChecked::CreateLambda([] { return true; }),
+			FIsActionButtonVisible::CreateLambda([&]() { return !bFilterExcludeActive && !bFilterPrimaryActive; })
+		)
+	);
+	Cmds->MapAction
+	(
+		FProjectCleanerCmds::Get().AssetDeleteLinked,
+		FUIAction
+		(
+			FExecuteAction::CreateLambda([&]()
+			{
+				// todo:ashe23 very sloppy logic here, research about how to handle this case
+				if (!SubsystemPtr) return;
+
+				// const auto SelectedAssets = AssetBrowserDelegateSelection.Execute();
+				// // for selected assets find all dependency assets that have 0 referencers and remove them
+				//
+				// TArray<FAssetData> Referencers;
+				// TArray<FAssetData> Dependencies;
+				// SubsystemPtr->GetAssetsReferencers(SelectedAssets, Referencers);
+				// SubsystemPtr->GetAssetsDependencies(SelectedAssets, Dependencies);
+
+				// return;
+
+				// TArray<FAssetData> LinkedAssets;
+				// LinkedAssets.Reserve(SelectedAssets.Num() + Referencers.Num());
+				//
+				// for (const auto& Asset : SelectedAssets)
+				// {
+				// 	LinkedAssets.AddUnique(Asset);
+				// }
+				//
+				// for (const auto& Asset : Referencers)
+				// {
+				// 	if (SubsystemPtr->GetScanData().AssetsUnused.Contains(Asset))
+				// 	{
+				// 		LinkedAssets.AddUnique(Asset);
+				// 	}
+				// }
+				//
+				// LinkedAssets.Reserve(LinkedAssets.Num() + Dependencies.Num());
+				// SubsystemPtr->GetAssetsDependencies(LinkedAssets, Dependencies);
+				//
+				// for (const auto& Asset : Dependencies)
+				// {
+				// 	if (SubsystemPtr->GetScanData().AssetsUnused.Contains(Asset))
+				// 	{
+				// 		LinkedAssets.AddUnique(Asset);
+				// 	}
+				// }
+				//
+				// LinkedAssets.Shrink();
+				//
+				// if (ObjectTools::DeleteAssets(LinkedAssets) > 0)
+				// {
+				// 	SubsystemPtr->ProjectScan();
+				// }
+			}),
+			FCanExecuteAction::CreateLambda([&]
+			{
+				return SubsystemPtr && AssetBrowserDelegateSelection.IsBound() && AssetBrowserDelegateSelection.Execute().Num() > 0;
+			}),
+			FIsActionChecked::CreateLambda([] { return true; }),
+			FIsActionButtonVisible::CreateLambda([&]() { return !bFilterExcludeActive && !bFilterPrimaryActive; })
+		)
+	);
 }
 
 FARFilter SProjectCleanerTabScanInfo::AssetBrowserCreateFilter() const
@@ -352,20 +419,4 @@ FARFilter SProjectCleanerTabScanInfo::AssetBrowserCreateFilter() const
 	}
 
 	return Filter;
-}
-
-TSharedPtr<SWidget> SProjectCleanerTabScanInfo::AssetBrowserContextMenuCreate(const TArray<FAssetData>& SelectedAssets) const
-{
-	FMenuBuilder MenuBuilder{true, Cmds};
-	MenuBuilder.BeginSection(TEXT("Asset"), FText::FromName(TEXT("Asset Actions")));
-	{
-		MenuBuilder.AddMenuEntry(FProjectCleanerCmds::Get().AssetLocateInBrowser);
-		MenuBuilder.AddMenuEntry(FProjectCleanerCmds::Get().AssetExclude);
-		MenuBuilder.AddMenuEntry(FProjectCleanerCmds::Get().AssetExcludeByType);
-		MenuBuilder.AddMenuEntry(FProjectCleanerCmds::Get().AssetDelete);
-		MenuBuilder.AddMenuEntry(FProjectCleanerCmds::Get().AssetDeleteLinked);
-	}
-	MenuBuilder.EndSection();
-
-	return MenuBuilder.MakeWidget();
 }

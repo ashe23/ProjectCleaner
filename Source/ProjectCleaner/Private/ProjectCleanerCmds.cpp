@@ -52,7 +52,7 @@ void FProjectCleanerCmds::RegisterCommands()
 
 	UI_COMMAND(
 		AssetExclude,
-		"Exclude Asset",
+		"Exclude Assets",
 		"Exclude selected assets",
 		EUserInterfaceActionType::Button,
 		FInputChord()
@@ -60,8 +60,8 @@ void FProjectCleanerCmds::RegisterCommands()
 
 	UI_COMMAND(
 		AssetExcludeByType,
-		"Exclude Assets By Type",
-		"Exclude assets of selected types",
+		"Exclude Assets By Class",
+		"Exclude assets of selected classes",
 		EUserInterfaceActionType::Button,
 		FInputChord()
 	);

@@ -4,12 +4,11 @@
 
 #include "CoreMinimal.h"
 #include "ProjectCleanerTypes.h"
+#include "ProjectCleanerDelegates.h"
 #include "ProjectCleanerSubsystem.generated.h"
 
 class FAssetRegistryModule;
 class FAssetToolsModule;
-
-DECLARE_MULTICAST_DELEGATE(FProjectCleanerDelegateProjectScanned);
 
 UCLASS(Config=EditorPerProjectUserSettings)
 class UProjectCleanerSubsystem final : public UEditorSubsystem
@@ -28,6 +27,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Returns all dependency assets for given assets"))
 	void GetAssetsDependencies(const TArray<FAssetData>& Assets, TArray<FAssetData>& Dependencies) const;
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Returns all referencer assets for given assets"))
+	void GetAssetsReferencers(const TArray<FAssetData>& Assets, TArray<FAssetData>& Referencers) const;
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(Tooltip="Returns total size of given assets"))
 	int64 GetAssetsTotalSize(const TArray<FAssetData>& Assets) const;

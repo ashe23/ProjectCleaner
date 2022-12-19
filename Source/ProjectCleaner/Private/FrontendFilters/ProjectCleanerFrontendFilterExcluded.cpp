@@ -3,7 +3,6 @@
 #include "FrontendFilters/ProjectCleanerFrontendFilterExcluded.h"
 #include "ProjectCleanerSubsystem.h"
 
-
 FFrontendFilterExcludedAssets::FFrontendFilterExcludedAssets(TSharedPtr<FFrontendFilterCategory> InCategory) : FFrontendFilter(InCategory)
 {
 }
