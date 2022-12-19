@@ -16,6 +16,7 @@ public:
 	TSharedPtr<FUICommandInfo> PathExclude;
 	TSharedPtr<FUICommandInfo> PathShowInExplorer;
 	TSharedPtr<FUICommandInfo> AssetLocateInBrowser;
+	TSharedPtr<FUICommandInfo> AssetLocateInExplorer;
 	TSharedPtr<FUICommandInfo> AssetExclude;
 	TSharedPtr<FUICommandInfo> AssetExcludeByType;
 	TSharedPtr<FUICommandInfo> AssetDelete;

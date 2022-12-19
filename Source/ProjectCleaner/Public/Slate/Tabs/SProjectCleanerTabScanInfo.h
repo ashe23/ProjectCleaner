@@ -26,8 +26,13 @@ private:
 
 	FARFilter AssetBrowserCreateFilter() const;
 
+	bool FilterAnyEnabled() const;
+	bool FilterAllDisabled() const;
+	bool FilterAllEnabled() const;
+
 	bool bFilterExcludeActive = false;
 	bool bFilterPrimaryActive = false;
+	bool bFilterUsedActive = false;
 	
 	TSharedPtr<FUICommandList> Cmds;
 	FGetCurrentSelectionDelegate AssetBrowserDelegateSelection;

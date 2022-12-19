@@ -51,8 +51,16 @@ void FProjectCleanerCmds::RegisterCommands()
 	);
 
 	UI_COMMAND(
+		AssetLocateInExplorer,
+		"Locate in FileExplorer",
+		"Show selected assets locations in FileExplorer",
+		EUserInterfaceActionType::Button,
+		FInputChord()
+	);
+
+	UI_COMMAND(
 		AssetExclude,
-		"Exclude Assets",
+		"Exclude",
 		"Exclude selected assets",
 		EUserInterfaceActionType::Button,
 		FInputChord()
@@ -60,7 +68,7 @@ void FProjectCleanerCmds::RegisterCommands()
 
 	UI_COMMAND(
 		AssetExcludeByType,
-		"Exclude Assets By Class",
+		"Exclude By Class",
 		"Exclude assets of selected classes",
 		EUserInterfaceActionType::Button,
 		FInputChord()

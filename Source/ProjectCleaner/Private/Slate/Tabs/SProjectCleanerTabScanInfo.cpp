@@ -1,18 +1,16 @@
 ﻿// Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "Slate/Tabs/SProjectCleanerTabScanInfo.h"
+#include "Settings/ProjectCleanerExcludeSettings.h"
 #include "FrontendFilters/ProjectCleanerFrontendFilterExcluded.h"
-#include "ProjectCleaner.h"
+#include "FrontendFilters/ProjectCleanerFrontendFilterPrimary.h"
+#include "FrontendFilters/ProjectCleanerFrontendFilterUsed.h"
 #include "ProjectCleanerCmds.h"
 #include "ProjectCleanerSubsystem.h"
 // Engine Headers
 #include "ContentBrowserModule.h"
-// #include "FrontendFilterBase.h"
 #include "IContentBrowserSingleton.h"
 #include "ObjectTools.h"
-#include "FrontendFilters/ProjectCleanerFrontendFilterPrimary.h"
-#include "Settings/ProjectCleanerExcludeSettings.h"
-#include "Toolkits/GlobalEditorCommonCommands.h"
 
 void SProjectCleanerTabScanInfo::Construct(const FArguments& InArgs)
 {
@@ -62,11 +60,20 @@ void SProjectCleanerTabScanInfo::Construct(const FArguments& InArgs)
 	AssetPickerConfig.OnGetAssetContextMenu = FOnGetAssetContextMenu::CreateLambda([&](const TArray<FAssetData>& SelectedAssets)
 	{
 		FMenuBuilder MenuBuilder{true, Cmds};
-		MenuBuilder.BeginSection(TEXT("Asset"), FText::FromName(TEXT("Asset Actions")));
+		MenuBuilder.BeginSection(TEXT("AssetLocationActions"), FText::FromName(TEXT("Locations")));
 		{
 			MenuBuilder.AddMenuEntry(FProjectCleanerCmds::Get().AssetLocateInBrowser);
+			MenuBuilder.AddMenuEntry(FProjectCleanerCmds::Get().AssetLocateInExplorer);
+		}
+		MenuBuilder.EndSection();
+		MenuBuilder.BeginSection(TEXT("AssetExcludeActions"), FText::FromName(TEXT("Exclusion")));
+		{
 			MenuBuilder.AddMenuEntry(FProjectCleanerCmds::Get().AssetExclude);
 			MenuBuilder.AddMenuEntry(FProjectCleanerCmds::Get().AssetExcludeByType);
+		}
+		MenuBuilder.EndSection();
+		MenuBuilder.BeginSection(TEXT("AssetDeletionActions"), FText::FromName(TEXT("Deletion")));
+		{
 			MenuBuilder.AddMenuEntry(FProjectCleanerCmds::Get().AssetDelete);
 			MenuBuilder.AddMenuEntry(FProjectCleanerCmds::Get().AssetDeleteLinked);
 		}
@@ -79,6 +86,7 @@ void SProjectCleanerTabScanInfo::Construct(const FArguments& InArgs)
 	const TSharedPtr<FFrontendFilterCategory> DefaultCategory = MakeShareable(new FFrontendFilterCategory(FText::FromString(TEXT("ProjectCleaner Filters")), FText::FromString(TEXT(""))));
 	const TSharedPtr<FFrontendFilterExcludedAssets> FilterExcluded = MakeShareable(new FFrontendFilterExcludedAssets(DefaultCategory));
 	const TSharedPtr<FFrontendFilterPrimaryAssets> FilterPrimary = MakeShareable(new FFrontendFilterPrimaryAssets(DefaultCategory));
+	const TSharedPtr<FFrontendFilterUsedAssets> FilterUsed = MakeShareable(new FFrontendFilterUsedAssets(DefaultCategory));
 
 	FilterExcluded->OnFilterChange().AddLambda([&](const bool bActive)
 	{
@@ -96,9 +104,18 @@ void SProjectCleanerTabScanInfo::Construct(const FArguments& InArgs)
 			AssetBrowserDelegateFilter.Execute(AssetBrowserCreateFilter());
 		}
 	});
+	FilterUsed->OnFilterChange().AddLambda([&](const bool bActive)
+	{
+		bFilterUsedActive = bActive;
+		if (AssetBrowserDelegateFilter.IsBound())
+		{
+			AssetBrowserDelegateFilter.Execute(AssetBrowserCreateFilter());
+		}
+	});
 
 	AssetPickerConfig.ExtraFrontendFilters.Add(FilterExcluded.ToSharedRef());
 	AssetPickerConfig.ExtraFrontendFilters.Add(FilterPrimary.ToSharedRef());
+	AssetPickerConfig.ExtraFrontendFilters.Add(FilterUsed.ToSharedRef());
 
 	ChildSlot
 	[
@@ -218,6 +235,34 @@ void SProjectCleanerTabScanInfo::CommandsRegister()
 	);
 	Cmds->MapAction
 	(
+		FProjectCleanerCmds::Get().AssetLocateInExplorer,
+		FUIAction
+		(
+			FExecuteAction::CreateLambda([&]()
+			{
+				if (!SubsystemPtr) return;
+
+				const auto& SelectedItems = AssetBrowserDelegateSelection.Execute();
+				for (const auto& Asset : SelectedItems)
+				{
+					const FString FolderPathAbs = SubsystemPtr->PathConvertToAbs(Asset.PackagePath.ToString());
+
+					if (FPaths::DirectoryExists(FolderPathAbs))
+					{
+						FPlatformProcess::ExploreFolder(*FolderPathAbs);
+					}
+				}
+			}),
+			FCanExecuteAction::CreateLambda([&]
+			{
+				return AssetBrowserDelegateSelection.IsBound() && AssetBrowserDelegateSelection.Execute().Num() > 0;
+			}),
+			FIsActionChecked::CreateLambda([] { return true; }),
+			FIsActionButtonVisible::CreateLambda([&]() { return true; })
+		)
+	);
+	Cmds->MapAction
+	(
 		FProjectCleanerCmds::Get().AssetExclude,
 		FUIAction
 		(
@@ -246,7 +291,7 @@ void SProjectCleanerTabScanInfo::CommandsRegister()
 				return SubsystemPtr && AssetBrowserDelegateSelection.IsBound() && AssetBrowserDelegateSelection.Execute().Num() > 0;
 			}),
 			FIsActionChecked::CreateLambda([] { return true; }),
-			FIsActionButtonVisible::CreateLambda([&]() { return !bFilterExcludeActive && !bFilterPrimaryActive; })
+			FIsActionButtonVisible::CreateLambda([&]() { return FilterAllDisabled(); })
 		)
 	);
 	Cmds->MapAction
@@ -282,7 +327,7 @@ void SProjectCleanerTabScanInfo::CommandsRegister()
 				return SubsystemPtr && AssetBrowserDelegateSelection.IsBound() && AssetBrowserDelegateSelection.Execute().Num() > 0;
 			}),
 			FIsActionChecked::CreateLambda([] { return true; }),
-			FIsActionButtonVisible::CreateLambda([&]() { return !bFilterExcludeActive && !bFilterPrimaryActive; })
+			FIsActionButtonVisible::CreateLambda([&]() { return FilterAllDisabled(); })
 		)
 	);
 	Cmds->MapAction
@@ -302,7 +347,7 @@ void SProjectCleanerTabScanInfo::CommandsRegister()
 				return SubsystemPtr && AssetBrowserDelegateSelection.IsBound() && AssetBrowserDelegateSelection.Execute().Num() > 0;
 			}),
 			FIsActionChecked::CreateLambda([] { return true; }),
-			FIsActionButtonVisible::CreateLambda([&]() { return !bFilterExcludeActive && !bFilterPrimaryActive; })
+			FIsActionButtonVisible::CreateLambda([&]() { return FilterAllDisabled(); })
 		)
 	);
 	Cmds->MapAction
@@ -364,7 +409,7 @@ void SProjectCleanerTabScanInfo::CommandsRegister()
 				return SubsystemPtr && AssetBrowserDelegateSelection.IsBound() && AssetBrowserDelegateSelection.Execute().Num() > 0;
 			}),
 			FIsActionChecked::CreateLambda([] { return true; }),
-			FIsActionButtonVisible::CreateLambda([&]() { return !bFilterExcludeActive && !bFilterPrimaryActive; })
+			FIsActionButtonVisible::CreateLambda([&]() { return FilterAllDisabled(); })
 		)
 	);
 }
@@ -373,30 +418,31 @@ FARFilter SProjectCleanerTabScanInfo::AssetBrowserCreateFilter() const
 {
 	FARFilter Filter;
 
-	if (bFilterExcludeActive || bFilterPrimaryActive)
+	if (FilterAnyEnabled())
 	{
-		if (SubsystemPtr->GetScanData().AssetsExcluded.Num() == 0 && SubsystemPtr->GetScanData().AssetsPrimary.Num() == 0)
-		{
-			Filter.TagsAndValues.Add(FName{"ProjectCleanerEmptyTag"}, FString{"ProjectCleanerEmptyTag"});
-		}
-		else
-		{
-			Filter.PackageNames.Reserve(SubsystemPtr->GetScanData().AssetsExcluded.Num() + SubsystemPtr->GetScanData().AssetsPrimary.Num());
+		Filter.PackageNames.Reserve(SubsystemPtr->GetScanData().AssetsExcluded.Num() + SubsystemPtr->GetScanData().AssetsPrimary.Num());
 
-			if (bFilterExcludeActive)
+		if (bFilterExcludeActive)
+		{
+			for (const auto& Asset : SubsystemPtr->GetScanData().AssetsExcluded)
 			{
-				for (const auto& Asset : SubsystemPtr->GetScanData().AssetsExcluded)
-				{
-					Filter.PackageNames.Emplace(Asset.PackageName);
-				}
+				Filter.PackageNames.Emplace(Asset.PackageName);
 			}
+		}
 
-			if (bFilterPrimaryActive)
+		if (bFilterPrimaryActive)
+		{
+			for (const auto& Asset : SubsystemPtr->GetScanData().AssetsPrimary)
 			{
-				for (const auto& Asset : SubsystemPtr->GetScanData().AssetsPrimary)
-				{
-					Filter.PackageNames.Emplace(Asset.PackageName);
-				}
+				Filter.PackageNames.Emplace(Asset.PackageName);
+			}
+		}
+
+		if (bFilterUsedActive)
+		{
+			for (const auto& Asset : SubsystemPtr->GetScanData().AssetsUsed)
+			{
+				Filter.PackageNames.Emplace(Asset.PackageName);
 			}
 		}
 
@@ -419,4 +465,19 @@ FARFilter SProjectCleanerTabScanInfo::AssetBrowserCreateFilter() const
 	}
 
 	return Filter;
+}
+
+bool SProjectCleanerTabScanInfo::FilterAnyEnabled() const
+{
+	return bFilterExcludeActive || bFilterPrimaryActive || bFilterUsedActive;
+}
+
+bool SProjectCleanerTabScanInfo::FilterAllDisabled() const
+{
+	return !bFilterExcludeActive && !bFilterPrimaryActive && !bFilterUsedActive;
+}
+
+bool SProjectCleanerTabScanInfo::FilterAllEnabled() const
+{
+	return bFilterExcludeActive && bFilterPrimaryActive && bFilterUsedActive;
 }
