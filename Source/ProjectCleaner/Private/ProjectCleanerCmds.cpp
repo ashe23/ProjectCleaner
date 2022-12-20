@@ -113,6 +113,22 @@ void FProjectCleanerCmds::RegisterCommands()
 		EUserInterfaceActionType::Button,
 		FInputChord()
 	);
+	
+	UI_COMMAND(
+		TabNonEngineTryOpenFile,
+		"Open file",
+		"Try to open file in default system program",
+		EUserInterfaceActionType::Button,
+		FInputChord()
+	);
+
+	UI_COMMAND(
+		TabNonEngineDeleteFile,
+		"Delete file",
+		"TDelete selected file from FileExplorer",
+		EUserInterfaceActionType::Button,
+		FInputChord()
+	);
 }
 
 #undef LOCTEXT_NAMESPACE

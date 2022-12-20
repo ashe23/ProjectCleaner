@@ -30,6 +30,7 @@ private:
 	TSharedRef<SDockTab> OnTabSpawnScanSettings(const FSpawnTabArgs& Args) const;
 	TSharedRef<SDockTab> OnTabSpawnScanInfo(const FSpawnTabArgs& Args) const;
 	TSharedRef<SDockTab> OnTabSpawnIndirectAssets(const FSpawnTabArgs& Args) const;
+	TSharedRef<SDockTab> OnTabSpawnNonEngineFiles(const FSpawnTabArgs& Args) const;
 
 	TSharedPtr<FTabManager> TabManager;
 	TSharedPtr<FTabManager::FLayout> TabLayout;

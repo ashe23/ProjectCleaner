@@ -24,4 +24,6 @@ public:
 	TSharedPtr<FUICommandInfo> TabIndirectAssetOpen;
 	TSharedPtr<FUICommandInfo> TabIndirectFileOpen;
 	TSharedPtr<FUICommandInfo> TabIndirectLocateInBrowser;
+	TSharedPtr<FUICommandInfo> TabNonEngineTryOpenFile;
+	TSharedPtr<FUICommandInfo> TabNonEngineDeleteFile;
 };

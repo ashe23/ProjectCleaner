@@ -42,6 +42,24 @@ struct FProjectCleanerIndirectAssetInfo
 	FString FilePath;
 };
 
+struct FProjectCleanerTabNonEngineListItem
+{
+	FString FileName;
+	FString FileExtension;
+	FString FilePathAbs;
+	int64 FileSize = 0;
+
+	bool operator==(const FProjectCleanerTabNonEngineListItem& Other) const
+	{
+		return FilePathAbs.Equals(Other.FilePathAbs);
+	}
+
+	bool operator!=(const FProjectCleanerTabNonEngineListItem& Other) const
+	{
+		return !FilePathAbs.Equals(Other.FilePathAbs);
+	}
+};
+
 USTRUCT(BlueprintType)
 struct FProjectCleanerScanSettings
 {
