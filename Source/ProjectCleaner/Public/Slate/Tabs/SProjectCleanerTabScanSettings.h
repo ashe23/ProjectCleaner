@@ -27,6 +27,7 @@ protected:
 	FReply OnBtnCleanEmptyFoldersClick() const;
 	FReply OnBtnResetExcludeSettingsClick() const;
 
+	bool BtnScanProjectEnabled() const;
 	bool BtnCleanProjectEnabled() const;
 	bool BtnCleanEmptyFolderEnabled() const;
 

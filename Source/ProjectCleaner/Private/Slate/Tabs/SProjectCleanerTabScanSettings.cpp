@@ -44,6 +44,7 @@ void SProjectCleanerTabScanSettings::Construct(const FArguments& InArgs)
 				SNew(SButton)
 				.ContentPadding(FMargin{5.0f})
 				.OnClicked_Raw(this, &SProjectCleanerTabScanSettings::OnBtnScanProjectClick)
+				.IsEnabled_Raw(this, &SProjectCleanerTabScanSettings::BtnScanProjectEnabled)
 				.ButtonColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Blue"))
 				[
 					SNew(STextBlock)
@@ -303,6 +304,11 @@ FReply SProjectCleanerTabScanSettings::OnBtnCleanEmptyFoldersClick() const
 	// SubsystemPtr->ProjectClean();
 
 	return FReply::Handled();
+}
+
+bool SProjectCleanerTabScanSettings::BtnScanProjectEnabled() const
+{
+	return SubsystemPtr && SubsystemPtr->CanScanProject();
 }
 
 bool SProjectCleanerTabScanSettings::BtnCleanProjectEnabled() const
