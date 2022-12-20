@@ -57,6 +57,8 @@ public:
 
 	void ProjectScan();
 	void ProjectScan(const FProjectCleanerScanSettings& InScanSettings);
+	void ProjectClean(const bool bRemoveEmptyFolders = true);
+	void ProjectCleanEmptyFolders();
 	const FProjectCleanerScanData& GetScanData() const;
 	bool CanScanProject() const;
 	bool AssetIsExcluded(const FAssetData& AssetData) const;
@@ -108,7 +110,7 @@ private:
 
 	FProjectCleanerScanData ScanData;
 	FProjectCleanerScanSettings ScanSettings;
-	
+
 	FProjectCleanerDelegateProjectScanned DelegateProjectScanned;
 
 	IPlatformFile* PlatformFile;

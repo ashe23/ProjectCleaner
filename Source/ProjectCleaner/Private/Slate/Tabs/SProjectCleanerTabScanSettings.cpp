@@ -292,7 +292,15 @@ FReply SProjectCleanerTabScanSettings::OnBtnCleanProjectClick() const
 {
 	if (!SubsystemPtr) return FReply::Handled();
 
-	// SubsystemPtr->ProjectClean();
+	const FText Title = FText::FromString(TEXT("Confirm project cleaning"));
+	const FText Msg = FText::FromString(TEXT("Are you sure you want to permanently delete unused assets?"));
+	const auto Result = FMessageDialog::Open(EAppMsgType::YesNo, Msg, &Title);
+	if (Result == EAppReturnType::No || Result == EAppReturnType::Cancel)
+	{
+		return FReply::Handled();
+	}
+
+	SubsystemPtr->ProjectClean(SubsystemPtr->bAutoCleanEmptyFolders);
 
 	return FReply::Handled();
 }
@@ -301,7 +309,15 @@ FReply SProjectCleanerTabScanSettings::OnBtnCleanEmptyFoldersClick() const
 {
 	if (!SubsystemPtr) return FReply::Handled();
 
-	// SubsystemPtr->ProjectClean();
+	const FText Title = FText::FromString(TEXT("Confirm empty folders cleaning"));
+	const FText Msg = FText::FromString(TEXT("Are you sure you want to delete all empty folders in project?"));
+	const auto Result = FMessageDialog::Open(EAppMsgType::YesNo, Msg, &Title);
+	if (Result == EAppReturnType::No || Result == EAppReturnType::Cancel)
+	{
+		return FReply::Handled();
+	}
+
+	SubsystemPtr->ProjectCleanEmptyFolders();
 
 	return FReply::Handled();
 }

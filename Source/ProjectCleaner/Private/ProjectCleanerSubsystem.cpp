@@ -2,6 +2,7 @@
 
 #include "ProjectCleanerSubsystem.h"
 #include "ProjectCleanerConstants.h"
+#include "ProjectCleaner.h"
 // Engine Headers
 #include "AssetToolsModule.h"
 #include "AssetRegistry/AssetRegistryModule.h"
@@ -14,7 +15,9 @@
 #include "FileHelpers.h"
 #include "Engine/MapBuildDataRegistry.h"
 #include "Engine/AssetManager.h"
+#include "Framework/Notifications/NotificationManager.h"
 #include "Settings/ProjectCleanerExcludeSettings.h"
+#include "Widgets/Notifications/SNotificationList.h"
 
 UProjectCleanerSubsystem::UProjectCleanerSubsystem()
 	:
@@ -148,10 +151,10 @@ int64 UProjectCleanerSubsystem::GetAssetsTotalSize(const TArray<FAssetData>& Ass
 	for (const auto& Asset : Assets)
 	{
 		if (!Asset.IsValid()) continue;
-		
+
 		const auto AssetPackageData = ModuleAssetRegistry->Get().GetAssetPackageData(Asset.PackageName);
 		if (!AssetPackageData) continue;
-		
+
 		Size += AssetPackageData->DiskSize;
 	}
 
@@ -366,6 +369,75 @@ void UProjectCleanerSubsystem::ProjectScan(const FProjectCleanerScanSettings& In
 	{
 		DelegateProjectScanned.Broadcast();
 	}
+}
+
+void UProjectCleanerSubsystem::ProjectClean(const bool bRemoveEmptyFolders)
+{
+	if (ScanData.ScanResult != EProjectCleanerScanResult::Success) return;
+}
+
+void UProjectCleanerSubsystem::ProjectCleanEmptyFolders()
+{
+	if (ScanData.ScanResult != EProjectCleanerScanResult::Success) return;
+	if (ScanData.FoldersEmpty.Num() == 0) return;
+
+	bCleaningProject = true;
+	
+	FScopedSlowTask SlowTask{
+		static_cast<float>(ScanData.FoldersEmpty.Num()),
+		FText::FromString(TEXT("Removing empty folders...")),
+		GIsEditor && !IsRunningCommandlet()
+	};
+	SlowTask.MakeDialog();
+
+	int32 FailedFoldersNum = 0;
+
+	for (const auto& EmptyFolder : ScanData.FoldersEmpty)
+	{
+		SlowTask.EnterProgressFrame(1.0f, FText::FromString(FString::Printf(TEXT("Removing %s folder"), *EmptyFolder)));
+
+		// if folder is engine generated folder then we wont remove them todo:ashe23 do not check here, but remove from list
+		if (EmptyFolder.Equals(FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / TEXT("Collections")))) continue;
+		if (EmptyFolder.Equals(FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / TEXT("Developers")))) continue;
+		if (EmptyFolder.Equals(FPaths::ConvertRelativePathToFull(FPaths::GameDevelopersDir() / FPaths::GameUserDeveloperFolderName()))) continue;
+		if (EmptyFolder.Equals(FPaths::ConvertRelativePathToFull(FPaths::GameUserDeveloperDir() / TEXT("Collections")))) continue;
+
+		if (!IFileManager::Get().DeleteDirectory(*EmptyFolder, true, false))
+		{
+			FailedFoldersNum++;
+			UE_LOG(LogProjectCleaner, Error, TEXT("Failed to remove %s folder"), *EmptyFolder);
+		}
+	}
+
+	if (FailedFoldersNum == 0)
+	{
+		FNotificationInfo Info{FText::FromString(TEXT("All empty folders cleaned successfully"))};
+		Info.ExpireDuration = 3.0f;
+
+		const auto NotificationPtr = FSlateNotificationManager::Get().AddNotification(Info);
+		if (!NotificationPtr.IsValid()) return;
+
+		NotificationPtr.Get()->SetCompletionState(SNotificationItem::CS_Success);
+	}
+	else
+	{
+		FNotificationInfo Info{FText::FromString(FString::Printf(TEXT("Failed to delete some folders. Deleted %d of %d"), FailedFoldersNum, ScanData.FoldersEmpty.Num()))};
+		Info.ExpireDuration = 3.0f;
+		Info.Hyperlink = FSimpleDelegate::CreateLambda([]()
+		{
+			FGlobalTabmanager::Get()->TryInvokeTab(FName{TEXT("OutputLog")});
+		});
+		Info.HyperlinkText = FText::FromString(TEXT("Show OutputLog..."));
+
+		const auto NotificationPtr = FSlateNotificationManager::Get().AddNotification(Info);
+		if (!NotificationPtr.IsValid()) return;
+
+		NotificationPtr.Get()->SetCompletionState(SNotificationItem::CS_Fail);
+	}
+
+	bCleaningProject = false;
+
+	ProjectScan();
 }
 
 const FProjectCleanerScanData& UProjectCleanerSubsystem::GetScanData() const
