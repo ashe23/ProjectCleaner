@@ -35,7 +35,7 @@ public:
 			return
 				SNew(SHorizontalBox)
 				+ SHorizontalBox::Slot()
-				  .Padding(FMargin{0.0f, 0.0f, 5.0f, 0.0f})
+				  .Padding(FMargin{5.0f, 0.0f, 5.0f, 0.0f})
 				  .AutoWidth()
 				[
 					SNew(SBox)
@@ -89,6 +89,7 @@ public:
 
 	void Construct(const FArguments& InArgs);
 	virtual ~SProjectCleanerTabIndirect() override;
+
 private:
 	void OnProjectScanned();
 	void ListUpdate();

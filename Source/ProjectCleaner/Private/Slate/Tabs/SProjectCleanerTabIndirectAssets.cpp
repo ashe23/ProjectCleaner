@@ -301,7 +301,7 @@ TSharedPtr<SHeaderRow> SProjectCleanerTabIndirect::GetListHeaderRow()
 	return
 		SNew(SHeaderRow)
 		+ SHeaderRow::Column(FName("AssetName"))
-		  .HAlignCell(HAlign_Center)
+		  .HAlignCell(HAlign_Left)
 		  .VAlignCell(VAlign_Center)
 		  .HAlignHeader(HAlign_Center)
 		  .HeaderContentPadding(FMargin(10.0f))
