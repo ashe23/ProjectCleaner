@@ -13,7 +13,6 @@
 #include "ContentBrowserModule.h"
 #include "IContentBrowserSingleton.h"
 #include "ObjectTools.h"
-#include "ProjectCleaner.h"
 
 void SProjectCleanerTabScanInfo::Construct(const FArguments& InArgs)
 {
@@ -152,6 +151,12 @@ void SProjectCleanerTabScanInfo::Construct(const FArguments& InArgs)
 	];
 	
 	SubsystemPtr->OnProjectScanned().AddRaw(this, &SProjectCleanerTabScanInfo::OnProjectScanned);
+}
+
+SProjectCleanerTabScanInfo::~SProjectCleanerTabScanInfo()
+{
+	SubsystemPtr->OnProjectScanned().RemoveAll(this);
+	SubsystemPtr = nullptr;
 }
 
 void SProjectCleanerTabScanInfo::CommandsRegister()

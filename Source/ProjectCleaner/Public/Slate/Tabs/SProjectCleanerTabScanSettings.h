@@ -17,10 +17,11 @@ public:
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
-
+	virtual ~SProjectCleanerTabScanSettings() override;
 protected:
 	void UpdateData();
-
+	void OnProjectScanned();
+	
 	FReply OnBtnScanProjectClick() const;
 	FReply OnBtnCleanProjectClick() const;
 	FReply OnBtnCleanEmptyFoldersClick() const;

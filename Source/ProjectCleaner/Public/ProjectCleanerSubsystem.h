@@ -106,10 +106,7 @@ private:
 	bool bScanningProject = false;
 	bool bCleaningProject = false;
 
-	UPROPERTY()
 	FProjectCleanerScanData ScanData;
-	
-	UPROPERTY()
 	FProjectCleanerScanSettings ScanSettings;
 	
 	FProjectCleanerDelegateProjectScanned DelegateProjectScanned;

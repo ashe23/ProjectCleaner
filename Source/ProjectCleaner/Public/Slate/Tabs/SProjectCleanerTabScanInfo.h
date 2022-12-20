@@ -19,7 +19,7 @@ public:
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
-
+	virtual ~SProjectCleanerTabScanInfo() override;
 private:
 	void CommandsRegister();
 	void OnProjectScanned() const;

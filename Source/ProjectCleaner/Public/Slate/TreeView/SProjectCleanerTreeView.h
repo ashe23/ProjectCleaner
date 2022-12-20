@@ -13,7 +13,6 @@ class SProjectCleanerTreeView final : public SCompoundWidget
 {
 public:
 	SLATE_BEGIN_ARGS(SProjectCleanerTreeView)
-			: _OnPathSelected()
 		{
 		}
 
@@ -21,9 +20,10 @@ public:
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
-
+	virtual ~SProjectCleanerTreeView() override;
 private:
 	void CommandsRegister();
+	void OnProjectScanned();
 	void ItemsUpdate();
 	TSharedPtr<FProjectCleanerTreeViewItem> ItemCreate(const FString& InFolderPathAbs) const;
 

@@ -34,7 +34,6 @@ void SProjectCleaner::Construct(const FArguments& InArgs, const TSharedRef<SDock
 			->Split(
 				FTabManager::NewStack()
 				->AddTab(ProjectCleanerConstants::TabScanInfo, ETabState::OpenedTab)
-				// ->AddTab(ProjectCleanerConstants::TabUnusedAssets, ETabState::OpenedTab)
 				// ->AddTab(ProjectCleanerConstants::TabIndirectAssets, ETabState::OpenedTab)
 				// ->AddTab(ProjectCleanerConstants::TabCorruptedAssets, ETabState::OpenedTab)
 				// ->AddTab(ProjectCleanerConstants::TabNonEngineFiles, ETabState::OpenedTab)

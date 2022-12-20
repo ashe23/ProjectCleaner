@@ -238,16 +238,18 @@ void SProjectCleanerTabScanSettings::Construct(const FArguments& InArgs)
 		]
 	];
 
-	SubsystemPtr->OnProjectScanned().AddLambda([&]()
-	{
-		UpdateData();
-	});
+	SubsystemPtr->OnProjectScanned().AddRaw(this, &SProjectCleanerTabScanSettings::OnProjectScanned);
+}
+
+SProjectCleanerTabScanSettings::~SProjectCleanerTabScanSettings()
+{
+	SubsystemPtr->OnProjectScanned().RemoveAll(this);
+	SubsystemPtr = nullptr;
 }
 
 void SProjectCleanerTabScanSettings::UpdateData()
 {
 	if (!SubsystemPtr) return;
-	if (!SubsystemPtr->IsValidLowLevel()) return;
 
 	const FProjectCleanerScanData& ScanData = SubsystemPtr->GetScanData();
 
@@ -269,6 +271,11 @@ void SProjectCleanerTabScanSettings::UpdateData()
 	FilesCorruptedSize = SubsystemPtr->GetFilesTotalSize(ScanData.FilesCorrupted);
 	FilesNonEngineNum = ScanData.FilesNonEngine.Num();
 	FilesNonEngineSize = SubsystemPtr->GetFilesTotalSize(ScanData.FilesNonEngine);
+}
+
+void SProjectCleanerTabScanSettings::OnProjectScanned()
+{
+	UpdateData();
 }
 
 FReply SProjectCleanerTabScanSettings::OnBtnScanProjectClick() const

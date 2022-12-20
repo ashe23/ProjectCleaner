@@ -21,15 +21,8 @@ void SProjectCleanerTreeView::Construct(const FArguments& InArgs)
 	SubsystemPtr = GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>();
 	if (!SubsystemPtr) return;
 
-	SubsystemPtr->OnProjectScanned().AddLambda([&]()
-	{
-		ItemsUpdate();
-	});
-
 	CommandsRegister();
 	ItemsUpdate();
-
-	if (!TreeView.IsValid()) return;
 
 	ChildSlot
 	[
@@ -128,6 +121,14 @@ void SProjectCleanerTreeView::Construct(const FArguments& InArgs)
 			]
 		]
 	];
+
+	SubsystemPtr->OnProjectScanned().AddRaw(this, &SProjectCleanerTreeView::OnProjectScanned);
+}
+
+SProjectCleanerTreeView::~SProjectCleanerTreeView()
+{
+	SubsystemPtr->OnProjectScanned().RemoveAll(this);
+	SubsystemPtr = nullptr;
 }
 
 void SProjectCleanerTreeView::CommandsRegister()
@@ -193,12 +194,17 @@ void SProjectCleanerTreeView::CommandsRegister()
 	);
 }
 
+void SProjectCleanerTreeView::OnProjectScanned()
+{
+	ItemsUpdate();
+}
+
 void SProjectCleanerTreeView::ItemsUpdate()
 {
 	if (!SubsystemPtr) return;
-	
+
 	Items.Reset();
-	
+
 	if (!TreeView.IsValid())
 	{
 		SAssignNew(TreeView, STreeView<TSharedPtr<FProjectCleanerTreeViewItem>>)
@@ -212,53 +218,53 @@ void SProjectCleanerTreeView::ItemsUpdate()
 		.OnSelectionChanged(this, &SProjectCleanerTreeView::OnSelectionChange)
 		.OnExpansionChanged(this, &SProjectCleanerTreeView::OnExpansionChange);
 	}
-	
+
 	// caching expanded and selected items in order to keep them , when we updating data
 	ItemsExpanded.Reset();
 	ItemsSelected.Reset();
 	TreeView->GetExpandedItems(ItemsExpanded);
 	TreeView->GetSelectedItems(ItemsSelected);
 	TreeView->ClearHighlightedItems();
-	
+
 	const TSharedPtr<FProjectCleanerTreeViewItem> RootItem = ItemCreate(FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() / TEXT("Content")));
 	if (!RootItem) return;
-	
+
 	// traversing and filling its child items
 	TArray<TSharedPtr<FProjectCleanerTreeViewItem>> Temp;
 	TArray<TSharedPtr<FProjectCleanerTreeViewItem>> Stack;
 	Stack.Push(RootItem);
 	Items.AddUnique(RootItem);
-	
+
 	if (ItemsExpanded.Num() == 0)
 	{
 		TreeView->SetItemExpansion(RootItem, true);
 	}
-	
+
 	if (ItemsSelected.Num() == 0)
 	{
 		TreeView->SetItemSelection(RootItem, true);
 	}
-	
+
 	while (Stack.Num() > 0)
 	{
 		const auto CurrentItem = Stack.Pop();
-	
+
 		TArray<FString> SubFolders;
 		IFileManager::Get().FindFiles(SubFolders, *(CurrentItem->FolderPathAbs / TEXT("*")), false, true);
-	
+
 		CurrentItem->SubItems.Reserve(SubFolders.Num());
-	
+
 		for (const auto& SubFolder : SubFolders)
 		{
 			const TSharedPtr<FProjectCleanerTreeViewItem> SubDirItem = ItemCreate(CurrentItem->FolderPathAbs / SubFolder);
 			if (!SubDirItem.IsValid()) continue;
-	
+
 			CurrentItem->SubItems.Add(SubDirItem);
 			Temp.Add(SubDirItem);
 			Stack.Push(SubDirItem);
 		}
 	}
-	
+
 	TreeView->RequestTreeRefresh();
 }
 
@@ -301,8 +307,7 @@ TSharedPtr<FProjectCleanerTreeViewItem> SProjectCleanerTreeView::ItemCreate(cons
 			break;
 		}
 	}
-	
-	// todo:ashe23 add to selected paths?
+
 	for (const auto& SelectedItem : ItemsSelected)
 	{
 		if (SelectedItem->FolderPathAbs.Equals(TreeItem->FolderPathAbs))
