@@ -89,6 +89,30 @@ void FProjectCleanerCmds::RegisterCommands()
 		EUserInterfaceActionType::Button,
 		FInputChord()
 	);
+
+	UI_COMMAND(
+		TabIndirectAssetOpen,
+		"Open Asset",
+		"Open asset editor",
+		EUserInterfaceActionType::Button,
+		FInputChord()
+	);
+
+	UI_COMMAND(
+		TabIndirectFileOpen,
+		"Open file",
+		"Try to open file in default system program",
+		EUserInterfaceActionType::Button,
+		FInputChord()
+	);
+
+	UI_COMMAND(
+		TabIndirectLocateInBrowser,
+		"Locate in ContentBrowser",
+		"Show selected assets in main ContentBrowser",
+		EUserInterfaceActionType::Button,
+		FInputChord()
+	);
 }
 
 #undef LOCTEXT_NAMESPACE

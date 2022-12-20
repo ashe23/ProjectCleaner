@@ -12,7 +12,7 @@ public:
 
 	// general
 	TSharedPtr<FUICommandInfo> OpenProjectCleanerWindow;
-	
+
 	TSharedPtr<FUICommandInfo> PathExclude;
 	TSharedPtr<FUICommandInfo> PathShowInExplorer;
 	TSharedPtr<FUICommandInfo> AssetLocateInBrowser;
@@ -21,4 +21,7 @@ public:
 	TSharedPtr<FUICommandInfo> AssetExcludeByType;
 	TSharedPtr<FUICommandInfo> AssetDelete;
 	TSharedPtr<FUICommandInfo> AssetDeleteLinked;
+	TSharedPtr<FUICommandInfo> TabIndirectAssetOpen;
+	TSharedPtr<FUICommandInfo> TabIndirectFileOpen;
+	TSharedPtr<FUICommandInfo> TabIndirectLocateInBrowser;
 };

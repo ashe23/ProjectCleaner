@@ -3,6 +3,7 @@
 #include "Slate/SProjectCleaner.h"
 #include "Slate/Tabs/SProjectCleanerTabScanSettings.h"
 #include "Slate/Tabs/SProjectCleanerTabScanInfo.h"
+#include "Slate/Tabs/SProjectCleanerTabIndirectAssets.h"
 #include "ProjectCleanerConstants.h"
 #include "ProjectCleanerStyles.h"
 #include "ProjectCleanerSubsystem.h"
@@ -35,7 +36,7 @@ void SProjectCleaner::Construct(const FArguments& InArgs, const TSharedRef<SDock
 			->Split(
 				FTabManager::NewStack()
 				->AddTab(ProjectCleanerConstants::TabScanInfo, ETabState::OpenedTab)
-				// ->AddTab(ProjectCleanerConstants::TabIndirectAssets, ETabState::OpenedTab)
+				->AddTab(ProjectCleanerConstants::TabIndirectAssets, ETabState::OpenedTab)
 				// ->AddTab(ProjectCleanerConstants::TabCorruptedAssets, ETabState::OpenedTab)
 				// ->AddTab(ProjectCleanerConstants::TabNonEngineFiles, ETabState::OpenedTab)
 				->SetSizeCoefficient(0.7f)
@@ -53,6 +54,11 @@ void SProjectCleaner::Construct(const FArguments& InArgs, const TSharedRef<SDock
 	          .SetDisplayName(FText::FromString(TEXT("Scan Info")))
 	          .SetIcon(FSlateIcon(FProjectCleanerStyles::GetStyleSetName(), "ProjectCleaner.IconTabScanInfo16"))
 	          .SetGroup(AppMenuGroup);
+	TabManager->RegisterTabSpawner(ProjectCleanerConstants::TabIndirectAssets, FOnSpawnTab::CreateRaw(this, &SProjectCleaner::OnTabSpawnIndirectAssets))
+			  .SetTooltipText(FText::FromString(TEXT("Open Indirect Assets Tab")))
+			  .SetDisplayName(FText::FromString(TEXT("Indirect Assets")))
+			  .SetIcon(FSlateIcon(FProjectCleanerStyles::GetStyleSetName(), "ProjectCleaner.IconTabIndirect16"))
+			  .SetGroup(AppMenuGroup);
 
 	FMenuBarBuilder MenuBarBuilder = FMenuBarBuilder(TSharedPtr<FUICommandList>());
 	MenuBarBuilder.AddPullDownMenu(
@@ -114,7 +120,7 @@ SProjectCleaner::~SProjectCleaner()
 {
 	FGlobalTabmanager::Get()->UnregisterTabSpawner(ProjectCleanerConstants::TabScanSettings);
 	FGlobalTabmanager::Get()->UnregisterTabSpawner(ProjectCleanerConstants::TabScanInfo);
-	// FGlobalTabmanager::Get()->UnregisterTabSpawner(ProjectCleanerConstants::TabIndirectAssets);
+	FGlobalTabmanager::Get()->UnregisterTabSpawner(ProjectCleanerConstants::TabIndirectAssets);
 	// FGlobalTabmanager::Get()->UnregisterTabSpawner(ProjectCleanerConstants::TabCorruptedAssets);
 	// FGlobalTabmanager::Get()->UnregisterTabSpawner(ProjectCleanerConstants::TabNonEngineFiles);
 }
@@ -269,5 +275,17 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnScanInfo(const FSpawnTabArgs& Ar
 		.Icon(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconTabScanInfo16"))
 		[
 			SNew(SProjectCleanerTabScanInfo)
+		];
+}
+
+TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnIndirectAssets(const FSpawnTabArgs& Args) const
+{
+	return
+		SNew(SDockTab)
+		.TabRole(PanelTab)
+		.Label(FText::FromString(TEXT("Indirect Assets")))
+		.Icon(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconTabIndirect16"))
+		[
+			SNew(SProjectCleanerTabIndirect)
 		];
 }
