@@ -374,6 +374,7 @@ void UProjectCleanerSubsystem::ProjectScan(const FProjectCleanerScanSettings& In
 void UProjectCleanerSubsystem::ProjectClean(const bool bRemoveEmptyFolders)
 {
 	if (ScanData.ScanResult != EProjectCleanerScanResult::Success) return;
+	// todo:ashe23 implement
 }
 
 void UProjectCleanerSubsystem::ProjectCleanEmptyFolders()
@@ -382,7 +383,7 @@ void UProjectCleanerSubsystem::ProjectCleanEmptyFolders()
 	if (ScanData.FoldersEmpty.Num() == 0) return;
 
 	bCleaningProject = true;
-	
+
 	FScopedSlowTask SlowTask{
 		static_cast<float>(ScanData.FoldersEmpty.Num()),
 		FText::FromString(TEXT("Removing empty folders...")),
@@ -422,7 +423,7 @@ void UProjectCleanerSubsystem::ProjectCleanEmptyFolders()
 	else
 	{
 		FNotificationInfo Info{FText::FromString(FString::Printf(TEXT("Failed to delete some folders. Deleted %d of %d"), FailedFoldersNum, ScanData.FoldersEmpty.Num()))};
-		Info.ExpireDuration = 3.0f;
+		Info.ExpireDuration = 10.0f;
 		Info.Hyperlink = FSimpleDelegate::CreateLambda([]()
 		{
 			FGlobalTabmanager::Get()->TryInvokeTab(FName{TEXT("OutputLog")});
@@ -495,6 +496,18 @@ bool UProjectCleanerSubsystem::FolderIsExcluded(const FString& InFolderPath) con
 FProjectCleanerDelegateProjectScanned& UProjectCleanerSubsystem::OnProjectScanned()
 {
 	return DelegateProjectScanned;
+}
+
+bool UProjectCleanerSubsystem::IsEngineGeneratedFolder(const FString& FolderPathAbs) const
+{
+	TSet<FString> Folders;
+	Folders.Reserve(4);
+	Folders.Add(FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / TEXT("Collections")));
+	Folders.Add(FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / TEXT("Developers")));
+	Folders.Add(FPaths::ConvertRelativePathToFull(FPaths::GameDevelopersDir() / FPaths::GameUserDeveloperFolderName()));
+	Folders.Add(FPaths::ConvertRelativePathToFull(FPaths::GameUserDeveloperDir() / TEXT("Collections")));
+
+	return Folders.Contains(FolderPathAbs);
 }
 
 FString UProjectCleanerSubsystem::ScanResultToString(const EProjectCleanerScanResult ScanResult)

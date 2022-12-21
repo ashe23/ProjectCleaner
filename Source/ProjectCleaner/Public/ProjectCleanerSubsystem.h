@@ -68,6 +68,7 @@ public:
 	static bool EditorInPlayMode();
 	bool FolderIsExcluded(const FString& InFolderPath) const;
 	FProjectCleanerDelegateProjectScanned& OnProjectScanned();
+	bool IsEngineGeneratedFolder(const FString& FolderPathAbs) const;
 
 private:
 	static FString ScanResultToString(const EProjectCleanerScanResult ScanResult);
