@@ -391,49 +391,43 @@ void UProjectCleanerSubsystem::ProjectCleanEmptyFolders()
 	};
 	SlowTask.MakeDialog();
 
-	int32 FailedFoldersNum = 0;
+	int32 DeletedFolderNum = 0;
+
+	ScanData.FoldersEmpty.Sort([](const FString& FolderA, const FString& FolderB)
+	{
+		return FolderA.Len() > FolderB.Len();
+	});
 
 	for (const auto& EmptyFolder : ScanData.FoldersEmpty)
 	{
 		SlowTask.EnterProgressFrame(1.0f, FText::FromString(FString::Printf(TEXT("Removing %s folder"), *EmptyFolder)));
 
-		// if folder is engine generated folder then we wont remove them todo:ashe23 do not check here, but remove from list
-		if (EmptyFolder.Equals(FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / TEXT("Collections")))) continue;
-		if (EmptyFolder.Equals(FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / TEXT("Developers")))) continue;
-		if (EmptyFolder.Equals(FPaths::ConvertRelativePathToFull(FPaths::GameDevelopersDir() / FPaths::GameUserDeveloperFolderName()))) continue;
-		if (EmptyFolder.Equals(FPaths::ConvertRelativePathToFull(FPaths::GameUserDeveloperDir() / TEXT("Collections")))) continue;
-
 		if (!IFileManager::Get().DeleteDirectory(*EmptyFolder, true, false))
 		{
-			FailedFoldersNum++;
 			UE_LOG(LogProjectCleaner, Error, TEXT("Failed to remove %s folder"), *EmptyFolder);
+		}
+		else
+		{
+			++DeletedFolderNum;
 		}
 	}
 
-	if (FailedFoldersNum == 0)
+	const bool bSuccess = DeletedFolderNum == ScanData.FoldersEmpty.Num();
+	const FString Title = FString::Printf(TEXT("Deleted %d of %d folders"), DeletedFolderNum, ScanData.FoldersEmpty.Num());
+	FNotificationInfo Info{FText::FromString(Title)};
+	Info.ExpireDuration = bSuccess ? 5.0f : 10.0f;
+	if (!bSuccess)
 	{
-		FNotificationInfo Info{FText::FromString(TEXT("All empty folders cleaned successfully"))};
-		Info.ExpireDuration = 3.0f;
-
-		const auto NotificationPtr = FSlateNotificationManager::Get().AddNotification(Info);
-		if (!NotificationPtr.IsValid()) return;
-
-		NotificationPtr.Get()->SetCompletionState(SNotificationItem::CS_Success);
-	}
-	else
-	{
-		FNotificationInfo Info{FText::FromString(FString::Printf(TEXT("Failed to delete some folders. Deleted %d of %d"), FailedFoldersNum, ScanData.FoldersEmpty.Num()))};
-		Info.ExpireDuration = 10.0f;
 		Info.Hyperlink = FSimpleDelegate::CreateLambda([]()
 		{
 			FGlobalTabmanager::Get()->TryInvokeTab(FName{TEXT("OutputLog")});
 		});
 		Info.HyperlinkText = FText::FromString(TEXT("Show OutputLog..."));
-
-		const auto NotificationPtr = FSlateNotificationManager::Get().AddNotification(Info);
-		if (!NotificationPtr.IsValid()) return;
-
-		NotificationPtr.Get()->SetCompletionState(SNotificationItem::CS_Fail);
+	}
+	const auto NotificationPtr = FSlateNotificationManager::Get().AddNotification(Info);
+	if (NotificationPtr.IsValid())
+	{
+		NotificationPtr.Get()->SetCompletionState(bSuccess ? SNotificationItem::CS_Success : SNotificationItem::CS_Fail);
 	}
 
 	bCleaningProject = false;
@@ -498,7 +492,7 @@ FProjectCleanerDelegateProjectScanned& UProjectCleanerSubsystem::OnProjectScanne
 	return DelegateProjectScanned;
 }
 
-bool UProjectCleanerSubsystem::IsEngineGeneratedFolder(const FString& FolderPathAbs) const
+bool UProjectCleanerSubsystem::FolderIsEngineGenerated(const FString& FolderPathAbs) const
 {
 	TSet<FString> Folders;
 	Folders.Reserve(4);
@@ -508,6 +502,22 @@ bool UProjectCleanerSubsystem::IsEngineGeneratedFolder(const FString& FolderPath
 	Folders.Add(FPaths::ConvertRelativePathToFull(FPaths::GameUserDeveloperDir() / TEXT("Collections")));
 
 	return Folders.Contains(FolderPathAbs);
+}
+
+bool UProjectCleanerSubsystem::CanShowFolder(const FString& FolderPathAbs) const
+{
+	const FString PathAbs = PathConvertToAbs(FolderPathAbs);
+	if (PathAbs.IsEmpty()) return false;
+
+	if (FolderIsEngineGenerated(FolderPathAbs))
+	{
+		TArray<FAssetData> Assets;
+		ModuleAssetRegistry->Get().GetAssetsByPath(FName{PathConvertToRel(PathAbs)}, Assets, true);
+
+		return Assets.Num() > 0;
+	}
+
+	return true;
 }
 
 FString UProjectCleanerSubsystem::ScanResultToString(const EProjectCleanerScanResult ScanResult)
@@ -933,9 +943,12 @@ void UProjectCleanerSubsystem::FindFolders()
 	TArray<FString> Folders;
 	IFileManager::Get().FindFilesRecursive(Folders, *FPaths::ProjectContentDir(), TEXT("*.*"), false, true);
 
+	TArray<FAssetData> Assets;
 	for (const auto& Folder : Folders)
 	{
 		const FString FolderPathAbs = FPaths::ConvertRelativePathToFull(Folder);
+
+		if (!CanShowFolder(FolderPathAbs)) continue;
 
 		ScanData.FoldersAll.AddUnique(FolderPathAbs);
 

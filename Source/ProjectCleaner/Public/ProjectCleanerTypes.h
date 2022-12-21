@@ -153,7 +153,7 @@ struct FProjectCleanerTreeViewItem
 	bool bExpanded = false;
 	bool bExcluded = false;
 	bool bEmpty = false;
-	bool bEngineGenerated = false;
+	// bool bEngineGenerated = false;
 	float PercentUnused = 0.0f; // 0 - 100 range
 	float PercentUnusedNormalized = 0.0f; // 0 - 1 range
 

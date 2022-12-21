@@ -200,10 +200,10 @@ FSlateColor SProjectCleanerTreeViewItem::GetFolderColor() const
 		return FProjectCleanerStyles::Get().GetSlateColor("ProjectCleaner.Color.Red");
 	}
 
-	if (TreeItem->bEngineGenerated)
-	{
-		return FProjectCleanerStyles::Get().GetSlateColor("ProjectCleaner.Color.Violet");
-	}
+	// if (TreeItem->bEngineGenerated)
+	// {
+	// 	return FProjectCleanerStyles::Get().GetSlateColor("ProjectCleaner.Color.Violet");
+	// }
 
 	return FSlateColor{FLinearColor::Gray};
 }

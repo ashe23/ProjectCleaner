@@ -61,21 +61,21 @@ void SProjectCleanerTreeView::Construct(const FArguments& InArgs)
 				SNew(STextBlock)
 				.Text(FText::FromString(TEXT(" - Excluded Folders")))
 			]
-			+ SHorizontalBox::Slot()
-			  .AutoWidth()
-			  .Padding(FMargin{5.0f, 0.0f, 0.0f, 0.0f})
-			[
-				SNew(SImage)
-				.Image(FEditorStyle::GetBrush("ContentBrowser.AssetTreeFolderOpen"))
-				.ColorAndOpacity(FProjectCleanerStyles::Get().GetSlateColor("ProjectCleaner.Color.Violet"))
-			]
-			+ SHorizontalBox::Slot()
-			  .Padding(FMargin{0.0f, 2.0f, 0.0f, 0.0f})
-			  .AutoWidth()
-			[
-				SNew(STextBlock)
-				.Text(FText::FromString(TEXT(" - Engine Generated Folders")))
-			]
+			// + SHorizontalBox::Slot()
+			//   .AutoWidth()
+			//   .Padding(FMargin{5.0f, 0.0f, 0.0f, 0.0f})
+			// [
+			// 	SNew(SImage)
+			// 	.Image(FEditorStyle::GetBrush("ContentBrowser.AssetTreeFolderOpen"))
+			// 	.ColorAndOpacity(FProjectCleanerStyles::Get().GetSlateColor("ProjectCleaner.Color.Violet"))
+			// ]
+			// + SHorizontalBox::Slot()
+			//   .Padding(FMargin{0.0f, 2.0f, 0.0f, 0.0f})
+			//   .AutoWidth()
+			// [
+			// 	SNew(STextBlock)
+			// 	.Text(FText::FromString(TEXT(" - Engine Generated Folders")))
+			// ]
 		]
 		+ SVerticalBox::Slot()
 		  .AutoHeight()
@@ -286,6 +286,7 @@ void SProjectCleanerTreeView::ItemsUpdate()
 TSharedPtr<FProjectCleanerTreeViewItem> SProjectCleanerTreeView::ItemCreate(const FString& InFolderPathAbs) const
 {
 	if (!SubsystemPtr) return {};
+	if (!SubsystemPtr->CanShowFolder(InFolderPathAbs)) return {};
 
 	const TSharedPtr<FProjectCleanerTreeViewItem> TreeItem = MakeShareable(new FProjectCleanerTreeViewItem());
 	if (!TreeItem.IsValid()) return {};
@@ -308,7 +309,7 @@ TSharedPtr<FProjectCleanerTreeViewItem> SProjectCleanerTreeView::ItemCreate(cons
 	TreeItem->bExcluded = SubsystemPtr->FolderIsExcluded(InFolderPathAbs);
 	TreeItem->PercentUnused = TreeItem->AssetsTotal == 0 ? 0.0f : TreeItem->AssetsUnused * 100.0f / TreeItem->AssetsTotal;
 	TreeItem->PercentUnusedNormalized = FMath::GetMappedRangeValueClamped(FVector2D{0.0f, 100.0f}, FVector2D{0.0f, 1.0f}, TreeItem->PercentUnused);
-	TreeItem->bEngineGenerated = SubsystemPtr->IsEngineGeneratedFolder(TreeItem->FolderPathAbs);
+	// TreeItem->bEngineGenerated = SubsystemPtr->FolderIsEngineGenerated(TreeItem->FolderPathAbs);
 
 	// do not filter root folder
 	if (!SubsystemPtr->bShowFoldersEmpty && !bIsProjectContentFolder && TreeItem->bEmpty) return {};

@@ -68,8 +68,8 @@ public:
 	static bool EditorInPlayMode();
 	bool FolderIsExcluded(const FString& InFolderPath) const;
 	FProjectCleanerDelegateProjectScanned& OnProjectScanned();
-	bool IsEngineGeneratedFolder(const FString& FolderPathAbs) const;
-
+	bool FolderIsEngineGenerated(const FString& FolderPathAbs) const;
+	bool CanShowFolder(const FString& FolderPathAbs) const;
 private:
 	static FString ScanResultToString(const EProjectCleanerScanResult ScanResult);
 	void FindAssetsTotal();
