@@ -3,8 +3,12 @@
 #include "ProjectCleanerSubsystem.h"
 #include "ProjectCleanerConstants.h"
 #include "ProjectCleaner.h"
+#include "Settings/ProjectCleanerExcludeSettings.h"
 // Engine Headers
 #include "AssetToolsModule.h"
+#include "AssetViewUtils.h"
+#include "ContentBrowserModule.h"
+#include "IContentBrowserSingleton.h"
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "Internationalization/Regex.h"
 #include "Misc/FileHelper.h"
@@ -13,10 +17,10 @@
 #include "EditorUtilityWidget.h"
 #include "EditorUtilityWidgetBlueprint.h"
 #include "FileHelpers.h"
+#include "ObjectTools.h"
 #include "Engine/MapBuildDataRegistry.h"
 #include "Engine/AssetManager.h"
 #include "Framework/Notifications/NotificationManager.h"
-#include "Settings/ProjectCleanerExcludeSettings.h"
 #include "Widgets/Notifications/SNotificationList.h"
 
 UProjectCleanerSubsystem::UProjectCleanerSubsystem()
@@ -279,6 +283,9 @@ void UProjectCleanerSubsystem::ProjectScan(const FProjectCleanerScanSettings& In
 
 	ScanDataReset();
 
+	ModuleAssetRegistry->Get().SearchAllAssets(true);
+	ModuleAssetRegistry->Get().WaitForCompletion();
+
 	if (AssetRegistryWorking())
 	{
 		ScanData.ScanResult = EProjectCleanerScanResult::AssetRegistryWorking;
@@ -373,8 +380,83 @@ void UProjectCleanerSubsystem::ProjectScan(const FProjectCleanerScanSettings& In
 
 void UProjectCleanerSubsystem::ProjectClean(const bool bRemoveEmptyFolders)
 {
+	// todo:ashe23 should we scan project before cleaning?
+
 	if (ScanData.ScanResult != EProjectCleanerScanResult::Success) return;
-	// todo:ashe23 implement
+	if (ScanData.AssetsUnused.Num() == 0) return;
+
+	bCleaningProject = true;
+	
+	int32 AssetsDeletedNum = 0;
+	const int32 AssetsTotalNum = ScanData.AssetsUnused.Num();
+
+	TArray<FAssetData> Bucket;
+	TArray<UObject*> LoadedAssets;
+	LoadedAssets.Reserve(ProjectCleanerConstants::DeletionBucketSize);
+	Bucket.Reserve(ProjectCleanerConstants::DeletionBucketSize);
+
+	FScopedSlowTask SlowTask(
+		AssetsTotalNum,
+		FText::FromString(TEXT("Removing unused assets..."))
+	);
+	SlowTask.MakeDialog();
+
+	while (ScanData.AssetsUnused.Num() > 0)
+	{
+		BucketFill(Bucket, ProjectCleanerConstants::DeletionBucketSize);
+
+		if (Bucket.Num() == 0)
+		{
+			break;
+		}
+
+		if (!BucketPrepare(Bucket, LoadedAssets))
+		{
+			UE_LOG(LogProjectCleaner, Error, TEXT("Failed to load some assets. Aborting."))
+			break;
+		}
+
+		AssetsDeletedNum += BucketDelete(LoadedAssets);
+		SlowTask.EnterProgressFrame(
+			Bucket.Num(),
+			FText::FromString(FString::Printf(TEXT("Deleted %d of %d assets"), AssetsDeletedNum, AssetsTotalNum))
+		);
+
+		Bucket.Reset();
+		LoadedAssets.Reset();
+	}
+
+	// Cleaning empty packages
+	const TSet<FName> EmptyPackages = ModuleAssetRegistry->Get().GetCachedEmptyPackages();
+	TArray<UPackage*> AssetPackages;
+	for (const auto& EmptyPackage : EmptyPackages)
+	{
+		UPackage* Package = FindPackage(nullptr, *EmptyPackage.ToString());
+		if (Package && Package->IsValidLowLevel())
+		{
+			AssetPackages.Add(Package);
+		}
+	}
+	
+	if (AssetPackages.Num() > 0)
+	{
+		ObjectTools::CleanupAfterSuccessfulDelete(AssetPackages);
+	}
+
+	bCleaningProject = false;
+	
+	if (bRemoveEmptyFolders)
+	{
+		ProjectCleanEmptyFolders();
+	}
+
+	ProjectScan();
+
+	TArray<FString> FocusFolders;
+	FocusFolders.Add(TEXT("/Game"));
+	
+	const FContentBrowserModule& CBModule = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
+	CBModule.Get().SyncBrowserToFolders(FocusFolders);
 }
 
 void UProjectCleanerSubsystem::ProjectCleanEmptyFolders()
@@ -1110,4 +1192,103 @@ bool UProjectCleanerSubsystem::FileIsCorrupted(const FString& InFilePathAbs) con
 
 	// if its does not exist in asset registry, then something wrong with asset
 	return !AssetData.IsValid();
+}
+
+void UProjectCleanerSubsystem::BucketFill(TArray<FAssetData>& Bucket, const int32 BucketSize)
+{
+	// Searching Root assets
+	int32 Index = 0;
+	TArray<FName> Refs;
+	while (Bucket.Num() < BucketSize && ScanData.AssetsUnused.IsValidIndex(Index))
+	{
+		const FAssetData CurrentAsset = ScanData.AssetsUnused[Index];
+		ModuleAssetRegistry->Get().GetReferencers(CurrentAsset.PackageName, Refs);
+		Refs.RemoveAllSwap([&](const FName& Ref)
+		{
+			return !Ref.ToString().StartsWith(ProjectCleanerConstants::PathRelRoot.ToString()) || Ref.IsEqual(CurrentAsset.PackageName);
+		}, false);
+		Refs.Shrink();
+
+		if (Refs.Num() == 0)
+		{
+			Bucket.AddUnique(CurrentAsset);
+			ScanData.AssetsUnused.RemoveAt(Index);
+		}
+
+		Refs.Reset();
+
+		++Index;
+	}
+
+	if (Bucket.Num() > 0)
+	{
+		return;
+	}
+
+	// if root assets not found, we deleting assets single by finding its referencers
+	if (ScanData.AssetsUnused.Num() == 0)
+	{
+		return;
+	}
+
+	TArray<FAssetData> Stack;
+	Stack.Add(ScanData.AssetsUnused[0]);
+
+	while (Stack.Num() > 0)
+	{
+		const FAssetData Current = Stack.Pop(false);
+		Bucket.AddUnique(Current);
+		ScanData.AssetsUnused.Remove(Current);
+
+		ModuleAssetRegistry->Get().GetReferencers(Current.PackageName, Refs);
+
+		Refs.RemoveAllSwap([&](const FName& Ref)
+		{
+			return !Ref.ToString().StartsWith(ProjectCleanerConstants::PathRelRoot.ToString()) || Ref.IsEqual(Current.PackageName);
+		}, false);
+		Refs.Shrink();
+
+		for (const auto& Ref : Refs)
+		{
+			const FString ObjectPath = Ref.ToString() + TEXT(".") + FPaths::GetBaseFilename(*Ref.ToString());
+			const FAssetData AssetData = ModuleAssetRegistry->Get().GetAssetByObjectPath(FName{*ObjectPath});
+			if (AssetData.IsValid())
+			{
+				if (!Bucket.Contains(AssetData))
+				{
+					Stack.Add(AssetData);
+				}
+
+				Bucket.AddUnique(AssetData);
+				ScanData.AssetsUnused.Remove(AssetData);
+			}
+		}
+
+		Refs.Reset();
+	}
+}
+
+bool UProjectCleanerSubsystem::BucketPrepare(const TArray<FAssetData>& Bucket, TArray<UObject*>& LoadedAssets) const
+{
+	TArray<FString> ObjectPaths;
+	ObjectPaths.Reserve(Bucket.Num());
+
+	for (const auto& Asset : Bucket)
+	{
+		ObjectPaths.Add(Asset.ObjectPath.ToString());
+	}
+
+	return AssetViewUtils::LoadAssetsIfNeeded(ObjectPaths, LoadedAssets, false, true);
+}
+
+int32 UProjectCleanerSubsystem::BucketDelete(const TArray<UObject*>& LoadedAssets) const
+{
+	int32 DeletedAssetsNum = ObjectTools::DeleteObjects(LoadedAssets, false);
+	
+	if (DeletedAssetsNum == 0)
+	{
+		DeletedAssetsNum = ObjectTools::ForceDeleteObjects(LoadedAssets, false);
+	}
+	
+	return DeletedAssetsNum;
 }

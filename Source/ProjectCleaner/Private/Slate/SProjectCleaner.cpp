@@ -64,7 +64,7 @@ void SProjectCleaner::Construct(const FArguments& InArgs, const TSharedRef<SDock
 	TabManager->RegisterTabSpawner(ProjectCleanerConstants::TabNonEngineFiles, FOnSpawnTab::CreateRaw(this, &SProjectCleaner::OnTabSpawnNonEngineFiles))
 	          .SetTooltipText(FText::FromString(TEXT("Open Non Engine Files Tab")))
 	          .SetDisplayName(FText::FromString(TEXT("NonEngine Files")))
-	          .SetIcon(FSlateIcon(FProjectCleanerStyles::GetStyleSetName(), "ProjectCleaner.IconNonEngine16"))
+	          .SetIcon(FSlateIcon(FProjectCleanerStyles::GetStyleSetName(), "ProjectCleaner.IconTabNonEngine16"))
 	          .SetGroup(AppMenuGroup);
 	TabManager->RegisterTabSpawner(ProjectCleanerConstants::TabCorruptedFiles, FOnSpawnTab::CreateRaw(this, &SProjectCleaner::OnTabSpawnCorruptedFiles))
 	          .SetTooltipText(FText::FromString(TEXT("Open Corrupted Files Tab")))

@@ -88,7 +88,9 @@ private:
 	bool AssetExcludedByObject(const FAssetData& AssetData) const;
 	static bool FileHasEngineExtension(const FString& InFilePath);
 	bool FileIsCorrupted(const FString& InFilePathAbs) const;
-
+	void BucketFill(TArray<FAssetData>& Bucket, const int32 BucketSize);
+	bool BucketPrepare(const TArray<FAssetData>& Bucket, TArray<UObject*>& LoadedAssets) const;
+	int32 BucketDelete(const TArray<UObject*>& LoadedAssets) const;
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Config, Category="ProjectCleaner")
 	bool bAutoCleanEmptyFolders = true;

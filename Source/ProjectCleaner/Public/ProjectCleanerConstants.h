@@ -30,4 +30,7 @@ namespace ProjectCleanerConstants
 
 	// ui settings
 	static constexpr int32 HeaderRowFontSize = 10;
+
+	// misc
+	static constexpr int32 DeletionBucketSize = 500; // how many assets delete at a time
 }
