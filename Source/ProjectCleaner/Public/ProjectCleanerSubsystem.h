@@ -96,9 +96,6 @@ public:
 	bool bAutoCleanEmptyFolders = true;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Config, Category="ProjectCleaner")
-	bool bShowRealtimeThumbnails = false;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Config, Category="ProjectCleaner")
 	bool bShowTreeViewLines = true;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Config, Category="ProjectCleaner")

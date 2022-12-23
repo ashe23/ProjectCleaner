@@ -11,6 +11,7 @@
 void SProjectCleanerTreeViewItem::Construct(const FArguments& InArgs, const TSharedRef<STableViewBase>& OwnerTable)
 {
 	TreeItem = InArgs._TreeItem;
+	SearchText = InArgs._SearchText;
 
 	SMultiColumnTableRow::Construct(SMultiColumnTableRow::FArguments().ToolTipText(FText::FromString(TreeItem->FolderPathRel)), OwnerTable);
 }
@@ -27,7 +28,7 @@ TSharedRef<SWidget> SProjectCleanerTreeViewItem::GenerateWidgetForColumn(const F
 			  .Padding(FMargin{2.0f})
 			[
 				SNew(SExpanderArrow, SharedThis(this))
-				.IndentAmount(20)
+				.IndentAmount(10)
 				.ShouldDrawWires(GetDefault<UProjectCleanerSubsystem>()->bShowTreeViewLines)
 			]
 			+ SHorizontalBox::Slot()
@@ -44,7 +45,7 @@ TSharedRef<SWidget> SProjectCleanerTreeViewItem::GenerateWidgetForColumn(const F
 			  .AutoWidth()
 			  .Padding(FMargin{5.0f})
 			[
-				SNew(STextBlock).Text(FText::FromString(TreeItem->FolderName))
+				SNew(STextBlock).Text(FText::FromString(TreeItem->FolderName)).HighlightText(FText::FromString(SearchText))
 			];
 	}
 
@@ -199,11 +200,6 @@ FSlateColor SProjectCleanerTreeViewItem::GetFolderColor() const
 	{
 		return FProjectCleanerStyles::Get().GetSlateColor("ProjectCleaner.Color.Red");
 	}
-
-	// if (TreeItem->bEngineGenerated)
-	// {
-	// 	return FProjectCleanerStyles::Get().GetSlateColor("ProjectCleaner.Color.Violet");
-	// }
 
 	return FSlateColor{FLinearColor::Gray};
 }

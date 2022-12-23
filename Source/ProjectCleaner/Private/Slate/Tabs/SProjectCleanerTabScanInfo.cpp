@@ -36,7 +36,7 @@ void SProjectCleanerTabScanInfo::Construct(const FArguments& InArgs)
 	AssetPickerConfig.bCanShowClasses = false;
 	AssetPickerConfig.bAllowDragging = false;
 	AssetPickerConfig.bForceShowEngineContent = false;
-	AssetPickerConfig.bCanShowRealTimeThumbnails = SubsystemPtr->bShowRealtimeThumbnails;
+	AssetPickerConfig.bCanShowRealTimeThumbnails = false;
 	AssetPickerConfig.AssetShowWarningText = FText::FromName("No assets");
 	AssetPickerConfig.GetCurrentSelectionDelegates.Add(&AssetBrowserDelegateSelection);
 	AssetPickerConfig.RefreshAssetViewDelegates.Add(&AssetBrowserDelegateRefreshView);

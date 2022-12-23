@@ -21,6 +21,7 @@ public:
 
 	void Construct(const FArguments& InArgs);
 	virtual ~SProjectCleanerTreeView() override;
+
 private:
 	void CommandsRegister();
 	void OnProjectScanned();
@@ -47,6 +48,7 @@ private:
 	int64 GetSizeTotal(const FProjectCleanerTreeViewItem& Item) const;
 	int64 GetSizeUnused(const FProjectCleanerTreeViewItem& Item) const;
 
+	FString SearchText;
 	TSet<FString> SelectedPaths;
 	TSharedPtr<FUICommandList> Cmds;
 	TSet<TSharedPtr<FProjectCleanerTreeViewItem>> ItemsExpanded;

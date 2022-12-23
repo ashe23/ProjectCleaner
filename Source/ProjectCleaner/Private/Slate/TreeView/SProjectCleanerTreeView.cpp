@@ -267,6 +267,11 @@ void SProjectCleanerTreeView::ItemsUpdate()
 		TArray<FString> SubFolders;
 		IFileManager::Get().FindFiles(SubFolders, *(CurrentItem->FolderPathAbs / TEXT("*")), false, true);
 
+		// TArray<FString> SubFoldersAll;
+		// IFileManager::Get().FindFilesRecursive(SubFoldersAll, *CurrentItem->FolderPathAbs, TEXT("*.*"),false, true);
+		
+		// if (!SearchText.IsEmpty() && !SubFoldersAll.Contains(SearchText)) continue;
+		
 		CurrentItem->SubItems.Reserve(SubFolders.Num());
 
 		for (const auto& SubFolder : SubFolders)
@@ -275,10 +280,13 @@ void SProjectCleanerTreeView::ItemsUpdate()
 			if (!SubDirItem.IsValid()) continue;
 
 			CurrentItem->SubItems.Add(SubDirItem);
+			SubDirItem->Parent = CurrentItem;
 			Temp.Add(SubDirItem);
 			Stack.Push(SubDirItem);
 		}
 	}
+
+
 
 	TreeView->RequestTreeRefresh();
 }
@@ -288,7 +296,7 @@ TSharedPtr<FProjectCleanerTreeViewItem> SProjectCleanerTreeView::ItemCreate(cons
 	if (!SubsystemPtr) return {};
 	if (!SubsystemPtr->CanShowFolder(InFolderPathAbs)) return {};
 
-	const TSharedPtr<FProjectCleanerTreeViewItem> TreeItem = MakeShareable(new FProjectCleanerTreeViewItem());
+	TSharedPtr<FProjectCleanerTreeViewItem> TreeItem = MakeShareable(new FProjectCleanerTreeViewItem());
 	if (!TreeItem.IsValid()) return {};
 
 	const bool bIsProjectContentFolder = InFolderPathAbs.Equals(FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() / TEXT("Content")));
@@ -309,7 +317,6 @@ TSharedPtr<FProjectCleanerTreeViewItem> SProjectCleanerTreeView::ItemCreate(cons
 	TreeItem->bExcluded = SubsystemPtr->FolderIsExcluded(InFolderPathAbs);
 	TreeItem->PercentUnused = TreeItem->AssetsTotal == 0 ? 0.0f : TreeItem->AssetsUnused * 100.0f / TreeItem->AssetsTotal;
 	TreeItem->PercentUnusedNormalized = FMath::GetMappedRangeValueClamped(FVector2D{0.0f, 100.0f}, FVector2D{0.0f, 1.0f}, TreeItem->PercentUnused);
-	// TreeItem->bEngineGenerated = SubsystemPtr->FolderIsEngineGenerated(TreeItem->FolderPathAbs);
 
 	// do not filter root folder
 	if (!SubsystemPtr->bShowFoldersEmpty && !bIsProjectContentFolder && TreeItem->bEmpty) return {};
@@ -340,7 +347,7 @@ TSharedPtr<FProjectCleanerTreeViewItem> SProjectCleanerTreeView::ItemCreate(cons
 
 TSharedRef<ITableRow> SProjectCleanerTreeView::OnGenerateRow(TSharedPtr<FProjectCleanerTreeViewItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const
 {
-	return SNew(SProjectCleanerTreeViewItem, OwnerTable).TreeItem(Item);
+	return SNew(SProjectCleanerTreeViewItem, OwnerTable).TreeItem(Item).SearchText(SearchText);
 }
 
 TSharedRef<SHeaderRow> SProjectCleanerTreeView::GetHeaderRow() const
@@ -351,10 +358,23 @@ TSharedRef<SHeaderRow> SProjectCleanerTreeView::GetHeaderRow() const
 		  .HAlignHeader(HAlign_Center)
 		  .VAlignHeader(VAlign_Center)
 		  .HeaderContentPadding(FMargin{5.0f})
+		  .ManualWidth(300.0f)
 		[
 			SNew(STextBlock)
 			.Text(FText::FromString(TEXT("Name")))
 			.ToolTipText(FText::FromString(TEXT("Folder Name")))
+			.ColorAndOpacity(FProjectCleanerStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
+			.Font(FProjectCleanerStyles::GetFont("Light", ProjectCleanerConstants::HeaderRowFontSize))
+		]
+		+ SHeaderRow::Column(TEXT("Percent"))
+		  .HAlignHeader(HAlign_Center)
+		  .VAlignHeader(VAlign_Center)
+		  .HeaderContentPadding(FMargin{5.0f})
+		  .ManualWidth(200.0f)
+		[
+			SNew(STextBlock)
+			.ToolTipText(FText::FromString(TEXT("Percent of unused number relative to total number of assets in folder")))
+			.Text(FText::FromString(TEXT("% of Unused")))
 			.ColorAndOpacity(FProjectCleanerStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
 			.Font(FProjectCleanerStyles::GetFont("Light", ProjectCleanerConstants::HeaderRowFontSize))
 		]
@@ -423,17 +443,6 @@ TSharedRef<SHeaderRow> SProjectCleanerTreeView::GetHeaderRow() const
 			.Text(FText::FromString(TEXT("Size (Unused)")))
 			.ColorAndOpacity(FProjectCleanerStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
 			.Font(FProjectCleanerStyles::GetFont("Light", ProjectCleanerConstants::HeaderRowFontSize))
-		]
-		+ SHeaderRow::Column(TEXT("Percent"))
-		  .HAlignHeader(HAlign_Center)
-		  .VAlignHeader(VAlign_Center)
-		  .HeaderContentPadding(FMargin{5.0f})
-		[
-			SNew(STextBlock)
-			.ToolTipText(FText::FromString(TEXT("Percent of unused number relative to total number of assets in folder")))
-			.Text(FText::FromString(TEXT("% of Unused")))
-			.ColorAndOpacity(FProjectCleanerStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
-			.Font(FProjectCleanerStyles::GetFont("Light", ProjectCleanerConstants::HeaderRowFontSize))
 		];
 }
 
@@ -465,105 +474,113 @@ TSharedRef<SWidget> SProjectCleanerTreeView::GetOptionsBtnContent()
 	const TSharedPtr<FExtender> Extender;
 	FMenuBuilder MenuBuilder(true, nullptr, Extender, true);
 
-	FUIAction ActionShowLines;
-	ActionShowLines.ExecuteAction = FExecuteAction::CreateLambda([&]()
-	{
-		if (!SubsystemPtr) return;
-
-		SubsystemPtr->bShowTreeViewLines = !SubsystemPtr->bShowTreeViewLines;
-		SubsystemPtr->PostEditChange();
-
-		ItemsUpdate();
-	});
-	ActionShowLines.CanExecuteAction = FCanExecuteAction::CreateLambda([&]()
-	{
-		return SubsystemPtr != nullptr;
-	});
-	ActionShowLines.GetActionCheckState = FGetActionCheckState::CreateLambda([&]()
-	{
-		return SubsystemPtr && SubsystemPtr->bShowTreeViewLines ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
-	});
 	MenuBuilder.AddMenuSeparator(TEXT("View"));
 	MenuBuilder.AddMenuEntry(
 		FText::FromString(TEXT("Show Lines")),
 		FText::FromString(TEXT("Show tree view organizer lines")),
 		FSlateIcon(),
-		ActionShowLines,
+		FUIAction
+		(
+			FExecuteAction::CreateLambda([&]
+			{
+				if (!SubsystemPtr) return;
+
+				SubsystemPtr->bShowTreeViewLines = !SubsystemPtr->bShowTreeViewLines;
+				SubsystemPtr->PostEditChange();
+
+				ItemsUpdate();
+			}),
+			FCanExecuteAction::CreateLambda([&]()
+			{
+				return SubsystemPtr != nullptr;
+			}),
+			FGetActionCheckState::CreateLambda([&]()
+			{
+				return SubsystemPtr && SubsystemPtr->bShowTreeViewLines ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
+			})
+		),
 		NAME_None,
 		EUserInterfaceActionType::ToggleButton
 	);
 
-	FUIAction ActionShowEmptyFolders;
-	ActionShowEmptyFolders.ExecuteAction = FExecuteAction::CreateLambda([&]()
-	{
-		if (!SubsystemPtr) return;
-
-		SubsystemPtr->bShowFoldersEmpty = !SubsystemPtr->bShowFoldersEmpty;
-		SubsystemPtr->PostEditChange();
-
-		ItemsUpdate();
-	});
-	ActionShowEmptyFolders.CanExecuteAction = FCanExecuteAction::CreateLambda([&]()
-	{
-		return SubsystemPtr != nullptr;
-	});
-	ActionShowEmptyFolders.GetActionCheckState = FGetActionCheckState::CreateLambda([&]()
-	{
-		return SubsystemPtr && SubsystemPtr->bShowFoldersEmpty ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
-	});
 	MenuBuilder.AddSeparator();
+
 	MenuBuilder.AddMenuEntry(
-		FText::FromString(TEXT("Show Empty Folders")),
-		FText::FromString(TEXT("Show Empty Folders")),
+		FText::FromString(TEXT("Show Folders Empty")),
+		FText::FromString(TEXT("Show empty folders in tree view")),
 		FSlateIcon(),
-		ActionShowEmptyFolders,
+		FUIAction
+		(
+			FExecuteAction::CreateLambda([&]
+			{
+				if (!SubsystemPtr) return;
+
+				SubsystemPtr->bShowFoldersEmpty = !SubsystemPtr->bShowFoldersEmpty;
+				SubsystemPtr->PostEditChange();
+
+				ItemsUpdate();
+			}),
+			FCanExecuteAction::CreateLambda([&]()
+			{
+				return SubsystemPtr != nullptr;
+			}),
+			FGetActionCheckState::CreateLambda([&]()
+			{
+				return SubsystemPtr && SubsystemPtr->bShowFoldersEmpty ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
+			})
+		),
 		NAME_None,
 		EUserInterfaceActionType::ToggleButton
 	);
 
-	FUIAction ActionShowExcludedFolders;
-	ActionShowExcludedFolders.ExecuteAction = FExecuteAction::CreateLambda([&]()
-	{
-		SubsystemPtr->bShowFoldersExcluded = !SubsystemPtr->bShowFoldersExcluded;
-		SubsystemPtr->PostEditChange();
-
-		ItemsUpdate();
-	});
-	ActionShowExcludedFolders.CanExecuteAction = FCanExecuteAction::CreateLambda([&]()
-	{
-		return SubsystemPtr != nullptr;
-	});
-	ActionShowExcludedFolders.GetActionCheckState = FGetActionCheckState::CreateLambda([&]()
-	{
-		return SubsystemPtr && SubsystemPtr->bShowFoldersExcluded ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
-	});
 	MenuBuilder.AddMenuEntry(
-		FText::FromString(TEXT("Show Excluded Folders")),
-		FText::FromString(TEXT("Show Excluded Folders")),
+		FText::FromString(TEXT("Show Folders Excluded")),
+		FText::FromString(TEXT("Show excluded folders in tree view")),
 		FSlateIcon(),
-		ActionShowExcludedFolders,
+		FUIAction
+		(
+			FExecuteAction::CreateLambda([&]
+			{
+				if (!SubsystemPtr) return;
+
+				SubsystemPtr->bShowFoldersExcluded = !SubsystemPtr->bShowFoldersExcluded;
+				SubsystemPtr->PostEditChange();
+
+				ItemsUpdate();
+			}),
+			FCanExecuteAction::CreateLambda([&]()
+			{
+				return SubsystemPtr != nullptr;
+			}),
+			FGetActionCheckState::CreateLambda([&]()
+			{
+				return SubsystemPtr && SubsystemPtr->bShowFoldersExcluded ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
+			})
+		),
 		NAME_None,
 		EUserInterfaceActionType::ToggleButton
 	);
 
-	FUIAction ActionClearSelection;
-	ActionClearSelection.ExecuteAction = FExecuteAction::CreateLambda([&]()
-	{
-		if (!TreeView.IsValid()) return;
-
-		TreeView->ClearSelection();
-		TreeView->ClearHighlightedItems();
-	});
-	ActionClearSelection.CanExecuteAction = FCanExecuteAction::CreateLambda([&]()
-	{
-		return TreeView.IsValid() && TreeView->GetSelectedItems().Num() > 0;
-	});
 	MenuBuilder.AddSeparator();
+
 	MenuBuilder.AddMenuEntry(
 		FText::FromString(TEXT("Clear Selection")),
 		FText::FromString(TEXT("Clear current tree view selection")),
 		FSlateIcon(),
-		ActionClearSelection,
+		FUIAction
+		(
+			FExecuteAction::CreateLambda([&]
+			{
+				if (!TreeView.IsValid()) return;
+
+				TreeView->ClearSelection();
+				TreeView->ClearHighlightedItems();
+			}),
+			FCanExecuteAction::CreateLambda([&]()
+			{
+				return TreeView.IsValid() && TreeView->GetSelectedItems().Num() > 0;
+			})
+		),
 		NAME_None,
 		EUserInterfaceActionType::Button
 	);
@@ -573,10 +590,16 @@ TSharedRef<SWidget> SProjectCleanerTreeView::GetOptionsBtnContent()
 
 void SProjectCleanerTreeView::OnSearchBoxTextChanged(const FText& InSearchText)
 {
+	SearchText = InSearchText.ToString();
+
+	ItemsUpdate();
 }
 
 void SProjectCleanerTreeView::OnSearchBoxTextCommitted(const FText& InSearchText, ETextCommit::Type InCommitType)
 {
+	SearchText = InSearchText.ToString();
+
+	ItemsUpdate();
 }
 
 void SProjectCleanerTreeView::OnItemMouseDblClick(TSharedPtr<FProjectCleanerTreeViewItem> Item)

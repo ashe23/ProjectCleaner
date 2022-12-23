@@ -14,6 +14,7 @@ class SProjectCleanerTreeViewItem final : public SMultiColumnTableRow<TSharedPtr
 		}
 
 		SLATE_ARGUMENT(TSharedPtr<FProjectCleanerTreeViewItem>, TreeItem)
+		SLATE_ARGUMENT(FString, SearchText)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs, const TSharedRef<STableViewBase>& OwnerTable);
@@ -24,5 +25,6 @@ private:
 	FSlateColor GetFolderColor() const;
 	FSlateColor GetProgressBarColor() const;
 
+	FString SearchText;
 	TSharedPtr<FProjectCleanerTreeViewItem> TreeItem;
 };

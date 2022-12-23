@@ -380,8 +380,6 @@ void UProjectCleanerSubsystem::ProjectScan(const FProjectCleanerScanSettings& In
 
 void UProjectCleanerSubsystem::ProjectClean(const bool bRemoveEmptyFolders)
 {
-	// todo:ashe23 should we scan project before cleaning?
-
 	if (ScanData.ScanResult != EProjectCleanerScanResult::Success) return;
 	if (ScanData.AssetsUnused.Num() == 0) return;
 
@@ -453,7 +451,7 @@ void UProjectCleanerSubsystem::ProjectClean(const bool bRemoveEmptyFolders)
 	ProjectScan();
 
 	TArray<FString> FocusFolders;
-	FocusFolders.Add(TEXT("/Game"));
+	FocusFolders.Add(ProjectCleanerConstants::PathRelRoot.ToString());
 	
 	const FContentBrowserModule& CBModule = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
 	CBModule.Get().SyncBrowserToFolders(FocusFolders);

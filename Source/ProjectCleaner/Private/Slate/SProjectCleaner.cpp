@@ -10,7 +10,6 @@
 #include "ProjectCleanerStyles.h"
 #include "ProjectCleanerSubsystem.h"
 // Engine Headers
-#include "Settings/ContentBrowserSettings.h"
 #include "Widgets/Layout/SWidgetSwitcher.h"
 
 void SProjectCleaner::Construct(const FArguments& InArgs, const TSharedRef<SDockTab>& ConstructUnderMajorTab, const TSharedPtr<SWindow>& ConstructUnderWindow)
@@ -18,8 +17,6 @@ void SProjectCleaner::Construct(const FArguments& InArgs, const TSharedRef<SDock
 	if (!GEditor) return;
 	SubsystemPtr = GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>();
 	if (!SubsystemPtr) return;
-
-	// SubsystemPtr->ProjectScan();
 
 	TabManager = FGlobalTabmanager::Get()->NewTabManager(ConstructUnderMajorTab);
 	const TSharedRef<FWorkspaceItem> AppMenuGroup = TabManager->AddLocalWorkspaceMenuCategory(FText::FromString(ProjectCleanerConstants::ModuleName.ToString()));
@@ -82,7 +79,7 @@ void SProjectCleaner::Construct(const FArguments& InArgs, const TSharedRef<SDock
 	MenuBarBuilder.AddPullDownMenu(
 		FText::FromString(TEXT("Tabs")),
 		FText::GetEmpty(),
-		FNewMenuDelegate::CreateRaw(this, &SProjectCleaner::CreateMenuBarTabs, TabManager),
+		FNewMenuDelegate::CreateStatic(&SProjectCleaner::CreateMenuBarTabs, TabManager),
 		"Window"
 	);
 
@@ -175,61 +172,15 @@ FText SProjectCleaner::WidgetText() const
 		return FText::FromString(TEXT("Please stop play mode in the editor before doing any operations in the plugin."));
 	}
 
-	// if (SubsystemPtr->ScanningProject())
-	// {
-	// 	return FText::FromString(TEXT("Scanning Project ..."));
-	// }
-	//
-	// if (SubsystemPtr->CleaningProject())
-	// {
-	// 	return FText::FromString(TEXT("Cleaning Project ..."));
-	// }
-
 	return FText::FromString(TEXT(""));
 }
 
 void SProjectCleaner::CreateMenuBarSettings(FMenuBuilder& MenuBuilder, const TSharedPtr<FTabManager> TabManagerPtr) const
 {
-	MenuBuilder.BeginSection(TEXT("SectionGeneral"), FText::FromString(TEXT("General Settings")));
-	MenuBuilder.AddMenuEntry(
-		FText::FromString(TEXT("Realtime Thumbnails")),
-		FText::FromString(TEXT("Enabled realtime thumbnails in asset browser. By default is disabled")),
-		FSlateIcon(),
-		FUIAction
-		(
-			FExecuteAction::CreateLambda([&]()
-			{
-				if (!SubsystemPtr) return;
-
-				SubsystemPtr->bShowRealtimeThumbnails = !SubsystemPtr->bShowRealtimeThumbnails;
-				SubsystemPtr->PostEditChange();
-
-				UContentBrowserSettings* Settings = GetMutableDefault<UContentBrowserSettings>();
-				if (!Settings) return;
-
-				Settings->RealTimeThumbnails = SubsystemPtr->bShowRealtimeThumbnails;
-				Settings->PostEditChange();
-
-				// todo:ashe23 must update asset browser ui
-			}),
-			FCanExecuteAction::CreateLambda([&]()
-			{
-				return SubsystemPtr != nullptr;
-			}),
-			FGetActionCheckState::CreateLambda([&]()
-			{
-				return SubsystemPtr && SubsystemPtr->bShowRealtimeThumbnails ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
-			})
-		),
-		NAME_None,
-		EUserInterfaceActionType::ToggleButton
-	);
-	MenuBuilder.EndSection();
-
 	MenuBuilder.BeginSection(TEXT("SectionClean"), FText::FromString(TEXT("Clean Settings")));
 	MenuBuilder.AddMenuEntry(
 		FText::FromString(TEXT("Auto Clean Empty Folders")),
-		FText::FromString(TEXT("Automatically delete empty folders after cleaning a project of unused assets. By default, it is enabled.")),
+		FText::FromString(TEXT("Automatically delete empty folders after deleting unused assets. By default, it is enabled.")),
 		FSlateIcon(),
 		FUIAction
 		(
@@ -255,7 +206,7 @@ void SProjectCleaner::CreateMenuBarSettings(FMenuBuilder& MenuBuilder, const TSh
 	MenuBuilder.EndSection();
 }
 
-void SProjectCleaner::CreateMenuBarTabs(FMenuBuilder& MenuBuilder, const TSharedPtr<FTabManager> TabManagerPtr) const
+void SProjectCleaner::CreateMenuBarTabs(FMenuBuilder& MenuBuilder, const TSharedPtr<FTabManager> TabManagerPtr)
 {
 	if (!TabManagerPtr.IsValid()) return;
 
