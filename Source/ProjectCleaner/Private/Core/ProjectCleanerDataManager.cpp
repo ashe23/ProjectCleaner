@@ -346,7 +346,7 @@ const TSet<FName>& FProjectCleanerDataManager::GetEmptyFolders() const
 	return EmptyFolders;
 }
 
-const TSet<FName>& FProjectCleanerDataManager::GetPrimaryAssetClasses() const
+const TSet<FTopLevelAssetPath>& FProjectCleanerDataManager::GetPrimaryAssetClasses() const
 {
 	return PrimaryAssetClasses;
 }
@@ -403,7 +403,8 @@ void FProjectCleanerDataManager::FixupRedirectors() const
 	FARFilter Filter;
 	Filter.bRecursivePaths = true;
 	Filter.PackagePaths.Emplace(RelativeRoot);
-	Filter.ClassNames.Emplace(UObjectRedirector::StaticClass()->GetFName());
+	// Filter.ClassNames.Emplace(UObjectRedirector::StaticClass()->GetFName());
+	Filter.ClassPaths.Emplace(UObjectRedirector::StaticClass()->GetClassPathName());
 
 	// Getting all redirectors in project
 	TArray<FAssetData> AssetList;
@@ -679,14 +680,14 @@ void FProjectCleanerDataManager::FindPrimaryAssetClasses()
 
 	for (const auto& AssetTypeInfo : AssetTypeInfos)
 	{
-		const UClass* AssetTypeCLass = AssetTypeInfo.AssetBaseClassLoaded;
-		if (!AssetTypeCLass) continue;
-		FName ClassName = AssetTypeCLass->GetFName();
-		PrimaryAssetClasses.Add(ClassName);
+		const UClass* AssetTypeClass = AssetTypeInfo.AssetBaseClassLoaded;
+		if (!AssetTypeClass) continue;
+		
+		PrimaryAssetClasses.Add(AssetTypeClass->GetClassPathName());
 	}
 
-	PrimaryAssetClasses.Add(UEditorUtilityBlueprint::StaticClass()->GetFName());
-	PrimaryAssetClasses.Add(UEditorUtilityWidgetBlueprint::StaticClass()->GetFName());
+	PrimaryAssetClasses.Add(UEditorUtilityBlueprint::StaticClass()->GetClassPathName());
+	PrimaryAssetClasses.Add(UEditorUtilityWidgetBlueprint::StaticClass()->GetClassPathName());
 }
 
 void FProjectCleanerDataManager::FindAssetsWithExternalReferencers()
@@ -743,14 +744,15 @@ void FProjectCleanerDataManager::FindUnusedAssets()
 
 void FProjectCleanerDataManager::FindUsedAssets(TSet<FName>& UsedAssets)
 {
-	TSet<FName> DerivedFromPrimaryAssets;
+	TSet<FTopLevelAssetPath> DerivedFromPrimaryAssets;
 	{
-		const TSet<FName> ExcludedClassNames;
+		const TSet<FTopLevelAssetPath> ExcludedClassNames;
 		AssetRegistry->Get().GetDerivedClassNames(PrimaryAssetClasses.Array(), ExcludedClassNames, DerivedFromPrimaryAssets);
 	}
 	
 	FARFilter Filter_BP;
-	Filter_BP.ClassNames.Add(UBlueprint::StaticClass()->GetFName());
+	Filter_BP.ClassPaths.Add(UBlueprint::StaticClass()->GetClassPathName());
+	// Filter_BP.ClassNames.Add(UBlueprint::StaticClass()->GetFName());
 	Filter_BP.PackagePaths.Add(TEXT("/Game"));
 	Filter_BP.bRecursiveClasses = true;
 	Filter_BP.bRecursivePaths = true;
@@ -761,18 +763,28 @@ void FProjectCleanerDataManager::FindUsedAssets(TSet<FName>& UsedAssets)
 	for (const auto& BP_Asset : BlueprintAssets)
 	{
 		const FName BP_ClassName = ProjectCleanerUtility::GetClassName(BP_Asset);
-		if (DerivedFromPrimaryAssets.Contains(BP_ClassName))
+		for (const auto& DerivedClass : DerivedFromPrimaryAssets)
 		{
-			UsedAssets.Add(BP_Asset.PackageName);
+			if (DerivedClass.GetAssetName().IsEqual(BP_ClassName))
+			{
+				UsedAssets.Add(BP_Asset.PackageName);
+				break;
+			}
 		}
+		// if (DerivedFromPrimaryAssets.Contains(BP_ClassName))
+		// {
+		// 	UsedAssets.Add(BP_Asset.PackageName);
+		// }
 	}
 	
 	FARFilter Filter;
 	Filter.bRecursiveClasses = true;
 	Filter.bRecursivePaths = true;
 	Filter.PackagePaths.Add(TEXT("/Game"));
-	Filter.ClassNames.Append(PrimaryAssetClasses.Array());
-	Filter.ClassNames.Add(UMapBuildDataRegistry::StaticClass()->GetFName());
+	// Filter.ClassNames.Append(PrimaryAssetClasses.Array());
+	// Filter.ClassNames.Add(UMapBuildDataRegistry::StaticClass()->GetFName());
+	Filter.ClassPaths.Append(PrimaryAssetClasses.Array());
+	Filter.ClassPaths.Add(UMapBuildDataRegistry::StaticClass()->GetClassPathName());
 
 	AssetRegistry->Get().GetAssets(Filter, PrimaryAssets);
 

@@ -79,7 +79,7 @@ void SProjectCleanerMainUI::Construct(const FArguments& InArgs)
 						+ SScrollBox::Slot()
 						[
 							SNew(SBorder)
-							.BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
+							.BorderImage(FAppStyle::GetBrush("ToolPanel.GroupBorder"))
 							[
 								SNew(SVerticalBox)
 								+ SVerticalBox::Slot()

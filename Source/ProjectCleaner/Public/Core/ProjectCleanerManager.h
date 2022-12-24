@@ -38,7 +38,7 @@ public:
 	const TSet<FName>& GetNonEngineFiles() const;
 	const TMap<FAssetData, FIndirectAsset>& GetIndirectAssets() const;
 	const TSet<FName>& GetEmptyFolders() const;
-	const TSet<FName>& GetPrimaryAssetClasses() const;
+	const TSet<FTopLevelAssetPath>& GetPrimaryAssetClasses() const;
 	UCleanerConfigs* GetCleanerConfigs() const;
 	float GetUnusedAssetsPercent() const;
 

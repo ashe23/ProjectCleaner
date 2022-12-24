@@ -46,7 +46,7 @@ public:
 	const TSet<FName>& GetCorruptedAssets() const;
 	const TSet<FName>& GetNonEngineFiles() const;
 	const TSet<FName>& GetEmptyFolders() const;
-	const TSet<FName>& GetPrimaryAssetClasses() const;
+	const TSet<FTopLevelAssetPath>& GetPrimaryAssetClasses() const;
 	const TMap<FAssetData, FIndirectAsset>& GetIndirectAssets() const;
 	
 	// setters
@@ -85,7 +85,7 @@ private:
 	TSet<FName> CorruptedAssets;
 	TSet<FName> NonEngineFiles;
 	TSet<FName> EmptyFolders;
-	TSet<FName> PrimaryAssetClasses;
+	TSet<FTopLevelAssetPath> PrimaryAssetClasses;
 	TSet<FName> ExcludedAssets;
 	TMap<FAssetData, FIndirectAsset> IndirectAssets;
 

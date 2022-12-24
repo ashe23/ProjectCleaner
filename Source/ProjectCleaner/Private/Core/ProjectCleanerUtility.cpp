@@ -5,12 +5,12 @@
 #include "ObjectTools.h"
 #include "FileHelpers.h"
 #include "AssetRegistryModule.h"
-#include "AssetToolsModule.h"
+// #include "AssetToolsModule.h"
 #include "IContentBrowserSingleton.h"
-#include "Engine/MapBuildDataRegistry.h"
+// #include "Engine/MapBuildDataRegistry.h"
 #include "Misc/Paths.h"
-#include "Misc/FileHelper.h"
-#include "Misc/ScopedSlowTask.h"
+// #include "Misc/FileHelper.h"
+// #include "Misc/ScopedSlowTask.h"
 #include "Editor/ContentBrowser/Public/ContentBrowserModule.h"
 #include "Internationalization/Regex.h"
 
@@ -33,7 +33,8 @@ FName ProjectCleanerUtility::GetClassName(const FAssetData& AssetData)
 	if (!AssetData.IsValid()) return NAME_None;
 	
 	FName ClassName;
-	if (AssetData.AssetClass.IsEqual("Blueprint"))
+	// if (AssetData.AssetClass.IsEqual("Blueprint"))
+	if (AssetData.AssetClassPath.GetAssetName().IsEqual("Blueprint"))
 	{
 		const auto GeneratedClassName = AssetData.TagsAndValues.FindTag(TEXT("GeneratedClass")).GetValue();
 		const FString ClassObjectPath = FPackageName::ExportTextPathToObjectPath(*GeneratedClassName);
@@ -41,7 +42,7 @@ FName ProjectCleanerUtility::GetClassName(const FAssetData& AssetData)
 	}
 	else
 	{
-		ClassName = FName{*AssetData.AssetClass.ToString()};
+		ClassName = FName{*AssetData.AssetClassPath.GetAssetName().ToString()};
 	}
 
 	return ClassName;

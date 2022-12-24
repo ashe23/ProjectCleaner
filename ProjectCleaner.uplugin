@@ -1,7 +1,7 @@
 {
 	"FileVersion": 3,
 	"Version": 1,
-	"VersionName": "1.8.2",
+	"VersionName": "1.9.0",
 	"FriendlyName": "ProjectCleaner",
 	"Description": "Unreal engine plugin for managing all unused assets and empty folders in project",
 	"Category": "ProjectManagementTools",
@@ -10,7 +10,7 @@
 	"DocsURL": "https://github.com/ashe23/ProjectCleaner",
 	"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/product/4d7f5dc837fc4b009bb91e678adf9fd0",
 	"SupportURL": "",
-	"EngineVersion": "5.0.0",
+	"EngineVersion": "5.1.0",
 	"CanContainContent": false,
 	"IsBetaVersion": false,
 	"IsExperimentalVersion": false,

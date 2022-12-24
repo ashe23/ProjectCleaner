@@ -4,10 +4,10 @@
 #include "StructsContainer.h"
 #include "UI/ProjectCleanerNotificationManager.h"
 // Engine Headers
-#include "AssetRegistryModule.h"
+// #include "AssetRegistryModule.h"
 #include "Misc/ScopedSlowTask.h"
-#include "Misc/FileHelper.h"
-#include "Engine/AssetManager.h"
+// #include "Misc/FileHelper.h"
+// #include "Engine/AssetManager.h"
 #include "ShaderCompiler.h"
 
 #define LOCTEXT_NAMESPACE "FProjectCleanerModule"
@@ -57,7 +57,8 @@ void FProjectCleanerManager::ExcludeSelectedAssetsByType(const TArray<FAssetData
 {
 	for (const auto& Asset : Assets)
 	{
-		if (Asset.AssetClass.IsEqual(TEXT("Blueprint")))
+		// if (Asset.AssetClass.IsEqual(TEXT("Blueprint")))
+		if (Asset.AssetClassPath.GetAssetName().IsEqual(TEXT("Blueprint")))
 		{
 			const auto LoadedAsset = Asset.GetAsset();
 			if (!LoadedAsset) continue;
@@ -269,7 +270,7 @@ const TSet<FName>& FProjectCleanerManager::GetEmptyFolders() const
 	return DataManager.GetEmptyFolders();
 }
 
-const TSet<FName>& FProjectCleanerManager::GetPrimaryAssetClasses() const
+const TSet<FTopLevelAssetPath>& FProjectCleanerManager::GetPrimaryAssetClasses() const
 {
 	return DataManager.GetPrimaryAssetClasses();
 }

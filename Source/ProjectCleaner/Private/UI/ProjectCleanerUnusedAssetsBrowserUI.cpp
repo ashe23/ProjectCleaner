@@ -6,10 +6,10 @@
 #include "StructsContainer.h"
 // Engine Headers
 #include "IContentBrowserDataModule.h"
-#include "AssetRegistry/AssetRegistryModule.h"
+// #include "AssetRegistry/AssetRegistryModule.h"
 #include "Editor/ContentBrowser/Public/ContentBrowserModule.h"
-#include "Widgets/Layout/SScrollBox.h"
-#include "Widgets/Layout/SScrollBorder.h"
+// #include "Widgets/Layout/SScrollBox.h"
+// #include "Widgets/Layout/SScrollBorder.h"
 #include "Toolkits/GlobalEditorCommonCommands.h"
 
 #define LOCTEXT_NAMESPACE "FProjectCleanerModule"
@@ -33,7 +33,7 @@ void SProjectCleanerUnusedAssetsBrowserUI::Construct(const FArguments& InArgs)
 	AssetPickerConfig.InitialAssetViewType = EAssetViewType::Tile;
 	AssetPickerConfig.bCanShowFolders = true;
 	AssetPickerConfig.bAddFilterUI = true;
-	AssetPickerConfig.bPreloadAssetsForContextMenu = false;
+	// AssetPickerConfig.bPreloadAssetsForContextMenu = false;
 	AssetPickerConfig.bSortByPathInColumnView = true;
 	AssetPickerConfig.bShowPathInColumnView = true;
 	AssetPickerConfig.bShowBottomToolbar = true;
@@ -245,8 +245,8 @@ void SProjectCleanerUnusedAssetsBrowserUI::OnAssetDblClicked(const FAssetData& A
 {
 	if (!GEditor) return;
 	
-	TArray<FName> AssetNames;
-	AssetNames.Add(AssetData.ObjectPath);
+	TArray<FSoftObjectPath> AssetNames;
+	AssetNames.Add(AssetData.GetSoftObjectPath());
 
 	GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->OpenEditorsForAssets(AssetNames);
 }
