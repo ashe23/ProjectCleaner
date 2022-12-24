@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "ProjectCleanerSubsystem.h"
 #include "ProjectCleanerTypes.generated.h"
 
 UENUM(BlueprintType)
@@ -168,4 +169,61 @@ struct FProjectCleanerTreeViewItem
 	{
 		return !FolderPathAbs.Equals(Other.FolderPathAbs);
 	}
+};
+
+struct FProjectCleanerPath
+{
+	explicit FProjectCleanerPath(const FString& InPath)
+	{
+		if (InPath.IsEmpty()) return;
+
+		// PathAbs = GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>()->PathConvertToAbs(InPath);
+		// PathRel = GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>()->PathConvertToRel(InPath);
+	}
+
+	bool IsValid() const
+	{
+		if (PathAbs.IsEmpty()) return false;
+
+		return IsFile() ? FPaths::FileExists(PathAbs) : FPaths::DirectoryExists(PathAbs);
+	}
+
+	const FString& GetPathFullAbs() const
+	{
+		return PathAbs;
+	}
+
+	const FString& GetPathFullRel() const
+	{
+		return PathRel;
+	}
+
+	const FString& GetPathAbs() const
+	{
+		return FPaths::GetPath(PathAbs);
+	}
+
+	const FString& GetPathRel() const
+	{
+		return FPaths::GetPath(PathRel);
+	}
+
+	const FString& GetName() const
+	{
+		return IsFile() ? FPaths::GetCleanFilename(PathAbs) : FPaths::GetPathLeaf(PathAbs);
+	}
+
+	const FString& GetExtension(const bool bIncludeDot) const
+	{
+		return IsFile() ? FPaths::GetExtension(PathAbs, bIncludeDot) : TEXT("");
+	}
+
+	bool IsFile() const
+	{
+		return FPaths::GetExtension(PathAbs).IsEmpty() == false;
+	}
+
+private:
+	FString PathAbs;
+	FString PathRel;
 };

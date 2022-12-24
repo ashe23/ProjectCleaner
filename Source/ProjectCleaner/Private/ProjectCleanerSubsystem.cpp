@@ -34,6 +34,18 @@ UProjectCleanerSubsystem::UProjectCleanerSubsystem()
 void UProjectCleanerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
+
+	const FProjectCleanerPath Path{FPaths::ProjectContentDir()};
+	UE_LOG(LogProjectCleaner, Warning, TEXT("%s"), Path.IsValid() ? TEXT("True") : TEXT("False"));
+	UE_LOG(LogProjectCleaner, Warning, TEXT("%s"), *Path.GetPathFullAbs());
+	UE_LOG(LogProjectCleaner, Warning, TEXT("%s"), *Path.GetPathFullRel());
+	UE_LOG(LogProjectCleaner, Warning, TEXT("%s"), *Path.GetPathAbs());
+	UE_LOG(LogProjectCleaner, Warning, TEXT("%s"), *Path.GetPathRel());
+	UE_LOG(LogProjectCleaner, Warning, TEXT("%s"), *Path.GetName());
+	UE_LOG(LogProjectCleaner, Warning, TEXT("%s"), *Path.GetExtension(true));
+	UE_LOG(LogProjectCleaner, Warning, TEXT("%s"), Path.IsFile() ? TEXT("True") : TEXT("False"));
+
+	return;
 }
 
 void UProjectCleanerSubsystem::Deinitialize()
@@ -283,8 +295,8 @@ void UProjectCleanerSubsystem::ProjectScan(const FProjectCleanerScanSettings& In
 
 	ScanDataReset();
 
-	ModuleAssetRegistry->Get().SearchAllAssets(true);
-	ModuleAssetRegistry->Get().WaitForCompletion();
+	// ModuleAssetRegistry->Get().SearchAllAssets(true);
+	// ModuleAssetRegistry->Get().WaitForCompletion();
 
 	if (AssetRegistryWorking())
 	{
@@ -384,7 +396,7 @@ void UProjectCleanerSubsystem::ProjectClean(const bool bRemoveEmptyFolders)
 	if (ScanData.AssetsUnused.Num() == 0) return;
 
 	bCleaningProject = true;
-	
+
 	int32 AssetsDeletedNum = 0;
 	const int32 AssetsTotalNum = ScanData.AssetsUnused.Num();
 
@@ -435,14 +447,14 @@ void UProjectCleanerSubsystem::ProjectClean(const bool bRemoveEmptyFolders)
 			AssetPackages.Add(Package);
 		}
 	}
-	
+
 	if (AssetPackages.Num() > 0)
 	{
 		ObjectTools::CleanupAfterSuccessfulDelete(AssetPackages);
 	}
 
 	bCleaningProject = false;
-	
+
 	if (bRemoveEmptyFolders)
 	{
 		ProjectCleanEmptyFolders();
@@ -452,7 +464,7 @@ void UProjectCleanerSubsystem::ProjectClean(const bool bRemoveEmptyFolders)
 
 	TArray<FString> FocusFolders;
 	FocusFolders.Add(ProjectCleanerConstants::PathRelRoot.ToString());
-	
+
 	const FContentBrowserModule& CBModule = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
 	CBModule.Get().SyncBrowserToFolders(FocusFolders);
 }
@@ -1282,11 +1294,11 @@ bool UProjectCleanerSubsystem::BucketPrepare(const TArray<FAssetData>& Bucket, T
 int32 UProjectCleanerSubsystem::BucketDelete(const TArray<UObject*>& LoadedAssets) const
 {
 	int32 DeletedAssetsNum = ObjectTools::DeleteObjects(LoadedAssets, false);
-	
+
 	if (DeletedAssetsNum == 0)
 	{
 		DeletedAssetsNum = ObjectTools::ForceDeleteObjects(LoadedAssets, false);
 	}
-	
+
 	return DeletedAssetsNum;
 }
