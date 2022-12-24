@@ -49,7 +49,7 @@ FProjectCleanerDataManager::~FProjectCleanerDataManager()
 void FProjectCleanerDataManager::AnalyzeProject()
 {
 	if (IsLoadingAssets()) return;
-	
+
 	FixupRedirectors();
 	ProjectCleanerUtility::SaveAllAssets(!bSilentMode);
 	FindAllAssets();
@@ -92,7 +92,7 @@ void FProjectCleanerDataManager::SetUserExcludedAssets(const TArray<FString>& As
 {
 	for (const auto& Asset : Assets)
 	{
-		const FAssetData AssetData = AssetRegistry->Get().GetAssetByObjectPath(FName{*Asset});
+		const FAssetData AssetData = AssetRegistry->Get().GetAssetByObjectPath(FSoftObjectPath{Asset});
 		if (!AssetData.IsValid()) continue;
 		
 		UserExcludedAssets.AddUnique(AssetData);
@@ -494,14 +494,14 @@ void FProjectCleanerDataManager::FindInvalidFilesAndAssets()
 						return false;
 					}
 					
-					const FName ObjectPathName = FName{*ObjectPath};
+					// const FName ObjectPathName = FName{*ObjectPath};
 					const bool IsInAssetRegistry = AllAssets.ContainsByPredicate([&] (const FAssetData& Elem)
 					{
-						return Elem.ObjectPath.IsEqual(ObjectPathName);
+						return Elem.GetSoftObjectPath().ToString().Equals(ObjectPath);
 					});
 					if (!IsInAssetRegistry)
 					{
-						CorruptedAssets.Add(ObjectPathName);
+						CorruptedAssets.Add(FName{*ObjectPath});
 					}
 				}
 				else
@@ -603,7 +603,7 @@ void FProjectCleanerDataManager::FindIndirectAssets()
 			const FAssetData* AssetData = AllAssets.FindByPredicate([&] (const FAssetData& Elem)
 			{
 				return
-					Elem.ObjectPath.ToString()==(FoundedAssetObjectPath) ||
+					Elem.GetSoftObjectPath().ToString()==(FoundedAssetObjectPath) ||
 					Elem.PackageName.ToString()==(FoundedAssetObjectPath);
 			});
 
@@ -957,7 +957,7 @@ void FProjectCleanerDataManager::FillBucketWithAssets(TArray<FAssetData>& Bucket
 		for (const auto& Ref : Refs)
 		{
 			const FString ObjectPath = Ref.ToString() + TEXT(".") + FPaths::GetBaseFilename(*Ref.ToString());
-			const FAssetData AssetData = AssetRegistry->Get().GetAssetByObjectPath(FName{*ObjectPath});
+			const FAssetData AssetData = AssetRegistry->Get().GetAssetByObjectPath(FSoftObjectPath{*ObjectPath});
 			if (AssetData.IsValid())
 			{
 				if (!Bucket.Contains(AssetData))
@@ -981,7 +981,7 @@ bool FProjectCleanerDataManager::PrepareBucketForDeletion(const TArray<FAssetDat
 	
 	for (const auto& Asset : Bucket)
 	{
-		ObjectPaths.Add(Asset.ObjectPath.ToString());
+		ObjectPaths.Add(Asset.GetSoftObjectPath().ToString());
 	}
 	
 	return AssetViewUtils::LoadAssetsIfNeeded(ObjectPaths, LoadedAssets, false, true);

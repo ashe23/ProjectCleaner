@@ -6,9 +6,9 @@
 #include "UI/ProjectCleanerCommands.h"
 // Engine Headers
 #include "ToolMenus.h"
-#include "AssetToolsModule.h"
-#include "AssetRegistry/AssetRegistryModule.h"
-#include "Settings/ContentBrowserSettings.h"
+// #include "AssetToolsModule.h"
+// #include "AssetRegistry/AssetRegistryModule.h"
+// #include "Settings/ContentBrowserSettings.h"
 
 DEFINE_LOG_CATEGORY(LogProjectCleaner);
 

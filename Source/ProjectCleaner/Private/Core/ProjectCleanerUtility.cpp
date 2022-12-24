@@ -48,6 +48,19 @@ FName ProjectCleanerUtility::GetClassName(const FAssetData& AssetData)
 	return ClassName;
 }
 
+FTopLevelAssetPath ProjectCleanerUtility::GetClassByName(const FName& ClassName)
+{
+	FTopLevelAssetPath ClassPathName;
+	if (ClassName != NAME_None)
+	{
+		const FString ShortClassName = ClassName.ToString();
+		ClassPathName = UClass::TryConvertShortTypeNameToPathName<UStruct>(*ShortClassName, ELogVerbosity::Warning, TEXT("AssetRegistry using deprecated function"));
+		UE_CLOG(ClassPathName.IsNull(), LogClass, Error, TEXT("Failed to convert short class name %s to class path name."), *ShortClassName);
+	}
+	
+	return ClassPathName;
+}
+
 FText ProjectCleanerUtility::GetDeletionProgressText(const int32 DeletedAssetNum, const int32 Total, const bool bShowPercent)
 {
 	if (bShowPercent)

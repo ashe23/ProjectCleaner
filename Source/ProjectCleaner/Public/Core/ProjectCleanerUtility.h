@@ -18,6 +18,7 @@ class PROJECTCLEANER_API ProjectCleanerUtility
 public:
 	static int64 GetTotalSize(const TArray<FAssetData>& Assets);
 	static FName GetClassName(const FAssetData& AssetData);
+	static FTopLevelAssetPath GetClassByName(const FName& ClassName);
 	static FText GetDeletionProgressText(const int32 DeletedAssetNum, const int32 Total, const bool bShowPercent);
 	static FString GetExternalActorsFolderPath();
 	static FString GetExternalObjectsFolderPath();

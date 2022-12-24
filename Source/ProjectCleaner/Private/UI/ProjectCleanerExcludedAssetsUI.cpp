@@ -9,7 +9,7 @@
 #include "IContentBrowserSingleton.h"
 #include "IContentBrowserDataModule.h"
 #include "Editor/ContentBrowser/Public/ContentBrowserModule.h"
-#include "Widgets/Layout/SScrollBox.h"
+// #include "Widgets/Layout/SScrollBox.h"
 #include "Toolkits/GlobalEditorCommonCommands.h"
 
 #define LOCTEXT_NAMESPACE "FProjectCleanerModule"
@@ -201,8 +201,8 @@ TSharedPtr<SWidget> SProjectCleanerExcludedAssetsUI::OnGetFolderContextMenu(cons
 
 void SProjectCleanerExcludedAssetsUI::OnAssetDblClicked(const FAssetData& AssetData)
 {
-	TArray<FName> AssetNames;
-	AssetNames.Add(AssetData.ObjectPath);
+	TArray<FSoftObjectPath> AssetNames;
+	AssetNames.Add(AssetData.GetSoftObjectPath());
 
 	GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->OpenEditorsForAssets(AssetNames);
 }

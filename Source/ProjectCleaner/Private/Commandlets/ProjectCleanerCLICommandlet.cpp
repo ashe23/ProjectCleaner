@@ -1,7 +1,8 @@
 ﻿// Copyright 2021. Ashot Barkhudaryan. All Rights Reserved.
 
 #include "ProjectCleanerCLICommandlet.h"
-#include "Misc/ScopedSlowTask.h"
+#include "Core/ProjectCleanerUtility.h"
+// #include "Misc/ScopedSlowTask.h"
 #include "Kismet/KismetStringLibrary.h"
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "Core/ProjectCleanerDataManager.h"
@@ -122,7 +123,7 @@ void UProjectCleanerCLICommandlet::ParseCommandLinesArguments(const FString& Par
 	}
 	
 	FAssetRegistryModule& AssetRegistry = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(AssetRegistryConstants::ModuleName);
-
+	
 	TSet<FString> InvalidObjectPaths;
 	TSet<FString> InvalidPaths;
 	TSet<FString> InvalidClasses;
@@ -138,7 +139,7 @@ void UProjectCleanerCLICommandlet::ParseCommandLinesArguments(const FString& Par
 			for (const auto& ObjectPath : ParsedArray)
 			{
 				// checking if given asset ObjectPath are valid
-				const FAssetData AssetData = AssetRegistry.Get().GetAssetByObjectPath(FName{*ObjectPath});
+				const FAssetData AssetData = AssetRegistry.Get().GetAssetByObjectPath(FSoftObjectPath{ObjectPath});
 				if (AssetData.IsValid())
 				{
 					ExcludedAssets.AddUnique(ObjectPath);
@@ -155,7 +156,7 @@ void UProjectCleanerCLICommandlet::ParseCommandLinesArguments(const FString& Par
 			// parsing string arguments to array
 			TArray<FString> ParsedArray;
 			Param.Value.ParseIntoArray(ParsedArray, TEXT(","), true);
-
+			
 			for (const auto& Path : ParsedArray)
 			{
 				if (AssetRegistry.Get().PathExists(Path))
@@ -177,8 +178,11 @@ void UProjectCleanerCLICommandlet::ParseCommandLinesArguments(const FString& Par
 			for (const auto& ClassName : ParsedArray)
 			{
 				TArray<FAssetData> Assets;
-				AssetRegistry.Get().GetAssetsByClass(FName{*ClassName}, Assets, true);
-
+				FTopLevelAssetPath ClassPathName = ProjectCleanerUtility::GetClassByName(FName{*ClassName});
+				if (!ClassPathName.IsValid()) continue;
+				
+				AssetRegistry.Get().GetAssetsByClass(ClassPathName, Assets, true);
+				
 				if (Assets.Num() > 0)
 				{
 					ExcludedClasses.AddUnique(ClassName);
@@ -212,7 +216,7 @@ void UProjectCleanerCLICommandlet::ParseCommandLinesArguments(const FString& Par
 
 		for (const auto& InvalidClass : InvalidClasses)
 		{
-			UE_LOG(LogProjectCleanerCLI, Error, TEXT("%s - Invalid path.Does not exists in AssetRegistry"), *InvalidClass);
+			UE_LOG(LogProjectCleanerCLI, Error, TEXT("%s - Invalid class.Does not exists in AssetRegistry"), *InvalidClass);
 		}
 
 		UE_LOG(LogProjectCleanerCLI, Display, TEXT(""));
@@ -251,7 +255,7 @@ bool UProjectCleanerCLICommandlet::ProjectHasRedirectors() const
 {
 	const auto AssetRegistry = &FModuleManager::LoadModuleChecked<FAssetRegistryModule>(AssetRegistryConstants::ModuleName);
  	TArray<FAssetData> RedirectAssets;
- 	AssetRegistry->Get().GetAssetsByClass(UObjectRedirector::StaticClass()->GetFName(), RedirectAssets);
+ 	AssetRegistry->Get().GetAssetsByClass(UObjectRedirector::StaticClass()->GetClassPathName(), RedirectAssets);
 
 	return RedirectAssets.Num() > 0;
 }

@@ -37,7 +37,7 @@ FString UProjectCleanerLibrary::GetAssetPathByPathType(const FAssetData& AssetDa
 	if (PathType == EProjectCleanerPathReturnType::EPT_Game)
 	{
 		// Returns ObjectPath in format => /Game/MyFolder/NewMaterial.NewMaterial
-		return AssetData.ObjectPath.ToString();
+		return AssetData.GetSoftObjectPath().ToString();
 	}
 
 	FString FinalPath{};

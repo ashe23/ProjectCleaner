@@ -4,9 +4,9 @@
 #include "UI/ProjectCleanerStyle.h"
 // Engine Headers
 #include "Widgets/Layout/SScrollBox.h"
-#include "IContentBrowserSingleton.h"
+// #include "IContentBrowserSingleton.h"
 #include "Core/ProjectCleanerManager.h"
-#include "Editor/ContentBrowser/Public/ContentBrowserModule.h"
+// #include "Editor/ContentBrowser/Public/ContentBrowserModule.h"
 
 #define LOCTEXT_NAMESPACE "FProjectCleanerModule"
 

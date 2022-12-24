@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "AssetData.h"
+// #include "AssetData.h"
 #include "StructsContainer.generated.h"
 
 class ICleanerUIActions

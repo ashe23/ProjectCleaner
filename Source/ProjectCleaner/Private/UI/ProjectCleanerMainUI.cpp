@@ -13,8 +13,9 @@
 #include "UI/ProjectCleanerNotificationManager.h"
 // Engine Headers
 #include "ToolMenus.h"
-#include "Components/SlateWrapperTypes.h"
+// #include "Components/SlateWrapperTypes.h"
 #include "Components/WidgetSwitcher.h"
+#include "Core/ProjectCleanerUtility.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Framework/Docking/TabManager.h"
@@ -39,9 +40,9 @@ void SProjectCleanerMainUI::Construct(const FArguments& InArgs)
 		this,
 		&SProjectCleanerMainUI::OnCleanerManagerUpdated
 	);
-	
+
 	InitTabs();
-	
+
 	ensure(TabManager.IsValid());
 
 	const TSharedRef<SWidget> TabContents = TabManager->RestoreFrom(
