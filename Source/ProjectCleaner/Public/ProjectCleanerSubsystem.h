@@ -73,6 +73,8 @@ public:
 	FProjectCleanerDelegateProjectScanned& OnProjectScanned();
 	bool FolderIsEngineGenerated(const FString& FolderPathAbs) const;
 	bool CanShowFolder(const FString& FolderPathAbs) const;
+	void SetAutoCleanEmptyFolders(const bool bValue);
+	void ToggleAutoCleanEmptyFolders();
 
 private:
 	static FString ScanResultToString(const EProjectCleanerScanResult ScanResult);

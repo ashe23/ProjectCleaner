@@ -9,15 +9,13 @@
 #include "ProjectCleanerConstants.h"
 #include "ProjectCleanerStyles.h"
 #include "ProjectCleanerSubsystem.h"
+#include "Libs/ProjectCleanerLibAsset.h"
+#include "Libs/ProjectCleanerLibEditor.h"
 // Engine Headers
 #include "Widgets/Layout/SWidgetSwitcher.h"
 
 void SProjectCleaner::Construct(const FArguments& InArgs, const TSharedRef<SDockTab>& ConstructUnderMajorTab, const TSharedPtr<SWindow>& ConstructUnderWindow)
 {
-	if (!GEditor) return;
-	SubsystemPtr = GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>();
-	if (!SubsystemPtr) return;
-
 	TabManager = FGlobalTabmanager::Get()->NewTabManager(ConstructUnderMajorTab);
 	const TSharedRef<FWorkspaceItem> AppMenuGroup = TabManager->AddLocalWorkspaceMenuCategory(FText::FromString(ProjectCleanerConstants::ModuleName.ToString()));
 
@@ -86,8 +84,8 @@ void SProjectCleaner::Construct(const FArguments& InArgs, const TSharedRef<SDock
 	ChildSlot
 	[
 		SNew(SWidgetSwitcher)
-		.IsEnabled_Raw(this, &SProjectCleaner::WidgetEnabled)
-		.WidgetIndex_Raw(this, &SProjectCleaner::WidgetGetIndex)
+		.IsEnabled_Static(&SProjectCleaner::WidgetEnabled)
+		.WidgetIndex_Static(&SProjectCleaner::WidgetGetIndex)
 		+ SWidgetSwitcher::Slot()
 		  .HAlign(HAlign_Fill)
 		  .VAlign(VAlign_Fill)
@@ -134,23 +132,14 @@ SProjectCleaner::~SProjectCleaner()
 	FGlobalTabmanager::Get()->UnregisterTabSpawner(ProjectCleanerConstants::TabCorruptedFiles);
 }
 
-bool SProjectCleaner::WidgetEnabled() const
+bool SProjectCleaner::WidgetEnabled()
 {
-	if (!SubsystemPtr) return false;
-
-	if (SubsystemPtr->AssetRegistryWorking() || SubsystemPtr->EditorInPlayMode())
-	{
-		return false;
-	}
-
-	return true;
+	return UProjectCleanerLibAsset::AssetRegistryWorking() == false && UProjectCleanerLibEditor::EditorInPlayMode() == false;
 }
 
-int32 SProjectCleaner::WidgetGetIndex() const
+int32 SProjectCleaner::WidgetGetIndex()
 {
-	if (!SubsystemPtr) return ProjectCleanerConstants::WidgetIndexWorking;
-
-	if (SubsystemPtr->AssetRegistryWorking() || SubsystemPtr->EditorInPlayMode())
+	if (UProjectCleanerLibAsset::AssetRegistryWorking() || UProjectCleanerLibEditor::EditorInPlayMode())
 	{
 		return ProjectCleanerConstants::WidgetIndexWorking;
 	}
@@ -160,14 +149,12 @@ int32 SProjectCleaner::WidgetGetIndex() const
 
 FText SProjectCleaner::WidgetText() const
 {
-	if (!SubsystemPtr) return FText::FromString(TEXT(""));
-
-	if (SubsystemPtr->AssetRegistryWorking())
+	if (UProjectCleanerLibAsset::AssetRegistryWorking())
 	{
 		return FText::FromString(TEXT("The AssetRegistry is still working. Please wait for the scan to finish"));
 	}
 
-	if (SubsystemPtr->EditorInPlayMode())
+	if (UProjectCleanerLibEditor::EditorInPlayMode())
 	{
 		return FText::FromString(TEXT("Please stop play mode in the editor before doing any operations in the plugin."));
 	}
@@ -186,18 +173,16 @@ void SProjectCleaner::CreateMenuBarSettings(FMenuBuilder& MenuBuilder, const TSh
 		(
 			FExecuteAction::CreateLambda([&]()
 			{
-				if (!SubsystemPtr) return;
-
-				SubsystemPtr->bAutoCleanEmptyFolders = !SubsystemPtr->bAutoCleanEmptyFolders;
-				SubsystemPtr->PostEditChange();
+				GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>()->ToggleAutoCleanEmptyFolders();
+				GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>()->PostEditChange();
 			}),
 			FCanExecuteAction::CreateLambda([&]()
 			{
-				return SubsystemPtr != nullptr;
+				return GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>() != nullptr;
 			}),
 			FGetActionCheckState::CreateLambda([&]()
 			{
-				return SubsystemPtr && SubsystemPtr->bAutoCleanEmptyFolders ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
+				return GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>()->bAutoCleanEmptyFolders ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
 			})
 		),
 		NAME_None,

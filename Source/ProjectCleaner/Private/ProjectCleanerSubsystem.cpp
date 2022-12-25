@@ -626,6 +626,16 @@ bool UProjectCleanerSubsystem::CanShowFolder(const FString& FolderPathAbs) const
 	return true;
 }
 
+void UProjectCleanerSubsystem::SetAutoCleanEmptyFolders(const bool bValue)
+{
+	bAutoCleanEmptyFolders = bValue;
+}
+
+void UProjectCleanerSubsystem::ToggleAutoCleanEmptyFolders()
+{
+	bAutoCleanEmptyFolders = !bAutoCleanEmptyFolders;
+}
+
 FString UProjectCleanerSubsystem::ScanResultToString(const EProjectCleanerScanResult ScanResult)
 {
 	switch (ScanResult)

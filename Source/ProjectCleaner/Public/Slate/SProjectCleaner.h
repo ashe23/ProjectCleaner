@@ -5,8 +5,6 @@
 #include "CoreMinimal.h"
 #include "Widgets/SCompoundWidget.h"
 
-class UProjectCleanerSubsystem;
-
 class SProjectCleaner final : public SCompoundWidget
 {
 public:
@@ -20,8 +18,8 @@ public:
 	virtual ~SProjectCleaner() override;
 
 private:
-	bool WidgetEnabled() const;
-	int32 WidgetGetIndex() const;
+	static bool WidgetEnabled();
+	static int32 WidgetGetIndex();
 	FText WidgetText() const;
 
 	void CreateMenuBarSettings(FMenuBuilder& MenuBuilder, const TSharedPtr<FTabManager> TabManagerPtr) const;
@@ -35,5 +33,4 @@ private:
 
 	TSharedPtr<FTabManager> TabManager;
 	TSharedPtr<FTabManager::FLayout> TabLayout;
-	UProjectCleanerSubsystem* SubsystemPtr = nullptr;
 };
