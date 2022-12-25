@@ -34,18 +34,6 @@ UProjectCleanerSubsystem::UProjectCleanerSubsystem()
 void UProjectCleanerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
-
-	const FProjectCleanerPath Path{FPaths::ProjectContentDir()};
-	UE_LOG(LogProjectCleaner, Warning, TEXT("%s"), Path.IsValid() ? TEXT("True") : TEXT("False"));
-	UE_LOG(LogProjectCleaner, Warning, TEXT("%s"), *Path.GetPathFullAbs());
-	UE_LOG(LogProjectCleaner, Warning, TEXT("%s"), *Path.GetPathFullRel());
-	UE_LOG(LogProjectCleaner, Warning, TEXT("%s"), *Path.GetPathAbs());
-	UE_LOG(LogProjectCleaner, Warning, TEXT("%s"), *Path.GetPathRel());
-	UE_LOG(LogProjectCleaner, Warning, TEXT("%s"), *Path.GetName());
-	UE_LOG(LogProjectCleaner, Warning, TEXT("%s"), *Path.GetExtension(true));
-	UE_LOG(LogProjectCleaner, Warning, TEXT("%s"), Path.IsFile() ? TEXT("True") : TEXT("False"));
-
-	return;
 }
 
 void UProjectCleanerSubsystem::Deinitialize()
