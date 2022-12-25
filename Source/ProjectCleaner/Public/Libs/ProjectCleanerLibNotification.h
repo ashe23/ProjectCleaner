@@ -28,6 +28,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category="ProjectCleaner|Lib|Notification")
 	static void ShowModalOutputLog(const FString& Msg, const EProjectCleanerModalState State = EProjectCleanerModalState::None, const float Duration = 2.0f);
 
+	UFUNCTION(BlueprintCallable, Category="ProjectCleaner|Lib|Notification")
+	static EAppReturnType::Type ShowDialogWindow(const FString& Title, const FString& Msg, const EAppMsgType::Type MsgType);
+
 private:
 	static SNotificationItem::ECompletionState GetCompletionStateFromModalState(const EProjectCleanerModalState ModalState);
 };

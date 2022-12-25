@@ -32,6 +32,14 @@ void UProjectCleanerLibNotification::ShowModalOutputLog(const FString& Msg, cons
 	NotificationPtr.Get()->SetCompletionState(GetCompletionStateFromModalState(State));
 }
 
+EAppReturnType::Type UProjectCleanerLibNotification::ShowDialogWindow(const FString& Title, const FString& Msg, const EAppMsgType::Type MsgType)
+{
+	const FText DialogTitle = FText::FromString(Title);
+	const FText DialogContent = FText::FromString(Msg);
+
+	return FMessageDialog::Open(MsgType, DialogContent, &DialogTitle);
+}
+
 SNotificationItem::ECompletionState UProjectCleanerLibNotification::GetCompletionStateFromModalState(const EProjectCleanerModalState ModalState)
 {
 	switch (ModalState)
