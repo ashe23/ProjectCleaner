@@ -4,6 +4,7 @@
 #include "ProjectCleanerStyles.h"
 #include "ProjectCleanerSubsystem.h"
 #include "Settings/ProjectCleanerExcludeSettings.h"
+#include "Settings/ProjectCleanerSettings.h"
 // Engine Headers
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SSeparator.h"
@@ -25,8 +26,15 @@ void SProjectCleanerTabScanSettings::Construct(const FArguments& InArgs)
 	DetailsViewArgs.ViewIdentifier = "ProjectCleanerExcludeSettings";
 
 	const auto ExcludeSettingsProperty = PropertyEditor.CreateDetailView(DetailsViewArgs);
-	ExcludeSettingsProperty->SetObject(GetMutableDefault<UProjectCleanerExcludeSettings>());
-
+	ExcludeSettingsProperty->SetObject(GetMutableDefault<UProjectCleanerSettings>());
+	ExcludeSettingsProperty->SetIsPropertyVisibleDelegate(FIsPropertyVisible::CreateLambda([&](const FPropertyAndParent& InPropertyAndParent)
+	{
+		const FString PropName = InPropertyAndParent.Property.GetName();
+		const FString PropNameCPP = InPropertyAndParent.Property.GetNameCPP();
+		
+		return true;
+	}));
+	
 	UpdateData();
 
 	ChildSlot
@@ -122,7 +130,6 @@ void SProjectCleanerTabScanSettings::Construct(const FArguments& InArgs)
 			[
 				SNew(STextBlock)
 				.Font(FProjectCleanerStyles::GetFont("Bold", 13))
-				.ColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.GreenBright"))
 				.Text_Raw(this, &SProjectCleanerTabScanSettings::GetTextAssetsUsed)
 			]
 			+ SVerticalBox::Slot()
@@ -293,7 +300,7 @@ FReply SProjectCleanerTabScanSettings::OnBtnCleanProjectClick() const
 	if (!SubsystemPtr) return FReply::Handled();
 
 	const FText Title = FText::FromString(TEXT("Confirm project cleaning"));
-	const FText Msg = FText::FromString(TEXT("Are you sure you want to permanently delete unused assets?"));
+	const FText Msg = FText::FromString(TEXT("Are you sure you want to delete all unused assets in project?"));
 	const auto Result = FMessageDialog::Open(EAppMsgType::YesNo, Msg, &Title);
 	if (Result == EAppReturnType::No || Result == EAppReturnType::Cancel)
 	{

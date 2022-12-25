@@ -1096,7 +1096,7 @@ void UProjectCleanerSubsystem::FixupRedirectors() const
 {
 	FScopedSlowTask FixRedirectorsTask{
 		1.0f,
-		FText::FromString(TEXT("Fixing redirectors..")),
+		FText::FromString(TEXT("Fixing redirectors...")),
 		GIsEditor && !IsRunningCommandlet()
 	};
 	FixRedirectorsTask.MakeDialog();

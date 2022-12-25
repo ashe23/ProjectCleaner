@@ -55,6 +55,7 @@ public class ProjectCleaner : ModuleRules
 				"Blutility",
 				"UMGEditor",
 				"EditorSubsystem",
+				"DeveloperSettings"
 			}
 		);
 

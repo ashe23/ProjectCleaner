@@ -32,13 +32,13 @@ struct FProjectCleanerIndirectAssetInfo
 		return LineNum != Other.LineNum || !FilePath.Equals(Other.FilePath);
 	}
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="Indirect Asset")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="Indirect Asset", meta=(ToolTip="Indirect asset data"))
 	FAssetData AssetData;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="Indirect Asset")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="Indirect Asset", meta=(ToolTip="Line number where asset used in file"))
 	int32 LineNum = 0;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="Indirect Asset")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="Indirect Asset", meta=(ToolTip="File path where assets used"))
 	FString FilePath;
 };
 

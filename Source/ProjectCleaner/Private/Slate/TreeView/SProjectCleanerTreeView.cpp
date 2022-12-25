@@ -61,21 +61,6 @@ void SProjectCleanerTreeView::Construct(const FArguments& InArgs)
 				SNew(STextBlock)
 				.Text(FText::FromString(TEXT(" - Excluded Folders")))
 			]
-			// + SHorizontalBox::Slot()
-			//   .AutoWidth()
-			//   .Padding(FMargin{5.0f, 0.0f, 0.0f, 0.0f})
-			// [
-			// 	SNew(SImage)
-			// 	.Image(FEditorStyle::GetBrush("ContentBrowser.AssetTreeFolderOpen"))
-			// 	.ColorAndOpacity(FProjectCleanerStyles::Get().GetSlateColor("ProjectCleaner.Color.Violet"))
-			// ]
-			// + SHorizontalBox::Slot()
-			//   .Padding(FMargin{0.0f, 2.0f, 0.0f, 0.0f})
-			//   .AutoWidth()
-			// [
-			// 	SNew(STextBlock)
-			// 	.Text(FText::FromString(TEXT(" - Engine Generated Folders")))
-			// ]
 		]
 		+ SVerticalBox::Slot()
 		  .AutoHeight()
