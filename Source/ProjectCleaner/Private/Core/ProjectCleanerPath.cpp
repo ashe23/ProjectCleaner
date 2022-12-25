@@ -13,6 +13,8 @@ FProjectCleanerPath::FProjectCleanerPath(const FString& InPath)
 	const FString PathProjectContentDir = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() / TEXT("Content"));
 	if (!InPath.StartsWith(ProjectCleanerConstants::PathRelRoot.ToString()) && !InPath.StartsWith(PathProjectContentDir)) return;
 
+	// todo:ashe23 for ue5 we must also exclude __ExternalActors__ and __ExternalObject__ folders
+
 	// normalizing given path
 	FString FullPath = FPaths::ConvertRelativePathToFull(InPath);
 	FPaths::RemoveDuplicateSlashes(FullPath);
