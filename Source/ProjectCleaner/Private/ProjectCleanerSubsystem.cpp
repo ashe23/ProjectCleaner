@@ -4,6 +4,7 @@
 #include "ProjectCleanerConstants.h"
 #include "ProjectCleaner.h"
 #include "Settings/ProjectCleanerExcludeSettings.h"
+#include "Core/ProjectCleanerPath.h"
 // Engine Headers
 #include "AssetToolsModule.h"
 #include "AssetViewUtils.h"
@@ -34,6 +35,8 @@ UProjectCleanerSubsystem::UProjectCleanerSubsystem()
 void UProjectCleanerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
+
+	FillFolderInfos();
 }
 
 void UProjectCleanerSubsystem::Deinitialize()
@@ -241,6 +244,29 @@ bool UProjectCleanerSubsystem::FolderIsEmpty(const FString& InFolderPath)
 	IFileManager::Get().FindFilesRecursive(Files, *InFolderPath, TEXT("*.*"), true, false);
 
 	return Files.Num() == 0;
+}
+
+void UProjectCleanerSubsystem::FillFolderInfos()
+{
+	FolderInfos.Empty();
+
+	// getting all folder under Content folder
+	TArray<FString> AllFolders;
+	IFileManager::Get().FindFilesRecursive(AllFolders, *FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir()), TEXT("*.*"), false, true);
+
+	FolderInfos.Reserve(AllFolders.Num());
+
+	for (const auto& Folder : AllFolders)
+	{
+		const FProjectCleanerPath Path{Folder};
+		if (!Path.IsValid()) continue;
+
+		const FProjectCleanerPathInfo PathInfo{Path};
+
+		FolderInfos.Add(PathInfo);
+	}
+
+	FolderInfos.Shrink();
 }
 
 void UProjectCleanerSubsystem::ProjectScan()

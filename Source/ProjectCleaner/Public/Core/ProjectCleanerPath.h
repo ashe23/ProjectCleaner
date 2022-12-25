@@ -20,11 +20,6 @@ struct FProjectCleanerPath
 		return IsValid() && PathAbs.Equals(Other.PathAbs, ESearchCase::CaseSensitive);
 	}
 
-	bool operator!=(const FProjectCleanerPath& Other) const
-	{
-		return IsValid() && !PathAbs.Equals(Other.PathAbs, ESearchCase::CaseSensitive);
-	}
-
 private:
 	FString PathAbs;
 	FString PathRel;

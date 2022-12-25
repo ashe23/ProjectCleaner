@@ -5,8 +5,10 @@
 #include "CoreMinimal.h"
 #include "ProjectCleanerTypes.h"
 #include "ProjectCleanerDelegates.h"
+#include "Core/ProjectCleanerPathInfo.h"
 #include "ProjectCleanerSubsystem.generated.h"
 
+struct FProjectCleanerPath;
 class FAssetRegistryModule;
 class FAssetToolsModule;
 
@@ -55,6 +57,7 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Checks folder is empty or not"))
 	static bool FolderIsEmpty(const FString& InFolderPath);
 
+	void FillFolderInfos();
 	void ProjectScan();
 	void ProjectScan(const FProjectCleanerScanSettings& InScanSettings);
 	void ProjectClean(const bool bRemoveEmptyFolders = true);
@@ -70,6 +73,7 @@ public:
 	FProjectCleanerDelegateProjectScanned& OnProjectScanned();
 	bool FolderIsEngineGenerated(const FString& FolderPathAbs) const;
 	bool CanShowFolder(const FString& FolderPathAbs) const;
+
 private:
 	static FString ScanResultToString(const EProjectCleanerScanResult ScanResult);
 	void FindAssetsTotal();
@@ -91,6 +95,7 @@ private:
 	void BucketFill(TArray<FAssetData>& Bucket, const int32 BucketSize);
 	bool BucketPrepare(const TArray<FAssetData>& Bucket, TArray<UObject*>& LoadedAssets) const;
 	int32 BucketDelete(const TArray<UObject*>& LoadedAssets) const;
+
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Config, Category="ProjectCleaner")
 	bool bAutoCleanEmptyFolders = true;
@@ -110,6 +115,8 @@ private:
 
 	FProjectCleanerScanData ScanData;
 	FProjectCleanerScanSettings ScanSettings;
+
+	TArray<FProjectCleanerPathInfo> FolderInfos;
 
 	FProjectCleanerDelegateProjectScanned DelegateProjectScanned;
 
