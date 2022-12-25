@@ -17,12 +17,12 @@ struct FProjectCleanerPath
 
 	bool operator==(const FProjectCleanerPath& Other) const
 	{
-		return PathAbs.Equals(Other.PathAbs, ESearchCase::CaseSensitive);
+		return IsValid() && PathAbs.Equals(Other.PathAbs, ESearchCase::CaseSensitive);
 	}
 
 	bool operator!=(const FProjectCleanerPath& Other) const
 	{
-		return !PathAbs.Equals(Other.PathAbs, ESearchCase::CaseSensitive);
+		return IsValid() && !PathAbs.Equals(Other.PathAbs, ESearchCase::CaseSensitive);
 	}
 
 private:
