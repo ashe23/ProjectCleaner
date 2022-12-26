@@ -217,21 +217,21 @@ void SProjectCleanerTabScanInfo::CommandsRegister()
 			FExecuteAction::CreateLambda([&]()
 			{
 				if (!SubsystemPtr) return;
-
+				
 				UProjectCleanerExcludeSettings* ExcludeSettings = GetMutableDefault<UProjectCleanerExcludeSettings>();
 				if (!ExcludeSettings) return;
-
+				
 				const auto SelectedItems = AssetBrowserDelegateSelection.Execute();
 				for (const auto& SelectedItem : SelectedItems)
 				{
 					if (!SelectedItem.IsValid()) continue;
 					if (!SelectedItem.GetAsset()) continue;
-
+				
 					ExcludeSettings->ExcludedAssets.AddUnique(SelectedItem.GetAsset());
 				}
-
+				
 				ExcludeSettings->PostEditChange();
-
+				
 				SubsystemPtr->ProjectScan();
 			}),
 			FCanExecuteAction::CreateLambda([&]
@@ -250,24 +250,24 @@ void SProjectCleanerTabScanInfo::CommandsRegister()
 			FExecuteAction::CreateLambda([&]()
 			{
 				if (!SubsystemPtr) return;
-
+				
 				UProjectCleanerExcludeSettings* ExcludeSettings = GetMutableDefault<UProjectCleanerExcludeSettings>();
 				if (!ExcludeSettings) return;
-
+				
 				const auto SelectedItems = AssetBrowserDelegateSelection.Execute();
 				for (const auto& SelectedItem : SelectedItems)
 				{
 					if (!SelectedItem.IsValid()) continue;
 					if (!SelectedItem.GetAsset()) continue;
-
+				
 					const UClass* AssetClass = SubsystemPtr->GetAssetClass(SelectedItem);
 					if (!AssetClass) continue;
-
+				
 					ExcludeSettings->ExcludedClasses.AddUnique(AssetClass);
 				}
-
+				
 				ExcludeSettings->PostEditChange();
-
+				
 				SubsystemPtr->ProjectScan();
 			}),
 			FCanExecuteAction::CreateLambda([&]

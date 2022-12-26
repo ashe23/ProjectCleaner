@@ -4,7 +4,6 @@
 #include "ProjectCleanerStyles.h"
 #include "ProjectCleanerSubsystem.h"
 #include "Settings/ProjectCleanerExcludeSettings.h"
-#include "Settings/ProjectCleanerSettings.h"
 // Engine Headers
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SSeparator.h"
@@ -20,21 +19,14 @@ void SProjectCleanerTabScanSettings::Construct(const FArguments& InArgs)
 	DetailsViewArgs.bUpdatesFromSelection = false;
 	DetailsViewArgs.bLockable = false;
 	DetailsViewArgs.bAllowSearch = false;
-	DetailsViewArgs.bShowOptions = false;
+	DetailsViewArgs.bShowOptions = true;
 	DetailsViewArgs.bAllowFavoriteSystem = false;
 	DetailsViewArgs.NameAreaSettings = FDetailsViewArgs::HideNameArea;
 	DetailsViewArgs.ViewIdentifier = "ProjectCleanerExcludeSettings";
 
 	const auto ExcludeSettingsProperty = PropertyEditor.CreateDetailView(DetailsViewArgs);
-	ExcludeSettingsProperty->SetObject(GetMutableDefault<UProjectCleanerSettings>());
-	ExcludeSettingsProperty->SetIsPropertyVisibleDelegate(FIsPropertyVisible::CreateLambda([&](const FPropertyAndParent& InPropertyAndParent)
-	{
-		const FString PropName = InPropertyAndParent.Property.GetName();
-		const FString PropNameCPP = InPropertyAndParent.Property.GetNameCPP();
-		
-		return true;
-	}));
-	
+	ExcludeSettingsProperty->SetObject(GetMutableDefault<UProjectCleanerExcludeSettings>());
+
 	UpdateData();
 
 	ChildSlot

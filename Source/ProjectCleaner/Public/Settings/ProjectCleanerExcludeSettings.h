@@ -6,11 +6,17 @@
 #include "ProjectCleanerExcludeSettings.generated.h"
 
 UCLASS(Config=EditorPerProjectUserSettings)
-class UProjectCleanerExcludeSettings final : public UObject
+class UProjectCleanerExcludeSettings final : public UDeveloperSettings
 {
 	GENERATED_BODY()
 
 public:
+	virtual FName GetContainerName() const override;
+	virtual FName GetCategoryName() const override;
+	virtual FName GetSectionName() const override;
+	virtual FText GetSectionText() const override;
+	virtual FText GetSectionDescription() const override;
+
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Config, Category="Exclude Settings", meta=(ContentDir))
 	TArray<FDirectoryPath> ExcludedFolders;
 
