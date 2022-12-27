@@ -5,6 +5,7 @@
 #include "ProjectCleanerSubsystem.h"
 #include "Settings/ProjectCleanerExcludeSettings.h"
 // Engine Headers
+#include "Libs/ProjectCleanerLibAsset.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SSeparator.h"
 
@@ -254,23 +255,23 @@ void SProjectCleanerTabScanSettings::UpdateData()
 	const FProjectCleanerScanData& ScanData = SubsystemPtr->GetScanData();
 
 	AssetsTotalNum = ScanData.AssetsAll.Num();
-	AssetsTotalSize = SubsystemPtr->GetAssetsTotalSize(ScanData.AssetsAll);
+	AssetsTotalSize = UProjectCleanerLibAsset::GetAssetsTotalSize(ScanData.AssetsAll);
 	AssetsPrimaryNum = ScanData.AssetsPrimary.Num();
-	AssetsPrimarySize = SubsystemPtr->GetAssetsTotalSize(ScanData.AssetsPrimary);
+	AssetsPrimarySize = UProjectCleanerLibAsset::GetAssetsTotalSize(ScanData.AssetsPrimary);
 	AssetsIndirectNum = ScanData.AssetsIndirect.Num();
-	AssetsIndirectSize = SubsystemPtr->GetAssetsTotalSize(ScanData.AssetsIndirect);
+	AssetsIndirectSize = UProjectCleanerLibAsset::GetAssetsTotalSize(ScanData.AssetsIndirect);
 	AssetsExcludedNum = ScanData.AssetsExcluded.Num();
-	AssetsExcludedSize = SubsystemPtr->GetAssetsTotalSize(ScanData.AssetsExcluded);
+	AssetsExcludedSize = UProjectCleanerLibAsset::GetAssetsTotalSize(ScanData.AssetsExcluded);
 	AssetsUnusedNum = ScanData.AssetsUnused.Num();
-	AssetsUnusedSize = SubsystemPtr->GetAssetsTotalSize(ScanData.AssetsUnused);
+	AssetsUnusedSize = UProjectCleanerLibAsset::GetAssetsTotalSize(ScanData.AssetsUnused);
 	AssetsUsedNum = ScanData.AssetsUsed.Num();
-	AssetsUsedSize = SubsystemPtr->GetAssetsTotalSize(ScanData.AssetsUsed);
+	AssetsUsedSize = UProjectCleanerLibAsset::GetAssetsTotalSize(ScanData.AssetsUsed);
 	FoldersTotalNum = ScanData.FoldersAll.Num();
 	FoldersEmptyNum = ScanData.FoldersEmpty.Num();
 	FilesCorruptedNum = ScanData.FilesCorrupted.Num();
-	FilesCorruptedSize = SubsystemPtr->GetFilesTotalSize(ScanData.FilesCorrupted);
+	FilesCorruptedSize = UProjectCleanerLibAsset::GetFilesTotalSize(ScanData.FilesCorrupted);
 	FilesNonEngineNum = ScanData.FilesNonEngine.Num();
-	FilesNonEngineSize = SubsystemPtr->GetFilesTotalSize(ScanData.FilesNonEngine);
+	FilesNonEngineSize = UProjectCleanerLibAsset::GetFilesTotalSize(ScanData.FilesNonEngine);
 }
 
 void SProjectCleanerTabScanSettings::OnProjectScanned()

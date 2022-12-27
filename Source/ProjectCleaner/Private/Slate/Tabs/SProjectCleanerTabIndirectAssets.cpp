@@ -8,6 +8,7 @@
 // Engine Headers
 #include "ContentBrowserModule.h"
 #include "IContentBrowserSingleton.h"
+#include "Libs/ProjectCleanerLibAsset.h"
 #include "Widgets/Layout/SScrollBox.h"
 
 void SProjectCleanerTabIndirect::Construct(const FArguments& InArgs)
@@ -185,7 +186,7 @@ void SProjectCleanerTabIndirect::ListUpdate()
 
 	ListItems.Reset();
 
-	TotalSize = SubsystemPtr->GetAssetsTotalSize(SubsystemPtr->GetScanData().AssetsIndirect);
+	TotalSize = UProjectCleanerLibAsset::GetAssetsTotalSize(SubsystemPtr->GetScanData().AssetsIndirect);
 
 	for (const auto& IndirectAsset : SubsystemPtr->GetScanData().AssetsIndirectInfo)
 	{

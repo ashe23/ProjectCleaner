@@ -165,6 +165,25 @@ int64 UProjectCleanerLibAsset::GetAssetsTotalSize(const TArray<FAssetData>& Asse
 	return Size;
 }
 
+int64 UProjectCleanerLibAsset::GetFilesTotalSize(const TArray<FString>& Files)
+{
+	if (Files.Num() == 0) return 0;
+
+	int64 TotalSize = 0;
+	for (const auto& File : Files)
+	{
+		if (File.IsEmpty() || !FPaths::FileExists(File)) continue;
+
+		TotalSize += IFileManager::Get().FileSize(*File);
+	}
+
+	return TotalSize;
+}
+
+void UProjectCleanerLibAsset::ProjectScan(const FProjectCleanerScanSettings& ScanSettings, FProjectCleanerScanData& ScanData)
+{
+}
+
 void UProjectCleanerLibAsset::GetAssetsAll(TArray<FAssetData>& Assets)
 {
 	Assets.Empty();

@@ -27,35 +27,35 @@ public:
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif
 
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Returns all dependency assets for given assets"))
-	void GetAssetsDependencies(const TArray<FAssetData>& Assets, TArray<FAssetData>& Dependencies) const;
+	// UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Returns all dependency assets for given assets"))
+	// void GetAssetsDependencies(const TArray<FAssetData>& Assets, TArray<FAssetData>& Dependencies) const;
+	//
+	// UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Returns all referencer assets for given assets"))
+	// void GetAssetsReferencers(const TArray<FAssetData>& Assets, TArray<FAssetData>& Referencers) const;
+	//
+	// UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(Tooltip="Returns total size of given assets"))
+	// int64 GetAssetsTotalSize(const TArray<FAssetData>& Assets) const;
 
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Returns all referencer assets for given assets"))
-	void GetAssetsReferencers(const TArray<FAssetData>& Assets, TArray<FAssetData>& Referencers) const;
+	// UFUNCTION(BlueprintCallable, Category="ProjectCleaner", meta=(Tooltip="Returns total size of given files"))
+	// static int64 GetFilesTotalSize(const TArray<FString>& Files);
 
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(Tooltip="Returns total size of given assets"))
-	int64 GetAssetsTotalSize(const TArray<FAssetData>& Assets) const;
+	// UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Returns asset class name"))
+	// FString GetAssetClassName(const FAssetData& AssetData) const;
+	//
+	// UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Returns asset class including blueprint assets."))
+	// UClass* GetAssetClass(const FAssetData& AssetData) const;
 
-	UFUNCTION(BlueprintCallable, Category="ProjectCleaner", meta=(Tooltip="Returns total size of given files"))
-	static int64 GetFilesTotalSize(const TArray<FString>& Files);
+	// UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Returns normalized path"))
+	// FString PathNormalize(const FString& InPath) const;
+	//
+	// UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Returns absolute path. /Game/MyFolder => {ContentDir}/MyFolder"))
+	// FString PathConvertToAbs(const FString& InPath) const;
+	//
+	// UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Returns relative path. {ContentDir/MyFolder} => /Game/MyFolder"))
+	// FString PathConvertToRel(const FString& InPath) const;
 
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Returns asset class name"))
-	FString GetAssetClassName(const FAssetData& AssetData) const;
-
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Returns asset class including blueprint assets."))
-	UClass* GetAssetClass(const FAssetData& AssetData) const;
-
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Returns normalized path"))
-	FString PathNormalize(const FString& InPath) const;
-
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Returns absolute path. /Game/MyFolder => {ContentDir}/MyFolder"))
-	FString PathConvertToAbs(const FString& InPath) const;
-
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Returns relative path. {ContentDir/MyFolder} => /Game/MyFolder"))
-	FString PathConvertToRel(const FString& InPath) const;
-
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Checks folder is empty or not"))
-	static bool FolderIsEmpty(const FString& InFolderPath);
+	// UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Checks folder is empty or not"))
+	// static bool FolderIsEmpty(const FString& InFolderPath);
 
 	void FillFolderInfos();
 	void ProjectScan();
@@ -65,14 +65,14 @@ public:
 	const FProjectCleanerScanData& GetScanData() const;
 	bool CanScanProject() const;
 	bool AssetIsExcluded(const FAssetData& AssetData) const;
-	bool AssetRegistryWorking() const;
+	// bool AssetRegistryWorking() const;
 	bool ScanningInProgress() const;
 	bool CleaningInProgress() const;
-	static bool EditorInPlayMode();
-	bool FolderIsExcluded(const FString& InFolderPath) const;
+	// static bool EditorInPlayMode();
+	// bool FolderIsExcluded(const FString& InFolderPath) const;
 	FProjectCleanerDelegateProjectScanned& OnProjectScanned();
-	bool FolderIsEngineGenerated(const FString& FolderPathAbs) const;
-	bool CanShowFolder(const FString& FolderPathAbs) const;
+	// bool FolderIsEngineGenerated(const FString& FolderPathAbs) const;
+	// bool CanShowFolder(const FString& FolderPathAbs) const;
 	void SetAutoCleanEmptyFolders(const bool bValue);
 	void ToggleAutoCleanEmptyFolders();
 

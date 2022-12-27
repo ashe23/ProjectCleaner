@@ -13,6 +13,8 @@
 #include "ContentBrowserModule.h"
 #include "IContentBrowserSingleton.h"
 #include "ObjectTools.h"
+#include "Libs/ProjectCleanerLibAsset.h"
+#include "Libs/ProjectCleanerLibPath.h"
 
 void SProjectCleanerTabScanInfo::Construct(const FArguments& InArgs)
 {
@@ -193,9 +195,9 @@ void SProjectCleanerTabScanInfo::CommandsRegister()
 				const auto& SelectedItems = AssetBrowserDelegateSelection.Execute();
 				for (const auto& Asset : SelectedItems)
 				{
-					const FString FolderPathAbs = SubsystemPtr->PathConvertToAbs(Asset.PackagePath.ToString());
+					const FString FolderPathAbs = UProjectCleanerLibPath::ConvertToAbs(Asset.PackagePath.ToString());
 
-					if (FPaths::DirectoryExists(FolderPathAbs))
+					if (!FolderPathAbs.IsEmpty() && FPaths::DirectoryExists(FolderPathAbs))
 					{
 						FPlatformProcess::ExploreFolder(*FolderPathAbs);
 					}
@@ -260,7 +262,7 @@ void SProjectCleanerTabScanInfo::CommandsRegister()
 					if (!SelectedItem.IsValid()) continue;
 					if (!SelectedItem.GetAsset()) continue;
 				
-					const UClass* AssetClass = SubsystemPtr->GetAssetClass(SelectedItem);
+					const UClass* AssetClass = UProjectCleanerLibAsset::GetAssetClass(SelectedItem);
 					if (!AssetClass) continue;
 				
 					ExcludeSettings->ExcludedClasses.AddUnique(AssetClass);

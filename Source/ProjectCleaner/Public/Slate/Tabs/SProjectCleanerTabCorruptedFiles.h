@@ -5,8 +5,10 @@
 #include "CoreMinimal.h"
 #include "ProjectCleanerSubsystem.h"
 #include "ProjectCleanerTypes.h"
+#include "Libs/ProjectCleanerLibPath.h"
 #include "Widgets/SCompoundWidget.h"
 
+class UProjectCleanerLibPath;
 struct FProjectCleanerScanner;
 
 class SProjectCleanerTabCorruptedListItem final : public SMultiColumnTableRow<TSharedPtr<FProjectCleanerTabCorruptedListItem>>
@@ -52,7 +54,7 @@ public:
 				  .Padding(FMargin{10.0f, 0.0f, 0.0f, 0.0f})
 				[
 					SNew(STextBlock)
-					.ToolTipText(FText::FromString(GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>()->PathConvertToRel(ListItem->FilePathAbs)))
+					.ToolTipText(FText::FromString(UProjectCleanerLibPath::ConvertToRel(ListItem->FilePathAbs)))
 					.Justification(ETextJustify::Left)
 					.Text(FText::FromString(ListItem->FilePathAbs))
 				];

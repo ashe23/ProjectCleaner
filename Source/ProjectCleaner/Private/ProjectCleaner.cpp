@@ -65,7 +65,7 @@ void FProjectCleanerModule::RegisterMenus()
 				UToolMenu* Menu = UToolMenus::Get()->ExtendMenu("LevelEditor.MainMenu.Window");
 				FToolMenuSection& Section = Menu->AddSection(
 					"SectionAssetManagementTools",
-					FText::FromString(TEXT("Asset Management Tools")),
+					FText::FromString(TEXT("Project Management Tools")),
 					FToolMenuInsert("WindowLayout", EToolMenuInsertType::After)
 				);
 				Section.AddMenuEntryWithCommandList(FProjectCleanerCmds::Get().OpenProjectCleanerWindow, Cmds);
