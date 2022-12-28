@@ -136,6 +136,23 @@ struct FProjectCleanerScanData
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanData")
 	TArray<FString> FilesNonEngine;
+
+	void Empty()
+	{
+		ScanResult = EProjectCleanerScanResult::None;
+		ScanResultMsg.Empty();
+		AssetsAll.Empty();
+		AssetsUsed.Empty();
+		AssetsPrimary.Empty();
+		AssetsIndirect.Empty();
+		AssetsIndirectInfo.Empty();
+		AssetsExcluded.Empty();
+		AssetsUnused.Empty();
+		FoldersAll.Empty();
+		FoldersEmpty.Empty();
+		FilesCorrupted.Empty();
+		FilesNonEngine.Empty();
+	}
 };
 
 struct FProjectCleanerTreeViewItem

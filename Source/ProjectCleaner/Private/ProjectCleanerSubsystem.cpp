@@ -38,8 +38,6 @@ UProjectCleanerSubsystem::UProjectCleanerSubsystem()
 void UProjectCleanerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
-
-	FillFolderInfos();
 }
 
 void UProjectCleanerSubsystem::Deinitialize()
@@ -249,28 +247,28 @@ void UProjectCleanerSubsystem::PostEditChangeProperty(FPropertyChangedEvent& Pro
 // 	return Files.Num() == 0;
 // }
 
-void UProjectCleanerSubsystem::FillFolderInfos()
-{
-	FolderInfos.Empty();
-
-	// getting all folder under Content folder
-	TArray<FString> AllFolders;
-	IFileManager::Get().FindFilesRecursive(AllFolders, *FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir()), TEXT("*.*"), false, true);
-
-	FolderInfos.Reserve(AllFolders.Num());
-
-	for (const auto& Folder : AllFolders)
-	{
-		const FProjectCleanerPath Path{Folder};
-		if (!Path.IsValid()) continue;
-
-		const FProjectCleanerPathInfo PathInfo{Path};
-
-		FolderInfos.Add(PathInfo);
-	}
-
-	FolderInfos.Shrink();
-}
+// void UProjectCleanerSubsystem::FillFolderInfos()
+// {
+// 	FolderInfos.Empty();
+//
+// 	// getting all folder under Content folder
+// 	TArray<FString> AllFolders;
+// 	IFileManager::Get().FindFilesRecursive(AllFolders, *FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir()), TEXT("*.*"), false, true);
+//
+// 	FolderInfos.Reserve(AllFolders.Num());
+//
+// 	for (const auto& Folder : AllFolders)
+// 	{
+// 		const FProjectCleanerPath Path{Folder};
+// 		if (!Path.IsValid()) continue;
+//
+// 		const FProjectCleanerPathInfo PathInfo{Path};
+//
+// 		FolderInfos.Add(PathInfo);
+// 	}
+//
+// 	FolderInfos.Shrink();
+// }
 
 void UProjectCleanerSubsystem::ProjectScan()
 {
@@ -311,10 +309,7 @@ void UProjectCleanerSubsystem::ProjectScan(const FProjectCleanerScanSettings& In
 	ScanSettings = InScanSettings;
 
 	ScanDataReset();
-
-	// ModuleAssetRegistry->Get().SearchAllAssets(true);
-	// ModuleAssetRegistry->Get().WaitForCompletion();
-
+	
 	if (UProjectCleanerLibAsset::AssetRegistryWorking())
 	{
 		ScanData.ScanResult = EProjectCleanerScanResult::AssetRegistryWorking;
@@ -1141,7 +1136,7 @@ void UProjectCleanerSubsystem::FixupRedirectors() const
 	Redirectors.Shrink();
 
 	// Fix up all founded redirectors
-	ModuleAssetTools->Get().FixupReferencers(Redirectors);
+	ModuleAssetTools->Get().FixupReferencers(Redirectors, false);
 
 	FixRedirectorsTask.EnterProgressFrame(1.0f);
 }

@@ -36,11 +36,4 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category="ProjectCleaner", meta=(Tooltip="Returns total size of given files"))
 	static int64 GetFilesTotalSize(const TArray<FString>& Files);
-
-	static void ProjectScan(const FProjectCleanerScanSettings& ScanSettings, FProjectCleanerScanData& ScanData);
-
-private:
-	static void GetAssetsAll(TArray<FAssetData>& Assets);
-	static void GetAssetsPrimary(TArray<FAssetData>& AssetsPrimary);
-	static void GetAssetsIndirect(TArray<FAssetData>& AssetsIndirect, TArray<FProjectCleanerIndirectAssetInfo>& AssetsIndirectInfos);
 };

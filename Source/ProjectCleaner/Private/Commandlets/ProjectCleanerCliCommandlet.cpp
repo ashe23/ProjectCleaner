@@ -2,6 +2,7 @@
 
 #include "Commandlets/ProjectCleanerCliCommandlet.h"
 
+#include "ProjectCleanerSubsystem.h"
 #include "ProjectCleanerTypes.h"
 #include "Libs/ProjectCleanerLibAsset.h"
 
@@ -9,6 +10,7 @@ DEFINE_LOG_CATEGORY_STATIC(LogProjectCleanerCli, Display, All);
 
 UProjectCleanerCliCommandlet::UProjectCleanerCliCommandlet()
 {
+	IsClient = false;
 	IsServer = false;
 }
 
@@ -18,13 +20,23 @@ int32 UProjectCleanerCliCommandlet::Main(const FString& Params)
 	UE_LOG(LogProjectCleanerCli, Display, TEXT("=======  ProjectCleaner CLI  ======="));
 	UE_LOG(LogProjectCleanerCli, Display, TEXT("===================================="));
 
-	FProjectCleanerScanSettings ScanSettings;
-	FProjectCleanerScanData ScanData;
-	UProjectCleanerLibAsset::ProjectScan(ScanSettings, ScanData);
-	//
-	// const auto SubsystemPtr = GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>();
-	// SubsystemPtr->ProjectScan();
+	const FString ProjectPath = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir());
+	const FString ProjectName = FApp::GetProjectName();
+	
 
+	UE_LOG(LogProjectCleanerCli, Display, TEXT("ProjectPath: %s"), *ProjectPath);
+	UE_LOG(LogProjectCleanerCli, Display, TEXT("ProjectName: %s"), *ProjectName);
+
+	if (!GEditor) return -1;
+	
+	UProjectCleanerSubsystem* SubsystemPtr = GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>();
+	if (!SubsystemPtr) return -1;
+	
+	// todo:ashe23 add settings version
+	SubsystemPtr->ProjectScan();
+	
+	const FProjectCleanerScanData ScanData = SubsystemPtr->GetScanData();
+	
 	UE_LOG(LogProjectCleanerCli, Display, TEXT("Scan Result - %s"), ScanData.ScanResult != EProjectCleanerScanResult::Success ? *ScanData.ScanResultMsg : TEXT("Ok"));
 	UE_LOG(LogProjectCleanerCli, Display, TEXT("	Assets All - %d"), ScanData.AssetsAll.Num());
 	UE_LOG(LogProjectCleanerCli, Display, TEXT("	Assets Used - %d"), ScanData.AssetsUnused.Num());
@@ -37,5 +49,5 @@ int32 UProjectCleanerCliCommandlet::Main(const FString& Params)
 	UE_LOG(LogProjectCleanerCli, Display, TEXT("	Files Corrupted - %d"), ScanData.FilesCorrupted.Num());
 	UE_LOG(LogProjectCleanerCli, Display, TEXT("	Files NonEngine - %d"), ScanData.FilesNonEngine.Num());
 
-	return Super::Main(Params);
+	return 0;
 }
