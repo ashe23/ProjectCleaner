@@ -100,7 +100,7 @@ void FProjectCleanerCmds::RegisterCommands()
 
 	UI_COMMAND(
 		TabIndirectFileOpen,
-		"Open file",
+		"Open File",
 		"Try to open file in default system program",
 		EUserInterfaceActionType::Button,
 		FInputChord()
@@ -108,7 +108,7 @@ void FProjectCleanerCmds::RegisterCommands()
 
 	UI_COMMAND(
 		TabIndirectLocateInBrowser,
-		"Locate in ContentBrowser",
+		"Locate In ContentBrowser",
 		"Show selected assets in main ContentBrowser",
 		EUserInterfaceActionType::Button,
 		FInputChord()
@@ -116,7 +116,7 @@ void FProjectCleanerCmds::RegisterCommands()
 	
 	UI_COMMAND(
 		TabNonEngineTryOpenFile,
-		"Open file",
+		"Open File",
 		"Try to open file in default system program",
 		EUserInterfaceActionType::Button,
 		FInputChord()
@@ -124,7 +124,7 @@ void FProjectCleanerCmds::RegisterCommands()
 
 	UI_COMMAND(
 		TabNonEngineDeleteFile,
-		"Delete file",
+		"Delete File",
 		"TDelete selected file from FileExplorer",
 		EUserInterfaceActionType::Button,
 		FInputChord()
