@@ -39,7 +39,7 @@ int32 UProjectCleanerCliCommandlet::Main(const FString& Params)
 	
 	UE_LOG(LogProjectCleanerCli, Display, TEXT("Scan Result - %s"), ScanData.ScanResult != EProjectCleanerScanResult::Success ? *ScanData.ScanResultMsg : TEXT("Ok"));
 	UE_LOG(LogProjectCleanerCli, Display, TEXT("	Assets All - %d"), ScanData.AssetsAll.Num());
-	UE_LOG(LogProjectCleanerCli, Display, TEXT("	Assets Used - %d"), ScanData.AssetsUnused.Num());
+	UE_LOG(LogProjectCleanerCli, Display, TEXT("	Assets Used - %d"), ScanData.AssetsUsed.Num());
 	UE_LOG(LogProjectCleanerCli, Display, TEXT("	Assets Primary - %d"), ScanData.AssetsPrimary.Num());
 	UE_LOG(LogProjectCleanerCli, Display, TEXT("	Assets Indirect - %d"), ScanData.AssetsIndirect.Num());
 	UE_LOG(LogProjectCleanerCli, Display, TEXT("	Assets Excluded - %d"), ScanData.AssetsExcluded.Num());

@@ -17,6 +17,11 @@ public:
 	virtual FText GetSectionText() const override;
 	virtual FText GetSectionDescription() const override;
 
+	void ToggleAutoCleanEmptyFolders();
+	void ToggleShowTreeViewLines();
+	void ToggleShowTreeViewFoldersEmpty();
+	void ToggleShowTreeViewFoldersExcluded();
+
 	UPROPERTY(EditAnywhere, Config, Category="General", meta=(ToolTip="Automatically delete empty folders after deleting unused assets. By default, it is enabled."))
 	bool bAutoCleanEmptyFolders = true;
 

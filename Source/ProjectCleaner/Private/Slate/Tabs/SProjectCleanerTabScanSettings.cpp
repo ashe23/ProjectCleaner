@@ -3,9 +3,10 @@
 #include "Slate/Tabs/SProjectCleanerTabScanSettings.h"
 #include "ProjectCleanerStyles.h"
 #include "ProjectCleanerSubsystem.h"
+#include "Libs/ProjectCleanerLibAsset.h"
+#include "Settings/ProjectCleanerSettings.h"
 #include "Settings/ProjectCleanerExcludeSettings.h"
 // Engine Headers
-#include "Libs/ProjectCleanerLibAsset.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SSeparator.h"
 
@@ -300,7 +301,7 @@ FReply SProjectCleanerTabScanSettings::OnBtnCleanProjectClick() const
 		return FReply::Handled();
 	}
 
-	SubsystemPtr->ProjectClean(SubsystemPtr->bAutoCleanEmptyFolders);
+	SubsystemPtr->ProjectClean(GetDefault<UProjectCleanerSettings>()->bAutoCleanEmptyFolders);
 
 	return FReply::Handled();
 }

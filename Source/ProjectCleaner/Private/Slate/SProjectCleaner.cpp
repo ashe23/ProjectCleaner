@@ -8,7 +8,6 @@
 #include "Slate/Tabs/SProjectCleanerTabNonEngineFiles.h"
 #include "ProjectCleanerConstants.h"
 #include "ProjectCleanerStyles.h"
-#include "ProjectCleanerSubsystem.h"
 #include "Libs/ProjectCleanerLibAsset.h"
 #include "Libs/ProjectCleanerLibEditor.h"
 // Engine Headers
@@ -68,12 +67,6 @@ void SProjectCleaner::Construct(const FArguments& InArgs, const TSharedRef<SDock
 	          .SetGroup(AppMenuGroup);
 
 	FMenuBarBuilder MenuBarBuilder = FMenuBarBuilder(TSharedPtr<FUICommandList>());
-	MenuBarBuilder.AddPullDownMenu(
-		FText::FromString(TEXT("Settings")),
-		FText::GetEmpty(),
-		FNewMenuDelegate::CreateRaw(this, &SProjectCleaner::CreateMenuBarSettings, TabManager),
-		"Window"
-	);
 	MenuBarBuilder.AddPullDownMenu(
 		FText::FromString(TEXT("Tabs")),
 		FText::GetEmpty(),
@@ -160,35 +153,6 @@ FText SProjectCleaner::WidgetText() const
 	}
 
 	return FText::FromString(TEXT(""));
-}
-
-void SProjectCleaner::CreateMenuBarSettings(FMenuBuilder& MenuBuilder, const TSharedPtr<FTabManager> TabManagerPtr) const
-{
-	MenuBuilder.BeginSection(TEXT("SectionClean"), FText::FromString(TEXT("Clean Settings")));
-	MenuBuilder.AddMenuEntry(
-		FText::FromString(TEXT("Auto Clean Empty Folders")),
-		FText::FromString(TEXT("Automatically delete empty folders after deleting unused assets. By default, it is enabled.")),
-		FSlateIcon(),
-		FUIAction
-		(
-			FExecuteAction::CreateLambda([&]()
-			{
-				GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>()->ToggleAutoCleanEmptyFolders();
-				GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>()->PostEditChange();
-			}),
-			FCanExecuteAction::CreateLambda([&]()
-			{
-				return GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>() != nullptr;
-			}),
-			FGetActionCheckState::CreateLambda([&]()
-			{
-				return GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>()->bAutoCleanEmptyFolders ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
-			})
-		),
-		NAME_None,
-		EUserInterfaceActionType::ToggleButton
-	);
-	MenuBuilder.EndSection();
 }
 
 void SProjectCleaner::CreateMenuBarTabs(FMenuBuilder& MenuBuilder, const TSharedPtr<FTabManager> TabManagerPtr)

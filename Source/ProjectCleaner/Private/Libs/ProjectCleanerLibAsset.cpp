@@ -3,7 +3,9 @@
 #include "Libs/ProjectCleanerLibAsset.h"
 #include "ProjectCleanerConstants.h"
 // Engine Headers
+#include "AssetToolsModule.h"
 #include "AssetRegistry/AssetRegistryModule.h"
+#include "Misc/ScopedSlowTask.h"
 
 bool UProjectCleanerLibAsset::AssetRegistryWorking()
 {
@@ -173,4 +175,56 @@ int64 UProjectCleanerLibAsset::GetFilesTotalSize(const TArray<FString>& Files)
 	}
 
 	return TotalSize;
+}
+
+void UProjectCleanerLibAsset::FixupRedirectors()
+{
+	const FAssetRegistryModule& ModuleAssetRegistry = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(AssetRegistryConstants::ModuleName);
+	const FAssetToolsModule& ModuleAssetTools = FModuleManager::LoadModuleChecked<FAssetToolsModule>(TEXT("AssetTools"));
+
+	FScopedSlowTask FixRedirectorsTask{
+		1.0f,
+		FText::FromString(TEXT("Fixing redirectors...")),
+		GIsEditor && !IsRunningCommandlet()
+	};
+	FixRedirectorsTask.MakeDialog();
+
+	FARFilter Filter;
+	Filter.bRecursivePaths = true;
+	Filter.PackagePaths.Add(ProjectCleanerConstants::PathRelRoot);
+	Filter.ClassNames.Add(UObjectRedirector::StaticClass()->GetFName());
+
+	TArray<FAssetData> AssetList;
+	ModuleAssetRegistry.Get().GetAssets(Filter, AssetList);
+
+	if (AssetList.Num() == 0) return;
+
+	FScopedSlowTask FixRedirectorsLoadingTask(
+		AssetList.Num(),
+		FText::FromString(TEXT("Loading redirectors...")),
+		GIsEditor && !IsRunningCommandlet()
+	);
+	FixRedirectorsLoadingTask.MakeDialog();
+
+	TArray<UObjectRedirector*> Redirectors;
+	Redirectors.Reserve(AssetList.Num());
+
+	for (const auto& Asset : AssetList)
+	{
+		FixRedirectorsLoadingTask.EnterProgressFrame();
+
+		UObject* AssetObj = Asset.GetAsset();
+		if (!AssetObj) continue;
+
+		UObjectRedirector* Redirector = CastChecked<UObjectRedirector>(AssetObj);
+		if (!Redirector) continue;
+
+		Redirectors.Add(Redirector);
+	}
+
+	Redirectors.Shrink();
+
+	ModuleAssetTools.Get().FixupReferencers(Redirectors, false);
+
+	FixRedirectorsTask.EnterProgressFrame(1.0f);
 }

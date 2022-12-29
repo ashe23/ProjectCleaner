@@ -1,11 +1,11 @@
 ﻿// Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "Slate/TreeView/SProjectCleanerTreeViewItem.h"
-#include "ProjectCleanerSubsystem.h"
 #include "ProjectCleanerTypes.h"
 #include "ProjectCleanerStyles.h"
 // Engine Headers
 #include "Kismet/KismetMathLibrary.h"
+#include "Settings/ProjectCleanerSettings.h"
 #include "Widgets/Notifications/SProgressBar.h"
 
 void SProjectCleanerTreeViewItem::Construct(const FArguments& InArgs, const TSharedRef<STableViewBase>& OwnerTable)
@@ -29,7 +29,7 @@ TSharedRef<SWidget> SProjectCleanerTreeViewItem::GenerateWidgetForColumn(const F
 			[
 				SNew(SExpanderArrow, SharedThis(this))
 				.IndentAmount(10)
-				.ShouldDrawWires(GetDefault<UProjectCleanerSubsystem>()->bShowTreeViewLines)
+				.ShouldDrawWires(GetDefault<UProjectCleanerSettings>()->bShowTreeViewLines)
 			]
 			+ SHorizontalBox::Slot()
 			  .AutoWidth()

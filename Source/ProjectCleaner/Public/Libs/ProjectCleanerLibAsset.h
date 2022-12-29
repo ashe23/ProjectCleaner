@@ -36,4 +36,6 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category="ProjectCleaner", meta=(Tooltip="Returns total size of given files"))
 	static int64 GetFilesTotalSize(const TArray<FString>& Files);
+	
+	static void FixupRedirectors();
 };

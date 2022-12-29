@@ -34,16 +34,13 @@ public:
 	const FProjectCleanerScanData& GetScanData() const;
 	bool CanScanProject() const;
 	bool AssetIsExcluded(const FAssetData& AssetData) const;
-	// bool AssetRegistryWorking() const;
 	bool ScanningInProgress() const;
 	bool CleaningInProgress() const;
-	// static bool EditorInPlayMode();
-	// bool FolderIsExcluded(const FString& InFolderPath) const;
 	FProjectCleanerDelegateProjectScanned& OnProjectScanned();
 	// bool FolderIsEngineGenerated(const FString& FolderPathAbs) const;
 	// bool CanShowFolder(const FString& FolderPathAbs) const;
-	void SetAutoCleanEmptyFolders(const bool bValue);
-	void ToggleAutoCleanEmptyFolders();
+	// void SetAutoCleanEmptyFolders(const bool bValue);
+	// void ToggleAutoCleanEmptyFolders();
 
 private:
 	static FString ScanResultToString(const EProjectCleanerScanResult ScanResult);
@@ -57,7 +54,6 @@ private:
 	void FindFilesNonEngine();
 	void FindFolders();
 	void ScanDataReset();
-	void FixupRedirectors() const;
 	bool AssetExcludedByPath(const FAssetData& AssetData) const;
 	bool AssetExcludedByClass(const FAssetData& AssetData) const;
 	bool AssetExcludedByObject(const FAssetData& AssetData) const;
@@ -67,20 +63,6 @@ private:
 	bool BucketPrepare(const TArray<FAssetData>& Bucket, TArray<UObject*>& LoadedAssets) const;
 	int32 BucketDelete(const TArray<UObject*>& LoadedAssets) const;
 
-public:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Config, Category="ProjectCleaner")
-	bool bAutoCleanEmptyFolders = true;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Config, Category="ProjectCleaner")
-	bool bShowTreeViewLines = true;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Config, Category="ProjectCleaner")
-	bool bShowFoldersEmpty = true;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Config, Category="ProjectCleaner")
-	bool bShowFoldersExcluded = true;
-
-private:
 	bool bScanningProject = false;
 	bool bCleaningProject = false;
 

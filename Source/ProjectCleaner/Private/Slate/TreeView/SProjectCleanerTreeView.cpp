@@ -11,6 +11,7 @@
 #include "ProjectCleanerConstants.h"
 #include "Libs/ProjectCleanerLibAsset.h"
 #include "Libs/ProjectCleanerLibPath.h"
+#include "Settings/ProjectCleanerSettings.h"
 #include "Widgets/Layout/SSeparator.h"
 #include "Widgets/Input/SSearchBox.h"
 #include "Widgets/Layout/SScrollBox.h"
@@ -256,9 +257,9 @@ void SProjectCleanerTreeView::ItemsUpdate()
 
 		// TArray<FString> SubFoldersAll;
 		// IFileManager::Get().FindFilesRecursive(SubFoldersAll, *CurrentItem->FolderPathAbs, TEXT("*.*"),false, true);
-		
+
 		// if (!SearchText.IsEmpty() && !SubFoldersAll.Contains(SearchText)) continue;
-		
+
 		CurrentItem->SubItems.Reserve(SubFolders.Num());
 
 		for (const auto& SubFolder : SubFolders)
@@ -272,7 +273,6 @@ void SProjectCleanerTreeView::ItemsUpdate()
 			Stack.Push(SubDirItem);
 		}
 	}
-
 
 
 	TreeView->RequestTreeRefresh();
@@ -470,20 +470,18 @@ TSharedRef<SWidget> SProjectCleanerTreeView::GetOptionsBtnContent()
 		(
 			FExecuteAction::CreateLambda([&]
 			{
-				if (!SubsystemPtr) return;
-
-				SubsystemPtr->bShowTreeViewLines = !SubsystemPtr->bShowTreeViewLines;
-				SubsystemPtr->PostEditChange();
+				GetMutableDefault<UProjectCleanerSettings>()->ToggleShowTreeViewLines();
+				GetMutableDefault<UProjectCleanerSettings>()->PostEditChange();
 
 				ItemsUpdate();
 			}),
 			FCanExecuteAction::CreateLambda([&]()
 			{
-				return SubsystemPtr != nullptr;
+				return GetDefault<UProjectCleanerSettings>() != nullptr;
 			}),
 			FGetActionCheckState::CreateLambda([&]()
 			{
-				return SubsystemPtr && SubsystemPtr->bShowTreeViewLines ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
+				return GetDefault<UProjectCleanerSettings>()->bShowTreeViewLines ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
 			})
 		),
 		NAME_None,
@@ -500,20 +498,18 @@ TSharedRef<SWidget> SProjectCleanerTreeView::GetOptionsBtnContent()
 		(
 			FExecuteAction::CreateLambda([&]
 			{
-				if (!SubsystemPtr) return;
-
-				SubsystemPtr->bShowFoldersEmpty = !SubsystemPtr->bShowFoldersEmpty;
-				SubsystemPtr->PostEditChange();
+				GetMutableDefault<UProjectCleanerSettings>()->ToggleShowTreeViewFoldersEmpty();
+				GetMutableDefault<UProjectCleanerSettings>()->PostEditChange();
 
 				ItemsUpdate();
 			}),
 			FCanExecuteAction::CreateLambda([&]()
 			{
-				return SubsystemPtr != nullptr;
+				return GetDefault<UProjectCleanerSettings>() != nullptr;
 			}),
 			FGetActionCheckState::CreateLambda([&]()
 			{
-				return SubsystemPtr && SubsystemPtr->bShowFoldersEmpty ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
+				return GetDefault<UProjectCleanerSettings>()->bShowTreeViewFoldersEmpty ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
 			})
 		),
 		NAME_None,
@@ -528,20 +524,18 @@ TSharedRef<SWidget> SProjectCleanerTreeView::GetOptionsBtnContent()
 		(
 			FExecuteAction::CreateLambda([&]
 			{
-				if (!SubsystemPtr) return;
-
-				SubsystemPtr->bShowFoldersExcluded = !SubsystemPtr->bShowFoldersExcluded;
-				SubsystemPtr->PostEditChange();
+				GetMutableDefault<UProjectCleanerSettings>()->ToggleShowTreeViewFoldersExcluded();
+				GetMutableDefault<UProjectCleanerSettings>()->PostEditChange();
 
 				ItemsUpdate();
 			}),
 			FCanExecuteAction::CreateLambda([&]()
 			{
-				return SubsystemPtr != nullptr;
+				return GetDefault<UProjectCleanerSettings>() != nullptr;
 			}),
 			FGetActionCheckState::CreateLambda([&]()
 			{
-				return SubsystemPtr && SubsystemPtr->bShowFoldersExcluded ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
+				return GetDefault<UProjectCleanerSettings>()->bShowTreeViewFoldersExcluded ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
 			})
 		),
 		NAME_None,
@@ -671,7 +665,7 @@ int32 SProjectCleanerTreeView::GetFoldersTotalNum(const FProjectCleanerTreeViewI
 
 int32 SProjectCleanerTreeView::GetFoldersEmptyNum(const FProjectCleanerTreeViewItem& Item) const
 {
-	if (!SubsystemPtr->bShowFoldersEmpty) return 0;
+	if (!GetDefault<UProjectCleanerSettings>()->bShowTreeViewFoldersEmpty) return 0;
 
 	int32 Num = 0;
 
