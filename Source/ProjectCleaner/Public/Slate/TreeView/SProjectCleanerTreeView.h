@@ -49,7 +49,9 @@ private:
 	int64 GetSizeTotal(const FProjectCleanerTreeViewItem& Item) const;
 	int64 GetSizeUnused(const FProjectCleanerTreeViewItem& Item) const;
 
-	bool ItemIsVisible(const FString& FolderPathAbs) const;
+	bool ItemIsVisible(const FProjectCleanerTreeViewItem& Item) const;
+	bool ItemIsExpanded(const FProjectCleanerTreeViewItem& Item) const;
+	// bool CanShowFolder(const FProjectCleanerTreeViewItem& Item) const;
 
 	FString SearchText;
 	TSet<FString> SelectedPaths;

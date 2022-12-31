@@ -352,34 +352,6 @@ FProjectCleanerDelegateProjectScanned& UProjectCleanerSubsystem::OnProjectScanne
 	return DelegateProjectScanned;
 }
 
-bool UProjectCleanerSubsystem::FolderIsEngineGenerated(const FString& FolderPathAbs) const
-{
-	TSet<FString> Folders;
-	Folders.Reserve(4);
-	Folders.Add(FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / TEXT("Collections")));
-	Folders.Add(FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / TEXT("Developers")));
-	Folders.Add(FPaths::ConvertRelativePathToFull(FPaths::GameDevelopersDir() / FPaths::GameUserDeveloperFolderName()));
-	Folders.Add(FPaths::ConvertRelativePathToFull(FPaths::GameUserDeveloperDir() / TEXT("Collections")));
-
-	return Folders.Contains(FolderPathAbs);
-}
-
-bool UProjectCleanerSubsystem::CanShowFolder(const FString& FolderPathAbs) const
-{
-	const FString PathAbs = UProjectCleanerLibPath::ConvertToAbs(FolderPathAbs);
-	if (PathAbs.IsEmpty()) return false;
-
-	if (FolderIsEngineGenerated(FolderPathAbs))
-	{
-		TArray<FAssetData> Assets;
-		ModuleAssetRegistry->Get().GetAssetsByPath(FName{UProjectCleanerLibPath::ConvertToRel(PathAbs)}, Assets, true);
-
-		return Assets.Num() > 0;
-	}
-
-	return true;
-}
-
 FString UProjectCleanerSubsystem::ScanResultToString(const EProjectCleanerScanResult ScanResult)
 {
 	switch (ScanResult)
@@ -817,7 +789,10 @@ void UProjectCleanerSubsystem::FindFolders()
 	
 		ScanData.FoldersAll.AddUnique(FolderPathAbs);
 	
-		if (UProjectCleanerLibPath::FolderIsEmpty(FolderPathAbs) && !UProjectCleanerLibPath::FolderIsExcluded(FolderPathAbs))
+		if (
+			UProjectCleanerLibPath::FolderIsEmpty(FolderPathAbs) &&
+			!UProjectCleanerLibPath::FolderIsExcluded(FolderPathAbs) &&
+			!UProjectCleanerLibPath::FolderIsEngineGenerated(FolderPathAbs))
 		{
 			ScanData.FoldersEmpty.AddUnique(FolderPathAbs);
 		}

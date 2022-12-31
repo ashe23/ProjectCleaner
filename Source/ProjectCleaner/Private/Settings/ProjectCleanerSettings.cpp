@@ -47,6 +47,11 @@ void UProjectCleanerSettings::ToggleShowTreeViewFoldersExcluded()
 	bShowTreeViewFoldersExcluded = !bShowTreeViewFoldersExcluded;
 }
 
+void UProjectCleanerSettings::ToggleShowTreeViewFoldersEngineGenerated()
+{
+	bShowTreeViewFoldersEngineGenerated = !bShowTreeViewFoldersEngineGenerated;
+}
+
 #if WITH_EDITOR
 void UProjectCleanerSettings::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {

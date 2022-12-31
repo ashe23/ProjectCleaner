@@ -21,6 +21,7 @@ public:
 	void ToggleShowTreeViewLines();
 	void ToggleShowTreeViewFoldersEmpty();
 	void ToggleShowTreeViewFoldersExcluded();
+	void ToggleShowTreeViewFoldersEngineGenerated();
 
 	UPROPERTY(EditAnywhere, Config, Category="General", meta=(ToolTip="Automatically delete empty folders after deleting unused assets. By default, it is enabled."))
 	bool bAutoCleanEmptyFolders = true;
@@ -33,6 +34,9 @@ public:
 
 	UPROPERTY(EditAnywhere, Config, Category="TreeView", meta=(ToolTip="Show excluded folders in tree view"), DisplayName="Show Folders Excluded")
 	bool bShowTreeViewFoldersExcluded = true;
+
+	UPROPERTY(EditAnywhere, Config, Category="TreeView", meta=(ToolTip="Show engine generated folders in tree view"), DisplayName="Show Folders Engine")
+	bool bShowTreeViewFoldersEngineGenerated = true;
 
 protected:
 #if WITH_EDITOR

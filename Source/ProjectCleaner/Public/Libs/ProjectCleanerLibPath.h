@@ -22,13 +22,27 @@ public:
 	static FString ConvertToRel(const FString& InPath);
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner|Lib|Path", meta=(ToolTip="Returns full path to project Content folder"))
-	static FString GetContentFolder();
+	static FString GetFolderContent();
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner|Lib|Path", meta=(ToolTip="Returns full path to project Developers folder"))
+	static FString GetFolderDevelopers();
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner|Lib|Path", meta=(ToolTip="Returns full path to project Collections folder"))
+	static FString GetFolderCollections();
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner|Lib|Path", meta=(ToolTip="Returns full path to Developers folder of current user"))
+	static FString GetFolderDevelopersUser();
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner|Lib|Path", meta=(ToolTip="Returns full path to Collections folder of current user"))
+	static FString GetFolderCollectionsUser();
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner|Lib|Path", meta=(ToolTip="Checks if given folder is empty"))
 	static bool FolderIsEmpty(const FString& InPath);
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner|Lib|Path", meta=(ToolTip="Checks if given folder is excluded"))
 	static bool FolderIsExcluded(const FString& InPath);
+
+	static bool FolderIsEngineGenerated(const FString& InPath);
 
 private:
 	static bool PathIsUnderContentFolder(const FString& InPath);
