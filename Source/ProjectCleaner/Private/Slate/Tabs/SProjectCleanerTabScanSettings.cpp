@@ -154,10 +154,27 @@ void SProjectCleanerTabScanSettings::Construct(const FArguments& InArgs)
 			+ SVerticalBox::Slot()
 			.AutoHeight()
 			[
-				SNew(STextBlock)
-				.Font(FProjectCleanerStyles::GetFont("Bold", 13))
-				.ColorAndOpacity_Raw(this, &SProjectCleanerTabScanSettings::GetTextColorAssetsUnused)
-				.Text_Raw(this, &SProjectCleanerTabScanSettings::GetTextAssetsUnused)
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				[
+					SNew(STextBlock)
+					.Font(FProjectCleanerStyles::GetFont("Bold", 13))
+					.ColorAndOpacity_Raw(this, &SProjectCleanerTabScanSettings::GetTextColorAssetsUnused)
+					.Text_Raw(this, &SProjectCleanerTabScanSettings::GetTextAssetsUnused)
+				]
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				.Padding(FMargin{10.0f, 0.0f})
+				[
+					SNew(SBox)
+					.WidthOverride(20.0f)
+					.HeightOverride(20.0f)
+					[
+						SNew(SImage)
+						.Image_Raw(this, &SProjectCleanerTabScanSettings::GetProjectScanStatusImg)
+					]
+				]
 			]
 			+ SVerticalBox::Slot()
 			  .AutoHeight()
@@ -405,9 +422,15 @@ FText SProjectCleanerTabScanSettings::GetTextFilesNonEngine() const
 	return FText::FromString(FString::Printf(TEXT("Files NonEngine - %d (%s)"), FilesNonEngineNum, *FText::AsMemory(FilesNonEngineSize).ToString()));
 }
 
+const FSlateBrush* SProjectCleanerTabScanSettings::GetProjectScanStatusImg() const
+{
+	const FString IconSpecifier = AssetsUnusedNum == 0 ? TEXT("ProjectCleaner.IconCheck16") : TEXT("ProjectCleaner.IconWarning16");
+	return FProjectCleanerStyles::Get().GetBrush(*IconSpecifier);
+}
+
 FSlateColor SProjectCleanerTabScanSettings::GetTextColorAssetsUnused() const
 {
-	return AssetsUnusedNum > 0 ? FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Red") : FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.White");
+	return AssetsUnusedNum > 0 ? FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Red") : FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.GreenBright");
 }
 
 FSlateColor SProjectCleanerTabScanSettings::GetTextColorAssetsExcluded() const

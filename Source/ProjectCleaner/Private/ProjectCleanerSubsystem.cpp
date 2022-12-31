@@ -7,8 +7,6 @@
 // Engine Headers
 #include "AssetToolsModule.h"
 #include "AssetViewUtils.h"
-#include "ContentBrowserModule.h"
-#include "IContentBrowserSingleton.h"
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "Internationalization/Regex.h"
 #include "Misc/FileHelper.h"
@@ -20,11 +18,10 @@
 #include "ObjectTools.h"
 #include "Engine/MapBuildDataRegistry.h"
 #include "Engine/AssetManager.h"
-#include "Framework/Notifications/NotificationManager.h"
 #include "Libs/ProjectCleanerLibAsset.h"
 #include "Libs/ProjectCleanerLibEditor.h"
+#include "Libs/ProjectCleanerLibNotification.h"
 #include "Libs/ProjectCleanerLibPath.h"
-#include "Widgets/Notifications/SNotificationList.h"
 
 UProjectCleanerSubsystem::UProjectCleanerSubsystem()
 	:
@@ -97,6 +94,9 @@ void UProjectCleanerSubsystem::ProjectScan(const FProjectCleanerScanSettings& In
 	{
 		ScanData.ScanResult = EProjectCleanerScanResult::AssetRegistryWorking;
 		ScanData.ScanResultMsg = ScanResultToString(ScanData.ScanResult);
+
+		UProjectCleanerLibNotification::ShowModalOutputLog(ScanData.ScanResultMsg, EProjectCleanerModalState::Error, 5.0f);
+
 		return;
 	}
 
@@ -104,6 +104,9 @@ void UProjectCleanerSubsystem::ProjectScan(const FProjectCleanerScanSettings& In
 	{
 		ScanData.ScanResult = EProjectCleanerScanResult::EditorInPlayMode;
 		ScanData.ScanResultMsg = ScanResultToString(ScanData.ScanResult);
+
+		UProjectCleanerLibNotification::ShowModalOutputLog(ScanData.ScanResultMsg, EProjectCleanerModalState::Error, 5.0f);
+
 		return;
 	}
 
@@ -111,6 +114,9 @@ void UProjectCleanerSubsystem::ProjectScan(const FProjectCleanerScanSettings& In
 	{
 		ScanData.ScanResult = EProjectCleanerScanResult::ScanningInProgress;
 		ScanData.ScanResultMsg = ScanResultToString(ScanData.ScanResult);
+
+		UProjectCleanerLibNotification::ShowModalOutputLog(ScanData.ScanResultMsg, EProjectCleanerModalState::Error, 5.0f);
+
 		return;
 	}
 
@@ -118,6 +124,9 @@ void UProjectCleanerSubsystem::ProjectScan(const FProjectCleanerScanSettings& In
 	{
 		ScanData.ScanResult = EProjectCleanerScanResult::CleaningInProgress;
 		ScanData.ScanResultMsg = ScanResultToString(ScanData.ScanResult);
+
+		UProjectCleanerLibNotification::ShowModalOutputLog(ScanData.ScanResultMsg, EProjectCleanerModalState::Error, 5.0f);
+
 		return;
 	}
 
@@ -128,6 +137,9 @@ void UProjectCleanerSubsystem::ProjectScan(const FProjectCleanerScanSettings& In
 	{
 		ScanData.ScanResult = EProjectCleanerScanResult::FailedToSaveAssets;
 		ScanData.ScanResultMsg = ScanResultToString(ScanData.ScanResult);
+
+		UProjectCleanerLibNotification::ShowModalOutputLog(ScanData.ScanResultMsg, EProjectCleanerModalState::Error, 5.0f);
+
 		return;
 	}
 
@@ -250,18 +262,24 @@ void UProjectCleanerSubsystem::ProjectClean(const bool bRemoveEmptyFolders)
 
 	bCleaningProject = false;
 
-	if (bRemoveEmptyFolders)
+	const bool bSuccess = AssetsDeletedNum == AssetsTotalNum;
+	const FString Title = FString::Printf(TEXT("Deleted %d of %d assets"), AssetsDeletedNum, AssetsTotalNum);
+
+	if (bSuccess)
 	{
-		ProjectCleanEmptyFolders();
+		UProjectCleanerLibNotification::ShowModal(Title, EProjectCleanerModalState::OK, 10.0f);
+	}
+	else
+	{
+		UProjectCleanerLibNotification::ShowModalOutputLog(Title, EProjectCleanerModalState::Error, 10.0f);
 	}
 
 	ProjectScan();
 
-	TArray<FString> FocusFolders;
-	FocusFolders.Add(ProjectCleanerConstants::PathRelRoot.ToString());
-
-	const FContentBrowserModule& CBModule = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
-	CBModule.Get().SyncBrowserToFolders(FocusFolders);
+	if (bRemoveEmptyFolders)
+	{
+		ProjectCleanEmptyFolders();
+	}
 }
 
 void UProjectCleanerSubsystem::ProjectCleanEmptyFolders()
@@ -299,25 +317,19 @@ void UProjectCleanerSubsystem::ProjectCleanEmptyFolders()
 		}
 	}
 
+	bCleaningProject = false;
+	
 	const bool bSuccess = DeletedFolderNum == ScanData.FoldersEmpty.Num();
 	const FString Title = FString::Printf(TEXT("Deleted %d of %d folders"), DeletedFolderNum, ScanData.FoldersEmpty.Num());
-	FNotificationInfo Info{FText::FromString(Title)};
-	Info.ExpireDuration = bSuccess ? 5.0f : 10.0f;
-	if (!bSuccess)
-	{
-		Info.Hyperlink = FSimpleDelegate::CreateLambda([]()
-		{
-			FGlobalTabmanager::Get()->TryInvokeTab(FName{TEXT("OutputLog")});
-		});
-		Info.HyperlinkText = FText::FromString(TEXT("Show OutputLog..."));
-	}
-	const auto NotificationPtr = FSlateNotificationManager::Get().AddNotification(Info);
-	if (NotificationPtr.IsValid())
-	{
-		NotificationPtr.Get()->SetCompletionState(bSuccess ? SNotificationItem::CS_Success : SNotificationItem::CS_Fail);
-	}
 
-	bCleaningProject = false;
+	if (bSuccess)
+	{
+		UProjectCleanerLibNotification::ShowModal(Title, EProjectCleanerModalState::OK, 10.0f);
+	}
+	else
+	{
+		UProjectCleanerLibNotification::ShowModalOutputLog(Title, EProjectCleanerModalState::Error, 10.0f);
+	}
 
 	ProjectScan();
 }
@@ -781,14 +793,14 @@ void UProjectCleanerSubsystem::FindFolders()
 {
 	TArray<FString> Folders;
 	IFileManager::Get().FindFilesRecursive(Folders, *FPaths::ProjectContentDir(), TEXT("*.*"), false, true);
-	
+
 	TArray<FAssetData> Assets;
 	for (const auto& Folder : Folders)
 	{
 		const FString FolderPathAbs = FPaths::ConvertRelativePathToFull(Folder);
-	
+
 		ScanData.FoldersAll.AddUnique(FolderPathAbs);
-	
+
 		if (
 			UProjectCleanerLibPath::FolderIsEmpty(FolderPathAbs) &&
 			!UProjectCleanerLibPath::FolderIsExcluded(FolderPathAbs) &&
@@ -947,6 +959,8 @@ bool UProjectCleanerSubsystem::BucketPrepare(const TArray<FAssetData>& Bucket, T
 
 	for (const auto& Asset : Bucket)
 	{
+		if (!Asset.IsValid()) continue;
+		
 		ObjectPaths.Add(Asset.ObjectPath.ToString());
 	}
 

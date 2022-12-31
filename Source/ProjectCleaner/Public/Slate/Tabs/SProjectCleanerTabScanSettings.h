@@ -42,6 +42,8 @@ protected:
 	FText GetTextFilesCorrupted() const;
 	FText GetTextFilesNonEngine() const;
 
+	const FSlateBrush* GetProjectScanStatusImg() const;
+	
 	FSlateColor GetTextColorAssetsUnused() const;
 	FSlateColor GetTextColorAssetsExcluded() const;
 	FSlateColor GetTextColorFoldersEmpty() const;

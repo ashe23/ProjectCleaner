@@ -14,6 +14,7 @@
 #include "IContentBrowserSingleton.h"
 #include "ObjectTools.h"
 #include "Libs/ProjectCleanerLibAsset.h"
+#include "Libs/ProjectCleanerLibNotification.h"
 #include "Libs/ProjectCleanerLibPath.h"
 
 void SProjectCleanerTabScanInfo::Construct(const FArguments& InArgs)
