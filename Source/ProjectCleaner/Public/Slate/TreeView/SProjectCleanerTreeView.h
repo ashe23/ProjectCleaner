@@ -4,10 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "ProjectCleanerDelegates.h"
+#include "ProjectCleanerTypes.h"
 #include "Widgets/SCompoundWidget.h"
 
 class UProjectCleanerSubsystem;
-struct FProjectCleanerTreeViewItem;
 
 class SProjectCleanerTreeView final : public SCompoundWidget
 {
@@ -36,10 +36,11 @@ private:
 	void OnSearchBoxTextChanged(const FText& InSearchText);
 	void OnSearchBoxTextCommitted(const FText& InSearchText, ETextCommit::Type InCommitType);
 	void OnItemMouseDblClick(TSharedPtr<FProjectCleanerTreeViewItem> Item);
-	void OnGetChildren(TSharedPtr<FProjectCleanerTreeViewItem> Item, TArray<TSharedPtr<FProjectCleanerTreeViewItem>>& OutChildren) const;
+	void OnGetChildren(TSharedPtr<FProjectCleanerTreeViewItem> Item, TArray<TSharedPtr<FProjectCleanerTreeViewItem>>& OutChildren);
 	void OnSelectionChange(TSharedPtr<FProjectCleanerTreeViewItem> Item, ESelectInfo::Type SelectType);
 	void OnExpansionChange(TSharedPtr<FProjectCleanerTreeViewItem> Item, bool bExpanded) const;
 	void ToggleExpansionRecursive(TSharedPtr<FProjectCleanerTreeViewItem> Item, const bool bExpanded);
+	void GetSubItems(const TSharedPtr<FProjectCleanerTreeViewItem>& Item, TArray<TSharedPtr<FProjectCleanerTreeViewItem>>& SubItems);
 
 	int32 GetFoldersTotalNum(const FProjectCleanerTreeViewItem& Item) const;
 	int32 GetFoldersEmptyNum(const FProjectCleanerTreeViewItem& Item) const;
@@ -48,11 +49,14 @@ private:
 	int64 GetSizeTotal(const FProjectCleanerTreeViewItem& Item) const;
 	int64 GetSizeUnused(const FProjectCleanerTreeViewItem& Item) const;
 
+	bool ItemIsVisible(const FString& FolderPathAbs) const;
+
 	FString SearchText;
 	TSet<FString> SelectedPaths;
 	TSharedPtr<FUICommandList> Cmds;
-	TSet<TSharedPtr<FProjectCleanerTreeViewItem>> ItemsExpanded;
-	TArray<TSharedPtr<FProjectCleanerTreeViewItem>> ItemsSelected;
+	TSet<TSharedPtr<FProjectCleanerTreeViewItem>> TreeViewItemsExpanded;
+	TArray<TSharedPtr<FProjectCleanerTreeViewItem>> TreeViewItemsSelected;
+	TArray<TSharedPtr<FProjectCleanerTreeViewItem>> TreeViewItems;
 	TArray<TSharedPtr<FProjectCleanerTreeViewItem>> Items;
 	TSharedPtr<STreeView<TSharedPtr<FProjectCleanerTreeViewItem>>> TreeView;
 	TSharedPtr<SComboButton> OptionsComboButton;
@@ -60,3 +64,5 @@ private:
 
 	FProjectCleanerDelegateTreeViewPathSelected OnPathSelected;
 };
+
+

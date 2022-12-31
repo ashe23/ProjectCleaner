@@ -37,10 +37,8 @@ public:
 	bool ScanningInProgress() const;
 	bool CleaningInProgress() const;
 	FProjectCleanerDelegateProjectScanned& OnProjectScanned();
-	// bool FolderIsEngineGenerated(const FString& FolderPathAbs) const;
-	// bool CanShowFolder(const FString& FolderPathAbs) const;
-	// void SetAutoCleanEmptyFolders(const bool bValue);
-	// void ToggleAutoCleanEmptyFolders();
+	bool FolderIsEngineGenerated(const FString& FolderPathAbs) const;
+	bool CanShowFolder(const FString& FolderPathAbs) const;
 
 private:
 	static FString ScanResultToString(const EProjectCleanerScanResult ScanResult);

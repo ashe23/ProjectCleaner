@@ -166,6 +166,7 @@ struct FProjectCleanerTreeViewItem
 	int64 SizeUnused = 0;
 	int32 AssetsTotal = 0;
 	int32 AssetsUnused = 0;
+	bool bVisible = true;
 	bool bDevFolder = false;
 	bool bExpanded = false;
 	bool bExcluded = false;
@@ -173,8 +174,13 @@ struct FProjectCleanerTreeViewItem
 	float PercentUnused = 0.0f; // 0 - 100 range
 	float PercentUnusedNormalized = 0.0f; // 0 - 1 range
 
-	TSharedPtr<FProjectCleanerTreeViewItem> Parent;
-	TArray<TSharedPtr<FProjectCleanerTreeViewItem>> SubItems;
+	bool IsValid() const
+	{
+		return FolderPathAbs.IsEmpty() == false;
+	}
+
+	// TSharedPtr<FProjectCleanerTreeViewItem> Parent;
+	// TArray<FProjectCleanerTreeViewItem> SubItems;
 
 	bool operator==(const FProjectCleanerTreeViewItem& Other) const
 	{

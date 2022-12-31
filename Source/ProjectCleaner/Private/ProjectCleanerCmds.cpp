@@ -44,7 +44,7 @@ void FProjectCleanerCmds::RegisterCommands()
 
 	UI_COMMAND(
 		AssetLocateInBrowser,
-		"Locate in ContentBrowser",
+		"Locate In ContentBrowser",
 		"Show selected assets in main ContentBrowser",
 		EUserInterfaceActionType::Button,
 		FInputChord()
@@ -52,7 +52,7 @@ void FProjectCleanerCmds::RegisterCommands()
 
 	UI_COMMAND(
 		AssetLocateInExplorer,
-		"Locate in FileExplorer",
+		"Locate In FileExplorer",
 		"Show selected assets locations in FileExplorer",
 		EUserInterfaceActionType::Button,
 		FInputChord()

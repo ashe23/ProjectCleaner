@@ -20,6 +20,16 @@ public:
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner|Lib|Path", meta=(ToolTip="Converts given to relative path. If path is outside Content folder will return empty string."))
 	static FString ConvertToRel(const FString& InPath);
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner|Lib|Path", meta=(ToolTip="Returns full path to project Content folder"))
+	static FString GetContentFolder();
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner|Lib|Path", meta=(ToolTip="Checks if given folder is empty"))
+	static bool FolderIsEmpty(const FString& InPath);
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner|Lib|Path", meta=(ToolTip="Checks if given folder is excluded"))
+	static bool FolderIsExcluded(const FString& InPath);
+
 private:
 	static bool PathIsUnderContentFolder(const FString& InPath);
 };

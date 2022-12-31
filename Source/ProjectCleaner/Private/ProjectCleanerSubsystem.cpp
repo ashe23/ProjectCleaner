@@ -352,33 +352,33 @@ FProjectCleanerDelegateProjectScanned& UProjectCleanerSubsystem::OnProjectScanne
 	return DelegateProjectScanned;
 }
 
-// bool UProjectCleanerSubsystem::FolderIsEngineGenerated(const FString& FolderPathAbs) const
-// {
-// 	TSet<FString> Folders;
-// 	Folders.Reserve(4);
-// 	Folders.Add(FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / TEXT("Collections")));
-// 	Folders.Add(FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / TEXT("Developers")));
-// 	Folders.Add(FPaths::ConvertRelativePathToFull(FPaths::GameDevelopersDir() / FPaths::GameUserDeveloperFolderName()));
-// 	Folders.Add(FPaths::ConvertRelativePathToFull(FPaths::GameUserDeveloperDir() / TEXT("Collections")));
-//
-// 	return Folders.Contains(FolderPathAbs);
-// }
+bool UProjectCleanerSubsystem::FolderIsEngineGenerated(const FString& FolderPathAbs) const
+{
+	TSet<FString> Folders;
+	Folders.Reserve(4);
+	Folders.Add(FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / TEXT("Collections")));
+	Folders.Add(FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / TEXT("Developers")));
+	Folders.Add(FPaths::ConvertRelativePathToFull(FPaths::GameDevelopersDir() / FPaths::GameUserDeveloperFolderName()));
+	Folders.Add(FPaths::ConvertRelativePathToFull(FPaths::GameUserDeveloperDir() / TEXT("Collections")));
 
-// bool UProjectCleanerSubsystem::CanShowFolder(const FString& FolderPathAbs) const
-// {
-// 	const FString PathAbs = PathConvertToAbs(FolderPathAbs);
-// 	if (PathAbs.IsEmpty()) return false;
-//
-// 	if (FolderIsEngineGenerated(FolderPathAbs))
-// 	{
-// 		TArray<FAssetData> Assets;
-// 		ModuleAssetRegistry->Get().GetAssetsByPath(FName{PathConvertToRel(PathAbs)}, Assets, true);
-//
-// 		return Assets.Num() > 0;
-// 	}
-//
-// 	return true;
-// }
+	return Folders.Contains(FolderPathAbs);
+}
+
+bool UProjectCleanerSubsystem::CanShowFolder(const FString& FolderPathAbs) const
+{
+	const FString PathAbs = UProjectCleanerLibPath::ConvertToAbs(FolderPathAbs);
+	if (PathAbs.IsEmpty()) return false;
+
+	if (FolderIsEngineGenerated(FolderPathAbs))
+	{
+		TArray<FAssetData> Assets;
+		ModuleAssetRegistry->Get().GetAssetsByPath(FName{UProjectCleanerLibPath::ConvertToRel(PathAbs)}, Assets, true);
+
+		return Assets.Num() > 0;
+	}
+
+	return true;
+}
 
 FString UProjectCleanerSubsystem::ScanResultToString(const EProjectCleanerScanResult ScanResult)
 {
@@ -807,24 +807,21 @@ void UProjectCleanerSubsystem::FindFilesNonEngine()
 
 void UProjectCleanerSubsystem::FindFolders()
 {
-	// todo:ashe23
-	// TArray<FString> Folders;
-	// IFileManager::Get().FindFilesRecursive(Folders, *FPaths::ProjectContentDir(), TEXT("*.*"), false, true);
-	//
-	// TArray<FAssetData> Assets;
-	// for (const auto& Folder : Folders)
-	// {
-	// 	const FString FolderPathAbs = FPaths::ConvertRelativePathToFull(Folder);
-	//
-	// 	if (!CanShowFolder(FolderPathAbs)) continue;
-	//
-	// 	ScanData.FoldersAll.AddUnique(FolderPathAbs);
-	//
-	// 	if (FolderIsEmpty(FolderPathAbs) && !FolderIsExcluded(FolderPathAbs))
-	// 	{
-	// 		ScanData.FoldersEmpty.AddUnique(FolderPathAbs);
-	// 	}
-	// }
+	TArray<FString> Folders;
+	IFileManager::Get().FindFilesRecursive(Folders, *FPaths::ProjectContentDir(), TEXT("*.*"), false, true);
+	
+	TArray<FAssetData> Assets;
+	for (const auto& Folder : Folders)
+	{
+		const FString FolderPathAbs = FPaths::ConvertRelativePathToFull(Folder);
+	
+		ScanData.FoldersAll.AddUnique(FolderPathAbs);
+	
+		if (UProjectCleanerLibPath::FolderIsEmpty(FolderPathAbs) && !UProjectCleanerLibPath::FolderIsExcluded(FolderPathAbs))
+		{
+			ScanData.FoldersEmpty.AddUnique(FolderPathAbs);
+		}
+	}
 }
 
 void UProjectCleanerSubsystem::ScanDataReset()
