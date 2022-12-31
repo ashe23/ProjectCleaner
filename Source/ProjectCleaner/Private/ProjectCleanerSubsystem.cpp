@@ -741,8 +741,8 @@ void UProjectCleanerSubsystem::FindFilesCorrupted()
 		SlowTask.EnterProgressFrame(1.0f, FText::FromString(FString::Printf(TEXT("%s"), *File)));
 
 		const FString FilePathAbs = FPaths::ConvertRelativePathToFull(File);
-		if (!FileHasEngineExtension(FilePathAbs)) continue;
-		if (!FileIsCorrupted(FilePathAbs)) continue;
+		if (!UProjectCleanerLibPath::FileHasEngineExtension(FilePathAbs)) continue;
+		if (!UProjectCleanerLibPath::FileIsCorrupted(FilePathAbs)) continue;
 
 		ScanData.FilesCorrupted.AddUnique(FilePathAbs);
 	}
@@ -769,7 +769,7 @@ void UProjectCleanerSubsystem::FindFilesNonEngine()
 		SlowTask.EnterProgressFrame(1.0f, FText::FromString(FString::Printf(TEXT("%s"), *File)));
 
 		const FString FilePathAbs = FPaths::ConvertRelativePathToFull(File);
-		if (FileHasEngineExtension(FilePathAbs)) continue;
+		if (UProjectCleanerLibPath::FileHasEngineExtension(FilePathAbs)) continue;
 
 		ScanData.FilesNonEngine.AddUnique(FilePathAbs);
 	}
@@ -864,42 +864,6 @@ bool UProjectCleanerSubsystem::AssetExcludedByObject(const FAssetData& AssetData
 	}
 
 	return false;
-}
-
-bool UProjectCleanerSubsystem::FileHasEngineExtension(const FString& InFilePath)
-{
-	const FString Extension = FPaths::GetExtension(InFilePath).ToLower();
-
-	TSet<FString> EngineExtensions;
-	EngineExtensions.Reserve(3);
-	EngineExtensions.Add(TEXT("uasset"));
-	EngineExtensions.Add(TEXT("umap"));
-	EngineExtensions.Add(TEXT("collection"));
-
-	return EngineExtensions.Contains(Extension);
-}
-
-bool UProjectCleanerSubsystem::FileIsCorrupted(const FString& InFilePathAbs) const
-{
-	if (!FPaths::FileExists(InFilePathAbs)) return false;
-
-	const FString RelativePath = UProjectCleanerLibPath::ConvertToRel(InFilePathAbs);
-
-	// here we got absolute path "C:/MyProject/Content/material.uasset"
-	// we must first convert that path to In Engine Internal Path like "/Game/material.uasset"
-	// const FString RelativePath = Convert(InFilePathAbs, EProjectCleanerPathType::Relative);
-	if (RelativePath.IsEmpty()) return false;
-
-	// Converting file path to object path (This is for searching in AssetRegistry)
-	// example "/Game/Name.uasset" => "/Game/Name.Name"
-	FString ObjectPath = RelativePath;
-	ObjectPath.RemoveFromEnd(FPaths::GetExtension(RelativePath, true));
-	ObjectPath.Append(TEXT(".") + FPaths::GetBaseFilename(RelativePath));
-
-	const FAssetData AssetData = ModuleAssetRegistry->Get().GetAssetByObjectPath(FName{*ObjectPath});
-
-	// if its does not exist in asset registry, then something wrong with asset
-	return !AssetData.IsValid();
 }
 
 void UProjectCleanerSubsystem::BucketFill(TArray<FAssetData>& Bucket, const int32 BucketSize)

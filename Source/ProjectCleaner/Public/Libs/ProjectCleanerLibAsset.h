@@ -3,7 +3,6 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "ProjectCleanerTypes.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "ProjectCleanerLibAsset.generated.h"
 
@@ -36,6 +35,6 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category="ProjectCleaner", meta=(Tooltip="Returns total size of given files"))
 	static int64 GetFilesTotalSize(const TArray<FString>& Files);
-	
+
 	static void FixupRedirectors();
 };

@@ -3,6 +3,8 @@
 #include "Libs/ProjectCleanerLibPath.h"
 #include "ProjectCleanerConstants.h"
 #include "Settings/ProjectCleanerExcludeSettings.h"
+// Engine Headers
+#include "AssetRegistry/AssetRegistryModule.h"
 
 FString UProjectCleanerLibPath::Normalize(const FString& InPath)
 {
@@ -96,6 +98,43 @@ bool UProjectCleanerLibPath::FolderIsExcluded(const FString& InPath)
 	}
 
 	return false;
+}
+
+bool UProjectCleanerLibPath::FileIsCorrupted(const FString& FilePathAbs)
+{
+	if (!FPaths::FileExists(FilePathAbs)) return false;
+
+	const FString RelativePath = UProjectCleanerLibPath::ConvertToRel(FilePathAbs);
+
+	// here we got absolute path "C:/MyProject/Content/material.uasset"
+	// we must first convert that path to In Engine Internal Path like "/Game/material.uasset"
+	// const FString RelativePath = Convert(InFilePathAbs, EProjectCleanerPathType::Relative);
+	if (RelativePath.IsEmpty()) return false;
+
+	// Converting file path to object path (This is for searching in AssetRegistry)
+	// example "/Game/Name.uasset" => "/Game/Name.Name"
+	FString ObjectPath = RelativePath;
+	ObjectPath.RemoveFromEnd(FPaths::GetExtension(RelativePath, true));
+	ObjectPath.Append(TEXT(".") + FPaths::GetBaseFilename(RelativePath));
+
+	const FAssetRegistryModule& ModuleAssetRegistry = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(AssetRegistryConstants::ModuleName);
+	const FAssetData AssetData = ModuleAssetRegistry.Get().GetAssetByObjectPath(FName{*ObjectPath});
+
+	// if its does not exist in asset registry, then something wrong with asset
+	return !AssetData.IsValid();
+}
+
+bool UProjectCleanerLibPath::FileHasEngineExtension(const FString& FilePathAbs)
+{
+	const FString Extension = FPaths::GetExtension(FilePathAbs).ToLower();
+
+	TSet<FString> EngineExtensions;
+	EngineExtensions.Reserve(3);
+	EngineExtensions.Add(TEXT("uasset"));
+	EngineExtensions.Add(TEXT("umap"));
+	EngineExtensions.Add(TEXT("collection"));
+
+	return EngineExtensions.Contains(Extension);
 }
 
 bool UProjectCleanerLibPath::FolderIsEngineGenerated(const FString& InPath)

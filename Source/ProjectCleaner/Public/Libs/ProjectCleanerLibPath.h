@@ -42,6 +42,12 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner|Lib|Path", meta=(ToolTip="Checks if given folder is excluded"))
 	static bool FolderIsExcluded(const FString& InPath);
 
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner|Lib|Path", meta=(Tooltip="Check if given file is corrupted or not. Must have .uasset extension"))
+	static bool FileIsCorrupted(const FString& FilePathAbs);
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner|Lib|Path", meta=(Tooltip="Check if given file has engine extension"))
+	static bool FileHasEngineExtension(const FString& FilePathAbs);
+
 	static bool FolderIsEngineGenerated(const FString& InPath);
 
 private:
