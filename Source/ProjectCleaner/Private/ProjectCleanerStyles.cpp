@@ -77,7 +77,9 @@ TSharedRef<FSlateStyleSet> FProjectCleanerStyles::Create()
 	Style->Set("ProjectCleaner.IconTabNonEngine20", new IMAGE_BRUSH(TEXT("IconTabNonEngine20"), FVector2D{20.0f, 20.0f}));
 	Style->Set("ProjectCleaner.IconTabNonEngine40", new IMAGE_BRUSH(TEXT("IconTabNonEngine40"), FVector2D{40.0f, 40.0f}));
 	Style->Set("ProjectCleaner.IconWarning16", new IMAGE_BRUSH(TEXT("IconWarning16"), FVector2D{16.0f, 16.0f}));
+	Style->Set("ProjectCleaner.IconWarning20", new IMAGE_BRUSH(TEXT("IconWarning20"), FVector2D{20.0f, 20.0f}));
 	Style->Set("ProjectCleaner.IconCheck16", new IMAGE_BRUSH(TEXT("IconCheck16"), FVector2D{16.0f, 16.0f}));
+	Style->Set("ProjectCleaner.IconCheck20", new IMAGE_BRUSH(TEXT("IconCheck20"), FVector2D{20.0f, 20.0f}));
 
 	// cmds
 	Style->Set("ProjectCleaner.OpenProjectCleanerWindow", new IMAGE_BRUSH(TEXT("IconBin40"), FVector2D{40.0f, 40.0f}));

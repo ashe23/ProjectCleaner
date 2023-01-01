@@ -424,7 +424,7 @@ FText SProjectCleanerTabScanSettings::GetTextFilesNonEngine() const
 
 const FSlateBrush* SProjectCleanerTabScanSettings::GetProjectScanStatusImg() const
 {
-	const FString IconSpecifier = AssetsUnusedNum == 0 ? TEXT("ProjectCleaner.IconCheck16") : TEXT("ProjectCleaner.IconWarning16");
+	const FString IconSpecifier = AssetsUnusedNum == 0 ? TEXT("ProjectCleaner.IconCheck20") : TEXT("ProjectCleaner.IconWarning20");
 	return FProjectCleanerStyles::Get().GetBrush(*IconSpecifier);
 }
 
