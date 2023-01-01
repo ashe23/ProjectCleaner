@@ -33,7 +33,7 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner|Lib|Asset", meta=(ToolTip="Returns total disk size of given assets"))
 	static int64 GetAssetsTotalSize(const TArray<FAssetData>& Assets);
 
-	UFUNCTION(BlueprintCallable, Category="ProjectCleaner", meta=(Tooltip="Returns total size of given files"))
+	UFUNCTION(BlueprintCallable, Category="ProjectCleaner|Lib|Asset", meta=(Tooltip="Returns total size of given files"))
 	static int64 GetFilesTotalSize(const TArray<FString>& Files);
 
 	static void FixupRedirectors();
