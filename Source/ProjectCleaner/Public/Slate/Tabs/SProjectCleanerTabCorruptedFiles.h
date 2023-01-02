@@ -85,6 +85,7 @@ private:
 	void OnListSort(EColumnSortPriority::Type SortPriority, const FName& Name, EColumnSortMode::Type SortMode);
 	void OnListItemDblClick(TSharedPtr<FProjectCleanerTabCorruptedListItem> Item) const;
 	TSharedPtr<SHeaderRow> GetListHeaderRow();
+	TSharedPtr<SWidget> OnListContextMenu() const;
 	TSharedRef<ITableRow> OnListGenerateRow(TSharedPtr<FProjectCleanerTabCorruptedListItem> InItem, const TSharedRef<STableViewBase>& OwnerTable) const;
 	FText GetListTextSummary() const;
 
@@ -93,6 +94,7 @@ private:
 	TEnumAsByte<EColumnSortMode::Type> ListSortMode = EColumnSortMode::Descending;
 	TArray<TSharedPtr<FProjectCleanerTabCorruptedListItem>> ListItems;
 	TSharedPtr<SListView<TSharedPtr<FProjectCleanerTabCorruptedListItem>>> ListView;
+	TSharedPtr<FUICommandList> Cmds;
 
 	UProjectCleanerSubsystem* SubsystemPtr = nullptr;
 };

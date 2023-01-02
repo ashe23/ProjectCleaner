@@ -4,6 +4,7 @@
 #include "ProjectCleanerStyles.h"
 #include "ProjectCleanerConstants.h"
 // Engine Headers
+#include "ProjectCleanerCmds.h"
 #include "Widgets/Layout/SScrollBox.h"
 
 void SProjectCleanerTabCorrupted::Construct(const FArguments& InArgs)
@@ -11,6 +12,27 @@ void SProjectCleanerTabCorrupted::Construct(const FArguments& InArgs)
 	if (!GEditor) return;
 	SubsystemPtr = GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>();
 	if (!SubsystemPtr) return;
+	
+	Cmds = MakeShareable(new FUICommandList);
+
+	Cmds->MapAction(
+		FProjectCleanerCmds::Get().TabNonEngineDeleteFile,
+		FUIAction(
+			FExecuteAction::CreateLambda([&]()
+			{
+				if (!GEditor) return;
+				if (!ListView.IsValid()) return;
+
+				const auto& SelectedItems = ListView->GetSelectedItems();
+				if (SelectedItems.Num() == 0) return;
+
+				const FString FilePath = SelectedItems[0]->FilePathAbs;
+				if (!FPaths::FileExists(FilePath)) return;
+
+				IFileManager::Get().Delete(*FilePath);
+			})
+		)
+	);
 
 	ListUpdate();
 
@@ -97,6 +119,7 @@ void SProjectCleanerTabCorrupted::ListUpdate()
 		.ListItemsSource(&ListItems)
 		.SelectionMode(ESelectionMode::SingleToggle)
 		.OnGenerateRow(this, &SProjectCleanerTabCorrupted::OnListGenerateRow)
+		.OnContextMenuOpening(this, &SProjectCleanerTabCorrupted::OnListContextMenu)
 		.OnMouseButtonDoubleClick_Raw(this, &SProjectCleanerTabCorrupted::OnListItemDblClick)
 		.HeaderRow(GetListHeaderRow());
 	}
@@ -285,6 +308,18 @@ TSharedPtr<SHeaderRow> SProjectCleanerTabCorrupted::GetListHeaderRow()
 			.ColorAndOpacity(FProjectCleanerStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
 			.Font(FProjectCleanerStyles::GetFont("Light", ProjectCleanerConstants::HeaderRowFontSize))
 		];
+}
+
+TSharedPtr<SWidget> SProjectCleanerTabCorrupted::OnListContextMenu() const
+{
+	FMenuBuilder MenuBuilder{true, Cmds};
+	MenuBuilder.BeginSection(TEXT("Actions"), FText::FromString(TEXT("File Actions")));
+	{
+		MenuBuilder.AddMenuEntry(FProjectCleanerCmds::Get().TabNonEngineDeleteFile);
+	}
+	MenuBuilder.EndSection();
+
+	return MenuBuilder.MakeWidget();
 }
 
 TSharedRef<ITableRow> SProjectCleanerTabCorrupted::OnListGenerateRow(TSharedPtr<FProjectCleanerTabCorruptedListItem> InItem, const TSharedRef<STableViewBase>& OwnerTable) const
