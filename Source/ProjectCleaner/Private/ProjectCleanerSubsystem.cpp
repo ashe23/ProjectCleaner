@@ -130,6 +130,9 @@ void UProjectCleanerSubsystem::ProjectScan(const FProjectCleanerScanSettings& In
 		return;
 	}
 
+	ModuleAssetRegistry->Get().SearchAllAssets(true);
+	ModuleAssetRegistry->Get().WaitForCompletion();
+	
 	GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->CloseAllAssetEditors();
 	UProjectCleanerLibAsset::FixupRedirectors();
 
@@ -146,7 +149,7 @@ void UProjectCleanerSubsystem::ProjectScan(const FProjectCleanerScanSettings& In
 	bScanningProject = true;
 
 	FScopedSlowTask SlowTaskScan{
-		9.0f,
+		8.0f,
 		FText::FromString(TEXT("Scanning project...")),
 		GIsEditor && !IsRunningCommandlet()
 	};
@@ -178,15 +181,42 @@ void UProjectCleanerSubsystem::ProjectScan(const FProjectCleanerScanSettings& In
 
 	SlowTaskScan.EnterProgressFrame(1.0f);
 
-	FindFilesCorrupted();
+	// todo:ashe23 very slow
+	// FindFilesCorrupted();
+	FindFilesAndFolders();
 
 	SlowTaskScan.EnterProgressFrame(1.0f);
 
-	FindFilesNonEngine();
+	// TArray<FString> Paths;
+	// ModuleAssetRegistry->Get().GetSubPaths(ProjectCleanerConstants::PathRelRoot.ToString(), ScanData.FoldersAll, true);
+	//
+	// FScopedSlowTask SlowTask{
+	// 	static_cast<float>(Paths.Num()),
+	// 	FText::FromString(TEXT("Scanning paths...")),
+	// 	GIsEditor && !IsRunningCommandlet()
+	// };
+	// SlowTask.MakeDialog();
+	//
+	// ScanData.FoldersAll.Reserve(Paths.Num());
+	// for (const auto& Path : Paths)
+	// {
+	// 	SlowTask.EnterProgressFrame(1.0f, FText::FromString(Path));
+	// 	
+	// 	const FString PathAbs = UProjectCleanerLibPath::ConvertToAbs(Path);
+	// 	if (PathAbs.IsEmpty()) continue;
+	//
+	// 	ScanData.FoldersAll.Add(PathAbs);
+	// }
 
-	SlowTaskScan.EnterProgressFrame(1.0f);
+	// ScanData.FoldersAll.Shrink();
+	
+	// todo:ashe23 very slow
+	// FindFilesNonEngine();
 
-	FindFolders();
+	// SlowTaskScan.EnterProgressFrame(1.0f);
+
+	// todo:ashe23 very slow
+	// FindFolders();
 
 	bScanningProject = false;
 	ScanData.ScanResult = EProjectCleanerScanResult::Success;
@@ -318,7 +348,7 @@ void UProjectCleanerSubsystem::ProjectCleanEmptyFolders()
 	}
 
 	bCleaningProject = false;
-	
+
 	const bool bSuccess = DeletedFolderNum == ScanData.FoldersEmpty.Num();
 	const FString Title = FString::Printf(TEXT("Deleted %d of %d folders"), DeletedFolderNum, ScanData.FoldersEmpty.Num());
 
@@ -811,6 +841,60 @@ void UProjectCleanerSubsystem::FindFolders()
 	}
 }
 
+void UProjectCleanerSubsystem::FindFilesAndFolders()
+{
+	struct FContentFolderVisitor : IPlatformFile::FDirectoryVisitor
+	{
+		explicit FContentFolderVisitor(FProjectCleanerScanData& InScanData) : ScanData(InScanData)
+		{
+		}
+
+		virtual bool Visit(const TCHAR* FilenameOrDirectory, bool bIsDirectory) override
+		{
+			const FString PathAbs = UProjectCleanerLibPath::ConvertToAbs(FilenameOrDirectory);
+			if (PathAbs.IsEmpty()) return true;
+
+			// if (bIsDirectory) return true;
+			if (bIsDirectory)
+			{
+				ScanData.FoldersAll.Add(PathAbs);
+			
+				if (
+					UProjectCleanerLibPath::FolderIsEmpty(PathAbs) &&
+					!UProjectCleanerLibPath::FolderIsExcluded(PathAbs) &&
+					!UProjectCleanerLibPath::FolderIsEngineGenerated(PathAbs)
+				)
+				{
+					ScanData.FoldersEmpty.AddUnique(PathAbs);
+				}
+			
+				return true;
+			}
+
+			if (UProjectCleanerLibPath::FileHasEngineExtension(PathAbs))
+			{
+				if (UProjectCleanerLibPath::FileIsCorrupted(PathAbs))
+				{
+					ScanData.FilesCorrupted.Add(PathAbs);
+				}
+			}
+			else
+			{
+				ScanData.FilesNonEngine.Add(PathAbs);
+			}
+
+			return true;
+		}
+
+		FProjectCleanerScanData& ScanData;
+	};
+
+	FContentFolderVisitor Visitor{ScanData};
+	FPlatformFileManager::Get().GetPlatformFile().IterateDirectoryRecursively(*UProjectCleanerLibPath::GetFolderContent(), Visitor);
+
+	
+}
+
 void UProjectCleanerSubsystem::ScanDataReset()
 {
 	ScanData.ScanResult = EProjectCleanerScanResult::None;
@@ -960,7 +1044,7 @@ bool UProjectCleanerSubsystem::BucketPrepare(const TArray<FAssetData>& Bucket, T
 	for (const auto& Asset : Bucket)
 	{
 		if (!Asset.IsValid()) continue;
-		
+
 		ObjectPaths.Add(Asset.ObjectPath.ToString());
 	}
 

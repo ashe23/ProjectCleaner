@@ -48,6 +48,7 @@ private:
 	void FindFilesCorrupted();
 	void FindFilesNonEngine();
 	void FindFolders();
+	void FindFilesAndFolders();
 	void ScanDataReset();
 	bool AssetExcludedByPath(const FAssetData& AssetData) const;
 	bool AssetExcludedByClass(const FAssetData& AssetData) const;
