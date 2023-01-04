@@ -11,10 +11,13 @@
 #include "ProjectCleanerConstants.h"
 #include "Libs/ProjectCleanerLibAsset.h"
 #include "Libs/ProjectCleanerLibPath.h"
+#include "Misc/ScopedSlowTask.h"
 #include "Settings/ProjectCleanerSettings.h"
 #include "Widgets/Layout/SSeparator.h"
 #include "Widgets/Input/SSearchBox.h"
 #include "Widgets/Layout/SScrollBox.h"
+#include "Widgets/Layout/SWidgetSwitcher.h"
+#include "Widgets/Notifications/SProgressBar.h"
 
 void SProjectCleanerTreeView::Construct(const FArguments& InArgs)
 {
@@ -29,97 +32,117 @@ void SProjectCleanerTreeView::Construct(const FArguments& InArgs)
 
 	ChildSlot
 	[
-		SNew(SVerticalBox)
-		+ SVerticalBox::Slot()
-		  .AutoHeight()
-		  .Padding(FMargin{0.0f, 0.0f, 0.0f, 10.0f})
+		SNew(SWidgetSwitcher)
+		.IsEnabled_Raw(this, &SProjectCleanerTreeView::WidgetEnabled)
+		.WidgetIndex_Raw(this, &SProjectCleanerTreeView::WidgetGetIndex)
+		+ SWidgetSwitcher::Slot()
+		  .HAlign(HAlign_Fill)
+		  .VAlign(VAlign_Fill)
 		[
-			SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot()
-			.AutoWidth()
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot()
+			.AutoHeight()
 			[
-				SNew(SImage)
-				.Image(FEditorStyle::GetBrush("ContentBrowser.AssetTreeFolderOpen"))
-				.ColorAndOpacity(FProjectCleanerStyles::Get().GetSlateColor("ProjectCleaner.Color.Red"))
-			]
-			+ SHorizontalBox::Slot()
-			  .Padding(FMargin{0.0f, 2.0f, 0.0f, 0.0f})
-			  .AutoWidth()
-			[
-				SNew(STextBlock)
-				.Text(FText::FromString(TEXT(" - Empty Folders")))
-			]
-			+ SHorizontalBox::Slot()
-			  .AutoWidth()
-			  .Padding(FMargin{5.0f, 0.0f, 0.0f, 0.0f})
-			[
-				SNew(SImage)
-				.Image(FEditorStyle::GetBrush("ContentBrowser.AssetTreeFolderOpen"))
-				.ColorAndOpacity(FProjectCleanerStyles::Get().GetSlateColor("ProjectCleaner.Color.Yellow"))
-			]
-			+ SHorizontalBox::Slot()
-			  .Padding(FMargin{0.0f, 2.0f, 0.0f, 0.0f})
-			  .AutoWidth()
-			[
-				SNew(STextBlock)
-				.Text(FText::FromString(TEXT(" - Excluded Folders")))
+				SNew(SProgressBar)
+				.Percent(0.5f)
 			]
 		]
-		+ SVerticalBox::Slot()
-		  .AutoHeight()
-		  .Padding(FMargin{0.0f, 0.0f, 0.0f, 5.0f})
+		+ SWidgetSwitcher::Slot()
+		  .HAlign(HAlign_Fill)
+		  .VAlign(VAlign_Fill)
 		[
-			SNew(SSeparator)
-			.Thickness(5.0f)
-		]
-		+ SVerticalBox::Slot()
-		  .AutoHeight()
-		  .Padding(FMargin{0.0f, 0.0f, 0.0f, 5.0f})
-		[
-			SNew(SSearchBox)
-			.HintText(FText::FromString(TEXT("Search Folders...")))
-			.OnTextChanged(this, &SProjectCleanerTreeView::OnSearchBoxTextChanged)
-			.OnTextCommitted(this, &SProjectCleanerTreeView::OnSearchBoxTextCommitted)
-		]
-		+ SVerticalBox::Slot()
-		  .FillHeight(1.0f)
-		  .Padding(FMargin{0.0f, 5.0f})
-		[
-			SNew(SScrollBox)
-			.ScrollWhenFocusChanges(EScrollWhenFocusChanges::NoScroll)
-			.AnimateWheelScrolling(true)
-			.AllowOverscroll(EAllowOverscroll::No)
-			+ SScrollBox::Slot()
-			[
-				TreeView.ToSharedRef()
-			]
-		]
-		+ SVerticalBox::Slot()
-		  .AutoHeight()
-		  .HAlign(HAlign_Right)
-		  .VAlign(VAlign_Center)
-		  .Padding(FMargin{0.0f, 5.0f})
-		[
-			SNew(SComboButton)
-			.ContentPadding(0)
-			.ForegroundColor_Raw(this, &SProjectCleanerTreeView::GetOptionsBtnForegroundColor)
-			.ButtonStyle(FEditorStyle::Get(), "ToggleButton")
-			.OnGetMenuContent(this, &SProjectCleanerTreeView::GetOptionsBtnContent)
-			.ButtonContent()
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot()
+			  .AutoHeight()
+			  .Padding(FMargin{0.0f, 0.0f, 0.0f, 10.0f})
 			[
 				SNew(SHorizontalBox)
 				+ SHorizontalBox::Slot()
-				  .AutoWidth()
-				  .VAlign(VAlign_Center)
+				.AutoWidth()
 				[
-					SNew(SImage).Image(FEditorStyle::GetBrush("GenericViewButton"))
+					SNew(SImage)
+					.Image(FEditorStyle::GetBrush("ContentBrowser.AssetTreeFolderOpen"))
+					.ColorAndOpacity(FProjectCleanerStyles::Get().GetSlateColor("ProjectCleaner.Color.Red"))
+				]
+				+ SHorizontalBox::Slot()
+				  .Padding(FMargin{0.0f, 2.0f, 0.0f, 0.0f})
+				  .AutoWidth()
+				[
+					SNew(STextBlock)
+					.Text(FText::FromString(TEXT(" - Empty Folders")))
 				]
 				+ SHorizontalBox::Slot()
 				  .AutoWidth()
-				  .Padding(2, 0, 0, 0)
-				  .VAlign(VAlign_Center)
+				  .Padding(FMargin{5.0f, 0.0f, 0.0f, 0.0f})
 				[
-					SNew(STextBlock).Text(FText::FromString(TEXT("View Options")))
+					SNew(SImage)
+					.Image(FEditorStyle::GetBrush("ContentBrowser.AssetTreeFolderOpen"))
+					.ColorAndOpacity(FProjectCleanerStyles::Get().GetSlateColor("ProjectCleaner.Color.Yellow"))
+				]
+				+ SHorizontalBox::Slot()
+				  .Padding(FMargin{0.0f, 2.0f, 0.0f, 0.0f})
+				  .AutoWidth()
+				[
+					SNew(STextBlock)
+					.Text(FText::FromString(TEXT(" - Excluded Folders")))
+				]
+			]
+			+ SVerticalBox::Slot()
+			  .AutoHeight()
+			  .Padding(FMargin{0.0f, 0.0f, 0.0f, 5.0f})
+			[
+				SNew(SSeparator)
+				.Thickness(5.0f)
+			]
+			+ SVerticalBox::Slot()
+			  .AutoHeight()
+			  .Padding(FMargin{0.0f, 0.0f, 0.0f, 5.0f})
+			[
+				SNew(SSearchBox)
+				.HintText(FText::FromString(TEXT("Search Folders...")))
+				.OnTextChanged(this, &SProjectCleanerTreeView::OnSearchBoxTextChanged)
+				.OnTextCommitted(this, &SProjectCleanerTreeView::OnSearchBoxTextCommitted)
+			]
+			+ SVerticalBox::Slot()
+			  .FillHeight(1.0f)
+			  .Padding(FMargin{0.0f, 5.0f})
+			[
+				SNew(SScrollBox)
+				.ScrollWhenFocusChanges(EScrollWhenFocusChanges::NoScroll)
+				.AnimateWheelScrolling(true)
+				.AllowOverscroll(EAllowOverscroll::No)
+				+ SScrollBox::Slot()
+				[
+					TreeView.ToSharedRef()
+				]
+			]
+			+ SVerticalBox::Slot()
+			  .AutoHeight()
+			  .HAlign(HAlign_Right)
+			  .VAlign(VAlign_Center)
+			  .Padding(FMargin{0.0f, 5.0f})
+			[
+				SNew(SComboButton)
+				.ContentPadding(0)
+				.ForegroundColor_Raw(this, &SProjectCleanerTreeView::GetOptionsBtnForegroundColor)
+				.ButtonStyle(FEditorStyle::Get(), "ToggleButton")
+				.OnGetMenuContent(this, &SProjectCleanerTreeView::GetOptionsBtnContent)
+				.ButtonContent()
+				[
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot()
+					  .AutoWidth()
+					  .VAlign(VAlign_Center)
+					[
+						SNew(SImage).Image(FEditorStyle::GetBrush("GenericViewButton"))
+					]
+					+ SHorizontalBox::Slot()
+					  .AutoWidth()
+					  .Padding(2, 0, 0, 0)
+					  .VAlign(VAlign_Center)
+					[
+						SNew(STextBlock).Text(FText::FromString(TEXT("View Options")))
+					]
 				]
 			]
 		]
@@ -204,6 +227,8 @@ void SProjectCleanerTreeView::OnProjectScanned()
 
 void SProjectCleanerTreeView::ItemsUpdate()
 {
+	bUpdatingView = true;
+	
 	if (!SubsystemPtr) return;
 
 	TreeViewItems.Reset();
@@ -228,6 +253,7 @@ void SProjectCleanerTreeView::ItemsUpdate()
 	const TSharedPtr<FProjectCleanerTreeViewItem> RootItem = ItemCreate(UProjectCleanerLibPath::GetFolderContent());
 	if (!RootItem.IsValid()) return;
 
+
 	// caching expanded and selected items in order to keep them , when we updating data
 	TreeViewItemsExpanded.Reset();
 	TreeViewItemsSelected.Reset();
@@ -241,15 +267,23 @@ void SProjectCleanerTreeView::ItemsUpdate()
 	Items.Reserve(SubsystemPtr->GetScanData().FoldersAll.Num() + 1);
 	Items.Add(RootItem);
 
+	// todo:ashe23 optimize 
+	FScopedSlowTask SlowTask{
+		static_cast<float>(SubsystemPtr->GetScanData().FoldersAll.Num()),
+		FText::FromString(TEXT("Updating TreeView ...")),
+		GIsEditor && !IsRunningCommandlet()
+	};
+	SlowTask.MakeDialog();
+
 	for (const auto& Folder : SubsystemPtr->GetScanData().FoldersAll)
 	{
+		SlowTask.EnterProgressFrame(1.0f, FText::FromString(Folder));
+
 		const auto Item = ItemCreate(Folder);
 		if (!Item.IsValid()) continue;
 
 		Items.Add(Item);
 	}
-
-	Items.Shrink();
 
 	for (const auto& Item : Items)
 	{
@@ -257,6 +291,8 @@ void SProjectCleanerTreeView::ItemsUpdate()
 	}
 
 	TreeView->RequestTreeRefresh();
+
+	bUpdatingView = false;
 }
 
 TSharedPtr<FProjectCleanerTreeViewItem> SProjectCleanerTreeView::ItemCreate(const FString& InFolderPathAbs) const
@@ -777,6 +813,16 @@ int64 SProjectCleanerTreeView::GetSizeUnused(const FProjectCleanerTreeViewItem& 
 	return UProjectCleanerLibAsset::GetAssetsTotalSize(FilteredAssets);
 }
 
+bool SProjectCleanerTreeView::WidgetEnabled() const
+{
+	return bUpdatingView == false;
+}
+
+int32 SProjectCleanerTreeView::WidgetGetIndex() const
+{
+	return bUpdatingView ? 0 : 1;
+}
+
 bool SProjectCleanerTreeView::ItemIsVisible(const FProjectCleanerTreeViewItem& Item) const
 {
 	if (Item.bRoot) return true;
@@ -831,4 +877,3 @@ bool SProjectCleanerTreeView::ItemIsExpanded(const FProjectCleanerTreeViewItem& 
 
 	return false;
 }
-

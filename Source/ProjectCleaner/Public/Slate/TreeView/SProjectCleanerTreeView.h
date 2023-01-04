@@ -49,10 +49,14 @@ private:
 	int64 GetSizeTotal(const FProjectCleanerTreeViewItem& Item) const;
 	int64 GetSizeUnused(const FProjectCleanerTreeViewItem& Item) const;
 
+	bool WidgetEnabled() const;
+	int32 WidgetGetIndex() const;
 	bool ItemIsVisible(const FProjectCleanerTreeViewItem& Item) const;
 	bool ItemIsExpanded(const FProjectCleanerTreeViewItem& Item) const;
 	// bool CanShowFolder(const FProjectCleanerTreeViewItem& Item) const;
 
+	bool bUpdatingView = false;
+	
 	FString SearchText;
 	TSet<FString> SelectedPaths;
 	TSharedPtr<FUICommandList> Cmds;
