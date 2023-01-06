@@ -464,19 +464,19 @@ TSharedRef<SWidget> SProjectCleanerTreeView::GetOptionsBtnContent()
 		(
 			FExecuteAction::CreateLambda([&]
 			{
-				GetMutableDefault<UProjectCleanerSettings>()->ToggleShowTreeViewLines();
-				GetMutableDefault<UProjectCleanerSettings>()->PostEditChange();
-
-				ItemsUpdate();
+				// GetMutableDefault<UProjectCleanerSettings>()->ToggleShowTreeViewLines();
+				// GetMutableDefault<UProjectCleanerSettings>()->PostEditChange();
+				//
+				// ItemsUpdate();
 			}),
 			FCanExecuteAction::CreateLambda([&]()
 			{
 				return GetDefault<UProjectCleanerSettings>() != nullptr;
-			}),
-			FGetActionCheckState::CreateLambda([&]()
-			{
-				return GetDefault<UProjectCleanerSettings>()->bShowTreeViewLines ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
 			})
+			// FGetActionCheckState::CreateLambda([&]()
+			// {
+			// 	return GetDefault<UProjectCleanerSettings>()->bShowTreeViewLines ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
+			// })
 		),
 		NAME_None,
 		EUserInterfaceActionType::ToggleButton
@@ -492,19 +492,19 @@ TSharedRef<SWidget> SProjectCleanerTreeView::GetOptionsBtnContent()
 		(
 			FExecuteAction::CreateLambda([&]
 			{
-				GetMutableDefault<UProjectCleanerSettings>()->ToggleShowTreeViewFoldersEmpty();
-				GetMutableDefault<UProjectCleanerSettings>()->PostEditChange();
-
-				ItemsUpdate();
+				// GetMutableDefault<UProjectCleanerSettings>()->ToggleShowTreeViewFoldersEmpty();
+				// GetMutableDefault<UProjectCleanerSettings>()->PostEditChange();
+				//
+				// ItemsUpdate();
 			}),
 			FCanExecuteAction::CreateLambda([&]()
 			{
 				return GetDefault<UProjectCleanerSettings>() != nullptr;
-			}),
-			FGetActionCheckState::CreateLambda([&]()
-			{
-				return GetDefault<UProjectCleanerSettings>()->bShowTreeViewFoldersEmpty ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
 			})
+			// FGetActionCheckState::CreateLambda([&]()
+			// {
+			// 	return GetDefault<UProjectCleanerSettings>()->bShowTreeViewFoldersEmpty ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
+			// })
 		),
 		NAME_None,
 		EUserInterfaceActionType::ToggleButton
@@ -518,19 +518,19 @@ TSharedRef<SWidget> SProjectCleanerTreeView::GetOptionsBtnContent()
 		(
 			FExecuteAction::CreateLambda([&]
 			{
-				GetMutableDefault<UProjectCleanerSettings>()->ToggleShowTreeViewFoldersExcluded();
-				GetMutableDefault<UProjectCleanerSettings>()->PostEditChange();
-
-				ItemsUpdate();
+				// GetMutableDefault<UProjectCleanerSettings>()->ToggleShowTreeViewFoldersExcluded();
+				// GetMutableDefault<UProjectCleanerSettings>()->PostEditChange();
+				//
+				// ItemsUpdate();
 			}),
 			FCanExecuteAction::CreateLambda([&]()
 			{
 				return GetDefault<UProjectCleanerSettings>() != nullptr;
-			}),
-			FGetActionCheckState::CreateLambda([&]()
-			{
-				return GetDefault<UProjectCleanerSettings>()->bShowTreeViewFoldersExcluded ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
 			})
+			// FGetActionCheckState::CreateLambda([&]()
+			// {
+			// 	return GetDefault<UProjectCleanerSettings>()->bShowTreeViewFoldersExcluded ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
+			// })
 		),
 		NAME_None,
 		EUserInterfaceActionType::ToggleButton
@@ -544,19 +544,19 @@ TSharedRef<SWidget> SProjectCleanerTreeView::GetOptionsBtnContent()
 		(
 			FExecuteAction::CreateLambda([&]
 			{
-				GetMutableDefault<UProjectCleanerSettings>()->ToggleShowTreeViewFoldersEngineGenerated();
-				GetMutableDefault<UProjectCleanerSettings>()->PostEditChange();
-
-				ItemsUpdate();
+				// GetMutableDefault<UProjectCleanerSettings>()->ToggleShowTreeViewFoldersEngineGenerated();
+				// GetMutableDefault<UProjectCleanerSettings>()->PostEditChange();
+				//
+				// ItemsUpdate();
 			}),
 			FCanExecuteAction::CreateLambda([&]()
 			{
 				return GetDefault<UProjectCleanerSettings>() != nullptr;
-			}),
-			FGetActionCheckState::CreateLambda([&]()
-			{
-				return GetDefault<UProjectCleanerSettings>()->bShowTreeViewFoldersEngineGenerated ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
 			})
+			// FGetActionCheckState::CreateLambda([&]()
+			// {
+			// 	return GetDefault<UProjectCleanerSettings>()->bShowTreeViewFoldersEngineGenerated ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
+			// })
 		),
 		NAME_None,
 		EUserInterfaceActionType::ToggleButton
@@ -714,8 +714,8 @@ int32 SProjectCleanerTreeView::GetFoldersTotalNum(const FProjectCleanerTreeViewI
 
 	for (const auto& Folder : SubsystemPtr->GetScanData().FoldersAll)
 	{
-		if (!GetDefault<UProjectCleanerSettings>()->bShowTreeViewFoldersEmpty && UProjectCleanerLibPath::FolderIsEmpty(Folder)) continue;
-		if (!GetDefault<UProjectCleanerSettings>()->bShowTreeViewFoldersExcluded && UProjectCleanerLibPath::FolderIsExcluded(Folder)) continue;
+		// if (!GetDefault<UProjectCleanerSettings>()->bShowTreeViewFoldersEmpty && UProjectCleanerLibPath::FolderIsEmpty(Folder)) continue;
+		// if (!GetDefault<UProjectCleanerSettings>()->bShowTreeViewFoldersExcluded && UProjectCleanerLibPath::FolderIsExcluded(Folder)) continue;
 		if (Folder.Equals(Item.FolderPathAbs)) continue;
 		if (FPaths::IsUnderDirectory(Folder, Item.FolderPathAbs))
 		{
@@ -728,7 +728,7 @@ int32 SProjectCleanerTreeView::GetFoldersTotalNum(const FProjectCleanerTreeViewI
 
 int32 SProjectCleanerTreeView::GetFoldersEmptyNum(const FProjectCleanerTreeViewItem& Item) const
 {
-	if (!GetDefault<UProjectCleanerSettings>()->bShowTreeViewFoldersEmpty) return 0;
+	// if (!GetDefault<UProjectCleanerSettings>()->bShowTreeViewFoldersEmpty) return 0;
 
 	int32 Num = 0;
 
@@ -826,9 +826,9 @@ int32 SProjectCleanerTreeView::WidgetGetIndex() const
 bool SProjectCleanerTreeView::ItemIsVisible(const FProjectCleanerTreeViewItem& Item) const
 {
 	if (Item.bRoot) return true;
-	if (Item.bEngineGenerated && !GetDefault<UProjectCleanerSettings>()->bShowTreeViewFoldersEngineGenerated) return false;
-	if (Item.bEmpty && !GetDefault<UProjectCleanerSettings>()->bShowTreeViewFoldersEmpty) return false;
-	if (Item.bExcluded && !GetDefault<UProjectCleanerSettings>()->bShowTreeViewFoldersExcluded) return false;
+	// if (Item.bEngineGenerated && !GetDefault<UProjectCleanerSettings>()->bShowTreeViewFoldersEngineGenerated) return false;
+	// if (Item.bEmpty && !GetDefault<UProjectCleanerSettings>()->bShowTreeViewFoldersEmpty) return false;
+	// if (Item.bExcluded && !GetDefault<UProjectCleanerSettings>()->bShowTreeViewFoldersExcluded) return false;
 	if (SearchText.IsEmpty()) return true;
 	if (Item.FolderName.Find(SearchText) != INDEX_NONE) return true;
 

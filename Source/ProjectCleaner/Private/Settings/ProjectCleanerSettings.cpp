@@ -27,31 +27,6 @@ FText UProjectCleanerSettings::GetSectionDescription() const
 	return FText::FromString(TEXT("Project Cleaner Global Settings"));
 }
 
-void UProjectCleanerSettings::ToggleAutoCleanEmptyFolders()
-{
-	bAutoCleanEmptyFolders = !bAutoCleanEmptyFolders;
-}
-
-void UProjectCleanerSettings::ToggleShowTreeViewLines()
-{
-	bShowTreeViewLines = !bShowTreeViewLines;
-}
-
-void UProjectCleanerSettings::ToggleShowTreeViewFoldersEmpty()
-{
-	bShowTreeViewFoldersEmpty = !bShowTreeViewFoldersEmpty;
-}
-
-void UProjectCleanerSettings::ToggleShowTreeViewFoldersExcluded()
-{
-	bShowTreeViewFoldersExcluded = !bShowTreeViewFoldersExcluded;
-}
-
-void UProjectCleanerSettings::ToggleShowTreeViewFoldersEngineGenerated()
-{
-	bShowTreeViewFoldersEngineGenerated = !bShowTreeViewFoldersEngineGenerated;
-}
-
 #if WITH_EDITOR
 void UProjectCleanerSettings::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {

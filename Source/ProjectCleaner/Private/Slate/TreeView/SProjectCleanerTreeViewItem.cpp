@@ -29,7 +29,8 @@ TSharedRef<SWidget> SProjectCleanerTreeViewItem::GenerateWidgetForColumn(const F
 			[
 				SNew(SExpanderArrow, SharedThis(this))
 				.IndentAmount(10)
-				.ShouldDrawWires(GetDefault<UProjectCleanerSettings>()->bShowTreeViewLines)
+				// .ShouldDrawWires(GetDefault<UProjectCleanerSettings>()->bShowTreeViewLines)
+				.ShouldDrawWires(true)
 			]
 			+ SHorizontalBox::Slot()
 			  .AutoWidth()

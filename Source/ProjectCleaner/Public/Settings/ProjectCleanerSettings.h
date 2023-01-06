@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "ProjectCleanerTypes.h"
 #include "ProjectCleanerSettings.generated.h"
 
 UCLASS(Config = EditorPerProjectUserSettings)
@@ -17,26 +18,23 @@ public:
 	virtual FText GetSectionText() const override;
 	virtual FText GetSectionDescription() const override;
 
-	void ToggleAutoCleanEmptyFolders();
-	void ToggleShowTreeViewLines();
-	void ToggleShowTreeViewFoldersEmpty();
-	void ToggleShowTreeViewFoldersExcluded();
-	void ToggleShowTreeViewFoldersEngineGenerated();
+	UPROPERTY(EditAnywhere, Config, Category="General")
+	EProjectCleanerCleanupMethod CleanupMethod = EProjectCleanerCleanupMethod::Full;
 
-	UPROPERTY(EditAnywhere, Config, Category="General", meta=(ToolTip="Automatically delete empty folders after deleting unused assets. By default, it is enabled."))
-	bool bAutoCleanEmptyFolders = true;
+	UPROPERTY(EditAnywhere, Config, Category="ScanSettings", meta=(ContentDir))
+	TArray<FDirectoryPath> ScanPaths;
 
-	UPROPERTY(EditAnywhere, Config, Category="TreeView", meta=(ToolTip="Show TreeView organizer lines"), DisplayName="Show Lines")
-	bool bShowTreeViewLines = true;
+	UPROPERTY(EditAnywhere, Config, Category="ScanSettings")
+	TArray<TSoftClassPtr<UObject>> ScanClasses;
 
-	UPROPERTY(EditAnywhere, Config, Category="TreeView", meta=(ToolTip="Show empty folders in tree view"), DisplayName="Show Folders Empty")
-	bool bShowTreeViewFoldersEmpty = true;
+	UPROPERTY(EditAnywhere, Config, Category="ExcludeSettings", meta=(ContentDir))
+	TArray<FDirectoryPath> ExcludePaths;
 
-	UPROPERTY(EditAnywhere, Config, Category="TreeView", meta=(ToolTip="Show excluded folders in tree view"), DisplayName="Show Folders Excluded")
-	bool bShowTreeViewFoldersExcluded = true;
+	UPROPERTY(EditAnywhere, Config, Category="ExcludeSettings")
+	TArray<TSoftClassPtr<UObject>> ExcludeClasses;
 
-	UPROPERTY(EditAnywhere, Config, Category="TreeView", meta=(ToolTip="Show engine generated folders in tree view"), DisplayName="Show Folders Engine")
-	bool bShowTreeViewFoldersEngineGenerated = true;
+	UPROPERTY(EditAnywhere, Config, Category="ExcludeSettings")
+	TArray<TSoftObjectPtr<UObject>> ExcludeAssets;
 
 protected:
 #if WITH_EDITOR

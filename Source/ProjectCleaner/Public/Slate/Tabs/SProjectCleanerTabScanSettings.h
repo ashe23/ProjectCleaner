@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Widgets/SCompoundWidget.h"
 
+class UProjectCleanerSettings;
 class UProjectCleanerSubsystem;
 
 class SProjectCleanerTabScanSettings final : public SCompoundWidget
@@ -18,19 +19,18 @@ public:
 
 	void Construct(const FArguments& InArgs);
 	virtual ~SProjectCleanerTabScanSettings() override;
+
 protected:
 	void UpdateData();
 	void OnProjectScanned();
-	
+
 	FReply OnBtnScanProjectClick() const;
 	FReply OnBtnCleanProjectClick() const;
-	FReply OnBtnCleanEmptyFoldersClick() const;
-	FReply OnBtnResetExcludeSettingsClick() const;
+	FReply OnBtnResetSettingsClick() const;
 
 	bool BtnScanProjectEnabled() const;
 	bool BtnCleanProjectEnabled() const;
-	bool BtnCleanEmptyFolderEnabled() const;
-
+	
 	FText GetTextAssetsTotal() const;
 	FText GetTextAssetsUsed() const;
 	FText GetTextAssetsIndirect() const;
@@ -42,11 +42,10 @@ protected:
 	FText GetTextFilesCorrupted() const;
 	FText GetTextFilesNonEngine() const;
 
-	const FSlateBrush* GetProjectScanStatusImg() const;
-	
 	FSlateColor GetTextColorAssetsUnused() const;
 	FSlateColor GetTextColorAssetsExcluded() const;
 	FSlateColor GetTextColorFoldersEmpty() const;
+	FSlateColor GetTextColorFilesCorrupted() const;
 
 private:
 	int32 AssetsTotalNum = 0;
@@ -70,4 +69,5 @@ private:
 	int64 FilesNonEngineSize = 0;
 
 	UProjectCleanerSubsystem* SubsystemPtr = nullptr;
+	UProjectCleanerSettings* Settings = nullptr;
 };

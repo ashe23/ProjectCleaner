@@ -5,7 +5,6 @@
 #include "ProjectCleanerSubsystem.h"
 #include "Libs/ProjectCleanerLibAsset.h"
 #include "Settings/ProjectCleanerSettings.h"
-#include "Settings/ProjectCleanerExcludeSettings.h"
 // Engine Headers
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SSeparator.h"
@@ -16,6 +15,11 @@ void SProjectCleanerTabScanSettings::Construct(const FArguments& InArgs)
 	SubsystemPtr = GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>();
 	if (!SubsystemPtr) return;
 
+	Settings = GetMutableDefault<UProjectCleanerSettings>();
+	if (!Settings) return;
+
+	SubsystemPtr->OnProjectScanned().AddRaw(this, &SProjectCleanerTabScanSettings::OnProjectScanned);
+
 	FPropertyEditorModule& PropertyEditor = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
 	FDetailsViewArgs DetailsViewArgs;
 	DetailsViewArgs.bUpdatesFromSelection = false;
@@ -24,10 +28,10 @@ void SProjectCleanerTabScanSettings::Construct(const FArguments& InArgs)
 	DetailsViewArgs.bShowOptions = true;
 	DetailsViewArgs.bAllowFavoriteSystem = false;
 	DetailsViewArgs.NameAreaSettings = FDetailsViewArgs::HideNameArea;
-	DetailsViewArgs.ViewIdentifier = "ProjectCleanerExcludeSettings";
+	DetailsViewArgs.ViewIdentifier = "ProjectCleanerSettings";
 
-	const auto ExcludeSettingsProperty = PropertyEditor.CreateDetailView(DetailsViewArgs);
-	ExcludeSettingsProperty->SetObject(GetMutableDefault<UProjectCleanerExcludeSettings>());
+	const auto SettingsProperty = PropertyEditor.CreateDetailView(DetailsViewArgs);
+	SettingsProperty->SetObject(Settings);
 
 	UpdateData();
 
@@ -51,7 +55,7 @@ void SProjectCleanerTabScanSettings::Construct(const FArguments& InArgs)
 				[
 					SNew(STextBlock)
 					.Justification(ETextJustify::Center)
-					.ToolTipText(FText::FromString(TEXT("Scan the project with the specified scan settings.")))
+					.ToolTipText(FText::FromString(TEXT("Scan the project based on specified settings.")))
 					.ColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.White"))
 					.ShadowOffset(FVector2D{1.5f, 1.5f})
 					.ShadowColorAndOpacity(FLinearColor::Black)
@@ -71,32 +75,12 @@ void SProjectCleanerTabScanSettings::Construct(const FArguments& InArgs)
 				[
 					SNew(STextBlock)
 					.Justification(ETextJustify::Center)
-					.ToolTipText(FText::FromString(TEXT("Remove all unused assets from the project.")))
+					.ToolTipText(FText::FromString(TEXT("Clean project based on specified CleanupMethod.")))
 					.ColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.White"))
 					.ShadowOffset(FVector2D{1.5f, 1.5f})
 					.ShadowColorAndOpacity(FLinearColor::Black)
 					.Font(FProjectCleanerStyles::GetFont("Bold", 10))
 					.Text(FText::FromString(TEXT("Clean Project")))
-				]
-			]
-			+ SHorizontalBox::Slot()
-			  .AutoWidth()
-			  .Padding(FMargin{0.0f, 0.0f, 5.0f, 0.0f})
-			[
-				SNew(SButton)
-				.ContentPadding(FMargin{5.0f})
-				.OnClicked_Raw(this, &SProjectCleanerTabScanSettings::OnBtnCleanEmptyFoldersClick)
-				.IsEnabled_Raw(this, &SProjectCleanerTabScanSettings::BtnCleanEmptyFolderEnabled)
-				.ButtonColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Red"))
-				[
-					SNew(STextBlock)
-					.Justification(ETextJustify::Center)
-					.ToolTipText(FText::FromString(TEXT("Remove all empty folders in the project.")))
-					.ColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.White"))
-					.ShadowOffset(FVector2D{1.5f, 1.5f})
-					.ShadowColorAndOpacity(FLinearColor::Black)
-					.Font(FProjectCleanerStyles::GetFont("Bold", 10))
-					.Text(FText::FromString(TEXT("Clean Empty Folders")))
 				]
 			]
 		]
@@ -154,27 +138,10 @@ void SProjectCleanerTabScanSettings::Construct(const FArguments& InArgs)
 			+ SVerticalBox::Slot()
 			.AutoHeight()
 			[
-				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot()
-				.AutoWidth()
-				[
-					SNew(STextBlock)
-					.Font(FProjectCleanerStyles::GetFont("Bold", 13))
-					.ColorAndOpacity_Raw(this, &SProjectCleanerTabScanSettings::GetTextColorAssetsUnused)
-					.Text_Raw(this, &SProjectCleanerTabScanSettings::GetTextAssetsUnused)
-				]
-				+ SHorizontalBox::Slot()
-				.AutoWidth()
-				.Padding(FMargin{10.0f, 0.0f})
-				[
-					SNew(SBox)
-					.WidthOverride(20.0f)
-					.HeightOverride(20.0f)
-					[
-						SNew(SImage)
-						.Image_Raw(this, &SProjectCleanerTabScanSettings::GetProjectScanStatusImg)
-					]
-				]
+				SNew(STextBlock)
+				.Font(FProjectCleanerStyles::GetFont("Bold", 13))
+				.ColorAndOpacity_Raw(this, &SProjectCleanerTabScanSettings::GetTextColorAssetsUnused)
+				.Text_Raw(this, &SProjectCleanerTabScanSettings::GetTextAssetsUnused)
 			]
 			+ SVerticalBox::Slot()
 			  .AutoHeight()
@@ -198,6 +165,7 @@ void SProjectCleanerTabScanSettings::Construct(const FArguments& InArgs)
 			[
 				SNew(STextBlock)
 				.Font(FProjectCleanerStyles::GetFont("Bold", 13))
+				.ColorAndOpacity_Raw(this, &SProjectCleanerTabScanSettings::GetTextColorFilesCorrupted)
 				.Text_Raw(this, &SProjectCleanerTabScanSettings::GetTextFilesCorrupted)
 			]
 			+ SVerticalBox::Slot()
@@ -225,17 +193,17 @@ void SProjectCleanerTabScanSettings::Construct(const FArguments& InArgs)
 			[
 				SNew(SButton)
 				.ContentPadding(FMargin{5.0f})
-				.OnClicked_Raw(this, &SProjectCleanerTabScanSettings::OnBtnResetExcludeSettingsClick)
+				.OnClicked_Raw(this, &SProjectCleanerTabScanSettings::OnBtnResetSettingsClick)
 				.ButtonColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Blue"))
 				[
 					SNew(STextBlock)
 					.Justification(ETextJustify::Center)
-					.ToolTipText(FText::FromString(TEXT("Clears all fields in exclude settings")))
+					.ToolTipText(FText::FromString(TEXT("Reset Settings to their default state")))
 					.ColorAndOpacity(FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.White"))
 					.ShadowOffset(FVector2D{1.5f, 1.5f})
 					.ShadowColorAndOpacity(FLinearColor::Black)
 					.Font(FProjectCleanerStyles::GetFont("Bold", 10))
-					.Text(FText::FromString(TEXT("Reset Exclude Settings")))
+					.Text(FText::FromString(TEXT("Reset Settings")))
 				]
 			]
 		]
@@ -251,13 +219,11 @@ void SProjectCleanerTabScanSettings::Construct(const FArguments& InArgs)
 				.AllowOverscroll(EAllowOverscroll::No)
 				+ SScrollBox::Slot()
 				[
-					ExcludeSettingsProperty
+					SettingsProperty
 				]
 			]
 		]
 	];
-
-	SubsystemPtr->OnProjectScanned().AddRaw(this, &SProjectCleanerTabScanSettings::OnProjectScanned);
 }
 
 SProjectCleanerTabScanSettings::~SProjectCleanerTabScanSettings()
@@ -311,31 +277,29 @@ FReply SProjectCleanerTabScanSettings::OnBtnCleanProjectClick() const
 	if (!SubsystemPtr) return FReply::Handled();
 
 	const FText Title = FText::FromString(TEXT("Confirm project cleaning"));
-	const FText Msg = FText::FromString(TEXT("Are you sure you want to delete all unused assets in project?"));
+	FText Msg;
+	if (Settings->CleanupMethod == EProjectCleanerCleanupMethod::Full)
+	{
+		Msg = FText::FromString(TEXT("Are you sure you want to delete all unused assets and empty folders in project?"));
+	}
+
+	if (Settings->CleanupMethod == EProjectCleanerCleanupMethod::UnusedAssetsOnly)
+	{
+		Msg = FText::FromString(TEXT("Are you sure you want to delete all unused assets in project?"));
+	}
+
+	if (Settings->CleanupMethod == EProjectCleanerCleanupMethod::EmptyFoldersOnly)
+	{
+		Msg = FText::FromString(TEXT("Are you sure you want to delete all empty folders in project?"));
+	}
+
 	const auto Result = FMessageDialog::Open(EAppMsgType::YesNo, Msg, &Title);
 	if (Result == EAppReturnType::No || Result == EAppReturnType::Cancel)
 	{
 		return FReply::Handled();
 	}
 
-	SubsystemPtr->ProjectClean(GetDefault<UProjectCleanerSettings>()->bAutoCleanEmptyFolders);
-
-	return FReply::Handled();
-}
-
-FReply SProjectCleanerTabScanSettings::OnBtnCleanEmptyFoldersClick() const
-{
-	if (!SubsystemPtr) return FReply::Handled();
-
-	const FText Title = FText::FromString(TEXT("Confirm empty folders cleaning"));
-	const FText Msg = FText::FromString(TEXT("Are you sure you want to delete all empty folders in project?"));
-	const auto Result = FMessageDialog::Open(EAppMsgType::YesNo, Msg, &Title);
-	if (Result == EAppReturnType::No || Result == EAppReturnType::Cancel)
-	{
-		return FReply::Handled();
-	}
-
-	SubsystemPtr->ProjectCleanEmptyFolders();
+	// SubsystemPtr->ProjectClean(GetDefault<UProjectCleanerSettings>()->bAutoCleanEmptyFolders);
 
 	return FReply::Handled();
 }
@@ -347,25 +311,21 @@ bool SProjectCleanerTabScanSettings::BtnScanProjectEnabled() const
 
 bool SProjectCleanerTabScanSettings::BtnCleanProjectEnabled() const
 {
-	return SubsystemPtr && SubsystemPtr->CanScanProject() && SubsystemPtr->GetScanData().AssetsUnused.Num() > 0;
+	return SubsystemPtr && SubsystemPtr->CanScanProject() && AssetsUnusedNum > 0 || FoldersEmptyNum > 0;
 }
 
-bool SProjectCleanerTabScanSettings::BtnCleanEmptyFolderEnabled() const
-{
-	return SubsystemPtr && SubsystemPtr->CanScanProject() && SubsystemPtr->GetScanData().FoldersEmpty.Num() > 0;
-}
-
-FReply SProjectCleanerTabScanSettings::OnBtnResetExcludeSettingsClick() const
+FReply SProjectCleanerTabScanSettings::OnBtnResetSettingsClick() const
 {
 	if (!SubsystemPtr) return FReply::Handled();
+	if (!Settings) return FReply::Handled();
 
-	UProjectCleanerExcludeSettings* ExcludeSettings = GetMutableDefault<UProjectCleanerExcludeSettings>();
-	if (!ExcludeSettings) return FReply::Handled();
-
-	ExcludeSettings->ExcludedFolders.Empty();
-	ExcludeSettings->ExcludedClasses.Empty();
-	ExcludeSettings->ExcludedAssets.Empty();
-	ExcludeSettings->PostEditChange();
+	Settings->CleanupMethod = EProjectCleanerCleanupMethod::Full;
+	Settings->ScanPaths.Empty();
+	Settings->ScanClasses.Empty();
+	Settings->ExcludePaths.Empty();
+	Settings->ExcludeAssets.Empty();
+	Settings->ExcludeClasses.Empty();
+	Settings->PostEditChange();
 
 	SubsystemPtr->ProjectScan();
 
@@ -422,15 +382,9 @@ FText SProjectCleanerTabScanSettings::GetTextFilesNonEngine() const
 	return FText::FromString(FString::Printf(TEXT("Files NonEngine - %d (%s)"), FilesNonEngineNum, *FText::AsMemory(FilesNonEngineSize).ToString()));
 }
 
-const FSlateBrush* SProjectCleanerTabScanSettings::GetProjectScanStatusImg() const
-{
-	const FString IconSpecifier = AssetsUnusedNum == 0 ? TEXT("ProjectCleaner.IconCheck20") : TEXT("ProjectCleaner.IconWarning20");
-	return FProjectCleanerStyles::Get().GetBrush(*IconSpecifier);
-}
-
 FSlateColor SProjectCleanerTabScanSettings::GetTextColorAssetsUnused() const
 {
-	return AssetsUnusedNum > 0 ? FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Red") : FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.GreenBright");
+	return AssetsUnusedNum > 0 ? FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Red") : FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.White");
 }
 
 FSlateColor SProjectCleanerTabScanSettings::GetTextColorAssetsExcluded() const
@@ -441,4 +395,9 @@ FSlateColor SProjectCleanerTabScanSettings::GetTextColorAssetsExcluded() const
 FSlateColor SProjectCleanerTabScanSettings::GetTextColorFoldersEmpty() const
 {
 	return FoldersEmptyNum > 0 ? FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Red") : FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.White");
+}
+
+FSlateColor SProjectCleanerTabScanSettings::GetTextColorFilesCorrupted() const
+{
+	return FilesCorruptedNum > 0 ? FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.Red") : FProjectCleanerStyles::Get().GetColor("ProjectCleaner.Color.White");
 }

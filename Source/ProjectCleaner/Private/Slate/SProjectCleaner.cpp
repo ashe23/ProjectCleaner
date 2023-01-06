@@ -186,7 +186,8 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnScanInfo(const FSpawnTabArgs& Ar
 		.Label(FText::FromString(TEXT("Scan Info")))
 		.Icon(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconTabScanInfo16"))
 		[
-			SNew(SProjectCleanerTabScanInfo)
+			// SNew(SProjectCleanerTabScanInfo)
+			SNew(STextBlock)
 		];
 }
 
@@ -198,7 +199,8 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnIndirectAssets(const FSpawnTabAr
 		.Label(FText::FromString(TEXT("Indirect Assets")))
 		.Icon(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconTabIndirect16"))
 		[
-			SNew(SProjectCleanerTabIndirect)
+			// SNew(SProjectCleanerTabIndirect)
+			SNew(STextBlock)
 		];
 }
 
@@ -210,7 +212,8 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnNonEngineFiles(const FSpawnTabAr
 		.Label(FText::FromString(TEXT("NonEngine Files")))
 		.Icon(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconTabNonEngine16"))
 		[
-			SNew(SProjectCleanerTabNonEngine)
+			// SNew(SProjectCleanerTabNonEngine)
+			SNew(STextBlock)
 		];
 }
 
@@ -222,6 +225,7 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnCorruptedFiles(const FSpawnTabAr
 		.Label(FText::FromString(TEXT("Corrupted Files")))
 		.Icon(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconTabCorrupted16"))
 		[
-			SNew(SProjectCleanerTabCorrupted)
+			// SNew(SProjectCleanerTabCorrupted)
+			SNew(STextBlock)
 		];
 }

@@ -16,7 +16,7 @@ public:
 
 	void Construct(const FArguments& InArgs, const TSharedRef<SDockTab>& ConstructUnderMajorTab, const TSharedPtr<SWindow>& ConstructUnderWindow);
 	virtual ~SProjectCleaner() override;
-
+	
 private:
 	static bool WidgetEnabled();
 	static int32 WidgetGetIndex();

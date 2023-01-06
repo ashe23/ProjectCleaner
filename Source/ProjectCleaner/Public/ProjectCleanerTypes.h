@@ -6,6 +6,14 @@
 #include "ProjectCleanerTypes.generated.h"
 
 UENUM(BlueprintType)
+enum class EProjectCleanerCleanupMethod : uint8
+{
+	UnusedAssetsOnly UMETA(Tooltip="Remove only unused assets"),
+	EmptyFoldersOnly UMETA(Tooltip="Remove empty folders only"),
+	Full UMETA(ToolTip="Remove both unused assets and empty folders")
+};
+
+UENUM(BlueprintType)
 enum class EProjectCleanerScanResult : uint8
 {
 	None,
@@ -83,14 +91,20 @@ struct FProjectCleanerScanSettings
 {
 	GENERATED_BODY()
 
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="ProjectCleaner|ScanSettings", meta=(ToolTip="List of paths that must be scanned. Must be relative"))
+	TArray<FString> ScanFolders;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="ProjectCleaner|ScanSettings", meta=(ToolTip="List of assets classes that must be scanned"))
+	TArray<UClass*> ScanClasses;
+
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="ProjectCleaner|ScanSettings", meta=(ToolTip="Paths inside Content folder that must be excluded from scanning. Must be relative."))
-	TArray<FString> ExcludedFolders;
+	TArray<FString> ExcludeFolders;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="ProjectCleaner|ScanSettings", meta=(ToolTip="Assets classes that must be excluded from scanning."))
-	TArray<UClass*> ExcludedClasses;
+	TArray<UClass*> ExcludeClasses;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="ProjectCleaner|ScanSettings", meta=(ToolTip="Specific assets that must be excluded from scanning."))
-	TArray<TSoftObjectPtr<UObject>> ExcludedAssets;
+	TArray<TSoftObjectPtr<UObject>> ExcludeAssets;
 };
 
 USTRUCT(BlueprintType)

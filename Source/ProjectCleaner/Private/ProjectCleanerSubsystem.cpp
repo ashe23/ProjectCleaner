@@ -64,21 +64,21 @@ void UProjectCleanerSubsystem::ProjectScan()
 		const FString PathAbs = UProjectCleanerLibPath::ConvertToAbs(ExcludedFolder.Path);
 		if (PathAbs.IsEmpty() || !FPaths::DirectoryExists(PathAbs)) continue;
 
-		NewScanSettings.ExcludedFolders.AddUnique(ExcludedFolder.Path);
+		NewScanSettings.ExcludeFolders.AddUnique(ExcludedFolder.Path);
 	}
 
 	for (const auto& ExcludedClasses : ExcludeSettings->ExcludedClasses)
 	{
 		if (!ExcludedClasses.LoadSynchronous()) continue;
 
-		NewScanSettings.ExcludedClasses.AddUnique(ExcludedClasses.Get());
+		NewScanSettings.ExcludeClasses.AddUnique(ExcludedClasses.Get());
 	}
 
 	for (const auto& ExcludedAsset : ExcludeSettings->ExcludedAssets)
 	{
 		if (!ExcludedAsset.LoadSynchronous()) continue;
 
-		NewScanSettings.ExcludedAssets.AddUnique(ExcludedAsset.Get());
+		NewScanSettings.ExcludeAssets.AddUnique(ExcludedAsset.Get());
 	}
 
 	ProjectScan(NewScanSettings);
@@ -914,7 +914,7 @@ void UProjectCleanerSubsystem::ScanDataReset()
 
 bool UProjectCleanerSubsystem::AssetExcludedByPath(const FAssetData& AssetData) const
 {
-	for (const auto& ExcludedFolder : ScanSettings.ExcludedFolders)
+	for (const auto& ExcludedFolder : ScanSettings.ExcludeFolders)
 	{
 		const FString FolderPathAbs = UProjectCleanerLibPath::ConvertToAbs(ExcludedFolder);
 		const FString AssetPathAbs = UProjectCleanerLibPath::ConvertToAbs(AssetData.PackagePath.ToString());
@@ -933,7 +933,7 @@ bool UProjectCleanerSubsystem::AssetExcludedByClass(const FAssetData& AssetData)
 {
 	const FString AssetClassName = UProjectCleanerLibAsset::GetAssetClassName(AssetData);
 
-	for (const auto& ExcludedClass : ScanSettings.ExcludedClasses)
+	for (const auto& ExcludedClass : ScanSettings.ExcludeClasses)
 	{
 		if (!ExcludedClass) continue;
 
@@ -949,7 +949,7 @@ bool UProjectCleanerSubsystem::AssetExcludedByClass(const FAssetData& AssetData)
 
 bool UProjectCleanerSubsystem::AssetExcludedByObject(const FAssetData& AssetData) const
 {
-	for (const auto& ExcludedAsset : ScanSettings.ExcludedAssets)
+	for (const auto& ExcludedAsset : ScanSettings.ExcludeAssets)
 	{
 		if (!ExcludedAsset.LoadSynchronous()) continue;
 
