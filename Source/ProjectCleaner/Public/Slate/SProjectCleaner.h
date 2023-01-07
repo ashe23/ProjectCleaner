@@ -5,6 +5,8 @@
 #include "CoreMinimal.h"
 #include "Widgets/SCompoundWidget.h"
 
+class UProjectCleanerSubsystem;
+
 class SProjectCleaner final : public SCompoundWidget
 {
 public:
@@ -16,7 +18,7 @@ public:
 
 	void Construct(const FArguments& InArgs, const TSharedRef<SDockTab>& ConstructUnderMajorTab, const TSharedPtr<SWindow>& ConstructUnderWindow);
 	virtual ~SProjectCleaner() override;
-	
+
 private:
 	static bool WidgetEnabled();
 	static int32 WidgetGetIndex();
@@ -32,4 +34,5 @@ private:
 
 	TSharedPtr<FTabManager> TabManager;
 	TSharedPtr<FTabManager::FLayout> TabLayout;
+	UProjectCleanerSubsystem* SubsystemPtr = nullptr;
 };

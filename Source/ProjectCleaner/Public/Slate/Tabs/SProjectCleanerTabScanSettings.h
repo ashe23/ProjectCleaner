@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "ProjectCleanerTypes.h"
 #include "Widgets/SCompoundWidget.h"
 
 class UProjectCleanerSettings;
@@ -15,6 +16,7 @@ public:
 		{
 		}
 
+		SLATE_ARGUMENT(const FProjectCleanerScanData*, ScanData)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
@@ -30,7 +32,7 @@ protected:
 
 	bool BtnScanProjectEnabled() const;
 	bool BtnCleanProjectEnabled() const;
-	
+
 	FText GetTextAssetsTotal() const;
 	FText GetTextAssetsUsed() const;
 	FText GetTextAssetsIndirect() const;
@@ -68,6 +70,7 @@ private:
 	int64 FilesCorruptedSize = 0;
 	int64 FilesNonEngineSize = 0;
 
+	FProjectCleanerScanData ScanData;
 	UProjectCleanerSubsystem* SubsystemPtr = nullptr;
 	UProjectCleanerSettings* Settings = nullptr;
 };

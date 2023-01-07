@@ -40,10 +40,10 @@ void FFrontendFilterExcludedAssets::ActiveStateChanged(bool bActive)
 bool FFrontendFilterExcludedAssets::PassesFilter(const FContentBrowserItem& InItem) const
 {
 	FAssetData ItemAssetData;
-	if (InItem.Legacy_TryGetAssetData(ItemAssetData))
-	{
-		return GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>()->GetScanData().AssetsExcluded.Contains(ItemAssetData);
-	}
+	// if (InItem.Legacy_TryGetAssetData(ItemAssetData))
+	// {
+	// 	return GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>()->GetScanData().AssetsExcluded.Contains(ItemAssetData);
+	// }
 
 	return false;
 }

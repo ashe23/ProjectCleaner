@@ -153,13 +153,13 @@ void SProjectCleanerTabScanInfo::Construct(const FArguments& InArgs)
 		]
 	];
 	
-	SubsystemPtr->OnProjectScanned().AddRaw(this, &SProjectCleanerTabScanInfo::OnProjectScanned);
+	// SubsystemPtr->OnProjectScanned().AddRaw(this, &SProjectCleanerTabScanInfo::OnProjectScanned);
 }
 
 SProjectCleanerTabScanInfo::~SProjectCleanerTabScanInfo()
 {
-	SubsystemPtr->OnProjectScanned().RemoveAll(this);
-	SubsystemPtr = nullptr;
+	// SubsystemPtr->OnProjectScanned().RemoveAll(this);
+	// SubsystemPtr = nullptr;
 }
 
 void SProjectCleanerTabScanInfo::CommandsRegister()
@@ -235,7 +235,7 @@ void SProjectCleanerTabScanInfo::CommandsRegister()
 				
 				ExcludeSettings->PostEditChange();
 				
-				SubsystemPtr->ProjectScan();
+				// SubsystemPtr->ProjectScan();
 			}),
 			FCanExecuteAction::CreateLambda([&]
 			{
@@ -271,7 +271,7 @@ void SProjectCleanerTabScanInfo::CommandsRegister()
 				
 				ExcludeSettings->PostEditChange();
 				
-				SubsystemPtr->ProjectScan();
+				// SubsystemPtr->ProjectScan();
 			}),
 			FCanExecuteAction::CreateLambda([&]
 			{
@@ -290,7 +290,7 @@ void SProjectCleanerTabScanInfo::CommandsRegister()
 			{
 				if (ObjectTools::DeleteAssets(AssetBrowserDelegateSelection.Execute()) > 0)
 				{
-					SubsystemPtr->ProjectScan();
+					// SubsystemPtr->ProjectScan();
 				}
 			}),
 			FCanExecuteAction::CreateLambda([&]
@@ -387,67 +387,67 @@ FARFilter SProjectCleanerTabScanInfo::AssetBrowserCreateFilter() const
 {
 	FARFilter Filter;
 
-	if (SelectedPaths.Num() > 0)
-	{
-		for (const auto& SelectedPath : SelectedPaths)
-		{
-			Filter.PackagePaths.AddUnique(FName{*SelectedPath});
-		}
-	}
-
-	if (FilterAnyEnabled())
-	{
-		Filter.PackageNames.Reserve(SubsystemPtr->GetScanData().AssetsExcluded.Num() + SubsystemPtr->GetScanData().AssetsPrimary.Num());
-
-		if (bFilterExcludeActive)
-		{
-			for (const auto& Asset : SubsystemPtr->GetScanData().AssetsExcluded)
-			{
-				Filter.PackageNames.Emplace(Asset.PackageName);
-			}
-		}
-
-		if (bFilterPrimaryActive)
-		{
-			for (const auto& Asset : SubsystemPtr->GetScanData().AssetsPrimary)
-			{
-				Filter.PackageNames.Emplace(Asset.PackageName);
-			}
-		}
-
-		if (bFilterUsedActive)
-		{
-			for (const auto& Asset : SubsystemPtr->GetScanData().AssetsUsed)
-			{
-				Filter.PackageNames.Emplace(Asset.PackageName);
-			}
-		}
-
-		if (bFilterIndirectActive)
-		{
-			for (const auto& Asset : SubsystemPtr->GetScanData().AssetsIndirect)
-			{
-				Filter.PackageNames.Emplace(Asset.PackageName);
-			}
-		}
-
-		return Filter;
-	}
-
-	if (SubsystemPtr->GetScanData().AssetsUnused.Num() == 0)
-	{
-		// this is needed for disabling showing primary assets in browser, when there is no unused assets
-		Filter.TagsAndValues.Add(FName{TEXT("ProjectCleanerEmptyTag")}, FString{TEXT("ProjectCleanerEmptyTag")});
-	}
-	else
-	{
-		Filter.PackageNames.Reserve(SubsystemPtr->GetScanData().AssetsUnused.Num());
-
-		for (const auto& Asset : SubsystemPtr->GetScanData().AssetsUnused)
-		{
-			Filter.PackageNames.Add(Asset.PackageName);
-		}
-	}
+	// if (SelectedPaths.Num() > 0)
+	// {
+	// 	for (const auto& SelectedPath : SelectedPaths)
+	// 	{
+	// 		Filter.PackagePaths.AddUnique(FName{*SelectedPath});
+	// 	}
+	// }
+	//
+	// if (FilterAnyEnabled())
+	// {
+	// 	Filter.PackageNames.Reserve(SubsystemPtr->GetScanData().AssetsExcluded.Num() + SubsystemPtr->GetScanData().AssetsPrimary.Num());
+	//
+	// 	if (bFilterExcludeActive)
+	// 	{
+	// 		for (const auto& Asset : SubsystemPtr->GetScanData().AssetsExcluded)
+	// 		{
+	// 			Filter.PackageNames.Emplace(Asset.PackageName);
+	// 		}
+	// 	}
+	//
+	// 	if (bFilterPrimaryActive)
+	// 	{
+	// 		for (const auto& Asset : SubsystemPtr->GetScanData().AssetsPrimary)
+	// 		{
+	// 			Filter.PackageNames.Emplace(Asset.PackageName);
+	// 		}
+	// 	}
+	//
+	// 	if (bFilterUsedActive)
+	// 	{
+	// 		for (const auto& Asset : SubsystemPtr->GetScanData().AssetsUsed)
+	// 		{
+	// 			Filter.PackageNames.Emplace(Asset.PackageName);
+	// 		}
+	// 	}
+	//
+	// 	if (bFilterIndirectActive)
+	// 	{
+	// 		for (const auto& Asset : SubsystemPtr->GetScanData().AssetsIndirect)
+	// 		{
+	// 			Filter.PackageNames.Emplace(Asset.PackageName);
+	// 		}
+	// 	}
+	//
+	// 	return Filter;
+	// }
+	//
+	// if (SubsystemPtr->GetScanData().AssetsUnused.Num() == 0)
+	// {
+	// 	// this is needed for disabling showing primary assets in browser, when there is no unused assets
+	// 	Filter.TagsAndValues.Add(FName{TEXT("ProjectCleanerEmptyTag")}, FString{TEXT("ProjectCleanerEmptyTag")});
+	// }
+	// else
+	// {
+	// 	Filter.PackageNames.Reserve(SubsystemPtr->GetScanData().AssetsUnused.Num());
+	//
+	// 	for (const auto& Asset : SubsystemPtr->GetScanData().AssetsUnused)
+	// 	{
+	// 		Filter.PackageNames.Add(Asset.PackageName);
+	// 	}
+	// }
 
 	return Filter;
 }

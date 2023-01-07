@@ -78,7 +78,7 @@ void SProjectCleanerTabNonEngine::Construct(const FArguments& InArgs)
 					NotificationPtr.Get()->SetCompletionState(SNotificationItem::CS_Fail);
 				}
 
-				GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>()->ProjectScan();
+				// GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>()->ProjectScan();
 			})
 		)
 	);
@@ -151,13 +151,13 @@ void SProjectCleanerTabNonEngine::Construct(const FArguments& InArgs)
 		]
 	];
 
-	SubsystemPtr->OnProjectScanned().AddRaw(this, &SProjectCleanerTabNonEngine::OnProjectScanned);
+	// SubsystemPtr->OnProjectScanned().AddRaw(this, &SProjectCleanerTabNonEngine::OnProjectScanned);
 }
 
 SProjectCleanerTabNonEngine::~SProjectCleanerTabNonEngine()
 {
-	SubsystemPtr->OnProjectScanned().RemoveAll(this);
-	SubsystemPtr = nullptr;
+	// SubsystemPtr->OnProjectScanned().RemoveAll(this);
+	// SubsystemPtr = nullptr;
 }
 
 void SProjectCleanerTabNonEngine::OnProjectScanned()
@@ -183,24 +183,24 @@ void SProjectCleanerTabNonEngine::ListUpdate()
 	ListItems.Reset();
 	TotalSize = 0;
 
-	for (const auto& NonEngineFile : SubsystemPtr->GetScanData().FilesNonEngine)
-	{
-		const TSharedPtr<FProjectCleanerTabNonEngineListItem> NewItem = MakeShareable(new FProjectCleanerTabNonEngineListItem);
-		if (!NewItem) continue;
-
-		if (NonEngineFile.IsEmpty() || !FPaths::FileExists(NonEngineFile)) continue;
-
-		NewItem->FileName = FPaths::GetCleanFilename(NonEngineFile);
-		NewItem->FileExtension = FPaths::GetExtension(NonEngineFile, true);
-		NewItem->FilePathAbs = NonEngineFile;
-		NewItem->FileSize = IFileManager::Get().FileSize(*NonEngineFile);
-		TotalSize += NewItem->FileSize;
-
-		ListItems.Add(NewItem);
-	}
-
-	ListSort();
-	ListView->RequestListRefresh();
+	// for (const auto& NonEngineFile : SubsystemPtr->GetScanData().FilesNonEngine)
+	// {
+	// 	const TSharedPtr<FProjectCleanerTabNonEngineListItem> NewItem = MakeShareable(new FProjectCleanerTabNonEngineListItem);
+	// 	if (!NewItem) continue;
+	//
+	// 	if (NonEngineFile.IsEmpty() || !FPaths::FileExists(NonEngineFile)) continue;
+	//
+	// 	NewItem->FileName = FPaths::GetCleanFilename(NonEngineFile);
+	// 	NewItem->FileExtension = FPaths::GetExtension(NonEngineFile, true);
+	// 	NewItem->FilePathAbs = NonEngineFile;
+	// 	NewItem->FileSize = IFileManager::Get().FileSize(*NonEngineFile);
+	// 	TotalSize += NewItem->FileSize;
+	//
+	// 	ListItems.Add(NewItem);
+	// }
+	//
+	// ListSort();
+	// ListView->RequestListRefresh();
 }
 
 void SProjectCleanerTabNonEngine::ListSort()

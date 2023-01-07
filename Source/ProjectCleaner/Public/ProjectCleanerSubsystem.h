@@ -26,30 +26,36 @@ public:
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif
 
-	void ProjectScan();
-	void ProjectScan(const FProjectCleanerScanSettings& InScanSettings);
-	void ProjectClean(const bool bRemoveEmptyFolders = true);
-	void ProjectCleanEmptyFolders();
-	const FProjectCleanerScanData& GetScanData() const;
-	bool CanScanProject() const;
-	bool AssetIsExcluded(const FAssetData& AssetData) const;
-	bool ScanningInProgress() const;
-	bool CleaningInProgress() const;
-	FProjectCleanerDelegateProjectScanned& OnProjectScanned();
+	
+	UFUNCTION(BlueprintCallable, Category="ProjectCleaner")
+	void Test(const FProjectCleanerScanSettings& ScanSettings);
+	
+	UFUNCTION(BlueprintCallable, Category="ProjectCleaner")
+	void ProjectScan(const FProjectCleanerScanSettings& ScanSettings, FProjectCleanerScanData& ScanData);
+	// void ProjectScan();
+	// void ProjectScan(const FProjectCleanerScanSettings& InScanSettings);
+	// void ProjectClean(const bool bRemoveEmptyFolders = true);
+	// void ProjectCleanEmptyFolders();
+	// const FProjectCleanerScanData& GetScanData() const;
+	// bool CanScanProject() const;
+	// bool AssetIsExcluded(const FAssetData& AssetData) const;
+	// bool ScanningInProgress() const;
+	// bool CleaningInProgress() const;
+	// FProjectCleanerDelegateProjectScanned& OnProjectScanned();
 
 private:
 	static FString ScanResultToString(const EProjectCleanerScanResult ScanResult);
-	void FindAssetsTotal();
-	void FindAssetsPrimary();
-	void FindAssetsIndirect();
+	static void ScanContentFolder(FProjectCleanerScanData& ScanData);
+	void FindAssetsByScanSettings(const FProjectCleanerScanSettings& ScanSettings, FProjectCleanerScanData& ScanData) const;
+	// void FindAssetsPrimary();
+	// void FindAssetsIndirect();
 	void FindAssetsExcluded();
 	void FindAssetsUsed();
 	void FindAssetsUnused();
 	void FindFilesCorrupted();
 	void FindFilesNonEngine();
 	void FindFolders();
-	void FindFilesAndFolders();
-	void ScanDataReset();
+	// void ScanDataReset();
 	bool AssetExcludedByPath(const FAssetData& AssetData) const;
 	bool AssetExcludedByClass(const FAssetData& AssetData) const;
 	bool AssetExcludedByObject(const FAssetData& AssetData) const;
@@ -57,13 +63,13 @@ private:
 	bool BucketPrepare(const TArray<FAssetData>& Bucket, TArray<UObject*>& LoadedAssets) const;
 	int32 BucketDelete(const TArray<UObject*>& LoadedAssets) const;
 
-	bool bScanningProject = false;
-	bool bCleaningProject = false;
+	bool bScanningInProgress = false;
+	bool bCleaningInProgress = false;
 
-	FProjectCleanerScanData ScanData;
-	FProjectCleanerScanSettings ScanSettings;
+	// FProjectCleanerScanData ScanData;
+	// FProjectCleanerScanSettings ScanSettings;
 
-	FProjectCleanerDelegateProjectScanned DelegateProjectScanned;
+	// FProjectCleanerDelegateProjectScanned DelegateProjectScanned;
 
 	IPlatformFile* PlatformFile;
 	FAssetRegistryModule* ModuleAssetRegistry;

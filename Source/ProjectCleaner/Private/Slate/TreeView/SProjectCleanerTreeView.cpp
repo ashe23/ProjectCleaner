@@ -10,6 +10,7 @@
 // Engine Headers
 #include "ProjectCleanerConstants.h"
 #include "Libs/ProjectCleanerLibAsset.h"
+#include "Libs/ProjectCleanerLibFile.h"
 #include "Libs/ProjectCleanerLibPath.h"
 #include "Misc/ScopedSlowTask.h"
 #include "Settings/ProjectCleanerSettings.h"
@@ -148,13 +149,13 @@ void SProjectCleanerTreeView::Construct(const FArguments& InArgs)
 		]
 	];
 
-	SubsystemPtr->OnProjectScanned().AddRaw(this, &SProjectCleanerTreeView::OnProjectScanned);
+	// SubsystemPtr->OnProjectScanned().AddRaw(this, &SProjectCleanerTreeView::OnProjectScanned);
 }
 
 SProjectCleanerTreeView::~SProjectCleanerTreeView()
 {
-	SubsystemPtr->OnProjectScanned().RemoveAll(this);
-	SubsystemPtr = nullptr;
+	// SubsystemPtr->OnProjectScanned().RemoveAll(this);
+	// SubsystemPtr = nullptr;
 }
 
 void SProjectCleanerTreeView::CommandsRegister()
@@ -183,7 +184,7 @@ void SProjectCleanerTreeView::CommandsRegister()
 
 				ExcludeSettings->PostEditChange();
 
-				SubsystemPtr->ProjectScan();
+				// SubsystemPtr->ProjectScan();
 			}),
 			FCanExecuteAction::CreateLambda([&]
 			{
@@ -248,49 +249,49 @@ void SProjectCleanerTreeView::ItemsUpdate()
 		.OnExpansionChanged(this, &SProjectCleanerTreeView::OnExpansionChange);
 	}
 
-	if (SubsystemPtr->GetScanData().ScanResult != EProjectCleanerScanResult::Success) return;
-
-	const TSharedPtr<FProjectCleanerTreeViewItem> RootItem = ItemCreate(UProjectCleanerLibPath::GetFolderContent());
-	if (!RootItem.IsValid()) return;
-
-
-	// caching expanded and selected items in order to keep them , when we updating data
-	TreeViewItemsExpanded.Reset();
-	TreeViewItemsSelected.Reset();
-	TreeView->GetExpandedItems(TreeViewItemsExpanded);
-	TreeView->GetSelectedItems(TreeViewItemsSelected);
-	TreeView->ClearHighlightedItems();
-	TreeView->ClearSelection();
-
-	TreeViewItems.AddUnique(RootItem);
-
-	Items.Reserve(SubsystemPtr->GetScanData().FoldersAll.Num() + 1);
-	Items.Add(RootItem);
-
-	// todo:ashe23 optimize 
-	FScopedSlowTask SlowTask{
-		static_cast<float>(SubsystemPtr->GetScanData().FoldersAll.Num()),
-		FText::FromString(TEXT("Updating TreeView ...")),
-		GIsEditor && !IsRunningCommandlet()
-	};
-	SlowTask.MakeDialog();
-
-	for (const auto& Folder : SubsystemPtr->GetScanData().FoldersAll)
-	{
-		SlowTask.EnterProgressFrame(1.0f, FText::FromString(Folder));
-
-		const auto Item = ItemCreate(Folder);
-		if (!Item.IsValid()) continue;
-
-		Items.Add(Item);
-	}
-
-	for (const auto& Item : Items)
-	{
-		TreeView->SetItemExpansion(Item, Item->bExpanded);
-	}
-
-	TreeView->RequestTreeRefresh();
+	// if (SubsystemPtr->GetScanData().ScanResult != EProjectCleanerScanResult::Success) return;
+	//
+	// const TSharedPtr<FProjectCleanerTreeViewItem> RootItem = ItemCreate(UProjectCleanerLibPath::GetFolderContent());
+	// if (!RootItem.IsValid()) return;
+	//
+	//
+	// // caching expanded and selected items in order to keep them , when we updating data
+	// TreeViewItemsExpanded.Reset();
+	// TreeViewItemsSelected.Reset();
+	// TreeView->GetExpandedItems(TreeViewItemsExpanded);
+	// TreeView->GetSelectedItems(TreeViewItemsSelected);
+	// TreeView->ClearHighlightedItems();
+	// TreeView->ClearSelection();
+	//
+	// TreeViewItems.AddUnique(RootItem);
+	//
+	// Items.Reserve(SubsystemPtr->GetScanData().FoldersAll.Num() + 1);
+	// Items.Add(RootItem);
+	//
+	// // todo:ashe23 optimize 
+	// FScopedSlowTask SlowTask{
+	// 	static_cast<float>(SubsystemPtr->GetScanData().FoldersAll.Num()),
+	// 	FText::FromString(TEXT("Updating TreeView ...")),
+	// 	GIsEditor && !IsRunningCommandlet()
+	// };
+	// SlowTask.MakeDialog();
+	//
+	// for (const auto& Folder : SubsystemPtr->GetScanData().FoldersAll)
+	// {
+	// 	SlowTask.EnterProgressFrame(1.0f, FText::FromString(Folder));
+	//
+	// 	const auto Item = ItemCreate(Folder);
+	// 	if (!Item.IsValid()) continue;
+	//
+	// 	Items.Add(Item);
+	// }
+	//
+	// for (const auto& Item : Items)
+	// {
+	// 	TreeView->SetItemExpansion(Item, Item->bExpanded);
+	// }
+	//
+	// TreeView->RequestTreeRefresh();
 
 	bUpdatingView = false;
 }
@@ -316,9 +317,9 @@ TSharedPtr<FProjectCleanerTreeViewItem> SProjectCleanerTreeView::ItemCreate(cons
 	TreeItem->bRoot = TreeItem->FolderPathAbs.Equals(UProjectCleanerLibPath::GetFolderContent());
 	TreeItem->bDevFolder = TreeItem->FolderPathAbs.Equals(UProjectCleanerLibPath::GetFolderDevelopers());
 	TreeItem->bExpanded = ItemIsExpanded(*TreeItem);
-	TreeItem->bEngineGenerated = UProjectCleanerLibPath::FolderIsEngineGenerated(TreeItem->FolderPathAbs);
-	TreeItem->bEmpty = SubsystemPtr->GetScanData().FoldersEmpty.Contains(TreeItem->FolderPathAbs);
-	TreeItem->bExcluded = UProjectCleanerLibPath::FolderIsExcluded(InFolderPathAbs);
+	TreeItem->bEngineGenerated = UProjectCleanerLibFile::FolderIsEngineGenerated(TreeItem->FolderPathAbs);
+	// TreeItem->bEmpty = SubsystemPtr->GetScanData().FoldersEmpty.Contains(TreeItem->FolderPathAbs);
+	TreeItem->bExcluded = UProjectCleanerLibFile::FolderIsExcluded(InFolderPathAbs);
 	TreeItem->bVisible = ItemIsVisible(*TreeItem);
 	TreeItem->PercentUnused = TreeItem->AssetsTotal == 0 ? 0.0f : TreeItem->AssetsUnused * 100.0f / TreeItem->AssetsTotal;
 	TreeItem->PercentUnusedNormalized = FMath::GetMappedRangeValueClamped(FVector2D{0.0f, 100.0f}, FVector2D{0.0f, 1.0f}, TreeItem->PercentUnused);
@@ -712,16 +713,16 @@ int32 SProjectCleanerTreeView::GetFoldersTotalNum(const FProjectCleanerTreeViewI
 
 	int32 Num = 0;
 
-	for (const auto& Folder : SubsystemPtr->GetScanData().FoldersAll)
-	{
-		// if (!GetDefault<UProjectCleanerSettings>()->bShowTreeViewFoldersEmpty && UProjectCleanerLibPath::FolderIsEmpty(Folder)) continue;
-		// if (!GetDefault<UProjectCleanerSettings>()->bShowTreeViewFoldersExcluded && UProjectCleanerLibPath::FolderIsExcluded(Folder)) continue;
-		if (Folder.Equals(Item.FolderPathAbs)) continue;
-		if (FPaths::IsUnderDirectory(Folder, Item.FolderPathAbs))
-		{
-			++Num;
-		}
-	}
+	// for (const auto& Folder : SubsystemPtr->GetScanData().FoldersAll)
+	// {
+	// 	// if (!GetDefault<UProjectCleanerSettings>()->bShowTreeViewFoldersEmpty && UProjectCleanerLibPath::FolderIsEmpty(Folder)) continue;
+	// 	// if (!GetDefault<UProjectCleanerSettings>()->bShowTreeViewFoldersExcluded && UProjectCleanerLibPath::FolderIsExcluded(Folder)) continue;
+	// 	if (Folder.Equals(Item.FolderPathAbs)) continue;
+	// 	if (FPaths::IsUnderDirectory(Folder, Item.FolderPathAbs))
+	// 	{
+	// 		++Num;
+	// 	}
+	// }
 
 	return Num;
 }
@@ -732,13 +733,13 @@ int32 SProjectCleanerTreeView::GetFoldersEmptyNum(const FProjectCleanerTreeViewI
 
 	int32 Num = 0;
 
-	for (const auto& Folder : SubsystemPtr->GetScanData().FoldersEmpty)
-	{
-		if (FPaths::IsUnderDirectory(Folder, Item.FolderPathAbs) && !Folder.Equals(Item.FolderPathAbs))
-		{
-			++Num;
-		}
-	}
+	// for (const auto& Folder : SubsystemPtr->GetScanData().FoldersEmpty)
+	// {
+	// 	if (FPaths::IsUnderDirectory(Folder, Item.FolderPathAbs) && !Folder.Equals(Item.FolderPathAbs))
+	// 	{
+	// 		++Num;
+	// 	}
+	// }
 
 	return Num;
 }
@@ -747,14 +748,14 @@ int32 SProjectCleanerTreeView::GetAssetsTotalNum(const FProjectCleanerTreeViewIt
 {
 	int32 Num = 0;
 
-	for (const auto& Asset : SubsystemPtr->GetScanData().AssetsAll)
-	{
-		const FString AssetPathAbs = UProjectCleanerLibPath::ConvertToAbs(Asset.PackagePath.ToString());
-		if (!AssetPathAbs.IsEmpty() && FPaths::IsUnderDirectory(AssetPathAbs, Item.FolderPathAbs))
-		{
-			++Num;
-		}
-	}
+	// for (const auto& Asset : SubsystemPtr->GetScanData().AssetsAll)
+	// {
+	// 	const FString AssetPathAbs = UProjectCleanerLibPath::ConvertToAbs(Asset.PackagePath.ToString());
+	// 	if (!AssetPathAbs.IsEmpty() && FPaths::IsUnderDirectory(AssetPathAbs, Item.FolderPathAbs))
+	// 	{
+	// 		++Num;
+	// 	}
+	// }
 
 	return Num;
 }
@@ -763,14 +764,14 @@ int32 SProjectCleanerTreeView::GetAssetsUnusedNum(const FProjectCleanerTreeViewI
 {
 	int32 Num = 0;
 
-	for (const auto& Asset : SubsystemPtr->GetScanData().AssetsUnused)
-	{
-		const FString AssetPathAbs = UProjectCleanerLibPath::ConvertToAbs(Asset.PackagePath.ToString());
-		if (!AssetPathAbs.IsEmpty() && FPaths::IsUnderDirectory(AssetPathAbs, Item.FolderPathAbs))
-		{
-			++Num;
-		}
-	}
+	// for (const auto& Asset : SubsystemPtr->GetScanData().AssetsUnused)
+	// {
+	// 	const FString AssetPathAbs = UProjectCleanerLibPath::ConvertToAbs(Asset.PackagePath.ToString());
+	// 	if (!AssetPathAbs.IsEmpty() && FPaths::IsUnderDirectory(AssetPathAbs, Item.FolderPathAbs))
+	// 	{
+	// 		++Num;
+	// 	}
+	// }
 
 	return Num;
 }
@@ -778,18 +779,18 @@ int32 SProjectCleanerTreeView::GetAssetsUnusedNum(const FProjectCleanerTreeViewI
 int64 SProjectCleanerTreeView::GetSizeTotal(const FProjectCleanerTreeViewItem& Item) const
 {
 	TArray<FAssetData> FilteredAssets;
-	FilteredAssets.Reserve(SubsystemPtr->GetScanData().AssetsAll.Num());
-
-	for (const auto& Asset : SubsystemPtr->GetScanData().AssetsAll)
-	{
-		const FString AssetPathAbs = UProjectCleanerLibPath::ConvertToAbs(Asset.PackagePath.ToString());
-		if (!AssetPathAbs.IsEmpty() && FPaths::IsUnderDirectory(AssetPathAbs, Item.FolderPathAbs))
-		{
-			FilteredAssets.Add(Asset);
-		}
-	}
-
-	FilteredAssets.Shrink();
+	// FilteredAssets.Reserve(SubsystemPtr->GetScanData().AssetsAll.Num());
+	//
+	// for (const auto& Asset : SubsystemPtr->GetScanData().AssetsAll)
+	// {
+	// 	const FString AssetPathAbs = UProjectCleanerLibPath::ConvertToAbs(Asset.PackagePath.ToString());
+	// 	if (!AssetPathAbs.IsEmpty() && FPaths::IsUnderDirectory(AssetPathAbs, Item.FolderPathAbs))
+	// 	{
+	// 		FilteredAssets.Add(Asset);
+	// 	}
+	// }
+	//
+	// FilteredAssets.Shrink();
 
 	return UProjectCleanerLibAsset::GetAssetsTotalSize(FilteredAssets);
 }
@@ -797,18 +798,18 @@ int64 SProjectCleanerTreeView::GetSizeTotal(const FProjectCleanerTreeViewItem& I
 int64 SProjectCleanerTreeView::GetSizeUnused(const FProjectCleanerTreeViewItem& Item) const
 {
 	TArray<FAssetData> FilteredAssets;
-	FilteredAssets.Reserve(SubsystemPtr->GetScanData().AssetsUnused.Num());
-
-	for (const auto& Asset : SubsystemPtr->GetScanData().AssetsUnused)
-	{
-		const FString AssetPathAbs = UProjectCleanerLibPath::ConvertToAbs(Asset.PackagePath.ToString());
-		if (!AssetPathAbs.IsEmpty() && FPaths::IsUnderDirectory(AssetPathAbs, Item.FolderPathAbs))
-		{
-			FilteredAssets.Add(Asset);
-		}
-	}
-
-	FilteredAssets.Shrink();
+	// FilteredAssets.Reserve(SubsystemPtr->GetScanData().AssetsUnused.Num());
+	//
+	// for (const auto& Asset : SubsystemPtr->GetScanData().AssetsUnused)
+	// {
+	// 	const FString AssetPathAbs = UProjectCleanerLibPath::ConvertToAbs(Asset.PackagePath.ToString());
+	// 	if (!AssetPathAbs.IsEmpty() && FPaths::IsUnderDirectory(AssetPathAbs, Item.FolderPathAbs))
+	// 	{
+	// 		FilteredAssets.Add(Asset);
+	// 	}
+	// }
+	//
+	// FilteredAssets.Shrink();
 
 	return UProjectCleanerLibAsset::GetAssetsTotalSize(FilteredAssets);
 }

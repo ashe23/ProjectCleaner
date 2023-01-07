@@ -92,19 +92,19 @@ struct FProjectCleanerScanSettings
 	GENERATED_BODY()
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="ProjectCleaner|ScanSettings", meta=(ToolTip="List of paths that must be scanned. Must be relative"))
-	TArray<FString> ScanFolders;
-
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="ProjectCleaner|ScanSettings", meta=(ToolTip="List of assets classes that must be scanned"))
-	TArray<UClass*> ScanClasses;
+	TSet<FString> ScanPaths;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="ProjectCleaner|ScanSettings", meta=(ToolTip="Paths inside Content folder that must be excluded from scanning. Must be relative."))
-	TArray<FString> ExcludeFolders;
+	TSet<FString> ExcludePaths;
+	
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="ProjectCleaner|ScanSettings", meta=(ToolTip="List of assets classes that must be scanned"))
+	TSet<UClass*> ScanClasses;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="ProjectCleaner|ScanSettings", meta=(ToolTip="Assets classes that must be excluded from scanning."))
-	TArray<UClass*> ExcludeClasses;
+	TSet<UClass*> ExcludeClasses;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="ProjectCleaner|ScanSettings", meta=(ToolTip="Specific assets that must be excluded from scanning."))
-	TArray<TSoftObjectPtr<UObject>> ExcludeAssets;
+	TSet<TSoftObjectPtr<UObject>> ExcludeAssets;
 };
 
 USTRUCT(BlueprintType)

@@ -40,10 +40,10 @@ void FFrontendFilterUsedAssets::ActiveStateChanged(bool bActive)
 bool FFrontendFilterUsedAssets::PassesFilter(const FContentBrowserItem& InItem) const
 {
 	FAssetData ItemAssetData;
-	if (InItem.Legacy_TryGetAssetData(ItemAssetData))
-	{
-		return GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>()->GetScanData().AssetsUsed.Contains(ItemAssetData);
-	}
+	// if (InItem.Legacy_TryGetAssetData(ItemAssetData))
+	// {
+	// 	return GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>()->GetScanData().AssetsUsed.Contains(ItemAssetData);
+	// }
 
 	return false;
 }
