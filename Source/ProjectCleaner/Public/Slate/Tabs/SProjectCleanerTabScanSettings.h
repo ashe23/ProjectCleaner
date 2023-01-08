@@ -16,7 +16,6 @@ public:
 		{
 		}
 
-		SLATE_ARGUMENT(const FProjectCleanerScanData*, ScanData)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);

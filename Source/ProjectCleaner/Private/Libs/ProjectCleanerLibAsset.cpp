@@ -8,12 +8,18 @@
 #include "EditorUtilityBlueprint.h"
 #include "EditorUtilityWidget.h"
 #include "EditorUtilityWidgetBlueprint.h"
+#include "FileHelpers.h"
+#include "ProjectCleaner.h"
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "Engine/AssetManager.h"
 #include "Engine/MapBuildDataRegistry.h"
 #include "Internationalization/Regex.h"
+#include "Libs/ProjectCleanerLibEditor.h"
+#include "Libs/ProjectCleanerLibFile.h"
+#include "Libs/ProjectCleanerLibPath.h"
 #include "Misc/FileHelper.h"
 #include "Misc/ScopedSlowTask.h"
+#include "Settings/ProjectCleanerSettings.h"
 
 bool UProjectCleanerLibAsset::AssetRegistryWorking()
 {
@@ -424,6 +430,73 @@ void UProjectCleanerLibAsset::GetAssetsUsed(TArray<FAssetData>& AssetsUsed)
 	AssetsUsed.Shrink();
 }
 
+void UProjectCleanerLibAsset::ProjectScan(const FProjectCleanerScanSettings& ScanSettings, FProjectCleanerScanData& ScanData)
+{
+	ScanData.Empty();
+
+	if (AssetRegistryWorking())
+	{
+		ScanData.ScanResult = EProjectCleanerScanResult::AssetRegistryWorking;
+		ScanData.ScanResultMsg = TEXT("Cant scan project because AssetRegistry still working");
+		UE_LOG(LogProjectCleaner, Error, TEXT("%s"), *ScanData.ScanResultMsg);
+
+		return;
+	}
+
+	if (UProjectCleanerLibEditor::EditorInPlayMode())
+	{
+		ScanData.ScanResult = EProjectCleanerScanResult::EditorInPlayMode;
+		ScanData.ScanResultMsg = TEXT("Cant scan project because Editor is in Play mode");
+		UE_LOG(LogProjectCleaner, Error, TEXT("%s"), *ScanData.ScanResultMsg);
+
+		return;
+	}
+
+	if (!IsRunningCommandlet())
+	{
+		GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->CloseAllAssetEditors();
+		FixupRedirectors();
+	}
+
+	if (!FEditorFileUtils::SaveDirtyPackages(false, true, true, false, false, false))
+	{
+		ScanData.ScanResult = EProjectCleanerScanResult::FailedToSaveAssets;
+		ScanData.ScanResultMsg = TEXT("Cant scan project because failed to save some assets");
+		UE_LOG(LogProjectCleaner, Error, TEXT("%s"), *ScanData.ScanResultMsg);
+
+		return;
+	}
+
+	FScopedSlowTask SlowTask{
+		6.0f,
+		FText::FromString(TEXT("Scanning project...")),
+		GIsEditor && !IsRunningCommandlet()
+	};
+	SlowTask.MakeDialog();
+
+	SlowTask.EnterProgressFrame(1.0f, FText::FromString(TEXT("Scanning Content folder...")));
+	UProjectCleanerLibFile::GetFolders(UProjectCleanerLibPath::GetFolderContent(), ScanData.FoldersAll, true);
+
+	SlowTask.EnterProgressFrame(1.0f, FText::FromString(TEXT("Searching Empty folders...")));
+	UProjectCleanerLibFile::GetFoldersEmpty(ScanData.FoldersEmpty);
+
+	SlowTask.EnterProgressFrame(1.0f, FText::FromString(TEXT("Searching Corrupted files...")));
+	UProjectCleanerLibFile::GetFilesCorrupted(ScanData.FilesCorrupted);
+
+	SlowTask.EnterProgressFrame(1.0f, FText::FromString(TEXT("Searching NonEngine files...")));
+	UProjectCleanerLibFile::GetFilesNonEngine(ScanData.FilesNonEngine);
+
+	SlowTask.EnterProgressFrame(1.0f, FText::FromString(TEXT("Searching Primary assets...")));
+	GetAssetsPrimary(ScanData.AssetsPrimary);
+
+	SlowTask.EnterProgressFrame(1.0f, FText::FromString(TEXT("Searching Indirect assets...")));
+	GetAssetsIndirect(ScanData.AssetsIndirect);
+	GetAssetsIndirectInfo(ScanData.AssetsIndirectInfo);
+
+	// SlowTask.EnterProgressFrame(1.0f, FText::FromString(TEXT("Searching Used assets...")));
+	// GetAssetsUsed(ScanData.AssetsUsed);
+}
+
 int64 UProjectCleanerLibAsset::GetAssetsTotalSize(const TArray<FAssetData>& Assets)
 {
 	int64 Size = 0;
@@ -441,6 +514,56 @@ int64 UProjectCleanerLibAsset::GetAssetsTotalSize(const TArray<FAssetData>& Asse
 	}
 
 	return Size;
+}
+
+void UProjectCleanerLibAsset::ProjectScan(const UProjectCleanerSettings* Settings, FProjectCleanerScanData& ScanData)
+{
+	if (!Settings)
+	{
+		UE_LOG(LogProjectCleaner, Error, TEXT("Invalid Settings"));
+		return;
+	}
+
+	FProjectCleanerScanSettings ScanSettings;
+
+	for (const auto& ScanPath : Settings->ScanPaths)
+	{
+		const FString PathAbs = UProjectCleanerLibPath::ConvertToAbs(ScanPath.Path);
+		if (PathAbs.IsEmpty()) continue;
+
+		ScanSettings.ScanPaths.Add(UProjectCleanerLibPath::ConvertToRel(PathAbs));
+	}
+
+	for (const auto& ExcludePath : Settings->ExcludePaths)
+	{
+		const FString PathAbs = UProjectCleanerLibPath::ConvertToAbs(ExcludePath.Path);
+		if (PathAbs.IsEmpty()) continue;
+
+		ScanSettings.ExcludePaths.Add(UProjectCleanerLibPath::ConvertToRel(PathAbs));
+	}
+
+	for (const auto& ScanClass : Settings->ScanClasses)
+	{
+		if (!ScanClass.LoadSynchronous()) continue;
+
+		ScanSettings.ScanClasses.Add(ScanClass.Get());
+	}
+
+	for (const auto& ExcludeClass : Settings->ExcludeClasses)
+	{
+		if (!ExcludeClass.LoadSynchronous()) continue;
+
+		ScanSettings.ExcludeClasses.Add(ExcludeClass.Get());
+	}
+
+	for (const auto& ExcludeAsset : Settings->ExcludeAssets)
+	{
+		if (!ExcludeAsset.LoadSynchronous()) continue;
+
+		ScanSettings.ExcludeAssets.Add(ExcludeAsset.Get());
+	}
+
+	ProjectScan(ScanSettings, ScanData);
 }
 
 void UProjectCleanerLibAsset::FixupRedirectors()

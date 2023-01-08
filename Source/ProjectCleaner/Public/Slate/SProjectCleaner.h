@@ -3,9 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "ProjectCleanerTypes.h"
 #include "Widgets/SCompoundWidget.h"
-
-class UProjectCleanerSubsystem;
 
 class SProjectCleaner final : public SCompoundWidget
 {
@@ -34,5 +33,5 @@ private:
 
 	TSharedPtr<FTabManager> TabManager;
 	TSharedPtr<FTabManager::FLayout> TabLayout;
-	UProjectCleanerSubsystem* SubsystemPtr = nullptr;
+	FProjectCleanerScanData ScanData;
 };

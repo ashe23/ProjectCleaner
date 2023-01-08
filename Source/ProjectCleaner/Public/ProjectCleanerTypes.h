@@ -13,6 +13,24 @@ enum class EProjectCleanerCleanupMethod : uint8
 	Full UMETA(ToolTip="Remove both unused assets and empty folders")
 };
 
+USTRUCT(BlueprintType)
+struct FProjectCleanerAssetSearchFilter
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, Category="ProjectCleaner")
+	TSet<FString> ScanPaths;
+
+	UPROPERTY(EditAnywhere, Category="ProjectCleaner")
+	TSet<FString> ExcludePaths;
+
+	void Empty()
+	{
+		ScanPaths.Empty();
+		ExcludePaths.Empty();
+	}
+};
+
 UENUM(BlueprintType)
 enum class EProjectCleanerScanResult : uint8
 {
@@ -20,8 +38,8 @@ enum class EProjectCleanerScanResult : uint8
 	Success,
 	AssetRegistryWorking,
 	EditorInPlayMode,
-	ScanningInProgress,
-	CleaningInProgress,
+	// ScanningInProgress,
+	// CleaningInProgress,
 	FailedToSaveAssets
 };
 
@@ -96,7 +114,7 @@ struct FProjectCleanerScanSettings
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="ProjectCleaner|ScanSettings", meta=(ToolTip="Paths inside Content folder that must be excluded from scanning. Must be relative."))
 	TSet<FString> ExcludePaths;
-	
+
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="ProjectCleaner|ScanSettings", meta=(ToolTip="List of assets classes that must be scanned"))
 	TSet<UClass*> ScanClasses;
 

@@ -3,9 +3,11 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "ProjectCleanerTypes.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "ProjectCleanerLibAsset.generated.h"
 
+class UProjectCleanerSettings;
 struct FProjectCleanerIndirectAssetInfo;
 struct FProjectCleanerScanSettings;
 
@@ -45,6 +47,9 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner|Lib|Asset", meta=(ToolTip="Returns all used assets in project"))
 	static void GetAssetsUsed(TArray<FAssetData>& AssetsUsed);
 
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner|Lib|Asset", meta=(ToolTip="Scans project based on given settings"))
+	static void ProjectScan(const FProjectCleanerScanSettings& ScanSettings, FProjectCleanerScanData& ScanData);
+
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner|Lib|Asset", meta=(ToolTip="Returns total disk size of given assets"))
 	static int64 GetAssetsTotalSize(const TArray<FAssetData>& Assets);
 
@@ -52,6 +57,8 @@ public:
 	// static bool AssetIsIndirect(const FAssetData AssetData, const TArray<FAssetData>& IndirectAssets);
 	// static bool AssetIsExcluded(const FAssetData AssetData, const FProjectCleanerScanSettings& ScanSettings);
 
+	// This is same version , just intended for UI queries, based on CleanerSettings
+	static void ProjectScan(const UProjectCleanerSettings* Settings, FProjectCleanerScanData& ScanData);
 	static void FixupRedirectors();
 
 private:

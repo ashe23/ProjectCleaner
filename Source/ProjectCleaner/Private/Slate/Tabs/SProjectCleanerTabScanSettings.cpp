@@ -12,11 +12,6 @@
 
 void SProjectCleanerTabScanSettings::Construct(const FArguments& InArgs)
 {
-	if (InArgs._ScanData)
-	{
-		ScanData = *InArgs._ScanData;
-	}
-
 	// if (!GEditor) return;
 	// SubsystemPtr = GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>();
 	// if (!SubsystemPtr) return;
