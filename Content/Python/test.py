@@ -50,23 +50,29 @@ import unreal
 # Developers folder or any folder under it
 # Collections folder
 
+def sizeof_fmt(num, suffix="B"):
+    for unit in ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"]:
+        if abs(num) < 1024.0:
+            return f"{num:3.1f}{unit}{suffix}"
+        num /= 1024.0
+    return f"{num:.1f}Yi{suffix}"
 
 subsystem = unreal.get_editor_subsystem(unreal.ProjectCleanerSubsystem)
 
-assets = subsystem.get_assets_by_path(["/Game/AnimStarterPack"], False)
-assets_rec = subsystem.get_assets_by_path(["/Game/AnimStarterPack"], True)
+unreal.log(subsystem.get_path_content_folder())
+unreal.log(subsystem.get_path_developers_folder())
+unreal.log(subsystem.get_path_collections_folder())
+unreal.log(subsystem.get_path_developers_user_folder())
+unreal.log(subsystem.get_path_collections_user_folder())
 
-unreal.log(len(assets))
-unreal.log(len(assets_rec))
 
+# get all unused materials and textures
+# search_settings.class_names.add("Material")
+# search_settings.class_names.add("Texture")
+# search_settings.path.add("/Game")
 
-# scan_data = subsystem.project_scan()
-# subsystem.remove_unused_assets()
-# subsystem.remove_empty_folders()
-# unreal.log(len(scan_data.assets_all))
-
-# assets = unreal.ProjectCleanerLibAsset.get_assets_indirect_info()
-
-# for asset in assets:
-    # print(asset.asset_data.object_path)
-    # print(asset.file_path)
+# get all unused assets excluded Materials and Textures
+# search_settings.exclude_class_names.add("Material")
+# search_settings.exclude_class_names.add("Texture")
+# search_settings.path.add("/Game")
+# subsystem.get_assets_unused(search_settings)

@@ -303,26 +303,26 @@ TSharedPtr<FProjectCleanerTreeViewItem> SProjectCleanerTreeView::ItemCreate(cons
 	TSharedPtr<FProjectCleanerTreeViewItem> TreeItem = MakeShareable(new FProjectCleanerTreeViewItem());
 	if (!TreeItem.IsValid()) return {};
 
-	TreeItem->FolderPathAbs = UProjectCleanerLibPath::ConvertToAbs(InFolderPathAbs);
-	if (TreeItem->FolderPathAbs.IsEmpty()) return {};
-
-	TreeItem->FolderPathRel = UProjectCleanerLibPath::ConvertToRel(TreeItem->FolderPathAbs);
-	TreeItem->FolderName = FPaths::GetPathLeaf(TreeItem->FolderPathAbs);
-	TreeItem->FoldersTotal = GetFoldersTotalNum(*TreeItem);
-	TreeItem->FoldersEmpty = GetFoldersEmptyNum(*TreeItem);
-	TreeItem->AssetsTotal = GetAssetsTotalNum(*TreeItem);
-	TreeItem->AssetsUnused = GetAssetsUnusedNum(*TreeItem);
-	TreeItem->SizeTotal = GetSizeTotal(*TreeItem);
-	TreeItem->SizeUnused = GetSizeUnused(*TreeItem);
-	TreeItem->bRoot = TreeItem->FolderPathAbs.Equals(UProjectCleanerLibPath::GetFolderContent());
-	TreeItem->bDevFolder = TreeItem->FolderPathAbs.Equals(UProjectCleanerLibPath::GetFolderDevelopers());
-	TreeItem->bExpanded = ItemIsExpanded(*TreeItem);
-	TreeItem->bEngineGenerated = UProjectCleanerLibFile::FolderIsEngineGenerated(TreeItem->FolderPathAbs);
-	// TreeItem->bEmpty = SubsystemPtr->GetScanData().FoldersEmpty.Contains(TreeItem->FolderPathAbs);
-	TreeItem->bExcluded = UProjectCleanerLibFile::FolderIsExcluded(InFolderPathAbs);
-	TreeItem->bVisible = ItemIsVisible(*TreeItem);
-	TreeItem->PercentUnused = TreeItem->AssetsTotal == 0 ? 0.0f : TreeItem->AssetsUnused * 100.0f / TreeItem->AssetsTotal;
-	TreeItem->PercentUnusedNormalized = FMath::GetMappedRangeValueClamped(FVector2D{0.0f, 100.0f}, FVector2D{0.0f, 1.0f}, TreeItem->PercentUnused);
+	// TreeItem->FolderPathAbs = UProjectCleanerLibPath::ConvertToAbs(InFolderPathAbs);
+	// if (TreeItem->FolderPathAbs.IsEmpty()) return {};
+	//
+	// TreeItem->FolderPathRel = UProjectCleanerLibPath::ConvertToRel(TreeItem->FolderPathAbs);
+	// TreeItem->FolderName = FPaths::GetPathLeaf(TreeItem->FolderPathAbs);
+	// TreeItem->FoldersTotal = GetFoldersTotalNum(*TreeItem);
+	// TreeItem->FoldersEmpty = GetFoldersEmptyNum(*TreeItem);
+	// TreeItem->AssetsTotal = GetAssetsTotalNum(*TreeItem);
+	// TreeItem->AssetsUnused = GetAssetsUnusedNum(*TreeItem);
+	// TreeItem->SizeTotal = GetSizeTotal(*TreeItem);
+	// TreeItem->SizeUnused = GetSizeUnused(*TreeItem);
+	// TreeItem->bRoot = TreeItem->FolderPathAbs.Equals(UProjectCleanerLibPath::GetFolderContent());
+	// TreeItem->bDevFolder = TreeItem->FolderPathAbs.Equals(UProjectCleanerLibPath::GetFolderDevelopers());
+	// TreeItem->bExpanded = ItemIsExpanded(*TreeItem);
+	// TreeItem->bEngineGenerated = UProjectCleanerLibFile::FolderIsEngineGenerated(TreeItem->FolderPathAbs);
+	// // TreeItem->bEmpty = SubsystemPtr->GetScanData().FoldersEmpty.Contains(TreeItem->FolderPathAbs);
+	// TreeItem->bExcluded = UProjectCleanerLibFile::FolderIsExcluded(InFolderPathAbs);
+	// TreeItem->bVisible = ItemIsVisible(*TreeItem);
+	// TreeItem->PercentUnused = TreeItem->AssetsTotal == 0 ? 0.0f : TreeItem->AssetsUnused * 100.0f / TreeItem->AssetsTotal;
+	// TreeItem->PercentUnusedNormalized = FMath::GetMappedRangeValueClamped(FVector2D{0.0f, 100.0f}, FVector2D{0.0f, 1.0f}, TreeItem->PercentUnused);
 
 	return TreeItem;
 }
@@ -792,7 +792,8 @@ int64 SProjectCleanerTreeView::GetSizeTotal(const FProjectCleanerTreeViewItem& I
 	//
 	// FilteredAssets.Shrink();
 
-	return UProjectCleanerLibAsset::GetAssetsTotalSize(FilteredAssets);
+	return 0;
+	// return UProjectCleanerLibAsset::GetAssetsTotalSize(FilteredAssets);
 }
 
 int64 SProjectCleanerTreeView::GetSizeUnused(const FProjectCleanerTreeViewItem& Item) const
@@ -811,7 +812,8 @@ int64 SProjectCleanerTreeView::GetSizeUnused(const FProjectCleanerTreeViewItem& 
 	//
 	// FilteredAssets.Shrink();
 
-	return UProjectCleanerLibAsset::GetAssetsTotalSize(FilteredAssets);
+	return 0;
+	// return UProjectCleanerLibAsset::GetAssetsTotalSize(FilteredAssets);
 }
 
 bool SProjectCleanerTreeView::WidgetEnabled() const

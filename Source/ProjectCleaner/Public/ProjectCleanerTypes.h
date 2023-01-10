@@ -13,21 +13,42 @@ enum class EProjectCleanerCleanupMethod : uint8
 	Full UMETA(ToolTip="Remove both unused assets and empty folders")
 };
 
+UENUM(BlueprintType)
+enum class EProjectCleanerModalState : uint8
+{
+	None UMETA(DisplayName = "None"),
+	OK UMETA(DisplayName = "OK"),
+	Pending UMETA(DisplayName = "Pending"),
+	Error UMETA(DisplayName = "Error"),
+};
+
 USTRUCT(BlueprintType)
 struct FProjectCleanerAssetSearchFilter
 {
 	GENERATED_BODY()
 
 	UPROPERTY(EditAnywhere, Category="ProjectCleaner")
-	TSet<FString> ScanPaths;
+	TArray<FString> ScanPaths;
 
 	UPROPERTY(EditAnywhere, Category="ProjectCleaner")
-	TSet<FString> ExcludePaths;
+	TArray<FString> ExcludePaths;
+
+	UPROPERTY(EditAnywhere, Category="ProjectCleaner")
+	TArray<TSoftClassPtr<UObject>> ScanClasses;
+
+	UPROPERTY(EditAnywhere, Category="ProjectCleaner")
+	TArray<TSoftClassPtr<UObject>> ExcludeClasses;
+
+	UPROPERTY(EditAnywhere, Category="ProjectCleaner")
+	TArray<TSoftClassPtr<UObject>> ExcludeAssets;
 
 	void Empty()
 	{
 		ScanPaths.Empty();
 		ExcludePaths.Empty();
+		ScanClasses.Empty();
+		ExcludeClasses.Empty();
+		ExcludeAssets.Empty();
 	}
 };
 

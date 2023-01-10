@@ -193,16 +193,16 @@ void SProjectCleanerTabScanInfo::CommandsRegister()
 			{
 				if (!SubsystemPtr) return;
 
-				const auto& SelectedItems = AssetBrowserDelegateSelection.Execute();
-				for (const auto& Asset : SelectedItems)
-				{
-					const FString FolderPathAbs = UProjectCleanerLibPath::ConvertToAbs(Asset.PackagePath.ToString());
-
-					if (!FolderPathAbs.IsEmpty() && FPaths::DirectoryExists(FolderPathAbs))
-					{
-						FPlatformProcess::ExploreFolder(*FolderPathAbs);
-					}
-				}
+				// const auto& SelectedItems = AssetBrowserDelegateSelection.Execute();
+				// for (const auto& Asset : SelectedItems)
+				// {
+				// 	const FString FolderPathAbs = UProjectCleanerLibPath::ConvertToAbs(Asset.PackagePath.ToString());
+				//
+				// 	if (!FolderPathAbs.IsEmpty() && FPaths::DirectoryExists(FolderPathAbs))
+				// 	{
+				// 		FPlatformProcess::ExploreFolder(*FolderPathAbs);
+				// 	}
+				// }
 			}),
 			FCanExecuteAction::CreateLambda([&]
 			{
@@ -254,22 +254,22 @@ void SProjectCleanerTabScanInfo::CommandsRegister()
 			{
 				if (!SubsystemPtr) return;
 				
-				UProjectCleanerExcludeSettings* ExcludeSettings = GetMutableDefault<UProjectCleanerExcludeSettings>();
-				if (!ExcludeSettings) return;
-				
-				const auto SelectedItems = AssetBrowserDelegateSelection.Execute();
-				for (const auto& SelectedItem : SelectedItems)
-				{
-					if (!SelectedItem.IsValid()) continue;
-					if (!SelectedItem.GetAsset()) continue;
-				
-					const UClass* AssetClass = UProjectCleanerLibAsset::GetAssetClass(SelectedItem);
-					if (!AssetClass) continue;
-				
-					ExcludeSettings->ExcludedClasses.AddUnique(AssetClass);
-				}
-				
-				ExcludeSettings->PostEditChange();
+				// UProjectCleanerExcludeSettings* ExcludeSettings = GetMutableDefault<UProjectCleanerExcludeSettings>();
+				// if (!ExcludeSettings) return;
+				//
+				// const auto SelectedItems = AssetBrowserDelegateSelection.Execute();
+				// for (const auto& SelectedItem : SelectedItems)
+				// {
+				// 	if (!SelectedItem.IsValid()) continue;
+				// 	if (!SelectedItem.GetAsset()) continue;
+				//
+				// 	const UClass* AssetClass = UProjectCleanerLibAsset::GetAssetClass(SelectedItem);
+				// 	if (!AssetClass) continue;
+				//
+				// 	ExcludeSettings->ExcludedClasses.AddUnique(AssetClass);
+				// }
+				//
+				// ExcludeSettings->PostEditChange();
 				
 				// SubsystemPtr->ProjectScan();
 			}),

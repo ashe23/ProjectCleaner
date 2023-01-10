@@ -127,30 +127,31 @@ SProjectCleaner::~SProjectCleaner()
 
 bool SProjectCleaner::WidgetEnabled()
 {
-	return !(UProjectCleanerLibAsset::AssetRegistryWorking() && UProjectCleanerLibEditor::EditorInPlayMode());
+	return false;
+	// return !(UProjectCleanerLibAsset::AssetRegistryWorking() && UProjectCleanerLibEditor::EditorInPlayMode());
 }
 
 int32 SProjectCleaner::WidgetGetIndex()
 {
-	if (UProjectCleanerLibAsset::AssetRegistryWorking() || UProjectCleanerLibEditor::EditorInPlayMode())
-	{
-		return ProjectCleanerConstants::WidgetIndexWorking;
-	}
+	// if (UProjectCleanerLibAsset::AssetRegistryWorking() || UProjectCleanerLibEditor::EditorInPlayMode())
+	// {
+	// 	return ProjectCleanerConstants::WidgetIndexWorking;
+	// }
 
 	return ProjectCleanerConstants::WidgetIndexIdle;
 }
 
 FText SProjectCleaner::WidgetText() const
 {
-	if (UProjectCleanerLibAsset::AssetRegistryWorking())
-	{
-		return FText::FromString(TEXT("The AssetRegistry is still working. Please wait for the scan to finish"));
-	}
-
-	if (UProjectCleanerLibEditor::EditorInPlayMode())
-	{
-		return FText::FromString(TEXT("Please stop play mode in the editor before doing any operations in the plugin."));
-	}
+	// if (UProjectCleanerLibAsset::AssetRegistryWorking())
+	// {
+	// 	return FText::FromString(TEXT("The AssetRegistry is still working. Please wait for the scan to finish"));
+	// }
+	//
+	// if (UProjectCleanerLibEditor::EditorInPlayMode())
+	// {
+	// 	return FText::FromString(TEXT("Please stop play mode in the editor before doing any operations in the plugin."));
+	// }
 
 	return FText::FromString(TEXT(""));
 }
