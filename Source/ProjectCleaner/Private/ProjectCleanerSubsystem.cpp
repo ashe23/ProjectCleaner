@@ -435,7 +435,7 @@ void UProjectCleanerSubsystem::GetAssetsUnused(TArray<FAssetData>& AssetsUnused)
 
 	FScopedSlowTask SlowTaskUnused{
 		static_cast<float>(AssetsAll.Num()),
-		FText::FromString(TEXT("Checking")),
+		FText::FromString(TEXT(" ")),
 		GIsEditor && !IsRunningCommandlet()
 	};
 	SlowTaskUnused.MakeDialog();
@@ -632,6 +632,69 @@ void UProjectCleanerSubsystem::GetFilesNonEngine(TArray<FString>& FilesNonEngine
 	FilesNonEngine.Shrink();
 }
 
+void UProjectCleanerSubsystem::GetFolders(const FString& InPath, TArray<FString>& Folders, const bool bRecursive)
+{
+	Folders.Empty();
+
+	const FString PathAbs = PathConvertToAbs(InPath);
+	if (PathAbs.IsEmpty()) return;
+
+	if (bRecursive)
+	{
+		IFileManager::Get().FindFilesRecursive(Folders, *PathAbs, TEXT("*.*"), false, true);
+	}
+	else
+	{
+		TArray<FString> FoldersAll;
+		IFileManager::Get().FindFiles(FoldersAll, *(PathAbs / TEXT("*")), false, true);
+
+		Folders.Reserve(FoldersAll.Num());
+		for (const auto& Folder : FoldersAll)
+		{
+			Folders.AddUnique(PathAbs / Folder);
+		}
+	}
+}
+
+void UProjectCleanerSubsystem::GetFoldersEmpty(const FString& InPath, TArray<FString>& FoldersEmpty)
+{
+	const FString PathAbs = PathConvertToAbs(InPath);
+	if (PathAbs.IsEmpty()) return;
+	
+	FScopedSlowTask SlowTask{
+		1,
+		FText::FromString(TEXT("Searching empty folders...")),
+		GIsEditor && !IsRunningCommandlet()
+	};
+	SlowTask.MakeDialog();
+
+	SlowTask.EnterProgressFrame(1.0f);
+	
+	TArray<FString> FoldersAll;
+	IFileManager::Get().FindFilesRecursive(FoldersAll, *PathAbs, TEXT("*.*"), false, true);
+
+	FoldersEmpty.Empty();
+	FoldersEmpty.Reserve(FoldersAll.Num());
+
+	FScopedSlowTask SlowTaskEmptyFolders{
+		static_cast<float>(FoldersAll.Num()),
+		FText::FromString(TEXT(" ")),
+		GIsEditor && !IsRunningCommandlet()
+	};
+	SlowTaskEmptyFolders.MakeDialog();
+	
+	for (const auto& Folder : FoldersAll)
+	{
+		SlowTaskEmptyFolders.EnterProgressFrame(1.0f, FText::FromString(Folder));
+		
+		if (!FolderIsEmpty(Folder)) continue;
+		
+		FoldersEmpty.Add(Folder);
+	}
+
+	FoldersEmpty.Shrink();
+}
+
 int64 UProjectCleanerSubsystem::GetFilesTotalSize(const TArray<FString>& Files)
 {
 	if (Files.Num() == 0) return 0;
@@ -668,6 +731,46 @@ bool UProjectCleanerSubsystem::AssetIsBlueprint(const FAssetData& AssetData)
 	return AssetData.AssetClass.IsEqual(UBlueprint::StaticClass()->GetFName());
 }
 
+bool UProjectCleanerSubsystem::AssetIsUsed(const FAssetData& AssetData) const
+{
+	if (!AssetData.IsValid()) return false;
+
+	TArray<FAssetData> AssetsUsed;
+	GetAssetsUsed(AssetsUsed);
+
+	return AssetsUsed.Contains(AssetData);
+}
+
+bool UProjectCleanerSubsystem::AssetIsUnused(const FAssetData& AssetData) const
+{
+	if (!AssetData.IsValid()) return false;
+
+	TArray<FAssetData> AssetsUnused;
+	GetAssetsUnused(AssetsUnused);
+
+	return AssetsUnused.Contains(AssetData);
+}
+
+bool UProjectCleanerSubsystem::AssetIsPrimary(const FAssetData& AssetData) const
+{
+	if (!AssetData.IsValid()) return false;
+
+	TArray<FAssetData> AssetsPrimary;
+	GetAssetsPrimary(AssetsPrimary);
+
+	return AssetsPrimary.Contains(AssetData);
+}
+
+bool UProjectCleanerSubsystem::AssetIsIndirect(const FAssetData& AssetData) const
+{
+	if (!AssetData.IsValid()) return false;
+
+	TArray<FAssetData> AssetsIndirect;
+	GetAssetsIndirect(AssetsIndirect);
+
+	return AssetsIndirect.Contains(AssetData);
+}
+
 bool UProjectCleanerSubsystem::FileIsCorrupted(const FString& FilePathAbs) const
 {
 	if (!FPaths::FileExists(FilePathAbs)) return false;
@@ -697,6 +800,17 @@ bool UProjectCleanerSubsystem::FileIsNonEngine(const FString& FilePathAbs) const
 	EngineExtensions.Add(TEXT("collection"));
 
 	return !EngineExtensions.Contains(Extension);
+}
+
+bool UProjectCleanerSubsystem::FolderIsEmpty(const FString& FolderPath)
+{
+	if (FolderPath.IsEmpty()) return false;
+	if (!FPaths::DirectoryExists(FolderPath)) return false;
+
+	TArray<FString> Files;
+	IFileManager::Get().FindFilesRecursive(Files, *FolderPath, TEXT("*.*"), true, false);
+
+	return Files.Num() == 0;
 }
 
 FString UProjectCleanerSubsystem::PathNormalize(const FString& InPath)

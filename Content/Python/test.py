@@ -59,11 +59,10 @@ def sizeof_fmt(num, suffix="B"):
 
 subsystem = unreal.get_editor_subsystem(unreal.ProjectCleanerSubsystem)
 
-unreal.log(subsystem.get_path_content_folder())
-unreal.log(subsystem.get_path_developers_folder())
-unreal.log(subsystem.get_path_collections_folder())
-unreal.log(subsystem.get_path_developers_user_folder())
-unreal.log(subsystem.get_path_collections_user_folder())
+# unreal.log(subsystem.path_convert_to_rel("/Game"))
+folders = subsystem.get_folders_empty("/Game/StarterContent")
+for folder in folders:
+    unreal.log(folder)
 
 
 # get all unused materials and textures

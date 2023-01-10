@@ -7,7 +7,6 @@
 #include "Widgets/Notifications/SNotificationList.h"
 #include "ProjectCleanerSubsystem.generated.h"
 
-struct FProjectCleanerPath;
 class FAssetRegistryModule;
 class FAssetToolsModule;
 
@@ -58,7 +57,13 @@ public:
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Returns all non engine files"))
 	void GetFilesNonEngine(TArray<FString>& FilesNonEngine) const;
-	
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(Tooltip="Returns subfolders under given path"))
+	static void GetFolders(const FString& InPath, TArray<FString>& Folders, const bool bRecursive);
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(Tooltip="Returns all empty folder under given path"))
+	static void GetFoldersEmpty(const FString& InPath, TArray<FString>& FoldersEmpty);
+
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Returns total size of given files"))
 	static int64 GetFilesTotalSize(const TArray<FString>& Files);
 
@@ -68,11 +73,26 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Checks if given asset is blueprint"))
 	static bool AssetIsBlueprint(const FAssetData& AssetData);
 
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Checks if given asset is used"))
+	bool AssetIsUsed(const FAssetData& AssetData) const;
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Checks if given asset is unused"))
+	bool AssetIsUnused(const FAssetData& AssetData) const;
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Checks if given asset is primary"))
+	bool AssetIsPrimary(const FAssetData& AssetData) const;
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Checks if given asset is indirect"))
+	bool AssetIsIndirect(const FAssetData& AssetData) const;
+
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Checks if given file is corrupted engine file"))
 	bool FileIsCorrupted(const FString& FilePathAbs) const;
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Checks if given file is non engine"))
 	bool FileIsNonEngine(const FString& FilePathAbs) const;
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Checks if folder is empty"))
+	static bool FolderIsEmpty(const FString& FolderPath);
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner|Path", meta=(ToolTip="Returns normalized file or directory path"))
 	static FString PathNormalize(const FString& InPath);
