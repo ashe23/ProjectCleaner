@@ -14,6 +14,9 @@ import unreal
 # get_assets_unused
 # get_assets_dependencies
 # get_assets_referencers
+# get_assets_by_filter
+# get_assets_used_by_filter
+# get_assets_unused_by_filter
 # get_files_corrupted
 # get_files_non_engine
 # ---------------
@@ -59,10 +62,22 @@ def sizeof_fmt(num, suffix="B"):
 
 subsystem = unreal.get_editor_subsystem(unreal.ProjectCleanerSubsystem)
 
-# unreal.log(subsystem.path_convert_to_rel("/Game"))
-folders = subsystem.get_folders_empty("/Game/StarterContent")
-for folder in folders:
-    unreal.log(folder)
+search_filter = unreal.ProjectCleanerAssetSearchFilter()
+search_filter.recursive_paths = True
+search_filter.recursive_classes = False
+# search_filter.scan_paths = ["/Game/StarterContent/Blueprints"]
+search_filter.scan_class_names = ["BP_Parent_Actor_C"]
+search_filter.exclude_class_names = ["BP_Child_Actor_C", "BP_Parent_Actor_C"]
+# search_filter.scan_class_names = ["Blueprint_Effect_Fire_C"]
+# search_filter.exclude_paths = ["/Game/StarterContent/Props"]
+
+
+assets = subsystem.get_assets_by_filter(search_filter)
+unreal.log(len(assets))
+
+# folders = subsystem.get_folders_empty("/Game/StarterContent")
+# for folder in folders:
+#     unreal.log(folder)
 
 
 # get all unused materials and textures

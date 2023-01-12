@@ -27,28 +27,34 @@ struct FProjectCleanerAssetSearchFilter
 {
 	GENERATED_BODY()
 
-	UPROPERTY(EditAnywhere, Category="ProjectCleaner")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ProjectCleaner", meta=(ToolTip="Whether scan paths recursive or not"))
+	bool bRecursivePaths = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ProjectCleaner", meta=(ToolTip="Whether scan classes recursive or not"))
+	bool bRecursiveClasses = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ProjectCleaner")
 	TArray<FString> ScanPaths;
 
-	UPROPERTY(EditAnywhere, Category="ProjectCleaner")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ProjectCleaner")
 	TArray<FString> ExcludePaths;
 
-	UPROPERTY(EditAnywhere, Category="ProjectCleaner")
-	TArray<TSoftClassPtr<UObject>> ScanClasses;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ProjectCleaner")
+	TArray<FString> ScanClassNames;
 
-	UPROPERTY(EditAnywhere, Category="ProjectCleaner")
-	TArray<TSoftClassPtr<UObject>> ExcludeClasses;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ProjectCleaner")
+	TArray<FString> ExcludeClassNames;
 
-	UPROPERTY(EditAnywhere, Category="ProjectCleaner")
-	TArray<TSoftClassPtr<UObject>> ExcludeAssets;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ProjectCleaner")
+	TArray<FString> ExcludeAssetObjectPaths;
 
 	void Empty()
 	{
 		ScanPaths.Empty();
 		ExcludePaths.Empty();
-		ScanClasses.Empty();
-		ExcludeClasses.Empty();
-		ExcludeAssets.Empty();
+		ScanClassNames.Empty();
+		ExcludeClassNames.Empty();
+		ExcludeAssetObjectPaths.Empty();
 	}
 };
 

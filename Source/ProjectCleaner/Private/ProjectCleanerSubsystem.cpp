@@ -25,6 +25,7 @@
 // #include "Libs/ProjectCleanerLibFile.h"
 // #include "Libs/ProjectCleanerLibNotification.h"
 // #include "Libs/ProjectCleanerLibPath.h"
+#include "ProjectCleaner.h"
 #include "Misc/FileHelper.h"
 
 UProjectCleanerSubsystem::UProjectCleanerSubsystem()
@@ -53,6 +54,35 @@ void UProjectCleanerSubsystem::PostEditChangeProperty(FPropertyChangedEvent& Pro
 	SaveConfig();
 }
 #endif
+
+void UProjectCleanerSubsystem::Test(const FProjectCleanerAssetSearchFilter& SearchFilter) const
+{
+	FARFilter Filter;
+	for (const auto& ScanClassName : SearchFilter.ScanClassNames)
+	{
+		Filter.ClassNames.Add(FName{*ScanClassName});
+	}
+
+	TArray<FAssetData> Assets;
+	ModuleAssetRegistry->Get().GetAssets(Filter, Assets);
+	
+	// TArray<FName> InClassNames;
+	// for (const auto& ClassName : SearchFilter.ScanClassNames)
+	// {
+	// 	InClassNames.Add(FName{*ClassName});
+	// }
+	//
+	// TSet<FName> ExcludeClassNames;
+	// for (const auto& ExcludeClassName : SearchFilter.ExcludeClassNames)
+	// {
+	// 	ExcludeClassNames.Add(FName{*ExcludeClassName});
+	// }
+	//
+	// TSet<FName> DerivedClassNames;
+	// ModuleAssetRegistry->Get().GetDerivedClassNames(InClassNames, ExcludeClassNames, DerivedClassNames);
+
+	return;
+}
 
 void UProjectCleanerSubsystem::GetAssetsAll(TArray<FAssetData>& Assets) const
 {
@@ -452,6 +482,111 @@ void UProjectCleanerSubsystem::GetAssetsUnused(TArray<FAssetData>& AssetsUnused)
 	AssetsUnused.Shrink();
 }
 
+void UProjectCleanerSubsystem::GetAssetsByFilter(TArray<FAssetData>& Assets, const FProjectCleanerAssetSearchFilter& SearchFilter) const
+{
+	FARFilter FilterPath;
+	FilterPath.bRecursivePaths = SearchFilter.bRecursivePaths;
+
+	for (const auto& ScanPath : SearchFilter.ScanPaths)
+	{
+		const FString PathRel = PathConvertToRel(ScanPath);
+		if (PathRel.IsEmpty()) continue;
+
+		FilterPath.PackagePaths.AddUnique(FName{*PathRel});
+	}
+
+	if (FilterPath.PackagePaths.Num() == 0)
+	{
+		FilterPath.PackagePaths.Add(ProjectCleanerConstants::PathRelRoot);
+	}
+
+	TArray<FAssetData> AssetsFilteredByPath;
+	ModuleAssetRegistry->Get().GetAssets(FilterPath, AssetsFilteredByPath);
+
+
+	// exclude assets by path
+	FARFilter FilterExcludePath;
+	FilterExcludePath.bRecursivePaths = true;
+
+	for (const auto& ExcludePath : SearchFilter.ExcludePaths)
+	{
+		const FString PathRel = PathConvertToRel(ExcludePath);
+		if (PathRel.IsEmpty()) continue;
+
+		FilterExcludePath.PackagePaths.AddUnique(FName{*PathRel});
+	}
+
+	if (FilterExcludePath.PackagePaths.Num() != 0)
+	{
+		ModuleAssetRegistry->Get().UseFilterToExcludeAssets(AssetsFilteredByPath, FilterExcludePath);
+	}
+
+	// exclude assets by object path
+	if (SearchFilter.ExcludeAssetObjectPaths.Num() > 0)
+	{
+		FARFilter FilterObjectPath;
+		for (const auto& ObjectPath : SearchFilter.ExcludeAssetObjectPaths)
+		{
+			if (!ModuleAssetRegistry->Get().GetAssetByObjectPath(FName{*ObjectPath}).IsValid()) continue;
+
+			FilterObjectPath.ObjectPaths.Add(FName{*ObjectPath});
+		}
+
+		if (FilterObjectPath.ObjectPaths.Num() > 0)
+		{
+			ModuleAssetRegistry->Get().UseFilterToExcludeAssets(AssetsFilteredByPath, FilterObjectPath);
+		}
+	}
+
+	// exclude assets by class
+	Assets.Empty();
+	Assets.Reserve(AssetsFilteredByPath.Num());
+
+	TArray<FName> ClassNamesScan;
+	TSet<FName> ClassNamesExclude;
+	TSet<FName> ClassNamesAllowed;
+	
+	ClassNamesScan.Reserve(SearchFilter.ScanClassNames.Num());
+	for (const auto& ScanClassName : SearchFilter.ScanClassNames)
+	{
+		ClassNamesScan.Add(FName{*ScanClassName});	
+	}
+
+	ClassNamesExclude.Reserve(SearchFilter.ExcludeClassNames.Num());
+	for (const auto& ExcludeClassName : SearchFilter.ExcludeClassNames)
+	{
+		ClassNamesExclude.Add(FName{*ExcludeClassName});
+	}
+	
+	if (SearchFilter.bRecursiveClasses)
+	{
+		ClassNamesAllowed.Reserve(ClassNamesScan.Num() + ClassNamesExclude.Num());
+		ModuleAssetRegistry->Get().GetDerivedClassNames(ClassNamesScan, ClassNamesExclude, ClassNamesAllowed);
+	}
+	else
+	{
+		for (const auto& ClassName : ClassNamesScan)
+		{
+			if (ClassNamesExclude.Contains(ClassName)) continue;
+			
+			ClassNamesAllowed.Add(ClassName);
+		}
+	}
+
+	// todo:ashe23 check correctly allowed classes num
+
+	for (const auto& Asset : AssetsFilteredByPath)
+	{
+		const FString AssetClassName = GetAssetClassName(Asset);
+
+		if (!ClassNamesAllowed.Contains(FName{*AssetClassName})) continue;
+
+		Assets.Add(Asset);
+	}
+
+	Assets.Shrink();
+}
+
 void UProjectCleanerSubsystem::GetAssetsDependencies(const TArray<FAssetData>& Assets, TArray<FAssetData>& Dependencies) const
 {
 	Dependencies.Empty();
@@ -660,7 +795,7 @@ void UProjectCleanerSubsystem::GetFoldersEmpty(const FString& InPath, TArray<FSt
 {
 	const FString PathAbs = PathConvertToAbs(InPath);
 	if (PathAbs.IsEmpty()) return;
-	
+
 	FScopedSlowTask SlowTask{
 		1,
 		FText::FromString(TEXT("Searching empty folders...")),
@@ -669,7 +804,7 @@ void UProjectCleanerSubsystem::GetFoldersEmpty(const FString& InPath, TArray<FSt
 	SlowTask.MakeDialog();
 
 	SlowTask.EnterProgressFrame(1.0f);
-	
+
 	TArray<FString> FoldersAll;
 	IFileManager::Get().FindFilesRecursive(FoldersAll, *PathAbs, TEXT("*.*"), false, true);
 
@@ -682,13 +817,13 @@ void UProjectCleanerSubsystem::GetFoldersEmpty(const FString& InPath, TArray<FSt
 		GIsEditor && !IsRunningCommandlet()
 	};
 	SlowTaskEmptyFolders.MakeDialog();
-	
+
 	for (const auto& Folder : FoldersAll)
 	{
 		SlowTaskEmptyFolders.EnterProgressFrame(1.0f, FText::FromString(Folder));
-		
+
 		if (!FolderIsEmpty(Folder)) continue;
-		
+
 		FoldersEmpty.Add(Folder);
 	}
 
@@ -726,7 +861,7 @@ FString UProjectCleanerSubsystem::GetAssetClassName(const FAssetData& AssetData)
 
 bool UProjectCleanerSubsystem::AssetIsBlueprint(const FAssetData& AssetData)
 {
-	if (AssetData.IsValid()) return false;
+	if (!AssetData.IsValid()) return false;
 
 	return AssetData.AssetClass.IsEqual(UBlueprint::StaticClass()->GetFName());
 }

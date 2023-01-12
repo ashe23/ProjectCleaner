@@ -25,6 +25,9 @@ public:
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif
 
+	UFUNCTION(BlueprintCallable, Category="ProjectCleaner")
+	void Test(const FProjectCleanerAssetSearchFilter& SearchFilter) const;
+
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Returns all assets in project"))
 	void GetAssetsAll(TArray<FAssetData>& Assets) const;
 
@@ -42,6 +45,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Returns all unused assets in project"))
 	void GetAssetsUnused(TArray<FAssetData>& AssetsUnused) const;
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Returns all assets by given search filter"))
+	void GetAssetsByFilter(TArray<FAssetData>& Assets, const FProjectCleanerAssetSearchFilter& SearchFilter) const;
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Returns all dependencies for given assets"))
 	void GetAssetsDependencies(const TArray<FAssetData>& Assets, TArray<FAssetData>& Dependencies) const;
