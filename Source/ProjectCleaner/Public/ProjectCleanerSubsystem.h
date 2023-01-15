@@ -26,10 +26,16 @@ public:
 #endif
 
 	UFUNCTION(BlueprintCallable, Category="ProjectCleaner")
-	void Test(const FProjectCleanerAssetSearchFilter& SearchFilter) const;
+	void Test(const FString& Path, TArray<FAssetData>& Assets) const;
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Returns all assets in project"))
 	void GetAssetsAll(TArray<FAssetData>& Assets) const;
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Returns assets filtered by paths"))
+	void GetAssetsByPath(TArray<FAssetData>& Assets, const TArray<FName>& Paths, const TArray<FName>& ExcludePaths, const bool bRecursive) const;
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Returns assets filtered by class"))
+	void GetAssetsByClass(TArray<FAssetData>& Assets, const TArray<FName>& ClassNames, const TArray<FName>& ExcludeClassNames, const bool bIncludeDerivedClasses) const;
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Returns all primary assets in project"))
 	void GetAssetsPrimary(TArray<FAssetData>& AssetsPrimary) const;
@@ -55,8 +61,17 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Returns all referencers for given assets"))
 	void GetAssetsReferencers(const TArray<FAssetData>& Assets, TArray<FAssetData>& Referencers) const;
 
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Return all primary assets class names including/excluding derived classes"))
+	void GetClassNamesPrimary(TArray<FName>& ClassNames, const bool bIncludeDerivedClasses) const;
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Return all derived class names for given class names"))
+	void GetClassNamesDerived(const TArray<FName>& ClassNames, TSet<FName>& DerivedClassNames) const;
+
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Returns total size of given assets"))
 	int64 GetAssetsTotalSize(const TArray<FAssetData>& Assets) const;
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Returns all files in given path"))
+	void GetFiles(const FString& InPath, TArray<FString>& Files, const bool bRecursive) const;
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Returns all corrupted engine files (.uassets, .umap or .ucollection)"))
 	void GetFilesCorrupted(TArray<FString>& FilesCorrupted) const;
@@ -74,10 +89,10 @@ public:
 	static int64 GetFilesTotalSize(const TArray<FString>& Files);
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Returns given asset class name.For blueprints returns GeneratedClass name"))
-	static FString GetAssetClassName(const FAssetData& AssetData);
+	FName GetAssetClassName(const FAssetData& AssetData) const;
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Checks if given asset is blueprint"))
-	static bool AssetIsBlueprint(const FAssetData& AssetData);
+	bool AssetIsBlueprint(const FAssetData& AssetData, const bool bCheckDerivedClasses) const;
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Checks if given asset is used"))
 	bool AssetIsUsed(const FAssetData& AssetData) const;

@@ -1,11 +1,16 @@
 import unreal
+import os
 
 # project cleaner subsystem api
 # all operations are performed only inside Content (/Game) folder
 
 # query functions
 # ---------------
-# get_assets
+# get_assets_all - return all assets inside Content folder
+# get_assets_by_path(paths, exclude_paths) - return all assets with specified paths
+
+# get_assets_by_class(class_names, exclude_classes) - return all assets with specified classes
+
 # get_assets_primary
 # get_assets_indirect
 # get_assets_indirect_info
@@ -30,6 +35,11 @@ import unreal
 # asset_is_primary
 # asset_is_corrupted
 
+# utility functions
+# -----------------
+# get_assets_primary_class_names(bIncludeDerivedClasses) - return all primary assets class names including/excluding derived classes
+
+
 # actions functions
 # -----------------
 # remove_assets_unused
@@ -53,40 +63,39 @@ import unreal
 # Developers folder or any folder under it
 # Collections folder
 
-def sizeof_fmt(num, suffix="B"):
-    for unit in ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"]:
-        if abs(num) < 1024.0:
-            return f"{num:3.1f}{unit}{suffix}"
-        num /= 1024.0
-    return f"{num:.1f}Yi{suffix}"
+# def sizeof_fmt(num, suffix="B"):
+#     for unit in ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"]:
+#         if abs(num) < 1024.0:
+#             return f"{num:3.1f}{unit}{suffix}"
+#         num /= 1024.0
+#     return f"{num:.1f}Yi{suffix}"
 
 subsystem = unreal.get_editor_subsystem(unreal.ProjectCleanerSubsystem)
+asset_registry = unreal.AssetRegistryHelpers.get_asset_registry()
 
-search_filter = unreal.ProjectCleanerAssetSearchFilter()
-search_filter.recursive_paths = True
-search_filter.recursive_classes = False
-# search_filter.scan_paths = ["/Game/StarterContent/Blueprints"]
-search_filter.scan_class_names = ["BP_Parent_Actor_C"]
-search_filter.exclude_class_names = ["BP_Child_Actor_C", "BP_Parent_Actor_C"]
-# search_filter.scan_class_names = ["Blueprint_Effect_Fire_C"]
+assets_all = subsystem.get_assets_all()
+
+with open('D:/assets.txt', 'w') as f:
+    for asset in assets_all:
+        f.write(f"{asset.asset_name} - {asset.asset_class} - {subsystem.asset_is_blueprint(asset, True)}\n")
+# class_names = subsystem.get_class_names_derived(["Blueprint", "BP_MyActor_C", "DataAsset"])
+# for name in class_names:
+#     print(name)
+# asset = asset_registry.get_asset_by_object_path("ItemMaster'/Game/Stagings/ItemMaster_01.ItemMaster_01'")
+# unreal.log(asset.asset_class)
+# unreal.log(subsystem.asset_is_blueprint(asset))
+# search_filter = unreal.ProjectCleanerAssetSearchFilter()
+
+# search_filter.recursive_paths = True
+# # search_filter.recursive_classes = False
+# search_filter.scan_paths = ["/Game/ParagonAurora/Characters/Heroes/Aurora"]
+# search_filter.scan_class_names = ["Material"]
+# search_filter.exclude_class_names = ["Texture"]
 # search_filter.exclude_paths = ["/Game/StarterContent/Props"]
+# search_filter.exclude_assets = ["Texture2D'/Game/StarterContent/Textures/T_Brick_Clay_Beveled_D.T_Brick_Clay_Beveled_D'"]
 
+# assets_all = subsystem.get_assets_all(False)
+# assets = subsystem.get_assets_by_class(["Blueprint"], ["BP_MyActor_C", "AnimBlueprint"], True)
 
-assets = subsystem.get_assets_by_filter(search_filter)
-unreal.log(len(assets))
-
-# folders = subsystem.get_folders_empty("/Game/StarterContent")
-# for folder in folders:
-#     unreal.log(folder)
-
-
-# get all unused materials and textures
-# search_settings.class_names.add("Material")
-# search_settings.class_names.add("Texture")
-# search_settings.path.add("/Game")
-
-# get all unused assets excluded Materials and Textures
-# search_settings.exclude_class_names.add("Material")
-# search_settings.exclude_class_names.add("Texture")
-# search_settings.path.add("/Game")
-# subsystem.get_assets_unused(search_settings)
+# unreal.log(len(assets_all))
+# unreal.log(len(assets))

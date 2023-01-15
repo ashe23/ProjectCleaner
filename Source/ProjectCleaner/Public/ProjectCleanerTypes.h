@@ -39,22 +39,27 @@ struct FProjectCleanerAssetSearchFilter
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ProjectCleaner")
 	TArray<FString> ExcludePaths;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ProjectCleaner")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ProjectCleaner", meta=(ToolTip="List of class names that must be scanned. For blueprints, class name should end with _C suffix"))
 	TArray<FString> ScanClassNames;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ProjectCleaner")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ProjectCleaner", meta=(ToolTip="List of class names that must be excluded. For blueprints, class name should end with _C suffix"))
 	TArray<FString> ExcludeClassNames;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ProjectCleaner")
-	TArray<FString> ExcludeAssetObjectPaths;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ProjectCleaner", meta=(ToolTip="List of asset object paths, that must be excluded"))
+	TArray<FString> ExcludeAssets;
 
-	void Empty()
+	bool IsEmpty() const
+	{
+		return ScanPaths.Num() == 0 && ExcludePaths.Num() == 0 && ScanClassNames.Num() == 0 && ExcludeClassNames.Num() == 0 && ExcludeAssets.Num() == 0;
+	}
+
+	void Clear()
 	{
 		ScanPaths.Empty();
 		ExcludePaths.Empty();
 		ScanClassNames.Empty();
 		ExcludeClassNames.Empty();
-		ExcludeAssetObjectPaths.Empty();
+		ExcludeAssets.Empty();
 	}
 };
 
