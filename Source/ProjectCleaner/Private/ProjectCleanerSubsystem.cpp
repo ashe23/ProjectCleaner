@@ -2,30 +2,16 @@
 
 #include "ProjectCleanerSubsystem.h"
 #include "ProjectCleanerConstants.h"
-// #include "ProjectCleaner.h"
-// #include "Settings/ProjectCleanerExcludeSettings.h"
 // Engine Headers
 #include "AssetToolsModule.h"
-// #include "AssetViewUtils.h"
 #include "AssetRegistry/AssetRegistryModule.h"
-// #include "Internationalization/Regex.h"
-// #include "Misc/FileHelper.h"
 #include "Misc/ScopedSlowTask.h"
 #include "EditorUtilityBlueprint.h"
 #include "EditorUtilityWidget.h"
 #include "EditorUtilityWidgetBlueprint.h"
-// #include "Engine/AssetManager.h"
-// #include "FileHelpers.h"
-// #include "ObjectTools.h"
 #include "Engine/AssetManager.h"
 #include "Framework/Notifications/NotificationManager.h"
 #include "Internationalization/Regex.h"
-// #include "Libs/ProjectCleanerLibAsset.h"
-// #include "Libs/ProjectCleanerLibEditor.h"
-// #include "Libs/ProjectCleanerLibFile.h"
-// #include "Libs/ProjectCleanerLibNotification.h"
-// #include "Libs/ProjectCleanerLibPath.h"
-#include "ProjectCleaner.h"
 #include "Misc/FileHelper.h"
 
 UProjectCleanerSubsystem::UProjectCleanerSubsystem()
@@ -55,105 +41,196 @@ void UProjectCleanerSubsystem::PostEditChangeProperty(FPropertyChangedEvent& Pro
 }
 #endif
 
-void UProjectCleanerSubsystem::Test(const FString& Path, TArray<FAssetData>& Assets) const
-{
-	FARFilter Filter;
-	Filter.bRecursivePaths = true;
-	Filter.PackagePaths.Add(FName{*Path});
-
-	ModuleAssetRegistry->Get().GetAssets(Filter, Assets);
-
-	// TArray<FName> InClassNames;
-	// for (const auto& ClassName : SearchFilter.ScanClassNames)
-	// {
-	// 	InClassNames.Add(FName{*ClassName});
-	// }
-	//
-	// TSet<FName> ExcludeClassNames;
-	// for (const auto& ExcludeClassName : SearchFilter.ExcludeClassNames)
-	// {
-	// 	ExcludeClassNames.Add(FName{*ExcludeClassName});
-	// }
-	//
-	// TSet<FName> DerivedClassNames;
-	// ModuleAssetRegistry->Get().GetDerivedClassNames(InClassNames, ExcludeClassNames, DerivedClassNames);
-
-	return;
-}
-
 void UProjectCleanerSubsystem::GetAssetsAll(TArray<FAssetData>& Assets) const
 {
-	if (ModuleAssetRegistry->Get().IsLoadingAssets())
-	{
-		ModuleAssetRegistry->Get().WaitForCompletion();
-	}
+	if (ModuleAssetRegistry->Get().IsLoadingAssets()) return;
 
 	Assets.Empty();
 
 	ModuleAssetRegistry->Get().GetAssetsByPath(ProjectCleanerConstants::PathRelRoot, Assets, true);
-
-	// todo:ashe23 for ue5 we should exclude __External*__ folders, they contain serialized .uasset files for WorldPartition that we are not interested in
 }
 
-void UProjectCleanerSubsystem::GetAssetsByPath(TArray<FAssetData>& Assets, const TArray<FName>& Paths, const TArray<FName>& ExcludePaths, const bool bRecursive) const
+void UProjectCleanerSubsystem::GetAssetsByFilter(TArray<FAssetData>& Assets, const FProjectCleanerAssetSearchFilter& SearchFilter) const
 {
-	if (ModuleAssetRegistry->Get().IsLoadingAssets())
+	if (ModuleAssetRegistry->Get().IsLoadingAssets()) return;
+	if (SearchFilter.IsEmpty()) return;
+	if (SearchFilter.PathsScan.Num() == 0) return;
+
 	{
-		ModuleAssetRegistry->Get().WaitForCompletion();
+		FARFilter Filter;
+		Filter.bRecursivePaths = SearchFilter.bRecursivePaths;
+
+		for (const auto& ScanPath : SearchFilter.PathsScan)
+		{
+			const FString RelativePath = PathConvertToRel(ScanPath);
+			if (RelativePath.IsEmpty()) continue;
+
+			Filter.PackagePaths.Add(FName{*RelativePath});
+		}
+
+		if (Filter.PackagePaths.Num() == 0) return;
+
+		ModuleAssetRegistry->Get().GetAssets(Filter, Assets);
 	}
 
-	if (Paths.Num() == 0) return;
-
-	FARFilter Filter;
-	Filter.bRecursivePaths = bRecursive;
-
-	for (const auto& Path : Paths)
+	if (SearchFilter.PathsExclude.Num() > 0)
 	{
-		const FString PathRel = PathConvertToRel(Path.ToString());
-		if (PathRel.IsEmpty()) continue;
+		FARFilter Filter;
+		Filter.bRecursivePaths = true;
 
-		Filter.PackagePaths.Add(Path);
+		for (const auto& ExcludePath : SearchFilter.PathsExclude)
+		{
+			const FString RelativePath = PathConvertToRel(ExcludePath);
+			if (RelativePath.IsEmpty()) continue;
+
+			Filter.PackagePaths.Add(FName{*RelativePath});
+		}
+
+		if (Filter.PackagePaths.Num() > 0)
+		{
+			ModuleAssetRegistry->Get().UseFilterToExcludeAssets(Assets, Filter);
+		}
 	}
 
-	if (Filter.PackagePaths.Num() == 0) return;
-
-	Assets.Empty();
-	ModuleAssetRegistry->Get().GetAssets(Filter, Assets);
-
-	if (ExcludePaths.Num() == 0) return;
-
-	FARFilter FilterExclude;
-	FilterExclude.bRecursivePaths = true;
-
-	for (const auto& ExcludePath : ExcludePaths)
+	if (SearchFilter.AssetsExclude.Num() > 0)
 	{
-		const FString PathRel = PathConvertToRel(ExcludePath.ToString());
-		if (PathRel.IsEmpty()) continue;
+		FARFilter Filter;
 
-		FilterExclude.PackagePaths.Add(ExcludePath);
+		for (const auto& ExcludeAssetObjectPath : SearchFilter.AssetsExclude)
+		{
+			const FAssetData AssetData = ModuleAssetRegistry->Get().GetAssetByObjectPath(FName{*ExcludeAssetObjectPath});
+			if (!AssetData.IsValid()) continue;
+
+			Filter.ObjectPaths.Add(AssetData.ObjectPath);
+		}
+
+		if (Filter.ObjectPaths.Num() > 0)
+		{
+			ModuleAssetRegistry->Get().UseFilterToExcludeAssets(Assets, Filter);
+		}
 	}
 
-	if (FilterExclude.PackagePaths.Num() == 0) return;
+	if (SearchFilter.ClassesExclude.Num() > 0)
+	{
+		TSet<FName> ClassNames;
+		if (SearchFilter.bRecursiveClasses)
+		{
+			GetClassNamesDerived(SearchFilter.ClassesExclude, ClassNames);
+		}
+		else
+		{
+			ClassNames.Append(SearchFilter.ClassesExclude);
+		}
 
-	ModuleAssetRegistry->Get().UseFilterToExcludeAssets(Assets, FilterExclude);
+		FARFilter Filter;
+
+		for (const auto& Asset : Assets)
+		{
+			if (ClassNames.Contains(Asset.AssetClass) || ClassNames.Contains(GetAssetExactClassName(Asset)))
+			{
+				Filter.ObjectPaths.Add(Asset.ObjectPath);
+			}
+		}
+
+		if (Filter.ObjectPaths.Num() > 0)
+		{
+			ModuleAssetRegistry->Get().UseFilterToExcludeAssets(Assets, Filter);
+		}
+	}
+
+	if (SearchFilter.ClassesScan.Num() > 0)
+	{
+		TSet<FName> ClassNames;
+		if (SearchFilter.bRecursiveClasses)
+		{
+			GetClassNamesDerived(SearchFilter.ClassesScan, ClassNames);
+		}
+		else
+		{
+			ClassNames.Append(SearchFilter.ClassesScan);
+		}
+
+		FARFilter Filter;
+
+		for (const auto& Asset : Assets)
+		{
+			if (ClassNames.Contains(Asset.AssetClass) || ClassNames.Contains(GetAssetExactClassName(Asset)))
+			{
+				Filter.ObjectPaths.Add(Asset.ObjectPath);
+			}
+		}
+
+		if (Filter.ObjectPaths.Num() > 0)
+		{
+			ModuleAssetRegistry->Get().RunAssetsThroughFilter(Assets, Filter);
+		}
+		else
+		{
+			Assets.Empty();
+		}
+	}
 }
 
-void UProjectCleanerSubsystem::GetAssetsByClass(TArray<FAssetData>& Assets, const TArray<FName>& ClassNames, const TArray<FName>& ExcludeClassNames, const bool bIncludeDerivedClasses) const
-{
-	if (ModuleAssetRegistry->Get().IsLoadingAssets())
-	{
-		ModuleAssetRegistry->Get().WaitForCompletion();
-	}
 
-	if (ClassNames.Num() == 0 && ExcludeClassNames.Num() == 0) return;
-
-
-	TArray<FAssetData> AssetsAll;
-	GetAssetsAll(AssetsAll);
-
-
-	return;
-}
+// void UProjectCleanerSubsystem::GetAssetsByPath(TArray<FAssetData>& Assets, const TArray<FName>& Paths, const TArray<FName>& ExcludePaths, const bool bRecursive) const
+// {
+// 	if (ModuleAssetRegistry->Get().IsLoadingAssets())
+// 	{
+// 		return;
+// 	}
+//
+// 	if (Paths.Num() == 0) return;
+//
+// 	FARFilter Filter;
+// 	Filter.bRecursivePaths = bRecursive;
+//
+// 	for (const auto& Path : Paths)
+// 	{
+// 		const FString PathRel = PathConvertToRel(Path.ToString());
+// 		if (PathRel.IsEmpty()) continue;
+//
+// 		Filter.PackagePaths.Add(Path);
+// 	}
+//
+// 	if (Filter.PackagePaths.Num() == 0) return;
+//
+// 	Assets.Empty();
+// 	ModuleAssetRegistry->Get().GetAssets(Filter, Assets);
+//
+// 	if (ExcludePaths.Num() == 0) return;
+//
+// 	FARFilter FilterExclude;
+// 	FilterExclude.bRecursivePaths = true;
+//
+// 	for (const auto& ExcludePath : ExcludePaths)
+// 	{
+// 		const FString PathRel = PathConvertToRel(ExcludePath.ToString());
+// 		if (PathRel.IsEmpty()) continue;
+//
+// 		FilterExclude.PackagePaths.Add(ExcludePath);
+// 	}
+//
+// 	if (FilterExclude.PackagePaths.Num() == 0) return;
+//
+// 	ModuleAssetRegistry->Get().UseFilterToExcludeAssets(Assets, FilterExclude);
+// }
+//
+// void UProjectCleanerSubsystem::GetAssetsByClass(TArray<FAssetData>& Assets, const TArray<FName>& ClassNames, const TArray<FName>& ExcludeClassNames, const bool bIncludeDerivedClasses) const
+// {
+// 	if (ModuleAssetRegistry->Get().IsLoadingAssets())
+// 	{
+// 		ModuleAssetRegistry->Get().WaitForCompletion();
+// 	}
+//
+// 	if (ClassNames.Num() == 0 && ExcludeClassNames.Num() == 0) return;
+//
+//
+// 	TArray<FAssetData> AssetsAll;
+// 	GetAssetsAll(AssetsAll);
+//
+//
+// 	return;
+// }
 
 void UProjectCleanerSubsystem::GetAssetsPrimary(TArray<FAssetData>& AssetsPrimary) const
 {
@@ -209,7 +286,7 @@ void UProjectCleanerSubsystem::GetAssetsPrimary(TArray<FAssetData>& AssetsPrimar
 	FilterBlueprint.bRecursivePaths = true;
 	FilterBlueprint.bRecursiveClasses = true;
 	FilterBlueprint.PackagePaths.Add(ProjectCleanerConstants::PathRelRoot);
-	FilterBlueprint.ClassNames.Add(UBlueprint::StaticClass()->GetFName());
+	FilterBlueprint.ClassNames.Add(UBlueprint::StaticClass()->GetFName()); // todo:ashe23 add blueprint derived classes?
 
 	TArray<FAssetData> BlueprintAssets;
 	ModuleAssetRegistry->Get().GetAssets(FilterBlueprint, BlueprintAssets);
@@ -217,7 +294,7 @@ void UProjectCleanerSubsystem::GetAssetsPrimary(TArray<FAssetData>& AssetsPrimar
 	AssetsPrimary.Reserve(AssetsPrimary.Num() + BlueprintAssets.Num());
 	for (const auto& BlueprintAsset : BlueprintAssets)
 	{
-		const FName BlueprintClass = GetAssetClassName(BlueprintAsset);
+		const FName BlueprintClass = GetAssetExactClassName(BlueprintAsset);
 		if (PrimaryAssetClasses.Contains(BlueprintClass))
 		{
 			AssetsPrimary.AddUnique(BlueprintAsset);
@@ -538,118 +615,6 @@ void UProjectCleanerSubsystem::GetAssetsUnused(TArray<FAssetData>& AssetsUnused)
 	AssetsUnused.Shrink();
 }
 
-void UProjectCleanerSubsystem::GetAssetsByFilter(TArray<FAssetData>& Assets, const FProjectCleanerAssetSearchFilter& SearchFilter) const
-{
-	if (SearchFilter.IsEmpty()) return;
-
-	FARFilter FilterPath;
-	FilterPath.bRecursivePaths = SearchFilter.bRecursivePaths;
-
-	for (const auto& ScanPath : SearchFilter.ScanPaths)
-	{
-		const FString PathRel = PathConvertToRel(ScanPath);
-		if (PathRel.IsEmpty()) continue;
-
-		FilterPath.PackagePaths.AddUnique(FName{*PathRel});
-	}
-
-	if (FilterPath.PackagePaths.Num() == 0)
-	{
-		FilterPath.PackagePaths.Add(ProjectCleanerConstants::PathRelRoot);
-	}
-
-	TArray<FAssetData> AssetsFilteredByPath;
-	ModuleAssetRegistry->Get().GetAssets(FilterPath, AssetsFilteredByPath);
-
-
-	// exclude assets by path
-	FARFilter FilterExcludePath;
-	FilterExcludePath.bRecursivePaths = true;
-
-	for (const auto& ExcludePath : SearchFilter.ExcludePaths)
-	{
-		const FString PathRel = PathConvertToRel(ExcludePath);
-		if (PathRel.IsEmpty()) continue;
-
-		FilterExcludePath.PackagePaths.AddUnique(FName{*PathRel});
-	}
-
-	if (FilterExcludePath.PackagePaths.Num() != 0)
-	{
-		ModuleAssetRegistry->Get().UseFilterToExcludeAssets(AssetsFilteredByPath, FilterExcludePath);
-	}
-
-	// exclude assets by object path
-	if (SearchFilter.ExcludeAssets.Num() > 0)
-	{
-		FARFilter FilterObjectPath;
-		for (const auto& ObjectPath : SearchFilter.ExcludeAssets)
-		{
-			if (!ModuleAssetRegistry->Get().GetAssetByObjectPath(FName{*ObjectPath}).IsValid()) continue;
-
-			FilterObjectPath.ObjectPaths.Add(FName{*ObjectPath});
-		}
-
-		if (FilterObjectPath.ObjectPaths.Num() > 0)
-		{
-			ModuleAssetRegistry->Get().UseFilterToExcludeAssets(AssetsFilteredByPath, FilterObjectPath);
-		}
-	}
-
-	// exclude assets by class
-
-
-	// TArray<FName> ClassNamesScan;
-	// TSet<FName> ClassNamesExclude;
-	// TSet<FName> ClassNamesAllowed;
-	//
-	// ClassNamesScan.Reserve(SearchFilter.ScanClassNames.Num());
-	// for (const auto& ScanClassName : SearchFilter.ScanClassNames)
-	// {
-	// 	ClassNamesScan.Add(FName{*ScanClassName});	
-	// }
-	//
-	// ClassNamesExclude.Reserve(SearchFilter.ExcludeClassNames.Num());
-	// for (const auto& ExcludeClassName : SearchFilter.ExcludeClassNames)
-	// {
-	// 	ClassNamesExclude.Add(FName{*ExcludeClassName});
-	// }
-	//
-	// if (SearchFilter.bRecursiveClasses)
-	// {
-	// 	ClassNamesAllowed.Reserve(ClassNamesScan.Num() + ClassNamesExclude.Num());
-	// 	ModuleAssetRegistry->Get().GetDerivedClassNames(ClassNamesScan, ClassNamesExclude, ClassNamesAllowed);
-	// }
-	// else
-	// {
-	// 	for (const auto& ClassName : ClassNamesScan)
-	// 	{
-	// 		if (ClassNamesExclude.Contains(ClassName)) continue;
-	// 		
-	// 		ClassNamesAllowed.Add(ClassName);
-	// 	}
-	// }
-	//
-	// if (ClassNamesAllowed.Num() == 0)
-	// {
-	// 	// todo:ashe23 we should return empty set?
-	// 	return;
-	// }
-
-	Assets.Empty();
-	Assets.Reserve(AssetsFilteredByPath.Num());
-
-	for (const auto& Asset : AssetsFilteredByPath)
-	{
-		// const FString AssetClassName = GetAssetClassName(Asset);
-
-		// if (!ClassNamesAllowed.Contains(FName{*AssetClassName})) continue;
-
-		Assets.Add(Asset);
-	}
-
-	Assets.Shrink();
-}
 
 void UProjectCleanerSubsystem::GetAssetsDependencies(const TArray<FAssetData>& Assets, TArray<FAssetData>& Dependencies) const
 {
@@ -983,7 +948,7 @@ int64 UProjectCleanerSubsystem::GetFilesTotalSize(const TArray<FString>& Files)
 	return TotalSize;
 }
 
-FName UProjectCleanerSubsystem::GetAssetClassName(const FAssetData& AssetData) const
+FName UProjectCleanerSubsystem::GetAssetExactClassName(const FAssetData& AssetData) const
 {
 	if (!AssetData.IsValid()) return {};
 

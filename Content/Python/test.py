@@ -71,31 +71,18 @@ import os
 #     return f"{num:.1f}Yi{suffix}"
 
 subsystem = unreal.get_editor_subsystem(unreal.ProjectCleanerSubsystem)
-asset_registry = unreal.AssetRegistryHelpers.get_asset_registry()
 
-assets_all = subsystem.get_assets_all()
+search_filter = unreal.ProjectCleanerAssetSearchFilter()
+search_filter.recursive_paths = True
+search_filter.recursive_classes = False
+search_filter.paths_scan = ["/Game"]
+search_filter.classes_scan = [unreal.ParticleSystem.static_class().get_name()]
 
-with open('D:/assets.txt', 'w') as f:
-    for asset in assets_all:
-        f.write(f"{asset.asset_name} - {asset.asset_class} - {subsystem.asset_is_blueprint(asset, True)}\n")
-# class_names = subsystem.get_class_names_derived(["Blueprint", "BP_MyActor_C", "DataAsset"])
-# for name in class_names:
-#     print(name)
-# asset = asset_registry.get_asset_by_object_path("ItemMaster'/Game/Stagings/ItemMaster_01.ItemMaster_01'")
-# unreal.log(asset.asset_class)
-# unreal.log(subsystem.asset_is_blueprint(asset))
-# search_filter = unreal.ProjectCleanerAssetSearchFilter()
+# search_filter.classes_exclude = [unreal.AnimBlueprint.static_class().get_name()]
 
-# search_filter.recursive_paths = True
-# # search_filter.recursive_classes = False
-# search_filter.scan_paths = ["/Game/ParagonAurora/Characters/Heroes/Aurora"]
-# search_filter.scan_class_names = ["Material"]
-# search_filter.exclude_class_names = ["Texture"]
-# search_filter.exclude_paths = ["/Game/StarterContent/Props"]
-# search_filter.exclude_assets = ["Texture2D'/Game/StarterContent/Textures/T_Brick_Clay_Beveled_D.T_Brick_Clay_Beveled_D'"]
 
-# assets_all = subsystem.get_assets_all(False)
-# assets = subsystem.get_assets_by_class(["Blueprint"], ["BP_MyActor_C", "AnimBlueprint"], True)
+assets = subsystem.get_assets_by_filter(search_filter)
+print(len(assets))
 
-# unreal.log(len(assets_all))
-# unreal.log(len(assets))
+for asset in assets:
+    print(f"{asset.asset_class} - {asset.object_path}")

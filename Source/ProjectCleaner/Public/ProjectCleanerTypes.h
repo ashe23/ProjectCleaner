@@ -22,6 +22,26 @@ enum class EProjectCleanerModalState : uint8
 	Error UMETA(DisplayName = "Error"),
 };
 
+// struct FProjectCleanerTabScanSettingsData
+// {
+// 	int32 AssetsTotal = 0;
+// 	int32 AssetsUsed = 0;
+// 	int32 AssetsUnused = 0;
+// 	int32 AssetsPrimary = 0;
+// 	int32 AssetsIndirect = 0;
+// 	int32 FoldersTotal = 0;
+// 	int32 FoldersEmpty = 0;
+// 	int32 FilesCorrupted = 0;
+// 	int32 FilesNonEngine = 0;
+// 	int64 AssetsTotalSize = 0;
+// 	int64 AssetsUsedSize = 0;
+// 	int64 AssetsUnusedSize = 0;
+// 	int64 AssetsPrimarySize = 0;
+// 	int64 AssetsIndirectSize = 0;
+// 	int64 FilesCorruptedSize = 0;
+// 	int64 FilesNonEngineSize = 0;
+// };
+
 USTRUCT(BlueprintType)
 struct FProjectCleanerAssetSearchFilter
 {
@@ -33,33 +53,33 @@ struct FProjectCleanerAssetSearchFilter
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ProjectCleaner", meta=(ToolTip="Whether scan classes recursive or not"))
 	bool bRecursiveClasses = false;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ProjectCleaner")
-	TArray<FString> ScanPaths;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ProjectCleaner", meta=(ToolTip="List of relative paths to scan"))
+	TArray<FString> PathsScan;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ProjectCleaner")
-	TArray<FString> ExcludePaths;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ProjectCleaner", meta=(ToolTip="List of relative paths to exclude"))
+	TArray<FString> PathsExclude;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ProjectCleaner", meta=(ToolTip="List of class names that must be scanned. For blueprints, class name should end with _C suffix"))
-	TArray<FString> ScanClassNames;
+	TArray<FName> ClassesScan;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ProjectCleaner", meta=(ToolTip="List of class names that must be excluded. For blueprints, class name should end with _C suffix"))
-	TArray<FString> ExcludeClassNames;
+	TArray<FName> ClassesExclude;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ProjectCleaner", meta=(ToolTip="List of asset object paths, that must be excluded"))
-	TArray<FString> ExcludeAssets;
+	TArray<FString> AssetsExclude;
 
 	bool IsEmpty() const
 	{
-		return ScanPaths.Num() == 0 && ExcludePaths.Num() == 0 && ScanClassNames.Num() == 0 && ExcludeClassNames.Num() == 0 && ExcludeAssets.Num() == 0;
+		return PathsScan.Num() == 0 && PathsExclude.Num() == 0 && ClassesScan.Num() == 0 && ClassesExclude.Num() == 0 && AssetsExclude.Num() == 0;
 	}
 
 	void Clear()
 	{
-		ScanPaths.Empty();
-		ExcludePaths.Empty();
-		ScanClassNames.Empty();
-		ExcludeClassNames.Empty();
-		ExcludeAssets.Empty();
+		PathsScan.Empty();
+		PathsExclude.Empty();
+		ClassesScan.Empty();
+		ClassesExclude.Empty();
+		AssetsExclude.Empty();
 	}
 };
 
