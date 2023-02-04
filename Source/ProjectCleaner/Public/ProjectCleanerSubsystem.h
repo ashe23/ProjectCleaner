@@ -30,13 +30,10 @@ public:
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Returns all assets by given search filter"))
 	void GetAssetsByFilter(TArray<FAssetData>& Assets, const FProjectCleanerAssetSearchFilter& SearchFilter) const;
-	
-	// UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Returns assets filtered by paths"))
-	// void GetAssetsByPath(TArray<FAssetData>& Assets, const TArray<FName>& Paths, const TArray<FName>& ExcludePaths, const bool bRecursive) const;
-	//
-	// UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Returns assets filtered by class"))
-	// void GetAssetsByClass(TArray<FAssetData>& Assets, const TArray<FName>& ClassNames, const TArray<FName>& ExcludeClassNames, const bool bIncludeDerivedClasses) const;
 
+	UFUNCTION(BlueprintCallable, Category="ProjectCleaner", meta=(ToolTip="For given list of assets excludes assets that are apply to given search filter"))
+	void GetAssetsExcludedByFilter(UPARAM(ref) TArray<FAssetData>& Assets, const FProjectCleanerAssetSearchFilter& SearchFilter) const;
+	
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Returns all primary assets in project"))
 	void GetAssetsPrimary(TArray<FAssetData>& AssetsPrimary) const;
 
@@ -67,8 +64,11 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Returns total size of given assets"))
 	int64 GetAssetsTotalSize(const TArray<FAssetData>& Assets) const;
 
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Returns given size in bytes as human readable string"))
+	FString SizeToString(const float Size) const;
+
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Returns all files in given path"))
-	void GetFiles(const FString& InPath, TArray<FString>& Files, const bool bRecursive) const;
+	static void GetFiles(const FString& InPath, TArray<FString>& Files, const bool bRecursive);
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Returns all corrupted engine files (.uassets, .umap or .ucollection)"))
 	void GetFilesCorrupted(TArray<FString>& FilesCorrupted) const;
@@ -90,24 +90,12 @@ public:
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Checks if given asset is blueprint"))
 	bool AssetIsBlueprint(const FAssetData& AssetData, const bool bCheckDerivedClasses) const;
-
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Checks if given asset is used"))
-	bool AssetIsUsed(const FAssetData& AssetData) const;
-
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Checks if given asset is unused"))
-	bool AssetIsUnused(const FAssetData& AssetData) const;
-
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Checks if given asset is primary"))
-	bool AssetIsPrimary(const FAssetData& AssetData) const;
-
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Checks if given asset is indirect"))
-	bool AssetIsIndirect(const FAssetData& AssetData) const;
-
+	
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Checks if given file is corrupted engine file"))
 	bool FileIsCorrupted(const FString& FilePathAbs) const;
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Checks if given file is non engine"))
-	bool FileIsNonEngine(const FString& FilePathAbs) const;
+	static bool FileIsNonEngine(const FString& FilePathAbs);
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Checks if folder is empty"))
 	static bool FolderIsEmpty(const FString& FolderPath);
@@ -142,8 +130,6 @@ public:
 	static EAppReturnType::Type ShowDialogWindow(const FString& Title, const FString& Msg, const EAppMsgType::Type MsgType);
 
 private:
-	void GetAssetsEditor(TArray<FAssetData>& AssetsEditor) const;
-	void GetAssetsMegascans(TArray<FAssetData>& AssetsMegascans) const;
 	void GetAssetsWithExternalRefs(TArray<FAssetData>& AssetsWithExternalRefs, const TArray<FAssetData>& Assets) const;
 	void FixupRedirectors() const;
 	static bool PathIsUnderContentFolder(const FString& InPath);

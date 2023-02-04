@@ -48,39 +48,16 @@ struct FProjectCleanerAssetSearchFilter
 	GENERATED_BODY()
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ProjectCleaner", meta=(ToolTip="Whether scan paths recursive or not"))
-	bool bRecursivePaths = false;
+	bool bRecursivePaths = true;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ProjectCleaner", meta=(ToolTip="Whether scan classes recursive or not"))
 	bool bRecursiveClasses = false;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ProjectCleaner", meta=(ToolTip="List of relative paths to scan"))
-	TArray<FString> PathsScan;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ProjectCleaner", meta=(ToolTip="List of relative paths to exclude"))
-	TArray<FString> PathsExclude;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ProjectCleaner", meta=(ToolTip="List of class names that must be scanned. For blueprints, class name should end with _C suffix"))
-	TArray<FName> ClassesScan;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ProjectCleaner", meta=(ToolTip="List of class names that must be excluded. For blueprints, class name should end with _C suffix"))
-	TArray<FName> ClassesExclude;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ProjectCleaner", meta=(ToolTip="List of asset object paths, that must be excluded"))
-	TArray<FString> AssetsExclude;
-
-	bool IsEmpty() const
-	{
-		return PathsScan.Num() == 0 && PathsExclude.Num() == 0 && ClassesScan.Num() == 0 && ClassesExclude.Num() == 0 && AssetsExclude.Num() == 0;
-	}
-
-	void Clear()
-	{
-		PathsScan.Empty();
-		PathsExclude.Empty();
-		ClassesScan.Empty();
-		ClassesExclude.Empty();
-		AssetsExclude.Empty();
-	}
+	TArray<FString> Paths;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ProjectCleaner", meta=(ToolTip="List of class names. For blueprints, class name should end with _C suffix"))
+	TArray<FName> Classes;
 };
 
 UENUM(BlueprintType)

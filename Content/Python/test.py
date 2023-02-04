@@ -6,12 +6,10 @@ import os
 
 # query functions
 # ---------------
-# get_assets_all - return all assets inside Content folder
-# get_assets_by_path(paths, exclude_paths) - return all assets with specified paths
+# get_assets_all - return all assets in project +
+# get_assets_by_filter - return assets by specified AssetSearchFilter +
+# get_assets_primary - return all primary assets in project +
 
-# get_assets_by_class(class_names, exclude_classes) - return all assets with specified classes
-
-# get_assets_primary
 # get_assets_indirect
 # get_assets_indirect_info
 # get_assets_excluded ??
@@ -72,17 +70,6 @@ import os
 
 subsystem = unreal.get_editor_subsystem(unreal.ProjectCleanerSubsystem)
 
-search_filter = unreal.ProjectCleanerAssetSearchFilter()
-search_filter.recursive_paths = True
-search_filter.recursive_classes = False
-search_filter.paths_scan = ["/Game"]
-search_filter.classes_scan = [unreal.ParticleSystem.static_class().get_name()]
-
-# search_filter.classes_exclude = [unreal.AnimBlueprint.static_class().get_name()]
 
 
-assets = subsystem.get_assets_by_filter(search_filter)
-print(len(assets))
 
-for asset in assets:
-    print(f"{asset.asset_class} - {asset.object_path}")
