@@ -61,7 +61,7 @@ void FProjectCleanerModule::RegisterMenus()
 		FSimpleMulticastDelegate::FDelegate::CreateLambda([&]()
 			{
 				FToolMenuOwnerScoped OwnerScoped(this);
-
+	
 				UToolMenu* Menu = UToolMenus::Get()->ExtendMenu("LevelEditor.MainMenu.Window");
 				FToolMenuSection& Section = Menu->AddSection(
 					"SectionAssetManagementTools",
@@ -69,7 +69,7 @@ void FProjectCleanerModule::RegisterMenus()
 					FToolMenuInsert("WindowLayout", EToolMenuInsertType::After)
 				);
 				Section.AddMenuEntryWithCommandList(FProjectCleanerCmds::Get().OpenProjectCleanerWindow, Cmds);
-
+	
 				UToolMenu* ToolbarMenu = UToolMenus::Get()->ExtendMenu("LevelEditor.LevelEditorToolBar");
 				FToolMenuSection& ToolbarSection = ToolbarMenu->FindOrAddSection("Settings");
 				FToolMenuEntry& Entry = ToolbarSection.AddEntry(
@@ -89,9 +89,9 @@ void FProjectCleanerModule::RegisterTabs() const
 		                        {
 			                        const TSharedRef<SDockTab> DockTab = SNew(SDockTab).TabRole(MajorTab);
 			                        const TSharedRef<SProjectCleaner> Frontend = SNew(SProjectCleaner, DockTab, SpawnTabArgs.GetOwnerWindow());
-
+	
 			                        DockTab->SetContent(Frontend);
-
+	
 			                        return DockTab;
 		                        }))
 	                        .SetDisplayName(FText::FromString(ProjectCleanerConstants::ModuleTitle.ToString()))

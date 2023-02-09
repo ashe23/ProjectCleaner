@@ -69,7 +69,7 @@ private:
 	int64 FilesCorruptedSize = 0;
 	int64 FilesNonEngineSize = 0;
 
-	FProjectCleanerScanData ScanData;
+	// FProjectCleanerScanData ScanData;
 	UProjectCleanerSubsystem* SubsystemPtr = nullptr;
 	UProjectCleanerSettings* Settings = nullptr;
 };

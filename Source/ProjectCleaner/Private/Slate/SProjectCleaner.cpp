@@ -7,6 +7,7 @@
 #include "Slate/Tabs/SProjectCleanerTabCorruptedFiles.h"
 #include "Slate/Tabs/SProjectCleanerTabNonEngineFiles.h"
 #include "ProjectCleanerConstants.h"
+#include "ProjectCleanerSubsystem.h"
 #include "ProjectCleanerStyles.h"
 #include "Libs/ProjectCleanerLibAsset.h"
 #include "Libs/ProjectCleanerLibEditor.h"
@@ -15,6 +16,13 @@
 
 void SProjectCleaner::Construct(const FArguments& InArgs, const TSharedRef<SDockTab>& ConstructUnderMajorTab, const TSharedPtr<SWindow>& ConstructUnderWindow)
 {
+	if (!GEditor) return;
+	
+	Subsystem = GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>();
+	if (!Subsystem) return;
+
+	Subsystem->ProjectScanInitial();
+	
 	TabManager = FGlobalTabmanager::Get()->NewTabManager(ConstructUnderMajorTab);
 	const TSharedRef<FWorkspaceItem> AppMenuGroup = TabManager->AddLocalWorkspaceMenuCategory(FText::FromString(ProjectCleanerConstants::ModuleName.ToString()));
 
@@ -32,9 +40,10 @@ void SProjectCleaner::Construct(const FArguments& InArgs, const TSharedRef<SDock
 			->Split(
 				FTabManager::NewStack()
 				->AddTab(ProjectCleanerConstants::TabScanInfo, ETabState::OpenedTab)
-				->AddTab(ProjectCleanerConstants::TabIndirectAssets, ETabState::OpenedTab)
-				->AddTab(ProjectCleanerConstants::TabNonEngineFiles, ETabState::OpenedTab)
-				->AddTab(ProjectCleanerConstants::TabCorruptedFiles, ETabState::OpenedTab)
+				// ->AddTab(ProjectCleanerConstants::TabIndirectAssets, ETabState::OpenedTab)
+				// ->AddTab(ProjectCleanerConstants::TabNonEngineFiles, ETabState::OpenedTab)
+				// ->AddTab(ProjectCleanerConstants::TabCorruptedFiles, ETabState::OpenedTab)
+				// ->AddTab(ProjectCleanerConstants::TabAssetsTableView, ETabState::OpenedTab)
 				->SetSizeCoefficient(0.7f)
 				->SetForegroundTab(ProjectCleanerConstants::TabScanInfo)
 			)
@@ -45,26 +54,31 @@ void SProjectCleaner::Construct(const FArguments& InArgs, const TSharedRef<SDock
 	          .SetDisplayName(FText::FromString(TEXT("Scan Settings")))
 	          .SetIcon(FSlateIcon(FProjectCleanerStyles::GetStyleSetName(), "ProjectCleaner.IconSettings16"))
 	          .SetGroup(AppMenuGroup);
-	TabManager->RegisterTabSpawner(ProjectCleanerConstants::TabScanInfo, FOnSpawnTab::CreateRaw(this, &SProjectCleaner::OnTabSpawnScanInfo))
-	          .SetTooltipText(FText::FromString(TEXT("Open Scan Info Tab")))
-	          .SetDisplayName(FText::FromString(TEXT("Scan Info")))
-	          .SetIcon(FSlateIcon(FProjectCleanerStyles::GetStyleSetName(), "ProjectCleaner.IconTabScanInfo16"))
-	          .SetGroup(AppMenuGroup);
-	TabManager->RegisterTabSpawner(ProjectCleanerConstants::TabIndirectAssets, FOnSpawnTab::CreateRaw(this, &SProjectCleaner::OnTabSpawnIndirectAssets))
-	          .SetTooltipText(FText::FromString(TEXT("Open Indirect Assets Tab")))
-	          .SetDisplayName(FText::FromString(TEXT("Indirect Assets")))
-	          .SetIcon(FSlateIcon(FProjectCleanerStyles::GetStyleSetName(), "ProjectCleaner.IconTabIndirect16"))
-	          .SetGroup(AppMenuGroup);
-	TabManager->RegisterTabSpawner(ProjectCleanerConstants::TabNonEngineFiles, FOnSpawnTab::CreateRaw(this, &SProjectCleaner::OnTabSpawnNonEngineFiles))
-	          .SetTooltipText(FText::FromString(TEXT("Open Non Engine Files Tab")))
-	          .SetDisplayName(FText::FromString(TEXT("NonEngine Files")))
-	          .SetIcon(FSlateIcon(FProjectCleanerStyles::GetStyleSetName(), "ProjectCleaner.IconTabNonEngine16"))
-	          .SetGroup(AppMenuGroup);
-	TabManager->RegisterTabSpawner(ProjectCleanerConstants::TabCorruptedFiles, FOnSpawnTab::CreateRaw(this, &SProjectCleaner::OnTabSpawnCorruptedFiles))
-	          .SetTooltipText(FText::FromString(TEXT("Open Corrupted Files Tab")))
-	          .SetDisplayName(FText::FromString(TEXT("Corrupted Files")))
-	          .SetIcon(FSlateIcon(FProjectCleanerStyles::GetStyleSetName(), "ProjectCleaner.IconTabCorrupted16"))
-	          .SetGroup(AppMenuGroup);
+	// TabManager->RegisterTabSpawner(ProjectCleanerConstants::TabScanInfo, FOnSpawnTab::CreateRaw(this, &SProjectCleaner::OnTabSpawnScanInfo))
+	//           .SetTooltipText(FText::FromString(TEXT("Open Scan Info Tab")))
+	//           .SetDisplayName(FText::FromString(TEXT("Scan Info")))
+	//           .SetIcon(FSlateIcon(FProjectCleanerStyles::GetStyleSetName(), "ProjectCleaner.IconTabScanInfo16"))
+	//           .SetGroup(AppMenuGroup);
+	// TabManager->RegisterTabSpawner(ProjectCleanerConstants::TabIndirectAssets, FOnSpawnTab::CreateRaw(this, &SProjectCleaner::OnTabSpawnIndirectAssets))
+	//           .SetTooltipText(FText::FromString(TEXT("Open Indirect Assets Tab")))
+	//           .SetDisplayName(FText::FromString(TEXT("Indirect Assets")))
+	//           .SetIcon(FSlateIcon(FProjectCleanerStyles::GetStyleSetName(), "ProjectCleaner.IconTabIndirect16"))
+	//           .SetGroup(AppMenuGroup);
+	// TabManager->RegisterTabSpawner(ProjectCleanerConstants::TabNonEngineFiles, FOnSpawnTab::CreateRaw(this, &SProjectCleaner::OnTabSpawnNonEngineFiles))
+	//           .SetTooltipText(FText::FromString(TEXT("Open Non Engine Files Tab")))
+	//           .SetDisplayName(FText::FromString(TEXT("NonEngine Files")))
+	//           .SetIcon(FSlateIcon(FProjectCleanerStyles::GetStyleSetName(), "ProjectCleaner.IconTabNonEngine16"))
+	//           .SetGroup(AppMenuGroup);
+	// TabManager->RegisterTabSpawner(ProjectCleanerConstants::TabCorruptedFiles, FOnSpawnTab::CreateRaw(this, &SProjectCleaner::OnTabSpawnCorruptedFiles))
+	//           .SetTooltipText(FText::FromString(TEXT("Open Corrupted Files Tab")))
+	//           .SetDisplayName(FText::FromString(TEXT("Corrupted Files")))
+	//           .SetIcon(FSlateIcon(FProjectCleanerStyles::GetStyleSetName(), "ProjectCleaner.IconTabCorrupted16"))
+	//           .SetGroup(AppMenuGroup);
+	// TabManager->RegisterTabSpawner(ProjectCleanerConstants::TabAssetsTableView, FOnSpawnTab::CreateRaw(this, &SProjectCleaner::OnTabSpawnAssetsTableView))
+	// 		  .SetTooltipText(FText::FromString(TEXT("Open Assets Table View Tab")))
+	// 		  .SetDisplayName(FText::FromString(TEXT("Table View")))
+	// 		  // .SetIcon(FSlateIcon(FProjectCleanerStyles::GetStyleSetName(), "ProjectCleaner.IconTabCorrupted16"))
+	// 		  .SetGroup(AppMenuGroup);
 
 	FMenuBarBuilder MenuBarBuilder = FMenuBarBuilder(TSharedPtr<FUICommandList>());
 	MenuBarBuilder.AddPullDownMenu(
@@ -77,8 +91,8 @@ void SProjectCleaner::Construct(const FArguments& InArgs, const TSharedRef<SDock
 	ChildSlot
 	[
 		SNew(SWidgetSwitcher)
-		.IsEnabled_Static(&SProjectCleaner::WidgetEnabled)
-		.WidgetIndex_Static(&SProjectCleaner::WidgetGetIndex)
+		.IsEnabled_Raw(this, &SProjectCleaner::WidgetEnabled)
+		.WidgetIndex_Raw(this, &SProjectCleaner::WidgetGetIndex)
 		+ SWidgetSwitcher::Slot()
 		  .HAlign(HAlign_Fill)
 		  .VAlign(VAlign_Fill)
@@ -119,39 +133,41 @@ void SProjectCleaner::Construct(const FArguments& InArgs, const TSharedRef<SDock
 SProjectCleaner::~SProjectCleaner()
 {
 	FGlobalTabmanager::Get()->UnregisterTabSpawner(ProjectCleanerConstants::TabScanSettings);
-	FGlobalTabmanager::Get()->UnregisterTabSpawner(ProjectCleanerConstants::TabScanInfo);
-	FGlobalTabmanager::Get()->UnregisterTabSpawner(ProjectCleanerConstants::TabIndirectAssets);
-	FGlobalTabmanager::Get()->UnregisterTabSpawner(ProjectCleanerConstants::TabNonEngineFiles);
-	FGlobalTabmanager::Get()->UnregisterTabSpawner(ProjectCleanerConstants::TabCorruptedFiles);
+	// FGlobalTabmanager::Get()->UnregisterTabSpawner(ProjectCleanerConstants::TabScanInfo);
+	// FGlobalTabmanager::Get()->UnregisterTabSpawner(ProjectCleanerConstants::TabIndirectAssets);
+	// FGlobalTabmanager::Get()->UnregisterTabSpawner(ProjectCleanerConstants::TabNonEngineFiles);
+	// FGlobalTabmanager::Get()->UnregisterTabSpawner(ProjectCleanerConstants::TabCorruptedFiles);
+	// FGlobalTabmanager::Get()->UnregisterTabSpawner(ProjectCleanerConstants::TabAssetsTableView);
 }
 
-bool SProjectCleaner::WidgetEnabled()
+bool SProjectCleaner::WidgetEnabled() const
 {
-	return false;
-	// return !(UProjectCleanerLibAsset::AssetRegistryWorking() && UProjectCleanerLibEditor::EditorInPlayMode());
+	return Subsystem && !Subsystem->EditorInPlayMode() && !Subsystem->AssetRegistryWorking();
 }
 
-int32 SProjectCleaner::WidgetGetIndex()
+int32 SProjectCleaner::WidgetGetIndex() const
 {
-	// if (UProjectCleanerLibAsset::AssetRegistryWorking() || UProjectCleanerLibEditor::EditorInPlayMode())
-	// {
-	// 	return ProjectCleanerConstants::WidgetIndexWorking;
-	// }
+	if (Subsystem && Subsystem->EditorInPlayMode() || Subsystem->AssetRegistryWorking())
+	{
+		return ProjectCleanerConstants::WidgetIndexWorking;
+	}
 
 	return ProjectCleanerConstants::WidgetIndexIdle;
 }
 
 FText SProjectCleaner::WidgetText() const
 {
-	// if (UProjectCleanerLibAsset::AssetRegistryWorking())
-	// {
-	// 	return FText::FromString(TEXT("The AssetRegistry is still working. Please wait for the scan to finish"));
-	// }
-	//
-	// if (UProjectCleanerLibEditor::EditorInPlayMode())
-	// {
-	// 	return FText::FromString(TEXT("Please stop play mode in the editor before doing any operations in the plugin."));
-	// }
+	if (!Subsystem) return FText{};
+	
+	if (Subsystem->AssetRegistryWorking())
+	{
+		return FText::FromString(TEXT("The AssetRegistry is still working. Please wait for the scan to finish"));
+	}
+	
+	if (Subsystem->EditorInPlayMode())
+	{
+		return FText::FromString(TEXT("Please stop play mode in the editor before doing any operations in the plugin."));
+	}
 
 	return FText::FromString(TEXT(""));
 }
@@ -225,6 +241,19 @@ TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnCorruptedFiles(const FSpawnTabAr
 		.TabRole(PanelTab)
 		.Label(FText::FromString(TEXT("Corrupted Files")))
 		.Icon(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconTabCorrupted16"))
+		[
+			// SNew(SProjectCleanerTabCorrupted)
+			SNew(STextBlock)
+		];
+}
+
+TSharedRef<SDockTab> SProjectCleaner::OnTabSpawnAssetsTableView(const FSpawnTabArgs& Args) const
+{
+	return
+		SNew(SDockTab)
+		.TabRole(PanelTab)
+		.Label(FText::FromString(TEXT("Table View")))
+		// .Icon(FProjectCleanerStyles::Get().GetBrush("ProjectCleaner.IconTabCorrupted16"))
 		[
 			// SNew(SProjectCleanerTabCorrupted)
 			SNew(STextBlock)

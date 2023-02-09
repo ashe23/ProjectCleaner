@@ -45,20 +45,20 @@ public:
 			return SNew(STextBlock).Text(FText::AsMemory(ListItem->FileSize));
 		}
 
-		// if (InColumnName.IsEqual(TEXT("FilePath")))
-		// {
-		// 	return
-		// 		SNew(SHorizontalBox)
-		// 		+ SHorizontalBox::Slot()
-		// 		  .AutoWidth()
-		// 		  .Padding(FMargin{10.0f, 0.0f, 0.0f, 0.0f})
-		// 		[
-		// 			SNew(STextBlock)
-		// 			.ToolTipText(FText::FromString(UProjectCleanerLibPath::ConvertToRel(ListItem->FilePathAbs)))
-		// 			.Justification(ETextJustify::Left)
-		// 			.Text(FText::FromString(ListItem->FilePathAbs))
-		// 		];
-		// }
+		if (InColumnName.IsEqual(TEXT("FilePath")))
+		{
+			return
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot()
+				  .AutoWidth()
+				  .Padding(FMargin{10.0f, 0.0f, 0.0f, 0.0f})
+				[
+					SNew(STextBlock)
+					.ToolTipText(FText::FromString(UProjectCleanerSubsystem::PathConvertToRel(ListItem->FilePathAbs)))
+					.Justification(ETextJustify::Left)
+					.Text(FText::FromString(ListItem->FilePathAbs))
+				];
+		}
 
 		return SNew(STextBlock).Text(FText::FromString("No Files"));
 	}

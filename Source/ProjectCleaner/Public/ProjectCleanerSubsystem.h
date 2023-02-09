@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "ProjectCleanerTypes.h"
+#include "ProjectCleanerDelegates.h"
 #include "Widgets/Notifications/SNotificationList.h"
 #include "ProjectCleanerSubsystem.generated.h"
 
@@ -55,8 +56,13 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Returns all referencers for given assets"))
 	void GetAssetsReferencers(const TArray<FAssetData>& Assets, TArray<FAssetData>& Referencers) const;
 
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Return all primary assets class names including/excluding derived classes"))
-	void GetClassNamesPrimary(TArray<FName>& ClassNames, const bool bIncludeDerivedClasses) const;
+	// void GetClassNamesPrimary(TArray<FName>& ClassNames, const bool bIncludeDerivedClasses) const;
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Return all primary assets class names"))
+	void GetClassNamesPrimary(TSet<FName>& ClassNamesPrimary) const;
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Return all assets class names that are considered to be used"))
+	void GetClassNamesUsed(TSet<FName>& ClassNamesUsed) const;
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Return all derived class names for given class names"))
 	void GetClassNamesDerived(const TArray<FName>& ClassNames, TSet<FName>& DerivedClassNames) const;
@@ -90,6 +96,14 @@ public:
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Checks if given asset is blueprint"))
 	bool AssetIsBlueprint(const FAssetData& AssetData, const bool bCheckDerivedClasses) const;
+
+	bool AssetIsEditorUtility(const FAssetData& AssetData) const;
+
+	EProjectCleanerAssetUsageCategory GetAssetUsageCategory(const FAssetData& AssetData) const;
+	
+	bool AssetIsPrimary(const FAssetData& AssetData) const;
+
+	bool AssetIsUsed(const FAssetData& AssetData) const;
 	
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(ToolTip="Checks if given file is corrupted engine file"))
 	bool FileIsCorrupted(const FString& FilePathAbs) const;
@@ -124,19 +138,31 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner|Path", meta=(ToolTip="Returns absolute path to current Developers Collections folder"))
 	static FString GetPathCollectionsUserFolder();
 
+	UFUNCTION(BlueprintCallable, Category="ProjectCleaner")
+	void ProjectScanInitial();
+	
+	void ProjectScan();
+	FProjectCleanerDelegateProjectScanned& OnProjectScanned();
+	const FProjectCleanerScanData& GetScanData() const;
+	bool AssetRegistryWorking() const;
 	static bool EditorInPlayMode();
 	static void ShowModal(const FString& Msg, const EProjectCleanerModalState State = EProjectCleanerModalState::None, const float Duration = 2.0f);
 	static void ShowModalOutputLog(const FString& Msg, const EProjectCleanerModalState State = EProjectCleanerModalState::None, const float Duration = 2.0f);
 	static EAppReturnType::Type ShowDialogWindow(const FString& Title, const FString& Msg, const EAppMsgType::Type MsgType);
 
-private:
+	UFUNCTION(BlueprintCallable, Category="ProjectCleaner")
 	void GetAssetsWithExternalRefs(TArray<FAssetData>& AssetsWithExternalRefs, const TArray<FAssetData>& Assets) const;
+private:
 	void FixupRedirectors() const;
 	static bool PathIsUnderContentFolder(const FString& InPath);
 	static SNotificationItem::ECompletionState GetCompletionStateFromModalState(const EProjectCleanerModalState ModalState);
 
 	bool bScanningInProgress = false;
 	bool bCleaningInProgress = false;
+	bool bInitialScan = true;
+
+	FProjectCleanerScanData ScanData;
+	FProjectCleanerDelegateProjectScanned DelegateProjectScanned;
 
 	IPlatformFile* PlatformFile;
 	FAssetRegistryModule* ModuleAssetRegistry;

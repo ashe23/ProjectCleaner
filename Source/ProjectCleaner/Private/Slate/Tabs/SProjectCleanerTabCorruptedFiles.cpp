@@ -95,13 +95,13 @@ void SProjectCleanerTabCorrupted::Construct(const FArguments& InArgs)
 		]
 	];
 
-	// SubsystemPtr->OnProjectScanned().AddRaw(this, &SProjectCleanerTabCorrupted::OnProjectScanned);
+	SubsystemPtr->OnProjectScanned().AddRaw(this, &SProjectCleanerTabCorrupted::OnProjectScanned);
 }
 
 SProjectCleanerTabCorrupted::~SProjectCleanerTabCorrupted()
 {
-	// SubsystemPtr->OnProjectScanned().RemoveAll(this);
-	// SubsystemPtr = nullptr;
+	SubsystemPtr->OnProjectScanned().RemoveAll(this);
+	SubsystemPtr = nullptr;
 }
 
 void SProjectCleanerTabCorrupted::OnProjectScanned()
@@ -128,24 +128,24 @@ void SProjectCleanerTabCorrupted::ListUpdate()
 	ListItems.Reset();
 	TotalSize = 0;
 
-	// for (const auto& CorruptedFile : SubsystemPtr->GetScanData().FilesCorrupted)
-	// {
-	// 	const TSharedPtr<FProjectCleanerTabCorruptedListItem> NewItem = MakeShareable(new FProjectCleanerTabCorruptedListItem);
-	// 	if (!NewItem) continue;
-	//
-	// 	if (CorruptedFile.IsEmpty() || !FPaths::FileExists(CorruptedFile)) continue;
-	//
-	// 	NewItem->FileName = FPaths::GetCleanFilename(CorruptedFile);
-	// 	NewItem->FileExtension = FPaths::GetExtension(CorruptedFile, true);
-	// 	NewItem->FilePathAbs = CorruptedFile;
-	// 	NewItem->FileSize = IFileManager::Get().FileSize(*CorruptedFile);
-	// 	TotalSize += NewItem->FileSize;
-	//
-	// 	ListItems.Add(NewItem);
-	// }
-	//
-	// ListSort();
-	// ListView->RequestListRefresh();
+	for (const auto& CorruptedFile : SubsystemPtr->GetScanData().FilesCorrupted)
+	{
+		const TSharedPtr<FProjectCleanerTabCorruptedListItem> NewItem = MakeShareable(new FProjectCleanerTabCorruptedListItem);
+		if (!NewItem) continue;
+	
+		if (CorruptedFile.IsEmpty() || !FPaths::FileExists(CorruptedFile)) continue;
+	
+		NewItem->FileName = FPaths::GetCleanFilename(CorruptedFile);
+		NewItem->FileExtension = FPaths::GetExtension(CorruptedFile, true);
+		NewItem->FilePathAbs = CorruptedFile;
+		NewItem->FileSize = IFileManager::Get().FileSize(*CorruptedFile);
+		TotalSize += NewItem->FileSize;
+	
+		ListItems.Add(NewItem);
+	}
+	
+	ListSort();
+	ListView->RequestListRefresh();
 }
 
 void SProjectCleanerTabCorrupted::ListSort()

@@ -6,9 +6,43 @@
 #include "ProjectCleanerTypes.generated.h"
 
 UENUM(BlueprintType)
+enum class EProjectCleanerAssetUsageCategory : uint8
+{
+	Used,
+	Unused,
+	Excluded
+};
+
+UENUM(BlueprintType)
+enum class EProjectCleanerAssetTag : uint8
+{
+	None,
+	Unused,
+	UsedAsPrimary,
+	UsedAsExcluded,
+	UsedAsEditorUtility,
+	UsedAsPluginAsset,
+	UsedInSourceCode,
+	UsedInConfigFile,
+	UsedByEngineContentAssets,
+	UsedAsDependency
+};
+
+UENUM(BlueprintType, meta=(Bitflags, UseEnumValuesAsMaskValuesInEditor="true"))
+enum class EProjectCleanerAssetCategory : uint8
+{
+	None = 0 UMETA(Hidden),
+	Primary = 1 << 0,
+	Secondary = 1 << 1,
+	Editor = 1 << 2,
+	Plugin = 1 << 3
+};
+ENUM_CLASS_FLAGS(EProjectCleanerAssetCategory)
+
+UENUM(BlueprintType)
 enum class EProjectCleanerCleanupMethod : uint8
 {
-	UnusedAssetsOnly UMETA(Tooltip="Remove only unused assets"),
+	UnusedAssetsOnly UMETA(Tooltip="Remove unused assets only"),
 	EmptyFoldersOnly UMETA(Tooltip="Remove empty folders only"),
 	Full UMETA(ToolTip="Remove both unused assets and empty folders")
 };
@@ -21,26 +55,6 @@ enum class EProjectCleanerModalState : uint8
 	Pending UMETA(DisplayName = "Pending"),
 	Error UMETA(DisplayName = "Error"),
 };
-
-// struct FProjectCleanerTabScanSettingsData
-// {
-// 	int32 AssetsTotal = 0;
-// 	int32 AssetsUsed = 0;
-// 	int32 AssetsUnused = 0;
-// 	int32 AssetsPrimary = 0;
-// 	int32 AssetsIndirect = 0;
-// 	int32 FoldersTotal = 0;
-// 	int32 FoldersEmpty = 0;
-// 	int32 FilesCorrupted = 0;
-// 	int32 FilesNonEngine = 0;
-// 	int64 AssetsTotalSize = 0;
-// 	int64 AssetsUsedSize = 0;
-// 	int64 AssetsUnusedSize = 0;
-// 	int64 AssetsPrimarySize = 0;
-// 	int64 AssetsIndirectSize = 0;
-// 	int64 FilesCorruptedSize = 0;
-// 	int64 FilesNonEngineSize = 0;
-// };
 
 USTRUCT(BlueprintType)
 struct FProjectCleanerAssetSearchFilter
@@ -67,8 +81,8 @@ enum class EProjectCleanerScanResult : uint8
 	Success,
 	AssetRegistryWorking,
 	EditorInPlayMode,
-	// ScanningInProgress,
-	// CleaningInProgress,
+	ScanningInProgress,
+	CleaningInProgress,
 	FailedToSaveAssets
 };
 
@@ -138,6 +152,8 @@ struct FProjectCleanerScanSettings
 {
 	GENERATED_BODY()
 
+	EProjectCleanerCleanupMethod CleanupMethod = EProjectCleanerCleanupMethod::Full;
+	
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="ProjectCleaner|ScanSettings", meta=(ToolTip="List of paths that must be scanned. Must be relative"))
 	TSet<FString> ScanPaths;
 

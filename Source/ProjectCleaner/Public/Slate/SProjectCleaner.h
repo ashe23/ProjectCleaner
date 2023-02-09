@@ -6,6 +6,8 @@
 #include "ProjectCleanerTypes.h"
 #include "Widgets/SCompoundWidget.h"
 
+class UProjectCleanerSubsystem;
+
 class SProjectCleaner final : public SCompoundWidget
 {
 public:
@@ -19,8 +21,8 @@ public:
 	virtual ~SProjectCleaner() override;
 
 private:
-	static bool WidgetEnabled();
-	static int32 WidgetGetIndex();
+	bool WidgetEnabled() const;
+	int32 WidgetGetIndex() const;
 	FText WidgetText() const;
 
 	static void CreateMenuBarTabs(FMenuBuilder& MenuBuilder, const TSharedPtr<FTabManager> TabManagerPtr);
@@ -30,8 +32,10 @@ private:
 	TSharedRef<SDockTab> OnTabSpawnIndirectAssets(const FSpawnTabArgs& Args) const;
 	TSharedRef<SDockTab> OnTabSpawnNonEngineFiles(const FSpawnTabArgs& Args) const;
 	TSharedRef<SDockTab> OnTabSpawnCorruptedFiles(const FSpawnTabArgs& Args) const;
+	TSharedRef<SDockTab> OnTabSpawnAssetsTableView(const FSpawnTabArgs& Args) const;
 
 	TSharedPtr<FTabManager> TabManager;
 	TSharedPtr<FTabManager::FLayout> TabLayout;
 	FProjectCleanerScanData ScanData;
+	UProjectCleanerSubsystem* Subsystem = nullptr;
 };

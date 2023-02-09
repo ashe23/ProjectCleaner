@@ -12,9 +12,9 @@
 
 void SProjectCleanerTabScanSettings::Construct(const FArguments& InArgs)
 {
-	// if (!GEditor) return;
-	// SubsystemPtr = GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>();
-	// if (!SubsystemPtr) return;
+	if (!GEditor) return;
+	SubsystemPtr = GEditor->GetEditorSubsystem<UProjectCleanerSubsystem>();
+	if (!SubsystemPtr) return;
 
 	Settings = GetMutableDefault<UProjectCleanerSettings>();
 	if (!Settings) return;
@@ -235,28 +235,28 @@ SProjectCleanerTabScanSettings::~SProjectCleanerTabScanSettings()
 
 void SProjectCleanerTabScanSettings::UpdateData()
 {
-	// if (!SubsystemPtr) return;
+	if (!SubsystemPtr) return;
 
 	// const FProjectCleanerScanData& ScanData = SubsystemPtr->GetScanData();
-
+	//
 	// AssetsTotalNum = ScanData.AssetsAll.Num();
-	// AssetsTotalSize = UProjectCleanerLibAsset::GetAssetsTotalSize(ScanData.AssetsAll);
+	// AssetsTotalSize = SubsystemPtr->GetAssetsTotalSize(ScanData.AssetsAll);
 	// AssetsPrimaryNum = ScanData.AssetsPrimary.Num();
-	// AssetsPrimarySize = UProjectCleanerLibAsset::GetAssetsTotalSize(ScanData.AssetsPrimary);
+	// AssetsPrimarySize = SubsystemPtr->GetAssetsTotalSize(ScanData.AssetsPrimary);
 	// AssetsIndirectNum = ScanData.AssetsIndirect.Num();
-	// AssetsIndirectSize = UProjectCleanerLibAsset::GetAssetsTotalSize(ScanData.AssetsIndirect);
+	// AssetsIndirectSize = SubsystemPtr->GetAssetsTotalSize(ScanData.AssetsIndirect);
 	// AssetsExcludedNum = ScanData.AssetsExcluded.Num();
-	// AssetsExcludedSize = UProjectCleanerLibAsset::GetAssetsTotalSize(ScanData.AssetsExcluded);
+	// AssetsExcludedSize = SubsystemPtr->GetAssetsTotalSize(ScanData.AssetsExcluded);
 	// AssetsUnusedNum = ScanData.AssetsUnused.Num();
-	// AssetsUnusedSize = UProjectCleanerLibAsset::GetAssetsTotalSize(ScanData.AssetsUnused);
+	// AssetsUnusedSize = SubsystemPtr->GetAssetsTotalSize(ScanData.AssetsUnused);
 	// AssetsUsedNum = ScanData.AssetsUsed.Num();
-	// AssetsUsedSize = UProjectCleanerLibAsset::GetAssetsTotalSize(ScanData.AssetsUsed);
+	// AssetsUsedSize = SubsystemPtr->GetAssetsTotalSize(ScanData.AssetsUsed);
 	// FoldersTotalNum = ScanData.FoldersAll.Num();
 	// FoldersEmptyNum = ScanData.FoldersEmpty.Num();
 	// FilesCorruptedNum = ScanData.FilesCorrupted.Num();
-	// FilesCorruptedSize = UProjectCleanerLibFile::GetFilesTotalSize(ScanData.FilesCorrupted);
+	// FilesCorruptedSize = SubsystemPtr->GetFilesTotalSize(ScanData.FilesCorrupted);
 	// FilesNonEngineNum = ScanData.FilesNonEngine.Num();
-	// FilesNonEngineSize = UProjectCleanerLibFile::GetFilesTotalSize(ScanData.FilesNonEngine);
+	// FilesNonEngineSize = SubsystemPtr->GetFilesTotalSize(ScanData.FilesNonEngine);
 }
 
 void SProjectCleanerTabScanSettings::OnProjectScanned()
@@ -266,7 +266,7 @@ void SProjectCleanerTabScanSettings::OnProjectScanned()
 
 FReply SProjectCleanerTabScanSettings::OnBtnScanProjectClick() const
 {
-	// if (!SubsystemPtr) return FReply::Handled();
+	if (!SubsystemPtr) return FReply::Handled();
 
 	// SubsystemPtr->ProjectScan();
 
@@ -307,13 +307,13 @@ FReply SProjectCleanerTabScanSettings::OnBtnCleanProjectClick() const
 
 bool SProjectCleanerTabScanSettings::BtnScanProjectEnabled() const
 {
-	return false;
+	return true;
 	// return SubsystemPtr && SubsystemPtr->CanScanProject();
 }
 
 bool SProjectCleanerTabScanSettings::BtnCleanProjectEnabled() const
 {
-	return false;
+	return true;
 	// return SubsystemPtr && SubsystemPtr->CanScanProject() && AssetsUnusedNum > 0 || FoldersEmptyNum > 0;
 }
 
@@ -330,7 +330,7 @@ FReply SProjectCleanerTabScanSettings::OnBtnResetSettingsClick() const
 	Settings->ExcludeClasses.Empty();
 	Settings->PostEditChange();
 
-	// SubsystemPtr->ProjectScan();
+	SubsystemPtr->ProjectScan();
 
 	return FReply::Handled();
 }

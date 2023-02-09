@@ -155,13 +155,13 @@ void SProjectCleanerTabIndirect::Construct(const FArguments& InArgs)
 		]
 	];
 
-	// SubsystemPtr->OnProjectScanned().AddRaw(this, &SProjectCleanerTabIndirect::OnProjectScanned);
+	SubsystemPtr->OnProjectScanned().AddRaw(this, &SProjectCleanerTabIndirect::OnProjectScanned);
 }
 
 SProjectCleanerTabIndirect::~SProjectCleanerTabIndirect()
 {
-	// SubsystemPtr->OnProjectScanned().RemoveAll(this);
-	// SubsystemPtr = nullptr;
+	SubsystemPtr->OnProjectScanned().RemoveAll(this);
+	SubsystemPtr = nullptr;
 }
 
 void SProjectCleanerTabIndirect::OnProjectScanned()
@@ -186,21 +186,21 @@ void SProjectCleanerTabIndirect::ListUpdate()
 
 	ListItems.Reset();
 
-	// TotalSize = UProjectCleanerLibAsset::GetAssetsTotalSize(SubsystemPtr->GetScanData().AssetsIndirect);
+	TotalSize = SubsystemPtr->GetAssetsTotalSize(SubsystemPtr->GetScanData().AssetsIndirect);
 
-	// for (const auto& IndirectAsset : SubsystemPtr->GetScanData().AssetsIndirectInfo)
-	// {
-	// 	const TSharedPtr<FProjectCleanerIndirectAssetInfo> NewItem = MakeShareable(new FProjectCleanerIndirectAssetInfo);
-	// 	if (!NewItem) continue;
-	//
-	// 	NewItem->AssetData = IndirectAsset.AssetData;
-	// 	NewItem->FilePath = IndirectAsset.FilePath;
-	// 	NewItem->LineNum = IndirectAsset.LineNum;
-	// 	ListItems.Add(NewItem);
-	// }
-	//
-	// ListSort();
-	// ListView->RequestListRefresh();
+	for (const auto& IndirectAsset : SubsystemPtr->GetScanData().AssetsIndirectInfo)
+	{
+		const TSharedPtr<FProjectCleanerIndirectAssetInfo> NewItem = MakeShareable(new FProjectCleanerIndirectAssetInfo);
+		if (!NewItem) continue;
+	
+		NewItem->AssetData = IndirectAsset.AssetData;
+		NewItem->FilePath = IndirectAsset.FilePath;
+		NewItem->LineNum = IndirectAsset.LineNum;
+		ListItems.Add(NewItem);
+	}
+	
+	ListSort();
+	ListView->RequestListRefresh();
 }
 
 void SProjectCleanerTabIndirect::ListSort()
