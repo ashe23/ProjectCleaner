@@ -15,7 +15,7 @@
 	"Installed": true,
 	"Modules": [
 		{
-			"Name": "ProjectCleaner",
+			"Name": "Pjc",
 			"Type": "Editor",
 			"LoadingPhase": "PostDefault",
 			"WhitelistPlatforms": [
@@ -23,6 +23,12 @@
 				"Win32",
 				"Linux"
 			]
+		}
+	],
+	"Plugins": [
+		{
+			"Name": "AssetManagerEditor",
+			"Enabled": true
 		}
 	]
 }
