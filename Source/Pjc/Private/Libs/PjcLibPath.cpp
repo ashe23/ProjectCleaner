@@ -36,6 +36,7 @@ TOptional<FString> FPjcLibPath::Normalize(const FString& InPath)
 
 	if (Path.StartsWith(PjcConstants::PathRelRoot.ToString())) return TOptional<FString>{Path};
 
+	// Ensure that we are dealing with paths that are under the project directory
 	const FString ProjectPath = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir());
 	if (!Path.StartsWith(ProjectPath)) return TOptional<FString>{}; // Return an empty string if the path is outside the project directory
 
