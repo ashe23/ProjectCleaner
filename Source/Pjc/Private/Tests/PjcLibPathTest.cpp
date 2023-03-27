@@ -34,6 +34,24 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter
 )
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FPjcLibPathGetFilePath,
+	"Plugins.ProjectCleaner.Libs.Path.GetFilePath",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter
+)
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FPjcLibPathGetPathName,
+	"Plugins.ProjectCleaner.Libs.Path.GetPathName",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter
+)
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FPjcLibPathGetFileExtension,
+	"Plugins.ProjectCleaner.Libs.Path.GetFileExtension",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter
+)
+
 bool FPjcLibPathDefaults::RunTest(const FString& Parameters)
 {
 	// default paths must not end with slash and must start with drive letter
@@ -246,6 +264,87 @@ bool FPjcLibPathToObjectPath::RunTest(const FString& Parameters)
 		const FName Actual = FPjcLibPath::ToObjectPath(Input);
 
 		TestEqual(FString::Printf(TEXT("ToObjectPath - Input: \"%s\""), *Input), Actual, Expected);
+	}
+
+	return true;
+}
+
+bool FPjcLibPathGetFilePath::RunTest(const FString& Parameters)
+{
+	// contracts
+	// 1. must return clean path without file name or extension
+	// 2. must return empty string if path is not file
+
+	TArray<TPair<FString, FString>> TestCases
+	{
+		TPair<FString, FString>{TEXT(""), TEXT("")},
+		TPair<FString, FString>{TEXT("/Game"), TEXT("")},
+		TPair<FString, FString>{FPjcLibPath::ContentDir() / TEXT("my_file.txt"), FPjcLibPath::ContentDir()},
+		TPair<FString, FString>{FPjcLibPath::ContentDir() / TEXT("/my_file.txt"), FPjcLibPath::ContentDir()},
+		TPair<FString, FString>{FPjcLibPath::ContentDir() / TEXT("Folder/my_file.txt"), FPjcLibPath::ContentDir() / TEXT("Folder")},
+		TPair<FString, FString>{FPjcLibPath::ContentDir() / TEXT("Folder//my_file.txt"), FPjcLibPath::ContentDir() / TEXT("Folder")},
+		TPair<FString, FString>{FPjcLibPath::ContentDir(), TEXT("")},
+		TPair<FString, FString>{FPjcLibPath::SourceDir(), TEXT("")},
+	};
+
+	for (const TPair<FString, FString>& TestCase : TestCases)
+	{
+		const FString Input = TestCase.Key;
+		const FString Expected = TestCase.Value;
+		const FString Actual = FPjcLibPath::GetFilePath(Input);
+
+		TestEqual(FString::Printf(TEXT("GetFilePath - Input: \"%s\""), *Input), Actual, Expected);
+	}
+
+	return true;
+}
+
+bool FPjcLibPathGetPathName::RunTest(const FString& Parameters)
+{
+	// contracts
+	// 1. must return given path last leaf name
+
+	TArray<TPair<FString, FString>> TestCases
+	{
+		TPair<FString, FString>{TEXT(""), TEXT("")},
+		TPair<FString, FString>{TEXT("/Game"), TEXT("Game")},
+		TPair<FString, FString>{FPjcLibPath::ContentDir() / TEXT("MyFolder"), TEXT("MyFolder")},
+		TPair<FString, FString>{FPjcLibPath::ContentDir() / TEXT("//MyFolder"), TEXT("MyFolder")},
+		TPair<FString, FString>{FPjcLibPath::ContentDir() / TEXT("MyFolder/my_file.txt"), TEXT("MyFolder")},
+		TPair<FString, FString>{FPjcLibPath::ContentDir() / TEXT("MyFolder/my_file.txt"), TEXT("MyFolder")},
+		TPair<FString, FString>{FPjcLibPath::ContentDir() / TEXT("Test/AnotherTest/my_file.txt"), TEXT("AnotherTest")},
+	};
+
+	for (const TPair<FString, FString>& TestCase : TestCases)
+	{
+		const FString Input = TestCase.Key;
+		const FString Expected = TestCase.Value;
+		const FString Actual = FPjcLibPath::GetPathName(Input);
+
+		TestEqual(FString::Printf(TEXT("GetPathName - Input: \"%s\""), *Input), Actual, Expected);
+	}
+
+	return true;
+}
+
+bool FPjcLibPathGetFileExtension::RunTest(const FString& Parameters)
+{
+	TArray<TPair<FString, FString>> TestCases
+	{
+		TPair<FString, FString>{TEXT(""), TEXT("")},
+		TPair<FString, FString>{FPjcLibPath::ContentDir() / TEXT("my_file.txt"), TEXT("txt")},
+		TPair<FString, FString>{FPjcLibPath::ContentDir() / TEXT("Test/other.mp4"), TEXT("mp4")},
+		TPair<FString, FString>{FPjcLibPath::ContentDir() / TEXT("Test/my_asset.uasset"), TEXT("uasset")},
+		TPair<FString, FString>{TEXT("/SomeRandomPath/test.bin"), TEXT("bin")},
+	};
+
+	for (const TPair<FString, FString>& TestCase : TestCases)
+	{
+		const FString Input = TestCase.Key;
+		const FString Expected = TestCase.Value;
+		const FString Actual = FPjcLibPath::GetFileExtension(Input, false);
+
+		TestEqual(FString::Printf(TEXT("GetFileExtension - Input: \"%s\""), *Input), Actual, Expected);
 	}
 
 	return true;

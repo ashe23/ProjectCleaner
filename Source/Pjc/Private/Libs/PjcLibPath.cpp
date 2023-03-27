@@ -149,3 +149,60 @@ FName FPjcLibPath::ToObjectPath(const FString& InPath)
 
 	return NAME_None;
 }
+
+FString FPjcLibPath::GetFilePath(const FString& InPath)
+{
+	if (!IsFile(InPath)) return {};
+
+	return FPaths::GetPath(Normalize(InPath));
+}
+
+FString FPjcLibPath::GetPathName(const FString& InPath)
+{
+	const FString Path = IsDir(InPath) ? Normalize(InPath) : GetFilePath(InPath);
+	if (Path.IsEmpty()) return {};
+
+	TArray<FString> Parts;
+	Path.ParseIntoArray(Parts,TEXT("/"), true);
+
+	return Parts.Num() > 0 ? Parts.Last() : TEXT("");
+}
+
+FString FPjcLibPath::GetFileExtension(const FString& InPath, const bool bIncludeDot)
+{
+	return FPaths::GetExtension(InPath, bIncludeDot);
+}
+
+bool FPjcLibPath::IsValid(const FString& InPath)
+{
+	return IsFile(InPath) ? FPaths::FileExists(Normalize(InPath)) : FPaths::DirectoryExists(Normalize(InPath));
+}
+
+bool FPjcLibPath::IsFile(const FString& InPath)
+{
+	return !GetFileExtension(InPath, false).IsEmpty();
+}
+
+bool FPjcLibPath::IsDir(const FString& InPath)
+{
+	return !IsFile(InPath);
+}
+
+int64 FPjcLibPath::GetFileSize(const FString& InPath)
+{
+	return IsValid(InPath) ? IFileManager::Get().FileSize(*Normalize(InPath)) : 0;
+}
+
+int64 FPjcLibPath::GetFilesSize(const TArray<FString>& InPaths)
+{
+	int64 Size = 0;
+
+	for (const auto& InPath : InPaths)
+	{
+		if (!IsValid(InPath)) continue;
+
+		Size += IFileManager::Get().FileSize(*Normalize(InPath));
+	}
+
+	return Size;
+}
