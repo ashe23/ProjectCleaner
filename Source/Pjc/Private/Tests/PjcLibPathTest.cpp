@@ -5,10 +5,44 @@
 #include "Libs/PjcLibPath.h"
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FPjcLibPathDefaults,
+	"Plugins.ProjectCleaner.Libs.Path.DefaultPaths",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter
+)
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FPjcLibPathNormalize,
 	"Plugins.ProjectCleaner.Libs.Path.Normalize",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter
 )
+
+bool FPjcLibPathDefaults::RunTest(const FString& Parameters)
+{
+	// default paths must not end with slash and must start with drive letter
+
+	TArray<FString> TestCases;
+	TestCases.Emplace(FPjcLibPath::ProjectDir());
+	TestCases.Emplace(FPjcLibPath::ContentDir());
+	TestCases.Emplace(FPjcLibPath::SourceDir());
+	TestCases.Emplace(FPjcLibPath::ConfigDir());
+	TestCases.Emplace(FPjcLibPath::PluginsDir());
+	TestCases.Emplace(FPjcLibPath::SavedDir());
+	TestCases.Emplace(FPjcLibPath::DevelopersDir());
+	TestCases.Emplace(FPjcLibPath::CollectionsDir());
+	TestCases.Emplace(FPjcLibPath::CurrentUserDevelopersDir());
+	TestCases.Emplace(FPjcLibPath::CurrentUserCollectionsDir());
+
+	for (const auto& TestCase : TestCases)
+	{
+		TestFalse(FString::Printf(TEXT("DefaultPaths - Input: \"%s\" must not be empty"), *TestCase), TestCase.IsEmpty());
+		TestFalse(FString::Printf(TEXT("DefaultPaths - Input: \"%s\" must not contain any trailing slash"), *TestCase), TestCase.EndsWith(TEXT("/")) || TestCase.EndsWith(TEXT("\\")));
+		TestFalse(FString::Printf(TEXT("DefaultPaths - Input: \"%s\" must be absolute"), *TestCase), !(TestCase.Len() > 2 && TestCase[1] == ':'));
+		TestFalse(FString::Printf(TEXT("DefaultPaths - Input: \"%s\" must be collapsed"), *TestCase), TestCase.Contains(TEXT("..")) || TestCase.Contains(TEXT(".")));
+	}
+
+	return true;
+}
+
 
 bool FPjcLibPathNormalize::RunTest(const FString& Parameters)
 {
@@ -43,12 +77,18 @@ bool FPjcLibPathNormalize::RunTest(const FString& Parameters)
 		TPair<FString, FString>(FPaths::ConvertRelativePathToFull(FPaths::ProjectConfigDir()), FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() / TEXT("Config"))),
 		TPair<FString, FString>(FPaths::ConvertRelativePathToFull(FPaths::GameSourceDir()), FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() / TEXT("Source"))),
 		TPair<FString, FString>(FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / TEXT("MyFolder/")), FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / TEXT("MyFolder"))),
-		TPair<FString, FString>(FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / TEXT("//MyFolder/")), FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / TEXT("MyFolder"))),
-		TPair<FString, FString>(FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / TEXT("//MyFolder/Test")), FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / TEXT("MyFolder/Test"))),
-		TPair<FString, FString>(FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / TEXT("//MyFolder/Test/")), FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / TEXT("MyFolder/Test"))),
-		TPair<FString, FString>(FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / TEXT("//MyFolder/Test//")), FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / TEXT("MyFolder/Test"))),
-		TPair<FString, FString>(FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / TEXT("//MyFolder/./Test//")), FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / TEXT("MyFolder/Test"))),
-		TPair<FString, FString>(FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / TEXT("//MyFolder//..//Test//")), FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / TEXT("Test"))),
+		TPair<FString, FString>(FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / TEXT("//MyFolder/")),
+		                        FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / TEXT("MyFolder"))),
+		TPair<FString, FString>(FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / TEXT("//MyFolder/Test")),
+		                        FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / TEXT("MyFolder/Test"))),
+		TPair<FString, FString>(FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / TEXT("//MyFolder/Test/")),
+		                        FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / TEXT("MyFolder/Test"))),
+		TPair<FString, FString>(FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / TEXT("//MyFolder/Test//")),
+		                        FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / TEXT("MyFolder/Test"))),
+		TPair<FString, FString>(FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / TEXT("//MyFolder/./Test//")),
+		                        FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / TEXT("MyFolder/Test"))),
+		TPair<FString, FString>(FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / TEXT("//MyFolder//..//Test//")),
+		                        FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / TEXT("Test"))),
 
 		// relative asset paths
 		TPair<FString, FString>(TEXT("/Game"), TEXT("/Game")),
@@ -68,10 +108,9 @@ bool FPjcLibPathNormalize::RunTest(const FString& Parameters)
 	{
 		const FString Input = TestCase.Key;
 		const FString Expected = TestCase.Value;
-		const TOptional<FString> Actual = FPjcLibPath::Normalize(Input);
-		const FString ActualValue = Actual.IsSet() ? Actual.GetValue() : TEXT("");
+		const FString Actual = FPjcLibPath::Normalize(Input);
 
-		TestEqual(FString::Printf(TEXT("PathNormalize - Input: \"%s\""), *Input), ActualValue, Expected);
+		TestEqual(FString::Printf(TEXT("PathNormalize - Input: \"%s\""), *Input), Actual, Expected);
 	}
 
 	return true;

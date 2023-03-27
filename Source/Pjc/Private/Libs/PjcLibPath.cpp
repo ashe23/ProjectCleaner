@@ -3,14 +3,64 @@
 #include "Libs/PjcLibPath.h"
 #include "PjcConstants.h"
 
-TOptional<FString> FPjcLibPath::Normalize(const FString& InPath)
+FString FPjcLibPath::ProjectDir()
 {
-	if (InPath.IsEmpty()) return TOptional<FString>{};
+	return FPaths::ConvertRelativePathToFull(FPaths::ProjectDir()).LeftChop(1);
+}
+
+FString FPjcLibPath::ContentDir()
+{
+	return FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir()).LeftChop(1);
+}
+
+FString FPjcLibPath::SourceDir()
+{
+	return FPaths::ConvertRelativePathToFull(FPaths::GameSourceDir()).LeftChop(1);
+}
+
+FString FPjcLibPath::ConfigDir()
+{
+	return FPaths::ConvertRelativePathToFull(FPaths::ProjectConfigDir()).LeftChop(1);
+}
+
+FString FPjcLibPath::PluginsDir()
+{
+	return FPaths::ConvertRelativePathToFull(FPaths::ProjectPluginsDir()).LeftChop(1);
+}
+
+FString FPjcLibPath::SavedDir()
+{
+	return FPaths::ConvertRelativePathToFull(FPaths::ProjectSavedDir()).LeftChop(1);
+}
+
+FString FPjcLibPath::DevelopersDir()
+{
+	return FPaths::ConvertRelativePathToFull(FPaths::GameDevelopersDir()).LeftChop(1);
+}
+
+FString FPjcLibPath::CollectionsDir()
+{
+	return ContentDir() / TEXT("Collections");
+}
+
+FString FPjcLibPath::CurrentUserDevelopersDir()
+{
+	return FPaths::ConvertRelativePathToFull(FPaths::GameUserDeveloperDir()).LeftChop(1);
+}
+
+FString FPjcLibPath::CurrentUserCollectionsDir()
+{
+	return CurrentUserDevelopersDir() / TEXT("Collections");
+}
+
+FString FPjcLibPath::Normalize(const FString& InPath)
+{
+	if (InPath.IsEmpty()) return {};
 
 	// Ensure the path starts with a slash or a disk drive letter
 	if (!(InPath.StartsWith(TEXT("/")) || InPath.StartsWith(TEXT("\\")) || (InPath.Len() > 2 && InPath[1] == ':')))
 	{
-		return TOptional<FString>{};
+		return {};
 	}
 
 	FString Path = FPaths::ConvertRelativePathToFull(InPath).TrimStartAndEnd();
@@ -34,11 +84,11 @@ TOptional<FString> FPjcLibPath::Normalize(const FString& InPath)
 		Path = Path.LeftChop(1);
 	}
 
-	if (Path.StartsWith(PjcConstants::PathRelRoot.ToString())) return TOptional<FString>{Path};
+	if (Path.StartsWith(PjcConstants::PathRelRoot.ToString())) return Path;
 
 	// Ensure that we are dealing with paths that are under the project directory
 	const FString ProjectPath = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir());
-	if (!Path.StartsWith(ProjectPath)) return TOptional<FString>{}; // Return an empty string if the path is outside the project directory
+	if (!Path.StartsWith(ProjectPath)) return {}; // Return an empty string if the path is outside the project directory
 
-	return TOptional<FString>{Path};
+	return Path;
 }

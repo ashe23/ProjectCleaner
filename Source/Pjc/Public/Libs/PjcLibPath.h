@@ -6,5 +6,15 @@
 
 struct FPjcLibPath
 {
-	static TOptional<FString> Normalize(const FString& InPath);
+	static FString ProjectDir();
+	static FString ContentDir();
+	static FString SourceDir();
+	static FString ConfigDir();
+	static FString PluginsDir();
+	static FString SavedDir();
+	static FString DevelopersDir();
+	static FString CollectionsDir();
+	static FString CurrentUserDevelopersDir();
+	static FString CurrentUserCollectionsDir();
+	static FString Normalize(const FString& InPath);
 };
