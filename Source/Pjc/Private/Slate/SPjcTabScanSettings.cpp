@@ -216,30 +216,30 @@ bool SPjcTabScanSettings::BtnCleanProjectEnabled() const
 
 void SPjcTabScanSettings::UpdateData()
 {
-	const UPjcSubsystem* SubsystemPtr = GEditor->GetEditorSubsystem<UPjcSubsystem>();
+	// const UPjcSubsystem* SubsystemPtr = GEditor->GetEditorSubsystem<UPjcSubsystem>();
 
-	NumAssetsTotal = SubsystemPtr->GetNumAssetsAll();
-	NumAssetsUsed = SubsystemPtr->GetNumAssetsUsed();
-	NumAssetsUnused = SubsystemPtr->GetNumAssetsUnused();
-	NumAssetsExcluded = SubsystemPtr->GetNumAssetsExcluded();
-	NumAssetsIndirect = SubsystemPtr->GetNumAssetsIndirect();
-	NumAssetsPrimary = SubsystemPtr->GetNumAssetsPrimary();
-	NumAssetsEditor = SubsystemPtr->GetNumAssetsEditor();
-	NumAssetsExtReferenced = SubsystemPtr->GetNumAssetsExtReferenced();
-	NumFilesNonEngine = SubsystemPtr->GetNumFilesNonEngine();
-	NumFilesCorrupted = SubsystemPtr->GetNumFilesNonCorrupted();
-	NumFoldersEmpty = SubsystemPtr->GetNumFolderEmpty();
-
-	SizeAssetsTotal = SubsystemPtr->GetSizeAssetsAll();
-	SizeAssetsUsed = SubsystemPtr->GetSizeAssetsUsed();
-	SizeAssetsUnused = SubsystemPtr->GetSizeAssetsUnused();
-	SizeAssetsExcluded = SubsystemPtr->GetSizeAssetsExcluded();
-	SizeAssetsIndirect = SubsystemPtr->GetSizeAssetsIndirect();
-	SizeAssetsPrimary = SubsystemPtr->GetSizeAssetsPrimary();
-	SizeAssetsEditor = SubsystemPtr->GetSizeAssetsEditor();
-	SizeAssetsExtReferenced = SubsystemPtr->GetSizeAssetsExtReferenced();
-	SizeFilesNonEngine = SubsystemPtr->GetSizeFilesNonEngine();
-	SizeFilesCorrupted = SubsystemPtr->GetSizeFilesCorrupted();
+	// NumAssetsTotal = SubsystemPtr->GetNumAssetsAll();
+	// NumAssetsUsed = SubsystemPtr->GetNumAssetsUsed();
+	// NumAssetsUnused = SubsystemPtr->GetNumAssetsUnused();
+	// NumAssetsExcluded = SubsystemPtr->GetNumAssetsExcluded();
+	// NumAssetsIndirect = SubsystemPtr->GetNumAssetsIndirect();
+	// NumAssetsPrimary = SubsystemPtr->GetNumAssetsPrimary();
+	// NumAssetsEditor = SubsystemPtr->GetNumAssetsEditor();
+	// NumAssetsExtReferenced = SubsystemPtr->GetNumAssetsExtReferenced();
+	// NumFilesNonEngine = SubsystemPtr->GetNumFilesNonEngine();
+	// NumFilesCorrupted = SubsystemPtr->GetNumFilesNonCorrupted();
+	// NumFoldersEmpty = SubsystemPtr->GetNumFolderEmpty();
+	//
+	// SizeAssetsTotal = SubsystemPtr->GetSizeAssetsAll();
+	// SizeAssetsUsed = SubsystemPtr->GetSizeAssetsUsed();
+	// SizeAssetsUnused = SubsystemPtr->GetSizeAssetsUnused();
+	// SizeAssetsExcluded = SubsystemPtr->GetSizeAssetsExcluded();
+	// SizeAssetsIndirect = SubsystemPtr->GetSizeAssetsIndirect();
+	// SizeAssetsPrimary = SubsystemPtr->GetSizeAssetsPrimary();
+	// SizeAssetsEditor = SubsystemPtr->GetSizeAssetsEditor();
+	// SizeAssetsExtReferenced = SubsystemPtr->GetSizeAssetsExtReferenced();
+	// SizeFilesNonEngine = SubsystemPtr->GetSizeFilesNonEngine();
+	// SizeFilesCorrupted = SubsystemPtr->GetSizeFilesCorrupted();
 }
 
 FText SPjcTabScanSettings::GetStatAssetsTotal() const
