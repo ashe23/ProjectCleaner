@@ -87,8 +87,24 @@ FString FPjcLibPath::Normalize(const FString& InPath)
 	if (Path.StartsWith(PjcConstants::PathRelRoot.ToString())) return Path;
 
 	// Ensure that we are dealing with paths that are under the project directory
-	const FString ProjectPath = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir());
-	if (!Path.StartsWith(ProjectPath)) return {}; // Return an empty string if the path is outside the project directory
+	if (!Path.StartsWith(ProjectDir())) return {};
 
 	return Path;
+}
+
+FString FPjcLibPath::ToAbsolute(const FString& InPath)
+{
+	const FString PathNormalized = Normalize(InPath);
+
+	if (PathNormalized.IsEmpty()) return {};
+	if (PathNormalized.StartsWith(ProjectDir())) return PathNormalized;
+	if (PathNormalized.StartsWith(PjcConstants::PathRelRoot.ToString()))
+	{
+		FString Path = PathNormalized;
+		Path.RemoveFromStart(PjcConstants::PathRelRoot.ToString());
+
+		return ContentDir() + Path;
+	}
+
+	return {};
 }

@@ -91,29 +91,24 @@ public:
 
 	int32 GetNumAssetsAll() const;
 	int32 GetNumAssetsUsed() const;
-	// int32 GetNumAssetsUsedDeps() const;
 	int32 GetNumAssetsExcluded() const;
 	int32 GetNumAssetsPrimary() const;
 	int32 GetNumAssetsIndirect() const;
 	int32 GetNumAssetsEditor() const;
 	int32 GetNumAssetsExtReferenced() const;
 	int32 GetNumAssetsUnused() const;
-	// int32 GetNumFilesAll() const;
 	int32 GetNumFilesNonEngine() const;
 	int32 GetNumFilesNonCorrupted() const;
-	// int32 GetNumFolderAll() const;
 	int32 GetNumFolderEmpty() const;
 
 	int64 GetSizeAssetsAll() const;
 	int64 GetSizeAssetsUsed() const;
-	// int64 GetSizeAssetsUsedDeps() const;
 	int64 GetSizeAssetsExcluded() const;
 	int64 GetSizeAssetsPrimary() const;
 	int64 GetSizeAssetsIndirect() const;
 	int64 GetSizeAssetsEditor() const;
 	int64 GetSizeAssetsUnused() const;
 	int64 GetSizeAssetsExtReferenced() const;
-	// int64 GetSizeFilesAll() const;
 	int64 GetSizeFilesNonEngine() const;
 	int64 GetSizeFilesCorrupted() const;
 

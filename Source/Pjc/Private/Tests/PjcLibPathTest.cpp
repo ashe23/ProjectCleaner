@@ -16,6 +16,12 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter
 )
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FPjcLibPathToAbsolute,
+	"Plugins.ProjectCleaner.Libs.Path.ToAbsolute",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter
+)
+
 bool FPjcLibPathDefaults::RunTest(const FString& Parameters)
 {
 	// default paths must not end with slash and must start with drive letter
@@ -43,10 +49,9 @@ bool FPjcLibPathDefaults::RunTest(const FString& Parameters)
 	return true;
 }
 
-
 bool FPjcLibPathNormalize::RunTest(const FString& Parameters)
 {
-	// normalized version for paths must have following contracts
+	// contracts
 	// 1. must start with slash or Disk drive letter (example C:/)
 	// 2. must not contain any duplicate slashes
 	// 3. must not end with trailing slash
@@ -111,6 +116,46 @@ bool FPjcLibPathNormalize::RunTest(const FString& Parameters)
 		const FString Actual = FPjcLibPath::Normalize(Input);
 
 		TestEqual(FString::Printf(TEXT("PathNormalize - Input: \"%s\""), *Input), Actual, Expected);
+	}
+
+	return true;
+}
+
+bool FPjcLibPathToAbsolute::RunTest(const FString& Parameters)
+{
+	// contracts
+	// 1. must start with drive letter
+	// 2. must be under project dir
+	// 3. must be collapsed
+	// 4. must not end with trailing slash
+
+	TArray<TPair<FString, FString>> TestCases
+	{
+		// empty cases
+		TPair<FString, FString>{TEXT(""), TEXT("")},
+		TPair<FString, FString>{TEXT("C:"), TEXT("")},
+		TPair<FString, FString>{TEXT("C:/"), TEXT("")},
+		TPair<FString, FString>{TEXT("C:\\"), TEXT("")},
+		TPair<FString, FString>{TEXT("C://"), TEXT("")},
+
+
+		TPair<FString, FString>{FPjcLibPath::ProjectDir() / TEXT("/"), FPjcLibPath::ProjectDir()},
+		TPair<FString, FString>{FPjcLibPath::ProjectDir() / TEXT("\\"), FPjcLibPath::ProjectDir()},
+		TPair<FString, FString>{FPjcLibPath::ContentDir() / TEXT("./Folder/"), FPjcLibPath::ContentDir() / TEXT("Folder")},
+		TPair<FString, FString>{FPjcLibPath::ContentDir() / TEXT("my_file.txt"), FPjcLibPath::ContentDir() / TEXT("my_file.txt")},
+		TPair<FString, FString>{TEXT("/Game"), FPjcLibPath::ContentDir()},
+		TPair<FString, FString>{TEXT("/Game/"), FPjcLibPath::ContentDir()},
+		TPair<FString, FString>{TEXT("/Game//"), FPjcLibPath::ContentDir()},
+		TPair<FString, FString>{TEXT("//Game//"), FPjcLibPath::ContentDir()},
+	};
+
+	for (const TPair<FString, FString>& TestCase : TestCases)
+	{
+		const FString Input = TestCase.Key;
+		const FString Expected = TestCase.Value;
+		const FString Actual = FPjcLibPath::ToAbsolute(Input);
+
+		TestEqual(FString::Printf(TEXT("ToAbsolute - Input: \"%s\""), *Input), Actual, Expected);
 	}
 
 	return true;
