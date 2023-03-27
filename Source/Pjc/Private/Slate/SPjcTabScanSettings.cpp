@@ -48,7 +48,7 @@ void SPjcTabScanSettings::Construct(const FArguments& InArgs)
 					[
 						SNew(STextBlock)
 						.Justification(ETextJustify::Center)
-						.ToolTipText(FText::FromString(TEXT("Scan project based on specified settings.")))
+						.ToolTipText(FText::FromString(TEXT("Scan project for unused assets, empty folders and other files")))
 						.ColorAndOpacity(FPjcStyles::Get().GetColor("ProjectCleaner.Color.White"))
 						.ShadowOffset(FVector2D{1.5f, 1.5f})
 						.ShadowColorAndOpacity(FLinearColor::Black)

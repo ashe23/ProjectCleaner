@@ -22,6 +22,7 @@
 #include "ShaderCompiler.h"
 #include "Engine/MapBuildDataRegistry.h"
 #include "Framework/Notifications/NotificationManager.h"
+#include "Libs/PjcLibEditor.h"
 
 void UPjcSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
@@ -1222,8 +1223,7 @@ void UPjcSubsystem::ProjectClean() const
 
 void UPjcSubsystem::Test(const FName& Path)
 {
-	const FAssetData AssetData = ModuleAssetRegistry->GetAssetByObjectPath(Path);
-	return;
+	FPjcLibEditor::ShowNotification(TEXT("AAA"), SNotificationItem::CS_None, 10.0f);
 }
 
 FPjcDelegateOnProjectScan& UPjcSubsystem::OnProjectScan()
@@ -1684,33 +1684,3 @@ void UPjcSubsystem::GetAssetsDeps(const TSet<FAssetData>& InAssets, TSet<FAssetD
 	OutAssetsDeps.Empty();
 	OutAssetsDeps.Append(AssetsContainer);
 }
-
-//
-// void UPjcSubsystem::ShowModal(const FString& Msg, const EPjcModalStatus ModalStatus, const float Duration)
-// {
-// 	FNotificationInfo Info{FText::FromString(Msg)};
-// 	Info.Text = FText::FromString(Msg);
-// 	Info.ExpireDuration = Duration;
-//
-// 	const auto NotificationPtr = FSlateNotificationManager::Get().AddNotification(Info);
-// 	if (!NotificationPtr.IsValid()) return;
-//
-// 	NotificationPtr.Get()->SetCompletionState(GetCompletionStateFromModalStatus(ModalStatus));
-// }
-//
-// void UPjcSubsystem::ShowModalWithOutputLog(const FString& Msg, const EPjcModalStatus ModalStatus, const float Duration)
-// {
-// 	FNotificationInfo Info{FText::FromString(Msg)};
-// 	Info.Text = FText::FromString(Msg);
-// 	Info.ExpireDuration = Duration;
-// 	Info.Hyperlink = FSimpleDelegate::CreateLambda([]()
-// 	{
-// 		FGlobalTabmanager::Get()->TryInvokeTab(FName{TEXT("OutputLog")});
-// 	});
-// 	Info.HyperlinkText = FText::FromString(TEXT("Show OutputLog..."));
-//
-// 	const auto NotificationPtr = FSlateNotificationManager::Get().AddNotification(Info);
-// 	if (!NotificationPtr.IsValid()) return;
-//
-// 	NotificationPtr.Get()->SetCompletionState(GetCompletionStateFromModalStatus(ModalStatus));
-// }
