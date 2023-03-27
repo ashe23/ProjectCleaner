@@ -22,6 +22,12 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter
 )
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FPjcLibPathToAssetPath,
+	"Plugins.ProjectCleaner.Libs.Path.ToAssetPath",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter
+)
+
 bool FPjcLibPathDefaults::RunTest(const FString& Parameters)
 {
 	// default paths must not end with slash and must start with drive letter
@@ -156,6 +162,44 @@ bool FPjcLibPathToAbsolute::RunTest(const FString& Parameters)
 		const FString Actual = FPjcLibPath::ToAbsolute(Input);
 
 		TestEqual(FString::Printf(TEXT("ToAbsolute - Input: \"%s\""), *Input), Actual, Expected);
+	}
+
+	return true;
+}
+
+bool FPjcLibPathToAssetPath::RunTest(const FString& Parameters)
+{
+	// contracts
+	// 1. must always start with /Game
+	// 2. must not end with slash
+
+	TArray<TPair<FString, FString>> TestCases
+	{
+		TPair<FString, FString>{TEXT(""), TEXT("")},
+		TPair<FString, FString>{TEXT("/Game"), TEXT("/Game")},
+		TPair<FString, FString>{TEXT("/Game/"), TEXT("/Game")},
+		TPair<FString, FString>{TEXT("/Game//"), TEXT("/Game")},
+		TPair<FString, FString>{TEXT("//Game//"), TEXT("/Game")},
+		TPair<FString, FString>{TEXT("//Game//MyFolder"), TEXT("/Game/MyFolder")},
+		TPair<FString, FString>{TEXT("//Game//MyFolder/"), TEXT("/Game/MyFolder")},
+		TPair<FString, FString>{FPjcLibPath::ContentDir(), TEXT("/Game")},
+		TPair<FString, FString>{FPjcLibPath::ContentDir() / TEXT("TestFolder"), TEXT("/Game/TestFolder")},
+		TPair<FString, FString>{FPjcLibPath::ContentDir() / TEXT("/TestFolder"), TEXT("/Game/TestFolder")},
+		TPair<FString, FString>{FPjcLibPath::ContentDir() / TEXT("/TestFolder/"), TEXT("/Game/TestFolder")},
+		TPair<FString, FString>{FPjcLibPath::ContentDir() / TEXT("/TestFolder//"), TEXT("/Game/TestFolder")},
+		TPair<FString, FString>{FPjcLibPath::ContentDir() / TEXT("TestFolder/NestedFolder"), TEXT("/Game/TestFolder/NestedFolder")},
+		TPair<FString, FString>{FPjcLibPath::ContentDir() / TEXT("TestFolder//NestedFolder"), TEXT("/Game/TestFolder/NestedFolder")},
+		TPair<FString, FString>{FPjcLibPath::ContentDir() / TEXT("TestFolder//NestedFolder/"), TEXT("/Game/TestFolder/NestedFolder")},
+		TPair<FString, FString>{FPjcLibPath::ContentDir() / TEXT("TestFolder//NestedFolder\\"), TEXT("/Game/TestFolder/NestedFolder")},
+	};
+
+	for (const TPair<FString, FString>& TestCase : TestCases)
+	{
+		const FString Input = TestCase.Key;
+		const FString Expected = TestCase.Value;
+		const FString Actual = FPjcLibPath::ToAssetPath(Input);
+
+		TestEqual(FString::Printf(TEXT("ToAssetPath - Input: \"%s\""), *Input), Actual, Expected);
 	}
 
 	return true;

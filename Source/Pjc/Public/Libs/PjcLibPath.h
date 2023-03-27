@@ -18,4 +18,5 @@ struct FPjcLibPath
 	static FString CurrentUserCollectionsDir();
 	static FString Normalize(const FString& InPath);
 	static FString ToAbsolute(const FString& InPath);
+	static FString ToAssetPath(const FString& InPath);
 };

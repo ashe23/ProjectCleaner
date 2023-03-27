@@ -108,3 +108,20 @@ FString FPjcLibPath::ToAbsolute(const FString& InPath)
 
 	return {};
 }
+
+FString FPjcLibPath::ToAssetPath(const FString& InPath)
+{
+	const FString PathNormalized = Normalize(InPath);
+
+	if (PathNormalized.IsEmpty()) return {};
+	if (PathNormalized.StartsWith(PjcConstants::PathRelRoot.ToString())) return PathNormalized;
+	if (PathNormalized.StartsWith(ContentDir()))
+	{
+		FString Path = PathNormalized;
+		Path.RemoveFromStart(ContentDir());
+
+		return PjcConstants::PathRelRoot.ToString() + Path;
+	}
+
+	return {};
+}
