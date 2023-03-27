@@ -19,4 +19,5 @@ struct FPjcLibPath
 	static FString Normalize(const FString& InPath);
 	static FString ToAbsolute(const FString& InPath);
 	static FString ToAssetPath(const FString& InPath);
+	static FName ToObjectPath(const FString& InPath);
 };

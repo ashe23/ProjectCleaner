@@ -125,3 +125,27 @@ FString FPjcLibPath::ToAssetPath(const FString& InPath)
 
 	return {};
 }
+
+FName FPjcLibPath::ToObjectPath(const FString& InPath)
+{
+	const FString ObjectPath = FPackageName::ExportTextPathToObjectPath(InPath);
+
+	if (!ObjectPath.StartsWith(PjcConstants::PathRelRoot.ToString())) return NAME_None;
+
+	TArray<FString> Parts;
+	ObjectPath.ParseIntoArray(Parts, TEXT("/"), true);
+
+	if (Parts.Num() > 0)
+	{
+		FString Left;
+		FString Right;
+		Parts.Last().Split(TEXT("."), &Left, &Right);
+
+		if (!Left.IsEmpty() && !Right.IsEmpty() && Left.Equals(*Right))
+		{
+			return FName{*ObjectPath};
+		}
+	}
+
+	return NAME_None;
+}

@@ -28,6 +28,12 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter
 )
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FPjcLibPathToObjectPath,
+	"Plugins.ProjectCleaner.Libs.Path.ToObjectPath",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter
+)
+
 bool FPjcLibPathDefaults::RunTest(const FString& Parameters)
 {
 	// default paths must not end with slash and must start with drive letter
@@ -200,6 +206,46 @@ bool FPjcLibPathToAssetPath::RunTest(const FString& Parameters)
 		const FString Actual = FPjcLibPath::ToAssetPath(Input);
 
 		TestEqual(FString::Printf(TEXT("ToAssetPath - Input: \"%s\""), *Input), Actual, Expected);
+	}
+
+	return true;
+}
+
+bool FPjcLibPathToObjectPath::RunTest(const FString& Parameters)
+{
+	// contracts
+	// 1. must always start with /Game
+	// 2. must end with {asset_name}.{asset_name}
+	// 3. must not have trailing slash
+
+	TArray<TPair<FString, FName>> TestCases
+	{
+		TPair<FString, FName>{TEXT(""), TEXT("")},
+		TPair<FString, FName>{TEXT("C:/"), TEXT("")},
+		TPair<FString, FName>{TEXT("C:\\"), TEXT("")},
+		TPair<FString, FName>{TEXT("C://"), TEXT("")},
+		TPair<FString, FName>{FPjcLibPath::ContentDir(), TEXT("")},
+		TPair<FString, FName>{TEXT("/Game/MyAsset.MyAsset"), TEXT("/Game/MyAsset.MyAsset")},
+		TPair<FString, FName>{TEXT("/Game/Materials/M_Mat_Master.M_Mat_Master"), TEXT("/Game/Materials/M_Mat_Master.M_Mat_Master")},
+		TPair<FString, FName>{TEXT("Material'/Game/StarterContent/Materials/M_ColorGrid_LowSpec.M_ColorGrid_LowSpec'"), TEXT("/Game/StarterContent/Materials/M_ColorGrid_LowSpec.M_ColorGrid_LowSpec")},
+		TPair<FString, FName>{
+			TEXT("Blueprint'/Game/ParagonLtBelica/Characters/Heroes/Belica/LtBelicaPlayerCharacter.LtBelicaPlayerCharacter'"),
+			TEXT("/Game/ParagonLtBelica/Characters/Heroes/Belica/LtBelicaPlayerCharacter.LtBelicaPlayerCharacter")
+		},
+		TPair<FString, FName>{
+			TEXT("/Game/ParagonLtBelica/Characters/Heroes/Belica/LtBelicaPlayerCharacter"),
+			TEXT("")
+		},
+
+	};
+
+	for (const TPair<FString, FName>& TestCase : TestCases)
+	{
+		const FString Input = TestCase.Key;
+		const FName Expected = TestCase.Value;
+		const FName Actual = FPjcLibPath::ToObjectPath(Input);
+
+		TestEqual(FString::Printf(TEXT("ToObjectPath - Input: \"%s\""), *Input), Actual, Expected);
 	}
 
 	return true;
