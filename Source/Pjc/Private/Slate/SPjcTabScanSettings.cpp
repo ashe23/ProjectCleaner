@@ -9,6 +9,7 @@
 #include "Widgets/Layout/SSeparator.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "SlateOptMacros.h"
+#include "Widgets/SCanvas.h"
 
 BEGIN_SLATE_FUNCTION_BUILD_OPTIMIZATION
 
@@ -29,37 +30,36 @@ int32 SPjcSlice::OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeomet
 	const FVector2D Size = AllottedGeometry.GetAbsoluteSize();
 	const FVector2D Center = Pos + 0.5 * Size;
 	const float Radius = FMath::Min(Size.X, Size.Y) * 0.5f;
-
+	
 	const FSlateBrush* SlateBrush = Brush.GetImage().Get();
 	const FLinearColor LinearColor = ColorAndOpacity.Get() * InWidgetStyle.GetColorAndOpacityTint() * SlateBrush->GetTint(InWidgetStyle);
 	const FColor FinalColorAndOpacity = LinearColor.ToFColor(true);
-	// const FColor FinalColorAndOpacity = FLinearColor::Green.ToFColor(false);
-
+	
 	const int NumSegments = FMath::RoundToInt(ArcSize / 5.0f);
 	TArray<FSlateVertex> Vertices;
 	Vertices.Reserve(NumSegments + 3);
-
+	
 	// Add center vertex
 	Vertices.AddZeroed();
 	FSlateVertex& CenterVertex = Vertices.Last();
-
+	
 	CenterVertex.Position = Center;
 	CenterVertex.Color = FinalColorAndOpacity;
-
+	
 	// Add edge vertices
 	for (int i = 0; i < NumSegments + 2; ++i)
 	{
 		const float CurrentAngle = FMath::DegreesToRadians(ArcSize * i / NumSegments + Angle);
 		const FVector2D EdgeDirection(FMath::Cos(CurrentAngle), FMath::Sin(CurrentAngle));
 		const FVector2D OuterEdge(Radius * EdgeDirection);
-
+	
 		Vertices.AddZeroed();
 		FSlateVertex& OuterVert = Vertices.Last();
-
+	
 		OuterVert.Position = Center + OuterEdge;
 		OuterVert.Color = FinalColorAndOpacity;
 	}
-
+	
 	TArray<SlateIndex> Indices;
 	for (int i = 0; i <= NumSegments; ++i)
 	{
@@ -67,7 +67,7 @@ int32 SPjcSlice::OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeomet
 		Indices.Add(i);
 		Indices.Add(i + 1);
 	}
-
+	
 	const FSlateResourceHandle Handle = FSlateApplication::Get().GetRenderer()->GetResourceHandle(*SlateBrush);
 	FSlateDrawElement::MakeCustomVerts(
 		OutDrawElements,
@@ -80,6 +80,7 @@ int32 SPjcSlice::OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeomet
 		0,
 		ESlateDrawEffect::None
 	);
+	
 	return LayerId;
 }
 
@@ -233,48 +234,45 @@ void SPjcTabScanSettings::Construct(const FArguments& InArgs)
 						]
 						+ SVerticalBox::Slot().AutoHeight()
 						[
-							SNew(SOverlay)
-							+ SOverlay::Slot()
+							SNew(SCanvas)
+							+ SCanvas::Slot()
+							.HAlign(HAlign_Fill)
+							.VAlign(VAlign_Fill)
+							.Position(FVector2D{0.0f})
+							.Size(100.0f)
 							[
-								SNew(SBox)
-								.WidthOverride(100.0f)
-								.HeightOverride(100.0f)
-								[
-									SNew(SPjcSlice)
-									.Brush(FCoreStyle::Get().GetBrush("WhiteBrush"))
-									.Angle(0.0f)
-									.ArcSize(90.0f)
-									.Color(FLinearColor::Green)
-									.ToolTipText(FText::FromString(TEXT("AssetFiles")))
-								]
+								SNew(SPjcSlice)
+								.Brush(FCoreStyle::Get().GetBrush("WhiteBrush"))
+								.Angle(0.0f)
+								.ArcSize(90.0f)
+								.Color(FLinearColor::Green)
+								.ToolTipText(FText::FromString(TEXT("AssetFiles")))
 							]
-							+ SOverlay::Slot()
+							+ SCanvas::Slot()
+							.HAlign(HAlign_Fill)
+							.VAlign(VAlign_Fill)
+							.Position(FVector2D{0.0f})
+							.Size(100.0f)
 							[
-								SNew(SBox)
-							    .WidthOverride(100.0f)
-							    .HeightOverride(100.0f)
-								[
-									SNew(SPjcSlice)
-									.Brush(FCoreStyle::Get().GetBrush("WhiteBrush"))
-									.Angle(90.0f)
-									.ArcSize(90.0f)
-									.Color(FLinearColor::Yellow)
-									.ToolTipText(FText::FromString(TEXT("NonEngine")))
-								]
+								SNew(SPjcSlice)
+								.Brush(FCoreStyle::Get().GetBrush("WhiteBrush"))
+								.Angle(90.0f)
+								.ArcSize(90.0f)
+								.Color(FLinearColor::Yellow)
+								.ToolTipText(FText::FromString(TEXT("NonEngine")))
 							]
-							+ SOverlay::Slot()
+							+ SCanvas::Slot()
+							.HAlign(HAlign_Fill)
+							.VAlign(VAlign_Fill)
+							.Position(FVector2D{0.0f})
+							.Size(100.0f)
 							[
-								SNew(SBox)
-								.WidthOverride(100.0f)
-								.HeightOverride(100.0f)
-								[
-									SNew(SPjcSlice)
-									.Brush(FCoreStyle::Get().GetBrush("WhiteBrush"))
-									.Angle(180.0f)
-									.ArcSize(180.0f)
-									.Color(FLinearColor::Red)
-									.ToolTipText(FText::FromString(TEXT("Corrupted")))
-								]
+								SNew(SPjcSlice)
+								.Brush(FCoreStyle::Get().GetBrush("WhiteBrush"))
+								.Angle(180.0f)
+								.ArcSize(180.0f)
+								.Color(FLinearColor::Red)
+								.ToolTipText(FText::FromString(TEXT("Corrupted")))
 							]
 						]
 					]
