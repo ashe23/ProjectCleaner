@@ -23,7 +23,7 @@ void SPjcMainWindow::Construct(const FArguments& InArgs, const TSharedRef<SDockT
 				FTabManager::NewStack()
 				->AddTab(PjcConstants::TabScanSettings, ETabState::OpenedTab)
 				->SetForegroundTab(PjcConstants::TabScanSettings)
-				->SetSizeCoefficient(0.2f)
+				->SetSizeCoefficient(0.3f)
 			)
 			->Split(
 				FTabManager::NewStack()
@@ -32,7 +32,7 @@ void SPjcMainWindow::Construct(const FArguments& InArgs, const TSharedRef<SDockT
 				// ->AddTab(PjcConstants::TabFilesNonEngine, ETabState::OpenedTab)
 				// ->AddTab(PjcConstants::TabFilesCorrupted, ETabState::OpenedTab)
 				->SetForegroundTab(PjcConstants::TabScanInfo)
-				->SetSizeCoefficient(0.8f)
+				->SetSizeCoefficient(0.7f)
 			)
 		);
 

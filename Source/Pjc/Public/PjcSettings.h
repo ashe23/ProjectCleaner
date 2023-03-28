@@ -18,8 +18,8 @@ public:
 	virtual FText GetSectionText() const override;
 	virtual FText GetSectionDescription() const override;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Config, Category="General", meta=(ToolTip="Project Cleanup Method"))
-	EPjcCleanupMethod CleanupMethod = EPjcCleanupMethod::Full;
+	// UPROPERTY(EditAnywhere, BlueprintReadWrite, Config, Category="General", meta=(ToolTip="Project Cleanup Method"))
+	// EPjcCleanupMethod CleanupMethod = EPjcCleanupMethod::Full;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Config, Category="ExcludeSettings", meta=(ContentDir, ToolTip="Consider assets in specified paths as used. Always Recursive"))
 	TArray<FDirectoryPath> ExcludedPaths;

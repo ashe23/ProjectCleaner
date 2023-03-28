@@ -6,8 +6,28 @@
 #include "Widgets/SCompoundWidget.h"
 
 enum class EPjcScanResult : uint8;
-enum class EPjcCleanupMethod : uint8;
-struct FPjcScanData;
+
+struct FPjcStatItem
+{
+	int64 Size = 0;
+	int32 Num = 0;
+	FString Category;
+	FString ToolTip;
+};
+
+class SPjcStatItem final : public SMultiColumnTableRow<TSharedPtr<FPjcStatItem>>
+{
+public:
+	SLATE_BEGIN_ARGS(SPjcStatItem) {}
+		SLATE_ARGUMENT(TSharedPtr<FPjcStatItem>, StatItem)
+	SLATE_END_ARGS()
+
+	void Construct(const FArguments& InArgs, const TSharedRef<STableViewBase>& InTable);
+	virtual TSharedRef<SWidget> GenerateWidgetForColumn(const FName& InColumnName) override;
+
+private:
+	TSharedPtr<FPjcStatItem> StatItem;
+};
 
 class SPjcTabScanSettings final : public SCompoundWidget
 {
@@ -18,49 +38,15 @@ public:
 	void Construct(const FArguments& InArgs);
 
 private:
-	void OnProjectScan(const EPjcScanResult ScanResult, const FString&);
-	void UpdateData();
-
 	FReply OnBtnScanProjectClick() const;
 	FReply OnBtnCleanProjectClick() const;
-
 	bool BtnCleanProjectEnabled() const;
 
-	FText GetStatAssetsTotal() const;
-	FText GetStatAssetsUsed() const;
-	FText GetStatAssetsUnused() const;
-	FText GetStatAssetsExcluded() const;
-	FText GetStatAssetsIndirect() const;
-	FText GetStatAssetsPrimary() const;
-	FText GetStatAssetsEditor() const;
-	FText GetStatAssetsExtReferenced() const;
-	FText GetStatFilesNonEngine() const;
-	FText GetStatFilesCorrupted() const;
-	FText GetStatFoldersEmpty() const;
-	FText GetCleanupText(const EPjcCleanupMethod CleanupMethod) const;
+	void StatsUpdate();
 
-	int32 NumAssetsTotal = 0;
-	int32 NumAssetsUsed = 0;
-	int32 NumAssetsUnused = 0;
-	int32 NumAssetsExcluded = 0;
-	int32 NumAssetsIndirect = 0;
-	int32 NumAssetsPrimary = 0;
-	int32 NumAssetsEditor = 0;
-	int32 NumAssetsExtReferenced = 0;
-	int32 NumFilesNonEngine = 0;
-	int32 NumFilesCorrupted = 0;
-	int32 NumFoldersEmpty = 0;
+	TSharedRef<ITableRow> OnStatsGenerateRow(TSharedPtr<FPjcStatItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const;
+	TSharedRef<SHeaderRow> GetStatsHeaderRow() const;
 
-	int64 SizeAssetsTotal = 0;
-	int64 SizeAssetsUsed = 0;
-	int64 SizeAssetsUnused = 0;
-	int64 SizeAssetsExcluded = 0;
-	int64 SizeAssetsIndirect = 0;
-	int64 SizeAssetsPrimary = 0;
-	int64 SizeAssetsEditor = 0;
-	int64 SizeAssetsExtReferenced = 0;
-	int64 SizeFilesNonEngine = 0;
-	int64 SizeFilesCorrupted = 0;
-
-	FNumberFormattingOptions NumberFormattingOptions;
+	TArray<TSharedPtr<FPjcStatItem>> StatItems;
+	TSharedPtr<SListView<TSharedPtr<FPjcStatItem>>> StatView;
 };
