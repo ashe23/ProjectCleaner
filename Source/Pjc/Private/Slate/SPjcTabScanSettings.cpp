@@ -4,10 +4,99 @@
 #include "PjcSubsystem.h"
 #include "PjcSettings.h"
 #include "PjcStyles.h"
-// Engine Headers
 #include "PjcConstants.h"
+// Engine Headers
 #include "Widgets/Layout/SSeparator.h"
 #include "Widgets/Layout/SScrollBox.h"
+#include "SlateOptMacros.h"
+
+BEGIN_SLATE_FUNCTION_BUILD_OPTIMIZATION
+
+void SPjcSlice::Construct(const FArguments& InArgs)
+{
+	Brush = FInvalidatableBrushAttribute(InArgs._Brush);
+	Angle = InArgs._Angle;
+	ArcSize = InArgs._ArcSize;
+	ColorAndOpacity = InArgs._Color;
+}
+
+END_SLATE_FUNCTION_BUILD_OPTIMIZATION
+
+int32 SPjcSlice::OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeometry, const FSlateRect& MyCullingRect, FSlateWindowElementList& OutDrawElements, int32 LayerId,
+                         const FWidgetStyle& InWidgetStyle, bool bParentEnabled) const
+{
+	const FVector2D Pos = AllottedGeometry.GetAbsolutePosition();
+	const FVector2D Size = AllottedGeometry.GetAbsoluteSize();
+	const FVector2D Center = Pos + 0.5 * Size;
+	const float Radius = FMath::Min(Size.X, Size.Y) * 0.5f;
+
+	const FSlateBrush* SlateBrush = Brush.GetImage().Get();
+	const FLinearColor LinearColor = ColorAndOpacity.Get() * InWidgetStyle.GetColorAndOpacityTint() * SlateBrush->GetTint(InWidgetStyle);
+	const FColor FinalColorAndOpacity = LinearColor.ToFColor(true);
+	// const FColor FinalColorAndOpacity = FLinearColor::Green.ToFColor(false);
+
+	const int NumSegments = FMath::RoundToInt(ArcSize / 5.0f);
+	TArray<FSlateVertex> Vertices;
+	Vertices.Reserve(NumSegments + 3);
+
+	// Add center vertex
+	Vertices.AddZeroed();
+	FSlateVertex& CenterVertex = Vertices.Last();
+
+	CenterVertex.Position = Center;
+	CenterVertex.Color = FinalColorAndOpacity;
+
+	// Add edge vertices
+	for (int i = 0; i < NumSegments + 2; ++i)
+	{
+		const float CurrentAngle = FMath::DegreesToRadians(ArcSize * i / NumSegments + Angle);
+		const FVector2D EdgeDirection(FMath::Cos(CurrentAngle), FMath::Sin(CurrentAngle));
+		const FVector2D OuterEdge(Radius * EdgeDirection);
+
+		Vertices.AddZeroed();
+		FSlateVertex& OuterVert = Vertices.Last();
+
+		OuterVert.Position = Center + OuterEdge;
+		OuterVert.Color = FinalColorAndOpacity;
+	}
+
+	TArray<SlateIndex> Indices;
+	for (int i = 0; i <= NumSegments; ++i)
+	{
+		Indices.Add(0);
+		Indices.Add(i);
+		Indices.Add(i + 1);
+	}
+
+	const FSlateResourceHandle Handle = FSlateApplication::Get().GetRenderer()->GetResourceHandle(*SlateBrush);
+	FSlateDrawElement::MakeCustomVerts(
+		OutDrawElements,
+		LayerId,
+		Handle,
+		Vertices,
+		Indices,
+		nullptr,
+		0,
+		0,
+		ESlateDrawEffect::None
+	);
+	return LayerId;
+}
+
+void SPjcSlice::SetBrush(const FSlateBrush* InBrush)
+{
+	Brush.SetImage(*this, InBrush);
+}
+
+void SPjcSlice::SetAngle(const float InAngle)
+{
+	Angle = InAngle;
+}
+
+void SPjcSlice::SetArcSize(const float InArcSize)
+{
+	ArcSize = InArcSize;
+}
 
 void SPjcStatItem::Construct(const FArguments& InArgs, const TSharedRef<STableViewBase>& InTable)
 {
@@ -129,6 +218,116 @@ void SPjcTabScanSettings::Construct(const FArguments& InArgs)
 					.Font(FPjcStyles::GetFont("Bold", 15))
 					.ColorAndOpacity(FPjcStyles::Get().GetColor("ProjectCleaner.Color.White"))
 					.Text(FText::FromString(TEXT("Project Content Statistics")))
+				]
+				+ SVerticalBox::Slot().AutoHeight().Padding(FMargin{0.0f, 10.0f})
+				[
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot().FillWidth(1.0f)
+					[
+						SNew(SVerticalBox)
+						+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center).VAlign(VAlign_Center)
+						[
+							SNew(STextBlock)
+							.Text(FText::FromString(TEXT("Files")))
+							.Font(FPjcStyles::GetFont("Bold", 13))
+						]
+						+ SVerticalBox::Slot().AutoHeight()
+						[
+							SNew(SOverlay)
+							+ SOverlay::Slot()
+							[
+								SNew(SBox)
+								.WidthOverride(100.0f)
+								.HeightOverride(100.0f)
+								[
+									SNew(SPjcSlice)
+									.Brush(FCoreStyle::Get().GetBrush("WhiteBrush"))
+									.Angle(0.0f)
+									.ArcSize(90.0f)
+									.Color(FLinearColor::Green)
+									.ToolTipText(FText::FromString(TEXT("AssetFiles")))
+								]
+							]
+							+ SOverlay::Slot()
+							[
+								SNew(SBox)
+							    .WidthOverride(100.0f)
+							    .HeightOverride(100.0f)
+								[
+									SNew(SPjcSlice)
+									.Brush(FCoreStyle::Get().GetBrush("WhiteBrush"))
+									.Angle(90.0f)
+									.ArcSize(90.0f)
+									.Color(FLinearColor::Yellow)
+									.ToolTipText(FText::FromString(TEXT("NonEngine")))
+								]
+							]
+							+ SOverlay::Slot()
+							[
+								SNew(SBox)
+								.WidthOverride(100.0f)
+								.HeightOverride(100.0f)
+								[
+									SNew(SPjcSlice)
+									.Brush(FCoreStyle::Get().GetBrush("WhiteBrush"))
+									.Angle(180.0f)
+									.ArcSize(180.0f)
+									.Color(FLinearColor::Red)
+									.ToolTipText(FText::FromString(TEXT("Corrupted")))
+								]
+							]
+						]
+					]
+					+ SHorizontalBox::Slot().FillWidth(1.0f)
+					[
+						SNew(SVerticalBox)
+						+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center).VAlign(VAlign_Center)
+						[
+							SNew(STextBlock)
+							.Text(FText::FromString(TEXT("Folders")))
+							.Font(FPjcStyles::GetFont("Bold", 13))
+						]
+						+ SVerticalBox::Slot().AutoHeight()
+						[
+							SNew(SBox)
+							.WidthOverride(100.0f)
+							.HeightOverride(100.0f)
+							[
+								SNew(SPjcSlice)
+								// .Brush(FPjcStyles::Get().GetBrush("ProjectCleaner.Slice"))
+								.Brush(FCoreStyle::Get().GetBrush("WhiteBrush"))
+								.Angle(0.0f)
+								.ArcSize(34.0f)
+								.Color(FLinearColor::Red)
+								.ToolTipText(FText::FromString(TEXT("Total - Num : 123 , Size: 123.23 MiB")))
+							]
+						]
+					]
+					+ SHorizontalBox::Slot().FillWidth(1.0f)
+					[
+						SNew(SVerticalBox)
+						+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center).VAlign(VAlign_Center)
+						[
+							SNew(STextBlock)
+							.Text(FText::FromString(TEXT("Assets")))
+							.Font(FPjcStyles::GetFont("Bold", 13))
+						]
+						+ SVerticalBox::Slot().AutoHeight()
+						[
+							SNew(SBox)
+							.WidthOverride(100.0f)
+							.HeightOverride(100.0f)
+							[
+								SNew(SPjcSlice)
+								// .Brush(FPjcStyles::Get().GetBrush("ProjectCleaner.Slice"))
+								.Brush(FCoreStyle::Get().GetBrush("WhiteBrush"))
+								.Angle(0.0f)
+								.ArcSize(120.0f)
+								.Color(FLinearColor::Blue)
+							]
+						]
+					]
+
 				]
 				+ SVerticalBox::Slot().AutoHeight()
 				[

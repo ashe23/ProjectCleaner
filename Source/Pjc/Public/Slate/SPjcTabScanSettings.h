@@ -15,6 +15,31 @@ struct FPjcStatItem
 	FString ToolTip;
 };
 
+class SPjcSlice : public SCompoundWidget
+{
+public:
+	SLATE_BEGIN_ARGS(SPjcSlice) {}
+		SLATE_ARGUMENT(const FSlateBrush*, Brush)
+		SLATE_ARGUMENT(float, Angle)
+		SLATE_ARGUMENT(float, ArcSize)
+		SLATE_ARGUMENT(TAttribute<FLinearColor>, Color)
+	SLATE_END_ARGS()
+
+	void Construct(const FArguments& InArgs);
+	virtual int32 OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeometry, const FSlateRect& MyCullingRect,
+	                      FSlateWindowElementList& OutDrawElements, int32 LayerId, const FWidgetStyle& InWidgetStyle,
+	                      bool bParentEnabled) const override;
+
+	void SetBrush(const FSlateBrush* InBrush);
+	void SetAngle(const float InAngle);
+	void SetArcSize(const float InArcSize);
+
+protected:
+	FInvalidatableBrushAttribute Brush;
+	float Angle = 0.0f;
+	float ArcSize = 0.0f;
+};
+
 class SPjcStatItem final : public SMultiColumnTableRow<TSharedPtr<FPjcStatItem>>
 {
 public:
