@@ -57,6 +57,8 @@ public class Pjc : ModuleRules
 				"AssetRegistry",
 				"LevelEditor",
 				"PropertyEditor",
+				"ConfigEditor",
+				"Settings"
 			}
 		);
 	}
