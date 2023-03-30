@@ -126,6 +126,29 @@ FString FPjcLibPath::ToAssetPath(const FString& InPath)
 	return {};
 }
 
+FString FPjcLibPath::GetFilePath(const FString& InPath)
+{
+	if (!IsFile(InPath)) return {};
+
+	return FPaths::GetPath(Normalize(InPath));
+}
+
+FString FPjcLibPath::GetPathName(const FString& InPath)
+{
+	const FString Path = IsDir(InPath) ? Normalize(InPath) : GetFilePath(InPath);
+	if (Path.IsEmpty()) return {};
+
+	TArray<FString> Parts;
+	Path.ParseIntoArray(Parts,TEXT("/"), true);
+
+	return Parts.Num() > 0 ? Parts.Last() : TEXT("");
+}
+
+FString FPjcLibPath::GetFileExtension(const FString& InPath, const bool bIncludeDot)
+{
+	return FPaths::GetExtension(InPath, bIncludeDot);
+}
+
 FName FPjcLibPath::ToObjectPath(const FString& InPath)
 {
 	const FString ObjectPath = FPackageName::ExportTextPathToObjectPath(InPath);
@@ -148,29 +171,6 @@ FName FPjcLibPath::ToObjectPath(const FString& InPath)
 	}
 
 	return NAME_None;
-}
-
-FString FPjcLibPath::GetFilePath(const FString& InPath)
-{
-	if (!IsFile(InPath)) return {};
-
-	return FPaths::GetPath(Normalize(InPath));
-}
-
-FString FPjcLibPath::GetPathName(const FString& InPath)
-{
-	const FString Path = IsDir(InPath) ? Normalize(InPath) : GetFilePath(InPath);
-	if (Path.IsEmpty()) return {};
-
-	TArray<FString> Parts;
-	Path.ParseIntoArray(Parts,TEXT("/"), true);
-
-	return Parts.Num() > 0 ? Parts.Last() : TEXT("");
-}
-
-FString FPjcLibPath::GetFileExtension(const FString& InPath, const bool bIncludeDot)
-{
-	return FPaths::GetExtension(InPath, bIncludeDot);
 }
 
 bool FPjcLibPath::IsValid(const FString& InPath)
