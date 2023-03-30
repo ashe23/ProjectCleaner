@@ -67,3 +67,8 @@ void FPjcLibEditor::OpenFileInFileExplorer(const FString& InFilePath)
 
 	FPlatformProcess::LaunchFileInDefaultExternalApplication(*PathAbsolute);
 }
+
+bool FPjcLibEditor::EditorInPlayMode()
+{
+	return GEditor && GEditor->PlayWorld || GIsPlayInEditorWorld;
+}
