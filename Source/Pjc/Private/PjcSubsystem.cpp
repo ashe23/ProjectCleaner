@@ -1,15 +1,17 @@
 ﻿// Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "PjcSubsystem.h"
+#include "Pjc.h"
+#include "PjcConstants.h"
+#include "Libs/PjcLibPath.h"
 #include "Libs/PjcLibAsset.h"
 #include "Libs/PjcLibEditor.h"
 // Engine Headers
 #include "FileHelpers.h"
-#include "ObjectTools.h"
-#include "Pjc.h"
-#include "PjcConstants.h"
+// #include "ObjectTools.h"
+#include "PjcExcludeSettings.h"
 #include "Engine/MapBuildDataRegistry.h"
-#include "Libs/PjcLibPath.h"
+#include "Misc/ScopedSlowTask.h"
 
 void UPjcSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
@@ -30,7 +32,60 @@ void UPjcSubsystem::PostEditChangeProperty(FPropertyChangedEvent& PropertyChange
 }
 #endif
 
-void UPjcSubsystem::ProjectScan() { }
+void UPjcSubsystem::ProjectScan()
+{
+	const UPjcExcludeSettings* ExcludeSettings = GetDefault<UPjcExcludeSettings>();
+	if (!ExcludeSettings) return;
+
+	FScopedSlowTask SlowTask{
+		2.0f,
+		FText::FromString(TEXT("Scanning project...")),
+		GIsEditor && !IsRunningCommandlet()
+	};
+	SlowTask.MakeDialog(false, false);
+	SlowTask.EnterProgressFrame(1.0f);
+	
+	FPjcScanSettings ScanSettings;
+
+	ScanSettings.ExcludedPaths.Reserve(ExcludeSettings->ExcludedPaths.Num());
+	ScanSettings.ExcludedClassNames.Reserve(ExcludeSettings->ExcludedClasses.Num());
+	ScanSettings.ExcludedObjectPaths.Reserve(ExcludeSettings->ExcludedAssets.Num());
+
+	for (const auto& ExcludedPath : ExcludeSettings->ExcludedPaths)
+	{
+		const FString AssetPath = FPjcLibPath::ToAssetPath(ExcludedPath.Path);
+		if (AssetPath.IsEmpty()) continue;
+
+		ScanSettings.ExcludedPaths.Emplace(AssetPath);
+	}
+
+	for (const auto& ExcludedClass : ExcludeSettings->ExcludedClasses)
+	{
+		if (!ExcludedClass.LoadSynchronous()) continue;
+
+		ScanSettings.ExcludedClassNames.Emplace(ExcludedClass.Get()->GetFName());
+	}
+
+	for (const auto& ExcludedAsset : ExcludeSettings->ExcludedAssets)
+	{
+		if (!ExcludedAsset.LoadSynchronous()) continue;
+
+		ScanSettings.ExcludedObjectPaths.Emplace(ExcludedAsset.ToSoftObjectPath().GetAssetPathName());
+	}
+
+	SlowTask.EnterProgressFrame(1.0f);
+	ProjectScanBySettings(ScanSettings, LastScanResult);
+
+	if (DelegateOnProjectScan.IsBound())
+	{
+		DelegateOnProjectScan.Broadcast(LastScanResult);
+	}
+}
+
+const FPjcScanResult& UPjcSubsystem::GetLastScanResult()
+{
+	return LastScanResult;
+}
 
 void UPjcSubsystem::ProjectScanBySettings(const FPjcScanSettings& InScanSettings, FPjcScanResult& OutScanResult) const
 {
@@ -155,12 +210,7 @@ void UPjcSubsystem::ProjectScanBySettings(const FPjcScanSettings& InScanSettings
 
 				const bool bPathIsEngineGenerated = FPjcLibPath::IsPathEngineGenerated(PathAbsolute);
 				const bool bPathIsExcluded = PathIsExcluded(PathAbsolute);
-
-				if (bPathIsExcluded)
-				{
-					ScanResult.FoldersExcluded.Emplace(PathAbsolute);
-				}
-
+				
 				if (FPjcLibPath::IsPathEmpty(PathAbsolute) && !bPathIsEngineGenerated && !bPathIsExcluded)
 				{
 					ScanResult.FoldersEmpty.Emplace(PathAbsolute);
@@ -181,6 +231,7 @@ void UPjcSubsystem::ProjectScanBySettings(const FPjcScanSettings& InScanSettings
 
 				if (AssetData.IsValid())
 				{
+					ScanResult.FilesAsset.Emplace(PathAbsolute);
 					ScanResult.AssetsAll.Emplace(AssetData);
 
 					const FName AssetClassName = FPjcLibAsset::GetAssetClassName(AssetData);

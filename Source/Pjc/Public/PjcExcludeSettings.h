@@ -6,17 +6,11 @@
 #include "PjcExcludeSettings.generated.h"
 
 UCLASS(Config = EditorPerProjectUserSettings)
-class UPjcExcludeSettings final : public UDeveloperSettings
+class UPjcExcludeSettings final : public UObject
 {
 	GENERATED_BODY()
 
 public:
-	virtual FName GetContainerName() const override;
-	virtual FName GetCategoryName() const override;
-	virtual FName GetSectionName() const override;
-	virtual FText GetSectionText() const override;
-	virtual FText GetSectionDescription() const override;
-	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Config, Category="ExcludeSettings", meta=(ContentDir, ToolTip="Consider assets in specified paths as used. Always Recursive"))
 	TArray<FDirectoryPath> ExcludedPaths;
 

@@ -38,6 +38,7 @@ public:
 	bool bShowPathsUnusedOnly = false;
 	
 	void ProjectScan();
+	const FPjcScanResult& GetLastScanResult();
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(AdvancedDisplay="OutScanResult"))
 	void ProjectScanBySettings(const FPjcScanSettings& InScanSettings, UPARAM(DisplayName="OutScanResult") FPjcScanResult& OutScanResult) const;

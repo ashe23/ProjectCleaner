@@ -67,8 +67,6 @@ struct FPjcScanResult
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner")
 	TSet<FString> FoldersTotal;
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner")
-	TSet<FString> FoldersExcluded;
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner")
 	TSet<FString> FoldersEmpty;
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner")
 	TSet<FAssetData> AssetsAll;
@@ -97,7 +95,6 @@ struct FPjcScanResult
 		FilesNonAsset.Empty();
 		FilesCorruptedAsset.Empty();
 		FoldersTotal.Empty();
-		FoldersExcluded.Empty();
 		FoldersEmpty.Empty();
 		AssetsAll.Empty();
 		AssetsPrimary.Empty();

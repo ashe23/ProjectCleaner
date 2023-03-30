@@ -6,6 +6,8 @@
 #include "PjcStyles.h"
 #include "PjcConstants.h"
 // Engine Headers
+#include "Libs/PjcLibAsset.h"
+#include "Libs/PjcLibPath.h"
 #include "Widgets/Layout/SSeparator.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/SCanvas.h"
@@ -21,10 +23,12 @@ TSharedRef<SWidget> SPjcStatItem::GenerateWidgetForColumn(const FName& InColumnN
 {
 	if (InColumnName.IsEqual(TEXT("Category")))
 	{
+		const FLinearColor Color = StatItem->Num > 0 || StatItem->Size > 0 ? StatItem->TextColor : FLinearColor::White;
 		return
 			SNew(STextBlock)
 			.Text(FText::FromString(StatItem->Category))
 			.Font(FPjcStyles::GetFont("Bold", 13))
+			.ColorAndOpacity(Color)
 			.ToolTipText(FText::FromString(StatItem->ToolTip));
 	}
 
@@ -34,21 +38,28 @@ TSharedRef<SWidget> SPjcStatItem::GenerateWidgetForColumn(const FName& InColumnN
 		NumberFormattingOptions.SetUseGrouping(true);
 		NumberFormattingOptions.SetMinimumFractionalDigits(0);
 
-		const FString StrNum = StatItem->Num > 0 ? FText::AsNumber(StatItem->Num, &NumberFormattingOptions).ToString() : TEXT("");
+		const FString StrNum = StatItem->Num >= 0 ? FText::AsNumber(StatItem->Num, &NumberFormattingOptions).ToString() : TEXT("");
+		const FLinearColor Color = StatItem->Num > 0 ? StatItem->TextColor : FLinearColor::White;
 
 		return
 			SNew(SHorizontalBox)
 			+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin{10.0f, 0.0f})
 			[
-				SNew(STextBlock).Text(FText::FromString(StrNum))
+				SNew(STextBlock)
+				.Text(FText::FromString(StrNum))
+				.ColorAndOpacity(Color)
 			];
 	}
 
 	if (InColumnName.IsEqual(TEXT("Size")))
 	{
-		const FString StrSize = StatItem->Size > 0 ? FText::AsMemory(StatItem->Size, IEC).ToString() : TEXT("");
-
-		return SNew(STextBlock).Text(FText::FromString(StrSize));
+		const FString StrSize = StatItem->Size >= 0 ? FText::AsMemory(StatItem->Size, IEC).ToString() : TEXT("");
+		const FLinearColor Color = StatItem->Size > 0 ? StatItem->TextColor : FLinearColor::White;
+		
+		return
+			SNew(STextBlock)
+			.Text(FText::FromString(StrSize))
+			.ColorAndOpacity(Color);
 	}
 
 	return SNew(STextBlock);
@@ -56,6 +67,8 @@ TSharedRef<SWidget> SPjcStatItem::GenerateWidgetForColumn(const FName& InColumnN
 
 void SPjcTabScanSettings::Construct(const FArguments& InArgs)
 {
+	GEditor->GetEditorSubsystem<UPjcSubsystem>()->OnProjectScan().AddRaw(this, &SPjcTabScanSettings::StatsUpdate);
+
 	FPropertyEditorModule& PropertyEditor = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
 	FDetailsViewArgs DetailsViewArgs;
 	DetailsViewArgs.bUpdatesFromSelection = false;
@@ -69,7 +82,7 @@ void SPjcTabScanSettings::Construct(const FArguments& InArgs)
 	const auto SettingsProperty = PropertyEditor.CreateDetailView(DetailsViewArgs);
 	SettingsProperty->SetObject(GetMutableDefault<UPjcExcludeSettings>());
 
-	StatsUpdate();
+	StatsUpdate(GEditor->GetEditorSubsystem<UPjcSubsystem>()->GetLastScanResult());
 
 	ChildSlot
 	[
@@ -159,6 +172,11 @@ void SPjcTabScanSettings::Construct(const FArguments& InArgs)
 	];
 }
 
+SPjcTabScanSettings::~SPjcTabScanSettings()
+{
+	GEditor->GetEditorSubsystem<UPjcSubsystem>()->OnProjectScan().RemoveAll(this);
+}
+
 FReply SPjcTabScanSettings::OnBtnScanProjectClick() const
 {
 	GEditor->GetEditorSubsystem<UPjcSubsystem>()->ProjectScan();
@@ -187,7 +205,7 @@ bool SPjcTabScanSettings::BtnCleanProjectEnabled() const
 	return false;
 }
 
-void SPjcTabScanSettings::StatsUpdate()
+void SPjcTabScanSettings::StatsUpdate(const FPjcScanResult& InScanResult)
 {
 	if (!StatView.IsValid())
 	{
@@ -200,25 +218,147 @@ void SPjcTabScanSettings::StatsUpdate()
 
 	StatItems.Empty();
 
-	StatItems.Emplace(MakeShareable(new FPjcStatItem{123213, 12312, TEXT("Files Total"), TEXT("Total number of files inside Content folder")}));
-	StatItems.Emplace(MakeShareable(new FPjcStatItem{123213, 12312, TEXT("Asset Files"), TEXT("Files that have .umap or .uaaset extension, and loaded by AssetRegistry")}));
-	StatItems.Emplace(MakeShareable(new FPjcStatItem{123213, 12312, TEXT("NonAsset Files"), TEXT("Files that dont have .umap or .uaaset extension, but are inside Content folder")}));
-	StatItems.Emplace(MakeShareable(new FPjcStatItem{123213, 12312, TEXT("Corrupted Asset Files"), TEXT("Files that have .umap or .uasset extension, but are not loaded by AssetRegistry")}));
+	StatItems.Emplace(
+		MakeShareable(
+			new FPjcStatItem{
+				FPjcLibPath::GetFilesSize(InScanResult.FilesTotal.Array()),
+				InScanResult.FilesTotal.Num(),
+				TEXT("Files Total"),
+				TEXT("Total number of files inside Content folder")
+			}
+		)
+	);
+	
+	StatItems.Emplace(
+		MakeShareable(
+			new FPjcStatItem{
+				FPjcLibAsset::GetAssetsSize(InScanResult.AssetsAll.Array()),
+				InScanResult.AssetsAll.Num(),
+				TEXT("	Assets Total"),
+				TEXT("Total number of assets in project")
+			}
+		)
+	);
+	StatItems.Emplace(
+		MakeShareable(
+			new FPjcStatItem{
+				FPjcLibAsset::GetAssetsSize(InScanResult.AssetsUsed.Array()),
+				InScanResult.AssetsUsed.Num(),
+				TEXT("		Used"),
+				TEXT("Total number of used assets in project")
+			}
+		)
+	);
+	StatItems.Emplace(
+		MakeShareable(
+			new FPjcStatItem{
+				FPjcLibAsset::GetAssetsSize(InScanResult.AssetsPrimary.Array()),
+				InScanResult.AssetsPrimary.Num(),
+				TEXT("			Primary"),
+				TEXT("Total number of primary assets in project")
+			}
+		)
+	);
+	StatItems.Emplace(
+		MakeShareable(
+			new FPjcStatItem{
+				FPjcLibAsset::GetAssetsSize(InScanResult.AssetsIndirect.Array()),
+				InScanResult.AssetsIndirect.Num(),
+				TEXT("			Indirect"),
+				TEXT("Total number of indirect assets in project. Assets that used in source code or config files")
+			}
+		)
+	);
+	StatItems.Emplace(
+		MakeShareable(
+			new FPjcStatItem{
+				FPjcLibAsset::GetAssetsSize(InScanResult.AssetsEditor.Array()),
+				InScanResult.AssetsEditor.Num(),
+				TEXT("			Editor"),
+				TEXT("Total number of editor specific assets in project. Assets like EditorUtilityBlueprint, EditorUtilityWidgets or EditorTutorial")
+			}
+		)
+	);
+	StatItems.Emplace(
+		MakeShareable(
+			new FPjcStatItem{
+				FPjcLibAsset::GetAssetsSize(InScanResult.AssetsExtReferenced.Array()),
+				InScanResult.AssetsExtReferenced.Num(),
+				TEXT("			ExtRefs"),
+				TEXT("Total number of assets that have external referencers outside Content folder")
+			}
+		)
+	);
+	StatItems.Emplace(
+		MakeShareable(
+			new FPjcStatItem{
+				FPjcLibAsset::GetAssetsSize(InScanResult.AssetsExcluded.Array()),
+				InScanResult.AssetsExcluded.Num(),
+				TEXT("			Excluded"),
+				TEXT("Total number of exluded assets by settings"),
+				FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Yellow").GetSpecifiedColor()
+			}
+		)
+	);
+	StatItems.Emplace(
+		MakeShareable(
+			new FPjcStatItem{
+				FPjcLibAsset::GetAssetsSize(InScanResult.AssetsUnused.Array()),
+				InScanResult.AssetsUnused.Num(),
+				TEXT("		Unused"),
+				TEXT("Total number of unused assets in project"),
+				FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Red").GetSpecifiedColor()
+			}
+		)
+	);
+
+	StatItems.Emplace(
+		MakeShareable(
+			new FPjcStatItem{
+				FPjcLibPath::GetFilesSize(InScanResult.FilesNonAsset.Array()),
+				InScanResult.FilesNonAsset.Num(),
+				TEXT("	Files NonAssets"),
+				TEXT("Files that dont have .umap or .uaaset extension, but are inside Content folder")
+			}
+		)
+	);
+
+	StatItems.Emplace(
+		MakeShareable(
+			new FPjcStatItem{
+				FPjcLibPath::GetFilesSize(InScanResult.FilesCorruptedAsset.Array()),
+				InScanResult.FilesCorruptedAsset.Num(),
+				TEXT("	Files Corrupted"),
+				TEXT("Files that have .umap or .uasset extension, but are not loaded by AssetRegistry"),
+				FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Red").GetSpecifiedColor()
+			}
+		)
+	);
+
 	StatItems.Emplace(MakeShareable(new FPjcStatItem{-1, -1, TEXT(""), TEXT("")}));
-	StatItems.Emplace(MakeShareable(new FPjcStatItem{-1, 12312, TEXT("Folders Total"), TEXT("Total number of folders inside Content folder")}));
-	StatItems.Emplace(MakeShareable(new FPjcStatItem{-1, 12312, TEXT("Folders Empty"), TEXT("Total number of empty folders inside Content folder")}));
-	StatItems.Emplace(MakeShareable(new FPjcStatItem{-1, -1, TEXT(""), TEXT("")}));
-	StatItems.Emplace(MakeShareable(new FPjcStatItem{123213, 12312, TEXT("Assets Total"), TEXT("Total number of assets in project")}));
-	StatItems.Emplace(MakeShareable(new FPjcStatItem{123213, 12312, TEXT("Assets Used"), TEXT("Total number of used assets in project")}));
-	StatItems.Emplace(MakeShareable(new FPjcStatItem{123213, 12312, TEXT("		Primary"), TEXT("Total number of primary assets in project")}));
-	StatItems.Emplace(MakeShareable(
-		new FPjcStatItem{123213, 12312, TEXT("		Indirect"), TEXT("Total number of indirect assets in project. Assets that used in source code or config files")}));
-	StatItems.Emplace(MakeShareable(new FPjcStatItem{
-		123213, 12312, TEXT("		Editor"), TEXT("Total number of editor specific assets in project. Assets like EditorUtilityBlueprint, EditorUtilityWidgets or EditorTutorial")
-	}));
-	StatItems.Emplace(MakeShareable(new FPjcStatItem{123213, 12312, TEXT("		ExtRefs"), TEXT("Total number of assets that have external referencers outside Content folder")}));
-	StatItems.Emplace(MakeShareable(new FPjcStatItem{123213, 12312, TEXT("		Excluded"), TEXT("Total number of exluded assets by settings")}));
-	StatItems.Emplace(MakeShareable(new FPjcStatItem{123213, 12312, TEXT("Assets Unused"), TEXT("Total number of unused assets in project")}));
+
+	StatItems.Emplace(
+		MakeShareable(
+			new FPjcStatItem{
+				-1,
+				InScanResult.FoldersTotal.Num(),
+				TEXT("Folders Total"),
+				TEXT("Total number of folders inside Content folder")
+			}
+		)
+	);
+
+	StatItems.Emplace(
+		MakeShareable(
+			new FPjcStatItem{
+				-1,
+				InScanResult.FoldersEmpty.Num(),
+				TEXT("Folders Empty"),
+				TEXT("Total number of empty folders inside Content folder"),
+				FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Red").GetSpecifiedColor()
+			}
+		)
+	);
 
 	StatView->RebuildList();
 }

@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Widgets/SCompoundWidget.h"
 
+struct FPjcScanResult;
 enum class EPjcScanResult : uint8;
 
 struct FPjcStatItem
@@ -13,6 +14,7 @@ struct FPjcStatItem
 	int32 Num = 0;
 	FString Category;
 	FString ToolTip;
+	FLinearColor TextColor{FLinearColor::White};
 };
 
 class SPjcStatItem final : public SMultiColumnTableRow<TSharedPtr<FPjcStatItem>>
@@ -36,13 +38,13 @@ public:
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
+	virtual ~SPjcTabScanSettings() override;
 
 private:
 	FReply OnBtnScanProjectClick() const;
 	FReply OnBtnCleanProjectClick() const;
 	bool BtnCleanProjectEnabled() const;
-
-	void StatsUpdate();
+	void StatsUpdate(const FPjcScanResult& InScanResult);
 
 	TSharedRef<ITableRow> OnStatsGenerateRow(TSharedPtr<FPjcStatItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const;
 	TSharedRef<SHeaderRow> GetStatsHeaderRow() const;
