@@ -2,7 +2,7 @@
 
 #include "Slate/SPjcTabScanSettings.h"
 #include "PjcSubsystem.h"
-#include "PjcSettings.h"
+#include "PjcExcludeSettings.h"
 #include "PjcStyles.h"
 #include "PjcConstants.h"
 // Engine Headers
@@ -67,7 +67,7 @@ void SPjcTabScanSettings::Construct(const FArguments& InArgs)
 	DetailsViewArgs.ViewIdentifier = "ProjectCleanerSettings";
 
 	const auto SettingsProperty = PropertyEditor.CreateDetailView(DetailsViewArgs);
-	SettingsProperty->SetObject(GetMutableDefault<UPjcSettings>());
+	SettingsProperty->SetObject(GetMutableDefault<UPjcExcludeSettings>());
 
 	StatsUpdate();
 
@@ -201,8 +201,9 @@ void SPjcTabScanSettings::StatsUpdate()
 	StatItems.Empty();
 
 	StatItems.Emplace(MakeShareable(new FPjcStatItem{123213, 12312, TEXT("Files Total"), TEXT("Total number of files inside Content folder")}));
-	StatItems.Emplace(MakeShareable(new FPjcStatItem{123213, 12312, TEXT("Files NonEngine"), TEXT("Files that dont have .umap or .uaaset extension, but are inside Content folder")}));
-	StatItems.Emplace(MakeShareable(new FPjcStatItem{123213, 12312, TEXT("Files Corrupted"), TEXT("Files that have .umap or .uasset extension, but are not loaded by AssetRegistry")}));
+	StatItems.Emplace(MakeShareable(new FPjcStatItem{123213, 12312, TEXT("Asset Files"), TEXT("Files that have .umap or .uaaset extension, and loaded by AssetRegistry")}));
+	StatItems.Emplace(MakeShareable(new FPjcStatItem{123213, 12312, TEXT("NonAsset Files"), TEXT("Files that dont have .umap or .uaaset extension, but are inside Content folder")}));
+	StatItems.Emplace(MakeShareable(new FPjcStatItem{123213, 12312, TEXT("Corrupted Asset Files"), TEXT("Files that have .umap or .uasset extension, but are not loaded by AssetRegistry")}));
 	StatItems.Emplace(MakeShareable(new FPjcStatItem{-1, -1, TEXT(""), TEXT("")}));
 	StatItems.Emplace(MakeShareable(new FPjcStatItem{-1, 12312, TEXT("Folders Total"), TEXT("Total number of folders inside Content folder")}));
 	StatItems.Emplace(MakeShareable(new FPjcStatItem{-1, 12312, TEXT("Folders Empty"), TEXT("Total number of empty folders inside Content folder")}));
@@ -269,94 +270,6 @@ TSharedRef<ITableRow> SPjcTabScanSettings::OnStatsGenerateRow(TSharedPtr<FPjcSta
 	return SNew(SPjcStatItem, OwnerTable).StatItem(Item);
 }
 
-
-// FText SPjcTabScanSettings::GetStatAssetsTotal() const
-// {
-// 	const FString StrSize = FText::AsMemory(SizeAssetsTotal, IEC).ToString();
-// 	const FString StrNum = FText::AsNumber(NumAssetsTotal, &NumberFormattingOptions).ToString();
-//
-// 	return FText::FromString(FString::Printf(TEXT("Assets Total - %s ( %s )"), *StrNum, *StrSize));
-// }
-//
-// FText SPjcTabScanSettings::GetStatAssetsUsed() const
-// {
-// 	const FString StrSize = FText::AsMemory(SizeAssetsUsed, IEC).ToString();
-// 	const FString StrNum = FText::AsNumber(NumAssetsUsed, &NumberFormattingOptions).ToString();
-//
-// 	return FText::FromString(FString::Printf(TEXT("Assets Used - %s ( %s )"), *StrNum, *StrSize));
-// }
-//
-// FText SPjcTabScanSettings::GetStatAssetsUnused() const
-// {
-// 	const FString StrSize = FText::AsMemory(SizeAssetsUnused, IEC).ToString();
-// 	const FString StrNum = FText::AsNumber(NumAssetsUnused, &NumberFormattingOptions).ToString();
-//
-// 	return FText::FromString(FString::Printf(TEXT("Assets Unused - %s ( %s )"), *StrNum, *StrSize));
-// }
-//
-// FText SPjcTabScanSettings::GetStatAssetsExcluded() const
-// {
-// 	const FString StrSize = FText::AsMemory(SizeAssetsExcluded, IEC).ToString();
-// 	const FString StrNum = FText::AsNumber(NumAssetsExcluded, &NumberFormattingOptions).ToString();
-//
-// 	return FText::FromString(FString::Printf(TEXT("Excluded - %s ( %s )"), *StrNum, *StrSize));
-// }
-//
-// FText SPjcTabScanSettings::GetStatAssetsIndirect() const
-// {
-// 	const FString StrSize = FText::AsMemory(SizeAssetsIndirect, IEC).ToString();
-// 	const FString StrNum = FText::AsNumber(NumAssetsIndirect, &NumberFormattingOptions).ToString();
-//
-// 	return FText::FromString(FString::Printf(TEXT("Indirect - %s ( %s )"), *StrNum, *StrSize));
-// }
-//
-// FText SPjcTabScanSettings::GetStatAssetsPrimary() const
-// {
-// 	const FString StrSize = FText::AsMemory(SizeAssetsPrimary, IEC).ToString();
-// 	const FString StrNum = FText::AsNumber(NumAssetsPrimary, &NumberFormattingOptions).ToString();
-//
-// 	return FText::FromString(FString::Printf(TEXT("Primary - %s ( %s )"), *StrNum, *StrSize));
-// }
-//
-// FText SPjcTabScanSettings::GetStatAssetsEditor() const
-// {
-// 	const FString StrSize = FText::AsMemory(SizeAssetsEditor, IEC).ToString();
-// 	const FString StrNum = FText::AsNumber(NumAssetsEditor, &NumberFormattingOptions).ToString();
-//
-// 	return FText::FromString(FString::Printf(TEXT("Editor - %s ( %s )"), *StrNum, *StrSize));
-// }
-//
-// FText SPjcTabScanSettings::GetStatAssetsExtReferenced() const
-// {
-// 	const FString StrSize = FText::AsMemory(SizeAssetsExtReferenced, IEC).ToString();
-// 	const FString StrNum = FText::AsNumber(NumAssetsExtReferenced, &NumberFormattingOptions).ToString();
-//
-// 	return FText::FromString(FString::Printf(TEXT("ExtReferenced - %s ( %s )"), *StrNum, *StrSize));
-// }
-//
-// FText SPjcTabScanSettings::GetStatFilesNonEngine() const
-// {
-// 	const FString StrSize = FText::AsMemory(SizeFilesNonEngine, IEC).ToString();
-// 	const FString StrNum = FText::AsNumber(NumFilesNonEngine, &NumberFormattingOptions).ToString();
-//
-// 	return FText::FromString(FString::Printf(TEXT("Files NonEngine - %s ( %s )"), *StrNum, *StrSize));
-// }
-//
-// FText SPjcTabScanSettings::GetStatFilesCorrupted() const
-// {
-// 	const FString StrSize = FText::AsMemory(SizeFilesCorrupted, IEC).ToString();
-// 	const FString StrNum = FText::AsNumber(NumFilesCorrupted, &NumberFormattingOptions).ToString();
-//
-// 	return FText::FromString(FString::Printf(TEXT("Files Corrupted - %s ( %s )"), *StrNum, *StrSize));
-// }
-//
-// FText SPjcTabScanSettings::GetStatFoldersEmpty() const
-// {
-// 	const FString StrNum = FText::AsNumber(NumFoldersEmpty, &NumberFormattingOptions).ToString();
-//
-// 	return FText::FromString(FString::Printf(TEXT("Folders Empty - %s"), *StrNum));
-// }
-//
 // FText SPjcTabScanSettings::GetCleanupText(const EPjcCleanupMethod CleanupMethod) const
 // {
 // 	switch (CleanupMethod)

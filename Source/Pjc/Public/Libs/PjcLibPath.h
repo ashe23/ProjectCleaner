@@ -26,6 +26,11 @@ struct FPjcLibPath
 	static bool IsValid(const FString& InPath);
 	static bool IsFile(const FString& InPath);
 	static bool IsDir(const FString& InPath);
+	static bool IsPathEmpty(const FString& InPath);
+	static bool IsPathEngineGenerated(const FString& InPath);
 	static int64 GetFileSize(const FString& InPath);
 	static int64 GetFilesSize(const TArray<FString>& InPaths);
+	static void GetFoldersInPath(const FString& SearchPath, const bool bSearchRecursive, TSet<FString>& OutFolders);
+	static void GetFilesInPath(const FString& SearchPath, const bool bSearchRecursive, TSet<FString>& OutFiles);
+	static void GetFilesInPathByExt(const FString& SearchPath, const bool bSearchRecursive, const bool bSearchInvert, const TSet<FString>& Extensions, TSet<FString>& OutFiles);
 };

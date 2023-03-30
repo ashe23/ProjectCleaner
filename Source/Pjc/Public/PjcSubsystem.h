@@ -8,9 +8,7 @@
 #include "PjcTypes.h"
 #include "PjcSubsystem.generated.h"
 
-class UPjcSettings;
-class IAssetRegistry;
-class FAssetToolsModule;
+class UPjcExcludeSettings;
 
 UCLASS(Config=EditorPerProjectUserSettings, meta=(ToolTip="ProjectCleanerSubsystem"))
 class UPjcSubsystem final : public UEditorSubsystem
@@ -40,22 +38,16 @@ public:
 	bool bShowPathsUnusedOnly = false;
 	
 	void ProjectScan();
-	void ProjectClean() const;
 
-	UFUNCTION(BlueprintCallable, Category="Pjc")
-	void Test(const FName& Path);
-
-	EPjcScannerState GetScannerState() const;
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(AdvancedDisplay="OutScanResult"))
+	void ProjectScanBySettings(const FPjcScanSettings& InScanSettings, UPARAM(DisplayName="OutScanResult") FPjcScanResult& OutScanResult) const;
 
 	FPjcDelegateOnProjectScan& OnProjectScan();
 
 private:
-	bool CanScanProject(FString& ErrMsg) const;
+	bool bScanningInProgress = false;
+	bool bCleaningInProgress = false;
 
-	EPjcScannerState ScannerState = EPjcScannerState::Idle;
-
+	FPjcScanResult LastScanResult;
 	FPjcDelegateOnProjectScan DelegateOnProjectScan;
-
-	IAssetRegistry* ModuleAssetRegistry = nullptr;
-	const FAssetToolsModule* ModuleAssetTools = nullptr;
 };

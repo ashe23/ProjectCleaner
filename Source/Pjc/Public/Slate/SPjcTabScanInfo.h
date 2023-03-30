@@ -7,7 +7,7 @@
 #include "Widgets/SCompoundWidget.h"
 
 struct FAssetPickerConfig;
-struct FPjcScanData;
+struct FPjcScanResult;
 
 struct FPjcTreeViewItem
 {
@@ -72,7 +72,7 @@ public:
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
-	void UpdateData(const FPjcScanData& InScanData);
+	void UpdateData(const FPjcScanResult& InScanData);
 
 private:
 	TSharedRef<SHeaderRow> GetTreeViewHeaderRow() const;

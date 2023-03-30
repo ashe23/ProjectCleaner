@@ -14,22 +14,6 @@ enum class EPjcCleanupMethod : uint8
 	EmptyFoldersOnly UMETA(Tooltip="Remove empty folders only"),
 };
 
-UENUM(BlueprintType)
-enum class EPjcScanResult : uint8
-{
-	None UMETA(Hidden),
-	Success,
-	Fail
-};
-
-UENUM(BlueprintType)
-enum class EPjcScannerState : uint8
-{
-	Idle,
-	Scanning,
-	Cleaning
-};
-
 struct FPjcAssetUsageInfo
 {
 	int32 FileLine;
@@ -45,5 +29,84 @@ struct FPjcAssetUsageInfo
 	bool operator!=(const FPjcAssetUsageInfo& Other) const
 	{
 		return !(FileLine == Other.FileLine && FilePathAbs.Equals(Other.FilePathAbs, ESearchCase::CaseSensitive));
+	}
+};
+
+USTRUCT(BlueprintType)
+struct FPjcScanSettings
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="ProjectCleaner")
+	TArray<FString> ExcludedPaths;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="ProjectCleaner", DisplayName="ExcludedClasses")
+	TArray<FName> ExcludedClassNames;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="ProjectCleaner", DisplayName="ExcludedAssets")
+	TArray<FName> ExcludedObjectPaths;
+};
+
+USTRUCT(BlueprintType)
+struct FPjcScanResult
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner")
+	bool bSuccess = false;
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner")
+	FString ErrMsg;
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner")
+	TSet<FString> FilesTotal;
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner")
+	TSet<FString> FilesAsset;
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner")
+	TSet<FString> FilesNonAsset;
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner")
+	TSet<FString> FilesCorruptedAsset;
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner")
+	TSet<FString> FoldersTotal;
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner")
+	TSet<FString> FoldersExcluded;
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner")
+	TSet<FString> FoldersEmpty;
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner")
+	TSet<FAssetData> AssetsAll;
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner")
+	TSet<FAssetData> AssetsPrimary;
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner")
+	TSet<FAssetData> AssetsIndirect;
+	TMap<FAssetData, TArray<FPjcAssetUsageInfo>> AssetsIndirectInfos;
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner")
+	TSet<FAssetData> AssetsEditor;
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner")
+	TSet<FAssetData> AssetsExtReferenced;
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner")
+	TSet<FAssetData> AssetsExcluded;
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner")
+	TSet<FAssetData> AssetsUsed;
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner")
+	TSet<FAssetData> AssetsUnused;
+
+	void Clear()
+	{
+		bSuccess = false;
+		ErrMsg.Empty();
+		FilesTotal.Empty();
+		FilesAsset.Empty();
+		FilesNonAsset.Empty();
+		FilesCorruptedAsset.Empty();
+		FoldersTotal.Empty();
+		FoldersExcluded.Empty();
+		FoldersEmpty.Empty();
+		AssetsAll.Empty();
+		AssetsPrimary.Empty();
+		AssetsIndirect.Empty();
+		AssetsIndirectInfos.Empty();
+		AssetsEditor.Empty();
+		AssetsExtReferenced.Empty();
+		AssetsExcluded.Empty();
+		AssetsUsed.Empty();
+		AssetsUnused.Empty();
 	}
 };

@@ -290,7 +290,7 @@ void SPjcTabScanInfo::Construct(const FArguments& InArgs)
 	];
 }
 
-void SPjcTabScanInfo::UpdateData(const FPjcScanData& InScanData)
+void SPjcTabScanInfo::UpdateData(const FPjcScanResult& InScanData)
 {
 	// RootItem.Reset();
 	//
