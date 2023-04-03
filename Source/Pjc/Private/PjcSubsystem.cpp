@@ -3,13 +3,12 @@
 #include "PjcSubsystem.h"
 #include "Pjc.h"
 #include "PjcConstants.h"
+#include "PjcExcludeSettings.h"
 #include "Libs/PjcLibPath.h"
 #include "Libs/PjcLibAsset.h"
 #include "Libs/PjcLibEditor.h"
 // Engine Headers
 #include "FileHelpers.h"
-// #include "ObjectTools.h"
-#include "PjcExcludeSettings.h"
 #include "Engine/MapBuildDataRegistry.h"
 #include "Misc/ScopedSlowTask.h"
 
@@ -126,6 +125,9 @@ void UPjcSubsystem::ProjectScanBySettings(const FPjcScanSettings& InScanSettings
 		OutScanResult.ErrMsg = TEXT("Scanning of the project has failed. The editor is in play mode. Please exit play mode and try again.");
 		return;
 	}
+
+	// Updating asset registry
+	FPjcLibAsset::AssetRegistryUpdate();
 
 	// Close all asset editors and fix redirectors if not running a commandlet
 	if (!IsRunningCommandlet())
@@ -334,8 +336,7 @@ void UPjcSubsystem::ProjectScanBySettings(const FPjcScanSettings& InScanSettings
 
 	OutScanResult.AssetsUnused = OutScanResult.AssetsAll.Difference(OutScanResult.AssetsUsed);
 
-	const double ScanEndTime = FPlatformTime::Seconds();
-	const double ScanTime = ScanEndTime - ScanStartTime;
+	const double ScanTime = FPlatformTime::Seconds() - ScanStartTime;
 
 	UE_LOG(LogProjectCleaner, Display, TEXT("Project Scanned in %.2f seconds"), ScanTime);
 }

@@ -13,6 +13,7 @@ struct FPjcLibAsset
 	static bool AssetRegistryWorking();
 	static bool IsValidClassName(const FName& InClassName);
 	static void FixupRedirectorsInProject(const bool bSlowTaskEnabled);
+	static void AssetRegistryUpdate();
 	static void GetClassNamesPrimary(TSet<FName>& ClassNamesPrimary);
 	static void GetClassNamesEditor(TSet<FName>& ClassNamesEditor);
 	static void GetAssetsIndirect(TMap<FAssetData, TArray<FPjcAssetUsageInfo>>& AssetsIndirect);

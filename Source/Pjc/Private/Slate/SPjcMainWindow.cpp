@@ -3,8 +3,8 @@
 #include "Slate/SPjcMainWindow.h"
 #include "PjcConstants.h"
 #include "PjcStyles.h"
-#include "PjcSubsystem.h"
 #include "Slate/SPjcTabScanSettings.h"
+#include "Slate/SPjcTabScanInfo.h"
 // Engine Headers
 #include "Widgets/Layout/SWidgetSwitcher.h"
 
@@ -191,7 +191,7 @@ TSharedRef<SDockTab> SPjcMainWindow::OnTabScanInfoSpawn(const FSpawnTabArgs& Arg
 		.Icon(FPjcStyles::Get().GetBrush("ProjectCleaner.IconTabAssetsBrowser16"))
 		.ToolTipText(FText::FromString(TEXT("Show detailed view of unused, used and excluded assets")))
 		[
-			SNew(STextBlock)
+			SNew(SPjcTabScanInfo)
 			// TabScanInfoPtr.ToSharedRef()
 		];
 }

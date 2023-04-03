@@ -72,13 +72,14 @@ public:
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
-	void UpdateData(const FPjcScanResult& InScanData);
-
+	virtual ~SPjcTabScanInfo() override;
 private:
+	void UpdateData(const FPjcScanResult& InScanResult);
 	TSharedRef<SHeaderRow> GetTreeViewHeaderRow() const;
 	TSharedRef<ITableRow> OnTreeViewGenerateRow(TSharedPtr<FPjcTreeViewItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const;
 	void OnTreeViewGetChildren(TSharedPtr<FPjcTreeViewItem> Item, TArray<TSharedPtr<FPjcTreeViewItem>>& OutChildren);
-	
+
+	// TSharedPtr<FPjcTreeViewItem> CreateViewItem(const FString& InPath, const TSharedPtr<FPjcTreeViewItem>& Parent);
 	TSharedRef<SWidget> GetTreeViewOptionsBtnContent();
 	FSlateColor GetTreeViewOptionsBtnForegroundColor() const;
 	

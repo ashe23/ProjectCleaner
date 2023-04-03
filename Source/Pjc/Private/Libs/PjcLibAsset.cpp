@@ -57,6 +57,7 @@ bool FPjcLibAsset::AssetIsExtReferenced(const FAssetData& InAssetData)
 bool FPjcLibAsset::AssetRegistryWorking()
 {
 	const FAssetRegistryModule& ModuleAssetRegistry = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(PjcConstants::ModuleAssetRegistryName);
+	ModuleAssetRegistry.Get().SearchAllAssets(true);
 	return ModuleAssetRegistry.Get().IsLoadingAssets();
 }
 
@@ -115,6 +116,12 @@ void FPjcLibAsset::FixupRedirectorsInProject(const bool bSlowTaskEnabled)
 	ModuleAssetTools.Get().FixupReferencers(Redirectors, false);
 
 	SlowTask.EnterProgressFrame(1.0f);
+}
+
+void FPjcLibAsset::AssetRegistryUpdate()
+{
+	const FAssetRegistryModule& ModuleAssetRegistry = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(PjcConstants::ModuleAssetRegistryName);
+	ModuleAssetRegistry.Get().SearchAllAssets(true);
 }
 
 void FPjcLibAsset::GetClassNamesPrimary(TSet<FName>& ClassNamesPrimary)
