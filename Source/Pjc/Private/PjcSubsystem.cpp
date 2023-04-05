@@ -9,6 +9,7 @@
 #include "Libs/PjcLibEditor.h"
 // Engine Headers
 #include "FileHelpers.h"
+#include "AssetRegistry/AssetRegistryModule.h"
 #include "Engine/MapBuildDataRegistry.h"
 #include "Misc/ScopedSlowTask.h"
 
@@ -43,7 +44,7 @@ void UPjcSubsystem::ProjectScan()
 	};
 	SlowTask.MakeDialog(false, false);
 	SlowTask.EnterProgressFrame(1.0f);
-	
+
 	FPjcScanSettings ScanSettings;
 
 	ScanSettings.ExcludedPaths.Reserve(ExcludeSettings->ExcludedPaths.Num());
@@ -212,7 +213,7 @@ void UPjcSubsystem::ProjectScanBySettings(const FPjcScanSettings& InScanSettings
 
 				const bool bPathIsEngineGenerated = FPjcLibPath::IsPathEngineGenerated(PathAbsolute);
 				const bool bPathIsExcluded = PathIsExcluded(PathAbsolute);
-				
+
 				if (FPjcLibPath::IsPathEmpty(PathAbsolute) && !bPathIsEngineGenerated && !bPathIsExcluded)
 				{
 					ScanResult.FoldersEmpty.Emplace(PathAbsolute);
@@ -344,61 +345,125 @@ void UPjcSubsystem::ProjectScanBySettings(const FPjcScanSettings& InScanSettings
 void UPjcSubsystem::ProjectScan2(const FPjcScanSettings& InScanSettings)
 {
 	const double ScanStartTime = FPlatformTime::Seconds();
-	
-	// TSet<FName> ClassNamesPrimary;
-	// TSet<FName> ClassNamesEditor;
-	// TMap<FAssetData, TArray<FPjcAssetUsageInfo>> AssetsIndirectInfos;
-	// TSet<FAssetData> ExcludedAssets;
-	//
-	// FPjcLibAsset::GetClassNamesPrimary(ClassNamesPrimary);
-	// FPjcLibAsset::GetClassNamesEditor(ClassNamesEditor);
-	// FPjcLibAsset::GetAssetsIndirect(AssetsIndirectInfos);
-	struct FContentFolderVisitor : IPlatformFile::FDirectoryVisitor
-	{
-		int32 NumFilesTotal = 0;
-		int32 NumFilesNonAsset = 0;
-		int32 NumFilesCorrupted = 0;
-		int64 SizeFilesTotal = 0;
-		int64 SizeFilesNonAsset = 0;
-		int64 SizeFilesCorrupted = 0;
-		
-		virtual bool Visit(const TCHAR* FilenameOrDirectory, bool bIsDirectory) override
-		{
-			if (bIsDirectory) return true;
 
-			const FString FilePathAbs = FPaths::ConvertRelativePathToFull(FilenameOrDirectory);
-			const FString FileExtension = FPaths::GetExtension(FilePathAbs, false);
-			const int64 FileSize = IFileManager::Get().FileSize(*FilePathAbs);
-			
-			
-			++NumFilesTotal;
-			SizeFilesTotal += FileSize;
-			
-			if (PjcConstants::EngineFileExtensions.Contains(FileExtension))
+	TArray<FString> FilesTotal;
+	IFileManager::Get().FindFilesRecursive(FilesTotal, *FPjcLibPath::ContentDir(), TEXT("*"), true, false);
+
+	// initial data
+	TSet<FName> ClassNamesPrimary;
+	TSet<FName> ClassNamesEditor;
+	TSet<FName> ClassNamesExcluded{InScanSettings.ExcludedClassNames};
+
+	FPjcLibAsset::GetClassNamesPrimary(ClassNamesPrimary);
+	FPjcLibAsset::GetClassNamesEditor(ClassNamesEditor);
+
+	TMap<FAssetData, TArray<FPjcAssetUsageInfo>> AssetsIndirectInfos;
+	FPjcLibAsset::GetAssetsIndirect(AssetsIndirectInfos);
+
+	TSet<FAssetData> AssetsExcluded;
+	TSet<FAssetData> AssetsIndirect;
+	FPjcLibAsset::GetAssetsExcluded(InScanSettings, AssetsExcluded);
+	AssetsIndirectInfos.GetKeys(AssetsIndirect);
+
+	// data
+	TSet<FAssetData> AssetsTotal;
+	TSet<FAssetData> AssetsPrimary;
+	TSet<FAssetData> AssetsEditor;
+	TSet<FAssetData> AssetsExtReferenced;
+	TSet<FAssetData> AssetsUsed;
+	
+	TSet<FString> FilesNonAsset;
+	TSet<FString> FilesCorrupted;
+
+	AssetsTotal.Reserve(FilesTotal.Num());
+	AssetsPrimary.Reserve(FilesTotal.Num());
+	AssetsEditor.Reserve(FilesTotal.Num());
+	AssetsExtReferenced.Reserve(FilesTotal.Num());
+	AssetsUsed.Reserve(FilesTotal.Num());
+	
+	FilesNonAsset.Reserve(FilesTotal.Num());
+	FilesCorrupted.Reserve(FilesTotal.Num());
+
+	FScopedSlowTask SlowTask{
+		static_cast<float>(FilesTotal.Num()),
+		FText::FromString(TEXT("Scanning content directory files...")),
+		GIsEditor && !IsRunningCommandlet()
+	};
+	SlowTask.MakeDialog(false, false);
+
+	for (const FString& File : FilesTotal)
+	{
+		SlowTask.EnterProgressFrame(1.0f, FText::FromString(FString::Printf(TEXT("%s"), *File)));
+
+		const FString FilePathAbs = FPaths::ConvertRelativePathToFull(File);
+		const FString FileExtension = FPaths::GetExtension(FilePathAbs, false);
+
+		if (PjcConstants::EngineFileExtensions.Contains(FileExtension))
+		{
+			const FName ObjectPath = FPjcLibPath::ToObjectPath(FilePathAbs);
+			const FAssetData AssetData = FPjcLibAsset::GetAssetByObjectPath(ObjectPath);
+
+			if (AssetData.IsValid())
 			{
-				// const FName ObjectPath = FPjcLibPath::ToObjectPath(FilePathAbs);
-				// const FAssetData AssetData = FPjcLibAsset::GetAssetByObjectPath(ObjectPath);
-				//
-				// if (!AssetData.IsValid())
-				// {
-				// 	++NumFilesCorrupted;
-				// 	SizeFilesCorrupted += FileSize;
-				// }
+				AssetsTotal.Emplace(AssetData);
+
+				const bool bIsPrimaryAsset = FPjcLibAsset::AssetClassNameInList(AssetData, ClassNamesPrimary);
+				const bool bIsEditorAsset = FPjcLibAsset::AssetClassNameInList(AssetData, ClassNamesEditor);
+				const bool bIsIndirectAsset = AssetsIndirect.Contains(AssetData);
+				const bool bIsExtReferencedAsset = FPjcLibAsset::AssetIsExtReferenced(AssetData);
+				const bool bIsExcludedAsset =  FPjcLibAsset::AssetClassNameInList(AssetData, ClassNamesExcluded) || AssetsExcluded.Contains(AssetData);
+				const bool bIsMegascansAsset = FPjcLibAsset::AssetIsMegascansBase(AssetData);
+				const bool bIsUsedAsset = bIsPrimaryAsset || bIsEditorAsset || bIsIndirectAsset || bIsExtReferencedAsset || bIsExcludedAsset || bIsMegascansAsset;
+
+				if (bIsPrimaryAsset)
+				{
+					AssetsPrimary.Emplace(AssetData);
+				}
+
+				if (bIsEditorAsset)
+				{
+					AssetsEditor.Emplace(AssetData);
+				}
+
+				if (bIsExtReferencedAsset)
+				{
+					AssetsExtReferenced.Emplace(AssetData);
+				}
+
+				if (bIsExcludedAsset)
+				{
+					AssetsExcluded.Emplace(AssetData);
+				}
+
+				if (bIsUsedAsset)
+				{
+					TSet<FAssetData> Deps;
+					FPjcLibAsset::GetAssetDeps(AssetData, Deps);
+
+					AssetsUsed.Emplace(AssetData);
+					AssetsUsed.Append(Deps);
+				}
 			}
 			else
 			{
-				++NumFilesNonAsset;
-				SizeFilesNonAsset += FileSize;
+				FilesCorrupted.Emplace(FilePathAbs);
 			}
-			
-			
-			return true;
 		}
-	};
-	
-	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
-	FContentFolderVisitor Visitor;
-	PlatformFile.IterateDirectoryRecursively(*FPjcLibPath::ContentDir(), Visitor);
+		else
+		{
+			FilesNonAsset.Emplace(FilePathAbs);
+		}
+	}
+
+	AssetsTotal.Shrink();
+	AssetsPrimary.Shrink();
+	AssetsEditor.Shrink();
+	AssetsExtReferenced.Shrink();
+	AssetsUsed.Shrink();
+	FilesNonAsset.Shrink();
+	FilesCorrupted.Shrink();
+
+	const TSet<FAssetData> AssetsUnused = AssetsTotal.Difference(AssetsUsed);
 
 	const double ScanTime = FPlatformTime::Seconds() - ScanStartTime;
 	UE_LOG(LogProjectCleaner, Display, TEXT("Project Scanned in %f seconds"), ScanTime);

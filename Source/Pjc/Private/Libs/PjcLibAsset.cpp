@@ -54,6 +54,20 @@ bool FPjcLibAsset::AssetIsExtReferenced(const FAssetData& InAssetData)
 	});
 }
 
+bool FPjcLibAsset::AssetIsMegascansBase(const FAssetData& InAssetData)
+{
+	if (!InAssetData.IsValid()) return false;
+
+	return InAssetData.PackagePath.ToString().StartsWith(PjcConstants::PathRelMSPresets.ToString());
+}
+
+bool FPjcLibAsset::AssetClassNameInList(const FAssetData& InAssetData, const TSet<FName>& InClassNames)
+{
+	if (!InAssetData.IsValid() || InClassNames.Num() == 0) return false;
+
+	return InClassNames.Contains(InAssetData.AssetClass) || InClassNames.Contains(GetAssetClassName(InAssetData));
+}
+
 bool FPjcLibAsset::AssetRegistryWorking()
 {
 	const FAssetRegistryModule& ModuleAssetRegistry = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(PjcConstants::ModuleAssetRegistryName);
@@ -162,16 +176,59 @@ void FPjcLibAsset::GetClassNamesEditor(TSet<FName>& ClassNamesEditor)
 	ModuleAssetRegistry.Get().GetDerivedClassNames(ClassNamesEditorBase, TSet<FName>{}, ClassNamesEditor);
 }
 
+void FPjcLibAsset::GetAssetsExcluded(const FPjcScanSettings& InScanSettings, TSet<FAssetData>& OutAssets)
+{
+	const FAssetRegistryModule& ModuleAssetRegistry = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(PjcConstants::ModuleAssetRegistryName);
+
+	// getting assets excluded by paths
+	TArray<FAssetData> AssetsExcludedByPaths;
+	{
+		FARFilter Filter;
+		Filter.bRecursivePaths = true;
+
+		Filter.PackagePaths.Reserve(InScanSettings.ExcludedPaths.Num());
+
+		for (const auto& ExcludedPath : InScanSettings.ExcludedPaths)
+		{
+			const FString AssetPath = FPjcLibPath::ToAssetPath(ExcludedPath);
+			if (AssetPath.IsEmpty()) continue;
+
+			Filter.PackagePaths.Emplace(AssetPath);
+		}
+
+		ModuleAssetRegistry.Get().GetAssets(Filter, AssetsExcludedByPaths);
+	}
+
+	TArray<FAssetData> AssetsExcludedByObjectPath;
+	{
+		FARFilter Filter;
+
+		for (const auto& ExcludedObjectPath : InScanSettings.ExcludedObjectPaths)
+		{
+			const FName ObjectPath = FPjcLibPath::ToObjectPath(ExcludedObjectPath.ToString());
+			if (ObjectPath == NAME_None) continue;
+
+			Filter.ObjectPaths.Emplace(ObjectPath);
+		}
+
+		ModuleAssetRegistry.Get().GetAssets(Filter, AssetsExcludedByObjectPath);
+	}
+
+	OutAssets.Empty();
+	OutAssets.Append(AssetsExcludedByPaths);
+	OutAssets.Append(AssetsExcludedByObjectPath);
+}
+
 void FPjcLibAsset::GetAssetsIndirect(TMap<FAssetData, TArray<FPjcAssetUsageInfo>>& AssetsIndirect)
 {
 	AssetsIndirect.Empty();
 
 	TSet<FString> SourceFiles;
 	TSet<FString> ConfigFiles;
-	
+
 	FPjcLibPath::GetFilesInPathByExt(FPjcLibPath::SourceDir(), true, false, PjcConstants::SourceFileExtensions, SourceFiles);
 	FPjcLibPath::GetFilesInPathByExt(FPjcLibPath::ConfigDir(), true, false, PjcConstants::ConfigFileExtensions, ConfigFiles);
-	
+
 	TSet<FString> InstalledPlugins;
 	FPjcLibPath::GetFoldersInPath(FPjcLibPath::PluginsDir(), false, InstalledPlugins);
 
@@ -181,15 +238,15 @@ void FPjcLibAsset::GetAssetsIndirect(TMap<FAssetData, TArray<FPjcAssetUsageInfo>
 	{
 		// ignore ProjectCleaner plugin
 		if (InstalledPlugin.Equals(ProjectCleanerPluginPath)) continue;
-		
+
 		FPjcLibPath::GetFilesInPathByExt(InstalledPlugin / TEXT("Source"), true, false, PjcConstants::SourceFileExtensions, Files);
 		SourceFiles.Append(Files);
-	
+
 		Files.Reset();
-	
+
 		FPjcLibPath::GetFilesInPathByExt(InstalledPlugin / TEXT("Config"), true, false, PjcConstants::ConfigFileExtensions, Files);
 		ConfigFiles.Append(Files);
-	
+
 		Files.Reset();
 	}
 
@@ -269,7 +326,7 @@ void FPjcLibAsset::GetAssetDeps(const FAssetData& InAssetData, TSet<FAssetData>&
 		const FName CurrentPackageName = Stack.Pop();
 		Deps.Reset();
 		AssetRegistry.Get().GetDependencies(CurrentPackageName, Deps);
-		
+
 		Deps.RemoveAllSwap([&](const FName& Dep)
 		{
 			return !Dep.ToString().StartsWith(PjcConstants::PathRelRoot.ToString());
@@ -285,11 +342,11 @@ void FPjcLibAsset::GetAssetDeps(const FAssetData& InAssetData, TSet<FAssetData>&
 			}
 		}
 	}
-	
+
 	FARFilter Filter;
 	// Filter.bRecursivePaths = true;
 	// Filter.PackagePaths.Add(PjcConstants::PathRelRoot);
-	
+
 	for (const auto& Dep : AllDepsPackageNames)
 	{
 		Filter.PackageNames.Add(Dep);
@@ -297,7 +354,7 @@ void FPjcLibAsset::GetAssetDeps(const FAssetData& InAssetData, TSet<FAssetData>&
 
 	TArray<FAssetData> AssetsContainer;
 	AssetRegistry.Get().GetAssets(Filter, AssetsContainer);
-	
+
 	OutDeps.Empty();
 	OutDeps.Append(AssetsContainer);
 }

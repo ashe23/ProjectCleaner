@@ -54,8 +54,12 @@ struct FPjcScanResult
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner")
 	bool bSuccess = false;
+	
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner")
 	FString ErrMsg;
+
+
+
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner")
 	TSet<FString> FilesTotal;
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner")
