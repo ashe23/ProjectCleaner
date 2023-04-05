@@ -43,6 +43,9 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(AdvancedDisplay="OutScanResult"))
 	void ProjectScanBySettings(const FPjcScanSettings& InScanSettings, UPARAM(DisplayName="OutScanResult") FPjcScanResult& OutScanResult) const;
 
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner")
+	void ProjectScan2(const FPjcScanSettings& InScanSettings);
+
 	FPjcDelegateOnProjectScan& OnProjectScan();
 
 private:

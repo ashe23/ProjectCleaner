@@ -14,6 +14,7 @@ struct FPjcStatItem
 	int32 Num = 0;
 	FString Category;
 	FString ToolTip;
+	FMargin Padding;
 	FLinearColor TextColor{FLinearColor::White};
 };
 

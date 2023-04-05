@@ -9,7 +9,20 @@ import os
 # - editor
 # - megascans
 
-
+# our initial stats
+# Files Total 
+#   Files Non Assets
+#   Files Corrupted Assets
+#   Assets Total
+#       Assets Unused
+#       Assets Used
+#           Primary
+#           Editor
+#           Indirect
+#           ExtReferenced
+#           Excluded
+# Folders Total
+# Folders Empty
 
 # exclude_settings = unreal.PjcExcludeSettings()
 # exclude_settings.excluded_paths = ["/Game/StarterContent"]
@@ -17,14 +30,14 @@ import os
 subsystem = unreal.get_editor_subsystem(unreal.PjcSubsystem)
 
 scan_settings = unreal.PjcScanSettings()
-scan_settings.excluded_paths = ["/Game/Developers"]
-scan_settings.excluded_class_names = [unreal.StaticMesh.static_class().get_name(), 
-                                      unreal.Texture2D.static_class().get_name(), 
-                                      unreal.Material.static_class().get_name(),
-                                      unreal.Blueprint.static_class().get_name(),
-                                      unreal.SoundWave.static_class().get_name()]
-scan_settings.excluded_object_paths = ["ParticleSystem'/Game/StarterContent/Particles/P_Explosion.P_Explosion'"]
-scan_result = subsystem.project_scan_by_settings(scan_settings)
+# scan_settings.excluded_paths = ["/Game/Developers"]
+# scan_settings.excluded_class_names = [unreal.StaticMesh.static_class().get_name(), 
+#                                       unreal.Texture2D.static_class().get_name(), 
+#                                       unreal.Material.static_class().get_name(),
+#                                       unreal.Blueprint.static_class().get_name(),
+#                                       unreal.SoundWave.static_class().get_name()]
+# scan_settings.excluded_object_paths = ["ParticleSystem'/Game/StarterContent/Particles/P_Explosion.P_Explosion'"]
+subsystem.project_scan2(scan_settings)
 # print(scan_result)
 
 # scan_data = subsystem.project_scan(exclude_settings) # uses provided exclude settings

@@ -341,6 +341,71 @@ void UPjcSubsystem::ProjectScanBySettings(const FPjcScanSettings& InScanSettings
 	UE_LOG(LogProjectCleaner, Display, TEXT("Project Scanned in %.2f seconds"), ScanTime);
 }
 
+void UPjcSubsystem::ProjectScan2(const FPjcScanSettings& InScanSettings)
+{
+	const double ScanStartTime = FPlatformTime::Seconds();
+	
+	// TSet<FName> ClassNamesPrimary;
+	// TSet<FName> ClassNamesEditor;
+	// TMap<FAssetData, TArray<FPjcAssetUsageInfo>> AssetsIndirectInfos;
+	// TSet<FAssetData> ExcludedAssets;
+	//
+	// FPjcLibAsset::GetClassNamesPrimary(ClassNamesPrimary);
+	// FPjcLibAsset::GetClassNamesEditor(ClassNamesEditor);
+	// FPjcLibAsset::GetAssetsIndirect(AssetsIndirectInfos);
+	struct FContentFolderVisitor : IPlatformFile::FDirectoryVisitor
+	{
+		int32 NumFilesTotal = 0;
+		int32 NumFilesNonAsset = 0;
+		int32 NumFilesCorrupted = 0;
+		int64 SizeFilesTotal = 0;
+		int64 SizeFilesNonAsset = 0;
+		int64 SizeFilesCorrupted = 0;
+		
+		virtual bool Visit(const TCHAR* FilenameOrDirectory, bool bIsDirectory) override
+		{
+			if (bIsDirectory) return true;
+
+			const FString FilePathAbs = FPaths::ConvertRelativePathToFull(FilenameOrDirectory);
+			const FString FileExtension = FPaths::GetExtension(FilePathAbs, false);
+			const int64 FileSize = IFileManager::Get().FileSize(*FilePathAbs);
+			
+			
+			++NumFilesTotal;
+			SizeFilesTotal += FileSize;
+			
+			if (PjcConstants::EngineFileExtensions.Contains(FileExtension))
+			{
+				// const FName ObjectPath = FPjcLibPath::ToObjectPath(FilePathAbs);
+				// const FAssetData AssetData = FPjcLibAsset::GetAssetByObjectPath(ObjectPath);
+				//
+				// if (!AssetData.IsValid())
+				// {
+				// 	++NumFilesCorrupted;
+				// 	SizeFilesCorrupted += FileSize;
+				// }
+			}
+			else
+			{
+				++NumFilesNonAsset;
+				SizeFilesNonAsset += FileSize;
+			}
+			
+			
+			return true;
+		}
+	};
+	
+	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
+	FContentFolderVisitor Visitor;
+	PlatformFile.IterateDirectoryRecursively(*FPjcLibPath::ContentDir(), Visitor);
+
+	const double ScanTime = FPlatformTime::Seconds() - ScanStartTime;
+	UE_LOG(LogProjectCleaner, Display, TEXT("Project Scanned in %f seconds"), ScanTime);
+
+	return;
+}
+
 FPjcDelegateOnProjectScan& UPjcSubsystem::OnProjectScan()
 {
 	return DelegateOnProjectScan;
