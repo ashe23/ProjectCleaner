@@ -56,6 +56,7 @@ bool FPjcLibAsset::AssetIsExtReferenced(const FAssetData& InAssetData)
 
 bool FPjcLibAsset::AssetIsMegascansBase(const FAssetData& InAssetData)
 {
+	if (!FModuleManager::Get().IsModuleLoaded(PjcConstants::ModuleMegascans)) return false;
 	if (!InAssetData.IsValid()) return false;
 
 	return InAssetData.PackagePath.ToString().StartsWith(PjcConstants::PathRelMSPresets.ToString());
@@ -294,16 +295,6 @@ void FPjcLibAsset::GetAssetsIndirect(TMap<FAssetData, TArray<FPjcAssetUsageInfo>
 
 				TArray<FPjcAssetUsageInfo>& Elem = AssetsIndirect.FindOrAdd(AssetData);
 				Elem.AddUnique(UsageInfo);
-				// if (const auto FileUsageInfo = AssetsIndirect.FindOrAdd(AssetData))
-				// {
-				// 	FileUsageInfo->AddUnique(UsageInfo);
-				// }
-				// else
-				// {
-				// 	auto Value = AssetsIndirect.Emplace(AssetData);
-				// 	Value.Emplace(UsageInfo);
-				// 	continue;
-				// }
 			}
 		}
 	}

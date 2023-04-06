@@ -12,6 +12,7 @@ namespace PjcConstants
 	static const FName ModuleTitle{TEXT("Project Cleaner")};
 	static const FName ModuleAssetRegistryName{TEXT("AssetRegistry")};
 	static const FName ModuleAssetToolsName{TEXT("AssetTools")};
+	static const FName ModuleMegascans{TEXT("MegascansPlugin")};
 
 	// paths
 	static FName PathRelRoot{TEXT("/Game")};
