@@ -18,8 +18,8 @@ struct FPjcLibAsset
 	static void AssetRegistryUpdate();
 	static void GetClassNamesPrimary(TSet<FName>& ClassNamesPrimary);
 	static void GetClassNamesEditor(TSet<FName>& ClassNamesEditor);
-	static void GetAssetsExcluded(const FPjcScanSettings& InScanSettings, TSet<FAssetData>& OutAssets);
-	static void GetAssetsIndirect(TMap<FAssetData, TArray<FPjcAssetUsageInfo>>& AssetsIndirect);
+	// static void GetAssetsExcluded(const FPjcScanSettings& InScanSettings, TSet<FAssetData>& OutAssets);
+	// static void GetAssetsIndirect(TMap<FAssetData, TArray<FPjcAssetUsageInfo>>& AssetsIndirect);
 	static void GetAssetDeps(const FAssetData& InAssetData, TSet<FAssetData>& OutDeps);
 	static FName GetAssetClassName(const FAssetData& InAssetData);
 	static FAssetData GetAssetByObjectPath(const FName& InObjectPath);

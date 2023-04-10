@@ -128,7 +128,7 @@ FSlateColor SPjcTreeViewItem::GetFolderColor() const
 
 void SPjcTabScanInfo::Construct(const FArguments& InArgs)
 {
-	GEditor->GetEditorSubsystem<UPjcSubsystem>()->OnProjectScan().AddRaw(this, &SPjcTabScanInfo::UpdateData);
+	// GEditor->GetEditorSubsystem<UPjcSubsystem>()->OnProjectScan().AddRaw(this, &SPjcTabScanInfo::UpdateData);
 	
 	const FContentBrowserModule& ModuleContentBrowser = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
 
@@ -296,61 +296,61 @@ void SPjcTabScanInfo::Construct(const FArguments& InArgs)
 
 SPjcTabScanInfo::~SPjcTabScanInfo()
 {
-	GEditor->GetEditorSubsystem<UPjcSubsystem>()->OnProjectScan().RemoveAll(this);
+	// GEditor->GetEditorSubsystem<UPjcSubsystem>()->OnProjectScan().RemoveAll(this);
 }
 
 void SPjcTabScanInfo::UpdateData(const FPjcScanResult& InScanResult)
 {
-	RootItem.Reset();
-	
-	RootItem = MakeShareable(new FPjcTreeViewItem);
-	RootItem->SizeUnused = FPjcLibAsset::GetAssetsSize(InScanResult.AssetsUnused.Array());
-	RootItem->NumTotal = InScanResult.AssetsAll.Num();
-	RootItem->NumUsed = InScanResult.AssetsUsed.Num();
-	RootItem->NumUnused = InScanResult.AssetsUnused.Num();
-	RootItem->PercentUnused = RootItem->NumTotal == 0 ? 0 : RootItem->NumUnused * 100.0f / RootItem->NumTotal;
-	RootItem->PercentUnusedNormalized = FMath::GetMappedRangeValueClamped(FVector2D{0.0f, 100.0f}, FVector2D{0.0f, 1.0f}, RootItem->PercentUnused);
-	RootItem->bIsRoot = true;
-	RootItem->bIsEmpty = FPjcLibPath::IsPathEmpty(FPaths::ProjectContentDir());
-	RootItem->bIsExcluded = FPjcLibPath::IsPathExcluded(FPaths::ProjectContentDir());
-	RootItem->bIsDevFolder = false;
-	RootItem->bIsExpanded = true;
-	RootItem->ParentItem = nullptr;
-	RootItem->PathAbs = FPjcLibPath::ContentDir();
-	RootItem->PathRel = FPjcLibPath::ToAssetPath(RootItem->PathAbs);
-	RootItem->FolderName = FPjcLibPath::GetPathName(RootItem->PathAbs);
-
-	TSet<FString> SubFolders;
-	FPjcLibPath::GetFoldersInPath(FPjcLibPath::ContentDir(), false, SubFolders);
-	
-	for (const FString& SubFolder : SubFolders)
-	{
-		const TSharedPtr<FPjcTreeViewItem> SubItem = MakeShareable(new FPjcTreeViewItem);
-		if (!SubItem) continue;
-
-		SubItem->SizeUnused = 0; // todo:ashe23
-		SubItem->NumTotal = 0;
-		SubItem->NumUsed = 0;
-		SubItem->NumUnused = 0;
-		SubItem->PercentUnused = SubItem->NumTotal == 0 ? 0 : SubItem->NumUnused * 100.0f / SubItem->NumTotal;
-		SubItem->PercentUnusedNormalized = FMath::GetMappedRangeValueClamped(FVector2D{0.0f, 100.0f}, FVector2D{0.0f, 1.0f}, SubItem->PercentUnused);
-		SubItem->bIsRoot = false;
-		SubItem->bIsEmpty = FPjcLibPath::IsPathEmpty(SubFolder);
-		SubItem->bIsExcluded = FPjcLibPath::IsPathExcluded(SubFolder);
-		SubItem->bIsDevFolder = false;
-		SubItem->bIsExpanded = true;
-		SubItem->ParentItem = RootItem;
-		SubItem->PathAbs = SubFolder;
-		SubItem->PathRel = FPjcLibPath::ToAssetPath(SubFolder);
-		SubItem->FolderName = FPjcLibPath::GetPathName(SubFolder);
-
-		RootItem->SubItems.Emplace(SubItem);
-	}
-
-	TreeViewItems.Empty();
-	TreeViewItems.Emplace(RootItem);
-
-	TreeView->RequestTreeRefresh();
+	// RootItem.Reset();
+	//
+	// RootItem = MakeShareable(new FPjcTreeViewItem);
+	// RootItem->SizeUnused = FPjcLibAsset::GetAssetsSize(InScanResult.AssetsUnused.Array());
+	// RootItem->NumTotal = InScanResult.AssetsAll.Num();
+	// RootItem->NumUsed = InScanResult.AssetsUsed.Num();
+	// RootItem->NumUnused = InScanResult.AssetsUnused.Num();
+	// RootItem->PercentUnused = RootItem->NumTotal == 0 ? 0 : RootItem->NumUnused * 100.0f / RootItem->NumTotal;
+	// RootItem->PercentUnusedNormalized = FMath::GetMappedRangeValueClamped(FVector2D{0.0f, 100.0f}, FVector2D{0.0f, 1.0f}, RootItem->PercentUnused);
+	// RootItem->bIsRoot = true;
+	// RootItem->bIsEmpty = FPjcLibPath::IsPathEmpty(FPaths::ProjectContentDir());
+	// RootItem->bIsExcluded = FPjcLibPath::IsPathExcluded(FPaths::ProjectContentDir());
+	// RootItem->bIsDevFolder = false;
+	// RootItem->bIsExpanded = true;
+	// RootItem->ParentItem = nullptr;
+	// RootItem->PathAbs = FPjcLibPath::ContentDir();
+	// RootItem->PathRel = FPjcLibPath::ToAssetPath(RootItem->PathAbs);
+	// RootItem->FolderName = FPjcLibPath::GetPathName(RootItem->PathAbs);
+	//
+	// TSet<FString> SubFolders;
+	// FPjcLibPath::GetFoldersInPath(FPjcLibPath::ContentDir(), false, SubFolders);
+	//
+	// for (const FString& SubFolder : SubFolders)
+	// {
+	// 	const TSharedPtr<FPjcTreeViewItem> SubItem = MakeShareable(new FPjcTreeViewItem);
+	// 	if (!SubItem) continue;
+	//
+	// 	SubItem->SizeUnused = 0; // todo:ashe23
+	// 	SubItem->NumTotal = 0;
+	// 	SubItem->NumUsed = 0;
+	// 	SubItem->NumUnused = 0;
+	// 	SubItem->PercentUnused = SubItem->NumTotal == 0 ? 0 : SubItem->NumUnused * 100.0f / SubItem->NumTotal;
+	// 	SubItem->PercentUnusedNormalized = FMath::GetMappedRangeValueClamped(FVector2D{0.0f, 100.0f}, FVector2D{0.0f, 1.0f}, SubItem->PercentUnused);
+	// 	SubItem->bIsRoot = false;
+	// 	SubItem->bIsEmpty = FPjcLibPath::IsPathEmpty(SubFolder);
+	// 	SubItem->bIsExcluded = FPjcLibPath::IsPathExcluded(SubFolder);
+	// 	SubItem->bIsDevFolder = false;
+	// 	SubItem->bIsExpanded = true;
+	// 	SubItem->ParentItem = RootItem;
+	// 	SubItem->PathAbs = SubFolder;
+	// 	SubItem->PathRel = FPjcLibPath::ToAssetPath(SubFolder);
+	// 	SubItem->FolderName = FPjcLibPath::GetPathName(SubFolder);
+	//
+	// 	RootItem->SubItems.Emplace(SubItem);
+	// }
+	//
+	// TreeViewItems.Empty();
+	// TreeViewItems.Emplace(RootItem);
+	//
+	// TreeView->RequestTreeRefresh();
 }
 
 TSharedRef<SHeaderRow> SPjcTabScanInfo::GetTreeViewHeaderRow() const

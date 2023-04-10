@@ -2,7 +2,7 @@
 
 #include "Libs/PjcLibPath.h"
 #include "PjcConstants.h"
-#include "PjcExcludeSettings.h"
+// #include "PjcExcludeSettings.h"
 #include "AssetRegistry/AssetRegistryModule.h"
 
 FString FPjcLibPath::ProjectDir()
@@ -221,20 +221,20 @@ bool FPjcLibPath::IsPathEngineGenerated(const FString& InPath)
 		InPath.StartsWith(CurrentUserDevelopersDir()) ||
 		InPath.StartsWith(CurrentUserCollectionsDir());
 }
-
-bool FPjcLibPath::IsPathExcluded(const FString& InPath)
-{
-	const FString PathAsset = ToAssetPath(InPath);
-	if (PathAsset.IsEmpty()) return false;
-
-	const UPjcExcludeSettings* ExcludeSettings = GetDefault<UPjcExcludeSettings>();
-	if (!ExcludeSettings) return false;
-
-	return ExcludeSettings->ExcludedPaths.ContainsByPredicate([&](const FDirectoryPath& DirectoryPath)
-	{
-		return DirectoryPath.Path.StartsWith(PathAsset);
-	});
-}
+//
+// bool FPjcLibPath::IsPathExcluded(const FString& InPath)
+// {
+// 	const FString PathAsset = ToAssetPath(InPath);
+// 	if (PathAsset.IsEmpty()) return false;
+//
+// 	const UPjcExcludeSettings* ExcludeSettings = GetDefault<UPjcExcludeSettings>();
+// 	if (!ExcludeSettings) return false;
+//
+// 	return ExcludeSettings->ExcludedPaths.ContainsByPredicate([&](const FDirectoryPath& DirectoryPath)
+// 	{
+// 		return DirectoryPath.Path.StartsWith(PathAsset);
+// 	});
+// }
 
 int64 FPjcLibPath::GetFileSize(const FString& InPath)
 {
