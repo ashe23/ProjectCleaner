@@ -18,6 +18,11 @@ public:
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	virtual void Deinitialize() override;
 
+	void ProjectScan();
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(AdvancedDisplay="OutScanResult"))
+	void ProjectScanBySettings(const FPjcExcludeSettings& InExcludeSettings, UPARAM(DisplayName="OutScanResult") FPjcScanResult& OutScanResult) const;
+
 	FPjcDelegateOnProjectScan& OnProjectScan();
 	const FPjcScanResult& GetLastScanResult() const;
 
@@ -27,6 +32,8 @@ protected:
 #endif
 
 private:
+	bool bScanningInProgress = false;
+	bool bCleaningInProgress = false;
 	FPjcScanResult LastScanResult;
 	FPjcDelegateOnProjectScan DelegateOnProjectScan;
 };

@@ -3,13 +3,14 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "PjcTypes.h"
 #include "Widgets/SCompoundWidget.h"
 
 class UPjcSubsystem;
-struct FPjcScanResult;
 
 struct FPjcStatItem
 {
+	bool bSplitter = false;
 	int64 Size = 0;
 	int32 Num = 0;
 	FString Category;
@@ -46,6 +47,8 @@ private:
 	FReply OnBtnCleanProjectClick() const;
 	bool BtnCleanProjectEnabled() const;
 
+	// FText GetStatTxtAssetsTotal() const;
+
 	void StatsUpdate(const FPjcScanResult& InScanResult);
 
 	TSharedRef<ITableRow> OnStatsGenerateRow(TSharedPtr<FPjcStatItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const;
@@ -55,4 +58,5 @@ private:
 	TSharedPtr<SListView<TSharedPtr<FPjcStatItem>>> StatView;
 
 	UPjcSubsystem* SubsystemPtr = nullptr;
+	FPjcScanStats ScanStats;
 };

@@ -67,26 +67,17 @@ struct FPjcScanStats
 	GENERATED_BODY()
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanStats")
-	int64 SizeFilesTotal = 0;
-
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanStats")
-	int64 SizeFilesAsset = 0;
-
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanStats")
-	int64 SizeFilesNonAsset = 0;
-
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanStats")
-	int64 SizeFilesCorrupted = 0;
-
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanStats")
-	int64 SizeAssetsUsed = 0;
+	int64 SizeAssetsTotal = 0;
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanStats")
 	int64 SizeAssetsUnused = 0;
-
+	
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanStats")
+	int64 SizeAssetsUsed = 0;
+	
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanStats")
 	int64 SizeAssetsPrimary = 0;
-
+	
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanStats")
 	int64 SizeAssetsIndirect = 0;
 
@@ -98,24 +89,21 @@ struct FPjcScanStats
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanStats")
 	int64 SizeAssetsExtReferenced = 0;
+	
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanStats")
+	int64 SizeAssetsCorrupted = 0;
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanStats")
-	int32 NumFilesTotal = 0;
+	int64 SizeFilesExternal = 0;
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanStats")
-	int32 NumFilesAsset = 0;
-
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanStats")
-	int32 NumFilesNonAsset = 0;
-
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanStats")
-	int32 NumFilesCorrupted = 0;
-
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanStats")
-	int32 NumAssetsUsed = 0;
+	int32 NumAssetsTotal = 0;
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanStats")
 	int32 NumAssetsUnused = 0;
+	
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanStats")
+	int32 NumAssetsUsed = 0;
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanStats")
 	int32 NumAssetsPrimary = 0;
@@ -133,36 +121,36 @@ struct FPjcScanStats
 	int32 NumAssetsExtReferenced = 0;
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanStats")
-	int32 NumFoldersTotal = 0;
+	int32 NumAssetsCorrupted = 0;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanStats")
+	int32 NumFilesExternal = 0;
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanStats")
 	int32 NumFoldersEmpty = 0;
 
 	void Clear()
 	{
-		SizeFilesTotal = 0;
-		SizeFilesAsset = 0;
-		SizeFilesNonAsset = 0;
-		SizeFilesCorrupted = 0;
-		SizeAssetsUsed = 0;
+		SizeAssetsTotal = 0;
 		SizeAssetsUnused = 0;
+		SizeAssetsUsed = 0;
 		SizeAssetsPrimary = 0;
 		SizeAssetsIndirect = 0;
 		SizeAssetsEditor = 0;
 		SizeAssetsExcluded = 0;
 		SizeAssetsExtReferenced = 0;
-		NumFilesTotal = 0;
-		NumFilesAsset = 0;
-		NumFilesNonAsset = 0;
-		NumFilesCorrupted = 0;
-		NumAssetsUsed = 0;
+		SizeAssetsCorrupted = 0;
+		SizeFilesExternal = 0;
+		NumAssetsTotal = 0;
 		NumAssetsUnused = 0;
+		NumAssetsUsed = 0;
 		NumAssetsPrimary = 0;
 		NumAssetsIndirect = 0;
 		NumAssetsEditor = 0;
 		NumAssetsExcluded = 0;
 		NumAssetsExtReferenced = 0;
-		NumFoldersTotal = 0;
+		NumAssetsCorrupted = 0;
+		NumFilesExternal = 0;
 		NumFoldersEmpty = 0;
 	}
 };
@@ -172,23 +160,15 @@ struct FPjcScanData
 {
 	GENERATED_BODY()
 
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanData")
-	TArray<FString> FilesNonAsset;
-
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanData")
-	TArray<FString> FilesCorrupted;
-
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanData")
-	TArray<FString> FoldersEmpty;
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanData")
 	TArray<FAssetData> AssetsAll;
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanData")
-	TArray<FAssetData> AssetsUsed;
-
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanData")
 	TArray<FAssetData> AssetsUnused;
+	
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanData")
+	TArray<FAssetData> AssetsUsed;
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanData")
 	TArray<FAssetData> AssetsPrimary;
@@ -207,20 +187,46 @@ struct FPjcScanData
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanData")
 	TArray<FAssetData> AssetsExtReferenced;
+	
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanData")
+	TArray<FString> AssetsCorrupted;
 
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanData")
+	TArray<FString> FilesExternal;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanData")
+	TArray<FString> FoldersEmpty;
+	
 	void Clear()
 	{
-		FilesNonAsset.Empty();
-		FilesCorrupted.Empty();
-		FoldersEmpty.Empty();
 		AssetsAll.Empty();
-		AssetsUsed.Empty();
 		AssetsUnused.Empty();
+		AssetsUsed.Empty();
 		AssetsPrimary.Empty();
 		AssetsIndirect.Empty();
+		AssetsIndirectInfos.Empty();
 		AssetsEditor.Empty();
 		AssetsExcluded.Empty();
 		AssetsExtReferenced.Empty();
+		AssetsCorrupted.Empty();
+		FilesExternal.Empty();
+		FoldersEmpty.Empty();
+	}
+
+	void Shrink()
+	{
+		AssetsAll.Shrink();
+		AssetsUnused.Shrink();
+		AssetsUsed.Shrink();
+		AssetsPrimary.Shrink();
+		AssetsIndirect.Shrink();
+		AssetsIndirectInfos.Shrink();
+		AssetsEditor.Shrink();
+		AssetsExcluded.Shrink();
+		AssetsExtReferenced.Shrink();
+		AssetsCorrupted.Shrink();
+		FilesExternal.Shrink();
+		FoldersEmpty.Shrink();
 	}
 };
 
@@ -230,7 +236,7 @@ struct FPjcScanResult
 	GENERATED_BODY()
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanResult")
-	bool bScanSuccess = false;
+	bool bScanSuccess = true;
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanResult")
 	FString ScanErrMsg;
@@ -240,4 +246,12 @@ struct FPjcScanResult
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanResult")
 	FPjcScanData ScanData;
+
+	void Clear()
+	{
+		bScanSuccess = true;
+		ScanErrMsg.Empty();
+		ScanStats.Clear();
+		ScanData.Clear();
+	}
 };

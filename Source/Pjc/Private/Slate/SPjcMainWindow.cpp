@@ -191,7 +191,8 @@ TSharedRef<SDockTab> SPjcMainWindow::OnTabScanInfoSpawn(const FSpawnTabArgs& Arg
 		.Icon(FPjcStyles::Get().GetBrush("ProjectCleaner.IconTabAssetsBrowser16"))
 		.ToolTipText(FText::FromString(TEXT("Show detailed view of unused, used and excluded assets")))
 		[
-			SNew(SPjcTabScanInfo)
+			// SNew(SPjcTabScanInfo)
+			SNew(STextBlock)
 			// TabScanInfoPtr.ToSharedRef()
 		];
 }
