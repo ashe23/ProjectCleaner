@@ -5,8 +5,8 @@
 #include "CoreMinimal.h"
 #include "Widgets/SCompoundWidget.h"
 
+class UPjcSubsystem;
 struct FPjcScanResult;
-enum class EPjcScanResult : uint8;
 
 struct FPjcStatItem
 {
@@ -45,6 +45,7 @@ private:
 	FReply OnBtnScanProjectClick() const;
 	FReply OnBtnCleanProjectClick() const;
 	bool BtnCleanProjectEnabled() const;
+
 	void StatsUpdate(const FPjcScanResult& InScanResult);
 
 	TSharedRef<ITableRow> OnStatsGenerateRow(TSharedPtr<FPjcStatItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const;
@@ -52,4 +53,6 @@ private:
 
 	TArray<TSharedPtr<FPjcStatItem>> StatItems;
 	TSharedPtr<SListView<TSharedPtr<FPjcStatItem>>> StatView;
+
+	UPjcSubsystem* SubsystemPtr = nullptr;
 };

@@ -31,6 +31,7 @@ namespace PjcConstants
 	static int32 WidgetIndexWorking = 1;
 
 	// misc
+	static int32 NoSize = -1;
 	static int32 HeaderRowFontSize = 10;
 	static FMargin HeaderRowMargin = 10.0f;
 	static const TSet<FString> EngineFileExtensions{TEXT("umap"), TEXT("uasset"), TEXT("collection")};

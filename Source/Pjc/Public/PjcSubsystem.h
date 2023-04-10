@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "EditorSubsystem.h"
+#include "PjcDelegates.h"
 #include "PjcSubsystem.generated.h"
 
 class UPjcExcludeSettings;
@@ -17,8 +18,15 @@ public:
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	virtual void Deinitialize() override;
 
+	FPjcDelegateOnProjectScan& OnProjectScan();
+	const FPjcScanResult& GetLastScanResult() const;
+
 protected:
 #if WITH_EDITOR
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif
+
+private:
+	FPjcScanResult LastScanResult;
+	FPjcDelegateOnProjectScan DelegateOnProjectScan;
 };

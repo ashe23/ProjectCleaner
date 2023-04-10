@@ -12,6 +12,16 @@ void UPjcSubsystem::Deinitialize()
 	Super::Deinitialize();
 }
 
+FPjcDelegateOnProjectScan& UPjcSubsystem::OnProjectScan()
+{
+	return DelegateOnProjectScan;
+}
+
+const FPjcScanResult& UPjcSubsystem::GetLastScanResult() const
+{
+	return LastScanResult;
+}
+
 #if WITH_EDITOR
 void UPjcSubsystem::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
