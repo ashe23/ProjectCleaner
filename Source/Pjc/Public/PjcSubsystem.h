@@ -32,6 +32,9 @@ protected:
 #endif
 
 private:
+	void ScanAssets(const FPjcExcludeSettings& InExcludeSettings, FPjcScanResult& OutScanResult) const;
+	void ScanFilesAndFolders(FPjcScanResult& OutScanResult) const;
+	
 	bool bScanningInProgress = false;
 	bool bCleaningInProgress = false;
 	FPjcScanResult LastScanResult;

@@ -134,7 +134,7 @@ void UPjcSubsystem::ProjectScanBySettings(const FPjcExcludeSettings& InExcludeSe
 	const double ScanStartTime = FPlatformTime::Seconds();
 
 	FScopedSlowTask SlowTask{
-		4.0f,
+		2.0f,
 		FText::FromString(TEXT("Scanning Project...")),
 		GIsEditor && !IsRunningCommandlet()
 	};
@@ -142,120 +142,12 @@ void UPjcSubsystem::ProjectScanBySettings(const FPjcExcludeSettings& InExcludeSe
 
 	SlowTask.EnterProgressFrame(1.0f);
 
-	FPjcLibAsset::GetAssetsAll(OutScanResult.ScanData.AssetsAll);
-	FPjcLibAsset::GetAssetsIndirect(OutScanResult.ScanData.AssetsIndirect, OutScanResult.ScanData.AssetsIndirectInfos);
-	FPjcLibAsset::GetAssetsExcluded(InExcludeSettings, OutScanResult.ScanData.AssetsExcluded);
-
-	TSet<FName> ClassNamesPrimary;
-	TSet<FName> ClassNamesEditor;
-
-	FPjcLibAsset::GetClassNamesPrimary(ClassNamesPrimary);
-	FPjcLibAsset::GetClassNamesEditor(ClassNamesEditor);
-
-	OutScanResult.ScanData.AssetsUsed.Reserve(OutScanResult.ScanData.AssetsAll.Num());
-	OutScanResult.ScanData.AssetsUnused.Reserve(OutScanResult.ScanData.AssetsAll.Num());
-
-	TSet<FAssetData> AssetsUsed;
-	const TSet<FAssetData> AssetsExcluded{OutScanResult.ScanData.AssetsExcluded};
-
+	ScanAssets(InExcludeSettings, OutScanResult);
 
 	SlowTask.EnterProgressFrame(1.0f);
 
-	FScopedSlowTask SubTask{
-		static_cast<float>(OutScanResult.ScanData.AssetsAll.Num()),
-		FText::FromString(TEXT("Scanning Assets...")),
-		GIsEditor && !IsRunningCommandlet()
-	};
-	SubTask.MakeDialog(false, false);
+	ScanFilesAndFolders(OutScanResult);
 
-	for (const auto& Asset : OutScanResult.ScanData.AssetsAll)
-	{
-		SubTask.EnterProgressFrame(1.0f, FText::FromString(Asset.ToSoftObjectPath().GetAssetPathString()));
-
-		const bool bIsPrimary = FPjcLibAsset::AssetClassNameInList(Asset, ClassNamesPrimary);
-		const bool bIsIndirect = OutScanResult.ScanData.AssetsIndirect.Contains(Asset);
-		const bool bIsEditor = FPjcLibAsset::AssetClassNameInList(Asset, ClassNamesEditor);
-		const bool bIsExcluded = AssetsExcluded.Contains(Asset);
-		const bool bIsExtReferenced = FPjcLibAsset::AssetIsExtReferenced(Asset);
-		const bool bIsUsed = bIsPrimary || bIsIndirect || bIsEditor || bIsExcluded || bIsExtReferenced || FPjcLibAsset::AssetIsMegascansBase(Asset);
-
-		if (bIsPrimary)
-		{
-			OutScanResult.ScanData.AssetsPrimary.Emplace(Asset);
-		}
-
-		if (bIsEditor)
-		{
-			OutScanResult.ScanData.AssetsEditor.Emplace(Asset);
-		}
-
-		if (bIsExtReferenced)
-		{
-			OutScanResult.ScanData.AssetsExtReferenced.Emplace(Asset);
-		}
-
-		if (bIsUsed)
-		{
-			AssetsUsed.Emplace(Asset);
-		}
-	}
-
-	TSet<FAssetData> AssetDeps;
-	FPjcLibAsset::GetAssetsDeps(AssetsUsed, AssetDeps);
-
-	for (const auto& Asset : OutScanResult.ScanData.AssetsAll)
-	{
-		if (!AssetDeps.Contains(Asset))
-		{
-			OutScanResult.ScanData.AssetsUnused.Emplace(Asset);
-		}
-	}
-
-	OutScanResult.ScanData.AssetsUsed.Append(AssetDeps.Array());
-
-	SlowTask.EnterProgressFrame(1.0f);
-
-	TArray<FString> Paths;
-	FPjcLibAsset::GetCachedPaths(Paths);
-
-	OutScanResult.ScanData.FoldersEmpty.Reserve(Paths.Num());
-
-	for (const auto& Path : Paths)
-	{
-		if (FPjcLibPath::IsPathEmpty(Path) && !FPjcLibPath::IsPathEngineGenerated(Path))
-		{
-			OutScanResult.ScanData.FoldersEmpty.Emplace(FPjcLibPath::ToAbsolute(Path));
-		}
-	}
-
-	TArray<FString> Files;
-	IFileManager::Get().FindFilesRecursive(Files, *FPjcLibPath::ContentDir(), TEXT("*"), true, false);
-	
-	OutScanResult.ScanData.FilesExternal.Reserve(Files.Num());
-	OutScanResult.ScanData.AssetsCorrupted.Reserve(Files.Num());
-	
-	for (const auto& File : Files)
-	{
-		const FString FilePathAbs = FPjcLibPath::ToAbsolute(File);
-		if (FilePathAbs.IsEmpty()) continue;
-	
-		const FString FileExtension = FPjcLibPath::GetFileExtension(FilePathAbs, false).ToLower();
-	
-		if (PjcConstants::EngineFileExtensions.Contains(FileExtension))
-		{
-			const FAssetData AssetData = FPjcLibAsset::GetAssetByObjectPath(FPjcLibPath::ToObjectPath(FilePathAbs));
-			if (!AssetData.IsValid())
-			{
-				OutScanResult.ScanData.AssetsCorrupted.Emplace(FilePathAbs);
-			}
-		}
-		else
-		{
-			OutScanResult.ScanData.FilesExternal.Emplace(FilePathAbs);
-		}
-	}
-
-	SlowTask.EnterProgressFrame(1.0f);
 	OutScanResult.ScanData.Shrink();
 
 	OutScanResult.ScanStats.NumAssetsTotal = OutScanResult.ScanData.AssetsAll.Num();
@@ -304,3 +196,132 @@ void UPjcSubsystem::PostEditChangeProperty(FPropertyChangedEvent& PropertyChange
 	SaveConfig();
 }
 #endif
+
+void UPjcSubsystem::ScanAssets(const FPjcExcludeSettings& InExcludeSettings, FPjcScanResult& OutScanResult) const
+{
+	TSet<FAssetData> AssetsAll;
+	TSet<FAssetData> AssetsExcluded;
+	TSet<FAssetData> AssetsUsed;
+	TSet<FName> ClassNamesPrimary;
+	TSet<FName> ClassNamesEditor;
+
+	FPjcLibAsset::GetAssetsByPath(PjcConstants::PathRelRoot.ToString(), true, OutScanResult.ScanData.AssetsAll);
+	FPjcLibAsset::GetAssetsIndirect(OutScanResult.ScanData.AssetsIndirect, OutScanResult.ScanData.AssetsIndirectInfos);
+	FPjcLibAsset::GetAssetsExcluded(InExcludeSettings, OutScanResult.ScanData.AssetsExcluded);
+	FPjcLibAsset::GetClassNamesPrimary(ClassNamesPrimary);
+	FPjcLibAsset::GetClassNamesEditor(ClassNamesEditor);
+
+	AssetsAll.Append(OutScanResult.ScanData.AssetsAll);
+	AssetsExcluded.Append(OutScanResult.ScanData.AssetsExcluded);
+	AssetsUsed.Append(OutScanResult.ScanData.AssetsIndirect);
+	AssetsUsed.Append(OutScanResult.ScanData.AssetsExcluded);
+
+	FScopedSlowTask SlowTask{
+		static_cast<float>(OutScanResult.ScanData.AssetsAll.Num()),
+		FText::FromString(TEXT("Scanning Assets...")),
+		GIsEditor && !IsRunningCommandlet()
+	};
+	SlowTask.MakeDialog(false, false);
+
+	for (const auto& Asset : OutScanResult.ScanData.AssetsAll)
+	{
+		SlowTask.EnterProgressFrame(1.0f, FText::FromString(Asset.ToSoftObjectPath().GetAssetPathString()));
+
+		const bool bIsPrimary = FPjcLibAsset::AssetClassNameInList(Asset, ClassNamesPrimary);
+		const bool bIsEditor = FPjcLibAsset::AssetClassNameInList(Asset, ClassNamesEditor);
+		const bool bIsExtReferenced = FPjcLibAsset::AssetIsExtReferenced(Asset);
+		const bool bIsUsed = bIsPrimary || bIsEditor || bIsExtReferenced || FPjcLibAsset::AssetIsMegascansBase(Asset);
+
+		if (bIsPrimary)
+		{
+			OutScanResult.ScanData.AssetsPrimary.Emplace(Asset);
+		}
+
+		if (bIsEditor)
+		{
+			OutScanResult.ScanData.AssetsEditor.Emplace(Asset);
+		}
+
+		if (bIsExtReferenced)
+		{
+			OutScanResult.ScanData.AssetsExtReferenced.Emplace(Asset);
+		}
+
+		if (bIsUsed)
+		{
+			AssetsUsed.Emplace(Asset);
+		}
+	}
+
+	TSet<FAssetData> AssetsUsedDependencies;
+	FPjcLibAsset::GetAssetsDeps(AssetsUsed, AssetsUsedDependencies);
+
+	const TSet<FAssetData> AssetsUnused = AssetsAll.Difference(AssetsUsedDependencies);
+
+	OutScanResult.ScanData.AssetsUsed.Append(AssetsUsedDependencies.Array());
+	OutScanResult.ScanData.AssetsUnused.Append(AssetsUnused.Array());
+}
+
+void UPjcSubsystem::ScanFilesAndFolders(FPjcScanResult& OutScanResult) const
+{
+	// TArray<FString> Paths;
+	// FPjcLibAsset::GetCachedPaths(Paths);
+	//
+	// for (const auto& Path : Paths)
+	// {
+	// 	if (FPjcLibPath::IsPathEmpty(Path) && !FPjcLibPath::IsPathEngineGenerated(Path))
+	// 	{
+	// 		OutScanResult.ScanData.FoldersEmpty.Emplace(Path);
+	// 	}
+	// }
+
+	TSet<FString> Folders;
+	FPjcLibPath::GetFoldersInPath(FPjcLibPath::ContentDir(), true, Folders);
+
+	FScopedSlowTask SlowTask1{
+		static_cast<float>(Folders.Num()),
+		FText::FromString(TEXT("Scanning Project Folders...")),
+		GIsEditor && !IsRunningCommandlet()
+	};
+	SlowTask1.MakeDialog(false, false);
+	
+	for (const auto& Folder : Folders)
+	{
+		SlowTask1.EnterProgressFrame(1.0f, FText::FromString(Folder));
+		
+		if (FPjcLibPath::IsPathEmpty(Folder) && !FPjcLibPath::IsPathEngineGenerated(Folder))
+		{
+			OutScanResult.ScanData.FoldersEmpty.Emplace(Folder);
+		}
+	}
+
+	TSet<FString> Files;
+	FPjcLibPath::GetFilesInPath(FPjcLibPath::ContentDir(), true, Files);
+	
+	FScopedSlowTask SlowTask{
+		static_cast<float>(Files.Num()),
+		FText::FromString(TEXT("Scanning Project Files...")),
+		GIsEditor && !IsRunningCommandlet()
+	};
+	SlowTask.MakeDialog(false, false);
+	
+	for (const auto& File : Files.Array())
+	{
+		SlowTask.EnterProgressFrame(1.0f, FText::FromString(File));
+		
+		const FString FileExtension = FPjcLibPath::GetFileExtension(File, false).ToLower();
+		
+		if (PjcConstants::EngineFileExtensions.Contains(FileExtension))
+		{
+			const FAssetData AssetData = FPjcLibAsset::GetAssetByObjectPath(FPjcLibPath::ToObjectPath(File));
+			if (!AssetData.IsValid())
+			{
+				OutScanResult.ScanData.AssetsCorrupted.Emplace(File);
+			}
+		}
+		else
+		{
+			OutScanResult.ScanData.FilesExternal.Emplace(File);
+		}
+	}
+}
