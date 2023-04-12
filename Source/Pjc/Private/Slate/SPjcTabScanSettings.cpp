@@ -203,16 +203,17 @@ FReply SPjcTabScanSettings::OnBtnScanProjectClick() const
 FReply SPjcTabScanSettings::OnBtnCleanProjectClick() const
 {
 	if (!SubsystemPtr) return FReply::Handled();
-	// const FText Title = FText::FromString(TEXT("Confirm project cleaning"));
-	// const FText Msg = GetCleanupText(GetDefault<UPjcSettings>()->CleanupMethod);
-	// const EAppReturnType::Type Result = FMessageDialog::Open(EAppMsgType::YesNo, Msg, &Title);
-	//
-	// if (Result == EAppReturnType::No || Result == EAppReturnType::Cancel)
-	// {
-	// 	return FReply::Handled();
-	// }
-	//
-	// GEditor->GetEditorSubsystem<UPjcSubsystem>()->ProjectClean();
+	const UPjcEditorSettings* EditorSettings = GetDefault<UPjcEditorSettings>();
+	if (!EditorSettings) return FReply::Handled();
+
+	const FText Title = FText::FromString(TEXT("Confirm project cleaning"));
+	const FText Msg = GetCleanupText(EditorSettings->CleanupMethod);
+	const EAppReturnType::Type Result = FMessageDialog::Open(EAppMsgType::YesNo, Msg, &Title);
+
+	if (Result == EAppReturnType::No || Result == EAppReturnType::Cancel)
+	{
+		return FReply::Handled();
+	}
 
 	SubsystemPtr->ProjectClean();
 
@@ -223,14 +224,6 @@ bool SPjcTabScanSettings::BtnCleanProjectEnabled() const
 {
 	return ScanStats.NumAssetsUnused > 0 || ScanStats.NumFoldersEmpty > 0;
 }
-
-// FText SPjcTabScanSettings::GetStatTxtAssetsTotal() const
-// {
-// 	const FString StrNum = FText::AsNumber(ScanStats.NumFilesAsset).ToString();
-// 	const FString StrSize = FText::AsMemory(ScanStats.SizeFilesAsset, IEC).ToString();
-// 	
-// 	return FText::FromString(FString::Printf(TEXT("%s ( %s )"), *StrNum, *StrSize)); 
-// }
 
 void SPjcTabScanSettings::StatsUpdate(const FPjcScanResult& InScanResult)
 {
@@ -454,15 +447,15 @@ TSharedRef<ITableRow> SPjcTabScanSettings::OnStatsGenerateRow(TSharedPtr<FPjcSta
 	return SNew(SPjcStatItem, OwnerTable).StatItem(Item);
 }
 
-// FText SPjcTabScanSettings::GetCleanupText(const EPjcCleanupMethod CleanupMethod) const
-// {
-// 	switch (CleanupMethod)
-// 	{
-// 		case EPjcCleanupMethod::None: return FText::FromString(TEXT(""));
-// 		case EPjcCleanupMethod::Full: return FText::FromString(TEXT("Are you sure you want to delete all unused assets and empty folders in project?"));
-// 		case EPjcCleanupMethod::UnusedAssetsOnly: return FText::FromString(TEXT("Are you sure you want to delete all unused assets in project?"));
-// 		case EPjcCleanupMethod::EmptyFoldersOnly: return FText::FromString(TEXT("Are you sure you want to delete all empty folders in project?"));
-// 		default:
-// 			return FText::FromString(TEXT(""));
-// 	}
-// }
+FText SPjcTabScanSettings::GetCleanupText(const EPjcCleanupMethod CleanupMethod) const
+{
+	switch (CleanupMethod)
+	{
+		case EPjcCleanupMethod::None: return FText::FromString(TEXT(""));
+		case EPjcCleanupMethod::Full: return FText::FromString(TEXT("Are you sure you want to delete all unused assets and empty folders in project?"));
+		case EPjcCleanupMethod::UnusedAssetsOnly: return FText::FromString(TEXT("Are you sure you want to delete all unused assets in project?"));
+		case EPjcCleanupMethod::EmptyFoldersOnly: return FText::FromString(TEXT("Are you sure you want to delete all empty folders in project?"));
+		default:
+			return FText::FromString(TEXT(""));
+	}
+}

@@ -57,6 +57,12 @@ void UPjcSubsystem::ProjectScan()
 
 	ProjectScanBySettings(ExcludeSettings, LastScanResult);
 
+	if (!LastScanResult.bScanSuccess)
+	{
+		UE_LOG(LogProjectCleaner, Error, TEXT("%s"), *LastScanResult.ScanErrMsg);
+		FPjcLibEditor::ShowNotificationWithOutputLog(LastScanResult.ScanErrMsg, SNotificationItem::ECompletionState::CS_Fail, 5.0f);
+	}
+
 	if (DelegateOnProjectScan.IsBound())
 	{
 		DelegateOnProjectScan.Broadcast(LastScanResult);

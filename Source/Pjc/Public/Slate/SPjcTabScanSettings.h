@@ -46,9 +46,7 @@ private:
 	FReply OnBtnScanProjectClick() const;
 	FReply OnBtnCleanProjectClick() const;
 	bool BtnCleanProjectEnabled() const;
-
-	// FText GetStatTxtAssetsTotal() const;
-
+	FText GetCleanupText(const EPjcCleanupMethod CleanupMethod) const;
 	void StatsUpdate(const FPjcScanResult& InScanResult);
 
 	TSharedRef<ITableRow> OnStatsGenerateRow(TSharedPtr<FPjcStatItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const;
