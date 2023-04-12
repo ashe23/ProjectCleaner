@@ -122,10 +122,10 @@ struct FPjcScanStats
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanStats")
 	int32 NumAssetsCorrupted = 0;
-
+	
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanStats")
 	int32 NumFilesExternal = 0;
-
+	
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanStats")
 	int32 NumFoldersEmpty = 0;
 

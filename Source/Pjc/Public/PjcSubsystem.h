@@ -19,6 +19,7 @@ public:
 	virtual void Deinitialize() override;
 
 	void ProjectScan();
+	void ProjectClean();
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(AdvancedDisplay="OutScanResult"))
 	void ProjectScanBySettings(const FPjcExcludeSettings& InExcludeSettings, UPARAM(DisplayName="OutScanResult") FPjcScanResult& OutScanResult) const;
@@ -33,7 +34,9 @@ protected:
 
 private:
 	void ScanAssets(const FPjcExcludeSettings& InExcludeSettings, FPjcScanResult& OutScanResult) const;
-	void ScanFilesAndFolders(FPjcScanResult& OutScanResult) const;
+	void ScanFiles(FPjcScanResult& OutScanResult) const;
+	void ScanFolders(FPjcScanResult& OutScanResult) const;
+	void ScanStatsUpdate(FPjcScanResult& InScanResult) const;
 	
 	bool bScanningInProgress = false;
 	bool bCleaningInProgress = false;

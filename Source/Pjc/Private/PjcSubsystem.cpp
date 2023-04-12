@@ -7,6 +7,7 @@
 #include "Libs/PjcLibPath.h"
 // Engine Headers
 #include "FileHelpers.h"
+#include "ObjectTools.h"
 #include "Pjc.h"
 #include "PjcEditorSettings.h"
 #include "Misc/ScopedSlowTask.h"
@@ -62,14 +63,22 @@ void UPjcSubsystem::ProjectScan()
 	}
 }
 
+void UPjcSubsystem::ProjectClean()
+{
+	// const UPjcEditorSettings* EditorSettings = GetDefault<UPjcEditorSettings>();
+	// if (!EditorSettings) return;
+
+	FPjcLibEditor::ShaderCompilationDisable();
+
+	ObjectTools::DeleteAssets(LastScanResult.ScanData.AssetsUnused);
+
+	FPjcLibEditor::ShaderCompilationEnable();
+}
+
 void UPjcSubsystem::ProjectScanBySettings(const FPjcExcludeSettings& InExcludeSettings, FPjcScanResult& OutScanResult) const
 {
 	// Clear previous scan data
 	OutScanResult.Clear();
-
-	// Initialize ScanResult with default success state
-	OutScanResult.bScanSuccess = true;
-	OutScanResult.ScanErrMsg.Empty();
 
 	// Check for ongoing scanning or cleaning operations
 	if (bScanningInProgress)
@@ -134,7 +143,7 @@ void UPjcSubsystem::ProjectScanBySettings(const FPjcExcludeSettings& InExcludeSe
 	const double ScanStartTime = FPlatformTime::Seconds();
 
 	FScopedSlowTask SlowTask{
-		2.0f,
+		4.0f,
 		FText::FromString(TEXT("Scanning Project...")),
 		GIsEditor && !IsRunningCommandlet()
 	};
@@ -146,32 +155,15 @@ void UPjcSubsystem::ProjectScanBySettings(const FPjcExcludeSettings& InExcludeSe
 
 	SlowTask.EnterProgressFrame(1.0f);
 
-	ScanFilesAndFolders(OutScanResult);
+	ScanFiles(OutScanResult);
 
-	OutScanResult.ScanData.Shrink();
+	SlowTask.EnterProgressFrame(1.0f);
 
-	OutScanResult.ScanStats.NumAssetsTotal = OutScanResult.ScanData.AssetsAll.Num();
-	OutScanResult.ScanStats.NumAssetsUnused = OutScanResult.ScanData.AssetsUnused.Num();
-	OutScanResult.ScanStats.NumAssetsUsed = OutScanResult.ScanData.AssetsUsed.Num();
-	OutScanResult.ScanStats.NumAssetsPrimary = OutScanResult.ScanData.AssetsPrimary.Num();
-	OutScanResult.ScanStats.NumAssetsIndirect = OutScanResult.ScanData.AssetsIndirect.Num();
-	OutScanResult.ScanStats.NumAssetsEditor = OutScanResult.ScanData.AssetsEditor.Num();
-	OutScanResult.ScanStats.NumAssetsExcluded = OutScanResult.ScanData.AssetsExcluded.Num();
-	OutScanResult.ScanStats.NumAssetsExtReferenced = OutScanResult.ScanData.AssetsExtReferenced.Num();
-	OutScanResult.ScanStats.NumAssetsCorrupted = OutScanResult.ScanData.AssetsCorrupted.Num();
-	OutScanResult.ScanStats.NumFilesExternal = OutScanResult.ScanData.FilesExternal.Num();
-	OutScanResult.ScanStats.NumFoldersEmpty = OutScanResult.ScanData.FoldersEmpty.Num();
+	ScanFolders(OutScanResult);
 
-	OutScanResult.ScanStats.SizeAssetsTotal = FPjcLibAsset::GetAssetsSize(OutScanResult.ScanData.AssetsAll);
-	OutScanResult.ScanStats.SizeAssetsUnused = FPjcLibAsset::GetAssetsSize(OutScanResult.ScanData.AssetsUnused);
-	OutScanResult.ScanStats.SizeAssetsUsed = FPjcLibAsset::GetAssetsSize(OutScanResult.ScanData.AssetsUsed);
-	OutScanResult.ScanStats.SizeAssetsPrimary = FPjcLibAsset::GetAssetsSize(OutScanResult.ScanData.AssetsPrimary);
-	OutScanResult.ScanStats.SizeAssetsIndirect = FPjcLibAsset::GetAssetsSize(OutScanResult.ScanData.AssetsIndirect);
-	OutScanResult.ScanStats.SizeAssetsEditor = FPjcLibAsset::GetAssetsSize(OutScanResult.ScanData.AssetsEditor);
-	OutScanResult.ScanStats.SizeAssetsExcluded = FPjcLibAsset::GetAssetsSize(OutScanResult.ScanData.AssetsExcluded);
-	OutScanResult.ScanStats.SizeAssetsExtReferenced = FPjcLibAsset::GetAssetsSize(OutScanResult.ScanData.AssetsExtReferenced);
-	OutScanResult.ScanStats.SizeAssetsCorrupted = FPjcLibPath::GetFilesSize(OutScanResult.ScanData.AssetsCorrupted);
-	OutScanResult.ScanStats.SizeFilesExternal = FPjcLibPath::GetFilesSize(OutScanResult.ScanData.FilesExternal);
+	SlowTask.EnterProgressFrame(1.0f);
+
+	ScanStatsUpdate(OutScanResult);
 
 	const double ScanTime = FPlatformTime::Seconds() - ScanStartTime;
 
@@ -199,6 +191,8 @@ void UPjcSubsystem::PostEditChangeProperty(FPropertyChangedEvent& PropertyChange
 
 void UPjcSubsystem::ScanAssets(const FPjcExcludeSettings& InExcludeSettings, FPjcScanResult& OutScanResult) const
 {
+	const double ScanStartTime = FPlatformTime::Seconds();
+
 	TSet<FAssetData> AssetsAll;
 	TSet<FAssetData> AssetsExcluded;
 	TSet<FAssetData> AssetsUsed;
@@ -260,68 +254,110 @@ void UPjcSubsystem::ScanAssets(const FPjcExcludeSettings& InExcludeSettings, FPj
 
 	OutScanResult.ScanData.AssetsUsed.Append(AssetsUsedDependencies.Array());
 	OutScanResult.ScanData.AssetsUnused.Append(AssetsUnused.Array());
+
+	const double ScanTime = FPlatformTime::Seconds() - ScanStartTime;
+
+	UE_LOG(LogProjectCleaner, Display, TEXT("Assets scanned in %.2f seconds"), ScanTime);
 }
 
-void UPjcSubsystem::ScanFilesAndFolders(FPjcScanResult& OutScanResult) const
+void UPjcSubsystem::ScanFiles(FPjcScanResult& OutScanResult) const
 {
-	// TArray<FString> Paths;
-	// FPjcLibAsset::GetCachedPaths(Paths);
-	//
-	// for (const auto& Path : Paths)
-	// {
-	// 	if (FPjcLibPath::IsPathEmpty(Path) && !FPjcLibPath::IsPathEngineGenerated(Path))
-	// 	{
-	// 		OutScanResult.ScanData.FoldersEmpty.Emplace(Path);
-	// 	}
-	// }
-
-	TSet<FString> Folders;
-	FPjcLibPath::GetFoldersInPath(FPjcLibPath::ContentDir(), true, Folders);
-
-	FScopedSlowTask SlowTask1{
-		static_cast<float>(Folders.Num()),
-		FText::FromString(TEXT("Scanning Project Folders...")),
-		GIsEditor && !IsRunningCommandlet()
-	};
-	SlowTask1.MakeDialog(false, false);
-	
-	for (const auto& Folder : Folders)
-	{
-		SlowTask1.EnterProgressFrame(1.0f, FText::FromString(Folder));
-		
-		if (FPjcLibPath::IsPathEmpty(Folder) && !FPjcLibPath::IsPathEngineGenerated(Folder))
-		{
-			OutScanResult.ScanData.FoldersEmpty.Emplace(Folder);
-		}
-	}
+	const double ScanStartTime = FPlatformTime::Seconds();
 
 	TSet<FString> Files;
 	FPjcLibPath::GetFilesInPath(FPjcLibPath::ContentDir(), true, Files);
-	
+
+	OutScanResult.ScanData.FilesExternal.Reserve(Files.Num());
+	OutScanResult.ScanData.AssetsCorrupted.Reserve(Files.Num());
+
 	FScopedSlowTask SlowTask{
 		static_cast<float>(Files.Num()),
 		FText::FromString(TEXT("Scanning Project Files...")),
 		GIsEditor && !IsRunningCommandlet()
 	};
 	SlowTask.MakeDialog(false, false);
-	
-	for (const auto& File : Files.Array())
+
+	for (const auto& File : Files)
 	{
 		SlowTask.EnterProgressFrame(1.0f, FText::FromString(File));
-		
-		const FString FileExtension = FPjcLibPath::GetFileExtension(File, false).ToLower();
-		
+
+		const FString FilePathAbs = FPjcLibPath::ToAbsolute(File);
+		const FString FileExtension = FPjcLibPath::GetFileExtension(FilePathAbs, false).ToLower();
+
 		if (PjcConstants::EngineFileExtensions.Contains(FileExtension))
 		{
-			const FAssetData AssetData = FPjcLibAsset::GetAssetByObjectPath(FPjcLibPath::ToObjectPath(File));
+			const FAssetData AssetData = FPjcLibAsset::GetAssetByObjectPath(FPjcLibPath::ToObjectPath(FilePathAbs));
 			if (!AssetData.IsValid())
 			{
-				OutScanResult.ScanData.AssetsCorrupted.Emplace(File);
+				OutScanResult.ScanData.AssetsCorrupted.Emplace(FilePathAbs);
 			}
 		}
 		else
 		{
-			OutScanResult.ScanData.FilesExternal.Emplace(File);
+			OutScanResult.ScanData.FilesExternal.Emplace(FilePathAbs);
 		}
 	}
+
+	const double ScanTime = FPlatformTime::Seconds() - ScanStartTime;
+
+	UE_LOG(LogProjectCleaner, Display, TEXT("Files scanned in %.2f seconds"), ScanTime);
+}
+
+void UPjcSubsystem::ScanFolders(FPjcScanResult& OutScanResult) const
+{
+	const double ScanStartTime = FPlatformTime::Seconds();
+
+	TSet<FString> Folders;
+	FPjcLibPath::GetFoldersInPath(FPjcLibPath::ContentDir(), true, Folders);
+
+	OutScanResult.ScanData.FoldersEmpty.Reserve(Folders.Num());
+
+	FScopedSlowTask SlowTask{
+		static_cast<float>(Folders.Num()),
+		FText::FromString(TEXT("Scanning Project Folders...")),
+		GIsEditor && !IsRunningCommandlet()
+	};
+	SlowTask.MakeDialog(false, false);
+
+	for (const auto& Folder : Folders)
+	{
+		SlowTask.EnterProgressFrame(1.0f, FText::FromString(Folder));
+
+		if (FPjcLibPath::IsPathEmpty(Folder) && !FPjcLibPath::IsPathEngineGenerated(Folder))
+		{
+			OutScanResult.ScanData.FoldersEmpty.Emplace(Folder);
+		}
+	}
+
+	const double ScanTime = FPlatformTime::Seconds() - ScanStartTime;
+
+	UE_LOG(LogProjectCleaner, Display, TEXT("Folders scanned in %.2f seconds"), ScanTime);
+}
+
+void UPjcSubsystem::ScanStatsUpdate(FPjcScanResult& InScanResult) const
+{
+	InScanResult.ScanData.Shrink();
+
+	InScanResult.ScanStats.NumAssetsTotal = InScanResult.ScanData.AssetsAll.Num();
+	InScanResult.ScanStats.NumAssetsUnused = InScanResult.ScanData.AssetsUnused.Num();
+	InScanResult.ScanStats.NumAssetsUsed = InScanResult.ScanData.AssetsUsed.Num();
+	InScanResult.ScanStats.NumAssetsPrimary = InScanResult.ScanData.AssetsPrimary.Num();
+	InScanResult.ScanStats.NumAssetsIndirect = InScanResult.ScanData.AssetsIndirect.Num();
+	InScanResult.ScanStats.NumAssetsEditor = InScanResult.ScanData.AssetsEditor.Num();
+	InScanResult.ScanStats.NumAssetsExcluded = InScanResult.ScanData.AssetsExcluded.Num();
+	InScanResult.ScanStats.NumAssetsExtReferenced = InScanResult.ScanData.AssetsExtReferenced.Num();
+	InScanResult.ScanStats.NumAssetsCorrupted = InScanResult.ScanData.AssetsCorrupted.Num();
+	InScanResult.ScanStats.NumFilesExternal = InScanResult.ScanData.FilesExternal.Num();
+	InScanResult.ScanStats.NumFoldersEmpty = InScanResult.ScanData.FoldersEmpty.Num();
+
+	InScanResult.ScanStats.SizeAssetsTotal = FPjcLibAsset::GetAssetsSize(InScanResult.ScanData.AssetsAll);
+	InScanResult.ScanStats.SizeAssetsUnused = FPjcLibAsset::GetAssetsSize(InScanResult.ScanData.AssetsUnused);
+	InScanResult.ScanStats.SizeAssetsUsed = FPjcLibAsset::GetAssetsSize(InScanResult.ScanData.AssetsUsed);
+	InScanResult.ScanStats.SizeAssetsPrimary = FPjcLibAsset::GetAssetsSize(InScanResult.ScanData.AssetsPrimary);
+	InScanResult.ScanStats.SizeAssetsIndirect = FPjcLibAsset::GetAssetsSize(InScanResult.ScanData.AssetsIndirect);
+	InScanResult.ScanStats.SizeAssetsEditor = FPjcLibAsset::GetAssetsSize(InScanResult.ScanData.AssetsEditor);
+	InScanResult.ScanStats.SizeAssetsExcluded = FPjcLibAsset::GetAssetsSize(InScanResult.ScanData.AssetsExcluded);
+	InScanResult.ScanStats.SizeAssetsExtReferenced = FPjcLibAsset::GetAssetsSize(InScanResult.ScanData.AssetsExtReferenced);
+	InScanResult.ScanStats.SizeAssetsCorrupted = FPjcLibPath::GetFilesSize(InScanResult.ScanData.AssetsCorrupted);
+	InScanResult.ScanStats.SizeFilesExternal = FPjcLibPath::GetFilesSize(InScanResult.ScanData.FilesExternal);
 }

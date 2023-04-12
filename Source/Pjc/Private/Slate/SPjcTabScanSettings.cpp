@@ -202,6 +202,7 @@ FReply SPjcTabScanSettings::OnBtnScanProjectClick() const
 
 FReply SPjcTabScanSettings::OnBtnCleanProjectClick() const
 {
+	if (!SubsystemPtr) return FReply::Handled();
 	// const FText Title = FText::FromString(TEXT("Confirm project cleaning"));
 	// const FText Msg = GetCleanupText(GetDefault<UPjcSettings>()->CleanupMethod);
 	// const EAppReturnType::Type Result = FMessageDialog::Open(EAppMsgType::YesNo, Msg, &Title);
@@ -213,12 +214,14 @@ FReply SPjcTabScanSettings::OnBtnCleanProjectClick() const
 	//
 	// GEditor->GetEditorSubsystem<UPjcSubsystem>()->ProjectClean();
 
+	SubsystemPtr->ProjectClean();
+
 	return FReply::Handled();
 }
 
 bool SPjcTabScanSettings::BtnCleanProjectEnabled() const
 {
-	return false;
+	return ScanStats.NumAssetsUnused > 0 || ScanStats.NumFoldersEmpty > 0;
 }
 
 // FText SPjcTabScanSettings::GetStatTxtAssetsTotal() const

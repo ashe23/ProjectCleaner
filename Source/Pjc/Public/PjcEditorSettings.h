@@ -24,10 +24,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Config, Category="ExcludeSettings", meta=(ContentDir, ToolTip="Consider assets in specified paths as used. Recursive."))
 	TArray<FDirectoryPath> ExcludedPaths;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Config, Category="ExcludeSettings", meta=(ContentDir, ToolTip="Consider assets of specified classes as used."))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Config, Category="ExcludeSettings", meta=(ToolTip="Consider assets of specified classes as used."))
 	TArray<TSoftClassPtr<UObject>> ExcludedClasses;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Config, Category="ExcludeSettings", meta=(ContentDir, ToolTip="Consider specified assets as used."))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Config, Category="ExcludeSettings", meta=(ToolTip="Consider specified assets as used."))
 	TArray<TSoftObjectPtr<UObject>> ExcludedAssets;
 
 protected:
