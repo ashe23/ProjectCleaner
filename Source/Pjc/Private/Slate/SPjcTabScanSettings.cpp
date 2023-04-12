@@ -281,6 +281,20 @@ void SPjcTabScanSettings::StatsUpdate(const FPjcScanResult& InScanResult)
 		MakeShareable(
 			new FPjcStatItem{
 				false,
+				InScanResult.ScanStats.SizeAssetsCorrupted,
+				InScanResult.ScanStats.NumAssetsCorrupted,
+				TEXT("Assets Corrupted"),
+				TEXT("Files that have .umap or .uasset extension, but are not loaded by AssetRegistry"),
+				MarginFirstLvl,
+				FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Red").GetSpecifiedColor()
+			}
+		)
+	);
+
+	StatItems.Emplace(
+		MakeShareable(
+			new FPjcStatItem{
+				false,
 				InScanResult.ScanStats.SizeAssetsUsed,
 				InScanResult.ScanStats.NumAssetsUsed,
 				TEXT("Assets Used"),
@@ -352,20 +366,6 @@ void SPjcTabScanSettings::StatsUpdate(const FPjcScanResult& InScanResult)
 				TEXT("ExtReferenced"),
 				TEXT("Total number of assets that have external referencers outside Content folder"),
 				MarginSecondLvl
-			}
-		)
-	);
-
-	StatItems.Emplace(
-		MakeShareable(
-			new FPjcStatItem{
-				false,
-				InScanResult.ScanStats.SizeAssetsCorrupted,
-				InScanResult.ScanStats.NumAssetsCorrupted,
-				TEXT("Assets Corrupted"),
-				TEXT("Files that have .umap or .uasset extension, but are not loaded by AssetRegistry"),
-				MarginFirstLvl,
-				FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Red").GetSpecifiedColor()
 			}
 		)
 	);
