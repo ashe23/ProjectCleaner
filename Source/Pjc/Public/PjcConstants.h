@@ -23,7 +23,7 @@ namespace PjcConstants
 	static const FName TabScanSettings{TEXT("TabScanSettings")};
 	static const FName TabScanInfo{TEXT("TabScanInfo")};
 	static const FName TabAssetsBrowser{TEXT("TabAssetsBrowser")};
-	static const FName TabFilesNonEngine{TEXT("TabFilesNonEngine")};
+	static const FName TabFilesBrowser{TEXT("TabFilesBrowser")};
 	static const FName TabFilesCorrupted{TEXT("TabFilesCorrupted")};
 
 	// widget index

@@ -135,6 +135,13 @@ FString FPjcLibPath::GetFilePath(const FString& InPath)
 	return FPaths::GetPath(Normalize(InPath));
 }
 
+FString FPjcLibPath::GetFileName(const FString& InPath)
+{
+	if (!IsFile(InPath)) return {};
+
+	return FPaths::GetBaseFilename(InPath);
+}
+
 FString FPjcLibPath::GetPathName(const FString& InPath)
 {
 	const FString Path = IsDir(InPath) ? Normalize(InPath) : GetFilePath(InPath);
@@ -221,6 +228,7 @@ bool FPjcLibPath::IsPathEngineGenerated(const FString& InPath)
 		InPath.StartsWith(CurrentUserDevelopersDir()) ||
 		InPath.StartsWith(CurrentUserCollectionsDir());
 }
+
 //
 // bool FPjcLibPath::IsPathExcluded(const FString& InPath)
 // {

@@ -20,6 +20,7 @@ struct FPjcLibPath
 	static FString ToAbsolute(const FString& InPath);
 	static FString ToAssetPath(const FString& InPath);
 	static FString GetFilePath(const FString& InPath);
+	static FString GetFileName(const FString& InPath);
 	static FString GetPathName(const FString& InPath);
 	static FString GetFileExtension(const FString& InPath, const bool bIncludeDot);
 	static FName ToObjectPath(const FString& InPath);

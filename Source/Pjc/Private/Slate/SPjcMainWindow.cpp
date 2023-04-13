@@ -6,6 +6,7 @@
 #include "Slate/SPjcTabScanSettings.h"
 #include "Slate/SPjcTabScanInfo.h"
 // Engine Headers
+#include "Slate/SPjcFileBrowser.h"
 #include "Widgets/Layout/SWidgetSwitcher.h"
 
 void SPjcMainWindow::Construct(const FArguments& InArgs, const TSharedRef<SDockTab>& ConstructUnderMajorTab, const TSharedPtr<SWindow>& ConstructUnderWindow)
@@ -28,8 +29,8 @@ void SPjcMainWindow::Construct(const FArguments& InArgs, const TSharedRef<SDockT
 			->Split(
 				FTabManager::NewStack()
 				->AddTab(PjcConstants::TabScanInfo, ETabState::OpenedTab)
+				->AddTab(PjcConstants::TabFilesBrowser, ETabState::OpenedTab)
 				// ->AddTab(PjcConstants::TabAssetsBrowser, ETabState::OpenedTab)
-				// ->AddTab(PjcConstants::TabFilesNonEngine, ETabState::OpenedTab)
 				// ->AddTab(PjcConstants::TabFilesCorrupted, ETabState::OpenedTab)
 				->SetForegroundTab(PjcConstants::TabScanInfo)
 				->SetSizeCoefficient(0.7f)
@@ -54,11 +55,11 @@ void SPjcMainWindow::Construct(const FArguments& InArgs, const TSharedRef<SDockT
 	//           .SetIcon(FPjcStyles::GetIcon("ProjectCleaner.IconTabAssetsBrowser16"))
 	//           .SetGroup(AppMenuGroup);
 	//
-	// TabManager->RegisterTabSpawner(PjcConstants::TabFilesNonEngine, FOnSpawnTab::CreateRaw(this, &SPjcMainWindow::OnTabFilesNonEngineSpawn))
-	//           .SetTooltipText(FText::FromString(TEXT("Open Non Engine Files Tab")))
-	//           .SetDisplayName(FText::FromString(TEXT("Files NonEngine")))
-	//           .SetIcon(FPjcStyles::GetIcon("ProjectCleaner.IconTabNonEngine16"))
-	//           .SetGroup(AppMenuGroup);
+	TabManager->RegisterTabSpawner(PjcConstants::TabFilesBrowser, FOnSpawnTab::CreateRaw(this, &SPjcMainWindow::OnTabFilesBrowserSpawn))
+	          .SetTooltipText(FText::FromString(TEXT("Open Files Browser Tab")))
+	          .SetDisplayName(FText::FromString(TEXT("Files Browser")))
+	          .SetIcon(FPjcStyles::GetIcon("ProjectCleaner.IconTabNonEngine16"))
+	          .SetGroup(AppMenuGroup);
 	//
 	// TabManager->RegisterTabSpawner(PjcConstants::TabFilesCorrupted, FOnSpawnTab::CreateRaw(this, &SPjcMainWindow::OnTabFilesCorruptedSpawn))
 	//           .SetTooltipText(FText::FromString(TEXT("Open Corrupted Files Tab")))
@@ -131,6 +132,7 @@ SPjcMainWindow::~SPjcMainWindow()
 {
 	FGlobalTabmanager::Get()->UnregisterTabSpawner(PjcConstants::TabScanSettings);
 	FGlobalTabmanager::Get()->UnregisterTabSpawner(PjcConstants::TabScanInfo);
+	FGlobalTabmanager::Get()->UnregisterTabSpawner(PjcConstants::TabFilesBrowser);
 }
 
 // bool SPjcMainWindow::WidgetEnabled() const
@@ -191,9 +193,8 @@ TSharedRef<SDockTab> SPjcMainWindow::OnTabScanInfoSpawn(const FSpawnTabArgs& Arg
 		.Icon(FPjcStyles::Get().GetBrush("ProjectCleaner.IconTabAssetsBrowser16"))
 		.ToolTipText(FText::FromString(TEXT("Show detailed view of unused, used and excluded assets")))
 		[
-			// SNew(SPjcTabScanInfo)
 			SNew(STextBlock)
-			// TabScanInfoPtr.ToSharedRef()
+			// SNew(SPjcTabScanInfo)
 		];
 }
 
@@ -210,16 +211,16 @@ TSharedRef<SDockTab> SPjcMainWindow::OnTabAssetsBrowserSpawn(const FSpawnTabArgs
 		];
 }
 
-TSharedRef<SDockTab> SPjcMainWindow::OnTabFilesNonEngineSpawn(const FSpawnTabArgs& Args) const
+TSharedRef<SDockTab> SPjcMainWindow::OnTabFilesBrowserSpawn(const FSpawnTabArgs& Args) const
 {
 	return
 		SNew(SDockTab)
 		.TabRole(PanelTab)
-		.Label(FText::FromString(TEXT("Files NonEngine")))
+		.Label(FText::FromString(TEXT("Files Browser")))
 		.Icon(FPjcStyles::Get().GetBrush("ProjectCleaner.IconTabNonEngine16"))
-		.ToolTipText(FText::FromString(TEXT("List of non engine files inside Content folder")))
+		.ToolTipText(FText::FromString(TEXT("List of external and corrupted asset files inside Content folder")))
 		[
-			SNew(STextBlock)
+			SNew(SPjcFileBrowser)
 			// TabFilesNonEnginePtr.ToSharedRef()
 		];
 }

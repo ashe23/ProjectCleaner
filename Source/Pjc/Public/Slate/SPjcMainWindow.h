@@ -25,7 +25,7 @@ private:
 	TSharedRef<SDockTab> OnTabScanSettingsSpawn(const FSpawnTabArgs& Args) const;
 	TSharedRef<SDockTab> OnTabScanInfoSpawn(const FSpawnTabArgs& Args) const;
 	TSharedRef<SDockTab> OnTabAssetsBrowserSpawn(const FSpawnTabArgs& Args) const;
-	TSharedRef<SDockTab> OnTabFilesNonEngineSpawn(const FSpawnTabArgs& Args) const;
+	TSharedRef<SDockTab> OnTabFilesBrowserSpawn(const FSpawnTabArgs& Args) const;
 	TSharedRef<SDockTab> OnTabFilesCorruptedSpawn(const FSpawnTabArgs& Args) const;
 
 	TSharedPtr<FTabManager> TabManager;
