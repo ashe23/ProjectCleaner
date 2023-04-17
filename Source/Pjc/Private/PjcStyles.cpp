@@ -74,9 +74,6 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create()
 	Style->Set("ProjectCleaner.IconSettings16", new IMAGE_BRUSH(TEXT("IconSettings16"), FVector2D{16.0f, 16.0f}));
 	Style->Set("ProjectCleaner.IconSettings20", new IMAGE_BRUSH(TEXT("IconSettings20"), FVector2D{20.0f, 20.0f}));
 	Style->Set("ProjectCleaner.IconSettings40", new IMAGE_BRUSH(TEXT("IconSettings40"), FVector2D{40.0f, 40.0f}));
-	Style->Set("ProjectCleaner.IconTabAssetsBrowser16", new IMAGE_BRUSH(TEXT("IconTabAssetsBrowser16"), FVector2D{16.0f, 16.0f}));
-	Style->Set("ProjectCleaner.IconTabAssetsBrowser20", new IMAGE_BRUSH(TEXT("IconTabAssetsBrowser20"), FVector2D{20.0f, 20.0f}));
-	Style->Set("ProjectCleaner.IconTabAssetsBrowser40", new IMAGE_BRUSH(TEXT("IconTabAssetsBrowser40"), FVector2D{40.0f, 40.0f}));
 	Style->Set("ProjectCleaner.IconTabIndirect16", new IMAGE_BRUSH(TEXT("IconTabIndirect16"), FVector2D{16.0f, 16.0f}));
 	Style->Set("ProjectCleaner.IconTabIndirect20", new IMAGE_BRUSH(TEXT("IconTabIndirect20"), FVector2D{20.0f, 20.0f}));
 	Style->Set("ProjectCleaner.IconTabIndirect40", new IMAGE_BRUSH(TEXT("IconTabIndirect40"), FVector2D{40.0f, 40.0f}));
@@ -86,6 +83,15 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create()
 	Style->Set("ProjectCleaner.IconTabNonEngine16", new IMAGE_BRUSH(TEXT("IconTabNonEngine16"), FVector2D{16.0f, 16.0f}));
 	Style->Set("ProjectCleaner.IconTabNonEngine20", new IMAGE_BRUSH(TEXT("IconTabNonEngine20"), FVector2D{20.0f, 20.0f}));
 	Style->Set("ProjectCleaner.IconTabNonEngine40", new IMAGE_BRUSH(TEXT("IconTabNonEngine40"), FVector2D{40.0f, 40.0f}));
+	
+	Style->Set("ProjectCleaner.IconTabAssetsBrowser16", new IMAGE_BRUSH(TEXT("IconTabAssetsBrowser16"), FVector2D{16.0f, 16.0f}));
+	Style->Set("ProjectCleaner.IconTabAssetsBrowser20", new IMAGE_BRUSH(TEXT("IconTabAssetsBrowser20"), FVector2D{20.0f, 20.0f}));
+	Style->Set("ProjectCleaner.IconTabAssetsBrowser40", new IMAGE_BRUSH(TEXT("IconTabAssetsBrowser40"), FVector2D{40.0f, 40.0f}));
+	
+	Style->Set("ProjectCleaner.IconTabFilesBrowser16", new IMAGE_BRUSH(TEXT("IconFile16"), FVector2D{16.0f, 16.0f}));
+	Style->Set("ProjectCleaner.IconTabFilesBrowser20", new IMAGE_BRUSH(TEXT("IconFile20"), FVector2D{20.0f, 20.0f}));
+	Style->Set("ProjectCleaner.IconTabFilesBrowser40", new IMAGE_BRUSH(TEXT("IconFile40"), FVector2D{40.0f, 40.0f}));
+	
 	Style->Set("ProjectCleaner.IconWarning16", new IMAGE_BRUSH(TEXT("IconWarning16"), FVector2D{16.0f, 16.0f}));
 	Style->Set("ProjectCleaner.IconWarning20", new IMAGE_BRUSH(TEXT("IconWarning20"), FVector2D{20.0f, 20.0f}));
 	Style->Set("ProjectCleaner.IconCheck16", new IMAGE_BRUSH(TEXT("IconCheck16"), FVector2D{16.0f, 16.0f}));
@@ -104,6 +110,7 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create()
 
 	// progressbar
 	Style->Set("ProjectCleaner.Progressbar", new BOX_BRUSH("ProgressbarBackground", FMargin(5.f/12.f)));
+	Style->Set("ProjectCleaner.BgWhite", new BOX_BRUSH("BgWhite", FMargin(16.0f/16.f)));
 
 	return Style;
 }

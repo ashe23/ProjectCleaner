@@ -83,6 +83,14 @@ void UPjcSubsystem::ProjectClean()
 
 void UPjcSubsystem::ProjectScanBySettings(const FPjcExcludeSettings& InExcludeSettings, FPjcScanResult& OutScanResult) const
 {
+	FScopedSlowTask SlowTask{
+		5.0f,
+		FText::FromString(TEXT("Scanning Project...")),
+		GIsEditor && !IsRunningCommandlet()
+	};
+	SlowTask.MakeDialog(false, false);
+	SlowTask.EnterProgressFrame(1.0f);
+	
 	// Clear previous scan data
 	OutScanResult.Clear();
 
@@ -147,13 +155,6 @@ void UPjcSubsystem::ProjectScanBySettings(const FPjcExcludeSettings& InExcludeSe
 	}
 
 	const double ScanStartTime = FPlatformTime::Seconds();
-
-	FScopedSlowTask SlowTask{
-		4.0f,
-		FText::FromString(TEXT("Scanning Project...")),
-		GIsEditor && !IsRunningCommandlet()
-	};
-	SlowTask.MakeDialog(false, false);
 
 	SlowTask.EnterProgressFrame(1.0f);
 

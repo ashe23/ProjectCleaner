@@ -22,44 +22,47 @@ void SPjcMainWindow::Construct(const FArguments& InArgs, const TSharedRef<SDockT
 			->Split
 			(
 				FTabManager::NewStack()
-				->AddTab(PjcConstants::TabScanSettings, ETabState::OpenedTab)
-				->SetForegroundTab(PjcConstants::TabScanSettings)
-				->SetSizeCoefficient(0.3f)
-			)
-			->Split(
-				FTabManager::NewStack()
-				->AddTab(PjcConstants::TabScanInfo, ETabState::OpenedTab)
+				->AddTab(PjcConstants::TabAssetsBrowser, ETabState::OpenedTab)
 				->AddTab(PjcConstants::TabFilesBrowser, ETabState::OpenedTab)
-				// ->AddTab(PjcConstants::TabAssetsBrowser, ETabState::OpenedTab)
-				// ->AddTab(PjcConstants::TabFilesCorrupted, ETabState::OpenedTab)
-				->SetForegroundTab(PjcConstants::TabScanInfo)
-				->SetSizeCoefficient(0.7f)
+				->SetForegroundTab(PjcConstants::TabAssetsBrowser)
+				->SetSizeCoefficient(1.0f)
 			)
+			// ->Split(
+			// 	FTabManager::NewStack()
+			// 	->AddTab(PjcConstants::TabScanInfo, ETabState::OpenedTab)
+			// 	->AddTab(PjcConstants::TabFilesBrowser, ETabState::OpenedTab)
+			// 	// ->AddTab(PjcConstants::TabAssetsBrowser, ETabState::OpenedTab)
+			// 	// ->AddTab(PjcConstants::TabFilesCorrupted, ETabState::OpenedTab)
+			// 	->SetForegroundTab(PjcConstants::TabScanInfo)
+			// 	->SetSizeCoefficient(0.7f)
+			// )
 		);
 
-	TabManager->RegisterTabSpawner(PjcConstants::TabScanSettings, FOnSpawnTab::CreateRaw(this, &SPjcMainWindow::OnTabScanSettingsSpawn))
-	          .SetTooltipText(FText::FromString(TEXT("Open Scan Settings Tab")))
-	          .SetDisplayName(FText::FromString(TEXT("Scan Settings")))
-	          .SetIcon(FPjcStyles::GetIcon("ProjectCleaner.IconSettings16"))
-	          .SetGroup(AppMenuGroup);
-
-	TabManager->RegisterTabSpawner(PjcConstants::TabScanInfo, FOnSpawnTab::CreateRaw(this, &SPjcMainWindow::OnTabScanInfoSpawn))
-	          .SetTooltipText(FText::FromString(TEXT("Open Scan Info Tab")))
-	          .SetDisplayName(FText::FromString(TEXT("Scan Info")))
+	TabManager->RegisterTabSpawner(PjcConstants::TabAssetsBrowser, FOnSpawnTab::CreateRaw(this, &SPjcMainWindow::OnTabAssetsBrowserSpawn))
+	          .SetTooltipText(FText::FromString(TEXT("Open Assets Browser Tab")))
+	          .SetDisplayName(FText::FromString(TEXT("Assets Browser")))
 	          .SetIcon(FPjcStyles::GetIcon("ProjectCleaner.IconTabAssetsBrowser16"))
 	          .SetGroup(AppMenuGroup);
-	//
-	// TabManager->RegisterTabSpawner(PjcConstants::TabAssetsBrowser, FOnSpawnTab::CreateRaw(this, &SPjcMainWindow::OnTabAssetsBrowserSpawn))
-	//           .SetTooltipText(FText::FromString(TEXT("Open Assets Browser Tab")))
-	//           .SetDisplayName(FText::FromString(TEXT("Assets Browser")))
-	//           .SetIcon(FPjcStyles::GetIcon("ProjectCleaner.IconTabAssetsBrowser16"))
-	//           .SetGroup(AppMenuGroup);
-	//
+	
 	TabManager->RegisterTabSpawner(PjcConstants::TabFilesBrowser, FOnSpawnTab::CreateRaw(this, &SPjcMainWindow::OnTabFilesBrowserSpawn))
 	          .SetTooltipText(FText::FromString(TEXT("Open Files Browser Tab")))
 	          .SetDisplayName(FText::FromString(TEXT("Files Browser")))
-	          .SetIcon(FPjcStyles::GetIcon("ProjectCleaner.IconTabNonEngine16"))
+	          .SetIcon(FPjcStyles::GetIcon("ProjectCleaner.IconTabFilesBrowser16"))
 	          .SetGroup(AppMenuGroup);
+	
+	// TabManager->RegisterTabSpawner(PjcConstants::TabScanSettings, FOnSpawnTab::CreateRaw(this, &SPjcMainWindow::OnTabScanSettingsSpawn))
+	//           .SetTooltipText(FText::FromString(TEXT("Open Scan Settings Tab")))
+	//           .SetDisplayName(FText::FromString(TEXT("Scan Settings")))
+	//           .SetIcon(FPjcStyles::GetIcon("ProjectCleaner.IconSettings16"))
+	//           .SetGroup(AppMenuGroup);
+
+	// TabManager->RegisterTabSpawner(PjcConstants::TabScanInfo, FOnSpawnTab::CreateRaw(this, &SPjcMainWindow::OnTabScanInfoSpawn))
+	//           .SetTooltipText(FText::FromString(TEXT("Open Scan Info Tab")))
+	//           .SetDisplayName(FText::FromString(TEXT("Scan Info")))
+	//           .SetIcon(FPjcStyles::GetIcon("ProjectCleaner.IconTabAssetsBrowser16"))
+	//           .SetGroup(AppMenuGroup);
+	//
+	
 	//
 	// TabManager->RegisterTabSpawner(PjcConstants::TabFilesCorrupted, FOnSpawnTab::CreateRaw(this, &SPjcMainWindow::OnTabFilesCorruptedSpawn))
 	//           .SetTooltipText(FText::FromString(TEXT("Open Corrupted Files Tab")))
@@ -130,8 +133,7 @@ void SPjcMainWindow::Construct(const FArguments& InArgs, const TSharedRef<SDockT
 
 SPjcMainWindow::~SPjcMainWindow()
 {
-	FGlobalTabmanager::Get()->UnregisterTabSpawner(PjcConstants::TabScanSettings);
-	FGlobalTabmanager::Get()->UnregisterTabSpawner(PjcConstants::TabScanInfo);
+	FGlobalTabmanager::Get()->UnregisterTabSpawner(PjcConstants::TabAssetsBrowser);
 	FGlobalTabmanager::Get()->UnregisterTabSpawner(PjcConstants::TabFilesBrowser);
 }
 
@@ -172,31 +174,31 @@ void SPjcMainWindow::CreateMenuBarTabs(FMenuBuilder& MenuBuilder, const TSharedP
 	TabManagerPtr->PopulateLocalTabSpawnerMenu(MenuBuilder);
 }
 
-TSharedRef<SDockTab> SPjcMainWindow::OnTabScanSettingsSpawn(const FSpawnTabArgs& Args) const
-{
-	return
-		SNew(SDockTab)
-		.TabRole(PanelTab)
-		.Label(FText::FromString(TEXT("Scan Settings")))
-		.Icon(FPjcStyles::Get().GetBrush("ProjectCleaner.IconSettings16"))
-		[
-			SNew(SPjcTabScanSettings)
-		];
-}
-
-TSharedRef<SDockTab> SPjcMainWindow::OnTabScanInfoSpawn(const FSpawnTabArgs& Args) const
-{
-	return
-		SNew(SDockTab)
-		.TabRole(PanelTab)
-		.Label(FText::FromString(TEXT("Scan Info")))
-		.Icon(FPjcStyles::Get().GetBrush("ProjectCleaner.IconTabAssetsBrowser16"))
-		.ToolTipText(FText::FromString(TEXT("Show detailed view of unused, used and excluded assets")))
-		[
-			SNew(STextBlock)
-			// SNew(SPjcTabScanInfo)
-		];
-}
+// TSharedRef<SDockTab> SPjcMainWindow::OnTabScanSettingsSpawn(const FSpawnTabArgs& Args) const
+// {
+// 	return
+// 		SNew(SDockTab)
+// 		.TabRole(PanelTab)
+// 		.Label(FText::FromString(TEXT("Scan Settings")))
+// 		.Icon(FPjcStyles::Get().GetBrush("ProjectCleaner.IconSettings16"))
+// 		[
+// 			SNew(SPjcTabScanSettings)
+// 		];
+// }
+//
+// TSharedRef<SDockTab> SPjcMainWindow::OnTabScanInfoSpawn(const FSpawnTabArgs& Args) const
+// {
+// 	return
+// 		SNew(SDockTab)
+// 		.TabRole(PanelTab)
+// 		.Label(FText::FromString(TEXT("Scan Info")))
+// 		.Icon(FPjcStyles::Get().GetBrush("ProjectCleaner.IconTabAssetsBrowser16"))
+// 		.ToolTipText(FText::FromString(TEXT("Show detailed view of unused, used and excluded assets")))
+// 		[
+// 			SNew(STextBlock)
+// 			// SNew(SPjcTabScanInfo)
+// 		];
+// }
 
 TSharedRef<SDockTab> SPjcMainWindow::OnTabAssetsBrowserSpawn(const FSpawnTabArgs& Args) const
 {
@@ -206,7 +208,7 @@ TSharedRef<SDockTab> SPjcMainWindow::OnTabAssetsBrowserSpawn(const FSpawnTabArgs
 		.Label(FText::FromString(TEXT("Assets Browser")))
 		.Icon(FPjcStyles::Get().GetBrush("ProjectCleaner.IconTabAssetsBrowser16"))
 		[
-			SNew(STextBlock)
+			SNew(STextBlock).Text(FText::FromString(TEXT("Assets Browser")))
 			// TabAssetsBrowserPtr.ToSharedRef()
 		];
 }
@@ -217,24 +219,25 @@ TSharedRef<SDockTab> SPjcMainWindow::OnTabFilesBrowserSpawn(const FSpawnTabArgs&
 		SNew(SDockTab)
 		.TabRole(PanelTab)
 		.Label(FText::FromString(TEXT("Files Browser")))
-		.Icon(FPjcStyles::Get().GetBrush("ProjectCleaner.IconTabNonEngine16"))
+		.Icon(FPjcStyles::Get().GetBrush("ProjectCleaner.IconTabFilesBrowser16"))
 		.ToolTipText(FText::FromString(TEXT("List of external and corrupted asset files inside Content folder")))
 		[
-			SNew(SPjcFileBrowser)
+			SNew(STextBlock).Text(FText::FromString(TEXT("Files Browser")))
+			// SNew(SPjcFileBrowser)
 			// TabFilesNonEnginePtr.ToSharedRef()
 		];
 }
 
-TSharedRef<SDockTab> SPjcMainWindow::OnTabFilesCorruptedSpawn(const FSpawnTabArgs& Args) const
-{
-	return
-		SNew(SDockTab)
-		.TabRole(PanelTab)
-		.Label(FText::FromString(TEXT("Files Corrupted")))
-		.Icon(FPjcStyles::Get().GetBrush("ProjectCleaner.IconTabCorrupted16"))
-		.ToolTipText(FText::FromString(TEXT("List of corrupted assets")))
-		[
-			SNew(STextBlock)
-			// TabFilesCorruptedPtr.ToSharedRef()
-		];
-}
+// TSharedRef<SDockTab> SPjcMainWindow::OnTabFilesCorruptedSpawn(const FSpawnTabArgs& Args) const
+// {
+// 	return
+// 		SNew(SDockTab)
+// 		.TabRole(PanelTab)
+// 		.Label(FText::FromString(TEXT("Files Corrupted")))
+// 		.Icon(FPjcStyles::Get().GetBrush("ProjectCleaner.IconTabCorrupted16"))
+// 		.ToolTipText(FText::FromString(TEXT("List of corrupted assets")))
+// 		[
+// 			SNew(STextBlock)
+// 			// TabFilesCorruptedPtr.ToSharedRef()
+// 		];
+// }

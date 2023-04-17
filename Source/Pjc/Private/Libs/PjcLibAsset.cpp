@@ -89,7 +89,8 @@ void FPjcLibAsset::FixupRedirectorsInProject(const bool bSlowTaskEnabled)
 		FText::FromString(TEXT("Fixing redirectors...")),
 		GIsEditor && !IsRunningCommandlet() && bSlowTaskEnabled
 	};
-	SlowTask.MakeDialog();
+	SlowTask.MakeDialog(false, false);
+	SlowTask.EnterProgressFrame(1.0f);
 
 	FARFilter Filter;
 	Filter.bRecursivePaths = true;
@@ -107,7 +108,7 @@ void FPjcLibAsset::FixupRedirectorsInProject(const bool bSlowTaskEnabled)
 		FText::FromString(TEXT("Loading redirectors...")),
 		GIsEditor && !IsRunningCommandlet() && bSlowTaskEnabled
 	);
-	LoadingTask.MakeDialog();
+	LoadingTask.MakeDialog(false, false);
 
 	TArray<UObjectRedirector*> Redirectors;
 	Redirectors.Reserve(AssetList.Num());
@@ -129,8 +130,6 @@ void FPjcLibAsset::FixupRedirectorsInProject(const bool bSlowTaskEnabled)
 
 	const FAssetToolsModule& ModuleAssetTools = FModuleManager::LoadModuleChecked<FAssetToolsModule>(PjcConstants::ModuleAssetToolsName);
 	ModuleAssetTools.Get().FixupReferencers(Redirectors, false);
-
-	SlowTask.EnterProgressFrame(1.0f);
 }
 
 void FPjcLibAsset::AssetRegistryUpdate()

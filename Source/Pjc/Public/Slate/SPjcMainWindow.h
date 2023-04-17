@@ -22,11 +22,11 @@ private:
 
 	void CreateMenuBarTabs(FMenuBuilder& MenuBuilder, const TSharedPtr<FTabManager> TabManagerPtr);
 
-	TSharedRef<SDockTab> OnTabScanSettingsSpawn(const FSpawnTabArgs& Args) const;
-	TSharedRef<SDockTab> OnTabScanInfoSpawn(const FSpawnTabArgs& Args) const;
+	// TSharedRef<SDockTab> OnTabScanSettingsSpawn(const FSpawnTabArgs& Args) const;
+	// TSharedRef<SDockTab> OnTabScanInfoSpawn(const FSpawnTabArgs& Args) const;
 	TSharedRef<SDockTab> OnTabAssetsBrowserSpawn(const FSpawnTabArgs& Args) const;
 	TSharedRef<SDockTab> OnTabFilesBrowserSpawn(const FSpawnTabArgs& Args) const;
-	TSharedRef<SDockTab> OnTabFilesCorruptedSpawn(const FSpawnTabArgs& Args) const;
+	// TSharedRef<SDockTab> OnTabFilesCorruptedSpawn(const FSpawnTabArgs& Args) const;
 
 	TSharedPtr<FTabManager> TabManager;
 	TSharedPtr<FTabManager::FLayout> TabLayout;
