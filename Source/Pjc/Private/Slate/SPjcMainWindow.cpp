@@ -3,11 +3,11 @@
 #include "Slate/SPjcMainWindow.h"
 #include "PjcConstants.h"
 #include "PjcStyles.h"
-#include "Slate/SPjcTabScanSettings.h"
-#include "Slate/SPjcTabScanInfo.h"
-// Engine Headers
 #include "Slate/SPjcFileBrowser.h"
-#include "Widgets/Layout/SWidgetSwitcher.h"
+// #include "Slate/SPjcTabScanSettings.h"
+// #include "Slate/SPjcTabScanInfo.h"
+// Engine Headers
+// #include "Widgets/Layout/SWidgetSwitcher.h"
 
 void SPjcMainWindow::Construct(const FArguments& InArgs, const TSharedRef<SDockTab>& ConstructUnderMajorTab, const TSharedPtr<SWindow>& ConstructUnderWindow)
 {
@@ -222,9 +222,7 @@ TSharedRef<SDockTab> SPjcMainWindow::OnTabFilesBrowserSpawn(const FSpawnTabArgs&
 		.Icon(FPjcStyles::Get().GetBrush("ProjectCleaner.IconTabFilesBrowser16"))
 		.ToolTipText(FText::FromString(TEXT("List of external and corrupted asset files inside Content folder")))
 		[
-			SNew(STextBlock).Text(FText::FromString(TEXT("Files Browser")))
-			// SNew(SPjcFileBrowser)
-			// TabFilesNonEnginePtr.ToSharedRef()
+			SNew(SPjcFileBrowser)
 		];
 }
 

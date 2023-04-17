@@ -71,13 +71,13 @@ struct FPjcScanStats
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanStats")
 	int64 SizeAssetsUnused = 0;
-	
+
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanStats")
 	int64 SizeAssetsUsed = 0;
-	
+
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanStats")
 	int64 SizeAssetsPrimary = 0;
-	
+
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanStats")
 	int64 SizeAssetsIndirect = 0;
 
@@ -89,7 +89,7 @@ struct FPjcScanStats
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanStats")
 	int64 SizeAssetsExtReferenced = 0;
-	
+
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanStats")
 	int64 SizeAssetsCorrupted = 0;
 
@@ -101,7 +101,7 @@ struct FPjcScanStats
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanStats")
 	int32 NumAssetsUnused = 0;
-	
+
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanStats")
 	int32 NumAssetsUsed = 0;
 
@@ -122,10 +122,10 @@ struct FPjcScanStats
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanStats")
 	int32 NumAssetsCorrupted = 0;
-	
+
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanStats")
 	int32 NumFilesExternal = 0;
-	
+
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanStats")
 	int32 NumFoldersEmpty = 0;
 
@@ -166,7 +166,7 @@ struct FPjcScanData
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanData")
 	TArray<FAssetData> AssetsUnused;
-	
+
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanData")
 	TArray<FAssetData> AssetsUsed;
 
@@ -187,7 +187,7 @@ struct FPjcScanData
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanData")
 	TArray<FAssetData> AssetsExtReferenced;
-	
+
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanData")
 	TArray<FString> AssetsCorrupted;
 
@@ -196,7 +196,7 @@ struct FPjcScanData
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ScanData")
 	TArray<FString> FoldersEmpty;
-	
+
 	void Clear()
 	{
 		AssetsAll.Empty();
@@ -254,4 +254,17 @@ struct FPjcScanResult
 		ScanStats.Clear();
 		ScanData.Clear();
 	}
+};
+
+UCLASS(Config = EditorPerProjectUserSettings)
+class UPjcFileExcludeSettings : public UObject
+{
+	GENERATED_BODY()
+
+public:
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Config, Category="File Exclude Settings", meta=(RelativeToGameDir, ToolTip="List of files to exclude from scanning"))
+	TArray<FFilePath> ExcludedFiles;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Config, Category="File Exclude Settings", meta=(ToolTip="List of file extensions to exclude from scanning"))
+	TArray<FString> ExcludedFileExtensions;
 };
