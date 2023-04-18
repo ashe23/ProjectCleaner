@@ -66,9 +66,9 @@ private:
 	EColumnSortMode::Type ColumnFileExtSortMode = EColumnSortMode::None;
 	EColumnSortMode::Type ColumnFileSizeSortMode = EColumnSortMode::None;
 	EColumnSortMode::Type ColumnFilePathSortMode = EColumnSortMode::None;
-	
+
+	TArray<FString> Files;
 	TArray<TSharedPtr<FPjcFileBrowserItem>> ListItems;
-	TArray<TSharedPtr<FPjcFileBrowserItem>> ListItemsCached;
 	TSharedPtr<SListView<TSharedPtr<FPjcFileBrowserItem>>> ListView;
 	FString SearchText;
 

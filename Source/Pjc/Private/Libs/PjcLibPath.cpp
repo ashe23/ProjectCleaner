@@ -4,6 +4,7 @@
 #include "PjcConstants.h"
 // #include "PjcExcludeSettings.h"
 #include "AssetRegistry/AssetRegistryModule.h"
+#include "Libs/PjcLibAsset.h"
 
 FString FPjcLibPath::ProjectDir()
 {

@@ -38,7 +38,7 @@ TSharedRef<SWidget> SPjcFileBrowserItem::GenerateWidgetForColumn(const FName& In
 
 	if (InColumnName.IsEqual(TEXT("FileExt")))
 	{
-		return SNew(STextBlock).Text(FText::FromString(Item->FileExtension));
+		return SNew(STextBlock).Text(FText::FromString(Item->FileExtension)).HighlightText(FText::FromString(SearchText));
 	}
 
 	if (InColumnName.IsEqual(TEXT("FileSize")))
@@ -206,16 +206,7 @@ void SPjcFileBrowser::Construct(const FArguments& InArgs)
 
 void SPjcFileBrowser::ListUpdate()
 {
-	if (!ListView.IsValid())
-	{
-		SAssignNew(ListView, SListView<TSharedPtr<FPjcFileBrowserItem>>)
-		.ListItemsSource(&ListItems)
-		.OnGenerateRow(this, &SPjcFileBrowser::OnGenerateRow)
-		// .OnMouseButtonDoubleClick_Raw(this, &SPjcFileListView::OnListItemDblClick)
-		// .OnContextMenuOpening_Raw(this, &SPjcFileListView::OnListContextMenu)
-		.SelectionMode(ESelectionMode::Multi)
-		.HeaderRow(GetHeaderRow());
-	}
+	if (!ListView.IsValid()) return;
 
 	FScopedSlowTask SlowTaskMain{
 		1.0f,
@@ -228,12 +219,13 @@ void SPjcFileBrowser::ListUpdate()
 	TSet<FString> FilesAll;
 	FPjcLibPath::GetFilesInPath(FPjcLibPath::ContentDir(), true, FilesAll);
 
+	Files.Reset(FilesAll.Num());
 	ListItems.Reset(FilesAll.Num());
 	TotalSize = 0;
 
 	FScopedSlowTask SlowTask{
 		static_cast<float>(FilesAll.Num()),
-		FText::FromString(TEXT("Scanning Files...")),
+		FText::FromString(TEXT("Processing Files...")),
 		GIsEditor && !IsRunningCommandlet()
 	};
 	SlowTask.MakeDialog(false, false);
@@ -247,42 +239,29 @@ void SPjcFileBrowser::ListUpdate()
 		const int64 FileSize = FPjcLibPath::GetFileSize(File);
 		const EPjcFileType FileType = PjcConstants::EngineFileExtensions.Contains(FileExtension) ? EPjcFileType::Corrupted : EPjcFileType::External;
 
-		if (FileType == EPjcFileType::Corrupted)
-		{
-			const FAssetData AssetData = FPjcLibAsset::GetAssetByObjectPath(FPjcLibPath::ToObjectPath(File));
-			if (!AssetData.IsValid())
-			{
-				TotalSize += FileSize;
-
-				ListItems.Emplace(
-					MakeShareable(
-						new FPjcFileBrowserItem{
-							FileSize,
-							FileName,
-							File,
-							TEXT(".") + FileExtension,
-							EPjcFileType::Corrupted
-						}
-					)
-				);
+		const auto Item = MakeShareable(
+			new FPjcFileBrowserItem{
+				FileSize,
+				FileName,
+				File,
+				TEXT(".") + FileExtension,
+				FileType
 			}
-		}
-		else
+		);
+
+		if (FileType == EPjcFileType::External || FileType == EPjcFileType::Corrupted && !FPjcLibAsset::GetAssetByObjectPath(FPjcLibPath::ToObjectPath(File)).IsValid())
 		{
 			TotalSize += FileSize;
-
-			ListItems.Emplace(
-				MakeShareable(
-					new FPjcFileBrowserItem{
-						FileSize,
-						FileName,
-						File,
-						TEXT(".") + FileExtension,
-						EPjcFileType::External
-					}
-				)
-			);
+			ListItems.Emplace(Item);
+			Files.Emplace(File);
 		}
+	}
+
+	if (!SearchText.IsEmpty())
+	{
+		ListSearch();
+
+		return;
 	}
 
 	ListView->RebuildList();
@@ -290,16 +269,34 @@ void SPjcFileBrowser::ListUpdate()
 
 void SPjcFileBrowser::ListSearch()
 {
-	if (SearchText.IsEmpty()) return;
+	if (!ListView.IsValid()) return;
 
-	// todo:ashe23 
-	// for (const auto& Item : ListItems)
-	// {
-	// 	if (Item->FileName.Contains(SearchText))
-	// 	{
-	// 		
-	// 	}
-	// }
+	ListItems.Reset(Files.Num());
+
+	for (const auto& File : Files)
+	{
+		const FString FileName = FPjcLibPath::GetFileName(File);
+		const FString FileExtension = FPjcLibPath::GetFileExtension(File, false).ToLower();
+		const int64 FileSize = FPjcLibPath::GetFileSize(File);
+		const EPjcFileType FileType = PjcConstants::EngineFileExtensions.Contains(FileExtension) ? EPjcFileType::Corrupted : EPjcFileType::External;
+
+		if (SearchText.IsEmpty() || FileName.Contains(SearchText) || FileExtension.Contains(SearchText))
+		{
+			ListItems.Emplace(
+				MakeShareable(
+					new FPjcFileBrowserItem{
+						FileSize,
+						FileName,
+						File,
+						TEXT(".") + FileExtension,
+						FileType
+					}
+				)
+			);
+		}
+	}
+
+	ListView->RebuildList();
 }
 
 void SPjcFileBrowser::OnSearchTextChanged(const FText& InText)
@@ -481,7 +478,7 @@ TSharedRef<SHeaderRow> SPjcFileBrowser::GetHeaderRow()
 
 TSharedRef<ITableRow> SPjcFileBrowser::OnGenerateRow(TSharedPtr<FPjcFileBrowserItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const
 {
-	return SNew(SPjcFileBrowserItem, OwnerTable).Item(Item);
+	return SNew(SPjcFileBrowserItem, OwnerTable).Item(Item).SearchText(SearchText);
 }
 
 FReply SPjcFileBrowser::OnBtnScanFilesClick()
