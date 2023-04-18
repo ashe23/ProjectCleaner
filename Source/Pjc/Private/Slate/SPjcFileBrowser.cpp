@@ -3,18 +3,16 @@
 #include "Slate/SPjcFileBrowser.h"
 #include "PjcConstants.h"
 #include "PjcStyles.h"
-#include "PjcSubsystem.h"
 #include "Libs/PjcLibPath.h"
+#include "Libs/PjcLibAsset.h"
 #include "Libs/PjcLibEditor.h"
 // Engine Headers
-#include "Libs/PjcLibAsset.h"
+#include "Pjc.h"
 #include "Misc/ScopedSlowTask.h"
 #include "Widgets/Input/SHyperlink.h"
 #include "Widgets/Input/SSearchBox.h"
 #include "Widgets/Layout/SScrollBox.h"
-#include "Widgets/Layout/SSeparator.h"
-#include "Widgets/Layout/SWidgetSwitcher.h"
-#include "Widgets/Notifications/SProgressBar.h"
+// #include "Widgets/Layout/SSeparator.h"
 
 void SPjcFileBrowserItem::Construct(const FArguments& InArgs, const TSharedRef<STableViewBase>& InTable)
 {
@@ -79,124 +77,134 @@ TSharedRef<SWidget> SPjcFileBrowserItem::GenerateWidgetForColumn(const FName& In
 
 void SPjcFileBrowser::Construct(const FArguments& InArgs)
 {
-	FPropertyEditorModule& PropertyEditor = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
-	FDetailsViewArgs DetailsViewArgs;
-	DetailsViewArgs.bUpdatesFromSelection = false;
-	DetailsViewArgs.bLockable = false;
-	DetailsViewArgs.bAllowSearch = false;
-	DetailsViewArgs.bShowOptions = true;
-	DetailsViewArgs.bAllowFavoriteSystem = false;
-	DetailsViewArgs.NameAreaSettings = FDetailsViewArgs::HideNameArea;
-	DetailsViewArgs.ViewIdentifier = "PjcFileExcludeSettings";
-
-	const auto SettingsProperty = PropertyEditor.CreateDetailView(DetailsViewArgs);
-	SettingsProperty->SetObject(GetMutableDefault<UPjcFileExcludeSettings>());
+	// FPropertyEditorModule& PropertyEditor = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
+	// FDetailsViewArgs DetailsViewArgs;
+	// DetailsViewArgs.bUpdatesFromSelection = false;
+	// DetailsViewArgs.bLockable = false;
+	// DetailsViewArgs.bAllowSearch = false;
+	// DetailsViewArgs.bShowOptions = true;
+	// DetailsViewArgs.bAllowFavoriteSystem = false;
+	// DetailsViewArgs.NameAreaSettings = FDetailsViewArgs::HideNameArea;
+	// DetailsViewArgs.ViewIdentifier = "PjcFileExcludeSettings";
+	//
+	// const auto SettingsProperty = PropertyEditor.CreateDetailView(DetailsViewArgs);
+	// SettingsProperty->SetObject(GetMutableDefault<UPjcFileExcludeSettings>());
 
 	SAssignNew(ListView, SListView<TSharedPtr<FPjcFileBrowserItem>>)
 	.ListItemsSource(&ListItems)
 	.OnGenerateRow(this, &SPjcFileBrowser::OnGenerateRow)
-	// .OnMouseButtonDoubleClick_Raw(this, &SPjcFileListView::OnListItemDblClick)
-	// .OnContextMenuOpening_Raw(this, &SPjcFileListView::OnListContextMenu)
+	.OnMouseButtonDoubleClick_Raw(this, &SPjcFileBrowser::OnListItemDblClick)
 	.SelectionMode(ESelectionMode::Multi)
 	.HeaderRow(GetHeaderRow());
 
+	NumberFormattingOptions.SetUseGrouping(true);
+	NumberFormattingOptions.SetMinimumFractionalDigits(0);
+
 	ChildSlot
 	[
-		SNew(SSplitter)
-		.PhysicalSplitterHandleSize(5.0f)
-		.Style(FEditorStyle::Get(), "ContentBrowser.Splitter")
-		+ SSplitter::Slot()
-		.Value(0.3f)
+		SNew(SVerticalBox)
+		+ SVerticalBox::Slot().AutoHeight().Padding(FMargin{5.0f})
 		[
-			SNew(SVerticalBox)
-			+ SVerticalBox::Slot().AutoHeight().Padding(FMargin{5.0f})
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot().AutoWidth()
 			[
-				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin{0.0f, 0.0f, 5.0f, 0.0f})
+				SNew(SButton)
+				.ContentPadding(FMargin{5.0f})
+				.OnClicked_Raw(this, &SPjcFileBrowser::OnBtnScanFilesClick)
+				.ButtonColorAndOpacity(FPjcStyles::Get().GetColor("ProjectCleaner.Color.Blue"))
 				[
-					SNew(SButton)
-					.ContentPadding(FMargin{5.0f})
-					.OnClicked_Raw(this, &SPjcFileBrowser::OnBtnScanFilesClick)
-					.ButtonColorAndOpacity(FPjcStyles::Get().GetColor("ProjectCleaner.Color.Blue"))
-					[
-						SNew(STextBlock)
-						.Justification(ETextJustify::Center)
-						.ToolTipText(FText::FromString(TEXT("Scan for external and corrupted asset files inside Content folder")))
-						.ColorAndOpacity(FPjcStyles::Get().GetColor("ProjectCleaner.Color.White"))
-						.ShadowOffset(FVector2D{1.5f, 1.5f})
-						.ShadowColorAndOpacity(FLinearColor::Black)
-						.Font(FPjcStyles::GetFont("Bold", 10))
-						.Text(FText::FromString(TEXT("Scan Files")))
-					]
+					SNew(STextBlock)
+					.Justification(ETextJustify::Center)
+					.ToolTipText(FText::FromString(TEXT("Scan for external and corrupted asset files inside Content folder")))
+					.ColorAndOpacity(FPjcStyles::Get().GetColor("ProjectCleaner.Color.White"))
+					.ShadowOffset(FVector2D{1.5f, 1.5f})
+					.ShadowColorAndOpacity(FLinearColor::Black)
+					.Font(FPjcStyles::GetFont("Bold", 10))
+					.Text(FText::FromString(TEXT("Scan Files")))
 				]
 			]
-			+ SVerticalBox::Slot().Padding(FMargin{5.0f}).AutoHeight()
+			+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin{5.0f, 0.0f, 0.0f, 0.0f})
 			[
-				SNew(SSeparator)
-				.Thickness(5.0f)
-			]
-			+ SVerticalBox::Slot().FillHeight(1.0f).Padding(FMargin{10.0f})
-			[
-				SNew(SScrollBox)
-				.ScrollWhenFocusChanges(EScrollWhenFocusChanges::NoScroll)
-				.AnimateWheelScrolling(true)
-				.AllowOverscroll(EAllowOverscroll::No)
-				+ SScrollBox::Slot()
+				SNew(SButton)
+				.ContentPadding(FMargin{5.0f})
+				.OnClicked_Raw(this, &SPjcFileBrowser::OnBtnDeleteFilesClick)
+				.IsEnabled_Raw(this, &SPjcFileBrowser::IsAnyItemSelected)
+				.ButtonColorAndOpacity(FPjcStyles::Get().GetColor("ProjectCleaner.Color.Red"))
 				[
-					SettingsProperty
+					SNew(STextBlock)
+					.Justification(ETextJustify::Center)
+					.ToolTipText(FText::FromString(TEXT("Delete Selected Files")))
+					.ColorAndOpacity(FPjcStyles::Get().GetColor("ProjectCleaner.Color.White"))
+					.ShadowOffset(FVector2D{1.5f, 1.5f})
+					.ShadowColorAndOpacity(FLinearColor::Black)
+					.Font(FPjcStyles::GetFont("Bold", 10))
+					.Text(FText::FromString(TEXT("Delete Files")))
+				]
+			]
+			+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin{5.0f, 0.0f, 0.0f, 0.0f})
+			[
+				SNew(SButton)
+				.ContentPadding(FMargin{5.0f})
+				.OnClicked_Raw(this, &SPjcFileBrowser::OnBtnClearSelectionClick)
+				.IsEnabled_Raw(this, &SPjcFileBrowser::IsAnyItemSelected)
+				.ButtonColorAndOpacity(FPjcStyles::Get().GetColor("ProjectCleaner.Color.Gray"))
+				[
+					SNew(STextBlock)
+					.Justification(ETextJustify::Center)
+					.ToolTipText(FText::FromString(TEXT("Clear view selection")))
+					.ColorAndOpacity(FPjcStyles::Get().GetColor("ProjectCleaner.Color.White"))
+					.ShadowOffset(FVector2D{1.5f, 1.5f})
+					.ShadowColorAndOpacity(FLinearColor::Black)
+					.Font(FPjcStyles::GetFont("Bold", 10))
+					.Text(FText::FromString(TEXT("Clear Selection")))
 				]
 			]
 		]
-		+ SSplitter::Slot()
-		.Value(0.7f)
+		+ SVerticalBox::Slot().FillHeight(1.0f).Padding(FMargin{5.0f})
 		[
-			SNew(SVerticalBox)
-			+ SVerticalBox::Slot().AutoHeight().Padding(FMargin{5.0f})
+			SNew(SScrollBox)
+			.ScrollWhenFocusChanges(EScrollWhenFocusChanges::NoScroll)
+			.AnimateWheelScrolling(true)
+			.AllowOverscroll(EAllowOverscroll::No)
+			+ SScrollBox::Slot()
 			[
-				SNew(SSearchBox)
-				.HintText(FText::FromString(TEXT("Search...")))
-				.OnTextChanged(this, &SPjcFileBrowser::OnSearchTextChanged)
-				.OnTextCommitted(this, &SPjcFileBrowser::OnSearchTextCommitted)
+				ListView.ToSharedRef()
 			]
-			+ SVerticalBox::Slot().FillHeight(1.0f).Padding(FMargin{5.0f})
+		]
+		+ SVerticalBox::Slot().Padding(FMargin{5.0f}).AutoHeight()
+		[
+			SNew(SSearchBox)
+			.HintText(FText::FromString(TEXT("Search...")))
+			.OnTextChanged(this, &SPjcFileBrowser::OnSearchTextChanged)
+			.OnTextCommitted(this, &SPjcFileBrowser::OnSearchTextCommitted)
+		]
+		+ SVerticalBox::Slot().AutoHeight().Padding(FMargin{5.0f})
+		[
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot().FillWidth(1.0f).HAlign(HAlign_Left)
 			[
-				SNew(SScrollBox)
-				.ScrollWhenFocusChanges(EScrollWhenFocusChanges::NoScroll)
-				.AnimateWheelScrolling(true)
-				.AllowOverscroll(EAllowOverscroll::No)
-				+ SScrollBox::Slot()
-				[
-					ListView.ToSharedRef()
-				]
+				SNew(STextBlock)
+				.AutoWrapText(false)
+				.Font(FPjcStyles::GetFont("Light", 10))
+				.Text_Raw(this, &SPjcFileBrowser::GetListSummaryText)
 			]
-			+ SVerticalBox::Slot().AutoHeight().Padding(FMargin{5.0f})
+			+ SHorizontalBox::Slot().FillWidth(1.0f).HAlign(HAlign_Right)
 			[
-				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot().FillWidth(1.0f).HAlign(HAlign_Left)
+				SNew(SComboButton)
+				.ContentPadding(0)
+				.ButtonStyle(FEditorStyle::Get(), "ToggleButton")
+				.OnGetMenuContent_Raw(this, &SPjcFileBrowser::GetViewOptionsBtnContent)
+				.ForegroundColor_Raw(this, &SPjcFileBrowser::GetViewOptionsForegroundColor)
+				.ButtonContent()
 				[
-					SNew(STextBlock)
-					.AutoWrapText(false)
-					.Font(FPjcStyles::GetFont("Light", 8))
-					.Text_Raw(this, &SPjcFileBrowser::GetListSummaryText)
-				]
-				+ SHorizontalBox::Slot().FillWidth(1.0f).HAlign(HAlign_Right)
-				[
-					SNew(SComboButton)
-					.ContentPadding(0)
-					// .ForegroundColor_Raw(this, &SPjcTabAssetsBrowser::GetTreeViewOptionsBtnForegroundColor)
-					.ButtonStyle(FEditorStyle::Get(), "ToggleButton")
-					// .OnGetMenuContent(this, &SPjcTabAssetsBrowser::GetTreeViewOptionsBtnContent)
-					.ButtonContent()
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 					[
-						SNew(SHorizontalBox)
-						+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
-						[
-							SNew(SImage).Image(FEditorStyle::GetBrush("GenericViewButton"))
-						]
-						+ SHorizontalBox::Slot().AutoWidth().Padding(2.0f, 0.0f, 0.0f, 0.0f).VAlign(VAlign_Center)
-						[
-							SNew(STextBlock).Text(FText::FromString(TEXT("View Options")))
-						]
+						SNew(SImage).Image(FEditorStyle::GetBrush("GenericViewButton"))
+					]
+					+ SHorizontalBox::Slot().AutoWidth().Padding(2.0f, 0.0f, 0.0f, 0.0f).VAlign(VAlign_Center)
+					[
+						SNew(STextBlock).Text(FText::FromString(TEXT("View Options")))
 					]
 				]
 			]
@@ -221,7 +229,6 @@ void SPjcFileBrowser::ListUpdate()
 
 	Files.Reset(FilesAll.Num());
 	ListItems.Reset(FilesAll.Num());
-	TotalSize = 0;
 
 	FScopedSlowTask SlowTask{
 		static_cast<float>(FilesAll.Num()),
@@ -237,25 +244,45 @@ void SPjcFileBrowser::ListUpdate()
 		const FString FileName = FPjcLibPath::GetFileName(File);
 		const FString FileExtension = FPjcLibPath::GetFileExtension(File, false).ToLower();
 		const int64 FileSize = FPjcLibPath::GetFileSize(File);
-		const EPjcFileType FileType = PjcConstants::EngineFileExtensions.Contains(FileExtension) ? EPjcFileType::Corrupted : EPjcFileType::External;
 
-		const auto Item = MakeShareable(
-			new FPjcFileBrowserItem{
-				FileSize,
-				FileName,
-				File,
-				TEXT(".") + FileExtension,
-				FileType
-			}
-		);
-
-		if (FileType == EPjcFileType::External || FileType == EPjcFileType::Corrupted && !FPjcLibAsset::GetAssetByObjectPath(FPjcLibPath::ToObjectPath(File)).IsValid())
+		if (PjcConstants::EngineFileExtensions.Contains(FileExtension))
 		{
-			TotalSize += FileSize;
-			ListItems.Emplace(Item);
+			if (!FPjcLibAsset::GetAssetByObjectPath(FPjcLibPath::ToObjectPath(File)).IsValid())
+			{
+				ListItems.Emplace(
+					MakeShareable(
+						new FPjcFileBrowserItem{
+							FileSize,
+							FileName,
+							File,
+							TEXT(".") + FileExtension,
+							EPjcFileType::Corrupted
+						}
+					)
+				);
+
+				Files.Emplace(File);
+			}
+		}
+		else
+		{
+			ListItems.Emplace(
+				MakeShareable(
+					new FPjcFileBrowserItem{
+						FileSize,
+						FileName,
+						File,
+						TEXT(".") + FileExtension,
+						EPjcFileType::External
+					}
+				)
+			);
+
 			Files.Emplace(File);
 		}
 	}
+
+	TotalSize = FPjcLibPath::GetFilesSize(Files);
 
 	if (!SearchText.IsEmpty())
 	{
@@ -381,6 +408,19 @@ void SPjcFileBrowser::OnListSort(EColumnSortPriority::Type SortPriority, const F
 	}
 }
 
+void SPjcFileBrowser::OnListItemDblClick(TSharedPtr<FPjcFileBrowserItem> Item) const
+{
+	if (!Item.IsValid()) return;
+
+	if (Item->FileType == EPjcFileType::Corrupted)
+	{
+		FPjcLibEditor::ShowNotification(TEXT("Cant open corrupted asset file"), SNotificationItem::CS_Fail, 3.0f);
+		return;
+	}
+
+	FPjcLibEditor::OpenFileInFileExplorer(Item->FilePathAbs);
+}
+
 FText SPjcFileBrowser::GetListSummaryText() const
 {
 	if (ListView.IsValid() && ListView->GetSelectedItems().Num() > 0)
@@ -481,9 +521,148 @@ TSharedRef<ITableRow> SPjcFileBrowser::OnGenerateRow(TSharedPtr<FPjcFileBrowserI
 	return SNew(SPjcFileBrowserItem, OwnerTable).Item(Item).SearchText(SearchText);
 }
 
+FSlateColor SPjcFileBrowser::GetViewOptionsForegroundColor() const
+{
+	static const FName InvertedForegroundName("InvertedForeground");
+	static const FName DefaultForegroundName("DefaultForeground");
+
+	if (!ViewOptionsBtn.IsValid()) return FEditorStyle::GetSlateColor(DefaultForegroundName);
+
+	return ViewOptionsBtn->IsHovered() ? FEditorStyle::GetSlateColor(InvertedForegroundName) : FEditorStyle::GetSlateColor(DefaultForegroundName);
+}
+
+TSharedRef<SWidget> SPjcFileBrowser::GetViewOptionsBtnContent() const
+{
+	const TSharedPtr<FExtender> Extender;
+	FMenuBuilder MenuBuilder(true, nullptr, Extender, true);
+
+	MenuBuilder.AddMenuSeparator(TEXT("View"));
+
+	MenuBuilder.AddMenuEntry(
+		FText::FromString(TEXT("Show Files External")),
+		FText::FromString(TEXT("Show external files in view")),
+		FSlateIcon(),
+		FUIAction
+		(
+			FExecuteAction::CreateLambda([&]
+			{
+				// SubsystemPtr->bShowPathsExcluded = !SubsystemPtr->bShowPathsExcluded;
+				// SubsystemPtr->PostEditChange();
+				//
+				// TreeViewItemsUpdate();
+			})
+			// FCanExecuteAction::CreateLambda([&]()
+			// {
+			// 	return SubsystemPtr && SubsystemPtr->bShowPathsUnusedOnly == false;
+			// }),
+			// FGetActionCheckState::CreateLambda([&]()
+			// {
+			// 	return SubsystemPtr->bShowPathsExcluded ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
+			// })
+		),
+		NAME_None,
+		EUserInterfaceActionType::ToggleButton
+	);
+
+	MenuBuilder.AddMenuEntry(
+		FText::FromString(TEXT("Show Files Corrupted")),
+		FText::FromString(TEXT("Show corrupted asset files in view")),
+		FSlateIcon(),
+		FUIAction
+		(
+			FExecuteAction::CreateLambda([&]
+			{
+				// SubsystemPtr->bShowPathsEngineGenerated = !SubsystemPtr->bShowPathsEngineGenerated;
+				// SubsystemPtr->PostEditChange();
+				//
+				// TreeViewItemsUpdate();
+			})
+			// FCanExecuteAction::CreateLambda([&]()
+			// {
+			// 	return SubsystemPtr && SubsystemPtr->bShowPathsUnusedOnly == false;
+			// }),
+			// FGetActionCheckState::CreateLambda([&]()
+			// {
+			// 	return SubsystemPtr->bShowPathsEngineGenerated ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
+			// })
+		),
+		NAME_None,
+		EUserInterfaceActionType::ToggleButton
+	);
+
+	return MenuBuilder.MakeWidget();
+}
+
 FReply SPjcFileBrowser::OnBtnScanFilesClick()
 {
 	ListUpdate();
 
 	return FReply::Handled();
+}
+
+FReply SPjcFileBrowser::OnBtnDeleteFilesClick()
+{
+	if (!ListView.IsValid()) return FReply::Handled();
+
+	const FText Title = FText::FromString(TEXT("Delete Files"));
+	const FText Msg = FText::FromString(TEXT("Are you sure you want to delete selected files?"));
+	const EAppReturnType::Type Result = FMessageDialog::Open(EAppMsgType::YesNo, Msg, &Title);
+
+	if (Result == EAppReturnType::No || Result == EAppReturnType::Cancel)
+	{
+		ListView->ClearSelection();
+		ListView->ClearHighlightedItems();
+		
+		return FReply::Handled();
+	}
+
+	const auto SelectedItems = ListView.Get()->GetSelectedItems();
+
+	FScopedSlowTask SlowTask{
+		static_cast<float>(SelectedItems.Num()),
+		FText::FromString(TEXT("Deleting Files...")),
+		GIsEditor && !IsRunningCommandlet()
+	};
+	SlowTask.MakeDialog(false, false);
+
+	const int32 FilesTotal = SelectedItems.Num();
+	int32 FilesDeleted = 0;
+
+	for (const auto& Item : SelectedItems)
+	{
+		if (!Item.IsValid()) continue;
+
+		SlowTask.EnterProgressFrame(1.0f, FText::FromString(Item->FilePathAbs));
+
+		if (!IFileManager::Get().Delete(*Item->FilePathAbs, true))
+		{
+			UE_LOG(LogProjectCleaner, Error, TEXT("Failed to delete file: %s"), *Item->FilePathAbs);
+			continue;
+		}
+
+		++FilesDeleted;
+	}
+
+	ListUpdate();
+
+	const FString DeleteMsg = FString::Printf(TEXT("Deleted %d of %d files"), FilesDeleted, FilesTotal);
+	const auto Status = FilesDeleted == FilesTotal ? SNotificationItem::ECompletionState::CS_Success : SNotificationItem::ECompletionState::CS_Fail;
+	FPjcLibEditor::ShowNotification(DeleteMsg, Status, 5.0f);
+
+	return FReply::Handled();
+}
+
+FReply SPjcFileBrowser::OnBtnClearSelectionClick() const
+{
+	if (!ListView.IsValid()) return FReply::Handled();
+
+	ListView->ClearSelection();
+	ListView->ClearHighlightedItems();
+
+	return FReply::Handled();
+}
+
+bool SPjcFileBrowser::IsAnyItemSelected() const
+{
+	return ListView.IsValid() && ListView.Get()->GetSelectedItems().Num() > 0;
 }

@@ -54,23 +54,27 @@ private:
 	void OnSearchTextChanged(const FText& InText);
 	void OnSearchTextCommitted(const FText& InText, ETextCommit::Type);
 	void OnListSort(EColumnSortPriority::Type SortPriority, const FName& ColumnName, EColumnSortMode::Type SortMode);
-
+	void OnListItemDblClick(TSharedPtr<FPjcFileBrowserItem> Item) const;
 	FText GetListSummaryText() const;
 	TSharedRef<SHeaderRow> GetHeaderRow();
 	TSharedRef<ITableRow> OnGenerateRow(TSharedPtr<FPjcFileBrowserItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const;
-
+	FSlateColor GetViewOptionsForegroundColor() const;
+	TSharedRef<SWidget> GetViewOptionsBtnContent() const;
 	FReply OnBtnScanFilesClick();
+	FReply OnBtnDeleteFilesClick();
+	FReply OnBtnClearSelectionClick() const;
+	bool IsAnyItemSelected() const;
 
 	EColumnSortMode::Type ColumnFileNameSortMode = EColumnSortMode::None;
 	EColumnSortMode::Type ColumnFileTypeSortMode = EColumnSortMode::None;
 	EColumnSortMode::Type ColumnFileExtSortMode = EColumnSortMode::None;
 	EColumnSortMode::Type ColumnFileSizeSortMode = EColumnSortMode::None;
 	EColumnSortMode::Type ColumnFilePathSortMode = EColumnSortMode::None;
-
+	FString SearchText;
+	int64 TotalSize = 0;
 	TArray<FString> Files;
+	TSharedPtr<SComboButton> ViewOptionsBtn;
 	TArray<TSharedPtr<FPjcFileBrowserItem>> ListItems;
 	TSharedPtr<SListView<TSharedPtr<FPjcFileBrowserItem>>> ListView;
-	FString SearchText;
-
-	int64 TotalSize = 0;
+	FNumberFormattingOptions NumberFormattingOptions;
 };

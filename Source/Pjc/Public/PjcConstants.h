@@ -33,7 +33,7 @@ namespace PjcConstants
 	// misc
 	static int32 NoSize = -1;
 	static int32 HeaderRowFontSize = 10;
-	static FMargin HeaderRowMargin = 10.0f;
+	static FMargin HeaderRowMargin{5.0f};
 	static const TSet<FString> EngineFileExtensions{TEXT("umap"), TEXT("uasset"), TEXT("collection")};
 	static const TSet<FString> SourceFileExtensions{TEXT("cpp"), TEXT("h"), TEXT("cs")};
 	static const TSet<FString> ConfigFileExtensions{TEXT("ini")};
