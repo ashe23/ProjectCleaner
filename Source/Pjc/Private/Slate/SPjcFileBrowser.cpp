@@ -1,19 +1,18 @@
 // Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "Slate/SPjcFileBrowser.h"
-#include "PjcConstants.h"
+#include "Pjc.h"
 #include "PjcStyles.h"
+#include "PjcSubsystem.h"
+#include "PjcConstants.h"
 #include "Libs/PjcLibPath.h"
-#include "Libs/PjcLibAsset.h"
 #include "Libs/PjcLibEditor.h"
 // Engine Headers
-#include "Pjc.h"
-#include "PjcSubsystem.h"
 #include "Misc/ScopedSlowTask.h"
 #include "Widgets/Input/SHyperlink.h"
 #include "Widgets/Input/SSearchBox.h"
 #include "Widgets/Layout/SScrollBox.h"
-// #include "Widgets/Layout/SSeparator.h"
+#include "Widgets/Layout/SWidgetSwitcher.h"
 
 void SPjcFileBrowserItem::Construct(const FArguments& InArgs, const TSharedRef<STableViewBase>& InTable)
 {
@@ -98,9 +97,6 @@ void SPjcFileBrowser::Construct(const FArguments& InArgs)
 	.SelectionMode(ESelectionMode::Multi)
 	.HeaderRow(GetHeaderRow());
 
-	NumberFormattingOptions.SetUseGrouping(true);
-	NumberFormattingOptions.SetMinimumFractionalDigits(0);
-
 	ChildSlot
 	[
 		SNew(SVerticalBox)
@@ -163,13 +159,27 @@ void SPjcFileBrowser::Construct(const FArguments& InArgs)
 		]
 		+ SVerticalBox::Slot().FillHeight(1.0f).Padding(FMargin{5.0f})
 		[
-			SNew(SScrollBox)
-			.ScrollWhenFocusChanges(EScrollWhenFocusChanges::NoScroll)
-			.AnimateWheelScrolling(true)
-			.AllowOverscroll(EAllowOverscroll::No)
-			+ SScrollBox::Slot()
+			SNew(SWidgetSwitcher)
+			.IsEnabled_Raw(this, &SPjcFileBrowser::IsListViewEnabled)
+			.WidgetIndex_Raw(this, &SPjcFileBrowser::GetListViewWidgetIndex)
+			+ SWidgetSwitcher::Slot().HAlign(HAlign_Center).VAlign(VAlign_Center)
 			[
-				ListView.ToSharedRef()
+				SNew(STextBlock)
+				.Justification(ETextJustify::Center)
+				.Text(FText::FromString(TEXT("No files to display")))
+				.ColorAndOpacity(FPjcStyles::Get().GetColor("ProjectCleaner.Color.White"))
+				.Font(FPjcStyles::GetFont("Bold", 20))
+			]
+			+ SWidgetSwitcher::Slot().HAlign(HAlign_Fill).VAlign(VAlign_Fill)
+			[
+				SNew(SScrollBox)
+				.ScrollWhenFocusChanges(EScrollWhenFocusChanges::NoScroll)
+				.AnimateWheelScrolling(true)
+				.AllowOverscroll(EAllowOverscroll::No)
+				+ SScrollBox::Slot()
+				[
+					ListView.ToSharedRef()
+				]
 			]
 		]
 		+ SVerticalBox::Slot().Padding(FMargin{5.0f}).AutoHeight()
@@ -213,17 +223,11 @@ void SPjcFileBrowser::Construct(const FArguments& InArgs)
 	];
 }
 
-void SPjcFileBrowser::ListUpdate()
+void SPjcFileBrowser::ListDataUpdate()
 {
-	if (!ListView.IsValid()) return;
-	if (!GEditor) return;
-
-	const UPjcSubsystem* SubsystemPtr = GEditor->GetEditorSubsystem<UPjcSubsystem>();
-	if (!SubsystemPtr) return;
-
 	FScopedSlowTask SlowTaskMain{
 		1.0f,
-		FText::FromString(TEXT("Scanning Files...")),
+		FText::FromString(TEXT("Scanning Files in Content directory...")),
 		GIsEditor && !IsRunningCommandlet()
 	};
 	SlowTaskMain.MakeDialog(false, false);
@@ -232,8 +236,9 @@ void SPjcFileBrowser::ListUpdate()
 	TSet<FString> FilesAll;
 	FPjcLibPath::GetFilesInPath(FPjcLibPath::ContentDir(), true, FilesAll);
 
-	Files.Reset(FilesAll.Num());
-	ListItems.Reset(FilesAll.Num());
+	Files.Empty();
+	Files.Reserve(FilesAll.Num());
+	TotalSize = 0;
 
 	FScopedSlowTask SlowTask{
 		static_cast<float>(FilesAll.Num()),
@@ -242,94 +247,46 @@ void SPjcFileBrowser::ListUpdate()
 	};
 	SlowTask.MakeDialog(false, false);
 
-	// todo:ashe23 fix bug when visibility changed
-
 	for (const auto& File : FilesAll)
 	{
 		SlowTask.EnterProgressFrame(1.0f, FText::FromString(File));
 
-		const FString FileName = FPjcLibPath::GetFileName(File);
-		const FString FileExtension = FPjcLibPath::GetFileExtension(File, false).ToLower();
-		const int64 FileSize = FPjcLibPath::GetFileSize(File);
-
-		if (PjcConstants::EngineFileExtensions.Contains(FileExtension) && SubsystemPtr->bShowFilesCorrupted)
+		if (FPjcLibPath::IsCorruptedAssetFile(File) || FPjcLibPath::IsExternalFile(File))
 		{
-			if (!FPjcLibAsset::GetAssetByObjectPath(FPjcLibPath::ToObjectPath(File)).IsValid())
-			{
-				ListItems.Emplace(
-					MakeShareable(
-						new FPjcFileBrowserItem{
-							FileSize,
-							FileName,
-							File,
-							TEXT(".") + FileExtension,
-							EPjcFileType::Corrupted
-						}
-					)
-				);
-
-				Files.Emplace(File);
-			}
-		}
-		else
-		{
-			if (SubsystemPtr->bShowFilesExternal)
-			{
-				ListItems.Emplace(
-					MakeShareable(
-						new FPjcFileBrowserItem{
-							FileSize,
-							FileName,
-							File,
-							TEXT(".") + FileExtension,
-							EPjcFileType::External
-						}
-					)
-				);
-
-				Files.Emplace(File);
-			}
+			TotalSize += FPjcLibPath::GetFileSize(File);
+			Files.Emplace(File);
 		}
 	}
 
-	TotalSize = FPjcLibPath::GetFilesSize(Files);
-
-	if (!SearchText.IsEmpty())
-	{
-		ListSearch();
-
-		return;
-	}
-
-	ListView->RebuildList();
+	Files.Shrink();
 }
 
-void SPjcFileBrowser::ListSearch()
+void SPjcFileBrowser::ListUpdate()
 {
 	if (!ListView.IsValid()) return;
+	if (!GEditor) return;
 
-	ListItems.Reset(Files.Num());
+	const UPjcSubsystem* SubsystemPtr = GEditor->GetEditorSubsystem<UPjcSubsystem>();
+	if (!SubsystemPtr) return;
+
+	ListView->ClearSelection();
+	ListView->ClearHighlightedItems();
+
+	ListItems.Empty();
+	ListItems.Reserve(Files.Num());
 
 	for (const auto& File : Files)
 	{
 		const FString FileName = FPjcLibPath::GetFileName(File);
 		const FString FileExtension = FPjcLibPath::GetFileExtension(File, false).ToLower();
-		const int64 FileSize = FPjcLibPath::GetFileSize(File);
-		const EPjcFileType FileType = PjcConstants::EngineFileExtensions.Contains(FileExtension) ? EPjcFileType::Corrupted : EPjcFileType::External;
+		const bool bIsCorruptedAssetFile = SubsystemPtr->bShowFilesCorrupted && FPjcLibPath::IsCorruptedAssetFile(File);
+		const bool bIsExternalFile = SubsystemPtr->bShowFilesExternal && FPjcLibPath::IsExternalFile(File);
+		const bool bFileNameMatchesSearch = FileName.Contains(SearchText) || FileExtension.Contains(SearchText);
+		const bool bShouldDisplayFile = SearchText.IsEmpty() ? bIsCorruptedAssetFile || bIsExternalFile : bFileNameMatchesSearch;
 
-		if (SearchText.IsEmpty() || FileName.Contains(SearchText) || FileExtension.Contains(SearchText))
+		if (bShouldDisplayFile)
 		{
-			ListItems.Emplace(
-				MakeShareable(
-					new FPjcFileBrowserItem{
-						FileSize,
-						FileName,
-						File,
-						TEXT(".") + FileExtension,
-						FileType
-					}
-				)
-			);
+			ListItems.Emplace(CreateListItem(File));
 		}
 	}
 
@@ -340,14 +297,14 @@ void SPjcFileBrowser::OnSearchTextChanged(const FText& InText)
 {
 	SearchText = InText.ToString();
 
-	ListSearch();
+	ListUpdate();
 }
 
 void SPjcFileBrowser::OnSearchTextCommitted(const FText& InText, ETextCommit::Type)
 {
 	SearchText = InText.ToString();
 
-	ListSearch();
+	ListUpdate();
 }
 
 void SPjcFileBrowser::OnListSort(EColumnSortPriority::Type SortPriority, const FName& ColumnName, EColumnSortMode::Type SortMode)
@@ -454,6 +411,16 @@ FText SPjcFileBrowser::GetListSummaryText() const
 			*FText::AsMemory(TotalSize, IEC).ToString()
 		)
 	);
+}
+
+TSharedPtr<FPjcFileBrowserItem> SPjcFileBrowser::CreateListItem(const FString& InFilePath) const
+{
+	const FString FileName = FPjcLibPath::GetFileName(InFilePath);
+	const FString FileExtension = FPjcLibPath::GetFileExtension(InFilePath, true);
+	const int64 FileSize = FPjcLibPath::GetFileSize(InFilePath);
+	const EPjcFileType FileType = FPjcLibPath::IsCorruptedAssetFile(InFilePath) ? EPjcFileType::Corrupted : EPjcFileType::External;
+
+	return MakeShareable(new FPjcFileBrowserItem{FileSize, FileName, InFilePath, FileExtension, FileType});
 }
 
 TSharedRef<SHeaderRow> SPjcFileBrowser::GetHeaderRow()
@@ -607,6 +574,7 @@ TSharedRef<SWidget> SPjcFileBrowser::GetViewOptionsBtnContent()
 
 FReply SPjcFileBrowser::OnBtnScanFilesClick()
 {
+	ListDataUpdate();
 	ListUpdate();
 
 	return FReply::Handled();
@@ -653,6 +621,7 @@ FReply SPjcFileBrowser::OnBtnDeleteFilesClick()
 		}
 
 		++FilesDeleted;
+		Files.Remove(Item->FilePathAbs);
 	}
 
 	ListUpdate();
@@ -677,4 +646,14 @@ FReply SPjcFileBrowser::OnBtnClearSelectionClick() const
 bool SPjcFileBrowser::IsAnyItemSelected() const
 {
 	return ListView.IsValid() && ListView.Get()->GetSelectedItems().Num() > 0;
+}
+
+bool SPjcFileBrowser::IsListViewEnabled() const
+{
+	return Files.Num() > 0;
+}
+
+int32 SPjcFileBrowser::GetListViewWidgetIndex() const
+{
+	return IsListViewEnabled() ? PjcConstants::WidgetIndexWorking : PjcConstants::WidgetIndexIdle;
 }

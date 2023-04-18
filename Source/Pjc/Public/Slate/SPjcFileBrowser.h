@@ -49,13 +49,14 @@ public:
 	void Construct(const FArguments& InArgs);
 
 private:
+	void ListDataUpdate();
 	void ListUpdate();
-	void ListSearch();
 	void OnSearchTextChanged(const FText& InText);
 	void OnSearchTextCommitted(const FText& InText, ETextCommit::Type);
 	void OnListSort(EColumnSortPriority::Type SortPriority, const FName& ColumnName, EColumnSortMode::Type SortMode);
 	void OnListItemDblClick(TSharedPtr<FPjcFileBrowserItem> Item) const;
 	FText GetListSummaryText() const;
+	TSharedPtr<FPjcFileBrowserItem> CreateListItem(const FString& InFilePath) const;
 	TSharedRef<SHeaderRow> GetHeaderRow();
 	TSharedRef<ITableRow> OnGenerateRow(TSharedPtr<FPjcFileBrowserItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const;
 	FSlateColor GetViewOptionsForegroundColor() const;
@@ -64,6 +65,8 @@ private:
 	FReply OnBtnDeleteFilesClick();
 	FReply OnBtnClearSelectionClick() const;
 	bool IsAnyItemSelected() const;
+	bool IsListViewEnabled() const;
+	int32 GetListViewWidgetIndex() const;
 
 	EColumnSortMode::Type ColumnFileNameSortMode = EColumnSortMode::None;
 	EColumnSortMode::Type ColumnFileTypeSortMode = EColumnSortMode::None;
@@ -72,9 +75,8 @@ private:
 	EColumnSortMode::Type ColumnFilePathSortMode = EColumnSortMode::None;
 	FString SearchText;
 	int64 TotalSize = 0;
-	TArray<FString> Files;
+	TArray<FString> Files; // todo:ashe23 this should be in subsystem class, so its caches scan data when user closes and then reopens it
 	TSharedPtr<SComboButton> ViewOptionsBtn;
 	TArray<TSharedPtr<FPjcFileBrowserItem>> ListItems;
 	TSharedPtr<SListView<TSharedPtr<FPjcFileBrowserItem>>> ListView;
-	FNumberFormattingOptions NumberFormattingOptions;
 };

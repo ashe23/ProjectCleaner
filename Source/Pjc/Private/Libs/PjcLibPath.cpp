@@ -230,6 +230,23 @@ bool FPjcLibPath::IsPathEngineGenerated(const FString& InPath)
 		InPath.StartsWith(CurrentUserCollectionsDir());
 }
 
+bool FPjcLibPath::IsCorruptedAssetFile(const FString& InPath)
+{
+	if (!PjcConstants::EngineFileExtensions.Contains(GetFileExtension(InPath, false).ToLower()))
+	{
+		return false;
+	}
+
+	return !FPjcLibAsset::GetAssetByObjectPath(ToObjectPath(InPath)).IsValid();
+}
+
+bool FPjcLibPath::IsExternalFile(const FString& InPath)
+{
+	const FString FileExt = GetFileExtension(InPath, false).ToLower();
+
+	return !PjcConstants::EngineFileExtensions.Contains(FileExt);
+}
+
 //
 // bool FPjcLibPath::IsPathExcluded(const FString& InPath)
 // {
