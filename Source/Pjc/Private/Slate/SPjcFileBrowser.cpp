@@ -19,6 +19,7 @@
 void SPjcFileBrowserItem::Construct(const FArguments& InArgs, const TSharedRef<STableViewBase>& InTable)
 {
 	Item = InArgs._Item;
+	SearchText = InArgs._SearchText;
 
 	SMultiColumnTableRow::Construct(SMultiColumnTableRow::FArguments().Padding(FMargin{0.0f, 2.0f, 0.0f, 0.0f}), InTable);
 }
@@ -31,7 +32,7 @@ TSharedRef<SWidget> SPjcFileBrowserItem::GenerateWidgetForColumn(const FName& In
 			SNew(SHorizontalBox)
 			+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin{5.0f, 0.0f})
 			[
-				SNew(STextBlock).Text(FText::FromString(Item->FileName))
+				SNew(STextBlock).Text(FText::FromString(Item->FileName)).HighlightText(FText::FromString(SearchText))
 			];
 	}
 
@@ -78,12 +79,6 @@ TSharedRef<SWidget> SPjcFileBrowserItem::GenerateWidgetForColumn(const FName& In
 
 void SPjcFileBrowser::Construct(const FArguments& InArgs)
 {
-	// SubsystemPtr = GEditor->GetEditorSubsystem<UPjcSubsystem>();
-	// if (!SubsystemPtr) return;
-	//
-	// SubsystemPtr->OnProjectScan().AddRaw(this, &SPjcFileBrowser::ListItemsUpdate);
-	// ListItemsUpdate(SubsystemPtr->GetLastScanResult());
-
 	FPropertyEditorModule& PropertyEditor = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
 	FDetailsViewArgs DetailsViewArgs;
 	DetailsViewArgs.bUpdatesFromSelection = false;
@@ -126,7 +121,7 @@ void SPjcFileBrowser::Construct(const FArguments& InArgs)
 					[
 						SNew(STextBlock)
 						.Justification(ETextJustify::Center)
-						// .ToolTipText(FText::FromString(TEXT("Scan project for unused assets, empty folders and other files")))
+						.ToolTipText(FText::FromString(TEXT("Scan for external and corrupted asset files inside Content folder")))
 						.ColorAndOpacity(FPjcStyles::Get().GetColor("ProjectCleaner.Color.White"))
 						.ShadowOffset(FVector2D{1.5f, 1.5f})
 						.ShadowColorAndOpacity(FLinearColor::Black)
@@ -134,24 +129,6 @@ void SPjcFileBrowser::Construct(const FArguments& InArgs)
 						.Text(FText::FromString(TEXT("Scan Files")))
 					]
 				]
-				// + SHorizontalBox::Slot().AutoWidth().Padding(FMargin{0.0f, 0.0f, 5.0f, 0.0f})
-				// [
-				// 	SNew(SButton)
-				// 	.ContentPadding(FMargin{5.0f})
-				// 	// .OnClicked_Raw(this, &SPjcTabScanSettings::OnBtnCleanProjectClick)
-				// 	// .IsEnabled_Raw(this, &SPjcTabScanSettings::BtnCleanProjectEnabled)
-				// 	.ButtonColorAndOpacity(FPjcStyles::Get().GetColor("ProjectCleaner.Color.Red"))
-				// 	[
-				// 		SNew(STextBlock)
-				// 		.Justification(ETextJustify::Center)
-				// 		.ToolTipText(FText::FromString(TEXT("Clean project based on specified CleanupMethod.")))
-				// 		.ColorAndOpacity(FPjcStyles::Get().GetColor("ProjectCleaner.Color.White"))
-				// 		.ShadowOffset(FVector2D{1.5f, 1.5f})
-				// 		.ShadowColorAndOpacity(FLinearColor::Black)
-				// 		.Font(FPjcStyles::GetFont("Bold", 10))
-				// 		.Text(FText::FromString(TEXT("Clean Project")))
-				// 	]
-				// ]
 			]
 			+ SVerticalBox::Slot().Padding(FMargin{5.0f}).AutoHeight()
 			[
@@ -174,7 +151,14 @@ void SPjcFileBrowser::Construct(const FArguments& InArgs)
 		.Value(0.7f)
 		[
 			SNew(SVerticalBox)
-			+ SVerticalBox::Slot().FillHeight(1.0f)
+			+ SVerticalBox::Slot().AutoHeight().Padding(FMargin{5.0f})
+			[
+				SNew(SSearchBox)
+				.HintText(FText::FromString(TEXT("Search...")))
+				.OnTextChanged(this, &SPjcFileBrowser::OnSearchTextChanged)
+				.OnTextCommitted(this, &SPjcFileBrowser::OnSearchTextCommitted)
+			]
+			+ SVerticalBox::Slot().FillHeight(1.0f).Padding(FMargin{5.0f})
 			[
 				SNew(SScrollBox)
 				.ScrollWhenFocusChanges(EScrollWhenFocusChanges::NoScroll)
@@ -185,59 +169,38 @@ void SPjcFileBrowser::Construct(const FArguments& InArgs)
 					ListView.ToSharedRef()
 				]
 			]
+			+ SVerticalBox::Slot().AutoHeight().Padding(FMargin{5.0f})
+			[
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot().FillWidth(1.0f).HAlign(HAlign_Left)
+				[
+					SNew(STextBlock)
+					.AutoWrapText(false)
+					.Font(FPjcStyles::GetFont("Light", 8))
+					.Text_Raw(this, &SPjcFileBrowser::GetListSummaryText)
+				]
+				+ SHorizontalBox::Slot().FillWidth(1.0f).HAlign(HAlign_Right)
+				[
+					SNew(SComboButton)
+					.ContentPadding(0)
+					// .ForegroundColor_Raw(this, &SPjcTabAssetsBrowser::GetTreeViewOptionsBtnForegroundColor)
+					.ButtonStyle(FEditorStyle::Get(), "ToggleButton")
+					// .OnGetMenuContent(this, &SPjcTabAssetsBrowser::GetTreeViewOptionsBtnContent)
+					.ButtonContent()
+					[
+						SNew(SHorizontalBox)
+						+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+						[
+							SNew(SImage).Image(FEditorStyle::GetBrush("GenericViewButton"))
+						]
+						+ SHorizontalBox::Slot().AutoWidth().Padding(2.0f, 0.0f, 0.0f, 0.0f).VAlign(VAlign_Center)
+						[
+							SNew(STextBlock).Text(FText::FromString(TEXT("View Options")))
+						]
+					]
+				]
+			]
 		]
-		// SNew(SOverlay)
-		// + SOverlay::Slot().Padding(FMargin{5.0f})
-		// [
-		// 	SNew(SVerticalBox)
-		// 	+ SVerticalBox::Slot().AutoHeight()
-		// 	[
-		// 		SNew(SSearchBox)
-		// 		.HintText(FText::FromString(TEXT("Search Files...")))
-		// 	]
-		// 	+ SVerticalBox::Slot().FillHeight(1.0f)
-		// 	[
-		// 		SNew(SScrollBox)
-		// 		.ScrollWhenFocusChanges(EScrollWhenFocusChanges::NoScroll)
-		// 		.AnimateWheelScrolling(true)
-		// 		.AllowOverscroll(EAllowOverscroll::No)
-		// 		+ SScrollBox::Slot()
-		// 		[
-		// 			ListView.ToSharedRef()
-		// 		]
-		// 	]
-		// 	+ SVerticalBox::Slot().AutoHeight()
-		// 	[
-		// 		SNew(SHorizontalBox)
-		// 		+ SHorizontalBox::Slot().FillWidth(1.0f).HAlign(HAlign_Left)
-		// 		[
-		// 			SNew(STextBlock)
-		// 			.AutoWrapText(false)
-		// 			.Font(FPjcStyles::GetFont("Light", 8))
-		// 			.Text_Raw(this, &SPjcFileBrowser::GetListSummaryText)
-		// 		]
-		// 		+ SHorizontalBox::Slot().FillWidth(1.0f).HAlign(HAlign_Right)
-		// 		[
-		// 			SNew(SComboButton)
-		// 			.ContentPadding(0)
-		// 			// .ForegroundColor_Raw(this, &SPjcTabAssetsBrowser::GetTreeViewOptionsBtnForegroundColor)
-		// 			.ButtonStyle(FEditorStyle::Get(), "ToggleButton")
-		// 			// .OnGetMenuContent(this, &SPjcTabAssetsBrowser::GetTreeViewOptionsBtnContent)
-		// 			.ButtonContent()
-		// 			[
-		// 				SNew(SHorizontalBox)
-		// 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
-		// 				[
-		// 					SNew(SImage).Image(FEditorStyle::GetBrush("GenericViewButton"))
-		// 				]
-		// 				+ SHorizontalBox::Slot().AutoWidth().Padding(2.0f, 0.0f, 0.0f, 0.0f).VAlign(VAlign_Center)
-		// 				[
-		// 					SNew(STextBlock).Text(FText::FromString(TEXT("View Options")))
-		// 				]
-		// 			]
-		// 		]
-		// 	]
-		// ]
 	];
 }
 
@@ -261,11 +224,12 @@ void SPjcFileBrowser::ListUpdate()
 	};
 	SlowTaskMain.MakeDialog(false, false);
 	SlowTaskMain.EnterProgressFrame(1.0f);
-	
+
 	TSet<FString> FilesAll;
 	FPjcLibPath::GetFilesInPath(FPjcLibPath::ContentDir(), true, FilesAll);
 
 	ListItems.Reset(FilesAll.Num());
+	TotalSize = 0;
 
 	FScopedSlowTask SlowTask{
 		static_cast<float>(FilesAll.Num()),
@@ -278,18 +242,23 @@ void SPjcFileBrowser::ListUpdate()
 	{
 		SlowTask.EnterProgressFrame(1.0f, FText::FromString(File));
 
+		const FString FileName = FPjcLibPath::GetFileName(File);
 		const FString FileExtension = FPjcLibPath::GetFileExtension(File, false).ToLower();
+		const int64 FileSize = FPjcLibPath::GetFileSize(File);
+		const EPjcFileType FileType = PjcConstants::EngineFileExtensions.Contains(FileExtension) ? EPjcFileType::Corrupted : EPjcFileType::External;
 
-		if (PjcConstants::EngineFileExtensions.Contains(FileExtension))
+		if (FileType == EPjcFileType::Corrupted)
 		{
 			const FAssetData AssetData = FPjcLibAsset::GetAssetByObjectPath(FPjcLibPath::ToObjectPath(File));
 			if (!AssetData.IsValid())
 			{
+				TotalSize += FileSize;
+
 				ListItems.Emplace(
 					MakeShareable(
 						new FPjcFileBrowserItem{
-							FPjcLibPath::GetFileSize(File),
-							FPjcLibPath::GetFileName(File),
+							FileSize,
+							FileName,
 							File,
 							TEXT(".") + FileExtension,
 							EPjcFileType::Corrupted
@@ -300,11 +269,13 @@ void SPjcFileBrowser::ListUpdate()
 		}
 		else
 		{
+			TotalSize += FileSize;
+
 			ListItems.Emplace(
 				MakeShareable(
 					new FPjcFileBrowserItem{
-						FPjcLibPath::GetFileSize(File),
-						FPjcLibPath::GetFileName(File),
+						FileSize,
+						FileName,
 						File,
 						TEXT(".") + FileExtension,
 						EPjcFileType::External
@@ -317,65 +288,33 @@ void SPjcFileBrowser::ListUpdate()
 	ListView->RebuildList();
 }
 
-// SPjcFileBrowser::~SPjcFileBrowser()
-// {
-// 	if (SubsystemPtr)
-// 	{
-// 		SubsystemPtr->OnProjectScan().RemoveAll(this);
-// 	}
-// }
+void SPjcFileBrowser::ListSearch()
+{
+	if (SearchText.IsEmpty()) return;
 
-// void SPjcFileBrowser::ListItemsUpdate(const FPjcScanResult& InScanResult)
-// {
-// 	if (!InScanResult.bScanSuccess) return;
-//
-// 	ScanResult = InScanResult;
-//
-// 	if (!ListView.IsValid())
-// 	{
-// 		SAssignNew(ListView, SListView<TSharedPtr<FPjcFileBrowserItem>>)
-// 		.ListItemsSource(&ListItems)
-// 		.OnGenerateRow(this, &SPjcFileBrowser::OnGenerateRow)
-// 		// .OnMouseButtonDoubleClick_Raw(this, &SPjcFileListView::OnListItemDblClick)
-// 		// .OnContextMenuOpening_Raw(this, &SPjcFileListView::OnListContextMenu)
-// 		.SelectionMode(ESelectionMode::Multi)
-// 		.HeaderRow(GetHeaderRow());
-// 	}
-//
-// 	ListItems.Reset(InScanResult.ScanStats.NumFilesExternal + InScanResult.ScanStats.NumAssetsCorrupted);
-//
-// 	for (const auto& FileExternal : InScanResult.ScanData.FilesExternal)
-// 	{
-// 		ListItems.Emplace(
-// 			MakeShareable(
-// 				new FPjcFileBrowserItem{
-// 					FPjcLibPath::GetFileSize(FileExternal),
-// 					FPjcLibPath::GetFileName(FileExternal),
-// 					FileExternal,
-// 					FPjcLibPath::GetFileExtension(FileExternal, true).ToLower(),
-// 					EPjcFileType::External
-// 				}
-// 			)
-// 		);
-// 	}
-//
-// 	for (const auto& CorruptedFile : InScanResult.ScanData.AssetsCorrupted)
-// 	{
-// 		ListItems.Emplace(
-// 			MakeShareable(
-// 				new FPjcFileBrowserItem{
-// 					FPjcLibPath::GetFileSize(CorruptedFile),
-// 					FPjcLibPath::GetFileName(CorruptedFile),
-// 					CorruptedFile,
-// 					FPjcLibPath::GetFileExtension(CorruptedFile, true).ToLower(),
-// 					EPjcFileType::Corrupted
-// 				}
-// 			)
-// 		);
-// 	}
-//
-// 	ListView->RebuildList();
-// }
+	// todo:ashe23 
+	// for (const auto& Item : ListItems)
+	// {
+	// 	if (Item->FileName.Contains(SearchText))
+	// 	{
+	// 		
+	// 	}
+	// }
+}
+
+void SPjcFileBrowser::OnSearchTextChanged(const FText& InText)
+{
+	SearchText = InText.ToString();
+
+	ListSearch();
+}
+
+void SPjcFileBrowser::OnSearchTextCommitted(const FText& InText, ETextCommit::Type)
+{
+	SearchText = InText.ToString();
+
+	ListSearch();
+}
 
 void SPjcFileBrowser::OnListSort(EColumnSortPriority::Type SortPriority, const FName& ColumnName, EColumnSortMode::Type SortMode)
 {
@@ -447,29 +386,27 @@ void SPjcFileBrowser::OnListSort(EColumnSortPriority::Type SortPriority, const F
 
 FText SPjcFileBrowser::GetListSummaryText() const
 {
-	return FText{};
+	if (ListView.IsValid() && ListView->GetSelectedItems().Num() > 0)
+	{
+		return FText::FromString(
+			FString::Printf(
+				TEXT("%d file%s (%d selected). Total Size: %s"),
+				ListItems.Num(),
+				ListItems.Num() > 1 ? TEXT("s") : TEXT(""),
+				ListView->GetSelectedItems().Num(),
+				*FText::AsMemory(TotalSize, IEC).ToString()
+			)
+		);
+	}
 
-	// if (ListView.IsValid() && ListView->GetSelectedItems().Num() > 0)
-	// {
-	// 	return FText::FromString(
-	// 		FString::Printf(
-	// 			TEXT("%d file%s (%d selected). Total Size: %s"),
-	// 			ListItems.Num(),
-	// 			ListItems.Num() > 1 ? TEXT("s") : TEXT(""),
-	// 			ListView->GetSelectedItems().Num(),
-	// 			*FText::AsMemory(ScanResult.ScanStats.SizeAssetsCorrupted + ScanResult.ScanStats.SizeFilesExternal).ToString()
-	// 		)
-	// 	);
-	// }
-	//
-	// return FText::FromString(
-	// 	FString::Printf(
-	// 		TEXT("%d file%s. Total Size: %s"),
-	// 		ListItems.Num(),
-	// 		ListItems.Num() > 1 ? TEXT("s") : TEXT(""),
-	// 		*FText::AsMemory(ScanResult.ScanStats.SizeAssetsCorrupted + ScanResult.ScanStats.SizeFilesExternal, IEC).ToString()
-	// 	)
-	// );
+	return FText::FromString(
+		FString::Printf(
+			TEXT("%d file%s. Total Size: %s"),
+			ListItems.Num(),
+			ListItems.Num() > 1 ? TEXT("s") : TEXT(""),
+			*FText::AsMemory(TotalSize, IEC).ToString()
+		)
+	);
 }
 
 TSharedRef<SHeaderRow> SPjcFileBrowser::GetHeaderRow()
@@ -529,7 +466,6 @@ TSharedRef<SHeaderRow> SPjcFileBrowser::GetHeaderRow()
 			.Font(FPjcStyles::GetFont("Light", PjcConstants::HeaderRowFontSize))
 		]
 		+ SHeaderRow::Column("FilePath")
-		  // .FillWidth(0.5f)
 		  .HAlignCell(HAlign_Left)
 		  .VAlignCell(VAlign_Center)
 		  .HAlignHeader(HAlign_Center)

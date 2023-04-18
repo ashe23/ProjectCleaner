@@ -28,6 +28,7 @@ class SPjcFileBrowserItem final : public SMultiColumnTableRow<TSharedPtr<FPjcFil
 public:
 	SLATE_BEGIN_ARGS(SPjcFileBrowserItem) {}
 		SLATE_ARGUMENT(TSharedPtr<FPjcFileBrowserItem>, Item)
+		SLATE_ARGUMENT(FString, SearchText)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs, const TSharedRef<STableViewBase>& InTable);
@@ -35,6 +36,7 @@ public:
 
 private:
 	TSharedPtr<FPjcFileBrowserItem> Item;
+	FString SearchText;
 };
 
 
@@ -48,6 +50,9 @@ public:
 
 private:
 	void ListUpdate();
+	void ListSearch();
+	void OnSearchTextChanged(const FText& InText);
+	void OnSearchTextCommitted(const FText& InText, ETextCommit::Type);
 	void OnListSort(EColumnSortPriority::Type SortPriority, const FName& ColumnName, EColumnSortMode::Type SortMode);
 
 	FText GetListSummaryText() const;
@@ -61,7 +66,11 @@ private:
 	EColumnSortMode::Type ColumnFileExtSortMode = EColumnSortMode::None;
 	EColumnSortMode::Type ColumnFileSizeSortMode = EColumnSortMode::None;
 	EColumnSortMode::Type ColumnFilePathSortMode = EColumnSortMode::None;
+	
 	TArray<TSharedPtr<FPjcFileBrowserItem>> ListItems;
+	TArray<TSharedPtr<FPjcFileBrowserItem>> ListItemsCached;
 	TSharedPtr<SListView<TSharedPtr<FPjcFileBrowserItem>>> ListView;
 	FString SearchText;
+
+	int64 TotalSize = 0;
 };
