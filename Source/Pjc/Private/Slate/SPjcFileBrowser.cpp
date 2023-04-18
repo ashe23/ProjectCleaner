@@ -8,6 +8,7 @@
 #include "Libs/PjcLibEditor.h"
 // Engine Headers
 #include "Pjc.h"
+#include "PjcSubsystem.h"
 #include "Misc/ScopedSlowTask.h"
 #include "Widgets/Input/SHyperlink.h"
 #include "Widgets/Input/SSearchBox.h"
@@ -215,6 +216,10 @@ void SPjcFileBrowser::Construct(const FArguments& InArgs)
 void SPjcFileBrowser::ListUpdate()
 {
 	if (!ListView.IsValid()) return;
+	if (!GEditor) return;
+
+	const UPjcSubsystem* SubsystemPtr = GEditor->GetEditorSubsystem<UPjcSubsystem>();
+	if (!SubsystemPtr) return;
 
 	FScopedSlowTask SlowTaskMain{
 		1.0f,
@@ -237,6 +242,8 @@ void SPjcFileBrowser::ListUpdate()
 	};
 	SlowTask.MakeDialog(false, false);
 
+	// todo:ashe23 fix bug when visibility changed
+
 	for (const auto& File : FilesAll)
 	{
 		SlowTask.EnterProgressFrame(1.0f, FText::FromString(File));
@@ -245,7 +252,7 @@ void SPjcFileBrowser::ListUpdate()
 		const FString FileExtension = FPjcLibPath::GetFileExtension(File, false).ToLower();
 		const int64 FileSize = FPjcLibPath::GetFileSize(File);
 
-		if (PjcConstants::EngineFileExtensions.Contains(FileExtension))
+		if (PjcConstants::EngineFileExtensions.Contains(FileExtension) && SubsystemPtr->bShowFilesCorrupted)
 		{
 			if (!FPjcLibAsset::GetAssetByObjectPath(FPjcLibPath::ToObjectPath(File)).IsValid())
 			{
@@ -266,19 +273,22 @@ void SPjcFileBrowser::ListUpdate()
 		}
 		else
 		{
-			ListItems.Emplace(
-				MakeShareable(
-					new FPjcFileBrowserItem{
-						FileSize,
-						FileName,
-						File,
-						TEXT(".") + FileExtension,
-						EPjcFileType::External
-					}
-				)
-			);
+			if (SubsystemPtr->bShowFilesExternal)
+			{
+				ListItems.Emplace(
+					MakeShareable(
+						new FPjcFileBrowserItem{
+							FileSize,
+							FileName,
+							File,
+							TEXT(".") + FileExtension,
+							EPjcFileType::External
+						}
+					)
+				);
 
-			Files.Emplace(File);
+				Files.Emplace(File);
+			}
 		}
 	}
 
@@ -531,7 +541,7 @@ FSlateColor SPjcFileBrowser::GetViewOptionsForegroundColor() const
 	return ViewOptionsBtn->IsHovered() ? FEditorStyle::GetSlateColor(InvertedForegroundName) : FEditorStyle::GetSlateColor(DefaultForegroundName);
 }
 
-TSharedRef<SWidget> SPjcFileBrowser::GetViewOptionsBtnContent() const
+TSharedRef<SWidget> SPjcFileBrowser::GetViewOptionsBtnContent()
 {
 	const TSharedPtr<FExtender> Extender;
 	FMenuBuilder MenuBuilder(true, nullptr, Extender, true);
@@ -546,19 +556,20 @@ TSharedRef<SWidget> SPjcFileBrowser::GetViewOptionsBtnContent() const
 		(
 			FExecuteAction::CreateLambda([&]
 			{
-				// SubsystemPtr->bShowPathsExcluded = !SubsystemPtr->bShowPathsExcluded;
-				// SubsystemPtr->PostEditChange();
-				//
-				// TreeViewItemsUpdate();
+				UPjcSubsystem* SubsystemPtr = GEditor->GetEditorSubsystem<UPjcSubsystem>();
+				SubsystemPtr->bShowFilesExternal = !SubsystemPtr->bShowFilesExternal;
+				SubsystemPtr->PostEditChange();
+
+				ListUpdate();
+			}),
+			FCanExecuteAction::CreateLambda([&]()
+			{
+				return true;
+			}),
+			FGetActionCheckState::CreateLambda([&]()
+			{
+				return GEditor && GEditor->GetEditorSubsystem<UPjcSubsystem>()->bShowFilesExternal ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
 			})
-			// FCanExecuteAction::CreateLambda([&]()
-			// {
-			// 	return SubsystemPtr && SubsystemPtr->bShowPathsUnusedOnly == false;
-			// }),
-			// FGetActionCheckState::CreateLambda([&]()
-			// {
-			// 	return SubsystemPtr->bShowPathsExcluded ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
-			// })
 		),
 		NAME_None,
 		EUserInterfaceActionType::ToggleButton
@@ -572,19 +583,20 @@ TSharedRef<SWidget> SPjcFileBrowser::GetViewOptionsBtnContent() const
 		(
 			FExecuteAction::CreateLambda([&]
 			{
-				// SubsystemPtr->bShowPathsEngineGenerated = !SubsystemPtr->bShowPathsEngineGenerated;
-				// SubsystemPtr->PostEditChange();
-				//
-				// TreeViewItemsUpdate();
+				UPjcSubsystem* SubsystemPtr = GEditor->GetEditorSubsystem<UPjcSubsystem>();
+				SubsystemPtr->bShowFilesCorrupted = !SubsystemPtr->bShowFilesCorrupted;
+				SubsystemPtr->PostEditChange();
+
+				ListUpdate();
+			}),
+			FCanExecuteAction::CreateLambda([&]()
+			{
+				return true;
+			}),
+			FGetActionCheckState::CreateLambda([&]()
+			{
+				return GEditor && GEditor->GetEditorSubsystem<UPjcSubsystem>()->bShowFilesCorrupted ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
 			})
-			// FCanExecuteAction::CreateLambda([&]()
-			// {
-			// 	return SubsystemPtr && SubsystemPtr->bShowPathsUnusedOnly == false;
-			// }),
-			// FGetActionCheckState::CreateLambda([&]()
-			// {
-			// 	return SubsystemPtr->bShowPathsEngineGenerated ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
-			// })
 		),
 		NAME_None,
 		EUserInterfaceActionType::ToggleButton
@@ -612,7 +624,7 @@ FReply SPjcFileBrowser::OnBtnDeleteFilesClick()
 	{
 		ListView->ClearSelection();
 		ListView->ClearHighlightedItems();
-		
+
 		return FReply::Handled();
 	}
 

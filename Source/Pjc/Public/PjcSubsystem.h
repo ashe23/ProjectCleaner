@@ -27,6 +27,12 @@ public:
 	FPjcDelegateOnProjectScan& OnProjectScan();
 	const FPjcScanResult& GetLastScanResult() const;
 
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="ProjectCleaner", Config)
+	bool bShowFilesExternal = true;
+	
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="ProjectCleaner", Config)
+	bool bShowFilesCorrupted = true;
+
 protected:
 #if WITH_EDITOR
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;

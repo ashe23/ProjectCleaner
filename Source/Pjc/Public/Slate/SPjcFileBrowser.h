@@ -59,7 +59,7 @@ private:
 	TSharedRef<SHeaderRow> GetHeaderRow();
 	TSharedRef<ITableRow> OnGenerateRow(TSharedPtr<FPjcFileBrowserItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const;
 	FSlateColor GetViewOptionsForegroundColor() const;
-	TSharedRef<SWidget> GetViewOptionsBtnContent() const;
+	TSharedRef<SWidget> GetViewOptionsBtnContent();
 	FReply OnBtnScanFilesClick();
 	FReply OnBtnDeleteFilesClick();
 	FReply OnBtnClearSelectionClick() const;
