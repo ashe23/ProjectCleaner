@@ -56,6 +56,7 @@ private:
 	void OnListSort(EColumnSortPriority::Type SortPriority, const FName& ColumnName, EColumnSortMode::Type SortMode);
 	void OnListItemDblClick(TSharedPtr<FPjcFileBrowserItem> Item) const;
 	FText GetListSummaryText() const;
+	FText GetWidgetSwitcherText() const;
 	TSharedPtr<FPjcFileBrowserItem> CreateListItem(const FString& InFilePath) const;
 	TSharedRef<SHeaderRow> GetHeaderRow();
 	TSharedRef<ITableRow> OnGenerateRow(TSharedPtr<FPjcFileBrowserItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const;

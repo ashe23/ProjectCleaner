@@ -135,7 +135,7 @@ void SPjcFileBrowser::Construct(const FArguments& InArgs)
 					.ShadowOffset(FVector2D{1.5f, 1.5f})
 					.ShadowColorAndOpacity(FLinearColor::Black)
 					.Font(FPjcStyles::GetFont("Bold", 10))
-					.Text(FText::FromString(TEXT("Delete Files")))
+					.Text(FText::FromString(TEXT("Delete Selected Files")))
 				]
 			]
 			+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin{5.0f, 0.0f, 0.0f, 0.0f})
@@ -164,10 +164,9 @@ void SPjcFileBrowser::Construct(const FArguments& InArgs)
 			.WidgetIndex_Raw(this, &SPjcFileBrowser::GetListViewWidgetIndex)
 			+ SWidgetSwitcher::Slot().HAlign(HAlign_Center).VAlign(VAlign_Center)
 			[
-				// todo:ashe23 must show another message if there is files , but are filtered by view options
 				SNew(STextBlock)
 				.Justification(ETextJustify::Center)
-				.Text(FText::FromString(TEXT("No files to display")))
+				.Text_Raw(this, &SPjcFileBrowser::GetWidgetSwitcherText)
 				.ColorAndOpacity(FPjcStyles::Get().GetColor("ProjectCleaner.Color.White"))
 				.Font(FPjcStyles::GetFont("Bold", 20))
 			]
@@ -276,10 +275,13 @@ void SPjcFileBrowser::ListUpdate()
 	ListItems.Empty();
 	ListItems.Reserve(Files.Num());
 
+	TotalSize = 0;
+
 	for (const auto& File : Files)
 	{
 		const FString FileName = FPjcLibPath::GetFileName(File);
 		const FString FileExtension = FPjcLibPath::GetFileExtension(File, false).ToLower();
+		const int64 FileSize = FPjcLibPath::GetFileSize(File);
 		const bool bIsCorruptedAssetFile = SubsystemPtr->bShowFilesCorrupted && FPjcLibPath::IsCorruptedAssetFile(File);
 		const bool bIsExternalFile = SubsystemPtr->bShowFilesExternal && FPjcLibPath::IsExternalFile(File);
 		const bool bFileNameMatchesSearch = FileName.Contains(SearchText) || FileExtension.Contains(SearchText);
@@ -288,6 +290,8 @@ void SPjcFileBrowser::ListUpdate()
 		if (bShouldDisplayFile)
 		{
 			ListItems.Emplace(CreateListItem(File));
+
+			TotalSize += FileSize;
 		}
 	}
 
@@ -412,6 +416,16 @@ FText SPjcFileBrowser::GetListSummaryText() const
 			*FText::AsMemory(TotalSize, IEC).ToString()
 		)
 	);
+}
+
+FText SPjcFileBrowser::GetWidgetSwitcherText() const
+{
+	if (Files.Num() > 0 && ListItems.Num() == 0)
+	{
+		return FText::FromString(TEXT("Some files are hidden by 'ViewOptions'."));
+	}
+
+	return FText::FromString(TEXT("No files to display."));
 }
 
 TSharedPtr<FPjcFileBrowserItem> SPjcFileBrowser::CreateListItem(const FString& InFilePath) const
@@ -651,7 +665,7 @@ bool SPjcFileBrowser::IsAnyItemSelected() const
 
 bool SPjcFileBrowser::IsListViewEnabled() const
 {
-	return Files.Num() > 0;
+	return ListItems.Num() > 0;
 }
 
 int32 SPjcFileBrowser::GetListViewWidgetIndex() const
