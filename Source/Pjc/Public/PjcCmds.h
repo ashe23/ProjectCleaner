@@ -25,4 +25,6 @@ public:
 	TSharedPtr<FUICommandInfo> AssetsIncludeByClass;
 	TSharedPtr<FUICommandInfo> AssetsDelete;
 	TSharedPtr<FUICommandInfo> DeleteFiles;
+	TSharedPtr<FUICommandInfo> FilesExclude;
+	TSharedPtr<FUICommandInfo> FilesInclude;
 };

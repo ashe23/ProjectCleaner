@@ -257,14 +257,17 @@ struct FPjcScanResult
 };
 
 UCLASS(Config = EditorPerProjectUserSettings)
-class UPjcFileExcludeSettings : public UObject
+class UPjcFileScanSettings : public UObject
 {
 	GENERATED_BODY()
 
 public:
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Config, Category="File Exclude Settings", meta=(RelativeToGameDir, ToolTip="List of files to exclude from scanning"))
+	// UPROPERTY(BlueprintReadWrite, EditAnywhere, Config, Category="File Scan Settings", meta=(RelativeToGameContentDir, ToolTip="List of paths to exclude from scanning"))
+	// TArray<FDirectoryPath> ExcludedPaths;
+	
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Config, Category="File Scan Settings", meta=(RelativeToGameDir, ToolTip="List of files to exclude from scanning"))
 	TArray<FFilePath> ExcludedFiles;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Config, Category="File Exclude Settings", meta=(ToolTip="List of file extensions to exclude from scanning"))
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Config, Category="File Scan Settings", meta=(ToolTip="List of file extensions to exclude from scanning"))
 	TArray<FString> ExcludedFileExtensions;
 };

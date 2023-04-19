@@ -2,6 +2,7 @@
 
 #include "Slate/SPjcFileBrowser.h"
 #include "Pjc.h"
+#include "PjcCmds.h"
 #include "PjcStyles.h"
 #include "PjcSubsystem.h"
 #include "PjcConstants.h"
@@ -24,24 +25,26 @@ void SPjcFileBrowserItem::Construct(const FArguments& InArgs, const TSharedRef<S
 
 TSharedRef<SWidget> SPjcFileBrowserItem::GenerateWidgetForColumn(const FName& InColumnName)
 {
+	const FSlateColor TextColor = Item->FileIsExcluded ? FLinearColor{1.0f, 1.0f, 1.0f, 0.3f} : FLinearColor::White;
+
 	if (InColumnName.IsEqual(TEXT("FileName")))
 	{
 		return
 			SNew(SHorizontalBox)
 			+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin{5.0f, 0.0f})
 			[
-				SNew(STextBlock).Text(FText::FromString(Item->FileName)).HighlightText(FText::FromString(SearchText))
+				SNew(STextBlock).Text(FText::FromString(Item->FileName)).HighlightText(FText::FromString(SearchText)).ColorAndOpacity(TextColor)
 			];
 	}
 
 	if (InColumnName.IsEqual(TEXT("FileExt")))
 	{
-		return SNew(STextBlock).Text(FText::FromString(Item->FileExtension)).HighlightText(FText::FromString(SearchText));
+		return SNew(STextBlock).Text(FText::FromString(Item->FileExtension)).HighlightText(FText::FromString(SearchText)).ColorAndOpacity(TextColor);
 	}
 
 	if (InColumnName.IsEqual(TEXT("FileSize")))
 	{
-		return SNew(STextBlock).Text(FText::AsMemory(Item->FileSize, IEC));
+		return SNew(STextBlock).Text(FText::AsMemory(Item->FileSize, IEC)).ColorAndOpacity(TextColor);
 	}
 
 	if (InColumnName.IsEqual(TEXT("FileType")))
@@ -56,6 +59,7 @@ TSharedRef<SWidget> SPjcFileBrowserItem::GenerateWidgetForColumn(const FName& In
 				SNew(STextBlock)
 				.Font(FPjcStyles::GetFont("Bold", 9))
 				.Text(FText::FromString(Item->FileType == EPjcFileType::External ? TEXT("External") : TEXT("Corrupted Asset File")))
+				.ColorAndOpacity(TextColor)
 			];
 	}
 
@@ -77,25 +81,87 @@ TSharedRef<SWidget> SPjcFileBrowserItem::GenerateWidgetForColumn(const FName& In
 
 void SPjcFileBrowser::Construct(const FArguments& InArgs)
 {
-	// FPropertyEditorModule& PropertyEditor = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
-	// FDetailsViewArgs DetailsViewArgs;
-	// DetailsViewArgs.bUpdatesFromSelection = false;
-	// DetailsViewArgs.bLockable = false;
-	// DetailsViewArgs.bAllowSearch = false;
-	// DetailsViewArgs.bShowOptions = true;
-	// DetailsViewArgs.bAllowFavoriteSystem = false;
-	// DetailsViewArgs.NameAreaSettings = FDetailsViewArgs::HideNameArea;
-	// DetailsViewArgs.ViewIdentifier = "PjcFileExcludeSettings";
-	//
-	// const auto SettingsProperty = PropertyEditor.CreateDetailView(DetailsViewArgs);
-	// SettingsProperty->SetObject(GetMutableDefault<UPjcFileExcludeSettings>());
-
 	SAssignNew(ListView, SListView<TSharedPtr<FPjcFileBrowserItem>>)
 	.ListItemsSource(&ListItems)
 	.OnGenerateRow(this, &SPjcFileBrowser::OnGenerateRow)
 	.OnMouseButtonDoubleClick_Raw(this, &SPjcFileBrowser::OnListItemDblClick)
+	.OnContextMenuOpening_Raw(this, &SPjcFileBrowser::GetListViewContextMenu)
 	.SelectionMode(ESelectionMode::Multi)
 	.HeaderRow(GetHeaderRow());
+
+	Cmds = MakeShareable(new FUICommandList);
+	Cmds->MapAction(
+		FPjcCmds::Get().FilesExclude,
+		FUIAction
+		(
+			FExecuteAction::CreateLambda([&]()
+			{
+				const auto& SelectedItems = ListView.Get()->GetSelectedItems();
+				for (const auto& Item : SelectedItems)
+				{
+					if (!Item.IsValid()) continue;
+
+					FilesExcluded.Emplace(Item->FilePathAbs);
+
+					ListUpdate();
+				}
+			}),
+			FCanExecuteAction::CreateLambda([&]()
+			{
+				if (!ListView.IsValid()) return false;
+
+				const auto& SelectedItems = ListView.Get()->GetSelectedItems();
+
+				for (const auto& Item : SelectedItems)
+				{
+					if (!Item.IsValid()) continue;
+
+					if (Item->FileIsExcluded)
+					{
+						return false;
+					}
+				}
+
+				return true;
+			})
+		)
+	);
+	Cmds->MapAction(
+		FPjcCmds::Get().FilesInclude,
+		FUIAction
+		(
+			FExecuteAction::CreateLambda([&]()
+			{
+				const auto& SelectedItems = ListView.Get()->GetSelectedItems();
+				for (const auto& Item : SelectedItems)
+				{
+					if (!Item.IsValid()) continue;
+
+					FilesExcluded.Remove(Item->FilePathAbs);
+
+					ListUpdate();
+				}
+			}),
+			FCanExecuteAction::CreateLambda([&]()
+			{
+				if (!ListView.IsValid()) return false;
+
+				const auto& SelectedItems = ListView.Get()->GetSelectedItems();
+
+				for (const auto& Item : SelectedItems)
+				{
+					if (!Item.IsValid()) continue;
+
+					if (!Item->FileIsExcluded)
+					{
+						return false;
+					}
+				}
+
+				return true;
+			})
+		)
+	);
 
 	ChildSlot
 	[
@@ -284,8 +350,9 @@ void SPjcFileBrowser::ListUpdate()
 		const int64 FileSize = FPjcLibPath::GetFileSize(File);
 		const bool bIsCorruptedAssetFile = SubsystemPtr->bShowFilesCorrupted && FPjcLibPath::IsCorruptedAssetFile(File);
 		const bool bIsExternalFile = SubsystemPtr->bShowFilesExternal && FPjcLibPath::IsExternalFile(File);
+		const bool bIsExcludedFile = SubsystemPtr->bShowFilesExcluded && FilesExcluded.Contains(File);
 		const bool bFileNameMatchesSearch = FileName.Contains(SearchText) || FileExtension.Contains(SearchText);
-		const bool bShouldDisplayFile = SearchText.IsEmpty() ? bIsCorruptedAssetFile || bIsExternalFile : bFileNameMatchesSearch;
+		const bool bShouldDisplayFile = SearchText.IsEmpty() ? bIsCorruptedAssetFile || bIsExternalFile || !bIsExcludedFile : bFileNameMatchesSearch;
 
 		if (bShouldDisplayFile)
 		{
@@ -434,8 +501,9 @@ TSharedPtr<FPjcFileBrowserItem> SPjcFileBrowser::CreateListItem(const FString& I
 	const FString FileExtension = FPjcLibPath::GetFileExtension(InFilePath, true);
 	const int64 FileSize = FPjcLibPath::GetFileSize(InFilePath);
 	const EPjcFileType FileType = FPjcLibPath::IsCorruptedAssetFile(InFilePath) ? EPjcFileType::Corrupted : EPjcFileType::External;
+	const bool bFileIsExcluded = GEditor->GetEditorSubsystem<UPjcSubsystem>()->bShowFilesExcluded && FilesExcluded.Contains(InFilePath);
 
-	return MakeShareable(new FPjcFileBrowserItem{FileSize, FileName, InFilePath, FileExtension, FileType});
+	return MakeShareable(new FPjcFileBrowserItem{FileSize, FileName, InFilePath, FileExtension, FileType, bFileIsExcluded});
 }
 
 TSharedRef<SHeaderRow> SPjcFileBrowser::GetHeaderRow()
@@ -513,6 +581,20 @@ TSharedRef<ITableRow> SPjcFileBrowser::OnGenerateRow(TSharedPtr<FPjcFileBrowserI
 	return SNew(SPjcFileBrowserItem, OwnerTable).Item(Item).SearchText(SearchText);
 }
 
+TSharedPtr<SWidget> SPjcFileBrowser::GetListViewContextMenu() const
+{
+	FMenuBuilder MenuBuilder{true, Cmds};
+	MenuBuilder.BeginSection(TEXT("PjcFileActions"), FText::FromString(TEXT("Actions")));
+	{
+		MenuBuilder.AddMenuEntry(FPjcCmds::Get().FilesExclude);
+		MenuBuilder.AddMenuEntry(FPjcCmds::Get().FilesInclude);
+	}
+
+	MenuBuilder.EndSection();
+
+	return MenuBuilder.MakeWidget();
+}
+
 FSlateColor SPjcFileBrowser::GetViewOptionsForegroundColor() const
 {
 	static const FName InvertedForegroundName("InvertedForeground");
@@ -578,6 +660,33 @@ TSharedRef<SWidget> SPjcFileBrowser::GetViewOptionsBtnContent()
 			FGetActionCheckState::CreateLambda([&]()
 			{
 				return GEditor && GEditor->GetEditorSubsystem<UPjcSubsystem>()->bShowFilesCorrupted ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
+			})
+		),
+		NAME_None,
+		EUserInterfaceActionType::ToggleButton
+	);
+
+	MenuBuilder.AddMenuEntry(
+		FText::FromString(TEXT("Show Files Excluded")),
+		FText::FromString(TEXT("Show excluded files in view")),
+		FSlateIcon(),
+		FUIAction
+		(
+			FExecuteAction::CreateLambda([&]
+			{
+				UPjcSubsystem* SubsystemPtr = GEditor->GetEditorSubsystem<UPjcSubsystem>();
+				SubsystemPtr->bShowFilesExcluded = !SubsystemPtr->bShowFilesExcluded;
+				SubsystemPtr->PostEditChange();
+
+				ListUpdate();
+			}),
+			FCanExecuteAction::CreateLambda([&]()
+			{
+				return true;
+			}),
+			FGetActionCheckState::CreateLambda([&]()
+			{
+				return GEditor && GEditor->GetEditorSubsystem<UPjcSubsystem>()->bShowFilesExcluded ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
 			})
 		),
 		NAME_None,

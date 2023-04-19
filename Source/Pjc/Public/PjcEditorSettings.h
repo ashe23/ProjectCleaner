@@ -21,14 +21,23 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Config, Category="General")
 	EPjcCleanupMethod CleanupMethod = EPjcCleanupMethod::Full;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Config, Category="ExcludeSettings", meta=(ContentDir, ToolTip="Consider assets in specified paths as used. Recursive."))
-	TArray<FDirectoryPath> ExcludedPaths;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Config, Category="AssetExclusionSettings", meta=(ContentDir, ToolTip="Consider assets in specified paths as used. Recursive."))
+	TArray<FDirectoryPath> ExcludedAssetPaths;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Config, Category="ExcludeSettings", meta=(ToolTip="Consider assets of specified classes as used."))
-	TArray<TSoftClassPtr<UObject>> ExcludedClasses;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Config, Category="AssetExclusionSettings", meta=(ToolTip="Consider assets of specified classes as used."))
+	TArray<TSoftClassPtr<UObject>> ExcludedAssetClasses;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Config, Category="ExcludeSettings", meta=(ToolTip="Consider specified assets as used."))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Config, Category="AssetExclusionSettings", meta=(ToolTip="Consider specified assets as used."))
 	TArray<TSoftObjectPtr<UObject>> ExcludedAssets;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Config, Category="ExternalFilesExclusionSettings", meta=(RelativeToGameDir))
+	TArray<FDirectoryPath> ExcludedExternalFilePaths;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Config, Category="ExternalFilesExclusionSettings")
+	TArray<FFilePath> ExcludedExternalFiles;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Config, Category="ExternalFilesExclusionSettings")
+	TArray<FString> ExcludedExternalFileExtensions;
 
 protected:
 #if WITH_EDITOR

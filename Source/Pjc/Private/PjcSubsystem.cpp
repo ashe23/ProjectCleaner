@@ -29,31 +29,31 @@ void UPjcSubsystem::ProjectScan()
 
 	FPjcExcludeSettings ExcludeSettings;
 
-	ExcludeSettings.ExcludedPaths.Reserve(EditorSettings->ExcludedPaths.Num());
-	ExcludeSettings.ExcludedClassNames.Reserve(EditorSettings->ExcludedClasses.Num());
-	ExcludeSettings.ExcludedAssetObjectPaths.Reserve(EditorSettings->ExcludedAssets.Num());
-
-	for (const auto& ExcludedPath : EditorSettings->ExcludedPaths)
-	{
-		const FString AssetPath = FPjcLibPath::ToAssetPath(ExcludedPath.Path);
-		if (AssetPath.IsEmpty()) continue;
-
-		ExcludeSettings.ExcludedPaths.Emplace(AssetPath);
-	}
-
-	for (const auto& ExcludedClass : EditorSettings->ExcludedClasses)
-	{
-		if (!ExcludedClass.LoadSynchronous()) continue;
-
-		ExcludeSettings.ExcludedClassNames.Emplace(ExcludedClass.Get()->GetFName());
-	}
-
-	for (const auto& ExcludedAsset : EditorSettings->ExcludedAssets)
-	{
-		if (!ExcludedAsset.LoadSynchronous()) continue;
-
-		ExcludeSettings.ExcludedAssetObjectPaths.Emplace(ExcludedAsset.ToSoftObjectPath().GetAssetPathName());
-	}
+	// ExcludeSettings.ExcludedPaths.Reserve(EditorSettings->ExcludedPaths.Num());
+	// ExcludeSettings.ExcludedClassNames.Reserve(EditorSettings->ExcludedClasses.Num());
+	// ExcludeSettings.ExcludedAssetObjectPaths.Reserve(EditorSettings->ExcludedAssets.Num());
+	//
+	// for (const auto& ExcludedPath : EditorSettings->ExcludedPaths)
+	// {
+	// 	const FString AssetPath = FPjcLibPath::ToAssetPath(ExcludedPath.Path);
+	// 	if (AssetPath.IsEmpty()) continue;
+	//
+	// 	ExcludeSettings.ExcludedPaths.Emplace(AssetPath);
+	// }
+	//
+	// for (const auto& ExcludedClass : EditorSettings->ExcludedClasses)
+	// {
+	// 	if (!ExcludedClass.LoadSynchronous()) continue;
+	//
+	// 	ExcludeSettings.ExcludedClassNames.Emplace(ExcludedClass.Get()->GetFName());
+	// }
+	//
+	// for (const auto& ExcludedAsset : EditorSettings->ExcludedAssets)
+	// {
+	// 	if (!ExcludedAsset.LoadSynchronous()) continue;
+	//
+	// 	ExcludeSettings.ExcludedAssetObjectPaths.Emplace(ExcludedAsset.ToSoftObjectPath().GetAssetPathName());
+	// }
 
 	ProjectScanBySettings(ExcludeSettings, LastScanResult);
 
@@ -90,7 +90,7 @@ void UPjcSubsystem::ProjectScanBySettings(const FPjcExcludeSettings& InExcludeSe
 	};
 	SlowTask.MakeDialog(false, false);
 	SlowTask.EnterProgressFrame(1.0f);
-	
+
 	// Clear previous scan data
 	OutScanResult.Clear();
 
@@ -175,6 +175,60 @@ void UPjcSubsystem::ProjectScanBySettings(const FPjcExcludeSettings& InExcludeSe
 	const double ScanTime = FPlatformTime::Seconds() - ScanStartTime;
 
 	UE_LOG(LogProjectCleaner, Display, TEXT("Project Scanned in %.2f seconds"), ScanTime);
+}
+
+void UPjcSubsystem::ScanProjectFiles(const UPjcFileScanSettings& InScanSettings, const bool bShowSlowTask, TSet<FString>& OutFilesExternal, TSet<FString>& OutFilesCorrupted) const
+{
+	OutFilesExternal.Empty();
+	OutFilesCorrupted.Empty();
+
+	const bool bSlowTaskEnabled = bShowSlowTask && GEditor && !IsRunningCommandlet();
+
+	FScopedSlowTask SlowTaskMain{
+		1.0f,
+		FText::FromString(TEXT("Scanning Content Directory Files...")),
+		bSlowTaskEnabled
+	};
+	SlowTaskMain.MakeDialog(false, false);
+	SlowTaskMain.EnterProgressFrame(1.0f);
+
+	// first gathering all files inside projects 'Content' folder
+	TSet<FString> FilesAll;
+	FPjcLibPath::GetFilesInPath(FPjcLibPath::ContentDir(), true, FilesAll);
+
+	// reserving some space
+	OutFilesExternal.Reserve(FilesAll.Num());
+	OutFilesCorrupted.Reserve(FilesAll.Num());
+
+	FScopedSlowTask SlowTask{
+		static_cast<float>(FilesAll.Num()),
+		FText::FromString(TEXT("")),
+		bSlowTaskEnabled
+	};
+
+	// traversing files and filtering only corrupted and external files
+	for (const auto& File : FilesAll)
+	{
+		SlowTask.EnterProgressFrame(1.0f, FText::FromString(File));
+
+		const FString FileExtension = FPjcLibPath::GetFileExtension(File, false).ToLower();
+		
+		// if (InScanSettings.ExcludedFiles.Contains(File)) continue;
+		// if (InScanSettings.ExcludedFileExtensions.Contains(FileExtension)) continue;
+
+		if (FPjcLibPath::IsExternalFile(File))
+		{
+			OutFilesExternal.Emplace(File);
+		}
+
+		if (FPjcLibPath::IsCorruptedAssetFile(File))
+		{
+			OutFilesCorrupted.Emplace(File);
+		}
+	}
+
+	OutFilesExternal.Shrink();
+	OutFilesCorrupted.Shrink();
 }
 
 FPjcDelegateOnProjectScan& UPjcSubsystem::OnProjectScan()

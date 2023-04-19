@@ -8,6 +8,7 @@
 #include "PjcSubsystem.generated.h"
 
 class UPjcExcludeSettings;
+class UPjcFileScanSettings;
 
 UCLASS(Config=EditorPerProjectUserSettings, meta=(ToolTip="ProjectCleanerSubsystem"))
 class UPjcSubsystem final : public UEditorSubsystem
@@ -24,14 +25,19 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(AdvancedDisplay="OutScanResult"))
 	void ProjectScanBySettings(const FPjcExcludeSettings& InExcludeSettings, UPARAM(DisplayName="OutScanResult") FPjcScanResult& OutScanResult) const;
 
+	void ScanProjectFiles(const UPjcFileScanSettings& InScanSettings, const bool bShowSlowTask, TSet<FString>& OutFilesExternal, TSet<FString>& OutFilesCorrupted) const;
+
 	FPjcDelegateOnProjectScan& OnProjectScan();
 	const FPjcScanResult& GetLastScanResult() const;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="ProjectCleaner", Config)
 	bool bShowFilesExternal = true;
-	
+
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="ProjectCleaner", Config)
 	bool bShowFilesCorrupted = true;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="ProjectCleaner", Config)
+	bool bShowFilesExcluded = true;
 
 protected:
 #if WITH_EDITOR
@@ -43,7 +49,12 @@ private:
 	void ScanFiles(FPjcScanResult& OutScanResult) const;
 	void ScanFolders(FPjcScanResult& OutScanResult) const;
 	void ScanStatsUpdate(FPjcScanResult& InScanResult) const;
-	
+
+	// cached data
+	TSet<FString> FilesExternal;
+	TSet<FString> FilesCorrupted;
+	TSet<FString> FilesExcluded;
+
 	bool bScanningInProgress = false;
 	bool bCleaningInProgress = false;
 	FPjcScanResult LastScanResult;

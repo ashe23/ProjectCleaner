@@ -43,13 +43,13 @@ void SPjcMainWindow::Construct(const FArguments& InArgs, const TSharedRef<SDockT
 	          .SetDisplayName(FText::FromString(TEXT("Assets Browser")))
 	          .SetIcon(FPjcStyles::GetIcon("ProjectCleaner.IconTabAssetsBrowser16"))
 	          .SetGroup(AppMenuGroup);
-	
+
 	TabManager->RegisterTabSpawner(PjcConstants::TabFilesBrowser, FOnSpawnTab::CreateRaw(this, &SPjcMainWindow::OnTabFilesBrowserSpawn))
 	          .SetTooltipText(FText::FromString(TEXT("Open Files Browser Tab")))
-	          .SetDisplayName(FText::FromString(TEXT("Files Browser")))
+	          .SetDisplayName(FText::FromString(TEXT("File Browser")))
 	          .SetIcon(FPjcStyles::GetIcon("ProjectCleaner.IconTabFilesBrowser16"))
 	          .SetGroup(AppMenuGroup);
-	
+
 	// TabManager->RegisterTabSpawner(PjcConstants::TabScanSettings, FOnSpawnTab::CreateRaw(this, &SPjcMainWindow::OnTabScanSettingsSpawn))
 	//           .SetTooltipText(FText::FromString(TEXT("Open Scan Settings Tab")))
 	//           .SetDisplayName(FText::FromString(TEXT("Scan Settings")))
@@ -62,7 +62,7 @@ void SPjcMainWindow::Construct(const FArguments& InArgs, const TSharedRef<SDockT
 	//           .SetIcon(FPjcStyles::GetIcon("ProjectCleaner.IconTabAssetsBrowser16"))
 	//           .SetGroup(AppMenuGroup);
 	//
-	
+
 	//
 	// TabManager->RegisterTabSpawner(PjcConstants::TabFilesCorrupted, FOnSpawnTab::CreateRaw(this, &SPjcMainWindow::OnTabFilesCorruptedSpawn))
 	//           .SetTooltipText(FText::FromString(TEXT("Open Corrupted Files Tab")))
@@ -75,6 +75,15 @@ void SPjcMainWindow::Construct(const FArguments& InArgs, const TSharedRef<SDockT
 		FText::FromString(TEXT("Tabs")),
 		FText::GetEmpty(),
 		FNewMenuDelegate::CreateRaw(this, &SPjcMainWindow::CreateMenuBarTabs, TabManager),
+		"Window"
+	);
+	MenuBarBuilder.AddPullDownMenu(
+		FText::FromString(TEXT("Help")),
+		FText::GetEmpty(),
+		FNewMenuDelegate::CreateLambda([](FMenuBuilder& MenuBuilder)
+		{
+			
+		}),
 		"Window"
 	);
 
@@ -218,7 +227,7 @@ TSharedRef<SDockTab> SPjcMainWindow::OnTabFilesBrowserSpawn(const FSpawnTabArgs&
 	return
 		SNew(SDockTab)
 		.TabRole(PanelTab)
-		.Label(FText::FromString(TEXT("Files Browser")))
+		.Label(FText::FromString(TEXT("File Browser")))
 		.Icon(FPjcStyles::Get().GetBrush("ProjectCleaner.IconTabFilesBrowser16"))
 		.ToolTipText(FText::FromString(TEXT("List of external and corrupted asset files inside Content folder")))
 		[

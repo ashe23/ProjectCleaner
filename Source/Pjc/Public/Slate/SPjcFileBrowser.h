@@ -21,6 +21,7 @@ public:
 	FString FilePathAbs;
 	FString FileExtension;
 	EPjcFileType FileType;
+	bool FileIsExcluded = false;
 };
 
 class SPjcFileBrowserItem final : public SMultiColumnTableRow<TSharedPtr<FPjcFileBrowserItem>>
@@ -60,6 +61,7 @@ private:
 	TSharedPtr<FPjcFileBrowserItem> CreateListItem(const FString& InFilePath) const;
 	TSharedRef<SHeaderRow> GetHeaderRow();
 	TSharedRef<ITableRow> OnGenerateRow(TSharedPtr<FPjcFileBrowserItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const;
+	TSharedPtr<SWidget> GetListViewContextMenu() const;
 	FSlateColor GetViewOptionsForegroundColor() const;
 	TSharedRef<SWidget> GetViewOptionsBtnContent();
 	FReply OnBtnScanFilesClick();
@@ -69,7 +71,7 @@ private:
 	bool IsListViewEnabled() const;
 	int32 GetListViewWidgetIndex() const;
 
-	// todo:ashe23 should add exclude/include functionality
+	TSharedPtr<FUICommandList> Cmds;
 	EColumnSortMode::Type ColumnFileNameSortMode = EColumnSortMode::None;
 	EColumnSortMode::Type ColumnFileTypeSortMode = EColumnSortMode::None;
 	EColumnSortMode::Type ColumnFileExtSortMode = EColumnSortMode::None;
@@ -77,7 +79,8 @@ private:
 	EColumnSortMode::Type ColumnFilePathSortMode = EColumnSortMode::None;
 	FString SearchText;
 	int64 TotalSize = 0;
-	TArray<FString> Files; // todo:ashe23 this should be in subsystem class, so its caches scan data when user closes and then reopens it
+	TArray<FString> Files;
+	TSet<FString> FilesExcluded; // todo:ashe23 this must be cached in subsystem class or editor settings
 	TSharedPtr<SComboButton> ViewOptionsBtn;
 	TArray<TSharedPtr<FPjcFileBrowserItem>> ListItems;
 	TSharedPtr<SListView<TSharedPtr<FPjcFileBrowserItem>>> ListView;

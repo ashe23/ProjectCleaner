@@ -133,6 +133,22 @@ void FPjcCmds::RegisterCommands()
 		EUserInterfaceActionType::Button,
 		FInputChord()
 	);
+
+	UI_COMMAND(
+		FilesExclude,
+		"Exclude...",
+		"Exclude selected files from scanning",
+		EUserInterfaceActionType::Button,
+		FInputChord()
+	);
+
+	UI_COMMAND(
+		FilesInclude,
+		"Include...",
+		"Include selected files in scanning",
+		EUserInterfaceActionType::Button,
+		FInputChord()
+	);
 }
 
 #undef LOCTEXT_NAMESPACE
