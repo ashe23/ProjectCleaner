@@ -68,6 +68,7 @@ private:
 	bool IsListViewEnabled() const;
 	int32 GetListViewWidgetIndex() const;
 
+	// todo:ashe23 should add exclude/include functionality
 	EColumnSortMode::Type ColumnFileNameSortMode = EColumnSortMode::None;
 	EColumnSortMode::Type ColumnFileTypeSortMode = EColumnSortMode::None;
 	EColumnSortMode::Type ColumnFileExtSortMode = EColumnSortMode::None;

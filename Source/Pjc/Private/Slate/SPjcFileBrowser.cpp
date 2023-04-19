@@ -164,6 +164,7 @@ void SPjcFileBrowser::Construct(const FArguments& InArgs)
 			.WidgetIndex_Raw(this, &SPjcFileBrowser::GetListViewWidgetIndex)
 			+ SWidgetSwitcher::Slot().HAlign(HAlign_Center).VAlign(VAlign_Center)
 			[
+				// todo:ashe23 must show another message if there is files , but are filtered by view options
 				SNew(STextBlock)
 				.Justification(ETextJustify::Center)
 				.Text(FText::FromString(TEXT("No files to display")))
