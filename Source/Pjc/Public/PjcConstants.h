@@ -22,19 +22,20 @@ namespace PjcConstants
 	static const FName TabProjectCleaner{TEXT("TabProjectCleaner")};
 	static const FName TabAssetsBrowser{TEXT("TabAssetsBrowser")};
 	static const FName TabFilesBrowser{TEXT("TabFilesBrowser")};
-	static const FName TabScanSettings{TEXT("TabScanSettings")};
-	static const FName TabScanInfo{TEXT("TabScanInfo")};
-	static const FName TabFilesCorrupted{TEXT("TabFilesCorrupted")};
+	// static const FName TabScanSettings{TEXT("TabScanSettings")};
+	// static const FName TabScanInfo{TEXT("TabScanInfo")};
+	// static const FName TabFilesCorrupted{TEXT("TabFilesCorrupted")};
 
 	// widget index
 	static int32 WidgetIndexIdle = 0;
 	static int32 WidgetIndexWorking = 1;
 
 	// misc
-	static int32 NoSize = -1;
-	static int32 HeaderRowFontSize = 10;
-	static FMargin HeaderRowMargin{5.0f};
+	// static int32 NoSize{-1};
+	// static int32 HeaderRowFontSize{10};
+	// static FMargin HeaderRowMargin{5.0f};
 	static const TSet<FString> EngineFileExtensions{TEXT("umap"), TEXT("uasset"), TEXT("collection")};
 	static const TSet<FString> SourceFileExtensions{TEXT("cpp"), TEXT("h"), TEXT("cs")};
 	static const TSet<FString> ConfigFileExtensions{TEXT("ini")};
+	static const FString UrlWiki{TEXT("")};
 }

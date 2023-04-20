@@ -98,12 +98,12 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create()
 	Style->Set("ProjectCleaner.IconCheck20", new IMAGE_BRUSH(TEXT("IconCheck20"), FVector2D{20.0f, 20.0f}));
 
 	// pallet colors
-	Style->Set("ProjectCleaner.Color.Blue", FLinearColor{FColor::FromHex(TEXT("#227c9d"))});
-	Style->Set("ProjectCleaner.Color.Green", FLinearColor{FColor::FromHex(TEXT("#17c3b2"))});
+	Style->Set("ProjectCleaner.Color.Blue", FLinearColor{FColor::FromHex(TEXT("#227C9D"))});
+	Style->Set("ProjectCleaner.Color.Green", FLinearColor{FColor::FromHex(TEXT("#17C3B2"))});
 	Style->Set("ProjectCleaner.Color.GreenBright", FLinearColor{FColor::FromHex(TEXT("#16db65"))});
-	Style->Set("ProjectCleaner.Color.Yellow", FLinearColor{FColor::FromHex(TEXT("#ffcb77"))});
+	Style->Set("ProjectCleaner.Color.Yellow", FLinearColor{FColor::FromHex(TEXT("#FFCB77"))});
 	Style->Set("ProjectCleaner.Color.White", FLinearColor{FColor::FromHex(TEXT("#fef9ef"))});
-	Style->Set("ProjectCleaner.Color.Red", FLinearColor{FColor::FromHex(TEXT("#fe6d73"))});
+	Style->Set("ProjectCleaner.Color.Red", FLinearColor{FColor::FromHex(TEXT("#FE6D73"))});
 	Style->Set("ProjectCleaner.Color.Violet", FLinearColor{FColor::FromHex(TEXT("#932f6d"))});
 	Style->Set("ProjectCleaner.Color.Gray", FLinearColor{FColor::FromHex(TEXT("#adb5bd"))});
 	Style->Set("ProjectCleaner.Color.DarkGray", FLinearColor{FColor::FromHex(TEXT("#567189"))});

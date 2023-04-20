@@ -19,16 +19,16 @@ public:
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	virtual void Deinitialize() override;
 
-	void ProjectScan();
-	void ProjectClean();
-
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(AdvancedDisplay="OutScanResult"))
-	void ProjectScanBySettings(const FPjcExcludeSettings& InExcludeSettings, UPARAM(DisplayName="OutScanResult") FPjcScanResult& OutScanResult) const;
-
-	void ScanProjectFiles(const UPjcFileScanSettings& InScanSettings, const bool bShowSlowTask, TSet<FString>& OutFilesExternal, TSet<FString>& OutFilesCorrupted) const;
-
-	FPjcDelegateOnProjectScan& OnProjectScan();
-	const FPjcScanResult& GetLastScanResult() const;
+	// void ProjectScan();
+	// void ProjectClean();
+	//
+	// UFUNCTION(BlueprintCallable, BlueprintPure, Category="ProjectCleaner", meta=(AdvancedDisplay="OutScanResult"))
+	// void ProjectScanBySettings(const FPjcExcludeSettings& InExcludeSettings, UPARAM(DisplayName="OutScanResult") FPjcScanResult& OutScanResult) const;
+	//
+	// void ScanProjectFiles(const UPjcFileScanSettings& InScanSettings, const bool bShowSlowTask, TSet<FString>& OutFilesExternal, TSet<FString>& OutFilesCorrupted) const;
+	//
+	// FPjcDelegateOnProjectScan& OnProjectScan();
+	// const FPjcScanResult& GetLastScanResult() const;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="ProjectCleaner", Config)
 	bool bShowFilesExternal = true;
@@ -45,18 +45,18 @@ protected:
 #endif
 
 private:
-	void ScanAssets(const FPjcExcludeSettings& InExcludeSettings, FPjcScanResult& OutScanResult) const;
-	void ScanFiles(FPjcScanResult& OutScanResult) const;
-	void ScanFolders(FPjcScanResult& OutScanResult) const;
-	void ScanStatsUpdate(FPjcScanResult& InScanResult) const;
-
-	// cached data
-	TSet<FString> FilesExternal;
-	TSet<FString> FilesCorrupted;
-	TSet<FString> FilesExcluded;
-
-	bool bScanningInProgress = false;
-	bool bCleaningInProgress = false;
-	FPjcScanResult LastScanResult;
-	FPjcDelegateOnProjectScan DelegateOnProjectScan;
+	// void ScanAssets(const FPjcExcludeSettings& InExcludeSettings, FPjcScanResult& OutScanResult) const;
+	// void ScanFiles(FPjcScanResult& OutScanResult) const;
+	// void ScanFolders(FPjcScanResult& OutScanResult) const;
+	// void ScanStatsUpdate(FPjcScanResult& InScanResult) const;
+	//
+	// // cached data
+	// TSet<FString> FilesExternal;
+	// TSet<FString> FilesCorrupted;
+	// TSet<FString> FilesExcluded;
+	//
+	// bool bScanningInProgress = false;
+	// bool bCleaningInProgress = false;
+	// FPjcScanResult LastScanResult;
+	// FPjcDelegateOnProjectScan DelegateOnProjectScan;
 };
