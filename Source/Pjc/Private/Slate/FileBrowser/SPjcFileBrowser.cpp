@@ -473,7 +473,7 @@ FText SPjcFileBrowser::GetSummary() const
 			FString::Printf(
 				TEXT("%d file%s (%d selected). Total Size: %s"),
 				ListItems.Num(),
-				ListItems.Num() > 1 ? TEXT("s") : TEXT(""),
+				ListItems.Num() == 1 ? TEXT("") : TEXT("s"),
 				ListView->GetSelectedItems().Num(),
 				*FText::AsMemory(TotalSize, IEC).ToString()
 			)
@@ -484,7 +484,7 @@ FText SPjcFileBrowser::GetSummary() const
 		FString::Printf(
 			TEXT("%d file%s. Total Size: %s"),
 			ListItems.Num(),
-			ListItems.Num() > 1 ? TEXT("s") : TEXT(""),
+			ListItems.Num() == 1 ? TEXT("") : TEXT("s"),
 			*FText::AsMemory(TotalSize, IEC).ToString()
 		)
 	);

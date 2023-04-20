@@ -2,15 +2,17 @@
 
 #include "SLate/AssetBrowser/SPjcAssetBrowser.h"
 #include "Slate/AssetBrowser/SPjcAssetBrowserStatItem.h"
+#include "Slate/AssetBrowser/SPjcContentBrowser.h"
+#include "Slate/AssetBrowser/SPjcTreeView.h"
 #include "PjcTypes.h"
 #include "PjcStyles.h"
+// #include "PjcConstants.h"
+// #include "Libs/PjcLibAsset.h"
 // Engine Headers
 #include "EditorWidgetsModule.h"
-#include "PjcConstants.h"
-#include "Libs/PjcLibAsset.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SSeparator.h"
-#include "Widgets/Layout/SWidgetSwitcher.h"
+// #include "Widgets/Layout/SWidgetSwitcher.h"
 
 void SPjcAssetBrowser::Construct(const FArguments& InArgs)
 {
@@ -61,6 +63,7 @@ void SPjcAssetBrowser::Construct(const FArguments& InArgs)
 				[
 					SNew(SButton)
 					.ContentPadding(FMargin{3.0f})
+					.OnClicked_Raw(this, &SPjcAssetBrowser::OnBtnScanAssetsClick)
 					.ButtonColorAndOpacity(FPjcStyles::Get().GetColor("ProjectCleaner.Color.Blue"))
 					[
 						SNew(STextBlock)
@@ -139,21 +142,28 @@ void SPjcAssetBrowser::Construct(const FArguments& InArgs)
 		+ SSplitter::Slot()
 		.Value(0.7f)
 		[
-			SNew(SOverlay)
-			+ SOverlay::Slot().Padding(5.0f)
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot().FillHeight(1.0f)
 			[
-				SNew(SScrollBox)
-				.ScrollWhenFocusChanges(EScrollWhenFocusChanges::NoScroll)
-				.AnimateWheelScrolling(true)
-				.AllowOverscroll(EAllowOverscroll::No)
-				+ SScrollBox::Slot()
+				SNew(SOverlay)
+				+ SOverlay::Slot().Padding(5.0f)
 				[
-					SNew(STextBlock).Text(FText::FromString(TEXT("Assets")))
+					SNew(SSplitter)
+					.Style(FEditorStyle::Get(), "DetailsView.Splitter")
+					.PhysicalSplitterHandleSize(3.0f)
+					+ SSplitter::Slot().Value(0.3f)
+					[
+						SAssignNew(TreeView, SPjcTreeView)
+					]
+					+ SSplitter::Slot().Value(0.7f)
+					[
+						SAssignNew(ContentBrowser, SPjcContentBrowser)
+					]
 				]
-			]
-			+ SOverlay::Slot().HAlign(HAlign_Center).VAlign(VAlign_Center).Padding(5.0f)
-			[
-				AssetDiscoveryIndicator
+				+ SOverlay::Slot().HAlign(HAlign_Center).VAlign(VAlign_Center).Padding(5.0f)
+				[
+					AssetDiscoveryIndicator
+				]
 			]
 		]
 	];
@@ -167,6 +177,7 @@ TSharedRef<ITableRow> SPjcAssetBrowser::OnStatGenerateRow(TSharedPtr<FPjcAssetBr
 TSharedRef<SHeaderRow> SPjcAssetBrowser::GetStatHeaderRow() const
 {
 	const FMargin HeaderContentPadding{5.0f};
+
 	return
 		SNew(SHeaderRow)
 		+ SHeaderRow::Column("Category").FillWidth(0.4f).HAlignCell(HAlign_Left).VAlignCell(VAlign_Center).HAlignHeader(HAlign_Center).HeaderContentPadding(HeaderContentPadding)
@@ -190,4 +201,14 @@ TSharedRef<SHeaderRow> SPjcAssetBrowser::GetStatHeaderRow() const
 			.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
 			.Font(FPjcStyles::GetFont("Light", 10.0f))
 		];
+}
+
+FReply SPjcAssetBrowser::OnBtnScanAssetsClick() const
+{
+	if (TreeView.IsValid())
+	{
+		TreeView->TreeViewListUpdate();
+	}
+
+	return FReply::Handled();
 }

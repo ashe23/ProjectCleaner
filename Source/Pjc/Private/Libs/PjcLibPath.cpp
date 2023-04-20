@@ -230,6 +230,24 @@ bool FPjcLibPath::IsPathEngineGenerated(const FString& InPath)
 		InPath.StartsWith(CurrentUserCollectionsDir());
 }
 
+bool FPjcLibPath::IsUnderPath(const FString& InPath, const FString& CheckPath)
+{
+	return InPath.StartsWith(CheckPath);
+}
+
+bool FPjcLibPath::IsUnderPaths(const FString& InPath, const TSet<FString>& CheckPaths)
+{
+	for (const auto& CheckPath : CheckPaths)
+	{
+		if (IsUnderPath(InPath, CheckPath))
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
 bool FPjcLibPath::IsCorruptedAssetFile(const FString& InPath)
 {
 	if (!PjcConstants::EngineFileExtensions.Contains(GetFileExtension(InPath, false).ToLower()))

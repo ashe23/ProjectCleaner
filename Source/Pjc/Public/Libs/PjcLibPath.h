@@ -29,6 +29,8 @@ struct FPjcLibPath
 	static bool IsDir(const FString& InPath);
 	static bool IsPathEmpty(const FString& InPath);
 	static bool IsPathEngineGenerated(const FString& InPath);
+	static bool IsUnderPath(const FString& InPath, const FString& CheckPath);
+	static bool IsUnderPaths(const FString& InPath, const TSet<FString>& CheckPaths);
 	static bool IsCorruptedAssetFile(const FString& InPath);
 	static bool IsExternalFile(const FString& InPath);
 	// static bool IsPathExcluded(const FString& InPath);

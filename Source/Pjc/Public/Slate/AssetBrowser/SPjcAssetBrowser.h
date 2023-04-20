@@ -5,6 +5,8 @@
 #include "CoreMinimal.h"
 #include "Widgets/SCompoundWidget.h"
 
+class SPjcContentBrowser;
+class SPjcTreeView;
 struct FPjcAssetBrowserStatItem;
 
 class SPjcAssetBrowser : public SCompoundWidget
@@ -19,6 +21,10 @@ private:
 	TSharedRef<ITableRow> OnStatGenerateRow(TSharedPtr<FPjcAssetBrowserStatItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const;
 	TSharedRef<SHeaderRow> GetStatHeaderRow() const;
 
+	FReply OnBtnScanAssetsClick() const;
+
+	TSharedPtr<SPjcTreeView> TreeView;
+	TSharedPtr<SPjcContentBrowser> ContentBrowser;
 	TArray<TSharedPtr<FPjcAssetBrowserStatItem>> StatItems;
 	TSharedPtr<SListView<TSharedPtr<FPjcAssetBrowserStatItem>>> StatListView;
 };
