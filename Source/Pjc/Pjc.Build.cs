@@ -44,6 +44,7 @@ public class Pjc : ModuleRules
 				"UMGEditor",
 				"EditorStyle",
 				"EditorSubsystem",
+				"EditorWidgets",
 				"ContentBrowser",
 				"ContentBrowserData",
 				"ToolMenus",
@@ -58,7 +59,7 @@ public class Pjc : ModuleRules
 				"LevelEditor",
 				"PropertyEditor",
 				"ConfigEditor",
-				"Settings"
+				"Settings", 
 			}
 		);
 	}

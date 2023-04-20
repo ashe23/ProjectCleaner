@@ -4,6 +4,7 @@
 #include "PjcConstants.h"
 #include "PjcStyles.h"
 #include "Slate/FileBrowser/SPjcFileBrowser.h"
+#include "Slate/AssetBrowser/SPjcAssetBrowser.h"
 
 void SPjcMainWindow::Construct(const FArguments& InArgs, const TSharedRef<SDockTab>& ConstructUnderMajorTab, const TSharedPtr<SWindow>& ConstructUnderWindow)
 {
@@ -20,7 +21,7 @@ void SPjcMainWindow::Construct(const FArguments& InArgs, const TSharedRef<SDockT
 				FTabManager::NewStack()
 				->AddTab(PjcConstants::TabAssetsBrowser, ETabState::OpenedTab)
 				->AddTab(PjcConstants::TabFilesBrowser, ETabState::OpenedTab)
-				->SetForegroundTab(PjcConstants::TabFilesBrowser)
+				->SetForegroundTab(PjcConstants::TabAssetsBrowser)
 				->SetSizeCoefficient(1.0f)
 			)
 		);
@@ -86,7 +87,7 @@ TSharedRef<SDockTab> SPjcMainWindow::OnTabAssetsBrowserSpawn(const FSpawnTabArgs
 		.Label(FText::FromString(TEXT("Assets Browser")))
 		.Icon(FPjcStyles::Get().GetBrush("ProjectCleaner.IconTabAssetsBrowser16"))
 		[
-			SNew(STextBlock).Text(FText::FromString(TEXT("Assets Browser")))
+			SNew(SPjcAssetBrowser)
 		];
 }
 

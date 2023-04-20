@@ -14,18 +14,47 @@ enum class EPjcCleanupMethod : uint8
 	EmptyFoldersOnly UMETA(Tooltip="Remove empty folders only"),
 };
 
+UCLASS(Config = EditorPerProjectUserSettings)
+class UPjcScanSettingsEditor : public UObject
+{
+	GENERATED_BODY()
+
+public:
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="General", Config)
+	EPjcCleanupMethod CleanupMethod = EPjcCleanupMethod::Full;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="AssetExcludeSettings", Config, meta=(ContentDir, RelativeToGameContentDir, HideViewOptions))
+	TArray<FDirectoryPath> ExcludedPaths;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="AssetExcludeSettings", Config, meta=(ShowTreeView, DisallowCreateNew))
+	TArray<TSoftClassPtr<UObject>> ExcludedAssetClasses;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="AssetExcludeSettings", Config)
+	TArray<TSoftObjectPtr<UObject>> ExcludedAssets;
+
+protected:
+#if WITH_EDITOR
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override
+	{
+		Super::PostEditChangeProperty(PropertyChangedEvent);
+
+		SaveConfig();
+	}
+#endif
+};
+
 USTRUCT(BlueprintType)
 struct FPjcExcludeSettings
 {
 	GENERATED_BODY()
 
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ExcludeSettings")
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|AssetExcludeSettings")
 	TArray<FString> ExcludedPaths;
 
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ExcludeSettings")
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|AssetExcludeSettings")
 	TArray<FName> ExcludedClassNames;
 
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|ExcludeSettings")
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ProjectCleaner|AssetExcludeSettings")
 	TArray<FName> ExcludedAssetObjectPaths;
 
 	void Clear()
@@ -264,7 +293,7 @@ class UPjcFileScanSettings : public UObject
 public:
 	// UPROPERTY(BlueprintReadWrite, EditAnywhere, Config, Category="File Scan Settings", meta=(RelativeToGameContentDir, ToolTip="List of paths to exclude from scanning"))
 	// TArray<FDirectoryPath> ExcludedPaths;
-	
+
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Config, Category="File Scan Settings", meta=(RelativeToGameDir, ToolTip="List of files to exclude from scanning"))
 	TArray<FFilePath> ExcludedFiles;
 

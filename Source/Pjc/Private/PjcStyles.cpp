@@ -106,6 +106,7 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create()
 	Style->Set("ProjectCleaner.Color.Red", FLinearColor{FColor::FromHex(TEXT("#FE6D73"))});
 	Style->Set("ProjectCleaner.Color.Violet", FLinearColor{FColor::FromHex(TEXT("#932f6d"))});
 	Style->Set("ProjectCleaner.Color.Gray", FLinearColor{FColor::FromHex(TEXT("#adb5bd"))});
+	Style->Set("ProjectCleaner.Color.BlueLight", FLinearColor{FColor::FromHex(TEXT("#0496ff"))});
 	Style->Set("ProjectCleaner.Color.DarkGray", FLinearColor{FColor::FromHex(TEXT("#567189"))});
 
 	// progressbar
