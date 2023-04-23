@@ -5,10 +5,8 @@
 #include "CoreMinimal.h"
 #include "EditorSubsystem.h"
 #include "PjcDelegates.h"
+#include "PjcTypes.h"
 #include "PjcSubsystem.generated.h"
-
-class UPjcExcludeSettings;
-class UPjcFileScanSettings;
 
 UCLASS(Config=EditorPerProjectUserSettings, meta=(ToolTip="ProjectCleanerSubsystem"))
 class UPjcSubsystem final : public UEditorSubsystem
@@ -18,6 +16,15 @@ class UPjcSubsystem final : public UEditorSubsystem
 public:
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	virtual void Deinitialize() override;
+
+	UFUNCTION(BlueprintCallable, Category="ProjectCleaner")
+	void ProjectScan(const FPjcAssetExcludeSettings& InAssetExcludeSetting, FPjcScanResult& ScanResult) const;
+
+	void ScanAssets(const FPjcAssetExcludeSettings& InAssetExcludeSetting, FPjcScanDataAssets& ScanDataAssets) const;
+	void ScanFiles(FPjcScanDataFiles& ScanDataFiles) const;
+
+	UFUNCTION(BlueprintCallable, Category="ProjectCleaner")
+	void Test();
 
 	// void ProjectScan();
 	// void ProjectClean();
@@ -30,14 +37,16 @@ public:
 	// FPjcDelegateOnProjectScan& OnProjectScan();
 	// const FPjcScanResult& GetLastScanResult() const;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="ProjectCleaner", Config)
-	bool bShowFilesExternal = true;
+	// UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="ProjectCleaner", Config)
+	// bool bShowFilesExternal = true;
+	//
+	// UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="ProjectCleaner", Config)
+	// bool bShowFilesCorrupted = true;
+	//
+	// UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="ProjectCleaner", Config)
+	// bool bShowFilesExcluded = true;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="ProjectCleaner", Config)
-	bool bShowFilesCorrupted = true;
-
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="ProjectCleaner", Config)
-	bool bShowFilesExcluded = true;
+	FPjcDelegateOnScanAssets& OnScanAssets();
 
 protected:
 #if WITH_EDITOR
@@ -45,6 +54,7 @@ protected:
 #endif
 
 private:
+	bool CanScanProject(FString& ErrMsg) const;
 	// void ScanAssets(const FPjcExcludeSettings& InExcludeSettings, FPjcScanResult& OutScanResult) const;
 	// void ScanFiles(FPjcScanResult& OutScanResult) const;
 	// void ScanFolders(FPjcScanResult& OutScanResult) const;
@@ -55,8 +65,10 @@ private:
 	// TSet<FString> FilesCorrupted;
 	// TSet<FString> FilesExcluded;
 	//
-	// bool bScanningInProgress = false;
-	// bool bCleaningInProgress = false;
+	bool bScanningInProgress = false;
+	bool bCleaningInProgress = false;
+
+	FPjcDelegateOnScanAssets DelegateOnScanAssets;
 	// FPjcScanResult LastScanResult;
 	// FPjcDelegateOnProjectScan DelegateOnProjectScan;
 };

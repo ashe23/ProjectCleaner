@@ -29,7 +29,7 @@ import os
 
 subsystem = unreal.get_editor_subsystem(unreal.PjcSubsystem)
 
-scan_settings = unreal.PjcScanSettings()
+# scan_settings = unreal.PjcScanSettings()
 # scan_settings.excluded_paths = ["/Game/Developers"]
 # scan_settings.excluded_class_names = [unreal.StaticMesh.static_class().get_name(), 
 #                                       unreal.Texture2D.static_class().get_name(), 
@@ -37,7 +37,7 @@ scan_settings = unreal.PjcScanSettings()
 #                                       unreal.Blueprint.static_class().get_name(),
 #                                       unreal.SoundWave.static_class().get_name()]
 # scan_settings.excluded_object_paths = ["ParticleSystem'/Game/StarterContent/Particles/P_Explosion.P_Explosion'"]
-subsystem.project_scan2(scan_settings)
+subsystem.test()
 # print(scan_result)
 
 # scan_data = subsystem.project_scan(exclude_settings) # uses provided exclude settings

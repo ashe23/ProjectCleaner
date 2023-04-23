@@ -4,6 +4,7 @@
 #include "Libs/PjcLibPath.h"
 // Engine Headers
 #include "ShaderCompiler.h"
+#include "EditorSettings/PjcEditorAssetExcludeSettings.h"
 #include "Framework/Notifications/NotificationManager.h"
 
 void FPjcLibEditor::ShowNotification(const FString& Msg, const SNotificationItem::ECompletionState State, const float Duration)
@@ -71,4 +72,37 @@ void FPjcLibEditor::OpenFileInFileExplorer(const FString& InFilePath)
 bool FPjcLibEditor::EditorInPlayMode()
 {
 	return GEditor && GEditor->PlayWorld || GIsPlayInEditorWorld;
+}
+
+FPjcAssetExcludeSettings FPjcLibEditor::GetEditorAssetExcludeSettings()
+{
+	FPjcAssetExcludeSettings AssetExcludeSettings;
+
+	const UPjcEditorAssetExcludeSettings* EditorAssetExcludeSettings = GetDefault<UPjcEditorAssetExcludeSettings>();
+	if (!EditorAssetExcludeSettings) return AssetExcludeSettings;
+
+	AssetExcludeSettings.ExcludedPackagePaths.Reserve(EditorAssetExcludeSettings->ExcludedPaths.Num());
+	AssetExcludeSettings.ExcludedObjectPaths.Reserve(EditorAssetExcludeSettings->ExcludedAssets.Num());
+	AssetExcludeSettings.ExcludedClassNames.Reserve(EditorAssetExcludeSettings->ExcludedClasses.Num());
+
+	for (const auto& ExcludedPath : EditorAssetExcludeSettings->ExcludedPaths)
+	{
+		AssetExcludeSettings.ExcludedPackagePaths.Emplace(FName{*ExcludedPath.Path});
+	}
+
+	for (const auto& ExcludedAsset : EditorAssetExcludeSettings->ExcludedAssets)
+	{
+		if (!ExcludedAsset.LoadSynchronous()) continue;
+
+		AssetExcludeSettings.ExcludedObjectPaths.Emplace(ExcludedAsset.ToSoftObjectPath().GetAssetPathName());
+	}
+
+	for (const auto& ExcludedClass : EditorAssetExcludeSettings->ExcludedClasses)
+	{
+		if (!ExcludedClass.LoadSynchronous()) continue;
+
+		AssetExcludeSettings.ExcludedClassNames.Emplace(ExcludedClass.Get()->GetFName());
+	}
+
+	return AssetExcludeSettings;
 }

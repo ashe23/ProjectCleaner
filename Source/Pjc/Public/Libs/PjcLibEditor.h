@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "PjcTypes.h"
 #include "Widgets/Notifications/SNotificationList.h"
 
 struct FPjcLibEditor
@@ -14,4 +15,5 @@ struct FPjcLibEditor
 	static void NavigateToPathInFileExplorer(const FString& InPath);
 	static void OpenFileInFileExplorer(const FString& InFilePath);
 	static bool EditorInPlayMode();
+	static FPjcAssetExcludeSettings GetEditorAssetExcludeSettings();
 };
