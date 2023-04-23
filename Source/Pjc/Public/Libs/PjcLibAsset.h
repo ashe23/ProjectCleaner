@@ -22,11 +22,11 @@ struct FPjcLibAsset
 	static void GetAssetsPrimary(const TArray<FAssetData>& AssetsAll, TArray<FAssetData>& OutAssets);
 	static void GetAssetsEditor(const TArray<FAssetData>& AssetsAll, TArray<FAssetData>& OutAssets);
 	static void GetAssetsExtReferenced(const TArray<FAssetData>& AssetsAll, TArray<FAssetData>& OutAssets);
-	static void GetAssetsExcluded(const FPjcExcludeSettings& InExcludeSettings, TArray<FAssetData>& OutAssets);
+	// static void GetAssetsExcluded(const FPjcExcludeSettings& InExcludeSettings, TArray<FAssetData>& OutAssets);
 	static void GetAssetsByPath(const FString& InPath, const bool bRecursive, TArray<FAssetData>& OutAssets);
 	static void GetAssetsByPackagePaths(const TArray<FString>& InPackagePaths, const bool bRecursive, TSet<FAssetData>& OutAssets);
 	static void GetAssetsByObjectPaths(const TArray<FName>& InObjectPaths, TSet<FAssetData>& OutAssets);
-	static void GetAssetsIndirect(TArray<FAssetData>& AssetsIndirect, TArray<FPjcAssetIndirectInfo>& AssetsIndirectInfos);
+	// static void GetAssetsIndirect(TArray<FAssetData>& AssetsIndirect, TArray<FPjcAssetIndirectInfo>& AssetsIndirectInfos);
 	static void GetAssetDeps(const FAssetData& InAssetData, TSet<FAssetData>& OutDeps);
 	static void GetAssetsDeps(const TSet<FAssetData>& Assets, TSet<FAssetData>& Dependencies);
 	static void GetCachedPaths(TArray<FString>& Paths);

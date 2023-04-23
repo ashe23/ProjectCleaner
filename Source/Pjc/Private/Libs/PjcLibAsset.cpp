@@ -292,146 +292,146 @@ void FPjcLibAsset::GetAssetsByObjectPaths(const TArray<FName>& InObjectPaths, TS
 	OutAssets.Append(Assets);
 }
 
-void FPjcLibAsset::GetAssetsExcluded(const FPjcExcludeSettings& InExcludeSettings, TArray<FAssetData>& OutAssets)
-{
-	const FAssetRegistryModule& ModuleAssetRegistry = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(PjcConstants::ModuleAssetRegistryName);
+// void FPjcLibAsset::GetAssetsExcluded(const FPjcExcludeSettings& InExcludeSettings, TArray<FAssetData>& OutAssets)
+// {
+// 	const FAssetRegistryModule& ModuleAssetRegistry = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(PjcConstants::ModuleAssetRegistryName);
+//
+// 	TArray<FAssetData> AssetsAll;
+// 	ModuleAssetRegistry.Get().GetAssetsByPath(PjcConstants::PathRelRoot, AssetsAll, true);
+//
+//
+// 	TSet<FAssetData> AssetsExcluded;
+//
+// 	{
+// 		FARFilter Filter;
+// 		Filter.bRecursivePaths = true;
+//
+// 		Filter.PackagePaths.Reserve(InExcludeSettings.ExcludedPaths.Num());
+//
+// 		for (const auto& ExcludedPath : InExcludeSettings.ExcludedPaths)
+// 		{
+// 			const FString AssetPath = FPjcLibPath::ToAssetPath(ExcludedPath);
+// 			if (AssetPath.IsEmpty()) continue;
+//
+// 			Filter.PackagePaths.Emplace(AssetPath);
+// 		}
+//
+// 		TArray<FAssetData> Assets;
+// 		ModuleAssetRegistry.Get().GetAssets(Filter, Assets);
+//
+// 		AssetsExcluded.Append(Assets);
+// 	}
+//
+// 	{
+// 		for (const auto& Asset : AssetsAll)
+// 		{
+// 			if (InExcludeSettings.ExcludedClassNames.Contains(Asset.AssetClass) || InExcludeSettings.ExcludedClassNames.Contains(GetAssetClassName(Asset)))
+// 			{
+// 				AssetsExcluded.Emplace(Asset);
+// 			}
+// 		}
+// 	}
+//
+// 	{
+// 		FARFilter Filter;
+//
+// 		for (const auto& ExcludedObjectPath : InExcludeSettings.ExcludedAssetObjectPaths)
+// 		{
+// 			const FName ObjectPath = FPjcLibPath::ToObjectPath(ExcludedObjectPath.ToString());
+// 			if (ObjectPath == NAME_None) continue;
+//
+// 			Filter.ObjectPaths.Emplace(ObjectPath);
+// 		}
+//
+// 		TArray<FAssetData> Assets;
+// 		ModuleAssetRegistry.Get().GetAssets(Filter, Assets);
+//
+// 		AssetsExcluded.Append(Assets);
+// 	}
+//
+// 	OutAssets.Empty();
+// 	OutAssets.Append(AssetsExcluded.Array());
+// }
 
-	TArray<FAssetData> AssetsAll;
-	ModuleAssetRegistry.Get().GetAssetsByPath(PjcConstants::PathRelRoot, AssetsAll, true);
-
-
-	TSet<FAssetData> AssetsExcluded;
-
-	{
-		FARFilter Filter;
-		Filter.bRecursivePaths = true;
-
-		Filter.PackagePaths.Reserve(InExcludeSettings.ExcludedPaths.Num());
-
-		for (const auto& ExcludedPath : InExcludeSettings.ExcludedPaths)
-		{
-			const FString AssetPath = FPjcLibPath::ToAssetPath(ExcludedPath);
-			if (AssetPath.IsEmpty()) continue;
-
-			Filter.PackagePaths.Emplace(AssetPath);
-		}
-
-		TArray<FAssetData> Assets;
-		ModuleAssetRegistry.Get().GetAssets(Filter, Assets);
-
-		AssetsExcluded.Append(Assets);
-	}
-
-	{
-		for (const auto& Asset : AssetsAll)
-		{
-			if (InExcludeSettings.ExcludedClassNames.Contains(Asset.AssetClass) || InExcludeSettings.ExcludedClassNames.Contains(GetAssetClassName(Asset)))
-			{
-				AssetsExcluded.Emplace(Asset);
-			}
-		}
-	}
-
-	{
-		FARFilter Filter;
-
-		for (const auto& ExcludedObjectPath : InExcludeSettings.ExcludedAssetObjectPaths)
-		{
-			const FName ObjectPath = FPjcLibPath::ToObjectPath(ExcludedObjectPath.ToString());
-			if (ObjectPath == NAME_None) continue;
-
-			Filter.ObjectPaths.Emplace(ObjectPath);
-		}
-
-		TArray<FAssetData> Assets;
-		ModuleAssetRegistry.Get().GetAssets(Filter, Assets);
-
-		AssetsExcluded.Append(Assets);
-	}
-
-	OutAssets.Empty();
-	OutAssets.Append(AssetsExcluded.Array());
-}
-
-void FPjcLibAsset::GetAssetsIndirect(TArray<FAssetData>& AssetsIndirect, TArray<FPjcAssetIndirectInfo>& AssetsIndirectInfos)
-{
-	AssetsIndirect.Empty();
-	AssetsIndirectInfos.Empty();
-
-	TSet<FString> SourceFiles;
-	TSet<FString> ConfigFiles;
-
-	FPjcLibPath::GetFilesInPathByExt(FPjcLibPath::SourceDir(), true, false, PjcConstants::SourceFileExtensions, SourceFiles);
-	FPjcLibPath::GetFilesInPathByExt(FPjcLibPath::ConfigDir(), true, false, PjcConstants::ConfigFileExtensions, ConfigFiles);
-
-	TSet<FString> InstalledPlugins;
-	FPjcLibPath::GetFoldersInPath(FPjcLibPath::PluginsDir(), false, InstalledPlugins);
-
-	const FString ProjectCleanerPluginPath = FPjcLibPath::PluginsDir() / PjcConstants::ModuleName.ToString();
-	TSet<FString> Files;
-	for (const auto& InstalledPlugin : InstalledPlugins)
-	{
-		// ignore ProjectCleaner plugin
-		if (InstalledPlugin.Equals(ProjectCleanerPluginPath)) continue;
-
-		FPjcLibPath::GetFilesInPathByExt(InstalledPlugin / TEXT("Source"), true, false, PjcConstants::SourceFileExtensions, Files);
-		SourceFiles.Append(Files);
-
-		Files.Reset();
-
-		FPjcLibPath::GetFilesInPathByExt(InstalledPlugin / TEXT("Config"), true, false, PjcConstants::ConfigFileExtensions, Files);
-		ConfigFiles.Append(Files);
-
-		Files.Reset();
-	}
-
-	TSet<FString> ScanFiles;
-	ScanFiles.Append(SourceFiles);
-	ScanFiles.Append(ConfigFiles);
-
-	FScopedSlowTask SlowTask{
-		static_cast<float>(ScanFiles.Num()),
-		FText::FromString(TEXT("Searching Indirectly used assets...")),
-		GIsEditor && !IsRunningCommandlet()
-	};
-	SlowTask.MakeDialog();
-
-	for (const auto& File : ScanFiles)
-	{
-		SlowTask.EnterProgressFrame(1.0f, FText::FromString(File));
-
-		FString FileContent;
-		FFileHelper::LoadFileToString(FileContent, *File);
-
-		if (FileContent.IsEmpty()) continue;
-
-		static FRegexPattern Pattern(TEXT(R"(\/Game([A-Za-z0-9_.\/]+)\b)"));
-		FRegexMatcher Matcher(Pattern, FileContent);
-		while (Matcher.FindNext())
-		{
-			FString FoundedAssetObjectPath = Matcher.GetCaptureGroup(0);
-			const FName ObjectPath = FPjcLibPath::ToObjectPath(FoundedAssetObjectPath);
-			const FAssetData AssetData = GetAssetByObjectPath(ObjectPath);
-			if (!AssetData.IsValid()) continue;
-
-			// if founded asset is ok, we loading file lines to determine on what line its used
-			TArray<FString> Lines;
-			FFileHelper::LoadFileToStringArray(Lines, *File);
-
-			for (int32 i = 0; i < Lines.Num(); ++i)
-			{
-				if (!Lines.IsValidIndex(i)) continue;
-				if (!Lines[i].Contains(FoundedAssetObjectPath)) continue;
-
-				const FString FilePathAbs = FPaths::ConvertRelativePathToFull(File);
-				const int32 FileLine = i + 1;
-
-				AssetsIndirectInfos.AddUnique(FPjcAssetIndirectInfo{FileLine, AssetData, FilePathAbs});
-				AssetsIndirect.AddUnique(AssetData);
-			}
-		}
-	}
-}
+// void FPjcLibAsset::GetAssetsIndirect(TArray<FAssetData>& AssetsIndirect, TArray<FPjcAssetIndirectInfo>& AssetsIndirectInfos)
+// {
+// 	AssetsIndirect.Empty();
+// 	AssetsIndirectInfos.Empty();
+//
+// 	TSet<FString> SourceFiles;
+// 	TSet<FString> ConfigFiles;
+//
+// 	FPjcLibPath::GetFilesInPathByExt(FPjcLibPath::SourceDir(), true, false, PjcConstants::SourceFileExtensions, SourceFiles);
+// 	FPjcLibPath::GetFilesInPathByExt(FPjcLibPath::ConfigDir(), true, false, PjcConstants::ConfigFileExtensions, ConfigFiles);
+//
+// 	TSet<FString> InstalledPlugins;
+// 	FPjcLibPath::GetFoldersInPath(FPjcLibPath::PluginsDir(), false, InstalledPlugins);
+//
+// 	const FString ProjectCleanerPluginPath = FPjcLibPath::PluginsDir() / PjcConstants::ModuleName.ToString();
+// 	TSet<FString> Files;
+// 	for (const auto& InstalledPlugin : InstalledPlugins)
+// 	{
+// 		// ignore ProjectCleaner plugin
+// 		if (InstalledPlugin.Equals(ProjectCleanerPluginPath)) continue;
+//
+// 		FPjcLibPath::GetFilesInPathByExt(InstalledPlugin / TEXT("Source"), true, false, PjcConstants::SourceFileExtensions, Files);
+// 		SourceFiles.Append(Files);
+//
+// 		Files.Reset();
+//
+// 		FPjcLibPath::GetFilesInPathByExt(InstalledPlugin / TEXT("Config"), true, false, PjcConstants::ConfigFileExtensions, Files);
+// 		ConfigFiles.Append(Files);
+//
+// 		Files.Reset();
+// 	}
+//
+// 	TSet<FString> ScanFiles;
+// 	ScanFiles.Append(SourceFiles);
+// 	ScanFiles.Append(ConfigFiles);
+//
+// 	FScopedSlowTask SlowTask{
+// 		static_cast<float>(ScanFiles.Num()),
+// 		FText::FromString(TEXT("Searching Indirectly used assets...")),
+// 		GIsEditor && !IsRunningCommandlet()
+// 	};
+// 	SlowTask.MakeDialog();
+//
+// 	for (const auto& File : ScanFiles)
+// 	{
+// 		SlowTask.EnterProgressFrame(1.0f, FText::FromString(File));
+//
+// 		FString FileContent;
+// 		FFileHelper::LoadFileToString(FileContent, *File);
+//
+// 		if (FileContent.IsEmpty()) continue;
+//
+// 		static FRegexPattern Pattern(TEXT(R"(\/Game([A-Za-z0-9_.\/]+)\b)"));
+// 		FRegexMatcher Matcher(Pattern, FileContent);
+// 		while (Matcher.FindNext())
+// 		{
+// 			FString FoundedAssetObjectPath = Matcher.GetCaptureGroup(0);
+// 			const FName ObjectPath = FPjcLibPath::ToObjectPath(FoundedAssetObjectPath);
+// 			const FAssetData AssetData = GetAssetByObjectPath(ObjectPath);
+// 			if (!AssetData.IsValid()) continue;
+//
+// 			// if founded asset is ok, we loading file lines to determine on what line its used
+// 			TArray<FString> Lines;
+// 			FFileHelper::LoadFileToStringArray(Lines, *File);
+//
+// 			for (int32 i = 0; i < Lines.Num(); ++i)
+// 			{
+// 				if (!Lines.IsValidIndex(i)) continue;
+// 				if (!Lines[i].Contains(FoundedAssetObjectPath)) continue;
+//
+// 				const FString FilePathAbs = FPaths::ConvertRelativePathToFull(File);
+// 				const int32 FileLine = i + 1;
+//
+// 				AssetsIndirectInfos.AddUnique(FPjcAssetIndirectInfo{FileLine, AssetData, FilePathAbs});
+// 				AssetsIndirect.AddUnique(AssetData);
+// 			}
+// 		}
+// 	}
+// }
 
 void FPjcLibAsset::GetAssetDeps(const FAssetData& InAssetData, TSet<FAssetData>& OutDeps)
 {

@@ -10,6 +10,7 @@
 // #include "Libs/PjcLibAsset.h"
 // Engine Headers
 #include "EditorWidgetsModule.h"
+#include "EditorSettings/PjcEditorAssetExcludeSettings.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SSeparator.h"
 // #include "Widgets/Layout/SWidgetSwitcher.h"
@@ -43,9 +44,9 @@ void SPjcAssetBrowser::Construct(const FArguments& InArgs)
 	DetailsViewArgs.bShowPropertyMatrixButton = false;
 	DetailsViewArgs.NameAreaSettings = FDetailsViewArgs::HideNameArea;
 	DetailsViewArgs.ViewIdentifier = "PjcScaSettingsEditor";
-
+	
 	const auto SettingsProperty = PropertyEditor.CreateDetailView(DetailsViewArgs);
-	SettingsProperty->SetObject(GetMutableDefault<UPjcScanSettingsEditor>());
+	SettingsProperty->SetObject(GetMutableDefault<UPjcEditorAssetExcludeSettings>());
 
 	ChildSlot
 	[
