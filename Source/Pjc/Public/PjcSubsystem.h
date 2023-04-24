@@ -23,9 +23,6 @@ public:
 	void ScanAssets(const FPjcAssetExcludeSettings& InAssetExcludeSetting, FPjcScanDataAssets& ScanDataAssets) const;
 	void ScanFiles(FPjcScanDataFiles& ScanDataFiles) const;
 
-	UFUNCTION(BlueprintCallable, Category="ProjectCleaner")
-	void Test();
-
 	FPjcDelegateOnScanAssets& OnScanAssets();
 	FPjcDelegateOnScanFiles& OnScanFiles();
 
@@ -36,7 +33,7 @@ protected:
 
 private:
 	bool CanScanProject(FString& ErrMsg) const;
-	
+
 	bool bScanningInProgress = false;
 	bool bCleaningInProgress = false;
 
