@@ -277,7 +277,7 @@ void FPjcLibAsset::GetAssetsByObjectPaths(const TArray<FName>& InObjectPaths, TA
 
 	for (const auto& ObjectPath : InObjectPaths)
 	{
-		Filter.PackagePaths.Emplace(ObjectPath);
+		Filter.ObjectPaths.Emplace(ObjectPath);
 	}
 
 	const FAssetRegistryModule& ModuleAssetRegistry = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(PjcConstants::ModuleAssetRegistryName);
@@ -285,67 +285,6 @@ void FPjcLibAsset::GetAssetsByObjectPaths(const TArray<FName>& InObjectPaths, TA
 	OutAssets.Empty();
 	ModuleAssetRegistry.Get().GetAssets(Filter, OutAssets);
 }
-
-// void FPjcLibAsset::GetAssetsExcluded(const FPjcExcludeSettings& InExcludeSettings, TArray<FAssetData>& OutAssets)
-// {
-// 	const FAssetRegistryModule& ModuleAssetRegistry = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(PjcConstants::ModuleAssetRegistryName);
-//
-// 	TArray<FAssetData> AssetsAll;
-// 	ModuleAssetRegistry.Get().GetAssetsByPath(PjcConstants::PathRelRoot, AssetsAll, true);
-//
-//
-// 	TSet<FAssetData> AssetsExcluded;
-//
-// 	{
-// 		FARFilter Filter;
-// 		Filter.bRecursivePaths = true;
-//
-// 		Filter.PackagePaths.Reserve(InExcludeSettings.ExcludedPaths.Num());
-//
-// 		for (const auto& ExcludedPath : InExcludeSettings.ExcludedPaths)
-// 		{
-// 			const FString AssetPath = FPjcLibPath::ToAssetPath(ExcludedPath);
-// 			if (AssetPath.IsEmpty()) continue;
-//
-// 			Filter.PackagePaths.Emplace(AssetPath);
-// 		}
-//
-// 		TArray<FAssetData> Assets;
-// 		ModuleAssetRegistry.Get().GetAssets(Filter, Assets);
-//
-// 		AssetsExcluded.Append(Assets);
-// 	}
-//
-// 	{
-// 		for (const auto& Asset : AssetsAll)
-// 		{
-// 			if (InExcludeSettings.ExcludedClassNames.Contains(Asset.AssetClass) || InExcludeSettings.ExcludedClassNames.Contains(GetAssetClassName(Asset)))
-// 			{
-// 				AssetsExcluded.Emplace(Asset);
-// 			}
-// 		}
-// 	}
-//
-// 	{
-// 		FARFilter Filter;
-//
-// 		for (const auto& ExcludedObjectPath : InExcludeSettings.ExcludedAssetObjectPaths)
-// 		{
-// 			const FName ObjectPath = FPjcLibPath::ToObjectPath(ExcludedObjectPath.ToString());
-// 			if (ObjectPath == NAME_None) continue;
-//
-// 			Filter.ObjectPaths.Emplace(ObjectPath);
-// 		}
-//
-// 		TArray<FAssetData> Assets;
-// 		ModuleAssetRegistry.Get().GetAssets(Filter, Assets);
-//
-// 		AssetsExcluded.Append(Assets);
-// 	}
-//
-// 	OutAssets.Empty();
-// 	OutAssets.Append(AssetsExcluded.Array());
-// }
 
 void FPjcLibAsset::GetAssetsIndirect(TMap<FAssetData, FPjcAssetIndirectUsageInfo>& AssetsIndirect)
 {
@@ -419,12 +358,8 @@ void FPjcLibAsset::GetAssetsIndirect(TMap<FAssetData, FPjcAssetIndirectUsageInfo
 				const FString FilePathAbs = FPaths::ConvertRelativePathToFull(File);
 				const int32 FileLine = i + 1;
 
-
 				FPjcAssetIndirectUsageInfo& UsageInfo = AssetsIndirect.FindOrAdd(AssetData);
 				UsageInfo.Files.AddUnique(FPjcFileInfo{FileLine, FilePathAbs});
-				
-				// AssetsIndirectInfos.AddUnique(FPjcAssetIndirectInfo{FileLine, AssetData, FilePathAbs});
-				// AssetsIndirect.AddUnique(AssetData);
 			}
 		}
 	}
@@ -465,8 +400,6 @@ void FPjcLibAsset::GetAssetDeps(const FAssetData& InAssetData, TSet<FAssetData>&
 	}
 
 	FARFilter Filter;
-	// Filter.bRecursivePaths = true;
-	// Filter.PackagePaths.Add(PjcConstants::PathRelRoot);
 
 	for (const auto& Dep : AllDepsPackageNames)
 	{
@@ -544,57 +477,6 @@ void FPjcLibAsset::GetCachedPaths(TArray<FString>& Paths)
 	}, false);
 	Paths.Shrink();
 }
-
-// void UProjectCleanerLibAsset::GetAssetsDependencies(const TArray<FAssetData>& Assets, TArray<FAssetData>& Dependencies)
-// {
-// 	Dependencies.Empty();
-//
-// 	const FAssetRegistryModule& ModuleAssetRegistry = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(AssetRegistryConstants::ModuleName);
-//
-// 	TSet<FName> UsedAssetsDeps;
-// 	TArray<FName> Stack;
-// 	for (const auto& Asset : Assets)
-// 	{
-// 		UsedAssetsDeps.Add(Asset.PackageName);
-// 		Stack.Add(Asset.PackageName);
-//
-// 		TArray<FName> Deps;
-// 		while (Stack.Num() > 0)
-// 		{
-// 			const auto CurrentPackageName = Stack.Pop(false);
-// 			Deps.Reset();
-//
-// 			ModuleAssetRegistry.Get().GetDependencies(CurrentPackageName, Deps);
-//
-// 			Deps.RemoveAllSwap([&](const FName& Dep)
-// 			{
-// 				return !Dep.ToString().StartsWith(*ProjectCleanerConstants::PathRelRoot.ToString());
-// 			}, false);
-//
-// 			for (const auto& Dep : Deps)
-// 			{
-// 				bool bIsAlreadyInSet = false;
-// 				UsedAssetsDeps.Add(Dep, &bIsAlreadyInSet);
-// 				if (!bIsAlreadyInSet)
-// 				{
-// 					Stack.Add(Dep);
-// 				}
-// 			}
-// 		}
-// 	}
-//
-// 	FARFilter Filter;
-// 	Filter.bRecursivePaths = true;
-// 	Filter.PackagePaths.Add(ProjectCleanerConstants::PathRelRoot);
-//
-// 	for (const auto& Dep : UsedAssetsDeps)
-// 	{
-// 		Filter.PackageNames.Add(Dep);
-// 	}
-//
-// 	ModuleAssetRegistry.Get().GetAssets(Filter, Dependencies);
-// }
-
 
 FName FPjcLibAsset::GetAssetClassName(const FAssetData& InAssetData)
 {

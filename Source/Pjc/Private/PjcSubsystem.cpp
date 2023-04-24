@@ -170,7 +170,7 @@ void UPjcSubsystem::ScanAssets(const FPjcAssetExcludeSettings& InAssetExcludeSet
 	ScanDataAssets.AssetsUnused.Shrink();
 	ScanDataAssets.AssetsUsed.Shrink();
 	ScanDataAssets.AssetsPrimary.Shrink();
-	ScanDataAssets.AssetsPrimary.Shrink();
+	ScanDataAssets.AssetsEditor.Shrink();
 	ScanDataAssets.AssetsExtReferenced.Shrink();
 	ScanDataAssets.AssetsExcluded.Shrink();
 

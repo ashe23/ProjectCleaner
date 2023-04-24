@@ -116,10 +116,10 @@ struct FPjcScanResult
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="ScanResult")
 	FString ScanErrMsg;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="ScanResult")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="ScanResult", DisplayName="Assets")
 	FPjcScanDataAssets ScanDataAssets;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="ScanResult")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="ScanResult", DisplayName="Files")
 	FPjcScanDataFiles ScanDataFiles;
 };
 
