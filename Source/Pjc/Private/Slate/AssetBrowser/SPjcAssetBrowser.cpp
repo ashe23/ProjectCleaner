@@ -3,20 +3,17 @@
 #include "SLate/AssetBrowser/SPjcAssetBrowser.h"
 #include "Slate/AssetStats/SPjcAssetStats.h"
 #include "EditorSettings/PjcEditorAssetExcludeSettings.h"
-// #include "Slate/AssetBrowser/SPjcAssetBrowserStatItem.h"
-// #include "Slate/AssetBrowser/SPjcContentBrowser.h"
-// #include "Slate/AssetBrowser/SPjcTreeView.h"
-// #include "PjcTypes.h"
 #include "PjcStyles.h"
-// #include "PjcConstants.h"
-// #include "Libs/PjcLibAsset.h"
-// Engine Headers
-#include "EditorWidgetsModule.h"
 #include "PjcSubsystem.h"
 #include "Libs/PjcLibEditor.h"
+// Engine Headers
+#include "ContentBrowserModule.h"
+#include "EditorWidgetsModule.h"
+#include "IContentBrowserSingleton.h"
+#include "PjcConstants.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SSeparator.h"
-// #include "Widgets/Layout/SWidgetSwitcher.h"
+#include "Widgets/Layout/SWidgetSwitcher.h"
 
 void SPjcAssetBrowser::Construct(const FArguments& InArgs)
 {
@@ -43,6 +40,116 @@ void SPjcAssetBrowser::Construct(const FArguments& InArgs)
 
 	const auto SettingsProperty = PropertyEditor.CreateDetailView(DetailsViewArgs);
 	SettingsProperty->SetObject(GetMutableDefault<UPjcEditorAssetExcludeSettings>());
+
+	const FContentBrowserModule& ModuleContentBrowser = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>(PjcConstants::ModuleContentBrowser);
+
+	Filter.TagsAndValues.Add(PjcConstants::EmptyTagName, PjcConstants::EmptyTagName.ToString());
+
+	FAssetPickerConfig AssetPickerConfig;
+	AssetPickerConfig.bAllowNullSelection = false;
+	AssetPickerConfig.InitialAssetViewType = EAssetViewType::Tile;
+	AssetPickerConfig.bCanShowFolders = false;
+	AssetPickerConfig.bAddFilterUI = true;
+	AssetPickerConfig.bSortByPathInColumnView = true;
+	AssetPickerConfig.bShowPathInColumnView = true;
+	AssetPickerConfig.bShowBottomToolbar = true;
+	AssetPickerConfig.bCanShowDevelopersFolder = true;
+	AssetPickerConfig.bCanShowClasses = false;
+	AssetPickerConfig.bAllowDragging = false;
+	AssetPickerConfig.bForceShowEngineContent = false;
+	AssetPickerConfig.bCanShowRealTimeThumbnails = false;
+	AssetPickerConfig.AssetShowWarningText = FText::FromName("No Unused Assets To Display.");
+	AssetPickerConfig.OnAssetDoubleClicked.BindRaw(this, &SPjcAssetBrowser::OnAssetDblClick);
+	AssetPickerConfig.GetCurrentSelectionDelegates.Add(&DelegateSelection);
+	AssetPickerConfig.RefreshAssetViewDelegates.Add(&DelegateRefreshView);
+	AssetPickerConfig.SetFilterDelegates.Add(&DelegateFilter);
+	AssetPickerConfig.Filter = Filter;
+
+	//
+	// 	AssetPickerConfig.OnGetAssetContextMenu = FOnGetAssetContextMenu::CreateLambda([&](const TArray<FAssetData>&)
+	// 	{
+	// 		FMenuBuilder MenuBuilder{true, Cmds};
+	// 		MenuBuilder.BeginSection(TEXT("AssetInfoActions"), FText::FromName(TEXT("Info")));
+	// 		{
+	// 			MenuBuilder.AddMenuEntry(FPjcCmds::Get().OpenSizeMap);
+	// 			MenuBuilder.AddMenuEntry(FPjcCmds::Get().OpenReferenceViewer);
+	// 			MenuBuilder.AddMenuEntry(FPjcCmds::Get().OpenAssetAudit);
+	// 		}
+	// 		MenuBuilder.EndSection();
+	// 		MenuBuilder.BeginSection(TEXT("AssetExcludeActions"), FText::FromName(TEXT("Exclusion")));
+	// 		{
+	// 			MenuBuilder.AddMenuEntry(FPjcCmds::Get().AssetsExclude);
+	// 			MenuBuilder.AddMenuEntry(FPjcCmds::Get().AssetsInclude);
+	// 			MenuBuilder.AddMenuEntry(FPjcCmds::Get().AssetsExcludeByClass);
+	// 			MenuBuilder.AddMenuEntry(FPjcCmds::Get().AssetsIncludeByClass);
+	// 		}
+	// 		MenuBuilder.EndSection();
+	// 		MenuBuilder.BeginSection(TEXT("AssetDeletionActions"), FText::FromName(TEXT("Deletion")));
+	// 		{
+	// 			MenuBuilder.AddMenuEntry(FPjcCmds::Get().AssetsDelete);
+	// 		}
+	// 		MenuBuilder.EndSection();
+	//
+	// 		return MenuBuilder.MakeWidget();
+	// 	});
+	//
+	// 	const TSharedPtr<FFrontendFilterCategory> DefaultCategory = MakeShareable(new FFrontendFilterCategory(FText::FromString(TEXT("ProjectCleaner Filters")), FText::FromString(TEXT(""))));
+	// 	const TSharedPtr<FPjcFilterAssetsPrimary> FilterPrimary = MakeShareable(new FPjcFilterAssetsPrimary(DefaultCategory));
+	// 	const TSharedPtr<FPjcFilterAssetsExcluded> FilterExcluded = MakeShareable(new FPjcFilterAssetsExcluded(DefaultCategory));
+	// 	const TSharedPtr<FPjcFilterAssetsIndirect> FilterIndirect = MakeShareable(new FPjcFilterAssetsIndirect(DefaultCategory));
+	// 	const TSharedPtr<FPjcFilterAssetsExtReferenced> FilterExtReferenced = MakeShareable(new FPjcFilterAssetsExtReferenced(DefaultCategory));
+	// 	const TSharedPtr<FPjcFilterAssetsUsed> FilterUsed = MakeShareable(new FPjcFilterAssetsUsed(DefaultCategory));
+	//
+	// 	FilterPrimary->OnFilterChange().AddLambda([&](const bool bActive)
+	// 	{
+	// 		bFilterPrimaryActive = bActive;
+	// 		if (AssetBrowserDelegateFilter.IsBound())
+	// 		{
+	// 			AssetBrowserDelegateFilter.Execute(AssetBrowserCreateFilter());
+	// 		}
+	// 	});
+	//
+	// 	FilterExcluded->OnFilterChange().AddLambda([&](const bool bActive)
+	// 	{
+	// 		bFilterExcludeActive = bActive;
+	// 		if (AssetBrowserDelegateFilter.IsBound())
+	// 		{
+	// 			AssetBrowserDelegateFilter.Execute(AssetBrowserCreateFilter());
+	// 		}
+	// 	});
+	//
+	// 	FilterIndirect->OnFilterChange().AddLambda([&](const bool bActive)
+	// 	{
+	// 		bFilterIndirectActive = bActive;
+	// 		if (AssetBrowserDelegateFilter.IsBound())
+	// 		{
+	// 			AssetBrowserDelegateFilter.Execute(AssetBrowserCreateFilter());
+	// 		}
+	// 	});
+	//
+	// 	FilterExtReferenced->OnFilterChange().AddLambda([&](const bool bActive)
+	// 	{
+	// 		bFilterExtReferencedActive = bActive;
+	// 		if (AssetBrowserDelegateFilter.IsBound())
+	// 		{
+	// 			AssetBrowserDelegateFilter.Execute(AssetBrowserCreateFilter());
+	// 		}
+	// 	});
+	//
+	// 	FilterUsed->OnFilterChange().AddLambda([&](const bool bActive)
+	// 	{
+	// 		bFilterUsedActive = bActive;
+	// 		if (AssetBrowserDelegateFilter.IsBound())
+	// 		{
+	// 			AssetBrowserDelegateFilter.Execute(AssetBrowserCreateFilter());
+	// 		}
+	// 	});
+	//
+	// 	AssetPickerConfig.ExtraFrontendFilters.Add(FilterUsed.ToSharedRef());
+	// 	AssetPickerConfig.ExtraFrontendFilters.Add(FilterPrimary.ToSharedRef());
+	// 	AssetPickerConfig.ExtraFrontendFilters.Add(FilterExcluded.ToSharedRef());
+	// 	AssetPickerConfig.ExtraFrontendFilters.Add(FilterIndirect.ToSharedRef());
+	// 	AssetPickerConfig.ExtraFrontendFilters.Add(FilterExtReferenced.ToSharedRef());
 
 	ChildSlot
 	[
@@ -118,33 +225,33 @@ void SPjcAssetBrowser::Construct(const FArguments& InArgs)
 				]
 			]
 		]
-		// + SSplitter::Slot()
-		// .Value(0.7f)
-		// [
-		// 	SNew(SVerticalBox)
-		// 	+ SVerticalBox::Slot().FillHeight(1.0f)
-		// 	[
-		// 		SNew(SOverlay)
-		// 		+ SOverlay::Slot().Padding(5.0f)
-		// 		[
-		// 			SNew(SSplitter)
-		// 			.Style(FEditorStyle::Get(), "DetailsView.Splitter")
-		// 			.PhysicalSplitterHandleSize(3.0f)
-		// 			+ SSplitter::Slot().Value(0.3f)
-		// 			[
-		// 				SAssignNew(TreeView, SPjcTreeView)
-		// 			]
-		// 			+ SSplitter::Slot().Value(0.7f)
-		// 			[
-		// 				SAssignNew(ContentBrowser, SPjcContentBrowser)
-		// 			]
-		// 		]
-		// 		+ SOverlay::Slot().HAlign(HAlign_Center).VAlign(VAlign_Center).Padding(5.0f)
-		// 		[
-		// 			AssetDiscoveryIndicator
-		// 		]
-		// 	]
-		// ]
+		+ SSplitter::Slot()
+		.Value(0.7f)
+		[
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot().FillHeight(1.0f)
+			[
+				SNew(SOverlay)
+				+ SOverlay::Slot().Padding(5.0f)
+				[
+					SNew(SSplitter)
+					.Style(FEditorStyle::Get(), "DetailsView.Splitter")
+					.PhysicalSplitterHandleSize(3.0f)
+					+ SSplitter::Slot().Value(0.3f)
+					[
+						SNew(STextBlock).Text(FText::FromString(TEXT("TreeView")))
+					]
+					+ SSplitter::Slot().Value(0.7f)
+					[
+						ModuleContentBrowser.Get().CreateAssetPicker(AssetPickerConfig)
+					]
+				]
+				+ SOverlay::Slot().HAlign(HAlign_Center).VAlign(VAlign_Center).Padding(5.0f)
+				[
+					AssetDiscoveryIndicator
+				]
+			]
+		]
 	];
 }
 
@@ -166,4 +273,30 @@ FReply SPjcAssetBrowser::OnBtnScanAssetsClick() const
 	return FReply::Handled();
 }
 
-void SPjcAssetBrowser::OnScanAssets(const FPjcScanDataAssets& InScaDataAssets) { }
+void SPjcAssetBrowser::OnScanAssets(const FPjcScanDataAssets& InScanDataAssets)
+{
+	Filter.Clear();
+
+	if (InScanDataAssets.AssetsUnused.Num() == 0)
+	{
+		// this is needed for disabling showing primary assets in browser, when there is no unused assets
+		Filter.TagsAndValues.Add(PjcConstants::EmptyTagName, PjcConstants::EmptyTagName.ToString());
+
+		DelegateFilter.Execute(Filter);
+		return;
+	}
+
+	Filter.PackageNames.Reserve(InScanDataAssets.AssetsUnused.Num());
+
+	for (const auto& Asset : InScanDataAssets.AssetsUnused)
+	{
+		Filter.PackageNames.Emplace(Asset.PackageName);
+	}
+
+	DelegateFilter.Execute(Filter);
+}
+
+void SPjcAssetBrowser::OnAssetDblClick(const FAssetData& AssetData)
+{
+	FPjcLibEditor::OpenAssetEditor(AssetData);
+}

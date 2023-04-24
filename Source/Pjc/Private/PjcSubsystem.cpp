@@ -3,7 +3,6 @@
 #include "PjcSubsystem.h"
 #include "Pjc.h"
 #include "PjcConstants.h"
-#include "PjcEditorSettings.h"
 #include "Libs/PjcLibPath.h"
 #include "Libs/PjcLibAsset.h"
 #include "Libs/PjcLibEditor.h"
@@ -21,7 +20,7 @@ void UPjcSubsystem::Deinitialize()
 	Super::Deinitialize();
 }
 
-void UPjcSubsystem::ProjectScan(const FPjcAssetExcludeSettings& InAssetExcludeSetting, FPjcScanResult& ScanResult) const
+void UPjcSubsystem::ProjectScan(const FPjcAssetExcludeSettings& InAssetExcludeSetting, FPjcScanResult& ScanResult)
 {
 	ScanResult.bScanSuccess = true;
 
@@ -45,8 +44,10 @@ void UPjcSubsystem::ProjectScan(const FPjcAssetExcludeSettings& InAssetExcludeSe
 	ScanFiles(ScanResult.ScanDataFiles);
 }
 
-void UPjcSubsystem::ScanAssets(const FPjcAssetExcludeSettings& InAssetExcludeSetting, FPjcScanDataAssets& ScanDataAssets) const
+void UPjcSubsystem::ScanAssets(const FPjcAssetExcludeSettings& InAssetExcludeSetting, FPjcScanDataAssets& ScanDataAssets)
 {
+	bScanningInProgress = true;
+
 	const double ScanStartTime = FPlatformTime::Seconds();
 
 	FScopedSlowTask SlowTaskMain{
@@ -177,6 +178,8 @@ void UPjcSubsystem::ScanAssets(const FPjcAssetExcludeSettings& InAssetExcludeSet
 	const double ScanTime = FPlatformTime::Seconds() - ScanStartTime;
 
 	UE_LOG(LogProjectCleaner, Display, TEXT("Project assets scanned in %f seconds"), ScanTime);
+
+	bScanningInProgress = false;
 
 	if (DelegateOnScanAssets.IsBound())
 	{

@@ -13,6 +13,7 @@ namespace PjcConstants
 	static const FName ModuleAssetRegistryName{TEXT("AssetRegistry")};
 	static const FName ModuleAssetToolsName{TEXT("AssetTools")};
 	static const FName ModuleMegascans{TEXT("MegascansPlugin")};
+	static const FName ModuleContentBrowser{TEXT("ContentBrowser")};
 
 	// paths
 	static FName PathRelRoot{TEXT("/Game")};
@@ -34,6 +35,7 @@ namespace PjcConstants
 	// static int32 NoSize{-1};
 	// static int32 HeaderRowFontSize{10};
 	// static FMargin HeaderRowMargin{5.0f};
+	static const FName EmptyTagName{TEXT("PjcEmptyTag")};
 	static const TSet<FString> EngineFileExtensions{TEXT("umap"), TEXT("uasset"), TEXT("collection")};
 	static const TSet<FString> SourceFileExtensions{TEXT("cpp"), TEXT("h"), TEXT("cs")};
 	static const TSet<FString> ConfigFileExtensions{TEXT("ini")};

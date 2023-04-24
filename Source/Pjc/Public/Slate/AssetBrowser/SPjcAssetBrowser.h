@@ -3,10 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "ContentBrowserDelegates.h"
 #include "Widgets/SCompoundWidget.h"
-
-// class SPjcContentBrowser;
-// class SPjcTreeView;
 
 struct FPjcScanDataAssets;
 class UPjcSubsystem;
@@ -19,11 +17,16 @@ public:
 
 	void Construct(const FArguments& InArgs);
 	virtual ~SPjcAssetBrowser() override;
+
 private:
 	FReply OnBtnScanAssetsClick() const;
-	void OnScanAssets(const FPjcScanDataAssets& InScaDataAssets);
+	void OnScanAssets(const FPjcScanDataAssets& InScanDataAssets);
+
+	void OnAssetDblClick(const FAssetData& AssetData);
 
 	UPjcSubsystem* SubsystemPtr = nullptr;
-	// TSharedPtr<SPjcTreeView> TreeView;
-	// TSharedPtr<SPjcContentBrowser> ContentBrowser;
+	FARFilter Filter;
+	FSetARFilterDelegate DelegateFilter;
+	FRefreshAssetViewDelegate DelegateRefreshView;
+	FGetCurrentSelectionDelegate DelegateSelection;
 };

@@ -14,6 +14,7 @@ struct FPjcLibEditor
 	static void ShaderCompilationDisable();
 	static void NavigateToPathInFileExplorer(const FString& InPath);
 	static void OpenFileInFileExplorer(const FString& InFilePath);
+	static void OpenAssetEditor(const FAssetData& InAssetData);
 	static bool EditorInPlayMode();
 	static FPjcAssetExcludeSettings GetEditorAssetExcludeSettings();
 };

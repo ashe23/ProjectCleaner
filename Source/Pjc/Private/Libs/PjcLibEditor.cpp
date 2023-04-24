@@ -69,6 +69,17 @@ void FPjcLibEditor::OpenFileInFileExplorer(const FString& InFilePath)
 	FPlatformProcess::LaunchFileInDefaultExternalApplication(*PathAbsolute);
 }
 
+void FPjcLibEditor::OpenAssetEditor(const FAssetData& InAssetData)
+{
+	if (!InAssetData.IsValid()) return;
+	if (!GEditor) return;
+
+	TArray<FName> AssetNames;
+	AssetNames.Add(InAssetData.ToSoftObjectPath().GetAssetPathName());
+
+	GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->OpenEditorsForAssets(AssetNames);
+}
+
 bool FPjcLibEditor::EditorInPlayMode()
 {
 	return GEditor && GEditor->PlayWorld || GIsPlayInEditorWorld;
