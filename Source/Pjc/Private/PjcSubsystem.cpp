@@ -30,6 +30,19 @@ void UPjcSubsystem::ProjectScan(const FPjcAssetExcludeSettings& InAssetExcludeSe
 		ScanResult.bScanSuccess = false;
 		return;
 	}
+
+	FScopedSlowTask SlowTaskMain{
+		2.0f,
+		FText::FromString(TEXT("Scanning Project ...")),
+		GIsEditor && !IsRunningCommandlet()
+	};
+	SlowTaskMain.MakeDialog(false, false);
+
+	SlowTaskMain.EnterProgressFrame(1.0f);
+	ScanAssets(InAssetExcludeSetting, ScanResult.ScanDataAssets);
+	
+	SlowTaskMain.EnterProgressFrame(1.0f);
+	ScanFiles(ScanResult.ScanDataFiles);
 }
 
 void UPjcSubsystem::ScanAssets(const FPjcAssetExcludeSettings& InAssetExcludeSetting, FPjcScanDataAssets& ScanDataAssets) const
@@ -173,18 +186,89 @@ void UPjcSubsystem::ScanAssets(const FPjcAssetExcludeSettings& InAssetExcludeSet
 
 void UPjcSubsystem::ScanFiles(FPjcScanDataFiles& ScanDataFiles) const
 {
-	// todo:ashe23
+	const float ScanStartTime = FPlatformTime::Seconds();
+
+	FScopedSlowTask SlowTaskMain{
+		1.0f,
+		FText::FromString(TEXT("Scanning Project Files...")),
+		GIsEditor && !IsRunningCommandlet()
+	};
+	SlowTaskMain.MakeDialog(false, false);
+
+	SlowTaskMain.EnterProgressFrame(1.0f);
+	TArray<FString> Paths;
+	FPjcLibAsset::GetCachedPaths(Paths);
+
+	ScanDataFiles.FilesExternal.Reset(Paths.Num());
+	ScanDataFiles.FilesCorrupted.Reset(Paths.Num());
+	ScanDataFiles.FoldersEmpty.Reset(Paths.Num());
+
+	FScopedSlowTask SlowTask{
+		static_cast<float>(Paths.Num()),
+		FText{},
+		GIsEditor && !IsRunningCommandlet()
+	};
+	SlowTask.MakeDialog(false, false);
+
+	TSet<FString> Files;
+	for (const auto& Path : Paths)
+	{
+		SlowTask.EnterProgressFrame(1.0f);
+
+		const FString PathAbs = FPjcLibPath::ToAbsolute(Path);
+		if (PathAbs.IsEmpty()) continue;
+
+		if (FPjcLibPath::IsPathEmpty(PathAbs) && !FPjcLibPath::IsPathEngineGenerated(PathAbs))
+		{
+			ScanDataFiles.FoldersEmpty.Emplace(PathAbs);
+		}
+
+		FPjcLibPath::GetFilesInPath(PathAbs, true, Files);
+
+		for (const auto& File : Files)
+		{
+			if (FPjcLibPath::IsExternalFile(File))
+			{
+				ScanDataFiles.FilesExternal.Emplace(File);
+			}
+
+			if (FPjcLibPath::IsCorruptedAssetFile(File))
+			{
+				ScanDataFiles.FilesCorrupted.Emplace(File);
+			}
+		}
+	}
+
+	ScanDataFiles.FilesExternal.Shrink();
+	ScanDataFiles.FilesCorrupted.Shrink();
+	ScanDataFiles.FoldersEmpty.Shrink();
+
+	const double ScanTime = FPlatformTime::Seconds() - ScanStartTime;
+
+	UE_LOG(LogProjectCleaner, Display, TEXT("Project files scanned in %f seconds"), ScanTime);
+
+	if (DelegateOnScanFiles.IsBound())
+	{
+		DelegateOnScanFiles.Broadcast(ScanDataFiles);
+	}
 }
 
 void UPjcSubsystem::Test()
 {
-	FPjcScanDataAssets DataAssets;
-	ScanAssets(FPjcLibEditor::GetEditorAssetExcludeSettings(), DataAssets);
+	FPjcScanDataFiles DataAssets;
+	ScanFiles(DataAssets);
+
+	return;
 }
 
 FPjcDelegateOnScanAssets& UPjcSubsystem::OnScanAssets()
 {
 	return DelegateOnScanAssets;
+}
+
+FPjcDelegateOnScanFiles& UPjcSubsystem::OnScanFiles()
+{
+	return DelegateOnScanFiles;
 }
 
 // void UPjcSubsystem::ProjectScan()

@@ -28,6 +28,9 @@ import os
 # exclude_settings.excluded_paths = ["/Game/StarterContent"]
 
 subsystem = unreal.get_editor_subsystem(unreal.PjcSubsystem)
+exclude_settings = unreal.PjcAssetExcludeSettings()
+# exclude_settings.excluded_package_paths = ["/Game"]
+print(len(subsystem.project_scan(exclude_settings).scan_data_assets.assets_unused))
 
 # scan_settings = unreal.PjcScanSettings()
 # scan_settings.excluded_paths = ["/Game/Developers"]
@@ -37,7 +40,7 @@ subsystem = unreal.get_editor_subsystem(unreal.PjcSubsystem)
 #                                       unreal.Blueprint.static_class().get_name(),
 #                                       unreal.SoundWave.static_class().get_name()]
 # scan_settings.excluded_object_paths = ["ParticleSystem'/Game/StarterContent/Particles/P_Explosion.P_Explosion'"]
-subsystem.test()
+# subsystem.test()
 # print(scan_result)
 
 # scan_data = subsystem.project_scan(exclude_settings) # uses provided exclude settings
