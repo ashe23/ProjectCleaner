@@ -21,10 +21,13 @@ public:
 	void ProjectScan(const FPjcAssetExcludeSettings& InAssetExcludeSetting, FPjcScanResult& ScanResult);
 
 	void ScanAssets(const FPjcAssetExcludeSettings& InAssetExcludeSetting, FPjcScanDataAssets& ScanDataAssets);
-	void ScanFiles(FPjcScanDataFiles& ScanDataFiles) const;
+	void ScanFiles(FPjcScanDataFiles& ScanDataFiles);
 
 	FPjcDelegateOnScanAssets& OnScanAssets();
 	FPjcDelegateOnScanFiles& OnScanFiles();
+
+	const FPjcScanDataAssets& GetLastScanDataAssets() const;
+	const FPjcScanDataFiles& GetLastScanDataFiles() const;
 
 protected:
 #if WITH_EDITOR
@@ -39,4 +42,7 @@ private:
 
 	FPjcDelegateOnScanAssets DelegateOnScanAssets;
 	FPjcDelegateOnScanFiles DelegateOnScanFiles;
+
+	FPjcScanDataAssets CachedScanDataAssets;
+	FPjcScanDataFiles CachedScanDataFiles;
 };

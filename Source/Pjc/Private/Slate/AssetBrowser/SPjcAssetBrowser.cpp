@@ -3,17 +3,25 @@
 #include "SLate/AssetBrowser/SPjcAssetBrowser.h"
 #include "Slate/AssetStats/SPjcAssetStats.h"
 #include "EditorSettings/PjcEditorAssetExcludeSettings.h"
+#include "Pjc.h"
 #include "PjcStyles.h"
+#include "PjcConstants.h"
 #include "PjcSubsystem.h"
 #include "Libs/PjcLibEditor.h"
+#include "FrontendFilters/PjcFrontendFilterAssetsEditor.h"
+#include "FrontendFilters/PjcFrontendFilterAssetsExcluded.h"
+#include "FrontendFilters/PjcFrontendFilterAssetsExtReferenced.h"
+#include "FrontendFilters/PjcFrontendFilterAssetsIndirect.h"
+#include "FrontendFilters/PjcFrontendFilterAssetsPrimary.h"
+#include "FrontendFilters/PjcFrontendFilterAssetsUsed.h"
 // Engine Headers
 #include "ContentBrowserModule.h"
-#include "EditorWidgetsModule.h"
+// #include "EditorWidgetsModule.h"
+#include "FrontendFilterBase.h"
 #include "IContentBrowserSingleton.h"
-#include "PjcConstants.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SSeparator.h"
-#include "Widgets/Layout/SWidgetSwitcher.h"
+// #include "Widgets/Layout/SWidgetSwitcher.h"
 
 void SPjcAssetBrowser::Construct(const FArguments& InArgs)
 {
@@ -24,8 +32,8 @@ void SPjcAssetBrowser::Construct(const FArguments& InArgs)
 
 	SubsystemPtr->OnScanAssets().AddRaw(this, &SPjcAssetBrowser::OnScanAssets);
 
-	FEditorWidgetsModule& EditorWidgetsModule = FModuleManager::LoadModuleChecked<FEditorWidgetsModule>("EditorWidgets");
-	const TSharedRef<SWidget> AssetDiscoveryIndicator = EditorWidgetsModule.CreateAssetDiscoveryIndicator(EAssetDiscoveryIndicatorScaleMode::Scale_None, FMargin(16, 8), false);
+	// FEditorWidgetsModule& EditorWidgetsModule = FModuleManager::LoadModuleChecked<FEditorWidgetsModule>("EditorWidgets");
+	// const TSharedRef<SWidget> AssetDiscoveryIndicator = EditorWidgetsModule.CreateAssetDiscoveryIndicator(EAssetDiscoveryIndicatorScaleMode::Scale_None, FMargin(16, 8), false);
 
 	FPropertyEditorModule& PropertyEditor = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
 	FDetailsViewArgs DetailsViewArgs;
@@ -58,7 +66,7 @@ void SPjcAssetBrowser::Construct(const FArguments& InArgs)
 	AssetPickerConfig.bAllowDragging = false;
 	AssetPickerConfig.bForceShowEngineContent = false;
 	AssetPickerConfig.bCanShowRealTimeThumbnails = false;
-	AssetPickerConfig.AssetShowWarningText = FText::FromName("No Unused Assets To Display.");
+	AssetPickerConfig.AssetShowWarningText = FText::FromName("No Assets");
 	AssetPickerConfig.OnAssetDoubleClicked.BindRaw(this, &SPjcAssetBrowser::OnAssetDblClick);
 	AssetPickerConfig.GetCurrentSelectionDelegates.Add(&DelegateSelection);
 	AssetPickerConfig.RefreshAssetViewDelegates.Add(&DelegateRefreshView);
@@ -93,63 +101,27 @@ void SPjcAssetBrowser::Construct(const FArguments& InArgs)
 	// 		return MenuBuilder.MakeWidget();
 	// 	});
 	//
-	// 	const TSharedPtr<FFrontendFilterCategory> DefaultCategory = MakeShareable(new FFrontendFilterCategory(FText::FromString(TEXT("ProjectCleaner Filters")), FText::FromString(TEXT(""))));
-	// 	const TSharedPtr<FPjcFilterAssetsPrimary> FilterPrimary = MakeShareable(new FPjcFilterAssetsPrimary(DefaultCategory));
-	// 	const TSharedPtr<FPjcFilterAssetsExcluded> FilterExcluded = MakeShareable(new FPjcFilterAssetsExcluded(DefaultCategory));
-	// 	const TSharedPtr<FPjcFilterAssetsIndirect> FilterIndirect = MakeShareable(new FPjcFilterAssetsIndirect(DefaultCategory));
-	// 	const TSharedPtr<FPjcFilterAssetsExtReferenced> FilterExtReferenced = MakeShareable(new FPjcFilterAssetsExtReferenced(DefaultCategory));
-	// 	const TSharedPtr<FPjcFilterAssetsUsed> FilterUsed = MakeShareable(new FPjcFilterAssetsUsed(DefaultCategory));
-	//
-	// 	FilterPrimary->OnFilterChange().AddLambda([&](const bool bActive)
-	// 	{
-	// 		bFilterPrimaryActive = bActive;
-	// 		if (AssetBrowserDelegateFilter.IsBound())
-	// 		{
-	// 			AssetBrowserDelegateFilter.Execute(AssetBrowserCreateFilter());
-	// 		}
-	// 	});
-	//
-	// 	FilterExcluded->OnFilterChange().AddLambda([&](const bool bActive)
-	// 	{
-	// 		bFilterExcludeActive = bActive;
-	// 		if (AssetBrowserDelegateFilter.IsBound())
-	// 		{
-	// 			AssetBrowserDelegateFilter.Execute(AssetBrowserCreateFilter());
-	// 		}
-	// 	});
-	//
-	// 	FilterIndirect->OnFilterChange().AddLambda([&](const bool bActive)
-	// 	{
-	// 		bFilterIndirectActive = bActive;
-	// 		if (AssetBrowserDelegateFilter.IsBound())
-	// 		{
-	// 			AssetBrowserDelegateFilter.Execute(AssetBrowserCreateFilter());
-	// 		}
-	// 	});
-	//
-	// 	FilterExtReferenced->OnFilterChange().AddLambda([&](const bool bActive)
-	// 	{
-	// 		bFilterExtReferencedActive = bActive;
-	// 		if (AssetBrowserDelegateFilter.IsBound())
-	// 		{
-	// 			AssetBrowserDelegateFilter.Execute(AssetBrowserCreateFilter());
-	// 		}
-	// 	});
-	//
-	// 	FilterUsed->OnFilterChange().AddLambda([&](const bool bActive)
-	// 	{
-	// 		bFilterUsedActive = bActive;
-	// 		if (AssetBrowserDelegateFilter.IsBound())
-	// 		{
-	// 			AssetBrowserDelegateFilter.Execute(AssetBrowserCreateFilter());
-	// 		}
-	// 	});
-	//
-	// 	AssetPickerConfig.ExtraFrontendFilters.Add(FilterUsed.ToSharedRef());
-	// 	AssetPickerConfig.ExtraFrontendFilters.Add(FilterPrimary.ToSharedRef());
-	// 	AssetPickerConfig.ExtraFrontendFilters.Add(FilterExcluded.ToSharedRef());
-	// 	AssetPickerConfig.ExtraFrontendFilters.Add(FilterIndirect.ToSharedRef());
-	// 	AssetPickerConfig.ExtraFrontendFilters.Add(FilterExtReferenced.ToSharedRef());
+	const TSharedPtr<FFrontendFilterCategory> DefaultCategory = MakeShareable(new FFrontendFilterCategory(FText::FromString(TEXT("ProjectCleaner Filters")), FText::FromString(TEXT(""))));
+	const TSharedPtr<FPjcFilterAssetsUsed> FilterUsed = MakeShareable(new FPjcFilterAssetsUsed(DefaultCategory));
+	const TSharedPtr<FPjcFilterAssetsPrimary> FilterPrimary = MakeShareable(new FPjcFilterAssetsPrimary(DefaultCategory));
+	const TSharedPtr<FPjcFilterAssetsIndirect> FilterIndirect = MakeShareable(new FPjcFilterAssetsIndirect(DefaultCategory));
+	const TSharedPtr<FPjcFilterAssetsEditor> FilterEditor = MakeShareable(new FPjcFilterAssetsEditor(DefaultCategory));
+	const TSharedPtr<FPjcFilterAssetsExtReferenced> FilterExtReferenced = MakeShareable(new FPjcFilterAssetsExtReferenced(DefaultCategory));
+	const TSharedPtr<FPjcFilterAssetsExcluded> FilterExcluded = MakeShareable(new FPjcFilterAssetsExcluded(DefaultCategory));
+
+	FilterUsed->OnFilterChanged().AddRaw(this, &SPjcAssetBrowser::OnFilterUsedChanged);
+	FilterPrimary->OnFilterChanged().AddRaw(this, &SPjcAssetBrowser::OnFilterPrimaryChanged);
+	FilterIndirect->OnFilterChanged().AddRaw(this, &SPjcAssetBrowser::OnFilterIndirectChanged);
+	FilterEditor->OnFilterChanged().AddRaw(this, &SPjcAssetBrowser::OnFilterEditorChanged);
+	FilterExtReferenced->OnFilterChanged().AddRaw(this, &SPjcAssetBrowser::OnFilterExtReferencedChanged);
+	FilterExcluded->OnFilterChanged().AddRaw(this, &SPjcAssetBrowser::OnFilterExcludedChanged);
+
+	AssetPickerConfig.ExtraFrontendFilters.Add(FilterUsed.ToSharedRef());
+	AssetPickerConfig.ExtraFrontendFilters.Add(FilterPrimary.ToSharedRef());
+	AssetPickerConfig.ExtraFrontendFilters.Add(FilterIndirect.ToSharedRef());
+	AssetPickerConfig.ExtraFrontendFilters.Add(FilterEditor.ToSharedRef());
+	AssetPickerConfig.ExtraFrontendFilters.Add(FilterExtReferenced.ToSharedRef());
+	AssetPickerConfig.ExtraFrontendFilters.Add(FilterExcluded.ToSharedRef());
 
 	ChildSlot
 	[
@@ -246,10 +218,10 @@ void SPjcAssetBrowser::Construct(const FArguments& InArgs)
 						ModuleContentBrowser.Get().CreateAssetPicker(AssetPickerConfig)
 					]
 				]
-				+ SOverlay::Slot().HAlign(HAlign_Center).VAlign(VAlign_Center).Padding(5.0f)
-				[
-					AssetDiscoveryIndicator
-				]
+				// + SOverlay::Slot().HAlign(HAlign_Center).VAlign(VAlign_Center).Padding(5.0f)
+				// [
+				// 	AssetDiscoveryIndicator
+				// ]
 			]
 		]
 	];
@@ -275,22 +247,96 @@ FReply SPjcAssetBrowser::OnBtnScanAssetsClick() const
 
 void SPjcAssetBrowser::OnScanAssets(const FPjcScanDataAssets& InScanDataAssets)
 {
+	FilterUpdate();
+}
+
+void SPjcAssetBrowser::FilterUpdate()
+{
+	if (!SubsystemPtr) return;
+
+	const FPjcScanDataAssets& ScanDataAssets = SubsystemPtr->GetLastScanDataAssets();
+
 	Filter.Clear();
 
-	if (InScanDataAssets.AssetsUnused.Num() == 0)
+	if (AnyFilterEnabled())
+	{
+		if (bFilterUsedActive)
+		{
+			Filter.PackageNames.Reserve(ScanDataAssets.AssetsUsed.Num());
+
+			for (const auto& Asset : ScanDataAssets.AssetsUsed)
+			{
+				Filter.PackageNames.Emplace(Asset.PackageName);
+			}
+		}
+
+		if (bFilterPrimaryActive)
+		{
+			Filter.PackageNames.Reserve(Filter.PackageNames.Num() + ScanDataAssets.AssetsPrimary.Num());
+
+			for (const auto& Asset : ScanDataAssets.AssetsPrimary)
+			{
+				Filter.PackageNames.Emplace(Asset.PackageName);
+			}
+		}
+
+		if (bFilterIndirectActive)
+		{
+			Filter.PackageNames.Reserve(Filter.PackageNames.Num() + ScanDataAssets.AssetsIndirect.Num());
+
+			TArray<FAssetData> AssetsIndirect;
+			ScanDataAssets.AssetsIndirect.GetKeys(AssetsIndirect);
+
+			for (const auto& Asset : AssetsIndirect)
+			{
+				Filter.PackageNames.Emplace(Asset.PackageName);
+			}
+		}
+
+		if (bFilterEditorActive)
+		{
+			Filter.PackageNames.Reserve(Filter.PackageNames.Num() + ScanDataAssets.AssetsEditor.Num());
+
+			for (const auto& Asset : ScanDataAssets.AssetsEditor)
+			{
+				Filter.PackageNames.Emplace(Asset.PackageName);
+			}
+		}
+
+		if (bFilterExtReferencedActive)
+		{
+			Filter.PackageNames.Reserve(Filter.PackageNames.Num() + ScanDataAssets.AssetsExtReferenced.Num());
+
+			for (const auto& Asset : ScanDataAssets.AssetsExtReferenced)
+			{
+				Filter.PackageNames.Emplace(Asset.PackageName);
+			}
+		}
+
+		if (bFilterExcludedActive)
+		{
+			Filter.PackageNames.Reserve(Filter.PackageNames.Num() + ScanDataAssets.AssetsExcluded.Num());
+
+			for (const auto& Asset : ScanDataAssets.AssetsExcluded)
+			{
+				Filter.PackageNames.Emplace(Asset.PackageName);
+			}
+		}
+	}
+	else
+	{
+		Filter.PackageNames.Reserve(ScanDataAssets.AssetsUnused.Num());
+
+		for (const auto& Asset : ScanDataAssets.AssetsUnused)
+		{
+			Filter.PackageNames.Emplace(Asset.PackageName);
+		}
+	}
+
+	if (Filter.PackageNames.Num() == 0)
 	{
 		// this is needed for disabling showing primary assets in browser, when there is no unused assets
 		Filter.TagsAndValues.Add(PjcConstants::EmptyTagName, PjcConstants::EmptyTagName.ToString());
-
-		DelegateFilter.Execute(Filter);
-		return;
-	}
-
-	Filter.PackageNames.Reserve(InScanDataAssets.AssetsUnused.Num());
-
-	for (const auto& Asset : InScanDataAssets.AssetsUnused)
-	{
-		Filter.PackageNames.Emplace(Asset.PackageName);
 	}
 
 	DelegateFilter.Execute(Filter);
@@ -299,4 +345,51 @@ void SPjcAssetBrowser::OnScanAssets(const FPjcScanDataAssets& InScanDataAssets)
 void SPjcAssetBrowser::OnAssetDblClick(const FAssetData& AssetData)
 {
 	FPjcLibEditor::OpenAssetEditor(AssetData);
+}
+
+void SPjcAssetBrowser::OnFilterUsedChanged(const bool bActive)
+{
+	bFilterUsedActive = bActive;
+
+	FilterUpdate();
+}
+
+void SPjcAssetBrowser::OnFilterPrimaryChanged(const bool bActive)
+{
+	bFilterPrimaryActive = bActive;
+
+	FilterUpdate();
+}
+
+void SPjcAssetBrowser::OnFilterIndirectChanged(const bool bActive)
+{
+	bFilterIndirectActive = bActive;
+
+	FilterUpdate();
+}
+
+void SPjcAssetBrowser::OnFilterEditorChanged(const bool bActive)
+{
+	bFilterEditorActive = bActive;
+
+	FilterUpdate();
+}
+
+void SPjcAssetBrowser::OnFilterExtReferencedChanged(const bool bActive)
+{
+	bFilterExtReferencedActive = bActive;
+
+	FilterUpdate();
+}
+
+void SPjcAssetBrowser::OnFilterExcludedChanged(const bool bActive)
+{
+	bFilterExcludedActive = bActive;
+
+	FilterUpdate();
+}
+
+bool SPjcAssetBrowser::AnyFilterEnabled() const
+{
+	return bFilterUsedActive || bFilterPrimaryActive || bFilterIndirectActive || bFilterEditorActive || bFilterExtReferencedActive || bFilterExcludedActive;
 }

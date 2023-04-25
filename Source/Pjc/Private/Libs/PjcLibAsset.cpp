@@ -11,6 +11,7 @@
 #include "EditorUtilityBlueprint.h"
 #include "EditorUtilityWidget.h"
 #include "EditorUtilityWidgetBlueprint.h"
+#include "EditorSettings/PjcEditorAssetExcludeSettings.h"
 #include "Internationalization/Regex.h"
 #include "Misc/FileHelper.h"
 #include "Misc/ScopedSlowTask.h"
@@ -184,10 +185,13 @@ void FPjcLibAsset::GetAssetsAll(TArray<FAssetData>& OutAssets)
 	ModuleAssetRegistry.Get().GetAssetsByPath(PjcConstants::PathRelRoot, OutAssets, true);
 }
 
-void FPjcLibAsset::GetAssetsPrimary(const TArray<FAssetData>& AssetsAll, TArray<FAssetData>& OutAssets)
+void FPjcLibAsset::GetAssetsPrimary(TArray<FAssetData>& OutAssets)
 {
 	TSet<FName> ClassNamesPrimary;
 	GetClassNamesPrimary(ClassNamesPrimary);
+
+	TArray<FAssetData> AssetsAll;
+	GetAssetsAll(AssetsAll);
 
 	OutAssets.Empty();
 	OutAssets.Reserve(AssetsAll.Num());

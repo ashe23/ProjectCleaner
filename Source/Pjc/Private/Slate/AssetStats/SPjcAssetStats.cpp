@@ -25,7 +25,7 @@ void SPjcAssetStats::Construct(const FArguments& InArgs)
 	.HeaderRow(GetHeaderRow());
 
 	// initializing stats
-	OnScanAssets(FPjcScanDataAssets{});
+	OnScanAssets(SubsystemPtr->GetLastScanDataAssets());
 
 	ChildSlot
 	[

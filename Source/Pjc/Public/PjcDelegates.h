@@ -7,9 +7,9 @@
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FPjcDelegateOnScanAssets, const FPjcScanDataAssets& ScanDataAssets)
 DECLARE_MULTICAST_DELEGATE_OneParam(FPjcDelegateOnScanFiles, const FPjcScanDataFiles& ScanDataFiles)
+DECLARE_MULTICAST_DELEGATE_OneParam(FPjcDelegateFilterChanged, const bool bActive)
 // DECLARE_MULTICAST_DELEGATE_OneParam(FPjcDelegateProjectCleaned, const FPjcScanData& ScanData)
 // DECLARE_MULTICAST_DELEGATE_OneParam(FPjcDelegateRequestedFilesDelete, const TArray<FString>& Files)
-// DECLARE_MULTICAST_DELEGATE_OneParam(FPjcDelegateFilterChanged, const bool bActive)
 // DECLARE_MULTICAST_DELEGATE_OneParam(FPjcDelegatePathsExclude, const TArray<FString>& Paths)
 // DECLARE_MULTICAST_DELEGATE_OneParam(FPjcDelegatePathsInclude, const TArray<FString>& Paths)
 // DECLARE_MULTICAST_DELEGATE_OneParam(FPjcDelegatePathsDelete, const TArray<FString>& Paths)

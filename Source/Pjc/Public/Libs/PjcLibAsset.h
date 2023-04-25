@@ -19,7 +19,7 @@ struct FPjcLibAsset
 	static void GetClassNamesPrimary(TSet<FName>& ClassNamesPrimary);
 	static void GetClassNamesEditor(TSet<FName>& ClassNamesEditor);
 	static void GetAssetsAll(TArray<FAssetData>& OutAssets);
-	static void GetAssetsPrimary(const TArray<FAssetData>& AssetsAll, TArray<FAssetData>& OutAssets);
+	static void GetAssetsPrimary(TArray<FAssetData>& OutAssets);
 	static void GetAssetsEditor(const TArray<FAssetData>& AssetsAll, TArray<FAssetData>& OutAssets);
 	static void GetAssetsExtReferenced(const TArray<FAssetData>& AssetsAll, TArray<FAssetData>& OutAssets);
 	// static void GetAssetsExcluded(const FPjcExcludeSettings& InExcludeSettings, TArray<FAssetData>& OutAssets);
