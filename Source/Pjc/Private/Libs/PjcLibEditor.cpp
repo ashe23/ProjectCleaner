@@ -3,6 +3,7 @@
 #include "Libs/PjcLibEditor.h"
 #include "Libs/PjcLibPath.h"
 // Engine Headers
+#include "AssetManagerEditorModule.h"
 #include "ShaderCompiler.h"
 #include "EditorSettings/PjcEditorAssetExcludeSettings.h"
 #include "Framework/Notifications/NotificationManager.h"
@@ -78,6 +79,51 @@ void FPjcLibEditor::OpenAssetEditor(const FAssetData& InAssetData)
 	AssetNames.Add(InAssetData.ToSoftObjectPath().GetAssetPathName());
 
 	GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->OpenEditorsForAssets(AssetNames);
+}
+
+void FPjcLibEditor::OpenSizeMapViewer(const TArray<FAssetData>& InAssetDatas)
+{
+	if (InAssetDatas.Num() == 0) return;
+
+	TArray<FName> PackageNames;
+	PackageNames.Reserve(InAssetDatas.Num());
+
+	for (const auto& Asset : InAssetDatas)
+	{
+		PackageNames.Emplace(Asset.PackageName);
+	}
+
+	IAssetManagerEditorModule::Get().OpenSizeMapUI(PackageNames);
+}
+
+void FPjcLibEditor::OpenReferenceViewer(const TArray<FAssetData>& InAssetDatas)
+{
+	if (InAssetDatas.Num() == 0) return;
+
+	TArray<FName> PackageNames;
+	PackageNames.Reserve(InAssetDatas.Num());
+
+	for (const auto& Asset : InAssetDatas)
+	{
+		PackageNames.Emplace(Asset.PackageName);
+	}
+
+	IAssetManagerEditorModule::Get().OpenReferenceViewerUI(PackageNames);
+}
+
+void FPjcLibEditor::OpenAssetAuditViewer(const TArray<FAssetData>& InAssetDatas)
+{
+	if (InAssetDatas.Num() == 0) return;
+
+	TArray<FName> PackageNames;
+	PackageNames.Reserve(InAssetDatas.Num());
+
+	for (const auto& Asset : InAssetDatas)
+	{
+		PackageNames.Emplace(Asset.PackageName);
+	}
+
+	IAssetManagerEditorModule::Get().OpenAssetAuditUI(PackageNames);
 }
 
 bool FPjcLibEditor::EditorInPlayMode()

@@ -3,6 +3,7 @@
 #include "SLate/AssetBrowser/SPjcAssetBrowser.h"
 #include "Slate/AssetStats/SPjcAssetStats.h"
 #include "EditorSettings/PjcEditorAssetExcludeSettings.h"
+#include "PjcCmds.h"
 #include "PjcStyles.h"
 #include "PjcConstants.h"
 #include "PjcSubsystem.h"
@@ -15,11 +16,11 @@
 #include "FrontendFilters/PjcFrontendFilterAssetsUsed.h"
 // Engine Headers
 #include "ContentBrowserModule.h"
-// #include "EditorWidgetsModule.h"
 #include "FrontendFilterBase.h"
 #include "IContentBrowserSingleton.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SSeparator.h"
+// #include "EditorWidgetsModule.h"
 // #include "Widgets/Layout/SWidgetSwitcher.h"
 
 void SPjcAssetBrowser::Construct(const FArguments& InArgs)
@@ -30,6 +31,8 @@ void SPjcAssetBrowser::Construct(const FArguments& InArgs)
 	if (!SubsystemPtr) return;
 
 	SubsystemPtr->OnScanAssets().AddRaw(this, &SPjcAssetBrowser::OnScanAssets);
+
+	CmdsRegister();
 
 	// FEditorWidgetsModule& EditorWidgetsModule = FModuleManager::LoadModuleChecked<FEditorWidgetsModule>("EditorWidgets");
 	// const TSharedRef<SWidget> AssetDiscoveryIndicator = EditorWidgetsModule.CreateAssetDiscoveryIndicator(EAssetDiscoveryIndicatorScaleMode::Scale_None, FMargin(16, 8), false);
@@ -69,7 +72,7 @@ void SPjcAssetBrowser::Construct(const FArguments& InArgs)
 	AssetPickerConfig.RefreshAssetViewDelegates.Add(&DelegateRefreshView);
 	AssetPickerConfig.SetFilterDelegates.Add(&DelegateFilter);
 	AssetPickerConfig.Filter = Filter;
-
+	AssetPickerConfig.OnGetAssetContextMenu.BindRaw(this, &SPjcAssetBrowser::OnGetAssetContextMenu);
 	//
 	// 	AssetPickerConfig.OnGetAssetContextMenu = FOnGetAssetContextMenu::CreateLambda([&](const TArray<FAssetData>&)
 	// 	{
@@ -389,7 +392,144 @@ void SPjcAssetBrowser::OnFilterExcludedChanged(const bool bActive)
 	FilterUpdate();
 }
 
+void SPjcAssetBrowser::CmdsRegister()
+{
+	Cmds = MakeShareable(new FUICommandList);
+
+	Cmds->MapAction
+	(
+		FPjcCmds::Get().OpenSizeMap,
+		FUIAction
+		(
+			FExecuteAction::CreateLambda([&]()
+			{
+				FPjcLibEditor::OpenSizeMapViewer(DelegateSelection.Execute());
+			})
+		)
+	);
+
+	Cmds->MapAction
+	(
+		FPjcCmds::Get().OpenReferenceViewer,
+		FUIAction
+		(
+			FExecuteAction::CreateLambda([&]()
+			{
+				FPjcLibEditor::OpenReferenceViewer(DelegateSelection.Execute());
+			})
+		)
+	);
+
+	Cmds->MapAction
+	(
+		FPjcCmds::Get().OpenAssetAudit,
+		FUIAction
+		(
+			FExecuteAction::CreateLambda([&]()
+			{
+				FPjcLibEditor::OpenAssetAuditViewer(DelegateSelection.Execute());
+			})
+		)
+	);
+
+	Cmds->MapAction
+	(
+		FPjcCmds::Get().AssetsExclude,
+		FUIAction
+		(
+			FExecuteAction::CreateLambda([&]()
+			{
+				UPjcEditorAssetExcludeSettings* AssetExcludeSettings = GetMutableDefault<UPjcEditorAssetExcludeSettings>();
+				if (!AssetExcludeSettings) return;
+
+				const TArray<FAssetData>& AssetsSelected = DelegateSelection.Execute();
+
+				for (const auto& Asset : AssetsSelected)
+				{
+					AssetExcludeSettings->ExcludedAssets.Emplace(Asset.ToSoftObjectPath());
+				}
+
+				AssetExcludeSettings->PostEditChange();
+
+				SubsystemPtr->ScanAssets();
+			}),
+			FCanExecuteAction::CreateLambda([&]()
+			{
+				return SubsystemPtr && !bFilterExcludedActive;
+			}),
+			FGetActionCheckState::CreateLambda([&]()
+			{
+				return ECheckBoxState::Checked;
+			}),
+			FIsActionButtonVisible::CreateLambda([&]()
+			{
+				return !bFilterExcludedActive;
+			})
+		)
+	);
+
+	Cmds->MapAction
+	(
+		FPjcCmds::Get().AssetsExcludeByClass,
+		FUIAction
+		(
+			FExecuteAction::CreateLambda([&]()
+			{
+				UPjcEditorAssetExcludeSettings* AssetExcludeSettings = GetMutableDefault<UPjcEditorAssetExcludeSettings>();
+				if (!AssetExcludeSettings) return;
+
+				const TArray<FAssetData>& AssetsSelected = DelegateSelection.Execute();
+
+				for (const auto& Asset : AssetsSelected)
+				{
+					AssetExcludeSettings->ExcludedClasses.Emplace(Asset.GetClass());
+				}
+
+				AssetExcludeSettings->PostEditChange();
+
+				SubsystemPtr->ScanAssets();
+			}),
+			FCanExecuteAction::CreateLambda([&]()
+			{
+				return SubsystemPtr && !bFilterExcludedActive;
+			}),
+			FGetActionCheckState::CreateLambda([&]()
+			{
+				return ECheckBoxState::Checked;
+			}),
+			FIsActionButtonVisible::CreateLambda([&]()
+			{
+				return !bFilterExcludedActive;
+			})
+		)
+	);
+}
+
 bool SPjcAssetBrowser::AnyFilterEnabled() const
 {
 	return bFilterUsedActive || bFilterPrimaryActive || bFilterIndirectActive || bFilterEditorActive || bFilterExtReferencedActive || bFilterExcludedActive;
+}
+
+TSharedPtr<SWidget> SPjcAssetBrowser::OnGetAssetContextMenu(const TArray<FAssetData>& Assets) const
+{
+	FMenuBuilder MenuBuilder{true, Cmds};
+
+	MenuBuilder.BeginSection(TEXT("PjcSectionAssetInfo"), FText::FromName(TEXT("Info")));
+	{
+		MenuBuilder.AddMenuEntry(FPjcCmds::Get().OpenSizeMap);
+		MenuBuilder.AddMenuEntry(FPjcCmds::Get().OpenReferenceViewer);
+		MenuBuilder.AddMenuEntry(FPjcCmds::Get().OpenAssetAudit);
+	}
+	MenuBuilder.EndSection();
+
+	MenuBuilder.BeginSection(TEXT("PjcSectionAssetExclusion"), FText::FromName(TEXT("Exclusion")));
+	{
+		MenuBuilder.AddMenuEntry(FPjcCmds::Get().AssetsExclude);
+		MenuBuilder.AddMenuEntry(FPjcCmds::Get().AssetsExcludeByClass);
+		// MenuBuilder.AddMenuEntry(FPjcCmds::Get().AssetsInclude);
+		// MenuBuilder.AddMenuEntry(FPjcCmds::Get().AssetsIncludeByClass);
+	}
+	MenuBuilder.EndSection();
+
+	return MenuBuilder.MakeWidget();
 }

@@ -28,11 +28,14 @@ private:
 	void OnFilterEditorChanged(const bool bActive);
 	void OnFilterExtReferencedChanged(const bool bActive);
 	void OnFilterExcludedChanged(const bool bActive);
-
+	void CmdsRegister();
 	bool AnyFilterEnabled() const;
+
+	TSharedPtr<SWidget> OnGetAssetContextMenu(const TArray<FAssetData>& Assets) const;
 
 	UPjcSubsystem* SubsystemPtr = nullptr;
 	FARFilter Filter;
+	TSharedPtr<FUICommandList> Cmds;
 	FSetARFilterDelegate DelegateFilter;
 	FRefreshAssetViewDelegate DelegateRefreshView;
 	FGetCurrentSelectionDelegate DelegateSelection;
