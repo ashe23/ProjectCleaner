@@ -180,7 +180,7 @@ void SPjcAssetBrowser::Construct(const FArguments& InArgs)
 
 			+ SVerticalBox::Slot().AutoHeight().Padding(5.0f)
 			[
-				SNew(SPjcAssetStats)
+				SNew(SPjcAssetStats).Padding(FMargin{5.0f})
 			]
 			+ SVerticalBox::Slot().AutoHeight().Padding(5.0f)
 			[
