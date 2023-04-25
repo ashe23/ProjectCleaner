@@ -21,7 +21,10 @@ public:
 	void ProjectScan(const FPjcAssetExcludeSettings& InAssetExcludeSetting, FPjcScanResult& ScanResult);
 
 	void ScanAssets(const FPjcAssetExcludeSettings& InAssetExcludeSetting, FPjcScanDataAssets& ScanDataAssets);
-	void ScanFiles(FPjcScanDataFiles& ScanDataFiles);
+	void ScanFiles(FPjcScanDataFiles& ScanDataFiles) const;
+
+	void ScanAssets();
+	void ScanFiles();
 
 	FPjcDelegateOnScanAssets& OnScanAssets();
 	FPjcDelegateOnScanFiles& OnScanFiles();

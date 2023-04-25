@@ -3,7 +3,6 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "PjcTypes.h"
 #include "ContentBrowserDelegates.h"
 #include "Widgets/SCompoundWidget.h"
 
@@ -20,7 +19,7 @@ public:
 
 private:
 	FReply OnBtnScanAssetsClick() const;
-	void OnScanAssets(const FPjcScanDataAssets& InScanDataAssets);
+	void OnScanAssets();
 	void FilterUpdate();
 	void OnAssetDblClick(const FAssetData& AssetData);
 	void OnFilterUsedChanged(const bool bActive);

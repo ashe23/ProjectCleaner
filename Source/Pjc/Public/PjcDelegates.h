@@ -3,10 +3,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "PjcTypes.h"
 
-DECLARE_MULTICAST_DELEGATE_OneParam(FPjcDelegateOnScanAssets, const FPjcScanDataAssets& ScanDataAssets)
-DECLARE_MULTICAST_DELEGATE_OneParam(FPjcDelegateOnScanFiles, const FPjcScanDataFiles& ScanDataFiles)
+DECLARE_MULTICAST_DELEGATE(FPjcDelegateOnScanAssets)
+DECLARE_MULTICAST_DELEGATE(FPjcDelegateOnScanFiles)
 DECLARE_MULTICAST_DELEGATE_OneParam(FPjcDelegateFilterChanged, const bool bActive)
 // DECLARE_MULTICAST_DELEGATE_OneParam(FPjcDelegateProjectCleaned, const FPjcScanData& ScanData)
 // DECLARE_MULTICAST_DELEGATE_OneParam(FPjcDelegateRequestedFilesDelete, const TArray<FString>& Files)

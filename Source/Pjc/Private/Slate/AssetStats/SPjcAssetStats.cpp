@@ -25,7 +25,7 @@ void SPjcAssetStats::Construct(const FArguments& InArgs)
 	.HeaderRow(GetHeaderRow());
 
 	// initializing stats
-	OnScanAssets(SubsystemPtr->GetLastScanDataAssets());
+	StatsUpdate();
 
 	ChildSlot
 	[
@@ -58,9 +58,17 @@ SPjcAssetStats::~SPjcAssetStats()
 	SubsystemPtr->OnScanAssets().RemoveAll(this);
 }
 
-void SPjcAssetStats::OnScanAssets(const FPjcScanDataAssets& InScanDataAssets)
+void SPjcAssetStats::OnScanAssets()
+{
+	StatsUpdate();
+}
+
+void SPjcAssetStats::StatsUpdate()
 {
 	if (!ListView.IsValid()) return;
+	if (!SubsystemPtr) return;
+
+	const FPjcScanDataAssets& ScanDataAssets = SubsystemPtr->GetLastScanDataAssets();
 
 	ListItems.Reset();
 
@@ -74,8 +82,8 @@ void SPjcAssetStats::OnScanAssets(const FPjcScanDataAssets& InScanDataAssets)
 	ListItems.Emplace(
 		MakeShareable(
 			new FPjcAssetStatsItem{
-				FPjcLibAsset::GetAssetsSize(InScanDataAssets.AssetsUnused),
-				InScanDataAssets.AssetsUnused.Num(),
+				FPjcLibAsset::GetAssetsSize(ScanDataAssets.AssetsUnused),
+				ScanDataAssets.AssetsUnused.Num(),
 				TEXT("Unused"),
 				FirstLvl,
 				TextColorWhite,
@@ -90,8 +98,8 @@ void SPjcAssetStats::OnScanAssets(const FPjcScanDataAssets& InScanDataAssets)
 	ListItems.Emplace(
 		MakeShareable(
 			new FPjcAssetStatsItem{
-				FPjcLibAsset::GetAssetsSize(InScanDataAssets.AssetsUsed),
-				InScanDataAssets.AssetsUsed.Num(),
+				FPjcLibAsset::GetAssetsSize(ScanDataAssets.AssetsUsed),
+				ScanDataAssets.AssetsUsed.Num(),
 				TEXT("Used"),
 				FirstLvl,
 				TextColorWhite,
@@ -106,8 +114,8 @@ void SPjcAssetStats::OnScanAssets(const FPjcScanDataAssets& InScanDataAssets)
 	ListItems.Emplace(
 		MakeShareable(
 			new FPjcAssetStatsItem{
-				FPjcLibAsset::GetAssetsSize(InScanDataAssets.AssetsPrimary),
-				InScanDataAssets.AssetsPrimary.Num(),
+				FPjcLibAsset::GetAssetsSize(ScanDataAssets.AssetsPrimary),
+				ScanDataAssets.AssetsPrimary.Num(),
 				TEXT("Primary"),
 				SecondLvl,
 				TextColorWhite,
@@ -122,8 +130,8 @@ void SPjcAssetStats::OnScanAssets(const FPjcScanDataAssets& InScanDataAssets)
 	ListItems.Emplace(
 		MakeShareable(
 			new FPjcAssetStatsItem{
-				FPjcLibAsset::GetAssetsSize(InScanDataAssets.AssetsEditor),
-				InScanDataAssets.AssetsEditor.Num(),
+				FPjcLibAsset::GetAssetsSize(ScanDataAssets.AssetsEditor),
+				ScanDataAssets.AssetsEditor.Num(),
 				TEXT("Editor"),
 				SecondLvl,
 				TextColorWhite,
@@ -136,7 +144,7 @@ void SPjcAssetStats::OnScanAssets(const FPjcScanDataAssets& InScanDataAssets)
 	);
 
 	TArray<FAssetData> AssetsIndirect;
-	InScanDataAssets.AssetsIndirect.GetKeys(AssetsIndirect);
+	ScanDataAssets.AssetsIndirect.GetKeys(AssetsIndirect);
 
 	ListItems.Emplace(
 		MakeShareable(
@@ -157,8 +165,8 @@ void SPjcAssetStats::OnScanAssets(const FPjcScanDataAssets& InScanDataAssets)
 	ListItems.Emplace(
 		MakeShareable(
 			new FPjcAssetStatsItem{
-				FPjcLibAsset::GetAssetsSize(InScanDataAssets.AssetsExtReferenced),
-				InScanDataAssets.AssetsExtReferenced.Num(),
+				FPjcLibAsset::GetAssetsSize(ScanDataAssets.AssetsExtReferenced),
+				ScanDataAssets.AssetsExtReferenced.Num(),
 				TEXT("ExtReferenced"),
 				SecondLvl,
 				TextColorWhite,
@@ -173,8 +181,8 @@ void SPjcAssetStats::OnScanAssets(const FPjcScanDataAssets& InScanDataAssets)
 	ListItems.Emplace(
 		MakeShareable(
 			new FPjcAssetStatsItem{
-				FPjcLibAsset::GetAssetsSize(InScanDataAssets.AssetsExcluded),
-				InScanDataAssets.AssetsExcluded.Num(),
+				FPjcLibAsset::GetAssetsSize(ScanDataAssets.AssetsExcluded),
+				ScanDataAssets.AssetsExcluded.Num(),
 				TEXT("Excluded"),
 				SecondLvl,
 				TextColorWhite,
@@ -189,8 +197,8 @@ void SPjcAssetStats::OnScanAssets(const FPjcScanDataAssets& InScanDataAssets)
 	ListItems.Emplace(
 		MakeShareable(
 			new FPjcAssetStatsItem{
-				FPjcLibAsset::GetAssetsSize(InScanDataAssets.AssetsAll),
-				InScanDataAssets.AssetsAll.Num(),
+				FPjcLibAsset::GetAssetsSize(ScanDataAssets.AssetsAll),
+				ScanDataAssets.AssetsAll.Num(),
 				TEXT("Total"),
 				FirstLvl,
 				TextColorWhite,

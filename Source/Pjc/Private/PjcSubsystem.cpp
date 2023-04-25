@@ -181,15 +181,13 @@ void UPjcSubsystem::ScanAssets(const FPjcAssetExcludeSettings& InAssetExcludeSet
 
 	bScanningInProgress = false;
 
-	CachedScanDataAssets = ScanDataAssets;
-
 	if (DelegateOnScanAssets.IsBound())
 	{
-		DelegateOnScanAssets.Broadcast(ScanDataAssets);
+		DelegateOnScanAssets.Broadcast();
 	}
 }
 
-void UPjcSubsystem::ScanFiles(FPjcScanDataFiles& ScanDataFiles)
+void UPjcSubsystem::ScanFiles(FPjcScanDataFiles& ScanDataFiles) const
 {
 	const float ScanStartTime = FPlatformTime::Seconds();
 
@@ -252,12 +250,20 @@ void UPjcSubsystem::ScanFiles(FPjcScanDataFiles& ScanDataFiles)
 
 	UE_LOG(LogProjectCleaner, Display, TEXT("Project files scanned in %f seconds"), ScanTime);
 
-	CachedScanDataFiles = ScanDataFiles;
-
 	if (DelegateOnScanFiles.IsBound())
 	{
-		DelegateOnScanFiles.Broadcast(ScanDataFiles);
+		DelegateOnScanFiles.Broadcast();
 	}
+}
+
+void UPjcSubsystem::ScanAssets()
+{
+	ScanAssets(FPjcLibEditor::GetEditorAssetExcludeSettings(), CachedScanDataAssets);
+}
+
+void UPjcSubsystem::ScanFiles()
+{
+	ScanFiles(CachedScanDataFiles);
 }
 
 FPjcDelegateOnScanAssets& UPjcSubsystem::OnScanAssets()

@@ -3,7 +3,6 @@
 #include "SLate/AssetBrowser/SPjcAssetBrowser.h"
 #include "Slate/AssetStats/SPjcAssetStats.h"
 #include "EditorSettings/PjcEditorAssetExcludeSettings.h"
-#include "Pjc.h"
 #include "PjcStyles.h"
 #include "PjcConstants.h"
 #include "PjcSubsystem.h"
@@ -50,8 +49,6 @@ void SPjcAssetBrowser::Construct(const FArguments& InArgs)
 	SettingsProperty->SetObject(GetMutableDefault<UPjcEditorAssetExcludeSettings>());
 
 	const FContentBrowserModule& ModuleContentBrowser = FModuleManager::Get().LoadModuleChecked<FContentBrowserModule>(PjcConstants::ModuleContentBrowser);
-
-	Filter.TagsAndValues.Add(PjcConstants::EmptyTagName, PjcConstants::EmptyTagName.ToString());
 
 	FAssetPickerConfig AssetPickerConfig;
 	AssetPickerConfig.bAllowNullSelection = false;
@@ -122,6 +119,10 @@ void SPjcAssetBrowser::Construct(const FArguments& InArgs)
 	AssetPickerConfig.ExtraFrontendFilters.Add(FilterEditor.ToSharedRef());
 	AssetPickerConfig.ExtraFrontendFilters.Add(FilterExtReferenced.ToSharedRef());
 	AssetPickerConfig.ExtraFrontendFilters.Add(FilterExcluded.ToSharedRef());
+
+	const TSharedRef<SWidget> ContentBrowserView = ModuleContentBrowser.Get().CreateAssetPicker(AssetPickerConfig);
+
+	FilterUpdate();
 
 	ChildSlot
 	[
@@ -215,7 +216,7 @@ void SPjcAssetBrowser::Construct(const FArguments& InArgs)
 					]
 					+ SSplitter::Slot().Value(0.7f)
 					[
-						ModuleContentBrowser.Get().CreateAssetPicker(AssetPickerConfig)
+						ContentBrowserView
 					]
 				]
 				// + SOverlay::Slot().HAlign(HAlign_Center).VAlign(VAlign_Center).Padding(5.0f)
@@ -238,14 +239,13 @@ FReply SPjcAssetBrowser::OnBtnScanAssetsClick() const
 {
 	if (SubsystemPtr)
 	{
-		FPjcScanDataAssets Data;
-		SubsystemPtr->ScanAssets(FPjcLibEditor::GetEditorAssetExcludeSettings(), Data);
+		SubsystemPtr->ScanAssets();
 	}
 
 	return FReply::Handled();
 }
 
-void SPjcAssetBrowser::OnScanAssets(const FPjcScanDataAssets& InScanDataAssets)
+void SPjcAssetBrowser::OnScanAssets()
 {
 	FilterUpdate();
 }

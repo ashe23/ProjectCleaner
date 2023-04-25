@@ -19,7 +19,8 @@ public:
 	void Construct(const FArguments& InArgs);
 	virtual ~SPjcAssetStats() override;
 private:
-	void OnScanAssets(const FPjcScanDataAssets& InScanDataAssets);
+	void OnScanAssets();
+	void StatsUpdate();
 	TSharedRef<ITableRow> OnGenerateRow(TSharedPtr<FPjcAssetStatsItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const;
 	TSharedRef<SHeaderRow> GetHeaderRow() const;
 
