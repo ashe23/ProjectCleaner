@@ -533,3 +533,8 @@ int64 FPjcLibAsset::GetAssetsSize(const TArray<FAssetData>& InAssetDatas)
 
 	return Size;
 }
+
+UClass* FPjcLibAsset::GetClassByName(const FName& InClassName)
+{
+	return FindObject<UClass>(ANY_PACKAGE, *InClassName.ToString());
+}

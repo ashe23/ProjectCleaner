@@ -121,7 +121,7 @@ void FPjcCmds::RegisterCommands()
 	UI_COMMAND(
 		AssetsDelete,
 		"Delete...",
-		"Deletes selected assets",
+		"Delete selected assets",
 		EUserInterfaceActionType::Button,
 		FInputChord()
 	);
@@ -129,7 +129,7 @@ void FPjcCmds::RegisterCommands()
 	UI_COMMAND(
 		DeleteFiles,
 		"Delete...",
-		"Deletes selected files",
+		"Delete selected files",
 		EUserInterfaceActionType::Button,
 		FInputChord()
 	);

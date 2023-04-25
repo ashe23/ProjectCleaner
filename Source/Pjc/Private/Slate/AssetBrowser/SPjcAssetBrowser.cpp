@@ -15,13 +15,13 @@
 #include "FrontendFilters/PjcFrontendFilterAssetsPrimary.h"
 #include "FrontendFilters/PjcFrontendFilterAssetsUsed.h"
 // Engine Headers
+#include "ObjectTools.h"
 #include "ContentBrowserModule.h"
 #include "FrontendFilterBase.h"
 #include "IContentBrowserSingleton.h"
+#include "Libs/PjcLibAsset.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SSeparator.h"
-// #include "EditorWidgetsModule.h"
-// #include "Widgets/Layout/SWidgetSwitcher.h"
 
 void SPjcAssetBrowser::Construct(const FArguments& InArgs)
 {
@@ -33,9 +33,6 @@ void SPjcAssetBrowser::Construct(const FArguments& InArgs)
 	SubsystemPtr->OnScanAssets().AddRaw(this, &SPjcAssetBrowser::OnScanAssets);
 
 	CmdsRegister();
-
-	// FEditorWidgetsModule& EditorWidgetsModule = FModuleManager::LoadModuleChecked<FEditorWidgetsModule>("EditorWidgets");
-	// const TSharedRef<SWidget> AssetDiscoveryIndicator = EditorWidgetsModule.CreateAssetDiscoveryIndicator(EAssetDiscoveryIndicatorScaleMode::Scale_None, FMargin(16, 8), false);
 
 	FPropertyEditorModule& PropertyEditor = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
 	FDetailsViewArgs DetailsViewArgs;
@@ -73,34 +70,7 @@ void SPjcAssetBrowser::Construct(const FArguments& InArgs)
 	AssetPickerConfig.SetFilterDelegates.Add(&DelegateFilter);
 	AssetPickerConfig.Filter = Filter;
 	AssetPickerConfig.OnGetAssetContextMenu.BindRaw(this, &SPjcAssetBrowser::OnGetAssetContextMenu);
-	//
-	// 	AssetPickerConfig.OnGetAssetContextMenu = FOnGetAssetContextMenu::CreateLambda([&](const TArray<FAssetData>&)
-	// 	{
-	// 		FMenuBuilder MenuBuilder{true, Cmds};
-	// 		MenuBuilder.BeginSection(TEXT("AssetInfoActions"), FText::FromName(TEXT("Info")));
-	// 		{
-	// 			MenuBuilder.AddMenuEntry(FPjcCmds::Get().OpenSizeMap);
-	// 			MenuBuilder.AddMenuEntry(FPjcCmds::Get().OpenReferenceViewer);
-	// 			MenuBuilder.AddMenuEntry(FPjcCmds::Get().OpenAssetAudit);
-	// 		}
-	// 		MenuBuilder.EndSection();
-	// 		MenuBuilder.BeginSection(TEXT("AssetExcludeActions"), FText::FromName(TEXT("Exclusion")));
-	// 		{
-	// 			MenuBuilder.AddMenuEntry(FPjcCmds::Get().AssetsExclude);
-	// 			MenuBuilder.AddMenuEntry(FPjcCmds::Get().AssetsInclude);
-	// 			MenuBuilder.AddMenuEntry(FPjcCmds::Get().AssetsExcludeByClass);
-	// 			MenuBuilder.AddMenuEntry(FPjcCmds::Get().AssetsIncludeByClass);
-	// 		}
-	// 		MenuBuilder.EndSection();
-	// 		MenuBuilder.BeginSection(TEXT("AssetDeletionActions"), FText::FromName(TEXT("Deletion")));
-	// 		{
-	// 			MenuBuilder.AddMenuEntry(FPjcCmds::Get().AssetsDelete);
-	// 		}
-	// 		MenuBuilder.EndSection();
-	//
-	// 		return MenuBuilder.MakeWidget();
-	// 	});
-	//
+
 	const TSharedPtr<FFrontendFilterCategory> DefaultCategory = MakeShareable(new FFrontendFilterCategory(FText::FromString(TEXT("ProjectCleaner Filters")), FText::FromString(TEXT(""))));
 	const TSharedPtr<FPjcFilterAssetsUsed> FilterUsed = MakeShareable(new FPjcFilterAssetsUsed(DefaultCategory));
 	const TSharedPtr<FPjcFilterAssetsPrimary> FilterPrimary = MakeShareable(new FPjcFilterAssetsPrimary(DefaultCategory));
@@ -177,7 +147,6 @@ void SPjcAssetBrowser::Construct(const FArguments& InArgs)
 			[
 				SNew(SSeparator).Thickness(5.0f)
 			]
-
 			+ SVerticalBox::Slot().AutoHeight().Padding(5.0f)
 			[
 				SNew(SPjcAssetStats).Padding(FMargin{5.0f})
@@ -205,27 +174,19 @@ void SPjcAssetBrowser::Construct(const FArguments& InArgs)
 		.Value(0.7f)
 		[
 			SNew(SVerticalBox)
-			+ SVerticalBox::Slot().FillHeight(1.0f)
+			+ SVerticalBox::Slot().FillHeight(1.0f).Padding(5.0f)
 			[
-				SNew(SOverlay)
-				+ SOverlay::Slot().Padding(5.0f)
+				SNew(SSplitter)
+				.Style(FEditorStyle::Get(), "DetailsView.Splitter")
+				.PhysicalSplitterHandleSize(3.0f)
+				+ SSplitter::Slot().Value(0.3f)
 				[
-					SNew(SSplitter)
-					.Style(FEditorStyle::Get(), "DetailsView.Splitter")
-					.PhysicalSplitterHandleSize(3.0f)
-					+ SSplitter::Slot().Value(0.3f)
-					[
-						SNew(STextBlock).Text(FText::FromString(TEXT("TreeView")))
-					]
-					+ SSplitter::Slot().Value(0.7f)
-					[
-						ContentBrowserView
-					]
+					SNew(STextBlock).Text(FText::FromString(TEXT("TreeView")))
 				]
-				// + SOverlay::Slot().HAlign(HAlign_Center).VAlign(VAlign_Center).Padding(5.0f)
-				// [
-				// 	AssetDiscoveryIndicator
-				// ]
+				+ SSplitter::Slot().Value(0.7f)
+				[
+					ContentBrowserView
+				]
 			]
 		]
 	];
@@ -434,6 +395,37 @@ void SPjcAssetBrowser::CmdsRegister()
 
 	Cmds->MapAction
 	(
+		FPjcCmds::Get().AssetsDelete,
+		FUIAction
+		(
+			FExecuteAction::CreateLambda([&]()
+			{
+				const TArray<FAssetData> AssetsSelected = DelegateSelection.Execute();
+
+				const int32 NumAssetsTotal = AssetsSelected.Num();
+				const int32 NumAssetsDeleted = ObjectTools::DeleteAssets(AssetsSelected, true);
+
+				if (NumAssetsDeleted > 0)
+				{
+					const FString Msg = FString::Printf(TEXT("Deleted %d of %d assets."), NumAssetsDeleted, NumAssetsTotal);
+
+					if (NumAssetsTotal == NumAssetsDeleted)
+					{
+						FPjcLibEditor::ShowNotification(Msg, SNotificationItem::CS_Success, 5.0f);
+					}
+					else
+					{
+						FPjcLibEditor::ShowNotificationWithOutputLog(Msg, SNotificationItem::CS_Fail, 5.0f);
+					}
+
+					SubsystemPtr->ScanAssets();
+				}
+			})
+		)
+	);
+
+	Cmds->MapAction
+	(
 		FPjcCmds::Get().AssetsExclude,
 		FUIAction
 		(
@@ -482,7 +474,10 @@ void SPjcAssetBrowser::CmdsRegister()
 
 				for (const auto& Asset : AssetsSelected)
 				{
-					AssetExcludeSettings->ExcludedClasses.Emplace(Asset.GetClass());
+					const UClass* AssetExactClass = FPjcLibAsset::GetClassByName(FPjcLibAsset::GetAssetClassName(Asset));
+					if (!AssetExactClass) continue;
+
+					AssetExcludeSettings->ExcludedClasses.Emplace(AssetExactClass);
 				}
 
 				AssetExcludeSettings->PostEditChange();
@@ -526,6 +521,15 @@ TSharedPtr<SWidget> SPjcAssetBrowser::OnGetAssetContextMenu(const TArray<FAssetD
 	{
 		MenuBuilder.AddMenuEntry(FPjcCmds::Get().AssetsExclude);
 		MenuBuilder.AddMenuEntry(FPjcCmds::Get().AssetsExcludeByClass);
+		// MenuBuilder.AddMenuEntry(FPjcCmds::Get().AssetsInclude);
+		// MenuBuilder.AddMenuEntry(FPjcCmds::Get().AssetsIncludeByClass);
+	}
+	MenuBuilder.EndSection();
+
+	MenuBuilder.BeginSection(TEXT("PjcSectionAssetCleanup"), FText::FromName(TEXT("Cleanup")));
+	{
+		MenuBuilder.AddMenuEntry(FPjcCmds::Get().AssetsDelete);
+		// MenuBuilder.AddMenuEntry(FPjcCmds::Get().AssetsExcludeByClass);
 		// MenuBuilder.AddMenuEntry(FPjcCmds::Get().AssetsInclude);
 		// MenuBuilder.AddMenuEntry(FPjcCmds::Get().AssetsIncludeByClass);
 	}

@@ -34,4 +34,5 @@ struct FPjcLibAsset
 	static FAssetData GetAssetByObjectPath(const FName& InObjectPath);
 	static int64 GetAssetSize(const FAssetData& InAssetData);
 	static int64 GetAssetsSize(const TArray<FAssetData>& InAssetDatas);
+	static UClass* GetClassByName(const FName& InClassName);
 };
