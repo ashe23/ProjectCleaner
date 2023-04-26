@@ -30,6 +30,7 @@ struct FPjcLibAsset
 	static void GetAssetDeps(const FAssetData& InAssetData, TSet<FAssetData>& OutDeps);
 	static void GetAssetsDeps(const TSet<FAssetData>& Assets, TSet<FAssetData>& Dependencies);
 	static void GetCachedPaths(TArray<FString>& Paths);
+	static void GetSubPaths(const FString& InPath, const bool bRecursive, TArray<FString>& SubPaths);
 	static FName GetAssetClassName(const FAssetData& InAssetData);
 	static FAssetData GetAssetByObjectPath(const FName& InObjectPath);
 	static int64 GetAssetSize(const FAssetData& InAssetData);

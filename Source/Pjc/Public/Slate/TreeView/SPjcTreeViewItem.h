@@ -6,7 +6,10 @@
 
 struct FPjcTreeViewItem
 {
-	float UnusedSize = 0.0f;
+	int64 UnusedSize = 0;
+	int32 NumAssetsTotal = 0;
+	int32 NumAssetsUsed = 0;
+	int32 NumAssetsUnused = 0;
 	float Percentage = 0.0f;
 	bool bIsDev = false;
 	bool bIsRoot = false;
@@ -19,6 +22,16 @@ struct FPjcTreeViewItem
 
 	TSharedPtr<FPjcTreeViewItem> ParentItem;
 	TArray<TSharedPtr<FPjcTreeViewItem>> SubItems;
+
+	bool operator==(const FPjcTreeViewItem& Other) const
+	{
+		return PathAbs.Equals(Other.PathAbs);
+	}
+
+	bool operator!=(const FPjcTreeViewItem& Other) const
+	{
+		return !PathAbs.Equals(Other.PathAbs);
+	}
 };
 
 class SPjcTreeViewItem final : public SMultiColumnTableRow<TSharedPtr<FPjcTreeViewItem>>

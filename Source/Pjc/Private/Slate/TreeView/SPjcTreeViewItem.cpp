@@ -1,8 +1,8 @@
 ﻿// Copyright Ashot Barkhudaryan. All Rights Reserved.
 
-#include "Slate/AssetBrowser/SPjcTreeViewItem.h"
-
+#include "Slate/TreeView/SPjcTreeViewItem.h"
 #include "PjcStyles.h"
+// Engine Headers
 #include "Widgets/Notifications/SProgressBar.h"
 
 void SPjcTreeViewItem::Construct(const FArguments& InArgs, const TSharedRef<STableViewBase>& InTable)
@@ -55,6 +55,48 @@ TSharedRef<SWidget> SPjcTreeViewItem::GenerateWidgetForColumn(const FName& InCol
 					.ColorAndOpacity(FLinearColor::White)
 					.Text(FText::AsMemory(Item->UnusedSize, IEC))
 				]
+			];
+	}
+
+	if (InColumnName.IsEqual(TEXT("NumAssetsTotal")))
+	{
+		return
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot().FillWidth(1.0f).HAlign(HAlign_Center).VAlign(VAlign_Center)
+			[
+				SNew(STextBlock)
+				.AutoWrapText(false)
+				.Justification(ETextJustify::Center)
+				.ColorAndOpacity(FLinearColor::White)
+				.Text(FText::AsNumber(Item->NumAssetsTotal))
+			];
+	}
+
+	if (InColumnName.IsEqual(TEXT("NumAssetsUsed")))
+	{
+		return
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot().FillWidth(1.0f).HAlign(HAlign_Center).VAlign(VAlign_Center)
+			[
+				SNew(STextBlock)
+				.AutoWrapText(false)
+				.Justification(ETextJustify::Center)
+				.ColorAndOpacity(FLinearColor::White)
+				.Text(FText::AsNumber(Item->NumAssetsUsed))
+			];
+	}
+
+	if (InColumnName.IsEqual(TEXT("NumAssetsUnused")))
+	{
+		return
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot().FillWidth(1.0f).HAlign(HAlign_Center).VAlign(VAlign_Center)
+			[
+				SNew(STextBlock)
+				.AutoWrapText(false)
+				.Justification(ETextJustify::Center)
+				.ColorAndOpacity(FLinearColor::White)
+				.Text(FText::AsNumber(Item->NumAssetsUnused))
 			];
 	}
 

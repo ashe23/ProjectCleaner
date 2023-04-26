@@ -482,6 +482,12 @@ void FPjcLibAsset::GetCachedPaths(TArray<FString>& Paths)
 	Paths.Shrink();
 }
 
+void FPjcLibAsset::GetSubPaths(const FString& InPath, const bool bRecursive, TArray<FString>& SubPaths)
+{
+	const FAssetRegistryModule& ModuleAssetRegistry = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(PjcConstants::ModuleAssetRegistryName);
+	ModuleAssetRegistry.Get().GetSubPaths(InPath, SubPaths, bRecursive);
+}
+
 FName FPjcLibAsset::GetAssetClassName(const FAssetData& InAssetData)
 {
 	if (!InAssetData.IsValid()) return NAME_None;

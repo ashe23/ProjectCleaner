@@ -6,6 +6,7 @@
 #include "ContentBrowserDelegates.h"
 #include "Widgets/SCompoundWidget.h"
 
+class SPjcTreeView;
 class UPjcSubsystem;
 
 class SPjcAssetBrowser final : public SCompoundWidget
@@ -20,6 +21,7 @@ public:
 private:
 	FReply OnBtnScanAssetsClick() const;
 	void OnScanAssets();
+	void OnPathSelectionChanged(const TArray<FName>& InSelectedPaths);
 	void FilterUpdate();
 	void OnAssetDblClick(const FAssetData& AssetData);
 	void OnFilterUsedChanged(const bool bActive);
@@ -36,6 +38,8 @@ private:
 	UPjcSubsystem* SubsystemPtr = nullptr;
 	FARFilter Filter;
 	TSharedPtr<FUICommandList> Cmds;
+	TSharedPtr<SPjcTreeView> TreeViewPtr;
+	TArray<FName> SelectedPaths;
 	FSetARFilterDelegate DelegateFilter;
 	FRefreshAssetViewDelegate DelegateRefreshView;
 	FGetCurrentSelectionDelegate DelegateSelection;

@@ -2,12 +2,14 @@
 
 #include "SLate/AssetBrowser/SPjcAssetBrowser.h"
 #include "Slate/AssetStats/SPjcAssetStats.h"
+#include "Slate/TreeView/SPjcTreeView.h"
 #include "EditorSettings/PjcEditorAssetExcludeSettings.h"
 #include "PjcCmds.h"
 #include "PjcStyles.h"
 #include "PjcConstants.h"
 #include "PjcSubsystem.h"
 #include "Libs/PjcLibEditor.h"
+#include "Libs/PjcLibAsset.h"
 #include "FrontendFilters/PjcFrontendFilterAssetsEditor.h"
 #include "FrontendFilters/PjcFrontendFilterAssetsExcluded.h"
 #include "FrontendFilters/PjcFrontendFilterAssetsExtReferenced.h"
@@ -19,7 +21,6 @@
 #include "ContentBrowserModule.h"
 #include "FrontendFilterBase.h"
 #include "IContentBrowserSingleton.h"
-#include "Libs/PjcLibAsset.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SSeparator.h"
 
@@ -96,6 +97,9 @@ void SPjcAssetBrowser::Construct(const FArguments& InArgs)
 	const TSharedRef<SWidget> ContentBrowserView = ModuleContentBrowser.Get().CreateAssetPicker(AssetPickerConfig);
 
 	FilterUpdate();
+
+	TreeViewPtr = SNew(SPjcTreeView);
+	TreeViewPtr->OnPathSelectionChanged().BindRaw(this, &SPjcAssetBrowser::OnPathSelectionChanged);
 
 	ChildSlot
 	[
@@ -179,11 +183,11 @@ void SPjcAssetBrowser::Construct(const FArguments& InArgs)
 				SNew(SSplitter)
 				.Style(FEditorStyle::Get(), "DetailsView.Splitter")
 				.PhysicalSplitterHandleSize(3.0f)
-				+ SSplitter::Slot().Value(0.3f)
+				+ SSplitter::Slot().Value(0.45f)
 				[
-					SNew(STextBlock).Text(FText::FromString(TEXT("TreeView")))
+					TreeViewPtr.ToSharedRef()
 				]
-				+ SSplitter::Slot().Value(0.7f)
+				+ SSplitter::Slot().Value(0.55f)
 				[
 					ContentBrowserView
 				]
@@ -194,9 +198,15 @@ void SPjcAssetBrowser::Construct(const FArguments& InArgs)
 
 SPjcAssetBrowser::~SPjcAssetBrowser()
 {
-	if (!SubsystemPtr) return;
+	if (SubsystemPtr)
+	{
+		SubsystemPtr->OnScanAssets().RemoveAll(this);
+	}
 
-	SubsystemPtr->OnScanAssets().RemoveAll(this);
+	if (TreeViewPtr)
+	{
+		TreeViewPtr->OnPathSelectionChanged().Unbind();
+	}
 }
 
 FReply SPjcAssetBrowser::OnBtnScanAssetsClick() const
@@ -211,6 +221,14 @@ FReply SPjcAssetBrowser::OnBtnScanAssetsClick() const
 
 void SPjcAssetBrowser::OnScanAssets()
 {
+	FilterUpdate();
+}
+
+void SPjcAssetBrowser::OnPathSelectionChanged(const TArray<FName>& InSelectedPaths)
+{
+	SelectedPaths.Empty();
+	SelectedPaths.Append(InSelectedPaths);
+
 	FilterUpdate();
 }
 
@@ -301,6 +319,11 @@ void SPjcAssetBrowser::FilterUpdate()
 	{
 		// this is needed for disabling showing primary assets in browser, when there is no unused assets
 		Filter.TagsAndValues.Add(PjcConstants::EmptyTagName, PjcConstants::EmptyTagName.ToString());
+	}
+
+	if (SelectedPaths.Num() > 0)
+	{
+		Filter.PackagePaths.Append(SelectedPaths);
 	}
 
 	DelegateFilter.Execute(Filter);
