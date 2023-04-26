@@ -193,14 +193,15 @@ void UPjcSubsystem::ScanFiles(FPjcScanDataFiles& ScanDataFiles) const
 
 	FScopedSlowTask SlowTaskMain{
 		1.0f,
-		FText::FromString(TEXT("Scanning Project Files...")),
+		FText::FromString(TEXT("Scanning Project for External and Corrupted Asset Files...")),
 		GIsEditor && !IsRunningCommandlet()
 	};
 	SlowTaskMain.MakeDialog(false, false);
 
 	SlowTaskMain.EnterProgressFrame(1.0f);
+
 	TArray<FString> Paths;
-	FPjcLibAsset::GetCachedPaths(Paths);
+	IFileManager::Get().FindFilesRecursive(Paths, *FPjcLibPath::ContentDir(), TEXT("*"), true, true);
 
 	ScanDataFiles.FilesExternal.Reset(Paths.Num());
 	ScanDataFiles.FilesCorrupted.Reset(Paths.Num());
@@ -213,31 +214,30 @@ void UPjcSubsystem::ScanFiles(FPjcScanDataFiles& ScanDataFiles) const
 	};
 	SlowTask.MakeDialog(false, false);
 
-	TSet<FString> Files;
 	for (const auto& Path : Paths)
 	{
-		SlowTask.EnterProgressFrame(1.0f);
+		SlowTask.EnterProgressFrame(1.0f, FText::FromString(Path));
 
 		const FString PathAbs = FPjcLibPath::ToAbsolute(Path);
 		if (PathAbs.IsEmpty()) continue;
 
-		if (FPjcLibPath::IsPathEmpty(PathAbs) && !FPjcLibPath::IsPathEngineGenerated(PathAbs))
+		if (FPjcLibPath::IsDir(PathAbs))
 		{
-			ScanDataFiles.FoldersEmpty.Emplace(PathAbs);
-		}
-
-		FPjcLibPath::GetFilesInPath(PathAbs, true, Files);
-
-		for (const auto& File : Files)
-		{
-			if (FPjcLibPath::IsExternalFile(File))
+			if (FPjcLibPath::IsPathEmpty(PathAbs) && !FPjcLibPath::IsPathEngineGenerated(PathAbs))
 			{
-				ScanDataFiles.FilesExternal.Emplace(File);
+				ScanDataFiles.FoldersEmpty.Emplace(PathAbs);
+			}
+		}
+		else
+		{
+			if (FPjcLibPath::IsExternalFile(PathAbs))
+			{
+				ScanDataFiles.FilesExternal.Emplace(PathAbs);
 			}
 
-			if (FPjcLibPath::IsCorruptedAssetFile(File))
+			if (FPjcLibPath::IsCorruptedAssetFile(PathAbs))
 			{
-				ScanDataFiles.FilesCorrupted.Emplace(File);
+				ScanDataFiles.FilesCorrupted.Emplace(PathAbs);
 			}
 		}
 	}

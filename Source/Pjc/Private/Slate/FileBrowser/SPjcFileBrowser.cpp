@@ -4,6 +4,7 @@
 #include "Slate/FileBrowser/SPjcFileBrowserItem.h"
 #include "PjcStyles.h"
 #include "PjcConstants.h"
+#include "PjcSubsystem.h"
 #include "Libs/PjcLibPath.h"
 #include "Libs/PjcLibEditor.h"
 // Engine Headers
@@ -14,12 +15,21 @@
 
 void SPjcFileBrowser::Construct(const FArguments& InArgs)
 {
+	if (!GEditor) return;
+
+	SubsystemPtr = GEditor->GetEditorSubsystem<UPjcSubsystem>();
+	if (!SubsystemPtr) return;
+
+	SubsystemPtr->OnScanFiles().AddRaw(this, &SPjcFileBrowser::OnScanFiles);
+
 	SAssignNew(ListView, SListView<TSharedPtr<FPjcFileBrowserItem>>)
 	.ListItemsSource(&ListItems)
 	.OnGenerateRow(this, &SPjcFileBrowser::OnGenerateRow)
 	.OnMouseButtonDoubleClick_Raw(this, &SPjcFileBrowser::OnListItemDblClick)
 	.SelectionMode(ESelectionMode::Multi)
 	.HeaderRow(GetHeaderRow());
+
+	ListItemsUpdate();
 
 	ChildSlot
 	[
@@ -122,6 +132,13 @@ void SPjcFileBrowser::Construct(const FArguments& InArgs)
 	];
 }
 
+SPjcFileBrowser::~SPjcFileBrowser()
+{
+	if (!SubsystemPtr) return;
+
+	SubsystemPtr->OnScanFiles().RemoveAll(this);
+}
+
 TSharedPtr<FPjcFileBrowserItem> SPjcFileBrowser::CreateListItem(const FString& InFilePath) const
 {
 	const FString FileName = FPjcLibPath::GetFileName(InFilePath);
@@ -202,9 +219,12 @@ TSharedRef<ITableRow> SPjcFileBrowser::OnGenerateRow(TSharedPtr<FPjcFileBrowserI
 	return SNew(SPjcFileBrowserItem, OwnerTable).Item(Item).HighlightText(SearchText);
 }
 
-FReply SPjcFileBrowser::OnBtnScanFilesClicked()
+FReply SPjcFileBrowser::OnBtnScanFilesClicked() const
 {
-	ListItemsUpdate();
+	if (SubsystemPtr)
+	{
+		SubsystemPtr->ScanFiles();
+	}
 
 	return FReply::Handled();
 }
@@ -245,8 +265,8 @@ FReply SPjcFileBrowser::OnBtnDeleteFilesClicked()
 		++FilesDeleted;
 	}
 
-	ListViewUpdate();
-
+	SubsystemPtr->ScanFiles();
+	
 	const FString DeleteStatMsg = FString::Printf(TEXT("Deleted %d of %d files."), FilesDeleted, FilesTotal);
 
 	if (FilesDeleted == FilesTotal)
@@ -266,6 +286,11 @@ FReply SPjcFileBrowser::OnBtnClearSelectionClicked() const
 	ListClearSelection();
 
 	return FReply::Handled();
+}
+
+void SPjcFileBrowser::OnScanFiles()
+{
+	ListItemsUpdate();
 }
 
 void SPjcFileBrowser::OnSearchTextChanged(const FText& InSearchText)
@@ -373,39 +398,28 @@ void SPjcFileBrowser::ListClearSelection() const
 
 void SPjcFileBrowser::ListItemsUpdate()
 {
-	FScopedSlowTask SlowTaskMain{
-		1.0f,
-		FText::FromString(TEXT("Scanning Files ...")),
-		GIsEditor && !IsRunningCommandlet()
-	};
-	SlowTaskMain.MakeDialog(false, false);
-	SlowTaskMain.EnterProgressFrame(1.0f);
+	if (!SubsystemPtr) return;
 
-	TSet<FString> FilesAll;
-	FPjcLibPath::GetFilesInPath(FPjcLibPath::ContentDir(), true, FilesAll);
+	const FPjcScanDataFiles& ScanDataFiles = SubsystemPtr->GetLastScanDataFiles();
+	const int32 NumFilesTotal = ScanDataFiles.FilesExternal.Num() + ScanDataFiles.FilesCorrupted.Num();
 
-	ListItems.Reset(FilesAll.Num());
-	ListItemsCached.Reset(FilesAll.Num());
+	ListItems.Reset(NumFilesTotal);
+	ListItemsCached.Reset(NumFilesTotal);
+
 	TotalSize = 0;
 
-	FScopedSlowTask SlowTask{
-		static_cast<float>(FilesAll.Num()),
-		FText::FromString(TEXT("Processing Files...")),
-		GIsEditor && !IsRunningCommandlet()
-	};
-	SlowTask.MakeDialog(false, false);
-
-	for (const FString& File : FilesAll)
+	for (const FString& File : ScanDataFiles.FilesExternal)
 	{
-		SlowTask.EnterProgressFrame(1.0f, FText::FromString(File));
+		TotalSize += FPjcLibPath::GetFileSize(File);
+		ListItems.Emplace(CreateListItem(File));
+		ListItemsCached.Emplace(CreateListItem(File));
+	}
 
-		if (FPjcLibPath::IsExternalFile(File) || FPjcLibPath::IsCorruptedAssetFile(File))
-		{
-			TotalSize += FPjcLibPath::GetFileSize(File);
-
-			ListItems.Emplace(CreateListItem(File));
-			ListItemsCached.Emplace(CreateListItem(File));
-		}
+	for (const FString& File : ScanDataFiles.FilesCorrupted)
+	{
+		TotalSize += FPjcLibPath::GetFileSize(File);
+		ListItems.Emplace(CreateListItem(File));
+		ListItemsCached.Emplace(CreateListItem(File));
 	}
 
 	ListItems.Shrink();
