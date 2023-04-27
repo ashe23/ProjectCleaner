@@ -1,13 +1,14 @@
 ﻿// Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "PjcSubsystem.h"
-#include "Pjc.h"
 #include "PjcConstants.h"
+#include "Pjc.h"
 #include "Libs/PjcLibPath.h"
 #include "Libs/PjcLibAsset.h"
 #include "Libs/PjcLibEditor.h"
 // Engine Headers
 #include "FileHelpers.h"
+#include "EditorSettings/PjcEditorAssetExcludeSettings.h"
 #include "Misc/ScopedSlowTask.h"
 
 void UPjcSubsystem::Initialize(FSubsystemCollectionBase& Collection)
@@ -20,130 +21,203 @@ void UPjcSubsystem::Deinitialize()
 	Super::Deinitialize();
 }
 
-void UPjcSubsystem::ProjectScan(const FPjcAssetExcludeSettings& InAssetExcludeSetting, FPjcScanResult& ScanResult)
+void UPjcSubsystem::ScanProject(const FPjcAssetExcludeSettings& InAssetExcludeSettings)
 {
-	ScanResult.bScanSuccess = true;
-
-	if (!CanScanProject(ScanResult.ScanErrMsg))
+	FString ErrMsg;
+	if (!CanScanProject(ErrMsg))
 	{
-		ScanResult.bScanSuccess = false;
+		UE_LOG(LogProjectCleaner, Error, TEXT("%s"), *ErrMsg);
 		return;
 	}
 
-	FScopedSlowTask SlowTaskMain{
-		2.0f,
-		FText::FromString(TEXT("Scanning Project ...")),
-		GIsEditor && !IsRunningCommandlet()
-	};
-	SlowTaskMain.MakeDialog(false, false);
-
-	SlowTaskMain.EnterProgressFrame(1.0f);
-	ScanAssets(InAssetExcludeSetting, ScanResult.ScanDataAssets);
-
-	SlowTaskMain.EnterProgressFrame(1.0f);
-	ScanFiles(ScanResult.ScanDataFiles);
-}
-
-void UPjcSubsystem::ScanAssets(const FPjcAssetExcludeSettings& InAssetExcludeSetting, FPjcScanDataAssets& ScanDataAssets)
-{
-	bScanningInProgress = true;
-
-	const double ScanStartTime = FPlatformTime::Seconds();
-
-	FScopedSlowTask SlowTaskMain{
-		5.0f,
-		FText::FromString(TEXT("Scanning Project Assets...")),
-		GIsEditor && !IsRunningCommandlet()
-	};
-	SlowTaskMain.MakeDialog(false, false);
-
-	SlowTaskMain.EnterProgressFrame(1.0f);
-	// first getting all assets in project
-	FPjcLibAsset::GetAssetsByPath(PjcConstants::PathRelRoot.ToString(), true, ScanDataAssets.AssetsAll);
-
-	SlowTaskMain.EnterProgressFrame(1.0f);
-	// reserving some space for data
-	const int32 NumAssetsTotal = ScanDataAssets.AssetsAll.Num();
-
-	ScanDataAssets.AssetsUnused.Reset(NumAssetsTotal);
-	ScanDataAssets.AssetsUsed.Reset(NumAssetsTotal);
-	ScanDataAssets.AssetsEditor.Reset(NumAssetsTotal);
-	ScanDataAssets.AssetsExcluded.Reset(NumAssetsTotal);
-	ScanDataAssets.AssetsPrimary.Reset(NumAssetsTotal);
-	ScanDataAssets.AssetsExtReferenced.Reset(NumAssetsTotal);
-
-	SlowTaskMain.EnterProgressFrame(1.0f);
-	// getting initial data
-	TSet<FName> ClassNamesPrimary;
-	TSet<FName> ClassNamesEditor;
-	TSet<FName> ClassNamesExcluded{InAssetExcludeSetting.ExcludedClassNames};
-	TSet<FAssetData> AssetsExcluded;
-	TSet<FAssetData> AssetsUsedInitial;
-
-	FPjcLibAsset::GetClassNamesPrimary(ClassNamesPrimary);
-	FPjcLibAsset::GetClassNamesEditor(ClassNamesEditor);
-	FPjcLibAsset::GetAssetsIndirect(ScanDataAssets.AssetsIndirect);
-
-	AssetsUsedInitial.Reserve(NumAssetsTotal);
-	AssetsExcluded.Reserve(NumAssetsTotal);
-
-	// loading initial used assets
-	{
-		TArray<FAssetData> AssetsExcludedByPackagePaths;
-		TArray<FAssetData> AssetsExcludedByObjectPaths;
-
-		FPjcLibAsset::GetAssetsByPackagePaths(InAssetExcludeSetting.ExcludedPackagePaths, true, AssetsExcludedByPackagePaths);
-		FPjcLibAsset::GetAssetsByObjectPaths(InAssetExcludeSetting.ExcludedObjectPaths, AssetsExcludedByObjectPaths);
-
-		TArray<FAssetData> AssetsIndirect;
-		ScanDataAssets.AssetsIndirect.GetKeys(AssetsIndirect);
-
-		AssetsExcluded.Append(AssetsExcludedByPackagePaths);
-		AssetsExcluded.Append(AssetsExcludedByObjectPaths);
-
-		AssetsUsedInitial.Append(AssetsExcludedByPackagePaths);
-		AssetsUsedInitial.Append(AssetsExcludedByObjectPaths);
-		AssetsUsedInitial.Append(AssetsIndirect);
-	}
-
-	SlowTaskMain.EnterProgressFrame(1.0f);
-
 	FScopedSlowTask SlowTask{
-		static_cast<float>(NumAssetsTotal),
-		FText::FromString(TEXT("Scanning Project Assets...")),
+		2.0f,
+		FText::FromString(TEXT("Scanning project...")),
 		GIsEditor && !IsRunningCommandlet()
 	};
 	SlowTask.MakeDialog(false, false);
 
-	for (const auto& Asset : ScanDataAssets.AssetsAll)
-	{
-		SlowTask.EnterProgressFrame(1.0f, FText::FromName(Asset.ToSoftObjectPath().GetAssetPathName()));
+	SlowTask.EnterProgressFrame(1.0f);
+	ScanProjectAssets(InAssetExcludeSettings);
 
+	SlowTask.EnterProgressFrame(1.0f);
+	ScanProjectFilesAndFolders();
+}
+
+
+const TArray<FAssetData>& UPjcSubsystem::GetAssetsAll() const
+{
+	return AssetsAll;
+}
+
+const TArray<FAssetData>& UPjcSubsystem::GetAssetsUsed() const
+{
+	return AssetsUsed;
+}
+
+const TArray<FAssetData>& UPjcSubsystem::GetAssetsUnused() const
+{
+	return AssetsUnused;
+}
+
+const TArray<FAssetData>& UPjcSubsystem::GetAssetsEditor() const
+{
+	return AssetsEditor;
+}
+
+const TArray<FAssetData>& UPjcSubsystem::GetAssetsPrimary() const
+{
+	return AssetsPrimary;
+}
+
+const TArray<FAssetData>& UPjcSubsystem::GetAssetsExcluded() const
+{
+	return AssetsExcluded;
+}
+
+const TArray<FAssetData>& UPjcSubsystem::GetAssetsIndirect() const
+{
+	return AssetsIndirect;
+}
+
+const TArray<FAssetData>& UPjcSubsystem::GetAssetsExtReferenced() const
+{
+	return AssetsExtReferenced;
+}
+
+const TSet<FString>& UPjcSubsystem::GetFilesExternal() const
+{
+	return FilesExternal;
+}
+
+const TSet<FString>& UPjcSubsystem::GetFilesCorrupted() const
+{
+	return FilesCorrupted;
+}
+
+const TSet<FString>& UPjcSubsystem::GetFoldersEmpty() const
+{
+	return FoldersEmpty;
+}
+
+void UPjcSubsystem::ScanProjectAssets()
+{
+	const UPjcEditorAssetExcludeSettings* EditorAssetExcludeSettings = GetDefault<UPjcEditorAssetExcludeSettings>();
+	if (!EditorAssetExcludeSettings) return;
+
+	FPjcAssetExcludeSettings ExcludeSettings;
+
+	ExcludeSettings.ExcludedPackagePaths.Reserve(EditorAssetExcludeSettings->ExcludedPaths.Num());
+	ExcludeSettings.ExcludedObjectPaths.Reserve(EditorAssetExcludeSettings->ExcludedAssets.Num());
+	ExcludeSettings.ExcludedClassNames.Reserve(EditorAssetExcludeSettings->ExcludedClasses.Num());
+
+	for (const auto& ExcludedPath : EditorAssetExcludeSettings->ExcludedPaths)
+	{
+		ExcludeSettings.ExcludedPackagePaths.Emplace(FPjcLibPath::ToAssetPath(ExcludedPath.Path));
+	}
+
+	for (const auto& ExcludedClass : EditorAssetExcludeSettings->ExcludedClasses)
+	{
+		if (!ExcludedClass.LoadSynchronous()) continue;
+
+		ExcludeSettings.ExcludedClassNames.Emplace(ExcludedClass.Get()->GetFName());
+	}
+
+	for (const auto& ExcludedAsset : EditorAssetExcludeSettings->ExcludedAssets)
+	{
+		if (!ExcludedAsset.LoadSynchronous()) continue;
+
+		ExcludeSettings.ExcludedObjectPaths.Emplace(ExcludedAsset.ToSoftObjectPath().GetAssetPathName());
+	}
+
+	ScanProjectAssets(ExcludeSettings);
+}
+
+void UPjcSubsystem::ScanProjectAssets(const FPjcAssetExcludeSettings& InAssetExcludeSettings)
+{
+	FString ErrMsg;
+	if (!CanScanProject(ErrMsg))
+	{
+		UE_LOG(LogProjectCleaner, Error, TEXT("%s"), *ErrMsg);
+		return;
+	}
+
+	const double StartTime = FPlatformTime::Seconds();
+
+	FScopedSlowTask SlowTask{
+		3.0f,
+		FText::FromString(TEXT("Scanning project assets...")),
+		GIsEditor && !IsRunningCommandlet()
+	};
+	SlowTask.MakeDialog(false, false);
+	SlowTask.EnterProgressFrame(1.0f);
+
+	bScanningInProgress = true;
+
+	AssetsAll.Reset();
+	AssetsUsed.Reset();
+	AssetsUnused.Reset();
+	AssetsEditor.Reset();
+	AssetsPrimary.Reset();
+	AssetsExcluded.Reset();
+	AssetsIndirect.Reset();
+	AssetsExtReferenced.Reset();
+	AssetsIndirectInfo.Reset();
+
+	TSet<FName> ClassNamesPrimary;
+	TSet<FName> ClassNamesEditor;
+	TSet<FName> ClassNamesExcluded{InAssetExcludeSettings.ExcludedClassNames};
+
+	TSet<FAssetData> AssetsUsedInitial;
+	TSet<FAssetData> AssetsUsedTotal;
+	TSet<FAssetData> AssetsExcludedTotal;
+	TArray<FAssetData> AssetsExcludedByPaths;
+	TArray<FAssetData> AssetsExcludedByObjectPaths;
+	TArray<FAssetData> AssetsMegascansReserved;
+
+	FPjcLibAsset::GetAssetsByPath(PjcConstants::PathRelRoot, true, AssetsAll);
+	FPjcLibAsset::GetAssetsByPath(PjcConstants::PathRelMSPresets, true, AssetsMegascansReserved);
+	FPjcLibAsset::GetClassNamesPrimary(ClassNamesPrimary);
+	FPjcLibAsset::GetClassNamesEditor(ClassNamesEditor);
+	FPjcLibAsset::GetAssetsByPackagePaths(InAssetExcludeSettings.ExcludedPackagePaths, true, AssetsExcludedByPaths);
+	FPjcLibAsset::GetAssetsByObjectPaths(InAssetExcludeSettings.ExcludedObjectPaths, AssetsExcludedByObjectPaths);
+	FPjcLibAsset::GetAssetsIndirect(AssetsIndirectInfo);
+	AssetsIndirectInfo.GetKeys(AssetsIndirect);
+
+	AssetsExcludedTotal.Append(AssetsExcludedByPaths);
+	AssetsExcludedTotal.Append(AssetsExcludedByObjectPaths);
+
+	AssetsUsedInitial.Append(AssetsIndirect);
+	AssetsUsedInitial.Append(AssetsMegascansReserved);
+
+	SlowTask.EnterProgressFrame(1.0f);
+
+	for (const auto& Asset : AssetsAll)
+	{
 		const bool bIsPrimary = FPjcLibAsset::AssetClassNameInList(Asset, ClassNamesPrimary);
 		const bool bIsEditor = FPjcLibAsset::AssetClassNameInList(Asset, ClassNamesEditor);
 		const bool bIsExcluded = FPjcLibAsset::AssetClassNameInList(Asset, ClassNamesExcluded);
 		const bool bIsExtReferenced = FPjcLibAsset::AssetIsExtReferenced(Asset);
-		const bool bIsMegascansBase = FPjcLibAsset::AssetIsMegascansBase(Asset);
-		const bool bIsUsed = bIsPrimary || bIsEditor || bIsExcluded || bIsExtReferenced || bIsMegascansBase;
+		const bool bIsUsed = bIsPrimary || bIsEditor || bIsExcluded || bIsExtReferenced;
 
 		if (bIsPrimary)
 		{
-			ScanDataAssets.AssetsPrimary.Emplace(Asset);
+			AssetsPrimary.Emplace(Asset);
 		}
 
 		if (bIsEditor)
 		{
-			ScanDataAssets.AssetsEditor.Emplace(Asset);
+			AssetsEditor.Emplace(Asset);
 		}
 
 		if (bIsExcluded)
 		{
-			AssetsExcluded.Emplace(Asset);
+			AssetsExcludedTotal.Emplace(Asset);
 		}
 
 		if (bIsExtReferenced)
 		{
-			ScanDataAssets.AssetsExtReferenced.Emplace(Asset);
+			AssetsExtReferenced.Emplace(Asset);
 		}
 
 		if (bIsUsed)
@@ -152,34 +226,21 @@ void UPjcSubsystem::ScanAssets(const FPjcAssetExcludeSettings& InAssetExcludeSet
 		}
 	}
 
-	SlowTaskMain.EnterProgressFrame(1.0f);
-	// now getting all used assets dependencies recursive
-	TSet<FAssetData> AssetsUsed;
-	FPjcLibAsset::GetAssetsDeps(AssetsUsedInitial, AssetsUsed);
-
 	SlowTask.EnterProgressFrame(1.0f);
-	// finally filtering all unused assets
-	const TSet<FAssetData> AssetsAll{ScanDataAssets.AssetsAll};
-	const TSet<FAssetData> AssetsUnused = AssetsAll.Difference(AssetsUsed);
+	AssetsUsedInitial.Append(AssetsExcludedTotal);
+	FPjcLibAsset::GetAssetsDeps(AssetsUsedInitial, AssetsUsedTotal);
 
-	ScanDataAssets.AssetsUsed.Append(AssetsUsed.Array());
-	ScanDataAssets.AssetsUnused.Append(AssetsUnused.Array());
-	ScanDataAssets.AssetsExcluded.Append(AssetsExcluded.Array());
+	const TSet<FAssetData> AssetsAllSet{AssetsAll};
+	const TSet<FAssetData> AssetsUnusedSet = AssetsAllSet.Difference(AssetsUsedTotal);
 
-	// shrinking data containers
-	ScanDataAssets.AssetsAll.Shrink();
-	ScanDataAssets.AssetsUnused.Shrink();
-	ScanDataAssets.AssetsUsed.Shrink();
-	ScanDataAssets.AssetsPrimary.Shrink();
-	ScanDataAssets.AssetsEditor.Shrink();
-	ScanDataAssets.AssetsExtReferenced.Shrink();
-	ScanDataAssets.AssetsExcluded.Shrink();
-
-	const double ScanTime = FPlatformTime::Seconds() - ScanStartTime;
-
-	UE_LOG(LogProjectCleaner, Display, TEXT("Project assets scanned in %f seconds"), ScanTime);
+	AssetsExcluded = AssetsExcludedTotal.Array();
+	AssetsUsed = AssetsUsedTotal.Array();
+	AssetsUnused = AssetsUnusedSet.Array();
 
 	bScanningInProgress = false;
+
+	const double ElapsedTime = FPlatformTime::Seconds() - StartTime;
+	UE_LOG(LogProjectCleaner, Display, TEXT("Project assets scanned in %f seconds"), ElapsedTime);
 
 	if (DelegateOnScanAssets.IsBound())
 	{
@@ -187,83 +248,58 @@ void UPjcSubsystem::ScanAssets(const FPjcAssetExcludeSettings& InAssetExcludeSet
 	}
 }
 
-void UPjcSubsystem::ScanFiles(FPjcScanDataFiles& ScanDataFiles) const
+void UPjcSubsystem::ScanProjectFilesAndFolders()
 {
-	const float ScanStartTime = FPlatformTime::Seconds();
+	const double StartTime = FPlatformTime::Seconds();
 
-	FScopedSlowTask SlowTaskMain{
-		1.0f,
-		FText::FromString(TEXT("Scanning Project for External and Corrupted Asset Files...")),
-		GIsEditor && !IsRunningCommandlet()
-	};
-	SlowTaskMain.MakeDialog(false, false);
+	TArray<FString> PathsAll;
+	IFileManager::Get().FindFilesRecursive(PathsAll, *FPjcLibPath::ContentDir(), TEXT("*"), true, true);
 
-	SlowTaskMain.EnterProgressFrame(1.0f);
-
-	TArray<FString> Paths;
-	IFileManager::Get().FindFilesRecursive(Paths, *FPjcLibPath::ContentDir(), TEXT("*"), true, true);
-
-	ScanDataFiles.FilesExternal.Reset(Paths.Num());
-	ScanDataFiles.FilesCorrupted.Reset(Paths.Num());
-	ScanDataFiles.FoldersEmpty.Reset(Paths.Num());
+	FilesExternal.Reset();
+	FilesCorrupted.Reset();
+	FoldersEmpty.Reset();
 
 	FScopedSlowTask SlowTask{
-		static_cast<float>(Paths.Num()),
-		FText{},
+		static_cast<float>(PathsAll.Num()),
+		FText::FromString(TEXT("Scanning project files...")),
 		GIsEditor && !IsRunningCommandlet()
 	};
 	SlowTask.MakeDialog(false, false);
 
-	for (const auto& Path : Paths)
+	for (const auto& Path : PathsAll)
 	{
 		SlowTask.EnterProgressFrame(1.0f, FText::FromString(Path));
 
 		const FString PathAbs = FPjcLibPath::ToAbsolute(Path);
-		if (PathAbs.IsEmpty()) continue;
 
 		if (FPjcLibPath::IsDir(PathAbs))
 		{
 			if (FPjcLibPath::IsPathEmpty(PathAbs) && !FPjcLibPath::IsPathEngineGenerated(PathAbs))
 			{
-				ScanDataFiles.FoldersEmpty.Emplace(PathAbs);
+				FoldersEmpty.Emplace(PathAbs);
 			}
 		}
 		else
 		{
 			if (FPjcLibPath::IsExternalFile(PathAbs))
 			{
-				ScanDataFiles.FilesExternal.Emplace(PathAbs);
+				FilesExternal.Emplace(PathAbs);
 			}
 
 			if (FPjcLibPath::IsCorruptedAssetFile(PathAbs))
 			{
-				ScanDataFiles.FilesCorrupted.Emplace(PathAbs);
+				FilesCorrupted.Emplace(PathAbs);
 			}
 		}
 	}
 
-	ScanDataFiles.FilesExternal.Shrink();
-	ScanDataFiles.FilesCorrupted.Shrink();
-	ScanDataFiles.FoldersEmpty.Shrink();
-
-	const double ScanTime = FPlatformTime::Seconds() - ScanStartTime;
-
-	UE_LOG(LogProjectCleaner, Display, TEXT("Project files scanned in %f seconds"), ScanTime);
+	const double ElapsedTime = FPlatformTime::Seconds() - StartTime;
+	UE_LOG(LogProjectCleaner, Display, TEXT("Project files and folders scanned in %f seconds"), ElapsedTime);
 
 	if (DelegateOnScanFiles.IsBound())
 	{
 		DelegateOnScanFiles.Broadcast();
 	}
-}
-
-void UPjcSubsystem::ScanAssets()
-{
-	ScanAssets(FPjcLibEditor::GetEditorAssetExcludeSettings(), CachedScanDataAssets);
-}
-
-void UPjcSubsystem::ScanFiles()
-{
-	ScanFiles(CachedScanDataFiles);
 }
 
 FPjcDelegateOnScanAssets& UPjcSubsystem::OnScanAssets()
@@ -274,16 +310,6 @@ FPjcDelegateOnScanAssets& UPjcSubsystem::OnScanAssets()
 FPjcDelegateOnScanFiles& UPjcSubsystem::OnScanFiles()
 {
 	return DelegateOnScanFiles;
-}
-
-const FPjcScanDataAssets& UPjcSubsystem::GetLastScanDataAssets() const
-{
-	return CachedScanDataAssets;
-}
-
-const FPjcScanDataFiles& UPjcSubsystem::GetLastScanDataFiles() const
-{
-	return CachedScanDataFiles;
 }
 
 #if WITH_EDITOR
@@ -327,7 +353,7 @@ bool UPjcSubsystem::CanScanProject(FString& ErrMsg) const
 	// Close all asset editors and fix redirectors if not running a commandlet
 	if (!IsRunningCommandlet())
 	{
-		if (!GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->CloseAllAssetEditors())
+		if (GEditor && !GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->CloseAllAssetEditors())
 		{
 			ErrMsg = TEXT("Scanning of the project has failed because not all asset editors are closed.");
 			return false;

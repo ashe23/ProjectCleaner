@@ -4,8 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "EditorSubsystem.h"
-#include "PjcDelegates.h"
 #include "PjcTypes.h"
+#include "PjcDelegates.h"
 #include "PjcSubsystem.generated.h"
 
 UCLASS(Config=EditorPerProjectUserSettings, meta=(ToolTip="ProjectCleanerSubsystem"))
@@ -18,19 +18,47 @@ public:
 	virtual void Deinitialize() override;
 
 	UFUNCTION(BlueprintCallable, Category="ProjectCleaner")
-	void ProjectScan(const FPjcAssetExcludeSettings& InAssetExcludeSetting, FPjcScanResult& ScanResult);
+	void ScanProject(const FPjcAssetExcludeSettings& InAssetExcludeSettings);
+	
+	UFUNCTION(BlueprintCallable, Category="ProjectCleaner")
+	const TArray<FAssetData>& GetAssetsAll() const;
 
-	void ScanAssets(const FPjcAssetExcludeSettings& InAssetExcludeSetting, FPjcScanDataAssets& ScanDataAssets);
-	void ScanFiles(FPjcScanDataFiles& ScanDataFiles) const;
+	UFUNCTION(BlueprintCallable, Category="ProjectCleaner")
+	const TArray<FAssetData>& GetAssetsUsed() const;
 
-	void ScanAssets();
-	void ScanFiles();
+	UFUNCTION(BlueprintCallable, Category="ProjectCleaner")
+	const TArray<FAssetData>& GetAssetsUnused() const;
+
+	UFUNCTION(BlueprintCallable, Category="ProjectCleaner")
+	const TArray<FAssetData>& GetAssetsEditor() const;
+
+	UFUNCTION(BlueprintCallable, Category="ProjectCleaner")
+	const TArray<FAssetData>& GetAssetsPrimary() const;
+
+	UFUNCTION(BlueprintCallable, Category="ProjectCleaner")
+	const TArray<FAssetData>& GetAssetsExcluded() const;
+
+	UFUNCTION(BlueprintCallable, Category="ProjectCleaner")
+	const TArray<FAssetData>& GetAssetsIndirect() const;
+
+	UFUNCTION(BlueprintCallable, Category="ProjectCleaner")
+	const TArray<FAssetData>& GetAssetsExtReferenced() const;
+
+	UFUNCTION(BlueprintCallable, Category="ProjectCleaner")
+	const TSet<FString>& GetFilesExternal() const;
+
+	UFUNCTION(BlueprintCallable, Category="ProjectCleaner")
+	const TSet<FString>& GetFilesCorrupted() const;
+
+	UFUNCTION(BlueprintCallable, Category="ProjectCleaner")
+	const TSet<FString>& GetFoldersEmpty() const;
+
+	void ScanProjectAssets();
+	void ScanProjectAssets(const FPjcAssetExcludeSettings& InAssetExcludeSettings);
+	void ScanProjectFilesAndFolders();
 
 	FPjcDelegateOnScanAssets& OnScanAssets();
 	FPjcDelegateOnScanFiles& OnScanFiles();
-
-	const FPjcScanDataAssets& GetLastScanDataAssets() const;
-	const FPjcScanDataFiles& GetLastScanDataFiles() const;
 
 protected:
 #if WITH_EDITOR
@@ -43,9 +71,19 @@ private:
 	bool bScanningInProgress = false;
 	bool bCleaningInProgress = false;
 
+	TArray<FAssetData> AssetsAll;
+	TArray<FAssetData> AssetsUsed;
+	TArray<FAssetData> AssetsUnused;
+	TArray<FAssetData> AssetsEditor;
+	TArray<FAssetData> AssetsPrimary;
+	TArray<FAssetData> AssetsExcluded;
+	TArray<FAssetData> AssetsIndirect;
+	TArray<FAssetData> AssetsExtReferenced;
+	TMap<FAssetData, FPjcAssetIndirectUsageInfo> AssetsIndirectInfo;
+	TSet<FString> FilesExternal;
+	TSet<FString> FilesCorrupted;
+	TSet<FString> FoldersEmpty;
+
 	FPjcDelegateOnScanAssets DelegateOnScanAssets;
 	FPjcDelegateOnScanFiles DelegateOnScanFiles;
-
-	FPjcScanDataAssets CachedScanDataAssets;
-	FPjcScanDataFiles CachedScanDataFiles;
 };

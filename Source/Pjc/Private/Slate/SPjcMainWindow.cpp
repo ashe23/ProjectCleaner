@@ -87,6 +87,7 @@ TSharedRef<SDockTab> SPjcMainWindow::OnTabAssetsBrowserSpawn(const FSpawnTabArgs
 		.Label(FText::FromString(TEXT("Assets Browser")))
 		.Icon(FPjcStyles::Get().GetBrush("ProjectCleaner.IconTabAssetsBrowser16"))
 		[
+			// SNew(STextBlock)
 			SNew(SPjcAssetBrowser)
 		];
 }
@@ -100,6 +101,7 @@ TSharedRef<SDockTab> SPjcMainWindow::OnTabFilesBrowserSpawn(const FSpawnTabArgs&
 		.Icon(FPjcStyles::Get().GetBrush("ProjectCleaner.IconTabFilesBrowser16"))
 		.ToolTipText(FText::FromString(TEXT("Manage external and corrupted asset files in project")))
 		[
+			// SNew(STextBlock)
 			SNew(SPjcFileBrowser)
 		];
 }

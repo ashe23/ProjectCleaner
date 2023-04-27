@@ -23,9 +23,10 @@ struct FPjcLibAsset
 	static void GetAssetsEditor(const TArray<FAssetData>& AssetsAll, TArray<FAssetData>& OutAssets);
 	static void GetAssetsExtReferenced(const TArray<FAssetData>& AssetsAll, TArray<FAssetData>& OutAssets);
 	// static void GetAssetsExcluded(const FPjcExcludeSettings& InExcludeSettings, TArray<FAssetData>& OutAssets);
-	static void GetAssetsByPath(const FString& InPath, const bool bRecursive, TArray<FAssetData>& OutAssets);
+	static void GetAssetsByPath(const FName& InPath, const bool bRecursive, TArray<FAssetData>& OutAssets);
 	static void GetAssetsByPackagePaths(const TArray<FName>& InPackagePaths, const bool bRecursive, TArray<FAssetData>& OutAssets);
 	static void GetAssetsByObjectPaths(const TArray<FName>& InObjectPaths, TArray<FAssetData>& OutAssets);
+	static void GetAssetsByClassNames(const TArray<FName>& InClassNames, TArray<FAssetData>& OutAssets);
 	static void GetAssetsIndirect(TMap<FAssetData, FPjcAssetIndirectUsageInfo>& AssetsIndirect);
 	static void GetAssetDeps(const FAssetData& InAssetData, TSet<FAssetData>& OutDeps);
 	static void GetAssetsDeps(const TSet<FAssetData>& Assets, TSet<FAssetData>& Dependencies);

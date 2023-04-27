@@ -213,7 +213,7 @@ FReply SPjcAssetBrowser::OnBtnScanAssetsClick() const
 {
 	if (SubsystemPtr)
 	{
-		SubsystemPtr->ScanAssets();
+		SubsystemPtr->ScanProjectAssets();
 	}
 
 	return FReply::Handled();
@@ -236,17 +236,15 @@ void SPjcAssetBrowser::FilterUpdate()
 {
 	if (!SubsystemPtr) return;
 
-	const FPjcScanDataAssets& ScanDataAssets = SubsystemPtr->GetLastScanDataAssets();
-
 	Filter.Clear();
 
 	if (AnyFilterEnabled())
 	{
 		if (bFilterUsedActive)
 		{
-			Filter.PackageNames.Reserve(ScanDataAssets.AssetsUsed.Num());
+			Filter.PackageNames.Reserve(SubsystemPtr->GetAssetsUsed().Num());
 
-			for (const auto& Asset : ScanDataAssets.AssetsUsed)
+			for (const auto& Asset : SubsystemPtr->GetAssetsUsed())
 			{
 				Filter.PackageNames.Emplace(Asset.PackageName);
 			}
@@ -254,9 +252,9 @@ void SPjcAssetBrowser::FilterUpdate()
 
 		if (bFilterPrimaryActive)
 		{
-			Filter.PackageNames.Reserve(Filter.PackageNames.Num() + ScanDataAssets.AssetsPrimary.Num());
+			Filter.PackageNames.Reserve(Filter.PackageNames.Num() + SubsystemPtr->GetAssetsPrimary().Num());
 
-			for (const auto& Asset : ScanDataAssets.AssetsPrimary)
+			for (const auto& Asset : SubsystemPtr->GetAssetsPrimary())
 			{
 				Filter.PackageNames.Emplace(Asset.PackageName);
 			}
@@ -264,12 +262,9 @@ void SPjcAssetBrowser::FilterUpdate()
 
 		if (bFilterIndirectActive)
 		{
-			Filter.PackageNames.Reserve(Filter.PackageNames.Num() + ScanDataAssets.AssetsIndirect.Num());
+			Filter.PackageNames.Reserve(Filter.PackageNames.Num() + SubsystemPtr->GetAssetsIndirect().Num());
 
-			TArray<FAssetData> AssetsIndirect;
-			ScanDataAssets.AssetsIndirect.GetKeys(AssetsIndirect);
-
-			for (const auto& Asset : AssetsIndirect)
+			for (const auto& Asset : SubsystemPtr->GetAssetsIndirect())
 			{
 				Filter.PackageNames.Emplace(Asset.PackageName);
 			}
@@ -277,9 +272,9 @@ void SPjcAssetBrowser::FilterUpdate()
 
 		if (bFilterEditorActive)
 		{
-			Filter.PackageNames.Reserve(Filter.PackageNames.Num() + ScanDataAssets.AssetsEditor.Num());
+			Filter.PackageNames.Reserve(Filter.PackageNames.Num() + SubsystemPtr->GetAssetsEditor().Num());
 
-			for (const auto& Asset : ScanDataAssets.AssetsEditor)
+			for (const auto& Asset : SubsystemPtr->GetAssetsEditor())
 			{
 				Filter.PackageNames.Emplace(Asset.PackageName);
 			}
@@ -287,9 +282,9 @@ void SPjcAssetBrowser::FilterUpdate()
 
 		if (bFilterExtReferencedActive)
 		{
-			Filter.PackageNames.Reserve(Filter.PackageNames.Num() + ScanDataAssets.AssetsExtReferenced.Num());
+			Filter.PackageNames.Reserve(Filter.PackageNames.Num() + SubsystemPtr->GetAssetsExtReferenced().Num());
 
-			for (const auto& Asset : ScanDataAssets.AssetsExtReferenced)
+			for (const auto& Asset : SubsystemPtr->GetAssetsExtReferenced())
 			{
 				Filter.PackageNames.Emplace(Asset.PackageName);
 			}
@@ -297,9 +292,9 @@ void SPjcAssetBrowser::FilterUpdate()
 
 		if (bFilterExcludedActive)
 		{
-			Filter.PackageNames.Reserve(Filter.PackageNames.Num() + ScanDataAssets.AssetsExcluded.Num());
+			Filter.PackageNames.Reserve(Filter.PackageNames.Num() + SubsystemPtr->GetAssetsExcluded().Num());
 
-			for (const auto& Asset : ScanDataAssets.AssetsExcluded)
+			for (const auto& Asset : SubsystemPtr->GetAssetsExcluded())
 			{
 				Filter.PackageNames.Emplace(Asset.PackageName);
 			}
@@ -307,9 +302,9 @@ void SPjcAssetBrowser::FilterUpdate()
 	}
 	else
 	{
-		Filter.PackageNames.Reserve(ScanDataAssets.AssetsUnused.Num());
+		Filter.PackageNames.Reserve(SubsystemPtr->GetAssetsUnused().Num());
 
-		for (const auto& Asset : ScanDataAssets.AssetsUnused)
+		for (const auto& Asset : SubsystemPtr->GetAssetsUnused())
 		{
 			Filter.PackageNames.Emplace(Asset.PackageName);
 		}
@@ -441,7 +436,7 @@ void SPjcAssetBrowser::CmdsRegister()
 						FPjcLibEditor::ShowNotificationWithOutputLog(Msg, SNotificationItem::CS_Fail, 5.0f);
 					}
 
-					SubsystemPtr->ScanAssets();
+					SubsystemPtr->ScanProjectAssets();
 				}
 			})
 		)
@@ -466,7 +461,7 @@ void SPjcAssetBrowser::CmdsRegister()
 
 				AssetExcludeSettings->PostEditChange();
 
-				SubsystemPtr->ScanAssets();
+				SubsystemPtr->ScanProjectAssets();
 			}),
 			FCanExecuteAction::CreateLambda([&]()
 			{
@@ -505,7 +500,7 @@ void SPjcAssetBrowser::CmdsRegister()
 
 				AssetExcludeSettings->PostEditChange();
 
-				SubsystemPtr->ScanAssets();
+				SubsystemPtr->ScanProjectAssets();
 			}),
 			FCanExecuteAction::CreateLambda([&]()
 			{

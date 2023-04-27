@@ -223,7 +223,7 @@ FReply SPjcFileBrowser::OnBtnScanFilesClicked() const
 {
 	if (SubsystemPtr)
 	{
-		SubsystemPtr->ScanFiles();
+		SubsystemPtr->ScanProjectFilesAndFolders();
 	}
 
 	return FReply::Handled();
@@ -265,8 +265,8 @@ FReply SPjcFileBrowser::OnBtnDeleteFilesClicked()
 		++FilesDeleted;
 	}
 
-	SubsystemPtr->ScanFiles();
-	
+	SubsystemPtr->ScanProjectFilesAndFolders();
+
 	const FString DeleteStatMsg = FString::Printf(TEXT("Deleted %d of %d files."), FilesDeleted, FilesTotal);
 
 	if (FilesDeleted == FilesTotal)
@@ -400,22 +400,21 @@ void SPjcFileBrowser::ListItemsUpdate()
 {
 	if (!SubsystemPtr) return;
 
-	const FPjcScanDataFiles& ScanDataFiles = SubsystemPtr->GetLastScanDataFiles();
-	const int32 NumFilesTotal = ScanDataFiles.FilesExternal.Num() + ScanDataFiles.FilesCorrupted.Num();
+	const int32 NumFilesTotal = SubsystemPtr->GetFilesExternal().Num() + SubsystemPtr->GetFilesCorrupted().Num();
 
 	ListItems.Reset(NumFilesTotal);
 	ListItemsCached.Reset(NumFilesTotal);
 
 	TotalSize = 0;
 
-	for (const FString& File : ScanDataFiles.FilesExternal)
+	for (const FString& File : SubsystemPtr->GetFilesExternal())
 	{
 		TotalSize += FPjcLibPath::GetFileSize(File);
 		ListItems.Emplace(CreateListItem(File));
 		ListItemsCached.Emplace(CreateListItem(File));
 	}
 
-	for (const FString& File : ScanDataFiles.FilesCorrupted)
+	for (const FString& File : SubsystemPtr->GetFilesCorrupted())
 	{
 		TotalSize += FPjcLibPath::GetFileSize(File);
 		ListItems.Emplace(CreateListItem(File));

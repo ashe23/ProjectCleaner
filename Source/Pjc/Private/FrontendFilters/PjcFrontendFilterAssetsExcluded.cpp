@@ -36,10 +36,9 @@ void FPjcFilterAssetsExcluded::ActiveStateChanged(bool bActive)
 
 	if (bActive)
 	{
-		const FPjcScanDataAssets& ScanDataAssets = GEditor->GetEditorSubsystem<UPjcSubsystem>()->GetLastScanDataAssets();
-
-		Assets.Empty(ScanDataAssets.AssetsExcluded.Num());
-		Assets.Append(ScanDataAssets.AssetsExcluded);
+		const TArray<FAssetData>& AssetsExcluded = GEditor->GetEditorSubsystem<UPjcSubsystem>()->GetAssetsExcluded();
+		Assets.Empty(AssetsExcluded.Num());
+		Assets.Append(AssetsExcluded);
 	}
 }
 

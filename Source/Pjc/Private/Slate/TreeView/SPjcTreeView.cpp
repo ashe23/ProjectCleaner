@@ -235,76 +235,74 @@ void SPjcTreeView::TreeViewListUpdate()
 
 	TArray<FString> Paths;
 	FPjcLibAsset::GetCachedPaths(Paths);
-
-	const FPjcScanDataAssets& ScanDataAssets = SubsystemPtr->GetLastScanDataAssets();
-
+	
 	SizesByPaths.Reset();
 	PercentageByPaths.Reset();
 	NumAssetsTotalByPaths.Reset();
 	NumAssetsUsedByPaths.Reset();
 	NumAssetsUnusedByPaths.Reset();
-
+	
 	SizesByPaths.Reserve(Paths.Num());
 	PercentageByPaths.Reserve(Paths.Num());
 	NumAssetsTotalByPaths.Reserve(Paths.Num());
 	NumAssetsUsedByPaths.Reserve(Paths.Num());
 	NumAssetsUnusedByPaths.Reserve(Paths.Num());
-
+	
 	TArray<FAssetData> AssetsTotalInPath;
 	TSet<FAssetData> AssetsTotalInPathSet;
-	const TSet<FAssetData> AssetsUsedSet{ScanDataAssets.AssetsUsed};
-	const TSet<FAssetData> AssetsUnusedSet{ScanDataAssets.AssetsUnused};
-
+	const TSet<FAssetData> AssetsUsedSet{SubsystemPtr->GetAssetsUsed()};
+	const TSet<FAssetData> AssetsUnusedSet{SubsystemPtr->GetAssetsUnused()};
+	
 	for (const auto& Path : Paths)
 	{
-		FPjcLibAsset::GetAssetsByPath(Path, true, AssetsTotalInPath);
-
+		FPjcLibAsset::GetAssetsByPath(FName{*Path}, true, AssetsTotalInPath);
+	
 		AssetsTotalInPathSet.Reset();
 		AssetsTotalInPathSet.Append(AssetsTotalInPath);
-
+	
 		const TSet<FAssetData> AssetsUnusedInPath = AssetsTotalInPathSet.Difference(AssetsUsedSet);
 		const TSet<FAssetData> AssetsUsedInPath = AssetsTotalInPathSet.Difference(AssetsUnusedSet);
-
+	
 		const int64 AssetsUnusedTotalSize = FPjcLibAsset::GetAssetsSize(AssetsUnusedInPath.Array());
 		const float Percentage = AssetsTotalInPath.Num() == 0 ? 0 : AssetsUnusedInPath.Num() * 100.0f / AssetsTotalInPath.Num();
 		const float PercentageNormalized = FMath::GetMappedRangeValueClamped(FVector2D{0.0f, 100.0f}, FVector2D{0.0f, 1.0f}, Percentage);
-
+	
 		SizesByPaths.FindOrAdd(Path, AssetsUnusedTotalSize);
 		PercentageByPaths.FindOrAdd(Path, PercentageNormalized);
-
+	
 		NumAssetsTotalByPaths.FindOrAdd(Path, AssetsTotalInPath.Num());
 		NumAssetsUsedByPaths.FindOrAdd(Path, AssetsUsedInPath.Num());
 		NumAssetsUnusedByPaths.FindOrAdd(Path, AssetsUnusedInPath.Num());
 	}
-
+	
 	TreeViewItems.Empty();
-
+	
 	const TSharedPtr<FPjcTreeViewItem> RootItem = CreateTreeItem(FPjcLibPath::ContentDir());
 	if (!RootItem.IsValid()) return;
-
+	
 	TreeView->SetItemExpansion(RootItem, true);
-
+	
 	TArray<TSharedPtr<FPjcTreeViewItem>> Stack;
 	Stack.Emplace(RootItem);
-
+	
 	while (Stack.Num() > 0)
 	{
 		const TSharedPtr<FPjcTreeViewItem> CurrentItem = Stack.Pop();
-
+	
 		TArray<FString> SubPaths;
 		FPjcLibAsset::GetSubPaths(CurrentItem->PathContent, false, SubPaths);
-
+	
 		for (const auto& SubPath : SubPaths)
 		{
 			const TSharedPtr<FPjcTreeViewItem> SubItem = CreateTreeItem(FPjcLibPath::ToAbsolute(SubPath));
 			if (!SubItem.IsValid()) continue;
-
+	
 			SubItem->ParentItem = CurrentItem;
 			CurrentItem->SubItems.Emplace(SubItem);
 			Stack.Emplace(SubItem);
 		}
 	}
-
+	
 	TreeViewItems.Emplace(RootItem);
 	TreeView->RequestTreeRefresh();
 }

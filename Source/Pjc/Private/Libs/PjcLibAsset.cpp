@@ -242,12 +242,12 @@ void FPjcLibAsset::GetAssetsExtReferenced(const TArray<FAssetData>& AssetsAll, T
 	OutAssets.Shrink();
 }
 
-void FPjcLibAsset::GetAssetsByPath(const FString& InPath, const bool bRecursive, TArray<FAssetData>& OutAssets)
+void FPjcLibAsset::GetAssetsByPath(const FName& InPath, const bool bRecursive, TArray<FAssetData>& OutAssets)
 {
 	OutAssets.Empty();
 
 	const FAssetRegistryModule& ModuleAssetRegistry = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(PjcConstants::ModuleAssetRegistryName);
-	ModuleAssetRegistry.Get().GetAssetsByPath(FName{*InPath}, OutAssets, bRecursive, true);
+	ModuleAssetRegistry.Get().GetAssetsByPath(InPath, OutAssets, bRecursive, true);
 }
 
 void FPjcLibAsset::GetAssetsByPackagePaths(const TArray<FName>& InPackagePaths, const bool bRecursive, TArray<FAssetData>& OutAssets)
@@ -257,15 +257,11 @@ void FPjcLibAsset::GetAssetsByPackagePaths(const TArray<FName>& InPackagePaths, 
 	FARFilter Filter;
 	Filter.bRecursivePaths = bRecursive;
 
+	Filter.PackagePaths.Reserve(InPackagePaths.Num());
 	for (const auto& PackagePath : InPackagePaths)
 	{
-		const FString AssetPath = FPjcLibPath::ToAssetPath(PackagePath.ToString());
-		if (AssetPath.IsEmpty()) continue;
-
-		Filter.PackagePaths.Emplace(FName{*AssetPath});
+		Filter.PackagePaths.Emplace(PackagePath);
 	}
-
-	if (Filter.PackagePaths.Num() == 0) return;
 
 	const FAssetRegistryModule& ModuleAssetRegistry = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(PjcConstants::ModuleAssetRegistryName);
 
@@ -281,13 +277,34 @@ void FPjcLibAsset::GetAssetsByObjectPaths(const TArray<FName>& InObjectPaths, TA
 
 	for (const auto& ObjectPath : InObjectPaths)
 	{
-		Filter.ObjectPaths.Emplace(ObjectPath);
+		const FName Path = FPjcLibPath::ToObjectPath(ObjectPath.ToString());
+		if (Path.IsNone()) continue;
+		
+		Filter.ObjectPaths.Emplace(Path);
 	}
 
 	const FAssetRegistryModule& ModuleAssetRegistry = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(PjcConstants::ModuleAssetRegistryName);
 
 	OutAssets.Empty();
 	ModuleAssetRegistry.Get().GetAssets(Filter, OutAssets);
+}
+
+void FPjcLibAsset::GetAssetsByClassNames(const TArray<FName>& InClassNames, TArray<FAssetData>& OutAssets)
+{
+	TArray<FAssetData> AssetsAll;
+	GetAssetsAll(AssetsAll);
+
+	OutAssets.Reserve(AssetsAll.Num());
+
+	for (const auto& Asset : AssetsAll)
+	{
+		if (AssetClassNameInList(Asset, TSet<FName>{InClassNames}))
+		{
+			OutAssets.Emplace(Asset);
+		}
+	}
+
+	OutAssets.Shrink();
 }
 
 void FPjcLibAsset::GetAssetsIndirect(TMap<FAssetData, FPjcAssetIndirectUsageInfo>& AssetsIndirect)

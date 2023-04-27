@@ -36,10 +36,9 @@ void FPjcFilterAssetsExtReferenced::ActiveStateChanged(bool bActive)
 
 	if (bActive)
 	{
-		const FPjcScanDataAssets& ScanDataAssets = GEditor->GetEditorSubsystem<UPjcSubsystem>()->GetLastScanDataAssets();
-
-		Assets.Empty(ScanDataAssets.AssetsExtReferenced.Num());
-		Assets.Append(ScanDataAssets.AssetsExtReferenced);
+		const TArray<FAssetData>& AssetExtReferenced = GEditor->GetEditorSubsystem<UPjcSubsystem>()->GetAssetsExtReferenced();
+		Assets.Empty(AssetExtReferenced.Num());
+		Assets.Append(AssetExtReferenced);
 	}
 }
 

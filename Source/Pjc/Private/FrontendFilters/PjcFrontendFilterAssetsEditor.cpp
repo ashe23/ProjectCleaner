@@ -36,10 +36,9 @@ void FPjcFilterAssetsEditor::ActiveStateChanged(bool bActive)
 
 	if (bActive)
 	{
-		const FPjcScanDataAssets& ScanDataAssets = GEditor->GetEditorSubsystem<UPjcSubsystem>()->GetLastScanDataAssets();
-
-		Assets.Empty(ScanDataAssets.AssetsEditor.Num());
-		Assets.Append(ScanDataAssets.AssetsEditor);
+		const TArray<FAssetData>& AssetsEditor = GEditor->GetEditorSubsystem<UPjcSubsystem>()->GetAssetsEditor();
+		Assets.Empty(AssetsEditor.Num());
+		Assets.Append(AssetsEditor);
 	}
 }
 
