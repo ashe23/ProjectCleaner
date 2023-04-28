@@ -8,12 +8,12 @@ public class Pjc : ModuleRules
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 
-		PublicIncludePaths.AddRange(
-			new[]
-			{
-				"Runtime/Slate/Public",
-			}
-		);
+		// PublicIncludePaths.AddRange(
+		// 	new[]
+		// 	{
+		// 		"Runtime/Slate/Public",
+		// 	}
+		// );
 
 
 		// PrivateIncludePaths.AddRange(
@@ -38,28 +38,29 @@ public class Pjc : ModuleRules
 			{
 				"Engine",
 				"CoreUObject",
-				"UnrealEd",
 				"Slate",
 				"SlateCore",
-				"UMGEditor",
-				"EditorStyle",
-				"EditorSubsystem",
-				"EditorWidgets",
-				"ContentBrowser",
-				"ContentBrowserData",
 				"ToolMenus",
-				"Blutility",
-				"DeveloperSettings",
 				"Projects",
-				"InputCore",
-				"AssetManagerEditor",
-				"IntroTutorials",
-				"AssetTools",
-				"AssetRegistry",
-				"LevelEditor",
-				"PropertyEditor",
-				"ConfigEditor",
-				"Settings", 
+				// "UnrealEd",
+				// "UMGEditor",
+				// "EditorStyle",
+				// "EditorSubsystem",
+				// "EditorWidgets",
+				// "ContentBrowser",
+				// "ContentBrowserData",
+				// "Blutility",
+				// "DeveloperSettings",
+				// "InputCore",
+				// "AssetManagerEditor",
+				// "IntroTutorials",
+				// "AssetTools",
+				// "AssetRegistry",
+				// "LevelEditor",
+				// "PropertyEditor",
+				// "ConfigEditor",
+				// "Settings",
+				// "EditorScriptingUtilities"
 			}
 		);
 	}

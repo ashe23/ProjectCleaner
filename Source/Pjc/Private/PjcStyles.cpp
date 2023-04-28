@@ -71,32 +71,7 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create()
 	Style->Set("ProjectCleaner.IconBin16", new IMAGE_BRUSH(TEXT("IconBin16"), FVector2D{16.0f, 16.0f}));
 	Style->Set("ProjectCleaner.IconBin20", new IMAGE_BRUSH(TEXT("IconBin20"), FVector2D{20.0f, 20.0f}));
 	Style->Set("ProjectCleaner.IconBin40", new IMAGE_BRUSH(TEXT("IconBin40"), FVector2D{40.0f, 40.0f}));
-	Style->Set("ProjectCleaner.IconSettings16", new IMAGE_BRUSH(TEXT("IconSettings16"), FVector2D{16.0f, 16.0f}));
-	Style->Set("ProjectCleaner.IconSettings20", new IMAGE_BRUSH(TEXT("IconSettings20"), FVector2D{20.0f, 20.0f}));
-	Style->Set("ProjectCleaner.IconSettings40", new IMAGE_BRUSH(TEXT("IconSettings40"), FVector2D{40.0f, 40.0f}));
-	Style->Set("ProjectCleaner.IconTabIndirect16", new IMAGE_BRUSH(TEXT("IconTabIndirect16"), FVector2D{16.0f, 16.0f}));
-	Style->Set("ProjectCleaner.IconTabIndirect20", new IMAGE_BRUSH(TEXT("IconTabIndirect20"), FVector2D{20.0f, 20.0f}));
-	Style->Set("ProjectCleaner.IconTabIndirect40", new IMAGE_BRUSH(TEXT("IconTabIndirect40"), FVector2D{40.0f, 40.0f}));
-	Style->Set("ProjectCleaner.IconTabCorrupted16", new IMAGE_BRUSH(TEXT("IconTabCorrupted16"), FVector2D{16.0f, 16.0f}));
-	Style->Set("ProjectCleaner.IconTabCorrupted20", new IMAGE_BRUSH(TEXT("IconTabCorrupted20"), FVector2D{20.0f, 20.0f}));
-	Style->Set("ProjectCleaner.IconTabCorrupted40", new IMAGE_BRUSH(TEXT("IconTabCorrupted40"), FVector2D{40.0f, 40.0f}));
-	Style->Set("ProjectCleaner.IconTabNonEngine16", new IMAGE_BRUSH(TEXT("IconTabNonEngine16"), FVector2D{16.0f, 16.0f}));
-	Style->Set("ProjectCleaner.IconTabNonEngine20", new IMAGE_BRUSH(TEXT("IconTabNonEngine20"), FVector2D{20.0f, 20.0f}));
-	Style->Set("ProjectCleaner.IconTabNonEngine40", new IMAGE_BRUSH(TEXT("IconTabNonEngine40"), FVector2D{40.0f, 40.0f}));
 	
-	Style->Set("ProjectCleaner.IconTabAssetsBrowser16", new IMAGE_BRUSH(TEXT("IconTabAssetsBrowser16"), FVector2D{16.0f, 16.0f}));
-	Style->Set("ProjectCleaner.IconTabAssetsBrowser20", new IMAGE_BRUSH(TEXT("IconTabAssetsBrowser20"), FVector2D{20.0f, 20.0f}));
-	Style->Set("ProjectCleaner.IconTabAssetsBrowser40", new IMAGE_BRUSH(TEXT("IconTabAssetsBrowser40"), FVector2D{40.0f, 40.0f}));
-	
-	Style->Set("ProjectCleaner.IconTabFilesBrowser16", new IMAGE_BRUSH(TEXT("IconFile16"), FVector2D{16.0f, 16.0f}));
-	Style->Set("ProjectCleaner.IconTabFilesBrowser20", new IMAGE_BRUSH(TEXT("IconFile20"), FVector2D{20.0f, 20.0f}));
-	Style->Set("ProjectCleaner.IconTabFilesBrowser40", new IMAGE_BRUSH(TEXT("IconFile40"), FVector2D{40.0f, 40.0f}));
-	
-	Style->Set("ProjectCleaner.IconWarning16", new IMAGE_BRUSH(TEXT("IconWarning16"), FVector2D{16.0f, 16.0f}));
-	Style->Set("ProjectCleaner.IconWarning20", new IMAGE_BRUSH(TEXT("IconWarning20"), FVector2D{20.0f, 20.0f}));
-	Style->Set("ProjectCleaner.IconCheck16", new IMAGE_BRUSH(TEXT("IconCheck16"), FVector2D{16.0f, 16.0f}));
-	Style->Set("ProjectCleaner.IconCheck20", new IMAGE_BRUSH(TEXT("IconCheck20"), FVector2D{20.0f, 20.0f}));
-
 	// pallet colors
 	Style->Set("ProjectCleaner.Color.Blue", FLinearColor{FColor::FromHex(TEXT("#227C9D"))});
 	Style->Set("ProjectCleaner.Color.Green", FLinearColor{FColor::FromHex(TEXT("#17C3B2"))});
