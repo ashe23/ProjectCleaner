@@ -15,7 +15,7 @@ FPjcCmds::FPjcCmds() : TCommands(
 void FPjcCmds::RegisterCommands()
 {
 	UI_COMMAND(
-		OpenMainWindow,
+		TabMain,
 		"Project Cleaner",
 		"Open Project Cleaner Main Window",
 		EUserInterfaceActionType::Button,

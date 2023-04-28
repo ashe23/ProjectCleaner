@@ -21,7 +21,7 @@ void FPjc::StartupModule()
 
 	Cmds = MakeShareable(new FUICommandList);
 	Cmds->MapAction(
-		FPjcCmds::Get().OpenMainWindow,
+		FPjcCmds::Get().TabMain,
 		FExecuteAction::CreateLambda([&]()
 		{
 			FGlobalTabmanager::Get()->TryInvokeTab(PjcConstants::TabProjectCleaner);
@@ -35,16 +35,16 @@ void FPjc::StartupModule()
 
 				UToolMenu* Menu = UToolMenus::Get()->ExtendMenu("LevelEditor.MainMenu.Window");
 				FToolMenuSection& Section = Menu->AddSection(
-					"SectionAssetManagementTools",
+					"PjcSectionAssetManagementTools",
 					FText::FromString(TEXT("Project Management Tools")),
 					FToolMenuInsert("WindowLayout", EToolMenuInsertType::After)
 				);
-				Section.AddMenuEntryWithCommandList(FPjcCmds::Get().OpenMainWindow, Cmds);
+				Section.AddMenuEntryWithCommandList(FPjcCmds::Get().TabMain, Cmds);
 
 				UToolMenu* ToolbarMenu = UToolMenus::Get()->ExtendMenu("LevelEditor.LevelEditorToolBar");
 				FToolMenuSection& ToolbarSection = ToolbarMenu->FindOrAddSection("Settings");
 				FToolMenuEntry& Entry = ToolbarSection.AddEntry(
-					FToolMenuEntry::InitToolBarButton(FPjcCmds::Get().OpenMainWindow)
+					FToolMenuEntry::InitToolBarButton(FPjcCmds::Get().TabMain)
 				);
 				Entry.SetCommandList(Cmds);
 			}
@@ -67,7 +67,7 @@ void FPjc::StartupModule()
 		)
 		.SetDisplayName(FText::FromString(PjcConstants::ModulePjcTitle.ToString()))
 		.SetMenuType(ETabSpawnerMenuType::Hidden)
-		.SetIcon(FPjcStyles::GetIcon("ProjectCleaner.IconBin16"));
+		.SetIcon(FPjcStyles::GetIcon("ProjectCleaner.Icon.Bin16"));
 }
 
 void FPjc::ShutdownModule()

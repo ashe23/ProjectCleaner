@@ -10,5 +10,5 @@ public:
 	FPjcCmds();
 	virtual void RegisterCommands() override;
 
-	TSharedPtr<FUICommandInfo> OpenMainWindow;
+	TSharedPtr<FUICommandInfo> TabMain;
 };
