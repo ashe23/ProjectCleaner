@@ -65,7 +65,7 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create()
 
 	// cmds icons big
 	Style->Set("ProjectCleaner.OpenMainWindow", new IMAGE_BRUSH(TEXT("IconBin40"), FVector2D{40.0f, 40.0f}));
-	
+
 	// cmds icons small
 	Style->Set("ProjectCleaner.OpenMainWindow.Small", new IMAGE_BRUSH(TEXT("IconBin20"), FVector2D{20.0f, 20.0f}));
 
@@ -73,7 +73,7 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create()
 	Style->Set("ProjectCleaner.IconBin16", new IMAGE_BRUSH(TEXT("IconBin16"), FVector2D{16.0f, 16.0f}));
 	Style->Set("ProjectCleaner.IconBin20", new IMAGE_BRUSH(TEXT("IconBin20"), FVector2D{20.0f, 20.0f}));
 	Style->Set("ProjectCleaner.IconBin40", new IMAGE_BRUSH(TEXT("IconBin40"), FVector2D{40.0f, 40.0f}));
-	
+
 	// pallet colors
 	Style->Set("ProjectCleaner.Color.Blue", FLinearColor{FColor::FromHex(TEXT("#227C9D"))});
 	Style->Set("ProjectCleaner.Color.Green", FLinearColor{FColor::FromHex(TEXT("#17C3B2"))});
@@ -86,8 +86,8 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create()
 	Style->Set("ProjectCleaner.Color.BlueLight", FLinearColor{FColor::FromHex(TEXT("#0496ff"))});
 	Style->Set("ProjectCleaner.Color.DarkGray", FLinearColor{FColor::FromHex(TEXT("#567189"))});
 
-	// progressbar
-	Style->Set("ProjectCleaner.Progressbar", new BOX_BRUSH("BgProgressbar", FMargin(5.f/12.f)));
+	// backgrounds
+	Style->Set("ProjectCleaner.BgProgressbar", new BOX_BRUSH("BgProgressbar", FMargin(5.f/12.f)));
 	Style->Set("ProjectCleaner.BgWhite", new BOX_BRUSH("BgWhite", FMargin(16.0f/16.f)));
 
 	return Style;
