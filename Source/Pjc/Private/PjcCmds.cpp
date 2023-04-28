@@ -21,6 +21,22 @@ void FPjcCmds::RegisterCommands()
 		EUserInterfaceActionType::Button,
 		FInputChord()
 	);
+
+	UI_COMMAND(
+		TabAssetsUnusedBtnScan,
+		"Scan Assets",
+		"Scan project for unused assets",
+		EUserInterfaceActionType::Button,
+		FInputChord()
+	);
+
+	UI_COMMAND(
+		TabAssetsUnusedBtnClean,
+		"Clean Project",
+		"Delete all unused assets in project",
+		EUserInterfaceActionType::Button,
+		FInputChord()
+	);
 }
 
 #undef LOCTEXT_NAMESPACE

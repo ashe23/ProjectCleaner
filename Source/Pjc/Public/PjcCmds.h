@@ -11,4 +11,6 @@ public:
 	virtual void RegisterCommands() override;
 
 	TSharedPtr<FUICommandInfo> TabMain;
+	TSharedPtr<FUICommandInfo> TabAssetsUnusedBtnScan;
+	TSharedPtr<FUICommandInfo> TabAssetsUnusedBtnClean;
 };

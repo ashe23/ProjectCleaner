@@ -2,9 +2,9 @@
 
 #include "Pjc.h"
 #include "PjcCmds.h"
-#include "PjcConstants.h"
 #include "PjcStyles.h"
-// #include "Slate/SPjcMainWindow.h"
+#include "PjcConstants.h"
+#include "Slate/SPjcTabMain.h"
 // Engine Headers
 #include "ToolMenus.h"
 #include "Widgets/Docking/SDockTab.h"
@@ -57,10 +57,9 @@ void FPjc::StartupModule()
 			FOnSpawnTab::CreateLambda([&](const FSpawnTabArgs& SpawnTabArgs) -> TSharedRef<SDockTab>
 			{
 				const TSharedRef<SDockTab> DockTab = SNew(SDockTab).TabRole(MajorTab);
-				DockTab->SetContent(SNew(STextBlock).Text(FText::FromString("AA")));
-				// const TSharedRef<SPjcMainWindow> Frontend = SNew(SPjcMainWindow, DockTab, SpawnTabArgs.GetOwnerWindow());
-				//
-				// DockTab->SetContent(Frontend);
+				const TSharedRef<SPjcTabMain> Frontend = SNew(SPjcTabMain, DockTab, SpawnTabArgs.GetOwnerWindow());
+
+				DockTab->SetContent(Frontend);
 
 				return DockTab;
 			})

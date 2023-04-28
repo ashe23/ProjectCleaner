@@ -20,11 +20,9 @@ namespace PjcConstants
 
 	// tabs
 	static const FName TabProjectCleaner{TEXT("TabProjectCleaner")};
-	// static const FName TabAssetsBrowser{TEXT("TabAssetsBrowser")};
-	// static const FName TabFilesBrowser{TEXT("TabFilesBrowser")};
-	// static const FName TabScanSettings{TEXT("TabScanSettings")};
-	// static const FName TabScanInfo{TEXT("TabScanInfo")};
-	// static const FName TabFilesCorrupted{TEXT("TabFilesCorrupted")};
+	static const FName TabAssetsUnused{TEXT("TabAssetsUnused")};
+	static const FName TabAssetsInspection{TEXT("TabAssetsInspection")};
+	static const FName TabFilesExternal{TEXT("TabFilesExternal")};
 
 	// widget index
 	static int32 WidgetIndexIdle = 0;
