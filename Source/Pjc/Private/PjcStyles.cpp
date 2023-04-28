@@ -63,8 +63,10 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create()
 	TSharedRef<FSlateStyleSet> Style = MakeShareable(new FSlateStyleSet(PjcConstants::ModuleStylesName));
 	Style->SetContentRoot(IPluginManager::Get().FindPlugin(PjcConstants::ModuleName.ToString())->GetBaseDir() / TEXT("Resources"));
 
-	// cmds
+	// cmds icons big
 	Style->Set("ProjectCleaner.OpenMainWindow", new IMAGE_BRUSH(TEXT("IconBin40"), FVector2D{40.0f, 40.0f}));
+	
+	// cmds icons small
 	Style->Set("ProjectCleaner.OpenMainWindow.Small", new IMAGE_BRUSH(TEXT("IconBin20"), FVector2D{20.0f, 20.0f}));
 
 	// icons
@@ -85,7 +87,7 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create()
 	Style->Set("ProjectCleaner.Color.DarkGray", FLinearColor{FColor::FromHex(TEXT("#567189"))});
 
 	// progressbar
-	Style->Set("ProjectCleaner.Progressbar", new BOX_BRUSH("ProgressbarBackground", FMargin(5.f/12.f)));
+	Style->Set("ProjectCleaner.Progressbar", new BOX_BRUSH("BgProgressbar", FMargin(5.f/12.f)));
 	Style->Set("ProjectCleaner.BgWhite", new BOX_BRUSH("BgWhite", FMargin(16.0f/16.f)));
 
 	return Style;
