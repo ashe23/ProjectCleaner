@@ -39,7 +39,7 @@ const ISlateStyle& FPjcStyles::Get()
 
 FName FPjcStyles::GetStyleSetName()
 {
-	return PjcConstants::ModuleStylesName;
+	return PjcConstants::ModulePjcStylesName;
 }
 
 FSlateFontInfo FPjcStyles::GetFont(const FString& FontType, const uint32 FontSize)
@@ -60,8 +60,8 @@ FSlateIcon FPjcStyles::GetIcon(const FString& IconSpecifier)
 
 TSharedRef<FSlateStyleSet> FPjcStyles::Create()
 {
-	TSharedRef<FSlateStyleSet> Style = MakeShareable(new FSlateStyleSet(PjcConstants::ModuleStylesName));
-	Style->SetContentRoot(IPluginManager::Get().FindPlugin(PjcConstants::ModuleName.ToString())->GetBaseDir() / TEXT("Resources"));
+	TSharedRef<FSlateStyleSet> Style = MakeShareable(new FSlateStyleSet(PjcConstants::ModulePjcStylesName));
+	Style->SetContentRoot(IPluginManager::Get().FindPlugin(PjcConstants::ModulePjcName.ToString())->GetBaseDir() / TEXT("Resources"));
 
 	// cmds icons big
 	Style->Set("ProjectCleaner.OpenMainWindow", new IMAGE_BRUSH(TEXT("IconBin40"), FVector2D{40.0f, 40.0f}));

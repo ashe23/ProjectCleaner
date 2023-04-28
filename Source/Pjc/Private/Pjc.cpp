@@ -65,7 +65,7 @@ void FPjc::StartupModule()
 				return DockTab;
 			})
 		)
-		.SetDisplayName(FText::FromString(PjcConstants::ModuleTitle.ToString()))
+		.SetDisplayName(FText::FromString(PjcConstants::ModulePjcTitle.ToString()))
 		.SetMenuType(ETabSpawnerMenuType::Hidden)
 		.SetIcon(FPjcStyles::GetIcon("ProjectCleaner.IconBin16"));
 }
