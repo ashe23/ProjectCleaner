@@ -1,7 +1,6 @@
 ﻿// Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "Slate/Items/SPjcItemStat.h"
-
 #include "PjcStyles.h"
 
 void SPjcItemStat::Construct(const FArguments& InArgs, const TSharedRef<STableViewBase>& InTable)
@@ -22,7 +21,7 @@ TSharedRef<SWidget> SPjcItemStat::GenerateWidgetForColumn(const FName& InColumnN
 				SNew(STextBlock)
 				.Font(FPjcStyles::GetFont("Bold", 12))
 				.Text(Item->Name)
-				// .ColorAndOpacity(TextColor)
+				.ColorAndOpacity(Item->TextColor)
 				.ToolTipText(Item->TooltipName)
 			];
 	}
@@ -33,7 +32,7 @@ TSharedRef<SWidget> SPjcItemStat::GenerateWidgetForColumn(const FName& InColumnN
 			SNew(STextBlock)
 			.Justification(ETextJustify::Center)
 			.Text(Item->Num)
-			// .ColorAndOpacity(TextColor)
+			.ColorAndOpacity(Item->TextColor)
 			.ToolTipText(Item->ToolTipNum);
 	}
 
@@ -43,7 +42,7 @@ TSharedRef<SWidget> SPjcItemStat::GenerateWidgetForColumn(const FName& InColumnN
 			SNew(STextBlock)
 			.Justification(ETextJustify::Center)
 			.Text(Item->Size)
-			// .ColorAndOpacity(TextColor)
+			.ColorAndOpacity(Item->TextColor)
 			.ToolTipText(Item->ToolTipSize);
 	}
 

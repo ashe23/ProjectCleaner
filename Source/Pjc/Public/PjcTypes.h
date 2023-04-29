@@ -11,10 +11,10 @@ class UPjcEditorAssetExcludeSettings : public UObject
 	GENERATED_BODY()
 
 public:
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Config, Category="AssetExcludeSettings", meta=(ContentDir, ToolTip="Consider assets in specified paths as used"))
-	TArray<FDirectoryPath> ExcludedPaths;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Config, Category="ExcludeSettings", meta=(ContentDir, ToolTip="Consider assets in specified folders as used"))
+	TArray<FDirectoryPath> ExcludedFolders;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Config, Category="AssetExcludeSettings", meta=(ShowTreeView, ToolTip="Consider assets of specified classes as used"))
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Config, Category="ExcludeSettings", meta=(ShowTreeView, ToolTip="Consider assets of specified classes as used"))
 	TArray<TSoftClassPtr<UObject>> ExcludedClasses;
 
 	UPROPERTY(Config)
@@ -41,4 +41,35 @@ struct FPjcStatItem
 	FText ToolTipSize;
 	FLinearColor TextColor{FLinearColor::White};
 	FMargin NamePadding{FMargin{0.0f}};
+};
+
+struct FPjcTreeItem
+{
+	FString FolderPath;
+	FString FolderName;
+	bool bIsDev = false;
+	bool bIsRoot = false;
+	bool bIsEmpty = false;
+	bool bIsExcluded = false;
+	bool bIsExpanded = false;
+	bool bIsVisible = false;
+	int32 NumAssetsTotal = 0;
+	int32 NumAssetsUsed = 0;
+	int32 NumAssetsUnused = 0;
+	float SizeAssetsUnused = 0;
+	float PercentageUnused = 0;
+	float PercentageUnusedNormalized = 0;
+
+	TSharedPtr<FPjcTreeItem> Parent;
+	TArray<TSharedPtr<FPjcTreeItem>> SubItems;
+
+	bool operator==(const FPjcTreeItem& Other) const
+	{
+		return FolderPath.Equals(Other.FolderPath);
+	}
+
+	bool operator!=(const FPjcTreeItem& Other) const
+	{
+		return !FolderPath.Equals(Other.FolderPath);
+	}
 };

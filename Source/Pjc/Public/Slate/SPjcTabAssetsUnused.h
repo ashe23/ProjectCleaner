@@ -15,12 +15,41 @@ public:
 	void Construct(const FArguments& InArgs);
 
 private:
-	void StatItemsInit();
 	TSharedRef<SWidget> CreateToolbar() const;
-	TSharedRef<ITableRow> OnStatGenerateRow(TSharedPtr<FPjcStatItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const;
-	TSharedRef<SHeaderRow> GetStatHeaderRow() const;
 
+	FText SearchText;
 	TSharedPtr<FUICommandList> Cmds;
+
+	// stats
+	void StatItemsInit();
+	TSharedRef<SHeaderRow> GetStatHeaderRow() const;
+	TSharedRef<ITableRow> OnStatGenerateRow(TSharedPtr<FPjcStatItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const;
+
 	TArray<TSharedPtr<FPjcStatItem>> StatItems;
 	TSharedPtr<SListView<TSharedPtr<FPjcStatItem>>> StatView;
+
+	// tree
+	void TreeItemsInit();
+	void TreeItemsFilter();
+	void TreeItemExpandParentsRecursive(const TSharedPtr<FPjcTreeItem>& Item) const;
+	void TreeItemMakeVisibleParentsRecursive(const TSharedPtr<FPjcTreeItem>& Item) const;
+	void SetTreeItemVisibility(const TSharedPtr<FPjcTreeItem>& Item) const;
+	void SetTreeItemExpansion(const TSharedPtr<FPjcTreeItem>& Item);
+	void OnTreeGetChildren(TSharedPtr<FPjcTreeItem> Item, TArray<TSharedPtr<FPjcTreeItem>>& OutChildren);
+	void OnTreeExpansionChanged(TSharedPtr<FPjcTreeItem> Item, const bool bIsExpanded) const;
+	void OnTreeSearchTextChanged(const FText& InText);
+	void OnTreeSearchTextCommitted(const FText& InText, ETextCommit::Type Type);
+	bool TreeItemContainsSearchText(const TSharedPtr<FPjcTreeItem>& Item) const;
+	TSharedRef<SHeaderRow> GetTreeHeaderRow() const;
+	TSharedRef<ITableRow> OnTreeGenerateRow(TSharedPtr<FPjcTreeItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const;
+	TSharedRef<SWidget> GetTreeOptionsBtnContent() const;
+	TSharedPtr<FPjcTreeItem> CreateTreeItem(const FString& InFolderPath) const;
+	FSlateColor GetTreeOptionsBtnForegroundColor() const;
+	FText GetTreeSummaryText() const;
+
+	TSharedPtr<FPjcTreeItem> TreeRootItem;
+	TSharedPtr<SComboButton> TreeOptionBtn;
+	TArray<TSharedPtr<FPjcTreeItem>> TreeItems;
+	TSet<TSharedPtr<FPjcTreeItem>> TreeItemsExpanded;
+	TSharedPtr<STreeView<TSharedPtr<FPjcTreeItem>>> TreeView;
 };
