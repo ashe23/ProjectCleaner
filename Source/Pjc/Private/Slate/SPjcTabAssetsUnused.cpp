@@ -10,7 +10,9 @@
 // Engine Headers
 #include "ContentBrowserModule.h"
 #include "IContentBrowserSingleton.h"
+#include "PjcSubsystem.h"
 #include "AssetRegistry/AssetRegistryModule.h"
+#include "Libs/PjcLibPath.h"
 #include "Settings/ContentBrowserSettings.h"
 #include "Widgets/Input/SSearchBox.h"
 #include "Widgets/Layout/SScrollBox.h"
@@ -18,12 +20,18 @@
 
 void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 {
+	if (GEditor)
+	{
+		SubsystemPtr = GEditor->GetEditorSubsystem<UPjcSubsystem>();
+	}
+
 	Cmds = MakeShareable(new FUICommandList);
 
 	Cmds->MapAction(
 		FPjcCmds::Get().TabAssetsUnusedBtnScan,
 		FExecuteAction::CreateLambda([&]()
 		{
+			TreeItemsUpdate();
 			TreeItemsFilter();
 		})
 	);
@@ -92,6 +100,7 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 	AssetPickerConfig.bAllowDragging = false;
 	AssetPickerConfig.bCanShowClasses = false;
 	AssetPickerConfig.bCanShowFolders = false;
+	AssetPickerConfig.bCanShowDevelopersFolder = false;
 	AssetPickerConfig.bForceShowEngineContent = false;
 	AssetPickerConfig.bForceShowPluginContent = false;
 	AssetPickerConfig.bAddFilterUI = true;
@@ -112,7 +121,7 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 	.HeaderRow(GetTreeHeaderRow());
 
 	StatItemsInit();
-	TreeItemsInit();
+	TreeItemsUpdate();
 
 	ChildSlot
 	[
@@ -393,14 +402,14 @@ void SPjcTabAssetsUnused::StatItemsInit()
 	}
 }
 
-void SPjcTabAssetsUnused::TreeItemsInit()
+void SPjcTabAssetsUnused::TreeItemsUpdate()
 {
-	if (!TreeView.IsValid()) return;
-
 	TreeRootItem.Reset();
-
 	TreeRootItem = CreateTreeItem(PjcConstants::PathRoot.ToString());
 	if (!TreeRootItem.IsValid()) return;
+
+	TreeItems.Reset();
+	TreeItems.Emplace(TreeRootItem);
 
 	const FAssetRegistryModule& AssetRegistry = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(PjcConstants::ModuleAssetRegistry);
 	TArray<TSharedPtr<FPjcTreeItem>> Stack;
@@ -426,16 +435,15 @@ void SPjcTabAssetsUnused::TreeItemsInit()
 			Stack.Push(SubItem);
 		}
 	}
-
-	TreeItems.Reset();
-	TreeItems.Emplace(TreeRootItem);
-	TreeView->RebuildList();
 }
 
 void SPjcTabAssetsUnused::TreeItemsFilter()
 {
 	if (!TreeRootItem.IsValid()) return;
 	if (!TreeView.IsValid()) return;
+
+	TreeItemsExpanded.Reset();
+	TreeView->GetExpandedItems(TreeItemsExpanded);
 
 	TArray<TSharedPtr<FPjcTreeItem>> Stack;
 	Stack.Push(TreeRootItem);
@@ -608,8 +616,8 @@ TSharedPtr<FPjcTreeItem> SPjcTabAssetsUnused::CreateTreeItem(const FString& InFo
 		bIsRoot ? TEXT("Content") : FPaths::GetPathLeaf(InFolderPath),
 		bIsDev,
 		bIsRoot,
-		false,
-		false,
+		FPjcLibPath::IsPathEmpty(InFolderPath),
+		FPjcLibPath::IsPathExcluded(InFolderPath),
 		bIsRoot ? true : false,
 		true,
 		0,
@@ -624,6 +632,19 @@ TSharedPtr<FPjcTreeItem> SPjcTabAssetsUnused::CreateTreeItem(const FString& InFo
 void SPjcTabAssetsUnused::SetTreeItemVisibility(const TSharedPtr<FPjcTreeItem>& Item) const
 {
 	if (!Item.IsValid()) return;
+	if (!SubsystemPtr) return;
+
+	if (!SubsystemPtr->CanShowFoldersEmpty() && Item->bIsEmpty && !Item->bIsRoot)
+	{
+		Item->bIsVisible = false;
+		return;
+	}
+
+	if (!SubsystemPtr->CanShowFoldersExcluded() && Item->bIsExcluded && !Item->bIsRoot)
+	{
+		Item->bIsVisible = false;
+		return;
+	}
 
 	Item->bIsVisible = Item->bIsRoot || SearchText.IsEmpty();
 
@@ -639,6 +660,12 @@ void SPjcTabAssetsUnused::SetTreeItemExpansion(const TSharedPtr<FPjcTreeItem>& I
 {
 	if (!Item.IsValid()) return;
 	if (!TreeView.IsValid()) return;
+	if (!Item->bIsVisible)
+	{
+		Item->bIsExpanded = false;
+		TreeView->SetItemExpansion(Item, Item->bIsExpanded);
+		return;
+	}
 
 	if (TreeItemContainsSearchText(Item))
 	{
@@ -710,7 +737,7 @@ FSlateColor SPjcTabAssetsUnused::GetTreeOptionsBtnForegroundColor() const
 	return TreeOptionBtn->IsHovered() ? FEditorStyle::GetSlateColor(InvertedForegroundName) : FEditorStyle::GetSlateColor(DefaultForegroundName);
 }
 
-TSharedRef<SWidget> SPjcTabAssetsUnused::GetTreeOptionsBtnContent() const
+TSharedRef<SWidget> SPjcTabAssetsUnused::GetTreeOptionsBtnContent()
 {
 	const TSharedPtr<FExtender> Extender;
 	FMenuBuilder MenuBuilder(true, nullptr, Extender, true);
@@ -723,14 +750,18 @@ TSharedRef<SWidget> SPjcTabAssetsUnused::GetTreeOptionsBtnContent() const
 		FSlateIcon(),
 		FUIAction
 		(
-			FExecuteAction::CreateLambda([&] { }),
+			FExecuteAction::CreateLambda([&]
+			{
+				SubsystemPtr->ToggleShowFoldersEmpty();
+				TreeItemsFilter();
+			}),
 			FCanExecuteAction::CreateLambda([&]()
 			{
-				return true;
+				return SubsystemPtr != nullptr;
 			}),
 			FGetActionCheckState::CreateLambda([&]()
 			{
-				return ECheckBoxState::Checked;
+				return SubsystemPtr->CanShowFoldersEmpty() ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
 			})
 		),
 		NAME_None,
@@ -743,14 +774,18 @@ TSharedRef<SWidget> SPjcTabAssetsUnused::GetTreeOptionsBtnContent() const
 		FSlateIcon(),
 		FUIAction
 		(
-			FExecuteAction::CreateLambda([&] { }),
+			FExecuteAction::CreateLambda([&]
+			{
+				SubsystemPtr->ToggleShowFoldersExcluded();
+				TreeItemsFilter();
+			}),
 			FCanExecuteAction::CreateLambda([&]()
 			{
-				return true;
+				return SubsystemPtr != nullptr;
 			}),
 			FGetActionCheckState::CreateLambda([&]()
 			{
-				return ECheckBoxState::Checked;
+				return SubsystemPtr->CanShowFoldersExcluded() ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
 			})
 		),
 		NAME_None,

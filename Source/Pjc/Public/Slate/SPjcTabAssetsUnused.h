@@ -6,6 +6,8 @@
 #include "PjcTypes.h"
 #include "Widgets/SCompoundWidget.h"
 
+class UPjcSubsystem;
+
 class SPjcTabAssetsUnused final : public SCompoundWidget
 {
 public:
@@ -29,7 +31,7 @@ private:
 	TSharedPtr<SListView<TSharedPtr<FPjcStatItem>>> StatView;
 
 	// tree
-	void TreeItemsInit();
+	void TreeItemsUpdate();
 	void TreeItemsFilter();
 	void TreeItemExpandParentsRecursive(const TSharedPtr<FPjcTreeItem>& Item) const;
 	void TreeItemMakeVisibleParentsRecursive(const TSharedPtr<FPjcTreeItem>& Item) const;
@@ -42,11 +44,12 @@ private:
 	bool TreeItemContainsSearchText(const TSharedPtr<FPjcTreeItem>& Item) const;
 	TSharedRef<SHeaderRow> GetTreeHeaderRow() const;
 	TSharedRef<ITableRow> OnTreeGenerateRow(TSharedPtr<FPjcTreeItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const;
-	TSharedRef<SWidget> GetTreeOptionsBtnContent() const;
+	TSharedRef<SWidget> GetTreeOptionsBtnContent();
 	TSharedPtr<FPjcTreeItem> CreateTreeItem(const FString& InFolderPath) const;
 	FSlateColor GetTreeOptionsBtnForegroundColor() const;
 	FText GetTreeSummaryText() const;
 
+	UPjcSubsystem* SubsystemPtr = nullptr;
 	TSharedPtr<FPjcTreeItem> TreeRootItem;
 	TSharedPtr<SComboButton> TreeOptionBtn;
 	TArray<TSharedPtr<FPjcTreeItem>> TreeItems;
