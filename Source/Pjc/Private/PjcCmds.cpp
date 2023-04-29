@@ -24,7 +24,7 @@ void FPjcCmds::RegisterCommands()
 
 	UI_COMMAND(
 		TabAssetsUnusedBtnScan,
-		"Scan Assets",
+		"Scan Project",
 		"Scan project for unused assets",
 		EUserInterfaceActionType::Button,
 		FInputChord()

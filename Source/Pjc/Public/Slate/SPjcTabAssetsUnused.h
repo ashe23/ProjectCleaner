@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "PjcTypes.h"
 #include "Widgets/SCompoundWidget.h"
 
 class SPjcTabAssetsUnused final : public SCompoundWidget
@@ -14,7 +15,12 @@ public:
 	void Construct(const FArguments& InArgs);
 
 private:
+	void StatItemsInit();
 	TSharedRef<SWidget> CreateToolbar() const;
-	
+	TSharedRef<ITableRow> OnStatGenerateRow(TSharedPtr<FPjcStatItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const;
+	TSharedRef<SHeaderRow> GetStatHeaderRow() const;
+
 	TSharedPtr<FUICommandList> Cmds;
+	TArray<TSharedPtr<FPjcStatItem>> StatItems;
+	TSharedPtr<SListView<TSharedPtr<FPjcStatItem>>> StatView;
 };
