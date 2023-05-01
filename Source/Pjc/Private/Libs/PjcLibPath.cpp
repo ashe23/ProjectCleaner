@@ -123,7 +123,7 @@ bool FPjcLibPath::IsPathEmpty(const FString& InPath)
 	TArray<FString> Files;
 	IFileManager::Get().FindFilesRecursive(Files, *ToAbsolute(InPath), TEXT("*"), true, false);
 
-	return Files.Num() == 0;
+	return Files.Num() == 0 && !InPath.StartsWith(PjcConstants::PathDevelopers.ToString()) && !InPath.StartsWith(PjcConstants::PathCollections.ToString());
 }
 
 bool FPjcLibPath::IsPathExcluded(const FString& InPath)

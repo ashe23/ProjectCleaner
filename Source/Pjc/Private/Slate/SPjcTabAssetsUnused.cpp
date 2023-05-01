@@ -77,7 +77,6 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 	const auto SettingsProperty = PropertyEditor.CreateDetailView(DetailsViewArgs);
 	SettingsProperty->SetObject(GetMutableDefault<UPjcEditorAssetExcludeSettings>());
 
-
 	const FContentBrowserModule& ContentBrowserModule = FModuleManager::LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
 
 	UContentBrowserSettings* ContentBrowserSettings = GetMutableDefault<UContentBrowserSettings>();
@@ -88,7 +87,6 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 		ContentBrowserSettings->SetDisplayPluginFolders(false);
 		ContentBrowserSettings->PostEditChange();
 	}
-
 
 	FPathPickerConfig PathPickerConfig;
 	PathPickerConfig.bAllowClassesFolder = false;
@@ -122,6 +120,7 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 
 	StatItemsInit();
 	TreeItemsUpdate();
+	TreeItemsFilter();
 
 	ChildSlot
 	[
@@ -509,7 +508,7 @@ void SPjcTabAssetsUnused::TreeItemMakeVisibleParentsRecursive(const TSharedPtr<F
 	}
 }
 
-TSharedRef<SWidget> SPjcTabAssetsUnused::CreateToolbar() const
+TSharedRef<SWidget> SPjcTabAssetsUnused::CreateToolbar()
 {
 	FToolBarBuilder ToolBarBuilder{Cmds, FMultiBoxCustomization::None};
 	ToolBarBuilder.BeginSection("PjcTabAssetUnusedScanActions");
@@ -519,7 +518,90 @@ TSharedRef<SWidget> SPjcTabAssetsUnused::CreateToolbar() const
 	}
 	ToolBarBuilder.EndSection();
 
+	ToolBarBuilder.BeginSection("PjcTabAssetsUnusedSettingsActions");
+	{
+		ToolBarBuilder.AddToolBarWidget(GetSettingsWidget());
+	}
+	ToolBarBuilder.EndSection();
+
 	return ToolBarBuilder.MakeWidget();
+}
+
+TSharedRef<SWidget> SPjcTabAssetsUnused::GetSettingsWidget()
+{
+	return
+		SNew(SVerticalBox)
+		+ SVerticalBox::Slot().AutoHeight().Padding(0.0f, 15.0f, 0.0f, 0.0f)
+		[
+			SNew(SCheckBox)
+			.IsChecked_Raw(this, &SPjcTabAssetsUnused::GetCheckboxStateScanFoldersDev)
+			.OnCheckStateChanged_Raw(this, &SPjcTabAssetsUnused::OnScanFoldersDevStateChanged)
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString(TEXT("Scan Developers Content")))
+				.ToolTipText(FText::FromString("If enabled, Developers folders will be scanned."))
+			]
+		]
+		+ SVerticalBox::Slot().AutoHeight()
+		[
+			SNew(SCheckBox)
+			.IsChecked_Raw(this, &SPjcTabAssetsUnused::GetCheckboxStateCleanAssetsUnused)
+			.OnCheckStateChanged_Raw(this, &SPjcTabAssetsUnused::OnCleanAssetsUnusedStateChanged)
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString(TEXT("Clean Unused Assets")))
+				.ToolTipText(FText::FromString(TEXT("If enabled, will delete all unused assets when CleanProject btn clicked.")))
+			]
+		]
+		+ SVerticalBox::Slot().AutoHeight()
+		[
+			SNew(SCheckBox)
+			.IsChecked_Raw(this, &SPjcTabAssetsUnused::GetCheckboxStateCleanFoldersEmpty)
+			.OnCheckStateChanged_Raw(this, &SPjcTabAssetsUnused::OnCleanFoldersEmptyStateChanged)
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString(TEXT("Clean Empty Folders")))
+				.ToolTipText(FText::FromString(TEXT("If enabled, will delete all empty folders in project")))
+			]
+		];
+}
+
+ECheckBoxState SPjcTabAssetsUnused::GetCheckboxStateScanFoldersDev() const
+{
+	return SubsystemPtr && SubsystemPtr->CanScanFoldersDev() ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
+}
+
+ECheckBoxState SPjcTabAssetsUnused::GetCheckboxStateCleanAssetsUnused() const
+{
+	return SubsystemPtr && SubsystemPtr->CanCleanAssetsUnused() ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
+}
+
+ECheckBoxState SPjcTabAssetsUnused::GetCheckboxStateCleanFoldersEmpty() const
+{
+	return SubsystemPtr && SubsystemPtr->CanCleanFoldersEmpty() ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
+}
+
+void SPjcTabAssetsUnused::OnScanFoldersDevStateChanged(ECheckBoxState BoxState)
+{
+	if (!SubsystemPtr) return;
+
+	SubsystemPtr->ToggleScanFoldersDev();
+
+	TreeItemsFilter();
+}
+
+void SPjcTabAssetsUnused::OnCleanAssetsUnusedStateChanged(ECheckBoxState BoxState)
+{
+	if (!SubsystemPtr) return;
+
+	SubsystemPtr->ToggleCleanAssetsUnused();
+}
+
+void SPjcTabAssetsUnused::OnCleanFoldersEmptyStateChanged(ECheckBoxState BoxState)
+{
+	if (!SubsystemPtr) return;
+
+	SubsystemPtr->ToggleCleanFoldersEmpty();
 }
 
 TSharedRef<SHeaderRow> SPjcTabAssetsUnused::GetStatHeaderRow() const
@@ -608,7 +690,7 @@ TSharedRef<ITableRow> SPjcTabAssetsUnused::OnTreeGenerateRow(TSharedPtr<FPjcTree
 
 TSharedPtr<FPjcTreeItem> SPjcTabAssetsUnused::CreateTreeItem(const FString& InFolderPath) const
 {
-	const bool bIsDev = InFolderPath.StartsWith(PjcConstants::PathDevelopers.ToString());
+	const bool bIsDev = InFolderPath.StartsWith(PjcConstants::PathDevelopers.ToString()) || InFolderPath.StartsWith(PjcConstants::PathCollections.ToString());
 	const bool bIsRoot = InFolderPath.Equals(PjcConstants::PathRoot.ToString());
 
 	return MakeShareable(new FPjcTreeItem{
@@ -646,9 +728,13 @@ void SPjcTabAssetsUnused::SetTreeItemVisibility(const TSharedPtr<FPjcTreeItem>& 
 		return;
 	}
 
-	Item->bIsVisible = Item->bIsRoot || SearchText.IsEmpty();
+	if (!SubsystemPtr->CanScanFoldersDev() && Item->bIsDev)
+	{
+		Item->bIsVisible = false;
+		return;
+	}
 
-	if (Item->bIsVisible) return;
+	if ((Item->bIsVisible = Item->bIsRoot || SearchText.IsEmpty())) return;
 
 	if (TreeItemContainsSearchText(Item))
 	{

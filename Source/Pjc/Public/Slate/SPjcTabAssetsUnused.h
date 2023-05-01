@@ -17,7 +17,16 @@ public:
 	void Construct(const FArguments& InArgs);
 
 private:
-	TSharedRef<SWidget> CreateToolbar() const;
+	TSharedRef<SWidget> CreateToolbar();
+	TSharedRef<SWidget> GetSettingsWidget();
+
+	ECheckBoxState GetCheckboxStateScanFoldersDev() const;
+	ECheckBoxState GetCheckboxStateCleanAssetsUnused() const;
+	ECheckBoxState GetCheckboxStateCleanFoldersEmpty() const;
+	
+	void OnScanFoldersDevStateChanged(ECheckBoxState BoxState);
+	void OnCleanAssetsUnusedStateChanged(ECheckBoxState BoxState);
+	void OnCleanFoldersEmptyStateChanged(ECheckBoxState BoxState);
 
 	FText SearchText;
 	TSharedPtr<FUICommandList> Cmds;

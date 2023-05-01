@@ -2,6 +2,8 @@
 
 #include "PjcSubsystem.h"
 
+#include "Settings/ContentBrowserSettings.h"
+
 void UPjcSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
@@ -10,12 +12,6 @@ void UPjcSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 void UPjcSubsystem::Deinitialize()
 {
 	Super::Deinitialize();
-}
-
-void UPjcSubsystem::ToggleShowFoldersDev()
-{
-	bShowFoldersDev = !bShowFoldersDev;
-	PostEditChange();
 }
 
 void UPjcSubsystem::ToggleShowFoldersEmpty()
@@ -30,9 +26,29 @@ void UPjcSubsystem::ToggleShowFoldersExcluded()
 	PostEditChange();
 }
 
-bool UPjcSubsystem::CanShowFoldersDev() const
+void UPjcSubsystem::ToggleScanFoldersDev()
 {
-	return bShowFoldersDev;
+	bScanFoldersDev = !bScanFoldersDev;
+	PostEditChange();
+
+	UContentBrowserSettings* Settings = GetMutableDefault<UContentBrowserSettings>();
+	if (Settings)
+	{
+		Settings->SetDisplayDevelopersFolder(bScanFoldersDev);
+		Settings->PostEditChange();
+	}
+}
+
+void UPjcSubsystem::ToggleCleanAssetsUnused()
+{
+	bCleanAssetsUnused = !bCleanAssetsUnused;
+	PostEditChange();
+}
+
+void UPjcSubsystem::ToggleCleanFoldersEmpty()
+{
+	bCleanFoldersEmpty = !bCleanFoldersEmpty;
+	PostEditChange();
 }
 
 bool UPjcSubsystem::CanShowFoldersEmpty() const
@@ -43,6 +59,21 @@ bool UPjcSubsystem::CanShowFoldersEmpty() const
 bool UPjcSubsystem::CanShowFoldersExcluded() const
 {
 	return bShowFoldersExcluded;
+}
+
+bool UPjcSubsystem::CanScanFoldersDev() const
+{
+	return bScanFoldersDev;
+}
+
+bool UPjcSubsystem::CanCleanAssetsUnused() const
+{
+	return bCleanAssetsUnused;
+}
+
+bool UPjcSubsystem::CanCleanFoldersEmpty() const
+{
+	return bCleanFoldersEmpty;
 }
 
 #if WITH_EDITOR

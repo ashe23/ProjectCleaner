@@ -15,23 +15,33 @@ public:
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	virtual void Deinitialize() override;
 
-	void ToggleShowFoldersDev();
 	void ToggleShowFoldersEmpty();
 	void ToggleShowFoldersExcluded();
+	void ToggleScanFoldersDev();
+	void ToggleCleanAssetsUnused();
+	void ToggleCleanFoldersEmpty();
 
-	bool CanShowFoldersDev() const;
 	bool CanShowFoldersEmpty() const;
 	bool CanShowFoldersExcluded() const;
+	bool CanScanFoldersDev() const;
+	bool CanCleanAssetsUnused() const;
+	bool CanCleanFoldersEmpty() const;
 
 private:
-	UPROPERTY(Config)
-	bool bShowFoldersDev = false;
-
 	UPROPERTY(Config)
 	bool bShowFoldersEmpty = true;
 
 	UPROPERTY(Config)
 	bool bShowFoldersExcluded = true;
+
+	UPROPERTY(Config)
+	bool bScanFoldersDev = false;
+
+	UPROPERTY(Config)
+	bool bCleanAssetsUnused = true;
+
+	UPROPERTY(Config)
+	bool bCleanFoldersEmpty = true;
 
 protected:
 #if WITH_EDITOR
