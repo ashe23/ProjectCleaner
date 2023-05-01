@@ -54,9 +54,13 @@ private:
 	TSharedRef<SHeaderRow> GetTreeHeaderRow() const;
 	TSharedRef<ITableRow> OnTreeGenerateRow(TSharedPtr<FPjcTreeItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const;
 	TSharedRef<SWidget> GetTreeOptionsBtnContent();
+	TSharedPtr<SWidget> GetTreeContextMenu();
 	TSharedPtr<FPjcTreeItem> CreateTreeItem(const FString& InFolderPath) const;
 	FSlateColor GetTreeOptionsBtnForegroundColor() const;
 	FText GetTreeSummaryText() const;
+
+	// content browser
+	TSharedPtr<SWidget> GetContentBrowserContextMenu(const TArray<FAssetData>& Assets);
 
 	UPjcSubsystem* SubsystemPtr = nullptr;
 	TSharedPtr<FPjcTreeItem> TreeRootItem;

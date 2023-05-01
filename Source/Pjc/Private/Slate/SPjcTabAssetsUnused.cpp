@@ -7,12 +7,12 @@
 #include "PjcTypes.h"
 #include "PjcStyles.h"
 #include "PjcConstants.h"
+#include "PjcSubsystem.h"
+#include "Libs/PjcLibPath.h"
 // Engine Headers
 #include "ContentBrowserModule.h"
 #include "IContentBrowserSingleton.h"
-#include "PjcSubsystem.h"
 #include "AssetRegistry/AssetRegistryModule.h"
-#include "Libs/PjcLibPath.h"
 #include "Settings/ContentBrowserSettings.h"
 #include "Widgets/Input/SSearchBox.h"
 #include "Widgets/Layout/SScrollBox.h"
@@ -63,6 +63,94 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 		})
 	);
 
+	Cmds->MapAction(
+		FPjcCmds::Get().PathsExclude,
+		FExecuteAction::CreateLambda([]
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Excluding paths"));
+		})
+	);
+
+	Cmds->MapAction(
+		FPjcCmds::Get().PathsInclude,
+		FExecuteAction::CreateLambda([]
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Including paths"));
+		})
+	);
+
+	Cmds->MapAction(
+		FPjcCmds::Get().PathsDelete,
+		FExecuteAction::CreateLambda([]
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Deleting paths"));
+		})
+	);
+
+	Cmds->MapAction(
+		FPjcCmds::Get().AssetsExclude,
+		FExecuteAction::CreateLambda([]
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Assets Exclude"));
+		})
+	);
+
+	Cmds->MapAction(
+		FPjcCmds::Get().AssetsExcludeByClass,
+		FExecuteAction::CreateLambda([]
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Assets exclude by class"));
+		})
+	);
+
+	Cmds->MapAction(
+		FPjcCmds::Get().AssetsInclude,
+		FExecuteAction::CreateLambda([]
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Assets include"));
+		})
+	);
+
+	Cmds->MapAction(
+		FPjcCmds::Get().AssetsIncludeByClass,
+		FExecuteAction::CreateLambda([]
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Assets include by class"));
+		})
+	);
+
+	Cmds->MapAction(
+		FPjcCmds::Get().AssetsDelete,
+		FExecuteAction::CreateLambda([]
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Assets delete"));
+		})
+	);
+
+	Cmds->MapAction(
+		FPjcCmds::Get().OpenViewerSizeMap,
+		FExecuteAction::CreateLambda([]
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Open Size Map"));
+		})
+	);
+
+	Cmds->MapAction(
+		FPjcCmds::Get().OpenViewerReference,
+		FExecuteAction::CreateLambda([]
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Open Reference Viewer"));
+		})
+	);
+
+	Cmds->MapAction(
+		FPjcCmds::Get().OpenViewerAudit,
+		FExecuteAction::CreateLambda([]
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Open Asset Audit"));
+		})
+	);
+
 	FPropertyEditorModule& PropertyEditor = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
 	FDetailsViewArgs DetailsViewArgs;
 	DetailsViewArgs.bUpdatesFromSelection = false;
@@ -98,10 +186,11 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 	AssetPickerConfig.bAllowDragging = false;
 	AssetPickerConfig.bCanShowClasses = false;
 	AssetPickerConfig.bCanShowFolders = false;
-	AssetPickerConfig.bCanShowDevelopersFolder = false;
+	AssetPickerConfig.bCanShowDevelopersFolder = true;
 	AssetPickerConfig.bForceShowEngineContent = false;
 	AssetPickerConfig.bForceShowPluginContent = false;
 	AssetPickerConfig.bAddFilterUI = true;
+	AssetPickerConfig.OnGetAssetContextMenu.BindRaw(this, &SPjcTabAssetsUnused::GetContentBrowserContextMenu);
 
 	SAssignNew(StatView, SListView<TSharedPtr<FPjcStatItem>>)
 	.ListItemsSource(&StatItems)
@@ -115,6 +204,7 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 	.SelectionMode(ESelectionMode::Multi)
 	.OnGenerateRow(this, &SPjcTabAssetsUnused::OnTreeGenerateRow)
 	.OnGetChildren(this, &SPjcTabAssetsUnused::OnTreeGetChildren)
+	.OnContextMenuOpening_Raw(this, &SPjcTabAssetsUnused::GetTreeContextMenu)
 	.OnExpansionChanged_Raw(this, &SPjcTabAssetsUnused::OnTreeExpansionChanged)
 	.HeaderRow(GetTreeHeaderRow());
 
@@ -587,6 +677,13 @@ void SPjcTabAssetsUnused::OnScanFoldersDevStateChanged(ECheckBoxState BoxState)
 
 	SubsystemPtr->ToggleScanFoldersDev();
 
+	UContentBrowserSettings* Settings = GetMutableDefault<UContentBrowserSettings>();
+	if (Settings)
+	{
+		Settings->SetDisplayDevelopersFolder(SubsystemPtr->CanScanFoldersDev());
+		Settings->PostEditChange();
+	}
+
 	TreeItemsFilter();
 }
 
@@ -881,7 +978,47 @@ TSharedRef<SWidget> SPjcTabAssetsUnused::GetTreeOptionsBtnContent()
 	return MenuBuilder.MakeWidget();
 }
 
+TSharedPtr<SWidget> SPjcTabAssetsUnused::GetTreeContextMenu()
+{
+	FMenuBuilder MenuBuilder{true, Cmds};
+
+	MenuBuilder.BeginSection(TEXT("PjcTabAssetsUnusedPathActions"), FText::FromString(TEXT("Actions")));
+	{
+		MenuBuilder.AddMenuEntry(FPjcCmds::Get().PathsExclude);
+		MenuBuilder.AddMenuEntry(FPjcCmds::Get().PathsInclude);
+		MenuBuilder.AddMenuEntry(FPjcCmds::Get().PathsDelete);
+	}
+	MenuBuilder.EndSection();
+
+	return MenuBuilder.MakeWidget();
+}
+
 FText SPjcTabAssetsUnused::GetTreeSummaryText() const
 {
 	return FText{};
+}
+
+TSharedPtr<SWidget> SPjcTabAssetsUnused::GetContentBrowserContextMenu(const TArray<FAssetData>& Assets)
+{
+	FMenuBuilder MenuBuilder{true, Cmds};
+
+	MenuBuilder.BeginSection(TEXT("PjcAssetsInfo"), FText::FromString(TEXT("Info")));
+	{
+		MenuBuilder.AddMenuEntry(FPjcCmds::Get().OpenViewerSizeMap);
+		MenuBuilder.AddMenuEntry(FPjcCmds::Get().OpenViewerReference);
+		MenuBuilder.AddMenuEntry(FPjcCmds::Get().OpenViewerAudit);
+	}
+	MenuBuilder.EndSection();
+
+	MenuBuilder.BeginSection(TEXT("PjcAssetActions"), FText::FromString(TEXT("Actions")));
+	{
+		MenuBuilder.AddMenuEntry(FPjcCmds::Get().AssetsExclude);
+		MenuBuilder.AddMenuEntry(FPjcCmds::Get().AssetsExcludeByClass);
+		MenuBuilder.AddMenuEntry(FPjcCmds::Get().AssetsInclude);
+		MenuBuilder.AddMenuEntry(FPjcCmds::Get().AssetsIncludeByClass);
+		MenuBuilder.AddMenuEntry(FPjcCmds::Get().AssetsDelete);
+	}
+	MenuBuilder.EndSection();
+
+	return MenuBuilder.MakeWidget();
 }
