@@ -29,6 +29,51 @@ void FPjcLibAsset::GetAssetsInPath(const FString& InPath, const bool bRecursive,
 	AssetRegistry.Get().GetAssetsByPath(FName{*InPath}, OutAssets, bRecursive);
 }
 
+void FPjcLibAsset::GetAssetsInPaths(const TArray<FString>& InPaths, const bool bRecursive, TArray<FAssetData>& OutAssets)
+{
+	const FAssetRegistryModule& AssetRegistry = GetAssetRegistry();
+
+	FARFilter Filter;
+	Filter.bRecursivePaths = bRecursive;
+
+	Filter.PackagePaths.Reserve(InPaths.Num());
+
+	for (const auto& Path : InPaths)
+	{
+		const FString PathContent = FPjcLibPath::ToContentPath(Path);
+		if (PathContent.IsEmpty()) continue;
+
+		Filter.PackagePaths.Emplace(FName{*PathContent});
+	}
+
+	if (Filter.PackagePaths.Num() == 0) return;
+
+	OutAssets.Reset();
+	AssetRegistry.Get().GetAssets(Filter, OutAssets);
+}
+
+void FPjcLibAsset::GetAssetsByObjectPaths(const TArray<FString>& InObjectPaths, TArray<FAssetData>& OutAssets)
+{
+	const FAssetRegistryModule& AssetRegistry = GetAssetRegistry();
+
+	FARFilter Filter;
+
+	Filter.ObjectPaths.Reserve(InObjectPaths.Num());
+
+	for (const auto& Path : InObjectPaths)
+	{
+		const FString ObjectPath = FPjcLibPath::ToObjectPath(Path);
+		if (ObjectPath.IsEmpty()) continue;
+
+		Filter.ObjectPaths.Emplace(FName{*ObjectPath});
+	}
+
+	if (Filter.ObjectPaths.Num() == 0) return;
+
+	OutAssets.Reset();
+	AssetRegistry.Get().GetAssets(Filter, OutAssets);
+}
+
 void FPjcLibAsset::GetAssetsIndirect(TArray<FAssetData>& OutAssets)
 {
 	TMap<FAssetData, FPjcAssetIndirectUsageInfo> Infos;
@@ -122,6 +167,117 @@ void FPjcLibAsset::GetAssetsIndirect(TMap<FAssetData, FPjcAssetIndirectUsageInfo
 	}
 }
 
+void FPjcLibAsset::GetAssetsExcludedByPaths(TSet<FAssetData>& OutAssets)
+{
+	const UPjcEditorSettings* PjcEditorSettings = GetDefault<UPjcEditorSettings>();
+	if (!PjcEditorSettings) return;
+
+	TArray<FString> ExcludedPaths;
+
+	ExcludedPaths.Reserve(PjcEditorSettings->ExcludedFolders.Num());
+
+	for (const auto& ExcludedFolder : PjcEditorSettings->ExcludedFolders)
+	{
+		ExcludedPaths.Emplace(ExcludedFolder.Path);
+	}
+
+	TArray<FAssetData> AssetsExcludedByPaths;
+	TArray<FAssetData> AssetsExcludedByObjectPaths;
+
+	GetAssetsInPaths(ExcludedPaths, true, AssetsExcludedByPaths);
+	GetAssetsByObjectPaths(PjcEditorSettings->ExcludedAssets, AssetsExcludedByObjectPaths);
+
+	OutAssets.Reset();
+	OutAssets.Append(AssetsExcludedByPaths);
+	OutAssets.Append(AssetsExcludedByObjectPaths);
+}
+
+void FPjcLibAsset::GetAssetsDeps(const TSet<FAssetData>& Assets, TSet<FAssetData>& Dependencies)
+{
+	Dependencies.Empty();
+
+	const FAssetRegistryModule& AssetRegistry = GetAssetRegistry();
+
+	TSet<FName> UsedAssetsDeps;
+	TArray<FName> Stack;
+	for (const auto& Asset : Assets)
+	{
+		UsedAssetsDeps.Add(Asset.PackageName);
+		Stack.Add(Asset.PackageName);
+
+		TArray<FName> Deps;
+		while (Stack.Num() > 0)
+		{
+			const auto CurrentPackageName = Stack.Pop(false);
+			Deps.Reset();
+
+			AssetRegistry.Get().GetDependencies(CurrentPackageName, Deps);
+
+			Deps.RemoveAllSwap([&](const FName& Dep)
+			{
+				return !Dep.ToString().StartsWith(*PjcConstants::PathRoot.ToString());
+			}, false);
+
+			for (const auto& Dep : Deps)
+			{
+				bool bIsAlreadyInSet = false;
+				UsedAssetsDeps.Add(Dep, &bIsAlreadyInSet);
+				if (!bIsAlreadyInSet)
+				{
+					Stack.Add(Dep);
+				}
+			}
+		}
+	}
+
+	FARFilter Filter;
+	Filter.bRecursivePaths = true;
+	Filter.PackagePaths.Add(PjcConstants::PathRoot);
+
+	for (const auto& Dep : UsedAssetsDeps)
+	{
+		Filter.PackageNames.Add(Dep);
+	}
+
+	TArray<FAssetData> TempContainer;
+	AssetRegistry.Get().GetAssets(Filter, TempContainer);
+
+	Dependencies.Append(TempContainer);
+}
+
+void FPjcLibAsset::FilterAssetsByPath(const TArray<FAssetData>& InAssets, const FString& InPath, TArray<FAssetData>& OutAssets)
+{
+	OutAssets.Reset();
+	OutAssets.Reserve(InAssets.Num());
+
+	for (const auto& Asset : InAssets)
+	{
+		if (Asset.PackagePath.ToString().StartsWith(InPath))
+		{
+			OutAssets.Emplace(Asset);
+		}
+	}
+}
+
+int64 FPjcLibAsset::GetAssetsTotalSize(const TArray<FAssetData>& InAssets)
+{
+	int64 Size = 0;
+
+	const FAssetRegistryModule& AssetRegistry = GetAssetRegistry();
+
+	for (const auto& Asset : InAssets)
+	{
+		if (!Asset.IsValid()) continue;
+
+		const auto AssetPackageData = AssetRegistry.Get().GetAssetPackageData(Asset.PackageName);
+		if (!AssetPackageData) continue;
+
+		Size += AssetPackageData->DiskSize;
+	}
+
+	return Size;
+}
+
 void FPjcLibAsset::GetClassNamesPrimary(TSet<FName>& OutClassNames)
 {
 	// getting list of primary asset classes that are defined in AssetManager
@@ -160,4 +316,59 @@ void FPjcLibAsset::GetClassNamesEditor(TSet<FName>& OutClassNames)
 
 	OutClassNames.Empty();
 	ModuleAssetRegistry.Get().GetDerivedClassNames(ClassNamesEditorBase, TSet<FName>{}, OutClassNames);
+}
+
+void FPjcLibAsset::GetClassNamesExcluded(TSet<FName>& OutClassNames)
+{
+	const UPjcEditorSettings* PjcEditorSettings = GetDefault<UPjcEditorSettings>();
+	if (!PjcEditorSettings) return;
+
+	OutClassNames.Reset();
+	OutClassNames.Reserve(PjcEditorSettings->ExcludedClasses.Num());
+
+	for (const auto& ExcludedClass : PjcEditorSettings->ExcludedClasses)
+	{
+		if (!ExcludedClass.LoadSynchronous()) continue;
+
+		OutClassNames.Emplace(ExcludedClass.Get()->GetFName());
+	}
+}
+
+bool FPjcLibAsset::AssetIsBlueprint(const FAssetData& InAssetData)
+{
+	if (!InAssetData.IsValid()) return false;
+
+	const UClass* AssetClass = InAssetData.GetClass();
+	if (!AssetClass) return false;
+
+	return AssetClass->IsChildOf(UBlueprint::StaticClass());
+}
+
+bool FPjcLibAsset::AssetIsExtReferenced(const FAssetData& InAssetData)
+{
+	if (!InAssetData.IsValid()) return false;
+
+	const FAssetRegistryModule& AssetRegistry = GetAssetRegistry();
+
+	TArray<FName> Refs;
+	AssetRegistry.Get().GetReferencers(InAssetData.PackageName, Refs);
+
+	return Refs.ContainsByPredicate([](const FName& Ref)
+	{
+		return !Ref.ToString().StartsWith(PjcConstants::PathRoot.ToString());
+	});
+}
+
+FName FPjcLibAsset::GetAssetExactClassName(const FAssetData& InAssetData)
+{
+	if (!InAssetData.IsValid()) return NAME_None;
+
+	if (AssetIsBlueprint(InAssetData))
+	{
+		const FString GeneratedClassName = InAssetData.TagsAndValues.FindTag(TEXT("GeneratedClass")).GetValue();
+		const FString ClassObjectPath = FPackageName::ExportTextPathToObjectPath(*GeneratedClassName);
+		return FName{*FPackageName::ObjectPathToObjectName(ClassObjectPath)};
+	}
+
+	return InAssetData.AssetClass;
 }

@@ -13,6 +13,7 @@ namespace PjcConstants
 	static const FName ModuleAssetRegistry{TEXT("AssetRegistry")};
 	static const FName ModuleAssetTools{TEXT("AssetTools")};
 	static const FName ModuleContentBrowser{TEXT("ContentBrowser")};
+	static const FName ModuleMegascans{TEXT("MegascansPlugin")};
 
 	// paths
 	static FName PathRoot{TEXT("/Game")};

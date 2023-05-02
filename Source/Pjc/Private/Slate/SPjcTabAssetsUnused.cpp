@@ -12,7 +12,9 @@
 // Engine Headers
 #include "ContentBrowserModule.h"
 #include "IContentBrowserSingleton.h"
+#include "ObjectTools.h"
 #include "AssetRegistry/AssetRegistryModule.h"
+#include "Libs/PjcLibAsset.h"
 #include "Settings/ContentBrowserSettings.h"
 #include "Widgets/Input/SSearchBox.h"
 #include "Widgets/Layout/SScrollBox.h"
@@ -31,16 +33,15 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 		FPjcCmds::Get().TabAssetsUnusedBtnScan,
 		FExecuteAction::CreateLambda([&]()
 		{
-			TreeItemsUpdate();
-			TreeItemsFilter();
+			ScanProjectAssets();
 		})
 	);
 
 	Cmds->MapAction(
 		FPjcCmds::Get().TabAssetsUnusedBtnClean,
-		FExecuteAction::CreateLambda([]()
+		FExecuteAction::CreateLambda([&]()
 		{
-			UE_LOG(LogTemp, Warning, TEXT("Cleaning project"));
+			ObjectTools::DeleteAssets(AssetsUnused, true);
 
 			// const TSharedRef<SWindow> Window = SNew(SWindow).Title(FText::FromString(TEXT("Some Title"))).ClientSize(FVector2D{600, 400});
 			// const TSharedRef<SWidget> Content =
@@ -179,7 +180,7 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 	DetailsViewArgs.ViewIdentifier = "PjcEditorAssetExcludeSettings";
 
 	const auto SettingsProperty = PropertyEditor.CreateDetailView(DetailsViewArgs);
-	SettingsProperty->SetObject(GetMutableDefault<UPjcSettings>());
+	SettingsProperty->SetObject(GetMutableDefault<UPjcEditorSettings>());
 
 	const FContentBrowserModule& ContentBrowserModule = FModuleManager::LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
 
@@ -224,9 +225,7 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 	.OnExpansionChanged_Raw(this, &SPjcTabAssetsUnused::OnTreeExpansionChanged)
 	.HeaderRow(GetTreeHeaderRow());
 
-	StatItemsInit();
-	TreeItemsUpdate();
-	TreeItemsFilter();
+	ScanProjectAssets();
 
 	ChildSlot
 	[
@@ -374,23 +373,25 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 	];
 }
 
-void SPjcTabAssetsUnused::StatItemsInit()
+void SPjcTabAssetsUnused::StatItemsUpdate()
 {
 	StatItems.Reset();
 
 	const FMargin FirstLvl{5.0f, 0.0f, 0.0f, 0.0f};
 	const FMargin SecondLvl{20.0f, 0.0f, 0.0f, 0.0f};
+	const auto ColorRed = FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Red").GetSpecifiedColor();
+	const auto ColorYellow = FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Yellow").GetSpecifiedColor();
 
 	StatItems.Emplace(
 		MakeShareable(
 			new FPjcStatItem{
 				FText::FromString(TEXT("Unused")),
-				FText::FromString(TEXT("0")),
-				FText::FromString(TEXT("0")),
+				FText::AsNumber(AssetsUnused.Num()),
+				FText::AsMemory(FPjcLibAsset::GetAssetsTotalSize(AssetsUnused), IEC),
 				FText::FromString(TEXT("Unused Assets")),
 				FText::FromString(TEXT("Total number of unused assets")),
 				FText::FromString(TEXT("Total size of unused assets")),
-				FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Red").GetSpecifiedColor(),
+				AssetsUnused.Num() > 0 ? ColorRed : FLinearColor::White,
 				FirstLvl
 			}
 		)
@@ -400,8 +401,8 @@ void SPjcTabAssetsUnused::StatItemsInit()
 		MakeShareable(
 			new FPjcStatItem{
 				FText::FromString(TEXT("Used")),
-				FText::FromString(TEXT("0")),
-				FText::FromString(TEXT("0")),
+				FText::AsNumber(AssetsUsed.Num()),
+				FText::AsMemory(FPjcLibAsset::GetAssetsTotalSize(AssetsUsed), IEC),
 				FText::FromString(TEXT("Used Assets")),
 				FText::FromString(TEXT("Total number of used assets")),
 				FText::FromString(TEXT("Total size of used assets")),
@@ -415,8 +416,8 @@ void SPjcTabAssetsUnused::StatItemsInit()
 		MakeShareable(
 			new FPjcStatItem{
 				FText::FromString(TEXT("Primary")),
-				FText::FromString(TEXT("0")),
-				FText::FromString(TEXT("0")),
+				FText::AsNumber(AssetsPrimary.Num()),
+				FText::AsMemory(FPjcLibAsset::GetAssetsTotalSize(AssetsPrimary), IEC),
 				FText::FromString(TEXT("Primary Assets")),
 				FText::FromString(TEXT("Total number of primary assets")),
 				FText::FromString(TEXT("Total size of primary assets")),
@@ -430,8 +431,8 @@ void SPjcTabAssetsUnused::StatItemsInit()
 		MakeShareable(
 			new FPjcStatItem{
 				FText::FromString(TEXT("Editor")),
-				FText::FromString(TEXT("0")),
-				FText::FromString(TEXT("0")),
+				FText::AsNumber(AssetsEditor.Num()),
+				FText::AsMemory(FPjcLibAsset::GetAssetsTotalSize(AssetsEditor), IEC),
 				FText::FromString(TEXT("Editor Assets")),
 				FText::FromString(TEXT("Total number of Editor assets")),
 				FText::FromString(TEXT("Total size of Editor assets")),
@@ -445,8 +446,8 @@ void SPjcTabAssetsUnused::StatItemsInit()
 		MakeShareable(
 			new FPjcStatItem{
 				FText::FromString(TEXT("Indirect")),
-				FText::FromString(TEXT("0")),
-				FText::FromString(TEXT("0")),
+				FText::AsNumber(AssetsIndirect.Num()),
+				FText::AsMemory(FPjcLibAsset::GetAssetsTotalSize(AssetsIndirect), IEC),
 				FText::FromString(TEXT("Indirect Assets")),
 				FText::FromString(TEXT("Total number of Indirect assets")),
 				FText::FromString(TEXT("Total size of Indirect assets")),
@@ -460,8 +461,8 @@ void SPjcTabAssetsUnused::StatItemsInit()
 		MakeShareable(
 			new FPjcStatItem{
 				FText::FromString(TEXT("ExtReferenced")),
-				FText::FromString(TEXT("0")),
-				FText::FromString(TEXT("0")),
+				FText::AsNumber(AssetsExtReferenced.Num()),
+				FText::AsMemory(FPjcLibAsset::GetAssetsTotalSize(AssetsExtReferenced), IEC),
 				FText::FromString(TEXT("ExtReferenced Assets")),
 				FText::FromString(TEXT("Total number of ExtReferenced assets")),
 				FText::FromString(TEXT("Total size of ExtReferenced assets")),
@@ -475,12 +476,12 @@ void SPjcTabAssetsUnused::StatItemsInit()
 		MakeShareable(
 			new FPjcStatItem{
 				FText::FromString(TEXT("Excluded")),
-				FText::FromString(TEXT("0")),
-				FText::FromString(TEXT("0")),
+				FText::AsNumber(AssetsExcluded.Num()),
+				FText::AsMemory(FPjcLibAsset::GetAssetsTotalSize(AssetsExcluded), IEC),
 				FText::FromString(TEXT("Excluded Assets")),
 				FText::FromString(TEXT("Total number of Excluded assets")),
 				FText::FromString(TEXT("Total size of Excluded assets")),
-				FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Yellow").GetSpecifiedColor(),
+				AssetsExcluded.Num() > 0 ? ColorYellow : FLinearColor::White,
 				SecondLvl
 			}
 		)
@@ -490,8 +491,8 @@ void SPjcTabAssetsUnused::StatItemsInit()
 		MakeShareable(
 			new FPjcStatItem{
 				FText::FromString(TEXT("Total")),
-				FText::FromString(TEXT("0")),
-				FText::FromString(TEXT("0")),
+				FText::AsNumber(AssetsAll.Num()),
+				FText::AsMemory(FPjcLibAsset::GetAssetsTotalSize(AssetsAll), IEC),
 				FText::FromString(TEXT("All Assets")),
 				FText::FromString(TEXT("Total number of assets")),
 				FText::FromString(TEXT("Total size of assets")),
@@ -760,10 +761,12 @@ TSharedPtr<FPjcTreeItem> SPjcTabAssetsUnused::CreateTreeItem(const FString& InFo
 	const bool bIsDev = InFolderPath.StartsWith(PjcConstants::PathDevelopers.ToString()) || InFolderPath.StartsWith(PjcConstants::PathCollections.ToString());
 	const bool bIsRoot = InFolderPath.Equals(PjcConstants::PathRoot.ToString());
 
-	// const FAssetRegistryModule& AssetRegistry = FPjcLibAsset::GetAssetRegistry();
-	//
-	// TArray<FAssetData> AssetsInPath;
-	// AssetRegistry.Get().GetAssetsByPath(FName{*InFolderPath}, AssetsInPath, true);
+	const int32 NumAssetsTotalInPath = NumAssetsTotalByPath.Contains(InFolderPath) ? *NumAssetsTotalByPath.Find(InFolderPath) : 0;
+	const int32 NumAssetsUsedInPath = NumAssetsUsedByPath.Contains(InFolderPath) ? *NumAssetsUsedByPath.Find(InFolderPath) : 0;
+	const int32 NumAssetsUnusedInPath = NumAssetsUnusedByPath.Contains(InFolderPath) ? *NumAssetsUnusedByPath.Find(InFolderPath) : 0;
+	const float SizeAssetsUnusedInPath = SizeAssetsUnusedByPath.Contains(InFolderPath) ? *SizeAssetsUnusedByPath.Find(InFolderPath) : 0.0f;
+	const float PercentageUnused = NumAssetsTotalInPath == 0 ? 0 : NumAssetsUnusedInPath * 100.0f / NumAssetsTotalInPath;
+	const float PercentageUnusedNormalized = FMath::GetMappedRangeValueClamped(FVector2D{0.0f, 100.0f}, FVector2D{0.0, 1.0f}, PercentageUnused);
 
 	return MakeShareable(
 		new FPjcTreeItem{
@@ -773,14 +776,14 @@ TSharedPtr<FPjcTreeItem> SPjcTabAssetsUnused::CreateTreeItem(const FString& InFo
 			bIsRoot,
 			FPjcLibPath::IsPathEmpty(InFolderPath),
 			FPjcLibPath::IsPathExcluded(InFolderPath),
-			bIsRoot ? true : false,
+			bIsRoot,
 			true,
-			0,
-			0,
-			0,
-			0,
-			0.0f,
-			0.0f
+			NumAssetsTotalInPath,
+			NumAssetsUsedInPath,
+			NumAssetsUnusedInPath,
+			SizeAssetsUnusedInPath,
+			PercentageUnused,
+			PercentageUnusedNormalized
 		});
 }
 
@@ -970,6 +973,126 @@ TSharedPtr<SWidget> SPjcTabAssetsUnused::GetTreeContextMenu() const
 FText SPjcTabAssetsUnused::GetTreeSummaryText() const
 {
 	return FText{};
+}
+
+void SPjcTabAssetsUnused::ScanProjectAssets()
+{
+	AssetsAll.Reset();
+	AssetsUnused.Reset();
+	AssetsUsed.Reset();
+	AssetsPrimary.Reset();
+	AssetsEditor.Reset();
+	AssetsIndirect.Reset();
+	AssetsExcluded.Reset();
+	AssetsExtReferenced.Reset();
+	NumAssetsTotalByPath.Reset();
+	NumAssetsUsedByPath.Reset();
+	NumAssetsUnusedByPath.Reset();
+	SizeAssetsUnusedByPath.Reset();
+
+	TSet<FName> ClassNamesPrimary;
+	TSet<FName> ClassNamesEditor;
+	TSet<FName> ClassNamesExcluded;
+	TArray<FAssetData> AssetsMegascans;
+	TSet<FAssetData> AssetsExcludedTotal;
+	TSet<FAssetData> AssetsUsedInitial;
+
+	FPjcLibAsset::GetClassNamesPrimary(ClassNamesPrimary);
+	FPjcLibAsset::GetClassNamesEditor(ClassNamesEditor);
+	FPjcLibAsset::GetClassNamesExcluded(ClassNamesExcluded);
+
+	if (FModuleManager::Get().IsModuleLoaded(PjcConstants::ModuleMegascans))
+	{
+		FPjcLibAsset::GetAssetsInPath(PjcConstants::PathMSPresets.ToString(), true, AssetsMegascans);
+	}
+
+	FPjcLibAsset::GetAssetsInPath(PjcConstants::PathRoot.ToString(), true, AssetsAll);
+	FPjcLibAsset::GetAssetsIndirect(AssetsIndirect);
+	FPjcLibAsset::GetAssetsExcludedByPaths(AssetsExcludedTotal);
+
+	for (const auto& Asset : AssetsAll)
+	{
+		const FName AssetExactClassName = FPjcLibAsset::GetAssetExactClassName(Asset);
+		const bool bIsPrimary = ClassNamesPrimary.Contains(Asset.AssetClass) || ClassNamesPrimary.Contains(AssetExactClassName);
+		const bool bIsEditor = ClassNamesEditor.Contains(Asset.AssetClass) || ClassNamesEditor.Contains(AssetExactClassName);
+		const bool bIsExcluded = ClassNamesExcluded.Contains(Asset.AssetClass) || ClassNamesExcluded.Contains(AssetExactClassName);
+		const bool bIsExtReferenced = FPjcLibAsset::AssetIsExtReferenced(Asset);
+		const bool bIsUsed = bIsPrimary || bIsEditor || bIsExcluded || bIsExtReferenced;
+
+		if (bIsPrimary)
+		{
+			AssetsPrimary.Emplace(Asset);
+		}
+
+		if (bIsEditor)
+		{
+			AssetsEditor.Emplace(Asset);
+		}
+
+		if (bIsExcluded)
+		{
+			AssetsExcludedTotal.Emplace(Asset);
+		}
+
+		if (bIsExtReferenced)
+		{
+			AssetsExtReferenced.Emplace(Asset);
+		}
+
+		if (bIsUsed)
+		{
+			AssetsUsedInitial.Emplace(Asset);
+		}
+	}
+
+	AssetsUsedInitial.Reserve(AssetsAll.Num());
+	AssetsUsedInitial.Append(AssetsIndirect);
+	AssetsUsedInitial.Append(AssetsExcludedTotal);
+	AssetsUsedInitial.Append(AssetsMegascans);
+
+	AssetsExcluded = AssetsExcludedTotal.Array();
+
+	TSet<FAssetData> AssetsUsedTotal;
+	FPjcLibAsset::GetAssetsDeps(AssetsUsedInitial, AssetsUsedTotal);
+
+	AssetsUsed = AssetsUsedTotal.Array();
+
+	AssetsUnused.Reserve(AssetsAll.Num() - AssetsUsed.Num());
+
+	for (const auto& Asset : AssetsAll)
+	{
+		if (AssetsUsedTotal.Contains(Asset)) continue;
+
+		AssetsUnused.Emplace(Asset);
+	}
+
+	TArray<FString> PathsAll;
+	FPjcLibAsset::GetAssetRegistry().Get().GetAllCachedPaths(PathsAll);
+
+	TArray<FAssetData> AssetsTotalInPath;
+	TArray<FAssetData> AssetsUsedInPath;
+	TArray<FAssetData> AssetsUnusedInPath;
+
+	for (const auto& Path : PathsAll)
+	{
+		FPjcLibAsset::FilterAssetsByPath(AssetsAll, Path, AssetsTotalInPath);
+		FPjcLibAsset::FilterAssetsByPath(AssetsUsed, Path, AssetsUsedInPath);
+		FPjcLibAsset::FilterAssetsByPath(AssetsUnused, Path, AssetsUnusedInPath);
+
+		NumAssetsTotalByPath.FindOrAdd(Path, AssetsTotalInPath.Num());
+		NumAssetsUsedByPath.FindOrAdd(Path, AssetsUsedInPath.Num());
+		NumAssetsUnusedByPath.FindOrAdd(Path, AssetsUnusedInPath.Num());
+		SizeAssetsUnusedByPath.FindOrAdd(Path, FPjcLibAsset::GetAssetsTotalSize(AssetsUnusedInPath));
+
+		AssetsTotalInPath.Reset();
+		AssetsUsedInPath.Reset();
+		AssetsUnusedInPath.Reset();
+	}
+
+
+	TreeItemsUpdate();
+	TreeItemsFilter();
+	StatItemsUpdate();
 }
 
 TSharedPtr<SWidget> SPjcTabAssetsUnused::GetContentBrowserContextMenu(const TArray<FAssetData>& Assets) const

@@ -50,14 +50,14 @@ FString FPjcLibPath::ToAbsolute(const FString& InPath)
 {
 	const FString PathNormalized = Normalize(InPath);
 	const FString PathProjectContent = FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir());
-	
+
 	if (PathNormalized.IsEmpty()) return {};
 	if (PathNormalized.StartsWith(PathProjectContent)) return PathNormalized;
 	if (PathNormalized.StartsWith(PjcConstants::PathRoot.ToString()))
 	{
 		FString Path = PathNormalized;
 		Path.RemoveFromStart(PjcConstants::PathRoot.ToString());
-	
+
 		return PathProjectContent / Path;
 	}
 
@@ -133,7 +133,7 @@ bool FPjcLibPath::IsPathExcluded(const FString& InPath)
 {
 	const FString ContentPath = ToContentPath(InPath);
 
-	const UPjcSettings* EditorSettings = GetDefault<UPjcSettings>();
+	const UPjcEditorSettings* EditorSettings = GetDefault<UPjcEditorSettings>();
 	if (!EditorSettings) return false;
 
 	for (const auto& ExcludedPath : EditorSettings->ExcludedFolders)
@@ -200,7 +200,7 @@ void FPjcLibPath::GetFilesInPathByExt(const FString& InSearchPath, const bool bS
 			if (!bIsDirectory)
 			{
 				const FString FullPath = FPaths::ConvertRelativePathToFull(FilenameOrDirectory);
-				
+
 				if (Extensions.Num() == 0)
 				{
 					Files.Emplace(FullPath);
@@ -273,4 +273,36 @@ void FPjcLibPath::GetFoldersInPath(const FString& InSearchPath, const bool bSear
 	{
 		FPlatformFileManager::Get().GetPlatformFile().IterateDirectory(*InSearchPath, FindFoldersVisitor);
 	}
+}
+
+int32 FPjcLibPath::DeleteFiles(const TSet<FString>& InFiles)
+{
+	int32 NumFilesDeleted = 0;
+
+	for (const auto& File : InFiles)
+	{
+		const FString FilePathAbs = ToAbsolute(File);
+		if (FilePathAbs.IsEmpty()) continue;
+		if (!IFileManager::Get().Delete(*FilePathAbs, true)) continue;
+
+		++NumFilesDeleted;
+	}
+
+	return NumFilesDeleted;
+}
+
+int32 FPjcLibPath::DeleteFolders(const TSet<FString>& InFolders)
+{
+	int32 NumFoldersDeleted = 0;
+
+	for (const auto& Folder : InFolders)
+	{
+		const FString FolderPathAbs = ToAbsolute(Folder);
+		if (FolderPathAbs.IsEmpty()) continue;
+		if (!IFileManager::Get().DeleteDirectory(*FolderPathAbs, true, true)) continue;
+
+		++NumFoldersDeleted;
+	}
+
+	return NumFoldersDeleted;
 }

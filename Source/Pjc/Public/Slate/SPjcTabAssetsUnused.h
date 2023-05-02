@@ -28,7 +28,8 @@ private:
 	TSharedPtr<FPjcTreeItem> CreateTreeItem(const FString& InFolderPath) const;
 	FSlateColor GetTreeOptionsBtnForegroundColor() const;
 	FText GetTreeSummaryText() const;
-	void StatItemsInit();
+	void ScanProjectAssets();
+	void StatItemsUpdate();
 	void TreeItemsUpdate();
 	void TreeItemsFilter();
 	void TreeItemsCollapseAll();
@@ -53,4 +54,17 @@ private:
 	TSet<TSharedPtr<FPjcTreeItem>> TreeItemsExpanded;
 	TSharedPtr<SListView<TSharedPtr<FPjcStatItem>>> StatView;
 	TSharedPtr<STreeView<TSharedPtr<FPjcTreeItem>>> TreeView;
+
+	TArray<FAssetData> AssetsAll;
+	TArray<FAssetData> AssetsUnused;
+	TArray<FAssetData> AssetsUsed;
+	TArray<FAssetData> AssetsPrimary;
+	TArray<FAssetData> AssetsEditor;
+	TArray<FAssetData> AssetsIndirect;
+	TArray<FAssetData> AssetsExcluded;
+	TArray<FAssetData> AssetsExtReferenced;
+	TMap<FString, int32> NumAssetsTotalByPath;
+	TMap<FString, int32> NumAssetsUsedByPath;
+	TMap<FString, int32> NumAssetsUnusedByPath;
+	TMap<FString, float> SizeAssetsUnusedByPath;
 };

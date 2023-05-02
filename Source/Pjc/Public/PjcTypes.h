@@ -15,7 +15,7 @@ enum class EPjcCleanupMethod : uint8
 };
 
 UCLASS(Config = EditorPerProjectUserSettings)
-class UPjcSettings : public UObject
+class UPjcEditorSettings : public UObject
 {
 	GENERATED_BODY()
 
@@ -30,7 +30,7 @@ public:
 	TArray<TSoftClassPtr<UObject>> ExcludedClasses;
 
 	UPROPERTY(Config)
-	TArray<FName> ExcludedAssets;
+	TArray<FString> ExcludedAssets;
 
 protected:
 #if WITH_EDITOR
