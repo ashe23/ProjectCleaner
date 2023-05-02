@@ -24,4 +24,6 @@ public:
 	TSharedPtr<FUICommandInfo> OpenViewerSizeMap;
 	TSharedPtr<FUICommandInfo> OpenViewerReference;
 	TSharedPtr<FUICommandInfo> OpenViewerAudit;
+	TSharedPtr<FUICommandInfo> ItemsCollapseAll;
+	TSharedPtr<FUICommandInfo> ItemsExpandAll;
 };

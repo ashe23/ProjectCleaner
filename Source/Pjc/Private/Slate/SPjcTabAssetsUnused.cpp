@@ -9,6 +9,7 @@
 #include "PjcConstants.h"
 #include "PjcSubsystem.h"
 #include "Libs/PjcLibPath.h"
+#include "Libs/PjcLibAsset.h"
 // Engine Headers
 #include "ContentBrowserModule.h"
 #include "IContentBrowserSingleton.h"
@@ -151,6 +152,22 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 		})
 	);
 
+	Cmds->MapAction(
+		FPjcCmds::Get().ItemsCollapseAll,
+		FExecuteAction::CreateLambda([&]
+		{
+			TreeItemsCollapseAll();
+		})
+	);
+
+	Cmds->MapAction(
+		FPjcCmds::Get().ItemsExpandAll,
+		FExecuteAction::CreateLambda([&]
+		{
+			TreeItemsExpandAll();
+		})
+	);
+
 	FPropertyEditorModule& PropertyEditor = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
 	FDetailsViewArgs DetailsViewArgs;
 	DetailsViewArgs.bUpdatesFromSelection = false;
@@ -207,7 +224,7 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 	.OnContextMenuOpening_Raw(this, &SPjcTabAssetsUnused::GetTreeContextMenu)
 	.OnExpansionChanged_Raw(this, &SPjcTabAssetsUnused::OnTreeExpansionChanged)
 	.HeaderRow(GetTreeHeaderRow());
-
+	
 	StatItemsInit();
 	TreeItemsUpdate();
 	TreeItemsFilter();
@@ -374,7 +391,7 @@ void SPjcTabAssetsUnused::StatItemsInit()
 				FText::FromString(TEXT("Unused Assets")),
 				FText::FromString(TEXT("Total number of unused assets")),
 				FText::FromString(TEXT("Total size of unused assets")),
-				FLinearColor::Red,
+				FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Red").GetSpecifiedColor(),
 				FirstLvl
 			}
 		)
@@ -464,7 +481,7 @@ void SPjcTabAssetsUnused::StatItemsInit()
 				FText::FromString(TEXT("Excluded Assets")),
 				FText::FromString(TEXT("Total number of Excluded assets")),
 				FText::FromString(TEXT("Total size of Excluded assets")),
-				FLinearColor::White,
+				FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Yellow").GetSpecifiedColor(),
 				SecondLvl
 			}
 		)
@@ -548,6 +565,50 @@ void SPjcTabAssetsUnused::TreeItemsFilter()
 		{
 			Stack.Push(SubItem);
 		}
+	}
+
+	TreeView->RebuildList();
+}
+
+void SPjcTabAssetsUnused::TreeItemsCollapseAll()
+{
+	if (!TreeRootItem.IsValid()) return;
+	if (!TreeView.IsValid()) return;
+
+	TreeItemsExpanded.Reset();
+
+	TArray<TSharedPtr<FPjcTreeItem>> Stack;
+
+	Stack.Push(TreeRootItem);
+
+	while (Stack.Num() > 0)
+	{
+		const auto CurrentItem = Stack.Pop(false);
+
+		CurrentItem->bIsExpanded = false;
+		TreeView->SetItemExpansion(CurrentItem, CurrentItem->bIsExpanded);
+	}
+
+	TreeView->RebuildList();
+}
+
+void SPjcTabAssetsUnused::TreeItemsExpandAll()
+{
+	if (!TreeRootItem.IsValid()) return;
+	if (!TreeView.IsValid()) return;
+
+	TreeItemsExpanded.Reset();
+
+	TArray<TSharedPtr<FPjcTreeItem>> Stack;
+
+	Stack.Push(TreeRootItem);
+
+	while (Stack.Num() > 0)
+	{
+		const auto CurrentItem = Stack.Pop(false);
+
+		CurrentItem->bIsExpanded = true;
+		TreeView->SetItemExpansion(CurrentItem, CurrentItem->bIsExpanded);
 	}
 
 	TreeView->RebuildList();
@@ -790,22 +851,28 @@ TSharedPtr<FPjcTreeItem> SPjcTabAssetsUnused::CreateTreeItem(const FString& InFo
 	const bool bIsDev = InFolderPath.StartsWith(PjcConstants::PathDevelopers.ToString()) || InFolderPath.StartsWith(PjcConstants::PathCollections.ToString());
 	const bool bIsRoot = InFolderPath.Equals(PjcConstants::PathRoot.ToString());
 
-	return MakeShareable(new FPjcTreeItem{
-		InFolderPath,
-		bIsRoot ? TEXT("Content") : FPaths::GetPathLeaf(InFolderPath),
-		bIsDev,
-		bIsRoot,
-		FPjcLibPath::IsPathEmpty(InFolderPath),
-		FPjcLibPath::IsPathExcluded(InFolderPath),
-		bIsRoot ? true : false,
-		true,
-		0,
-		0,
-		0,
-		0,
-		0.0f,
-		0.0f
-	});
+	// const FAssetRegistryModule& AssetRegistry = FPjcLibAsset::GetAssetRegistry();
+	//
+	// TArray<FAssetData> AssetsInPath;
+	// AssetRegistry.Get().GetAssetsByPath(FName{*InFolderPath}, AssetsInPath, true);
+
+	return MakeShareable(
+		new FPjcTreeItem{
+			InFolderPath,
+			bIsRoot ? TEXT("Content") : FPaths::GetPathLeaf(InFolderPath),
+			bIsDev,
+			bIsRoot,
+			FPjcLibPath::IsPathEmpty(InFolderPath),
+			FPjcLibPath::IsPathExcluded(InFolderPath),
+			bIsRoot ? true : false,
+			true,
+			0,
+			0,
+			0,
+			0,
+			0.0f,
+			0.0f
+		});
 }
 
 void SPjcTabAssetsUnused::SetTreeItemVisibility(const TSharedPtr<FPjcTreeItem>& Item) const
@@ -974,6 +1041,10 @@ TSharedRef<SWidget> SPjcTabAssetsUnused::GetTreeOptionsBtnContent()
 		NAME_None,
 		EUserInterfaceActionType::ToggleButton
 	);
+
+	MenuBuilder.AddSeparator();
+	MenuBuilder.AddMenuEntry(FPjcCmds::Get().ItemsCollapseAll);
+	MenuBuilder.AddMenuEntry(FPjcCmds::Get().ItemsExpandAll);
 
 	return MenuBuilder.MakeWidget();
 }

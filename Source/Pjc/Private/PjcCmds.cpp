@@ -125,6 +125,22 @@ void FPjcCmds::RegisterCommands()
 		EUserInterfaceActionType::Button,
 		FInputChord()
 	);
+
+	UI_COMMAND(
+		ItemsCollapseAll,
+		"Collapse All ...",
+		"Collapse all items",
+		EUserInterfaceActionType::Button,
+		FInputChord()
+	);
+
+	UI_COMMAND(
+		ItemsExpandAll,
+		"Expand All ...",
+		"Expand all items",
+		EUserInterfaceActionType::Button,
+		FInputChord()
+	);
 }
 
 #undef LOCTEXT_NAMESPACE

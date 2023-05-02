@@ -1,9 +1,10 @@
 ﻿// Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "Libs/PjcLibPath.h"
-
 #include "PjcConstants.h"
 #include "PjcTypes.h"
+#include "Libs/PjcLibAsset.h"
+// Engine Headers
 #include "AssetRegistry/AssetRegistryModule.h"
 
 FString FPjcLibPath::Normalize(const FString& InPath)
@@ -37,41 +38,43 @@ FString FPjcLibPath::Normalize(const FString& InPath)
 		Path = Path.LeftChop(1);
 	}
 
-	if (Path.StartsWith(PjcConstants::PathRoot.ToString())) return Path;
-
-	// Ensure that we are dealing with paths that are under the project directory
-	if (!Path.StartsWith(FPaths::ProjectContentDir())) return {};
+	// if (Path.StartsWith(PjcConstants::PathRoot.ToString())) return Path;
+	//
+	// // Ensure that we are dealing with paths that are under the project directory
+	// if (!Path.StartsWith(ToFullPath(FPaths::ProjectContentDir()))) return {};
 
 	return Path;
 }
 
 FString FPjcLibPath::ToAbsolute(const FString& InPath)
 {
-	const FString PathNormalized = Normalize(InPath);
+	// const FString PathNormalized = Normalize(InPath);
+	// const FString PathProjectContent = ToFullPath(FPaths::ProjectContentDir());
+	//
+	// if (PathNormalized.IsEmpty()) return {};
+	// if (PathNormalized.StartsWith(PathProjectContent)) return PathNormalized;
+	// if (PathNormalized.StartsWith(PjcConstants::PathRoot.ToString()))
+	// {
+	// 	FString Path = PathNormalized;
+	// 	Path.RemoveFromStart(PjcConstants::PathRoot.ToString());
+	//
+	// 	return PathProjectContent.LeftChop(1) + Path;
+	// }
 
-	if (PathNormalized.IsEmpty()) return {};
-	if (PathNormalized.StartsWith(FPaths::ProjectContentDir())) return PathNormalized;
-	if (PathNormalized.StartsWith(PjcConstants::PathRoot.ToString()))
-	{
-		FString Path = PathNormalized;
-		Path.RemoveFromStart(PjcConstants::PathRoot.ToString());
-
-		return FPaths::ProjectContentDir().LeftChop(1) + Path;
-	}
-
-	return {};
+	return FPaths::ConvertRelativePathToFull(InPath);
 }
 
 FString FPjcLibPath::ToContentPath(const FString& InPath)
 {
 	const FString PathNormalized = Normalize(InPath);
+	const FString PathProjectContent = ToAbsolute(FPaths::ProjectContentDir());
 
 	if (PathNormalized.IsEmpty()) return {};
 	if (PathNormalized.StartsWith(PjcConstants::PathRoot.ToString())) return PathNormalized;
-	if (PathNormalized.StartsWith(FPaths::ProjectContentDir()))
+	if (PathNormalized.StartsWith(PathProjectContent))
 	{
 		FString Path = PathNormalized;
-		Path.RemoveFromStart(FPaths::ProjectContentDir());
+		Path.RemoveFromStart(PathProjectContent);
 
 		return PjcConstants::PathRoot.ToString() + Path;
 	}
@@ -114,7 +117,7 @@ FString FPjcLibPath::ToObjectPath(const FString& InPath)
 bool FPjcLibPath::IsPathEmpty(const FString& InPath)
 {
 	// first we check if given path contains any assets, because AssetRegistry keeps cached info
-	const FAssetRegistryModule& AssetRegistry = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(PjcConstants::ModuleAssetRegistry);
+	const FAssetRegistryModule& AssetRegistry = FPjcLibAsset::GetAssetRegistry();
 	const FName PackagePath = FName{*ToContentPath(InPath)};
 
 	if (AssetRegistry.Get().HasAssets(PackagePath, true)) return false;
@@ -169,11 +172,11 @@ void FPjcLibPath::GetFilesInPath(const FString& InSearchPath, const bool bSearch
 
 	if (bSearchRecursive)
 	{
-		FPlatformFileManager::Get().GetPlatformFile().IterateDirectoryRecursively(*ToAbsolute(InSearchPath), FindFilesVisitor);
+		FPlatformFileManager::Get().GetPlatformFile().IterateDirectoryRecursively(*InSearchPath, FindFilesVisitor);
 	}
 	else
 	{
-		FPlatformFileManager::Get().GetPlatformFile().IterateDirectory(*ToAbsolute(InSearchPath), FindFilesVisitor);
+		FPlatformFileManager::Get().GetPlatformFile().IterateDirectory(*InSearchPath, FindFilesVisitor);
 	}
 }
 
@@ -196,13 +199,15 @@ void FPjcLibPath::GetFilesInPathByExt(const FString& InSearchPath, const bool bS
 		{
 			if (!bIsDirectory)
 			{
+				const FString FullPath = FPaths::ConvertRelativePathToFull(FilenameOrDirectory);
+				
 				if (Extensions.Num() == 0)
 				{
-					Files.Emplace(FPaths::ConvertRelativePathToFull(FilenameOrDirectory));
+					Files.Emplace(FullPath);
 					return true;
 				}
 
-				const FString Ext = FPaths::GetExtension(FilenameOrDirectory, false).ToLower();
+				const FString Ext = FPaths::GetExtension(FullPath, false);
 				const bool bExistsInSearchList = Extensions.Contains(Ext);
 
 				if (
@@ -210,7 +215,7 @@ void FPjcLibPath::GetFilesInPathByExt(const FString& InSearchPath, const bool bS
 					!bExistsInSearchList && bSearchInvert
 				)
 				{
-					Files.Emplace(FPaths::ConvertRelativePathToFull(FilenameOrDirectory));
+					Files.Emplace(FullPath);
 				}
 			}
 
@@ -223,18 +228,18 @@ void FPjcLibPath::GetFilesInPathByExt(const FString& InSearchPath, const bool bS
 
 	for (const auto& Ext : InExtensions)
 	{
-		const FString ExtNormalized = Ext.Replace(TEXT("."), TEXT("")).ToLower();
+		const FString ExtNormalized = Ext.Replace(TEXT("."), TEXT(""));
 		ExtensionsNormalized.Emplace(ExtNormalized);
 	}
 
 	FFindFilesVisitor FindFilesVisitor{bExtSearchInvert, OutFiles, ExtensionsNormalized};
 	if (bSearchRecursive)
 	{
-		FPlatformFileManager::Get().GetPlatformFile().IterateDirectoryRecursively(*ToAbsolute(InSearchPath), FindFilesVisitor);
+		FPlatformFileManager::Get().GetPlatformFile().IterateDirectoryRecursively(*InSearchPath, FindFilesVisitor);
 	}
 	else
 	{
-		FPlatformFileManager::Get().GetPlatformFile().IterateDirectory(*ToAbsolute(InSearchPath), FindFilesVisitor);
+		FPlatformFileManager::Get().GetPlatformFile().IterateDirectory(*InSearchPath, FindFilesVisitor);
 	}
 }
 
@@ -262,10 +267,10 @@ void FPjcLibPath::GetFoldersInPath(const FString& InSearchPath, const bool bSear
 	FFindFoldersVisitor FindFoldersVisitor{OutFolders};
 	if (bSearchRecursive)
 	{
-		FPlatformFileManager::Get().GetPlatformFile().IterateDirectoryRecursively(*ToAbsolute(InSearchPath), FindFoldersVisitor);
+		FPlatformFileManager::Get().GetPlatformFile().IterateDirectoryRecursively(*InSearchPath, FindFoldersVisitor);
 	}
 	else
 	{
-		FPlatformFileManager::Get().GetPlatformFile().IterateDirectory(*ToAbsolute(InSearchPath), FindFoldersVisitor);
+		FPlatformFileManager::Get().GetPlatformFile().IterateDirectory(*InSearchPath, FindFoldersVisitor);
 	}
 }

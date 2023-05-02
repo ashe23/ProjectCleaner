@@ -42,6 +42,8 @@ private:
 	// tree
 	void TreeItemsUpdate();
 	void TreeItemsFilter();
+	void TreeItemsCollapseAll();
+	void TreeItemsExpandAll();
 	void TreeItemExpandParentsRecursive(const TSharedPtr<FPjcTreeItem>& Item) const;
 	void TreeItemMakeVisibleParentsRecursive(const TSharedPtr<FPjcTreeItem>& Item) const;
 	void SetTreeItemVisibility(const TSharedPtr<FPjcTreeItem>& Item) const;

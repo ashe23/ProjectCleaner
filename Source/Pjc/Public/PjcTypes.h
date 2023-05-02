@@ -73,3 +73,34 @@ struct FPjcTreeItem
 		return !FolderPath.Equals(Other.FolderPath);
 	}
 };
+
+USTRUCT(BlueprintType)
+struct FPjcFileInfo
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="FileInfo")
+	int32 FileNum;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="FileInfo")
+	FString FilePath;
+
+	bool operator==(const FPjcFileInfo& Other) const
+	{
+		return FilePath.Equals(Other.FilePath) && FileNum == Other.FileNum;
+	}
+
+	bool operator!=(const FPjcFileInfo& Other) const
+	{
+		return !(FilePath.Equals(Other.FilePath) && FileNum == Other.FileNum);
+	}
+};
+
+USTRUCT(BlueprintType)
+struct FPjcAssetIndirectUsageInfo
+{
+	GENERATED_BODY()
+	
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="AssetIndirect")
+	TArray<FPjcFileInfo> FileInfos;
+};
