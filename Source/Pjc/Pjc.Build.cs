@@ -48,11 +48,12 @@ public class Pjc : ModuleRules
 				"PropertyEditor",
 				"ContentBrowser",
 				"InputCore",
-				"EditorSubsystem",
+				"EditorSubsystem", 
+				"Blutility",
+				"EditorScriptingUtilities",
 				// "UMGEditor",
 				// "EditorWidgets",
 				// "ContentBrowserData",
-				// "Blutility",
 				// "DeveloperSettings",
 				// "AssetManagerEditor",
 				// "IntroTutorials",
@@ -60,7 +61,6 @@ public class Pjc : ModuleRules
 				// "LevelEditor",
 				// "ConfigEditor",
 				// "Settings",
-				// "EditorScriptingUtilities"
 			}
 		);
 	}
