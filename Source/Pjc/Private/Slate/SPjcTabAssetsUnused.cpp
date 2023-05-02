@@ -197,8 +197,7 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 	PathPickerConfig.bAllowClassesFolder = false;
 	PathPickerConfig.bAllowContextMenu = false;
 	PathPickerConfig.bFocusSearchBoxWhenOpened = false;
-
-
+	
 	FAssetPickerConfig AssetPickerConfig;
 	AssetPickerConfig.bAllowDragging = false;
 	AssetPickerConfig.bCanShowClasses = false;

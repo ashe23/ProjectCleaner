@@ -9,6 +9,7 @@
 struct FPjcLibAsset
 {
 	static FAssetRegistryModule& GetAssetRegistry();
+	static void GetAssetsInPath(const FString& InPath, const bool bRecursive, TArray<FAssetData>& OutAssets);
 	static void GetAssetsIndirect(TArray<FAssetData>& OutAssets);
 	static void GetAssetsIndirect(TMap<FAssetData, FPjcAssetIndirectUsageInfo>& AssetsIndirectInfos);
 

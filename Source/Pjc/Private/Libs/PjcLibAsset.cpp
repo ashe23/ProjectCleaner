@@ -18,6 +18,17 @@ FAssetRegistryModule& FPjcLibAsset::GetAssetRegistry()
 	return FModuleManager::LoadModuleChecked<FAssetRegistryModule>(PjcConstants::ModuleAssetRegistry);
 }
 
+void FPjcLibAsset::GetAssetsInPath(const FString& InPath, const bool bRecursive, TArray<FAssetData>& OutAssets)
+{
+	const FString ContentPath = FPjcLibPath::ToContentPath(InPath);
+	if (ContentPath.IsEmpty()) return;
+
+	const FAssetRegistryModule& AssetRegistry = GetAssetRegistry();
+
+	OutAssets.Reset();
+	AssetRegistry.Get().GetAssetsByPath(FName{*InPath}, OutAssets, bRecursive);
+}
+
 void FPjcLibAsset::GetAssetsIndirect(TArray<FAssetData>& OutAssets)
 {
 	TMap<FAssetData, FPjcAssetIndirectUsageInfo> Infos;

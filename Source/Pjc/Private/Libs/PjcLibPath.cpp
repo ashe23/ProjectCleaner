@@ -48,26 +48,26 @@ FString FPjcLibPath::Normalize(const FString& InPath)
 
 FString FPjcLibPath::ToAbsolute(const FString& InPath)
 {
-	// const FString PathNormalized = Normalize(InPath);
-	// const FString PathProjectContent = ToFullPath(FPaths::ProjectContentDir());
-	//
-	// if (PathNormalized.IsEmpty()) return {};
-	// if (PathNormalized.StartsWith(PathProjectContent)) return PathNormalized;
-	// if (PathNormalized.StartsWith(PjcConstants::PathRoot.ToString()))
-	// {
-	// 	FString Path = PathNormalized;
-	// 	Path.RemoveFromStart(PjcConstants::PathRoot.ToString());
-	//
-	// 	return PathProjectContent.LeftChop(1) + Path;
-	// }
+	const FString PathNormalized = Normalize(InPath);
+	const FString PathProjectContent = FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir());
+	
+	if (PathNormalized.IsEmpty()) return {};
+	if (PathNormalized.StartsWith(PathProjectContent)) return PathNormalized;
+	if (PathNormalized.StartsWith(PjcConstants::PathRoot.ToString()))
+	{
+		FString Path = PathNormalized;
+		Path.RemoveFromStart(PjcConstants::PathRoot.ToString());
+	
+		return PathProjectContent / Path;
+	}
 
-	return FPaths::ConvertRelativePathToFull(InPath);
+	return {};
 }
 
 FString FPjcLibPath::ToContentPath(const FString& InPath)
 {
 	const FString PathNormalized = Normalize(InPath);
-	const FString PathProjectContent = ToAbsolute(FPaths::ProjectContentDir());
+	const FString PathProjectContent = FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir());
 
 	if (PathNormalized.IsEmpty()) return {};
 	if (PathNormalized.StartsWith(PjcConstants::PathRoot.ToString())) return PathNormalized;
@@ -76,7 +76,7 @@ FString FPjcLibPath::ToContentPath(const FString& InPath)
 		FString Path = PathNormalized;
 		Path.RemoveFromStart(PathProjectContent);
 
-		return PjcConstants::PathRoot.ToString() + Path;
+		return PjcConstants::PathRoot.ToString() / Path;
 	}
 
 	return {};
