@@ -17,29 +17,18 @@ public:
 	void Construct(const FArguments& InArgs);
 
 private:
-	TSharedRef<SWidget> CreateToolbar();
-	TSharedRef<SWidget> GetSettingsWidget();
-
-	ECheckBoxState GetCheckboxStateScanFoldersDev() const;
-	ECheckBoxState GetCheckboxStateCleanAssetsUnused() const;
-	ECheckBoxState GetCheckboxStateCleanFoldersEmpty() const;
-	
-	void OnScanFoldersDevStateChanged(ECheckBoxState BoxState);
-	void OnCleanAssetsUnusedStateChanged(ECheckBoxState BoxState);
-	void OnCleanFoldersEmptyStateChanged(ECheckBoxState BoxState);
-
-	FText SearchText;
-	TSharedPtr<FUICommandList> Cmds;
-
-	// stats
-	void StatItemsInit();
+	TSharedRef<SWidget> CreateToolbar() const;
+	TSharedRef<SWidget> GetTreeOptionsBtnContent();
+	TSharedPtr<SWidget> GetTreeContextMenu() const;
+	TSharedPtr<SWidget> GetContentBrowserContextMenu(const TArray<FAssetData>& Assets) const;
 	TSharedRef<SHeaderRow> GetStatHeaderRow() const;
+	TSharedRef<SHeaderRow> GetTreeHeaderRow() const;
 	TSharedRef<ITableRow> OnStatGenerateRow(TSharedPtr<FPjcStatItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const;
-
-	TArray<TSharedPtr<FPjcStatItem>> StatItems;
-	TSharedPtr<SListView<TSharedPtr<FPjcStatItem>>> StatView;
-
-	// tree
+	TSharedRef<ITableRow> OnTreeGenerateRow(TSharedPtr<FPjcTreeItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const;
+	TSharedPtr<FPjcTreeItem> CreateTreeItem(const FString& InFolderPath) const;
+	FSlateColor GetTreeOptionsBtnForegroundColor() const;
+	FText GetTreeSummaryText() const;
+	void StatItemsInit();
 	void TreeItemsUpdate();
 	void TreeItemsFilter();
 	void TreeItemsCollapseAll();
@@ -53,21 +42,15 @@ private:
 	void OnTreeSearchTextChanged(const FText& InText);
 	void OnTreeSearchTextCommitted(const FText& InText, ETextCommit::Type Type);
 	bool TreeItemContainsSearchText(const TSharedPtr<FPjcTreeItem>& Item) const;
-	TSharedRef<SHeaderRow> GetTreeHeaderRow() const;
-	TSharedRef<ITableRow> OnTreeGenerateRow(TSharedPtr<FPjcTreeItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const;
-	TSharedRef<SWidget> GetTreeOptionsBtnContent();
-	TSharedPtr<SWidget> GetTreeContextMenu();
-	TSharedPtr<FPjcTreeItem> CreateTreeItem(const FString& InFolderPath) const;
-	FSlateColor GetTreeOptionsBtnForegroundColor() const;
-	FText GetTreeSummaryText() const;
 
-	// content browser
-	TSharedPtr<SWidget> GetContentBrowserContextMenu(const TArray<FAssetData>& Assets);
-
+	FText SearchText;
+	TSharedPtr<FUICommandList> Cmds;
 	UPjcSubsystem* SubsystemPtr = nullptr;
 	TSharedPtr<FPjcTreeItem> TreeRootItem;
 	TSharedPtr<SComboButton> TreeOptionBtn;
+	TArray<TSharedPtr<FPjcStatItem>> StatItems;
 	TArray<TSharedPtr<FPjcTreeItem>> TreeItems;
 	TSet<TSharedPtr<FPjcTreeItem>> TreeItemsExpanded;
+	TSharedPtr<SListView<TSharedPtr<FPjcStatItem>>> StatView;
 	TSharedPtr<STreeView<TSharedPtr<FPjcTreeItem>>> TreeView;
 };

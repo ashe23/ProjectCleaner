@@ -133,10 +133,10 @@ bool FPjcLibPath::IsPathExcluded(const FString& InPath)
 {
 	const FString ContentPath = ToContentPath(InPath);
 
-	const UPjcEditorAssetExcludeSettings* EditorAssetExcludeSettings = GetDefault<UPjcEditorAssetExcludeSettings>();
-	if (!EditorAssetExcludeSettings) return false;
+	const UPjcSettings* EditorSettings = GetDefault<UPjcSettings>();
+	if (!EditorSettings) return false;
 
-	for (const auto& ExcludedPath : EditorAssetExcludeSettings->ExcludedFolders)
+	for (const auto& ExcludedPath : EditorSettings->ExcludedFolders)
 	{
 		if (ContentPath.StartsWith(ExcludedPath.Path))
 		{

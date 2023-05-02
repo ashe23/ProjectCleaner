@@ -2,7 +2,7 @@
 
 #include "PjcSubsystem.h"
 
-#include "Settings/ContentBrowserSettings.h"
+// #include "Settings/ContentBrowserSettings.h"
 
 void UPjcSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
@@ -26,30 +26,30 @@ void UPjcSubsystem::ToggleShowFoldersExcluded()
 	PostEditChange();
 }
 
-void UPjcSubsystem::ToggleScanFoldersDev()
-{
-	bScanFoldersDev = !bScanFoldersDev;
-	PostEditChange();
-
-	UContentBrowserSettings* Settings = GetMutableDefault<UContentBrowserSettings>();
-	if (Settings)
-	{
-		Settings->SetDisplayDevelopersFolder(bScanFoldersDev);
-		Settings->PostEditChange();
-	}
-}
-
-void UPjcSubsystem::ToggleCleanAssetsUnused()
-{
-	bCleanAssetsUnused = !bCleanAssetsUnused;
-	PostEditChange();
-}
-
-void UPjcSubsystem::ToggleCleanFoldersEmpty()
-{
-	bCleanFoldersEmpty = !bCleanFoldersEmpty;
-	PostEditChange();
-}
+// void UPjcSubsystem::ToggleScanFoldersDev()
+// {
+// 	bScanFoldersDev = !bScanFoldersDev;
+// 	PostEditChange();
+//
+// 	UContentBrowserSettings* Settings = GetMutableDefault<UContentBrowserSettings>();
+// 	if (Settings)
+// 	{
+// 		Settings->SetDisplayDevelopersFolder(bScanFoldersDev);
+// 		Settings->PostEditChange();
+// 	}
+// }
+//
+// void UPjcSubsystem::ToggleCleanAssetsUnused()
+// {
+// 	bCleanAssetsUnused = !bCleanAssetsUnused;
+// 	PostEditChange();
+// }
+//
+// void UPjcSubsystem::ToggleCleanFoldersEmpty()
+// {
+// 	bCleanFoldersEmpty = !bCleanFoldersEmpty;
+// 	PostEditChange();
+// }
 
 bool UPjcSubsystem::CanShowFoldersEmpty() const
 {
@@ -61,20 +61,20 @@ bool UPjcSubsystem::CanShowFoldersExcluded() const
 	return bShowFoldersExcluded;
 }
 
-bool UPjcSubsystem::CanScanFoldersDev() const
-{
-	return bScanFoldersDev;
-}
-
-bool UPjcSubsystem::CanCleanAssetsUnused() const
-{
-	return bCleanAssetsUnused;
-}
-
-bool UPjcSubsystem::CanCleanFoldersEmpty() const
-{
-	return bCleanFoldersEmpty;
-}
+// bool UPjcSubsystem::CanScanFoldersDev() const
+// {
+// 	return bScanFoldersDev;
+// }
+//
+// bool UPjcSubsystem::CanCleanAssetsUnused() const
+// {
+// 	return bCleanAssetsUnused;
+// }
+//
+// bool UPjcSubsystem::CanCleanFoldersEmpty() const
+// {
+// 	return bCleanFoldersEmpty;
+// }
 
 #if WITH_EDITOR
 void UPjcSubsystem::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)

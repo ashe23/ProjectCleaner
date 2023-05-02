@@ -5,12 +5,24 @@
 #include "CoreMinimal.h"
 #include "PjcTypes.generated.h"
 
+UENUM(BlueprintType)
+enum class EPjcCleanupMethod : uint8
+{
+	None UMETA(Hidden),
+	Full UMETA(ToolTip="Delete unused assets and empty folders"),
+	UnusedAssetOnly UMETA(ToolTip="Delete only unused assets"),
+	EmptyFoldersOnly UMETA(ToolTip="Delete only empty folders")
+};
+
 UCLASS(Config = EditorPerProjectUserSettings)
-class UPjcEditorAssetExcludeSettings : public UObject
+class UPjcSettings : public UObject
 {
 	GENERATED_BODY()
 
 public:
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Config, Category="CleanupSettings")
+	EPjcCleanupMethod CleanupMethod = EPjcCleanupMethod::Full;
+
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Config, Category="ExcludeSettings", meta=(ContentDir, ToolTip="Consider assets in specified folders as used"))
 	TArray<FDirectoryPath> ExcludedFolders;
 
@@ -20,6 +32,7 @@ public:
 	UPROPERTY(Config)
 	TArray<FName> ExcludedAssets;
 
+protected:
 #if WITH_EDITOR
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override
 	{
@@ -29,7 +42,6 @@ public:
 	}
 #endif
 };
-
 
 struct FPjcStatItem
 {
@@ -100,7 +112,7 @@ USTRUCT(BlueprintType)
 struct FPjcAssetIndirectUsageInfo
 {
 	GENERATED_BODY()
-	
+
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="AssetIndirect")
 	TArray<FPjcFileInfo> FileInfos;
 };

@@ -9,7 +9,6 @@
 #include "PjcConstants.h"
 #include "PjcSubsystem.h"
 #include "Libs/PjcLibPath.h"
-#include "Libs/PjcLibAsset.h"
 // Engine Headers
 #include "ContentBrowserModule.h"
 #include "IContentBrowserSingleton.h"
@@ -180,13 +179,14 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 	DetailsViewArgs.ViewIdentifier = "PjcEditorAssetExcludeSettings";
 
 	const auto SettingsProperty = PropertyEditor.CreateDetailView(DetailsViewArgs);
-	SettingsProperty->SetObject(GetMutableDefault<UPjcEditorAssetExcludeSettings>());
+	SettingsProperty->SetObject(GetMutableDefault<UPjcSettings>());
 
 	const FContentBrowserModule& ContentBrowserModule = FModuleManager::LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
 
 	UContentBrowserSettings* ContentBrowserSettings = GetMutableDefault<UContentBrowserSettings>();
 	if (ContentBrowserSettings)
 	{
+		ContentBrowserSettings->SetDisplayDevelopersFolder(true);
 		ContentBrowserSettings->SetDisplayEngineFolder(false);
 		ContentBrowserSettings->SetDisplayCppFolders(false);
 		ContentBrowserSettings->SetDisplayPluginFolders(false);
@@ -197,7 +197,7 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 	PathPickerConfig.bAllowClassesFolder = false;
 	PathPickerConfig.bAllowContextMenu = false;
 	PathPickerConfig.bFocusSearchBoxWhenOpened = false;
-	
+
 	FAssetPickerConfig AssetPickerConfig;
 	AssetPickerConfig.bAllowDragging = false;
 	AssetPickerConfig.bCanShowClasses = false;
@@ -223,7 +223,7 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 	.OnContextMenuOpening_Raw(this, &SPjcTabAssetsUnused::GetTreeContextMenu)
 	.OnExpansionChanged_Raw(this, &SPjcTabAssetsUnused::OnTreeExpansionChanged)
 	.HeaderRow(GetTreeHeaderRow());
-	
+
 	StatItemsInit();
 	TreeItemsUpdate();
 	TreeItemsFilter();
@@ -658,7 +658,7 @@ void SPjcTabAssetsUnused::TreeItemMakeVisibleParentsRecursive(const TSharedPtr<F
 	}
 }
 
-TSharedRef<SWidget> SPjcTabAssetsUnused::CreateToolbar()
+TSharedRef<SWidget> SPjcTabAssetsUnused::CreateToolbar() const
 {
 	FToolBarBuilder ToolBarBuilder{Cmds, FMultiBoxCustomization::None};
 	ToolBarBuilder.BeginSection("PjcTabAssetUnusedScanActions");
@@ -668,97 +668,7 @@ TSharedRef<SWidget> SPjcTabAssetsUnused::CreateToolbar()
 	}
 	ToolBarBuilder.EndSection();
 
-	ToolBarBuilder.BeginSection("PjcTabAssetsUnusedSettingsActions");
-	{
-		ToolBarBuilder.AddToolBarWidget(GetSettingsWidget());
-	}
-	ToolBarBuilder.EndSection();
-
 	return ToolBarBuilder.MakeWidget();
-}
-
-TSharedRef<SWidget> SPjcTabAssetsUnused::GetSettingsWidget()
-{
-	return
-		SNew(SVerticalBox)
-		+ SVerticalBox::Slot().AutoHeight().Padding(0.0f, 15.0f, 0.0f, 0.0f)
-		[
-			SNew(SCheckBox)
-			.IsChecked_Raw(this, &SPjcTabAssetsUnused::GetCheckboxStateScanFoldersDev)
-			.OnCheckStateChanged_Raw(this, &SPjcTabAssetsUnused::OnScanFoldersDevStateChanged)
-			[
-				SNew(STextBlock)
-				.Text(FText::FromString(TEXT("Scan Developers Content")))
-				.ToolTipText(FText::FromString("If enabled, Developers folders will be scanned."))
-			]
-		]
-		+ SVerticalBox::Slot().AutoHeight()
-		[
-			SNew(SCheckBox)
-			.IsChecked_Raw(this, &SPjcTabAssetsUnused::GetCheckboxStateCleanAssetsUnused)
-			.OnCheckStateChanged_Raw(this, &SPjcTabAssetsUnused::OnCleanAssetsUnusedStateChanged)
-			[
-				SNew(STextBlock)
-				.Text(FText::FromString(TEXT("Clean Unused Assets")))
-				.ToolTipText(FText::FromString(TEXT("If enabled, will delete all unused assets when CleanProject btn clicked.")))
-			]
-		]
-		+ SVerticalBox::Slot().AutoHeight()
-		[
-			SNew(SCheckBox)
-			.IsChecked_Raw(this, &SPjcTabAssetsUnused::GetCheckboxStateCleanFoldersEmpty)
-			.OnCheckStateChanged_Raw(this, &SPjcTabAssetsUnused::OnCleanFoldersEmptyStateChanged)
-			[
-				SNew(STextBlock)
-				.Text(FText::FromString(TEXT("Clean Empty Folders")))
-				.ToolTipText(FText::FromString(TEXT("If enabled, will delete all empty folders in project")))
-			]
-		];
-}
-
-ECheckBoxState SPjcTabAssetsUnused::GetCheckboxStateScanFoldersDev() const
-{
-	return SubsystemPtr && SubsystemPtr->CanScanFoldersDev() ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
-}
-
-ECheckBoxState SPjcTabAssetsUnused::GetCheckboxStateCleanAssetsUnused() const
-{
-	return SubsystemPtr && SubsystemPtr->CanCleanAssetsUnused() ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
-}
-
-ECheckBoxState SPjcTabAssetsUnused::GetCheckboxStateCleanFoldersEmpty() const
-{
-	return SubsystemPtr && SubsystemPtr->CanCleanFoldersEmpty() ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
-}
-
-void SPjcTabAssetsUnused::OnScanFoldersDevStateChanged(ECheckBoxState BoxState)
-{
-	if (!SubsystemPtr) return;
-
-	SubsystemPtr->ToggleScanFoldersDev();
-
-	UContentBrowserSettings* Settings = GetMutableDefault<UContentBrowserSettings>();
-	if (Settings)
-	{
-		Settings->SetDisplayDevelopersFolder(SubsystemPtr->CanScanFoldersDev());
-		Settings->PostEditChange();
-	}
-
-	TreeItemsFilter();
-}
-
-void SPjcTabAssetsUnused::OnCleanAssetsUnusedStateChanged(ECheckBoxState BoxState)
-{
-	if (!SubsystemPtr) return;
-
-	SubsystemPtr->ToggleCleanAssetsUnused();
-}
-
-void SPjcTabAssetsUnused::OnCleanFoldersEmptyStateChanged(ECheckBoxState BoxState)
-{
-	if (!SubsystemPtr) return;
-
-	SubsystemPtr->ToggleCleanFoldersEmpty();
 }
 
 TSharedRef<SHeaderRow> SPjcTabAssetsUnused::GetStatHeaderRow() const
@@ -886,12 +796,6 @@ void SPjcTabAssetsUnused::SetTreeItemVisibility(const TSharedPtr<FPjcTreeItem>& 
 	}
 
 	if (!SubsystemPtr->CanShowFoldersExcluded() && Item->bIsExcluded && !Item->bIsRoot)
-	{
-		Item->bIsVisible = false;
-		return;
-	}
-
-	if (!SubsystemPtr->CanScanFoldersDev() && Item->bIsDev)
 	{
 		Item->bIsVisible = false;
 		return;
@@ -1048,7 +952,7 @@ TSharedRef<SWidget> SPjcTabAssetsUnused::GetTreeOptionsBtnContent()
 	return MenuBuilder.MakeWidget();
 }
 
-TSharedPtr<SWidget> SPjcTabAssetsUnused::GetTreeContextMenu()
+TSharedPtr<SWidget> SPjcTabAssetsUnused::GetTreeContextMenu() const
 {
 	FMenuBuilder MenuBuilder{true, Cmds};
 
@@ -1068,7 +972,7 @@ FText SPjcTabAssetsUnused::GetTreeSummaryText() const
 	return FText{};
 }
 
-TSharedPtr<SWidget> SPjcTabAssetsUnused::GetContentBrowserContextMenu(const TArray<FAssetData>& Assets)
+TSharedPtr<SWidget> SPjcTabAssetsUnused::GetContentBrowserContextMenu(const TArray<FAssetData>& Assets) const
 {
 	FMenuBuilder MenuBuilder{true, Cmds};
 
