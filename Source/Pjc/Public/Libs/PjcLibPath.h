@@ -12,4 +12,7 @@ struct FPjcLibPath
 	static FString ToObjectPath(const FString& InPath);
 	static bool IsPathEmpty(const FString& InPath);
 	static bool IsPathExcluded(const FString& InPath);
+	static void GetFilesInPath(const FString& InSearchPath, const bool bSearchRecursive, TSet<FString>& OutFiles);
+	static void GetFilesInPathByExt(const FString& InSearchPath, const bool bSearchRecursive, const bool bExtSearchInvert, const TSet<FString>& InExtensions, TSet<FString>& OutFiles);
+	static void GetFoldersInPath(const FString& InSearchPath, const bool bSearchRecursive, TSet<FString>& OutFolders);
 };

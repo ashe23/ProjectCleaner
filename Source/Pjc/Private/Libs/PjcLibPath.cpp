@@ -143,3 +143,129 @@ bool FPjcLibPath::IsPathExcluded(const FString& InPath)
 
 	return false;
 }
+
+void FPjcLibPath::GetFilesInPath(const FString& InSearchPath, const bool bSearchRecursive, TSet<FString>& OutFiles)
+{
+	OutFiles.Empty();
+
+	struct FFindFilesVisitor : IPlatformFile::FDirectoryVisitor
+	{
+		TSet<FString>& Files;
+
+		explicit FFindFilesVisitor(TSet<FString>& InFiles) : Files(InFiles) { }
+
+		virtual bool Visit(const TCHAR* FilenameOrDirectory, bool bIsDirectory) override
+		{
+			if (!bIsDirectory)
+			{
+				Files.Emplace(FPaths::ConvertRelativePathToFull(FilenameOrDirectory));
+			}
+
+			return true;
+		}
+	};
+
+	FFindFilesVisitor FindFilesVisitor{OutFiles};
+
+	if (bSearchRecursive)
+	{
+		FPlatformFileManager::Get().GetPlatformFile().IterateDirectoryRecursively(*ToAbsolute(InSearchPath), FindFilesVisitor);
+	}
+	else
+	{
+		FPlatformFileManager::Get().GetPlatformFile().IterateDirectory(*ToAbsolute(InSearchPath), FindFilesVisitor);
+	}
+}
+
+void FPjcLibPath::GetFilesInPathByExt(const FString& InSearchPath, const bool bSearchRecursive, const bool bExtSearchInvert, const TSet<FString>& InExtensions, TSet<FString>& OutFiles)
+{
+	OutFiles.Empty();
+
+	struct FFindFilesVisitor : IPlatformFile::FDirectoryVisitor
+	{
+		const bool bSearchInvert;
+		TSet<FString>& Files;
+		const TSet<FString>& Extensions;
+
+		explicit FFindFilesVisitor(const bool bInSearchInvert, TSet<FString>& InFiles, const TSet<FString>& InExtensions)
+			: bSearchInvert(bInSearchInvert),
+			  Files(InFiles),
+			  Extensions(InExtensions) { }
+
+		virtual bool Visit(const TCHAR* FilenameOrDirectory, bool bIsDirectory) override
+		{
+			if (!bIsDirectory)
+			{
+				if (Extensions.Num() == 0)
+				{
+					Files.Emplace(FPaths::ConvertRelativePathToFull(FilenameOrDirectory));
+					return true;
+				}
+
+				const FString Ext = FPaths::GetExtension(FilenameOrDirectory, false).ToLower();
+				const bool bExistsInSearchList = Extensions.Contains(Ext);
+
+				if (
+					bExistsInSearchList && !bSearchInvert ||
+					!bExistsInSearchList && bSearchInvert
+				)
+				{
+					Files.Emplace(FPaths::ConvertRelativePathToFull(FilenameOrDirectory));
+				}
+			}
+
+			return true;
+		}
+	};
+
+	TSet<FString> ExtensionsNormalized;
+	ExtensionsNormalized.Reserve(InExtensions.Num());
+
+	for (const auto& Ext : InExtensions)
+	{
+		const FString ExtNormalized = Ext.Replace(TEXT("."), TEXT("")).ToLower();
+		ExtensionsNormalized.Emplace(ExtNormalized);
+	}
+
+	FFindFilesVisitor FindFilesVisitor{bExtSearchInvert, OutFiles, ExtensionsNormalized};
+	if (bSearchRecursive)
+	{
+		FPlatformFileManager::Get().GetPlatformFile().IterateDirectoryRecursively(*ToAbsolute(InSearchPath), FindFilesVisitor);
+	}
+	else
+	{
+		FPlatformFileManager::Get().GetPlatformFile().IterateDirectory(*ToAbsolute(InSearchPath), FindFilesVisitor);
+	}
+}
+
+void FPjcLibPath::GetFoldersInPath(const FString& InSearchPath, const bool bSearchRecursive, TSet<FString>& OutFolders)
+{
+	OutFolders.Empty();
+
+	struct FFindFoldersVisitor : IPlatformFile::FDirectoryVisitor
+	{
+		TSet<FString>& Folders;
+
+		explicit FFindFoldersVisitor(TSet<FString>& InFolders) : Folders(InFolders) { }
+
+		virtual bool Visit(const TCHAR* FilenameOrDirectory, bool bIsDirectory) override
+		{
+			if (bIsDirectory)
+			{
+				Folders.Emplace(FPaths::ConvertRelativePathToFull(FilenameOrDirectory));
+			}
+
+			return true;
+		}
+	};
+
+	FFindFoldersVisitor FindFoldersVisitor{OutFolders};
+	if (bSearchRecursive)
+	{
+		FPlatformFileManager::Get().GetPlatformFile().IterateDirectoryRecursively(*ToAbsolute(InSearchPath), FindFoldersVisitor);
+	}
+	else
+	{
+		FPlatformFileManager::Get().GetPlatformFile().IterateDirectory(*ToAbsolute(InSearchPath), FindFoldersVisitor);
+	}
+}
