@@ -12,6 +12,7 @@
 // Engine Headers
 #include "ContentBrowserModule.h"
 #include "IContentBrowserSingleton.h"
+#include "IStructureDetailsView.h"
 #include "ObjectTools.h"
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "Libs/PjcLibAsset.h"
@@ -179,8 +180,10 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 	DetailsViewArgs.NameAreaSettings = FDetailsViewArgs::HideNameArea;
 	DetailsViewArgs.ViewIdentifier = "PjcEditorAssetExcludeSettings";
 
-	const auto SettingsProperty = PropertyEditor.CreateDetailView(DetailsViewArgs);
-	SettingsProperty->SetObject(GetMutableDefault<UPjcEditorSettings>());
+	// const auto SettingsProperty = PropertyEditor.CreateDetailView(DetailsViewArgs);
+	// SettingsProperty->SetObject(GetMutableDefault<UPjcEditorSettings>());
+	const TSharedPtr<FStructOnScope> StructOnScope = MakeShared<FStructOnScope>(FPjcSettings::StaticStruct());
+	const auto SettingsProperty = PropertyEditor.CreateStructureDetailView(DetailsViewArgs, FStructureDetailsViewArgs{}, StructOnScope);
 
 	const FContentBrowserModule& ContentBrowserModule = FModuleManager::LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
 
@@ -278,7 +281,7 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 						.AllowOverscroll(EAllowOverscroll::No)
 						+ SScrollBox::Slot()
 						[
-							SettingsProperty
+							SettingsProperty->GetWidget().ToSharedRef()
 						]
 					]
 				]

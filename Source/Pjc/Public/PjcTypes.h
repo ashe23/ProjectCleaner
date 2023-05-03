@@ -116,3 +116,21 @@ struct FPjcAssetIndirectUsageInfo
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="AssetIndirect")
 	TArray<FPjcFileInfo> FileInfos;
 };
+
+USTRUCT(BlueprintType)
+struct FPjcSettings
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Settings")
+	bool bScanDevelopersContent = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Settings")
+	bool bAutoCleanEmptyFolders = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Settings", meta=(ContentDir))
+	TArray<FDirectoryPath> ExcludedFolders;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Settings", meta=(DisallowCreateNew))
+	TArray<TSoftClassPtr<UObject>> ExcludedClasses;
+};
