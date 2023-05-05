@@ -16,6 +16,7 @@ struct FPjcLibAsset
 	static void GetAssetsIndirect(TMap<FAssetData, FPjcAssetIndirectUsageInfo>& AssetsIndirectInfos);
 	static void GetAssetsExcludedByPaths(TSet<FAssetData>& OutAssets);
 	static void GetAssetsDeps(const TSet<FAssetData>& Assets, TSet<FAssetData>& Dependencies);
+	static void LoadAssetsDependencies(TSet<FAssetData>& InAssets);
 	static void FilterAssetsByPath(const TArray<FAssetData>& InAssets, const FString& InPath, TArray<FAssetData>& OutAssets);
 	static int64 GetAssetsTotalSize(const TArray<FAssetData>& InAssets);
 	static void GetClassNamesPrimary(TSet<FName>& OutClassNames);

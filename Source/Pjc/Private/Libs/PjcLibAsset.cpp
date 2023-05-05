@@ -245,6 +245,17 @@ void FPjcLibAsset::GetAssetsDeps(const TSet<FAssetData>& Assets, TSet<FAssetData
 	Dependencies.Append(TempContainer);
 }
 
+void FPjcLibAsset::LoadAssetsDependencies(TSet<FAssetData>& InAssets)
+{
+	const FAssetRegistryModule& AssetRegistry = GetAssetRegistry();
+
+	for (const auto& Asset : InAssets)
+	{
+		// todo:ashe23
+		// AssetRegistry.Get().GetDependencies()
+	}
+}
+
 void FPjcLibAsset::FilterAssetsByPath(const TArray<FAssetData>& InAssets, const FString& InPath, TArray<FAssetData>& OutAssets)
 {
 	OutAssets.Reset();
