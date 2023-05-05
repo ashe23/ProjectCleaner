@@ -21,15 +21,12 @@ private:
 	TSharedRef<SWidget> GetTreeOptionsBtnContent();
 	TSharedPtr<SWidget> GetTreeContextMenu() const;
 	TSharedPtr<SWidget> GetContentBrowserContextMenu(const TArray<FAssetData>& Assets) const;
-	TSharedRef<SHeaderRow> GetStatHeaderRow() const;
 	TSharedRef<SHeaderRow> GetTreeHeaderRow() const;
-	TSharedRef<ITableRow> OnStatGenerateRow(TSharedPtr<FPjcStatItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const;
 	TSharedRef<ITableRow> OnTreeGenerateRow(TSharedPtr<FPjcTreeItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const;
 	TSharedPtr<FPjcTreeItem> CreateTreeItem(const FString& InFolderPath) const;
 	FSlateColor GetTreeOptionsBtnForegroundColor() const;
 	FText GetTreeSummaryText() const;
 	void ScanProjectAssets();
-	void StatItemsUpdate();
 	void TreeItemsUpdate();
 	void TreeItemsFilter();
 	void TreeItemsCollapseAll();
@@ -49,10 +46,8 @@ private:
 	UPjcSubsystem* SubsystemPtr = nullptr;
 	TSharedPtr<FPjcTreeItem> TreeRootItem;
 	TSharedPtr<SComboButton> TreeOptionBtn;
-	TArray<TSharedPtr<FPjcStatItem>> StatItems;
 	TArray<TSharedPtr<FPjcTreeItem>> TreeItems;
 	TSet<TSharedPtr<FPjcTreeItem>> TreeItemsExpanded;
-	TSharedPtr<SListView<TSharedPtr<FPjcStatItem>>> StatView;
 	TSharedPtr<STreeView<TSharedPtr<FPjcTreeItem>>> TreeView;
 
 	TArray<FAssetData> AssetsAll;
