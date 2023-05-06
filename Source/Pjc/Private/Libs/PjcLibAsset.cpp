@@ -192,10 +192,8 @@ void FPjcLibAsset::GetAssetsExcludedByPaths(TSet<FAssetData>& OutAssets)
 	OutAssets.Append(AssetsExcludedByObjectPaths);
 }
 
-void FPjcLibAsset::GetAssetsDeps(const TSet<FAssetData>& Assets, TSet<FAssetData>& Dependencies)
+void FPjcLibAsset::GetAssetsDeps(TSet<FAssetData>& Assets)
 {
-	Dependencies.Empty();
-
 	const FAssetRegistryModule& AssetRegistry = GetAssetRegistry();
 
 	TSet<FName> UsedAssetsDeps;
@@ -231,8 +229,6 @@ void FPjcLibAsset::GetAssetsDeps(const TSet<FAssetData>& Assets, TSet<FAssetData
 	}
 
 	FARFilter Filter;
-	Filter.bRecursivePaths = true;
-	Filter.PackagePaths.Add(PjcConstants::PathRoot);
 
 	for (const auto& Dep : UsedAssetsDeps)
 	{
@@ -242,21 +238,10 @@ void FPjcLibAsset::GetAssetsDeps(const TSet<FAssetData>& Assets, TSet<FAssetData
 	TArray<FAssetData> TempContainer;
 	AssetRegistry.Get().GetAssets(Filter, TempContainer);
 
-	Dependencies.Append(TempContainer);
+	Assets.Append(TempContainer);
 }
 
-void FPjcLibAsset::LoadAssetsDependencies(TSet<FAssetData>& InAssets)
-{
-	const FAssetRegistryModule& AssetRegistry = GetAssetRegistry();
-
-	for (const auto& Asset : InAssets)
-	{
-		// todo:ashe23
-		// AssetRegistry.Get().GetDependencies()
-	}
-}
-
-void FPjcLibAsset::FilterAssetsByPath(const TArray<FAssetData>& InAssets, const FString& InPath, TArray<FAssetData>& OutAssets)
+void FPjcLibAsset::FilterAssetsByPath(const TSet<FAssetData>& InAssets, const FString& InPath, TSet<FAssetData>& OutAssets)
 {
 	OutAssets.Reset();
 	OutAssets.Reserve(InAssets.Num());
@@ -270,7 +255,18 @@ void FPjcLibAsset::FilterAssetsByPath(const TArray<FAssetData>& InAssets, const 
 	}
 }
 
-int64 FPjcLibAsset::GetAssetsTotalSize(const TArray<FAssetData>& InAssets)
+int64 FPjcLibAsset::GetAssetSize(const FAssetData& InAsset)
+{
+	if (!InAsset.IsValid()) return 0;
+
+	const FAssetRegistryModule& AssetRegistry = GetAssetRegistry();
+	const auto AssetPackageData = AssetRegistry.Get().GetAssetPackageData(InAsset.PackageName);
+	if (!AssetPackageData) return 0;
+
+	return AssetPackageData->DiskSize;
+}
+
+int64 FPjcLibAsset::GetAssetsTotalSize(const TSet<FAssetData>& InAssets)
 {
 	int64 Size = 0;
 

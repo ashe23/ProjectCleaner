@@ -12,12 +12,7 @@ import os
 
 subsystem = unreal.get_editor_subsystem(unreal.PjcSubsystem)
 
-exclude_settings = unreal.PjcAssetExcludeSettings()
-# exclude_settings.excluded_package_paths = ["/Game/ParagonProps"]
-exclude_settings.excluded_object_paths = ["Material'/Game/StarterContent/Materials/M_ColorGrid_LowSpec.M_ColorGrid_LowSpec'"]
-
-subsystem.scan_project(exclude_settings)
-print(len(subsystem.get_assets_all()))
+subsystem.scan_project_assets()
 # subsystem.get_assets_all()
 # subsystem.get_assets_primary()
 # subsystem.get_assets_editor()

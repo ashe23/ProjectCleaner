@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Widgets/SCompoundWidget.h"
 
+class UPjcSubsystem;
 struct FPjcStatItem;
 
 class SPjcStatsBasic final : public SCompoundWidget
@@ -25,6 +26,7 @@ protected:
 private:
 	FText Title;
 	FMargin HeaderMargin;
+	UPjcSubsystem* SubsystemPtr = nullptr;
 	TArray<TSharedPtr<FPjcStatItem>> StatItems;
 	TSharedPtr<SListView<TSharedPtr<FPjcStatItem>>> StatView;
 };
