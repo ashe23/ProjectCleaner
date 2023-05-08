@@ -61,6 +61,12 @@ void UPjcSubsystem::ToggleShowFoldersExcluded()
 	PostEditChange();
 }
 
+void UPjcSubsystem::ToggleAutoCleanFoldersEmpty()
+{
+	bAutoCleanFoldersEmpty = !bAutoCleanFoldersEmpty;
+	PostEditChange();
+}
+
 bool UPjcSubsystem::CanShowFoldersEmpty() const
 {
 	return bShowFoldersEmpty;
@@ -69,6 +75,11 @@ bool UPjcSubsystem::CanShowFoldersEmpty() const
 bool UPjcSubsystem::CanShowFoldersExcluded() const
 {
 	return bShowFoldersExcluded;
+}
+
+bool UPjcSubsystem::CanAutoCleanFoldersEmpty() const
+{
+	return bAutoCleanFoldersEmpty;
 }
 
 void UPjcSubsystem::ScanProjectAssets()
@@ -160,7 +171,7 @@ void UPjcSubsystem::ScanProjectAssets()
 	);
 	LoadingTask.MakeDialog(false, false);
 	LoadingTask.EnterProgressFrame(1.0f);
-	
+
 	const double TimeStart = FPlatformTime::Seconds();
 
 	// resetting cached data
@@ -245,7 +256,7 @@ void UPjcSubsystem::ScanProjectAssets()
 
 	// now filling unused assets
 	LoadingTask.EnterProgressFrame(1.0f);
-	
+
 	AssetsAll.Append(ContainerAssetsAll);
 	AssetsUnused = AssetsAll.Difference(AssetsUsed);
 

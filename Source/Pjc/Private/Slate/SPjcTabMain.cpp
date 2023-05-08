@@ -8,10 +8,17 @@
 #include "PjcStyles.h"
 #include "Libs/PjcLibEditor.h"
 // Engine Headers
+#include "PjcCmds.h"
+#include "PjcSubsystem.h"
 #include "Widgets/Layout/SWidgetSwitcher.h"
 
 void SPjcTabMain::Construct(const FArguments& InArgs, const TSharedRef<SDockTab>& ConstructUnderMajorTab, const TSharedPtr<SWindow>& ConstructUnderWindow)
 {
+	if (GEditor)
+	{
+		SubsystemPtr = GEditor->GetEditorSubsystem<UPjcSubsystem>();
+	}
+
 	TabManager = FGlobalTabmanager::Get()->NewTabManager(ConstructUnderMajorTab);
 	const TSharedRef<FWorkspaceItem> AppMenuGroup = TabManager->AddLocalWorkspaceMenuCategory(FText::FromString(PjcConstants::ModulePjcName.ToString()));
 
@@ -50,11 +57,19 @@ void SPjcTabMain::Construct(const FArguments& InArgs, const TSharedRef<SDockTab>
 	          .SetGroup(AppMenuGroup);
 
 	FMenuBarBuilder MenuBarBuilder = FMenuBarBuilder(TSharedPtr<FUICommandList>());
+
+	MenuBarBuilder.AddPullDownMenu(
+		FText::FromString(TEXT("Settings")),
+		FText::GetEmpty(),
+		FNewMenuDelegate::CreateRaw(this, &SPjcTabMain::CreateMenuBarSettings, TabManager),
+		"Window"
+	);
+
 	MenuBarBuilder.AddPullDownMenu(
 		FText::FromString(TEXT("Tabs")),
 		FText::GetEmpty(),
 		FNewMenuDelegate::CreateRaw(this, &SPjcTabMain::CreateMenuBarTabs, TabManager),
-		"Window"
+		"Settings"
 	);
 
 	ChildSlot
@@ -152,6 +167,29 @@ TSharedRef<SDockTab> SPjcTabMain::OnTabAssetsInspectionSpawn(const FSpawnTabArgs
 		[
 			SNew(SPjcTabAssetsInspection)
 		];
+}
+
+void SPjcTabMain::CreateMenuBarSettings(FMenuBuilder& MenuBuilder, const TSharedPtr<FTabManager> TabManagerPtr)
+{
+	Cmds = MakeShareable(new FUICommandList);
+
+	Cmds->MapAction(
+		FPjcCmds::Get().AutoCleanEmptyFolders,
+		FExecuteAction::CreateLambda([&]()
+		{
+			SubsystemPtr->ToggleAutoCleanFoldersEmpty();
+		}),
+		FCanExecuteAction::CreateLambda([&]()
+		{
+			return SubsystemPtr != nullptr;
+		}),
+		FGetActionCheckState::CreateLambda([&]()
+		{
+			return SubsystemPtr->CanAutoCleanFoldersEmpty() ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
+		})
+	);
+
+	MenuBuilder.AddMenuEntry(FPjcCmds::Get().AutoCleanEmptyFolders);
 }
 
 TSharedRef<SDockTab> SPjcTabMain::OnTabFilesExternalSpawn(const FSpawnTabArgs& Args) const

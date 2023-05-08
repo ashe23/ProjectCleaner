@@ -5,6 +5,8 @@
 #include "CoreMinimal.h"
 #include "Widgets/SCompoundWidget.h"
 
+class UPjcSubsystem;
+
 class SPjcTabMain final : public SCompoundWidget
 {
 public:
@@ -21,8 +23,11 @@ private:
 	TSharedRef<SDockTab> OnTabAssetsUnusedSpawn(const FSpawnTabArgs& Args) const;
 	TSharedRef<SDockTab> OnTabFilesExternalSpawn(const FSpawnTabArgs& Args) const;
 	TSharedRef<SDockTab> OnTabAssetsInspectionSpawn(const FSpawnTabArgs& Args) const;
+	void CreateMenuBarSettings(FMenuBuilder& MenuBuilder, const TSharedPtr<FTabManager> TabManagerPtr);
 	void CreateMenuBarTabs(FMenuBuilder& MenuBuilder, const TSharedPtr<FTabManager> TabManagerPtr);
 
+	TSharedPtr<FUICommandList> Cmds;
+	UPjcSubsystem* SubsystemPtr = nullptr;
 	TSharedPtr<FTabManager> TabManager;
 	TSharedPtr<FTabManager::FLayout> TabLayout;
 };

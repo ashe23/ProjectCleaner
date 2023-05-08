@@ -21,9 +21,11 @@ public:
 
 	void ToggleShowFoldersEmpty();
 	void ToggleShowFoldersExcluded();
+	void ToggleAutoCleanFoldersEmpty();
 
 	bool CanShowFoldersEmpty() const;
 	bool CanShowFoldersExcluded() const;
+	bool CanAutoCleanFoldersEmpty() const;
 
 	UFUNCTION(BlueprintCallable, Category="ProjectCleaner")
 	void ScanProjectAssets();
@@ -53,6 +55,9 @@ private:
 
 	UPROPERTY(Config)
 	bool bShowFoldersExcluded = true;
+
+	UPROPERTY(Config)
+	bool bAutoCleanFoldersEmpty = true;
 
 protected:
 #if WITH_EDITOR

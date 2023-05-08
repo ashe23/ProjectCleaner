@@ -23,6 +23,14 @@ void FPjcCmds::RegisterCommands()
 	);
 
 	UI_COMMAND(
+		AutoCleanEmptyFolders,
+		"Auto Clean Empty Folders",
+		"If Enabled, will delete all leftover empty folders after cleaning unused assets",
+		EUserInterfaceActionType::Button,
+		FInputChord()
+	);
+
+	UI_COMMAND(
 		TabAssetsUnusedBtnScan,
 		"Scan Project",
 		"Scan project for unused assets",
