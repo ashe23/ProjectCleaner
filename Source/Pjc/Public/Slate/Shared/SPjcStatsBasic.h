@@ -17,7 +17,7 @@ public:
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
-
+	virtual ~SPjcStatsBasic() override;
 protected:
 	void StatItemsUpdate();
 	TSharedRef<SHeaderRow> GetStatHeaderRow() const;

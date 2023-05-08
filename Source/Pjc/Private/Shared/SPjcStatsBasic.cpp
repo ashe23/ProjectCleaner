@@ -11,7 +11,7 @@
 void SPjcStatsBasic::Construct(const FArguments& InArgs)
 {
 	SubsystemPtr = GEditor->GetEditorSubsystem<UPjcSubsystem>();
-	SubsystemPtr->OnScanAssets().AddRaw(this, &SPjcStatsBasic::StatItemsUpdate);
+	SubsystemPtr->OnScanAssetsSuccess().AddRaw(this, &SPjcStatsBasic::StatItemsUpdate);
 	
 	Title = InArgs._Title;
 	HeaderMargin = InArgs._HeaderMargin;
@@ -47,6 +47,14 @@ void SPjcStatsBasic::Construct(const FArguments& InArgs)
 			StatView.ToSharedRef()
 		]
 	];
+}
+
+SPjcStatsBasic::~SPjcStatsBasic()
+{
+	if (SubsystemPtr)
+	{
+		SubsystemPtr->OnScanAssetsSuccess().RemoveAll(this);
+	}
 }
 
 void SPjcStatsBasic::StatItemsUpdate()

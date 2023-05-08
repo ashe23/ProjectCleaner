@@ -1,9 +1,13 @@
 ﻿// Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "PjcSubsystem.h"
+
+#include "FileHelpers.h"
 #include "Pjc.h"
 #include "PjcConstants.h"
 #include "Libs/PjcLibAsset.h"
+#include "Libs/PjcLibEditor.h"
+#include "Misc/ScopedSlowTask.h"
 // #include "Misc/ScopedSlowTask.h"
 
 void UpdateAssetCountByPathRecursive(TMap<FString, int32>& Map, const FString& AssetPath)
@@ -69,6 +73,94 @@ bool UPjcSubsystem::CanShowFoldersExcluded() const
 
 void UPjcSubsystem::ScanProjectAssets()
 {
+	if (bScanningInProgress)
+	{
+		if (DelegateOnScanAssetsFailed.IsBound())
+		{
+			DelegateOnScanAssetsFailed.Broadcast(TEXT("Scanning is in progress. Please wait until it has finished and then try again."));
+		}
+
+		return;
+	}
+
+	if (bCleaningInProgress)
+	{
+		if (DelegateOnScanAssetsFailed.IsBound())
+		{
+			DelegateOnScanAssetsFailed.Broadcast(TEXT("Cleaning is in progress. Please wait until it has finished and then try again."));
+		}
+
+		return;
+	}
+
+	if (FPjcLibEditor::AssetRegistryIsWorking())
+	{
+		if (DelegateOnScanAssetsFailed.IsBound())
+		{
+			DelegateOnScanAssetsFailed.Broadcast(TEXT("Scanning of the project has failed. AssetRegistry is still discovering assets. Please try again after it has finished."));
+		}
+
+		return;
+	}
+
+	if (FPjcLibEditor::EditorInPlayMode())
+	{
+		if (DelegateOnScanAssetsFailed.IsBound())
+		{
+			DelegateOnScanAssetsFailed.Broadcast(TEXT("Scanning of the project has failed. The editor is in play mode. Please exit play mode and try again."));
+		}
+
+		return;
+	}
+
+	// Close all asset editors and fix redirectors if not running a commandlet
+	if (!IsRunningCommandlet())
+	{
+		if (GEditor && !GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->CloseAllAssetEditors())
+		{
+			if (DelegateOnScanAssetsFailed.IsBound())
+			{
+				DelegateOnScanAssetsFailed.Broadcast(TEXT("Scanning of the project has failed because not all asset editors are closed."));
+			}
+
+			return;
+		}
+	}
+
+	FPjcLibEditor::FixupRedirectorsInProject();
+
+	// Check if project still contains redirectors
+	if (FPjcLibEditor::ProjectContainsRedirectors())
+	{
+		if (DelegateOnScanAssetsFailed.IsBound())
+		{
+			DelegateOnScanAssetsFailed.Broadcast(TEXT("Failed to scan project, because not all redirectors are fixed."));
+		}
+
+		return;
+	}
+
+	// Saving all unsaved assets in project, before scanning
+	if (!FEditorFileUtils::SaveDirtyPackages(true, true, true, false, false, false))
+	{
+		if (DelegateOnScanAssetsFailed.IsBound())
+		{
+			DelegateOnScanAssetsFailed.Broadcast(TEXT("Scanning of the project has failed because not all assets have been saved."));
+		}
+
+		return;
+	}
+
+	bScanningInProgress = true;
+
+	FScopedSlowTask LoadingTask(
+		3.0f,
+		FText::FromString(TEXT("Scanning project assets...")),
+		GIsEditor && !IsRunningCommandlet()
+	);
+	LoadingTask.MakeDialog(false, false);
+	LoadingTask.EnterProgressFrame(1.0f);
+	
 	const double TimeStart = FPlatformTime::Seconds();
 
 	// resetting cached data
@@ -104,6 +196,8 @@ void UPjcSubsystem::ScanProjectAssets()
 	FPjcLibAsset::GetAssetsIndirect(AssetsIndirectInfoMap);
 	AssetsIndirectInfoMap.GetKeys(ContainerAssetsIndirect);
 	AssetsIndirect.Append(ContainerAssetsIndirect);
+
+	LoadingTask.EnterProgressFrame(1.0f);
 
 	// traversing assets and filling them by category
 	for (const auto& Asset : ContainerAssetsAll)
@@ -150,17 +244,21 @@ void UPjcSubsystem::ScanProjectAssets()
 	FPjcLibAsset::GetAssetsDeps(AssetsUsed);
 
 	// now filling unused assets
+	LoadingTask.EnterProgressFrame(1.0f);
+	
 	AssetsAll.Append(ContainerAssetsAll);
 	AssetsUnused = AssetsAll.Difference(AssetsUsed);
 
 	CategorizeAssetsByPath();
 
+	bScanningInProgress = false;
+
 	const double TimeElapsed = FPlatformTime::Seconds() - TimeStart;
 	UE_LOG(LogProjectCleaner, Warning, TEXT("Project Assets Scanned In %.2f seconds"), TimeElapsed);
 
-	if (DelegateOnScanAssets.IsBound())
+	if (DelegateOnScanAssetsSuccess.IsBound())
 	{
-		DelegateOnScanAssets.Broadcast();
+		DelegateOnScanAssetsSuccess.Broadcast();
 	}
 }
 
@@ -201,7 +299,12 @@ const TSet<FAssetData>& UPjcSubsystem::GetAssetsExcluded() const
 
 const TSet<FAssetData>& UPjcSubsystem::GetAssetsExtReferenced() const
 {
-	return AssetsExcluded;
+	return AssetsExtReferenced;
+}
+
+const TMap<FAssetData, FPjcAssetIndirectUsageInfo>& UPjcSubsystem::GetAssetsIndirectInfo() const
+{
+	return AssetsIndirectInfoMap;
 }
 
 int32 UPjcSubsystem::GetNumAssetsTotalInPath(const FString& InPath) const
@@ -234,9 +337,14 @@ int64 UPjcSubsystem::GetSizeAssetsUnusedInPath(const FString& InPath) const
 	return MapSizeAssetsUnusedByPath.Contains(InPath) ? MapSizeAssetsUnusedByPath[InPath] : 0;
 }
 
-FPjcDelegateOnScanAssets& UPjcSubsystem::OnScanAssets()
+FPjcDelegateOnScanAssetsSuccess& UPjcSubsystem::OnScanAssetsSuccess()
 {
-	return DelegateOnScanAssets;
+	return DelegateOnScanAssetsSuccess;
+}
+
+FPjcDelegateOnScanAssetsFailed& UPjcSubsystem::OnScanAssetsFailed()
+{
+	return DelegateOnScanAssetsFailed;
 }
 
 #if WITH_EDITOR

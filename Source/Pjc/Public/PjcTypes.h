@@ -23,7 +23,7 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Config, Category="ExcludeSettings", meta=(ContentDir, ToolTip="Consider assets in specified folders as used"))
 	TArray<FDirectoryPath> ExcludedFolders;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Config, Category="ExcludeSettings", meta=(ShowTreeView, ToolTip="Consider assets of specified classes as used"))
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Config, Category="ExcludeSettings", meta=(ToolTip="Consider assets of specified classes as used"))
 	TArray<TSoftClassPtr<UObject>> ExcludedClasses;
 
 	UPROPERTY(Config)
@@ -44,8 +44,6 @@ USTRUCT(BlueprintType)
 struct FPjcSettings
 {
 	GENERATED_BODY()
-
-	
 };
 
 struct FPjcStatItem

@@ -7,7 +7,8 @@
 #include "PjcTypes.h"
 #include "PjcSubsystem.generated.h"
 
-DECLARE_MULTICAST_DELEGATE(FPjcDelegateOnScanAssets);
+DECLARE_MULTICAST_DELEGATE(FPjcDelegateOnScanAssetsSuccess);
+DECLARE_MULTICAST_DELEGATE_OneParam(FPjcDelegateOnScanAssetsFailed, const FString&)
 
 UCLASS(Config=EditorPerProjectUserSettings, meta=(ToolTip="ProjectCleanerSubsystem"))
 class UPjcSubsystem final : public UEditorSubsystem
@@ -35,6 +36,7 @@ public:
 	const TSet<FAssetData>& GetAssetsEditor() const;
 	const TSet<FAssetData>& GetAssetsExcluded() const;
 	const TSet<FAssetData>& GetAssetsExtReferenced() const;
+	const TMap<FAssetData, FPjcAssetIndirectUsageInfo>& GetAssetsIndirectInfo() const;
 	int32 GetNumAssetsTotalInPath(const FString& InPath) const;
 	int32 GetNumAssetsUsedInPath(const FString& InPath) const;
 	int32 GetNumAssetsUnusedInPath(const FString& InPath) const;
@@ -42,7 +44,8 @@ public:
 	int64 GetSizeAssetsUsedInPath(const FString& InPath) const;
 	int64 GetSizeAssetsUnusedInPath(const FString& InPath) const;
 
-	FPjcDelegateOnScanAssets& OnScanAssets();
+	FPjcDelegateOnScanAssetsSuccess& OnScanAssetsSuccess();
+	FPjcDelegateOnScanAssetsFailed& OnScanAssetsFailed();
 
 private:
 	UPROPERTY(Config)
@@ -60,6 +63,9 @@ private:
 	void CategorizeAssetsByPath();
 	void UpdateMapInfo(TMap<FString, int32>& MapNum, TMap<FString, int64>& MapSize, const FString& AssetPath, int64 AssetSize);
 
+	bool bScanningInProgress = false;
+	bool bCleaningInProgress = false;
+	
 	TSet<FAssetData> AssetsAll;
 	TSet<FAssetData> AssetsUsed;
 	TSet<FAssetData> AssetsUnused;
@@ -76,5 +82,6 @@ private:
 	TMap<FString, int64> MapSizeAssetsUsedByPath;
 	TMap<FString, int64> MapSizeAssetsUnusedByPath;
 
-	FPjcDelegateOnScanAssets DelegateOnScanAssets;
+	FPjcDelegateOnScanAssetsSuccess DelegateOnScanAssetsSuccess;
+	FPjcDelegateOnScanAssetsFailed DelegateOnScanAssetsFailed;
 };

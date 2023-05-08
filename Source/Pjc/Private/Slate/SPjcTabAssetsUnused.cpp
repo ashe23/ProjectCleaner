@@ -25,10 +25,15 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 	if (GEditor)
 	{
 		SubsystemPtr = GEditor->GetEditorSubsystem<UPjcSubsystem>();
-		SubsystemPtr->OnScanAssets().AddLambda([&]()
+		SubsystemPtr->OnScanAssetsSuccess().AddLambda([&]()
 		{
 			TreeItemsUpdate();
 			TreeItemsFilter();
+		});
+
+		SubsystemPtr->OnScanAssetsFailed().AddLambda([&](const FString& ErrMsg)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("%s"), *ErrMsg);
 		});
 	}
 
@@ -355,6 +360,15 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 			]
 		]
 	];
+}
+
+SPjcTabAssetsUnused::~SPjcTabAssetsUnused()
+{
+	if (SubsystemPtr)
+	{
+		SubsystemPtr->OnScanAssetsSuccess().RemoveAll(this);
+		SubsystemPtr->OnScanAssetsFailed().RemoveAll(this);
+	}
 }
 
 // void SPjcTabAssetsUnused::StatItemsUpdate()

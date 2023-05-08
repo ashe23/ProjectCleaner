@@ -15,7 +15,7 @@ public:
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
-
+	virtual ~SPjcTabAssetsUnused() override;
 private:
 	TSharedRef<SWidget> CreateToolbar() const;
 	TSharedRef<SWidget> GetTreeOptionsBtnContent();
