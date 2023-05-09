@@ -27,7 +27,6 @@ public:
 	static FString PathNormalize(const FString& InPath);
 	static FString PathConvertToAbsolute(const FString& InPath);
 	static FString PathConvertToRelative(const FString& InPath);
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category="PjcHelper")
 	static FString PathConvertToObjectPath(const FString& InPath);
 
 	static bool EditorIsInPlayMode();
