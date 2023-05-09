@@ -6,28 +6,52 @@
 #include "PjcTypes.generated.h"
 
 UENUM(BlueprintType)
-enum class EPjcCleanupMethod : uint8
+enum class EPjcAssetCategory : uint8
 {
 	None UMETA(Hidden),
-	Full UMETA(ToolTip="Delete unused assets and empty folders"),
-	UnusedAssetOnly UMETA(ToolTip="Delete only unused assets"),
-	EmptyFoldersOnly UMETA(ToolTip="Delete only empty folders")
+	Any,
+	Used,
+	Unused,
+	Primary,
+	Indirect,
+	Circular,
+	Editor,
+	Excluded,
+	ExtReferenced
+};
+
+UENUM(BlueprintType)
+enum class EPjcFileCategory : uint8
+{
+	None UMETA(Hidden),
+	Any,
+	External,
+	Excluded,
+	Corrupted
+};
+
+UENUM(BlueprintType)
+enum class EPjcFolderCategory : uint8
+{
+	None UMETA(Hidden),
+	Any,
+	Empty
 };
 
 UCLASS(Config = EditorPerProjectUserSettings)
-class UPjcEditorSettings : public UObject
+class UPjcEditorAssetExcludeSettings : public UObject
 {
 	GENERATED_BODY()
 
 public:
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Config, Category="ExcludeSettings", meta=(ContentDir, ToolTip="Consider assets in specified folders as used"))
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Config, Category="AssetExcludeSettings", meta=(ContentDir, ToolTip="Consider assets in specified folders as used"))
 	TArray<FDirectoryPath> ExcludedFolders;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Config, Category="ExcludeSettings", meta=(ToolTip="Consider assets of specified classes as used"))
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Config, Category="AssetExcludeSettings", meta=(ToolTip="Consider assets of specified classes as used"))
 	TArray<TSoftClassPtr<UObject>> ExcludedClasses;
 
 	UPROPERTY(Config)
-	TArray<FString> ExcludedAssets;
+	TArray<TSoftObjectPtr<UObject>> ExcludedAssets;
 
 protected:
 #if WITH_EDITOR
@@ -41,9 +65,125 @@ protected:
 };
 
 USTRUCT(BlueprintType)
-struct FPjcSettings
+struct FPjcAssetExcludeSettings
 {
 	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="AssetExcludeSettings", meta=(ContentDir, ToolTip="Consider assets in specified folders as used"))
+	TArray<FString> ExcludedFolders;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="AssetExcludeSettings", meta=(ToolTip="Consider assets of specified classes as used"))
+	TArray<FString> ExcludedClasses;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="AssetExcludeSettings", meta=(ToolTip="Consider specified assets as used"))
+	TArray<FString> ExcludedAssets;
+
+	void Reset()
+	{
+		ExcludedFolders.Reset();
+		ExcludedClasses.Reset();
+		ExcludedAssets.Reset();
+	}
+};
+
+UCLASS(Config = EditorPerProjectUserSettings)
+class UPjcEditorFileExcludeSettings : public UObject
+{
+	GENERATED_BODY()
+
+public:
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Config, Category="FileExcludeSettings", meta=(ContentDir, ToolTip="Consider files in specified folders as used"))
+	TArray<FDirectoryPath> ExcludedFolders;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Config, Category="FileExcludeSettings", meta=(ToolTip="Consider specified files as used"))
+	TArray<FFilePath> ExcludedFiles;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Config, Category="FileExcludeSettings", meta=(ToolTip="Consider files with specified extensions as used"))
+	TArray<FString> ExcludedExtensions;
+
+protected:
+#if WITH_EDITOR
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override
+	{
+		Super::PostEditChangeProperty(PropertyChangedEvent);
+
+		SaveConfig();
+	}
+#endif
+};
+
+USTRUCT(BlueprintType)
+struct FPjcFileExcludeSettings
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="FileExcludeSettings", meta=(ToolTip="Consider files in specified folders as used"))
+	TArray<FString> ExcludedFolders;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="FileExcludeSettings", meta=(ToolTip="Consider specified files as used"))
+	TArray<FString> ExcludedFiles;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="FileExcludeSettings", meta=(ToolTip="Consider files with specified extensions as used"))
+	TArray<FString> ExcludedExtensions;
+
+	void Reset()
+	{
+		ExcludedFolders.Reset();
+		ExcludedFiles.Reset();
+		ExcludedExtensions.Reset();
+	}
+};
+
+USTRUCT(BlueprintType)
+struct FPjcScanResult
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ScanResult")
+	bool bScanSuccess = true;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="ScanResult")
+	FString ScanErrMsg;
+};
+
+USTRUCT(BlueprintType)
+struct FPjcAssetSearchFilter
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="SearchFilter")
+	bool bRecursivePaths = false;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="SearchFilter")
+	bool bRecursiveClasses = false;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="SearchFilter")
+	TArray<FName> PackagePaths;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="SearchFilter")
+	TArray<FName> ClassNames;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="SearchFilter")
+	TArray<FName> ObjectPaths;
+
+	bool IsEmpty() const
+	{
+		return PackagePaths.Num() == 0 && ClassNames.Num() == 0 && ObjectPaths.Num() == 0;
+	}
+
+	bool IsRecursive() const
+	{
+		return bRecursivePaths || bRecursiveClasses;
+	}
+
+	void Clear()
+	{
+		bRecursivePaths = false;
+		bRecursiveClasses = false;
+		PackagePaths.Reset();
+		ClassNames.Reset();
+		ObjectPaths.Reset();
+	}
 };
 
 struct FPjcStatItem
@@ -109,13 +249,4 @@ struct FPjcFileInfo
 	{
 		return !(FilePath.Equals(Other.FilePath) && FileNum == Other.FileNum);
 	}
-};
-
-USTRUCT(BlueprintType)
-struct FPjcAssetIndirectUsageInfo
-{
-	GENERATED_BODY()
-
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="AssetIndirect")
-	TArray<FPjcFileInfo> FileInfos;
 };

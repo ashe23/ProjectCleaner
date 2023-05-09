@@ -183,7 +183,7 @@ void UPjcSubsystem::ScanProjectAssets()
 	AssetsEditor.Reset();
 	AssetsExcluded.Reset();
 	AssetsExtReferenced.Reset();
-	AssetsIndirectInfoMap.Reset();
+	// AssetsIndirectInfoMap.Reset();
 	MapNumAssetsAllByPath.Reset();
 	MapNumAssetsUsedByPath.Reset();
 	MapNumAssetsUnusedByPath.Reset();
@@ -204,8 +204,8 @@ void UPjcSubsystem::ScanProjectAssets()
 	FPjcLibAsset::GetClassNamesExcluded(ClassNamesExcluded);
 	FPjcLibAsset::GetAssetsExcludedByPaths(AssetsExcluded);
 	FPjcLibAsset::GetAssetsInPath(PjcConstants::PathRoot.ToString(), true, ContainerAssetsAll);
-	FPjcLibAsset::GetAssetsIndirect(AssetsIndirectInfoMap);
-	AssetsIndirectInfoMap.GetKeys(ContainerAssetsIndirect);
+	// FPjcLibAsset::GetAssetsIndirect(AssetsIndirectInfoMap);
+	// AssetsIndirectInfoMap.GetKeys(ContainerAssetsIndirect);
 	AssetsIndirect.Append(ContainerAssetsIndirect);
 
 	LoadingTask.EnterProgressFrame(1.0f);
@@ -313,10 +313,10 @@ const TSet<FAssetData>& UPjcSubsystem::GetAssetsExtReferenced() const
 	return AssetsExtReferenced;
 }
 
-const TMap<FAssetData, FPjcAssetIndirectUsageInfo>& UPjcSubsystem::GetAssetsIndirectInfo() const
-{
-	return AssetsIndirectInfoMap;
-}
+// const TMap<FAssetData, FPjcAssetIndirectUsageInfo>& UPjcSubsystem::GetAssetsIndirectInfo() const
+// {
+// 	return AssetsIndirectInfoMap;
+// }
 
 int32 UPjcSubsystem::GetNumAssetsTotalInPath(const FString& InPath) const
 {

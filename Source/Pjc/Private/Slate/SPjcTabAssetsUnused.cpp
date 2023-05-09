@@ -190,7 +190,7 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 	DetailsViewArgs.ViewIdentifier = "PjcEditorAssetExcludeSettings";
 
 	const auto SettingsProperty = PropertyEditor.CreateDetailView(DetailsViewArgs);
-	SettingsProperty->SetObject(GetMutableDefault<UPjcEditorSettings>());
+	SettingsProperty->SetObject(GetMutableDefault<UPjcEditorAssetExcludeSettings>());
 
 	const FContentBrowserModule& ContentBrowserModule = FModuleManager::LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
 

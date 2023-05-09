@@ -13,7 +13,7 @@ struct FPjcLibAsset
 	static void GetAssetsInPaths(const TArray<FString>& InPaths, const bool bRecursive, TArray<FAssetData>& OutAssets);
 	static void GetAssetsByObjectPaths(const TArray<FString>& InObjectPaths, TArray<FAssetData>& OutAssets);
 	static void GetAssetsIndirect(TArray<FAssetData>& OutAssets);
-	static void GetAssetsIndirect(TMap<FAssetData, FPjcAssetIndirectUsageInfo>& AssetsIndirectInfos);
+	// static void GetAssetsIndirect(TMap<FAssetData, FPjcAssetIndirectUsageInfo>& AssetsIndirectInfos);
 	static void GetAssetsExcludedByPaths(TSet<FAssetData>& OutAssets);
 	static void GetAssetsDeps(TSet<FAssetData>& Assets);
 	static void FilterAssetsByPath(const TSet<FAssetData>& InAssets, const FString& InPath, TSet<FAssetData>& OutAssets);

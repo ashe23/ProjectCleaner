@@ -38,7 +38,7 @@ public:
 	const TSet<FAssetData>& GetAssetsEditor() const;
 	const TSet<FAssetData>& GetAssetsExcluded() const;
 	const TSet<FAssetData>& GetAssetsExtReferenced() const;
-	const TMap<FAssetData, FPjcAssetIndirectUsageInfo>& GetAssetsIndirectInfo() const;
+	// const TMap<FAssetData, FPjcAssetIndirectUsageInfo>& GetAssetsIndirectInfo() const;
 	int32 GetNumAssetsTotalInPath(const FString& InPath) const;
 	int32 GetNumAssetsUsedInPath(const FString& InPath) const;
 	int32 GetNumAssetsUnusedInPath(const FString& InPath) const;
@@ -79,7 +79,7 @@ private:
 	TSet<FAssetData> AssetsEditor;
 	TSet<FAssetData> AssetsExcluded;
 	TSet<FAssetData> AssetsExtReferenced;
-	TMap<FAssetData, FPjcAssetIndirectUsageInfo> AssetsIndirectInfoMap;
+	// TMap<FAssetData, FPjcAssetIndirectUsageInfo> AssetsIndirectInfoMap;
 	TMap<FString, int32> MapNumAssetsAllByPath;
 	TMap<FString, int32> MapNumAssetsUsedByPath;
 	TMap<FString, int32> MapNumAssetsUnusedByPath;

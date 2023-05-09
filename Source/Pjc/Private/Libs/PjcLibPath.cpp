@@ -131,18 +131,18 @@ bool FPjcLibPath::IsPathEmpty(const FString& InPath)
 
 bool FPjcLibPath::IsPathExcluded(const FString& InPath)
 {
-	const FString ContentPath = ToContentPath(InPath);
-
-	const UPjcEditorSettings* EditorSettings = GetDefault<UPjcEditorSettings>();
-	if (!EditorSettings) return false;
-
-	for (const auto& ExcludedPath : EditorSettings->ExcludedFolders)
-	{
-		if (ContentPath.StartsWith(ExcludedPath.Path))
-		{
-			return true;
-		}
-	}
+	// const FString ContentPath = ToContentPath(InPath);
+	//
+	// const UPjcEditorSettings* EditorSettings = GetDefault<UPjcEditorSettings>();
+	// if (!EditorSettings) return false;
+	//
+	// for (const auto& ExcludedPath : EditorSettings->ExcludedFolders)
+	// {
+	// 	if (ContentPath.StartsWith(ExcludedPath.Path))
+	// 	{
+	// 		return true;
+	// 	}
+	// }
 
 	return false;
 }

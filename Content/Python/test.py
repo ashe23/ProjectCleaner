@@ -1,35 +1,19 @@
 import unreal
-import os
 
-# used assets
-# - primary
-# - excluded
-# - indirect
-# - ext_referenced
-# - editor
-# - megascans
+subsystem_scanner = unreal.get_engine_subsystem(unreal.PjcScannerSubsystem)
 
 
-subsystem = unreal.get_editor_subsystem(unreal.PjcSubsystem)
+# asset_exclude_settings = unreal.PjcAssetExcludeSettings()
+# asset_exclude_settings.excluded_folders = ["/Game/StarterContent"]
+# asset_exclude_settings.excluded_classes = [unreal.Material.static_class().get_name()]
+# asset_exclude_settings.excluded_assets = ["DialogueVoice'/Game/ParagonAurora/Audio/Aurora.Aurora'"]
 
-subsystem.scan_project_assets()
-# subsystem.get_assets_all()
-# subsystem.get_assets_primary()
-# subsystem.get_assets_editor()
-# subsystem.get_assets_indirect()
-# subsystem.get_assets_indirect_with_info()
-# subsystem.get_assets_ext_referenced()
-# subsystem.get_assets_excluded(exclude_settings)
-# subsystem.get_assets_used(exclude_settings)
-# subsystem.get_assets_unused(exclude_settings)
-# subsystem.get_assets_size()
-# subsystem.get_files_size()
-# subsystem.get_files_external()
-# subsystem.get_files_corrupted()
-# subsystem.get_folders_empty()
-# subsystem.get_assets_by_path()
-# subsystem.get_assets_by_paths()
-# subsystem.get_assets_by_object_path()
-# subsystem.get_assets_by_object_paths()
-# subsystem.get_assets_by_class_name()
-# subsystem.get_assets_by_class_names()
+
+settings = unreal.PjcFileExcludeSettings()
+# settings.excluded_extensions = [".txt"]
+# settings.excluded_folders = ["W:/ue_projects/Workshop427/Content/ParagonCountess"]
+settings.excluded_files = ["W:/ue_projects/Workshop427/Content/ParagonCountess/Placeholder.txt"]
+
+subsystem_scanner.scan_project_paths(settings)
+print(subsystem_scanner.get_files_by_category(unreal.PjcFileCategory.EXCLUDED))
+
