@@ -7,6 +7,8 @@
 #include "PjcConstants.h"
 #include "PjcStyles.h"
 // Engine Headers
+#include "ObjectTools.h"
+#include "PjcCmds.h"
 #include "Widgets/Input/SSearchBox.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SSeparator.h"
@@ -23,13 +25,39 @@ void SPjcTreeView::Construct(const FArguments& InArgs)
 			ScannerSubsystemPtr->OnProjectAssetsScanSuccess().AddRaw(this, &SPjcTreeView::OnProjectAssetsScanSuccess);
 		}
 	}
+	
+	Cmds = MakeShareable(new FUICommandList);
+	Cmds->MapAction(
+		FPjcCmds::Get().PathsDelete,
+		FExecuteAction::CreateLambda([&]()
+		{
+			if (ScannerSubsystemPtr)
+			{
+				const auto& SelectedItems = TreeView->GetSelectedItems();
+				if (SelectedItems.Num() == 0) return;
 
+				const auto& Item = SelectedItems[0];
+				const TSet<FAssetData>& AssetsUnusedAll = ScannerSubsystemPtr->GetAssetsByCategory(EPjcAssetCategory::Unused);
+
+				TSet<FAssetData> AssetsAllInPath;
+				TArray<FAssetData> Assets;
+				UPjcHelperSubsystem::GetModuleAssetRegistry().Get().GetAssetsByPath(FName{*Item->FolderPath}, Assets, true);
+
+				AssetsAllInPath.Append(Assets);
+
+				const TSet<FAssetData> AssetsUnusedInPath = AssetsUnusedAll.Intersect(AssetsAllInPath);
+
+				ObjectTools::DeleteAssets(AssetsUnusedInPath.Array(), true);
+			}
+		})
+	);
+	
 	SAssignNew(TreeView, STreeView<TSharedPtr<FPjcTreeItem>>)
 	.TreeItemsSource(&TreeItems)
 	.SelectionMode(ESelectionMode::Multi)
 	.OnGenerateRow(this, &SPjcTreeView::OnTreeGenerateRow)
 	.OnGetChildren(this, &SPjcTreeView::OnTreeGetChildren)
-	// .OnContextMenuOpening_Raw(this, &SPjcTreeView::GetTreeContextMenu)
+	.OnContextMenuOpening_Raw(this, &SPjcTreeView::GetTreeContextMenu)
 	// .OnExpansionChanged_Raw(this, &SPjcTreeView::OnTreeExpansionChanged)
 	.HeaderRow(GetTreeHeaderRow());
 
@@ -267,18 +295,43 @@ TSharedRef<SWidget> SPjcTreeView::GetTreeBtnOptionsContent()
 	return MenuBuilder.MakeWidget();
 }
 
+TSharedPtr<SWidget> SPjcTreeView::GetTreeContextMenu() const
+{
+	FMenuBuilder MenuBuilder{true, Cmds};
+
+	MenuBuilder.BeginSection(TEXT("PjcSectionPathActions"), FText::FromString(TEXT("Actions")));
+	{
+		MenuBuilder.AddMenuEntry(FPjcCmds::Get().PathsExclude);
+		MenuBuilder.AddMenuEntry(FPjcCmds::Get().PathsInclude);
+		MenuBuilder.AddMenuEntry(FPjcCmds::Get().PathsDelete);
+	}
+	MenuBuilder.EndSection();
+
+	return MenuBuilder.MakeWidget();
+}
+
 TSharedRef<SHeaderRow> SPjcTreeView::GetTreeHeaderRow()
 {
 	return
 		SNew(SHeaderRow)
-		+ SHeaderRow::Column(TEXT("Path")).HAlignHeader(HAlign_Center).VAlignHeader(VAlign_Center).HeaderContentPadding(HeaderPadding).FillWidth(0.5f)
+		+ SHeaderRow::Column(TEXT("Path"))
+		  .HAlignHeader(HAlign_Center)
+		  .VAlignHeader(VAlign_Center)
+		  .HeaderContentPadding(HeaderPadding)
+		  .FillWidth(0.4f)
+		  .OnSort_Raw(this, &SPjcTreeView::OnTreeSort)
 		[
 			SNew(STextBlock)
 			.Text(FText::FromString(TEXT("Path")))
 			.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
 			.Font(FPjcStyles::GetFont("Light", 10.0f))
 		]
-		+ SHeaderRow::Column(TEXT("NumAssetsTotal")).HAlignHeader(HAlign_Center).VAlignHeader(VAlign_Center).HeaderContentPadding(HeaderPadding).FillWidth(0.1f)
+		+ SHeaderRow::Column(TEXT("NumAssetsTotal"))
+		  .HAlignHeader(HAlign_Center)
+		  .VAlignHeader(VAlign_Center)
+		  .HeaderContentPadding(HeaderPadding)
+		  .FillWidth(0.1f)
+		  .OnSort_Raw(this, &SPjcTreeView::OnTreeSort)
 		[
 			SNew(STextBlock)
 			.Text(FText::FromString(TEXT("Total")))
@@ -286,7 +339,12 @@ TSharedRef<SHeaderRow> SPjcTreeView::GetTreeHeaderRow()
 			.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
 			.Font(FPjcStyles::GetFont("Light", 10.0f))
 		]
-		+ SHeaderRow::Column(TEXT("NumAssetsUsed")).HAlignHeader(HAlign_Center).VAlignHeader(VAlign_Center).HeaderContentPadding(HeaderPadding).FillWidth(0.1f)
+		+ SHeaderRow::Column(TEXT("NumAssetsUsed"))
+		  .HAlignHeader(HAlign_Center)
+		  .VAlignHeader(VAlign_Center)
+		  .HeaderContentPadding(HeaderPadding)
+		  .FillWidth(0.1f)
+		  .OnSort_Raw(this, &SPjcTreeView::OnTreeSort)
 		[
 			SNew(STextBlock)
 			.Text(FText::FromString(TEXT("Used")))
@@ -294,7 +352,12 @@ TSharedRef<SHeaderRow> SPjcTreeView::GetTreeHeaderRow()
 			.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
 			.Font(FPjcStyles::GetFont("Light", 10.0f))
 		]
-		+ SHeaderRow::Column(TEXT("NumAssetsUnused")).HAlignHeader(HAlign_Center).VAlignHeader(VAlign_Center).HeaderContentPadding(HeaderPadding).FillWidth(0.1f)
+		+ SHeaderRow::Column(TEXT("NumAssetsUnused"))
+		  .HAlignHeader(HAlign_Center)
+		  .VAlignHeader(VAlign_Center)
+		  .HeaderContentPadding(HeaderPadding)
+		  .FillWidth(0.1f)
+		  .OnSort_Raw(this, &SPjcTreeView::OnTreeSort)
 		[
 			SNew(STextBlock)
 			.Text(FText::FromString(TEXT("Unused")))
@@ -302,19 +365,29 @@ TSharedRef<SHeaderRow> SPjcTreeView::GetTreeHeaderRow()
 			.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
 			.Font(FPjcStyles::GetFont("Light", 10.0f))
 		]
-		+ SHeaderRow::Column(TEXT("UnusedPercent")).HAlignHeader(HAlign_Center).VAlignHeader(VAlign_Center).HeaderContentPadding(HeaderPadding).FillWidth(0.2f).OnSort_Raw(this, &SPjcTreeView::OnTreeSort)
+		+ SHeaderRow::Column(TEXT("UnusedPercent"))
+		  .HAlignHeader(HAlign_Center)
+		  .VAlignHeader(VAlign_Center)
+		  .HeaderContentPadding(HeaderPadding)
+		  .FillWidth(0.15f)
+		  .OnSort_Raw(this, &SPjcTreeView::OnTreeSort)
 		[
 			SNew(STextBlock)
 			.Text(FText::FromString(TEXT("Unused %")))
-			.ToolTipText(FText::FromString(TEXT("Percentage of unused assets assets relative to total assets in current path")))
+			.ToolTipText(FText::FromString(TEXT("Percentage of unused assets number relative to total assets number in current path")))
 			.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
 			.Font(FPjcStyles::GetFont("Light", 10.0f))
 		]
-		+ SHeaderRow::Column(TEXT("UnusedSize")).HAlignHeader(HAlign_Center).VAlignHeader(VAlign_Center).HeaderContentPadding(HeaderPadding).FillWidth(0.2f).OnSort_Raw(this, &SPjcTreeView::OnTreeSort)
+		+ SHeaderRow::Column(TEXT("UnusedSize"))
+		  .HAlignHeader(HAlign_Center)
+		  .VAlignHeader(VAlign_Center)
+		  .HeaderContentPadding(HeaderPadding)
+		  .FillWidth(0.15f)
+		  .OnSort_Raw(this, &SPjcTreeView::OnTreeSort)
 		[
 			SNew(STextBlock)
 			.Text(FText::FromString(TEXT("Unused Size")))
-			.ToolTipText(FText::FromString(TEXT("Total size of unused assets  in current path")))
+			.ToolTipText(FText::FromString(TEXT("Total size of unused assets in current path")))
 			.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
 			.Font(FPjcStyles::GetFont("Light", 10.0f))
 		];
@@ -348,14 +421,13 @@ void SPjcTreeView::OnTreeSearchTextCommitted(const FText& InText, ETextCommit::T
 	SearchText = InText;
 }
 
-void SPjcTreeView::OnTreeSort(EColumnSortPriority::Type SortPriority, const FName& ColumnName, EColumnSortMode::Type SortMode)
+void SPjcTreeView::OnTreeSort(EColumnSortPriority::Type SortPriority, const FName& ColumnName, EColumnSortMode::Type InSortMode)
 {
-	if (!RootItem.IsValid()) return;
-	if (!TreeView.IsValid()) return;
+	if (!RootItem.IsValid() || !TreeView.IsValid()) return;
 
-	if (ColumnName.IsEqual(TEXT("UnusedPercent")))
+	auto SortTreeItems = [&](auto& SortMode, auto SortFunc)
 	{
-		ColumnUnusedPercentSortMode = ColumnUnusedPercentSortMode == EColumnSortMode::Ascending ? EColumnSortMode::Descending : EColumnSortMode::Ascending;
+		SortMode = SortMode == EColumnSortMode::Ascending ? EColumnSortMode::Descending : EColumnSortMode::Ascending;
 
 		TArray<TSharedPtr<FPjcTreeItem>> Stack;
 		Stack.Push(RootItem);
@@ -366,39 +438,58 @@ void SPjcTreeView::OnTreeSort(EColumnSortPriority::Type SortPriority, const FNam
 			if (!CurrentItem.IsValid()) continue;
 
 			TArray<TSharedPtr<FPjcTreeItem>>& SubItems = CurrentItem->SubItems;
-			SubItems.Sort([&](const TSharedPtr<FPjcTreeItem>& Item1, const TSharedPtr<FPjcTreeItem>& Item2)
-			{
-				return ColumnUnusedPercentSortMode == EColumnSortMode::Ascending
-					       ? Item1->PercentageUnused < Item2->PercentageUnused
-					       : Item1->PercentageUnused > Item2->PercentageUnused;
-			});
+			SubItems.Sort(SortFunc);
 
 			Stack.Append(CurrentItem->SubItems);
 		}
+	};
+
+	if (ColumnName.IsEqual(TEXT("Path")))
+	{
+		SortTreeItems(ColumnPathSortMode, [&](const TSharedPtr<FPjcTreeItem>& Item1, const TSharedPtr<FPjcTreeItem>& Item2)
+		{
+			return ColumnPathSortMode == EColumnSortMode::Ascending ? Item1->FolderPath < Item2->FolderPath : Item1->FolderPath > Item2->FolderPath;
+		});
+	}
+
+	if (ColumnName.IsEqual(TEXT("NumAssetsTotal")))
+	{
+		SortTreeItems(ColumnAssetsTotalSortMode, [&](const TSharedPtr<FPjcTreeItem>& Item1, const TSharedPtr<FPjcTreeItem>& Item2)
+		{
+			return ColumnAssetsTotalSortMode == EColumnSortMode::Ascending ? Item1->NumAssetsTotal < Item2->NumAssetsTotal : Item1->NumAssetsTotal > Item2->NumAssetsTotal;
+		});
+	}
+
+	if (ColumnName.IsEqual(TEXT("NumAssetsUsed")))
+	{
+		SortTreeItems(ColumnAssetsUsedSortMode, [&](const TSharedPtr<FPjcTreeItem>& Item1, const TSharedPtr<FPjcTreeItem>& Item2)
+		{
+			return ColumnAssetsUsedSortMode == EColumnSortMode::Ascending ? Item1->NumAssetsUsed < Item2->NumAssetsUsed : Item1->NumAssetsUsed > Item2->NumAssetsUsed;
+		});
+	}
+
+	if (ColumnName.IsEqual(TEXT("NumAssetsUnused")))
+	{
+		SortTreeItems(ColumnAssetsUnusedSortMode, [&](const TSharedPtr<FPjcTreeItem>& Item1, const TSharedPtr<FPjcTreeItem>& Item2)
+		{
+			return ColumnAssetsUnusedSortMode == EColumnSortMode::Ascending ? Item1->NumAssetsUnused < Item2->NumAssetsUnused : Item1->NumAssetsUnused > Item2->NumAssetsUnused;
+		});
+	}
+
+	if (ColumnName.IsEqual(TEXT("UnusedPercent")))
+	{
+		SortTreeItems(ColumnUnusedPercentSortMode, [&](const TSharedPtr<FPjcTreeItem>& Item1, const TSharedPtr<FPjcTreeItem>& Item2)
+		{
+			return ColumnUnusedPercentSortMode == EColumnSortMode::Ascending ? Item1->PercentageUnused < Item2->PercentageUnused : Item1->PercentageUnused > Item2->PercentageUnused;
+		});
 	}
 
 	if (ColumnName.IsEqual(TEXT("UnusedSize")))
 	{
-		ColumnUnusedSizeSortMode = ColumnUnusedSizeSortMode == EColumnSortMode::Ascending ? EColumnSortMode::Descending : EColumnSortMode::Ascending;
-
-		TArray<TSharedPtr<FPjcTreeItem>> Stack;
-		Stack.Push(RootItem);
-
-		while (Stack.Num() > 0)
+		SortTreeItems(ColumnUnusedSizeSortMode, [&](const TSharedPtr<FPjcTreeItem>& Item1, const TSharedPtr<FPjcTreeItem>& Item2)
 		{
-			const auto& CurrentItem = Stack.Pop(false);
-			if (!CurrentItem.IsValid()) continue;
-
-			TArray<TSharedPtr<FPjcTreeItem>>& SubItems = CurrentItem->SubItems;
-			SubItems.Sort([&](const TSharedPtr<FPjcTreeItem>& Item1, const TSharedPtr<FPjcTreeItem>& Item2)
-			{
-				return ColumnUnusedSizeSortMode == EColumnSortMode::Ascending
-						   ? Item1->SizeAssetsUnused < Item2->SizeAssetsUnused
-						   : Item1->SizeAssetsUnused > Item2->SizeAssetsUnused;
-			});
-
-			Stack.Append(CurrentItem->SubItems);
-		}
+			return ColumnUnusedSizeSortMode == EColumnSortMode::Ascending ? Item1->SizeAssetsUnused < Item2->SizeAssetsUnused : Item1->SizeAssetsUnused > Item2->SizeAssetsUnused;
+		});
 	}
 
 	TreeView->RebuildList();

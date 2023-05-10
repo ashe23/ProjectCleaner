@@ -21,12 +21,13 @@ public:
 protected:
 	TSharedRef<SWidget> GetTreeBtnActionsContent();
 	TSharedRef<SWidget> GetTreeBtnOptionsContent();
+	TSharedPtr<SWidget> GetTreeContextMenu() const;
 	TSharedRef<SHeaderRow> GetTreeHeaderRow();
 	TSharedRef<ITableRow> OnTreeGenerateRow(TSharedPtr<FPjcTreeItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const;
 	void OnTreeGetChildren(TSharedPtr<FPjcTreeItem> Item, TArray<TSharedPtr<FPjcTreeItem>>& OutChildren);
 	void OnTreeSearchTextChanged(const FText& InText);
 	void OnTreeSearchTextCommitted(const FText& InText, ETextCommit::Type Type);
-	void OnTreeSort(EColumnSortPriority::Type SortPriority, const FName& ColumnName, EColumnSortMode::Type SortMode);
+	void OnTreeSort(EColumnSortPriority::Type SortPriority, const FName& ColumnName, EColumnSortMode::Type InSortMode);
 	void CategorizeAssetsPerPath();
 	void TreeItemsUpdateData();
 	void TreeItemsUpdateView();
@@ -40,6 +41,7 @@ private:
 
 	FText SearchText;
 	FMargin HeaderPadding;
+	TSharedPtr<FUICommandList> Cmds;
 	TSharedPtr<FPjcTreeItem> RootItem;
 	TSharedPtr<SComboButton> TreeOptionBtn;
 	TArray<TSharedPtr<FPjcTreeItem>> TreeItems;
@@ -53,6 +55,10 @@ private:
 	TMap<FString, int64> MapSizeAssetsUsedByPath;
 	TMap<FString, int64> MapSizeAssetsUnusedByPath;
 
+	EColumnSortMode::Type ColumnPathSortMode = EColumnSortMode::None;
+	EColumnSortMode::Type ColumnAssetsTotalSortMode = EColumnSortMode::None;
+	EColumnSortMode::Type ColumnAssetsUsedSortMode = EColumnSortMode::None;
+	EColumnSortMode::Type ColumnAssetsUnusedSortMode = EColumnSortMode::None;
 	EColumnSortMode::Type ColumnUnusedPercentSortMode = EColumnSortMode::None;
 	EColumnSortMode::Type ColumnUnusedSizeSortMode = EColumnSortMode::None;
 };

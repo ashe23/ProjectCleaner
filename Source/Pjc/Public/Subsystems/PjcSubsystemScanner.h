@@ -53,6 +53,7 @@ protected:
 private:
 	bool bIsIdle = true;
 
+	// todo:ashe23 this cached data must work only when calling from editor
 	TMap<EPjcAssetCategory, TSet<FAssetData>> MapAssets;
 	TMap<EPjcFileCategory, TSet<FString>> MapFiles;
 	TMap<EPjcFolderCategory, TSet<FString>> MapFolders;
