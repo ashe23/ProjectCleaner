@@ -8,7 +8,10 @@
 #include "EditorUtilityBlueprint.h"
 #include "EditorUtilityWidget.h"
 #include "EditorUtilityWidgetBlueprint.h"
+#include "ShaderCompiler.h"
 #include "Engine/AssetManager.h"
+#include "AssetManagerEditorModule.h"
+#include "Framework/Notifications/NotificationManager.h"
 
 void UPjcHelperSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
@@ -101,6 +104,121 @@ void UPjcHelperSubsystem::GetAssetsDependencies(TSet<FAssetData>& Assets)
 	GetModuleAssetRegistry().Get().GetAssets(Filter, TempContainer);
 
 	Assets.Append(TempContainer);
+}
+
+void UPjcHelperSubsystem::ShowNotification(const FString& Msg, const SNotificationItem::ECompletionState State, const float Duration)
+{
+	FNotificationInfo Info{FText::FromString(Msg)};
+	Info.Text = FText::FromString(Msg);
+	Info.ExpireDuration = Duration;
+
+	const auto NotificationPtr = FSlateNotificationManager::Get().AddNotification(Info);
+	if (!NotificationPtr.IsValid()) return;
+
+	NotificationPtr.Get()->SetCompletionState(State);
+}
+
+void UPjcHelperSubsystem::ShowNotificationWithOutputLog(const FString& Msg, const SNotificationItem::ECompletionState State, const float Duration)
+{
+	FNotificationInfo Info{FText::FromString(Msg)};
+	Info.Text = FText::FromString(Msg);
+	Info.ExpireDuration = Duration;
+	Info.Hyperlink = FSimpleDelegate::CreateLambda([]()
+	{
+		FGlobalTabmanager::Get()->TryInvokeTab(FName{TEXT("OutputLog")});
+	});
+	Info.HyperlinkText = FText::FromString(TEXT("Show OutputLog..."));
+
+	const auto NotificationPtr = FSlateNotificationManager::Get().AddNotification(Info);
+	if (!NotificationPtr.IsValid()) return;
+
+	NotificationPtr.Get()->SetCompletionState(State);
+}
+
+void UPjcHelperSubsystem::ShaderCompilationEnable()
+{
+	if (!GShaderCompilingManager) return;
+
+	GShaderCompilingManager->SkipShaderCompilation(false);
+}
+
+void UPjcHelperSubsystem::ShaderCompilationDisable()
+{
+	if (!GShaderCompilingManager) return;
+
+	GShaderCompilingManager->SkipShaderCompilation(true);
+}
+
+void UPjcHelperSubsystem::OpenPathInFileExplorer(const FString& InPath)
+{
+	if (InPath.IsEmpty()) return;
+	if (!FPaths::DirectoryExists(InPath)) return;
+
+	FPlatformProcess::ExploreFolder(*InPath);
+}
+
+void UPjcHelperSubsystem::OpenAssetEditor(const FAssetData& InAssetData)
+{
+	if (!InAssetData.IsValid()) return;
+	if (!GEditor) return;
+
+	TArray<FName> AssetNames;
+	AssetNames.Add(InAssetData.ToSoftObjectPath().GetAssetPathName());
+
+	GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->OpenEditorsForAssets(AssetNames);
+}
+
+void UPjcHelperSubsystem::OpenSizeMapViewer(const TArray<FAssetData>& InAssetDatas)
+{
+	if (InAssetDatas.Num() == 0) return;
+
+	TArray<FName> PackageNames;
+	PackageNames.Reserve(InAssetDatas.Num());
+
+	for (const auto& Asset : InAssetDatas)
+	{
+		PackageNames.Emplace(Asset.PackageName);
+	}
+
+	IAssetManagerEditorModule::Get().OpenSizeMapUI(PackageNames);
+}
+
+void UPjcHelperSubsystem::OpenReferenceViewer(const TArray<FAssetData>& InAssetDatas)
+{
+	if (InAssetDatas.Num() == 0) return;
+
+	TArray<FName> PackageNames;
+	PackageNames.Reserve(InAssetDatas.Num());
+
+	for (const auto& Asset : InAssetDatas)
+	{
+		PackageNames.Emplace(Asset.PackageName);
+	}
+
+	IAssetManagerEditorModule::Get().OpenReferenceViewerUI(PackageNames);
+}
+
+void UPjcHelperSubsystem::OpenAssetAuditViewer(const TArray<FAssetData>& InAssetDatas)
+{
+	if (InAssetDatas.Num() == 0) return;
+
+	TArray<FName> PackageNames;
+	PackageNames.Reserve(InAssetDatas.Num());
+
+	for (const auto& Asset : InAssetDatas)
+	{
+		PackageNames.Emplace(Asset.PackageName);
+	}
+
+	IAssetManagerEditorModule::Get().OpenAssetAuditUI(PackageNames);
+}
+
+void UPjcHelperSubsystem::TryOpenFile(const FString& InPath)
+{
+	if (InPath.IsEmpty()) return;
+	if (!FPaths::FileExists(InPath)) return;
+
+	FPlatformProcess::LaunchFileInDefaultExternalApplication(*InPath);
 }
 
 FString UPjcHelperSubsystem::PathNormalize(const FString& InPath)
@@ -267,6 +385,63 @@ bool UPjcHelperSubsystem::AssetIsCircular(const FAssetData& InAssetData)
 	return false;
 }
 
+bool UPjcHelperSubsystem::PathIsEmpty(const FString& InPath)
+{
+	if (InPath.IsEmpty()) return false;
+
+	const FName PathRel = FName{*PathConvertToRelative(InPath)};
+	if (GetModuleAssetRegistry().Get().HasAssets(PathRel, true))
+	{
+		return false;
+	}
+
+	const FString PathAbs = PathConvertToAbsolute(InPath);
+	if (PathAbs.IsEmpty()) return false;
+
+	TArray<FString> Files;
+	IFileManager::Get().FindFilesRecursive(Files, *PathAbs, TEXT("*"), true, false);
+
+	return Files.Num() == 0;
+}
+
+bool UPjcHelperSubsystem::PathIsExcluded(const FString& InPath)
+{
+	const UPjcEditorAssetExcludeSettings* EditorAssetExcludeSettings = GetDefault<UPjcEditorAssetExcludeSettings>();
+	if (!EditorAssetExcludeSettings) return false;
+
+	const FString PathRel = PathConvertToRelative(InPath);
+	if (PathRel.IsEmpty()) return false;
+
+	for (const auto& ExcludedPath : EditorAssetExcludeSettings->ExcludedFolders)
+	{
+		const FString ExcludedPathRel = PathConvertToRelative(ExcludedPath.Path);
+		if (ExcludedPathRel.IsEmpty()) continue;
+
+		if (PathRel.StartsWith(ExcludedPathRel))
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool UPjcHelperSubsystem::PathIsEngineGenerated(const FString& InPath)
+{
+	const FString PathDevelopers = FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir());
+	const FString PathCollections = PathDevelopers / TEXT("Collections");
+	const FString PathCurrentDeveloper = PathDevelopers / FPaths::GameUserDeveloperFolderName();
+	const FString PathCurrentDeveloperCollections = PathCurrentDeveloper / TEXT("Collections");
+
+	TSet<FString> EngineGeneratedPaths;
+	EngineGeneratedPaths.Emplace(PathDevelopers);
+	EngineGeneratedPaths.Emplace(PathCollections);
+	EngineGeneratedPaths.Emplace(PathCurrentDeveloper);
+	EngineGeneratedPaths.Emplace(PathCurrentDeveloperCollections);
+
+	return EngineGeneratedPaths.Contains(InPath);
+}
+
 FName UPjcHelperSubsystem::GetAssetExactClassName(const FAssetData& InAssetData)
 {
 	if (!InAssetData.IsValid()) return NAME_None;
@@ -279,6 +454,33 @@ FName UPjcHelperSubsystem::GetAssetExactClassName(const FAssetData& InAssetData)
 	}
 
 	return InAssetData.AssetClass;
+}
+
+int64 UPjcHelperSubsystem::GetAssetSize(const FAssetData& InAssetData)
+{
+	if (!InAssetData.IsValid()) return 0;
+
+	const FAssetPackageData* AssetPackageData = GetModuleAssetRegistry().Get().GetAssetPackageData(InAssetData.PackageName);
+	if (!AssetPackageData) return 0;
+
+	return AssetPackageData->DiskSize;
+}
+
+int64 UPjcHelperSubsystem::GetAssetsTotalSize(const TSet<FAssetData>& InAssets)
+{
+	int64 Size = 0;
+
+	for (const auto& Asset : InAssets)
+	{
+		if (!Asset.IsValid()) continue;
+
+		const auto AssetPackageData = GetModuleAssetRegistry().Get().GetAssetPackageData(Asset.PackageName);
+		if (!AssetPackageData) continue;
+
+		Size += AssetPackageData->DiskSize;
+	}
+
+	return Size;
 }
 
 void UPjcHelperSubsystem::GetAssetsByFilter(const FPjcAssetSearchFilter& InSearchFilter, TArray<FAssetData>& OutAssets)

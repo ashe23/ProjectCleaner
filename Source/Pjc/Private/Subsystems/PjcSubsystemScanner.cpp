@@ -249,7 +249,6 @@ void UPjcScannerSubsystem::ScanProjectPaths(const FPjcFileExcludeSettings& InExc
 		const TSet<FString>& ExcludedExtensions;
 		TMap<EPjcFileCategory, TSet<FString>>& Files;
 		TMap<EPjcFolderCategory, TSet<FString>>& Folders;
-		TSet<FString> EngineGeneratedPaths;
 
 		explicit FContentFolderVisitor(
 			const TSet<FString>& InExcludedFolders,
@@ -262,18 +261,7 @@ void UPjcScannerSubsystem::ScanProjectPaths(const FPjcFileExcludeSettings& InExc
 			ExcludedFiles(InExcludedFiles),
 			ExcludedExtensions(InExcludedExtensions),
 			Files(InFiles),
-			Folders(InFolders)
-		{
-			const FString PathDevelopers = UPjcHelperSubsystem::PathConvertToAbsolute(PjcConstants::PathDevelopers.ToString());
-			const FString PathCollections = UPjcHelperSubsystem::PathConvertToAbsolute(PjcConstants::PathCollections.ToString());
-			const FString PathCurrentDeveloper = PathDevelopers / FPaths::GameUserDeveloperFolderName();
-			const FString PathCurrentDeveloperCollections = PathCurrentDeveloper / TEXT("Collections");
-
-			EngineGeneratedPaths.Emplace(PathDevelopers);
-			EngineGeneratedPaths.Emplace(PathCollections);
-			EngineGeneratedPaths.Emplace(PathCurrentDeveloper);
-			EngineGeneratedPaths.Emplace(PathCurrentDeveloperCollections);
-		}
+			Folders(InFolders) {}
 
 		virtual bool Visit(const TCHAR* FilenameOrDirectory, bool bIsDirectory) override
 		{
@@ -285,15 +273,9 @@ void UPjcScannerSubsystem::ScanProjectPaths(const FPjcFileExcludeSettings& InExc
 
 				const FString PathRel = UPjcHelperSubsystem::PathConvertToRelative(PathAbs);
 
-				if (!UPjcHelperSubsystem::GetModuleAssetRegistry().Get().HasAssets(FName{*PathRel}, true))
+				if (UPjcHelperSubsystem::PathIsEmpty(PathAbs) && !UPjcHelperSubsystem::PathIsEngineGenerated(PathAbs))
 				{
-					TSet<FString> FilesInPath;
-					UPjcHelperSubsystem::GetFilesInPath(PathAbs, true, FilesInPath);
-
-					if (FilesInPath.Num() == 0 && !EngineGeneratedPaths.Contains(PathAbs))
-					{
-						Folders[EPjcFolderCategory::Empty].Emplace(PathAbs);
-					}
+					Folders[EPjcFolderCategory::Empty].Emplace(PathAbs);
 				}
 
 				return true;

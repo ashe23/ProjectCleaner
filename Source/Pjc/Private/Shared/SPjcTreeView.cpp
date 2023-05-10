@@ -2,6 +2,9 @@
 
 #include "Slate/Shared/SPjcTreeView.h"
 #include "Slate/Items/SPjcItemTree.h"
+#include "Subsystems/PjcSubsystemHelper.h"
+#include "Subsystems/PjcSubsystemScanner.h"
+#include "PjcConstants.h"
 #include "PjcStyles.h"
 // Engine Headers
 #include "Widgets/Input/SSearchBox.h"
@@ -12,6 +15,15 @@ void SPjcTreeView::Construct(const FArguments& InArgs)
 {
 	HeaderPadding = InArgs._HeaderPadding;
 
+	if (GEngine)
+	{
+		ScannerSubsystemPtr = GEngine->GetEngineSubsystem<UPjcScannerSubsystem>();
+		if (ScannerSubsystemPtr)
+		{
+			ScannerSubsystemPtr->OnProjectAssetsScanSuccess().AddRaw(this, &SPjcTreeView::OnProjectAssetsScanSuccess);
+		}
+	}
+
 	SAssignNew(TreeView, STreeView<TSharedPtr<FPjcTreeItem>>)
 	.TreeItemsSource(&TreeItems)
 	.SelectionMode(ESelectionMode::Multi)
@@ -20,6 +32,8 @@ void SPjcTreeView::Construct(const FArguments& InArgs)
 	// .OnContextMenuOpening_Raw(this, &SPjcTreeView::GetTreeContextMenu)
 	// .OnExpansionChanged_Raw(this, &SPjcTreeView::OnTreeExpansionChanged)
 	.HeaderRow(GetTreeHeaderRow());
+
+	TreeItemsUpdateData();
 
 	ChildSlot
 	[
@@ -121,6 +135,14 @@ void SPjcTreeView::Construct(const FArguments& InArgs)
 	];
 }
 
+SPjcTreeView::~SPjcTreeView()
+{
+	if (ScannerSubsystemPtr)
+	{
+		ScannerSubsystemPtr->OnProjectAssetsScanSuccess().RemoveAll(this);
+	}
+}
+
 TSharedRef<SWidget> SPjcTreeView::GetTreeBtnActionsContent()
 {
 	const TSharedPtr<FExtender> Extender;
@@ -131,6 +153,50 @@ TSharedRef<SWidget> SPjcTreeView::GetTreeBtnActionsContent()
 	MenuBuilder.AddMenuEntry(
 		FText::FromString(TEXT("Delete Empty Folders")),
 		FText::FromString(TEXT("Delete all empty folders in project")),
+		FSlateIcon(),
+		FUIAction
+		(
+			FExecuteAction::CreateLambda([&] { })
+		),
+		NAME_None,
+		EUserInterfaceActionType::Button
+	);
+
+	MenuBuilder.AddMenuEntry(
+		FText::FromString(TEXT("Clear Selection")),
+		FText::FromString(TEXT("Clear any selection in tree view")),
+		FSlateIcon(),
+		FUIAction
+		(
+			FExecuteAction::CreateLambda([&]
+			{
+				TreeView->ClearSelection();
+				TreeView->ClearHighlightedItems();
+			}),
+			FCanExecuteAction::CreateLambda([&]()
+			{
+				return TreeView.IsValid();
+			})
+		),
+		NAME_None,
+		EUserInterfaceActionType::Button
+	);
+
+	MenuBuilder.AddMenuEntry(
+		FText::FromString(TEXT("Expand All")),
+		FText::FromString(TEXT("Expand all folders recursive")),
+		FSlateIcon(),
+		FUIAction
+		(
+			FExecuteAction::CreateLambda([&] { })
+		),
+		NAME_None,
+		EUserInterfaceActionType::Button
+	);
+
+	MenuBuilder.AddMenuEntry(
+		FText::FromString(TEXT("Collapse All")),
+		FText::FromString(TEXT("Collapse all folders recursive")),
 		FSlateIcon(),
 		FUIAction
 		(
@@ -162,10 +228,46 @@ TSharedRef<SWidget> SPjcTreeView::GetTreeBtnOptionsContent()
 		EUserInterfaceActionType::ToggleButton
 	);
 
+	MenuBuilder.AddMenuEntry(
+		FText::FromString(TEXT("Show Folders Excluded")),
+		FText::FromString(TEXT("Show empty folders in tree view")),
+		FSlateIcon(),
+		FUIAction
+		(
+			FExecuteAction::CreateLambda([&] { })
+		),
+		NAME_None,
+		EUserInterfaceActionType::ToggleButton
+	);
+
+	MenuBuilder.AddMenuEntry(
+		FText::FromString(TEXT("Show Folders Unused Only")),
+		FText::FromString(TEXT("Show empty folders in tree view")),
+		FSlateIcon(),
+		FUIAction
+		(
+			FExecuteAction::CreateLambda([&] { })
+		),
+		NAME_None,
+		EUserInterfaceActionType::ToggleButton
+	);
+
+	MenuBuilder.AddMenuEntry(
+		FText::FromString(TEXT("Show Folders Engine Generated")),
+		FText::FromString(TEXT("Show empty folders in tree view")),
+		FSlateIcon(),
+		FUIAction
+		(
+			FExecuteAction::CreateLambda([&] { })
+		),
+		NAME_None,
+		EUserInterfaceActionType::ToggleButton
+	);
+
 	return MenuBuilder.MakeWidget();
 }
 
-TSharedRef<SHeaderRow> SPjcTreeView::GetTreeHeaderRow() const
+TSharedRef<SHeaderRow> SPjcTreeView::GetTreeHeaderRow()
 {
 	return
 		SNew(SHeaderRow)
@@ -200,11 +302,19 @@ TSharedRef<SHeaderRow> SPjcTreeView::GetTreeHeaderRow() const
 			.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
 			.Font(FPjcStyles::GetFont("Light", 10.0f))
 		]
-		+ SHeaderRow::Column(TEXT("UnusedSize")).HAlignHeader(HAlign_Center).VAlignHeader(VAlign_Center).HeaderContentPadding(HeaderPadding).FillWidth(0.2f)
+		+ SHeaderRow::Column(TEXT("UnusedPercent")).HAlignHeader(HAlign_Center).VAlignHeader(VAlign_Center).HeaderContentPadding(HeaderPadding).FillWidth(0.2f).OnSort_Raw(this, &SPjcTreeView::OnTreeSort)
+		[
+			SNew(STextBlock)
+			.Text(FText::FromString(TEXT("Unused %")))
+			.ToolTipText(FText::FromString(TEXT("Percentage of unused assets assets relative to total assets in current path")))
+			.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
+			.Font(FPjcStyles::GetFont("Light", 10.0f))
+		]
+		+ SHeaderRow::Column(TEXT("UnusedSize")).HAlignHeader(HAlign_Center).VAlignHeader(VAlign_Center).HeaderContentPadding(HeaderPadding).FillWidth(0.2f).OnSort_Raw(this, &SPjcTreeView::OnTreeSort)
 		[
 			SNew(STextBlock)
 			.Text(FText::FromString(TEXT("Unused Size")))
-			.ToolTipText(FText::FromString(TEXT("Total num of unused assets relative to total assets in current path")))
+			.ToolTipText(FText::FromString(TEXT("Total size of unused assets  in current path")))
 			.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
 			.Font(FPjcStyles::GetFont("Light", 10.0f))
 		];
@@ -232,9 +342,204 @@ void SPjcTreeView::OnTreeSearchTextChanged(const FText& InText)
 {
 	SearchText = InText;
 }
+
 void SPjcTreeView::OnTreeSearchTextCommitted(const FText& InText, ETextCommit::Type Type)
 {
 	SearchText = InText;
+}
+
+void SPjcTreeView::OnTreeSort(EColumnSortPriority::Type SortPriority, const FName& ColumnName, EColumnSortMode::Type SortMode)
+{
+	if (!RootItem.IsValid()) return;
+	if (!TreeView.IsValid()) return;
+
+	if (ColumnName.IsEqual(TEXT("UnusedPercent")))
+	{
+		ColumnUnusedPercentSortMode = ColumnUnusedPercentSortMode == EColumnSortMode::Ascending ? EColumnSortMode::Descending : EColumnSortMode::Ascending;
+
+		TArray<TSharedPtr<FPjcTreeItem>> Stack;
+		Stack.Push(RootItem);
+
+		while (Stack.Num() > 0)
+		{
+			const auto& CurrentItem = Stack.Pop(false);
+			if (!CurrentItem.IsValid()) continue;
+
+			TArray<TSharedPtr<FPjcTreeItem>>& SubItems = CurrentItem->SubItems;
+			SubItems.Sort([&](const TSharedPtr<FPjcTreeItem>& Item1, const TSharedPtr<FPjcTreeItem>& Item2)
+			{
+				return ColumnUnusedPercentSortMode == EColumnSortMode::Ascending
+					       ? Item1->PercentageUnused < Item2->PercentageUnused
+					       : Item1->PercentageUnused > Item2->PercentageUnused;
+			});
+
+			Stack.Append(CurrentItem->SubItems);
+		}
+	}
+
+	if (ColumnName.IsEqual(TEXT("UnusedSize")))
+	{
+		ColumnUnusedSizeSortMode = ColumnUnusedSizeSortMode == EColumnSortMode::Ascending ? EColumnSortMode::Descending : EColumnSortMode::Ascending;
+
+		TArray<TSharedPtr<FPjcTreeItem>> Stack;
+		Stack.Push(RootItem);
+
+		while (Stack.Num() > 0)
+		{
+			const auto& CurrentItem = Stack.Pop(false);
+			if (!CurrentItem.IsValid()) continue;
+
+			TArray<TSharedPtr<FPjcTreeItem>>& SubItems = CurrentItem->SubItems;
+			SubItems.Sort([&](const TSharedPtr<FPjcTreeItem>& Item1, const TSharedPtr<FPjcTreeItem>& Item2)
+			{
+				return ColumnUnusedSizeSortMode == EColumnSortMode::Ascending
+						   ? Item1->SizeAssetsUnused < Item2->SizeAssetsUnused
+						   : Item1->SizeAssetsUnused > Item2->SizeAssetsUnused;
+			});
+
+			Stack.Append(CurrentItem->SubItems);
+		}
+	}
+
+	TreeView->RebuildList();
+}
+
+void SPjcTreeView::CategorizeAssetsPerPath()
+{
+	if (!ScannerSubsystemPtr) return;
+
+	MapNumAssetsAllByPath.Reset();
+	MapNumAssetsUsedByPath.Reset();
+	MapNumAssetsUnusedByPath.Reset();
+	MapSizeAssetsAllByPath.Reset();
+	MapSizeAssetsUsedByPath.Reset();
+	MapSizeAssetsUnusedByPath.Reset();
+
+	for (const FAssetData& Asset : ScannerSubsystemPtr->GetAssetsByCategory(EPjcAssetCategory::Any))
+	{
+		const FString AssetPath = Asset.PackagePath.ToString();
+		const int64 AssetSize = UPjcHelperSubsystem::GetAssetSize(Asset);
+		UpdateMapInfo(MapNumAssetsAllByPath, MapSizeAssetsAllByPath, AssetPath, AssetSize);
+	}
+
+	for (const FAssetData& Asset : ScannerSubsystemPtr->GetAssetsByCategory(EPjcAssetCategory::Used))
+	{
+		const FString AssetPath = Asset.PackagePath.ToString();
+		const int64 AssetSize = UPjcHelperSubsystem::GetAssetSize(Asset);
+		UpdateMapInfo(MapNumAssetsUsedByPath, MapSizeAssetsUsedByPath, AssetPath, AssetSize);
+	}
+
+	for (const FAssetData& Asset : ScannerSubsystemPtr->GetAssetsByCategory(EPjcAssetCategory::Unused))
+	{
+		const FString AssetPath = Asset.PackagePath.ToString();
+		const int64 AssetSize = UPjcHelperSubsystem::GetAssetSize(Asset);
+		UpdateMapInfo(MapNumAssetsUnusedByPath, MapSizeAssetsUnusedByPath, AssetPath, AssetSize);
+	}
+}
+
+void SPjcTreeView::TreeItemsUpdateData()
+{
+	if (!ScannerSubsystemPtr) return;
+	if (!TreeView.IsValid()) return;
+
+	const TSet<FString> FoldersEmpty = ScannerSubsystemPtr->GetFoldersByCategory(EPjcFolderCategory::Empty);
+
+	TSet<TSharedPtr<FPjcTreeItem>> CachedExpandedItems;
+	TreeView->GetExpandedItems(CachedExpandedItems);
+
+	RootItem.Reset();
+	TreeItems.Reset();
+
+	// creating root item
+	const FString PathContentDir = FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir());
+
+	RootItem = MakeShareable(new FPjcTreeItem);
+	if (!RootItem.IsValid()) return;
+
+	RootItem->FolderPath = PjcConstants::PathRoot.ToString();
+	RootItem->FolderName = TEXT("Content");
+	RootItem->bIsDev = false;
+	RootItem->bIsRoot = true;
+	RootItem->bIsEmpty = UPjcHelperSubsystem::PathIsEmpty(PathContentDir);
+	RootItem->bIsExcluded = UPjcHelperSubsystem::PathIsExcluded(PathContentDir);
+	RootItem->bIsExpanded = ItemIsExpanded(RootItem, CachedExpandedItems);
+	RootItem->bIsVisible = true;
+	RootItem->NumAssetsTotal = ScannerSubsystemPtr->GetAssetsByCategory(EPjcAssetCategory::Any).Num();
+	RootItem->NumAssetsUsed = ScannerSubsystemPtr->GetAssetsByCategory(EPjcAssetCategory::Used).Num();
+	RootItem->NumAssetsUnused = ScannerSubsystemPtr->GetAssetsByCategory(EPjcAssetCategory::Unused).Num();
+	RootItem->SizeAssetsUnused = UPjcHelperSubsystem::GetAssetsTotalSize(ScannerSubsystemPtr->GetAssetsByCategory(EPjcAssetCategory::Unused));
+	RootItem->PercentageUnused = RootItem->NumAssetsTotal == 0 ? 0 : RootItem->NumAssetsUnused * 100.0f / RootItem->NumAssetsTotal;
+	RootItem->PercentageUnusedNormalized = FMath::GetMappedRangeValueClamped(FVector2D{0.0f, 100.0f}, FVector2D{0.0f, 1.0f}, RootItem->PercentageUnused);
+	RootItem->Parent = nullptr;
+
+	TreeItems.Emplace(RootItem);
+	TreeView->SetItemExpansion(RootItem, RootItem->bIsExpanded);
+
+	// filling whole tree
+	TArray<TSharedPtr<FPjcTreeItem>> Stack;
+	Stack.Push(RootItem);
+
+	while (Stack.Num() > 0)
+	{
+		const auto CurrentItem = Stack.Pop(false);
+
+		TArray<FString> SubPaths;
+		UPjcHelperSubsystem::GetModuleAssetRegistry().Get().GetSubPaths(CurrentItem->FolderPath, SubPaths, false);
+
+		for (const auto& SubPath : SubPaths)
+		{
+			const TSharedPtr<FPjcTreeItem> SubItem = MakeShareable(new FPjcTreeItem);
+			if (!SubItem.IsValid()) continue;
+
+			SubItem->FolderPath = SubPath;
+			SubItem->FolderName = FPaths::GetPathLeaf(SubItem->FolderPath);
+			SubItem->bIsDev = SubItem->FolderPath.StartsWith(PjcConstants::PathDevelopers.ToString());
+			SubItem->bIsRoot = false;
+			SubItem->bIsEmpty = UPjcHelperSubsystem::PathIsEmpty(SubItem->FolderPath);
+			SubItem->bIsExcluded = UPjcHelperSubsystem::PathIsExcluded(SubItem->FolderPath);
+			SubItem->bIsExpanded = ItemIsExpanded(SubItem, CachedExpandedItems);
+			SubItem->bIsVisible = true;
+			SubItem->NumAssetsTotal = MapNumAssetsAllByPath.Contains(SubItem->FolderPath) ? MapNumAssetsAllByPath[SubItem->FolderPath] : 0;
+			SubItem->NumAssetsUsed = MapNumAssetsUsedByPath.Contains(SubItem->FolderPath) ? MapNumAssetsUsedByPath[SubItem->FolderPath] : 0;
+			SubItem->NumAssetsUnused = MapNumAssetsUnusedByPath.Contains(SubItem->FolderPath) ? MapNumAssetsUnusedByPath[SubItem->FolderPath] : 0;
+			SubItem->SizeAssetsUnused = MapSizeAssetsUnusedByPath.Contains(SubItem->FolderPath) ? MapSizeAssetsUnusedByPath[SubItem->FolderPath] : 0.0f;
+			SubItem->PercentageUnused = SubItem->NumAssetsTotal == 0 ? 0 : SubItem->NumAssetsUnused * 100.0f / SubItem->NumAssetsTotal;
+			SubItem->PercentageUnusedNormalized = FMath::GetMappedRangeValueClamped(FVector2D{0.0f, 100.0f}, FVector2D{0.0f, 1.0f}, SubItem->PercentageUnused);
+			SubItem->Parent = CurrentItem;
+
+			TreeView->SetItemExpansion(SubItem, SubItem->bIsExpanded);
+			CurrentItem->SubItems.Emplace(SubItem);
+			Stack.Emplace(SubItem);
+		}
+	}
+
+	TreeView->RebuildList();
+}
+
+void SPjcTreeView::TreeItemsUpdateView() {}
+
+void SPjcTreeView::OnProjectAssetsScanSuccess()
+{
+	CategorizeAssetsPerPath();
+	TreeItemsUpdateData();
+}
+
+bool SPjcTreeView::ItemIsExpanded(const TSharedPtr<FPjcTreeItem>& Item, const TSet<TSharedPtr<FPjcTreeItem>>& ExpandedItems)
+{
+	if (!Item.IsValid()) return false;
+	if (ExpandedItems.Num() == 0) return false;
+
+	for (const auto& ExpandedItem : ExpandedItems)
+	{
+		if (!ExpandedItem.IsValid()) continue;
+
+		if (ExpandedItem->FolderPath.Equals(Item->FolderPath))
+		{
+			return true;
+		}
+	}
+
+	return false;
 }
 
 FText SPjcTreeView::GetTreeSummaryText() const
@@ -257,4 +562,35 @@ FSlateColor SPjcTreeView::GetTreeOptionsBtnForegroundColor() const
 	if (!TreeOptionBtn.IsValid()) return FEditorStyle::GetSlateColor(DefaultForegroundName);
 
 	return TreeOptionBtn->IsHovered() ? FEditorStyle::GetSlateColor(InvertedForegroundName) : FEditorStyle::GetSlateColor(DefaultForegroundName);
+}
+
+void SPjcTreeView::UpdateMapInfo(TMap<FString, int32>& MapNum, TMap<FString, int64>& MapSize, const FString& AssetPath, int64 AssetSize)
+{
+	FString CurrentPath = AssetPath;
+
+	// Iterate through all parent folders and update the asset count and size
+	while (!CurrentPath.IsEmpty())
+	{
+		if (MapNum.Contains(CurrentPath))
+		{
+			MapNum[CurrentPath]++;
+			MapSize[CurrentPath] += AssetSize;
+		}
+		else
+		{
+			MapNum.Add(CurrentPath, 1);
+			MapSize.Add(CurrentPath, AssetSize);
+		}
+
+		// Remove the last folder in the path
+		int32 LastSlashIndex;
+		if (CurrentPath.FindLastChar('/', LastSlashIndex))
+		{
+			CurrentPath.LeftInline(LastSlashIndex, false);
+		}
+		else
+		{
+			CurrentPath.Empty();
+		}
+	}
 }

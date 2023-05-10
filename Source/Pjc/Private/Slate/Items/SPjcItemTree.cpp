@@ -75,8 +75,15 @@ TSharedRef<SWidget> SPjcItemTree::GenerateWidgetForColumn(const FName& InColumnN
 			];
 	}
 
-	if (InColumnName.IsEqual(TEXT("UnusedSize")))
+	if (InColumnName.IsEqual(TEXT("UnusedPercent")))
 	{
+		FNumberFormattingOptions FormattingOptions;
+		FormattingOptions.UseGrouping = true;
+		FormattingOptions.MinimumFractionalDigits = 2;
+		FormattingOptions.MaximumFractionalDigits = 2;
+
+		const FString StrPercent = FText::AsNumber(Item->PercentageUnused, &FormattingOptions).ToString() + TEXT(" %");
+
 		return
 			SNew(SHorizontalBox)
 			+ SHorizontalBox::Slot().Padding(FMargin{5.0f, 1.0f}).FillWidth(1.0f)
@@ -96,8 +103,36 @@ TSharedRef<SWidget> SPjcItemTree::GenerateWidgetForColumn(const FName& InColumnN
 					.AutoWrapText(false)
 					.ColorAndOpacity(FLinearColor::White)
 					// .Font(FPjcStyles::GetFont("Light", 8))
-					.Text(FText::AsMemory(Item->SizeAssetsUnused, IEC))
+					.Text(FText::FromString(StrPercent))
 				]
+			];
+	}
+
+	if (InColumnName.IsEqual(TEXT("UnusedSize")))
+	{
+		return
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot().Padding(FMargin{5.0f, 1.0f}).FillWidth(1.0f)
+			[
+				SNew(STextBlock)
+				.AutoWrapText(false)
+				.ColorAndOpacity(FLinearColor::White)
+				.Justification(ETextJustify::Center)
+				.ColorAndOpacity(FLinearColor::White)
+				// .Font(FPjcStyles::GetFont("Light", 8))
+				.Text(FText::AsMemory(Item->SizeAssetsUnused, IEC))
+				// SNew(SOverlay)
+				// + SOverlay::Slot().HAlign(HAlign_Fill).VAlign(VAlign_Fill)
+				// [
+				// 	SNew(SProgressBar)
+				// 	.BorderPadding(FVector2D{0.0f, 0.0f})
+				// 	.Percent(Item->PercentageUnusedNormalized)
+				// 	.BackgroundImage(FPjcStyles::Get().GetBrush("ProjectCleaner.BgProgressbar"))
+				// 	.FillColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Red"))
+				// ]
+				// + SOverlay::Slot().HAlign(HAlign_Center).VAlign(VAlign_Center)
+				// [
+				// ]
 			];
 	}
 

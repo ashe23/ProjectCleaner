@@ -1,42 +1,33 @@
 ﻿// Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "Slate/SPjcTabAssetsUnused.h"
-// #include "Slate/Items/SPjcItemTree.h"
+#include "Slate/Shared/SPjcTreeView.h"
 #include "Slate/Shared/SPjcStatsBasic.h"
+#include "Subsystems/PjcSubsystemScanner.h"
 #include "PjcCmds.h"
 #include "PjcTypes.h"
-// #include "PjcStyles.h"
-// #include "PjcConstants.h"
-// #include "PjcSubsystem.h"
-// #include "Libs/PjcLibPath.h"
-// #include "Libs/PjcLibAsset.h"
 // Engine Headers
 #include "ContentBrowserModule.h"
 #include "IContentBrowserSingleton.h"
-// #include "ObjectTools.h"
-// #include "AssetRegistry/AssetRegistryModule.h"
+#include "ObjectTools.h"
+#include "PjcStyles.h"
 #include "Settings/ContentBrowserSettings.h"
-#include "Slate/Shared/SPjcTreeView.h"
-// #include "Widgets/Input/SSearchBox.h"
+#include "Subsystems/PjcSubsystemHelper.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SSeparator.h"
 
 void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 {
-	// if (GEditor)
-	// {
-	// 	SubsystemPtr = GEditor->GetEditorSubsystem<UPjcSubsystem>();
-	// 	SubsystemPtr->OnScanAssetsSuccess().AddLambda([&]()
-	// 	{
-	// 		TreeItemsUpdate();
-	// 		TreeItemsFilter();
-	// 	});
-	//
-	// 	SubsystemPtr->OnScanAssetsFailed().AddLambda([&](const FString& ErrMsg)
-	// 	{
-	// 		UE_LOG(LogTemp, Warning, TEXT("%s"), *ErrMsg);
-	// 	});
-	// }
+	if (GEngine)
+	{
+		ScannerSubsystemPtr = GEngine->GetEngineSubsystem<UPjcScannerSubsystem>();
+
+		if (ScannerSubsystemPtr)
+		{
+			ScannerSubsystemPtr->OnProjectAssetsScanSuccess().AddRaw(this, &SPjcTabAssetsUnused::OnProjectScanSuccess);
+			ScannerSubsystemPtr->OnProjectAssetsScanFail().AddRaw(this, &SPjcTabAssetsUnused::OnProjectScanFail);
+		}
+	}
 
 	Cmds = MakeShareable(new FUICommandList);
 
@@ -44,7 +35,10 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 		FPjcCmds::Get().TabAssetsUnusedBtnScan,
 		FExecuteAction::CreateLambda([&]()
 		{
-			// SubsystemPtr->ScanProjectAssets();
+			if (ScannerSubsystemPtr)
+			{
+				ScannerSubsystemPtr->ScanProjectAssets();
+			}
 		})
 	);
 
@@ -52,7 +46,9 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 		FPjcCmds::Get().TabAssetsUnusedBtnClean,
 		FExecuteAction::CreateLambda([&]()
 		{
-			// ObjectTools::DeleteAssets(SubsystemPtr->GetAssetsUnused().Array(), true);
+			UPjcHelperSubsystem::ShaderCompilationDisable();
+			ObjectTools::DeleteAssets(ScannerSubsystemPtr->GetAssetsByCategory(EPjcAssetCategory::Unused).Array(), true);
+			UPjcHelperSubsystem::ShaderCompilationEnable();
 
 			// const TSharedRef<SWindow> Window = SNew(SWindow).Title(FText::FromString(TEXT("Some Title"))).ClientSize(FVector2D{600, 400});
 			// const TSharedRef<SWidget> Content =
@@ -116,6 +112,8 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 	AssetPickerConfig.bAddFilterUI = true;
 	AssetPickerConfig.OnGetAssetContextMenu.BindRaw(this, &SPjcTabAssetsUnused::GetContentBrowserContextMenu);
 
+	StatItemsUpdate();
+
 	ChildSlot
 	[
 		SNew(SVerticalBox)
@@ -137,9 +135,10 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 				]
 				+ SVerticalBox::Slot().AutoHeight().Padding(3.0f)
 				[
-					SNew(SPjcStatsBasic)
+					SAssignNew(StatsViewPtr, SPjcStatsBasic)
 					.Title(FText::FromString(TEXT("Assets Statistics")))
 					.HeaderMargin(FMargin{10.0f})
+					.InitialItems(&StatItems)
 				]
 				+ SVerticalBox::Slot().AutoHeight().Padding(3.0f)
 				[
@@ -178,11 +177,177 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 
 SPjcTabAssetsUnused::~SPjcTabAssetsUnused()
 {
-	// if (SubsystemPtr)
-	// {
-	// 	SubsystemPtr->OnScanAssetsSuccess().RemoveAll(this);
-	// 	SubsystemPtr->OnScanAssetsFailed().RemoveAll(this);
-	// }
+	if (ScannerSubsystemPtr)
+	{
+		ScannerSubsystemPtr->OnProjectAssetsScanSuccess().RemoveAll(this);
+		ScannerSubsystemPtr->OnProjectAssetsScanFail().RemoveAll(this);
+	}
+}
+
+void SPjcTabAssetsUnused::OnProjectScanSuccess()
+{
+	StatItemsUpdate();
+}
+
+void SPjcTabAssetsUnused::OnProjectScanFail(const FString& InScanErrMsg)
+{
+	UPjcHelperSubsystem::ShowNotificationWithOutputLog(InScanErrMsg, SNotificationItem::CS_Fail, 5.0f);
+}
+
+void SPjcTabAssetsUnused::StatItemsUpdate()
+{
+	if (!ScannerSubsystemPtr) return;
+
+	const TSet<FAssetData>& AssetsUnused = ScannerSubsystemPtr->GetAssetsByCategory(EPjcAssetCategory::Unused);
+	const TSet<FAssetData>& AssetsUsed = ScannerSubsystemPtr->GetAssetsByCategory(EPjcAssetCategory::Used);
+	const TSet<FAssetData>& AssetsPrimary = ScannerSubsystemPtr->GetAssetsByCategory(EPjcAssetCategory::Primary);
+	const TSet<FAssetData>& AssetsEditor = ScannerSubsystemPtr->GetAssetsByCategory(EPjcAssetCategory::Editor);
+	const TSet<FAssetData>& AssetsIndirect = ScannerSubsystemPtr->GetAssetsByCategory(EPjcAssetCategory::Indirect);
+	const TSet<FAssetData>& AssetsExtReferenced = ScannerSubsystemPtr->GetAssetsByCategory(EPjcAssetCategory::ExtReferenced);
+	const TSet<FAssetData>& AssetsExcluded = ScannerSubsystemPtr->GetAssetsByCategory(EPjcAssetCategory::Excluded);
+	const TSet<FAssetData>& AssetsAny = ScannerSubsystemPtr->GetAssetsByCategory(EPjcAssetCategory::Any);
+
+
+	const int64 SizeAssetsUnused = UPjcHelperSubsystem::GetAssetsTotalSize(AssetsUnused);
+	const int64 SizeAssetsUsed = UPjcHelperSubsystem::GetAssetsTotalSize(AssetsUsed);
+	const int64 SizeAssetsPrimary = UPjcHelperSubsystem::GetAssetsTotalSize(AssetsPrimary);
+	const int64 SizeAssetsEditor = UPjcHelperSubsystem::GetAssetsTotalSize(AssetsEditor);
+	const int64 SizeAssetsIndirect = UPjcHelperSubsystem::GetAssetsTotalSize(AssetsIndirect);
+	const int64 SizeAssetsExtReferenced = UPjcHelperSubsystem::GetAssetsTotalSize(AssetsExtReferenced);
+	const int64 SizeAssetsExcluded = UPjcHelperSubsystem::GetAssetsTotalSize(AssetsExcluded);
+	const int64 SizeAssetsAny = UPjcHelperSubsystem::GetAssetsTotalSize(AssetsAny);
+
+	StatItems.Reset();
+
+	const FMargin FirstLvl{5.0f, 0.0f, 0.0f, 0.0f};
+	const FMargin SecondLvl{20.0f, 0.0f, 0.0f, 0.0f};
+	const auto ColorRed = FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Red").GetSpecifiedColor();
+	const auto ColorYellow = FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Yellow").GetSpecifiedColor();
+
+	StatItems.Emplace(
+		MakeShareable(
+			new FPjcStatItem{
+				FText::FromString(TEXT("Unused")),
+				FText::AsNumber(AssetsUnused.Num()),
+				FText::AsMemory(SizeAssetsUnused, IEC),
+				FText::FromString(TEXT("Unused Assets")),
+				FText::FromString(TEXT("Total number of unused assets")),
+				FText::FromString(TEXT("Total size of unused assets")),
+				AssetsUnused.Num() > 0 ? ColorRed : FLinearColor::White,
+				FirstLvl
+			}
+		)
+	);
+
+	StatItems.Emplace(
+		MakeShareable(
+			new FPjcStatItem{
+				FText::FromString(TEXT("Used")),
+				FText::AsNumber(AssetsUsed.Num()),
+				FText::AsMemory(SizeAssetsUsed, IEC),
+				FText::FromString(TEXT("Used Assets")),
+				FText::FromString(TEXT("Total number of used assets")),
+				FText::FromString(TEXT("Total size of used assets")),
+				FLinearColor::White,
+				FirstLvl
+			}
+		)
+	);
+
+	StatItems.Emplace(
+		MakeShareable(
+			new FPjcStatItem{
+				FText::FromString(TEXT("Primary")),
+				FText::AsNumber(AssetsPrimary.Num()),
+				FText::AsMemory(SizeAssetsPrimary, IEC),
+				FText::FromString(TEXT("Primary Assets")),
+				FText::FromString(TEXT("Total number of primary assets")),
+				FText::FromString(TEXT("Total size of primary assets")),
+				FLinearColor::White,
+				SecondLvl
+			}
+		)
+	);
+
+	StatItems.Emplace(
+		MakeShareable(
+			new FPjcStatItem{
+				FText::FromString(TEXT("Editor")),
+				FText::AsNumber(AssetsEditor.Num()),
+				FText::AsMemory(SizeAssetsEditor, IEC),
+				FText::FromString(TEXT("Editor Assets")),
+				FText::FromString(TEXT("Total number of Editor assets")),
+				FText::FromString(TEXT("Total size of Editor assets")),
+				FLinearColor::White,
+				SecondLvl
+			}
+		)
+	);
+
+	StatItems.Emplace(
+		MakeShareable(
+			new FPjcStatItem{
+				FText::FromString(TEXT("Indirect")),
+				FText::AsNumber(AssetsIndirect.Num()),
+				FText::AsMemory(SizeAssetsIndirect, IEC),
+				FText::FromString(TEXT("Indirect Assets")),
+				FText::FromString(TEXT("Total number of Indirect assets")),
+				FText::FromString(TEXT("Total size of Indirect assets")),
+				FLinearColor::White,
+				SecondLvl
+			}
+		)
+	);
+
+	StatItems.Emplace(
+		MakeShareable(
+			new FPjcStatItem{
+				FText::FromString(TEXT("ExtReferenced")),
+				FText::AsNumber(AssetsExtReferenced.Num()),
+				FText::AsMemory(SizeAssetsExtReferenced, IEC),
+				FText::FromString(TEXT("ExtReferenced Assets")),
+				FText::FromString(TEXT("Total number of ExtReferenced assets")),
+				FText::FromString(TEXT("Total size of ExtReferenced assets")),
+				FLinearColor::White,
+				SecondLvl
+			}
+		)
+	);
+
+	StatItems.Emplace(
+		MakeShareable(
+			new FPjcStatItem{
+				FText::FromString(TEXT("Excluded")),
+				FText::AsNumber(AssetsExcluded.Num()),
+				FText::AsMemory(SizeAssetsExcluded, IEC),
+				FText::FromString(TEXT("Excluded Assets")),
+				FText::FromString(TEXT("Total number of Excluded assets")),
+				FText::FromString(TEXT("Total size of Excluded assets")),
+				AssetsExcluded.Num() > 0 ? ColorYellow : FLinearColor::White,
+				SecondLvl
+			}
+		)
+	);
+
+	StatItems.Emplace(
+		MakeShareable(
+			new FPjcStatItem{
+				FText::FromString(TEXT("Total")),
+				FText::AsNumber(AssetsAny.Num()),
+				FText::AsMemory(SizeAssetsAny, IEC),
+				FText::FromString(TEXT("All Assets")),
+				FText::FromString(TEXT("Total number of assets")),
+				FText::FromString(TEXT("Total size of assets")),
+				FLinearColor::White,
+				FirstLvl
+			}
+		)
+	);
+
+	if (StatsViewPtr.IsValid())
+	{
+		StatsViewPtr->StatItemsUpdate(StatItems);
+	}
 }
 
 // void SPjcTabAssetsUnused::TreeItemsUpdate()

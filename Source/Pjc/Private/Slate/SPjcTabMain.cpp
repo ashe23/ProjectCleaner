@@ -6,19 +6,12 @@
 #include "Slate/SPjcTabFilesExternal.h"
 #include "PjcConstants.h"
 #include "PjcStyles.h"
-#include "Libs/PjcLibEditor.h"
+#include "Subsystems/PjcSubsystemHelper.h"
 // Engine Headers
-#include "PjcCmds.h"
-#include "PjcSubsystem.h"
 #include "Widgets/Layout/SWidgetSwitcher.h"
 
 void SPjcTabMain::Construct(const FArguments& InArgs, const TSharedRef<SDockTab>& ConstructUnderMajorTab, const TSharedPtr<SWindow>& ConstructUnderWindow)
 {
-	if (GEditor)
-	{
-		SubsystemPtr = GEditor->GetEditorSubsystem<UPjcSubsystem>();
-	}
-
 	TabManager = FGlobalTabmanager::Get()->NewTabManager(ConstructUnderMajorTab);
 	const TSharedRef<FWorkspaceItem> AppMenuGroup = TabManager->AddLocalWorkspaceMenuCategory(FText::FromString(PjcConstants::ModulePjcName.ToString()));
 
@@ -59,17 +52,10 @@ void SPjcTabMain::Construct(const FArguments& InArgs, const TSharedRef<SDockTab>
 	FMenuBarBuilder MenuBarBuilder = FMenuBarBuilder(TSharedPtr<FUICommandList>());
 
 	MenuBarBuilder.AddPullDownMenu(
-		FText::FromString(TEXT("Settings")),
-		FText::GetEmpty(),
-		FNewMenuDelegate::CreateRaw(this, &SPjcTabMain::CreateMenuBarSettings, TabManager),
-		"Window"
-	);
-
-	MenuBarBuilder.AddPullDownMenu(
 		FText::FromString(TEXT("Tabs")),
 		FText::GetEmpty(),
 		FNewMenuDelegate::CreateRaw(this, &SPjcTabMain::CreateMenuBarTabs, TabManager),
-		"Settings"
+		"Window"
 	);
 
 	ChildSlot
@@ -127,17 +113,17 @@ SPjcTabMain::~SPjcTabMain()
 
 int32 SPjcTabMain::GetWidgetIndex() const
 {
-	return FPjcLibEditor::EditorInPlayMode() || FPjcLibEditor::AssetRegistryIsWorking() ? PjcConstants::WidgetIndexWorking : PjcConstants::WidgetIndexIdle;
+	return UPjcHelperSubsystem::EditorIsInPlayMode() || UPjcHelperSubsystem::GetModuleAssetRegistry().Get().IsLoadingAssets() ? PjcConstants::WidgetIndexWorking : PjcConstants::WidgetIndexIdle;
 }
 
 FText SPjcTabMain::GetWidgetWarningText() const
 {
-	if (FPjcLibEditor::EditorInPlayMode())
+	if (UPjcHelperSubsystem::EditorIsInPlayMode())
 	{
 		return FText::FromString(TEXT("Please exit the editor's play mode before performing any operations in the plugin."));
 	}
 
-	if (FPjcLibEditor::AssetRegistryIsWorking())
+	if (UPjcHelperSubsystem::GetModuleAssetRegistry().Get().IsLoadingAssets())
 	{
 		return FText::FromString(TEXT("Please wait until the Asset Registry has discovered all assets in the project."));
 	}
@@ -167,29 +153,6 @@ TSharedRef<SDockTab> SPjcTabMain::OnTabAssetsInspectionSpawn(const FSpawnTabArgs
 		[
 			SNew(SPjcTabAssetsInspection)
 		];
-}
-
-void SPjcTabMain::CreateMenuBarSettings(FMenuBuilder& MenuBuilder, const TSharedPtr<FTabManager> TabManagerPtr)
-{
-	Cmds = MakeShareable(new FUICommandList);
-
-	Cmds->MapAction(
-		FPjcCmds::Get().AutoCleanEmptyFolders,
-		FExecuteAction::CreateLambda([&]()
-		{
-			SubsystemPtr->ToggleAutoCleanFoldersEmpty();
-		}),
-		FCanExecuteAction::CreateLambda([&]()
-		{
-			return SubsystemPtr != nullptr;
-		}),
-		FGetActionCheckState::CreateLambda([&]()
-		{
-			return SubsystemPtr->CanAutoCleanFoldersEmpty() ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
-		})
-	);
-
-	MenuBuilder.AddMenuEntry(FPjcCmds::Get().AutoCleanEmptyFolders);
 }
 
 TSharedRef<SDockTab> SPjcTabMain::OnTabFilesExternalSpawn(const FSpawnTabArgs& Args) const

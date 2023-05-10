@@ -10,34 +10,34 @@
 #include "Misc/ScopedSlowTask.h"
 // #include "Misc/ScopedSlowTask.h"
 
-void UpdateAssetCountByPathRecursive(TMap<FString, int32>& Map, const FString& AssetPath)
-{
-	FString CurrentPath = AssetPath;
-
-	// Iterate through all parent folders and update the asset count
-	while (!CurrentPath.IsEmpty())
-	{
-		if (Map.Contains(CurrentPath))
-		{
-			Map[CurrentPath]++;
-		}
-		else
-		{
-			Map.Add(CurrentPath, 1);
-		}
-
-		// Remove the last folder in the path
-		int32 LastSlashIndex;
-		if (CurrentPath.FindLastChar('/', LastSlashIndex))
-		{
-			CurrentPath.LeftInline(LastSlashIndex, false);
-		}
-		else
-		{
-			CurrentPath.Empty();
-		}
-	}
-}
+// void UpdateAssetCountByPathRecursive(TMap<FString, int32>& Map, const FString& AssetPath)
+// {
+// 	FString CurrentPath = AssetPath;
+//
+// 	// Iterate through all parent folders and update the asset count
+// 	while (!CurrentPath.IsEmpty())
+// 	{
+// 		if (Map.Contains(CurrentPath))
+// 		{
+// 			Map[CurrentPath]++;
+// 		}
+// 		else
+// 		{
+// 			Map.Add(CurrentPath, 1);
+// 		}
+//
+// 		// Remove the last folder in the path
+// 		int32 LastSlashIndex;
+// 		if (CurrentPath.FindLastChar('/', LastSlashIndex))
+// 		{
+// 			CurrentPath.LeftInline(LastSlashIndex, false);
+// 		}
+// 		else
+// 		{
+// 			CurrentPath.Empty();
+// 		}
+// 	}
+// }
 
 void UPjcSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {

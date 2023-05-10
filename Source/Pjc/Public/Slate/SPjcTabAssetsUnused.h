@@ -6,7 +6,9 @@
 // #include "PjcTypes.h"
 #include "Widgets/SCompoundWidget.h"
 
-class UPjcSubsystem;
+class SPjcStatsBasic;
+struct FPjcStatItem;
+class UPjcScannerSubsystem;
 
 class SPjcTabAssetsUnused final : public SCompoundWidget
 {
@@ -16,10 +18,13 @@ public:
 
 	void Construct(const FArguments& InArgs);
 	virtual ~SPjcTabAssetsUnused() override;
+
 private:
+	void OnProjectScanSuccess();
+	void OnProjectScanFail(const FString& InScanErrMsg);
+	void StatItemsUpdate();
+
 	TSharedRef<SWidget> CreateToolbar() const;
-	// TSharedRef<SWidget> GetTreeOptionsBtnContent();
-	// TSharedPtr<SWidget> GetTreeContextMenu() const;
 	TSharedPtr<SWidget> GetContentBrowserContextMenu(const TArray<FAssetData>& Assets) const;
 	// TSharedRef<SHeaderRow> GetTreeHeaderRow() const;
 	// TSharedRef<ITableRow> OnTreeGenerateRow(TSharedPtr<FPjcTreeItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const;
@@ -40,12 +45,8 @@ private:
 	// void OnTreeSearchTextCommitted(const FText& InText, ETextCommit::Type Type);
 	// bool TreeItemContainsSearchText(const TSharedPtr<FPjcTreeItem>& Item) const;
 
-	// FText SearchText;
 	TSharedPtr<FUICommandList> Cmds;
-	// UPjcSubsystem* SubsystemPtr = nullptr;
-	// TSharedPtr<FPjcTreeItem> TreeRootItem;
-	// TSharedPtr<SComboButton> TreeOptionBtn;
-	// TArray<TSharedPtr<FPjcTreeItem>> TreeItems;
-	// TSet<TSharedPtr<FPjcTreeItem>> TreeItemsExpanded;
-	// TSharedPtr<STreeView<TSharedPtr<FPjcTreeItem>>> TreeView;
+	TSharedPtr<SPjcStatsBasic> StatsViewPtr;
+	TArray<TSharedPtr<FPjcStatItem>> StatItems;
+	UPjcScannerSubsystem* ScannerSubsystemPtr = nullptr;
 };

@@ -6,13 +6,14 @@
 #include "EditorSubsystem.h"
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "AssetToolsModule.h"
+#include "Widgets/Notifications/SNotificationList.h"
 #include "PjcSubsystemHelper.generated.h"
 
 struct FPjcFileSearchFilter;
 struct FPjcAssetSearchFilter;
 struct FPjcFileInfo;
 
-UCLASS(DisplayName="ProjectCleanerHelperSubsystem", meta=(Tooltip="Class containing various helper functions", ShortToolTip="My Short Tooltip"))
+UCLASS()
 class UPjcHelperSubsystem : public UEngineSubsystem
 {
 	GENERATED_BODY()
@@ -24,6 +25,16 @@ public:
 	static void GetClassNamesPrimary(TSet<FName>& OutClassNames);
 	static void GetClassNamesEditor(TSet<FName>& OutClassNames);
 	static void GetAssetsDependencies(TSet<FAssetData>& Assets);
+	static void ShowNotification(const FString& Msg, const SNotificationItem::ECompletionState State, const float Duration);
+	static void ShowNotificationWithOutputLog(const FString& Msg, const SNotificationItem::ECompletionState State, const float Duration);
+	static void ShaderCompilationEnable();
+	static void ShaderCompilationDisable();
+	static void OpenPathInFileExplorer(const FString& InPath);
+	static void OpenAssetEditor(const FAssetData& InAssetData);
+	static void OpenSizeMapViewer(const TArray<FAssetData>& InAssetDatas);
+	static void OpenReferenceViewer(const TArray<FAssetData>& InAssetDatas);
+	static void OpenAssetAuditViewer(const TArray<FAssetData>& InAssetDatas);
+	static void TryOpenFile(const FString& InPath);
 	static FString PathNormalize(const FString& InPath);
 	static FString PathConvertToAbsolute(const FString& InPath);
 	static FString PathConvertToRelative(const FString& InPath);
@@ -34,8 +45,14 @@ public:
 	static bool AssetIsBlueprint(const FAssetData& InAssetData);
 	static bool AssetIsExtReferenced(const FAssetData& InAssetData);
 	static bool AssetIsCircular(const FAssetData& InAssetData);
+	static bool PathIsEmpty(const FString& InPath);
+	static bool PathIsExcluded(const FString& InPath);
+	static bool PathIsEngineGenerated(const FString& InPath);
 
 	static FName GetAssetExactClassName(const FAssetData& InAssetData);
+
+	static int64 GetAssetSize(const FAssetData& InAssetData);
+	static int64 GetAssetsTotalSize(const TSet<FAssetData>& InAssets);
 
 	static FAssetRegistryModule& GetModuleAssetRegistry();
 	static FAssetToolsModule& GetModuleAssetTools();
