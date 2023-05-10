@@ -25,7 +25,7 @@ void SPjcTreeView::Construct(const FArguments& InArgs)
 			ScannerSubsystemPtr->OnProjectAssetsScanSuccess().AddRaw(this, &SPjcTreeView::OnProjectAssetsScanSuccess);
 		}
 	}
-	
+
 	Cmds = MakeShareable(new FUICommandList);
 	Cmds->MapAction(
 		FPjcCmds::Get().PathsDelete,
@@ -51,13 +51,14 @@ void SPjcTreeView::Construct(const FArguments& InArgs)
 			}
 		})
 	);
-	
+
 	SAssignNew(TreeView, STreeView<TSharedPtr<FPjcTreeItem>>)
 	.TreeItemsSource(&TreeItems)
 	.SelectionMode(ESelectionMode::Multi)
 	.OnGenerateRow(this, &SPjcTreeView::OnTreeGenerateRow)
 	.OnGetChildren(this, &SPjcTreeView::OnTreeGetChildren)
 	.OnContextMenuOpening_Raw(this, &SPjcTreeView::GetTreeContextMenu)
+	.OnSelectionChanged_Raw(this, &SPjcTreeView::OnTreeSelectionChanged)
 	// .OnExpansionChanged_Raw(this, &SPjcTreeView::OnTreeExpansionChanged)
 	.HeaderRow(GetTreeHeaderRow());
 
@@ -161,6 +162,11 @@ void SPjcTreeView::Construct(const FArguments& InArgs)
 			]
 		]
 	];
+}
+
+FPjcDelegateTreeViewSelectionChanged& SPjcTreeView::OnTreeViewSelectionChanged()
+{
+	return DelegateTreeViewSelectionChanged;
 }
 
 SPjcTreeView::~SPjcTreeView()
@@ -493,6 +499,28 @@ void SPjcTreeView::OnTreeSort(EColumnSortPriority::Type SortPriority, const FNam
 	}
 
 	TreeView->RebuildList();
+}
+
+void SPjcTreeView::OnTreeSelectionChanged(TSharedPtr<FPjcTreeItem> Selection, ESelectInfo::Type SelectInfo)
+{
+	if (!TreeView.IsValid()) return;
+
+	const auto ItemsSelected = TreeView->GetSelectedItems();
+
+	TSet<FString> SelectedPaths;
+	SelectedPaths.Reserve(ItemsSelected.Num());
+
+	for (const auto& Item : ItemsSelected)
+	{
+		if (!Item.IsValid()) continue;
+
+		SelectedPaths.Emplace(Item->FolderPath);
+	}
+
+	if (DelegateTreeViewSelectionChanged.IsBound())
+	{
+		DelegateTreeViewSelectionChanged.Execute(SelectedPaths);
+	}
 }
 
 void SPjcTreeView::CategorizeAssetsPerPath()

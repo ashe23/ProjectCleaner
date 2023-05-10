@@ -10,6 +10,7 @@
 #include "ContentBrowserModule.h"
 #include "IContentBrowserSingleton.h"
 #include "ObjectTools.h"
+#include "Pjc.h"
 #include "PjcStyles.h"
 #include "Settings/ContentBrowserSettings.h"
 #include "Subsystems/PjcSubsystemHelper.h"
@@ -112,6 +113,15 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 	AssetPickerConfig.bAddFilterUI = true;
 	AssetPickerConfig.OnGetAssetContextMenu.BindRaw(this, &SPjcTabAssetsUnused::GetContentBrowserContextMenu);
 
+	SAssignNew(TreeViewPtr, SPjcTreeView).HeaderPadding(FMargin{5.0f});
+	if (TreeViewPtr.IsValid())
+	{
+		TreeViewPtr->OnTreeViewSelectionChanged().BindLambda([&](const TSet<FString>& InSelectedPaths)
+		{
+			// todo:ashe23 change content browser filter here
+			
+		});
+	}
 	StatItemsUpdate();
 
 	ChildSlot
@@ -161,7 +171,7 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 			]
 			+ SSplitter::Slot().Value(0.35f)
 			[
-				SAssignNew(TreeViewPtr, SPjcTreeView).HeaderPadding(FMargin{5.0f})
+				TreeViewPtr.ToSharedRef()
 			]
 			+ SSplitter::Slot().Value(0.45f)
 			[
@@ -181,6 +191,11 @@ SPjcTabAssetsUnused::~SPjcTabAssetsUnused()
 	{
 		ScannerSubsystemPtr->OnProjectAssetsScanSuccess().RemoveAll(this);
 		ScannerSubsystemPtr->OnProjectAssetsScanFail().RemoveAll(this);
+	}
+
+	if (TreeViewPtr)
+	{
+		TreeViewPtr->OnTreeViewSelectionChanged().Unbind();
 	}
 }
 

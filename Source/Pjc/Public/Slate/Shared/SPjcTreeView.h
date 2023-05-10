@@ -6,6 +6,8 @@
 #include "PjcTypes.h"
 #include "Widgets/SCompoundWidget.h"
 
+DECLARE_DELEGATE_OneParam(FPjcDelegateTreeViewSelectionChanged, const TSet<FString>& SelectedPaths)
+
 class UPjcScannerSubsystem;
 
 class SPjcTreeView final : public SCompoundWidget
@@ -16,6 +18,7 @@ public:
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
+	FPjcDelegateTreeViewSelectionChanged& OnTreeViewSelectionChanged();
 	virtual ~SPjcTreeView() override;
 
 protected:
@@ -28,6 +31,7 @@ protected:
 	void OnTreeSearchTextChanged(const FText& InText);
 	void OnTreeSearchTextCommitted(const FText& InText, ETextCommit::Type Type);
 	void OnTreeSort(EColumnSortPriority::Type SortPriority, const FName& ColumnName, EColumnSortMode::Type InSortMode);
+	void OnTreeSelectionChanged(TSharedPtr<FPjcTreeItem> Selection, ESelectInfo::Type SelectInfo);
 	void CategorizeAssetsPerPath();
 	void TreeItemsUpdateData();
 	void TreeItemsUpdateView();
@@ -61,4 +65,6 @@ private:
 	EColumnSortMode::Type ColumnAssetsUnusedSortMode = EColumnSortMode::None;
 	EColumnSortMode::Type ColumnUnusedPercentSortMode = EColumnSortMode::None;
 	EColumnSortMode::Type ColumnUnusedSizeSortMode = EColumnSortMode::None;
+
+	FPjcDelegateTreeViewSelectionChanged DelegateTreeViewSelectionChanged;
 };
