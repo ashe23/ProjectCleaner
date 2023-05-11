@@ -14,9 +14,6 @@ public:
 	TSharedPtr<FUICommandInfo> TabMain;
 
 	// Settings
-	TSharedPtr<FUICommandInfo> AutoCleanEmptyFolders;
-
-	
 	TSharedPtr<FUICommandInfo> TabAssetsUnusedBtnScan;
 	TSharedPtr<FUICommandInfo> TabAssetsUnusedBtnClean;
 	TSharedPtr<FUICommandInfo> PathsExclude;

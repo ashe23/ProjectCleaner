@@ -1,9 +1,9 @@
 ﻿// Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "Slate/SPjcTabMain.h"
-#include "Slate/SPjcTabAssetsInspection.h"
-#include "Slate/SPjcTabAssetsUnused.h"
-#include "Slate/SPjcTabFilesExternal.h"
+// #include "Slate/SPjcTabAssetsInspection.h"
+// #include "Slate/SPjcTabAssetsUnused.h"
+// #include "Slate/SPjcTabFilesExternal.h"
 #include "PjcConstants.h"
 #include "PjcStyles.h"
 #include "Subsystems/PjcSubsystemHelper.h"
@@ -113,20 +113,21 @@ SPjcTabMain::~SPjcTabMain()
 
 int32 SPjcTabMain::GetWidgetIndex() const
 {
-	return UPjcHelperSubsystem::EditorIsInPlayMode() || UPjcHelperSubsystem::GetModuleAssetRegistry().Get().IsLoadingAssets() ? PjcConstants::WidgetIndexWorking : PjcConstants::WidgetIndexIdle;
+	return 0;
+	// return UPjcHelperSubsystem::EditorIsInPlayMode() || UPjcHelperSubsystem::GetModuleAssetRegistry().Get().IsLoadingAssets() ? PjcConstants::WidgetIndexWorking : PjcConstants::WidgetIndexIdle;
 }
 
 FText SPjcTabMain::GetWidgetWarningText() const
 {
-	if (UPjcHelperSubsystem::EditorIsInPlayMode())
-	{
-		return FText::FromString(TEXT("Please exit the editor's play mode before performing any operations in the plugin."));
-	}
-
-	if (UPjcHelperSubsystem::GetModuleAssetRegistry().Get().IsLoadingAssets())
-	{
-		return FText::FromString(TEXT("Please wait until the Asset Registry has discovered all assets in the project."));
-	}
+	// if (UPjcHelperSubsystem::EditorIsInPlayMode())
+	// {
+	// 	return FText::FromString(TEXT("Please exit the editor's play mode before performing any operations in the plugin."));
+	// }
+	//
+	// if (UPjcHelperSubsystem::GetModuleAssetRegistry().Get().IsLoadingAssets())
+	// {
+	// 	return FText::FromString(TEXT("Please wait until the Asset Registry has discovered all assets in the project."));
+	// }
 
 	return FText::FromString(TEXT(""));
 }
@@ -139,7 +140,8 @@ TSharedRef<SDockTab> SPjcTabMain::OnTabAssetsUnusedSpawn(const FSpawnTabArgs& Ar
 		.Label(FText::FromString(TEXT("Assets Unused")))
 		.Icon(FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.PieChart16"))
 		[
-			SNew(SPjcTabAssetsUnused)
+			SNew(STextBlock)
+			// SNew(SPjcTabAssetsUnused)
 		];
 }
 
@@ -151,7 +153,8 @@ TSharedRef<SDockTab> SPjcTabMain::OnTabAssetsInspectionSpawn(const FSpawnTabArgs
 		.Label(FText::FromString(TEXT("Assets Inspection")))
 		.Icon(FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.Stat16"))
 		[
-			SNew(SPjcTabAssetsInspection)
+			SNew(STextBlock)
+			// SNew(SPjcTabAssetsInspection)
 		];
 }
 
@@ -163,7 +166,8 @@ TSharedRef<SDockTab> SPjcTabMain::OnTabFilesExternalSpawn(const FSpawnTabArgs& A
 		.Label(FText::FromString(TEXT("Files External")))
 		.Icon(FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.File16"))
 		[
-			SNew(SPjcTabFilesExternal)
+			SNew(STextBlock)
+			// SNew(SPjcTabFilesExternal)
 		];
 }
 
