@@ -20,9 +20,22 @@ public:
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	virtual void Deinitialize() override;
 
+	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem")
+	void ScanProjectAssets();
+
+	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem")
+	void GetFilesExternal(TSet<FString>& FilesExternal);
+
+	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem")
+	void GetFilesCorrupted(TSet<FString>& FilesCorrupted);
+
+	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem")
+	void GetFoldersEmpty(TSet<FString>& FoldersEmpty);
+
 protected:
 	static void GetClassNamesPrimary(TSet<FName>& ClassNames);
 	static void GetClassNamesEditor(TSet<FName>& ClassNames);
+	static void GetClassNamesExcluded(TSet<FName>& ClassNames);
 	static void GetSourceAndConfigFiles(TSet<FString>& Files);
 	static void GetAssetsDependencies(TSet<FAssetData>& Assets);
 	static void ShowNotification(const FString& Msg, const SNotificationItem::ECompletionState State, const float Duration);
@@ -61,11 +74,8 @@ protected:
 
 private:
 	void FindAssetsIndirect();
-	void FindAssetsExcluded();
+	void FindAssetsExcludedByPaths();
 
-	TSet<FString> FilesExternal;
-	TSet<FString> FilesCorrupted;
-	TSet<FString> FoldersEmpty;
 	TMap<FAssetData, TArray<FPjcFileInfo>> AssetsIndirectInfo;
 	TMap<EPjcAssetCategory, TSet<FAssetData>> AssetsCategoryMapping;
 };
