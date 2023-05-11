@@ -20,7 +20,16 @@
 void UPjcSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
+}
 
+void UPjcSubsystem::Deinitialize()
+{
+	Super::Deinitialize();
+}
+
+void UPjcSubsystem::ScanProjectAssets(TMap<EPjcAssetCategory, TSet<FAssetData>>& AssetsCategoryMapping) const
+{
+	AssetsCategoryMapping.Empty();
 	AssetsCategoryMapping.Add(EPjcAssetCategory::None);
 	AssetsCategoryMapping.Add(EPjcAssetCategory::Any);
 	AssetsCategoryMapping.Add(EPjcAssetCategory::Used);
@@ -31,18 +40,7 @@ void UPjcSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	AssetsCategoryMapping.Add(EPjcAssetCategory::Editor);
 	AssetsCategoryMapping.Add(EPjcAssetCategory::Excluded);
 	AssetsCategoryMapping.Add(EPjcAssetCategory::ExtReferenced);
-}
 
-void UPjcSubsystem::Deinitialize()
-{
-	Super::Deinitialize();
-	
-	AssetsCategoryMapping.Empty();
-	AssetsIndirectInfo.Empty();
-}
-
-void UPjcSubsystem::ScanProjectAssets()
-{
 	if (GetModuleAssetRegistry().Get().IsLoadingAssets()) return;
 	if (GEditor && !GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->CloseAllAssetEditors()) return;
 	if (!FEditorFileUtils::SaveDirtyPackages(true, true, true, false, false, false)) return;
@@ -71,6 +69,7 @@ void UPjcSubsystem::ScanProjectAssets()
 	TSet<FName> ClassNamesEditor;
 	TSet<FName> ClassNamesExcluded;
 	TArray<FAssetData> AssetsAll;
+	TMap<FAssetData, TArray<FPjcFileInfo>> AssetsIndirectInfo;
 
 	GetClassNamesPrimary(ClassNamesPrimary);
 	GetClassNamesEditor(ClassNamesEditor);
@@ -78,8 +77,8 @@ void UPjcSubsystem::ScanProjectAssets()
 	GetModuleAssetRegistry().Get().GetAssetsByPath(PjcConstants::PathRoot, AssetsAll, true);
 
 	SlowTaskMain.EnterProgressFrame(1.0f);
-	FindAssetsIndirect();
-	FindAssetsExcludedByPaths();
+	FindAssetsIndirect(AssetsIndirectInfo);
+	FindAssetsExcludedByPaths(AssetsCategoryMapping);
 
 	SlowTaskMain.EnterProgressFrame(1.0f);
 
@@ -137,8 +136,11 @@ void UPjcSubsystem::ScanProjectAssets()
 
 	// loading all used assets dependencies recursive
 	SlowTaskMain.EnterProgressFrame(1.0f);
-	AssetsCategoryMapping[EPjcAssetCategory::Used].Append(AssetsCategoryMapping[EPjcAssetCategory::Indirect]);
+	TArray<FAssetData> AssetsIndirect;
+	AssetsIndirectInfo.GetKeys(AssetsIndirect);
+	AssetsCategoryMapping[EPjcAssetCategory::Indirect].Append(AssetsIndirect);
 	AssetsCategoryMapping[EPjcAssetCategory::Used].Append(AssetsCategoryMapping[EPjcAssetCategory::Excluded]);
+	AssetsCategoryMapping[EPjcAssetCategory::Used].Append(AssetsCategoryMapping[EPjcAssetCategory::Indirect]);
 	GetAssetsDependencies(AssetsCategoryMapping[EPjcAssetCategory::Used]);
 
 	// filtering unused assets
@@ -147,6 +149,29 @@ void UPjcSubsystem::ScanProjectAssets()
 
 	const double ScanTime = FPlatformTime::Seconds() - ScanStartTime;
 	UE_LOG(LogProjectCleaner, Display, TEXT("Project assets scanned in %.2f seconds."), ScanTime);
+}
+
+void UPjcSubsystem::GetAssetsByCategory(const EPjcAssetCategory AssetCategory, TSet<FAssetData>& Assets)
+{
+	TMap<EPjcAssetCategory, TSet<FAssetData>> AssetsCategoryMapping;
+
+	ScanProjectAssets(AssetsCategoryMapping);
+
+	Assets.Reset();
+	Assets.Append(AssetsCategoryMapping[AssetCategory]);
+}
+
+void UPjcSubsystem::GetAssetIndirectInfo(const FAssetData& Asset, TArray<FPjcFileInfo>& Infos)
+{
+	Infos.Reset();
+
+	TMap<FAssetData, TArray<FPjcFileInfo>> AssetsIndirectInfo;
+	FindAssetsIndirect(AssetsIndirectInfo);
+
+	if (AssetsIndirectInfo.Contains(Asset))
+	{
+		Infos = *AssetsIndirectInfo.Find(Asset);
+	}
 }
 
 void UPjcSubsystem::GetFilesExternal(TSet<FString>& FilesExternal)
@@ -616,7 +641,7 @@ void UPjcSubsystem::GetFoldersInPath(const FString& InSearchPath, const bool bSe
 	}
 }
 
-void UPjcSubsystem::FindAssetsIndirect()
+void UPjcSubsystem::FindAssetsIndirect(TMap<FAssetData, TArray<FPjcFileInfo>>& AssetsIndirectInfo)
 {
 	TSet<FString> ScanFiles;
 	GetSourceAndConfigFiles(ScanFiles);
@@ -663,15 +688,9 @@ void UPjcSubsystem::FindAssetsIndirect()
 			}
 		}
 	}
-
-	TArray<FAssetData> AssetsIndirect;
-	AssetsIndirectInfo.GetKeys(AssetsIndirect);
-
-	AssetsCategoryMapping[EPjcAssetCategory::Indirect].Reset();
-	AssetsCategoryMapping[EPjcAssetCategory::Indirect].Append(AssetsIndirect);
 }
 
-void UPjcSubsystem::FindAssetsExcludedByPaths()
+void UPjcSubsystem::FindAssetsExcludedByPaths(TMap<EPjcAssetCategory, TSet<FAssetData>>& AssetsCategoryMapping)
 {
 	AssetsCategoryMapping[EPjcAssetCategory::Excluded].Reset();
 

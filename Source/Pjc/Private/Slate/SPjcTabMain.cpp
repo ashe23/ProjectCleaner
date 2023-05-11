@@ -5,6 +5,7 @@
 // #include "Slate/SPjcTabAssetsUnused.h"
 // #include "Slate/SPjcTabFilesExternal.h"
 #include "PjcConstants.h"
+#include "PjcSubsystem.h"
 #include "PjcStyles.h"
 #include "Subsystems/PjcSubsystemHelper.h"
 // Engine Headers
@@ -113,21 +114,20 @@ SPjcTabMain::~SPjcTabMain()
 
 int32 SPjcTabMain::GetWidgetIndex() const
 {
-	return 0;
-	// return UPjcHelperSubsystem::EditorIsInPlayMode() || UPjcHelperSubsystem::GetModuleAssetRegistry().Get().IsLoadingAssets() ? PjcConstants::WidgetIndexWorking : PjcConstants::WidgetIndexIdle;
+	return UPjcSubsystem::EditorIsInPlayMode() || UPjcSubsystem::GetModuleAssetRegistry().Get().IsLoadingAssets() ? PjcConstants::WidgetIndexWorking : PjcConstants::WidgetIndexIdle;
 }
 
 FText SPjcTabMain::GetWidgetWarningText() const
 {
-	// if (UPjcHelperSubsystem::EditorIsInPlayMode())
-	// {
-	// 	return FText::FromString(TEXT("Please exit the editor's play mode before performing any operations in the plugin."));
-	// }
-	//
-	// if (UPjcHelperSubsystem::GetModuleAssetRegistry().Get().IsLoadingAssets())
-	// {
-	// 	return FText::FromString(TEXT("Please wait until the Asset Registry has discovered all assets in the project."));
-	// }
+	if (UPjcSubsystem::EditorIsInPlayMode())
+	{
+		return FText::FromString(TEXT("Please exit the editor's play mode before performing any operations in the plugin."));
+	}
+	
+	if (UPjcSubsystem::GetModuleAssetRegistry().Get().IsLoadingAssets())
+	{
+		return FText::FromString(TEXT("Please wait until the Asset Registry has discovered all assets in the project."));
+	}
 
 	return FText::FromString(TEXT(""));
 }

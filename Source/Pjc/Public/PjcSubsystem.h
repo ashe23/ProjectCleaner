@@ -20,8 +20,13 @@ public:
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	virtual void Deinitialize() override;
 
+	void ScanProjectAssets(TMap<EPjcAssetCategory, TSet<FAssetData>>& AssetsCategoryMapping) const;
+
 	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem")
-	void ScanProjectAssets();
+	void GetAssetsByCategory(const EPjcAssetCategory AssetCategory, TSet<FAssetData>& Assets);
+
+	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem")
+	void GetAssetIndirectInfo(const FAssetData& Asset, TArray<FPjcFileInfo>& Infos);
 
 	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem")
 	void GetFilesExternal(TSet<FString>& FilesExternal);
@@ -32,7 +37,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem")
 	void GetFoldersEmpty(TSet<FString>& FoldersEmpty);
 
-protected:
+
 	static void GetClassNamesPrimary(TSet<FName>& ClassNames);
 	static void GetClassNamesEditor(TSet<FName>& ClassNames);
 	static void GetClassNamesExcluded(TSet<FName>& ClassNames);
@@ -73,9 +78,9 @@ protected:
 	static FPropertyEditorModule& GetModulePropertyEditor();
 
 private:
-	void FindAssetsIndirect();
-	void FindAssetsExcludedByPaths();
+	static void FindAssetsIndirect(TMap<FAssetData, TArray<FPjcFileInfo>>& AssetsIndirectInfo);
+	static void FindAssetsExcludedByPaths(TMap<EPjcAssetCategory, TSet<FAssetData>>& AssetsCategoryMapping);
 
-	TMap<FAssetData, TArray<FPjcFileInfo>> AssetsIndirectInfo;
-	TMap<EPjcAssetCategory, TSet<FAssetData>> AssetsCategoryMapping;
+	// TMap<FAssetData, TArray<FPjcFileInfo>> AssetsIndirectInfo;
+	// TMap<EPjcAssetCategory, TSet<FAssetData>> AssetsCategoryMapping;
 };
