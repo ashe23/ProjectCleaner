@@ -97,8 +97,7 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 			]
 			+ SSplitter::Slot().Value(0.35f)
 			[
-				SNew(STextBlock)
-				// TreeViewPtr.ToSharedRef()
+				SAssignNew(TreeViewPtr, SPjcTreeView)
 			]
 			+ SSplitter::Slot().Value(0.45f)
 			[
@@ -124,6 +123,11 @@ void SPjcTabAssetsUnused::OnScanProjectAssets()
 		{
 			StatAssetsPtr->StatsUpdateData(AssetsCategoryMapping);
 		}
+
+		if (TreeViewPtr.IsValid())
+		{
+			TreeViewPtr->TreeItemsUpdateData(AssetsCategoryMapping);
+		}
 	}
 	else
 	{
@@ -134,7 +138,7 @@ void SPjcTabAssetsUnused::OnScanProjectAssets()
 void SPjcTabAssetsUnused::OnCleanProject()
 {
 	ObjectTools::DeleteAssets(AssetsCategoryMapping[EPjcAssetCategory::Unused].Array(), true);
-	
+
 	// todo:ashe23 cleanup setting window here
 	// const TSharedRef<SWindow> Window = SNew(SWindow).Title(FText::FromString(TEXT("Some Title"))).ClientSize(FVector2D{600, 400});
 	// const TSharedRef<SWidget> Content =

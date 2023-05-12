@@ -6,6 +6,7 @@
 #include "Widgets/SCompoundWidget.h"
 
 enum class EPjcAssetCategory : uint8;
+class SPjcTreeView;
 class SPjcStatAssets;
 
 class SPjcTabAssetsUnused final : public SCompoundWidget
@@ -26,5 +27,6 @@ private:
 
 	TSharedPtr<FUICommandList> Cmds;
 	TSharedPtr<SPjcStatAssets> StatAssetsPtr;
+	TSharedPtr<SPjcTreeView> TreeViewPtr;
 	TMap<EPjcAssetCategory, TSet<FAssetData>> AssetsCategoryMapping;
 };

@@ -26,16 +26,16 @@ public:
 	void GetAssetsByCategory(const EPjcAssetCategory AssetCategory, TSet<FAssetData>& Assets);
 
 	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem")
-	void GetAssetIndirectInfo(const FAssetData& Asset, TArray<FPjcFileInfo>& Infos);
+	static void GetAssetIndirectInfo(const FAssetData& Asset, TArray<FPjcFileInfo>& Infos);
 
 	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem")
-	void GetFilesExternal(TSet<FString>& FilesExternal);
+	static void GetFilesExternal(TSet<FString>& FilesExternal);
 
 	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem")
-	void GetFilesCorrupted(TSet<FString>& FilesCorrupted);
+	static void GetFilesCorrupted(TSet<FString>& FilesCorrupted);
 
 	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem")
-	void GetFoldersEmpty(TSet<FString>& FoldersEmpty);
+	static void GetFoldersEmpty(TSet<FString>& FoldersEmpty);
 
 	static void GetClassNamesPrimary(TSet<FName>& ClassNames);
 	static void GetClassNamesEditor(TSet<FName>& ClassNames);
