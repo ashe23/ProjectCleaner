@@ -4,7 +4,7 @@
 #include "PjcCmds.h"
 #include "PjcStyles.h"
 #include "PjcConstants.h"
-#include "Slate/SPjcTabMain.h"
+#include "Slate/Tabs/SPjcTabMain.h"
 // Engine Headers
 #include "ToolMenus.h"
 #include "Widgets/Docking/SDockTab.h"

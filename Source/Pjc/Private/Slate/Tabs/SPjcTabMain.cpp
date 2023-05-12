@@ -1,13 +1,12 @@
 ﻿// Copyright Ashot Barkhudaryan. All Rights Reserved.
 
-#include "Slate/SPjcTabMain.h"
+#include "Slate/Tabs/SPjcTabMain.h"
 // #include "Slate/SPjcTabAssetsInspection.h"
 // #include "Slate/SPjcTabAssetsUnused.h"
 // #include "Slate/SPjcTabFilesExternal.h"
 #include "PjcConstants.h"
 #include "PjcSubsystem.h"
 #include "PjcStyles.h"
-#include "Subsystems/PjcSubsystemHelper.h"
 // Engine Headers
 #include "Widgets/Layout/SWidgetSwitcher.h"
 
@@ -25,8 +24,10 @@ void SPjcTabMain::Construct(const FArguments& InArgs, const TSharedRef<SDockTab>
 			(
 				FTabManager::NewStack()
 				->AddTab(PjcConstants::TabAssetsUnused, ETabState::OpenedTab)
-				->AddTab(PjcConstants::TabFilesExternal, ETabState::OpenedTab)
+				->AddTab(PjcConstants::TabAssetsIndirect, ETabState::OpenedTab)
+				->AddTab(PjcConstants::TabAssetsCorrupted, ETabState::OpenedTab)
 				->AddTab(PjcConstants::TabAssetsInspection, ETabState::OpenedTab)
+				->AddTab(PjcConstants::TabFilesExternal, ETabState::OpenedTab)
 				->SetForegroundTab(PjcConstants::TabAssetsUnused)
 				->SetSizeCoefficient(1.0f)
 			)
@@ -37,6 +38,18 @@ void SPjcTabMain::Construct(const FArguments& InArgs, const TSharedRef<SDockTab>
 	          .SetDisplayName(FText::FromString(TEXT("Assets Unused")))
 	          .SetIcon(FPjcStyles::GetIcon("ProjectCleaner.Icon.PieChart16"))
 	          .SetGroup(AppMenuGroup);
+
+	TabManager->RegisterTabSpawner(PjcConstants::TabAssetsIndirect, FOnSpawnTab::CreateRaw(this, &SPjcTabMain::OnTabAssetsIndirectSpawn))
+			  .SetTooltipText(FText::FromString(TEXT("Open Indirect Assets Tab")))
+			  .SetDisplayName(FText::FromString(TEXT("Assets Indirect")))
+			  .SetIcon(FPjcStyles::GetIcon("ProjectCleaner.Icon.PieChart16"))
+			  .SetGroup(AppMenuGroup);
+
+	TabManager->RegisterTabSpawner(PjcConstants::TabAssetsCorrupted, FOnSpawnTab::CreateRaw(this, &SPjcTabMain::OnTabAssetsCorruptedSpawn))
+			  .SetTooltipText(FText::FromString(TEXT("Open Corrupted Assets Tab")))
+			  .SetDisplayName(FText::FromString(TEXT("Assets Corrupted")))
+			  .SetIcon(FPjcStyles::GetIcon("ProjectCleaner.Icon.PieChart16"))
+			  .SetGroup(AppMenuGroup);
 
 	TabManager->RegisterTabSpawner(PjcConstants::TabAssetsInspection, FOnSpawnTab::CreateRaw(this, &SPjcTabMain::OnTabAssetsInspectionSpawn))
 	          .SetTooltipText(FText::FromString(TEXT("Open Assets Inspection Tab")))
@@ -108,8 +121,10 @@ void SPjcTabMain::Construct(const FArguments& InArgs, const TSharedRef<SDockTab>
 SPjcTabMain::~SPjcTabMain()
 {
 	FGlobalTabmanager::Get()->UnregisterTabSpawner(PjcConstants::TabAssetsUnused);
-	FGlobalTabmanager::Get()->UnregisterTabSpawner(PjcConstants::TabFilesExternal);
+	FGlobalTabmanager::Get()->UnregisterTabSpawner(PjcConstants::TabAssetsIndirect);
+	FGlobalTabmanager::Get()->UnregisterTabSpawner(PjcConstants::TabAssetsCorrupted);
 	FGlobalTabmanager::Get()->UnregisterTabSpawner(PjcConstants::TabAssetsInspection);
+	FGlobalTabmanager::Get()->UnregisterTabSpawner(PjcConstants::TabFilesExternal);
 }
 
 int32 SPjcTabMain::GetWidgetIndex() const
@@ -138,6 +153,32 @@ TSharedRef<SDockTab> SPjcTabMain::OnTabAssetsUnusedSpawn(const FSpawnTabArgs& Ar
 		SNew(SDockTab)
 		.TabRole(PanelTab)
 		.Label(FText::FromString(TEXT("Assets Unused")))
+		.Icon(FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.PieChart16"))
+		[
+			SNew(STextBlock)
+			// SNew(SPjcTabAssetsUnused)
+		];
+}
+
+TSharedRef<SDockTab> SPjcTabMain::OnTabAssetsIndirectSpawn(const FSpawnTabArgs& Args) const
+{
+	return
+		SNew(SDockTab)
+		.TabRole(PanelTab)
+		.Label(FText::FromString(TEXT("Assets Indirect")))
+		.Icon(FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.PieChart16"))
+		[
+			SNew(STextBlock)
+			// SNew(SPjcTabAssetsUnused)
+		];
+}
+
+TSharedRef<SDockTab> SPjcTabMain::OnTabAssetsCorruptedSpawn(const FSpawnTabArgs& Args) const
+{
+	return
+		SNew(SDockTab)
+		.TabRole(PanelTab)
+		.Label(FText::FromString(TEXT("Assets Corrupted")))
 		.Icon(FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.PieChart16"))
 		[
 			SNew(STextBlock)
