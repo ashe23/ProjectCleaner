@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Widgets/SCompoundWidget.h"
 
+class SPjcContentBrowser;
 enum class EPjcAssetCategory : uint8;
 class SPjcTreeView;
 class SPjcStatAssets;
@@ -28,5 +29,6 @@ private:
 	TSharedPtr<FUICommandList> Cmds;
 	TSharedPtr<SPjcStatAssets> StatAssetsPtr;
 	TSharedPtr<SPjcTreeView> TreeViewPtr;
+	TSharedPtr<SPjcContentBrowser> ContentBrowserPtr;
 	TMap<EPjcAssetCategory, TSet<FAssetData>> AssetsCategoryMapping;
 };
