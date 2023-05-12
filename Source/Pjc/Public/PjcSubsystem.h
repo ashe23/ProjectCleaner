@@ -20,7 +20,7 @@ public:
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	virtual void Deinitialize() override;
 
-	void ScanProjectAssets(TMap<EPjcAssetCategory, TSet<FAssetData>>& AssetsCategoryMapping) const;
+	static void ScanProjectAssets(TMap<EPjcAssetCategory, TSet<FAssetData>>& AssetsCategoryMapping, FString& ErrMsg);
 
 	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem")
 	void GetAssetsByCategory(const EPjcAssetCategory AssetCategory, TSet<FAssetData>& Assets);
@@ -36,7 +36,6 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem")
 	void GetFoldersEmpty(TSet<FString>& FoldersEmpty);
-
 
 	static void GetClassNamesPrimary(TSet<FName>& ClassNames);
 	static void GetClassNamesEditor(TSet<FName>& ClassNames);
@@ -57,6 +56,7 @@ public:
 	static void GetFilesInPath(const FString& InSearchPath, const bool bSearchRecursive, TSet<FString>& OutFiles);
 	static void GetFilesInPathByExt(const FString& InSearchPath, const bool bSearchRecursive, const bool bExtSearchInvert, const TSet<FString>& InExtensions, TSet<FString>& OutFiles);
 	static void GetFoldersInPath(const FString& InSearchPath, const bool bSearchRecursive, TSet<FString>& OutFolders);
+	static void AssetCategoryMappingInit(TMap<EPjcAssetCategory, TSet<FAssetData>>& AssetsCategoryMapping);
 	static bool AssetIsBlueprint(const FAssetData& InAsset);
 	static bool AssetIsExtReferenced(const FAssetData& InAsset);
 	static bool AssetIsCircular(const FAssetData& InAsset);
@@ -80,7 +80,4 @@ public:
 private:
 	static void FindAssetsIndirect(TMap<FAssetData, TArray<FPjcFileInfo>>& AssetsIndirectInfo);
 	static void FindAssetsExcludedByPaths(TMap<EPjcAssetCategory, TSet<FAssetData>>& AssetsCategoryMapping);
-
-	// TMap<FAssetData, TArray<FPjcFileInfo>> AssetsIndirectInfo;
-	// TMap<EPjcAssetCategory, TSet<FAssetData>> AssetsCategoryMapping;
 };

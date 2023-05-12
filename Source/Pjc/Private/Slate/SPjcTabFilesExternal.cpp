@@ -1,6 +1,6 @@
 ﻿// Copyright Ashot Barkhudaryan. All Rights Reserved.
 
-#include "Slate/Tabs/SPjcTabFilesExternal.h"
+#include "Slate/SPjcTabFilesExternal.h"
 
 void SPjcTabFilesExternal::Construct(const FArguments& InArgs)
 {

@@ -1,6 +1,6 @@
 ﻿// Copyright Ashot Barkhudaryan. All Rights Reserved.
 
-#include "Slate/Tabs/SPjcTabAssetsInspection.h"
+#include "Slate/SPjcTabAssetsInspection.h"
 
 void SPjcTabAssetsInspection::Construct(const FArguments& InArgs)
 {

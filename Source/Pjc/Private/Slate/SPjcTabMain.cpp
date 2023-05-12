@@ -1,9 +1,7 @@
 ﻿// Copyright Ashot Barkhudaryan. All Rights Reserved.
 
-#include "Slate/Tabs/SPjcTabMain.h"
-// #include "Slate/SPjcTabAssetsInspection.h"
-// #include "Slate/SPjcTabAssetsUnused.h"
-// #include "Slate/SPjcTabFilesExternal.h"
+#include "Slate/SPjcTabMain.h"
+#include "Slate/SPjcTabAssetsUnused.h"
 #include "PjcConstants.h"
 #include "PjcSubsystem.h"
 #include "PjcStyles.h"
@@ -155,8 +153,7 @@ TSharedRef<SDockTab> SPjcTabMain::OnTabAssetsUnusedSpawn(const FSpawnTabArgs& Ar
 		.Label(FText::FromString(TEXT("Assets Unused")))
 		.Icon(FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.PieChart16"))
 		[
-			SNew(STextBlock)
-			// SNew(SPjcTabAssetsUnused)
+			SNew(SPjcTabAssetsUnused)
 		];
 }
 

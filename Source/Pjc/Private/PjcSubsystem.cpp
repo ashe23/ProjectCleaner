@@ -27,27 +27,36 @@ void UPjcSubsystem::Deinitialize()
 	Super::Deinitialize();
 }
 
-void UPjcSubsystem::ScanProjectAssets(TMap<EPjcAssetCategory, TSet<FAssetData>>& AssetsCategoryMapping) const
+void UPjcSubsystem::ScanProjectAssets(TMap<EPjcAssetCategory, TSet<FAssetData>>& AssetsCategoryMapping, FString& ErrMsg)
 {
-	AssetsCategoryMapping.Empty();
-	AssetsCategoryMapping.Add(EPjcAssetCategory::None);
-	AssetsCategoryMapping.Add(EPjcAssetCategory::Any);
-	AssetsCategoryMapping.Add(EPjcAssetCategory::Used);
-	AssetsCategoryMapping.Add(EPjcAssetCategory::Unused);
-	AssetsCategoryMapping.Add(EPjcAssetCategory::Primary);
-	AssetsCategoryMapping.Add(EPjcAssetCategory::Indirect);
-	AssetsCategoryMapping.Add(EPjcAssetCategory::Circular);
-	AssetsCategoryMapping.Add(EPjcAssetCategory::Editor);
-	AssetsCategoryMapping.Add(EPjcAssetCategory::Excluded);
-	AssetsCategoryMapping.Add(EPjcAssetCategory::ExtReferenced);
+	ErrMsg.Reset();
+	AssetCategoryMappingInit(AssetsCategoryMapping);
 
-	if (GetModuleAssetRegistry().Get().IsLoadingAssets()) return;
-	if (GEditor && !GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->CloseAllAssetEditors()) return;
-	if (!FEditorFileUtils::SaveDirtyPackages(true, true, true, false, false, false)) return;
+	if (GetModuleAssetRegistry().Get().IsLoadingAssets())
+	{
+		ErrMsg = TEXT("Failed to scan project. AssetRegistry is still discovering assets. Please try again after it has finished.");
+		return;
+	}
+
+	if (GEditor && !GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->CloseAllAssetEditors())
+	{
+		ErrMsg = TEXT("Failed to scan project, because not all asset editors are closed.");
+		return;
+	}
 
 	FixupRedirectorsInProject();
 
-	if (ProjectContainsRedirectors()) return;
+	if (ProjectContainsRedirectors())
+	{
+		ErrMsg = TEXT("Failed to scan project, because not all redirectors are fixed.");
+		return;
+	}
+
+	if (!FEditorFileUtils::SaveDirtyPackages(true, true, true, false, false, false))
+	{
+		ErrMsg = TEXT("Failed to scan project, because not all assets have been saved.");
+		return;
+	}
 
 	const double ScanStartTime = FPlatformTime::Seconds();
 
@@ -155,7 +164,8 @@ void UPjcSubsystem::GetAssetsByCategory(const EPjcAssetCategory AssetCategory, T
 {
 	TMap<EPjcAssetCategory, TSet<FAssetData>> AssetsCategoryMapping;
 
-	ScanProjectAssets(AssetsCategoryMapping);
+	FString ErrMsg;
+	ScanProjectAssets(AssetsCategoryMapping, ErrMsg);
 
 	Assets.Reset();
 	Assets.Append(AssetsCategoryMapping[AssetCategory]);
@@ -639,6 +649,21 @@ void UPjcSubsystem::GetFoldersInPath(const FString& InSearchPath, const bool bSe
 	{
 		FPlatformFileManager::Get().GetPlatformFile().IterateDirectory(*InSearchPath, FindFoldersVisitor);
 	}
+}
+
+void UPjcSubsystem::AssetCategoryMappingInit(TMap<EPjcAssetCategory, TSet<FAssetData>>& AssetsCategoryMapping)
+{
+	AssetsCategoryMapping.Empty();
+	AssetsCategoryMapping.Add(EPjcAssetCategory::None);
+	AssetsCategoryMapping.Add(EPjcAssetCategory::Any);
+	AssetsCategoryMapping.Add(EPjcAssetCategory::Used);
+	AssetsCategoryMapping.Add(EPjcAssetCategory::Unused);
+	AssetsCategoryMapping.Add(EPjcAssetCategory::Primary);
+	AssetsCategoryMapping.Add(EPjcAssetCategory::Indirect);
+	AssetsCategoryMapping.Add(EPjcAssetCategory::Circular);
+	AssetsCategoryMapping.Add(EPjcAssetCategory::Editor);
+	AssetsCategoryMapping.Add(EPjcAssetCategory::Excluded);
+	AssetsCategoryMapping.Add(EPjcAssetCategory::ExtReferenced);
 }
 
 void UPjcSubsystem::FindAssetsIndirect(TMap<FAssetData, TArray<FPjcFileInfo>>& AssetsIndirectInfo)
