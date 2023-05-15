@@ -29,12 +29,12 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 	Cmds = MakeShareable(new FUICommandList);
 
 	Cmds->MapAction(
-		FPjcCmds::Get().TabAssetsUnusedBtnScan,
+		FPjcCmds::Get().ScanProject,
 		FExecuteAction::CreateRaw(this, &SPjcTabAssetsUnused::OnScanProjectAssets)
 	);
 
 	Cmds->MapAction(
-		FPjcCmds::Get().TabAssetsUnusedBtnClean,
+		FPjcCmds::Get().CleanProject,
 		FExecuteAction::CreateRaw(this, &SPjcTabAssetsUnused::OnCleanProject),
 		FCanExecuteAction::CreateRaw(this, &SPjcTabAssetsUnused::CanCleanProject)
 	);
@@ -174,6 +174,8 @@ void SPjcTabAssetsUnused::FilterUpdate()
 
 	if (SelectedPaths.Num() > 0)
 	{
+		Filter.bRecursivePaths = true;
+		
 		for (const auto& SelectedPath : SelectedPaths)
 		{
 			Filter.PackagePaths.Emplace(FName{*SelectedPath});
@@ -207,8 +209,8 @@ TSharedRef<SWidget> SPjcTabAssetsUnused::CreateToolbar() const
 	FToolBarBuilder ToolBarBuilder{Cmds, FMultiBoxCustomization::None};
 	ToolBarBuilder.BeginSection("PjcSectionTabAssetUnusedActions");
 	{
-		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().TabAssetsUnusedBtnScan);
-		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().TabAssetsUnusedBtnClean);
+		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().ScanProject);
+		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().CleanProject);
 	}
 	ToolBarBuilder.EndSection();
 

@@ -20,6 +20,28 @@ enum class EPjcAssetCategory : uint8
 	ExtReferenced UMETA(Tooltip="Assets that have external referencers outside Content folder.")
 };
 
+UENUM(BlueprintType)
+enum class EPjcThumbnailSize : uint8
+{
+	None UMETA(Hidden),
+	Tiny,
+	Small,
+	Medium,
+	Large
+};
+
+UCLASS()
+class UPjcContentBrowserSettings : public UObject
+{
+	GENERATED_BODY()
+public:
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="Settings")
+	bool bRealtime = false;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="Settings")
+	EPjcThumbnailSize ThumbnailSize = EPjcThumbnailSize::Medium;
+};
+
 UCLASS(Config = EditorPerProjectUserSettings)
 class UPjcAssetExcludeSettings : public UObject
 {

@@ -65,13 +65,13 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create()
 
 	// cmds icons big
 	Style->Set("ProjectCleaner.TabMain", new IMAGE_BRUSH(TEXT("IconBin40"), FVector2D{40.0f, 40.0f}));
-	Style->Set("ProjectCleaner.TabAssetsUnusedBtnScan", new IMAGE_BRUSH(TEXT("IconRefresh32"), FVector2D{32.0f, 32.0f}));
-	Style->Set("ProjectCleaner.TabAssetsUnusedBtnClean", new IMAGE_BRUSH(TEXT("IconBinRed32"), FVector2D{32.0f, 32.0f}));
+	Style->Set("ProjectCleaner.ScanProject", new IMAGE_BRUSH(TEXT("IconRefresh32"), FVector2D{32.0f, 32.0f}));
+	Style->Set("ProjectCleaner.CleanProject", new IMAGE_BRUSH(TEXT("IconBinRed32"), FVector2D{32.0f, 32.0f}));
 
 	// cmds icons small
 	Style->Set("ProjectCleaner.TabMain.Small", new IMAGE_BRUSH(TEXT("IconBin20"), FVector2D{20.0f, 20.0f}));
-	Style->Set("ProjectCleaner.TabAssetsUnusedBtnScan.Small", new IMAGE_BRUSH(TEXT("IconRefresh20"), FVector2D{20.0f, 20.0f}));
-	Style->Set("ProjectCleaner.TabAssetsUnusedBtnClean.Small", new IMAGE_BRUSH(TEXT("IconBinRed20"), FVector2D{20.0f, 20.0f}));
+	Style->Set("ProjectCleaner.ScanProject.Small", new IMAGE_BRUSH(TEXT("IconRefresh20"), FVector2D{20.0f, 20.0f}));
+	Style->Set("ProjectCleaner.CleanProject.Small", new IMAGE_BRUSH(TEXT("IconBinRed20"), FVector2D{20.0f, 20.0f}));
 
 	// icons
 	Style->Set("ProjectCleaner.Icon.Bin16", new IMAGE_BRUSH(TEXT("IconBin16"), FVector2D{16.0f, 16.0f}));

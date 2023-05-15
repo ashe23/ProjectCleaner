@@ -23,17 +23,17 @@ void FPjcCmds::RegisterCommands()
 	);
 
 	UI_COMMAND(
-		TabAssetsUnusedBtnScan,
+		ScanProject,
 		"Scan Project",
-		"Scan project for unused assets",
+		"Scan project for unused assets and empty folders",
 		EUserInterfaceActionType::Button,
 		FInputChord()
 	);
 
 	UI_COMMAND(
-		TabAssetsUnusedBtnClean,
+		CleanProject,
 		"Clean Project",
-		"Delete all unused assets in project",
+		"Clean project from unused assets and empty folders",
 		EUserInterfaceActionType::Button,
 		FInputChord()
 	);
@@ -90,6 +90,14 @@ void FPjcCmds::RegisterCommands()
 		AssetsIncludeByClass,
 		"Include By Class...",
 		"Include selected assets by class",
+		EUserInterfaceActionType::Button,
+		FInputChord()
+	);
+
+	UI_COMMAND(
+		AssetsIncludeAll,
+		"Include All...",
+		"Include all assets that were previously excluded.",
 		EUserInterfaceActionType::Button,
 		FInputChord()
 	);

@@ -12,10 +12,9 @@ public:
 
 	// Tabs
 	TSharedPtr<FUICommandInfo> TabMain;
-
-	// Settings
-	TSharedPtr<FUICommandInfo> TabAssetsUnusedBtnScan;
-	TSharedPtr<FUICommandInfo> TabAssetsUnusedBtnClean;
+	
+	TSharedPtr<FUICommandInfo> ScanProject;
+	TSharedPtr<FUICommandInfo> CleanProject;
 	TSharedPtr<FUICommandInfo> PathsExclude;
 	TSharedPtr<FUICommandInfo> PathsInclude;
 	TSharedPtr<FUICommandInfo> PathsDelete;
@@ -23,6 +22,7 @@ public:
 	TSharedPtr<FUICommandInfo> AssetsExcludeByClass;
 	TSharedPtr<FUICommandInfo> AssetsInclude;
 	TSharedPtr<FUICommandInfo> AssetsIncludeByClass;
+	TSharedPtr<FUICommandInfo> AssetsIncludeAll;
 	TSharedPtr<FUICommandInfo> AssetsDelete;
 	TSharedPtr<FUICommandInfo> OpenViewerSizeMap;
 	TSharedPtr<FUICommandInfo> OpenViewerReference;

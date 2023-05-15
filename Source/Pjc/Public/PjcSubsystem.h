@@ -22,8 +22,20 @@ public:
 
 	static void ScanProjectAssets(TMap<EPjcAssetCategory, TSet<FAssetData>>& AssetsCategoryMapping, FString& ErrMsg);
 
+	// void ExcludePaths();
+	// void IncludePaths();
+	// void ExcludeAssetsByPaths();
+	// void ExcludeAssetsByClasses();
+	// void ExcludeAssetsByObjectPaths();
+	// void IncludeAllAssets();
+	// void IncludeAssetsByPaths();
+	// void IncludeAssetsByClasses();
+	// void IncludeAssetsByObjectPaths();
+
+	static void CleanProject();
+
 	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem")
-	void GetAssetsByCategory(const EPjcAssetCategory AssetCategory, TSet<FAssetData>& Assets);
+	static void GetAssetsByCategory(const EPjcAssetCategory AssetCategory, TSet<FAssetData>& Assets);
 
 	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem")
 	static void GetAssetIndirectInfo(const FAssetData& Asset, TArray<FPjcFileInfo>& Infos);
@@ -68,6 +80,7 @@ public:
 	static int64 GetAssetSize(const FAssetData& InAsset);
 	static int64 GetAssetsTotalSize(const TSet<FAssetData>& InAssets);
 	static FName GetAssetExactClassName(const FAssetData& InAsset);
+	static UClass* GetAssetClassByName(const FName& InClassName);
 	static FString PathNormalize(const FString& InPath);
 	static FString PathConvertToAbsolute(const FString& InPath);
 	static FString PathConvertToRelative(const FString& InPath);
@@ -76,6 +89,9 @@ public:
 	static FAssetToolsModule& GetModuleAssetTools();
 	static FContentBrowserModule& GetModuleContentBrowser();
 	static FPropertyEditorModule& GetModulePropertyEditor();
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Config, Category="ProjectCleanerSubsystem")
+	bool bShowRealtimeThumbnails = false;
 
 private:
 	static void FindAssetsIndirect(TMap<FAssetData, TArray<FPjcFileInfo>>& AssetsIndirectInfo);

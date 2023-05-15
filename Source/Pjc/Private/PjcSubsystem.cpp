@@ -160,6 +160,24 @@ void UPjcSubsystem::ScanProjectAssets(TMap<EPjcAssetCategory, TSet<FAssetData>>&
 	UE_LOG(LogProjectCleaner, Display, TEXT("Project assets scanned in %.2f seconds."), ScanTime);
 }
 
+void UPjcSubsystem::CleanProject()
+{
+	// first of all we must scan project assets , to make sure we have all actual data
+
+	// starting query assets
+	//  - assets without referencers
+	//  - circular assets
+	//  - the rest of assets
+
+	// before deleting
+	// - load assets by bucket size, if any error while loading => abort inform user and log
+	// - try to delete bucket, if any error while deleting => abort inform user and log
+	// - load next bucket, until all assets deleted
+
+	// rescan project and update asset registry
+	// if empty folder cleanup option enabled => delete empty folders and update asset registry
+}
+
 void UPjcSubsystem::GetAssetsByCategory(const EPjcAssetCategory AssetCategory, TSet<FAssetData>& Assets)
 {
 	TMap<EPjcAssetCategory, TSet<FAssetData>> AssetsCategoryMapping;
@@ -922,6 +940,12 @@ FName UPjcSubsystem::GetAssetExactClassName(const FAssetData& InAsset)
 	}
 
 	return InAsset.AssetClass;
+}
+
+UClass* UPjcSubsystem::GetAssetClassByName(const FName& InClassName)
+{
+	UClass* FoundClass = FindObject<UClass>(ANY_PACKAGE, *InClassName.ToString());
+	return FoundClass;
 }
 
 FString UPjcSubsystem::PathNormalize(const FString& InPath)

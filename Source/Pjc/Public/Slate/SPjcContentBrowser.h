@@ -6,6 +6,7 @@
 #include "ContentBrowserDelegates.h"
 #include "Widgets/SCompoundWidget.h"
 
+class UPjcSubsystem;
 enum class EPjcAssetCategory : uint8;
 
 class SPjcContentBrowser final : public SCompoundWidget
@@ -21,11 +22,16 @@ protected:
 	FText GetSummaryText() const;
 	TSharedRef<SWidget> GetBtnActionsContent();
 	TSharedRef<SWidget> GetBtnOptionsContent();
+	void CreateContentBrowser();
 	FSlateColor GetOptionsBtnForegroundColor() const;
 
 private:
+	bool bUnusedAssetsMode = true;
 	FARFilter Filter;
+	UPjcSubsystem* SubsystemPtr = nullptr;
+	TSharedPtr<FUICommandList> Cmds;
 	TSharedPtr<SComboButton> OptionBtn;
+	TSharedPtr<SWidget> ContentBrowserPtr;
 	FSetARFilterDelegate DelegateFilter;
 	FRefreshAssetViewDelegate DelegateRefreshView;
 	FGetCurrentSelectionDelegate DelegateSelection;
