@@ -3,9 +3,11 @@
 #include "Slate/SPjcTabAssetsUnused.h"
 #include "Slate/SPjcTreeView.h"
 #include "Slate/SPjcStatAssets.h"
+#include "Slate/SPjcContentBrowser.h"
 #include "PjcCmds.h"
 #include "PjcTypes.h"
 #include "PjcSubsystem.h"
+#include "PjcConstants.h"
 // Engine Headers
 #include "ObjectTools.h"
 #include "Settings/ContentBrowserSettings.h"
@@ -97,15 +99,19 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 			]
 			+ SSplitter::Slot().Value(0.35f)
 			[
-				SAssignNew(TreeViewPtr, SPjcTreeView)
+				SNew(SVerticalBox)
+				+ SVerticalBox::Slot().FillHeight(1.0f).Padding(5.0f)
+				[
+					SAssignNew(TreeViewPtr, SPjcTreeView)
+					.OnSelectionChanged_Raw(this, &SPjcTabAssetsUnused::OnTreeViewSelectionChanged)
+				]
 			]
 			+ SSplitter::Slot().Value(0.45f)
 			[
 				SNew(SVerticalBox)
 				+ SVerticalBox::Slot().FillHeight(1.0f).Padding(5.0f)
 				[
-					SNew(STextBlock)
-					// ContentBrowserModule.Get().CreateAssetPicker(AssetPickerConfig)
+					SAssignNew(ContentBrowserPtr, SPjcContentBrowser)
 				]
 			]
 		]
@@ -119,15 +125,11 @@ void SPjcTabAssetsUnused::OnScanProjectAssets()
 
 	if (ErrMsg.IsEmpty())
 	{
-		if (StatAssetsPtr.IsValid())
-		{
-			StatAssetsPtr->StatsUpdateData(AssetsCategoryMapping);
-		}
+		if (!StatAssetsPtr.IsValid() || !TreeViewPtr.IsValid() || !ContentBrowserPtr.IsValid()) return;
 
-		if (TreeViewPtr.IsValid())
-		{
-			TreeViewPtr->TreeItemsUpdateData(AssetsCategoryMapping);
-		}
+		StatAssetsPtr->StatsUpdateData(AssetsCategoryMapping);
+		TreeViewPtr->TreeItemsUpdateData(AssetsCategoryMapping);
+		FilterUpdate();
 	}
 	else
 	{
@@ -154,6 +156,45 @@ void SPjcTabAssetsUnused::OnCleanProject()
 	// {
 	// 	GEditor->EditorAddModalWindow(Window);
 	// }
+}
+
+void SPjcTabAssetsUnused::OnTreeViewSelectionChanged(const TSet<FString>& InSelectedPaths)
+{
+	FilterUpdate();
+}
+
+void SPjcTabAssetsUnused::FilterUpdate()
+{
+	if (!TreeViewPtr.IsValid() || !ContentBrowserPtr.IsValid()) return;
+
+	FARFilter Filter;
+	
+	const TSet<FString>& SelectedPaths = TreeViewPtr->GetSelectedPaths();
+	const TSet<FAssetData>& AssetsUnused = AssetsCategoryMapping[EPjcAssetCategory::Unused];
+
+	if (SelectedPaths.Num() > 0)
+	{
+		for (const auto& SelectedPath : SelectedPaths)
+		{
+			Filter.PackagePaths.Emplace(FName{*SelectedPath});
+		}
+	}
+
+	if (AssetsUnused.Num() > 0)
+	{
+		Filter.ObjectPaths.Reserve(AssetsUnused.Num());
+
+		for (const auto& Asset : AssetsUnused)
+		{
+			Filter.ObjectPaths.Emplace(Asset.ToSoftObjectPath().GetAssetPathName());
+		}
+	}
+	else
+	{
+		Filter.TagsAndValues.Emplace(PjcConstants::EmptyTagName, PjcConstants::EmptyTagName.ToString());
+	}
+
+	ContentBrowserPtr->FilterUpdate(Filter);
 }
 
 bool SPjcTabAssetsUnused::CanCleanProject()

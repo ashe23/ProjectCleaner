@@ -14,6 +14,8 @@
 
 void SPjcTreeView::Construct(const FArguments& InArgs)
 {
+	DelegateSelectionChanged = InArgs._OnSelectionChanged;
+	
 	TreeItemsInit();
 	
 	Cmds = MakeShareable(new FUICommandList);
@@ -36,14 +38,14 @@ void SPjcTreeView::Construct(const FArguments& InArgs)
 	ChildSlot
 	[
 		SNew(SVerticalBox)
-		+ SVerticalBox::Slot().AutoHeight().Padding(FMargin{5.0f})
+		+ SVerticalBox::Slot().AutoHeight().Padding(FMargin{5.0f, 0.0f})
 		[
 			SNew(SSearchBox)
 			.HintText(FText::FromString(TEXT("Search Folders...")))
 			.OnTextChanged_Raw(this, &SPjcTreeView::OnTreeSearchTextChanged)
 			.OnTextCommitted_Raw(this, &SPjcTreeView::OnTreeSearchTextCommitted)
 		]
-		+ SVerticalBox::Slot().AutoHeight().Padding(FMargin{5.0f, 0.0f, 5.0f, 2.0f})
+		+ SVerticalBox::Slot().AutoHeight().Padding(FMargin{5.0f, 5.0f, 5.0f, 2.0f})
 		[
 			SNew(SHorizontalBox)
 			+ SHorizontalBox::Slot().AutoWidth()
@@ -131,6 +133,11 @@ void SPjcTreeView::Construct(const FArguments& InArgs)
 			]
 		]
 	];
+}
+
+const TSet<FString>& SPjcTreeView::GetSelectedPaths() const
+{
+	return SelectedPaths;
 }
 
 TSharedRef<SWidget> SPjcTreeView::GetTreeBtnActionsContent()
@@ -469,14 +476,18 @@ void SPjcTreeView::OnTreeSelectionChanged(TSharedPtr<FPjcTreeItem> Selection, ES
 
 	const auto ItemsSelected = TreeView->GetSelectedItems();
 
-	TSet<FString> SelectedPaths;
-	SelectedPaths.Reserve(ItemsSelected.Num());
+	SelectedPaths.Empty(ItemsSelected.Num());
 
 	for (const auto& Item : ItemsSelected)
 	{
 		if (!Item.IsValid()) continue;
 
 		SelectedPaths.Emplace(Item->FolderPath);
+	}
+
+	if (DelegateSelectionChanged.IsBound())
+	{
+		DelegateSelectionChanged.Execute(SelectedPaths);
 	}
 }
 

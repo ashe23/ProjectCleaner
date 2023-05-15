@@ -9,11 +9,16 @@
 class SPjcTreeView final : public SCompoundWidget
 {
 public:
+	DECLARE_DELEGATE_OneParam(FPjcDelegateSelectionChanged, const TSet<FString>&)
+
 	SLATE_BEGIN_ARGS(SPjcTreeView) {}
+		SLATE_EVENT(FPjcDelegateSelectionChanged, OnSelectionChanged)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
+	const TSet<FString>& GetSelectedPaths() const;
 	void TreeItemsUpdateData(TMap<EPjcAssetCategory, TSet<FAssetData>>& AssetsCategoryMapping);
+
 protected:
 	TSharedRef<SWidget> GetTreeBtnActionsContent();
 	TSharedRef<SWidget> GetTreeBtnOptionsContent();
@@ -35,6 +40,7 @@ private:
 	void UpdateMapInfo(TMap<FString, int32>& MapNum, TMap<FString, int64>& MapSize, const FString& AssetPath, int64 AssetSize);
 
 	FText SearchText;
+	TSet<FString> SelectedPaths;
 	TSharedPtr<FUICommandList> Cmds;
 	TSharedPtr<FPjcTreeItem> RootItem;
 	TSharedPtr<SComboButton> TreeOptionBtn;
@@ -54,4 +60,6 @@ private:
 	EColumnSortMode::Type ColumnAssetsUnusedSortMode = EColumnSortMode::None;
 	EColumnSortMode::Type ColumnUnusedPercentSortMode = EColumnSortMode::None;
 	EColumnSortMode::Type ColumnUnusedSizeSortMode = EColumnSortMode::None;
+
+	FPjcDelegateSelectionChanged DelegateSelectionChanged;
 };

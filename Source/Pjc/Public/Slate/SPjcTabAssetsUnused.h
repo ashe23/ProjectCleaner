@@ -17,12 +17,14 @@ public:
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
-	
+
 protected:
 	void OnScanProjectAssets();
 	void OnCleanProject();
+	void OnTreeViewSelectionChanged(const TSet<FString>& InSelectedPaths);
+	void FilterUpdate();
 	bool CanCleanProject();
-	
+
 private:
 	TSharedRef<SWidget> CreateToolbar() const;
 

@@ -2,6 +2,7 @@
 
 #include "PjcSubsystem.h"
 #include "PjcConstants.h"
+#include "Pjc.h"
 // Engine Headers
 #include "AssetManagerEditorModule.h"
 #include "EditorTutorial.h"
@@ -9,7 +10,6 @@
 #include "EditorUtilityWidget.h"
 #include "EditorUtilityWidgetBlueprint.h"
 #include "FileHelpers.h"
-#include "Pjc.h"
 #include "ShaderCompiler.h"
 #include "Engine/AssetManager.h"
 #include "Framework/Notifications/NotificationManager.h"
