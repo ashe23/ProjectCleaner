@@ -270,28 +270,28 @@ TSharedRef<SWidget> SPjcContentBrowser::GetBtnActionsContent()
 	}
 	MenuBuilder.EndSection();
 
-	MenuBuilder.BeginSection(TEXT("Selection"), FText::FromString(TEXT("Selection")));
-	{
-		MenuBuilder.AddMenuEntry(
-			FText::FromString(TEXT("Clear Selection")),
-			FText::FromString(TEXT("Clear any selection in content browser")),
-			FSlateIcon(),
-			FUIAction
-			(
-				FExecuteAction::CreateLambda([&]
-				{
-					DelegateFilter.Execute(Filter);
-				}),
-				FCanExecuteAction::CreateLambda([&]()
-				{
-					return DelegateSelection.Execute().Num() > 0;
-				})
-			),
-			NAME_None,
-			EUserInterfaceActionType::Button
-		);
-	}
-	MenuBuilder.EndSection();
+	// MenuBuilder.BeginSection(TEXT("Selection"), FText::FromString(TEXT("Selection")));
+	// {
+	// 	MenuBuilder.AddMenuEntry(
+	// 		FText::FromString(TEXT("Clear Selection")),
+	// 		FText::FromString(TEXT("Clear any selection in content browser")),
+	// 		FSlateIcon(),
+	// 		FUIAction
+	// 		(
+	// 			FExecuteAction::CreateLambda([&]
+	// 			{
+	// 				DelegateFilter.Execute(Filter);
+	// 			}),
+	// 			FCanExecuteAction::CreateLambda([&]()
+	// 			{
+	// 				return DelegateSelection.Execute().Num() > 0;
+	// 			})
+	// 		),
+	// 		NAME_None,
+	// 		EUserInterfaceActionType::Button
+	// 	);
+	// }
+	// MenuBuilder.EndSection();
 
 
 	return MenuBuilder.MakeWidget();
@@ -353,6 +353,7 @@ void SPjcContentBrowser::CreateContentBrowser()
 	AssetPickerConfig.bCanShowRealTimeThumbnails = SubsystemPtr->bShowRealtimeThumbnails;
 	AssetPickerConfig.AssetShowWarningText = FText::FromString(TEXT("No assets"));
 	AssetPickerConfig.Filter = Filter;
+	AssetPickerConfig.bAllowNullSelection = true;
 	AssetPickerConfig.GetCurrentSelectionDelegates.Add(&DelegateSelection);
 	AssetPickerConfig.RefreshAssetViewDelegates.Add(&DelegateRefreshView);
 	AssetPickerConfig.SetFilterDelegates.Add(&DelegateFilter);

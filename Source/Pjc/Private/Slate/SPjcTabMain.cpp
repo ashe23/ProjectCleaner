@@ -2,6 +2,7 @@
 
 #include "Slate/SPjcTabMain.h"
 #include "Slate/SPjcTabAssetsUnused.h"
+#include "Slate/SPjcTabAssetsIndirect.h"
 #include "PjcConstants.h"
 #include "PjcSubsystem.h"
 #include "PjcStyles.h"
@@ -38,16 +39,16 @@ void SPjcTabMain::Construct(const FArguments& InArgs, const TSharedRef<SDockTab>
 	          .SetGroup(AppMenuGroup);
 
 	TabManager->RegisterTabSpawner(PjcConstants::TabAssetsIndirect, FOnSpawnTab::CreateRaw(this, &SPjcTabMain::OnTabAssetsIndirectSpawn))
-			  .SetTooltipText(FText::FromString(TEXT("Open Indirect Assets Tab")))
-			  .SetDisplayName(FText::FromString(TEXT("Assets Indirect")))
-			  .SetIcon(FPjcStyles::GetIcon("ProjectCleaner.Icon.PieChart16"))
-			  .SetGroup(AppMenuGroup);
+	          .SetTooltipText(FText::FromString(TEXT("Open Indirect Assets Tab")))
+	          .SetDisplayName(FText::FromString(TEXT("Assets Indirect")))
+	          .SetIcon(FPjcStyles::GetIcon("ProjectCleaner.Icon.Arrows16"))
+	          .SetGroup(AppMenuGroup);
 
 	TabManager->RegisterTabSpawner(PjcConstants::TabAssetsCorrupted, FOnSpawnTab::CreateRaw(this, &SPjcTabMain::OnTabAssetsCorruptedSpawn))
-			  .SetTooltipText(FText::FromString(TEXT("Open Corrupted Assets Tab")))
-			  .SetDisplayName(FText::FromString(TEXT("Assets Corrupted")))
-			  .SetIcon(FPjcStyles::GetIcon("ProjectCleaner.Icon.PieChart16"))
-			  .SetGroup(AppMenuGroup);
+	          .SetTooltipText(FText::FromString(TEXT("Open Corrupted Assets Tab")))
+	          .SetDisplayName(FText::FromString(TEXT("Assets Corrupted")))
+	          .SetIcon(FPjcStyles::GetIcon("ProjectCleaner.Icon.PieChart16"))
+	          .SetGroup(AppMenuGroup);
 
 	TabManager->RegisterTabSpawner(PjcConstants::TabAssetsInspection, FOnSpawnTab::CreateRaw(this, &SPjcTabMain::OnTabAssetsInspectionSpawn))
 	          .SetTooltipText(FText::FromString(TEXT("Open Assets Inspection Tab")))
@@ -136,7 +137,7 @@ FText SPjcTabMain::GetWidgetWarningText() const
 	{
 		return FText::FromString(TEXT("Please exit the editor's play mode before performing any operations in the plugin."));
 	}
-	
+
 	if (UPjcSubsystem::GetModuleAssetRegistry().Get().IsLoadingAssets())
 	{
 		return FText::FromString(TEXT("Please wait until the Asset Registry has discovered all assets in the project."));
@@ -163,10 +164,9 @@ TSharedRef<SDockTab> SPjcTabMain::OnTabAssetsIndirectSpawn(const FSpawnTabArgs& 
 		SNew(SDockTab)
 		.TabRole(PanelTab)
 		.Label(FText::FromString(TEXT("Assets Indirect")))
-		.Icon(FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.PieChart16"))
+		.Icon(FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.Arrows16"))
 		[
-			SNew(STextBlock)
-			// SNew(SPjcTabAssetsUnused)
+			SNew(SPjcTabAssetsIndirect)
 		];
 }
 

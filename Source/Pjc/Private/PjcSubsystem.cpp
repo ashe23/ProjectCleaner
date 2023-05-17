@@ -424,7 +424,6 @@ void UPjcSubsystem::ShaderCompilationDisable()
 void UPjcSubsystem::OpenPathInFileExplorer(const FString& InPath)
 {
 	if (InPath.IsEmpty()) return;
-	if (!FPaths::DirectoryExists(InPath)) return;
 
 	FPlatformProcess::ExploreFolder(*InPath);
 }

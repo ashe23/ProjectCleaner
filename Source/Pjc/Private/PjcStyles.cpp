@@ -81,6 +81,7 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create()
 	Style->Set("ProjectCleaner.Icon.PieChart16", new IMAGE_BRUSH(TEXT("IconPieChart16"), FVector2D{16.0f, 16.0f}));
 	Style->Set("ProjectCleaner.Icon.File16", new IMAGE_BRUSH(TEXT("IconFile16"), FVector2D{16.0f, 16.0f}));
 	Style->Set("ProjectCleaner.Icon.Stat16", new IMAGE_BRUSH(TEXT("IconStat16"), FVector2D{16.0f, 16.0f}));
+	Style->Set("ProjectCleaner.Icon.Arrows16", new IMAGE_BRUSH(TEXT("IconArrows16"), FVector2D{16.0f, 16.0f}));
 
 	// pallet colors
 	Style->Set("ProjectCleaner.Color.Blue", FLinearColor{FColor::FromHex(TEXT("#227C9D"))});
