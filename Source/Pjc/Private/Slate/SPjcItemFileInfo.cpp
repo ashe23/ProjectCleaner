@@ -18,7 +18,7 @@ TSharedRef<SWidget> SPjcItemFileInfo::GenerateWidgetForColumn(const FName& InCol
 	{
 		return
 			SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot().FillWidth(1.0f).HAlign(HAlign_Left).VAlign(VAlign_Center)
+			+ SHorizontalBox::Slot().FillWidth(1.0f).HAlign(HAlign_Left).VAlign(VAlign_Center).Padding(FMargin{5.0f, 0.0f})
 			[
 				SNew(SHyperlink)
 				.Text(FText::FromString(Item->FilePath))

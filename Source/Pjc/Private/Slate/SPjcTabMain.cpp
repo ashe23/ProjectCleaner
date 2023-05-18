@@ -24,9 +24,6 @@ void SPjcTabMain::Construct(const FArguments& InArgs, const TSharedRef<SDockTab>
 			(
 				FTabManager::NewStack()
 				->AddTab(PjcConstants::TabAssetsUnused, ETabState::OpenedTab)
-				// ->AddTab(PjcConstants::TabAssetsIndirect, ETabState::OpenedTab)
-				// ->AddTab(PjcConstants::TabAssetsCorrupted, ETabState::OpenedTab)
-				->AddTab(PjcConstants::TabAssetsInspection, ETabState::OpenedTab)
 				->AddTab(PjcConstants::TabFilesExternal, ETabState::OpenedTab)
 				->SetForegroundTab(PjcConstants::TabAssetsUnused)
 				->SetSizeCoefficient(1.0f)
@@ -51,11 +48,11 @@ void SPjcTabMain::Construct(const FArguments& InArgs, const TSharedRef<SDockTab>
 	//           .SetIcon(FPjcStyles::GetIcon("ProjectCleaner.Icon.PieChart16"))
 	//           .SetGroup(AppMenuGroup);
 
-	TabManager->RegisterTabSpawner(PjcConstants::TabAssetsInspection, FOnSpawnTab::CreateRaw(this, &SPjcTabMain::OnTabAssetsInspectionSpawn))
-	          .SetTooltipText(FText::FromString(TEXT("Open Assets Inspection Tab")))
-	          .SetDisplayName(FText::FromString(TEXT("Assets Inspection")))
-	          .SetIcon(FPjcStyles::GetIcon("ProjectCleaner.Icon.Stat16"))
-	          .SetGroup(AppMenuGroup);
+	// TabManager->RegisterTabSpawner(PjcConstants::TabAssetsInspection, FOnSpawnTab::CreateRaw(this, &SPjcTabMain::OnTabAssetsInspectionSpawn))
+	//           .SetTooltipText(FText::FromString(TEXT("Open Assets Inspection Tab")))
+	//           .SetDisplayName(FText::FromString(TEXT("Assets Inspection")))
+	//           .SetIcon(FPjcStyles::GetIcon("ProjectCleaner.Icon.Stat16"))
+	//           .SetGroup(AppMenuGroup);
 
 	TabManager->RegisterTabSpawner(PjcConstants::TabFilesExternal, FOnSpawnTab::CreateRaw(this, &SPjcTabMain::OnTabFilesExternalSpawn))
 	          .SetTooltipText(FText::FromString(TEXT("Open External Files Tab")))
@@ -121,9 +118,6 @@ void SPjcTabMain::Construct(const FArguments& InArgs, const TSharedRef<SDockTab>
 SPjcTabMain::~SPjcTabMain()
 {
 	FGlobalTabmanager::Get()->UnregisterTabSpawner(PjcConstants::TabAssetsUnused);
-	FGlobalTabmanager::Get()->UnregisterTabSpawner(PjcConstants::TabAssetsIndirect);
-	FGlobalTabmanager::Get()->UnregisterTabSpawner(PjcConstants::TabAssetsCorrupted);
-	FGlobalTabmanager::Get()->UnregisterTabSpawner(PjcConstants::TabAssetsInspection);
 	FGlobalTabmanager::Get()->UnregisterTabSpawner(PjcConstants::TabFilesExternal);
 }
 
@@ -184,18 +178,18 @@ TSharedRef<SDockTab> SPjcTabMain::OnTabAssetsUnusedSpawn(const FSpawnTabArgs& Ar
 // 		];
 // }
 
-TSharedRef<SDockTab> SPjcTabMain::OnTabAssetsInspectionSpawn(const FSpawnTabArgs& Args) const
-{
-	return
-		SNew(SDockTab)
-		.TabRole(PanelTab)
-		.Label(FText::FromString(TEXT("Assets Inspection")))
-		.Icon(FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.Stat16"))
-		[
-			SNew(STextBlock)
-			// SNew(SPjcTabAssetsInspection)
-		];
-}
+// TSharedRef<SDockTab> SPjcTabMain::OnTabAssetsInspectionSpawn(const FSpawnTabArgs& Args) const
+// {
+// 	return
+// 		SNew(SDockTab)
+// 		.TabRole(PanelTab)
+// 		.Label(FText::FromString(TEXT("Assets Inspection")))
+// 		.Icon(FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.Stat16"))
+// 		[
+// 			SNew(STextBlock)
+// 			// SNew(SPjcTabAssetsInspection)
+// 		];
+// }
 
 TSharedRef<SDockTab> SPjcTabMain::OnTabFilesExternalSpawn(const FSpawnTabArgs& Args) const
 {

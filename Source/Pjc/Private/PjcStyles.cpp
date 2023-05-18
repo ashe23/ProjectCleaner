@@ -80,6 +80,14 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create()
 	Style->Set("ProjectCleaner.PathsInclude", new IMAGE_BRUSH(TEXT("IconPlus32"), FVector2D{32.0f, 32.0f}));
 	Style->Set("ProjectCleaner.PathsDelete", new IMAGE_BRUSH(TEXT("IconCross32"), FVector2D{32.0f, 32.0f}));
 	Style->Set("ProjectCleaner.AssetsDelete", new IMAGE_BRUSH(TEXT("IconCross32"), FVector2D{32.0f, 32.0f}));
+	Style->Set("ProjectCleaner.FilesScan", new IMAGE_BRUSH(TEXT("IconRefresh32"), FVector2D{32.0f, 32.0f}));
+	Style->Set("ProjectCleaner.FilesDelete", new IMAGE_BRUSH(TEXT("IconCross32"), FVector2D{32.0f, 32.0f}));
+	Style->Set("ProjectCleaner.FilesExclude", new IMAGE_BRUSH(TEXT("IconMinus32"), FVector2D{32.0f, 32.0f}));
+	Style->Set("ProjectCleaner.FilesExcludeByExt", new IMAGE_BRUSH(TEXT("IconMinus32"), FVector2D{32.0f, 32.0f}));
+	Style->Set("ProjectCleaner.FilesExcludeByPath", new IMAGE_BRUSH(TEXT("IconMinus32"), FVector2D{32.0f, 32.0f}));
+	Style->Set("ProjectCleaner.OpenViewerSizeMap", new IMAGE_BRUSH(TEXT("IconTreeMap32"), FVector2D{32.0f, 32.0f}));
+	Style->Set("ProjectCleaner.OpenViewerReference", new IMAGE_BRUSH(TEXT("IconGraph32"), FVector2D{32.0f, 32.0f}));
+	Style->Set("ProjectCleaner.OpenViewerAssetsAudit", new IMAGE_BRUSH(TEXT("IconStat32"), FVector2D{32.0f, 32.0f}));
 
 	// cmds icons small
 	Style->Set("ProjectCleaner.TabMain.Small", new IMAGE_BRUSH(TEXT("IconBin20"), FVector2D{20.0f, 20.0f}));
@@ -98,6 +106,14 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create()
 	Style->Set("ProjectCleaner.PathsInclude.Small", new IMAGE_BRUSH(TEXT("IconPlus20"), FVector2D{20.0f, 20.0f}));
 	Style->Set("ProjectCleaner.PathsDelete.Small", new IMAGE_BRUSH(TEXT("IconCross20"), FVector2D{20.0f, 20.0f}));
 	Style->Set("ProjectCleaner.AssetsDelete.Small", new IMAGE_BRUSH(TEXT("IconCross20"), FVector2D{20.0f, 20.0f}));
+	Style->Set("ProjectCleaner.FilesScan.Small", new IMAGE_BRUSH(TEXT("IconRefresh20"), FVector2D{20.0f, 20.0f}));
+	Style->Set("ProjectCleaner.FilesDelete.Small", new IMAGE_BRUSH(TEXT("IconCross20"), FVector2D{20.0f, 20.0f}));
+	Style->Set("ProjectCleaner.FilesExclude.Small", new IMAGE_BRUSH(TEXT("IconMinus20"), FVector2D{20.0f, 20.0f}));
+	Style->Set("ProjectCleaner.FilesExcludeByExt.Small", new IMAGE_BRUSH(TEXT("IconMinus20"), FVector2D{20.0f, 20.0f}));
+	Style->Set("ProjectCleaner.FilesExcludeByPath.Small", new IMAGE_BRUSH(TEXT("IconMinus20"), FVector2D{20.0f, 20.0f}));
+	Style->Set("ProjectCleaner.OpenViewerSizeMap.Small", new IMAGE_BRUSH(TEXT("IconTreeMap20"), FVector2D{20.0f, 20.0f}));
+	Style->Set("ProjectCleaner.OpenViewerReference.Small", new IMAGE_BRUSH(TEXT("IconGraph20"), FVector2D{20.0f, 20.0f}));
+	Style->Set("ProjectCleaner.OpenViewerAssetsAudit.Small", new IMAGE_BRUSH(TEXT("IconStat20"), FVector2D{20.0f, 20.0f}));
 
 	// icons
 	Style->Set("ProjectCleaner.Icon.Bin16", new IMAGE_BRUSH(TEXT("IconBin16"), FVector2D{16.0f, 16.0f}));

@@ -5,7 +5,6 @@
 #include "CoreMinimal.h"
 #include "Widgets/SCompoundWidget.h"
 
-struct FPjcStatItem;
 struct FPjcFileExternalItem;
 
 class SPjcTabFilesExternal final : public SCompoundWidget
@@ -17,20 +16,17 @@ public:
 	void Construct(const FArguments& InArgs);
 
 protected:
-	void StatsInit();
-	void StatsUpdate();
 	void ListUpdate();
 	
 	TSharedRef<SWidget> CreateToolbar() const;
-	TSharedRef<SHeaderRow> GetStatHeaderRow() const;
+	TSharedRef<SWidget> GetBtnOptionsContent();
 	TSharedRef<SHeaderRow> GetListHeaderRow() const;
-	TSharedRef<ITableRow> OnStatGenerateRow(TSharedPtr<FPjcStatItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const;
 	TSharedRef<ITableRow> OnListGenerateRow(TSharedPtr<FPjcFileExternalItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const;
+	FSlateColor GetOptionsBtnForegroundColor() const;
 private:
 	TSharedPtr<FUICommandList> Cmds;
-	TArray<TSharedPtr<FPjcStatItem>> StatItems;
+	TSharedPtr<SComboButton> OptionBtn;
 	TArray<TSharedPtr<FPjcFileExternalItem>> ListItems;
-	TSharedPtr<SListView<TSharedPtr<FPjcStatItem>>> StatView;
 	TSharedPtr<SListView<TSharedPtr<FPjcFileExternalItem>>> ListView;
 
 	EColumnSortMode::Type ColumnSortModeFilePath = EColumnSortMode::None;

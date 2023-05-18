@@ -128,7 +128,7 @@ void FPjcCmds::RegisterCommands()
 
 	UI_COMMAND(
 		OpenViewerSizeMap,
-		"Open SizeMap",
+		"SizeMap",
 		"Open SizeMap viewer for selected assets",
 		EUserInterfaceActionType::Button,
 		FInputChord()
@@ -136,7 +136,7 @@ void FPjcCmds::RegisterCommands()
 
 	UI_COMMAND(
 		OpenViewerReference,
-		"Open ReferenceViewer",
+		"ReferenceViewer",
 		"Open ReferenceViewer for selected assets",
 		EUserInterfaceActionType::Button,
 		FInputChord()
@@ -144,7 +144,7 @@ void FPjcCmds::RegisterCommands()
 
 	UI_COMMAND(
 		OpenViewerAssetsAudit,
-		"Open Asset Audit",
+		"Asset Audit",
 		"Open AssetAudit viewer for selected assets",
 		EUserInterfaceActionType::Button,
 		FInputChord()
@@ -152,7 +152,7 @@ void FPjcCmds::RegisterCommands()
 
 	UI_COMMAND(
 		OpenViewerAssetsIndirect,
-		"Indirect Assets Viewer",
+		"Indirect Assets",
 		"Open indirect assets viewer",
 		EUserInterfaceActionType::Button,
 		FInputChord()
@@ -160,7 +160,7 @@ void FPjcCmds::RegisterCommands()
 
 	UI_COMMAND(
 		OpenViewerAssetsCorrupted,
-		"Corrupted Assets Viewer",
+		"Corrupted Assets",
 		"Open corrupted assets viewer",
 		EUserInterfaceActionType::Button,
 		FInputChord()
