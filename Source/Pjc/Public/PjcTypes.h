@@ -152,7 +152,7 @@ struct FPjcFileInfo
 	GENERATED_BODY()
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="FileInfo")
-	int32 FileNum;
+	int32 FileNum = 0;
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="FileInfo")
 	FString FilePath;

@@ -8,21 +8,13 @@ public class Pjc : ModuleRules
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 
-		// PublicIncludePaths.AddRange(
-		// 	new[]
-		// 	{
-		// 		"Runtime/Slate/Public",
-		// 	}
-		// );
-
-
-		// PrivateIncludePaths.AddRange(
-		// 	new[]
-		// 	{
-		// 		"Pjc/Private",
-		// 		"Pjc/Private/Commandlets"
-		// 	}
-		// );
+		PrivateIncludePaths.AddRange(
+			new[]
+			{
+				"Pjc/Private",
+				"Pjc/Private/Commandlets"
+			}
+		);
 
 
 		PublicDependencyModuleNames.AddRange(
@@ -49,7 +41,7 @@ public class Pjc : ModuleRules
 				"ContentBrowser",
 				"ContentBrowserData",
 				"InputCore",
-				"EditorSubsystem", 
+				"EditorSubsystem",
 				"Blutility",
 				"EditorScriptingUtilities",
 				"EditorWidgets",

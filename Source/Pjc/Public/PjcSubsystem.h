@@ -22,16 +22,6 @@ public:
 
 	static void ScanProjectAssets(TMap<EPjcAssetCategory, TSet<FAssetData>>& AssetsCategoryMapping, FString& ErrMsg);
 
-	// void ExcludePaths();
-	// void IncludePaths();
-	// void ExcludeAssetsByPaths();
-	// void ExcludeAssetsByClasses();
-	// void ExcludeAssetsByObjectPaths();
-	// void IncludeAllAssets();
-	// void IncludeAssetsByPaths();
-	// void IncludeAssetsByClasses();
-	// void IncludeAssetsByObjectPaths();
-
 	static void CleanProject();
 
 	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem")
