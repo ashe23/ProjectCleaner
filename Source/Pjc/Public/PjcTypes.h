@@ -109,10 +109,10 @@ struct FPjcStatItem
 
 struct FPjcFileExternalItem
 {
-	FText FileName;
-	FText FileExt;
-	FText FileSize;
-	FText FilePath;
+	int64 FileSize;
+	FString FileName;
+	FString FileExt;
+	FString FilePath;
 };
 
 struct FPjcTreeItem
