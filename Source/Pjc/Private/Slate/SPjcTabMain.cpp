@@ -2,7 +2,8 @@
 
 #include "Slate/SPjcTabMain.h"
 #include "Slate/SPjcTabAssetsUnused.h"
-#include "Slate/SPjcTabAssetsIndirect.h"
+#include "Slate/SPjcTabFilesExternal.h"
+// #include "Slate/SPjcTabAssetsIndirect.h"
 #include "PjcConstants.h"
 #include "PjcSubsystem.h"
 #include "PjcStyles.h"
@@ -204,8 +205,7 @@ TSharedRef<SDockTab> SPjcTabMain::OnTabFilesExternalSpawn(const FSpawnTabArgs& A
 		.Label(FText::FromString(TEXT("Files External")))
 		.Icon(FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.File16"))
 		[
-			SNew(STextBlock)
-			// SNew(SPjcTabFilesExternal)
+			SNew(SPjcTabFilesExternal)
 		];
 }
 

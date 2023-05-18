@@ -37,4 +37,9 @@ public:
 	TSharedPtr<FUICommandInfo> ThumbnailSizeSmall;
 	TSharedPtr<FUICommandInfo> ThumbnailSizeMedium;
 	TSharedPtr<FUICommandInfo> ThumbnailSizeLarge;
+	TSharedPtr<FUICommandInfo> FilesScan;
+	TSharedPtr<FUICommandInfo> FilesDelete;
+	TSharedPtr<FUICommandInfo> FilesExclude;
+	TSharedPtr<FUICommandInfo> FilesExcludeByExt;
+	TSharedPtr<FUICommandInfo> FilesExcludeByPath;
 };

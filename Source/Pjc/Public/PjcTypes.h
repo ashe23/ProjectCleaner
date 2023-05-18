@@ -34,6 +34,7 @@ UCLASS()
 class UPjcContentBrowserSettings : public UObject
 {
 	GENERATED_BODY()
+
 public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="Settings")
 	bool bRealtime = false;
@@ -68,6 +69,32 @@ protected:
 #endif
 };
 
+UCLASS(Config = EditorPerProjectUserSettings)
+class UPjcFileExcludeSettings : public UObject
+{
+	GENERATED_BODY()
+
+public:
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Config, Category="AssetExcludeSettings", meta=(ContentDir, ToolTip="Exclude specified folders from scanning.Recursive."))
+	TArray<FDirectoryPath> ExcludedFolders;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Config, Category="AssetExcludeSettings", meta=(RelativeToGameContentDir, ToolTip="Exclude specified files from scanning"))
+	TArray<FFilePath> ExcludedFiles;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Config, Category="AssetExcludeSettings", meta=(ToolTip="Exclude files with specified extensions from scanning"))
+	TArray<FString> ExcludedExtensions;
+
+protected:
+#if WITH_EDITOR
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override
+	{
+		Super::PostEditChangeProperty(PropertyChangedEvent);
+
+		SaveConfig();
+	}
+#endif
+};
+
 struct FPjcStatItem
 {
 	FText Name;
@@ -78,6 +105,14 @@ struct FPjcStatItem
 	FText ToolTipSize;
 	FLinearColor TextColor{FLinearColor::White};
 	FMargin NamePadding{FMargin{0.0f}};
+};
+
+struct FPjcFileExternalItem
+{
+	FText FileName;
+	FText FileExt;
+	FText FileSize;
+	FText FilePath;
 };
 
 struct FPjcTreeItem

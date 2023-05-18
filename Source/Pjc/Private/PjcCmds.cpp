@@ -189,7 +189,7 @@ void FPjcCmds::RegisterCommands()
 		EUserInterfaceActionType::Button,
 		FInputChord()
 	);
-	
+
 	UI_COMMAND(
 		ThumbnailSizeSmall,
 		"Small",
@@ -210,6 +210,46 @@ void FPjcCmds::RegisterCommands()
 		ThumbnailSizeLarge,
 		"Large",
 		"Thumbnail large size",
+		EUserInterfaceActionType::Button,
+		FInputChord()
+	);
+
+	UI_COMMAND(
+		FilesScan,
+		"Scan",
+		"Scan files",
+		EUserInterfaceActionType::Button,
+		FInputChord()
+	);
+
+	UI_COMMAND(
+		FilesDelete,
+		"Delete",
+		"Delete selected files",
+		EUserInterfaceActionType::Button,
+		FInputChord()
+	);
+
+	UI_COMMAND(
+		FilesExclude,
+		"Exclude",
+		"Exclude selected files from scanning",
+		EUserInterfaceActionType::Button,
+		FInputChord()
+	);
+
+	UI_COMMAND(
+		FilesExcludeByPath,
+		"Exclude By Path",
+		"Exclude selected files from scanning by their paths",
+		EUserInterfaceActionType::Button,
+		FInputChord()
+	);
+
+	UI_COMMAND(
+		FilesExcludeByExt,
+		"Exclude By Extension",
+		"Exclude selected files from scanning, by their extensions",
 		EUserInterfaceActionType::Button,
 		FInputChord()
 	);
