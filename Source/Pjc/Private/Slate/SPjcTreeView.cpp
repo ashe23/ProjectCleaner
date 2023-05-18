@@ -61,7 +61,7 @@ void SPjcTreeView::Construct(const FArguments& InArgs)
 			.OnTextChanged_Raw(this, &SPjcTreeView::OnTreeSearchTextChanged)
 			.OnTextCommitted_Raw(this, &SPjcTreeView::OnTreeSearchTextCommitted)
 		]
-		+ SVerticalBox::Slot().AutoHeight().Padding(5.0f, 0.0f)
+		+ SVerticalBox::Slot().AutoHeight().Padding(5.0f, 0.0f, 0.0f, 2.1f)
 		[
 			SNew(SHorizontalBox)
 			+ SHorizontalBox::Slot().AutoWidth()
@@ -87,7 +87,7 @@ void SPjcTreeView::Construct(const FArguments& InArgs)
 		]
 		+ SVerticalBox::Slot().AutoHeight().Padding(5.0f)
 		[
-			SNew(SSeparator).Thickness(5.0f)
+			SNew(SSeparator).Thickness(3.0f)
 		]
 		+ SVerticalBox::Slot().FillHeight(1.0f).Padding(5.0f)
 		[

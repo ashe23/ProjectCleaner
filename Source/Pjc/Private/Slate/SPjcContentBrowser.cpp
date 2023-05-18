@@ -188,7 +188,7 @@ void SPjcContentBrowser::Construct(const FArguments& InArgs)
 		[
 			SNew(SSeparator).Thickness(5.0f)
 		]
-		+ SVerticalBox::Slot().FillHeight(1.0f).Padding(FMargin{5.0f, 1.0f})
+		+ SVerticalBox::Slot().FillHeight(1.0f).Padding(5.0f)
 		[
 			ContentBrowserPtr.ToSharedRef()
 		]
