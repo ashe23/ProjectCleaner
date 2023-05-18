@@ -181,6 +181,38 @@ void FPjcCmds::RegisterCommands()
 		EUserInterfaceActionType::Button,
 		FInputChord()
 	);
+
+	UI_COMMAND(
+		ThumbnailSizeTiny,
+		"Tiny",
+		"Thumbnail tiny size",
+		EUserInterfaceActionType::Button,
+		FInputChord()
+	);
+	
+	UI_COMMAND(
+		ThumbnailSizeSmall,
+		"Small",
+		"Thumbnail small size",
+		EUserInterfaceActionType::Button,
+		FInputChord()
+	);
+
+	UI_COMMAND(
+		ThumbnailSizeMedium,
+		"Medium",
+		"Thumbnail medium size",
+		EUserInterfaceActionType::Button,
+		FInputChord()
+	);
+
+	UI_COMMAND(
+		ThumbnailSizeLarge,
+		"Large",
+		"Thumbnail large size",
+		EUserInterfaceActionType::Button,
+		FInputChord()
+	);
 }
 
 #undef LOCTEXT_NAMESPACE

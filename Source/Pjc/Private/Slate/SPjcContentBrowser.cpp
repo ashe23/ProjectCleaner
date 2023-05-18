@@ -160,22 +160,6 @@ void SPjcContentBrowser::Construct(const FArguments& InArgs)
 		})
 	);
 
-	// Cmds->MapAction(
-	// 	FPjcCmds::Get().AssetsIncludeAll,
-	// 	FExecuteAction::CreateLambda([&]()
-	// 	{
-	// 		UPjcAssetExcludeSettings* ExcludeSettings = GetMutableDefault<UPjcAssetExcludeSettings>();
-	// 		if (!ExcludeSettings) return;
-	//
-	// 		ExcludeSettings->ExcludedFolders.Empty();
-	// 		ExcludeSettings->ExcludedClasses.Empty();
-	// 		ExcludeSettings->ExcludedAssets.Empty();
-	// 		ExcludeSettings->PostEditChange();
-	//
-	// 		// todo:ashe23 rescan project
-	// 	})
-	// );
-
 	Cmds->MapAction(
 		FPjcCmds::Get().AssetsDelete,
 		FExecuteAction::CreateLambda([&]()
@@ -191,8 +175,59 @@ void SPjcContentBrowser::Construct(const FArguments& InArgs)
 		})
 	);
 
-	CreateContentBrowser();
+	Cmds->MapAction(
+		FPjcCmds::Get().ThumbnailSizeTiny,
+		FExecuteAction::CreateLambda([&]()
+		{
+			ThumbnailSize = 0.01f;
+			CreateContentBrowser();
+			UpdateView();
+		})
+	);
 
+	Cmds->MapAction(
+		FPjcCmds::Get().ThumbnailSizeSmall,
+		FExecuteAction::CreateLambda([&]()
+		{
+			ThumbnailSize = 0.1f;
+			CreateContentBrowser();
+			UpdateView();
+		})
+	);
+
+	Cmds->MapAction(
+		FPjcCmds::Get().ThumbnailSizeMedium,
+		FExecuteAction::CreateLambda([&]()
+		{
+			ThumbnailSize = 0.2f;
+			CreateContentBrowser();
+			UpdateView();
+		})
+	);
+
+	Cmds->MapAction(
+		FPjcCmds::Get().ThumbnailSizeLarge,
+		FExecuteAction::CreateLambda([&]()
+		{
+			ThumbnailSize = 0.3f;
+			CreateContentBrowser();
+			UpdateView();
+		})
+	);
+
+	CreateContentBrowser();
+	UpdateView();
+}
+
+void SPjcContentBrowser::FilterUpdate(const FARFilter& InFilter)
+{
+	Filter = InFilter;
+
+	DelegateFilter.Execute(Filter);
+}
+
+void SPjcContentBrowser::UpdateView()
+{
 	ChildSlot
 	[
 		SNew(SVerticalBox)
@@ -237,11 +272,6 @@ void SPjcContentBrowser::Construct(const FArguments& InArgs)
 			]
 		]
 	];
-}
-
-void SPjcContentBrowser::FilterUpdate(const FARFilter& InFilter)
-{
-	Filter = InFilter;
 
 	DelegateFilter.Execute(Filter);
 }
@@ -318,6 +348,12 @@ TSharedRef<SWidget> SPjcContentBrowser::GetBtnOptionsContent()
 			NAME_None,
 			EUserInterfaceActionType::ToggleButton
 		);
+
+		MenuBuilder.AddSubMenu(
+			FText::FromString(TEXT("Thumbnail Size")),
+			FText::FromString(TEXT("Select Thumbnail Size")),
+			FNewMenuDelegate::CreateRaw(this, &SPjcContentBrowser::MakeSubmenu)
+		);
 	}
 	MenuBuilder.EndSection();
 
@@ -344,7 +380,8 @@ void SPjcContentBrowser::CreateContentBrowser()
 	AssetPickerConfig.bCanShowRealTimeThumbnails = SubsystemPtr->bShowRealtimeThumbnails;
 	AssetPickerConfig.AssetShowWarningText = FText::FromString(TEXT("No assets"));
 	AssetPickerConfig.Filter = Filter;
-	AssetPickerConfig.bAllowNullSelection = true; // todo:ashe23 OnAssetSelected.ExecuteIfBound(FAssetData());
+	AssetPickerConfig.ThumbnailScale = ThumbnailSize;
+	AssetPickerConfig.bAllowNullSelection = true;
 	AssetPickerConfig.GetCurrentSelectionDelegates.Add(&DelegateSelection);
 	AssetPickerConfig.RefreshAssetViewDelegates.Add(&DelegateRefreshView);
 	AssetPickerConfig.SetFilterDelegates.Add(&DelegateFilter);
@@ -352,7 +389,7 @@ void SPjcContentBrowser::CreateContentBrowser()
 	{
 		UPjcSubsystem::OpenAssetEditor(InAsset);
 	});
-	AssetPickerConfig.OnGetAssetContextMenu.BindLambda([&](const TArray<FAssetData>& SelectedAssets)
+	AssetPickerConfig.OnGetAssetContextMenu.BindLambda([&](const TArray<FAssetData>&)
 	{
 		const TSharedPtr<FExtender> Extender;
 		FMenuBuilder MenuBuilder(true, Cmds, Extender, true);
@@ -401,6 +438,14 @@ void SPjcContentBrowser::CreateContentBrowser()
 
 	ContentBrowserPtr.Reset();
 	ContentBrowserPtr = UPjcSubsystem::GetModuleContentBrowser().Get().CreateAssetPicker(AssetPickerConfig);
+}
+
+void SPjcContentBrowser::MakeSubmenu(FMenuBuilder& MenuBuilder)
+{
+	MenuBuilder.AddMenuEntry(FPjcCmds::Get().ThumbnailSizeTiny);
+	MenuBuilder.AddMenuEntry(FPjcCmds::Get().ThumbnailSizeSmall);
+	MenuBuilder.AddMenuEntry(FPjcCmds::Get().ThumbnailSizeMedium);
+	MenuBuilder.AddMenuEntry(FPjcCmds::Get().ThumbnailSizeLarge);
 }
 
 FSlateColor SPjcContentBrowser::GetOptionsBtnForegroundColor() const

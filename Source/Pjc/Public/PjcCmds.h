@@ -33,4 +33,8 @@ public:
 	TSharedPtr<FUICommandInfo> OpenViewerAssetsCorrupted;
 	TSharedPtr<FUICommandInfo> ItemsCollapseAll;
 	TSharedPtr<FUICommandInfo> ItemsExpandAll;
+	TSharedPtr<FUICommandInfo> ThumbnailSizeTiny;
+	TSharedPtr<FUICommandInfo> ThumbnailSizeSmall;
+	TSharedPtr<FUICommandInfo> ThumbnailSizeMedium;
+	TSharedPtr<FUICommandInfo> ThumbnailSizeLarge;
 };

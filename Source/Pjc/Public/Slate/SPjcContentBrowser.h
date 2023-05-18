@@ -17,16 +17,18 @@ public:
 
 	void Construct(const FArguments& InArgs);
 	void FilterUpdate(const FARFilter& InFilter);
-
+	void UpdateView(); // todo:ashe23 testing
 protected:
 	FText GetSummaryText() const;
 	TSharedRef<SWidget> CreateToolbar() const;
 	TSharedRef<SWidget> GetBtnOptionsContent();
 	void CreateContentBrowser();
+	void MakeSubmenu(FMenuBuilder& MenuBuilder);
 	FSlateColor GetOptionsBtnForegroundColor() const;
 
 private:
 	bool bUnusedAssetsMode = true;
+	float ThumbnailSize = 0.1f;
 	FARFilter Filter;
 	UPjcSubsystem* SubsystemPtr = nullptr;
 	TSharedPtr<FUICommandList> Cmds;
