@@ -39,6 +39,11 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 		FCanExecuteAction::CreateRaw(this, &SPjcTabAssetsUnused::CanCleanProject)
 	);
 
+	Cmds->MapAction(
+		FPjcCmds::Get().ClearExcludeSettings,
+		FExecuteAction::CreateLambda([]() {})
+	);
+
 	FPropertyEditorModule& PropertyEditor = UPjcSubsystem::GetModulePropertyEditor();
 	FDetailsViewArgs DetailsViewArgs;
 	DetailsViewArgs.bUpdatesFromSelection = false;
@@ -99,20 +104,12 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 			]
 			+ SSplitter::Slot().Value(0.35f)
 			[
-				SNew(SVerticalBox)
-				+ SVerticalBox::Slot().FillHeight(1.0f).Padding(5.0f)
-				[
-					SAssignNew(TreeViewPtr, SPjcTreeView)
-					.OnSelectionChanged_Raw(this, &SPjcTabAssetsUnused::OnTreeViewSelectionChanged)
-				]
+				SAssignNew(TreeViewPtr, SPjcTreeView)
+				.OnSelectionChanged_Raw(this, &SPjcTabAssetsUnused::OnTreeViewSelectionChanged)
 			]
 			+ SSplitter::Slot().Value(0.45f)
 			[
-				SNew(SVerticalBox)
-				+ SVerticalBox::Slot().FillHeight(1.0f).Padding(5.0f)
-				[
-					SAssignNew(ContentBrowserPtr, SPjcContentBrowser)
-				]
+				SAssignNew(ContentBrowserPtr, SPjcContentBrowser)
 			]
 		]
 	];
@@ -168,14 +165,14 @@ void SPjcTabAssetsUnused::FilterUpdate()
 	if (!TreeViewPtr.IsValid() || !ContentBrowserPtr.IsValid()) return;
 
 	FARFilter Filter;
-	
+
 	const TSet<FString>& SelectedPaths = TreeViewPtr->GetSelectedPaths();
 	const TSet<FAssetData>& AssetsUnused = AssetsCategoryMapping[EPjcAssetCategory::Unused];
 
 	if (SelectedPaths.Num() > 0)
 	{
 		Filter.bRecursivePaths = true;
-		
+
 		for (const auto& SelectedPath : SelectedPaths)
 		{
 			Filter.PackagePaths.Emplace(FName{*SelectedPath});
@@ -211,6 +208,8 @@ TSharedRef<SWidget> SPjcTabAssetsUnused::CreateToolbar() const
 	{
 		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().ScanProject);
 		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().CleanProject);
+		ToolBarBuilder.AddSeparator();
+		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().ClearExcludeSettings);
 	}
 	ToolBarBuilder.EndSection();
 

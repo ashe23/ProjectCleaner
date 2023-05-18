@@ -10,6 +10,7 @@
 #include "IContentBrowserSingleton.h"
 #include "Pjc.h"
 #include "PjcFrontendFilters.h"
+#include "Widgets/Layout/SSeparator.h"
 
 void SPjcContentBrowser::Construct(const FArguments& InArgs)
 {
@@ -35,7 +36,7 @@ void SPjcContentBrowser::Construct(const FArguments& InArgs)
 	);
 
 	Cmds->MapAction(
-		FPjcCmds::Get().OpenViewerAudit,
+		FPjcCmds::Get().OpenViewerAssetsAudit,
 		FExecuteAction::CreateLambda([&]()
 		{
 			UPjcSubsystem::OpenAssetAuditViewer(DelegateSelection.Execute());
@@ -147,21 +148,21 @@ void SPjcContentBrowser::Construct(const FArguments& InArgs)
 		})
 	);
 
-	Cmds->MapAction(
-		FPjcCmds::Get().AssetsIncludeAll,
-		FExecuteAction::CreateLambda([&]()
-		{
-			UPjcAssetExcludeSettings* ExcludeSettings = GetMutableDefault<UPjcAssetExcludeSettings>();
-			if (!ExcludeSettings) return;
-
-			ExcludeSettings->ExcludedFolders.Empty();
-			ExcludeSettings->ExcludedClasses.Empty();
-			ExcludeSettings->ExcludedAssets.Empty();
-			ExcludeSettings->PostEditChange();
-
-			// todo:ashe23 rescan project
-		})
-	);
+	// Cmds->MapAction(
+	// 	FPjcCmds::Get().AssetsIncludeAll,
+	// 	FExecuteAction::CreateLambda([&]()
+	// 	{
+	// 		UPjcAssetExcludeSettings* ExcludeSettings = GetMutableDefault<UPjcAssetExcludeSettings>();
+	// 		if (!ExcludeSettings) return;
+	//
+	// 		ExcludeSettings->ExcludedFolders.Empty();
+	// 		ExcludeSettings->ExcludedClasses.Empty();
+	// 		ExcludeSettings->ExcludedAssets.Empty();
+	// 		ExcludeSettings->PostEditChange();
+	//
+	// 		// todo:ashe23 rescan project
+	// 	})
+	// );
 
 	Cmds->MapAction(
 		FPjcCmds::Get().AssetsDelete,
@@ -179,7 +180,15 @@ void SPjcContentBrowser::Construct(const FArguments& InArgs)
 	ChildSlot
 	[
 		SNew(SVerticalBox)
-		+ SVerticalBox::Slot().FillHeight(1.0f).Padding(FMargin{5.0f, 0.0f})
+		+ SVerticalBox::Slot().AutoHeight().Padding(3.0f)
+		[
+			CreateToolbar()
+		]
+		+ SVerticalBox::Slot().AutoHeight().Padding(3.0f)
+		[
+			SNew(SSeparator).Thickness(5.0f)
+		]
+		+ SVerticalBox::Slot().FillHeight(1.0f).Padding(FMargin{5.0f, 1.0f})
 		[
 			ContentBrowserPtr.ToSharedRef()
 		]
@@ -259,16 +268,29 @@ FText SPjcContentBrowser::GetSummaryText() const
 	return FText::FromString(FString::Printf(TEXT("Items - %s"), *NumAssetsTotal));
 }
 
+TSharedRef<SWidget> SPjcContentBrowser::CreateToolbar() const
+{
+	FToolBarBuilder ToolBarBuilder{Cmds, FMultiBoxCustomization::None};
+	ToolBarBuilder.BeginSection("PjcSectionActionsAssets");
+	{
+		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().OpenViewerAssetsIndirect);
+		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().OpenViewerAssetsCorrupted);
+	}
+	ToolBarBuilder.EndSection();
+
+	return ToolBarBuilder.MakeWidget();
+}
+
 TSharedRef<SWidget> SPjcContentBrowser::GetBtnActionsContent()
 {
 	const TSharedPtr<FExtender> Extender;
 	FMenuBuilder MenuBuilder(true, Cmds, Extender, true);
 
-	MenuBuilder.BeginSection(TEXT("Inclusion"), FText::FromString(TEXT("Inclusion")));
-	{
-		MenuBuilder.AddMenuEntry(FPjcCmds::Get().AssetsIncludeAll);
-	}
-	MenuBuilder.EndSection();
+	// MenuBuilder.BeginSection(TEXT("Inclusion"), FText::FromString(TEXT("Inclusion")));
+	// {
+	// 	// MenuBuilder.AddMenuEntry(FPjcCmds::Get().AssetsIncludeAll);
+	// }
+	// MenuBuilder.EndSection();
 
 	// MenuBuilder.BeginSection(TEXT("Selection"), FText::FromString(TEXT("Selection")));
 	// {
@@ -353,7 +375,7 @@ void SPjcContentBrowser::CreateContentBrowser()
 	AssetPickerConfig.bCanShowRealTimeThumbnails = SubsystemPtr->bShowRealtimeThumbnails;
 	AssetPickerConfig.AssetShowWarningText = FText::FromString(TEXT("No assets"));
 	AssetPickerConfig.Filter = Filter;
-	AssetPickerConfig.bAllowNullSelection = true;
+	AssetPickerConfig.bAllowNullSelection = true; // todo:ashe23 OnAssetSelected.ExecuteIfBound(FAssetData());
 	AssetPickerConfig.GetCurrentSelectionDelegates.Add(&DelegateSelection);
 	AssetPickerConfig.RefreshAssetViewDelegates.Add(&DelegateRefreshView);
 	AssetPickerConfig.SetFilterDelegates.Add(&DelegateFilter);
@@ -370,7 +392,7 @@ void SPjcContentBrowser::CreateContentBrowser()
 		{
 			MenuBuilder.AddMenuEntry(FPjcCmds::Get().OpenViewerSizeMap);
 			MenuBuilder.AddMenuEntry(FPjcCmds::Get().OpenViewerReference);
-			MenuBuilder.AddMenuEntry(FPjcCmds::Get().OpenViewerAudit);
+			MenuBuilder.AddMenuEntry(FPjcCmds::Get().OpenViewerAssetsAudit);
 		}
 		MenuBuilder.EndSection();
 
@@ -398,7 +420,7 @@ void SPjcContentBrowser::CreateContentBrowser()
 	});
 
 	// todo:ashe23 maybe make this frontend filter optional?
-	
+
 	const TSharedPtr<FFrontendFilterCategory> DefaultCategory = MakeShareable(new FFrontendFilterCategory(FText::FromString(TEXT("ProjectCleaner Filters")), FText::FromString(TEXT(""))));
 	const TSharedPtr<FPjcFilterAssetsUsed> FilterUsed = MakeShareable(new FPjcFilterAssetsUsed(DefaultCategory));
 	FilterUsed->OnFilterChanged().AddLambda([](const bool bActive)

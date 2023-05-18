@@ -15,14 +15,22 @@
 void SPjcTreeView::Construct(const FArguments& InArgs)
 {
 	DelegateSelectionChanged = InArgs._OnSelectionChanged;
-	
+
 	TreeItemsInit();
-	
+
 	Cmds = MakeShareable(new FUICommandList);
 
 	Cmds->MapAction(
 		FPjcCmds::Get().PathsDelete,
 		FExecuteAction::CreateLambda([&]() { })
+	);
+
+	Cmds->MapAction(
+		FPjcCmds::Get().DeleteEmptyFolders,
+		FExecuteAction::CreateLambda([&]()
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Removing all empty folders"))
+		})
 	);
 
 	SAssignNew(TreeView, STreeView<TSharedPtr<FPjcTreeItem>>)
@@ -38,14 +46,22 @@ void SPjcTreeView::Construct(const FArguments& InArgs)
 	ChildSlot
 	[
 		SNew(SVerticalBox)
-		+ SVerticalBox::Slot().AutoHeight().Padding(FMargin{5.0f, 0.0f})
+		+ SVerticalBox::Slot().AutoHeight().Padding(3.0f)
+		[
+			CreateToolbar()
+		]
+		+ SVerticalBox::Slot().AutoHeight().Padding(3.0f)
+		[
+			SNew(SSeparator).Thickness(5.0f)
+		]
+		+ SVerticalBox::Slot().AutoHeight().Padding(5.0f)
 		[
 			SNew(SSearchBox)
 			.HintText(FText::FromString(TEXT("Search Folders...")))
 			.OnTextChanged_Raw(this, &SPjcTreeView::OnTreeSearchTextChanged)
 			.OnTextCommitted_Raw(this, &SPjcTreeView::OnTreeSearchTextCommitted)
 		]
-		+ SVerticalBox::Slot().AutoHeight().Padding(FMargin{5.0f, 5.0f, 5.0f, 2.0f})
+		+ SVerticalBox::Slot().AutoHeight().Padding(5.0f, 0.0f)
 		[
 			SNew(SHorizontalBox)
 			+ SHorizontalBox::Slot().AutoWidth()
@@ -69,11 +85,11 @@ void SPjcTreeView::Construct(const FArguments& InArgs)
 				SNew(STextBlock).Text(FText::FromString(TEXT(" - Excluded Folders")))
 			]
 		]
-		+ SVerticalBox::Slot().AutoHeight().Padding(FMargin{5.0f, 0.0f, 5.0f, 5.0f})
+		+ SVerticalBox::Slot().AutoHeight().Padding(5.0f)
 		[
 			SNew(SSeparator).Thickness(5.0f)
 		]
-		+ SVerticalBox::Slot().FillHeight(1.0f).Padding(FMargin{5.0f, 5.0f, 5.0f, 0.0f})
+		+ SVerticalBox::Slot().FillHeight(1.0f).Padding(5.0f)
 		[
 			SNew(SScrollBox)
 			.ScrollWhenFocusChanges(EScrollWhenFocusChanges::NoScroll)
@@ -502,7 +518,7 @@ void SPjcTreeView::TreeItemsInit()
 void SPjcTreeView::TreeItemsUpdateData(TMap<EPjcAssetCategory, TSet<FAssetData>>& AssetsCategoryMapping)
 {
 	if (!TreeView.IsValid()) return;
-	
+
 	MapNumAssetsAllByPath.Reset();
 	MapNumAssetsUsedByPath.Reset();
 	MapNumAssetsUnusedByPath.Reset();
@@ -601,6 +617,18 @@ void SPjcTreeView::TreeItemsUpdateData(TMap<EPjcAssetCategory, TSet<FAssetData>>
 	}
 
 	TreeView->RebuildList();
+}
+
+TSharedRef<SWidget> SPjcTreeView::CreateToolbar() const
+{
+	FToolBarBuilder ToolBarBuilder{Cmds, FMultiBoxCustomization::None};
+	ToolBarBuilder.BeginSection("PjcSectionActionsPaths");
+	{
+		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().DeleteEmptyFolders);
+	}
+	ToolBarBuilder.EndSection();
+
+	return ToolBarBuilder.MakeWidget();
 }
 
 void SPjcTreeView::TreeItemsUpdateView() {}

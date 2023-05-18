@@ -20,6 +20,7 @@ public:
 	void TreeItemsUpdateData(TMap<EPjcAssetCategory, TSet<FAssetData>>& AssetsCategoryMapping);
 
 protected:
+	TSharedRef<SWidget> CreateToolbar() const;
 	TSharedRef<SWidget> GetTreeBtnActionsContent();
 	TSharedRef<SWidget> GetTreeBtnOptionsContent();
 	TSharedPtr<SWidget> GetTreeContextMenu() const;

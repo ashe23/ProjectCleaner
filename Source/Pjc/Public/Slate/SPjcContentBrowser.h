@@ -20,6 +20,7 @@ public:
 
 protected:
 	FText GetSummaryText() const;
+	TSharedRef<SWidget> CreateToolbar() const;
 	TSharedRef<SWidget> GetBtnActionsContent();
 	TSharedRef<SWidget> GetBtnOptionsContent();
 	void CreateContentBrowser();

@@ -67,11 +67,35 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create()
 	Style->Set("ProjectCleaner.TabMain", new IMAGE_BRUSH(TEXT("IconBin40"), FVector2D{40.0f, 40.0f}));
 	Style->Set("ProjectCleaner.ScanProject", new IMAGE_BRUSH(TEXT("IconRefresh32"), FVector2D{32.0f, 32.0f}));
 	Style->Set("ProjectCleaner.CleanProject", new IMAGE_BRUSH(TEXT("IconBinRed32"), FVector2D{32.0f, 32.0f}));
+	Style->Set("ProjectCleaner.DeleteEmptyFolders", new IMAGE_BRUSH(TEXT("IconFolderRemove32"), FVector2D{32.0f, 32.0f}));
+	Style->Set("ProjectCleaner.ClearExcludeSettings", new IMAGE_BRUSH(TEXT("IconFilterClear32"), FVector2D{32.0f, 32.0f}));
+	Style->Set("ProjectCleaner.OpenViewerAssetsIndirect", new IMAGE_BRUSH(TEXT("IconArrows32"), FVector2D{32.0f, 32.0f}));
+	Style->Set("ProjectCleaner.OpenViewerAssetsCorrupted", new IMAGE_BRUSH(TEXT("IconCorruptedFile32"), FVector2D{32.0f, 32.0f}));
+	Style->Set("ProjectCleaner.AssetsExclude", new IMAGE_BRUSH(TEXT("IconMinus32"), FVector2D{32.0f, 32.0f}));
+	Style->Set("ProjectCleaner.AssetsExcludeByClass", new IMAGE_BRUSH(TEXT("IconMinus32"), FVector2D{32.0f, 32.0f}));
+	Style->Set("ProjectCleaner.AssetsInclude", new IMAGE_BRUSH(TEXT("IconPlus32"), FVector2D{32.0f, 32.0f}));
+	Style->Set("ProjectCleaner.AssetsIncludeByClass", new IMAGE_BRUSH(TEXT("IconPlus32"), FVector2D{32.0f, 32.0f}));
+	Style->Set("ProjectCleaner.PathsExclude", new IMAGE_BRUSH(TEXT("IconMinus32"), FVector2D{32.0f, 32.0f}));
+	Style->Set("ProjectCleaner.PathsInclude", new IMAGE_BRUSH(TEXT("IconPlus32"), FVector2D{32.0f, 32.0f}));
+	Style->Set("ProjectCleaner.PathsDelete", new IMAGE_BRUSH(TEXT("IconCross32"), FVector2D{32.0f, 32.0f}));
+	Style->Set("ProjectCleaner.AssetsDelete", new IMAGE_BRUSH(TEXT("IconCross32"), FVector2D{32.0f, 32.0f}));
 
 	// cmds icons small
 	Style->Set("ProjectCleaner.TabMain.Small", new IMAGE_BRUSH(TEXT("IconBin20"), FVector2D{20.0f, 20.0f}));
 	Style->Set("ProjectCleaner.ScanProject.Small", new IMAGE_BRUSH(TEXT("IconRefresh20"), FVector2D{20.0f, 20.0f}));
 	Style->Set("ProjectCleaner.CleanProject.Small", new IMAGE_BRUSH(TEXT("IconBinRed20"), FVector2D{20.0f, 20.0f}));
+	Style->Set("ProjectCleaner.DeleteEmptyFolders.Small", new IMAGE_BRUSH(TEXT("IconFolderRemove20"), FVector2D{20.0f, 20.0f}));
+	Style->Set("ProjectCleaner.ClearExcludeSettings.Small", new IMAGE_BRUSH(TEXT("IconFilterClear20"), FVector2D{20.0f, 20.0f}));
+	Style->Set("ProjectCleaner.OpenViewerAssetsIndirect.Small", new IMAGE_BRUSH(TEXT("IconArrows20"), FVector2D{20.0f, 20.0f}));
+	Style->Set("ProjectCleaner.OpenViewerAssetsCorrupted.Small", new IMAGE_BRUSH(TEXT("IconCorruptedFile20"), FVector2D{20.0f, 20.0f}));
+	Style->Set("ProjectCleaner.AssetsExclude.Small", new IMAGE_BRUSH(TEXT("IconMinus20"), FVector2D{20.0f, 20.0f}));
+	Style->Set("ProjectCleaner.AssetsExcludeByClass.Small", new IMAGE_BRUSH(TEXT("IconMinus20"), FVector2D{20.0f, 20.0f}));
+	Style->Set("ProjectCleaner.AssetsInclude.Small", new IMAGE_BRUSH(TEXT("IconPlus20"), FVector2D{20.0f, 20.0f}));
+	Style->Set("ProjectCleaner.AssetsIncludeByClass.Small", new IMAGE_BRUSH(TEXT("IconPlus20"), FVector2D{20.0f, 20.0f}));
+	Style->Set("ProjectCleaner.PathsExclude.Small", new IMAGE_BRUSH(TEXT("IconMinus20"), FVector2D{20.0f, 20.0f}));
+	Style->Set("ProjectCleaner.PathsInclude.Small", new IMAGE_BRUSH(TEXT("IconPlus20"), FVector2D{20.0f, 20.0f}));
+	Style->Set("ProjectCleaner.PathsDelete.Small", new IMAGE_BRUSH(TEXT("IconCross20"), FVector2D{20.0f, 20.0f}));
+	Style->Set("ProjectCleaner.AssetsDelete.Small", new IMAGE_BRUSH(TEXT("IconCross20"), FVector2D{20.0f, 20.0f}));
 
 	// icons
 	Style->Set("ProjectCleaner.Icon.Bin16", new IMAGE_BRUSH(TEXT("IconBin16"), FVector2D{16.0f, 16.0f}));

@@ -39,6 +39,22 @@ void FPjcCmds::RegisterCommands()
 	);
 
 	UI_COMMAND(
+		DeleteEmptyFolders,
+		"Delete Empty Folders",
+		"Delete all empty folders in project. Engine Generated folders will be ignored. (/Game/Developers, /Game/Collection etc).",
+		EUserInterfaceActionType::Button,
+		FInputChord()
+	);
+
+	UI_COMMAND(
+		ClearExcludeSettings,
+		"Clear Exclude Settings",
+		"Clear all exclude settings and rescan project",
+		EUserInterfaceActionType::Button,
+		FInputChord()
+	);
+
+	UI_COMMAND(
 		PathsExclude,
 		"Exclude ...",
 		"Exclude assets in selected paths",
@@ -93,15 +109,7 @@ void FPjcCmds::RegisterCommands()
 		EUserInterfaceActionType::Button,
 		FInputChord()
 	);
-
-	UI_COMMAND(
-		AssetsIncludeAll,
-		"Include All...",
-		"Include all assets that were previously excluded.",
-		EUserInterfaceActionType::Button,
-		FInputChord()
-	);
-
+	
 	UI_COMMAND(
 		AssetsDelete,
 		"Delete ...",
@@ -127,9 +135,25 @@ void FPjcCmds::RegisterCommands()
 	);
 
 	UI_COMMAND(
-		OpenViewerAudit,
+		OpenViewerAssetsAudit,
 		"Open Asset Audit ...",
 		"Open AssetAudit viewer for selected assets",
+		EUserInterfaceActionType::Button,
+		FInputChord()
+	);
+
+	UI_COMMAND(
+		OpenViewerAssetsIndirect,
+		"Indirect Assets Viewer",
+		"Open indirect assets viewer",
+		EUserInterfaceActionType::Button,
+		FInputChord()
+	);
+
+	UI_COMMAND(
+		OpenViewerAssetsCorrupted,
+		"Corrupted Assets Viewer",
+		"Open corrupted assets viewer",
 		EUserInterfaceActionType::Button,
 		FInputChord()
 	);
