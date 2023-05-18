@@ -23,6 +23,14 @@ void FPjcCmds::RegisterCommands()
 	);
 
 	UI_COMMAND(
+		Refresh,
+		"Refresh",
+		"Refresh",
+		EUserInterfaceActionType::Button,
+		FInputChord()
+	);
+
+	UI_COMMAND(
 		ScanProject,
 		"Scan Project",
 		"Scan project for unused assets and empty folders",

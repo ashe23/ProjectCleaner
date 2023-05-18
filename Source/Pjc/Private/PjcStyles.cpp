@@ -65,6 +65,7 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create()
 
 	// cmds icons big
 	Style->Set("ProjectCleaner.TabMain", new IMAGE_BRUSH(TEXT("IconBin40"), FVector2D{40.0f, 40.0f}));
+	Style->Set("ProjectCleaner.Refresh", new IMAGE_BRUSH(TEXT("IconRefresh32"), FVector2D{32.0f, 32.0f}));
 	Style->Set("ProjectCleaner.ScanProject", new IMAGE_BRUSH(TEXT("IconRefresh32"), FVector2D{32.0f, 32.0f}));
 	Style->Set("ProjectCleaner.CleanProject", new IMAGE_BRUSH(TEXT("IconBinRed32"), FVector2D{32.0f, 32.0f}));
 	Style->Set("ProjectCleaner.DeleteEmptyFolders", new IMAGE_BRUSH(TEXT("IconFolderRemove32"), FVector2D{32.0f, 32.0f}));
@@ -91,6 +92,7 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create()
 
 	// cmds icons small
 	Style->Set("ProjectCleaner.TabMain.Small", new IMAGE_BRUSH(TEXT("IconBin20"), FVector2D{20.0f, 20.0f}));
+	Style->Set("ProjectCleaner.Refresh.Small", new IMAGE_BRUSH(TEXT("IconRefresh20"), FVector2D{20.0f, 20.0f}));
 	Style->Set("ProjectCleaner.ScanProject.Small", new IMAGE_BRUSH(TEXT("IconRefresh20"), FVector2D{20.0f, 20.0f}));
 	Style->Set("ProjectCleaner.CleanProject.Small", new IMAGE_BRUSH(TEXT("IconBinRed20"), FVector2D{20.0f, 20.0f}));
 	Style->Set("ProjectCleaner.DeleteEmptyFolders.Small", new IMAGE_BRUSH(TEXT("IconFolderRemove20"), FVector2D{20.0f, 20.0f}));
@@ -124,6 +126,7 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create()
 	Style->Set("ProjectCleaner.Icon.File16", new IMAGE_BRUSH(TEXT("IconFile16"), FVector2D{16.0f, 16.0f}));
 	Style->Set("ProjectCleaner.Icon.Stat16", new IMAGE_BRUSH(TEXT("IconStat16"), FVector2D{16.0f, 16.0f}));
 	Style->Set("ProjectCleaner.Icon.Arrows16", new IMAGE_BRUSH(TEXT("IconArrows16"), FVector2D{16.0f, 16.0f}));
+	Style->Set("ProjectCleaner.Icon.CorruptedFile16", new IMAGE_BRUSH(TEXT("IconCorruptedFile20"), FVector2D{16.0f, 16.0f}));
 
 	// pallet colors
 	Style->Set("ProjectCleaner.Color.Black", FLinearColor{FColor::FromHex(TEXT("#000000"))});

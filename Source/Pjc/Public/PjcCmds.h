@@ -13,6 +13,7 @@ public:
 	// Tabs
 	TSharedPtr<FUICommandInfo> TabMain;
 
+	TSharedPtr<FUICommandInfo> Refresh;
 	TSharedPtr<FUICommandInfo> ScanProject;
 	TSharedPtr<FUICommandInfo> CleanProject;
 	TSharedPtr<FUICommandInfo> DeleteEmptyFolders;

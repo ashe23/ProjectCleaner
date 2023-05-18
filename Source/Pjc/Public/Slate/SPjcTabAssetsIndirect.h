@@ -17,9 +17,9 @@ public:
 	void Construct(const FArguments& InArgs);
 
 protected:
+	TSharedRef<SWidget> CreateToolbar() const;
 	TSharedRef<SHeaderRow> GetHeaderRow();
 	TSharedRef<ITableRow> OnGenerateRow(TSharedPtr<FPjcFileInfo> Item, const TSharedRef<STableViewBase>& OwnerTable) const;
-	FReply OnBtnRefreshClick();
 
 private:
 	TArray<TSharedPtr<FPjcFileInfo>> Items;
@@ -29,6 +29,7 @@ private:
 	EColumnSortMode::Type ColumnSortModeFileNum = EColumnSortMode::None;
 
 	FARFilter Filter;
+	TSharedPtr<FUICommandList> Cmds;
 	TSet<FAssetData> AssetsIndirect;
 	FSetARFilterDelegate DelegateFilter;
 	FRefreshAssetViewDelegate DelegateRefreshView;

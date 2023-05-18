@@ -4,15 +4,37 @@
 #include "Slate/SPjcItemFileInfo.h"
 #include "PjcStyles.h"
 #include "PjcSubsystem.h"
+#include "PjcConstants.h"
 // Engine Headers
 #include "IContentBrowserSingleton.h"
-#include "PjcConstants.h"
+#include "PjcCmds.h"
 #include "Widgets/Input/SSearchBox.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SSeparator.h"
 
 void SPjcTabAssetsIndirect::Construct(const FArguments& InArgs)
 {
+	Cmds = MakeShareable(new FUICommandList);
+
+	Cmds->MapAction(
+		FPjcCmds::Get().Refresh,
+		FExecuteAction::CreateLambda([&]()
+		{
+			UPjcSubsystem::GetAssetsByCategory(EPjcAssetCategory::Indirect, AssetsIndirect);
+
+			Filter.Clear();
+
+			Filter.ObjectPaths.Reserve(AssetsIndirect.Num());
+
+			for (const auto& Asset : AssetsIndirect)
+			{
+				Filter.ObjectPaths.Emplace(Asset.ToSoftObjectPath().GetAssetPathName());
+			}
+
+			DelegateFilter.Execute(Filter);
+		})
+	);
+
 	Filter.TagsAndValues.Emplace(PjcConstants::EmptyTagName, PjcConstants::EmptyTagName.ToString());
 
 	FAssetPickerConfig AssetPickerConfig;
@@ -56,6 +78,7 @@ void SPjcTabAssetsIndirect::Construct(const FArguments& InArgs)
 
 	SAssignNew(ListView, SListView<TSharedPtr<FPjcFileInfo>>)
 	.ListItemsSource(&Items)
+	.SelectionMode(ESelectionMode::None)
 	.OnGenerateRow(this, &SPjcTabAssetsIndirect::OnGenerateRow)
 	.HeaderRow(GetHeaderRow());
 
@@ -64,33 +87,11 @@ void SPjcTabAssetsIndirect::Construct(const FArguments& InArgs)
 		SNew(SVerticalBox)
 		+ SVerticalBox::Slot().AutoHeight().Padding(5.0f)
 		[
-			SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot().FillWidth(1.0f).HAlign(HAlign_Center).VAlign(VAlign_Center)
-			[
-				SNew(STextBlock)
-				.Justification(ETextJustify::Center)
-				.ColorAndOpacity(FPjcStyles::Get().GetColor("ProjectCleaner.Color.Gray"))
-				.ShadowOffset(FVector2D{1.5f, 1.5f})
-				.ShadowColorAndOpacity(FLinearColor::Black)
-				.Font(FPjcStyles::GetFont("Bold", 20))
-				.Text(FText::FromString(TEXT("List of assets used in source code or config files.")))
-			]
+			CreateToolbar()
 		]
 		+ SVerticalBox::Slot().AutoHeight().Padding(10.0f, 0.0f)
 		[
 			SNew(SSeparator).Thickness(5.0f)
-		]
-		+ SVerticalBox::Slot().AutoHeight().Padding(5.0f)
-		[
-			SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot().AutoWidth()
-			[
-				SNew(SButton)
-				.OnClicked_Raw(this, &SPjcTabAssetsIndirect::OnBtnRefreshClick)
-				[
-					SNew(STextBlock).Text(FText::FromString(TEXT("Refresh")))
-				]
-			]
 		]
 		+ SVerticalBox::Slot().FillHeight(1.0f).Padding(5.0f)
 		[
@@ -99,11 +100,35 @@ void SPjcTabAssetsIndirect::Construct(const FArguments& InArgs)
 			.Style(FEditorStyle::Get(), "DetailsView.Splitter")
 			+ SSplitter::Slot().Value(0.5f)
 			[
-				UPjcSubsystem::GetModuleContentBrowser().Get().CreateAssetPicker(AssetPickerConfig)
+				SNew(SVerticalBox)
+				+ SVerticalBox::Slot().FillHeight(1.0f).Padding(5.0f)
+				[
+					UPjcSubsystem::GetModuleContentBrowser().Get().CreateAssetPicker(AssetPickerConfig)
+				]
 			]
 			+ SSplitter::Slot().Value(0.5f)
 			[
 				SNew(SVerticalBox)
+				+ SVerticalBox::Slot().AutoHeight().Padding(FMargin{10.0f, 0.0f, 5.0f, 5.0f})
+				[
+					SNew(STextBlock)
+					.Justification(ETextJustify::Center)
+					.ColorAndOpacity(FPjcStyles::Get().GetColor("ProjectCleaner.Color.Gray"))
+					.ShadowOffset(FVector2D{0.5f, 0.5f})
+					.ShadowColorAndOpacity(FLinearColor::Black)
+					.Font(FPjcStyles::GetFont("Bold", 15))
+					.Text(FText::FromString(TEXT("List of assets used in source code or config files.")))
+				]
+				+ SVerticalBox::Slot().AutoHeight().Padding(FMargin{10.0f, 0.0f, 5.0f, 5.0f})
+				[
+					SNew(STextBlock)
+					.Justification(ETextJustify::Center)
+					.ColorAndOpacity(FPjcStyles::Get().GetColor("ProjectCleaner.Color.Gray"))
+					.ShadowOffset(FVector2D{0.5f, 0.5f})
+					.ShadowColorAndOpacity(FLinearColor::Black)
+					.Font(FPjcStyles::GetFont("Bold", 10))
+					.Text(FText::FromString(TEXT("Select asset in order to see their usage info.")))
+				]
 				+ SVerticalBox::Slot().AutoHeight().Padding(FMargin{10.0f, 0.0f, 5.0f, 5.0f})
 				[
 					SNew(SSearchBox)
@@ -123,6 +148,23 @@ void SPjcTabAssetsIndirect::Construct(const FArguments& InArgs)
 			]
 		]
 	];
+}
+
+TSharedRef<SWidget> SPjcTabAssetsIndirect::CreateToolbar() const
+{
+	FToolBarBuilder ToolBarBuilder{Cmds, FMultiBoxCustomization::None};
+	ToolBarBuilder.BeginSection(NAME_None);
+	{
+		ToolBarBuilder.AddToolBarButton(
+			FPjcCmds::Get().Refresh,
+			NAME_None,
+			FText::FromString(TEXT("Search")),
+			FText::FromString(TEXT("Search for indirect assets and their usage info"))
+		);
+	}
+	ToolBarBuilder.EndSection();
+
+	return ToolBarBuilder.MakeWidget();
 }
 
 TSharedRef<SHeaderRow> SPjcTabAssetsIndirect::GetHeaderRow()
@@ -160,22 +202,4 @@ TSharedRef<SHeaderRow> SPjcTabAssetsIndirect::GetHeaderRow()
 TSharedRef<ITableRow> SPjcTabAssetsIndirect::OnGenerateRow(TSharedPtr<FPjcFileInfo> Item, const TSharedRef<STableViewBase>& OwnerTable) const
 {
 	return SNew(SPjcItemFileInfo, OwnerTable).Item(Item);
-}
-
-FReply SPjcTabAssetsIndirect::OnBtnRefreshClick()
-{
-	UPjcSubsystem::GetAssetsByCategory(EPjcAssetCategory::Indirect, AssetsIndirect);
-
-	Filter.Clear();
-
-	Filter.ObjectPaths.Reserve(AssetsIndirect.Num());
-
-	for (const auto& Asset : AssetsIndirect)
-	{
-		Filter.ObjectPaths.Emplace(Asset.ToSoftObjectPath().GetAssetPathName());
-	}
-
-	DelegateFilter.Execute(Filter);
-
-	return FReply::Handled();
 }
