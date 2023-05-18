@@ -55,24 +55,32 @@ void FPjcCmds::RegisterCommands()
 	);
 
 	UI_COMMAND(
+		ClearSelection,
+		"Clear Selection",
+		"Clear any selection",
+		EUserInterfaceActionType::Button,
+		FInputChord()
+	);
+
+	UI_COMMAND(
 		PathsExclude,
-		"Exclude ...",
-		"Exclude assets in selected paths",
+		"Exclude",
+		"Exclude assets in selected folders",
 		EUserInterfaceActionType::Button,
 		FInputChord()
 	);
 
 	UI_COMMAND(
 		PathsInclude,
-		"Include ...",
-		"Include assets in selected paths",
+		"Include",
+		"Include assets in selected folders",
 		EUserInterfaceActionType::Button,
 		FInputChord()
 	);
 
 	UI_COMMAND(
 		PathsDelete,
-		"Delete ...",
+		"Delete",
 		"Delete all assets in selected paths",
 		EUserInterfaceActionType::Button,
 		FInputChord()
@@ -80,7 +88,7 @@ void FPjcCmds::RegisterCommands()
 
 	UI_COMMAND(
 		AssetsExclude,
-		"Exclude ...",
+		"Exclude",
 		"Exclude selected assets",
 		EUserInterfaceActionType::Button,
 		FInputChord()
@@ -88,7 +96,7 @@ void FPjcCmds::RegisterCommands()
 
 	UI_COMMAND(
 		AssetsExcludeByClass,
-		"Exclude By Class...",
+		"Exclude By Class",
 		"Exclude selected assets by class",
 		EUserInterfaceActionType::Button,
 		FInputChord()
@@ -96,7 +104,7 @@ void FPjcCmds::RegisterCommands()
 
 	UI_COMMAND(
 		AssetsInclude,
-		"Include ...",
+		"Include",
 		"Include selected assets",
 		EUserInterfaceActionType::Button,
 		FInputChord()
@@ -104,15 +112,15 @@ void FPjcCmds::RegisterCommands()
 
 	UI_COMMAND(
 		AssetsIncludeByClass,
-		"Include By Class...",
+		"Include By Class",
 		"Include selected assets by class",
 		EUserInterfaceActionType::Button,
 		FInputChord()
 	);
-	
+
 	UI_COMMAND(
 		AssetsDelete,
-		"Delete ...",
+		"Delete",
 		"Delete selected assets",
 		EUserInterfaceActionType::Button,
 		FInputChord()
@@ -120,7 +128,7 @@ void FPjcCmds::RegisterCommands()
 
 	UI_COMMAND(
 		OpenViewerSizeMap,
-		"Open SizeMap ...",
+		"Open SizeMap",
 		"Open SizeMap viewer for selected assets",
 		EUserInterfaceActionType::Button,
 		FInputChord()
@@ -128,7 +136,7 @@ void FPjcCmds::RegisterCommands()
 
 	UI_COMMAND(
 		OpenViewerReference,
-		"Open ReferenceViewer ...",
+		"Open ReferenceViewer",
 		"Open ReferenceViewer for selected assets",
 		EUserInterfaceActionType::Button,
 		FInputChord()
@@ -136,7 +144,7 @@ void FPjcCmds::RegisterCommands()
 
 	UI_COMMAND(
 		OpenViewerAssetsAudit,
-		"Open Asset Audit ...",
+		"Open Asset Audit",
 		"Open AssetAudit viewer for selected assets",
 		EUserInterfaceActionType::Button,
 		FInputChord()
@@ -160,7 +168,7 @@ void FPjcCmds::RegisterCommands()
 
 	UI_COMMAND(
 		ItemsCollapseAll,
-		"Collapse All ...",
+		"Collapse All",
 		"Collapse all items",
 		EUserInterfaceActionType::Button,
 		FInputChord()
@@ -168,7 +176,7 @@ void FPjcCmds::RegisterCommands()
 
 	UI_COMMAND(
 		ItemsExpandAll,
-		"Expand All ...",
+		"Expand All",
 		"Expand all items",
 		EUserInterfaceActionType::Button,
 		FInputChord()

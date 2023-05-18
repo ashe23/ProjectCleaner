@@ -17,6 +17,7 @@ public:
 	TSharedPtr<FUICommandInfo> CleanProject;
 	TSharedPtr<FUICommandInfo> DeleteEmptyFolders;
 	TSharedPtr<FUICommandInfo> ClearExcludeSettings;
+	TSharedPtr<FUICommandInfo> ClearSelection;
 	TSharedPtr<FUICommandInfo> PathsExclude;
 	TSharedPtr<FUICommandInfo> PathsInclude;
 	TSharedPtr<FUICommandInfo> PathsDelete;

@@ -69,6 +69,7 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create()
 	Style->Set("ProjectCleaner.CleanProject", new IMAGE_BRUSH(TEXT("IconBinRed32"), FVector2D{32.0f, 32.0f}));
 	Style->Set("ProjectCleaner.DeleteEmptyFolders", new IMAGE_BRUSH(TEXT("IconFolderRemove32"), FVector2D{32.0f, 32.0f}));
 	Style->Set("ProjectCleaner.ClearExcludeSettings", new IMAGE_BRUSH(TEXT("IconFilterClear32"), FVector2D{32.0f, 32.0f}));
+	Style->Set("ProjectCleaner.ClearSelection", new IMAGE_BRUSH(TEXT("IconNone32"), FVector2D{32.0f, 32.0f}));
 	Style->Set("ProjectCleaner.OpenViewerAssetsIndirect", new IMAGE_BRUSH(TEXT("IconArrows32"), FVector2D{32.0f, 32.0f}));
 	Style->Set("ProjectCleaner.OpenViewerAssetsCorrupted", new IMAGE_BRUSH(TEXT("IconCorruptedFile32"), FVector2D{32.0f, 32.0f}));
 	Style->Set("ProjectCleaner.AssetsExclude", new IMAGE_BRUSH(TEXT("IconMinus32"), FVector2D{32.0f, 32.0f}));
@@ -86,6 +87,7 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create()
 	Style->Set("ProjectCleaner.CleanProject.Small", new IMAGE_BRUSH(TEXT("IconBinRed20"), FVector2D{20.0f, 20.0f}));
 	Style->Set("ProjectCleaner.DeleteEmptyFolders.Small", new IMAGE_BRUSH(TEXT("IconFolderRemove20"), FVector2D{20.0f, 20.0f}));
 	Style->Set("ProjectCleaner.ClearExcludeSettings.Small", new IMAGE_BRUSH(TEXT("IconFilterClear20"), FVector2D{20.0f, 20.0f}));
+	Style->Set("ProjectCleaner.ClearSelection.Small", new IMAGE_BRUSH(TEXT("IconNone20"), FVector2D{20.0f, 20.0f}));
 	Style->Set("ProjectCleaner.OpenViewerAssetsIndirect.Small", new IMAGE_BRUSH(TEXT("IconArrows20"), FVector2D{20.0f, 20.0f}));
 	Style->Set("ProjectCleaner.OpenViewerAssetsCorrupted.Small", new IMAGE_BRUSH(TEXT("IconCorruptedFile20"), FVector2D{20.0f, 20.0f}));
 	Style->Set("ProjectCleaner.AssetsExclude.Small", new IMAGE_BRUSH(TEXT("IconMinus20"), FVector2D{20.0f, 20.0f}));
@@ -108,6 +110,7 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create()
 	Style->Set("ProjectCleaner.Icon.Arrows16", new IMAGE_BRUSH(TEXT("IconArrows16"), FVector2D{16.0f, 16.0f}));
 
 	// pallet colors
+	Style->Set("ProjectCleaner.Color.Black", FLinearColor{FColor::FromHex(TEXT("#000000"))});
 	Style->Set("ProjectCleaner.Color.Blue", FLinearColor{FColor::FromHex(TEXT("#227C9D"))});
 	Style->Set("ProjectCleaner.Color.Green", FLinearColor{FColor::FromHex(TEXT("#17C3B2"))});
 	Style->Set("ProjectCleaner.Color.GreenBright", FLinearColor{FColor::FromHex(TEXT("#16db65"))});

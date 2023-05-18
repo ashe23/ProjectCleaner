@@ -16,6 +16,10 @@ void SPjcTreeView::Construct(const FArguments& InArgs)
 {
 	DelegateSelectionChanged = InArgs._OnSelectionChanged;
 
+	TSet<FString> FoldersTotal;
+	UPjcSubsystem::GetFoldersInPath(FPaths::ProjectContentDir(), true, FoldersTotal);
+	NumFoldersTotal = FoldersTotal.Num();
+
 	TreeItemsInit();
 
 	Cmds = MakeShareable(new FUICommandList);
@@ -30,6 +34,46 @@ void SPjcTreeView::Construct(const FArguments& InArgs)
 		FExecuteAction::CreateLambda([&]()
 		{
 			UE_LOG(LogTemp, Warning, TEXT("Removing all empty folders"))
+		})
+	);
+
+	Cmds->MapAction(
+		FPjcCmds::Get().PathsExclude,
+		FExecuteAction::CreateLambda([&]()
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Excluding selected paths"))
+		}),
+		FCanExecuteAction::CreateLambda([&]()
+		{
+			return TreeView.IsValid() && TreeView->GetSelectedItems().Num();
+		})
+	);
+
+	Cmds->MapAction(
+		FPjcCmds::Get().PathsInclude,
+		FExecuteAction::CreateLambda([&]()
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Including selected paths"))
+		}),
+		FCanExecuteAction::CreateLambda([&]()
+		{
+			return TreeView.IsValid() && TreeView->GetSelectedItems().Num();
+		})
+	);
+
+	Cmds->MapAction(
+		FPjcCmds::Get().ClearSelection,
+		FExecuteAction::CreateLambda([&]()
+		{
+			if (TreeView.IsValid())
+			{
+				TreeView->ClearSelection();
+				TreeView->ClearHighlightedItems();
+			}
+		}),
+		FCanExecuteAction::CreateLambda([&]()
+		{
+			return TreeView.IsValid() && TreeView->GetSelectedItems().Num() > 0;
 		})
 	);
 
@@ -84,6 +128,16 @@ void SPjcTreeView::Construct(const FArguments& InArgs)
 			[
 				SNew(STextBlock).Text(FText::FromString(TEXT(" - Excluded Folders")))
 			]
+			+ SHorizontalBox::Slot().AutoWidth()
+			[
+				SNew(SImage)
+				.Image(FEditorStyle::GetBrush("ContentBrowser.AssetTreeFolderOpen"))
+				.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Black"))
+			]
+			+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin{0.0f, 2.0f, 5.0f, 0.0f})
+			[
+				SNew(STextBlock).Text(FText::FromString(TEXT(" - Engine Folders")))
+			]
 		]
 		+ SVerticalBox::Slot().AutoHeight().Padding(5.0f)
 		[
@@ -105,27 +159,11 @@ void SPjcTreeView::Construct(const FArguments& InArgs)
 			SNew(SHorizontalBox)
 			+ SHorizontalBox::Slot().FillWidth(1.0f).HAlign(HAlign_Left).VAlign(VAlign_Center)
 			[
-				SNew(SComboButton)
-				.ContentPadding(0)
-				.ForegroundColor_Raw(this, &SPjcTreeView::GetTreeOptionsBtnForegroundColor)
-				.ButtonStyle(FEditorStyle::Get(), "ToggleButton")
-				.OnGetMenuContent(this, &SPjcTreeView::GetTreeBtnActionsContent)
-				.ButtonContent()
-				[
-					SNew(SHorizontalBox)
-					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
-					[
-						SNew(SImage).Image(FEditorStyle::GetBrush("GenericViewButton"))
-					]
-					+ SHorizontalBox::Slot().AutoWidth().Padding(2.0f, 0.0f, 0.0f, 0.0f).VAlign(VAlign_Center)
-					[
-						SNew(STextBlock).Text(FText::FromString(TEXT("Actions")))
-					]
-				]
+				SNew(STextBlock).Text_Raw(this, &SPjcTreeView::GetTreeSummaryText)
 			]
 			+ SHorizontalBox::Slot().FillWidth(1.0f).HAlign(HAlign_Center).VAlign(VAlign_Center)
 			[
-				SNew(STextBlock).Text_Raw(this, &SPjcTreeView::GetTreeSummaryText)
+				SNew(STextBlock).Text_Raw(this, &SPjcTreeView::GetTreeSelectionText)
 			]
 			+ SHorizontalBox::Slot().FillWidth(1.0f).HAlign(HAlign_Right).VAlign(VAlign_Center)
 			[
@@ -156,25 +194,60 @@ const TSet<FString>& SPjcTreeView::GetSelectedPaths() const
 	return SelectedPaths;
 }
 
-TSharedRef<SWidget> SPjcTreeView::GetTreeBtnActionsContent()
+TSharedRef<SWidget> SPjcTreeView::GetTreeBtnOptionsContent()
 {
 	const TSharedPtr<FExtender> Extender;
-	FMenuBuilder MenuBuilder(true, nullptr, Extender, true);
+	FMenuBuilder MenuBuilder(true, Cmds, Extender, true);
 
-	MenuBuilder.AddMenuSeparator(TEXT("Actions"));
+	MenuBuilder.AddMenuSeparator(TEXT("View"));
 
 	MenuBuilder.AddMenuEntry(
-		FText::FromString(TEXT("Delete Empty Folders")),
-		FText::FromString(TEXT("Delete all empty folders in project")),
+		FText::FromString(TEXT("Show Folders Empty")),
+		FText::FromString(TEXT("Show empty folders in tree view")),
 		FSlateIcon(),
 		FUIAction
 		(
 			FExecuteAction::CreateLambda([&] { })
 		),
 		NAME_None,
-		EUserInterfaceActionType::Button
+		EUserInterfaceActionType::ToggleButton
 	);
 
+	MenuBuilder.AddMenuEntry(
+		FText::FromString(TEXT("Show Folders Excluded")),
+		FText::FromString(TEXT("Show excluded folders in tree view")),
+		FSlateIcon(),
+		FUIAction
+		(
+			FExecuteAction::CreateLambda([&] { })
+		),
+		NAME_None,
+		EUserInterfaceActionType::ToggleButton
+	);
+
+	MenuBuilder.AddMenuEntry(
+		FText::FromString(TEXT("Show Folders Used")),
+		FText::FromString(TEXT("Show folders that dont contain unused assets in tree view")),
+		FSlateIcon(),
+		FUIAction
+		(
+			FExecuteAction::CreateLambda([&] { })
+		),
+		NAME_None,
+		EUserInterfaceActionType::ToggleButton
+	);
+
+	MenuBuilder.AddMenuEntry(
+		FText::FromString(TEXT("Show Folders Engine Generated")),
+		FText::FromString(TEXT("Show engine generated folders in tree view")),
+		FSlateIcon(),
+		FUIAction
+		(
+			FExecuteAction::CreateLambda([&] { })
+		),
+		NAME_None,
+		EUserInterfaceActionType::ToggleButton
+	);
 
 	MenuBuilder.AddSeparator();
 
@@ -200,85 +273,6 @@ TSharedRef<SWidget> SPjcTreeView::GetTreeBtnActionsContent()
 		),
 		NAME_None,
 		EUserInterfaceActionType::Button
-	);
-
-	MenuBuilder.AddSeparator();
-	MenuBuilder.AddMenuEntry(
-		FText::FromString(TEXT("Clear Selection")),
-		FText::FromString(TEXT("Clear any selection in tree view")),
-		FSlateIcon(),
-		FUIAction
-		(
-			FExecuteAction::CreateLambda([&]
-			{
-				TreeView->ClearSelection();
-				TreeView->ClearHighlightedItems();
-			}),
-			FCanExecuteAction::CreateLambda([&]()
-			{
-				return TreeView.IsValid();
-			})
-		),
-		NAME_None,
-		EUserInterfaceActionType::Button
-	);
-
-	return MenuBuilder.MakeWidget();
-}
-
-TSharedRef<SWidget> SPjcTreeView::GetTreeBtnOptionsContent()
-{
-	const TSharedPtr<FExtender> Extender;
-	FMenuBuilder MenuBuilder(true, nullptr, Extender, true);
-
-	MenuBuilder.AddMenuSeparator(TEXT("View"));
-
-	MenuBuilder.AddMenuEntry(
-		FText::FromString(TEXT("Show Folders Empty")),
-		FText::FromString(TEXT("Show empty folders in tree view")),
-		FSlateIcon(),
-		FUIAction
-		(
-			FExecuteAction::CreateLambda([&] { })
-		),
-		NAME_None,
-		EUserInterfaceActionType::ToggleButton
-	);
-
-	MenuBuilder.AddMenuEntry(
-		FText::FromString(TEXT("Show Folders Excluded")),
-		FText::FromString(TEXT("Show empty folders in tree view")),
-		FSlateIcon(),
-		FUIAction
-		(
-			FExecuteAction::CreateLambda([&] { })
-		),
-		NAME_None,
-		EUserInterfaceActionType::ToggleButton
-	);
-
-	MenuBuilder.AddMenuEntry(
-		FText::FromString(TEXT("Show Folders Unused Only")),
-		FText::FromString(TEXT("Show empty folders in tree view")),
-		FSlateIcon(),
-		FUIAction
-		(
-			FExecuteAction::CreateLambda([&] { })
-		),
-		NAME_None,
-		EUserInterfaceActionType::ToggleButton
-	);
-
-	MenuBuilder.AddMenuEntry(
-		FText::FromString(TEXT("Show Folders Engine Generated")),
-		FText::FromString(TEXT("Show empty folders in tree view")),
-		FSlateIcon(),
-		FUIAction
-		(
-			FExecuteAction::CreateLambda([&] { })
-		),
-		NAME_None,
-		EUserInterfaceActionType::ToggleButton
 	);
 
 	return MenuBuilder.MakeWidget();
@@ -565,7 +559,7 @@ void SPjcTreeView::TreeItemsUpdateData(TMap<EPjcAssetCategory, TSet<FAssetData>>
 	RootItem->bIsRoot = true;
 	RootItem->bIsEmpty = UPjcSubsystem::PathIsEmpty(PathContentDir);
 	RootItem->bIsExcluded = UPjcSubsystem::PathIsExcluded(PathContentDir);
-	RootItem->bIsExpanded = ItemIsExpanded(RootItem, CachedExpandedItems);
+	RootItem->bIsExpanded = true;
 	RootItem->bIsVisible = true;
 	RootItem->NumAssetsTotal = AssetsCategoryMapping[EPjcAssetCategory::Any].Num();
 	RootItem->NumAssetsUsed = AssetsCategoryMapping[EPjcAssetCategory::Used].Num();
@@ -625,6 +619,11 @@ TSharedRef<SWidget> SPjcTreeView::CreateToolbar() const
 	ToolBarBuilder.BeginSection("PjcSectionActionsPaths");
 	{
 		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().DeleteEmptyFolders);
+		ToolBarBuilder.AddSeparator();
+		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().PathsExclude);
+		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().PathsInclude);
+		ToolBarBuilder.AddSeparator();
+		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().ClearSelection);
 	}
 	ToolBarBuilder.EndSection();
 
@@ -652,6 +651,11 @@ bool SPjcTreeView::ItemIsExpanded(const TSharedPtr<FPjcTreeItem>& Item, const TS
 }
 
 FText SPjcTreeView::GetTreeSummaryText() const
+{
+	return FText::FromString(FString::Printf(TEXT("Total - %d"), NumFoldersTotal));
+}
+
+FText SPjcTreeView::GetTreeSelectionText() const
 {
 	const int32 NumItemsSelected = TreeView.IsValid() ? TreeView->GetSelectedItems().Num() : 0;
 

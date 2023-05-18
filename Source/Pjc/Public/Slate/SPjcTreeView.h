@@ -21,7 +21,6 @@ public:
 
 protected:
 	TSharedRef<SWidget> CreateToolbar() const;
-	TSharedRef<SWidget> GetTreeBtnActionsContent();
 	TSharedRef<SWidget> GetTreeBtnOptionsContent();
 	TSharedPtr<SWidget> GetTreeContextMenu() const;
 	TSharedRef<SHeaderRow> GetTreeHeaderRow();
@@ -35,11 +34,13 @@ protected:
 	void TreeItemsUpdateView();
 	bool ItemIsExpanded(const TSharedPtr<FPjcTreeItem>& Item, const TSet<TSharedPtr<FPjcTreeItem>>& ExpandedItems);
 	FText GetTreeSummaryText() const;
+	FText GetTreeSelectionText() const;
 	FSlateColor GetTreeOptionsBtnForegroundColor() const;
 
 private:
 	void UpdateMapInfo(TMap<FString, int32>& MapNum, TMap<FString, int64>& MapSize, const FString& AssetPath, int64 AssetSize);
 
+	int32 NumFoldersTotal = 0;
 	FText SearchText;
 	TSet<FString> SelectedPaths;
 	TSharedPtr<FUICommandList> Cmds;

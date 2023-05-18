@@ -156,6 +156,11 @@ FSlateColor SPjcItemTree::GetFolderColor() const
 	{
 		return FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Yellow");
 	}
+	
+	if (Item->bIsDev)
+	{
+		return FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Black");
+	}
 
 	if (Item->bIsEmpty)
 	{

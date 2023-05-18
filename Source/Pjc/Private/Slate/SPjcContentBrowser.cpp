@@ -24,6 +24,10 @@ void SPjcContentBrowser::Construct(const FArguments& InArgs)
 		FExecuteAction::CreateLambda([&]()
 		{
 			UPjcSubsystem::OpenSizeMapViewer(DelegateSelection.Execute());
+		}),
+		FCanExecuteAction::CreateLambda([&]()
+		{
+			return DelegateSelection.Execute().Num() > 0;
 		})
 	);
 
@@ -32,6 +36,10 @@ void SPjcContentBrowser::Construct(const FArguments& InArgs)
 		FExecuteAction::CreateLambda([&]()
 		{
 			UPjcSubsystem::OpenReferenceViewer(DelegateSelection.Execute());
+		}),
+		FCanExecuteAction::CreateLambda([&]()
+		{
+			return DelegateSelection.Execute().Num() > 0;
 		})
 	);
 
@@ -40,6 +48,10 @@ void SPjcContentBrowser::Construct(const FArguments& InArgs)
 		FExecuteAction::CreateLambda([&]()
 		{
 			UPjcSubsystem::OpenAssetAuditViewer(DelegateSelection.Execute());
+		}),
+		FCanExecuteAction::CreateLambda([&]()
+		{
+			return DelegateSelection.Execute().Num() > 0;
 		})
 	);
 
@@ -60,7 +72,7 @@ void SPjcContentBrowser::Construct(const FArguments& InArgs)
 		}),
 		FCanExecuteAction::CreateLambda([&]()
 		{
-			return bUnusedAssetsMode;
+			return bUnusedAssetsMode && DelegateSelection.Execute().Num() > 0;
 		})
 	);
 
@@ -85,7 +97,7 @@ void SPjcContentBrowser::Construct(const FArguments& InArgs)
 		}),
 		FCanExecuteAction::CreateLambda([&]()
 		{
-			return bUnusedAssetsMode;
+			return bUnusedAssetsMode && DelegateSelection.Execute().Num() > 0;
 		})
 	);
 
@@ -115,7 +127,7 @@ void SPjcContentBrowser::Construct(const FArguments& InArgs)
 		}),
 		FCanExecuteAction::CreateLambda([&]()
 		{
-			return !bUnusedAssetsMode;
+			return !bUnusedAssetsMode && DelegateSelection.Execute().Num() > 0;
 		})
 	);
 
@@ -144,7 +156,7 @@ void SPjcContentBrowser::Construct(const FArguments& InArgs)
 		}),
 		FCanExecuteAction::CreateLambda([&]()
 		{
-			return !bUnusedAssetsMode;
+			return !bUnusedAssetsMode && DelegateSelection.Execute().Num() > 0;
 		})
 	);
 
@@ -172,6 +184,10 @@ void SPjcContentBrowser::Construct(const FArguments& InArgs)
 			ObjectTools::DeleteAssets(DelegateSelection.Execute());
 
 			// todo:ashe23 rescan project
+		}),
+		FCanExecuteAction::CreateLambda([&]()
+		{
+			return DelegateSelection.Execute().Num() > 0;
 		})
 	);
 
@@ -196,26 +212,6 @@ void SPjcContentBrowser::Construct(const FArguments& InArgs)
 		[
 			SNew(SHorizontalBox)
 			+ SHorizontalBox::Slot().FillWidth(1.0f).HAlign(HAlign_Left).VAlign(VAlign_Center)
-			[
-				SNew(SComboButton)
-				.ContentPadding(0)
-				.ForegroundColor_Raw(this, &SPjcContentBrowser::GetOptionsBtnForegroundColor)
-				.ButtonStyle(FEditorStyle::Get(), "ToggleButton")
-				.OnGetMenuContent(this, &SPjcContentBrowser::GetBtnActionsContent)
-				.ButtonContent()
-				[
-					SNew(SHorizontalBox)
-					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
-					[
-						SNew(SImage).Image(FEditorStyle::GetBrush("GenericViewButton"))
-					]
-					+ SHorizontalBox::Slot().AutoWidth().Padding(2.0f, 0.0f, 0.0f, 0.0f).VAlign(VAlign_Center)
-					[
-						SNew(STextBlock).Text(FText::FromString(TEXT("Actions")))
-					]
-				]
-			]
-			+ SHorizontalBox::Slot().FillWidth(1.0f).HAlign(HAlign_Center).VAlign(VAlign_Center)
 			[
 				SNew(STextBlock).Text_Raw(this, &SPjcContentBrowser::GetSummaryText)
 			]
@@ -273,50 +269,23 @@ TSharedRef<SWidget> SPjcContentBrowser::CreateToolbar() const
 	FToolBarBuilder ToolBarBuilder{Cmds, FMultiBoxCustomization::None};
 	ToolBarBuilder.BeginSection("PjcSectionActionsAssets");
 	{
+		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().AssetsDelete);
+		ToolBarBuilder.AddSeparator();
+		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().AssetsExclude);
+		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().AssetsExcludeByClass);
+		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().AssetsInclude);
+		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().AssetsIncludeByClass);
+		ToolBarBuilder.AddSeparator();
+		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().OpenViewerSizeMap);
+		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().OpenViewerReference);
+		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().OpenViewerAssetsAudit);
+		ToolBarBuilder.AddSeparator();
 		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().OpenViewerAssetsIndirect);
 		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().OpenViewerAssetsCorrupted);
 	}
 	ToolBarBuilder.EndSection();
 
 	return ToolBarBuilder.MakeWidget();
-}
-
-TSharedRef<SWidget> SPjcContentBrowser::GetBtnActionsContent()
-{
-	const TSharedPtr<FExtender> Extender;
-	FMenuBuilder MenuBuilder(true, Cmds, Extender, true);
-
-	// MenuBuilder.BeginSection(TEXT("Inclusion"), FText::FromString(TEXT("Inclusion")));
-	// {
-	// 	// MenuBuilder.AddMenuEntry(FPjcCmds::Get().AssetsIncludeAll);
-	// }
-	// MenuBuilder.EndSection();
-
-	// MenuBuilder.BeginSection(TEXT("Selection"), FText::FromString(TEXT("Selection")));
-	// {
-	// 	MenuBuilder.AddMenuEntry(
-	// 		FText::FromString(TEXT("Clear Selection")),
-	// 		FText::FromString(TEXT("Clear any selection in content browser")),
-	// 		FSlateIcon(),
-	// 		FUIAction
-	// 		(
-	// 			FExecuteAction::CreateLambda([&]
-	// 			{
-	// 				DelegateFilter.Execute(Filter);
-	// 			}),
-	// 			FCanExecuteAction::CreateLambda([&]()
-	// 			{
-	// 				return DelegateSelection.Execute().Num() > 0;
-	// 			})
-	// 		),
-	// 		NAME_None,
-	// 		EUserInterfaceActionType::Button
-	// 	);
-	// }
-	// MenuBuilder.EndSection();
-
-
-	return MenuBuilder.MakeWidget();
 }
 
 TSharedRef<SWidget> SPjcContentBrowser::GetBtnOptionsContent()
