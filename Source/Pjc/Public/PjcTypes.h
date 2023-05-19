@@ -75,10 +75,7 @@ class UPjcFileExcludeSettings : public UObject
 	GENERATED_BODY()
 
 public:
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Config, Category="AssetExcludeSettings", meta=(ContentDir, ToolTip="Exclude specified folders from scanning.Recursive."))
-	TArray<FDirectoryPath> ExcludedFolders;
-
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Config, Category="AssetExcludeSettings", meta=(RelativeToGameContentDir, ToolTip="Exclude specified files from scanning"))
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Config, Category="AssetExcludeSettings", meta=(RelativeToGameDir, ToolTip="Exclude specified files from scanning"))
 	TArray<FFilePath> ExcludedFiles;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Config, Category="AssetExcludeSettings", meta=(ToolTip="Exclude files with specified extensions from scanning"))
@@ -109,7 +106,8 @@ struct FPjcStatItem
 
 struct FPjcFileExternalItem
 {
-	int64 FileSize;
+	int64 FileSize = 0;
+	bool bExcluded = false;
 	FString FileName;
 	FString FileExt;
 	FString FilePath;

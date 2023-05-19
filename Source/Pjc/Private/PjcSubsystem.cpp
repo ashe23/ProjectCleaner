@@ -683,6 +683,15 @@ void UPjcSubsystem::AssetCategoryMappingInit(TMap<EPjcAssetCategory, TSet<FAsset
 	AssetsCategoryMapping.Add(EPjcAssetCategory::ExtReferenced);
 }
 
+#if WITH_EDITOR
+void UPjcSubsystem::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+{
+	Super::PostEditChangeProperty(PropertyChangedEvent);
+
+	SaveConfig();
+}
+#endif
+
 void UPjcSubsystem::FindAssetsIndirect(TMap<FAssetData, TArray<FPjcFileInfo>>& AssetsIndirectInfo)
 {
 	TSet<FString> ScanFiles;

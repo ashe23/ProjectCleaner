@@ -80,8 +80,12 @@ public:
 	static FContentBrowserModule& GetModuleContentBrowser();
 	static FPropertyEditorModule& GetModulePropertyEditor();
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Config, Category="ProjectCleanerSubsystem")
-	bool bShowRealtimeThumbnails = false;
+	UPROPERTY(Config)
+	bool bShowFilesExternal = true;
+
+#if WITH_EDITOR
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+#endif
 
 private:
 	static void FindAssetsIndirect(TMap<FAssetData, TArray<FPjcFileInfo>>& AssetsIndirectInfo);

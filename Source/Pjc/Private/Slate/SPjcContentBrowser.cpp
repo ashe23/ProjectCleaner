@@ -331,19 +331,7 @@ TSharedRef<SWidget> SPjcContentBrowser::GetBtnOptionsContent()
 			FSlateIcon(),
 			FUIAction
 			(
-				FExecuteAction::CreateLambda([&]
-				{
-					SubsystemPtr->bShowRealtimeThumbnails = !SubsystemPtr->bShowRealtimeThumbnails;
-					SubsystemPtr->PostEditChange();
-				}),
-				FCanExecuteAction::CreateLambda([&]()
-				{
-					return true;
-				}),
-				FGetActionCheckState::CreateLambda([&]()
-				{
-					return SubsystemPtr->bShowRealtimeThumbnails ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
-				})
+				FExecuteAction::CreateLambda([&] { })
 			),
 			NAME_None,
 			EUserInterfaceActionType::ToggleButton
@@ -377,7 +365,7 @@ void SPjcContentBrowser::CreateContentBrowser()
 	AssetPickerConfig.bForceShowPluginContent = false;
 	AssetPickerConfig.bAllowNullSelection = false;
 	AssetPickerConfig.bCanShowClasses = false;
-	AssetPickerConfig.bCanShowRealTimeThumbnails = SubsystemPtr->bShowRealtimeThumbnails;
+	// AssetPickerConfig.bCanShowRealTimeThumbnails = SubsystemPtr->bShowRealtimeThumbnails;
 	AssetPickerConfig.AssetShowWarningText = FText::FromString(TEXT("No assets"));
 	AssetPickerConfig.Filter = Filter;
 	AssetPickerConfig.ThumbnailScale = ThumbnailSize;
