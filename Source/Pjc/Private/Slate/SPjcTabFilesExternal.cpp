@@ -30,18 +30,52 @@ void SPjcTabFilesExternal::Construct(const FArguments& InArgs)
 		FPjcCmds::Get().FilesDelete,
 		FExecuteAction::CreateLambda([&]()
 		{
+			UPjcFileExcludeSettings* FileExcludeSettings = GetMutableDefault<UPjcFileExcludeSettings>();
+			if (!FileExcludeSettings) return;
+
 			const auto ItemsSelected = ListView->GetSelectedItems();
-
-
 			const int32 NumTotal = ItemsSelected.Num();
 			int32 NumDeleted = 0;
-
 			const FText Title = FText::FromString(TEXT("Delete External Files"));
-			const FText Context = FText::FromString(FString::Printf(TEXT("Are you sure you want to delete %d files?"), NumTotal));
+			const FText Context = FText::FromString(TEXT("Are you sure you want to delete selected files?"));
 
 			const EAppReturnType::Type ReturnType = FMessageDialog::Open(EAppMsgType::YesNo, Context, &Title);
 			if (ReturnType == EAppReturnType::Cancel || ReturnType == EAppReturnType::No) return;
 
+			for (const auto& Item : ItemsSelected)
+			{
+				if (!Item.IsValid() || !FPaths::FileExists(Item->FilePath)) continue;
+				if (!IFileManager::Get().Delete(*Item->FilePath, true)) continue;
+
+				if (Item->bExcluded)
+				{
+					FileExcludeSettings->ExcludedFiles.RemoveAllSwap([&](const FFilePath& InFile)
+					{
+						FString Path = Item->FilePath;
+						Path.RemoveFromStart(FPaths::ConvertRelativePathToFull(FPaths::ProjectDir()));
+
+						return InFile.FilePath.Equals(Path);
+					}, false);
+				}
+
+				++NumDeleted;
+			}
+
+			FileExcludeSettings->PostEditChange();
+
+			const FString Msg = FString::Printf(TEXT("Deleted %d of %d files"), NumDeleted, NumTotal);
+
+			if (NumDeleted == NumTotal)
+			{
+				UPjcSubsystem::ShowNotification(Msg, SNotificationItem::CS_Success, 5.0f);
+			}
+			else
+			{
+				UPjcSubsystem::ShowNotificationWithOutputLog(Msg, SNotificationItem::CS_Fail, 5.0f);
+			}
+
+			ListUpdateData();
+			ListUpdateView();
 		}),
 		FCanExecuteAction::CreateLambda([&]()
 		{
@@ -128,6 +162,7 @@ void SPjcTabFilesExternal::Construct(const FArguments& InArgs)
 	SAssignNew(ListView, SListView<TSharedPtr<FPjcFileExternalItem>>)
 	.ListItemsSource(&ItemsFiltered)
 	.OnGenerateRow(this, &SPjcTabFilesExternal::OnListGenerateRow)
+	.OnContextMenuOpening_Raw(this, &SPjcTabFilesExternal::OnContextMenuOpening)
 	.SelectionMode(ESelectionMode::Multi)
 	.HeaderRow(GetListHeaderRow());
 
@@ -447,6 +482,21 @@ TSharedRef<SWidget> SPjcTabFilesExternal::CreateToolbar() const
 	ToolBarBuilder.EndSection();
 
 	return ToolBarBuilder.MakeWidget();
+}
+
+TSharedPtr<SWidget> SPjcTabFilesExternal::OnContextMenuOpening() const
+{
+	FMenuBuilder MenuBuilder{true, Cmds};
+	MenuBuilder.BeginSection("PjcSectionCtxMenu");
+	{
+		MenuBuilder.AddMenuEntry(FPjcCmds::Get().FilesExclude);
+		MenuBuilder.AddMenuEntry(FPjcCmds::Get().FilesExcludeByExt);
+		MenuBuilder.AddSeparator();
+		MenuBuilder.AddMenuEntry(FPjcCmds::Get().FilesDelete);
+	}
+	MenuBuilder.EndSection();
+
+	return MenuBuilder.MakeWidget();
 }
 
 TSharedRef<SWidget> SPjcTabFilesExternal::GetBtnOptionsContent()

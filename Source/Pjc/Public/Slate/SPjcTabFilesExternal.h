@@ -27,6 +27,7 @@ protected:
 	TSharedRef<SWidget> GetBtnOptionsContent();
 	TSharedRef<SHeaderRow> GetListHeaderRow();
 	TSharedRef<ITableRow> OnListGenerateRow(TSharedPtr<FPjcFileExternalItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const;
+	TSharedPtr<SWidget> OnContextMenuOpening() const;
 	FSlateColor GetOptionsBtnForegroundColor() const;
 	FText GetTxtSummary() const;
 	FText GetTxtSelection() const;
