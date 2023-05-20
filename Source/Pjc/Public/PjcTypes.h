@@ -113,6 +113,14 @@ struct FPjcFileExternalItem
 	FString FilePath;
 };
 
+struct FPjcCorruptedAssetItem
+{
+	int64 FileSize = 0;
+	FString FileName;
+	FString FileExt;
+	FString FilePath;
+};
+
 struct FPjcTreeItem
 {
 	FString FolderPath;
