@@ -31,6 +31,7 @@ protected:
 	FSlateColor GetOptionsBtnForegroundColor() const;
 	FText GetTxtSummary() const;
 	FText GetTxtSelection() const;
+	int32 GetWidgetIndex() const;
 
 private:
 	FText SearchText;
@@ -39,8 +40,8 @@ private:
 	TSharedPtr<FUICommandList> Cmds;
 	TSharedPtr<SComboButton> OptionBtn;
 	UPjcSubsystem* SubsystemPtr = nullptr;
-	TArray<TSharedPtr<FPjcFileExternalItem>> ItemsFiltered;
 	TArray<TSharedPtr<FPjcFileExternalItem>> ItemsAll;
+	TArray<TSharedPtr<FPjcFileExternalItem>> ItemsFiltered;
 	TSharedPtr<SListView<TSharedPtr<FPjcFileExternalItem>>> ListView;
 
 	EColumnSortMode::Type ColumnSortModeFilePath = EColumnSortMode::None;

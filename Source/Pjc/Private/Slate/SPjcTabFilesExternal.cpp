@@ -11,6 +11,7 @@
 #include "Widgets/Input/SSearchBox.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SSeparator.h"
+#include "Widgets/Layout/SWidgetSwitcher.h"
 
 void SPjcTabFilesExternal::Construct(const FArguments& InArgs)
 {
@@ -250,13 +251,32 @@ void SPjcTabFilesExternal::Construct(const FArguments& InArgs)
 				]
 				+ SVerticalBox::Slot().FillHeight(1.0f).Padding(5.0f)
 				[
-					SNew(SScrollBox)
-					.ScrollWhenFocusChanges(EScrollWhenFocusChanges::NoScroll)
-					.AnimateWheelScrolling(true)
-					.AllowOverscroll(EAllowOverscroll::No)
-					+ SScrollBox::Slot().Padding(5.0f)
+					SNew(SWidgetSwitcher)
+					.WidgetIndex_Raw(this, &SPjcTabFilesExternal::GetWidgetIndex)
+					+ SWidgetSwitcher::Slot()
 					[
-						ListView.ToSharedRef()
+						SNew(SHorizontalBox)
+						+ SHorizontalBox::Slot().FillWidth(1.0f).HAlign(HAlign_Center).VAlign(VAlign_Center)
+						[
+							SNew(STextBlock)
+							.Justification(ETextJustify::Center)
+							.ColorAndOpacity(FPjcStyles::Get().GetColor("ProjectCleaner.Color.Gray"))
+							.ShadowOffset(FVector2D{0.5f, 0.5f})
+							.ShadowColorAndOpacity(FLinearColor::Black)
+							.Font(FPjcStyles::GetFont("Bold", 15))
+							.Text(FText::FromString(TEXT("No external files found")))
+						]
+					]
+					+ SWidgetSwitcher::Slot()
+					[
+						SNew(SScrollBox)
+						.ScrollWhenFocusChanges(EScrollWhenFocusChanges::NoScroll)
+						.AnimateWheelScrolling(true)
+						.AllowOverscroll(EAllowOverscroll::No)
+						+ SScrollBox::Slot().Padding(5.0f)
+						[
+							ListView.ToSharedRef()
+						]
 					]
 				]
 				+ SVerticalBox::Slot().AutoHeight().Padding(5.0f)
@@ -375,6 +395,9 @@ void SPjcTabFilesExternal::ListUpdateData()
 void SPjcTabFilesExternal::ListUpdateView()
 {
 	if (!ListView.IsValid() || !SubsystemPtr) return;
+
+	ListView->ClearSelection();
+	ListView->ClearHighlightedItems();
 
 	ItemsFiltered.Reset();
 	ItemsFiltered.Reserve(ItemsAll.Num());
@@ -628,4 +651,9 @@ FText SPjcTabFilesExternal::GetTxtSelection() const
 	}
 
 	return FText::GetEmpty();
+}
+
+int32 SPjcTabFilesExternal::GetWidgetIndex() const
+{
+	return ItemsAll.Num() == 0 ? PjcConstants::WidgetIndexIdle : PjcConstants::WidgetIndexWorking;
 }

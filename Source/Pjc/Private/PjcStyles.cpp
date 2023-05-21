@@ -122,6 +122,7 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create()
 	Style->Set("ProjectCleaner.Icon.Bin20", new IMAGE_BRUSH(TEXT("IconBin20"), FVector2D{20.0f, 20.0f}));
 	Style->Set("ProjectCleaner.Icon.Bin40", new IMAGE_BRUSH(TEXT("IconBin40"), FVector2D{40.0f, 40.0f}));
 	Style->Set("ProjectCleaner.Icon.Warning32", new IMAGE_BRUSH(TEXT("IconWarning32"), FVector2D{32.0f, 32.0f}));
+	Style->Set("ProjectCleaner.Icon.Check32", new IMAGE_BRUSH(TEXT("IconCheck32"), FVector2D{32.0f, 32.0f}));
 	Style->Set("ProjectCleaner.Icon.PieChart16", new IMAGE_BRUSH(TEXT("IconPieChart16"), FVector2D{16.0f, 16.0f}));
 	Style->Set("ProjectCleaner.Icon.File16", new IMAGE_BRUSH(TEXT("IconFile16"), FVector2D{16.0f, 16.0f}));
 	Style->Set("ProjectCleaner.Icon.Stat16", new IMAGE_BRUSH(TEXT("IconStat16"), FVector2D{16.0f, 16.0f}));
