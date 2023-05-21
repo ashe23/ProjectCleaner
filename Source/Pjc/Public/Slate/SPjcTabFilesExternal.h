@@ -37,6 +37,8 @@ private:
 	FText SearchText;
 	int32 NumFilesTotal = 0;
 	int32 NumFilesExcluded = 0;
+	int64 SizeFilesTotal = 0;
+	int64 SizeFilesExcluded = 0;
 	TSharedPtr<FUICommandList> Cmds;
 	TSharedPtr<SComboButton> OptionBtn;
 	UPjcSubsystem* SubsystemPtr = nullptr;

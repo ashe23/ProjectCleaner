@@ -373,6 +373,8 @@ void SPjcTabFilesExternal::ListUpdateData()
 
 	NumFilesTotal = FilesExternalAll.Num();
 	NumFilesExcluded = 0;
+	SizeFilesTotal = 0;
+	SizeFilesExcluded = 0;
 
 	for (const auto& File : FilesExternalAll)
 	{
@@ -383,9 +385,12 @@ void SPjcTabFilesExternal::ListUpdateData()
 		const int64 FileSize = IFileManager::Get().FileSize(*File);
 		const bool bExcluded = ExcludedFiles.Contains(File) || ExcludedExtensions.Contains(FileExt);
 
+		SizeFilesTotal += FileSize;
+
 		if (bExcluded)
 		{
 			++NumFilesExcluded;
+			SizeFilesExcluded += FileSize;
 		}
 
 		ItemsAll.Emplace(MakeShareable(new FPjcFileExternalItem{FileSize, bExcluded, FileName, FileExt, File}));
@@ -510,7 +515,7 @@ TSharedRef<SWidget> SPjcTabFilesExternal::CreateToolbar() const
 TSharedPtr<SWidget> SPjcTabFilesExternal::OnContextMenuOpening() const
 {
 	FMenuBuilder MenuBuilder{true, Cmds};
-	MenuBuilder.BeginSection("PjcSectionCtxMenu");
+	MenuBuilder.BeginSection("PjcSectionFilesExternalCtxMenu");
 	{
 		MenuBuilder.AddMenuEntry(FPjcCmds::Get().FilesExclude);
 		MenuBuilder.AddMenuEntry(FPjcCmds::Get().FilesExcludeByExt);
@@ -635,10 +640,18 @@ FText SPjcTabFilesExternal::GetTxtSummary() const
 {
 	if (NumFilesExcluded > 0)
 	{
-		return FText::FromString(FString::Printf(TEXT("Total - %d. Excluded - %d"), NumFilesTotal, NumFilesExcluded));
+		return FText::FromString(
+			FString::Printf(
+				TEXT("Total - %d (%s). Excluded - %d (%s)"),
+				NumFilesTotal,
+				*FText::AsMemory(SizeFilesTotal, IEC).ToString(),
+				NumFilesExcluded,
+				*FText::AsMemory(SizeFilesExcluded, IEC).ToString()
+			)
+		);
 	}
 
-	return FText::FromString(FString::Printf(TEXT("Total - %d"), NumFilesTotal));
+	return FText::FromString(FString::Printf(TEXT("Total - %d (%s)"), NumFilesTotal, *FText::AsMemory(SizeFilesTotal, IEC).ToString()));
 }
 
 FText SPjcTabFilesExternal::GetTxtSelection() const
