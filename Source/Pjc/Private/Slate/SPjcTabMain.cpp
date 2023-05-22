@@ -2,8 +2,9 @@
 
 #include "Slate/SPjcTabMain.h"
 #include "Slate/SPjcTabAssetsUnused.h"
-#include "Slate/SPjcTabFilesExternal.h"
 #include "Slate/SPjcTabAssetsIndirect.h"
+#include "Slate/SPjcTabAssetsCorrupted.h"
+#include "Slate/SPjcTabFilesExternal.h"
 #include "PjcConstants.h"
 #include "PjcSubsystem.h"
 #include "PjcStyles.h"
@@ -43,7 +44,7 @@ void SPjcTabMain::Construct(const FArguments& InArgs, const TSharedRef<SDockTab>
 	          .SetDisplayName(FText::FromString(TEXT("Assets Indirect")))
 	          .SetIcon(FPjcStyles::GetIcon("ProjectCleaner.Icon.Arrows16"))
 	          .SetGroup(AppMenuGroup);
-	
+
 	TabManager->RegisterTabSpawner(PjcConstants::TabAssetsCorrupted, FOnSpawnTab::CreateRaw(this, &SPjcTabMain::OnTabAssetsCorruptedSpawn))
 	          .SetTooltipText(FText::FromString(TEXT("Open Corrupted Assets Tab")))
 	          .SetDisplayName(FText::FromString(TEXT("Assets Corrupted")))
@@ -171,23 +172,9 @@ TSharedRef<SDockTab> SPjcTabMain::OnTabAssetsCorruptedSpawn(const FSpawnTabArgs&
 		.Label(FText::FromString(TEXT("Assets Corrupted")))
 		.Icon(FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.CorruptedFile16"))
 		[
-			SNew(STextBlock)
-			// SNew(SPjcTabAssetsUnused)
+			SNew(SPjcTabAssetsCorrupted)
 		];
 }
-
-// TSharedRef<SDockTab> SPjcTabMain::OnTabAssetsInspectionSpawn(const FSpawnTabArgs& Args) const
-// {
-// 	return
-// 		SNew(SDockTab)
-// 		.TabRole(PanelTab)
-// 		.Label(FText::FromString(TEXT("Assets Inspection")))
-// 		.Icon(FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.Stat16"))
-// 		[
-// 			SNew(STextBlock)
-// 			// SNew(SPjcTabAssetsInspection)
-// 		];
-// }
 
 TSharedRef<SDockTab> SPjcTabMain::OnTabFilesExternalSpawn(const FSpawnTabArgs& Args) const
 {

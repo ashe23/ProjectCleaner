@@ -1,3 +1,350 @@
 ﻿// Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "Slate/SPjcTabAssetsCorrupted.h"
+#include "PjcCmds.h"
+#include "PjcStyles.h"
+#include "PjcConstants.h"
+#include "PjcSubsystem.h"
+// Engine Headers
+#include "Misc/ScopedSlowTask.h"
+#include "Slate/SPjcItemAssetCorrupted.h"
+#include "Widgets/Input/SSearchBox.h"
+#include "Widgets/Layout/SSeparator.h"
+
+void SPjcTabAssetsCorrupted::Construct(const FArguments& InArgs)
+{
+	Cmds = MakeShareable(new FUICommandList);
+
+	Cmds->MapAction(
+		FPjcCmds::Get().FilesScan,
+		FExecuteAction::CreateLambda([&]()
+		{
+			ListUpdateData();
+			ListUpdateView();
+		})
+	);
+
+	Cmds->MapAction(
+		FPjcCmds::Get().FilesDelete,
+		FExecuteAction::CreateLambda([&]()
+		{
+			const FText Title = FText::FromString(TEXT("Delete Corrupted Asset Files"));
+			const FText Context = FText::FromString(TEXT("Are you sure you want to delete selected files?"));
+
+			const EAppReturnType::Type ReturnType = FMessageDialog::Open(EAppMsgType::YesNo, Context, &Title);
+			if (ReturnType == EAppReturnType::Cancel || ReturnType == EAppReturnType::No) return;
+		}),
+		FCanExecuteAction::CreateLambda([&]()
+		{
+			return ListView.IsValid() && ListView->GetSelectedItems().Num() > 0;
+		})
+	);
+
+	SAssignNew(ListView, SListView<TSharedPtr<FPjcCorruptedAssetItem>>)
+	.ListItemsSource(&ItemsFiltered)
+	.OnGenerateRow(this, &SPjcTabAssetsCorrupted::OnListGenerateRow)
+	.OnContextMenuOpening_Raw(this, &SPjcTabAssetsCorrupted::OnContextMenuOpening)
+	.SelectionMode(ESelectionMode::Multi)
+	.HeaderRow(GetListHeaderRow());
+
+	ChildSlot
+	[
+		SNew(SVerticalBox)
+		+ SVerticalBox::Slot().AutoHeight().Padding(5.0f)
+		[
+			CreateToolbar()
+		]
+		+ SVerticalBox::Slot().AutoHeight().Padding(5.0f)
+		[
+			SNew(SSeparator).Thickness(5.0f)
+		]
+		+ SVerticalBox::Slot().AutoHeight().Padding(5.0f)
+		[
+			SNew(STextBlock)
+			.Justification(ETextJustify::Center)
+			.ColorAndOpacity(FPjcStyles::Get().GetColor("ProjectCleaner.Color.Gray"))
+			.ShadowOffset(FVector2D{0.5f, 0.5f})
+			.ShadowColorAndOpacity(FLinearColor::Black)
+			.Font(FPjcStyles::GetFont("Bold", 15))
+			.Text(FText::FromString(TEXT("List of corrupted asset files inside Content folder.")))
+		]
+		+ SVerticalBox::Slot().AutoHeight().Padding(5.0f, 0.0f)
+		[
+			SNew(STextBlock)
+			.Justification(ETextJustify::Center)
+			.ColorAndOpacity(FPjcStyles::Get().GetColor("ProjectCleaner.Color.Gray"))
+			.ShadowOffset(FVector2D{0.5f, 0.5f})
+			.ShadowColorAndOpacity(FLinearColor::Black)
+			.Font(FPjcStyles::GetFont("Bold", 10))
+			.Text(FText::FromString(TEXT("These are the assets that are not being loaded by the AssetRegistry. To identify these problematic assets, you can view the OutputLog, which should provide information regarding the reasons why these assets aren't loading.")))
+		]
+		+ SVerticalBox::Slot().AutoHeight().Padding(5.0f, 0.0f)
+		[
+			SNew(STextBlock)
+			.Justification(ETextJustify::Center)
+			.ColorAndOpacity(FPjcStyles::Get().GetColor("ProjectCleaner.Color.Gray"))
+			.ShadowOffset(FVector2D{0.5f, 0.5f})
+			.ShadowColorAndOpacity(FLinearColor::Black)
+			.Font(FPjcStyles::GetFont("Bold", 10))
+			.Text(FText::FromString(TEXT("Often, these issues arise when an asset has been migrated from a different project that uses a different engine version, or if there were problems during the asset saving process, among other reasons.")))
+		]
+		+ SVerticalBox::Slot().AutoHeight().Padding(5.0f, 0.0f)
+		[
+			SNew(STextBlock)
+			.Justification(ETextJustify::Center)
+			.ColorAndOpacity(FPjcStyles::Get().GetColor("ProjectCleaner.Color.Gray"))
+			.ShadowOffset(FVector2D{0.5f, 0.5f})
+			.ShadowColorAndOpacity(FLinearColor::Black)
+			.Font(FPjcStyles::GetFont("Bold", 10))
+			.Text(FText::FromString(TEXT("You can attempt to manually load these assets again to see if the problem persists. If the issue remains unresolved, you may consider deleting the problematic asset file directly from the file explorer.")))
+		]
+		+ SVerticalBox::Slot().AutoHeight().Padding(5.0f)
+		[
+			SNew(SSeparator).Thickness(5.0f)
+		]
+		+ SVerticalBox::Slot().AutoHeight().Padding(5.0f)
+		[
+			SNew(SSearchBox)
+			.HintText(FText::FromString(TEXT("Search files...")))
+			.OnTextChanged_Raw(this, &SPjcTabAssetsCorrupted::OnSearchTextChanged)
+			.OnTextCommitted_Raw(this, &SPjcTabAssetsCorrupted::OnSearchTextCommitted)
+		]
+		+ SVerticalBox::Slot().FillHeight(1.0f).Padding(5.0f)
+		[
+			ListView.ToSharedRef()
+		]
+	];
+}
+
+void SPjcTabAssetsCorrupted::ListUpdateData()
+{
+	FScopedSlowTask SlowTaskMain{
+		2.0f,
+		FText::FromString(TEXT("Scanning for corrupted assets...")),
+		GIsEditor && !IsRunningCommandlet()
+	};
+	SlowTaskMain.MakeDialog(false, false);
+	SlowTaskMain.EnterProgressFrame(1.0f);
+
+	TSet<FString> FilesEngine;
+	UPjcSubsystem::GetFilesInPathByExt(FPaths::ProjectContentDir(), true, false, PjcConstants::EngineFileExtensions, FilesEngine);
+
+	FScopedSlowTask SlowTask{
+		static_cast<float>(FilesEngine.Num()),
+		FText::FromString(TEXT("Scanning assets files...")),
+		GIsEditor && !IsRunningCommandlet()
+	};
+	SlowTask.MakeDialog(false, false);
+
+	ItemsAll.Reset();
+	ItemsAll.Reserve(FilesEngine.Num());
+	SizeFilesTotal = 0;
+
+	for (const auto& File : FilesEngine)
+	{
+		SlowTask.EnterProgressFrame(1.0f, FText::FromString(File));
+
+		const FString ObjectPath = UPjcSubsystem::PathConvertToObjectPath(File);
+		if (ObjectPath.IsEmpty() || UPjcSubsystem::GetModuleAssetRegistry().Get().GetAssetByObjectPath(FName{*ObjectPath}).IsValid()) continue;
+
+		const int64 FileSize = IFileManager::Get().FileSize(*File);
+		const FString FileName = FPaths::GetBaseFilename(File);
+		const FString FileExt = FPaths::GetExtension(File, false).ToLower();
+		SizeFilesTotal += FileSize;
+
+		ItemsAll.Emplace(
+			MakeShareable(
+				new FPjcCorruptedAssetItem{
+					FileSize,
+					FileName,
+					FileExt,
+					File
+				}
+			)
+		);
+	}
+}
+
+void SPjcTabAssetsCorrupted::ListUpdateView()
+{
+	if (!ListView.IsValid()) return;
+
+	ItemsFiltered.Reset();
+	ItemsFiltered.Reserve(ItemsAll.Num());
+
+	const FString SearchString = SearchText.ToString();
+
+	for (const auto& Item : ItemsAll)
+	{
+		if (!Item.IsValid()) continue;
+
+		if (!SearchText.IsEmpty() && !Item->FilePath.Contains(SearchString) && !Item->FileName.Contains(SearchString))
+		{
+			continue;
+		}
+
+		ItemsFiltered.Emplace(
+			MakeShareable(
+				new FPjcCorruptedAssetItem{
+					Item->FileSize,
+					Item->FileName,
+					Item->FileExt,
+					Item->FilePath
+				}
+			)
+		);
+	}
+
+	ListView->ClearSelection();
+	ListView->ClearHighlightedItems();
+	ListView->RebuildList();
+}
+
+void SPjcTabAssetsCorrupted::OnListSort(EColumnSortPriority::Type SortPriority, const FName& ColumnName, EColumnSortMode::Type InSortMode)
+{
+	if (!ListView.IsValid()) return;
+
+	auto SortListItems = [&](auto& SortMode, auto SortFunc)
+	{
+		SortMode = SortMode == EColumnSortMode::Ascending ? EColumnSortMode::Descending : EColumnSortMode::Ascending;
+
+		ItemsFiltered.Sort(SortFunc);
+	};
+
+	if (ColumnName.IsEqual(TEXT("FilePath")))
+	{
+		SortListItems(ColumnSortModeFilePath, [&](const TSharedPtr<FPjcCorruptedAssetItem>& Item1, const TSharedPtr<FPjcCorruptedAssetItem>& Item2)
+		{
+			return ColumnSortModeFilePath == EColumnSortMode::Ascending ? Item1->FilePath < Item2->FilePath : Item1->FilePath > Item2->FilePath;
+		});
+	}
+
+	if (ColumnName.IsEqual(TEXT("FileName")))
+	{
+		SortListItems(ColumnSortModeFileName, [&](const TSharedPtr<FPjcCorruptedAssetItem>& Item1, const TSharedPtr<FPjcCorruptedAssetItem>& Item2)
+		{
+			return ColumnSortModeFileName == EColumnSortMode::Ascending ? Item1->FileName < Item2->FileName : Item1->FileName > Item2->FileName;
+		});
+	}
+
+	if (ColumnName.IsEqual(TEXT("FileExt")))
+	{
+		SortListItems(ColumnSortModeFileExt, [&](const TSharedPtr<FPjcCorruptedAssetItem>& Item1, const TSharedPtr<FPjcCorruptedAssetItem>& Item2)
+		{
+			return ColumnSortModeFileExt == EColumnSortMode::Ascending ? Item1->FileExt < Item2->FileExt : Item1->FileExt > Item2->FileExt;
+		});
+	}
+
+	if (ColumnName.IsEqual(TEXT("FileSize")))
+	{
+		SortListItems(ColumnSortModeFileSize, [&](const TSharedPtr<FPjcCorruptedAssetItem>& Item1, const TSharedPtr<FPjcCorruptedAssetItem>& Item2)
+		{
+			return ColumnSortModeFileSize == EColumnSortMode::Ascending ? Item1->FileSize < Item2->FileSize : Item1->FileSize > Item2->FileSize;
+		});
+	}
+
+	ListView->RebuildList();
+}
+
+void SPjcTabAssetsCorrupted::OnSearchTextChanged(const FText& InSearchText)
+{
+	SearchText = InSearchText;
+	ListUpdateView();
+}
+
+void SPjcTabAssetsCorrupted::OnSearchTextCommitted(const FText& InSearchText, ETextCommit::Type)
+{
+	SearchText = InSearchText;
+	ListUpdateView();
+}
+
+TSharedRef<SHeaderRow> SPjcTabAssetsCorrupted::GetListHeaderRow()
+{
+	const FMargin HeaderMargin{5.0f};
+
+	return
+		SNew(SHeaderRow)
+		+ SHeaderRow::Column("FilePath")
+		  .FillWidth(0.6f)
+		  .HAlignCell(HAlign_Left)
+		  .VAlignCell(VAlign_Center)
+		  .HAlignHeader(HAlign_Center)
+		  .HeaderContentPadding(HeaderMargin)
+		  .OnSort_Raw(this, &SPjcTabAssetsCorrupted::OnListSort)
+		[
+			SNew(STextBlock)
+			.Text(FText::FromString(TEXT("FilePath")))
+			.Font(FPjcStyles::GetFont("Light", 10.0f))
+			.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
+		]
+		+ SHeaderRow::Column("FileName")
+		  .FillWidth(0.2f)
+		  .HAlignCell(HAlign_Center)
+		  .VAlignCell(VAlign_Center)
+		  .HAlignHeader(HAlign_Center)
+		  .HeaderContentPadding(HeaderMargin)
+		  .OnSort_Raw(this, &SPjcTabAssetsCorrupted::OnListSort)
+		[
+			SNew(STextBlock)
+			.Text(FText::FromString(TEXT("FileName")))
+			.Font(FPjcStyles::GetFont("Light", 10.0f))
+			.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
+		]
+		+ SHeaderRow::Column("FileExt")
+		  .FillWidth(0.1f)
+		  .HAlignCell(HAlign_Center)
+		  .VAlignCell(VAlign_Center)
+		  .HAlignHeader(HAlign_Center)
+		  .HeaderContentPadding(HeaderMargin)
+		  .OnSort_Raw(this, &SPjcTabAssetsCorrupted::OnListSort)
+		[
+			SNew(STextBlock)
+			.Text(FText::FromString(TEXT("FileExtension")))
+			.Font(FPjcStyles::GetFont("Light", 10.0f))
+			.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
+		]
+		+ SHeaderRow::Column("FileSize")
+		  .FillWidth(0.1f)
+		  .HAlignCell(HAlign_Center)
+		  .VAlignCell(VAlign_Center)
+		  .HAlignHeader(HAlign_Center)
+		  .HeaderContentPadding(HeaderMargin)
+		  .OnSort_Raw(this, &SPjcTabAssetsCorrupted::OnListSort)
+		[
+			SNew(STextBlock)
+			.Text(FText::FromString(TEXT("FileSize")))
+			.Font(FPjcStyles::GetFont("Light", 10.0f))
+			.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
+		];
+}
+
+TSharedRef<ITableRow> SPjcTabAssetsCorrupted::OnListGenerateRow(TSharedPtr<FPjcCorruptedAssetItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const
+{
+	return SNew(SPjcItemAssetCorrupted, OwnerTable).Item(Item).TextHighlight(SearchText);
+}
+
+TSharedPtr<SWidget> SPjcTabAssetsCorrupted::OnContextMenuOpening() const
+{
+	FMenuBuilder MenuBuilder{true, Cmds};
+	MenuBuilder.BeginSection("PjcSectionFilesExternalCtxMenu");
+	{
+		MenuBuilder.AddMenuEntry(FPjcCmds::Get().FilesDelete);
+		// todo:ashe23 reload file
+	}
+	MenuBuilder.EndSection();
+
+	return MenuBuilder.MakeWidget();
+}
+
+TSharedRef<SWidget> SPjcTabAssetsCorrupted::CreateToolbar() const
+{
+	FToolBarBuilder ToolBarBuilder{Cmds, FMultiBoxCustomization::None};
+	ToolBarBuilder.BeginSection("PjcSectionActionsFilesCorrupted");
+	{
+		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().FilesScan);
+		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().FilesDelete);
+	}
+	ToolBarBuilder.EndSection();
+
+	return ToolBarBuilder.MakeWidget();
+}

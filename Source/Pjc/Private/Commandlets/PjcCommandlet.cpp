@@ -19,12 +19,13 @@ int32 UPjcCommandlet::Main(const FString& Params)
 	// ParseCommandLinesArguments(Params);
 
 	// cli arguments
-	// -check
-	// -cleanup_method=full,unused_assets_only or empty_folders_only
-	// -exclude_settings=editor or custom
-	// -exclude_folders=[]
-	// -exclude_classes=[]
-	// -exclude_assets=[]
+	//- check
+	//- clean_unused_assets
+	//- clean_empty_folders
+	//- clean_external_files
+	//- clean_corrupted_files
+	//- use_editor_settings
+
 
 	const UPjcAssetExcludeSettings* AssetExcludeSettings = GetDefault<UPjcAssetExcludeSettings>();
 	if (!AssetExcludeSettings) return 1;
