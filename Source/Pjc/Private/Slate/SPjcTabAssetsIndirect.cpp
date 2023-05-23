@@ -158,8 +158,8 @@ TSharedRef<SWidget> SPjcTabAssetsIndirect::CreateToolbar() const
 		ToolBarBuilder.AddToolBarButton(
 			FPjcCmds::Get().Refresh,
 			NAME_None,
-			FText::FromString(TEXT("Search")),
-			FText::FromString(TEXT("Search for indirect assets and their usage info"))
+			FText::FromString(TEXT("Scan")),
+			FText::FromString(TEXT("Scan for indirect assets and their usage info"))
 		);
 	}
 	ToolBarBuilder.EndSection();

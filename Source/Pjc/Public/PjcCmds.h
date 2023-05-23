@@ -13,12 +13,18 @@ public:
 	// Tabs
 	TSharedPtr<FUICommandInfo> TabMain;
 
+	// Generic Commands
 	TSharedPtr<FUICommandInfo> Refresh;
+	TSharedPtr<FUICommandInfo> Delete;
+	TSharedPtr<FUICommandInfo> Exclude;
+	TSharedPtr<FUICommandInfo> ExcludeByExt;
+	TSharedPtr<FUICommandInfo> ExcludeByClass;
+	TSharedPtr<FUICommandInfo> ClearSelection;
+
 	TSharedPtr<FUICommandInfo> ScanProject;
 	TSharedPtr<FUICommandInfo> CleanProject;
 	TSharedPtr<FUICommandInfo> DeleteEmptyFolders;
 	TSharedPtr<FUICommandInfo> ClearExcludeSettings;
-	TSharedPtr<FUICommandInfo> ClearSelection;
 	TSharedPtr<FUICommandInfo> PathsExclude;
 	TSharedPtr<FUICommandInfo> PathsInclude;
 	TSharedPtr<FUICommandInfo> PathsDelete;
@@ -33,14 +39,9 @@ public:
 	TSharedPtr<FUICommandInfo> OpenViewerAssetsIndirect;
 	TSharedPtr<FUICommandInfo> OpenViewerAssetsCorrupted;
 	TSharedPtr<FUICommandInfo> ItemsCollapseAll;
-	TSharedPtr<FUICommandInfo> ItemsExpandAll;
+	TSharedPtr<FUICommandInfo> ItemsExpandAll;  
 	TSharedPtr<FUICommandInfo> ThumbnailSizeTiny;
 	TSharedPtr<FUICommandInfo> ThumbnailSizeSmall;
 	TSharedPtr<FUICommandInfo> ThumbnailSizeMedium;
 	TSharedPtr<FUICommandInfo> ThumbnailSizeLarge;
-	TSharedPtr<FUICommandInfo> FilesScan;
-	TSharedPtr<FUICommandInfo> FilesDelete;
-	TSharedPtr<FUICommandInfo> FilesExclude;
-	TSharedPtr<FUICommandInfo> FilesExcludeByExt;
-	TSharedPtr<FUICommandInfo> FilesExcludeByPath;
 };

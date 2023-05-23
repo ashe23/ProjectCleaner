@@ -31,6 +31,46 @@ void FPjcCmds::RegisterCommands()
 	);
 
 	UI_COMMAND(
+		Delete,
+		"Delete",
+		"Delete Selected",
+		EUserInterfaceActionType::Button,
+		FInputChord()
+	);
+
+	UI_COMMAND(
+		Exclude,
+		"Exclude",
+		"Exclude Selected",
+		EUserInterfaceActionType::Button,
+		FInputChord()
+	);
+
+	UI_COMMAND(
+		ExcludeByExt,
+		"Exclude By Ext",
+		"Exclude Selected Files By Extension",
+		EUserInterfaceActionType::Button,
+		FInputChord()
+	);
+
+	UI_COMMAND(
+		ExcludeByClass,
+		"Exclude By Class",
+		"Exclude Selected By Class",
+		EUserInterfaceActionType::Button,
+		FInputChord()
+	);
+
+	UI_COMMAND(
+		ClearSelection,
+		"Clear Selection",
+		"Clear Any Selection",
+		EUserInterfaceActionType::Button,
+		FInputChord()
+	);
+
+	UI_COMMAND(
 		ScanProject,
 		"Scan Project",
 		"Scan project for unused assets and empty folders",
@@ -62,13 +102,6 @@ void FPjcCmds::RegisterCommands()
 		FInputChord()
 	);
 
-	UI_COMMAND(
-		ClearSelection,
-		"Clear Selection",
-		"Clear any selection",
-		EUserInterfaceActionType::Button,
-		FInputChord()
-	);
 
 	UI_COMMAND(
 		PathsExclude,
@@ -218,46 +251,6 @@ void FPjcCmds::RegisterCommands()
 		ThumbnailSizeLarge,
 		"Large",
 		"Thumbnail large size",
-		EUserInterfaceActionType::Button,
-		FInputChord()
-	);
-
-	UI_COMMAND(
-		FilesScan,
-		"Scan",
-		"Scan files",
-		EUserInterfaceActionType::Button,
-		FInputChord()
-	);
-
-	UI_COMMAND(
-		FilesDelete,
-		"Delete",
-		"Delete selected files",
-		EUserInterfaceActionType::Button,
-		FInputChord()
-	);
-
-	UI_COMMAND(
-		FilesExclude,
-		"Exclude",
-		"Exclude selected files from scanning",
-		EUserInterfaceActionType::Button,
-		FInputChord()
-	);
-
-	UI_COMMAND(
-		FilesExcludeByPath,
-		"Exclude By Path",
-		"Exclude selected files from scanning by their paths",
-		EUserInterfaceActionType::Button,
-		FInputChord()
-	);
-
-	UI_COMMAND(
-		FilesExcludeByExt,
-		"Exclude By Extension",
-		"Exclude selected files from scanning, by their extensions",
 		EUserInterfaceActionType::Button,
 		FInputChord()
 	);

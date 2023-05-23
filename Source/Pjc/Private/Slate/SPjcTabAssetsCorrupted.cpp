@@ -17,7 +17,7 @@ void SPjcTabAssetsCorrupted::Construct(const FArguments& InArgs)
 	Cmds = MakeShareable(new FUICommandList);
 
 	Cmds->MapAction(
-		FPjcCmds::Get().FilesScan,
+		FPjcCmds::Get().Refresh,
 		FExecuteAction::CreateLambda([&]()
 		{
 			ListUpdateData();
@@ -26,7 +26,7 @@ void SPjcTabAssetsCorrupted::Construct(const FArguments& InArgs)
 	);
 
 	Cmds->MapAction(
-		FPjcCmds::Get().FilesDelete,
+		FPjcCmds::Get().Delete,
 		FExecuteAction::CreateLambda([&]()
 		{
 			const FText Title = FText::FromString(TEXT("Delete Corrupted Asset Files"));
@@ -385,7 +385,7 @@ TSharedPtr<SWidget> SPjcTabAssetsCorrupted::OnContextMenuOpening() const
 	FMenuBuilder MenuBuilder{true, Cmds};
 	MenuBuilder.BeginSection("PjcSectionFilesExternalCtxMenu");
 	{
-		MenuBuilder.AddMenuEntry(FPjcCmds::Get().FilesDelete);
+		MenuBuilder.AddMenuEntry(FPjcCmds::Get().Delete, NAME_None, FText::FromString(TEXT("Delete")), FText::FromString(TEXT("Delete Selected Files")));
 	}
 	MenuBuilder.EndSection();
 
@@ -397,8 +397,8 @@ TSharedRef<SWidget> SPjcTabAssetsCorrupted::CreateToolbar() const
 	FToolBarBuilder ToolBarBuilder{Cmds, FMultiBoxCustomization::None};
 	ToolBarBuilder.BeginSection("PjcSectionActionsFilesCorrupted");
 	{
-		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().FilesScan);
-		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().FilesDelete);
+		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().Refresh, NAME_None, FText::FromString(TEXT("Scan")), FText::FromString(TEXT("Scan For Corrupted Assets")));
+		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().Delete, NAME_None, FText::FromString(TEXT("Delete")), FText::FromString(TEXT("Delete Selected Files")));
 		ToolBarBuilder.AddSeparator();
 		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().ClearSelection);
 	}

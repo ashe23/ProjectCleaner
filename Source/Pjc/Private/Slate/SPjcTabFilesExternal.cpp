@@ -20,7 +20,7 @@ void SPjcTabFilesExternal::Construct(const FArguments& InArgs)
 	Cmds = MakeShareable(new FUICommandList);
 
 	Cmds->MapAction(
-		FPjcCmds::Get().FilesScan,
+		FPjcCmds::Get().Refresh,
 		FExecuteAction::CreateLambda([&]()
 		{
 			ListUpdateData();
@@ -28,7 +28,7 @@ void SPjcTabFilesExternal::Construct(const FArguments& InArgs)
 		})
 	);
 	Cmds->MapAction(
-		FPjcCmds::Get().FilesDelete,
+		FPjcCmds::Get().Delete,
 		FExecuteAction::CreateLambda([&]()
 		{
 			UPjcFileExcludeSettings* FileExcludeSettings = GetMutableDefault<UPjcFileExcludeSettings>();
@@ -84,7 +84,7 @@ void SPjcTabFilesExternal::Construct(const FArguments& InArgs)
 		})
 	);
 	Cmds->MapAction(
-		FPjcCmds::Get().FilesExclude,
+		FPjcCmds::Get().Exclude,
 		FExecuteAction::CreateLambda([&]()
 		{
 			const auto ItemsSelected = ListView->GetSelectedItems();
@@ -121,7 +121,7 @@ void SPjcTabFilesExternal::Construct(const FArguments& InArgs)
 		})
 	);
 	Cmds->MapAction(
-		FPjcCmds::Get().FilesExcludeByExt,
+		FPjcCmds::Get().ExcludeByExt,
 		FExecuteAction::CreateLambda([&]()
 		{
 			const auto ItemsSelected = ListView->GetSelectedItems();
@@ -497,13 +497,13 @@ void SPjcTabFilesExternal::OnSearchTextCommitted(const FText& InText, ETextCommi
 TSharedRef<SWidget> SPjcTabFilesExternal::CreateToolbar() const
 {
 	FToolBarBuilder ToolBarBuilder{Cmds, FMultiBoxCustomization::None};
-	ToolBarBuilder.BeginSection("PjcSectionActionsFilesExternal");
+	ToolBarBuilder.BeginSection("PjcSectionFilesExternalToolbar");
 	{
-		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().FilesScan);
-		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().FilesDelete);
+		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().Refresh, NAME_None, FText::FromString(TEXT("Scan")), FText::FromString(TEXT("Scan For External Files")));
+		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().Delete, NAME_None, FText::FromString(TEXT("Delete")), FText::FromString(TEXT("Delete Selected Files")));
 		ToolBarBuilder.AddSeparator();
-		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().FilesExclude);
-		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().FilesExcludeByExt);
+		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().Exclude, NAME_None, FText::FromString(TEXT("Exclude")), FText::FromString(TEXT("Exclude Selected Files")));
+		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().ExcludeByExt, NAME_None, FText::FromString(TEXT("Exclude By Ext")), FText::FromString(TEXT("Exclude Selected Files By Their Extension")));
 		ToolBarBuilder.AddSeparator();
 		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().ClearSelection);
 	}
@@ -517,10 +517,10 @@ TSharedPtr<SWidget> SPjcTabFilesExternal::OnContextMenuOpening() const
 	FMenuBuilder MenuBuilder{true, Cmds};
 	MenuBuilder.BeginSection("PjcSectionFilesExternalCtxMenu");
 	{
-		MenuBuilder.AddMenuEntry(FPjcCmds::Get().FilesExclude);
-		MenuBuilder.AddMenuEntry(FPjcCmds::Get().FilesExcludeByExt);
+		MenuBuilder.AddMenuEntry(FPjcCmds::Get().Exclude, NAME_None, FText::FromString(TEXT("Exclude")), FText::FromString(TEXT("Exclude Selected Files")));
+		MenuBuilder.AddMenuEntry(FPjcCmds::Get().ExcludeByExt, NAME_None, FText::FromString(TEXT("Exclude By Ext")), FText::FromString(TEXT("Exclude Selected Files By Their Extension")));
 		MenuBuilder.AddSeparator();
-		MenuBuilder.AddMenuEntry(FPjcCmds::Get().FilesDelete);
+		MenuBuilder.AddMenuEntry(FPjcCmds::Get().Delete, NAME_None, FText::FromString(TEXT("Delete")), FText::FromString(TEXT("Delete Selected Files")));
 	}
 	MenuBuilder.EndSection();
 
@@ -534,7 +534,7 @@ TSharedRef<SWidget> SPjcTabFilesExternal::GetBtnOptionsContent()
 
 	MenuBuilder.AddMenuEntry(
 		FText::FromString(TEXT("Show Files Excluded")),
-		FText::FromString(TEXT("Show excluded files in list view")),
+		FText::FromString(TEXT("Show Excluded Files In List View")),
 		FSlateIcon(),
 		FUIAction
 		(
