@@ -9,6 +9,7 @@
 #include "Misc/ScopedSlowTask.h"
 #include "Slate/SPjcItemAssetCorrupted.h"
 #include "Widgets/Input/SSearchBox.h"
+#include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SSeparator.h"
 
 void SPjcTabAssetsCorrupted::Construct(const FArguments& InArgs)
@@ -33,6 +34,45 @@ void SPjcTabAssetsCorrupted::Construct(const FArguments& InArgs)
 
 			const EAppReturnType::Type ReturnType = FMessageDialog::Open(EAppMsgType::YesNo, Context, &Title);
 			if (ReturnType == EAppReturnType::Cancel || ReturnType == EAppReturnType::No) return;
+
+			const auto ItemsSelected = ListView->GetSelectedItems();
+			const int32 NumTotal = ItemsSelected.Num();
+			int32 NumDeleted = 0;
+
+			for (const auto& Item : ItemsSelected)
+			{
+				if (!Item.IsValid()) continue;
+				if (!IFileManager::Get().Delete(*Item->FilePath)) continue;
+
+				++NumDeleted;
+			}
+
+			const FString Msg = FString::Printf(TEXT("Deleted %d of %d files"), NumDeleted, NumTotal);
+
+			if (NumDeleted == NumTotal)
+			{
+				UPjcSubsystem::ShowNotification(Msg, SNotificationItem::CS_Success, 5.0f);
+			}
+			else
+			{
+				UPjcSubsystem::ShowNotificationWithOutputLog(Msg, SNotificationItem::CS_Fail, 5.0f);
+			}
+
+			ListUpdateData();
+			ListUpdateView();
+		}),
+		FCanExecuteAction::CreateLambda([&]()
+		{
+			return ListView.IsValid() && ListView->GetSelectedItems().Num() > 0;
+		})
+	);
+
+	Cmds->MapAction(
+		FPjcCmds::Get().ClearSelection,
+		FExecuteAction::CreateLambda([&]()
+		{
+			ListView->ClearSelection();
+			ListView->ClearHighlightedItems();
 		}),
 		FCanExecuteAction::CreateLambda([&]()
 		{
@@ -111,7 +151,22 @@ void SPjcTabAssetsCorrupted::Construct(const FArguments& InArgs)
 		]
 		+ SVerticalBox::Slot().FillHeight(1.0f).Padding(5.0f)
 		[
-			ListView.ToSharedRef()
+			SNew(SScrollBox)
+			.ScrollWhenFocusChanges(EScrollWhenFocusChanges::NoScroll)
+			.AnimateWheelScrolling(true)
+			.AllowOverscroll(EAllowOverscroll::No)
+			+ SScrollBox::Slot().Padding(5.0f)
+			[
+				ListView.ToSharedRef()
+			]
+		]
+		+ SVerticalBox::Slot().AutoHeight().Padding(5.0f)
+		[
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot().FillWidth(1.0f).HAlign(HAlign_Left).VAlign(VAlign_Center).Padding(3.0f, 0.0f, 0.0f, 0.0f)
+			[
+				SNew(STextBlock).Text_Raw(this, &SPjcTabAssetsCorrupted::GetTxtSummary)
+			]
 		]
 	];
 }
@@ -163,6 +218,8 @@ void SPjcTabAssetsCorrupted::ListUpdateData()
 			)
 		);
 	}
+
+	NumFilesTotal = ItemsAll.Num();
 }
 
 void SPjcTabAssetsCorrupted::ListUpdateView()
@@ -329,7 +386,6 @@ TSharedPtr<SWidget> SPjcTabAssetsCorrupted::OnContextMenuOpening() const
 	MenuBuilder.BeginSection("PjcSectionFilesExternalCtxMenu");
 	{
 		MenuBuilder.AddMenuEntry(FPjcCmds::Get().FilesDelete);
-		// todo:ashe23 reload file
 	}
 	MenuBuilder.EndSection();
 
@@ -343,8 +399,22 @@ TSharedRef<SWidget> SPjcTabAssetsCorrupted::CreateToolbar() const
 	{
 		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().FilesScan);
 		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().FilesDelete);
+		ToolBarBuilder.AddSeparator();
+		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().ClearSelection);
 	}
 	ToolBarBuilder.EndSection();
 
 	return ToolBarBuilder.MakeWidget();
+}
+
+FText SPjcTabAssetsCorrupted::GetTxtSummary() const
+{
+	if (ListView.IsValid())
+	{
+		const int32 NumFilesSelected = ListView->GetSelectedItems().Num();
+
+		return FText::FromString(FString::Printf(TEXT("Total - %d (%s). Selected %d"), NumFilesTotal, *FText::AsMemory(SizeFilesTotal, IEC).ToString(), NumFilesSelected));
+	}
+
+	return FText::FromString(FString::Printf(TEXT("Total - %d (%s)"), NumFilesTotal, *FText::AsMemory(SizeFilesTotal, IEC).ToString()));
 }

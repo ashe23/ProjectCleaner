@@ -25,6 +25,7 @@ protected:
 	TSharedRef<ITableRow> OnListGenerateRow(TSharedPtr<FPjcCorruptedAssetItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const;
 	TSharedPtr<SWidget> OnContextMenuOpening() const;
 	TSharedRef<SWidget> CreateToolbar() const;
+	FText GetTxtSummary() const;
 
 private:
 	FText SearchText;
