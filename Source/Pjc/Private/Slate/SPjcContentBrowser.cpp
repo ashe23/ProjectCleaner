@@ -309,9 +309,6 @@ TSharedRef<SWidget> SPjcContentBrowser::CreateToolbar() const
 		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().OpenViewerSizeMap);
 		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().OpenViewerReference);
 		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().OpenViewerAssetsAudit);
-		ToolBarBuilder.AddSeparator();
-		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().OpenViewerAssetsIndirect);
-		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().OpenViewerAssetsCorrupted);
 	}
 	ToolBarBuilder.EndSection();
 

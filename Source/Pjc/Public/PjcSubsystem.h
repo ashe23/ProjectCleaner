@@ -21,7 +21,7 @@ public:
 	virtual void Deinitialize() override;
 
 	static void ScanProjectAssets(TMap<EPjcAssetCategory, TSet<FAssetData>>& AssetsCategoryMapping, FString& ErrMsg);
-
+	
 	static void CleanProject();
 
 	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem")
