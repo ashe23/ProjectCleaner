@@ -22,10 +22,7 @@ TSharedRef<SWidget> SPjcItemFileInfo::GenerateWidgetForColumn(const FName& InCol
 			[
 				SNew(SHyperlink)
 				.Text(FText::FromString(Item->FilePath))
-				.OnNavigate_Lambda([&]()
-				                {
-					                UPjcSubsystem::OpenPathInFileExplorer(Item->FilePath);
-				                })
+				.OnNavigate_Lambda([&]() { UPjcSubsystem::OpenPathInFileExplorer(Item->FilePath); })
 			];
 	}
 
