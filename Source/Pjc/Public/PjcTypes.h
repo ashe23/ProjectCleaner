@@ -173,3 +173,58 @@ struct FPjcFileInfo
 		return !(FilePath.Equals(Other.FilePath) && FileNum == Other.FileNum);
 	}
 };
+
+USTRUCT(BlueprintType)
+struct FPjcAssetsIndirectInfo
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="AssetIndirectInfo")
+	FAssetData Asset;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="AssetIndirectInfo")
+	FString FilePath;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="AssetIndirectInfo")
+	int32 FileNum = 0;
+
+	bool operator==(const FPjcAssetsIndirectInfo& Other) const
+	{
+		return Asset == Other.Asset && FilePath.Equals(Other.FilePath) && FileNum == Other.FileNum;
+	}
+
+	bool operator!=(const FPjcAssetsIndirectInfo& Other) const
+	{
+		return !(Asset == Other.Asset && FilePath.Equals(Other.FilePath) && FileNum == Other.FileNum);
+	}
+};
+
+// USTRUCT(BlueprintType)
+// struct FPjcAssetFilter
+// {
+// 	GENERATED_BODY()
+//
+// 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="ProjectCleaner|AssetSearchFilter")
+// 	bool bRecursivePaths = false;
+//
+// 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="ProjectCleaner|AssetSearchFilter")
+// 	bool bRecursiveClasses = false;
+//
+// 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="ProjectCleaner|AssetSearchFilter")
+// 	TArray<FName> PackagePaths;
+//
+// 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="ProjectCleaner|AssetSearchFilter")
+// 	TArray<FName> ClassNames;
+//
+// 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="ProjectCleaner|AssetSearchFilter")
+// 	TArray<FName> ObjectPaths;
+//
+// 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="ProjectCleaner|AssetSearchFilter")
+// 	TArray<FName> ExcludedPackagePaths;
+//
+// 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="ProjectCleaner|AssetSearchFilter")
+// 	TArray<FName> ExcludedClassNames;
+//
+// 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="ProjectCleaner|AssetSearchFilter")
+// 	TArray<FName> ExcludedObjectPaths;
+// };
