@@ -33,7 +33,6 @@ sub = unreal.get_editor_subsystem(unreal.PjcSubsystem)
 # sub.delete_files_external()
 # sub.delete_files_corrupted()
 
-
-print(f"{len(sub.get_assets_used())}")
-print(f"{len(sub.get_assets_unused())}")
+for file in sub.get_folders_empty():
+    print(file)
 

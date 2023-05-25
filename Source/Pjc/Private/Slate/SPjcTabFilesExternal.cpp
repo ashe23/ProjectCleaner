@@ -332,7 +332,7 @@ void SPjcTabFilesExternal::ListUpdateData()
 	SlowTaskMain.EnterProgressFrame(1.0f);
 
 	// getting all external files in project
-	TSet<FString> FilesExternalAll;
+	TArray<FString> FilesExternalAll;
 	UPjcSubsystem::GetFilesByExt(FPaths::ProjectContentDir(), true, true, PjcConstants::EngineFileExtensions, FilesExternalAll);
 
 	// validate exclude settings

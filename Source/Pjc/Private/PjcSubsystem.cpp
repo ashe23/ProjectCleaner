@@ -38,7 +38,7 @@ void UPjcSubsystem::GetAssetsUsed(TArray<FAssetData>& Assets)
 	TArray<FAssetData> AssetsAll;
 	TArray<FAssetData> AssetsIndirect;
 	TArray<FAssetData> AssetsExcluded;
-	TArray<FPjcAssetsIndirectInfo> AssetsIndirectInfos;
+	TArray<FPjcAssetIndirectInfo> AssetsIndirectInfos;
 	TSet<FName> ClassNamesPrimary;
 	TSet<FName> ClassNamesEditor;
 
@@ -114,7 +114,7 @@ void UPjcSubsystem::GetAssetsPrimary(TArray<FAssetData>& Assets)
 	Assets.Shrink();
 }
 
-void UPjcSubsystem::GetAssetsIndirect(TArray<FAssetData>& Assets, TArray<FPjcAssetsIndirectInfo>& AssetsIndirectInfos, const bool bShowSlowTask)
+void UPjcSubsystem::GetAssetsIndirect(TArray<FAssetData>& Assets, TArray<FPjcAssetIndirectInfo>& AssetsIndirectInfos, const bool bShowSlowTask)
 {
 	Assets.Reset();
 	AssetsIndirectInfos.Reset();
@@ -162,13 +162,12 @@ void UPjcSubsystem::GetAssetsIndirect(TArray<FAssetData>& Assets, TArray<FPjcAss
 				const FString FilePathAbs = FPaths::ConvertRelativePathToFull(File);
 				const int32 FileLine = i + 1;
 
-				AssetsIndirectInfos.AddUnique(FPjcAssetsIndirectInfo{AssetData, FilePathAbs, FileLine});
+				AssetsIndirectInfos.AddUnique(FPjcAssetIndirectInfo{AssetData, FilePathAbs, FileLine});
 				Assets.AddUnique(AssetData);
 			}
 		}
 	}
 }
-
 
 void UPjcSubsystem::GetAssetsCircular(TArray<FAssetData>& Assets)
 {
@@ -308,6 +307,308 @@ void UPjcSubsystem::GetAssetsExtReferenced(TArray<FAssetData>& Assets)
 
 	Assets.Shrink();
 }
+
+void UPjcSubsystem::GetClassNamesPrimary(TSet<FName>& ClassNames)
+{
+	// getting list of primary asset classes that are defined in AssetManager
+	const auto& AssetManager = UAssetManager::Get();
+	if (!AssetManager.IsValid()) return;
+
+	TSet<FName> ClassNamesPrimaryBase;
+	TArray<FPrimaryAssetTypeInfo> AssetTypeInfos;
+	AssetManager.Get().GetPrimaryAssetTypeInfoList(AssetTypeInfos);
+	ClassNamesPrimaryBase.Reserve(AssetTypeInfos.Num());
+
+	for (const auto& AssetTypeInfo : AssetTypeInfos)
+	{
+		if (!AssetTypeInfo.AssetBaseClassLoaded) continue;
+
+		ClassNamesPrimaryBase.Emplace(AssetTypeInfo.AssetBaseClassLoaded->GetFName());
+	}
+
+	// getting list of primary assets classes that are derived from main primary assets
+	ClassNames.Empty();
+	GetModuleAssetRegistry().Get().GetDerivedClassNames(ClassNamesPrimaryBase.Array(), TSet<FName>{}, ClassNames);
+}
+
+void UPjcSubsystem::GetClassNamesEditor(TSet<FName>& ClassNames)
+{
+	const TArray<FName> ClassNamesEditorBase{
+		UEditorUtilityWidget::StaticClass()->GetFName(),
+		UEditorUtilityBlueprint::StaticClass()->GetFName(),
+		UEditorUtilityWidgetBlueprint::StaticClass()->GetFName(),
+		UEditorTutorial::StaticClass()->GetFName()
+	};
+
+	ClassNames.Empty();
+	GetModuleAssetRegistry().Get().GetDerivedClassNames(ClassNamesEditorBase, TSet<FName>{}, ClassNames);
+}
+
+void UPjcSubsystem::GetClassNamesExcluded(TSet<FName>& ClassNames)
+{
+	const UPjcAssetExcludeSettings* AssetExcludeSettings = GetDefault<UPjcAssetExcludeSettings>();
+	if (!AssetExcludeSettings) return;
+
+	ClassNames.Empty(AssetExcludeSettings->ExcludedClasses.Num());
+	for (const auto& ExcludedClass : AssetExcludeSettings->ExcludedClasses)
+	{
+		if (!ExcludedClass.LoadSynchronous() || ExcludedClass.IsNull()) continue;
+
+		ClassNames.Emplace(ExcludedClass.Get()->GetFName());
+	}
+}
+
+void UPjcSubsystem::GetFiles(const FString& InSearchPath, const bool bSearchRecursive, TArray<FString>& OutFiles)
+{
+	OutFiles.Empty();
+
+	struct FFindFilesVisitor : IPlatformFile::FDirectoryVisitor
+	{
+		TArray<FString>& Files;
+
+		explicit FFindFilesVisitor(TArray<FString>& InFiles) : Files(InFiles) { }
+
+		virtual bool Visit(const TCHAR* FilenameOrDirectory, bool bIsDirectory) override
+		{
+			if (!bIsDirectory)
+			{
+				Files.Emplace(FPaths::ConvertRelativePathToFull(FilenameOrDirectory));
+			}
+
+			return true;
+		}
+	};
+
+	FFindFilesVisitor FindFilesVisitor{OutFiles};
+
+	if (bSearchRecursive)
+	{
+		FPlatformFileManager::Get().GetPlatformFile().IterateDirectoryRecursively(*InSearchPath, FindFilesVisitor);
+	}
+	else
+	{
+		FPlatformFileManager::Get().GetPlatformFile().IterateDirectory(*InSearchPath, FindFilesVisitor);
+	}
+}
+
+void UPjcSubsystem::GetFilesByExt(const FString& InSearchPath, const bool bSearchRecursive, const bool bExtSearchInvert, const TSet<FString>& InExtensions, TArray<FString>& OutFiles)
+{
+	OutFiles.Empty();
+
+	struct FFindFilesVisitor : IPlatformFile::FDirectoryVisitor
+	{
+		const bool bSearchInvert;
+		TArray<FString>& Files;
+		const TSet<FString>& Extensions;
+
+		explicit FFindFilesVisitor(const bool bInSearchInvert, TArray<FString>& InFiles, const TSet<FString>& InExtensions)
+			: bSearchInvert(bInSearchInvert),
+			  Files(InFiles),
+			  Extensions(InExtensions) { }
+
+		virtual bool Visit(const TCHAR* FilenameOrDirectory, bool bIsDirectory) override
+		{
+			if (!bIsDirectory)
+			{
+				const FString FullPath = FPaths::ConvertRelativePathToFull(FilenameOrDirectory);
+
+				if (Extensions.Num() == 0)
+				{
+					Files.Emplace(FullPath);
+					return true;
+				}
+
+				const FString Ext = FPaths::GetExtension(FullPath, false);
+				const bool bExistsInSearchList = Extensions.Contains(Ext);
+
+				if (
+					bExistsInSearchList && !bSearchInvert ||
+					!bExistsInSearchList && bSearchInvert
+				)
+				{
+					Files.Emplace(FullPath);
+				}
+			}
+
+			return true;
+		}
+	};
+
+	TSet<FString> ExtensionsNormalized;
+	ExtensionsNormalized.Reserve(InExtensions.Num());
+
+	for (const auto& Ext : InExtensions)
+	{
+		const FString ExtNormalized = Ext.Replace(TEXT("."), TEXT(""));
+		ExtensionsNormalized.Emplace(ExtNormalized);
+	}
+
+	FFindFilesVisitor FindFilesVisitor{bExtSearchInvert, OutFiles, ExtensionsNormalized};
+	if (bSearchRecursive)
+	{
+		FPlatformFileManager::Get().GetPlatformFile().IterateDirectoryRecursively(*InSearchPath, FindFilesVisitor);
+	}
+	else
+	{
+		FPlatformFileManager::Get().GetPlatformFile().IterateDirectory(*InSearchPath, FindFilesVisitor);
+	}
+}
+
+void UPjcSubsystem::GetFilesExternalAll(TArray<FString>& Files)
+{
+	GetFilesByExt(
+		FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir()),
+		true,
+		true,
+		PjcConstants::EngineFileExtensions,
+		Files
+	);
+}
+
+void UPjcSubsystem::GetFilesExternalFiltered(TArray<FString>& Files)
+{
+	const UPjcFileExcludeSettings* FileExcludeSettings = GetDefault<UPjcFileExcludeSettings>();
+	if (!FileExcludeSettings) return;
+
+	TArray<FString> FilesExternalAll;
+	GetFilesExternalAll(FilesExternalAll);
+
+	Files.Reset(FilesExternalAll.Num());
+
+	for (const auto& File : FilesExternalAll)
+	{
+		const FString FileExt = FPaths::GetExtension(File, false).ToLower();
+		const bool bExcludedByExt = FileExcludeSettings->ExcludedExtensions.Contains(FileExt);
+		const bool bExcludedByFile = FileExcludeSettings->ExcludedFiles.ContainsByPredicate([&](const FFilePath& InFilePath)
+		{
+			if (!InFilePath.FilePath.StartsWith(TEXT("Content"))) return false;
+
+			const FString Path = FPaths::ProjectDir() / InFilePath.FilePath;
+			const FString PathAbs = PathConvertToAbsolute(Path);
+			if (PathAbs.IsEmpty()) return false;
+
+			return File.Equals(PathAbs);
+		});
+
+		if (bExcludedByExt || bExcludedByFile) continue;
+
+		Files.Emplace(File);
+	}
+
+	Files.Shrink();
+}
+
+void UPjcSubsystem::GetFilesExternalExcluded(TArray<FString>& Files)
+{
+	const UPjcFileExcludeSettings* FileExcludeSettings = GetDefault<UPjcFileExcludeSettings>();
+	if (!FileExcludeSettings) return;
+
+	TArray<FString> FilesExternalAll;
+	GetFilesExternalAll(FilesExternalAll);
+
+	Files.Reset(FilesExternalAll.Num());
+
+	for (const auto& File : FilesExternalAll)
+	{
+		const FString FileExt = FPaths::GetExtension(File, false).ToLower();
+		const bool bExcludedByExt = FileExcludeSettings->ExcludedExtensions.Contains(FileExt);
+		const bool bExcludedByFile = FileExcludeSettings->ExcludedFiles.ContainsByPredicate([&](const FFilePath& InFilePath)
+		{
+			if (!InFilePath.FilePath.StartsWith(TEXT("Content"))) return false;
+
+			const FString Path = FPaths::ProjectDir() / InFilePath.FilePath;
+			const FString PathAbs = PathConvertToAbsolute(Path);
+			if (PathAbs.IsEmpty()) return false;
+
+			return File.Equals(PathAbs);
+		});
+
+		if (bExcludedByExt || bExcludedByFile)
+		{
+			Files.Emplace(File);
+		}
+	}
+
+	Files.Shrink();
+}
+
+void UPjcSubsystem::GetFilesCorrupted(TArray<FString>& Files)
+{
+	TArray<FString> FileAssets;
+
+	GetFilesByExt(
+		FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir()),
+		true,
+		false,
+		PjcConstants::EngineFileExtensions,
+		FileAssets
+	);
+
+	Files.Reset(FileAssets.Num());
+
+	for (const auto& File : FileAssets)
+	{
+		const FString Path = PathConvertToObjectPath(File);
+		if (Path.IsEmpty()) continue;
+		if (GetModuleAssetRegistry().Get().GetAssetByObjectPath(FName{*Path}).IsValid()) continue;
+
+		Files.Emplace(File);
+	}
+
+	Files.Shrink();
+}
+
+void UPjcSubsystem::GetFolders(const FString& InSearchPath, const bool bSearchRecursive, TArray<FString>& OutFolders)
+{
+	OutFolders.Empty();
+
+	struct FFindFoldersVisitor : IPlatformFile::FDirectoryVisitor
+	{
+		TArray<FString>& Folders;
+
+		explicit FFindFoldersVisitor(TArray<FString>& InFolders) : Folders(InFolders) { }
+
+		virtual bool Visit(const TCHAR* FilenameOrDirectory, bool bIsDirectory) override
+		{
+			if (bIsDirectory)
+			{
+				Folders.Emplace(FPaths::ConvertRelativePathToFull(FilenameOrDirectory));
+			}
+
+			return true;
+		}
+	};
+
+	FFindFoldersVisitor FindFoldersVisitor{OutFolders};
+	if (bSearchRecursive)
+	{
+		FPlatformFileManager::Get().GetPlatformFile().IterateDirectoryRecursively(*InSearchPath, FindFoldersVisitor);
+	}
+	else
+	{
+		FPlatformFileManager::Get().GetPlatformFile().IterateDirectory(*InSearchPath, FindFoldersVisitor);
+	}
+}
+
+void UPjcSubsystem::GetFoldersEmpty(TArray<FString>& Folders)
+{
+	TArray<FString> FoldersAll;
+	GetFolders(FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir()), true, FoldersAll);
+
+	Folders.Reset(FoldersAll.Num());
+	
+	for (const auto& Folder : FoldersAll)
+	{
+		if (PathIsEmpty(Folder) && !PathIsEngineGenerated(Folder))
+		{
+			Folders.Emplace(Folder);
+		}
+	}
+
+	Folders.Shrink();
+}
+
+// NOT BLUEPRINT Exposed, but public
 
 void UPjcSubsystem::ScanProjectAssets(TMap<EPjcAssetCategory, TSet<FAssetData>>& AssetsCategoryMapping, FString& ErrMsg)
 {
@@ -460,138 +761,23 @@ void UPjcSubsystem::CleanProject()
 	// if empty folder cleanup option enabled => delete empty folders and update asset registry
 }
 
-// void UPjcSubsystem::GetAssetsByCategory(const EPjcAssetCategory AssetCategory, TSet<FAssetData>& Assets)
-// {
-// 	TMap<EPjcAssetCategory, TSet<FAssetData>> AssetsCategoryMapping;
-//
-// 	FString ErrMsg;
-// 	ScanProjectAssets(AssetsCategoryMapping, ErrMsg);
-//
-// 	Assets.Reset();
-// 	Assets.Append(AssetsCategoryMapping[AssetCategory]);
-// }
-//
-// void UPjcSubsystem::GetAssetIndirectInfo(const FAssetData& Asset, TArray<FPjcFileInfo>& Infos)
-// {
-// 	Infos.Reset();
-//
-// 	TMap<FAssetData, TArray<FPjcFileInfo>> AssetsIndirectInfo;
-// 	FindAssetsIndirect(AssetsIndirectInfo);
-//
-// 	if (AssetsIndirectInfo.Contains(Asset))
-// 	{
-// 		Infos = *AssetsIndirectInfo.Find(Asset);
-// 	}
-// }
-//
-// void UPjcSubsystem::GetFilesExternal(TSet<FString>& FilesExternal)
-// {
-// 	GetFilesByExt(FPaths::ProjectContentDir(), true, true, PjcConstants::EngineFileExtensions, FilesExternal);
-// }
-//
-// void UPjcSubsystem::GetFilesCorrupted(TSet<FString>& FilesCorrupted)
-// {
-// 	FilesCorrupted.Reset();
-//
-// 	TSet<FString> Files;
-// 	GetFilesByExt(FPaths::ProjectContentDir(), true, false, PjcConstants::EngineFileExtensions, Files);
-//
-// 	for (const auto& File : Files)
-// 	{
-// 		const FString ObjectPath = PathConvertToObjectPath(File);
-// 		if (ObjectPath.IsEmpty()) continue;
-//
-// 		const FAssetData AssetData = GetModuleAssetRegistry().Get().GetAssetByObjectPath(FName{*ObjectPath});
-// 		if (!AssetData.IsValid())
-// 		{
-// 			FilesCorrupted.Emplace(File);
-// 		}
-// 	}
-// }
-//
-// void UPjcSubsystem::GetFoldersEmpty(TSet<FString>& FoldersEmpty)
-// {
-// 	FoldersEmpty.Reset();
-//
-// 	TArray<FString> PathsAll;
-// 	GetModuleAssetRegistry().Get().GetAllCachedPaths(PathsAll);
-//
-// 	for (const auto& Path : PathsAll)
-// 	{
-// 		if (PathIsEmpty(Path) && !PathIsExcluded(Path) && !PathIsEngineGenerated(Path))
-// 		{
-// 			FoldersEmpty.Emplace(PathConvertToAbsolute(Path));
-// 		}
-// 	}
-// }
-
-void UPjcSubsystem::GetClassNamesPrimary(TSet<FName>& ClassNames)
-{
-	// getting list of primary asset classes that are defined in AssetManager
-	const auto& AssetManager = UAssetManager::Get();
-	if (!AssetManager.IsValid()) return;
-
-	TSet<FName> ClassNamesPrimaryBase;
-	TArray<FPrimaryAssetTypeInfo> AssetTypeInfos;
-	AssetManager.Get().GetPrimaryAssetTypeInfoList(AssetTypeInfos);
-	ClassNamesPrimaryBase.Reserve(AssetTypeInfos.Num());
-
-	for (const auto& AssetTypeInfo : AssetTypeInfos)
-	{
-		if (!AssetTypeInfo.AssetBaseClassLoaded) continue;
-
-		ClassNamesPrimaryBase.Emplace(AssetTypeInfo.AssetBaseClassLoaded->GetFName());
-	}
-
-	// getting list of primary assets classes that are derived from main primary assets
-	ClassNames.Empty();
-	GetModuleAssetRegistry().Get().GetDerivedClassNames(ClassNamesPrimaryBase.Array(), TSet<FName>{}, ClassNames);
-}
-
-void UPjcSubsystem::GetClassNamesEditor(TSet<FName>& ClassNames)
-{
-	const TArray<FName> ClassNamesEditorBase{
-		UEditorUtilityWidget::StaticClass()->GetFName(),
-		UEditorUtilityBlueprint::StaticClass()->GetFName(),
-		UEditorUtilityWidgetBlueprint::StaticClass()->GetFName(),
-		UEditorTutorial::StaticClass()->GetFName()
-	};
-
-	ClassNames.Empty();
-	GetModuleAssetRegistry().Get().GetDerivedClassNames(ClassNamesEditorBase, TSet<FName>{}, ClassNames);
-}
-
-void UPjcSubsystem::GetClassNamesExcluded(TSet<FName>& ClassNames)
-{
-	const UPjcAssetExcludeSettings* AssetExcludeSettings = GetDefault<UPjcAssetExcludeSettings>();
-	if (!AssetExcludeSettings) return;
-
-	ClassNames.Empty(AssetExcludeSettings->ExcludedClasses.Num());
-	for (const auto& ExcludedClass : AssetExcludeSettings->ExcludedClasses)
-	{
-		if (!ExcludedClass.LoadSynchronous() || ExcludedClass.IsNull()) continue;
-
-		ClassNames.Emplace(ExcludedClass.Get()->GetFName());
-	}
-}
-
 void UPjcSubsystem::GetSourceAndConfigFiles(TSet<FString>& Files)
 {
 	const FString DirSrc = FPaths::ConvertRelativePathToFull(FPaths::GameSourceDir());
 	const FString DirCfg = FPaths::ConvertRelativePathToFull(FPaths::ProjectConfigDir());
 	const FString DirPlg = FPaths::ConvertRelativePathToFull(FPaths::ProjectPluginsDir());
 
-	TSet<FString> SourceFiles;
-	TSet<FString> ConfigFiles;
+	TArray<FString> SourceFiles;
+	TArray<FString> ConfigFiles;
 
 	GetFilesByExt(DirSrc, true, false, PjcConstants::SourceFileExtensions, SourceFiles);
 	GetFilesByExt(DirCfg, true, false, PjcConstants::ConfigFileExtensions, ConfigFiles);
 
-	TSet<FString> InstalledPlugins;
+	TArray<FString> InstalledPlugins;
 	GetFolders(DirPlg, false, InstalledPlugins);
 
 	const FString ProjectCleanerPluginPath = DirPlg / PjcConstants::ModulePjcName.ToString();
-	TSet<FString> PluginFiles;
+	TArray<FString> PluginFiles;
 	for (const auto& InstalledPlugin : InstalledPlugins)
 	{
 		// ignore ProjectCleaner plugin
@@ -822,133 +1008,6 @@ void UPjcSubsystem::FixupRedirectorsInProject()
 	GetModuleAssetTools().Get().FixupReferencers(Redirectors, false);
 }
 
-void UPjcSubsystem::GetFiles(const FString& InSearchPath, const bool bSearchRecursive, TSet<FString>& OutFiles)
-{
-	OutFiles.Empty();
-
-	struct FFindFilesVisitor : IPlatformFile::FDirectoryVisitor
-	{
-		TSet<FString>& Files;
-
-		explicit FFindFilesVisitor(TSet<FString>& InFiles) : Files(InFiles) { }
-
-		virtual bool Visit(const TCHAR* FilenameOrDirectory, bool bIsDirectory) override
-		{
-			if (!bIsDirectory)
-			{
-				Files.Emplace(FPaths::ConvertRelativePathToFull(FilenameOrDirectory));
-			}
-
-			return true;
-		}
-	};
-
-	FFindFilesVisitor FindFilesVisitor{OutFiles};
-
-	if (bSearchRecursive)
-	{
-		FPlatformFileManager::Get().GetPlatformFile().IterateDirectoryRecursively(*InSearchPath, FindFilesVisitor);
-	}
-	else
-	{
-		FPlatformFileManager::Get().GetPlatformFile().IterateDirectory(*InSearchPath, FindFilesVisitor);
-	}
-}
-
-void UPjcSubsystem::GetFilesByExt(const FString& InSearchPath, const bool bSearchRecursive, const bool bExtSearchInvert, const TSet<FString>& InExtensions, TSet<FString>& OutFiles)
-{
-	OutFiles.Empty();
-
-	struct FFindFilesVisitor : IPlatformFile::FDirectoryVisitor
-	{
-		const bool bSearchInvert;
-		TSet<FString>& Files;
-		const TSet<FString>& Extensions;
-
-		explicit FFindFilesVisitor(const bool bInSearchInvert, TSet<FString>& InFiles, const TSet<FString>& InExtensions)
-			: bSearchInvert(bInSearchInvert),
-			  Files(InFiles),
-			  Extensions(InExtensions) { }
-
-		virtual bool Visit(const TCHAR* FilenameOrDirectory, bool bIsDirectory) override
-		{
-			if (!bIsDirectory)
-			{
-				const FString FullPath = FPaths::ConvertRelativePathToFull(FilenameOrDirectory);
-
-				if (Extensions.Num() == 0)
-				{
-					Files.Emplace(FullPath);
-					return true;
-				}
-
-				const FString Ext = FPaths::GetExtension(FullPath, false);
-				const bool bExistsInSearchList = Extensions.Contains(Ext);
-
-				if (
-					bExistsInSearchList && !bSearchInvert ||
-					!bExistsInSearchList && bSearchInvert
-				)
-				{
-					Files.Emplace(FullPath);
-				}
-			}
-
-			return true;
-		}
-	};
-
-	TSet<FString> ExtensionsNormalized;
-	ExtensionsNormalized.Reserve(InExtensions.Num());
-
-	for (const auto& Ext : InExtensions)
-	{
-		const FString ExtNormalized = Ext.Replace(TEXT("."), TEXT(""));
-		ExtensionsNormalized.Emplace(ExtNormalized);
-	}
-
-	FFindFilesVisitor FindFilesVisitor{bExtSearchInvert, OutFiles, ExtensionsNormalized};
-	if (bSearchRecursive)
-	{
-		FPlatformFileManager::Get().GetPlatformFile().IterateDirectoryRecursively(*InSearchPath, FindFilesVisitor);
-	}
-	else
-	{
-		FPlatformFileManager::Get().GetPlatformFile().IterateDirectory(*InSearchPath, FindFilesVisitor);
-	}
-}
-
-void UPjcSubsystem::GetFolders(const FString& InSearchPath, const bool bSearchRecursive, TSet<FString>& OutFolders)
-{
-	OutFolders.Empty();
-
-	struct FFindFoldersVisitor : IPlatformFile::FDirectoryVisitor
-	{
-		TSet<FString>& Folders;
-
-		explicit FFindFoldersVisitor(TSet<FString>& InFolders) : Folders(InFolders) { }
-
-		virtual bool Visit(const TCHAR* FilenameOrDirectory, bool bIsDirectory) override
-		{
-			if (bIsDirectory)
-			{
-				Folders.Emplace(FPaths::ConvertRelativePathToFull(FilenameOrDirectory));
-			}
-
-			return true;
-		}
-	};
-
-	FFindFoldersVisitor FindFoldersVisitor{OutFolders};
-	if (bSearchRecursive)
-	{
-		FPlatformFileManager::Get().GetPlatformFile().IterateDirectoryRecursively(*InSearchPath, FindFoldersVisitor);
-	}
-	else
-	{
-		FPlatformFileManager::Get().GetPlatformFile().IterateDirectory(*InSearchPath, FindFoldersVisitor);
-	}
-}
 
 void UPjcSubsystem::AssetCategoryMappingInit(TMap<EPjcAssetCategory, TSet<FAssetData>>& AssetsCategoryMapping)
 {
@@ -1177,8 +1236,8 @@ bool UPjcSubsystem::PathIsExcluded(const FString& InPath)
 
 bool UPjcSubsystem::PathIsEngineGenerated(const FString& InPath)
 {
-	const FString PathDevelopers = FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir());
-	const FString PathCollections = PathDevelopers / TEXT("Collections");
+	const FString PathDevelopers = FPaths::ConvertRelativePathToFull(FPaths::GameDevelopersDir());
+	const FString PathCollections = FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir()) / TEXT("Collections");
 	const FString PathCurrentDeveloper = PathDevelopers / FPaths::GameUserDeveloperFolderName();
 	const FString PathCurrentDeveloperCollections = PathCurrentDeveloper / TEXT("Collections");
 

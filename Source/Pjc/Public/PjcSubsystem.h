@@ -21,7 +21,6 @@ public:
 	virtual void Deinitialize() override;
 
 
-	
 	/**
 	 * @brief Returns all assets in project (particularly Content folder)
 	 * @param Assets TArray<FAssetData>
@@ -29,70 +28,150 @@ public:
 	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset")
 	static void GetAssetsAll(TArray<FAssetData>& Assets);
 
-	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset", meta=(Tooltip="Returns all used assets"))
+	/**
+	 * @brief Returns all used assets in project
+	 * @param Assets TArray<FAssetData>
+	 */
+	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset")
 	static void GetAssetsUsed(TArray<FAssetData>& Assets);
 
-	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset", meta=(Tooltip="Returns all unused assets"))
+	/**
+	 * @brief Returns all unused assets in project
+	 * @param Assets TArray<FAssetData>
+	 */
+	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset")
 	static void GetAssetsUnused(TArray<FAssetData>& Assets);
 
-	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset", meta=(Tooltip="Returns all unused assets"))
+	/**
+	 * @brief Returns all primary and derived from primary assets in project. See AssetManager Settings for more info.
+	 * @param Assets TArray<FAssetData>
+	 */
+	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset")
 	static void GetAssetsPrimary(TArray<FAssetData>& Assets);
 
-	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset", meta=(Tooltip="Returns all indirect assets"))
-	static void GetAssetsIndirect(TArray<FAssetData>& Assets, TArray<FPjcAssetsIndirectInfo>& AssetsIndirectInfos, const bool bShowSlowTask = true);
+	/**
+	 * @brief Returns assets that used in source code or config files indirectly.
+	 * @param Assets TArray<FAssetData> - Assets
+	 * @param AssetsIndirectInfos TArray<FPjcAssetIndirectInfo> - Assets and their usage information
+	 * @param bShowSlowTask bool - Show slow task progress bar or not
+	 */
+	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset")
+	static void GetAssetsIndirect(TArray<FAssetData>& Assets, TArray<FPjcAssetIndirectInfo>& AssetsIndirectInfos, const bool bShowSlowTask = true);
 
-	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset", meta=(Tooltip="Returns all assets that have circular dependencies"))
+	/**
+	 * @brief Returns assets that have circular dependencies
+	 * @param Assets TArray<FAssetData>
+	 */
+	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset")
 	static void GetAssetsCircular(TArray<FAssetData>& Assets);
 
-	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset", meta=(Tooltip="Returns all editor specific assets"))
+	/**
+	 * @brief Returns assets that are editor specific. Like Tutorial asset, EditorUtilityBlueprint or EditorUtilityWidgets.
+	 * @param Assets TArray<FAssetData>
+	 */
+	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset")
 	static void GetAssetsEditor(TArray<FAssetData>& Assets);
 
-	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset", meta=(Tooltip="Returns all excluded assets"))
+	/**
+	 * @brief Returns all excluded assets in project
+	 * @param Assets TArray<FAssetData>
+	 */
+	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset")
 	static void GetAssetsExcluded(TArray<FAssetData>& Assets);
 
-	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset", meta=(Tooltip="Returns all assets that have external referencers out Content folder"))
+	/**
+	 * @brief Returns all assets that have external referencers outside Content folder
+	 * @param Assets TArray<FAssetData>
+	 */
+	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset")
 	static void GetAssetsExtReferenced(TArray<FAssetData>& Assets);
 
-	static void GetFiles(const FString& InSearchPath, const bool bSearchRecursive, TSet<FString>& OutFiles);
-	static void GetFilesByExt(const FString& InSearchPath, const bool bSearchRecursive, const bool bExtSearchInvert, const TSet<FString>& InExtensions, TSet<FString>& OutFiles);
-	
-	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem", meta=(Tooltip="Returns all external files inside Content folder"))
+	/**
+	 * @brief Returns all primary assets class names
+	 * @param ClassNames TSet<FName>
+	 */
+	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset")
+	static void GetClassNamesPrimary(TSet<FName>& ClassNames);
+
+	/**
+	 * @brief Returns all editor assets class names
+	 * @param ClassNames TSet<FName>
+	 */
+	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset")
+	static void GetClassNamesEditor(TSet<FName>& ClassNames);
+
+	/**
+	 * @brief Returns all excluded assets class names
+	 * @param ClassNames TSet<FName>
+	 */
+	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset")
+	static void GetClassNamesExcluded(TSet<FName>& ClassNames);
+
+	/**
+	 * @brief Returns list of files inside given path with specified settings
+	 * @param InSearchPath FString
+	 * @param bSearchRecursive bool
+	 * @param OutFiles
+	 */
+	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Path")
+	static void GetFiles(const FString& InSearchPath, const bool bSearchRecursive, TArray<FString>& OutFiles);
+
+	/**
+	 * @brief Returns list of files inside given path with specified file extension settings
+	 * @param InSearchPath FString
+	 * @param bSearchRecursive bool
+	 * @param bExtSearchInvert bool
+	 * @param InExtensions TSet<FString>
+	 * @param OutFiles
+	 */
+	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Path")
+	static void GetFilesByExt(const FString& InSearchPath, const bool bSearchRecursive, const bool bExtSearchInvert, const TSet<FString>& InExtensions, TArray<FString>& OutFiles);
+
+	/**
+	 * @brief Returns all external files in project. Files that dont .uasset or .umap extensions
+	 * @param Files
+	 */
+	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Path")
 	static void GetFilesExternalAll(TArray<FString>& Files);
 
-	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem", meta=(Tooltip="Returns excluded external files"))
+	/**
+	 * @brief Returns all external files minus excluded files
+	 * @param Files
+	 */
+	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Path")
+	static void GetFilesExternalFiltered(TArray<FString>& Files);
+
+	/**
+	 * @brief Returns all external files that has been excluded
+	 * @param Files
+	 */
+	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Path")
 	static void GetFilesExternalExcluded(TArray<FString>& Files);
 
-	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem", meta=(Tooltip="Returns all corrupted asset files inside Content folder"))
+	/**
+	 * @brief Returns all corrupted asset files in project
+	 * @param Files
+	 */
+	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Path")
 	static void GetFilesCorrupted(TArray<FString>& Files);
 
-	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem", meta=(Tooltip="Returns all subfolders for given path"))
-	static void GetFolders(const FString& InSearchPath, const bool bSearchRecursive, TSet<FString>& OutFolders);
-	
-	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem", meta=(Tooltip="Returns all empty folders inside Content folder"))
-	static void GetFoldersEmpty(TArray<FString>& Folders, const bool bAbsolutePath = true);
+	/**
+	 * @brief Returns all subfolders in given path
+	 * @param InSearchPath FString
+	 * @param bSearchRecursive bool
+	 * @param OutFolders
+	 */
+	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Path")
+	static void GetFolders(const FString& InSearchPath, const bool bSearchRecursive, TArray<FString>& OutFolders);
 
-	static void ScanProjectAssets(TMap<EPjcAssetCategory, TSet<FAssetData>>& AssetsCategoryMapping, FString& ErrMsg);
+	/**
+	 * @brief Returns all empty folders in project
+	 * @param Folders TSet<FString>
+	 */
+	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Path")
+	static void GetFoldersEmpty(TArray<FString>& Folders);
 
-	static void CleanProject();
 
-	// UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem")
-	// static void GetAssetsByCategory(const EPjcAssetCategory AssetCategory, TSet<FAssetData>& Assets);
-
-	// UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem")
-	// static void GetAssetIndirectInfo(const FAssetData& Asset, TArray<FPjcFileInfo>& Infos);
-
-	// UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem")
-	// static void GetFilesExternal(TSet<FString>& FilesExternal);
-	//
-	// UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem")
-	// static void GetFilesCorrupted(TSet<FString>& FilesCorrupted);
-	//
-	// UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem")
-	// static void GetFoldersEmpty(TSet<FString>& FoldersEmpty);
-
-	static void GetClassNamesPrimary(TSet<FName>& ClassNames);
-	static void GetClassNamesEditor(TSet<FName>& ClassNames);
-	static void GetClassNamesExcluded(TSet<FName>& ClassNames);
 	static void GetSourceAndConfigFiles(TSet<FString>& Files);
 	static void GetAssetsDependencies(TSet<FAssetData>& Assets);
 	static void ShowNotification(const FString& Msg, const SNotificationItem::ECompletionState State, const float Duration);
@@ -123,10 +202,13 @@ public:
 	static FString PathConvertToAbsolute(const FString& InPath);
 	static FString PathConvertToRelative(const FString& InPath);
 	static FString PathConvertToObjectPath(const FString& InPath);
-	static FAssetRegistryModule& GetModuleAssetRegistry();
 	static FAssetToolsModule& GetModuleAssetTools();
+	static FAssetRegistryModule& GetModuleAssetRegistry();
 	static FContentBrowserModule& GetModuleContentBrowser();
 	static FPropertyEditorModule& GetModulePropertyEditor();
+
+	static void ScanProjectAssets(TMap<EPjcAssetCategory, TSet<FAssetData>>& AssetsCategoryMapping, FString& ErrMsg);
+	static void CleanProject();
 
 	UPROPERTY(Config)
 	bool bShowFilesExternal = true;

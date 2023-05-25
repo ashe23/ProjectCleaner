@@ -175,7 +175,7 @@ struct FPjcFileInfo
 };
 
 USTRUCT(BlueprintType)
-struct FPjcAssetsIndirectInfo
+struct FPjcAssetIndirectInfo
 {
 	GENERATED_BODY()
 
@@ -188,12 +188,12 @@ struct FPjcAssetsIndirectInfo
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="AssetIndirectInfo")
 	int32 FileNum = 0;
 
-	bool operator==(const FPjcAssetsIndirectInfo& Other) const
+	bool operator==(const FPjcAssetIndirectInfo& Other) const
 	{
 		return Asset == Other.Asset && FilePath.Equals(Other.FilePath) && FileNum == Other.FileNum;
 	}
 
-	bool operator!=(const FPjcAssetsIndirectInfo& Other) const
+	bool operator!=(const FPjcAssetIndirectInfo& Other) const
 	{
 		return !(Asset == Other.Asset && FilePath.Equals(Other.FilePath) && FileNum == Other.FileNum);
 	}

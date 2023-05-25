@@ -5,9 +5,7 @@
 #include "PjcCmds.h"
 #include "PjcStyles.h"
 #include "PjcSubsystem.h"
-#include "PjcConstants.h"
 // Engine Headers
-#include "IContentBrowserSingleton.h"
 #include "Internationalization/Regex.h"
 #include "Misc/FileHelper.h"
 #include "Misc/ScopedSlowTask.h"
@@ -26,48 +24,7 @@ void SPjcTabAssetsIndirect::Construct(const FArguments& InArgs)
 			ListUpdateData();
 		})
 	);
-
-	Filter.TagsAndValues.Emplace(PjcConstants::EmptyTagName, PjcConstants::EmptyTagName.ToString());
-
-	FAssetPickerConfig AssetPickerConfig;
-	AssetPickerConfig.bAllowDragging = false;
-	AssetPickerConfig.bCanShowClasses = false;
-	AssetPickerConfig.bCanShowFolders = false;
-	AssetPickerConfig.bShowBottomToolbar = false;
-	AssetPickerConfig.bAddFilterUI = true;
-	AssetPickerConfig.bCanShowDevelopersFolder = true;
-	AssetPickerConfig.bForceShowEngineContent = false;
-	AssetPickerConfig.bForceShowPluginContent = false;
-	AssetPickerConfig.bCanShowRealTimeThumbnails = true;
-	AssetPickerConfig.SelectionMode = ESelectionMode::SingleToggle;
-	AssetPickerConfig.GetCurrentSelectionDelegates.Add(&DelegateSelection);
-	AssetPickerConfig.RefreshAssetViewDelegates.Add(&DelegateRefreshView);
-	AssetPickerConfig.SetFilterDelegates.Add(&DelegateFilter);
-	AssetPickerConfig.AssetShowWarningText = FText::FromString(TEXT("No assets"));
-	AssetPickerConfig.Filter = Filter;
-	AssetPickerConfig.bAllowNullSelection = true;
-	AssetPickerConfig.OnAssetDoubleClicked.BindLambda([](const FAssetData& InAsset)
-	{
-		UPjcSubsystem::OpenAssetEditor(InAsset);
-	});
-	AssetPickerConfig.OnAssetSelected.BindLambda([&](const FAssetData& InAsset)
-	{
-		// Items.Reset();
-		//
-		// if (!InAsset.IsValid()) return;
-		// if (!ListView.IsValid()) return;
-		//
-		// TArray<FPjcFileInfo> Infos;
-		// UPjcSubsystem::GetAssetIndirectInfo(InAsset, Infos);
-		//
-		// for (const auto& Info : Infos)
-		// {
-		// 	Items.Emplace(MakeShareable(new FPjcFileInfo{Info.FileNum, Info.FilePath}));
-		// }
-		//
-		// ListView->RebuildList();
-	});
-
+	
 	SAssignNew(ListView, SListView<TSharedPtr<FPjcFileInfo>>)
 	.ListItemsSource(&ItemsFiltered)
 	.SelectionMode(ESelectionMode::None)
@@ -115,35 +72,21 @@ void SPjcTabAssetsIndirect::Construct(const FArguments& InArgs)
 		]
 		+ SVerticalBox::Slot().FillHeight(1.0f).Padding(5.0f)
 		[
-			SNew(SSplitter)
-			.PhysicalSplitterHandleSize(3.0f)
-			.Style(FEditorStyle::Get(), "DetailsView.Splitter")
-			+ SSplitter::Slot().Value(0.5f)
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot().AutoHeight().Padding(5.0f)
 			[
-				SNew(SVerticalBox)
-				+ SVerticalBox::Slot().FillHeight(1.0f).Padding(5.0f)
-				[
-					UPjcSubsystem::GetModuleContentBrowser().Get().CreateAssetPicker(AssetPickerConfig)
-				]
+				SNew(SSearchBox)
+				.HintText(FText::FromString(TEXT("Search files...")))
 			]
-			+ SSplitter::Slot().Value(0.5f)
+			+ SVerticalBox::Slot().FillHeight(1.0f).Padding(5.0f)
 			[
-				SNew(SVerticalBox)
-				+ SVerticalBox::Slot().AutoHeight().Padding(5.0f)
+				SNew(SScrollBox)
+				.ScrollWhenFocusChanges(EScrollWhenFocusChanges::NoScroll)
+				.AnimateWheelScrolling(true)
+				.AllowOverscroll(EAllowOverscroll::No)
+				+ SScrollBox::Slot()
 				[
-					SNew(SSearchBox)
-					.HintText(FText::FromString(TEXT("Search files...")))
-				]
-				+ SVerticalBox::Slot().FillHeight(1.0f).Padding(5.0f)
-				[
-					SNew(SScrollBox)
-					.ScrollWhenFocusChanges(EScrollWhenFocusChanges::NoScroll)
-					.AnimateWheelScrolling(true)
-					.AllowOverscroll(EAllowOverscroll::No)
-					+ SScrollBox::Slot()
-					[
-						ListView.ToSharedRef()
-					]
+					ListView.ToSharedRef()
 				]
 			]
 		]
@@ -257,18 +200,6 @@ void SPjcTabAssetsIndirect::ListUpdateData()
 
 	TArray<FAssetData> AssetsIndirect;
 	AssetsIndirectInfos.GetKeys(AssetsIndirect);
-
-	if (AssetsIndirect.Num() > 0)
-	{
-		Filter.Clear();
-
-		for (const auto& Asset : AssetsIndirect)
-		{
-			Filter.ObjectPaths.Emplace(Asset.ToSoftObjectPath().GetAssetPathName());
-		}
-
-		DelegateFilter.Execute(Filter);
-	}
 }
 
 void SPjcTabAssetsIndirect::ListUpdateView()

@@ -16,7 +16,7 @@ void SPjcTreeView::Construct(const FArguments& InArgs)
 {
 	DelegateSelectionChanged = InArgs._OnSelectionChanged;
 
-	TSet<FString> FoldersTotal;
+	TArray<FString> FoldersTotal;
 	UPjcSubsystem::GetFolders(FPaths::ProjectContentDir(), true, FoldersTotal);
 	NumFoldersTotal = FoldersTotal.Num();
 

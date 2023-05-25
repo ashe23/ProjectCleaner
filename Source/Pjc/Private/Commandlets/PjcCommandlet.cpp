@@ -1,6 +1,8 @@
 ﻿// Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "Commandlets/PjcCommandlet.h"
+
+#include "PjcSubsystem.h"
 #include "PjcTypes.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogProjectCleanerCLI, Display, All);
@@ -16,7 +18,7 @@ int32 UPjcCommandlet::Main(const FString& Params)
 	UE_LOG(LogProjectCleanerCLI, Display, TEXT("=======  ProjectCleaner CLI  ======="));
 	UE_LOG(LogProjectCleanerCLI, Display, TEXT("===================================="));
 
-	// ParseCommandLinesArguments(Params);
+	ParseCommandLinesArguments(Params);
 
 	// cli arguments
 	//- check
@@ -26,11 +28,23 @@ int32 UPjcCommandlet::Main(const FString& Params)
 	//- clean_corrupted_files
 	//- use_editor_settings
 
+	TArray<FAssetData> AssetsUnused;
+	TArray<FString> FilesExternal;
+	TArray<FString> FilesCorrupted;
 
-	const UPjcAssetExcludeSettings* AssetExcludeSettings = GetDefault<UPjcAssetExcludeSettings>();
-	if (!AssetExcludeSettings) return 1;
+	UPjcSubsystem::GetAssetsUnused(AssetsUnused);
+	UPjcSubsystem::GetFilesExternalAll(FilesExternal);
+	UPjcSubsystem::GetFilesCorrupted(FilesCorrupted);
 
-	UE_LOG(LogProjectCleanerCLI, Display, TEXT("%d"), AssetExcludeSettings->ExcludedFolders.Num());
+	UE_LOG(LogProjectCleanerCLI, Display, TEXT("Assets Unused - %d"), AssetsUnused.Num());
+	UE_LOG(LogProjectCleanerCLI, Display, TEXT("Files External - %d"), FilesExternal.Num());
+	UE_LOG(LogProjectCleanerCLI, Display, TEXT("Files Corrupted - %d"), FilesCorrupted.Num());
+
+
+	// const UPjcAssetExcludeSettings* AssetExcludeSettings = GetDefault<UPjcAssetExcludeSettings>();
+	// if (!AssetExcludeSettings) return 1;
+	//
+	// UE_LOG(LogProjectCleanerCLI, Display, TEXT("%d"), AssetExcludeSettings->ExcludedFolders.Num());
 
 	return 0;
 }

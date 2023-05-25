@@ -181,7 +181,7 @@ void SPjcTabAssetsCorrupted::ListUpdateData()
 	SlowTaskMain.MakeDialog(false, false);
 	SlowTaskMain.EnterProgressFrame(1.0f);
 
-	TSet<FString> FilesEngine;
+	TArray<FString> FilesEngine;
 	UPjcSubsystem::GetFilesByExt(FPaths::ProjectContentDir(), true, false, PjcConstants::EngineFileExtensions, FilesEngine);
 
 	FScopedSlowTask SlowTask{

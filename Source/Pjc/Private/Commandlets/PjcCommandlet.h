@@ -17,4 +17,6 @@ public:
 
 private:
 	void ParseCommandLinesArguments(const FString& Params);
+
+	bool bScanOnly = false;
 };

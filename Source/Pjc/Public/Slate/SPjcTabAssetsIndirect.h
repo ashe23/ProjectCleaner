@@ -35,10 +35,6 @@ private:
 	EColumnSortMode::Type ColumnSortModeFileNum = EColumnSortMode::None;
 
 	FText SearchText;
-	FARFilter Filter;
 	TSharedPtr<FUICommandList> Cmds;
 	TMap<FAssetData, TArray<FPjcFileInfo>> AssetsIndirectInfos;
-	FSetARFilterDelegate DelegateFilter;
-	FRefreshAssetViewDelegate DelegateRefreshView;
-	FGetCurrentSelectionDelegate DelegateSelection;
 };
