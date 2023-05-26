@@ -33,6 +33,5 @@ sub = unreal.get_editor_subsystem(unreal.PjcSubsystem)
 # sub.delete_files_external()
 # sub.delete_files_corrupted()
 
-
-sub.delete_assets_unused()
-sub.delete_folders_empty()
+for f in sub.get_folders_empty():
+    print(f)

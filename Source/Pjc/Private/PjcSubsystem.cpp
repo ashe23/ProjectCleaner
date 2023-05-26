@@ -612,6 +612,14 @@ void UPjcSubsystem::GetFoldersEmpty(TArray<FString>& Folders)
 
 void UPjcSubsystem::DeleteAssetsUnused()
 {
+	if (GetModuleAssetRegistry().Get().IsLoadingAssets()) return;
+	if (GEditor && !GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->CloseAllAssetEditors()) return;
+
+	FixupRedirectorsInProject();
+
+	if (ProjectContainsRedirectors()) return;
+	if (!FEditorFileUtils::SaveDirtyPackages(true, true, true, false, false, false))return;
+
 	TArray<FAssetData> AssetsUnused;
 	GetAssetsUnused(AssetsUnused);
 
@@ -624,12 +632,14 @@ void UPjcSubsystem::DeleteAssetsUnused()
 	LoadedAssets.Reserve(BucketSize);
 	Bucket.Reserve(BucketSize);
 
-	FScopedSlowTask DeleteSlowTask(
+	ShaderCompilationDisable();
+
+	FScopedSlowTask SlowTask(
 		AssetsUnused.Num(),
 		FText::FromString(TEXT("Deleting unused assets...")),
 		GIsEditor && !IsRunningCommandlet()
 	);
-	DeleteSlowTask.MakeDialog(false, false);
+	SlowTask.MakeDialog(false, false);
 
 	while (AssetsUnused.Num() > 0)
 	{
@@ -648,7 +658,7 @@ void UPjcSubsystem::DeleteAssetsUnused()
 
 		NumAssetsDeleted += BucketDelete(LoadedAssets);
 		const FString ProgressMsg = FString::Printf(TEXT("Deleted %d of %d"), NumAssetsDeleted, NumAssetsTotal);
-		DeleteSlowTask.EnterProgressFrame(Bucket.Num(), FText::FromString(ProgressMsg));
+		SlowTask.EnterProgressFrame(Bucket.Num(), FText::FromString(ProgressMsg));
 
 		Bucket.Reset();
 		LoadedAssets.Reset();
@@ -671,9 +681,11 @@ void UPjcSubsystem::DeleteAssetsUnused()
 		ObjectTools::CleanupAfterSuccessfulDelete(AssetPackages);
 	}
 
+	ShaderCompilationEnable();
+
 	// todo:ashe23 delegate call here?
 
-	const FString Msg = FString::Printf(TEXT("Deleted %d of %d assets"), NumAssetsDeleted, NumAssetsTotal);
+	const FString Msg = FString::Printf(TEXT("Deleted %d of %d unused assets"), NumAssetsDeleted, NumAssetsTotal);
 
 	UE_LOG(LogProjectCleaner, Display, TEXT("%s"), *Msg);
 
@@ -694,16 +706,16 @@ void UPjcSubsystem::DeleteFoldersEmpty()
 	TArray<FString> FoldersEmpty;
 	GetFoldersEmpty(FoldersEmpty);
 
-	FScopedSlowTask DeleteSlowTask(
+	FScopedSlowTask SlowTask(
 		FoldersEmpty.Num(),
 		FText::FromString(TEXT("Deleting empty folders...")),
 		GIsEditor && !IsRunningCommandlet()
 	);
-	DeleteSlowTask.MakeDialog(false, false);
+	SlowTask.MakeDialog(false, false);
 
 	for (const auto& Folder : FoldersEmpty)
 	{
-		DeleteSlowTask.EnterProgressFrame(1.0f, FText::FromString(Folder));
+		SlowTask.EnterProgressFrame(1.0f, FText::FromString(Folder));
 
 		if (IFileManager::Get().DeleteDirectory(*Folder, true, true))
 		{
@@ -714,8 +726,49 @@ void UPjcSubsystem::DeleteFoldersEmpty()
 	// todo:ashe23 delegate call here?
 }
 
-void UPjcSubsystem::DeleteFilesExternal() { }
-void UPjcSubsystem::DeleteFilesCorrupted() { }
+void UPjcSubsystem::DeleteFilesExternal()
+{
+	TArray<FString> FilesExternalFiltered;
+	GetFilesExternalFiltered(FilesExternalFiltered);
+
+	FScopedSlowTask SlowTask(
+		FilesExternalFiltered.Num(),
+		FText::FromString(TEXT("Deleting external files ...")),
+		GIsEditor && !IsRunningCommandlet()
+	);
+	SlowTask.MakeDialog(false, false);
+
+	for (const auto& File : FilesExternalFiltered)
+	{
+		SlowTask.EnterProgressFrame(1.0f, FText::FromString(File));
+
+		IFileManager::Get().Delete(*File, true);
+	}
+
+	// todo:ashe23 delegate call here?
+}
+
+void UPjcSubsystem::DeleteFilesCorrupted()
+{
+	TArray<FString> FilesCorrupted;
+	GetFilesCorrupted(FilesCorrupted);
+
+	FScopedSlowTask SlowTask(
+		FilesCorrupted.Num(),
+		FText::FromString(TEXT("Deleting corrupted asset files ...")),
+		GIsEditor && !IsRunningCommandlet()
+	);
+	SlowTask.MakeDialog(false, false);
+
+	for (const auto& File : FilesCorrupted)
+	{
+		SlowTask.EnterProgressFrame(1.0f, FText::FromString(File));
+
+		IFileManager::Get().Delete(*File, true);
+	}
+
+	// todo:ashe23 delegate call here?
+}
 
 // NOT BLUEPRINT Exposed, but public
 
@@ -1444,7 +1497,7 @@ bool UPjcSubsystem::PathIsExcluded(const FString& InPath)
 
 bool UPjcSubsystem::PathIsEngineGenerated(const FString& InPath)
 {
-	const FString PathDevelopers = FPaths::ConvertRelativePathToFull(FPaths::GameDevelopersDir());
+	const FString PathDevelopers = FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / TEXT("Developers"));
 	const FString PathCollections = FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir()) / TEXT("Collections");
 	const FString PathCurrentDeveloper = PathDevelopers / FPaths::GameUserDeveloperFolderName();
 	const FString PathCurrentDeveloperCollections = PathCurrentDeveloper / TEXT("Collections");
