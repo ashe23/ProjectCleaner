@@ -34,6 +34,7 @@ namespace PjcConstants
 	static int32 WidgetIndexWorking = 1;
 
 	// misc
+	static constexpr int32 BucketSize = 500;
 	static const FName EmptyTagName{TEXT("PjcEmptyTag")};
 	static const TSet<FString> EngineFileExtensions{TEXT("umap"), TEXT("uasset"), TEXT("collection")};
 	static const TSet<FString> SourceFileExtensions{TEXT("cpp"), TEXT("h"), TEXT("cs")};

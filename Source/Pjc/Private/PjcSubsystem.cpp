@@ -5,11 +5,13 @@
 #include "Pjc.h"
 // Engine Headers
 #include "AssetManagerEditorModule.h"
+#include "AssetViewUtils.h"
 #include "EditorTutorial.h"
 #include "EditorUtilityBlueprint.h"
 #include "EditorUtilityWidget.h"
 #include "EditorUtilityWidgetBlueprint.h"
 #include "FileHelpers.h"
+#include "ObjectTools.h"
 #include "ShaderCompiler.h"
 #include "Engine/AssetManager.h"
 #include "Framework/Notifications/NotificationManager.h"
@@ -596,7 +598,7 @@ void UPjcSubsystem::GetFoldersEmpty(TArray<FString>& Folders)
 	GetFolders(FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir()), true, FoldersAll);
 
 	Folders.Reset(FoldersAll.Num());
-	
+
 	for (const auto& Folder : FoldersAll)
 	{
 		if (PathIsEmpty(Folder) && !PathIsEngineGenerated(Folder))
@@ -607,6 +609,113 @@ void UPjcSubsystem::GetFoldersEmpty(TArray<FString>& Folders)
 
 	Folders.Shrink();
 }
+
+void UPjcSubsystem::DeleteAssetsUnused()
+{
+	TArray<FAssetData> AssetsUnused;
+	GetAssetsUnused(AssetsUnused);
+
+	constexpr int32 BucketSize = PjcConstants::BucketSize;
+	const int32 NumAssetsTotal = AssetsUnused.Num();
+	int32 NumAssetsDeleted = 0;
+
+	TArray<FAssetData> Bucket;
+	TArray<UObject*> LoadedAssets;
+	LoadedAssets.Reserve(BucketSize);
+	Bucket.Reserve(BucketSize);
+
+	FScopedSlowTask DeleteSlowTask(
+		AssetsUnused.Num(),
+		FText::FromString(TEXT("Deleting unused assets...")),
+		GIsEditor && !IsRunningCommandlet()
+	);
+	DeleteSlowTask.MakeDialog(false, false);
+
+	while (AssetsUnused.Num() > 0)
+	{
+		BucketFill(AssetsUnused, Bucket, BucketSize);
+
+		if (Bucket.Num() == 0)
+		{
+			break;
+		}
+
+		if (!BucketPrepare(Bucket, LoadedAssets))
+		{
+			UE_LOG(LogProjectCleaner, Error, TEXT("Failed to load some assets. Aborting."))
+			break;
+		}
+
+		NumAssetsDeleted += BucketDelete(LoadedAssets);
+		const FString ProgressMsg = FString::Printf(TEXT("Deleted %d of %d"), NumAssetsDeleted, NumAssetsTotal);
+		DeleteSlowTask.EnterProgressFrame(Bucket.Num(), FText::FromString(ProgressMsg));
+
+		Bucket.Reset();
+		LoadedAssets.Reset();
+	}
+
+	// Cleaning empty packages
+	const TSet<FName> EmptyPackages = GetModuleAssetRegistry().Get().GetCachedEmptyPackages();
+	TArray<UPackage*> AssetPackages;
+	for (const auto& EmptyPackage : EmptyPackages)
+	{
+		UPackage* Package = FindPackage(nullptr, *EmptyPackage.ToString());
+		if (Package && Package->IsValidLowLevel())
+		{
+			AssetPackages.Add(Package);
+		}
+	}
+
+	if (AssetPackages.Num() > 0)
+	{
+		ObjectTools::CleanupAfterSuccessfulDelete(AssetPackages);
+	}
+
+	// todo:ashe23 delegate call here?
+
+	const FString Msg = FString::Printf(TEXT("Deleted %d of %d assets"), NumAssetsDeleted, NumAssetsTotal);
+
+	UE_LOG(LogProjectCleaner, Display, TEXT("%s"), *Msg);
+
+	// todo:ashe23 this part should not be here, i guess? or control it with parameter
+
+	if (NumAssetsDeleted == NumAssetsTotal)
+	{
+		ShowNotification(Msg, SNotificationItem::CS_Success, 5.0f);
+	}
+	else
+	{
+		ShowNotificationWithOutputLog(Msg, SNotificationItem::CS_Fail, 10.0f);
+	}
+}
+
+void UPjcSubsystem::DeleteFoldersEmpty()
+{
+	TArray<FString> FoldersEmpty;
+	GetFoldersEmpty(FoldersEmpty);
+
+	FScopedSlowTask DeleteSlowTask(
+		FoldersEmpty.Num(),
+		FText::FromString(TEXT("Deleting empty folders...")),
+		GIsEditor && !IsRunningCommandlet()
+	);
+	DeleteSlowTask.MakeDialog(false, false);
+
+	for (const auto& Folder : FoldersEmpty)
+	{
+		DeleteSlowTask.EnterProgressFrame(1.0f, FText::FromString(Folder));
+
+		if (IFileManager::Get().DeleteDirectory(*Folder, true, true))
+		{
+			GetModuleAssetRegistry().Get().RemovePath(PathConvertToRelative(Folder));
+		}
+	}
+
+	// todo:ashe23 delegate call here?
+}
+
+void UPjcSubsystem::DeleteFilesExternal() { }
+void UPjcSubsystem::DeleteFilesCorrupted() { }
 
 // NOT BLUEPRINT Exposed, but public
 
@@ -669,8 +778,8 @@ void UPjcSubsystem::ScanProjectAssets(TMap<EPjcAssetCategory, TSet<FAssetData>>&
 	GetModuleAssetRegistry().Get().GetAssetsByPath(PjcConstants::PathRoot, AssetsAll, true);
 
 	SlowTaskMain.EnterProgressFrame(1.0f);
-	FindAssetsIndirect(AssetsIndirectInfo);
-	FindAssetsExcludedByPaths(AssetsCategoryMapping);
+	// FindAssetsIndirect(AssetsIndirectInfo);
+	// FindAssetsExcludedByPaths(AssetsCategoryMapping);
 
 	SlowTaskMain.EnterProgressFrame(1.0f);
 
@@ -1033,103 +1142,202 @@ void UPjcSubsystem::PostEditChangeProperty(FPropertyChangedEvent& PropertyChange
 }
 #endif
 
-void UPjcSubsystem::FindAssetsIndirect(TMap<FAssetData, TArray<FPjcFileInfo>>& AssetsIndirectInfo)
+void UPjcSubsystem::BucketFill(TArray<FAssetData>& AssetsUnused, TArray<FAssetData>& Bucket, const int32 BucketSize)
 {
-	TSet<FString> ScanFiles;
-	GetSourceAndConfigFiles(ScanFiles);
-
-	FScopedSlowTask SlowTask{
-		static_cast<float>(ScanFiles.Num()),
-		FText::FromString(TEXT("Searching Indirectly used assets...")),
-		GIsEditor && !IsRunningCommandlet()
-	};
-	SlowTask.MakeDialog();
-
-	for (const auto& File : ScanFiles)
+	// Searching Root assets
+	int32 Index = 0;
+	TArray<FName> Refs;
+	while (Bucket.Num() < BucketSize && AssetsUnused.IsValidIndex(Index))
 	{
-		SlowTask.EnterProgressFrame(1.0f, FText::FromString(File));
-
-		FString FileContent;
-		FFileHelper::LoadFileToString(FileContent, *File);
-
-		if (FileContent.IsEmpty()) continue;
-
-		static FRegexPattern Pattern(TEXT(R"(\/Game([A-Za-z0-9_.\/]+)\b)"));
-		FRegexMatcher Matcher(Pattern, FileContent);
-		while (Matcher.FindNext())
+		const FAssetData CurrentAsset = AssetsUnused[Index];
+		GetModuleAssetRegistry().Get().GetReferencers(CurrentAsset.PackageName, Refs);
+		Refs.RemoveAllSwap([&](const FName& Ref)
 		{
-			FString FoundedAssetObjectPath = Matcher.GetCaptureGroup(0);
-			const FString ObjectPath = PathConvertToObjectPath(FoundedAssetObjectPath);
+			return !Ref.ToString().StartsWith(PjcConstants::PathRoot.ToString()) || Ref.IsEqual(CurrentAsset.PackageName);
+		}, false);
+		Refs.Shrink();
+
+		if (Refs.Num() == 0)
+		{
+			Bucket.AddUnique(CurrentAsset);
+			AssetsUnused.RemoveAt(Index);
+		}
+
+		Refs.Reset();
+
+		++Index;
+	}
+
+	if (Bucket.Num() > 0)
+	{
+		return;
+	}
+
+	// if root assets not found, we deleting assets single by finding its referencers
+	if (AssetsUnused.Num() == 0)
+	{
+		return;
+	}
+
+	TArray<FAssetData> Stack;
+	Stack.Add(AssetsUnused[0]);
+
+	while (Stack.Num() > 0)
+	{
+		const FAssetData Current = Stack.Pop(false);
+		Bucket.AddUnique(Current);
+		AssetsUnused.Remove(Current);
+
+		GetModuleAssetRegistry().Get().GetReferencers(Current.PackageName, Refs);
+
+		Refs.RemoveAllSwap([&](const FName& Ref)
+		{
+			return !Ref.ToString().StartsWith(PjcConstants::PathRoot.ToString()) || Ref.IsEqual(Current.PackageName);
+		}, false);
+		Refs.Shrink();
+
+		for (const auto& Ref : Refs)
+		{
+			const FString ObjectPath = Ref.ToString() + TEXT(".") + FPaths::GetBaseFilename(*Ref.ToString());
 			const FAssetData AssetData = GetModuleAssetRegistry().Get().GetAssetByObjectPath(FName{*ObjectPath});
-			if (!AssetData.IsValid()) continue;
-
-			// if founded asset is ok, we loading file lines to determine on what line its used
-			TArray<FString> Lines;
-			FFileHelper::LoadFileToStringArray(Lines, *File);
-
-			for (int32 i = 0; i < Lines.Num(); ++i)
+			if (AssetData.IsValid())
 			{
-				if (!Lines.IsValidIndex(i)) continue;
-				if (!Lines[i].Contains(FoundedAssetObjectPath)) continue;
+				if (!Bucket.Contains(AssetData))
+				{
+					Stack.Add(AssetData);
+				}
 
-				const FString FilePathAbs = FPaths::ConvertRelativePathToFull(File);
-				const int32 FileLine = i + 1;
-
-				TArray<FPjcFileInfo>& Infos = AssetsIndirectInfo.FindOrAdd(AssetData);
-				Infos.AddUnique(FPjcFileInfo{FileLine, FilePathAbs});
+				Bucket.AddUnique(AssetData);
+				AssetsUnused.Remove(AssetData);
 			}
 		}
+
+		Refs.Reset();
 	}
 }
 
-void UPjcSubsystem::FindAssetsExcludedByPaths(TMap<EPjcAssetCategory, TSet<FAssetData>>& AssetsCategoryMapping)
+bool UPjcSubsystem::BucketPrepare(const TArray<FAssetData>& Bucket, TArray<UObject*>& LoadedAssets)
 {
-	AssetsCategoryMapping[EPjcAssetCategory::Excluded].Reset();
+	TArray<FString> ObjectPaths;
+	ObjectPaths.Reserve(Bucket.Num());
 
-	const UPjcAssetExcludeSettings* AssetExcludeSettings = GetDefault<UPjcAssetExcludeSettings>();
-	if (!AssetExcludeSettings) return;
-
+	for (const auto& Asset : Bucket)
 	{
-		FARFilter Filter;
-		Filter.bRecursivePaths = true;
-		Filter.PackagePaths.Reserve(AssetExcludeSettings->ExcludedFolders.Num());
-
-		for (const auto& ExcludedFolder : AssetExcludeSettings->ExcludedFolders)
-		{
-			if (!ExcludedFolder.Path.StartsWith(PjcConstants::PathRoot.ToString())) continue;
-
-			Filter.PackagePaths.Emplace(FName{*ExcludedFolder.Path});
-		}
-
-		if (Filter.PackagePaths.Num() > 0)
-		{
-			TArray<FAssetData> Assets;
-			GetModuleAssetRegistry().Get().GetAssets(Filter, Assets);
-
-			AssetsCategoryMapping[EPjcAssetCategory::Excluded].Append(Assets);
-		}
+		ObjectPaths.Add(Asset.ObjectPath.ToString());
 	}
 
-	{
-		FARFilter Filter;
-		Filter.ObjectPaths.Reserve(AssetExcludeSettings->ExcludedAssets.Num());
-
-		for (const auto& ExcludedAsset : AssetExcludeSettings->ExcludedAssets)
-		{
-			if (!ExcludedAsset.LoadSynchronous() || ExcludedAsset.IsNull()) continue;
-
-			Filter.ObjectPaths.Emplace(ExcludedAsset.ToSoftObjectPath().GetAssetPathName());
-		}
-
-		if (Filter.ObjectPaths.Num() > 0)
-		{
-			TArray<FAssetData> Assets;
-			GetModuleAssetRegistry().Get().GetAssets(Filter, Assets);
-
-			AssetsCategoryMapping[EPjcAssetCategory::Excluded].Append(Assets);
-		}
-	}
+	return AssetViewUtils::LoadAssetsIfNeeded(ObjectPaths, LoadedAssets, false, true);
 }
+
+int32 UPjcSubsystem::BucketDelete(const TArray<UObject*>& LoadedAssets)
+{
+	int32 DeletedAssetsNum = ObjectTools::DeleteObjects(LoadedAssets, false);
+
+	if (DeletedAssetsNum == 0)
+	{
+		DeletedAssetsNum = ObjectTools::ForceDeleteObjects(LoadedAssets, false);
+	}
+
+	return DeletedAssetsNum;
+}
+
+// void UPjcSubsystem::FindAssetsIndirect(TMap<FAssetData, TArray<FPjcFileInfo>>& AssetsIndirectInfo)
+// {
+// 	TSet<FString> ScanFiles;
+// 	GetSourceAndConfigFiles(ScanFiles);
+//
+// 	FScopedSlowTask SlowTask{
+// 		static_cast<float>(ScanFiles.Num()),
+// 		FText::FromString(TEXT("Searching Indirectly used assets...")),
+// 		GIsEditor && !IsRunningCommandlet()
+// 	};
+// 	SlowTask.MakeDialog();
+//
+// 	for (const auto& File : ScanFiles)
+// 	{
+// 		SlowTask.EnterProgressFrame(1.0f, FText::FromString(File));
+//
+// 		FString FileContent;
+// 		FFileHelper::LoadFileToString(FileContent, *File);
+//
+// 		if (FileContent.IsEmpty()) continue;
+//
+// 		static FRegexPattern Pattern(TEXT(R"(\/Game([A-Za-z0-9_.\/]+)\b)"));
+// 		FRegexMatcher Matcher(Pattern, FileContent);
+// 		while (Matcher.FindNext())
+// 		{
+// 			FString FoundedAssetObjectPath = Matcher.GetCaptureGroup(0);
+// 			const FString ObjectPath = PathConvertToObjectPath(FoundedAssetObjectPath);
+// 			const FAssetData AssetData = GetModuleAssetRegistry().Get().GetAssetByObjectPath(FName{*ObjectPath});
+// 			if (!AssetData.IsValid()) continue;
+//
+// 			// if founded asset is ok, we loading file lines to determine on what line its used
+// 			TArray<FString> Lines;
+// 			FFileHelper::LoadFileToStringArray(Lines, *File);
+//
+// 			for (int32 i = 0; i < Lines.Num(); ++i)
+// 			{
+// 				if (!Lines.IsValidIndex(i)) continue;
+// 				if (!Lines[i].Contains(FoundedAssetObjectPath)) continue;
+//
+// 				const FString FilePathAbs = FPaths::ConvertRelativePathToFull(File);
+// 				const int32 FileLine = i + 1;
+//
+// 				TArray<FPjcFileInfo>& Infos = AssetsIndirectInfo.FindOrAdd(AssetData);
+// 				Infos.AddUnique(FPjcFileInfo{FileLine, FilePathAbs});
+// 			}
+// 		}
+// 	}
+// }
+//
+// void UPjcSubsystem::FindAssetsExcludedByPaths(TMap<EPjcAssetCategory, TSet<FAssetData>>& AssetsCategoryMapping)
+// {
+// 	AssetsCategoryMapping[EPjcAssetCategory::Excluded].Reset();
+//
+// 	const UPjcAssetExcludeSettings* AssetExcludeSettings = GetDefault<UPjcAssetExcludeSettings>();
+// 	if (!AssetExcludeSettings) return;
+//
+// 	{
+// 		FARFilter Filter;
+// 		Filter.bRecursivePaths = true;
+// 		Filter.PackagePaths.Reserve(AssetExcludeSettings->ExcludedFolders.Num());
+//
+// 		for (const auto& ExcludedFolder : AssetExcludeSettings->ExcludedFolders)
+// 		{
+// 			if (!ExcludedFolder.Path.StartsWith(PjcConstants::PathRoot.ToString())) continue;
+//
+// 			Filter.PackagePaths.Emplace(FName{*ExcludedFolder.Path});
+// 		}
+//
+// 		if (Filter.PackagePaths.Num() > 0)
+// 		{
+// 			TArray<FAssetData> Assets;
+// 			GetModuleAssetRegistry().Get().GetAssets(Filter, Assets);
+//
+// 			AssetsCategoryMapping[EPjcAssetCategory::Excluded].Append(Assets);
+// 		}
+// 	}
+//
+// 	{
+// 		FARFilter Filter;
+// 		Filter.ObjectPaths.Reserve(AssetExcludeSettings->ExcludedAssets.Num());
+//
+// 		for (const auto& ExcludedAsset : AssetExcludeSettings->ExcludedAssets)
+// 		{
+// 			if (!ExcludedAsset.LoadSynchronous() || ExcludedAsset.IsNull()) continue;
+//
+// 			Filter.ObjectPaths.Emplace(ExcludedAsset.ToSoftObjectPath().GetAssetPathName());
+// 		}
+//
+// 		if (Filter.ObjectPaths.Num() > 0)
+// 		{
+// 			TArray<FAssetData> Assets;
+// 			GetModuleAssetRegistry().Get().GetAssets(Filter, Assets);
+//
+// 			AssetsCategoryMapping[EPjcAssetCategory::Excluded].Append(Assets);
+// 		}
+// 	}
+// }
 
 bool UPjcSubsystem::AssetIsBlueprint(const FAssetData& InAsset)
 {

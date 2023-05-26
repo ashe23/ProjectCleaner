@@ -171,6 +171,30 @@ public:
 	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Path")
 	static void GetFoldersEmpty(TArray<FString>& Folders);
 
+	/**
+	 * @brief Delete all unused assets in project. This does not delete excluded assets.
+	 */
+	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset")
+	static void DeleteAssetsUnused();
+
+	/**
+	 * @brief Delete all empty folders in project
+	 */
+	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Path")
+	static void DeleteFoldersEmpty();
+
+	/**
+	 * @brief Delete all external files in project. This does not delete excluded files.
+	 */
+	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Path")
+	static void DeleteFilesExternal();
+
+	/**
+	 * @brief Delete all corrupted asset files in project
+	 */
+	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Path")
+	static void DeleteFilesCorrupted();
+
 
 	static void GetSourceAndConfigFiles(TSet<FString>& Files);
 	static void GetAssetsDependencies(TSet<FAssetData>& Assets);
@@ -218,6 +242,9 @@ public:
 #endif
 
 private:
-	static void FindAssetsIndirect(TMap<FAssetData, TArray<FPjcFileInfo>>& AssetsIndirectInfo);
-	static void FindAssetsExcludedByPaths(TMap<EPjcAssetCategory, TSet<FAssetData>>& AssetsCategoryMapping);
+	static void BucketFill(TArray<FAssetData>& AssetsUnused, TArray<FAssetData>& Bucket, const int32 BucketSize);
+	static bool BucketPrepare(const TArray<FAssetData>& Bucket, TArray<UObject*>& LoadedAssets);
+	static int32 BucketDelete(const TArray<UObject*>& LoadedAssets);
+	// static void FindAssetsIndirect(TMap<FAssetData, TArray<FPjcFileInfo>>& AssetsIndirectInfo);
+	// static void FindAssetsExcludedByPaths(TMap<EPjcAssetCategory, TSet<FAssetData>>& AssetsCategoryMapping);
 };
