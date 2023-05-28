@@ -1,6 +1,6 @@
-import unreal
+# import unreal
 
-sub = unreal.get_editor_subsystem(unreal.PjcSubsystem)
+# sub = unreal.get_editor_subsystem(unreal.PjcSubsystem)
 
 # QUERY
 # sub.get_assets_all() - returns all assets in project (inside Content Folder only)
@@ -33,5 +33,15 @@ sub = unreal.get_editor_subsystem(unreal.PjcSubsystem)
 # sub.delete_files_external()
 # sub.delete_files_corrupted()
 
-for f in sub.get_folders_empty():
-    print(f)
+# for f in sub.get_folders_empty():
+    # print(f)
+
+# ./UE4Editor-Cmd.exe "C:\dev\ue4\MyProject\MyProject.uproject" -run=ProjectCleanerCLI
+# UE4Editor.exe <GameName or uproject> -run=ResavePackages -fixupredirects -autocheckout -projectonly -unattended
+cmd_ref = "C:\\Program Files\\Epic Games\\UE_4.27\\Engine\\Binaries\\Win64\\UE4Editor.exe \"W:/dev/ue_projects/Workshop427/Workshop427.uproject\" -run=ResavePackages -fixupredirects -autocheckout -projectonly -unattended"
+
+cmd = "C:\\Program Files\\Epic Games\\UE_4.27\\Engine\\Binaries\\Win64\\UE4Editor-Cmd.exe \"W:/dev/ue_projects/Workshop427/Workshop427.uproject\" -run=Pjc -NoShaderCompile -delete_assets_unused -delete_folders_empty -delete_files_external -delete_files_corrupted"
+
+import subprocess
+
+subprocess.call(cmd)
