@@ -25,6 +25,7 @@ int32 UPjcCommandlet::Main(const FString& Params)
 
 	// cli arguments
 	//- scan_only
+	//- full_cleanup
 	//- delete_assets_unused
 	//- delete_folders_empty
 	//- delete_files_external
@@ -38,7 +39,6 @@ int32 UPjcCommandlet::Main(const FString& Params)
 
 		return 0;
 	}
-
 
 	TArray<FAssetData> AssetsAll;
 	TArray<FAssetData> AssetsUsed;
@@ -71,27 +71,27 @@ int32 UPjcCommandlet::Main(const FString& Params)
 
 	if (bScanOnly) return 0;
 
-	if (bDeleteAssetsUnused)
+	if (bFullCleanup || bDeleteAssetsUnused)
 	{
 		UPjcSubsystem::DeleteAssetsUnused();
 	}
 
-	if (bDeleteFilesExternal)
+	if (bFullCleanup || bDeleteFilesExternal)
 	{
 		UPjcSubsystem::DeleteFilesExternal();
 	}
 
-	if (bDeleteFilesCorrupted)
+	if (bFullCleanup || bDeleteFilesCorrupted)
 	{
 		UPjcSubsystem::DeleteFilesCorrupted();
 	}
 
-	if (bDeleteFoldersEmpty)
+	if (bFullCleanup || bDeleteFoldersEmpty)
 	{
 		UPjcSubsystem::DeleteFoldersEmpty();
 	}
 
-	if (bDeleteAssetsUnused || bDeleteFilesExternal || bDeleteFilesCorrupted || bDeleteFoldersEmpty)
+	if (bFullCleanup || bDeleteAssetsUnused || bDeleteFilesExternal || bDeleteFilesCorrupted || bDeleteFoldersEmpty)
 	{
 		UPjcSubsystem::GetAssetsAll(AssetsAll);
 		UPjcSubsystem::GetAssetsUsed(AssetsUsed);
@@ -109,9 +109,9 @@ int32 UPjcCommandlet::Main(const FString& Params)
 			FilesCorrupted.Num()
 		};
 
-		UE_LOG(LogProjectCleanerCLI, Display, TEXT("======================="));
-		UE_LOG(LogProjectCleanerCLI, Display, TEXT("====  Cleanup Info  ==="));
-		UE_LOG(LogProjectCleanerCLI, Display, TEXT("======================="));
+		UE_LOG(LogProjectCleanerCLI, Display, TEXT("==========================================="));
+		UE_LOG(LogProjectCleanerCLI, Display, TEXT("=============  Stats After Cleanup ========"));
+		UE_LOG(LogProjectCleanerCLI, Display, TEXT("==========================================="));
 		StatsPrint(StatsAfter);
 	}
 
@@ -131,6 +131,11 @@ void UPjcCommandlet::ParseCommandLinesArguments(const FString& Params)
 		{
 			bScanOnly = true;
 			break;
+		}
+
+		if (Switch.Equals(TEXT("full_cleanup")))
+		{
+			bFullCleanup = true;
 		}
 
 		if (Switch.Equals(TEXT("delete_assets_unused")))

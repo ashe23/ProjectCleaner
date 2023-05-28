@@ -40,7 +40,7 @@
 # UE4Editor.exe <GameName or uproject> -run=ResavePackages -fixupredirects -autocheckout -projectonly -unattended
 cmd_ref = "C:\\Program Files\\Epic Games\\UE_4.27\\Engine\\Binaries\\Win64\\UE4Editor.exe \"W:/dev/ue_projects/Workshop427/Workshop427.uproject\" -run=ResavePackages -fixupredirects -autocheckout -projectonly -unattended"
 
-cmd = "C:\\Program Files\\Epic Games\\UE_4.27\\Engine\\Binaries\\Win64\\UE4Editor-Cmd.exe \"W:/dev/ue_projects/Workshop427/Workshop427.uproject\" -run=Pjc -NoShaderCompile -delete_assets_unused -delete_folders_empty -delete_files_external -delete_files_corrupted"
+cmd = "C:\\Program Files\\Epic Games\\UE_4.27\\Engine\\Binaries\\Win64\\UE4Editor-Cmd.exe \"W:/dev/ue_projects/Workshop427/Workshop427.uproject\" -run=Pjc -full_cleanup -NoShaderCompile"
 
 import subprocess
 

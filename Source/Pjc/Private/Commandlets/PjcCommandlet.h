@@ -30,6 +30,7 @@ private:
 	void StatsPrint(const FCleanupStats& Stats);
 	
 	bool bScanOnly = false;
+	bool bFullCleanup = false;
 	bool bDeleteAssetsUnused = false;
 	bool bDeleteFoldersEmpty = false;
 	bool bDeleteFilesExternal = false;
