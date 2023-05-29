@@ -198,33 +198,3 @@ struct FPjcAssetIndirectInfo
 		return !(Asset == Other.Asset && FilePath.Equals(Other.FilePath) && FileNum == Other.FileNum);
 	}
 };
-
-// USTRUCT(BlueprintType)
-// struct FPjcAssetFilter
-// {
-// 	GENERATED_BODY()
-//
-// 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="ProjectCleaner|AssetSearchFilter")
-// 	bool bRecursivePaths = false;
-//
-// 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="ProjectCleaner|AssetSearchFilter")
-// 	bool bRecursiveClasses = false;
-//
-// 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="ProjectCleaner|AssetSearchFilter")
-// 	TArray<FName> PackagePaths;
-//
-// 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="ProjectCleaner|AssetSearchFilter")
-// 	TArray<FName> ClassNames;
-//
-// 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="ProjectCleaner|AssetSearchFilter")
-// 	TArray<FName> ObjectPaths;
-//
-// 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="ProjectCleaner|AssetSearchFilter")
-// 	TArray<FName> ExcludedPackagePaths;
-//
-// 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="ProjectCleaner|AssetSearchFilter")
-// 	TArray<FName> ExcludedClassNames;
-//
-// 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="ProjectCleaner|AssetSearchFilter")
-// 	TArray<FName> ExcludedObjectPaths;
-// };

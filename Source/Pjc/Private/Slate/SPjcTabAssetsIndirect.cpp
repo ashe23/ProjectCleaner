@@ -1,14 +1,11 @@
 ﻿// Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "Slate/SPjcTabAssetsIndirect.h"
-#include "Slate/SPjcItemFileInfo.h"
+#include "Slate/SPjcItemAssetIndirect.h"
 #include "PjcCmds.h"
 #include "PjcStyles.h"
 #include "PjcSubsystem.h"
 // Engine Headers
-#include "Internationalization/Regex.h"
-#include "Misc/FileHelper.h"
-#include "Misc/ScopedSlowTask.h"
 #include "Widgets/Input/SSearchBox.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SSeparator.h"
@@ -22,12 +19,98 @@ void SPjcTabAssetsIndirect::Construct(const FArguments& InArgs)
 		FExecuteAction::CreateLambda([&]()
 		{
 			ListUpdateData();
+			ListUpdateView();
 		})
 	);
-	
+
+	Cmds->MapAction(
+		FPjcCmds::Get().OpenViewerSizeMap,
+		FExecuteAction::CreateLambda([&]()
+		{
+			const auto SelectedItems = ListView->GetSelectedItems();
+
+			TArray<FAssetData> Assets;
+			Assets.Reserve(SelectedItems.Num());
+
+			for (const auto& SelectedItem : SelectedItems)
+			{
+				if (!SelectedItem.IsValid()) continue;
+
+				Assets.Emplace(SelectedItem->Asset);
+			}
+
+			UPjcSubsystem::OpenSizeMapViewer(Assets);
+		}),
+		FCanExecuteAction::CreateLambda([&]()
+		{
+			return ListView.IsValid() && ListView->GetSelectedItems().Num() > 0;
+		})
+	);
+
+	Cmds->MapAction(
+		FPjcCmds::Get().OpenViewerReference,
+		FExecuteAction::CreateLambda([&]()
+		{
+			const auto SelectedItems = ListView->GetSelectedItems();
+
+			TArray<FAssetData> Assets;
+			Assets.Reserve(SelectedItems.Num());
+
+			for (const auto& SelectedItem : SelectedItems)
+			{
+				if (!SelectedItem.IsValid()) continue;
+
+				Assets.Emplace(SelectedItem->Asset);
+			}
+
+			UPjcSubsystem::OpenReferenceViewer(Assets);
+		}),
+		FCanExecuteAction::CreateLambda([&]()
+		{
+			return ListView.IsValid() && ListView->GetSelectedItems().Num() > 0;
+		})
+	);
+
+	Cmds->MapAction(
+		FPjcCmds::Get().OpenViewerAssetsAudit,
+		FExecuteAction::CreateLambda([&]()
+		{
+			const auto SelectedItems = ListView->GetSelectedItems();
+
+			TArray<FAssetData> Assets;
+			Assets.Reserve(SelectedItems.Num());
+
+			for (const auto& SelectedItem : SelectedItems)
+			{
+				if (!SelectedItem.IsValid()) continue;
+
+				Assets.Emplace(SelectedItem->Asset);
+			}
+
+			UPjcSubsystem::OpenAssetAuditViewer(Assets);
+		}),
+		FCanExecuteAction::CreateLambda([&]()
+		{
+			return ListView.IsValid() && ListView->GetSelectedItems().Num() > 0;
+		})
+	);
+
+	Cmds->MapAction(
+		FPjcCmds::Get().ClearSelection,
+		FExecuteAction::CreateLambda([&]()
+		{
+			ListView->ClearSelection();
+			ListView->ClearHighlightedItems();
+		}),
+		FCanExecuteAction::CreateLambda([&]()
+		{
+			return ListView.IsValid() && ListView->GetSelectedItems().Num() > 0;
+		})
+	);
+
 	SAssignNew(ListView, SListView<TSharedPtr<FPjcAssetIndirectInfo>>)
 	.ListItemsSource(&ItemsFiltered)
-	.SelectionMode(ESelectionMode::None)
+	.SelectionMode(ESelectionMode::Multi)
 	.OnGenerateRow(this, &SPjcTabAssetsIndirect::OnGenerateRow)
 	.HeaderRow(GetHeaderRow());
 
@@ -66,7 +149,9 @@ void SPjcTabAssetsIndirect::Construct(const FArguments& InArgs)
 			+ SVerticalBox::Slot().AutoHeight().Padding(5.0f)
 			[
 				SNew(SSearchBox)
-				.HintText(FText::FromString(TEXT("Search files...")))
+				.HintText(FText::FromString(TEXT("Search ...")))
+				.OnTextChanged_Raw(this, &SPjcTabAssetsIndirect::OnSearchTextChanged)
+				.OnTextCommitted_Raw(this, &SPjcTabAssetsIndirect::OnSearchTextCommitted)
 			]
 			+ SVerticalBox::Slot().FillHeight(1.0f).Padding(5.0f)
 			[
@@ -94,6 +179,12 @@ TSharedRef<SWidget> SPjcTabAssetsIndirect::CreateToolbar() const
 			FText::FromString(TEXT("Scan")),
 			FText::FromString(TEXT("Scan for indirect assets and their usage info"))
 		);
+		ToolBarBuilder.AddSeparator();
+		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().OpenViewerSizeMap);
+		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().OpenViewerReference);
+		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().OpenViewerAssetsAudit);
+		ToolBarBuilder.AddSeparator();
+		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().ClearSelection);
 	}
 	ToolBarBuilder.EndSection();
 
@@ -104,10 +195,36 @@ TSharedRef<SHeaderRow> SPjcTabAssetsIndirect::GetHeaderRow()
 {
 	return
 		SNew(SHeaderRow)
+		+ SHeaderRow::Column(TEXT("AssetName"))
+		  .HAlignHeader(HAlign_Center)
+		  .VAlignHeader(VAlign_Center)
+		  .FillWidth(0.1f)
+		  .HeaderContentPadding(FMargin{5.0f})
+		  .OnSort_Raw(this, &SPjcTabAssetsIndirect::OnListSort)
+		[
+			SNew(STextBlock)
+			.Text(FText::FromString(TEXT("Asset Name")))
+			.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
+			.Font(FPjcStyles::GetFont("Light", 10.0f))
+			.ToolTipText(FText::FromString(TEXT("Indirect asset name")))
+		]
+		+ SHeaderRow::Column(TEXT("AssetPath"))
+		  .HAlignHeader(HAlign_Center)
+		  .VAlignHeader(VAlign_Center)
+		  .FillWidth(0.4f)
+		  .HeaderContentPadding(FMargin{5.0f})
+		  .OnSort_Raw(this, &SPjcTabAssetsIndirect::OnListSort)
+		[
+			SNew(STextBlock)
+			.Text(FText::FromString(TEXT("Asset Path")))
+			.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
+			.Font(FPjcStyles::GetFont("Light", 10.0f))
+			.ToolTipText(FText::FromString(TEXT("Indirect asset path in content browser")))
+		]
 		+ SHeaderRow::Column(TEXT("FilePath"))
 		  .HAlignHeader(HAlign_Center)
 		  .VAlignHeader(VAlign_Center)
-		  .FillWidth(0.8f)
+		  .FillWidth(0.4f)
 		  .HeaderContentPadding(FMargin{5.0f})
 		  .OnSort_Raw(this, &SPjcTabAssetsIndirect::OnListSort)
 		[
@@ -120,7 +237,7 @@ TSharedRef<SHeaderRow> SPjcTabAssetsIndirect::GetHeaderRow()
 		+ SHeaderRow::Column(TEXT("FileLine"))
 		  .HAlignHeader(HAlign_Center)
 		  .VAlignHeader(VAlign_Center)
-		  .FillWidth(0.2f)
+		  .FillWidth(0.1f)
 		  .HeaderContentPadding(FMargin{5.0f})
 		  .OnSort_Raw(this, &SPjcTabAssetsIndirect::OnListSort)
 		[
@@ -134,67 +251,54 @@ TSharedRef<SHeaderRow> SPjcTabAssetsIndirect::GetHeaderRow()
 
 TSharedRef<ITableRow> SPjcTabAssetsIndirect::OnGenerateRow(TSharedPtr<FPjcAssetIndirectInfo> Item, const TSharedRef<STableViewBase>& OwnerTable) const
 {
-	return SNew(SPjcItemFileInfo, OwnerTable).Item(Item);
+	return SNew(SPjcItemAssetIndirect, OwnerTable).Item(Item).HighlightText(SearchText);
 }
 
 void SPjcTabAssetsIndirect::ListUpdateData()
 {
-	AssetsIndirectInfos.Reset();
+	TArray<FAssetData> AssetsIndirect;
+	TArray<FPjcAssetIndirectInfo> AssetIndirectInfos;
 
-	TSet<FString> ScanFiles;
-	UPjcSubsystem::GetSourceAndConfigFiles(ScanFiles);
+	UPjcSubsystem::GetAssetsIndirect(AssetsIndirect, AssetIndirectInfos, true);
 
-	FScopedSlowTask SlowTask{
-		static_cast<float>(ScanFiles.Num()),
-		FText::FromString(TEXT("Searching Indirectly used assets...")),
-		GIsEditor && !IsRunningCommandlet()
-	};
-	SlowTask.MakeDialog();
+	ItemsAll.Reset(AssetIndirectInfos.Num());
 
-	for (const auto& File : ScanFiles)
+	for (const auto& AssetIndirectInfo : AssetIndirectInfos)
 	{
-		SlowTask.EnterProgressFrame(1.0f, FText::FromString(File));
-
-		FString FileContent;
-		FFileHelper::LoadFileToString(FileContent, *File);
-
-		if (FileContent.IsEmpty()) continue;
-
-		static FRegexPattern Pattern(TEXT(R"(\/Game([A-Za-z0-9_.\/]+)\b)"));
-		FRegexMatcher Matcher(Pattern, FileContent);
-		while (Matcher.FindNext())
+		const TSharedPtr<FPjcAssetIndirectInfo> Item = MakeShareable(new FPjcAssetIndirectInfo{AssetIndirectInfo.Asset, AssetIndirectInfo.FilePath, AssetIndirectInfo.FileNum});
+		if (Item.IsValid())
 		{
-			FString FoundedAssetObjectPath = Matcher.GetCaptureGroup(0);
-			const FString ObjectPath = UPjcSubsystem::PathConvertToObjectPath(FoundedAssetObjectPath);
-			const FAssetData AssetData = UPjcSubsystem::GetModuleAssetRegistry().Get().GetAssetByObjectPath(FName{*ObjectPath});
-			if (!AssetData.IsValid()) continue;
-
-			// if founded asset is ok, we loading file lines to determine on what line its used
-			TArray<FString> Lines;
-			FFileHelper::LoadFileToStringArray(Lines, *File);
-
-			for (int32 i = 0; i < Lines.Num(); ++i)
-			{
-				if (!Lines.IsValidIndex(i)) continue;
-				if (!Lines[i].Contains(FoundedAssetObjectPath)) continue;
-
-				const FString FilePathAbs = FPaths::ConvertRelativePathToFull(File);
-				const int32 FileLine = i + 1;
-
-				TArray<FPjcFileInfo>& Infos = AssetsIndirectInfos.FindOrAdd(AssetData);
-				Infos.AddUnique(FPjcFileInfo{FileLine, FilePathAbs});
-			}
+			ItemsAll.Emplace(Item);
 		}
 	}
-
-
-	TArray<FAssetData> AssetsIndirect;
-	AssetsIndirectInfos.GetKeys(AssetsIndirect);
 }
 
 void SPjcTabAssetsIndirect::ListUpdateView()
 {
-	
+	if (!ListView.IsValid()) return;
+	if (ItemsAll.Num() == 0) return;
+
+	ItemsFiltered.Reset(ItemsAll.Num());
+
+	const FString SearchStr = SearchText.ToString();
+
+	for (const auto& Item : ItemsAll)
+	{
+		if (
+			!Item.IsValid() ||
+			!SearchText.IsEmpty() &&
+			!Item->FilePath.Contains(SearchStr) &&
+			!Item->Asset.AssetName.ToString().Contains(SearchStr) &&
+			!Item->Asset.PackagePath.ToString().Contains(SearchStr)
+		)
+		{
+			continue;
+		}
+
+		ItemsFiltered.Emplace(MakeShareable(new FPjcAssetIndirectInfo{Item->Asset, Item->FilePath, Item->FileNum}));
+	}
+
+	ListView->RebuildList();
 }
 
 void SPjcTabAssetsIndirect::OnListSort(EColumnSortPriority::Type SortPriority, const FName& ColumnName, EColumnSortMode::Type InSortMode)
@@ -208,6 +312,22 @@ void SPjcTabAssetsIndirect::OnListSort(EColumnSortPriority::Type SortPriority, c
 		ItemsFiltered.Sort(SortFunc);
 	};
 
+	if (ColumnName.IsEqual(TEXT("AssetName")))
+	{
+		SortListItems(ColumnSortModeAssetName, [&](const TSharedPtr<FPjcAssetIndirectInfo>& Item1, const TSharedPtr<FPjcAssetIndirectInfo>& Item2)
+		{
+			return ColumnSortModeAssetName == EColumnSortMode::Ascending ? Item1->Asset.AssetName.ToString() < Item2->Asset.AssetName.ToString() : Item1->Asset.AssetName.ToString() > Item2->Asset.AssetName.ToString();
+		});
+	}
+
+	if (ColumnName.IsEqual(TEXT("AssetPath")))
+	{
+		SortListItems(ColumnSortModeAssetPath, [&](const TSharedPtr<FPjcAssetIndirectInfo>& Item1, const TSharedPtr<FPjcAssetIndirectInfo>& Item2)
+		{
+			return ColumnSortModeAssetPath == EColumnSortMode::Ascending ? Item1->Asset.PackagePath.ToString() < Item2->Asset.PackagePath.ToString() : Item1->Asset.PackagePath.ToString() > Item2->Asset.PackagePath.ToString();
+		});
+	}
+
 	if (ColumnName.IsEqual(TEXT("FilePath")))
 	{
 		SortListItems(ColumnSortModeFilePath, [&](const TSharedPtr<FPjcAssetIndirectInfo>& Item1, const TSharedPtr<FPjcAssetIndirectInfo>& Item2)
@@ -216,21 +336,27 @@ void SPjcTabAssetsIndirect::OnListSort(EColumnSortPriority::Type SortPriority, c
 		});
 	}
 
-	if (ColumnName.IsEqual(TEXT("FileName")))
+	if (ColumnName.IsEqual(TEXT("FileLine")))
 	{
-		SortListItems(ColumnSortModeFileNum, [&](const TSharedPtr<FPjcAssetIndirectInfo>& Item1, const TSharedPtr<FPjcAssetIndirectInfo>& Item2)
+		SortListItems(ColumnSortModeFileLine, [&](const TSharedPtr<FPjcAssetIndirectInfo>& Item1, const TSharedPtr<FPjcAssetIndirectInfo>& Item2)
 		{
-			return ColumnSortModeFileNum == EColumnSortMode::Ascending ? Item1->FileNum < Item2->FileNum : Item1->FileNum > Item2->FileNum;
+			return ColumnSortModeFileLine == EColumnSortMode::Ascending ? Item1->FileNum < Item2->FileNum : Item1->FileNum > Item2->FileNum;
 		});
 	}
+
+	ListView->RebuildList();
 }
 
 void SPjcTabAssetsIndirect::OnSearchTextChanged(const FText& InText)
 {
 	SearchText = InText;
+
+	ListUpdateView();
 }
 
 void SPjcTabAssetsIndirect::OnSearchTextCommitted(const FText& InText, ETextCommit::Type)
 {
 	SearchText = InText;
+
+	ListUpdateView();
 }

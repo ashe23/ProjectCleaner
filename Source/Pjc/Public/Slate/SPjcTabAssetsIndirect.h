@@ -31,10 +31,11 @@ private:
 	TArray<TSharedPtr<FPjcAssetIndirectInfo>> ItemsFiltered;
 	TSharedPtr<SListView<TSharedPtr<FPjcAssetIndirectInfo>>> ListView;
 
+	EColumnSortMode::Type ColumnSortModeAssetName = EColumnSortMode::None;
+	EColumnSortMode::Type ColumnSortModeAssetPath = EColumnSortMode::None;
 	EColumnSortMode::Type ColumnSortModeFilePath = EColumnSortMode::None;
-	EColumnSortMode::Type ColumnSortModeFileNum = EColumnSortMode::None;
+	EColumnSortMode::Type ColumnSortModeFileLine = EColumnSortMode::None;
 
 	FText SearchText;
 	TSharedPtr<FUICommandList> Cmds;
-	TMap<FAssetData, TArray<FPjcFileInfo>> AssetsIndirectInfos;
 };
