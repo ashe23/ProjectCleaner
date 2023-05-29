@@ -26,6 +26,7 @@ protected:
 	TSharedPtr<SWidget> OnContextMenuOpening() const;
 	TSharedRef<SWidget> CreateToolbar() const;
 	FText GetTxtSummary() const;
+	int32 GetWidgetIndex() const;
 
 private:
 	FText SearchText;

@@ -4,11 +4,13 @@
 #include "Slate/SPjcItemAssetCorrupted.h"
 #include "PjcCmds.h"
 #include "PjcStyles.h"
+#include "PjcConstants.h"
 #include "PjcSubsystem.h"
 // Engine Headers
 #include "Widgets/Input/SSearchBox.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SSeparator.h"
+#include "Widgets/Layout/SWidgetSwitcher.h"
 
 void SPjcTabAssetsCorrupted::Construct(const FArguments& InArgs)
 {
@@ -85,6 +87,9 @@ void SPjcTabAssetsCorrupted::Construct(const FArguments& InArgs)
 	.SelectionMode(ESelectionMode::Multi)
 	.HeaderRow(GetListHeaderRow());
 
+	ListUpdateData();
+	ListUpdateView();
+
 	ChildSlot
 	[
 		SNew(SVerticalBox)
@@ -149,13 +154,32 @@ void SPjcTabAssetsCorrupted::Construct(const FArguments& InArgs)
 		]
 		+ SVerticalBox::Slot().FillHeight(1.0f).Padding(5.0f)
 		[
-			SNew(SScrollBox)
-			.ScrollWhenFocusChanges(EScrollWhenFocusChanges::NoScroll)
-			.AnimateWheelScrolling(true)
-			.AllowOverscroll(EAllowOverscroll::No)
-			+ SScrollBox::Slot().Padding(5.0f)
+			SNew(SWidgetSwitcher)
+			.WidgetIndex_Raw(this, &SPjcTabAssetsCorrupted::GetWidgetIndex)
+			+ SWidgetSwitcher::Slot()
 			[
-				ListView.ToSharedRef()
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot().FillWidth(1.0f).HAlign(HAlign_Center).VAlign(VAlign_Center)
+				[
+					SNew(STextBlock)
+					.Justification(ETextJustify::Center)
+					.ColorAndOpacity(FPjcStyles::Get().GetColor("ProjectCleaner.Color.Gray"))
+					.ShadowOffset(FVector2D{0.5f, 0.5f})
+					.ShadowColorAndOpacity(FLinearColor::Black)
+					.Font(FPjcStyles::GetFont("Bold", 15))
+					.Text(FText::FromString(TEXT("No corrupted asset files were found.")))
+				]
+			]
+			+ SWidgetSwitcher::Slot()
+			[
+				SNew(SScrollBox)
+				.ScrollWhenFocusChanges(EScrollWhenFocusChanges::NoScroll)
+				.AnimateWheelScrolling(true)
+				.AllowOverscroll(EAllowOverscroll::No)
+				+ SScrollBox::Slot().Padding(5.0f)
+				[
+					ListView.ToSharedRef()
+				]
 			]
 		]
 		+ SVerticalBox::Slot().AutoHeight().Padding(5.0f)
@@ -397,4 +421,9 @@ FText SPjcTabAssetsCorrupted::GetTxtSummary() const
 	}
 
 	return FText::FromString(FString::Printf(TEXT("Total - %d (%s)"), NumFilesTotal, *FText::AsMemory(SizeFilesTotal, IEC).ToString()));
+}
+
+int32 SPjcTabAssetsCorrupted::GetWidgetIndex() const
+{
+	return ItemsAll.Num() == 0 ? PjcConstants::WidgetIndexIdle : PjcConstants::WidgetIndexWorking;
 }

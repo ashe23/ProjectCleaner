@@ -25,6 +25,7 @@ protected:
 	void OnListSort(EColumnSortPriority::Type SortPriority, const FName& ColumnName, EColumnSortMode::Type InSortMode);
 	void OnSearchTextChanged(const FText& InText);
 	void OnSearchTextCommitted(const FText& InText, ETextCommit::Type);
+	int32 GetWidgetIndex() const;
 
 private:
 	TArray<TSharedPtr<FPjcAssetIndirectInfo>> ItemsAll;

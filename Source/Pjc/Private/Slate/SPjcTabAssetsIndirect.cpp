@@ -4,11 +4,13 @@
 #include "Slate/SPjcItemAssetIndirect.h"
 #include "PjcCmds.h"
 #include "PjcStyles.h"
+#include "PjcConstants.h"
 #include "PjcSubsystem.h"
 // Engine Headers
 #include "Widgets/Input/SSearchBox.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SSeparator.h"
+#include "Widgets/Layout/SWidgetSwitcher.h"
 
 void SPjcTabAssetsIndirect::Construct(const FArguments& InArgs)
 {
@@ -108,11 +110,15 @@ void SPjcTabAssetsIndirect::Construct(const FArguments& InArgs)
 		})
 	);
 
+
 	SAssignNew(ListView, SListView<TSharedPtr<FPjcAssetIndirectInfo>>)
 	.ListItemsSource(&ItemsFiltered)
 	.SelectionMode(ESelectionMode::Multi)
 	.OnGenerateRow(this, &SPjcTabAssetsIndirect::OnGenerateRow)
 	.HeaderRow(GetHeaderRow());
+
+	ListUpdateData();
+	ListUpdateView();
 
 	ChildSlot
 	[
@@ -155,13 +161,32 @@ void SPjcTabAssetsIndirect::Construct(const FArguments& InArgs)
 			]
 			+ SVerticalBox::Slot().FillHeight(1.0f).Padding(5.0f)
 			[
-				SNew(SScrollBox)
-				.ScrollWhenFocusChanges(EScrollWhenFocusChanges::NoScroll)
-				.AnimateWheelScrolling(true)
-				.AllowOverscroll(EAllowOverscroll::No)
-				+ SScrollBox::Slot()
+				SNew(SWidgetSwitcher)
+				.WidgetIndex_Raw(this, &SPjcTabAssetsIndirect::GetWidgetIndex)
+				+ SWidgetSwitcher::Slot()
 				[
-					ListView.ToSharedRef()
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot().FillWidth(1.0f).HAlign(HAlign_Center).VAlign(VAlign_Center)
+					[
+						SNew(STextBlock)
+						.Justification(ETextJustify::Center)
+						.ColorAndOpacity(FPjcStyles::Get().GetColor("ProjectCleaner.Color.Gray"))
+						.ShadowOffset(FVector2D{0.5f, 0.5f})
+						.ShadowColorAndOpacity(FLinearColor::Black)
+						.Font(FPjcStyles::GetFont("Bold", 15))
+						.Text(FText::FromString(TEXT("No indirect assets were found.")))
+					]
+				]
+				+ SWidgetSwitcher::Slot()
+				[
+					SNew(SScrollBox)
+					.ScrollWhenFocusChanges(EScrollWhenFocusChanges::NoScroll)
+					.AnimateWheelScrolling(true)
+					.AllowOverscroll(EAllowOverscroll::No)
+					+ SScrollBox::Slot().Padding(5.0f)
+					[
+						ListView.ToSharedRef()
+					]
 				]
 			]
 		]
@@ -359,4 +384,9 @@ void SPjcTabAssetsIndirect::OnSearchTextCommitted(const FText& InText, ETextComm
 {
 	SearchText = InText;
 	ListUpdateView();
+}
+
+int32 SPjcTabAssetsIndirect::GetWidgetIndex() const
+{
+	return ItemsAll.Num() == 0 ? PjcConstants::WidgetIndexIdle : PjcConstants::WidgetIndexWorking;
 }

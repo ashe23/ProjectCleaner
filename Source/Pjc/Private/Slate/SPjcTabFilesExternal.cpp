@@ -7,7 +7,6 @@
 #include "PjcSubsystem.h"
 #include "PjcConstants.h"
 // Engine Headers
-#include "Misc/ScopedSlowTask.h"
 #include "Widgets/Input/SSearchBox.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SSeparator.h"
@@ -167,6 +166,9 @@ void SPjcTabFilesExternal::Construct(const FArguments& InArgs)
 	.SelectionMode(ESelectionMode::Multi)
 	.HeaderRow(GetListHeaderRow());
 
+	ListUpdateData();
+	ListUpdateView();
+
 	FPropertyEditorModule& PropertyEditor = UPjcSubsystem::GetModulePropertyEditor();
 	FDetailsViewArgs DetailsViewArgs;
 	DetailsViewArgs.bUpdatesFromSelection = false;
@@ -264,7 +266,7 @@ void SPjcTabFilesExternal::Construct(const FArguments& InArgs)
 							.ShadowOffset(FVector2D{0.5f, 0.5f})
 							.ShadowColorAndOpacity(FLinearColor::Black)
 							.Font(FPjcStyles::GetFont("Bold", 15))
-							.Text(FText::FromString(TEXT("No external files found")))
+							.Text(FText::FromString(TEXT("No external files were found.")))
 						]
 					]
 					+ SWidgetSwitcher::Slot()
@@ -318,72 +320,26 @@ void SPjcTabFilesExternal::Construct(const FArguments& InArgs)
 
 void SPjcTabFilesExternal::ListUpdateData()
 {
-	if (!ListView.IsValid() || !SubsystemPtr) return;
-
-	const UPjcFileExcludeSettings* FileExcludeSettings = GetDefault<UPjcFileExcludeSettings>();
-	if (!FileExcludeSettings) return;
-
-	FScopedSlowTask SlowTaskMain{
-		2.0f,
-		FText::FromString(TEXT("Scanning for external files...")),
-		GIsEditor && !IsRunningCommandlet()
-	};
-	SlowTaskMain.MakeDialog(false, false);
-	SlowTaskMain.EnterProgressFrame(1.0f);
-
-	// getting all external files in project
 	TArray<FString> FilesExternalAll;
-	UPjcSubsystem::GetFilesByExt(FPaths::ProjectContentDir(), true, true, PjcConstants::EngineFileExtensions, FilesExternalAll);
+	TArray<FString> FilesExternalExcluded;
 
-	// validate exclude settings
-	TSet<FString> ExcludedFiles;
-	TSet<FString> ExcludedExtensions;
-
-	const FString ProjectDir = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir());
-
-	for (const auto& ExcludedFile : FileExcludeSettings->ExcludedFiles)
-	{
-		if (!ExcludedFile.FilePath.StartsWith(TEXT("Content"))) continue;
-
-		const FString PathAbs = UPjcSubsystem::PathNormalize(ProjectDir / ExcludedFile.FilePath);
-
-		if (!FPaths::FileExists(PathAbs)) continue;
-
-		ExcludedFiles.Emplace(PathAbs);
-	}
-
-	for (const auto& ExcludedExt : FileExcludeSettings->ExcludedExtensions)
-	{
-		if (ExcludedExt.IsEmpty()) continue;
-
-		ExcludedExtensions.Emplace(ExcludedExt.Replace(TEXT("."), TEXT("")).ToLower());
-	}
-
-	SlowTaskMain.EnterProgressFrame(1.0f);
-
-	FScopedSlowTask SlowTask{
-		static_cast<float>(FilesExternalAll.Num()),
-		FText::FromString(TEXT("Scanning for external files...")),
-		GIsEditor && !IsRunningCommandlet()
-	};
-	SlowTask.MakeDialog(false, false);
+	UPjcSubsystem::GetFilesExternalAll(FilesExternalAll);
+	UPjcSubsystem::GetFilesExternalExcluded(FilesExternalExcluded);
 
 	ItemsAll.Reset();
 	ItemsAll.Reserve(FilesExternalAll.Num());
 
 	NumFilesTotal = FilesExternalAll.Num();
-	NumFilesExcluded = 0;
+	NumFilesExcluded = FilesExternalExcluded.Num();
 	SizeFilesTotal = 0;
 	SizeFilesExcluded = 0;
 
 	for (const auto& File : FilesExternalAll)
 	{
-		SlowTask.EnterProgressFrame(1.0f, FText::FromString(File));
-
 		const FString FileName = FPaths::GetBaseFilename(File);
 		const FString FileExt = FPaths::GetExtension(File, false).ToLower();
 		const int64 FileSize = IFileManager::Get().FileSize(*File);
-		const bool bExcluded = ExcludedFiles.Contains(File) || ExcludedExtensions.Contains(FileExt);
+		const bool bExcluded = FilesExternalExcluded.Contains(File);
 
 		SizeFilesTotal += FileSize;
 
@@ -400,9 +356,6 @@ void SPjcTabFilesExternal::ListUpdateData()
 void SPjcTabFilesExternal::ListUpdateView()
 {
 	if (!ListView.IsValid() || !SubsystemPtr) return;
-
-	ListView->ClearSelection();
-	ListView->ClearHighlightedItems();
 
 	ItemsFiltered.Reset();
 	ItemsFiltered.Reserve(ItemsAll.Num());
@@ -433,6 +386,8 @@ void SPjcTabFilesExternal::ListUpdateView()
 		);
 	}
 
+	ListView->ClearSelection();
+	ListView->ClearHighlightedItems();
 	ListView->RebuildList();
 }
 
