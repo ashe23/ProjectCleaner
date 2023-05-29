@@ -64,9 +64,9 @@ int32 UPjcCommandlet::Main(const FString& Params)
 	};
 
 
-	UE_LOG(LogProjectCleanerCLI, Display, TEXT("======================="));
-	UE_LOG(LogProjectCleanerCLI, Display, TEXT("=====  Scan Info   ===="));
-	UE_LOG(LogProjectCleanerCLI, Display, TEXT("======================="));
+	UE_LOG(LogProjectCleanerCLI, Display, TEXT("======================================"));
+	UE_LOG(LogProjectCleanerCLI, Display, TEXT("========     Project Stats    ========"));
+	UE_LOG(LogProjectCleanerCLI, Display, TEXT("======================================"));
 	StatsPrint(StatsBefore);
 
 	if (bScanOnly) return 0;
@@ -109,9 +109,9 @@ int32 UPjcCommandlet::Main(const FString& Params)
 			FilesCorrupted.Num()
 		};
 
-		UE_LOG(LogProjectCleanerCLI, Display, TEXT("==========================================="));
-		UE_LOG(LogProjectCleanerCLI, Display, TEXT("=============  Stats After Cleanup ========"));
-		UE_LOG(LogProjectCleanerCLI, Display, TEXT("==========================================="));
+		UE_LOG(LogProjectCleanerCLI, Display, TEXT("======================================"));
+		UE_LOG(LogProjectCleanerCLI, Display, TEXT("========  Stats After Cleanup ========"));
+		UE_LOG(LogProjectCleanerCLI, Display, TEXT("======================================"));
 		StatsPrint(StatsAfter);
 	}
 
