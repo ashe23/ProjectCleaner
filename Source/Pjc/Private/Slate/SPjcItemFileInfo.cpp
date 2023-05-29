@@ -1,7 +1,6 @@
 ﻿// Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "Slate/SPjcItemFileInfo.h"
-
 #include "PjcSubsystem.h"
 #include "PjcTypes.h"
 #include "Widgets/Input/SHyperlink.h"

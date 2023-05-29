@@ -3,10 +3,10 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "ContentBrowserDelegates.h"
 #include "Widgets/SCompoundWidget.h"
 
 struct FPjcFileInfo;
+struct FPjcAssetIndirectInfo;
 
 class SPjcTabAssetsIndirect final : public SCompoundWidget
 {
@@ -19,7 +19,7 @@ public:
 protected:
 	TSharedRef<SWidget> CreateToolbar() const;
 	TSharedRef<SHeaderRow> GetHeaderRow();
-	TSharedRef<ITableRow> OnGenerateRow(TSharedPtr<FPjcFileInfo> Item, const TSharedRef<STableViewBase>& OwnerTable) const;
+	TSharedRef<ITableRow> OnGenerateRow(TSharedPtr<FPjcAssetIndirectInfo> Item, const TSharedRef<STableViewBase>& OwnerTable) const;
 	void ListUpdateData();
 	void ListUpdateView();
 	void OnListSort(EColumnSortPriority::Type SortPriority, const FName& ColumnName, EColumnSortMode::Type InSortMode);
@@ -27,9 +27,9 @@ protected:
 	void OnSearchTextCommitted(const FText& InText, ETextCommit::Type);
 
 private:
-	TArray<TSharedPtr<FPjcFileInfo>> ItemsAll;
-	TArray<TSharedPtr<FPjcFileInfo>> ItemsFiltered;
-	TSharedPtr<SListView<TSharedPtr<FPjcFileInfo>>> ListView;
+	TArray<TSharedPtr<FPjcAssetIndirectInfo>> ItemsAll;
+	TArray<TSharedPtr<FPjcAssetIndirectInfo>> ItemsFiltered;
+	TSharedPtr<SListView<TSharedPtr<FPjcAssetIndirectInfo>>> ListView;
 
 	EColumnSortMode::Type ColumnSortModeFilePath = EColumnSortMode::None;
 	EColumnSortMode::Type ColumnSortModeFileNum = EColumnSortMode::None;

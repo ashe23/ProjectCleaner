@@ -136,7 +136,7 @@ void SPjcTabAssetsUnused::OnScanProjectAssets()
 
 void SPjcTabAssetsUnused::OnCleanProject()
 {
-	ObjectTools::DeleteAssets(AssetsCategoryMapping[EPjcAssetCategory::Unused].Array(), true);
+	// ObjectTools::DeleteAssets(AssetsCategoryMapping[EPjcAssetCategory::Unused].Array(), true);
 
 	// todo:ashe23 cleanup setting window here
 	// const TSharedRef<SWindow> Window = SNew(SWindow).Title(FText::FromString(TEXT("Some Title"))).ClientSize(FVector2D{600, 400});

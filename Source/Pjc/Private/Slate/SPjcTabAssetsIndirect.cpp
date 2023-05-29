@@ -25,7 +25,7 @@ void SPjcTabAssetsIndirect::Construct(const FArguments& InArgs)
 		})
 	);
 	
-	SAssignNew(ListView, SListView<TSharedPtr<FPjcFileInfo>>)
+	SAssignNew(ListView, SListView<TSharedPtr<FPjcAssetIndirectInfo>>)
 	.ListItemsSource(&ItemsFiltered)
 	.SelectionMode(ESelectionMode::None)
 	.OnGenerateRow(this, &SPjcTabAssetsIndirect::OnGenerateRow)
@@ -54,16 +54,6 @@ void SPjcTabAssetsIndirect::Construct(const FArguments& InArgs)
 				.ShadowColorAndOpacity(FLinearColor::Black)
 				.Font(FPjcStyles::GetFont("Bold", 15))
 				.Text(FText::FromString(TEXT("List of assets used in source code or config files.")))
-			]
-			+ SVerticalBox::Slot().AutoHeight().Padding(FMargin{10.0f, 0.0f, 5.0f, 5.0f})
-			[
-				SNew(STextBlock)
-				.Justification(ETextJustify::Center)
-				.ColorAndOpacity(FPjcStyles::Get().GetColor("ProjectCleaner.Color.Gray"))
-				.ShadowOffset(FVector2D{0.5f, 0.5f})
-				.ShadowColorAndOpacity(FLinearColor::Black)
-				.Font(FPjcStyles::GetFont("Bold", 10))
-				.Text(FText::FromString(TEXT("Select asset in order to see their usage info.")))
 			]
 		]
 		+ SVerticalBox::Slot().AutoHeight().Padding(5.0f)
@@ -142,7 +132,7 @@ TSharedRef<SHeaderRow> SPjcTabAssetsIndirect::GetHeaderRow()
 		];
 }
 
-TSharedRef<ITableRow> SPjcTabAssetsIndirect::OnGenerateRow(TSharedPtr<FPjcFileInfo> Item, const TSharedRef<STableViewBase>& OwnerTable) const
+TSharedRef<ITableRow> SPjcTabAssetsIndirect::OnGenerateRow(TSharedPtr<FPjcAssetIndirectInfo> Item, const TSharedRef<STableViewBase>& OwnerTable) const
 {
 	return SNew(SPjcItemFileInfo, OwnerTable).Item(Item);
 }
@@ -220,7 +210,7 @@ void SPjcTabAssetsIndirect::OnListSort(EColumnSortPriority::Type SortPriority, c
 
 	if (ColumnName.IsEqual(TEXT("FilePath")))
 	{
-		SortListItems(ColumnSortModeFilePath, [&](const TSharedPtr<FPjcFileInfo>& Item1, const TSharedPtr<FPjcFileInfo>& Item2)
+		SortListItems(ColumnSortModeFilePath, [&](const TSharedPtr<FPjcAssetIndirectInfo>& Item1, const TSharedPtr<FPjcAssetIndirectInfo>& Item2)
 		{
 			return ColumnSortModeFilePath == EColumnSortMode::Ascending ? Item1->FilePath < Item2->FilePath : Item1->FilePath > Item2->FilePath;
 		});
@@ -228,7 +218,7 @@ void SPjcTabAssetsIndirect::OnListSort(EColumnSortPriority::Type SortPriority, c
 
 	if (ColumnName.IsEqual(TEXT("FileName")))
 	{
-		SortListItems(ColumnSortModeFileNum, [&](const TSharedPtr<FPjcFileInfo>& Item1, const TSharedPtr<FPjcFileInfo>& Item2)
+		SortListItems(ColumnSortModeFileNum, [&](const TSharedPtr<FPjcAssetIndirectInfo>& Item1, const TSharedPtr<FPjcAssetIndirectInfo>& Item2)
 		{
 			return ColumnSortModeFileNum == EColumnSortMode::Ascending ? Item1->FileNum < Item2->FileNum : Item1->FileNum > Item2->FileNum;
 		});
