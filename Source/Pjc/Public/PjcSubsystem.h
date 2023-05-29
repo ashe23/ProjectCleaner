@@ -20,7 +20,6 @@ public:
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	virtual void Deinitialize() override;
 
-
 	/**
 	 * @brief Returns all assets in project (particularly Content folder)
 	 * @param Assets TArray<FAssetData>
@@ -31,23 +30,26 @@ public:
 	/**
 	 * @brief Returns all used assets in project
 	 * @param Assets TArray<FAssetData>
+	 * @param bShowSlowTask bool
 	 */
 	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset")
-	static void GetAssetsUsed(TArray<FAssetData>& Assets);
+	static void GetAssetsUsed(TArray<FAssetData>& Assets, const bool bShowSlowTask = true);
 
 	/**
 	 * @brief Returns all unused assets in project
 	 * @param Assets TArray<FAssetData>
+	 * @param bShowSlowTask bool
 	 */
 	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset")
-	static void GetAssetsUnused(TArray<FAssetData>& Assets);
+	static void GetAssetsUnused(TArray<FAssetData>& Assets, const bool bShowSlowTask = true);
 
 	/**
 	 * @brief Returns all primary and derived from primary assets in project. See AssetManager Settings for more info.
 	 * @param Assets TArray<FAssetData>
+	 * @param bShowSlowTask bool
 	 */
 	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset")
-	static void GetAssetsPrimary(TArray<FAssetData>& Assets);
+	static void GetAssetsPrimary(TArray<FAssetData>& Assets, const bool bShowSlowTask = true);
 
 	/**
 	 * @brief Returns assets that used in source code or config files indirectly.
@@ -61,30 +63,34 @@ public:
 	/**
 	 * @brief Returns assets that have circular dependencies
 	 * @param Assets TArray<FAssetData>
+	 * @param bShowSlowTask bool
 	 */
 	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset")
-	static void GetAssetsCircular(TArray<FAssetData>& Assets);
+	static void GetAssetsCircular(TArray<FAssetData>& Assets, const bool bShowSlowTask = true);
 
 	/**
 	 * @brief Returns assets that are editor specific. Like Tutorial asset, EditorUtilityBlueprint or EditorUtilityWidgets.
 	 * @param Assets TArray<FAssetData>
+	 * @param bShowSlowTask bool
 	 */
 	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset")
-	static void GetAssetsEditor(TArray<FAssetData>& Assets);
+	static void GetAssetsEditor(TArray<FAssetData>& Assets, const bool bShowSlowTask = true);
 
 	/**
 	 * @brief Returns all excluded assets in project
 	 * @param Assets TArray<FAssetData>
+	 * @param bShowSlowTask bool
 	 */
 	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset")
-	static void GetAssetsExcluded(TArray<FAssetData>& Assets);
+	static void GetAssetsExcluded(TArray<FAssetData>& Assets, const bool bShowSlowTask = true);
 
 	/**
 	 * @brief Returns all assets that have external referencers outside Content folder
 	 * @param Assets TArray<FAssetData>
+	 *  @param bShowSlowTask bool
 	 */
 	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset")
-	static void GetAssetsExtReferenced(TArray<FAssetData>& Assets);
+	static void GetAssetsExtReferenced(TArray<FAssetData>& Assets, const bool bShowSlowTask = true);
 
 	/**
 	 * @brief Returns all primary assets class names

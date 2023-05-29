@@ -31,12 +31,17 @@ void UPjcSubsystem::Deinitialize()
 
 void UPjcSubsystem::GetAssetsAll(TArray<FAssetData>& Assets)
 {
+	if (GetModuleAssetRegistry().Get().IsLoadingAssets()) return;
+
 	Assets.Reset();
+
 	GetModuleAssetRegistry().Get().GetAssetsByPath(PjcConstants::PathRoot, Assets, true);
 }
 
-void UPjcSubsystem::GetAssetsUsed(TArray<FAssetData>& Assets)
+void UPjcSubsystem::GetAssetsUsed(TArray<FAssetData>& Assets, const bool bShowSlowTask)
 {
+	if (GetModuleAssetRegistry().Get().IsLoadingAssets()) return;
+
 	TArray<FAssetData> AssetsAll;
 	TArray<FAssetData> AssetsIndirect;
 	TArray<FAssetData> AssetsExcluded;
@@ -45,8 +50,8 @@ void UPjcSubsystem::GetAssetsUsed(TArray<FAssetData>& Assets)
 	TSet<FName> ClassNamesEditor;
 
 	GetAssetsAll(AssetsAll);
-	GetAssetsIndirect(AssetsIndirect, AssetsIndirectInfos);
-	GetAssetsExcluded(AssetsExcluded);
+	GetAssetsIndirect(AssetsIndirect, AssetsIndirectInfos, bShowSlowTask);
+	GetAssetsExcluded(AssetsExcluded, bShowSlowTask);
 	GetClassNamesPrimary(ClassNamesPrimary);
 	GetClassNamesEditor(ClassNamesEditor);
 
@@ -54,8 +59,17 @@ void UPjcSubsystem::GetAssetsUsed(TArray<FAssetData>& Assets)
 	AssetsUsed.Append(AssetsIndirect);
 	AssetsUsed.Append(AssetsExcluded);
 
+	FScopedSlowTask SlowTask{
+		static_cast<float>(AssetsAll.Num()),
+		FText::FromString(TEXT("Searching used assets...")),
+		bShowSlowTask && GIsEditor && !IsRunningCommandlet()
+	};
+	SlowTask.MakeDialog(false, false);
+
 	for (const auto& Asset : AssetsAll)
 	{
+		SlowTask.EnterProgressFrame(1.0f, FText::FromString(Asset.GetFullName()));
+
 		const FName AssetExactClassName = GetAssetExactClassName(Asset);
 		const bool bIsPrimary = ClassNamesPrimary.Contains(Asset.AssetClass) || ClassNamesPrimary.Contains(AssetExactClassName);
 		const bool bIsEditor = ClassNamesEditor.Contains(Asset.AssetClass) || ClassNamesEditor.Contains(AssetExactClassName);
@@ -74,19 +88,30 @@ void UPjcSubsystem::GetAssetsUsed(TArray<FAssetData>& Assets)
 	Assets = AssetsUsed.Array();
 }
 
-void UPjcSubsystem::GetAssetsUnused(TArray<FAssetData>& Assets)
+void UPjcSubsystem::GetAssetsUnused(TArray<FAssetData>& Assets, const bool bShowSlowTask)
 {
+	if (GetModuleAssetRegistry().Get().IsLoadingAssets()) return;
+	
 	TArray<FAssetData> AssetsAll;
 	TArray<FAssetData> AssetsUsed;
 
 	GetAssetsAll(AssetsAll);
-	GetAssetsUsed(AssetsUsed);
+	GetAssetsUsed(AssetsUsed, bShowSlowTask);
 
 	const TSet<FAssetData> AssetsUsedSet{AssetsUsed};
-
 	Assets.Reset(AssetsAll.Num());
+
+	FScopedSlowTask SlowTask{
+		static_cast<float>(AssetsAll.Num()),
+		FText::FromString(TEXT("Searching unused assets...")),
+		bShowSlowTask && GIsEditor && !IsRunningCommandlet()
+	};
+	SlowTask.MakeDialog(false, false);
+
 	for (const auto& Asset : AssetsAll)
 	{
+		SlowTask.EnterProgressFrame(1.0f, FText::FromString(Asset.GetFullName()));
+
 		if (!AssetsUsedSet.Contains(Asset))
 		{
 			Assets.Emplace(Asset);
@@ -95,8 +120,10 @@ void UPjcSubsystem::GetAssetsUnused(TArray<FAssetData>& Assets)
 	Assets.Shrink();
 }
 
-void UPjcSubsystem::GetAssetsPrimary(TArray<FAssetData>& Assets)
+void UPjcSubsystem::GetAssetsPrimary(TArray<FAssetData>& Assets, const bool bShowSlowTask)
 {
+	if (GetModuleAssetRegistry().Get().IsLoadingAssets()) return;
+	
 	TArray<FAssetData> AssetsAll;
 	GetAssetsAll(AssetsAll);
 
@@ -104,9 +131,18 @@ void UPjcSubsystem::GetAssetsPrimary(TArray<FAssetData>& Assets)
 	GetClassNamesPrimary(ClassNamesPrimary);
 
 	Assets.Reset(AssetsAll.Num());
+	
+	FScopedSlowTask SlowTask{
+		static_cast<float>(AssetsAll.Num()),
+		FText::FromString(TEXT("Searching primary assets...")),
+		bShowSlowTask && GIsEditor && !IsRunningCommandlet()
+	};
+	SlowTask.MakeDialog(false, false);
 
 	for (const auto& Asset : AssetsAll)
 	{
+		SlowTask.EnterProgressFrame(1.0f, FText::FromString(Asset.GetFullName()));
+		
 		if (ClassNamesPrimary.Contains(Asset.AssetClass) || ClassNamesPrimary.Contains(GetAssetExactClassName(Asset)))
 		{
 			Assets.Emplace(Asset);
@@ -118,6 +154,8 @@ void UPjcSubsystem::GetAssetsPrimary(TArray<FAssetData>& Assets)
 
 void UPjcSubsystem::GetAssetsIndirect(TArray<FAssetData>& Assets, TArray<FPjcAssetIndirectInfo>& AssetsIndirectInfos, const bool bShowSlowTask)
 {
+	if (GetModuleAssetRegistry().Get().IsLoadingAssets()) return;
+	
 	Assets.Reset();
 	AssetsIndirectInfos.Reset();
 
@@ -129,7 +167,7 @@ void UPjcSubsystem::GetAssetsIndirect(TArray<FAssetData>& Assets, TArray<FPjcAss
 		FText::FromString(TEXT("Searching Indirectly used assets...")),
 		bShowSlowTask && GIsEditor && !IsRunningCommandlet()
 	};
-	SlowTask.MakeDialog();
+	SlowTask.MakeDialog(false, false);
 
 	for (const auto& File : ScanFiles)
 	{
@@ -171,15 +209,26 @@ void UPjcSubsystem::GetAssetsIndirect(TArray<FAssetData>& Assets, TArray<FPjcAss
 	}
 }
 
-void UPjcSubsystem::GetAssetsCircular(TArray<FAssetData>& Assets)
+void UPjcSubsystem::GetAssetsCircular(TArray<FAssetData>& Assets, const bool bShowSlowTask)
 {
+	if (GetModuleAssetRegistry().Get().IsLoadingAssets()) return;
+	
 	TArray<FAssetData> AssetsAll;
 	GetAssetsAll(AssetsAll);
 
 	Assets.Reset(AssetsAll.Num());
 
+	FScopedSlowTask SlowTask{
+		static_cast<float>(AssetsAll.Num()),
+		FText::FromString(TEXT("Searching circular assets...")),
+		bShowSlowTask && GIsEditor && !IsRunningCommandlet()
+	};
+	SlowTask.MakeDialog(false, false);
+
 	for (const auto& Asset : AssetsAll)
 	{
+		SlowTask.EnterProgressFrame(1.0f, FText::FromString(Asset.GetFullName()));
+		
 		if (AssetIsCircular(Asset))
 		{
 			Assets.Emplace(Asset);
@@ -189,8 +238,10 @@ void UPjcSubsystem::GetAssetsCircular(TArray<FAssetData>& Assets)
 	Assets.Shrink();
 }
 
-void UPjcSubsystem::GetAssetsEditor(TArray<FAssetData>& Assets)
+void UPjcSubsystem::GetAssetsEditor(TArray<FAssetData>& Assets, const bool bShowSlowTask)
 {
+	if (GetModuleAssetRegistry().Get().IsLoadingAssets()) return;
+	
 	TArray<FAssetData> AssetsAll;
 	GetAssetsAll(AssetsAll);
 
@@ -199,8 +250,17 @@ void UPjcSubsystem::GetAssetsEditor(TArray<FAssetData>& Assets)
 
 	Assets.Reset(AssetsAll.Num());
 
+	FScopedSlowTask SlowTask{
+		static_cast<float>(AssetsAll.Num()),
+		FText::FromString(TEXT("Searching editor assets...")),
+		bShowSlowTask && GIsEditor && !IsRunningCommandlet()
+	};
+	SlowTask.MakeDialog(false, false);
+
 	for (const auto& Asset : AssetsAll)
 	{
+		SlowTask.EnterProgressFrame(1.0f, FText::FromString(Asset.GetFullName()));
+		
 		if (ClassNamesEditor.Contains(Asset.AssetClass) || ClassNamesEditor.Contains(GetAssetExactClassName(Asset)))
 		{
 			Assets.Emplace(Asset);
@@ -210,19 +270,30 @@ void UPjcSubsystem::GetAssetsEditor(TArray<FAssetData>& Assets)
 	Assets.Shrink();
 }
 
-void UPjcSubsystem::GetAssetsExcluded(TArray<FAssetData>& Assets)
+void UPjcSubsystem::GetAssetsExcluded(TArray<FAssetData>& Assets, const bool bShowSlowTask)
 {
+	if (GetModuleAssetRegistry().Get().IsLoadingAssets()) return;
+	
 	Assets.Reset();
 
 	const UPjcAssetExcludeSettings* AssetExcludeSettings = GetDefault<UPjcAssetExcludeSettings>();
 	if (!AssetExcludeSettings) return;
 
+	FScopedSlowTask SlowTask{
+		4.0f,
+		FText::FromString(TEXT("Searching excluded assets...")),
+		bShowSlowTask && GIsEditor && !IsRunningCommandlet()
+	};
+	SlowTask.MakeDialog(false, false);
+	SlowTask.EnterProgressFrame(1.0f);
+	
 	TArray<FAssetData> AssetsAll;
 	GetAssetsAll(AssetsAll);
 
 	TSet<FAssetData> AssetsExcluded;
 	AssetsExcluded.Reserve(AssetsAll.Num());
 
+	SlowTask.EnterProgressFrame(1.0f);
 	// assets excluded by class names
 	{
 		TSet<FName> ClassNamesExcluded;
@@ -244,6 +315,7 @@ void UPjcSubsystem::GetAssetsExcluded(TArray<FAssetData>& Assets)
 		}
 	}
 
+	SlowTask.EnterProgressFrame(1.0f);
 	// assets excluded by package paths
 	{
 		FARFilter Filter;
@@ -267,6 +339,7 @@ void UPjcSubsystem::GetAssetsExcluded(TArray<FAssetData>& Assets)
 		}
 	}
 
+	SlowTask.EnterProgressFrame(1.0f);
 	// assets excluded by object paths
 	{
 		FARFilter Filter;
@@ -292,15 +365,26 @@ void UPjcSubsystem::GetAssetsExcluded(TArray<FAssetData>& Assets)
 	Assets = AssetsExcluded.Array();
 }
 
-void UPjcSubsystem::GetAssetsExtReferenced(TArray<FAssetData>& Assets)
+void UPjcSubsystem::GetAssetsExtReferenced(TArray<FAssetData>& Assets, const bool bShowSlowTask)
 {
+	if (GetModuleAssetRegistry().Get().IsLoadingAssets()) return;
+	
 	TArray<FAssetData> AssetsAll;
 	GetAssetsAll(AssetsAll);
 
 	Assets.Reset(Assets.Num());
 
+	FScopedSlowTask SlowTask{
+		4.0f,
+		FText::FromString(TEXT("Searching assets with external referencers...")),
+		bShowSlowTask && GIsEditor && !IsRunningCommandlet()
+	};
+	SlowTask.MakeDialog(false, false);
+
 	for (const auto& Asset : AssetsAll)
 	{
+		SlowTask.EnterProgressFrame(1.0f, FText::FromString(Asset.GetFullName()));
+		
 		if (AssetIsExtReferenced(Asset))
 		{
 			Assets.Emplace(Asset);

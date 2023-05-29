@@ -1,6 +1,12 @@
-# import unreal
+import unreal
 
-# sub = unreal.get_editor_subsystem(unreal.PjcSubsystem)
+subsystem = unreal.get_editor_subsystem(unreal.PjcSubsystem)
+
+
+## Scan project and print result
+subsystem.project_scan()
+
+##
 
 # QUERY
 # sub.get_assets_all() - returns all assets in project (inside Content Folder only)
