@@ -5,7 +5,6 @@
 #include "CoreMinimal.h"
 #include "Widgets/SCompoundWidget.h"
 
-enum class EPjcAssetCategory:uint8;
 struct FPjcStatItem;
 
 class SPjcStatAssets final : public SCompoundWidget
@@ -15,10 +14,9 @@ public:
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
-	void StatsUpdateData(TMap<EPjcAssetCategory, TSet<FAssetData>>& AssetsCategoryMapping);
+	void UpdateData();
 
 protected:
-	void StatsInit();
 	TSharedRef<SHeaderRow> GetHeaderRow() const;
 	TSharedRef<ITableRow> OnGenerateRow(TSharedPtr<FPjcStatItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const;
 

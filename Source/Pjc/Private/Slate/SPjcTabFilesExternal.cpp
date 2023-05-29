@@ -166,9 +166,6 @@ void SPjcTabFilesExternal::Construct(const FArguments& InArgs)
 	.SelectionMode(ESelectionMode::Multi)
 	.HeaderRow(GetListHeaderRow());
 
-	ListUpdateData();
-	ListUpdateView();
-
 	FPropertyEditorModule& PropertyEditor = UPjcSubsystem::GetModulePropertyEditor();
 	FDetailsViewArgs DetailsViewArgs;
 	DetailsViewArgs.bUpdatesFromSelection = false;

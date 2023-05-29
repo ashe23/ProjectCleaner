@@ -345,7 +345,6 @@ public:
 	static void OpenReferenceViewer(const TArray<FAssetData>& InAssets);
 	static void OpenAssetAuditViewer(const TArray<FAssetData>& InAssets);
 	static void TryOpenFile(const FString& InPath);
-	static void AssetCategoryMappingInit(TMap<EPjcAssetCategory, TSet<FAssetData>>& AssetsCategoryMapping);
 	static FName GetAssetExactClassName(const FAssetData& InAsset);
 	static UClass* GetAssetClassByName(const FName& InClassName);
 	static FAssetToolsModule& GetModuleAssetTools();
@@ -353,11 +352,22 @@ public:
 	static FContentBrowserModule& GetModuleContentBrowser();
 	static FPropertyEditorModule& GetModulePropertyEditor();
 
-	static void ScanProjectAssets(TMap<EPjcAssetCategory, TSet<FAssetData>>& AssetsCategoryMapping, FString& ErrMsg);
 	static void CleanProject();
 
 	UPROPERTY(Config)
 	bool bShowFilesExternal = true;
+
+	UPROPERTY(Config)
+	bool bShowFoldersEmpty = true;
+
+	UPROPERTY(Config)
+	bool bShowFoldersExcluded = true;
+
+	UPROPERTY(Config)
+	bool bShowFoldersUsed = false;
+
+	UPROPERTY(Config)
+	bool bShowFoldersEngine = true;
 
 #if WITH_EDITOR
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;

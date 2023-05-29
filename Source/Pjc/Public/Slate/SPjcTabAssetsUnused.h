@@ -19,18 +19,14 @@ public:
 	void Construct(const FArguments& InArgs);
 
 protected:
-	void OnScanProjectAssets();
-	void OnCleanProject();
 	void OnTreeViewSelectionChanged(const TSet<FString>& InSelectedPaths);
-	void FilterUpdate();
-	bool CanCleanProject();
 
 private:
 	TSharedRef<SWidget> CreateToolbar() const;
 
+	bool bCanCleanProject = false;
 	TSharedPtr<FUICommandList> Cmds;
-	TSharedPtr<SPjcStatAssets> StatAssetsPtr;
 	TSharedPtr<SPjcTreeView> TreeViewPtr;
+	TSharedPtr<SPjcStatAssets> StatAssetsPtr;
 	TSharedPtr<SPjcContentBrowser> ContentBrowserPtr;
-	TMap<EPjcAssetCategory, TSet<FAssetData>> AssetsCategoryMapping;
 };

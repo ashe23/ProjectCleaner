@@ -117,9 +117,6 @@ void SPjcTabAssetsIndirect::Construct(const FArguments& InArgs)
 	.OnGenerateRow(this, &SPjcTabAssetsIndirect::OnGenerateRow)
 	.HeaderRow(GetHeaderRow());
 
-	ListUpdateData();
-	ListUpdateView();
-
 	ChildSlot
 	[
 		SNew(SVerticalBox)

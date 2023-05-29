@@ -87,9 +87,6 @@ void SPjcTabAssetsCorrupted::Construct(const FArguments& InArgs)
 	.SelectionMode(ESelectionMode::Multi)
 	.HeaderRow(GetListHeaderRow());
 
-	ListUpdateData();
-	ListUpdateView();
-
 	ChildSlot
 	[
 		SNew(SVerticalBox)

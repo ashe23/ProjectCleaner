@@ -2,20 +2,20 @@
 
 #include "Slate/SPjcStatAssets.h"
 #include "Slate/SPjcItemStat.h"
-#include "PjcStyles.h"
 #include "PjcSubsystem.h"
+#include "PjcStyles.h"
 #include "PjcTypes.h"
 
 void SPjcStatAssets::Construct(const FArguments& InArgs)
 {
-	StatsInit();
-
 	SAssignNew(ListView, SListView<TSharedPtr<FPjcStatItem>>)
 	.ListItemsSource(&Items)
 	.OnGenerateRow(this, &SPjcStatAssets::OnGenerateRow)
 	.SelectionMode(ESelectionMode::None)
 	.IsFocusable(false)
 	.HeaderRow(GetHeaderRow());
+
+	UpdateData();
 
 	ChildSlot
 	[
@@ -41,27 +41,46 @@ void SPjcStatAssets::Construct(const FArguments& InArgs)
 	];
 }
 
-void SPjcStatAssets::StatsUpdateData(TMap<EPjcAssetCategory, TSet<FAssetData>>& AssetsCategoryMapping)
+void SPjcStatAssets::UpdateData()
 {
+	TArray<FAssetData> AssetsAll;
+	TArray<FAssetData> AssetsUsed;
+	TArray<FAssetData> AssetsUnused;
+	TArray<FAssetData> AssetsPrimary;
+	TArray<FAssetData> AssetsIndirect;
+	TArray<FAssetData> AssetsEditor;
+	TArray<FAssetData> AssetsExcluded;
+	TArray<FAssetData> AssetsExtReferenced;
+	TArray<FPjcAssetIndirectInfo> AssetIndirectInfos;
+
+	UPjcSubsystem::GetAssetsAll(AssetsAll);
+	UPjcSubsystem::GetAssetsUsed(AssetsUsed, false);
+	UPjcSubsystem::GetAssetsUnused(AssetsUnused, false);
+	UPjcSubsystem::GetAssetsPrimary(AssetsPrimary, false);
+	UPjcSubsystem::GetAssetsIndirect(AssetsIndirect, AssetIndirectInfos, false);
+	UPjcSubsystem::GetAssetsEditor(AssetsEditor, false);
+	UPjcSubsystem::GetAssetsExcluded(AssetsExcluded, false);
+	UPjcSubsystem::GetAssetsExtReferenced(AssetsExtReferenced, false);
+
+	const int32 NumAssetsAll = AssetsAll.Num();
+	const int32 NumAssetsUsed = AssetsUsed.Num();
+	const int32 NumAssetsUnused = AssetsUnused.Num();
+	const int32 NumAssetsPrimary = AssetsPrimary.Num();
+	const int32 NumAssetsIndirect = AssetsIndirect.Num();
+	const int32 NumAssetsEditor = AssetsEditor.Num();
+	const int32 NumAssetsExcluded = AssetsExcluded.Num();
+	const int32 NumAssetsExtReferenced = AssetsExtReferenced.Num();
+
+	const int64 SizeAssetsAll = UPjcSubsystem::GetAssetsTotalSize(AssetsAll);
+	const int64 SizeAssetsUsed = UPjcSubsystem::GetAssetsTotalSize(AssetsUsed);
+	const int64 SizeAssetsUnused = UPjcSubsystem::GetAssetsTotalSize(AssetsUnused);
+	const int64 SizeAssetsPrimary = UPjcSubsystem::GetAssetsTotalSize(AssetsPrimary);
+	const int64 SizeAssetsIndirect = UPjcSubsystem::GetAssetsTotalSize(AssetsIndirect);
+	const int64 SizeAssetsEditor = UPjcSubsystem::GetAssetsTotalSize(AssetsEditor);
+	const int64 SizeAssetsExcluded = UPjcSubsystem::GetAssetsTotalSize(AssetsExcluded);
+	const int64 SizeAssetsExtReferenced = UPjcSubsystem::GetAssetsTotalSize(AssetsExtReferenced);
+	
 	Items.Reset();
-
-	const int32 NumAssetsUnused = AssetsCategoryMapping[EPjcAssetCategory::Unused].Num();
-	const int32 NumAssetsUsed = AssetsCategoryMapping[EPjcAssetCategory::Used].Num();
-	const int32 NumAssetsPrimary = AssetsCategoryMapping[EPjcAssetCategory::Primary].Num();
-	const int32 NumAssetsEditor = AssetsCategoryMapping[EPjcAssetCategory::Editor].Num();
-	const int32 NumAssetsIndirect = AssetsCategoryMapping[EPjcAssetCategory::Indirect].Num();
-	const int32 NumAssetsExtReferenced = AssetsCategoryMapping[EPjcAssetCategory::ExtReferenced].Num();
-	const int32 NumAssetsExcluded = AssetsCategoryMapping[EPjcAssetCategory::Excluded].Num();
-	const int32 NumAssetsAny = AssetsCategoryMapping[EPjcAssetCategory::Any].Num();
-
-	const int64 SizeAssetsUnused = UPjcSubsystem::GetAssetsTotalSize(AssetsCategoryMapping[EPjcAssetCategory::Unused].Array());
-	const int64 SizeAssetsUsed = UPjcSubsystem::GetAssetsTotalSize(AssetsCategoryMapping[EPjcAssetCategory::Used].Array());
-	const int64 SizeAssetsPrimary = UPjcSubsystem::GetAssetsTotalSize(AssetsCategoryMapping[EPjcAssetCategory::Primary].Array());
-	const int64 SizeAssetsEditor = UPjcSubsystem::GetAssetsTotalSize(AssetsCategoryMapping[EPjcAssetCategory::Editor].Array());
-	const int64 SizeAssetsIndirect = UPjcSubsystem::GetAssetsTotalSize(AssetsCategoryMapping[EPjcAssetCategory::Indirect].Array());
-	const int64 SizeAssetsExtReferenced = UPjcSubsystem::GetAssetsTotalSize(AssetsCategoryMapping[EPjcAssetCategory::ExtReferenced].Array());
-	const int64 SizeAssetsExcluded = UPjcSubsystem::GetAssetsTotalSize(AssetsCategoryMapping[EPjcAssetCategory::Excluded].Array());
-	const int64 SizeAssetsAny = UPjcSubsystem::GetAssetsTotalSize(AssetsCategoryMapping[EPjcAssetCategory::Any].Array());
 
 	const FMargin FirstLvl{5.0f, 0.0f, 0.0f, 0.0f};
 	const FMargin SecondLvl{20.0f, 0.0f, 0.0f, 0.0f};
@@ -177,8 +196,8 @@ void SPjcStatAssets::StatsUpdateData(TMap<EPjcAssetCategory, TSet<FAssetData>>& 
 		MakeShareable(
 			new FPjcStatItem{
 				FText::FromString(TEXT("Total")),
-				FText::AsNumber(NumAssetsAny),
-				FText::AsMemory(SizeAssetsAny, IEC),
+				FText::AsNumber(NumAssetsAll),
+				FText::AsMemory(SizeAssetsAll, IEC),
 				FText::FromString(TEXT("All Assets")),
 				FText::FromString(TEXT("Total number of assets")),
 				FText::FromString(TEXT("Total size of assets")),
@@ -192,14 +211,6 @@ void SPjcStatAssets::StatsUpdateData(TMap<EPjcAssetCategory, TSet<FAssetData>>& 
 	{
 		ListView->RebuildList();
 	}
-}
-
-void SPjcStatAssets::StatsInit()
-{
-	TMap<EPjcAssetCategory, TSet<FAssetData>> AssetsCategoryMapping;
-	UPjcSubsystem::AssetCategoryMappingInit(AssetsCategoryMapping);
-
-	StatsUpdateData(AssetsCategoryMapping);
 }
 
 TSharedRef<SHeaderRow> SPjcStatAssets::GetHeaderRow() const

@@ -375,7 +375,7 @@ void UPjcSubsystem::GetAssetsExtReferenced(TArray<FAssetData>& Assets, const boo
 	Assets.Reset(Assets.Num());
 
 	FScopedSlowTask SlowTask{
-		4.0f,
+		static_cast<float>(AssetsAll.Num()),
 		FText::FromString(TEXT("Searching assets with external referencers...")),
 		bShowSlowTask && GIsEditor && !IsRunningCommandlet()
 	};
@@ -602,7 +602,7 @@ void UPjcSubsystem::GetFilesExternalExcluded(TArray<FString>& Files, const bool 
 	GetFilesExternalAll(FilesExternalAll);
 
 	Files.Reset(FilesExternalAll.Num());
-	
+
 	FScopedSlowTask SlowTask(
 		static_cast<float>(FilesExternalAll.Num()),
 		FText::FromString(TEXT("Searching for external files...")),
@@ -613,7 +613,7 @@ void UPjcSubsystem::GetFilesExternalExcluded(TArray<FString>& Files, const bool 
 	for (const auto& File : FilesExternalAll)
 	{
 		SlowTask.EnterProgressFrame(1.0f, FText::FromString(File));
-		
+
 		const FString FileExt = FPaths::GetExtension(File, false).ToLower();
 		const bool bExcludedByExt = FileExcludeSettings->ExcludedExtensions.Contains(FileExt);
 		const bool bExcludedByFile = FileExcludeSettings->ExcludedFiles.ContainsByPredicate([&](const FFilePath& InFilePath)
@@ -660,7 +660,7 @@ void UPjcSubsystem::GetFilesCorrupted(TArray<FString>& Files, const bool bShowSl
 	for (const auto& File : FileAssets)
 	{
 		SlowTask.EnterProgressFrame(1.0f, FText::FromString(File));
-		
+
 		const FString Path = PathConvertToObjectPath(File);
 		if (Path.IsEmpty()) continue;
 		if (GetModuleAssetRegistry().Get().GetAssetByObjectPath(FName{*Path}).IsValid()) continue;
@@ -1279,138 +1279,138 @@ int64 UPjcSubsystem::GetFilesTotalSize(const TArray<FString>& Files)
 
 // NOT BLUEPRINT Exposed, but public
 
-void UPjcSubsystem::ScanProjectAssets(TMap<EPjcAssetCategory, TSet<FAssetData>>& AssetsCategoryMapping, FString& ErrMsg)
-{
-	ErrMsg.Reset();
-	AssetCategoryMappingInit(AssetsCategoryMapping);
-
-	if (GetModuleAssetRegistry().Get().IsLoadingAssets())
-	{
-		ErrMsg = TEXT("Failed to scan project. AssetRegistry is still discovering assets. Please try again after it has finished.");
-		return;
-	}
-
-	if (GEditor && !GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->CloseAllAssetEditors())
-	{
-		ErrMsg = TEXT("Failed to scan project, because not all asset editors are closed.");
-		return;
-	}
-
-	// FixupRedirectorsInProject();
-
-	if (ProjectHasRedirectors())
-	{
-		ErrMsg = TEXT("Failed to scan project, because not all redirectors are fixed.");
-		return;
-	}
-
-	if (!FEditorFileUtils::SaveDirtyPackages(true, true, true, false, false, false))
-	{
-		ErrMsg = TEXT("Failed to scan project, because not all assets have been saved.");
-		return;
-	}
-
-	const double ScanStartTime = FPlatformTime::Seconds();
-
-	FScopedSlowTask SlowTaskMain{
-		6.0f,
-		FText::FromString(TEXT("Scanning project assets...")),
-		GIsEditor && !IsRunningCommandlet()
-	};
-	SlowTaskMain.MakeDialog(false, false);
-	SlowTaskMain.EnterProgressFrame(1.0f);
-
-	for (auto& Mapping : AssetsCategoryMapping)
-	{
-		Mapping.Value.Reset();
-	}
-
-	SlowTaskMain.EnterProgressFrame(1.0f);
-	TSet<FName> ClassNamesPrimary;
-	TSet<FName> ClassNamesEditor;
-	TSet<FName> ClassNamesExcluded;
-	TArray<FAssetData> AssetsAll;
-	TMap<FAssetData, TArray<FPjcFileInfo>> AssetsIndirectInfo;
-
-	GetClassNamesPrimary(ClassNamesPrimary);
-	GetClassNamesEditor(ClassNamesEditor);
-	GetClassNamesExcluded(ClassNamesExcluded);
-	GetModuleAssetRegistry().Get().GetAssetsByPath(PjcConstants::PathRoot, AssetsAll, true);
-
-	SlowTaskMain.EnterProgressFrame(1.0f);
-	// FindAssetsIndirect(AssetsIndirectInfo);
-	// FindAssetsExcludedByPaths(AssetsCategoryMapping);
-
-	SlowTaskMain.EnterProgressFrame(1.0f);
-
-	FScopedSlowTask SlowTask{
-		static_cast<float>(AssetsAll.Num()),
-		FText::FromString(TEXT("Scanning project assets...")),
-		GIsEditor && !IsRunningCommandlet()
-	};
-	SlowTask.MakeDialog(false, false);
-
-	for (const auto& Asset : AssetsAll)
-	{
-		SlowTask.EnterProgressFrame(1.0f, FText::FromString(Asset.GetFullName()));
-
-		const FName AssetExactClassName = GetAssetExactClassName(Asset);
-		const bool bIsPrimary = ClassNamesPrimary.Contains(Asset.AssetClass) || ClassNamesPrimary.Contains(AssetExactClassName);
-		const bool bIsEditor = ClassNamesEditor.Contains(Asset.AssetClass) || ClassNamesEditor.Contains(AssetExactClassName);
-		const bool bIsExcluded = ClassNamesExcluded.Contains(Asset.AssetClass) || ClassNamesExcluded.Contains(AssetExactClassName);
-		const bool bIsCircular = AssetIsCircular(Asset);
-		const bool bIsExtReferenced = AssetIsExtReferenced(Asset);
-		const bool bIsUsed = bIsPrimary || bIsEditor || bIsExtReferenced;
-
-		AssetsCategoryMapping[EPjcAssetCategory::Any].Emplace(Asset);
-
-		if (bIsPrimary)
-		{
-			AssetsCategoryMapping[EPjcAssetCategory::Primary].Emplace(Asset);
-		}
-
-		if (bIsEditor)
-		{
-			AssetsCategoryMapping[EPjcAssetCategory::Editor].Emplace(Asset);
-		}
-
-		if (bIsExcluded)
-		{
-			AssetsCategoryMapping[EPjcAssetCategory::Excluded].Emplace(Asset);
-		}
-
-		if (bIsCircular)
-		{
-			AssetsCategoryMapping[EPjcAssetCategory::Circular].Emplace(Asset);
-		}
-
-		if (bIsExtReferenced)
-		{
-			AssetsCategoryMapping[EPjcAssetCategory::ExtReferenced].Emplace(Asset);
-		}
-
-		if (bIsUsed)
-		{
-			AssetsCategoryMapping[EPjcAssetCategory::Used].Emplace(Asset);
-		}
-	}
-
-	// loading all used assets dependencies recursive
-	SlowTaskMain.EnterProgressFrame(1.0f);
-	TArray<FAssetData> AssetsIndirect;
-	AssetsIndirectInfo.GetKeys(AssetsIndirect);
-	AssetsCategoryMapping[EPjcAssetCategory::Indirect].Append(AssetsIndirect);
-	AssetsCategoryMapping[EPjcAssetCategory::Used].Append(AssetsCategoryMapping[EPjcAssetCategory::Excluded]);
-	AssetsCategoryMapping[EPjcAssetCategory::Used].Append(AssetsCategoryMapping[EPjcAssetCategory::Indirect]);
-	GetAssetsDependencies(AssetsCategoryMapping[EPjcAssetCategory::Used]);
-
-	// filtering unused assets
-	SlowTaskMain.EnterProgressFrame(1.0f);
-	AssetsCategoryMapping[EPjcAssetCategory::Unused] = AssetsCategoryMapping[EPjcAssetCategory::Any].Difference(AssetsCategoryMapping[EPjcAssetCategory::Used]);
-
-	const double ScanTime = FPlatformTime::Seconds() - ScanStartTime;
-	UE_LOG(LogProjectCleaner, Display, TEXT("Project assets scanned in %.2f seconds."), ScanTime);
-}
+// void UPjcSubsystem::ScanProjectAssets(TMap<EPjcAssetCategory, TSet<FAssetData>>& AssetsCategoryMapping, FString& ErrMsg)
+// {
+// 	ErrMsg.Reset();
+// 	AssetCategoryMappingInit(AssetsCategoryMapping);
+//
+// 	if (GetModuleAssetRegistry().Get().IsLoadingAssets())
+// 	{
+// 		ErrMsg = TEXT("Failed to scan project. AssetRegistry is still discovering assets. Please try again after it has finished.");
+// 		return;
+// 	}
+//
+// 	if (GEditor && !GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->CloseAllAssetEditors())
+// 	{
+// 		ErrMsg = TEXT("Failed to scan project, because not all asset editors are closed.");
+// 		return;
+// 	}
+//
+// 	// FixupRedirectorsInProject();
+//
+// 	if (ProjectHasRedirectors())
+// 	{
+// 		ErrMsg = TEXT("Failed to scan project, because not all redirectors are fixed.");
+// 		return;
+// 	}
+//
+// 	if (!FEditorFileUtils::SaveDirtyPackages(true, true, true, false, false, false))
+// 	{
+// 		ErrMsg = TEXT("Failed to scan project, because not all assets have been saved.");
+// 		return;
+// 	}
+//
+// 	const double ScanStartTime = FPlatformTime::Seconds();
+//
+// 	FScopedSlowTask SlowTaskMain{
+// 		6.0f,
+// 		FText::FromString(TEXT("Scanning project assets...")),
+// 		GIsEditor && !IsRunningCommandlet()
+// 	};
+// 	SlowTaskMain.MakeDialog(false, false);
+// 	SlowTaskMain.EnterProgressFrame(1.0f);
+//
+// 	for (auto& Mapping : AssetsCategoryMapping)
+// 	{
+// 		Mapping.Value.Reset();
+// 	}
+//
+// 	SlowTaskMain.EnterProgressFrame(1.0f);
+// 	TSet<FName> ClassNamesPrimary;
+// 	TSet<FName> ClassNamesEditor;
+// 	TSet<FName> ClassNamesExcluded;
+// 	TArray<FAssetData> AssetsAll;
+// 	TMap<FAssetData, TArray<FPjcFileInfo>> AssetsIndirectInfo;
+//
+// 	GetClassNamesPrimary(ClassNamesPrimary);
+// 	GetClassNamesEditor(ClassNamesEditor);
+// 	GetClassNamesExcluded(ClassNamesExcluded);
+// 	GetModuleAssetRegistry().Get().GetAssetsByPath(PjcConstants::PathRoot, AssetsAll, true);
+//
+// 	SlowTaskMain.EnterProgressFrame(1.0f);
+// 	// FindAssetsIndirect(AssetsIndirectInfo);
+// 	// FindAssetsExcludedByPaths(AssetsCategoryMapping);
+//
+// 	SlowTaskMain.EnterProgressFrame(1.0f);
+//
+// 	FScopedSlowTask SlowTask{
+// 		static_cast<float>(AssetsAll.Num()),
+// 		FText::FromString(TEXT("Scanning project assets...")),
+// 		GIsEditor && !IsRunningCommandlet()
+// 	};
+// 	SlowTask.MakeDialog(false, false);
+//
+// 	for (const auto& Asset : AssetsAll)
+// 	{
+// 		SlowTask.EnterProgressFrame(1.0f, FText::FromString(Asset.GetFullName()));
+//
+// 		const FName AssetExactClassName = GetAssetExactClassName(Asset);
+// 		const bool bIsPrimary = ClassNamesPrimary.Contains(Asset.AssetClass) || ClassNamesPrimary.Contains(AssetExactClassName);
+// 		const bool bIsEditor = ClassNamesEditor.Contains(Asset.AssetClass) || ClassNamesEditor.Contains(AssetExactClassName);
+// 		const bool bIsExcluded = ClassNamesExcluded.Contains(Asset.AssetClass) || ClassNamesExcluded.Contains(AssetExactClassName);
+// 		const bool bIsCircular = AssetIsCircular(Asset);
+// 		const bool bIsExtReferenced = AssetIsExtReferenced(Asset);
+// 		const bool bIsUsed = bIsPrimary || bIsEditor || bIsExtReferenced;
+//
+// 		AssetsCategoryMapping[EPjcAssetCategory::Any].Emplace(Asset);
+//
+// 		if (bIsPrimary)
+// 		{
+// 			AssetsCategoryMapping[EPjcAssetCategory::Primary].Emplace(Asset);
+// 		}
+//
+// 		if (bIsEditor)
+// 		{
+// 			AssetsCategoryMapping[EPjcAssetCategory::Editor].Emplace(Asset);
+// 		}
+//
+// 		if (bIsExcluded)
+// 		{
+// 			AssetsCategoryMapping[EPjcAssetCategory::Excluded].Emplace(Asset);
+// 		}
+//
+// 		if (bIsCircular)
+// 		{
+// 			AssetsCategoryMapping[EPjcAssetCategory::Circular].Emplace(Asset);
+// 		}
+//
+// 		if (bIsExtReferenced)
+// 		{
+// 			AssetsCategoryMapping[EPjcAssetCategory::ExtReferenced].Emplace(Asset);
+// 		}
+//
+// 		if (bIsUsed)
+// 		{
+// 			AssetsCategoryMapping[EPjcAssetCategory::Used].Emplace(Asset);
+// 		}
+// 	}
+//
+// 	// loading all used assets dependencies recursive
+// 	SlowTaskMain.EnterProgressFrame(1.0f);
+// 	TArray<FAssetData> AssetsIndirect;
+// 	AssetsIndirectInfo.GetKeys(AssetsIndirect);
+// 	AssetsCategoryMapping[EPjcAssetCategory::Indirect].Append(AssetsIndirect);
+// 	AssetsCategoryMapping[EPjcAssetCategory::Used].Append(AssetsCategoryMapping[EPjcAssetCategory::Excluded]);
+// 	AssetsCategoryMapping[EPjcAssetCategory::Used].Append(AssetsCategoryMapping[EPjcAssetCategory::Indirect]);
+// 	GetAssetsDependencies(AssetsCategoryMapping[EPjcAssetCategory::Used]);
+//
+// 	// filtering unused assets
+// 	SlowTaskMain.EnterProgressFrame(1.0f);
+// 	AssetsCategoryMapping[EPjcAssetCategory::Unused] = AssetsCategoryMapping[EPjcAssetCategory::Any].Difference(AssetsCategoryMapping[EPjcAssetCategory::Used]);
+//
+// 	const double ScanTime = FPlatformTime::Seconds() - ScanStartTime;
+// 	UE_LOG(LogProjectCleaner, Display, TEXT("Project assets scanned in %.2f seconds."), ScanTime);
+// }
 
 void UPjcSubsystem::CleanProject()
 {
@@ -1627,21 +1627,6 @@ void UPjcSubsystem::TryOpenFile(const FString& InPath)
 	if (!FPaths::FileExists(InPath)) return;
 
 	FPlatformProcess::LaunchFileInDefaultExternalApplication(*InPath);
-}
-
-void UPjcSubsystem::AssetCategoryMappingInit(TMap<EPjcAssetCategory, TSet<FAssetData>>& AssetsCategoryMapping)
-{
-	AssetsCategoryMapping.Empty();
-	AssetsCategoryMapping.Add(EPjcAssetCategory::None);
-	AssetsCategoryMapping.Add(EPjcAssetCategory::Any);
-	AssetsCategoryMapping.Add(EPjcAssetCategory::Used);
-	AssetsCategoryMapping.Add(EPjcAssetCategory::Unused);
-	AssetsCategoryMapping.Add(EPjcAssetCategory::Primary);
-	AssetsCategoryMapping.Add(EPjcAssetCategory::Indirect);
-	AssetsCategoryMapping.Add(EPjcAssetCategory::Circular);
-	AssetsCategoryMapping.Add(EPjcAssetCategory::Editor);
-	AssetsCategoryMapping.Add(EPjcAssetCategory::Excluded);
-	AssetsCategoryMapping.Add(EPjcAssetCategory::ExtReferenced);
 }
 
 #if WITH_EDITOR

@@ -5,20 +5,20 @@
 #include "CoreMinimal.h"
 #include "PjcTypes.generated.h"
 
-UENUM(BlueprintType)
-enum class EPjcAssetCategory : uint8
-{
-	None UMETA(Hidden),
-	Any UMETA(ToolTip="Any asset category. This means all assets types."),
-	Used UMETA(Tooltip="Assets that considered used."),
-	Unused UMETA(Tooltip="Assets that considered unused."),
-	Primary UMETA(Tooltip="Assets that considered Primary via AssetManager. Level assets are primary by default."),
-	Indirect UMETA(Tooltip="Assets that used in source code or config files."),
-	Circular UMETA(Tooltip="Assets that have circular dependencies and referencers."),
-	Editor UMETA(ToolTip="Editor specific assets. Like EditorUtilityBlueprint or EditorTutorial assets."),
-	Excluded UMETA(Tooltip="Assets that excluded by user via plugins Exclude Settings."),
-	ExtReferenced UMETA(Tooltip="Assets that have external referencers outside Content folder.")
-};
+// UENUM(BlueprintType)
+// enum class EPjcAssetCategory : uint8
+// {
+// 	None UMETA(Hidden),
+// 	Any UMETA(ToolTip="Any asset category. This means all assets types."),
+// 	Used UMETA(Tooltip="Assets that considered used."),
+// 	Unused UMETA(Tooltip="Assets that considered unused."),
+// 	Primary UMETA(Tooltip="Assets that considered Primary via AssetManager. Level assets are primary by default."),
+// 	Indirect UMETA(Tooltip="Assets that used in source code or config files."),
+// 	Circular UMETA(Tooltip="Assets that have circular dependencies and referencers."),
+// 	Editor UMETA(ToolTip="Editor specific assets. Like EditorUtilityBlueprint or EditorTutorial assets."),
+// 	Excluded UMETA(Tooltip="Assets that excluded by user via plugins Exclude Settings."),
+// 	ExtReferenced UMETA(Tooltip="Assets that have external referencers outside Content folder.")
+// };
 
 UENUM(BlueprintType)
 enum class EPjcThumbnailSize : uint8

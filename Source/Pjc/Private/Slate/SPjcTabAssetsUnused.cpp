@@ -9,7 +9,7 @@
 #include "PjcSubsystem.h"
 #include "PjcConstants.h"
 // Engine Headers
-#include "ObjectTools.h"
+#include "FileHelpers.h"
 #include "Settings/ContentBrowserSettings.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SSeparator.h"
@@ -30,18 +30,76 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 
 	Cmds->MapAction(
 		FPjcCmds::Get().ScanProject,
-		FExecuteAction::CreateRaw(this, &SPjcTabAssetsUnused::OnScanProjectAssets)
+		FExecuteAction::CreateLambda([&]()
+		{
+			if (UPjcSubsystem::GetModuleAssetRegistry().Get().IsLoadingAssets())
+			{
+				UPjcSubsystem::ShowNotification(TEXT("Failed to scan project. AssetRegistry is still discovering assets. Please try again after it has finished."), SNotificationItem::CS_Fail, 5.0f);
+				return;
+			}
+
+			TArray<FAssetData> Redirectors;
+			UPjcSubsystem::GetProjectRedirectors(Redirectors);
+			UPjcSubsystem::FixProjectRedirectors(Redirectors);
+
+			if (UPjcSubsystem::ProjectHasRedirectors())
+			{
+				UPjcSubsystem::ShowNotificationWithOutputLog(TEXT("Failed to scan project, because not all redirectors are fixed."), SNotificationItem::CS_Fail, 5.0f);
+				return;
+			}
+
+			if (!FEditorFileUtils::SaveDirtyPackages(true, true, true, false, false, false))
+			{
+				UPjcSubsystem::ShowNotificationWithOutputLog(TEXT("Failed to scan project, because not all assets have been saved."), SNotificationItem::CS_Fail, 5.0f);
+				return;
+			}
+
+			if (StatAssetsPtr.IsValid())
+			{
+				StatAssetsPtr->UpdateData();
+			}
+
+			if (TreeViewPtr.IsValid())
+			{
+				TreeViewPtr->UpdateData();
+				TreeViewPtr->UpdateView();
+			}
+
+			TArray<FAssetData> AssetsUnused;
+			UPjcSubsystem::GetAssetsUnused(AssetsUnused, false);
+
+			bCanCleanProject = AssetsUnused.Num() > 0;
+		})
 	);
 
 	Cmds->MapAction(
 		FPjcCmds::Get().CleanProject,
-		FExecuteAction::CreateRaw(this, &SPjcTabAssetsUnused::OnCleanProject),
-		FCanExecuteAction::CreateRaw(this, &SPjcTabAssetsUnused::CanCleanProject)
+		FExecuteAction::CreateLambda([&]()
+		{
+			// todo:ashe23 show window here 
+		}),
+		FCanExecuteAction::CreateLambda([&]()
+		{
+			return bCanCleanProject;
+		})
 	);
 
 	Cmds->MapAction(
 		FPjcCmds::Get().ClearExcludeSettings,
-		FExecuteAction::CreateLambda([]() {})
+		FExecuteAction::CreateLambda([]()
+		{
+			UPjcAssetExcludeSettings* AssetExcludeSettings = GetMutableDefault<UPjcAssetExcludeSettings>();
+			if (!AssetExcludeSettings) return;
+
+			AssetExcludeSettings->ExcludedAssets.Empty();
+			AssetExcludeSettings->ExcludedClasses.Empty();
+			AssetExcludeSettings->ExcludedFolders.Empty();
+			AssetExcludeSettings->PostEditChange();
+
+			// todo:ashe23 update stats
+			// todo:ashe23 update tree view
+			// todo:ashe23 update content browser
+		})
 	);
 
 	FPropertyEditorModule& PropertyEditor = UPjcSubsystem::GetModulePropertyEditor();
@@ -57,8 +115,6 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 
 	const auto SettingsProperty = PropertyEditor.CreateDetailView(DetailsViewArgs);
 	SettingsProperty->SetObject(GetMutableDefault<UPjcAssetExcludeSettings>());
-
-	UPjcSubsystem::AssetCategoryMappingInit(AssetsCategoryMapping);
 
 	ChildSlot
 	[
@@ -115,91 +171,74 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 	];
 }
 
-void SPjcTabAssetsUnused::OnScanProjectAssets()
-{
-	FString ErrMsg;
-	UPjcSubsystem::ScanProjectAssets(AssetsCategoryMapping, ErrMsg);
 
-	if (ErrMsg.IsEmpty())
-	{
-		if (!StatAssetsPtr.IsValid() || !TreeViewPtr.IsValid() || !ContentBrowserPtr.IsValid()) return;
-
-		StatAssetsPtr->StatsUpdateData(AssetsCategoryMapping);
-		TreeViewPtr->TreeItemsUpdateData(AssetsCategoryMapping);
-		FilterUpdate();
-	}
-	else
-	{
-		UPjcSubsystem::ShowNotificationWithOutputLog(ErrMsg, SNotificationItem::CS_Fail, 5.0f);
-	}
-}
-
-void SPjcTabAssetsUnused::OnCleanProject()
-{
-	// ObjectTools::DeleteAssets(AssetsCategoryMapping[EPjcAssetCategory::Unused].Array(), true);
-
-	// todo:ashe23 cleanup setting window here
-	// const TSharedRef<SWindow> Window = SNew(SWindow).Title(FText::FromString(TEXT("Some Title"))).ClientSize(FVector2D{600, 400});
-	// const TSharedRef<SWidget> Content =
-	// 	SNew(SVerticalBox)
-	// 	+ SVerticalBox::Slot()
-	// 	[
-	// 		SNew(STextBlock).Text(FText::FromString(TEXT("Some Content")))
-	// 	];
-	//
-	// Window->SetContent(Content);
-	//
-	// if (GEditor)
-	// {
-	// 	GEditor->EditorAddModalWindow(Window);
-	// }
-}
+// void SPjcTabAssetsUnused::OnCleanProject()
+// {
+// 	// todo:ashe23 cleanup setting window here, with option to delete empty folders afterwards
+//
+// 	// ObjectTools::DeleteAssets(AssetsCategoryMapping[EPjcAssetCategory::Unused].Array(), true);
+//
+// 	// const TSharedRef<SWindow> Window = SNew(SWindow).Title(FText::FromString(TEXT("Some Title"))).ClientSize(FVector2D{600, 400});
+// 	// const TSharedRef<SWidget> Content =
+// 	// 	SNew(SVerticalBox)
+// 	// 	+ SVerticalBox::Slot()
+// 	// 	[
+// 	// 		SNew(STextBlock).Text(FText::FromString(TEXT("Some Content")))
+// 	// 	];
+// 	//
+// 	// Window->SetContent(Content);
+// 	//
+// 	// if (GEditor)
+// 	// {
+// 	// 	GEditor->EditorAddModalWindow(Window);
+// 	// }
+// }
 
 void SPjcTabAssetsUnused::OnTreeViewSelectionChanged(const TSet<FString>& InSelectedPaths)
 {
-	FilterUpdate();
+	if (!ContentBrowserPtr.IsValid()) return;
+
+	// todo;ashe23 update content browser
 }
 
-void SPjcTabAssetsUnused::FilterUpdate()
-{
-	if (!TreeViewPtr.IsValid() || !ContentBrowserPtr.IsValid()) return;
-
-	FARFilter Filter;
-
-	const TSet<FString>& SelectedPaths = TreeViewPtr->GetSelectedPaths();
-	const TSet<FAssetData>& AssetsUnused = AssetsCategoryMapping[EPjcAssetCategory::Unused];
-
-	if (SelectedPaths.Num() > 0)
-	{
-		Filter.bRecursivePaths = true;
-
-		for (const auto& SelectedPath : SelectedPaths)
-		{
-			Filter.PackagePaths.Emplace(FName{*SelectedPath});
-		}
-	}
-
-	if (AssetsUnused.Num() > 0)
-	{
-		Filter.ObjectPaths.Reserve(AssetsUnused.Num());
-
-		for (const auto& Asset : AssetsUnused)
-		{
-			Filter.ObjectPaths.Emplace(Asset.ToSoftObjectPath().GetAssetPathName());
-		}
-	}
-	else
-	{
-		Filter.TagsAndValues.Emplace(PjcConstants::EmptyTagName, PjcConstants::EmptyTagName.ToString());
-	}
-
-	ContentBrowserPtr->FilterUpdate(Filter);
-}
-
-bool SPjcTabAssetsUnused::CanCleanProject()
-{
-	return AssetsCategoryMapping[EPjcAssetCategory::Unused].Num() > 0;
-}
+// void SPjcTabAssetsUnused::FilterUpdate() const
+// {
+// 	// todo:ashe23 this must be changed
+// 	if (!TreeViewPtr.IsValid() || !ContentBrowserPtr.IsValid()) return;
+//
+// 	FARFilter Filter;
+//
+// 	const TSet<FString>& SelectedPaths = TreeViewPtr->GetSelectedPaths();
+//
+// 	TArray<FAssetData> AssetsUnused;
+// 	UPjcSubsystem::GetAssetsUnused(AssetsUnused);
+//
+// 	if (SelectedPaths.Num() > 0)
+// 	{
+// 		Filter.bRecursivePaths = true;
+//
+// 		for (const auto& SelectedPath : SelectedPaths)
+// 		{
+// 			Filter.PackagePaths.Emplace(FName{*SelectedPath});
+// 		}
+// 	}
+//
+// 	if (AssetsUnused.Num() > 0)
+// 	{
+// 		Filter.ObjectPaths.Reserve(AssetsUnused.Num());
+//
+// 		for (const auto& Asset : AssetsUnused)
+// 		{
+// 			Filter.ObjectPaths.Emplace(Asset.ToSoftObjectPath().GetAssetPathName());
+// 		}
+// 	}
+// 	else
+// 	{
+// 		Filter.TagsAndValues.Emplace(PjcConstants::EmptyTagName, PjcConstants::EmptyTagName.ToString());
+// 	}
+//
+// 	ContentBrowserPtr->FilterUpdate(Filter);
+// }
 
 TSharedRef<SWidget> SPjcTabAssetsUnused::CreateToolbar() const
 {
@@ -215,28 +254,3 @@ TSharedRef<SWidget> SPjcTabAssetsUnused::CreateToolbar() const
 
 	return ToolBarBuilder.MakeWidget();
 }
-
-// TSharedPtr<SWidget> SPjcTabAssetsUnused::GetContentBrowserContextMenu(const TArray<FAssetData>& Assets) const
-// {
-// 	FMenuBuilder MenuBuilder{true, Cmds};
-//
-// 	MenuBuilder.BeginSection(TEXT("PjcAssetsInfo"), FText::FromString(TEXT("Info")));
-// 	{
-// 		MenuBuilder.AddMenuEntry(FPjcCmds::Get().OpenViewerSizeMap);
-// 		MenuBuilder.AddMenuEntry(FPjcCmds::Get().OpenViewerReference);
-// 		MenuBuilder.AddMenuEntry(FPjcCmds::Get().OpenViewerAudit);
-// 	}
-// 	MenuBuilder.EndSection();
-//
-// 	MenuBuilder.BeginSection(TEXT("PjcAssetActions"), FText::FromString(TEXT("Actions")));
-// 	{
-// 		MenuBuilder.AddMenuEntry(FPjcCmds::Get().AssetsExclude);
-// 		MenuBuilder.AddMenuEntry(FPjcCmds::Get().AssetsExcludeByClass);
-// 		MenuBuilder.AddMenuEntry(FPjcCmds::Get().AssetsInclude);
-// 		MenuBuilder.AddMenuEntry(FPjcCmds::Get().AssetsIncludeByClass);
-// 		MenuBuilder.AddMenuEntry(FPjcCmds::Get().AssetsDelete);
-// 	}
-// 	MenuBuilder.EndSection();
-//
-// 	return MenuBuilder.MakeWidget();
-// }
