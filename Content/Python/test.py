@@ -2,7 +2,10 @@ import unreal
 
 subsystem = unreal.get_editor_subsystem(unreal.PjcSubsystem)
 
+# subsystem.delete_folders_empty(True, True)
 
+for f in subsystem.get_folders_empty():
+    print(f)
 ## Scan project and print result
 # subsystem.project_scan()
 

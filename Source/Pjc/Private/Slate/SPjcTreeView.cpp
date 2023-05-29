@@ -564,7 +564,7 @@ void SPjcTreeView::TreeItemsUpdateData(TMap<EPjcAssetCategory, TSet<FAssetData>>
 	RootItem->NumAssetsTotal = AssetsCategoryMapping[EPjcAssetCategory::Any].Num();
 	RootItem->NumAssetsUsed = AssetsCategoryMapping[EPjcAssetCategory::Used].Num();
 	RootItem->NumAssetsUnused = AssetsCategoryMapping[EPjcAssetCategory::Unused].Num();
-	RootItem->SizeAssetsUnused = UPjcSubsystem::GetAssetsTotalSize(AssetsCategoryMapping[EPjcAssetCategory::Unused]);
+	RootItem->SizeAssetsUnused = UPjcSubsystem::GetAssetsTotalSize(AssetsCategoryMapping[EPjcAssetCategory::Unused].Array());
 	RootItem->PercentageUnused = RootItem->NumAssetsTotal == 0 ? 0 : RootItem->NumAssetsUnused * 100.0f / RootItem->NumAssetsTotal;
 	RootItem->PercentageUnusedNormalized = FMath::GetMappedRangeValueClamped(FVector2D{0.0f, 100.0f}, FVector2D{0.0f, 1.0f}, RootItem->PercentageUnused);
 	RootItem->Parent = nullptr;

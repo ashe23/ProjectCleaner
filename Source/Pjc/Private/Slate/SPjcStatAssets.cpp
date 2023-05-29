@@ -54,14 +54,14 @@ void SPjcStatAssets::StatsUpdateData(TMap<EPjcAssetCategory, TSet<FAssetData>>& 
 	const int32 NumAssetsExcluded = AssetsCategoryMapping[EPjcAssetCategory::Excluded].Num();
 	const int32 NumAssetsAny = AssetsCategoryMapping[EPjcAssetCategory::Any].Num();
 
-	const int64 SizeAssetsUnused = UPjcSubsystem::GetAssetsTotalSize(AssetsCategoryMapping[EPjcAssetCategory::Unused]);
-	const int64 SizeAssetsUsed = UPjcSubsystem::GetAssetsTotalSize(AssetsCategoryMapping[EPjcAssetCategory::Used]);
-	const int64 SizeAssetsPrimary = UPjcSubsystem::GetAssetsTotalSize(AssetsCategoryMapping[EPjcAssetCategory::Primary]);
-	const int64 SizeAssetsEditor = UPjcSubsystem::GetAssetsTotalSize(AssetsCategoryMapping[EPjcAssetCategory::Editor]);
-	const int64 SizeAssetsIndirect = UPjcSubsystem::GetAssetsTotalSize(AssetsCategoryMapping[EPjcAssetCategory::Indirect]);
-	const int64 SizeAssetsExtReferenced = UPjcSubsystem::GetAssetsTotalSize(AssetsCategoryMapping[EPjcAssetCategory::ExtReferenced]);
-	const int64 SizeAssetsExcluded = UPjcSubsystem::GetAssetsTotalSize(AssetsCategoryMapping[EPjcAssetCategory::Excluded]);
-	const int64 SizeAssetsAny = UPjcSubsystem::GetAssetsTotalSize(AssetsCategoryMapping[EPjcAssetCategory::Any]);
+	const int64 SizeAssetsUnused = UPjcSubsystem::GetAssetsTotalSize(AssetsCategoryMapping[EPjcAssetCategory::Unused].Array());
+	const int64 SizeAssetsUsed = UPjcSubsystem::GetAssetsTotalSize(AssetsCategoryMapping[EPjcAssetCategory::Used].Array());
+	const int64 SizeAssetsPrimary = UPjcSubsystem::GetAssetsTotalSize(AssetsCategoryMapping[EPjcAssetCategory::Primary].Array());
+	const int64 SizeAssetsEditor = UPjcSubsystem::GetAssetsTotalSize(AssetsCategoryMapping[EPjcAssetCategory::Editor].Array());
+	const int64 SizeAssetsIndirect = UPjcSubsystem::GetAssetsTotalSize(AssetsCategoryMapping[EPjcAssetCategory::Indirect].Array());
+	const int64 SizeAssetsExtReferenced = UPjcSubsystem::GetAssetsTotalSize(AssetsCategoryMapping[EPjcAssetCategory::ExtReferenced].Array());
+	const int64 SizeAssetsExcluded = UPjcSubsystem::GetAssetsTotalSize(AssetsCategoryMapping[EPjcAssetCategory::Excluded].Array());
+	const int64 SizeAssetsAny = UPjcSubsystem::GetAssetsTotalSize(AssetsCategoryMapping[EPjcAssetCategory::Any].Array());
 
 	const FMargin FirstLvl{5.0f, 0.0f, 0.0f, 0.0f};
 	const FMargin SecondLvl{20.0f, 0.0f, 0.0f, 0.0f};

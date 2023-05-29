@@ -179,27 +179,35 @@ public:
 
 	/**
 	 * @brief Delete all unused assets in project. This does not delete excluded assets.
+	 * @param bShowSlowTask bool
+	 * @param bShowEditorNotification bool
 	 */
 	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset")
-	static void DeleteAssetsUnused();
+	static void DeleteAssetsUnused(const bool bShowSlowTask = true, const bool bShowEditorNotification = false);
 
 	/**
 	 * @brief Delete all empty folders in project
+	 * @param bShowSlowTask bool
+	 * @param bShowEditorNotification bool
 	 */
 	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Path")
-	static void DeleteFoldersEmpty();
+	static void DeleteFoldersEmpty(const bool bShowSlowTask = true, const bool bShowEditorNotification = false);
 
 	/**
 	 * @brief Delete all external files in project. This does not delete excluded files.
+	 * @param bShowSlowTask bool
+	 * @param bShowEditorNotification bool
 	 */
 	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Path")
-	static void DeleteFilesExternal();
+	static void DeleteFilesExternal(const bool bShowSlowTask = true, const bool bShowEditorNotification = false);
 
 	/**
 	 * @brief Delete all corrupted asset files in project
+	 * @param bShowSlowTask bool
+	 * @param bShowEditorNotification bool
 	 */
 	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Path")
-	static void DeleteFilesCorrupted();
+	static void DeleteFilesCorrupted(const bool bShowSlowTask = true, const bool bShowEditorNotification = false);
 
 	/**
 	 * @brief Returns all redirectors in project
