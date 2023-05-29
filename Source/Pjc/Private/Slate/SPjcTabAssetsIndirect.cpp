@@ -298,6 +298,8 @@ void SPjcTabAssetsIndirect::ListUpdateView()
 		ItemsFiltered.Emplace(MakeShareable(new FPjcAssetIndirectInfo{Item->Asset, Item->FilePath, Item->FileNum}));
 	}
 
+	ListView->ClearSelection();
+	ListView->ClearHighlightedItems();
 	ListView->RebuildList();
 }
 
@@ -350,13 +352,11 @@ void SPjcTabAssetsIndirect::OnListSort(EColumnSortPriority::Type SortPriority, c
 void SPjcTabAssetsIndirect::OnSearchTextChanged(const FText& InText)
 {
 	SearchText = InText;
-
 	ListUpdateView();
 }
 
 void SPjcTabAssetsIndirect::OnSearchTextCommitted(const FText& InText, ETextCommit::Type)
 {
 	SearchText = InText;
-
 	ListUpdateView();
 }

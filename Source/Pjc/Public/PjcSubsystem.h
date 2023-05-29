@@ -143,23 +143,26 @@ public:
 	/**
 	 * @brief Returns all external files minus excluded files
 	 * @param Files
+	 * @param bShowSlowTask bool
 	 */
 	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Path")
-	static void GetFilesExternalFiltered(TArray<FString>& Files);
+	static void GetFilesExternalFiltered(TArray<FString>& Files, const bool bShowSlowTask = true);
 
 	/**
 	 * @brief Returns all external files that has been excluded
 	 * @param Files
+	 * @param bShowSlowTask bool
 	 */
 	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Path")
-	static void GetFilesExternalExcluded(TArray<FString>& Files);
+	static void GetFilesExternalExcluded(TArray<FString>& Files, const bool bShowSlowTask = true);
 
 	/**
 	 * @brief Returns all corrupted asset files in project
 	 * @param Files
+	 * @param bShowSlowTask bool
 	 */
 	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Path")
-	static void GetFilesCorrupted(TArray<FString>& Files);
+	static void GetFilesCorrupted(TArray<FString>& Files, const bool bShowSlowTask = true);
 
 	/**
 	 * @brief Returns all subfolders in given path

@@ -1,13 +1,11 @@
 ﻿// Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "Slate/SPjcTabAssetsCorrupted.h"
+#include "Slate/SPjcItemAssetCorrupted.h"
 #include "PjcCmds.h"
 #include "PjcStyles.h"
-#include "PjcConstants.h"
 #include "PjcSubsystem.h"
 // Engine Headers
-#include "Misc/ScopedSlowTask.h"
-#include "Slate/SPjcItemAssetCorrupted.h"
 #include "Widgets/Input/SSearchBox.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SSeparator.h"
@@ -136,7 +134,7 @@ void SPjcTabAssetsCorrupted::Construct(const FArguments& InArgs)
 			.ShadowOffset(FVector2D{0.5f, 0.5f})
 			.ShadowColorAndOpacity(FLinearColor::Black)
 			.Font(FPjcStyles::GetFont("Bold", 10))
-			.Text(FText::FromString(TEXT("You can attempt to manually load these assets again to see if the problem persists. If the issue remains unresolved, you may consider deleting the problematic asset file directly from the file explorer.")))
+			.Text(FText::FromString(TEXT("You can attempt to manually load these assets again, by restarting editor, to see if the problem persists. If the issue remains unresolved, you may consider deleting the problematic asset file directly from the file explorer.")))
 		]
 		+ SVerticalBox::Slot().AutoHeight().Padding(5.0f)
 		[
@@ -173,35 +171,16 @@ void SPjcTabAssetsCorrupted::Construct(const FArguments& InArgs)
 
 void SPjcTabAssetsCorrupted::ListUpdateData()
 {
-	FScopedSlowTask SlowTaskMain{
-		2.0f,
-		FText::FromString(TEXT("Scanning for corrupted assets...")),
-		GIsEditor && !IsRunningCommandlet()
-	};
-	SlowTaskMain.MakeDialog(false, false);
-	SlowTaskMain.EnterProgressFrame(1.0f);
+	TArray<FString> FilesCorrupted;
+	UPjcSubsystem::GetFilesCorrupted(FilesCorrupted, true);
 
-	TArray<FString> FilesEngine;
-	UPjcSubsystem::GetFilesByExt(FPaths::ProjectContentDir(), true, false, PjcConstants::EngineFileExtensions, FilesEngine);
+	ItemsAll.Reset(FilesCorrupted.Num());
 
-	FScopedSlowTask SlowTask{
-		static_cast<float>(FilesEngine.Num()),
-		FText::FromString(TEXT("Scanning assets files...")),
-		GIsEditor && !IsRunningCommandlet()
-	};
-	SlowTask.MakeDialog(false, false);
-
-	ItemsAll.Reset();
-	ItemsAll.Reserve(FilesEngine.Num());
+	NumFilesTotal = FilesCorrupted.Num();
 	SizeFilesTotal = 0;
 
-	for (const auto& File : FilesEngine)
+	for (const auto& File : FilesCorrupted)
 	{
-		SlowTask.EnterProgressFrame(1.0f, FText::FromString(File));
-
-		const FString ObjectPath = UPjcSubsystem::PathConvertToObjectPath(File);
-		if (ObjectPath.IsEmpty() || UPjcSubsystem::GetModuleAssetRegistry().Get().GetAssetByObjectPath(FName{*ObjectPath}).IsValid()) continue;
-
 		const int64 FileSize = IFileManager::Get().FileSize(*File);
 		const FString FileName = FPaths::GetBaseFilename(File);
 		const FString FileExt = FPaths::GetExtension(File, false).ToLower();
@@ -218,8 +197,6 @@ void SPjcTabAssetsCorrupted::ListUpdateData()
 			)
 		);
 	}
-
-	NumFilesTotal = ItemsAll.Num();
 }
 
 void SPjcTabAssetsCorrupted::ListUpdateView()
@@ -233,9 +210,12 @@ void SPjcTabAssetsCorrupted::ListUpdateView()
 
 	for (const auto& Item : ItemsAll)
 	{
-		if (!Item.IsValid()) continue;
-
-		if (!SearchText.IsEmpty() && !Item->FilePath.Contains(SearchString) && !Item->FileName.Contains(SearchString))
+		if (
+			!Item.IsValid() ||
+			!SearchText.IsEmpty() &&
+			!Item->FilePath.Contains(SearchString) &&
+			!Item->FileName.Contains(SearchString)
+		)
 		{
 			continue;
 		}

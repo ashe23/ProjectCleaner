@@ -551,7 +551,7 @@ void UPjcSubsystem::GetFilesExternalAll(TArray<FString>& Files)
 	);
 }
 
-void UPjcSubsystem::GetFilesExternalFiltered(TArray<FString>& Files)
+void UPjcSubsystem::GetFilesExternalFiltered(TArray<FString>& Files, const bool bShowSlowTask)
 {
 	const UPjcFileExcludeSettings* FileExcludeSettings = GetDefault<UPjcFileExcludeSettings>();
 	if (!FileExcludeSettings) return;
@@ -561,8 +561,17 @@ void UPjcSubsystem::GetFilesExternalFiltered(TArray<FString>& Files)
 
 	Files.Reset(FilesExternalAll.Num());
 
+	FScopedSlowTask SlowTask(
+		static_cast<float>(FilesExternalAll.Num()),
+		FText::FromString(TEXT("Searching for external files...")),
+		bShowSlowTask && GIsEditor && !IsRunningCommandlet()
+	);
+	SlowTask.MakeDialog(false, false);
+
 	for (const auto& File : FilesExternalAll)
 	{
+		SlowTask.EnterProgressFrame(1.0f, FText::FromString(File));
+
 		const FString FileExt = FPaths::GetExtension(File, false).ToLower();
 		const bool bExcludedByExt = FileExcludeSettings->ExcludedExtensions.Contains(FileExt);
 		const bool bExcludedByFile = FileExcludeSettings->ExcludedFiles.ContainsByPredicate([&](const FFilePath& InFilePath)
@@ -584,7 +593,7 @@ void UPjcSubsystem::GetFilesExternalFiltered(TArray<FString>& Files)
 	Files.Shrink();
 }
 
-void UPjcSubsystem::GetFilesExternalExcluded(TArray<FString>& Files)
+void UPjcSubsystem::GetFilesExternalExcluded(TArray<FString>& Files, const bool bShowSlowTask)
 {
 	const UPjcFileExcludeSettings* FileExcludeSettings = GetDefault<UPjcFileExcludeSettings>();
 	if (!FileExcludeSettings) return;
@@ -593,9 +602,18 @@ void UPjcSubsystem::GetFilesExternalExcluded(TArray<FString>& Files)
 	GetFilesExternalAll(FilesExternalAll);
 
 	Files.Reset(FilesExternalAll.Num());
+	
+	FScopedSlowTask SlowTask(
+		static_cast<float>(FilesExternalAll.Num()),
+		FText::FromString(TEXT("Searching for external files...")),
+		bShowSlowTask && GIsEditor && !IsRunningCommandlet()
+	);
+	SlowTask.MakeDialog(false, false);
 
 	for (const auto& File : FilesExternalAll)
 	{
+		SlowTask.EnterProgressFrame(1.0f, FText::FromString(File));
+		
 		const FString FileExt = FPaths::GetExtension(File, false).ToLower();
 		const bool bExcludedByExt = FileExcludeSettings->ExcludedExtensions.Contains(FileExt);
 		const bool bExcludedByFile = FileExcludeSettings->ExcludedFiles.ContainsByPredicate([&](const FFilePath& InFilePath)
@@ -618,7 +636,7 @@ void UPjcSubsystem::GetFilesExternalExcluded(TArray<FString>& Files)
 	Files.Shrink();
 }
 
-void UPjcSubsystem::GetFilesCorrupted(TArray<FString>& Files)
+void UPjcSubsystem::GetFilesCorrupted(TArray<FString>& Files, const bool bShowSlowTask)
 {
 	TArray<FString> FileAssets;
 
@@ -632,8 +650,17 @@ void UPjcSubsystem::GetFilesCorrupted(TArray<FString>& Files)
 
 	Files.Reset(FileAssets.Num());
 
+	FScopedSlowTask SlowTask(
+		static_cast<float>(FileAssets.Num()),
+		FText::FromString(TEXT("Searching for corrupted asset files...")),
+		bShowSlowTask && GIsEditor && !IsRunningCommandlet()
+	);
+	SlowTask.MakeDialog(false, false);
+
 	for (const auto& File : FileAssets)
 	{
+		SlowTask.EnterProgressFrame(1.0f, FText::FromString(File));
+		
 		const FString Path = PathConvertToObjectPath(File);
 		if (Path.IsEmpty()) continue;
 		if (GetModuleAssetRegistry().Get().GetAssetByObjectPath(FName{*Path}).IsValid()) continue;
