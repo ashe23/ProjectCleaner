@@ -557,8 +557,8 @@ void SPjcTreeView::TreeItemsUpdateData(TMap<EPjcAssetCategory, TSet<FAssetData>>
 	RootItem->FolderName = TEXT("Content");
 	RootItem->bIsDev = false;
 	RootItem->bIsRoot = true;
-	RootItem->bIsEmpty = UPjcSubsystem::PathIsEmpty(PathContentDir);
-	RootItem->bIsExcluded = UPjcSubsystem::PathIsExcluded(PathContentDir);
+	RootItem->bIsEmpty = UPjcSubsystem::FolderIsEmpty(PathContentDir);
+	RootItem->bIsExcluded = UPjcSubsystem::FolderIsExcluded(PathContentDir);
 	RootItem->bIsExpanded = true;
 	RootItem->bIsVisible = true;
 	RootItem->NumAssetsTotal = AssetsCategoryMapping[EPjcAssetCategory::Any].Num();
@@ -592,8 +592,8 @@ void SPjcTreeView::TreeItemsUpdateData(TMap<EPjcAssetCategory, TSet<FAssetData>>
 			SubItem->FolderName = FPaths::GetPathLeaf(SubItem->FolderPath);
 			SubItem->bIsDev = SubItem->FolderPath.StartsWith(PjcConstants::PathDevelopers.ToString());
 			SubItem->bIsRoot = false;
-			SubItem->bIsEmpty = UPjcSubsystem::PathIsEmpty(SubItem->FolderPath);
-			SubItem->bIsExcluded = UPjcSubsystem::PathIsExcluded(SubItem->FolderPath);
+			SubItem->bIsEmpty = UPjcSubsystem::FolderIsEmpty(SubItem->FolderPath);
+			SubItem->bIsExcluded = UPjcSubsystem::FolderIsExcluded(SubItem->FolderPath);
 			SubItem->bIsExpanded = ItemIsExpanded(SubItem, CachedExpandedItems);
 			SubItem->bIsVisible = true;
 			SubItem->NumAssetsTotal = MapNumAssetsAllByPath.Contains(SubItem->FolderPath) ? MapNumAssetsAllByPath[SubItem->FolderPath] : 0;

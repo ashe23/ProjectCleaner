@@ -4,9 +4,17 @@ subsystem = unreal.get_editor_subsystem(unreal.PjcSubsystem)
 
 
 ## Scan project and print result
-subsystem.project_scan()
+# subsystem.project_scan()
 
-##
+## clean project
+# subsystem.project_clean()
+
+## get all unused_assets in project
+# subsystem.get_assets_unused()
+
+# fix_project_redirectors()
+# get_project_redirectors()
+# project_has_redirectors()
 
 # QUERY
 # sub.get_assets_all() - returns all assets in project (inside Content Folder only)
@@ -44,10 +52,10 @@ subsystem.project_scan()
 
 # ./UE4Editor-Cmd.exe "C:\dev\ue4\MyProject\MyProject.uproject" -run=ProjectCleanerCLI
 # UE4Editor.exe <GameName or uproject> -run=ResavePackages -fixupredirects -autocheckout -projectonly -unattended
-cmd_ref = "C:\\Program Files\\Epic Games\\UE_4.27\\Engine\\Binaries\\Win64\\UE4Editor.exe \"W:/dev/ue_projects/Workshop427/Workshop427.uproject\" -run=ResavePackages -fixupredirects -autocheckout -projectonly -unattended"
+# cmd_ref = "C:\\Program Files\\Epic Games\\UE_4.27\\Engine\\Binaries\\Win64\\UE4Editor.exe \"W:/dev/ue_projects/Workshop427/Workshop427.uproject\" -run=ResavePackages -fixupredirects -autocheckout -projectonly -unattended"
 
-cmd = "C:\\Program Files\\Epic Games\\UE_4.27\\Engine\\Binaries\\Win64\\UE4Editor-Cmd.exe \"W:/dev/ue_projects/Workshop427/Workshop427.uproject\" -run=Pjc -full_cleanup -NoShaderCompile"
+# cmd = "C:\\Program Files\\Epic Games\\UE_4.27\\Engine\\Binaries\\Win64\\UE4Editor-Cmd.exe \"W:/dev/ue_projects/Workshop427/Workshop427.uproject\" -run=Pjc -full_cleanup -NoShaderCompile"
 
-import subprocess
+# import subprocess
 
-subprocess.call(cmd)
+# subprocess.call(cmd)

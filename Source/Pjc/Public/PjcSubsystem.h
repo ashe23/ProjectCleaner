@@ -201,7 +201,127 @@ public:
 	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Path")
 	static void DeleteFilesCorrupted();
 
+	/**
+	 * @brief Returns all redirectors in project
+	 * @param Redirectors TArray<FAssetData>
+	 */
+	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset")
+	static void GetProjectRedirectors(TArray<FAssetData>& Redirectors);
 
+	/**
+	 * @brief Checks if project contains any redirector asset
+	 * @return bool
+	 */
+	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset")
+	static bool ProjectHasRedirectors();
+
+	/**
+	 * @brief Fixup given redirector assets
+	 * @param Redirectors TArray<FAssetData>
+	 * @param bShowSlowTask bool
+	 */
+	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset")
+	static void FixProjectRedirectors(const TArray<FAssetData>& Redirectors, const bool bShowSlowTask = true);
+
+	/**
+	 * @brief Checks if editor is in play mode or simulation or not
+	 * @return bool
+	 */
+	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Editor")
+	static bool EditorIsInPlayMode();
+
+	/**
+	 * @brief Checks if given asset is blueprint or not
+	 * @param InAsset FAssetData
+	 * @return bool
+	 */
+	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset")
+	static bool AssetIsBlueprint(const FAssetData& InAsset);
+
+	/**
+	 * @brief Checks if given asset has external referencers outside Content folder or not
+	 * @param InAsset FAssetData
+	 * @return bool
+	 */
+	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset")
+	static bool AssetIsExtReferenced(const FAssetData& InAsset);
+
+	/**
+	 * @brief Checks if given asset has circular dependencies or not
+	 * @param InAsset FAssetData
+	 * @return bool
+	 */
+	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset")
+	static bool AssetIsCircular(const FAssetData& InAsset);
+
+	/**
+	 * @brief Normalize given path
+	 * @param InPath FString
+	 * @return FString
+	 */
+	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Path")
+	static FString PathNormalize(const FString& InPath);
+
+	/**
+	 * @brief Convert given path to absolute
+	 * @param InPath FString
+	 * @return FString
+	 */
+	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Path")
+	static FString PathConvertToAbsolute(const FString& InPath);
+
+	/**
+	 * @brief Convert given path relative to Content folder
+	 * @param InPath FString
+	 * @return FString
+	 */
+	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Path")
+	static FString PathConvertToRelative(const FString& InPath);
+
+	/**
+	 * @brief Convert given path to object path 
+	 * @param InPath FString
+	 * @return FString
+	 */
+	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Path")
+	static FString PathConvertToObjectPath(const FString& InPath);
+
+	/**
+	 * @brief Returns given asset size on disk in bytes
+	 * @param InAsset FAssetData
+	 * @return int64
+	 */
+	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset")
+	static int64 GetAssetSize(const FAssetData& InAsset);
+
+	/**
+	 * @brief Returns total size of given assets in bytes
+	 * @param InAssets TArray<FAssetData>
+	 * @return int64
+	 */
+	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset")
+	static int64 GetAssetsTotalSize(const TArray<FAssetData>& InAssets);
+
+	/**
+	 * @brief Returns size of given file in bytes
+	 * @param InFile FString
+	 * @return int64
+	 */
+	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Path")
+	static int64 GetFileSize(const FString& InFile);
+
+	/**
+	 * @brief Returns total size of given files in bytes
+	 * @param Files TArray<FString>
+	 * @return int64
+	 */
+	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Path")
+	static int64 GetFilesTotalSize(const TArray<FString>& Files);
+
+
+	static bool FolderIsEmpty(const FString& InPath);
+	static bool FolderIsExcluded(const FString& InPath);
+	static bool FolderIsEngineGenerated(const FString& InPath);
 	static void GetSourceAndConfigFiles(TSet<FString>& Files);
 	static void GetAssetsDependencies(TSet<FAssetData>& Assets);
 	static void ShowNotification(const FString& Msg, const SNotificationItem::ECompletionState State, const float Duration);
@@ -214,24 +334,9 @@ public:
 	static void OpenReferenceViewer(const TArray<FAssetData>& InAssets);
 	static void OpenAssetAuditViewer(const TArray<FAssetData>& InAssets);
 	static void TryOpenFile(const FString& InPath);
-	static void FixupRedirectorsInProject();
 	static void AssetCategoryMappingInit(TMap<EPjcAssetCategory, TSet<FAssetData>>& AssetsCategoryMapping);
-	static bool AssetIsBlueprint(const FAssetData& InAsset);
-	static bool AssetIsExtReferenced(const FAssetData& InAsset);
-	static bool AssetIsCircular(const FAssetData& InAsset);
-	static bool EditorIsInPlayMode();
-	static bool ProjectContainsRedirectors();
-	static bool PathIsEmpty(const FString& InPath);
-	static bool PathIsExcluded(const FString& InPath);
-	static bool PathIsEngineGenerated(const FString& InPath);
-	static int64 GetAssetSize(const FAssetData& InAsset);
-	static int64 GetAssetsTotalSize(const TSet<FAssetData>& InAssets);
 	static FName GetAssetExactClassName(const FAssetData& InAsset);
 	static UClass* GetAssetClassByName(const FName& InClassName);
-	static FString PathNormalize(const FString& InPath);
-	static FString PathConvertToAbsolute(const FString& InPath);
-	static FString PathConvertToRelative(const FString& InPath);
-	static FString PathConvertToObjectPath(const FString& InPath);
 	static FAssetToolsModule& GetModuleAssetTools();
 	static FAssetRegistryModule& GetModuleAssetRegistry();
 	static FContentBrowserModule& GetModuleContentBrowser();

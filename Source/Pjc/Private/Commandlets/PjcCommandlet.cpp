@@ -31,7 +31,7 @@ int32 UPjcCommandlet::Main(const FString& Params)
 	//- delete_files_external
 	//- delete_files_corrupted
 
-	if (UPjcSubsystem::ProjectContainsRedirectors())
+	if (UPjcSubsystem::ProjectHasRedirectors())
 	{
 		UE_LOG(LogProjectCleanerCLI, Warning, TEXT("Project contains redirectors that must be fixed first."));
 		UE_LOG(LogProjectCleanerCLI, Warning, TEXT("Please run following command before doing any cleaning operations."));
@@ -162,12 +162,9 @@ void UPjcCommandlet::ParseCommandLinesArguments(const FString& Params)
 
 void UPjcCommandlet::StatsPrint(const FCleanupStats& Stats)
 {
-	const float UnusedPercent = Stats.NumAssetsAll == 0 ? 0.0f : static_cast<float>(Stats.NumAssetsUnused) / Stats.NumAssetsAll * 100.0f;
-
 	UE_LOG(LogProjectCleanerCLI, Display, TEXT("Assets All - %d"), Stats.NumAssetsAll);
 	UE_LOG(LogProjectCleanerCLI, Display, TEXT("Assets Used - %d"), Stats.NumAssetsUsed);
 	UE_LOG(LogProjectCleanerCLI, Display, TEXT("Assets Unused - %d"), Stats.NumAssetsUnused);
-	UE_LOG(LogProjectCleanerCLI, Display, TEXT("Unused %% - %.1f"), UnusedPercent);
 	UE_LOG(LogProjectCleanerCLI, Display, TEXT("================="));
 	UE_LOG(LogProjectCleanerCLI, Display, TEXT("Files External - %d"), Stats.NumFilesExternal);
 	UE_LOG(LogProjectCleanerCLI, Display, TEXT("Files Corrupted - %d"), Stats.NumFilesCorrupted);
