@@ -7,7 +7,6 @@
 #include "PjcCmds.h"
 #include "PjcTypes.h"
 #include "PjcSubsystem.h"
-#include "PjcConstants.h"
 // Engine Headers
 #include "FileHelpers.h"
 #include "Settings/ContentBrowserSettings.h"
@@ -54,21 +53,7 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 				return;
 			}
 
-			if (StatAssetsPtr.IsValid())
-			{
-				StatAssetsPtr->UpdateData();
-			}
-
-			if (TreeViewPtr.IsValid())
-			{
-				TreeViewPtr->UpdateData();
-				TreeViewPtr->UpdateView();
-			}
-
-			TArray<FAssetData> AssetsUnused;
-			UPjcSubsystem::GetAssetsUnused(AssetsUnused, false);
-
-			bCanCleanProject = AssetsUnused.Num() > 0;
+			UpdateView();
 		})
 	);
 
@@ -86,7 +71,7 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 
 	Cmds->MapAction(
 		FPjcCmds::Get().ClearExcludeSettings,
-		FExecuteAction::CreateLambda([]()
+		FExecuteAction::CreateLambda([&]()
 		{
 			UPjcAssetExcludeSettings* AssetExcludeSettings = GetMutableDefault<UPjcAssetExcludeSettings>();
 			if (!AssetExcludeSettings) return;
@@ -96,9 +81,7 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 			AssetExcludeSettings->ExcludedFolders.Empty();
 			AssetExcludeSettings->PostEditChange();
 
-			// todo:ashe23 update stats
-			// todo:ashe23 update tree view
-			// todo:ashe23 update content browser
+			UpdateView();
 		})
 	);
 
@@ -115,6 +98,9 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 
 	const auto SettingsProperty = PropertyEditor.CreateDetailView(DetailsViewArgs);
 	SettingsProperty->SetObject(GetMutableDefault<UPjcAssetExcludeSettings>());
+
+	SAssignNew(TreeViewPtr, SPjcTreeView);
+	SAssignNew(ContentBrowserPtr, SPjcContentBrowser).TreeViewPtr(TreeViewPtr);
 
 	ChildSlot
 	[
@@ -160,12 +146,11 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 			]
 			+ SSplitter::Slot().Value(0.35f)
 			[
-				SAssignNew(TreeViewPtr, SPjcTreeView)
-				.OnSelectionChanged_Raw(this, &SPjcTabAssetsUnused::OnTreeViewSelectionChanged)
+				TreeViewPtr.ToSharedRef()
 			]
 			+ SSplitter::Slot().Value(0.45f)
 			[
-				SAssignNew(ContentBrowserPtr, SPjcContentBrowser)
+				ContentBrowserPtr.ToSharedRef()
 			]
 		]
 	];
@@ -194,52 +179,6 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 // 	// }
 // }
 
-void SPjcTabAssetsUnused::OnTreeViewSelectionChanged(const TSet<FString>& InSelectedPaths)
-{
-	if (!ContentBrowserPtr.IsValid()) return;
-
-	// todo;ashe23 update content browser
-}
-
-// void SPjcTabAssetsUnused::FilterUpdate() const
-// {
-// 	// todo:ashe23 this must be changed
-// 	if (!TreeViewPtr.IsValid() || !ContentBrowserPtr.IsValid()) return;
-//
-// 	FARFilter Filter;
-//
-// 	const TSet<FString>& SelectedPaths = TreeViewPtr->GetSelectedPaths();
-//
-// 	TArray<FAssetData> AssetsUnused;
-// 	UPjcSubsystem::GetAssetsUnused(AssetsUnused);
-//
-// 	if (SelectedPaths.Num() > 0)
-// 	{
-// 		Filter.bRecursivePaths = true;
-//
-// 		for (const auto& SelectedPath : SelectedPaths)
-// 		{
-// 			Filter.PackagePaths.Emplace(FName{*SelectedPath});
-// 		}
-// 	}
-//
-// 	if (AssetsUnused.Num() > 0)
-// 	{
-// 		Filter.ObjectPaths.Reserve(AssetsUnused.Num());
-//
-// 		for (const auto& Asset : AssetsUnused)
-// 		{
-// 			Filter.ObjectPaths.Emplace(Asset.ToSoftObjectPath().GetAssetPathName());
-// 		}
-// 	}
-// 	else
-// 	{
-// 		Filter.TagsAndValues.Emplace(PjcConstants::EmptyTagName, PjcConstants::EmptyTagName.ToString());
-// 	}
-//
-// 	ContentBrowserPtr->FilterUpdate(Filter);
-// }
-
 TSharedRef<SWidget> SPjcTabAssetsUnused::CreateToolbar() const
 {
 	FToolBarBuilder ToolBarBuilder{Cmds, FMultiBoxCustomization::None};
@@ -253,4 +192,28 @@ TSharedRef<SWidget> SPjcTabAssetsUnused::CreateToolbar() const
 	ToolBarBuilder.EndSection();
 
 	return ToolBarBuilder.MakeWidget();
+}
+
+void SPjcTabAssetsUnused::UpdateView()
+{
+	if (StatAssetsPtr.IsValid())
+	{
+		StatAssetsPtr->UpdateView();
+	}
+
+	if (TreeViewPtr.IsValid())
+	{
+		TreeViewPtr->UpdateData();
+		TreeViewPtr->UpdateView();
+	}
+
+	if (ContentBrowserPtr.IsValid())
+	{
+		ContentBrowserPtr->UpdateView();
+	}
+
+	TArray<FAssetData> AssetsUnused;
+	UPjcSubsystem::GetAssetsUnused(AssetsUnused, false);
+
+	bCanCleanProject = AssetsUnused.Num() > 0;
 }

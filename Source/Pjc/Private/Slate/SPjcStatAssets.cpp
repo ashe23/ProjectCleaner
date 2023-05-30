@@ -15,7 +15,7 @@ void SPjcStatAssets::Construct(const FArguments& InArgs)
 	.IsFocusable(false)
 	.HeaderRow(GetHeaderRow());
 
-	UpdateData();
+	UpdateView();
 
 	ChildSlot
 	[
@@ -41,7 +41,7 @@ void SPjcStatAssets::Construct(const FArguments& InArgs)
 	];
 }
 
-void SPjcStatAssets::UpdateData()
+void SPjcStatAssets::UpdateView()
 {
 	TArray<FAssetData> AssetsAll;
 	TArray<FAssetData> AssetsUsed;

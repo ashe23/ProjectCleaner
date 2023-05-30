@@ -14,8 +14,6 @@
 
 void SPjcTreeView::Construct(const FArguments& InArgs)
 {
-	DelegateSelectionChanged = InArgs._OnSelectionChanged;
-
 	SubsystemPtr = GEditor->GetEditorSubsystem<UPjcSubsystem>();
 
 	Cmds = MakeShareable(new FUICommandList);
@@ -30,9 +28,9 @@ void SPjcTreeView::Construct(const FArguments& InArgs)
 			const EAppReturnType::Type ReturnType = FMessageDialog::Open(EAppMsgType::YesNo, Context, &Title);
 			if (ReturnType == EAppReturnType::Cancel || ReturnType == EAppReturnType::No) return;
 
-			UPjcSubsystem::DeleteFoldersEmpty(true, true);
+			// UPjcSubsystem::DeleteFoldersEmpty(true, true);
 
-			UpdateData();
+			// UpdateData();
 		})
 	);
 
@@ -40,6 +38,7 @@ void SPjcTreeView::Construct(const FArguments& InArgs)
 		FPjcCmds::Get().PathsExclude,
 		FExecuteAction::CreateLambda([&]()
 		{
+			// todo:ashe23
 			UE_LOG(LogTemp, Warning, TEXT("Excluding selected paths"))
 		}),
 		FCanExecuteAction::CreateLambda([&]()
@@ -52,6 +51,7 @@ void SPjcTreeView::Construct(const FArguments& InArgs)
 		FPjcCmds::Get().PathsInclude,
 		FExecuteAction::CreateLambda([&]()
 		{
+			// todo:ashe23
 			UE_LOG(LogTemp, Warning, TEXT("Including selected paths"))
 		}),
 		FCanExecuteAction::CreateLambda([&]()
@@ -193,16 +193,14 @@ void SPjcTreeView::Construct(const FArguments& InArgs)
 
 void SPjcTreeView::UpdateData()
 {
-	if (!TreeView.IsValid()) return;
-
 	TArray<FAssetData> AssetsAll;
 	TArray<FAssetData> AssetsUsed;
 	TArray<FAssetData> AssetsUnused;
 	TArray<FString> FoldersTotal;
 
 	UPjcSubsystem::GetAssetsAll(AssetsAll);
-	UPjcSubsystem::GetAssetsUsed(AssetsUsed);
-	UPjcSubsystem::GetAssetsUnused(AssetsUnused);
+	UPjcSubsystem::GetAssetsUsed(AssetsUsed, false);
+	UPjcSubsystem::GetAssetsUnused(AssetsUnused, false);
 	UPjcSubsystem::GetFolders(FPaths::ProjectContentDir(), true, FoldersTotal);
 	NumFoldersTotal = FoldersTotal.Num();
 
@@ -234,11 +232,11 @@ void SPjcTreeView::UpdateData()
 		UpdateMapInfo(MapNumAssetsUnusedByPath, MapSizeAssetsUnusedByPath, AssetPath, AssetSize);
 	}
 
-	TSet<TSharedPtr<FPjcTreeItem>> CachedExpandedItems;
-	TreeView->GetExpandedItems(CachedExpandedItems);
+	// TSet<TSharedPtr<FPjcTreeItem>> CachedExpandedItems;
+	// TreeView->GetExpandedItems(CachedExpandedItems);
 
 	RootItem.Reset();
-	TreeItems.Reset();
+	// TreeItems.Reset();
 
 	// creating root item
 	const FString PathContentDir = FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir());
@@ -262,8 +260,8 @@ void SPjcTreeView::UpdateData()
 	RootItem->PercentageUnusedNormalized = FMath::GetMappedRangeValueClamped(FVector2D{0.0f, 100.0f}, FVector2D{0.0f, 1.0f}, RootItem->PercentageUnused);
 	RootItem->Parent = nullptr;
 
-	TreeItems.Emplace(RootItem);
-	TreeView->SetItemExpansion(RootItem, RootItem->bIsExpanded);
+	// TreeItems.Emplace(RootItem);
+	// TreeView->SetItemExpansion(RootItem, RootItem->bIsExpanded);
 
 	// filling whole tree
 	TArray<TSharedPtr<FPjcTreeItem>> Stack;
@@ -287,8 +285,8 @@ void SPjcTreeView::UpdateData()
 			SubItem->bIsRoot = false;
 			SubItem->bIsEmpty = UPjcSubsystem::FolderIsEmpty(SubItem->FolderPath);
 			SubItem->bIsExcluded = UPjcSubsystem::FolderIsExcluded(SubItem->FolderPath);
-			SubItem->bIsExpanded = ItemIsExpanded(SubItem, CachedExpandedItems);
-			SubItem->bIsVisible = ItemIsVisible(SubItem);
+			SubItem->bIsExpanded = false;
+			SubItem->bIsVisible = true;
 			SubItem->NumAssetsTotal = MapNumAssetsAllByPath.Contains(SubItem->FolderPath) ? MapNumAssetsAllByPath[SubItem->FolderPath] : 0;
 			SubItem->NumAssetsUsed = MapNumAssetsUsedByPath.Contains(SubItem->FolderPath) ? MapNumAssetsUsedByPath[SubItem->FolderPath] : 0;
 			SubItem->NumAssetsUnused = MapNumAssetsUnusedByPath.Contains(SubItem->FolderPath) ? MapNumAssetsUnusedByPath[SubItem->FolderPath] : 0;
@@ -297,7 +295,6 @@ void SPjcTreeView::UpdateData()
 			SubItem->PercentageUnusedNormalized = FMath::GetMappedRangeValueClamped(FVector2D{0.0f, 100.0f}, FVector2D{0.0f, 1.0f}, SubItem->PercentageUnused);
 			SubItem->Parent = CurrentItem;
 
-			TreeView->SetItemExpansion(SubItem, SubItem->bIsExpanded);
 			CurrentItem->SubItems.Emplace(SubItem);
 			Stack.Emplace(SubItem);
 		}
@@ -315,29 +312,8 @@ void SPjcTreeView::UpdateView()
 	{
 		const auto& CurrentItem = Stack.Pop(false);
 
-		CurrentItem->bIsVisible = ItemIsVisible(CurrentItem);
-
-		if (!SearchText.IsEmpty() && CurrentItem->bIsVisible)
-		{
-			if (ItemContainsSearchText(CurrentItem))
-			{
-				CurrentItem->bIsVisible = true;
-				ChangeItemExpansionRecursive(CurrentItem, false);
-
-				auto ParentItem = CurrentItem;
-				while (ParentItem.IsValid())
-				{
-					ParentItem->bIsVisible = true;
-					ParentItem->bIsExpanded = true;
-					TreeView->SetItemExpansion(ParentItem, ParentItem->bIsExpanded);
-					ParentItem = ParentItem->Parent;
-				}
-			}
-			else
-			{
-				CurrentItem->bIsVisible = false;
-			}
-		}
+		SetItemVisibility(CurrentItem);
+		SetItemExpansion(CurrentItem);
 
 		for (const auto& SubItem : CurrentItem->SubItems)
 		{
@@ -345,9 +321,17 @@ void SPjcTreeView::UpdateView()
 		}
 	}
 
-	TreeView->ClearSelection();
-	TreeView->ClearHighlightedItems();
+	TreeItems.Reset();
+	TreeItems.Add(RootItem);
+
+	SortTreeItems(false);
+
 	TreeView->RebuildList();
+}
+
+SPjcTreeView::FPjcDelegateSelectionChanged& SPjcTreeView::OnSelectionChanged()
+{
+	return DelegateSelectionChanged;
 }
 
 const TSet<FString>& SPjcTreeView::GetSelectedPaths() const
@@ -476,15 +460,15 @@ TSharedRef<SWidget> SPjcTreeView::GetTreeBtnOptionsContent()
 		(
 			FExecuteAction::CreateLambda([&]
 			{
-				const auto SelectedItems = TreeView->GetSelectedItems();
-
-				for (const auto& SelectedItem : SelectedItems)
-				{
-					if (!SelectedItem.IsValid()) continue;
-					ChangeItemExpansionRecursive(SelectedItem, true);
-				}
-
-				TreeView->RebuildList();
+				// const auto SelectedItems = TreeView->GetSelectedItems();
+				//
+				// for (const auto& SelectedItem : SelectedItems)
+				// {
+				// 	if (!SelectedItem.IsValid()) continue;
+				// 	ChangeItemExpansionRecursive(SelectedItem, true);
+				// }
+				//
+				// TreeView->RebuildList();
 			}),
 			FCanExecuteAction::CreateLambda([&]()
 			{
@@ -503,15 +487,15 @@ TSharedRef<SWidget> SPjcTreeView::GetTreeBtnOptionsContent()
 		(
 			FExecuteAction::CreateLambda([&]
 			{
-				const auto SelectedItems = TreeView->GetSelectedItems();
-
-				for (const auto& SelectedItem : SelectedItems)
-				{
-					if (!SelectedItem.IsValid()) continue;
-					ChangeItemExpansionRecursive(SelectedItem, false);
-				}
-
-				TreeView->RebuildList();
+				// const auto SelectedItems = TreeView->GetSelectedItems();
+				//
+				// for (const auto& SelectedItem : SelectedItems)
+				// {
+				// 	// if (!SelectedItem.IsValid()) continue;
+				// 	// ChangeItemExpansionRecursive(SelectedItem, false);
+				// }
+				//
+				// TreeView->RebuildList();
 			}),
 			FCanExecuteAction::CreateLambda([&]()
 			{
@@ -530,8 +514,8 @@ TSharedRef<SWidget> SPjcTreeView::GetTreeBtnOptionsContent()
 		(
 			FExecuteAction::CreateLambda([&]
 			{
-				ChangeItemExpansionRecursive(RootItem, true);
-				TreeView->RebuildList();
+				// ChangeItemExpansionRecursive(RootItem, true);
+				// TreeView->RebuildList();
 			}),
 			FCanExecuteAction::CreateLambda([&]()
 			{
@@ -550,8 +534,8 @@ TSharedRef<SWidget> SPjcTreeView::GetTreeBtnOptionsContent()
 		(
 			FExecuteAction::CreateLambda([&]
 			{
-				ChangeItemExpansionRecursive(RootItem, false);
-				TreeView->RebuildList();
+				// ChangeItemExpansionRecursive(RootItem, false);
+				// TreeView->RebuildList();
 			}),
 			FCanExecuteAction::CreateLambda([&]()
 			{
@@ -685,85 +669,22 @@ void SPjcTreeView::OnTreeGetChildren(TSharedPtr<FPjcTreeItem> Item, TArray<TShar
 void SPjcTreeView::OnTreeSearchTextChanged(const FText& InText)
 {
 	SearchText = InText;
-	UpdateView();
+	// UpdateView();
 }
 
 void SPjcTreeView::OnTreeSearchTextCommitted(const FText& InText, ETextCommit::Type Type)
 {
 	SearchText = InText;
-	UpdateView();
+	// UpdateView();
 }
 
 void SPjcTreeView::OnTreeSort(EColumnSortPriority::Type SortPriority, const FName& ColumnName, EColumnSortMode::Type InSortMode)
 {
 	if (!RootItem.IsValid() || !TreeView.IsValid()) return;
 
-	auto SortTreeItems = [&](auto& SortMode, auto SortFunc)
-	{
-		SortMode = SortMode == EColumnSortMode::Ascending ? EColumnSortMode::Descending : EColumnSortMode::Ascending;
+	LastSortedColumn = ColumnName;
 
-		TArray<TSharedPtr<FPjcTreeItem>> Stack;
-		Stack.Push(RootItem);
-
-		while (Stack.Num() > 0)
-		{
-			const auto& CurrentItem = Stack.Pop(false);
-			if (!CurrentItem.IsValid()) continue;
-
-			TArray<TSharedPtr<FPjcTreeItem>>& SubItems = CurrentItem->SubItems;
-			SubItems.Sort(SortFunc);
-
-			Stack.Append(CurrentItem->SubItems);
-		}
-	};
-
-	if (ColumnName.IsEqual(TEXT("Path")))
-	{
-		SortTreeItems(ColumnPathSortMode, [&](const TSharedPtr<FPjcTreeItem>& Item1, const TSharedPtr<FPjcTreeItem>& Item2)
-		{
-			return ColumnPathSortMode == EColumnSortMode::Ascending ? Item1->FolderPath < Item2->FolderPath : Item1->FolderPath > Item2->FolderPath;
-		});
-	}
-
-	if (ColumnName.IsEqual(TEXT("NumAssetsTotal")))
-	{
-		SortTreeItems(ColumnAssetsTotalSortMode, [&](const TSharedPtr<FPjcTreeItem>& Item1, const TSharedPtr<FPjcTreeItem>& Item2)
-		{
-			return ColumnAssetsTotalSortMode == EColumnSortMode::Ascending ? Item1->NumAssetsTotal < Item2->NumAssetsTotal : Item1->NumAssetsTotal > Item2->NumAssetsTotal;
-		});
-	}
-
-	if (ColumnName.IsEqual(TEXT("NumAssetsUsed")))
-	{
-		SortTreeItems(ColumnAssetsUsedSortMode, [&](const TSharedPtr<FPjcTreeItem>& Item1, const TSharedPtr<FPjcTreeItem>& Item2)
-		{
-			return ColumnAssetsUsedSortMode == EColumnSortMode::Ascending ? Item1->NumAssetsUsed < Item2->NumAssetsUsed : Item1->NumAssetsUsed > Item2->NumAssetsUsed;
-		});
-	}
-
-	if (ColumnName.IsEqual(TEXT("NumAssetsUnused")))
-	{
-		SortTreeItems(ColumnAssetsUnusedSortMode, [&](const TSharedPtr<FPjcTreeItem>& Item1, const TSharedPtr<FPjcTreeItem>& Item2)
-		{
-			return ColumnAssetsUnusedSortMode == EColumnSortMode::Ascending ? Item1->NumAssetsUnused < Item2->NumAssetsUnused : Item1->NumAssetsUnused > Item2->NumAssetsUnused;
-		});
-	}
-
-	if (ColumnName.IsEqual(TEXT("UnusedPercent")))
-	{
-		SortTreeItems(ColumnUnusedPercentSortMode, [&](const TSharedPtr<FPjcTreeItem>& Item1, const TSharedPtr<FPjcTreeItem>& Item2)
-		{
-			return ColumnUnusedPercentSortMode == EColumnSortMode::Ascending ? Item1->PercentageUnused < Item2->PercentageUnused : Item1->PercentageUnused > Item2->PercentageUnused;
-		});
-	}
-
-	if (ColumnName.IsEqual(TEXT("UnusedSize")))
-	{
-		SortTreeItems(ColumnUnusedSizeSortMode, [&](const TSharedPtr<FPjcTreeItem>& Item1, const TSharedPtr<FPjcTreeItem>& Item2)
-		{
-			return ColumnUnusedSizeSortMode == EColumnSortMode::Ascending ? Item1->SizeAssetsUnused < Item2->SizeAssetsUnused : Item1->SizeAssetsUnused > Item2->SizeAssetsUnused;
-		});
-	}
+	SortTreeItems(true);
 
 	TreeView->RebuildList();
 }
@@ -785,7 +706,7 @@ void SPjcTreeView::OnTreeSelectionChanged(TSharedPtr<FPjcTreeItem> Selection, ES
 
 	if (DelegateSelectionChanged.IsBound())
 	{
-		DelegateSelectionChanged.Execute(SelectedPaths);
+		DelegateSelectionChanged.Execute();
 	}
 }
 
@@ -798,84 +719,221 @@ void SPjcTreeView::OnTreeExpansionChanged(TSharedPtr<FPjcTreeItem> Item, bool bI
 	TreeView->RebuildList();
 }
 
-// void SPjcTreeView::TreeItemsFilter() { }
-
-void SPjcTreeView::ChangeItemExpansionRecursive(const TSharedPtr<FPjcTreeItem>& Item, const bool bExpansion) const
+void SPjcTreeView::SetItemVisibility(const TSharedPtr<FPjcTreeItem>& Item) const
 {
-	if (!Item.IsValid()) return;
-	if (!TreeView.IsValid()) return;
+	if (!Item.IsValid() || !SubsystemPtr) return;
 
-	TArray<TSharedPtr<FPjcTreeItem>> Stack;
-	Stack.Push(Item);
-
-	while (Stack.Num() > 0)
+	if (Item->bIsRoot)
 	{
-		const auto CurrentItem = Stack.Pop(false);
-
-		CurrentItem->bIsExpanded = bExpansion;
-		TreeView->SetItemExpansion(CurrentItem, bExpansion);
-
-		for (const auto& SubItem : CurrentItem->SubItems)
-		{
-			Stack.Push(SubItem);
-		}
+		Item->bIsVisible = true;
+		return;
 	}
+
+	if (Item->bIsDev && !SubsystemPtr->bShowFoldersEngine)
+	{
+		Item->bIsVisible = false;
+		return;
+	}
+
+	if (Item->bIsExcluded && !SubsystemPtr->bShowFoldersExcluded)
+	{
+		Item->bIsVisible = false;
+		return;
+	}
+
+	if (Item->bIsEmpty && !Item->bIsDev && !Item->bIsExcluded && !SubsystemPtr->bShowFoldersEmpty)
+	{
+		Item->bIsVisible = false;
+		return;
+	}
+
+	if (Item->NumAssetsUsed > 0 && Item->NumAssetsUnused == 0 && !Item->bIsExcluded && !SubsystemPtr->bShowFoldersUsed)
+	{
+		Item->bIsVisible = false;
+		return;
+	}
+
+	Item->bIsVisible = true;
 }
 
-bool SPjcTreeView::ItemIsExpanded(const TSharedPtr<FPjcTreeItem>& Item, const TSet<TSharedPtr<FPjcTreeItem>>& ExpandedItems)
+void SPjcTreeView::SetItemExpansion(const TSharedPtr<FPjcTreeItem>& Item) const
 {
-	if (!Item.IsValid()) return false;
-	if (ExpandedItems.Num() == 0) return false;
+	if (!Item.IsValid() || !TreeView.IsValid()) return;
 
-	for (const auto& ExpandedItem : ExpandedItems)
+	if (Item->bIsRoot)
+	{
+		Item->bIsExpanded = true;
+		TreeView->SetItemExpansion(Item, Item->bIsExpanded);
+		return;
+	}
+
+	TSet<TSharedPtr<FPjcTreeItem>> CachedExpandedItems;
+	TreeView->GetExpandedItems(CachedExpandedItems);
+
+	for (const auto& ExpandedItem : CachedExpandedItems)
 	{
 		if (!ExpandedItem.IsValid()) continue;
 
 		if (ExpandedItem->FolderPath.Equals(Item->FolderPath))
 		{
-			return true;
+			Item->bIsExpanded = true;
+			TreeView->SetItemExpansion(Item, Item->bIsExpanded);
 		}
 	}
-
-	return false;
 }
 
-bool SPjcTreeView::ItemIsVisible(const TSharedPtr<FPjcTreeItem>& Item) const
+void SPjcTreeView::SortTreeItems(const bool UpdateColumnSorting)
 {
-	if (!SubsystemPtr) return false;
-	if (Item->bIsRoot) return true;
-	if (Item->bIsDev && !SubsystemPtr->bShowFoldersEngine) return false;
-	if (Item->NumAssetsUsed > 0 && Item->NumAssetsUnused == 0 && !SubsystemPtr->bShowFoldersUsed) return false;
-	if (Item->bIsExcluded && !SubsystemPtr->bShowFoldersExcluded) return false;
-	if (Item->bIsEmpty && !SubsystemPtr->bShowFoldersEmpty) return false;
-
-	return true;
-}
-
-bool SPjcTreeView::ItemContainsSearchText(const TSharedPtr<FPjcTreeItem>& Item) const
-{
-	if (!Item.IsValid()) return false;
-
-	TArray<TSharedPtr<FPjcTreeItem>> Stack;
-	Stack.Push(Item);
-
-	while (Stack.Num() > 0)
+	auto SortTreeItems = [&](auto& SortMode, auto SortFunc)
 	{
-		const auto CurrentItem = Stack.Pop(false);
-
-		if (CurrentItem->FolderName.Contains(SearchText.ToString()))
+		if (UpdateColumnSorting)
 		{
-			return true;
+			SortMode = SortMode == EColumnSortMode::Ascending ? EColumnSortMode::Descending : EColumnSortMode::Ascending;
 		}
 
-		for (const auto& SubItem : CurrentItem->SubItems)
+		TArray<TSharedPtr<FPjcTreeItem>> Stack;
+		Stack.Push(RootItem);
+
+		while (Stack.Num() > 0)
 		{
-			Stack.Push(SubItem);
+			const auto& CurrentItem = Stack.Pop(false);
+			if (!CurrentItem.IsValid()) continue;
+
+			TArray<TSharedPtr<FPjcTreeItem>>& SubItems = CurrentItem->SubItems;
+			SubItems.Sort(SortFunc);
+
+			Stack.Append(CurrentItem->SubItems);
 		}
+	};
+
+	if (LastSortedColumn.IsEqual(TEXT("Path")))
+	{
+		SortTreeItems(ColumnPathSortMode, [&](const TSharedPtr<FPjcTreeItem>& Item1, const TSharedPtr<FPjcTreeItem>& Item2)
+		{
+			return ColumnPathSortMode == EColumnSortMode::Ascending ? Item1->FolderPath < Item2->FolderPath : Item1->FolderPath > Item2->FolderPath;
+		});
 	}
 
-	return false;
+	if (LastSortedColumn.IsEqual(TEXT("NumAssetsTotal")))
+	{
+		SortTreeItems(ColumnAssetsTotalSortMode, [&](const TSharedPtr<FPjcTreeItem>& Item1, const TSharedPtr<FPjcTreeItem>& Item2)
+		{
+			return ColumnAssetsTotalSortMode == EColumnSortMode::Ascending ? Item1->NumAssetsTotal < Item2->NumAssetsTotal : Item1->NumAssetsTotal > Item2->NumAssetsTotal;
+		});
+	}
+
+	if (LastSortedColumn.IsEqual(TEXT("NumAssetsUsed")))
+	{
+		SortTreeItems(ColumnAssetsUsedSortMode, [&](const TSharedPtr<FPjcTreeItem>& Item1, const TSharedPtr<FPjcTreeItem>& Item2)
+		{
+			return ColumnAssetsUsedSortMode == EColumnSortMode::Ascending ? Item1->NumAssetsUsed < Item2->NumAssetsUsed : Item1->NumAssetsUsed > Item2->NumAssetsUsed;
+		});
+	}
+
+	if (LastSortedColumn.IsEqual(TEXT("NumAssetsUnused")))
+	{
+		SortTreeItems(ColumnAssetsUnusedSortMode, [&](const TSharedPtr<FPjcTreeItem>& Item1, const TSharedPtr<FPjcTreeItem>& Item2)
+		{
+			return ColumnAssetsUnusedSortMode == EColumnSortMode::Ascending ? Item1->NumAssetsUnused < Item2->NumAssetsUnused : Item1->NumAssetsUnused > Item2->NumAssetsUnused;
+		});
+	}
+
+	if (LastSortedColumn.IsEqual(TEXT("UnusedPercent")))
+	{
+		SortTreeItems(ColumnUnusedPercentSortMode, [&](const TSharedPtr<FPjcTreeItem>& Item1, const TSharedPtr<FPjcTreeItem>& Item2)
+		{
+			return ColumnUnusedPercentSortMode == EColumnSortMode::Ascending ? Item1->PercentageUnused < Item2->PercentageUnused : Item1->PercentageUnused > Item2->PercentageUnused;
+		});
+	}
+
+	if (LastSortedColumn.IsEqual(TEXT("UnusedSize")))
+	{
+		SortTreeItems(ColumnUnusedSizeSortMode, [&](const TSharedPtr<FPjcTreeItem>& Item1, const TSharedPtr<FPjcTreeItem>& Item2)
+		{
+			return ColumnUnusedSizeSortMode == EColumnSortMode::Ascending ? Item1->SizeAssetsUnused < Item2->SizeAssetsUnused : Item1->SizeAssetsUnused > Item2->SizeAssetsUnused;
+		});
+	}
 }
+
+
+// void SPjcTreeView::TreeItemsFilter() { }
+
+// void SPjcTreeView::ChangeItemExpansionRecursive(const TSharedPtr<FPjcTreeItem>& Item, const bool bExpansion) const
+// {
+// 	if (!Item.IsValid()) return;
+// 	if (!TreeView.IsValid()) return;
+//
+// 	TArray<TSharedPtr<FPjcTreeItem>> Stack;
+// 	Stack.Push(Item);
+//
+// 	while (Stack.Num() > 0)
+// 	{
+// 		const auto CurrentItem = Stack.Pop(false);
+//
+// 		CurrentItem->bIsExpanded = bExpansion;
+// 		TreeView->SetItemExpansion(CurrentItem, bExpansion);
+//
+// 		for (const auto& SubItem : CurrentItem->SubItems)
+// 		{
+// 			Stack.Push(SubItem);
+// 		}
+// 	}
+// }
+
+// bool SPjcTreeView::ItemIsExpanded(const TSharedPtr<FPjcTreeItem>& Item, const TSet<TSharedPtr<FPjcTreeItem>>& ExpandedItems)
+// {
+// 	if (!Item.IsValid()) return false;
+// 	if (ExpandedItems.Num() == 0) return false;
+//
+// 	for (const auto& ExpandedItem : ExpandedItems)
+// 	{
+// 		if (!ExpandedItem.IsValid()) continue;
+//
+// 		if (ExpandedItem->FolderPath.Equals(Item->FolderPath))
+// 		{
+// 			return true;
+// 		}
+// 	}
+//
+// 	return false;
+// }
+//
+// bool SPjcTreeView::ItemIsVisible(const TSharedPtr<FPjcTreeItem>& Item) const
+// {
+// 	if (!SubsystemPtr) return false;
+// 	if (Item->bIsRoot) return true;
+// 	if (Item->bIsDev && !SubsystemPtr->bShowFoldersEngine) return false;
+// 	if (Item->NumAssetsUsed > 0 && Item->NumAssetsUnused == 0 && !SubsystemPtr->bShowFoldersUsed) return false;
+// 	if (Item->bIsExcluded && !SubsystemPtr->bShowFoldersExcluded) return false;
+// 	if (Item->bIsEmpty && !SubsystemPtr->bShowFoldersEmpty) return false;
+//
+// 	return true;
+// }
+
+// bool SPjcTreeView::ItemContainsSearchText(const TSharedPtr<FPjcTreeItem>& Item) const
+// {
+// 	if (!Item.IsValid()) return false;
+//
+// 	TArray<TSharedPtr<FPjcTreeItem>> Stack;
+// 	Stack.Push(Item);
+//
+// 	while (Stack.Num() > 0)
+// 	{
+// 		const auto CurrentItem = Stack.Pop(false);
+//
+// 		if (CurrentItem->FolderName.Contains(SearchText.ToString()))
+// 		{
+// 			return true;
+// 		}
+//
+// 		for (const auto& SubItem : CurrentItem->SubItems)
+// 		{
+// 			Stack.Push(SubItem);
+// 		}
+// 	}
+//
+// 	return false;
+// }
 
 TSharedRef<SWidget> SPjcTreeView::CreateToolbar() const
 {

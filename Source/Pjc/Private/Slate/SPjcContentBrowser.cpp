@@ -1,21 +1,30 @@
 ﻿// Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "Slate/SPjcContentBrowser.h"
+#include "Slate/SPjcTreeView.h"
 #include "PjcCmds.h"
 #include "PjcSubsystem.h"
 #include "PjcConstants.h"
+#include "PjcFrontendFilters.h"
 // Engine Headers
 #include "FrontendFilterBase.h"
 #include "ObjectTools.h"
 #include "IContentBrowserSingleton.h"
-#include "Pjc.h"
-#include "PjcFrontendFilters.h"
 #include "Widgets/Layout/SSeparator.h"
+
 
 void SPjcContentBrowser::Construct(const FArguments& InArgs)
 {
+	TreeViewPtr = InArgs._TreeViewPtr;
 	SubsystemPtr = GEditor->GetEditorSubsystem<UPjcSubsystem>();
-	check(SubsystemPtr);
+
+	if (TreeViewPtr.IsValid())
+	{
+		TreeViewPtr->OnSelectionChanged().BindLambda([&]()
+		{
+			UpdateView();
+		});
+	}
 
 	Cmds = MakeShareable(new FUICommandList);
 
@@ -68,11 +77,11 @@ void SPjcContentBrowser::Construct(const FArguments& InArgs)
 			}
 			ExcludeSettings->PostEditChange();
 
-			// todo:ashe23 rescan project
+			UpdateView();
 		}),
 		FCanExecuteAction::CreateLambda([&]()
 		{
-			return bUnusedAssetsMode && DelegateSelection.Execute().Num() > 0;
+			return !bFilterAssetsExcludedActive && DelegateSelection.Execute().Num() > 0;
 		})
 	);
 
@@ -97,7 +106,7 @@ void SPjcContentBrowser::Construct(const FArguments& InArgs)
 		}),
 		FCanExecuteAction::CreateLambda([&]()
 		{
-			return bUnusedAssetsMode && DelegateSelection.Execute().Num() > 0;
+			return !bFilterAssetsUnusedActive && DelegateSelection.Execute().Num() > 0;
 		})
 	);
 
@@ -127,7 +136,7 @@ void SPjcContentBrowser::Construct(const FArguments& InArgs)
 		}),
 		FCanExecuteAction::CreateLambda([&]()
 		{
-			return !bUnusedAssetsMode && DelegateSelection.Execute().Num() > 0;
+			return !bFilterAssetsUnusedActive && DelegateSelection.Execute().Num() > 0;
 		})
 	);
 
@@ -156,7 +165,7 @@ void SPjcContentBrowser::Construct(const FArguments& InArgs)
 		}),
 		FCanExecuteAction::CreateLambda([&]()
 		{
-			return !bUnusedAssetsMode && DelegateSelection.Execute().Num() > 0;
+			return bFilterAssetsUnusedActive && DelegateSelection.Execute().Num() > 0;
 		})
 	);
 
@@ -171,63 +180,14 @@ void SPjcContentBrowser::Construct(const FArguments& InArgs)
 		}),
 		FCanExecuteAction::CreateLambda([&]()
 		{
-			return DelegateSelection.Execute().Num() > 0;
-		})
-	);
-
-	Cmds->MapAction(
-		FPjcCmds::Get().ThumbnailSizeTiny,
-		FExecuteAction::CreateLambda([&]()
-		{
-			ThumbnailSize = 0.01f;
-			CreateContentBrowser();
-			UpdateView();
-		})
-	);
-
-	Cmds->MapAction(
-		FPjcCmds::Get().ThumbnailSizeSmall,
-		FExecuteAction::CreateLambda([&]()
-		{
-			ThumbnailSize = 0.1f;
-			CreateContentBrowser();
-			UpdateView();
-		})
-	);
-
-	Cmds->MapAction(
-		FPjcCmds::Get().ThumbnailSizeMedium,
-		FExecuteAction::CreateLambda([&]()
-		{
-			ThumbnailSize = 0.2f;
-			CreateContentBrowser();
-			UpdateView();
-		})
-	);
-
-	Cmds->MapAction(
-		FPjcCmds::Get().ThumbnailSizeLarge,
-		FExecuteAction::CreateLambda([&]()
-		{
-			ThumbnailSize = 0.3f;
-			CreateContentBrowser();
-			UpdateView();
+			return bFilterAssetsUnusedActive && DelegateSelection.Execute().Num() > 0;
 		})
 	);
 
 	CreateContentBrowser();
+
 	UpdateView();
-}
 
-void SPjcContentBrowser::FilterUpdate(const FARFilter& InFilter)
-{
-	Filter = InFilter;
-
-	DelegateFilter.Execute(Filter);
-}
-
-void SPjcContentBrowser::UpdateView()
-{
 	ChildSlot
 	[
 		SNew(SVerticalBox)
@@ -243,56 +203,75 @@ void SPjcContentBrowser::UpdateView()
 		[
 			ContentBrowserPtr.ToSharedRef()
 		]
-		+ SVerticalBox::Slot().AutoHeight().Padding(5.0f)
-		[
-			SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot().FillWidth(1.0f).HAlign(HAlign_Left).VAlign(VAlign_Center)
-			[
-				SNew(STextBlock).Text_Raw(this, &SPjcContentBrowser::GetSummaryText)
-			]
-			+ SHorizontalBox::Slot().FillWidth(1.0f).HAlign(HAlign_Right).VAlign(VAlign_Center)
-			[
-				SNew(SComboButton)
-				.ContentPadding(0)
-				.ForegroundColor_Raw(this, &SPjcContentBrowser::GetOptionsBtnForegroundColor)
-				.ButtonStyle(FEditorStyle::Get(), "ToggleButton")
-				.OnGetMenuContent(this, &SPjcContentBrowser::GetBtnOptionsContent)
-				.ButtonContent()
-				[
-					SNew(SHorizontalBox)
-					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
-					[
-						SNew(SImage).Image(FEditorStyle::GetBrush("GenericViewButton"))
-					]
-					+ SHorizontalBox::Slot().AutoWidth().Padding(2.0f, 0.0f, 0.0f, 0.0f).VAlign(VAlign_Center)
-					[
-						SNew(STextBlock).Text(FText::FromString(TEXT("View Options")))
-					]
-				]
-			]
-		]
 	];
+}
+
+SPjcContentBrowser::~SPjcContentBrowser()
+{
+	if (TreeViewPtr)
+	{
+		TreeViewPtr->OnSelectionChanged().Unbind();
+	}
+}
+
+void SPjcContentBrowser::UpdateView()
+{
+	if (!TreeViewPtr.IsValid()) return;
+
+	Filter.Clear();
+
+	TArray<FAssetData> AssetsUnused;
+	UPjcSubsystem::GetAssetsUnused(AssetsUnused, false);
+
+	const TSet<FString>& SelectedPaths = TreeViewPtr->GetSelectedPaths();
+
+	if (SelectedPaths.Num() > 0)
+	{
+		Filter.bRecursivePaths = true;
+
+		for (const auto& SelectedPath : TreeViewPtr->GetSelectedPaths())
+		{
+			Filter.PackagePaths.Emplace(FName{*SelectedPath});
+		}
+	}
+
+	if (AnyFilterActive())
+	{
+		if (bFilterAssetsUsedActive)
+		{
+			TArray<FAssetData> AssetsUsed;
+			UPjcSubsystem::GetAssetsUsed(AssetsUsed, false);
+
+			Filter.ObjectPaths.Reserve(AssetsUsed.Num());
+
+			for (const auto& Asset : AssetsUsed)
+			{
+				Filter.ObjectPaths.Emplace(Asset.ToSoftObjectPath().GetAssetPathName());
+			}
+		}
+
+		DelegateFilter.Execute(Filter);
+
+		return;
+	}
+
+	if (AssetsUnused.Num() > 0 && bFilterAssetsUnusedActive)
+	{
+		Filter.ObjectPaths.Reserve(AssetsUnused.Num());
+
+		for (const auto& Asset : AssetsUnused)
+		{
+			Filter.ObjectPaths.Emplace(Asset.ToSoftObjectPath().GetAssetPathName());
+		}
+	}
+	else
+	{
+		Filter.TagsAndValues.Emplace(PjcConstants::EmptyTagName, PjcConstants::EmptyTagName.ToString());
+	}
 
 	DelegateFilter.Execute(Filter);
 }
 
-FText SPjcContentBrowser::GetSummaryText() const
-{
-	const auto ItemsSelected = DelegateSelection.Execute();
-
-	TArray<FAssetData> AssetsTotal;
-	UPjcSubsystem::GetModuleAssetRegistry().Get().GetAssets(Filter, AssetsTotal);
-
-	const FString NumAssetsTotal = FText::AsNumber(AssetsTotal.Num()).ToString();
-	const FString NumAssetsSelected = FText::AsNumber(ItemsSelected.Num()).ToString();
-
-	if (ItemsSelected.Num() > 0)
-	{
-		return FText::FromString(FString::Printf(TEXT("Selected %s of %s items"), *NumAssetsSelected, *NumAssetsTotal));
-	}
-
-	return FText::FromString(FString::Printf(TEXT("Items - %s"), *NumAssetsTotal));
-}
 
 TSharedRef<SWidget> SPjcContentBrowser::CreateToolbar() const
 {
@@ -315,36 +294,6 @@ TSharedRef<SWidget> SPjcContentBrowser::CreateToolbar() const
 	return ToolBarBuilder.MakeWidget();
 }
 
-TSharedRef<SWidget> SPjcContentBrowser::GetBtnOptionsContent()
-{
-	const TSharedPtr<FExtender> Extender;
-	FMenuBuilder MenuBuilder(true, Cmds, Extender, true);
-
-	MenuBuilder.BeginSection(TEXT("Thumbnails"), FText::FromString(TEXT("Thumbnails")));
-	{
-		MenuBuilder.AddMenuEntry(
-			FText::FromString(TEXT("RealtimeThumbnails")),
-			FText::FromString(TEXT("Enable realtime thunmbnails")),
-			FSlateIcon(),
-			FUIAction
-			(
-				FExecuteAction::CreateLambda([&] { })
-			),
-			NAME_None,
-			EUserInterfaceActionType::ToggleButton
-		);
-
-		MenuBuilder.AddSubMenu(
-			FText::FromString(TEXT("Thumbnail Size")),
-			FText::FromString(TEXT("Select Thumbnail Size")),
-			FNewMenuDelegate::CreateRaw(this, &SPjcContentBrowser::MakeSubmenu)
-		);
-	}
-	MenuBuilder.EndSection();
-
-	return MenuBuilder.MakeWidget();
-}
-
 
 void SPjcContentBrowser::CreateContentBrowser()
 {
@@ -356,16 +305,15 @@ void SPjcContentBrowser::CreateContentBrowser()
 	AssetPickerConfig.bCanShowFolders = false;
 	AssetPickerConfig.bAllowDragging = false;
 	AssetPickerConfig.SelectionMode = ESelectionMode::Multi;
-	AssetPickerConfig.bShowBottomToolbar = false;
+	AssetPickerConfig.bShowBottomToolbar = true;
 	AssetPickerConfig.bCanShowDevelopersFolder = true;
 	AssetPickerConfig.bForceShowEngineContent = false;
 	AssetPickerConfig.bForceShowPluginContent = false;
 	AssetPickerConfig.bAllowNullSelection = false;
 	AssetPickerConfig.bCanShowClasses = false;
-	// AssetPickerConfig.bCanShowRealTimeThumbnails = SubsystemPtr->bShowRealtimeThumbnails;
+	AssetPickerConfig.bCanShowRealTimeThumbnails = false;
 	AssetPickerConfig.AssetShowWarningText = FText::FromString(TEXT("No assets"));
 	AssetPickerConfig.Filter = Filter;
-	AssetPickerConfig.ThumbnailScale = ThumbnailSize;
 	AssetPickerConfig.bAllowNullSelection = true;
 	AssetPickerConfig.GetCurrentSelectionDelegates.Add(&DelegateSelection);
 	AssetPickerConfig.RefreshAssetViewDelegates.Add(&DelegateRefreshView);
@@ -410,35 +358,92 @@ void SPjcContentBrowser::CreateContentBrowser()
 		return MenuBuilder.MakeWidget();
 	});
 
-	// todo:ashe23 maybe make this frontend filter optional?
-
 	const TSharedPtr<FFrontendFilterCategory> DefaultCategory = MakeShareable(new FFrontendFilterCategory(FText::FromString(TEXT("ProjectCleaner Filters")), FText::FromString(TEXT(""))));
 	const TSharedPtr<FPjcFilterAssetsUsed> FilterUsed = MakeShareable(new FPjcFilterAssetsUsed(DefaultCategory));
-	FilterUsed->OnFilterChanged().AddLambda([](const bool bActive)
+	const TSharedPtr<FPjcFilterAssetsPrimary> FilterPrimary = MakeShareable(new FPjcFilterAssetsPrimary(DefaultCategory));
+	const TSharedPtr<FPjcFilterAssetsIndirect> FilterIndirect = MakeShareable(new FPjcFilterAssetsIndirect(DefaultCategory));
+	const TSharedPtr<FPjcFilterAssetsCircular> FilterCircular = MakeShareable(new FPjcFilterAssetsCircular(DefaultCategory));
+	const TSharedPtr<FPjcFilterAssetsEditor> FilterEditor = MakeShareable(new FPjcFilterAssetsEditor(DefaultCategory));
+	const TSharedPtr<FPjcFilterAssetsExcluded> FilterExcluded = MakeShareable(new FPjcFilterAssetsExcluded(DefaultCategory));
+	const TSharedPtr<FPjcFilterAssetsExtReferenced> FilterExtReferenced = MakeShareable(new FPjcFilterAssetsExtReferenced(DefaultCategory));
+
+
+	FilterUsed->OnFilterChanged().AddLambda([&](const bool bActive)
 	{
-		UE_LOG(LogProjectCleaner, Warning, TEXT("Fiter Used Assets Changed"));
+		bFilterAssetsUsedActive = bActive;
+		bFilterAssetsUnusedActive = !AnyFilterActive();
+
+		UpdateView();
 	});
 
+	FilterPrimary->OnFilterChanged().AddLambda([&](const bool bActive)
+	{
+		bFilterAssetsPrimaryActive = bActive;
+		bFilterAssetsUnusedActive = !AnyFilterActive();
+
+		UpdateView();
+	});
+
+	FilterIndirect->OnFilterChanged().AddLambda([&](const bool bActive)
+	{
+		bFilterAssetsIndirectActive = bActive;
+		bFilterAssetsUnusedActive = !AnyFilterActive();
+
+		UpdateView();
+	});
+
+	FilterCircular->OnFilterChanged().AddLambda([&](const bool bActive)
+	{
+		bFilterAssetsCircularActive = bActive;
+		bFilterAssetsUnusedActive = !AnyFilterActive();
+
+		UpdateView();
+	});
+
+	FilterEditor->OnFilterChanged().AddLambda([&](const bool bActive)
+	{
+		bFilterAssetsEditorActive = bActive;
+		bFilterAssetsUnusedActive = !AnyFilterActive();
+
+		UpdateView();
+	});
+
+	FilterExcluded->OnFilterChanged().AddLambda([&](const bool bActive)
+	{
+		bFilterAssetsExcludedActive = bActive;
+		bFilterAssetsUnusedActive = !AnyFilterActive();
+
+		UpdateView();
+	});
+
+	FilterExtReferenced->OnFilterChanged().AddLambda([&](const bool bActive)
+	{
+		bFilterAssetsExtReferencedActive = bActive;
+		bFilterAssetsUnusedActive = !AnyFilterActive();
+
+		UpdateView();
+	});
+
+
 	AssetPickerConfig.ExtraFrontendFilters.Emplace(FilterUsed.ToSharedRef());
+	AssetPickerConfig.ExtraFrontendFilters.Emplace(FilterPrimary.ToSharedRef());
+	AssetPickerConfig.ExtraFrontendFilters.Emplace(FilterIndirect.ToSharedRef());
+	AssetPickerConfig.ExtraFrontendFilters.Emplace(FilterCircular.ToSharedRef());
+	AssetPickerConfig.ExtraFrontendFilters.Emplace(FilterEditor.ToSharedRef());
+	AssetPickerConfig.ExtraFrontendFilters.Emplace(FilterExcluded.ToSharedRef());
+	AssetPickerConfig.ExtraFrontendFilters.Emplace(FilterExtReferenced.ToSharedRef());
 
 	ContentBrowserPtr.Reset();
 	ContentBrowserPtr = UPjcSubsystem::GetModuleContentBrowser().Get().CreateAssetPicker(AssetPickerConfig);
 }
 
-void SPjcContentBrowser::MakeSubmenu(FMenuBuilder& MenuBuilder)
+bool SPjcContentBrowser::AnyFilterActive() const
 {
-	MenuBuilder.AddMenuEntry(FPjcCmds::Get().ThumbnailSizeTiny);
-	MenuBuilder.AddMenuEntry(FPjcCmds::Get().ThumbnailSizeSmall);
-	MenuBuilder.AddMenuEntry(FPjcCmds::Get().ThumbnailSizeMedium);
-	MenuBuilder.AddMenuEntry(FPjcCmds::Get().ThumbnailSizeLarge);
-}
-
-FSlateColor SPjcContentBrowser::GetOptionsBtnForegroundColor() const
-{
-	static const FName InvertedForegroundName("InvertedForeground");
-	static const FName DefaultForegroundName("DefaultForeground");
-
-	if (!OptionBtn.IsValid()) return FEditorStyle::GetSlateColor(DefaultForegroundName);
-
-	return OptionBtn->IsHovered() ? FEditorStyle::GetSlateColor(InvertedForegroundName) : FEditorStyle::GetSlateColor(DefaultForegroundName);
+	return
+		bFilterAssetsUsedActive ||
+		bFilterAssetsPrimaryActive ||
+		bFilterAssetsEditorActive ||
+		bFilterAssetsIndirectActive ||
+		bFilterAssetsExcludedActive ||
+		bFilterAssetsExtReferencedActive;
 }

@@ -14,7 +14,7 @@ public:
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
-	void UpdateData();
+	void UpdateView();
 
 protected:
 	TSharedRef<SHeaderRow> GetHeaderRow() const;

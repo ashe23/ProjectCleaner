@@ -11,15 +11,15 @@ class UPjcSubsystem;
 class SPjcTreeView final : public SCompoundWidget
 {
 public:
-	DECLARE_DELEGATE_OneParam(FPjcDelegateSelectionChanged, const TSet<FString>&)
-
+	DECLARE_DELEGATE(FPjcDelegateSelectionChanged)
+	
 	SLATE_BEGIN_ARGS(SPjcTreeView) {}
-		SLATE_EVENT(FPjcDelegateSelectionChanged, OnSelectionChanged)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
 	void UpdateData();
 	void UpdateView();
+	FPjcDelegateSelectionChanged& OnSelectionChanged();
 	const TSet<FString>& GetSelectedPaths() const;
 
 protected:
@@ -34,11 +34,9 @@ protected:
 	void OnTreeSort(EColumnSortPriority::Type SortPriority, const FName& ColumnName, EColumnSortMode::Type InSortMode);
 	void OnTreeSelectionChanged(TSharedPtr<FPjcTreeItem> Selection, ESelectInfo::Type SelectInfo);
 	void OnTreeExpansionChanged(TSharedPtr<FPjcTreeItem> Item, bool bIsExpanded);
-	// void TreeItemsFilter();
-	void ChangeItemExpansionRecursive(const TSharedPtr<FPjcTreeItem>& Item, const bool bExpansion) const;
-	bool ItemIsExpanded(const TSharedPtr<FPjcTreeItem>& Item, const TSet<TSharedPtr<FPjcTreeItem>>& ExpandedItems);
-	bool ItemIsVisible(const TSharedPtr<FPjcTreeItem>& Item) const;
-	bool ItemContainsSearchText(const TSharedPtr<FPjcTreeItem>& Item) const;
+	void SetItemVisibility(const TSharedPtr<FPjcTreeItem>& Item) const;
+	void SetItemExpansion(const TSharedPtr<FPjcTreeItem>& Item) const;
+	void SortTreeItems(const bool UpdateColumnSorting);
 	FText GetTreeSummaryText() const;
 	FText GetTreeSelectionText() const;
 	FSlateColor GetTreeOptionsBtnForegroundColor() const;
@@ -69,6 +67,7 @@ private:
 	EColumnSortMode::Type ColumnAssetsUnusedSortMode = EColumnSortMode::None;
 	EColumnSortMode::Type ColumnUnusedPercentSortMode = EColumnSortMode::None;
 	EColumnSortMode::Type ColumnUnusedSizeSortMode = EColumnSortMode::None;
+	FName LastSortedColumn;
 
 	FPjcDelegateSelectionChanged DelegateSelectionChanged;
 };
