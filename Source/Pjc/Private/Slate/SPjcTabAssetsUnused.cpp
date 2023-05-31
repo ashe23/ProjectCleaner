@@ -110,7 +110,15 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 
 			for (const auto& Asset : DelegateSelection.Execute())
 			{
-				ExcludeSettings->ExcludedAssets.Emplace(Asset.GetAsset());
+				const bool bAlreadyInList = ExcludeSettings->ExcludedAssets.ContainsByPredicate([&](const TSoftObjectPtr<UObject>& InObject)
+				{
+					return InObject.LoadSynchronous() && InObject.ToSoftObjectPath() == Asset.ToSoftObjectPath();
+				});
+
+				if (!bAlreadyInList)
+				{
+					ExcludeSettings->ExcludedAssets.Emplace(Asset.GetAsset());
+				}
 			}
 			ExcludeSettings->PostEditChange();
 
@@ -131,10 +139,36 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 
 			for (const auto& Asset : DelegateSelection.Execute())
 			{
-				const UClass* AssetClass = UPjcSubsystem::GetAssetClassByName(UPjcSubsystem::GetAssetExactClassName(Asset));
-				if (!AssetClass) continue;
+				const FName AssetExactClassName = UPjcSubsystem::GetAssetExactClassName(Asset);
 
-				ExcludeSettings->ExcludedClasses.Emplace(AssetClass);
+				if (UPjcSubsystem::AssetIsBlueprint(Asset))
+				{
+					const FString AssetPathName = Asset.ToSoftObjectPath().GetAssetPathString() + TEXT("_C");
+					const UClass* BlueprintClass = LoadObject<UClass>(nullptr, *AssetPathName);
+					if (!BlueprintClass) continue;
+
+					const bool bAlreadyInList = ExcludeSettings->ExcludedClasses.ContainsByPredicate([&](const TSoftClassPtr<UObject>& InObject)
+					{
+						return InObject.LoadSynchronous() && InObject.Get()->GetFName().IsEqual(BlueprintClass->GetFName());
+					});
+
+					if (!bAlreadyInList)
+					{
+						ExcludeSettings->ExcludedClasses.Emplace(BlueprintClass);
+					}
+				}
+				else
+				{
+					const bool bAlreadyInList = ExcludeSettings->ExcludedClasses.ContainsByPredicate([&](const TSoftClassPtr<UObject>& InObject)
+					{
+						return InObject.LoadSynchronous() && InObject.Get()->GetFName().IsEqual(AssetExactClassName);
+					});
+
+					if (!bAlreadyInList)
+					{
+						ExcludeSettings->ExcludedClasses.Emplace(Asset.GetClass());
+					}
+				}
 			}
 
 			ExcludeSettings->PostEditChange();
@@ -151,8 +185,6 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 		FPjcCmds::Get().AssetsInclude,
 		FExecuteAction::CreateLambda([&]()
 		{
-			// todo:ashe23 check if selected assets are not exclude by paths
-
 			UPjcAssetExcludeSettings* ExcludeSettings = GetMutableDefault<UPjcAssetExcludeSettings>();
 			if (!ExcludeSettings) return;
 
@@ -165,7 +197,7 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 
 			ExcludeSettings->ExcludedAssets.RemoveAllSwap([&](const TSoftObjectPtr<UObject>& ExcludedAsset)
 			{
-				return ObjectPaths.Contains(ExcludedAsset.ToSoftObjectPath().GetAssetPathName());
+				return ExcludedAsset.LoadSynchronous() && ObjectPaths.Contains(ExcludedAsset.ToSoftObjectPath().GetAssetPathName());
 			}, false);
 			ExcludeSettings->PostEditChange();
 
@@ -193,7 +225,7 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 
 			ExcludeSettings->ExcludedClasses.RemoveAllSwap([&](const TSoftClassPtr<UObject>& ExcludedClass)
 			{
-				return ClassNames.Contains(ExcludedClass.Get()->GetFName());
+				return ExcludedClass.LoadSynchronous() && ClassNames.Contains(ExcludedClass.Get()->GetFName());
 			}, false);
 
 			ExcludeSettings->PostEditChange();
@@ -210,9 +242,12 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 		FPjcCmds::Get().AssetsDelete,
 		FExecuteAction::CreateLambda([&]()
 		{
-			ObjectTools::DeleteAssets(DelegateSelection.Execute(), true);
-
-			ScanProject();
+			const int32 NumAssetsDeleted = ObjectTools::DeleteAssets(DelegateSelection.Execute(), true);
+			if (NumAssetsDeleted > 0)
+			{
+				UPjcSubsystem::ShowNotification(FString::Printf(TEXT("Deleted %d assets"), NumAssetsDeleted), SNotificationItem::CS_Success, 5.0f);
+				ScanProject();
+			}
 		}),
 		FCanExecuteAction::CreateLambda([&]()
 		{
@@ -310,14 +345,14 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 	});
 
 	const TSharedPtr<FFrontendFilterCategory> DefaultCategory = MakeShareable(new FFrontendFilterCategory(FText::FromString(TEXT("ProjectCleaner Filters")), FText::FromString(TEXT(""))));
-	const TSharedPtr<FPjcFilterAssetsUsed> FilterUsed = MakeShareable(new FPjcFilterAssetsUsed(DefaultCategory));
-	const TSharedPtr<FPjcFilterAssetsPrimary> FilterPrimary = MakeShareable(new FPjcFilterAssetsPrimary(DefaultCategory));
-	const TSharedPtr<FPjcFilterAssetsIndirect> FilterIndirect = MakeShareable(new FPjcFilterAssetsIndirect(DefaultCategory));
-	const TSharedPtr<FPjcFilterAssetsCircular> FilterCircular = MakeShareable(new FPjcFilterAssetsCircular(DefaultCategory));
-	const TSharedPtr<FPjcFilterAssetsEditor> FilterEditor = MakeShareable(new FPjcFilterAssetsEditor(DefaultCategory));
+	FilterUsed = MakeShareable(new FPjcFilterAssetsUsed(DefaultCategory));
+	FilterPrimary = MakeShareable(new FPjcFilterAssetsPrimary(DefaultCategory));
+	FilterIndirect = MakeShareable(new FPjcFilterAssetsIndirect(DefaultCategory));
+	FilterCircular = MakeShareable(new FPjcFilterAssetsCircular(DefaultCategory));
+	FilterEditor = MakeShareable(new FPjcFilterAssetsEditor(DefaultCategory));
 	FilterExcluded = MakeShareable(new FPjcFilterAssetsExcluded(DefaultCategory));
-	const TSharedPtr<FPjcFilterAssetsExtReferenced> FilterExtReferenced = MakeShareable(new FPjcFilterAssetsExtReferenced(DefaultCategory));
-	
+	FilterExtReferenced = MakeShareable(new FPjcFilterAssetsExtReferenced(DefaultCategory));
+
 	FilterUsed->OnFilterChanged().AddLambda([&](const bool bActive)
 	{
 		bFilterAssetsUsedActive = bActive;
@@ -383,7 +418,9 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 	AssetPickerConfig.ExtraFrontendFilters.Emplace(FilterExcluded.ToSharedRef());
 	AssetPickerConfig.ExtraFrontendFilters.Emplace(FilterExtReferenced.ToSharedRef());
 
-	UpdateStats();
+	const auto ContentBrowserView = UPjcSubsystem::GetModuleContentBrowser().Get().CreateAssetPicker(AssetPickerConfig);
+
+	ScanProject();
 
 	ChildSlot
 	[
@@ -558,7 +595,7 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 				]
 				+ SVerticalBox::Slot().FillHeight(1.0f).Padding(5.0f)
 				[
-					UPjcSubsystem::GetModuleContentBrowser().Get().CreateAssetPicker(AssetPickerConfig)
+					ContentBrowserView
 				]
 			]
 		]
@@ -776,8 +813,13 @@ void SPjcTabAssetsUnused::ScanProject()
 	UPjcSubsystem::GetFolders(FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir()), true, FoldersTotal);
 	UPjcSubsystem::GetFoldersEmpty(FoldersEmpty);
 
-	// todo:ashe23 make sure we update content browser when there is no assets if filter enabled
-	FilterExcluded->ActiveStateChanged(true);
+	FilterUsed->UpdateData();
+	FilterPrimary->UpdateData();
+	FilterIndirect->UpdateData();
+	FilterCircular->UpdateData();
+	FilterEditor->UpdateData();
+	FilterExcluded->UpdateData();
+	FilterExtReferenced->UpdateData();
 
 	for (const FAssetData& Asset : AssetsAll)
 	{
@@ -985,7 +1027,7 @@ void SPjcTabAssetsUnused::UpdateTreeView()
 	RootItem->FolderName = TEXT("Content");
 	RootItem->bIsDev = false;
 	RootItem->bIsRoot = true;
-	RootItem->bIsEmpty = UPjcSubsystem::FolderIsEmpty(PathContentDir);
+	RootItem->bIsEmpty = false;
 	RootItem->bIsExcluded = UPjcSubsystem::FolderIsExcluded(PathContentDir);
 	RootItem->bIsExpanded = true;
 	RootItem->bIsVisible = true;
@@ -1006,7 +1048,7 @@ void SPjcTabAssetsUnused::UpdateTreeView()
 		const auto CurrentItem = Stack.Pop(false);
 
 		TreeListView->SetItemExpansion(CurrentItem, CurrentItem->bIsExpanded);
-		
+
 		TArray<FString> SubPaths;
 		UPjcSubsystem::GetModuleAssetRegistry().Get().GetSubPaths(CurrentItem->FolderPath, SubPaths, false);
 
@@ -1037,7 +1079,7 @@ void SPjcTabAssetsUnused::UpdateTreeView()
 	}
 
 	SortTreeItems(false);
-	
+
 	TreeListItems.Reset();
 	TreeListItems.Emplace(RootItem);
 	TreeListView->RebuildList();
@@ -1200,6 +1242,8 @@ void SPjcTabAssetsUnused::OnTreeSelectionChanged(TSharedPtr<FPjcTreeItem> Select
 	{
 		SelectedPaths.Emplace(FName{*SelectedItem->FolderPath});
 	}
+
+	UpdateContentBrowser();
 }
 
 void SPjcTabAssetsUnused::OnTreeExpansionChanged(TSharedPtr<FPjcTreeItem> Item, bool bIsExpanded)
@@ -1742,6 +1786,18 @@ TSharedRef<ITableRow> SPjcTabAssetsUnused::OnStatsGenerateRow(TSharedPtr<FPjcSta
 TSharedRef<ITableRow> SPjcTabAssetsUnused::OnTreeGenerateRow(TSharedPtr<FPjcTreeItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const
 {
 	return SNew(SPjcItemTree, OwnerTable).Item(Item).HightlightText(TreeSearchText);
+}
+
+void SPjcTabAssetsUnused::ResetFilters()
+{
+	bFilterAssetsUsedActive = false;
+	bFilterAssetsPrimaryActive = false;
+	bFilterAssetsEditorActive = false;
+	bFilterAssetsIndirectActive = false;
+	bFilterAssetsExcludedActive = false;
+	bFilterAssetsExtReferencedActive = false;
+	bFilterAssetsCircularActive = false;
+	bFilterAssetsUnusedActive = true;
 }
 
 void SPjcTabAssetsUnused::ResetCachedData()

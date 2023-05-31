@@ -33,11 +33,7 @@ void FPjcFilterAssetsUsed::ActiveStateChanged(bool bActive)
 
 	if (bActive)
 	{
-		TArray<FAssetData> AssetsUsed;
-		UPjcSubsystem::GetAssetsUsed(AssetsUsed, false);
-
-		Assets.Reset();
-		Assets.Append(AssetsUsed);
+		UpdateData();
 	}
 
 	if (DelegateFilterChanged.IsBound())
@@ -52,6 +48,15 @@ bool FPjcFilterAssetsUsed::PassesFilter(const FContentBrowserItem& InItem) const
 	if (!InItem.Legacy_TryGetAssetData(AssetData)) return false;
 
 	return Assets.Contains(AssetData);
+}
+
+void FPjcFilterAssetsUsed::UpdateData()
+{
+	TArray<FAssetData> AssetsUsed;
+	UPjcSubsystem::GetAssetsUsed(AssetsUsed, false);
+
+	Assets.Reset();
+	Assets.Append(AssetsUsed);
 }
 
 FPjcDelegateFilterChanged& FPjcFilterAssetsUsed::OnFilterChanged()
@@ -87,11 +92,7 @@ void FPjcFilterAssetsPrimary::ActiveStateChanged(bool bActive)
 
 	if (bActive)
 	{
-		TArray<FAssetData> AssetsPrimary;
-		UPjcSubsystem::GetAssetsPrimary(AssetsPrimary, false);
-
-		Assets.Reset();
-		Assets.Append(AssetsPrimary);
+		UpdateData();
 	}
 
 	if (DelegateFilterChanged.IsBound())
@@ -106,6 +107,15 @@ bool FPjcFilterAssetsPrimary::PassesFilter(const FContentBrowserItem& InItem) co
 	if (!InItem.Legacy_TryGetAssetData(AssetData)) return false;
 
 	return Assets.Contains(AssetData);
+}
+
+void FPjcFilterAssetsPrimary::UpdateData()
+{
+	TArray<FAssetData> AssetsPrimary;
+	UPjcSubsystem::GetAssetsPrimary(AssetsPrimary, false);
+
+	Assets.Reset();
+	Assets.Append(AssetsPrimary);
 }
 
 FPjcDelegateFilterChanged& FPjcFilterAssetsPrimary::OnFilterChanged()
@@ -141,12 +151,7 @@ void FPjcFilterAssetsIndirect::ActiveStateChanged(bool bActive)
 
 	if (bActive)
 	{
-		TArray<FAssetData> AssetsIndirect;
-		TArray<FPjcAssetIndirectInfo> AssetIndirectInfos;
-		UPjcSubsystem::GetAssetsIndirect(AssetsIndirect, AssetIndirectInfos, false);
-
-		Assets.Reset();
-		Assets.Append(AssetsIndirect);
+		UpdateData();
 	}
 
 	if (DelegateFilterChanged.IsBound())
@@ -161,6 +166,16 @@ bool FPjcFilterAssetsIndirect::PassesFilter(const FContentBrowserItem& InItem) c
 	if (!InItem.Legacy_TryGetAssetData(AssetData)) return false;
 
 	return Assets.Contains(AssetData);
+}
+
+void FPjcFilterAssetsIndirect::UpdateData()
+{
+	TArray<FAssetData> AssetsIndirect;
+	TArray<FPjcAssetIndirectInfo> AssetIndirectInfos;
+	UPjcSubsystem::GetAssetsIndirect(AssetsIndirect, AssetIndirectInfos, false);
+
+	Assets.Reset();
+	Assets.Append(AssetsIndirect);
 }
 
 FPjcDelegateFilterChanged& FPjcFilterAssetsIndirect::OnFilterChanged()
@@ -196,11 +211,7 @@ void FPjcFilterAssetsCircular::ActiveStateChanged(bool bActive)
 
 	if (bActive)
 	{
-		TArray<FAssetData> AssetsCircular;
-		UPjcSubsystem::GetAssetsCircular(AssetsCircular, false);
-
-		Assets.Reset();
-		Assets.Append(AssetsCircular);
+		UpdateData();
 	}
 
 	if (DelegateFilterChanged.IsBound())
@@ -215,6 +226,15 @@ bool FPjcFilterAssetsCircular::PassesFilter(const FContentBrowserItem& InItem) c
 	if (!InItem.Legacy_TryGetAssetData(AssetData)) return false;
 
 	return Assets.Contains(AssetData);
+}
+
+void FPjcFilterAssetsCircular::UpdateData()
+{
+	TArray<FAssetData> AssetsCircular;
+	UPjcSubsystem::GetAssetsCircular(AssetsCircular, false);
+
+	Assets.Reset();
+	Assets.Append(AssetsCircular);
 }
 
 FPjcDelegateFilterChanged& FPjcFilterAssetsCircular::OnFilterChanged()
@@ -250,11 +270,7 @@ void FPjcFilterAssetsEditor::ActiveStateChanged(bool bActive)
 
 	if (bActive)
 	{
-		TArray<FAssetData> AssetsEditor;
-		UPjcSubsystem::GetAssetsEditor(AssetsEditor, false);
-
-		Assets.Reset();
-		Assets.Append(AssetsEditor);
+		UpdateData();
 	}
 
 	if (DelegateFilterChanged.IsBound())
@@ -269,6 +285,15 @@ bool FPjcFilterAssetsEditor::PassesFilter(const FContentBrowserItem& InItem) con
 	if (!InItem.Legacy_TryGetAssetData(AssetData)) return false;
 
 	return Assets.Contains(AssetData);
+}
+
+void FPjcFilterAssetsEditor::UpdateData()
+{
+	TArray<FAssetData> AssetsEditor;
+	UPjcSubsystem::GetAssetsEditor(AssetsEditor, false);
+
+	Assets.Reset();
+	Assets.Append(AssetsEditor);
 }
 
 FPjcDelegateFilterChanged& FPjcFilterAssetsEditor::OnFilterChanged()
@@ -304,11 +329,7 @@ void FPjcFilterAssetsExcluded::ActiveStateChanged(bool bActive)
 
 	if (bActive)
 	{
-		TArray<FAssetData> AssetExcluded;
-		UPjcSubsystem::GetAssetsExcluded(AssetExcluded, false);
-
-		Assets.Reset();
-		Assets.Append(AssetExcluded);
+		UpdateData();
 	}
 
 	if (DelegateFilterChanged.IsBound())
@@ -323,6 +344,15 @@ bool FPjcFilterAssetsExcluded::PassesFilter(const FContentBrowserItem& InItem) c
 	if (!InItem.Legacy_TryGetAssetData(AssetData)) return false;
 
 	return Assets.Contains(AssetData);
+}
+
+void FPjcFilterAssetsExcluded::UpdateData()
+{
+	TArray<FAssetData> AssetExcluded;
+	UPjcSubsystem::GetAssetsExcluded(AssetExcluded, false);
+
+	Assets.Reset();
+	Assets.Append(AssetExcluded);
 }
 
 FPjcDelegateFilterChanged& FPjcFilterAssetsExcluded::OnFilterChanged()
@@ -358,11 +388,7 @@ void FPjcFilterAssetsExtReferenced::ActiveStateChanged(bool bActive)
 
 	if (bActive)
 	{
-		TArray<FAssetData> AssetsExtReferenced;
-		UPjcSubsystem::GetAssetsExtReferenced(AssetsExtReferenced, false);
-
-		Assets.Reset();
-		Assets.Append(AssetsExtReferenced);
+		UpdateData();
 	}
 
 	if (DelegateFilterChanged.IsBound())
@@ -377,6 +403,15 @@ bool FPjcFilterAssetsExtReferenced::PassesFilter(const FContentBrowserItem& InIt
 	if (!InItem.Legacy_TryGetAssetData(AssetData)) return false;
 
 	return Assets.Contains(AssetData);
+}
+
+void FPjcFilterAssetsExtReferenced::UpdateData()
+{
+	TArray<FAssetData> AssetsExtReferenced;
+	UPjcSubsystem::GetAssetsExtReferenced(AssetsExtReferenced, false);
+
+	Assets.Reset();
+	Assets.Append(AssetsExtReferenced);
 }
 
 FPjcDelegateFilterChanged& FPjcFilterAssetsExtReferenced::OnFilterChanged()

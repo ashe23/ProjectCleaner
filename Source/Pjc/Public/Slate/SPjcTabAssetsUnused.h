@@ -6,6 +6,12 @@
 #include "ContentBrowserDelegates.h"
 #include "Widgets/SCompoundWidget.h"
 
+class FPjcFilterAssetsExtReferenced;
+class FPjcFilterAssetsEditor;
+class FPjcFilterAssetsCircular;
+class FPjcFilterAssetsIndirect;
+class FPjcFilterAssetsPrimary;
+class FPjcFilterAssetsUsed;
 class FPjcFilterAssetsExcluded;
 struct FPjcTreeItem;
 struct FPjcStatItem;
@@ -59,6 +65,7 @@ private:
 	TSharedRef<ITableRow> OnStatsGenerateRow(TSharedPtr<FPjcStatItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const;
 	TSharedRef<ITableRow> OnTreeGenerateRow(TSharedPtr<FPjcTreeItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const;
 
+	void ResetFilters();
 	void ResetCachedData();
 	void UpdateMapInfo(TMap<FString, int32>& MapNum, TMap<FString, int64>& MapSize, const FString& AssetPath, int64 AssetSize);
 
@@ -95,7 +102,13 @@ private:
 	bool bFilterAssetsCircularActive = false;
 	bool bFilterAssetsUnusedActive = true;
 
+	TSharedPtr<FPjcFilterAssetsUsed> FilterUsed;
+	TSharedPtr<FPjcFilterAssetsPrimary> FilterPrimary;
+	TSharedPtr<FPjcFilterAssetsIndirect> FilterIndirect;
+	TSharedPtr<FPjcFilterAssetsCircular> FilterCircular;
+	TSharedPtr<FPjcFilterAssetsEditor> FilterEditor;
 	TSharedPtr<FPjcFilterAssetsExcluded> FilterExcluded;
+	TSharedPtr<FPjcFilterAssetsExtReferenced> FilterExtReferenced;
 
 	TArray<FAssetData> AssetsAll;
 	TArray<FAssetData> AssetsUsed;
