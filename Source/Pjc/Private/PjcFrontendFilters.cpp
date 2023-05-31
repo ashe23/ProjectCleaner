@@ -24,7 +24,7 @@ FText FPjcFilterAssetsUsed::GetToolTipText() const
 
 FLinearColor FPjcFilterAssetsUsed::GetColor() const
 {
-	return FLinearColor::Green; // todo:ashe23 change color later
+	return FLinearColor::Green;
 }
 
 void FPjcFilterAssetsUsed::ActiveStateChanged(bool bActive)

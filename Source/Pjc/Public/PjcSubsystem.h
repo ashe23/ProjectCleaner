@@ -365,7 +365,7 @@ public:
 	bool bShowFoldersExcluded = true;
 
 	UPROPERTY(Config)
-	bool bShowFoldersUsed = false;
+	bool bShowFoldersUsed = true;
 
 	UPROPERTY(Config)
 	bool bShowFoldersEngine = true;

@@ -1063,8 +1063,6 @@ void SPjcTabAssetsUnused::UpdateTreeView()
 			SubItem->bIsRoot = false;
 			SubItem->bIsEmpty = UPjcSubsystem::FolderIsEmpty(SubItem->FolderPath);
 			SubItem->bIsExcluded = UPjcSubsystem::FolderIsExcluded(SubItem->FolderPath);
-			SubItem->bIsExpanded = TreeItemIsExpanded(SubItem, CachedExpandedItems);
-			SubItem->bIsVisible = TreeItemIsVisible(SubItem);
 			SubItem->NumAssetsTotal = MapNumAssetsAllByPath.Contains(SubItem->FolderPath) ? MapNumAssetsAllByPath[SubItem->FolderPath] : 0;
 			SubItem->NumAssetsUsed = MapNumAssetsUsedByPath.Contains(SubItem->FolderPath) ? MapNumAssetsUsedByPath[SubItem->FolderPath] : 0;
 			SubItem->NumAssetsUnused = MapNumAssetsUnusedByPath.Contains(SubItem->FolderPath) ? MapNumAssetsUnusedByPath[SubItem->FolderPath] : 0;
@@ -1072,6 +1070,8 @@ void SPjcTabAssetsUnused::UpdateTreeView()
 			SubItem->PercentageUnused = SubItem->NumAssetsTotal == 0 ? 0 : SubItem->NumAssetsUnused * 100.0f / SubItem->NumAssetsTotal;
 			SubItem->PercentageUnusedNormalized = FMath::GetMappedRangeValueClamped(FVector2D{0.0f, 100.0f}, FVector2D{0.0f, 1.0f}, SubItem->PercentageUnused);
 			SubItem->Parent = CurrentItem;
+			SubItem->bIsExpanded = TreeItemIsExpanded(SubItem, CachedExpandedItems);
+			SubItem->bIsVisible = TreeItemIsVisible(SubItem);
 
 			CurrentItem->SubItems.Emplace(SubItem);
 			Stack.Emplace(SubItem);
@@ -1374,20 +1374,6 @@ bool SPjcTabAssetsUnused::TreeItemIsVisible(const TSharedPtr<FPjcTreeItem>& Item
 	{
 		return false;
 	}
-
-	// todo:ashe23 fix this search part
-	// if (!TreeSearchText.IsEmpty())
-	// {
-	// 	if (TreeItemContainsSearchText(CurrentItem))
-	// 	{
-	// 		TSharedPtr<FPjcTreeItem> Item = CurrentItem;
-	// 		while (Item.IsValid())
-	// 		{
-	// 			Item->bIsVisible = true;
-	// 			Item = Item->Parent;
-	// 		}
-	// 	}
-	// }
 
 	return true;
 }
