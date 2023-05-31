@@ -1036,6 +1036,8 @@ void SPjcTabAssetsUnused::UpdateTreeView()
 		}
 	}
 
+	SortTreeItems(false);
+	
 	TreeListItems.Reset();
 	TreeListItems.Emplace(RootItem);
 	TreeListView->RebuildList();
