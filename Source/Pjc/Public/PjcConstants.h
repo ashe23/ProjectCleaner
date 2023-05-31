@@ -39,5 +39,6 @@ namespace PjcConstants
 	static const TSet<FString> EngineFileExtensions{TEXT("umap"), TEXT("uasset"), TEXT("collection")};
 	static const TSet<FString> SourceFileExtensions{TEXT("cpp"), TEXT("h"), TEXT("cs")};
 	static const TSet<FString> ConfigFileExtensions{TEXT("ini")};
-	static const FString UrlWiki{TEXT("")}; // todo:ashe23 change later
+	static const FString UrlGithub{TEXT("https://github.com/ashe23/ProjectCleaner")};
+	static const FString UrlDocs{TEXT("https://github.com/ashe23/ProjectCleaner/wiki")};
 }

@@ -38,6 +38,8 @@ public:
 	TSharedPtr<FUICommandInfo> OpenViewerAssetsAudit;
 	TSharedPtr<FUICommandInfo> OpenViewerAssetsIndirect;
 	TSharedPtr<FUICommandInfo> OpenViewerAssetsCorrupted;
+	TSharedPtr<FUICommandInfo> OpenGithub;
+	TSharedPtr<FUICommandInfo> OpenWiki;
 	TSharedPtr<FUICommandInfo> ItemsCollapseAll;
 	TSharedPtr<FUICommandInfo> ItemsExpandAll;
 };

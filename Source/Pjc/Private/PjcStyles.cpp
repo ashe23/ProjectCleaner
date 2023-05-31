@@ -88,6 +88,8 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create()
 	Style->Set("ProjectCleaner.OpenViewerSizeMap", new IMAGE_BRUSH(TEXT("IconTreeMap32"), FVector2D{32.0f, 32.0f}));
 	Style->Set("ProjectCleaner.OpenViewerReference", new IMAGE_BRUSH(TEXT("IconGraph32"), FVector2D{32.0f, 32.0f}));
 	Style->Set("ProjectCleaner.OpenViewerAssetsAudit", new IMAGE_BRUSH(TEXT("IconStat32"), FVector2D{32.0f, 32.0f}));
+	Style->Set("ProjectCleaner.OpenGithub", new IMAGE_BRUSH(TEXT("IconGithub32"), FVector2D{32.0f, 32.0f}));
+	Style->Set("ProjectCleaner.OpenWiki", new IMAGE_BRUSH(TEXT("IconWiki32"), FVector2D{32.0f, 32.0f}));
 
 	// cmds icons small
 	Style->Set("ProjectCleaner.TabMain.Small", new IMAGE_BRUSH(TEXT("IconBin20"), FVector2D{20.0f, 20.0f}));
@@ -114,6 +116,8 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create()
 	Style->Set("ProjectCleaner.OpenViewerSizeMap.Small", new IMAGE_BRUSH(TEXT("IconTreeMap20"), FVector2D{20.0f, 20.0f}));
 	Style->Set("ProjectCleaner.OpenViewerReference.Small", new IMAGE_BRUSH(TEXT("IconGraph20"), FVector2D{20.0f, 20.0f}));
 	Style->Set("ProjectCleaner.OpenViewerAssetsAudit.Small", new IMAGE_BRUSH(TEXT("IconStat20"), FVector2D{20.0f, 20.0f}));
+	Style->Set("ProjectCleaner.OpenGithub.Small", new IMAGE_BRUSH(TEXT("IconGithub20"), FVector2D{20.0f, 20.0f}));
+	Style->Set("ProjectCleaner.OpenWiki.Small", new IMAGE_BRUSH(TEXT("IconWiki20"), FVector2D{20.0f, 20.0f}));
 
 	// icons
 	Style->Set("ProjectCleaner.Icon.Bin16", new IMAGE_BRUSH(TEXT("IconBin16"), FVector2D{16.0f, 16.0f}));

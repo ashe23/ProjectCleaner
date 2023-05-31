@@ -9,12 +9,25 @@
 #include "PjcSubsystem.h"
 #include "PjcStyles.h"
 // Engine Headers
+#include "PjcCmds.h"
 #include "Widgets/Layout/SWidgetSwitcher.h"
 
 void SPjcTabMain::Construct(const FArguments& InArgs, const TSharedRef<SDockTab>& ConstructUnderMajorTab, const TSharedPtr<SWindow>& ConstructUnderWindow)
 {
 	TabManager = FGlobalTabmanager::Get()->NewTabManager(ConstructUnderMajorTab);
 	const TSharedRef<FWorkspaceItem> AppMenuGroup = TabManager->AddLocalWorkspaceMenuCategory(FText::FromString(PjcConstants::ModulePjcName.ToString()));
+
+	Cmds = MakeShareable(new FUICommandList);
+
+	Cmds->MapAction(FPjcCmds::Get().OpenGithub, FExecuteAction::CreateLambda([]()
+	{
+		FPlatformProcess::LaunchURL(*PjcConstants::UrlGithub, nullptr, nullptr);
+	}));
+
+	Cmds->MapAction(FPjcCmds::Get().OpenWiki, FExecuteAction::CreateLambda([]()
+	{
+		FPlatformProcess::LaunchURL(*PjcConstants::UrlDocs, nullptr, nullptr);
+	}));
 
 	TabLayout = FTabManager::NewLayout("PjcTabLayout")
 		->AddArea
@@ -57,13 +70,19 @@ void SPjcTabMain::Construct(const FArguments& InArgs, const TSharedRef<SDockTab>
 	          .SetIcon(FPjcStyles::GetIcon("ProjectCleaner.Icon.File16"))
 	          .SetGroup(AppMenuGroup);
 
-	FMenuBarBuilder MenuBarBuilder = FMenuBarBuilder(TSharedPtr<FUICommandList>());
+	FMenuBarBuilder MenuBarBuilder = FMenuBarBuilder(Cmds);
 
 	MenuBarBuilder.AddPullDownMenu(
 		FText::FromString(TEXT("Tabs")),
 		FText::GetEmpty(),
 		FNewMenuDelegate::CreateRaw(this, &SPjcTabMain::CreateMenuBarTabs, TabManager),
 		"Window"
+	);
+	MenuBarBuilder.AddPullDownMenu(
+		FText::FromString(TEXT("Help")),
+		FText::GetEmpty(),
+		FNewMenuDelegate::CreateRaw(this, &SPjcTabMain::CreateMenuBarHelp, TabManager),
+		"Tabs"
 	);
 
 	ChildSlot
@@ -197,4 +216,10 @@ void SPjcTabMain::CreateMenuBarTabs(FMenuBuilder& MenuBuilder, const TSharedPtr<
 #endif
 
 	TabManagerPtr->PopulateLocalTabSpawnerMenu(MenuBuilder);
+}
+
+void SPjcTabMain::CreateMenuBarHelp(FMenuBuilder& MenuBuilder, const TSharedPtr<FTabManager> TabManagerPtr)
+{
+	MenuBuilder.AddMenuEntry(FPjcCmds::Get().OpenGithub);
+	MenuBuilder.AddMenuEntry(FPjcCmds::Get().OpenWiki);
 }
