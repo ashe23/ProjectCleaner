@@ -20,6 +20,10 @@ public:
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	virtual void Deinitialize() override;
 
+#if WITH_EDITOR
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+#endif
+
 	/**
 	 * @brief Returns all assets in project (particularly Content folder)
 	 * @param Assets TArray<FAssetData>
@@ -329,7 +333,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Path")
 	static int64 GetFilesTotalSize(const TArray<FString>& Files);
 
-
 	static bool FolderIsEmpty(const FString& InPath);
 	static bool FolderIsExcluded(const FString& InPath);
 	static bool FolderIsEngineGenerated(const FString& InPath);
@@ -352,8 +355,6 @@ public:
 	static FContentBrowserModule& GetModuleContentBrowser();
 	static FPropertyEditorModule& GetModulePropertyEditor();
 
-	static void CleanProject();
-
 	UPROPERTY(Config)
 	bool bShowFilesExternal = true;
 
@@ -369,14 +370,8 @@ public:
 	UPROPERTY(Config)
 	bool bShowFoldersEngine = true;
 
-#if WITH_EDITOR
-	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
-#endif
-
 private:
 	static void BucketFill(TArray<FAssetData>& AssetsUnused, TArray<FAssetData>& Bucket, const int32 BucketSize);
 	static bool BucketPrepare(const TArray<FAssetData>& Bucket, TArray<UObject*>& LoadedAssets);
 	static int32 BucketDelete(const TArray<UObject*>& LoadedAssets);
-	// static void FindAssetsIndirect(TMap<FAssetData, TArray<FPjcFileInfo>>& AssetsIndirectInfo);
-	// static void FindAssetsExcludedByPaths(TMap<EPjcAssetCategory, TSet<FAssetData>>& AssetsCategoryMapping);
 };

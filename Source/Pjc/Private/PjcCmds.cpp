@@ -89,7 +89,7 @@ void FPjcCmds::RegisterCommands()
 	UI_COMMAND(
 		DeleteEmptyFolders,
 		"Delete Empty Folders",
-		"Delete all empty folders in project. Engine Generated folders will be ignored. (/Game/Developers, /Game/Collection etc).",
+		"Delete all empty folders in project. Excluded and Engine Generated folders will be ignored.",
 		EUserInterfaceActionType::Button,
 		FInputChord()
 	);

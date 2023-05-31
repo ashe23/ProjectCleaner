@@ -29,6 +29,15 @@ void UPjcSubsystem::Deinitialize()
 	Super::Deinitialize();
 }
 
+#if WITH_EDITOR
+void UPjcSubsystem::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+{
+	Super::PostEditChangeProperty(PropertyChangedEvent);
+
+	SaveConfig();
+}
+#endif
+
 void UPjcSubsystem::GetAssetsAll(TArray<FAssetData>& Assets)
 {
 	if (GetModuleAssetRegistry().Get().IsLoadingAssets()) return;
@@ -348,7 +357,7 @@ void UPjcSubsystem::GetAssetsExcluded(TArray<FAssetData>& Assets, const bool bSh
 
 		for (const auto& ExcludedAsset : AssetExcludeSettings->ExcludedAssets)
 		{
-			if (!ExcludedAsset.LoadSynchronous() || !ExcludedAsset.IsNull()) continue;
+			if (!ExcludedAsset.LoadSynchronous()) continue;
 
 			Filter.ObjectPaths.Emplace(ExcludedAsset.ToSoftObjectPath().GetAssetPathName());
 		}
@@ -712,7 +721,7 @@ void UPjcSubsystem::GetFoldersEmpty(TArray<FString>& Folders)
 
 	for (const auto& Folder : FoldersAll)
 	{
-		if (FolderIsEmpty(Folder) && !FolderIsEngineGenerated(Folder))
+		if (FolderIsEmpty(Folder) && !FolderIsEngineGenerated(Folder) && !FolderIsExcluded(Folder))
 		{
 			Folders.Emplace(Folder);
 		}
@@ -828,8 +837,6 @@ void UPjcSubsystem::DeleteAssetsUnused(const bool bShowSlowTask, const bool bSho
 
 	ShaderCompilationEnable();
 
-	// todo:ashe23 delegate call here?
-
 	const FString Msg = FString::Printf(TEXT("Deleted %d of %d assets"), NumAssetsDeleted, NumAssetsTotal);
 	UE_LOG(LogProjectCleaner, Display, TEXT("%s"), *Msg);
 
@@ -891,8 +898,6 @@ void UPjcSubsystem::DeleteFoldersEmpty(const bool bShowSlowTask, const bool bSho
 		GetModuleAssetRegistry().Get().RemovePath(PathConvertToRelative(Folder));
 	}
 
-	// todo:ashe23 delegate call here?
-
 	const FString Msg = FString::Printf(TEXT("Deleted %d of %d empty folders"), NumFoldersDeleted, NumFoldersTotal);
 	UE_LOG(LogProjectCleaner, Display, TEXT("%s"), *Msg);
 
@@ -950,8 +955,6 @@ void UPjcSubsystem::DeleteFilesExternal(const bool bShowSlowTask, const bool bSh
 		++NumFilesDeleted;
 	}
 
-	// todo:ashe23 delegate call here?
-
 	const FString Msg = FString::Printf(TEXT("Deleted %d of %d external files"), NumFilesDeleted, NumFilesTotal);
 	UE_LOG(LogProjectCleaner, Display, TEXT("%s"), *Msg);
 
@@ -1008,8 +1011,6 @@ void UPjcSubsystem::DeleteFilesCorrupted(const bool bShowSlowTask, const bool bS
 
 		++NumFilesDeleted;
 	}
-
-	// todo:ashe23 delegate call here?
 
 	const FString Msg = FString::Printf(TEXT("Deleted %d of %d corrupted files"), NumFilesDeleted, NumFilesTotal);
 	UE_LOG(LogProjectCleaner, Display, TEXT("%s"), *Msg);
@@ -1277,157 +1278,61 @@ int64 UPjcSubsystem::GetFilesTotalSize(const TArray<FString>& Files)
 	return Size;
 }
 
-// NOT BLUEPRINT Exposed, but public
-
-// void UPjcSubsystem::ScanProjectAssets(TMap<EPjcAssetCategory, TSet<FAssetData>>& AssetsCategoryMapping, FString& ErrMsg)
-// {
-// 	ErrMsg.Reset();
-// 	AssetCategoryMappingInit(AssetsCategoryMapping);
-//
-// 	if (GetModuleAssetRegistry().Get().IsLoadingAssets())
-// 	{
-// 		ErrMsg = TEXT("Failed to scan project. AssetRegistry is still discovering assets. Please try again after it has finished.");
-// 		return;
-// 	}
-//
-// 	if (GEditor && !GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->CloseAllAssetEditors())
-// 	{
-// 		ErrMsg = TEXT("Failed to scan project, because not all asset editors are closed.");
-// 		return;
-// 	}
-//
-// 	// FixupRedirectorsInProject();
-//
-// 	if (ProjectHasRedirectors())
-// 	{
-// 		ErrMsg = TEXT("Failed to scan project, because not all redirectors are fixed.");
-// 		return;
-// 	}
-//
-// 	if (!FEditorFileUtils::SaveDirtyPackages(true, true, true, false, false, false))
-// 	{
-// 		ErrMsg = TEXT("Failed to scan project, because not all assets have been saved.");
-// 		return;
-// 	}
-//
-// 	const double ScanStartTime = FPlatformTime::Seconds();
-//
-// 	FScopedSlowTask SlowTaskMain{
-// 		6.0f,
-// 		FText::FromString(TEXT("Scanning project assets...")),
-// 		GIsEditor && !IsRunningCommandlet()
-// 	};
-// 	SlowTaskMain.MakeDialog(false, false);
-// 	SlowTaskMain.EnterProgressFrame(1.0f);
-//
-// 	for (auto& Mapping : AssetsCategoryMapping)
-// 	{
-// 		Mapping.Value.Reset();
-// 	}
-//
-// 	SlowTaskMain.EnterProgressFrame(1.0f);
-// 	TSet<FName> ClassNamesPrimary;
-// 	TSet<FName> ClassNamesEditor;
-// 	TSet<FName> ClassNamesExcluded;
-// 	TArray<FAssetData> AssetsAll;
-// 	TMap<FAssetData, TArray<FPjcFileInfo>> AssetsIndirectInfo;
-//
-// 	GetClassNamesPrimary(ClassNamesPrimary);
-// 	GetClassNamesEditor(ClassNamesEditor);
-// 	GetClassNamesExcluded(ClassNamesExcluded);
-// 	GetModuleAssetRegistry().Get().GetAssetsByPath(PjcConstants::PathRoot, AssetsAll, true);
-//
-// 	SlowTaskMain.EnterProgressFrame(1.0f);
-// 	// FindAssetsIndirect(AssetsIndirectInfo);
-// 	// FindAssetsExcludedByPaths(AssetsCategoryMapping);
-//
-// 	SlowTaskMain.EnterProgressFrame(1.0f);
-//
-// 	FScopedSlowTask SlowTask{
-// 		static_cast<float>(AssetsAll.Num()),
-// 		FText::FromString(TEXT("Scanning project assets...")),
-// 		GIsEditor && !IsRunningCommandlet()
-// 	};
-// 	SlowTask.MakeDialog(false, false);
-//
-// 	for (const auto& Asset : AssetsAll)
-// 	{
-// 		SlowTask.EnterProgressFrame(1.0f, FText::FromString(Asset.GetFullName()));
-//
-// 		const FName AssetExactClassName = GetAssetExactClassName(Asset);
-// 		const bool bIsPrimary = ClassNamesPrimary.Contains(Asset.AssetClass) || ClassNamesPrimary.Contains(AssetExactClassName);
-// 		const bool bIsEditor = ClassNamesEditor.Contains(Asset.AssetClass) || ClassNamesEditor.Contains(AssetExactClassName);
-// 		const bool bIsExcluded = ClassNamesExcluded.Contains(Asset.AssetClass) || ClassNamesExcluded.Contains(AssetExactClassName);
-// 		const bool bIsCircular = AssetIsCircular(Asset);
-// 		const bool bIsExtReferenced = AssetIsExtReferenced(Asset);
-// 		const bool bIsUsed = bIsPrimary || bIsEditor || bIsExtReferenced;
-//
-// 		AssetsCategoryMapping[EPjcAssetCategory::Any].Emplace(Asset);
-//
-// 		if (bIsPrimary)
-// 		{
-// 			AssetsCategoryMapping[EPjcAssetCategory::Primary].Emplace(Asset);
-// 		}
-//
-// 		if (bIsEditor)
-// 		{
-// 			AssetsCategoryMapping[EPjcAssetCategory::Editor].Emplace(Asset);
-// 		}
-//
-// 		if (bIsExcluded)
-// 		{
-// 			AssetsCategoryMapping[EPjcAssetCategory::Excluded].Emplace(Asset);
-// 		}
-//
-// 		if (bIsCircular)
-// 		{
-// 			AssetsCategoryMapping[EPjcAssetCategory::Circular].Emplace(Asset);
-// 		}
-//
-// 		if (bIsExtReferenced)
-// 		{
-// 			AssetsCategoryMapping[EPjcAssetCategory::ExtReferenced].Emplace(Asset);
-// 		}
-//
-// 		if (bIsUsed)
-// 		{
-// 			AssetsCategoryMapping[EPjcAssetCategory::Used].Emplace(Asset);
-// 		}
-// 	}
-//
-// 	// loading all used assets dependencies recursive
-// 	SlowTaskMain.EnterProgressFrame(1.0f);
-// 	TArray<FAssetData> AssetsIndirect;
-// 	AssetsIndirectInfo.GetKeys(AssetsIndirect);
-// 	AssetsCategoryMapping[EPjcAssetCategory::Indirect].Append(AssetsIndirect);
-// 	AssetsCategoryMapping[EPjcAssetCategory::Used].Append(AssetsCategoryMapping[EPjcAssetCategory::Excluded]);
-// 	AssetsCategoryMapping[EPjcAssetCategory::Used].Append(AssetsCategoryMapping[EPjcAssetCategory::Indirect]);
-// 	GetAssetsDependencies(AssetsCategoryMapping[EPjcAssetCategory::Used]);
-//
-// 	// filtering unused assets
-// 	SlowTaskMain.EnterProgressFrame(1.0f);
-// 	AssetsCategoryMapping[EPjcAssetCategory::Unused] = AssetsCategoryMapping[EPjcAssetCategory::Any].Difference(AssetsCategoryMapping[EPjcAssetCategory::Used]);
-//
-// 	const double ScanTime = FPlatformTime::Seconds() - ScanStartTime;
-// 	UE_LOG(LogProjectCleaner, Display, TEXT("Project assets scanned in %.2f seconds."), ScanTime);
-// }
-
-void UPjcSubsystem::CleanProject()
+bool UPjcSubsystem::FolderIsEmpty(const FString& InPath)
 {
-	// first of all we must scan project assets , to make sure we have all actual data
+	if (InPath.IsEmpty()) return false;
 
-	// starting query assets
-	//  - assets without referencers
-	//  - circular assets
-	//  - the rest of assets
+	const FName PathRel = FName{*PathConvertToRelative(InPath)};
+	if (GetModuleAssetRegistry().Get().HasAssets(PathRel, true))
+	{
+		return false;
+	}
 
-	// before deleting
-	// - load assets by bucket size, if any error while loading => abort inform user and log
-	// - try to delete bucket, if any error while deleting => abort inform user and log
-	// - load next bucket, until all assets deleted
+	const FString PathAbs = PathConvertToAbsolute(InPath);
+	if (PathAbs.IsEmpty()) return false;
 
-	// rescan project and update asset registry
-	// if empty folder cleanup option enabled => delete empty folders and update asset registry
+	TArray<FString> Files;
+	IFileManager::Get().FindFilesRecursive(Files, *PathAbs, TEXT("*"), true, false);
+
+	return Files.Num() == 0;
+}
+
+bool UPjcSubsystem::FolderIsExcluded(const FString& InPath)
+{
+	const UPjcAssetExcludeSettings* EditorAssetExcludeSettings = GetDefault<UPjcAssetExcludeSettings>();
+	if (!EditorAssetExcludeSettings) return false;
+
+	const FString PathRel = PathConvertToRelative(InPath);
+	if (PathRel.IsEmpty()) return false;
+
+	for (const auto& ExcludedPath : EditorAssetExcludeSettings->ExcludedFolders)
+	{
+		const FString ExcludedPathRel = PathConvertToRelative(ExcludedPath.Path);
+		if (ExcludedPathRel.IsEmpty()) continue;
+
+		if (PathRel.StartsWith(ExcludedPathRel))
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool UPjcSubsystem::FolderIsEngineGenerated(const FString& InPath)
+{
+	const FString PathDevelopers = FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / TEXT("Developers"));
+	const FString PathCollections = FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir()) / TEXT("Collections");
+	const FString PathCurrentDeveloper = PathDevelopers / FPaths::GameUserDeveloperFolderName();
+	const FString PathCurrentDeveloperCollections = PathCurrentDeveloper / TEXT("Collections");
+
+	TSet<FString> EngineGeneratedPaths;
+	EngineGeneratedPaths.Emplace(PathDevelopers);
+	EngineGeneratedPaths.Emplace(PathCollections);
+	EngineGeneratedPaths.Emplace(PathCurrentDeveloper);
+	EngineGeneratedPaths.Emplace(PathCurrentDeveloperCollections);
+
+	return EngineGeneratedPaths.Contains(InPath);
 }
 
 void UPjcSubsystem::GetSourceAndConfigFiles(TSet<FString>& Files)
@@ -1629,14 +1534,45 @@ void UPjcSubsystem::TryOpenFile(const FString& InPath)
 	FPlatformProcess::LaunchFileInDefaultExternalApplication(*InPath);
 }
 
-#if WITH_EDITOR
-void UPjcSubsystem::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+FName UPjcSubsystem::GetAssetExactClassName(const FAssetData& InAsset)
 {
-	Super::PostEditChangeProperty(PropertyChangedEvent);
+	if (!InAsset.IsValid()) return NAME_None;
 
-	SaveConfig();
+	if (AssetIsBlueprint(InAsset))
+	{
+		const FString GeneratedClassName = InAsset.TagsAndValues.FindTag(TEXT("GeneratedClass")).GetValue();
+		const FString ClassObjectPath = FPackageName::ExportTextPathToObjectPath(*GeneratedClassName);
+		return FName{*FPackageName::ObjectPathToObjectName(ClassObjectPath)};
+	}
+
+	return InAsset.AssetClass;
 }
-#endif
+
+UClass* UPjcSubsystem::GetAssetClassByName(const FName& InClassName)
+{
+	UClass* FoundClass = FindObject<UClass>(ANY_PACKAGE, *InClassName.ToString());
+	return FoundClass;
+}
+
+FAssetRegistryModule& UPjcSubsystem::GetModuleAssetRegistry()
+{
+	return FModuleManager::LoadModuleChecked<FAssetRegistryModule>(PjcConstants::ModuleAssetRegistry);
+}
+
+FAssetToolsModule& UPjcSubsystem::GetModuleAssetTools()
+{
+	return FModuleManager::LoadModuleChecked<FAssetToolsModule>(PjcConstants::ModuleAssetTools);
+}
+
+FContentBrowserModule& UPjcSubsystem::GetModuleContentBrowser()
+{
+	return FModuleManager::LoadModuleChecked<FContentBrowserModule>(PjcConstants::ModuleContentBrowser);
+}
+
+FPropertyEditorModule& UPjcSubsystem::GetModulePropertyEditor()
+{
+	return FModuleManager::LoadModuleChecked<FPropertyEditorModule>(PjcConstants::ModulePropertyEditor);
+}
 
 void UPjcSubsystem::BucketFill(TArray<FAssetData>& AssetsUnused, TArray<FAssetData>& Bucket, const int32 BucketSize)
 {
@@ -1735,101 +1671,4 @@ int32 UPjcSubsystem::BucketDelete(const TArray<UObject*>& LoadedAssets)
 	}
 
 	return DeletedAssetsNum;
-}
-
-bool UPjcSubsystem::FolderIsEmpty(const FString& InPath)
-{
-	if (InPath.IsEmpty()) return false;
-
-	const FName PathRel = FName{*PathConvertToRelative(InPath)};
-	if (GetModuleAssetRegistry().Get().HasAssets(PathRel, true))
-	{
-		return false;
-	}
-
-	const FString PathAbs = PathConvertToAbsolute(InPath);
-	if (PathAbs.IsEmpty()) return false;
-
-	TArray<FString> Files;
-	IFileManager::Get().FindFilesRecursive(Files, *PathAbs, TEXT("*"), true, false);
-
-	return Files.Num() == 0;
-}
-
-bool UPjcSubsystem::FolderIsExcluded(const FString& InPath)
-{
-	const UPjcAssetExcludeSettings* EditorAssetExcludeSettings = GetDefault<UPjcAssetExcludeSettings>();
-	if (!EditorAssetExcludeSettings) return false;
-
-	const FString PathRel = PathConvertToRelative(InPath);
-	if (PathRel.IsEmpty()) return false;
-
-	for (const auto& ExcludedPath : EditorAssetExcludeSettings->ExcludedFolders)
-	{
-		const FString ExcludedPathRel = PathConvertToRelative(ExcludedPath.Path);
-		if (ExcludedPathRel.IsEmpty()) continue;
-
-		if (PathRel.StartsWith(ExcludedPathRel))
-		{
-			return true;
-		}
-	}
-
-	return false;
-}
-
-bool UPjcSubsystem::FolderIsEngineGenerated(const FString& InPath)
-{
-	const FString PathDevelopers = FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / TEXT("Developers"));
-	const FString PathCollections = FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir()) / TEXT("Collections");
-	const FString PathCurrentDeveloper = PathDevelopers / FPaths::GameUserDeveloperFolderName();
-	const FString PathCurrentDeveloperCollections = PathCurrentDeveloper / TEXT("Collections");
-
-	TSet<FString> EngineGeneratedPaths;
-	EngineGeneratedPaths.Emplace(PathDevelopers);
-	EngineGeneratedPaths.Emplace(PathCollections);
-	EngineGeneratedPaths.Emplace(PathCurrentDeveloper);
-	EngineGeneratedPaths.Emplace(PathCurrentDeveloperCollections);
-
-	return EngineGeneratedPaths.Contains(InPath);
-}
-
-FName UPjcSubsystem::GetAssetExactClassName(const FAssetData& InAsset)
-{
-	if (!InAsset.IsValid()) return NAME_None;
-
-	if (AssetIsBlueprint(InAsset))
-	{
-		const FString GeneratedClassName = InAsset.TagsAndValues.FindTag(TEXT("GeneratedClass")).GetValue();
-		const FString ClassObjectPath = FPackageName::ExportTextPathToObjectPath(*GeneratedClassName);
-		return FName{*FPackageName::ObjectPathToObjectName(ClassObjectPath)};
-	}
-
-	return InAsset.AssetClass;
-}
-
-UClass* UPjcSubsystem::GetAssetClassByName(const FName& InClassName)
-{
-	UClass* FoundClass = FindObject<UClass>(ANY_PACKAGE, *InClassName.ToString());
-	return FoundClass;
-}
-
-FAssetRegistryModule& UPjcSubsystem::GetModuleAssetRegistry()
-{
-	return FModuleManager::LoadModuleChecked<FAssetRegistryModule>(PjcConstants::ModuleAssetRegistry);
-}
-
-FAssetToolsModule& UPjcSubsystem::GetModuleAssetTools()
-{
-	return FModuleManager::LoadModuleChecked<FAssetToolsModule>(PjcConstants::ModuleAssetTools);
-}
-
-FContentBrowserModule& UPjcSubsystem::GetModuleContentBrowser()
-{
-	return FModuleManager::LoadModuleChecked<FContentBrowserModule>(PjcConstants::ModuleContentBrowser);
-}
-
-FPropertyEditorModule& UPjcSubsystem::GetModulePropertyEditor()
-{
-	return FModuleManager::LoadModuleChecked<FPropertyEditorModule>(PjcConstants::ModulePropertyEditor);
 }
