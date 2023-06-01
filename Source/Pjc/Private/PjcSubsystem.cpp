@@ -812,7 +812,7 @@ void UPjcSubsystem::DeleteAssetsUnused(const bool bShowSlowTask, const bool bSho
 		}
 
 		NumAssetsDeleted += BucketDelete(LoadedAssets);
-		const FString ProgressMsg = FString::Printf(TEXT("Deleted %d of %d"), NumAssetsDeleted, NumAssetsTotal);
+		const FString ProgressMsg = FString::Printf(TEXT("Deleted %d of %d assets"), NumAssetsDeleted, NumAssetsTotal);
 		SlowTask.EnterProgressFrame(Bucket.Num(), FText::FromString(ProgressMsg));
 
 		Bucket.Reset();
@@ -869,9 +869,17 @@ void UPjcSubsystem::DeleteFoldersEmpty(const bool bShowSlowTask, const bool bSho
 		return;
 	}
 
+	FScopedSlowTask SlowTaskMain(
+		1.0f,
+		FText::FromString(TEXT("Deleting empty folders...")),
+		bShowSlowTask && GIsEditor && !IsRunningCommandlet()
+	);
+	SlowTaskMain.MakeDialog(false, false);
+	SlowTaskMain.EnterProgressFrame(1.0f);
+	
 	FScopedSlowTask SlowTask(
 		FoldersEmpty.Num(),
-		FText::FromString(TEXT("Deleting empty folders...")),
+		FText::FromString(TEXT(" ")),
 		bShowSlowTask && GIsEditor && !IsRunningCommandlet()
 	);
 	SlowTask.MakeDialog(false, false);
