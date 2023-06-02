@@ -120,14 +120,6 @@ void FPjcCmds::RegisterCommands()
 	);
 
 	UI_COMMAND(
-		PathsDelete,
-		"Delete",
-		"Delete all assets in selected paths",
-		EUserInterfaceActionType::Button,
-		FInputChord()
-	);
-
-	UI_COMMAND(
 		AssetsExclude,
 		"Exclude",
 		"Exclude selected assets",
@@ -200,6 +192,14 @@ void FPjcCmds::RegisterCommands()
 	);
 
 	UI_COMMAND(
+		OpenViewerAssetsCorrupted,
+		"Corrupted Assets",
+		"Open corrupted assets viewer",
+		EUserInterfaceActionType::Button,
+		FInputChord()
+	);
+
+	UI_COMMAND(
 		OpenGithub,
 		"Go to Github",
 		"Open plugins github repository",
@@ -219,30 +219,6 @@ void FPjcCmds::RegisterCommands()
 		OpenBugReport,
 		"Report Bug",
 		"Open the GitHub issue tracker to report a bug.",
-		EUserInterfaceActionType::Button,
-		FInputChord()
-	);
-
-	UI_COMMAND(
-		OpenViewerAssetsCorrupted,
-		"Corrupted Assets",
-		"Open corrupted assets viewer",
-		EUserInterfaceActionType::Button,
-		FInputChord()
-	);
-
-	UI_COMMAND(
-		ItemsCollapseAll,
-		"Collapse All",
-		"Collapse all items",
-		EUserInterfaceActionType::Button,
-		FInputChord()
-	);
-
-	UI_COMMAND(
-		ItemsExpandAll,
-		"Expand All",
-		"Expand all items",
 		EUserInterfaceActionType::Button,
 		FInputChord()
 	);

@@ -103,7 +103,6 @@ TSharedRef<SWidget> SPjcItemTree::GenerateWidgetForColumn(const FName& InColumnN
 					SNew(STextBlock)
 					.AutoWrapText(false)
 					.ColorAndOpacity(FLinearColor::White)
-					// .Font(FPjcStyles::GetFont("Light", 8))
 					.Text(FText::FromString(StrPercent))
 				]
 			];
@@ -120,20 +119,7 @@ TSharedRef<SWidget> SPjcItemTree::GenerateWidgetForColumn(const FName& InColumnN
 				.ColorAndOpacity(FLinearColor::White)
 				.Justification(ETextJustify::Center)
 				.ColorAndOpacity(FLinearColor::White)
-				// .Font(FPjcStyles::GetFont("Light", 8))
 				.Text(FText::AsMemory(Item->SizeAssetsUnused, IEC))
-				// SNew(SOverlay)
-				// + SOverlay::Slot().HAlign(HAlign_Fill).VAlign(VAlign_Fill)
-				// [
-				// 	SNew(SProgressBar)
-				// 	.BorderPadding(FVector2D{0.0f, 0.0f})
-				// 	.Percent(Item->PercentageUnusedNormalized)
-				// 	.BackgroundImage(FPjcStyles::Get().GetBrush("ProjectCleaner.BgProgressbar"))
-				// 	.FillColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Red"))
-				// ]
-				// + SOverlay::Slot().HAlign(HAlign_Center).VAlign(VAlign_Center)
-				// [
-				// ]
 			];
 	}
 
@@ -156,7 +142,7 @@ FSlateColor SPjcItemTree::GetFolderColor() const
 	{
 		return FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Yellow");
 	}
-	
+
 	if (Item->bIsDev)
 	{
 		return FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Blue");

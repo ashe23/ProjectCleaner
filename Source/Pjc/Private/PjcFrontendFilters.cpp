@@ -1,7 +1,6 @@
 ﻿// Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "PjcFrontendFilters.h"
-
 #include "PjcStyles.h"
 #include "PjcSubsystem.h"
 

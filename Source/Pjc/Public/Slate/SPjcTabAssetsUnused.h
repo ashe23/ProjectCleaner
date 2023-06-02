@@ -6,6 +6,9 @@
 #include "ContentBrowserDelegates.h"
 #include "Widgets/SCompoundWidget.h"
 
+struct FPjcTreeItem;
+struct FPjcStatItem;
+class UPjcSubsystem;
 class FPjcFilterAssetsExtReferenced;
 class FPjcFilterAssetsEditor;
 class FPjcFilterAssetsCircular;
@@ -13,9 +16,6 @@ class FPjcFilterAssetsIndirect;
 class FPjcFilterAssetsPrimary;
 class FPjcFilterAssetsUsed;
 class FPjcFilterAssetsExcluded;
-struct FPjcTreeItem;
-struct FPjcStatItem;
-class UPjcSubsystem;
 
 class SPjcTabAssetsUnused final : public SCompoundWidget
 {

@@ -8,8 +8,8 @@
 #include "PjcConstants.h"
 #include "PjcSubsystem.h"
 #include "PjcStyles.h"
-// Engine Headers
 #include "PjcCmds.h"
+// Engine Headers
 #include "Widgets/Layout/SWidgetSwitcher.h"
 
 void SPjcTabMain::Construct(const FArguments& InArgs, const TSharedRef<SDockTab>& ConstructUnderMajorTab, const TSharedPtr<SWindow>& ConstructUnderWindow)

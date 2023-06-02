@@ -27,7 +27,6 @@ public:
 	TSharedPtr<FUICommandInfo> ClearExcludeSettings;
 	TSharedPtr<FUICommandInfo> PathsExclude;
 	TSharedPtr<FUICommandInfo> PathsInclude;
-	TSharedPtr<FUICommandInfo> PathsDelete;
 	TSharedPtr<FUICommandInfo> AssetsExclude;
 	TSharedPtr<FUICommandInfo> AssetsExcludeByClass;
 	TSharedPtr<FUICommandInfo> AssetsInclude;
@@ -41,6 +40,4 @@ public:
 	TSharedPtr<FUICommandInfo> OpenGithub;
 	TSharedPtr<FUICommandInfo> OpenWiki;
 	TSharedPtr<FUICommandInfo> OpenBugReport;
-	TSharedPtr<FUICommandInfo> ItemsCollapseAll;
-	TSharedPtr<FUICommandInfo> ItemsExpandAll;
 };

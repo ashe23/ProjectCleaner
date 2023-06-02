@@ -876,7 +876,7 @@ void UPjcSubsystem::DeleteFoldersEmpty(const bool bShowSlowTask, const bool bSho
 	);
 	SlowTaskMain.MakeDialog(false, false);
 	SlowTaskMain.EnterProgressFrame(1.0f);
-	
+
 	FScopedSlowTask SlowTask(
 		FoldersEmpty.Num(),
 		FText::FromString(TEXT(" ")),
@@ -1556,7 +1556,6 @@ void UPjcSubsystem::TryOpenFile(const FString& InPath)
 
 	FPlatformProcess::LaunchFileInDefaultExternalApplication(*InPath);
 }
-
 
 
 FAssetRegistryModule& UPjcSubsystem::GetModuleAssetRegistry()
