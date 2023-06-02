@@ -41,4 +41,5 @@ namespace PjcConstants
 	static const TSet<FString> ConfigFileExtensions{TEXT("ini")};
 	static const FString UrlGithub{TEXT("https://github.com/ashe23/ProjectCleaner")};
 	static const FString UrlDocs{TEXT("https://github.com/ashe23/ProjectCleaner/wiki")};
+	static const FString UrlIssueTracker{TEXT("https://github.com/ashe23/ProjectCleaner/issues")};
 }

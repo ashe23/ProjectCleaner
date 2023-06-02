@@ -333,6 +333,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Path")
 	static int64 GetFilesTotalSize(const TArray<FString>& Files);
 
+	/**
+	 * @brief Returns asset exact class name, if its blueprint it will return generated class name
+	 * @param InAsset FAssetData
+	 * @return FName 
+	 */
+	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Path")
+	static FName GetAssetExactClassName(const FAssetData& InAsset);
+
 	static bool FolderIsEmpty(const FString& InPath);
 	static bool FolderIsExcluded(const FString& InPath);
 	static bool FolderIsEngineGenerated(const FString& InPath);
@@ -348,8 +356,7 @@ public:
 	static void OpenReferenceViewer(const TArray<FAssetData>& InAssets);
 	static void OpenAssetAuditViewer(const TArray<FAssetData>& InAssets);
 	static void TryOpenFile(const FString& InPath);
-	static FName GetAssetExactClassName(const FAssetData& InAsset);
-	static UClass* GetAssetClassByName(const FName& InClassName);
+
 	static FAssetToolsModule& GetModuleAssetTools();
 	static FAssetRegistryModule& GetModuleAssetRegistry();
 	static FContentBrowserModule& GetModuleContentBrowser();

@@ -48,11 +48,7 @@ public class Pjc : ModuleRules
 				"IntroTutorials",
 				"UMGEditor",
 				"AssetManagerEditor",
-				"AssetTools",
-				// "DeveloperSettings",
-				// "LevelEditor",
-				// "ConfigEditor",
-				// "Settings",
+				"AssetTools"
 			}
 		);
 	}

@@ -216,6 +216,14 @@ void FPjcCmds::RegisterCommands()
 	);
 
 	UI_COMMAND(
+		OpenBugReport,
+		"Report Bug",
+		"Open the GitHub issue tracker to report a bug.",
+		EUserInterfaceActionType::Button,
+		FInputChord()
+	);
+
+	UI_COMMAND(
 		OpenViewerAssetsCorrupted,
 		"Corrupted Assets",
 		"Open corrupted assets viewer",

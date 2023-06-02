@@ -29,6 +29,11 @@ void SPjcTabMain::Construct(const FArguments& InArgs, const TSharedRef<SDockTab>
 		FPlatformProcess::LaunchURL(*PjcConstants::UrlDocs, nullptr, nullptr);
 	}));
 
+	Cmds->MapAction(FPjcCmds::Get().OpenBugReport, FExecuteAction::CreateLambda([]()
+	{
+		FPlatformProcess::LaunchURL(*PjcConstants::UrlIssueTracker, nullptr, nullptr);
+	}));
+
 	TabLayout = FTabManager::NewLayout("PjcTabLayout")
 		->AddArea
 		(
@@ -222,4 +227,6 @@ void SPjcTabMain::CreateMenuBarHelp(FMenuBuilder& MenuBuilder, const TSharedPtr<
 {
 	MenuBuilder.AddMenuEntry(FPjcCmds::Get().OpenGithub);
 	MenuBuilder.AddMenuEntry(FPjcCmds::Get().OpenWiki);
+	MenuBuilder.AddSeparator();
+	MenuBuilder.AddMenuEntry(FPjcCmds::Get().OpenBugReport);
 }

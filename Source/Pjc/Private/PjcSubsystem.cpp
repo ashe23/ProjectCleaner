@@ -1216,7 +1216,8 @@ FString UPjcSubsystem::PathConvertToObjectPath(const FString& InPath)
 		return FString::Printf(TEXT("%s/%s.%s"), *AssetPath, *FileName, *FileName);
 	}
 
-	const FString ObjectPath = FPackageName::ExportTextPathToObjectPath(InPath);
+	FString ObjectPath = FPackageName::ExportTextPathToObjectPath(InPath);
+	ObjectPath.RemoveFromEnd(TEXT("_C")); // we should remove _C prefix if its blueprint asset
 
 	if (!ObjectPath.StartsWith(PjcConstants::PathRoot.ToString())) return {};
 
@@ -1284,6 +1285,20 @@ int64 UPjcSubsystem::GetFilesTotalSize(const TArray<FString>& Files)
 	}
 
 	return Size;
+}
+
+FName UPjcSubsystem::GetAssetExactClassName(const FAssetData& InAsset)
+{
+	if (!InAsset.IsValid()) return NAME_None;
+
+	if (AssetIsBlueprint(InAsset))
+	{
+		const FString GeneratedClassName = InAsset.TagsAndValues.FindTag(TEXT("GeneratedClass")).GetValue();
+		const FString ClassObjectPath = FPackageName::ExportTextPathToObjectPath(*GeneratedClassName);
+		return FName{*FPackageName::ObjectPathToObjectName(ClassObjectPath)};
+	}
+
+	return InAsset.AssetClass;
 }
 
 bool UPjcSubsystem::FolderIsEmpty(const FString& InPath)
@@ -1542,25 +1557,7 @@ void UPjcSubsystem::TryOpenFile(const FString& InPath)
 	FPlatformProcess::LaunchFileInDefaultExternalApplication(*InPath);
 }
 
-FName UPjcSubsystem::GetAssetExactClassName(const FAssetData& InAsset)
-{
-	if (!InAsset.IsValid()) return NAME_None;
 
-	if (AssetIsBlueprint(InAsset))
-	{
-		const FString GeneratedClassName = InAsset.TagsAndValues.FindTag(TEXT("GeneratedClass")).GetValue();
-		const FString ClassObjectPath = FPackageName::ExportTextPathToObjectPath(*GeneratedClassName);
-		return FName{*FPackageName::ObjectPathToObjectName(ClassObjectPath)};
-	}
-
-	return InAsset.AssetClass;
-}
-
-UClass* UPjcSubsystem::GetAssetClassByName(const FName& InClassName)
-{
-	UClass* FoundClass = FindObject<UClass>(ANY_PACKAGE, *InClassName.ToString());
-	return FoundClass;
-}
 
 FAssetRegistryModule& UPjcSubsystem::GetModuleAssetRegistry()
 {
