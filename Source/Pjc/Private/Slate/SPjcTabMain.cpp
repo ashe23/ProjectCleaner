@@ -133,7 +133,7 @@ void SPjcTabMain::Construct(const FArguments& InArgs, const TSharedRef<SDockTab>
 		]
 	];
 
-	TabManager->SetMenuMultiBox(MenuBarBuilder.GetMultiBox());
+	TabManager->SetMenuMultiBox(MenuBarBuilder.GetMultiBox(), nullptr);
 }
 
 SPjcTabMain::~SPjcTabMain()
@@ -166,50 +166,58 @@ FText SPjcTabMain::GetWidgetWarningText() const
 
 TSharedRef<SDockTab> SPjcTabMain::OnTabAssetsUnusedSpawn(const FSpawnTabArgs& Args) const
 {
-	return
+	const auto Frontend =
 		SNew(SDockTab)
 		.TabRole(PanelTab)
 		.Label(FText::FromString(TEXT("Assets Unused")))
-		.Icon(FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.PieChart16"))
 		[
 			SNew(SPjcTabAssetsUnused)
 		];
+
+	Frontend->SetTabIcon(FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.PieChart16"));
+	return Frontend;
 }
 
 TSharedRef<SDockTab> SPjcTabMain::OnTabAssetsIndirectSpawn(const FSpawnTabArgs& Args) const
 {
-	return
+	const auto Frontend =
 		SNew(SDockTab)
 		.TabRole(PanelTab)
 		.Label(FText::FromString(TEXT("Assets Indirect")))
-		.Icon(FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.Arrows16"))
 		[
 			SNew(SPjcTabAssetsIndirect)
 		];
+
+	Frontend->SetTabIcon(FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.Arrows16"));
+	return Frontend;
 }
 
 TSharedRef<SDockTab> SPjcTabMain::OnTabAssetsCorruptedSpawn(const FSpawnTabArgs& Args) const
 {
-	return
+	const auto Frontend =
 		SNew(SDockTab)
 		.TabRole(PanelTab)
 		.Label(FText::FromString(TEXT("Assets Corrupted")))
-		.Icon(FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.CorruptedFile16"))
 		[
 			SNew(SPjcTabAssetsCorrupted)
 		];
+
+	Frontend->SetTabIcon(FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.CorruptedFile16"));
+	return Frontend;
 }
 
 TSharedRef<SDockTab> SPjcTabMain::OnTabFilesExternalSpawn(const FSpawnTabArgs& Args) const
 {
-	return
+	const auto Frontend =
 		SNew(SDockTab)
 		.TabRole(PanelTab)
 		.Label(FText::FromString(TEXT("Files External")))
-		.Icon(FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.File16"))
 		[
 			SNew(SPjcTabFilesExternal)
 		];
+
+	Frontend->SetTabIcon(FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.File16"));
+	return Frontend;
 }
 
 void SPjcTabMain::CreateMenuBarTabs(FMenuBuilder& MenuBuilder, const TSharedPtr<FTabManager> TabManagerPtr)

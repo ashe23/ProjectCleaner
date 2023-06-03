@@ -48,7 +48,8 @@ public class Pjc : ModuleRules
 				"IntroTutorials",
 				"UMGEditor",
 				"AssetManagerEditor",
-				"AssetTools"
+				"AssetTools",
+				"RenderCore"
 			}
 		);
 	}

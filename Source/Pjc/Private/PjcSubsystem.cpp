@@ -828,7 +828,8 @@ void UPjcSubsystem::DeleteAssetsUnused(const bool bShowSlowTask, const bool bSho
 		LoadedAssets.Reset();
 	}
 
-	const TSet<FName> EmptyPackages = GetModuleAssetRegistry().Get().GetCachedEmptyPackages();
+	// const TSet<FName> EmptyPackages = GetModuleAssetRegistry().Get().GetCachedEmptyPackages();
+	const TSet<FName> EmptyPackages = GetModuleAssetRegistry().Get().GetCachedEmptyPackagesCopy();
 	TArray<UPackage*> AssetPackages;
 	for (const auto& EmptyPackage : EmptyPackages)
 	{
@@ -1252,8 +1253,8 @@ int64 UPjcSubsystem::GetAssetSize(const FAssetData& InAsset)
 {
 	if (!InAsset.IsValid()) return 0;
 
-	const FAssetPackageData* AssetPackageData = GetModuleAssetRegistry().Get().GetAssetPackageData(InAsset.PackageName);
-	if (!AssetPackageData) return 0;
+	const auto& AssetPackageData = GetModuleAssetRegistry().Get().GetAssetPackageDataCopy(InAsset.PackageName);
+	if (!AssetPackageData.IsSet()) return 0;
 
 	return AssetPackageData->DiskSize;
 }
@@ -1266,8 +1267,8 @@ int64 UPjcSubsystem::GetAssetsTotalSize(const TArray<FAssetData>& InAssets)
 	{
 		if (!Asset.IsValid()) continue;
 
-		const auto AssetPackageData = GetModuleAssetRegistry().Get().GetAssetPackageData(Asset.PackageName);
-		if (!AssetPackageData) continue;
+		const auto& AssetPackageData = GetModuleAssetRegistry().Get().GetAssetPackageDataCopy(Asset.PackageName);
+		if (!AssetPackageData.IsSet()) continue;
 
 		Size += AssetPackageData->DiskSize;
 	}

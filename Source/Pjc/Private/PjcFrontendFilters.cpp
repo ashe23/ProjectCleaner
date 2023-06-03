@@ -378,7 +378,7 @@ FText FPjcFilterAssetsExtReferenced::GetToolTipText() const
 
 FLinearColor FPjcFilterAssetsExtReferenced::GetColor() const
 {
-	return FPjcStyles::Get().GetColor("ProjectCleaner.Color.Purple");
+	return FPjcStyles::Get().GetColor("ProjectCleaner.Color.Violet");
 }
 
 void FPjcFilterAssetsExtReferenced::ActiveStateChanged(bool bActive)
