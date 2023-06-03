@@ -1,32 +1,36 @@
 # ProjectCleaner
-Unreal engine plugin for managing unused assets and empty folders in project.
+Unreal engine plugin for managing unused assets and empty folders in your project.
 
-No more Migration and other hacky methods needed.
+No more need for Migration and other hacky methods.
 
 Versions Supported: 4.27+   
 Platform: Windows and Linux
 
-<img src="https://user-images.githubusercontent.com/8270558/162420930-760e035b-6e91-43c4-9cd0-0e0beddf8d31.png" />
+<img src="https://github.com/ashe23/ProjectCleaner/assets/8270558/265ed34e-1b7b-46fb-953c-bc0d37c10fd1" />
 
 # Installation
-Plugin available on marketplace [Marketplace URL](https://www.unrealengine.com/marketplace/en-US/product/4d7f5dc837fc4b009bb91e678adf9fd0)
+The plugin is available on the marketplace [Marketplace URL](https://www.unrealengine.com/marketplace/en-US/product/4d7f5dc837fc4b009bb91e678adf9fd0)
 
 # Installation from github
 1) Create 'Plugins' folder in your project root directory
 2) Download appropriate version of .zip in releases
 3) Extract to Plugins folder
-4) Open Project, and thats it!
+4) Open your project, and you're done!
 
 # Installation from source
 1) Create 'Plugins' folder in your project root directory
-2) Clone repository to 'Plugins' folder (make sure you picked correct branch for your engine version)
-3) Build solution and that it!
+2) Clone the repository to the 'Plugins' folder (make sure you pick the correct branch for your engine version).
+3) Build the solution and you're done!
 
 # Features
-* Unused assets detection ([Unused assets Docs](https://github.com/ashe23/ProjectCleaner/wiki/Unused-assets))
+* Detection of unused assets
+* Detection of corrupted assets
+* Detection of indirect assets
+* Detection of external files
 * Empty folders detection
-* Non Engine files detection ([Non Engine Files Docs](https://github.com/ashe23/ProjectCleaner/wiki/Non-Engine-Files))
-* Corrupted assets detection ([Corrupted assets Docs](https://github.com/ashe23/ProjectCleaner/wiki/Corrupted-Assets))
-* Indirectly used assets detection ([Indirectly used assets Docs](https://github.com/ashe23/ProjectCleaner/wiki/Indirectly-used-assets))
-* Configurable options for scanning
-* Command line interface ([CLI docs](https://github.com/ashe23/ProjectCleaner/wiki/Command-line-interface))
+* Subsystem class that exposes most of the plugin functionality, which can be utilized in Blueprints or Python scripts.
+* Command line interface using Commandlets
+* Works fast on Large projects
+* Intiutive and informative user interface
+* Per-folder asset usage information
+* Configurable scanning and exclusion settings
