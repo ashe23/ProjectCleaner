@@ -1,1 +1,0 @@
-﻿// Copyright Ashot Barkhudaryan. All Rights Reserved.

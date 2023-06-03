@@ -450,7 +450,7 @@ void UPjcSubsystem::GetClassNamesEditor(TSet<FTopLevelAssetPath>& ClassNames)
 		UEditorUtilityWidgetBlueprint::StaticClass()->GetClassPathName(),
 		UEditorTutorial::StaticClass()->GetClassPathName()
 	};
-
+	
 	ClassNames.Empty();
 	GetModuleAssetRegistry().Get().GetDerivedClassNames(ClassNamesEditorBase, TSet<FTopLevelAssetPath>{}, ClassNames);
 }
@@ -1321,7 +1321,7 @@ FTopLevelAssetPath UPjcSubsystem::GetAssetExactClassName(const FAssetData& InAss
 		{
 			const FString ShortClassName = ClassName.ToString();
 			ClassPathName = UClass::TryConvertShortTypeNameToPathName<UStruct>(*ShortClassName, ELogVerbosity::Warning, TEXT("AssetRegistry using deprecated function"));
-			UE_CLOG(ClassPathName.IsNull(), LogClass, Error, TEXT("Failed to convert short class name %s to class path name."), *ShortClassName);
+			// UE_CLOG(ClassPathName.IsNull(), LogClass, Error, TEXT("Failed to convert short class name %s to class path name."), *ShortClassName);
 		}
 
 		return ClassPathName;

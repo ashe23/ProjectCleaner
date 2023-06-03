@@ -34,6 +34,10 @@
 		{
 			"Name": "EditorScriptingUtilities",
 			"Enabled": true
+		},
+		{
+			"Name": "GuidedTutorials",
+			"Enabled": true
 		}
 	]
 }
