@@ -129,11 +129,6 @@ TSharedRef<SWidget> SPjcItemTree::GenerateWidgetForColumn(const FName& InColumnN
 
 const FSlateBrush* SPjcItemTree::GetFolderIcon() const
 {
-	if (Item->bIsDev)
-	{
-		return FAppStyle::GetBrush(TEXT("ContentBrowser.AssetTreeFolderDeveloper"));
-	}
-
 	return FAppStyle::GetBrush(Item->bIsExpanded ? TEXT("ContentBrowser.AssetTreeFolderOpen") : TEXT("ContentBrowser.AssetTreeFolderClosed"));
 }
 
