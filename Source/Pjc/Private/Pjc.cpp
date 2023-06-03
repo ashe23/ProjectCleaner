@@ -41,7 +41,7 @@ void FPjc::StartupModule()
 				);
 				Section.AddMenuEntryWithCommandList(FPjcCmds::Get().TabMain, Cmds);
 
-				UToolMenu* ToolbarMenu = UToolMenus::Get()->ExtendMenu("LevelEditor.LevelEditorToolBar");
+				UToolMenu* ToolbarMenu = UToolMenus::Get()->ExtendMenu("LevelEditor.LevelEditorToolBar.PlayToolBar");
 				FToolMenuSection& ToolbarSection = ToolbarMenu->FindOrAddSection("Settings");
 				FToolMenuEntry& Entry = ToolbarSection.AddEntry(
 					FToolMenuEntry::InitToolBarButton(FPjcCmds::Get().TabMain)
