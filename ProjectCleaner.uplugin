@@ -29,6 +29,10 @@
 		{
 			"Name": "AssetManagerEditor",
 			"Enabled": true
+		},
+		{
+			"Name": "EditorScriptingUtilities",
+			"Enabled": true
 		}
 	]
 }

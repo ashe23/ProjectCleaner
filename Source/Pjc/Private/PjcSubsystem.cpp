@@ -58,6 +58,7 @@ void UPjcSubsystem::GetAssetsUsed(TArray<FAssetData>& Assets, const bool bShowSl
 	TArray<FAssetData> AssetsAll;
 	TArray<FAssetData> AssetsIndirect;
 	TArray<FAssetData> AssetsExcluded;
+	TArray<FAssetData> AssetsMegascans;
 	TArray<FPjcAssetIndirectInfo> AssetsIndirectInfos;
 
 	GetAssetsAll(AssetsAll);
@@ -66,9 +67,15 @@ void UPjcSubsystem::GetAssetsUsed(TArray<FAssetData>& Assets, const bool bShowSl
 	GetClassNamesPrimary(ClassNamesPrimary);
 	GetClassNamesEditor(ClassNamesEditor);
 
+	if (FModuleManager::Get().IsModuleLoaded(PjcConstants::ModuleMegascans))
+	{
+		GetModuleAssetRegistry().Get().GetAssetsByPath(PjcConstants::PathMSPresets, AssetsMegascans, true);
+	}
+
 	TSet<FAssetData> AssetsUsed;
 	AssetsUsed.Append(AssetsIndirect);
 	AssetsUsed.Append(AssetsExcluded);
+	AssetsUsed.Append(AssetsMegascans);
 
 	FScopedSlowTask SlowTask{
 		static_cast<float>(AssetsAll.Num()),
