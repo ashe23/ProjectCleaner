@@ -47,7 +47,7 @@ private:
 	void OnTreeSelectionChanged(TSharedPtr<FPjcTreeItem> Selection, ESelectInfo::Type SelectInfo);
 	void OnTreeExpansionChanged(TSharedPtr<FPjcTreeItem> Item, bool bIsExpanded);
 	void SortTreeItems(const bool UpdateSortingOrder);
-	void ChangeItemExpansionRecursive(const TSharedPtr<FPjcTreeItem>& Item, const bool bExpansion) const;
+	void ChangeItemExpansionRecursive(const TSharedPtr<FPjcTreeItem>& Item, const bool bExpansion, const bool bRebuildList) const;
 	bool TreeItemIsVisible(const TSharedPtr<FPjcTreeItem>& Item) const;
 	bool TreeItemIsExpanded(const TSharedPtr<FPjcTreeItem>& Item, const TSet<TSharedPtr<FPjcTreeItem>>& CachedItems) const;
 	bool TreeItemContainsSearchText(const TSharedPtr<FPjcTreeItem>& Item) const;

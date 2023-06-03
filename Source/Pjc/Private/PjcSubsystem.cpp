@@ -22,6 +22,8 @@
 void UPjcSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
+
+	bFirstScan = true;
 }
 
 void UPjcSubsystem::Deinitialize()

@@ -338,7 +338,7 @@ public:
 	 * @param InAsset FAssetData
 	 * @return FName 
 	 */
-	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Path")
+	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset")
 	static FName GetAssetExactClassName(const FAssetData& InAsset);
 
 	static bool FolderIsEmpty(const FString& InPath);
@@ -376,6 +376,8 @@ public:
 
 	UPROPERTY(Config)
 	bool bShowFoldersEngine = true;
+
+	bool bFirstScan = true;
 
 private:
 	static void BucketFill(TArray<FAssetData>& AssetsUnused, TArray<FAssetData>& Bucket, const int32 BucketSize);

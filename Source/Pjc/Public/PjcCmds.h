@@ -27,6 +27,9 @@ public:
 	TSharedPtr<FUICommandInfo> ClearExcludeSettings;
 	TSharedPtr<FUICommandInfo> PathsExclude;
 	TSharedPtr<FUICommandInfo> PathsInclude;
+	TSharedPtr<FUICommandInfo> PathsReveal;
+	TSharedPtr<FUICommandInfo> PathsExpandRecursive;
+	TSharedPtr<FUICommandInfo> PathsCollapseRecursive;
 	TSharedPtr<FUICommandInfo> AssetsExclude;
 	TSharedPtr<FUICommandInfo> AssetsExcludeByClass;
 	TSharedPtr<FUICommandInfo> AssetsInclude;

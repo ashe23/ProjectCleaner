@@ -20,6 +20,7 @@ protected:
 	TSharedRef<SWidget> CreateToolbar() const;
 	TSharedRef<SHeaderRow> GetHeaderRow();
 	TSharedRef<ITableRow> OnGenerateRow(TSharedPtr<FPjcAssetIndirectInfo> Item, const TSharedRef<STableViewBase>& OwnerTable) const;
+	void OnMouseDoubleClicked(TSharedPtr<FPjcAssetIndirectInfo> Item);
 	void ListUpdateData();
 	void ListUpdateView();
 	void OnListSort(EColumnSortPriority::Type SortPriority, const FName& ColumnName, EColumnSortMode::Type InSortMode);

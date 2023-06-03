@@ -120,6 +120,30 @@ void FPjcCmds::RegisterCommands()
 	);
 
 	UI_COMMAND(
+		PathsReveal,
+		"Reveal in FileExplorer",
+		"Show selected folders in FileExplorer",
+		EUserInterfaceActionType::Button,
+		FInputChord()
+	);
+
+	UI_COMMAND(
+		PathsExpandRecursive,
+		"Expand Recursive",
+		"Expand selected folders recursively",
+		EUserInterfaceActionType::Button,
+		FInputChord()
+	);
+
+	UI_COMMAND(
+		PathsCollapseRecursive,
+		"Collapse Recursive",
+		"Collapse selected folders recursively",
+		EUserInterfaceActionType::Button,
+		FInputChord()
+	);
+
+	UI_COMMAND(
 		AssetsExclude,
 		"Exclude",
 		"Exclude selected assets",

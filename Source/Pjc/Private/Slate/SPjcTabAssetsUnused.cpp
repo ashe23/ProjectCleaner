@@ -60,6 +60,49 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 		FCanExecuteAction::CreateRaw(this, &SPjcTabAssetsUnused::TreeHasSelection)
 	);
 	Cmds->MapAction(
+		FPjcCmds::Get().PathsReveal,
+		FExecuteAction::CreateLambda([&]()
+		{
+			const auto SelectedItems = TreeListView->GetSelectedItems();
+
+			for (const auto& Item : SelectedItems)
+			{
+				UPjcSubsystem::OpenPathInFileExplorer(UPjcSubsystem::PathConvertToAbsolute(Item->FolderPath));
+			}
+		}),
+		FCanExecuteAction::CreateRaw(this, &SPjcTabAssetsUnused::TreeHasSelection)
+	);
+	Cmds->MapAction(
+		FPjcCmds::Get().PathsExpandRecursive,
+		FExecuteAction::CreateLambda([&]()
+		{
+			const auto SelectedItems = TreeListView->GetSelectedItems();
+
+			for (const auto& Item : SelectedItems)
+			{
+				ChangeItemExpansionRecursive(Item, true, false);
+			}
+
+			TreeListView->RebuildList();
+		}),
+		FCanExecuteAction::CreateRaw(this, &SPjcTabAssetsUnused::TreeHasSelection)
+	);
+	Cmds->MapAction(
+		FPjcCmds::Get().PathsCollapseRecursive,
+		FExecuteAction::CreateLambda([&]()
+		{
+			const auto SelectedItems = TreeListView->GetSelectedItems();
+
+			for (const auto& Item : SelectedItems)
+			{
+				ChangeItemExpansionRecursive(Item, false, false);
+			}
+
+			TreeListView->RebuildList();
+		}),
+		FCanExecuteAction::CreateRaw(this, &SPjcTabAssetsUnused::TreeHasSelection)
+	);
+	Cmds->MapAction(
 		FPjcCmds::Get().ClearSelection,
 		FExecuteAction::CreateRaw(this, &SPjcTabAssetsUnused::OnClearSelection),
 		FCanExecuteAction::CreateRaw(this, &SPjcTabAssetsUnused::TreeHasSelection)
@@ -188,17 +231,36 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 			UPjcAssetExcludeSettings* ExcludeSettings = GetMutableDefault<UPjcAssetExcludeSettings>();
 			if (!ExcludeSettings) return;
 
-			TSet<FName> ObjectPaths;
+			bool bFilterConflicts = false;
 
 			for (const auto& Asset : DelegateSelection.Execute())
 			{
-				ObjectPaths.Emplace(Asset.ToSoftObjectPath().GetAssetPathName());
+				const bool bAssetFolderAlreadyExcluded = ExcludeSettings->ExcludedFolders.ContainsByPredicate([&](const FDirectoryPath& InDirPath)
+				{
+					return Asset.PackagePath.ToString().StartsWith(InDirPath.Path);
+				});
+
+				const bool bAssetClassAlreadyExcluded = ExcludeSettings->ExcludedClasses.ContainsByPredicate([&](const TSoftClassPtr<UObject>& InClass)
+				{
+					return InClass.LoadSynchronous() && InClass.Get()->GetFName().IsEqual(UPjcSubsystem::GetAssetExactClassName(Asset));
+				});
+
+				if (bAssetFolderAlreadyExcluded || bAssetClassAlreadyExcluded)
+				{
+					bFilterConflicts = true;
+				}
+
+				ExcludeSettings->ExcludedAssets.RemoveAllSwap([&](const TSoftObjectPtr<UObject>& ExcludedAsset)
+				{
+					return ExcludedAsset.LoadSynchronous() && ExcludedAsset.ToSoftObjectPath() == Asset.ToSoftObjectPath();
+				}, false);
 			}
 
-			ExcludeSettings->ExcludedAssets.RemoveAllSwap([&](const TSoftObjectPtr<UObject>& ExcludedAsset)
+			if (bFilterConflicts)
 			{
-				return ExcludedAsset.LoadSynchronous() && ObjectPaths.Contains(ExcludedAsset.ToSoftObjectPath().GetAssetPathName());
-			}, false);
+				UPjcSubsystem::ShowNotification(TEXT("Some assets you wish to include are excluded by other settings."), SNotificationItem::CS_None, 5.0f);
+			}
+
 			ExcludeSettings->PostEditChange();
 
 			ScanProject();
@@ -216,17 +278,35 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 			UPjcAssetExcludeSettings* ExcludeSettings = GetMutableDefault<UPjcAssetExcludeSettings>();
 			if (!ExcludeSettings) return;
 
-			TSet<FName> ClassNames;
+			bool bFilterConflicts = false;
 
 			for (const auto& Asset : DelegateSelection.Execute())
 			{
-				ClassNames.Emplace(UPjcSubsystem::GetAssetExactClassName(Asset));
+				const bool bAssetFolderAlreadyExcluded = ExcludeSettings->ExcludedFolders.ContainsByPredicate([&](const FDirectoryPath& InDirPath)
+				{
+					return Asset.PackagePath.ToString().StartsWith(InDirPath.Path);
+				});
+
+				const bool bAssetAlreadyExcluded = ExcludeSettings->ExcludedAssets.ContainsByPredicate([&](const TSoftObjectPtr<UObject>& InObject)
+				{
+					return InObject.LoadSynchronous() && InObject.ToSoftObjectPath() == Asset.ToSoftObjectPath();
+				});
+
+				if (bAssetFolderAlreadyExcluded || bAssetAlreadyExcluded)
+				{
+					bFilterConflicts = true;
+				}
+
+				ExcludeSettings->ExcludedClasses.RemoveAllSwap([&](const TSoftClassPtr<UObject>& ExcludedAsset)
+				{
+					return ExcludedAsset.LoadSynchronous() && ExcludedAsset.Get()->GetFName().IsEqual(UPjcSubsystem::GetAssetExactClassName(Asset));
+				}, false);
 			}
 
-			ExcludeSettings->ExcludedClasses.RemoveAllSwap([&](const TSoftClassPtr<UObject>& ExcludedClass)
+			if (bFilterConflicts)
 			{
-				return ExcludedClass.LoadSynchronous() && ClassNames.Contains(ExcludedClass.Get()->GetFName());
-			}, false);
+				UPjcSubsystem::ShowNotification(TEXT("Some assets you wish to include are excluded by other settings."), SNotificationItem::CS_None, 5.0f);
+			}
 
 			ExcludeSettings->PostEditChange();
 
@@ -732,15 +812,52 @@ void SPjcTabAssetsUnused::OnPathInclude()
 
 	const auto& SelectedItems = TreeListView->GetSelectedItems();
 
+	bool bFilterConflicts = false;
+
+	TSet<TSharedPtr<FPjcTreeItem>> ExcludedParents;
+	TSet<TSharedPtr<FPjcTreeItem>> SelectedParents;
+
 	for (const auto& SelectedItem : SelectedItems)
 	{
+		bool bFolderParentAlreadyExcluded = false;
+
+		TSharedPtr<FPjcTreeItem> CurrentItem = SelectedItem;
+
+		while (CurrentItem.IsValid())
+		{
+			if (CurrentItem->bIsExcluded && CurrentItem != SelectedItem)
+			{
+				ExcludedParents.Add(CurrentItem);
+				bFolderParentAlreadyExcluded = true;
+				break;
+			}
+			CurrentItem = CurrentItem->Parent;
+		}
+
+		if (!bFolderParentAlreadyExcluded)
+		{
+			SelectedParents.Add(SelectedItem);
+		}
+
 		AssetExcludeSettings->ExcludedFolders.RemoveAllSwap([&](const FDirectoryPath& InDirPath)
 		{
 			return InDirPath.Path.Equals(SelectedItem->FolderPath);
 		});
 	}
 
+	ExcludedParents = ExcludedParents.Difference(SelectedParents);
+
+	if (ExcludedParents.Num() > 0)
+	{
+		bFilterConflicts = true;
+	}
+
 	AssetExcludeSettings->PostEditChange();
+
+	if (bFilterConflicts)
+	{
+		UPjcSubsystem::ShowNotification(TEXT("Some folders you are trying to include falls under an excluded parent folder"), SNotificationItem::CS_None, 5.0f);
+	}
 
 	ScanProject();
 }
@@ -757,6 +874,12 @@ void SPjcTabAssetsUnused::ScanProject()
 {
 	if (UPjcSubsystem::GetModuleAssetRegistry().Get().IsLoadingAssets())
 	{
+		if (SubsystemPtr && SubsystemPtr->bFirstScan)
+		{
+			SubsystemPtr->bFirstScan = false;
+			return;
+		}
+
 		UPjcSubsystem::ShowNotificationWithOutputLog(TEXT("Failed to scan project. AssetRegistry is still discovering assets. Please try again after it has finished."), SNotificationItem::CS_Fail, 5.0f);
 		return;
 	}
@@ -1049,6 +1172,11 @@ void SPjcTabAssetsUnused::UpdateTreeView()
 
 		TreeListView->SetItemExpansion(CurrentItem, CurrentItem->bIsExpanded);
 
+		if (SelectedPaths.Contains(FName{*CurrentItem->FolderPath}))
+		{
+			TreeListView->SetItemSelection(CurrentItem, true, ESelectInfo::Direct);
+		}
+
 		TArray<FString> SubPaths;
 		UPjcSubsystem::GetModuleAssetRegistry().Get().GetSubPaths(CurrentItem->FolderPath, SubPaths, false);
 
@@ -1328,7 +1456,7 @@ void SPjcTabAssetsUnused::SortTreeItems(const bool UpdateSortingOrder)
 	}
 }
 
-void SPjcTabAssetsUnused::ChangeItemExpansionRecursive(const TSharedPtr<FPjcTreeItem>& Item, const bool bExpansion) const
+void SPjcTabAssetsUnused::ChangeItemExpansionRecursive(const TSharedPtr<FPjcTreeItem>& Item, const bool bExpansion, const bool bRebuildList) const
 {
 	if (!Item.IsValid() || !TreeListView.IsValid()) return;
 
@@ -1348,7 +1476,10 @@ void SPjcTabAssetsUnused::ChangeItemExpansionRecursive(const TSharedPtr<FPjcTree
 		}
 	}
 
-	TreeListView->RebuildList();
+	if (bRebuildList)
+	{
+		TreeListView->RebuildList();
+	}
 }
 
 bool SPjcTabAssetsUnused::TreeItemIsVisible(const TSharedPtr<FPjcTreeItem>& Item) const
@@ -1592,7 +1723,7 @@ TSharedRef<SWidget> SPjcTabAssetsUnused::GetTreeBtnOptionsContent()
 		(
 			FExecuteAction::CreateLambda([&]
 			{
-				ChangeItemExpansionRecursive(RootItem, true);
+				ChangeItemExpansionRecursive(RootItem, true, true);
 			}),
 			FCanExecuteAction::CreateLambda([&]()
 			{
@@ -1611,7 +1742,7 @@ TSharedRef<SWidget> SPjcTabAssetsUnused::GetTreeBtnOptionsContent()
 		(
 			FExecuteAction::CreateLambda([&]
 			{
-				ChangeItemExpansionRecursive(RootItem, false);
+				ChangeItemExpansionRecursive(RootItem, false, true);
 			}),
 			FCanExecuteAction::CreateLambda([&]()
 			{
@@ -1633,6 +1764,11 @@ TSharedPtr<SWidget> SPjcTabAssetsUnused::GetTreeContextMenu() const
 	{
 		MenuBuilder.AddMenuEntry(FPjcCmds::Get().PathsExclude);
 		MenuBuilder.AddMenuEntry(FPjcCmds::Get().PathsInclude);
+		MenuBuilder.AddSeparator();
+		MenuBuilder.AddMenuEntry(FPjcCmds::Get().PathsReveal);
+		MenuBuilder.AddSeparator();
+		MenuBuilder.AddMenuEntry(FPjcCmds::Get().PathsExpandRecursive);
+		MenuBuilder.AddMenuEntry(FPjcCmds::Get().PathsCollapseRecursive);
 	}
 	MenuBuilder.EndSection();
 

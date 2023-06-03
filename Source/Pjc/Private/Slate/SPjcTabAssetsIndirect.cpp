@@ -115,6 +115,7 @@ void SPjcTabAssetsIndirect::Construct(const FArguments& InArgs)
 	.ListItemsSource(&ItemsFiltered)
 	.SelectionMode(ESelectionMode::Multi)
 	.OnGenerateRow(this, &SPjcTabAssetsIndirect::OnGenerateRow)
+	.OnMouseButtonDoubleClick_Raw(this, &SPjcTabAssetsIndirect::OnMouseDoubleClicked)
 	.HeaderRow(GetHeaderRow());
 
 	ChildSlot
@@ -274,6 +275,13 @@ TSharedRef<SHeaderRow> SPjcTabAssetsIndirect::GetHeaderRow()
 TSharedRef<ITableRow> SPjcTabAssetsIndirect::OnGenerateRow(TSharedPtr<FPjcAssetIndirectInfo> Item, const TSharedRef<STableViewBase>& OwnerTable) const
 {
 	return SNew(SPjcItemAssetIndirect, OwnerTable).Item(Item).HighlightText(SearchText);
+}
+
+void SPjcTabAssetsIndirect::OnMouseDoubleClicked(TSharedPtr<FPjcAssetIndirectInfo> Item)
+{
+	if (!Item.IsValid()) return;
+
+	UPjcSubsystem::OpenAssetEditor(Item->Asset);
 }
 
 void SPjcTabAssetsIndirect::ListUpdateData()

@@ -83,6 +83,9 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create()
 	Style->Set("ProjectCleaner.AssetsIncludeByClass", new IMAGE_BRUSH(TEXT("IconPlus32"), FVector2D{32.0f, 32.0f}));
 	Style->Set("ProjectCleaner.PathsExclude", new IMAGE_BRUSH(TEXT("IconMinus32"), FVector2D{32.0f, 32.0f}));
 	Style->Set("ProjectCleaner.PathsInclude", new IMAGE_BRUSH(TEXT("IconPlus32"), FVector2D{32.0f, 32.0f}));
+	Style->Set("ProjectCleaner.PathsReveal", new IMAGE_BRUSH(TEXT("IconFolderReveal32"), FVector2D{32.0f, 32.0f}));
+	Style->Set("ProjectCleaner.PathsExpandRecursive", new IMAGE_BRUSH(TEXT("IconExpand32"), FVector2D{32.0f, 32.0f}));
+	Style->Set("ProjectCleaner.PathsCollapseRecursive", new IMAGE_BRUSH(TEXT("IconCollapse32"), FVector2D{32.0f, 32.0f}));
 	Style->Set("ProjectCleaner.AssetsDelete", new IMAGE_BRUSH(TEXT("IconCross32"), FVector2D{32.0f, 32.0f}));
 	Style->Set("ProjectCleaner.OpenViewerSizeMap", new IMAGE_BRUSH(TEXT("IconTreeMap32"), FVector2D{32.0f, 32.0f}));
 	Style->Set("ProjectCleaner.OpenViewerReference", new IMAGE_BRUSH(TEXT("IconGraph32"), FVector2D{32.0f, 32.0f}));
@@ -111,6 +114,9 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create()
 	Style->Set("ProjectCleaner.AssetsIncludeByClass.Small", new IMAGE_BRUSH(TEXT("IconPlus20"), FVector2D{20.0f, 20.0f}));
 	Style->Set("ProjectCleaner.PathsExclude.Small", new IMAGE_BRUSH(TEXT("IconMinus20"), FVector2D{20.0f, 20.0f}));
 	Style->Set("ProjectCleaner.PathsInclude.Small", new IMAGE_BRUSH(TEXT("IconPlus20"), FVector2D{20.0f, 20.0f}));
+	Style->Set("ProjectCleaner.PathsReveal.Small", new IMAGE_BRUSH(TEXT("IconFolderReveal20"), FVector2D{20.0f, 20.0f}));
+	Style->Set("ProjectCleaner.PathsExpandRecursive.Small", new IMAGE_BRUSH(TEXT("IconExpand20"), FVector2D{20.0f, 20.0f}));
+	Style->Set("ProjectCleaner.PathsCollapseRecursive.Small", new IMAGE_BRUSH(TEXT("IconCollapse20"), FVector2D{20.0f, 20.0f}));
 	Style->Set("ProjectCleaner.AssetsDelete.Small", new IMAGE_BRUSH(TEXT("IconCross20"), FVector2D{20.0f, 20.0f}));
 	Style->Set("ProjectCleaner.OpenViewerSizeMap.Small", new IMAGE_BRUSH(TEXT("IconTreeMap20"), FVector2D{20.0f, 20.0f}));
 	Style->Set("ProjectCleaner.OpenViewerReference.Small", new IMAGE_BRUSH(TEXT("IconGraph20"), FVector2D{20.0f, 20.0f}));
