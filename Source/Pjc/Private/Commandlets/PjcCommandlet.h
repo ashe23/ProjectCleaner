@@ -20,7 +20,7 @@ class UPjcCommandlet : public UCommandlet
 		int32 NumFilesExternal = 0;
 		int32 NumFilesCorrupted = 0;
 	};
-	
+
 public:
 	UPjcCommandlet();
 	virtual int32 Main(const FString& Params) override;
@@ -28,7 +28,7 @@ public:
 private:
 	void ParseCommandLinesArguments(const FString& Params);
 	void StatsPrint(const FCleanupStats& Stats);
-	
+
 	bool bScanOnly = false;
 	bool bFullCleanup = false;
 	bool bDeleteAssetsUnused = false;

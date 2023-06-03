@@ -3,7 +3,6 @@
 #include "Commandlets/PjcCommandlet.h"
 
 #include "PjcSubsystem.h"
-#include "PjcTypes.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogProjectCleanerCLI, Display, All);
 
