@@ -500,6 +500,9 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 
 	const auto ContentBrowserView = UPjcSubsystem::GetModuleContentBrowser().Get().CreateAssetPicker(AssetPickerConfig);
 
+	UpdateStats();
+	UpdateTreeView();
+	UpdateContentBrowser();
 	ScanProject();
 
 	ChildSlot
