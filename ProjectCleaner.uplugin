@@ -1,29 +1,39 @@
 {
 	"FileVersion": 3,
 	"Version": 1,
-	"VersionName": "1.8.2",
+	"VersionName": "2.0.0",
 	"FriendlyName": "ProjectCleaner",
-	"Description": "Unreal engine plugin for managing all unused assets and empty folders in project",
+	"Description": "Unreal engine plugin for managing all unused assets and empty folders in project.",
 	"Category": "ProjectManagementTools",
 	"CreatedBy": "Ashot Barkhudaryan",
 	"CreatedByURL": "https://github.com/ashe23",
-	"DocsURL": "https://github.com/ashe23/ProjectCleaner",
+	"DocsURL": "https://github.com/ashe23/ProjectCleaner/wiki",
 	"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/product/4d7f5dc837fc4b009bb91e678adf9fd0",
-	"SupportURL": "",
 	"EngineVersion": "5.0.0",
+	"SupportURL": "https://github.com/ashe23/ProjectCleaner/issues",
 	"CanContainContent": false,
 	"IsBetaVersion": false,
 	"IsExperimentalVersion": false,
 	"Installed": false,
 	"Modules": [
 		{
-			"Name": "ProjectCleaner",
+			"Name": "Pjc",
 			"Type": "Editor",
 			"LoadingPhase": "PostDefault",
 			"WhitelistPlatforms": [
 				"Win64",
 				"Linux"
 			]
+		}
+	],
+	"Plugins": [
+		{
+			"Name": "AssetManagerEditor",
+			"Enabled": true
+		},
+		{
+			"Name": "EditorScriptingUtilities",
+			"Enabled": true
 		}
 	]
 }
