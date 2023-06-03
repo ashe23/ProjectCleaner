@@ -201,7 +201,7 @@ FText FPjcFilterAssetsCircular::GetToolTipText() const
 
 FLinearColor FPjcFilterAssetsCircular::GetColor() const
 {
-	return FLinearColor::Gray;
+	return FPjcStyles::Get().GetColor("ProjectCleaner.Color.DarkGray");
 }
 
 void FPjcFilterAssetsCircular::ActiveStateChanged(bool bActive)
@@ -378,7 +378,7 @@ FText FPjcFilterAssetsExtReferenced::GetToolTipText() const
 
 FLinearColor FPjcFilterAssetsExtReferenced::GetColor() const
 {
-	return FPjcStyles::Get().GetColor("ProjectCleaner.Color.Purple");
+	return FPjcStyles::Get().GetColor("ProjectCleaner.Color.Violet");
 }
 
 void FPjcFilterAssetsExtReferenced::ActiveStateChanged(bool bActive)
