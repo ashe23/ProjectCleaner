@@ -37,7 +37,7 @@ public:
 	virtual void ActiveStateChanged(bool bActive) override;
 	virtual bool PassesFilter(const FContentBrowserItem& InItem) const override;
 	void UpdateData();
-	
+
 	FPjcDelegateFilterChanged& OnFilterChanged();
 
 private:
@@ -56,7 +56,7 @@ public:
 	virtual void ActiveStateChanged(bool bActive) override;
 	virtual bool PassesFilter(const FContentBrowserItem& InItem) const override;
 	void UpdateData();
-	
+
 	FPjcDelegateFilterChanged& OnFilterChanged();
 
 private:
@@ -75,7 +75,7 @@ public:
 	virtual void ActiveStateChanged(bool bActive) override;
 	virtual bool PassesFilter(const FContentBrowserItem& InItem) const override;
 	void UpdateData();
-	
+
 	FPjcDelegateFilterChanged& OnFilterChanged();
 
 private:
@@ -94,7 +94,7 @@ public:
 	virtual void ActiveStateChanged(bool bActive) override;
 	virtual bool PassesFilter(const FContentBrowserItem& InItem) const override;
 	void UpdateData();
-	
+
 	FPjcDelegateFilterChanged& OnFilterChanged();
 
 private:
@@ -113,7 +113,7 @@ public:
 	virtual void ActiveStateChanged(bool bActive) override;
 	virtual bool PassesFilter(const FContentBrowserItem& InItem) const override;
 	void UpdateData();
-	
+
 	FPjcDelegateFilterChanged& OnFilterChanged();
 
 private:
@@ -132,12 +132,10 @@ public:
 	virtual void ActiveStateChanged(bool bActive) override;
 	virtual bool PassesFilter(const FContentBrowserItem& InItem) const override;
 	void UpdateData();
-	
+
 	FPjcDelegateFilterChanged& OnFilterChanged();
 
 private:
 	FPjcDelegateFilterChanged DelegateFilterChanged;
 	TSet<FAssetData> Assets;
 };
-
-
