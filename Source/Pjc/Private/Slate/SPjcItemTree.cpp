@@ -96,6 +96,7 @@ TSharedRef<SWidget> SPjcItemTree::GenerateWidgetForColumn(const FName& InColumnN
 					.BorderPadding(FVector2D{0.0f, 0.0f})
 					.Percent(Item->PercentageUnusedNormalized)
 					.BackgroundImage(FPjcStyles::Get().GetBrush("ProjectCleaner.BgProgressbar"))
+					.FillImage(FPjcStyles::Get().GetBrush("ProjectCleaner.BgWhite"))
 					.FillColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Red"))
 				]
 				+ SOverlay::Slot().HAlign(HAlign_Center).VAlign(VAlign_Center)

@@ -47,6 +47,13 @@ void UPjcSubsystem::GetAssetsAll(TArray<FAssetData>& Assets)
 	Assets.Reset();
 
 	GetModuleAssetRegistry().Get().GetAssetsByPath(PjcConstants::PathRoot, Assets, true);
+
+	// filtering assets that are in '/Game/__ExternalActors__' and '/Game/__ExternalObjects__' folders
+	FARFilter Filter;
+	Filter.bRecursivePaths = true;
+	Filter.PackagePaths.Add(FName{*GetPathExternalActors()});
+	Filter.PackagePaths.Add(FName{*GetPathExternalObjects()});
+	GetModuleAssetRegistry().Get().UseFilterToExcludeAssets(Assets, Filter);
 }
 
 void UPjcSubsystem::GetAssetsUsed(TArray<FAssetData>& Assets, const bool bShowSlowTask)
@@ -206,7 +213,7 @@ void UPjcSubsystem::GetAssetsIndirect(TArray<FAssetData>& Assets, TArray<FPjcAss
 			if (ObjectPath.IsEmpty()) continue;
 
 			const FAssetData AssetData = GetModuleAssetRegistry().Get().GetAssetByObjectPath(FName{*ObjectPath});
-			if (!AssetData.IsValid()) continue;
+			if (!AssetData.IsValid() || FolderIsExternal(AssetData.PackagePath.ToString())) continue;
 
 			// if founded asset is ok, we loading file lines to determine on what line its used
 			TArray<FString> Lines;
@@ -679,6 +686,8 @@ void UPjcSubsystem::GetFilesCorrupted(TArray<FString>& Files, const bool bShowSl
 	{
 		SlowTask.EnterProgressFrame(1.0f, FText::FromString(File));
 
+		if (FolderIsExternal(PathConvertToRelative(FPaths::GetPath(File)))) continue;
+
 		const FString Path = PathConvertToObjectPath(File);
 		if (Path.IsEmpty()) continue;
 		if (GetModuleAssetRegistry().Get().GetAssetByObjectPath(FName{*Path}).IsValid()) continue;
@@ -1121,7 +1130,7 @@ bool UPjcSubsystem::AssetIsExtReferenced(const FAssetData& InAsset)
 
 	return Refs.ContainsByPredicate([](const FName& Ref)
 	{
-		return !Ref.ToString().StartsWith(PjcConstants::PathRoot.ToString());
+		return !Ref.ToString().StartsWith(PjcConstants::PathRoot.ToString()) || FolderIsExternal(Ref.ToString());
 	});
 }
 
@@ -1368,6 +1377,11 @@ bool UPjcSubsystem::FolderIsEngineGenerated(const FString& InPath)
 	return EngineGeneratedPaths.Contains(InPath);
 }
 
+bool UPjcSubsystem::FolderIsExternal(const FString& InPath)
+{
+	return InPath.StartsWith(GetPathExternalActors()) || InPath.StartsWith(GetPathExternalObjects());
+}
+
 void UPjcSubsystem::GetSourceAndConfigFiles(TSet<FString>& Files)
 {
 	const FString DirSrc = FPaths::ConvertRelativePathToFull(FPaths::GameSourceDir());
@@ -1456,7 +1470,8 @@ void UPjcSubsystem::GetAssetsDependencies(TSet<FAssetData>& Assets)
 void UPjcSubsystem::ShowNotification(const FString& Msg, const SNotificationItem::ECompletionState State, const float Duration)
 {
 	FNotificationInfo Info{FText::FromString(Msg)};
-	Info.Text = FText::FromString(Msg);
+	Info.Text = FText::FromString(TEXT("ProjectCleaner"));
+	Info.SubText = FText::FromString(Msg);
 	Info.ExpireDuration = Duration;
 
 	const auto NotificationPtr = FSlateNotificationManager::Get().AddNotification(Info);
@@ -1468,7 +1483,8 @@ void UPjcSubsystem::ShowNotification(const FString& Msg, const SNotificationItem
 void UPjcSubsystem::ShowNotificationWithOutputLog(const FString& Msg, const SNotificationItem::ECompletionState State, const float Duration)
 {
 	FNotificationInfo Info{FText::FromString(Msg)};
-	Info.Text = FText::FromString(Msg);
+	Info.Text = FText::FromString(TEXT("ProjectCleaner"));
+	Info.SubText = FText::FromString(Msg);
 	Info.ExpireDuration = Duration;
 	Info.Hyperlink = FSimpleDelegate::CreateLambda([]()
 	{
@@ -1567,6 +1583,15 @@ void UPjcSubsystem::TryOpenFile(const FString& InPath)
 	FPlatformProcess::LaunchFileInDefaultExternalApplication(*InPath);
 }
 
+FString UPjcSubsystem::GetPathExternalActors()
+{
+	return FString::Printf(TEXT("/Game/%s"), FPackagePath::GetExternalActorsFolderName());
+}
+
+FString UPjcSubsystem::GetPathExternalObjects()
+{
+	return FString::Printf(TEXT("/Game/%s"), FPackagePath::GetExternalObjectsFolderName());
+}
 
 FAssetRegistryModule& UPjcSubsystem::GetModuleAssetRegistry()
 {

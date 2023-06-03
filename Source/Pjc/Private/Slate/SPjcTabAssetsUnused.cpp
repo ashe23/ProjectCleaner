@@ -33,6 +33,8 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 	ContentBrowserSettings->SetDisplayEngineFolder(false);
 	ContentBrowserSettings->SetDisplayCppFolders(false);
 	ContentBrowserSettings->SetDisplayPluginFolders(false);
+	ContentBrowserSettings->bShowAllFolder = false;
+	ContentBrowserSettings->bOrganizeFolders = false;
 	ContentBrowserSettings->PostEditChange();
 
 	Cmds = MakeShareable(new FUICommandList);
@@ -1185,6 +1187,8 @@ void SPjcTabAssetsUnused::UpdateTreeView()
 
 		for (const auto& SubPath : SubPaths)
 		{
+			if (UPjcSubsystem::FolderIsExternal(SubPath)) continue;
+
 			const TSharedPtr<FPjcTreeItem> SubItem = MakeShareable(new FPjcTreeItem);
 			if (!SubItem.IsValid()) continue;
 
