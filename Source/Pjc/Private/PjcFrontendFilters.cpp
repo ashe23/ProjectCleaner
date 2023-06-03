@@ -201,7 +201,7 @@ FText FPjcFilterAssetsCircular::GetToolTipText() const
 
 FLinearColor FPjcFilterAssetsCircular::GetColor() const
 {
-	return FLinearColor::Gray;
+	return FPjcStyles::Get().GetColor("ProjectCleaner.Color.DarkGray");
 }
 
 void FPjcFilterAssetsCircular::ActiveStateChanged(bool bActive)
