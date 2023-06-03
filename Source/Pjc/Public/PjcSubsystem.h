@@ -101,21 +101,21 @@ public:
 	 * @param ClassNames TSet<FName>
 	 */
 	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset")
-	static void GetClassNamesPrimary(TSet<FName>& ClassNames);
+	static void GetClassNamesPrimary(TSet<FTopLevelAssetPath>& ClassNames);
 
 	/**
 	 * @brief Returns all editor assets class names
 	 * @param ClassNames TSet<FName>
 	 */
 	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset")
-	static void GetClassNamesEditor(TSet<FName>& ClassNames);
+	static void GetClassNamesEditor(TSet<FTopLevelAssetPath>& ClassNames);
 
 	/**
 	 * @brief Returns all excluded assets class names
 	 * @param ClassNames TSet<FName>
 	 */
 	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset")
-	static void GetClassNamesExcluded(TSet<FName>& ClassNames);
+	static void GetClassNamesExcluded(TSet<FTopLevelAssetPath>& ClassNames);
 
 	/**
 	 * @brief Returns list of files inside given path with specified settings
@@ -339,7 +339,7 @@ public:
 	 * @return FName 
 	 */
 	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset")
-	static FName GetAssetExactClassName(const FAssetData& InAsset);
+	static FTopLevelAssetPath GetAssetExactClassName(const FAssetData& InAsset);
 
 	static bool FolderIsEmpty(const FString& InPath);
 	static bool FolderIsExcluded(const FString& InPath);

@@ -45,11 +45,13 @@ public class Pjc : ModuleRules
 				"Blutility",
 				"EditorScriptingUtilities",
 				"EditorWidgets",
+				"EditorFramework",
 				"IntroTutorials",
 				"UMGEditor",
 				"AssetManagerEditor",
 				"AssetTools",
-				"RenderCore"
+				"RenderCore",
+				"IntroTutorials"
 			}
 		);
 	}

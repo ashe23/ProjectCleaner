@@ -198,7 +198,7 @@ void SPjcTabFilesExternal::Construct(const FArguments& InArgs)
 		[
 			SNew(SSplitter)
 			.PhysicalSplitterHandleSize(3.0f)
-			.Style(FEditorStyle::Get(), "DetailsView.Splitter")
+			.Style(FAppStyle::Get(), "DetailsView.Splitter")
 			+ SSplitter::Slot().Value(0.3f)
 			[
 				SNew(SVerticalBox)
@@ -294,14 +294,14 @@ void SPjcTabFilesExternal::Construct(const FArguments& InArgs)
 						SNew(SComboButton)
 						.ContentPadding(0)
 						.ForegroundColor_Raw(this, &SPjcTabFilesExternal::GetOptionsBtnForegroundColor)
-						.ButtonStyle(FEditorStyle::Get(), "ToggleButton")
+						.ButtonStyle(FAppStyle::Get(), "ToggleButton")
 						.OnGetMenuContent(this, &SPjcTabFilesExternal::GetBtnOptionsContent)
 						.ButtonContent()
 						[
 							SNew(SHorizontalBox)
 							+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 							[
-								SNew(SImage).Image(FEditorStyle::GetBrush("GenericViewButton"))
+								SNew(SImage).Image(FAppStyle::GetBrush("GenericViewButton"))
 							]
 							+ SHorizontalBox::Slot().AutoWidth().Padding(2.0f, 0.0f, 0.0f, 0.0f).VAlign(VAlign_Center)
 							[
@@ -583,9 +583,9 @@ FSlateColor SPjcTabFilesExternal::GetOptionsBtnForegroundColor() const
 	static const FName InvertedForegroundName("InvertedForeground");
 	static const FName DefaultForegroundName("DefaultForeground");
 
-	if (!OptionBtn.IsValid()) return FEditorStyle::GetSlateColor(DefaultForegroundName);
+	if (!OptionBtn.IsValid()) return FAppStyle::GetSlateColor(DefaultForegroundName);
 
-	return OptionBtn->IsHovered() ? FEditorStyle::GetSlateColor(InvertedForegroundName) : FEditorStyle::GetSlateColor(DefaultForegroundName);
+	return OptionBtn->IsHovered() ? FAppStyle::GetSlateColor(InvertedForegroundName) : FAppStyle::GetSlateColor(DefaultForegroundName);
 }
 
 FText SPjcTabFilesExternal::GetTxtSummary() const

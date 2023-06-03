@@ -184,7 +184,7 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 
 			for (const auto& Asset : DelegateSelection.Execute())
 			{
-				const FName AssetExactClassName = UPjcSubsystem::GetAssetExactClassName(Asset);
+				const FTopLevelAssetPath AssetExactClassName = UPjcSubsystem::GetAssetExactClassName(Asset);
 
 				if (UPjcSubsystem::AssetIsBlueprint(Asset))
 				{
@@ -206,7 +206,7 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 				{
 					const bool bAlreadyInList = ExcludeSettings->ExcludedClasses.ContainsByPredicate([&](const TSoftClassPtr<UObject>& InObject)
 					{
-						return InObject.LoadSynchronous() && InObject.Get()->GetFName().IsEqual(AssetExactClassName);
+						return InObject.LoadSynchronous() && InObject.Get()->GetClassPathName() == AssetExactClassName;
 					});
 
 					if (!bAlreadyInList)
@@ -244,7 +244,7 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 
 				const bool bAssetClassAlreadyExcluded = ExcludeSettings->ExcludedClasses.ContainsByPredicate([&](const TSoftClassPtr<UObject>& InClass)
 				{
-					return InClass.LoadSynchronous() && InClass.Get()->GetFName().IsEqual(UPjcSubsystem::GetAssetExactClassName(Asset));
+					return InClass.LoadSynchronous() && InClass.Get()->GetClassPathName() == UPjcSubsystem::GetAssetExactClassName(Asset);
 				});
 
 				if (bAssetFolderAlreadyExcluded || bAssetClassAlreadyExcluded)
@@ -301,7 +301,7 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 
 				ExcludeSettings->ExcludedClasses.RemoveAllSwap([&](const TSoftClassPtr<UObject>& ExcludedAsset)
 				{
-					return ExcludedAsset.LoadSynchronous() && ExcludedAsset.Get()->GetFName().IsEqual(UPjcSubsystem::GetAssetExactClassName(Asset));
+					return ExcludedAsset.LoadSynchronous() && ExcludedAsset.Get()->GetClassPathName() == UPjcSubsystem::GetAssetExactClassName(Asset);
 				}, false);
 			}
 
@@ -514,7 +514,7 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 		[
 			SNew(SSplitter)
 			.PhysicalSplitterHandleSize(3.0f)
-			.Style(FEditorStyle::Get(), "DetailsView.Splitter")
+			.Style(FAppStyle::Get(), "DetailsView.Splitter")
 			+ SSplitter::Slot().Value(0.2f)
 			[
 				SNew(SVerticalBox)
@@ -591,7 +591,7 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 					+ SHorizontalBox::Slot().AutoWidth()
 					[
 						SNew(SImage)
-						.Image(FEditorStyle::GetBrush("ContentBrowser.AssetTreeFolderOpen"))
+						.Image(FAppStyle::GetBrush("ContentBrowser.AssetTreeFolderOpen"))
 						.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Red"))
 					]
 					+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin{0.0f, 2.0f, 5.0f, 0.0f})
@@ -601,7 +601,7 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 					+ SHorizontalBox::Slot().AutoWidth()
 					[
 						SNew(SImage)
-						.Image(FEditorStyle::GetBrush("ContentBrowser.AssetTreeFolderOpen"))
+						.Image(FAppStyle::GetBrush("ContentBrowser.AssetTreeFolderOpen"))
 						.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Yellow"))
 					]
 					+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin{0.0f, 2.0f, 5.0f, 0.0f})
@@ -611,7 +611,7 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 					+ SHorizontalBox::Slot().AutoWidth()
 					[
 						SNew(SImage)
-						.Image(FEditorStyle::GetBrush("ContentBrowser.AssetTreeFolderOpen"))
+						.Image(FAppStyle::GetBrush("ContentBrowser.AssetTreeFolderOpen"))
 						.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Blue"))
 					]
 					+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin{0.0f, 2.0f, 5.0f, 0.0f})
@@ -650,14 +650,14 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 						SNew(SComboButton)
 						.ContentPadding(0)
 						.ForegroundColor_Raw(this, &SPjcTabAssetsUnused::GetTreeOptionsBtnForegroundColor)
-						.ButtonStyle(FEditorStyle::Get(), "ToggleButton")
+						.ButtonStyle(FAppStyle::Get(), "ToggleButton")
 						.OnGetMenuContent(this, &SPjcTabAssetsUnused::GetTreeBtnOptionsContent)
 						.ButtonContent()
 						[
 							SNew(SHorizontalBox)
 							+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 							[
-								SNew(SImage).Image(FEditorStyle::GetBrush("GenericViewButton"))
+								SNew(SImage).Image(FAppStyle::GetBrush("GenericViewButton"))
 							]
 							+ SHorizontalBox::Slot().AutoWidth().Padding(2.0f, 0.0f, 0.0f, 0.0f).VAlign(VAlign_Center)
 							[
@@ -1238,71 +1238,71 @@ void SPjcTabAssetsUnused::UpdateContentBrowser()
 	{
 		if (bFilterAssetsUsedActive)
 		{
-			Filter.ObjectPaths.Reserve(Filter.ObjectPaths.Num() + AssetsUsed.Num());
+			Filter.SoftObjectPaths.Reserve(Filter.SoftObjectPaths.Num() + AssetsUsed.Num());
 
 			for (const auto& Asset : AssetsUsed)
 			{
-				Filter.ObjectPaths.Emplace(Asset.ToSoftObjectPath().GetAssetPathName());
+				Filter.SoftObjectPaths.Emplace(Asset.ToSoftObjectPath());
 			}
 		}
 
 		if (bFilterAssetsPrimaryActive)
 		{
-			Filter.ObjectPaths.Reserve(Filter.ObjectPaths.Num() + AssetsPrimary.Num());
+			Filter.SoftObjectPaths.Reserve(Filter.SoftObjectPaths.Num() + AssetsPrimary.Num());
 
 			for (const auto& Asset : AssetsPrimary)
 			{
-				Filter.ObjectPaths.Emplace(Asset.ToSoftObjectPath().GetAssetPathName());
+				Filter.SoftObjectPaths.Emplace(Asset.ToSoftObjectPath());
 			}
 		}
 
 		if (bFilterAssetsEditorActive)
 		{
-			Filter.ObjectPaths.Reserve(Filter.ObjectPaths.Num() + AssetsEditor.Num());
+			Filter.SoftObjectPaths.Reserve(Filter.SoftObjectPaths.Num() + AssetsEditor.Num());
 
 			for (const auto& Asset : AssetsEditor)
 			{
-				Filter.ObjectPaths.Emplace(Asset.ToSoftObjectPath().GetAssetPathName());
+				Filter.SoftObjectPaths.Emplace(Asset.ToSoftObjectPath());
 			}
 		}
 
 		if (bFilterAssetsIndirectActive)
 		{
-			Filter.ObjectPaths.Reserve(Filter.ObjectPaths.Num() + AssetsIndirect.Num());
+			Filter.SoftObjectPaths.Reserve(Filter.SoftObjectPaths.Num() + AssetsIndirect.Num());
 
 			for (const auto& Asset : AssetsIndirect)
 			{
-				Filter.ObjectPaths.Emplace(Asset.ToSoftObjectPath().GetAssetPathName());
+				Filter.SoftObjectPaths.Emplace(Asset.ToSoftObjectPath());
 			}
 		}
 
 		if (bFilterAssetsExcludedActive)
 		{
-			Filter.ObjectPaths.Reserve(Filter.ObjectPaths.Num() + AssetsExcluded.Num());
+			Filter.SoftObjectPaths.Reserve(Filter.SoftObjectPaths.Num() + AssetsExcluded.Num());
 
 			for (const auto& Asset : AssetsExcluded)
 			{
-				Filter.ObjectPaths.Emplace(Asset.ToSoftObjectPath().GetAssetPathName());
+				Filter.SoftObjectPaths.Emplace(Asset.ToSoftObjectPath());
 			}
 		}
 
 		if (bFilterAssetsExtReferencedActive)
 		{
-			Filter.ObjectPaths.Reserve(Filter.ObjectPaths.Num() + AssetsExtReferenced.Num());
+			Filter.SoftObjectPaths.Reserve(Filter.SoftObjectPaths.Num() + AssetsExtReferenced.Num());
 
 			for (const auto& Asset : AssetsExtReferenced)
 			{
-				Filter.ObjectPaths.Emplace(Asset.ToSoftObjectPath().GetAssetPathName());
+				Filter.SoftObjectPaths.Emplace(Asset.ToSoftObjectPath());
 			}
 		}
 
 		if (bFilterAssetsCircularActive)
 		{
-			Filter.ObjectPaths.Reserve(Filter.ObjectPaths.Num() + AssetsCircular.Num());
+			Filter.SoftObjectPaths.Reserve(Filter.SoftObjectPaths.Num() + AssetsCircular.Num());
 
 			for (const auto& Asset : AssetsCircular)
 			{
-				Filter.ObjectPaths.Emplace(Asset.ToSoftObjectPath().GetAssetPathName());
+				Filter.SoftObjectPaths.Emplace(Asset.ToSoftObjectPath());
 			}
 		}
 
@@ -1313,11 +1313,11 @@ void SPjcTabAssetsUnused::UpdateContentBrowser()
 
 	if (AssetsUnused.Num() > 0 && bFilterAssetsUnusedActive)
 	{
-		Filter.ObjectPaths.Reserve(AssetsUnused.Num());
+		Filter.SoftObjectPaths.Reserve(AssetsUnused.Num());
 
 		for (const auto& Asset : AssetsUnused)
 		{
-			Filter.ObjectPaths.Emplace(Asset.ToSoftObjectPath().GetAssetPathName());
+			Filter.SoftObjectPaths.Emplace(Asset.ToSoftObjectPath());
 		}
 	}
 	else
@@ -1608,9 +1608,9 @@ FSlateColor SPjcTabAssetsUnused::GetTreeOptionsBtnForegroundColor() const
 	static const FName InvertedForegroundName("InvertedForeground");
 	static const FName DefaultForegroundName("DefaultForeground");
 
-	if (!TreeOptionBtn.IsValid()) return FEditorStyle::GetSlateColor(DefaultForegroundName);
+	if (!TreeOptionBtn.IsValid()) return FAppStyle::GetSlateColor(DefaultForegroundName);
 
-	return TreeOptionBtn->IsHovered() ? FEditorStyle::GetSlateColor(InvertedForegroundName) : FEditorStyle::GetSlateColor(DefaultForegroundName);
+	return TreeOptionBtn->IsHovered() ? FAppStyle::GetSlateColor(InvertedForegroundName) : FAppStyle::GetSlateColor(DefaultForegroundName);
 }
 
 TSharedRef<SWidget> SPjcTabAssetsUnused::GetTreeBtnOptionsContent()
