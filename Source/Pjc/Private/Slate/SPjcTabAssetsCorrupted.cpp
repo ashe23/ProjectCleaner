@@ -32,7 +32,7 @@ void SPjcTabAssetsCorrupted::Construct(const FArguments& InArgs)
 			const FText Title = FText::FromString(TEXT("Delete Corrupted Asset Files"));
 			const FText Context = FText::FromString(TEXT("Are you sure you want to delete selected files?"));
 
-			const EAppReturnType::Type ReturnType = FMessageDialog::Open(EAppMsgType::YesNo, Context, &Title);
+			const EAppReturnType::Type ReturnType = FMessageDialog::Open(EAppMsgCategory::Warning, EAppMsgType::YesNo, Context, Title);
 			if (ReturnType == EAppReturnType::Cancel || ReturnType == EAppReturnType::No) return;
 
 			const auto ItemsSelected = ListView->GetSelectedItems();

@@ -10,7 +10,7 @@
 	"DocsURL": "https://github.com/ashe23/ProjectCleaner/wiki",
 	"SupportURL": "https://github.com/ashe23/ProjectCleaner/issues",
 	"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/product/4d7f5dc837fc4b009bb91e678adf9fd0",
-	"EngineVersion": "5.2.0",
+	"EngineVersion": "5.3.0",
 	"CanContainContent": false,
 	"IsBetaVersion": false,
 	"IsExperimentalVersion": false,

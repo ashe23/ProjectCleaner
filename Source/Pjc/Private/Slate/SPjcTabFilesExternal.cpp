@@ -39,7 +39,7 @@ void SPjcTabFilesExternal::Construct(const FArguments& InArgs)
 			const FText Title = FText::FromString(TEXT("Delete External Files"));
 			const FText Context = FText::FromString(TEXT("Are you sure you want to delete selected files?"));
 
-			const EAppReturnType::Type ReturnType = FMessageDialog::Open(EAppMsgType::YesNo, Context, &Title);
+			const EAppReturnType::Type ReturnType = FMessageDialog::Open(EAppMsgCategory::Warning, EAppMsgType::YesNo, Context, Title);
 			if (ReturnType == EAppReturnType::Cancel || ReturnType == EAppReturnType::No) return;
 
 			for (const auto& Item : ItemsSelected)

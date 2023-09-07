@@ -423,7 +423,7 @@ void UPjcSubsystem::GetClassNamesPrimary(TSet<FTopLevelAssetPath>& ClassNames)
 {
 	// getting list of primary asset classes that are defined in AssetManager
 	const auto& AssetManager = UAssetManager::Get();
-	if (!AssetManager.IsValid()) return;
+	if (!AssetManager.IsInitialized()) return;
 
 	TSet<FTopLevelAssetPath> ClassNamesPrimaryBase;
 	TArray<FPrimaryAssetTypeInfo> AssetTypeInfos;

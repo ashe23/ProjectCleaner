@@ -750,7 +750,7 @@ void SPjcTabAssetsUnused::OnProjectClean()
 	const FText Title = FText::FromString(TEXT("Project Cleanup"));
 	const FText Context = FText::FromString(TEXT("Are you sure you want to delete all unused assets and empty folders in project?"));
 
-	const EAppReturnType::Type ReturnType = FMessageDialog::Open(EAppMsgType::YesNo, Context, &Title);
+	const EAppReturnType::Type ReturnType = FMessageDialog::Open(EAppMsgCategory::Warning, EAppMsgType::YesNo, Context, Title);
 	if (ReturnType == EAppReturnType::Cancel || ReturnType == EAppReturnType::No) return;
 
 	UPjcSubsystem::DeleteAssetsUnused(true, true);
@@ -777,7 +777,7 @@ void SPjcTabAssetsUnused::OnDeleteEmptyFolders()
 	const FText Title = FText::FromString(TEXT("Delete Empty Folder"));
 	const FText Context = FText::FromString(TEXT("Are you sure you want to delete all empty folders?"));
 
-	const EAppReturnType::Type ReturnType = FMessageDialog::Open(EAppMsgType::YesNo, Context, &Title);
+	const EAppReturnType::Type ReturnType = FMessageDialog::Open(EAppMsgCategory::Warning, EAppMsgType::YesNo, Context, Title);
 	if (ReturnType == EAppReturnType::Cancel || ReturnType == EAppReturnType::No) return;
 
 	UPjcSubsystem::DeleteFoldersEmpty(true, true);
