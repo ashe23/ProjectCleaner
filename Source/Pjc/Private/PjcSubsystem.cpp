@@ -546,8 +546,13 @@ void UPjcSubsystem::GetFilesByExt(const FString& InSearchPath, const bool bSearc
 				const bool bExistsInSearchList = Extensions.Contains(Ext);
 
 				if (
-					bExistsInSearchList && !bSearchInvert ||
-					!bExistsInSearchList && bSearchInvert
+					(
+						bExistsInSearchList && !bSearchInvert
+					)
+					||
+					(
+						!bExistsInSearchList && bSearchInvert
+					)
 				)
 				{
 					Files.Emplace(FullPath);
@@ -1141,7 +1146,7 @@ void UPjcSubsystem::FixProjectRedirectors(const TArray<FAssetData>& Redirectors,
 
 bool UPjcSubsystem::EditorIsInPlayMode()
 {
-	return GEditor && GEditor->PlayWorld || GIsPlayInEditorWorld;
+	return ( GEditor && GEditor->PlayWorld ) || GIsPlayInEditorWorld;
 }
 
 bool UPjcSubsystem::AssetIsBlueprint(const FAssetData& InAsset)
