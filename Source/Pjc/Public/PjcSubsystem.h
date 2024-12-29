@@ -8,6 +8,7 @@
 #include "ContentBrowserModule.h"
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "Widgets/Notifications/SNotificationList.h"
+#include "PropertyEditorModule.h"
 #include "PjcTypes.h"
 #include "PjcSubsystem.generated.h"
 

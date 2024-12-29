@@ -14,10 +14,12 @@
 #include "ObjectTools.h"
 #include "ShaderCompiler.h"
 #include "Engine/AssetManager.h"
+#include "Subsystems/AssetEditorSubsystem.h"
 #include "Framework/Notifications/NotificationManager.h"
 #include "Internationalization/Regex.h"
 #include "Misc/FileHelper.h"
 #include "Misc/ScopedSlowTask.h"
+#include "Editor.h"
 
 void UPjcSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
