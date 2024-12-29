@@ -186,9 +186,11 @@ void SPjcTabAssetsCorrupted::ListUpdateView()
 	{
 		if (
 			!Item.IsValid() ||
-			!SearchText.IsEmpty() &&
-			!Item->FilePath.Contains(SearchString) &&
-			!Item->FileName.Contains(SearchString)
+			(
+				!SearchText.IsEmpty() &&
+				!Item->FilePath.Contains(SearchString) &&
+				!Item->FileName.Contains(SearchString)
+			)
 		)
 		{
 			continue;
