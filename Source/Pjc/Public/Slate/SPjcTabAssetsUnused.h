@@ -19,13 +19,15 @@ class FPjcFilterAssetsExcluded;
 
 class SPjcTabAssetsUnused final : public SCompoundWidget
 {
-public:
+  public:
+
 	SLATE_BEGIN_ARGS(SPjcTabAssetsUnused) {}
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
 
-private:
+  private:
+
 	TSharedRef<SWidget> CreateToolbarMain() const;
 	TSharedRef<SWidget> CreateToolbarTreeView() const;
 	TSharedRef<SWidget> CreateToolbarContentBrowser() const;
@@ -108,7 +110,7 @@ private:
 	UPjcSubsystem* SubsystemPtr = nullptr;
 	TSharedPtr<FUICommandList> Cmds;
 	FText TreeSearchText;
-	const FMargin HeaderMargin{5.0f};
+	const FMargin HeaderMargin {5.0f};
 	TSet<FName> SelectedPaths;
 	FARFilter Filter;
 	FSetARFilterDelegate DelegateFilter;

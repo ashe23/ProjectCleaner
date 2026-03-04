@@ -21,11 +21,13 @@ class UPjcCommandlet : public UCommandlet
 		int32 NumFilesCorrupted = 0;
 	};
 
-public:
+  public:
+
 	UPjcCommandlet();
 	virtual int32 Main(const FString& Params) override;
 
-private:
+  private:
+
 	void ParseCommandLinesArguments(const FString& Params);
 	void StatsPrint(const FCleanupStats& Stats);
 

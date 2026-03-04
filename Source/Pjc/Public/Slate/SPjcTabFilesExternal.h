@@ -10,13 +10,15 @@ struct FPjcFileExternalItem;
 
 class SPjcTabFilesExternal final : public SCompoundWidget
 {
-public:
+  public:
+
 	SLATE_BEGIN_ARGS(SPjcTabFilesExternal) {}
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
 
-protected:
+  protected:
+
 	void ListUpdateData();
 	void ListUpdateView();
 	void OnListSort(EColumnSortPriority::Type SortPriority, const FName& ColumnName, EColumnSortMode::Type InSortMode);
@@ -33,7 +35,8 @@ protected:
 	FText GetTxtSelection() const;
 	int32 GetWidgetIndex() const;
 
-private:
+  private:
+
 	FText SearchText;
 	int32 NumFilesTotal = 0;
 	int32 NumFilesExcluded = 0;

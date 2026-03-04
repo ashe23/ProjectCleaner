@@ -12,16 +12,12 @@
 #include "Widgets/Layout/SSeparator.h"
 #include "Widgets/Layout/SWidgetSwitcher.h"
 
-void SPjcTabFilesExternal::Construct(const FArguments& InArgs)
-{
+void SPjcTabFilesExternal::Construct(const FArguments& InArgs) {
 	SubsystemPtr = GEditor->GetEditorSubsystem<UPjcSubsystem>();
 
 	Cmds = MakeShareable(new FUICommandList);
 
-	Cmds->MapAction(
-		FPjcCmds::Get().Refresh,
-		FExecuteAction::CreateRaw(this, &SPjcTabFilesExternal::OnRefresh)
-	);
+	Cmds->MapAction(FPjcCmds::Get().Refresh, FExecuteAction::CreateRaw(this, &SPjcTabFilesExternal::OnRefresh));
 	Cmds->MapAction(
 		FPjcCmds::Get().Delete,
 		FExecuteAction::CreateRaw(this, &SPjcTabFilesExternal::OnDelete),
@@ -45,11 +41,11 @@ void SPjcTabFilesExternal::Construct(const FArguments& InArgs)
 	);
 
 	SAssignNew(ListView, SListView<TSharedPtr<FPjcFileExternalItem>>)
-	.ListItemsSource(&ItemsFiltered)
-	.OnGenerateRow(this, &SPjcTabFilesExternal::OnListGenerateRow)
-	.OnContextMenuOpening_Raw(this, &SPjcTabFilesExternal::OnContextMenuOpening)
-	.SelectionMode(ESelectionMode::Multi)
-	.HeaderRow(GetListHeaderRow());
+		.ListItemsSource(&ItemsFiltered)
+		.OnGenerateRow(this, &SPjcTabFilesExternal::OnListGenerateRow)
+		.OnContextMenuOpening_Raw(this, &SPjcTabFilesExternal::OnContextMenuOpening)
+		.SelectionMode(ESelectionMode::Multi)
+		.HeaderRow(GetListHeaderRow());
 
 	FPropertyEditorModule& PropertyEditor = UPjcSubsystem::GetModulePropertyEditor();
 	FDetailsViewArgs DetailsViewArgs;
@@ -66,30 +62,40 @@ void SPjcTabFilesExternal::Construct(const FArguments& InArgs)
 	SettingsProperty->SetObject(GetMutableDefault<UPjcFileExcludeSettings>());
 
 	const FText DescShort = FText::FromString(TEXT("List of external files inside Content folder."));
-	const FText DescLong = FText::FromString(
-		TEXT("These files won't be visible in the ContentBrowser. Therefore, you can choose to include only the files necessary for your project, and clean up by excluding the rest.")
-	);
+	const FText DescLong = FText::FromString(TEXT(
+		"These files won't be visible in the ContentBrowser. Therefore, you can choose to include only the files necessary for your " "project, " "an" "d " "clean up by excluding the rest."
+	));
 
+	// clang-format off
 	ChildSlot
 	[
 		SNew(SVerticalBox)
-		+ SVerticalBox::Slot().AutoHeight().Padding(5.0f)
+		+ SVerticalBox::Slot()
+		.AutoHeight()
+		.Padding(5.0f)
 		[
 			CreateToolbar()
 		]
-		+ SVerticalBox::Slot().AutoHeight().Padding(5.0f)
+		+ SVerticalBox::Slot()
+		.AutoHeight()
+		.Padding(5.0f)
 		[
 			SNew(SSeparator).Thickness(5.0f)
 		]
-		+ SVerticalBox::Slot().FillHeight(1.0f).Padding(5.0f)
+		+ SVerticalBox::Slot()
+		.FillHeight(1.0f)
+		.Padding(5.0f)
 		[
 			SNew(SSplitter)
 			.PhysicalSplitterHandleSize(3.0f)
 			.Style(FEditorStyle::Get(), "DetailsView.Splitter")
-			+ SSplitter::Slot().Value(0.3f)
+			+ SSplitter::Slot()
+			.Value(0.3f)
 			[
 				SNew(SVerticalBox)
-				+ SVerticalBox::Slot().FillHeight(1.0f).Padding(3.0f)
+				+ SVerticalBox::Slot()
+				.FillHeight(1.0f)
+				.Padding(3.0f)
 				[
 					SNew(SScrollBox)
 					.ScrollWhenFocusChanges(EScrollWhenFocusChanges::NoScroll)
@@ -101,10 +107,13 @@ void SPjcTabFilesExternal::Construct(const FArguments& InArgs)
 					]
 				]
 			]
-			+ SSplitter::Slot().Value(0.7f)
+			+ SSplitter::Slot()
+			.Value(0.7f)
 			[
 				SNew(SVerticalBox)
-				+ SVerticalBox::Slot().AutoHeight().Padding(5.0f)
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(5.0f)
 				[
 					SNew(STextBlock)
 					.Justification(ETextJustify::Center)
@@ -114,7 +123,9 @@ void SPjcTabFilesExternal::Construct(const FArguments& InArgs)
 					.Font(FPjcStyles::GetFont("Bold", 15))
 					.Text(DescShort)
 				]
-				+ SVerticalBox::Slot().AutoHeight().Padding(10.0f, 5.0f)
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(10.0f, 5.0f)
 				[
 					SNew(STextBlock)
 					.Justification(ETextJustify::Center)
@@ -124,25 +135,33 @@ void SPjcTabFilesExternal::Construct(const FArguments& InArgs)
 					.Font(FPjcStyles::GetFont("Bold", 10))
 					.Text(DescLong)
 				]
-				+ SVerticalBox::Slot().AutoHeight().Padding(10.0f, 5.0f)
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(10.0f, 5.0f)
 				[
 					SNew(SSeparator).Thickness(5.0f)
 				]
-				+ SVerticalBox::Slot().AutoHeight().Padding(10.0f, 5.0f)
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(10.0f, 5.0f)
 				[
 					SNew(SSearchBox)
 					.HintText(FText::FromString(TEXT("Search files...")))
 					.OnTextChanged_Raw(this, &SPjcTabFilesExternal::OnSearchTextChanged)
 					.OnTextCommitted_Raw(this, &SPjcTabFilesExternal::OnSearchTextCommitted)
 				]
-				+ SVerticalBox::Slot().FillHeight(1.0f).Padding(5.0f)
+				+ SVerticalBox::Slot()
+				.FillHeight(1.0f)
+				.Padding(5.0f)
 				[
-					SNew(SWidgetSwitcher)
-					.WidgetIndex_Raw(this, &SPjcTabFilesExternal::GetWidgetIndex)
+					SNew(SWidgetSwitcher).WidgetIndex_Raw(this, &SPjcTabFilesExternal::GetWidgetIndex)
 					+ SWidgetSwitcher::Slot()
 					[
 						SNew(SHorizontalBox)
-						+ SHorizontalBox::Slot().FillWidth(1.0f).HAlign(HAlign_Center).VAlign(VAlign_Center)
+						+ SHorizontalBox::Slot()
+						.FillWidth(1.0f)
+						.HAlign(HAlign_Center)
+						.VAlign(VAlign_Center)
 						[
 							SNew(STextBlock)
 							.Justification(ETextJustify::Center)
@@ -159,24 +178,37 @@ void SPjcTabFilesExternal::Construct(const FArguments& InArgs)
 						.ScrollWhenFocusChanges(EScrollWhenFocusChanges::NoScroll)
 						.AnimateWheelScrolling(true)
 						.AllowOverscroll(EAllowOverscroll::No)
-						+ SScrollBox::Slot().Padding(5.0f)
+						+ SScrollBox::Slot()
+						.Padding(5.0f)
 						[
 							ListView.ToSharedRef()
 						]
 					]
 				]
-				+ SVerticalBox::Slot().AutoHeight().Padding(5.0f)
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(5.0f)
 				[
 					SNew(SHorizontalBox)
-					+ SHorizontalBox::Slot().FillWidth(1.0f).HAlign(HAlign_Left).VAlign(VAlign_Center).Padding(3.0f, 0.0f, 0.0f, 0.0f)
+					+ SHorizontalBox::Slot()
+					.FillWidth(1.0f)
+					.HAlign(HAlign_Left)
+					.VAlign(VAlign_Center)
+					.Padding(3.0f, 0.0f, 0.0f, 0.0f)
 					[
 						SNew(STextBlock).Text_Raw(this, &SPjcTabFilesExternal::GetTxtSummary)
 					]
-					+ SHorizontalBox::Slot().FillWidth(1.0f).HAlign(HAlign_Center).VAlign(VAlign_Center)
+					+ SHorizontalBox::Slot()
+					.FillWidth(1.0f)
+					.HAlign(HAlign_Center)
+					.VAlign(VAlign_Center)
 					[
 						SNew(STextBlock).Text_Raw(this, &SPjcTabFilesExternal::GetTxtSelection)
 					]
-					+ SHorizontalBox::Slot().FillWidth(1.0f).HAlign(HAlign_Right).VAlign(VAlign_Center)
+					+ SHorizontalBox::Slot()
+					.FillWidth(1.0f)
+					.HAlign(HAlign_Right)
+					.VAlign(VAlign_Center)
 					[
 						SNew(SComboButton)
 						.ContentPadding(0)
@@ -186,11 +218,16 @@ void SPjcTabFilesExternal::Construct(const FArguments& InArgs)
 						.ButtonContent()
 						[
 							SNew(SHorizontalBox)
-							+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+							+ SHorizontalBox::Slot()
+							.AutoWidth()
+							.VAlign(VAlign_Center)
 							[
 								SNew(SImage).Image(FEditorStyle::GetBrush("GenericViewButton"))
 							]
-							+ SHorizontalBox::Slot().AutoWidth().Padding(2.0f, 0.0f, 0.0f, 0.0f).VAlign(VAlign_Center)
+							+ SHorizontalBox::Slot()
+							.AutoWidth()
+							.Padding(2.0f, 0.0f, 0.0f, 0.0f)
+							.VAlign(VAlign_Center)
 							[
 								SNew(STextBlock).Text(FText::FromString(TEXT("View Options")))
 							]
@@ -200,10 +237,10 @@ void SPjcTabFilesExternal::Construct(const FArguments& InArgs)
 			]
 		]
 	];
+	// clang-format on
 }
 
-void SPjcTabFilesExternal::ListUpdateData()
-{
+void SPjcTabFilesExternal::ListUpdateData() {
 	TArray<FString> FilesExternalAll;
 	TArray<FString> FilesExternalExcluded;
 
@@ -218,8 +255,7 @@ void SPjcTabFilesExternal::ListUpdateData()
 	SizeFilesTotal = 0;
 	SizeFilesExcluded = 0;
 
-	for (const auto& File : FilesExternalAll)
-	{
+	for (const auto& File : FilesExternalAll) {
 		const FString FileName = FPaths::GetBaseFilename(File);
 		const FString FileExt = FPaths::GetExtension(File, false).ToLower();
 		const int64 FileSize = IFileManager::Get().FileSize(*File);
@@ -227,18 +263,16 @@ void SPjcTabFilesExternal::ListUpdateData()
 
 		SizeFilesTotal += FileSize;
 
-		if (bExcluded)
-		{
+		if (bExcluded) {
 			++NumFilesExcluded;
 			SizeFilesExcluded += FileSize;
 		}
 
-		ItemsAll.Emplace(MakeShareable(new FPjcFileExternalItem{FileSize, bExcluded, FileName, FileExt, File}));
+		ItemsAll.Emplace(MakeShareable(new FPjcFileExternalItem {FileSize, bExcluded, FileName, FileExt, File}));
 	}
 }
 
-void SPjcTabFilesExternal::ListUpdateView()
-{
+void SPjcTabFilesExternal::ListUpdateView() {
 	if (!ListView.IsValid() || !SubsystemPtr) return;
 
 	ItemsFiltered.Reset();
@@ -246,25 +280,16 @@ void SPjcTabFilesExternal::ListUpdateView()
 
 	const FString SearchString = SearchText.ToString();
 
-	for (const auto& Item : ItemsAll)
-	{
+	for (const auto& Item : ItemsAll) {
 		if (!Item.IsValid()) continue;
 
-		if ((!SearchText.IsEmpty() && !Item->FilePath.Contains(SearchString) && !Item->FileName.Contains(SearchString)) || (!SubsystemPtr->bShowFilesExternal && Item->bExcluded))
-		{
+		if ((!SearchText.IsEmpty() && !Item->FilePath.Contains(SearchString) && !Item->FileName.Contains(SearchString))
+			|| (!SubsystemPtr->bShowFilesExternal && Item->bExcluded)) {
 			continue;
 		}
 
 		ItemsFiltered.Emplace(
-			MakeShareable(
-				new FPjcFileExternalItem{
-					Item->FileSize,
-					Item->bExcluded,
-					Item->FileName,
-					Item->FileExt,
-					Item->FilePath
-				}
-			)
+			MakeShareable(new FPjcFileExternalItem {Item->FileSize, Item->bExcluded, Item->FileName, Item->FileExt, Item->FilePath})
 		);
 	}
 
@@ -273,45 +298,35 @@ void SPjcTabFilesExternal::ListUpdateView()
 	ListView->RebuildList();
 }
 
-void SPjcTabFilesExternal::OnListSort(EColumnSortPriority::Type SortPriority, const FName& ColumnName, EColumnSortMode::Type InSortMode)
-{
+void SPjcTabFilesExternal::OnListSort(EColumnSortPriority::Type SortPriority, const FName& ColumnName, EColumnSortMode::Type InSortMode) {
 	if (!ListView.IsValid()) return;
 
-	auto SortListItems = [&](auto& SortMode, auto SortFunc)
-	{
+	auto SortListItems = [&](auto& SortMode, auto SortFunc) {
 		SortMode = SortMode == EColumnSortMode::Ascending ? EColumnSortMode::Descending : EColumnSortMode::Ascending;
 
 		ItemsFiltered.Sort(SortFunc);
 	};
 
-	if (ColumnName.IsEqual(TEXT("FilePath")))
-	{
-		SortListItems(ColumnSortModeFilePath, [&](const TSharedPtr<FPjcFileExternalItem>& Item1, const TSharedPtr<FPjcFileExternalItem>& Item2)
-		{
+	if (ColumnName.IsEqual(TEXT("FilePath"))) {
+		SortListItems(ColumnSortModeFilePath, [&](const TSharedPtr<FPjcFileExternalItem>& Item1, const TSharedPtr<FPjcFileExternalItem>& Item2) {
 			return ColumnSortModeFilePath == EColumnSortMode::Ascending ? Item1->FilePath < Item2->FilePath : Item1->FilePath > Item2->FilePath;
 		});
 	}
 
-	if (ColumnName.IsEqual(TEXT("FileName")))
-	{
-		SortListItems(ColumnSortModeFileName, [&](const TSharedPtr<FPjcFileExternalItem>& Item1, const TSharedPtr<FPjcFileExternalItem>& Item2)
-		{
+	if (ColumnName.IsEqual(TEXT("FileName"))) {
+		SortListItems(ColumnSortModeFileName, [&](const TSharedPtr<FPjcFileExternalItem>& Item1, const TSharedPtr<FPjcFileExternalItem>& Item2) {
 			return ColumnSortModeFileName == EColumnSortMode::Ascending ? Item1->FileName < Item2->FileName : Item1->FileName > Item2->FileName;
 		});
 	}
 
-	if (ColumnName.IsEqual(TEXT("FileExt")))
-	{
-		SortListItems(ColumnSortModeFileExt, [&](const TSharedPtr<FPjcFileExternalItem>& Item1, const TSharedPtr<FPjcFileExternalItem>& Item2)
-		{
+	if (ColumnName.IsEqual(TEXT("FileExt"))) {
+		SortListItems(ColumnSortModeFileExt, [&](const TSharedPtr<FPjcFileExternalItem>& Item1, const TSharedPtr<FPjcFileExternalItem>& Item2) {
 			return ColumnSortModeFileExt == EColumnSortMode::Ascending ? Item1->FileExt < Item2->FileExt : Item1->FileExt > Item2->FileExt;
 		});
 	}
 
-	if (ColumnName.IsEqual(TEXT("FileSize")))
-	{
-		SortListItems(ColumnSortModeFileSize, [&](const TSharedPtr<FPjcFileExternalItem>& Item1, const TSharedPtr<FPjcFileExternalItem>& Item2)
-		{
+	if (ColumnName.IsEqual(TEXT("FileSize"))) {
+		SortListItems(ColumnSortModeFileSize, [&](const TSharedPtr<FPjcFileExternalItem>& Item1, const TSharedPtr<FPjcFileExternalItem>& Item2) {
 			return ColumnSortModeFileSize == EColumnSortMode::Ascending ? Item1->FileSize < Item2->FileSize : Item1->FileSize > Item2->FileSize;
 		});
 	}
@@ -319,28 +334,36 @@ void SPjcTabFilesExternal::OnListSort(EColumnSortPriority::Type SortPriority, co
 	ListView->RebuildList();
 }
 
-void SPjcTabFilesExternal::OnSearchTextChanged(const FText& InText)
-{
+void SPjcTabFilesExternal::OnSearchTextChanged(const FText& InText) {
 	SearchText = InText;
 	ListUpdateView();
 }
 
-void SPjcTabFilesExternal::OnSearchTextCommitted(const FText& InText, ETextCommit::Type)
-{
+void SPjcTabFilesExternal::OnSearchTextCommitted(const FText& InText, ETextCommit::Type) {
 	SearchText = InText;
 	ListUpdateView();
 }
 
-TSharedRef<SWidget> SPjcTabFilesExternal::CreateToolbar() const
-{
-	FToolBarBuilder ToolBarBuilder{Cmds, FMultiBoxCustomization::None};
+TSharedRef<SWidget> SPjcTabFilesExternal::CreateToolbar() const {
+	FToolBarBuilder ToolBarBuilder {Cmds, FMultiBoxCustomization::None};
 	ToolBarBuilder.BeginSection("PjcSectionFilesExternalToolbar");
 	{
-		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().Refresh, NAME_None, FText::FromString(TEXT("Scan")), FText::FromString(TEXT("Scan For External Files")));
-		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().Delete, NAME_None, FText::FromString(TEXT("Delete")), FText::FromString(TEXT("Delete Selected Files")));
+		ToolBarBuilder.AddToolBarButton(
+			FPjcCmds::Get().Refresh, NAME_None, FText::FromString(TEXT("Scan")), FText::FromString(TEXT("Scan For External Files"))
+		);
+		ToolBarBuilder.AddToolBarButton(
+			FPjcCmds::Get().Delete, NAME_None, FText::FromString(TEXT("Delete")), FText::FromString(TEXT("Delete Selected Files"))
+		);
 		ToolBarBuilder.AddSeparator();
-		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().Exclude, NAME_None, FText::FromString(TEXT("Exclude")), FText::FromString(TEXT("Exclude Selected Files")));
-		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().ExcludeByExt, NAME_None, FText::FromString(TEXT("Exclude By Ext")), FText::FromString(TEXT("Exclude Selected Files By Their Extension")));
+		ToolBarBuilder.AddToolBarButton(
+			FPjcCmds::Get().Exclude, NAME_None, FText::FromString(TEXT("Exclude")), FText::FromString(TEXT("Exclude Selected Files"))
+		);
+		ToolBarBuilder.AddToolBarButton(
+			FPjcCmds::Get().ExcludeByExt,
+			NAME_None,
+			FText::FromString(TEXT("Exclude By Ext")),
+			FText::FromString(TEXT("Exclude Selected Files By Their Extension"))
+		);
 		ToolBarBuilder.AddSeparator();
 		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().ClearSelection);
 	}
@@ -349,23 +372,30 @@ TSharedRef<SWidget> SPjcTabFilesExternal::CreateToolbar() const
 	return ToolBarBuilder.MakeWidget();
 }
 
-TSharedPtr<SWidget> SPjcTabFilesExternal::OnContextMenuOpening() const
-{
-	FMenuBuilder MenuBuilder{true, Cmds};
+TSharedPtr<SWidget> SPjcTabFilesExternal::OnContextMenuOpening() const {
+	FMenuBuilder MenuBuilder {true, Cmds};
 	MenuBuilder.BeginSection("PjcSectionFilesExternalCtxMenu");
 	{
-		MenuBuilder.AddMenuEntry(FPjcCmds::Get().Exclude, NAME_None, FText::FromString(TEXT("Exclude")), FText::FromString(TEXT("Exclude Selected Files")));
-		MenuBuilder.AddMenuEntry(FPjcCmds::Get().ExcludeByExt, NAME_None, FText::FromString(TEXT("Exclude By Ext")), FText::FromString(TEXT("Exclude Selected Files By Their Extension")));
+		MenuBuilder.AddMenuEntry(
+			FPjcCmds::Get().Exclude, NAME_None, FText::FromString(TEXT("Exclude")), FText::FromString(TEXT("Exclude Selected Files"))
+		);
+		MenuBuilder.AddMenuEntry(
+			FPjcCmds::Get().ExcludeByExt,
+			NAME_None,
+			FText::FromString(TEXT("Exclude By Ext")),
+			FText::FromString(TEXT("Exclude Selected Files By Their Extension"))
+		);
 		MenuBuilder.AddSeparator();
-		MenuBuilder.AddMenuEntry(FPjcCmds::Get().Delete, NAME_None, FText::FromString(TEXT("Delete")), FText::FromString(TEXT("Delete Selected Files")));
+		MenuBuilder.AddMenuEntry(
+			FPjcCmds::Get().Delete, NAME_None, FText::FromString(TEXT("Delete")), FText::FromString(TEXT("Delete Selected Files"))
+		);
 	}
 	MenuBuilder.EndSection();
 
 	return MenuBuilder.MakeWidget();
 }
 
-TSharedRef<SWidget> SPjcTabFilesExternal::GetBtnOptionsContent()
-{
+TSharedRef<SWidget> SPjcTabFilesExternal::GetBtnOptionsContent() {
 	const TSharedPtr<FExtender> Extender;
 	FMenuBuilder MenuBuilder(true, Cmds, Extender, true);
 
@@ -373,21 +403,17 @@ TSharedRef<SWidget> SPjcTabFilesExternal::GetBtnOptionsContent()
 		FText::FromString(TEXT("Show Files Excluded")),
 		FText::FromString(TEXT("Show Excluded Files In List View")),
 		FSlateIcon(),
-		FUIAction
-		(
-			FExecuteAction::CreateLambda([&]
-			{
+		FUIAction(
+			FExecuteAction::CreateLambda([&] {
 				SubsystemPtr->bShowFilesExternal = !SubsystemPtr->bShowFilesExternal;
 				SubsystemPtr->PostEditChange();
 
 				ListUpdateView();
 			}),
-			FCanExecuteAction::CreateLambda([&]()
-			{
+			FCanExecuteAction::CreateLambda([&]() {
 				return SubsystemPtr != nullptr;
 			}),
-			FGetActionCheckState::CreateLambda([&]()
-			{
+			FGetActionCheckState::CreateLambda([&]() {
 				return SubsystemPtr && SubsystemPtr->bShowFilesExternal ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
 			})
 		),
@@ -398,73 +424,66 @@ TSharedRef<SWidget> SPjcTabFilesExternal::GetBtnOptionsContent()
 	return MenuBuilder.MakeWidget();
 }
 
-TSharedRef<SHeaderRow> SPjcTabFilesExternal::GetListHeaderRow()
-{
-	const FMargin HeaderMargin{5.0f};
+TSharedRef<SHeaderRow> SPjcTabFilesExternal::GetListHeaderRow() {
+	const FMargin HeaderMargin {5.0f};
 
-	return
-			SNew(SHeaderRow)
-			+ SHeaderRow::Column("FilePath")
-			.FillWidth(0.6f)
-			.HAlignCell(HAlign_Left)
-			.VAlignCell(VAlign_Center)
-			.HAlignHeader(HAlign_Center)
-			.HeaderContentPadding(HeaderMargin)
-			.OnSort_Raw(this, &SPjcTabFilesExternal::OnListSort)
-			[
-				SNew(STextBlock)
-				.Text(FText::FromString(TEXT("FilePath")))
-				.Font(FPjcStyles::GetFont("Light", 10.0f))
-				.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
-			]
-			+ SHeaderRow::Column("FileName")
-			.FillWidth(0.2f)
-			.HAlignCell(HAlign_Center)
-			.VAlignCell(VAlign_Center)
-			.HAlignHeader(HAlign_Center)
-			.HeaderContentPadding(HeaderMargin)
-			.OnSort_Raw(this, &SPjcTabFilesExternal::OnListSort)
-			[
-				SNew(STextBlock)
-				.Text(FText::FromString(TEXT("FileName")))
-				.Font(FPjcStyles::GetFont("Light", 10.0f))
-				.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
-			]
-			+ SHeaderRow::Column("FileExt")
-			.FillWidth(0.1f)
-			.HAlignCell(HAlign_Center)
-			.VAlignCell(VAlign_Center)
-			.HAlignHeader(HAlign_Center)
-			.HeaderContentPadding(HeaderMargin)
-			.OnSort_Raw(this, &SPjcTabFilesExternal::OnListSort)
-			[
-				SNew(STextBlock)
-				.Text(FText::FromString(TEXT("FileExtension")))
-				.Font(FPjcStyles::GetFont("Light", 10.0f))
-				.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
-			]
-			+ SHeaderRow::Column("FileSize")
-			.FillWidth(0.1f)
-			.HAlignCell(HAlign_Center)
-			.VAlignCell(VAlign_Center)
-			.HAlignHeader(HAlign_Center)
-			.HeaderContentPadding(HeaderMargin)
-			.OnSort_Raw(this, &SPjcTabFilesExternal::OnListSort)
-			[
-				SNew(STextBlock)
-				.Text(FText::FromString(TEXT("FileSize")))
-				.Font(FPjcStyles::GetFont("Light", 10.0f))
-				.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
-			];
+	return SNew(SHeaderRow)
+		+ SHeaderRow::Column("FilePath")
+			  .FillWidth(0.6f)
+			  .HAlignCell(HAlign_Left)
+			  .VAlignCell(VAlign_Center)
+			  .HAlignHeader(HAlign_Center)
+			  .HeaderContentPadding(HeaderMargin)
+			  .OnSort_Raw(
+				  this, &SPjcTabFilesExternal::OnListSort
+			  )[SNew(STextBlock)
+					.Text(FText::FromString(TEXT("FilePath")))
+					.Font(FPjcStyles::GetFont("Light", 10.0f))
+					.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))]
+		+ SHeaderRow::Column("FileName")
+			  .FillWidth(0.2f)
+			  .HAlignCell(HAlign_Center)
+			  .VAlignCell(VAlign_Center)
+			  .HAlignHeader(HAlign_Center)
+			  .HeaderContentPadding(HeaderMargin)
+			  .OnSort_Raw(
+				  this, &SPjcTabFilesExternal::OnListSort
+			  )[SNew(STextBlock)
+					.Text(FText::FromString(TEXT("FileName")))
+					.Font(FPjcStyles::GetFont("Light", 10.0f))
+					.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))]
+		+ SHeaderRow::Column("FileExt")
+			  .FillWidth(0.1f)
+			  .HAlignCell(HAlign_Center)
+			  .VAlignCell(VAlign_Center)
+			  .HAlignHeader(HAlign_Center)
+			  .HeaderContentPadding(HeaderMargin)
+			  .OnSort_Raw(
+				  this, &SPjcTabFilesExternal::OnListSort
+			  )[SNew(STextBlock)
+					.Text(FText::FromString(TEXT("FileExtension")))
+					.Font(FPjcStyles::GetFont("Light", 10.0f))
+					.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))]
+		+ SHeaderRow::Column("FileSize")
+			  .FillWidth(0.1f)
+			  .HAlignCell(HAlign_Center)
+			  .VAlignCell(VAlign_Center)
+			  .HAlignHeader(HAlign_Center)
+			  .HeaderContentPadding(HeaderMargin)
+			  .OnSort_Raw(
+				  this, &SPjcTabFilesExternal::OnListSort
+			  )[SNew(STextBlock)
+					.Text(FText::FromString(TEXT("FileSize")))
+					.Font(FPjcStyles::GetFont("Light", 10.0f))
+					.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))];
 }
 
-TSharedRef<ITableRow> SPjcTabFilesExternal::OnListGenerateRow(TSharedPtr<FPjcFileExternalItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const
-{
+TSharedRef<ITableRow>
+SPjcTabFilesExternal::OnListGenerateRow(TSharedPtr<FPjcFileExternalItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const {
 	return SNew(SPjcItemFileExternal, OwnerTable).Item(Item).TextHighlight(SearchText);
 }
 
-FSlateColor SPjcTabFilesExternal::GetOptionsBtnForegroundColor() const
-{
+FSlateColor SPjcTabFilesExternal::GetOptionsBtnForegroundColor() const {
 	static const FName InvertedForegroundName("InvertedForeground");
 	static const FName DefaultForegroundName("DefaultForeground");
 
@@ -473,10 +492,8 @@ FSlateColor SPjcTabFilesExternal::GetOptionsBtnForegroundColor() const
 	return OptionBtn->IsHovered() ? FEditorStyle::GetSlateColor(InvertedForegroundName) : FEditorStyle::GetSlateColor(DefaultForegroundName);
 }
 
-FText SPjcTabFilesExternal::GetTxtSummary() const
-{
-	if (NumFilesExcluded > 0)
-	{
+FText SPjcTabFilesExternal::GetTxtSummary() const {
+	if (NumFilesExcluded > 0) {
 		return FText::FromString(
 			FString::Printf(
 				TEXT("Total - %d (%s). Excluded - %d (%s)"),
@@ -491,10 +508,8 @@ FText SPjcTabFilesExternal::GetTxtSummary() const
 	return FText::FromString(FString::Printf(TEXT("Total - %d (%s)"), NumFilesTotal, *FText::AsMemory(SizeFilesTotal, IEC).ToString()));
 }
 
-FText SPjcTabFilesExternal::GetTxtSelection() const
-{
-	if (ListView.IsValid())
-	{
+FText SPjcTabFilesExternal::GetTxtSelection() const {
+	if (ListView.IsValid()) {
 		const int32 NumFilesSelected = ListView->GetSelectedItems().Num();
 
 		return FText::FromString(FString::Printf(TEXT("Selected %d of %d"), NumFilesSelected, ItemsFiltered.Num()));
@@ -503,19 +518,16 @@ FText SPjcTabFilesExternal::GetTxtSelection() const
 	return FText::GetEmpty();
 }
 
-int32 SPjcTabFilesExternal::GetWidgetIndex() const
-{
+int32 SPjcTabFilesExternal::GetWidgetIndex() const {
 	return ItemsAll.Num() == 0 ? PjcConstants::WidgetIndexIdle : PjcConstants::WidgetIndexWorking;
 }
 
-void SPjcTabFilesExternal::OnRefresh()
-{
+void SPjcTabFilesExternal::OnRefresh() {
 	ListUpdateData();
 	ListUpdateView();
 }
 
-void SPjcTabFilesExternal::OnDelete()
-{
+void SPjcTabFilesExternal::OnDelete() {
 	UPjcFileExcludeSettings* FileExcludeSettings = GetMutableDefault<UPjcFileExcludeSettings>();
 	if (!FileExcludeSettings) return;
 
@@ -528,20 +540,20 @@ void SPjcTabFilesExternal::OnDelete()
 	const EAppReturnType::Type ReturnType = FMessageDialog::Open(EAppMsgType::YesNo, Context, &Title);
 	if (ReturnType == EAppReturnType::Cancel || ReturnType == EAppReturnType::No) return;
 
-	for (const auto& Item : ItemsSelected)
-	{
+	for (const auto& Item : ItemsSelected) {
 		if (!Item.IsValid() || !FPaths::FileExists(Item->FilePath)) continue;
 		if (!IFileManager::Get().Delete(*Item->FilePath, true)) continue;
 
-		if (Item->bExcluded)
-		{
-			FileExcludeSettings->ExcludedFiles.RemoveAllSwap([&](const FFilePath& InFile)
-			{
-				FString Path = Item->FilePath;
-				Path.RemoveFromStart(FPaths::ConvertRelativePathToFull(FPaths::ProjectDir()));
+		if (Item->bExcluded) {
+			FileExcludeSettings->ExcludedFiles.RemoveAllSwap(
+				[&](const FFilePath& InFile) {
+					FString Path = Item->FilePath;
+					Path.RemoveFromStart(FPaths::ConvertRelativePathToFull(FPaths::ProjectDir()));
 
-				return InFile.FilePath.Equals(Path);
-			}, false);
+					return InFile.FilePath.Equals(Path);
+				},
+				false
+			);
 		}
 
 		++NumDeleted;
@@ -551,12 +563,10 @@ void SPjcTabFilesExternal::OnDelete()
 
 	const FString Msg = FString::Printf(TEXT("Deleted %d of %d files"), NumDeleted, NumTotal);
 
-	if (NumDeleted == NumTotal)
-	{
+	if (NumDeleted == NumTotal) {
 		UPjcSubsystem::ShowNotification(Msg, SNotificationItem::CS_Success, 5.0f);
 	}
-	else
-	{
+	else {
 		UPjcSubsystem::ShowNotificationWithOutputLog(Msg, SNotificationItem::CS_Fail, 5.0f);
 	}
 
@@ -564,8 +574,7 @@ void SPjcTabFilesExternal::OnDelete()
 	ListUpdateView();
 }
 
-void SPjcTabFilesExternal::OnExclude()
-{
+void SPjcTabFilesExternal::OnExclude() {
 	const auto ItemsSelected = ListView->GetSelectedItems();
 
 	UPjcFileExcludeSettings* FileExcludeSettings = GetMutableDefault<UPjcFileExcludeSettings>();
@@ -573,22 +582,19 @@ void SPjcTabFilesExternal::OnExclude()
 
 	const FString ProjectDir = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir());
 
-	for (const auto& ItemSelected : ItemsSelected)
-	{
+	for (const auto& ItemSelected : ItemsSelected) {
 		if (!ItemSelected.IsValid()) continue;
 
 		FString Path = ItemSelected->FilePath;
 		Path.RemoveFromStart(ProjectDir);
 
-		const bool bAlreadyInList = FileExcludeSettings->ExcludedFiles.ContainsByPredicate(
-			[&Path](const FFilePath& InFilePath)
-			{
-				return InFilePath.FilePath.Equals(Path);
-			});
+		const bool bAlreadyInList = FileExcludeSettings->ExcludedFiles.ContainsByPredicate([&Path](const FFilePath& InFilePath) {
+			return InFilePath.FilePath.Equals(Path);
+		});
 
 		if (bAlreadyInList) continue;
 
-		FileExcludeSettings->ExcludedFiles.Emplace(FFilePath{Path});
+		FileExcludeSettings->ExcludedFiles.Emplace(FFilePath {Path});
 	}
 	FileExcludeSettings->PostEditChange();
 
@@ -596,15 +602,13 @@ void SPjcTabFilesExternal::OnExclude()
 	ListUpdateView();
 }
 
-void SPjcTabFilesExternal::OnExcludeByExt()
-{
+void SPjcTabFilesExternal::OnExcludeByExt() {
 	const auto ItemsSelected = ListView->GetSelectedItems();
 
 	UPjcFileExcludeSettings* FileExcludeSettings = GetMutableDefault<UPjcFileExcludeSettings>();
 	if (!FileExcludeSettings) return;
 
-	for (const auto& ItemSelected : ItemsSelected)
-	{
+	for (const auto& ItemSelected : ItemsSelected) {
 		if (!ItemSelected.IsValid()) continue;
 
 		FileExcludeSettings->ExcludedExtensions.AddUnique(ItemSelected->FileExt);
@@ -616,13 +620,11 @@ void SPjcTabFilesExternal::OnExcludeByExt()
 	ListUpdateView();
 }
 
-void SPjcTabFilesExternal::OnClearSelection() const
-{
+void SPjcTabFilesExternal::OnClearSelection() const {
 	ListView->ClearSelection();
 	ListView->ClearHighlightedItems();
 }
 
-bool SPjcTabFilesExternal::CanExecuteAction() const
-{
+bool SPjcTabFilesExternal::CanExecuteAction() const {
 	return ListView.IsValid() && ListView->GetSelectedItems().Num() > 0;
 }

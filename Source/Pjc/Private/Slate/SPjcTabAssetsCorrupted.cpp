@@ -12,14 +12,10 @@
 #include "Widgets/Layout/SSeparator.h"
 #include "Widgets/Layout/SWidgetSwitcher.h"
 
-void SPjcTabAssetsCorrupted::Construct(const FArguments& InArgs)
-{
+void SPjcTabAssetsCorrupted::Construct(const FArguments& InArgs) {
 	Cmds = MakeShareable(new FUICommandList);
 
-	Cmds->MapAction(
-		FPjcCmds::Get().Refresh,
-		FExecuteAction::CreateRaw(this, &SPjcTabAssetsCorrupted::OnRefresh)
-	);
+	Cmds->MapAction(FPjcCmds::Get().Refresh, FExecuteAction::CreateRaw(this, &SPjcTabAssetsCorrupted::OnRefresh));
 
 	Cmds->MapAction(
 		FPjcCmds::Get().Delete,
@@ -33,25 +29,32 @@ void SPjcTabAssetsCorrupted::Construct(const FArguments& InArgs)
 		FCanExecuteAction::CreateRaw(this, &SPjcTabAssetsCorrupted::AnyAssetSelected)
 	);
 
+	// clang-format off
 	SAssignNew(ListView, SListView<TSharedPtr<FPjcCorruptedAssetItem>>)
-	.ListItemsSource(&ItemsFiltered)
-	.OnGenerateRow(this, &SPjcTabAssetsCorrupted::OnListGenerateRow)
-	.OnContextMenuOpening_Raw(this, &SPjcTabAssetsCorrupted::OnContextMenuOpening)
-	.SelectionMode(ESelectionMode::Multi)
-	.HeaderRow(GetListHeaderRow());
+		.ListItemsSource(&ItemsFiltered)
+		.OnGenerateRow(this, &SPjcTabAssetsCorrupted::OnListGenerateRow)
+		.OnContextMenuOpening_Raw(this, &SPjcTabAssetsCorrupted::OnContextMenuOpening)
+		.SelectionMode(ESelectionMode::Multi)
+		.HeaderRow(GetListHeaderRow());
 
 	ChildSlot
 	[
 		SNew(SVerticalBox)
-		+ SVerticalBox::Slot().AutoHeight().Padding(5.0f)
+		+ SVerticalBox::Slot()
+		.AutoHeight()
+		.Padding(5.0f)
 		[
 			CreateToolbar()
 		]
-		+ SVerticalBox::Slot().AutoHeight().Padding(5.0f)
+		+ SVerticalBox::Slot()
+		.AutoHeight()
+		.Padding(5.0f)
 		[
 			SNew(SSeparator).Thickness(5.0f)
 		]
-		+ SVerticalBox::Slot().AutoHeight().Padding(5.0f)
+		+ SVerticalBox::Slot()
+		.AutoHeight()
+		.Padding(5.0f)
 		[
 			SNew(STextBlock)
 			.Justification(ETextJustify::Center)
@@ -61,7 +64,9 @@ void SPjcTabAssetsCorrupted::Construct(const FArguments& InArgs)
 			.Font(FPjcStyles::GetFont("Bold", 15))
 			.Text(FText::FromString(TEXT("List of corrupted asset files inside Content folder.")))
 		]
-		+ SVerticalBox::Slot().AutoHeight().Padding(5.0f, 0.0f)
+		+ SVerticalBox::Slot()
+		.AutoHeight()
+		.Padding(5.0f, 0.0f)
 		[
 			SNew(STextBlock)
 			.Justification(ETextJustify::Center)
@@ -71,7 +76,9 @@ void SPjcTabAssetsCorrupted::Construct(const FArguments& InArgs)
 			.Font(FPjcStyles::GetFont("Bold", 10))
 			.Text(FText::FromString(TEXT("These are the assets that are not being loaded by the AssetRegistry. To identify these problematic assets, you can view the OutputLog, which should provide information regarding the reasons why these assets aren't loading.")))
 		]
-		+ SVerticalBox::Slot().AutoHeight().Padding(5.0f, 0.0f)
+		+ SVerticalBox::Slot()
+		.AutoHeight()
+		.Padding(5.0f, 0.0f)
 		[
 			SNew(STextBlock)
 			.Justification(ETextJustify::Center)
@@ -81,7 +88,9 @@ void SPjcTabAssetsCorrupted::Construct(const FArguments& InArgs)
 			.Font(FPjcStyles::GetFont("Bold", 10))
 			.Text(FText::FromString(TEXT("Often, these issues arise when an asset has been migrated from a different project that uses a different engine version, or if there were problems during the asset saving process, among other reasons.")))
 		]
-		+ SVerticalBox::Slot().AutoHeight().Padding(5.0f, 0.0f)
+		+ SVerticalBox::Slot()
+		.AutoHeight()
+		.Padding(5.0f, 0.0f)
 		[
 			SNew(STextBlock)
 			.Justification(ETextJustify::Center)
@@ -91,25 +100,34 @@ void SPjcTabAssetsCorrupted::Construct(const FArguments& InArgs)
 			.Font(FPjcStyles::GetFont("Bold", 10))
 			.Text(FText::FromString(TEXT("You can attempt to manually load these assets again, by restarting editor, to see if the problem persists. If the issue remains unresolved, you may consider deleting the problematic asset file directly from the file explorer.")))
 		]
-		+ SVerticalBox::Slot().AutoHeight().Padding(5.0f)
+		+ SVerticalBox::Slot()
+		.AutoHeight()
+		.Padding(5.0f)
 		[
 			SNew(SSeparator).Thickness(5.0f)
 		]
-		+ SVerticalBox::Slot().AutoHeight().Padding(5.0f)
+		+ SVerticalBox::Slot()
+		.AutoHeight()
+		.Padding(5.0f)
 		[
 			SNew(SSearchBox)
 			.HintText(FText::FromString(TEXT("Search files...")))
 			.OnTextChanged_Raw(this, &SPjcTabAssetsCorrupted::OnSearchTextChanged)
 			.OnTextCommitted_Raw(this, &SPjcTabAssetsCorrupted::OnSearchTextCommitted)
 		]
-		+ SVerticalBox::Slot().FillHeight(1.0f).Padding(5.0f)
+		+ SVerticalBox::Slot()
+		.FillHeight(1.0f)
+		.Padding(5.0f)
 		[
 			SNew(SWidgetSwitcher)
 			.WidgetIndex_Raw(this, &SPjcTabAssetsCorrupted::GetWidgetIndex)
 			+ SWidgetSwitcher::Slot()
 			[
 				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot().FillWidth(1.0f).HAlign(HAlign_Center).VAlign(VAlign_Center)
+				+ SHorizontalBox::Slot()
+				.FillWidth(1.0f)
+				.HAlign(HAlign_Center)
+				.VAlign(VAlign_Center)
 				[
 					SNew(STextBlock)
 					.Justification(ETextJustify::Center)
@@ -126,25 +144,32 @@ void SPjcTabAssetsCorrupted::Construct(const FArguments& InArgs)
 				.ScrollWhenFocusChanges(EScrollWhenFocusChanges::NoScroll)
 				.AnimateWheelScrolling(true)
 				.AllowOverscroll(EAllowOverscroll::No)
-				+ SScrollBox::Slot().Padding(5.0f)
+				+ SScrollBox::Slot()
+				.Padding(5.0f)
 				[
 					ListView.ToSharedRef()
 				]
 			]
 		]
-		+ SVerticalBox::Slot().AutoHeight().Padding(5.0f)
+		+ SVerticalBox::Slot()
+		.AutoHeight()
+		.Padding(5.0f)
 		[
 			SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot().FillWidth(1.0f).HAlign(HAlign_Left).VAlign(VAlign_Center).Padding(3.0f, 0.0f, 0.0f, 0.0f)
+			+ SHorizontalBox::Slot()
+			.FillWidth(1.0f)
+			.HAlign(HAlign_Left)
+			.VAlign(VAlign_Center)
+			.Padding(3.0f, 0.0f, 0.0f, 0.0f)
 			[
 				SNew(STextBlock).Text_Raw(this, &SPjcTabAssetsCorrupted::GetTxtSummary)
 			]
 		]
 	];
+	// clang-format on
 }
 
-void SPjcTabAssetsCorrupted::ListUpdateData()
-{
+void SPjcTabAssetsCorrupted::ListUpdateData() {
 	TArray<FString> FilesCorrupted;
 	UPjcSubsystem::GetFilesCorrupted(FilesCorrupted, true);
 
@@ -153,28 +178,17 @@ void SPjcTabAssetsCorrupted::ListUpdateData()
 	NumFilesTotal = FilesCorrupted.Num();
 	SizeFilesTotal = 0;
 
-	for (const auto& File : FilesCorrupted)
-	{
+	for (const auto& File : FilesCorrupted) {
 		const int64 FileSize = IFileManager::Get().FileSize(*File);
 		const FString FileName = FPaths::GetBaseFilename(File);
 		const FString FileExt = FPaths::GetExtension(File, false).ToLower();
 		SizeFilesTotal += FileSize;
 
-		ItemsAll.Emplace(
-			MakeShareable(
-				new FPjcCorruptedAssetItem{
-					FileSize,
-					FileName,
-					FileExt,
-					File
-				}
-			)
-		);
+		ItemsAll.Emplace(MakeShareable(new FPjcCorruptedAssetItem {FileSize, FileName, FileExt, File}));
 	}
 }
 
-void SPjcTabAssetsCorrupted::ListUpdateView()
-{
+void SPjcTabAssetsCorrupted::ListUpdateView() {
 	if (!ListView.IsValid()) return;
 
 	ItemsFiltered.Reset();
@@ -182,30 +196,12 @@ void SPjcTabAssetsCorrupted::ListUpdateView()
 
 	const FString SearchString = SearchText.ToString();
 
-	for (const auto& Item : ItemsAll)
-	{
-		if (
-			!Item.IsValid() ||
-			(
-				!SearchText.IsEmpty() &&
-				!Item->FilePath.Contains(SearchString) &&
-				!Item->FileName.Contains(SearchString)
-			)
-		)
-		{
+	for (const auto& Item : ItemsAll) {
+		if (!Item.IsValid() || (!SearchText.IsEmpty() && !Item->FilePath.Contains(SearchString) && !Item->FileName.Contains(SearchString))) {
 			continue;
 		}
 
-		ItemsFiltered.Emplace(
-			MakeShareable(
-				new FPjcCorruptedAssetItem{
-					Item->FileSize,
-					Item->FileName,
-					Item->FileExt,
-					Item->FilePath
-				}
-			)
-		);
+		ItemsFiltered.Emplace(MakeShareable(new FPjcCorruptedAssetItem {Item->FileSize, Item->FileName, Item->FileExt, Item->FilePath}));
 	}
 
 	ListView->ClearSelection();
@@ -213,45 +209,35 @@ void SPjcTabAssetsCorrupted::ListUpdateView()
 	ListView->RebuildList();
 }
 
-void SPjcTabAssetsCorrupted::OnListSort(EColumnSortPriority::Type SortPriority, const FName& ColumnName, EColumnSortMode::Type InSortMode)
-{
+void SPjcTabAssetsCorrupted::OnListSort(EColumnSortPriority::Type SortPriority, const FName& ColumnName, EColumnSortMode::Type InSortMode) {
 	if (!ListView.IsValid()) return;
 
-	auto SortListItems = [&](auto& SortMode, auto SortFunc)
-	{
+	auto SortListItems = [&](auto& SortMode, auto SortFunc) {
 		SortMode = SortMode == EColumnSortMode::Ascending ? EColumnSortMode::Descending : EColumnSortMode::Ascending;
 
 		ItemsFiltered.Sort(SortFunc);
 	};
 
-	if (ColumnName.IsEqual(TEXT("FilePath")))
-	{
-		SortListItems(ColumnSortModeFilePath, [&](const TSharedPtr<FPjcCorruptedAssetItem>& Item1, const TSharedPtr<FPjcCorruptedAssetItem>& Item2)
-		{
+	if (ColumnName.IsEqual(TEXT("FilePath"))) {
+		SortListItems(ColumnSortModeFilePath, [&](const TSharedPtr<FPjcCorruptedAssetItem>& Item1, const TSharedPtr<FPjcCorruptedAssetItem>& Item2) {
 			return ColumnSortModeFilePath == EColumnSortMode::Ascending ? Item1->FilePath < Item2->FilePath : Item1->FilePath > Item2->FilePath;
 		});
 	}
 
-	if (ColumnName.IsEqual(TEXT("FileName")))
-	{
-		SortListItems(ColumnSortModeFileName, [&](const TSharedPtr<FPjcCorruptedAssetItem>& Item1, const TSharedPtr<FPjcCorruptedAssetItem>& Item2)
-		{
+	if (ColumnName.IsEqual(TEXT("FileName"))) {
+		SortListItems(ColumnSortModeFileName, [&](const TSharedPtr<FPjcCorruptedAssetItem>& Item1, const TSharedPtr<FPjcCorruptedAssetItem>& Item2) {
 			return ColumnSortModeFileName == EColumnSortMode::Ascending ? Item1->FileName < Item2->FileName : Item1->FileName > Item2->FileName;
 		});
 	}
 
-	if (ColumnName.IsEqual(TEXT("FileExt")))
-	{
-		SortListItems(ColumnSortModeFileExt, [&](const TSharedPtr<FPjcCorruptedAssetItem>& Item1, const TSharedPtr<FPjcCorruptedAssetItem>& Item2)
-		{
+	if (ColumnName.IsEqual(TEXT("FileExt"))) {
+		SortListItems(ColumnSortModeFileExt, [&](const TSharedPtr<FPjcCorruptedAssetItem>& Item1, const TSharedPtr<FPjcCorruptedAssetItem>& Item2) {
 			return ColumnSortModeFileExt == EColumnSortMode::Ascending ? Item1->FileExt < Item2->FileExt : Item1->FileExt > Item2->FileExt;
 		});
 	}
 
-	if (ColumnName.IsEqual(TEXT("FileSize")))
-	{
-		SortListItems(ColumnSortModeFileSize, [&](const TSharedPtr<FPjcCorruptedAssetItem>& Item1, const TSharedPtr<FPjcCorruptedAssetItem>& Item2)
-		{
+	if (ColumnName.IsEqual(TEXT("FileSize"))) {
+		SortListItems(ColumnSortModeFileSize, [&](const TSharedPtr<FPjcCorruptedAssetItem>& Item1, const TSharedPtr<FPjcCorruptedAssetItem>& Item2) {
 			return ColumnSortModeFileSize == EColumnSortMode::Ascending ? Item1->FileSize < Item2->FileSize : Item1->FileSize > Item2->FileSize;
 		});
 	}
@@ -259,24 +245,21 @@ void SPjcTabAssetsCorrupted::OnListSort(EColumnSortPriority::Type SortPriority, 
 	ListView->RebuildList();
 }
 
-void SPjcTabAssetsCorrupted::OnSearchTextChanged(const FText& InSearchText)
-{
+void SPjcTabAssetsCorrupted::OnSearchTextChanged(const FText& InSearchText) {
 	SearchText = InSearchText;
 	ListUpdateView();
 }
 
-void SPjcTabAssetsCorrupted::OnSearchTextCommitted(const FText& InSearchText, ETextCommit::Type)
-{
+void SPjcTabAssetsCorrupted::OnSearchTextCommitted(const FText& InSearchText, ETextCommit::Type) {
 	SearchText = InSearchText;
 	ListUpdateView();
 }
 
-TSharedRef<SHeaderRow> SPjcTabAssetsCorrupted::GetListHeaderRow()
-{
-	const FMargin HeaderMargin{5.0f};
+TSharedRef<SHeaderRow> SPjcTabAssetsCorrupted::GetListHeaderRow() {
+	const FMargin HeaderMargin {5.0f};
 
-	return
-		SNew(SHeaderRow)
+	// clang-format off
+	return SNew(SHeaderRow)
 		+ SHeaderRow::Column("FilePath")
 		.FillWidth(0.6f)
 		.HAlignCell(HAlign_Left)
@@ -329,32 +312,37 @@ TSharedRef<SHeaderRow> SPjcTabAssetsCorrupted::GetListHeaderRow()
 			.Font(FPjcStyles::GetFont("Light", 10.0f))
 			.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
 		];
+	// clang-format on
 }
 
-TSharedRef<ITableRow> SPjcTabAssetsCorrupted::OnListGenerateRow(TSharedPtr<FPjcCorruptedAssetItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const
-{
+TSharedRef<ITableRow>
+SPjcTabAssetsCorrupted::OnListGenerateRow(TSharedPtr<FPjcCorruptedAssetItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const {
 	return SNew(SPjcItemAssetCorrupted, OwnerTable).Item(Item).TextHighlight(SearchText);
 }
 
-TSharedPtr<SWidget> SPjcTabAssetsCorrupted::OnContextMenuOpening() const
-{
-	FMenuBuilder MenuBuilder{true, Cmds};
+TSharedPtr<SWidget> SPjcTabAssetsCorrupted::OnContextMenuOpening() const {
+	FMenuBuilder MenuBuilder {true, Cmds};
 	MenuBuilder.BeginSection("PjcSectionFilesExternalCtxMenu");
 	{
-		MenuBuilder.AddMenuEntry(FPjcCmds::Get().Delete, NAME_None, FText::FromString(TEXT("Delete")), FText::FromString(TEXT("Delete Selected Files")));
+		MenuBuilder.AddMenuEntry(
+			FPjcCmds::Get().Delete, NAME_None, FText::FromString(TEXT("Delete")), FText::FromString(TEXT("Delete Selected Files"))
+		);
 	}
 	MenuBuilder.EndSection();
 
 	return MenuBuilder.MakeWidget();
 }
 
-TSharedRef<SWidget> SPjcTabAssetsCorrupted::CreateToolbar() const
-{
-	FToolBarBuilder ToolBarBuilder{Cmds, FMultiBoxCustomization::None};
+TSharedRef<SWidget> SPjcTabAssetsCorrupted::CreateToolbar() const {
+	FToolBarBuilder ToolBarBuilder {Cmds, FMultiBoxCustomization::None};
 	ToolBarBuilder.BeginSection("PjcSectionActionsFilesCorrupted");
 	{
-		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().Refresh, NAME_None, FText::FromString(TEXT("Scan")), FText::FromString(TEXT("Scan For Corrupted Assets")));
-		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().Delete, NAME_None, FText::FromString(TEXT("Delete")), FText::FromString(TEXT("Delete Selected Files")));
+		ToolBarBuilder.AddToolBarButton(
+			FPjcCmds::Get().Refresh, NAME_None, FText::FromString(TEXT("Scan")), FText::FromString(TEXT("Scan For Corrupted Assets"))
+		);
+		ToolBarBuilder.AddToolBarButton(
+			FPjcCmds::Get().Delete, NAME_None, FText::FromString(TEXT("Delete")), FText::FromString(TEXT("Delete Selected Files"))
+		);
 		ToolBarBuilder.AddSeparator();
 		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().ClearSelection);
 	}
@@ -363,31 +351,28 @@ TSharedRef<SWidget> SPjcTabAssetsCorrupted::CreateToolbar() const
 	return ToolBarBuilder.MakeWidget();
 }
 
-FText SPjcTabAssetsCorrupted::GetTxtSummary() const
-{
-	if (ListView.IsValid())
-	{
+FText SPjcTabAssetsCorrupted::GetTxtSummary() const {
+	if (ListView.IsValid()) {
 		const int32 NumFilesSelected = ListView->GetSelectedItems().Num();
 
-		return FText::FromString(FString::Printf(TEXT("Total - %d (%s). Selected %d"), NumFilesTotal, *FText::AsMemory(SizeFilesTotal, IEC).ToString(), NumFilesSelected));
+		return FText::FromString(
+			FString::Printf(TEXT("Total - %d (%s). Selected %d"), NumFilesTotal, *FText::AsMemory(SizeFilesTotal, IEC).ToString(), NumFilesSelected)
+		);
 	}
 
 	return FText::FromString(FString::Printf(TEXT("Total - %d (%s)"), NumFilesTotal, *FText::AsMemory(SizeFilesTotal, IEC).ToString()));
 }
 
-int32 SPjcTabAssetsCorrupted::GetWidgetIndex() const
-{
+int32 SPjcTabAssetsCorrupted::GetWidgetIndex() const {
 	return ItemsAll.Num() == 0 ? PjcConstants::WidgetIndexIdle : PjcConstants::WidgetIndexWorking;
 }
 
-void SPjcTabAssetsCorrupted::OnRefresh()
-{
+void SPjcTabAssetsCorrupted::OnRefresh() {
 	ListUpdateData();
 	ListUpdateView();
 }
 
-void SPjcTabAssetsCorrupted::OnDelete()
-{
+void SPjcTabAssetsCorrupted::OnDelete() {
 	const FText Title = FText::FromString(TEXT("Delete Corrupted Asset Files"));
 	const FText Context = FText::FromString(TEXT("Are you sure you want to delete selected files?"));
 
@@ -398,8 +383,7 @@ void SPjcTabAssetsCorrupted::OnDelete()
 	const int32 NumTotal = ItemsSelected.Num();
 	int32 NumDeleted = 0;
 
-	for (const auto& Item : ItemsSelected)
-	{
+	for (const auto& Item : ItemsSelected) {
 		if (!Item.IsValid()) continue;
 		if (!IFileManager::Get().Delete(*Item->FilePath)) continue;
 
@@ -408,12 +392,10 @@ void SPjcTabAssetsCorrupted::OnDelete()
 
 	const FString Msg = FString::Printf(TEXT("Deleted %d of %d files"), NumDeleted, NumTotal);
 
-	if (NumDeleted == NumTotal)
-	{
+	if (NumDeleted == NumTotal) {
 		UPjcSubsystem::ShowNotification(Msg, SNotificationItem::CS_Success, 5.0f);
 	}
-	else
-	{
+	else {
 		UPjcSubsystem::ShowNotificationWithOutputLog(Msg, SNotificationItem::CS_Fail, 5.0f);
 	}
 
@@ -421,13 +403,11 @@ void SPjcTabAssetsCorrupted::OnDelete()
 	ListUpdateView();
 }
 
-void SPjcTabAssetsCorrupted::OnClearSelection() const
-{
+void SPjcTabAssetsCorrupted::OnClearSelection() const {
 	ListView->ClearSelection();
 	ListView->ClearHighlightedItems();
 }
 
-bool SPjcTabAssetsCorrupted::AnyAssetSelected() const
-{
+bool SPjcTabAssetsCorrupted::AnyAssetSelected() const {
 	return ListView.IsValid() && ListView->GetSelectedItems().Num() > 0;
 }

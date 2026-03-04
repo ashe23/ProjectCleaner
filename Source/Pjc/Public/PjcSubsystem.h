@@ -11,12 +11,13 @@
 #include "PjcTypes.h"
 #include "PjcSubsystem.generated.h"
 
-UCLASS(Config=EditorPerProjectUserSettings, DisplayName="ProjectCleanerSubsystem")
+UCLASS(Config = EditorPerProjectUserSettings, DisplayName = "ProjectCleanerSubsystem")
 class UPjcSubsystem final : public UEditorSubsystem
 {
 	GENERATED_BODY()
 
-public:
+  public:
+
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	virtual void Deinitialize() override;
 
@@ -28,7 +29,7 @@ public:
 	 * @brief Returns all assets in project (particularly Content folder)
 	 * @param Assets TArray<FAssetData>
 	 */
-	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset")
+	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Asset")
 	static void GetAssetsAll(TArray<FAssetData>& Assets);
 
 	/**
@@ -36,7 +37,7 @@ public:
 	 * @param Assets TArray<FAssetData>
 	 * @param bShowSlowTask bool
 	 */
-	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset")
+	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Asset")
 	static void GetAssetsUsed(TArray<FAssetData>& Assets, const bool bShowSlowTask = true);
 
 	/**
@@ -44,7 +45,7 @@ public:
 	 * @param Assets TArray<FAssetData>
 	 * @param bShowSlowTask bool
 	 */
-	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset")
+	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Asset")
 	static void GetAssetsUnused(TArray<FAssetData>& Assets, const bool bShowSlowTask = true);
 
 	/**
@@ -52,7 +53,7 @@ public:
 	 * @param Assets TArray<FAssetData>
 	 * @param bShowSlowTask bool
 	 */
-	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset")
+	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Asset")
 	static void GetAssetsPrimary(TArray<FAssetData>& Assets, const bool bShowSlowTask = true);
 
 	/**
@@ -61,7 +62,7 @@ public:
 	 * @param AssetsIndirectInfos TArray<FPjcAssetIndirectInfo> - Assets and their usage information
 	 * @param bShowSlowTask bool - Show slow task progress bar or not
 	 */
-	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset")
+	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Asset")
 	static void GetAssetsIndirect(TArray<FAssetData>& Assets, TArray<FPjcAssetIndirectInfo>& AssetsIndirectInfos, const bool bShowSlowTask = true);
 
 	/**
@@ -69,7 +70,7 @@ public:
 	 * @param Assets TArray<FAssetData>
 	 * @param bShowSlowTask bool
 	 */
-	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset")
+	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Asset")
 	static void GetAssetsCircular(TArray<FAssetData>& Assets, const bool bShowSlowTask = true);
 
 	/**
@@ -77,7 +78,7 @@ public:
 	 * @param Assets TArray<FAssetData>
 	 * @param bShowSlowTask bool
 	 */
-	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset")
+	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Asset")
 	static void GetAssetsEditor(TArray<FAssetData>& Assets, const bool bShowSlowTask = true);
 
 	/**
@@ -85,7 +86,7 @@ public:
 	 * @param Assets TArray<FAssetData>
 	 * @param bShowSlowTask bool
 	 */
-	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset")
+	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Asset")
 	static void GetAssetsExcluded(TArray<FAssetData>& Assets, const bool bShowSlowTask = true);
 
 	/**
@@ -93,28 +94,28 @@ public:
 	 * @param Assets TArray<FAssetData>
 	 *  @param bShowSlowTask bool
 	 */
-	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset")
+	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Asset")
 	static void GetAssetsExtReferenced(TArray<FAssetData>& Assets, const bool bShowSlowTask = true);
 
 	/**
 	 * @brief Returns all primary assets class names
 	 * @param ClassNames TSet<FName>
 	 */
-	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset")
+	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Asset")
 	static void GetClassNamesPrimary(TSet<FName>& ClassNames);
 
 	/**
 	 * @brief Returns all editor assets class names
 	 * @param ClassNames TSet<FName>
 	 */
-	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset")
+	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Asset")
 	static void GetClassNamesEditor(TSet<FName>& ClassNames);
 
 	/**
 	 * @brief Returns all excluded assets class names
 	 * @param ClassNames TSet<FName>
 	 */
-	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset")
+	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Asset")
 	static void GetClassNamesExcluded(TSet<FName>& ClassNames);
 
 	/**
@@ -123,7 +124,7 @@ public:
 	 * @param bSearchRecursive bool
 	 * @param OutFiles
 	 */
-	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Path")
+	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Path")
 	static void GetFiles(const FString& InSearchPath, const bool bSearchRecursive, TArray<FString>& OutFiles);
 
 	/**
@@ -134,14 +135,20 @@ public:
 	 * @param InExtensions TSet<FString>
 	 * @param OutFiles
 	 */
-	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Path")
-	static void GetFilesByExt(const FString& InSearchPath, const bool bSearchRecursive, const bool bExtSearchInvert, const TSet<FString>& InExtensions, TArray<FString>& OutFiles);
+	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Path")
+	static void GetFilesByExt(
+		const FString& InSearchPath,
+		const bool bSearchRecursive,
+		const bool bExtSearchInvert,
+		const TSet<FString>& InExtensions,
+		TArray<FString>& OutFiles
+	);
 
 	/**
 	 * @brief Returns all external files in project. Files that dont .uasset or .umap extensions
 	 * @param Files
 	 */
-	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Path")
+	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Path")
 	static void GetFilesExternalAll(TArray<FString>& Files);
 
 	/**
@@ -149,7 +156,7 @@ public:
 	 * @param Files
 	 * @param bShowSlowTask bool
 	 */
-	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Path")
+	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Path")
 	static void GetFilesExternalFiltered(TArray<FString>& Files, const bool bShowSlowTask = true);
 
 	/**
@@ -157,7 +164,7 @@ public:
 	 * @param Files
 	 * @param bShowSlowTask bool
 	 */
-	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Path")
+	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Path")
 	static void GetFilesExternalExcluded(TArray<FString>& Files, const bool bShowSlowTask = true);
 
 	/**
@@ -165,7 +172,7 @@ public:
 	 * @param Files
 	 * @param bShowSlowTask bool
 	 */
-	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Path")
+	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Path")
 	static void GetFilesCorrupted(TArray<FString>& Files, const bool bShowSlowTask = true);
 
 	/**
@@ -174,14 +181,14 @@ public:
 	 * @param bSearchRecursive bool
 	 * @param OutFolders
 	 */
-	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Path")
+	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Path")
 	static void GetFolders(const FString& InSearchPath, const bool bSearchRecursive, TArray<FString>& OutFolders);
 
 	/**
 	 * @brief Returns all empty folders in project
 	 * @param Folders TSet<FString>
 	 */
-	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Path")
+	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Path")
 	static void GetFoldersEmpty(TArray<FString>& Folders);
 
 	/**
@@ -189,7 +196,7 @@ public:
 	 * @param bShowSlowTask bool
 	 * @param bShowEditorNotification bool
 	 */
-	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset")
+	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Asset")
 	static void DeleteAssetsUnused(const bool bShowSlowTask = true, const bool bShowEditorNotification = false);
 
 	/**
@@ -197,7 +204,7 @@ public:
 	 * @param bShowSlowTask bool
 	 * @param bShowEditorNotification bool
 	 */
-	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Path")
+	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Path")
 	static void DeleteFoldersEmpty(const bool bShowSlowTask = true, const bool bShowEditorNotification = false);
 
 	/**
@@ -205,7 +212,7 @@ public:
 	 * @param bShowSlowTask bool
 	 * @param bShowEditorNotification bool
 	 */
-	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Path")
+	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Path")
 	static void DeleteFilesExternal(const bool bShowSlowTask = true, const bool bShowEditorNotification = false);
 
 	/**
@@ -213,21 +220,21 @@ public:
 	 * @param bShowSlowTask bool
 	 * @param bShowEditorNotification bool
 	 */
-	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Path")
+	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Path")
 	static void DeleteFilesCorrupted(const bool bShowSlowTask = true, const bool bShowEditorNotification = false);
 
 	/**
 	 * @brief Returns all redirectors in project
 	 * @param Redirectors TArray<FAssetData>
 	 */
-	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset")
+	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Asset")
 	static void GetProjectRedirectors(TArray<FAssetData>& Redirectors);
 
 	/**
 	 * @brief Checks if project contains any redirector asset
 	 * @return bool
 	 */
-	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset")
+	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Asset")
 	static bool ProjectHasRedirectors();
 
 	/**
@@ -235,14 +242,14 @@ public:
 	 * @param Redirectors TArray<FAssetData>
 	 * @param bShowSlowTask bool
 	 */
-	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset")
+	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Asset")
 	static void FixProjectRedirectors(const TArray<FAssetData>& Redirectors, const bool bShowSlowTask = true);
 
 	/**
 	 * @brief Checks if editor is in play mode or simulation or not
 	 * @return bool
 	 */
-	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Editor")
+	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Editor")
 	static bool EditorIsInPlayMode();
 
 	/**
@@ -250,7 +257,7 @@ public:
 	 * @param InAsset FAssetData
 	 * @return bool
 	 */
-	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset")
+	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Asset")
 	static bool AssetIsBlueprint(const FAssetData& InAsset);
 
 	/**
@@ -258,7 +265,7 @@ public:
 	 * @param InAsset FAssetData
 	 * @return bool
 	 */
-	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset")
+	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Asset")
 	static bool AssetIsExtReferenced(const FAssetData& InAsset);
 
 	/**
@@ -266,7 +273,7 @@ public:
 	 * @param InAsset FAssetData
 	 * @return bool
 	 */
-	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset")
+	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Asset")
 	static bool AssetIsCircular(const FAssetData& InAsset);
 
 	/**
@@ -274,7 +281,7 @@ public:
 	 * @param InPath FString
 	 * @return FString
 	 */
-	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Path")
+	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Path")
 	static FString PathNormalize(const FString& InPath);
 
 	/**
@@ -282,7 +289,7 @@ public:
 	 * @param InPath FString
 	 * @return FString
 	 */
-	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Path")
+	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Path")
 	static FString PathConvertToAbsolute(const FString& InPath);
 
 	/**
@@ -290,15 +297,15 @@ public:
 	 * @param InPath FString
 	 * @return FString
 	 */
-	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Path")
+	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Path")
 	static FString PathConvertToRelative(const FString& InPath);
 
 	/**
-	 * @brief Convert given path to object path 
+	 * @brief Convert given path to object path
 	 * @param InPath FString
 	 * @return FString
 	 */
-	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Path")
+	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Path")
 	static FString PathConvertToObjectPath(const FString& InPath);
 
 	/**
@@ -306,7 +313,7 @@ public:
 	 * @param InAsset FAssetData
 	 * @return int64
 	 */
-	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset")
+	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Asset")
 	static int64 GetAssetSize(const FAssetData& InAsset);
 
 	/**
@@ -314,7 +321,7 @@ public:
 	 * @param InAssets TArray<FAssetData>
 	 * @return int64
 	 */
-	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset")
+	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Asset")
 	static int64 GetAssetsTotalSize(const TArray<FAssetData>& InAssets);
 
 	/**
@@ -322,7 +329,7 @@ public:
 	 * @param InFile FString
 	 * @return int64
 	 */
-	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Path")
+	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Path")
 	static int64 GetFileSize(const FString& InFile);
 
 	/**
@@ -330,15 +337,15 @@ public:
 	 * @param Files TArray<FString>
 	 * @return int64
 	 */
-	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Path")
+	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Path")
 	static int64 GetFilesTotalSize(const TArray<FString>& Files);
 
 	/**
 	 * @brief Returns asset exact class name, if its blueprint it will return generated class name
 	 * @param InAsset FAssetData
-	 * @return FName 
+	 * @return FName
 	 */
-	UFUNCTION(BlueprintCallable, Category="ProjectCleanerSubsystem|Lib_Asset")
+	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Asset")
 	static FName GetAssetExactClassName(const FAssetData& InAsset);
 
 	static bool FolderIsEmpty(const FString& InPath);
@@ -379,7 +386,8 @@ public:
 
 	bool bFirstScan = true;
 
-private:
+  private:
+
 	static void BucketFill(TArray<FAssetData>& AssetsUnused, TArray<FAssetData>& Bucket, const int32 BucketSize);
 	static bool BucketPrepare(const TArray<FAssetData>& Bucket, TArray<UObject*>& LoadedAssets);
 	static int32 BucketDelete(const TArray<UObject*>& LoadedAssets);

@@ -9,13 +9,15 @@ struct FPjcCorruptedAssetItem;
 
 class SPjcTabAssetsCorrupted final : public SCompoundWidget
 {
-public:
+  public:
+
 	SLATE_BEGIN_ARGS(SPjcTabAssetsCorrupted) {}
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
 
-protected:
+  protected:
+
 	void ListUpdateData();
 	void ListUpdateView();
 	void OnListSort(EColumnSortPriority::Type SortPriority, const FName& ColumnName, EColumnSortMode::Type InSortMode);
@@ -28,7 +30,8 @@ protected:
 	FText GetTxtSummary() const;
 	int32 GetWidgetIndex() const;
 
-private:
+  private:
+
 	void OnRefresh();
 	void OnDelete();
 	void OnClearSelection() const;

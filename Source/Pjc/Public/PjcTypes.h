@@ -10,20 +10,33 @@ class UPjcAssetExcludeSettings : public UObject
 {
 	GENERATED_BODY()
 
-public:
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Config, Category="AssetExcludeSettings", meta=(ContentDir, ToolTip="Consider assets in specified folders as used"))
+  public:
+
+	UPROPERTY(
+		BlueprintReadWrite,
+		EditAnywhere,
+		Config,
+		Category = "AssetExcludeSettings",
+		meta = (ContentDir, ToolTip = "Consider assets in specified folders as used")
+	)
 	TArray<FDirectoryPath> ExcludedFolders;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Config, Category="AssetExcludeSettings", meta=(ToolTip="Consider assets of specified classes as used"))
+	UPROPERTY(
+		BlueprintReadWrite,
+		EditAnywhere,
+		Config,
+		Category = "AssetExcludeSettings",
+		meta = (ToolTip = "Consider assets of specified classes as used")
+	)
 	TArray<TSoftClassPtr<UObject>> ExcludedClasses;
 
 	UPROPERTY(Config)
 	TArray<TSoftObjectPtr<UObject>> ExcludedAssets;
 
-protected:
+  protected:
+
 #if WITH_EDITOR
-	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override
-	{
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override {
 		Super::PostEditChangeProperty(PropertyChangedEvent);
 
 		SaveConfig();
@@ -36,17 +49,30 @@ class UPjcFileExcludeSettings : public UObject
 {
 	GENERATED_BODY()
 
-public:
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Config, Category="FileExcludeSettings", meta=(RelativeToGameDir, ToolTip="Exclude specified files from scanning"))
+  public:
+
+	UPROPERTY(
+		BlueprintReadWrite,
+		EditAnywhere,
+		Config,
+		Category = "FileExcludeSettings",
+		meta = (RelativeToGameDir, ToolTip = "Exclude specified files from scanning")
+	)
 	TArray<FFilePath> ExcludedFiles;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Config, Category="FileExcludeSettings", meta=(ToolTip="Exclude files with specified extensions from scanning"))
+	UPROPERTY(
+		BlueprintReadWrite,
+		EditAnywhere,
+		Config,
+		Category = "FileExcludeSettings",
+		meta = (ToolTip = "Exclude files with specified extensions from scanning")
+	)
 	TArray<FString> ExcludedExtensions;
 
-protected:
+  protected:
+
 #if WITH_EDITOR
-	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override
-	{
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override {
 		Super::PostEditChangeProperty(PropertyChangedEvent);
 
 		SaveConfig();
@@ -62,8 +88,8 @@ struct FPjcStatItem
 	FText TooltipName;
 	FText ToolTipNum;
 	FText ToolTipSize;
-	FLinearColor TextColor{FLinearColor::White};
-	FMargin NamePadding{FMargin{0.0f}};
+	FLinearColor TextColor {FLinearColor::White};
+	FMargin NamePadding {FMargin {0.0f}};
 };
 
 struct FPjcFileExternalItem
@@ -103,13 +129,11 @@ struct FPjcTreeItem
 	TSharedPtr<FPjcTreeItem> Parent;
 	TArray<TSharedPtr<FPjcTreeItem>> SubItems;
 
-	bool operator==(const FPjcTreeItem& Other) const
-	{
+	bool operator==(const FPjcTreeItem& Other) const {
 		return FolderPath.Equals(Other.FolderPath);
 	}
 
-	bool operator!=(const FPjcTreeItem& Other) const
-	{
+	bool operator!=(const FPjcTreeItem& Other) const {
 		return !FolderPath.Equals(Other.FolderPath);
 	}
 };
@@ -119,19 +143,17 @@ struct FPjcFileInfo
 {
 	GENERATED_BODY()
 
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="FileInfo")
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "FileInfo")
 	int32 FileNum = 0;
 
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="FileInfo")
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "FileInfo")
 	FString FilePath;
 
-	bool operator==(const FPjcFileInfo& Other) const
-	{
+	bool operator==(const FPjcFileInfo& Other) const {
 		return FilePath.Equals(Other.FilePath) && FileNum == Other.FileNum;
 	}
 
-	bool operator!=(const FPjcFileInfo& Other) const
-	{
+	bool operator!=(const FPjcFileInfo& Other) const {
 		return !(FilePath.Equals(Other.FilePath) && FileNum == Other.FileNum);
 	}
 };
@@ -141,22 +163,20 @@ struct FPjcAssetIndirectInfo
 {
 	GENERATED_BODY()
 
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="AssetIndirectInfo")
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "AssetIndirectInfo")
 	FAssetData Asset;
 
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="AssetIndirectInfo")
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "AssetIndirectInfo")
 	FString FilePath;
 
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="AssetIndirectInfo")
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "AssetIndirectInfo")
 	int32 FileNum = 0;
 
-	bool operator==(const FPjcAssetIndirectInfo& Other) const
-	{
+	bool operator==(const FPjcAssetIndirectInfo& Other) const {
 		return Asset == Other.Asset && FilePath.Equals(Other.FilePath) && FileNum == Other.FileNum;
 	}
 
-	bool operator!=(const FPjcAssetIndirectInfo& Other) const
-	{
+	bool operator!=(const FPjcAssetIndirectInfo& Other) const {
 		return !(Asset == Other.Asset && FilePath.Equals(Other.FilePath) && FileNum == Other.FileNum);
 	}
 };

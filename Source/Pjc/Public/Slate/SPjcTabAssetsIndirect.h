@@ -10,13 +10,15 @@ struct FPjcAssetIndirectInfo;
 
 class SPjcTabAssetsIndirect final : public SCompoundWidget
 {
-public:
+  public:
+
 	SLATE_BEGIN_ARGS(SPjcTabAssetsIndirect) {}
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
 
-protected:
+  protected:
+
 	TSharedRef<SWidget> CreateToolbar() const;
 	TSharedRef<SHeaderRow> GetHeaderRow();
 	TSharedRef<ITableRow> OnGenerateRow(TSharedPtr<FPjcAssetIndirectInfo> Item, const TSharedRef<STableViewBase>& OwnerTable) const;
@@ -28,7 +30,8 @@ protected:
 	void OnSearchTextCommitted(const FText& InText, ETextCommit::Type);
 	int32 GetWidgetIndex() const;
 
-private:
+  private:
+
 	void OnRefresh();
 	void OnOpenSizeMap() const;
 	void OnOpenReferenceViewer() const;

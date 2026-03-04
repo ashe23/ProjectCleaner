@@ -9,12 +9,14 @@ DECLARE_LOG_CATEGORY_EXTERN(LogProjectCleaner, Log, All);
 
 class FPjc final : public IModuleInterface
 {
-public:
+  public:
+
 	virtual void StartupModule() override;
 	virtual void ShutdownModule() override;
 	virtual bool SupportsDynamicReloading() override;
 	virtual bool IsGameModule() const override;
 
-private:
+  private:
+
 	TSharedPtr<FUICommandList> Cmds;
 };

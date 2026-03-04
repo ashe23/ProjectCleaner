@@ -9,14 +9,16 @@ struct FPjcStatItem;
 
 class SPjcItemStat final : public SMultiColumnTableRow<TSharedPtr<FPjcStatItem>>
 {
-public:
+  public:
+
 	SLATE_BEGIN_ARGS(SPjcItemStat) {}
-		SLATE_ARGUMENT(TSharedPtr<FPjcStatItem>, Item)
+	SLATE_ARGUMENT(TSharedPtr<FPjcStatItem>, Item)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs, const TSharedRef<STableViewBase>& InTable);
 	virtual TSharedRef<SWidget> GenerateWidgetForColumn(const FName& InColumnName) override;
 
-private:
+  private:
+
 	TSharedPtr<FPjcStatItem> Item;
 };

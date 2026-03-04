@@ -21,8 +21,7 @@
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SSeparator.h"
 
-void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
-{
+void SPjcTabAssetsUnused::Construct(const FArguments& InArgs) {
 	SubsystemPtr = GEditor->GetEditorSubsystem<UPjcSubsystem>();
 	if (!SubsystemPtr) return;
 
@@ -42,10 +41,7 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 		FExecuteAction::CreateRaw(this, &SPjcTabAssetsUnused::OnProjectClean),
 		FCanExecuteAction::CreateRaw(this, &SPjcTabAssetsUnused::CanCleanProject)
 	);
-	Cmds->MapAction(
-		FPjcCmds::Get().ClearExcludeSettings,
-		FExecuteAction::CreateRaw(this, &SPjcTabAssetsUnused::OnResetExcludeSettings)
-	);
+	Cmds->MapAction(FPjcCmds::Get().ClearExcludeSettings, FExecuteAction::CreateRaw(this, &SPjcTabAssetsUnused::OnResetExcludeSettings));
 	Cmds->MapAction(
 		FPjcCmds::Get().DeleteEmptyFolders,
 		FExecuteAction::CreateRaw(this, &SPjcTabAssetsUnused::OnDeleteEmptyFolders),
@@ -144,22 +140,24 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 	const auto SettingsProperty = PropertyEditor.CreateDetailView(DetailsViewArgs);
 	SettingsProperty->SetObject(GetMutableDefault<UPjcAssetExcludeSettings>());
 
+	// clang-format off
 	SAssignNew(StatsListView, SListView<TSharedPtr<FPjcStatItem>>)
-	.ListItemsSource(&StatsListItems)
-	.OnGenerateRow(this, &SPjcTabAssetsUnused::OnStatsGenerateRow)
-	.SelectionMode(ESelectionMode::None)
-	.IsFocusable(false)
-	.HeaderRow(GetStatsHeaderRow());
+		.ListItemsSource(&StatsListItems)
+		.OnGenerateRow(this, &SPjcTabAssetsUnused::OnStatsGenerateRow)
+		.SelectionMode(ESelectionMode::None)
+		.IsFocusable(false)
+		.HeaderRow(GetStatsHeaderRow());
 
 	SAssignNew(TreeListView, STreeView<TSharedPtr<FPjcTreeItem>>)
-	.TreeItemsSource(&TreeListItems)
-	.SelectionMode(ESelectionMode::Multi)
-	.OnGenerateRow(this, &SPjcTabAssetsUnused::OnTreeGenerateRow)
-	.OnGetChildren(this, &SPjcTabAssetsUnused::OnTreeGetChildren)
-	.OnContextMenuOpening_Raw(this, &SPjcTabAssetsUnused::GetTreeContextMenu)
-	.OnSelectionChanged_Raw(this, &SPjcTabAssetsUnused::OnTreeSelectionChanged)
-	.OnExpansionChanged_Raw(this, &SPjcTabAssetsUnused::OnTreeExpansionChanged)
-	.HeaderRow(GetTreeHeaderRow());
+		.TreeItemsSource(&TreeListItems)
+		.SelectionMode(ESelectionMode::Multi)
+		.OnGenerateRow(this, &SPjcTabAssetsUnused::OnTreeGenerateRow)
+		.OnGetChildren(this, &SPjcTabAssetsUnused::OnTreeGetChildren)
+		.OnContextMenuOpening_Raw(this, &SPjcTabAssetsUnused::GetTreeContextMenu)
+		.OnSelectionChanged_Raw(this, &SPjcTabAssetsUnused::OnTreeSelectionChanged)
+		.OnExpansionChanged_Raw(this, &SPjcTabAssetsUnused::OnTreeExpansionChanged)
+		.HeaderRow(GetTreeHeaderRow());
+	// clang-format on
 
 	FAssetPickerConfig AssetPickerConfig;
 	AssetPickerConfig.bAddFilterUI = true;
@@ -182,12 +180,8 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 	AssetPickerConfig.OnAssetDoubleClicked.BindRaw(this, &SPjcTabAssetsUnused::OnAssetDblClicked);
 	AssetPickerConfig.OnGetAssetContextMenu.BindRaw(this, &SPjcTabAssetsUnused::GetAssetContextMenu);
 
-	const TSharedPtr<FFrontendFilterCategory> DefaultCategory = MakeShareable(
-		new FFrontendFilterCategory(
-			FText::FromString(TEXT("ProjectCleaner Filters")),
-			FText::FromString(TEXT(""))
-		)
-	);
+	const TSharedPtr<FFrontendFilterCategory> DefaultCategory
+		= MakeShareable(new FFrontendFilterCategory(FText::FromString(TEXT("ProjectCleaner Filters")), FText::FromString(TEXT(""))));
 	FilterUsed = MakeShareable(new FPjcFilterAssetsUsed(DefaultCategory));
 	FilterPrimary = MakeShareable(new FPjcFilterAssetsPrimary(DefaultCategory));
 	FilterIndirect = MakeShareable(new FPjcFilterAssetsIndirect(DefaultCategory));
@@ -219,32 +213,46 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 	UpdateContentBrowser();
 	ScanProject();
 
+	// clang-format off
 	ChildSlot
 	[
 		SNew(SVerticalBox)
-		+ SVerticalBox::Slot().FillHeight(1.0f).Padding(5.0f)
+		+ SVerticalBox::Slot()
+		.FillHeight(1.0f)
+		.Padding(5.0f)
 		[
 			SNew(SSplitter)
 			.PhysicalSplitterHandleSize(3.0f)
 			.Style(FEditorStyle::Get(), "DetailsView.Splitter")
-			+ SSplitter::Slot().Value(0.2f)
+			+ SSplitter::Slot()
+			.Value(0.2f)
 			[
 				SNew(SVerticalBox)
-				+ SVerticalBox::Slot().AutoHeight().Padding(3.0f)
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(3.0f)
 				[
 					CreateToolbarMain()
 				]
-				+ SVerticalBox::Slot().AutoHeight().Padding(3.0f)
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(3.0f)
 				[
 					SNew(SSeparator).Thickness(5.0f)
 				]
-				+ SVerticalBox::Slot().AutoHeight().Padding(3.0f)
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(3.0f)
 				[
 					SNew(SVerticalBox)
-					+ SVerticalBox::Slot().AutoHeight()
+					+ SVerticalBox::Slot()
+					.AutoHeight()
 					[
 						SNew(SHorizontalBox)
-						+ SHorizontalBox::Slot().FillWidth(1.0f).HAlign(HAlign_Center).VAlign(VAlign_Center)
+						+ SHorizontalBox::Slot()
+						.FillWidth(1.0f)
+						.HAlign(HAlign_Center)
+						.VAlign(VAlign_Center)
 						[
 							SNew(STextBlock)
 							.Justification(ETextJustify::Center)
@@ -255,16 +263,21 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 							.Text(FText::FromString(TEXT("Asset Statistics Summary")))
 						]
 					]
-					+ SVerticalBox::Slot().AutoHeight()
+					+ SVerticalBox::Slot()
+					.AutoHeight()
 					[
 						StatsListView.ToSharedRef()
 					]
 				]
-				+ SVerticalBox::Slot().AutoHeight().Padding(3.0f)
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(3.0f)
 				[
 					SNew(SSeparator).Thickness(5.0f)
 				]
-				+ SVerticalBox::Slot().FillHeight(1.0f).Padding(3.0f)
+				+ SVerticalBox::Slot()
+				.FillHeight(1.0f)
+				.Padding(3.0f)
 				[
 					SNew(SBox)
 					[
@@ -279,63 +292,85 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 					]
 				]
 			]
-			+ SSplitter::Slot().Value(0.35f)
+			+ SSplitter::Slot()
+			.Value(0.35f)
 			[
 				SNew(SVerticalBox)
-				+ SVerticalBox::Slot().AutoHeight().Padding(3.0f)
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(3.0f)
 				[
 					CreateToolbarTreeView()
 				]
-				+ SVerticalBox::Slot().AutoHeight().Padding(3.0f)
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(3.0f)
 				[
 					SNew(SSeparator).Thickness(5.0f)
 				]
-				+ SVerticalBox::Slot().AutoHeight().Padding(5.0f)
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(5.0f)
 				[
 					SNew(SSearchBox)
 					.HintText(FText::FromString(TEXT("Search Folders...")))
 					.OnTextChanged_Raw(this, &SPjcTabAssetsUnused::OnTreeSearchTextChanged)
 					.OnTextCommitted_Raw(this, &SPjcTabAssetsUnused::OnTreeSearchTextCommitted)
 				]
-				+ SVerticalBox::Slot().AutoHeight().Padding(5.0f, 0.0f, 0.0f, 2.1f)
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(5.0f, 0.0f, 0.0f, 2.1f)
 				[
 					SNew(SHorizontalBox)
-					+ SHorizontalBox::Slot().AutoWidth()
+					+ SHorizontalBox::Slot()
+					.AutoWidth()
 					[
 						SNew(SImage)
 						.Image(FEditorStyle::GetBrush("ContentBrowser.AssetTreeFolderOpen"))
 						.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Red"))
 					]
-					+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin{0.0f, 2.0f, 5.0f, 0.0f})
+					+ SHorizontalBox::Slot()
+					.AutoWidth()
+					.Padding(FMargin{0.0f, 2.0f, 5.0f, 0.0f})
 					[
 						SNew(STextBlock).Text(FText::FromString(TEXT(" - Empty Folders")))
 					]
-					+ SHorizontalBox::Slot().AutoWidth()
+					+ SHorizontalBox::Slot()
+					.AutoWidth()
 					[
 						SNew(SImage)
 						.Image(FEditorStyle::GetBrush("ContentBrowser.AssetTreeFolderOpen"))
 						.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Yellow"))
 					]
-					+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin{0.0f, 2.0f, 5.0f, 0.0f})
+					+ SHorizontalBox::Slot()
+					.AutoWidth()
+					.Padding(FMargin{0.0f, 2.0f, 5.0f, 0.0f})
 					[
 						SNew(STextBlock).Text(FText::FromString(TEXT(" - Excluded Folders")))
 					]
-					+ SHorizontalBox::Slot().AutoWidth()
+					+ SHorizontalBox::Slot()
+					.AutoWidth()
 					[
 						SNew(SImage)
 						.Image(FEditorStyle::GetBrush("ContentBrowser.AssetTreeFolderOpen"))
 						.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Blue"))
 					]
-					+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin{0.0f, 2.0f, 5.0f, 0.0f})
+					+ SHorizontalBox::Slot()
+					.AutoWidth()
+					.Padding(FMargin{0.0f, 2.0f, 5.0f, 0.0f})
 					[
 						SNew(STextBlock).Text(FText::FromString(TEXT(" - Engine Folders")))
 					]
 				]
-				+ SVerticalBox::Slot().AutoHeight().Padding(5.0f)
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(5.0f)
 				[
 					SNew(SSeparator).Thickness(3.0f)
 				]
-				+ SVerticalBox::Slot().FillHeight(1.0f).Padding(5.0f)
+				+ SVerticalBox::Slot()
+				.FillHeight(1.0f)
+				.Padding(5.0f)
 				[
 					SNew(SScrollBox)
 					.ScrollWhenFocusChanges(EScrollWhenFocusChanges::NoScroll)
@@ -346,18 +381,29 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 						TreeListView.ToSharedRef()
 					]
 				]
-				+ SVerticalBox::Slot().AutoHeight().Padding(5.0f)
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(5.0f)
 				[
 					SNew(SHorizontalBox)
-					+ SHorizontalBox::Slot().FillWidth(1.0f).HAlign(HAlign_Left).VAlign(VAlign_Center)
+					+ SHorizontalBox::Slot()
+					.FillWidth(1.0f)
+					.HAlign(HAlign_Left)
+					.VAlign(VAlign_Center)
 					[
 						SNew(STextBlock).Text_Raw(this, &SPjcTabAssetsUnused::GetTreeSummaryText)
 					]
-					+ SHorizontalBox::Slot().FillWidth(1.0f).HAlign(HAlign_Center).VAlign(VAlign_Center)
+					+ SHorizontalBox::Slot()
+					.FillWidth(1.0f)
+					.HAlign(HAlign_Center)
+					.VAlign(VAlign_Center)
 					[
 						SNew(STextBlock).Text_Raw(this, &SPjcTabAssetsUnused::GetTreeSelectionText)
 					]
-					+ SHorizontalBox::Slot().FillWidth(1.0f).HAlign(HAlign_Right).VAlign(VAlign_Center)
+					+ SHorizontalBox::Slot()
+					.FillWidth(1.0f)
+					.HAlign(HAlign_Right)
+					.VAlign(VAlign_Center)
 					[
 						SNew(SComboButton)
 						.ContentPadding(0)
@@ -367,11 +413,16 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 						.ButtonContent()
 						[
 							SNew(SHorizontalBox)
-							+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+							+ SHorizontalBox::Slot()
+							.AutoWidth()
+							.VAlign(VAlign_Center)
 							[
 								SNew(SImage).Image(FEditorStyle::GetBrush("GenericViewButton"))
 							]
-							+ SHorizontalBox::Slot().AutoWidth().Padding(2.0f, 0.0f, 0.0f, 0.0f).VAlign(VAlign_Center)
+							+ SHorizontalBox::Slot()
+							.AutoWidth()
+							.Padding(2.0f, 0.0f, 0.0f, 0.0f)
+							.VAlign(VAlign_Center)
 							[
 								SNew(STextBlock).Text(FText::FromString(TEXT("View Options")))
 							]
@@ -379,29 +430,36 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs)
 					]
 				]
 			]
-			+ SSplitter::Slot().Value(0.45f)
+			+ SSplitter::Slot()
+			.Value(0.45f)
 			[
 				SNew(SVerticalBox)
-				+ SVerticalBox::Slot().AutoHeight().Padding(3.0f)
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(3.0f)
 				[
 					CreateToolbarContentBrowser()
 				]
-				+ SVerticalBox::Slot().AutoHeight().Padding(3.0f)
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(3.0f)
 				[
 					SNew(SSeparator).Thickness(5.0f)
 				]
-				+ SVerticalBox::Slot().FillHeight(1.0f).Padding(5.0f)
+				+ SVerticalBox::Slot()
+				.FillHeight(1.0f)
+				.Padding(5.0f)
 				[
 					ContentBrowserView
 				]
 			]
 		]
 	];
+	// clang-format on
 }
 
-TSharedRef<SWidget> SPjcTabAssetsUnused::CreateToolbarMain() const
-{
-	FToolBarBuilder ToolBarBuilder{Cmds, FMultiBoxCustomization::None};
+TSharedRef<SWidget> SPjcTabAssetsUnused::CreateToolbarMain() const {
+	FToolBarBuilder ToolBarBuilder {Cmds, FMultiBoxCustomization::None};
 	ToolBarBuilder.BeginSection("PjcSectionMain");
 	{
 		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().ScanProject);
@@ -414,9 +472,8 @@ TSharedRef<SWidget> SPjcTabAssetsUnused::CreateToolbarMain() const
 	return ToolBarBuilder.MakeWidget();
 }
 
-TSharedRef<SWidget> SPjcTabAssetsUnused::CreateToolbarTreeView() const
-{
-	FToolBarBuilder ToolBarBuilder{Cmds, FMultiBoxCustomization::None};
+TSharedRef<SWidget> SPjcTabAssetsUnused::CreateToolbarTreeView() const {
+	FToolBarBuilder ToolBarBuilder {Cmds, FMultiBoxCustomization::None};
 	ToolBarBuilder.BeginSection("PjcSectionTreeView");
 	{
 		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().DeleteEmptyFolders);
@@ -431,9 +488,8 @@ TSharedRef<SWidget> SPjcTabAssetsUnused::CreateToolbarTreeView() const
 	return ToolBarBuilder.MakeWidget();
 }
 
-TSharedRef<SWidget> SPjcTabAssetsUnused::CreateToolbarContentBrowser() const
-{
-	FToolBarBuilder ToolBarBuilder{Cmds, FMultiBoxCustomization::None};
+TSharedRef<SWidget> SPjcTabAssetsUnused::CreateToolbarContentBrowser() const {
+	FToolBarBuilder ToolBarBuilder {Cmds, FMultiBoxCustomization::None};
 	ToolBarBuilder.BeginSection("PjcSectionContentBrowser");
 	{
 		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().AssetsDelete);
@@ -452,13 +508,11 @@ TSharedRef<SWidget> SPjcTabAssetsUnused::CreateToolbarContentBrowser() const
 	return ToolBarBuilder.MakeWidget();
 }
 
-void SPjcTabAssetsUnused::OnProjectScan()
-{
+void SPjcTabAssetsUnused::OnProjectScan() {
 	ScanProject();
 }
 
-void SPjcTabAssetsUnused::OnProjectClean()
-{
+void SPjcTabAssetsUnused::OnProjectClean() {
 	const FText Title = FText::FromString(TEXT("Project Cleanup"));
 	const FText Context = FText::FromString(TEXT("Are you sure you want to delete all unused assets and empty folders in project?"));
 
@@ -471,8 +525,7 @@ void SPjcTabAssetsUnused::OnProjectClean()
 	ScanProject();
 }
 
-void SPjcTabAssetsUnused::OnResetExcludeSettings()
-{
+void SPjcTabAssetsUnused::OnResetExcludeSettings() {
 	UPjcAssetExcludeSettings* AssetExcludeSettings = GetMutableDefault<UPjcAssetExcludeSettings>();
 	if (!AssetExcludeSettings) return;
 
@@ -484,8 +537,7 @@ void SPjcTabAssetsUnused::OnResetExcludeSettings()
 	ScanProject();
 }
 
-void SPjcTabAssetsUnused::OnDeleteEmptyFolders()
-{
+void SPjcTabAssetsUnused::OnDeleteEmptyFolders() {
 	const FText Title = FText::FromString(TEXT("Delete Empty Folder"));
 	const FText Context = FText::FromString(TEXT("Are you sure you want to delete all empty folders?"));
 
@@ -497,58 +549,47 @@ void SPjcTabAssetsUnused::OnDeleteEmptyFolders()
 	UpdateTreeView();
 }
 
-void SPjcTabAssetsUnused::OnPathReveal() const
-{
+void SPjcTabAssetsUnused::OnPathReveal() const {
 	const auto SelectedItems = TreeListView->GetSelectedItems();
 
-	for (const auto& Item : SelectedItems)
-	{
+	for (const auto& Item : SelectedItems) {
 		UPjcSubsystem::OpenPathInFileExplorer(UPjcSubsystem::PathConvertToAbsolute(Item->FolderPath));
 	}
 }
 
-void SPjcTabAssetsUnused::OnPathExpandRecursive() const
-{
+void SPjcTabAssetsUnused::OnPathExpandRecursive() const {
 	const auto SelectedItems = TreeListView->GetSelectedItems();
 
-	for (const auto& Item : SelectedItems)
-	{
+	for (const auto& Item : SelectedItems) {
 		ChangeItemExpansionRecursive(Item, true, false);
 	}
 
 	TreeListView->RebuildList();
 }
 
-void SPjcTabAssetsUnused::OnPathCollapseRecursive() const
-{
+void SPjcTabAssetsUnused::OnPathCollapseRecursive() const {
 	const auto SelectedItems = TreeListView->GetSelectedItems();
 
-	for (const auto& Item : SelectedItems)
-	{
+	for (const auto& Item : SelectedItems) {
 		ChangeItemExpansionRecursive(Item, false, false);
 	}
 
 	TreeListView->RebuildList();
 }
 
-void SPjcTabAssetsUnused::OnPathExclude()
-{
+void SPjcTabAssetsUnused::OnPathExclude() {
 	UPjcAssetExcludeSettings* AssetExcludeSettings = GetMutableDefault<UPjcAssetExcludeSettings>();
 	if (!AssetExcludeSettings) return;
 
 	const auto& SelectedItems = TreeListView->GetSelectedItems();
 
-	for (const auto& SelectedItem : SelectedItems)
-	{
-		const bool bAlreadyInList = AssetExcludeSettings->ExcludedFolders.ContainsByPredicate(
-			[&](const FDirectoryPath& InDirPath)
-			{
-				return InDirPath.Path.Equals(SelectedItem->FolderPath);
-			});
+	for (const auto& SelectedItem : SelectedItems) {
+		const bool bAlreadyInList = AssetExcludeSettings->ExcludedFolders.ContainsByPredicate([&](const FDirectoryPath& InDirPath) {
+			return InDirPath.Path.Equals(SelectedItem->FolderPath);
+		});
 
-		if (!bAlreadyInList)
-		{
-			AssetExcludeSettings->ExcludedFolders.Emplace(FDirectoryPath{SelectedItem->FolderPath});
+		if (!bAlreadyInList) {
+			AssetExcludeSettings->ExcludedFolders.Emplace(FDirectoryPath {SelectedItem->FolderPath});
 		}
 	}
 
@@ -557,8 +598,7 @@ void SPjcTabAssetsUnused::OnPathExclude()
 	ScanProject();
 }
 
-void SPjcTabAssetsUnused::OnPathInclude()
-{
+void SPjcTabAssetsUnused::OnPathInclude() {
 	UPjcAssetExcludeSettings* AssetExcludeSettings = GetMutableDefault<UPjcAssetExcludeSettings>();
 	if (!AssetExcludeSettings) return;
 
@@ -569,16 +609,13 @@ void SPjcTabAssetsUnused::OnPathInclude()
 	TSet<TSharedPtr<FPjcTreeItem>> ExcludedParents;
 	TSet<TSharedPtr<FPjcTreeItem>> SelectedParents;
 
-	for (const auto& SelectedItem : SelectedItems)
-	{
+	for (const auto& SelectedItem : SelectedItems) {
 		bool bFolderParentAlreadyExcluded = false;
 
 		TSharedPtr<FPjcTreeItem> CurrentItem = SelectedItem;
 
-		while (CurrentItem.IsValid())
-		{
-			if (CurrentItem->bIsExcluded && CurrentItem != SelectedItem)
-			{
+		while (CurrentItem.IsValid()) {
+			if (CurrentItem->bIsExcluded && CurrentItem != SelectedItem) {
 				ExcludedParents.Add(CurrentItem);
 				bFolderParentAlreadyExcluded = true;
 				break;
@@ -586,75 +623,61 @@ void SPjcTabAssetsUnused::OnPathInclude()
 			CurrentItem = CurrentItem->Parent;
 		}
 
-		if (!bFolderParentAlreadyExcluded)
-		{
+		if (!bFolderParentAlreadyExcluded) {
 			SelectedParents.Add(SelectedItem);
 		}
 
-		AssetExcludeSettings->ExcludedFolders.RemoveAllSwap([&](const FDirectoryPath& InDirPath)
-		{
+		AssetExcludeSettings->ExcludedFolders.RemoveAllSwap([&](const FDirectoryPath& InDirPath) {
 			return InDirPath.Path.Equals(SelectedItem->FolderPath);
 		});
 	}
 
 	ExcludedParents = ExcludedParents.Difference(SelectedParents);
 
-	if (ExcludedParents.Num() > 0)
-	{
+	if (ExcludedParents.Num() > 0) {
 		bFilterConflicts = true;
 	}
 
 	AssetExcludeSettings->PostEditChange();
 
-	if (bFilterConflicts)
-	{
+	if (bFilterConflicts) {
 		UPjcSubsystem::ShowNotification(
-			TEXT("Some folders you are trying to include falls under an excluded parent folder"),
-			SNotificationItem::CS_None,
-			5.0f
+			TEXT("Some folders you are trying to include falls under an excluded parent folder"), SNotificationItem::CS_None, 5.0f
 		);
 	}
 
 	ScanProject();
 }
 
-void SPjcTabAssetsUnused::OnClearSelection() const
-{
+void SPjcTabAssetsUnused::OnClearSelection() const {
 	if (!TreeListView.IsValid()) return;
 
 	TreeListView->ClearSelection();
 	TreeListView->ClearHighlightedItems();
 }
 
-void SPjcTabAssetsUnused::OnOpenSizeMap() const
-{
+void SPjcTabAssetsUnused::OnOpenSizeMap() const {
 	UPjcSubsystem::OpenSizeMapViewer(DelegateSelection.Execute());
 }
 
-void SPjcTabAssetsUnused::OnOpenReferenceViewer() const
-{
+void SPjcTabAssetsUnused::OnOpenReferenceViewer() const {
 	UPjcSubsystem::OpenReferenceViewer(DelegateSelection.Execute());
 }
 
-void SPjcTabAssetsUnused::OnOpenAssetAudit() const
-{
+void SPjcTabAssetsUnused::OnOpenAssetAudit() const {
 	UPjcSubsystem::OpenAssetAuditViewer(DelegateSelection.Execute());
 }
 
-void SPjcTabAssetsUnused::OnAssetsExclude()
-{
+void SPjcTabAssetsUnused::OnAssetsExclude() {
 	UPjcAssetExcludeSettings* ExcludeSettings = GetMutableDefault<UPjcAssetExcludeSettings>();
 	if (!ExcludeSettings) return;
 
-	for (const auto& Asset : DelegateSelection.Execute())
-	{
-		const bool bAlreadyInList = ExcludeSettings->ExcludedAssets.ContainsByPredicate([&](const TSoftObjectPtr<UObject>& InObject)
-		{
+	for (const auto& Asset : DelegateSelection.Execute()) {
+		const bool bAlreadyInList = ExcludeSettings->ExcludedAssets.ContainsByPredicate([&](const TSoftObjectPtr<UObject>& InObject) {
 			return InObject.LoadSynchronous() && InObject.ToSoftObjectPath() == Asset.ToSoftObjectPath();
 		});
 
-		if (!bAlreadyInList)
-		{
+		if (!bAlreadyInList) {
 			ExcludeSettings->ExcludedAssets.Emplace(Asset.GetAsset());
 		}
 	}
@@ -663,40 +686,32 @@ void SPjcTabAssetsUnused::OnAssetsExclude()
 	ScanProject();
 }
 
-void SPjcTabAssetsUnused::OnAssetsExcludeByClass()
-{
+void SPjcTabAssetsUnused::OnAssetsExcludeByClass() {
 	UPjcAssetExcludeSettings* ExcludeSettings = GetMutableDefault<UPjcAssetExcludeSettings>();
 	if (!ExcludeSettings) return;
 
-	for (const auto& Asset : DelegateSelection.Execute())
-	{
+	for (const auto& Asset : DelegateSelection.Execute()) {
 		const FName AssetExactClassName = UPjcSubsystem::GetAssetExactClassName(Asset);
 
-		if (UPjcSubsystem::AssetIsBlueprint(Asset))
-		{
+		if (UPjcSubsystem::AssetIsBlueprint(Asset)) {
 			const FString AssetPathName = Asset.ToSoftObjectPath().GetAssetPathString() + TEXT("_C");
 			const UClass* BlueprintClass = LoadObject<UClass>(nullptr, *AssetPathName);
 			if (!BlueprintClass) continue;
 
-			const bool bAlreadyInList = ExcludeSettings->ExcludedClasses.ContainsByPredicate([&](const TSoftClassPtr<UObject>& InObject)
-			{
+			const bool bAlreadyInList = ExcludeSettings->ExcludedClasses.ContainsByPredicate([&](const TSoftClassPtr<UObject>& InObject) {
 				return InObject.LoadSynchronous() && InObject.Get()->GetFName().IsEqual(BlueprintClass->GetFName());
 			});
 
-			if (!bAlreadyInList)
-			{
+			if (!bAlreadyInList) {
 				ExcludeSettings->ExcludedClasses.Emplace(BlueprintClass);
 			}
 		}
-		else
-		{
-			const bool bAlreadyInList = ExcludeSettings->ExcludedClasses.ContainsByPredicate([&](const TSoftClassPtr<UObject>& InObject)
-			{
+		else {
+			const bool bAlreadyInList = ExcludeSettings->ExcludedClasses.ContainsByPredicate([&](const TSoftClassPtr<UObject>& InObject) {
 				return InObject.LoadSynchronous() && InObject.Get()->GetFName().IsEqual(AssetExactClassName);
 			});
 
-			if (!bAlreadyInList)
-			{
+			if (!bAlreadyInList) {
 				ExcludeSettings->ExcludedClasses.Emplace(Asset.GetClass());
 			}
 		}
@@ -707,43 +722,35 @@ void SPjcTabAssetsUnused::OnAssetsExcludeByClass()
 	ScanProject();
 }
 
-void SPjcTabAssetsUnused::OnAssetsInclude()
-{
+void SPjcTabAssetsUnused::OnAssetsInclude() {
 	UPjcAssetExcludeSettings* ExcludeSettings = GetMutableDefault<UPjcAssetExcludeSettings>();
 	if (!ExcludeSettings) return;
 
 	bool bFilterConflicts = false;
 
-	for (const auto& Asset : DelegateSelection.Execute())
-	{
-		const bool bAssetFolderAlreadyExcluded = ExcludeSettings->ExcludedFolders.ContainsByPredicate([&](const FDirectoryPath& InDirPath)
-		{
+	for (const auto& Asset : DelegateSelection.Execute()) {
+		const bool bAssetFolderAlreadyExcluded = ExcludeSettings->ExcludedFolders.ContainsByPredicate([&](const FDirectoryPath& InDirPath) {
 			return Asset.PackagePath.ToString().StartsWith(InDirPath.Path);
 		});
 
-		const bool bAssetClassAlreadyExcluded = ExcludeSettings->ExcludedClasses.ContainsByPredicate([&](const TSoftClassPtr<UObject>& InClass)
-		{
+		const bool bAssetClassAlreadyExcluded = ExcludeSettings->ExcludedClasses.ContainsByPredicate([&](const TSoftClassPtr<UObject>& InClass) {
 			return InClass.LoadSynchronous() && InClass.Get()->GetFName().IsEqual(UPjcSubsystem::GetAssetExactClassName(Asset));
 		});
 
-		if (bAssetFolderAlreadyExcluded || bAssetClassAlreadyExcluded)
-		{
+		if (bAssetFolderAlreadyExcluded || bAssetClassAlreadyExcluded) {
 			bFilterConflicts = true;
 		}
 
-		ExcludeSettings->ExcludedAssets.RemoveAllSwap([&](const TSoftObjectPtr<UObject>& ExcludedAsset)
-		{
-			return ExcludedAsset.LoadSynchronous() && ExcludedAsset.ToSoftObjectPath() == Asset.ToSoftObjectPath();
-		}, false);
+		ExcludeSettings->ExcludedAssets.RemoveAllSwap(
+			[&](const TSoftObjectPtr<UObject>& ExcludedAsset) {
+				return ExcludedAsset.LoadSynchronous() && ExcludedAsset.ToSoftObjectPath() == Asset.ToSoftObjectPath();
+			},
+			false
+		);
 	}
 
-	if (bFilterConflicts)
-	{
-		UPjcSubsystem::ShowNotification(
-			TEXT("Some assets you wish to include are excluded by other settings."),
-			SNotificationItem::CS_None,
-			5.0f
-		);
+	if (bFilterConflicts) {
+		UPjcSubsystem::ShowNotification(TEXT("Some assets you wish to include are excluded by other settings."), SNotificationItem::CS_None, 5.0f);
 	}
 
 	ExcludeSettings->PostEditChange();
@@ -751,43 +758,35 @@ void SPjcTabAssetsUnused::OnAssetsInclude()
 	ScanProject();
 }
 
-void SPjcTabAssetsUnused::OnAssetsIncludeByClass()
-{
+void SPjcTabAssetsUnused::OnAssetsIncludeByClass() {
 	UPjcAssetExcludeSettings* ExcludeSettings = GetMutableDefault<UPjcAssetExcludeSettings>();
 	if (!ExcludeSettings) return;
 
 	bool bFilterConflicts = false;
 
-	for (const auto& Asset : DelegateSelection.Execute())
-	{
-		const bool bAssetFolderAlreadyExcluded = ExcludeSettings->ExcludedFolders.ContainsByPredicate([&](const FDirectoryPath& InDirPath)
-		{
+	for (const auto& Asset : DelegateSelection.Execute()) {
+		const bool bAssetFolderAlreadyExcluded = ExcludeSettings->ExcludedFolders.ContainsByPredicate([&](const FDirectoryPath& InDirPath) {
 			return Asset.PackagePath.ToString().StartsWith(InDirPath.Path);
 		});
 
-		const bool bAssetAlreadyExcluded = ExcludeSettings->ExcludedAssets.ContainsByPredicate([&](const TSoftObjectPtr<UObject>& InObject)
-		{
+		const bool bAssetAlreadyExcluded = ExcludeSettings->ExcludedAssets.ContainsByPredicate([&](const TSoftObjectPtr<UObject>& InObject) {
 			return InObject.LoadSynchronous() && InObject.ToSoftObjectPath() == Asset.ToSoftObjectPath();
 		});
 
-		if (bAssetFolderAlreadyExcluded || bAssetAlreadyExcluded)
-		{
+		if (bAssetFolderAlreadyExcluded || bAssetAlreadyExcluded) {
 			bFilterConflicts = true;
 		}
 
-		ExcludeSettings->ExcludedClasses.RemoveAllSwap([&](const TSoftClassPtr<UObject>& ExcludedAsset)
-		{
-			return ExcludedAsset.LoadSynchronous() && ExcludedAsset.Get()->GetFName().IsEqual(UPjcSubsystem::GetAssetExactClassName(Asset));
-		}, false);
+		ExcludeSettings->ExcludedClasses.RemoveAllSwap(
+			[&](const TSoftClassPtr<UObject>& ExcludedAsset) {
+				return ExcludedAsset.LoadSynchronous() && ExcludedAsset.Get()->GetFName().IsEqual(UPjcSubsystem::GetAssetExactClassName(Asset));
+			},
+			false
+		);
 	}
 
-	if (bFilterConflicts)
-	{
-		UPjcSubsystem::ShowNotification(
-			TEXT("Some assets you wish to include are excluded by other settings."),
-			SNotificationItem::CS_None,
-			5.0f
-		);
+	if (bFilterConflicts) {
+		UPjcSubsystem::ShowNotification(TEXT("Some assets you wish to include are excluded by other settings."), SNotificationItem::CS_None, 5.0f);
 	}
 
 	ExcludeSettings->PostEditChange();
@@ -795,26 +794,17 @@ void SPjcTabAssetsUnused::OnAssetsIncludeByClass()
 	ScanProject();
 }
 
-void SPjcTabAssetsUnused::OnAssetsDelete()
-{
+void SPjcTabAssetsUnused::OnAssetsDelete() {
 	const int32 NumAssetsDeleted = ObjectTools::DeleteAssets(DelegateSelection.Execute(), true);
-	if (NumAssetsDeleted > 0)
-	{
-		UPjcSubsystem::ShowNotification(
-			FString::Printf(TEXT("Deleted %d assets"), NumAssetsDeleted),
-			SNotificationItem::CS_Success,
-			5.0f
-		);
+	if (NumAssetsDeleted > 0) {
+		UPjcSubsystem::ShowNotification(FString::Printf(TEXT("Deleted %d assets"), NumAssetsDeleted), SNotificationItem::CS_Success, 5.0f);
 		ScanProject();
 	}
 }
 
-void SPjcTabAssetsUnused::ScanProject()
-{
-	if (UPjcSubsystem::GetModuleAssetRegistry().Get().IsLoadingAssets())
-	{
-		if (SubsystemPtr && SubsystemPtr->bFirstScan)
-		{
+void SPjcTabAssetsUnused::ScanProject() {
+	if (UPjcSubsystem::GetModuleAssetRegistry().Get().IsLoadingAssets()) {
+		if (SubsystemPtr && SubsystemPtr->bFirstScan) {
 			SubsystemPtr->bFirstScan = false;
 			return;
 		}
@@ -827,12 +817,9 @@ void SPjcTabAssetsUnused::ScanProject()
 		return;
 	}
 
-	if (GEditor && !GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->CloseAllAssetEditors())
-	{
+	if (GEditor && !GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->CloseAllAssetEditors()) {
 		UPjcSubsystem::ShowNotificationWithOutputLog(
-			TEXT("Failed to scan project, because not all asset editors are closed."),
-			SNotificationItem::CS_Fail,
-			5.0f
+			TEXT("Failed to scan project, because not all asset editors are closed."), SNotificationItem::CS_Fail, 5.0f
 		);
 		return;
 	}
@@ -841,41 +828,30 @@ void SPjcTabAssetsUnused::ScanProject()
 	UPjcSubsystem::GetProjectRedirectors(Redirectors);
 	UPjcSubsystem::FixProjectRedirectors(Redirectors, true);
 
-	if (UPjcSubsystem::ProjectHasRedirectors())
-	{
+	if (UPjcSubsystem::ProjectHasRedirectors()) {
 		UPjcSubsystem::ShowNotificationWithOutputLog(
-			TEXT("Failed to scan project, because not all redirectors are fixed."),
-			SNotificationItem::CS_Fail,
-			5.0f
+			TEXT("Failed to scan project, because not all redirectors are fixed."), SNotificationItem::CS_Fail, 5.0f
 		);
 
 		UE_LOG(LogProjectCleaner, Warning, TEXT("Failed to fix following redirectors: "));
 
-		for (const auto& Redirector : Redirectors)
-		{
+		for (const auto& Redirector : Redirectors) {
 			UE_LOG(LogProjectCleaner, Warning, TEXT("	%s"), *Redirector.ToSoftObjectPath().ToString());
 		}
 
 		return;
 	}
 
-	if (!FEditorFileUtils::SaveDirtyPackages(true, true, true, false, false, false))
-	{
+	if (!FEditorFileUtils::SaveDirtyPackages(true, true, true, false, false, false)) {
 		UPjcSubsystem::ShowNotificationWithOutputLog(
-			TEXT("Failed to scan project, because not all assets have been saved."),
-			SNotificationItem::CS_Fail,
-			5.0f
+			TEXT("Failed to scan project, because not all assets have been saved."), SNotificationItem::CS_Fail, 5.0f
 		);
 		return;
 	}
 
 	const double ScanStartTime = FPlatformTime::Seconds();
 
-	FScopedSlowTask SlowTaskMain{
-		4.0f,
-		FText::FromString(TEXT("Scanning project assets...")),
-		GIsEditor && !IsRunningCommandlet()
-	};
+	FScopedSlowTask SlowTaskMain {4.0f, FText::FromString(TEXT("Scanning project assets...")), GIsEditor && !IsRunningCommandlet()};
 	SlowTaskMain.MakeDialog(false, false);
 
 	SlowTaskMain.EnterProgressFrame(1.0f);
@@ -907,22 +883,19 @@ void SPjcTabAssetsUnused::ScanProject()
 	FilterExcluded->UpdateData();
 	FilterExtReferenced->UpdateData();
 
-	for (const FAssetData& Asset : AssetsAll)
-	{
+	for (const FAssetData& Asset : AssetsAll) {
 		const FString AssetPath = Asset.PackagePath.ToString();
 		const int64 AssetSize = UPjcSubsystem::GetAssetSize(Asset);
 		UpdateMapInfo(MapNumAssetsAllByPath, MapSizeAssetsAllByPath, AssetPath, AssetSize);
 	}
 
-	for (const FAssetData& Asset : AssetsUsed)
-	{
+	for (const FAssetData& Asset : AssetsUsed) {
 		const FString AssetPath = Asset.PackagePath.ToString();
 		const int64 AssetSize = UPjcSubsystem::GetAssetSize(Asset);
 		UpdateMapInfo(MapNumAssetsUsedByPath, MapSizeAssetsUsedByPath, AssetPath, AssetSize);
 	}
 
-	for (const FAssetData& Asset : AssetsUnused)
-	{
+	for (const FAssetData& Asset : AssetsUnused) {
 		const FString AssetPath = Asset.PackagePath.ToString();
 		const int64 AssetSize = UPjcSubsystem::GetAssetSize(Asset);
 		UpdateMapInfo(MapNumAssetsUnusedByPath, MapSizeAssetsUnusedByPath, AssetPath, AssetSize);
@@ -961,144 +934,108 @@ void SPjcTabAssetsUnused::ScanProject()
 	UpdateContentBrowser();
 }
 
-void SPjcTabAssetsUnused::UpdateStats()
-{
+void SPjcTabAssetsUnused::UpdateStats() {
 	StatsListItems.Reset();
 
-	const FMargin FirstLvl{5.0f, 0.0f, 0.0f, 0.0f};
-	const FMargin SecondLvl{20.0f, 0.0f, 0.0f, 0.0f};
+	const FMargin FirstLvl {5.0f, 0.0f, 0.0f, 0.0f};
+	const FMargin SecondLvl {20.0f, 0.0f, 0.0f, 0.0f};
 	const auto ColorRed = FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Red").GetSpecifiedColor();
 	const auto ColorYellow = FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Yellow").GetSpecifiedColor();
 
-	StatsListItems.Emplace(
-		MakeShareable(
-			new FPjcStatItem{
-				FText::FromString(TEXT("Unused")),
-				FText::AsNumber(NumAssetsUnused),
-				FText::AsMemory(SizeAssetsUnused, IEC),
-				FText::FromString(TEXT("Unused Assets")),
-				FText::FromString(TEXT("Total number of unused assets")),
-				FText::FromString(TEXT("Total size of unused assets")),
-				NumAssetsUnused > 0 ? ColorRed : FLinearColor::White,
-				FirstLvl
-			}
-		)
-	);
+	StatsListItems.Emplace(MakeShareable(new FPjcStatItem {
+	  FText::FromString(TEXT("Unused")),
+	  FText::AsNumber(NumAssetsUnused),
+	  FText::AsMemory(SizeAssetsUnused, IEC),
+	  FText::FromString(TEXT("Unused Assets")),
+	  FText::FromString(TEXT("Total number of unused assets")),
+	  FText::FromString(TEXT("Total size of unused assets")),
+	  NumAssetsUnused > 0 ? ColorRed : FLinearColor::White,
+	  FirstLvl
+	}));
 
-	StatsListItems.Emplace(
-		MakeShareable(
-			new FPjcStatItem{
-				FText::FromString(TEXT("Used")),
-				FText::AsNumber(NumAssetsUsed),
-				FText::AsMemory(SizeAssetsUsed, IEC),
-				FText::FromString(TEXT("Used Assets")),
-				FText::FromString(TEXT("Total number of used assets")),
-				FText::FromString(TEXT("Total size of used assets")),
-				FLinearColor::White,
-				FirstLvl
-			}
-		)
-	);
+	StatsListItems.Emplace(MakeShareable(new FPjcStatItem {
+	  FText::FromString(TEXT("Used")),
+	  FText::AsNumber(NumAssetsUsed),
+	  FText::AsMemory(SizeAssetsUsed, IEC),
+	  FText::FromString(TEXT("Used Assets")),
+	  FText::FromString(TEXT("Total number of used assets")),
+	  FText::FromString(TEXT("Total size of used assets")),
+	  FLinearColor::White,
+	  FirstLvl
+	}));
 
-	StatsListItems.Emplace(
-		MakeShareable(
-			new FPjcStatItem{
-				FText::FromString(TEXT("Primary")),
-				FText::AsNumber(NumAssetsPrimary),
-				FText::AsMemory(SizeAssetsPrimary, IEC),
-				FText::FromString(
-					TEXT("Primary Assets that defined in AssetManager. Level assets are primary by default.")),
-				FText::FromString(TEXT("Total number of primary assets")),
-				FText::FromString(TEXT("Total size of primary assets")),
-				FLinearColor::White,
-				SecondLvl
-			}
-		)
-	);
+	StatsListItems.Emplace(MakeShareable(new FPjcStatItem {
+	  FText::FromString(TEXT("Primary")),
+	  FText::AsNumber(NumAssetsPrimary),
+	  FText::AsMemory(SizeAssetsPrimary, IEC),
+	  FText::FromString(TEXT("Primary Assets that defined in AssetManager. Level assets are primary by default.")),
+	  FText::FromString(TEXT("Total number of primary assets")),
+	  FText::FromString(TEXT("Total size of primary assets")),
+	  FLinearColor::White,
+	  SecondLvl
+	}));
 
-	StatsListItems.Emplace(
-		MakeShareable(
-			new FPjcStatItem{
-				FText::FromString(TEXT("Editor")),
-				FText::AsNumber(NumAssetsEditor),
-				FText::AsMemory(SizeAssetsEditor, IEC),
-				FText::FromString(TEXT("Editor specific assets. Like EditorUtilitWidgets or EditorTutorial assets.")),
-				FText::FromString(TEXT("Total number of Editor assets")),
-				FText::FromString(TEXT("Total size of Editor assets")),
-				FLinearColor::White,
-				SecondLvl
-			}
-		)
-	);
+	StatsListItems.Emplace(MakeShareable(new FPjcStatItem {
+	  FText::FromString(TEXT("Editor")),
+	  FText::AsNumber(NumAssetsEditor),
+	  FText::AsMemory(SizeAssetsEditor, IEC),
+	  FText::FromString(TEXT("Editor specific assets. Like EditorUtilitWidgets or EditorTutorial assets.")),
+	  FText::FromString(TEXT("Total number of Editor assets")),
+	  FText::FromString(TEXT("Total size of Editor assets")),
+	  FLinearColor::White,
+	  SecondLvl
+	}));
 
-	StatsListItems.Emplace(
-		MakeShareable(
-			new FPjcStatItem{
-				FText::FromString(TEXT("Indirect")),
-				FText::AsNumber(NumAssetsIndirect),
-				FText::AsMemory(SizeAssetsIndirect, IEC),
-				FText::FromString(TEXT("Assets that used in source code or config files.")),
-				FText::FromString(TEXT("Total number of Indirect assets")),
-				FText::FromString(TEXT("Total size of Indirect assets")),
-				FLinearColor::White,
-				SecondLvl
-			}
-		)
-	);
+	StatsListItems.Emplace(MakeShareable(new FPjcStatItem {
+	  FText::FromString(TEXT("Indirect")),
+	  FText::AsNumber(NumAssetsIndirect),
+	  FText::AsMemory(SizeAssetsIndirect, IEC),
+	  FText::FromString(TEXT("Assets that used in source code or config files.")),
+	  FText::FromString(TEXT("Total number of Indirect assets")),
+	  FText::FromString(TEXT("Total size of Indirect assets")),
+	  FLinearColor::White,
+	  SecondLvl
+	}));
 
-	StatsListItems.Emplace(
-		MakeShareable(
-			new FPjcStatItem{
-				FText::FromString(TEXT("ExtReferenced")),
-				FText::AsNumber(NumAssetsExtReferenced),
-				FText::AsMemory(SizeAssetsExtReferenced, IEC),
-				FText::FromString(TEXT("Assets that have external referencers outside Content folder.")),
-				FText::FromString(TEXT("Total number of ExtReferenced assets")),
-				FText::FromString(TEXT("Total size of ExtReferenced assets")),
-				FLinearColor::White,
-				SecondLvl
-			}
-		)
-	);
+	StatsListItems.Emplace(MakeShareable(new FPjcStatItem {
+	  FText::FromString(TEXT("ExtReferenced")),
+	  FText::AsNumber(NumAssetsExtReferenced),
+	  FText::AsMemory(SizeAssetsExtReferenced, IEC),
+	  FText::FromString(TEXT("Assets that have external referencers outside Content folder.")),
+	  FText::FromString(TEXT("Total number of ExtReferenced assets")),
+	  FText::FromString(TEXT("Total size of ExtReferenced assets")),
+	  FLinearColor::White,
+	  SecondLvl
+	}));
 
-	StatsListItems.Emplace(
-		MakeShareable(
-			new FPjcStatItem{
-				FText::FromString(TEXT("Excluded")),
-				FText::AsNumber(NumAssetsExcluded),
-				FText::AsMemory(SizeAssetsExcluded, IEC),
-				FText::FromString(TEXT("Excluded Assets")),
-				FText::FromString(TEXT("Total number of Excluded assets")),
-				FText::FromString(TEXT("Total size of Excluded assets")),
-				NumAssetsExcluded > 0 ? ColorYellow : FLinearColor::White,
-				SecondLvl
-			}
-		)
-	);
+	StatsListItems.Emplace(MakeShareable(new FPjcStatItem {
+	  FText::FromString(TEXT("Excluded")),
+	  FText::AsNumber(NumAssetsExcluded),
+	  FText::AsMemory(SizeAssetsExcluded, IEC),
+	  FText::FromString(TEXT("Excluded Assets")),
+	  FText::FromString(TEXT("Total number of Excluded assets")),
+	  FText::FromString(TEXT("Total size of Excluded assets")),
+	  NumAssetsExcluded > 0 ? ColorYellow : FLinearColor::White,
+	  SecondLvl
+	}));
 
-	StatsListItems.Emplace(
-		MakeShareable(
-			new FPjcStatItem{
-				FText::FromString(TEXT("Total")),
-				FText::AsNumber(NumAssetsAll),
-				FText::AsMemory(SizeAssetsAll, IEC),
-				FText::FromString(TEXT("All Assets")),
-				FText::FromString(TEXT("Total number of assets")),
-				FText::FromString(TEXT("Total size of assets")),
-				FLinearColor::White,
-				FirstLvl
-			}
-		)
-	);
+	StatsListItems.Emplace(MakeShareable(new FPjcStatItem {
+	  FText::FromString(TEXT("Total")),
+	  FText::AsNumber(NumAssetsAll),
+	  FText::AsMemory(SizeAssetsAll, IEC),
+	  FText::FromString(TEXT("All Assets")),
+	  FText::FromString(TEXT("Total number of assets")),
+	  FText::FromString(TEXT("Total size of assets")),
+	  FLinearColor::White,
+	  FirstLvl
+	}));
 
-	if (StatsListView.IsValid())
-	{
+	if (StatsListView.IsValid()) {
 		StatsListView->RebuildList();
 	}
 }
 
-void SPjcTabAssetsUnused::UpdateTreeView()
-{
+void SPjcTabAssetsUnused::UpdateTreeView() {
 	if (!TreeListView.IsValid()) return;
 
 	const FString PathContentDir = FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir());
@@ -1109,7 +1046,6 @@ void SPjcTabAssetsUnused::UpdateTreeView()
 
 	TSet<TSharedPtr<FPjcTreeItem>> CachedExpandedItems;
 	TreeListView->GetExpandedItems(CachedExpandedItems);
-
 
 	RootItem->FolderPath = PjcConstants::PathRoot.ToString();
 	RootItem->FolderName = TEXT("Content");
@@ -1124,29 +1060,27 @@ void SPjcTabAssetsUnused::UpdateTreeView()
 	RootItem->NumAssetsUnused = AssetsUnused.Num();
 	RootItem->SizeAssetsUnused = UPjcSubsystem::GetAssetsTotalSize(AssetsUnused);
 	RootItem->PercentageUnused = RootItem->NumAssetsTotal == 0 ? 0 : RootItem->NumAssetsUnused * 100.0f / RootItem->NumAssetsTotal;
-	RootItem->PercentageUnusedNormalized = FMath::GetMappedRangeValueClamped(FVector2D{0.0f, 100.0f}, FVector2D{0.0f, 1.0f}, RootItem->PercentageUnused);
+	RootItem->PercentageUnusedNormalized
+		= FMath::GetMappedRangeValueClamped(FVector2D {0.0f, 100.0f}, FVector2D {0.0f, 1.0f}, RootItem->PercentageUnused);
 	RootItem->Parent = nullptr;
 
 	// filling whole tree
 	TArray<TSharedPtr<FPjcTreeItem>> Stack;
 	Stack.Push(RootItem);
 
-	while (Stack.Num() > 0)
-	{
+	while (Stack.Num() > 0) {
 		const auto CurrentItem = Stack.Pop(false);
 
 		TreeListView->SetItemExpansion(CurrentItem, CurrentItem->bIsExpanded);
 
-		if (SelectedPaths.Contains(FName{*CurrentItem->FolderPath}))
-		{
+		if (SelectedPaths.Contains(FName {*CurrentItem->FolderPath})) {
 			TreeListView->SetItemSelection(CurrentItem, true, ESelectInfo::Direct);
 		}
 
 		TArray<FString> SubPaths;
 		UPjcSubsystem::GetModuleAssetRegistry().Get().GetSubPaths(CurrentItem->FolderPath, SubPaths, false);
 
-		for (const auto& SubPath : SubPaths)
-		{
+		for (const auto& SubPath : SubPaths) {
 			const TSharedPtr<FPjcTreeItem> SubItem = MakeShareable(new FPjcTreeItem);
 			if (!SubItem.IsValid()) continue;
 
@@ -1159,9 +1093,11 @@ void SPjcTabAssetsUnused::UpdateTreeView()
 			SubItem->NumAssetsTotal = MapNumAssetsAllByPath.Contains(SubItem->FolderPath) ? MapNumAssetsAllByPath[SubItem->FolderPath] : 0;
 			SubItem->NumAssetsUsed = MapNumAssetsUsedByPath.Contains(SubItem->FolderPath) ? MapNumAssetsUsedByPath[SubItem->FolderPath] : 0;
 			SubItem->NumAssetsUnused = MapNumAssetsUnusedByPath.Contains(SubItem->FolderPath) ? MapNumAssetsUnusedByPath[SubItem->FolderPath] : 0;
-			SubItem->SizeAssetsUnused = MapSizeAssetsUnusedByPath.Contains(SubItem->FolderPath) ? MapSizeAssetsUnusedByPath[SubItem->FolderPath] : 0.0f;
+			SubItem->SizeAssetsUnused
+				= MapSizeAssetsUnusedByPath.Contains(SubItem->FolderPath) ? MapSizeAssetsUnusedByPath[SubItem->FolderPath] : 0.0f;
 			SubItem->PercentageUnused = SubItem->NumAssetsTotal == 0 ? 0 : SubItem->NumAssetsUnused * 100.0f / SubItem->NumAssetsTotal;
-			SubItem->PercentageUnusedNormalized = FMath::GetMappedRangeValueClamped(FVector2D{0.0f, 100.0f}, FVector2D{0.0f, 1.0f}, SubItem->PercentageUnused);
+			SubItem->PercentageUnusedNormalized
+				= FMath::GetMappedRangeValueClamped(FVector2D {0.0f, 100.0f}, FVector2D {0.0f, 1.0f}, SubItem->PercentageUnused);
 			SubItem->Parent = CurrentItem;
 			SubItem->bIsExpanded = TreeItemIsExpanded(SubItem, CachedExpandedItems);
 			SubItem->bIsVisible = TreeItemIsVisible(SubItem);
@@ -1178,88 +1114,70 @@ void SPjcTabAssetsUnused::UpdateTreeView()
 	TreeListView->RebuildList();
 }
 
-void SPjcTabAssetsUnused::UpdateContentBrowser()
-{
+void SPjcTabAssetsUnused::UpdateContentBrowser() {
 	Filter.Clear();
 
-	if (SelectedPaths.Num() > 0)
-	{
+	if (SelectedPaths.Num() > 0) {
 		Filter.bRecursivePaths = true;
 
-		for (const auto& SelectedPath : SelectedPaths)
-		{
+		for (const auto& SelectedPath : SelectedPaths) {
 			Filter.PackagePaths.Emplace(SelectedPath);
 		}
 	}
 
-	if (AnyFilterActive())
-	{
-		if (bFilterAssetsUsedActive)
-		{
+	if (AnyFilterActive()) {
+		if (bFilterAssetsUsedActive) {
 			Filter.ObjectPaths.Reserve(Filter.ObjectPaths.Num() + AssetsUsed.Num());
 
-			for (const auto& Asset : AssetsUsed)
-			{
+			for (const auto& Asset : AssetsUsed) {
 				Filter.ObjectPaths.Emplace(Asset.ToSoftObjectPath().GetAssetPathName());
 			}
 		}
 
-		if (bFilterAssetsPrimaryActive)
-		{
+		if (bFilterAssetsPrimaryActive) {
 			Filter.ObjectPaths.Reserve(Filter.ObjectPaths.Num() + AssetsPrimary.Num());
 
-			for (const auto& Asset : AssetsPrimary)
-			{
+			for (const auto& Asset : AssetsPrimary) {
 				Filter.ObjectPaths.Emplace(Asset.ToSoftObjectPath().GetAssetPathName());
 			}
 		}
 
-		if (bFilterAssetsEditorActive)
-		{
+		if (bFilterAssetsEditorActive) {
 			Filter.ObjectPaths.Reserve(Filter.ObjectPaths.Num() + AssetsEditor.Num());
 
-			for (const auto& Asset : AssetsEditor)
-			{
+			for (const auto& Asset : AssetsEditor) {
 				Filter.ObjectPaths.Emplace(Asset.ToSoftObjectPath().GetAssetPathName());
 			}
 		}
 
-		if (bFilterAssetsIndirectActive)
-		{
+		if (bFilterAssetsIndirectActive) {
 			Filter.ObjectPaths.Reserve(Filter.ObjectPaths.Num() + AssetsIndirect.Num());
 
-			for (const auto& Asset : AssetsIndirect)
-			{
+			for (const auto& Asset : AssetsIndirect) {
 				Filter.ObjectPaths.Emplace(Asset.ToSoftObjectPath().GetAssetPathName());
 			}
 		}
 
-		if (bFilterAssetsExcludedActive)
-		{
+		if (bFilterAssetsExcludedActive) {
 			Filter.ObjectPaths.Reserve(Filter.ObjectPaths.Num() + AssetsExcluded.Num());
 
-			for (const auto& Asset : AssetsExcluded)
-			{
+			for (const auto& Asset : AssetsExcluded) {
 				Filter.ObjectPaths.Emplace(Asset.ToSoftObjectPath().GetAssetPathName());
 			}
 		}
 
-		if (bFilterAssetsExtReferencedActive)
-		{
+		if (bFilterAssetsExtReferencedActive) {
 			Filter.ObjectPaths.Reserve(Filter.ObjectPaths.Num() + AssetsExtReferenced.Num());
 
-			for (const auto& Asset : AssetsExtReferenced)
-			{
+			for (const auto& Asset : AssetsExtReferenced) {
 				Filter.ObjectPaths.Emplace(Asset.ToSoftObjectPath().GetAssetPathName());
 			}
 		}
 
-		if (bFilterAssetsCircularActive)
-		{
+		if (bFilterAssetsCircularActive) {
 			Filter.ObjectPaths.Reserve(Filter.ObjectPaths.Num() + AssetsCircular.Num());
 
-			for (const auto& Asset : AssetsCircular)
-			{
+			for (const auto& Asset : AssetsCircular) {
 				Filter.ObjectPaths.Emplace(Asset.ToSoftObjectPath().GetAssetPathName());
 			}
 		}
@@ -1269,50 +1187,41 @@ void SPjcTabAssetsUnused::UpdateContentBrowser()
 		return;
 	}
 
-	if (AssetsUnused.Num() > 0 && bFilterAssetsUnusedActive)
-	{
+	if (AssetsUnused.Num() > 0 && bFilterAssetsUnusedActive) {
 		Filter.ObjectPaths.Reserve(AssetsUnused.Num());
 
-		for (const auto& Asset : AssetsUnused)
-		{
+		for (const auto& Asset : AssetsUnused) {
 			Filter.ObjectPaths.Emplace(Asset.ToSoftObjectPath().GetAssetPathName());
 		}
 	}
-	else
-	{
+	else {
 		Filter.TagsAndValues.Emplace(PjcConstants::EmptyTagName, PjcConstants::EmptyTagName.ToString());
 	}
 
 	DelegateFilter.Execute(Filter);
 }
 
-void SPjcTabAssetsUnused::OnTreeGetChildren(TSharedPtr<FPjcTreeItem> Item, TArray<TSharedPtr<FPjcTreeItem>>& OutChildren)
-{
+void SPjcTabAssetsUnused::OnTreeGetChildren(TSharedPtr<FPjcTreeItem> Item, TArray<TSharedPtr<FPjcTreeItem>>& OutChildren) {
 	if (!Item.IsValid()) return;
 
-	for (const auto& SubItem : Item->SubItems)
-	{
-		if (SubItem->bIsVisible)
-		{
+	for (const auto& SubItem : Item->SubItems) {
+		if (SubItem->bIsVisible) {
 			OutChildren.Add(SubItem);
 		}
 	}
 }
 
-void SPjcTabAssetsUnused::OnTreeSearchTextChanged(const FText& InText)
-{
+void SPjcTabAssetsUnused::OnTreeSearchTextChanged(const FText& InText) {
 	TreeSearchText = InText;
 	UpdateTreeView();
 }
 
-void SPjcTabAssetsUnused::OnTreeSearchTextCommitted(const FText& InText, ETextCommit::Type Type)
-{
+void SPjcTabAssetsUnused::OnTreeSearchTextCommitted(const FText& InText, ETextCommit::Type Type) {
 	TreeSearchText = InText;
 	UpdateTreeView();
 }
 
-void SPjcTabAssetsUnused::OnTreeSort(EColumnSortPriority::Type SortPriority, const FName& ColumnName, EColumnSortMode::Type InSortMode)
-{
+void SPjcTabAssetsUnused::OnTreeSort(EColumnSortPriority::Type SortPriority, const FName& ColumnName, EColumnSortMode::Type InSortMode) {
 	if (!RootItem.IsValid() || !TreeListView.IsValid()) return;
 
 	LastSortedColumn = ColumnName;
@@ -1322,8 +1231,7 @@ void SPjcTabAssetsUnused::OnTreeSort(EColumnSortPriority::Type SortPriority, con
 	TreeListView->RebuildList();
 }
 
-void SPjcTabAssetsUnused::OnTreeSelectionChanged(TSharedPtr<FPjcTreeItem> Selection, ESelectInfo::Type SelectInfo)
-{
+void SPjcTabAssetsUnused::OnTreeSelectionChanged(TSharedPtr<FPjcTreeItem> Selection, ESelectInfo::Type SelectInfo) {
 	if (!TreeListView.IsValid()) return;
 
 	const auto& SelectedItems = TreeListView->GetSelectedItems();
@@ -1331,16 +1239,14 @@ void SPjcTabAssetsUnused::OnTreeSelectionChanged(TSharedPtr<FPjcTreeItem> Select
 	SelectedPaths.Reset();
 	SelectedPaths.Reserve(SelectedItems.Num());
 
-	for (const auto& SelectedItem : SelectedItems)
-	{
-		SelectedPaths.Emplace(FName{*SelectedItem->FolderPath});
+	for (const auto& SelectedItem : SelectedItems) {
+		SelectedPaths.Emplace(FName {*SelectedItem->FolderPath});
 	}
 
 	UpdateContentBrowser();
 }
 
-void SPjcTabAssetsUnused::OnTreeExpansionChanged(TSharedPtr<FPjcTreeItem> Item, bool bIsExpanded)
-{
+void SPjcTabAssetsUnused::OnTreeExpansionChanged(TSharedPtr<FPjcTreeItem> Item, bool bIsExpanded) {
 	if (!Item.IsValid() || !TreeListView.IsValid()) return;
 
 	Item->bIsExpanded = bIsExpanded;
@@ -1348,20 +1254,16 @@ void SPjcTabAssetsUnused::OnTreeExpansionChanged(TSharedPtr<FPjcTreeItem> Item, 
 	TreeListView->RebuildList();
 }
 
-void SPjcTabAssetsUnused::SortTreeItems(const bool UpdateSortingOrder)
-{
-	auto SortTreeItems = [&](auto& SortMode, auto SortFunc)
-	{
-		if (UpdateSortingOrder)
-		{
+void SPjcTabAssetsUnused::SortTreeItems(const bool UpdateSortingOrder) {
+	auto SortTreeItems = [&](auto& SortMode, auto SortFunc) {
+		if (UpdateSortingOrder) {
 			SortMode = SortMode == EColumnSortMode::Ascending ? EColumnSortMode::Descending : EColumnSortMode::Ascending;
 		}
 
 		TArray<TSharedPtr<FPjcTreeItem>> Stack;
 		Stack.Push(RootItem);
 
-		while (Stack.Num() > 0)
-		{
+		while (Stack.Num() > 0) {
 			const auto& CurrentItem = Stack.Pop(false);
 			if (!CurrentItem.IsValid()) continue;
 
@@ -1372,115 +1274,96 @@ void SPjcTabAssetsUnused::SortTreeItems(const bool UpdateSortingOrder)
 		}
 	};
 
-	if (LastSortedColumn.IsEqual(TEXT("Path")))
-	{
-		SortTreeItems(ColumnPathSortMode, [&](const TSharedPtr<FPjcTreeItem>& Item1, const TSharedPtr<FPjcTreeItem>& Item2)
-		{
+	if (LastSortedColumn.IsEqual(TEXT("Path"))) {
+		SortTreeItems(ColumnPathSortMode, [&](const TSharedPtr<FPjcTreeItem>& Item1, const TSharedPtr<FPjcTreeItem>& Item2) {
 			return ColumnPathSortMode == EColumnSortMode::Ascending ? Item1->FolderPath < Item2->FolderPath : Item1->FolderPath > Item2->FolderPath;
 		});
 	}
 
-	if (LastSortedColumn.IsEqual(TEXT("NumAssetsTotal")))
-	{
-		SortTreeItems(ColumnAssetsTotalSortMode, [&](const TSharedPtr<FPjcTreeItem>& Item1, const TSharedPtr<FPjcTreeItem>& Item2)
-		{
-			return ColumnAssetsTotalSortMode == EColumnSortMode::Ascending ? Item1->NumAssetsTotal < Item2->NumAssetsTotal : Item1->NumAssetsTotal > Item2->NumAssetsTotal;
+	if (LastSortedColumn.IsEqual(TEXT("NumAssetsTotal"))) {
+		SortTreeItems(ColumnAssetsTotalSortMode, [&](const TSharedPtr<FPjcTreeItem>& Item1, const TSharedPtr<FPjcTreeItem>& Item2) {
+			return ColumnAssetsTotalSortMode == EColumnSortMode::Ascending ? Item1->NumAssetsTotal < Item2->NumAssetsTotal
+																		   : Item1->NumAssetsTotal > Item2->NumAssetsTotal;
 		});
 	}
 
-	if (LastSortedColumn.IsEqual(TEXT("NumAssetsUsed")))
-	{
-		SortTreeItems(ColumnAssetsUsedSortMode, [&](const TSharedPtr<FPjcTreeItem>& Item1, const TSharedPtr<FPjcTreeItem>& Item2)
-		{
-			return ColumnAssetsUsedSortMode == EColumnSortMode::Ascending ? Item1->NumAssetsUsed < Item2->NumAssetsUsed : Item1->NumAssetsUsed > Item2->NumAssetsUsed;
+	if (LastSortedColumn.IsEqual(TEXT("NumAssetsUsed"))) {
+		SortTreeItems(ColumnAssetsUsedSortMode, [&](const TSharedPtr<FPjcTreeItem>& Item1, const TSharedPtr<FPjcTreeItem>& Item2) {
+			return ColumnAssetsUsedSortMode == EColumnSortMode::Ascending ? Item1->NumAssetsUsed < Item2->NumAssetsUsed
+																		  : Item1->NumAssetsUsed > Item2->NumAssetsUsed;
 		});
 	}
 
-	if (LastSortedColumn.IsEqual(TEXT("NumAssetsUnused")))
-	{
-		SortTreeItems(ColumnAssetsUnusedSortMode, [&](const TSharedPtr<FPjcTreeItem>& Item1, const TSharedPtr<FPjcTreeItem>& Item2)
-		{
-			return ColumnAssetsUnusedSortMode == EColumnSortMode::Ascending ? Item1->NumAssetsUnused < Item2->NumAssetsUnused : Item1->NumAssetsUnused > Item2->NumAssetsUnused;
+	if (LastSortedColumn.IsEqual(TEXT("NumAssetsUnused"))) {
+		SortTreeItems(ColumnAssetsUnusedSortMode, [&](const TSharedPtr<FPjcTreeItem>& Item1, const TSharedPtr<FPjcTreeItem>& Item2) {
+			return ColumnAssetsUnusedSortMode == EColumnSortMode::Ascending ? Item1->NumAssetsUnused < Item2->NumAssetsUnused
+																			: Item1->NumAssetsUnused > Item2->NumAssetsUnused;
 		});
 	}
 
-	if (LastSortedColumn.IsEqual(TEXT("UnusedPercent")))
-	{
-		SortTreeItems(ColumnUnusedPercentSortMode, [&](const TSharedPtr<FPjcTreeItem>& Item1, const TSharedPtr<FPjcTreeItem>& Item2)
-		{
-			return ColumnUnusedPercentSortMode == EColumnSortMode::Ascending ? Item1->PercentageUnused < Item2->PercentageUnused : Item1->PercentageUnused > Item2->PercentageUnused;
+	if (LastSortedColumn.IsEqual(TEXT("UnusedPercent"))) {
+		SortTreeItems(ColumnUnusedPercentSortMode, [&](const TSharedPtr<FPjcTreeItem>& Item1, const TSharedPtr<FPjcTreeItem>& Item2) {
+			return ColumnUnusedPercentSortMode == EColumnSortMode::Ascending ? Item1->PercentageUnused < Item2->PercentageUnused
+																			 : Item1->PercentageUnused > Item2->PercentageUnused;
 		});
 	}
 
-	if (LastSortedColumn.IsEqual(TEXT("UnusedSize")))
-	{
-		SortTreeItems(ColumnUnusedSizeSortMode, [&](const TSharedPtr<FPjcTreeItem>& Item1, const TSharedPtr<FPjcTreeItem>& Item2)
-		{
-			return ColumnUnusedSizeSortMode == EColumnSortMode::Ascending ? Item1->SizeAssetsUnused < Item2->SizeAssetsUnused : Item1->SizeAssetsUnused > Item2->SizeAssetsUnused;
+	if (LastSortedColumn.IsEqual(TEXT("UnusedSize"))) {
+		SortTreeItems(ColumnUnusedSizeSortMode, [&](const TSharedPtr<FPjcTreeItem>& Item1, const TSharedPtr<FPjcTreeItem>& Item2) {
+			return ColumnUnusedSizeSortMode == EColumnSortMode::Ascending ? Item1->SizeAssetsUnused < Item2->SizeAssetsUnused
+																		  : Item1->SizeAssetsUnused > Item2->SizeAssetsUnused;
 		});
 	}
 }
 
-void SPjcTabAssetsUnused::ChangeItemExpansionRecursive(const TSharedPtr<FPjcTreeItem>& Item, const bool bExpansion, const bool bRebuildList) const
-{
+void SPjcTabAssetsUnused::ChangeItemExpansionRecursive(const TSharedPtr<FPjcTreeItem>& Item, const bool bExpansion, const bool bRebuildList) const {
 	if (!Item.IsValid() || !TreeListView.IsValid()) return;
 
 	TArray<TSharedPtr<FPjcTreeItem>> Stack;
 	Stack.Push(Item);
 
-	while (Stack.Num() > 0)
-	{
+	while (Stack.Num() > 0) {
 		const auto CurrentItem = Stack.Pop(false);
 
 		CurrentItem->bIsExpanded = bExpansion;
 		TreeListView->SetItemExpansion(CurrentItem, CurrentItem->bIsExpanded);
 
-		for (const auto& SubItem : CurrentItem->SubItems)
-		{
+		for (const auto& SubItem : CurrentItem->SubItems) {
 			Stack.Push(SubItem);
 		}
 	}
 
-	if (bRebuildList)
-	{
+	if (bRebuildList) {
 		TreeListView->RebuildList();
 	}
 }
 
-bool SPjcTabAssetsUnused::TreeItemIsVisible(const TSharedPtr<FPjcTreeItem>& Item) const
-{
+bool SPjcTabAssetsUnused::TreeItemIsVisible(const TSharedPtr<FPjcTreeItem>& Item) const {
 	if (!SubsystemPtr) return false;
 
-	if (Item->bIsDev && !SubsystemPtr->bShowFoldersEngine)
-	{
+	if (Item->bIsDev && !SubsystemPtr->bShowFoldersEngine) {
 		return false;
 	}
 
-	if (Item->bIsExcluded && !SubsystemPtr->bShowFoldersExcluded)
-	{
+	if (Item->bIsExcluded && !SubsystemPtr->bShowFoldersExcluded) {
 		return false;
 	}
 
-	if (Item->bIsEmpty && !Item->bIsDev && !Item->bIsExcluded && !SubsystemPtr->bShowFoldersEmpty)
-	{
+	if (Item->bIsEmpty && !Item->bIsDev && !Item->bIsExcluded && !SubsystemPtr->bShowFoldersEmpty) {
 		return false;
 	}
 
-	if (Item->NumAssetsUsed > 0 && Item->NumAssetsUnused == 0 && !Item->bIsExcluded && !SubsystemPtr->bShowFoldersUsed)
-	{
+	if (Item->NumAssetsUsed > 0 && Item->NumAssetsUnused == 0 && !Item->bIsExcluded && !SubsystemPtr->bShowFoldersUsed) {
 		return false;
 	}
 
 	return true;
 }
 
-bool SPjcTabAssetsUnused::TreeItemIsExpanded(const TSharedPtr<FPjcTreeItem>& Item, const TSet<TSharedPtr<FPjcTreeItem>>& CachedItems) const
-{
-	if (!TreeSearchText.IsEmpty() && TreeItemContainsSearchText(Item))
-	{
+bool SPjcTabAssetsUnused::TreeItemIsExpanded(const TSharedPtr<FPjcTreeItem>& Item, const TSet<TSharedPtr<FPjcTreeItem>>& CachedItems) const {
+	if (!TreeSearchText.IsEmpty() && TreeItemContainsSearchText(Item)) {
 		auto CurrentItem = Item;
-		while (CurrentItem.IsValid())
-		{
+		while (CurrentItem.IsValid()) {
 			CurrentItem->bIsExpanded = true;
 			TreeListView->SetItemExpansion(CurrentItem, CurrentItem->bIsExpanded);
 			CurrentItem = CurrentItem->Parent;
@@ -1489,12 +1372,10 @@ bool SPjcTabAssetsUnused::TreeItemIsExpanded(const TSharedPtr<FPjcTreeItem>& Ite
 		return true;
 	}
 
-	for (const auto& ExpandedItem : CachedItems)
-	{
+	for (const auto& ExpandedItem : CachedItems) {
 		if (!ExpandedItem.IsValid()) continue;
 
-		if (ExpandedItem->FolderPath.Equals(Item->FolderPath))
-		{
+		if (ExpandedItem->FolderPath.Equals(Item->FolderPath)) {
 			return true;
 		}
 	}
@@ -1502,15 +1383,12 @@ bool SPjcTabAssetsUnused::TreeItemIsExpanded(const TSharedPtr<FPjcTreeItem>& Ite
 	return false;
 }
 
-bool SPjcTabAssetsUnused::TreeItemContainsSearchText(const TSharedPtr<FPjcTreeItem>& Item) const
-{
+bool SPjcTabAssetsUnused::TreeItemContainsSearchText(const TSharedPtr<FPjcTreeItem>& Item) const {
 	TArray<FString> SubPaths;
 	UPjcSubsystem::GetModuleAssetRegistry().Get().GetSubPaths(Item->FolderPath, SubPaths, true);
 
-	for (const auto& Path : SubPaths)
-	{
-		if (Path.Contains(TreeSearchText.ToString()))
-		{
+	for (const auto& Path : SubPaths) {
+		if (Path.Contains(TreeSearchText.ToString())) {
 			return true;
 		}
 	}
@@ -1518,66 +1396,50 @@ bool SPjcTabAssetsUnused::TreeItemContainsSearchText(const TSharedPtr<FPjcTreeIt
 	return false;
 }
 
-bool SPjcTabAssetsUnused::TreeHasSelection() const
-{
+bool SPjcTabAssetsUnused::TreeHasSelection() const {
 	return TreeListView.IsValid() && TreeListView->GetSelectedItems().Num() > 0;
 }
 
-bool SPjcTabAssetsUnused::CanCleanProject() const
-{
+bool SPjcTabAssetsUnused::CanCleanProject() const {
 	return NumAssetsUnused > 0 || NumFoldersEmpty > 0;
 }
 
-bool SPjcTabAssetsUnused::CanDeleteEmptyFolders() const
-{
+bool SPjcTabAssetsUnused::CanDeleteEmptyFolders() const {
 	return NumFoldersEmpty > 0;
 }
 
-bool SPjcTabAssetsUnused::AnyFilterActive() const
-{
-	return
-		bFilterAssetsUsedActive ||
-		bFilterAssetsPrimaryActive ||
-		bFilterAssetsEditorActive ||
-		bFilterAssetsIndirectActive ||
-		bFilterAssetsExcludedActive ||
-		bFilterAssetsExtReferencedActive;
+bool SPjcTabAssetsUnused::AnyFilterActive() const {
+	return bFilterAssetsUsedActive || bFilterAssetsPrimaryActive || bFilterAssetsEditorActive || bFilterAssetsIndirectActive
+		|| bFilterAssetsExcludedActive || bFilterAssetsExtReferencedActive;
 }
 
-bool SPjcTabAssetsUnused::AnyAssetSelected() const
-{
+bool SPjcTabAssetsUnused::AnyAssetSelected() const {
 	return DelegateSelection.Execute().Num() > 0;
 }
 
-bool SPjcTabAssetsUnused::CanExcludeAssets() const
-{
+bool SPjcTabAssetsUnused::CanExcludeAssets() const {
 	return !bFilterAssetsExcludedActive && DelegateSelection.Execute().Num() > 0;
 }
 
-bool SPjcTabAssetsUnused::CanIncludeAssets() const
-{
+bool SPjcTabAssetsUnused::CanIncludeAssets() const {
 	return bFilterAssetsExcludedActive && DelegateSelection.Execute().Num() > 0;
 }
 
-FText SPjcTabAssetsUnused::GetTreeSummaryText() const
-{
+FText SPjcTabAssetsUnused::GetTreeSummaryText() const {
 	return FText::FromString(FString::Printf(TEXT("Folders Total - %d"), NumFoldersTotal));
 }
 
-FText SPjcTabAssetsUnused::GetTreeSelectionText() const
-{
+FText SPjcTabAssetsUnused::GetTreeSelectionText() const {
 	const int32 NumItemsSelected = TreeListView.IsValid() ? TreeListView->GetSelectedItems().Num() : 0;
 
-	if (NumItemsSelected > 0)
-	{
+	if (NumItemsSelected > 0) {
 		return FText::FromString(FString::Printf(TEXT("%d selected"), NumItemsSelected));
 	}
 
 	return FText::GetEmpty();
 }
 
-FSlateColor SPjcTabAssetsUnused::GetTreeOptionsBtnForegroundColor() const
-{
+FSlateColor SPjcTabAssetsUnused::GetTreeOptionsBtnForegroundColor() const {
 	static const FName InvertedForegroundName("InvertedForeground");
 	static const FName DefaultForegroundName("DefaultForeground");
 
@@ -1586,8 +1448,7 @@ FSlateColor SPjcTabAssetsUnused::GetTreeOptionsBtnForegroundColor() const
 	return TreeOptionBtn->IsHovered() ? FEditorStyle::GetSlateColor(InvertedForegroundName) : FEditorStyle::GetSlateColor(DefaultForegroundName);
 }
 
-TSharedRef<SWidget> SPjcTabAssetsUnused::GetTreeBtnOptionsContent()
-{
+TSharedRef<SWidget> SPjcTabAssetsUnused::GetTreeBtnOptionsContent() {
 	const TSharedPtr<FExtender> Extender;
 	FMenuBuilder MenuBuilder(true, Cmds, Extender, true);
 
@@ -1597,8 +1458,7 @@ TSharedRef<SWidget> SPjcTabAssetsUnused::GetTreeBtnOptionsContent()
 		FText::FromString(TEXT("Show Folders Empty")),
 		FText::FromString(TEXT("Show empty folders in tree view")),
 		FSlateIcon(),
-		FUIAction
-		(
+		FUIAction(
 			FExecuteAction::CreateRaw(this, &SPjcTabAssetsUnused::OnShowFoldersEmpty),
 			FCanExecuteAction::CreateRaw(this, &SPjcTabAssetsUnused::IsSubsystemValid),
 			FGetActionCheckState::CreateRaw(this, &SPjcTabAssetsUnused::GetFoldersEmptyActionState)
@@ -1611,8 +1471,7 @@ TSharedRef<SWidget> SPjcTabAssetsUnused::GetTreeBtnOptionsContent()
 		FText::FromString(TEXT("Show Folders Excluded")),
 		FText::FromString(TEXT("Show excluded folders in tree view")),
 		FSlateIcon(),
-		FUIAction
-		(
+		FUIAction(
 			FExecuteAction::CreateRaw(this, &SPjcTabAssetsUnused::OnShowFoldersExcluded),
 			FCanExecuteAction::CreateRaw(this, &SPjcTabAssetsUnused::IsSubsystemValid),
 			FGetActionCheckState::CreateRaw(this, &SPjcTabAssetsUnused::GetFoldersExcludedActionState)
@@ -1625,8 +1484,7 @@ TSharedRef<SWidget> SPjcTabAssetsUnused::GetTreeBtnOptionsContent()
 		FText::FromString(TEXT("Show Folders Used")),
 		FText::FromString(TEXT("Show folders that dont contain unused assets in tree view")),
 		FSlateIcon(),
-		FUIAction
-		(
+		FUIAction(
 			FExecuteAction::CreateRaw(this, &SPjcTabAssetsUnused::OnShowFoldersUsed),
 			FCanExecuteAction::CreateRaw(this, &SPjcTabAssetsUnused::IsSubsystemValid),
 			FGetActionCheckState::CreateRaw(this, &SPjcTabAssetsUnused::GetFoldersUsedActionState)
@@ -1639,8 +1497,7 @@ TSharedRef<SWidget> SPjcTabAssetsUnused::GetTreeBtnOptionsContent()
 		FText::FromString(TEXT("Show Folders Engine Generated")),
 		FText::FromString(TEXT("Show engine generated folders in tree view")),
 		FSlateIcon(),
-		FUIAction
-		(
+		FUIAction(
 			FExecuteAction::CreateRaw(this, &SPjcTabAssetsUnused::OnShowFoldersEngine),
 			FCanExecuteAction::CreateRaw(this, &SPjcTabAssetsUnused::IsSubsystemValid),
 			FGetActionCheckState::CreateRaw(this, &SPjcTabAssetsUnused::GetFoldersEngineActionState)
@@ -1655,10 +1512,8 @@ TSharedRef<SWidget> SPjcTabAssetsUnused::GetTreeBtnOptionsContent()
 		FText::FromString(TEXT("Expand All")),
 		FText::FromString(TEXT("Expand all folders recursively")),
 		FSlateIcon(),
-		FUIAction
-		(
-			FExecuteAction::CreateRaw(this, &SPjcTabAssetsUnused::OnExpandAll),
-			FCanExecuteAction::CreateRaw(this, &SPjcTabAssetsUnused::IsTreeValid)
+		FUIAction(
+			FExecuteAction::CreateRaw(this, &SPjcTabAssetsUnused::OnExpandAll), FCanExecuteAction::CreateRaw(this, &SPjcTabAssetsUnused::IsTreeValid)
 		),
 		NAME_None,
 		EUserInterfaceActionType::Button
@@ -1668,8 +1523,7 @@ TSharedRef<SWidget> SPjcTabAssetsUnused::GetTreeBtnOptionsContent()
 		FText::FromString(TEXT("Collapse All")),
 		FText::FromString(TEXT("Collapse all folders recursively")),
 		FSlateIcon(),
-		FUIAction
-		(
+		FUIAction(
 			FExecuteAction::CreateRaw(this, &SPjcTabAssetsUnused::OnCollapseAll),
 			FCanExecuteAction::CreateRaw(this, &SPjcTabAssetsUnused::IsTreeValid)
 		),
@@ -1680,9 +1534,8 @@ TSharedRef<SWidget> SPjcTabAssetsUnused::GetTreeBtnOptionsContent()
 	return MenuBuilder.MakeWidget();
 }
 
-TSharedPtr<SWidget> SPjcTabAssetsUnused::GetTreeContextMenu() const
-{
-	FMenuBuilder MenuBuilder{true, Cmds};
+TSharedPtr<SWidget> SPjcTabAssetsUnused::GetTreeContextMenu() const {
+	FMenuBuilder MenuBuilder {true, Cmds};
 
 	MenuBuilder.BeginSection(TEXT("PjcSectionPathActions"), FText::FromString(TEXT("Actions")));
 	{
@@ -1699,8 +1552,7 @@ TSharedPtr<SWidget> SPjcTabAssetsUnused::GetTreeContextMenu() const
 	return MenuBuilder.MakeWidget();
 }
 
-TSharedPtr<SWidget> SPjcTabAssetsUnused::GetAssetContextMenu(const TArray<FAssetData>& SelectedAssets) const
-{
+TSharedPtr<SWidget> SPjcTabAssetsUnused::GetAssetContextMenu(const TArray<FAssetData>& SelectedAssets) const {
 	const TSharedPtr<FExtender> Extender;
 	FMenuBuilder MenuBuilder(true, Cmds, Extender, true);
 
@@ -1727,213 +1579,199 @@ TSharedPtr<SWidget> SPjcTabAssetsUnused::GetAssetContextMenu(const TArray<FAsset
 	MenuBuilder.EndSection();
 
 	MenuBuilder.BeginSection(TEXT("Deletion"), FText::FromString(TEXT("Deletion")));
-	{
-		MenuBuilder.AddMenuEntry(FPjcCmds::Get().AssetsDelete);
-	}
+	{ MenuBuilder.AddMenuEntry(FPjcCmds::Get().AssetsDelete); }
 	MenuBuilder.EndSection();
 
 	return MenuBuilder.MakeWidget();
 }
 
-TSharedRef<SHeaderRow> SPjcTabAssetsUnused::GetStatsHeaderRow() const
-{
-	return
-			SNew(SHeaderRow)
-			+ SHeaderRow::Column("Name")
-			.FillWidth(0.4f)
-			.HAlignCell(HAlign_Left)
-			.VAlignCell(VAlign_Center)
-			.HAlignHeader(HAlign_Center)
-			.HeaderContentPadding(HeaderMargin)
-			[
-				SNew(STextBlock)
-				.Text(FText::FromString(TEXT("Category")))
-				.Font(FPjcStyles::GetFont("Light", 10.0f))
-				.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
-			]
-			+ SHeaderRow::Column("Num")
-			.FillWidth(0.3f)
-			.HAlignCell(HAlign_Center)
-			.VAlignCell(VAlign_Center)
-			.HAlignHeader(HAlign_Center)
-			.HeaderContentPadding(HeaderMargin)
-			[
-				SNew(STextBlock)
-				.Text(FText::FromString(TEXT("Num")))
-				.Font(FPjcStyles::GetFont("Light", 10.0f))
-				.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
-			]
-			+ SHeaderRow::Column("Size")
-			.FillWidth(0.3f)
-			.HAlignCell(HAlign_Center)
-			.VAlignCell(VAlign_Center)
-			.HAlignHeader(HAlign_Center)
-			.HeaderContentPadding(HeaderMargin)
-			[
-				SNew(STextBlock)
-				.Text(FText::FromString(TEXT("Size")))
-				.Font(FPjcStyles::GetFont("Light", 10.0f))
-				.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
-			];
+TSharedRef<SHeaderRow> SPjcTabAssetsUnused::GetStatsHeaderRow() const {
+	// clang-format off
+	return SNew(SHeaderRow)
+		+ SHeaderRow::Column("Name")
+		.FillWidth(0.4f)
+		.HAlignCell(HAlign_Left)
+		.VAlignCell(VAlign_Center)
+		.HAlignHeader(HAlign_Center)
+		.HeaderContentPadding(HeaderMargin)
+		[
+			SNew(STextBlock)
+			.Text(FText::FromString(TEXT("Category")))
+			.Font(FPjcStyles::GetFont("Light", 10.0f))
+			.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
+		]
+		+ SHeaderRow::Column("Num")
+		.FillWidth(0.3f)
+		.HAlignCell(HAlign_Center)
+		.VAlignCell(VAlign_Center)
+		.HAlignHeader(HAlign_Center)
+		.HeaderContentPadding(HeaderMargin)
+		[
+			SNew(STextBlock)
+			.Text(FText::FromString(TEXT("Num")))
+			.Font(FPjcStyles::GetFont("Light", 10.0f))
+			.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
+		]
+		+ SHeaderRow::Column("Size")
+		.FillWidth(0.3f)
+		.HAlignCell(HAlign_Center)
+		.VAlignCell(VAlign_Center)
+		.HAlignHeader(HAlign_Center)
+		.HeaderContentPadding(HeaderMargin)
+		[
+			SNew(STextBlock)
+			.Text(FText::FromString(TEXT("Size")))
+			.Font(FPjcStyles::GetFont("Light", 10.0f))
+			.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
+		];
+	// clang-format on
 }
 
-TSharedRef<SHeaderRow> SPjcTabAssetsUnused::GetTreeHeaderRow()
-{
-	return
-			SNew(SHeaderRow)
-			+ SHeaderRow::Column(TEXT("Path"))
-			.HAlignHeader(HAlign_Center)
-			.VAlignHeader(VAlign_Center)
-			.HeaderContentPadding(HeaderMargin)
-			.FillWidth(0.4f)
-			.OnSort_Raw(this, &SPjcTabAssetsUnused::OnTreeSort)
-			[
-				SNew(STextBlock)
-				.Text(FText::FromString(TEXT("Path")))
-				.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
-				.Font(FPjcStyles::GetFont("Light", 10.0f))
-			]
-			+ SHeaderRow::Column(TEXT("NumAssetsTotal"))
-			.HAlignHeader(HAlign_Center)
-			.VAlignHeader(VAlign_Center)
-			.HeaderContentPadding(HeaderMargin)
-			.FillWidth(0.1f)
-			.OnSort_Raw(this, &SPjcTabAssetsUnused::OnTreeSort)
-			[
-				SNew(STextBlock)
-				.Text(FText::FromString(TEXT("Total")))
-				.ToolTipText(FText::FromString(TEXT("Total number of assets in current path")))
-				.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
-				.Font(FPjcStyles::GetFont("Light", 10.0f))
-			]
-			+ SHeaderRow::Column(TEXT("NumAssetsUsed"))
-			.HAlignHeader(HAlign_Center)
-			.VAlignHeader(VAlign_Center)
-			.HeaderContentPadding(HeaderMargin)
-			.FillWidth(0.1f)
-			.OnSort_Raw(this, &SPjcTabAssetsUnused::OnTreeSort)
-			[
-				SNew(STextBlock)
-				.Text(FText::FromString(TEXT("Used")))
-				.ToolTipText(FText::FromString(TEXT("Total number of used assets in current path")))
-				.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
-				.Font(FPjcStyles::GetFont("Light", 10.0f))
-			]
-			+ SHeaderRow::Column(TEXT("NumAssetsUnused"))
-			.HAlignHeader(HAlign_Center)
-			.VAlignHeader(VAlign_Center)
-			.HeaderContentPadding(HeaderMargin)
-			.FillWidth(0.1f)
-			.OnSort_Raw(this, &SPjcTabAssetsUnused::OnTreeSort)
-			[
-				SNew(STextBlock)
-				.Text(FText::FromString(TEXT("Unused")))
-				.ToolTipText(FText::FromString(TEXT("Total number of unused assets in current path")))
-				.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
-				.Font(FPjcStyles::GetFont("Light", 10.0f))
-			]
-			+ SHeaderRow::Column(TEXT("UnusedPercent"))
-			.HAlignHeader(HAlign_Center)
-			.VAlignHeader(VAlign_Center)
-			.HeaderContentPadding(HeaderMargin)
-			.FillWidth(0.15f)
-			.OnSort_Raw(this, &SPjcTabAssetsUnused::OnTreeSort)
-			[
-				SNew(STextBlock)
-				.Text(FText::FromString(TEXT("Unused %")))
-				.ToolTipText(FText::FromString(
-					TEXT("Percentage of unused assets number relative to total assets number in current path")))
-				.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
-				.Font(FPjcStyles::GetFont("Light", 10.0f))
-			]
-			+ SHeaderRow::Column(TEXT("UnusedSize"))
-			.HAlignHeader(HAlign_Center)
-			.VAlignHeader(VAlign_Center)
-			.HeaderContentPadding(HeaderMargin)
-			.FillWidth(0.15f)
-			.OnSort_Raw(this, &SPjcTabAssetsUnused::OnTreeSort)
-			[
-				SNew(STextBlock)
-				.Text(FText::FromString(TEXT("Unused Size")))
-				.ToolTipText(FText::FromString(TEXT("Total size of unused assets in current path")))
-				.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
-				.Font(FPjcStyles::GetFont("Light", 10.0f))
-			];
+TSharedRef<SHeaderRow> SPjcTabAssetsUnused::GetTreeHeaderRow() {
+	// clang-format off
+	return SNew(SHeaderRow)
+		+ SHeaderRow::Column(TEXT("Path"))
+		.HAlignHeader(HAlign_Center)
+		.VAlignHeader(VAlign_Center)
+		.HeaderContentPadding(HeaderMargin)
+		.FillWidth(0.4f)
+		.OnSort_Raw(this, &SPjcTabAssetsUnused::OnTreeSort)
+		[
+			SNew(STextBlock)
+			.Text(FText::FromString(TEXT("Path")))
+			.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
+			.Font(FPjcStyles::GetFont("Light", 10.0f))
+		]
+		+ SHeaderRow::Column(TEXT("NumAssetsTotal"))
+		.HAlignHeader(HAlign_Center)
+		.VAlignHeader(VAlign_Center)
+		.HeaderContentPadding(HeaderMargin)
+		.FillWidth(0.1f)
+		.OnSort_Raw(this, &SPjcTabAssetsUnused::OnTreeSort)
+		[
+			SNew(STextBlock)
+			.Text(FText::FromString(TEXT("Total")))
+			.ToolTipText(FText::FromString(TEXT("Total number of assets in current path")))
+			.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
+			.Font(FPjcStyles::GetFont("Light", 10.0f))
+		]
+		+ SHeaderRow::Column(TEXT("NumAssetsUsed"))
+		.HAlignHeader(HAlign_Center)
+		.VAlignHeader(VAlign_Center)
+		.HeaderContentPadding(HeaderMargin)
+		.FillWidth(0.1f)
+		.OnSort_Raw(this, &SPjcTabAssetsUnused::OnTreeSort)
+		[
+			SNew(STextBlock)
+			.Text(FText::FromString(TEXT("Used")))
+			.ToolTipText(FText::FromString(TEXT("Total number of used assets in current path")))
+			.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
+			.Font(FPjcStyles::GetFont("Light", 10.0f))
+		]
+		+ SHeaderRow::Column(TEXT("NumAssetsUnused"))
+		.HAlignHeader(HAlign_Center)
+		.VAlignHeader(VAlign_Center)
+		.HeaderContentPadding(HeaderMargin)
+		.FillWidth(0.1f)
+		.OnSort_Raw(this, &SPjcTabAssetsUnused::OnTreeSort)
+		[
+			SNew(STextBlock)
+			.Text(FText::FromString(TEXT("Unused")))
+			.ToolTipText(FText::FromString(TEXT("Total number of unused assets in current path")))
+			.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
+			.Font(FPjcStyles::GetFont("Light", 10.0f))
+		]
+		+ SHeaderRow::Column(TEXT("UnusedPercent"))
+		.HAlignHeader(HAlign_Center)
+		.VAlignHeader(VAlign_Center)
+		.HeaderContentPadding(HeaderMargin)
+		.FillWidth(0.15f)
+		.OnSort_Raw(this, &SPjcTabAssetsUnused::OnTreeSort)
+		[
+			SNew(STextBlock)
+			.Text(FText::FromString(TEXT("Unused %")))
+			.ToolTipText(FText::FromString(TEXT("Percentage of unused assets number relative to total assets number in current path")))
+			.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
+			.Font(FPjcStyles::GetFont("Light", 10.0f))
+		]
+		+ SHeaderRow::Column(TEXT("UnusedSize"))
+		.HAlignHeader(HAlign_Center)
+		.VAlignHeader(VAlign_Center)
+		.HeaderContentPadding(HeaderMargin)
+		.FillWidth(0.15f)
+		.OnSort_Raw(this, &SPjcTabAssetsUnused::OnTreeSort)
+		[
+			SNew(STextBlock)
+			.Text(FText::FromString(TEXT("Unused Size")))
+			.ToolTipText(FText::FromString(TEXT("Total size of unused assets in current path")))
+			.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
+			.Font(FPjcStyles::GetFont("Light", 10.0f))
+		];
+	// clang-format on
 }
 
-TSharedRef<ITableRow> SPjcTabAssetsUnused::OnStatsGenerateRow(TSharedPtr<FPjcStatItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const
-{
+TSharedRef<ITableRow> SPjcTabAssetsUnused::OnStatsGenerateRow(TSharedPtr<FPjcStatItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const {
 	return SNew(SPjcItemStat, OwnerTable).Item(Item);
 }
 
-TSharedRef<ITableRow> SPjcTabAssetsUnused::OnTreeGenerateRow(TSharedPtr<FPjcTreeItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const
-{
+TSharedRef<ITableRow> SPjcTabAssetsUnused::OnTreeGenerateRow(TSharedPtr<FPjcTreeItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const {
 	return SNew(SPjcItemTree, OwnerTable).Item(Item).HightlightText(TreeSearchText);
 }
 
-void SPjcTabAssetsUnused::OnFilterUsedChanged(const bool bActive)
-{
+void SPjcTabAssetsUnused::OnFilterUsedChanged(const bool bActive) {
 	bFilterAssetsUsedActive = bActive;
 	bFilterAssetsUnusedActive = !AnyFilterActive();
 
 	UpdateContentBrowser();
 }
 
-void SPjcTabAssetsUnused::OnFilterPrimaryChanged(const bool bActive)
-{
+void SPjcTabAssetsUnused::OnFilterPrimaryChanged(const bool bActive) {
 	bFilterAssetsPrimaryActive = bActive;
 	bFilterAssetsUnusedActive = !AnyFilterActive();
 
 	UpdateContentBrowser();
 }
 
-void SPjcTabAssetsUnused::OnFilterIndirectChanged(const bool bActive)
-{
+void SPjcTabAssetsUnused::OnFilterIndirectChanged(const bool bActive) {
 	bFilterAssetsIndirectActive = bActive;
 	bFilterAssetsUnusedActive = !AnyFilterActive();
 
 	UpdateContentBrowser();
 }
 
-void SPjcTabAssetsUnused::OnFilterCircularChanged(const bool bActive)
-{
+void SPjcTabAssetsUnused::OnFilterCircularChanged(const bool bActive) {
 	bFilterAssetsCircularActive = bActive;
 	bFilterAssetsUnusedActive = !AnyFilterActive();
 
 	UpdateContentBrowser();
 }
 
-void SPjcTabAssetsUnused::OnFilterEditorChanged(const bool bActive)
-{
+void SPjcTabAssetsUnused::OnFilterEditorChanged(const bool bActive) {
 	bFilterAssetsEditorActive = bActive;
 	bFilterAssetsUnusedActive = !AnyFilterActive();
 
 	UpdateContentBrowser();
 }
 
-void SPjcTabAssetsUnused::OnFilterExcludedChanged(const bool bActive)
-{
+void SPjcTabAssetsUnused::OnFilterExcludedChanged(const bool bActive) {
 	bFilterAssetsExcludedActive = bActive;
 	bFilterAssetsUnusedActive = !AnyFilterActive();
 
 	UpdateContentBrowser();
 }
 
-void SPjcTabAssetsUnused::OnFilterExtReferencedChanged(const bool bActive)
-{
+void SPjcTabAssetsUnused::OnFilterExtReferencedChanged(const bool bActive) {
 	bFilterAssetsExtReferencedActive = bActive;
 	bFilterAssetsUnusedActive = !AnyFilterActive();
 
 	UpdateContentBrowser();
 }
 
-void SPjcTabAssetsUnused::OnAssetDblClicked(const FAssetData& AssetData)
-{
+void SPjcTabAssetsUnused::OnAssetDblClicked(const FAssetData& AssetData) {
 	UPjcSubsystem::OpenAssetEditor(AssetData);
 }
 
-void SPjcTabAssetsUnused::OnShowFoldersEmpty()
-{
+void SPjcTabAssetsUnused::OnShowFoldersEmpty() {
 	if (!SubsystemPtr) return;
 
 	SubsystemPtr->bShowFoldersEmpty = !SubsystemPtr->bShowFoldersEmpty;
@@ -1941,8 +1779,7 @@ void SPjcTabAssetsUnused::OnShowFoldersEmpty()
 	UpdateTreeView();
 }
 
-void SPjcTabAssetsUnused::OnShowFoldersExcluded()
-{
+void SPjcTabAssetsUnused::OnShowFoldersExcluded() {
 	if (!SubsystemPtr) return;
 
 	SubsystemPtr->bShowFoldersExcluded = !SubsystemPtr->bShowFoldersExcluded;
@@ -1950,8 +1787,7 @@ void SPjcTabAssetsUnused::OnShowFoldersExcluded()
 	UpdateTreeView();
 }
 
-void SPjcTabAssetsUnused::OnShowFoldersUsed()
-{
+void SPjcTabAssetsUnused::OnShowFoldersUsed() {
 	if (!SubsystemPtr) return;
 
 	SubsystemPtr->bShowFoldersUsed = !SubsystemPtr->bShowFoldersUsed;
@@ -1959,8 +1795,7 @@ void SPjcTabAssetsUnused::OnShowFoldersUsed()
 	UpdateTreeView();
 }
 
-void SPjcTabAssetsUnused::OnShowFoldersEngine()
-{
+void SPjcTabAssetsUnused::OnShowFoldersEngine() {
 	if (!SubsystemPtr) return;
 
 	SubsystemPtr->bShowFoldersEngine = !SubsystemPtr->bShowFoldersEngine;
@@ -1968,38 +1803,31 @@ void SPjcTabAssetsUnused::OnShowFoldersEngine()
 	UpdateTreeView();
 }
 
-void SPjcTabAssetsUnused::OnExpandAll() const
-{
+void SPjcTabAssetsUnused::OnExpandAll() const {
 	ChangeItemExpansionRecursive(RootItem, true, true);
 }
 
-void SPjcTabAssetsUnused::OnCollapseAll() const
-{
+void SPjcTabAssetsUnused::OnCollapseAll() const {
 	ChangeItemExpansionRecursive(RootItem, false, true);
 }
 
-ECheckBoxState SPjcTabAssetsUnused::GetFoldersEmptyActionState() const
-{
+ECheckBoxState SPjcTabAssetsUnused::GetFoldersEmptyActionState() const {
 	return SubsystemPtr && SubsystemPtr->bShowFoldersEmpty ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
 }
 
-ECheckBoxState SPjcTabAssetsUnused::GetFoldersExcludedActionState() const
-{
+ECheckBoxState SPjcTabAssetsUnused::GetFoldersExcludedActionState() const {
 	return SubsystemPtr && SubsystemPtr->bShowFoldersExcluded ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
 }
 
-ECheckBoxState SPjcTabAssetsUnused::GetFoldersUsedActionState() const
-{
+ECheckBoxState SPjcTabAssetsUnused::GetFoldersUsedActionState() const {
 	return SubsystemPtr && SubsystemPtr->bShowFoldersUsed ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
 }
 
-ECheckBoxState SPjcTabAssetsUnused::GetFoldersEngineActionState() const
-{
+ECheckBoxState SPjcTabAssetsUnused::GetFoldersEngineActionState() const {
 	return SubsystemPtr && SubsystemPtr->bShowFoldersEngine ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
 }
 
-void SPjcTabAssetsUnused::ResetFilters()
-{
+void SPjcTabAssetsUnused::ResetFilters() {
 	bFilterAssetsUsedActive = false;
 	bFilterAssetsPrimaryActive = false;
 	bFilterAssetsEditorActive = false;
@@ -2010,8 +1838,7 @@ void SPjcTabAssetsUnused::ResetFilters()
 	bFilterAssetsUnusedActive = true;
 }
 
-void SPjcTabAssetsUnused::ResetCachedData()
-{
+void SPjcTabAssetsUnused::ResetCachedData() {
 	AssetsAll.Reset();
 	AssetsUsed.Reset();
 	AssetsUnused.Reset();
@@ -2049,43 +1876,35 @@ void SPjcTabAssetsUnused::ResetCachedData()
 	SizeAssetsExtReferenced = 0;
 }
 
-void SPjcTabAssetsUnused::UpdateMapInfo(TMap<FString, int32>& MapNum, TMap<FString, int64>& MapSize, const FString& AssetPath, int64 AssetSize)
-{
+void SPjcTabAssetsUnused::UpdateMapInfo(TMap<FString, int32>& MapNum, TMap<FString, int64>& MapSize, const FString& AssetPath, int64 AssetSize) {
 	FString CurrentPath = AssetPath;
 
 	// Iterate through all parent folders and update the asset count and size
-	while (!CurrentPath.IsEmpty())
-	{
-		if (MapNum.Contains(CurrentPath))
-		{
+	while (!CurrentPath.IsEmpty()) {
+		if (MapNum.Contains(CurrentPath)) {
 			MapNum[CurrentPath]++;
 			MapSize[CurrentPath] += AssetSize;
 		}
-		else
-		{
+		else {
 			MapNum.Add(CurrentPath, 1);
 			MapSize.Add(CurrentPath, AssetSize);
 		}
 
 		// Remove the last folder in the path
 		int32 LastSlashIndex;
-		if (CurrentPath.FindLastChar('/', LastSlashIndex))
-		{
+		if (CurrentPath.FindLastChar('/', LastSlashIndex)) {
 			CurrentPath.LeftInline(LastSlashIndex, false);
 		}
-		else
-		{
+		else {
 			CurrentPath.Empty();
 		}
 	}
 }
 
-bool SPjcTabAssetsUnused::IsSubsystemValid() const
-{
+bool SPjcTabAssetsUnused::IsSubsystemValid() const {
 	return SubsystemPtr != nullptr;
 }
 
-bool SPjcTabAssetsUnused::IsTreeValid() const
-{
+bool SPjcTabAssetsUnused::IsTreeValid() const {
 	return RootItem.IsValid() && TreeListView.IsValid();
 }

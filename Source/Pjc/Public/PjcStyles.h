@@ -7,7 +7,8 @@
 
 class FPjcStyles
 {
-public:
+  public:
+
 	static void Initialize();
 	static void Shutdown();
 	static void ReloadTextures();
@@ -16,7 +17,8 @@ public:
 	static FSlateFontInfo GetFont(const FString& FontType, const uint32 FontSize);
 	static FSlateIcon GetIcon(const FString& IconSpecifier);
 
-private:
+  private:
+
 	static TSharedRef<FSlateStyleSet> Create();
 	static TSharedPtr<FSlateStyleSet> StyleInstance;
 };

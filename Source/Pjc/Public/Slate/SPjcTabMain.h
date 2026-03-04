@@ -7,15 +7,17 @@
 
 class SPjcTabMain final : public SCompoundWidget
 {
-public:
-	SLATE_BEGIN_ARGS(SPjcTabMain) { }
+  public:
+
+	SLATE_BEGIN_ARGS(SPjcTabMain) {}
 
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs, const TSharedRef<SDockTab>& ConstructUnderMajorTab, const TSharedPtr<SWindow>& ConstructUnderWindow);
 	virtual ~SPjcTabMain() override;
 
-private:
+  private:
+
 	int32 GetWidgetIndex() const;
 	FText GetWidgetWarningText() const;
 	TSharedRef<SDockTab> OnTabAssetsUnusedSpawn(const FSpawnTabArgs& Args) const;

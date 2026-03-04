@@ -6,7 +6,8 @@
 
 class FPjcCmds final : public TCommands<FPjcCmds>
 {
-public:
+  public:
+
 	FPjcCmds();
 	virtual void RegisterCommands() override;
 

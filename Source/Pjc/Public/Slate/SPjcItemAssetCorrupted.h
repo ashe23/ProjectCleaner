@@ -9,16 +9,18 @@ struct FPjcCorruptedAssetItem;
 
 class SPjcItemAssetCorrupted final : public SMultiColumnTableRow<TSharedPtr<FPjcCorruptedAssetItem>>
 {
-public:
+  public:
+
 	SLATE_BEGIN_ARGS(SPjcItemAssetCorrupted) {}
-		SLATE_ARGUMENT(TSharedPtr<FPjcCorruptedAssetItem>, Item)
-		SLATE_ARGUMENT(FText, TextHighlight)
+	SLATE_ARGUMENT(TSharedPtr<FPjcCorruptedAssetItem>, Item)
+	SLATE_ARGUMENT(FText, TextHighlight)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs, const TSharedRef<STableViewBase>& InTable);
 	virtual TSharedRef<SWidget> GenerateWidgetForColumn(const FName& InColumnName) override;
 
-private:
+  private:
+
 	FText TextHighlight;
 	TSharedPtr<FPjcCorruptedAssetItem> Item;
 };

@@ -6,51 +6,42 @@
 
 FPjcFilterAssetsUsed::FPjcFilterAssetsUsed(TSharedPtr<FFrontendFilterCategory> InCategory) : FFrontendFilter(InCategory) {}
 
-FString FPjcFilterAssetsUsed::GetName() const
-{
+FString FPjcFilterAssetsUsed::GetName() const {
 	return TEXT("Assets Used");
 }
 
-FText FPjcFilterAssetsUsed::GetDisplayName() const
-{
+FText FPjcFilterAssetsUsed::GetDisplayName() const {
 	return FText::FromString(TEXT("Assets Used"));
 }
 
-FText FPjcFilterAssetsUsed::GetToolTipText() const
-{
+FText FPjcFilterAssetsUsed::GetToolTipText() const {
 	return FText::FromString(TEXT("Show assets that considered used."));
 }
 
-FLinearColor FPjcFilterAssetsUsed::GetColor() const
-{
+FLinearColor FPjcFilterAssetsUsed::GetColor() const {
 	return FLinearColor::Green;
 }
 
-void FPjcFilterAssetsUsed::ActiveStateChanged(bool bActive)
-{
+void FPjcFilterAssetsUsed::ActiveStateChanged(bool bActive) {
 	FFrontendFilter::ActiveStateChanged(bActive);
 
-	if (bActive)
-	{
+	if (bActive) {
 		UpdateData();
 	}
 
-	if (DelegateFilterChanged.IsBound())
-	{
+	if (DelegateFilterChanged.IsBound()) {
 		DelegateFilterChanged.Broadcast(bActive);
 	}
 }
 
-bool FPjcFilterAssetsUsed::PassesFilter(const FContentBrowserItem& InItem) const
-{
+bool FPjcFilterAssetsUsed::PassesFilter(const FContentBrowserItem& InItem) const {
 	FAssetData AssetData;
 	if (!InItem.Legacy_TryGetAssetData(AssetData)) return false;
 
 	return Assets.Contains(AssetData);
 }
 
-void FPjcFilterAssetsUsed::UpdateData()
-{
+void FPjcFilterAssetsUsed::UpdateData() {
 	TArray<FAssetData> AssetsUsed;
 	UPjcSubsystem::GetAssetsUsed(AssetsUsed, false);
 
@@ -58,58 +49,48 @@ void FPjcFilterAssetsUsed::UpdateData()
 	Assets.Append(AssetsUsed);
 }
 
-FPjcDelegateFilterChanged& FPjcFilterAssetsUsed::OnFilterChanged()
-{
+FPjcDelegateFilterChanged& FPjcFilterAssetsUsed::OnFilterChanged() {
 	return DelegateFilterChanged;
 }
 
 FPjcFilterAssetsPrimary::FPjcFilterAssetsPrimary(TSharedPtr<FFrontendFilterCategory> InCategory) : FFrontendFilter(InCategory) {}
 
-FString FPjcFilterAssetsPrimary::GetName() const
-{
+FString FPjcFilterAssetsPrimary::GetName() const {
 	return TEXT("Assets Primary");
 }
 
-FText FPjcFilterAssetsPrimary::GetDisplayName() const
-{
+FText FPjcFilterAssetsPrimary::GetDisplayName() const {
 	return FText::FromString(TEXT("Assets Primary"));
 }
 
-FText FPjcFilterAssetsPrimary::GetToolTipText() const
-{
+FText FPjcFilterAssetsPrimary::GetToolTipText() const {
 	return FText::FromString(TEXT("Show primary assets."));
 }
 
-FLinearColor FPjcFilterAssetsPrimary::GetColor() const
-{
+FLinearColor FPjcFilterAssetsPrimary::GetColor() const {
 	return FLinearColor::Red;
 }
 
-void FPjcFilterAssetsPrimary::ActiveStateChanged(bool bActive)
-{
+void FPjcFilterAssetsPrimary::ActiveStateChanged(bool bActive) {
 	FFrontendFilter::ActiveStateChanged(bActive);
 
-	if (bActive)
-	{
+	if (bActive) {
 		UpdateData();
 	}
 
-	if (DelegateFilterChanged.IsBound())
-	{
+	if (DelegateFilterChanged.IsBound()) {
 		DelegateFilterChanged.Broadcast(bActive);
 	}
 }
 
-bool FPjcFilterAssetsPrimary::PassesFilter(const FContentBrowserItem& InItem) const
-{
+bool FPjcFilterAssetsPrimary::PassesFilter(const FContentBrowserItem& InItem) const {
 	FAssetData AssetData;
 	if (!InItem.Legacy_TryGetAssetData(AssetData)) return false;
 
 	return Assets.Contains(AssetData);
 }
 
-void FPjcFilterAssetsPrimary::UpdateData()
-{
+void FPjcFilterAssetsPrimary::UpdateData() {
 	TArray<FAssetData> AssetsPrimary;
 	UPjcSubsystem::GetAssetsPrimary(AssetsPrimary, false);
 
@@ -117,58 +98,48 @@ void FPjcFilterAssetsPrimary::UpdateData()
 	Assets.Append(AssetsPrimary);
 }
 
-FPjcDelegateFilterChanged& FPjcFilterAssetsPrimary::OnFilterChanged()
-{
+FPjcDelegateFilterChanged& FPjcFilterAssetsPrimary::OnFilterChanged() {
 	return DelegateFilterChanged;
 }
 
 FPjcFilterAssetsIndirect::FPjcFilterAssetsIndirect(TSharedPtr<FFrontendFilterCategory> InCategory) : FFrontendFilter(InCategory) {}
 
-FString FPjcFilterAssetsIndirect::GetName() const
-{
+FString FPjcFilterAssetsIndirect::GetName() const {
 	return TEXT("Assets Indirect");
 }
 
-FText FPjcFilterAssetsIndirect::GetDisplayName() const
-{
+FText FPjcFilterAssetsIndirect::GetDisplayName() const {
 	return FText::FromString(TEXT("Assets Indirect"));
 }
 
-FText FPjcFilterAssetsIndirect::GetToolTipText() const
-{
+FText FPjcFilterAssetsIndirect::GetToolTipText() const {
 	return FText::FromString(TEXT("Show assets used in source code or config files."));
 }
 
-FLinearColor FPjcFilterAssetsIndirect::GetColor() const
-{
+FLinearColor FPjcFilterAssetsIndirect::GetColor() const {
 	return FLinearColor::White;
 }
 
-void FPjcFilterAssetsIndirect::ActiveStateChanged(bool bActive)
-{
+void FPjcFilterAssetsIndirect::ActiveStateChanged(bool bActive) {
 	FFrontendFilter::ActiveStateChanged(bActive);
 
-	if (bActive)
-	{
+	if (bActive) {
 		UpdateData();
 	}
 
-	if (DelegateFilterChanged.IsBound())
-	{
+	if (DelegateFilterChanged.IsBound()) {
 		DelegateFilterChanged.Broadcast(bActive);
 	}
 }
 
-bool FPjcFilterAssetsIndirect::PassesFilter(const FContentBrowserItem& InItem) const
-{
+bool FPjcFilterAssetsIndirect::PassesFilter(const FContentBrowserItem& InItem) const {
 	FAssetData AssetData;
 	if (!InItem.Legacy_TryGetAssetData(AssetData)) return false;
 
 	return Assets.Contains(AssetData);
 }
 
-void FPjcFilterAssetsIndirect::UpdateData()
-{
+void FPjcFilterAssetsIndirect::UpdateData() {
 	TArray<FAssetData> AssetsIndirect;
 	TArray<FPjcAssetIndirectInfo> AssetIndirectInfos;
 	UPjcSubsystem::GetAssetsIndirect(AssetsIndirect, AssetIndirectInfos, false);
@@ -177,58 +148,48 @@ void FPjcFilterAssetsIndirect::UpdateData()
 	Assets.Append(AssetsIndirect);
 }
 
-FPjcDelegateFilterChanged& FPjcFilterAssetsIndirect::OnFilterChanged()
-{
+FPjcDelegateFilterChanged& FPjcFilterAssetsIndirect::OnFilterChanged() {
 	return DelegateFilterChanged;
 }
 
 FPjcFilterAssetsCircular::FPjcFilterAssetsCircular(TSharedPtr<FFrontendFilterCategory> InCategory) : FFrontendFilter(InCategory) {}
 
-FString FPjcFilterAssetsCircular::GetName() const
-{
+FString FPjcFilterAssetsCircular::GetName() const {
 	return TEXT("Assets Circular");
 }
 
-FText FPjcFilterAssetsCircular::GetDisplayName() const
-{
+FText FPjcFilterAssetsCircular::GetDisplayName() const {
 	return FText::FromString(TEXT("Assets Circular"));
 }
 
-FText FPjcFilterAssetsCircular::GetToolTipText() const
-{
+FText FPjcFilterAssetsCircular::GetToolTipText() const {
 	return FText::FromString(TEXT("Show assets with circular dependencies"));
 }
 
-FLinearColor FPjcFilterAssetsCircular::GetColor() const
-{
+FLinearColor FPjcFilterAssetsCircular::GetColor() const {
 	return FPjcStyles::Get().GetColor("ProjectCleaner.Color.DarkGray");
 }
 
-void FPjcFilterAssetsCircular::ActiveStateChanged(bool bActive)
-{
+void FPjcFilterAssetsCircular::ActiveStateChanged(bool bActive) {
 	FFrontendFilter::ActiveStateChanged(bActive);
 
-	if (bActive)
-	{
+	if (bActive) {
 		UpdateData();
 	}
 
-	if (DelegateFilterChanged.IsBound())
-	{
+	if (DelegateFilterChanged.IsBound()) {
 		DelegateFilterChanged.Broadcast(bActive);
 	}
 }
 
-bool FPjcFilterAssetsCircular::PassesFilter(const FContentBrowserItem& InItem) const
-{
+bool FPjcFilterAssetsCircular::PassesFilter(const FContentBrowserItem& InItem) const {
 	FAssetData AssetData;
 	if (!InItem.Legacy_TryGetAssetData(AssetData)) return false;
 
 	return Assets.Contains(AssetData);
 }
 
-void FPjcFilterAssetsCircular::UpdateData()
-{
+void FPjcFilterAssetsCircular::UpdateData() {
 	TArray<FAssetData> AssetsCircular;
 	UPjcSubsystem::GetAssetsCircular(AssetsCircular, false);
 
@@ -236,58 +197,48 @@ void FPjcFilterAssetsCircular::UpdateData()
 	Assets.Append(AssetsCircular);
 }
 
-FPjcDelegateFilterChanged& FPjcFilterAssetsCircular::OnFilterChanged()
-{
+FPjcDelegateFilterChanged& FPjcFilterAssetsCircular::OnFilterChanged() {
 	return DelegateFilterChanged;
 }
 
 FPjcFilterAssetsEditor::FPjcFilterAssetsEditor(TSharedPtr<FFrontendFilterCategory> InCategory) : FFrontendFilter(InCategory) {}
 
-FString FPjcFilterAssetsEditor::GetName() const
-{
+FString FPjcFilterAssetsEditor::GetName() const {
 	return TEXT("Assets Editor");
 }
 
-FText FPjcFilterAssetsEditor::GetDisplayName() const
-{
+FText FPjcFilterAssetsEditor::GetDisplayName() const {
 	return FText::FromString(TEXT("Assets Editor"));
 }
 
-FText FPjcFilterAssetsEditor::GetToolTipText() const
-{
+FText FPjcFilterAssetsEditor::GetToolTipText() const {
 	return FText::FromString(TEXT("Show editor specific assets"));
 }
 
-FLinearColor FPjcFilterAssetsEditor::GetColor() const
-{
+FLinearColor FPjcFilterAssetsEditor::GetColor() const {
 	return FLinearColor::Blue;
 }
 
-void FPjcFilterAssetsEditor::ActiveStateChanged(bool bActive)
-{
+void FPjcFilterAssetsEditor::ActiveStateChanged(bool bActive) {
 	FFrontendFilter::ActiveStateChanged(bActive);
 
-	if (bActive)
-	{
+	if (bActive) {
 		UpdateData();
 	}
 
-	if (DelegateFilterChanged.IsBound())
-	{
+	if (DelegateFilterChanged.IsBound()) {
 		DelegateFilterChanged.Broadcast(bActive);
 	}
 }
 
-bool FPjcFilterAssetsEditor::PassesFilter(const FContentBrowserItem& InItem) const
-{
+bool FPjcFilterAssetsEditor::PassesFilter(const FContentBrowserItem& InItem) const {
 	FAssetData AssetData;
 	if (!InItem.Legacy_TryGetAssetData(AssetData)) return false;
 
 	return Assets.Contains(AssetData);
 }
 
-void FPjcFilterAssetsEditor::UpdateData()
-{
+void FPjcFilterAssetsEditor::UpdateData() {
 	TArray<FAssetData> AssetsEditor;
 	UPjcSubsystem::GetAssetsEditor(AssetsEditor, false);
 
@@ -295,58 +246,48 @@ void FPjcFilterAssetsEditor::UpdateData()
 	Assets.Append(AssetsEditor);
 }
 
-FPjcDelegateFilterChanged& FPjcFilterAssetsEditor::OnFilterChanged()
-{
+FPjcDelegateFilterChanged& FPjcFilterAssetsEditor::OnFilterChanged() {
 	return DelegateFilterChanged;
 }
 
 FPjcFilterAssetsExcluded::FPjcFilterAssetsExcluded(TSharedPtr<FFrontendFilterCategory> InCategory) : FFrontendFilter(InCategory) {}
 
-FString FPjcFilterAssetsExcluded::GetName() const
-{
+FString FPjcFilterAssetsExcluded::GetName() const {
 	return TEXT("Assets Excluded");
 }
 
-FText FPjcFilterAssetsExcluded::GetDisplayName() const
-{
+FText FPjcFilterAssetsExcluded::GetDisplayName() const {
 	return FText::FromString(TEXT("Assets Excluded"));
 }
 
-FText FPjcFilterAssetsExcluded::GetToolTipText() const
-{
+FText FPjcFilterAssetsExcluded::GetToolTipText() const {
 	return FText::FromString(TEXT("Show excluded assets."));
 }
 
-FLinearColor FPjcFilterAssetsExcluded::GetColor() const
-{
+FLinearColor FPjcFilterAssetsExcluded::GetColor() const {
 	return FPjcStyles::Get().GetColor("ProjectCleaner.Color.Yellow");
 }
 
-void FPjcFilterAssetsExcluded::ActiveStateChanged(bool bActive)
-{
+void FPjcFilterAssetsExcluded::ActiveStateChanged(bool bActive) {
 	FFrontendFilter::ActiveStateChanged(bActive);
 
-	if (bActive)
-	{
+	if (bActive) {
 		UpdateData();
 	}
 
-	if (DelegateFilterChanged.IsBound())
-	{
+	if (DelegateFilterChanged.IsBound()) {
 		DelegateFilterChanged.Broadcast(bActive);
 	}
 }
 
-bool FPjcFilterAssetsExcluded::PassesFilter(const FContentBrowserItem& InItem) const
-{
+bool FPjcFilterAssetsExcluded::PassesFilter(const FContentBrowserItem& InItem) const {
 	FAssetData AssetData;
 	if (!InItem.Legacy_TryGetAssetData(AssetData)) return false;
 
 	return Assets.Contains(AssetData);
 }
 
-void FPjcFilterAssetsExcluded::UpdateData()
-{
+void FPjcFilterAssetsExcluded::UpdateData() {
 	TArray<FAssetData> AssetExcluded;
 	UPjcSubsystem::GetAssetsExcluded(AssetExcluded, false);
 
@@ -354,58 +295,48 @@ void FPjcFilterAssetsExcluded::UpdateData()
 	Assets.Append(AssetExcluded);
 }
 
-FPjcDelegateFilterChanged& FPjcFilterAssetsExcluded::OnFilterChanged()
-{
+FPjcDelegateFilterChanged& FPjcFilterAssetsExcluded::OnFilterChanged() {
 	return DelegateFilterChanged;
 }
 
 FPjcFilterAssetsExtReferenced::FPjcFilterAssetsExtReferenced(TSharedPtr<FFrontendFilterCategory> InCategory) : FFrontendFilter(InCategory) {}
 
-FString FPjcFilterAssetsExtReferenced::GetName() const
-{
+FString FPjcFilterAssetsExtReferenced::GetName() const {
 	return TEXT("Assets ExtReferenced");
 }
 
-FText FPjcFilterAssetsExtReferenced::GetDisplayName() const
-{
+FText FPjcFilterAssetsExtReferenced::GetDisplayName() const {
 	return FText::FromString(TEXT("Assets ExtReferenced"));
 }
 
-FText FPjcFilterAssetsExtReferenced::GetToolTipText() const
-{
+FText FPjcFilterAssetsExtReferenced::GetToolTipText() const {
 	return FText::FromString(TEXT("Show assets with external referencers outside Content folder"));
 }
 
-FLinearColor FPjcFilterAssetsExtReferenced::GetColor() const
-{
+FLinearColor FPjcFilterAssetsExtReferenced::GetColor() const {
 	return FPjcStyles::Get().GetColor("ProjectCleaner.Color.Violet");
 }
 
-void FPjcFilterAssetsExtReferenced::ActiveStateChanged(bool bActive)
-{
+void FPjcFilterAssetsExtReferenced::ActiveStateChanged(bool bActive) {
 	FFrontendFilter::ActiveStateChanged(bActive);
 
-	if (bActive)
-	{
+	if (bActive) {
 		UpdateData();
 	}
 
-	if (DelegateFilterChanged.IsBound())
-	{
+	if (DelegateFilterChanged.IsBound()) {
 		DelegateFilterChanged.Broadcast(bActive);
 	}
 }
 
-bool FPjcFilterAssetsExtReferenced::PassesFilter(const FContentBrowserItem& InItem) const
-{
+bool FPjcFilterAssetsExtReferenced::PassesFilter(const FContentBrowserItem& InItem) const {
 	FAssetData AssetData;
 	if (!InItem.Legacy_TryGetAssetData(AssetData)) return false;
 
 	return Assets.Contains(AssetData);
 }
 
-void FPjcFilterAssetsExtReferenced::UpdateData()
-{
+void FPjcFilterAssetsExtReferenced::UpdateData() {
 	TArray<FAssetData> AssetsExtReferenced;
 	UPjcSubsystem::GetAssetsExtReferenced(AssetsExtReferenced, false);
 
@@ -413,7 +344,6 @@ void FPjcFilterAssetsExtReferenced::UpdateData()
 	Assets.Append(AssetsExtReferenced);
 }
 
-FPjcDelegateFilterChanged& FPjcFilterAssetsExtReferenced::OnFilterChanged()
-{
+FPjcDelegateFilterChanged& FPjcFilterAssetsExtReferenced::OnFilterChanged() {
 	return DelegateFilterChanged;
 }

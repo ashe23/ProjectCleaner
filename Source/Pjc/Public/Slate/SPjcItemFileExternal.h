@@ -9,16 +9,18 @@ struct FPjcFileExternalItem;
 
 class SPjcItemFileExternal final : public SMultiColumnTableRow<TSharedPtr<FPjcFileExternalItem>>
 {
-public:
+  public:
+
 	SLATE_BEGIN_ARGS(SPjcItemFileExternal) {}
-		SLATE_ARGUMENT(TSharedPtr<FPjcFileExternalItem>, Item)
-		SLATE_ARGUMENT(FText, TextHighlight)
+	SLATE_ARGUMENT(TSharedPtr<FPjcFileExternalItem>, Item)
+	SLATE_ARGUMENT(FText, TextHighlight)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs, const TSharedRef<STableViewBase>& InTable);
 	virtual TSharedRef<SWidget> GenerateWidgetForColumn(const FName& InColumnName) override;
 
-private:
+  private:
+
 	FText TextHighlight;
 	TSharedPtr<FPjcFileExternalItem> Item;
 };

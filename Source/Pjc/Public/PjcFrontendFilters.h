@@ -9,7 +9,8 @@ DECLARE_MULTICAST_DELEGATE_OneParam(FPjcDelegateFilterChanged, const bool bActiv
 
 class FPjcFilterAssetsUsed final : public FFrontendFilter
 {
-public:
+  public:
+
 	explicit FPjcFilterAssetsUsed(TSharedPtr<FFrontendFilterCategory> InCategory);
 	virtual FString GetName() const override;
 	virtual FText GetDisplayName() const override;
@@ -21,14 +22,16 @@ public:
 
 	FPjcDelegateFilterChanged& OnFilterChanged();
 
-private:
+  private:
+
 	FPjcDelegateFilterChanged DelegateFilterChanged;
 	TSet<FAssetData> Assets;
 };
 
 class FPjcFilterAssetsPrimary final : public FFrontendFilter
 {
-public:
+  public:
+
 	explicit FPjcFilterAssetsPrimary(TSharedPtr<FFrontendFilterCategory> InCategory);
 	virtual FString GetName() const override;
 	virtual FText GetDisplayName() const override;
@@ -40,14 +43,16 @@ public:
 
 	FPjcDelegateFilterChanged& OnFilterChanged();
 
-private:
+  private:
+
 	FPjcDelegateFilterChanged DelegateFilterChanged;
 	TSet<FAssetData> Assets;
 };
 
 class FPjcFilterAssetsIndirect final : public FFrontendFilter
 {
-public:
+  public:
+
 	explicit FPjcFilterAssetsIndirect(TSharedPtr<FFrontendFilterCategory> InCategory);
 	virtual FString GetName() const override;
 	virtual FText GetDisplayName() const override;
@@ -59,14 +64,16 @@ public:
 
 	FPjcDelegateFilterChanged& OnFilterChanged();
 
-private:
+  private:
+
 	FPjcDelegateFilterChanged DelegateFilterChanged;
 	TSet<FAssetData> Assets;
 };
 
 class FPjcFilterAssetsCircular final : public FFrontendFilter
 {
-public:
+  public:
+
 	explicit FPjcFilterAssetsCircular(TSharedPtr<FFrontendFilterCategory> InCategory);
 	virtual FString GetName() const override;
 	virtual FText GetDisplayName() const override;
@@ -78,14 +85,16 @@ public:
 
 	FPjcDelegateFilterChanged& OnFilterChanged();
 
-private:
+  private:
+
 	FPjcDelegateFilterChanged DelegateFilterChanged;
 	TSet<FAssetData> Assets;
 };
 
 class FPjcFilterAssetsEditor final : public FFrontendFilter
 {
-public:
+  public:
+
 	explicit FPjcFilterAssetsEditor(TSharedPtr<FFrontendFilterCategory> InCategory);
 	virtual FString GetName() const override;
 	virtual FText GetDisplayName() const override;
@@ -97,14 +106,16 @@ public:
 
 	FPjcDelegateFilterChanged& OnFilterChanged();
 
-private:
+  private:
+
 	FPjcDelegateFilterChanged DelegateFilterChanged;
 	TSet<FAssetData> Assets;
 };
 
 class FPjcFilterAssetsExcluded final : public FFrontendFilter
 {
-public:
+  public:
+
 	explicit FPjcFilterAssetsExcluded(TSharedPtr<FFrontendFilterCategory> InCategory);
 	virtual FString GetName() const override;
 	virtual FText GetDisplayName() const override;
@@ -116,14 +127,16 @@ public:
 
 	FPjcDelegateFilterChanged& OnFilterChanged();
 
-private:
+  private:
+
 	FPjcDelegateFilterChanged DelegateFilterChanged;
 	TSet<FAssetData> Assets;
 };
 
 class FPjcFilterAssetsExtReferenced final : public FFrontendFilter
 {
-public:
+  public:
+
 	explicit FPjcFilterAssetsExtReferenced(TSharedPtr<FFrontendFilterCategory> InCategory);
 	virtual FString GetName() const override;
 	virtual FText GetDisplayName() const override;
@@ -135,7 +148,8 @@ public:
 
 	FPjcDelegateFilterChanged& OnFilterChanged();
 
-private:
+  private:
+
 	FPjcDelegateFilterChanged DelegateFilterChanged;
 	TSet<FAssetData> Assets;
 };

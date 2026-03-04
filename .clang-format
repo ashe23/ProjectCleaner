@@ -47,7 +47,7 @@ BraceWrapping:
 BracedInitializerIndentWidth: 2
 BreakAdjacentStringLiterals: false
 BreakArrays: false
-BreakBeforeBinaryOperators: None
+BreakBeforeBinaryOperators: All
 BreakBeforeTernaryOperators: true
 BreakConstructorInitializers: AfterColon
 BreakFunctionDefinitionParameters: false
