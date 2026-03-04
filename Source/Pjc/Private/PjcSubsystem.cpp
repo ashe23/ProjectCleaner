@@ -187,7 +187,7 @@ void UPjcSubsystem::GetAssetsIndirect(TArray<FAssetData>& Assets, TArray<FPjcAss
 			const FAssetData AssetData = GetModuleAssetRegistry().Get().GetAssetByObjectPath(FName {*ObjectPath});
 			if (!AssetData.IsValid()) continue;
 
-			// if founded asset is ok, we loading file lines to determine on what line its used
+			// if founded asset is ok, we are loading file lines to determine on what line its used
 			TArray<FString> Lines;
 			FFileHelper::LoadFileToStringArray(Lines, *File);
 
@@ -700,7 +700,7 @@ void UPjcSubsystem::DeleteAssetsUnused(const bool bShowSlowTask, const bool bSho
 	Bucket.Reserve(BucketSize);
 
 	// Assets must be loaded first when deleting, which can cause a lot of unnecessary shader compilation work.
-	// Therefore, we disable shader compilation during this stage for faster deletion and then enable it afterwards.
+	// Therefore, we disable shader compilation during this stage for faster deletion and then enable it afterward.
 	ShaderCompilationDisable();
 
 	FScopedSlowTask SlowTask(
@@ -995,7 +995,7 @@ bool UPjcSubsystem::AssetIsCircular(const FAssetData& InAsset) {
 FString UPjcSubsystem::PathNormalize(const FString& InPath) {
 	if (InPath.IsEmpty()) return {};
 
-	// Ensure the path dont starts with a slash or a disk drive letter
+	// Ensure the path don't start with a slash or a disk drive letter
 	if (!(InPath.StartsWith(TEXT("/")) || InPath.StartsWith(TEXT("\\")) || (InPath.Len() > 2 && InPath[1] == ':'))) {
 		return {};
 	}
@@ -1411,7 +1411,7 @@ void UPjcSubsystem::BucketFill(TArray<FAssetData>& AssetsUnused, TArray<FAssetDa
 		return;
 	}
 
-	// if root assets not found, we deleting assets single by finding its referencers
+	// if root assets not found, we are deleting assets single by finding its referencers
 	if (AssetsUnused.Num() == 0) {
 		return;
 	}
