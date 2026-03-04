@@ -1,0 +1,18 @@
+---
+Checks: >
+    -*,
+FormatStyle: "file"
+WarningsAsErrors: true
+CheckOptions:
+    - { key: readability-identifier-naming.VariableCase, value: CamelCase }
+    - { readability-identifier-naming.VariableCase, value: CamelCase }
+    - { readability-identifier-naming.FunctionCase, value: CamelCase }
+    - { readability-identifier-naming.ParameterCase, value: CamelCase }
+    - { readability-identifier-naming.StructCase, value: CamelCase }
+    - { readability-identifier-naming.UnionCase, value: CamelCase }
+    - { readability-identifier-naming.MacroDefinitionCase, value: UPPER_CASE }
+    - { readability-identifier-naming.EnumCase, value: CamelCase }
+    - {
+          readability-identifier-naming.EnumConstantCase,
+          value: CamelCase,
+      }
