@@ -2,6 +2,7 @@
 
 #include "Slate/SPjcItemTree.h"
 #include "PjcStyles.h"
+#include "PjcShim.h"
 #include "PjcTypes.h"
 // Engine Headers
 #include "Widgets/Notifications/SProgressBar.h"
@@ -149,7 +150,7 @@ TSharedRef<SWidget> SPjcItemTree::GenerateWidgetForColumn(const FName& InColumnN
 }
 
 const FSlateBrush* SPjcItemTree::GetFolderIcon() const {
-	return FEditorStyle::GetBrush(Item->bIsExpanded ? TEXT("ContentBrowser.AssetTreeFolderOpen") : TEXT("ContentBrowser.AssetTreeFolderClosed"));
+	return PjcShim::GetBrush(Item->bIsExpanded ? TEXT("ContentBrowser.AssetTreeFolderOpen") : TEXT("ContentBrowser.AssetTreeFolderClosed"));
 }
 
 FSlateColor SPjcItemTree::GetFolderColor() const {

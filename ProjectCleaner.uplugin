@@ -10,8 +10,9 @@
 	"DocsURL": "https://github.com/ashe23/ProjectCleaner/wiki",
 	"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/product/4d7f5dc837fc4b009bb91e678adf9fd0",
 	"SupportURL": "https://github.com/ashe23/ProjectCleaner/issues",
-	"EngineVersion": "4.27.0",
 	"CanContainContent": false,
+    "IsBetaVersion": false,
+    "IsExperimentalVersion": false,
 	"Installed": true,
 	"Modules": [
 		{
@@ -20,7 +21,6 @@
 			"LoadingPhase": "PostDefault",
 			"WhitelistPlatforms": [
 				"Win64",
-				"Win32",
 				"Linux"
 			]
 		}

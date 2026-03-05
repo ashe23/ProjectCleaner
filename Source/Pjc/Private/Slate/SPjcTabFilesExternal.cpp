@@ -4,6 +4,7 @@
 #include "Slate/SPjcItemFileExternal.h"
 #include "PjcCmds.h"
 #include "PjcStyles.h"
+#include "PjcShim.h"
 #include "PjcSubsystem.h"
 #include "PjcConstants.h"
 // Engine Headers
@@ -88,7 +89,7 @@ void SPjcTabFilesExternal::Construct(const FArguments& InArgs) {
 		[
 			SNew(SSplitter)
 			.PhysicalSplitterHandleSize(3.0f)
-			.Style(FEditorStyle::Get(), "DetailsView.Splitter")
+			.Style(PjcShim::GetStyle(), "DetailsView.Splitter")
 			+ SSplitter::Slot()
 			.Value(0.3f)
 			[
@@ -213,7 +214,7 @@ void SPjcTabFilesExternal::Construct(const FArguments& InArgs) {
 						SNew(SComboButton)
 						.ContentPadding(0)
 						.ForegroundColor_Raw(this, &SPjcTabFilesExternal::GetOptionsBtnForegroundColor)
-						.ButtonStyle(FEditorStyle::Get(), "ToggleButton")
+						.ButtonStyle(PjcShim::GetStyle(), "ToggleButton")
 						.OnGetMenuContent(this, &SPjcTabFilesExternal::GetBtnOptionsContent)
 						.ButtonContent()
 						[
@@ -222,7 +223,7 @@ void SPjcTabFilesExternal::Construct(const FArguments& InArgs) {
 							.AutoWidth()
 							.VAlign(VAlign_Center)
 							[
-								SNew(SImage).Image(FEditorStyle::GetBrush("GenericViewButton"))
+								SNew(SImage).Image(PjcShim::GetBrush("GenericViewButton"))
 							]
 							+ SHorizontalBox::Slot()
 							.AutoWidth()
@@ -487,9 +488,9 @@ FSlateColor SPjcTabFilesExternal::GetOptionsBtnForegroundColor() const {
 	static const FName InvertedForegroundName("InvertedForeground");
 	static const FName DefaultForegroundName("DefaultForeground");
 
-	if (!OptionBtn.IsValid()) return FEditorStyle::GetSlateColor(DefaultForegroundName);
+	if (!OptionBtn.IsValid()) return PjcShim::GetSlateColor(DefaultForegroundName);
 
-	return OptionBtn->IsHovered() ? FEditorStyle::GetSlateColor(InvertedForegroundName) : FEditorStyle::GetSlateColor(DefaultForegroundName);
+	return OptionBtn->IsHovered() ? PjcShim::GetSlateColor(InvertedForegroundName) : PjcShim::GetSlateColor(DefaultForegroundName);
 }
 
 FText SPjcTabFilesExternal::GetTxtSummary() const {

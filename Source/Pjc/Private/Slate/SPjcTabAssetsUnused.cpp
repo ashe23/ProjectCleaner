@@ -7,6 +7,7 @@
 #include "PjcCmds.h"
 #include "PjcTypes.h"
 #include "PjcStyles.h"
+#include "PjcShim.h"
 #include "PjcSubsystem.h"
 #include "PjcConstants.h"
 #include "PjcFrontendFilters.h"
@@ -223,7 +224,7 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs) {
 		[
 			SNew(SSplitter)
 			.PhysicalSplitterHandleSize(3.0f)
-			.Style(FEditorStyle::Get(), "DetailsView.Splitter")
+			.Style(PjcShim::GetStyle(), "DetailsView.Splitter")
 			+ SSplitter::Slot()
 			.Value(0.2f)
 			[
@@ -326,7 +327,7 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs) {
 					.AutoWidth()
 					[
 						SNew(SImage)
-						.Image(FEditorStyle::GetBrush("ContentBrowser.AssetTreeFolderOpen"))
+						.Image(PjcShim::GetBrush("ContentBrowser.AssetTreeFolderOpen"))
 						.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Red"))
 					]
 					+ SHorizontalBox::Slot()
@@ -339,7 +340,7 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs) {
 					.AutoWidth()
 					[
 						SNew(SImage)
-						.Image(FEditorStyle::GetBrush("ContentBrowser.AssetTreeFolderOpen"))
+						.Image(PjcShim::GetBrush("ContentBrowser.AssetTreeFolderOpen"))
 						.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Yellow"))
 					]
 					+ SHorizontalBox::Slot()
@@ -352,7 +353,7 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs) {
 					.AutoWidth()
 					[
 						SNew(SImage)
-						.Image(FEditorStyle::GetBrush("ContentBrowser.AssetTreeFolderOpen"))
+						.Image(PjcShim::GetBrush("ContentBrowser.AssetTreeFolderOpen"))
 						.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Blue"))
 					]
 					+ SHorizontalBox::Slot()
@@ -408,7 +409,7 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs) {
 						SNew(SComboButton)
 						.ContentPadding(0)
 						.ForegroundColor_Raw(this, &SPjcTabAssetsUnused::GetTreeOptionsBtnForegroundColor)
-						.ButtonStyle(FEditorStyle::Get(), "ToggleButton")
+						.ButtonStyle(PjcShim::GetStyle(), "ToggleButton")
 						.OnGetMenuContent(this, &SPjcTabAssetsUnused::GetTreeBtnOptionsContent)
 						.ButtonContent()
 						[
@@ -417,7 +418,7 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs) {
 							.AutoWidth()
 							.VAlign(VAlign_Center)
 							[
-								SNew(SImage).Image(FEditorStyle::GetBrush("GenericViewButton"))
+								SNew(SImage).Image(PjcShim::GetBrush("GenericViewButton"))
 							]
 							+ SHorizontalBox::Slot()
 							.AutoWidth()
@@ -1443,9 +1444,9 @@ FSlateColor SPjcTabAssetsUnused::GetTreeOptionsBtnForegroundColor() const {
 	static const FName InvertedForegroundName("InvertedForeground");
 	static const FName DefaultForegroundName("DefaultForeground");
 
-	if (!TreeOptionBtn.IsValid()) return FEditorStyle::GetSlateColor(DefaultForegroundName);
+	if (!TreeOptionBtn.IsValid()) return PjcShim::GetSlateColor(DefaultForegroundName);
 
-	return TreeOptionBtn->IsHovered() ? FEditorStyle::GetSlateColor(InvertedForegroundName) : FEditorStyle::GetSlateColor(DefaultForegroundName);
+	return TreeOptionBtn->IsHovered() ? PjcShim::GetSlateColor(InvertedForegroundName) : PjcShim::GetSlateColor(DefaultForegroundName);
 }
 
 TSharedRef<SWidget> SPjcTabAssetsUnused::GetTreeBtnOptionsContent() {
