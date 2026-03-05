@@ -9,6 +9,7 @@
 #include "PjcSubsystem.h"
 #include "PjcStyles.h"
 #include "PjcCmds.h"
+#include "PjcShim.h"
 // Engine Headers
 #include "Widgets/Layout/SWidgetSwitcher.h"
 
@@ -137,7 +138,7 @@ void SPjcTabMain::Construct(
 	];
 	// clang-format on
 
-	TabManager->SetMenuMultiBox(MenuBarBuilder.GetMultiBox());
+	PjcShim::SetTabManagerMenuMultiBox(TabManager, MenuBarBuilder.GetMultiBox());
 }
 
 SPjcTabMain::~SPjcTabMain() {

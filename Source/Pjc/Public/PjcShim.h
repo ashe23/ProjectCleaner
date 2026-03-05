@@ -7,6 +7,9 @@
 #include "Styling/SlateColor.h"
 #include "Runtime/Launch/Resources/Version.h"
 
+class FTabManager;
+class FMultiBox;
+
 #if ENGINE_MAJOR_VERSION == 5
 #include "Styling/AppStyle.h"
 #else
@@ -19,4 +22,6 @@ namespace PjcShim
 	const ISlateStyle& GetStyle();
 	const FSlateBrush* GetBrush(const FName PropertyName, const ANSICHAR* Specifier = nullptr);
 	FSlateColor GetSlateColor(const FName PropertyName, const ANSICHAR* Specifier = nullptr);
+
+	void SetTabManagerMenuMultiBox(const TSharedPtr<FTabManager>& InTabManager, const TSharedRef<FMultiBox>& InMultiBox);
 }	// namespace PjcShim

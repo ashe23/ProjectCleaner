@@ -1,6 +1,8 @@
 // Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "PjcShim.h"
+#include "Framework/Docking/TabManager.h"
+#include "Framework/MultiBox/MultiBox.h"
 
 namespace PjcShim
 {
@@ -25,6 +27,16 @@ namespace PjcShim
 		return FAppStyle::GetSlateColor(PropertyName, Specifier);
 #else
 		return FEditorStyle::GetSlateColor(PropertyName, Specifier);
+#endif
+	}
+
+	void SetTabManagerMenuMultiBox(const TSharedPtr<FTabManager>& InTabManager, const TSharedRef<FMultiBox>& InMultiBox) {
+		if (!InTabManager.IsValid()) return;
+
+#if ENGINE_MAJOR_VERSION == 5
+		InTabManager->SetMenuMultiBox(InMultiBox, nullptr);
+#else
+		InTabManager->SetMenuMultiBox(InMultiBox);
 #endif
 	}
 }	// namespace PjcShim
