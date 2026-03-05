@@ -28,28 +28,37 @@ public class Pjc : ModuleRules
 		PrivateDependencyModuleNames.AddRange(
 			new[]
 			{
+                // core modules
 				"Engine",
 				"CoreUObject",
 				"Slate",
 				"SlateCore",
+				"AssetRegistry",
+				"AssetTools",
+                // editor modules
+				"AssetManagerEditor",
+				"Blutility",
 				"ToolMenus",
 				"Projects",
+				"PropertyEditor",
 				"UnrealEd",
 				"EditorStyle",
-				"AssetRegistry",
-				"PropertyEditor",
-				"ContentBrowser",
-				"ContentBrowserData",
-				"InputCore",
 				"EditorSubsystem",
-				"Blutility",
 				"EditorScriptingUtilities",
 				"EditorWidgets",
 				"IntroTutorials",
+				"InputCore",
+				"ContentBrowser",
+				"ContentBrowserData",
 				"UMGEditor",
-				"AssetManagerEditor",
-				"AssetTools"
 			}
 		);
+		
+        // modules require for engine version 5.x+
+		if (Target.Version.MajorVersion == 5)
+		{
+			PrivateDependencyModuleNames.Add("RenderCore");
+			PrivateDependencyModuleNames.Add("EditorFramework");
+		}
 	}
 }
