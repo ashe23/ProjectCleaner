@@ -88,8 +88,8 @@ void UPjcSubsystem::GetAssetsUsed(TArray<FAssetData>& Assets, const bool bShowSl
 		SlowTask.EnterProgressFrame(1.0f, FText::FromString(Asset.GetFullName()));
 
 		const FName AssetExactClassName = GetAssetExactClassName(Asset);
-		const bool bIsPrimary = ClassNamesPrimary.Contains(Asset.AssetClass) || ClassNamesPrimary.Contains(AssetExactClassName);
-		const bool bIsEditor = ClassNamesEditor.Contains(Asset.AssetClass) || ClassNamesEditor.Contains(AssetExactClassName);
+		const bool bIsPrimary = ClassNamesPrimary.Contains(PjcShim::GetAssetClassName(Asset)) || ClassNamesPrimary.Contains(AssetExactClassName);
+		const bool bIsEditor = ClassNamesEditor.Contains(PjcShim::GetAssetClassName(Asset)) || ClassNamesEditor.Contains(AssetExactClassName);
 		const bool bIsExtReferenced = AssetIsExtReferenced(Asset);
 		const bool bIsUsed = bIsPrimary || bIsEditor || bIsExtReferenced;
 
@@ -152,7 +152,7 @@ void UPjcSubsystem::GetAssetsPrimary(TArray<FAssetData>& Assets, const bool bSho
 	for (const auto& Asset : AssetsAll) {
 		SlowTask.EnterProgressFrame(1.0f, FText::FromString(Asset.GetFullName()));
 
-		if (ClassNamesPrimary.Contains(Asset.AssetClass) || ClassNamesPrimary.Contains(GetAssetExactClassName(Asset))) {
+		if (ClassNamesPrimary.Contains(PjcShim::GetAssetClassName(Asset)) || ClassNamesPrimary.Contains(GetAssetExactClassName(Asset))) {
 			Assets.Emplace(Asset);
 		}
 	}
@@ -192,7 +192,7 @@ void UPjcSubsystem::GetAssetsIndirect(TArray<FAssetData>& Assets, TArray<FPjcAss
 			const FString ObjectPath = PathConvertToObjectPath(FoundedAssetObjectPath);
 			if (ObjectPath.IsEmpty()) continue;
 
-			const FAssetData AssetData = GetModuleAssetRegistry().Get().GetAssetByObjectPath(FName {*ObjectPath});
+			const FAssetData AssetData = PjcShim::GetAssetByObjectPath(ObjectPath);
 			if (!AssetData.IsValid() || FolderIsExternal(AssetData.PackagePath.ToString())) continue;
 
 			// if founded asset is ok, we are loading file lines to determine on what line its used
@@ -258,7 +258,7 @@ void UPjcSubsystem::GetAssetsEditor(TArray<FAssetData>& Assets, const bool bShow
 	for (const auto& Asset : AssetsAll) {
 		SlowTask.EnterProgressFrame(1.0f, FText::FromString(Asset.GetFullName()));
 
-		if (ClassNamesEditor.Contains(Asset.AssetClass) || ClassNamesEditor.Contains(GetAssetExactClassName(Asset))) {
+		if (ClassNamesEditor.Contains(PjcShim::GetAssetClassName(Asset)) || ClassNamesEditor.Contains(GetAssetExactClassName(Asset))) {
 			Assets.Emplace(Asset);
 		}
 	}
@@ -293,11 +293,11 @@ void UPjcSubsystem::GetAssetsExcluded(TArray<FAssetData>& Assets, const bool bSh
 		for (const auto& ExcludedClass : AssetExcludeSettings->ExcludedClasses) {
 			if (!ExcludedClass.LoadSynchronous() || ExcludedClass.IsNull()) continue;
 
-			ClassNamesExcluded.Emplace(ExcludedClass.Get()->GetFName());
+			ClassNamesExcluded.Emplace(PjcShim::GetClassName(ExcludedClass.Get()));
 		}
 
 		for (const auto& Asset : AssetsAll) {
-			if (ClassNamesExcluded.Contains(Asset.AssetClass) || ClassNamesExcluded.Contains(GetAssetExactClassName(Asset))) {
+			if (ClassNamesExcluded.Contains(PjcShim::GetAssetClassName(Asset)) || ClassNamesExcluded.Contains(GetAssetExactClassName(Asset))) {
 				AssetsExcluded.Emplace(Asset);
 			}
 		}
@@ -330,15 +330,16 @@ void UPjcSubsystem::GetAssetsExcluded(TArray<FAssetData>& Assets, const bool bSh
 	{
 		FARFilter Filter;
 
-		Filter.ObjectPaths.Reserve(AssetExcludeSettings->ExcludedAssets.Num());
+		PjcShim::ReserveFilterObjectPaths(Filter, AssetExcludeSettings->ExcludedAssets.Num());
 
 		for (const auto& ExcludedAsset : AssetExcludeSettings->ExcludedAssets) {
 			if (!ExcludedAsset.LoadSynchronous()) continue;
 
-			Filter.ObjectPaths.Emplace(ExcludedAsset.ToSoftObjectPath().GetAssetPathName());
+			FAssetData AssetData(ExcludedAsset.Get());
+			PjcShim::AddFilterObjectPath(Filter, AssetData);
 		}
 
-		if (Filter.ObjectPaths.Num() > 0) {
+		if (PjcShim::HasFilterObjectPaths(Filter)) {
 			TArray<FAssetData> AssetsExcludedByObjectPaths;
 			GetModuleAssetRegistry().Get().GetAssets(Filter, AssetsExcludedByObjectPaths);
 
@@ -388,24 +389,24 @@ void UPjcSubsystem::GetClassNamesPrimary(TSet<FName>& ClassNames) {
 	for (const auto& AssetTypeInfo : AssetTypeInfos) {
 		if (!AssetTypeInfo.AssetBaseClassLoaded) continue;
 
-		ClassNamesPrimaryBase.Emplace(AssetTypeInfo.AssetBaseClassLoaded->GetFName());
+		ClassNamesPrimaryBase.Emplace(PjcShim::GetClassName(AssetTypeInfo.AssetBaseClassLoaded));
 	}
 
 	// getting list of primary assets classes that are derived from main primary assets
 	ClassNames.Empty();
-	GetModuleAssetRegistry().Get().GetDerivedClassNames(ClassNamesPrimaryBase.Array(), TSet<FName> {}, ClassNames);
+	PjcShim::GetDerivedClassNames(ClassNamesPrimaryBase.Array(), TSet<FName> {}, ClassNames);
 }
 
 void UPjcSubsystem::GetClassNamesEditor(TSet<FName>& ClassNames) {
 	const TArray<FName> ClassNamesEditorBase {
-	  UEditorUtilityWidget::StaticClass()->GetFName(),
-	  UEditorUtilityBlueprint::StaticClass()->GetFName(),
-	  UEditorUtilityWidgetBlueprint::StaticClass()->GetFName(),
-	  UEditorTutorial::StaticClass()->GetFName()
+	  PjcShim::GetClassName(UEditorUtilityWidget::StaticClass()),
+	  PjcShim::GetClassName(UEditorUtilityBlueprint::StaticClass()),
+	  PjcShim::GetClassName(UEditorUtilityWidgetBlueprint::StaticClass()),
+	  PjcShim::GetClassName(UEditorTutorial::StaticClass())
 	};
 
 	ClassNames.Empty();
-	GetModuleAssetRegistry().Get().GetDerivedClassNames(ClassNamesEditorBase, TSet<FName> {}, ClassNames);
+	PjcShim::GetDerivedClassNames(ClassNamesEditorBase, TSet<FName> {}, ClassNames);
 }
 
 void UPjcSubsystem::GetClassNamesExcluded(TSet<FName>& ClassNames) {
@@ -416,7 +417,7 @@ void UPjcSubsystem::GetClassNamesExcluded(TSet<FName>& ClassNames) {
 	for (const auto& ExcludedClass : AssetExcludeSettings->ExcludedClasses) {
 		if (!ExcludedClass.LoadSynchronous() || ExcludedClass.IsNull()) continue;
 
-		ClassNames.Emplace(ExcludedClass.Get()->GetFName());
+		ClassNames.Emplace(PjcShim::GetClassName(ExcludedClass.Get()));
 	}
 }
 
@@ -609,7 +610,7 @@ void UPjcSubsystem::GetFilesCorrupted(TArray<FString>& Files, const bool bShowSl
 
 		const FString Path = PathConvertToObjectPath(File);
 		if (Path.IsEmpty()) continue;
-		if (GetModuleAssetRegistry().Get().GetAssetByObjectPath(FName {*Path}).IsValid()) continue;
+		if (PjcShim::GetAssetByObjectPath(Path).IsValid()) continue;
 
 		Files.Emplace(File);
 	}
@@ -924,7 +925,7 @@ void UPjcSubsystem::GetProjectRedirectors(TArray<FAssetData>& Redirectors) {
 	FARFilter Filter;
 	Filter.bRecursivePaths = true;
 	Filter.PackagePaths.Emplace(PjcConstants::PathRoot);
-	Filter.ClassNames.Emplace(UObjectRedirector::StaticClass()->GetFName());
+	PjcShim::AddFilterClass(Filter, UObjectRedirector::StaticClass());
 
 	Redirectors.Reset();
 	GetModuleAssetRegistry().Get().GetAssets(Filter, Redirectors);
@@ -1140,7 +1141,7 @@ FName UPjcSubsystem::GetAssetExactClassName(const FAssetData& InAsset) {
 		return FName {*FPackageName::ObjectPathToObjectName(ClassObjectPath)};
 	}
 
-	return InAsset.AssetClass;
+	return PjcShim::GetAssetClassName(InAsset);
 }
 
 bool UPjcSubsystem::FolderIsEmpty(const FString& InPath) {
@@ -1333,13 +1334,7 @@ void UPjcSubsystem::OpenPathInFileExplorer(const FString& InPath) {
 }
 
 void UPjcSubsystem::OpenAssetEditor(const FAssetData& InAsset) {
-	if (!InAsset.IsValid()) return;
-	if (!GEditor) return;
-
-	TArray<FName> AssetNames;
-	AssetNames.Add(InAsset.ToSoftObjectPath().GetAssetPathName());
-
-	GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->OpenEditorsForAssets(AssetNames);
+	PjcShim::OpenAssetEditor(InAsset);
 }
 
 void UPjcSubsystem::OpenSizeMapViewer(const TArray<FAssetData>& InAssets) {
@@ -1465,7 +1460,7 @@ void UPjcSubsystem::BucketFill(TArray<FAssetData>& AssetsUnused, TArray<FAssetDa
 
 		for (const auto& Ref : Refs) {
 			const FString ObjectPath = Ref.ToString() + TEXT(".") + FPaths::GetBaseFilename(*Ref.ToString());
-			const FAssetData AssetData = GetModuleAssetRegistry().Get().GetAssetByObjectPath(FName {*ObjectPath});
+			const FAssetData AssetData = PjcShim::GetAssetByObjectPath(ObjectPath);
 			if (AssetData.IsValid()) {
 				if (!Bucket.Contains(AssetData)) {
 					Stack.Add(AssetData);
@@ -1485,7 +1480,7 @@ bool UPjcSubsystem::BucketPrepare(const TArray<FAssetData>& Bucket, TArray<UObje
 	ObjectPaths.Reserve(Bucket.Num());
 
 	for (const auto& Asset : Bucket) {
-		ObjectPaths.Add(Asset.ObjectPath.ToString());
+		ObjectPaths.Add(PjcShim::GetObjectPathString(Asset));
 	}
 
 	return AssetViewUtils::LoadAssetsIfNeeded(ObjectPaths, LoadedAssets, false, true);

@@ -700,7 +700,7 @@ void SPjcTabAssetsUnused::OnAssetsExcludeByClass() {
 			if (!BlueprintClass) continue;
 
 			const bool bAlreadyInList = ExcludeSettings->ExcludedClasses.ContainsByPredicate([&](const TSoftClassPtr<UObject>& InObject) {
-				return InObject.LoadSynchronous() && InObject.Get()->GetFName().IsEqual(BlueprintClass->GetFName());
+				return InObject.LoadSynchronous() && PjcShim::GetClassName(InObject.Get()).IsEqual(PjcShim::GetClassName(BlueprintClass));
 			});
 
 			if (!bAlreadyInList) {
@@ -709,7 +709,7 @@ void SPjcTabAssetsUnused::OnAssetsExcludeByClass() {
 		}
 		else {
 			const bool bAlreadyInList = ExcludeSettings->ExcludedClasses.ContainsByPredicate([&](const TSoftClassPtr<UObject>& InObject) {
-				return InObject.LoadSynchronous() && InObject.Get()->GetFName().IsEqual(AssetExactClassName);
+				return InObject.LoadSynchronous() && PjcShim::GetClassName(InObject.Get()).IsEqual(AssetExactClassName);
 			});
 
 			if (!bAlreadyInList) {
@@ -735,7 +735,7 @@ void SPjcTabAssetsUnused::OnAssetsInclude() {
 		});
 
 		const bool bAssetClassAlreadyExcluded = ExcludeSettings->ExcludedClasses.ContainsByPredicate([&](const TSoftClassPtr<UObject>& InClass) {
-			return InClass.LoadSynchronous() && InClass.Get()->GetFName().IsEqual(UPjcSubsystem::GetAssetExactClassName(Asset));
+			return InClass.LoadSynchronous() && PjcShim::GetClassName(InClass.Get()).IsEqual(UPjcSubsystem::GetAssetExactClassName(Asset));
 		});
 
 		if (bAssetFolderAlreadyExcluded || bAssetClassAlreadyExcluded) {
@@ -780,7 +780,8 @@ void SPjcTabAssetsUnused::OnAssetsIncludeByClass() {
 
 		ExcludeSettings->ExcludedClasses.RemoveAllSwap(
 			[&](const TSoftClassPtr<UObject>& ExcludedAsset) {
-				return ExcludedAsset.LoadSynchronous() && ExcludedAsset.Get()->GetFName().IsEqual(UPjcSubsystem::GetAssetExactClassName(Asset));
+				return ExcludedAsset.LoadSynchronous()
+					&& PjcShim::GetClassName(ExcludedAsset.Get()).IsEqual(UPjcSubsystem::GetAssetExactClassName(Asset));
 			},
 			false
 		);
@@ -1130,58 +1131,58 @@ void SPjcTabAssetsUnused::UpdateContentBrowser() {
 
 	if (AnyFilterActive()) {
 		if (bFilterAssetsUsedActive) {
-			Filter.ObjectPaths.Reserve(Filter.ObjectPaths.Num() + AssetsUsed.Num());
+			PjcShim::ReserveFilterObjectPaths(Filter, AssetsUsed.Num());
 
 			for (const auto& Asset : AssetsUsed) {
-				Filter.ObjectPaths.Emplace(Asset.ToSoftObjectPath().GetAssetPathName());
+				PjcShim::AddFilterObjectPath(Filter, Asset);
 			}
 		}
 
 		if (bFilterAssetsPrimaryActive) {
-			Filter.ObjectPaths.Reserve(Filter.ObjectPaths.Num() + AssetsPrimary.Num());
+			PjcShim::ReserveFilterObjectPaths(Filter, AssetsPrimary.Num());
 
 			for (const auto& Asset : AssetsPrimary) {
-				Filter.ObjectPaths.Emplace(Asset.ToSoftObjectPath().GetAssetPathName());
+				PjcShim::AddFilterObjectPath(Filter, Asset);
 			}
 		}
 
 		if (bFilterAssetsEditorActive) {
-			Filter.ObjectPaths.Reserve(Filter.ObjectPaths.Num() + AssetsEditor.Num());
+			PjcShim::ReserveFilterObjectPaths(Filter, AssetsEditor.Num());
 
 			for (const auto& Asset : AssetsEditor) {
-				Filter.ObjectPaths.Emplace(Asset.ToSoftObjectPath().GetAssetPathName());
+				PjcShim::AddFilterObjectPath(Filter, Asset);
 			}
 		}
 
 		if (bFilterAssetsIndirectActive) {
-			Filter.ObjectPaths.Reserve(Filter.ObjectPaths.Num() + AssetsIndirect.Num());
+			PjcShim::ReserveFilterObjectPaths(Filter, AssetsIndirect.Num());
 
 			for (const auto& Asset : AssetsIndirect) {
-				Filter.ObjectPaths.Emplace(Asset.ToSoftObjectPath().GetAssetPathName());
+				PjcShim::AddFilterObjectPath(Filter, Asset);
 			}
 		}
 
 		if (bFilterAssetsExcludedActive) {
-			Filter.ObjectPaths.Reserve(Filter.ObjectPaths.Num() + AssetsExcluded.Num());
+			PjcShim::ReserveFilterObjectPaths(Filter, AssetsExcluded.Num());
 
 			for (const auto& Asset : AssetsExcluded) {
-				Filter.ObjectPaths.Emplace(Asset.ToSoftObjectPath().GetAssetPathName());
+				PjcShim::AddFilterObjectPath(Filter, Asset);
 			}
 		}
 
 		if (bFilterAssetsExtReferencedActive) {
-			Filter.ObjectPaths.Reserve(Filter.ObjectPaths.Num() + AssetsExtReferenced.Num());
+			PjcShim::ReserveFilterObjectPaths(Filter, AssetsExtReferenced.Num());
 
 			for (const auto& Asset : AssetsExtReferenced) {
-				Filter.ObjectPaths.Emplace(Asset.ToSoftObjectPath().GetAssetPathName());
+				PjcShim::AddFilterObjectPath(Filter, Asset);
 			}
 		}
 
 		if (bFilterAssetsCircularActive) {
-			Filter.ObjectPaths.Reserve(Filter.ObjectPaths.Num() + AssetsCircular.Num());
+			PjcShim::ReserveFilterObjectPaths(Filter, AssetsCircular.Num());
 
 			for (const auto& Asset : AssetsCircular) {
-				Filter.ObjectPaths.Emplace(Asset.ToSoftObjectPath().GetAssetPathName());
+				PjcShim::AddFilterObjectPath(Filter, Asset);
 			}
 		}
 
@@ -1191,10 +1192,10 @@ void SPjcTabAssetsUnused::UpdateContentBrowser() {
 	}
 
 	if (AssetsUnused.Num() > 0 && bFilterAssetsUnusedActive) {
-		Filter.ObjectPaths.Reserve(AssetsUnused.Num());
+		PjcShim::ReserveFilterObjectPaths(Filter, AssetsUnused.Num());
 
 		for (const auto& Asset : AssetsUnused) {
-			Filter.ObjectPaths.Emplace(Asset.ToSoftObjectPath().GetAssetPathName());
+			PjcShim::AddFilterObjectPath(Filter, Asset);
 		}
 	}
 	else {
