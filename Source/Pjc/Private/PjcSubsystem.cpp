@@ -2,17 +2,16 @@
 
 #include "PjcSubsystem.h"
 #include "PjcConstants.h"
+#include "PjcShim.h"
 #include "Pjc.h"
 // Engine Headers
 #include "AssetManagerEditorModule.h"
 #include "AssetViewUtils.h"
-#include "EditorTutorial.h"
 #include "EditorUtilityBlueprint.h"
 #include "EditorUtilityWidget.h"
 #include "EditorUtilityWidgetBlueprint.h"
 #include "FileHelpers.h"
 #include "ObjectTools.h"
-#include "PjcShim.h"
 #include "ShaderCompiler.h"
 #include "Engine/AssetManager.h"
 #include "Framework/Notifications/NotificationManager.h"
@@ -401,8 +400,7 @@ void UPjcSubsystem::GetClassNamesEditor(TSet<FName>& ClassNames) {
 	const TArray<FName> ClassNamesEditorBase {
 	  PjcShim::GetClassName(UEditorUtilityWidget::StaticClass()),
 	  PjcShim::GetClassName(UEditorUtilityBlueprint::StaticClass()),
-	  PjcShim::GetClassName(UEditorUtilityWidgetBlueprint::StaticClass()),
-	  PjcShim::GetClassName(UEditorTutorial::StaticClass())
+	  PjcShim::GetClassName(UEditorUtilityWidgetBlueprint::StaticClass())
 	};
 
 	ClassNames.Empty();

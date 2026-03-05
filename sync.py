@@ -18,8 +18,8 @@ source_plugin_dir = r"C:\dev\ue_projects\sandbox\Hub427\Plugins\ProjectCleaner"
 target_projects = [
     "Hub500",
     "Hub510",
-    # "Hub520",
-    # "Hub530",
+    "Hub520",
+    "Hub530",
     # "Hub540",
     # "Hub550",
     # "Hub560",

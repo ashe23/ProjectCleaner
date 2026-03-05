@@ -46,7 +46,6 @@ public class Pjc : ModuleRules
 				"EditorSubsystem",
 				"EditorScriptingUtilities",
 				"EditorWidgets",
-				"IntroTutorials",
 				"InputCore",
 				"ContentBrowser",
 				"ContentBrowserData",
