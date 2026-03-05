@@ -12,6 +12,7 @@
 #include "EditorUtilityWidgetBlueprint.h"
 #include "FileHelpers.h"
 #include "ObjectTools.h"
+#include "PjcShim.h"
 #include "ShaderCompiler.h"
 #include "Engine/AssetManager.h"
 #include "Framework/Notifications/NotificationManager.h"
@@ -43,6 +44,13 @@ void UPjcSubsystem::GetAssetsAll(TArray<FAssetData>& Assets) {
 	Assets.Reset();
 
 	GetModuleAssetRegistry().Get().GetAssetsByPath(PjcConstants::PathRoot, Assets, true);
+
+	// filtering assets that are in '/Game/__ExternalActors__' and '/Game/__ExternalObjects__' folders
+	FARFilter Filter;
+	Filter.bRecursivePaths = true;
+	Filter.PackagePaths.Add(FName {*GetPathExternalActors()});
+	Filter.PackagePaths.Add(FName {*GetPathExternalObjects()});
+	GetModuleAssetRegistry().Get().UseFilterToExcludeAssets(Assets, Filter);
 }
 
 void UPjcSubsystem::GetAssetsUsed(TArray<FAssetData>& Assets, const bool bShowSlowTask) {
@@ -185,7 +193,7 @@ void UPjcSubsystem::GetAssetsIndirect(TArray<FAssetData>& Assets, TArray<FPjcAss
 			if (ObjectPath.IsEmpty()) continue;
 
 			const FAssetData AssetData = GetModuleAssetRegistry().Get().GetAssetByObjectPath(FName {*ObjectPath});
-			if (!AssetData.IsValid()) continue;
+			if (!AssetData.IsValid() || FolderIsExternal(AssetData.PackagePath.ToString())) continue;
 
 			// if founded asset is ok, we are loading file lines to determine on what line its used
 			TArray<FString> Lines;
@@ -597,6 +605,8 @@ void UPjcSubsystem::GetFilesCorrupted(TArray<FString>& Files, const bool bShowSl
 	for (const auto& File : FileAssets) {
 		SlowTask.EnterProgressFrame(1.0f, FText::FromString(File));
 
+		if (FolderIsExternal(PathConvertToRelative(FPaths::GetPath(File)))) continue;
+
 		const FString Path = PathConvertToObjectPath(File);
 		if (Path.IsEmpty()) continue;
 		if (GetModuleAssetRegistry().Get().GetAssetByObjectPath(FName {*Path}).IsValid()) continue;
@@ -731,7 +741,7 @@ void UPjcSubsystem::DeleteAssetsUnused(const bool bShowSlowTask, const bool bSho
 		LoadedAssets.Reset();
 	}
 
-	const TSet<FName> EmptyPackages = GetModuleAssetRegistry().Get().GetCachedEmptyPackages();
+	const TSet<FName> EmptyPackages = PjcShim::GetCachedEmptyPackages();
 	TArray<UPackage*> AssetPackages;
 	for (const auto& EmptyPackage : EmptyPackages) {
 		UPackage* Package = FindPackage(nullptr, *EmptyPackage.ToString());
@@ -970,7 +980,7 @@ bool UPjcSubsystem::AssetIsExtReferenced(const FAssetData& InAsset) {
 	GetModuleAssetRegistry().Get().GetReferencers(InAsset.PackageName, Refs);
 
 	return Refs.ContainsByPredicate([](const FName& Ref) {
-		return !Ref.ToString().StartsWith(PjcConstants::PathRoot.ToString());
+		return !Ref.ToString().StartsWith(PjcConstants::PathRoot.ToString()) || FolderIsExternal(Ref.ToString());
 	});
 }
 
@@ -1085,10 +1095,9 @@ FString UPjcSubsystem::PathConvertToObjectPath(const FString& InPath) {
 int64 UPjcSubsystem::GetAssetSize(const FAssetData& InAsset) {
 	if (!InAsset.IsValid()) return 0;
 
-	const FAssetPackageData* AssetPackageData = GetModuleAssetRegistry().Get().GetAssetPackageData(InAsset.PackageName);
-	if (!AssetPackageData) return 0;
+	const FAssetPackageData AssetPackageData = PjcShim::GetAssetPackageData(InAsset.PackageName);
 
-	return AssetPackageData->DiskSize;
+	return AssetPackageData.DiskSize;
 }
 
 int64 UPjcSubsystem::GetAssetsTotalSize(const TArray<FAssetData>& InAssets) {
@@ -1097,10 +1106,8 @@ int64 UPjcSubsystem::GetAssetsTotalSize(const TArray<FAssetData>& InAssets) {
 	for (const auto& Asset : InAssets) {
 		if (!Asset.IsValid()) continue;
 
-		const auto AssetPackageData = GetModuleAssetRegistry().Get().GetAssetPackageData(Asset.PackageName);
-		if (!AssetPackageData) continue;
-
-		Size += AssetPackageData->DiskSize;
+		const FAssetPackageData AssetPackageData = PjcShim::GetAssetPackageData(Asset.PackageName);
+		Size += AssetPackageData.DiskSize;
 	}
 
 	return Size;
@@ -1185,6 +1192,21 @@ bool UPjcSubsystem::FolderIsEngineGenerated(const FString& InPath) {
 	EngineGeneratedPaths.Emplace(PathCurrentDeveloperCollections);
 
 	return EngineGeneratedPaths.Contains(InPath);
+}
+
+bool UPjcSubsystem::FolderIsExternal(const FString& InPath) {
+	const FString PathExternalActor = GetPathExternalActors();
+	const FString PathExternalObjects = GetPathExternalObjects();
+
+	if (!PathExternalActor.IsEmpty() && InPath.StartsWith(PathExternalActor)) {
+		return true;
+	}
+
+	if (!PathExternalObjects.IsEmpty() && InPath.StartsWith(PathExternalObjects)) {
+		return true;
+	}
+
+	return false;
 }
 
 void UPjcSubsystem::GetSourceAndConfigFiles(TSet<FString>& Files) {
@@ -1364,6 +1386,13 @@ void UPjcSubsystem::TryOpenFile(const FString& InPath) {
 	if (!FPaths::FileExists(InPath)) return;
 
 	FPlatformProcess::LaunchFileInDefaultExternalApplication(*InPath);
+}
+
+FString UPjcSubsystem::GetPathExternalActors() {
+	return PjcShim::GetPathExternalActors();
+}
+FString UPjcSubsystem::GetPathExternalObjects() {
+	return PjcShim::GetPathExternalObjects();
 }
 
 FAssetRegistryModule& UPjcSubsystem::GetModuleAssetRegistry() {

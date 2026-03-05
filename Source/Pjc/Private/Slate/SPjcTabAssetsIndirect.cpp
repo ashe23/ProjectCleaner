@@ -253,11 +253,21 @@ void SPjcTabAssetsIndirect::ListUpdateView() {
 	const FString SearchStr = SearchText.ToString();
 
 	for (const auto& Item : ItemsAll) {
-		if (!Item.IsValid()
-			|| (!SearchText.IsEmpty() && !Item->FilePath.Contains(SearchStr) && !Item->Asset.AssetName.ToString().Contains(SearchStr)
-				&& !Item->Asset.PackagePath.ToString().Contains(SearchStr))) {
+
+		if (!Item.IsValid()) {
 			continue;
 		}
+		// clang-format off
+		if (
+			!SearchText.IsEmpty() &&
+			!Item->FilePath.Contains(SearchStr) &&
+			!Item->Asset.AssetName.ToString().Contains(SearchStr) &&
+			!Item->Asset.PackagePath.ToString().Contains(SearchStr)
+			)
+		{
+			continue;
+		}
+		// clang-format on
 
 		ItemsFiltered.Emplace(MakeShareable(new FPjcAssetIndirectInfo {Item->Asset, Item->FilePath, Item->FileNum}));
 	}

@@ -351,6 +351,7 @@ class UPjcSubsystem final : public UEditorSubsystem
 	static bool FolderIsEmpty(const FString& InPath);
 	static bool FolderIsExcluded(const FString& InPath);
 	static bool FolderIsEngineGenerated(const FString& InPath);
+	static bool FolderIsExternal(const FString& InPath);
 	static void GetSourceAndConfigFiles(TSet<FString>& Files);
 	static void GetAssetsDependencies(TSet<FAssetData>& Assets);
 	static void ShowNotification(const FString& Msg, const SNotificationItem::ECompletionState State, const float Duration);
@@ -363,6 +364,8 @@ class UPjcSubsystem final : public UEditorSubsystem
 	static void OpenReferenceViewer(const TArray<FAssetData>& InAssets);
 	static void OpenAssetAuditViewer(const TArray<FAssetData>& InAssets);
 	static void TryOpenFile(const FString& InPath);
+	static FString GetPathExternalActors();
+	static FString GetPathExternalObjects();
 
 	static FAssetToolsModule& GetModuleAssetTools();
 	static FAssetRegistryModule& GetModuleAssetRegistry();

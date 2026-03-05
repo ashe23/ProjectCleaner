@@ -1082,6 +1082,8 @@ void SPjcTabAssetsUnused::UpdateTreeView() {
 		UPjcSubsystem::GetModuleAssetRegistry().Get().GetSubPaths(CurrentItem->FolderPath, SubPaths, false);
 
 		for (const auto& SubPath : SubPaths) {
+			if (UPjcSubsystem::FolderIsExternal(SubPath)) continue;
+
 			const TSharedPtr<FPjcTreeItem> SubItem = MakeShareable(new FPjcTreeItem);
 			if (!SubItem.IsValid()) continue;
 

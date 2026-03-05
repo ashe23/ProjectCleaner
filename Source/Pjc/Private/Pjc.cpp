@@ -1,6 +1,7 @@
 ﻿// Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "Pjc.h"
+#include "PjcShim.h"
 #include "PjcCmds.h"
 #include "PjcStyles.h"
 #include "PjcConstants.h"
@@ -34,7 +35,7 @@ void FPjc::StartupModule() {
 		);
 		Section.AddMenuEntryWithCommandList(FPjcCmds::Get().TabMain, Cmds);
 
-		UToolMenu* ToolbarMenu = UToolMenus::Get()->ExtendMenu("LevelEditor.LevelEditorToolBar");
+		UToolMenu* ToolbarMenu = UToolMenus::Get()->ExtendMenu(PjcShim::GetLevelEditorToolBarName());
 		FToolMenuSection& ToolbarSection = ToolbarMenu->FindOrAddSection("Settings");
 		FToolMenuEntry& Entry = ToolbarSection.AddEntry(FToolMenuEntry::InitToolBarButton(FPjcCmds::Get().TabMain));
 		Entry.SetCommandList(Cmds);

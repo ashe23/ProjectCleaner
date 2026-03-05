@@ -166,31 +166,35 @@ FText SPjcTabMain::GetWidgetWarningText() const {
 }
 
 TSharedRef<SDockTab> SPjcTabMain::OnTabAssetsUnusedSpawn(const FSpawnTabArgs& Args) const {
-	return SNew(SDockTab)
-		.TabRole(PanelTab)
-		.Label(FText::FromString(TEXT("Assets Unused")))
-		.Icon(FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.PieChart16"))[SNew(SPjcTabAssetsUnused)];
+	const auto Frontend = SNew(SDockTab).TabRole(PanelTab).Label(FText::FromString(TEXT("Assets Unused")))[SNew(SPjcTabAssetsUnused)];
+
+	Frontend->SetTabIcon(FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.PieChart16"));
+
+	return Frontend;
 }
 
 TSharedRef<SDockTab> SPjcTabMain::OnTabAssetsIndirectSpawn(const FSpawnTabArgs& Args) const {
-	return SNew(SDockTab)
-		.TabRole(PanelTab)
-		.Label(FText::FromString(TEXT("Assets Indirect")))
-		.Icon(FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.Arrows16"))[SNew(SPjcTabAssetsIndirect)];
+	const auto Frontend = SNew(SDockTab).TabRole(PanelTab).Label(FText::FromString(TEXT("Assets Indirect")))[SNew(SPjcTabAssetsIndirect)];
+
+	Frontend->SetTabIcon(FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.Arrows16"));
+
+	return Frontend;
 }
 
 TSharedRef<SDockTab> SPjcTabMain::OnTabAssetsCorruptedSpawn(const FSpawnTabArgs& Args) const {
-	return SNew(SDockTab)
-		.TabRole(PanelTab)
-		.Label(FText::FromString(TEXT("Assets Corrupted")))
-		.Icon(FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.CorruptedFile16"))[SNew(SPjcTabAssetsCorrupted)];
+	const auto Frontend = SNew(SDockTab).TabRole(PanelTab).Label(FText::FromString(TEXT("Assets Corrupted")))[SNew(SPjcTabAssetsCorrupted)];
+
+	Frontend->SetTabIcon(FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.CorruptedFile16"));
+
+	return Frontend;
 }
 
 TSharedRef<SDockTab> SPjcTabMain::OnTabFilesExternalSpawn(const FSpawnTabArgs& Args) const {
-	return SNew(SDockTab)
-		.TabRole(PanelTab)
-		.Label(FText::FromString(TEXT("Files External")))
-		.Icon(FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.File16"))[SNew(SPjcTabFilesExternal)];
+	const auto Frontend = SNew(SDockTab).TabRole(PanelTab).Label(FText::FromString(TEXT("Files External")))[SNew(SPjcTabFilesExternal)];
+
+	Frontend->SetTabIcon(FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.File16"));
+
+	return Frontend;
 }
 
 void SPjcTabMain::CreateMenuBarTabs(FMenuBuilder& MenuBuilder, const TSharedPtr<FTabManager> TabManagerPtr) {

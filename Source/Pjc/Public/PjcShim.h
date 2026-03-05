@@ -3,7 +3,6 @@
 #pragma once
 
 #include "CoreMinimal.h"
-// #include "Styling/SlateStyle.h"
 #include "Styling/SlateColor.h"
 #include "Runtime/Launch/Resources/Version.h"
 
@@ -22,6 +21,12 @@ namespace PjcShim
 	const ISlateStyle& GetStyle();
 	const FSlateBrush* GetBrush(const FName PropertyName, const ANSICHAR* Specifier = nullptr);
 	FSlateColor GetSlateColor(const FName PropertyName, const ANSICHAR* Specifier = nullptr);
+
+	FName GetLevelEditorToolBarName();
+	TSet<FName> GetCachedEmptyPackages();
+	FAssetPackageData GetAssetPackageData(const FName PackageName);
+	FString GetPathExternalActors();
+	FString GetPathExternalObjects();
 
 	void SetTabManagerMenuMultiBox(const TSharedPtr<FTabManager>& InTabManager, const TSharedRef<FMultiBox>& InMultiBox);
 }	// namespace PjcShim
