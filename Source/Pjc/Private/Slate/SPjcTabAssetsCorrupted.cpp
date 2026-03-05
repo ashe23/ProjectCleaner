@@ -3,6 +3,7 @@
 #include "Slate/SPjcTabAssetsCorrupted.h"
 #include "Slate/SPjcItemAssetCorrupted.h"
 #include "PjcCmds.h"
+#include "PjcShim.h"
 #include "PjcStyles.h"
 #include "PjcConstants.h"
 #include "PjcSubsystem.h"
@@ -376,7 +377,7 @@ void SPjcTabAssetsCorrupted::OnDelete() {
 	const FText Title = FText::FromString(TEXT("Delete Corrupted Asset Files"));
 	const FText Context = FText::FromString(TEXT("Are you sure you want to delete selected files?"));
 
-	const EAppReturnType::Type ReturnType = FMessageDialog::Open(EAppMsgType::YesNo, Context, &Title);
+	const EAppReturnType::Type ReturnType = PjcShim::ShowDialog(Title, Context, EAppMsgType::YesNo);
 	if (ReturnType == EAppReturnType::Cancel || ReturnType == EAppReturnType::No) return;
 
 	const auto ItemsSelected = ListView->GetSelectedItems();

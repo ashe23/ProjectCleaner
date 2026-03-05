@@ -43,4 +43,7 @@ namespace PjcShim
 	void GetDerivedClassNames(const TArray<FName>& ClassNames, const TSet<FName>& ExcludedClassNames, TSet<FName>& OutDerivedClassNames);
 	void OpenAssetEditor(const FAssetData& InAssetData);
 	FString GetObjectPathString(const FAssetData& InAssetData);
+
+	bool IsAssetManagerValid();
+	EAppReturnType::Type ShowDialog(const FText& Title, const FText& Message, const EAppMsgType::Type MessageType);
 }	// namespace PjcShim

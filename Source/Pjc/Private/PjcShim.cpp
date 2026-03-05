@@ -11,6 +11,8 @@
 #endif
 #include "Framework/Docking/TabManager.h"
 #include "Framework/MultiBox/MultiBox.h"
+#include "Engine/AssetManager.h"
+#include "Misc/MessageDialog.h"
 
 namespace PjcShim
 {
@@ -200,6 +202,22 @@ namespace PjcShim
 		return InAssetData.GetObjectPathString();
 #else
 		return InAssetData.ObjectPath.ToString();
+#endif
+	}
+
+	bool IsAssetManagerValid() {
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3
+		return UAssetManager::IsInitialized();
+#else
+		return UAssetManager::Get().IsValid();
+#endif
+	}
+
+	EAppReturnType::Type ShowDialog(const FText& Title, const FText& Message, const EAppMsgType::Type MessageType) {
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3
+		return FMessageDialog::Open(MessageType, Message, Title);
+#else
+		return FMessageDialog::Open(MessageType, Message, &Title);
 #endif
 	}
 

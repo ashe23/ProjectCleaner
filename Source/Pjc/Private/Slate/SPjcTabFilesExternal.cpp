@@ -538,7 +538,7 @@ void SPjcTabFilesExternal::OnDelete() {
 	const FText Title = FText::FromString(TEXT("Delete External Files"));
 	const FText Context = FText::FromString(TEXT("Are you sure you want to delete selected files?"));
 
-	const EAppReturnType::Type ReturnType = FMessageDialog::Open(EAppMsgType::YesNo, Context, &Title);
+	const EAppReturnType::Type ReturnType = PjcShim::ShowDialog(Title, Context, EAppMsgType::YesNo);
 	if (ReturnType == EAppReturnType::Cancel || ReturnType == EAppReturnType::No) return;
 
 	for (const auto& Item : ItemsSelected) {

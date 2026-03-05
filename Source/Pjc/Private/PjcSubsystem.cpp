@@ -377,8 +377,9 @@ void UPjcSubsystem::GetAssetsExtReferenced(TArray<FAssetData>& Assets, const boo
 
 void UPjcSubsystem::GetClassNamesPrimary(TSet<FName>& ClassNames) {
 	// getting list of primary asset classes that are defined in AssetManager
+	if (!PjcShim::IsAssetManagerValid()) return;
+
 	const auto& AssetManager = UAssetManager::Get();
-	if (!AssetManager.IsValid()) return;
 
 	TSet<FName> ClassNamesPrimaryBase;
 	TArray<FPrimaryAssetTypeInfo> AssetTypeInfos;
