@@ -20,10 +20,10 @@ target_projects = [
     "Hub510",
     "Hub520",
     "Hub530",
-    # "Hub540",
-    # "Hub550",
-    # "Hub560",
-    # "Hub570",
+    "Hub540",
+    "Hub550",
+    "Hub560",
+    "Hub570",
 ]
 
 # Items we DO NOT want to sync to other engine versions

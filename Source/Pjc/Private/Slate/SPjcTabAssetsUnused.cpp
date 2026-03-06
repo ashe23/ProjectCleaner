@@ -26,13 +26,9 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs) {
 	SubsystemPtr = GEditor->GetEditorSubsystem<UPjcSubsystem>();
 	if (!SubsystemPtr) return;
 
-	UContentBrowserSettings* ContentBrowserSettings = GetMutableDefault<UContentBrowserSettings>();
+	UContentBrowserSettings* ContentBrowserSettings = PjcShim::GetContentBrowserSettingsForUnusedAssetsTab();
 	if (!ContentBrowserSettings) return;
 
-	ContentBrowserSettings->SetDisplayDevelopersFolder(true);
-	ContentBrowserSettings->SetDisplayEngineFolder(false);
-	ContentBrowserSettings->SetDisplayCppFolders(false);
-	ContentBrowserSettings->SetDisplayPluginFolders(false);
 	ContentBrowserSettings->PostEditChange();
 
 	Cmds = MakeShareable(new FUICommandList);
@@ -742,12 +738,9 @@ void SPjcTabAssetsUnused::OnAssetsInclude() {
 			bFilterConflicts = true;
 		}
 
-		ExcludeSettings->ExcludedAssets.RemoveAllSwap(
-			[&](const TSoftObjectPtr<UObject>& ExcludedAsset) {
-				return ExcludedAsset.LoadSynchronous() && ExcludedAsset.ToSoftObjectPath() == Asset.ToSoftObjectPath();
-			},
-			false
-		);
+		PjcShim::RemoveAllSwapArray(ExcludeSettings->ExcludedAssets, [&](const TSoftObjectPtr<UObject>& ExcludedAsset) {
+			return ExcludedAsset.LoadSynchronous() && ExcludedAsset.ToSoftObjectPath() == Asset.ToSoftObjectPath();
+		});
 	}
 
 	if (bFilterConflicts) {
@@ -778,13 +771,10 @@ void SPjcTabAssetsUnused::OnAssetsIncludeByClass() {
 			bFilterConflicts = true;
 		}
 
-		ExcludeSettings->ExcludedClasses.RemoveAllSwap(
-			[&](const TSoftClassPtr<UObject>& ExcludedAsset) {
-				return ExcludedAsset.LoadSynchronous()
-					&& PjcShim::GetClassName(ExcludedAsset.Get()).IsEqual(UPjcSubsystem::GetAssetExactClassName(Asset));
-			},
-			false
-		);
+		PjcShim::RemoveAllSwapArray(ExcludeSettings->ExcludedClasses, [&](const TSoftClassPtr<UObject>& ExcludedAsset) {
+			return ExcludedAsset.LoadSynchronous()
+				&& PjcShim::GetClassName(ExcludedAsset.Get()).IsEqual(UPjcSubsystem::GetAssetExactClassName(Asset));
+		});
 	}
 
 	if (bFilterConflicts) {
@@ -1071,7 +1061,7 @@ void SPjcTabAssetsUnused::UpdateTreeView() {
 	Stack.Push(RootItem);
 
 	while (Stack.Num() > 0) {
-		const auto CurrentItem = Stack.Pop(false);
+		const auto CurrentItem = PjcShim::PopArray(Stack);
 
 		TreeListView->SetItemExpansion(CurrentItem, CurrentItem->bIsExpanded);
 
@@ -1090,7 +1080,8 @@ void SPjcTabAssetsUnused::UpdateTreeView() {
 
 			SubItem->FolderPath = SubPath;
 			SubItem->FolderName = FPaths::GetPathLeaf(SubItem->FolderPath);
-			SubItem->bIsDev = SubItem->FolderPath.StartsWith(PjcConstants::PathDevelopers.ToString());
+			SubItem->bIsDev = SubItem->FolderPath.StartsWith(PjcConstants::PathDevelopers.ToString())
+				|| SubItem->FolderPath.StartsWith(PjcConstants::PathCollections.ToString());
 			SubItem->bIsRoot = false;
 			SubItem->bIsEmpty = UPjcSubsystem::FolderIsEmpty(SubItem->FolderPath);
 			SubItem->bIsExcluded = UPjcSubsystem::FolderIsExcluded(SubItem->FolderPath);
@@ -1268,7 +1259,7 @@ void SPjcTabAssetsUnused::SortTreeItems(const bool UpdateSortingOrder) {
 		Stack.Push(RootItem);
 
 		while (Stack.Num() > 0) {
-			const auto& CurrentItem = Stack.Pop(false);
+			const auto& CurrentItem = PjcShim::PopArray(Stack);
 			if (!CurrentItem.IsValid()) continue;
 
 			TArray<TSharedPtr<FPjcTreeItem>>& SubItems = CurrentItem->SubItems;
@@ -1327,7 +1318,7 @@ void SPjcTabAssetsUnused::ChangeItemExpansionRecursive(const TSharedPtr<FPjcTree
 	Stack.Push(Item);
 
 	while (Stack.Num() > 0) {
-		const auto CurrentItem = Stack.Pop(false);
+		const auto CurrentItem = PjcShim::PopArray(Stack);
 
 		CurrentItem->bIsExpanded = bExpansion;
 		TreeListView->SetItemExpansion(CurrentItem, CurrentItem->bIsExpanded);
@@ -1897,7 +1888,7 @@ void SPjcTabAssetsUnused::UpdateMapInfo(TMap<FString, int32>& MapNum, TMap<FStri
 		// Remove the last folder in the path
 		int32 LastSlashIndex;
 		if (CurrentPath.FindLastChar('/', LastSlashIndex)) {
-			CurrentPath.LeftInline(LastSlashIndex, false);
+			PjcShim::LeftInlineString(CurrentPath, LastSlashIndex);
 		}
 		else {
 			CurrentPath.Empty();

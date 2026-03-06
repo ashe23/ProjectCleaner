@@ -1254,17 +1254,14 @@ void UPjcSubsystem::GetAssetsDependencies(TSet<FAssetData>& Assets) {
 
 		TArray<FName> Deps;
 		while (Stack.Num() > 0) {
-			const auto CurrentPackageName = Stack.Pop(false);
+			const auto CurrentPackageName = PjcShim::PopArray(Stack);
 			Deps.Reset();
 
 			GetModuleAssetRegistry().Get().GetDependencies(CurrentPackageName, Deps);
 
-			Deps.RemoveAllSwap(
-				[&](const FName& Dep) {
-					return !Dep.ToString().StartsWith(*PjcConstants::PathRoot.ToString());
-				},
-				false
-			);
+			PjcShim::RemoveAllSwapArray(Deps, [&](const FName& Dep) {
+				return !Dep.ToString().StartsWith(*PjcConstants::PathRoot.ToString());
+			});
 
 			for (const auto& Dep : Deps) {
 				bool bIsAlreadyInSet = false;
@@ -1412,12 +1409,9 @@ void UPjcSubsystem::BucketFill(TArray<FAssetData>& AssetsUnused, TArray<FAssetDa
 	while (Bucket.Num() < BucketSize && AssetsUnused.IsValidIndex(Index)) {
 		const FAssetData CurrentAsset = AssetsUnused[Index];
 		GetModuleAssetRegistry().Get().GetReferencers(CurrentAsset.PackageName, Refs);
-		Refs.RemoveAllSwap(
-			[&](const FName& Ref) {
-				return !Ref.ToString().StartsWith(PjcConstants::PathRoot.ToString()) || Ref.IsEqual(CurrentAsset.PackageName);
-			},
-			false
-		);
+		PjcShim::RemoveAllSwapArray(Refs, [&](const FName& Ref) {
+			return !Ref.ToString().StartsWith(PjcConstants::PathRoot.ToString()) || Ref.IsEqual(CurrentAsset.PackageName);
+		});
 		Refs.Shrink();
 
 		if (Refs.Num() == 0) {
@@ -1443,18 +1437,15 @@ void UPjcSubsystem::BucketFill(TArray<FAssetData>& AssetsUnused, TArray<FAssetDa
 	Stack.Add(AssetsUnused[0]);
 
 	while (Stack.Num() > 0) {
-		const FAssetData Current = Stack.Pop(false);
+		const FAssetData Current = PjcShim::PopArray(Stack);
 		Bucket.AddUnique(Current);
 		AssetsUnused.Remove(Current);
 
 		GetModuleAssetRegistry().Get().GetReferencers(Current.PackageName, Refs);
 
-		Refs.RemoveAllSwap(
-			[&](const FName& Ref) {
-				return !Ref.ToString().StartsWith(PjcConstants::PathRoot.ToString()) || Ref.IsEqual(Current.PackageName);
-			},
-			false
-		);
+		PjcShim::RemoveAllSwapArray(Refs, [&](const FName& Ref) {
+			return !Ref.ToString().StartsWith(PjcConstants::PathRoot.ToString()) || Ref.IsEqual(Current.PackageName);
+		});
 		Refs.Shrink();
 
 		for (const auto& Ref : Refs) {
@@ -1482,7 +1473,7 @@ bool UPjcSubsystem::BucketPrepare(const TArray<FAssetData>& Bucket, TArray<UObje
 		ObjectPaths.Add(PjcShim::GetObjectPathString(Asset));
 	}
 
-	return AssetViewUtils::LoadAssetsIfNeeded(ObjectPaths, LoadedAssets, false, true);
+	return PjcShim::LoadAssetsIfNeeded(ObjectPaths, LoadedAssets, false, true);
 }
 
 int32 UPjcSubsystem::BucketDelete(const TArray<UObject*>& LoadedAssets) {

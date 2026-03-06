@@ -13,6 +13,7 @@
 #include "Framework/MultiBox/MultiBox.h"
 #include "Engine/AssetManager.h"
 #include "Misc/MessageDialog.h"
+#include "AssetViewUtils.h"
 
 namespace PjcShim
 {
@@ -218,6 +219,34 @@ namespace PjcShim
 		return FMessageDialog::Open(MessageType, Message, Title);
 #else
 		return FMessageDialog::Open(MessageType, Message, &Title);
+#endif
+	}
+
+	UContentBrowserSettings* GetContentBrowserSettingsForUnusedAssetsTab() {
+		UContentBrowserSettings* ContentBrowserSettings = GetMutableDefault<UContentBrowserSettings>();
+		if (!ContentBrowserSettings) return nullptr;
+
+		ContentBrowserSettings->SetDisplayDevelopersFolder(true);
+		ContentBrowserSettings->SetDisplayEngineFolder(false);
+		ContentBrowserSettings->SetDisplayCppFolders(false);
+		ContentBrowserSettings->SetDisplayPluginFolders(false);
+#if ENGINE_MAJOR_VERSION == 5
+		ContentBrowserSettings->bShowAllFolder = false;
+		ContentBrowserSettings->bOrganizeFolders = false;
+#endif
+
+		return ContentBrowserSettings;
+	}
+
+	bool LoadAssetsIfNeeded(const TArray<FString>& ObjectPaths, TArray<UObject*>& LoadedObjects, bool bAllowedToPromptToLoad, bool bLoadRedirects)
+	{
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 4
+		AssetViewUtils::FLoadAssetsSettings Settings;
+		Settings.bAlwaysPromptBeforeLoading = bAllowedToPromptToLoad;
+		Settings.bFollowRedirectors = bLoadRedirects;
+		return AssetViewUtils::LoadAssetsIfNeeded(ObjectPaths, LoadedObjects, Settings) == AssetViewUtils::ELoadAssetsResult::Success;
+#else
+		return AssetViewUtils::LoadAssetsIfNeeded(ObjectPaths, LoadedObjects, bAllowedToPromptToLoad, bLoadRedirects);
 #endif
 	}
 

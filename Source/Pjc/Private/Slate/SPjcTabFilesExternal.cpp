@@ -546,15 +546,12 @@ void SPjcTabFilesExternal::OnDelete() {
 		if (!IFileManager::Get().Delete(*Item->FilePath, true)) continue;
 
 		if (Item->bExcluded) {
-			FileExcludeSettings->ExcludedFiles.RemoveAllSwap(
-				[&](const FFilePath& InFile) {
-					FString Path = Item->FilePath;
-					Path.RemoveFromStart(FPaths::ConvertRelativePathToFull(FPaths::ProjectDir()));
+			PjcShim::RemoveAllSwapArray(FileExcludeSettings->ExcludedFiles, [&](const FFilePath& InFile) {
+				FString Path = Item->FilePath;
+				Path.RemoveFromStart(FPaths::ConvertRelativePathToFull(FPaths::ProjectDir()));
 
-					return InFile.FilePath.Equals(Path);
-				},
-				false
-			);
+				return InFile.FilePath.Equals(Path);
+			});
 		}
 
 		++NumDeleted;

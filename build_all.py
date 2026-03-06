@@ -17,10 +17,10 @@ versions = [
     {"engine": "5.1", "project": "Hub510"},
     {"engine": "5.2", "project": "Hub520"},
     {"engine": "5.3", "project": "Hub530"},
-    # {"engine": "5.4", "project": "Hub540"},
-    # {"engine": "5.5", "project": "Hub550"},
-    # {"engine": "5.6", "project": "Hub560"},
-    # {"engine": "5.7", "project": "Hub570"},
+    {"engine": "5.4", "project": "Hub540"},
+    {"engine": "5.5", "project": "Hub550"},
+    {"engine": "5.6", "project": "Hub560"},
+    {"engine": "5.7", "project": "Hub570"},
 ]
 
 def main():

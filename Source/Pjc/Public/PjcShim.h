@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Styling/SlateColor.h"
 #include "Runtime/Launch/Resources/Version.h"
+#include "Settings/ContentBrowserSettings.h"
 
 class FTabManager;
 class FMultiBox;
@@ -46,4 +47,39 @@ namespace PjcShim
 
 	bool IsAssetManagerValid();
 	EAppReturnType::Type ShowDialog(const FText& Title, const FText& Message, const EAppMsgType::Type MessageType);
+
+	UContentBrowserSettings* GetContentBrowserSettingsForUnusedAssetsTab();
+
+	bool LoadAssetsIfNeeded(const TArray<FString>& ObjectPaths, TArray<UObject*>& LoadedObjects, bool bAllowedToPromptToLoad, bool bLoadRedirects);
+
+	// UE5.5 EAllowShrinking Deprecations
+	template<typename ArrayType>
+	auto PopArray(ArrayType& InArray)
+	{
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 5
+		return InArray.Pop(EAllowShrinking::No);
+#else
+		return InArray.Pop(false);
+#endif
+	}
+
+	template<typename ArrayType, typename Predicate>
+	void RemoveAllSwapArray(ArrayType& InArray, Predicate Pred)
+	{
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 5
+		InArray.RemoveAllSwap(Pred, EAllowShrinking::No);
+#else
+		InArray.RemoveAllSwap(Pred, false);
+#endif
+	}
+
+	inline void LeftInlineString(FString& InString, const int32 Count)
+	{
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 5
+		InString.LeftInline(Count, EAllowShrinking::No);
+#else
+		InString.LeftInline(Count, false);
+#endif
+	}
+
 }	// namespace PjcShim
