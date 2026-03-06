@@ -26,10 +26,20 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs) {
 	SubsystemPtr = GEditor->GetEditorSubsystem<UPjcSubsystem>();
 	if (!SubsystemPtr) return;
 
-	UContentBrowserSettings* ContentBrowserSettings = PjcShim::GetContentBrowserSettingsForUnusedAssetsTab();
-	if (!ContentBrowserSettings) return;
+	UContentBrowserSettings* ContentBrowserSettings = GetMutableDefault<UContentBrowserSettings>();
+	if (ContentBrowserSettings) {
+		bInitialShowPluginFolders = ContentBrowserSettings->GetDisplayPluginFolders();
 
-	ContentBrowserSettings->PostEditChange();
+		ContentBrowserSettings->SetDisplayDevelopersFolder(true);
+		ContentBrowserSettings->SetDisplayEngineFolder(false);
+		ContentBrowserSettings->SetDisplayCppFolders(false);
+		ContentBrowserSettings->SetDisplayPluginFolders(true);
+#if ENGINE_MAJOR_VERSION == 5
+		ContentBrowserSettings->bShowAllFolder = false;
+		ContentBrowserSettings->bOrganizeFolders = false;
+#endif
+		ContentBrowserSettings->PostEditChange();
+	}
 
 	Cmds = MakeShareable(new FUICommandList);
 	Cmds->MapAction(FPjcCmds::Get().ScanProject, FExecuteAction::CreateRaw(this, &SPjcTabAssetsUnused::OnProjectScan));
@@ -185,7 +195,7 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs) {
 	FilterCircular = MakeShareable(new FPjcFilterAssetsCircular(DefaultCategory));
 	FilterEditor = MakeShareable(new FPjcFilterAssetsEditor(DefaultCategory));
 	FilterExcluded = MakeShareable(new FPjcFilterAssetsExcluded(DefaultCategory));
-	FilterExtReferenced = MakeShareable(new FPjcFilterAssetsExtReferenced(DefaultCategory));
+	FilterEngineReferenced = MakeShareable(new FPjcFilterAssetsEngineReferenced(DefaultCategory));
 
 	FilterUsed->OnFilterChanged().AddRaw(this, &SPjcTabAssetsUnused::OnFilterUsedChanged);
 	FilterPrimary->OnFilterChanged().AddRaw(this, &SPjcTabAssetsUnused::OnFilterPrimaryChanged);
@@ -193,7 +203,7 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs) {
 	FilterCircular->OnFilterChanged().AddRaw(this, &SPjcTabAssetsUnused::OnFilterCircularChanged);
 	FilterEditor->OnFilterChanged().AddRaw(this, &SPjcTabAssetsUnused::OnFilterEditorChanged);
 	FilterExcluded->OnFilterChanged().AddRaw(this, &SPjcTabAssetsUnused::OnFilterExcludedChanged);
-	FilterExtReferenced->OnFilterChanged().AddRaw(this, &SPjcTabAssetsUnused::OnFilterExtReferencedChanged);
+	FilterEngineReferenced->OnFilterChanged().AddRaw(this, &SPjcTabAssetsUnused::OnFilterEngineReferencedChanged);
 
 	AssetPickerConfig.ExtraFrontendFilters.Emplace(FilterUsed.ToSharedRef());
 	AssetPickerConfig.ExtraFrontendFilters.Emplace(FilterPrimary.ToSharedRef());
@@ -201,7 +211,7 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs) {
 	AssetPickerConfig.ExtraFrontendFilters.Emplace(FilterCircular.ToSharedRef());
 	AssetPickerConfig.ExtraFrontendFilters.Emplace(FilterEditor.ToSharedRef());
 	AssetPickerConfig.ExtraFrontendFilters.Emplace(FilterExcluded.ToSharedRef());
-	AssetPickerConfig.ExtraFrontendFilters.Emplace(FilterExtReferenced.ToSharedRef());
+	AssetPickerConfig.ExtraFrontendFilters.Emplace(FilterEngineReferenced.ToSharedRef());
 
 	const auto ContentBrowserView = UPjcSubsystem::GetModuleContentBrowser().Get().CreateAssetPicker(AssetPickerConfig);
 
@@ -453,6 +463,14 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs) {
 		]
 	];
 	// clang-format on
+}
+
+SPjcTabAssetsUnused::~SPjcTabAssetsUnused() {
+	UContentBrowserSettings* ContentBrowserSettings = GetMutableDefault<UContentBrowserSettings>();
+	if (ContentBrowserSettings) {
+		ContentBrowserSettings->SetDisplayPluginFolders(bInitialShowPluginFolders);
+		ContentBrowserSettings->PostEditChange();
+	}
 }
 
 TSharedRef<SWidget> SPjcTabAssetsUnused::CreateToolbarMain() const {
@@ -863,7 +881,7 @@ void SPjcTabAssetsUnused::ScanProject() {
 	UPjcSubsystem::GetAssetsCircular(AssetsCircular);
 	UPjcSubsystem::GetAssetsEditor(AssetsEditor);
 	UPjcSubsystem::GetAssetsExcluded(AssetsExcluded);
-	UPjcSubsystem::GetAssetsExtReferenced(AssetsExtReferenced);
+	UPjcSubsystem::GetAssetsEngineReferenced(AssetsEngineReferenced);
 	UPjcSubsystem::GetFolders(FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir()), true, FoldersTotal);
 	UPjcSubsystem::GetFoldersEmpty(FoldersEmpty);
 
@@ -873,7 +891,7 @@ void SPjcTabAssetsUnused::ScanProject() {
 	FilterCircular->UpdateData();
 	FilterEditor->UpdateData();
 	FilterExcluded->UpdateData();
-	FilterExtReferenced->UpdateData();
+	FilterEngineReferenced->UpdateData();
 
 	for (const FAssetData& Asset : AssetsAll) {
 		const FString AssetPath = Asset.PackagePath.ToString();
@@ -902,7 +920,7 @@ void SPjcTabAssetsUnused::ScanProject() {
 	NumAssetsIndirect = AssetsIndirect.Num();
 	NumAssetsEditor = AssetsEditor.Num();
 	NumAssetsExcluded = AssetsExcluded.Num();
-	NumAssetsExtReferenced = AssetsExtReferenced.Num();
+	NumAssetsEngineReferenced = AssetsEngineReferenced.Num();
 	NumFoldersTotal = FoldersTotal.Num();
 	NumFoldersEmpty = FoldersEmpty.Num();
 
@@ -913,7 +931,7 @@ void SPjcTabAssetsUnused::ScanProject() {
 	SizeAssetsIndirect = UPjcSubsystem::GetAssetsTotalSize(AssetsIndirect);
 	SizeAssetsEditor = UPjcSubsystem::GetAssetsTotalSize(AssetsEditor);
 	SizeAssetsExcluded = UPjcSubsystem::GetAssetsTotalSize(AssetsExcluded);
-	SizeAssetsExtReferenced = UPjcSubsystem::GetAssetsTotalSize(AssetsExtReferenced);
+	SizeAssetsEngineReferenced = UPjcSubsystem::GetAssetsTotalSize(AssetsEngineReferenced);
 
 	const double ScanTime = FPlatformTime::Seconds() - ScanStartTime;
 
@@ -990,12 +1008,12 @@ void SPjcTabAssetsUnused::UpdateStats() {
 	}));
 
 	StatsListItems.Emplace(MakeShareable(new FPjcStatItem {
-	  FText::FromString(TEXT("ExtReferenced")),
-	  FText::AsNumber(NumAssetsExtReferenced),
-	  FText::AsMemory(SizeAssetsExtReferenced, IEC),
-	  FText::FromString(TEXT("Assets that have external referencers outside Content folder.")),
-	  FText::FromString(TEXT("Total number of ExtReferenced assets")),
-	  FText::FromString(TEXT("Total size of ExtReferenced assets")),
+	  FText::FromString(TEXT("EngineReferenced")),
+	  FText::AsNumber(NumAssetsEngineReferenced),
+	  FText::AsMemory(SizeAssetsEngineReferenced, IEC),
+	  FText::FromString(TEXT("Assets that have referencers outside project (e.g. Engine).")),
+	  FText::FromString(TEXT("Total number of EngineReferenced assets")),
+	  FText::FromString(TEXT("Total size of EngineReferenced assets")),
 	  FLinearColor::White,
 	  SecondLvl
 	}));
@@ -1030,36 +1048,46 @@ void SPjcTabAssetsUnused::UpdateStats() {
 void SPjcTabAssetsUnused::UpdateTreeView() {
 	if (!TreeListView.IsValid()) return;
 
-	const FString PathContentDir = FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir());
-
-	RootItem.Reset();
-	RootItem = MakeShareable(new FPjcTreeItem);
-	if (!RootItem.IsValid()) return;
-
 	TSet<TSharedPtr<FPjcTreeItem>> CachedExpandedItems;
 	TreeListView->GetExpandedItems(CachedExpandedItems);
 
-	RootItem->FolderPath = PjcConstants::PathRoot.ToString();
-	RootItem->FolderName = TEXT("Content");
-	RootItem->bIsDev = false;
-	RootItem->bIsRoot = true;
-	RootItem->bIsEmpty = false;
-	RootItem->bIsExcluded = UPjcSubsystem::FolderIsExcluded(PathContentDir);
-	RootItem->bIsExpanded = true;
-	RootItem->bIsVisible = true;
-	RootItem->NumAssetsTotal = AssetsAll.Num();
-	RootItem->NumAssetsUsed = AssetsUsed.Num();
-	RootItem->NumAssetsUnused = AssetsUnused.Num();
-	RootItem->SizeAssetsUnused = UPjcSubsystem::GetAssetsTotalSize(AssetsUnused);
-	RootItem->PercentageUnused = RootItem->NumAssetsTotal == 0 ? 0 : RootItem->NumAssetsUnused * 100.0f / RootItem->NumAssetsTotal;
-	RootItem->PercentageUnusedNormalized
-		= FMath::GetMappedRangeValueClamped(FVector2D {0.0f, 100.0f}, FVector2D {0.0f, 1.0f}, RootItem->PercentageUnused);
-	RootItem->Parent = nullptr;
+	RootItems.Reset();
+	TreeListItems.Reset();
+	TArray<TSharedPtr<FPjcTreeItem>> Stack;
+
+	for (const auto& RootPath : UPjcSubsystem::GetProjectRootPaths()) {
+		const FString PathContentDir = UPjcSubsystem::PathConvertToAbsolute(RootPath);
+
+		TSharedPtr<FPjcTreeItem> RootItem = MakeShareable(new FPjcTreeItem);
+		if (!RootItem.IsValid()) continue;
+
+		RootItem->FolderPath = RootPath;
+		RootItem->FolderName = FPaths::GetBaseFilename(RootPath);
+		if (RootItem->FolderName.Equals(TEXT("Game"))) {
+			RootItem->FolderName = TEXT("Content");
+		}
+
+		RootItem->bIsDev = false;
+		RootItem->bIsRoot = true;
+		RootItem->bIsEmpty = false;
+		RootItem->bIsExcluded = UPjcSubsystem::FolderIsExcluded(PathContentDir);
+		RootItem->bIsExpanded = true;
+		RootItem->bIsVisible = true;
+		RootItem->NumAssetsTotal = MapNumAssetsAllByPath.Contains(RootPath) ? MapNumAssetsAllByPath[RootPath] : 0;
+		RootItem->NumAssetsUsed = MapNumAssetsUsedByPath.Contains(RootPath) ? MapNumAssetsUsedByPath[RootPath] : 0;
+		RootItem->NumAssetsUnused = MapNumAssetsUnusedByPath.Contains(RootPath) ? MapNumAssetsUnusedByPath[RootPath] : 0;
+		RootItem->SizeAssetsUnused = MapSizeAssetsUnusedByPath.Contains(RootPath) ? MapSizeAssetsUnusedByPath[RootPath] : 0.0f;
+		RootItem->PercentageUnused = RootItem->NumAssetsTotal == 0 ? 0 : RootItem->NumAssetsUnused * 100.0f / RootItem->NumAssetsTotal;
+		RootItem->PercentageUnusedNormalized
+			= FMath::GetMappedRangeValueClamped(FVector2D {0.0f, 100.0f}, FVector2D {0.0f, 1.0f}, RootItem->PercentageUnused);
+		RootItem->Parent = nullptr;
+
+		RootItems.Add(RootItem);
+		TreeListItems.Add(RootItem);
+		Stack.Push(RootItem);
+	}
 
 	// filling whole tree
-	TArray<TSharedPtr<FPjcTreeItem>> Stack;
-	Stack.Push(RootItem);
-
 	while (Stack.Num() > 0) {
 		const auto CurrentItem = PjcShim::PopArray(Stack);
 
@@ -1105,7 +1133,9 @@ void SPjcTabAssetsUnused::UpdateTreeView() {
 	SortTreeItems(false);
 
 	TreeListItems.Reset();
-	TreeListItems.Emplace(RootItem);
+	for (const auto& Item : RootItems) {
+		TreeListItems.Emplace(Item);
+	}
 	TreeListView->RebuildList();
 }
 
@@ -1161,10 +1191,10 @@ void SPjcTabAssetsUnused::UpdateContentBrowser() {
 			}
 		}
 
-		if (bFilterAssetsExtReferencedActive) {
-			PjcShim::ReserveFilterObjectPaths(Filter, AssetsExtReferenced.Num());
+		if (bFilterAssetsEngineReferencedActive) {
+			PjcShim::ReserveFilterObjectPaths(Filter, AssetsEngineReferenced.Num());
 
-			for (const auto& Asset : AssetsExtReferenced) {
+			for (const auto& Asset : AssetsEngineReferenced) {
 				PjcShim::AddFilterObjectPath(Filter, Asset);
 			}
 		}
@@ -1217,7 +1247,7 @@ void SPjcTabAssetsUnused::OnTreeSearchTextCommitted(const FText& InText, ETextCo
 }
 
 void SPjcTabAssetsUnused::OnTreeSort(EColumnSortPriority::Type SortPriority, const FName& ColumnName, EColumnSortMode::Type InSortMode) {
-	if (!RootItem.IsValid() || !TreeListView.IsValid()) return;
+	if (RootItems.Num() == 0 || !TreeListView.IsValid()) return;
 
 	LastSortedColumn = ColumnName;
 
@@ -1256,7 +1286,9 @@ void SPjcTabAssetsUnused::SortTreeItems(const bool UpdateSortingOrder) {
 		}
 
 		TArray<TSharedPtr<FPjcTreeItem>> Stack;
-		Stack.Push(RootItem);
+		for (const auto& RootItem : RootItems) {
+			Stack.Push(RootItem);
+		}
 
 		while (Stack.Num() > 0) {
 			const auto& CurrentItem = PjcShim::PopArray(Stack);
@@ -1405,7 +1437,7 @@ bool SPjcTabAssetsUnused::CanDeleteEmptyFolders() const {
 
 bool SPjcTabAssetsUnused::AnyFilterActive() const {
 	return bFilterAssetsUsedActive || bFilterAssetsPrimaryActive || bFilterAssetsEditorActive || bFilterAssetsIndirectActive
-		|| bFilterAssetsExcludedActive || bFilterAssetsExtReferencedActive;
+		|| bFilterAssetsExcludedActive || bFilterAssetsEngineReferencedActive;
 }
 
 bool SPjcTabAssetsUnused::AnyAssetSelected() const {
@@ -1755,8 +1787,8 @@ void SPjcTabAssetsUnused::OnFilterExcludedChanged(const bool bActive) {
 	UpdateContentBrowser();
 }
 
-void SPjcTabAssetsUnused::OnFilterExtReferencedChanged(const bool bActive) {
-	bFilterAssetsExtReferencedActive = bActive;
+void SPjcTabAssetsUnused::OnFilterEngineReferencedChanged(const bool bActive) {
+	bFilterAssetsEngineReferencedActive = bActive;
 	bFilterAssetsUnusedActive = !AnyFilterActive();
 
 	UpdateContentBrowser();
@@ -1799,11 +1831,15 @@ void SPjcTabAssetsUnused::OnShowFoldersEngine() {
 }
 
 void SPjcTabAssetsUnused::OnExpandAll() const {
-	ChangeItemExpansionRecursive(RootItem, true, true);
+	for (const auto& RootItem : RootItems) {
+		ChangeItemExpansionRecursive(RootItem, true, true);
+	}
 }
 
 void SPjcTabAssetsUnused::OnCollapseAll() const {
-	ChangeItemExpansionRecursive(RootItem, false, true);
+	for (const auto& RootItem : RootItems) {
+		ChangeItemExpansionRecursive(RootItem, false, true);
+	}
 }
 
 ECheckBoxState SPjcTabAssetsUnused::GetFoldersEmptyActionState() const {
@@ -1828,7 +1864,7 @@ void SPjcTabAssetsUnused::ResetFilters() {
 	bFilterAssetsEditorActive = false;
 	bFilterAssetsIndirectActive = false;
 	bFilterAssetsExcludedActive = false;
-	bFilterAssetsExtReferencedActive = false;
+	bFilterAssetsEngineReferencedActive = false;
 	bFilterAssetsCircularActive = false;
 	bFilterAssetsUnusedActive = true;
 }
@@ -1842,7 +1878,7 @@ void SPjcTabAssetsUnused::ResetCachedData() {
 	AssetsCircular.Reset();
 	AssetsEditor.Reset();
 	AssetsExcluded.Reset();
-	AssetsExtReferenced.Reset();
+	AssetsEngineReferenced.Reset();
 	MapNumAssetsAllByPath.Reset();
 	MapNumAssetsUsedByPath.Reset();
 	MapNumAssetsUnusedByPath.Reset();
@@ -1857,7 +1893,7 @@ void SPjcTabAssetsUnused::ResetCachedData() {
 	NumAssetsIndirect = 0;
 	NumAssetsEditor = 0;
 	NumAssetsExcluded = 0;
-	NumAssetsExtReferenced = 0;
+	NumAssetsEngineReferenced = 0;
 	NumFoldersTotal = 0;
 	NumFoldersEmpty = 0;
 
@@ -1868,7 +1904,7 @@ void SPjcTabAssetsUnused::ResetCachedData() {
 	SizeAssetsIndirect = 0;
 	SizeAssetsEditor = 0;
 	SizeAssetsExcluded = 0;
-	SizeAssetsExtReferenced = 0;
+	SizeAssetsEngineReferenced = 0;
 }
 
 void SPjcTabAssetsUnused::UpdateMapInfo(TMap<FString, int32>& MapNum, TMap<FString, int64>& MapSize, const FString& AssetPath, int64 AssetSize) {
@@ -1901,5 +1937,5 @@ bool SPjcTabAssetsUnused::IsSubsystemValid() const {
 }
 
 bool SPjcTabAssetsUnused::IsTreeValid() const {
-	return RootItem.IsValid() && TreeListView.IsValid();
+	return RootItems.Num() > 0 && TreeListView.IsValid();
 }

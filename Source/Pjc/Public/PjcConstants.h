@@ -17,7 +17,6 @@ namespace PjcConstants
 	static const FName ModuleMegascans {TEXT("MegascansPlugin")};
 
 	// paths
-	static FName PathRoot {TEXT("/Game")};
 	static FName PathDevelopers {TEXT("/Game/Developers")};
 	static FName PathCollections {TEXT("/Game/Collections")};
 	static FName PathMSPresets {TEXT("/Game/MSPresets")};

@@ -299,25 +299,25 @@ FPjcDelegateFilterChanged& FPjcFilterAssetsExcluded::OnFilterChanged() {
 	return DelegateFilterChanged;
 }
 
-FPjcFilterAssetsExtReferenced::FPjcFilterAssetsExtReferenced(TSharedPtr<FFrontendFilterCategory> InCategory) : FFrontendFilter(InCategory) {}
+FPjcFilterAssetsEngineReferenced::FPjcFilterAssetsEngineReferenced(TSharedPtr<FFrontendFilterCategory> InCategory) : FFrontendFilter(InCategory) {}
 
-FString FPjcFilterAssetsExtReferenced::GetName() const {
-	return TEXT("Assets ExtReferenced");
+FString FPjcFilterAssetsEngineReferenced::GetName() const {
+	return TEXT("Assets EngineReferenced");
 }
 
-FText FPjcFilterAssetsExtReferenced::GetDisplayName() const {
-	return FText::FromString(TEXT("Assets ExtReferenced"));
+FText FPjcFilterAssetsEngineReferenced::GetDisplayName() const {
+	return FText::FromString(TEXT("Assets EngineReferenced"));
 }
 
-FText FPjcFilterAssetsExtReferenced::GetToolTipText() const {
-	return FText::FromString(TEXT("Show assets with external referencers outside Content folder"));
+FText FPjcFilterAssetsEngineReferenced::GetToolTipText() const {
+	return FText::FromString(TEXT("Show assets with referencers outside project (e.g. Engine)"));
 }
 
-FLinearColor FPjcFilterAssetsExtReferenced::GetColor() const {
+FLinearColor FPjcFilterAssetsEngineReferenced::GetColor() const {
 	return FPjcStyles::Get().GetColor("ProjectCleaner.Color.Violet");
 }
 
-void FPjcFilterAssetsExtReferenced::ActiveStateChanged(bool bActive) {
+void FPjcFilterAssetsEngineReferenced::ActiveStateChanged(bool bActive) {
 	FFrontendFilter::ActiveStateChanged(bActive);
 
 	if (bActive) {
@@ -329,21 +329,21 @@ void FPjcFilterAssetsExtReferenced::ActiveStateChanged(bool bActive) {
 	}
 }
 
-bool FPjcFilterAssetsExtReferenced::PassesFilter(const FContentBrowserItem& InItem) const {
+bool FPjcFilterAssetsEngineReferenced::PassesFilter(const FContentBrowserItem& InItem) const {
 	FAssetData AssetData;
 	if (!InItem.Legacy_TryGetAssetData(AssetData)) return false;
 
 	return Assets.Contains(AssetData);
 }
 
-void FPjcFilterAssetsExtReferenced::UpdateData() {
-	TArray<FAssetData> AssetsExtReferenced;
-	UPjcSubsystem::GetAssetsExtReferenced(AssetsExtReferenced, false);
+void FPjcFilterAssetsEngineReferenced::UpdateData() {
+	TArray<FAssetData> AssetsEngineReferenced;
+	UPjcSubsystem::GetAssetsEngineReferenced(AssetsEngineReferenced, false);
 
 	Assets.Reset();
-	Assets.Append(AssetsExtReferenced);
+	Assets.Append(AssetsEngineReferenced);
 }
 
-FPjcDelegateFilterChanged& FPjcFilterAssetsExtReferenced::OnFilterChanged() {
+FPjcDelegateFilterChanged& FPjcFilterAssetsEngineReferenced::OnFilterChanged() {
 	return DelegateFilterChanged;
 }

@@ -6,7 +6,6 @@
 #include "Pjc.h"
 // Engine Headers
 #include "AssetManagerEditorModule.h"
-#include "AssetViewUtils.h"
 #include "EditorUtilityBlueprint.h"
 #include "EditorUtilityWidget.h"
 #include "EditorUtilityWidgetBlueprint.h"
@@ -17,6 +16,7 @@
 #include "Framework/Notifications/NotificationManager.h"
 #include "Internationalization/Regex.h"
 #include "Misc/FileHelper.h"
+#include "Interfaces/IPluginManager.h"
 #include "Misc/ScopedSlowTask.h"
 
 void UPjcSubsystem::Initialize(FSubsystemCollectionBase& Collection) {
@@ -42,7 +42,11 @@ void UPjcSubsystem::GetAssetsAll(TArray<FAssetData>& Assets) {
 
 	Assets.Reset();
 
-	GetModuleAssetRegistry().Get().GetAssetsByPath(PjcConstants::PathRoot, Assets, true);
+	for (const auto& RootPath : GetProjectRootPaths()) {
+		TArray<FAssetData> TempAssets;
+		GetModuleAssetRegistry().Get().GetAssetsByPath(FName{*RootPath}, TempAssets, true);
+		Assets.Append(TempAssets);
+	}
 
 	// filtering assets that are in '/Game/__ExternalActors__' and '/Game/__ExternalObjects__' folders
 	FARFilter Filter;
@@ -89,8 +93,8 @@ void UPjcSubsystem::GetAssetsUsed(TArray<FAssetData>& Assets, const bool bShowSl
 		const FName AssetExactClassName = GetAssetExactClassName(Asset);
 		const bool bIsPrimary = ClassNamesPrimary.Contains(PjcShim::GetAssetClassName(Asset)) || ClassNamesPrimary.Contains(AssetExactClassName);
 		const bool bIsEditor = ClassNamesEditor.Contains(PjcShim::GetAssetClassName(Asset)) || ClassNamesEditor.Contains(AssetExactClassName);
-		const bool bIsExtReferenced = AssetIsExtReferenced(Asset);
-		const bool bIsUsed = bIsPrimary || bIsEditor || bIsExtReferenced;
+		const bool bIsEngineReferenced = AssetIsEngineReferenced(Asset);
+		const bool bIsUsed = bIsPrimary || bIsEditor || bIsEngineReferenced;
 
 		if (bIsUsed) {
 			AssetsUsed.Emplace(Asset);
@@ -311,7 +315,7 @@ void UPjcSubsystem::GetAssetsExcluded(TArray<FAssetData>& Assets, const bool bSh
 		Filter.PackagePaths.Reserve(AssetExcludeSettings->ExcludedFolders.Num());
 
 		for (const auto& ExcludedFolder : AssetExcludeSettings->ExcludedFolders) {
-			if (!ExcludedFolder.Path.StartsWith(PjcConstants::PathRoot.ToString())) continue;
+			if (!PathIsInsideProject(ExcludedFolder.Path)) continue;
 
 			Filter.PackagePaths.Emplace(ExcludedFolder.Path);
 		}
@@ -349,7 +353,7 @@ void UPjcSubsystem::GetAssetsExcluded(TArray<FAssetData>& Assets, const bool bSh
 	Assets = AssetsExcluded.Array();
 }
 
-void UPjcSubsystem::GetAssetsExtReferenced(TArray<FAssetData>& Assets, const bool bShowSlowTask) {
+void UPjcSubsystem::GetAssetsEngineReferenced(TArray<FAssetData>& Assets, const bool bShowSlowTask) {
 	if (GetModuleAssetRegistry().Get().IsLoadingAssets()) return;
 
 	TArray<FAssetData> AssetsAll;
@@ -367,7 +371,7 @@ void UPjcSubsystem::GetAssetsExtReferenced(TArray<FAssetData>& Assets, const boo
 	for (const auto& Asset : AssetsAll) {
 		SlowTask.EnterProgressFrame(1.0f, FText::FromString(Asset.GetFullName()));
 
-		if (AssetIsExtReferenced(Asset)) {
+		if (AssetIsEngineReferenced(Asset)) {
 			Assets.Emplace(Asset);
 		}
 	}
@@ -388,6 +392,7 @@ void UPjcSubsystem::GetClassNamesPrimary(TSet<FName>& ClassNames) {
 
 	for (const auto& AssetTypeInfo : AssetTypeInfos) {
 		if (!AssetTypeInfo.AssetBaseClassLoaded) continue;
+		if (AssetTypeInfo.AssetBaseClassLoaded == UObject::StaticClass()) continue;
 
 		ClassNamesPrimaryBase.Emplace(PjcShim::GetClassName(AssetTypeInfo.AssetBaseClassLoaded));
 	}
@@ -646,7 +651,12 @@ void UPjcSubsystem::GetFolders(const FString& InSearchPath, const bool bSearchRe
 
 void UPjcSubsystem::GetFoldersEmpty(TArray<FString>& Folders) {
 	TArray<FString> FoldersAll;
-	GetFolders(FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir()), true, FoldersAll);
+
+	for (const auto& RootPath : GetProjectRootPaths()) {
+		TArray<FString> RootFolders;
+		GetFolders(PathConvertToAbsolute(RootPath), true, RootFolders);
+		FoldersAll.Append(RootFolders);
+	}
 
 	Folders.Reset(FoldersAll.Num());
 
@@ -923,7 +933,9 @@ void UPjcSubsystem::DeleteFilesCorrupted(const bool bShowSlowTask, const bool bS
 void UPjcSubsystem::GetProjectRedirectors(TArray<FAssetData>& Redirectors) {
 	FARFilter Filter;
 	Filter.bRecursivePaths = true;
-	Filter.PackagePaths.Emplace(PjcConstants::PathRoot);
+	for (const auto& RootPath : GetProjectRootPaths()) {
+		Filter.PackagePaths.Emplace(FName{*RootPath});
+	}
 	PjcShim::AddFilterClass(Filter, UObjectRedirector::StaticClass());
 
 	Redirectors.Reset();
@@ -973,14 +985,14 @@ bool UPjcSubsystem::AssetIsBlueprint(const FAssetData& InAsset) {
 	return AssetClass->IsChildOf(UBlueprint::StaticClass());
 }
 
-bool UPjcSubsystem::AssetIsExtReferenced(const FAssetData& InAsset) {
+bool UPjcSubsystem::AssetIsEngineReferenced(const FAssetData& InAsset) {
 	if (!InAsset.IsValid()) return false;
 
 	TArray<FName> Refs;
 	GetModuleAssetRegistry().Get().GetReferencers(InAsset.PackageName, Refs);
 
 	return Refs.ContainsByPredicate([](const FName& Ref) {
-		return !Ref.ToString().StartsWith(PjcConstants::PathRoot.ToString()) || FolderIsExternal(Ref.ToString());
+		return !PathIsInsideProject(Ref.ToString()) || FolderIsExternal(Ref.ToString());
 	});
 }
 
@@ -1033,34 +1045,28 @@ FString UPjcSubsystem::PathNormalize(const FString& InPath) {
 
 FString UPjcSubsystem::PathConvertToAbsolute(const FString& InPath) {
 	const FString PathNormalized = PathNormalize(InPath);
-	const FString PathProjectContent = FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir()).LeftChop(1);
 
 	if (PathNormalized.IsEmpty()) return {};
-	if (PathNormalized.StartsWith(PathProjectContent)) return PathNormalized;
-	if (PathNormalized.StartsWith(PjcConstants::PathRoot.ToString())) {
-		FString Path = PathNormalized;
-		Path.RemoveFromStart(PjcConstants::PathRoot.ToString());
 
-		return Path.IsEmpty() ? PathProjectContent : PathProjectContent / Path;
+	FString AbsolutePath;
+	if (FPackageName::TryConvertLongPackageNameToFilename(PathNormalized, AbsolutePath)) {
+		return PathNormalize(AbsolutePath);
 	}
 
-	return {};
+	return PathNormalized;
 }
 
 FString UPjcSubsystem::PathConvertToRelative(const FString& InPath) {
 	const FString PathNormalized = PathNormalize(InPath);
-	const FString PathProjectContent = FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir()).LeftChop(1);
 
 	if (PathNormalized.IsEmpty()) return {};
-	if (PathNormalized.StartsWith(PjcConstants::PathRoot.ToString())) return PathNormalized;
-	if (PathNormalized.StartsWith(PathProjectContent)) {
-		FString Path = PathNormalized;
-		Path.RemoveFromStart(PathProjectContent);
 
-		return Path.IsEmpty() ? PjcConstants::PathRoot.ToString() : PjcConstants::PathRoot.ToString() / Path;
+	FString RelativePath;
+	if (FPackageName::TryConvertFilenameToLongPackageName(PathNormalized, RelativePath)) {
+		return PathNormalize(RelativePath);
 	}
 
-	return {};
+	return PathNormalized;
 }
 
 FString UPjcSubsystem::PathConvertToObjectPath(const FString& InPath) {
@@ -1074,7 +1080,7 @@ FString UPjcSubsystem::PathConvertToObjectPath(const FString& InPath) {
 	FString ObjectPath = FPackageName::ExportTextPathToObjectPath(InPath);
 	ObjectPath.RemoveFromEnd(TEXT("_C"));	// we should remove _C prefix if its blueprint asset
 
-	if (!ObjectPath.StartsWith(PjcConstants::PathRoot.ToString())) return {};
+	if (!PathIsInsideProject(ObjectPath)) return {};
 
 	TArray<FString> Parts;
 	ObjectPath.ParseIntoArray(Parts, TEXT("/"), true);
@@ -1141,6 +1147,36 @@ FName UPjcSubsystem::GetAssetExactClassName(const FAssetData& InAsset) {
 	}
 
 	return PjcShim::GetAssetClassName(InAsset);
+}
+
+TArray<FString> UPjcSubsystem::GetProjectRootPaths() {
+	TArray<FString> Paths;
+	Paths.Add(TEXT("/Game"));
+
+	for (const auto& Plugin : IPluginManager::Get().GetEnabledPlugins()) {
+		if (Plugin->GetLoadedFrom() == EPluginLoadedFrom::Project && Plugin->CanContainContent()) {
+			Paths.Add(FString::Printf(TEXT("/%s"), *Plugin->GetName()));
+		}
+	}
+
+	return Paths;
+}
+
+bool UPjcSubsystem::PathIsInsideProject(const FString& InPath) {
+	const TArray<FString> RootPaths = GetProjectRootPaths();
+	for (const auto& RootPath : RootPaths) {
+		if (InPath.StartsWith(RootPath)) {
+			return true;
+		}
+	}
+	return false;
+}
+
+bool UPjcSubsystem::AssetIsInsideProject(const FAssetData& InAsset) {
+	if (!InAsset.IsValid()) return false;
+
+	const FString PackagePath = InAsset.PackagePath.ToString();
+	return PathIsInsideProject(PackagePath);
 }
 
 bool UPjcSubsystem::FolderIsEmpty(const FString& InPath) {
@@ -1260,7 +1296,7 @@ void UPjcSubsystem::GetAssetsDependencies(TSet<FAssetData>& Assets) {
 			GetModuleAssetRegistry().Get().GetDependencies(CurrentPackageName, Deps);
 
 			PjcShim::RemoveAllSwapArray(Deps, [&](const FName& Dep) {
-				return !Dep.ToString().StartsWith(*PjcConstants::PathRoot.ToString());
+				return !PathIsInsideProject(Dep.ToString());
 			});
 
 			for (const auto& Dep : Deps) {
@@ -1410,7 +1446,7 @@ void UPjcSubsystem::BucketFill(TArray<FAssetData>& AssetsUnused, TArray<FAssetDa
 		const FAssetData CurrentAsset = AssetsUnused[Index];
 		GetModuleAssetRegistry().Get().GetReferencers(CurrentAsset.PackageName, Refs);
 		PjcShim::RemoveAllSwapArray(Refs, [&](const FName& Ref) {
-			return !Ref.ToString().StartsWith(PjcConstants::PathRoot.ToString()) || Ref.IsEqual(CurrentAsset.PackageName);
+			return !PathIsInsideProject(Ref.ToString()) || Ref.IsEqual(CurrentAsset.PackageName);
 		});
 		Refs.Shrink();
 
@@ -1444,7 +1480,7 @@ void UPjcSubsystem::BucketFill(TArray<FAssetData>& AssetsUnused, TArray<FAssetDa
 		GetModuleAssetRegistry().Get().GetReferencers(Current.PackageName, Refs);
 
 		PjcShim::RemoveAllSwapArray(Refs, [&](const FName& Ref) {
-			return !Ref.ToString().StartsWith(PjcConstants::PathRoot.ToString()) || Ref.IsEqual(Current.PackageName);
+			return !PathIsInsideProject(Ref.ToString()) || Ref.IsEqual(Current.PackageName);
 		});
 		Refs.Shrink();
 

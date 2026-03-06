@@ -133,11 +133,11 @@ class FPjcFilterAssetsExcluded final : public FFrontendFilter
 	TSet<FAssetData> Assets;
 };
 
-class FPjcFilterAssetsExtReferenced final : public FFrontendFilter
+class FPjcFilterAssetsEngineReferenced final : public FFrontendFilter
 {
   public:
 
-	explicit FPjcFilterAssetsExtReferenced(TSharedPtr<FFrontendFilterCategory> InCategory);
+	explicit FPjcFilterAssetsEngineReferenced(TSharedPtr<FFrontendFilterCategory> InCategory);
 	virtual FString GetName() const override;
 	virtual FText GetDisplayName() const override;
 	virtual FText GetToolTipText() const override;

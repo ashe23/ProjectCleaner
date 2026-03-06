@@ -90,12 +90,12 @@ class UPjcSubsystem final : public UEditorSubsystem
 	static void GetAssetsExcluded(TArray<FAssetData>& Assets, const bool bShowSlowTask = true);
 
 	/**
-	 * @brief Returns all assets that have external referencers outside Content folder
+	 * @brief Returns all assets that have referencers outside project (e.g. Engine)
 	 * @param Assets TArray<FAssetData>
 	 *  @param bShowSlowTask bool
 	 */
 	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Asset")
-	static void GetAssetsExtReferenced(TArray<FAssetData>& Assets, const bool bShowSlowTask = true);
+	static void GetAssetsEngineReferenced(TArray<FAssetData>& Assets, const bool bShowSlowTask = true);
 
 	/**
 	 * @brief Returns all primary assets class names
@@ -261,12 +261,12 @@ class UPjcSubsystem final : public UEditorSubsystem
 	static bool AssetIsBlueprint(const FAssetData& InAsset);
 
 	/**
-	 * @brief Checks if given asset has external referencers outside Content folder or not
+	 * @brief Checks if given asset has referencers outside project (e.g. Engine) or not
 	 * @param InAsset FAssetData
 	 * @return bool
 	 */
 	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Asset")
-	static bool AssetIsExtReferenced(const FAssetData& InAsset);
+	static bool AssetIsEngineReferenced(const FAssetData& InAsset);
 
 	/**
 	 * @brief Checks if given asset has circular dependencies or not
@@ -347,6 +347,10 @@ class UPjcSubsystem final : public UEditorSubsystem
 	 */
 	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Asset")
 	static FName GetAssetExactClassName(const FAssetData& InAsset);
+
+	static TArray<FString> GetProjectRootPaths();
+	static bool PathIsInsideProject(const FString& InPath);
+	static bool AssetIsInsideProject(const FAssetData& InAsset);
 
 	static bool FolderIsEmpty(const FString& InPath);
 	static bool FolderIsExcluded(const FString& InPath);

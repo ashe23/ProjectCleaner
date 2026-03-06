@@ -9,7 +9,7 @@
 struct FPjcTreeItem;
 struct FPjcStatItem;
 class UPjcSubsystem;
-class FPjcFilterAssetsExtReferenced;
+class FPjcFilterAssetsEngineReferenced;
 class FPjcFilterAssetsEditor;
 class FPjcFilterAssetsCircular;
 class FPjcFilterAssetsIndirect;
@@ -17,15 +17,17 @@ class FPjcFilterAssetsPrimary;
 class FPjcFilterAssetsUsed;
 class FPjcFilterAssetsExcluded;
 
-class SPjcTabAssetsUnused final : public SCompoundWidget
+class SPjcTabAssetsUnused : public SCompoundWidget
 {
-  public:
-
+public:
 	SLATE_BEGIN_ARGS(SPjcTabAssetsUnused) {}
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
+	virtual ~SPjcTabAssetsUnused() override;
 
+private:
+	bool bInitialShowPluginFolders = false;
   private:
 
 	TSharedRef<SWidget> CreateToolbarMain() const;
@@ -88,7 +90,7 @@ class SPjcTabAssetsUnused final : public SCompoundWidget
 	void OnFilterCircularChanged(const bool bActive);
 	void OnFilterEditorChanged(const bool bActive);
 	void OnFilterExcludedChanged(const bool bActive);
-	void OnFilterExtReferencedChanged(const bool bActive);
+	void OnFilterEngineReferencedChanged(const bool bActive);
 	void OnAssetDblClicked(const FAssetData& AssetData);
 	void OnShowFoldersEmpty();
 	void OnShowFoldersExcluded();
@@ -117,7 +119,7 @@ class SPjcTabAssetsUnused final : public SCompoundWidget
 	FRefreshAssetViewDelegate DelegateRefreshView;
 	FGetCurrentSelectionDelegate DelegateSelection;
 	TSharedPtr<SComboButton> TreeOptionBtn;
-	TSharedPtr<FPjcTreeItem> RootItem;
+	TArray<TSharedPtr<FPjcTreeItem>> RootItems;
 	TArray<TSharedPtr<FPjcStatItem>> StatsListItems;
 	TArray<TSharedPtr<FPjcTreeItem>> TreeListItems;
 	TSharedPtr<SListView<TSharedPtr<FPjcStatItem>>> StatsListView;
@@ -136,7 +138,7 @@ class SPjcTabAssetsUnused final : public SCompoundWidget
 	bool bFilterAssetsEditorActive = false;
 	bool bFilterAssetsIndirectActive = false;
 	bool bFilterAssetsExcludedActive = false;
-	bool bFilterAssetsExtReferencedActive = false;
+	bool bFilterAssetsEngineReferencedActive = false;
 	bool bFilterAssetsCircularActive = false;
 	bool bFilterAssetsUnusedActive = true;
 
@@ -146,7 +148,7 @@ class SPjcTabAssetsUnused final : public SCompoundWidget
 	TSharedPtr<FPjcFilterAssetsCircular> FilterCircular;
 	TSharedPtr<FPjcFilterAssetsEditor> FilterEditor;
 	TSharedPtr<FPjcFilterAssetsExcluded> FilterExcluded;
-	TSharedPtr<FPjcFilterAssetsExtReferenced> FilterExtReferenced;
+	TSharedPtr<FPjcFilterAssetsEngineReferenced> FilterEngineReferenced;
 
 	TArray<FAssetData> AssetsAll;
 	TArray<FAssetData> AssetsUsed;
@@ -156,7 +158,7 @@ class SPjcTabAssetsUnused final : public SCompoundWidget
 	TArray<FAssetData> AssetsCircular;
 	TArray<FAssetData> AssetsEditor;
 	TArray<FAssetData> AssetsExcluded;
-	TArray<FAssetData> AssetsExtReferenced;
+	TArray<FAssetData> AssetsEngineReferenced;
 
 	TMap<FString, int32> MapNumAssetsAllByPath;
 	TMap<FString, int32> MapNumAssetsUsedByPath;
@@ -172,7 +174,7 @@ class SPjcTabAssetsUnused final : public SCompoundWidget
 	int32 NumAssetsIndirect = 0;
 	int32 NumAssetsEditor = 0;
 	int32 NumAssetsExcluded = 0;
-	int32 NumAssetsExtReferenced = 0;
+	int32 NumAssetsEngineReferenced = 0;
 	int32 NumFoldersTotal = 0;
 	int32 NumFoldersEmpty = 0;
 
@@ -183,5 +185,5 @@ class SPjcTabAssetsUnused final : public SCompoundWidget
 	int64 SizeAssetsIndirect = 0;
 	int64 SizeAssetsEditor = 0;
 	int64 SizeAssetsExcluded = 0;
-	int64 SizeAssetsExtReferenced = 0;
+	int64 SizeAssetsEngineReferenced = 0;
 };

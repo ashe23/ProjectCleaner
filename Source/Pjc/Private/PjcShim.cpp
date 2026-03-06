@@ -229,7 +229,7 @@ namespace PjcShim
 		ContentBrowserSettings->SetDisplayDevelopersFolder(true);
 		ContentBrowserSettings->SetDisplayEngineFolder(false);
 		ContentBrowserSettings->SetDisplayCppFolders(false);
-		ContentBrowserSettings->SetDisplayPluginFolders(false);
+		ContentBrowserSettings->SetDisplayPluginFolders(true);
 #if ENGINE_MAJOR_VERSION == 5
 		ContentBrowserSettings->bShowAllFolder = false;
 		ContentBrowserSettings->bOrganizeFolders = false;
