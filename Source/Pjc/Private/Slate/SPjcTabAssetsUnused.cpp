@@ -68,6 +68,11 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs) {
 		FExecuteAction::CreateRaw(this, &SPjcTabAssetsUnused::OnProjectClean),
 		FCanExecuteAction::CreateRaw(this, &SPjcTabAssetsUnused::CanCleanProject)
 	);
+	Cmds->MapAction(
+		FPjcCmds::Get().FixRedirectors,
+		FExecuteAction::CreateRaw(this, &SPjcTabAssetsUnused::OnFixRedirectors),
+		FCanExecuteAction::CreateRaw(this, &SPjcTabAssetsUnused::CanFixRedirectors)
+	);
 	Cmds->MapAction(FPjcCmds::Get().ClearExcludeSettings, FExecuteAction::CreateRaw(this, &SPjcTabAssetsUnused::OnResetExcludeSettings));
 	Cmds->MapAction(
 		FPjcCmds::Get().DeleteEmptyFolders,
@@ -269,6 +274,16 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs) {
 				.Padding(3.0f)
 				[
 					SNew(SSeparator).Thickness(5.0f)
+				]
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(3.0f)
+				[
+					SNew(STextBlock)
+					.Visibility(UPjcSubsystem::ProjectHasVersionControl() ? EVisibility::Collapsed : EVisibility::Visible)
+					.AutoWrapText(true)
+					.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Yellow"))
+					.Text(FText::FromString(TEXT("No version control found for this project. Deleted assets can not be restored, copy the project folder somewhere safe before cleaning.")))
 				]
 				+ SVerticalBox::Slot()
 				.AutoHeight()
@@ -509,6 +524,7 @@ TSharedRef<SWidget> SPjcTabAssetsUnused::CreateToolbarMain() const {
 	{
 		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().ScanProject);
 		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().CleanProject);
+		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().FixRedirectors);
 		ToolBarBuilder.AddSeparator();
 		ToolBarBuilder.AddToolBarButton(FPjcCmds::Get().ClearExcludeSettings);
 	}
@@ -557,9 +573,27 @@ void SPjcTabAssetsUnused::OnProjectScan() {
 	ScanProject();
 }
 
+void SPjcTabAssetsUnused::OnFixRedirectors() {
+	FixRedirectors();
+	ScanProject();
+}
+
+bool SPjcTabAssetsUnused::CanFixRedirectors() const {
+	return NumRedirectors > 0;
+}
+
 void SPjcTabAssetsUnused::OnProjectClean() {
 	const FText Title = FText::FromString(TEXT("Project Cleanup"));
-	const FText Context = FText::FromString(TEXT("Are you sure you want to delete all unused assets and empty folders in project?"));
+	const FText Context = FText::FromString(
+		FString::Printf(
+			TEXT("Delete %d unused asset(s) (%s) and %d empty folder(s)?\n\n")
+				TEXT("Assets something still holds in memory are kept and listed in Output Log.\n\n%s"),
+			NumAssetsUnused,
+			*FText::AsMemory(SizeAssetsUnused, IEC).ToString(),
+			NumFoldersEmpty,
+			*UPjcSubsystem::GetDeleteWarning()
+		)
+	);
 
 	const EAppReturnType::Type ReturnType = PjcShim::ShowDialog(Title, Context, EAppMsgType::YesNo);
 	if (ReturnType == EAppReturnType::Cancel || ReturnType == EAppReturnType::No) return;
@@ -584,7 +618,8 @@ void SPjcTabAssetsUnused::OnResetExcludeSettings() {
 
 void SPjcTabAssetsUnused::OnDeleteEmptyFolders() {
 	const FText Title = FText::FromString(TEXT("Delete Empty Folder"));
-	const FText Context = FText::FromString(TEXT("Are you sure you want to delete all empty folders?"));
+	const FText Context
+		= FText::FromString(FString::Printf(TEXT("Delete %d empty folder(s)?\n\n%s"), NumFoldersEmpty, *UPjcSubsystem::GetDeleteWarning()));
 
 	const EAppReturnType::Type ReturnType = PjcShim::ShowDialog(Title, Context, EAppMsgType::YesNo);
 	if (ReturnType == EAppReturnType::Cancel || ReturnType == EAppReturnType::No) return;
@@ -857,8 +892,6 @@ void SPjcTabAssetsUnused::ScanProject() {
 		return;
 	}
 
-	if (!FixRedirectorsBeforeScan()) return;
-
 	if (!FEditorFileUtils::SaveDirtyPackages(true, true, true, false, false, false)) {
 		UPjcSubsystem::ShowNotificationWithOutputLog(
 			TEXT("Failed to scan project, because not all assets have been saved."), SNotificationItem::CS_Fail, 5.0f
@@ -892,12 +925,22 @@ void SPjcTabAssetsUnused::ScanProject() {
 	UPjcSubsystem::GetAssetsEditor(AssetsEditor);
 	UPjcSubsystem::GetAssetsExcluded(AssetsExcluded);
 	UPjcSubsystem::GetAssetsEngineReferenced(AssetsEngineReferenced);
+	UPjcSubsystem::GetAssetsFolderLabelOnly(AssetsFolderLabelOnly);
 	for (const auto& ContentDir : UPjcSubsystem::GetProjectContentDirs()) {
 		TArray<FString> RootFolders;
 		UPjcSubsystem::GetFolders(ContentDir, true, RootFolders);
 		FoldersTotal.Append(RootFolders);
 	}
 	UPjcSubsystem::GetFoldersEmpty(FoldersEmpty);
+
+	// one package can hold several redirectors (blueprint, its class and default object)
+	TArray<FAssetData> Redirectors;
+	UPjcSubsystem::GetProjectRedirectors(Redirectors);
+	TSet<FName> RedirectorPackages;
+	for (const auto& Redirector : Redirectors) {
+		RedirectorPackages.Add(Redirector.PackageName);
+	}
+	NumRedirectors = RedirectorPackages.Num();
 
 	FilterUsed->UpdateData();
 	FilterPrimary->UpdateData();
@@ -935,6 +978,7 @@ void SPjcTabAssetsUnused::ScanProject() {
 	NumAssetsEditor = AssetsEditor.Num();
 	NumAssetsExcluded = AssetsExcluded.Num();
 	NumAssetsEngineReferenced = AssetsEngineReferenced.Num();
+	NumAssetsFolderLabelOnly = AssetsFolderLabelOnly.Num();
 	NumFoldersTotal = FoldersTotal.Num();
 	NumFoldersEmpty = FoldersEmpty.Num();
 
@@ -946,6 +990,7 @@ void SPjcTabAssetsUnused::ScanProject() {
 	SizeAssetsEditor = UPjcSubsystem::GetAssetsTotalSize(AssetsEditor);
 	SizeAssetsExcluded = UPjcSubsystem::GetAssetsTotalSize(AssetsExcluded);
 	SizeAssetsEngineReferenced = UPjcSubsystem::GetAssetsTotalSize(AssetsEngineReferenced);
+	SizeAssetsFolderLabelOnly = UPjcSubsystem::GetAssetsTotalSize(AssetsFolderLabelOnly);
 
 	const double ScanTime = FPlatformTime::Seconds() - ScanStartTime;
 
@@ -958,27 +1003,24 @@ void SPjcTabAssetsUnused::ScanProject() {
 	UpdateContentBrowser();
 }
 
-bool SPjcTabAssetsUnused::FixRedirectorsBeforeScan() {
+bool SPjcTabAssetsUnused::FixRedirectors() {
 	TArray<FAssetData> Redirectors;
 	UPjcSubsystem::GetProjectRedirectors(Redirectors);
 	if (Redirectors.Num() == 0) return true;
 
-	// fixing resaves every referencing asset (source control checkouts), so it should never happen silently (#63)
+	// fixing resaves every referencing asset (source control checkouts), so it never happens silently (#63)
 	if (GetDefault<UPjcEditorSettings>()->bConfirmRedirectorsFix) {
 		const FText Title = FText::FromString(TEXT("Fix Redirectors"));
 		const FText Context = FText::FromString(
 			FString::Printf(
-				TEXT("Project contains %d redirector(s). They must be fixed before scanning.\n\n")
+				TEXT("Project contains %d redirector(s).\n\n")
 					TEXT("Fixing resaves all assets that reference them, with source control those assets will be checked out.\n\n")
 						TEXT("Fix redirectors now?"),
 				Redirectors.Num()
 			)
 		);
 
-		if (PjcShim::ShowDialog(Title, Context, EAppMsgType::YesNo) != EAppReturnType::Yes) {
-			UPjcSubsystem::ShowNotification(TEXT("Scan cancelled. Project contains redirectors."), SNotificationItem::CS_None, 5.0f);
-			return false;
-		}
+		if (PjcShim::ShowDialog(Title, Context, EAppMsgType::YesNo) != EAppReturnType::Yes) return false;
 	}
 
 	if (GEditor && !GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->CloseAllAssetEditors()) {
@@ -994,7 +1036,7 @@ bool SPjcTabAssetsUnused::FixRedirectorsBeforeScan() {
 	if (Redirectors.Num() == 0) return true;
 
 	UPjcSubsystem::ShowNotificationWithOutputLog(
-		TEXT("Failed to scan project, because not all redirectors are fixed."), SNotificationItem::CS_Fail, 5.0f
+		FString::Printf(TEXT("%d redirector(s) were not fixed."), Redirectors.Num()), SNotificationItem::CS_Fail, 5.0f
 	);
 
 	UE_LOG(LogProjectCleaner, Warning, TEXT("Failed to fix following redirectors: "));
@@ -1046,6 +1088,24 @@ void SPjcTabAssetsUnused::UpdateStats() {
 	  SecondLvl
 	}));
 
+	const bool bFolderLabelsUsed = GetDefault<UPjcScanSettings>()->bFolderLabelsUsed;
+	StatsListItems.Emplace(MakeShareable(new FPjcStatItem {
+	  FText::FromString(TEXT("Folder Labels")),
+	  FText::AsNumber(NumAssetsFolderLabelOnly),
+	  FText::AsMemory(SizeAssetsFolderLabelOnly, IEC),
+	  FText::FromString(
+		  bFolderLabelsUsed
+			  ? TEXT("Assets referenced only by Primary Asset Labels with \"Label Assets In My Directory\" (cook rules). Counted as used, ")
+					TEXT("turn off Folder Labels Used in Project Settings > Plugins > Project Cleaner to review them.")
+			  : TEXT("Assets referenced only by Primary Asset Labels with \"Label Assets In My Directory\" (cook rules). Counted as unused, ")
+					TEXT("Folder Labels Used is off in Project Settings > Plugins > Project Cleaner.")
+	  ),
+	  FText::FromString(TEXT("Number of assets only folder labels reference")),
+	  FText::FromString(TEXT("Total size of assets only folder labels reference")),
+	  NumAssetsFolderLabelOnly > 0 ? ColorYellow : FLinearColor::White,
+	  SecondLvl
+	}));
+
 	StatsListItems.Emplace(MakeShareable(new FPjcStatItem {
 	  FText::FromString(TEXT("Editor")),
 	  FText::AsNumber(NumAssetsEditor),
@@ -1087,6 +1147,17 @@ void SPjcTabAssetsUnused::UpdateStats() {
 	  FText::FromString(TEXT("Total number of Excluded assets")),
 	  FText::FromString(TEXT("Total size of Excluded assets")),
 	  NumAssetsExcluded > 0 ? ColorYellow : FLinearColor::White,
+	  SecondLvl
+	}));
+
+	StatsListItems.Emplace(MakeShareable(new FPjcStatItem {
+	  FText::FromString(TEXT("Redirectors")),
+	  FText::AsNumber(NumRedirectors),
+	  FText::GetEmpty(),
+	  FText::FromString(TEXT("Redirectors left by renamed or moved assets. Scanning does not need them fixed, use Fix Redirectors to remove them.")),
+	  FText::FromString(TEXT("Number of packages with redirectors")),
+	  FText::GetEmpty(),
+	  NumRedirectors > 0 ? ColorYellow : FLinearColor::White,
 	  SecondLvl
 	}));
 

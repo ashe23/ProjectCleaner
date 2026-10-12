@@ -28,6 +28,14 @@ void FPjcCmds::RegisterCommands() {
 	UI_COMMAND(CleanProject, "Clean Project", "Clean project from unused assets and empty folders", EUserInterfaceActionType::Button, FInputChord());
 
 	UI_COMMAND(
+		FixRedirectors,
+		"Fix Redirectors",
+		"Resave assets that reference redirectors and delete fixed redirectors. Scanning does not require it.",
+		EUserInterfaceActionType::Button,
+		FInputChord()
+	);
+
+	UI_COMMAND(
 		DeleteEmptyFolders,
 		"Delete Empty Folders",
 		"Delete all empty folders in project. Excluded and Engine Generated folders will be ignored.",

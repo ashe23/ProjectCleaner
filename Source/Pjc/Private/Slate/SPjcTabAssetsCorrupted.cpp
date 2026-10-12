@@ -380,7 +380,8 @@ void SPjcTabAssetsCorrupted::OnRefresh() {
 
 void SPjcTabAssetsCorrupted::OnDelete() {
 	const FText Title = FText::FromString(TEXT("Delete Corrupted Asset Files"));
-	const FText Context = FText::FromString(TEXT("Are you sure you want to delete selected files?"));
+	const FText Context
+		= FText::FromString(FString::Printf(TEXT("Are you sure you want to delete selected files?\n\n%s"), *UPjcSubsystem::GetDeleteWarning()));
 
 	const EAppReturnType::Type ReturnType = PjcShim::ShowDialog(Title, Context, EAppMsgType::YesNo);
 	if (ReturnType == EAppReturnType::Cancel || ReturnType == EAppReturnType::No) return;

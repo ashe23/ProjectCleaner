@@ -52,6 +52,7 @@ class SPjcTabAssetsUnused : public SCompoundWidget
 	TSharedRef<SWidget> CreateToolbarContentBrowser() const;
 	void OnProjectScan();
 	void OnProjectClean();
+	void OnFixRedirectors();
 	void OnResetExcludeSettings();
 	void OnDeleteEmptyFolders();
 	void OnPathReveal() const;
@@ -69,7 +70,7 @@ class SPjcTabAssetsUnused : public SCompoundWidget
 	void OnAssetsIncludeByClass();
 	void OnAssetsDelete();
 	void ScanProject();
-	bool FixRedirectorsBeforeScan();
+	bool FixRedirectors();
 	void UpdateStats();
 	void UpdateTreeView();
 	void UpdateContentBrowser();
@@ -86,6 +87,7 @@ class SPjcTabAssetsUnused : public SCompoundWidget
 	bool TreeItemContainsSearchText(const TSharedPtr<FPjcTreeItem>& Item) const;
 	bool TreeHasSelection() const;
 	bool CanCleanProject() const;
+	bool CanFixRedirectors() const;
 	bool CanDeleteEmptyFolders() const;
 	bool AnyFilterActive() const;
 	bool AnyAssetSelected() const;
@@ -177,6 +179,7 @@ class SPjcTabAssetsUnused : public SCompoundWidget
 	TArray<FAssetData> AssetsEditor;
 	TArray<FAssetData> AssetsExcluded;
 	TArray<FAssetData> AssetsEngineReferenced;
+	TArray<FAssetData> AssetsFolderLabelOnly;
 
 	TMap<FString, int32> MapNumAssetsAllByPath;
 	TMap<FString, int32> MapNumAssetsUsedByPath;
@@ -193,8 +196,10 @@ class SPjcTabAssetsUnused : public SCompoundWidget
 	int32 NumAssetsEditor = 0;
 	int32 NumAssetsExcluded = 0;
 	int32 NumAssetsEngineReferenced = 0;
+	int32 NumAssetsFolderLabelOnly = 0;
 	int32 NumFoldersTotal = 0;
 	int32 NumFoldersEmpty = 0;
+	int32 NumRedirectors = 0;
 
 	int64 SizeAssetsAll = 0;
 	int64 SizeAssetsUsed = 0;
@@ -204,4 +209,5 @@ class SPjcTabAssetsUnused : public SCompoundWidget
 	int64 SizeAssetsEditor = 0;
 	int64 SizeAssetsExcluded = 0;
 	int64 SizeAssetsEngineReferenced = 0;
+	int64 SizeAssetsFolderLabelOnly = 0;
 };

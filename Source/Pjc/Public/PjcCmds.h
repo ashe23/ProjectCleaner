@@ -25,6 +25,7 @@ class FPjcCmds final : public TCommands<FPjcCmds>
 
 	TSharedPtr<FUICommandInfo> ScanProject;
 	TSharedPtr<FUICommandInfo> CleanProject;
+	TSharedPtr<FUICommandInfo> FixRedirectors;
 	TSharedPtr<FUICommandInfo> DeleteEmptyFolders;
 	TSharedPtr<FUICommandInfo> ClearExcludeSettings;
 	TSharedPtr<FUICommandInfo> PathsExclude;
