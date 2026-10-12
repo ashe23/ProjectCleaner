@@ -77,3 +77,7 @@ Plugins/*/Intermediate/*
 
 # Cache files for the editor to use
 DerivedDataCache/*
+
+# Dev tool
+Scripts/pjc.local.json
+__pycache__/
