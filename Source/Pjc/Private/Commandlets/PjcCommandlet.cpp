@@ -2,10 +2,51 @@
 
 #include "Commandlets/PjcCommandlet.h"
 
+#include "PjcSettings.h"
 #include "PjcShim.h"
 #include "PjcSubsystem.h"
+#include "PjcTypes.h"
+#include "Dom/JsonObject.h"
+#include "Engine/AssetManager.h"
+#include "JsonObjectConverter.h"
+#include "Misc/App.h"
+#include "Misc/EngineVersion.h"
+#include "Misc/FileHelper.h"
+#include "Misc/Paths.h"
+#include "Serialization/JsonSerializer.h"
+#include "Serialization/JsonWriter.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogProjectCleanerCLI, Display, All);
+
+namespace
+{
+	TArray<TSharedPtr<FJsonValue>> JsonStrings(const TArray<FString>& Items) {
+		TArray<FString> Sorted = Items;
+		Sorted.Sort();
+
+		TArray<TSharedPtr<FJsonValue>> Values;
+		Values.Reserve(Sorted.Num());
+		for (const auto& Item : Sorted) {
+			Values.Emplace(MakeShared<FJsonValueString>(Item));
+		}
+		return Values;
+	}
+
+	TArray<TSharedPtr<FJsonValue>> JsonAssets(const TArray<FAssetData>& Assets) {
+		TArray<FString> Paths;
+		Paths.Reserve(Assets.Num());
+		for (const auto& Asset : Assets) {
+			Paths.Emplace(PjcShim::GetObjectPathString(Asset));
+		}
+		return JsonStrings(Paths);
+	}
+
+	TSharedRef<FJsonObject> JsonSettings(const UObject* Settings) {
+		TSharedRef<FJsonObject> Object = MakeShared<FJsonObject>();
+		FJsonObjectConverter::UStructToJsonObject(Settings->GetClass(), Settings, Object, CPF_Config, 0);
+		return Object;
+	}
+}	// namespace
 
 UPjcCommandlet::UPjcCommandlet() {
 	IsServer = false;
@@ -30,44 +71,39 @@ int32 UPjcCommandlet::Main(const FString& Params) {
 	//- delete_files_corrupted
 	//- fix_redirectors
 	//- list
+	//- report=<file.json>
 
 	// asset discovery can still run in background, every query below needs complete registry
 	UPjcSubsystem::GetModuleAssetRegistry().Get().SearchAllAssets(true);
 
+	if (!ReportPath.IsEmpty()) {
+		ReportInit();
+	}
+
+	// scanning works with redirectors (they are assets like any other), fixing them is optional
 	if (bFixRedirectors && UPjcSubsystem::ProjectHasRedirectors()) {
 		TArray<FAssetData> Redirectors;
 		UPjcSubsystem::GetProjectRedirectors(Redirectors);
 		UE_LOG(LogProjectCleanerCLI, Display, TEXT("Fixing %d redirectors..."), Redirectors.Num());
 		UPjcSubsystem::FixProjectRedirectors(Redirectors, false);
-	}
 
-	if (UPjcSubsystem::ProjectHasRedirectors()) {
-		TArray<FAssetData> Redirectors;
 		UPjcSubsystem::GetProjectRedirectors(Redirectors);
-
-		UE_LOG(LogProjectCleanerCLI, Warning, TEXT("Project contains %d redirectors that must be fixed first:"), Redirectors.Num());
 		for (const auto& Redirector : Redirectors) {
-			UE_LOG(LogProjectCleanerCLI, Warning, TEXT("	%s"), *PjcShim::GetObjectPathString(Redirector));
+			UE_LOG(LogProjectCleanerCLI, Warning, TEXT("Redirector not fixed: %s"), *PjcShim::GetObjectPathString(Redirector));
 		}
-		UE_LOG(LogProjectCleanerCLI, Warning, TEXT("Run again with -fix_redirectors, or fix them with:"));
-		UE_LOG(
-			LogProjectCleanerCLI,
-			Warning,
-			TEXT("	%s <uproject> -run=ResavePackages -fixupredirects -autocheckout -projectonly -unattended"),
-			ENGINE_MAJOR_VERSION >= 5 ? TEXT("UnrealEditor-Cmd") : TEXT("UE4Editor-Cmd")
-		);
-
-		return 1;
 	}
 
-	const FCleanupStats StatsBefore = StatsCollect(bList);
+	const FCleanupStats StatsBefore = StatsCollect(bList, TEXT("before"));
 
 	UE_LOG(LogProjectCleanerCLI, Display, TEXT("======================================"));
 	UE_LOG(LogProjectCleanerCLI, Display, TEXT("========     Project Stats    ========"));
 	UE_LOG(LogProjectCleanerCLI, Display, TEXT("======================================"));
 	StatsPrint(StatsBefore);
 
-	if (bScanOnly) return 0;
+	if (bScanOnly) {
+		ReportWrite(TEXT("scanned"));
+		return 0;
+	}
 
 	bool bSuccess = true;
 
@@ -88,7 +124,7 @@ int32 UPjcCommandlet::Main(const FString& Params) {
 	}
 
 	if (bFullCleanup || bDeleteAssetsUnused || bDeleteFilesExternal || bDeleteFilesCorrupted || bDeleteFoldersEmpty) {
-		const FCleanupStats StatsAfter = StatsCollect(bList);
+		const FCleanupStats StatsAfter = StatsCollect(bList, TEXT("after"));
 
 		UE_LOG(LogProjectCleanerCLI, Display, TEXT("======================================"));
 		UE_LOG(LogProjectCleanerCLI, Display, TEXT("========  Stats After Cleanup ========"));
@@ -99,6 +135,8 @@ int32 UPjcCommandlet::Main(const FString& Params) {
 	if (!bSuccess) {
 		UE_LOG(LogProjectCleanerCLI, Error, TEXT("Cleanup finished with errors, see log above."));
 	}
+
+	ReportWrite(bSuccess ? TEXT("cleaned") : TEXT("failed"));
 
 	return bSuccess ? 0 : 1;
 }
@@ -142,9 +180,13 @@ void UPjcCommandlet::ParseCommandLinesArguments(const FString& Params) {
 			bList = true;
 		}
 	}
+
+	if (const FString* Path = Parameters.Find(TEXT("report"))) {
+		ReportPath = Path->TrimQuotes();
+	}
 }
 
-UPjcCommandlet::FCleanupStats UPjcCommandlet::StatsCollect(const bool bPrintLists) {
+UPjcCommandlet::FCleanupStats UPjcCommandlet::StatsCollect(const bool bPrintLists, const FString& ReportField) {
 	FPjcScanCacheScope ScanCacheScope;
 
 	TArray<FAssetData> AssetsAll;
@@ -168,7 +210,98 @@ UPjcCommandlet::FCleanupStats UPjcCommandlet::StatsCollect(const bool bPrintList
 		ListPrint(TEXT("Files Corrupted"), FilesCorrupted);
 	}
 
-	return FCleanupStats {AssetsAll.Num(), AssetsUsed.Num(), AssetsUnused.Num(), FoldersEmpty.Num(), FilesExternal.Num(), FilesCorrupted.Num()};
+	const FCleanupStats Stats {AssetsAll.Num(), AssetsUsed.Num(), AssetsUnused.Num(), FoldersEmpty.Num(), FilesExternal.Num(), FilesCorrupted.Num()};
+
+	if (Report.IsValid()) {
+		TArray<FAssetData> AssetsPrimary;
+		TArray<FAssetData> AssetsEditor;
+		TArray<FAssetData> AssetsIndirect;
+		TArray<FAssetData> AssetsExcluded;
+		TArray<FAssetData> AssetsEngineReferenced;
+		TArray<FAssetData> AssetsFolderLabelOnly;
+		TArray<FAssetData> Redirectors;
+		TArray<FPjcAssetIndirectInfo> AssetsIndirectInfos;
+		TArray<FString> FilesExternalExcluded;
+
+		UPjcSubsystem::GetAssetsPrimary(AssetsPrimary, false);
+		UPjcSubsystem::GetAssetsEditor(AssetsEditor, false);
+		UPjcSubsystem::GetAssetsIndirect(AssetsIndirect, AssetsIndirectInfos, false);
+		UPjcSubsystem::GetAssetsExcluded(AssetsExcluded, false);
+		UPjcSubsystem::GetAssetsEngineReferenced(AssetsEngineReferenced, false);
+		UPjcSubsystem::GetAssetsFolderLabelOnly(AssetsFolderLabelOnly, false);
+		UPjcSubsystem::GetFilesExternalExcluded(FilesExternalExcluded, false);
+		UPjcSubsystem::GetProjectRedirectors(Redirectors);
+
+		const TSharedRef<FJsonObject> StatsJson = MakeShared<FJsonObject>();
+		StatsJson->SetNumberField(TEXT("assets_all"), Stats.NumAssetsAll);
+		StatsJson->SetNumberField(TEXT("assets_used"), Stats.NumAssetsUsed);
+		StatsJson->SetNumberField(TEXT("assets_unused"), Stats.NumAssetsUnused);
+		StatsJson->SetNumberField(TEXT("folders_empty"), Stats.NumFoldersEmpty);
+		StatsJson->SetNumberField(TEXT("files_external"), Stats.NumFilesExternal);
+		StatsJson->SetNumberField(TEXT("files_corrupted"), Stats.NumFilesCorrupted);
+
+		const TSharedRef<FJsonObject> Block = MakeShared<FJsonObject>();
+		Block->SetObjectField(TEXT("stats"), StatsJson);
+		Block->SetArrayField(TEXT("assets_unused"), JsonAssets(AssetsUnused));
+		Block->SetArrayField(TEXT("assets_primary"), JsonAssets(AssetsPrimary));
+		Block->SetArrayField(TEXT("assets_editor"), JsonAssets(AssetsEditor));
+		Block->SetArrayField(TEXT("assets_indirect"), JsonAssets(AssetsIndirect));
+		Block->SetArrayField(TEXT("assets_excluded"), JsonAssets(AssetsExcluded));
+		Block->SetArrayField(TEXT("assets_engine_referenced"), JsonAssets(AssetsEngineReferenced));
+		Block->SetArrayField(TEXT("assets_folder_label_only"), JsonAssets(AssetsFolderLabelOnly));
+		Block->SetArrayField(TEXT("folders_empty"), JsonStrings(FoldersEmpty));
+		Block->SetArrayField(TEXT("files_external"), JsonStrings(FilesExternal));
+		Block->SetArrayField(TEXT("files_external_excluded"), JsonStrings(FilesExternalExcluded));
+		Block->SetArrayField(TEXT("files_corrupted"), JsonStrings(FilesCorrupted));
+		Block->SetArrayField(TEXT("redirectors"), JsonAssets(Redirectors));
+		Report->SetObjectField(ReportField, Block);
+	}
+
+	return Stats;
+}
+
+void UPjcCommandlet::ReportInit() {
+	Report = MakeShared<FJsonObject>();
+	Report->SetStringField(TEXT("engine"), FEngineVersion::Current().ToString());
+	Report->SetStringField(TEXT("project"), FApp::GetProjectName());
+	Report->SetArrayField(TEXT("roots"), JsonStrings(UPjcSubsystem::GetProjectRootPaths()));
+	Report->SetArrayField(TEXT("content_dirs"), JsonStrings(UPjcSubsystem::GetProjectContentDirs()));
+	Report->SetObjectField(TEXT("scan_settings"), JsonSettings(GetDefault<UPjcScanSettings>()));
+	Report->SetObjectField(TEXT("asset_exclude_settings"), JsonSettings(GetDefault<UPjcAssetExcludeSettings>()));
+	Report->SetObjectField(TEXT("file_exclude_settings"), JsonSettings(GetDefault<UPjcFileExcludeSettings>()));
+
+	// what the engine itself considers primary assets, independent of plugin classification (used by tests)
+	TArray<FString> PrimaryAssets;
+	if (PjcShim::IsAssetManagerValid()) {
+		const UAssetManager& AssetManager = UAssetManager::Get();
+		TArray<FPrimaryAssetTypeInfo> TypeInfos;
+		AssetManager.GetPrimaryAssetTypeInfoList(TypeInfos);
+		for (const auto& TypeInfo : TypeInfos) {
+			TArray<FPrimaryAssetId> Ids;
+			AssetManager.GetPrimaryAssetIdList(TypeInfo.PrimaryAssetType, Ids);
+			for (const auto& Id : Ids) {
+				PrimaryAssets.Emplace(Id.ToString() + TEXT(" ") + AssetManager.GetPrimaryAssetPath(Id).ToString());
+			}
+		}
+	}
+	Report->SetArrayField(TEXT("asset_manager_primary_assets"), JsonStrings(PrimaryAssets));
+}
+
+void UPjcCommandlet::ReportWrite(const FString& Result) const {
+	if (!Report.IsValid()) return;
+
+	Report->SetStringField(TEXT("result"), Result);
+
+	FString Json;
+	const TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&Json);
+	FJsonSerializer::Serialize(Report.ToSharedRef(), Writer);
+
+	if (FFileHelper::SaveStringToFile(Json, *ReportPath, FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM)) {
+		UE_LOG(LogProjectCleanerCLI, Display, TEXT("Report written to %s"), *ReportPath);
+	}
+	else {
+		UE_LOG(LogProjectCleanerCLI, Error, TEXT("Failed to write report to %s"), *ReportPath);
+	}
 }
 
 void UPjcCommandlet::StatsPrint(const FCleanupStats& Stats) {

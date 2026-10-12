@@ -37,6 +37,8 @@ public class Pjc : ModuleRules
 				"SlateCore",
 				"AssetRegistry",
 				"AssetTools",
+				"Json",
+				"JsonUtilities",
                 // editor modules
 				"AssetManagerEditor",
 				"Blutility",

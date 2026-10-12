@@ -7,6 +7,7 @@
 #include "PjcCommandlet.generated.h"
 
 struct FAssetData;
+class FJsonObject;
 
 /**
  * UnrealEditor-Cmd.exe <uproject> -run=Pjc [switches]
@@ -17,10 +18,11 @@ struct FAssetData;
  *   -delete_folders_empty
  *   -delete_files_external
  *   -delete_files_corrupted
- *   -fix_redirectors         fix redirectors first instead of stopping
+ *   -fix_redirectors         fix redirectors before scanning (resaves referencing assets)
  *   -list                    print found items, not only counts
+ *   -report=<file.json>      write stats and every found item as json (for CI and scripts)
  *
- * Returns 0 on success, 1 when project has redirectors or something failed to delete.
+ * Returns 0 on success, 1 when something failed to delete.
  */
 UCLASS()
 class UPjcCommandlet : public UCommandlet
@@ -45,10 +47,12 @@ class UPjcCommandlet : public UCommandlet
   private:
 
 	void ParseCommandLinesArguments(const FString& Params);
-	FCleanupStats StatsCollect(const bool bPrintLists);
+	FCleanupStats StatsCollect(const bool bPrintLists, const FString& ReportField);
 	void StatsPrint(const FCleanupStats& Stats);
 	void ListPrint(const FString& Title, const TArray<FAssetData>& Assets);
 	void ListPrint(const FString& Title, const TArray<FString>& Items);
+	void ReportInit();
+	void ReportWrite(const FString& Result) const;
 
 	bool bScanOnly = false;
 	bool bFullCleanup = false;
@@ -58,4 +62,6 @@ class UPjcCommandlet : public UCommandlet
 	bool bDeleteFilesCorrupted = false;
 	bool bFixRedirectors = false;
 	bool bList = false;
+	FString ReportPath;
+	TSharedPtr<FJsonObject> Report;
 };
