@@ -736,6 +736,11 @@ void UPjcSubsystem::GetFilesExternalExcluded(TArray<FString>& Files, const bool 
 }
 
 void UPjcSubsystem::GetFilesCorrupted(TArray<FString>& Files, const bool bShowSlowTask) {
+	Files.Reset();
+
+	// files are corrupted when registry does not know them, so incomplete registry would report every asset
+	if (GetModuleAssetRegistry().Get().IsLoadingAssets()) return;
+
 	TArray<FString> FileAssets;
 	TArray<FString> RootFiles;
 
@@ -1058,6 +1063,11 @@ bool UPjcSubsystem::DeleteFilesExternal(const bool bShowSlowTask, const bool bSh
 }
 
 bool UPjcSubsystem::DeleteFilesCorrupted(const bool bShowSlowTask, const bool bShowEditorNotification) {
+	if (GetModuleAssetRegistry().Get().IsLoadingAssets()) {
+		UE_LOG(LogProjectCleaner, Warning, TEXT("Failed to delete corrupted files, because AssetRegistry still discovering assets."));
+		return false;
+	}
+
 	TArray<FString> FilesCorrupted;
 	GetFilesCorrupted(FilesCorrupted);
 
