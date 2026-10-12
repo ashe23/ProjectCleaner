@@ -2,6 +2,7 @@
 
 #include "Pjc.h"
 #include "PjcShim.h"
+#include "PjcSettings.h"
 #include "PjcCmds.h"
 #include "PjcStyles.h"
 #include "PjcConstants.h"
@@ -24,22 +25,8 @@ void FPjc::StartupModule() {
 						FGlobalTabmanager::Get()->TryInvokeTab(PjcConstants::TabProjectCleaner);
 					}));
 
-	UToolMenus::RegisterStartupCallback(FSimpleMulticastDelegate::FDelegate::CreateLambda([&]() {
-		FToolMenuOwnerScoped OwnerScoped(this);
-
-		UToolMenu* Menu = UToolMenus::Get()->ExtendMenu("LevelEditor.MainMenu.Window");
-		FToolMenuSection& Section = Menu->AddSection(
-			"PjcSectionAssetManagementTools",
-			FText::FromString(TEXT("Project Management Tools")),
-			FToolMenuInsert("WindowLayout", EToolMenuInsertType::After)
-		);
-		Section.AddMenuEntryWithCommandList(FPjcCmds::Get().TabMain, Cmds);
-
-		UToolMenu* ToolbarMenu = UToolMenus::Get()->ExtendMenu(PjcShim::GetLevelEditorToolBarName());
-		FToolMenuSection& ToolbarSection = ToolbarMenu->FindOrAddSection("Settings");
-		FToolMenuEntry& Entry = ToolbarSection.AddEntry(FToolMenuEntry::InitToolBarButton(FPjcCmds::Get().TabMain));
-		Entry.SetCommandList(Cmds);
-	}));
+	UToolMenus::RegisterStartupCallback(FSimpleMulticastDelegate::FDelegate::CreateRaw(this, &FPjc::RegisterMenus));
+	GetMutableDefault<UPjcEditorSettings>()->OnChanged.AddRaw(this, &FPjc::OnSettingsChanged);
 
 	FGlobalTabmanager::Get()
 		->RegisterTabSpawner(
@@ -58,6 +45,10 @@ void FPjc::StartupModule() {
 }
 
 void FPjc::ShutdownModule() {
+	if (UObjectInitialized()) {
+		GetMutableDefault<UPjcEditorSettings>()->OnChanged.RemoveAll(this);
+	}
+
 	FGlobalTabmanager::Get()->UnregisterTabSpawner(PjcConstants::TabProjectCleaner);
 	UToolMenus::UnRegisterStartupCallback(this);
 	UToolMenus::UnregisterOwner(this);
@@ -65,6 +56,35 @@ void FPjc::ShutdownModule() {
 	FPjcStyles::Shutdown();
 
 	IModuleInterface::ShutdownModule();
+}
+
+void FPjc::RegisterMenus() {
+	FToolMenuOwnerScoped OwnerScoped(this);
+
+	UToolMenu* Menu = UToolMenus::Get()->ExtendMenu("LevelEditor.MainMenu.Window");
+	FToolMenuSection& Section = Menu->AddSection(
+		"PjcSectionAssetManagementTools",
+		FText::FromString(TEXT("Project Management Tools")),
+		FToolMenuInsert("WindowLayout", EToolMenuInsertType::After)
+	);
+	Section.AddMenuEntryWithCommandList(FPjcCmds::Get().TabMain, Cmds);
+
+	const EPjcToolbarLocation ToolbarLocation = GetDefault<UPjcEditorSettings>()->ToolbarLocation;
+	if (ToolbarLocation == EPjcToolbarLocation::Hidden) return;
+
+	UToolMenu* ToolbarMenu = UToolMenus::Get()->ExtendMenu(PjcShim::GetLevelEditorToolBarName(ToolbarLocation));
+	FToolMenuSection& ToolbarSection = ToolbarMenu->FindOrAddSection("Settings");
+	FToolMenuEntry& Entry = ToolbarSection.AddEntry(FToolMenuEntry::InitToolBarButton(FPjcCmds::Get().TabMain));
+	Entry.SetCommandList(Cmds);
+}
+
+void FPjc::OnSettingsChanged() {
+	if (!UToolMenus::IsToolMenuUIEnabled()) return;
+
+	// toolbar location can change at any time, rebuild entries owned by this module
+	UToolMenus::UnregisterOwner(this);
+	RegisterMenus();
+	UToolMenus::Get()->RefreshAllWidgets();
 }
 
 bool FPjc::SupportsDynamicReloading() {

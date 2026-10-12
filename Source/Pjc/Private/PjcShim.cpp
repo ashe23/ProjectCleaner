@@ -2,6 +2,7 @@
 
 #include "PjcShim.h"
 #include "PjcConstants.h"
+#include "PjcSettings.h"
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "AssetRegistry/ARFilter.h"
 #if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1
@@ -41,10 +42,15 @@ namespace PjcShim
 #endif
 	}
 
-	FName GetLevelEditorToolBarName() {
+	FName GetLevelEditorToolBarName(const EPjcToolbarLocation Location) {
 #if ENGINE_MAJOR_VERSION == 5
-		return TEXT("LevelEditor.LevelEditorToolBar.PlayToolBar");
+		switch (Location) {
+			case EPjcToolbarLocation::AssetsToolbar : return TEXT("LevelEditor.LevelEditorToolBar.AssetsToolBar");
+			case EPjcToolbarLocation::UserToolbar :	  return TEXT("LevelEditor.LevelEditorToolBar.User");
+			default :								  return TEXT("LevelEditor.LevelEditorToolBar.PlayToolBar");
+		}
 #else
+		// UE4 has single level editor toolbar
 		return TEXT("LevelEditor.LevelEditorToolBar");
 #endif
 	}

@@ -25,6 +25,7 @@ class SPjcTabMain final : public SCompoundWidget
 	TSharedRef<SDockTab> OnTabAssetsCorruptedSpawn(const FSpawnTabArgs& Args) const;
 	TSharedRef<SDockTab> OnTabFilesExternalSpawn(const FSpawnTabArgs& Args) const;
 	void CreateMenuBarTabs(FMenuBuilder& MenuBuilder, const TSharedPtr<FTabManager> TabManagerPtr);
+	void CreateMenuBarSettings(FMenuBuilder& MenuBuilder);
 	void CreateMenuBarHelp(FMenuBuilder& MenuBuilder, const TSharedPtr<FTabManager> TabManagerPtr);
 
 	TSharedPtr<FUICommandList> Cmds;

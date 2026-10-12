@@ -11,6 +11,7 @@
 #include "PjcCmds.h"
 #include "PjcShim.h"
 // Engine Headers
+#include "ISettingsModule.h"
 #include "Widgets/Layout/SWidgetSwitcher.h"
 
 void SPjcTabMain::Construct(
@@ -34,6 +35,14 @@ void SPjcTabMain::Construct(
 
 	Cmds->MapAction(FPjcCmds::Get().OpenBugReport, FExecuteAction::CreateLambda([]() {
 						FPlatformProcess::LaunchURL(*PjcConstants::UrlIssueTracker, nullptr, nullptr);
+					}));
+
+	Cmds->MapAction(FPjcCmds::Get().OpenSettingsProject, FExecuteAction::CreateLambda([]() {
+						FModuleManager::LoadModuleChecked<ISettingsModule>("Settings").ShowViewer("Project", "Plugins", "PjcScanSettings");
+					}));
+
+	Cmds->MapAction(FPjcCmds::Get().OpenSettingsEditor, FExecuteAction::CreateLambda([]() {
+						FModuleManager::LoadModuleChecked<ISettingsModule>("Settings").ShowViewer("Editor", "Plugins", "PjcEditorSettings");
 					}));
 
 	TabLayout = FTabManager::NewLayout("PjcTabLayout")
@@ -79,6 +88,9 @@ void SPjcTabMain::Construct(
 
 	MenuBarBuilder.AddPullDownMenu(
 		FText::FromString(TEXT("Tabs")), FText::GetEmpty(), FNewMenuDelegate::CreateRaw(this, &SPjcTabMain::CreateMenuBarTabs, TabManager), "Window"
+	);
+	MenuBarBuilder.AddPullDownMenu(
+		FText::FromString(TEXT("Settings")), FText::GetEmpty(), FNewMenuDelegate::CreateRaw(this, &SPjcTabMain::CreateMenuBarSettings), "Settings"
 	);
 	MenuBarBuilder.AddPullDownMenu(
 		FText::FromString(TEXT("Help")), FText::GetEmpty(), FNewMenuDelegate::CreateRaw(this, &SPjcTabMain::CreateMenuBarHelp, TabManager), "Tabs"
@@ -205,6 +217,11 @@ void SPjcTabMain::CreateMenuBarTabs(FMenuBuilder& MenuBuilder, const TSharedPtr<
 #endif
 
 	TabManagerPtr->PopulateLocalTabSpawnerMenu(MenuBuilder);
+}
+
+void SPjcTabMain::CreateMenuBarSettings(FMenuBuilder& MenuBuilder) {
+	MenuBuilder.AddMenuEntry(FPjcCmds::Get().OpenSettingsProject);
+	MenuBuilder.AddMenuEntry(FPjcCmds::Get().OpenSettingsEditor);
 }
 
 void SPjcTabMain::CreateMenuBarHelp(FMenuBuilder& MenuBuilder, const TSharedPtr<FTabManager> TabManagerPtr) {

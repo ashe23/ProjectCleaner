@@ -8,6 +8,7 @@
 #include "Settings/ContentBrowserSettings.h"
 
 class FTabManager;
+enum class EPjcToolbarLocation : uint8;
 class FMultiBox;
 struct FARFilter;
 struct FAssetData;
@@ -25,7 +26,7 @@ namespace PjcShim
 	const FSlateBrush* GetBrush(const FName PropertyName, const ANSICHAR* Specifier = nullptr);
 	FSlateColor GetSlateColor(const FName PropertyName, const ANSICHAR* Specifier = nullptr);
 
-	FName GetLevelEditorToolBarName();
+	FName GetLevelEditorToolBarName(const EPjcToolbarLocation Location);
 	TSet<FName> GetCachedEmptyPackages();
 	FAssetPackageData GetAssetPackageData(const FName PackageName);
 	FString GetPathExternalActors();

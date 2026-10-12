@@ -18,5 +18,8 @@ class FPjc final : public IModuleInterface
 
   private:
 
+	void RegisterMenus();
+	void OnSettingsChanged();
+
 	TSharedPtr<FUICommandList> Cmds;
 };
