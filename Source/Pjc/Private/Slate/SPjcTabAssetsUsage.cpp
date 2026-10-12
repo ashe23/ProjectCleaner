@@ -1,7 +1,9 @@
 // Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "Slate/SPjcTabAssetsUsage.h"
+#include "Slate/SPjcAssetGraph.h"
 #include "Slate/SPjcItemUsage.h"
+#include "PjcAssetGraph.h"
 #include "PjcCmds.h"
 #include "PjcSettings.h"
 #include "PjcShim.h"
@@ -13,6 +15,7 @@
 #include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "Misc/PackageName.h"
 #include "Widgets/Input/SButton.h"
+#include "Widgets/Input/SCheckBox.h"
 #include "Widgets/Input/SComboButton.h"
 #include "Widgets/Input/SHyperlink.h"
 #include "Widgets/Input/SSearchBox.h"
@@ -74,65 +77,95 @@ void SPjcTabAssetsUsage::Construct(const FArguments& InArgs) {
 
 	SAssignNew(ChainBox, SVerticalBox);
 
+	SAssignNew(GraphView, SPjcAssetGraph)
+		.OnSelectionChanged_Raw(this, &SPjcTabAssetsUsage::OnGraphSelectionChanged)
+		.OnAssetDoubleClicked_Raw(this, &SPjcTabAssetsUsage::OnGraphAssetDoubleClicked);
+
 	// clang-format off
 	ChildSlot
 	[
-		SNew(SSplitter)
-		.Orientation(Orient_Horizontal)
-		+ SSplitter::Slot()
-		.Value(0.4f)
+		SNew(SVerticalBox)
+		+ SVerticalBox::Slot()
+		.AutoHeight()
+		.Padding(5.0f)
 		[
-			SNew(SVerticalBox)
-			+ SVerticalBox::Slot()
-			.AutoHeight()
-			.Padding(5.0f)
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			.VAlign(VAlign_Center)
 			[
 				CreateToolbar()
 			]
-			+ SVerticalBox::Slot()
-			.AutoHeight()
-			.Padding(FMargin{10.0f, 0.0f, 5.0f, 5.0f})
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			.VAlign(VAlign_Center)
+			.Padding(FMargin{10.0f, 0.0f})
+			[
+				CreateViewToggle()
+			]
+			+ SHorizontalBox::Slot()
+			.FillWidth(1.0f)
+			.VAlign(VAlign_Center)
+			.Padding(FMargin{10.0f, 0.0f})
 			[
 				SNew(STextBlock)
-				.AutoWrapText(true)
 				.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Gray"))
 				.Text_Raw(this, &SPjcTabAssetsUsage::GetSummaryText)
 			]
-			+ SVerticalBox::Slot()
-			.AutoHeight()
-			.Padding(5.0f)
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			.VAlign(VAlign_Center)
 			[
-				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot()
-				.FillWidth(1.0f)
+				SNew(SBox)
+				.WidthOverride(300.0f)
 				[
 					SNew(SSearchBox)
 					.HintText(FText::FromString(TEXT("Search name, path, class or reason...")))
 					.OnTextChanged_Raw(this, &SPjcTabAssetsUsage::OnSearchTextChanged)
 				]
-				+ SHorizontalBox::Slot()
-				.AutoWidth()
-				.Padding(FMargin{5.0f, 0.0f, 0.0f, 0.0f})
+			]
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			.VAlign(VAlign_Center)
+			.Padding(FMargin{5.0f, 0.0f, 0.0f, 0.0f})
+			[
+				SNew(SComboButton)
+				.OnGetMenuContent_Raw(this, &SPjcTabAssetsUsage::CreateFilterMenu)
+				.ButtonContent()
 				[
-					SNew(SComboButton)
-					.OnGetMenuContent_Raw(this, &SPjcTabAssetsUsage::CreateFilterMenu)
-					.ButtonContent()
-					[
-						SNew(STextBlock).Text_Raw(this, &SPjcTabAssetsUsage::GetFilterText)
-					]
+					SNew(STextBlock).Text_Raw(this, &SPjcTabAssetsUsage::GetFilterText)
 				]
 			]
-			+ SVerticalBox::Slot()
-			.FillHeight(1.0f)
-			.Padding(5.0f)
-			[
-				ListView.ToSharedRef()
-			]
 		]
-		+ SSplitter::Slot()
-		.Value(0.6f)
+		+ SVerticalBox::Slot()
+		.FillHeight(1.0f)
 		[
-			CreateInspector()
+			SNew(SSplitter)
+			.Orientation(Orient_Horizontal)
+			+ SSplitter::Slot()
+			.Value(0.62f)
+			[
+				SNew(SWidgetSwitcher)
+				.WidgetIndex_Lambda([this]() { return bShowList ? 1 : 0; })
+				+ SWidgetSwitcher::Slot()
+				[
+					GraphView.ToSharedRef()
+				]
+				+ SWidgetSwitcher::Slot()
+				.Padding(5.0f)
+				[
+					ListView.ToSharedRef()
+				]
+			]
+			+ SSplitter::Slot()
+			.Value(0.38f)
+			[
+				SNew(SBox)
+				.Visibility_Lambda([this]() { return Current.IsValid() ? EVisibility::Visible : EVisibility::Collapsed; })
+				[
+					CreateInspector()
+				]
+			]
 		]
 	];
 	// clang-format on
@@ -189,7 +222,7 @@ void SPjcTabAssetsUsage::Inspect(const FName& PackageName, const bool bRecordHis
 	ListUsedBy->RequestListRefresh();
 	ListUses->RequestListRefresh();
 
-	// asset list follows inspected asset, without inspecting it again
+	// asset list and graph follow inspected asset, without inspecting it again. Graph moves to it unless it was clicked there
 	TGuardValue<bool> SyncGuard {bSyncingSelection, true};
 	if (ItemsFiltered.Contains(Item)) {
 		ListView->SetSelection(Item, ESelectInfo::Direct);
@@ -198,6 +231,7 @@ void SPjcTabAssetsUsage::Inspect(const FName& PackageName, const bool bRecordHis
 	else {
 		ListView->ClearSelection();
 	}
+	GraphView->SetSelection(PackageName, !bSelectingInGraph);
 }
 
 void SPjcTabAssetsUsage::Scan() {
@@ -227,21 +261,25 @@ void SPjcTabAssetsUsage::Scan() {
 	NumUsed = 0;
 	NumUnused = 0;
 	NumNotDeleted = 0;
+	SizeUsed = 0;
+	SizeUnused = 0;
 
 	for (const auto& Asset : AssetsAll) {
 		const TSharedPtr<FPjcUsageItem> Item = MakeShared<FPjcUsageItem>();
 		Item->PackageName = Asset.PackageName;
 		Item->Asset = Asset;
 		Item->Usage = Usage.FindRef(Asset.PackageName);
-		Item->ClassName = PjcShim::GetAssetClassName(Asset).ToString();
+		Item->ClassName = FPackageName::ObjectPathToObjectName(PjcShim::GetAssetClassName(Asset).ToString());
 		Item->Size = UPjcSubsystem::GetAssetSize(Asset);
 		Item->bScanned = true;
 
 		if (Item->Usage.bUsed) {
 			++NumUsed;
+			SizeUsed += Item->Size;
 		}
 		else {
 			++NumUnused;
+			SizeUnused += Item->Size;
 			if (const FString* KeptBy = Kept.Find(Asset.PackageName)) {
 				Item->Kept = *KeptBy;
 				++NumNotDeleted;
@@ -256,6 +294,10 @@ void SPjcTabAssetsUsage::Scan() {
 	for (const auto& Item : ItemsAll) {
 		Item->ReasonText = GetShortReason(*Item);
 	}
+
+	Graph = MakeShared<FPjcAssetGraph>();
+	Graph->Build(ItemsAll);
+	GraphView->SetGraph(Graph);
 
 	bScanned = true;
 	Current.Reset();
@@ -293,6 +335,14 @@ void SPjcTabAssetsUsage::ListUpdateView() {
 
 	ListSort();
 	ListView->RequestListRefresh();
+
+	// graph shows all assets, ones that pass search and filter stand out
+	TSet<FName> Emphasized;
+	Emphasized.Reserve(ItemsFiltered.Num());
+	for (const auto& Item : ItemsFiltered) {
+		Emphasized.Add(Item->PackageName);
+	}
+	GraphView->SetEmphasis(Emphasized, Filter != EFilter::All || !Search.IsEmpty());
 }
 
 void SPjcTabAssetsUsage::ListSort() {
@@ -392,6 +442,26 @@ void SPjcTabAssetsUsage::RebuildChain() {
 	}
 }
 
+void SPjcTabAssetsUsage::ClearInspected() {
+	if (Current.IsValid()) {
+		HistoryBack.Add(Current->PackageName);
+		HistoryForward.Reset();
+	}
+
+	Current.Reset();
+	CurrentHolder.Reset();
+	CurrentWhy = FText::GetEmpty();
+	ItemsUsedBy.Reset();
+	ItemsUses.Reset();
+	ChainBox->ClearChildren();
+	ListUsedBy->RequestListRefresh();
+	ListUses->RequestListRefresh();
+
+	TGuardValue<bool> SyncGuard {bSyncingSelection, true};
+	ListView->ClearSelection();
+	GraphView->SetSelection(NAME_None, false);
+}
+
 TSharedPtr<FPjcUsageItem> SPjcTabAssetsUsage::FindOrMakeItem(const FName& PackageName) {
 	if (const TSharedPtr<FPjcUsageItem>* Found = ItemsByPackage.Find(PackageName)) {
 		return *Found;
@@ -409,7 +479,7 @@ TSharedPtr<FPjcUsageItem> SPjcTabAssetsUsage::FindOrMakeItem(const FName& Packag
 		}
 	}
 	if (Item->Asset.IsValid()) {
-		Item->ClassName = PjcShim::GetAssetClassName(Item->Asset).ToString();
+		Item->ClassName = FPackageName::ObjectPathToObjectName(PjcShim::GetAssetClassName(Item->Asset).ToString());
 	}
 	Item->ReasonText = GetShortReason(*Item);
 
@@ -593,6 +663,34 @@ TSharedRef<SWidget> SPjcTabAssetsUsage::CreateToolbar() const {
 	return ToolBarBuilder.MakeWidget();
 }
 
+TSharedRef<SWidget> SPjcTabAssetsUsage::CreateViewToggle() {
+	const auto MakeButton = [this](const TCHAR* InLabel, const TCHAR* InToolTip, const bool bInList) {
+		return SNew(SCheckBox)
+			.Style(&PjcShim::GetStyle().GetWidgetStyle<FCheckBoxStyle>("ToggleButtonCheckbox"))
+			.ToolTipText(FText::FromString(InToolTip))
+			.IsChecked_Lambda([this, bInList]() {
+				return bShowList == bInList ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
+			})
+			.OnCheckStateChanged_Lambda([this, bInList](ECheckBoxState) {
+				bShowList = bInList;
+			})[SNew(SBox).Padding(FMargin {10.0f, 2.0f})[SNew(STextBlock).Text(FText::FromString(InLabel))]];
+	};
+
+	// clang-format off
+	return SNew(SHorizontalBox)
+		+ SHorizontalBox::Slot()
+		.AutoWidth()
+		[
+			MakeButton(TEXT("Graph"), TEXT("Assets as graph: bubbles are assets with everything only they use, scroll to open them"), false)
+		]
+		+ SHorizontalBox::Slot()
+		.AutoWidth()
+		[
+			MakeButton(TEXT("List"), TEXT("Assets as sortable list"), true)
+		];
+	// clang-format on
+}
+
 TSharedRef<SWidget> SPjcTabAssetsUsage::CreateFilterMenu() {
 	FMenuBuilder MenuBuilder {true, nullptr};
 
@@ -683,13 +781,60 @@ TSharedRef<SWidget> SPjcTabAssetsUsage::CreateInspector() {
 					SNew(STextBlock)
 					.Font(FPjcStyles::GetFont("Bold", 16))
 					.Text_Raw(this, &SPjcTabAssetsUsage::GetTitleText)
+					.ToolTipText_Raw(this, &SPjcTabAssetsUsage::GetTitleText)
 				]
 				+ SHorizontalBox::Slot()
 				.AutoWidth()
 				.Padding(FMargin{5.0f, 0.0f, 0.0f, 0.0f})
 				[
 					MakeButton(
-						TEXT("Show in Content Browser"),
+						TEXT("X"),
+						TEXT("Close (Esc in graph)"),
+						FOnClicked::CreateLambda([this]() { ClearInspected(); return FReply::Handled(); }),
+						true
+					)
+				]
+			]
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(FMargin{10.0f, 0.0f, 5.0f, 5.0f})
+			[
+				SNew(STextBlock)
+				.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Gray"))
+				.Text_Raw(this, &SPjcTabAssetsUsage::GetSubtitleText)
+				.ToolTipText_Raw(this, &SPjcTabAssetsUsage::GetSubtitleText)
+			]
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(FMargin{10.0f, 5.0f, 5.0f, 5.0f})
+			[
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				.VAlign(VAlign_Center)
+				[
+					SNew(SBorder)
+					.BorderImage(FPjcStyles::Get().GetBrush("ProjectCleaner.BgWhite"))
+					.BorderBackgroundColor_Raw(this, &SPjcTabAssetsUsage::GetStatusColor)
+					.Padding(FMargin{10.0f, 3.0f})
+					[
+						SNew(STextBlock)
+						.Font(FPjcStyles::GetFont("Bold", 11))
+						.ColorAndOpacity(FPjcStyles::Get().GetColor("ProjectCleaner.Color.Black"))
+						.Text_Raw(this, &SPjcTabAssetsUsage::GetStatusText)
+					]
+				]
+				+ SHorizontalBox::Slot()
+				.FillWidth(1.0f)
+				[
+					SNew(SBox)
+				]
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				.Padding(FMargin{5.0f, 0.0f, 0.0f, 0.0f})
+				[
+					MakeButton(
+						TEXT("Browse"),
 						TEXT("Select asset in Content Browser"),
 						FOnClicked::CreateLambda([this]() { OnShowInContentBrowser(); return FReply::Handled(); }),
 						HasAsset
@@ -711,35 +856,11 @@ TSharedRef<SWidget> SPjcTabAssetsUsage::CreateInspector() {
 				.Padding(FMargin{5.0f, 0.0f, 0.0f, 0.0f})
 				[
 					MakeButton(
-						TEXT("Reference Viewer"),
+						TEXT("References"),
 						TEXT("Open engine Reference Viewer for this asset"),
 						FOnClicked::CreateLambda([this]() { OnOpenReferenceViewer(); return FReply::Handled(); }),
 						HasAsset
 					)
-				]
-			]
-			+ SVerticalBox::Slot()
-			.AutoHeight()
-			.Padding(FMargin{10.0f, 0.0f, 5.0f, 5.0f})
-			[
-				SNew(STextBlock)
-				.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Gray"))
-				.Text_Raw(this, &SPjcTabAssetsUsage::GetSubtitleText)
-			]
-			+ SVerticalBox::Slot()
-			.AutoHeight()
-			.Padding(FMargin{10.0f, 5.0f})
-			.HAlign(HAlign_Left)
-			[
-				SNew(SBorder)
-				.BorderImage(FPjcStyles::Get().GetBrush("ProjectCleaner.BgWhite"))
-				.BorderBackgroundColor_Raw(this, &SPjcTabAssetsUsage::GetStatusColor)
-				.Padding(FMargin{10.0f, 3.0f})
-				[
-					SNew(STextBlock)
-					.Font(FPjcStyles::GetFont("Bold", 11))
-					.ColorAndOpacity(FPjcStyles::Get().GetColor("ProjectCleaner.Color.Black"))
-					.Text_Raw(this, &SPjcTabAssetsUsage::GetStatusText)
 				]
 			]
 			+ SVerticalBox::Slot()
@@ -883,6 +1004,23 @@ void SPjcTabAssetsUsage::OnLinkDoubleClicked(TSharedPtr<FPjcUsageItem> Item) {
 	Inspect(Item->PackageName);
 }
 
+void SPjcTabAssetsUsage::OnGraphSelectionChanged(const FName& PackageName) {
+	if (PackageName.IsNone()) {
+		ClearInspected();
+		return;
+	}
+
+	TGuardValue<bool> GraphGuard {bSelectingInGraph, true};
+	Inspect(PackageName);
+}
+
+void SPjcTabAssetsUsage::OnGraphAssetDoubleClicked(const FName& PackageName) {
+	const TSharedPtr<FPjcUsageItem>* Item = ItemsByPackage.Find(PackageName);
+	if (Item && (*Item)->Asset.IsValid()) {
+		UPjcSubsystem::OpenAssetEditor((*Item)->Asset);
+	}
+}
+
 void SPjcTabAssetsUsage::OnListSort(EColumnSortPriority::Type SortPriority, const FName& ColumnName, EColumnSortMode::Type InSortMode) {
 	SortMode = SortColumn == ColumnName && SortMode == EColumnSortMode::Ascending ? EColumnSortMode::Descending : EColumnSortMode::Ascending;
 	SortColumn = ColumnName;
@@ -945,9 +1083,16 @@ FText SPjcTabAssetsUsage::GetSummaryText() const {
 		return FText::FromString(TEXT("Press Scan to find out why each asset is used or unused."));
 	}
 
-	FString Summary = FString::Printf(TEXT("%d assets: %d used, %d unused"), ItemsAll.Num(), NumUsed, NumUnused);
+	FString Summary = FString::Printf(
+		TEXT("%d assets: %d used (%s), %d unused (%s)"),
+		ItemsAll.Num(),
+		NumUsed,
+		*FText::AsMemory(SizeUsed, IEC).ToString(),
+		NumUnused,
+		*FText::AsMemory(SizeUnused, IEC).ToString()
+	);
 	if (NumNotDeleted > 0) {
-		Summary += FString::Printf(TEXT(" (%d not deleted by last cleanup)"), NumNotDeleted);
+		Summary += FString::Printf(TEXT(", %d not deleted by last cleanup"), NumNotDeleted);
 	}
 
 	return FText::FromString(Summary);

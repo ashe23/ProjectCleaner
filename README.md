@@ -22,7 +22,7 @@ Project Cleaner deletes files and can not know every way a project loads assets,
 # Features
 * Detection of unused assets, indirect assets (used in source code or config files), corrupted assets, external files and empty folders
 * Per-folder asset usage information
-* Asset Usage tab (experimental): why each asset is used or unused
+* Asset Usage tab (experimental): project assets as a zoomable graph, shows why each asset is used or unused
 * Optional scanning of project plugins content (for plugin based projects like Lyra)
 * Configurable scanning and exclusion settings
 * Subsystem for Blueprints and Python, command line interface

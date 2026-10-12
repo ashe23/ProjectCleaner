@@ -4,6 +4,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
+#include "PjcAssetGraph.h"
 #include "PjcSettings.h"
 #include "PjcShim.h"
 #include "PjcSubsystem.h"
@@ -523,6 +524,93 @@ bool FPjcTestScanUsage::RunTest(const FString& Parameters) {
 	if (TestNotNull(TEXT("usage of C_Labeled, folder labels off"), Labeled)) {
 		TestFalse(TEXT("C_Labeled unused while folder labels are not used"), Labeled->bUsed);
 		TestTrue(TEXT("C_Labeled still tells its folder label"), Labeled->bFolderLabelOnly && Labeled->Reason == EPjcUsageReason::FolderLabel);
+	}
+
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPjcTestScanGraph, "ProjectCleaner.Scan.Graph", PJC_TEST_FLAGS)
+
+bool FPjcTestScanGraph::RunTest(const FString& Parameters) {
+	if (!FPjcTestFixture::IsTestHost()) {
+		AddInfo(TEXT("Skipped, fixture tests run only in test host projects"));
+		return true;
+	}
+
+	FPjcScopedScanSettings ScopedSettings {false};
+
+	FPjcTestFixture Fixture;
+	if (!Fixture.Build(*this)) return false;
+
+	TArray<FAssetData> AssetsAll;
+	TMap<FName, FPjcAssetUsage> Usage;
+	UPjcSubsystem::GetAssetsAll(AssetsAll);
+	UPjcSubsystem::GetAssetsUsage(Usage, false);
+
+	TArray<TSharedPtr<FPjcUsageItem>> Items;
+	for (const auto& Asset : AssetsAll) {
+		const TSharedPtr<FPjcUsageItem> Item = MakeShared<FPjcUsageItem>();
+		Item->PackageName = Asset.PackageName;
+		Item->Asset = Asset;
+		Item->Usage = Usage.FindRef(Asset.PackageName);
+		Item->Size = UPjcSubsystem::GetAssetSize(Asset);
+		Item->bScanned = true;
+		Items.Add(Item);
+	}
+
+	FPjcAssetGraph Graph;
+	Graph.Build(Items);
+	const TArray<FPjcGraphNode>& Nodes = Graph.GetNodes();
+	TestEqual(TEXT("node for every scanned asset"), Nodes.Num(), AssetsAll.Num());
+
+	int32 NumInRegions = 0;
+	for (const auto& Region : Graph.GetRegions()) {
+		NumInRegions += Region.NumAssets;
+	}
+	TestEqual(TEXT("regions hold every asset"), NumInRegions, Nodes.Num());
+
+	// owner has same verdict, owned sizes add up, owned circles stay inside owner group
+	for (const auto& Node : Nodes) {
+		const FString Name = Node.Item->PackageName.ToString();
+		int64 Size = Node.Item->Size;
+		for (const int32 Owned : Node.Owned) {
+			Size += Nodes[Owned].SizeOwned;
+		}
+		TestEqual(*FString::Printf(TEXT("%s owned size"), *Name), Node.SizeOwned, Size);
+		if (Node.Owner == INDEX_NONE) continue;
+
+		const FPjcGraphNode& Owner = Nodes[Node.Owner];
+		TestEqual(*FString::Printf(TEXT("%s owner verdict"), *Name), Owner.Item->Usage.bUsed, Node.Item->Usage.bUsed);
+		const double Reach = FVector2D::Distance(Node.GetClusterCenter(), Owner.GetClusterCenter()) + Node.ClusterRadius;
+		TestTrue(*FString::Printf(TEXT("%s inside owner group"), *Name), Reach <= Owner.ClusterRadius + 0.01);
+	}
+
+	const auto TestOwner = [&](const TCHAR* Name, const TCHAR* OwnerName) {
+		const int32 Index = Graph.Find(PackageOf(Fixture, Name));
+		if (!TestTrue(*FString::Printf(TEXT("%s in graph"), Name), Index != INDEX_NONE)) return;
+
+		const int32 Owner = Nodes[Index].Owner;
+		TestEqual(
+			*FString::Printf(TEXT("%s owner"), Name),
+			Owner == INDEX_NONE ? FName {NAME_None} : Nodes[Owner].Item->PackageName,
+			OwnerName ? PackageOf(Fixture, OwnerName) : FName {NAME_None}
+		);
+	};
+
+	// only user owns, chains nest, unused groups and cycles have their own owners
+	TestOwner(TEXT("PAL_Root"), nullptr);
+	TestOwner(TEXT("OL_Chain"), TEXT("PAL_Root"));
+	TestOwner(TEXT("C_ChainLeaf"), TEXT("OL_Chain"));
+	TestOwner(TEXT("C_Labeled"), TEXT("PAL_Folder"));
+	TestOwner(TEXT("OL_UnusedRoot"), nullptr);
+	TestOwner(TEXT("C_UnusedLeaf"), TEXT("OL_UnusedRoot"));
+	TestOwner(TEXT("OL_CircA"), nullptr);
+	TestOwner(TEXT("OL_CircB"), TEXT("OL_CircA"));
+
+	const FBox2D UsedArea = Graph.GetGroupBounds(true);
+	const FBox2D UnusedArea = Graph.GetGroupBounds(false);
+	if (TestTrue(TEXT("used and unused areas"), UsedArea.bIsValid && UnusedArea.bIsValid)) {
+		TestFalse(TEXT("used and unused areas apart"), UsedArea.Intersect(UnusedArea));
 	}
 
 	return true;

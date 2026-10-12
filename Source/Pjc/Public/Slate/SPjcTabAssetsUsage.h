@@ -10,11 +10,14 @@
 #include "Widgets/Views/STableRow.h"
 
 struct FPjcUsageItem;
+class FPjcAssetGraph;
+class SPjcAssetGraph;
 class SVerticalBox;
 
 /**
- * Experimental: tells for every scanned asset why it is used or unused. Asset list on the left; on the right the selected
- * asset with plain words why, the chain from an asset used for its own reason down to it, and assets it is used by and uses.
+ * Experimental: tells for every scanned asset why it is used or unused. Graph of project assets (or asset list); selected
+ * asset opens on the right with plain words why, the chain from an asset used for its own reason down to it, and assets it
+ * is used by and uses.
  */
 class SPjcTabAssetsUsage final : public SCompoundWidget
 {
@@ -42,18 +45,22 @@ class SPjcTabAssetsUsage final : public SCompoundWidget
 	void ListUpdateView();
 	void ListSort();
 	void RebuildChain();
+	void ClearInspected();
 	TSharedPtr<FPjcUsageItem> FindOrMakeItem(const FName& PackageName);
 	FString GetShortReason(const FPjcUsageItem& Item);
 	FString GetFolderLabelName(const FPjcUsageItem& Item);
 	FText BuildWhyText(const FPjcUsageItem& Item);
 
 	TSharedRef<SWidget> CreateToolbar() const;
+	TSharedRef<SWidget> CreateViewToggle();
 	TSharedRef<SWidget> CreateFilterMenu();
 	TSharedRef<SWidget> CreateInspector();
 	TSharedRef<SHeaderRow> GetHeaderRow(const bool bAssetList);
 	TSharedRef<ITableRow> OnGenerateRow(TSharedPtr<FPjcUsageItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const;
 	void OnListSelectionChanged(TSharedPtr<FPjcUsageItem> Item, ESelectInfo::Type SelectInfo);
 	void OnLinkDoubleClicked(TSharedPtr<FPjcUsageItem> Item);
+	void OnGraphSelectionChanged(const FName& PackageName);
+	void OnGraphAssetDoubleClicked(const FName& PackageName);
 	void OnListSort(EColumnSortPriority::Type SortPriority, const FName& ColumnName, EColumnSortMode::Type InSortMode);
 	EColumnSortMode::Type GetColumnSortMode(const FName ColumnName) const;
 	void OnSearchTextChanged(const FText& InText);
@@ -83,6 +90,8 @@ class SPjcTabAssetsUsage final : public SCompoundWidget
 	TSharedPtr<SListView<TSharedPtr<FPjcUsageItem>>> ListView;
 	TSharedPtr<SListView<TSharedPtr<FPjcUsageItem>>> ListUsedBy;
 	TSharedPtr<SListView<TSharedPtr<FPjcUsageItem>>> ListUses;
+	TSharedPtr<SPjcAssetGraph> GraphView;
+	TSharedPtr<FPjcAssetGraph> Graph;
 	TSharedPtr<SVerticalBox> ChainBox;
 	TSharedPtr<FPjcUsageItem> Current;
 	FString CurrentHolder;
@@ -95,7 +104,11 @@ class SPjcTabAssetsUsage final : public SCompoundWidget
 	EColumnSortMode::Type SortMode = EColumnSortMode::Ascending;
 	bool bScanned = false;
 	bool bSyncingSelection = false;
+	bool bSelectingInGraph = false;
+	bool bShowList = false;
 	int32 NumUsed = 0;
 	int32 NumUnused = 0;
 	int32 NumNotDeleted = 0;
+	int64 SizeUsed = 0;
+	int64 SizeUnused = 0;
 };
