@@ -53,7 +53,8 @@ namespace PjcShim
 	bool IsAssetManagerValid();
 	EAppReturnType::Type ShowDialog(const FText& Title, const FText& Message, const EAppMsgType::Type MessageType);
 
-	UContentBrowserSettings* GetContentBrowserSettingsForUnusedAssetsTab();
+	/** Writes object config to project default config file (e.g. Config/DefaultEditor.ini) */
+	void UpdateDefaultConfigFile(UObject* InObject);
 
 	bool LoadAssetsIfNeeded(const TArray<FString>& ObjectPaths, TArray<UObject*>& LoadedObjects, bool bAllowedToPromptToLoad, bool bLoadRedirects);
 

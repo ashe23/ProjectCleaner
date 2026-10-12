@@ -255,24 +255,17 @@ namespace PjcShim
 #endif
 	}
 
-	UContentBrowserSettings* GetContentBrowserSettingsForUnusedAssetsTab() {
-		UContentBrowserSettings* ContentBrowserSettings = GetMutableDefault<UContentBrowserSettings>();
-		if (!ContentBrowserSettings) return nullptr;
+	void UpdateDefaultConfigFile(UObject* InObject) {
+		if (!InObject) return;
 
-		ContentBrowserSettings->SetDisplayDevelopersFolder(true);
-		ContentBrowserSettings->SetDisplayEngineFolder(false);
-		ContentBrowserSettings->SetDisplayCppFolders(false);
-		ContentBrowserSettings->SetDisplayPluginFolders(true);
 #if ENGINE_MAJOR_VERSION == 5
-		ContentBrowserSettings->bShowAllFolder = false;
-		ContentBrowserSettings->bOrganizeFolders = false;
+		InObject->TryUpdateDefaultConfigFile();
+#else
+		InObject->UpdateDefaultConfigFile();
 #endif
-
-		return ContentBrowserSettings;
 	}
 
-	bool LoadAssetsIfNeeded(const TArray<FString>& ObjectPaths, TArray<UObject*>& LoadedObjects, bool bAllowedToPromptToLoad, bool bLoadRedirects)
-	{
+	bool LoadAssetsIfNeeded(const TArray<FString>& ObjectPaths, TArray<UObject*>& LoadedObjects, bool bAllowedToPromptToLoad, bool bLoadRedirects) {
 #if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 4
 		AssetViewUtils::FLoadAssetsSettings Settings;
 		Settings.bAlwaysPromptBeforeLoading = bAllowedToPromptToLoad;
