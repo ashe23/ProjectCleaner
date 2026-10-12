@@ -86,6 +86,22 @@ namespace PjcShim
 #endif
 	}
 
+	FString GetExternalActorsFolderName() {
+#if ENGINE_MAJOR_VERSION == 5
+		return FPackagePath::GetExternalActorsFolderName();
+#else
+		return {};
+#endif
+	}
+
+	FString GetExternalObjectsFolderName() {
+#if ENGINE_MAJOR_VERSION == 5
+		return FPackagePath::GetExternalObjectsFolderName();
+#else
+		return {};
+#endif
+	}
+
 	void SetTabManagerMenuMultiBox(const TSharedPtr<FTabManager>& InTabManager, const TSharedRef<FMultiBox>& InMultiBox) {
 		if (!InTabManager.IsValid()) return;
 

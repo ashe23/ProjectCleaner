@@ -31,6 +31,8 @@ public class Pjc : ModuleRules
                 // core modules
 				"Engine",
 				"CoreUObject",
+				"DeveloperSettings",
+				"Settings",
 				"Slate",
 				"SlateCore",
 				"AssetRegistry",
@@ -54,7 +56,7 @@ public class Pjc : ModuleRules
 		);
 		
         // modules require for engine version 5.x+
-		if (Target.Version.MajorVersion == 5)
+		if (Target.Version.MajorVersion >= 5)
 		{
 			PrivateDependencyModuleNames.Add("RenderCore");
 			PrivateDependencyModuleNames.Add("EditorFramework");

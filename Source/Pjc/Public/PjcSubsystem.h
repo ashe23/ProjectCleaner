@@ -26,7 +26,7 @@ class UPjcSubsystem final : public UEditorSubsystem
 #endif
 
 	/**
-	 * @brief Returns all assets in project (particularly Content folder)
+	 * @brief Returns all assets in scanned content roots (/Game and project plugins if enabled in settings)
 	 * @param Assets TArray<FAssetData>
 	 */
 	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Asset")
@@ -82,7 +82,7 @@ class UPjcSubsystem final : public UEditorSubsystem
 	static void GetAssetsEditor(TArray<FAssetData>& Assets, const bool bShowSlowTask = true);
 
 	/**
-	 * @brief Returns all excluded assets in project
+	 * @brief Returns all excluded assets in project (exclude settings and used classes from project settings)
 	 * @param Assets TArray<FAssetData>
 	 * @param bShowSlowTask bool
 	 */
@@ -90,7 +90,7 @@ class UPjcSubsystem final : public UEditorSubsystem
 	static void GetAssetsExcluded(TArray<FAssetData>& Assets, const bool bShowSlowTask = true);
 
 	/**
-	 * @brief Returns all assets that have referencers outside project (e.g. Engine)
+	 * @brief Returns all assets that have referencers outside scanned content roots (e.g. Engine or not scanned plugins)
 	 * @param Assets TArray<FAssetData>
 	 *  @param bShowSlowTask bool
 	 */
@@ -348,7 +348,11 @@ class UPjcSubsystem final : public UEditorSubsystem
 	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Asset")
 	static FName GetAssetExactClassName(const FAssetData& InAsset);
 
+	/** Scanned content roots: "/Game" and mount paths of project plugins when plugin scanning is enabled */
 	static TArray<FString> GetProjectRootPaths();
+	/** Absolute disk folders of scanned content roots */
+	static TArray<FString> GetProjectContentDirs();
+	static bool FileIsExcluded(const FString& InFile);
 	static bool PathIsInsideProject(const FString& InPath);
 	static bool AssetIsInsideProject(const FAssetData& InAsset);
 

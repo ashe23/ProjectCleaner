@@ -30,6 +30,9 @@ namespace PjcShim
 	FAssetPackageData GetAssetPackageData(const FName PackageName);
 	FString GetPathExternalActors();
 	FString GetPathExternalObjects();
+	// World Partition (one file per actor) folder names, empty before UE5
+	FString GetExternalActorsFolderName();
+	FString GetExternalObjectsFolderName();
 
 	void SetTabManagerMenuMultiBox(const TSharedPtr<FTabManager>& InTabManager, const TSharedRef<FMultiBox>& InMultiBox);
 

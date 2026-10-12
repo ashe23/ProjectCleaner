@@ -3,6 +3,7 @@
 #include "PjcSubsystem.h"
 #include "PjcConstants.h"
 #include "PjcShim.h"
+#include "PjcSettings.h"
 #include "Pjc.h"
 // Engine Headers
 #include "AssetManagerEditorModule.h"
@@ -44,7 +45,7 @@ void UPjcSubsystem::GetAssetsAll(TArray<FAssetData>& Assets) {
 
 	for (const auto& RootPath : GetProjectRootPaths()) {
 		TArray<FAssetData> TempAssets;
-		GetModuleAssetRegistry().Get().GetAssetsByPath(FName{*RootPath}, TempAssets, true);
+		GetModuleAssetRegistry().Get().GetAssetsByPath(FName {*RootPath}, TempAssets, true);
 		Assets.Append(TempAssets);
 	}
 
@@ -179,37 +180,38 @@ void UPjcSubsystem::GetAssetsIndirect(TArray<FAssetData>& Assets, TArray<FPjcAss
 	};
 	SlowTask.MakeDialog(false, false);
 
+	// asset paths of every scanned root, e.g. "/Game/Maps/Main.Main" or "/ShooterCore/Weapons/Rifle"
+	TArray<FString> RootPatterns;
+	for (const auto& RootPath : GetProjectRootPaths()) {
+		RootPatterns.Add(RootPath.Replace(TEXT("/"), TEXT("\\/")));
+	}
+	const FRegexPattern Pattern {FString::Printf(TEXT(R"((%s)\/[A-Za-z0-9_.\/]+\b)"), *FString::Join(RootPatterns, TEXT("|")))};
+
+	TArray<FString> Lines;
 	for (const auto& File : ScanFiles) {
 		SlowTask.EnterProgressFrame(1.0f, FText::FromString(File));
 
-		FString FileContent;
-		FFileHelper::LoadFileToString(FileContent, *File);
+		Lines.Reset();
+		FFileHelper::LoadFileToStringArray(Lines, *File);
+		const FString FilePathAbs = FPaths::ConvertRelativePathToFull(File);
 
-		if (FileContent.IsEmpty()) continue;
+		for (int32 i = 0; i < Lines.Num(); ++i) {
+			FRegexMatcher Matcher(Pattern, Lines[i]);
+			while (Matcher.FindNext()) {
+				const FString Match = Matcher.GetCaptureGroup(0);
+				FString ObjectPath = PathConvertToObjectPath(Match);
 
-		static FRegexPattern Pattern(TEXT(R"(\/Game([A-Za-z0-9_.\/]+)\b)"));
-		FRegexMatcher Matcher(Pattern, FileContent);
-		while (Matcher.FindNext()) {
-			FString FoundedAssetObjectPath = Matcher.GetCaptureGroup(0);
+				// package names are common in configs too, e.g. "/Game/Maps/Main" instead of "/Game/Maps/Main.Main"
+				if (ObjectPath.IsEmpty() && !Match.Contains(TEXT("."))) {
+					ObjectPath = PathConvertToObjectPath(Match + TEXT(".") + FPackageName::GetShortName(Match));
+				}
 
-			const FString ObjectPath = PathConvertToObjectPath(FoundedAssetObjectPath);
-			if (ObjectPath.IsEmpty()) continue;
+				if (ObjectPath.IsEmpty()) continue;
 
-			const FAssetData AssetData = PjcShim::GetAssetByObjectPath(ObjectPath);
-			if (!AssetData.IsValid() || FolderIsExternal(AssetData.PackagePath.ToString())) continue;
+				const FAssetData AssetData = PjcShim::GetAssetByObjectPath(ObjectPath);
+				if (!AssetData.IsValid() || FolderIsExternal(AssetData.PackagePath.ToString())) continue;
 
-			// if founded asset is ok, we are loading file lines to determine on what line its used
-			TArray<FString> Lines;
-			FFileHelper::LoadFileToStringArray(Lines, *File);
-
-			for (int32 i = 0; i < Lines.Num(); ++i) {
-				if (!Lines.IsValidIndex(i)) continue;
-				if (!Lines[i].Contains(FoundedAssetObjectPath)) continue;
-
-				const FString FilePathAbs = FPaths::ConvertRelativePathToFull(File);
-				const int32 FileLine = i + 1;
-
-				AssetsIndirectInfos.AddUnique(FPjcAssetIndirectInfo {AssetData, FilePathAbs, FileLine});
+				AssetsIndirectInfos.AddUnique(FPjcAssetIndirectInfo {AssetData, FilePathAbs, i + 1});
 				Assets.AddUnique(AssetData);
 			}
 		}
@@ -288,16 +290,10 @@ void UPjcSubsystem::GetAssetsExcluded(TArray<FAssetData>& Assets, const bool bSh
 	AssetsExcluded.Reserve(AssetsAll.Num());
 
 	SlowTask.EnterProgressFrame(1.0f);
-	// assets excluded by class names
+	// assets excluded by class names (user excluded classes and project used classes)
 	{
 		TSet<FName> ClassNamesExcluded;
-		ClassNamesExcluded.Reserve(AssetExcludeSettings->ExcludedClasses.Num());
-
-		for (const auto& ExcludedClass : AssetExcludeSettings->ExcludedClasses) {
-			if (!ExcludedClass.LoadSynchronous() || ExcludedClass.IsNull()) continue;
-
-			ClassNamesExcluded.Emplace(PjcShim::GetClassName(ExcludedClass.Get()));
-		}
+		GetClassNamesExcluded(ClassNamesExcluded);
 
 		for (const auto& Asset : AssetsAll) {
 			if (ClassNamesExcluded.Contains(PjcShim::GetAssetClassName(Asset)) || ClassNamesExcluded.Contains(GetAssetExactClassName(Asset))) {
@@ -380,6 +376,11 @@ void UPjcSubsystem::GetAssetsEngineReferenced(TArray<FAssetData>& Assets, const 
 }
 
 void UPjcSubsystem::GetClassNamesPrimary(TSet<FName>& ClassNames) {
+	ClassNames.Empty();
+
+	const UPjcScanSettings* ScanSettings = GetDefault<UPjcScanSettings>();
+	if (!ScanSettings->bPrimaryAssetsUsed) return;
+
 	// getting list of primary asset classes that are defined in AssetManager
 	if (!PjcShim::IsAssetManagerValid()) return;
 
@@ -392,36 +393,73 @@ void UPjcSubsystem::GetClassNamesPrimary(TSet<FName>& ClassNames) {
 
 	for (const auto& AssetTypeInfo : AssetTypeInfos) {
 		if (!AssetTypeInfo.AssetBaseClassLoaded) continue;
-		if (AssetTypeInfo.AssetBaseClassLoaded == UObject::StaticClass()) continue;
+		if (ScanSettings->IgnoredPrimaryAssetTypes.Contains(AssetTypeInfo.PrimaryAssetType)) continue;
+
+		// type registered without real base class (e.g. GameFeature plugins in Lyra like projects)
+		// would make every asset used (#58)
+		if (AssetTypeInfo.AssetBaseClassLoaded == UObject::StaticClass()) {
+			UE_LOG(
+				LogProjectCleaner, Verbose, TEXT("Primary asset type %s has UObject base class, ignored"), *AssetTypeInfo.PrimaryAssetType.ToString()
+			);
+			continue;
+		}
 
 		ClassNamesPrimaryBase.Emplace(PjcShim::GetClassName(AssetTypeInfo.AssetBaseClassLoaded));
 	}
 
 	// getting list of primary assets classes that are derived from main primary assets
-	ClassNames.Empty();
 	PjcShim::GetDerivedClassNames(ClassNamesPrimaryBase.Array(), TSet<FName> {}, ClassNames);
 }
 
 void UPjcSubsystem::GetClassNamesEditor(TSet<FName>& ClassNames) {
+	ClassNames.Empty();
+
+	if (!GetDefault<UPjcScanSettings>()->bEditorAssetsUsed) return;
+
 	const TArray<FName> ClassNamesEditorBase {
 	  PjcShim::GetClassName(UEditorUtilityWidget::StaticClass()),
 	  PjcShim::GetClassName(UEditorUtilityBlueprint::StaticClass()),
 	  PjcShim::GetClassName(UEditorUtilityWidgetBlueprint::StaticClass())
 	};
 
-	ClassNames.Empty();
 	PjcShim::GetDerivedClassNames(ClassNamesEditorBase, TSet<FName> {}, ClassNames);
 }
 
 void UPjcSubsystem::GetClassNamesExcluded(TSet<FName>& ClassNames) {
-	const UPjcAssetExcludeSettings* AssetExcludeSettings = GetDefault<UPjcAssetExcludeSettings>();
-	if (!AssetExcludeSettings) return;
+	ClassNames.Empty();
 
-	ClassNames.Empty(AssetExcludeSettings->ExcludedClasses.Num());
+	// user excluded classes match exactly
+	const UPjcAssetExcludeSettings* AssetExcludeSettings = GetDefault<UPjcAssetExcludeSettings>();
 	for (const auto& ExcludedClass : AssetExcludeSettings->ExcludedClasses) {
 		if (!ExcludedClass.LoadSynchronous() || ExcludedClass.IsNull()) continue;
 
 		ClassNames.Emplace(PjcShim::GetClassName(ExcludedClass.Get()));
+	}
+
+	// project used classes match with derived classes
+	const UPjcScanSettings* ScanSettings = GetDefault<UPjcScanSettings>();
+	TArray<FName> ClassNamesUsedBase;
+
+	for (const auto& UsedClass : ScanSettings->UsedClasses) {
+		if (!UsedClass.LoadSynchronous() || UsedClass.IsNull()) continue;
+
+		ClassNamesUsedBase.Emplace(PjcShim::GetClassName(UsedClass.Get()));
+	}
+
+	if (ScanSettings->bCinematicAssetsUsed) {
+		for (const auto& ClassPath : UPjcScanSettings::GetCinematicClassPaths()) {
+			// no loading: classes of disabled plugins or other engine versions are just skipped
+			const UClass* CinematicClass = FSoftClassPath {ClassPath}.ResolveClass();
+			if (!CinematicClass) continue;
+
+			ClassNamesUsedBase.Emplace(PjcShim::GetClassName(CinematicClass));
+		}
+	}
+
+	if (ClassNamesUsedBase.Num() > 0) {
+		TSet<FName> ClassNamesUsed;
+		PjcShim::GetDerivedClassNames(ClassNamesUsedBase, TSet<FName> {}, ClassNamesUsed);
+		ClassNames.Append(ClassNamesUsed);
 	}
 }
 
@@ -512,13 +550,16 @@ void UPjcSubsystem::GetFilesByExt(
 }
 
 void UPjcSubsystem::GetFilesExternalAll(TArray<FString>& Files) {
-	GetFilesByExt(FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir()), true, true, PjcConstants::EngineFileExtensions, Files);
+	Files.Reset();
+
+	TArray<FString> RootFiles;
+	for (const auto& ContentDir : GetProjectContentDirs()) {
+		GetFilesByExt(ContentDir, true, true, PjcConstants::EngineFileExtensions, RootFiles);
+		Files.Append(RootFiles);
+	}
 }
 
 void UPjcSubsystem::GetFilesExternalFiltered(TArray<FString>& Files, const bool bShowSlowTask) {
-	const UPjcFileExcludeSettings* FileExcludeSettings = GetDefault<UPjcFileExcludeSettings>();
-	if (!FileExcludeSettings) return;
-
 	TArray<FString> FilesExternalAll;
 	GetFilesExternalAll(FilesExternalAll);
 
@@ -534,19 +575,7 @@ void UPjcSubsystem::GetFilesExternalFiltered(TArray<FString>& Files, const bool 
 	for (const auto& File : FilesExternalAll) {
 		SlowTask.EnterProgressFrame(1.0f, FText::FromString(File));
 
-		const FString FileExt = FPaths::GetExtension(File, false).ToLower();
-		const bool bExcludedByExt = FileExcludeSettings->ExcludedExtensions.Contains(FileExt);
-		const bool bExcludedByFile = FileExcludeSettings->ExcludedFiles.ContainsByPredicate([&](const FFilePath& InFilePath) {
-			if (!InFilePath.FilePath.StartsWith(TEXT("Content"))) return false;
-
-			const FString Path = FPaths::ProjectDir() / InFilePath.FilePath;
-			const FString PathAbs = PathConvertToAbsolute(Path);
-			if (PathAbs.IsEmpty()) return false;
-
-			return File.Equals(PathAbs);
-		});
-
-		if (bExcludedByExt || bExcludedByFile) continue;
+		if (FileIsExcluded(File)) continue;
 
 		Files.Emplace(File);
 	}
@@ -555,9 +584,6 @@ void UPjcSubsystem::GetFilesExternalFiltered(TArray<FString>& Files, const bool 
 }
 
 void UPjcSubsystem::GetFilesExternalExcluded(TArray<FString>& Files, const bool bShowSlowTask) {
-	const UPjcFileExcludeSettings* FileExcludeSettings = GetDefault<UPjcFileExcludeSettings>();
-	if (!FileExcludeSettings) return;
-
 	TArray<FString> FilesExternalAll;
 	GetFilesExternalAll(FilesExternalAll);
 
@@ -573,19 +599,7 @@ void UPjcSubsystem::GetFilesExternalExcluded(TArray<FString>& Files, const bool 
 	for (const auto& File : FilesExternalAll) {
 		SlowTask.EnterProgressFrame(1.0f, FText::FromString(File));
 
-		const FString FileExt = FPaths::GetExtension(File, false).ToLower();
-		const bool bExcludedByExt = FileExcludeSettings->ExcludedExtensions.Contains(FileExt);
-		const bool bExcludedByFile = FileExcludeSettings->ExcludedFiles.ContainsByPredicate([&](const FFilePath& InFilePath) {
-			if (!InFilePath.FilePath.StartsWith(TEXT("Content"))) return false;
-
-			const FString Path = FPaths::ProjectDir() / InFilePath.FilePath;
-			const FString PathAbs = PathConvertToAbsolute(Path);
-			if (PathAbs.IsEmpty()) return false;
-
-			return File.Equals(PathAbs);
-		});
-
-		if (bExcludedByExt || bExcludedByFile) {
+		if (FileIsExcluded(File)) {
 			Files.Emplace(File);
 		}
 	}
@@ -595,8 +609,12 @@ void UPjcSubsystem::GetFilesExternalExcluded(TArray<FString>& Files, const bool 
 
 void UPjcSubsystem::GetFilesCorrupted(TArray<FString>& Files, const bool bShowSlowTask) {
 	TArray<FString> FileAssets;
+	TArray<FString> RootFiles;
 
-	GetFilesByExt(FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir()), true, false, PjcConstants::EngineFileExtensions, FileAssets);
+	for (const auto& ContentDir : GetProjectContentDirs()) {
+		GetFilesByExt(ContentDir, true, false, PjcConstants::EngineFileExtensions, RootFiles);
+		FileAssets.Append(RootFiles);
+	}
 
 	Files.Reset(FileAssets.Num());
 
@@ -934,7 +952,7 @@ void UPjcSubsystem::GetProjectRedirectors(TArray<FAssetData>& Redirectors) {
 	FARFilter Filter;
 	Filter.bRecursivePaths = true;
 	for (const auto& RootPath : GetProjectRootPaths()) {
-		Filter.PackagePaths.Emplace(FName{*RootPath});
+		Filter.PackagePaths.Emplace(FName {*RootPath});
 	}
 	PjcShim::AddFilterClass(Filter, UObjectRedirector::StaticClass());
 
@@ -1157,13 +1175,54 @@ TArray<FString> UPjcSubsystem::GetProjectRootPaths() {
 	TArray<FString> Paths;
 	Paths.Add(TEXT("/Game"));
 
-	for (const auto& Plugin : IPluginManager::Get().GetEnabledPlugins()) {
-		if (Plugin->GetLoadedFrom() == EPluginLoadedFrom::Project && Plugin->CanContainContent()) {
-			Paths.Add(FString::Printf(TEXT("/%s"), *Plugin->GetName()));
+	const UPjcScanSettings* ScanSettings = GetDefault<UPjcScanSettings>();
+	if (!ScanSettings->bScanProjectPlugins) return Paths;
+
+	for (const auto& Plugin : IPluginManager::Get().GetEnabledPluginsWithContent()) {
+		if (Plugin->GetLoadedFrom() != EPluginLoadedFrom::Project) continue;
+		if (Plugin->GetName().Equals(PjcConstants::ModulePjcName.ToString())) continue;
+		if (ScanSettings->IgnoredPlugins.Contains(Plugin->GetName())) continue;
+
+		FString MountedPath = Plugin->GetMountedAssetPath();
+		MountedPath.RemoveFromEnd(TEXT("/"));
+		if (!MountedPath.IsEmpty()) {
+			Paths.AddUnique(MountedPath);
 		}
 	}
 
 	return Paths;
+}
+
+TArray<FString> UPjcSubsystem::GetProjectContentDirs() {
+	TArray<FString> Dirs;
+	for (const auto& RootPath : GetProjectRootPaths()) {
+		const FString Dir = PathConvertToAbsolute(RootPath);
+		if (!Dir.IsEmpty() && FPaths::DirectoryExists(Dir)) {
+			Dirs.Add(Dir);
+		}
+	}
+	return Dirs;
+}
+
+bool UPjcSubsystem::FileIsExcluded(const FString& InFile) {
+	const UPjcFileExcludeSettings* FileExcludeSettings = GetDefault<UPjcFileExcludeSettings>();
+
+	const FString FileExt = FPaths::GetExtension(InFile, false);
+	const bool bExcludedByExt = FileExcludeSettings->ExcludedExtensions.ContainsByPredicate([&](const FString& ExcludedExt) {
+		FString Ext = ExcludedExt.TrimStartAndEnd();
+		Ext.RemoveFromStart(TEXT("."));
+		return Ext.Equals(FileExt, ESearchCase::IgnoreCase);
+	});
+	if (bExcludedByExt) return true;
+
+	return FileExcludeSettings->ExcludedFiles.ContainsByPredicate([&](const FFilePath& InFilePath) {
+		if (InFilePath.FilePath.IsEmpty()) return false;
+
+		// picker stores paths relative to project dir, absolute ones are accepted too
+		const FString Path = FPaths::IsRelative(InFilePath.FilePath) ? FPaths::ProjectDir() / InFilePath.FilePath : InFilePath.FilePath;
+		const FString PathAbs = PathNormalize(FPaths::ConvertRelativePathToFull(Path));
+		return !PathAbs.IsEmpty() && FPaths::IsSamePath(PathAbs, InFile);
+	});
 }
 
 bool UPjcSubsystem::PathIsInsideProject(const FString& InPath) {
@@ -1236,15 +1295,14 @@ bool UPjcSubsystem::FolderIsEngineGenerated(const FString& InPath) {
 }
 
 bool UPjcSubsystem::FolderIsExternal(const FString& InPath) {
-	const FString PathExternalActor = GetPathExternalActors();
-	const FString PathExternalObjects = GetPathExternalObjects();
+	// World Partition external actors/objects live directly under any content root: /Game/__ExternalActors__, /MyPlugin/__ExternalObjects__
+	for (const auto& FolderName : {PjcShim::GetExternalActorsFolderName(), PjcShim::GetExternalObjectsFolderName()}) {
+		if (FolderName.IsEmpty()) continue;
 
-	if (!PathExternalActor.IsEmpty() && InPath.StartsWith(PathExternalActor)) {
-		return true;
-	}
-
-	if (!PathExternalObjects.IsEmpty() && InPath.StartsWith(PathExternalObjects)) {
-		return true;
+		const FString Segment = TEXT("/") + FolderName;
+		if (InPath.Contains(Segment + TEXT("/")) || InPath.EndsWith(Segment)) {
+			return true;
+		}
 	}
 
 	return false;
@@ -1261,14 +1319,16 @@ void UPjcSubsystem::GetSourceAndConfigFiles(TSet<FString>& Files) {
 	GetFilesByExt(DirSrc, true, false, PjcConstants::SourceFileExtensions, SourceFiles);
 	GetFilesByExt(DirCfg, true, false, PjcConstants::ConfigFileExtensions, ConfigFiles);
 
-	TArray<FString> InstalledPlugins;
-	GetFolders(DirPlg, false, InstalledPlugins);
+	// every plugin in project Plugins folder, nested ones too (e.g. Plugins/GameFeatures/ShooterCore),
+	// enabled or not: assets mentioned by them are kept even when their content is not scanned
+	TArray<FString> PluginDescriptors;
+	IFileManager::Get().FindFilesRecursive(PluginDescriptors, *DirPlg, TEXT("*.uplugin"), true, false);
 
-	const FString ProjectCleanerPluginPath = DirPlg / PjcConstants::ModulePjcName.ToString();
 	TArray<FString> PluginFiles;
-	for (const auto& InstalledPlugin : InstalledPlugins) {
-		// ignore ProjectCleaner plugin
-		if (InstalledPlugin.Equals(ProjectCleanerPluginPath)) continue;
+	for (const auto& PluginDescriptor : PluginDescriptors) {
+		if (FPaths::GetBaseFilename(PluginDescriptor).Equals(PjcConstants::ModulePjcName.ToString())) continue;
+
+		const FString InstalledPlugin = FPaths::GetPath(PluginDescriptor);
 
 		GetFilesByExt(InstalledPlugin / TEXT("Source"), true, false, PjcConstants::SourceFileExtensions, PluginFiles);
 		SourceFiles.Append(PluginFiles);
