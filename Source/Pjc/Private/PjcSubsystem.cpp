@@ -13,6 +13,8 @@
 #include "FileHelpers.h"
 #include "ObjectTools.h"
 #include "ShaderCompiler.h"
+#include "Misc/ScopeExit.h"
+#include "Settings/ContentBrowserSettings.h"
 #include "Engine/AssetManager.h"
 #include "Framework/Notifications/NotificationManager.h"
 #include "Internationalization/Regex.h"
@@ -102,12 +104,28 @@ void UPjcSubsystem::GetAssetsAll(TArray<FAssetData>& Assets) {
 		Assets.Append(TempAssets);
 	}
 
-	// filtering assets that are in '/Game/__ExternalActors__' and '/Game/__ExternalObjects__' folders
-	FARFilter Filter;
-	Filter.bRecursivePaths = true;
-	Filter.PackagePaths.Add(FName {*GetPathExternalActors()});
-	Filter.PackagePaths.Add(FName {*GetPathExternalObjects()});
-	GetModuleAssetRegistry().Get().UseFilterToExcludeAssets(Assets, Filter);
+	// Registry loaded from disk (commandlets) lists more than one asset per package, for example
+	// BlueprintGeneratedClass next to its Blueprint. Everything here works per package, so keep
+	// one entry per package: the main asset if there is one.
+	TSet<FName> PackagesWithMainAsset;
+	for (const auto& Asset : Assets) {
+		if (Asset.IsUAsset()) {
+			PackagesWithMainAsset.Add(Asset.PackageName);
+		}
+	}
+
+	TSet<FName> PackagesAdded;
+	PjcShim::RemoveAllSwapArray(Assets, [&](const FAssetData& Asset) {
+		// World Partition actors and objects ('__ExternalActors__', '__ExternalObjects__') belong to their map
+		if (FolderIsExternal(Asset.PackagePath.ToString())) return true;
+		if (PackagesWithMainAsset.Contains(Asset.PackageName) && !Asset.IsUAsset()) return true;
+
+		bool bAlreadyAdded = false;
+		PackagesAdded.Add(Asset.PackageName, &bAlreadyAdded);
+		return bAlreadyAdded;
+	});
+
+	ScanCacheSet(ScanCache.AssetsAll, Assets);
 }
 
 void UPjcSubsystem::GetAssetsUsed(TArray<FAssetData>& Assets, const bool bShowSlowTask) {
@@ -165,8 +183,22 @@ void UPjcSubsystem::GetAssetsUsed(TArray<FAssetData>& Assets, const bool bShowSl
 
 	GetAssetsDependencies(AssetsUsed);
 
-	Assets.Reset();
-	Assets = AssetsUsed.Array();
+	// dependencies come per package, map them back to scanned assets so used + unused = all
+	TSet<FName> PackagesUsed;
+	PackagesUsed.Reserve(AssetsUsed.Num());
+	for (const auto& Asset : AssetsUsed) {
+		PackagesUsed.Add(Asset.PackageName);
+	}
+
+	Assets.Reset(AssetsAll.Num());
+	for (const auto& Asset : AssetsAll) {
+		if (PackagesUsed.Contains(Asset.PackageName)) {
+			Assets.Emplace(Asset);
+		}
+	}
+	Assets.Shrink();
+
+	ScanCacheSet(ScanCache.AssetsUsed, Assets);
 }
 
 void UPjcSubsystem::GetAssetsUnused(TArray<FAssetData>& Assets, const bool bShowSlowTask) {
@@ -415,7 +447,20 @@ void UPjcSubsystem::GetAssetsExcluded(TArray<FAssetData>& Assets, const bool bSh
 		}
 	}
 
-	Assets = AssetsExcluded.Array();
+	// registry queries above may return extra assets of same packages, keep scanned ones only
+	TSet<FName> PackagesExcluded;
+	for (const auto& Asset : AssetsExcluded) {
+		PackagesExcluded.Add(Asset.PackageName);
+	}
+
+	Assets.Reset(PackagesExcluded.Num());
+	for (const auto& Asset : AssetsAll) {
+		if (PackagesExcluded.Contains(Asset.PackageName)) {
+			Assets.Emplace(Asset);
+		}
+	}
+
+	ScanCacheSet(ScanCache.AssetsExcluded, Assets);
 }
 
 void UPjcSubsystem::GetAssetsEngineReferenced(TArray<FAssetData>& Assets, const bool bShowSlowTask) {
@@ -425,7 +470,7 @@ void UPjcSubsystem::GetAssetsEngineReferenced(TArray<FAssetData>& Assets, const 
 	TArray<FAssetData> AssetsAll;
 	GetAssetsAll(AssetsAll);
 
-	Assets.Reset(Assets.Num());
+	Assets.Reset(AssetsAll.Num());
 
 	FScopedSlowTask SlowTask {
 	  static_cast<float>(AssetsAll.Num()),
@@ -759,11 +804,11 @@ void UPjcSubsystem::GetFoldersEmpty(TArray<FString>& Folders) {
 	Folders.Shrink();
 }
 
-void UPjcSubsystem::DeleteAssetsUnused(const bool bShowSlowTask, const bool bShowEditorNotification) {
+bool UPjcSubsystem::DeleteAssetsUnused(const bool bShowSlowTask, const bool bShowEditorNotification) {
 	if (GetModuleAssetRegistry().Get().IsLoadingAssets()) {
 		UE_LOG(LogProjectCleaner, Warning, TEXT("Failed to delete unused assets, because AssetRegistry still discovering assets."));
-		UE_LOG(LogProjectCleaner, Warning, TEXT("Please wait until it finished adn then try again."));
-		return;
+		UE_LOG(LogProjectCleaner, Warning, TEXT("Please wait until it finished and then try again."));
+		return false;
 	}
 
 	if (GEditor && !GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->CloseAllAssetEditors()) {
@@ -773,7 +818,7 @@ void UPjcSubsystem::DeleteAssetsUnused(const bool bShowSlowTask, const bool bSho
 			Warning,
 			TEXT("Please try again, check the OutputLog for reasons why certain windows haven't closed, or try to manually close all editor windows.")
 		);
-		return;
+		return false;
 	}
 
 	TArray<FAssetData> Redirectors;
@@ -783,26 +828,38 @@ void UPjcSubsystem::DeleteAssetsUnused(const bool bShowSlowTask, const bool bSho
 	if (ProjectHasRedirectors()) {
 		UE_LOG(LogProjectCleaner, Warning, TEXT("Failed to delete unused assets because project contains redirectors that failed to fix."));
 		UE_LOG(LogProjectCleaner, Warning, TEXT("Please fix redirectors first manually and then try again."));
-		return;
+		return false;
 	}
 
 	if (!FEditorFileUtils::SaveDirtyPackages(true, true, true, false, false, false)) {
 		UE_LOG(LogProjectCleaner, Warning, TEXT("Failed to delete unused assets because project contains unsaved assets."));
 		UE_LOG(LogProjectCleaner, Warning, TEXT("Please save those assets and then try again. Check OutputLog for more information"));
-		return;
+		return false;
 	}
 
 	TArray<FAssetData> AssetsUnused;
 	GetAssetsUnused(AssetsUnused);
 
 	if (AssetsUnused.Num() == 0) {
-		UE_LOG(LogProjectCleaner, Warning, TEXT("The project currently contains no unused assets, thus there are no items to delete."));
-		return;
+		UE_LOG(LogProjectCleaner, Display, TEXT("The project currently contains no unused assets, thus there are no items to delete."));
+		return true;
 	}
 
 	constexpr int32 BucketSize = PjcConstants::BucketSize;
+	const TArray<FAssetData> AssetsToDelete = AssetsUnused;
 	const int32 NumAssetsTotal = AssetsUnused.Num();
 	int32 NumAssetsDeleted = 0;
+
+	// Engine asks before loading many assets (UE 5.4+). In commandlets and unattended runs nobody can answer,
+	// default answer cancels loading and deletion aborts. Users can skip it too, they already confirmed deletion (#60).
+	UContentBrowserSettings* ContentBrowserSettings = GetMutableDefault<UContentBrowserSettings>();
+	const int32 NumObjectsToLoadBeforeWarning = ContentBrowserSettings->NumObjectsToLoadBeforeWarning;
+	if (IsRunningCommandlet() || FApp::IsUnattended() || GetDefault<UPjcEditorSettings>()->bSkipAssetLoadWarning) {
+		ContentBrowserSettings->NumObjectsToLoadBeforeWarning = MAX_int32;
+	}
+	ON_SCOPE_EXIT {
+		ContentBrowserSettings->NumObjectsToLoadBeforeWarning = NumObjectsToLoadBeforeWarning;
+	};
 
 	TArray<FAssetData> Bucket;
 	TArray<UObject*> LoadedAssets;
@@ -856,6 +913,15 @@ void UPjcSubsystem::DeleteAssetsUnused(const bool bShowSlowTask, const bool bSho
 
 	ShaderCompilationEnable();
 
+	// assets can be deleted together with other assets, so count what is really gone
+	int32 NumAssetsRemaining = 0;
+	for (const auto& Asset : AssetsToDelete) {
+		if (FPackageName::DoesPackageExist(Asset.PackageName.ToString())) {
+			++NumAssetsRemaining;
+		}
+	}
+	NumAssetsDeleted = NumAssetsTotal - NumAssetsRemaining;
+
 	const FString Msg = FString::Printf(TEXT("Deleted %d of %d assets"), NumAssetsDeleted, NumAssetsTotal);
 	UE_LOG(LogProjectCleaner, Display, TEXT("%s"), *Msg);
 
@@ -871,15 +937,17 @@ void UPjcSubsystem::DeleteAssetsUnused(const bool bShowSlowTask, const bool bSho
 			ShowNotificationWithOutputLog(Msg, SNotificationItem::CS_Fail, 5.0f);
 		}
 	}
+
+	return !bErrors && NumAssetsDeleted == NumAssetsTotal;
 }
 
-void UPjcSubsystem::DeleteFoldersEmpty(const bool bShowSlowTask, const bool bShowEditorNotification) {
+bool UPjcSubsystem::DeleteFoldersEmpty(const bool bShowSlowTask, const bool bShowEditorNotification) {
 	TArray<FString> FoldersEmpty;
 	GetFoldersEmpty(FoldersEmpty);
 
 	if (FoldersEmpty.Num() == 0) {
-		UE_LOG(LogProjectCleaner, Warning, TEXT("The project currently contains no empty folders, thus there are no items to delete."));
-		return;
+		UE_LOG(LogProjectCleaner, Display, TEXT("The project currently contains no empty folders, thus there are no items to delete."));
+		return true;
 	}
 
 	FScopedSlowTask SlowTaskMain(1.0f, FText::FromString(TEXT("Deleting empty folders...")), bShowSlowTask && GIsEditor && !IsRunningCommandlet());
@@ -924,15 +992,17 @@ void UPjcSubsystem::DeleteFoldersEmpty(const bool bShowSlowTask, const bool bSho
 			ShowNotificationWithOutputLog(Msg, SNotificationItem::CS_Fail, 5.0f);
 		}
 	}
+
+	return !bErrors;
 }
 
-void UPjcSubsystem::DeleteFilesExternal(const bool bShowSlowTask, const bool bShowEditorNotification) {
+bool UPjcSubsystem::DeleteFilesExternal(const bool bShowSlowTask, const bool bShowEditorNotification) {
 	TArray<FString> FilesExternalFiltered;
 	GetFilesExternalFiltered(FilesExternalFiltered);
 
 	if (FilesExternalFiltered.Num() == 0) {
-		UE_LOG(LogProjectCleaner, Warning, TEXT("The project currently contains no external files, thus there are no items to delete."));
-		return;
+		UE_LOG(LogProjectCleaner, Display, TEXT("The project currently contains no external files, thus there are no items to delete."));
+		return true;
 	}
 
 	FScopedSlowTask SlowTask(
@@ -951,6 +1021,7 @@ void UPjcSubsystem::DeleteFilesExternal(const bool bShowSlowTask, const bool bSh
 		if (!IFileManager::Get().Delete(*File, true)) {
 			bErrors = true;
 			UE_LOG(LogProjectCleaner, Error, TEXT("Failed to delete file: %s"), *File);
+			continue;
 		}
 
 		++NumFilesDeleted;
@@ -971,15 +1042,17 @@ void UPjcSubsystem::DeleteFilesExternal(const bool bShowSlowTask, const bool bSh
 			ShowNotificationWithOutputLog(Msg, SNotificationItem::CS_Fail, 5.0f);
 		}
 	}
+
+	return !bErrors;
 }
 
-void UPjcSubsystem::DeleteFilesCorrupted(const bool bShowSlowTask, const bool bShowEditorNotification) {
+bool UPjcSubsystem::DeleteFilesCorrupted(const bool bShowSlowTask, const bool bShowEditorNotification) {
 	TArray<FString> FilesCorrupted;
 	GetFilesCorrupted(FilesCorrupted);
 
 	if (FilesCorrupted.Num() == 0) {
-		UE_LOG(LogProjectCleaner, Warning, TEXT("The project currently contains no corrupted files, thus there are no items to delete."));
-		return;
+		UE_LOG(LogProjectCleaner, Display, TEXT("The project currently contains no corrupted files, thus there are no items to delete."));
+		return true;
 	}
 
 	FScopedSlowTask SlowTask(
@@ -998,6 +1071,7 @@ void UPjcSubsystem::DeleteFilesCorrupted(const bool bShowSlowTask, const bool bS
 		if (!IFileManager::Get().Delete(*File, true)) {
 			bErrors = true;
 			UE_LOG(LogProjectCleaner, Error, TEXT("Failed to delete file: %s"), *File);
+			continue;
 		}
 
 		++NumFilesDeleted;
@@ -1018,6 +1092,8 @@ void UPjcSubsystem::DeleteFilesCorrupted(const bool bShowSlowTask, const bool bS
 			ShowNotificationWithOutputLog(Msg, SNotificationItem::CS_Fail, 5.0f);
 		}
 	}
+
+	return !bErrors;
 }
 
 void UPjcSubsystem::GetProjectRedirectors(TArray<FAssetData>& Redirectors) {
@@ -1446,6 +1522,9 @@ void UPjcSubsystem::GetAssetsDependencies(TSet<FAssetData>& Assets) {
 		}
 	}
 
+	// empty filter would return every asset in registry and make whole project used
+	if (UsedAssetsDeps.Num() == 0) return;
+
 	FARFilter Filter;
 
 	for (const auto& Dep : UsedAssetsDeps) {
@@ -1591,10 +1670,11 @@ void UPjcSubsystem::BucketFill(TArray<FAssetData>& AssetsUnused, TArray<FAssetDa
 			Bucket.AddUnique(CurrentAsset);
 			AssetsUnused.RemoveAt(Index);
 		}
+		else {
+			++Index;
+		}
 
 		Refs.Reset();
-
-		++Index;
 	}
 
 	if (Bucket.Num() > 0) {
@@ -1643,8 +1723,13 @@ bool UPjcSubsystem::BucketPrepare(const TArray<FAssetData>& Bucket, TArray<UObje
 	ObjectPaths.Reserve(Bucket.Num());
 
 	for (const auto& Asset : Bucket) {
+		// package could be gone already, deleted together with assets of previous bucket
+		if (!FPackageName::DoesPackageExist(Asset.PackageName.ToString())) continue;
+
 		ObjectPaths.Add(PjcShim::GetObjectPathString(Asset));
 	}
+
+	if (ObjectPaths.Num() == 0) return true;
 
 	return PjcShim::LoadAssetsIfNeeded(ObjectPaths, LoadedAssets, false, true);
 }

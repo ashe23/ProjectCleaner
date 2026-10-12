@@ -210,33 +210,37 @@ class UPjcSubsystem final : public UEditorSubsystem
 	 * @brief Delete all unused assets in project. This does not delete excluded assets.
 	 * @param bShowSlowTask bool
 	 * @param bShowEditorNotification bool
+	 * @return true if all unused assets were deleted
 	 */
 	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Asset")
-	static void DeleteAssetsUnused(const bool bShowSlowTask = true, const bool bShowEditorNotification = false);
+	static bool DeleteAssetsUnused(const bool bShowSlowTask = true, const bool bShowEditorNotification = false);
 
 	/**
 	 * @brief Delete all empty folders in project
 	 * @param bShowSlowTask bool
 	 * @param bShowEditorNotification bool
+	 * @return true if all empty folders were deleted
 	 */
 	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Path")
-	static void DeleteFoldersEmpty(const bool bShowSlowTask = true, const bool bShowEditorNotification = false);
+	static bool DeleteFoldersEmpty(const bool bShowSlowTask = true, const bool bShowEditorNotification = false);
 
 	/**
 	 * @brief Delete all external files in project. This does not delete excluded files.
 	 * @param bShowSlowTask bool
 	 * @param bShowEditorNotification bool
+	 * @return true if all external files were deleted
 	 */
 	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Path")
-	static void DeleteFilesExternal(const bool bShowSlowTask = true, const bool bShowEditorNotification = false);
+	static bool DeleteFilesExternal(const bool bShowSlowTask = true, const bool bShowEditorNotification = false);
 
 	/**
 	 * @brief Delete all corrupted asset files in project
 	 * @param bShowSlowTask bool
 	 * @param bShowEditorNotification bool
+	 * @return true if all corrupted files were deleted
 	 */
 	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Path")
-	static void DeleteFilesCorrupted(const bool bShowSlowTask = true, const bool bShowEditorNotification = false);
+	static bool DeleteFilesCorrupted(const bool bShowSlowTask = true, const bool bShowEditorNotification = false);
 
 	/**
 	 * @brief Returns all redirectors in project
