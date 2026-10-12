@@ -563,14 +563,16 @@ class HostsLock:
 
 
 def bundled_dotnet(engine):
-    """Engine shipped dotnet SDK folder, if any (Engine/Binaries/ThirdParty/DotNet/<ver>/<platform>)."""
+    """Engine shipped dotnet folder, if any: DotNet/<ver>/<platform> (5.1+) or DotNet/<Platform> (5.0)."""
     if engine is None:
         return None
     sub = "windows" if IS_WIN else ("linux" if IS_LINUX else ("mac-arm64" if os.uname().machine == "arm64" else "mac-x64"))
     exe = "dotnet.exe" if IS_WIN else "dotnet"
-    candidates = glob.glob(os.path.join(engine.root, "Engine", "Binaries", "ThirdParty", "DotNet", "*", sub, exe))
+    root = os.path.join(engine.root, "Engine", "Binaries", "ThirdParty", "DotNet")
+    candidates = glob.glob(os.path.join(root, "*", sub, exe))
     if not candidates:
-        return None
+        legacy = os.path.join(root, "Windows" if IS_WIN else ("Linux" if IS_LINUX else "Mac"), exe)
+        return os.path.dirname(legacy) if os.path.isfile(legacy) else None
 
     def version_key(path):
         ver = os.path.basename(os.path.dirname(os.path.dirname(path)))
@@ -608,6 +610,17 @@ def run_logged(cmd, log_path, timeout=None, cwd=None, engine=None):
         except subprocess.TimeoutExpired:
             f.write("\n\nTIMEOUT after {} sec\n".format(timeout))
             return None
+
+
+def run_ubt_logged(cmd, log, engine):
+    """UBT/UAT run. Engine versions share some per-user UBT files (e.g. MarketplaceRules.dll), retry on collision."""
+    code = None
+    for attempt in range(3):
+        code = run_logged(cmd, log, timeout=3600, engine=engine)
+        if code == 0 or not log_lines(log, r"being used by another process", 1):
+            break
+        time.sleep(10 + attempt * 10)
+    return code
 
 
 def log_lines(log_path, pattern, limit=25):
@@ -708,12 +721,7 @@ def build_host(host, clang=False, strict=False):
     if strict:
         # every file compiled on its own, catches missing includes hidden by unity and precompiled headers
         cmd += ["-DisableUnity", "-NoPCH"]
-    for attempt in range(3):
-        code = run_logged(cmd, log, timeout=3600, engine=engine)
-        # different engine versions share some per-user UBT files (e.g. MarketplaceRules.dll), retry on collision
-        if code == 0 or not log_lines(log, r"being used by another process", 1):
-            break
-        time.sleep(10 + attempt * 10)
+    code = run_ubt_logged(cmd, log, engine)
     warnings = log_lines(log, r"[\\/](ProjectCleaner|Pjc)[\\/].*\.(cpp|h)\(\d+.*: warning")
     errors = log_lines(log, r"error [A-Z]+\d+:|: error\b|: fatal error|ERROR:|Unhandled exception") if code != 0 else []
     if code == 0:
@@ -942,9 +950,13 @@ def cmd_package(args, hosts, cfg):
             "-Rocket",
         ]
         log = host.log("package")
-        code = run_logged(cmd, log, timeout=3600, engine=host.engine)
-        if code == 0:
+        code = run_ubt_logged(cmd, log, host.engine)
+        # some UAT batch files exit 0 even when AutomationTool could not start, check the result too
+        binaries = glob.glob(os.path.join(out, "Binaries", host.engine.platform, "*Pjc*"))
+        if code == 0 and binaries:
             return True, out
+        if code == 0:
+            code = "0 but no plugin binaries"
         return False, "exit {}  log: {}\n{}".format(code, log, "\n".join(log_lines(log, r"(?i)\berror\b", 15)))
 
     return run_for_hosts(hosts, work, args.jobs, "package")
