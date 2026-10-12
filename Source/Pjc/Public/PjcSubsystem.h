@@ -12,6 +12,7 @@
 #include "PjcSubsystem.generated.h"
 
 class FPropertyEditorModule;
+class UObjectRedirector;
 
 /**
  * While alive, expensive asset queries (all, used, unused, indirect, excluded, externally referenced) are computed
@@ -64,6 +65,15 @@ class UPjcSubsystem final : public UEditorSubsystem
 	 */
 	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Asset")
 	static void GetAssetsUnused(TArray<FAssetData>& Assets, const bool bShowSlowTask = true);
+
+	/**
+	 * @brief Returns assets that only folder labels (Primary Asset Labels with "Label Assets In My Directory") keep used.
+	 * Filled whatever "Folder Labels Used" setting is, so it shows what that setting changes.
+	 * @param Assets TArray<FAssetData>
+	 * @param bShowSlowTask bool
+	 */
+	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Asset")
+	static void GetAssetsFolderLabelOnly(TArray<FAssetData>& Assets, const bool bShowSlowTask = true);
 
 	/**
 	 * @brief Returns all primary and derived from primary assets in project. See AssetManager Settings for more info.
@@ -298,6 +308,14 @@ class UPjcSubsystem final : public UEditorSubsystem
 	static bool AssetIsCircular(const FAssetData& InAsset);
 
 	/**
+	 * @brief Checks if asset is loaded by engine systems without references to it, e.g. GameplayCue notifies
+	 * @param InAsset FAssetData
+	 * @return bool
+	 */
+	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Asset")
+	static bool AssetIsLoadedByTag(const FAssetData& InAsset);
+
+	/**
 	 * @brief Normalize given path
 	 * @param InPath FString
 	 * @return FString
@@ -374,6 +392,10 @@ class UPjcSubsystem final : public UEditorSubsystem
 	/** Absolute disk folders of scanned content roots */
 	static TArray<FString> GetProjectContentDirs();
 	static bool FileIsExcluded(const FString& InFile);
+	/** Non asset file the engine or project reads from content folders (localization, staged folders, named in code or config) */
+	static bool FileIsUsedByProject(const FString& InFile);
+	static void GetFoldersUsedByProject(TArray<FString>& Folders);
+	static void GetSourceAndConfigWords(TSet<FString>& Words);
 	static bool PathIsInsideProject(const FString& InPath);
 	static bool AssetIsInsideProject(const FAssetData& InAsset);
 
@@ -382,8 +404,14 @@ class UPjcSubsystem final : public UEditorSubsystem
 	static bool FolderIsEngineGenerated(const FString& InPath);
 	static bool FolderIsExternal(const FString& InPath);
 	static void GetSourceAndConfigFiles(TSet<FString>& Files);
-	static void GetAssetsDependencies(TSet<FAssetData>& Assets);
+	static void GetAssetsDependencies(TSet<FAssetData>& Assets, const TSet<FName>& PackagesNotFollowed = {});
+	static void GetFolderLabels(const TArray<FAssetData>& AssetsAll, TSet<FAssetData>& AssetsUsed, TSet<FName>& PackagesNotFollowed);
+	static void ComputeAssetsUsed(TArray<FAssetData>& OutUsed, TArray<FAssetData>& OutFolderLabelOnly, const bool bShowSlowTask);
 	static void ShowNotification(const FString& Msg, const SNotificationItem::ECompletionState State, const float Duration);
+	/** Source control provider is set up, or repository files (.git, .svn, ...) found next to project or above it */
+	static bool ProjectHasVersionControl();
+	/** Added to every delete confirmation, plain words for everyone (not only programmers) */
+	static FString GetDeleteWarning();
 	static void ShowNotificationWithOutputLog(const FString& Msg, const SNotificationItem::ECompletionState State, const float Duration);
 	static void ShaderCompilationEnable();
 	static void ShaderCompilationDisable();
@@ -420,7 +448,13 @@ class UPjcSubsystem final : public UEditorSubsystem
 
   private:
 
-	static void BucketFill(TArray<FAssetData>& AssetsUnused, TArray<FAssetData>& Bucket, const int32 BucketSize);
+	static void BucketFill(TArray<FAssetData>& AssetsUnused, TArray<FAssetData>& Bucket, const int32 BucketSize, const TSet<FName>& PackagesUnused);
+	static int32 DeleteAssetsReferencedByFolderLabels(const TArray<FAssetData>& Assets);
+	static int32 DeleteAssetsHeldByEachOther(const TArray<FAssetData>& Assets);
+	static void RemoveAssetsHeldOutside(TArray<UObject*>& Assets, TMap<FString, FString>* OutHolders = nullptr);
+	static bool PackageIsFolderLabel(const FName& PackageName);
+	static void GetExternalActorsDependencies(TSet<FName>& OutPackages);
 	static bool BucketPrepare(const TArray<FAssetData>& Bucket, TArray<UObject*>& LoadedAssets);
 	static int32 BucketDelete(const TArray<UObject*>& LoadedAssets);
+	static void FixRedirectorsWithoutUI(const TArray<UObjectRedirector*>& RedirectorObjects);
 };

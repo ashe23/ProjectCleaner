@@ -10,6 +10,11 @@
 #include "Framework/MultiBox/MultiBox.h"
 #include "Engine/AssetManager.h"
 #include "Misc/MessageDialog.h"
+#include "Misc/PackageName.h"
+#include "ShaderCompiler.h"
+#if ENGINE_MAJOR_VERSION >= 5
+#include "AssetCompilingManager.h"
+#endif
 #include "AssetViewUtils.h"
 #include "Editor.h"
 #include "Subsystems/AssetEditorSubsystem.h"
@@ -75,26 +80,19 @@ namespace PjcShim
 	}
 
 	FString GetPathExternalActors() {
-#if ENGINE_MAJOR_VERSION == 5
-		return FString::Printf(TEXT("/Game/%s"), FPackagePath::GetExternalActorsFolderName());
-#else
-		return {};
-#endif
+		return TEXT("/Game/") + GetExternalActorsFolderName();
 	}
 
 	FString GetPathExternalObjects() {
-#if ENGINE_MAJOR_VERSION == 5
-		return FString::Printf(TEXT("/Game/%s"), FPackagePath::GetExternalObjectsFolderName());
-#else
-		return {};
-#endif
+		return TEXT("/Game/") + GetExternalObjectsFolderName();
 	}
 
 	FString GetExternalActorsFolderName() {
 #if ENGINE_MAJOR_VERSION == 5
 		return FPackagePath::GetExternalActorsFolderName();
 #else
-		return {};
+		// one file per actor levels exist since 4.26, folder name is not exposed there (see ULevel::GetExternalActorsPath)
+		return TEXT("__ExternalActors__");
 #endif
 	}
 
@@ -102,7 +100,7 @@ namespace PjcShim
 #if ENGINE_MAJOR_VERSION == 5
 		return FPackagePath::GetExternalObjectsFolderName();
 #else
-		return {};
+		return TEXT("__ExternalObjects__");
 #endif
 	}
 
@@ -261,6 +259,24 @@ namespace PjcShim
 #else
 		InObject->UpdateDefaultConfigFile();
 #endif
+	}
+
+	bool DoesPackageExist(const FString& InPackageName, FString* OutFilename) {
+#if ENGINE_MAJOR_VERSION >= 5
+		return FPackageName::DoesPackageExist(InPackageName, OutFilename);
+#else
+		return FPackageName::DoesPackageExist(InPackageName, nullptr, OutFilename);
+#endif
+	}
+
+	void FinishAssetCompilation() {
+#if ENGINE_MAJOR_VERSION >= 5
+		FAssetCompilingManager::Get().FinishAllCompilation();
+#endif
+		if (GShaderCompilingManager) {
+			GShaderCompilingManager->FinishAllCompilation();
+		}
+		FlushAsyncLoading();
 	}
 
 	bool LoadAssetsIfNeeded(const TArray<FString>& ObjectPaths, TArray<UObject*>& LoadedObjects, bool bAllowedToPromptToLoad, bool bLoadRedirects) {

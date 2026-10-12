@@ -40,8 +40,10 @@ public class Pjc : ModuleRules
                 // editor modules
 				"AssetManagerEditor",
 				"Blutility",
+				"BlueprintGraph",
 				"ToolMenus",
 				"Projects",
+				"SourceControl",
 				"PropertyEditor",
 				"UnrealEd",
 				"EditorStyle",
@@ -60,6 +62,7 @@ public class Pjc : ModuleRules
 		{
 			PrivateDependencyModuleNames.Add("RenderCore");
 			PrivateDependencyModuleNames.Add("EditorFramework");
+			PrivateDependencyModuleNames.Add("DeveloperToolSettings");
 		}
 	}
 }

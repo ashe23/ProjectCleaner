@@ -58,6 +58,15 @@ class UPjcScanSettings final : public UDeveloperSettings
 	TArray<FName> IgnoredPrimaryAssetTypes;
 
 	/**
+	 * Primary Asset Labels with "Label Assets In My Directory" make every asset in their folder used.
+	 * Such labels are cook rules, often added for content loaded by path, so by default their assets stay used.
+	 * A label in content root (e.g. Lyra DefaultGame_Label) makes whole project used: turn off to review those assets.
+	 * Label itself and its explicit assets, blueprints and collection are always used.
+	 */
+	UPROPERTY(EditAnywhere, Config, Category = "Used Assets", meta = (EditCondition = "bPrimaryAssetsUsed"))
+	bool bFolderLabelsUsed = true;
+
+	/**
 	 * Cinematic assets are used: Level Sequences, Template Sequences, Movie Render Queue and Movie Render Graph configs.
 	 * They are usually rendered or played without being referenced by any level.
 	 */
@@ -108,8 +117,8 @@ class UPjcEditorSettings final : public UDeveloperSettings
 	bool bScanOnOpen = true;
 
 	/**
-	 * Ask before fixing redirectors. Scanning requires fixed redirectors, fixing them resaves
-	 * (and checks out from source control) every asset that references a redirector.
+	 * Ask before Fix Redirectors runs. Fixing resaves (and checks out from source control) every asset
+	 * that references a redirector. Scanning does not need fixed redirectors.
 	 */
 	UPROPERTY(EditAnywhere, Config, Category = "Scanning")
 	bool bConfirmRedirectorsFix = true;

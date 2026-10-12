@@ -7,16 +7,21 @@
 #include "Pjc.h"
 // Engine Headers
 #include "AssetManagerEditorModule.h"
+#include "BlueprintActionDatabase.h"
 #include "EditorUtilityBlueprint.h"
 #include "EditorUtilityWidget.h"
 #include "EditorUtilityWidgetBlueprint.h"
 #include "FileHelpers.h"
+#include "ISourceControlModule.h"
 #include "HAL/PlatformFileManager.h"
 #include "ObjectTools.h"
 #include "ShaderCompiler.h"
 #include "Misc/ScopeExit.h"
 #include "Settings/ContentBrowserSettings.h"
+#include "Settings/ProjectPackagingSettings.h"
 #include "Engine/AssetManager.h"
+#include "Engine/PrimaryAssetLabel.h"
+#include "Framework/Application/SlateApplication.h"
 #include "Framework/Notifications/NotificationManager.h"
 #include "Internationalization/Regex.h"
 #include "Misc/FileHelper.h"
@@ -25,6 +30,11 @@
 #include "Editor.h"
 #include "HAL/FileManager.h"
 #include "Misc/Paths.h"
+#include "Misc/PackageName.h"
+#include "UObject/ObjectRedirector.h"
+#include "UObject/Linker.h"
+#include "UObject/LinkerLoad.h"
+#include "UObject/ReferencerFinder.h"
 #include "Widgets/Notifications/SNotificationList.h"
 #include "Framework/Docking/TabManager.h"
 #include "HAL/PlatformProcess.h"
@@ -45,6 +55,9 @@ namespace
 		TOptional<TArray<FPjcAssetIndirectInfo>> AssetsIndirectInfos;
 		TOptional<TArray<FAssetData>> AssetsExcluded;
 		TOptional<TArray<FAssetData>> AssetsEngineReferenced;
+		TOptional<TArray<FAssetData>> AssetsFolderLabelOnly;
+		TOptional<TArray<FString>> FoldersUsedByProject;
+		TOptional<TSet<FString>> SourceAndConfigWords;
 
 		void Reset() {
 			AssetsAll.Reset();
@@ -54,6 +67,9 @@ namespace
 			AssetsIndirectInfos.Reset();
 			AssetsExcluded.Reset();
 			AssetsEngineReferenced.Reset();
+			AssetsFolderLabelOnly.Reset();
+			FoldersUsedByProject.Reset();
+			SourceAndConfigWords.Reset();
 		}
 	};
 
@@ -143,6 +159,25 @@ void UPjcSubsystem::GetAssetsUsed(TArray<FAssetData>& Assets, const bool bShowSl
 	if (GetModuleAssetRegistry().Get().IsLoadingAssets()) return;
 	if (ScanCacheGet(ScanCache.AssetsUsed, Assets)) return;
 
+	TArray<FAssetData> AssetsFolderLabelOnly;
+	ComputeAssetsUsed(Assets, AssetsFolderLabelOnly, bShowSlowTask);
+
+	ScanCacheSet(ScanCache.AssetsUsed, Assets);
+	ScanCacheSet(ScanCache.AssetsFolderLabelOnly, AssetsFolderLabelOnly);
+}
+
+void UPjcSubsystem::GetAssetsFolderLabelOnly(TArray<FAssetData>& Assets, const bool bShowSlowTask) {
+	if (GetModuleAssetRegistry().Get().IsLoadingAssets()) return;
+	if (ScanCacheGet(ScanCache.AssetsFolderLabelOnly, Assets)) return;
+
+	TArray<FAssetData> AssetsUsed;
+	ComputeAssetsUsed(AssetsUsed, Assets, bShowSlowTask);
+
+	ScanCacheSet(ScanCache.AssetsUsed, AssetsUsed);
+	ScanCacheSet(ScanCache.AssetsFolderLabelOnly, Assets);
+}
+
+void UPjcSubsystem::ComputeAssetsUsed(TArray<FAssetData>& OutUsed, TArray<FAssetData>& OutFolderLabelOnly, const bool bShowSlowTask) {
 	const UPjcScanSettings* ScanSettings = GetDefault<UPjcScanSettings>();
 
 	TSet<FName> ClassNamesPrimary;
@@ -185,31 +220,67 @@ void UPjcSubsystem::GetAssetsUsed(TArray<FAssetData>& Assets, const bool bShowSl
 		const bool bIsPrimary = ClassNamesPrimary.Contains(PjcShim::GetAssetClassName(Asset)) || ClassNamesPrimary.Contains(AssetExactClassName);
 		const bool bIsEditor = ClassNamesEditor.Contains(PjcShim::GetAssetClassName(Asset)) || ClassNamesEditor.Contains(AssetExactClassName);
 		const bool bIsEngineReferenced = AssetsEngineReferencedSet.Contains(Asset);
-		const bool bIsUsed = bIsPrimary || bIsEditor || bIsEngineReferenced;
+		const bool bIsUsed = bIsPrimary || bIsEditor || bIsEngineReferenced || AssetIsLoadedByTag(Asset);
 
 		if (bIsUsed) {
 			AssetsUsed.Emplace(Asset);
 		}
 	}
 
-	GetAssetsDependencies(AssetsUsed);
+	// folder labels reference every asset in their folder: closure without following them tells which assets only they keep
+	TSet<FAssetData> AssetsUsedStrict = AssetsUsed;
+	TSet<FName> FolderLabels;
+	if (ScanSettings->bPrimaryAssetsUsed) {
+		GetFolderLabels(AssetsAll, AssetsUsedStrict, FolderLabels);
+	}
+	GetAssetsDependencies(AssetsUsedStrict, FolderLabels);
 
-	// dependencies come per package, map them back to scanned assets so used + unused = all
-	TSet<FName> PackagesUsed;
-	PackagesUsed.Reserve(AssetsUsed.Num());
-	for (const auto& Asset : AssetsUsed) {
-		PackagesUsed.Add(Asset.PackageName);
+	TSet<FName> PackagesStrict;
+	for (const auto& Asset : AssetsUsedStrict) {
+		PackagesStrict.Add(Asset.PackageName);
 	}
 
-	Assets.Reset(AssetsAll.Num());
-	for (const auto& Asset : AssetsAll) {
-		if (PackagesUsed.Contains(Asset.PackageName)) {
-			Assets.Emplace(Asset);
+	TSet<FName> PackagesFull = PackagesStrict;
+	if (FolderLabels.Num() > 0) {
+		GetAssetsDependencies(AssetsUsed);
+		for (const auto& Asset : AssetsUsed) {
+			PackagesFull.Add(Asset.PackageName);
 		}
 	}
-	Assets.Shrink();
 
-	ScanCacheSet(ScanCache.AssetsUsed, Assets);
+	// dependencies come per package, map them back to scanned assets so used + unused = all
+	const TSet<FName>& PackagesUsed = ScanSettings->bFolderLabelsUsed ? PackagesFull : PackagesStrict;
+	OutUsed.Reset(AssetsAll.Num());
+	OutFolderLabelOnly.Reset();
+	for (const auto& Asset : AssetsAll) {
+		if (PackagesUsed.Contains(Asset.PackageName)) {
+			OutUsed.Emplace(Asset);
+		}
+		if (PackagesFull.Contains(Asset.PackageName) && !PackagesStrict.Contains(Asset.PackageName)) {
+			OutFolderLabelOnly.Emplace(Asset);
+		}
+	}
+	OutUsed.Shrink();
+
+	// tell which label decides how many assets, e.g. Lyra DefaultGame_Label keeps hundreds of otherwise unused assets
+	for (const auto& FolderLabel : FolderLabels) {
+		TArray<FName> Deps;
+		GetModuleAssetRegistry().Get().GetDependencies(FolderLabel, Deps);
+		int32 NumOnlyByLabel = 0;
+		for (const auto& Asset : OutFolderLabelOnly) {
+			NumOnlyByLabel += Deps.Contains(Asset.PackageName) ? 1 : 0;
+		}
+		if (NumOnlyByLabel == 0) continue;
+
+		UE_LOG(
+			LogProjectCleaner,
+			Display,
+			TEXT("Folder label %s: %d asset(s) referenced only by it are %s (Project Settings > Plugins > Project Cleaner > Folder Labels Used)"),
+			*FolderLabel.ToString(),
+			NumOnlyByLabel,
+			ScanSettings->bFolderLabelsUsed ? TEXT("kept used") : TEXT("unused")
+		);
+	}
 }
 
 void UPjcSubsystem::GetAssetsUnused(TArray<FAssetData>& Assets, const bool bShowSlowTask) {
@@ -293,7 +364,8 @@ void UPjcSubsystem::GetAssetsIndirect(TArray<FAssetData>& Assets, TArray<FPjcAss
 	for (const auto& RootPath : GetProjectRootPaths()) {
 		RootPatterns.Add(RootPath.Replace(TEXT("/"), TEXT("\\/")));
 	}
-	const FRegexPattern Pattern {FString::Printf(TEXT(R"((%s)\/[A-Za-z0-9_.\/]+\b)"), *FString::Join(RootPatterns, TEXT("|")))};
+	// everything allowed in package names (e.g. "ButtonStyle-Primary-M"), stops at quotes, separators and brackets
+	const FRegexPattern Pattern {FString::Printf(TEXT(R"((%s)\/[^\s"'`,:;=*?<>|&!~@#\\()\[\]{}]+)"), *FString::Join(RootPatterns, TEXT("|")))};
 
 	TArray<FString> Lines;
 	for (const auto& File : ScanFiles) {
@@ -306,7 +378,10 @@ void UPjcSubsystem::GetAssetsIndirect(TArray<FAssetData>& Assets, TArray<FPjcAss
 		for (int32 i = 0; i < Lines.Num(); ++i) {
 			FRegexMatcher Matcher(Pattern, Lines[i]);
 			while (Matcher.FindNext()) {
-				const FString Match = Matcher.GetCaptureGroup(0);
+				FString Match = Matcher.GetCaptureGroup(0);
+				while (Match.EndsWith(TEXT(".")) || Match.EndsWith(TEXT("/"))) {
+					Match.LeftChopInline(1);
+				}
 				FString ObjectPath = PathConvertToObjectPath(Match);
 
 				// package names are common in configs too, e.g. "/Game/Maps/Main" instead of "/Game/Maps/Main.Main"
@@ -483,6 +558,9 @@ void UPjcSubsystem::GetAssetsEngineReferenced(TArray<FAssetData>& Assets, const 
 
 	Assets.Reset(AssetsAll.Num());
 
+	TSet<FName> ExternalActorsDependencies;
+	GetExternalActorsDependencies(ExternalActorsDependencies);
+
 	FScopedSlowTask SlowTask {
 	  static_cast<float>(AssetsAll.Num()),
 	  FText::FromString(TEXT("Searching assets with external referencers...")),
@@ -493,7 +571,7 @@ void UPjcSubsystem::GetAssetsEngineReferenced(TArray<FAssetData>& Assets, const 
 	for (const auto& Asset : AssetsAll) {
 		SlowTask.EnterProgressFrame(1.0f, FText::FromString(Asset.GetFullName()));
 
-		if (AssetIsEngineReferenced(Asset)) {
+		if (AssetIsEngineReferenced(Asset) || ExternalActorsDependencies.Contains(Asset.PackageName)) {
 			Assets.Emplace(Asset);
 		}
 	}
@@ -693,6 +771,7 @@ void UPjcSubsystem::GetFilesExternalFiltered(TArray<FString>& Files, const bool 
 
 	Files.Reset(FilesExternalAll.Num());
 
+	FPjcScanCacheScope ScanCacheScope;
 	FScopedSlowTask SlowTask(
 		static_cast<float>(FilesExternalAll.Num()),
 		FText::FromString(TEXT("Searching for external files...")),
@@ -717,6 +796,7 @@ void UPjcSubsystem::GetFilesExternalExcluded(TArray<FString>& Files, const bool 
 
 	Files.Reset(FilesExternalAll.Num());
 
+	FPjcScanCacheScope ScanCacheScope;
 	FScopedSlowTask SlowTask(
 		static_cast<float>(FilesExternalAll.Num()),
 		FText::FromString(TEXT("Searching for external files...")),
@@ -837,17 +917,9 @@ bool UPjcSubsystem::DeleteAssetsUnused(const bool bShowSlowTask, const bool bSho
 		return false;
 	}
 
-	TArray<FAssetData> Redirectors;
-	GetProjectRedirectors(Redirectors);
-	FixProjectRedirectors(Redirectors);
-
-	if (ProjectHasRedirectors()) {
-		UE_LOG(LogProjectCleaner, Warning, TEXT("Failed to delete unused assets because project contains redirectors that failed to fix."));
-		UE_LOG(LogProjectCleaner, Warning, TEXT("Please fix redirectors first manually and then try again."));
-		return false;
-	}
-
-	if (!FEditorFileUtils::SaveDirtyPackages(true, true, true, false, false, false)) {
+	// unsaved edits could reference assets that look unused on disk. Commandlets have no user edits, packages there
+	// only get dirty when loading updates them (e.g. Niagara systems after redirector fixup) and nobody can answer a prompt
+	if (!IsRunningCommandlet() && !FEditorFileUtils::SaveDirtyPackages(true, true, true, false, false, false)) {
 		UE_LOG(LogProjectCleaner, Warning, TEXT("Failed to delete unused assets because project contains unsaved assets."));
 		UE_LOG(LogProjectCleaner, Warning, TEXT("Please save those assets and then try again. Check OutputLog for more information"));
 		return false;
@@ -861,8 +933,15 @@ bool UPjcSubsystem::DeleteAssetsUnused(const bool bShowSlowTask, const bool bSho
 		return true;
 	}
 
+	// asset delete handlers (e.g. RigVM) create it on first use, building it while assets are half deleted asserts (UE 5.4)
+	FBlueprintActionDatabase::Get();
+
 	constexpr int32 BucketSize = PjcConstants::BucketSize;
 	const TArray<FAssetData> AssetsToDelete = AssetsUnused;
+	TSet<FName> PackagesUnused;
+	for (const auto& Asset : AssetsUnused) {
+		PackagesUnused.Add(Asset.PackageName);
+	}
 	const int32 NumAssetsTotal = AssetsUnused.Num();
 	int32 NumAssetsDeleted = 0;
 
@@ -892,9 +971,10 @@ bool UPjcSubsystem::DeleteAssetsUnused(const bool bShowSlowTask, const bool bSho
 	SlowTask.MakeDialog(false, false);
 
 	bool bErrors = false;
+	int32 NumProgress = 0;
 
 	while (AssetsUnused.Num() > 0) {
-		BucketFill(AssetsUnused, Bucket, BucketSize);
+		BucketFill(AssetsUnused, Bucket, BucketSize, PackagesUnused);
 
 		if (Bucket.Num() == 0) {
 			break;
@@ -908,18 +988,23 @@ bool UPjcSubsystem::DeleteAssetsUnused(const bool bShowSlowTask, const bool bSho
 
 		NumAssetsDeleted += BucketDelete(LoadedAssets);
 		const FString ProgressMsg = FString::Printf(TEXT("Deleted %d of %d assets"), NumAssetsDeleted, NumAssetsTotal);
-		SlowTask.EnterProgressFrame(Bucket.Num(), FText::FromString(ProgressMsg));
+		const int32 ProgressWork = FMath::Min(Bucket.Num(), NumAssetsTotal - NumProgress);
+		NumProgress += ProgressWork;
+		SlowTask.EnterProgressFrame(ProgressWork, FText::FromString(ProgressMsg));
 
 		Bucket.Reset();
 		LoadedAssets.Reset();
 	}
 
+	// packages left empty by this deletion only: registry "empty" list also holds packages of other loaded assets
 	const TSet<FName> EmptyPackages = PjcShim::GetCachedEmptyPackages();
 	TArray<UPackage*> AssetPackages;
-	for (const auto& EmptyPackage : EmptyPackages) {
-		UPackage* Package = FindPackage(nullptr, *EmptyPackage.ToString());
+	for (const auto& Asset : AssetsToDelete) {
+		if (!EmptyPackages.Contains(Asset.PackageName)) continue;
+
+		UPackage* Package = FindPackage(nullptr, *Asset.PackageName.ToString());
 		if (Package && Package->IsValidLowLevel()) {
-			AssetPackages.Add(Package);
+			AssetPackages.AddUnique(Package);
 		}
 	}
 
@@ -927,14 +1012,41 @@ bool UPjcSubsystem::DeleteAssetsUnused(const bool bShowSlowTask, const bool bSho
 		ObjectTools::CleanupAfterSuccessfulDelete(AssetPackages);
 	}
 
+	DeleteAssetsReferencedByFolderLabels(AssetsToDelete);
+	DeleteAssetsHeldByEachOther(AssetsToDelete);
+
 	ShaderCompilationEnable();
 
 	// assets can be deleted together with other assets, so count what is really gone
+	TArray<UObject*> AssetsRemaining;
+	for (const auto& Asset : AssetsToDelete) {
+		if (!FPackageName::DoesPackageExist(Asset.PackageName.ToString())) continue;
+
+		if (UObject* Object = FindObject<UObject>(nullptr, *PjcShim::GetObjectPathString(Asset))) {
+			AssetsRemaining.Add(Object);
+		}
+		else {
+			UE_LOG(LogProjectCleaner, Warning, TEXT("Not deleted: %s"), *PjcShim::GetObjectPathString(Asset));
+		}
+	}
+
+	// tell who keeps each of them, a live reference means something uses it even when no saved asset does
+	TMap<FString, FString> Holders;
+	TArray<UObject*> HeldByEachOther = AssetsRemaining;
+	RemoveAssetsHeldOutside(HeldByEachOther, &Holders);
+	for (const UObject* Asset : AssetsRemaining) {
+		const FString* Holder = Holders.Find(Asset->GetPathName());
+		UE_LOG(
+			LogProjectCleaner,
+			Warning,
+			TEXT("Not deleted, still referenced: %s (%s)"),
+			*Asset->GetPathName(),
+			Holder ? **Holder : TEXT("by asset that is kept")
+		);
+	}
 	int32 NumAssetsRemaining = 0;
 	for (const auto& Asset : AssetsToDelete) {
-		if (FPackageName::DoesPackageExist(Asset.PackageName.ToString())) {
-			++NumAssetsRemaining;
-		}
+		NumAssetsRemaining += FPackageName::DoesPackageExist(Asset.PackageName.ToString()) ? 1 : 0;
 	}
 	NumAssetsDeleted = NumAssetsTotal - NumAssetsRemaining;
 
@@ -1150,13 +1262,94 @@ void UPjcSubsystem::FixProjectRedirectors(const TArray<FAssetData>& Redirectors,
 	for (const auto& Redirector : Redirectors) {
 		SlowTask.EnterProgressFrame(1.0f, FText::FromString(Redirector.GetFullName()));
 
-		UObjectRedirector* RedirectorObject = CastChecked<UObjectRedirector>(Redirector.GetAsset());
+		UObjectRedirector* RedirectorObject = Cast<UObjectRedirector>(Redirector.GetAsset());
 		if (!RedirectorObject) continue;
 
 		RedirectorObjects.Emplace(RedirectorObject);
 	}
 
+	// engine fixup ends with a modal report window (UE 5.4+), which can not exist without Slate (commandlets)
+	if (IsRunningCommandlet() || !FSlateApplication::IsInitialized()) {
+		FixRedirectorsWithoutUI(RedirectorObjects);
+		return;
+	}
+
 	GetModuleAssetTools().Get().FixupReferencers(RedirectorObjects, false);
+}
+
+void UPjcSubsystem::FixRedirectorsWithoutUI(const TArray<UObjectRedirector*>& RedirectorObjects) {
+	IAssetRegistry& AssetRegistry = GetModuleAssetRegistry().Get();
+
+	TSet<FName> RedirectorPackageNames;
+	for (const auto& RedirectorObject : RedirectorObjects) {
+		RedirectorPackageNames.Add(RedirectorObject->GetOutermost()->GetFName());
+	}
+
+	// redirector to missing asset: resaving its referencers would replace the broken reference with null, keep both
+	TSet<FName> ReferencersToSkip;
+	for (const auto& RedirectorObject : RedirectorObjects) {
+		if (RedirectorObject->DestinationObject) continue;
+
+		TArray<FName> Referencers;
+		AssetRegistry.GetReferencers(RedirectorObject->GetOutermost()->GetFName(), Referencers);
+		ReferencersToSkip.Append(Referencers);
+		UE_LOG(LogProjectCleaner, Warning, TEXT("Redirector %s points to missing asset, not fixed"), *RedirectorObject->GetPathName());
+	}
+
+	TSet<FName> ReferencerNames;
+	for (const FName& PackageName : RedirectorPackageNames) {
+		TArray<FName> Referencers;
+		AssetRegistry.GetReferencers(PackageName, Referencers);
+		for (const FName& Referencer : Referencers) {
+			if (!RedirectorPackageNames.Contains(Referencer) && !ReferencersToSkip.Contains(Referencer)) {
+				ReferencerNames.Add(Referencer);
+			}
+		}
+	}
+
+	// loading referencers resolves redirectors (loaded redirectors also fix soft references on save)
+	TArray<UPackage*> PackagesToSave;
+	TArray<FString> FilesToRescan;
+	for (const FName& ReferencerName : ReferencerNames) {
+		FString Filename;
+		if (!PjcShim::DoesPackageExist(ReferencerName.ToString(), &Filename)) continue;
+
+		UPackage* Package = FindPackage(nullptr, *ReferencerName.ToString());
+		if (!Package) {
+			Package = LoadPackage(nullptr, *ReferencerName.ToString(), LOAD_None);
+		}
+
+		if (!Package || Package->HasAnyPackageFlags(PKG_CompiledIn)) continue;
+
+		PackagesToSave.Add(Package);
+		FilesToRescan.Add(FPaths::ConvertRelativePathToFull(Filename));
+	}
+
+	if (PackagesToSave.Num() > 0) {
+		if (ISourceControlModule::Get().IsEnabled()) {
+			FEditorFileUtils::CheckoutPackages(PackagesToSave, nullptr, false);
+		}
+		UEditorLoadingAndSavingUtils::SavePackages(PackagesToSave, false);
+		AssetRegistry.ScanFilesSynchronous(FilesToRescan, true);
+	}
+
+	// delete only redirectors nothing points to anymore (other redirectors do not count)
+	TArray<UObject*> ObjectsToDelete;
+	for (const auto& RedirectorObject : RedirectorObjects) {
+		TArray<FName> Referencers;
+		AssetRegistry.GetReferencers(RedirectorObject->GetOutermost()->GetFName(), Referencers);
+		const bool bReferenced = Referencers.ContainsByPredicate([&](const FName& Referencer) {
+			return !RedirectorPackageNames.Contains(Referencer);
+		});
+
+		if (!bReferenced && RedirectorObject->DestinationObject) {
+			ObjectsToDelete.Add(RedirectorObject);
+		}
+	}
+
+	if (ObjectsToDelete.Num() > 0) {
+		ObjectTools::DeleteObjects(ObjectsToDelete, false);
+	}
 }
 
 bool UPjcSubsystem::EditorIsInPlayMode() {
@@ -1181,6 +1374,15 @@ bool UPjcSubsystem::AssetIsEngineReferenced(const FAssetData& InAsset) {
 	return Refs.ContainsByPredicate([](const FName& Ref) {
 		return !PathIsInsideProject(Ref.ToString()) || FolderIsExternal(Ref.ToString());
 	});
+}
+
+bool UPjcSubsystem::AssetIsLoadedByTag(const FAssetData& InAsset) {
+	// GameplayAbilities: notifies found in GameplayCueNotifyPaths are loaded by their cue tag, nothing references them.
+	// Tag is written for every GameplayCueNotify_Static and GameplayCueNotify_Actor (blueprints too)
+	static const FName GameplayCueNameTag {TEXT("GameplayCueName")};
+
+	FString GameplayCueName;
+	return InAsset.GetTagValue(GameplayCueNameTag, GameplayCueName) && !GameplayCueName.IsEmpty() && GameplayCueName != TEXT("None");
 }
 
 bool UPjcSubsystem::AssetIsCircular(const FAssetData& InAsset) {
@@ -1374,6 +1576,8 @@ TArray<FString> UPjcSubsystem::GetProjectContentDirs() {
 }
 
 bool UPjcSubsystem::FileIsExcluded(const FString& InFile) {
+	if (FileIsUsedByProject(InFile)) return true;
+
 	const UPjcFileExcludeSettings* FileExcludeSettings = GetDefault<UPjcFileExcludeSettings>();
 
 	const FString FileExt = FPaths::GetExtension(InFile, false);
@@ -1392,6 +1596,101 @@ bool UPjcSubsystem::FileIsExcluded(const FString& InFile) {
 		const FString PathAbs = PathNormalize(FPaths::ConvertRelativePathToFull(Path));
 		return !PathAbs.IsEmpty() && FPaths::IsSamePath(PathAbs, InFile);
 	});
+}
+
+bool UPjcSubsystem::FileIsUsedByProject(const FString& InFile) {
+	const FString File = PathNormalize(InFile);
+	if (File.IsEmpty()) return false;
+
+	// called per file, rules come from scan cache when there is one (no copies of big word set)
+	TArray<FString> FoldersLocal;
+	TSet<FString> WordsLocal;
+	if (ScanCache.Depth > 0 && !ScanCache.FoldersUsedByProject.IsSet()) {
+		ScanCache.FoldersUsedByProject.Emplace();
+		GetFoldersUsedByProject(ScanCache.FoldersUsedByProject.GetValue());
+	}
+	if (ScanCache.Depth == 0) {
+		GetFoldersUsedByProject(FoldersLocal);
+	}
+	const TArray<FString>& Folders = ScanCache.Depth > 0 ? ScanCache.FoldersUsedByProject.GetValue() : FoldersLocal;
+
+	for (const auto& Folder : Folders) {
+		if (File.StartsWith(Folder + TEXT("/"))) return true;
+	}
+
+	// Developers/<User>/Collections
+	for (const auto& ContentDir : GetProjectContentDirs()) {
+		const FString DevelopersDir = PathNormalize(ContentDir / TEXT("Developers")) + TEXT("/");
+		if (File.StartsWith(DevelopersDir) && File.RightChop(DevelopersDir.Len()).Contains(TEXT("/Collections/"))) return true;
+	}
+
+	// loaded by code or config by file name, e.g. FPaths::ProjectContentDir() / "Slate/Icon.svg"
+	if (ScanCache.Depth > 0 && !ScanCache.SourceAndConfigWords.IsSet()) {
+		ScanCache.SourceAndConfigWords.Emplace();
+		GetSourceAndConfigWords(ScanCache.SourceAndConfigWords.GetValue());
+	}
+	if (ScanCache.Depth == 0) {
+		GetSourceAndConfigWords(WordsLocal);
+	}
+	const TSet<FString>& Words = ScanCache.Depth > 0 ? ScanCache.SourceAndConfigWords.GetValue() : WordsLocal;
+
+	return Words.Contains(FPaths::GetBaseFilename(File));
+}
+
+void UPjcSubsystem::GetFoldersUsedByProject(TArray<FString>& Folders) {
+	Folders.Reset();
+
+	// read by engine from every content root
+	for (const auto& ContentDir : GetProjectContentDirs()) {
+		for (const TCHAR* FolderName : {TEXT("Localization"), TEXT("Movies"), TEXT("Splash"), TEXT("Python"), TEXT("Collections")}) {
+			Folders.Add(PathNormalize(ContentDir / FolderName));
+		}
+	}
+
+	// staged as is with packaged builds, paths are relative to project Content folder
+	const UProjectPackagingSettings* PackagingSettings = GetDefault<UProjectPackagingSettings>();
+	TArray<FDirectoryPath> StagedDirs;
+	StagedDirs.Append(PackagingSettings->DirectoriesToAlwaysStageAsUFS);
+	StagedDirs.Append(PackagingSettings->DirectoriesToAlwaysStageAsNonUFS);
+	StagedDirs.Append(PackagingSettings->DirectoriesToAlwaysStageAsUFSServer);
+	StagedDirs.Append(PackagingSettings->DirectoriesToAlwaysStageAsNonUFSServer);
+
+	for (const auto& StagedDir : StagedDirs) {
+		FString Path = StagedDir.Path.TrimStartAndEnd();
+		if (Path.IsEmpty()) continue;
+
+		Path.RemoveFromStart(TEXT("/Game/"));
+		Folders.Add(PathNormalize(FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / Path)));
+	}
+
+	Folders.RemoveAll([](const FString& Folder) {
+		return Folder.IsEmpty();
+	});
+}
+
+void UPjcSubsystem::GetSourceAndConfigWords(TSet<FString>& Words) {
+	Words.Reset();
+
+	TSet<FString> Files;
+	GetSourceAndConfigFiles(Files);
+
+	FString Content;
+	for (const auto& File : Files) {
+		Content.Reset();
+		if (!FFileHelper::LoadFileToString(Content, *File)) continue;
+
+		int32 Start = INDEX_NONE;
+		for (int32 i = 0; i <= Content.Len(); ++i) {
+			const bool bWordChar = i < Content.Len() && (FChar::IsAlnum(Content[i]) || Content[i] == TCHAR('_') || Content[i] == TCHAR('-'));
+			if (bWordChar && Start == INDEX_NONE) {
+				Start = i;
+			}
+			else if (!bWordChar && Start != INDEX_NONE) {
+				Words.Add(Content.Mid(Start, i - Start));
+				Start = INDEX_NONE;
+			}
+		}
+	}
 }
 
 bool UPjcSubsystem::PathIsInsideProject(const FString& InPath) {
@@ -1515,7 +1814,35 @@ void UPjcSubsystem::GetSourceAndConfigFiles(TSet<FString>& Files) {
 	Files.Append(ConfigFiles);
 }
 
-void UPjcSubsystem::GetAssetsDependencies(TSet<FAssetData>& Assets) {
+void UPjcSubsystem::GetFolderLabels(const TArray<FAssetData>& AssetsAll, TSet<FAssetData>& AssetsUsed, TSet<FName>& PackagesNotFollowed) {
+	// "Label Assets In My Directory" saves a reference to every asset in label folder. That is a cook rule, not usage:
+	// label stays used, only its explicit assets are followed instead of registry dependencies
+	for (const auto& Asset : AssetsAll) {
+		const UClass* AssetClass = Asset.GetClass();
+		if (!AssetClass || !AssetClass->IsChildOf(UPrimaryAssetLabel::StaticClass()) || !AssetsUsed.Contains(Asset)) continue;
+
+		const UPrimaryAssetLabel* Label = Cast<UPrimaryAssetLabel>(Asset.GetAsset());
+		if (!Label || !Label->bLabelAssetsInMyDirectory || !Label->AssetCollection.CollectionName.IsNone()) continue;
+
+		PackagesNotFollowed.Add(Asset.PackageName);
+
+		TArray<FSoftObjectPath> ExplicitPaths;
+		for (const auto& ExplicitAsset : Label->ExplicitAssets) {
+			ExplicitPaths.Add(ExplicitAsset.ToSoftObjectPath());
+		}
+		for (const auto& ExplicitBlueprint : Label->ExplicitBlueprints) {
+			ExplicitPaths.Add(ExplicitBlueprint.ToSoftObjectPath());
+		}
+
+		for (const auto& ExplicitPath : ExplicitPaths) {
+			TArray<FAssetData> ExplicitAssets;
+			GetModuleAssetRegistry().Get().GetAssetsByPackageName(FName {*ExplicitPath.GetLongPackageName()}, ExplicitAssets);
+			AssetsUsed.Append(ExplicitAssets);
+		}
+	}
+}
+
+void UPjcSubsystem::GetAssetsDependencies(TSet<FAssetData>& Assets, const TSet<FName>& PackagesNotFollowed) {
 	TSet<FName> UsedAssetsDeps;
 	TArray<FName> Stack;
 	for (const auto& Asset : Assets) {
@@ -1525,6 +1852,8 @@ void UPjcSubsystem::GetAssetsDependencies(TSet<FAssetData>& Assets) {
 		TArray<FName> Deps;
 		while (Stack.Num() > 0) {
 			const auto CurrentPackageName = PjcShim::PopArray(Stack);
+			if (PackagesNotFollowed.Contains(CurrentPackageName)) continue;
+
 			Deps.Reset();
 
 			GetModuleAssetRegistry().Get().GetDependencies(CurrentPackageName, Deps);
@@ -1556,6 +1885,36 @@ void UPjcSubsystem::GetAssetsDependencies(TSet<FAssetData>& Assets) {
 	GetModuleAssetRegistry().Get().GetAssets(Filter, TempContainer);
 
 	Assets.Append(TempContainer);
+}
+
+bool UPjcSubsystem::ProjectHasVersionControl() {
+	if (ISourceControlModule::Get().IsEnabled()) return true;
+
+	// repository root can be above project folder
+	FString Dir = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir());
+	FPaths::NormalizeDirectoryName(Dir);
+	while (!Dir.IsEmpty()) {
+		for (const TCHAR* Marker : {TEXT(".git"), TEXT(".svn"), TEXT(".hg"), TEXT(".plastic"), TEXT(".p4config"), TEXT("p4config.txt")}) {
+			if (IFileManager::Get().FileExists(*(Dir / Marker)) || IFileManager::Get().DirectoryExists(*(Dir / Marker))) return true;
+		}
+
+		const FString Parent = FPaths::GetPath(Dir);
+		if (Parent.IsEmpty() || Parent == Dir) break;
+		Dir = Parent;
+	}
+
+	return false;
+}
+
+FString UPjcSubsystem::GetDeleteWarning() {
+	FString Warning = TEXT("Deleted files can not be restored by Project Cleaner. ")
+		TEXT("Make sure your work is saved to version control (Git, Perforce, ...) or the project folder is backed up.");
+
+	if (!ProjectHasVersionControl()) {
+		Warning += TEXT("\n\nNo version control found for this project. Copy the project folder somewhere safe before deleting.");
+	}
+
+	return Warning;
 }
 
 void UPjcSubsystem::ShowNotification(const FString& Msg, const SNotificationItem::ECompletionState State, const float Duration) {
@@ -1675,7 +2034,12 @@ FPropertyEditorModule& UPjcSubsystem::GetModulePropertyEditor() {
 	return FModuleManager::LoadModuleChecked<FPropertyEditorModule>(PjcConstants::ModulePropertyEditor);
 }
 
-void UPjcSubsystem::BucketFill(TArray<FAssetData>& AssetsUnused, TArray<FAssetData>& Bucket, const int32 BucketSize) {
+void UPjcSubsystem::BucketFill(
+	TArray<FAssetData>& AssetsUnused,
+	TArray<FAssetData>& Bucket,
+	const int32 BucketSize,
+	const TSet<FName>& PackagesUnused
+) {
 	// Searching Root assets (assets without referencers)
 	int32 Index = 0;
 	TArray<FName> Refs;
@@ -1723,6 +2087,9 @@ void UPjcSubsystem::BucketFill(TArray<FAssetData>& AssetsUnused, TArray<FAssetDa
 		Refs.Shrink();
 
 		for (const auto& Ref : Refs) {
+			// only unused referencers go with it, a used one (e.g. folder label) must never be deleted
+			if (!PackagesUnused.Contains(Ref)) continue;
+
 			const FString ObjectPath = Ref.ToString() + TEXT(".") + FPaths::GetBaseFilename(*Ref.ToString());
 			const FAssetData AssetData = PjcShim::GetAssetByObjectPath(ObjectPath);
 			if (AssetData.IsValid()) {
@@ -1739,6 +2106,241 @@ void UPjcSubsystem::BucketFill(TArray<FAssetData>& AssetsUnused, TArray<FAssetDa
 	}
 }
 
+int32 UPjcSubsystem::DeleteAssetsReferencedByFolderLabels(const TArray<FAssetData>& Assets) {
+	if (GetDefault<UPjcScanSettings>()->bFolderLabelsUsed) return 0;
+
+	// engine never deletes assets with referencers on disk. Folder labels reference every asset in their folder (cook
+	// rule, not usage), so unused assets there are left over. Delete those whose only referencers are folder labels or
+	// other assets deleted together, then resave labels so they stop referencing them.
+	TMap<FName, FAssetData> Candidates;
+	for (const auto& Asset : Assets) {
+		if (FPackageName::DoesPackageExist(Asset.PackageName.ToString())) {
+			Candidates.Add(Asset.PackageName, Asset);
+		}
+	}
+
+	TMap<FName, TArray<FName>> Referencers;
+	for (const auto& Pair : Candidates) {
+		GetModuleAssetRegistry().Get().GetReferencers(Pair.Key, Referencers.Add(Pair.Key));
+	}
+
+	TMap<FName, bool> LabelCache;
+	auto IsFolderLabel = [&](const FName& PackageName) {
+		if (const bool* bCached = LabelCache.Find(PackageName)) return *bCached;
+		return LabelCache.Add(PackageName, PackageIsFolderLabel(PackageName));
+	};
+
+	// assets referenced by anything that stays (on disk) are not deleted, repeat until nothing changes
+	TSet<FName> Labels;
+	bool bChanged = true;
+	while (bChanged) {
+		bChanged = false;
+		Labels.Reset();
+		for (auto It = Candidates.CreateIterator(); It; ++It) {
+			bool bKeep = false;
+			for (const auto& Ref : Referencers[It.Key()]) {
+				if (Ref == It.Key() || Candidates.Contains(Ref) || !PathIsInsideProject(Ref.ToString())) continue;
+				if (IsFolderLabel(Ref)) {
+					Labels.Add(Ref);
+					continue;
+				}
+				bKeep = true;
+				break;
+			}
+			if (bKeep) {
+				It.RemoveCurrent();
+				bChanged = true;
+			}
+		}
+	}
+
+	if (Candidates.Num() == 0 || Labels.Num() == 0) return 0;
+
+	TArray<FString> ObjectPaths;
+	for (const auto& Pair : Candidates) {
+		ObjectPaths.Add(PjcShim::GetObjectPathString(Pair.Value));
+	}
+
+	TArray<UObject*> LoadedAssets;
+	PjcShim::LoadAssetsIfNeeded(ObjectPaths, LoadedAssets, false, false);
+	PjcShim::FinishAssetCompilation();
+	CollectGarbage(GARBAGE_COLLECTION_KEEPFLAGS);
+
+	// same for references in memory: something live outside this set uses the asset, keep it
+	RemoveAssetsHeldOutside(LoadedAssets);
+
+	if (LoadedAssets.Num() == 0) return 0;
+
+	// nothing outside the set references them: no reference replacing (force delete edits referencers, can crash).
+	// Editor systems drop their references first, same as engine delete
+	FEditorDelegates::OnAssetsPreDelete.Broadcast(LoadedAssets);
+	const int32 NumDeleted = ObjectTools::DeleteObjectsUnchecked(LoadedAssets);
+
+	TArray<UPackage*> LabelPackages;
+	for (const auto& Label : Labels) {
+		if (UPackage* Package = LoadPackage(nullptr, *Label.ToString(), LOAD_None)) {
+			Package->MarkPackageDirty();
+			LabelPackages.Add(Package);
+		}
+	}
+	if (LabelPackages.Num() > 0) {
+		// saving updates label asset bundles, deleted assets are not referenced anymore
+		UEditorLoadingAndSavingUtils::SavePackages(LabelPackages, false);
+	}
+
+	UE_LOG(
+		LogProjectCleaner, Display, TEXT("Deleted %d asset(s) referenced only by folder labels, resaved %d label(s)"), NumDeleted, LabelPackages.Num()
+	);
+	return NumDeleted;
+}
+
+void UPjcSubsystem::GetExternalActorsDependencies(TSet<FName>& OutPackages) {
+	OutPackages.Reset();
+
+#if ENGINE_MAJOR_VERSION < 5
+	// UE4 asset registry does not read one file per actor packages (levels with external actors, 4.26+), so assets
+	// placed only there have no referencers. Read imports of those packages directly, only file tables are loaded.
+	for (const auto& ContentDir : GetProjectContentDirs()) {
+		const FString Dir = ContentDir / PjcShim::GetExternalActorsFolderName();
+		if (!IFileManager::Get().DirectoryExists(*Dir)) continue;
+
+		TArray<FString> Files;
+		IFileManager::Get().FindFilesRecursive(Files, *Dir, *(TEXT("*") + FPackageName::GetAssetPackageExtension()), true, false);
+
+		for (const auto& File : Files) {
+			FString PackageName;
+			if (!FPackageName::TryConvertFilenameToLongPackageName(File, PackageName)) continue;
+
+			const bool bWasLoaded = FindPackage(nullptr, *PackageName) != nullptr;
+			FLinkerLoad* Linker = LoadPackageLinker(
+				nullptr, *PackageName, LOAD_NoVerify | LOAD_Quiet | LOAD_NoWarn, nullptr, nullptr, nullptr, [&](FLinkerLoad* LoadedLinker) {
+					if (!LoadedLinker) return;
+
+					for (const FObjectImport& Import : LoadedLinker->ImportMap) {
+						if (Import.OuterIndex.IsNull() && Import.ClassName == NAME_Package) {
+							OutPackages.Add(Import.ObjectName);
+						}
+					}
+				}
+			);
+
+			// release file handles of packages opened only for this
+			if (Linker && Linker->LinkerRoot && !bWasLoaded) {
+				ResetLoaders(Linker->LinkerRoot);
+			}
+		}
+	}
+#endif
+}
+
+int32 UPjcSubsystem::DeleteAssetsHeldByEachOther(const TArray<FAssetData>& Assets) {
+	// unused assets can hold each other in memory without registry knowing (e.g. montage and its sequence through
+	// notifies), deleting them one by one never works and engine deletes all or nothing: delete those together
+	TArray<FString> ObjectPaths;
+	for (const auto& Asset : Assets) {
+		if (FPackageName::DoesPackageExist(Asset.PackageName.ToString())) {
+			ObjectPaths.Add(PjcShim::GetObjectPathString(Asset));
+		}
+	}
+	if (ObjectPaths.Num() < 2) return 0;
+
+	TArray<UObject*> LoadedAssets;
+	PjcShim::LoadAssetsIfNeeded(ObjectPaths, LoadedAssets, false, false);
+	PjcShim::FinishAssetCompilation();
+	CollectGarbage(GARBAGE_COLLECTION_KEEPFLAGS);
+
+	RemoveAssetsHeldOutside(LoadedAssets);
+	if (LoadedAssets.Num() == 0) return 0;
+
+	// groups of assets referencing each other, so one asset engine refuses does not block all others
+	TMap<FName, UObject*> ByPackage;
+	for (UObject* Asset : LoadedAssets) {
+		ByPackage.Add(Asset->GetOutermost()->GetFName(), Asset);
+	}
+
+	int32 NumDeleted = 0;
+	TSet<FName> Visited;
+	for (const auto& Pair : ByPackage) {
+		if (Visited.Contains(Pair.Key)) continue;
+
+		TArray<UObject*> Group;
+		TArray<FName> Stack {Pair.Key};
+		Visited.Add(Pair.Key);
+		while (Stack.Num() > 0) {
+			const FName Current = PjcShim::PopArray(Stack);
+			Group.Add(ByPackage[Current]);
+
+			TArray<FName> Linked;
+			GetModuleAssetRegistry().Get().GetDependencies(Current, Linked);
+			TArray<FName> Referencers;
+			GetModuleAssetRegistry().Get().GetReferencers(Current, Referencers);
+			Linked.Append(Referencers);
+
+			for (const auto& Other : Linked) {
+				if (ByPackage.Contains(Other) && !Visited.Contains(Other)) {
+					Visited.Add(Other);
+					Stack.Add(Other);
+				}
+			}
+		}
+
+		// regular delete: it still refuses when a kept asset references any of them on disk
+		NumDeleted += ObjectTools::DeleteObjects(Group, false);
+	}
+
+	return NumDeleted;
+}
+
+void UPjcSubsystem::RemoveAssetsHeldOutside(TArray<UObject*>& Assets, TMap<FString, FString>* OutHolders) {
+	// objects of other assets in the set (and own subobjects) do not count, repeat until nothing changes
+	bool bChanged = true;
+	while (bChanged && Assets.Num() > 0) {
+		bChanged = false;
+
+		TSet<UObject*> ObjectsInSet;
+		for (const UObject* Asset : Assets) {
+			TArray<UObject*> Inner;
+			GetObjectsWithOuter(Asset->GetOutermost(), Inner);
+			ObjectsInSet.Append(Inner);
+			ObjectsInSet.Add(Asset->GetOutermost());
+		}
+
+		for (int32 i = Assets.Num() - 1; i >= 0; --i) {
+			// engine refuses delete when anything outside holds asset or any of its subobjects (e.g. montage notifies)
+			TArray<UObject*> Referencees;
+			GetObjectsWithOuter(Assets[i], Referencees);
+			Referencees.Add(Assets[i]);
+
+			TArray<UObject*> Holders = FReferencerFinder::GetAllReferencers(Referencees, &ObjectsInSet);
+			Holders.RemoveAll([](const UObject* Holder) {
+				return !IsValid(Holder);
+			});
+			if (Holders.Num() == 0) continue;
+
+			if (OutHolders) {
+				OutHolders->Add(Assets[i]->GetPathName(), TEXT("in memory by ") + Holders[0]->GetFullName());
+			}
+			Assets.RemoveAt(i);
+			bChanged = true;
+		}
+	}
+}
+
+bool UPjcSubsystem::PackageIsFolderLabel(const FName& PackageName) {
+	TArray<FAssetData> Assets;
+	GetModuleAssetRegistry().Get().GetAssetsByPackageName(PackageName, Assets);
+
+	for (const auto& Asset : Assets) {
+		const UClass* AssetClass = Asset.GetClass();
+		if (!AssetClass || !AssetClass->IsChildOf(UPrimaryAssetLabel::StaticClass())) continue;
+
+		const UPrimaryAssetLabel* Label = Cast<UPrimaryAssetLabel>(Asset.GetAsset());
+		if (Label && Label->bLabelAssetsInMyDirectory && Label->AssetCollection.CollectionName.IsNone()) return true;
+	}
+
+	return false;
+}
+
 bool UPjcSubsystem::BucketPrepare(const TArray<FAssetData>& Bucket, TArray<UObject*>& LoadedAssets) {
 	TArray<FString> ObjectPaths;
 	ObjectPaths.Reserve(Bucket.Num());
@@ -1752,15 +2354,43 @@ bool UPjcSubsystem::BucketPrepare(const TArray<FAssetData>& Bucket, TArray<UObje
 
 	if (ObjectPaths.Num() == 0) return true;
 
-	return PjcShim::LoadAssetsIfNeeded(ObjectPaths, LoadedAssets, false, true);
+	// unused redirector must delete itself, following it would load (and delete) its target
+	const bool bLoaded = PjcShim::LoadAssetsIfNeeded(ObjectPaths, LoadedAssets, false, false);
+
+	// async compilation started by loading (meshes, textures, animations, Niagara) holds assets, engine refuses to delete them
+	PjcShim::FinishAssetCompilation();
+
+	return bLoaded;
 }
 
 int32 UPjcSubsystem::BucketDelete(const TArray<UObject*>& LoadedAssets) {
-	int32 DeletedAssetsNum = ObjectTools::DeleteObjects(LoadedAssets, false);
+	const int32 NumDeleted = ObjectTools::DeleteObjects(LoadedAssets, false);
+	if (NumDeleted > 0 || LoadedAssets.Num() < 2) return NumDeleted;
 
-	if (DeletedAssetsNum == 0) {
-		DeletedAssetsNum = ObjectTools::ForceDeleteObjects(LoadedAssets, false);
+	// engine deletes all or nothing: one asset still referenced in memory blocks the whole bucket. Retry one by one,
+	// never force delete, a live reference means something uses that asset even when no saved asset does
+	TArray<TWeakObjectPtr<UObject>> Remaining;
+	for (UObject* Asset : LoadedAssets) {
+		Remaining.Add(Asset);
 	}
 
-	return DeletedAssetsNum;
+	// leftovers of assets deleted before (and their finished async jobs) must not count as references
+	CollectGarbage(GARBAGE_COLLECTION_KEEPFLAGS);
+
+	int32 NumDeletedSingle = 0;
+	bool bProgress = true;
+	while (bProgress && Remaining.Num() > 0) {
+		bProgress = false;
+		for (int32 i = Remaining.Num() - 1; i >= 0; --i) {
+			UObject* Asset = Remaining[i].Get();
+			if (Asset && ObjectTools::DeleteObjects({Asset}, false) == 0) continue;
+
+			// deleted, or gone together with an asset deleted before
+			Remaining.RemoveAt(i);
+			NumDeletedSingle += Asset ? 1 : 0;
+			bProgress = true;
+		}
+	}
+
+	return NumDeletedSingle;
 }

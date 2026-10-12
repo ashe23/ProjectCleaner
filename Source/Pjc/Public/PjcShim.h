@@ -31,7 +31,7 @@ namespace PjcShim
 	FAssetPackageData GetAssetPackageData(const FName PackageName);
 	FString GetPathExternalActors();
 	FString GetPathExternalObjects();
-	// World Partition (one file per actor) folder names, empty before UE5
+	// one file per actor folder names (World Partition and OFPA levels)
 	FString GetExternalActorsFolderName();
 	FString GetExternalObjectsFolderName();
 
@@ -46,6 +46,9 @@ namespace PjcShim
 	FName GetClassNameFromObjectPath(const FString& InClassObjectPath);
 
 	FAssetData GetAssetByObjectPath(const FString& InObjectPath);
+	bool DoesPackageExist(const FString& InPackageName, FString* OutFilename);
+	/** Waits for async asset compilation (UE5: textures, meshes, animations, ...) and shader jobs, they hold loaded assets */
+	void FinishAssetCompilation();
 	void GetDerivedClassNames(const TArray<FName>& ClassNames, const TSet<FName>& ExcludedClassNames, TSet<FName>& OutDerivedClassNames);
 	void OpenAssetEditor(const FAssetData& InAssetData);
 	FString GetObjectPathString(const FAssetData& InAssetData);
