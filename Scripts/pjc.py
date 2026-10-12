@@ -49,6 +49,9 @@ PLUGIN_NAME = "ProjectCleaner"
 PLUGIN_FILE = os.path.join(REPO_DIR, PLUGIN_NAME + ".uplugin")
 PLUGIN_LINK_DIRS = ["Source", "Resources", "Config", "Content", "Shaders"]
 TEST_CONTENT_PLUGIN = "PjcTestContent"
+# Lyra like layout: game feature plugin in Plugins/GameFeatures, content plugin that exists but is not enabled
+TEST_FEATURE_PLUGIN = "PjcFeature"
+TEST_DISABLED_PLUGIN = "PjcDisabled"
 TEST_FILTER = "ProjectCleaner"
 FIXTURE_TEST = "PjcFixture.Build"
 LOCAL_CONFIG = os.path.join(SCRIPT_DIR, "pjc.local.json")
@@ -404,22 +407,26 @@ def _uproject_json(host):
         "Plugins": [
             {"Name": PLUGIN_NAME, "Enabled": True},
             {"Name": TEST_CONTENT_PLUGIN, "Enabled": True},
+            {"Name": "GameFeatures", "Enabled": True},
+            {"Name": "ModularGameplay", "Enabled": True},
+            {"Name": TEST_FEATURE_PLUGIN, "Enabled": True},
         ],
     }
     return json.dumps(data, indent="\t") + "\n"
 
 
-def _test_content_uplugin():
+def _test_content_uplugin(name=TEST_CONTENT_PLUGIN, description="Content only plugin used by ProjectCleaner tests (multi root scanning)", **extra):
     data = {
         "FileVersion": 3,
         "Version": 1,
         "VersionName": "1.0",
-        "FriendlyName": TEST_CONTENT_PLUGIN,
-        "Description": "Content only plugin used by ProjectCleaner tests (multi root scanning)",
+        "FriendlyName": name,
+        "Description": description,
         "Category": "Testing",
         "CanContainContent": True,
         "Installed": False,
     }
+    data.update(extra)
     return json.dumps(data, indent="\t") + "\n"
 
 
@@ -479,6 +486,8 @@ def setup_host(host):
             write_if_changed(os.path.join(host.dir, "Source", rel), content)
 
     # PjcTestPrimary: blueprint based primary type used by fixture tests (Blueprints/BP_Primary)
+    # GameFeatureData: required by game feature plugins (same rule as Lyra)
+    # staged folder: raw files shipped with packaged builds, never "external files"
     write_if_changed(
         os.path.join(host.dir, "Config", "DefaultGame.ini"),
         "[/Script/EngineSettings.GeneralProjectSettings]\n"
@@ -487,7 +496,13 @@ def setup_host(host):
         "[/Script/Engine.AssetManagerSettings]\n"
         '+PrimaryAssetTypesToScan=(PrimaryAssetType="PjcTestPrimary",AssetBaseClass=/Script/Engine.PlayerController,'
         'bHasBlueprintClasses=True,bIsEditorOnly=True,Directories=((Path="/Game/PjcTests/Blueprints")),'
-        "Rules=(Priority=-1,ChunkId=-1,bApplyRecursively=True,CookRule=Unknown))\n".format(host.name),
+        "Rules=(Priority=-1,ChunkId=-1,bApplyRecursively=True,CookRule=Unknown))\n"
+        '+PrimaryAssetTypesToScan=(PrimaryAssetType="GameFeatureData",AssetBaseClass="/Script/GameFeatures.GameFeatureData",'
+        "bHasBlueprintClasses=False,bIsEditorOnly=False,Directories=,SpecificAssets=,"
+        "Rules=(Priority=-1,ChunkId=-1,bApplyRecursively=True,CookRule=AlwaysCook))\n"
+        "\n"
+        "[/Script/UnrealEd.ProjectPackagingSettings]\n"
+        '+DirectoriesToAlwaysStageAsNonUFS=(Path="PjcTests/Staged")\n'.format(host.name),
     )
     write_if_changed(os.path.join(host.dir, "Config", "DefaultEngine.ini"), "[/Script/Engine.Engine]\n")
 
@@ -495,6 +510,29 @@ def setup_host(host):
     write_if_changed(os.path.join(plugin_root, TEST_CONTENT_PLUGIN + ".uplugin"), _test_content_uplugin())
     os.makedirs(os.path.join(plugin_root, "Content"), exist_ok=True)
     os.makedirs(os.path.join(host.dir, "Content"), exist_ok=True)
+
+    feature_root = os.path.join(host.dir, "Plugins", "GameFeatures", TEST_FEATURE_PLUGIN)
+    write_if_changed(
+        os.path.join(feature_root, TEST_FEATURE_PLUGIN + ".uplugin"),
+        _test_content_uplugin(
+            TEST_FEATURE_PLUGIN,
+            "Game feature plugin used by ProjectCleaner tests (Lyra like layout)",
+            Category="Game Features",
+            EnabledByDefault=False,
+            ExplicitlyLoaded=True,
+            BuiltInInitialFeatureState="Registered",
+        ),
+    )
+    os.makedirs(os.path.join(feature_root, "Content"), exist_ok=True)
+    os.makedirs(os.path.join(feature_root, "Config"), exist_ok=True)
+
+    # present in Plugins but not enabled (like Lyra GreenRoom/RedRoom): not mounted, must never be touched
+    disabled_root = os.path.join(host.dir, "Plugins", TEST_DISABLED_PLUGIN)
+    write_if_changed(
+        os.path.join(disabled_root, TEST_DISABLED_PLUGIN + ".uplugin"),
+        _test_content_uplugin(TEST_DISABLED_PLUGIN, "Disabled content plugin used by ProjectCleaner tests", ExplicitlyLoaded=True, EnabledByDefault=False),
+    )
+    os.makedirs(os.path.join(disabled_root, "Content"), exist_ok=True)
 
     sync_host(host)
 
@@ -846,14 +884,29 @@ def commandlet_failed(code, log):
     return code is None or bool(unexpected) or not log_lines(log, r"Broken\.uasset", 1)
 
 
-def remove_fixture(host, expected):
-    for rel in expected.get("cleanup_paths", []):
-        path = os.path.join(host.dir, rel)
-        if os.path.isdir(path):
-            remove_tree(path)
-        elif os.path.isfile(path):
-            os.remove(path)
-    if expected.get("cleanup_user_config"):
+# everything fixture tests may leave behind (crashed or failed runs), same list PjcFixture.Build writes to expected.json
+FIXTURE_LEFTOVERS = [
+    "Content/PjcTests",
+    "Content/Localization/PjcTests",
+    "Config/PjcTests.ini",
+    "Plugins/" + TEST_CONTENT_PLUGIN + "/Content/*",
+    "Plugins/GameFeatures/" + TEST_FEATURE_PLUGIN + "/Content/*",
+    "Plugins/GameFeatures/" + TEST_FEATURE_PLUGIN + "/Config/PjcFeatureTests.ini",
+    "Plugins/" + TEST_DISABLED_PLUGIN + "/Content/*",
+]
+
+
+def remove_fixture(host, expected=None):
+    expected = expected or {}
+    for rel in sorted(set(expected.get("cleanup_paths", []) + FIXTURE_LEFTOVERS)):
+        # "Folder/*": contents only, folder itself belongs to host setup
+        paths = glob.glob(os.path.join(host.dir, rel)) if rel.endswith("/*") else [os.path.join(host.dir, rel)]
+        for path in paths:
+            if os.path.isdir(path):
+                remove_tree(path)
+            elif os.path.isfile(path):
+                os.remove(path)
+    if expected.get("cleanup_user_config", True):
         # exclude and scan settings saved by the fixture for the commandlet run
         for name in ("EditorPerProjectUserSettings.ini", "Editor.ini"):
             for ini in glob.glob(os.path.join(host.dir, "Saved", "Config", "*", name)):
@@ -874,6 +927,7 @@ def run_cli_tests(host):
     ok, summary = run_automation(host, FIXTURE_TEST, "fixture")
     expected_path = os.path.join(host.dir, "Saved", "PjcFixture", "expected.json")
     if not ok or not os.path.isfile(expected_path):
+        remove_fixture(host)
         return False, "fixture build failed: " + summary
     with open(expected_path, encoding="utf-8-sig") as f:
         expected = json.load(f)
@@ -926,6 +980,8 @@ def cmd_test(args, hosts):
                 return False, "build: " + summary
         results = []
         ok_all = True
+        # leftovers of crashed runs would show up as unexpected assets
+        remove_fixture(host)
         if not args.cli_only:
             ok, summary = run_automation(host, args.filter, "automation")
             ok_all &= ok

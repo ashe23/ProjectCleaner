@@ -10,6 +10,11 @@
 #include "PjcTypes.h"
 #include "Curves/CurveFloat.h"
 #include "Engine/AssetManager.h"
+#include "Framework/Application/SlateApplication.h"
+#include "Slate/SPjcTabAssetsCorrupted.h"
+#include "Slate/SPjcTabAssetsIndirect.h"
+#include "Slate/SPjcTabAssetsUnused.h"
+#include "Slate/SPjcTabFilesExternal.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
 
@@ -82,6 +87,7 @@ namespace
 		TArray<FString> IgnoredPlugins;
 		bool bPrimaryAssetsUsed;
 		TArray<FName> IgnoredPrimaryAssetTypes;
+		bool bFolderLabelsUsed;
 		bool bCinematicAssetsUsed;
 		bool bEditorAssetsUsed;
 		bool bIndirectAssetsUsed;
@@ -92,6 +98,7 @@ namespace
 			IgnoredPlugins = Settings->IgnoredPlugins;
 			bPrimaryAssetsUsed = Settings->bPrimaryAssetsUsed;
 			IgnoredPrimaryAssetTypes = Settings->IgnoredPrimaryAssetTypes;
+			bFolderLabelsUsed = Settings->bFolderLabelsUsed;
 			bCinematicAssetsUsed = Settings->bCinematicAssetsUsed;
 			bEditorAssetsUsed = Settings->bEditorAssetsUsed;
 			bIndirectAssetsUsed = Settings->bIndirectAssetsUsed;
@@ -102,6 +109,7 @@ namespace
 			Settings->IgnoredPlugins.Reset();
 			Settings->bPrimaryAssetsUsed = true;
 			Settings->IgnoredPrimaryAssetTypes.Reset();
+			Settings->bFolderLabelsUsed = true;
 			Settings->bCinematicAssetsUsed = true;
 			Settings->bEditorAssetsUsed = true;
 			Settings->bIndirectAssetsUsed = true;
@@ -113,6 +121,7 @@ namespace
 			Settings->IgnoredPlugins = IgnoredPlugins;
 			Settings->bPrimaryAssetsUsed = bPrimaryAssetsUsed;
 			Settings->IgnoredPrimaryAssetTypes = IgnoredPrimaryAssetTypes;
+			Settings->bFolderLabelsUsed = bFolderLabelsUsed;
 			Settings->bCinematicAssetsUsed = bCinematicAssetsUsed;
 			Settings->bEditorAssetsUsed = bEditorAssetsUsed;
 			Settings->bIndirectAssetsUsed = bIndirectAssetsUsed;
@@ -311,18 +320,20 @@ bool FPjcTestScanCleanup::RunTest(const FString& Parameters) {
 		return true;
 	}
 
-	// plugins scanned: deletion inside plugin content is covered too
+	// plugins scanned: deletion inside plugin content is covered too. Folder labels off: asset only a folder label
+	// references is deleted (engine refuses, label pass does it) and label is kept
 	FPjcScopedScanSettings ScopedSettings {true};
+	ScopedSettings.Settings->bFolderLabelsUsed = false;
 
 	FPjcTestFixture Fixture;
 	if (!Fixture.Build(*this)) return false;
 
 	TestTrue(TEXT("DeleteAssetsUnused succeeded"), UPjcSubsystem::DeleteAssetsUnused(false, false));
 
-	for (const auto& Name : Fixture.UnusedNames(true)) {
+	for (const auto& Name : Fixture.UnusedNames(true, false)) {
 		TestFalse(FString::Printf(TEXT("unused %s deleted"), *Name), FPaths::FileExists(Fixture.PackageFile(Name)));
 	}
-	for (const auto& Name : Fixture.UsedNames(true)) {
+	for (const auto& Name : Fixture.UsedNames(true, false)) {
 		TestTrue(FString::Printf(TEXT("used %s kept"), *Name), FPaths::FileExists(Fixture.PackageFile(Name)));
 	}
 
@@ -402,15 +413,54 @@ bool FPjcTestScanSettings::RunTest(const FString& Parameters) {
 		*this,
 		TEXT("primary assets not used"),
 		UnusedFixtureAssets(),
-		UnusedDefault.Union(ObjectPaths(Fixture, {TEXT("PAL_Root"), TEXT("OL_Chain"), TEXT("C_ChainLeaf"), TEXT("BP_Primary")}))
+		UnusedDefault.Union(
+			ObjectPaths(Fixture, {TEXT("PAL_Root"), TEXT("OL_Chain"), TEXT("C_ChainLeaf"), TEXT("BP_Primary"), TEXT("PAL_Folder"), TEXT("C_Labeled")})
+		)
 	);
 	Settings->bPrimaryAssetsUsed = true;
+
+	TArray<FAssetData> LabelOnly;
+	UPjcSubsystem::GetAssetsFolderLabelOnly(LabelOnly, false);
+	TestSetEqual(*this, TEXT("kept only by folder labels"), FixtureAssets(LabelOnly), ObjectPaths(Fixture, {TEXT("C_Labeled")}));
+
+	Settings->bFolderLabelsUsed = false;
+	TestSetEqual(*this, TEXT("folder labels not used"), UnusedFixtureAssets(), UnusedDefault.Union(ObjectPaths(Fixture, {TEXT("C_Labeled")})));
+	UPjcSubsystem::GetAssetsFolderLabelOnly(LabelOnly, false);
+	TestSetEqual(*this, TEXT("only by folder labels, setting off"), FixtureAssets(LabelOnly), ObjectPaths(Fixture, {TEXT("C_Labeled")}));
+	Settings->bFolderLabelsUsed = true;
 
 	Settings->bScanProjectPlugins = true;
 	Settings->IgnoredPlugins.Add(TEXT("PjcTestContent"));
 	TestSetEqual(*this, TEXT("ignored plugin"), UnusedFixtureAssets(), UnusedDefault);
 	TestFalse(TEXT("ignored plugin is not scan root"), UPjcSubsystem::GetProjectRootPaths().Contains(FPjcTestFixture::PluginRootPath()));
 
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPjcTestUiTabs, "ProjectCleaner.UI.Tabs", PJC_TEST_FLAGS)
+
+bool FPjcTestUiTabs::RunTest(const FString& Parameters) {
+	if (!FSlateApplication::IsInitialized()) {
+		AddInfo(TEXT("Skipped, Slate is not initialized"));
+		return true;
+	}
+
+	// tab widgets with fixture content, Assets Unused scans when constructed. Built without window: headless editors
+	// (-nullrhi) can not create one before UE 5.8
+	FPjcTestFixture Fixture;
+	if (FPjcTestFixture::IsTestHost() && !Fixture.Build(*this)) return false;
+
+	UPjcEditorSettings* EditorSettings = GetMutableDefault<UPjcEditorSettings>();
+	const bool bScanOnOpen = EditorSettings->bScanOnOpen;
+	EditorSettings->bScanOnOpen = true;
+
+	const TSharedRef<SWidget> Tabs[]
+		= {SNew(SPjcTabAssetsUnused), SNew(SPjcTabAssetsIndirect), SNew(SPjcTabAssetsCorrupted), SNew(SPjcTabFilesExternal)};
+	for (const auto& Tab : Tabs) {
+		TestTrue(FString::Printf(TEXT("%s has content"), *Tab->GetTypeAsString()), Tab->GetChildren()->Num() > 0);
+	}
+
+	EditorSettings->bScanOnOpen = bScanOnOpen;
 	return true;
 }
 
@@ -425,8 +475,9 @@ bool FPjcFixtureBuild::RunTest(const FString& Parameters) {
 	UPjcScanSettings* ScanSettings = GetMutableDefault<UPjcScanSettings>();
 	ScanSettings->bScanProjectPlugins = true;
 
+	// Lyra like layout: game feature data registers its primary type when editor starts, only next process sees it
 	FPjcTestFixture Fixture;
-	if (!Fixture.Build(*this, true, false)) return false;
+	if (!Fixture.Build(*this, true, false, true)) return false;
 
 	// commandlet runs in another process, it must see same settings (host config files, removed by pjc.py)
 	GetMutableDefault<UPjcAssetExcludeSettings>()->SaveConfig();
@@ -446,19 +497,25 @@ bool FPjcFixtureBuild::RunTest(const FString& Parameters) {
 	}
 	KeptFiles.Add(RelativeToProject(Fixture.ExternalExcludedFile()));
 	KeptFiles.Add(RelativeToProject(FPjcTestFixture::IndirectConfigFile()));
+	KeptFiles.Add(RelativeToProject(FPjcTestFixture::FeatureConfigFile()));
+	KeptFiles.Add(TEXT("Plugins/GameFeatures/PjcFeature/Content/__ExternalActors__"));
+	for (const auto& File : Fixture.LyraKeptFiles()) {
+		KeptFiles.Add(RelativeToProject(File));
+	}
 	DeletedFiles.Add(RelativeToProject(Fixture.ExternalFile()));
 	DeletedFiles.Add(RelativeToProject(Fixture.CorruptedFile()));
 	for (const auto& Folder : Fixture.EmptyFolders()) {
 		DeletedFiles.Add(RelativeToProject(Folder));
 	}
 
-	const TArray<FString> CleanupPaths {
+	TArray<FString> CleanupPaths {
 	  TEXT("Content/PjcTests"),
 	  TEXT("Config/PjcTests.ini"),
 	  TEXT("Plugins/PjcTestContent/Content/C_PluginUsed.uasset"),
 	  TEXT("Plugins/PjcTestContent/Content/C_PluginUnused.uasset"),
 	  TEXT("Plugins/PjcTestContent/Content/OL_PluginLib.uasset"),
 	};
+	CleanupPaths.Append(Fixture.LyraCleanupPaths());
 
 	const int32 NumUsed = UsedNames.Num();
 	const int32 NumUnused = UnusedNames.Num();

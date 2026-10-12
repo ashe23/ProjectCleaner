@@ -8,6 +8,10 @@
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "Curves/CurveFloat.h"
 #include "Curves/CurveLinearColor.h"
+#include "Curves/CurveVector.h"
+#include "Engine/World.h"
+#include "Engine/Level.h"
+#include "PjcShim.h"
 #include "AssetToolsModule.h"
 #include "EditorUtilityBlueprint.h"
 #include "EditorUtilityObject.h"
@@ -26,6 +30,7 @@
 #include "Misc/FileHelper.h"
 #include "Misc/Parse.h"
 #include "Misc/Paths.h"
+#include "UObject/ObjectRedirector.h"
 
 namespace
 {
@@ -41,10 +46,79 @@ namespace
 		return FPaths::ConvertRelativePathToFull(FPaths::ProjectPluginsDir() / TEXT("PjcTestContent") / TEXT("Content"));
 	}
 
+	FString FeaturePluginDir() {
+		return FPaths::ConvertRelativePathToFull(FPaths::ProjectPluginsDir() / TEXT("GameFeatures/PjcFeature"));
+	}
+
+	FString DisabledPluginContentDir() {
+		return FPaths::ConvertRelativePathToFull(FPaths::ProjectPluginsDir() / TEXT("PjcDisabled/Content"));
+	}
+
+	bool ImportPropertyText(UObject* Object, const TCHAR* PropertyName, const TCHAR* Text) {
+		FProperty* Property = Object->GetClass()->FindPropertyByName(PropertyName);
+		if (!Property) return false;
+
+		void* Value = Property->ContainerPtrToValuePtr<void>(Object);
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 1
+		return Property->ImportText_Direct(Text, Value, Object, PPF_None) != nullptr;
+#else
+		return Property->ImportText(Text, Value, PPF_None, Object) != nullptr;
+#endif
+	}
+
 	UPackage* NewPackage(const FString& PackageName, TArray<UPackage*>& OutPackages) {
 		UPackage* Package = CreatePackage(*PackageName);
 		OutPackages.Add(Package);
 		return Package;
+	}
+
+	// game feature data found by class path, so tests need no GameFeatures module dependency
+	UObject* NewGameFeatureData(const FString& PackageName, const TCHAR* PrimaryAssetTypes, TArray<UPackage*>& OutPackages) {
+		UClass* DataClass = FSoftClassPath {TEXT("/Script/GameFeatures.GameFeatureData")}.ResolveClass();
+		if (!DataClass) return nullptr;
+
+		UPackage* Package = NewPackage(PackageName, OutPackages);
+		UObject* Data
+			= NewObject<UObject>(Package, DataClass, FName {*FPackageName::GetLongPackageAssetName(PackageName)}, RF_Public | RF_Standalone);
+		if (!ImportPropertyText(Data, TEXT("PrimaryAssetTypesToScan"), PrimaryAssetTypes)) return nullptr;
+
+		FAssetRegistryModule::AssetCreated(Data);
+		Package->MarkPackageDirty();
+		return Data;
+	}
+
+	// level with one file per actor: actor is saved in its own package under __ExternalActors__
+	UWorld* NewWorldWithExternalActor(const FString& PackageName, UClass* ActorClass, TArray<UPackage*>& OutPackages) {
+		UPackage* Package = NewPackage(PackageName, OutPackages);
+		UWorld* World = UWorld::CreateWorld(EWorldType::Inactive, false, FName {*FPackageName::GetLongPackageAssetName(PackageName)}, Package);
+		if (!World) return nullptr;
+
+		World->SetFlags(RF_Public | RF_Standalone);
+		World->PersistentLevel->SetUseExternalActors(true);
+
+		// UE4 does not create actor packages by default
+		FActorSpawnParameters SpawnParameters;
+		SpawnParameters.bCreateActorPackage = true;
+		const AActor* Actor = World->SpawnActor(ActorClass, nullptr, nullptr, SpawnParameters);
+		UPackage* ActorPackage = Actor ? Actor->GetExternalPackage() : nullptr;
+		if (!ActorPackage) return nullptr;
+
+		OutPackages.Add(ActorPackage);
+		FAssetRegistryModule::AssetCreated(World);
+		Package->MarkPackageDirty();
+		ActorPackage->MarkPackageDirty();
+		return World;
+	}
+
+	// what the engine leaves behind when an asset is renamed or moved
+	UObjectRedirector* NewRedirector(const FString& PackageName, UObject* Destination, TArray<UPackage*>& OutPackages) {
+		UPackage* Package = NewPackage(PackageName, OutPackages);
+		const FName Name {*FPackageName::GetLongPackageAssetName(PackageName)};
+		UObjectRedirector* Redirector = NewObject<UObjectRedirector>(Package, Name, RF_Public | RF_Standalone);
+		Redirector->DestinationObject = Destination;
+		FAssetRegistryModule::AssetCreated(Redirector);
+		Package->MarkPackageDirty();
+		return Redirector;
 	}
 
 	template<typename T>
@@ -103,8 +177,16 @@ FString FPjcTestFixture::PluginRootPath() {
 	return TEXT("/PjcTestContent");
 }
 
+FString FPjcTestFixture::FeatureRootPath() {
+	return TEXT("/PjcFeature");
+}
+
 FString FPjcTestFixture::IndirectConfigFile() {
 	return FPaths::ConvertRelativePathToFull(FPaths::ProjectConfigDir() / TEXT("PjcTests.ini"));
+}
+
+FString FPjcTestFixture::FeatureConfigFile() {
+	return FeaturePluginDir() / TEXT("Config/PjcFeatureTests.ini");
 }
 
 FPjcTestFixture::FPjcTestFixture() {}
@@ -113,7 +195,7 @@ FPjcTestFixture::~FPjcTestFixture() {
 	Cleanup();
 }
 
-bool FPjcTestFixture::Build(FAutomationTestBase& Test, const bool bApplyExcludeSettings, const bool bCreateCorruptedFile) {
+bool FPjcTestFixture::Build(FAutomationTestBase& Test, const bool bApplyExcludeSettings, const bool bCreateCorruptedFile, const bool bInLyraLayout) {
 	if (!IsTestHost()) {
 		Test.AddError(TEXT("Fixture tests create and delete assets, run them only in test host projects (-PjcTestHost)"));
 		return false;
@@ -125,10 +207,15 @@ bool FPjcTestFixture::Build(FAutomationTestBase& Test, const bool bApplyExcludeS
 	// leftovers from crashed or kept runs
 	Cleanup();
 	bKeep = false;
+	bLyraLayout = bInLyraLayout;
 
 	if (!CreateAssets(Test)) return false;
+	if (bLyraLayout && !CreateLyraAssets(Test)) return false;
 
 	CreateFiles(bCreateCorruptedFile);
+	if (bLyraLayout) {
+		CreateLyraFiles();
+	}
 
 	if (bApplyExcludeSettings) {
 		ApplyExcludeSettings();
@@ -160,6 +247,23 @@ bool FPjcTestFixture::CreateAssets(FAutomationTestBase& Test) {
 	Chain->AddObject(PluginUsed);
 	UPrimaryAssetLabel* Label = NewAsset<UPrimaryAssetLabel>(Register(TEXT("Used"), TEXT("PAL_Root")), Packages);
 	Label->ExplicitAssets.Add(TSoftObjectPtr<UObject> {Chain});
+
+	// redirectors: used one keeps its target used, unused ones are deleted without touching their targets
+	UCurveFloat* Gone = nullptr;
+	if (bLyraLayout) {
+		UCurveFloat* Target = NewAsset<UCurveFloat>(Register(TEXT("Redirectors"), TEXT("C_Target")), Packages);
+		NewRedirector(Register(TEXT("Redirectors"), TEXT("R_Moved")), Target, Packages);
+		NewRedirector(Register(TEXT("Redirectors"), TEXT("R_Stale")), ChainLeaf, Packages);
+		// target never saved, moved out of project below (like Lyra 5.8 STT_PlayAnimMontage1 pointing to deleted asset)
+		Gone = NewObject<UCurveFloat>(CreatePackage(*(RootPath() / TEXT("Redirectors/C_Gone"))), TEXT("C_Gone"), RF_Public);
+		NewRedirector(Register(TEXT("Redirectors"), TEXT("R_Dangling")), Gone, Packages);
+		Label->ExplicitAssets.Add(TSoftObjectPtr<UObject> {FSoftObjectPath {ObjectPath(TEXT("R_Moved"))}});
+	}
+
+	// folder label (cook rule) references everything in its folder
+	NewAsset<UCurveFloat>(Register(TEXT("Labeled"), TEXT("C_Labeled")), Packages);
+	UPrimaryAssetLabel* FolderLabel = NewAsset<UPrimaryAssetLabel>(Register(TEXT("Labeled"), TEXT("PAL_Folder")), Packages);
+	FolderLabel->bLabelAssetsInMyDirectory = true;
 
 	// unused
 	NewAsset<UCurveFloat>(Register(TEXT("Unused"), TEXT("C_Unused")), Packages);
@@ -217,6 +321,12 @@ bool FPjcTestFixture::CreateAssets(FAutomationTestBase& Test) {
 		return false;
 	}
 
+	// R_Dangling on disk points to /Game/PjcTests/Redirectors/C_Gone, which never exists as asset
+	if (Gone) {
+		Gone->ClearFlags(RF_Public);
+		Gone->Rename(nullptr, GetTransientPackage(), REN_DontCreateRedirectors | REN_NonTransactional);
+	}
+
 	// dependencies are gathered from saved package files
 	TArray<FString> Files;
 	for (const auto& Pair : PackageNames) {
@@ -234,6 +344,119 @@ bool FPjcTestFixture::CreateAssets(FAutomationTestBase& Test) {
 	return true;
 }
 
+bool FPjcTestFixture::CreateLyraAssets(FAutomationTestBase& Test) {
+	auto Register = [&](const FString& PackageName) {
+		PackageNames.Add(FPackageName::GetLongPackageAssetName(PackageName), PackageName);
+		return PackageName;
+	};
+
+	TArray<UPackage*> LyraPackages;
+
+#if ENGINE_MAJOR_VERSION >= 5
+	// game feature data registers its own primary type, like ShooterCore registers experiences.
+	// UE4 game features (experimental) do not register data saved this way (Plugin_Missing_GameFeatureData)
+	const TCHAR* PrimaryAssetTypes
+		= TEXT("((PrimaryAssetType=\"PjcFeatureExperience\",AssetBaseClass=\"/Script/Engine.CurveVector\",bHasBlueprintClasses=False,")
+			TEXT("bIsEditorOnly=False,Directories=((Path=\"/PjcFeature/Experiences\")),Rules=(Priority=-1,ChunkId=-1,bApplyRecursively=True)))");
+	if (!NewGameFeatureData(Register(FeatureRootPath() / TEXT("PjcFeature")), PrimaryAssetTypes, LyraPackages)) {
+		Test.AddError(TEXT("Failed to create game feature data, GameFeatures plugin must be enabled in test host"));
+		return false;
+	}
+
+	NewAsset<UCurveVector>(Register(FeatureRootPath() / TEXT("Experiences/CV_Experience")), LyraPackages);
+#endif
+	NewAsset<UCurveFloat>(Register(FeatureRootPath() / TEXT("Unused/C_FeatureUnused")), LyraPackages);
+	NewAsset<UCurveFloat>(Register(FeatureRootPath() / TEXT("Indirect/C_FeatureIndirect")), LyraPackages);
+
+	const UBlueprint* Placed
+		= NewBlueprint(Register(RootPath() / TEXT("Lyra/BP_Placed")), AActor::StaticClass(), UBlueprint::StaticClass(), LyraPackages);
+	if (!Placed || !Placed->GeneratedClass) {
+		Test.AddError(TEXT("Failed to create fixture blueprint BP_Placed"));
+		return false;
+	}
+
+	UWorld* World = NewWorldWithExternalActor(Register(FeatureRootPath() / TEXT("Maps/L_Feature")), Placed->GeneratedClass, LyraPackages);
+	if (!World) {
+		Test.AddError(TEXT("Failed to create fixture level with external actors"));
+		return false;
+	}
+	MapNames.Add(TEXT("L_Feature"));
+
+	const bool bSaved = UEditorLoadingAndSavingUtils::SavePackages(LyraPackages, false);
+
+	// level is not needed in memory anymore, a world left alive would block its deletion and leak on exit
+	World->DestroyWorld(false);
+	World->RemoveFromRoot();
+	Packages.Append(LyraPackages);
+
+	if (!bSaved) {
+		Test.AddError(TEXT("Failed to save fixture Lyra layout packages"));
+		return false;
+	}
+
+	TArray<FString> Files;
+	for (const auto* Package : LyraPackages) {
+		FString Filename;
+		if (PjcShim::DoesPackageExist(Package->GetName(), &Filename)) {
+			Files.Add(FPaths::ConvertRelativePathToFull(Filename));
+		}
+	}
+	AssetRegistry().ScanFilesSynchronous(Files, true);
+
+	for (const auto& Name : {TEXT("C_FeatureUnused"), TEXT("C_FeatureIndirect"), TEXT("BP_Placed"), TEXT("L_Feature")}) {
+		if (!FPaths::FileExists(PackageFile(Name))) {
+			Test.AddError(FString::Printf(TEXT("Fixture file was not saved: %s"), *PackageFile(Name)));
+			return false;
+		}
+	}
+
+	if (!IFileManager::Get().DirectoryExists(*(FeaturePluginDir() / TEXT("Content/__ExternalActors__")))) {
+		Test.AddError(TEXT("Fixture level was saved without external actors"));
+		return false;
+	}
+
+	return true;
+}
+
+void FPjcTestFixture::CreateLyraFiles() {
+	for (const auto& File : LyraKeptFiles()) {
+		if (FPaths::GetExtension(File).IsEmpty()) {
+			IFileManager::Get().MakeDirectory(*File, true);
+		}
+		else if (!FPaths::FileExists(File)) {
+			FFileHelper::SaveStringToFile(TEXT("fixture file"), *File);
+		}
+	}
+
+	// plugin that is not enabled holds a real package file too, nothing may load or delete it
+	IFileManager::Get().Copy(*(DisabledPluginContentDir() / TEXT("C_Disabled.uasset")), *PackageFile(TEXT("C_Unused")));
+
+	const FString Config = FString::Printf(TEXT("[PjcFeatureTests]\nIndirectAsset=%s\n"), *ObjectPath(TEXT("C_FeatureIndirect")));
+	FFileHelper::SaveStringToFile(Config, *FeatureConfigFile());
+}
+
+TArray<FString> FPjcTestFixture::LyraKeptFiles() const {
+	const FString Content = ContentDir();
+	return {
+	  Content / TEXT("Localization/PjcTests/en/PjcTests.locres"),
+	  FeaturePluginDir() / TEXT("Content/Localization/PjcFeature/en/PjcFeature.locres"),
+	  Content / TEXT("PjcTests/Staged/license.txt"),
+	  Content / TEXT("PjcTests/Files/T_RawIcon.svg"),
+	  DisabledPluginContentDir() / TEXT("C_Disabled.uasset"),
+	  DisabledPluginContentDir() / TEXT("readme.txt"),
+	  DisabledPluginContentDir() / TEXT("Empty"),
+	};
+}
+
+TArray<FString> FPjcTestFixture::LyraCleanupPaths() const {
+	return {
+	  TEXT("Content/Localization/PjcTests"),
+	  TEXT("Plugins/GameFeatures/PjcFeature/Content/*"),
+	  TEXT("Plugins/GameFeatures/PjcFeature/Config/PjcFeatureTests.ini"),
+	  TEXT("Plugins/PjcDisabled/Content/*"),
+	};
+}
+
 void FPjcTestFixture::CreateFiles(const bool bCreateCorruptedFile) {
 	const FString Root = ContentDir() / TEXT("PjcTests");
 
@@ -244,9 +467,13 @@ void FPjcTestFixture::CreateFiles(const bool bCreateCorruptedFile) {
 		FFileHelper::SaveStringToFile(TEXT("this is not an unreal package"), *CorruptedFile());
 	}
 
-	const FString Config = FString::Printf(
+	FString Config = FString::Printf(
 		TEXT("[PjcTests]\nIndirectAsset=%s\nIndirectPackage=%s\n"), *ObjectPath(TEXT("C_Indirect")), **PackageNames.Find(TEXT("C_IndirectPackage"))
 	);
+	// Lyra layout: raw file loaded by its file name
+	if (bLyraLayout) {
+		Config += TEXT("RawIcon=PjcTests/Files/T_RawIcon.svg\n");
+	}
 	FFileHelper::SaveStringToFile(Config, *IndirectConfigFile());
 }
 
@@ -321,8 +548,9 @@ void FPjcTestFixture::Cleanup() {
 
 	TArray<UObject*> Objects;
 	for (const auto& Pair : PackageNames) {
+		// worlds are destroyed right after saving, deleting their files is enough
 		UObject* Object = FSoftObjectPath {ObjectPath(Pair.Key)}.ResolveObject();
-		if (IsValid(Object)) {
+		if (IsValid(Object) && !Object->IsA<UWorld>()) {
 			Objects.Add(Object);
 		}
 	}
@@ -337,13 +565,25 @@ void FPjcTestFixture::Cleanup() {
 	IFileManager::Get().Delete(*(PluginContentDir() / TEXT("C_PluginUnused.uasset")), false, true, true);
 	IFileManager::Get().Delete(*(PluginContentDir() / TEXT("OL_PluginLib.uasset")), false, true, true);
 	IFileManager::Get().Delete(*IndirectConfigFile(), false, true, true);
+	IFileManager::Get().Delete(*FeatureConfigFile(), false, true, true);
+	IFileManager::Get().DeleteDirectory(*(ContentDir() / TEXT("Localization/PjcTests")), false, true);
+	for (const auto& Dir : {FeaturePluginDir() / TEXT("Content"), DisabledPluginContentDir()}) {
+		TArray<FString> Children;
+		IFileManager::Get().FindFiles(Children, *(Dir / TEXT("*")), true, true);
+		for (const auto& Child : Children) {
+			IFileManager::Get().DeleteDirectory(*(Dir / Child), false, true);
+			IFileManager::Get().Delete(*(Dir / Child), false, true, true);
+		}
+	}
 
-	AssetRegistry().ScanPathsSynchronous({RootPath(), PluginRootPath()}, true);
+	AssetRegistry().ScanPathsSynchronous({RootPath(), PluginRootPath(), FeatureRootPath()}, true);
 	AssetRegistry().RemovePath(RootPath());
 
 	PackageNames.Reset();
+	MapNames.Reset();
 	Packages.Reset();
 	bBuilt = false;
+	bLyraLayout = false;
 }
 
 FString FPjcTestFixture::ObjectPath(const FString& Name) const {
@@ -357,10 +597,11 @@ FString FPjcTestFixture::PackageFile(const FString& Name) const {
 	const FString* PackageName = PackageNames.Find(Name);
 	if (!PackageName) return {};
 
-	return FPaths::ConvertRelativePathToFull(FPackageName::LongPackageNameToFilename(*PackageName, FPackageName::GetAssetPackageExtension()));
+	const FString& Extension = MapNames.Contains(Name) ? FPackageName::GetMapPackageExtension() : FPackageName::GetAssetPackageExtension();
+	return FPaths::ConvertRelativePathToFull(FPackageName::LongPackageNameToFilename(*PackageName, Extension));
 }
 
-TArray<FString> FPjcTestFixture::UsedNames(const bool bScanPlugins) const {
+TArray<FString> FPjcTestFixture::UsedNames(const bool bScanPlugins, const bool bFolderLabelsUsed) const {
 	TArray<FString> Names {
 	  TEXT("PAL_Root"),
 	  TEXT("OL_Chain"),
@@ -373,7 +614,12 @@ TArray<FString> FPjcTestFixture::UsedNames(const bool bScanPlugins) const {
 	  TEXT("LS_Cinematic"),
 	  TEXT("EUB_Tool"),
 	  TEXT("BP_Primary"),
+	  TEXT("PAL_Folder"),
 	};
+
+	if (bFolderLabelsUsed) {
+		Names.Add(TEXT("C_Labeled"));
+	}
 
 	if (bScanPlugins) {
 		Names.Add(TEXT("C_PluginUsed"));
@@ -383,10 +629,21 @@ TArray<FString> FPjcTestFixture::UsedNames(const bool bScanPlugins) const {
 		Names.Add(TEXT("C_RefByPlugin"));
 	}
 
+	if (bLyraLayout) {
+		// used redirector and its target, BP_Placed referenced only by external actor package of L_Feature
+		Names.Append({TEXT("R_Moved"), TEXT("C_Target"), TEXT("BP_Placed")});
+		if (bScanPlugins) {
+			Names.Append({TEXT("C_FeatureIndirect"), TEXT("L_Feature")});
+#if ENGINE_MAJOR_VERSION >= 5
+			Names.Append({TEXT("PjcFeature"), TEXT("CV_Experience")});
+#endif
+		}
+	}
+
 	return Names;
 }
 
-TArray<FString> FPjcTestFixture::UnusedNames(const bool bScanPlugins) const {
+TArray<FString> FPjcTestFixture::UnusedNames(const bool bScanPlugins, const bool bFolderLabelsUsed) const {
 	TArray<FString> Names {
 	  TEXT("C_Unused"),
 	  TEXT("OL_UnusedRoot"),
@@ -395,6 +652,10 @@ TArray<FString> FPjcTestFixture::UnusedNames(const bool bScanPlugins) const {
 	  TEXT("OL_CircB"),
 	  TEXT("BP_Unused"),
 	};
+
+	if (!bFolderLabelsUsed) {
+		Names.Add(TEXT("C_Labeled"));
+	}
 
 	for (int32 i = 0; i < NumBulkAssets; ++i) {
 		Names.Add(FString::Printf(TEXT("C_Bulk_%02d"), i));
@@ -406,11 +667,18 @@ TArray<FString> FPjcTestFixture::UnusedNames(const bool bScanPlugins) const {
 		Names.Add(TEXT("C_RefByPlugin"));
 	}
 
+	if (bLyraLayout) {
+		Names.Append({TEXT("R_Stale"), TEXT("R_Dangling")});
+		if (bScanPlugins) {
+			Names.Add(TEXT("C_FeatureUnused"));
+		}
+	}
+
 	return Names;
 }
 
 TArray<FString> FPjcTestFixture::PrimaryNames() const {
-	return {TEXT("PAL_Root"), TEXT("BP_Primary")};
+	return {TEXT("PAL_Root"), TEXT("BP_Primary"), TEXT("PAL_Folder")};
 }
 
 TArray<FString> FPjcTestFixture::ExcludedNames() const {
