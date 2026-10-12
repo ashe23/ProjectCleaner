@@ -25,10 +25,6 @@ FLinearColor FPjcFilterAssetsUsed::GetColor() const {
 void FPjcFilterAssetsUsed::ActiveStateChanged(bool bActive) {
 	FFrontendFilter::ActiveStateChanged(bActive);
 
-	if (bActive) {
-		UpdateData();
-	}
-
 	if (DelegateFilterChanged.IsBound()) {
 		DelegateFilterChanged.Broadcast(bActive);
 	}
@@ -74,10 +70,6 @@ FLinearColor FPjcFilterAssetsPrimary::GetColor() const {
 void FPjcFilterAssetsPrimary::ActiveStateChanged(bool bActive) {
 	FFrontendFilter::ActiveStateChanged(bActive);
 
-	if (bActive) {
-		UpdateData();
-	}
-
 	if (DelegateFilterChanged.IsBound()) {
 		DelegateFilterChanged.Broadcast(bActive);
 	}
@@ -122,10 +114,6 @@ FLinearColor FPjcFilterAssetsIndirect::GetColor() const {
 
 void FPjcFilterAssetsIndirect::ActiveStateChanged(bool bActive) {
 	FFrontendFilter::ActiveStateChanged(bActive);
-
-	if (bActive) {
-		UpdateData();
-	}
 
 	if (DelegateFilterChanged.IsBound()) {
 		DelegateFilterChanged.Broadcast(bActive);
@@ -173,10 +161,6 @@ FLinearColor FPjcFilterAssetsCircular::GetColor() const {
 void FPjcFilterAssetsCircular::ActiveStateChanged(bool bActive) {
 	FFrontendFilter::ActiveStateChanged(bActive);
 
-	if (bActive) {
-		UpdateData();
-	}
-
 	if (DelegateFilterChanged.IsBound()) {
 		DelegateFilterChanged.Broadcast(bActive);
 	}
@@ -221,10 +205,6 @@ FLinearColor FPjcFilterAssetsEditor::GetColor() const {
 
 void FPjcFilterAssetsEditor::ActiveStateChanged(bool bActive) {
 	FFrontendFilter::ActiveStateChanged(bActive);
-
-	if (bActive) {
-		UpdateData();
-	}
 
 	if (DelegateFilterChanged.IsBound()) {
 		DelegateFilterChanged.Broadcast(bActive);
@@ -271,10 +251,6 @@ FLinearColor FPjcFilterAssetsExcluded::GetColor() const {
 void FPjcFilterAssetsExcluded::ActiveStateChanged(bool bActive) {
 	FFrontendFilter::ActiveStateChanged(bActive);
 
-	if (bActive) {
-		UpdateData();
-	}
-
 	if (DelegateFilterChanged.IsBound()) {
 		DelegateFilterChanged.Broadcast(bActive);
 	}
@@ -319,10 +295,6 @@ FLinearColor FPjcFilterAssetsEngineReferenced::GetColor() const {
 
 void FPjcFilterAssetsEngineReferenced::ActiveStateChanged(bool bActive) {
 	FFrontendFilter::ActiveStateChanged(bActive);
-
-	if (bActive) {
-		UpdateData();
-	}
 
 	if (DelegateFilterChanged.IsBound()) {
 		DelegateFilterChanged.Broadcast(bActive);

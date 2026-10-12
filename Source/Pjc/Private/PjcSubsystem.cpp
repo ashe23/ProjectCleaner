@@ -20,6 +20,58 @@
 #include "Interfaces/IPluginManager.h"
 #include "Misc/ScopedSlowTask.h"
 
+namespace
+{
+	struct FPjcScanCache
+	{
+		int32 Depth = 0;
+		TOptional<TArray<FAssetData>> AssetsAll;
+		TOptional<TArray<FAssetData>> AssetsUsed;
+		TOptional<TArray<FAssetData>> AssetsUnused;
+		TOptional<TArray<FAssetData>> AssetsIndirect;
+		TOptional<TArray<FPjcAssetIndirectInfo>> AssetsIndirectInfos;
+		TOptional<TArray<FAssetData>> AssetsExcluded;
+		TOptional<TArray<FAssetData>> AssetsEngineReferenced;
+
+		void Reset() {
+			AssetsAll.Reset();
+			AssetsUsed.Reset();
+			AssetsUnused.Reset();
+			AssetsIndirect.Reset();
+			AssetsIndirectInfos.Reset();
+			AssetsExcluded.Reset();
+			AssetsEngineReferenced.Reset();
+		}
+	};
+
+	FPjcScanCache ScanCache;
+
+	template<typename T>
+	bool ScanCacheGet(const TOptional<T>& Cached, T& Out) {
+		if (ScanCache.Depth == 0 || !Cached.IsSet()) return false;
+
+		Out = Cached.GetValue();
+		return true;
+	}
+
+	template<typename T>
+	void ScanCacheSet(TOptional<T>& Cached, const T& Value) {
+		if (ScanCache.Depth == 0) return;
+
+		Cached = Value;
+	}
+}	// namespace
+
+FPjcScanCacheScope::FPjcScanCacheScope() {
+	++ScanCache.Depth;
+}
+
+FPjcScanCacheScope::~FPjcScanCacheScope() {
+	if (--ScanCache.Depth == 0) {
+		ScanCache.Reset();
+	}
+}
+
 void UPjcSubsystem::Initialize(FSubsystemCollectionBase& Collection) {
 	Super::Initialize(Collection);
 
@@ -40,6 +92,7 @@ void UPjcSubsystem::PostEditChangeProperty(FPropertyChangedEvent& PropertyChange
 
 void UPjcSubsystem::GetAssetsAll(TArray<FAssetData>& Assets) {
 	if (GetModuleAssetRegistry().Get().IsLoadingAssets()) return;
+	if (ScanCacheGet(ScanCache.AssetsAll, Assets)) return;
 
 	Assets.Reset();
 
@@ -59,6 +112,9 @@ void UPjcSubsystem::GetAssetsAll(TArray<FAssetData>& Assets) {
 
 void UPjcSubsystem::GetAssetsUsed(TArray<FAssetData>& Assets, const bool bShowSlowTask) {
 	if (GetModuleAssetRegistry().Get().IsLoadingAssets()) return;
+	if (ScanCacheGet(ScanCache.AssetsUsed, Assets)) return;
+
+	const UPjcScanSettings* ScanSettings = GetDefault<UPjcScanSettings>();
 
 	TSet<FName> ClassNamesPrimary;
 	TSet<FName> ClassNamesEditor;
@@ -66,10 +122,15 @@ void UPjcSubsystem::GetAssetsUsed(TArray<FAssetData>& Assets, const bool bShowSl
 	TArray<FAssetData> AssetsIndirect;
 	TArray<FAssetData> AssetsExcluded;
 	TArray<FAssetData> AssetsMegascans;
+	TArray<FAssetData> AssetsEngineReferenced;
 	TArray<FPjcAssetIndirectInfo> AssetsIndirectInfos;
 
 	GetAssetsAll(AssetsAll);
-	GetAssetsIndirect(AssetsIndirect, AssetsIndirectInfos, bShowSlowTask);
+	GetAssetsEngineReferenced(AssetsEngineReferenced, bShowSlowTask);
+	const TSet<FAssetData> AssetsEngineReferencedSet {AssetsEngineReferenced};
+	if (ScanSettings->bIndirectAssetsUsed) {
+		GetAssetsIndirect(AssetsIndirect, AssetsIndirectInfos, bShowSlowTask);
+	}
 	GetAssetsExcluded(AssetsExcluded, bShowSlowTask);
 	GetClassNamesPrimary(ClassNamesPrimary);
 	GetClassNamesEditor(ClassNamesEditor);
@@ -94,7 +155,7 @@ void UPjcSubsystem::GetAssetsUsed(TArray<FAssetData>& Assets, const bool bShowSl
 		const FName AssetExactClassName = GetAssetExactClassName(Asset);
 		const bool bIsPrimary = ClassNamesPrimary.Contains(PjcShim::GetAssetClassName(Asset)) || ClassNamesPrimary.Contains(AssetExactClassName);
 		const bool bIsEditor = ClassNamesEditor.Contains(PjcShim::GetAssetClassName(Asset)) || ClassNamesEditor.Contains(AssetExactClassName);
-		const bool bIsEngineReferenced = AssetIsEngineReferenced(Asset);
+		const bool bIsEngineReferenced = AssetsEngineReferencedSet.Contains(Asset);
 		const bool bIsUsed = bIsPrimary || bIsEditor || bIsEngineReferenced;
 
 		if (bIsUsed) {
@@ -110,6 +171,7 @@ void UPjcSubsystem::GetAssetsUsed(TArray<FAssetData>& Assets, const bool bShowSl
 
 void UPjcSubsystem::GetAssetsUnused(TArray<FAssetData>& Assets, const bool bShowSlowTask) {
 	if (GetModuleAssetRegistry().Get().IsLoadingAssets()) return;
+	if (ScanCacheGet(ScanCache.AssetsUnused, Assets)) return;
 
 	TArray<FAssetData> AssetsAll;
 	TArray<FAssetData> AssetsUsed;
@@ -133,6 +195,8 @@ void UPjcSubsystem::GetAssetsUnused(TArray<FAssetData>& Assets, const bool bShow
 		}
 	}
 	Assets.Shrink();
+
+	ScanCacheSet(ScanCache.AssetsUnused, Assets);
 }
 
 void UPjcSubsystem::GetAssetsPrimary(TArray<FAssetData>& Assets, const bool bShowSlowTask) {
@@ -166,6 +230,7 @@ void UPjcSubsystem::GetAssetsPrimary(TArray<FAssetData>& Assets, const bool bSho
 
 void UPjcSubsystem::GetAssetsIndirect(TArray<FAssetData>& Assets, TArray<FPjcAssetIndirectInfo>& AssetsIndirectInfos, const bool bShowSlowTask) {
 	if (GetModuleAssetRegistry().Get().IsLoadingAssets()) return;
+	if (ScanCacheGet(ScanCache.AssetsIndirect, Assets) && ScanCacheGet(ScanCache.AssetsIndirectInfos, AssetsIndirectInfos)) return;
 
 	Assets.Reset();
 	AssetsIndirectInfos.Reset();
@@ -216,6 +281,9 @@ void UPjcSubsystem::GetAssetsIndirect(TArray<FAssetData>& Assets, TArray<FPjcAss
 			}
 		}
 	}
+
+	ScanCacheSet(ScanCache.AssetsIndirect, Assets);
+	ScanCacheSet(ScanCache.AssetsIndirectInfos, AssetsIndirectInfos);
 }
 
 void UPjcSubsystem::GetAssetsCircular(TArray<FAssetData>& Assets, const bool bShowSlowTask) {
@@ -273,6 +341,7 @@ void UPjcSubsystem::GetAssetsEditor(TArray<FAssetData>& Assets, const bool bShow
 
 void UPjcSubsystem::GetAssetsExcluded(TArray<FAssetData>& Assets, const bool bShowSlowTask) {
 	if (GetModuleAssetRegistry().Get().IsLoadingAssets()) return;
+	if (ScanCacheGet(ScanCache.AssetsExcluded, Assets)) return;
 
 	Assets.Reset();
 
@@ -351,6 +420,7 @@ void UPjcSubsystem::GetAssetsExcluded(TArray<FAssetData>& Assets, const bool bSh
 
 void UPjcSubsystem::GetAssetsEngineReferenced(TArray<FAssetData>& Assets, const bool bShowSlowTask) {
 	if (GetModuleAssetRegistry().Get().IsLoadingAssets()) return;
+	if (ScanCacheGet(ScanCache.AssetsEngineReferenced, Assets)) return;
 
 	TArray<FAssetData> AssetsAll;
 	GetAssetsAll(AssetsAll);
@@ -373,6 +443,8 @@ void UPjcSubsystem::GetAssetsEngineReferenced(TArray<FAssetData>& Assets, const 
 	}
 
 	Assets.Shrink();
+
+	ScanCacheSet(ScanCache.AssetsEngineReferenced, Assets);
 }
 
 void UPjcSubsystem::GetClassNamesPrimary(TSet<FName>& ClassNames) {

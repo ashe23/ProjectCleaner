@@ -11,6 +11,21 @@
 #include "PjcTypes.h"
 #include "PjcSubsystem.generated.h"
 
+/**
+ * While alive, expensive asset queries (all, used, unused, indirect, excluded, externally referenced) are computed
+ * once and reused. Use it around a batch of read only queries, never across deleting or creating assets.
+ */
+class FPjcScanCacheScope
+{
+  public:
+
+	FPjcScanCacheScope();
+	~FPjcScanCacheScope();
+
+	FPjcScanCacheScope(const FPjcScanCacheScope&) = delete;
+	FPjcScanCacheScope& operator=(const FPjcScanCacheScope&) = delete;
+};
+
 UCLASS(Config = EditorPerProjectUserSettings, DisplayName = "ProjectCleanerSubsystem")
 class UPjcSubsystem final : public UEditorSubsystem
 {
