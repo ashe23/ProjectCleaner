@@ -2,6 +2,7 @@
 
 #include "Commandlets/PjcCommandlet.h"
 
+#include "PjcShim.h"
 #include "PjcSubsystem.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogProjectCleanerCLI, Display, All);
@@ -27,36 +28,39 @@ int32 UPjcCommandlet::Main(const FString& Params) {
 	//- delete_folders_empty
 	//- delete_files_external
 	//- delete_files_corrupted
+	//- fix_redirectors
+	//- list
+
+	// asset discovery can still run in background, every query below needs complete registry
+	UPjcSubsystem::GetModuleAssetRegistry().Get().SearchAllAssets(true);
+
+	if (bFixRedirectors && UPjcSubsystem::ProjectHasRedirectors()) {
+		TArray<FAssetData> Redirectors;
+		UPjcSubsystem::GetProjectRedirectors(Redirectors);
+		UE_LOG(LogProjectCleanerCLI, Display, TEXT("Fixing %d redirectors..."), Redirectors.Num());
+		UPjcSubsystem::FixProjectRedirectors(Redirectors, false);
+	}
 
 	if (UPjcSubsystem::ProjectHasRedirectors()) {
-		UE_LOG(LogProjectCleanerCLI, Warning, TEXT("Project contains redirectors that must be fixed first."));
-		UE_LOG(LogProjectCleanerCLI, Warning, TEXT("Please run following command before doing any cleaning operations."));
+		TArray<FAssetData> Redirectors;
+		UPjcSubsystem::GetProjectRedirectors(Redirectors);
+
+		UE_LOG(LogProjectCleanerCLI, Warning, TEXT("Project contains %d redirectors that must be fixed first:"), Redirectors.Num());
+		for (const auto& Redirector : Redirectors) {
+			UE_LOG(LogProjectCleanerCLI, Warning, TEXT("	%s"), *PjcShim::GetObjectPathString(Redirector));
+		}
+		UE_LOG(LogProjectCleanerCLI, Warning, TEXT("Run again with -fix_redirectors, or fix them with:"));
 		UE_LOG(
 			LogProjectCleanerCLI,
 			Warning,
-			TEXT("	UE4Editor.exe <GameName or uproject> -run=ResavePackages -fixupredirects -autocheckout -projectonly -unattended")
+			TEXT("	%s <uproject> -run=ResavePackages -fixupredirects -autocheckout -projectonly -unattended"),
+			ENGINE_MAJOR_VERSION >= 5 ? TEXT("UnrealEditor-Cmd") : TEXT("UE4Editor-Cmd")
 		);
 
-		return 0;
+		return 1;
 	}
 
-	TArray<FAssetData> AssetsAll;
-	TArray<FAssetData> AssetsUsed;
-	TArray<FAssetData> AssetsUnused;
-	TArray<FString> FoldersEmpty;
-	TArray<FString> FilesExternal;
-	TArray<FString> FilesCorrupted;
-
-	UPjcSubsystem::GetAssetsAll(AssetsAll);
-	UPjcSubsystem::GetAssetsUsed(AssetsUsed);
-	UPjcSubsystem::GetAssetsUnused(AssetsUnused);
-	UPjcSubsystem::GetFoldersEmpty(FoldersEmpty);
-	UPjcSubsystem::GetFilesExternalFiltered(FilesExternal);
-	UPjcSubsystem::GetFilesCorrupted(FilesCorrupted);
-
-	const FCleanupStats StatsBefore {
-	  AssetsAll.Num(), AssetsUsed.Num(), AssetsUnused.Num(), FoldersEmpty.Num(), FilesExternal.Num(), FilesCorrupted.Num()
-	};
+	const FCleanupStats StatsBefore = StatsCollect(bList);
 
 	UE_LOG(LogProjectCleanerCLI, Display, TEXT("======================================"));
 	UE_LOG(LogProjectCleanerCLI, Display, TEXT("========     Project Stats    ========"));
@@ -65,33 +69,26 @@ int32 UPjcCommandlet::Main(const FString& Params) {
 
 	if (bScanOnly) return 0;
 
+	bool bSuccess = true;
+
 	if (bFullCleanup || bDeleteAssetsUnused) {
-		UPjcSubsystem::DeleteAssetsUnused();
+		bSuccess &= UPjcSubsystem::DeleteAssetsUnused(false, false);
 	}
 
 	if (bFullCleanup || bDeleteFilesExternal) {
-		UPjcSubsystem::DeleteFilesExternal();
+		bSuccess &= UPjcSubsystem::DeleteFilesExternal(false, false);
 	}
 
 	if (bFullCleanup || bDeleteFilesCorrupted) {
-		UPjcSubsystem::DeleteFilesCorrupted();
+		bSuccess &= UPjcSubsystem::DeleteFilesCorrupted(false, false);
 	}
 
 	if (bFullCleanup || bDeleteFoldersEmpty) {
-		UPjcSubsystem::DeleteFoldersEmpty();
+		bSuccess &= UPjcSubsystem::DeleteFoldersEmpty(false, false);
 	}
 
 	if (bFullCleanup || bDeleteAssetsUnused || bDeleteFilesExternal || bDeleteFilesCorrupted || bDeleteFoldersEmpty) {
-		UPjcSubsystem::GetAssetsAll(AssetsAll);
-		UPjcSubsystem::GetAssetsUsed(AssetsUsed);
-		UPjcSubsystem::GetAssetsUnused(AssetsUnused);
-		UPjcSubsystem::GetFoldersEmpty(FoldersEmpty);
-		UPjcSubsystem::GetFilesExternalFiltered(FilesExternal);
-		UPjcSubsystem::GetFilesCorrupted(FilesCorrupted);
-
-		const FCleanupStats StatsAfter {
-		  AssetsAll.Num(), AssetsUsed.Num(), AssetsUnused.Num(), FoldersEmpty.Num(), FilesExternal.Num(), FilesCorrupted.Num()
-		};
+		const FCleanupStats StatsAfter = StatsCollect(bList);
 
 		UE_LOG(LogProjectCleanerCLI, Display, TEXT("======================================"));
 		UE_LOG(LogProjectCleanerCLI, Display, TEXT("========  Stats After Cleanup ========"));
@@ -99,7 +96,11 @@ int32 UPjcCommandlet::Main(const FString& Params) {
 		StatsPrint(StatsAfter);
 	}
 
-	return 0;
+	if (!bSuccess) {
+		UE_LOG(LogProjectCleanerCLI, Error, TEXT("Cleanup finished with errors, see log above."));
+	}
+
+	return bSuccess ? 0 : 1;
 }
 
 void UPjcCommandlet::ParseCommandLinesArguments(const FString& Params) {
@@ -111,7 +112,6 @@ void UPjcCommandlet::ParseCommandLinesArguments(const FString& Params) {
 	for (const auto& Switch : Switches) {
 		if (Switch.Equals(TEXT("scan_only"))) {
 			bScanOnly = true;
-			break;
 		}
 
 		if (Switch.Equals(TEXT("full_cleanup"))) {
@@ -133,7 +133,42 @@ void UPjcCommandlet::ParseCommandLinesArguments(const FString& Params) {
 		if (Switch.Equals(TEXT("delete_files_corrupted"))) {
 			bDeleteFilesCorrupted = true;
 		}
+
+		if (Switch.Equals(TEXT("fix_redirectors"))) {
+			bFixRedirectors = true;
+		}
+
+		if (Switch.Equals(TEXT("list"))) {
+			bList = true;
+		}
 	}
+}
+
+UPjcCommandlet::FCleanupStats UPjcCommandlet::StatsCollect(const bool bPrintLists) {
+	FPjcScanCacheScope ScanCacheScope;
+
+	TArray<FAssetData> AssetsAll;
+	TArray<FAssetData> AssetsUsed;
+	TArray<FAssetData> AssetsUnused;
+	TArray<FString> FoldersEmpty;
+	TArray<FString> FilesExternal;
+	TArray<FString> FilesCorrupted;
+
+	UPjcSubsystem::GetAssetsAll(AssetsAll);
+	UPjcSubsystem::GetAssetsUsed(AssetsUsed, false);
+	UPjcSubsystem::GetAssetsUnused(AssetsUnused, false);
+	UPjcSubsystem::GetFoldersEmpty(FoldersEmpty);
+	UPjcSubsystem::GetFilesExternalFiltered(FilesExternal, false);
+	UPjcSubsystem::GetFilesCorrupted(FilesCorrupted, false);
+
+	if (bPrintLists) {
+		ListPrint(TEXT("Assets Unused"), AssetsUnused);
+		ListPrint(TEXT("Folders Empty"), FoldersEmpty);
+		ListPrint(TEXT("Files External"), FilesExternal);
+		ListPrint(TEXT("Files Corrupted"), FilesCorrupted);
+	}
+
+	return FCleanupStats {AssetsAll.Num(), AssetsUsed.Num(), AssetsUnused.Num(), FoldersEmpty.Num(), FilesExternal.Num(), FilesCorrupted.Num()};
 }
 
 void UPjcCommandlet::StatsPrint(const FCleanupStats& Stats) {
@@ -144,4 +179,24 @@ void UPjcCommandlet::StatsPrint(const FCleanupStats& Stats) {
 	UE_LOG(LogProjectCleanerCLI, Display, TEXT("Files External - %d"), Stats.NumFilesExternal);
 	UE_LOG(LogProjectCleanerCLI, Display, TEXT("Files Corrupted - %d"), Stats.NumFilesCorrupted);
 	UE_LOG(LogProjectCleanerCLI, Display, TEXT("Folders Empty - %d"), Stats.NumFoldersEmpty);
+}
+
+void UPjcCommandlet::ListPrint(const FString& Title, const TArray<FAssetData>& Assets) {
+	TArray<FString> Paths;
+	Paths.Reserve(Assets.Num());
+	for (const auto& Asset : Assets) {
+		Paths.Add(PjcShim::GetObjectPathString(Asset));
+	}
+
+	ListPrint(Title, Paths);
+}
+
+void UPjcCommandlet::ListPrint(const FString& Title, const TArray<FString>& Items) {
+	TArray<FString> Sorted = Items;
+	Sorted.Sort();
+
+	UE_LOG(LogProjectCleanerCLI, Display, TEXT("%s:"), *Title);
+	for (const auto& Item : Sorted) {
+		UE_LOG(LogProjectCleanerCLI, Display, TEXT("	%s"), *Item);
+	}
 }

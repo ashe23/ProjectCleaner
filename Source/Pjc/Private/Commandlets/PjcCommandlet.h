@@ -6,6 +6,22 @@
 #include "Commandlets/Commandlet.h"
 #include "PjcCommandlet.generated.h"
 
+struct FAssetData;
+
+/**
+ * UnrealEditor-Cmd.exe <uproject> -run=Pjc [switches]
+ *
+ *   -scan_only               print stats only
+ *   -full_cleanup            all delete_* operations below
+ *   -delete_assets_unused
+ *   -delete_folders_empty
+ *   -delete_files_external
+ *   -delete_files_corrupted
+ *   -fix_redirectors         fix redirectors first instead of stopping
+ *   -list                    print found items, not only counts
+ *
+ * Returns 0 on success, 1 when project has redirectors or something failed to delete.
+ */
 UCLASS()
 class UPjcCommandlet : public UCommandlet
 {
@@ -29,7 +45,10 @@ class UPjcCommandlet : public UCommandlet
   private:
 
 	void ParseCommandLinesArguments(const FString& Params);
+	FCleanupStats StatsCollect(const bool bPrintLists);
 	void StatsPrint(const FCleanupStats& Stats);
+	void ListPrint(const FString& Title, const TArray<FAssetData>& Assets);
+	void ListPrint(const FString& Title, const TArray<FString>& Items);
 
 	bool bScanOnly = false;
 	bool bFullCleanup = false;
@@ -37,4 +56,6 @@ class UPjcCommandlet : public UCommandlet
 	bool bDeleteFoldersEmpty = false;
 	bool bDeleteFilesExternal = false;
 	bool bDeleteFilesCorrupted = false;
+	bool bFixRedirectors = false;
+	bool bList = false;
 };
