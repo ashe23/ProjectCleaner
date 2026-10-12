@@ -511,6 +511,52 @@ def sync_host(host):
         write_if_changed(dst, f.read())
 
 
+def _pid_alive(pid):
+    if IS_WIN:
+        out = subprocess.run(["tasklist", "/FI", "PID eq %d" % pid, "/NH"], capture_output=True, text=True).stdout
+        return str(pid) in out
+    try:
+        os.kill(pid, 0)
+        return True
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+
+
+class HostsLock:
+    """One pjc.py run per hosts folder: parallel runs delete each other's test content."""
+
+    def __init__(self, root):
+        self.path = os.path.join(root, ".pjc.lock")
+
+    def __enter__(self):
+        os.makedirs(os.path.dirname(self.path), exist_ok=True)
+        for _ in range(2):
+            try:
+                fd = os.open(self.path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            except FileExistsError:
+                try:
+                    with open(self.path, encoding="utf-8") as f:
+                        pid = int(f.read().strip() or 0)
+                except (OSError, ValueError):
+                    pid = 0
+                if pid and _pid_alive(pid):
+                    die("another pjc.py run (pid {}) is using {}".format(pid, os.path.dirname(self.path)))
+                os.remove(self.path)  # stale lock
+                continue
+            os.write(fd, str(os.getpid()).encode())
+            os.close(fd)
+            return self
+        die("could not lock " + self.path)
+
+    def __exit__(self, *_):
+        try:
+            os.remove(self.path)
+        except OSError:
+            pass
+
+
 # ----------------------------------------------------------------------------------------------------------------------
 # process helpers
 # ----------------------------------------------------------------------------------------------------------------------
@@ -638,7 +684,7 @@ def cmd_sync(args, hosts):
     return run_for_hosts(hosts, work, 1, "sync")
 
 
-def build_host(host, clang=False):
+def build_host(host, clang=False, strict=False):
     # always refresh host files (writes only what changed), so hosts follow tool updates
     setup_host(host)
     engine = host.engine
@@ -656,6 +702,9 @@ def build_host(host, clang=False):
     ]
     if clang:
         cmd.append("-Compiler=Clang")
+    if strict:
+        # every file compiled on its own, catches missing includes hidden by unity and precompiled headers
+        cmd += ["-DisableUnity", "-NoPCH"]
     for attempt in range(3):
         code = run_logged(cmd, log, timeout=3600, engine=engine)
         # different engine versions share some per-user UBT files (e.g. MarketplaceRules.dll), retry on collision
@@ -672,7 +721,7 @@ def build_host(host, clang=False):
 
 
 def cmd_build(args, hosts):
-    return run_for_hosts(hosts, lambda h: build_host(h, args.clang), args.jobs, "build")
+    return run_for_hosts(hosts, lambda h: build_host(h, args.clang, args.strict), args.jobs, "build")
 
 
 def editor_args(host, extra):
@@ -1017,6 +1066,7 @@ def main():
     add("sync", "re-link plugin into host projects")
     p = add("build", "compile plugin for each engine")
     p.add_argument("--clang", action="store_true", help="compile with clang (Windows only, catches Linux/Mac compiler errors)")
+    p.add_argument("--strict", action="store_true", help="no unity build and no precompiled headers (finds missing includes). UE 5.3 launcher builds do not support it")
     p = add("test", "build, then run automation and commandlet tests")
     p.add_argument("--filter", default=TEST_FILTER, help="automation test filter (default: %(default)s)")
     p.add_argument("--no-build", action="store_true", help="skip build step")
@@ -1055,7 +1105,8 @@ def main():
         "package": lambda: cmd_package(args, hosts, cfg),
         "clean": lambda: cmd_clean(args, hosts),
     }
-    return commands[args.command]()
+    with HostsLock(root):
+        return commands[args.command]()
 
 
 if __name__ == "__main__":
