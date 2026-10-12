@@ -1,7 +1,7 @@
 {
     "FileVersion": 3,
-    "Version": 1,
-    "VersionName": "2.0.1",
+    "Version": 3,
+    "VersionName": "3.0.0",
     "FriendlyName": "ProjectCleaner",
     "Description": "Unreal engine plugin for managing all unused assets and empty folders in project.",
     "Category": "ProjectManagementTools",
@@ -19,6 +19,11 @@
             "Name": "Pjc",
             "Type": "Editor",
             "LoadingPhase": "PostDefault",
+            "PlatformAllowList": [
+                "Win64",
+                "Linux",
+                "Mac"
+            ],
             "WhitelistPlatforms": [
                 "Win64",
                 "Linux",
