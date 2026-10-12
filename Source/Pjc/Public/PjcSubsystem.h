@@ -76,6 +76,28 @@ class UPjcSubsystem final : public UEditorSubsystem
 	static void GetAssetsFolderLabelOnly(TArray<FAssetData>& Assets, const bool bShowSlowTask = true);
 
 	/**
+	 * @brief Returns for every scanned asset (by package name) whether it is used and why. Same result as GetAssetsUsed,
+	 * used assets also tell which used asset references them (Parent), so chain to the asset used for its own reason can be shown.
+	 * @param Usage TMap<FName, FPjcAssetUsage>
+	 * @param bShowSlowTask bool
+	 */
+	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Asset")
+	static void GetAssetsUsage(TMap<FName, FPjcAssetUsage>& Usage, const bool bShowSlowTask = true);
+
+	/**
+	 * @brief Returns what holds given asset in memory, so deleting it is refused. Empty when asset is not loaded or nothing outside it holds it.
+	 * @param InAsset FAssetData
+	 * @return FString
+	 */
+	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Asset")
+	static FString GetAssetHolder(const FAssetData& InAsset);
+
+	/** Assets last DeleteAssetsUnused could not delete (by package name) and what kept them */
+	static const TMap<FName, FString>& GetLastCleanupKept();
+	/** Short plain words for usage reason, e.g. "Primary asset Map:L_Main" */
+	static FString GetUsageReasonText(const FPjcAssetUsage& Usage);
+
+	/**
 	 * @brief Returns all primary and derived from primary assets in project. See AssetManager Settings for more info.
 	 * @param Assets TArray<FAssetData>
 	 * @param bShowSlowTask bool
@@ -405,8 +427,19 @@ class UPjcSubsystem final : public UEditorSubsystem
 	static bool FolderIsExternal(const FString& InPath);
 	static void GetSourceAndConfigFiles(TSet<FString>& Files);
 	static void GetAssetsDependencies(TSet<FAssetData>& Assets, const TSet<FName>& PackagesNotFollowed = {});
-	static void GetFolderLabels(const TArray<FAssetData>& AssetsAll, TSet<FAssetData>& AssetsUsed, TSet<FName>& PackagesNotFollowed);
-	static void ComputeAssetsUsed(TArray<FAssetData>& OutUsed, TArray<FAssetData>& OutFolderLabelOnly, const bool bShowSlowTask);
+	/** Used labels with "Label Assets In My Directory" and assets they list explicitly (asset package -> label package) */
+	static void GetFolderLabels(
+		const TArray<FAssetData>& AssetsAll,
+		const TMap<FName, FPjcAssetUsage>& Usage,
+		TSet<FName>& OutFolderLabels,
+		TMap<FName, FName>& OutLabelAssets
+	);
+	static void ComputeAssetsUsed(
+		TArray<FAssetData>& OutUsed,
+		TArray<FAssetData>& OutFolderLabelOnly,
+		TMap<FName, FPjcAssetUsage>& OutUsage,
+		const bool bShowSlowTask
+	);
 	static void ShowNotification(const FString& Msg, const SNotificationItem::ECompletionState State, const float Duration);
 	/** Source control provider is set up, or repository files (.git, .svn, ...) found next to project or above it */
 	static bool ProjectHasVersionControl();
@@ -453,6 +486,12 @@ class UPjcSubsystem final : public UEditorSubsystem
 	static int32 DeleteAssetsHeldByEachOther(const TArray<FAssetData>& Assets);
 	static void RemoveAssetsHeldOutside(TArray<UObject*>& Assets, TMap<FString, FString>* OutHolders = nullptr);
 	static bool PackageIsFolderLabel(const FName& PackageName);
+	/** Class names that exclude settings make used: excluded by user (exact), always used classes and cinematic classes (derived) */
+	static void GetClassNamesExcludedBy(TSet<FName>& OutUserExcluded, TSet<FName>& OutUsedClasses, TSet<FName>& OutCinematic);
+	static FString
+	GetExcludedDetail(const FAssetData& Asset, const TSet<FName>& UserExcluded, const TSet<FName>& UsedClasses, const TSet<FName>& Cinematic);
+	static FString GetPrimaryDetail(const FAssetData& Asset);
+	static FString GetEngineReferencedDetail(const FAssetData& Asset);
 	static void GetExternalActorsDependencies(TSet<FName>& OutPackages);
 	static bool BucketPrepare(const TArray<FAssetData>& Bucket, TArray<UObject*>& LoadedAssets);
 	static int32 BucketDelete(const TArray<UObject*>& LoadedAssets);

@@ -56,6 +56,7 @@ namespace
 		TOptional<TArray<FAssetData>> AssetsExcluded;
 		TOptional<TArray<FAssetData>> AssetsEngineReferenced;
 		TOptional<TArray<FAssetData>> AssetsFolderLabelOnly;
+		TOptional<TMap<FName, FPjcAssetUsage>> AssetsUsage;
 		TOptional<TArray<FString>> FoldersUsedByProject;
 		TOptional<TSet<FString>> SourceAndConfigWords;
 
@@ -68,12 +69,16 @@ namespace
 			AssetsExcluded.Reset();
 			AssetsEngineReferenced.Reset();
 			AssetsFolderLabelOnly.Reset();
+			AssetsUsage.Reset();
 			FoldersUsedByProject.Reset();
 			SourceAndConfigWords.Reset();
 		}
 	};
 
 	FPjcScanCache ScanCache;
+
+	// what kept each asset last cleanup could not delete, shown by Asset Usage tab
+	TMap<FName, FString> LastCleanupKept;
 
 	template<typename T>
 	bool ScanCacheGet(const TOptional<T>& Cached, T& Out) {
@@ -160,10 +165,12 @@ void UPjcSubsystem::GetAssetsUsed(TArray<FAssetData>& Assets, const bool bShowSl
 	if (ScanCacheGet(ScanCache.AssetsUsed, Assets)) return;
 
 	TArray<FAssetData> AssetsFolderLabelOnly;
-	ComputeAssetsUsed(Assets, AssetsFolderLabelOnly, bShowSlowTask);
+	TMap<FName, FPjcAssetUsage> AssetsUsage;
+	ComputeAssetsUsed(Assets, AssetsFolderLabelOnly, AssetsUsage, bShowSlowTask);
 
 	ScanCacheSet(ScanCache.AssetsUsed, Assets);
 	ScanCacheSet(ScanCache.AssetsFolderLabelOnly, AssetsFolderLabelOnly);
+	ScanCacheSet(ScanCache.AssetsUsage, AssetsUsage);
 }
 
 void UPjcSubsystem::GetAssetsFolderLabelOnly(TArray<FAssetData>& Assets, const bool bShowSlowTask) {
@@ -171,13 +178,65 @@ void UPjcSubsystem::GetAssetsFolderLabelOnly(TArray<FAssetData>& Assets, const b
 	if (ScanCacheGet(ScanCache.AssetsFolderLabelOnly, Assets)) return;
 
 	TArray<FAssetData> AssetsUsed;
-	ComputeAssetsUsed(AssetsUsed, Assets, bShowSlowTask);
+	TMap<FName, FPjcAssetUsage> AssetsUsage;
+	ComputeAssetsUsed(AssetsUsed, Assets, AssetsUsage, bShowSlowTask);
 
 	ScanCacheSet(ScanCache.AssetsUsed, AssetsUsed);
 	ScanCacheSet(ScanCache.AssetsFolderLabelOnly, Assets);
+	ScanCacheSet(ScanCache.AssetsUsage, AssetsUsage);
 }
 
-void UPjcSubsystem::ComputeAssetsUsed(TArray<FAssetData>& OutUsed, TArray<FAssetData>& OutFolderLabelOnly, const bool bShowSlowTask) {
+void UPjcSubsystem::GetAssetsUsage(TMap<FName, FPjcAssetUsage>& Usage, const bool bShowSlowTask) {
+	if (GetModuleAssetRegistry().Get().IsLoadingAssets()) return;
+	if (ScanCacheGet(ScanCache.AssetsUsage, Usage)) return;
+
+	TArray<FAssetData> AssetsUsed;
+	TArray<FAssetData> AssetsFolderLabelOnly;
+	ComputeAssetsUsed(AssetsUsed, AssetsFolderLabelOnly, Usage, bShowSlowTask);
+
+	ScanCacheSet(ScanCache.AssetsUsed, AssetsUsed);
+	ScanCacheSet(ScanCache.AssetsFolderLabelOnly, AssetsFolderLabelOnly);
+	ScanCacheSet(ScanCache.AssetsUsage, Usage);
+}
+
+FString UPjcSubsystem::GetAssetHolder(const FAssetData& InAsset) {
+	UObject* Object = FindObject<UObject>(nullptr, *PjcShim::GetObjectPathString(InAsset));
+	if (!Object) return FString {};
+
+	TArray<UObject*> Objects {Object};
+	TMap<FString, FString> Holders;
+	RemoveAssetsHeldOutside(Objects, &Holders);
+
+	return Holders.FindRef(Object->GetPathName());
+}
+
+const TMap<FName, FString>& UPjcSubsystem::GetLastCleanupKept() {
+	return LastCleanupKept;
+}
+
+FString UPjcSubsystem::GetUsageReasonText(const FPjcAssetUsage& Usage) {
+	switch (Usage.Reason) {
+		case EPjcUsageReason::Primary :			 return Usage.Detail.IsEmpty() ? TEXT("Primary asset") : TEXT("Primary asset ") + Usage.Detail;
+		case EPjcUsageReason::EngineReferenced : return TEXT("Referenced outside scanned content");
+		case EPjcUsageReason::Indirect :		 return TEXT("Named in ") + Usage.Detail;
+		case EPjcUsageReason::Excluded :		 return Usage.Detail.IsEmpty() ? TEXT("Excluded") : Usage.Detail;
+		case EPjcUsageReason::Editor :			 return TEXT("Editor utility asset");
+		case EPjcUsageReason::GameplayCue :		 return TEXT("GameplayCue notify ") + Usage.Detail;
+		case EPjcUsageReason::Megascans :		 return TEXT("Megascans preset");
+		case EPjcUsageReason::FolderLabelAsset : return TEXT("Listed by folder label ") + FPackageName::GetShortName(Usage.Parent);
+		case EPjcUsageReason::Dependency :		 return TEXT("Referenced by ") + FPackageName::GetShortName(Usage.Parent);
+		case EPjcUsageReason::FolderLabel :		 return TEXT("In folder of label ") + FPackageName::GetShortName(Usage.Parent);
+		case EPjcUsageReason::None :
+		default :								 return TEXT("Nothing used references it");
+	}
+}
+
+void UPjcSubsystem::ComputeAssetsUsed(
+	TArray<FAssetData>& OutUsed,
+	TArray<FAssetData>& OutFolderLabelOnly,
+	TMap<FName, FPjcAssetUsage>& OutUsage,
+	const bool bShowSlowTask
+) {
 	const UPjcScanSettings* ScanSettings = GetDefault<UPjcScanSettings>();
 
 	TSet<FName> ClassNamesPrimary;
@@ -203,60 +262,154 @@ void UPjcSubsystem::ComputeAssetsUsed(TArray<FAssetData>& OutUsed, TArray<FAsset
 		GetModuleAssetRegistry().Get().GetAssetsByPath(PjcConstants::PathMSPresets, AssetsMegascans, true);
 	}
 
-	TSet<FAssetData> AssetsUsed;
-	AssetsUsed.Append(AssetsIndirect);
-	AssetsUsed.Append(AssetsExcluded);
-	AssetsUsed.Append(AssetsMegascans);
+	// every used package remembers why: its own reason, or the used package that references it (closest to a root)
+	TMap<FName, FPjcAssetUsage> Usage;
+	TArray<FName> Queue;
+	const auto AddUsed = [&](const FName& PackageName, const EPjcUsageReason Reason, const FName& Parent, const FString& Detail) -> FPjcAssetUsage* {
+		if (Usage.Contains(PackageName)) return nullptr;
+
+		FPjcAssetUsage& AssetUsage = Usage.Add(PackageName);
+		AssetUsage.bUsed = true;
+		AssetUsage.Reason = Reason;
+		AssetUsage.Parent = Parent;
+		AssetUsage.Detail = Detail;
+		Queue.Add(PackageName);
+
+		return &AssetUsage;
+	};
 
 	FScopedSlowTask SlowTask {
 	  static_cast<float>(AssetsAll.Num()), FText::FromString(TEXT("Searching used assets...")), bShowSlowTask && GIsEditor && !IsRunningCommandlet()
 	};
 	SlowTask.MakeDialog(false, false);
 
+	// first reason found is the one reported, most telling first
 	for (const auto& Asset : AssetsAll) {
 		SlowTask.EnterProgressFrame(1.0f, FText::FromString(Asset.GetFullName()));
 
+		const FName AssetClassName = PjcShim::GetAssetClassName(Asset);
 		const FName AssetExactClassName = GetAssetExactClassName(Asset);
-		const bool bIsPrimary = ClassNamesPrimary.Contains(PjcShim::GetAssetClassName(Asset)) || ClassNamesPrimary.Contains(AssetExactClassName);
-		const bool bIsEditor = ClassNamesEditor.Contains(PjcShim::GetAssetClassName(Asset)) || ClassNamesEditor.Contains(AssetExactClassName);
-		const bool bIsEngineReferenced = AssetsEngineReferencedSet.Contains(Asset);
-		const bool bIsUsed = bIsPrimary || bIsEditor || bIsEngineReferenced || AssetIsLoadedByTag(Asset);
 
-		if (bIsUsed) {
-			AssetsUsed.Emplace(Asset);
+		if (ClassNamesPrimary.Contains(AssetClassName) || ClassNamesPrimary.Contains(AssetExactClassName)) {
+			AddUsed(Asset.PackageName, EPjcUsageReason::Primary, NAME_None, GetPrimaryDetail(Asset));
+		}
+		else if (AssetsEngineReferencedSet.Contains(Asset)) {
+			AddUsed(Asset.PackageName, EPjcUsageReason::EngineReferenced, NAME_None, GetEngineReferencedDetail(Asset));
+		}
+		else if (ClassNamesEditor.Contains(AssetClassName) || ClassNamesEditor.Contains(AssetExactClassName)) {
+			AddUsed(Asset.PackageName, EPjcUsageReason::Editor, NAME_None, FString {});
+		}
+		else if (AssetIsLoadedByTag(Asset)) {
+			FString GameplayCueName;
+			Asset.GetTagValue(FName {TEXT("GameplayCueName")}, GameplayCueName);
+			AddUsed(Asset.PackageName, EPjcUsageReason::GameplayCue, NAME_None, GameplayCueName);
 		}
 	}
 
-	// folder labels reference every asset in their folder: closure without following them tells which assets only they keep
-	TSet<FAssetData> AssetsUsedStrict = AssetsUsed;
+	const FString ProjectDir = PathNormalize(FPaths::ConvertRelativePathToFull(FPaths::ProjectDir())) + TEXT("/");
+	for (const auto& Info : AssetsIndirectInfos) {
+		FString File = PathNormalize(Info.FilePath);
+		FPaths::MakePathRelativeTo(File, *ProjectDir);
+		AddUsed(Info.Asset.PackageName, EPjcUsageReason::Indirect, NAME_None, FString::Printf(TEXT("%s, line %d"), *File, Info.FileNum));
+	}
+	for (const auto& Asset : AssetsIndirect) {
+		AddUsed(Asset.PackageName, EPjcUsageReason::Indirect, NAME_None, FString {});
+	}
+
+	if (AssetsExcluded.Num() > 0) {
+		TSet<FName> ClassNamesUserExcluded;
+		TSet<FName> ClassNamesUsedClasses;
+		TSet<FName> ClassNamesCinematic;
+		GetClassNamesExcludedBy(ClassNamesUserExcluded, ClassNamesUsedClasses, ClassNamesCinematic);
+
+		for (const auto& Asset : AssetsExcluded) {
+			if (Usage.Contains(Asset.PackageName)) continue;
+
+			AddUsed(
+				Asset.PackageName,
+				EPjcUsageReason::Excluded,
+				NAME_None,
+				GetExcludedDetail(Asset, ClassNamesUserExcluded, ClassNamesUsedClasses, ClassNamesCinematic)
+			);
+		}
+	}
+
+	for (const auto& Asset : AssetsMegascans) {
+		AddUsed(Asset.PackageName, EPjcUsageReason::Megascans, NAME_None, FString {});
+	}
+
+	// folder labels reference every asset in their folder. That is a cook rule, so labels are followed last:
+	// what only they keep is told apart (and unused when "Folder Labels Used" is off)
 	TSet<FName> FolderLabels;
+	TMap<FName, FName> LabelAssets;
 	if (ScanSettings->bPrimaryAssetsUsed) {
-		GetFolderLabels(AssetsAll, AssetsUsedStrict, FolderLabels);
+		GetFolderLabels(AssetsAll, Usage, FolderLabels, LabelAssets);
 	}
-	GetAssetsDependencies(AssetsUsedStrict, FolderLabels);
-
-	TSet<FName> PackagesStrict;
-	for (const auto& Asset : AssetsUsedStrict) {
-		PackagesStrict.Add(Asset.PackageName);
+	for (const auto& LabelAsset : LabelAssets) {
+		AddUsed(LabelAsset.Key, EPjcUsageReason::FolderLabelAsset, LabelAsset.Value, FString {});
 	}
 
-	TSet<FName> PackagesFull = PackagesStrict;
-	if (FolderLabels.Num() > 0) {
-		GetAssetsDependencies(AssetsUsed);
-		for (const auto& Asset : AssetsUsed) {
-			PackagesFull.Add(Asset.PackageName);
+	TSet<FName> PackagesScanned;
+	PackagesScanned.Reserve(AssetsAll.Num());
+	for (const auto& Asset : AssetsAll) {
+		PackagesScanned.Add(Asset.PackageName);
+	}
+
+	// breadth first, so parent chains are short
+	int32 QueueHead = 0;
+	TArray<FName> Deps;
+	const auto FollowDependencies = [&](const TSet<FName>& PackagesNotFollowed, const bool bFolderLabelOnly) {
+		while (QueueHead < Queue.Num()) {
+			const FName PackageName = Queue[QueueHead++];
+			if (PackagesNotFollowed.Contains(PackageName)) continue;
+
+			// packages that are not scanned assets (e.g. actors saved in their own files) pass their parent on
+			FName Parent = PackageName;
+			FString Detail;
+			if (!PackagesScanned.Contains(PackageName)) {
+				const FPjcAssetUsage* ParentUsage = Usage.Find(PackageName);
+				if (ParentUsage && !ParentUsage->Parent.IsNone()) {
+					Parent = ParentUsage->Parent;
+					Detail = TEXT("through ") + PackageName.ToString();
+				}
+			}
+
+			Deps.Reset();
+			GetModuleAssetRegistry().Get().GetDependencies(PackageName, Deps);
+
+			for (const auto& Dep : Deps) {
+				if (!PathIsInsideProject(Dep.ToString())) continue;
+
+				const bool bFromLabel = FolderLabels.Contains(PackageName);
+				FPjcAssetUsage* DepUsage = AddUsed(Dep, bFromLabel ? EPjcUsageReason::FolderLabel : EPjcUsageReason::Dependency, Parent, Detail);
+				if (DepUsage && bFolderLabelOnly) {
+					DepUsage->bFolderLabelOnly = true;
+					DepUsage->bUsed = ScanSettings->bFolderLabelsUsed;
+				}
+			}
 		}
+	};
+
+	FollowDependencies(FolderLabels, false);
+	if (FolderLabels.Num() > 0) {
+		Queue.Append(FolderLabels.Array());
+		FollowDependencies(TSet<FName> {}, true);
 	}
 
 	// dependencies come per package, map them back to scanned assets so used + unused = all
-	const TSet<FName>& PackagesUsed = ScanSettings->bFolderLabelsUsed ? PackagesFull : PackagesStrict;
 	OutUsed.Reset(AssetsAll.Num());
 	OutFolderLabelOnly.Reset();
+	OutUsage.Reset();
+	OutUsage.Reserve(AssetsAll.Num());
 	for (const auto& Asset : AssetsAll) {
-		if (PackagesUsed.Contains(Asset.PackageName)) {
+		const FPjcAssetUsage* AssetUsage = Usage.Find(Asset.PackageName);
+		OutUsage.Add(Asset.PackageName, AssetUsage ? *AssetUsage : FPjcAssetUsage {});
+		if (!AssetUsage) continue;
+
+		if (AssetUsage->bUsed) {
 			OutUsed.Emplace(Asset);
 		}
-		if (PackagesFull.Contains(Asset.PackageName) && !PackagesStrict.Contains(Asset.PackageName)) {
+		if (AssetUsage->bFolderLabelOnly) {
 			OutFolderLabelOnly.Emplace(Asset);
 		}
 	}
@@ -264,11 +417,11 @@ void UPjcSubsystem::ComputeAssetsUsed(TArray<FAssetData>& OutUsed, TArray<FAsset
 
 	// tell which label decides how many assets, e.g. Lyra DefaultGame_Label keeps hundreds of otherwise unused assets
 	for (const auto& FolderLabel : FolderLabels) {
-		TArray<FName> Deps;
-		GetModuleAssetRegistry().Get().GetDependencies(FolderLabel, Deps);
+		TArray<FName> LabelDeps;
+		GetModuleAssetRegistry().Get().GetDependencies(FolderLabel, LabelDeps);
 		int32 NumOnlyByLabel = 0;
 		for (const auto& Asset : OutFolderLabelOnly) {
-			NumOnlyByLabel += Deps.Contains(Asset.PackageName) ? 1 : 0;
+			NumOnlyByLabel += LabelDeps.Contains(Asset.PackageName) ? 1 : 0;
 		}
 		if (NumOnlyByLabel == 0) continue;
 
@@ -632,14 +785,28 @@ void UPjcSubsystem::GetClassNamesEditor(TSet<FName>& ClassNames) {
 }
 
 void UPjcSubsystem::GetClassNamesExcluded(TSet<FName>& ClassNames) {
+	TSet<FName> ClassNamesUserExcluded;
+	TSet<FName> ClassNamesUsedClasses;
+	TSet<FName> ClassNamesCinematic;
+	GetClassNamesExcludedBy(ClassNamesUserExcluded, ClassNamesUsedClasses, ClassNamesCinematic);
+
 	ClassNames.Empty();
+	ClassNames.Append(ClassNamesUserExcluded);
+	ClassNames.Append(ClassNamesUsedClasses);
+	ClassNames.Append(ClassNamesCinematic);
+}
+
+void UPjcSubsystem::GetClassNamesExcludedBy(TSet<FName>& OutUserExcluded, TSet<FName>& OutUsedClasses, TSet<FName>& OutCinematic) {
+	OutUserExcluded.Empty();
+	OutUsedClasses.Empty();
+	OutCinematic.Empty();
 
 	// user excluded classes match exactly
 	const UPjcAssetExcludeSettings* AssetExcludeSettings = GetDefault<UPjcAssetExcludeSettings>();
 	for (const auto& ExcludedClass : AssetExcludeSettings->ExcludedClasses) {
 		if (!ExcludedClass.LoadSynchronous() || ExcludedClass.IsNull()) continue;
 
-		ClassNames.Emplace(PjcShim::GetClassName(ExcludedClass.Get()));
+		OutUserExcluded.Emplace(PjcShim::GetClassName(ExcludedClass.Get()));
 	}
 
 	// project used classes match with derived classes
@@ -652,21 +819,83 @@ void UPjcSubsystem::GetClassNamesExcluded(TSet<FName>& ClassNames) {
 		ClassNamesUsedBase.Emplace(PjcShim::GetClassName(UsedClass.Get()));
 	}
 
+	if (ClassNamesUsedBase.Num() > 0) {
+		PjcShim::GetDerivedClassNames(ClassNamesUsedBase, TSet<FName> {}, OutUsedClasses);
+	}
+
 	if (ScanSettings->bCinematicAssetsUsed) {
+		TArray<FName> ClassNamesCinematicBase;
 		for (const auto& ClassPath : UPjcScanSettings::GetCinematicClassPaths()) {
 			// no loading: classes of disabled plugins or other engine versions are just skipped
 			const UClass* CinematicClass = FSoftClassPath {ClassPath}.ResolveClass();
 			if (!CinematicClass) continue;
 
-			ClassNamesUsedBase.Emplace(PjcShim::GetClassName(CinematicClass));
+			ClassNamesCinematicBase.Emplace(PjcShim::GetClassName(CinematicClass));
+		}
+
+		if (ClassNamesCinematicBase.Num() > 0) {
+			PjcShim::GetDerivedClassNames(ClassNamesCinematicBase, TSet<FName> {}, OutCinematic);
+		}
+	}
+}
+
+FString UPjcSubsystem::GetExcludedDetail(
+	const FAssetData& Asset,
+	const TSet<FName>& UserExcluded,
+	const TSet<FName>& UsedClasses,
+	const TSet<FName>& Cinematic
+) {
+	const UPjcAssetExcludeSettings* AssetExcludeSettings = GetDefault<UPjcAssetExcludeSettings>();
+
+	for (const auto& ExcludedAsset : AssetExcludeSettings->ExcludedAssets) {
+		if (ExcludedAsset.ToSoftObjectPath().GetLongPackageName() == Asset.PackageName.ToString()) {
+			return TEXT("Excluded asset");
 		}
 	}
 
-	if (ClassNamesUsedBase.Num() > 0) {
-		TSet<FName> ClassNamesUsed;
-		PjcShim::GetDerivedClassNames(ClassNamesUsedBase, TSet<FName> {}, ClassNamesUsed);
-		ClassNames.Append(ClassNamesUsed);
+	const FString PackagePath = Asset.PackagePath.ToString();
+	for (const auto& ExcludedFolder : AssetExcludeSettings->ExcludedFolders) {
+		if (PackagePath == ExcludedFolder.Path || PackagePath.StartsWith(ExcludedFolder.Path + TEXT("/"))) {
+			return TEXT("In excluded folder ") + ExcludedFolder.Path;
+		}
 	}
+
+	const FName ClassName = PjcShim::GetAssetClassName(Asset);
+	const FName ExactClassName = GetAssetExactClassName(Asset);
+	const auto HasClass = [&](const TSet<FName>& ClassNames) {
+		return ClassNames.Contains(ClassName) || ClassNames.Contains(ExactClassName);
+	};
+
+	if (HasClass(UserExcluded)) return TEXT("Excluded class ") + ExactClassName.ToString();
+	if (HasClass(UsedClasses)) return TEXT("Always used class ") + ExactClassName.ToString();
+	if (HasClass(Cinematic)) return TEXT("Cinematic asset (Cinematic Assets Used setting)");
+
+	return TEXT("Excluded");
+}
+
+FString UPjcSubsystem::GetPrimaryDetail(const FAssetData& Asset) {
+	if (PjcShim::IsAssetManagerValid()) {
+		const FPrimaryAssetId PrimaryAssetId = UAssetManager::Get().GetPrimaryAssetIdForData(Asset);
+		if (PrimaryAssetId.IsValid()) {
+			return PrimaryAssetId.ToString();
+		}
+	}
+
+	return GetAssetExactClassName(Asset).ToString();
+}
+
+FString UPjcSubsystem::GetEngineReferencedDetail(const FAssetData& Asset) {
+	TArray<FName> Refs;
+	GetModuleAssetRegistry().Get().GetReferencers(Asset.PackageName, Refs);
+
+	for (const auto& Ref : Refs) {
+		if (!PathIsInsideProject(Ref.ToString()) || FolderIsExternal(Ref.ToString())) {
+			return Ref.ToString();
+		}
+	}
+
+	// UE4 registry has no dependencies of actor packages, they are read from package files
+	return TEXT("actor placed in a level (one file per actor)");
 }
 
 void UPjcSubsystem::GetFiles(const FString& InSearchPath, const bool bSearchRecursive, TArray<FString>& OutFiles) {
@@ -936,6 +1165,8 @@ bool UPjcSubsystem::DeleteAssetsUnused(const bool bShowSlowTask, const bool bSho
 	// asset delete handlers (e.g. RigVM) create it on first use, building it while assets are half deleted asserts (UE 5.4)
 	FBlueprintActionDatabase::Get();
 
+	LastCleanupKept.Reset();
+
 	constexpr int32 BucketSize = PjcConstants::BucketSize;
 	const TArray<FAssetData> AssetsToDelete = AssetsUnused;
 	TSet<FName> PackagesUnused;
@@ -1027,6 +1258,7 @@ bool UPjcSubsystem::DeleteAssetsUnused(const bool bShowSlowTask, const bool bSho
 		}
 		else {
 			UE_LOG(LogProjectCleaner, Warning, TEXT("Not deleted: %s"), *PjcShim::GetObjectPathString(Asset));
+			LastCleanupKept.Add(Asset.PackageName, TEXT("could not be loaded"));
 		}
 	}
 
@@ -1043,6 +1275,7 @@ bool UPjcSubsystem::DeleteAssetsUnused(const bool bShowSlowTask, const bool bSho
 			*Asset->GetPathName(),
 			Holder ? **Holder : TEXT("by asset that is kept")
 		);
+		LastCleanupKept.Add(Asset->GetOutermost()->GetFName(), Holder ? *Holder : TEXT("referenced by asset that is kept"));
 	}
 	int32 NumAssetsRemaining = 0;
 	for (const auto& Asset : AssetsToDelete) {
@@ -1814,17 +2047,22 @@ void UPjcSubsystem::GetSourceAndConfigFiles(TSet<FString>& Files) {
 	Files.Append(ConfigFiles);
 }
 
-void UPjcSubsystem::GetFolderLabels(const TArray<FAssetData>& AssetsAll, TSet<FAssetData>& AssetsUsed, TSet<FName>& PackagesNotFollowed) {
+void UPjcSubsystem::GetFolderLabels(
+	const TArray<FAssetData>& AssetsAll,
+	const TMap<FName, FPjcAssetUsage>& Usage,
+	TSet<FName>& OutFolderLabels,
+	TMap<FName, FName>& OutLabelAssets
+) {
 	// "Label Assets In My Directory" saves a reference to every asset in label folder. That is a cook rule, not usage:
 	// label stays used, only its explicit assets are followed instead of registry dependencies
 	for (const auto& Asset : AssetsAll) {
 		const UClass* AssetClass = Asset.GetClass();
-		if (!AssetClass || !AssetClass->IsChildOf(UPrimaryAssetLabel::StaticClass()) || !AssetsUsed.Contains(Asset)) continue;
+		if (!AssetClass || !AssetClass->IsChildOf(UPrimaryAssetLabel::StaticClass()) || !Usage.Contains(Asset.PackageName)) continue;
 
 		const UPrimaryAssetLabel* Label = Cast<UPrimaryAssetLabel>(Asset.GetAsset());
 		if (!Label || !Label->bLabelAssetsInMyDirectory || !Label->AssetCollection.CollectionName.IsNone()) continue;
 
-		PackagesNotFollowed.Add(Asset.PackageName);
+		OutFolderLabels.Add(Asset.PackageName);
 
 		TArray<FSoftObjectPath> ExplicitPaths;
 		for (const auto& ExplicitAsset : Label->ExplicitAssets) {
@@ -1835,9 +2073,12 @@ void UPjcSubsystem::GetFolderLabels(const TArray<FAssetData>& AssetsAll, TSet<FA
 		}
 
 		for (const auto& ExplicitPath : ExplicitPaths) {
+			const FName ExplicitPackage {*ExplicitPath.GetLongPackageName()};
 			TArray<FAssetData> ExplicitAssets;
-			GetModuleAssetRegistry().Get().GetAssetsByPackageName(FName {*ExplicitPath.GetLongPackageName()}, ExplicitAssets);
-			AssetsUsed.Append(ExplicitAssets);
+			GetModuleAssetRegistry().Get().GetAssetsByPackageName(ExplicitPackage, ExplicitAssets);
+			if (ExplicitAssets.Num() > 0 && !OutLabelAssets.Contains(ExplicitPackage)) {
+				OutLabelAssets.Add(ExplicitPackage, Asset.PackageName);
+			}
 		}
 	}
 }

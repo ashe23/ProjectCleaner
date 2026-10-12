@@ -5,6 +5,7 @@
 #include "Slate/SPjcTabAssetsIndirect.h"
 #include "Slate/SPjcTabAssetsCorrupted.h"
 #include "Slate/SPjcTabFilesExternal.h"
+#include "Slate/SPjcTabAssetsUsage.h"
 #include "PjcConstants.h"
 #include "PjcSubsystem.h"
 #include "PjcStyles.h"
@@ -63,6 +64,7 @@ void SPjcTabMain::Construct(
 									->AddTab(PjcConstants::TabAssetsIndirect, ETabState::OpenedTab)
 									->AddTab(PjcConstants::TabAssetsCorrupted, ETabState::OpenedTab)
 									->AddTab(PjcConstants::TabFilesExternal, ETabState::OpenedTab)
+									->AddTab(PjcConstants::TabAssetsUsage, ETabState::OpenedTab)
 									->SetForegroundTab(PjcConstants::TabAssetsUnused)
 									->SetSizeCoefficient(1.0f)
 							)
@@ -90,6 +92,12 @@ void SPjcTabMain::Construct(
 		.SetTooltipText(FText::FromString(TEXT("Open External Files Tab")))
 		.SetDisplayName(FText::FromString(TEXT("Files External")))
 		.SetIcon(FPjcStyles::GetIcon("ProjectCleaner.Icon.File16"))
+		.SetGroup(AppMenuGroup);
+
+	TabManager->RegisterTabSpawner(PjcConstants::TabAssetsUsage, FOnSpawnTab::CreateRaw(this, &SPjcTabMain::OnTabAssetsUsageSpawn))
+		.SetTooltipText(FText::FromString(TEXT("Open Asset Usage Tab (experimental): why each asset is used or unused")))
+		.SetDisplayName(FText::FromString(TEXT("Asset Usage")))
+		.SetIcon(FPjcStyles::GetIcon("ProjectCleaner.Icon.Graph16"))
 		.SetGroup(AppMenuGroup);
 
 	FMenuBarBuilder MenuBarBuilder = FMenuBarBuilder(Cmds);
@@ -166,6 +174,7 @@ SPjcTabMain::~SPjcTabMain() {
 	FGlobalTabmanager::Get()->UnregisterTabSpawner(PjcConstants::TabAssetsIndirect);
 	FGlobalTabmanager::Get()->UnregisterTabSpawner(PjcConstants::TabAssetsCorrupted);
 	FGlobalTabmanager::Get()->UnregisterTabSpawner(PjcConstants::TabFilesExternal);
+	FGlobalTabmanager::Get()->UnregisterTabSpawner(PjcConstants::TabAssetsUsage);
 }
 
 int32 SPjcTabMain::GetWidgetIndex() const {
@@ -213,6 +222,14 @@ TSharedRef<SDockTab> SPjcTabMain::OnTabFilesExternalSpawn(const FSpawnTabArgs& A
 	const auto Frontend = SNew(SDockTab).TabRole(PanelTab).Label(FText::FromString(TEXT("Files External")))[SNew(SPjcTabFilesExternal)];
 
 	Frontend->SetTabIcon(FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.File16"));
+
+	return Frontend;
+}
+
+TSharedRef<SDockTab> SPjcTabMain::OnTabAssetsUsageSpawn(const FSpawnTabArgs& Args) const {
+	const auto Frontend = SNew(SDockTab).TabRole(PanelTab).Label(FText::FromString(TEXT("Asset Usage")))[SNew(SPjcTabAssetsUsage)];
+
+	Frontend->SetTabIcon(FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.Graph16"));
 
 	return Frontend;
 }

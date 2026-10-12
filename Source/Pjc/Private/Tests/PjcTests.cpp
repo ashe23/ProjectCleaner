@@ -14,8 +14,10 @@
 #include "Slate/SPjcTabAssetsCorrupted.h"
 #include "Slate/SPjcTabAssetsIndirect.h"
 #include "Slate/SPjcTabAssetsUnused.h"
+#include "Slate/SPjcTabAssetsUsage.h"
 #include "Slate/SPjcTabFilesExternal.h"
 #include "Misc/FileHelper.h"
+#include "Misc/PackageName.h"
 #include "Misc/Paths.h"
 
 namespace
@@ -128,6 +130,10 @@ namespace
 			Settings->UsedClasses = UsedClasses;
 		}
 	};
+
+	FName PackageOf(const FPjcTestFixture& Fixture, const TCHAR* Name) {
+		return FName {*FPackageName::ObjectPathToPackageName(Fixture.ObjectPath(Name))};
+	}
 
 	TSet<FString> UnusedFixtureAssets() {
 		TArray<FAssetData> Assets;
@@ -437,6 +443,91 @@ bool FPjcTestScanSettings::RunTest(const FString& Parameters) {
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPjcTestScanUsage, "ProjectCleaner.Scan.Usage", PJC_TEST_FLAGS)
+
+bool FPjcTestScanUsage::RunTest(const FString& Parameters) {
+	if (!FPjcTestFixture::IsTestHost()) {
+		AddInfo(TEXT("Skipped, fixture tests run only in test host projects"));
+		return true;
+	}
+
+	FPjcScopedScanSettings ScopedSettings {false};
+
+	FPjcTestFixture Fixture;
+	if (!Fixture.Build(*this)) return false;
+
+	TArray<FAssetData> AssetsAll;
+	TArray<FAssetData> AssetsUsed;
+	TMap<FName, FPjcAssetUsage> Usage;
+	UPjcSubsystem::GetAssetsAll(AssetsAll);
+	UPjcSubsystem::GetAssetsUsed(AssetsUsed, false);
+	UPjcSubsystem::GetAssetsUsage(Usage, false);
+
+	// same verdict as used list, and every used asset leads to an asset used for its own reason
+	TestEqual(TEXT("usage of every scanned asset"), Usage.Num(), AssetsAll.Num());
+	const TSet<FAssetData> UsedSet {AssetsUsed};
+	for (const auto& Asset : AssetsAll) {
+		const FPjcAssetUsage* AssetUsage = Usage.Find(Asset.PackageName);
+		if (!TestNotNull(*FString::Printf(TEXT("usage of %s"), *Asset.PackageName.ToString()), AssetUsage)) continue;
+
+		TestEqual(*FString::Printf(TEXT("%s used"), *Asset.PackageName.ToString()), AssetUsage->bUsed, UsedSet.Contains(Asset));
+		if (!AssetUsage->bUsed || !IsFixturePath(Asset.PackageName.ToString())) continue;
+
+		const FPjcAssetUsage* Step = AssetUsage;
+		int32 NumSteps = 0;
+		while (Step && !Step->Parent.IsNone() && NumSteps < 32) {
+			Step = Usage.Find(Step->Parent);
+			++NumSteps;
+		}
+		const bool bReachesRoot = Step && Step->Parent.IsNone() && Step->Reason != EPjcUsageReason::None
+			&& Step->Reason != EPjcUsageReason::Dependency && Step->Reason != EPjcUsageReason::FolderLabel;
+		TestTrue(*FString::Printf(TEXT("%s chain reaches asset used for its own reason"), *Asset.PackageName.ToString()), bReachesRoot);
+	}
+
+	const auto TestReason = [&](const TCHAR* Name, const EPjcUsageReason Reason, const TCHAR* Parent, const TCHAR* DetailPart) {
+		const FPjcAssetUsage* AssetUsage = Usage.Find(PackageOf(Fixture, Name));
+		if (!TestNotNull(*FString::Printf(TEXT("usage of %s"), Name), AssetUsage)) return;
+
+		TestEqual(*FString::Printf(TEXT("%s reason"), Name), static_cast<int32>(AssetUsage->Reason), static_cast<int32>(Reason));
+		TestEqual(*FString::Printf(TEXT("%s parent"), Name), AssetUsage->Parent, Parent ? PackageOf(Fixture, Parent) : FName {NAME_None});
+		if (DetailPart) {
+			TestTrue(
+				*FString::Printf(TEXT("%s detail '%s' has '%s'"), Name, *AssetUsage->Detail, DetailPart), AssetUsage->Detail.Contains(DetailPart)
+			);
+		}
+	};
+
+	TestReason(TEXT("PAL_Root"), EPjcUsageReason::Primary, nullptr, nullptr);
+	TestReason(TEXT("OL_Chain"), EPjcUsageReason::Dependency, TEXT("PAL_Root"), nullptr);
+	TestReason(TEXT("C_ChainLeaf"), EPjcUsageReason::Dependency, TEXT("OL_Chain"), nullptr);
+	TestReason(TEXT("BP_Primary"), EPjcUsageReason::Primary, nullptr, nullptr);
+	TestReason(TEXT("C_Indirect"), EPjcUsageReason::Indirect, nullptr, TEXT("PjcTests.ini, line 2"));
+	TestReason(TEXT("C_RefByPlugin"), EPjcUsageReason::EngineReferenced, nullptr, TEXT("/PjcTestContent/"));
+	TestReason(TEXT("EUB_Tool"), EPjcUsageReason::Editor, nullptr, nullptr);
+	TestReason(TEXT("C_ByAsset"), EPjcUsageReason::Excluded, nullptr, TEXT("Excluded asset"));
+	TestReason(TEXT("C_ByFolder"), EPjcUsageReason::Excluded, nullptr, TEXT("In excluded folder"));
+	TestReason(TEXT("CLC_ByClass"), EPjcUsageReason::Excluded, nullptr, TEXT("Excluded class"));
+	TestReason(TEXT("LS_Cinematic"), EPjcUsageReason::Excluded, nullptr, TEXT("Cinematic"));
+	TestReason(TEXT("C_Labeled"), EPjcUsageReason::FolderLabel, TEXT("PAL_Folder"), nullptr);
+	TestReason(TEXT("C_UnusedLeaf"), EPjcUsageReason::None, nullptr, nullptr);
+
+	const FPjcAssetUsage* Labeled = Usage.Find(PackageOf(Fixture, TEXT("C_Labeled")));
+	if (TestNotNull(TEXT("usage of C_Labeled"), Labeled)) {
+		TestTrue(TEXT("C_Labeled kept only by folder label"), Labeled->bFolderLabelOnly);
+		TestTrue(TEXT("C_Labeled used while folder labels are used"), Labeled->bUsed);
+	}
+
+	ScopedSettings.Settings->bFolderLabelsUsed = false;
+	UPjcSubsystem::GetAssetsUsage(Usage, false);
+	Labeled = Usage.Find(PackageOf(Fixture, TEXT("C_Labeled")));
+	if (TestNotNull(TEXT("usage of C_Labeled, folder labels off"), Labeled)) {
+		TestFalse(TEXT("C_Labeled unused while folder labels are not used"), Labeled->bUsed);
+		TestTrue(TEXT("C_Labeled still tells its folder label"), Labeled->bFolderLabelOnly && Labeled->Reason == EPjcUsageReason::FolderLabel);
+	}
+
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPjcTestUiTabs, "ProjectCleaner.UI.Tabs", PJC_TEST_FLAGS)
 
 bool FPjcTestUiTabs::RunTest(const FString& Parameters) {
@@ -454,11 +545,20 @@ bool FPjcTestUiTabs::RunTest(const FString& Parameters) {
 	const bool bScanOnOpen = EditorSettings->bScanOnOpen;
 	EditorSettings->bScanOnOpen = true;
 
+	const TSharedRef<SPjcTabAssetsUsage> TabUsage = SNew(SPjcTabAssetsUsage);
 	const TSharedRef<SWidget> Tabs[]
-		= {SNew(SPjcTabAssetsUnused), SNew(SPjcTabAssetsIndirect), SNew(SPjcTabAssetsCorrupted), SNew(SPjcTabFilesExternal)};
+		= {SNew(SPjcTabAssetsUnused), SNew(SPjcTabAssetsIndirect), SNew(SPjcTabAssetsCorrupted), SNew(SPjcTabFilesExternal), TabUsage};
 	for (const auto& Tab : Tabs) {
 		TestTrue(FString::Printf(TEXT("%s has content"), *Tab->GetTypeAsString()), Tab->GetChildren()->Num() > 0);
 	}
+
+	// used through chain, unused, kept by folder label and package outside scan
+	if (FPjcTestFixture::IsTestHost()) {
+		for (const TCHAR* Name : {TEXT("C_ChainLeaf"), TEXT("C_UnusedLeaf"), TEXT("C_Labeled"), TEXT("C_RefByPlugin")}) {
+			TabUsage->Inspect(PackageOf(Fixture, Name));
+		}
+	}
+	TabUsage->Inspect(FName {TEXT("/Engine/EngineMaterials/WorldGridMaterial")});
 
 	EditorSettings->bScanOnOpen = bScanOnOpen;
 	return true;

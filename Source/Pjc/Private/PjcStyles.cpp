@@ -128,6 +128,7 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create() {
 	Style->Set("ProjectCleaner.Icon.File16", new IMAGE_BRUSH(TEXT("IconFile16"), FVector2D {16.0f, 16.0f}));
 	Style->Set("ProjectCleaner.Icon.Stat16", new IMAGE_BRUSH(TEXT("IconStat16"), FVector2D {16.0f, 16.0f}));
 	Style->Set("ProjectCleaner.Icon.Arrows16", new IMAGE_BRUSH(TEXT("IconArrows16"), FVector2D {16.0f, 16.0f}));
+	Style->Set("ProjectCleaner.Icon.Graph16", new IMAGE_BRUSH(TEXT("IconGraph20"), FVector2D {16.0f, 16.0f}));
 	Style->Set("ProjectCleaner.Icon.CorruptedFile16", new IMAGE_BRUSH(TEXT("IconCorruptedFile20"), FVector2D {16.0f, 16.0f}));
 
 	// pallet colors
