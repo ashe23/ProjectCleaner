@@ -431,6 +431,21 @@ HOST_TARGET_PATCHES = {(5, minor): ["bOverrideBuildEnvironment = true;", 'Global
 HOST_TARGET_PATCHES[(5, 0)] = ["bOverrideBuildEnvironment = true;", 'GlobalDefinitions.Add("__has_feature(x)=0");']
 
 
+def msvc_workaround_env(engine, root):
+    """
+    Same fix as HOST_TARGET_PATCHES for builds that do not use our host targets (RunUAT BuildPlugin makes its own
+    host project). MSVC prepends the CL environment variable to every cl.exe command line.
+    """
+    if not IS_WIN or (engine.major, engine.minor) not in HOST_TARGET_PATCHES:
+        return {}
+    if engine.minor >= 1:
+        return {"CL": "/DPLATFORM_HAS_ASAN_INCLUDE=0"}
+    # 5.0: /D cannot define function like macros, force include a header instead
+    header = os.path.join(root, "_toolchain", "pjc_has_feature.h")
+    write_if_changed(header, "#pragma once\n#ifndef __has_feature\n#define __has_feature(x) 0\n#endif\n")
+    return {"CL": "/FI" + header}
+
+
 def _patch_target(engine, content):
     lines = HOST_TARGET_PATCHES.get(engine.key) if IS_WIN else None
     if not lines:
@@ -597,26 +612,29 @@ def child_env(engine=None):
     return env
 
 
-def run_logged(cmd, log_path, timeout=None, cwd=None, engine=None):
+def run_logged(cmd, log_path, timeout=None, cwd=None, engine=None, extra_env=None):
     """Runs a command with all output written to a log file. Returns exit code (or None on timeout)."""
+    env = child_env(engine)
+    env.update(extra_env or {})
     with open(log_path, "w", encoding="utf-8", errors="replace") as f:
-        f.write("$ " + subprocess.list2cmdline(cmd) + "\n\n")
+        f.write("$ " + subprocess.list2cmdline(cmd) + "\n")
+        for key, value in sorted((extra_env or {}).items()):
+            f.write("$ env {}={}\n".format(key, value))
+        f.write("\n")
         f.flush()
         try:
-            result = subprocess.run(
-                cmd, stdout=f, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, timeout=timeout, cwd=cwd, env=child_env(engine)
-            )
+            result = subprocess.run(cmd, stdout=f, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, timeout=timeout, cwd=cwd, env=env)
             return result.returncode
         except subprocess.TimeoutExpired:
             f.write("\n\nTIMEOUT after {} sec\n".format(timeout))
             return None
 
 
-def run_ubt_logged(cmd, log, engine):
+def run_ubt_logged(cmd, log, engine, extra_env=None):
     """UBT/UAT run. Engine versions share some per-user UBT files (e.g. MarketplaceRules.dll), retry on collision."""
     code = None
     for attempt in range(3):
-        code = run_logged(cmd, log, timeout=3600, engine=engine)
+        code = run_logged(cmd, log, timeout=3600, engine=engine, extra_env=extra_env)
         if code == 0 or not log_lines(log, r"being used by another process", 1):
             break
         time.sleep(10 + attempt * 10)
@@ -950,7 +968,7 @@ def cmd_package(args, hosts, cfg):
             "-Rocket",
         ]
         log = host.log("package")
-        code = run_ubt_logged(cmd, log, host.engine)
+        code = run_ubt_logged(cmd, log, host.engine, msvc_workaround_env(host.engine, os.path.dirname(host.dir)))
         # some UAT batch files exit 0 even when AutomationTool could not start, check the result too
         binaries = glob.glob(os.path.join(out, "Binaries", host.engine.platform, "*Pjc*"))
         if code == 0 and binaries:
