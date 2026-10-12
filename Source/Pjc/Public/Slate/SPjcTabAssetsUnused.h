@@ -19,15 +19,24 @@ class FPjcFilterAssetsExcluded;
 
 class SPjcTabAssetsUnused : public SCompoundWidget
 {
-public:
+  public:
+
 	SLATE_BEGIN_ARGS(SPjcTabAssetsUnused) {}
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
 	virtual ~SPjcTabAssetsUnused() override;
 
-private:
+  private:
+
+	// content browser settings changed while tab is open, restored on close
 	bool bInitialShowPluginFolders = false;
+	bool bInitialShowDevelopersFolder = false;
+	bool bInitialShowEngineFolder = false;
+	bool bInitialShowCppFolders = false;
+	bool bInitialShowAllFolder = false;
+	bool bInitialOrganizeFolders = false;
+
   private:
 
 	TSharedRef<SWidget> CreateToolbarMain() const;
@@ -52,6 +61,7 @@ private:
 	void OnAssetsIncludeByClass();
 	void OnAssetsDelete();
 	void ScanProject();
+	bool FixRedirectorsBeforeScan();
 	void UpdateStats();
 	void UpdateTreeView();
 	void UpdateContentBrowser();

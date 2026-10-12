@@ -8,6 +8,7 @@
 #include "PjcTypes.h"
 #include "PjcStyles.h"
 #include "PjcShim.h"
+#include "PjcSettings.h"
 #include "PjcSubsystem.h"
 #include "PjcConstants.h"
 #include "PjcFrontendFilters.h"
@@ -29,12 +30,19 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs) {
 	UContentBrowserSettings* ContentBrowserSettings = GetMutableDefault<UContentBrowserSettings>();
 	if (ContentBrowserSettings) {
 		bInitialShowPluginFolders = ContentBrowserSettings->GetDisplayPluginFolders();
+		bInitialShowDevelopersFolder = ContentBrowserSettings->GetDisplayDevelopersFolder();
+		bInitialShowEngineFolder = ContentBrowserSettings->GetDisplayEngineFolder();
+		bInitialShowCppFolders = ContentBrowserSettings->GetDisplayCppFolders();
+#if ENGINE_MAJOR_VERSION >= 5
+		bInitialShowAllFolder = ContentBrowserSettings->bShowAllFolder;
+		bInitialOrganizeFolders = ContentBrowserSettings->bOrganizeFolders;
+#endif
 
 		ContentBrowserSettings->SetDisplayDevelopersFolder(true);
 		ContentBrowserSettings->SetDisplayEngineFolder(false);
 		ContentBrowserSettings->SetDisplayCppFolders(false);
 		ContentBrowserSettings->SetDisplayPluginFolders(true);
-#if ENGINE_MAJOR_VERSION == 5
+#if ENGINE_MAJOR_VERSION >= 5
 		ContentBrowserSettings->bShowAllFolder = false;
 		ContentBrowserSettings->bOrganizeFolders = false;
 #endif
@@ -218,7 +226,10 @@ void SPjcTabAssetsUnused::Construct(const FArguments& InArgs) {
 	UpdateStats();
 	UpdateTreeView();
 	UpdateContentBrowser();
-	ScanProject();
+
+	if (GetDefault<UPjcEditorSettings>()->bScanOnOpen) {
+		ScanProject();
+	}
 
 	// clang-format off
 	ChildSlot
@@ -469,6 +480,13 @@ SPjcTabAssetsUnused::~SPjcTabAssetsUnused() {
 	UContentBrowserSettings* ContentBrowserSettings = GetMutableDefault<UContentBrowserSettings>();
 	if (ContentBrowserSettings) {
 		ContentBrowserSettings->SetDisplayPluginFolders(bInitialShowPluginFolders);
+		ContentBrowserSettings->SetDisplayDevelopersFolder(bInitialShowDevelopersFolder);
+		ContentBrowserSettings->SetDisplayEngineFolder(bInitialShowEngineFolder);
+		ContentBrowserSettings->SetDisplayCppFolders(bInitialShowCppFolders);
+#if ENGINE_MAJOR_VERSION >= 5
+		ContentBrowserSettings->bShowAllFolder = bInitialShowAllFolder;
+		ContentBrowserSettings->bOrganizeFolders = bInitialOrganizeFolders;
+#endif
 		ContentBrowserSettings->PostEditChange();
 	}
 }
@@ -827,30 +845,7 @@ void SPjcTabAssetsUnused::ScanProject() {
 		return;
 	}
 
-	if (GEditor && !GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->CloseAllAssetEditors()) {
-		UPjcSubsystem::ShowNotificationWithOutputLog(
-			TEXT("Failed to scan project, because not all asset editors are closed."), SNotificationItem::CS_Fail, 5.0f
-		);
-		return;
-	}
-
-	TArray<FAssetData> Redirectors;
-	UPjcSubsystem::GetProjectRedirectors(Redirectors);
-	UPjcSubsystem::FixProjectRedirectors(Redirectors, true);
-
-	if (UPjcSubsystem::ProjectHasRedirectors()) {
-		UPjcSubsystem::ShowNotificationWithOutputLog(
-			TEXT("Failed to scan project, because not all redirectors are fixed."), SNotificationItem::CS_Fail, 5.0f
-		);
-
-		UE_LOG(LogProjectCleaner, Warning, TEXT("Failed to fix following redirectors: "));
-
-		for (const auto& Redirector : Redirectors) {
-			UE_LOG(LogProjectCleaner, Warning, TEXT("	%s"), *Redirector.ToSoftObjectPath().ToString());
-		}
-
-		return;
-	}
+	if (!FixRedirectorsBeforeScan()) return;
 
 	if (!FEditorFileUtils::SaveDirtyPackages(true, true, true, false, false, false)) {
 		UPjcSubsystem::ShowNotificationWithOutputLog(
@@ -870,6 +865,9 @@ void SPjcTabAssetsUnused::ScanProject() {
 
 	SlowTaskMain.EnterProgressFrame(1.0f);
 
+	// every query below shares same intermediate results (indirect search, references), compute them once
+	FPjcScanCacheScope ScanCacheScope;
+
 	TArray<FString> FoldersTotal;
 	TArray<FString> FoldersEmpty;
 	TArray<FPjcAssetIndirectInfo> AssetIndirectInfos;
@@ -882,7 +880,11 @@ void SPjcTabAssetsUnused::ScanProject() {
 	UPjcSubsystem::GetAssetsEditor(AssetsEditor);
 	UPjcSubsystem::GetAssetsExcluded(AssetsExcluded);
 	UPjcSubsystem::GetAssetsEngineReferenced(AssetsEngineReferenced);
-	UPjcSubsystem::GetFolders(FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir()), true, FoldersTotal);
+	for (const auto& ContentDir : UPjcSubsystem::GetProjectContentDirs()) {
+		TArray<FString> RootFolders;
+		UPjcSubsystem::GetFolders(ContentDir, true, RootFolders);
+		FoldersTotal.Append(RootFolders);
+	}
 	UPjcSubsystem::GetFoldersEmpty(FoldersEmpty);
 
 	FilterUsed->UpdateData();
@@ -942,6 +944,53 @@ void SPjcTabAssetsUnused::ScanProject() {
 	UpdateStats();
 	UpdateTreeView();
 	UpdateContentBrowser();
+}
+
+bool SPjcTabAssetsUnused::FixRedirectorsBeforeScan() {
+	TArray<FAssetData> Redirectors;
+	UPjcSubsystem::GetProjectRedirectors(Redirectors);
+	if (Redirectors.Num() == 0) return true;
+
+	// fixing resaves every referencing asset (source control checkouts), so it should never happen silently (#63)
+	if (GetDefault<UPjcEditorSettings>()->bConfirmRedirectorsFix) {
+		const FText Title = FText::FromString(TEXT("Fix Redirectors"));
+		const FText Context = FText::FromString(
+			FString::Printf(
+				TEXT("Project contains %d redirector(s). They must be fixed before scanning.\n\n")
+					TEXT("Fixing resaves all assets that reference them, with source control those assets will be checked out.\n\n")
+						TEXT("Fix redirectors now?"),
+				Redirectors.Num()
+			)
+		);
+
+		if (PjcShim::ShowDialog(Title, Context, EAppMsgType::YesNo) != EAppReturnType::Yes) {
+			UPjcSubsystem::ShowNotification(TEXT("Scan cancelled. Project contains redirectors."), SNotificationItem::CS_None, 5.0f);
+			return false;
+		}
+	}
+
+	if (GEditor && !GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->CloseAllAssetEditors()) {
+		UPjcSubsystem::ShowNotificationWithOutputLog(
+			TEXT("Failed to fix redirectors, because not all asset editors are closed."), SNotificationItem::CS_Fail, 5.0f
+		);
+		return false;
+	}
+
+	UPjcSubsystem::FixProjectRedirectors(Redirectors, true);
+
+	UPjcSubsystem::GetProjectRedirectors(Redirectors);
+	if (Redirectors.Num() == 0) return true;
+
+	UPjcSubsystem::ShowNotificationWithOutputLog(
+		TEXT("Failed to scan project, because not all redirectors are fixed."), SNotificationItem::CS_Fail, 5.0f
+	);
+
+	UE_LOG(LogProjectCleaner, Warning, TEXT("Failed to fix following redirectors: "));
+	for (const auto& Redirector : Redirectors) {
+		UE_LOG(LogProjectCleaner, Warning, TEXT("	%s"), *Redirector.ToSoftObjectPath().ToString());
+	}
+
+	return false;
 }
 
 void SPjcTabAssetsUnused::UpdateStats() {
@@ -1011,7 +1060,7 @@ void SPjcTabAssetsUnused::UpdateStats() {
 	  FText::FromString(TEXT("EngineReferenced")),
 	  FText::AsNumber(NumAssetsEngineReferenced),
 	  FText::AsMemory(SizeAssetsEngineReferenced, IEC),
-	  FText::FromString(TEXT("Assets that have referencers outside project (e.g. Engine).")),
+	  FText::FromString(TEXT("Assets that have referencers outside scanned content (e.g. Engine or plugins that are not scanned).")),
 	  FText::FromString(TEXT("Total number of EngineReferenced assets")),
 	  FText::FromString(TEXT("Total size of EngineReferenced assets")),
 	  FLinearColor::White,
@@ -1022,7 +1071,7 @@ void SPjcTabAssetsUnused::UpdateStats() {
 	  FText::FromString(TEXT("Excluded")),
 	  FText::AsNumber(NumAssetsExcluded),
 	  FText::AsMemory(SizeAssetsExcluded, IEC),
-	  FText::FromString(TEXT("Excluded Assets")),
+	  FText::FromString(TEXT("Assets excluded by settings: excluded folders, classes and assets, cinematic and used classes from Project Settings.")),
 	  FText::FromString(TEXT("Total number of Excluded assets")),
 	  FText::FromString(TEXT("Total size of Excluded assets")),
 	  NumAssetsExcluded > 0 ? ColorYellow : FLinearColor::White,
