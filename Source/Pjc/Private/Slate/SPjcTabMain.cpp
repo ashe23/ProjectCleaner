@@ -13,6 +13,14 @@
 // Engine Headers
 #include "ISettingsModule.h"
 #include "Widgets/Layout/SWidgetSwitcher.h"
+#include "Widgets/Text/STextBlock.h"
+#include "Widgets/Images/SImage.h"
+#include "Widgets/Layout/SBox.h"
+#include "Widgets/SBoxPanel.h"
+#include "Widgets/Docking/SDockTab.h"
+#include "Framework/MultiBox/MultiBoxBuilder.h"
+#include "Framework/Docking/TabManager.h"
+#include "HAL/PlatformProcess.h"
 
 void SPjcTabMain::Construct(
 	const FArguments& InArgs,

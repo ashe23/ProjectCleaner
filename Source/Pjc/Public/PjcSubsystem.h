@@ -11,6 +11,8 @@
 #include "PjcTypes.h"
 #include "PjcSubsystem.generated.h"
 
+class FPropertyEditorModule;
+
 /**
  * While alive, expensive asset queries (all, used, unused, indirect, excluded, externally referenced) are computed
  * once and reused. Use it around a batch of read only queries, never across deleting or creating assets.

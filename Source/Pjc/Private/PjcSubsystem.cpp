@@ -11,6 +11,7 @@
 #include "EditorUtilityWidget.h"
 #include "EditorUtilityWidgetBlueprint.h"
 #include "FileHelpers.h"
+#include "HAL/PlatformFileManager.h"
 #include "ObjectTools.h"
 #include "ShaderCompiler.h"
 #include "Misc/ScopeExit.h"
@@ -21,6 +22,16 @@
 #include "Misc/FileHelper.h"
 #include "Interfaces/IPluginManager.h"
 #include "Misc/ScopedSlowTask.h"
+#include "Editor.h"
+#include "HAL/FileManager.h"
+#include "Misc/Paths.h"
+#include "Widgets/Notifications/SNotificationList.h"
+#include "Framework/Docking/TabManager.h"
+#include "HAL/PlatformProcess.h"
+#include "Subsystems/AssetEditorSubsystem.h"
+#include "AssetToolsModule.h"
+#include "ContentBrowserModule.h"
+#include "PropertyEditorModule.h"
 
 namespace
 {

@@ -11,6 +11,9 @@
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SSeparator.h"
 #include "Widgets/Layout/SWidgetSwitcher.h"
+#include "Widgets/Text/STextBlock.h"
+#include "Widgets/SBoxPanel.h"
+#include "Framework/MultiBox/MultiBoxBuilder.h"
 
 void SPjcTabAssetsIndirect::Construct(const FArguments& InArgs) {
 	Cmds = MakeShareable(new FUICommandList);

@@ -5,6 +5,14 @@
 #include "CoreMinimal.h"
 #include "ContentBrowserDelegates.h"
 #include "Widgets/SCompoundWidget.h"
+#include "AssetRegistry/ARFilter.h"
+#include "AssetRegistry/AssetData.h"
+#include "Framework/Commands/UICommandList.h"
+#include "Widgets/Views/SHeaderRow.h"
+#include "Widgets/Views/SListView.h"
+#include "Widgets/Views/STableRow.h"
+#include "Widgets/Views/STreeView.h"
+#include "Widgets/Input/SComboButton.h"
 
 struct FPjcTreeItem;
 struct FPjcStatItem;

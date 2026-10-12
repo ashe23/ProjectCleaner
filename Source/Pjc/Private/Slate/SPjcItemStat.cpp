@@ -3,6 +3,8 @@
 #include "Slate/SPjcItemStat.h"
 #include "PjcStyles.h"
 #include "PjcTypes.h"
+#include "Widgets/Text/STextBlock.h"
+#include "Widgets/SBoxPanel.h"
 
 void SPjcItemStat::Construct(const FArguments& InArgs, const TSharedRef<STableViewBase>& InTable) {
 	Item = InArgs._Item;

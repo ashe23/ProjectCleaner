@@ -12,6 +12,17 @@
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SSeparator.h"
 #include "Widgets/Layout/SWidgetSwitcher.h"
+#include "Editor.h"
+#include "Widgets/Text/STextBlock.h"
+#include "Widgets/Images/SImage.h"
+#include "Widgets/SBoxPanel.h"
+#include "Widgets/Input/SComboButton.h"
+#include "Widgets/Layout/SSplitter.h"
+#include "Framework/MultiBox/MultiBoxBuilder.h"
+#include "HAL/FileManager.h"
+#include "Misc/Paths.h"
+#include "PropertyEditorModule.h"
+#include "IDetailsView.h"
 
 void SPjcTabFilesExternal::Construct(const FArguments& InArgs) {
 	SubsystemPtr = GEditor->GetEditorSubsystem<UPjcSubsystem>();

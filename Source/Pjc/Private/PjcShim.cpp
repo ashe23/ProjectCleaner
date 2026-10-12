@@ -5,16 +5,14 @@
 #include "PjcSettings.h"
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "AssetRegistry/ARFilter.h"
-#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1
 #include "AssetRegistry/AssetData.h"
-#else
-#include "AssetData.h"
-#endif
 #include "Framework/Docking/TabManager.h"
 #include "Framework/MultiBox/MultiBox.h"
 #include "Engine/AssetManager.h"
 #include "Misc/MessageDialog.h"
 #include "AssetViewUtils.h"
+#include "Editor.h"
+#include "Subsystems/AssetEditorSubsystem.h"
 
 namespace PjcShim
 {

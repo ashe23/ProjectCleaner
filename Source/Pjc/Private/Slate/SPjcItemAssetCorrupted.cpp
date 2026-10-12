@@ -5,6 +5,8 @@
 #include "PjcSubsystem.h"
 // Engine Headers
 #include "Widgets/Input/SHyperlink.h"
+#include "Widgets/Text/STextBlock.h"
+#include "Widgets/SBoxPanel.h"
 
 void SPjcItemAssetCorrupted::Construct(const FArguments& InArgs, const TSharedRef<STableViewBase>& InTable) {
 	Item = InArgs._Item;

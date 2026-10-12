@@ -5,6 +5,10 @@
 #include "PjcTypes.h"
 // Engine Headers
 #include "Widgets/Input/SHyperlink.h"
+#include "Widgets/Text/STextBlock.h"
+#include "Widgets/Layout/SBox.h"
+#include "Widgets/SBoxPanel.h"
+#include "AssetThumbnail.h"
 
 void SPjcItemAssetIndirect::Construct(const FArguments& InArgs, const TSharedRef<STableViewBase>& InTable) {
 	Item = InArgs._Item;

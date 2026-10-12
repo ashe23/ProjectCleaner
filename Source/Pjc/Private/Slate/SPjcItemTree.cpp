@@ -6,6 +6,10 @@
 #include "PjcTypes.h"
 // Engine Headers
 #include "Widgets/Notifications/SProgressBar.h"
+#include "Widgets/Text/STextBlock.h"
+#include "Widgets/Images/SImage.h"
+#include "Widgets/SBoxPanel.h"
+#include "Widgets/SOverlay.h"
 
 void SPjcItemTree::Construct(const FArguments& InArgs, const TSharedRef<STableViewBase>& InTable) {
 	Item = InArgs._Item;

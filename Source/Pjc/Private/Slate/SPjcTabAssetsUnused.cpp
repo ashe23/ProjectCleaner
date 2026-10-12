@@ -22,6 +22,18 @@
 #include "Widgets/Input/SSearchBox.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SSeparator.h"
+#include "Editor.h"
+#include "Widgets/Text/STextBlock.h"
+#include "Widgets/Images/SImage.h"
+#include "Widgets/Layout/SBox.h"
+#include "Widgets/SBoxPanel.h"
+#include "Widgets/Input/SComboButton.h"
+#include "Widgets/Layout/SSplitter.h"
+#include "Framework/MultiBox/MultiBoxBuilder.h"
+#include "Misc/Paths.h"
+#include "Subsystems/AssetEditorSubsystem.h"
+#include "PropertyEditorModule.h"
+#include "IDetailsView.h"
 
 void SPjcTabAssetsUnused::Construct(const FArguments& InArgs) {
 	SubsystemPtr = GEditor->GetEditorSubsystem<UPjcSubsystem>();

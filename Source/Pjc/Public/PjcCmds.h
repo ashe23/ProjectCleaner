@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Framework/Commands/Commands.h"
 
 class FPjcCmds final : public TCommands<FPjcCmds>
 {

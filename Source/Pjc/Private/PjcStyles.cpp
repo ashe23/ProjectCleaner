@@ -4,6 +4,7 @@
 #include "PjcConstants.h"
 // Engine Headers
 #include "Styling/SlateStyleRegistry.h"
+#include "Framework/Application/SlateApplication.h"
 #include "Interfaces/IPluginManager.h"
 
 TSharedPtr<FSlateStyleSet> FPjcStyles::StyleInstance = nullptr;

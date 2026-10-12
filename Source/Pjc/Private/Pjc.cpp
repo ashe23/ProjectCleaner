@@ -10,6 +10,7 @@
 // Engine Headers
 #include "ToolMenus.h"
 #include "Widgets/Docking/SDockTab.h"
+#include "Framework/Docking/TabManager.h"
 
 DEFINE_LOG_CATEGORY(LogProjectCleaner);
 

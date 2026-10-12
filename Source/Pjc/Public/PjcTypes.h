@@ -3,6 +3,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "AssetRegistry/AssetData.h"
+#include "Engine/EngineTypes.h"
+#include "Layout/Margin.h"
 #include "PjcTypes.generated.h"
 
 UCLASS(Config = EditorPerProjectUserSettings)
