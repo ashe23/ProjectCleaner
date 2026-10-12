@@ -581,6 +581,9 @@ def bundled_dotnet(engine):
 
 def child_env(engine=None):
     env = os.environ.copy()
+    # set by some shells (e.g. Git Bash); UE4 RunUAT.bat starts AutomationTool.exe from current directory
+    for key in [k for k in env if k.upper() == "NODEFAULTCURRENTDIRECTORYINEXEPATH"]:
+        del env[key]
     # Same as engine GetDotnetPath script. UE 5.1 installed builds skip it and run UBT on whatever system dotnet
     # exists, which fails on machines with only .NET 8+ (BinaryFormatter removed). Use the engine own runtime.
     dotnet = bundled_dotnet(engine)
