@@ -128,7 +128,7 @@ class UPjcEditorSettings final : public UDeveloperSettings
 	 * Project Cleaner already asks for confirmation before deleting. Always skipped in commandlets.
 	 */
 	UPROPERTY(EditAnywhere, Config, Category = "Deletion")
-	bool bSkipAssetLoadWarning = false;
+	bool bSkipAssetLoadWarning = true;
 
 	DECLARE_MULTICAST_DELEGATE(FPjcDelegateSettingsChanged);
 	FPjcDelegateSettingsChanged OnChanged;

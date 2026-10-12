@@ -76,7 +76,7 @@ Project Cleaner window > Settings menu, or:
   * Toolbar button location (or hidden)
   * Scan on window open
   * Ask before Fix Redirectors runs
-  * Skip engine "About to load N assets" question while deleting (UE 5.4+)
+  * Skip engine "About to load N assets" question while deleting (UE 5.4+), on by default
 
 # Command line
 ```
