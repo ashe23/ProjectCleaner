@@ -148,6 +148,17 @@ namespace PjcShim
 #endif
 	}
 
+	FName GetClassNameFromObjectPath(const FString& InClassObjectPath) {
+		if (InClassObjectPath.IsEmpty()) return NAME_None;
+
+		// must match GetClassName format: full path since 5.1, short name before
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1
+		return FName {*InClassObjectPath};
+#else
+		return FName {*FPackageName::ObjectPathToObjectName(InClassObjectPath)};
+#endif
+	}
+
 	FAssetData GetAssetByObjectPath(const FString& InObjectPath) {
 		const FAssetRegistryModule& AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(PjcConstants::ModuleAssetRegistry);
 #if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1

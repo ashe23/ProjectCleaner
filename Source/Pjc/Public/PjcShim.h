@@ -39,6 +39,7 @@ namespace PjcShim
 	bool HasFilterObjectPaths(const FARFilter& InFilter);
 	FName GetAssetClassName(const FAssetData& InAssetData);
 	FName GetClassName(const UClass* InClass);
+	FName GetClassNameFromObjectPath(const FString& InClassObjectPath);
 
 	FAssetData GetAssetByObjectPath(const FString& InObjectPath);
 	void GetDerivedClassNames(const TArray<FName>& ClassNames, const TSet<FName>& ExcludedClassNames, TSet<FName>& OutDerivedClassNames);
@@ -54,8 +55,7 @@ namespace PjcShim
 
 	// UE5.5 EAllowShrinking Deprecations
 	template<typename ArrayType>
-	auto PopArray(ArrayType& InArray)
-	{
+	auto PopArray(ArrayType& InArray) {
 #if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 5
 		return InArray.Pop(EAllowShrinking::No);
 #else
@@ -64,8 +64,7 @@ namespace PjcShim
 	}
 
 	template<typename ArrayType, typename Predicate>
-	void RemoveAllSwapArray(ArrayType& InArray, Predicate Pred)
-	{
+	void RemoveAllSwapArray(ArrayType& InArray, Predicate Pred) {
 #if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 5
 		InArray.RemoveAllSwap(Pred, EAllowShrinking::No);
 #else
@@ -73,8 +72,7 @@ namespace PjcShim
 #endif
 	}
 
-	inline void LeftInlineString(FString& InString, const int32 Count)
-	{
+	inline void LeftInlineString(FString& InString, const int32 Count) {
 #if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 5
 		InString.LeftInline(Count, EAllowShrinking::No);
 #else

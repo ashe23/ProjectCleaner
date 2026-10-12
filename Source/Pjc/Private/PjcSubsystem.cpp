@@ -1048,9 +1048,11 @@ FString UPjcSubsystem::PathConvertToAbsolute(const FString& InPath) {
 
 	if (PathNormalized.IsEmpty()) return {};
 
+	// trailing slash makes mount roots like "/Game" convertible too.
+	// result is relative to engine binaries when project and engine are on same drive, so make it full.
 	FString AbsolutePath;
-	if (FPackageName::TryConvertLongPackageNameToFilename(PathNormalized, AbsolutePath)) {
-		return PathNormalize(AbsolutePath);
+	if (FPackageName::TryConvertLongPackageNameToFilename(PathNormalized + TEXT("/"), AbsolutePath)) {
+		return PathNormalize(FPaths::ConvertRelativePathToFull(AbsolutePath));
 	}
 
 	return PathNormalized;
@@ -1061,8 +1063,10 @@ FString UPjcSubsystem::PathConvertToRelative(const FString& InPath) {
 
 	if (PathNormalized.IsEmpty()) return {};
 
+	// files convert as is, folders (including content root itself) need trailing slash
 	FString RelativePath;
-	if (FPackageName::TryConvertFilenameToLongPackageName(PathNormalized, RelativePath)) {
+	if (FPackageName::TryConvertFilenameToLongPackageName(PathNormalized, RelativePath)
+		|| FPackageName::TryConvertFilenameToLongPackageName(PathNormalized + TEXT("/"), RelativePath)) {
 		return PathNormalize(RelativePath);
 	}
 
@@ -1143,7 +1147,7 @@ FName UPjcSubsystem::GetAssetExactClassName(const FAssetData& InAsset) {
 	if (AssetIsBlueprint(InAsset)) {
 		const FString GeneratedClassName = InAsset.TagsAndValues.FindTag(TEXT("GeneratedClass")).GetValue();
 		const FString ClassObjectPath = FPackageName::ExportTextPathToObjectPath(*GeneratedClassName);
-		return FName {*FPackageName::ObjectPathToObjectName(ClassObjectPath)};
+		return PjcShim::GetClassNameFromObjectPath(ClassObjectPath);
 	}
 
 	return PjcShim::GetAssetClassName(InAsset);
@@ -1165,7 +1169,8 @@ TArray<FString> UPjcSubsystem::GetProjectRootPaths() {
 bool UPjcSubsystem::PathIsInsideProject(const FString& InPath) {
 	const TArray<FString> RootPaths = GetProjectRootPaths();
 	for (const auto& RootPath : RootPaths) {
-		if (InPath.StartsWith(RootPath)) {
+		// "/GameData" or "/MyPluginExtra" must not match "/Game" or "/MyPlugin"
+		if (InPath.Equals(RootPath) || InPath.StartsWith(RootPath + TEXT("/"))) {
 			return true;
 		}
 	}
@@ -1207,7 +1212,7 @@ bool UPjcSubsystem::FolderIsExcluded(const FString& InPath) {
 		const FString ExcludedPathRel = PathConvertToRelative(ExcludedPath.Path);
 		if (ExcludedPathRel.IsEmpty()) continue;
 
-		if (PathRel.StartsWith(ExcludedPathRel)) {
+		if (PathRel.Equals(ExcludedPathRel) || PathRel.StartsWith(ExcludedPathRel + TEXT("/"))) {
 			return true;
 		}
 	}
