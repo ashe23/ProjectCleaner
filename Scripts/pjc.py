@@ -9,6 +9,7 @@ ProjectCleaner dev tool - build, test and package the plugin against every insta
   python Scripts/pjc.py test    [-e ...] [-j N]     run automation tests and commandlet (CLI) tests
   python Scripts/pjc.py cli     -e 5.5 -- -scan_only    run ProjectCleaner commandlet with given switches
   python Scripts/pjc.py package [-e ...]            RunUAT BuildPlugin (same build Fab/Marketplace does)
+  python Scripts/pjc.py polygon [projects]          clean real projects (e.g. Lyra) in local git repos, verify, reset
   python Scripts/pjc.py lint                        include path case check (Linux/Mac) + clang-format check
   python Scripts/pjc.py clean   [-e ...]            delete host Binaries/Intermediate/Saved/DerivedDataCache
 
@@ -650,18 +651,31 @@ def child_env(engine=None):
     return env
 
 
+def ue_cmdline(cmd):
+    """
+    Windows command line for Unreal tools. Unreal parses -Key="value with spaces", but list2cmdline would quote the
+    whole "-Key=value with spaces" argument, which Unreal does not understand.
+    """
+    parts = []
+    for arg in cmd:
+        m = re.match(r"^(-[\w.]+=)(.*\s.*)$", arg)
+        parts.append('{}"{}"'.format(m.group(1), m.group(2)) if m else subprocess.list2cmdline([arg]))
+    return " ".join(parts)
+
+
 def run_logged(cmd, log_path, timeout=None, cwd=None, engine=None, extra_env=None):
     """Runs a command with all output written to a log file. Returns exit code (or None on timeout)."""
     env = child_env(engine)
     env.update(extra_env or {})
     with open(log_path, "w", encoding="utf-8", errors="replace") as f:
-        f.write("$ " + subprocess.list2cmdline(cmd) + "\n")
+        f.write("$ " + ue_cmdline(cmd) + "\n")
         for key, value in sorted((extra_env or {}).items()):
             f.write("$ env {}={}\n".format(key, value))
         f.write("\n")
         f.flush()
         try:
-            result = subprocess.run(cmd, stdout=f, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, timeout=timeout, cwd=cwd, env=env)
+            args = ue_cmdline(cmd) if IS_WIN else cmd
+            result = subprocess.run(args, stdout=f, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, timeout=timeout, cwd=cwd, env=env)
             return result.returncode
         except subprocess.TimeoutExpired:
             f.write("\n\nTIMEOUT after {} sec\n".format(timeout))
@@ -1056,6 +1070,635 @@ def cmd_clean(args, hosts):
 
 
 # ----------------------------------------------------------------------------------------------------------------------
+# polygon: real projects (e.g. Lyra) in local git repos are scanned and cleaned for real, verified, then reset
+# ----------------------------------------------------------------------------------------------------------------------
+
+SCAN_SETTINGS_SECTION = "/Script/Pjc.PjcScanSettings"
+SCAN_SETTINGS_DEFAULT = {
+    "bScanProjectPlugins": False,
+    "bPrimaryAssetsUsed": True,
+    "bFolderLabelsUsed": True,
+    "bCinematicAssetsUsed": True,
+    "bEditorAssetsUsed": True,
+    "bIndirectAssetsUsed": True,
+}
+REDIRECTOR_CLASSES = ("/Script/CoreUObject.ObjectRedirector", "ObjectRedirector")
+LABEL_CLASSES = ("/Script/Engine.PrimaryAssetLabel", "PrimaryAssetLabel")
+SNAPSHOT_VERSION = 2
+TEXT_REF_EXTENSIONS = (".ini", ".h", ".cpp", ".cs", ".py", ".json")
+
+# name: (scan settings overrides, commandlet switches)
+POLYGON_SCENARIOS = {
+    "scan": ({}, ["-scan_only"]),
+    "scan_plugins": ({"bScanProjectPlugins": True}, ["-scan_only"]),
+    "no_primary": ({"bPrimaryAssetsUsed": False}, ["-scan_only"]),
+    "no_editor": ({"bEditorAssetsUsed": False}, ["-scan_only"]),
+    "no_indirect": ({"bIndirectAssetsUsed": False}, ["-scan_only"]),
+    "no_cinematic": ({"bCinematicAssetsUsed": False}, ["-scan_only"]),
+    "no_folder_labels": ({"bFolderLabelsUsed": False}, ["-scan_only"]),
+    "fix_redirectors": ({"bScanProjectPlugins": True}, ["-scan_only", "-fix_redirectors"]),
+    "cleanup": ({}, ["-full_cleanup"]),
+    "cleanup_plugins": ({"bScanProjectPlugins": True}, ["-full_cleanup"]),
+    "cleanup_no_folder_labels": ({"bScanProjectPlugins": True, "bFolderLabelsUsed": False}, ["-full_cleanup"]),
+}
+# (wider, narrower): turning a "used" rule off can only add unused assets, never remove them
+POLYGON_SUPERSETS = [
+    ("scan_plugins", "scan"),
+    ("no_primary", "scan"),
+    ("no_editor", "scan"),
+    ("no_indirect", "scan"),
+    ("no_cinematic", "scan"),
+    ("no_folder_labels", "scan"),
+]
+
+
+class Polygon:
+    def __init__(self, uproject, engine, root):
+        self.uproject = os.path.abspath(uproject)
+        self.dir = os.path.dirname(self.uproject)
+        self.name = os.path.splitext(os.path.basename(self.uproject))[0]
+        self.engine = engine
+        self.host = Host(engine, root)
+        self.logs_dir = os.path.join(root, "_logs", "polygon", self.name)
+        # Saved is never tracked, survives git reset/clean
+        self.work_dir = os.path.join(self.dir, "Saved", "PjcPolygon")
+        self.plugin_dir = os.path.join(self.dir, "Plugins", PLUGIN_NAME)
+
+    def log(self, name):
+        os.makedirs(self.logs_dir, exist_ok=True)
+        return os.path.join(self.logs_dir, name + ".log")
+
+    def rel(self, path):
+        return os.path.relpath(path, self.dir).replace("\\", "/")
+
+
+def polygon_projects(args, cfg, engines):
+    """Projects from command line, PJC_POLYGONS env (os.pathsep separated) or {"polygons": [...]} in pjc.local.json."""
+    patterns = args.projects or [p for p in os.environ.get("PJC_POLYGONS", "").split(os.pathsep) if p] or cfg.get("polygons", [])
+    if not patterns:
+        die("no polygon projects. Pass paths, set PJC_POLYGONS or add 'polygons' to " + LOCAL_CONFIG)
+
+    uprojects = []
+    for pattern in patterns:
+        for path in sorted(glob.glob(os.path.expanduser(pattern))):
+            if os.path.isdir(path):
+                uprojects += sorted(glob.glob(os.path.join(path, "*.uproject")))
+            elif path.endswith(".uproject"):
+                uprojects.append(path)
+
+    by_version = {e.version: e for e in engines}
+    root = hosts_dir(cfg)
+    projects = []
+    for uproject in uprojects:
+        with open(uproject, encoding="utf-8-sig") as f:
+            association = json.load(f).get("EngineAssociation", "")
+        engine = by_version.get(association)
+        if engine is None:
+            print(yellow("skipped {}: engine '{}' not found".format(uproject, association)))
+            continue
+        projects.append(Polygon(uproject, engine, root))
+    return projects
+
+
+def git(cwd, *args):
+    result = subprocess.run(["git", "-C", cwd] + list(args), capture_output=True, text=True, encoding="utf-8", errors="replace")
+    if result.returncode != 0:
+        raise RuntimeError("git {} failed: {}".format(" ".join(args), result.stderr.strip()))
+    return result.stdout
+
+
+def git_status(project_dir):
+    """[(code, repo relative path)] for changed and untracked (not ignored) files."""
+    out = git(project_dir, "status", "--porcelain=v1", "-z", "--untracked-files=all")
+    return [(entry[:2], entry[3:]) for entry in out.split("\0") if entry]
+
+
+def polygon_check_repo(p, allow_dirty):
+    top = os.path.normcase(os.path.abspath(git(p.dir, "rev-parse", "--show-toplevel").strip()))
+    if top != os.path.normcase(p.dir):
+        raise RuntimeError("{} must be the root of its own git repo (found {}), polygon runs reset it".format(p.dir, top))
+    if git_status(p.dir) and not allow_dirty:
+        raise RuntimeError("{} has uncommitted changes, commit them or run with --reset to discard".format(p.dir))
+
+
+def polygon_reset(p):
+    git(p.dir, "reset", "--hard", "-q")
+    git(p.dir, "clean", "-fdq")
+
+
+def _stash_manifest(p):
+    return os.path.join(p.work_dir, "stash.json")
+
+
+def polygon_stash_plugins(p):
+    """Other ProjectCleaner copies (e.g. installed package) would clash with the tested build, move them out."""
+    polygon_restore_plugins(p)
+    moved = {}
+    for uplugin in glob.glob(os.path.join(p.dir, "Plugins", "**", PLUGIN_NAME + ".uplugin"), recursive=True):
+        src = os.path.dirname(os.path.abspath(uplugin))
+        if os.path.normcase(src) == os.path.normcase(p.plugin_dir):
+            continue
+        dst = os.path.join(p.work_dir, "stash", p.rel(src).replace("/", "_"))
+        remove_tree(dst)
+        os.makedirs(os.path.dirname(dst), exist_ok=True)
+        shutil.move(src, dst)
+        moved[src] = dst
+    if moved:
+        with open(_stash_manifest(p), "w", encoding="utf-8") as f:
+            json.dump(moved, f, indent=1)
+
+
+def polygon_restore_plugins(p):
+    manifest = _stash_manifest(p)
+    if not os.path.isfile(manifest):
+        return
+    with open(manifest, encoding="utf-8") as f:
+        moved = json.load(f)
+    for src, dst in moved.items():
+        if os.path.isdir(dst) and not os.path.exists(src):
+            shutil.move(dst, src)
+    os.remove(manifest)
+
+
+def polygon_install_plugin(p):
+    """Copies the plugin built in the matching host project (same engine BuildId), no compile needed in the project."""
+    platform = p.engine.platform
+    binaries = os.path.join(p.host.plugin_dir, "Binaries", platform)
+    if not glob.glob(os.path.join(binaries, "*Pjc*")):
+        raise RuntimeError("no plugin binaries in {}, build first".format(binaries))
+    remove_tree(p.plugin_dir)
+    shutil.copytree(binaries, os.path.join(p.plugin_dir, "Binaries", platform))
+    for name in ("Resources", "Config"):
+        if os.path.isdir(os.path.join(REPO_DIR, name)):
+            shutil.copytree(os.path.join(REPO_DIR, name), os.path.join(p.plugin_dir, name))
+    shutil.copy2(PLUGIN_FILE, p.plugin_dir)
+
+
+def polygon_mounts(p):
+    """Content roots of the project: /Game plus every project plugin with a Content folder."""
+    mounts = {"/Game": os.path.join(p.dir, "Content")}
+    for uplugin in glob.glob(os.path.join(p.dir, "Plugins", "**", "*.uplugin"), recursive=True):
+        content = os.path.join(os.path.dirname(uplugin), "Content")
+        name = os.path.splitext(os.path.basename(uplugin))[0]
+        if name != PLUGIN_NAME and os.path.isdir(content):
+            mounts["/" + name] = content
+    return mounts
+
+
+def _ini_without_sections(text, prefix):
+    out = []
+    skip = False
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("[") and stripped.endswith("]"):
+            skip = stripped[1:-1].startswith(prefix)
+        if not skip:
+            out.append(line)
+    return "\n".join(out).rstrip("\n")
+
+
+def polygon_write_settings(p, overrides):
+    settings = dict(SCAN_SETTINGS_DEFAULT, **overrides)
+    ini = os.path.join(p.dir, "Config", "DefaultEditor.ini")
+    text = ""
+    if os.path.isfile(ini):
+        with open(ini, encoding="utf-8-sig", errors="replace") as f:
+            text = f.read()
+    section = "\n".join(["[{}]".format(SCAN_SETTINGS_SECTION)] + ["{}={}".format(k, v) for k, v in settings.items()])
+    with open(ini, "w", encoding="utf-8", newline="\n") as f:
+        f.write(_ini_without_sections(text, SCAN_SETTINGS_SECTION) + "\n\n" + section + "\n")
+    # exclude settings are per user (Saved), keep them out of the way
+    for user_ini in glob.glob(os.path.join(p.dir, "Saved", "Config", "*", "EditorPerProjectUserSettings.ini")):
+        with open(user_ini, encoding="utf-8-sig", errors="replace") as f:
+            content = f.read()
+        if "[/Script/Pjc." in content:
+            with open(user_ini, "w", encoding="utf-8", newline="\n") as f:
+                f.write(_ini_without_sections(content, "/Script/Pjc.") + "\n")
+    return settings
+
+
+def polygon_editor(p, extra, log, timeout=1800, extra_env=None):
+    cmd = [p.engine.editor_cmd, p.uproject] + extra + ["-unattended", "-nopause", "-nosplash", "-nullrhi", "-NoSound", "-stdout", "-FullStdOutLogOutput"]
+    return run_logged(cmd, log, timeout=timeout, engine=p.engine, extra_env=extra_env)
+
+
+def polygon_snapshot(p):
+    """Package graph of the clean project, cached per git commit."""
+    head = git(p.dir, "rev-parse", "HEAD").strip()[:12]
+    path = os.path.join(p.work_dir, "snapshot_v{}_{}_{}.json".format(SNAPSHOT_VERSION, p.engine.version, head))
+    if not os.path.isfile(path):
+        os.makedirs(p.work_dir, exist_ok=True)
+        log = p.log("snapshot")
+        env = {"PJC_SNAPSHOT_OUT": path + ".tmp", "PJC_SNAPSHOT_MOUNTS": json.dumps(polygon_mounts(p))}
+        script = os.path.join(SCRIPT_DIR, "pjc_snapshot.py")
+        code = polygon_editor(p, ["-run=pythonscript", "-script=" + script, "-EnablePlugins=PythonScriptPlugin"], log, extra_env=env)
+        if not os.path.isfile(path + ".tmp"):
+            raise RuntimeError("snapshot failed (exit {})  log: {}".format(code, log))
+        os.replace(path + ".tmp", path)
+    with open(path, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def package_of(object_path):
+    """/Game/A/B.B or /Game/A/B.B:Sub -> /Game/A/B"""
+    path = object_path.split(":")[0]
+    head, _, tail = path.rpartition("/")
+    return head + "/" + tail.split(".")[0]
+
+
+def polygon_text_refs(p, packages):
+    """Packages named in project/plugin Config and Source files, independent of the plugin's own indirect search."""
+    roots = sorted({"/" + name.split("/")[1] for name in packages})
+    if not roots:
+        return {}
+    regex = re.compile(r"(?<![\w/])((?:{})/[\w\-/]*[\w\-])".format("|".join(re.escape(r) for r in roots)))
+    files = []
+    for top in [p.dir] + [os.path.dirname(u) for u in glob.glob(os.path.join(p.dir, "Plugins", "**", "*.uplugin"), recursive=True)]:
+        for sub in ("Config", "Source"):
+            for dirpath, _, names in os.walk(os.path.join(top, sub)):
+                files += [os.path.join(dirpath, n) for n in names if n.lower().endswith(TEXT_REF_EXTENSIONS)]
+    refs = {}
+    for path in sorted(set(files)):
+        with open(path, encoding="utf-8", errors="replace") as f:
+            for num, line in enumerate(f, 1):
+                for m in regex.finditer(line):
+                    candidate = m.group(1).strip()
+                    # "/Game/Path/Asset" and "/Game/Path/Asset.Asset", directories are not packages
+                    for name in (candidate, candidate.rsplit(".", 1)[0]):
+                        if name in packages:
+                            refs.setdefault(name, []).append("{}:{}".format(p.rel(path), num))
+                            break
+    return refs
+
+
+def _resolved_deps(package, packages, deleted):
+    """Dependencies with fixed (deleted) redirectors replaced by their targets, referencers were resaved."""
+    result = set()
+    stack = list(packages[package]["deps"])
+    seen = set()
+    while stack:
+        dep = stack.pop()
+        if dep in seen:
+            continue
+        seen.add(dep)
+        info = packages.get(dep)
+        if info and dep in deleted and any(c in REDIRECTOR_CLASSES for c in info["classes"]):
+            stack += info["deps"]
+        else:
+            result.add(dep)
+    return result
+
+
+def polygon_verify(p, scenario, settings, snapshot, text_refs, report, status, code, log):
+    """Returns (problems, notes). Problems fail the run, notes are informative."""
+    problems, notes = [], []
+    packages = snapshot["packages"]
+    switches = POLYGON_SCENARIOS[scenario][1]
+    cleanup = "-full_cleanup" in switches
+    fixing = "-fix_redirectors" in switches
+
+    # assets engine refused to delete because something live holds them (often editor data the registry does not
+    # record, e.g. MetaSound graphs) are kept on purpose, plugin logs who holds each of them
+    kept_live = set()
+    if cleanup:
+        for line in log_lines(log, r"Not deleted, (?:still )?referenced", 100000):
+            m = re.search(r"(/[\w\-/]+)\.[\w\-]+", line.split("Not deleted", 1)[1])
+            if m:
+                kept_live.add(m.group(1))
+
+    expected_result = "cleaned" if cleanup else "scanned"
+    if cleanup and report.get("result") == "failed" and kept_live:
+        expected_result = "failed"
+    if report.get("result") != expected_result:
+        problems.append("commandlet exit {}, result '{}' (expected '{}')".format(code, report.get("result"), expected_result))
+        if "before" not in report:
+            return problems, notes
+    elif code != 0:
+        # engine turns any logged error into exit code 1 (e.g. ensures in engine background tasks)
+        plugin_errors = [e for e in log_lines(log, r": Error: ", 200) if "Pjc" in e or "ProjectCleaner" in e]
+        if kept_live:
+            # cleanup reports failure on purpose when it kept assets something holds in memory
+            plugin_errors = [e for e in plugin_errors if "Cleanup finished with errors" not in e]
+        if plugin_errors:
+            problems.append("commandlet exit {}: {}".format(code, plugin_errors[0][:200]))
+        else:
+            notes.append("exit {} from engine errors only".format(code))
+
+    before = report["before"]
+    stats = before["stats"]
+    if stats["assets_used"] + stats["assets_unused"] != stats["assets_all"]:
+        problems.append("used {} + unused {} != all {}".format(stats["assets_used"], stats["assets_unused"], stats["assets_all"]))
+
+    file_to_package = {p.rel(info["file"]).lower(): name for name, info in packages.items()}
+    deleted_files = {path for code_, path in status if code_.strip() == "D"}
+    modified_files = {path for code_, path in status if code_.strip() == "M"}
+    added_files = {path for code_, path in status if code_ == "??"}
+    deleted_packages = {file_to_package[f.lower()] for f in deleted_files if f.lower() in file_to_package}
+    # fixed redirectors are deleted after their referencers were resaved, unused ones are deleted as any asset
+    redirectors = {name for name in deleted_packages if any(c in REDIRECTOR_CLASSES for c in packages[name]["classes"])} if fixing else set()
+    labels = {name for name, info in packages.items() if any(c in LABEL_CLASSES for c in info["classes"])}
+
+    unused = {package_of(a) for a in before["assets_unused"]}
+    # lists are reported even when their rule is off, only enabled rules must keep assets used
+    used_rules = {"excluded": {package_of(a) for a in before["assets_excluded"]}}
+    for rule, setting in (("primary", "bPrimaryAssetsUsed"), ("editor", "bEditorAssetsUsed"), ("indirect", "bIndirectAssetsUsed")):
+        if settings[setting]:
+            used_rules[rule] = {package_of(a) for a in before["assets_" + rule]}
+    for rule, used in used_rules.items():
+        clash = sorted(used & unused)
+        if clash:
+            problems.append("{} {} asset(s) also listed unused: {}".format(len(clash), rule, ", ".join(clash[:5])))
+
+    # cleanup simulation (scan scenarios) or real deletion (cleanup scenarios)
+    gone = (deleted_packages - redirectors) if cleanup else unused
+    gone_all = gone | redirectors
+
+    broken = []
+    for name in packages:
+        if name in gone_all:
+            continue
+        # folder labels reference their whole folder (cook rule), cleanup resaves them without deleted assets
+        if name in labels and not settings["bFolderLabelsUsed"]:
+            continue
+        deps = _resolved_deps(name, packages, gone_all) if fixing else set(packages[name]["deps"])
+        for dep in sorted(deps & gone):
+            broken.append("{} -> {}".format(name, dep))
+    if broken:
+        problems.append("{} reference(s) to removed assets: {}".format(len(broken), "; ".join(broken[:8])))
+
+    if settings["bPrimaryAssetsUsed"]:
+        ignored = set(settings.get("IgnoredPrimaryAssetTypes", []))
+        lost = []
+        for entry in report.get("asset_manager_primary_assets", []):
+            primary_id, _, path = entry.partition(" ")
+            if path and primary_id.split(":")[0] not in ignored and package_of(path) in gone:
+                lost.append(primary_id)
+        if lost:
+            problems.append("{} asset manager primary asset(s) removed: {}".format(len(lost), ", ".join(sorted(lost)[:8])))
+
+    # GameplayAbilities loads cue notifies by tag from GameplayCueNotifyPaths, nothing references them
+    cues = sorted(name for name in gone if packages.get(name, {}).get("gameplay_cue"))
+    if cues:
+        problems.append("{} GameplayCue notify(s) removed: {}".format(len(cues), ", ".join(cues[:8])))
+
+    if settings["bIndirectAssetsUsed"]:
+        lost = sorted(name for name in gone if name in text_refs)
+        if lost:
+            problems.append(
+                "{} asset(s) named in Config/Source removed: {}".format(len(lost), ", ".join("{} ({})".format(n, text_refs[n][0]) for n in lost[:8]))
+            )
+
+    if cleanup:
+        external = {p.rel(f).lower() for f in before["files_external"] + before["files_corrupted"]}
+        allowed_deleted = unused | redirectors
+        unexpected = sorted(f for f in deleted_files if file_to_package.get(f.lower()) not in allowed_deleted and f.lower() not in external)
+        if unexpected:
+            problems.append("{} file(s) deleted but not reported: {}".format(len(unexpected), ", ".join(unexpected[:8])))
+        not_deleted = sorted(unused - deleted_packages - kept_live)
+        if not_deleted:
+            problems.append("{} unused asset(s) not deleted: {}".format(len(not_deleted), ", ".join(not_deleted[:8])))
+        if kept_live:
+            notes.append("{} kept, referenced in memory".format(len(kept_live)))
+        after = report.get("after", {}).get("stats", {})
+        leftovers = {k: v for k, v in after.items() if k in ("assets_unused", "files_external", "files_corrupted", "folders_empty") and v}
+        if leftovers.get("assets_unused", 0) <= len(kept_live):
+            leftovers.pop("assets_unused", None)
+        if leftovers:
+            problems.append("rescan after cleanup not clean: {}".format(leftovers))
+        other_files = [f for f in deleted_files if f.lower() not in file_to_package]
+        notes.append("deleted {} assets, {} other files".format(len(deleted_packages - redirectors), len(other_files)))
+    else:
+        unexpected = sorted(name for name in deleted_packages if name not in redirectors)
+        if unexpected:
+            problems.append("scan deleted {} package(s): {}".format(len(unexpected), ", ".join(unexpected[:8])))
+
+    referencers = {name for name, info in packages.items() if set(info["deps"]) & redirectors}
+    allowed_modified = {"config/defaulteditor.ini"} | {p.rel(packages[n]["file"]).lower() for n in referencers}
+    if cleanup and not settings["bFolderLabelsUsed"]:
+        allowed_modified |= {p.rel(packages[n]["file"]).lower() for n in labels}
+    unexpected = sorted(f for f in modified_files if f.lower() not in allowed_modified)
+    text_files = [f for f in unexpected if not f.lower().endswith((".uasset", ".umap"))]
+    if text_files:
+        diff = git(p.dir, "diff", "--", *text_files)
+        diff_path = os.path.join(p.logs_dir, scenario + ".diff")
+        with open(diff_path, "w", encoding="utf-8") as f:
+            f.write(diff)
+        notes.append("diff: " + diff_path)
+        # engine plugins write their own config on first start (e.g. AndroidFileServer SecurityToken in 5.2)
+        changed = [line for line in diff.splitlines() if line[:1] in "+-" and not line.startswith(("+++", "---"))]
+        if all(f.lower().endswith(".ini") for f in text_files) and changed and all(line.startswith("+") and "Pjc" not in line for line in changed):
+            notes.append("engine added config: " + ", ".join(text_files))
+            unexpected = [f for f in unexpected if f not in text_files]
+    if unexpected:
+        problems.append("{} file(s) modified unexpectedly: {}".format(len(unexpected), ", ".join(unexpected[:8])))
+    resaved_labels = sorted(n for n in labels if p.rel(packages[n]["file"]).lower() in {m.lower() for m in modified_files})
+    if resaved_labels:
+        notes.append("resaved {} folder label(s)".format(len(resaved_labels)))
+    if added_files:
+        notes.append("{} new file(s): {}".format(len(added_files), ", ".join(sorted(added_files)[:5])))
+
+    scope = [p.rel(d).lower() + "/" for d in report.get("content_dirs", [])]
+    outside = sorted(f for f in deleted_files if not any(f.lower().startswith(s) for s in scope))
+    if outside:
+        problems.append("{} deleted file(s) outside scanned roots: {}".format(len(outside), ", ".join(outside[:5])))
+
+    if redirectors:
+        notes.append("fixed {} redirector(s)".format(len(redirectors)))
+    notes.insert(0, "all {} used {} unused {} external {} corrupted {} empty {}".format(
+        stats["assets_all"], stats["assets_used"], stats["assets_unused"], stats["files_external"], stats["files_corrupted"], stats["folders_empty"]))
+    return problems, notes
+
+
+def polygon_run(p, scenario, snapshot, text_refs):
+    overrides, switches = POLYGON_SCENARIOS[scenario]
+    polygon_reset(p)
+    settings = polygon_write_settings(p, overrides)
+    report_path = os.path.join(p.logs_dir, scenario + ".json")
+    if os.path.isfile(report_path):
+        os.remove(report_path)
+    start = time.time()
+    code = polygon_editor(p, ["-run=Pjc"] + switches + ["-report=" + report_path], p.log(scenario))
+    elapsed = time.time() - start
+    report = {}
+    if os.path.isfile(report_path):
+        with open(report_path, encoding="utf-8") as f:
+            report = json.load(f)
+    status = git_status(p.dir)
+    problems, notes = polygon_verify(p, scenario, settings, snapshot, text_refs, report, status, code, p.log(scenario))
+    return {"scenario": scenario, "ok": not problems, "seconds": round(elapsed), "problems": problems, "notes": notes, "report": report_path, "log": p.log(scenario)}
+
+
+# opt-in (slow): package the project (RunUAT BuildCookRun) and start packaged game, with or without cleanup first
+POLYGON_PACKAGE_SCENARIOS = {
+    "package": None,
+    "package_cleanup": ({}, ["-full_cleanup"]),
+    "package_cleanup_plugins": ({"bScanProjectPlugins": True}, ["-full_cleanup"]),
+}
+GAME_FAILURE = r"Fatal error|Critical error|Assertion failed|Unhandled Exception|LogLinker: Warning: .*(?:Failed to load|Can't find file)|Failed to load package|LoadErrors"
+
+
+def polygon_game_checks(cfg):
+    """[{"url": map url or "" for default map, "expect": regex}] from 'polygon_game' in pjc.local.json"""
+    checks = cfg.get("polygon_game") or []
+    return [{"url": "", "expect": r"LogLoad: Took .* to LoadMap"}] + checks
+
+
+def polygon_run_game(p, exe, check, tag):
+    """Starts packaged game without rendering, waits for expected log line or failure, then stops it."""
+    log_dir = os.path.join(os.path.dirname(exe), "Saved", "Logs")
+    remove_tree(log_dir)
+    log = p.log(tag)
+    cmd = [exe] + ([check["url"]] if check["url"] else []) + ["-nullrhi", "-unattended", "-nosound", "-nosplash", "-log", "-abslog=" + log]
+    proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL)
+    expect = re.compile(check["expect"])
+    failure = re.compile(GAME_FAILURE)
+    deadline = time.time() + 300
+    found, failures = False, []
+    try:
+        while time.time() < deadline and proc.poll() is None:
+            time.sleep(3)
+            if not os.path.isfile(log):
+                continue
+            with open(log, encoding="utf-8", errors="replace") as f:
+                text = f.read()
+            found = bool(expect.search(text))
+            failures = [line for line in text.splitlines() if failure.search(line)]
+            if found or failures:
+                time.sleep(5 if found else 0)
+                break
+    finally:
+        if proc.poll() is None:
+            proc.kill()
+            proc.wait()
+    if os.path.isfile(log):
+        failures = log_lines(log, GAME_FAILURE, 10)
+    return found, failures
+
+
+def polygon_package(p, scenario, cfg):
+    spec = POLYGON_PACKAGE_SCENARIOS[scenario]
+    polygon_reset(p)
+    notes, problems = [], []
+    start = time.time()
+    if spec:
+        overrides, switches = spec
+        polygon_write_settings(p, overrides)
+        code = polygon_editor(p, ["-run=Pjc"] + switches, p.log(scenario + "_cleanup"))
+        deleted = sum(1 for code_, _ in git_status(p.dir) if code_.strip() == "D")
+        notes.append("cleanup exit {}, {} files deleted".format(code, deleted))
+
+    archive = os.path.join(p.work_dir, "package_" + scenario)
+    remove_tree(archive)
+    log = p.log(scenario)
+    cmd = [
+        p.engine.uat_script,
+        "BuildCookRun",
+        "-project=" + p.uproject,
+        "-noP4",
+        "-platform=" + p.engine.platform,
+        "-clientconfig=Development",
+        "-build",
+        "-cook",
+        "-stage",
+        "-pak",
+        "-archive",
+        "-archivedirectory=" + archive,
+        "-nocompileeditor",
+        "-unattended",
+        "-utf8output",
+    ]
+    code = run_logged(cmd, log, timeout=7200, engine=p.engine)
+    cook_errors = [line for line in log_lines(log, r"LogCook: Error|LogInit: Display: .*Error:|Error: \[", 200)]
+    notes.append("BuildCookRun exit {}, {} cook error line(s)".format(code, len(cook_errors)))
+    exes = [e for e in glob.glob(os.path.join(archive, "*", "*", "Binaries", p.engine.platform, "*.exe" if IS_WIN else "*")) if os.path.isfile(e)]
+    if code != 0 or not exes:
+        problems.append("packaging failed (exit {})  log: {}".format(code, log))
+    else:
+        for i, check in enumerate(polygon_game_checks(cfg)):
+            found, failures = polygon_run_game(p, exes[0], check, "{}_game{}".format(scenario, i))
+            what = check["url"] or "default map"
+            if not found:
+                problems.append("game {}: '{}' not in log".format(what, check["expect"]))
+            if failures:
+                problems.append("game {}: {}".format(what, failures[0][:200]))
+            notes.append("game {}: {}".format(what, "ok" if found and not failures else "FAILED"))
+    with open(os.path.join(p.logs_dir, scenario + "_cook_errors.txt"), "w", encoding="utf-8") as f:
+        f.write("\n".join(cook_errors))
+    return {"scenario": scenario, "ok": not problems, "seconds": round(time.time() - start), "problems": problems, "notes": notes, "report": "", "log": log}
+
+
+def polygon_supersets(results):
+    problems = []
+    unused = {}
+    for r in results:
+        if r["report"] and os.path.isfile(r["report"]):
+            with open(r["report"], encoding="utf-8") as f:
+                before = json.load(f).get("before")
+            if before:
+                unused[r["scenario"]] = set(before["assets_unused"])
+    for wider, base in POLYGON_SUPERSETS:
+        if wider in unused and base in unused:
+            missing = sorted(unused[base] - unused[wider])
+            if missing:
+                problems.append("{} must include all '{}' unused assets, missing {}: {}".format(wider, base, len(missing), ", ".join(missing[:5])))
+    return problems
+
+
+def cmd_polygon(args, cfg, engines):
+    selected = {e.version for e in select_engines(engines, args.engines)}
+    projects = [p for p in polygon_projects(args, cfg, engines) if p.engine.version in selected]
+    if not projects:
+        die("no polygon projects for selected engines")
+    scenarios = [s.strip() for s in args.scenarios.split(",")] if args.scenarios else list(POLYGON_SCENARIOS)
+    unknown = [s for s in scenarios if s not in POLYGON_SCENARIOS and s not in POLYGON_PACKAGE_SCENARIOS]
+    if unknown:
+        die("unknown scenario(s): {}. Known: {}".format(", ".join(unknown), ", ".join(list(POLYGON_SCENARIOS) + list(POLYGON_PACKAGE_SCENARIOS))))
+
+    def work(p):
+        if not args.no_build:
+            ok, summary = build_host(p.host)
+            if not ok:
+                return False, "build: " + summary
+        polygon_check_repo(p, args.reset)
+        # contents only, the folder itself may be open in a shell or explorer
+        os.makedirs(p.logs_dir, exist_ok=True)
+        for entry in os.listdir(p.logs_dir):
+            path = os.path.join(p.logs_dir, entry)
+            remove_tree(path) if os.path.isdir(path) else os.remove(path)
+        results = []
+        try:
+            polygon_reset(p)
+            polygon_stash_plugins(p)
+            polygon_install_plugin(p)
+            if any(s in POLYGON_SCENARIOS for s in scenarios):
+                snapshot = polygon_snapshot(p)
+                text_refs = polygon_text_refs(p, snapshot["packages"])
+            for scenario in scenarios:
+                if scenario in POLYGON_PACKAGE_SCENARIOS:
+                    results.append(polygon_package(p, scenario, cfg))
+                else:
+                    results.append(polygon_run(p, scenario, snapshot, text_refs))
+        finally:
+            polygon_reset(p)
+            if not args.keep_plugin:
+                remove_tree(p.plugin_dir)
+                polygon_restore_plugins(p)
+        extra = polygon_supersets(results)
+        with open(os.path.join(p.logs_dir, "polygon.json"), "w", encoding="utf-8") as f:
+            json.dump({"project": p.uproject, "engine": str(p.engine), "results": results, "problems": extra}, f, indent=1)
+        lines = []
+        for r in results:
+            lines.append("{} {:<16} {:>4}s  {}".format(green("ok  ") if r["ok"] else red("FAIL"), r["scenario"], r["seconds"], " | ".join(r["notes"])))
+            lines += ["       " + red(x) for x in r["problems"]]
+        lines += [red(x) for x in extra]
+        ok = all(r["ok"] for r in results) and not extra
+        return ok, "\n".join(["{} ({} scenarios)  logs: {}".format(p.name, len(results), p.logs_dir)] + lines)
+
+    print(cyan("== polygon: " + ", ".join(p.name for p in projects)))
+    return run_for_hosts(projects, work, args.jobs, "polygon")
+
+
+# ----------------------------------------------------------------------------------------------------------------------
 # lint
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -1164,6 +1807,12 @@ def main():
     p.add_argument("--cli-only", action="store_true", help="skip automation tests")
     p = add("cli", "run ProjectCleaner commandlet")
     p.add_argument("rest", nargs=argparse.REMAINDER, help="-- followed by commandlet switches")
+    p = add("polygon", "clean real projects (e.g. Lyra) kept in local git repos for real, verify, then reset them")
+    p.add_argument("projects", nargs="*", help="project folders, .uproject files or globs (default: PJC_POLYGONS or 'polygons' in pjc.local.json)")
+    p.add_argument("--scenarios", help="comma separated subset of: {} (default), opt-in: {}".format(", ".join(POLYGON_SCENARIOS), ", ".join(POLYGON_PACKAGE_SCENARIOS)))
+    p.add_argument("--no-build", action="store_true", help="skip host build, use existing plugin binaries")
+    p.add_argument("--reset", action="store_true", help="discard uncommitted changes in polygon projects before running")
+    p.add_argument("--keep-plugin", action="store_true", help="leave the tested plugin build installed afterwards")
     p = add("package", "RunUAT BuildPlugin for each engine")
     p.add_argument("--out", help="output folder (default: <hosts dir>/../packages)")
     add("lint", "include case and clang-format checks")
@@ -1177,6 +1826,9 @@ def main():
         return cmd_engines(args, engines, cfg)
     if args.command == "lint":
         return cmd_lint(args, select_engines(engines, args.engines))
+    if args.command == "polygon":
+        with HostsLock(hosts_dir(cfg)):
+            return cmd_polygon(args, cfg, engines)
 
     if not engines:
         die("no Unreal Engine installs found. Set PJC_ENGINES or add 'engines' to " + LOCAL_CONFIG)
