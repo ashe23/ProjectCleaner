@@ -1575,6 +1575,17 @@ def polygon_run_game(p, exe, check, tag):
     return found, failures
 
 
+def polygon_game_exes(archive, p):
+    """Game executables of the archived build: project binaries only, engine ships its own tools (EpicWebHelper)."""
+    project = os.path.splitext(os.path.basename(p.uproject))[0]
+    if IS_MAC:
+        return sorted(glob.glob(os.path.join(archive, "*", "*.app", "Contents", "MacOS", "*")))
+    binaries = glob.glob(os.path.join(archive, "*", project, "Binaries", p.engine.platform, "*"))
+    if IS_WIN:
+        return sorted(e for e in binaries if e.lower().endswith(".exe"))
+    return sorted(e for e in binaries if "." not in os.path.basename(e) and os.access(e, os.X_OK))
+
+
 def polygon_package(p, scenario, cfg):
     spec = POLYGON_PACKAGE_SCENARIOS[scenario]
     polygon_reset(p)
@@ -1610,7 +1621,7 @@ def polygon_package(p, scenario, cfg):
     code = run_logged(cmd, log, timeout=7200, engine=p.engine)
     cook_errors = [line for line in log_lines(log, r"LogCook: Error|LogInit: Display: .*Error:|Error: \[", 200)]
     notes.append("BuildCookRun exit {}, {} cook error line(s)".format(code, len(cook_errors)))
-    exes = [e for e in glob.glob(os.path.join(archive, "*", "*", "Binaries", p.engine.platform, "*.exe" if IS_WIN else "*")) if os.path.isfile(e)]
+    exes = polygon_game_exes(archive, p)
     if code != 0 or not exes:
         problems.append("packaging failed (exit {})  log: {}".format(code, log))
     else:
