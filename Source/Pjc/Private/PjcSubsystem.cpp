@@ -2405,6 +2405,7 @@ int32 UPjcSubsystem::DeleteAssetsReferencedByFolderLabels(const TArray<FAssetDat
 	TArray<UObject*> LoadedAssets;
 	PjcShim::LoadAssetsIfNeeded(ObjectPaths, LoadedAssets, false, false);
 	PjcShim::FinishAssetCompilation();
+	PjcShim::ReleaseEditorHelpers(LoadedAssets);
 	CollectGarbage(GARBAGE_COLLECTION_KEEPFLAGS);
 
 	// same for references in memory: something live outside this set uses the asset, keep it
@@ -2488,6 +2489,7 @@ int32 UPjcSubsystem::DeleteAssetsHeldByEachOther(const TArray<FAssetData>& Asset
 	TArray<UObject*> LoadedAssets;
 	PjcShim::LoadAssetsIfNeeded(ObjectPaths, LoadedAssets, false, false);
 	PjcShim::FinishAssetCompilation();
+	PjcShim::ReleaseEditorHelpers(LoadedAssets);
 	CollectGarbage(GARBAGE_COLLECTION_KEEPFLAGS);
 
 	RemoveAssetsHeldOutside(LoadedAssets);
@@ -2600,6 +2602,11 @@ bool UPjcSubsystem::BucketPrepare(const TArray<FAssetData>& Bucket, TArray<UObje
 
 	// async compilation started by loading (meshes, textures, animations, Niagara) holds assets, engine refuses to delete them
 	PjcShim::FinishAssetCompilation();
+
+	// same for helpers assets keep for themselves (animation data controllers), engine counts them as outside references
+	if (PjcShim::ReleaseEditorHelpers(LoadedAssets)) {
+		CollectGarbage(GARBAGE_COLLECTION_KEEPFLAGS);
+	}
 
 	return bLoaded;
 }

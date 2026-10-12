@@ -49,6 +49,12 @@ namespace PjcShim
 	bool DoesPackageExist(const FString& InPackageName, FString* OutFilename);
 	/** Waits for async asset compilation (UE5: textures, meshes, animations, ...) and shader jobs, they hold loaded assets */
 	void FinishAssetCompilation();
+	/**
+	 * Drops transient helpers assets keep for themselves while loaded in the editor (UE5 animation data controller).
+	 * Helper references asset internals, so engine treats it as outside reference and refuses deleting the asset.
+	 * Asset creates it again when needed. Returns true if any was dropped (collect garbage before deleting).
+	 */
+	bool ReleaseEditorHelpers(const TArray<UObject*>& Assets);
 	void GetDerivedClassNames(const TArray<FName>& ClassNames, const TSet<FName>& ExcludedClassNames, TSet<FName>& OutDerivedClassNames);
 	void OpenAssetEditor(const FAssetData& InAssetData);
 	FString GetObjectPathString(const FAssetData& InAssetData);

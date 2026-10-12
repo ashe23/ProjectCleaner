@@ -14,6 +14,7 @@
 #include "ShaderCompiler.h"
 #if ENGINE_MAJOR_VERSION >= 5
 #include "AssetCompilingManager.h"
+#include "Animation/AnimSequenceBase.h"
 #endif
 #include "AssetViewUtils.h"
 #include "Editor.h"
@@ -277,6 +278,29 @@ namespace PjcShim
 			GShaderCompilingManager->FinishAllCompilation();
 		}
 		FlushAsyncLoading();
+	}
+
+	bool ReleaseEditorHelpers(const TArray<UObject*>& Assets) {
+#if ENGINE_MAJOR_VERSION >= 5
+		// UAnimSequenceBase::Controller is transient, GetController() creates it on demand. It is protected, so reflection
+		const FInterfaceProperty* ControllerProperty = FindFProperty<FInterfaceProperty>(UAnimSequenceBase::StaticClass(), TEXT("Controller"));
+		if (!ControllerProperty) return false;
+
+		bool bReleased = false;
+		for (UObject* Asset : Assets) {
+			if (!Asset || !Asset->IsA<UAnimSequenceBase>()) continue;
+
+			void* Value = ControllerProperty->ContainerPtrToValuePtr<void>(Asset);
+			if (!ControllerProperty->GetPropertyValue(Value).GetObject()) continue;
+
+			ControllerProperty->SetPropertyValue(Value, FScriptInterface {});
+			bReleased = true;
+		}
+
+		return bReleased;
+#else
+		return false;
+#endif
 	}
 
 	bool LoadAssetsIfNeeded(const TArray<FString>& ObjectPaths, TArray<UObject*>& LoadedObjects, bool bAllowedToPromptToLoad, bool bLoadRedirects) {

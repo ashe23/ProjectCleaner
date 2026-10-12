@@ -564,10 +564,10 @@ FText SPjcTabAssetsUsage::BuildWhyText(const FPjcUsageItem& Item) {
 	if (!CurrentHolder.IsEmpty()) {
 		Paragraphs.Add(FString::Printf(TEXT("Right now it is %s, deleting it would be refused."), *GetShortHolder(CurrentHolder)));
 		Paragraphs.Add(
-			IsAnimationHelper(CurrentHolder) ? TEXT("The engine creates this helper when it loads an animation in the editor, ")
-												   TEXT("and its own delete refuses such assets too. ")
-													   TEXT("If you are sure, delete it from the Content Browser with Force Delete.")
-											 : TEXT("Close editors or levels that use it, or restart the editor, then clean again.")
+			IsAnimationHelper(CurrentHolder)
+				? TEXT("The engine creates this helper when it loads an animation. ")
+					  TEXT("Clean Project releases it before deleting, so it blocks only while an animation editor uses it.")
+				: TEXT("Close editors or levels that use it, or restart the editor, then clean again.")
 		);
 	}
 	else if (!Item.Kept.IsEmpty()) {
