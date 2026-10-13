@@ -11,6 +11,7 @@ ProjectCleaner dev tool - build, test and package the plugin against every insta
   python Scripts/pjc.py package [-e ...]            RunUAT BuildPlugin (same build Fab/Marketplace does)
   python Scripts/pjc.py polygon [projects]          clean real projects (e.g. Lyra) in local git repos, verify, reset
   python Scripts/pjc.py lint                        include path case check (Linux/Mac) + clang-format check
+  python Scripts/pjc.py synth   [-e 5.8] [--assets N]   large synthetic project in its own host, to try views on many assets
   python Scripts/pjc.py clean   [-e ...]            delete host Binaries/Intermediate/Saved/DerivedDataCache
 
 Engine versions for -e: "all" (default), "5.4", "5.4,5.6", "5.0-5.3", "4.27,5.5-".
@@ -24,6 +25,7 @@ Nothing is hard-coded. Engines are discovered from, in priority order:
   6. default install folders    - <ProgramFiles>/Epic Games/UE_*, /Users/Shared/Epic Games/UE_*
 
 Host projects live in PJC_HOSTS_DIR, {"hosts_dir": ...} in pjc.local.json, or <repo>/../hosts.
+Synthetic project hosts live apart from them: PJC_SYNTH_DIR, {"synth_dir": ...}, or <hosts dir>/../synth.
 Each host links Source/Resources/Config of this repo into Plugins/ProjectCleaner (junction on Windows,
 symlink elsewhere), so every engine compiles the same working tree with its own Binaries/Intermediate.
 """
@@ -55,6 +57,8 @@ TEST_FEATURE_PLUGIN = "PjcFeature"
 TEST_DISABLED_PLUGIN = "PjcDisabled"
 TEST_FILTER = "ProjectCleaner"
 FIXTURE_TEST = "PjcFixture.Build"
+SYNTH_TEST = "PjcFixture.Synth"
+SYNTH_FOLDER = "PjcSynth"
 LOCAL_CONFIG = os.path.join(SCRIPT_DIR, "pjc.local.json")
 
 USE_COLOR = sys.stdout.isatty() and os.environ.get("NO_COLOR") is None
@@ -99,6 +103,11 @@ def load_local_config():
 
 def hosts_dir(cfg):
     path = os.environ.get("PJC_HOSTS_DIR") or cfg.get("hosts_dir") or os.path.join(os.path.dirname(REPO_DIR), "hosts")
+    return os.path.abspath(os.path.expanduser(path))
+
+
+def synth_dir(cfg):
+    path = os.environ.get("PJC_SYNTH_DIR") or cfg.get("synth_dir") or os.path.join(os.path.dirname(hosts_dir(cfg)), "synth")
     return os.path.abspath(os.path.expanduser(path))
 
 
@@ -818,7 +827,7 @@ def editor_args(host, extra):
     ]
 
 
-def run_automation(host, test_filter, tag):
+def run_automation(host, test_filter, tag, extra=()):
     report_dir = os.path.join(host.logs_dir, "report_" + tag)
     remove_tree(report_dir)
     os.makedirs(report_dir, exist_ok=True)
@@ -828,7 +837,8 @@ def run_automation(host, test_filter, tag):
             "-ExecCmds=Automation RunTests {};Quit".format(test_filter),
             "-TestExit=Automation Test Queue Empty",
             "-ReportExportPath=" + report_dir,
-        ],
+        ]
+        + list(extra),
     )
     log = host.log(tag)
     code = run_logged(cmd, log, timeout=2400, engine=host.engine)
@@ -1020,6 +1030,31 @@ def cmd_cli(args, hosts):
         return code == 0, "exit {}  {}  log: {}".format(code, stats[-1] if stats else "", log)
 
     return run_for_hosts(hosts, work, args.jobs, "cli " + " ".join(switches))
+
+
+def cmd_synth(args, hosts):
+    def work(host):
+        content = os.path.join(host.dir, "Content", SYNTH_FOLDER)
+        remove_tree(content)
+        if args.remove:
+            return True, "removed " + content
+
+        ok, summary = build_host(host)
+        if not ok:
+            return False, "build: " + summary
+        extra = ["-PjcSynthAssets={}".format(args.assets), "-PjcSynthSeed={}".format(args.seed)]
+        ok, summary = run_automation(host, SYNTH_TEST, "synth", extra)
+        if not ok:
+            return False, summary
+
+        assets = 0
+        size = 0
+        for root, _, files in os.walk(content):
+            assets += len([f for f in files if f.endswith(".uasset")])
+            size += sum(os.path.getsize(os.path.join(root, f)) for f in files)
+        return True, "{} assets, {:.0f} MB\nopen {}".format(assets, size / (1024 * 1024), host.uproject)
+
+    return run_for_hosts(hosts, work, args.jobs, "synth")
 
 
 def cmd_package(args, hosts, cfg):
@@ -1828,6 +1863,11 @@ def main():
     p.add_argument("--out", help="output folder (default: <hosts dir>/../packages)")
     add("lint", "include case and clang-format checks")
     add("clean", "delete host build products")
+    p = add("synth", "generate large synthetic project in its own host (default: newest engine), to try views on many assets")
+    p.set_defaults(engines="newest")
+    p.add_argument("--assets", type=int, default=30000, help="number of assets (default: %(default)s)")
+    p.add_argument("--seed", type=int, default=1, help="random seed, another seed gives another project of same size")
+    p.add_argument("--remove", action="store_true", help="delete synthetic content instead of generating it")
 
     args = parser.parse_args()
     cfg = load_local_config()
@@ -1843,6 +1883,12 @@ def main():
 
     if not engines:
         die("no Unreal Engine installs found. Set PJC_ENGINES or add 'engines' to " + LOCAL_CONFIG)
+
+    if args.command == "synth":
+        selected = select_engines(engines, "all")[-1:] if args.engines == "newest" else select_engines(engines, args.engines)
+        root = synth_dir(cfg)
+        with HostsLock(root):
+            return cmd_synth(args, [Host(e, root) for e in selected])
 
     selected = select_engines(engines, args.engines)
     root = hosts_dir(cfg)
