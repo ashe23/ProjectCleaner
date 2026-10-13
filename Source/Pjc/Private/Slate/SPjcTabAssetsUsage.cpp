@@ -1,6 +1,7 @@
 // Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "Slate/SPjcTabAssetsUsage.h"
+#include "Slate/SPjcAssetConnections.h"
 #include "Slate/SPjcAssetGraph.h"
 #include "Slate/SPjcItemUsage.h"
 #include "PjcAssetGraph.h"
@@ -81,6 +82,19 @@ void SPjcTabAssetsUsage::Construct(const FArguments& InArgs) {
 		.OnSelectionChanged_Raw(this, &SPjcTabAssetsUsage::OnGraphSelectionChanged)
 		.OnAssetDoubleClicked_Raw(this, &SPjcTabAssetsUsage::OnGraphAssetDoubleClicked);
 
+	SAssignNew(ConnectionsView, SPjcAssetConnections)
+		.OnInspect_Lambda([this](const FName& PackageName) {
+			Inspect(PackageName);
+		})
+		.OnOpen_Raw(this, &SPjcTabAssetsUsage::OnGraphAssetDoubleClicked)
+		.OnBrowse_Lambda([this](const FName&) {
+			OnShowInContentBrowser();
+		})
+		.OnShowInMap_Lambda([this](const FName& PackageName) {
+			View = EView::Map;
+			GraphView->SetSelection(PackageName, true);
+		});
+
 	// clang-format off
 	ChildSlot
 	[
@@ -146,10 +160,14 @@ void SPjcTabAssetsUsage::Construct(const FArguments& InArgs) {
 			.Value(0.62f)
 			[
 				SNew(SWidgetSwitcher)
-				.WidgetIndex_Lambda([this]() { return bShowList ? 1 : 0; })
+				.WidgetIndex_Lambda([this]() { return static_cast<int32>(View); })
 				+ SWidgetSwitcher::Slot()
 				[
 					GraphView.ToSharedRef()
+				]
+				+ SWidgetSwitcher::Slot()
+				[
+					ConnectionsView.ToSharedRef()
 				]
 				+ SWidgetSwitcher::Slot()
 				.Padding(5.0f)
@@ -161,7 +179,7 @@ void SPjcTabAssetsUsage::Construct(const FArguments& InArgs) {
 			.Value(0.38f)
 			[
 				SNew(SBox)
-				.Visibility_Lambda([this]() { return Current.IsValid() ? EVisibility::Visible : EVisibility::Collapsed; })
+				.Visibility_Lambda([this]() { return Current.IsValid() && View != EView::Connections ? EVisibility::Visible : EVisibility::Collapsed; })
 				[
 					CreateInspector()
 				]
@@ -218,6 +236,7 @@ void SPjcTabAssetsUsage::Inspect(const FName& PackageName, const bool bRecordHis
 	CurrentHolder = Item->bScanned && !Item->Usage.bUsed && Item->Asset.IsValid() ? UPjcSubsystem::GetAssetHolder(Item->Asset) : FString {};
 	CurrentWhy = BuildWhyText(*Item);
 	RebuildChain();
+	UpdateConnections();
 
 	ListUsedBy->RequestListRefresh();
 	ListUses->RequestListRefresh();
@@ -374,10 +393,11 @@ void SPjcTabAssetsUsage::ListSort() {
 
 void SPjcTabAssetsUsage::RebuildChain() {
 	ChainBox->ClearChildren();
+	ItemsChain.Reset();
 	if (!Current.IsValid() || !Current->bScanned || Current->Usage.Parent.IsNone()) return;
 
 	// from asset used for its own reason down to inspected one
-	TArray<TSharedPtr<FPjcUsageItem>> Chain;
+	TArray<TSharedPtr<FPjcUsageItem>>& Chain = ItemsChain;
 	TSet<FName> Visited;
 	TSharedPtr<FPjcUsageItem> Step = Current;
 	while (Step.IsValid() && !Visited.Contains(Step->PackageName) && Chain.Num() < 64) {
@@ -453,13 +473,29 @@ void SPjcTabAssetsUsage::ClearInspected() {
 	CurrentWhy = FText::GetEmpty();
 	ItemsUsedBy.Reset();
 	ItemsUses.Reset();
+	ItemsChain.Reset();
 	ChainBox->ClearChildren();
 	ListUsedBy->RequestListRefresh();
 	ListUses->RequestListRefresh();
+	UpdateConnections();
 
 	TGuardValue<bool> SyncGuard {bSyncingSelection, true};
 	ListView->ClearSelection();
 	GraphView->SetSelection(NAME_None, false);
+}
+
+void SPjcTabAssetsUsage::UpdateConnections() {
+	// what only it uses, deleting or keeping it decides about them too
+	FString Owned;
+	const int32 Node = Current.IsValid() && Graph.IsValid() ? Graph->Find(Current->PackageName) : INDEX_NONE;
+	if (Node != INDEX_NONE && Graph->GetNodes()[Node].NumOwned > 0) {
+		const FPjcGraphNode& GraphNode = Graph->GetNodes()[Node];
+		Owned = FString::Printf(
+			TEXT("Only it uses %d asset(s), %s with them."), GraphNode.NumOwned, *FText::AsMemory(GraphNode.SizeOwned, IEC).ToString()
+		);
+	}
+
+	ConnectionsView->SetAsset(Current, ItemsChain, ItemsUsedBy, ItemsUses, CurrentWhy, Owned);
 }
 
 TSharedPtr<FPjcUsageItem> SPjcTabAssetsUsage::FindOrMakeItem(const FName& PackageName) {
@@ -664,15 +700,15 @@ TSharedRef<SWidget> SPjcTabAssetsUsage::CreateToolbar() const {
 }
 
 TSharedRef<SWidget> SPjcTabAssetsUsage::CreateViewToggle() {
-	const auto MakeButton = [this](const TCHAR* InLabel, const TCHAR* InToolTip, const bool bInList) {
+	const auto MakeButton = [this](const TCHAR* InLabel, const TCHAR* InToolTip, const EView InView) {
 		return SNew(SCheckBox)
 			.Style(&PjcShim::GetStyle().GetWidgetStyle<FCheckBoxStyle>("ToggleButtonCheckbox"))
 			.ToolTipText(FText::FromString(InToolTip))
-			.IsChecked_Lambda([this, bInList]() {
-				return bShowList == bInList ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
+			.IsChecked_Lambda([this, InView]() {
+				return View == InView ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
 			})
-			.OnCheckStateChanged_Lambda([this, bInList](ECheckBoxState) {
-				bShowList = bInList;
+			.OnCheckStateChanged_Lambda([this, InView](ECheckBoxState) {
+				View = InView;
 			})[SNew(SBox).Padding(FMargin {10.0f, 2.0f})[SNew(STextBlock).Text(FText::FromString(InLabel))]];
 	};
 
@@ -681,12 +717,17 @@ TSharedRef<SWidget> SPjcTabAssetsUsage::CreateViewToggle() {
 		+ SHorizontalBox::Slot()
 		.AutoWidth()
 		[
-			MakeButton(TEXT("Graph"), TEXT("Assets as graph: bubbles are assets with everything only they use, scroll to open them"), false)
+			MakeButton(TEXT("Map"), TEXT("Project folders as map: circle area is size on disk, red part of folder ring is unused. Scroll to open folders"), EView::Map)
 		]
 		+ SHorizontalBox::Slot()
 		.AutoWidth()
 		[
-			MakeButton(TEXT("List"), TEXT("Assets as sortable list"), true)
+			MakeButton(TEXT("Connections"), TEXT("Selected asset with its usage chain, assets it is used by and assets it uses"), EView::Connections)
+		]
+		+ SHorizontalBox::Slot()
+		.AutoWidth()
+		[
+			MakeButton(TEXT("List"), TEXT("Assets as sortable list"), EView::List)
 		];
 	// clang-format on
 }
@@ -828,6 +869,17 @@ TSharedRef<SWidget> SPjcTabAssetsUsage::CreateInspector() {
 				.FillWidth(1.0f)
 				[
 					SNew(SBox)
+				]
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				.Padding(FMargin{5.0f, 0.0f, 0.0f, 0.0f})
+				[
+					MakeButton(
+						TEXT("Connections"),
+						TEXT("Show what uses it and what it uses"),
+						FOnClicked::CreateLambda([this]() { View = EView::Connections; return FReply::Handled(); }),
+						true
+					)
 				]
 				+ SHorizontalBox::Slot()
 				.AutoWidth()

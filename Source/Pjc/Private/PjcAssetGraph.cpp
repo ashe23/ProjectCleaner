@@ -14,27 +14,12 @@ namespace
 	constexpr double RadiusPerSqrtByte = 0.02;
 	constexpr float RadiusMin = 4.0f;
 
-	// folder with more top level assets than this share of its area is split by subfolders
-	constexpr int32 RegionSplitMin = 150;
-	constexpr float RegionSplitShare = 0.4f;
-	constexpr int32 RegionDepthMax = 6;
-
 	// vector component type, float before UE5
 	using FReal = decltype(FVector2D::X);
 
-	/** Gap kept around circle inside its owner */
-	float GetPadding(const float Radius) {
-		return 2.0f + Radius * 0.05f;
-	}
-
-	/** Gap kept between top level groups */
+	/** Gap kept around circle inside its folder */
 	float GetGap(const float Radius) {
-		return 4.0f + Radius * 0.04f;
-	}
-
-	/** Gap kept between folder regions */
-	float GetRegionGap(const float Radius) {
-		return 24.0f + Radius * 0.05f;
+		return 2.0f + Radius * 0.04f;
 	}
 
 	double SquareRoot(const double Value) {
@@ -190,30 +175,6 @@ namespace
 		}
 	}
 
-	/** Breadth first over given neighbors, starts from items in given order, so linked items follow each other */
-	TArray<int32> GetLinkedOrder(const TArray<int32>& Items, const TMap<int32, TArray<int32>>& Neighbors) {
-		TArray<int32> Result;
-		TSet<int32> Added;
-		Result.Reserve(Items.Num());
-		Added.Reserve(Items.Num());
-		for (const int32 Start : Items) {
-			if (Added.Contains(Start)) continue;
-
-			Added.Add(Start);
-			for (int32 Head = Result.Add(Start); Head < Result.Num(); ++Head) {
-				const TArray<int32>* ItemNeighbors = Neighbors.Find(Result[Head]);
-				for (int32 Step = 0; ItemNeighbors && Step < ItemNeighbors->Num(); ++Step) {
-					const int32 Neighbor = (*ItemNeighbors)[Step];
-					if (Added.Contains(Neighbor)) continue;
-
-					Added.Add(Neighbor);
-					Result.Add(Neighbor);
-				}
-			}
-		}
-		return Result;
-	}
-
 	/** Packs circles, then moves them so circle around them is centered at origin. Returns its radius */
 	double PackCentered(TArray<FPackCircle>& Circles) {
 		PackCircles(Circles);
@@ -245,12 +206,9 @@ namespace
 void FPjcAssetGraph::Build(const TArray<TSharedPtr<FPjcUsageItem>>& Items) {
 	Nodes.Reset();
 	NodeIndices.Reset();
-	TopLevel.Reset();
-	Order.Reset();
-	Regions.Reset();
-	NodeRegions.Reset();
-	GroupBounds[0] = FBox2D {ForceInit};
-	GroupBounds[1] = FBox2D {ForceInit};
+	Folders.Reset();
+	RootFolders.Reset();
+	Bounds = FBox2D {ForceInit};
 	NumLinks = 0;
 
 	// sorted by name, so same project gives same picture
@@ -277,10 +235,8 @@ void FPjcAssetGraph::Build(const TArray<TSharedPtr<FPjcUsageItem>>& Items) {
 
 	BuildLinks();
 	BuildOwners();
-	BuildClusters();
-	BuildRegions();
+	BuildFolders();
 	BuildLayout();
-	UpdatePositions();
 }
 
 int32 FPjcAssetGraph::Find(const FName& PackageName) const {
@@ -292,34 +248,16 @@ const TArray<FPjcGraphNode>& FPjcAssetGraph::GetNodes() const {
 	return Nodes;
 }
 
-const TArray<FPjcGraphRegion>& FPjcAssetGraph::GetRegions() const {
-	return Regions;
+const TArray<FPjcGraphFolder>& FPjcAssetGraph::GetFolders() const {
+	return Folders;
 }
 
-int32 FPjcAssetGraph::GetRegion(const int32 Node) const {
-	return NodeRegions.IsValidIndex(Node) ? NodeRegions[Node] : INDEX_NONE;
-}
-
-const TArray<int32>& FPjcAssetGraph::GetTopLevel() const {
-	return TopLevel;
-}
-
-const TArray<int32>& FPjcAssetGraph::GetOrder() const {
-	return Order;
+const TArray<int32>& FPjcAssetGraph::GetRootFolders() const {
+	return RootFolders;
 }
 
 FBox2D FPjcAssetGraph::GetBounds() const {
-	FBox2D Bounds {ForceInit};
-	for (const auto& Group : GroupBounds) {
-		if (Group.bIsValid) {
-			Bounds += Group;
-		}
-	}
 	return Bounds;
-}
-
-FBox2D FPjcAssetGraph::GetGroupBounds(const bool bUsed) const {
-	return GroupBounds[bUsed ? 0 : 1];
 }
 
 int32 FPjcAssetGraph::GetNumLinks() const {
@@ -522,16 +460,14 @@ void FPjcAssetGraph::BuildOwners() {
 		}
 	}
 
+	// owners come before what they own
+	TArray<int32> Order;
 	Order.Reserve(Num);
 	for (int32 Step = 1; Step < ReversePostOrder.Num(); ++Step) {
 		const int32 Index = ReversePostOrder[Step];
 		FPjcGraphNode& Node = Nodes[Index];
 		Node.Owner = Dominator[Index] == Root ? INDEX_NONE : Dominator[Index];
-		Node.Depth = Node.Owner == INDEX_NONE ? 0 : Nodes[Node.Owner].Depth + 1;
-		if (Node.Owner == INDEX_NONE) {
-			TopLevel.Add(Index);
-		}
-		else {
+		if (Node.Owner != INDEX_NONE) {
 			Nodes[Node.Owner].Owned.Add(Index);
 		}
 		Order.Add(Index);
@@ -552,225 +488,170 @@ void FPjcAssetGraph::BuildOwners() {
 	for (auto& Node : Nodes) {
 		Node.Owned.Sort(BiggerFirst);
 	}
-	TopLevel.Sort(BiggerFirst);
 }
 
-void FPjcAssetGraph::BuildClusters() {
-	// owned assets are packed around their owner, smallest groups first so owners know their size
-	TArray<FPackCircle> Circles;
-	for (int32 Step = Order.Num() - 1; Step >= 0; --Step) {
-		FPjcGraphNode& Node = Nodes[Order[Step]];
-		if (Node.Owned.Num() == 0) {
-			Node.ClusterRadius = Node.Radius;
-			continue;
-		}
-
-		Circles.Reset(Node.Owned.Num() + 1);
-		Circles.Add(FPackCircle {0.0, 0.0, Node.Radius + GetPadding(Node.Radius)});
-		for (const int32 OwnedIndex : Node.Owned) {
-			const float Radius = Nodes[OwnedIndex].ClusterRadius;
-			Circles.Add(FPackCircle {0.0, 0.0, Radius + GetPadding(Radius)});
-		}
-		PackCircles(Circles);
-
-		// group circle centered on bounds of packed circles, owner is not always in the middle but circle stays tight
-		double MinX = -Node.Radius;
-		double MinY = -Node.Radius;
-		double MaxX = Node.Radius;
-		double MaxY = Node.Radius;
-		for (int32 OwnedStep = 0; OwnedStep < Node.Owned.Num(); ++OwnedStep) {
-			const FPackCircle& Circle = Circles[OwnedStep + 1];
-			const double Radius = Nodes[Node.Owned[OwnedStep]].ClusterRadius;
-			MinX = FMath::Min(MinX, Circle.X - Radius);
-			MinY = FMath::Min(MinY, Circle.Y - Radius);
-			MaxX = FMath::Max(MaxX, Circle.X + Radius);
-			MaxY = FMath::Max(MaxY, Circle.Y + Radius);
-		}
-		const double CenterX = (MinX + MaxX) * 0.5;
-		const double CenterY = (MinY + MaxY) * 0.5;
-
-		double ClusterRadius = SquareRoot(CenterX * CenterX + CenterY * CenterY) + Node.Radius;
-		for (int32 OwnedStep = 0; OwnedStep < Node.Owned.Num(); ++OwnedStep) {
-			FPjcGraphNode& OwnedNode = Nodes[Node.Owned[OwnedStep]];
-			const FPackCircle& Circle = Circles[OwnedStep + 1];
-			const double Dist = SquareRoot(FMath::Square(Circle.X - CenterX) + FMath::Square(Circle.Y - CenterY));
-			ClusterRadius = FMath::Max(ClusterRadius, Dist + OwnedNode.ClusterRadius);
-
-			// packed circle is owned group, asset itself is off its center
-			OwnedNode.Offset = ToVector(Circle.X, Circle.Y) - OwnedNode.ClusterOffset;
-		}
-
-		// room for group outline
-		Node.ClusterOffset = ToVector(CenterX, CenterY);
-		Node.ClusterRadius = static_cast<float>(ClusterRadius * 1.03 + 2.0);
-	}
-}
-
-void FPjcAssetGraph::BuildRegions() {
-	// folder of asset at given depth below mount point, e.g. depth 1: /Game/Characters
-	const auto GetFolder = [](const FString& PackageName, const int32 Depth) {
-		int32 NumSlashes = 0;
-		for (int32 Index = 1; Index < PackageName.Len(); ++Index) {
-			if (PackageName[Index] == TEXT('/') && ++NumSlashes > Depth) {
-				return PackageName.Left(Index);
-			}
-		}
-		return FPackageName::GetLongPackagePath(PackageName);
+void FPjcAssetGraph::BuildFolders() {
+	// folder tree like content browser shows it
+	struct FTreeFolder
+	{
+		FString Path;
+		TArray<int32> Folders;
+		TArray<int32> Assets;
 	};
+	TArray<FTreeFolder> Tree;
+	TMap<FString, int32> TreeIndices;
+	TArray<int32> TreeRoots;
 
-	// one region per folder, folder holding most of its area is split by subfolders
-	for (const bool bUsed : {true, false}) {
-		TArray<int32> Items;
-		for (const int32 Index : TopLevel) {
-			if (Nodes[Index].Item->Usage.bUsed == bUsed) {
-				Items.Add(Index);
-			}
+	TFunction<int32(const FString&)> GetTreeFolder;
+	GetTreeFolder = [&](const FString& Path) {
+		if (const int32* Found = TreeIndices.Find(Path)) return *Found;
+
+		const int32 Slash = Path.Find(TEXT("/"), ESearchCase::CaseSensitive, ESearchDir::FromEnd);
+		const int32 Parent = Slash > 0 ? GetTreeFolder(Path.Left(Slash)) : INDEX_NONE;
+		const int32 Index = Tree.Add(FTreeFolder {Path, {}, {}});
+		TreeIndices.Add(Path, Index);
+		if (Parent == INDEX_NONE) {
+			TreeRoots.Add(Index);
 		}
-		const int32 SplitAbove = FMath::Max(RegionSplitMin, static_cast<int32>(Items.Num() * RegionSplitShare));
-
-		TFunction<void(const TArray<int32>&, int32)> Split;
-		Split = [&](const TArray<int32>& InItems, const int32 Depth) {
-			TMap<FString, TArray<int32>> ByFolder;
-			for (const int32 Index : InItems) {
-				ByFolder.FindOrAdd(GetFolder(Nodes[Index].Item->PackageName.ToString(), Depth)).Add(Index);
-			}
-
-			for (const auto& Folder : ByFolder) {
-				bool bHasSubfolders = false;
-				for (const int32 Index : Folder.Value) {
-					bHasSubfolders = bHasSubfolders || GetFolder(Nodes[Index].Item->PackageName.ToString(), Depth + 1) != Folder.Key;
-				}
-				if (Folder.Value.Num() > SplitAbove && bHasSubfolders && Depth < RegionDepthMax) {
-					Split(Folder.Value, Depth + 1);
-					continue;
-				}
-
-				FPjcGraphRegion& Region = Regions.AddDefaulted_GetRef();
-				Region.Path = Folder.Key;
-				Region.bUsed = bUsed;
-				Region.Nodes = Folder.Value;
-				for (const int32 Index : Folder.Value) {
-					Region.NumAssets += Nodes[Index].NumOwned + 1;
-					Region.Size += Nodes[Index].SizeOwned;
-				}
-			}
-		};
-		Split(Items, 1);
+		else {
+			Tree[Parent].Folders.Add(Index);
+		}
+		return Index;
+	};
+	for (int32 Index = 0; Index < Nodes.Num(); ++Index) {
+		Tree[GetTreeFolder(FPackageName::GetLongPackagePath(Nodes[Index].Item->PackageName.ToString()))].Assets.Add(Index);
 	}
 
-	NodeRegions.Init(INDEX_NONE, Nodes.Num());
-	for (int32 RegionIndex = 0; RegionIndex < Regions.Num(); ++RegionIndex) {
-		for (const int32 Index : Regions[RegionIndex].Nodes) {
-			NodeRegions[Index] = RegionIndex;
+	// folders holding nothing but one folder are merged with it, parents get lower indices than subfolders
+	const auto GetLastName = [](const FString& Path) {
+		return Path.Mid(Path.Find(TEXT("/"), ESearchCase::CaseSensitive, ESearchDir::FromEnd) + 1);
+	};
+	TFunction<void(int32, int32)> AddFolder;
+	AddFolder = [&](int32 TreeIndex, const int32 Parent) {
+		FString Name = GetLastName(Tree[TreeIndex].Path);
+		while (Tree[TreeIndex].Assets.Num() == 0 && Tree[TreeIndex].Folders.Num() == 1) {
+			TreeIndex = Tree[TreeIndex].Folders[0];
+			Name += TEXT("/") + GetLastName(Tree[TreeIndex].Path);
+		}
+
+		const int32 Index = Folders.AddDefaulted();
+		Folders[Index].Path = Tree[TreeIndex].Path;
+		Folders[Index].Name = Name;
+		Folders[Index].Parent = Parent;
+		Folders[Index].Assets = Tree[TreeIndex].Assets;
+		for (const int32 Asset : Tree[TreeIndex].Assets) {
+			Nodes[Asset].Folder = Index;
+		}
+		if (Parent == INDEX_NONE) {
+			RootFolders.Add(Index);
+		}
+		else {
+			Folders[Parent].Folders.Add(Index);
+		}
+
+		for (const int32 Child : Tree[TreeIndex].Folders) {
+			AddFolder(Child, Index);
+		}
+	};
+	for (const int32 TreeRoot : TreeRoots) {
+		AddFolder(TreeRoot, INDEX_NONE);
+	}
+
+	// totals from deepest folders up
+	for (int32 Index = Folders.Num() - 1; Index >= 0; --Index) {
+		FPjcGraphFolder& Folder = Folders[Index];
+		for (const int32 Asset : Folder.Assets) {
+			const FPjcUsageItem& Item = *Nodes[Asset].Item;
+			++Folder.NumAssets;
+			Folder.Size += Item.Size;
+			if (!Item.Usage.bUsed) {
+				++Folder.NumUnused;
+				Folder.SizeUnused += Item.Size;
+				Folder.NumNotDeleted += Item.Kept.IsEmpty() ? 0 : 1;
+			}
+		}
+		for (const int32 Subfolder : Folder.Folders) {
+			Folder.NumAssets += Folders[Subfolder].NumAssets;
+			Folder.NumUnused += Folders[Subfolder].NumUnused;
+			Folder.NumNotDeleted += Folders[Subfolder].NumNotDeleted;
+			Folder.Size += Folders[Subfolder].Size;
+			Folder.SizeUnused += Folders[Subfolder].SizeUnused;
 		}
 	}
-	for (const int32 Index : Order) {
-		if (Nodes[Index].Owner != INDEX_NONE) {
-			NodeRegions[Index] = NodeRegions[Nodes[Index].Owner];
-		}
+
+	for (auto& Folder : Folders) {
+		Folder.Folders.Sort([this](const int32 A, const int32 B) {
+			return Folders[A].Size != Folders[B].Size ? Folders[A].Size > Folders[B].Size : A < B;
+		});
+		Folder.Assets.Sort([this](const int32 A, const int32 B) {
+			return Nodes[A].Item->Size != Nodes[B].Item->Size ? Nodes[A].Item->Size > Nodes[B].Item->Size : A < B;
+		});
 	}
 }
 
 void FPjcAssetGraph::BuildLayout() {
-	// links between top level assets (through anything they own) and between regions
-	TArray<int32> TopOf;
-	TopOf.SetNumUninitialized(Nodes.Num());
-	for (const int32 Index : Order) {
-		const int32 Owner = Nodes[Index].Owner;
-		TopOf[Index] = Owner == INDEX_NONE ? Index : TopOf[Owner];
-	}
-
-	TSet<uint64> LinkKeys;
-	TMap<int32, TArray<int32>> Neighbors;
-	TMap<int32, TArray<int32>> RegionNeighbors;
-	const auto AddLink = [&LinkKeys](TMap<int32, TArray<int32>>& InNeighbors, const int32 A, const int32 B, const uint64 Kind) {
-		bool bAlreadyAdded = false;
-		LinkKeys.Add(Kind << 62 | static_cast<uint64>(FMath::Min(A, B)) << 31 | static_cast<uint64>(FMath::Max(A, B)), &bAlreadyAdded);
-		if (bAlreadyAdded) return;
-
-		InNeighbors.FindOrAdd(A).Add(B);
-		InNeighbors.FindOrAdd(B).Add(A);
+	// every folder packs its subfolders and assets, deepest first so subfolders know their size
+	struct FPackItem
+	{
+		int32 Index;
+		bool bFolder;
+		float Radius;
 	};
-	for (int32 Index = 0; Index < Nodes.Num(); ++Index) {
-		for (const int32 Use : Nodes[Index].Uses) {
-			const int32 A = TopOf[Index];
-			const int32 B = TopOf[Use];
-			if (A == B) continue;
+	TArray<FVector2D> AssetOffsets;
+	TArray<FVector2D> FolderOffsets;
+	AssetOffsets.SetNum(Nodes.Num());
+	FolderOffsets.SetNum(Folders.Num());
 
-			const int32 RegionA = NodeRegions[A];
-			const int32 RegionB = NodeRegions[B];
-			if (RegionA == RegionB) {
-				AddLink(Neighbors, A, B, 0);
-			}
-			else if (Regions[RegionA].bUsed == Regions[RegionB].bUsed) {
-				AddLink(RegionNeighbors, RegionA, RegionB, 1);
-			}
-		}
-	}
-
-	// top level assets packed in their region, region circle centered at origin for now
-	TArray<FVector2D> LocalCenters;
-	LocalCenters.SetNum(Nodes.Num());
+	TArray<FPackItem> Items;
 	TArray<FPackCircle> Circles;
-	for (auto& Region : Regions) {
-		const TArray<int32> Linked = GetLinkedOrder(Region.Nodes, Neighbors);
-		Circles.Reset(Linked.Num());
-		for (const int32 Index : Linked) {
-			const float Radius = Nodes[Index].ClusterRadius;
-			Circles.Add(FPackCircle {0.0, 0.0, Radius + GetGap(Radius) * 0.5});
-		}
-
-		const double Radius = PackCentered(Circles);
-		for (int32 Step = 0; Step < Linked.Num(); ++Step) {
-			LocalCenters[Linked[Step]] = ToVector(Circles[Step].X, Circles[Step].Y);
-		}
-		Region.Radius = static_cast<float>(Radius * 1.03 + 10.0);
-	}
-
-	// regions packed in used and unused areas, unused area right of used one
-	double AreaLeft = 0.0;
-	for (const bool bUsed : {true, false}) {
-		TArray<int32> GroupRegions;
-		for (int32 RegionIndex = 0; RegionIndex < Regions.Num(); ++RegionIndex) {
-			if (Regions[RegionIndex].bUsed == bUsed) {
-				GroupRegions.Add(RegionIndex);
-			}
-		}
-		if (GroupRegions.Num() == 0) continue;
-
-		GroupRegions.Sort([this](const int32 A, const int32 B) {
-			return Regions[A].Radius != Regions[B].Radius ? Regions[A].Radius > Regions[B].Radius : A < B;
+	const auto Pack = [&]() {
+		Items.Sort([](const FPackItem& A, const FPackItem& B) {
+			return A.Radius > B.Radius;
 		});
-		const TArray<int32> Linked = GetLinkedOrder(GroupRegions, RegionNeighbors);
-
-		Circles.Reset(Linked.Num());
-		for (const int32 RegionIndex : Linked) {
-			const float Radius = Regions[RegionIndex].Radius;
-			Circles.Add(FPackCircle {0.0, 0.0, Radius + GetRegionGap(Radius) * 0.5});
+		Circles.Reset(Items.Num());
+		for (const auto& Item : Items) {
+			Circles.Add(FPackCircle {0.0, 0.0, Item.Radius + GetGap(Item.Radius) * 0.5});
 		}
+
 		const double Radius = PackCentered(Circles);
-
-		const FVector2D AreaCenter = ToVector(AreaLeft + Radius, 0.0);
-		FBox2D& Bounds = GroupBounds[bUsed ? 0 : 1];
-		for (int32 Step = 0; Step < Linked.Num(); ++Step) {
-			FPjcGraphRegion& Region = Regions[Linked[Step]];
-			Region.Center = AreaCenter + ToVector(Circles[Step].X, Circles[Step].Y);
-			Bounds += Region.Center - FVector2D {Region.Radius, Region.Radius};
-			Bounds += Region.Center + FVector2D {Region.Radius, Region.Radius};
-
-			for (const int32 Index : Region.Nodes) {
-				Nodes[Index].Position = Region.Center + LocalCenters[Index] - Nodes[Index].ClusterOffset;
-			}
+		for (int32 Step = 0; Step < Items.Num(); ++Step) {
+			const FVector2D Offset = ToVector(Circles[Step].X, Circles[Step].Y);
+			(Items[Step].bFolder ? FolderOffsets[Items[Step].Index] : AssetOffsets[Items[Step].Index]) = Offset;
 		}
-		AreaLeft += Radius * 2.0 + FMath::Max(300.0, Radius * 0.15);
-	}
-}
+		return Radius;
+	};
 
-void FPjcAssetGraph::UpdatePositions() {
-	for (const int32 Index : Order) {
-		FPjcGraphNode& Node = Nodes[Index];
-		if (Node.Owner != INDEX_NONE) {
-			Node.Position = Nodes[Node.Owner].Position + Node.Offset;
+	for (int32 Index = Folders.Num() - 1; Index >= 0; --Index) {
+		FPjcGraphFolder& Folder = Folders[Index];
+		Items.Reset();
+		for (const int32 Subfolder : Folder.Folders) {
+			Items.Add(FPackItem {Subfolder, true, Folders[Subfolder].Radius});
+		}
+		for (const int32 Asset : Folder.Assets) {
+			Items.Add(FPackItem {Asset, false, Nodes[Asset].Radius});
+		}
+
+		// room for folder outline
+		const double Radius = Pack();
+		Folder.Radius = static_cast<float>(Radius * 1.02 + 4.0);
+	}
+
+	// mount points side by side
+	Items.Reset();
+	for (const int32 Index : RootFolders) {
+		Items.Add(FPackItem {Index, true, Folders[Index].Radius * 1.05f});
+	}
+	Pack();
+
+	for (int32 Index = 0; Index < Folders.Num(); ++Index) {
+		FPjcGraphFolder& Folder = Folders[Index];
+		Folder.Center = Folder.Parent == INDEX_NONE ? FolderOffsets[Index] : Folders[Folder.Parent].Center + FolderOffsets[Index];
+		for (const int32 Asset : Folder.Assets) {
+			Nodes[Asset].Position = Folder.Center + AssetOffsets[Asset];
+		}
+		if (Folder.Parent == INDEX_NONE) {
+			Bounds += Folder.Center - FVector2D {Folder.Radius, Folder.Radius};
+			Bounds += Folder.Center + FVector2D {Folder.Radius, Folder.Radius};
 		}
 	}
 }

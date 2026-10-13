@@ -15,34 +15,27 @@
 
 namespace
 {
-	// group opens when its bubble gets this big on screen, fully open after fade. Same for folder regions
-	constexpr float OpenPixels = 90.0f;
-	constexpr float FadePixels = 70.0f;
-	constexpr float RegionOpenPixels = 150.0f;
-	constexpr float RegionFadePixels = 110.0f;
+	// folder opens when its circle gets this big on screen, fully open after fade
+	constexpr float FolderOpenPixels = 120.0f;
+	constexpr float FolderFadePixels = 90.0f;
 	constexpr float MaxZoom = 12.0f;
 	constexpr float CullMargin = 60.0f;
 	constexpr int32 MaxLabels = 90;
 	constexpr int32 MaxForcedNodes = 300;
 	// asset circle this big shows class icon
 	constexpr float IconPixels = 13.0f;
+	// hovered closed folder shows links of its assets when it has not more of them
+	constexpr int32 MaxHoverFolderAssets = 20000;
 
 	const FLinearColor BackgroundColor {0.006f, 0.007f, 0.009f, 1.0f};
 	const FLinearColor PanelColor {0.0f, 0.0f, 0.0f, 0.75f};
 	const FLinearColor LinkColor {0.4f, 0.5f, 0.65f, 1.0f};
 	const FLinearColor TextColor {0.85f, 0.87f, 0.9f, 1.0f};
 	const FLinearColor HintColor {0.3f, 0.32f, 0.35f, 1.0f};
+	const FLinearColor FolderColor {0.55f, 0.6f, 0.7f, 1.0f};
 
 	FLinearColor WithAlpha(const FLinearColor& Color, const float InAlpha) {
 		return FLinearColor {Color.R, Color.G, Color.B, Color.A * FMath::Clamp(InAlpha, 0.0f, 1.0f)};
-	}
-
-	/** "/Game/Characters" -> "Characters", "/ShooterCore/Weapons" -> "ShooterCore/Weapons" */
-	FString GetRegionName(const FString& Path) {
-		FString Name = Path;
-		Name.RemoveFromStart(TEXT("/Game/"));
-		Name.RemoveFromStart(TEXT("/"));
-		return Name.IsEmpty() ? Path : Name;
 	}
 
 	FPaintGeometry MakePaintGeometry(const FGeometry& Geometry, const FVector2D& Offset, const FVector2D& Size) {
@@ -128,6 +121,36 @@ namespace
 			}
 		}
 
+		/** Part of ring, angles in turns clockwise from top */
+		void
+		Arc(const FVector2D& Center, const float Radius, const float Thickness, const float Start, const float Sweep, const FLinearColor& Color) {
+			if (Color.A < 0.004f || Radius <= 0.0f || Sweep <= 0.0001f) return;
+
+			const int32 Num = FMath::Clamp(static_cast<int32>(Radius * Sweep * 0.8f) + 2, 2, 128);
+			const FColor Solid = Color.ToFColor(true);
+			const FColor Clear = WithAlpha(Color, 0.0f).ToFColor(true);
+			const float Half = FMath::Max(Thickness * 0.5f - 0.5f, 0.0f);
+			const float Radii[] = {FMath::Max(Radius - Half - 1.0f, 0.0f), Radius - Half, Radius + Half, Radius + Half + 1.0f};
+			const FColor Colors[] = {Clear, Solid, Solid, Clear};
+
+			const SlateIndex First = static_cast<SlateIndex>(Vertices.Num());
+			for (int32 Step = 0; Step <= Num; ++Step) {
+				const float Angle = (Start + Sweep * Step / Num) * 6.2831853f;
+				const FVector2D Dir {FMath::Sin(Angle), -FMath::Cos(Angle)};
+				for (int32 Band = 0; Band < 4; ++Band) {
+					AddVertex(Center + Dir * Radii[Band], Colors[Band]);
+				}
+			}
+			for (int32 Step = 0; Step < Num; ++Step) {
+				const SlateIndex A = First + Step * 4;
+				const SlateIndex B = A + 4;
+				for (int32 Band = 0; Band < 3; ++Band) {
+					AddTriangle(A + Band, A + Band + 1, B + Band + 1);
+					AddTriangle(A + Band, B + Band + 1, B + Band);
+				}
+			}
+		}
+
 		void Line(const FVector2D& Start, const FVector2D& End, const float Thickness, const FLinearColor& ColorStart, const FLinearColor& ColorEnd) {
 			if (ColorStart.A < 0.004f && ColorEnd.A < 0.004f) return;
 
@@ -205,18 +228,18 @@ void SPjcAssetGraph::SetGraph(const TSharedPtr<FPjcAssetGraph>& InGraph) {
 	Graph = InGraph;
 
 	const int32 NumNodes = Graph.IsValid() ? Graph->GetNodes().Num() : 0;
+	const int32 NumFolders = Graph.IsValid() ? Graph->GetFolders().Num() : 0;
 	Selected = INDEX_NONE;
 	Hovered = INDEX_NONE;
-	HoveredRegion = INDEX_NONE;
+	HoveredFolder = INDEX_NONE;
 	Focus.Init(EFocus::None, NumNodes);
 	FocusLinks.Reset();
 	Emphasized.Init(true, NumNodes);
+	FolderEmphasized.Init(0, NumFolders);
 	bEmphasisActive = false;
 	NumEmphasized = NumNodes;
 	DrawnNodes.Reset();
-	DrawnRegions.Reset();
-	LinkReps.Reset();
-	Links.Reset();
+	DrawnFolders.Reset();
 
 	// class icons, shown inside circles big enough
 	Icons.Reset(NumNodes);
@@ -228,6 +251,7 @@ void SPjcAssetGraph::SetGraph(const TSharedPtr<FPjcAssetGraph>& InGraph) {
 	bViewMoving = false;
 	bZoomAnchored = false;
 	bFocusFitPending = false;
+	bKeepSelectedPending = false;
 	bFitPending = true;
 	StartTimer();
 }
@@ -246,16 +270,22 @@ void SPjcAssetGraph::SetSelection(const FName& PackageName, const bool bMoveView
 void SPjcAssetGraph::SetEmphasis(const TSet<FName>& Packages, const bool bActive) {
 	if (!Graph.IsValid()) return;
 
+	const TArray<FPjcGraphNode>& Nodes = Graph->GetNodes();
+	const TArray<FPjcGraphFolder>& Folders = Graph->GetFolders();
 	bEmphasisActive = bActive;
-	Emphasized.Init(!bActive, Graph->GetNodes().Num());
+	Emphasized.Init(!bActive, Nodes.Num());
+	FolderEmphasized.Init(0, Folders.Num());
 	NumEmphasized = bActive ? 0 : Emphasized.Num();
 	if (!bActive) return;
 
 	for (const auto& Package : Packages) {
 		const int32 Node = Graph->Find(Package);
-		if (Node != INDEX_NONE) {
-			Emphasized[Node] = true;
-			++NumEmphasized;
+		if (Node == INDEX_NONE) continue;
+
+		Emphasized[Node] = true;
+		++NumEmphasized;
+		for (int32 Folder = Nodes[Node].Folder; Folder != INDEX_NONE; Folder = Folders[Folder].Parent) {
+			++FolderEmphasized[Folder];
 		}
 	}
 }
@@ -283,7 +313,7 @@ int32 SPjcAssetGraph::OnPaint(
 ) const {
 	ViewSize = AllottedGeometry.GetLocalSize();
 	DrawnNodes.Reset();
-	DrawnRegions.Reset();
+	DrawnFolders.Reset();
 	++NumPaints;
 
 	const FSlateBrush* WhiteBrush = PjcShim::GetBrush(TEXT("WhiteBrush"));
@@ -291,23 +321,22 @@ int32 SPjcAssetGraph::OnPaint(
 	const FSlateResourceHandle Handle = FSlateApplication::Get().GetRenderer()->GetResourceHandle(*WhiteBrush);
 	const FSlateRenderTransform& Transform = AllottedGeometry.GetAccumulatedRenderTransform();
 
-	const int32 LayerLinks = LayerId + 1;
-	const int32 LayerNodes = LayerId + 2;
-	const int32 LayerIcons = LayerId + 3;
-	const int32 LayerFocusLinks = LayerId + 4;
-	const int32 LayerFocusNodes = LayerId + 5;
-	const int32 LayerLabels = LayerId + 6;
-	const int32 LayerPanels = LayerId + 7;
-	const int32 LayerPanelContent = LayerId + 8;
+	const int32 LayerNodes = LayerId + 1;
+	const int32 LayerIcons = LayerId + 2;
+	const int32 LayerFocusLinks = LayerId + 3;
+	const int32 LayerFocusNodes = LayerId + 4;
+	const int32 LayerLabels = LayerId + 5;
+	const int32 LayerPanels = LayerId + 6;
+	const int32 LayerPanelContent = LayerId + 7;
 
 	const FSlateFontInfo FontRegular = FPjcStyles::GetFont(TEXT("Regular"), 8);
 	const FSlateFontInfo FontBold = FPjcStyles::GetFont(TEXT("Bold"), 9);
 	const FSlateFontInfo FontTitle = FPjcStyles::GetFont(TEXT("Bold"), 10);
-	const FSlateFontInfo FontRegion = FPjcStyles::GetFont(TEXT("Bold"), 11);
-	const FSlateFontInfo FontArea = FPjcStyles::GetFont(TEXT("Bold"), 14);
+	const FSlateFontInfo FontFolder = FPjcStyles::GetFont(TEXT("Bold"), 11);
 
 	const FLinearColor ColorUsed = FPjcStyles::Get().GetColor("ProjectCleaner.Color.Green");
 	const FLinearColor ColorUnused = FPjcStyles::Get().GetColor("ProjectCleaner.Color.Red");
+	const FLinearColor ColorNotDeleted = FPjcStyles::Get().GetColor("ProjectCleaner.Color.Yellow");
 
 	const auto MeasureText = [&](const FString& Text, const FSlateFontInfo& Font) {
 		return FVector2D {FontMeasure->Measure(Text, Font)};
@@ -351,227 +380,182 @@ int32 SPjcAssetGraph::OnPaint(
 	FSlateDrawElement::MakeBox(OutDrawElements, LayerId, AllottedGeometry.ToPaintGeometry(), WhiteBrush, ESlateDrawEffect::None, BackgroundColor);
 
 	if (!Graph.IsValid() || Graph->GetNodes().Num() == 0) {
-		const FString Text = Graph.IsValid() ? TEXT("No assets to show") : TEXT("Press Scan to see how project assets are linked");
+		const FString Text = Graph.IsValid() ? TEXT("No assets to show") : TEXT("Press Scan to see project assets");
 		DrawText(Text, (ViewSize - MeasureText(Text, FontTitle)) * 0.5f, FontTitle, HintColor, LayerLabels);
 		return LayerPanelContent;
 	}
 
 	const TArray<FPjcGraphNode>& Nodes = Graph->GetNodes();
-	const TArray<FPjcGraphRegion>& Regions = Graph->GetRegions();
-	const int32 NumNodes = Nodes.Num();
+	const TArray<FPjcGraphFolder>& Folders = Graph->GetFolders();
 	const bool bFocusActive = Selected != INDEX_NONE;
 	const auto IsOnScreen = [this](const FVector2D& Center, const float Radius) {
 		return Center.X + Radius > -CullMargin && Center.Y + Radius > -CullMargin && Center.X - Radius < ViewSize.X + CullMargin
 			&& Center.Y - Radius < ViewSize.Y + CullMargin;
 	};
 
-	// level of detail: folder regions open while they grow on screen, then groups in them the same way
-	RegionOpenness.SetNumUninitialized(Regions.Num());
-	for (int32 Region = 0; Region < Regions.Num(); ++Region) {
-		RegionOpenness[Region] = FMath::Clamp((Regions[Region].Radius * Zoom - RegionOpenPixels) / RegionFadePixels, 0.0f, 1.0f);
+	// level of detail: folder opens while it grows on screen, what it holds fades in
+	FolderOpenness.SetNumUninitialized(Folders.Num());
+	FolderAlpha.SetNumUninitialized(Folders.Num());
+	FolderShown.SetNumUninitialized(Folders.Num());
+	for (int32 Index = 0; Index < Folders.Num(); ++Index) {
+		const FPjcGraphFolder& Folder = Folders[Index];
+		const float Open = FMath::Clamp((Folder.Radius * Zoom - FolderOpenPixels) / FolderFadePixels, 0.0f, 1.0f);
+		const int32 Parent = Folder.Parent;
+		const int32 ParentShown = Parent == INDEX_NONE ? INDEX_NONE : FolderShown[Parent];
+		FolderOpenness[Index] = Open;
+		FolderAlpha[Index] = Parent == INDEX_NONE ? 1.0f : FolderAlpha[Parent] * FolderOpenness[Parent];
+		FolderShown[Index] = ParentShown != INDEX_NONE ? ParentShown : (Open < 0.5f ? Index : INDEX_NONE);
 	}
 
-	Openness.SetNumUninitialized(NumNodes);
-	Alpha.SetNumUninitialized(NumNodes);
-	Reps.SetNumUninitialized(NumNodes);
-	for (const int32 Index : Graph->GetOrder()) {
-		const FPjcGraphNode& Node = Nodes[Index];
-		Openness[Index] = Node.Owned.Num() > 0 ? FMath::Clamp((Node.ClusterRadius * Zoom - OpenPixels) / FadePixels, 0.0f, 1.0f) : 0.0f;
-		if (Node.Owner == INDEX_NONE) {
-			const int32 Region = Graph->GetRegion(Index);
-			Alpha[Index] = RegionOpenness[Region];
-			Reps[Index] = RegionOpenness[Region] >= 0.5f ? Index : NumNodes + Region;
-			continue;
-		}
-
-		const bool bOwnerShown = Reps[Node.Owner] == Node.Owner && Openness[Node.Owner] >= 0.5f;
-		Alpha[Index] = Alpha[Node.Owner] * Openness[Node.Owner];
-		Reps[Index] = bOwnerShown ? Index : Reps[Node.Owner];
-	}
-
-	// links between shown circles, links of assets in closed groups or regions go to them
-	if (LinkReps != Reps) {
-		LinkReps = Reps;
-		Links.Reset();
-
-		TMap<uint64, int32> LinkIndices;
-		for (int32 Index = 0; Index < NumNodes; ++Index) {
-			const int32 From = Reps[Index];
-			for (const int32 Use : Nodes[Index].Uses) {
-				const int32 To = Reps[Use];
-				if (From == To) continue;
-
-				const uint64 Key = static_cast<uint64>(From) << 32 | static_cast<uint64>(To);
-				if (const int32* Found = LinkIndices.Find(Key)) {
-					++Links[*Found].Count;
-					continue;
-				}
-				LinkIndices.Add(Key, Links.Add(FDrawnLink {From, To, 1}));
-			}
-		}
-	}
-
-	const auto GetEndAlpha = [&](const int32 End) {
-		if (End >= NumNodes) return bFocusActive ? 0.1f : 1.0f;
-		return Alpha[End] * GetDim(End);
-	};
-
-	// links with an end on screen, the more there are the fainter they get
-	struct FVisibleLink
-	{
-		FVector2D Start;
-		FVector2D End;
-		float Alpha;
-		int32 Count;
-	};
-	TArray<FVisibleLink> VisibleLinks;
-	for (const auto& Link : Links) {
-		const float LinkAlpha = FMath::Min(GetEndAlpha(Link.From), GetEndAlpha(Link.To));
-		if (LinkAlpha < 0.02f) continue;
-
-		const FVector2D Start = GraphToLocal(GetShownCenter(Link.From));
-		const FVector2D End = GraphToLocal(GetShownCenter(Link.To));
-		const float RadiusStart = GetShownRadius(Link.From) * Zoom;
-		const float RadiusEnd = GetShownRadius(Link.To) * Zoom;
-		if (!IsOnScreen(Start, RadiusStart) && !IsOnScreen(End, RadiusEnd)) continue;
-
-		const FVector2D Delta = End - Start;
-		const float Length = static_cast<float>(Delta.Size());
-		if (Length <= RadiusStart + RadiusEnd + 2.0f) continue;
-
-		const FVector2D Dir = Delta / Length;
-		VisibleLinks.Add(FVisibleLink {Start + Dir * RadiusStart, End - Dir * RadiusEnd, LinkAlpha, Link.Count});
-	}
-
-	FPjcMesh LinkMesh {Transform};
-	const float Crowd = FMath::Clamp(300.0f / FMath::Max(VisibleLinks.Num(), 1), 0.15f, 1.0f);
-	for (const auto& Link : VisibleLinks) {
-		// fainter at user, stronger at used asset
-		const float Weight = FMath::Loge(static_cast<float>(Link.Count));
-		const float Strength = FMath::Min(1.0f, 0.5f + 0.2f * Weight) * Link.Alpha * Crowd;
-		LinkMesh.Line(
-			Link.Start,
-			Link.End,
-			1.0f + FMath::Min(3.0f, Weight * 0.6f),
-			WithAlpha(LinkColor, 0.06f * Strength),
-			WithAlpha(LinkColor, 0.35f * Strength)
-		);
-	}
-	LinkMesh.Draw(OutDrawElements, LayerLinks, Handle);
-
+	// folders with what they hold, closed folders end there
 	FPjcMesh NodeMesh {Transform};
-	for (int32 Region = 0; Region < Regions.Num(); ++Region) {
-		const FVector2D Center = GraphToLocal(Regions[Region].Center);
-		const float RadiusPixels = Regions[Region].Radius * Zoom;
-		if (!IsOnScreen(Center, RadiusPixels)) continue;
+	TArray<int32> Stack = Graph->GetRootFolders();
+	while (Stack.Num() > 0) {
+		const int32 Index = PjcShim::PopArray(Stack);
+		const FPjcGraphFolder& Folder = Folders[Index];
+		const FVector2D Center = GraphToLocal(Folder.Center);
+		const float RadiusPixels = Folder.Radius * Zoom;
+		if (!IsOnScreen(Center, RadiusPixels + 6.0f)) continue;
 
-		const float Open = RegionOpenness[Region];
-		const float Dim = bFocusActive ? 0.1f : 1.0f;
-		const FLinearColor& Color = Regions[Region].bUsed ? ColorUsed : ColorUnused;
-		NodeMesh.Disc(Center, RadiusPixels, WithAlpha(Color, (0.14f * (1.0f - Open) + 0.02f * Open) * Dim));
-		NodeMesh.Ring(Center, RadiusPixels, 1.5f, WithAlpha(Color, (0.6f * (1.0f - Open) + 0.12f * Open) * Dim));
+		const float Open = FolderOpenness[Index];
+		const float FolderDim = bFocusActive ? 0.1f : (bEmphasisActive && FolderEmphasized[Index] == 0 ? 0.3f : 1.0f);
+		const float Alpha = FolderAlpha[Index] * FolderDim;
+
+		// mostly unused folders turn red, ring outside folder: red part is unused share of its size
+		const float Unused = Folder.Size > 0 ? static_cast<float>(static_cast<double>(Folder.SizeUnused) / static_cast<double>(Folder.Size)) : 0.0f;
+		const FLinearColor Fill = FMath::Lerp(FolderColor, ColorUnused, Unused * 0.7f);
+		NodeMesh.Disc(Center, RadiusPixels, WithAlpha(Fill, (0.12f * (1.0f - Open) + 0.03f * Open) * Alpha));
+		NodeMesh.Ring(Center, RadiusPixels, 1.2f, WithAlpha(FolderColor, (0.45f * (1.0f - Open) + 0.18f * Open) * Alpha));
+
+		if (Folder.Size > 0 && RadiusPixels >= 6.0f) {
+			const float GaugeRadius = RadiusPixels + 3.5f;
+			const float Thickness = Open < 0.5f ? 3.0f : 2.0f;
+			NodeMesh.Arc(Center, GaugeRadius, Thickness, Unused, 1.0f - Unused, WithAlpha(ColorUsed, 0.45f * Alpha));
+			NodeMesh.Arc(Center, GaugeRadius, Thickness, 0.0f, Unused, WithAlpha(ColorUnused, 0.95f * Alpha));
+		}
+
 		if (Open < 0.5f) {
-			DrawnRegions.Add(FDrawnItem {Region, Center, RadiusPixels});
+			DrawnFolders.Add(FDrawnItem {Index, Center, RadiusPixels});
 		}
-	}
+		if (Open <= 0.0f) continue;
 
-	for (const int32 Index : Graph->GetOrder()) {
-		if (Alpha[Index] <= 0.0f) continue;
+		Stack.Append(Folder.Folders);
+		for (const int32 Asset : Folder.Assets) {
+			const FPjcGraphNode& Node = Nodes[Asset];
+			const FVector2D NodeCenter = GraphToLocal(Node.Position);
+			const float NodeRadius = FMath::Max(Node.Radius * Zoom, 0.8f);
+			if (!IsOnScreen(NodeCenter, NodeRadius)) continue;
 
-		const FPjcGraphNode& Node = Nodes[Index];
-		const FVector2D Center = GraphToLocal(Node.Position);
-		const FVector2D ClusterCenter = GraphToLocal(Node.GetClusterCenter());
-		const float ClusterPixels = Node.ClusterRadius * Zoom;
-		if (!IsOnScreen(ClusterCenter, ClusterPixels)) continue;
+			const float NodeAlpha = FolderAlpha[Index] * Open * GetDim(Asset);
+			NodeMesh.Disc(NodeCenter, NodeRadius, WithAlpha(SPjcItemUsage::GetStatusColor(*Node.Item), NodeAlpha));
+			if (FPjcAssetGraph::IsUsageRoot(Node) && NodeRadius >= 2.0f) {
+				NodeMesh.Ring(NodeCenter, NodeRadius + 3.0f, 1.5f, WithAlpha(FLinearColor::White, 0.85f * NodeAlpha));
+			}
+			DrawIcon(Asset, NodeCenter, NodeRadius, NodeAlpha, LayerIcons);
 
-		const float NodeAlpha = Alpha[Index] * GetDim(Index);
-		const FLinearColor Color = SPjcItemUsage::GetStatusColor(*Node.Item);
-		const float RadiusPixels = FMath::Max(Node.Radius * Zoom, 1.0f);
-
-		if (Node.Owned.Num() > 0) {
-			const float Open = Openness[Index];
-			NodeMesh.Disc(ClusterCenter, ClusterPixels, WithAlpha(Color, (0.2f * (1.0f - Open) + 0.035f * Open) * NodeAlpha));
-			NodeMesh.Ring(ClusterCenter, ClusterPixels, 1.5f - 0.5f * Open, WithAlpha(Color, (0.8f * (1.0f - Open) + 0.2f * Open) * NodeAlpha));
-		}
-		NodeMesh.Disc(Center, RadiusPixels, WithAlpha(Color, NodeAlpha));
-		if (FPjcAssetGraph::IsUsageRoot(Node) && RadiusPixels >= 2.0f) {
-			NodeMesh.Ring(Center, RadiusPixels + 3.0f, 1.5f, WithAlpha(FLinearColor::White, 0.85f * NodeAlpha));
-		}
-		DrawIcon(Index, Center, RadiusPixels, NodeAlpha, LayerIcons);
-
-		if (Alpha[Index] >= 0.5f) {
-			const bool bClosedGroup = Node.Owned.Num() > 0 && Openness[Index] < 0.5f;
-			DrawnNodes.Add(
-				bClosedGroup ? FDrawnItem {Index, ClusterCenter, ClusterPixels} : FDrawnItem {Index, Center, FMath::Max(RadiusPixels, 4.0f)}
-			);
+			if (FolderAlpha[Index] * Open >= 0.5f) {
+				DrawnNodes.Add(FDrawnItem {Asset, NodeCenter, FMath::Max(NodeRadius, 4.0f)});
+			}
 		}
 	}
 	NodeMesh.Draw(OutDrawElements, LayerNodes, Handle);
 
-	// selected asset with its usage chain and links, or few search results, drawn over everything wherever they are
-	const bool bForceEmphasized = !bFocusActive && bEmphasisActive && NumEmphasized <= MaxForcedNodes;
+	// links: of selected asset (usage chain and direct links), hovered asset, or hovered closed folder
 	FPjcMesh FocusLinkMesh {Transform};
 	FPjcMesh FocusNodeMesh {Transform};
+	const auto DrawArrow =
+		[&](
+			const FVector2D& From, const float RadiusFrom, const FVector2D& To, const float RadiusTo, const float Thickness, const FLinearColor& Color
+		) {
+			const FVector2D Delta = To - From;
+			const float Length = static_cast<float>(Delta.Size());
+			if (Length <= RadiusFrom + RadiusTo + 8.0f) return;
+
+			const FVector2D Dir = Delta / Length;
+			const FVector2D Normal {-Dir.Y, Dir.X};
+			const FVector2D Tip = To - Dir * RadiusTo;
+			FocusLinkMesh.Line(From + Dir * RadiusFrom, Tip - Dir * 7.0f, Thickness, WithAlpha(Color, Color.A * 0.45f), Color);
+			FocusLinkMesh.Triangle(Tip, Tip - Dir * 9.0f + Normal * 4.5f, Tip - Dir * 9.0f - Normal * 4.5f, Color);
+		};
+
 	if (bFocusActive) {
 		for (const auto& Link : FocusLinks) {
 			const FPjcGraphNode& From = Nodes[Link.From];
 			const FPjcGraphNode& To = Nodes[Link.To];
-			const FVector2D Start = GraphToLocal(From.Position);
-			const FVector2D End = GraphToLocal(To.Position);
-			const FVector2D Delta = End - Start;
-			const float Length = static_cast<float>(Delta.Size());
-			const float RadiusStart = FMath::Max(From.Radius * Zoom, 3.5f) + 2.0f;
-			const float RadiusEnd = FMath::Max(To.Radius * Zoom, 3.5f) + 2.0f;
-			if (Length <= RadiusStart + RadiusEnd + 8.0f) continue;
-
-			const FVector2D Dir = Delta / Length;
-			const FVector2D Normal {-Dir.Y, Dir.X};
 			const FLinearColor Color = Link.bChain ? FLinearColor::White : SPjcItemUsage::GetStatusColor(*(Link.From == Selected ? To : From).Item);
-			const FVector2D Tip = End - Dir * RadiusEnd;
-			FocusLinkMesh.Line(
-				Start + Dir * RadiusStart, Tip - Dir * 7.0f, Link.bChain ? 2.5f : 1.5f, WithAlpha(Color, 0.45f), WithAlpha(Color, 0.9f)
+			DrawArrow(
+				GraphToLocal(From.Position),
+				FMath::Max(From.Radius * Zoom, 3.5f) + 2.0f,
+				GraphToLocal(To.Position),
+				FMath::Max(To.Radius * Zoom, 3.5f) + 2.0f,
+				Link.bChain ? 2.5f : 1.5f,
+				WithAlpha(Color, 0.9f)
 			);
-			FocusLinkMesh.Triangle(Tip, Tip - Dir * 9.0f + Normal * 4.5f, Tip - Dir * 9.0f - Normal * 4.5f, WithAlpha(Color, 0.95f));
 		}
 	}
-
-	// hovered asset shows its links, assets in closed groups or regions are linked through them
-	if (!bFocusActive && !bDragging && Nodes.IsValidIndex(Hovered) && Reps[Hovered] == Hovered) {
+	else if (!bDragging && Nodes.IsValidIndex(Hovered) && GetShown(Hovered) == Hovered) {
+		// assets in closed folders are linked through them
 		TMap<int32, bool> Ends;
 		for (const int32 Use : Nodes[Hovered].Uses) {
-			Ends.Add(Reps[Use], true);
+			Ends.Add(GetShown(Use), true);
 		}
 		for (const int32 User : Nodes[Hovered].UsedBy) {
-			if (!Ends.Contains(Reps[User])) {
-				Ends.Add(Reps[User], false);
+			if (!Ends.Contains(GetShown(User))) {
+				Ends.Add(GetShown(User), false);
 			}
 		}
 
-		const FVector2D HoveredCenter = GraphToLocal(GetShownCenter(Hovered));
-		const float HoveredRadius = GetShownRadius(Hovered) * Zoom;
+		const FVector2D HoveredCenter = GraphToLocal(Nodes[Hovered].Position);
+		const float HoveredRadius = Nodes[Hovered].Radius * Zoom + 2.0f;
 		for (const auto& End : Ends) {
 			if (End.Key == Hovered) continue;
 
 			const FVector2D OtherCenter = GraphToLocal(GetShownCenter(End.Key));
-			const float OtherRadius = GetShownRadius(End.Key) * Zoom;
-			const FVector2D Start = End.Value ? HoveredCenter : OtherCenter;
-			const FVector2D Finish = End.Value ? OtherCenter : HoveredCenter;
-			const float RadiusStart = (End.Value ? HoveredRadius : OtherRadius) + 2.0f;
-			const float RadiusFinish = (End.Value ? OtherRadius : HoveredRadius) + 2.0f;
-			const FVector2D Delta = Finish - Start;
-			const float Length = static_cast<float>(Delta.Size());
-			if (Length <= RadiusStart + RadiusFinish + 8.0f) continue;
-
-			const FVector2D Dir = Delta / Length;
-			const FVector2D Normal {-Dir.Y, Dir.X};
-			const FVector2D Tip = Finish - Dir * RadiusFinish;
+			const float OtherRadius = GetShownRadius(End.Key) * Zoom + 2.0f;
 			const FLinearColor Color = WithAlpha(FLinearColor::White, 0.7f);
-			FocusLinkMesh.Line(Start + Dir * RadiusStart, Tip - Dir * 7.0f, 1.5f, WithAlpha(Color, 0.3f), Color);
-			FocusLinkMesh.Triangle(Tip, Tip - Dir * 9.0f + Normal * 4.5f, Tip - Dir * 9.0f - Normal * 4.5f, Color);
+			if (End.Value) {
+				DrawArrow(HoveredCenter, HoveredRadius, OtherCenter, OtherRadius, 1.5f, Color);
+			}
+			else {
+				DrawArrow(OtherCenter, OtherRadius, HoveredCenter, HoveredRadius, 1.5f, Color);
+			}
+		}
+	}
+	else if (!bDragging && Folders.IsValidIndex(HoveredFolder) && Folders[HoveredFolder].NumAssets <= MaxHoverFolderAssets) {
+		// what assets of folder use outside of it, line width tells how many links
+		TMap<int32, int32> Uses;
+		TArray<int32> FolderStack {HoveredFolder};
+		while (FolderStack.Num() > 0) {
+			const FPjcGraphFolder& Folder = Folders[PjcShim::PopArray(FolderStack)];
+			FolderStack.Append(Folder.Folders);
+			for (const int32 Asset : Folder.Assets) {
+				for (const int32 Use : Nodes[Asset].Uses) {
+					const int32 Shown = GetShown(Use);
+					if (Shown != Nodes.Num() + HoveredFolder && !IsInsideFolder(Use, HoveredFolder)) {
+						++Uses.FindOrAdd(Shown);
+					}
+				}
+			}
+		}
+
+		const FPjcGraphFolder& Source = Folders[HoveredFolder];
+		const FVector2D From = GraphToLocal(Source.Center);
+		for (const auto& Use : Uses) {
+			const float Weight = FMath::Loge(static_cast<float>(Use.Value));
+			DrawArrow(
+				From,
+				Source.Radius * Zoom + 4.0f,
+				GraphToLocal(GetShownCenter(Use.Key)),
+				GetShownRadius(Use.Key) * Zoom + 4.0f,
+				1.0f + FMath::Min(3.0f, Weight * 0.6f),
+				WithAlpha(FLinearColor::White, 0.35f + FMath::Min(0.45f, Weight * 0.1f))
+			);
 		}
 	}
 
-	for (int32 Index = 0; Index < NumNodes && (bFocusActive || bForceEmphasized); ++Index) {
+	// selected asset with its chain and links, or few search results, drawn over everything wherever they are
+	const bool bForceEmphasized = !bFocusActive && bEmphasisActive && NumEmphasized <= MaxForcedNodes;
+	for (int32 Index = 0; Index < Nodes.Num() && (bFocusActive || bForceEmphasized); ++Index) {
 		if (bFocusActive ? Focus[Index] == EFocus::None : !Emphasized[Index]) continue;
 
 		const FPjcGraphNode& Node = Nodes[Index];
@@ -598,16 +582,16 @@ int32 SPjcAssetGraph::OnPaint(
 				break;
 			}
 		}
-		for (const auto& DrawnRegion : DrawnRegions) {
-			if (DrawnRegion.Item == HoveredRegion) {
-				FocusNodeMesh.Ring(DrawnRegion.Center, DrawnRegion.Radius + 2.0f, 2.0f, WithAlpha(FLinearColor::White, 0.5f));
+		for (const auto& DrawnFolder : DrawnFolders) {
+			if (DrawnFolder.Item == HoveredFolder) {
+				FocusNodeMesh.Ring(DrawnFolder.Center, DrawnFolder.Radius + 8.0f, 1.5f, WithAlpha(FLinearColor::White, 0.5f));
 			}
 		}
 	}
 	FocusLinkMesh.Draw(OutDrawElements, LayerFocusLinks, Handle);
 	FocusNodeMesh.Draw(OutDrawElements, LayerFocusNodes, Handle);
 
-	// labels: regions first, then important assets, then biggest circles, never on top of each other
+	// labels: folders first, then important assets, then biggest circles, never on top of each other
 	TArray<FSlateRect> Placed;
 	const auto MakeRect = [](const FVector2D& Position, const FVector2D& Size) {
 		return FSlateRect(
@@ -622,60 +606,86 @@ int32 SPjcAssetGraph::OnPaint(
 			return FSlateRect::DoRectanglesIntersect(Rect, Other);
 		});
 	};
-	const auto DrawBlock
-		= [&](const FString& Name, const FString& Details, const FVector2D& Position, const FSlateFontInfo& Font, const FLinearColor& Color) {
-			  const FVector2D NameSize = MeasureText(Name, Font);
-			  const FVector2D DetailsSize = Details.IsEmpty() ? FVector2D::ZeroVector : MeasureText(Details, FontRegular);
-			  const float Width = static_cast<float>(FMath::Max(NameSize.X, DetailsSize.X));
-			  DrawText(Name, FVector2D {Position.X + (Width - NameSize.X) * 0.5f, Position.Y}, Font, Color, LayerLabels);
-			  if (!Details.IsEmpty()) {
-				  DrawText(
-					  Details,
-					  FVector2D {Position.X + (Width - DetailsSize.X) * 0.5f, Position.Y + NameSize.Y},
-					  FontRegular,
-					  WithAlpha(Color, 0.7f),
-					  LayerLabels
-				  );
-			  }
-		  };
-	const auto GetBlockSize = [&](const FString& Name, const FString& Details, const FSlateFontInfo& Font) {
-		const FVector2D NameSize = MeasureText(Name, Font);
-		const FVector2D DetailsSize = Details.IsEmpty() ? FVector2D::ZeroVector : MeasureText(Details, FontRegular);
-		return FVector2D {FMath::Max(NameSize.X, DetailsSize.X), NameSize.Y + DetailsSize.Y};
+
+	struct FLine
+	{
+		FString Text;
+		const FSlateFontInfo* Font;
+		FLinearColor Color;
+	};
+	const auto GetBlockSize = [&](const TArray<FLine>& Lines) {
+		FVector2D Size {0.0f, 0.0f};
+		for (const auto& Line : Lines) {
+			const FVector2D LineSize = MeasureText(Line.Text, *Line.Font);
+			Size.X = FMath::Max(Size.X, LineSize.X);
+			Size.Y += LineSize.Y;
+		}
+		return Size;
+	};
+	const auto DrawBlock = [&](const TArray<FLine>& Lines, const FVector2D& Position, const float Width) {
+		float Y = static_cast<float>(Position.Y);
+		for (const auto& Line : Lines) {
+			const FVector2D LineSize = MeasureText(Line.Text, *Line.Font);
+			DrawText(Line.Text, FVector2D {Position.X + (Width - LineSize.X) * 0.5f, Y}, *Line.Font, Line.Color, LayerLabels);
+			Y += static_cast<float>(LineSize.Y);
+		}
+	};
+	const auto GetFolderLines = [&](const int32 Index) {
+		const FPjcGraphFolder& Folder = Folders[Index];
+		TArray<FLine> Lines;
+		Lines.Add(FLine {Folder.Name, &FontFolder, FLinearColor::White});
+		Lines.Add(
+			FLine {FString::Printf(TEXT("%d assets, %s"), Folder.NumAssets, *FText::AsMemory(Folder.Size, IEC).ToString()), &FontRegular, TextColor}
+		);
+		if (Folder.NumUnused > 0) {
+			Lines.Add(
+				FLine {
+				  FString::Printf(TEXT("%d unused, %s"), Folder.NumUnused, *FText::AsMemory(Folder.SizeUnused, IEC).ToString()),
+				  &FontRegular,
+				  ColorUnused
+				}
+			);
+		}
+		if (bEmphasisActive) {
+			Lines.Add(FLine {FString::Printf(TEXT("%d matching"), FolderEmphasized[Index]), &FontRegular, ColorNotDeleted});
+		}
+		return Lines;
 	};
 
 	if (!bFocusActive) {
-		for (const auto& DrawnRegion : DrawnRegions) {
-			if (DrawnRegion.Radius < 34.0f && DrawnRegion.Item != HoveredRegion) continue;
+		// closed folders, biggest first
+		TArray<FDrawnItem> ClosedFolders = DrawnFolders;
+		ClosedFolders.Sort([](const FDrawnItem& A, const FDrawnItem& B) {
+			return A.Radius > B.Radius;
+		});
+		for (const auto& DrawnFolder : ClosedFolders) {
+			if (DrawnFolder.Radius < 30.0f && DrawnFolder.Item != HoveredFolder) continue;
 
-			const FPjcGraphRegion& Region = Regions[DrawnRegion.Item];
-			const FString Name = GetRegionName(Region.Path);
-			const FString Details = FString::Printf(TEXT("%d assets, %s"), Region.NumAssets, *FText::AsMemory(Region.Size, IEC).ToString());
-			const FVector2D BlockSize = GetBlockSize(Name, Details, FontRegion);
-			const FVector2D Position = DrawnRegion.Center - BlockSize * 0.5f;
+			const TArray<FLine> Lines = GetFolderLines(DrawnFolder.Item);
+			const FVector2D BlockSize = GetBlockSize(Lines);
+			const FVector2D Position = DrawnFolder.Center - BlockSize * 0.5f;
 			const FSlateRect Rect = MakeRect(Position, BlockSize);
-			if (!IsFree(Rect) && DrawnRegion.Item != HoveredRegion) continue;
+			if (!IsFree(Rect) && DrawnFolder.Item != HoveredFolder) continue;
 
 			Placed.Add(Rect);
-			DrawBlock(Name, Details, Position, FontRegion, FLinearColor::White);
+			DrawBlock(Lines, Position, static_cast<float>(BlockSize.X));
 		}
 
-		// open regions keep their name at the top
-		for (int32 Region = 0; Region < Regions.Num(); ++Region) {
-			if (RegionOpenness[Region] < 0.5f) continue;
+		// open folders keep their name at the top
+		for (int32 Index = 0; Index < Folders.Num(); ++Index) {
+			if (FolderOpenness[Index] < 0.5f || FolderAlpha[Index] < 0.5f) continue;
 
-			const FVector2D Center = GraphToLocal(Regions[Region].Center);
-			const float RadiusPixels = Regions[Region].Radius * Zoom;
-			const FString Name = GetRegionName(Regions[Region].Path);
-			const FVector2D NameSize = MeasureText(Name, FontRegion);
-			const FVector2D Position {Center.X - NameSize.X * 0.5f, Center.Y - RadiusPixels - NameSize.Y - 4.0f};
+			const FVector2D Center = GraphToLocal(Folders[Index].Center);
+			const float RadiusPixels = Folders[Index].Radius * Zoom;
+			const FVector2D NameSize = MeasureText(Folders[Index].Name, FontFolder);
+			const FVector2D Position {Center.X - NameSize.X * 0.5f, Center.Y - RadiusPixels - NameSize.Y - 7.0f};
 			if (!IsOnScreen(Position + NameSize * 0.5f, static_cast<float>(NameSize.X))) continue;
 
 			const FSlateRect Rect = MakeRect(Position, NameSize);
 			if (!IsFree(Rect)) continue;
 
 			Placed.Add(Rect);
-			DrawText(Name, Position, FontRegion, WithAlpha(Regions[Region].bUsed ? ColorUsed : ColorUnused, RegionOpenness[Region]), LayerLabels);
+			DrawText(Folders[Index].Name, Position, FontFolder, WithAlpha(TextColor, FolderOpenness[Index] * FolderAlpha[Index]), LayerLabels);
 		}
 	}
 
@@ -688,9 +698,6 @@ int32 SPjcAssetGraph::OnPaint(
 	};
 	TMap<int32, FLabel> LabelsByNode;
 	for (const auto& DrawnNode : DrawnNodes) {
-		const FPjcGraphNode& Node = Nodes[DrawnNode.Item];
-		const bool bClosedGroup = Node.Owned.Num() > 0 && Openness[DrawnNode.Item] < 0.5f;
-
 		int32 Priority = 0;
 		if (DrawnNode.Item == Selected) {
 			Priority = 4;
@@ -704,7 +711,7 @@ int32 SPjcAssetGraph::OnPaint(
 		else if ((bFocusActive && Focus[DrawnNode.Item] != EFocus::None) || (bForceEmphasized && Emphasized[DrawnNode.Item])) {
 			Priority = 1;
 		}
-		else if (GetDim(DrawnNode.Item) < 1.0f || DrawnNode.Radius < (bClosedGroup ? 26.0f : 12.0f)) {
+		else if (GetDim(DrawnNode.Item) < 1.0f || DrawnNode.Radius < 12.0f) {
 			continue;
 		}
 
@@ -724,28 +731,20 @@ int32 SPjcAssetGraph::OnPaint(
 	for (const auto& Label : Labels) {
 		if (NumLabels >= MaxLabels && Label.Priority == 0) break;
 
-		const FPjcGraphNode& Node = Nodes[Label.Node];
-		const bool bClosedGroup = Node.Owned.Num() > 0 && Openness[Label.Node] < 0.5f;
 		const FSlateFontInfo& Font = Label.Priority >= 2 ? FontBold : FontRegular;
-		const FString Name = SPjcItemUsage::GetItemName(*Node.Item);
-		const FString Details
-			= bClosedGroup ? FString::Printf(TEXT("%d assets, %s"), Node.NumOwned + 1, *FText::AsMemory(Node.SizeOwned, IEC).ToString()) : FString {};
-		const FVector2D BlockSize = GetBlockSize(Name, Details, Font);
+		const FString Name = SPjcItemUsage::GetItemName(*Nodes[Label.Node].Item);
+		const FVector2D BlockSize = MeasureText(Name, Font);
 
-		// inside big bubble, otherwise below, above or right of circle, whichever is free
+		// below, above or right of circle, whichever is free
 		const float Gap = Label.Radius + (Label.Node == Selected ? 12.0f : 3.0f);
-		TArray<FVector2D, TInlineAllocator<3>> Spots;
-		if (bClosedGroup && Label.Radius > 45.0f) {
-			Spots.Add(Label.Center - BlockSize * 0.5f);
-		}
-		else {
-			Spots.Add(FVector2D {Label.Center.X - BlockSize.X * 0.5f, Label.Center.Y + Gap});
-			Spots.Add(FVector2D {Label.Center.X - BlockSize.X * 0.5f, Label.Center.Y - Gap - BlockSize.Y});
-			Spots.Add(FVector2D {Label.Center.X + Gap + 2.0f, Label.Center.Y - BlockSize.Y * 0.5f});
-		}
+		const FVector2D Spots[] = {
+		  FVector2D {Label.Center.X - BlockSize.X * 0.5f,				  Label.Center.Y + Gap},
+		  FVector2D {Label.Center.X - BlockSize.X * 0.5f,  Label.Center.Y - Gap - BlockSize.Y},
+		  FVector2D {		 Label.Center.X + Gap + 2.0f, Label.Center.Y - BlockSize.Y * 0.5f},
+		};
 
 		int32 FreeSpot = INDEX_NONE;
-		for (int32 Spot = 0; Spot < Spots.Num() && FreeSpot == INDEX_NONE; ++Spot) {
+		for (int32 Spot = 0; Spot < UE_ARRAY_COUNT(Spots) && FreeSpot == INDEX_NONE; ++Spot) {
 			if (IsFree(MakeRect(Spots[Spot], BlockSize))) {
 				FreeSpot = Spot;
 			}
@@ -754,37 +753,13 @@ int32 SPjcAssetGraph::OnPaint(
 
 		const FVector2D Position = Spots[FreeSpot == INDEX_NONE ? 0 : FreeSpot];
 		Placed.Add(MakeRect(Position, BlockSize));
-		DrawBlock(Name, Details, Position, Font, Label.Priority > 0 ? FLinearColor::White : TextColor);
+		DrawText(Name, Position, Font, Label.Priority > 0 ? FLinearColor::White : TextColor, LayerLabels);
 		++NumLabels;
-	}
-
-	// used and unused area titles
-	for (const bool bUsed : {true, false}) {
-		const FBox2D Area = Graph->GetGroupBounds(bUsed);
-		if (!Area.bIsValid) continue;
-
-		int32 NumAssets = 0;
-		int64 Size = 0;
-		for (const auto& Region : Regions) {
-			if (Region.bUsed == bUsed) {
-				NumAssets += Region.NumAssets;
-				Size += Region.Size;
-			}
-		}
-
-		const FString Title
-			= FString::Printf(TEXT("%s: %d assets, %s"), bUsed ? TEXT("USED") : TEXT("UNUSED"), NumAssets, *FText::AsMemory(Size, IEC).ToString());
-		const FVector2D TitleSize = MeasureText(Title, FontArea);
-		const FVector2D Top = GraphToLocal(FVector2D {Area.GetCenter().X, Area.Min.Y});
-		const FVector2D Position {Top.X - TitleSize.X * 0.5f, Top.Y - TitleSize.Y - 8.0f};
-		if (IsOnScreen(Position + TitleSize * 0.5f, static_cast<float>(TitleSize.X))) {
-			DrawText(Title, Position, FontArea, WithAlpha(bUsed ? ColorUsed : ColorUnused, bFocusActive ? 0.3f : 0.9f), LayerLabels);
-		}
 	}
 
 	// how to read and use it
 	DrawText(
-		TEXT("Scroll to zoom, drag to move. Click an asset for details, double click a bubble to open it. F fits view, Esc clears selection."),
+		TEXT("Scroll to zoom, drag to move. Click a folder to open it, an asset for details. F fits view, Esc clears selection."),
 		FVector2D {10.0f, 8.0f},
 		FontRegular,
 		WithAlpha(TextColor, 0.45f),
@@ -808,10 +783,10 @@ int32 SPjcAssetGraph::OnPaint(
 		};
 		AddEntry(ColorUsed, false, TEXT("Used"));
 		AddEntry(ColorUnused, false, TEXT("Unused"));
-		AddEntry(FPjcStyles::Get().GetColor("ProjectCleaner.Color.Yellow"), false, TEXT("Not deleted"));
+		AddEntry(ColorNotDeleted, false, TEXT("Not deleted"));
 		AddEntry(ColorUsed, true, TEXT("Used for its own reason"));
 		DrawText(
-			TEXT("Circle area is size on disk. Bubble: folder, or asset with everything only it uses."),
+			TEXT("Circle area is size on disk. Red part of folder ring is unused share of its size."),
 			FVector2D {LegendPos.X + 8.0f, LegendPos.Y + 30.0f},
 			FontRegular,
 			WithAlpha(TextColor, 0.7f),
@@ -820,45 +795,59 @@ int32 SPjcAssetGraph::OnPaint(
 		LegendMesh.Draw(OutDrawElements, LayerPanelContent, Handle);
 	}
 
-	// hovered asset or region card
-	TArray<TPair<FString, const FSlateFontInfo*>> Lines;
-	FLinearColor CardColor = TextColor;
+	// hovered asset or folder card
+	TArray<FLine> Card;
+	FLinearColor CardTint = TextColor;
 	if (Hovered != INDEX_NONE && Nodes.IsValidIndex(Hovered) && !bDragging) {
 		const FPjcGraphNode& Node = Nodes[Hovered];
 		const FPjcUsageItem& Item = *Node.Item;
-		Lines.Emplace(SPjcItemUsage::GetItemName(Item), &FontTitle);
-		Lines.Emplace(FString::Printf(TEXT("%s, %s"), *Item.ClassName, *FText::AsMemory(Item.Size, IEC).ToString()), &FontRegular);
+		Card.Add(FLine {SPjcItemUsage::GetItemName(Item), &FontTitle, FLinearColor::White});
+		Card.Add(FLine {FString::Printf(TEXT("%s, %s"), *Item.ClassName, *FText::AsMemory(Item.Size, IEC).ToString()), &FontRegular, TextColor});
 		if (Node.NumOwned > 0) {
-			Lines.Emplace(
-				FString::Printf(TEXT("Owns %d asset(s) only it uses, %s in total"), Node.NumOwned, *FText::AsMemory(Node.SizeOwned, IEC).ToString()),
-				&FontRegular
+			Card.Add(
+				FLine {
+				  FString::Printf(TEXT("Only it uses %d asset(s), %s with them"), Node.NumOwned, *FText::AsMemory(Node.SizeOwned, IEC).ToString()),
+				  &FontRegular,
+				  TextColor
+				}
 			);
 		}
-		Lines.Emplace(SPjcItemUsage::GetStatusText(Item).ToString() + TEXT(": ") + Item.ReasonText, &FontRegular);
-		CardColor = SPjcItemUsage::GetStatusColor(Item);
+		Card.Add(FLine {SPjcItemUsage::GetStatusText(Item).ToString() + TEXT(": ") + Item.ReasonText, &FontRegular, TextColor});
+		CardTint = SPjcItemUsage::GetStatusColor(Item);
 	}
-	else if (HoveredRegion != INDEX_NONE && Regions.IsValidIndex(HoveredRegion) && !bDragging) {
-		const FPjcGraphRegion& Region = Regions[HoveredRegion];
-		Lines.Emplace(GetRegionName(Region.Path), &FontTitle);
-		Lines.Emplace(Region.Path, &FontRegular);
-		Lines.Emplace(
-			FString::Printf(
-				TEXT("%s: %d assets, %s%s"),
-				Region.bUsed ? TEXT("Used") : TEXT("Unused"),
-				Region.NumAssets,
-				*FText::AsMemory(Region.Size, IEC).ToString(),
-				Region.bUsed ? TEXT("") : TEXT(", Clean Project deletes them")
-			),
-			&FontRegular
+	else if (HoveredFolder != INDEX_NONE && Folders.IsValidIndex(HoveredFolder) && !bDragging) {
+		const FPjcGraphFolder& Folder = Folders[HoveredFolder];
+		const int32 NumUsed = Folder.NumAssets - Folder.NumUnused;
+		Card.Add(FLine {Folder.Name, &FontTitle, FLinearColor::White});
+		Card.Add(FLine {Folder.Path, &FontRegular, TextColor});
+		Card.Add(
+			FLine {FString::Printf(TEXT("%d assets, %s"), Folder.NumAssets, *FText::AsMemory(Folder.Size, IEC).ToString()), &FontRegular, TextColor}
 		);
-		Lines.Emplace(TEXT("Click or scroll to open"), &FontRegular);
-		CardColor = Region.bUsed ? ColorUsed : ColorUnused;
+		Card.Add(
+			FLine {
+			  FString::Printf(TEXT("Used: %d, %s"), NumUsed, *FText::AsMemory(Folder.Size - Folder.SizeUnused, IEC).ToString()),
+			  &FontRegular,
+			  ColorUsed
+			}
+		);
+		Card.Add(
+			FLine {
+			  FString::Printf(TEXT("Unused: %d, %s"), Folder.NumUnused, *FText::AsMemory(Folder.SizeUnused, IEC).ToString()),
+			  &FontRegular,
+			  ColorUnused
+			}
+		);
+		if (Folder.NumNotDeleted > 0) {
+			Card.Add(FLine {FString::Printf(TEXT("Not deleted by last cleanup: %d"), Folder.NumNotDeleted), &FontRegular, ColorNotDeleted});
+		}
+		Card.Add(FLine {TEXT("Arrows: what it uses outside. Click or scroll to open"), &FontRegular, WithAlpha(TextColor, 0.7f)});
+		CardTint = FolderColor;
 	}
 
-	if (Lines.Num() > 0) {
+	if (Card.Num() > 0) {
 		FVector2D CardSize {0.0f, 0.0f};
-		for (const auto& Line : Lines) {
-			const FVector2D LineSize = MeasureText(Line.Key, *Line.Value);
+		for (const auto& Line : Card) {
+			const FVector2D LineSize = MeasureText(Line.Text, *Line.Font);
 			CardSize.X = FMath::Max(CardSize.X, LineSize.X);
 			CardSize.Y += LineSize.Y + 2.0f;
 		}
@@ -867,15 +856,13 @@ int32 SPjcAssetGraph::OnPaint(
 		FVector2D CardPos = MouseLocal + FVector2D {16.0f, 18.0f};
 		CardPos.X = FMath::Min(CardPos.X, ViewSize.X - CardSize.X - 4.0f);
 		CardPos.Y = CardPos.Y + CardSize.Y > ViewSize.Y - 4.0f ? MouseLocal.Y - CardSize.Y - 8.0f : CardPos.Y;
-		DrawPanel(CardPos - FVector2D {1.0f, 1.0f}, CardSize + FVector2D {2.0f, 2.0f}, WithAlpha(CardColor, 0.8f));
+		DrawPanel(CardPos - FVector2D {1.0f, 1.0f}, CardSize + FVector2D {2.0f, 2.0f}, WithAlpha(CardTint, 0.8f));
 		DrawPanel(CardPos, CardSize, FLinearColor {0.012f, 0.013f, 0.016f, 0.97f});
 
 		float LineY = static_cast<float>(CardPos.Y) + 7.0f;
-		for (const auto& Line : Lines) {
-			DrawText(
-				Line.Key, FVector2D {CardPos.X + 10.0f, LineY}, *Line.Value, &Line == &Lines[0] ? FLinearColor::White : TextColor, LayerPanelContent
-			);
-			LineY += static_cast<float>(MeasureText(Line.Key, *Line.Value).Y) + 2.0f;
+		for (const auto& Line : Card) {
+			DrawText(Line.Text, FVector2D {CardPos.X + 10.0f, LineY}, *Line.Font, Line.Color, LayerPanelContent);
+			LineY += static_cast<float>(MeasureText(Line.Text, *Line.Font).Y) + 2.0f;
 		}
 	}
 
@@ -905,13 +892,13 @@ FReply SPjcAssetGraph::OnMouseButtonDown(const FGeometry& MyGeometry, const FPoi
 FReply SPjcAssetGraph::OnMouseButtonUp(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) {
 	if (!HasMouseCapture()) return FReply::Unhandled();
 
-	// click: asset selects it, closed region opens, empty space clears selection
+	// click: asset selects it, closed folder opens, empty space clears selection
 	if (!bDragging && MouseEvent.GetEffectingButton() == EKeys::LeftMouseButton) {
 		const FVector2D Local = MyGeometry.AbsoluteToLocal(MouseEvent.GetScreenSpacePosition());
 		const int32 Node = FindNodeAt(Local);
-		const int32 Region = Node == INDEX_NONE ? FindRegionAt(Local) : INDEX_NONE;
-		if (Region != INDEX_NONE) {
-			OpenRegion(Region);
+		const int32 Folder = Node == INDEX_NONE ? FindFolderAt(Local) : INDEX_NONE;
+		if (Folder != INDEX_NONE) {
+			OpenFolder(Folder);
 		}
 		else {
 			SelectNode(Node, true);
@@ -929,7 +916,7 @@ FReply SPjcAssetGraph::OnMouseMove(const FGeometry& MyGeometry, const FPointerEv
 		if (!bDragging && FVector2D::Distance(MouseLocal, MouseDownLocal) > 4.0f) {
 			bDragging = true;
 			Hovered = INDEX_NONE;
-			HoveredRegion = INDEX_NONE;
+			HoveredFolder = INDEX_NONE;
 		}
 		if (bDragging) {
 			const FVector2D CursorDelta = MouseEvent.GetCursorDelta();
@@ -938,6 +925,7 @@ FReply SPjcAssetGraph::OnMouseMove(const FGeometry& MyGeometry, const FPointerEv
 			bZoomAnchored = false;
 			bFitPending = false;
 			bFocusFitPending = false;
+			bKeepSelectedPending = false;
 		}
 		return FReply::Handled();
 	}
@@ -957,6 +945,7 @@ FReply SPjcAssetGraph::OnMouseWheel(const FGeometry& MyGeometry, const FPointerE
 	bViewMoving = true;
 	bFitPending = false;
 	bFocusFitPending = false;
+	bKeepSelectedPending = false;
 	StartTimer();
 
 	return FReply::Handled();
@@ -965,23 +954,17 @@ FReply SPjcAssetGraph::OnMouseWheel(const FGeometry& MyGeometry, const FPointerE
 FReply SPjcAssetGraph::OnMouseButtonDoubleClick(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) {
 	if (!Graph.IsValid() || MouseEvent.GetEffectingButton() != EKeys::LeftMouseButton) return FReply::Unhandled();
 
-	// closed group or region opens, asset opens its editor, empty space fits view
+	// asset opens its editor, closed folder opens, empty space fits view
 	const FVector2D Local = MyGeometry.AbsoluteToLocal(MouseEvent.GetScreenSpacePosition());
 	const int32 Node = FindNodeAt(Local);
 	if (Node != INDEX_NONE) {
-		const FPjcGraphNode& GraphNode = Graph->GetNodes()[Node];
-		if (GraphNode.Owned.Num() > 0 && Openness.IsValidIndex(Node) && Openness[Node] < 1.0f) {
-			MoveView(GraphNode.GetClusterCenter(), static_cast<float>(FMath::Min(ViewSize.X, ViewSize.Y)) * 0.42f / GraphNode.ClusterRadius);
-		}
-		else {
-			OnAssetDoubleClicked.ExecuteIfBound(GraphNode.Item->PackageName);
-		}
+		OnAssetDoubleClicked.ExecuteIfBound(Graph->GetNodes()[Node].Item->PackageName);
 		return FReply::Handled();
 	}
 
-	const int32 Region = FindRegionAt(Local);
-	if (Region != INDEX_NONE) {
-		OpenRegion(Region);
+	const int32 Folder = FindFolderAt(Local);
+	if (Folder != INDEX_NONE) {
+		OpenFolder(Folder);
 	}
 	else {
 		ZoomToFit();
@@ -993,7 +976,7 @@ void SPjcAssetGraph::OnMouseLeave(const FPointerEvent& MouseEvent) {
 	SLeafWidget::OnMouseLeave(MouseEvent);
 
 	Hovered = INDEX_NONE;
-	HoveredRegion = INDEX_NONE;
+	HoveredFolder = INDEX_NONE;
 }
 
 FReply SPjcAssetGraph::OnKeyDown(const FGeometry& MyGeometry, const FKeyEvent& InKeyEvent) {
@@ -1011,7 +994,7 @@ FReply SPjcAssetGraph::OnKeyDown(const FGeometry& MyGeometry, const FKeyEvent& I
 
 FCursorReply SPjcAssetGraph::OnCursorQuery(const FGeometry& MyGeometry, const FPointerEvent& CursorEvent) const {
 	if (bDragging) return FCursorReply::Cursor(EMouseCursor::GrabHandClosed);
-	if (Hovered != INDEX_NONE || HoveredRegion != INDEX_NONE) return FCursorReply::Cursor(EMouseCursor::Hand);
+	if (Hovered != INDEX_NONE || HoveredFolder != INDEX_NONE) return FCursorReply::Cursor(EMouseCursor::Hand);
 
 	return FCursorReply::Unhandled();
 }
@@ -1108,7 +1091,7 @@ void SPjcAssetGraph::UpdateFocus() {
 
 	Focus[Selected] = EFocus::Selected;
 
-	// used asset: chain up to asset used for its own reason. Unused asset: groups it is deleted with
+	// used asset: chain up to asset used for its own reason. Unused asset: assets it is deleted with
 	const FPjcGraphNode& SelectedNode = Nodes[Selected];
 	int32 Step = Selected;
 	for (int32 Guard = 0; Guard < 64; ++Guard) {
@@ -1141,7 +1124,7 @@ void SPjcAssetGraph::UpdateFocus() {
 void SPjcAssetGraph::FitFocus() {
 	if (!Graph.IsValid() || Selected == INDEX_NONE) return;
 
-	// selected asset with its chain and links, they are drawn even inside closed groups and regions
+	// selected asset with its chain and links, they are drawn even inside closed folders
 	FBox2D Box {ForceInit};
 	const TArray<FPjcGraphNode>& Nodes = Graph->GetNodes();
 	for (int32 Index = 0; Index < Nodes.Num(); ++Index) {
@@ -1153,13 +1136,13 @@ void SPjcAssetGraph::FitFocus() {
 	MoveView(Box.GetCenter(), FMath::Min(GetFitZoom(Box), 2.0f));
 }
 
-void SPjcAssetGraph::OpenRegion(const int32 Region) {
-	if (!Graph.IsValid() || !Graph->GetRegions().IsValidIndex(Region)) return;
+void SPjcAssetGraph::OpenFolder(const int32 Folder) {
+	if (!Graph.IsValid() || !Graph->GetFolders().IsValidIndex(Folder)) return;
 
-	const FPjcGraphRegion& GraphRegion = Graph->GetRegions()[Region];
-	const FVector2D Extent {GraphRegion.Radius, GraphRegion.Radius};
-	const float FitZoom = GetFitZoom(FBox2D {GraphRegion.Center - Extent, GraphRegion.Center + Extent});
-	MoveView(GraphRegion.Center, FMath::Max(FitZoom, (RegionOpenPixels + RegionFadePixels) * 1.1f / GraphRegion.Radius));
+	const FPjcGraphFolder& GraphFolder = Graph->GetFolders()[Folder];
+	const FVector2D Extent {GraphFolder.Radius, GraphFolder.Radius};
+	const float FitZoom = GetFitZoom(FBox2D {GraphFolder.Center - Extent, GraphFolder.Center + Extent});
+	MoveView(GraphFolder.Center, FMath::Max(FitZoom, (FolderOpenPixels + FolderFadePixels) * 1.15f / GraphFolder.Radius));
 }
 
 void SPjcAssetGraph::MoveView(const FVector2D& Center, const float InZoom) {
@@ -1173,7 +1156,7 @@ void SPjcAssetGraph::MoveView(const FVector2D& Center, const float InZoom) {
 
 void SPjcAssetGraph::UpdateHovered() {
 	Hovered = FindNodeAt(MouseLocal);
-	HoveredRegion = Hovered == INDEX_NONE ? FindRegionAt(MouseLocal) : INDEX_NONE;
+	HoveredFolder = Hovered == INDEX_NONE ? FindFolderAt(MouseLocal) : INDEX_NONE;
 }
 
 int32 SPjcAssetGraph::FindNodeAt(const FVector2D& LocalPosition) const {
@@ -1185,10 +1168,10 @@ int32 SPjcAssetGraph::FindNodeAt(const FVector2D& LocalPosition) const {
 	return INDEX_NONE;
 }
 
-int32 SPjcAssetGraph::FindRegionAt(const FVector2D& LocalPosition) const {
-	for (int32 Index = DrawnRegions.Num() - 1; Index >= 0; --Index) {
-		if (FVector2D::DistSquared(DrawnRegions[Index].Center, LocalPosition) <= FMath::Square(DrawnRegions[Index].Radius)) {
-			return DrawnRegions[Index].Item;
+int32 SPjcAssetGraph::FindFolderAt(const FVector2D& LocalPosition) const {
+	for (int32 Index = DrawnFolders.Num() - 1; Index >= 0; --Index) {
+		if (FVector2D::DistSquared(DrawnFolders[Index].Center, LocalPosition) <= FMath::Square(DrawnFolders[Index].Radius)) {
+			return DrawnFolders[Index].Item;
 		}
 	}
 	return INDEX_NONE;
@@ -1203,7 +1186,7 @@ FVector2D SPjcAssetGraph::LocalToGraph(const FVector2D& LocalPosition) const {
 }
 
 float SPjcAssetGraph::GetFitZoom(const FBox2D& Box) const {
-	// room for labels at sides, hint and area titles above, legend below
+	// room for labels at sides, hint above and legend below
 	const FVector2D Size = Box.GetSize();
 	const float ZoomX = FMath::Max(static_cast<float>(ViewSize.X) - 200.0f, 100.0f) / FMath::Max(static_cast<float>(Size.X), 1.0f);
 	const float ZoomY = FMath::Max(static_cast<float>(ViewSize.Y) - 220.0f, 100.0f) / FMath::Max(static_cast<float>(Size.Y), 1.0f);
@@ -1217,20 +1200,20 @@ float SPjcAssetGraph::GetMinZoom() const {
 	return Bounds.bIsValid ? GetFitZoom(Bounds) * 0.25f : 0.0001f;
 }
 
-float SPjcAssetGraph::GetShownRadius(const int32 End) const {
-	const TArray<FPjcGraphNode>& Nodes = Graph->GetNodes();
-	if (End >= Nodes.Num()) return Graph->GetRegions()[End - Nodes.Num()].Radius;
-
-	const FPjcGraphNode& Node = Nodes[End];
-	return Node.Owned.Num() > 0 && Openness[End] < 0.5f ? Node.ClusterRadius : Node.Radius;
+int32 SPjcAssetGraph::GetShown(const int32 Node) const {
+	const int32 Folder = Graph->GetNodes()[Node].Folder;
+	const int32 Shown = FolderShown.IsValidIndex(Folder) ? FolderShown[Folder] : INDEX_NONE;
+	return Shown == INDEX_NONE ? Node : Graph->GetNodes().Num() + Shown;
 }
 
-FVector2D SPjcAssetGraph::GetShownCenter(const int32 End) const {
+float SPjcAssetGraph::GetShownRadius(const int32 Shown) const {
 	const TArray<FPjcGraphNode>& Nodes = Graph->GetNodes();
-	if (End >= Nodes.Num()) return Graph->GetRegions()[End - Nodes.Num()].Center;
+	return Shown < Nodes.Num() ? Nodes[Shown].Radius : Graph->GetFolders()[Shown - Nodes.Num()].Radius;
+}
 
-	const FPjcGraphNode& Node = Nodes[End];
-	return Node.Owned.Num() > 0 && Openness[End] < 0.5f ? Node.GetClusterCenter() : Node.Position;
+FVector2D SPjcAssetGraph::GetShownCenter(const int32 Shown) const {
+	const TArray<FPjcGraphNode>& Nodes = Graph->GetNodes();
+	return Shown < Nodes.Num() ? Nodes[Shown].Position : Graph->GetFolders()[Shown - Nodes.Num()].Center;
 }
 
 float SPjcAssetGraph::GetDim(const int32 Node) const {
@@ -1238,4 +1221,12 @@ float SPjcAssetGraph::GetDim(const int32 Node) const {
 	if (bEmphasisActive) return Emphasized[Node] ? 1.0f : 0.15f;
 
 	return 1.0f;
+}
+
+bool SPjcAssetGraph::IsInsideFolder(const int32 Node, const int32 Folder) const {
+	const TArray<FPjcGraphFolder>& Folders = Graph->GetFolders();
+	for (int32 Step = Graph->GetNodes()[Node].Folder; Step != INDEX_NONE; Step = Folders[Step].Parent) {
+		if (Step == Folder) return true;
+	}
+	return false;
 }

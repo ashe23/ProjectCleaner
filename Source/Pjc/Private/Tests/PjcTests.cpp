@@ -563,13 +563,37 @@ bool FPjcTestScanGraph::RunTest(const FString& Parameters) {
 	const TArray<FPjcGraphNode>& Nodes = Graph.GetNodes();
 	TestEqual(TEXT("node for every scanned asset"), Nodes.Num(), AssetsAll.Num());
 
-	int32 NumInRegions = 0;
-	for (const auto& Region : Graph.GetRegions()) {
-		NumInRegions += Region.NumAssets;
+	// folders hold every asset, totals add up, circles stay inside their folder
+	const TArray<FPjcGraphFolder>& Folders = Graph.GetFolders();
+	int32 NumInRoots = 0;
+	for (const int32 Root : Graph.GetRootFolders()) {
+		NumInRoots += Folders[Root].NumAssets;
 	}
-	TestEqual(TEXT("regions hold every asset"), NumInRegions, Nodes.Num());
+	TestEqual(TEXT("folders hold every asset"), NumInRoots, Nodes.Num());
 
-	// owner has same verdict, owned sizes add up, owned circles stay inside owner group
+	for (const auto& Folder : Folders) {
+		int32 NumAssets = Folder.Assets.Num();
+		for (const int32 Subfolder : Folder.Folders) {
+			NumAssets += Folders[Subfolder].NumAssets;
+			const double Reach = FVector2D::Distance(Folders[Subfolder].Center, Folder.Center) + Folders[Subfolder].Radius;
+			TestTrue(*FString::Printf(TEXT("%s inside %s"), *Folders[Subfolder].Path, *Folder.Path), Reach <= Folder.Radius + 0.01);
+		}
+		TestEqual(*FString::Printf(TEXT("%s asset count"), *Folder.Path), Folder.NumAssets, NumAssets);
+		for (const int32 Asset : Folder.Assets) {
+			const double Reach = FVector2D::Distance(Nodes[Asset].Position, Folder.Center) + Nodes[Asset].Radius;
+			TestTrue(*FString::Printf(TEXT("%s inside its folder"), *Nodes[Asset].Item->PackageName.ToString()), Reach <= Folder.Radius + 0.01);
+		}
+	}
+
+	const FPjcGraphFolder* UnusedFolder = Folders.FindByPredicate([](const FPjcGraphFolder& Folder) {
+		return Folder.Path == FPjcTestFixture::RootPath() / TEXT("Unused");
+	});
+	if (TestNotNull(TEXT("folder of unused fixture assets"), UnusedFolder)) {
+		TestTrue(TEXT("unused folder counts its unused assets"), UnusedFolder->NumAssets >= 3 && UnusedFolder->NumUnused == UnusedFolder->NumAssets);
+		TestEqual(TEXT("unused folder size is unused"), UnusedFolder->SizeUnused, UnusedFolder->Size);
+	}
+
+	// owner has same verdict, owned sizes add up
 	for (const auto& Node : Nodes) {
 		const FString Name = Node.Item->PackageName.ToString();
 		int64 Size = Node.Item->Size;
@@ -579,10 +603,7 @@ bool FPjcTestScanGraph::RunTest(const FString& Parameters) {
 		TestEqual(*FString::Printf(TEXT("%s owned size"), *Name), Node.SizeOwned, Size);
 		if (Node.Owner == INDEX_NONE) continue;
 
-		const FPjcGraphNode& Owner = Nodes[Node.Owner];
-		TestEqual(*FString::Printf(TEXT("%s owner verdict"), *Name), Owner.Item->Usage.bUsed, Node.Item->Usage.bUsed);
-		const double Reach = FVector2D::Distance(Node.GetClusterCenter(), Owner.GetClusterCenter()) + Node.ClusterRadius;
-		TestTrue(*FString::Printf(TEXT("%s inside owner group"), *Name), Reach <= Owner.ClusterRadius + 0.01);
+		TestEqual(*FString::Printf(TEXT("%s owner verdict"), *Name), Nodes[Node.Owner].Item->Usage.bUsed, Node.Item->Usage.bUsed);
 	}
 
 	const auto TestOwner = [&](const TCHAR* Name, const TCHAR* OwnerName) {
@@ -606,12 +627,6 @@ bool FPjcTestScanGraph::RunTest(const FString& Parameters) {
 	TestOwner(TEXT("C_UnusedLeaf"), TEXT("OL_UnusedRoot"));
 	TestOwner(TEXT("OL_CircA"), nullptr);
 	TestOwner(TEXT("OL_CircB"), TEXT("OL_CircA"));
-
-	const FBox2D UsedArea = Graph.GetGroupBounds(true);
-	const FBox2D UnusedArea = Graph.GetGroupBounds(false);
-	if (TestTrue(TEXT("used and unused areas"), UsedArea.bIsValid && UnusedArea.bIsValid)) {
-		TestFalse(TEXT("used and unused areas apart"), UsedArea.Intersect(UnusedArea));
-	}
 
 	return true;
 }

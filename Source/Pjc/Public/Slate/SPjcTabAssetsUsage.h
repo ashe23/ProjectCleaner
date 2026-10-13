@@ -11,6 +11,7 @@
 
 struct FPjcUsageItem;
 class FPjcAssetGraph;
+class SPjcAssetConnections;
 class SPjcAssetGraph;
 class SVerticalBox;
 
@@ -33,6 +34,13 @@ class SPjcTabAssetsUsage final : public SCompoundWidget
 
   private:
 
+	enum class EView : uint8
+	{
+		Map,
+		Connections,
+		List,
+	};
+
 	enum class EFilter : uint8
 	{
 		All,
@@ -46,6 +54,7 @@ class SPjcTabAssetsUsage final : public SCompoundWidget
 	void ListSort();
 	void RebuildChain();
 	void ClearInspected();
+	void UpdateConnections();
 	TSharedPtr<FPjcUsageItem> FindOrMakeItem(const FName& PackageName);
 	FString GetShortReason(const FPjcUsageItem& Item);
 	FString GetFolderLabelName(const FPjcUsageItem& Item);
@@ -91,6 +100,9 @@ class SPjcTabAssetsUsage final : public SCompoundWidget
 	TSharedPtr<SListView<TSharedPtr<FPjcUsageItem>>> ListUsedBy;
 	TSharedPtr<SListView<TSharedPtr<FPjcUsageItem>>> ListUses;
 	TSharedPtr<SPjcAssetGraph> GraphView;
+	TSharedPtr<SPjcAssetConnections> ConnectionsView;
+	/** usage chain of inspected asset, asset used for its own reason first */
+	TArray<TSharedPtr<FPjcUsageItem>> ItemsChain;
 	TSharedPtr<FPjcAssetGraph> Graph;
 	TSharedPtr<SVerticalBox> ChainBox;
 	TSharedPtr<FPjcUsageItem> Current;
@@ -105,7 +117,7 @@ class SPjcTabAssetsUsage final : public SCompoundWidget
 	bool bScanned = false;
 	bool bSyncingSelection = false;
 	bool bSelectingInGraph = false;
-	bool bShowList = false;
+	EView View = EView::Map;
 	int32 NumUsed = 0;
 	int32 NumUnused = 0;
 	int32 NumNotDeleted = 0;

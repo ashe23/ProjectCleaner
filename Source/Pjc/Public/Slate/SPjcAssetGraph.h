@@ -12,9 +12,9 @@ struct FSlateBrush;
 DECLARE_DELEGATE_OneParam(FPjcOnGraphAsset, const FName&);
 
 /**
- * Draws asset graph: circle area is size on disk, color is status, lines are dependencies. Zoomed out, every folder region
- * is one bubble, zooming in opens it, then every group (asset with everything only it uses) opens the same way. Selected
- * asset is shown with its usage chain and links, everything else fades.
+ * Draws project map: folders are circles holding subfolders and assets, ring around folder shows how much of it is unused,
+ * asset circle area is size on disk, color is status. Zoomed out, folders are closed bubbles with their totals, zooming in
+ * opens them. Hovered asset shows its links, selected one its usage chain and links while everything else fades.
  */
 class SPjcAssetGraph final : public SLeafWidget
 {
@@ -32,9 +32,9 @@ class SPjcAssetGraph final : public SLeafWidget
 	void SetGraph(const TSharedPtr<FPjcAssetGraph>& InGraph);
 	/** Selects asset without notifying, None or asset not in graph clears selection */
 	void SetSelection(const FName& PackageName, const bool bMoveView);
-	/** When active, only given assets are shown in full, others fade */
+	/** When active, only given assets are shown in full, others fade, closed folders tell how many they hold */
 	void SetEmphasis(const TSet<FName>& Packages, const bool bActive);
-	/** Fits selected asset with its links, or whole graph */
+	/** Fits selected asset with its links, or whole map */
 	void ZoomToFit();
 
 	virtual int32 OnPaint(
@@ -74,7 +74,7 @@ class SPjcAssetGraph final : public SLeafWidget
 		bool bChain = false;
 	};
 
-	/** Circle drawn last paint, Item is node index, or region index for regions */
+	/** Circle drawn last paint, Item is asset index, or folder index for folders */
 	struct FDrawnItem
 	{
 		int32 Item = INDEX_NONE;
@@ -82,32 +82,26 @@ class SPjcAssetGraph final : public SLeafWidget
 		float Radius = 0.0f;
 	};
 
-	/** Link between shown circles. Ends are node indices, regions follow nodes (node count + region index) */
-	struct FDrawnLink
-	{
-		int32 From = INDEX_NONE;
-		int32 To = INDEX_NONE;
-		int32 Count = 0;
-	};
-
 	EActiveTimerReturnType OnTimer(double InCurrentTime, float InDeltaTime);
 	void StartTimer();
 	void SelectNode(const int32 Node, const bool bNotify);
 	void UpdateFocus();
 	void FitFocus();
-	void OpenRegion(const int32 Region);
+	void OpenFolder(const int32 Folder);
 	void MoveView(const FVector2D& Center, const float InZoom);
 	void UpdateHovered();
 	int32 FindNodeAt(const FVector2D& LocalPosition) const;
-	int32 FindRegionAt(const FVector2D& LocalPosition) const;
+	int32 FindFolderAt(const FVector2D& LocalPosition) const;
 	FVector2D GraphToLocal(const FVector2D& GraphPosition) const;
 	FVector2D LocalToGraph(const FVector2D& LocalPosition) const;
 	float GetFitZoom(const FBox2D& Box) const;
 	float GetMinZoom() const;
-	/** Shown circle of link end: region bubble, group bubble while group is closed, otherwise asset itself */
-	float GetShownRadius(const int32 End) const;
-	FVector2D GetShownCenter(const int32 End) const;
+	/** Shown circle for asset: asset itself, or closed folder holding it (node count + folder index) */
+	int32 GetShown(const int32 Node) const;
+	float GetShownRadius(const int32 Shown) const;
+	FVector2D GetShownCenter(const int32 Shown) const;
 	float GetDim(const int32 Node) const;
+	bool IsInsideFolder(const int32 Node, const int32 Folder) const;
 
 	TSharedPtr<FPjcAssetGraph> Graph;
 	FPjcOnGraphAsset OnSelectionChanged;
@@ -134,10 +128,12 @@ class SPjcAssetGraph final : public SLeafWidget
 
 	int32 Selected = INDEX_NONE;
 	int32 Hovered = INDEX_NONE;
-	int32 HoveredRegion = INDEX_NONE;
+	int32 HoveredFolder = INDEX_NONE;
 	TArray<EFocus> Focus;
 	TArray<FFocusLink> FocusLinks;
 	TArray<bool> Emphasized;
+	/** emphasized assets inside every folder, subfolders too */
+	TArray<int32> FolderEmphasized;
 	bool bEmphasisActive = false;
 	int32 NumEmphasized = 0;
 
@@ -148,11 +144,9 @@ class SPjcAssetGraph final : public SLeafWidget
 	// paint results, used by input handling and next paint
 	mutable FVector2D ViewSize = FVector2D {1.0, 1.0};
 	mutable TArray<FDrawnItem> DrawnNodes;
-	mutable TArray<FDrawnItem> DrawnRegions;
-	mutable TArray<float> RegionOpenness;
-	mutable TArray<float> Openness;
-	mutable TArray<float> Alpha;
-	mutable TArray<int32> Reps;
-	mutable TArray<int32> LinkReps;
-	mutable TArray<FDrawnLink> Links;
+	mutable TArray<FDrawnItem> DrawnFolders;
+	mutable TArray<float> FolderOpenness;
+	mutable TArray<float> FolderAlpha;
+	/** outermost closed folder on the way to every folder, INDEX_NONE when all are open */
+	mutable TArray<int32> FolderShown;
 };
