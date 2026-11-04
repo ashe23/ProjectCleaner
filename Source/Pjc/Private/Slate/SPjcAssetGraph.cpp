@@ -738,7 +738,7 @@ int32 SPjcAssetGraph::OnPaint(
 		// below, above or right of circle, whichever is free
 		const float Gap = Label.Radius + (Label.Node == Selected ? 12.0f : 3.0f);
 		const FVector2D Spots[] = {
-		  FVector2D {Label.Center.X - BlockSize.X * 0.5f,				  Label.Center.Y + Gap},
+		  FVector2D {Label.Center.X - BlockSize.X * 0.5f,				 Label.Center.Y + Gap},
 		  FVector2D {Label.Center.X - BlockSize.X * 0.5f,  Label.Center.Y - Gap - BlockSize.Y},
 		  FVector2D {		 Label.Center.X + Gap + 2.0f, Label.Center.Y - BlockSize.Y * 0.5f},
 		};
