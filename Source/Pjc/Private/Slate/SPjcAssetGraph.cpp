@@ -345,16 +345,18 @@ int32 SPjcAssetGraph::OnPaint(
 	const auto DrawText
 		= [&](const FString& Text, const FVector2D& Position, const FSlateFontInfo& Font, const FLinearColor& Color, const int32 Layer) {
 			  const FVector2D Size = MeasureText(Text, Font);
-			  const FLinearColor Shadow {0.0f, 0.0f, 0.0f, Color.A * 0.9f};
-			  FSlateDrawElement::MakeText(
-				  OutDrawElements,
-				  Layer,
-				  MakePaintGeometry(AllottedGeometry, Position + FVector2D {1.0f, 1.0f}, Size),
-				  Text,
-				  Font,
-				  ESlateDrawEffect::None,
-				  Shadow
-			  );
+			  // dark halo keeps text readable over circles and links
+			  const FLinearColor Halo {0.0f, 0.0f, 0.0f, Color.A * 0.8f};
+			  for (const FVector2D& Offset : {
+					 FVector2D { 1.0f,	1.0f},
+					  FVector2D {-1.0f,	 1.0f},
+						FVector2D { 1.0f, -1.0f},
+					  FVector2D {-1.0f, -1.0f}
+			  }) {
+				  FSlateDrawElement::MakeText(
+					  OutDrawElements, Layer, MakePaintGeometry(AllottedGeometry, Position + Offset, Size), Text, Font, ESlateDrawEffect::None, Halo
+				  );
+			  }
 			  FSlateDrawElement::MakeText(
 				  OutDrawElements, Layer, MakePaintGeometry(AllottedGeometry, Position, Size), Text, Font, ESlateDrawEffect::None, Color
 			  );
@@ -631,50 +633,99 @@ int32 SPjcAssetGraph::OnPaint(
 			Y += static_cast<float>(LineSize.Y);
 		}
 	};
-	const auto GetFolderLines = [&](const int32 Index) {
+	// name, then what can be freed: unused size and its share of folder size
+	const auto GetFolderLines = [&](const int32 Index, const bool bWithDetail, const FSlateFontInfo& NameFont) {
 		const FPjcGraphFolder& Folder = Folders[Index];
 		TArray<FLine> Lines;
-		Lines.Add(FLine {Folder.Name, &FontFolder, FLinearColor::White});
-		Lines.Add(
-			FLine {
-			  FString::Printf(TEXT("%s assets, %s"), *PjcFormat::Count(Folder.NumAssets), *PjcFormat::Size(Folder.Size)), &FontRegular, TextColor
+		Lines.Add(FLine {Folder.Name, &NameFont, FLinearColor::White});
+		if (bWithDetail) {
+			if (Folder.NumUnused == 0) {
+				Lines.Add(FLine {PjcFormat::Size(Folder.Size) + TEXT(", all used"), &FontRegular, WithAlpha(TextColor, 0.75f)});
 			}
-		);
-		if (Folder.NumUnused > 0) {
-			Lines.Add(
-				FLine {
-				  FString::Printf(TEXT("%s unused, %s"), *PjcFormat::Count(Folder.NumUnused), *PjcFormat::Size(Folder.SizeUnused)),
-				  &FontRegular,
-				  ColorUnused
-				}
-			);
+			else if (Folder.NumUnused == Folder.NumAssets) {
+				Lines.Add(FLine {TEXT("All unused, ") + PjcFormat::Size(Folder.SizeUnused), &FontRegular, ColorUnused});
+			}
+			else {
+				Lines.Add(
+					FLine {
+					  FString::Printf(
+						  TEXT("%s unused, %s"), *PjcFormat::Size(Folder.SizeUnused), *PjcFormat::Percent(Folder.SizeUnused, Folder.Size)
+					  ),
+					  &FontRegular,
+					  ColorUnused
+					}
+				);
+			}
 		}
 		if (bEmphasisActive) {
 			Lines.Add(FLine {FString::Printf(TEXT("%s matching"), *PjcFormat::Count(FolderEmphasized[Index])), &FontRegular, ColorNotDeleted});
 		}
 		return Lines;
 	};
+	const auto IsInsideView = [this](const FSlateRect& Rect) {
+		return Rect.Left >= 0.0f && Rect.Top >= 0.0f && Rect.Right <= ViewSize.X && Rect.Bottom <= ViewSize.Y;
+	};
+	/** Closed folder circle on screen that rect touches */
+	const auto HitsClosedFolder = [this](const FSlateRect& Rect) {
+		return DrawnFolders.ContainsByPredicate([&Rect](const FDrawnItem& Folder) {
+			const FVector2D Closest {
+			  FMath::Clamp(static_cast<float>(Folder.Center.X), Rect.Left, Rect.Right),
+			  FMath::Clamp(static_cast<float>(Folder.Center.Y), Rect.Top, Rect.Bottom)
+			};
+			return FVector2D::DistSquared(Closest, Folder.Center) < Folder.Radius * Folder.Radius;
+		});
+	};
 
 	if (!bFocusActive) {
-		// closed folders, biggest first
+		// closed folders, biggest first. Label stays inside its circle and inside view, details go first when space is short
 		TArray<FDrawnItem> ClosedFolders = DrawnFolders;
 		ClosedFolders.Sort([](const FDrawnItem& A, const FDrawnItem& B) {
 			return A.Radius > B.Radius;
 		});
 		for (const auto& DrawnFolder : ClosedFolders) {
-			if (DrawnFolder.Radius < 30.0f && DrawnFolder.Item != HoveredFolder) continue;
+			const bool bHovered = DrawnFolder.Item == HoveredFolder;
+			// folder inside a closed folder is still fading in, its parent speaks for it
+			if (FolderShown[DrawnFolder.Item] != DrawnFolder.Item && !bHovered) continue;
+			if (DrawnFolder.Radius < 22.0f && !bHovered) continue;
 
-			const TArray<FLine> Lines = GetFolderLines(DrawnFolder.Item);
-			const FVector2D BlockSize = GetBlockSize(Lines);
-			const FVector2D Position = DrawnFolder.Center - BlockSize * 0.5f;
+			// name with details inside circle, else name alone, else smaller name a bit wider than circle
+			struct FLabelFit
+			{
+				bool bWithDetail;
+				const FSlateFontInfo* NameFont;
+				float Width;
+			};
+			const FLabelFit Fits[] = {
+			  { true, &FontFolder, 1.8f},
+			  {false, &FontFolder, 2.0f},
+			   {false,	 &FontBold, 2.4f}
+			};
+			TArray<FLine> Lines;
+			FVector2D BlockSize {0.0f, 0.0f};
+			bool bFits = false;
+			for (const FLabelFit& Fit : Fits) {
+				Lines = GetFolderLines(DrawnFolder.Item, Fit.bWithDetail, *Fit.NameFont);
+				BlockSize = GetBlockSize(Lines);
+				bFits = bHovered || (BlockSize.X <= DrawnFolder.Radius * Fit.Width && BlockSize.Y <= DrawnFolder.Radius * 1.4f);
+				if (bFits) break;
+			}
+			if (!bFits) continue;
+
+			// big circle partly off screen: label slides into view while it stays inside the circle
+			FVector2D Position = DrawnFolder.Center - BlockSize * 0.5f;
+			Position.X = FMath::Clamp(static_cast<float>(Position.X), 4.0f, FMath::Max(4.0f, static_cast<float>(ViewSize.X - BlockSize.X) - 4.0f));
+			Position.Y = FMath::Clamp(static_cast<float>(Position.Y), 4.0f, FMath::Max(4.0f, static_cast<float>(ViewSize.Y - BlockSize.Y) - 4.0f));
+			const float Reach = DrawnFolder.Radius - static_cast<float>(BlockSize.GetMax()) * 0.5f;
+			if (!bHovered && FVector2D::Distance(Position + BlockSize * 0.5f, DrawnFolder.Center) > FMath::Max(Reach, 0.0f)) continue;
+
 			const FSlateRect Rect = MakeRect(Position, BlockSize);
-			if (!IsFree(Rect) && DrawnFolder.Item != HoveredFolder) continue;
+			if (!bHovered && (!IsFree(Rect) || !IsInsideView(Rect))) continue;
 
 			Placed.Add(Rect);
 			DrawBlock(Lines, Position, static_cast<float>(BlockSize.X));
 		}
 
-		// open folders keep their name at the top
+		// open folders keep their name at the top, unless it would cover a neighbor folder
 		for (int32 Index = 0; Index < Folders.Num(); ++Index) {
 			if (FolderOpenness[Index] < 0.5f || FolderAlpha[Index] < 0.5f) continue;
 
@@ -685,7 +736,7 @@ int32 SPjcAssetGraph::OnPaint(
 			if (!IsOnScreen(Position + NameSize * 0.5f, static_cast<float>(NameSize.X))) continue;
 
 			const FSlateRect Rect = MakeRect(Position, NameSize);
-			if (!IsFree(Rect)) continue;
+			if (!IsFree(Rect) || !IsInsideView(Rect) || HitsClosedFolder(Rect)) continue;
 
 			Placed.Add(Rect);
 			DrawText(Folders[Index].Name, Position, FontFolder, WithAlpha(TextColor, FolderOpenness[Index] * FolderAlpha[Index]), LayerLabels);
