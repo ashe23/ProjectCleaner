@@ -4,6 +4,7 @@
 #include "PjcFormat.h"
 #include "Slate/SPjcItemUsage.h"
 #include "PjcAssetGraph.h"
+#include "PjcSettings.h"
 #include "PjcShim.h"
 #include "PjcStyles.h"
 #include "PjcTypes.h"
@@ -29,7 +30,7 @@ namespace
 	constexpr int32 MaxHoverFolderAssets = 20000;
 
 	const FLinearColor BackgroundColor {0.006f, 0.007f, 0.009f, 1.0f};
-	const FLinearColor PanelColor {0.0f, 0.0f, 0.0f, 0.75f};
+	const FLinearColor PanelColor {0.0f, 0.0f, 0.0f, 0.9f};
 	const FLinearColor LinkColor {0.4f, 0.5f, 0.65f, 1.0f};
 	const FLinearColor TextColor {0.85f, 0.87f, 0.9f, 1.0f};
 	const FLinearColor HintColor {0.3f, 0.32f, 0.35f, 1.0f};
@@ -37,6 +38,10 @@ namespace
 
 	FLinearColor WithAlpha(const FLinearColor& Color, const float InAlpha) {
 		return FLinearColor {Color.R, Color.G, Color.B, Color.A * FMath::Clamp(InAlpha, 0.0f, 1.0f)};
+	}
+
+	bool RectContains(const FSlateRect& Rect, const FVector2D& Point) {
+		return Rect.Right > Rect.Left && Point.X >= Rect.Left && Point.X <= Rect.Right && Point.Y >= Rect.Top && Point.Y <= Rect.Bottom;
 	}
 
 	FPaintGeometry MakePaintGeometry(const FGeometry& Geometry, const FVector2D& Offset, const FVector2D& Size) {
@@ -315,6 +320,8 @@ int32 SPjcAssetGraph::OnPaint(
 	ViewSize = AllottedGeometry.GetLocalSize();
 	DrawnNodes.Reset();
 	DrawnFolders.Reset();
+	HelpButtonRect = FSlateRect {0.0f, 0.0f, 0.0f, 0.0f};
+	HelpPanelRect = FSlateRect {0.0f, 0.0f, 0.0f, 0.0f};
 	++NumPaints;
 
 	const FSlateBrush* WhiteBrush = PjcShim::GetBrush(TEXT("WhiteBrush"));
@@ -604,6 +611,26 @@ int32 SPjcAssetGraph::OnPaint(
 			static_cast<float>(Position.Y + Size.Y + 1.0f)
 		);
 	};
+	// help button in the corner and the panel above it (setting Map Help Open), labels keep clear of both
+	const bool bHelpOpen = GetDefault<UPjcEditorSettings>()->bMapHelpOpen;
+	const FString HelpText
+		= TEXT("Scroll to zoom, drag to move. Click a folder to open it, an asset for details. F fits view, Esc clears selection.");
+	const FString LegendNote = TEXT("Circle area is size on disk. Red part of folder ring is unused share of its size.");
+	{
+		constexpr float ButtonSize = 24.0f;
+		const float ButtonTop = static_cast<float>(ViewSize.Y) - 10.0f - ButtonSize;
+		HelpButtonRect = FSlateRect {10.0f, ButtonTop, 10.0f + ButtonSize, ButtonTop + ButtonSize};
+		HelpPanelRect = FSlateRect {0.0f, 0.0f, 0.0f, 0.0f};
+		Placed.Add(HelpButtonRect);
+		if (bHelpOpen) {
+			const float TextWidth = static_cast<float>(FMath::Max(MeasureText(HelpText, FontRegular).X, MeasureText(LegendNote, FontRegular).X));
+			const float PanelHeight = 76.0f;
+			const float PanelTop = ButtonTop - 6.0f - PanelHeight;
+			HelpPanelRect = FSlateRect {10.0f, PanelTop, 10.0f + FMath::Max(TextWidth, 420.0f) + 24.0f, PanelTop + PanelHeight};
+			Placed.Add(HelpPanelRect);
+		}
+	}
+
 	const auto IsFree = [&Placed](const FSlateRect& Rect) {
 		return !Placed.ContainsByPredicate([&Rect](const FSlateRect& Other) {
 			return FSlateRect::DoRectanglesIntersect(Rect, Other);
@@ -811,42 +838,42 @@ int32 SPjcAssetGraph::OnPaint(
 		++NumLabels;
 	}
 
-	// how to read and use it
-	DrawText(
-		TEXT("Scroll to zoom, drag to move. Click a folder to open it, an asset for details. F fits view, Esc clears selection."),
-		FVector2D {10.0f, 8.0f},
-		FontRegular,
-		WithAlpha(TextColor, 0.45f),
-		LayerPanelContent
-	);
-
+	// help panel (how to use it and legend) above its button
 	{
+		FPjcMesh HelpMesh {Transform};
 		FPjcMesh LegendMesh {Transform};
-		const FVector2D LegendPos {10.0f, ViewSize.Y - 64.0f};
-		DrawPanel(LegendPos, FVector2D {440.0f, 56.0f}, PanelColor);
+		if (bHelpOpen) {
+			const FVector2D PanelPos {HelpPanelRect.Left, HelpPanelRect.Top};
+			DrawPanel(PanelPos, FVector2D {HelpPanelRect.Right - HelpPanelRect.Left, HelpPanelRect.Bottom - HelpPanelRect.Top}, PanelColor);
+			DrawText(HelpText, PanelPos + FVector2D {12.0f, 9.0f}, FontRegular, TextColor, LayerPanelContent);
 
-		float X = static_cast<float>(LegendPos.X) + 12.0f;
-		const float Y = static_cast<float>(LegendPos.Y) + 14.0f;
-		const auto AddEntry = [&](const FLinearColor& Color, const bool bRing, const TCHAR* Text) {
-			LegendMesh.Disc(FVector2D {X, Y}, 5.0f, Color);
-			if (bRing) {
-				LegendMesh.Ring(FVector2D {X, Y}, 8.0f, 1.5f, WithAlpha(FLinearColor::White, 0.85f));
-			}
-			DrawText(Text, FVector2D {X + 12.0f, Y - 7.0f}, FontRegular, TextColor, LayerPanelContent);
-			X += 24.0f + static_cast<float>(MeasureText(Text, FontRegular).X);
-		};
-		AddEntry(ColorUsed, false, TEXT("Used"));
-		AddEntry(ColorUnused, false, TEXT("Unused"));
-		AddEntry(ColorNotDeleted, false, TEXT("Not deleted"));
-		AddEntry(ColorUsed, true, TEXT("Used for its own reason"));
-		DrawText(
-			TEXT("Circle area is size on disk. Red part of folder ring is unused share of its size."),
-			FVector2D {LegendPos.X + 8.0f, LegendPos.Y + 30.0f},
-			FontRegular,
-			WithAlpha(TextColor, 0.7f),
-			LayerPanelContent
-		);
+			float X = HelpPanelRect.Left + 18.0f;
+			const float Y = HelpPanelRect.Top + 41.0f;
+			const auto AddEntry = [&](const FLinearColor& Color, const bool bRing, const TCHAR* Text) {
+				LegendMesh.Disc(FVector2D {X, Y}, 5.0f, Color);
+				if (bRing) {
+					LegendMesh.Ring(FVector2D {X, Y}, 8.0f, 1.5f, WithAlpha(FLinearColor::White, 0.85f));
+				}
+				DrawText(Text, FVector2D {X + 12.0f, Y - 7.0f}, FontRegular, TextColor, LayerPanelContent);
+				X += 24.0f + static_cast<float>(MeasureText(Text, FontRegular).X);
+			};
+			AddEntry(ColorUsed, false, TEXT("Used"));
+			AddEntry(ColorUnused, false, TEXT("Unused"));
+			AddEntry(ColorNotDeleted, false, TEXT("Not deleted"));
+			AddEntry(ColorUsed, true, TEXT("Used for its own reason"));
+			DrawText(LegendNote, PanelPos + FVector2D {12.0f, 55.0f}, FontRegular, WithAlpha(TextColor, 0.7f), LayerPanelContent);
+		}
+
+		const float ButtonRadius = (HelpButtonRect.Right - HelpButtonRect.Left) * 0.5f;
+		const FVector2D ButtonCenter {HelpButtonRect.Left + ButtonRadius, HelpButtonRect.Top + ButtonRadius};
+		const bool bButtonHovered = RectContains(HelpButtonRect, MouseLocal);
+		HelpMesh.Disc(ButtonCenter, ButtonRadius, bHelpOpen ? WithAlpha(FolderColor, 0.5f) : PanelColor);
+		HelpMesh.Ring(ButtonCenter, ButtonRadius, 1.5f, WithAlpha(TextColor, bButtonHovered ? 0.95f : 0.5f));
+		HelpMesh.Draw(OutDrawElements, LayerPanels, Handle);
 		LegendMesh.Draw(OutDrawElements, LayerPanelContent, Handle);
+
+		const FString Mark = TEXT("?");
+		DrawText(Mark, ButtonCenter - MeasureText(Mark, FontTitle) * 0.5f, FontTitle, FLinearColor::White, LayerPanelContent);
 	}
 
 	// hovered asset or folder card
@@ -968,9 +995,15 @@ FReply SPjcAssetGraph::OnMouseButtonDown(const FGeometry& MyGeometry, const FPoi
 FReply SPjcAssetGraph::OnMouseButtonUp(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) {
 	if (!HasMouseCapture()) return FReply::Unhandled();
 
-	// click: asset selects it, closed folder opens, empty space clears selection
-	if (!bDragging && MouseEvent.GetEffectingButton() == EKeys::LeftMouseButton) {
-		const FVector2D Local = MyGeometry.AbsoluteToLocal(MouseEvent.GetScreenSpacePosition());
+	// click: help button toggles help, asset selects it, closed folder opens, empty space clears selection
+	const FVector2D ClickLocal = MyGeometry.AbsoluteToLocal(MouseEvent.GetScreenSpacePosition());
+	if (!bDragging && MouseEvent.GetEffectingButton() == EKeys::LeftMouseButton && IsOverHelp(ClickLocal)) {
+		if (RectContains(HelpButtonRect, ClickLocal)) {
+			ToggleHelp();
+		}
+	}
+	else if (!bDragging && MouseEvent.GetEffectingButton() == EKeys::LeftMouseButton) {
+		const FVector2D Local = ClickLocal;
 		const int32 Node = FindNodeAt(Local);
 		const int32 Folder = Node == INDEX_NONE ? FindFolderAt(Local) : INDEX_NONE;
 		if (Folder != INDEX_NONE) {
@@ -1032,6 +1065,8 @@ FReply SPjcAssetGraph::OnMouseButtonDoubleClick(const FGeometry& MyGeometry, con
 
 	// asset opens its editor, closed folder opens, empty space fits view
 	const FVector2D Local = MyGeometry.AbsoluteToLocal(MouseEvent.GetScreenSpacePosition());
+	if (IsOverHelp(Local)) return FReply::Handled();
+
 	const int32 Node = FindNodeAt(Local);
 	if (Node != INDEX_NONE) {
 		OnAssetDoubleClicked.ExecuteIfBound(Graph->GetNodes()[Node].Item->PackageName);
@@ -1070,7 +1105,9 @@ FReply SPjcAssetGraph::OnKeyDown(const FGeometry& MyGeometry, const FKeyEvent& I
 
 FCursorReply SPjcAssetGraph::OnCursorQuery(const FGeometry& MyGeometry, const FPointerEvent& CursorEvent) const {
 	if (bDragging) return FCursorReply::Cursor(EMouseCursor::GrabHandClosed);
-	if (Hovered != INDEX_NONE || HoveredFolder != INDEX_NONE) return FCursorReply::Cursor(EMouseCursor::Hand);
+	if (Hovered != INDEX_NONE || HoveredFolder != INDEX_NONE || RectContains(HelpButtonRect, MouseLocal)) {
+		return FCursorReply::Cursor(EMouseCursor::Hand);
+	}
 
 	return FCursorReply::Unhandled();
 }
@@ -1231,8 +1268,19 @@ void SPjcAssetGraph::MoveView(const FVector2D& Center, const float InZoom) {
 }
 
 void SPjcAssetGraph::UpdateHovered() {
-	Hovered = FindNodeAt(MouseLocal);
-	HoveredFolder = Hovered == INDEX_NONE ? FindFolderAt(MouseLocal) : INDEX_NONE;
+	const bool bOverHelp = IsOverHelp(MouseLocal);
+	Hovered = bOverHelp ? INDEX_NONE : FindNodeAt(MouseLocal);
+	HoveredFolder = bOverHelp || Hovered != INDEX_NONE ? INDEX_NONE : FindFolderAt(MouseLocal);
+}
+
+bool SPjcAssetGraph::IsOverHelp(const FVector2D& LocalPosition) const {
+	return RectContains(HelpButtonRect, LocalPosition) || RectContains(HelpPanelRect, LocalPosition);
+}
+
+void SPjcAssetGraph::ToggleHelp() {
+	UPjcEditorSettings* Settings = GetMutableDefault<UPjcEditorSettings>();
+	Settings->bMapHelpOpen = !Settings->bMapHelpOpen;
+	Settings->SaveConfig();
 }
 
 int32 SPjcAssetGraph::FindNodeAt(const FVector2D& LocalPosition) const {

@@ -102,6 +102,9 @@ class SPjcAssetGraph final : public SLeafWidget
 	FVector2D GetShownCenter(const int32 Shown) const;
 	float GetDim(const int32 Node) const;
 	bool IsInsideFolder(const int32 Node, const int32 Folder) const;
+	/** Help button or open help panel, map items under them do not react */
+	bool IsOverHelp(const FVector2D& LocalPosition) const;
+	void ToggleHelp();
 
 	TSharedPtr<FPjcAssetGraph> Graph;
 	FPjcOnGraphAsset OnSelectionChanged;
@@ -149,4 +152,6 @@ class SPjcAssetGraph final : public SLeafWidget
 	mutable TArray<float> FolderAlpha;
 	/** outermost closed folder on the way to every folder, INDEX_NONE when all are open */
 	mutable TArray<int32> FolderShown;
+	mutable FSlateRect HelpButtonRect {0.0f, 0.0f, 0.0f, 0.0f};
+	mutable FSlateRect HelpPanelRect {0.0f, 0.0f, 0.0f, 0.0f};
 };

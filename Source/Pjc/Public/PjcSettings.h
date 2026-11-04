@@ -130,6 +130,10 @@ class UPjcEditorSettings final : public UDeveloperSettings
 	UPROPERTY(EditAnywhere, Config, Category = "Deletion")
 	bool bSkipAssetLoadWarning = true;
 
+	/** Show help and legend on the Asset Usage map. The ? button in the map corner opens and closes it. */
+	UPROPERTY(EditAnywhere, Config, Category = "Interface")
+	bool bMapHelpOpen = true;
+
 	DECLARE_MULTICAST_DELEGATE(FPjcDelegateSettingsChanged);
 	FPjcDelegateSettingsChanged OnChanged;
 };
