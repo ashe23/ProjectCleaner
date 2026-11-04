@@ -1,6 +1,7 @@
 // Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "Slate/SPjcAssetGraph.h"
+#include "PjcFormat.h"
 #include "Slate/SPjcItemUsage.h"
 #include "PjcAssetGraph.h"
 #include "PjcShim.h"
@@ -635,19 +636,21 @@ int32 SPjcAssetGraph::OnPaint(
 		TArray<FLine> Lines;
 		Lines.Add(FLine {Folder.Name, &FontFolder, FLinearColor::White});
 		Lines.Add(
-			FLine {FString::Printf(TEXT("%d assets, %s"), Folder.NumAssets, *FText::AsMemory(Folder.Size, IEC).ToString()), &FontRegular, TextColor}
+			FLine {
+			  FString::Printf(TEXT("%s assets, %s"), *PjcFormat::Count(Folder.NumAssets), *PjcFormat::Size(Folder.Size)), &FontRegular, TextColor
+			}
 		);
 		if (Folder.NumUnused > 0) {
 			Lines.Add(
 				FLine {
-				  FString::Printf(TEXT("%d unused, %s"), Folder.NumUnused, *FText::AsMemory(Folder.SizeUnused, IEC).ToString()),
+				  FString::Printf(TEXT("%s unused, %s"), *PjcFormat::Count(Folder.NumUnused), *PjcFormat::Size(Folder.SizeUnused)),
 				  &FontRegular,
 				  ColorUnused
 				}
 			);
 		}
 		if (bEmphasisActive) {
-			Lines.Add(FLine {FString::Printf(TEXT("%d matching"), FolderEmphasized[Index]), &FontRegular, ColorNotDeleted});
+			Lines.Add(FLine {FString::Printf(TEXT("%s matching"), *PjcFormat::Count(FolderEmphasized[Index])), &FontRegular, ColorNotDeleted});
 		}
 		return Lines;
 	};
@@ -802,11 +805,11 @@ int32 SPjcAssetGraph::OnPaint(
 		const FPjcGraphNode& Node = Nodes[Hovered];
 		const FPjcUsageItem& Item = *Node.Item;
 		Card.Add(FLine {SPjcItemUsage::GetItemName(Item), &FontTitle, FLinearColor::White});
-		Card.Add(FLine {FString::Printf(TEXT("%s, %s"), *Item.ClassName, *FText::AsMemory(Item.Size, IEC).ToString()), &FontRegular, TextColor});
+		Card.Add(FLine {FString::Printf(TEXT("%s, %s"), *Item.ClassName, *PjcFormat::Size(Item.Size)), &FontRegular, TextColor});
 		if (Node.NumOwned > 0) {
 			Card.Add(
 				FLine {
-				  FString::Printf(TEXT("Only it uses %d asset(s), %s with them"), Node.NumOwned, *FText::AsMemory(Node.SizeOwned, IEC).ToString()),
+				  FString::Printf(TEXT("Only it uses %s asset(s), %s with them"), *PjcFormat::Count(Node.NumOwned), *PjcFormat::Size(Node.SizeOwned)),
 				  &FontRegular,
 				  TextColor
 				}
@@ -821,24 +824,46 @@ int32 SPjcAssetGraph::OnPaint(
 		Card.Add(FLine {Folder.Name, &FontTitle, FLinearColor::White});
 		Card.Add(FLine {Folder.Path, &FontRegular, TextColor});
 		Card.Add(
-			FLine {FString::Printf(TEXT("%d assets, %s"), Folder.NumAssets, *FText::AsMemory(Folder.Size, IEC).ToString()), &FontRegular, TextColor}
-		);
-		Card.Add(
 			FLine {
-			  FString::Printf(TEXT("Used: %d, %s"), NumUsed, *FText::AsMemory(Folder.Size - Folder.SizeUnused, IEC).ToString()),
-			  &FontRegular,
-			  ColorUsed
+			  FString::Printf(TEXT("%s assets, %s"), *PjcFormat::Count(Folder.NumAssets), *PjcFormat::Size(Folder.Size)), &FontRegular, TextColor
 			}
 		);
-		Card.Add(
-			FLine {
-			  FString::Printf(TEXT("Unused: %d, %s"), Folder.NumUnused, *FText::AsMemory(Folder.SizeUnused, IEC).ToString()),
-			  &FontRegular,
-			  ColorUnused
-			}
-		);
+		if (Folder.NumUnused == 0) {
+			Card.Add(FLine {TEXT("All used"), &FontRegular, ColorUsed});
+		}
+		else if (NumUsed == 0) {
+			Card.Add(FLine {TEXT("All unused"), &FontRegular, ColorUnused});
+		}
+		else {
+			const int64 SizeUsed = Folder.Size - Folder.SizeUnused;
+			Card.Add(
+				FLine {
+				  FString::Printf(
+					  TEXT("Used: %s, %s (%s)"), *PjcFormat::Count(NumUsed), *PjcFormat::Size(SizeUsed), *PjcFormat::Percent(SizeUsed, Folder.Size)
+				  ),
+				  &FontRegular,
+				  ColorUsed
+				}
+			);
+			Card.Add(
+				FLine {
+				  FString::Printf(
+					  TEXT("Unused: %s, %s (%s)"),
+					  *PjcFormat::Count(Folder.NumUnused),
+					  *PjcFormat::Size(Folder.SizeUnused),
+					  *PjcFormat::Percent(Folder.SizeUnused, Folder.Size)
+				  ),
+				  &FontRegular,
+				  ColorUnused
+				}
+			);
+		}
 		if (Folder.NumNotDeleted > 0) {
-			Card.Add(FLine {FString::Printf(TEXT("Not deleted by last cleanup: %d"), Folder.NumNotDeleted), &FontRegular, ColorNotDeleted});
+			Card.Add(
+				FLine {
+				  FString::Printf(TEXT("Not deleted by last cleanup: %s"), *PjcFormat::Count(Folder.NumNotDeleted)), &FontRegular, ColorNotDeleted
+				}
+			);
 		}
 		Card.Add(FLine {TEXT("Arrows: what it uses outside. Click or scroll to open"), &FontRegular, WithAlpha(TextColor, 0.7f)});
 		CardTint = FolderColor;

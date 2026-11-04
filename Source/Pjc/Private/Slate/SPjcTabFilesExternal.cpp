@@ -1,6 +1,7 @@
 ﻿// Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "Slate/SPjcTabFilesExternal.h"
+#include "PjcFormat.h"
 #include "Slate/SPjcItemFileExternal.h"
 #include "PjcCmds.h"
 #include "PjcStyles.h"
@@ -508,23 +509,25 @@ FText SPjcTabFilesExternal::GetTxtSummary() const {
 	if (NumFilesExcluded > 0) {
 		return FText::FromString(
 			FString::Printf(
-				TEXT("Total - %d (%s). Excluded - %d (%s)"),
-				NumFilesTotal,
-				*FText::AsMemory(SizeFilesTotal, IEC).ToString(),
-				NumFilesExcluded,
-				*FText::AsMemory(SizeFilesExcluded, IEC).ToString()
+				TEXT("Total - %s (%s). Excluded - %s (%s)"),
+				*PjcFormat::Count(NumFilesTotal),
+				*PjcFormat::Size(SizeFilesTotal),
+				*PjcFormat::Count(NumFilesExcluded),
+				*PjcFormat::Size(SizeFilesExcluded)
 			)
 		);
 	}
 
-	return FText::FromString(FString::Printf(TEXT("Total - %d (%s)"), NumFilesTotal, *FText::AsMemory(SizeFilesTotal, IEC).ToString()));
+	return FText::FromString(FString::Printf(TEXT("Total - %s (%s)"), *PjcFormat::Count(NumFilesTotal), *PjcFormat::Size(SizeFilesTotal)));
 }
 
 FText SPjcTabFilesExternal::GetTxtSelection() const {
 	if (ListView.IsValid()) {
 		const int32 NumFilesSelected = ListView->GetSelectedItems().Num();
 
-		return FText::FromString(FString::Printf(TEXT("Selected %d of %d"), NumFilesSelected, ItemsFiltered.Num()));
+		return FText::FromString(
+			FString::Printf(TEXT("Selected %s of %s"), *PjcFormat::Count(NumFilesSelected), *PjcFormat::Count(ItemsFiltered.Num()))
+		);
 	}
 
 	return FText::GetEmpty();
@@ -571,7 +574,7 @@ void SPjcTabFilesExternal::OnDelete() {
 
 	FileExcludeSettings->PostEditChange();
 
-	const FString Msg = FString::Printf(TEXT("Deleted %d of %d files"), NumDeleted, NumTotal);
+	const FString Msg = FString::Printf(TEXT("Deleted %s of %s files"), *PjcFormat::Count(NumDeleted), *PjcFormat::Count(NumTotal));
 
 	if (NumDeleted == NumTotal) {
 		UPjcSubsystem::ShowNotification(Msg, SNotificationItem::CS_Success, 5.0f);

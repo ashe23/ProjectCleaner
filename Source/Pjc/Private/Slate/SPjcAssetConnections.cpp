@@ -1,6 +1,7 @@
 // Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "Slate/SPjcAssetConnections.h"
+#include "PjcFormat.h"
 #include "Slate/SPjcItemUsage.h"
 #include "PjcShim.h"
 #include "PjcStyles.h"
@@ -235,8 +236,8 @@ void SPjcAssetConnections::Rebuild() {
 
 		return SNew(STextBlock).ColorAndOpacity(TextGray).AutoWrapText(true).Text(FText::FromString(Note));
 	};
-	const FString UsedByTitle = FString::Printf(TEXT("Used by (%d)"), UsedBy.Num());
-	const FString UsesTitle = FString::Printf(TEXT("Uses (%d)"), Uses.Num());
+	const FString UsedByTitle = FString::Printf(TEXT("Used by (%s)"), *PjcFormat::Count(UsedBy.Num()));
+	const FString UsesTitle = FString::Printf(TEXT("Uses (%s)"), *PjcFormat::Count(Uses.Num()));
 	const TCHAR* UsedByNote
 		= Item->bScanned && !Item->Usage.bUsed ? TEXT("Nothing uses it.") : TEXT("No asset uses it, it is used for its own reason.");
 	Columns->AddSlot().FillWidth(
@@ -290,7 +291,7 @@ TSharedRef<SWidget> SPjcAssetConnections::MakeCard(const TSharedPtr<FPjcUsageIte
 	const UClass* AssetClass = InItem->Asset.IsValid() ? InItem->Asset.GetClass() : nullptr;
 	FString Details = InItem->ClassName;
 	if (InItem->bScanned) {
-		Details += TEXT(", ") + FText::AsMemory(InItem->Size, IEC).ToString();
+		Details += TEXT(", ") + PjcFormat::Size(InItem->Size);
 	}
 	else {
 		Details += Details.IsEmpty() ? TEXT("not scanned") : TEXT(", not scanned");
@@ -376,7 +377,7 @@ TSharedRef<SWidget> SPjcAssetConnections::MakeCenter() {
 	const FLinearColor StatusColor = SPjcItemUsage::GetStatusColor(*Item);
 	FString Details = Item->ClassName;
 	if (Item->bScanned) {
-		Details += TEXT(", ") + FText::AsMemory(Item->Size, IEC).ToString();
+		Details += TEXT(", ") + PjcFormat::Size(Item->Size);
 	}
 
 	const auto MakeButton = [this, Package, bHasAsset](const TCHAR* InLabel, const TCHAR* InToolTip, const FPjcOnConnectionAsset& InDelegate) {

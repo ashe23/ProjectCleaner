@@ -1,6 +1,7 @@
 ﻿// Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "Slate/SPjcItemAssetCorrupted.h"
+#include "PjcFormat.h"
 #include "PjcTypes.h"
 #include "PjcSubsystem.h"
 // Engine Headers
@@ -44,7 +45,7 @@ TSharedRef<SWidget> SPjcItemAssetCorrupted::GenerateWidgetForColumn(const FName&
 	}
 
 	if (InColumnName.IsEqual(TEXT("FileSize"))) {
-		return SNew(STextBlock).Text(FText::AsMemory(Item->FileSize, IEC));
+		return SNew(STextBlock).Text(FText::FromString(PjcFormat::Size(Item->FileSize)));
 	}
 
 	return SNew(STextBlock).Text(FText::GetEmpty());

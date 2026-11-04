@@ -1,6 +1,7 @@
 ﻿// Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "PjcSubsystem.h"
+#include "PjcFormat.h"
 #include "PjcConstants.h"
 #include "PjcShim.h"
 #include "PjcSettings.h"
@@ -1218,7 +1219,8 @@ bool UPjcSubsystem::DeleteAssetsUnused(const bool bShowSlowTask, const bool bSho
 		}
 
 		NumAssetsDeleted += BucketDelete(LoadedAssets);
-		const FString ProgressMsg = FString::Printf(TEXT("Deleted %d of %d assets"), NumAssetsDeleted, NumAssetsTotal);
+		const FString ProgressMsg
+			= FString::Printf(TEXT("Deleted %s of %s assets"), *PjcFormat::Count(NumAssetsDeleted), *PjcFormat::Count(NumAssetsTotal));
 		const int32 ProgressWork = FMath::Min(Bucket.Num(), NumAssetsTotal - NumProgress);
 		NumProgress += ProgressWork;
 		SlowTask.EnterProgressFrame(ProgressWork, FText::FromString(ProgressMsg));
@@ -1283,7 +1285,7 @@ bool UPjcSubsystem::DeleteAssetsUnused(const bool bShowSlowTask, const bool bSho
 	}
 	NumAssetsDeleted = NumAssetsTotal - NumAssetsRemaining;
 
-	const FString Msg = FString::Printf(TEXT("Deleted %d of %d assets"), NumAssetsDeleted, NumAssetsTotal);
+	const FString Msg = FString::Printf(TEXT("Deleted %s of %s assets"), *PjcFormat::Count(NumAssetsDeleted), *PjcFormat::Count(NumAssetsTotal));
 	UE_LOG(LogProjectCleaner, Display, TEXT("%s"), *Msg);
 
 	if (bErrors) {
@@ -1338,7 +1340,8 @@ bool UPjcSubsystem::DeleteFoldersEmpty(const bool bShowSlowTask, const bool bSho
 		GetModuleAssetRegistry().Get().RemovePath(PathConvertToRelative(Folder));
 	}
 
-	const FString Msg = FString::Printf(TEXT("Deleted %d of %d empty folders"), NumFoldersDeleted, NumFoldersTotal);
+	const FString Msg
+		= FString::Printf(TEXT("Deleted %s of %s empty folders"), *PjcFormat::Count(NumFoldersDeleted), *PjcFormat::Count(NumFoldersTotal));
 	UE_LOG(LogProjectCleaner, Display, TEXT("%s"), *Msg);
 
 	if (bErrors) {
@@ -1388,7 +1391,8 @@ bool UPjcSubsystem::DeleteFilesExternal(const bool bShowSlowTask, const bool bSh
 		++NumFilesDeleted;
 	}
 
-	const FString Msg = FString::Printf(TEXT("Deleted %d of %d external files"), NumFilesDeleted, NumFilesTotal);
+	const FString Msg
+		= FString::Printf(TEXT("Deleted %s of %s external files"), *PjcFormat::Count(NumFilesDeleted), *PjcFormat::Count(NumFilesTotal));
 	UE_LOG(LogProjectCleaner, Display, TEXT("%s"), *Msg);
 
 	if (bErrors) {
@@ -1443,7 +1447,8 @@ bool UPjcSubsystem::DeleteFilesCorrupted(const bool bShowSlowTask, const bool bS
 		++NumFilesDeleted;
 	}
 
-	const FString Msg = FString::Printf(TEXT("Deleted %d of %d corrupted files"), NumFilesDeleted, NumFilesTotal);
+	const FString Msg
+		= FString::Printf(TEXT("Deleted %s of %s corrupted files"), *PjcFormat::Count(NumFilesDeleted), *PjcFormat::Count(NumFilesTotal));
 	UE_LOG(LogProjectCleaner, Display, TEXT("%s"), *Msg);
 
 	if (bErrors) {

@@ -1,6 +1,7 @@
 ﻿// Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "Slate/SPjcItemFileExternal.h"
+#include "PjcFormat.h"
 #include "PjcTypes.h"
 #include "PjcSubsystem.h"
 // Engine Headers
@@ -47,7 +48,7 @@ TSharedRef<SWidget> SPjcItemFileExternal::GenerateWidgetForColumn(const FName& I
 	}
 
 	if (InColumnName.IsEqual(TEXT("FileSize"))) {
-		return SNew(STextBlock).Text(FText::AsMemory(Item->FileSize, IEC)).RenderOpacity(ItemRenderOpacity);
+		return SNew(STextBlock).Text(FText::FromString(PjcFormat::Size(Item->FileSize))).RenderOpacity(ItemRenderOpacity);
 	}
 
 	return SNew(STextBlock).Text(FText::GetEmpty());

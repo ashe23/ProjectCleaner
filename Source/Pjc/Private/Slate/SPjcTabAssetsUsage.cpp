@@ -1,6 +1,7 @@
 // Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "Slate/SPjcTabAssetsUsage.h"
+#include "PjcFormat.h"
 #include "Slate/SPjcAssetConnections.h"
 #include "Slate/SPjcAssetGraph.h"
 #include "Slate/SPjcItemUsage.h"
@@ -491,7 +492,7 @@ void SPjcTabAssetsUsage::UpdateConnections() {
 	if (Node != INDEX_NONE && Graph->GetNodes()[Node].NumOwned > 0) {
 		const FPjcGraphNode& GraphNode = Graph->GetNodes()[Node];
 		Owned = FString::Printf(
-			TEXT("Only it uses %d asset(s), %s with them."), GraphNode.NumOwned, *FText::AsMemory(GraphNode.SizeOwned, IEC).ToString()
+			TEXT("Only it uses %s asset(s), %s with them."), *PjcFormat::Count(GraphNode.NumOwned), *PjcFormat::Size(GraphNode.SizeOwned)
 		);
 	}
 
@@ -659,7 +660,10 @@ FText SPjcTabAssetsUsage::BuildWhyText(const FPjcUsageItem& Item) {
 	}
 	if (NumUnusedReferencers > 0) {
 		Paragraphs.Add(
-			FString::Printf(TEXT("%d unused asset(s) use it (see Used by). They are unused too, so they are deleted together."), NumUnusedReferencers)
+			FString::Printf(
+				TEXT("%s unused asset(s) use it (see Used by). They are unused too, so they are deleted together."),
+				*PjcFormat::Count(NumUnusedReferencers)
+			)
 		);
 	}
 
@@ -1136,15 +1140,15 @@ FText SPjcTabAssetsUsage::GetSummaryText() const {
 	}
 
 	FString Summary = FString::Printf(
-		TEXT("%d assets: %d used (%s), %d unused (%s)"),
-		ItemsAll.Num(),
-		NumUsed,
-		*FText::AsMemory(SizeUsed, IEC).ToString(),
-		NumUnused,
-		*FText::AsMemory(SizeUnused, IEC).ToString()
+		TEXT("%s assets: %s used (%s), %s unused (%s)"),
+		*PjcFormat::Count(ItemsAll.Num()),
+		*PjcFormat::Count(NumUsed),
+		*PjcFormat::Size(SizeUsed),
+		*PjcFormat::Count(NumUnused),
+		*PjcFormat::Size(SizeUnused)
 	);
 	if (NumNotDeleted > 0) {
-		Summary += FString::Printf(TEXT(", %d not deleted by last cleanup"), NumNotDeleted);
+		Summary += FString::Printf(TEXT(", %s not deleted by last cleanup"), *PjcFormat::Count(NumNotDeleted));
 	}
 
 	return FText::FromString(Summary);
@@ -1170,7 +1174,7 @@ FText SPjcTabAssetsUsage::GetSubtitleText() const {
 	FString Subtitle = Current->ClassName.IsEmpty() ? FString {} : Current->ClassName + TEXT("    ");
 	Subtitle += Current->PackageName.ToString();
 	if (Current->bScanned) {
-		Subtitle += TEXT("    ") + FText::AsMemory(Current->Size, IEC).ToString();
+		Subtitle += TEXT("    ") + PjcFormat::Size(Current->Size);
 	}
 
 	return FText::FromString(Subtitle);
@@ -1185,11 +1189,11 @@ FSlateColor SPjcTabAssetsUsage::GetStatusColor() const {
 }
 
 FText SPjcTabAssetsUsage::GetUsedByHeaderText() const {
-	return FText::FromString(FString::Printf(TEXT("Used by (%d)"), ItemsUsedBy.Num()));
+	return FText::FromString(FString::Printf(TEXT("Used by (%s)"), *PjcFormat::Count(ItemsUsedBy.Num())));
 }
 
 FText SPjcTabAssetsUsage::GetUsesHeaderText() const {
-	return FText::FromString(FString::Printf(TEXT("Uses (%d)"), ItemsUses.Num()));
+	return FText::FromString(FString::Printf(TEXT("Uses (%s)"), *PjcFormat::Count(ItemsUses.Num())));
 }
 
 int32 SPjcTabAssetsUsage::GetInspectorIndex() const {

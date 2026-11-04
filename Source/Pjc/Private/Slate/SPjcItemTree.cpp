@@ -1,6 +1,7 @@
 ﻿// Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "Slate/SPjcItemTree.h"
+#include "PjcFormat.h"
 #include "PjcStyles.h"
 #include "PjcShim.h"
 #include "PjcTypes.h"
@@ -146,7 +147,7 @@ TSharedRef<SWidget> SPjcItemTree::GenerateWidgetForColumn(const FName& InColumnN
 				.ColorAndOpacity(FLinearColor::White)
 				.Justification(ETextJustify::Center)
 				.ColorAndOpacity(FLinearColor::White)
-				.Text(FText::AsMemory(Item->SizeAssetsUnused, IEC))
+				.Text(FText::FromString(PjcFormat::Size(Item->SizeAssetsUnused)))
 			];
 		// clang-format on
 	}

@@ -1,6 +1,7 @@
 ﻿// Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "Slate/SPjcTabAssetsCorrupted.h"
+#include "PjcFormat.h"
 #include "Slate/SPjcItemAssetCorrupted.h"
 #include "PjcCmds.h"
 #include "PjcShim.h"
@@ -362,11 +363,16 @@ FText SPjcTabAssetsCorrupted::GetTxtSummary() const {
 		const int32 NumFilesSelected = ListView->GetSelectedItems().Num();
 
 		return FText::FromString(
-			FString::Printf(TEXT("Total - %d (%s). Selected %d"), NumFilesTotal, *FText::AsMemory(SizeFilesTotal, IEC).ToString(), NumFilesSelected)
+			FString::Printf(
+				TEXT("Total - %s (%s). Selected %s"),
+				*PjcFormat::Count(NumFilesTotal),
+				*PjcFormat::Size(SizeFilesTotal),
+				*PjcFormat::Count(NumFilesSelected)
+			)
 		);
 	}
 
-	return FText::FromString(FString::Printf(TEXT("Total - %d (%s)"), NumFilesTotal, *FText::AsMemory(SizeFilesTotal, IEC).ToString()));
+	return FText::FromString(FString::Printf(TEXT("Total - %s (%s)"), *PjcFormat::Count(NumFilesTotal), *PjcFormat::Size(SizeFilesTotal)));
 }
 
 int32 SPjcTabAssetsCorrupted::GetWidgetIndex() const {
@@ -397,7 +403,7 @@ void SPjcTabAssetsCorrupted::OnDelete() {
 		++NumDeleted;
 	}
 
-	const FString Msg = FString::Printf(TEXT("Deleted %d of %d files"), NumDeleted, NumTotal);
+	const FString Msg = FString::Printf(TEXT("Deleted %s of %s files"), *PjcFormat::Count(NumDeleted), *PjcFormat::Count(NumTotal));
 
 	if (NumDeleted == NumTotal) {
 		UPjcSubsystem::ShowNotification(Msg, SNotificationItem::CS_Success, 5.0f);

@@ -1,6 +1,7 @@
 ﻿// Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "Slate/SPjcTabAssetsUnused.h"
+#include "PjcFormat.h"
 #include "Slate/SPjcItemStat.h"
 #include "Slate/SPjcItemTree.h"
 #include "Pjc.h"
@@ -586,11 +587,11 @@ void SPjcTabAssetsUnused::OnProjectClean() {
 	const FText Title = FText::FromString(TEXT("Project Cleanup"));
 	const FText Context = FText::FromString(
 		FString::Printf(
-			TEXT("Delete %d unused asset(s) (%s) and %d empty folder(s)?\n\n")
+			TEXT("Delete %s unused asset(s) (%s) and %s empty folder(s)?\n\n")
 				TEXT("Assets something still holds in memory are kept and listed in Output Log.\n\n%s"),
-			NumAssetsUnused,
-			*FText::AsMemory(SizeAssetsUnused, IEC).ToString(),
-			NumFoldersEmpty,
+			*PjcFormat::Count(NumAssetsUnused),
+			*PjcFormat::Size(SizeAssetsUnused),
+			*PjcFormat::Count(NumFoldersEmpty),
 			*UPjcSubsystem::GetDeleteWarning()
 		)
 	);
@@ -618,8 +619,9 @@ void SPjcTabAssetsUnused::OnResetExcludeSettings() {
 
 void SPjcTabAssetsUnused::OnDeleteEmptyFolders() {
 	const FText Title = FText::FromString(TEXT("Delete Empty Folder"));
-	const FText Context
-		= FText::FromString(FString::Printf(TEXT("Delete %d empty folder(s)?\n\n%s"), NumFoldersEmpty, *UPjcSubsystem::GetDeleteWarning()));
+	const FText Context = FText::FromString(
+		FString::Printf(TEXT("Delete %s empty folder(s)?\n\n%s"), *PjcFormat::Count(NumFoldersEmpty), *UPjcSubsystem::GetDeleteWarning())
+	);
 
 	const EAppReturnType::Type ReturnType = PjcShim::ShowDialog(Title, Context, EAppMsgType::YesNo);
 	if (ReturnType == EAppReturnType::Cancel || ReturnType == EAppReturnType::No) return;
@@ -872,7 +874,9 @@ void SPjcTabAssetsUnused::OnAssetsIncludeByClass() {
 void SPjcTabAssetsUnused::OnAssetsDelete() {
 	const int32 NumAssetsDeleted = ObjectTools::DeleteAssets(DelegateSelection.Execute(), true);
 	if (NumAssetsDeleted > 0) {
-		UPjcSubsystem::ShowNotification(FString::Printf(TEXT("Deleted %d assets"), NumAssetsDeleted), SNotificationItem::CS_Success, 5.0f);
+		UPjcSubsystem::ShowNotification(
+			FString::Printf(TEXT("Deleted %s assets"), *PjcFormat::Count(NumAssetsDeleted)), SNotificationItem::CS_Success, 5.0f
+		);
 		ScanProject();
 	}
 }
@@ -1013,10 +1017,10 @@ bool SPjcTabAssetsUnused::FixRedirectors() {
 		const FText Title = FText::FromString(TEXT("Fix Redirectors"));
 		const FText Context = FText::FromString(
 			FString::Printf(
-				TEXT("Project contains %d redirector(s).\n\n")
+				TEXT("Project contains %s redirector(s).\n\n")
 					TEXT("Fixing resaves all assets that reference them, with source control those assets will be checked out.\n\n")
 						TEXT("Fix redirectors now?"),
-				Redirectors.Num()
+				*PjcFormat::Count(Redirectors.Num())
 			)
 		);
 
@@ -1036,7 +1040,7 @@ bool SPjcTabAssetsUnused::FixRedirectors() {
 	if (Redirectors.Num() == 0) return true;
 
 	UPjcSubsystem::ShowNotificationWithOutputLog(
-		FString::Printf(TEXT("%d redirector(s) were not fixed."), Redirectors.Num()), SNotificationItem::CS_Fail, 5.0f
+		FString::Printf(TEXT("%s redirector(s) were not fixed."), *PjcFormat::Count(Redirectors.Num())), SNotificationItem::CS_Fail, 5.0f
 	);
 
 	UE_LOG(LogProjectCleaner, Warning, TEXT("Failed to fix following redirectors: "));
@@ -1058,7 +1062,7 @@ void SPjcTabAssetsUnused::UpdateStats() {
 	StatsListItems.Emplace(MakeShareable(new FPjcStatItem {
 	  FText::FromString(TEXT("Unused")),
 	  FText::AsNumber(NumAssetsUnused),
-	  FText::AsMemory(SizeAssetsUnused, IEC),
+	  FText::FromString(PjcFormat::Size(SizeAssetsUnused)),
 	  FText::FromString(TEXT("Unused Assets")),
 	  FText::FromString(TEXT("Total number of unused assets")),
 	  FText::FromString(TEXT("Total size of unused assets")),
@@ -1069,7 +1073,7 @@ void SPjcTabAssetsUnused::UpdateStats() {
 	StatsListItems.Emplace(MakeShareable(new FPjcStatItem {
 	  FText::FromString(TEXT("Used")),
 	  FText::AsNumber(NumAssetsUsed),
-	  FText::AsMemory(SizeAssetsUsed, IEC),
+	  FText::FromString(PjcFormat::Size(SizeAssetsUsed)),
 	  FText::FromString(TEXT("Used Assets")),
 	  FText::FromString(TEXT("Total number of used assets")),
 	  FText::FromString(TEXT("Total size of used assets")),
@@ -1080,7 +1084,7 @@ void SPjcTabAssetsUnused::UpdateStats() {
 	StatsListItems.Emplace(MakeShareable(new FPjcStatItem {
 	  FText::FromString(TEXT("Primary")),
 	  FText::AsNumber(NumAssetsPrimary),
-	  FText::AsMemory(SizeAssetsPrimary, IEC),
+	  FText::FromString(PjcFormat::Size(SizeAssetsPrimary)),
 	  FText::FromString(TEXT("Primary Assets that defined in AssetManager. Level assets are primary by default.")),
 	  FText::FromString(TEXT("Total number of primary assets")),
 	  FText::FromString(TEXT("Total size of primary assets")),
@@ -1092,7 +1096,7 @@ void SPjcTabAssetsUnused::UpdateStats() {
 	StatsListItems.Emplace(MakeShareable(new FPjcStatItem {
 	  FText::FromString(TEXT("Folder Labels")),
 	  FText::AsNumber(NumAssetsFolderLabelOnly),
-	  FText::AsMemory(SizeAssetsFolderLabelOnly, IEC),
+	  FText::FromString(PjcFormat::Size(SizeAssetsFolderLabelOnly)),
 	  FText::FromString(
 		  bFolderLabelsUsed
 			  ? TEXT("Assets referenced only by Primary Asset Labels with \"Label Assets In My Directory\" (cook rules). Counted as used, ")
@@ -1109,7 +1113,7 @@ void SPjcTabAssetsUnused::UpdateStats() {
 	StatsListItems.Emplace(MakeShareable(new FPjcStatItem {
 	  FText::FromString(TEXT("Editor")),
 	  FText::AsNumber(NumAssetsEditor),
-	  FText::AsMemory(SizeAssetsEditor, IEC),
+	  FText::FromString(PjcFormat::Size(SizeAssetsEditor)),
 	  FText::FromString(TEXT("Editor specific assets. Like EditorUtilitWidgets or EditorTutorial assets.")),
 	  FText::FromString(TEXT("Total number of Editor assets")),
 	  FText::FromString(TEXT("Total size of Editor assets")),
@@ -1120,7 +1124,7 @@ void SPjcTabAssetsUnused::UpdateStats() {
 	StatsListItems.Emplace(MakeShareable(new FPjcStatItem {
 	  FText::FromString(TEXT("Indirect")),
 	  FText::AsNumber(NumAssetsIndirect),
-	  FText::AsMemory(SizeAssetsIndirect, IEC),
+	  FText::FromString(PjcFormat::Size(SizeAssetsIndirect)),
 	  FText::FromString(TEXT("Assets that used in source code or config files.")),
 	  FText::FromString(TEXT("Total number of Indirect assets")),
 	  FText::FromString(TEXT("Total size of Indirect assets")),
@@ -1131,7 +1135,7 @@ void SPjcTabAssetsUnused::UpdateStats() {
 	StatsListItems.Emplace(MakeShareable(new FPjcStatItem {
 	  FText::FromString(TEXT("EngineReferenced")),
 	  FText::AsNumber(NumAssetsEngineReferenced),
-	  FText::AsMemory(SizeAssetsEngineReferenced, IEC),
+	  FText::FromString(PjcFormat::Size(SizeAssetsEngineReferenced)),
 	  FText::FromString(TEXT("Assets that have referencers outside scanned content (e.g. Engine or plugins that are not scanned).")),
 	  FText::FromString(TEXT("Total number of EngineReferenced assets")),
 	  FText::FromString(TEXT("Total size of EngineReferenced assets")),
@@ -1142,7 +1146,7 @@ void SPjcTabAssetsUnused::UpdateStats() {
 	StatsListItems.Emplace(MakeShareable(new FPjcStatItem {
 	  FText::FromString(TEXT("Excluded")),
 	  FText::AsNumber(NumAssetsExcluded),
-	  FText::AsMemory(SizeAssetsExcluded, IEC),
+	  FText::FromString(PjcFormat::Size(SizeAssetsExcluded)),
 	  FText::FromString(TEXT("Assets excluded by settings: excluded folders, classes and assets, cinematic and used classes from Project Settings.")),
 	  FText::FromString(TEXT("Total number of Excluded assets")),
 	  FText::FromString(TEXT("Total size of Excluded assets")),
@@ -1164,7 +1168,7 @@ void SPjcTabAssetsUnused::UpdateStats() {
 	StatsListItems.Emplace(MakeShareable(new FPjcStatItem {
 	  FText::FromString(TEXT("Total")),
 	  FText::AsNumber(NumAssetsAll),
-	  FText::AsMemory(SizeAssetsAll, IEC),
+	  FText::FromString(PjcFormat::Size(SizeAssetsAll)),
 	  FText::FromString(TEXT("All Assets")),
 	  FText::FromString(TEXT("Total number of assets")),
 	  FText::FromString(TEXT("Total size of assets")),
@@ -1585,14 +1589,14 @@ bool SPjcTabAssetsUnused::CanIncludeAssets() const {
 }
 
 FText SPjcTabAssetsUnused::GetTreeSummaryText() const {
-	return FText::FromString(FString::Printf(TEXT("Folders Total - %d"), NumFoldersTotal));
+	return FText::FromString(FString::Printf(TEXT("Folders Total - %s"), *PjcFormat::Count(NumFoldersTotal)));
 }
 
 FText SPjcTabAssetsUnused::GetTreeSelectionText() const {
 	const int32 NumItemsSelected = TreeListView.IsValid() ? TreeListView->GetSelectedItems().Num() : 0;
 
 	if (NumItemsSelected > 0) {
-		return FText::FromString(FString::Printf(TEXT("%d selected"), NumItemsSelected));
+		return FText::FromString(FString::Printf(TEXT("%s selected"), *PjcFormat::Count(NumItemsSelected)));
 	}
 
 	return FText::GetEmpty();
