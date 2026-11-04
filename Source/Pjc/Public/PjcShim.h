@@ -12,6 +12,7 @@ class FTabManager;
 enum class EPjcToolbarLocation : uint8;
 class FMultiBox;
 struct FARFilter;
+struct FButtonStyle;
 
 #if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1
 #include "Styling/AppStyle.h"
@@ -25,6 +26,11 @@ namespace PjcShim
 	const ISlateStyle& GetStyle();
 	const FSlateBrush* GetBrush(const FName PropertyName, const ANSICHAR* Specifier = nullptr);
 	FSlateColor GetSlateColor(const FName PropertyName, const ANSICHAR* Specifier = nullptr);
+	// editor icons and styles under their name in each engine version
+	const FSlateBrush* GetIconBack();
+	const FSlateBrush* GetIconForward();
+	const FSlateBrush* GetIconClose();
+	const FButtonStyle& GetPrimaryButtonStyle();
 
 	FName GetLevelEditorToolBarName(const EPjcToolbarLocation Location);
 	TSet<FName> GetCachedEmptyPackages();

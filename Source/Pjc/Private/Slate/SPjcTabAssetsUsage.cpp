@@ -16,6 +16,8 @@
 #include "IContentBrowserSingleton.h"
 #include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "Misc/PackageName.h"
+#include "Styling/SlateIconFinder.h"
+#include "Widgets/Images/SImage.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Input/SCheckBox.h"
 #include "Widgets/Input/SComboButton.h"
@@ -61,21 +63,19 @@ void SPjcTabAssetsUsage::Construct(const FArguments& InArgs) {
 		.SelectionMode(ESelectionMode::Single)
 		.OnGenerateRow(this, &SPjcTabAssetsUsage::OnGenerateRow)
 		.OnSelectionChanged(this, &SPjcTabAssetsUsage::OnListSelectionChanged)
-		.HeaderRow(GetHeaderRow(true));
+		.HeaderRow(GetHeaderRow());
 
 	SAssignNew(ListUsedBy, SListView<TSharedPtr<FPjcUsageItem>>)
 		.ListItemsSource(&ItemsUsedBy)
 		.SelectionMode(ESelectionMode::Single)
-		.OnGenerateRow(this, &SPjcTabAssetsUsage::OnGenerateRow)
-		.OnMouseButtonDoubleClick(this, &SPjcTabAssetsUsage::OnLinkDoubleClicked)
-		.HeaderRow(GetHeaderRow(false));
+		.OnGenerateRow(this, &SPjcTabAssetsUsage::OnGenerateLinkRow)
+		.OnMouseButtonDoubleClick(this, &SPjcTabAssetsUsage::OnLinkDoubleClicked);
 
 	SAssignNew(ListUses, SListView<TSharedPtr<FPjcUsageItem>>)
 		.ListItemsSource(&ItemsUses)
 		.SelectionMode(ESelectionMode::Single)
-		.OnGenerateRow(this, &SPjcTabAssetsUsage::OnGenerateRow)
-		.OnMouseButtonDoubleClick(this, &SPjcTabAssetsUsage::OnLinkDoubleClicked)
-		.HeaderRow(GetHeaderRow(false));
+		.OnGenerateRow(this, &SPjcTabAssetsUsage::OnGenerateLinkRow)
+		.OnMouseButtonDoubleClick(this, &SPjcTabAssetsUsage::OnLinkDoubleClicked);
 
 	SAssignNew(ChainBox, SVerticalBox);
 
@@ -455,6 +455,7 @@ void SPjcTabAssetsUsage::RebuildChain() {
 			.Padding(FMargin{8.0f, 0.0f, 0.0f, 0.0f})
 			[
 				SNew(STextBlock)
+				.AutoWrapText(true)
 				.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Gray"))
 				.Text(FText::FromString(Index == 0 ? ChainItem->ClassName + TEXT(", ") + ChainItem->ReasonText : ChainItem->ClassName))
 			]
@@ -771,6 +772,22 @@ TSharedRef<SWidget> SPjcTabAssetsUsage::CreateInspector() {
 	const auto MakeButton = [](const TCHAR* InLabel, const TCHAR* InToolTip, const FOnClicked& InOnClicked, const TAttribute<bool>& InEnabled) {
 		return SNew(SButton).Text(FText::FromString(InLabel)).ToolTipText(FText::FromString(InToolTip)).OnClicked(InOnClicked).IsEnabled(InEnabled);
 	};
+	const auto MakeIconButton
+		= [](const FSlateBrush* InIcon, const TCHAR* InToolTip, const FOnClicked& InOnClicked, const TAttribute<bool>& InEnabled) {
+			  return SNew(SButton)
+				  .ContentPadding(FMargin {4.0f, 2.0f})
+				  .VAlign(VAlign_Center)
+				  .ToolTipText(FText::FromString(InToolTip))
+				  .OnClicked(InOnClicked)
+				  .IsEnabled(InEnabled)[SNew(SImage).Image(InIcon).ColorAndOpacity(FSlateColor::UseForeground())];
+		  };
+	const auto MakeEmptyNote = [](const TAttribute<FText>& InText) {
+		return SNew(STextBlock)
+			.Margin(FMargin {5.0f})
+			.AutoWrapText(true)
+			.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Gray"))
+			.Text(InText);
+	};
 
 	const TAttribute<bool> HasAsset = TAttribute<bool>::Create(TAttribute<bool>::FGetter::CreateRaw(this, &SPjcTabAssetsUsage::CurrentHasAsset));
 
@@ -801,8 +818,8 @@ TSharedRef<SWidget> SPjcTabAssetsUsage::CreateInspector() {
 				.AutoWidth()
 				.Padding(FMargin{0.0f, 0.0f, 2.0f, 0.0f})
 				[
-					MakeButton(
-						TEXT("<"),
+					MakeIconButton(
+						PjcShim::GetIconBack(),
 						TEXT("Back"),
 						FOnClicked::CreateLambda([this]() { OnBack(); return FReply::Handled(); }),
 						TAttribute<bool>::Create(TAttribute<bool>::FGetter::CreateLambda([this]() { return HistoryBack.Num() > 0; }))
@@ -812,8 +829,8 @@ TSharedRef<SWidget> SPjcTabAssetsUsage::CreateInspector() {
 				.AutoWidth()
 				.Padding(FMargin{0.0f, 0.0f, 10.0f, 0.0f})
 				[
-					MakeButton(
-						TEXT(">"),
+					MakeIconButton(
+						PjcShim::GetIconForward(),
 						TEXT("Forward"),
 						FOnClicked::CreateLambda([this]() { OnForward(); return FReply::Handled(); }),
 						TAttribute<bool>::Create(TAttribute<bool>::FGetter::CreateLambda([this]() { return HistoryForward.Num() > 0; }))
@@ -832,9 +849,9 @@ TSharedRef<SWidget> SPjcTabAssetsUsage::CreateInspector() {
 				.AutoWidth()
 				.Padding(FMargin{5.0f, 0.0f, 0.0f, 0.0f})
 				[
-					MakeButton(
-						TEXT("X"),
-						TEXT("Close (Esc in graph)"),
+					MakeIconButton(
+						PjcShim::GetIconClose(),
+						TEXT("Close (Esc on the map)"),
 						FOnClicked::CreateLambda([this]() { ClearInspected(); return FReply::Handled(); }),
 						true
 					)
@@ -842,12 +859,20 @@ TSharedRef<SWidget> SPjcTabAssetsUsage::CreateInspector() {
 			]
 			+ SVerticalBox::Slot()
 			.AutoHeight()
-			.Padding(FMargin{10.0f, 0.0f, 5.0f, 5.0f})
+			.Padding(FMargin{10.0f, 0.0f, 5.0f, 0.0f})
 			[
 				SNew(STextBlock)
 				.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Gray"))
 				.Text_Raw(this, &SPjcTabAssetsUsage::GetSubtitleText)
-				.ToolTipText_Raw(this, &SPjcTabAssetsUsage::GetSubtitleText)
+			]
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(FMargin{10.0f, 2.0f, 5.0f, 5.0f})
+			[
+				SNew(STextBlock)
+				.AutoWrapText(true)
+				.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Gray"))
+				.Text_Raw(this, &SPjcTabAssetsUsage::GetPathText)
 			]
 			+ SVerticalBox::Slot()
 			.AutoHeight()
@@ -878,12 +903,11 @@ TSharedRef<SWidget> SPjcTabAssetsUsage::CreateInspector() {
 				.AutoWidth()
 				.Padding(FMargin{5.0f, 0.0f, 0.0f, 0.0f})
 				[
-					MakeButton(
-						TEXT("Connections"),
-						TEXT("Show what uses it and what it uses"),
-						FOnClicked::CreateLambda([this]() { View = EView::Connections; return FReply::Handled(); }),
-						true
-					)
+					SNew(SButton)
+					.ButtonStyle(&PjcShim::GetPrimaryButtonStyle())
+					.Text(FText::FromString(TEXT("Connections")))
+					.ToolTipText(FText::FromString(TEXT("Show what uses it and what it uses")))
+					.OnClicked_Lambda([this]() { View = EView::Connections; return FReply::Handled(); })
 				]
 				+ SHorizontalBox::Slot()
 				.AutoWidth()
@@ -986,7 +1010,16 @@ TSharedRef<SWidget> SPjcTabAssetsUsage::CreateInspector() {
 					+ SVerticalBox::Slot()
 					.FillHeight(1.0f)
 					[
-						ListUsedBy.ToSharedRef()
+						SNew(SWidgetSwitcher)
+						.WidgetIndex_Lambda([this]() { return ItemsUsedBy.Num() > 0 ? 0 : 1; })
+						+ SWidgetSwitcher::Slot()
+						[
+							ListUsedBy.ToSharedRef()
+						]
+						+ SWidgetSwitcher::Slot()
+						[
+							MakeEmptyNote(TAttribute<FText>::Create(TAttribute<FText>::FGetter::CreateRaw(this, &SPjcTabAssetsUsage::GetUsedByEmptyText)))
+						]
 					]
 				]
 				+ SSplitter::Slot()
@@ -1006,7 +1039,16 @@ TSharedRef<SWidget> SPjcTabAssetsUsage::CreateInspector() {
 					+ SVerticalBox::Slot()
 					.FillHeight(1.0f)
 					[
-						ListUses.ToSharedRef()
+						SNew(SWidgetSwitcher)
+						.WidgetIndex_Lambda([this]() { return ItemsUses.Num() > 0 ? 0 : 1; })
+						+ SWidgetSwitcher::Slot()
+						[
+							ListUses.ToSharedRef()
+						]
+						+ SWidgetSwitcher::Slot()
+						[
+							MakeEmptyNote(FText::FromString(TEXT("Uses no other assets.")))
+						]
 					]
 				]
 			]
@@ -1014,7 +1056,7 @@ TSharedRef<SWidget> SPjcTabAssetsUsage::CreateInspector() {
 	// clang-format on
 }
 
-TSharedRef<SHeaderRow> SPjcTabAssetsUsage::GetHeaderRow(const bool bAssetList) {
+TSharedRef<SHeaderRow> SPjcTabAssetsUsage::GetHeaderRow() {
 	const auto MakeColumn = [&](const FName InColumn, const TCHAR* InLabel, const float InWidth, const TCHAR* InToolTip) {
 		SHeaderRow::FColumn::FArguments Args = SHeaderRow::Column(InColumn);
 		Args.FillWidth(InWidth)
@@ -1026,26 +1068,79 @@ TSharedRef<SHeaderRow> SPjcTabAssetsUsage::GetHeaderRow(const bool bAssetList) {
 													  .ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Green"))
 													  .Font(FPjcStyles::GetFont("Light", 10.0f))];
 
-		if (bAssetList) {
-			Args.SortMode_Raw(this, &SPjcTabAssetsUsage::GetColumnSortMode, InColumn).OnSort_Raw(this, &SPjcTabAssetsUsage::OnListSort);
-		}
-
+		Args.SortMode_Raw(this, &SPjcTabAssetsUsage::GetColumnSortMode, InColumn).OnSort_Raw(this, &SPjcTabAssetsUsage::OnListSort);
 		return Args;
 	};
 
 	TSharedRef<SHeaderRow> HeaderRow = SNew(SHeaderRow);
-	HeaderRow->AddColumn(MakeColumn(TEXT("Name"), TEXT("Name"), bAssetList ? 0.3f : 0.5f, TEXT("Asset name")));
-	HeaderRow->AddColumn(MakeColumn(TEXT("Class"), TEXT("Class"), bAssetList ? 0.17f : 0.3f, TEXT("Asset class")));
-	HeaderRow->AddColumn(MakeColumn(TEXT("Status"), TEXT("Status"), bAssetList ? 0.13f : 0.2f, TEXT("Used, unused or not deleted by last cleanup")));
-	if (bAssetList) {
-		HeaderRow->AddColumn(MakeColumn(TEXT("Why"), TEXT("Why"), 0.4f, TEXT("Why asset is used or unused")));
-	}
+	HeaderRow->AddColumn(MakeColumn(TEXT("Name"), TEXT("Name"), 0.3f, TEXT("Asset name")));
+	HeaderRow->AddColumn(MakeColumn(TEXT("Class"), TEXT("Class"), 0.17f, TEXT("Asset class")));
+	HeaderRow->AddColumn(MakeColumn(TEXT("Status"), TEXT("Status"), 0.13f, TEXT("Used, unused or not deleted by last cleanup")));
+	HeaderRow->AddColumn(MakeColumn(TEXT("Why"), TEXT("Why"), 0.4f, TEXT("Why asset is used or unused")));
 
 	return HeaderRow;
 }
 
 TSharedRef<ITableRow> SPjcTabAssetsUsage::OnGenerateRow(TSharedPtr<FPjcUsageItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const {
 	return SNew(SPjcItemUsage, OwnerTable).Item(Item).HighlightText(SearchText);
+}
+
+TSharedRef<ITableRow> SPjcTabAssetsUsage::OnGenerateLinkRow(TSharedPtr<FPjcUsageItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const {
+	const UClass* AssetClass = Item->Asset.IsValid() ? Item->Asset.GetClass() : nullptr;
+	FString Detail = Item->ClassName;
+	if (Item->bScanned) {
+		Detail += (Detail.IsEmpty() ? TEXT("") : TEXT(", ")) + PjcFormat::Size(Item->Size);
+	}
+
+	// clang-format off
+	return SNew(STableRow<TSharedPtr<FPjcUsageItem>>, OwnerTable)
+		.Padding(FMargin{2.0f, 3.0f})
+		.ToolTipText(FText::FromString(FString::Printf(TEXT("%s\n%s. Double click to inspect."), *Item->PackageName.ToString(), *SPjcItemUsage::GetStatusText(*Item).ToString())))
+		[
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			.VAlign(VAlign_Center)
+			.Padding(FMargin{3.0f, 0.0f, 5.0f, 0.0f})
+			[
+				SNew(SBox).WidthOverride(8.0f).HeightOverride(8.0f)
+				[
+					SNew(SImage)
+					.Image(FPjcStyles::Get().GetBrush("ProjectCleaner.BgWhite"))
+					.ColorAndOpacity(SPjcItemUsage::GetStatusColor(*Item))
+				]
+			]
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			.VAlign(VAlign_Center)
+			.Padding(FMargin{0.0f, 0.0f, 6.0f, 0.0f})
+			[
+				SNew(SBox).WidthOverride(16.0f).HeightOverride(16.0f)
+				[
+					SNew(SImage).Image(FSlateIconFinder::FindIconBrushForClass(AssetClass))
+				]
+			]
+			+ SHorizontalBox::Slot()
+			.FillWidth(1.0f)
+			.VAlign(VAlign_Center)
+			[
+				SNew(SVerticalBox)
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				[
+					SNew(STextBlock).Text(FText::FromString(SPjcItemUsage::GetItemName(*Item)))
+				]
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				[
+					SNew(STextBlock)
+					.Font(FPjcStyles::GetFont("Regular", 8))
+					.ColorAndOpacity(FPjcStyles::Get().GetSlateColor("ProjectCleaner.Color.Gray"))
+					.Text(FText::FromString(Detail))
+				]
+			]
+		];
+	// clang-format on
 }
 
 void SPjcTabAssetsUsage::OnListSelectionChanged(TSharedPtr<FPjcUsageItem> Item, ESelectInfo::Type SelectInfo) {
@@ -1171,13 +1266,24 @@ FText SPjcTabAssetsUsage::GetTitleText() const {
 FText SPjcTabAssetsUsage::GetSubtitleText() const {
 	if (!Current.IsValid()) return FText::GetEmpty();
 
-	FString Subtitle = Current->ClassName.IsEmpty() ? FString {} : Current->ClassName + TEXT("    ");
-	Subtitle += Current->PackageName.ToString();
+	FString Subtitle = Current->ClassName;
 	if (Current->bScanned) {
-		Subtitle += TEXT("    ") + PjcFormat::Size(Current->Size);
+		Subtitle += (Subtitle.IsEmpty() ? TEXT("") : TEXT(", ")) + PjcFormat::Size(Current->Size);
 	}
 
 	return FText::FromString(Subtitle);
+}
+
+FText SPjcTabAssetsUsage::GetPathText() const {
+	return Current.IsValid() ? FText::FromName(Current->PackageName) : FText::GetEmpty();
+}
+
+FText SPjcTabAssetsUsage::GetUsedByEmptyText() const {
+	if (!Current.IsValid()) return FText::GetEmpty();
+
+	return FText::FromString(
+		Current->bScanned && !Current->Usage.bUsed ? TEXT("Nothing uses it.") : TEXT("No asset uses it, it is used for its own reason.")
+	);
 }
 
 FText SPjcTabAssetsUsage::GetStatusText() const {

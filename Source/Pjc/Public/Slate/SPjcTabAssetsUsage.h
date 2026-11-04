@@ -64,8 +64,10 @@ class SPjcTabAssetsUsage final : public SCompoundWidget
 	TSharedRef<SWidget> CreateViewToggle();
 	TSharedRef<SWidget> CreateFilterMenu();
 	TSharedRef<SWidget> CreateInspector();
-	TSharedRef<SHeaderRow> GetHeaderRow(const bool bAssetList);
+	TSharedRef<SHeaderRow> GetHeaderRow();
 	TSharedRef<ITableRow> OnGenerateRow(TSharedPtr<FPjcUsageItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const;
+	/** Row of Used by and Uses lists: status, icon, name, class and size */
+	TSharedRef<ITableRow> OnGenerateLinkRow(TSharedPtr<FPjcUsageItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const;
 	void OnListSelectionChanged(TSharedPtr<FPjcUsageItem> Item, ESelectInfo::Type SelectInfo);
 	void OnLinkDoubleClicked(TSharedPtr<FPjcUsageItem> Item);
 	void OnGraphSelectionChanged(const FName& PackageName);
@@ -84,6 +86,8 @@ class SPjcTabAssetsUsage final : public SCompoundWidget
 	FText GetFilterText() const;
 	FText GetTitleText() const;
 	FText GetSubtitleText() const;
+	FText GetPathText() const;
+	FText GetUsedByEmptyText() const;
 	FText GetStatusText() const;
 	FSlateColor GetStatusColor() const;
 	FText GetUsedByHeaderText() const;

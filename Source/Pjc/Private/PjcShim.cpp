@@ -11,6 +11,7 @@
 #include "Engine/AssetManager.h"
 #include "Misc/MessageDialog.h"
 #include "Misc/PackageName.h"
+#include "Styling/SlateTypes.h"
 #include "ShaderCompiler.h"
 #if ENGINE_MAJOR_VERSION >= 5
 #include "AssetCompilingManager.h"
@@ -35,6 +36,38 @@ namespace PjcShim
 		return FAppStyle::GetBrush(PropertyName, Specifier);
 #else
 		return FEditorStyle::GetBrush(PropertyName, Specifier);
+#endif
+	}
+
+	const FSlateBrush* GetIconBack() {
+#if ENGINE_MAJOR_VERSION == 5
+		return GetBrush(TEXT("Icons.ArrowLeft"));
+#else
+		return GetBrush(TEXT("ContentBrowser.HistoryBack"));
+#endif
+	}
+
+	const FSlateBrush* GetIconForward() {
+#if ENGINE_MAJOR_VERSION == 5
+		return GetBrush(TEXT("Icons.ArrowRight"));
+#else
+		return GetBrush(TEXT("ContentBrowser.HistoryForward"));
+#endif
+	}
+
+	const FSlateBrush* GetIconClose() {
+#if ENGINE_MAJOR_VERSION == 5
+		return GetBrush(TEXT("Icons.X"));
+#else
+		return GetBrush(TEXT("Icons.Cross"));
+#endif
+	}
+
+	const FButtonStyle& GetPrimaryButtonStyle() {
+#if ENGINE_MAJOR_VERSION == 5
+		return GetStyle().GetWidgetStyle<FButtonStyle>(TEXT("PrimaryButton"));
+#else
+		return GetStyle().GetWidgetStyle<FButtonStyle>(TEXT("FlatButton.Primary"));
 #endif
 	}
 
