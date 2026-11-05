@@ -177,6 +177,29 @@ void SPjcScanSettings::Rebuild() {
 		TEXT("Level Sequences and Movie Render Queue configs count as used."),
 		FString {}
 	)];
+	const TSharedRef<SVerticalBox> Exclusions = SNew(SVerticalBox);
+	Exclusions->AddSlot().AutoHeight()[MakeListRows(
+		TEXT("ExcludedFolders"),
+		TEXT("Folders"),
+		&FPjcScanDraft::ExcludedFolders,
+		TEXT("Folder, e.g. /Game/Keep"),
+		TEXT("Every asset in these folders is kept.")
+	)];
+	Exclusions->AddSlot().AutoHeight()[MakeListRows(
+		TEXT("ExcludedClasses"),
+		TEXT("Classes"),
+		&FPjcScanDraft::ExcludedClasses,
+		TEXT("Class path, e.g. /Script/Engine.Texture2D"),
+		TEXT("Assets of these classes are kept.")
+	)];
+	Exclusions->AddSlot().AutoHeight()[MakeListRows(
+		TEXT("ExcludedAssets"),
+		TEXT("Assets"),
+		&FPjcScanDraft::ExcludedAssets,
+		TEXT("Asset path, e.g. /Game/Maps/L_Main.L_Main"),
+		TEXT("These assets are kept.")
+	)];
+
 	Used->AddSlot().AutoHeight()[MakeListRows(
 		TEXT("UsedClasses"),
 		TEXT("Always used classes"),
@@ -200,6 +223,10 @@ void SPjcScanSettings::Rebuild() {
 		[
 			MakeCategory(TEXT("Used"), TEXT("Counted as used"), TEXT("Rules that keep assets used. Locked rules are always on."), Used)
 		]
+		+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {0.0f, 0.0f, 0.0f, 6.0f})
+		[
+			MakeCategory(TEXT("Exclusions"), TEXT("Exclusions"), TEXT("Always kept, never deleted"), Exclusions)
+		]
 		+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {8.0f, 6.0f})
 		[
 			SNew(STextBlock)
@@ -216,7 +243,7 @@ TSharedRef<SWidget> SPjcScanSettings::MakeHeader() {
 	const auto Edit = [this](TFunction<void()> Change) {
 		return [this, Change]() {
 			Change();
-			FPjcScanDraft::OnEdited().Broadcast();
+			FPjcScanDraft::NotifyEdited();
 		};
 	};
 
@@ -362,7 +389,7 @@ SPjcScanSettings::MakeSwitchRow(const FString& Label, FDraftFlag Flag, const int
 										   .IsChecked(bValue ? ECheckBoxState::Checked : ECheckBoxState::Unchecked)
 										   .OnCheckStateChanged_Lambda([this, Flag](const ECheckBoxState State) {
 											   FPjcScanDraft::Get().*Flag = State == ECheckBoxState::Checked;
-											   FPjcScanDraft::OnEdited().Broadcast();
+											   FPjcScanDraft::NotifyEdited();
 										   });
 
 	const FString Value = Num < 0 ? FString {} : (Num > 0 ? PjcFormat::Count(Num) : TEXT("–"));
@@ -425,7 +452,7 @@ TSharedRef<SWidget> SPjcScanSettings::MakeListRows(
 					.ToolTipText(FText::FromString(TEXT("Remove")))
 					.OnClicked_Lambda([this, List, Item]() {
 						(FPjcScanDraft::Get().*List).Remove(Item);
-						FPjcScanDraft::OnEdited().Broadcast();
+						FPjcScanDraft::NotifyEdited();
 						return FReply::Handled();
 					})
 					[
@@ -448,7 +475,7 @@ TSharedRef<SWidget> SPjcScanSettings::MakeListRows(
 				const FString Value = Text.ToString().TrimStartAndEnd();
 				if (CommitType == ETextCommit::OnEnter && !Value.IsEmpty()) {
 					(FPjcScanDraft::Get().*List).AddUnique(Value);
-					FPjcScanDraft::OnEdited().Broadcast();
+					FPjcScanDraft::NotifyEdited();
 				}
 				else if (Value.IsEmpty() || CommitType == ETextCommit::OnCleared) {
 					AddingList = NAME_None;

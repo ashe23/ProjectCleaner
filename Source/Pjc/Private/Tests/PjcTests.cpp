@@ -656,8 +656,14 @@ bool FPjcTestScanDraft::RunTest(const FString& Parameters) {
 	FPjcScanDraft::Revert();
 	TestFalse(TEXT("draft starts as the settings"), FPjcScanDraft::IsChanged());
 
+	// not edited yet: follows the settings when they change elsewhere
+	ScopedSettings.Settings->bFolderLabelsUsed = false;
+	TestFalse(TEXT("draft follows settings until edited"), FPjcScanDraft::Get().bFolderLabelsUsed || FPjcScanDraft::IsChanged());
+	ScopedSettings.Settings->bFolderLabelsUsed = true;
+
 	// editing the draft leaves the settings alone until applied
 	FPjcScanDraft::Get().bFolderLabelsUsed = false;
+	FPjcScanDraft::NotifyEdited();
 	TestTrue(TEXT("edited draft is changed"), FPjcScanDraft::IsChanged());
 	TestTrue(TEXT("settings untouched by the draft"), ScopedSettings.Settings->bFolderLabelsUsed);
 	FPjcScanDraft::Revert();
@@ -666,6 +672,7 @@ bool FPjcTestScanDraft::RunTest(const FString& Parameters) {
 
 	FPjcScanDraft::Get().bCinematicAssetsUsed = false;
 	FPjcScanDraft::Get().UsedClasses.Add(UCurveFloat::StaticClass()->GetPathName());
+	FPjcScanDraft::NotifyEdited();
 	FPjcScanDraft::Get().ApplyToSettings();
 	TestFalse(TEXT("applied draft is not changed"), FPjcScanDraft::IsChanged());
 	TestFalse(TEXT("applied to settings"), ScopedSettings.Settings->bCinematicAssetsUsed);
