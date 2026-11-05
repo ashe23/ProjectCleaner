@@ -287,7 +287,7 @@ namespace PjcShim
 		for (const auto& ObjectPath : ObjectPaths) {
 			OutPackages.AddUnique(FName {*ObjectPath.GetLongPackageName()});
 		}
-#elif ENGINE_MAJOR_VERSION == 5
+#elif ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1
 		TArray<FSoftObjectPath> ObjectPaths;
 		CollectionManager.GetAssetsInCollection(
 			CollectionName, ECollectionShareType::CST_All, ObjectPaths, ECollectionRecursionFlags::SelfAndChildren

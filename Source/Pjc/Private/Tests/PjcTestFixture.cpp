@@ -667,7 +667,7 @@ bool FPjcTestFixture::CreateCollection(const FString& ObjectPath) {
 	const TSharedRef<ICollectionContainer>& Collections = CollectionManager.GetProjectCollectionContainer();
 	return Collections->CreateCollection(CollectionName(), ECollectionShareType::CST_Local, ECollectionStorageMode::Static)
 		&& Collections->AddToCollection(CollectionName(), ECollectionShareType::CST_Local, FSoftObjectPath {ObjectPath});
-#elif ENGINE_MAJOR_VERSION == 5
+#elif ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1
 	return CollectionManager.CreateCollection(CollectionName(), ECollectionShareType::CST_Local, ECollectionStorageMode::Static)
 		&& CollectionManager.AddToCollection(CollectionName(), ECollectionShareType::CST_Local, FSoftObjectPath {ObjectPath});
 #else
