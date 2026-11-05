@@ -206,6 +206,8 @@ enum class EPjcUsageReason : uint8
 	GameplayCue,
 	/** localized copy (L10N/<culture> folder) of a used asset, loaded in its place for that culture (Parent: the source) */
 	Localized,
+	/** in a folder the cook always takes whole: Additional Asset Directories to Cook, Data Registry scan folders */
+	ConfigFolder,
 	/** Megascans preset */
 	Megascans,
 	/** listed explicitly by a Primary Asset Label */

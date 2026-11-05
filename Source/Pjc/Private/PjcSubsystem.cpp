@@ -361,6 +361,7 @@ FString UPjcSubsystem::GetUsageReasonText(const FPjcAssetUsage& Usage) {
 		case EPjcUsageReason::GameplayCue :		 return TEXT("GameplayCue notify ") + Usage.Detail;
 		case EPjcUsageReason::Megascans :		 return TEXT("Megascans preset");
 		case EPjcUsageReason::Localized :		 return TEXT("Localized copy of ") + FPackageName::GetShortName(Usage.Parent);
+		case EPjcUsageReason::ConfigFolder :	 return TEXT("In folder ") + Usage.Detail;
 		case EPjcUsageReason::FolderLabelAsset : return TEXT("Listed by folder label ") + FPackageName::GetShortName(Usage.Parent);
 		case EPjcUsageReason::Dependency :		 return TEXT("Referenced by ") + FPackageName::GetShortName(Usage.Parent);
 		case EPjcUsageReason::FolderLabel :		 return TEXT("In folder of label ") + FPackageName::GetShortName(Usage.Parent);
@@ -474,6 +475,21 @@ void UPjcSubsystem::ComputeAssetsUsed(
 
 	for (const auto& Asset : AssetsMegascans) {
 		AddUsed(Asset.PackageName, EPjcUsageReason::Megascans, NAME_None, FString {});
+	}
+
+	// folders the cook always takes whole: every asset inside is used
+	TMap<FString, FString> ConfigFolders;
+	GetConfigFolders(ConfigFolders);
+	if (ConfigFolders.Num() > 0) {
+		for (const auto& Asset : AssetsAll) {
+			const FString AssetPath = Asset.PackagePath.ToString();
+			for (const auto& Folder : ConfigFolders) {
+				if (AssetPath == Folder.Key || AssetPath.StartsWith(Folder.Key + TEXT("/"))) {
+					AddUsed(Asset.PackageName, EPjcUsageReason::ConfigFolder, NAME_None, Folder.Value + TEXT(" ") + Folder.Key);
+					break;
+				}
+			}
+		}
 	}
 
 	// folder labels reference every asset in their folder. That is a cook rule, so labels are followed last:
@@ -959,6 +975,37 @@ void UPjcSubsystem::GetPackagesPrimary(TSet<FName>& Packages) {
 			if (!ObjectPath.IsEmpty()) {
 				Packages.Add(FName {*FPackageName::ObjectPathToPackageName(ObjectPath)});
 			}
+		}
+	}
+}
+
+void UPjcSubsystem::GetConfigFolders(TMap<FString, FString>& Folders) {
+	Folders.Reset();
+
+	// full package paths (/Game/Folder, /PluginName/Folder) or relative to /Game, as the cooker reads them
+	const auto AddFolder = [&Folders](FString Path, const TCHAR* Setting) {
+		Path = Path.TrimStartAndEnd().Replace(TEXT("\\"), TEXT("/"));
+		Path.RemoveFromEnd(TEXT("/"));
+		if (Path.IsEmpty()) return;
+
+		if (!Path.StartsWith(TEXT("/"))) {
+			Path = TEXT("/Game/") + Path;
+		}
+		Folders.Add(Path, Setting);
+	};
+
+	for (const auto& Dir : GetDefault<UProjectPackagingSettings>()->DirectoriesToAlwaysCook) {
+		AddFolder(Dir.Path, TEXT("Additional Asset Directories to Cook"));
+	}
+
+	// Data Registry plugin may not be enabled or loaded: its setting is read from config
+	TArray<FString> RegistryDirs;
+	GConfig->GetArray(TEXT("/Script/DataRegistry.DataRegistrySettings"), TEXT("DirectoriesToScan"), RegistryDirs, GGameIni);
+	for (const auto& Entry : RegistryDirs) {
+		FString Path;
+		if (FParse::Value(*Entry, TEXT("Path="), Path)) {
+			Path.RemoveFromEnd(TEXT(")"));
+			AddFolder(Path, TEXT("Data Registry Directories to Scan"));
 		}
 	}
 }

@@ -498,6 +498,7 @@ def setup_host(host):
     # PjcTestPrimary: blueprint based primary type used by fixture tests (Blueprints/BP_Primary)
     # GameFeatureData: required by game feature plugins (same rule as Lyra)
     # staged folder: raw files shipped with packaged builds, never "external files"
+    # always cook and data registry folders: every asset inside is used
     write_if_changed(
         os.path.join(host.dir, "Config", "DefaultGame.ini"),
         "[/Script/EngineSettings.GeneralProjectSettings]\n"
@@ -512,7 +513,11 @@ def setup_host(host):
         "Rules=(Priority=-1,ChunkId=-1,bApplyRecursively=True,CookRule=AlwaysCook))\n"
         "\n"
         "[/Script/UnrealEd.ProjectPackagingSettings]\n"
-        '+DirectoriesToAlwaysStageAsNonUFS=(Path="PjcTests/Staged")\n'.format(host.name),
+        '+DirectoriesToAlwaysStageAsNonUFS=(Path="PjcTests/Staged")\n'
+        '+DirectoriesToAlwaysCook=(Path="/Game/PjcTests/AlwaysCook")\n'
+        "\n"
+        "[/Script/DataRegistry.DataRegistrySettings]\n"
+        '+DirectoriesToScan=(Path="/Game/PjcTests/Registry")\n'.format(host.name),
     )
     write_if_changed(os.path.join(host.dir, "Config", "DefaultEngine.ini"), "[/Script/Engine.Engine]\n")
 

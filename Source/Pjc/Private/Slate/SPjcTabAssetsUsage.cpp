@@ -621,6 +621,11 @@ FText SPjcTabAssetsUsage::BuildWhyText(const FPjcUsageItem& Item) {
 				);
 				break;
 			case EPjcUsageReason::Megascans : Paragraphs.Add(TEXT("Used: it is a Megascans preset.")); break;
+			case EPjcUsageReason::ConfigFolder :
+				Paragraphs.Add(
+					FString::Printf(TEXT("Used: it is in a folder the cook always takes whole (%s), so every asset inside is used."), *Usage.Detail)
+				);
+				break;
 			case EPjcUsageReason::Localized :
 				Paragraphs.Add(
 					FString::Printf(

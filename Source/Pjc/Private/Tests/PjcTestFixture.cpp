@@ -306,6 +306,8 @@ bool FPjcTestFixture::CreateAssets(FAutomationTestBase& Test) {
 	}
 	NewAsset<UCurveFloat>(Register(TEXT("Indirect"), TEXT("C_Indirect")), Packages);
 	NewAsset<UCurveFloat>(Register(TEXT("Indirect"), TEXT("C_IndirectPackage")), Packages);
+	NewAsset<UCurveFloat>(Register(TEXT("AlwaysCook"), TEXT("C_AlwaysCooked")), Packages);
+	NewAsset<UCurveFloat>(Register(TEXT("Registry"), TEXT("C_RegistryData")), Packages);
 
 	// localized copies (Content/L10N/<culture>, same path as the source): used and unused with their source
 	const auto RegisterLocalized = [&](const FString& Folder, const FString& Name) {
@@ -649,6 +651,8 @@ TArray<FString> FPjcTestFixture::UsedNames(const bool bScanPlugins, const bool b
 	  TEXT("BP_PrimaryOutside"),
 	  TEXT("PAL_Folder"),
 	  TEXT("C_Indirect_fr"),
+	  TEXT("C_AlwaysCooked"),
+	  TEXT("C_RegistryData"),
 	};
 
 	if (bFolderLabelsUsed) {

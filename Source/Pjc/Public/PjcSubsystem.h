@@ -171,6 +171,9 @@ class UPjcSubsystem final : public UEditorSubsystem
 	/** Packages of primary assets: every map in scanned content and every asset the Asset Manager registered */
 	static void GetPackagesPrimary(TSet<FName>& Packages);
 
+	/** Folders the cook always takes whole (package path -> setting): Additional Asset Directories to Cook, Data Registry scan folders */
+	static void GetConfigFolders(TMap<FString, FString>& Folders);
+
 	/**
 	 * @brief Returns all editor assets class names
 	 * @param ClassNames TSet<FName>

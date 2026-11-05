@@ -486,6 +486,8 @@ bool FPjcTestScanUsage::RunTest(const FString& Parameters) {
 	TestReason(TEXT("C_Labeled"), EPjcUsageReason::FolderLabel, TEXT("PAL_Folder"), nullptr);
 	TestReason(TEXT("C_UnusedLeaf"), EPjcUsageReason::None, nullptr, nullptr);
 	TestReason(TEXT("C_Indirect_fr"), EPjcUsageReason::Localized, TEXT("C_Indirect"), nullptr);
+	TestReason(TEXT("C_AlwaysCooked"), EPjcUsageReason::ConfigFolder, nullptr, TEXT("/Game/PjcTests/AlwaysCook"));
+	TestReason(TEXT("C_RegistryData"), EPjcUsageReason::ConfigFolder, nullptr, TEXT("/Game/PjcTests/Registry"));
 	TestReason(TEXT("C_Unused_fr"), EPjcUsageReason::None, nullptr, nullptr);
 
 	const FPjcAssetUsage* Labeled = Usage.Find(PackageOf(Fixture, TEXT("C_Labeled")));
@@ -613,6 +615,7 @@ bool FPjcTestScanResult::RunTest(const FString& Parameters) {
 	TestStatus(TEXT("BP_Primary"), EPjcAssetStatus::Used, EPjcUsageReason::Primary);
 	TestStatus(TEXT("C_Indirect"), EPjcAssetStatus::Used, EPjcUsageReason::Indirect);
 	TestStatus(TEXT("C_Indirect_fr"), EPjcAssetStatus::Used, EPjcUsageReason::Localized);
+	TestStatus(TEXT("C_AlwaysCooked"), EPjcAssetStatus::Used, EPjcUsageReason::ConfigFolder);
 	TestStatus(TEXT("C_Unused_fr"), EPjcAssetStatus::Unused, EPjcUsageReason::None);
 	TestStatus(TEXT("EUB_Tool"), EPjcAssetStatus::EditorOnly, EPjcUsageReason::Editor);
 	TestStatus(TEXT("C_UnusedLeaf"), EPjcAssetStatus::Unused, EPjcUsageReason::None);
