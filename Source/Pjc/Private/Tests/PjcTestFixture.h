@@ -43,6 +43,8 @@
  *   Blueprints/BP_Primary    Blueprint derived from PlayerController, primary type "PjcTestPrimary" in host config
  *   Blueprints/BP_Unused     Blueprint derived from Actor, not referenced
  *   Misc/BP_PrimaryOutside   PlayerController Blueprint outside the PjcTestPrimary folder: primary class, not registered
+ *   Used/PAL_Collection      PrimaryAssetLabel naming local collection PjcTestCollection
+ *   Misc/C_InCollection      only in collection PjcTestCollection: used through PAL_Collection
  *   Labeled/PAL_Folder       PrimaryAssetLabel with "Label Assets In My Directory"
  *   Labeled/C_Labeled        only referenced by folder label: used unless bFolderLabelsUsed is off
  *   Empty/A/B                empty folders
@@ -85,6 +87,8 @@ class FPjcTestFixture
 	static bool IsTestHost();
 	static FString RootPath();
 	static FString LocalizedRootPath();
+	/** Name of the local collection PAL_Collection names */
+	static FName CollectionName();
 	/** EditorValidatorBase, null when DataValidation is not loaded */
 	static UClass* ValidatorBaseClass();
 	static FString PluginRootPath();
@@ -139,6 +143,8 @@ class FPjcTestFixture
 	void CreateFiles(const bool bCreateCorruptedFile);
 	void CreateLyraFiles();
 	void ApplyExcludeSettings();
+	static bool CreateCollection(const FString& ObjectPath);
+	static void DestroyCollection();
 	static void RefreshAssetManager();
 	void RestoreSettings();
 

@@ -503,6 +503,8 @@ bool FPjcTestScanUsage::RunTest(const FString& Parameters) {
 	TestReason(TEXT("C_Indirect_fr"), EPjcUsageReason::Localized, TEXT("C_Indirect"), nullptr);
 	TestReason(TEXT("C_AlwaysCooked"), EPjcUsageReason::ConfigFolder, nullptr, TEXT("/Game/PjcTests/AlwaysCook"));
 	TestReason(TEXT("C_InPython"), EPjcUsageReason::Indirect, nullptr, TEXT("PjcTests.py"));
+	TestReason(TEXT("PAL_Collection"), EPjcUsageReason::Primary, nullptr, nullptr);
+	TestReason(TEXT("C_InCollection"), EPjcUsageReason::Dependency, TEXT("PAL_Collection"), TEXT("PjcTestCollection"));
 	TestReason(TEXT("C_InPlatformConfig"), EPjcUsageReason::Indirect, nullptr, TEXT("PjcPlatformTests.ini"));
 	TestReason(TEXT("C_RegistryData"), EPjcUsageReason::ConfigFolder, nullptr, TEXT("/Game/PjcTests/Registry"));
 	TestReason(TEXT("C_Unused_fr"), EPjcUsageReason::None, nullptr, nullptr);
@@ -828,6 +830,7 @@ bool FPjcFixtureBuild::RunTest(const FString& Parameters) {
 	  TEXT("Content/PjcTests"),
 	  TEXT("Content/L10N/fr/PjcTests"),
 	  TEXT("Content/Python/PjcTests.py"),
+	  TEXT("Saved/Collections/PjcTestCollection.collection"),
 	  TEXT("Platforms/PjcPlatform"),
 	  TEXT("Config/PjcTests.ini"),
 	  TEXT("Plugins/PjcTestContent/Content/C_PluginUsed.uasset"),

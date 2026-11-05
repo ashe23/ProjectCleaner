@@ -55,6 +55,7 @@ public class Pjc : ModuleRules
 				"InputCore",
 				"ContentBrowser",
 				"ContentBrowserData",
+				"CollectionManager",
 				"UMGEditor",
 			}
 		);

@@ -918,6 +918,7 @@ FIXTURE_LEFTOVERS = [
     "Content/PjcTests",
     "Content/L10N/fr/PjcTests",
     "Content/Python/PjcTests.py",
+    "Saved/Collections/PjcTestCollection.collection",
     "Platforms/PjcPlatform",
     "Content/Localization/PjcTests",
     "Config/PjcTests.ini",

@@ -477,6 +477,26 @@ void UPjcSubsystem::ComputeAssetsUsed(
 		AddUsed(Asset.PackageName, EPjcUsageReason::Megascans, NAME_None, FString {});
 	}
 
+	// assets in the collection a used Primary Asset Label names are labeled like its explicit assets
+	for (const auto& Asset : AssetsAll) {
+		const UClass* AssetClass = Asset.GetClass();
+		if (!AssetClass || !AssetClass->IsChildOf(UPrimaryAssetLabel::StaticClass()) || !Usage.Contains(Asset.PackageName)) continue;
+
+		const UPrimaryAssetLabel* Label = Cast<UPrimaryAssetLabel>(Asset.GetAsset());
+		if (!Label || Label->AssetCollection.CollectionName.IsNone()) continue;
+
+		TArray<FName> CollectionPackages;
+		PjcShim::GetPackagesInCollection(Label->AssetCollection.CollectionName, CollectionPackages);
+		for (const auto& CollectionPackage : CollectionPackages) {
+			AddUsed(
+				CollectionPackage,
+				EPjcUsageReason::Dependency,
+				Asset.PackageName,
+				TEXT("in collection ") + Label->AssetCollection.CollectionName.ToString()
+			);
+		}
+	}
+
 	// folders the cook always takes whole: every asset inside is used
 	TMap<FString, FString> ConfigFolders;
 	GetConfigFolders(ConfigFolders);

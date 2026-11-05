@@ -13,6 +13,11 @@
 #include "Engine/Level.h"
 #include "PjcShim.h"
 #include "Engine/AssetManager.h"
+#include "CollectionManagerModule.h"
+#include "ICollectionManager.h"
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 6
+#include "ICollectionContainer.h"
+#endif
 #include "AssetToolsModule.h"
 #include "EditorUtilityBlueprint.h"
 #include "EditorUtilityObject.h"
@@ -263,6 +268,15 @@ bool FPjcTestFixture::CreateAssets(FAutomationTestBase& Test) {
 	Chain->AddObject(PluginUsed);
 	UPrimaryAssetLabel* Label = NewAsset<UPrimaryAssetLabel>(Register(TEXT("Used"), TEXT("PAL_Root")), Packages);
 	Label->ExplicitAssets.Add(TSoftObjectPtr<UObject> {Chain});
+
+	// label that names a collection: assets in it are labeled like explicit assets
+	NewAsset<UCurveFloat>(Register(TEXT("Misc"), TEXT("C_InCollection")), Packages);
+	UPrimaryAssetLabel* CollectionLabel = NewAsset<UPrimaryAssetLabel>(Register(TEXT("Used"), TEXT("PAL_Collection")), Packages);
+	CollectionLabel->AssetCollection.CollectionName = CollectionName();
+	if (!CreateCollection(ObjectPath(TEXT("C_InCollection")))) {
+		Test.AddError(TEXT("Failed to create fixture collection"));
+		return false;
+	}
 
 	// redirectors: used one keeps its target used, unused ones are deleted without touching their targets
 	UCurveFloat* Gone = nullptr;
@@ -585,6 +599,8 @@ void FPjcTestFixture::Cleanup() {
 
 	RestoreSettings();
 
+	DestroyCollection();
+
 	// before deleting assets: UE4 rescans folders on delete and logs errors for corrupted packages
 	IFileManager::Get().Delete(*CorruptedFile(), false, true, true);
 
@@ -639,6 +655,43 @@ void FPjcTestFixture::Cleanup() {
 	bLyraLayout = false;
 }
 
+FName FPjcTestFixture::CollectionName() {
+	return FName {TEXT("PjcTestCollection")};
+}
+
+bool FPjcTestFixture::CreateCollection(const FString& ObjectPath) {
+	DestroyCollection();
+
+	ICollectionManager& CollectionManager = FCollectionManagerModule::GetModule().Get();
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 6
+	const TSharedRef<ICollectionContainer>& Collections = CollectionManager.GetProjectCollectionContainer();
+	return Collections->CreateCollection(CollectionName(), ECollectionShareType::CST_Local, ECollectionStorageMode::Static)
+		&& Collections->AddToCollection(CollectionName(), ECollectionShareType::CST_Local, FSoftObjectPath {ObjectPath});
+#elif ENGINE_MAJOR_VERSION == 5
+	return CollectionManager.CreateCollection(CollectionName(), ECollectionShareType::CST_Local, ECollectionStorageMode::Static)
+		&& CollectionManager.AddToCollection(CollectionName(), ECollectionShareType::CST_Local, FSoftObjectPath {ObjectPath});
+#else
+	return CollectionManager.CreateCollection(CollectionName(), ECollectionShareType::CST_Local, ECollectionStorageMode::Static)
+		&& CollectionManager.AddToCollection(CollectionName(), ECollectionShareType::CST_Local, FName {*ObjectPath});
+#endif
+}
+
+void FPjcTestFixture::DestroyCollection() {
+	if (!FCollectionManagerModule::IsModuleAvailable()) return;
+
+	ICollectionManager& CollectionManager = FCollectionManagerModule::GetModule().Get();
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 6
+	const TSharedRef<ICollectionContainer>& Collections = CollectionManager.GetProjectCollectionContainer();
+	if (Collections->CollectionExists(CollectionName(), ECollectionShareType::CST_Local)) {
+		Collections->DestroyCollection(CollectionName(), ECollectionShareType::CST_Local);
+	}
+#else
+	if (CollectionManager.CollectionExists(CollectionName(), ECollectionShareType::CST_Local)) {
+		CollectionManager.DestroyCollection(CollectionName(), ECollectionShareType::CST_Local);
+	}
+#endif
+}
+
 UClass* FPjcTestFixture::ValidatorBaseClass() {
 	return FSoftClassPath {TEXT("/Script/DataValidation.EditorValidatorBase")}.ResolveClass();
 }
@@ -667,24 +720,10 @@ FString FPjcTestFixture::PackageFile(const FString& Name) const {
 
 TArray<FString> FPjcTestFixture::UsedNames(const bool bScanPlugins, const bool bFolderLabelsUsed) const {
 	TArray<FString> Names {
-	  TEXT("PAL_Root"),
-	  TEXT("OL_Chain"),
-	  TEXT("C_ChainLeaf"),
-	  TEXT("C_Indirect"),
-	  TEXT("C_IndirectPackage"),
-	  TEXT("C_ByFolder"),
-	  TEXT("CLC_ByClass"),
-	  TEXT("C_ByAsset"),
-	  TEXT("LS_Cinematic"),
-	  TEXT("EUB_Tool"),
-	  TEXT("BP_Primary"),
-	  TEXT("BP_PrimaryOutside"),
-	  TEXT("PAL_Folder"),
-	  TEXT("C_Indirect_fr"),
-	  TEXT("C_AlwaysCooked"),
-	  TEXT("C_RegistryData"),
-	  TEXT("C_InPython"),
-	  TEXT("C_InPlatformConfig"),
+	  TEXT("PAL_Root"),		  TEXT("OL_Chain"),			 TEXT("C_ChainLeaf"),		 TEXT("C_Indirect"),	 TEXT("C_IndirectPackage"),
+	  TEXT("C_ByFolder"),	  TEXT("CLC_ByClass"),		 TEXT("C_ByAsset"),			 TEXT("LS_Cinematic"),	 TEXT("EUB_Tool"),
+	  TEXT("BP_Primary"),	  TEXT("BP_PrimaryOutside"), TEXT("PAL_Folder"),		 TEXT("C_Indirect_fr"),	 TEXT("C_AlwaysCooked"),
+	  TEXT("C_RegistryData"), TEXT("C_InPython"),		 TEXT("C_InPlatformConfig"), TEXT("PAL_Collection"), TEXT("C_InCollection"),
 	};
 
 	if (ValidatorBaseClass()) {
@@ -753,7 +792,7 @@ TArray<FString> FPjcTestFixture::UnusedNames(const bool bScanPlugins, const bool
 }
 
 TArray<FString> FPjcTestFixture::PrimaryNames() const {
-	return {TEXT("PAL_Root"), TEXT("BP_Primary"), TEXT("PAL_Folder")};
+	return {TEXT("PAL_Root"), TEXT("PAL_Collection"), TEXT("BP_Primary"), TEXT("PAL_Folder")};
 }
 
 TArray<FString> FPjcTestFixture::ExcludedNames() const {

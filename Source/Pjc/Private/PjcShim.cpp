@@ -9,6 +9,11 @@
 #include "Framework/Docking/TabManager.h"
 #include "Framework/MultiBox/MultiBox.h"
 #include "Engine/AssetManager.h"
+#include "CollectionManagerModule.h"
+#include "ICollectionManager.h"
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 6
+#include "ICollectionContainer.h"
+#endif
 #include "Misc/MessageDialog.h"
 #include "Misc/PackageName.h"
 #include "Styling/SlateTypes.h"
@@ -266,6 +271,38 @@ namespace PjcShim
 		return InAssetData.GetObjectPathString();
 #else
 		return InAssetData.ObjectPath.ToString();
+#endif
+	}
+
+	void GetPackagesInCollection(const FName CollectionName, TArray<FName>& OutPackages) {
+		OutPackages.Reset();
+		if (CollectionName.IsNone() || !FCollectionManagerModule::IsModuleAvailable()) return;
+
+		ICollectionManager& CollectionManager = FCollectionManagerModule::GetModule().Get();
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 6
+		TArray<FSoftObjectPath> ObjectPaths;
+		CollectionManager.GetProjectCollectionContainer()->GetAssetsInCollection(
+			CollectionName, ECollectionShareType::CST_All, ObjectPaths, ECollectionRecursionFlags::SelfAndChildren
+		);
+		for (const auto& ObjectPath : ObjectPaths) {
+			OutPackages.AddUnique(FName {*ObjectPath.GetLongPackageName()});
+		}
+#elif ENGINE_MAJOR_VERSION == 5
+		TArray<FSoftObjectPath> ObjectPaths;
+		CollectionManager.GetAssetsInCollection(
+			CollectionName, ECollectionShareType::CST_All, ObjectPaths, ECollectionRecursionFlags::SelfAndChildren
+		);
+		for (const auto& ObjectPath : ObjectPaths) {
+			OutPackages.AddUnique(FName {*ObjectPath.GetLongPackageName()});
+		}
+#else
+		TArray<FName> ObjectPaths;
+		CollectionManager.GetAssetsInCollection(
+			CollectionName, ECollectionShareType::CST_All, ObjectPaths, ECollectionRecursionFlags::SelfAndChildren
+		);
+		for (const auto& ObjectPath : ObjectPaths) {
+			OutPackages.AddUnique(FName {*FPackageName::ObjectPathToPackageName(ObjectPath.ToString())});
+		}
 #endif
 	}
 

@@ -66,6 +66,8 @@ namespace PjcShim
 	FString GetObjectPathString(const FAssetData& InAssetData);
 
 	bool IsAssetManagerValid();
+	/** Packages of the assets in a collection of any share type, with its child collections */
+	void GetPackagesInCollection(const FName CollectionName, TArray<FName>& OutPackages);
 	EAppReturnType::Type ShowDialog(const FText& Title, const FText& Message, const EAppMsgType::Type MessageType);
 
 	/** Writes object config to project default config file (e.g. Config/DefaultEditor.ini) */
