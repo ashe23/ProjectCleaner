@@ -231,14 +231,11 @@ bool UPjcSubsystem::Scan(const bool bShowSlowTask) {
 		Result.Sizes.Add(Asset.PackageName, GetAssetSize(Asset));
 	}
 
-	// the game uses what roots that are not editor assets reach through references the game loads (the registry
-	// marks editor-only references); what only editor assets or editor-only references reach is editor only.
-	// Folder label references are a cook rule, not followed: what a label keeps is a root here.
-	// Primary Asset Labels are editor only, so the registry marks all their references editor only, but the Asset
-	// Manager cooks what they list: every reference of a label is followed.
-	TSet<FName> FolderLabels;
-	TMap<FName, FName> LabelAssets;
-	GetFolderLabels(Result.Assets, Result.Usage, FolderLabels, LabelAssets);
+	// the game uses what ships: roots that are not editor assets, assets the Asset Manager cooks by its rules, and what
+	// those reach through the references the cooker follows (game hard and soft references). Labels are left out with
+	// their references: they cook nothing themselves, and editor only label types ignore AlwaysCook rules, so what a
+	// label lists ships only through a cook rule or another reference. What only editor assets, labels or editor-only
+	// references reach is editor only.
 	TSet<FName> Labels;
 	for (const auto& Asset : Result.Assets) {
 		const UClass* AssetClass = Asset.GetClass();
@@ -247,15 +244,22 @@ bool UPjcSubsystem::Scan(const bool bShowSlowTask) {
 		}
 	}
 
+	const UAssetManager* AssetManager = PjcShim::IsAssetManagerValid() ? &UAssetManager::Get() : nullptr;
+	const auto IsCookedByRule = [AssetManager](const FName Package) {
+		if (!AssetManager) return false;
+
+		const EPrimaryAssetCookRule CookRule = AssetManager->GetPackageCookRule(Package);
+		return CookRule == EPrimaryAssetCookRule::AlwaysCook || CookRule == EPrimaryAssetCookRule::DevelopmentAlwaysCook;
+	};
+
 	TSet<FName> GameUsed;
 	TArray<FName> Stack;
 	for (const auto& Pair : Result.Usage) {
 		const FPjcAssetUsage& AssetUsage = Pair.Value;
-		if (!AssetUsage.bUsed) continue;
+		if (!AssetUsage.bUsed || Labels.Contains(Pair.Key)) continue;
 
-		const bool bGameRoot = AssetUsage.Parent.IsNone() && AssetUsage.Reason != EPjcUsageReason::Editor;
-		const bool bLabelKept = AssetUsage.Reason == EPjcUsageReason::FolderLabel || AssetUsage.Reason == EPjcUsageReason::FolderLabelAsset;
-		if (bGameRoot || bLabelKept) {
+		const bool bRoot = AssetUsage.Parent.IsNone() && AssetUsage.Reason != EPjcUsageReason::Editor;
+		if (bRoot || IsCookedByRule(Pair.Key)) {
 			GameUsed.Add(Pair.Key);
 			Stack.Add(Pair.Key);
 		}
@@ -264,18 +268,13 @@ bool UPjcSubsystem::Scan(const bool bShowSlowTask) {
 	TArray<FName> Deps;
 	while (Stack.Num() > 0) {
 		const FName Current = PjcShim::PopArray(Stack);
-		if (FolderLabels.Contains(Current)) continue;
 
 		Deps.Reset();
 		GetModuleAssetRegistry().Get().GetDependencies(
-			Current,
-			Deps,
-			UE::AssetRegistry::EDependencyCategory::Package,
-			Labels.Contains(Current) ? UE::AssetRegistry::FDependencyQuery {}
-									 : UE::AssetRegistry::FDependencyQuery {UE::AssetRegistry::EDependencyQuery::Game}
+			Current, Deps, UE::AssetRegistry::EDependencyCategory::Package, UE::AssetRegistry::EDependencyQuery::Game
 		);
 		for (const auto& Dep : Deps) {
-			if (!PathIsInsideProject(Dep.ToString())) continue;
+			if (Labels.Contains(Dep) || !PathIsInsideProject(Dep.ToString())) continue;
 
 			bool bAlreadyUsed = false;
 			GameUsed.Add(Dep, &bAlreadyUsed);

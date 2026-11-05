@@ -630,11 +630,13 @@ bool FPjcTestScanResult::RunTest(const FString& Parameters) {
 			*FString::Printf(TEXT("%s chain reason"), Name), static_cast<int32>(Result.GetChainReason(Package)), static_cast<int32>(ChainReason)
 		);
 	};
-	TestStatus(TEXT("PAL_Root"), EPjcAssetStatus::Used, EPjcUsageReason::Primary);
-	TestStatus(TEXT("OL_Chain"), EPjcAssetStatus::Used, EPjcUsageReason::Primary);
-	TestStatus(TEXT("C_ChainLeaf"), EPjcAssetStatus::Used, EPjcUsageReason::Primary);
+	// labels cook nothing themselves; without cook rules what they list or keep ships only through other references
+	TestStatus(TEXT("PAL_Root"), EPjcAssetStatus::EditorOnly, EPjcUsageReason::Primary);
+	TestStatus(TEXT("OL_Chain"), EPjcAssetStatus::EditorOnly, EPjcUsageReason::Primary);
+	TestStatus(TEXT("C_ChainLeaf"), EPjcAssetStatus::EditorOnly, EPjcUsageReason::Primary);
+	TestStatus(TEXT("C_Labeled"), EPjcAssetStatus::EditorOnly, EPjcUsageReason::FolderLabel);
+	TestStatus(TEXT("BP_Primary"), EPjcAssetStatus::Used, EPjcUsageReason::Primary);
 	TestStatus(TEXT("C_Indirect"), EPjcAssetStatus::Used, EPjcUsageReason::Indirect);
-	TestStatus(TEXT("C_Labeled"), EPjcAssetStatus::Used, EPjcUsageReason::FolderLabel);
 	TestStatus(TEXT("EUB_Tool"), EPjcAssetStatus::EditorOnly, EPjcUsageReason::Editor);
 	TestStatus(TEXT("C_UnusedLeaf"), EPjcAssetStatus::Unused, EPjcUsageReason::None);
 
