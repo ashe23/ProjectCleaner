@@ -28,6 +28,10 @@ class SPjcScanBar final : public SCompoundWidget
   private:
 
 	FReply OnScanClicked() const;
+	FReply OnRescanClicked() const;
+	EVisibility GetScanVisibility() const;
+	EVisibility GetRescanVisibility() const;
+	FSlateColor GetStatusColor() const;
 	FReply OnCleanClicked() const;
 	FText GetStatusText() const;
 	FText GetStatusToolTip() const;

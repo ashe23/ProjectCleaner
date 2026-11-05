@@ -2,6 +2,8 @@
 
 #include "Slate/SPjcScanBar.h"
 #include "PjcFormat.h"
+#include "PjcScanDraft.h"
+#include "PjcStyles.h"
 #include "PjcShim.h"
 #include "PjcSubsystem.h"
 // Engine Headers
@@ -31,9 +33,24 @@ void SPjcScanBar::Construct(const FArguments& InArgs) {
 				SNew(SButton)
 				.ContentPadding(FMargin {12.0f, 2.0f})
 				.ToolTipText(FText::FromString(TEXT("Scans the project again")))
+				.Visibility(this, &SPjcScanBar::GetScanVisibility)
 				.OnClicked(this, &SPjcScanBar::OnScanClicked)
 				[
 					SNew(STextBlock).Text(FText::FromString(TEXT("Scan")))
+				]
+			]
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			.VAlign(VAlign_Center)
+			[
+				SNew(SButton)
+				.ButtonStyle(&PjcShim::GetPrimaryButtonStyle())
+				.ContentPadding(FMargin {12.0f, 2.0f})
+				.ToolTipText(FText::FromString(TEXT("Applies the changed scan settings and scans again")))
+				.Visibility(this, &SPjcScanBar::GetRescanVisibility)
+				.OnClicked(this, &SPjcScanBar::OnRescanClicked)
+				[
+					SNew(STextBlock).Text(FText::FromString(TEXT("Rescan")))
 				]
 			]
 			+ SHorizontalBox::Slot()
@@ -43,6 +60,7 @@ void SPjcScanBar::Construct(const FArguments& InArgs) {
 			[
 				SNew(STextBlock)
 				.Text(this, &SPjcScanBar::GetStatusText)
+				.ColorAndOpacity(this, &SPjcScanBar::GetStatusColor)
 				.ToolTipText(this, &SPjcScanBar::GetStatusToolTip)
 			]
 			+ SHorizontalBox::Slot()
@@ -122,12 +140,34 @@ FReply SPjcScanBar::OnScanClicked() const {
 	return FReply::Handled();
 }
 
+FReply SPjcScanBar::OnRescanClicked() const {
+	FPjcScanDraft::Get().ApplyToSettings();
+	ScanProject();
+	return FReply::Handled();
+}
+
+EVisibility SPjcScanBar::GetScanVisibility() const {
+	return FPjcScanDraft::IsChanged() ? EVisibility::Collapsed : EVisibility::Visible;
+}
+
+EVisibility SPjcScanBar::GetRescanVisibility() const {
+	return FPjcScanDraft::IsChanged() ? EVisibility::Visible : EVisibility::Collapsed;
+}
+
+FSlateColor SPjcScanBar::GetStatusColor() const {
+	return FPjcScanDraft::IsChanged() ? FSlateColor {FPjcStyles::Get().GetColor("ProjectCleaner.Color.Yellow")} : FSlateColor::UseForeground();
+}
+
 FReply SPjcScanBar::OnCleanClicked() const {
 	CleanProject();
 	return FReply::Handled();
 }
 
 FText SPjcScanBar::GetStatusText() const {
+	if (FPjcScanDraft::IsChanged()) {
+		return FText::FromString(TEXT("Settings changed · results are from the last scan"));
+	}
+
 	const FPjcScanResult& Result = UPjcSubsystem::GetScanResult();
 	if (!Result.IsValid()) {
 		return FText::FromString(TEXT("Not scanned yet"));

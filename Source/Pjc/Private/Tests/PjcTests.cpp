@@ -5,6 +5,7 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 #include "PjcAssetGraph.h"
+#include "PjcScanDraft.h"
 #include "PjcSettings.h"
 #include "PjcShim.h"
 #include "PjcSubsystem.h"
@@ -640,6 +641,45 @@ bool FPjcTestScanResult::RunTest(const FString& Parameters) {
 	TestStatus(TEXT("EUB_Tool"), EPjcAssetStatus::EditorOnly, EPjcUsageReason::Editor);
 	TestStatus(TEXT("C_UnusedLeaf"), EPjcAssetStatus::Unused, EPjcUsageReason::None);
 
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPjcTestScanDraft, "ProjectCleaner.Scan.Draft", PJC_TEST_FLAGS)
+
+bool FPjcTestScanDraft::RunTest(const FString& Parameters) {
+	if (!FPjcTestFixture::IsTestHost()) {
+		AddInfo(TEXT("Skipped, writes DefaultEditor.ini, runs only in test host projects"));
+		return true;
+	}
+
+	FPjcScopedScanSettings ScopedSettings {false};
+	FPjcScanDraft::Revert();
+	TestFalse(TEXT("draft starts as the settings"), FPjcScanDraft::IsChanged());
+
+	// editing the draft leaves the settings alone until applied
+	FPjcScanDraft::Get().bFolderLabelsUsed = false;
+	TestTrue(TEXT("edited draft is changed"), FPjcScanDraft::IsChanged());
+	TestTrue(TEXT("settings untouched by the draft"), ScopedSettings.Settings->bFolderLabelsUsed);
+	FPjcScanDraft::Revert();
+	TestFalse(TEXT("undo back to the settings"), FPjcScanDraft::IsChanged());
+	TestTrue(TEXT("undo restores the value"), FPjcScanDraft::Get().bFolderLabelsUsed);
+
+	FPjcScanDraft::Get().bCinematicAssetsUsed = false;
+	FPjcScanDraft::Get().UsedClasses.Add(UCurveFloat::StaticClass()->GetPathName());
+	FPjcScanDraft::Get().ApplyToSettings();
+	TestFalse(TEXT("applied draft is not changed"), FPjcScanDraft::IsChanged());
+	TestFalse(TEXT("applied to settings"), ScopedSettings.Settings->bCinematicAssetsUsed);
+	if (TestEqual(TEXT("used classes applied"), ScopedSettings.Settings->UsedClasses.Num(), 1)) {
+		TestEqual(TEXT("used class resolves"), ScopedSettings.Settings->UsedClasses[0].LoadSynchronous(), UCurveFloat::StaticClass());
+	}
+
+	TestTrue(TEXT("plugin defaults"), FPjcScanDraft {}.bUnregisteredPrimaryUsed && FPjcScanDraft {}.bFolderLabelsUsed);
+
+	// DefaultEditor.ini back to what it was
+	ScopedSettings.Settings->bCinematicAssetsUsed = true;
+	ScopedSettings.Settings->UsedClasses.Reset();
+	PjcShim::UpdateDefaultConfigFile(ScopedSettings.Settings);
+	FPjcScanDraft::Revert();
 	return true;
 }
 
