@@ -1,6 +1,7 @@
 ﻿// Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "Slate/SPjcTabMain.h"
+#include "Slate/SPjcTabOverview.h"
 #include "Slate/SPjcTabAssetsUnused.h"
 #include "Slate/SPjcTabAssetsIndirect.h"
 #include "Slate/SPjcTabAssetsCorrupted.h"
@@ -60,15 +61,22 @@ void SPjcTabMain::Construct(
 							->SetOrientation(Orient_Horizontal)
 							->Split(
 								FTabManager::NewStack()
+									->AddTab(PjcConstants::TabOverview, ETabState::OpenedTab)
 									->AddTab(PjcConstants::TabAssetsUnused, ETabState::OpenedTab)
 									->AddTab(PjcConstants::TabAssetsIndirect, ETabState::OpenedTab)
 									->AddTab(PjcConstants::TabAssetsCorrupted, ETabState::OpenedTab)
 									->AddTab(PjcConstants::TabFilesExternal, ETabState::OpenedTab)
 									->AddTab(PjcConstants::TabAssetsUsage, ETabState::OpenedTab)
-									->SetForegroundTab(PjcConstants::TabAssetsUnused)
+									->SetForegroundTab(PjcConstants::TabOverview)
 									->SetSizeCoefficient(1.0f)
 							)
 					);
+
+	TabManager->RegisterTabSpawner(PjcConstants::TabOverview, FOnSpawnTab::CreateRaw(this, &SPjcTabMain::OnTabOverviewSpawn))
+		.SetTooltipText(FText::FromString(TEXT("Open Overview Tab")))
+		.SetDisplayName(FText::FromString(TEXT("Overview")))
+		.SetIcon(FPjcStyles::GetIcon("ProjectCleaner.Icon.Stat16"))
+		.SetGroup(AppMenuGroup);
 
 	TabManager->RegisterTabSpawner(PjcConstants::TabAssetsUnused, FOnSpawnTab::CreateRaw(this, &SPjcTabMain::OnTabAssetsUnusedSpawn))
 		.SetTooltipText(FText::FromString(TEXT("Open Unused Assets Tab")))
@@ -170,6 +178,7 @@ void SPjcTabMain::Construct(
 }
 
 SPjcTabMain::~SPjcTabMain() {
+	FGlobalTabmanager::Get()->UnregisterTabSpawner(PjcConstants::TabOverview);
 	FGlobalTabmanager::Get()->UnregisterTabSpawner(PjcConstants::TabAssetsUnused);
 	FGlobalTabmanager::Get()->UnregisterTabSpawner(PjcConstants::TabAssetsIndirect);
 	FGlobalTabmanager::Get()->UnregisterTabSpawner(PjcConstants::TabAssetsCorrupted);
@@ -192,6 +201,14 @@ FText SPjcTabMain::GetWidgetWarningText() const {
 	}
 
 	return FText::FromString(TEXT(""));
+}
+
+TSharedRef<SDockTab> SPjcTabMain::OnTabOverviewSpawn(const FSpawnTabArgs& Args) const {
+	const auto Frontend = SNew(SDockTab).TabRole(PanelTab).Label(FText::FromString(TEXT("Overview")))[SNew(SPjcTabOverview)];
+
+	Frontend->SetTabIcon(FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.Stat16"));
+
+	return Frontend;
 }
 
 TSharedRef<SDockTab> SPjcTabMain::OnTabAssetsUnusedSpawn(const FSpawnTabArgs& Args) const {

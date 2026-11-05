@@ -16,6 +16,7 @@
 #include "Slate/SPjcTabAssetsIndirect.h"
 #include "Slate/SPjcTabAssetsUnused.h"
 #include "Slate/SPjcTabAssetsUsage.h"
+#include "Slate/SPjcTabOverview.h"
 #include "Slate/SPjcTabFilesExternal.h"
 #include "Misc/FileHelper.h"
 #include "Misc/PackageName.h"
@@ -762,8 +763,14 @@ bool FPjcTestUiTabs::RunTest(const FString& Parameters) {
 	EditorSettings->bScanOnOpen = true;
 
 	const TSharedRef<SPjcTabAssetsUsage> TabUsage = SNew(SPjcTabAssetsUsage);
-	const TSharedRef<SWidget> Tabs[]
-		= {SNew(SPjcTabAssetsUnused), SNew(SPjcTabAssetsIndirect), SNew(SPjcTabAssetsCorrupted), SNew(SPjcTabFilesExternal), TabUsage};
+	const TSharedRef<SWidget> Tabs[] = {
+	  SNew(SPjcTabOverview),
+	  SNew(SPjcTabAssetsUnused),
+	  SNew(SPjcTabAssetsIndirect),
+	  SNew(SPjcTabAssetsCorrupted),
+	  SNew(SPjcTabFilesExternal),
+	  TabUsage
+	};
 	for (const auto& Tab : Tabs) {
 		TestTrue(FString::Printf(TEXT("%s has content"), *Tab->GetTypeAsString()), Tab->GetChildren()->Num() > 0);
 	}
