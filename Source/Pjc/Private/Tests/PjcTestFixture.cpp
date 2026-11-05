@@ -174,6 +174,10 @@ FString FPjcTestFixture::RootPath() {
 	return TEXT("/Game/PjcTests");
 }
 
+FString FPjcTestFixture::LocalizedRootPath() {
+	return TEXT("/Game/L10N/fr/PjcTests");
+}
+
 FString FPjcTestFixture::PluginRootPath() {
 	return TEXT("/PjcTestContent");
 }
@@ -302,6 +306,15 @@ bool FPjcTestFixture::CreateAssets(FAutomationTestBase& Test) {
 	}
 	NewAsset<UCurveFloat>(Register(TEXT("Indirect"), TEXT("C_Indirect")), Packages);
 	NewAsset<UCurveFloat>(Register(TEXT("Indirect"), TEXT("C_IndirectPackage")), Packages);
+
+	// localized copies (Content/L10N/<culture>, same path as the source): used and unused with their source
+	const auto RegisterLocalized = [&](const FString& Folder, const FString& Name) {
+		const FString PackageName = LocalizedRootPath() / Folder / Name;
+		PackageNames.Add(Name + TEXT("_fr"), PackageName);
+		return PackageName;
+	};
+	NewAsset<UCurveFloat>(RegisterLocalized(TEXT("Indirect"), TEXT("C_Indirect")), Packages);
+	NewAsset<UCurveFloat>(RegisterLocalized(TEXT("Unused"), TEXT("C_Unused")), Packages);
 	NewAsset<UCurveFloat>(Register(TEXT("Excluded"), TEXT("C_ByFolder")), Packages);
 	NewAsset<UCurveLinearColor>(Register(TEXT("Misc"), TEXT("CLC_ByClass")), Packages);
 	NewAsset<UCurveFloat>(Register(TEXT("Misc"), TEXT("C_ByAsset")), Packages);
@@ -573,6 +586,10 @@ void FPjcTestFixture::Cleanup() {
 	IFileManager::Get().Delete(*IndirectConfigFile(), false, true, true);
 	IFileManager::Get().Delete(*FeatureConfigFile(), false, true, true);
 	IFileManager::Get().DeleteDirectory(*(ContentDir() / TEXT("Localization/PjcTests")), false, true);
+	// localized copies, and the L10N folders when the fixture made them
+	IFileManager::Get().DeleteDirectory(*(ContentDir() / TEXT("L10N/fr/PjcTests")), false, true);
+	IFileManager::Get().DeleteDirectory(*(ContentDir() / TEXT("L10N/fr")), false, false);
+	IFileManager::Get().DeleteDirectory(*(ContentDir() / TEXT("L10N")), false, false);
 	for (const auto& Dir : {FeaturePluginDir() / TEXT("Content"), DisabledPluginContentDir()}) {
 		TArray<FString> Children;
 		IFileManager::Get().FindFiles(Children, *(Dir / TEXT("*")), true, true);
@@ -582,8 +599,9 @@ void FPjcTestFixture::Cleanup() {
 		}
 	}
 
-	AssetRegistry().ScanPathsSynchronous({RootPath(), PluginRootPath(), FeatureRootPath()}, true);
+	AssetRegistry().ScanPathsSynchronous({RootPath(), LocalizedRootPath(), PluginRootPath(), FeatureRootPath()}, true);
 	AssetRegistry().RemovePath(RootPath());
+	AssetRegistry().RemovePath(LocalizedRootPath());
 	RefreshAssetManager();
 
 	PackageNames.Reset();
@@ -603,7 +621,8 @@ FString FPjcTestFixture::ObjectPath(const FString& Name) const {
 	const FString* PackageName = PackageNames.Find(Name);
 	if (!PackageName) return {};
 
-	return FString::Printf(TEXT("%s.%s"), **PackageName, *Name);
+	// object is named like its package; keys can differ (localized copies)
+	return FString::Printf(TEXT("%s.%s"), **PackageName, *FPackageName::GetLongPackageAssetName(*PackageName));
 }
 
 FString FPjcTestFixture::PackageFile(const FString& Name) const {
@@ -629,6 +648,7 @@ TArray<FString> FPjcTestFixture::UsedNames(const bool bScanPlugins, const bool b
 	  TEXT("BP_Primary"),
 	  TEXT("BP_PrimaryOutside"),
 	  TEXT("PAL_Folder"),
+	  TEXT("C_Indirect_fr"),
 	};
 
 	if (bFolderLabelsUsed) {
@@ -665,6 +685,7 @@ TArray<FString> FPjcTestFixture::UnusedNames(const bool bScanPlugins, const bool
 	  TEXT("OL_CircA"),
 	  TEXT("OL_CircB"),
 	  TEXT("BP_Unused"),
+	  TEXT("C_Unused_fr"),
 	};
 
 	if (!bFolderLabelsUsed) {

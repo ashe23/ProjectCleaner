@@ -27,6 +27,8 @@
  *   Circular/OL_CircA,B      reference each other, nothing references them
  *   Indirect/C_Indirect      referenced only from Config/PjcTests.ini (object path)
  *   Indirect/C_IndirectPackage  referenced only from Config/PjcTests.ini (package name)
+ *   /Game/L10N/fr/PjcTests/Indirect/C_Indirect  localized copy of used C_Indirect (key C_Indirect_fr): used
+ *   /Game/L10N/fr/PjcTests/Unused/C_Unused      localized copy of unused C_Unused (key C_Unused_fr): unused
  *   Cinematics/LS_Cinematic  LevelSequence, not referenced (used by "cinematic assets used" setting)
  *   Misc/C_RefByPlugin       referenced only by /PjcTestContent/OL_PluginLib
  *   Excluded/C_ByFolder      excluded by folder
@@ -77,6 +79,7 @@ class FPjcTestFixture
 
 	static bool IsTestHost();
 	static FString RootPath();
+	static FString LocalizedRootPath();
 	static FString PluginRootPath();
 	static FString FeatureRootPath();
 	static FString IndirectConfigFile();

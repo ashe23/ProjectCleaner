@@ -204,6 +204,8 @@ enum class EPjcUsageReason : uint8
 	Editor,
 	/** GameplayCue notify, loaded by its tag */
 	GameplayCue,
+	/** localized copy (L10N/<culture> folder) of a used asset, loaded in its place for that culture (Parent: the source) */
+	Localized,
 	/** Megascans preset */
 	Megascans,
 	/** listed explicitly by a Primary Asset Label */

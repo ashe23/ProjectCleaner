@@ -911,6 +911,7 @@ def commandlet_failed(code, log):
 # everything fixture tests may leave behind (crashed or failed runs), same list PjcFixture.Build writes to expected.json
 FIXTURE_LEFTOVERS = [
     "Content/PjcTests",
+    "Content/L10N/fr/PjcTests",
     "Content/Localization/PjcTests",
     "Config/PjcTests.ini",
     "Plugins/" + TEST_CONTENT_PLUGIN + "/Content/*",
@@ -930,6 +931,11 @@ def remove_fixture(host, expected=None):
                 remove_tree(path)
             elif os.path.isfile(path):
                 os.remove(path)
+    # L10N folders the fixture made for its localized copies, only when nothing else is in them
+    for rel in ("Content/L10N/fr", "Content/L10N"):
+        path = os.path.join(host.dir, rel)
+        if os.path.isdir(path) and not os.listdir(path):
+            os.rmdir(path)
     if expected.get("cleanup_user_config", True):
         # exclude and scan settings saved by the fixture for the commandlet run
         for name in ("EditorPerProjectUserSettings.ini", "Editor.ini"):

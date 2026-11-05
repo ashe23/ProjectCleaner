@@ -266,23 +266,37 @@ bool UPjcSubsystem::Scan(const bool bShowSlowTask) {
 	}
 
 	TArray<FName> Deps;
-	while (Stack.Num() > 0) {
-		const FName Current = PjcShim::PopArray(Stack);
+	const auto WalkGameReferences = [&]() {
+		while (Stack.Num() > 0) {
+			const FName Current = PjcShim::PopArray(Stack);
 
-		Deps.Reset();
-		GetModuleAssetRegistry().Get().GetDependencies(
-			Current, Deps, UE::AssetRegistry::EDependencyCategory::Package, UE::AssetRegistry::EDependencyQuery::Game
-		);
-		for (const auto& Dep : Deps) {
-			if (Labels.Contains(Dep) || !PathIsInsideProject(Dep.ToString())) continue;
+			Deps.Reset();
+			GetModuleAssetRegistry().Get().GetDependencies(
+				Current, Deps, UE::AssetRegistry::EDependencyCategory::Package, UE::AssetRegistry::EDependencyQuery::Game
+			);
+			for (const auto& Dep : Deps) {
+				if (Labels.Contains(Dep) || !PathIsInsideProject(Dep.ToString())) continue;
 
-			bool bAlreadyUsed = false;
-			GameUsed.Add(Dep, &bAlreadyUsed);
-			if (!bAlreadyUsed) {
-				Stack.Add(Dep);
+				bool bAlreadyUsed = false;
+				GameUsed.Add(Dep, &bAlreadyUsed);
+				if (!bAlreadyUsed) {
+					Stack.Add(Dep);
+				}
 			}
 		}
+	};
+	WalkGameReferences();
+
+	// localized copies ship with their source, the cooker adds them
+	for (const auto& Pair : Result.Usage) {
+		const FPjcAssetUsage& AssetUsage = Pair.Value;
+		if (AssetUsage.Reason == EPjcUsageReason::Localized && AssetUsage.bUsed && GameUsed.Contains(AssetUsage.Parent)
+			&& !GameUsed.Contains(Pair.Key)) {
+			GameUsed.Add(Pair.Key);
+			Stack.Add(Pair.Key);
+		}
 	}
+	WalkGameReferences();
 
 	Result.Status.Reserve(Result.Assets.Num());
 	for (const auto& Asset : Result.Assets) {
@@ -346,6 +360,7 @@ FString UPjcSubsystem::GetUsageReasonText(const FPjcAssetUsage& Usage) {
 		case EPjcUsageReason::Editor :			 return TEXT("Editor utility asset");
 		case EPjcUsageReason::GameplayCue :		 return TEXT("GameplayCue notify ") + Usage.Detail;
 		case EPjcUsageReason::Megascans :		 return TEXT("Megascans preset");
+		case EPjcUsageReason::Localized :		 return TEXT("Localized copy of ") + FPackageName::GetShortName(Usage.Parent);
 		case EPjcUsageReason::FolderLabelAsset : return TEXT("Listed by folder label ") + FPackageName::GetShortName(Usage.Parent);
 		case EPjcUsageReason::Dependency :		 return TEXT("Referenced by ") + FPackageName::GetShortName(Usage.Parent);
 		case EPjcUsageReason::FolderLabel :		 return TEXT("In folder of label ") + FPackageName::GetShortName(Usage.Parent);
@@ -511,6 +526,27 @@ void UPjcSubsystem::ComputeAssetsUsed(
 		}
 	};
 
+	// localized copies (Content/L10N/<culture>/...) are loaded in place of their source for that culture: they are
+	// used as their source is, also when only a folder label keeps it
+	const auto AddLocalized = [&]() {
+		for (const auto& Asset : AssetsAll) {
+			const FString PackageName = Asset.PackageName.ToString();
+			if (Usage.Contains(Asset.PackageName) || !FPackageName::IsLocalizedPackage(PackageName)) continue;
+
+			const FName Source {*FPackageName::GetSourcePackagePath(PackageName)};
+			const FPjcAssetUsage* SourceUsage = Usage.Find(Source);
+			if (!SourceUsage) continue;
+
+			const bool bSourceUsed = SourceUsage->bUsed;
+			const bool bSourceFolderLabelOnly = SourceUsage->bFolderLabelOnly;
+			FPjcAssetUsage* CopyUsage = AddUsed(Asset.PackageName, EPjcUsageReason::Localized, Source, FString {});
+			if (CopyUsage) {
+				CopyUsage->bUsed = bSourceUsed;
+				CopyUsage->bFolderLabelOnly = bSourceFolderLabelOnly;
+			}
+		}
+	};
+
 	FollowDependencies(FolderLabels, false);
 
 	// assets of a primary class the Asset Manager did not register (outside the type's folders, or in a game feature
@@ -527,9 +563,13 @@ void UPjcSubsystem::ComputeAssetsUsed(
 		}
 	}
 	FollowDependencies(FolderLabels, false);
+	AddLocalized();
+	FollowDependencies(FolderLabels, false);
 
 	if (FolderLabels.Num() > 0) {
 		Queue.Append(FolderLabels.Array());
+		FollowDependencies(TSet<FName> {}, true);
+		AddLocalized();
 		FollowDependencies(TSet<FName> {}, true);
 	}
 

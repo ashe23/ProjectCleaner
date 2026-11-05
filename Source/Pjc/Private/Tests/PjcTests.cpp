@@ -35,7 +35,8 @@ namespace
 	}
 
 	bool IsFixturePath(const FString& Path) {
-		return Path.StartsWith(FPjcTestFixture::RootPath() + TEXT("/")) || Path.StartsWith(FPjcTestFixture::PluginRootPath() + TEXT("/"));
+		return Path.StartsWith(FPjcTestFixture::RootPath() + TEXT("/")) || Path.StartsWith(FPjcTestFixture::LocalizedRootPath() + TEXT("/"))
+			|| Path.StartsWith(FPjcTestFixture::PluginRootPath() + TEXT("/"));
 	}
 
 	TSet<FString> FixtureAssets(const TArray<FAssetData>& Assets) {
@@ -484,6 +485,8 @@ bool FPjcTestScanUsage::RunTest(const FString& Parameters) {
 	TestReason(TEXT("LS_Cinematic"), EPjcUsageReason::Excluded, nullptr, TEXT("Cinematic"));
 	TestReason(TEXT("C_Labeled"), EPjcUsageReason::FolderLabel, TEXT("PAL_Folder"), nullptr);
 	TestReason(TEXT("C_UnusedLeaf"), EPjcUsageReason::None, nullptr, nullptr);
+	TestReason(TEXT("C_Indirect_fr"), EPjcUsageReason::Localized, TEXT("C_Indirect"), nullptr);
+	TestReason(TEXT("C_Unused_fr"), EPjcUsageReason::None, nullptr, nullptr);
 
 	const FPjcAssetUsage* Labeled = Usage.Find(PackageOf(Fixture, TEXT("C_Labeled")));
 	if (TestNotNull(TEXT("usage of C_Labeled"), Labeled)) {
@@ -609,6 +612,8 @@ bool FPjcTestScanResult::RunTest(const FString& Parameters) {
 	TestStatus(TEXT("C_Labeled"), EPjcAssetStatus::EditorOnly, EPjcUsageReason::FolderLabel);
 	TestStatus(TEXT("BP_Primary"), EPjcAssetStatus::Used, EPjcUsageReason::Primary);
 	TestStatus(TEXT("C_Indirect"), EPjcAssetStatus::Used, EPjcUsageReason::Indirect);
+	TestStatus(TEXT("C_Indirect_fr"), EPjcAssetStatus::Used, EPjcUsageReason::Localized);
+	TestStatus(TEXT("C_Unused_fr"), EPjcAssetStatus::Unused, EPjcUsageReason::None);
 	TestStatus(TEXT("EUB_Tool"), EPjcAssetStatus::EditorOnly, EPjcUsageReason::Editor);
 	TestStatus(TEXT("C_UnusedLeaf"), EPjcAssetStatus::Unused, EPjcUsageReason::None);
 
@@ -799,6 +804,7 @@ bool FPjcFixtureBuild::RunTest(const FString& Parameters) {
 
 	TArray<FString> CleanupPaths {
 	  TEXT("Content/PjcTests"),
+	  TEXT("Content/L10N/fr/PjcTests"),
 	  TEXT("Config/PjcTests.ini"),
 	  TEXT("Plugins/PjcTestContent/Content/C_PluginUsed.uasset"),
 	  TEXT("Plugins/PjcTestContent/Content/C_PluginUnused.uasset"),

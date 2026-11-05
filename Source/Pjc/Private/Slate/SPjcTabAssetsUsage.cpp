@@ -620,7 +620,16 @@ FText SPjcTabAssetsUsage::BuildWhyText(const FPjcUsageItem& Item) {
 					)
 				);
 				break;
-			case EPjcUsageReason::Megascans :		 Paragraphs.Add(TEXT("Used: it is a Megascans preset.")); break;
+			case EPjcUsageReason::Megascans : Paragraphs.Add(TEXT("Used: it is a Megascans preset.")); break;
+			case EPjcUsageReason::Localized :
+				Paragraphs.Add(
+					FString::Printf(
+						TEXT("Used: it is a localized copy of %s (L10N folder), loaded in its place for that language while %s is used."),
+						*ParentName,
+						*ParentName
+					)
+				);
+				break;
 			case EPjcUsageReason::FolderLabelAsset : Paragraphs.Add(FString::Printf(TEXT("Used: folder label %s lists it."), *ParentName)); break;
 			case EPjcUsageReason::FolderLabel :
 				Paragraphs.Add(
