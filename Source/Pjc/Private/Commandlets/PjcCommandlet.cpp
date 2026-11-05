@@ -46,6 +46,49 @@ namespace
 		FJsonObjectConverter::UStructToJsonObject(Settings->GetClass(), Settings, Object, CPF_Config, 0);
 		return Object;
 	}
+
+	// shared scan result: status counts, redirectors apart, editor only assets and what starts the chains of used ones
+	TSharedRef<FJsonObject> JsonScanResult() {
+		UPjcSubsystem::Scan(false);
+		const FPjcScanResult& Result = UPjcSubsystem::GetScanResult();
+
+		int32 NumUsed = 0;
+		int32 NumUnused = 0;
+		TArray<FAssetData> EditorOnly;
+		TMap<FString, int32> ChainReasons;
+		for (const auto& Asset : Result.Assets) {
+			const EPjcAssetStatus Status = Result.GetStatus(Asset.PackageName);
+			if (Status == EPjcAssetStatus::Unused) {
+				++NumUnused;
+				continue;
+			}
+
+			if (Status == EPjcAssetStatus::Used) {
+				++NumUsed;
+			}
+			else {
+				EditorOnly.Add(Asset);
+			}
+			ChainReasons.FindOrAdd(UEnum::GetValueAsString(Result.GetChainReason(Asset.PackageName)))++;
+		}
+
+		const TSharedRef<FJsonObject> Reasons = MakeShared<FJsonObject>();
+		for (const auto& Pair : ChainReasons) {
+			Reasons->SetNumberField(Pair.Key, Pair.Value);
+		}
+
+		const TSharedRef<FJsonObject> Object = MakeShared<FJsonObject>();
+		Object->SetNumberField(TEXT("assets"), Result.Assets.Num());
+		Object->SetNumberField(TEXT("used"), NumUsed);
+		Object->SetNumberField(TEXT("editor_only"), EditorOnly.Num());
+		Object->SetNumberField(TEXT("unused"), NumUnused);
+		Object->SetNumberField(TEXT("redirectors"), Result.Redirectors.Num());
+		Object->SetNumberField(TEXT("seconds"), Result.Seconds);
+		Object->SetObjectField(TEXT("chain_reasons"), Reasons);
+		Object->SetArrayField(TEXT("assets_editor_only"), JsonAssets(EditorOnly));
+		Object->SetArrayField(TEXT("redirectors_list"), JsonAssets(Result.Redirectors));
+		return Object;
+	}
 }	// namespace
 
 UPjcCommandlet::UPjcCommandlet() {
@@ -254,6 +297,7 @@ UPjcCommandlet::FCleanupStats UPjcCommandlet::StatsCollect(const bool bPrintList
 		Block->SetArrayField(TEXT("files_external_excluded"), JsonStrings(FilesExternalExcluded));
 		Block->SetArrayField(TEXT("files_corrupted"), JsonStrings(FilesCorrupted));
 		Block->SetArrayField(TEXT("redirectors"), JsonAssets(Redirectors));
+		Block->SetObjectField(TEXT("scan_result"), JsonScanResult());
 		Report->SetObjectField(ReportField, Block);
 	}
 
