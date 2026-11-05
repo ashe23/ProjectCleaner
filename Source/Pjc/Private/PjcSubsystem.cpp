@@ -231,6 +231,68 @@ bool UPjcSubsystem::Scan(const bool bShowSlowTask) {
 		Result.Sizes.Add(Asset.PackageName, GetAssetSize(Asset));
 	}
 
+	// the game uses what roots that are not editor assets reach through references the game loads (the registry
+	// marks editor-only references); what only editor assets or editor-only references reach is editor only.
+	// Folder label references are a cook rule, not followed: what a label keeps is a root here.
+	// Primary Asset Labels are editor only, so the registry marks all their references editor only, but the Asset
+	// Manager cooks what they list: every reference of a label is followed.
+	TSet<FName> FolderLabels;
+	TMap<FName, FName> LabelAssets;
+	GetFolderLabels(Result.Assets, Result.Usage, FolderLabels, LabelAssets);
+	TSet<FName> Labels;
+	for (const auto& Asset : Result.Assets) {
+		const UClass* AssetClass = Asset.GetClass();
+		if (AssetClass && AssetClass->IsChildOf(UPrimaryAssetLabel::StaticClass())) {
+			Labels.Add(Asset.PackageName);
+		}
+	}
+
+	TSet<FName> GameUsed;
+	TArray<FName> Stack;
+	for (const auto& Pair : Result.Usage) {
+		const FPjcAssetUsage& AssetUsage = Pair.Value;
+		if (!AssetUsage.bUsed) continue;
+
+		const bool bGameRoot = AssetUsage.Parent.IsNone() && AssetUsage.Reason != EPjcUsageReason::Editor;
+		const bool bLabelKept = AssetUsage.Reason == EPjcUsageReason::FolderLabel || AssetUsage.Reason == EPjcUsageReason::FolderLabelAsset;
+		if (bGameRoot || bLabelKept) {
+			GameUsed.Add(Pair.Key);
+			Stack.Add(Pair.Key);
+		}
+	}
+
+	TArray<FName> Deps;
+	while (Stack.Num() > 0) {
+		const FName Current = PjcShim::PopArray(Stack);
+		if (FolderLabels.Contains(Current)) continue;
+
+		Deps.Reset();
+		GetModuleAssetRegistry().Get().GetDependencies(
+			Current,
+			Deps,
+			UE::AssetRegistry::EDependencyCategory::Package,
+			Labels.Contains(Current) ? UE::AssetRegistry::FDependencyQuery {}
+									 : UE::AssetRegistry::FDependencyQuery {UE::AssetRegistry::EDependencyQuery::Game}
+		);
+		for (const auto& Dep : Deps) {
+			if (!PathIsInsideProject(Dep.ToString())) continue;
+
+			bool bAlreadyUsed = false;
+			GameUsed.Add(Dep, &bAlreadyUsed);
+			if (!bAlreadyUsed) {
+				Stack.Add(Dep);
+			}
+		}
+	}
+
+	Result.Status.Reserve(Result.Assets.Num());
+	for (const auto& Asset : Result.Assets) {
+		const EPjcAssetStatus Status = !Result.IsUsed(Asset.PackageName) ? EPjcAssetStatus::Unused
+			: GameUsed.Contains(Asset.PackageName)						 ? EPjcAssetStatus::Used
+																		 : EPjcAssetStatus::EditorOnly;
+		Result.Status.Add(Asset.PackageName, Status);
+	}
+
 	Result.Time = FDateTime::UtcNow();
 	Result.Seconds = FPlatformTime::Seconds() - StartTime;
 	LastScan = MoveTemp(Result);

@@ -6,6 +6,17 @@
 #include "AssetRegistry/AssetData.h"
 #include "PjcTypes.h"
 
+/** What a scanned asset is for, in the shared scan result */
+enum class EPjcAssetStatus : uint8
+{
+	/** nothing used references it, cleanup deletes it */
+	Unused,
+	/** the game uses it: reached from a root that is not an editor asset, through references the game loads */
+	Used,
+	/** only the editor uses it: editor assets, or reached only through editor-only references. Cleanup keeps it. */
+	EditorOnly,
+};
+
 /**
  * One scan of the project, shared by every Project Cleaner tab.
  * Made by UPjcSubsystem::Scan, read with UPjcSubsystem::GetScanResult. It is not updated when assets change:
@@ -45,6 +56,26 @@ struct FPjcScanResult
 
 	/** Size on disk of each scanned asset */
 	TMap<FName, int64> Sizes;
+
+	/** Status of each scanned asset */
+	TMap<FName, EPjcAssetStatus> Status;
+
+	EPjcAssetStatus GetStatus(const FName Package) const {
+		const EPjcAssetStatus* Found = Status.Find(Package);
+		return Found ? *Found : EPjcAssetStatus::Unused;
+	}
+
+	/**
+	 * Reason of the asset that starts the usage chain of a package, following Parent through Dependency steps:
+	 * the own reason of a root, FolderLabel for what a folder label keeps, None for unused packages.
+	 */
+	EPjcUsageReason GetChainReason(const FName Package) const {
+		const FPjcAssetUsage* Step = Usage.Find(Package);
+		for (int32 NumSteps = 0; Step && Step->Reason == EPjcUsageReason::Dependency && NumSteps < 1024; ++NumSteps) {
+			Step = Usage.Find(Step->Parent);
+		}
+		return Step ? Step->Reason : EPjcUsageReason::None;
+	}
 
 	bool IsValid() const {
 		return Time.GetTicks() > 0;

@@ -616,6 +616,28 @@ bool FPjcTestScanResult::RunTest(const FString& Parameters) {
 	TestTrue(TEXT("C_UnusedLeaf has a size"), Result.GetSize(UnusedLeaf) > 0);
 	TestTrue(TEXT("PAL_Root used"), Result.IsUsed(PackageOf(Fixture, TEXT("PAL_Root"))));
 
+	// status: game use, editor only use, unused
+	TestEqual(TEXT("status of every asset"), Result.Status.Num(), Result.Assets.Num());
+	int32 NumUnusedStatus = 0;
+	for (const auto& Pair : Result.Status) {
+		NumUnusedStatus += Pair.Value == EPjcAssetStatus::Unused ? 1 : 0;
+	}
+	TestEqual(TEXT("unused status of every unused asset"), NumUnusedStatus, Result.Unused.Num());
+	const auto TestStatus = [&](const TCHAR* Name, const EPjcAssetStatus Status, const EPjcUsageReason ChainReason) {
+		const FName Package = PackageOf(Fixture, Name);
+		TestEqual(*FString::Printf(TEXT("%s status"), Name), static_cast<int32>(Result.GetStatus(Package)), static_cast<int32>(Status));
+		TestEqual(
+			*FString::Printf(TEXT("%s chain reason"), Name), static_cast<int32>(Result.GetChainReason(Package)), static_cast<int32>(ChainReason)
+		);
+	};
+	TestStatus(TEXT("PAL_Root"), EPjcAssetStatus::Used, EPjcUsageReason::Primary);
+	TestStatus(TEXT("OL_Chain"), EPjcAssetStatus::Used, EPjcUsageReason::Primary);
+	TestStatus(TEXT("C_ChainLeaf"), EPjcAssetStatus::Used, EPjcUsageReason::Primary);
+	TestStatus(TEXT("C_Indirect"), EPjcAssetStatus::Used, EPjcUsageReason::Indirect);
+	TestStatus(TEXT("C_Labeled"), EPjcAssetStatus::Used, EPjcUsageReason::FolderLabel);
+	TestStatus(TEXT("EUB_Tool"), EPjcAssetStatus::EditorOnly, EPjcUsageReason::Editor);
+	TestStatus(TEXT("C_UnusedLeaf"), EPjcAssetStatus::Unused, EPjcUsageReason::None);
+
 	return true;
 }
 
