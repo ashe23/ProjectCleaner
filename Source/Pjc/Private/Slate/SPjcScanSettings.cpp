@@ -127,11 +127,8 @@ void SPjcScanSettings::Rebuild() {
 		TEXT("Primary assets"),
 		Roots(EPjcUsageReason::Primary),
 		TEXT("primary assets"),
-		TEXT(
-			"Maps and the assets the Asset Manager registers count as used and start chains, with the assets and collections Primary Asset " "Lab" "e"
-																																				   "l"
-																																				   "s" " " "list."
-		)
+		TEXT("Maps and the assets the Asset Manager registers count as used and start chains, ")
+			TEXT("with the assets and collections Primary Asset Labels list.")
 	)];
 	Used->AddSlot().AutoHeight()[MakeFixedRow(
 		TEXT("Editor assets"),
@@ -161,15 +158,8 @@ void SPjcScanSettings::Rebuild() {
 		TEXT("Unregistered primary classes"),
 		&FPjcScanDraft::bUnregisteredPrimaryUsed,
 		NumUnregistered,
-		TEXT(
-			"Assets of a primary asset class that the Asset Manager did not register count as used: outside its folders, or in a game " "feature " "p"
-																																				   "l"
-																																				   "u"
-																																				   "g"
-																																				   "i"
-																																				   "n"
-																																				   " " "that is not registered yet."
-		),
+		TEXT("Assets of a primary asset class that the Asset Manager did not register count as used: ")
+			TEXT("outside its folders, or in a game feature plugin that is not registered yet."),
 		NumUnregistered > 0 ? FString::Printf(TEXT("%s %s assets used"), *UnregisteredKeep, *PjcFormat::Count(NumUnregistered))
 							: TEXT("None in the last scan")
 	)];
