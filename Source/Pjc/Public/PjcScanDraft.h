@@ -39,4 +39,7 @@ struct FPjcScanDraft
 
 	/** Back to the project settings (Undo) */
 	static void Revert();
+
+	/** Broadcast after the draft was edited or reverted, so every Scan settings panel shows it */
+	static FSimpleMulticastDelegate& OnEdited();
 };

@@ -2,10 +2,12 @@
 
 #include "Slate/SPjcTabOverview.h"
 #include "Slate/SPjcScanBar.h"
+#include "Slate/SPjcToolFrame.h"
 #include "PjcFormat.h"
 #include "PjcSettings.h"
 #include "PjcSubsystem.h"
 // Engine Headers
+#include "Widgets/Layout/SBox.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/Text/STextBlock.h"
 
@@ -16,17 +18,15 @@ void SPjcTabOverview::Construct(const FArguments& InArgs) {
 	// clang-format off
 	ChildSlot
 	[
-		SNew(SVerticalBox)
-		+ SVerticalBox::Slot()
-		.AutoHeight()
+		SNew(SPjcToolFrame)
+		.PageName(TEXT("Overview"))
+		.PanelOpen(true)
 		[
-			SNew(SPjcScanBar)
-		]
-		+ SVerticalBox::Slot()
-		.FillHeight(1.0f)
-		.Padding(FMargin {14.0f})
-		[
-			SNew(STextBlock).Text(this, &SPjcTabOverview::GetSummaryText)
+			SNew(SBox)
+			.Padding(FMargin {14.0f})
+			[
+				SNew(STextBlock).Text(this, &SPjcTabOverview::GetSummaryText)
+			]
 		]
 	];
 	// clang-format on

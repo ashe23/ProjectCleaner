@@ -6,8 +6,10 @@
 
 namespace
 {
-	TOptional<FPjcScanDraft> Draft;
-}
+	// unity builds join files: names unique to this file
+	TOptional<FPjcScanDraft> PjcSharedDraft;
+	FSimpleMulticastDelegate PjcDraftEdited;
+}	// namespace
 
 FPjcScanDraft FPjcScanDraft::FromSettings() {
 	const UPjcScanSettings* Settings = GetDefault<UPjcScanSettings>();
@@ -47,10 +49,10 @@ bool FPjcScanDraft::operator==(const FPjcScanDraft& Other) const {
 }
 
 FPjcScanDraft& FPjcScanDraft::Get() {
-	if (!Draft.IsSet()) {
-		Draft = FromSettings();
+	if (!PjcSharedDraft.IsSet()) {
+		PjcSharedDraft = FromSettings();
 	}
-	return Draft.GetValue();
+	return PjcSharedDraft.GetValue();
 }
 
 bool FPjcScanDraft::IsChanged() {
@@ -58,5 +60,10 @@ bool FPjcScanDraft::IsChanged() {
 }
 
 void FPjcScanDraft::Revert() {
-	Draft = FromSettings();
+	PjcSharedDraft = FromSettings();
+	PjcDraftEdited.Broadcast();
+}
+
+FSimpleMulticastDelegate& FPjcScanDraft::OnEdited() {
+	return PjcDraftEdited;
 }

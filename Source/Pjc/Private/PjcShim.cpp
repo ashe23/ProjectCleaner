@@ -60,6 +60,22 @@ namespace PjcShim
 #endif
 	}
 
+	const FSlateBrush* GetIconLock() {
+#if ENGINE_MAJOR_VERSION == 5
+		return GetBrush(TEXT("Icons.Lock"));
+#else
+		return GetBrush(TEXT("PropertyWindow.Locked"));
+#endif
+	}
+
+	const FSlateBrush* GetIconSettings() {
+#if ENGINE_MAJOR_VERSION == 5
+		return GetBrush(TEXT("Icons.Settings"));
+#else
+		return GetBrush(TEXT("LevelEditor.GameSettings"));
+#endif
+	}
+
 	const FSlateBrush* GetIconClose() {
 #if ENGINE_MAJOR_VERSION == 5
 		return GetBrush(TEXT("Icons.X"));
