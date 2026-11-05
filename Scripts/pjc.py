@@ -1462,11 +1462,10 @@ def polygon_verify(p, scenario, settings, snapshot, text_refs, report, status, c
         problems.append("{} reference(s) to removed assets: {}".format(len(broken), "; ".join(broken[:8])))
 
     if settings["bPrimaryAssetsUsed"]:
-        ignored = set(settings.get("IgnoredPrimaryAssetTypes", []))
         lost = []
         for entry in report.get("asset_manager_primary_assets", []):
             primary_id, _, path = entry.partition(" ")
-            if path and primary_id.split(":")[0] not in ignored and package_of(path) in gone:
+            if path and package_of(path) in gone:
                 lost.append(primary_id)
         if lost:
             problems.append("{} asset manager primary asset(s) removed: {}".format(len(lost), ", ".join(sorted(lost)[:8])))

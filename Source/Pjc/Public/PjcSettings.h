@@ -46,16 +46,22 @@ class UPjcScanSettings final : public UDeveloperSettings
 	UPROPERTY(EditAnywhere, Config, Category = "Scan Roots", meta = (EditCondition = "bScanProjectPlugins"))
 	TArray<FString> IgnoredPlugins;
 
-	/** Assets of primary asset types (Project Settings > Asset Manager) and their derived classes are used. */
+	/** Primary assets are used: every map and every asset the Asset Manager registers (Project Settings > Asset Manager). */
 	UPROPERTY(EditAnywhere, Config, Category = "Used Assets")
 	bool bPrimaryAssetsUsed = true;
 
 	/**
-	 * Primary asset types that do not make assets used.
-	 * Use it when a project registers a type with very broad base class and everything becomes used.
+	 * Assets of a primary asset class that the Asset Manager did not register are used: outside the folders of their
+	 * type, or in a game feature plugin that is not registered yet. On by default, the game may still load them.
+	 * Turn off when a type has a very broad base class and too many assets stay used.
 	 */
-	UPROPERTY(EditAnywhere, Config, Category = "Used Assets", meta = (EditCondition = "bPrimaryAssetsUsed"))
-	TArray<FName> IgnoredPrimaryAssetTypes;
+	UPROPERTY(
+		EditAnywhere,
+		Config,
+		Category = "Used Assets",
+		meta = (EditCondition = "bPrimaryAssetsUsed", DisplayName = "Unregistered Primary Classes Used")
+	)
+	bool bUnregisteredPrimaryUsed = true;
 
 	/**
 	 * Primary Asset Labels with "Label Assets In My Directory" make every asset in their folder used.

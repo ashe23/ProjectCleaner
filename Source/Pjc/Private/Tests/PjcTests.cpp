@@ -92,7 +92,7 @@ namespace
 		bool bScanProjectPlugins;
 		TArray<FString> IgnoredPlugins;
 		bool bPrimaryAssetsUsed;
-		TArray<FName> IgnoredPrimaryAssetTypes;
+		bool bUnregisteredPrimaryUsed;
 		bool bFolderLabelsUsed;
 		bool bCinematicAssetsUsed;
 		bool bEditorAssetsUsed;
@@ -103,7 +103,7 @@ namespace
 			bScanProjectPlugins = Settings->bScanProjectPlugins;
 			IgnoredPlugins = Settings->IgnoredPlugins;
 			bPrimaryAssetsUsed = Settings->bPrimaryAssetsUsed;
-			IgnoredPrimaryAssetTypes = Settings->IgnoredPrimaryAssetTypes;
+			bUnregisteredPrimaryUsed = Settings->bUnregisteredPrimaryUsed;
 			bFolderLabelsUsed = Settings->bFolderLabelsUsed;
 			bCinematicAssetsUsed = Settings->bCinematicAssetsUsed;
 			bEditorAssetsUsed = Settings->bEditorAssetsUsed;
@@ -114,7 +114,7 @@ namespace
 			Settings->bScanProjectPlugins = bInScanProjectPlugins;
 			Settings->IgnoredPlugins.Reset();
 			Settings->bPrimaryAssetsUsed = true;
-			Settings->IgnoredPrimaryAssetTypes.Reset();
+			Settings->bUnregisteredPrimaryUsed = true;
 			Settings->bFolderLabelsUsed = true;
 			Settings->bCinematicAssetsUsed = true;
 			Settings->bEditorAssetsUsed = true;
@@ -126,7 +126,7 @@ namespace
 			Settings->bScanProjectPlugins = bScanProjectPlugins;
 			Settings->IgnoredPlugins = IgnoredPlugins;
 			Settings->bPrimaryAssetsUsed = bPrimaryAssetsUsed;
-			Settings->IgnoredPrimaryAssetTypes = IgnoredPrimaryAssetTypes;
+			Settings->bUnregisteredPrimaryUsed = bUnregisteredPrimaryUsed;
 			Settings->bFolderLabelsUsed = bFolderLabelsUsed;
 			Settings->bCinematicAssetsUsed = bCinematicAssetsUsed;
 			Settings->bEditorAssetsUsed = bEditorAssetsUsed;
@@ -414,14 +414,14 @@ bool FPjcTestScanSettings::RunTest(const FString& Parameters) {
 	);
 	Settings->bIndirectAssetsUsed = true;
 
-	Settings->IgnoredPrimaryAssetTypes.Add(TEXT("PjcTestPrimary"));
+	Settings->bUnregisteredPrimaryUsed = false;
 	TestSetEqual(
 		*this,
-		TEXT("ignored primary type"),
+		TEXT("unregistered primary classes not used"),
 		UnusedFixtureAssets(),
-		UnusedDefault.Union(ObjectPaths(Fixture, {TEXT("BP_Primary"), TEXT("BP_PrimaryOutside")}))
+		UnusedDefault.Union(ObjectPaths(Fixture, {TEXT("BP_PrimaryOutside")}))
 	);
-	Settings->IgnoredPrimaryAssetTypes.Reset();
+	Settings->bUnregisteredPrimaryUsed = true;
 
 	Settings->bPrimaryAssetsUsed = false;
 	TestSetEqual(

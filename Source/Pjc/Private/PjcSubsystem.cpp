@@ -521,6 +521,7 @@ void UPjcSubsystem::ComputeAssetsUsed(
 	// plugin that is not registered yet) are uncertain, so used. After the references above, which tell more, and
 	// before folder labels, so they stay used when labels do not count
 	for (const auto& Asset : AssetsAll) {
+		if (!ScanSettings->bUnregisteredPrimaryUsed) break;
 		if (Usage.Contains(Asset.PackageName)) continue;
 
 		const FName AssetClassName = PjcShim::GetAssetClassName(Asset);
@@ -882,7 +883,6 @@ void UPjcSubsystem::GetClassNamesPrimary(TSet<FName>& ClassNames) {
 
 	for (const auto& AssetTypeInfo : AssetTypeInfos) {
 		if (!AssetTypeInfo.AssetBaseClassLoaded) continue;
-		if (ScanSettings->IgnoredPrimaryAssetTypes.Contains(AssetTypeInfo.PrimaryAssetType)) continue;
 
 		// type registered without real base class (e.g. GameFeature plugins in Lyra like projects)
 		// would make every asset used (#58)
@@ -922,8 +922,6 @@ void UPjcSubsystem::GetPackagesPrimary(TSet<FName>& Packages) {
 	TArray<FPrimaryAssetTypeInfo> TypeInfos;
 	AssetManager.GetPrimaryAssetTypeInfoList(TypeInfos);
 	for (const auto& TypeInfo : TypeInfos) {
-		if (ScanSettings->IgnoredPrimaryAssetTypes.Contains(TypeInfo.PrimaryAssetType)) continue;
-
 		TArray<FPrimaryAssetId> Ids;
 		AssetManager.GetPrimaryAssetIdList(TypeInfo.PrimaryAssetType, Ids);
 		for (const auto& Id : Ids) {
