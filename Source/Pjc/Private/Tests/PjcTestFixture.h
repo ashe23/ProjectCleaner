@@ -37,6 +37,7 @@
  *   Misc/CLC_ByClass         excluded by class (CurveLinearColor)
  *   Misc/C_ByAsset           excluded by asset
  *   Editor/EUB_Tool          EditorUtilityBlueprint
+ *   Editor/BP_Validator      Blueprint derived from EditorValidatorBase (only when DataValidation is loaded): editor asset
  *   Blueprints/BP_Primary    Blueprint derived from PlayerController, primary type "PjcTestPrimary" in host config
  *   Blueprints/BP_Unused     Blueprint derived from Actor, not referenced
  *   Misc/BP_PrimaryOutside   PlayerController Blueprint outside the PjcTestPrimary folder: primary class, not registered
@@ -82,6 +83,8 @@ class FPjcTestFixture
 	static bool IsTestHost();
 	static FString RootPath();
 	static FString LocalizedRootPath();
+	/** EditorValidatorBase, null when DataValidation is not loaded */
+	static UClass* ValidatorBaseClass();
 	static FString PluginRootPath();
 	static FString FeatureRootPath();
 	static FString IndirectConfigFile();

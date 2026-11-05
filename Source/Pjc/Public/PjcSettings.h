@@ -79,6 +79,9 @@ class UPjcScanSettings final : public UDeveloperSettings
 
 	/** Classes that are cinematic assets, resolved for current engine version */
 	static TArray<FString> GetCinematicClassPaths();
+
+	/** Editor tools and editor tool data from engine plugins (with derived classes), resolved for current engine version */
+	static TArray<FString> GetEditorClassPaths();
 };
 
 /**

@@ -329,6 +329,12 @@ bool FPjcTestFixture::CreateAssets(FAutomationTestBase& Test) {
 		= NewBlueprint(Register(TEXT("Blueprints"), TEXT("BP_Primary")), APlayerController::StaticClass(), UBlueprint::StaticClass(), Packages);
 	const UBlueprint* BlueprintUnused
 		= NewBlueprint(Register(TEXT("Blueprints"), TEXT("BP_Unused")), AActor::StaticClass(), UBlueprint::StaticClass(), Packages);
+	if (UClass* ValidatorClass = ValidatorBaseClass()) {
+		if (!NewBlueprint(Register(TEXT("Editor"), TEXT("BP_Validator")), ValidatorClass, UBlueprint::StaticClass(), Packages)) {
+			Test.AddError(TEXT("Failed to create validator blueprint"));
+			return false;
+		}
+	}
 	const UBlueprint* BlueprintPrimaryOutside
 		= NewBlueprint(Register(TEXT("Misc"), TEXT("BP_PrimaryOutside")), APlayerController::StaticClass(), UBlueprint::StaticClass(), Packages);
 
@@ -613,6 +619,10 @@ void FPjcTestFixture::Cleanup() {
 	bLyraLayout = false;
 }
 
+UClass* FPjcTestFixture::ValidatorBaseClass() {
+	return FSoftClassPath {TEXT("/Script/DataValidation.EditorValidatorBase")}.ResolveClass();
+}
+
 void FPjcTestFixture::RefreshAssetManager() {
 	if (PjcShim::IsAssetManagerValid()) {
 		UAssetManager::Get().RefreshPrimaryAssetDirectory(true);
@@ -654,6 +664,10 @@ TArray<FString> FPjcTestFixture::UsedNames(const bool bScanPlugins, const bool b
 	  TEXT("C_AlwaysCooked"),
 	  TEXT("C_RegistryData"),
 	};
+
+	if (ValidatorBaseClass()) {
+		Names.Add(TEXT("BP_Validator"));
+	}
 
 	if (bFolderLabelsUsed) {
 		Names.Add(TEXT("C_Labeled"));

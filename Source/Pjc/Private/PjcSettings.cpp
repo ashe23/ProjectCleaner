@@ -30,6 +30,26 @@ TArray<FString> UPjcScanSettings::GetCinematicClassPaths() {
 	};
 }
 
+TArray<FString> UPjcScanSettings::GetEditorClassPaths() {
+	// the editor loads them by class (validators, scriptable tools) or they are tool data; classes of disabled plugins
+	// or other engine versions do not resolve and are skipped
+	return {
+	  TEXT("/Script/DataValidation.EditorValidatorBase"),
+	  TEXT("/Script/ScriptableToolsFramework.ScriptableInteractiveTool"),
+	  TEXT("/Script/UserToolBoxCore.UTBEditorBlueprint"),
+	  TEXT("/Script/ModelContextProtocolEditor.ModelContextProtocolEditorToolLibraryBlueprint"),
+	  TEXT("/Script/VCamCoreEditor.EditorOnlyVCamModifierBlueprint"),
+	  TEXT("/Script/NamingTokensEditor.EditorUtilityNamingTokens"),
+	  TEXT("/Script/WorldBookmark.WorldBookmark"),
+	  TEXT("/Script/ToolPresetAsset.InteractiveToolsPresetCollectionAsset"),
+	  TEXT("/Script/ControlRig.ControlRigPoseAsset"),
+	  TEXT("/Script/TakesCore.TakePreset"),
+	  TEXT("/Script/LevelSnapshots.LevelSnapshot"),
+	  TEXT("/Script/LevelSnapshotFilters.LevelSnapshotBlueprintFilter"),
+	  TEXT("/Script/RemoteControl.RemoteControlPreset"),
+	};
+}
+
 FName UPjcEditorSettings::GetContainerName() const {
 	return TEXT("Editor");
 }

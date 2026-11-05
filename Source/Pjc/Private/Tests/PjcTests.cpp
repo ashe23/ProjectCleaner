@@ -270,7 +270,11 @@ bool FPjcTestScanClassification::RunTest(const FString& Parameters) {
 	TestSetEqual(*this, TEXT("primary"), FixtureAssets(Assets), ObjectPaths(Fixture, Fixture.PrimaryNames()));
 
 	UPjcSubsystem::GetAssetsEditor(Assets, false);
-	TestSetEqual(*this, TEXT("editor"), FixtureAssets(Assets), ObjectPaths(Fixture, {TEXT("EUB_Tool")}));
+	TArray<FString> EditorNames {TEXT("EUB_Tool")};
+	if (FPjcTestFixture::ValidatorBaseClass()) {
+		EditorNames.Add(TEXT("BP_Validator"));
+	}
+	TestSetEqual(*this, TEXT("editor"), FixtureAssets(Assets), ObjectPaths(Fixture, EditorNames));
 
 	UPjcSubsystem::GetAssetsExcluded(Assets, false);
 	TestSetEqual(*this, TEXT("excluded"), FixtureAssets(Assets), ObjectPaths(Fixture, Fixture.ExcludedNames()));
@@ -479,6 +483,12 @@ bool FPjcTestScanUsage::RunTest(const FString& Parameters) {
 	TestReason(TEXT("C_Indirect"), EPjcUsageReason::Indirect, nullptr, TEXT("PjcTests.ini, line 2"));
 	TestReason(TEXT("C_RefByPlugin"), EPjcUsageReason::EngineReferenced, nullptr, TEXT("/PjcTestContent/"));
 	TestReason(TEXT("EUB_Tool"), EPjcUsageReason::Editor, nullptr, nullptr);
+	if (FPjcTestFixture::ValidatorBaseClass()) {
+		TestReason(TEXT("BP_Validator"), EPjcUsageReason::Editor, nullptr, nullptr);
+	}
+	else {
+		AddInfo(TEXT("DataValidation not loaded, validator blueprint not tested"));
+	}
 	TestReason(TEXT("C_ByAsset"), EPjcUsageReason::Excluded, nullptr, TEXT("Excluded asset"));
 	TestReason(TEXT("C_ByFolder"), EPjcUsageReason::Excluded, nullptr, TEXT("In excluded folder"));
 	TestReason(TEXT("CLC_ByClass"), EPjcUsageReason::Excluded, nullptr, TEXT("Excluded class"));

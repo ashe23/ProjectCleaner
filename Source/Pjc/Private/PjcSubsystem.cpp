@@ -357,7 +357,7 @@ FString UPjcSubsystem::GetUsageReasonText(const FPjcAssetUsage& Usage) {
 		case EPjcUsageReason::EngineReferenced : return TEXT("Referenced outside scanned content");
 		case EPjcUsageReason::Indirect :		 return TEXT("Named in ") + Usage.Detail;
 		case EPjcUsageReason::Excluded :		 return Usage.Detail.IsEmpty() ? TEXT("Excluded") : Usage.Detail;
-		case EPjcUsageReason::Editor :			 return TEXT("Editor utility asset");
+		case EPjcUsageReason::Editor :			 return TEXT("Editor asset");
 		case EPjcUsageReason::GameplayCue :		 return TEXT("GameplayCue notify ") + Usage.Detail;
 		case EPjcUsageReason::Megascans :		 return TEXT("Megascans preset");
 		case EPjcUsageReason::Localized :		 return TEXT("Localized copy of ") + FPackageName::GetShortName(Usage.Parent);
@@ -1013,11 +1013,18 @@ void UPjcSubsystem::GetConfigFolders(TMap<FString, FString>& Folders) {
 void UPjcSubsystem::GetClassNamesEditor(TSet<FName>& ClassNames) {
 	ClassNames.Empty();
 
-	const TArray<FName> ClassNamesEditorBase {
+	TArray<FName> ClassNamesEditorBase {
 	  PjcShim::GetClassName(UEditorUtilityWidget::StaticClass()),
 	  PjcShim::GetClassName(UEditorUtilityBlueprint::StaticClass()),
 	  PjcShim::GetClassName(UEditorUtilityWidgetBlueprint::StaticClass())
 	};
+	for (const auto& ClassPath : UPjcScanSettings::GetEditorClassPaths()) {
+		// no loading: classes of disabled plugins or other engine versions are just skipped
+		const UClass* EditorClass = FSoftClassPath {ClassPath}.ResolveClass();
+		if (EditorClass) {
+			ClassNamesEditorBase.Emplace(PjcShim::GetClassName(EditorClass));
+		}
+	}
 
 	PjcShim::GetDerivedClassNames(ClassNamesEditorBase, TSet<FName> {}, ClassNames);
 }
