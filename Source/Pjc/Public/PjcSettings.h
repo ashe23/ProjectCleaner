@@ -46,21 +46,15 @@ class UPjcScanSettings final : public UDeveloperSettings
 	UPROPERTY(EditAnywhere, Config, Category = "Scan Roots", meta = (EditCondition = "bScanProjectPlugins"))
 	TArray<FString> IgnoredPlugins;
 
-	/** Primary assets are used: every map and every asset the Asset Manager registers (Project Settings > Asset Manager). */
-	UPROPERTY(EditAnywhere, Config, Category = "Used Assets")
-	bool bPrimaryAssetsUsed = true;
+	// always used, not settings: primary assets (every map and what the Asset Manager registers), editor assets,
+	// assets named in source and config files
 
 	/**
 	 * Assets of a primary asset class that the Asset Manager did not register are used: outside the folders of their
 	 * type, or in a game feature plugin that is not registered yet. On by default, the game may still load them.
 	 * Turn off when a type has a very broad base class and too many assets stay used.
 	 */
-	UPROPERTY(
-		EditAnywhere,
-		Config,
-		Category = "Used Assets",
-		meta = (EditCondition = "bPrimaryAssetsUsed", DisplayName = "Unregistered Primary Classes Used")
-	)
+	UPROPERTY(EditAnywhere, Config, Category = "Used Assets", meta = (DisplayName = "Unregistered Primary Classes Used"))
 	bool bUnregisteredPrimaryUsed = true;
 
 	/**
@@ -69,7 +63,7 @@ class UPjcScanSettings final : public UDeveloperSettings
 	 * A label in content root (e.g. Lyra DefaultGame_Label) makes whole project used: turn off to review those assets.
 	 * Label itself and its explicit assets, blueprints and collection are always used.
 	 */
-	UPROPERTY(EditAnywhere, Config, Category = "Used Assets", meta = (EditCondition = "bPrimaryAssetsUsed"))
+	UPROPERTY(EditAnywhere, Config, Category = "Used Assets")
 	bool bFolderLabelsUsed = true;
 
 	/**
@@ -78,14 +72,6 @@ class UPjcScanSettings final : public UDeveloperSettings
 	 */
 	UPROPERTY(EditAnywhere, Config, Category = "Used Assets")
 	bool bCinematicAssetsUsed = true;
-
-	/** Editor utility assets (Editor Utility Widgets and Blueprints) are used. */
-	UPROPERTY(EditAnywhere, Config, Category = "Used Assets")
-	bool bEditorAssetsUsed = true;
-
-	/** Assets mentioned in project source code (.h, .cpp, .cs) or config (.ini) files are used. */
-	UPROPERTY(EditAnywhere, Config, Category = "Used Assets")
-	bool bIndirectAssetsUsed = true;
 
 	/** Assets of these classes (and derived classes) are always used. */
 	UPROPERTY(EditAnywhere, Config, Category = "Used Assets", meta = (AllowAbstract = "true"))

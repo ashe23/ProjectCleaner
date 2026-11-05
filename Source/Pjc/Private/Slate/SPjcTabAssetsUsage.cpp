@@ -611,7 +611,7 @@ FText SPjcTabAssetsUsage::BuildWhyText(const FPjcUsageItem& Item) {
 					FString::Printf(TEXT("Used: %s. Exclusions are managed in the Assets Unused tab and in Project Cleaner settings."), *Usage.Detail)
 				);
 				break;
-			case EPjcUsageReason::Editor : Paragraphs.Add(TEXT("Used: it is an editor utility asset (setting Editor Assets Used).")); break;
+			case EPjcUsageReason::Editor : Paragraphs.Add(TEXT("Used: it is an editor utility asset.")); break;
 			case EPjcUsageReason::GameplayCue :
 				Paragraphs.Add(
 					FString::Printf(

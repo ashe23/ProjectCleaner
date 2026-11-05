@@ -91,46 +91,34 @@ namespace
 		UPjcScanSettings* Settings;
 		bool bScanProjectPlugins;
 		TArray<FString> IgnoredPlugins;
-		bool bPrimaryAssetsUsed;
 		bool bUnregisteredPrimaryUsed;
 		bool bFolderLabelsUsed;
 		bool bCinematicAssetsUsed;
-		bool bEditorAssetsUsed;
-		bool bIndirectAssetsUsed;
 		TArray<TSoftClassPtr<UObject>> UsedClasses;
 
 		explicit FPjcScopedScanSettings(const bool bInScanProjectPlugins) : Settings(GetMutableDefault<UPjcScanSettings>()) {
 			bScanProjectPlugins = Settings->bScanProjectPlugins;
 			IgnoredPlugins = Settings->IgnoredPlugins;
-			bPrimaryAssetsUsed = Settings->bPrimaryAssetsUsed;
 			bUnregisteredPrimaryUsed = Settings->bUnregisteredPrimaryUsed;
 			bFolderLabelsUsed = Settings->bFolderLabelsUsed;
 			bCinematicAssetsUsed = Settings->bCinematicAssetsUsed;
-			bEditorAssetsUsed = Settings->bEditorAssetsUsed;
-			bIndirectAssetsUsed = Settings->bIndirectAssetsUsed;
 			UsedClasses = Settings->UsedClasses;
 
 			// known state, fixture expectations are written for defaults
 			Settings->bScanProjectPlugins = bInScanProjectPlugins;
 			Settings->IgnoredPlugins.Reset();
-			Settings->bPrimaryAssetsUsed = true;
 			Settings->bUnregisteredPrimaryUsed = true;
 			Settings->bFolderLabelsUsed = true;
 			Settings->bCinematicAssetsUsed = true;
-			Settings->bEditorAssetsUsed = true;
-			Settings->bIndirectAssetsUsed = true;
 			Settings->UsedClasses.Reset();
 		}
 
 		~FPjcScopedScanSettings() {
 			Settings->bScanProjectPlugins = bScanProjectPlugins;
 			Settings->IgnoredPlugins = IgnoredPlugins;
-			Settings->bPrimaryAssetsUsed = bPrimaryAssetsUsed;
 			Settings->bUnregisteredPrimaryUsed = bUnregisteredPrimaryUsed;
 			Settings->bFolderLabelsUsed = bFolderLabelsUsed;
 			Settings->bCinematicAssetsUsed = bCinematicAssetsUsed;
-			Settings->bEditorAssetsUsed = bEditorAssetsUsed;
-			Settings->bIndirectAssetsUsed = bIndirectAssetsUsed;
 			Settings->UsedClasses = UsedClasses;
 		}
 	};
@@ -401,19 +389,6 @@ bool FPjcTestScanSettings::RunTest(const FString& Parameters) {
 	TestSetEqual(*this, TEXT("curves are used classes"), UnusedFixtureAssets(), ObjectPaths(Fixture, NotCurves));
 	Settings->UsedClasses.Reset();
 
-	Settings->bEditorAssetsUsed = false;
-	TestSetEqual(*this, TEXT("editor assets not used"), UnusedFixtureAssets(), UnusedDefault.Union(ObjectPaths(Fixture, {TEXT("EUB_Tool")})));
-	Settings->bEditorAssetsUsed = true;
-
-	Settings->bIndirectAssetsUsed = false;
-	TestSetEqual(
-		*this,
-		TEXT("indirect assets not used"),
-		UnusedFixtureAssets(),
-		UnusedDefault.Union(ObjectPaths(Fixture, {TEXT("C_Indirect"), TEXT("C_IndirectPackage")}))
-	);
-	Settings->bIndirectAssetsUsed = true;
-
 	Settings->bUnregisteredPrimaryUsed = false;
 	TestSetEqual(
 		*this,
@@ -422,24 +397,6 @@ bool FPjcTestScanSettings::RunTest(const FString& Parameters) {
 		UnusedDefault.Union(ObjectPaths(Fixture, {TEXT("BP_PrimaryOutside")}))
 	);
 	Settings->bUnregisteredPrimaryUsed = true;
-
-	Settings->bPrimaryAssetsUsed = false;
-	TestSetEqual(
-		*this,
-		TEXT("primary assets not used"),
-		UnusedFixtureAssets(),
-		UnusedDefault.Union(ObjectPaths(
-			Fixture,
-			{TEXT("PAL_Root"),
-			 TEXT("OL_Chain"),
-			 TEXT("C_ChainLeaf"),
-			 TEXT("BP_Primary"),
-			 TEXT("BP_PrimaryOutside"),
-			 TEXT("PAL_Folder"),
-			 TEXT("C_Labeled")}
-		))
-	);
-	Settings->bPrimaryAssetsUsed = true;
 
 	TArray<FAssetData> LabelOnly;
 	UPjcSubsystem::GetAssetsFolderLabelOnly(LabelOnly, false);

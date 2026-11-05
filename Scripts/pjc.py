@@ -1111,11 +1111,9 @@ def cmd_clean(args, hosts):
 SCAN_SETTINGS_SECTION = "/Script/Pjc.PjcScanSettings"
 SCAN_SETTINGS_DEFAULT = {
     "bScanProjectPlugins": False,
-    "bPrimaryAssetsUsed": True,
+    "bUnregisteredPrimaryUsed": True,
     "bFolderLabelsUsed": True,
     "bCinematicAssetsUsed": True,
-    "bEditorAssetsUsed": True,
-    "bIndirectAssetsUsed": True,
 }
 REDIRECTOR_CLASSES = ("/Script/CoreUObject.ObjectRedirector", "ObjectRedirector")
 LABEL_CLASSES = ("/Script/Engine.PrimaryAssetLabel", "PrimaryAssetLabel")
@@ -1126,9 +1124,7 @@ TEXT_REF_EXTENSIONS = (".ini", ".h", ".cpp", ".cs", ".py", ".json")
 POLYGON_SCENARIOS = {
     "scan": ({}, ["-scan_only"]),
     "scan_plugins": ({"bScanProjectPlugins": True}, ["-scan_only"]),
-    "no_primary": ({"bPrimaryAssetsUsed": False}, ["-scan_only"]),
-    "no_editor": ({"bEditorAssetsUsed": False}, ["-scan_only"]),
-    "no_indirect": ({"bIndirectAssetsUsed": False}, ["-scan_only"]),
+    "no_unregistered_primary": ({"bUnregisteredPrimaryUsed": False}, ["-scan_only"]),
     "no_cinematic": ({"bCinematicAssetsUsed": False}, ["-scan_only"]),
     "no_folder_labels": ({"bFolderLabelsUsed": False}, ["-scan_only"]),
     "fix_redirectors": ({"bScanProjectPlugins": True}, ["-scan_only", "-fix_redirectors"]),
@@ -1139,9 +1135,7 @@ POLYGON_SCENARIOS = {
 # (wider, narrower): turning a "used" rule off can only add unused assets, never remove them
 POLYGON_SUPERSETS = [
     ("scan_plugins", "scan"),
-    ("no_primary", "scan"),
-    ("no_editor", "scan"),
-    ("no_indirect", "scan"),
+    ("no_unregistered_primary", "scan"),
     ("no_cinematic", "scan"),
     ("no_folder_labels", "scan"),
 ]
@@ -1434,11 +1428,8 @@ def polygon_verify(p, scenario, settings, snapshot, text_refs, report, status, c
     labels = {name for name, info in packages.items() if any(c in LABEL_CLASSES for c in info["classes"])}
 
     unused = {package_of(a) for a in before["assets_unused"]}
-    # lists are reported even when their rule is off, only enabled rules must keep assets used
-    used_rules = {"excluded": {package_of(a) for a in before["assets_excluded"]}}
-    for rule, setting in (("primary", "bPrimaryAssetsUsed"), ("editor", "bEditorAssetsUsed"), ("indirect", "bIndirectAssetsUsed")):
-        if settings[setting]:
-            used_rules[rule] = {package_of(a) for a in before["assets_" + rule]}
+    # primary, editor and indirect assets are always used, never listed unused
+    used_rules = {rule: {package_of(a) for a in before["assets_" + rule]} for rule in ("excluded", "primary", "editor", "indirect")}
     for rule, used in used_rules.items():
         clash = sorted(used & unused)
         if clash:
@@ -1461,26 +1452,24 @@ def polygon_verify(p, scenario, settings, snapshot, text_refs, report, status, c
     if broken:
         problems.append("{} reference(s) to removed assets: {}".format(len(broken), "; ".join(broken[:8])))
 
-    if settings["bPrimaryAssetsUsed"]:
-        lost = []
-        for entry in report.get("asset_manager_primary_assets", []):
-            primary_id, _, path = entry.partition(" ")
-            if path and package_of(path) in gone:
-                lost.append(primary_id)
-        if lost:
-            problems.append("{} asset manager primary asset(s) removed: {}".format(len(lost), ", ".join(sorted(lost)[:8])))
+    lost = []
+    for entry in report.get("asset_manager_primary_assets", []):
+        primary_id, _, path = entry.partition(" ")
+        if path and package_of(path) in gone:
+            lost.append(primary_id)
+    if lost:
+        problems.append("{} asset manager primary asset(s) removed: {}".format(len(lost), ", ".join(sorted(lost)[:8])))
 
     # GameplayAbilities loads cue notifies by tag from GameplayCueNotifyPaths, nothing references them
     cues = sorted(name for name in gone if packages.get(name, {}).get("gameplay_cue"))
     if cues:
         problems.append("{} GameplayCue notify(s) removed: {}".format(len(cues), ", ".join(cues[:8])))
 
-    if settings["bIndirectAssetsUsed"]:
-        lost = sorted(name for name in gone if name in text_refs)
-        if lost:
-            problems.append(
-                "{} asset(s) named in Config/Source removed: {}".format(len(lost), ", ".join("{} ({})".format(n, text_refs[n][0]) for n in lost[:8]))
-            )
+    lost = sorted(name for name in gone if name in text_refs)
+    if lost:
+        problems.append(
+            "{} asset(s) named in Config/Source removed: {}".format(len(lost), ", ".join("{} ({})".format(n, text_refs[n][0]) for n in lost[:8]))
+        )
 
     if cleanup:
         external = {p.rel(f).lower() for f in before["files_external"] + before["files_corrupted"]}

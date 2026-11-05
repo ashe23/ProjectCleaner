@@ -374,9 +374,7 @@ void UPjcSubsystem::ComputeAssetsUsed(
 	GetAssetsAll(AssetsAll);
 	GetAssetsEngineReferenced(AssetsEngineReferenced, bShowSlowTask);
 	const TSet<FAssetData> AssetsEngineReferencedSet {AssetsEngineReferenced};
-	if (ScanSettings->bIndirectAssetsUsed) {
-		GetAssetsIndirect(AssetsIndirect, AssetsIndirectInfos, bShowSlowTask);
-	}
+	GetAssetsIndirect(AssetsIndirect, AssetsIndirectInfos, bShowSlowTask);
 	GetAssetsExcluded(AssetsExcluded, bShowSlowTask);
 	GetClassNamesPrimary(ClassNamesPrimary);
 	GetClassNamesEditor(ClassNamesEditor);
@@ -467,9 +465,7 @@ void UPjcSubsystem::ComputeAssetsUsed(
 	// what only they keep is told apart (and unused when "Folder Labels Used" is off)
 	TSet<FName> FolderLabels;
 	TMap<FName, FName> LabelAssets;
-	if (ScanSettings->bPrimaryAssetsUsed) {
-		GetFolderLabels(AssetsAll, Usage, FolderLabels, LabelAssets);
-	}
+	GetFolderLabels(AssetsAll, Usage, FolderLabels, LabelAssets);
 	for (const auto& LabelAsset : LabelAssets) {
 		AddUsed(LabelAsset.Key, EPjcUsageReason::FolderLabelAsset, LabelAsset.Value, FString {});
 	}
@@ -868,9 +864,6 @@ void UPjcSubsystem::GetAssetsEngineReferenced(TArray<FAssetData>& Assets, const 
 void UPjcSubsystem::GetClassNamesPrimary(TSet<FName>& ClassNames) {
 	ClassNames.Empty();
 
-	const UPjcScanSettings* ScanSettings = GetDefault<UPjcScanSettings>();
-	if (!ScanSettings->bPrimaryAssetsUsed) return;
-
 	// getting list of primary asset classes that are defined in AssetManager
 	if (!PjcShim::IsAssetManagerValid()) return;
 
@@ -903,9 +896,6 @@ void UPjcSubsystem::GetClassNamesPrimary(TSet<FName>& ClassNames) {
 void UPjcSubsystem::GetPackagesPrimary(TSet<FName>& Packages) {
 	Packages.Reset();
 
-	const UPjcScanSettings* ScanSettings = GetDefault<UPjcScanSettings>();
-	if (!ScanSettings->bPrimaryAssetsUsed) return;
-
 	// levels are opened by name, so every map is primary, not only the ones the Asset Manager registers (e.g. Lyra TransitionMap)
 	TArray<FAssetData> AssetsAll;
 	GetAssetsAll(AssetsAll);
@@ -935,8 +925,6 @@ void UPjcSubsystem::GetPackagesPrimary(TSet<FName>& Packages) {
 
 void UPjcSubsystem::GetClassNamesEditor(TSet<FName>& ClassNames) {
 	ClassNames.Empty();
-
-	if (!GetDefault<UPjcScanSettings>()->bEditorAssetsUsed) return;
 
 	const TArray<FName> ClassNamesEditorBase {
 	  PjcShim::GetClassName(UEditorUtilityWidget::StaticClass()),
