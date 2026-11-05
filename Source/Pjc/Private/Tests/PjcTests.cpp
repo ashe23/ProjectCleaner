@@ -551,9 +551,11 @@ bool FPjcTestScanResult::RunTest(const FString& Parameters) {
 	UObjectRedirector* Redirector = NewObject<UObjectRedirector>(CreatePackage(*RedirectorPackageName), TEXT("R_Test"), RF_Public | RF_Standalone);
 	Redirector->DestinationObject = FSoftObjectPath {Fixture.ObjectPath(TEXT("C_UnusedLeaf"))}.ResolveObject();
 	FAssetRegistryModule::AssetCreated(Redirector);
-#if ENGINE_MAJOR_VERSION < 5
-	// UE4 registry unregisters the redirection on delete but does not register it on create (ensure)
+	// registry before 5.5 unregisters the redirection on delete but does not register it on create (ensure)
+#if ENGINE_MAJOR_VERSION < 5 || (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION == 0)
 	GRedirectCollector.AddAssetPathRedirection(FName {*Redirector->GetPathName()}, FName {*Fixture.ObjectPath(TEXT("C_UnusedLeaf"))});
+#elif ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION < 5
+	GRedirectCollector.AddAssetPathRedirection(FSoftObjectPath {Redirector}, FSoftObjectPath {Fixture.ObjectPath(TEXT("C_UnusedLeaf"))});
 #endif
 	ON_SCOPE_EXIT {
 		// garbage collection frees it
