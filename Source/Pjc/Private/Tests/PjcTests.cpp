@@ -284,7 +284,12 @@ bool FPjcTestScanClassification::RunTest(const FString& Parameters) {
 
 	TArray<FPjcAssetIndirectInfo> IndirectInfos;
 	UPjcSubsystem::GetAssetsIndirect(Assets, IndirectInfos, false);
-	TestSetEqual(*this, TEXT("indirect"), FixtureAssets(Assets), ObjectPaths(Fixture, {TEXT("C_Indirect"), TEXT("C_IndirectPackage")}));
+	TestSetEqual(
+		*this,
+		TEXT("indirect"),
+		FixtureAssets(Assets),
+		ObjectPaths(Fixture, {TEXT("C_Indirect"), TEXT("C_IndirectPackage"), TEXT("C_InPython"), TEXT("C_InPlatformConfig")})
+	);
 
 	const FPjcAssetIndirectInfo* IndirectInfo = IndirectInfos.FindByPredicate([&](const FPjcAssetIndirectInfo& Info) {
 		return PjcShim::GetObjectPathString(Info.Asset).Equals(Fixture.ObjectPath(TEXT("C_Indirect")));
@@ -497,6 +502,8 @@ bool FPjcTestScanUsage::RunTest(const FString& Parameters) {
 	TestReason(TEXT("C_UnusedLeaf"), EPjcUsageReason::None, nullptr, nullptr);
 	TestReason(TEXT("C_Indirect_fr"), EPjcUsageReason::Localized, TEXT("C_Indirect"), nullptr);
 	TestReason(TEXT("C_AlwaysCooked"), EPjcUsageReason::ConfigFolder, nullptr, TEXT("/Game/PjcTests/AlwaysCook"));
+	TestReason(TEXT("C_InPython"), EPjcUsageReason::Indirect, nullptr, TEXT("PjcTests.py"));
+	TestReason(TEXT("C_InPlatformConfig"), EPjcUsageReason::Indirect, nullptr, TEXT("PjcPlatformTests.ini"));
 	TestReason(TEXT("C_RegistryData"), EPjcUsageReason::ConfigFolder, nullptr, TEXT("/Game/PjcTests/Registry"));
 	TestReason(TEXT("C_Unused_fr"), EPjcUsageReason::None, nullptr, nullptr);
 
@@ -804,6 +811,8 @@ bool FPjcFixtureBuild::RunTest(const FString& Parameters) {
 	}
 	KeptFiles.Add(RelativeToProject(Fixture.ExternalExcludedFile()));
 	KeptFiles.Add(RelativeToProject(FPjcTestFixture::IndirectConfigFile()));
+	KeptFiles.Add(RelativeToProject(FPjcTestFixture::PythonFile()));
+	KeptFiles.Add(RelativeToProject(FPjcTestFixture::PlatformConfigFile()));
 	KeptFiles.Add(RelativeToProject(FPjcTestFixture::FeatureConfigFile()));
 	KeptFiles.Add(TEXT("Plugins/GameFeatures/PjcFeature/Content/__ExternalActors__"));
 	for (const auto& File : Fixture.LyraKeptFiles()) {
@@ -818,6 +827,8 @@ bool FPjcFixtureBuild::RunTest(const FString& Parameters) {
 	TArray<FString> CleanupPaths {
 	  TEXT("Content/PjcTests"),
 	  TEXT("Content/L10N/fr/PjcTests"),
+	  TEXT("Content/Python/PjcTests.py"),
+	  TEXT("Platforms/PjcPlatform"),
 	  TEXT("Config/PjcTests.ini"),
 	  TEXT("Plugins/PjcTestContent/Content/C_PluginUsed.uasset"),
 	  TEXT("Plugins/PjcTestContent/Content/C_PluginUnused.uasset"),

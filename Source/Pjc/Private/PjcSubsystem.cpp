@@ -2269,6 +2269,18 @@ void UPjcSubsystem::GetSourceAndConfigFiles(TSet<FString>& Files) {
 	GetFilesByExt(DirSrc, true, false, PjcConstants::SourceFileExtensions, SourceFiles);
 	GetFilesByExt(DirCfg, true, false, PjcConstants::ConfigFileExtensions, ConfigFiles);
 
+	// platform extensions (Platforms/<Platform>/Config, /Source) and editor Python scripts (Content/Python, e.g. init_unreal.py)
+	const auto AddPlatformAndPythonFiles = [&SourceFiles, &ConfigFiles](const FString& Root) {
+		TArray<FString> Found;
+		GetFilesByExt(Root / TEXT("Platforms"), true, false, PjcConstants::SourceFileExtensions, Found);
+		SourceFiles.Append(Found);
+		GetFilesByExt(Root / TEXT("Platforms"), true, false, PjcConstants::ConfigFileExtensions, Found);
+		ConfigFiles.Append(Found);
+		GetFilesByExt(Root / TEXT("Content/Python"), true, false, PjcConstants::PythonFileExtensions, Found);
+		SourceFiles.Append(Found);
+	};
+	AddPlatformAndPythonFiles(FPaths::ConvertRelativePathToFull(FPaths::ProjectDir()));
+
 	// every plugin in project Plugins folder, nested ones too (e.g. Plugins/GameFeatures/ShooterCore),
 	// enabled or not: assets mentioned by them are kept even when their content is not scanned
 	TArray<FString> PluginDescriptors;
@@ -2289,6 +2301,8 @@ void UPjcSubsystem::GetSourceAndConfigFiles(TSet<FString>& Files) {
 		ConfigFiles.Append(PluginFiles);
 
 		PluginFiles.Reset();
+
+		AddPlatformAndPythonFiles(InstalledPlugin);
 	}
 
 	Files.Reset();

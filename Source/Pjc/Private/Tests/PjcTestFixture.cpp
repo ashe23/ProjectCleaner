@@ -190,6 +190,14 @@ FString FPjcTestFixture::IndirectConfigFile() {
 	return FPaths::ConvertRelativePathToFull(FPaths::ProjectConfigDir() / TEXT("PjcTests.ini"));
 }
 
+FString FPjcTestFixture::PythonFile() {
+	return FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / TEXT("Python/PjcTests.py"));
+}
+
+FString FPjcTestFixture::PlatformConfigFile() {
+	return FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() / TEXT("Platforms/PjcPlatform/Config/PjcPlatformTests.ini"));
+}
+
 FString FPjcTestFixture::FeatureConfigFile() {
 	return FeaturePluginDir() / TEXT("Config/PjcFeatureTests.ini");
 }
@@ -306,6 +314,8 @@ bool FPjcTestFixture::CreateAssets(FAutomationTestBase& Test) {
 	}
 	NewAsset<UCurveFloat>(Register(TEXT("Indirect"), TEXT("C_Indirect")), Packages);
 	NewAsset<UCurveFloat>(Register(TEXT("Indirect"), TEXT("C_IndirectPackage")), Packages);
+	NewAsset<UCurveFloat>(Register(TEXT("Indirect"), TEXT("C_InPython")), Packages);
+	NewAsset<UCurveFloat>(Register(TEXT("Indirect"), TEXT("C_InPlatformConfig")), Packages);
 	NewAsset<UCurveFloat>(Register(TEXT("AlwaysCook"), TEXT("C_AlwaysCooked")), Packages);
 	NewAsset<UCurveFloat>(Register(TEXT("Registry"), TEXT("C_RegistryData")), Packages);
 
@@ -502,6 +512,11 @@ void FPjcTestFixture::CreateFiles(const bool bCreateCorruptedFile) {
 		Config += TEXT("RawIcon=PjcTests/Files/T_RawIcon.svg\n");
 	}
 	FFileHelper::SaveStringToFile(Config, *IndirectConfigFile());
+
+	FFileHelper::SaveStringToFile(
+		FString::Printf(TEXT("import unreal\n\nasset = unreal.load_asset(\"%s\")\n"), *ObjectPath(TEXT("C_InPython"))), *PythonFile()
+	);
+	FFileHelper::SaveStringToFile(FString::Printf(TEXT("[PjcTests]\nAsset=%s\n"), *ObjectPath(TEXT("C_InPlatformConfig"))), *PlatformConfigFile());
 }
 
 void FPjcTestFixture::ApplyExcludeSettings() {
@@ -592,6 +607,11 @@ void FPjcTestFixture::Cleanup() {
 	IFileManager::Get().Delete(*(PluginContentDir() / TEXT("C_PluginUnused.uasset")), false, true, true);
 	IFileManager::Get().Delete(*(PluginContentDir() / TEXT("OL_PluginLib.uasset")), false, true, true);
 	IFileManager::Get().Delete(*IndirectConfigFile(), false, true, true);
+	// Python script and platform config, and their folders when the fixture made them
+	IFileManager::Get().Delete(*PythonFile(), false, true, true);
+	IFileManager::Get().DeleteDirectory(*FPaths::GetPath(PythonFile()), false, false);
+	IFileManager::Get().DeleteDirectory(*FPaths::GetPath(FPaths::GetPath(PlatformConfigFile())), false, true);
+	IFileManager::Get().DeleteDirectory(*(FPaths::ProjectDir() / TEXT("Platforms")), false, false);
 	IFileManager::Get().Delete(*FeatureConfigFile(), false, true, true);
 	IFileManager::Get().DeleteDirectory(*(ContentDir() / TEXT("Localization/PjcTests")), false, true);
 	// localized copies, and the L10N folders when the fixture made them
@@ -663,6 +683,8 @@ TArray<FString> FPjcTestFixture::UsedNames(const bool bScanPlugins, const bool b
 	  TEXT("C_Indirect_fr"),
 	  TEXT("C_AlwaysCooked"),
 	  TEXT("C_RegistryData"),
+	  TEXT("C_InPython"),
+	  TEXT("C_InPlatformConfig"),
 	};
 
 	if (ValidatorBaseClass()) {

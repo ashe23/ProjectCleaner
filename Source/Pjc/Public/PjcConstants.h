@@ -37,8 +37,9 @@ namespace PjcConstants
 	static constexpr int32 BucketSize = 500;
 	static const FName EmptyTagName {TEXT("PjcEmptyTag")};
 	static const TSet<FString> EngineFileExtensions {TEXT("umap"), TEXT("uasset"), TEXT("collection")};
-	static const TSet<FString> SourceFileExtensions {TEXT("cpp"), TEXT("h"), TEXT("cs")};
+	static const TSet<FString> SourceFileExtensions {TEXT("cpp"), TEXT("h"), TEXT("hpp"), TEXT("inl"), TEXT("cs")};
 	static const TSet<FString> ConfigFileExtensions {TEXT("ini")};
+	static const TSet<FString> PythonFileExtensions {TEXT("py")};
 	static const FString UrlGithub {TEXT("https://github.com/ashe23/ProjectCleaner")};
 	static const FString UrlDocs {TEXT("https://github.com/ashe23/ProjectCleaner/wiki")};
 	static const FString UrlIssueTracker {TEXT("https://github.com/ashe23/ProjectCleaner/issues")};

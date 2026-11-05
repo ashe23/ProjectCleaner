@@ -27,6 +27,8 @@
  *   Circular/OL_CircA,B      reference each other, nothing references them
  *   Indirect/C_Indirect      referenced only from Config/PjcTests.ini (object path)
  *   Indirect/C_IndirectPackage  referenced only from Config/PjcTests.ini (package name)
+ *   Indirect/C_InPython      named only in Content/Python/PjcTests.py (editor Python script)
+ *   Indirect/C_InPlatformConfig  named only in Platforms/PjcPlatform/Config/PjcPlatformTests.ini
  *   AlwaysCook/C_AlwaysCooked  in Additional Asset Directories to Cook (host config): used
  *   Registry/C_RegistryData    in Data Registry Directories to Scan (host config): used
  *   /Game/L10N/fr/PjcTests/Indirect/C_Indirect  localized copy of used C_Indirect (key C_Indirect_fr): used
@@ -88,6 +90,8 @@ class FPjcTestFixture
 	static FString PluginRootPath();
 	static FString FeatureRootPath();
 	static FString IndirectConfigFile();
+	static FString PythonFile();
+	static FString PlatformConfigFile();
 	static FString FeatureConfigFile();
 
 	FPjcTestFixture();
