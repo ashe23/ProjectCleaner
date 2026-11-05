@@ -175,6 +175,12 @@ class UPjcSubsystem final : public UEditorSubsystem
 	static void GetConfigFolders(TMap<FString, FString>& Folders);
 
 	/**
+	 * Exclusions are shared with the team since 3.1 (DefaultEditor.ini). Moves what this user still has in the per user
+	 * settings of older versions into the project settings, once. Returns how many entries moved.
+	 */
+	static int32 MoveExclusionsToProject();
+
+	/**
 	 * @brief Returns all editor assets class names
 	 * @param ClassNames TSet<FName>
 	 */

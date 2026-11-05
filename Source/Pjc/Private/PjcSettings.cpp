@@ -1,8 +1,18 @@
 // Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "PjcSettings.h"
+#include "PjcShim.h"
+#include "PjcTypes.h"
 
 UPjcScanSettings::UPjcScanSettings() {}
+
+#if WITH_EDITOR
+void UPjcAssetExcludeSettings::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) {
+	Super::PostEditChangeProperty(PropertyChangedEvent);
+
+	PjcShim::UpdateDefaultConfigFile(this);
+}
+#endif
 
 FName UPjcScanSettings::GetCategoryName() const {
 	return TEXT("Plugins");

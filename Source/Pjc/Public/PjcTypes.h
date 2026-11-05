@@ -8,7 +8,11 @@
 #include "Layout/Margin.h"
 #include "PjcTypes.generated.h"
 
-UCLASS(Config = EditorPerProjectUserSettings)
+/**
+ * Assets cleanup always keeps. Shared with the team: saved to DefaultEditor.ini (moved from per user settings in 3.1,
+ * see UPjcSubsystem::MoveExclusionsToProject).
+ */
+UCLASS(Config = Editor, DefaultConfig)
 class UPjcAssetExcludeSettings : public UObject
 {
 	GENERATED_BODY()
@@ -39,11 +43,7 @@ class UPjcAssetExcludeSettings : public UObject
   protected:
 
 #if WITH_EDITOR
-	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override {
-		Super::PostEditChangeProperty(PropertyChangedEvent);
-
-		SaveConfig();
-	}
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif
 };
 

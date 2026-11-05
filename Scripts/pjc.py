@@ -952,7 +952,8 @@ def remove_fixture(host, expected=None):
         default_editor = os.path.join(host.dir, "Config", "DefaultEditor.ini")
         if os.path.isfile(default_editor):
             with open(default_editor, encoding="utf-8", errors="replace") as f:
-                generated = "PjcScanSettings" in f.read()
+                content = f.read()
+            generated = "PjcScanSettings" in content or "PjcAssetExcludeSettings" in content
             if generated:
                 os.remove(default_editor)
     expected_file = os.path.join(host.dir, "Saved", "PjcFixture", "expected.json")

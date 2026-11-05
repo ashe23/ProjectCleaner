@@ -115,6 +115,69 @@ void UPjcSubsystem::Initialize(FSubsystemCollectionBase& Collection) {
 	Super::Initialize(Collection);
 
 	bFirstScan = true;
+	MoveExclusionsToProject();
+}
+
+int32 UPjcSubsystem::MoveExclusionsToProject() {
+	if (!GConfig) return 0;
+
+	const FString Section = UPjcAssetExcludeSettings::StaticClass()->GetPathName();
+	TArray<FString> Folders;
+	TArray<FString> Classes;
+	TArray<FString> Assets;
+	GConfig->GetArray(*Section, TEXT("ExcludedFolders"), Folders, GEditorPerProjectIni);
+	GConfig->GetArray(*Section, TEXT("ExcludedClasses"), Classes, GEditorPerProjectIni);
+	GConfig->GetArray(*Section, TEXT("ExcludedAssets"), Assets, GEditorPerProjectIni);
+	if (Folders.Num() + Classes.Num() + Assets.Num() == 0) return 0;
+
+	const auto Unquote = [](FString Value) {
+		Value.TrimStartAndEndInline();
+		Value.TrimQuotesInline();
+		return Value;
+	};
+
+	UPjcAssetExcludeSettings* Settings = GetMutableDefault<UPjcAssetExcludeSettings>();
+	int32 NumMoved = 0;
+	for (const auto& Entry : Folders) {
+		FString Path;
+		if (!FParse::Value(*Entry, TEXT("Path="), Path)) continue;
+
+		Path.RemoveFromEnd(TEXT(")"));
+		Path = Unquote(Path);
+		if (Path.IsEmpty() || Settings->ExcludedFolders.ContainsByPredicate([&Path](const FDirectoryPath& Dir) {
+				return Dir.Path == Path;
+			}))
+			continue;
+
+		Settings->ExcludedFolders.Add(FDirectoryPath {Path});
+		++NumMoved;
+	}
+	for (const auto& Entry : Classes) {
+		const TSoftClassPtr<UObject> Class {FSoftObjectPath {Unquote(Entry)}};
+		if (Class.IsNull() || Settings->ExcludedClasses.Contains(Class)) continue;
+
+		Settings->ExcludedClasses.Add(Class);
+		++NumMoved;
+	}
+	for (const auto& Entry : Assets) {
+		const TSoftObjectPtr<UObject> Asset {FSoftObjectPath {Unquote(Entry)}};
+		if (Asset.IsNull() || Settings->ExcludedAssets.Contains(Asset)) continue;
+
+		Settings->ExcludedAssets.Add(Asset);
+		++NumMoved;
+	}
+
+	PjcShim::UpdateDefaultConfigFile(Settings);
+	GConfig->EmptySection(*Section, GEditorPerProjectIni);
+	GConfig->Flush(false, GEditorPerProjectIni);
+
+	UE_LOG(
+		LogProjectCleaner,
+		Display,
+		TEXT("Moved %d exclusion(s) from your editor preferences to the project settings (Config/DefaultEditor.ini), shared with the team"),
+		NumMoved
+	);
+	return NumMoved;
 }
 
 void UPjcSubsystem::Deinitialize() {

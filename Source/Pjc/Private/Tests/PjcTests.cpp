@@ -683,6 +683,54 @@ bool FPjcTestScanDraft::RunTest(const FString& Parameters) {
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPjcTestExclusionsMoved, "ProjectCleaner.Settings.ExclusionsMoved", PJC_TEST_FLAGS)
+
+bool FPjcTestExclusionsMoved::RunTest(const FString& Parameters) {
+	if (!FPjcTestFixture::IsTestHost()) {
+		AddInfo(TEXT("Skipped, writes DefaultEditor.ini, runs only in test host projects"));
+		return true;
+	}
+
+	UPjcAssetExcludeSettings* Settings = GetMutableDefault<UPjcAssetExcludeSettings>();
+	const TArray<FDirectoryPath> SavedFolders = Settings->ExcludedFolders;
+	const TArray<TSoftClassPtr<UObject>> SavedClasses = Settings->ExcludedClasses;
+	const TArray<TSoftObjectPtr<UObject>> SavedAssets = Settings->ExcludedAssets;
+	Settings->ExcludedFolders = {FDirectoryPath {TEXT("/Game/PjcKept")}};
+	Settings->ExcludedClasses.Reset();
+	Settings->ExcludedAssets.Reset();
+
+	// what versions before 3.1 saved per user
+	const FString Section = UPjcAssetExcludeSettings::StaticClass()->GetPathName();
+	GConfig->SetArray(*Section, TEXT("ExcludedFolders"), {TEXT("(Path=\"/Game/PjcMoved\")"), TEXT("(Path=\"/Game/PjcKept\")")}, GEditorPerProjectIni);
+	GConfig->SetArray(*Section, TEXT("ExcludedClasses"), {TEXT("/Script/Engine.CurveFloat")}, GEditorPerProjectIni);
+	GConfig->SetArray(*Section, TEXT("ExcludedAssets"), {TEXT("/Game/PjcMoved/C_Moved.C_Moved")}, GEditorPerProjectIni);
+
+	TestEqual(TEXT("moved entries, the one already shared is not doubled"), UPjcSubsystem::MoveExclusionsToProject(), 3);
+	TestEqual(TEXT("folders"), Settings->ExcludedFolders.Num(), 2);
+	TestTrue(TEXT("moved folder"), Settings->ExcludedFolders.ContainsByPredicate([](const FDirectoryPath& Dir) {
+		return Dir.Path == TEXT("/Game/PjcMoved");
+	}));
+	TestTrue(
+		TEXT("moved class"),
+		Settings->ExcludedClasses.Num() == 1 && Settings->ExcludedClasses[0].ToSoftObjectPath().ToString() == TEXT("/Script/Engine.CurveFloat")
+	);
+	TestTrue(
+		TEXT("moved asset"),
+		Settings->ExcludedAssets.Num() == 1 && Settings->ExcludedAssets[0].ToSoftObjectPath().ToString() == TEXT("/Game/PjcMoved/C_Moved.C_Moved")
+	);
+
+	TArray<FString> Left;
+	GConfig->GetArray(*Section, TEXT("ExcludedFolders"), Left, GEditorPerProjectIni);
+	TestEqual(TEXT("per user settings emptied"), Left.Num(), 0);
+	TestEqual(TEXT("moves only once"), UPjcSubsystem::MoveExclusionsToProject(), 0);
+
+	Settings->ExcludedFolders = SavedFolders;
+	Settings->ExcludedClasses = SavedClasses;
+	Settings->ExcludedAssets = SavedAssets;
+	PjcShim::UpdateDefaultConfigFile(Settings);
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPjcTestScanGraph, "ProjectCleaner.Scan.Graph", PJC_TEST_FLAGS)
 
 bool FPjcTestScanGraph::RunTest(const FString& Parameters) {
@@ -843,7 +891,7 @@ bool FPjcFixtureBuild::RunTest(const FString& Parameters) {
 	if (!Fixture.Build(*this, true, false, true)) return false;
 
 	// commandlet runs in another process, it must see same settings (host config files, removed by pjc.py)
-	GetMutableDefault<UPjcAssetExcludeSettings>()->SaveConfig();
+	PjcShim::UpdateDefaultConfigFile(GetMutableDefault<UPjcAssetExcludeSettings>());
 	GetMutableDefault<UPjcFileExcludeSettings>()->SaveConfig();
 	PjcShim::UpdateDefaultConfigFile(ScanSettings);
 
