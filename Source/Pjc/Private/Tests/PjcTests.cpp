@@ -529,6 +529,60 @@ bool FPjcTestScanUsage::RunTest(const FString& Parameters) {
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPjcTestScanResult, "ProjectCleaner.Scan.Result", PJC_TEST_FLAGS)
+
+bool FPjcTestScanResult::RunTest(const FString& Parameters) {
+	if (!FPjcTestFixture::IsTestHost()) {
+		AddInfo(TEXT("Skipped, fixture tests run only in test host projects"));
+		return true;
+	}
+
+	FPjcScopedScanSettings ScopedSettings {false};
+
+	FPjcTestFixture Fixture;
+	if (!Fixture.Build(*this)) return false;
+
+	int32 NumBroadcasts = 0;
+	const FDelegateHandle Handle = UPjcSubsystem::OnScanFinished().AddLambda([&NumBroadcasts]() {
+		++NumBroadcasts;
+	});
+	const bool bScanned = UPjcSubsystem::Scan(false);
+	UPjcSubsystem::OnScanFinished().Remove(Handle);
+
+	TestTrue(TEXT("scan made a result"), bScanned);
+	TestEqual(TEXT("scan finished broadcast once"), NumBroadcasts, 1);
+
+	const FPjcScanResult& Result = UPjcSubsystem::GetScanResult();
+	TestTrue(TEXT("result is valid"), Result.IsValid());
+
+	// same answers as the separate queries
+	TArray<FAssetData> AssetsAll;
+	TArray<FAssetData> AssetsUsed;
+	TArray<FAssetData> AssetsUnused;
+	UPjcSubsystem::GetAssetsAll(AssetsAll);
+	UPjcSubsystem::GetAssetsUsed(AssetsUsed, false);
+	UPjcSubsystem::GetAssetsUnused(AssetsUnused, false);
+	TestEqual(TEXT("result assets"), ToObjectPaths(Result.Assets).Num(), ToObjectPaths(AssetsAll).Num());
+	TestTrue(TEXT("result used assets"), ToObjectPaths(Result.Used).Difference(ToObjectPaths(AssetsUsed)).Num() == 0);
+	TestTrue(TEXT("result unused assets"), ToObjectPaths(Result.Unused).Difference(ToObjectPaths(AssetsUnused)).Num() == 0);
+	TestEqual(TEXT("result unused count"), Result.Unused.Num(), AssetsUnused.Num());
+
+	// every scanned asset is used or unused, has usage and a size
+	TestEqual(TEXT("used and unused cover every asset"), Result.Used.Num() + Result.Unused.Num(), Result.Assets.Num());
+	TestEqual(TEXT("usage of every asset"), Result.Usage.Num(), Result.Assets.Num());
+	TestEqual(TEXT("size of every asset"), Result.Sizes.Num(), Result.Assets.Num());
+	for (const auto& Asset : Result.Unused) {
+		TestFalse(*FString::Printf(TEXT("%s unused in usage"), *Asset.PackageName.ToString()), Result.IsUsed(Asset.PackageName));
+	}
+
+	const FName UnusedLeaf = PackageOf(Fixture, TEXT("C_UnusedLeaf"));
+	TestFalse(TEXT("C_UnusedLeaf unused"), Result.IsUsed(UnusedLeaf));
+	TestTrue(TEXT("C_UnusedLeaf has a size"), Result.GetSize(UnusedLeaf) > 0);
+	TestTrue(TEXT("PAL_Root used"), Result.IsUsed(PackageOf(Fixture, TEXT("PAL_Root"))));
+
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPjcTestScanGraph, "ProjectCleaner.Scan.Graph", PJC_TEST_FLAGS)
 
 bool FPjcTestScanGraph::RunTest(const FString& Parameters) {

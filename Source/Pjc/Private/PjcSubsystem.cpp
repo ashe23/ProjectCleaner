@@ -81,6 +81,10 @@ namespace
 	// what kept each asset last cleanup could not delete, shown by Asset Usage tab
 	TMap<FName, FString> LastCleanupKept;
 
+	// last Scan, shared by every tab
+	FPjcScanResult LastScan;
+	UPjcSubsystem::FPjcDelegateScanFinished ScanFinished;
+
 	template<typename T>
 	bool ScanCacheGet(const TOptional<T>& Cached, T& Out) {
 		if (ScanCache.Depth == 0 || !Cached.IsSet()) return false;
@@ -185,6 +189,42 @@ void UPjcSubsystem::GetAssetsFolderLabelOnly(TArray<FAssetData>& Assets, const b
 	ScanCacheSet(ScanCache.AssetsUsed, AssetsUsed);
 	ScanCacheSet(ScanCache.AssetsFolderLabelOnly, Assets);
 	ScanCacheSet(ScanCache.AssetsUsage, AssetsUsage);
+}
+
+bool UPjcSubsystem::Scan(const bool bShowSlowTask) {
+	if (GetModuleAssetRegistry().Get().IsLoadingAssets()) return false;
+
+	const double StartTime = FPlatformTime::Seconds();
+
+	// the queries below share their intermediate results (references, source and config search)
+	FPjcScanCacheScope ScanCacheScope;
+
+	FPjcScanResult Result;
+	GetAssetsAll(Result.Assets);
+	GetAssetsUsage(Result.Usage, bShowSlowTask);
+	GetAssetsUsed(Result.Used, bShowSlowTask);
+	GetAssetsUnused(Result.Unused, bShowSlowTask);
+	GetAssetsFolderLabelOnly(Result.FolderLabelOnly, bShowSlowTask);
+
+	Result.Sizes.Reserve(Result.Assets.Num());
+	for (const auto& Asset : Result.Assets) {
+		Result.Sizes.Add(Asset.PackageName, GetAssetSize(Asset));
+	}
+
+	Result.Time = FDateTime::UtcNow();
+	Result.Seconds = FPlatformTime::Seconds() - StartTime;
+	LastScan = MoveTemp(Result);
+
+	ScanFinished.Broadcast();
+	return true;
+}
+
+const FPjcScanResult& UPjcSubsystem::GetScanResult() {
+	return LastScan;
+}
+
+UPjcSubsystem::FPjcDelegateScanFinished& UPjcSubsystem::OnScanFinished() {
+	return ScanFinished;
 }
 
 void UPjcSubsystem::GetAssetsUsage(TMap<FName, FPjcAssetUsage>& Usage, const bool bShowSlowTask) {

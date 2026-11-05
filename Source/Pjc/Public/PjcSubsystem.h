@@ -9,6 +9,7 @@
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "Widgets/Notifications/SNotificationList.h"
 #include "PjcTypes.h"
+#include "PjcScanResult.h"
 #include "PjcSubsystem.generated.h"
 
 class FPropertyEditorModule;
@@ -83,6 +84,20 @@ class UPjcSubsystem final : public UEditorSubsystem
 	 */
 	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Asset")
 	static void GetAssetsUsage(TMap<FName, FPjcAssetUsage>& Usage, const bool bShowSlowTask = true);
+
+	DECLARE_MULTICAST_DELEGATE(FPjcDelegateScanFinished);
+
+	/**
+	 * Scans the project once for every tab: scanned assets, used and unused, usage reasons and sizes.
+	 * Returns false and keeps the last result while the asset registry is still discovering assets.
+	 */
+	static bool Scan(const bool bShowSlowTask = true);
+
+	/** Result of the last Scan, IsValid() is false before the first one */
+	static const FPjcScanResult& GetScanResult();
+
+	/** Broadcast after every Scan that made a new result */
+	static FPjcDelegateScanFinished& OnScanFinished();
 
 	/**
 	 * @brief Returns what holds given asset in memory, so deleting it is refused. Empty when asset is not loaded or nothing outside it holds it.
