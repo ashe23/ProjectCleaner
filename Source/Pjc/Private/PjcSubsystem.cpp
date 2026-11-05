@@ -206,6 +206,26 @@ bool UPjcSubsystem::Scan(const bool bShowSlowTask) {
 	GetAssetsUnused(Result.Unused, bShowSlowTask);
 	GetAssetsFolderLabelOnly(Result.FolderLabelOnly, bShowSlowTask);
 
+	// redirectors are not content: they get their own list (one per package, its main asset) and leave the others
+	TArray<FAssetData> Redirectors;
+	GetProjectRedirectors(Redirectors);
+	TSet<FName> RedirectorPackages;
+	for (const auto& Redirector : Redirectors) {
+		RedirectorPackages.Add(Redirector.PackageName);
+	}
+	const auto IsRedirector = [&RedirectorPackages](const FAssetData& Asset) {
+		return RedirectorPackages.Contains(Asset.PackageName);
+	};
+	for (const auto& Asset : Result.Assets) {
+		if (IsRedirector(Asset)) {
+			Result.Redirectors.Add(Asset);
+		}
+	}
+	Result.Assets.RemoveAll(IsRedirector);
+	Result.Used.RemoveAll(IsRedirector);
+	Result.Unused.RemoveAll(IsRedirector);
+	Result.FolderLabelOnly.RemoveAll(IsRedirector);
+
 	Result.Sizes.Reserve(Result.Assets.Num());
 	for (const auto& Asset : Result.Assets) {
 		Result.Sizes.Add(Asset.PackageName, GetAssetSize(Asset));

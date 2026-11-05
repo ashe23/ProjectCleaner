@@ -19,7 +19,10 @@ struct FPjcScanResult
 	/** How long the scan took */
 	double Seconds = 0.0;
 
-	/** Scanned assets, one per package (GetAssetsAll) */
+	/**
+	 * Scanned assets, one per package (GetAssetsAll without redirectors).
+	 * Redirectors are not content: they are left out of Assets, Used, Unused, FolderLabelOnly and Sizes.
+	 */
 	TArray<FAssetData> Assets;
 
 	/** Used assets, folder label assets included while folder labels are used (GetAssetsUsed) */
@@ -31,10 +34,16 @@ struct FPjcScanResult
 	/** Assets only folder labels keep (GetAssetsFolderLabelOnly) */
 	TArray<FAssetData> FolderLabelOnly;
 
-	/** Why each scanned package is used or unused (GetAssetsUsage) */
+	/** Redirectors in scanned content, one per package */
+	TArray<FAssetData> Redirectors;
+
+	/**
+	 * Why each scanned package is used or unused (GetAssetsUsage).
+	 * Redirector packages stay here, chains go through them (referencer, redirector, target).
+	 */
 	TMap<FName, FPjcAssetUsage> Usage;
 
-	/** Size on disk of each scanned package */
+	/** Size on disk of each scanned asset */
 	TMap<FName, int64> Sizes;
 
 	bool IsValid() const {

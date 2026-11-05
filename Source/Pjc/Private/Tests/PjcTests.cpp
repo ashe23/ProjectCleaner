@@ -20,6 +20,9 @@
 #include "Misc/FileHelper.h"
 #include "Misc/PackageName.h"
 #include "Misc/Paths.h"
+#include "Misc/RedirectCollector.h"
+#include "Misc/ScopeExit.h"
+#include "UObject/ObjectRedirector.h"
 
 namespace
 {
@@ -542,6 +545,23 @@ bool FPjcTestScanResult::RunTest(const FString& Parameters) {
 	FPjcTestFixture Fixture;
 	if (!Fixture.Build(*this)) return false;
 
+	// unused redirector, like the engine leaves behind after a move (the fixture has saved ones only in its Lyra layout).
+	// Kept in memory and taken out of the registry at the end, the engine deletes redirectors only when loaded from disk.
+	const FString RedirectorPackageName = FPjcTestFixture::RootPath() / TEXT("Redirectors/R_Test");
+	UObjectRedirector* Redirector = NewObject<UObjectRedirector>(CreatePackage(*RedirectorPackageName), TEXT("R_Test"), RF_Public | RF_Standalone);
+	Redirector->DestinationObject = FSoftObjectPath {Fixture.ObjectPath(TEXT("C_UnusedLeaf"))}.ResolveObject();
+	FAssetRegistryModule::AssetCreated(Redirector);
+#if ENGINE_MAJOR_VERSION < 5
+	// UE4 registry unregisters the redirection on delete but does not register it on create (ensure)
+	GRedirectCollector.AddAssetPathRedirection(FName {*Redirector->GetPathName()}, FName {*Fixture.ObjectPath(TEXT("C_UnusedLeaf"))});
+#endif
+	ON_SCOPE_EXIT {
+		// garbage collection frees it
+		FAssetRegistryModule::AssetDeleted(Redirector);
+		Redirector->DestinationObject = nullptr;
+		Redirector->ClearFlags(RF_Public | RF_Standalone);
+	};
+
 	int32 NumBroadcasts = 0;
 	const FDelegateHandle Handle = UPjcSubsystem::OnScanFinished().AddLambda([&NumBroadcasts]() {
 		++NumBroadcasts;
@@ -562,14 +582,30 @@ bool FPjcTestScanResult::RunTest(const FString& Parameters) {
 	UPjcSubsystem::GetAssetsAll(AssetsAll);
 	UPjcSubsystem::GetAssetsUsed(AssetsUsed, false);
 	UPjcSubsystem::GetAssetsUnused(AssetsUnused, false);
-	TestEqual(TEXT("result assets"), ToObjectPaths(Result.Assets).Num(), ToObjectPaths(AssetsAll).Num());
+	// redirectors are not content: own list, and out of every other list
+	const TSet<FString> Redirectors = ToObjectPaths(Result.Redirectors);
+	const auto WithoutRedirectors = [&Redirectors](const TArray<FAssetData>& Assets) {
+		return ToObjectPaths(Assets).Difference(Redirectors);
+	};
+	const FName RedirectorPackage {*RedirectorPackageName};
+	const auto IsRedirectorPackage = [&RedirectorPackage](const FAssetData& Asset) {
+		return Asset.PackageName == RedirectorPackage;
+	};
+	TestTrue(TEXT("R_Test in redirectors"), Result.Redirectors.ContainsByPredicate(IsRedirectorPackage));
+	TestFalse(TEXT("R_Test not in assets"), Result.Assets.ContainsByPredicate(IsRedirectorPackage));
+	TestFalse(TEXT("R_Test not in unused"), Result.Unused.ContainsByPredicate(IsRedirectorPackage));
+	TestFalse(TEXT("R_Test has no size"), Result.Sizes.Contains(RedirectorPackage));
+	TestTrue(TEXT("R_Test keeps its usage"), Result.Usage.Contains(RedirectorPackage));
+	TestTrue(TEXT("R_Test is an unused redirector"), AssetsUnused.ContainsByPredicate(IsRedirectorPackage));
+	TestTrue(TEXT("redirectors are not in assets"), ToObjectPaths(Result.Assets).Intersect(Redirectors).Num() == 0);
+	TestEqual(TEXT("result assets"), ToObjectPaths(Result.Assets).Num(), WithoutRedirectors(AssetsAll).Num());
 	TestTrue(TEXT("result used assets"), ToObjectPaths(Result.Used).Difference(ToObjectPaths(AssetsUsed)).Num() == 0);
 	TestTrue(TEXT("result unused assets"), ToObjectPaths(Result.Unused).Difference(ToObjectPaths(AssetsUnused)).Num() == 0);
-	TestEqual(TEXT("result unused count"), Result.Unused.Num(), AssetsUnused.Num());
+	TestEqual(TEXT("result unused count"), Result.Unused.Num(), WithoutRedirectors(AssetsUnused).Num());
 
-	// every scanned asset is used or unused, has usage and a size
+	// every scanned asset is used or unused, has usage and a size; chains keep their redirectors
 	TestEqual(TEXT("used and unused cover every asset"), Result.Used.Num() + Result.Unused.Num(), Result.Assets.Num());
-	TestEqual(TEXT("usage of every asset"), Result.Usage.Num(), Result.Assets.Num());
+	TestEqual(TEXT("usage of every asset and redirector"), Result.Usage.Num(), Result.Assets.Num() + Result.Redirectors.Num());
 	TestEqual(TEXT("size of every asset"), Result.Sizes.Num(), Result.Assets.Num());
 	for (const auto& Asset : Result.Unused) {
 		TestFalse(*FString::Printf(TEXT("%s unused in usage"), *Asset.PackageName.ToString()), Result.IsUsed(Asset.PackageName));
