@@ -168,6 +168,9 @@ class UPjcSubsystem final : public UEditorSubsystem
 	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Asset")
 	static void GetClassNamesPrimary(TSet<FName>& ClassNames);
 
+	/** Packages of primary assets: every map in scanned content and every asset the Asset Manager registered */
+	static void GetPackagesPrimary(TSet<FName>& Packages);
+
 	/**
 	 * @brief Returns all editor assets class names
 	 * @param ClassNames TSet<FName>

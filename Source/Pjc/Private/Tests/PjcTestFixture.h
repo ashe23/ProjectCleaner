@@ -35,6 +35,7 @@
  *   Editor/EUB_Tool          EditorUtilityBlueprint
  *   Blueprints/BP_Primary    Blueprint derived from PlayerController, primary type "PjcTestPrimary" in host config
  *   Blueprints/BP_Unused     Blueprint derived from Actor, not referenced
+ *   Misc/BP_PrimaryOutside   PlayerController Blueprint outside the PjcTestPrimary folder: primary class, not registered
  *   Labeled/PAL_Folder       PrimaryAssetLabel with "Label Assets In My Directory"
  *   Labeled/C_Labeled        only referenced by folder label: used unless bFolderLabelsUsed is off
  *   Empty/A/B                empty folders
@@ -126,6 +127,7 @@ class FPjcTestFixture
 	void CreateFiles(const bool bCreateCorruptedFile);
 	void CreateLyraFiles();
 	void ApplyExcludeSettings();
+	static void RefreshAssetManager();
 	void RestoreSettings();
 
 	TMap<FString, FString> PackageNames;   // short name -> long package name

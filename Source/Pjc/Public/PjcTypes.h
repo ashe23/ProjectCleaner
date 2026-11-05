@@ -190,8 +190,10 @@ enum class EPjcUsageReason : uint8
 {
 	/** nothing used references it */
 	None,
-	/** Asset Manager primary asset (maps, primary asset labels, types from project settings or game features) */
+	/** primary asset: every map, and every asset the Asset Manager registered (labels, types from project settings or game features) */
 	Primary,
+	/** asset of a primary asset class that the Asset Manager did not register (outside the type's folders, or game feature not registered yet) */
+	PrimaryClass,
 	/** referenced from outside scanned content: engine, not scanned plugins, actors saved in their own files */
 	EngineReferenced,
 	/** named in project or plugin Source/Config files */

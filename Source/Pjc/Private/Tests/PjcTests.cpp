@@ -415,7 +415,12 @@ bool FPjcTestScanSettings::RunTest(const FString& Parameters) {
 	Settings->bIndirectAssetsUsed = true;
 
 	Settings->IgnoredPrimaryAssetTypes.Add(TEXT("PjcTestPrimary"));
-	TestSetEqual(*this, TEXT("ignored primary type"), UnusedFixtureAssets(), UnusedDefault.Union(ObjectPaths(Fixture, {TEXT("BP_Primary")})));
+	TestSetEqual(
+		*this,
+		TEXT("ignored primary type"),
+		UnusedFixtureAssets(),
+		UnusedDefault.Union(ObjectPaths(Fixture, {TEXT("BP_Primary"), TEXT("BP_PrimaryOutside")}))
+	);
 	Settings->IgnoredPrimaryAssetTypes.Reset();
 
 	Settings->bPrimaryAssetsUsed = false;
@@ -423,9 +428,16 @@ bool FPjcTestScanSettings::RunTest(const FString& Parameters) {
 		*this,
 		TEXT("primary assets not used"),
 		UnusedFixtureAssets(),
-		UnusedDefault.Union(
-			ObjectPaths(Fixture, {TEXT("PAL_Root"), TEXT("OL_Chain"), TEXT("C_ChainLeaf"), TEXT("BP_Primary"), TEXT("PAL_Folder"), TEXT("C_Labeled")})
-		)
+		UnusedDefault.Union(ObjectPaths(
+			Fixture,
+			{TEXT("PAL_Root"),
+			 TEXT("OL_Chain"),
+			 TEXT("C_ChainLeaf"),
+			 TEXT("BP_Primary"),
+			 TEXT("BP_PrimaryOutside"),
+			 TEXT("PAL_Folder"),
+			 TEXT("C_Labeled")}
+		))
 	);
 	Settings->bPrimaryAssetsUsed = true;
 
@@ -505,6 +517,7 @@ bool FPjcTestScanUsage::RunTest(const FString& Parameters) {
 	TestReason(TEXT("OL_Chain"), EPjcUsageReason::Dependency, TEXT("PAL_Root"), nullptr);
 	TestReason(TEXT("C_ChainLeaf"), EPjcUsageReason::Dependency, TEXT("OL_Chain"), nullptr);
 	TestReason(TEXT("BP_Primary"), EPjcUsageReason::Primary, nullptr, nullptr);
+	TestReason(TEXT("BP_PrimaryOutside"), EPjcUsageReason::PrimaryClass, nullptr, nullptr);
 	TestReason(TEXT("C_Indirect"), EPjcUsageReason::Indirect, nullptr, TEXT("PjcTests.ini, line 2"));
 	TestReason(TEXT("C_RefByPlugin"), EPjcUsageReason::EngineReferenced, nullptr, TEXT("/PjcTestContent/"));
 	TestReason(TEXT("EUB_Tool"), EPjcUsageReason::Editor, nullptr, nullptr);

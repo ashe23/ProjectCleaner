@@ -339,6 +339,7 @@ const TMap<FName, FString>& UPjcSubsystem::GetLastCleanupKept() {
 FString UPjcSubsystem::GetUsageReasonText(const FPjcAssetUsage& Usage) {
 	switch (Usage.Reason) {
 		case EPjcUsageReason::Primary :			 return Usage.Detail.IsEmpty() ? TEXT("Primary asset") : TEXT("Primary asset ") + Usage.Detail;
+		case EPjcUsageReason::PrimaryClass :	 return TEXT("Primary class, not registered by the Asset Manager");
 		case EPjcUsageReason::EngineReferenced : return TEXT("Referenced outside scanned content");
 		case EPjcUsageReason::Indirect :		 return TEXT("Named in ") + Usage.Detail;
 		case EPjcUsageReason::Excluded :		 return Usage.Detail.IsEmpty() ? TEXT("Excluded") : Usage.Detail;
@@ -379,6 +380,8 @@ void UPjcSubsystem::ComputeAssetsUsed(
 	GetAssetsExcluded(AssetsExcluded, bShowSlowTask);
 	GetClassNamesPrimary(ClassNamesPrimary);
 	GetClassNamesEditor(ClassNamesEditor);
+	TSet<FName> PackagesPrimary;
+	GetPackagesPrimary(PackagesPrimary);
 
 	if (FModuleManager::Get().IsModuleLoaded(PjcConstants::ModuleMegascans)) {
 		GetModuleAssetRegistry().Get().GetAssetsByPath(PjcConstants::PathMSPresets, AssetsMegascans, true);
@@ -412,7 +415,7 @@ void UPjcSubsystem::ComputeAssetsUsed(
 		const FName AssetClassName = PjcShim::GetAssetClassName(Asset);
 		const FName AssetExactClassName = GetAssetExactClassName(Asset);
 
-		if (ClassNamesPrimary.Contains(AssetClassName) || ClassNamesPrimary.Contains(AssetExactClassName)) {
+		if (PackagesPrimary.Contains(Asset.PackageName)) {
 			AddUsed(Asset.PackageName, EPjcUsageReason::Primary, NAME_None, GetPrimaryDetail(Asset));
 		}
 		else if (AssetsEngineReferencedSet.Contains(Asset)) {
@@ -513,6 +516,21 @@ void UPjcSubsystem::ComputeAssetsUsed(
 	};
 
 	FollowDependencies(FolderLabels, false);
+
+	// assets of a primary class the Asset Manager did not register (outside the type's folders, or in a game feature
+	// plugin that is not registered yet) are uncertain, so used. After the references above, which tell more, and
+	// before folder labels, so they stay used when labels do not count
+	for (const auto& Asset : AssetsAll) {
+		if (Usage.Contains(Asset.PackageName)) continue;
+
+		const FName AssetClassName = PjcShim::GetAssetClassName(Asset);
+		const FName AssetExactClassName = GetAssetExactClassName(Asset);
+		if (ClassNamesPrimary.Contains(AssetClassName) || ClassNamesPrimary.Contains(AssetExactClassName)) {
+			AddUsed(Asset.PackageName, EPjcUsageReason::PrimaryClass, NAME_None, AssetExactClassName.ToString());
+		}
+	}
+	FollowDependencies(FolderLabels, false);
+
 	if (FolderLabels.Num() > 0) {
 		Queue.Append(FolderLabels.Array());
 		FollowDependencies(TSet<FName> {}, true);
@@ -594,22 +612,12 @@ void UPjcSubsystem::GetAssetsPrimary(TArray<FAssetData>& Assets, const bool bSho
 	TArray<FAssetData> AssetsAll;
 	GetAssetsAll(AssetsAll);
 
-	TSet<FName> ClassNamesPrimary;
-	GetClassNamesPrimary(ClassNamesPrimary);
+	TSet<FName> PackagesPrimary;
+	GetPackagesPrimary(PackagesPrimary);
 
 	Assets.Reset(AssetsAll.Num());
-
-	FScopedSlowTask SlowTask {
-	  static_cast<float>(AssetsAll.Num()),
-	  FText::FromString(TEXT("Searching primary assets...")),
-	  bShowSlowTask && GIsEditor && !IsRunningCommandlet()
-	};
-	SlowTask.MakeDialog(false, false);
-
 	for (const auto& Asset : AssetsAll) {
-		SlowTask.EnterProgressFrame(1.0f, FText::FromString(Asset.GetFullName()));
-
-		if (ClassNamesPrimary.Contains(PjcShim::GetAssetClassName(Asset)) || ClassNamesPrimary.Contains(GetAssetExactClassName(Asset))) {
+		if (PackagesPrimary.Contains(Asset.PackageName)) {
 			Assets.Emplace(Asset);
 		}
 	}
@@ -890,6 +898,41 @@ void UPjcSubsystem::GetClassNamesPrimary(TSet<FName>& ClassNames) {
 
 	// getting list of primary assets classes that are derived from main primary assets
 	PjcShim::GetDerivedClassNames(ClassNamesPrimaryBase.Array(), TSet<FName> {}, ClassNames);
+}
+
+void UPjcSubsystem::GetPackagesPrimary(TSet<FName>& Packages) {
+	Packages.Reset();
+
+	const UPjcScanSettings* ScanSettings = GetDefault<UPjcScanSettings>();
+	if (!ScanSettings->bPrimaryAssetsUsed) return;
+
+	// levels are opened by name, so every map is primary, not only the ones the Asset Manager registers (e.g. Lyra TransitionMap)
+	TArray<FAssetData> AssetsAll;
+	GetAssetsAll(AssetsAll);
+	const FName ClassNameWorld = PjcShim::GetClassName(UWorld::StaticClass());
+	for (const auto& Asset : AssetsAll) {
+		if (PjcShim::GetAssetClassName(Asset) == ClassNameWorld) {
+			Packages.Add(Asset.PackageName);
+		}
+	}
+
+	if (!PjcShim::IsAssetManagerValid()) return;
+
+	const UAssetManager& AssetManager = UAssetManager::Get();
+	TArray<FPrimaryAssetTypeInfo> TypeInfos;
+	AssetManager.GetPrimaryAssetTypeInfoList(TypeInfos);
+	for (const auto& TypeInfo : TypeInfos) {
+		if (ScanSettings->IgnoredPrimaryAssetTypes.Contains(TypeInfo.PrimaryAssetType)) continue;
+
+		TArray<FPrimaryAssetId> Ids;
+		AssetManager.GetPrimaryAssetIdList(TypeInfo.PrimaryAssetType, Ids);
+		for (const auto& Id : Ids) {
+			const FString ObjectPath = AssetManager.GetPrimaryAssetPath(Id).ToString();
+			if (!ObjectPath.IsEmpty()) {
+				Packages.Add(FName {*FPackageName::ObjectPathToPackageName(ObjectPath)});
+			}
+		}
+	}
 }
 
 void UPjcSubsystem::GetClassNamesEditor(TSet<FName>& ClassNames) {

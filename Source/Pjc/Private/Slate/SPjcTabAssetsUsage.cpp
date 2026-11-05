@@ -579,6 +579,16 @@ FText SPjcTabAssetsUsage::BuildWhyText(const FPjcUsageItem& Item) {
 					)
 				);
 				break;
+			case EPjcUsageReason::PrimaryClass :
+				Paragraphs.Add(
+					FString::Printf(
+						TEXT("Used: it is a %s, a primary asset class, but the Asset Manager did not register it ")
+							TEXT("(outside the folders of its type, or in a game feature plugin that is not registered yet). ")
+								TEXT("Kept used because the game may still load it."),
+						*Usage.Detail
+					)
+				);
+				break;
 			case EPjcUsageReason::EngineReferenced :
 				Paragraphs.Add(
 					FString::Printf(

@@ -12,6 +12,7 @@
 #include "Engine/World.h"
 #include "Engine/Level.h"
 #include "PjcShim.h"
+#include "Engine/AssetManager.h"
 #include "AssetToolsModule.h"
 #include "EditorUtilityBlueprint.h"
 #include "EditorUtilityObject.h"
@@ -221,6 +222,9 @@ bool FPjcTestFixture::Build(FAutomationTestBase& Test, const bool bApplyExcludeS
 		ApplyExcludeSettings();
 	}
 
+	// the Asset Manager registers primary assets when the editor starts, blueprint types only from disk
+	RefreshAssetManager();
+
 	bBuilt = true;
 	return true;
 }
@@ -310,8 +314,10 @@ bool FPjcTestFixture::CreateAssets(FAutomationTestBase& Test) {
 		= NewBlueprint(Register(TEXT("Blueprints"), TEXT("BP_Primary")), APlayerController::StaticClass(), UBlueprint::StaticClass(), Packages);
 	const UBlueprint* BlueprintUnused
 		= NewBlueprint(Register(TEXT("Blueprints"), TEXT("BP_Unused")), AActor::StaticClass(), UBlueprint::StaticClass(), Packages);
+	const UBlueprint* BlueprintPrimaryOutside
+		= NewBlueprint(Register(TEXT("Misc"), TEXT("BP_PrimaryOutside")), APlayerController::StaticClass(), UBlueprint::StaticClass(), Packages);
 
-	if (!EditorTool || !BlueprintPrimary || !BlueprintUnused) {
+	if (!EditorTool || !BlueprintPrimary || !BlueprintUnused || !BlueprintPrimaryOutside) {
 		Test.AddError(TEXT("Failed to create fixture blueprints"));
 		return false;
 	}
@@ -578,12 +584,19 @@ void FPjcTestFixture::Cleanup() {
 
 	AssetRegistry().ScanPathsSynchronous({RootPath(), PluginRootPath(), FeatureRootPath()}, true);
 	AssetRegistry().RemovePath(RootPath());
+	RefreshAssetManager();
 
 	PackageNames.Reset();
 	MapNames.Reset();
 	Packages.Reset();
 	bBuilt = false;
 	bLyraLayout = false;
+}
+
+void FPjcTestFixture::RefreshAssetManager() {
+	if (PjcShim::IsAssetManagerValid()) {
+		UAssetManager::Get().RefreshPrimaryAssetDirectory(true);
+	}
 }
 
 FString FPjcTestFixture::ObjectPath(const FString& Name) const {
@@ -614,6 +627,7 @@ TArray<FString> FPjcTestFixture::UsedNames(const bool bScanPlugins, const bool b
 	  TEXT("LS_Cinematic"),
 	  TEXT("EUB_Tool"),
 	  TEXT("BP_Primary"),
+	  TEXT("BP_PrimaryOutside"),
 	  TEXT("PAL_Folder"),
 	};
 
