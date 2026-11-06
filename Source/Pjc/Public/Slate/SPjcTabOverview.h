@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "PjcCookInfo.h"
 #include "PjcOverview.h"
 #include "Slate/PjcWidgets.h"
 #include "Widgets/SCompoundWidget.h"
@@ -38,6 +39,7 @@ class SPjcTabOverview final : public SCompoundWidget
 	TSharedRef<SWidget> MakeClasses() const;
 	TSharedRef<SWidget> MakeUnusedFolders();
 	TSharedRef<SWidget> MakeLargestUnused();
+	TSharedRef<SWidget> MakeShippedCard() const;
 
 	/** Card with a title, a hint on the right and its rows */
 	static TSharedRef<SWidget> MakeSection(const FString& Title, const FString& Hint, const TSharedRef<SWidget>& Content);
@@ -60,4 +62,8 @@ class SPjcTabOverview final : public SCompoundWidget
 	TWeakPtr<FTabManager> TabManager;
 	TSharedPtr<SBox> Body;
 	FPjcOverview Overview;
+
+	/** Last cook, without its package list */
+	FPjcCookInfo Cook;
+	TOptional<FPjcOverview::FShipped> Shipped;
 };

@@ -10,8 +10,10 @@
 #include "PjcSettings.h"
 #include "PjcStyles.h"
 #include "PjcSubsystem.h"
+#include "Runtime/Launch/Resources/Version.h"
 // Engine Headers
 #include "Framework/Docking/TabManager.h"
+#include "HAL/PlatformProperties.h"
 #include "Misc/PackageName.h"
 #include "Misc/Paths.h"
 #include "Styling/CoreStyle.h"
@@ -58,7 +60,18 @@ SPjcTabOverview::~SPjcTabOverview() {
 }
 
 void SPjcTabOverview::OnScanFinished() {
-	Overview = FPjcOverview::Make(UPjcSubsystem::GetScanResult());
+	const FPjcScanResult& Result = UPjcSubsystem::GetScanResult();
+	Overview = FPjcOverview::Make(Result);
+
+	Cook = FPjcCookInfo::GetLast();
+	Shipped.Reset();
+	if (Result.IsValid() && Cook.IsValid()) {
+		Shipped = FPjcOverview::MakeShipped(Result, Cook);
+	}
+	// the card needs only the summary of the cook
+	Cook.Cooked.Empty();
+	Cook.SavedDigests.Empty();
+
 	Rebuild();
 }
 
@@ -80,6 +93,10 @@ void SPjcTabOverview::Rebuild() {
 		+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {0.0f, 14.0f, 0.0f, 0.0f})
 		[
 			MakeIssues()
+		]
+		+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {0.0f, 14.0f, 0.0f, 0.0f})
+		[
+			MakeShippedCard()
 		]
 		+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {0.0f, 14.0f, 0.0f, 0.0f})
 		[
@@ -595,6 +612,265 @@ TSharedRef<SWidget> SPjcTabOverview::MakeLargestUnused() {
 	}
 
 	return MakeSection(TEXT("Largest unused"), FString::Printf(TEXT("top %d by size"), MaxRows), Rows);
+}
+
+TSharedRef<SWidget> SPjcTabOverview::MakeShippedCard() const {
+	const FSlateColor Muted = FSlateColor::UseSubduedForeground();
+	const auto Text = [&Muted](const FString& String, const bool bMuted = true) {
+		return SNew(STextBlock).Text(FText::FromString(String)).ColorAndOpacity(bMuted ? Muted : FSlateColor::UseForeground());
+	};
+	const auto Card = [](const TSharedRef<SWidget>& Status, const TSharedRef<SWidget>& Content) {
+		// clang-format off
+		return PjcWidgets::MakeCard(
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {0.0f, 0.0f, 0.0f, 10.0f})
+			[
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
+				[
+					PjcWidgets::MakeCardTitle(TEXT("Shipped"))
+				]
+				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+				[
+					Status
+				]
+			]
+			+ SVerticalBox::Slot().AutoHeight()
+			[
+				Content
+			],
+			FMargin {14.0f, 12.0f}
+		);
+		// clang-format on
+	};
+
+	const FString Where = TEXT("The card reads the last cook of this project folder: Saved/Cooked/[Platform]/[Project]/Metadata. ")
+		TEXT("Cooks made on another machine are not seen.");
+	if (!Cook.IsFound()) {
+#if ENGINE_MAJOR_VERSION >= 5
+		const FString HowTo = FString::Printf(TEXT("Platforms › %s › Cook Content"), ANSI_TO_TCHAR(FPlatformProperties::IniPlatformName()));
+#else
+		const FString HowTo = FString::Printf(TEXT("File › Cook Content for %s"), ANSI_TO_TCHAR(FPlatformProperties::IniPlatformName()));
+#endif
+		const FString Message = FString::Printf(TEXT("No cook found for this project. Cook it for a platform (%s) to see what ships."), *HowTo);
+		return Card(SNullWidget::NullWidget, SNew(SBox).ToolTip(PjcWidgets::MakeToolTip(TEXT("No cook"), Where))[Text(Message)]);
+	}
+	if (!Shipped.IsSet()) {
+		const FString Message
+			= FString::Printf(TEXT("The last cook (%s) could not be read. It may come from another engine version."), *Cook.Platform);
+		return Card(SNullWidget::NullWidget, SNew(SBox).ToolTip(PjcWidgets::MakeToolTip(TEXT("Last cook"), Cook.File, Where))[Text(Message)]);
+	}
+
+	const FPjcOverview::FShipped& Ship = Shipped.GetValue();
+
+	// cook time and whether assets changed since
+	const FTimespan Age = FDateTime::UtcNow() - Cook.Time;
+	const FString Ago = Age.GetTotalMinutes() < 1.0 ? TEXT("just now")
+		: Age.GetTotalHours() < 1.0					? FString::Printf(TEXT("%d min ago"), FMath::FloorToInt(Age.GetTotalMinutes()))
+		: Age.GetTotalDays() < 1.0					? FString::Printf(TEXT("%d h ago"), FMath::FloorToInt(Age.GetTotalHours()))
+													: FString::Printf(TEXT("%d days ago"), FMath::FloorToInt(Age.GetTotalDays()));
+	const FDateTime LocalTime = Cook.Time + (FDateTime::Now() - FDateTime::UtcNow());
+	const FString When = TEXT("Last cook: ") + LocalTime.ToString(TEXT("%Y-%m-%d %H:%M"));
+	const bool bUpToDate = Ship.NumChanged == 0 && Ship.NumDeleted == 0;
+	TArray<FString> Since;
+	if (Ship.NumChanged > 0) Since.Add(FString::Printf(TEXT("%s changed"), *PjcFormat::Count(Ship.NumChanged)));
+	if (Ship.NumDeleted > 0) Since.Add(FString::Printf(TEXT("%s deleted"), *PjcFormat::Count(Ship.NumDeleted)));
+	const FString Fresh = bUpToDate ? TEXT("up to date") : FString::Join(Since, TEXT(", ")) + TEXT(" since");
+	const FString FreshTip = bUpToDate
+		? TEXT("No scanned asset was saved, added or deleted since the cook.")
+		: TEXT("Assets were saved, added or deleted after the cook, so these numbers can be out of date. Cook again for current numbers.");
+
+	// clang-format off
+	const TSharedRef<SWidget> Status = SNew(SHorizontalBox)
+		.ToolTip(PjcWidgets::MakeToolTip(When, FreshTip, Cook.File))
+		+ SHorizontalBox::Slot().AutoWidth()
+		[
+			SNew(STextBlock).Text(FText::FromString(Cook.Platform)).Font(FPjcStyles::GetFont("Bold", 9))
+		]
+		+ SHorizontalBox::Slot().AutoWidth()
+		[
+			Text(TEXT(" · cooked ") + Ago + TEXT(" · "))
+		]
+		+ SHorizontalBox::Slot().AutoWidth()
+		[
+			SNew(STextBlock)
+			.Text(FText::FromString(Fresh))
+			.ColorAndOpacity(PjcWidgets::GetColor(bUpToDate ? "ProjectCleaner.Color.Ok" : "ProjectCleaner.Color.Yellow"))
+		];
+	// clang-format on
+
+	// bar by editor size
+	const int64 AllSize = Ship.Shipped.Size + Ship.UnusedShipped.Size + Ship.UsedNotShipped.Size + Ship.Unused.Size;
+	TArray<PjcWidgets::FBarSegment> Segments;
+	const auto AddSegment = [&Segments, AllSize](const FString& Label, const FPjcOverview::FTotal& Total, const FLinearColor& Color) {
+		PjcWidgets::FBarSegment& Segment = Segments.AddDefaulted_GetRef();
+		Segment.Value = static_cast<double>(Total.Size);
+		Segment.Color = Color;
+		Segment.ToolTip = PjcWidgets::MakeToolTip(
+			Label,
+			FString::Printf(
+				TEXT("%s assets · %s in the editor (%s)"),
+				*PjcFormat::Count(Total.Num),
+				*PjcFormat::Size(Total.Size),
+				*PjcFormat::Percent(Total.Size, AllSize)
+			)
+		);
+	};
+	AddSegment(TEXT("Shipped"), Ship.Shipped, PjcWidgets::GetColor("ProjectCleaner.Color.ShipFill"));
+	AddSegment(TEXT("Unused, shipped"), Ship.UnusedShipped, PjcWidgets::GetColor("ProjectCleaner.Color.Yellow"));
+	AddSegment(TEXT("Used, not shipped"), Ship.UsedNotShipped, PjcWidgets::GetColor("ProjectCleaner.Color.KeepFill"));
+	AddSegment(TEXT("Unused"), Ship.Unused, PjcWidgets::GetColor("ProjectCleaner.Color.UnusedFill"));
+
+	// one column per group
+	const auto Column = [&Muted](
+							const FString& Label,
+							const TOptional<FLinearColor>& Swatch,
+							const FString& Number,
+							const FSlateColor& NumberColor,
+							const FString& Sub,
+							const FString& ToolTip
+						) {
+		const TSharedRef<SHorizontalBox> Head = SNew(SHorizontalBox);
+		if (Swatch.IsSet()) {
+			Head->AddSlot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 6.0f, 0.0f})[PjcWidgets::MakeSwatch(Swatch.GetValue())];
+		}
+		Head->AddSlot().AutoWidth().VAlign(VAlign_Center)[SNew(STextBlock).Text(FText::FromString(Label)).ColorAndOpacity(Muted)];
+
+		// clang-format off
+		return SNew(SBox)
+			.ToolTip(PjcWidgets::MakeToolTip(Label, ToolTip))
+			[
+				SNew(SVerticalBox)
+				+ SVerticalBox::Slot().AutoHeight()
+				[
+					Head
+				]
+				+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {0.0f, 1.0f})
+				[
+					SNew(STextBlock).Text(FText::FromString(Number)).Font(PjcWidgets::GetFontMono(13)).ColorAndOpacity(NumberColor)
+				]
+				+ SVerticalBox::Slot().AutoHeight()
+				[
+					SNew(STextBlock).Text(FText::FromString(Sub)).ColorAndOpacity(Muted)
+				]
+			];
+		// clang-format on
+	};
+
+	TArray<FString> ReasonLines;
+	for (const auto& Row : Ship.UsedNotShippedReasons) {
+		FString Name;
+		FString ReasonTip;
+		FLinearColor Color;
+		GetReasonInfo(Row.Reason, Name, ReasonTip, Color);
+		ReasonLines.Add(FString::Printf(TEXT("%s: %s"), *Name, *PjcFormat::Count(Row.Total.Num)));
+	}
+	const auto Share = [AllSize](const FPjcOverview::FTotal& Total) {
+		return FString::Printf(TEXT("%s · %s"), *PjcFormat::Size(Total.Size), *PjcFormat::Percent(Total.Size, AllSize));
+	};
+	const int32 NumShipped = Ship.Shipped.Num + Ship.UnusedShipped.Num;
+	const int64 SizeShippedCooked = Ship.ShippedCooked + Ship.UnusedShippedCooked;
+	const int64 SizeShippedEditor = Ship.Shipped.Size + Ship.UnusedShipped.Size;
+
+	const TSharedRef<SHorizontalBox> Columns = SNew(SHorizontalBox);
+	const auto AddColumn = [&Columns](const TSharedRef<SWidget>& Widget) {
+		Columns->AddSlot().FillWidth(1.0f).Padding(FMargin {0.0f, 0.0f, 10.0f, 0.0f})[Widget];
+	};
+	AddColumn(Column(
+		TEXT("Shipped"),
+		PjcWidgets::GetColor("ProjectCleaner.Color.ShipFill"),
+		PjcFormat::Count(NumShipped),
+		FSlateColor::UseForeground(),
+		PjcFormat::Size(SizeShippedCooked) + TEXT(" cooked"),
+		FString::Printf(
+			TEXT("Packaged in the game for %s: %s cooked, %s in the editor. Cooked size is before pak compression."),
+			*Cook.Platform,
+			*PjcFormat::Size(SizeShippedCooked),
+			*PjcFormat::Size(SizeShippedEditor)
+		)
+	));
+	AddColumn(Column(
+		TEXT("Used, not shipped"),
+		PjcWidgets::GetColor("ProjectCleaner.Color.KeepFill"),
+		PjcFormat::Count(Ship.UsedNotShipped.Num),
+		FSlateColor::UseForeground(),
+		Share(Ship.UsedNotShipped),
+		TEXT("Used in the editor, or only by content that is not cooked: editor-only references, maps and tools left out of the cook. ")
+				TEXT("By chain start:\n")
+			+ FString::Join(ReasonLines, TEXT("\n"))
+	));
+	AddColumn(Column(
+		TEXT("Unused"),
+		PjcWidgets::GetColor("ProjectCleaner.Color.UnusedFill"),
+		PjcFormat::Count(Ship.Unused.Num),
+		FSlateColor::UseForeground(),
+		Share(Ship.Unused),
+		TEXT("Not shipped and not used. Cleanup deletes them.")
+	));
+	if (Ship.UnusedShipped.Num > 0) {
+		AddColumn(Column(
+			TEXT("Unused, shipped"),
+			{},
+			PjcFormat::Count(Ship.UnusedShipped.Num),
+			PjcWidgets::GetColor("ProjectCleaner.Color.Yellow"),
+			PjcFormat::Size(Ship.UnusedShippedCooked) + TEXT(" cooked"),
+			TEXT("The cook packages them but the scan marks them unused. Check them before deleting.")
+		));
+	}
+	else {
+		AddColumn(Column(
+			TEXT("Unused, shipped"),
+			{},
+			TEXT("✓ 0"),
+			PjcWidgets::GetColor("ProjectCleaner.Color.Ok"),
+			TEXT("scan and cook agree"),
+			TEXT("No asset the scan marks unused is in the cook.")
+		));
+	}
+
+	// what else the cook packaged
+	TArray<FString> RootLines;
+	for (int32 Index = 0; Index < Ship.OutsideRoots.Num() && Index < 8; ++Index) {
+		RootLines.Add(FString::Printf(TEXT("%s: %s"), *Ship.OutsideRoots[Index].Key, *PjcFormat::Count(Ship.OutsideRoots[Index].Value)));
+	}
+	const TSharedRef<SHorizontalBox> Footer = SNew(SHorizontalBox);
+	Footer->AddSlot()
+		.AutoWidth()[SNew(SBox).ToolTip(PjcWidgets::MakeToolTip(TEXT("Shipped outside the scan"), FString::Join(RootLines, TEXT("\n"))))[Text(
+			FString::Printf(
+				TEXT("Also shipped: %s engine and plugin packages, %s cooked"), *PjcFormat::Count(Ship.NumOutside), *PjcFormat::Size(Ship.SizeOutside)
+			)
+		)]];
+	if (Ship.NumGenerated > 0) {
+		Footer->AddSlot().AutoWidth().Padding(FMargin {18.0f, 0.0f, 0.0f, 0.0f})[SNew(SBox).ToolTip(
+			PjcWidgets::MakeToolTip(TEXT("Generated packages"), TEXT("World Partition cells and other packages the cook generates."))
+		)[Text(FString::Printf(TEXT("%s generated packages"), *PjcFormat::Count(Ship.NumGenerated)))]];
+	}
+
+	// clang-format off
+	return Card(
+		Status,
+		SNew(SVerticalBox)
+		+ SVerticalBox::Slot().AutoHeight()
+		[
+			PjcWidgets::MakeBar(Segments, 8.0f)
+		]
+		+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {0.0f, 10.0f})
+		[
+			Columns
+		]
+		+ SVerticalBox::Slot().AutoHeight()
+		[
+			SNew(SBox).HeightOverride(1.0f)
+			[
+				SNew(SImage).Image(FCoreStyle::Get().GetBrush("WhiteBrush")).ColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.Line"))
+			]
+		]
+		+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {0.0f, 8.0f, 0.0f, 0.0f})
+		[
+			Footer
+		]
+	);
+	// clang-format on
 }
 
 FString SPjcTabOverview::GetClassShortName(const FName ClassName) {
