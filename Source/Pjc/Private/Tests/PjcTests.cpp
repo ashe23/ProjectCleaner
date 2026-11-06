@@ -815,8 +815,10 @@ bool FPjcTestCookShipped::RunTest(const FString& Parameters) {
 	// a cook as the cooker leaves it: a development asset registry, negative size for what it did not cook
 	const FString PlatformDir = FPjcCookInfo::GetCookedDir() / TEXT("PjcTestPlatform");
 	const FString RegistryFile = PlatformDir / FApp::GetProjectName() / TEXT("Metadata") / TEXT("DevelopmentAssetRegistry.bin");
+	// Saved/Cooked goes too when the test made it
+	const bool bCookedDirExisted = IFileManager::Get().DirectoryExists(*FPjcCookInfo::GetCookedDir());
 	ON_SCOPE_EXIT {
-		IFileManager::Get().DeleteDirectory(*PlatformDir, false, true);
+		IFileManager::Get().DeleteDirectory(*(bCookedDirExisted ? PlatformDir : FPjcCookInfo::GetCookedDir()), false, true);
 	};
 	{
 		FAssetRegistryState State;
