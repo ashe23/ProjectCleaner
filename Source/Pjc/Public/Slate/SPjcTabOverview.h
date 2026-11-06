@@ -4,10 +4,12 @@
 
 #include "CoreMinimal.h"
 #include "PjcOverview.h"
+#include "Slate/PjcWidgets.h"
 #include "Widgets/SCompoundWidget.h"
 
 class FTabManager;
 class SBox;
+class SToolTip;
 
 /** Overview tool: what the shared scan found for the whole project */
 class SPjcTabOverview final : public SCompoundWidget
@@ -30,6 +32,23 @@ class SPjcTabOverview final : public SCompoundWidget
 
 	TSharedRef<SWidget> MakeSummary();
 	TSharedRef<SWidget> MakeIssues();
+	TSharedRef<SWidget> MakeReasons() const;
+	TSharedRef<SWidget> MakeClasses() const;
+
+	/** Card with a title, a hint on the right and its rows */
+	static TSharedRef<SWidget> MakeSection(const FString& Title, const FString& Hint, const TSharedRef<SWidget>& Content);
+	/** Two cards side by side, as high as the higher one */
+	static TSharedRef<SWidget> MakeColumns(const TSharedRef<SWidget>& Left, const TSharedRef<SWidget>& Right);
+	/** Name and value on one line, a bar under them; a button when OnClick is bound */
+	static TSharedRef<SWidget> MakeRow(
+		const TSharedRef<SWidget>& Name,
+		const TSharedRef<SWidget>& Value,
+		const TArray<PjcWidgets::FBarSegment>& Segments,
+		const double BarTotal,
+		const TSharedPtr<SToolTip>& ToolTip,
+		const FSimpleDelegate& OnClick = FSimpleDelegate {}
+	);
+	static void GetReasonInfo(const EPjcUsageReason Reason, FString& OutName, FString& OutToolTip, FLinearColor& OutColor);
 
 	FDelegateHandle ScanFinishedHandle;
 	TWeakPtr<FTabManager> TabManager;

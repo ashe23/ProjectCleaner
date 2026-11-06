@@ -5,6 +5,7 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 #include "PjcAssetGraph.h"
+#include "PjcOverview.h"
 #include "PjcScanDraft.h"
 #include "PjcSettings.h"
 #include "PjcShim.h"
@@ -640,6 +641,38 @@ bool FPjcTestScanResult::RunTest(const FString& Parameters) {
 	TestStatus(TEXT("C_Unused_fr"), EPjcAssetStatus::Unused, EPjcUsageReason::None);
 	TestStatus(TEXT("EUB_Tool"), EPjcAssetStatus::EditorOnly, EPjcUsageReason::Editor);
 	TestStatus(TEXT("C_UnusedLeaf"), EPjcAssetStatus::Unused, EPjcUsageReason::None);
+
+	// overview: every asset counted once by status, by reason and by class
+	const FPjcOverview Overview = FPjcOverview::Make(Result);
+	TestEqual(TEXT("overview all"), Overview.All.Num, Result.Assets.Num());
+	TestEqual(TEXT("overview by status"), Overview.Used.Num + Overview.EditorOnly.Num + Overview.Unused.Num, Overview.All.Num);
+	TestEqual(TEXT("overview unused"), Overview.Unused.Num, Result.Unused.Num());
+	int32 NumByReason = 0;
+	int64 SizeByReason = 0;
+	const FPjcOverview::FReason* Unreferenced = nullptr;
+	const FPjcOverview::FReason* Indirect = nullptr;
+	for (const auto& Row : Overview.Reasons) {
+		NumByReason += Row.Total.Num;
+		SizeByReason += Row.Total.Size;
+		Unreferenced = Row.Reason == EPjcUsageReason::None ? &Row : Unreferenced;
+		Indirect = Row.Reason == EPjcUsageReason::Indirect ? &Row : Indirect;
+	}
+	TestEqual(TEXT("overview by reason"), NumByReason, Overview.All.Num);
+	TestEqual(TEXT("overview size by reason"), SizeByReason, Overview.All.Size);
+	TestTrue(TEXT("overview unused reason"), Unreferenced && Unreferenced->Total.Num == Overview.Unused.Num);
+	TestTrue(TEXT("overview source and config reason"), Indirect && Indirect->Total.Num > 0);
+	int32 NumByClass = 0;
+	for (int32 Index = 0; Index < Overview.Classes.Num(); ++Index) {
+		const FPjcOverview::FClass& Class = Overview.Classes[Index];
+		NumByClass += Class.Total.Num;
+		TestEqual(
+			*FString::Printf(TEXT("%s size by status"), *Class.Name.ToString()),
+			Class.SizeUsed + Class.SizeEditorOnly + Class.SizeUnused,
+			Class.Total.Size
+		);
+		TestTrue(TEXT("classes biggest first"), Index == 0 || Overview.Classes[Index - 1].Total.Size >= Class.Total.Size);
+	}
+	TestEqual(TEXT("overview by class"), NumByClass, Overview.All.Num);
 
 	// issues: same answers as the separate queries
 	TestSetEqual(*this, TEXT("result external files"), FixtureFiles(Result.FilesExternal), Normalized({Fixture.ExternalFile()}));

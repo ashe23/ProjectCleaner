@@ -78,6 +78,10 @@ void SPjcTabOverview::Rebuild() {
 		[
 			MakeIssues()
 		]
+		+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {0.0f, 14.0f, 0.0f, 0.0f})
+		[
+			MakeColumns(MakeReasons(), MakeClasses())
+		]
 	);
 	// clang-format on
 }
@@ -338,4 +342,258 @@ TSharedRef<SWidget> SPjcTabOverview::MakeIssues() {
 	}
 
 	return Row;
+}
+
+TSharedRef<SWidget> SPjcTabOverview::MakeReasons() const {
+	const TSharedRef<SVerticalBox> Rows = SNew(SVerticalBox);
+	const int64 MaxSize = Overview.Reasons.Num() > 0 ? Overview.Reasons[0].Total.Size : 0;
+
+	for (const auto& Row : Overview.Reasons) {
+		FString Name;
+		FString ToolTip;
+		FLinearColor Color;
+		GetReasonInfo(Row.Reason, Name, ToolTip, Color);
+
+		PjcWidgets::FBarSegment Segment;
+		Segment.Value = static_cast<double>(Row.Total.Size);
+		Segment.Color = Color;
+
+		// clang-format off
+		const TSharedRef<SWidget> NameWidget = SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 7.0f, 0.0f})
+			[
+				PjcWidgets::MakeSwatch(Color, 8.0f)
+			]
+			+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
+			[
+				SNew(STextBlock).Text(FText::FromString(Name))
+			];
+		// clang-format on
+		const FString ValueText = FString::Printf(TEXT("%s · %s"), *PjcFormat::Size(Row.Total.Size), *PjcFormat::Count(Row.Total.Num));
+		const TSharedRef<SWidget> Value = SNew(STextBlock)
+											  .Text(FText::FromString(ValueText))
+											  .Font(PjcWidgets::GetFontMono(9))
+											  .ColorAndOpacity(FSlateColor::UseSubduedForeground());
+		const FString Share = FString::Printf(TEXT("%s of the project size"), *PjcFormat::Percent(Row.Total.Size, Overview.All.Size));
+
+		Rows->AddSlot()
+			.AutoHeight()[MakeRow(NameWidget, Value, {Segment}, static_cast<double>(MaxSize), PjcWidgets::MakeToolTip(Name, ToolTip, Share))];
+	}
+
+	return MakeSection(TEXT("Usage reasons"), TEXT("by chain start"), Rows);
+}
+
+TSharedRef<SWidget> SPjcTabOverview::MakeClasses() const {
+	constexpr int32 MaxRows = 8;
+	const TSharedRef<SVerticalBox> Rows = SNew(SVerticalBox);
+	const int64 MaxSize = Overview.Classes.Num() > 0 ? Overview.Classes[0].Total.Size : 0;
+
+	for (int32 Index = 0; Index < Overview.Classes.Num() && Index < MaxRows; ++Index) {
+		const FPjcOverview::FClass& Class = Overview.Classes[Index];
+
+		TArray<PjcWidgets::FBarSegment> Segments;
+		Segments.AddDefaulted(3);
+		Segments[0].Value = static_cast<double>(Class.SizeUsed);
+		Segments[0].Color = PjcWidgets::GetColor("ProjectCleaner.Color.UsedFill");
+		Segments[1].Value = static_cast<double>(Class.SizeEditorOnly);
+		Segments[1].Color = PjcWidgets::GetColor("ProjectCleaner.Color.EditorFill");
+		Segments[2].Value = static_cast<double>(Class.SizeUnused);
+		Segments[2].Color = PjcWidgets::GetColor("ProjectCleaner.Color.UnusedFill");
+
+		const FString ValueText = FString::Printf(TEXT("%s · %s"), *PjcFormat::Size(Class.Total.Size), *PjcFormat::Count(Class.Total.Num));
+		const TSharedRef<SHorizontalBox> Value = SNew(SHorizontalBox);
+		Value->AddSlot().AutoWidth()[SNew(STextBlock)
+										 .Text(FText::FromString(ValueText))
+										 .Font(PjcWidgets::GetFontMono(9))
+										 .ColorAndOpacity(FSlateColor::UseSubduedForeground())];
+		if (Class.SizeUnused > 0) {
+			Value->AddSlot().AutoWidth()[SNew(STextBlock)
+											 .Text(FText::FromString(FString::Printf(TEXT(" · %s unused"), *PjcFormat::Size(Class.SizeUnused))))
+											 .Font(PjcWidgets::GetFontMono(9))
+											 .ColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.Red"))];
+		}
+
+		const FString Text = FString::Printf(TEXT("%s assets, %s"), *PjcFormat::Count(Class.Total.Num), *PjcFormat::Size(Class.Total.Size));
+		const FString Lines = FString::Printf(
+			TEXT("Used: %s\nEditor only: %s\nUnused: %s"),
+			*PjcFormat::Size(Class.SizeUsed),
+			*PjcFormat::Size(Class.SizeEditorOnly),
+			*PjcFormat::Size(Class.SizeUnused)
+		);
+		// UE5 class names are paths (/Script/Engine.Texture2D): the name is after the dot
+		const FString ClassPath = Class.Name.ToString();
+		int32 Dot = INDEX_NONE;
+		const FString ClassName = ClassPath.FindLastChar(TEXT('.'), Dot) ? ClassPath.Mid(Dot + 1) : ClassPath;
+		Rows->AddSlot().AutoHeight()[MakeRow(
+			SNew(STextBlock).Text(FText::FromString(ClassName)),
+			Value,
+			Segments,
+			static_cast<double>(MaxSize),
+			PjcWidgets::MakeToolTip(ClassPath, Text, Lines)
+		)];
+	}
+
+	return MakeSection(TEXT("Classes"), FString::Printf(TEXT("top %d by size"), MaxRows), Rows);
+}
+
+TSharedRef<SWidget> SPjcTabOverview::MakeSection(const FString& Title, const FString& Hint, const TSharedRef<SWidget>& Content) {
+	// clang-format off
+	return PjcWidgets::MakeCard(
+		SNew(SVerticalBox)
+		+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {6.0f, 0.0f, 6.0f, 8.0f})
+		[
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
+			[
+				PjcWidgets::MakeCardTitle(Title)
+			]
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+			[
+				SNew(STextBlock).Text(FText::FromString(Hint)).Font(FPjcStyles::GetFont("Regular", 8)).ColorAndOpacity(FSlateColor::UseSubduedForeground())
+			]
+		]
+		+ SVerticalBox::Slot().AutoHeight()
+		[
+			Content
+		],
+		FMargin {8.0f, 12.0f, 8.0f, 10.0f}
+	);
+	// clang-format on
+}
+
+TSharedRef<SWidget> SPjcTabOverview::MakeColumns(const TSharedRef<SWidget>& Left, const TSharedRef<SWidget>& Right) {
+	// clang-format off
+	return SNew(SHorizontalBox)
+		+ SHorizontalBox::Slot().FillWidth(1.0f)
+		[
+			Left
+		]
+		+ SHorizontalBox::Slot().AutoWidth()
+		[
+			SNew(SBox).WidthOverride(14.0f)
+		]
+		+ SHorizontalBox::Slot().FillWidth(1.0f)
+		[
+			Right
+		];
+	// clang-format on
+}
+
+TSharedRef<SWidget> SPjcTabOverview::MakeRow(
+	const TSharedRef<SWidget>& Name,
+	const TSharedRef<SWidget>& Value,
+	const TArray<PjcWidgets::FBarSegment>& Segments,
+	const double BarTotal,
+	const TSharedPtr<SToolTip>& ToolTip,
+	const FSimpleDelegate& OnClick
+) {
+	// clang-format off
+	const TSharedRef<SWidget> Content = SNew(SBox)
+		.Padding(FMargin {6.0f, 5.0f})
+		[
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot().AutoHeight()
+			[
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
+				[
+					Name
+				]
+				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {12.0f, 0.0f, 0.0f, 0.0f})
+				[
+					Value
+				]
+			]
+			+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {0.0f, 4.0f, 0.0f, 0.0f})
+			[
+				PjcWidgets::MakeBar(Segments, 5.0f, BarTotal)
+			]
+		];
+
+	if (!OnClick.IsBound()) {
+		return SNew(SBox).ToolTip(ToolTip)[Content];
+	}
+
+	return SNew(SButton)
+		.ButtonStyle(&FPjcStyles::Get().GetWidgetStyle<FButtonStyle>("ProjectCleaner.Button.Row"))
+		.ContentPadding(FMargin {0.0f})
+		.ToolTip(ToolTip)
+		.OnClicked_Lambda([OnClick]() {
+			OnClick.ExecuteIfBound();
+			return FReply::Handled();
+		})
+		[
+			Content
+		];
+	// clang-format on
+}
+
+void SPjcTabOverview::GetReasonInfo(const EPjcUsageReason Reason, FString& OutName, FString& OutToolTip, FLinearColor& OutColor) {
+	const TCHAR* Color = TEXT("#6FA8A2");
+	switch (Reason) {
+		case EPjcUsageReason::None :
+			OutName = TEXT("Unreferenced");
+			OutToolTip = TEXT("Nothing used references them. Cleanup deletes them.");
+			Color = TEXT("#FE6D73");
+			break;
+		case EPjcUsageReason::Primary :
+			OutName = TEXT("Primary assets");
+			OutToolTip = TEXT("Maps, and the assets the Asset Manager registers or Primary Asset Labels list.");
+			Color = TEXT("#4F9DF0");
+			break;
+		case EPjcUsageReason::PrimaryClass :
+			OutName = TEXT("Unregistered primary classes");
+			OutToolTip = TEXT("Assets of a primary asset class the Asset Manager did not register.");
+			Color = TEXT("#7A9FD0");
+			break;
+		case EPjcUsageReason::EngineReferenced :
+			OutName = TEXT("External references");
+			OutToolTip = TEXT("Referenced by engine content, plugins left out of the scan, or level actors saved in their own files.");
+			Color = TEXT("#9B8CF0");
+			break;
+		case EPjcUsageReason::Indirect :
+			OutName = TEXT("Source & config");
+			OutToolTip = TEXT("C++, Python and .ini files name them by path.");
+			Color = TEXT("#E0A85A");
+			break;
+		case EPjcUsageReason::ConfigFolder :
+			OutName = TEXT("Config folders");
+			OutToolTip = TEXT("Inside folders set to always cook or scanned for Data Registries.");
+			Color = TEXT("#C9A04A");
+			break;
+		case EPjcUsageReason::Localized :
+			OutName = TEXT("Localized assets");
+			OutToolTip = TEXT("Language copies of used assets in L10N folders.");
+			Color = TEXT("#5FC4A8");
+			break;
+		case EPjcUsageReason::Editor :
+			OutName = TEXT("Editor assets");
+			OutToolTip = TEXT("Editor utilities, validators, scriptable tools and editor tool data.");
+			Color = TEXT("#7FB2FF");
+			break;
+		case EPjcUsageReason::Excluded :
+			OutName = TEXT("Excluded");
+			OutToolTip = TEXT("Excluded in settings, always used classes and cinematics.");
+			Color = TEXT("#8A9099");
+			break;
+		case EPjcUsageReason::GameplayCue :
+			OutName = TEXT("GameplayCue notifies");
+			OutToolTip = TEXT("Loaded by their tag by the GameplayCue manager.");
+			Color = TEXT("#D679C8");
+			break;
+		case EPjcUsageReason::FolderLabel :
+			OutName = TEXT("Folder labels");
+			OutToolTip = TEXT("In the folder of a Primary Asset Label with Label Assets In My Directory.");
+			Color = TEXT("#FFCB77");
+			break;
+		case EPjcUsageReason::Megascans :
+			OutName = TEXT("Megascans presets");
+			OutToolTip = TEXT("Presets the Megascans plugin uses.");
+			break;
+		default :
+			OutName = TEXT("Other");
+			OutToolTip = FString {};
+			break;
+	}
+	OutColor = FLinearColor {FColor::FromHex(Color)};
 }
