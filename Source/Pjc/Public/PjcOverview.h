@@ -38,6 +38,22 @@ struct FPjcOverview
 		int64 SizeUnused = 0;
 	};
 
+	/** Folder with its assets and the unused ones among them */
+	struct FFolder
+	{
+		FString Path;
+		FTotal All;
+		FTotal Unused;
+	};
+
+	/** Unused asset */
+	struct FAsset
+	{
+		FName Package;
+		FName Class;
+		int64 Size = 0;
+	};
+
 	/** Every scanned asset (redirectors are not content) */
 	FTotal All;
 	FTotal Used;
@@ -50,8 +66,20 @@ struct FPjcOverview
 	/** Biggest first */
 	TArray<FClass> Classes;
 
+	/** Folders with half of their size or more unused, while their parent has less; most unused bytes first */
+	TArray<FFolder> UnusedFolders;
+
+	/** Biggest unused assets, biggest first */
+	TArray<FAsset> LargestUnused;
+
+	static constexpr int32 MaxLargestUnused = 50;
+
 	static FPjcOverview Make(const FPjcScanResult& Result);
 
 	/** Reason a chain is grouped under: assets a Primary Asset Label lists are primary assets too */
 	static EPjcUsageReason GetGroupReason(const FPjcScanResult& Result, const FName Package);
+
+  private:
+
+	static void MakeUnusedFolders(const FPjcScanResult& Result, FPjcOverview& Overview);
 };

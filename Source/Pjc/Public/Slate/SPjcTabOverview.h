@@ -29,11 +29,15 @@ class SPjcTabOverview final : public SCompoundWidget
 	void OnScanFinished();
 	void Rebuild();
 	void OpenTab(const FName TabId) const;
+	/** Shows the asset in Asset Usage */
+	void Inspect(const FName Package) const;
 
 	TSharedRef<SWidget> MakeSummary();
 	TSharedRef<SWidget> MakeIssues();
 	TSharedRef<SWidget> MakeReasons() const;
 	TSharedRef<SWidget> MakeClasses() const;
+	TSharedRef<SWidget> MakeUnusedFolders();
+	TSharedRef<SWidget> MakeLargestUnused();
 
 	/** Card with a title, a hint on the right and its rows */
 	static TSharedRef<SWidget> MakeSection(const FString& Title, const FString& Hint, const TSharedRef<SWidget>& Content);
@@ -48,6 +52,8 @@ class SPjcTabOverview final : public SCompoundWidget
 		const TSharedPtr<SToolTip>& ToolTip,
 		const FSimpleDelegate& OnClick = FSimpleDelegate {}
 	);
+	/** UE5 class names are paths (/Script/Engine.Texture2D): the name after the dot */
+	static FString GetClassShortName(const FName ClassName);
 	static void GetReasonInfo(const EPjcUsageReason Reason, FString& OutName, FString& OutToolTip, FLinearColor& OutColor);
 
 	FDelegateHandle ScanFinishedHandle;

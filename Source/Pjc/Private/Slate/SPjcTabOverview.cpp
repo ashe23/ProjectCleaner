@@ -3,6 +3,7 @@
 #include "Slate/SPjcTabOverview.h"
 #include "Slate/PjcWidgets.h"
 #include "Slate/SPjcScanBar.h"
+#include "Slate/SPjcTabAssetsUsage.h"
 #include "Slate/SPjcToolFrame.h"
 #include "PjcConstants.h"
 #include "PjcFormat.h"
@@ -11,8 +12,10 @@
 #include "PjcSubsystem.h"
 // Engine Headers
 #include "Framework/Docking/TabManager.h"
+#include "Misc/PackageName.h"
 #include "Misc/Paths.h"
 #include "Styling/CoreStyle.h"
+#include "Widgets/Docking/SDockTab.h"
 #include "Widgets/Images/SImage.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Input/SHyperlink.h"
@@ -82,6 +85,10 @@ void SPjcTabOverview::Rebuild() {
 		[
 			MakeColumns(MakeReasons(), MakeClasses())
 		]
+		+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {0.0f, 14.0f, 0.0f, 0.0f})
+		[
+			MakeColumns(MakeUnusedFolders(), MakeLargestUnused())
+		]
 	);
 	// clang-format on
 }
@@ -89,6 +96,16 @@ void SPjcTabOverview::Rebuild() {
 void SPjcTabOverview::OpenTab(const FName TabId) const {
 	if (const TSharedPtr<FTabManager> Tabs = TabManager.Pin()) {
 		Tabs->TryInvokeTab(FTabId {TabId});
+	}
+}
+
+void SPjcTabOverview::Inspect(const FName Package) const {
+	const TSharedPtr<FTabManager> Tabs = TabManager.Pin();
+	if (!Tabs.IsValid()) return;
+
+	const TSharedPtr<SDockTab> Tab = Tabs->TryInvokeTab(FTabId {PjcConstants::TabAssetsUsage});
+	if (Tab.IsValid() && Tab->GetContent()->GetType() == TEXT("SPjcTabAssetsUsage")) {
+		StaticCastSharedRef<SPjcTabAssetsUsage>(Tab->GetContent())->Inspect(Package);
 	}
 }
 
@@ -420,20 +437,170 @@ TSharedRef<SWidget> SPjcTabOverview::MakeClasses() const {
 			*PjcFormat::Size(Class.SizeEditorOnly),
 			*PjcFormat::Size(Class.SizeUnused)
 		);
-		// UE5 class names are paths (/Script/Engine.Texture2D): the name is after the dot
-		const FString ClassPath = Class.Name.ToString();
-		int32 Dot = INDEX_NONE;
-		const FString ClassName = ClassPath.FindLastChar(TEXT('.'), Dot) ? ClassPath.Mid(Dot + 1) : ClassPath;
 		Rows->AddSlot().AutoHeight()[MakeRow(
-			SNew(STextBlock).Text(FText::FromString(ClassName)),
+			SNew(STextBlock).Text(FText::FromString(GetClassShortName(Class.Name))),
 			Value,
 			Segments,
 			static_cast<double>(MaxSize),
-			PjcWidgets::MakeToolTip(ClassPath, Text, Lines)
+			PjcWidgets::MakeToolTip(Class.Name.ToString(), Text, Lines)
 		)];
 	}
 
 	return MakeSection(TEXT("Classes"), FString::Printf(TEXT("top %d by size"), MaxRows), Rows);
+}
+
+TSharedRef<SWidget> SPjcTabOverview::MakeUnusedFolders() {
+	constexpr int32 MaxRows = 6;
+	const TSharedRef<SVerticalBox> Rows = SNew(SVerticalBox);
+	const int64 MaxSize = Overview.UnusedFolders.Num() > 0 ? Overview.UnusedFolders[0].Unused.Size : 0;
+	const FLinearColor ColorUnused = PjcWidgets::GetColor("ProjectCleaner.Color.Red");
+
+	for (int32 Index = 0; Index < Overview.UnusedFolders.Num() && Index < MaxRows; ++Index) {
+		const FPjcOverview::FFolder& Folder = Overview.UnusedFolders[Index];
+		const bool bAllUnused = Folder.Unused.Num == Folder.All.Num;
+
+		// name, and the parent path without its leading slash
+		int32 Slash = INDEX_NONE;
+		Folder.Path.FindLastChar(TEXT('/'), Slash);
+		const FString Name = Folder.Path.Mid(Slash + 1);
+		const FString Parent = Slash > 0 ? Folder.Path.Mid(1, Slash - 1) : FString {};
+
+		// clang-format off
+		const TSharedRef<SWidget> NameWidget = SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+			[
+				SNew(STextBlock).Text(FText::FromString(Name)).Font(FPjcStyles::GetFont("Bold", 9))
+			]
+			+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center).Padding(FMargin {7.0f, 0.0f, 0.0f, 0.0f})
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString(Parent))
+				.Font(FPjcStyles::GetFont("Regular", 8))
+				.ColorAndOpacity(FSlateColor::UseSubduedForeground())
+			];
+
+		const TSharedRef<SWidget> Value = SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot().AutoWidth()
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString(PjcFormat::Size(Folder.Unused.Size) + TEXT(" · ")))
+				.Font(PjcWidgets::GetFontMono(9))
+				.ColorAndOpacity(FSlateColor::UseSubduedForeground())
+			]
+			+ SHorizontalBox::Slot().AutoWidth()
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString(PjcFormat::Percent(Folder.Unused.Size, Folder.All.Size)))
+				.Font(PjcWidgets::GetFontMono(9))
+				.ColorAndOpacity(bAllUnused ? FSlateColor {ColorUnused} : FSlateColor::UseSubduedForeground())
+			]
+			+ SHorizontalBox::Slot().AutoWidth()
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString(TEXT(" · ") + PjcFormat::Count(Folder.Unused.Num)))
+				.Font(PjcWidgets::GetFontMono(9))
+				.ColorAndOpacity(FSlateColor::UseSubduedForeground())
+			]
+			+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin {8.0f, 0.0f, 0.0f, 0.0f})
+			[
+				SNew(STextBlock).Text(FText::FromString(TEXT("Review ›"))).ColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.Accent"))
+			];
+		// clang-format on
+
+		PjcWidgets::FBarSegment Segment;
+		Segment.Value = static_cast<double>(Folder.Unused.Size);
+		Segment.Color = PjcWidgets::GetColor("ProjectCleaner.Color.UnusedFill");
+
+		const FString Text = bAllUnused
+			? FString::Printf(TEXT("All %s assets unused"), *PjcFormat::Count(Folder.All.Num))
+			: FString::Printf(TEXT("%s of %s assets unused"), *PjcFormat::Count(Folder.Unused.Num), *PjcFormat::Count(Folder.All.Num));
+		const FString Sizes
+			= FString::Printf(TEXT("%s of %s\nOpens Assets Unused"), *PjcFormat::Size(Folder.Unused.Size), *PjcFormat::Size(Folder.All.Size));
+		Rows->AddSlot().AutoHeight()[MakeRow(
+			NameWidget,
+			Value,
+			{Segment},
+			static_cast<double>(MaxSize),
+			PjcWidgets::MakeToolTip(Folder.Path, Text, Sizes),
+			FSimpleDelegate::CreateSP(this, &SPjcTabOverview::OpenTab, PjcConstants::TabAssetsUnused)
+		)];
+	}
+
+	if (Overview.UnusedFolders.Num() == 0) {
+		Rows->AddSlot().AutoHeight().Padding(
+			FMargin {6.0f, 4.0f}
+		)[SNew(STextBlock).Text(FText::FromString(TEXT("No folder is mostly unused."))).ColorAndOpacity(FSlateColor::UseSubduedForeground())];
+	}
+
+	return MakeSection(TEXT("Unused by folder"), TEXT("50% or more unused"), Rows);
+}
+
+TSharedRef<SWidget> SPjcTabOverview::MakeLargestUnused() {
+	constexpr int32 MaxRows = 6;
+	const TSharedRef<SVerticalBox> Rows = SNew(SVerticalBox);
+	const int64 MaxSize = Overview.LargestUnused.Num() > 0 ? Overview.LargestUnused[0].Size : 0;
+
+	for (int32 Index = 0; Index < Overview.LargestUnused.Num() && Index < MaxRows; ++Index) {
+		const FPjcOverview::FAsset& Asset = Overview.LargestUnused[Index];
+		const FString Name = FPackageName::GetShortName(Asset.Package);
+		const FString ClassName = GetClassShortName(Asset.Class);
+
+		// clang-format off
+		const TSharedRef<SWidget> NameWidget = SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+			[
+				SNew(STextBlock).Text(FText::FromString(Name))
+			]
+			+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center).Padding(FMargin {7.0f, 0.0f, 0.0f, 0.0f})
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString(ClassName))
+				.Font(FPjcStyles::GetFont("Regular", 8))
+				.ColorAndOpacity(FSlateColor::UseSubduedForeground())
+			];
+
+		const TSharedRef<SWidget> Value = SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot().AutoWidth()
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString(PjcFormat::Size(Asset.Size)))
+				.Font(PjcWidgets::GetFontMono(9))
+				.ColorAndOpacity(FSlateColor::UseSubduedForeground())
+			]
+			+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin {8.0f, 0.0f, 0.0f, 0.0f})
+			[
+				SNew(STextBlock).Text(FText::FromString(TEXT("Inspect ›"))).ColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.Accent"))
+			];
+		// clang-format on
+
+		PjcWidgets::FBarSegment Segment;
+		Segment.Value = static_cast<double>(Asset.Size);
+		Segment.Color = PjcWidgets::GetColor("ProjectCleaner.Color.UnusedFill");
+
+		const FString More = FString::Printf(TEXT("%s, %s\nOpens it in Asset Usage"), *ClassName, *PjcFormat::Size(Asset.Size));
+		Rows->AddSlot().AutoHeight()[MakeRow(
+			NameWidget,
+			Value,
+			{Segment},
+			static_cast<double>(MaxSize),
+			PjcWidgets::MakeToolTip(Name, Asset.Package.ToString(), More),
+			FSimpleDelegate::CreateSP(this, &SPjcTabOverview::Inspect, Asset.Package)
+		)];
+	}
+
+	if (Overview.LargestUnused.Num() == 0) {
+		Rows->AddSlot().AutoHeight().Padding(
+			FMargin {6.0f, 4.0f}
+		)[SNew(STextBlock).Text(FText::FromString(TEXT("Nothing unused."))).ColorAndOpacity(FSlateColor::UseSubduedForeground())];
+	}
+
+	return MakeSection(TEXT("Largest unused"), FString::Printf(TEXT("top %d by size"), MaxRows), Rows);
+}
+
+FString SPjcTabOverview::GetClassShortName(const FName ClassName) {
+	const FString Path = ClassName.ToString();
+	int32 Dot = INDEX_NONE;
+	return Path.FindLastChar(TEXT('.'), Dot) ? Path.Mid(Dot + 1) : Path;
 }
 
 TSharedRef<SWidget> SPjcTabOverview::MakeSection(const FString& Title, const FString& Hint, const TSharedRef<SWidget>& Content) {

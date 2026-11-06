@@ -673,6 +673,22 @@ bool FPjcTestScanResult::RunTest(const FString& Parameters) {
 		TestTrue(TEXT("classes biggest first"), Index == 0 || Overview.Classes[Index - 1].Total.Size >= Class.Total.Size);
 	}
 	TestEqual(TEXT("overview by class"), NumByClass, Overview.All.Num);
+	TestEqual(
+		TEXT("largest unused"), Overview.LargestUnused.Num(), FMath::Min(Result.Unused.Num(), static_cast<int32>(FPjcOverview::MaxLargestUnused))
+	);
+	for (int32 Index = 1; Index < Overview.LargestUnused.Num(); ++Index) {
+		TestTrue(TEXT("largest unused biggest first"), Overview.LargestUnused[Index - 1].Size >= Overview.LargestUnused[Index].Size);
+	}
+	TestTrue(TEXT("unused folders found"), Overview.UnusedFolders.Num() > 0);
+	for (const auto& Folder : Overview.UnusedFolders) {
+		TestTrue(*FString::Printf(TEXT("%s mostly unused"), *Folder.Path), Folder.Unused.Size * 2 >= Folder.All.Size && Folder.Unused.Num > 0);
+		TestFalse(
+			*FString::Printf(TEXT("%s parent not listed"), *Folder.Path),
+			Overview.UnusedFolders.ContainsByPredicate([&Folder](const FPjcOverview::FFolder& Other) {
+				return Folder.Path.StartsWith(Other.Path + TEXT("/"));
+			})
+		);
+	}
 
 	// issues: same answers as the separate queries
 	TestSetEqual(*this, TEXT("result external files"), FixtureFiles(Result.FilesExternal), Normalized({Fixture.ExternalFile()}));

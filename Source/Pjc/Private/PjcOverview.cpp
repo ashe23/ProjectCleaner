@@ -49,7 +49,58 @@ FPjcOverview FPjcOverview::Make(const FPjcScanResult& Result) {
 		return A.Total.Size != B.Total.Size ? A.Total.Size > B.Total.Size : A.Name.LexicalLess(B.Name);
 	});
 
+	MakeUnusedFolders(Result, Overview);
+
+	for (const auto& Asset : Result.Unused) {
+		Overview.LargestUnused.Add(FAsset {Asset.PackageName, PjcShim::GetAssetClassName(Asset), Result.GetSize(Asset.PackageName)});
+	}
+	Overview.LargestUnused.Sort([](const FAsset& A, const FAsset& B) {
+		return A.Size != B.Size ? A.Size > B.Size : A.Package.LexicalLess(B.Package);
+	});
+	if (Overview.LargestUnused.Num() > MaxLargestUnused) {
+		Overview.LargestUnused.SetNum(MaxLargestUnused);
+	}
+
 	return Overview;
+}
+
+void FPjcOverview::MakeUnusedFolders(const FPjcScanResult& Result, FPjcOverview& Overview) {
+	// every folder with what is inside it, subfolders included
+	TMap<FString, FFolder> Folders;
+	for (const auto& Asset : Result.Assets) {
+		const int64 Size = Result.GetSize(Asset.PackageName);
+		const bool bUnused = Result.GetStatus(Asset.PackageName) == EPjcAssetStatus::Unused;
+
+		FString Path = Asset.PackagePath.ToString();
+		while (!Path.IsEmpty()) {
+			FFolder& Folder = Folders.FindOrAdd(Path);
+			Folder.Path = Path;
+			Folder.All.Add(Size);
+			if (bUnused) {
+				Folder.Unused.Add(Size);
+			}
+
+			int32 Slash = INDEX_NONE;
+			Path = Path.FindLastChar(TEXT('/'), Slash) && Slash > 0 ? Path.Left(Slash) : FString {};
+		}
+	}
+
+	// mostly unused: the topmost such folder stands for its subfolders
+	const auto IsMostlyUnused = [](const FFolder& Folder) {
+		return Folder.Unused.Size > 0 && Folder.Unused.Size * 2 >= Folder.All.Size;
+	};
+	for (const auto& Pair : Folders) {
+		if (!IsMostlyUnused(Pair.Value)) continue;
+
+		int32 Slash = INDEX_NONE;
+		const FFolder* Parent = Pair.Key.FindLastChar(TEXT('/'), Slash) && Slash > 0 ? Folders.Find(Pair.Key.Left(Slash)) : nullptr;
+		if (Parent && IsMostlyUnused(*Parent)) continue;
+
+		Overview.UnusedFolders.Add(Pair.Value);
+	}
+	Overview.UnusedFolders.Sort([](const FFolder& A, const FFolder& B) {
+		return A.Unused.Size != B.Unused.Size ? A.Unused.Size > B.Unused.Size : A.Path < B.Path;
+	});
 }
 
 EPjcUsageReason FPjcOverview::GetGroupReason(const FPjcScanResult& Result, const FName Package) {
