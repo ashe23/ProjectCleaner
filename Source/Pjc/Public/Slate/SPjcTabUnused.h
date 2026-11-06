@@ -9,6 +9,27 @@
 
 class FTabManager;
 class SBox;
+class SHorizontalBox;
+struct FSlateBrush;
+
+/** Unused asset in the list of the Assets Unused tool */
+struct FPjcUnusedAssetRow
+{
+	/** Index into FPjcScanResult::Assets */
+	int32 Index = INDEX_NONE;
+	FName Package;
+	FString Name;
+	FName ClassName;
+	/** Type name as the Content Browser shows it */
+	FString ClassLabel;
+	FLinearColor Color = FLinearColor::White;
+	const FSlateBrush* Icon = nullptr;
+	int64 Size = 0;
+	/** Folder relative to the selected folder */
+	FString Folder;
+	/** Only a folder label keeps it, while Folder labels is on */
+	bool bLabel = false;
+};
 
 /**
  * Assets Unused tool: cleanup folder by folder. Left the folder tree with unused totals, right the unused assets of
@@ -56,8 +77,26 @@ class SPjcTabUnused final : public SCompoundWidget
 	TSharedRef<SWidget> MakeViewMenu();
 
 	// unused assets of the selected folder
+	using FAssetRowPtr = TSharedPtr<FPjcUnusedAssetRow>;
+	struct FTypeInfo
+	{
+		FString Label;
+		FLinearColor Color;
+		const FSlateBrush* Icon = nullptr;
+	};
+
 	TSharedRef<SWidget> MakeAssetPane();
+	void RefreshAssets();
+	void ApplyAssetFilter();
+	void RebuildChips();
+	const FTypeInfo& GetTypeInfo(const FAssetData& Asset);
+	TSharedRef<ITableRow> OnGenerateAssetRow(FAssetRowPtr Row, const TSharedRef<STableViewBase>& Table);
+	void OnAssetSort(EColumnSortPriority::Type Priority, const FName& Column, EColumnSortMode::Type Mode);
+	EColumnSortMode::Type GetAssetSortMode(const FName Column) const;
+	void OnAssetSearchChanged(const FText& Text);
+	void OnChipClicked(const FName ClassName);
 	FText GetWhereText() const;
+	FText GetWhereInfoText() const;
 
 	void SaveViewState() const;
 
@@ -79,4 +118,18 @@ class SPjcTabUnused final : public SCompoundWidget
 	FString FolderSearch;
 	/** Folders matching the search, with their parents */
 	TSet<FString> SearchMatches;
+
+	// asset list
+	TArray<FAssetRowPtr> FolderRows;
+	TArray<FAssetRowPtr> ListRows;
+	TSharedPtr<SListView<FAssetRowPtr>> ListView;
+	TSharedPtr<SHorizontalBox> ChipsBox;
+	TMap<FName, FTypeInfo> TypeInfos;
+	/** Assets only folder labels keep (unused while Folder labels is off) */
+	TSet<FName> LabelOnly;
+	TSet<FName> ClassFilter;
+	bool bSubfolders = true;
+	FString AssetSearch;
+	FName AssetSortColumn = TEXT("Size");
+	EColumnSortMode::Type AssetSortMode = EColumnSortMode::Descending;
 };
