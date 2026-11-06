@@ -27,6 +27,7 @@ class SPjcTabMain final : public SCompoundWidget
 	FText GetWidgetWarningText() const;
 	TSharedRef<SDockTab> OnTabOverviewSpawn(const FSpawnTabArgs& Args) const;
 	TSharedRef<SDockTab> OnTabAssetsUnusedSpawn(const FSpawnTabArgs& Args) const;
+	TSharedRef<SDockTab> OnTabIssuesSpawn(const FSpawnTabArgs& Args) const;
 	TSharedRef<SDockTab> OnTabAssetsIndirectSpawn(const FSpawnTabArgs& Args) const;
 	TSharedRef<SDockTab> OnTabAssetsCorruptedSpawn(const FSpawnTabArgs& Args) const;
 	TSharedRef<SDockTab> OnTabFilesExternalSpawn(const FSpawnTabArgs& Args) const;

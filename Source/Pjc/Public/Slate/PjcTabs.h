@@ -17,6 +17,9 @@ namespace PjcTabs
 	/** Shows the folder in Assets Unused */
 	void ShowFolder(const TWeakPtr<FTabManager>& Tabs, const FString& Path);
 
+	/** Shows a category of Issues, EPjcIssueCategory as number */
+	void ShowIssues(const TWeakPtr<FTabManager>& Tabs, const uint8 Category);
+
 	/** Shows the assets the last delete could not remove in Assets Unused */
 	void ShowNotDeleted(const TWeakPtr<FTabManager>& Tabs);
 }	// namespace PjcTabs

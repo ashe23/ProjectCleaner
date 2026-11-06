@@ -336,6 +336,13 @@ class UPjcSubsystem final : public UEditorSubsystem
 	static void FixProjectRedirectors(const TArray<FAssetData>& Redirectors, const bool bShowSlowTask = true);
 
 	/**
+	 * Fixes redirectors without the engine dialogs: resaves the assets that use them (checked out when source control
+	 * is on), then deletes the redirectors nothing points to anymore. Redirectors to missing assets stay, with their
+	 * users. Tells what was not resaved and which redirectors stay, and why.
+	 */
+	static FPjcRedirectorFixResult FixRedirectorsWithReport(const TArray<FAssetData>& Redirectors, const bool bShowSlowTask = true);
+
+	/**
 	 * @brief Checks if editor is in play mode or simulation or not
 	 * @return bool
 	 */
@@ -520,5 +527,4 @@ class UPjcSubsystem final : public UEditorSubsystem
 	static void GetExternalActorsDependencies(TSet<FName>& OutPackages);
 	static bool BucketPrepare(const TArray<FAssetData>& Bucket, TArray<UObject*>& LoadedAssets);
 	static int32 BucketDelete(const TArray<UObject*>& LoadedAssets);
-	static void FixRedirectorsWithoutUI(const TArray<UObjectRedirector*>& RedirectorObjects);
 };

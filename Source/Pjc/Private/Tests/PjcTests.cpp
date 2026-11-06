@@ -5,6 +5,7 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 #include "PjcAssetGraph.h"
+#include "PjcIssues.h"
 #include "PjcCookInfo.h"
 #include "PjcOverview.h"
 #include "PjcScanDraft.h"
@@ -19,6 +20,7 @@
 #include "Framework/Application/SlateApplication.h"
 #include "Slate/SPjcTabAssetsCorrupted.h"
 #include "Slate/SPjcTabAssetsIndirect.h"
+#include "Slate/SPjcTabIssues.h"
 #include "Slate/SPjcTabUnused.h"
 #include "Slate/SPjcTabAssetsUsage.h"
 #include "Slate/SPjcTabOverview.h"
@@ -959,6 +961,52 @@ bool FPjcTestUnusedDelete::RunTest(const FString& Parameters) {
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPjcTestIssuesRedirectors, "ProjectCleaner.Issues.Redirectors", PJC_TEST_FLAGS)
+
+bool FPjcTestIssuesRedirectors::RunTest(const FString& Parameters) {
+	if (!FPjcTestFixture::IsTestHost()) {
+		AddInfo(TEXT("Skipped, fixes fixture redirectors, runs only in test host projects"));
+		return true;
+	}
+
+	FPjcScopedScanSettings ScopedSettings {false};
+	FPjcTestFixture Fixture;
+	if (!Fixture.Build(*this, true, true, true)) return false;
+	if (!TestTrue(TEXT("scanned"), UPjcSubsystem::Scan(false))) return false;
+
+	// states: used through, nothing points through it, target missing
+	TArray<FPjcRedirectorInfo> Redirectors;
+	PjcIssues::GetRedirectors(UPjcSubsystem::GetScanResult(), Redirectors);
+	const auto Find = [&](const TCHAR* Name) {
+		return Redirectors.FindByPredicate([&](const FPjcRedirectorInfo& Info) {
+			return Info.Asset.PackageName == PackageOf(Fixture, Name);
+		});
+	};
+	const FPjcRedirectorInfo* Moved = Find(TEXT("R_Moved"));
+	const FPjcRedirectorInfo* Stale = Find(TEXT("R_Stale"));
+	const FPjcRedirectorInfo* Dangling = Find(TEXT("R_Dangling"));
+	if (!TestTrue(TEXT("fixture redirectors found"), Moved && Stale && Dangling)) return false;
+	TestEqual(TEXT("R_Moved in use"), static_cast<int32>(Moved->State), static_cast<int32>(EPjcRedirectorState::InUse));
+	TestTrue(TEXT("R_Moved used by PAL_Root"), Moved->UsedBy.Contains(PackageOf(Fixture, TEXT("PAL_Root"))));
+	TestEqual(TEXT("R_Moved points to C_Target"), Moved->Target, PackageOf(Fixture, TEXT("C_Target")));
+	TestEqual(TEXT("R_Stale not referenced"), static_cast<int32>(Stale->State), static_cast<int32>(EPjcRedirectorState::NotReferenced));
+	TestEqual(TEXT("R_Dangling broken"), static_cast<int32>(Dangling->State), static_cast<int32>(EPjcRedirectorState::Broken));
+	TestTrue(TEXT("unused broken redirector can be fixed"), Dangling->CanFix());
+
+	// fix: users resaved, every redirector deleted, targets kept
+	const FPjcRedirectorFixResult Result = UPjcSubsystem::FixRedirectorsWithReport({Moved->Asset, Stale->Asset, Dangling->Asset}, false);
+	TestEqual(TEXT("nothing kept"), Result.Kept.Num(), 0);
+	TestEqual(TEXT("nothing failed to resave"), Result.NotResaved.Num(), 0);
+	TestEqual(TEXT("redirectors deleted"), Result.Deleted.Num(), 3);
+	TestTrue(TEXT("user resaved"), Result.NumResaved >= 1);
+	for (const TCHAR* Name : {TEXT("R_Moved"), TEXT("R_Stale"), TEXT("R_Dangling")}) {
+		TestFalse(*FString::Printf(TEXT("%s gone"), Name), FPackageName::DoesPackageExist(PackageOf(Fixture, Name).ToString()));
+	}
+	TestTrue(TEXT("C_Target kept"), FPackageName::DoesPackageExist(PackageOf(Fixture, TEXT("C_Target")).ToString()));
+	TestTrue(TEXT("C_ChainLeaf kept"), FPackageName::DoesPackageExist(PackageOf(Fixture, TEXT("C_ChainLeaf")).ToString()));
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPjcTestScanGraph, "ProjectCleaner.Scan.Graph", PJC_TEST_FLAGS)
 
 bool FPjcTestScanGraph::RunTest(const FString& Parameters) {
@@ -1080,10 +1128,23 @@ bool FPjcTestUiTabs::RunTest(const FString& Parameters) {
 
 	const TSharedRef<SPjcTabAssetsUsage> TabUsage = SNew(SPjcTabAssetsUsage);
 	const TSharedRef<SPjcTabUnused> TabUnused = SNew(SPjcTabUnused);
-	const TSharedRef<SWidget> Tabs[]
-		= {SNew(SPjcTabOverview), TabUnused, SNew(SPjcTabAssetsIndirect), SNew(SPjcTabAssetsCorrupted), SNew(SPjcTabFilesExternal), TabUsage};
+	const TSharedRef<SPjcTabIssues> TabIssues = SNew(SPjcTabIssues);
+	const TSharedRef<SWidget> Tabs[] = {
+	  SNew(SPjcTabOverview), TabUnused, TabIssues, SNew(SPjcTabAssetsIndirect), SNew(SPjcTabAssetsCorrupted), SNew(SPjcTabFilesExternal), TabUsage
+	};
 	for (const auto& Tab : Tabs) {
 		TestTrue(FString::Printf(TEXT("%s has content"), *Tab->GetTypeAsString()), Tab->GetChildren()->Num() > 0);
+	}
+
+	// every Issues category lists
+	for (const EPjcIssueCategory Category :
+		 {EPjcIssueCategory::External, EPjcIssueCategory::Corrupted, EPjcIssueCategory::Empty, EPjcIssueCategory::Redirectors}) {
+		TabIssues->ShowCategory(Category);
+		TestEqual(TEXT("issues category shown"), static_cast<int32>(TabIssues->GetCategory()), static_cast<int32>(Category));
+	}
+	if (FPjcTestFixture::IsTestHost()) {
+		TabIssues->ShowCategory(EPjcIssueCategory::External);
+		TestTrue(TEXT("issues lists the fixture external file"), TabIssues->GetNumRows() > 0);
 	}
 
 	// a folder the Overview links to

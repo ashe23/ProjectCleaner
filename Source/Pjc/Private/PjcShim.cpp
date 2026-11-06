@@ -17,6 +17,7 @@
 #endif
 #include "Misc/MessageDialog.h"
 #include "Misc/PackageName.h"
+#include "Misc/RedirectCollector.h"
 #include "Styling/SlateTypes.h"
 #include "ShaderCompiler.h"
 #if ENGINE_MAJOR_VERSION >= 5
@@ -140,6 +141,22 @@ namespace PjcShim
 #else
 		const FAssetPackageData* Data = AssetRegistryModule.Get().GetAssetPackageData(PackageName);
 		return Data ? *Data : FAssetPackageData {};
+#endif
+	}
+
+	void RegisterRedirection(const UObject* Redirector, const FString& TargetObjectPath) {
+		if (!Redirector || TargetObjectPath.IsEmpty()) return;
+
+#if ENGINE_MAJOR_VERSION < 5 || (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION == 0)
+		const FName Path {*Redirector->GetPathName()};
+		if (GRedirectCollector.GetAssetPathRedirection(Path).IsNone()) {
+			GRedirectCollector.AddAssetPathRedirection(Path, FName {*TargetObjectPath});
+		}
+#elif ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION < 5
+		const FSoftObjectPath Path {Redirector};
+		if (GRedirectCollector.GetAssetPathRedirection(Path).IsNull()) {
+			GRedirectCollector.AddAssetPathRedirection(Path, FSoftObjectPath {TargetObjectPath});
+		}
 #endif
 	}
 

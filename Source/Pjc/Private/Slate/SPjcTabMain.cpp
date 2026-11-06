@@ -3,6 +3,7 @@
 #include "Slate/SPjcTabMain.h"
 #include "Slate/SPjcTabOverview.h"
 #include "Slate/SPjcTabUnused.h"
+#include "Slate/SPjcTabIssues.h"
 #include "Slate/SPjcTabAssetsIndirect.h"
 #include "Slate/SPjcTabAssetsCorrupted.h"
 #include "Slate/SPjcTabFilesExternal.h"
@@ -63,6 +64,7 @@ void SPjcTabMain::Construct(
 								FTabManager::NewStack()
 									->AddTab(PjcConstants::TabOverview, ETabState::OpenedTab)
 									->AddTab(PjcConstants::TabAssetsUnused, ETabState::OpenedTab)
+									->AddTab(PjcConstants::TabIssues, ETabState::OpenedTab)
 									->AddTab(PjcConstants::TabAssetsIndirect, ETabState::OpenedTab)
 									->AddTab(PjcConstants::TabAssetsCorrupted, ETabState::OpenedTab)
 									->AddTab(PjcConstants::TabFilesExternal, ETabState::OpenedTab)
@@ -76,6 +78,12 @@ void SPjcTabMain::Construct(
 		.SetTooltipText(FText::FromString(TEXT("Open Overview Tab")))
 		.SetDisplayName(FText::FromString(TEXT("Overview")))
 		.SetIcon(FPjcStyles::GetIcon("ProjectCleaner.Icon.Stat16"))
+		.SetGroup(AppMenuGroup);
+
+	TabManager->RegisterTabSpawner(PjcConstants::TabIssues, FOnSpawnTab::CreateRaw(this, &SPjcTabMain::OnTabIssuesSpawn))
+		.SetTooltipText(FText::FromString(TEXT("Open Issues Tab: redirectors, external files, corrupted files, empty folders")))
+		.SetDisplayName(FText::FromString(TEXT("Issues")))
+		.SetIcon(FPjcStyles::GetIcon("ProjectCleaner.Icon.CorruptedFile16"))
 		.SetGroup(AppMenuGroup);
 
 	TabManager->RegisterTabSpawner(PjcConstants::TabAssetsUnused, FOnSpawnTab::CreateRaw(this, &SPjcTabMain::OnTabAssetsUnusedSpawn))
@@ -180,6 +188,7 @@ void SPjcTabMain::Construct(
 SPjcTabMain::~SPjcTabMain() {
 	FGlobalTabmanager::Get()->UnregisterTabSpawner(PjcConstants::TabOverview);
 	FGlobalTabmanager::Get()->UnregisterTabSpawner(PjcConstants::TabAssetsUnused);
+	FGlobalTabmanager::Get()->UnregisterTabSpawner(PjcConstants::TabIssues);
 	FGlobalTabmanager::Get()->UnregisterTabSpawner(PjcConstants::TabAssetsIndirect);
 	FGlobalTabmanager::Get()->UnregisterTabSpawner(PjcConstants::TabAssetsCorrupted);
 	FGlobalTabmanager::Get()->UnregisterTabSpawner(PjcConstants::TabFilesExternal);
@@ -207,6 +216,14 @@ TSharedRef<SDockTab> SPjcTabMain::OnTabOverviewSpawn(const FSpawnTabArgs& Args) 
 	const auto Frontend = SNew(SDockTab).TabRole(PanelTab).Label(FText::FromString(TEXT("Overview")))[SNew(SPjcTabOverview).TabManager(TabManager)];
 
 	Frontend->SetTabIcon(FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.Stat16"));
+
+	return Frontend;
+}
+
+TSharedRef<SDockTab> SPjcTabMain::OnTabIssuesSpawn(const FSpawnTabArgs& Args) const {
+	const auto Frontend = SNew(SDockTab).TabRole(PanelTab).Label(FText::FromString(TEXT("Issues")))[SNew(SPjcTabIssues).TabManager(TabManager)];
+
+	Frontend->SetTabIcon(FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.CorruptedFile16"));
 
 	return Frontend;
 }

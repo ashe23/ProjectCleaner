@@ -177,6 +177,19 @@ enum class EPjcUsageReason : uint8
 	FolderLabel,
 };
 
+/** What fixing redirectors did */
+struct FPjcRedirectorFixResult
+{
+	/** Assets that used a redirector and were resaved */
+	int32 NumResaved = 0;
+	/** Redirector packages deleted */
+	TArray<FName> Deleted;
+	/** Assets that use a redirector and could not be resaved, and why */
+	TMap<FName, FString> NotResaved;
+	/** Redirector packages that stay, and why */
+	TMap<FName, FString> Kept;
+};
+
 USTRUCT(BlueprintType)
 struct FPjcAssetUsage
 {

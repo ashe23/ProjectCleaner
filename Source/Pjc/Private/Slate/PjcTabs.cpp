@@ -2,6 +2,7 @@
 
 #include "Slate/PjcTabs.h"
 #include "Slate/SPjcTabAssetsUsage.h"
+#include "Slate/SPjcTabIssues.h"
 #include "Slate/SPjcTabUnused.h"
 #include "PjcConstants.h"
 // Engine Headers
@@ -29,6 +30,14 @@ namespace PjcTabs
 		const TSharedPtr<SDockTab> Tab = Manager.IsValid() ? Manager->TryInvokeTab(FTabId {PjcConstants::TabAssetsUnused}) : nullptr;
 		if (Tab.IsValid() && Tab->GetContent()->GetType() == TEXT("SPjcTabUnused")) {
 			StaticCastSharedRef<SPjcTabUnused>(Tab->GetContent())->SelectFolder(Path);
+		}
+	}
+
+	void ShowIssues(const TWeakPtr<FTabManager>& Tabs, const uint8 Category) {
+		const TSharedPtr<FTabManager> Manager = Tabs.Pin();
+		const TSharedPtr<SDockTab> Tab = Manager.IsValid() ? Manager->TryInvokeTab(FTabId {PjcConstants::TabIssues}) : nullptr;
+		if (Tab.IsValid() && Tab->GetContent()->GetType() == TEXT("SPjcTabIssues")) {
+			StaticCastSharedRef<SPjcTabIssues>(Tab->GetContent())->ShowCategory(static_cast<EPjcIssueCategory>(Category));
 		}
 	}
 

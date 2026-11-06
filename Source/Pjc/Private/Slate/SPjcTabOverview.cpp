@@ -4,6 +4,7 @@
 #include "Slate/PjcTabs.h"
 #include "Slate/PjcWidgets.h"
 #include "Slate/SPjcScanBar.h"
+#include "Slate/SPjcTabIssues.h"
 
 #include "Slate/SPjcToolFrame.h"
 #include "PjcConstants.h"
@@ -262,7 +263,8 @@ TSharedRef<SWidget> SPjcTabOverview::MakeIssues() {
 		FString Lower;
 		int32 Num;
 		FString ToolTip;
-		FName TabId;
+		/** Issues category, -1 for the assets the last delete kept */
+		int32 Category;
 	};
 	const FString ExternalExample
 		= Result.FilesExternal.Num() > 0 ? FString::Printf(TEXT(", e.g. %s"), *FPaths::GetCleanFilename(Result.FilesExternal[0])) : FString {};
@@ -271,7 +273,7 @@ TSharedRef<SWidget> SPjcTabOverview::MakeIssues() {
 	   TEXT("redirectors"),
 	   Result.Redirectors.Num(),
 	   TEXT("Left by renamed or moved assets. Scanning follows them, fixing resaves the assets that still use the old path."),
-	   PjcConstants::TabAssetsUnused},
+	   static_cast<int32>(EPjcIssueCategory::Redirectors)},
 	  {TEXT("External files"),
 	   TEXT("external files"),
 	   Result.FilesExternal.Num(),
@@ -279,22 +281,22 @@ TSharedRef<SWidget> SPjcTabOverview::MakeIssues() {
 		   TEXT("Files in content folders the engine does not use%s. %s more are kept: used by the project, or excluded in settings."),
 	   *ExternalExample,
 	   *PjcFormat::Count(Result.FilesExternalKept.Num())
-	   ), PjcConstants::TabFilesExternal},
+	   ), static_cast<int32>(EPjcIssueCategory::External)},
 	  {TEXT("Corrupted files"),
 	   TEXT("corrupted files"),
 	   Result.FilesCorrupted.Num(),
 	   TEXT("Asset files the engine cannot read."),
-	   PjcConstants::TabAssetsCorrupted},
+	   static_cast<int32>(EPjcIssueCategory::Corrupted)},
 	  {TEXT("Empty folders"),
 	   TEXT("empty folders"),
 	   Result.FoldersEmpty.Num(),
 	   TEXT("Folders without assets or files."),
-	   PjcConstants::TabAssetsUnused},
+	   static_cast<int32>(EPjcIssueCategory::Empty)},
 	  {TEXT("Not deleted"),
 	   TEXT("assets left by the last cleanup"),
 	   UPjcSubsystem::GetLastCleanupKept().Num(),
 	   TEXT("Unused assets the last cleanup could not delete, because something holds them."),
-	   NAME_None},
+	   -1},
 	};
 
 	const FLinearColor ColorWarn = PjcWidgets::GetColor("ProjectCleaner.Color.Yellow");
@@ -308,7 +310,7 @@ TSharedRef<SWidget> SPjcTabOverview::MakeIssues() {
 			continue;
 		}
 
-		const FName TabId = Issue.TabId;
+		const int32 IssueCategory = Issue.Category;
 		// clang-format off
 		Row->AddSlot()
 		[
@@ -334,13 +336,13 @@ TSharedRef<SWidget> SPjcTabOverview::MakeIssues() {
 				[
 					SNew(SButton)
 					.ContentPadding(FMargin {8.0f, 0.0f})
-					.OnClicked_Lambda([this, TabId]() {
-						// Not deleted (no tab of its own): the kept assets in Assets Unused
-						if (TabId.IsNone()) {
+					.OnClicked_Lambda([this, IssueCategory]() {
+						// Not deleted: the kept assets in Assets Unused
+						if (IssueCategory < 0) {
 							PjcTabs::ShowNotDeleted(TabManager);
 						}
 						else {
-							OpenTab(TabId);
+							PjcTabs::ShowIssues(TabManager, static_cast<uint8>(IssueCategory));
 						}
 						return FReply::Handled();
 					})

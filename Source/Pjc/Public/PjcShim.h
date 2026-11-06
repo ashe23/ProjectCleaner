@@ -69,6 +69,11 @@ namespace PjcShim
 	 * Asset creates it again when needed. Returns true if any was dropped (collect garbage before deleting).
 	 */
 	bool ReleaseEditorHelpers(const TArray<UObject*>& Assets);
+	/**
+	 * Before 5.5 deleting a redirector removes its redirection and ensures it was registered; loaded redirectors
+	 * are not always registered (4.27). Registers it to TargetObjectPath when missing.
+	 */
+	void RegisterRedirection(const UObject* Redirector, const FString& TargetObjectPath);
 	void GetDerivedClassNames(const TArray<FName>& ClassNames, const TSet<FName>& ExcludedClassNames, TSet<FName>& OutDerivedClassNames);
 	void OpenAssetEditor(const FAssetData& InAssetData);
 	FString GetObjectPathString(const FAssetData& InAssetData);
