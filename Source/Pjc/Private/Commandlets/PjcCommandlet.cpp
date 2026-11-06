@@ -83,6 +83,10 @@ namespace
 		Object->SetNumberField(TEXT("editor_only"), EditorOnly.Num());
 		Object->SetNumberField(TEXT("unused"), NumUnused);
 		Object->SetNumberField(TEXT("redirectors"), Result.Redirectors.Num());
+		Object->SetNumberField(TEXT("files_external"), Result.FilesExternal.Num());
+		Object->SetNumberField(TEXT("files_external_kept"), Result.FilesExternalKept.Num());
+		Object->SetNumberField(TEXT("files_corrupted"), Result.FilesCorrupted.Num());
+		Object->SetNumberField(TEXT("folders_empty"), Result.FoldersEmpty.Num());
 		Object->SetNumberField(TEXT("seconds"), Result.Seconds);
 		Object->SetObjectField(TEXT("chain_reasons"), Reasons);
 		Object->SetArrayField(TEXT("assets_editor_only"), JsonAssets(EditorOnly));

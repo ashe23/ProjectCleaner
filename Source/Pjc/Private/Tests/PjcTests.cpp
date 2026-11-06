@@ -641,6 +641,12 @@ bool FPjcTestScanResult::RunTest(const FString& Parameters) {
 	TestStatus(TEXT("EUB_Tool"), EPjcAssetStatus::EditorOnly, EPjcUsageReason::Editor);
 	TestStatus(TEXT("C_UnusedLeaf"), EPjcAssetStatus::Unused, EPjcUsageReason::None);
 
+	// issues: same answers as the separate queries
+	TestSetEqual(*this, TEXT("result external files"), FixtureFiles(Result.FilesExternal), Normalized({Fixture.ExternalFile()}));
+	TestSetEqual(*this, TEXT("result kept external files"), FixtureFiles(Result.FilesExternalKept), Normalized({Fixture.ExternalExcludedFile()}));
+	TestSetEqual(*this, TEXT("result corrupted files"), FixtureFiles(Result.FilesCorrupted), Normalized({Fixture.CorruptedFile()}));
+	TestSetEqual(*this, TEXT("result empty folders"), FixtureFiles(Result.FoldersEmpty), Normalized(Fixture.EmptyFolders()));
+
 	return true;
 }
 

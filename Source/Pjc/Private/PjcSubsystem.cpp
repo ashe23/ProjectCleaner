@@ -369,6 +369,15 @@ bool UPjcSubsystem::Scan(const bool bShowSlowTask) {
 		Result.Status.Add(Asset.PackageName, Status);
 	}
 
+	// files that are not assets, and empty folders
+	TArray<FString> FilesExternal;
+	GetFilesExternalAll(FilesExternal);
+	for (auto& File : FilesExternal) {
+		(FileIsExcluded(File) ? Result.FilesExternalKept : Result.FilesExternal).Add(MoveTemp(File));
+	}
+	GetFilesCorrupted(Result.FilesCorrupted, bShowSlowTask);
+	GetFoldersEmpty(Result.FoldersEmpty);
+
 	Result.Time = FDateTime::UtcNow();
 	Result.Seconds = FPlatformTime::Seconds() - StartTime;
 	LastScan = MoveTemp(Result);

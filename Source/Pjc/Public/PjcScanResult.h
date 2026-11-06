@@ -60,6 +60,18 @@ struct FPjcScanResult
 	/** Status of each scanned asset */
 	TMap<FName, EPjcAssetStatus> Status;
 
+	/** Files in content folders that are not assets, absolute paths: to review (cleanup deletes them) */
+	TArray<FString> FilesExternal;
+
+	/** Files in content folders that are not assets but kept: used by the project or engine, or excluded in settings */
+	TArray<FString> FilesExternalKept;
+
+	/** Asset files the asset registry does not know, absolute paths */
+	TArray<FString> FilesCorrupted;
+
+	/** Empty folders cleanup deletes, absolute paths */
+	TArray<FString> FoldersEmpty;
+
 	EPjcAssetStatus GetStatus(const FName Package) const {
 		const EPjcAssetStatus* Found = Status.Find(Package);
 		return Found ? *Found : EPjcAssetStatus::Unused;
