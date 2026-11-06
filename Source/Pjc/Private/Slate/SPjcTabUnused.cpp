@@ -1194,7 +1194,7 @@ TSharedPtr<SWidget> SPjcTabUnused::OnAssetContextMenu() {
 	Menu.AddSeparator();
 	Menu.AddMenuEntry(
 		FText::FromString(TEXT("Inspect")),
-		FText::FromString(TEXT("Shows why it is unused in Asset Usage")),
+		FText::FromString(TEXT("Shows why it is unused in the Inspector")),
 		FSlateIcon {},
 		FUIAction {FExecuteAction::CreateSP(this, &SPjcTabUnused::InspectSelected), FCanExecuteAction::CreateLambda([Packages]() {
 					   return Packages.Num() == 1;
@@ -1304,7 +1304,7 @@ TSharedRef<SWidget> SPjcTabUnused::MakeFooter() {
 			[
 				SNew(SButton)
 				.ContentPadding(FMargin {10.0f, 2.0f})
-				.ToolTipText(FText::FromString(TEXT("Shows why it is unused in Asset Usage")))
+				.ToolTipText(FText::FromString(TEXT("Shows why it is unused in the Inspector")))
 				.IsEnabled_Lambda([this]() { return ListView.IsValid() && ListView->GetNumItemsSelected() == 1; })
 				.OnClicked_Lambda([this]() {
 					InspectSelected();

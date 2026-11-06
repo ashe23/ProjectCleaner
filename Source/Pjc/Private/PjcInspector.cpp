@@ -192,6 +192,13 @@ FPjcInspectorGraph FPjcInspectorGraph::Make(const FPjcScanResult& Result, const 
 	TArray<FPjcRootPath> Paths;
 	PjcInspectorRootPaths(Result, Focus, Paths);
 	Graph.NumRoots = Paths.Num();
+	for (const FPjcRootPath& Path : Paths) {
+		Graph.Roots.Add(FPjcInspectorRoot {Path.Root, Path.Path.Num() - 1});
+	}
+	Graph.Roots.Sort([](const FPjcInspectorRoot& A, const FPjcInspectorRoot& B) {
+		if (A.Steps != B.Steps) return A.Steps < B.Steps;
+		return A.Package.LexicalLess(B.Package);
+	});
 
 	struct FItem
 	{

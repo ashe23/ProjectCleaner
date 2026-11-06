@@ -4,7 +4,7 @@
 #include "Slate/SPjcTabOverview.h"
 #include "Slate/SPjcTabUnused.h"
 #include "Slate/SPjcTabIssues.h"
-#include "Slate/SPjcTabAssetsUsage.h"
+#include "Slate/SPjcTabInspector.h"
 #include "PjcConstants.h"
 #include "PjcSubsystem.h"
 #include "PjcStyles.h"
@@ -61,8 +61,8 @@ void SPjcTabMain::Construct(
 								FTabManager::NewStack()
 									->AddTab(PjcConstants::TabOverview, ETabState::OpenedTab)
 									->AddTab(PjcConstants::TabAssetsUnused, ETabState::OpenedTab)
+									->AddTab(PjcConstants::TabInspector, ETabState::OpenedTab)
 									->AddTab(PjcConstants::TabIssues, ETabState::OpenedTab)
-									->AddTab(PjcConstants::TabAssetsUsage, ETabState::OpenedTab)
 									->SetForegroundTab(PjcConstants::TabOverview)
 									->SetSizeCoefficient(1.0f)
 							)
@@ -86,9 +86,9 @@ void SPjcTabMain::Construct(
 		.SetIcon(FPjcStyles::GetIcon("ProjectCleaner.Icon.PieChart16"))
 		.SetGroup(AppMenuGroup);
 
-	TabManager->RegisterTabSpawner(PjcConstants::TabAssetsUsage, FOnSpawnTab::CreateRaw(this, &SPjcTabMain::OnTabAssetsUsageSpawn))
-		.SetTooltipText(FText::FromString(TEXT("Open Asset Usage Tab (experimental): why each asset is used or unused")))
-		.SetDisplayName(FText::FromString(TEXT("Asset Usage")))
+	TabManager->RegisterTabSpawner(PjcConstants::TabInspector, FOnSpawnTab::CreateRaw(this, &SPjcTabMain::OnTabInspectorSpawn))
+		.SetTooltipText(FText::FromString(TEXT("Open Inspector Tab: why an asset is used, from every root down to it")))
+		.SetDisplayName(FText::FromString(TEXT("Inspector")))
 		.SetIcon(FPjcStyles::GetIcon("ProjectCleaner.Icon.Graph16"))
 		.SetGroup(AppMenuGroup);
 
@@ -165,7 +165,7 @@ SPjcTabMain::~SPjcTabMain() {
 	FGlobalTabmanager::Get()->UnregisterTabSpawner(PjcConstants::TabOverview);
 	FGlobalTabmanager::Get()->UnregisterTabSpawner(PjcConstants::TabAssetsUnused);
 	FGlobalTabmanager::Get()->UnregisterTabSpawner(PjcConstants::TabIssues);
-	FGlobalTabmanager::Get()->UnregisterTabSpawner(PjcConstants::TabAssetsUsage);
+	FGlobalTabmanager::Get()->UnregisterTabSpawner(PjcConstants::TabInspector);
 }
 
 int32 SPjcTabMain::GetWidgetIndex() const {
@@ -210,8 +210,8 @@ TSharedRef<SDockTab> SPjcTabMain::OnTabAssetsUnusedSpawn(const FSpawnTabArgs& Ar
 	return Frontend;
 }
 
-TSharedRef<SDockTab> SPjcTabMain::OnTabAssetsUsageSpawn(const FSpawnTabArgs& Args) const {
-	const auto Frontend = SNew(SDockTab).TabRole(PanelTab).Label(FText::FromString(TEXT("Asset Usage")))[SNew(SPjcTabAssetsUsage)];
+TSharedRef<SDockTab> SPjcTabMain::OnTabInspectorSpawn(const FSpawnTabArgs& Args) const {
+	const auto Frontend = SNew(SDockTab).TabRole(PanelTab).Label(FText::FromString(TEXT("Inspector")))[SNew(SPjcTabInspector).TabManager(TabManager)];
 
 	Frontend->SetTabIcon(FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.Graph16"));
 

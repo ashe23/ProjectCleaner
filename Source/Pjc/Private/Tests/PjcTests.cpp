@@ -21,7 +21,7 @@
 #include "Framework/Application/SlateApplication.h"
 #include "Slate/SPjcTabIssues.h"
 #include "Slate/SPjcTabUnused.h"
-#include "Slate/SPjcTabAssetsUsage.h"
+#include "Slate/SPjcTabInspector.h"
 #include "Slate/SPjcTabOverview.h"
 #include "HAL/FileManager.h"
 #include "Misc/App.h"
@@ -1270,10 +1270,10 @@ bool FPjcTestUiTabs::RunTest(const FString& Parameters) {
 	const bool bScanOnOpen = EditorSettings->bScanOnOpen;
 	EditorSettings->bScanOnOpen = true;
 
-	const TSharedRef<SPjcTabAssetsUsage> TabUsage = SNew(SPjcTabAssetsUsage);
+	const TSharedRef<SPjcTabInspector> TabInspector = SNew(SPjcTabInspector);
 	const TSharedRef<SPjcTabUnused> TabUnused = SNew(SPjcTabUnused);
 	const TSharedRef<SPjcTabIssues> TabIssues = SNew(SPjcTabIssues);
-	const TSharedRef<SWidget> Tabs[] = {SNew(SPjcTabOverview), TabUnused, TabIssues, TabUsage};
+	const TSharedRef<SWidget> Tabs[] = {SNew(SPjcTabOverview), TabUnused, TabIssues, TabInspector};
 	for (const auto& Tab : Tabs) {
 		TestTrue(FString::Printf(TEXT("%s has content"), *Tab->GetTypeAsString()), Tab->GetChildren()->Num() > 0);
 	}
@@ -1297,11 +1297,17 @@ bool FPjcTestUiTabs::RunTest(const FString& Parameters) {
 
 	// used through chain, unused, kept by folder label and package outside scan
 	if (FPjcTestFixture::IsTestHost()) {
+		TestTrue(TEXT("inspector finder lists the scanned assets"), TabInspector->GetNumFinderRows() > 0);
 		for (const TCHAR* Name : {TEXT("C_ChainLeaf"), TEXT("C_UnusedLeaf"), TEXT("C_Labeled"), TEXT("C_RefByPlugin")}) {
-			TabUsage->Inspect(PackageOf(Fixture, Name));
+			const FName Package = PackageOf(Fixture, Name);
+			TabInspector->Inspect(Package);
+			TestEqual(FString::Printf(TEXT("inspector shows %s"), Name), TabInspector->GetFocus(), Package);
+			TestTrue(FString::Printf(TEXT("inspector graph of %s has the asset"), Name), TabInspector->GetGraph().FindNode(Package) != INDEX_NONE);
 		}
 	}
-	TabUsage->Inspect(FName {TEXT("/Engine/EngineMaterials/WorldGridMaterial")});
+	const FName Outside {TEXT("/Engine/EngineMaterials/WorldGridMaterial")};
+	TabInspector->Inspect(Outside);
+	TestEqual(TEXT("inspector shows a package outside the scan"), TabInspector->GetFocus(), Outside);
 
 	EditorSettings->bScanOnOpen = bScanOnOpen;
 	return true;

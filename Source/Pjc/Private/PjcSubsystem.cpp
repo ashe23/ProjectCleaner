@@ -78,7 +78,7 @@ namespace
 
 	FPjcScanCache ScanCache;
 
-	// what kept each asset last cleanup could not delete, shown by Asset Usage tab
+	// what kept each asset last cleanup could not delete, shown by the Inspector and Assets Unused
 	TMap<FName, FString> LastCleanupKept;
 
 	// last Scan, shared by every tab

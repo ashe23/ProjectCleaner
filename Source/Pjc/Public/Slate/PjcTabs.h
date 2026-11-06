@@ -11,7 +11,7 @@ namespace PjcTabs
 {
 	void Open(const TWeakPtr<FTabManager>& Tabs, const FName TabId);
 
-	/** Shows the asset in Asset Usage */
+	/** Shows the asset in the Inspector */
 	void Inspect(const TWeakPtr<FTabManager>& Tabs, const FName Package);
 
 	/** Shows the folder in Assets Unused */

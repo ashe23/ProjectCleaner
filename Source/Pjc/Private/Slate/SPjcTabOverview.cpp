@@ -599,7 +599,7 @@ TSharedRef<SWidget> SPjcTabOverview::MakeLargestUnused() {
 		Segment.Value = static_cast<double>(Asset.Size);
 		Segment.Color = PjcWidgets::GetColor("ProjectCleaner.Color.UnusedFill");
 
-		const FString More = FString::Printf(TEXT("%s, %s\nOpens it in Asset Usage"), *ClassName, *PjcFormat::Size(Asset.Size));
+		const FString More = FString::Printf(TEXT("%s, %s\nOpens it in the Inspector"), *ClassName, *PjcFormat::Size(Asset.Size));
 		Rows->AddSlot().AutoHeight()[MakeRow(
 			NameWidget,
 			Value,

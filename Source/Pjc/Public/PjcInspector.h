@@ -50,6 +50,13 @@ struct FPjcInspectorEdge
 	int32 NumLinks = 1;
 };
 
+struct FPjcInspectorRoot
+{
+	FName Package;
+	/** References from the root down to the asset, 0 when the asset is the root */
+	int32 Steps = 0;
+};
+
 /**
  * What keeps an asset used, as a graph for the Inspector: every root at once, top to bottom, each with the shortest path
  * from it to the asset (paths merge into the asset at the bottom) and a source box above it. For an unused asset: the
@@ -60,7 +67,8 @@ struct FPjcInspectorGraph
 	FName Focus;
 	TArray<FPjcInspectorNode> Nodes;
 	TArray<FPjcInspectorEdge> Edges;
-	/** Every root that keeps the asset used */
+	/** Every root that keeps the asset used, nearest first */
+	TArray<FPjcInspectorRoot> Roots;
 	int32 NumRoots = 0;
 	/** Root paths not drawn, past MaxPaths */
 	int32 NumHidden = 0;

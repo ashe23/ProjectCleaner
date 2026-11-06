@@ -1,7 +1,7 @@
 // Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "Slate/PjcTabs.h"
-#include "Slate/SPjcTabAssetsUsage.h"
+#include "Slate/SPjcTabInspector.h"
 #include "Slate/SPjcTabIssues.h"
 #include "Slate/SPjcTabUnused.h"
 #include "PjcConstants.h"
@@ -19,9 +19,9 @@ namespace PjcTabs
 
 	void Inspect(const TWeakPtr<FTabManager>& Tabs, const FName Package) {
 		const TSharedPtr<FTabManager> Manager = Tabs.Pin();
-		const TSharedPtr<SDockTab> Tab = Manager.IsValid() ? Manager->TryInvokeTab(FTabId {PjcConstants::TabAssetsUsage}) : nullptr;
-		if (Tab.IsValid() && Tab->GetContent()->GetType() == TEXT("SPjcTabAssetsUsage")) {
-			StaticCastSharedRef<SPjcTabAssetsUsage>(Tab->GetContent())->Inspect(Package);
+		const TSharedPtr<SDockTab> Tab = Manager.IsValid() ? Manager->TryInvokeTab(FTabId {PjcConstants::TabInspector}) : nullptr;
+		if (Tab.IsValid() && Tab->GetContent()->GetType() == TEXT("SPjcTabInspector")) {
+			StaticCastSharedRef<SPjcTabInspector>(Tab->GetContent())->Inspect(Package);
 		}
 	}
 
