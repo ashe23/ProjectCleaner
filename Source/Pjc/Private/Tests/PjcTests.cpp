@@ -5,12 +5,14 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 #include "PjcAssetGraph.h"
+#include "PjcCookInfo.h"
 #include "PjcOverview.h"
 #include "PjcScanDraft.h"
 #include "PjcSettings.h"
 #include "PjcShim.h"
 #include "PjcSubsystem.h"
 #include "PjcTypes.h"
+#include "AssetRegistry/AssetRegistryState.h"
 #include "Curves/CurveFloat.h"
 #include "Engine/AssetManager.h"
 #include "Framework/Application/SlateApplication.h"
@@ -20,11 +22,14 @@
 #include "Slate/SPjcTabAssetsUsage.h"
 #include "Slate/SPjcTabOverview.h"
 #include "Slate/SPjcTabFilesExternal.h"
+#include "HAL/FileManager.h"
+#include "Misc/App.h"
 #include "Misc/FileHelper.h"
 #include "Misc/PackageName.h"
 #include "Misc/Paths.h"
 #include "Misc/RedirectCollector.h"
 #include "Misc/ScopeExit.h"
+#include "Serialization/MemoryWriter.h"
 #include "UObject/ObjectRedirector.h"
 
 namespace
@@ -790,6 +795,80 @@ bool FPjcTestExclusionsMoved::RunTest(const FString& Parameters) {
 	Settings->ExcludedClasses = SavedClasses;
 	Settings->ExcludedAssets = SavedAssets;
 	PjcShim::UpdateDefaultConfigFile(Settings);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPjcTestCookShipped, "ProjectCleaner.Cook.Shipped", PJC_TEST_FLAGS)
+
+bool FPjcTestCookShipped::RunTest(const FString& Parameters) {
+	if (!FPjcTestFixture::IsTestHost()) {
+		AddInfo(TEXT("Skipped, writes a cook into Saved/Cooked, runs only in test host projects"));
+		return true;
+	}
+
+	FPjcScopedScanSettings ScopedSettings {false};
+	FPjcTestFixture Fixture;
+	if (!Fixture.Build(*this)) return false;
+	if (!TestTrue(TEXT("scanned"), UPjcSubsystem::Scan(false))) return false;
+	const FPjcScanResult& Result = UPjcSubsystem::GetScanResult();
+
+	// a cook as the cooker leaves it: a development asset registry, negative size for what it did not cook
+	const FString PlatformDir = FPjcCookInfo::GetCookedDir() / TEXT("PjcTestPlatform");
+	const FString RegistryFile = PlatformDir / FApp::GetProjectName() / TEXT("Metadata") / TEXT("DevelopmentAssetRegistry.bin");
+	ON_SCOPE_EXIT {
+		IFileManager::Get().DeleteDirectory(*PlatformDir, false, true);
+	};
+	{
+		FAssetRegistryState State;
+		const auto AddPackage = [&State](const FName Package, const int64 DiskSize) {
+			State.CreateOrGetAssetPackageData(Package)->DiskSize = DiskSize;
+		};
+		AddPackage(PackageOf(Fixture, TEXT("BP_Primary")), 1000);
+		AddPackage(PackageOf(Fixture, TEXT("C_UnusedLeaf")), 77);
+		AddPackage(PackageOf(Fixture, TEXT("EUB_Tool")), -1);
+		AddPackage(FName {TEXT("/Engine/PjcTest/EngineThing")}, 500);
+		AddPackage(FName {*(FPjcTestFixture::RootPath() / TEXT("_Generated_/Cell"))}, 10);
+		AddPackage(FName {*(FPjcTestFixture::RootPath() / TEXT("DeletedSince"))}, 20);
+
+		FAssetRegistrySerializationOptions Options;
+		Options.bSerializeAssetRegistry = true;
+		Options.bSerializePackageData = true;
+		TArray<uint8> Bytes;
+		FMemoryWriter Writer {Bytes};
+		State.Serialize(Writer, Options);
+		TestTrue(TEXT("cook written"), FFileHelper::SaveArrayToFile(Bytes, *RegistryFile));
+	}
+
+	const FPjcCookInfo& Cook = FPjcCookInfo::GetLast();
+	TestTrue(TEXT("cook found"), Cook.IsValid());
+	TestEqual(TEXT("cook platform"), Cook.Platform, FString {TEXT("PjcTestPlatform")});
+	TestEqual(TEXT("cooked packages"), Cook.Cooked.Num(), 5);
+	TestEqual(TEXT("cooked size"), Cook.Cooked.FindRef(PackageOf(Fixture, TEXT("BP_Primary"))), static_cast<int64>(1000));
+	TestFalse(TEXT("not cooked is left out"), Cook.Cooked.Contains(PackageOf(Fixture, TEXT("EUB_Tool"))));
+
+	FPjcOverview::FShipped Shipped = FPjcOverview::MakeShipped(Result, Cook);
+	TestEqual(TEXT("shipped"), Shipped.Shipped.Num, 1);
+	TestEqual(TEXT("shipped cooked size"), Shipped.ShippedCooked, static_cast<int64>(1000));
+	TestEqual(TEXT("unused shipped"), Shipped.UnusedShipped.Num, 1);
+	TestEqual(TEXT("used, not shipped"), Shipped.UsedNotShipped.Num, Result.Used.Num() - 1);
+	TestEqual(TEXT("unused, not shipped"), Shipped.Unused.Num, Result.Unused.Num() - 1);
+	TestEqual(TEXT("outside the scan"), Shipped.NumOutside, 1);
+	TestEqual(TEXT("outside size"), Shipped.SizeOutside, static_cast<int64>(500));
+	TestTrue(TEXT("outside root"), Shipped.OutsideRoots.Num() == 1 && Shipped.OutsideRoots[0].Key == TEXT("/Engine"));
+	TestEqual(TEXT("generated"), Shipped.NumGenerated, 1);
+	TestEqual(TEXT("deleted since"), Shipped.NumDeleted, 1);
+	TestEqual(TEXT("nothing changed since"), Shipped.NumChanged, 0);
+
+	// an asset saved after the cook
+	FString File;
+	if (TestTrue(TEXT("asset file"), PjcShim::DoesPackageExist(PackageOf(Fixture, TEXT("C_UnusedLeaf")).ToString(), &File))) {
+		IFileManager::Get().SetTimeStamp(*File, Cook.Time + FTimespan::FromMinutes(1.0));
+		Shipped = FPjcOverview::MakeShipped(Result, Cook);
+		TestEqual(TEXT("changed since"), Shipped.NumChanged, 1);
+	}
+
+	IFileManager::Get().DeleteDirectory(*PlatformDir, false, true);
+	TestFalse(TEXT("no cook"), FPjcCookInfo::GetLast().IsFound());
 	return true;
 }
 

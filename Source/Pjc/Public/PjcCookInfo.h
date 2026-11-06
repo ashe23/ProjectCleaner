@@ -1,0 +1,45 @@
+// Copyright Ashot Barkhudaryan. All Rights Reserved.
+
+#pragma once
+
+#include "CoreMinimal.h"
+
+/**
+ * What the last cook of this project folder packaged, read from its development asset registry
+ * (Saved/Cooked/<Platform>/<Project>/Metadata/DevelopmentAssetRegistry.bin). Every engine version writes it on a cook.
+ * Cooks made on another machine or into another folder are not seen.
+ */
+struct FPjcCookInfo
+{
+	/** Platform folder of the cook, e.g. Windows */
+	FString Platform;
+
+	/** The development asset registry of the cook, absolute path */
+	FString File;
+
+	/** When the cook finished (UTC): time of its registry file. 0 ticks when there is no cook (4.27 does not zero FDateTime) */
+	FDateTime Time {0};
+
+	/** Every package the cook saved, with its cooked size (before pak compression) */
+	TMap<FName, int64> Cooked;
+
+	/** A registry was found but could not be read, e.g. written by another engine version */
+	bool bReadFailed = false;
+
+	bool IsFound() const {
+		return Time.GetTicks() > 0;
+	}
+
+	bool IsValid() const {
+		return IsFound() && !bReadFailed;
+	}
+
+	/** Newest cook of this project folder for any platform. Read again only when its file changes. */
+	static const FPjcCookInfo& GetLast();
+
+	/** Folder the cooks of this project are in: Saved/Cooked */
+	static FString GetCookedDir();
+
+	/** Reads the packages a development asset registry lists as cooked */
+	static bool Read(const FString& InFile, TMap<FName, int64>& OutCooked);
+};

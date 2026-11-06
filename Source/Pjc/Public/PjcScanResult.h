@@ -24,8 +24,8 @@ enum class EPjcAssetStatus : uint8
  */
 struct FPjcScanResult
 {
-	/** When the scan finished (UTC), unset before the first scan */
-	FDateTime Time;
+	/** When the scan finished (UTC), 0 ticks before the first scan (4.27 does not zero FDateTime) */
+	FDateTime Time {0};
 
 	/** How long the scan took */
 	double Seconds = 0.0;

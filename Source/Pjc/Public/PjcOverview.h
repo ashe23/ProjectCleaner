@@ -5,6 +5,8 @@
 #include "CoreMinimal.h"
 #include "PjcScanResult.h"
 
+struct FPjcCookInfo;
+
 /** What the Overview tool shows, made from a scan result */
 struct FPjcOverview
 {
@@ -54,6 +56,37 @@ struct FPjcOverview
 		int64 Size = 0;
 	};
 
+	/** Scanned assets against the last cook */
+	struct FShipped
+	{
+		/** Used and cooked */
+		FTotal Shipped;
+		int64 ShippedCooked = 0;
+
+		/** Unused but cooked: the scan and the cook disagree */
+		FTotal UnusedShipped;
+		int64 UnusedShippedCooked = 0;
+
+		/** Used in the editor, not cooked; by chain start, biggest first */
+		FTotal UsedNotShipped;
+		TArray<FReason> UsedNotShippedReasons;
+
+		/** Unused and not cooked */
+		FTotal Unused;
+
+		/** Cooked packages outside the scan (engine, plugins not scanned), by top folder, biggest first */
+		int32 NumOutside = 0;
+		int64 SizeOutside = 0;
+		TArray<TPair<FString, int32>> OutsideRoots;
+
+		/** Packages the cook generates, e.g. World Partition cells */
+		int32 NumGenerated = 0;
+
+		/** Scanned assets saved or added after the cook, and cooked ones deleted since */
+		int32 NumChanged = 0;
+		int32 NumDeleted = 0;
+	};
+
 	/** Every scanned asset (redirectors are not content) */
 	FTotal All;
 	FTotal Used;
@@ -75,6 +108,9 @@ struct FPjcOverview
 	static constexpr int32 MaxLargestUnused = 50;
 
 	static FPjcOverview Make(const FPjcScanResult& Result);
+
+	/** Scan against a cook, reads the file times of the scanned assets */
+	static FShipped MakeShipped(const FPjcScanResult& Result, const FPjcCookInfo& Cook);
 
 	/** Reason a chain is grouped under: assets a Primary Asset Label lists are primary assets too */
 	static EPjcUsageReason GetGroupReason(const FPjcScanResult& Result, const FName Package);
