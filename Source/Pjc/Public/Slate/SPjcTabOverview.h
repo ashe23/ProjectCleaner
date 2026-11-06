@@ -32,6 +32,8 @@ class SPjcTabOverview final : public SCompoundWidget
 	void OpenTab(const FName TabId) const;
 	/** Shows the asset in Asset Usage */
 	void Inspect(const FName Package) const;
+	/** Shows the folder in Assets Unused */
+	void ShowFolder(const FString Path) const;
 
 	TSharedRef<SWidget> MakeSummary();
 	TSharedRef<SWidget> MakeIssues();

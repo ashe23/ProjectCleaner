@@ -1,9 +1,10 @@
 // Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "Slate/SPjcTabOverview.h"
+#include "Slate/PjcTabs.h"
 #include "Slate/PjcWidgets.h"
 #include "Slate/SPjcScanBar.h"
-#include "Slate/SPjcTabAssetsUsage.h"
+
 #include "Slate/SPjcToolFrame.h"
 #include "PjcConstants.h"
 #include "PjcFormat.h"
@@ -111,19 +112,15 @@ void SPjcTabOverview::Rebuild() {
 }
 
 void SPjcTabOverview::OpenTab(const FName TabId) const {
-	if (const TSharedPtr<FTabManager> Tabs = TabManager.Pin()) {
-		Tabs->TryInvokeTab(FTabId {TabId});
-	}
+	PjcTabs::Open(TabManager, TabId);
 }
 
 void SPjcTabOverview::Inspect(const FName Package) const {
-	const TSharedPtr<FTabManager> Tabs = TabManager.Pin();
-	if (!Tabs.IsValid()) return;
+	PjcTabs::Inspect(TabManager, Package);
+}
 
-	const TSharedPtr<SDockTab> Tab = Tabs->TryInvokeTab(FTabId {PjcConstants::TabAssetsUsage});
-	if (Tab.IsValid() && Tab->GetContent()->GetType() == TEXT("SPjcTabAssetsUsage")) {
-		StaticCastSharedRef<SPjcTabAssetsUsage>(Tab->GetContent())->Inspect(Package);
-	}
+void SPjcTabOverview::ShowFolder(const FString Path) const {
+	PjcTabs::ShowFolder(TabManager, Path);
 }
 
 TSharedRef<SWidget> SPjcTabOverview::MakeSummary() {
@@ -539,7 +536,7 @@ TSharedRef<SWidget> SPjcTabOverview::MakeUnusedFolders() {
 			{Segment},
 			static_cast<double>(MaxSize),
 			PjcWidgets::MakeToolTip(Folder.Path, Text, Sizes),
-			FSimpleDelegate::CreateSP(this, &SPjcTabOverview::OpenTab, PjcConstants::TabAssetsUnused)
+			FSimpleDelegate::CreateSP(this, &SPjcTabOverview::ShowFolder, Folder.Path)
 		)];
 	}
 

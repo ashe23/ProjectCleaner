@@ -1,17 +1,21 @@
 // Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "Slate/SPjcTabUnused.h"
+#include "Slate/PjcTabs.h"
 #include "Slate/PjcWidgets.h"
 #include "Slate/SPjcDeleteDialog.h"
 #include "Slate/SPjcScanBar.h"
 #include "Slate/SPjcToolFrame.h"
 #include "PjcFormat.h"
+#include "PjcScanDraft.h"
 #include "PjcSettings.h"
 #include "PjcShim.h"
 #include "PjcStyles.h"
 #include "PjcSubsystem.h"
 // Engine Headers
 #include "AssetToolsModule.h"
+#include "ContentBrowserModule.h"
+#include "IContentBrowserSingleton.h"
 #include "Framework/Application/SlateApplication.h"
 #include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "IAssetTypeActions.h"
@@ -20,6 +24,7 @@
 #include "Styling/CoreStyle.h"
 #include "Styling/SlateIconFinder.h"
 #include "Widgets/Images/SImage.h"
+#include "Widgets/Input/SButton.h"
 #include "Widgets/Input/SCheckBox.h"
 #include "Widgets/Input/SComboButton.h"
 #include "Widgets/Input/SSearchBox.h"
@@ -63,7 +68,8 @@ namespace
 			const bool bAnyUnused = Folder->Unused.Num > 0;
 
 			if (Column == PjcUnusedColFolder) {
-				const TSharedRef<SHorizontalBox> NameBox = SNew(SHorizontalBox).ToolTipText(FText::FromString(Folder->Path));
+				const TSharedRef<SHorizontalBox> NameBox
+					= SNew(SHorizontalBox).Clipping(EWidgetClipping::ClipToBounds).ToolTipText(FText::FromString(Folder->Path));
 				NameBox->AddSlot().AutoWidth().VAlign(VAlign_Center)[SNew(SExpanderArrow, SharedThis(this)).IndentAmount(14).ShouldDrawWires(false)];
 				NameBox->AddSlot()
 					.AutoWidth()
@@ -193,7 +199,7 @@ namespace
 			const FSlateColor Muted = FSlateColor::UseSubduedForeground();
 
 			if (Column == PjcUnusedColName) {
-				const TSharedRef<SHorizontalBox> NameBox = SNew(SHorizontalBox);
+				const TSharedRef<SHorizontalBox> NameBox = SNew(SHorizontalBox).Clipping(EWidgetClipping::ClipToBounds);
 				// clang-format off
 				NameBox->AddSlot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {4.0f, 0.0f, 6.0f, 0.0f})
 				[
@@ -607,6 +613,14 @@ TSharedPtr<SWidget> SPjcTabUnused::OnFolderContextMenu() {
 		  })
 		}
 	);
+	Menu.AddMenuEntry(
+		FText::FromString(TEXT("Exclude folder")),
+		FText::FromString(TEXT("Keeps every asset in the folder, saved to Config/DefaultEditor.ini")),
+		FSlateIcon {},
+		FUIAction {FExecuteAction::CreateLambda([this, Folder]() {
+			ExcludeFolder(Folder->Path);
+		})}
+	);
 	Menu.AddSeparator();
 	Menu.AddMenuEntry(
 		FText::FromString(TEXT("Expand all")),
@@ -732,6 +746,12 @@ TSharedRef<SWidget> SPjcTabUnused::MakeAssetPane() {
 		.HeaderRow(Header)
 		.OnGenerateRow(this, &SPjcTabUnused::OnGenerateAssetRow)
 		.OnContextMenuOpening(this, &SPjcTabUnused::OnAssetContextMenu)
+		.OnSelectionChanged(this, &SPjcTabUnused::OnAssetSelectionChanged)
+		.OnMouseButtonDoubleClick_Lambda([this](FAssetRowPtr Row) {
+			if (Row.IsValid()) {
+				PjcTabs::Inspect(TabManager, Row->Package);
+			}
+		})
 		.OnKeyDownHandler(this, &SPjcTabUnused::OnAssetKeyDown);
 
 	return SNew(SBorder)
@@ -789,6 +809,10 @@ TSharedRef<SWidget> SPjcTabUnused::MakeAssetPane() {
 			+ SVerticalBox::Slot().FillHeight(1.0f)
 			[
 				ListView.ToSharedRef()
+			]
+			+ SVerticalBox::Slot().AutoHeight()
+			[
+				MakeFooter()
 			]
 		];
 	// clang-format on
@@ -1064,6 +1088,23 @@ TSharedPtr<SWidget> SPjcTabUnused::OnAssetContextMenu() {
 			DeleteWithGroup(Packages);
 		})}
 	);
+	Menu.AddSeparator();
+	AddExcludeEntries(Menu);
+	Menu.AddSeparator();
+	Menu.AddMenuEntry(
+		FText::FromString(TEXT("Inspect")),
+		FText::FromString(TEXT("Shows why it is unused in Asset Usage")),
+		FSlateIcon {},
+		FUIAction {FExecuteAction::CreateSP(this, &SPjcTabUnused::InspectSelected), FCanExecuteAction::CreateLambda([Packages]() {
+					   return Packages.Num() == 1;
+				   })}
+	);
+	Menu.AddMenuEntry(
+		FText::FromString(TEXT("Browse")),
+		FText::FromString(TEXT("Shows the selection in the Content Browser")),
+		FSlateIcon {},
+		FUIAction {FExecuteAction::CreateSP(this, &SPjcTabUnused::BrowseSelected)}
+	);
 	return Menu.MakeWidget();
 }
 
@@ -1142,4 +1183,250 @@ void SPjcTabUnused::DeleteWithGroup(const TArray<FName>& Packages) {
 	All.Append(With);
 	UPjcSubsystem::DeleteAssets(All, true, true);
 	SPjcScanBar::ScanProject();
+}
+
+void SPjcTabUnused::OnAssetSelectionChanged(FAssetRowPtr Row, ESelectInfo::Type SelectInfo) {
+	TArray<FName> Group;
+	const TArray<FName> Packages = GetSelectedPackages();
+	if (Packages.Num() > 0) {
+		FPjcUnusedTree::GetDeleteGroup(UPjcSubsystem::GetScanResult(), Packages, Group);
+	}
+	NumSelectionGroup = Group.Num();
+}
+
+TSharedRef<SWidget> SPjcTabUnused::MakeFooter() {
+	const auto HasSelection = [this]() {
+		return ListView.IsValid() && ListView->GetNumItemsSelected() > 0;
+	};
+
+	// clang-format off
+	return SNew(SBorder)
+		.BorderImage(PjcShim::GetBrush(TEXT("ToolPanel.DarkGroupBorder")))
+		.Padding(FMargin {10.0f, 6.0f})
+		[
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+			[
+				SNew(STextBlock).Text(this, &SPjcTabUnused::GetSelectionText)
+			]
+			+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
+			[
+				SNew(STextBlock)
+				.Text(this, &SPjcTabUnused::GetSelectionGroupText)
+				.ToolTipText(FText::FromString(TEXT("Unused assets that reference the selection: deleted with it")))
+				.ColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.Yellow"))
+			]
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
+			[
+				SNew(SButton)
+				.ButtonColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.UnusedFill"))
+				.ContentPadding(FMargin {10.0f, 2.0f})
+				.ToolTipText(FText::FromString(TEXT("Deletes the selection with the unused assets that reference it (Delete)")))
+				.IsEnabled_Lambda(HasSelection)
+				.OnClicked_Lambda([this]() {
+					DeleteWithGroup(GetSelectedPackages());
+					return FReply::Handled();
+				})
+				[
+					SNew(STextBlock).Text(FText::FromString(TEXT("Delete…"))).ColorAndOpacity(FLinearColor::White)
+				]
+			]
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
+			[
+				SNew(SComboButton)
+				.ToolTipText(FText::FromString(TEXT("Keeps the selection, its folder or its class from cleanup")))
+				.IsEnabled_Lambda(HasSelection)
+				.OnGetMenuContent(this, &SPjcTabUnused::MakeExcludeMenu)
+				.ButtonContent()
+				[
+					SNew(STextBlock).Text(FText::FromString(TEXT("Exclude")))
+				]
+			]
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
+			[
+				SNew(SButton)
+				.ContentPadding(FMargin {10.0f, 2.0f})
+				.ToolTipText(FText::FromString(TEXT("Shows why it is unused in Asset Usage")))
+				.IsEnabled_Lambda([this]() { return ListView.IsValid() && ListView->GetNumItemsSelected() == 1; })
+				.OnClicked_Lambda([this]() {
+					InspectSelected();
+					return FReply::Handled();
+				})
+				[
+					SNew(STextBlock).Text(FText::FromString(TEXT("Inspect")))
+				]
+			]
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
+			[
+				SNew(SButton)
+				.ContentPadding(FMargin {10.0f, 2.0f})
+				.ToolTipText(FText::FromString(TEXT("Shows the selection in the Content Browser")))
+				.IsEnabled_Lambda(HasSelection)
+				.OnClicked_Lambda([this]() {
+					BrowseSelected();
+					return FReply::Handled();
+				})
+				[
+					SNew(STextBlock).Text(FText::FromString(TEXT("Browse")))
+				]
+			]
+		];
+	// clang-format on
+}
+
+TSharedRef<SWidget> SPjcTabUnused::MakeExcludeMenu() {
+	FMenuBuilder Menu {true, nullptr};
+	AddExcludeEntries(Menu);
+	return Menu.MakeWidget();
+}
+
+void SPjcTabUnused::AddExcludeEntries(FMenuBuilder& Menu) {
+	TSet<FString> ClassLabels;
+	int32 NumSelected = 0;
+	for (const auto& Row : ListRows) {
+		if (ListView->IsItemSelected(Row)) {
+			ClassLabels.Add(Row->ClassLabel);
+			++NumSelected;
+		}
+	}
+	const FString ClassText
+		= ClassLabels.Num() == 1 ? ClassLabels.Array()[0] : FString::Printf(TEXT("%s classes"), *PjcFormat::Count(ClassLabels.Num()));
+	int32 Slash = INDEX_NONE;
+	SelectedFolder.FindLastChar(TEXT('/'), Slash);
+	const FString FolderName = SelectedFolder.Mid(Slash + 1);
+
+	Menu.AddMenuEntry(
+		FText::FromString(FString::Printf(TEXT("Exclude assets (%s)"), *PjcFormat::Count(NumSelected))),
+		FText::FromString(TEXT("Keeps the selected assets, saved to Config/DefaultEditor.ini")),
+		FSlateIcon {},
+		FUIAction {FExecuteAction::CreateSP(this, &SPjcTabUnused::ExcludeSelectedAssets)}
+	);
+	Menu.AddMenuEntry(
+		FText::FromString(FString::Printf(TEXT("Exclude folder %s"), *FolderName)),
+		FText::FromString(TEXT("Keeps every asset in the selected folder, saved to Config/DefaultEditor.ini")),
+		FSlateIcon {},
+		FUIAction {FExecuteAction::CreateLambda([this]() {
+			ExcludeFolder(SelectedFolder);
+		})}
+	);
+	Menu.AddMenuEntry(
+		FText::FromString(FString::Printf(TEXT("Exclude class %s"), *ClassText)),
+		FText::FromString(TEXT("Keeps every asset of the class, saved to Config/DefaultEditor.ini")),
+		FSlateIcon {},
+		FUIAction {FExecuteAction::CreateSP(this, &SPjcTabUnused::ExcludeSelectedClasses)}
+	);
+}
+
+void SPjcTabUnused::Exclude(const TArray<FString>& Folders, const TArray<FString>& Classes, const TArray<FString>& Assets, const FString& Message) {
+	UPjcAssetExcludeSettings* Settings = GetMutableDefault<UPjcAssetExcludeSettings>();
+	for (const auto& Folder : Folders) {
+		if (!Settings->ExcludedFolders.ContainsByPredicate([&Folder](const FDirectoryPath& Path) {
+				return Path.Path.Equals(Folder);
+			})) {
+			Settings->ExcludedFolders.Add(FDirectoryPath {Folder});
+		}
+	}
+	for (const auto& Class : Classes) {
+		Settings->ExcludedClasses.AddUnique(TSoftClassPtr<UObject> {FSoftObjectPath {Class}});
+	}
+	for (const auto& Asset : Assets) {
+		Settings->ExcludedAssets.AddUnique(TSoftObjectPtr<UObject> {FSoftObjectPath {Asset}});
+	}
+	PjcShim::UpdateDefaultConfigFile(Settings);
+
+	// an edited draft keeps its edits and gets the exclusions too, so Rescan does not drop them
+	FPjcScanDraft& Draft = FPjcScanDraft::Get();
+	for (const auto& Folder : Folders) {
+		Draft.ExcludedFolders.AddUnique(Folder);
+	}
+	for (const auto& Class : Classes) {
+		Draft.ExcludedClasses.AddUnique(Class);
+	}
+	for (const auto& Asset : Assets) {
+		Draft.ExcludedAssets.AddUnique(Asset);
+	}
+	FPjcScanDraft::OnEdited().Broadcast();
+
+	UPjcSubsystem::ShowNotification(Message + TEXT(" · saved to Config/DefaultEditor.ini"), SNotificationItem::CS_Success, 4.0f);
+	SPjcScanBar::ScanProject();
+}
+
+void SPjcTabUnused::ExcludeSelectedAssets() {
+	const FPjcScanResult& Result = UPjcSubsystem::GetScanResult();
+	TArray<FString> Assets;
+	for (const auto& Row : ListRows) {
+		if (ListView->IsItemSelected(Row)) {
+			Assets.Add(PjcShim::GetObjectPathString(Result.Assets[Row->Index]));
+		}
+	}
+	if (Assets.Num() == 0) return;
+
+	Exclude({}, {}, Assets, FString::Printf(TEXT("Excluded %s asset%s"), *PjcFormat::Count(Assets.Num()), Assets.Num() == 1 ? TEXT("") : TEXT("s")));
+}
+
+void SPjcTabUnused::ExcludeSelectedClasses() {
+	const FPjcScanResult& Result = UPjcSubsystem::GetScanResult();
+	TArray<FString> Classes;
+	TArray<FString> Labels;
+	for (const auto& Row : ListRows) {
+		const UClass* AssetClass = ListView->IsItemSelected(Row) ? Result.Assets[Row->Index].GetClass() : nullptr;
+		if (AssetClass && !Classes.Contains(AssetClass->GetPathName())) {
+			Classes.Add(AssetClass->GetPathName());
+			Labels.Add(Row->ClassLabel);
+		}
+	}
+	if (Classes.Num() == 0) return;
+
+	Exclude({}, Classes, {}, TEXT("Excluded ") + FString::Join(Labels, TEXT(", ")));
+}
+
+void SPjcTabUnused::ExcludeFolder(const FString& Path) {
+	Exclude({Path}, {}, {}, TEXT("Excluded folder ") + Path);
+}
+
+void SPjcTabUnused::InspectSelected() const {
+	const TArray<FName> Packages = GetSelectedPackages();
+	if (Packages.Num() == 1) {
+		PjcTabs::Inspect(TabManager, Packages[0]);
+	}
+}
+
+void SPjcTabUnused::BrowseSelected() const {
+	const FPjcScanResult& Result = UPjcSubsystem::GetScanResult();
+	TArray<FAssetData> Assets;
+	for (const auto& Row : ListRows) {
+		if (ListView->IsItemSelected(Row)) {
+			Assets.Add(Result.Assets[Row->Index]);
+		}
+	}
+	if (Assets.Num() > 0) {
+		UPjcSubsystem::GetModuleContentBrowser().Get().SyncBrowserToAssets(Assets);
+	}
+}
+
+FText SPjcTabUnused::GetSelectionText() const {
+	if (!ListView.IsValid() || ListView->GetNumItemsSelected() == 0) {
+		return FText::FromString(TEXT("No selection · Ctrl or Shift selects more"));
+	}
+
+	int32 Num = 0;
+	int64 Size = 0;
+	FAssetRowPtr One;
+	for (const auto& Row : ListRows) {
+		if (ListView->IsItemSelected(Row)) {
+			++Num;
+			Size += Row->Size;
+			One = Row;
+		}
+	}
+	if (Num == 1 && One.IsValid()) {
+		return FText::FromString(FString::Printf(TEXT("%s · %s · %s"), *One->Name, *One->ClassLabel, *PjcFormat::Size(Size)));
+	}
+	return FText::FromString(FString::Printf(TEXT("%s selected · %s"), *PjcFormat::Count(Num), *PjcFormat::Size(Size)));
+}
+
+FText SPjcTabUnused::GetSelectionGroupText() const {
+	if (NumSelectionGroup == 0 || !ListView.IsValid() || ListView->GetNumItemsSelected() == 0) return FText::GetEmpty();
+
+	return FText::FromString(FString::Printf(TEXT("  ·  +%s go with them"), *PjcFormat::Count(NumSelectionGroup)));
 }

@@ -7,6 +7,7 @@
 #include "Widgets/SCompoundWidget.h"
 #include "Widgets/Views/STreeView.h"
 
+class FMenuBuilder;
 class FTabManager;
 class SBox;
 class SHorizontalBox;
@@ -107,6 +108,19 @@ class SPjcTabUnused final : public SCompoundWidget
 	/** Asks, then deletes the packages with the unused assets that reference them, and scans again */
 	void DeleteWithGroup(const TArray<FName>& Packages);
 	void GetFolderUnused(const FString& Path, TArray<FName>& OutPackages) const;
+	/** Adds exclusions to the project settings (and the settings draft), saves DefaultEditor.ini, scans again */
+	void Exclude(const TArray<FString>& Folders, const TArray<FString>& Classes, const TArray<FString>& Assets, const FString& Message);
+	void ExcludeSelectedAssets();
+	void ExcludeSelectedClasses();
+	void ExcludeFolder(const FString& Path);
+	void InspectSelected() const;
+	void BrowseSelected() const;
+	void OnAssetSelectionChanged(FAssetRowPtr Row, ESelectInfo::Type SelectInfo);
+	TSharedRef<SWidget> MakeFooter();
+	TSharedRef<SWidget> MakeExcludeMenu();
+	void AddExcludeEntries(FMenuBuilder& Menu);
+	FText GetSelectionText() const;
+	FText GetSelectionGroupText() const;
 
 	void SaveViewState() const;
 
@@ -139,6 +153,8 @@ class SPjcTabUnused final : public SCompoundWidget
 	TSet<FName> LabelOnly;
 	/** Delete group size per package, made when listed */
 	TMap<FName, int32> GroupSizes;
+	/** Unused assets that go with the selection */
+	int32 NumSelectionGroup = 0;
 	TSet<FName> ClassFilter;
 	bool bSubfolders = true;
 	FString AssetSearch;

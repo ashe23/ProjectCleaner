@@ -19,7 +19,7 @@
 #include "Framework/Application/SlateApplication.h"
 #include "Slate/SPjcTabAssetsCorrupted.h"
 #include "Slate/SPjcTabAssetsIndirect.h"
-#include "Slate/SPjcTabAssetsUnused.h"
+#include "Slate/SPjcTabUnused.h"
 #include "Slate/SPjcTabAssetsUsage.h"
 #include "Slate/SPjcTabOverview.h"
 #include "Slate/SPjcTabFilesExternal.h"
@@ -1079,16 +1079,17 @@ bool FPjcTestUiTabs::RunTest(const FString& Parameters) {
 	EditorSettings->bScanOnOpen = true;
 
 	const TSharedRef<SPjcTabAssetsUsage> TabUsage = SNew(SPjcTabAssetsUsage);
-	const TSharedRef<SWidget> Tabs[] = {
-	  SNew(SPjcTabOverview),
-	  SNew(SPjcTabAssetsUnused),
-	  SNew(SPjcTabAssetsIndirect),
-	  SNew(SPjcTabAssetsCorrupted),
-	  SNew(SPjcTabFilesExternal),
-	  TabUsage
-	};
+	const TSharedRef<SPjcTabUnused> TabUnused = SNew(SPjcTabUnused);
+	const TSharedRef<SWidget> Tabs[]
+		= {SNew(SPjcTabOverview), TabUnused, SNew(SPjcTabAssetsIndirect), SNew(SPjcTabAssetsCorrupted), SNew(SPjcTabFilesExternal), TabUsage};
 	for (const auto& Tab : Tabs) {
 		TestTrue(FString::Printf(TEXT("%s has content"), *Tab->GetTypeAsString()), Tab->GetChildren()->Num() > 0);
+	}
+
+	// a folder the Overview links to
+	if (FPjcTestFixture::IsTestHost()) {
+		TabUnused->SelectFolder(FPjcTestFixture::RootPath() / TEXT("Unused"));
+		TestEqual(TEXT("folder shown in Assets Unused"), TabUnused->GetSelectedFolder(), FPjcTestFixture::RootPath() / TEXT("Unused"));
 	}
 
 	// used through chain, unused, kept by folder label and package outside scan

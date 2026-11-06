@@ -2,7 +2,7 @@
 
 #include "Slate/SPjcTabMain.h"
 #include "Slate/SPjcTabOverview.h"
-#include "Slate/SPjcTabAssetsUnused.h"
+#include "Slate/SPjcTabUnused.h"
 #include "Slate/SPjcTabAssetsIndirect.h"
 #include "Slate/SPjcTabAssetsCorrupted.h"
 #include "Slate/SPjcTabFilesExternal.h"
@@ -212,7 +212,8 @@ TSharedRef<SDockTab> SPjcTabMain::OnTabOverviewSpawn(const FSpawnTabArgs& Args) 
 }
 
 TSharedRef<SDockTab> SPjcTabMain::OnTabAssetsUnusedSpawn(const FSpawnTabArgs& Args) const {
-	const auto Frontend = SNew(SDockTab).TabRole(PanelTab).Label(FText::FromString(TEXT("Assets Unused")))[SNew(SPjcTabAssetsUnused)];
+	const auto Frontend
+		= SNew(SDockTab).TabRole(PanelTab).Label(FText::FromString(TEXT("Assets Unused")))[SNew(SPjcTabUnused).TabManager(TabManager)];
 
 	Frontend->SetTabIcon(FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.PieChart16"));
 
