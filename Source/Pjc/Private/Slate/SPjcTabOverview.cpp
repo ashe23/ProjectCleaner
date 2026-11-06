@@ -294,7 +294,7 @@ TSharedRef<SWidget> SPjcTabOverview::MakeIssues() {
 	   TEXT("assets left by the last cleanup"),
 	   UPjcSubsystem::GetLastCleanupKept().Num(),
 	   TEXT("Unused assets the last cleanup could not delete, because something holds them."),
-	   PjcConstants::TabAssetsUnused},
+	   NAME_None},
 	};
 
 	const FLinearColor ColorWarn = PjcWidgets::GetColor("ProjectCleaner.Color.Yellow");
@@ -335,7 +335,13 @@ TSharedRef<SWidget> SPjcTabOverview::MakeIssues() {
 					SNew(SButton)
 					.ContentPadding(FMargin {8.0f, 0.0f})
 					.OnClicked_Lambda([this, TabId]() {
-						OpenTab(TabId);
+						// Not deleted (no tab of its own): the kept assets in Assets Unused
+						if (TabId.IsNone()) {
+							PjcTabs::ShowNotDeleted(TabManager);
+						}
+						else {
+							OpenTab(TabId);
+						}
 						return FReply::Handled();
 					})
 					[

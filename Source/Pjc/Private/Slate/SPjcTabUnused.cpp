@@ -222,6 +222,25 @@ namespace
 					SNew(STextBlock).Text(FText::FromString(Row->Name)).HighlightText(HighlightText)
 				];
 				// clang-format on
+				if (!Row->Holder.IsEmpty()) {
+					NameBox->AddSlot()
+						.AutoWidth()
+						.VAlign(VAlign_Center)
+						.Padding(
+							FMargin {6.0f, 0.0f, 4.0f, 0.0f}
+						)[SNew(SBorder)
+							  .BorderImage(FCoreStyle::Get().GetBrush("WhiteBrush"))
+							  .BorderBackgroundColor(FLinearColor {FColor::FromHex(TEXT("#3A1F22"))})
+							  .Padding(FMargin {4.0f, 0.0f})
+							  .ToolTipText(
+								  FText::FromString(
+									  FString::Printf(TEXT("Not deleted: held by %s. An editor restart releases transient holders."), *Row->Holder)
+								  )
+							  )[SNew(STextBlock)
+									.Text(FText::FromString(TEXT("HELD")))
+									.Font(PjcWidgets::GetFontMono(7))
+									.ColorAndOpacity(FLinearColor {FColor::FromHex(TEXT("#FFB3B6"))})]];
+				}
 				if (Row->bLabel) {
 					NameBox->AddSlot()
 						.AutoWidth()
@@ -905,6 +924,7 @@ void SPjcTabUnused::RefreshAssets() {
 		Row->Size = Result.GetSize(Asset.PackageName);
 		Row->Folder = Path.Len() > SelectedFolder.Len() ? Path.Mid(SelectedFolder.Len() + 1) : FString {};
 		Row->bLabel = LabelOnly.Contains(Asset.PackageName);
+		Row->Holder = UPjcSubsystem::GetLastCleanupKept().FindRef(Asset.PackageName);
 		if (const int32* Group = GroupSizes.Find(Asset.PackageName)) {
 			Row->Group = *Group;
 		}
@@ -938,6 +958,7 @@ void SPjcTabUnused::ApplyAssetFilter() {
 	ListRows.Reset();
 	for (const auto& Row : FolderRows) {
 		if (ClassFilter.Num() > 0 && !ClassFilter.Contains(Row->ClassName)) continue;
+		if (bHeldOnly && Row->Holder.IsEmpty()) continue;
 		if (!AssetSearch.IsEmpty() && !Row->Name.Contains(AssetSearch) && !Row->ClassLabel.Contains(AssetSearch)) continue;
 
 		ListRows.Add(Row);
@@ -1034,6 +1055,42 @@ void SPjcTabUnused::RebuildChips() {
 		  };
 
 	ChipsBox->ClearChildren();
+	int32 NumHeld = 0;
+	for (const auto& Row : FolderRows) {
+		NumHeld += Row->Holder.IsEmpty() ? 0 : 1;
+	}
+	if (NumHeld == 0) {
+		bHeldOnly = false;
+	}
+	else {
+		// clang-format off
+		ChipsBox->AddSlot().AutoWidth().Padding(FMargin {0.0f, 0.0f, 4.0f, 0.0f})
+		[
+			SNew(SCheckBox)
+			.Style(&PjcShim::GetStyle().GetWidgetStyle<FCheckBoxStyle>(TEXT("ToggleButtonCheckbox")))
+			.ToolTipText(FText::FromString(TEXT("The last delete could not remove them: something holds them in memory")))
+			.IsChecked_Lambda([this]() { return bHeldOnly ? ECheckBoxState::Checked : ECheckBoxState::Unchecked; })
+			.OnCheckStateChanged_Lambda([this](ECheckBoxState) {
+				bHeldOnly = !bHeldOnly;
+				ApplyAssetFilter();
+			})
+			[
+				SNew(SBox).Padding(FMargin {8.0f, 2.0f})
+				[
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+					[
+						SNew(STextBlock).Text(FText::FromString(TEXT("Not deleted"))).ColorAndOpacity(FLinearColor {FColor::FromHex(TEXT("#FFB3B6"))})
+					]
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
+					[
+						SNew(STextBlock).Text(FText::FromString(PjcFormat::Count(NumHeld))).Font(PjcWidgets::GetFontMono(8)).ColorAndOpacity(FSlateColor::UseSubduedForeground())
+					]
+				]
+			]
+		];
+		// clang-format on
+	}
 	ChipsBox->AddSlot().AutoWidth().Padding(
 		FMargin {0.0f, 0.0f, 4.0f, 0.0f}
 	)[MakeChip(NAME_None, TEXT("All"), {}, FolderRows.Num(), TEXT("Every unused asset here"))];
@@ -1099,6 +1156,7 @@ void SPjcTabUnused::OnChipClicked(const FName ClassName) {
 	// a click shows one class (again: all), Ctrl+click adds or removes it
 	if (ClassName.IsNone()) {
 		ClassFilter.Reset();
+		bHeldOnly = false;
 	}
 	else if (FSlateApplication::Get().GetModifierKeys().IsControlDown()) {
 		if (ClassFilter.Contains(ClassName)) {
@@ -1494,7 +1552,8 @@ FText SPjcTabUnused::GetSelectionText() const {
 		}
 	}
 	if (Num == 1 && One.IsValid()) {
-		return FText::FromString(FString::Printf(TEXT("%s · %s · %s"), *One->Name, *One->ClassLabel, *PjcFormat::Size(Size)));
+		const FString Held = One->Holder.IsEmpty() ? FString {} : TEXT(" · held by ") + One->Holder;
+		return FText::FromString(FString::Printf(TEXT("%s · %s · %s%s"), *One->Name, *One->ClassLabel, *PjcFormat::Size(Size), *Held));
 	}
 	return FText::FromString(FString::Printf(TEXT("%s selected · %s"), *PjcFormat::Count(Num), *PjcFormat::Size(Size)));
 }
@@ -1655,4 +1714,29 @@ void SPjcTabUnused::OnMapAssetClicked(int32 Index) {
 			break;
 		}
 	}
+}
+
+void SPjcTabUnused::ShowNotDeleted() {
+	// the root of the first asset the last delete kept, with subfolders
+	const FPjcScanResult& Result = UPjcSubsystem::GetScanResult();
+	const TMap<FName, FString>& Kept = UPjcSubsystem::GetLastCleanupKept();
+	FString Root;
+	for (const auto& Asset : Result.Assets) {
+		if (Kept.Contains(Asset.PackageName)) {
+			const FString Path = Asset.PackagePath.ToString();
+			const int32 Slash = Path.Find(TEXT("/"), ESearchCase::CaseSensitive, ESearchDir::FromStart, 1);
+			Root = Slash > 0 ? Path.Left(Slash) : Path;
+			break;
+		}
+	}
+	if (Root.IsEmpty()) return;
+
+	if (!bSubfolders) {
+		bSubfolders = true;
+		SaveViewState();
+	}
+	SelectFolder(Root);
+	RefreshAssets();
+	bHeldOnly = true;
+	ApplyAssetFilter();
 }

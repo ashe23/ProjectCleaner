@@ -33,6 +33,8 @@ struct FPjcUnusedAssetRow
 	bool bLabel = false;
 	/** Unused assets that reference it and are deleted with it */
 	int32 Group = 0;
+	/** What held it when the last delete could not remove it, empty when it was not kept */
+	FString Holder;
 };
 
 /**
@@ -57,6 +59,9 @@ class SPjcTabUnused final : public SCompoundWidget
 	const FString& GetSelectedFolder() const {
 		return SelectedFolder;
 	}
+
+	/** Shows the assets the last delete could not remove */
+	void ShowNotDeleted();
 
   private:
 
@@ -171,6 +176,8 @@ class SPjcTabUnused final : public SCompoundWidget
 	TSharedPtr<SPjcSizeMap> SizeMap;
 	TSharedPtr<SHorizontalBox> Breadcrumb;
 	TSet<FName> ClassFilter;
+	/** Only assets the last delete could not remove */
+	bool bHeldOnly = false;
 	bool bSubfolders = true;
 	FString AssetSearch;
 	FName AssetSortColumn = TEXT("Size");
