@@ -168,6 +168,9 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create() {
 #if ENGINE_MAJOR_VERSION >= 5
 	// cards of the Overview, 4.27 takes the editor group border (PjcShim::GetBrushCard)
 	Style->Set("ProjectCleaner.Card", new FSlateRoundedBoxBrush(FStyleColors::Panel, 4.0f, FLinearColor {FColor::FromHex(TEXT("#383B40"))}, 1.0f));
+	// Inspector graph boxes, white: drawn tinted. 4.27 draws square boxes.
+	Style->Set("ProjectCleaner.Graph.Node", new FSlateRoundedBoxBrush(FLinearColor::White, 3.0f));
+	Style->Set("ProjectCleaner.Graph.Pill", new FSlateRoundedBoxBrush(FLinearColor::White, 23.0f));
 #endif
 
 	// rows that react to the mouse
