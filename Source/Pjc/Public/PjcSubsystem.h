@@ -517,9 +517,6 @@ class UPjcSubsystem final : public UEditorSubsystem
 	static FContentBrowserModule& GetModuleContentBrowser();
 	static FPropertyEditorModule& GetModulePropertyEditor();
 
-	UPROPERTY(Config)
-	bool bShowFilesExternal = true;
-
   private:
 
 	/** Asset registry ready, asset editors closed, unsaved assets saved */

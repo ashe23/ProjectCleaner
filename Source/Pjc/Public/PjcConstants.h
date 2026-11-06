@@ -25,9 +25,6 @@ namespace PjcConstants
 	static const FName TabProjectCleaner {TEXT("TabProjectCleaner")};
 	static const FName TabOverview {TEXT("TabOverview")};
 	static const FName TabAssetsUnused {TEXT("TabAssetsUnused")};
-	static const FName TabAssetsIndirect {TEXT("TabAssetsIndirect")};
-	static const FName TabAssetsCorrupted {TEXT("TabAssetsCorrupted")};
-	static const FName TabFilesExternal {TEXT("TabFilesExternal")};
 	static const FName TabAssetsUsage {TEXT("TabAssetsUsage")};
 	static const FName TabIssues {TEXT("TabIssues")};
 

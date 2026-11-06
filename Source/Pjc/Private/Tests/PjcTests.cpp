@@ -18,13 +18,10 @@
 #include "Curves/CurveFloat.h"
 #include "Engine/AssetManager.h"
 #include "Framework/Application/SlateApplication.h"
-#include "Slate/SPjcTabAssetsCorrupted.h"
-#include "Slate/SPjcTabAssetsIndirect.h"
 #include "Slate/SPjcTabIssues.h"
 #include "Slate/SPjcTabUnused.h"
 #include "Slate/SPjcTabAssetsUsage.h"
 #include "Slate/SPjcTabOverview.h"
-#include "Slate/SPjcTabFilesExternal.h"
 #include "HAL/FileManager.h"
 #include "Misc/App.h"
 #include "Misc/FileHelper.h"
@@ -1209,9 +1206,7 @@ bool FPjcTestUiTabs::RunTest(const FString& Parameters) {
 	const TSharedRef<SPjcTabAssetsUsage> TabUsage = SNew(SPjcTabAssetsUsage);
 	const TSharedRef<SPjcTabUnused> TabUnused = SNew(SPjcTabUnused);
 	const TSharedRef<SPjcTabIssues> TabIssues = SNew(SPjcTabIssues);
-	const TSharedRef<SWidget> Tabs[] = {
-	  SNew(SPjcTabOverview), TabUnused, TabIssues, SNew(SPjcTabAssetsIndirect), SNew(SPjcTabAssetsCorrupted), SNew(SPjcTabFilesExternal), TabUsage
-	};
+	const TSharedRef<SWidget> Tabs[] = {SNew(SPjcTabOverview), TabUnused, TabIssues, TabUsage};
 	for (const auto& Tab : Tabs) {
 		TestTrue(FString::Printf(TEXT("%s has content"), *Tab->GetTypeAsString()), Tab->GetChildren()->Num() > 0);
 	}

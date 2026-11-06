@@ -16,16 +16,8 @@ class FPjcCmds final : public TCommands<FPjcCmds>
 	TSharedPtr<FUICommandInfo> TabMain;
 
 	// Generic Commands
-	TSharedPtr<FUICommandInfo> Refresh;
-	TSharedPtr<FUICommandInfo> Delete;
-	TSharedPtr<FUICommandInfo> Exclude;
-	TSharedPtr<FUICommandInfo> ExcludeByExt;
-	TSharedPtr<FUICommandInfo> ClearSelection;
 
 	TSharedPtr<FUICommandInfo> ScanProject;
-	TSharedPtr<FUICommandInfo> OpenViewerSizeMap;
-	TSharedPtr<FUICommandInfo> OpenViewerReference;
-	TSharedPtr<FUICommandInfo> OpenViewerAssetsAudit;
 	TSharedPtr<FUICommandInfo> OpenGithub;
 	TSharedPtr<FUICommandInfo> OpenWiki;
 	TSharedPtr<FUICommandInfo> OpenBugReport;

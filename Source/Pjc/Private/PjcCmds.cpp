@@ -11,23 +11,7 @@ FPjcCmds::FPjcCmds() :
 void FPjcCmds::RegisterCommands() {
 	UI_COMMAND(TabMain, "Project Cleaner", "Open Project Cleaner Main Window", EUserInterfaceActionType::Button, FInputChord());
 
-	UI_COMMAND(Refresh, "Refresh", "Refresh", EUserInterfaceActionType::Button, FInputChord());
-
-	UI_COMMAND(Delete, "Delete", "Delete Selected", EUserInterfaceActionType::Button, FInputChord());
-
-	UI_COMMAND(Exclude, "Exclude", "Exclude Selected", EUserInterfaceActionType::Button, FInputChord());
-
-	UI_COMMAND(ExcludeByExt, "Exclude By Ext", "Exclude Selected Files By Extension", EUserInterfaceActionType::Button, FInputChord());
-
-	UI_COMMAND(ClearSelection, "Clear Selection", "Clear Any Selection", EUserInterfaceActionType::Button, FInputChord());
-
 	UI_COMMAND(ScanProject, "Scan Project", "Scan project for unused assets and empty folders", EUserInterfaceActionType::Button, FInputChord());
-
-	UI_COMMAND(OpenViewerSizeMap, "SizeMap", "Open SizeMap viewer for selected assets", EUserInterfaceActionType::Button, FInputChord());
-
-	UI_COMMAND(OpenViewerReference, "ReferenceViewer", "Open ReferenceViewer for selected assets", EUserInterfaceActionType::Button, FInputChord());
-
-	UI_COMMAND(OpenViewerAssetsAudit, "Asset Audit", "Open AssetAudit viewer for selected assets", EUserInterfaceActionType::Button, FInputChord());
 
 	UI_COMMAND(OpenGithub, "Go to Github", "Open plugins github repository", EUserInterfaceActionType::Button, FInputChord());
 

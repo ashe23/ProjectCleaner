@@ -89,23 +89,6 @@ class UPjcFileExcludeSettings : public UObject
 #endif
 };
 
-struct FPjcFileExternalItem
-{
-	int64 FileSize = 0;
-	bool bExcluded = false;
-	FString FileName;
-	FString FileExt;
-	FString FilePath;
-};
-
-struct FPjcCorruptedAssetItem
-{
-	int64 FileSize = 0;
-	FString FileName;
-	FString FileExt;
-	FString FilePath;
-};
-
 USTRUCT(BlueprintType)
 struct FPjcFileInfo
 {
