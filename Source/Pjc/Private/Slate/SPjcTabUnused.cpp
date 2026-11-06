@@ -1,14 +1,13 @@
 // Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "Slate/SPjcTabUnused.h"
+#include "Slate/PjcActions.h"
 #include "Slate/PjcTabs.h"
 #include "Slate/PjcWidgets.h"
-#include "Slate/SPjcDeleteDialog.h"
 #include "Slate/SPjcScanBar.h"
 #include "Slate/SPjcSizeMap.h"
 #include "Slate/SPjcToolFrame.h"
 #include "PjcFormat.h"
-#include "PjcScanDraft.h"
 #include "PjcSettings.h"
 #include "PjcShim.h"
 #include "PjcStyles.h"
@@ -679,7 +678,7 @@ TSharedPtr<SWidget> SPjcTabUnused::OnFolderContextMenu() {
 		  FExecuteAction::CreateLambda([this, Folder]() {
 			  TArray<FName> Packages;
 			  GetFolderUnused(Folder->Path, Packages);
-			  DeleteWithGroup(Packages);
+			  PjcActions::DeleteWithGroup(Packages);
 		  }),
 		  FCanExecuteAction::CreateLambda([Folder]() {
 			  return Folder->Unused.Num > 0;
@@ -1187,7 +1186,7 @@ TSharedPtr<SWidget> SPjcTabUnused::OnAssetContextMenu() {
 		FText::FromString(TEXT("Deletes the selection with the unused assets that reference it")),
 		FSlateIcon {},
 		FUIAction {FExecuteAction::CreateLambda([this, Packages]() {
-			DeleteWithGroup(Packages);
+			PjcActions::DeleteWithGroup(Packages);
 		})}
 	);
 	Menu.AddSeparator();
@@ -1212,7 +1211,7 @@ TSharedPtr<SWidget> SPjcTabUnused::OnAssetContextMenu() {
 
 FReply SPjcTabUnused::OnAssetKeyDown(const FGeometry& Geometry, const FKeyEvent& KeyEvent) {
 	if (KeyEvent.GetKey() == EKeys::Delete && ListView->GetNumItemsSelected() > 0) {
-		DeleteWithGroup(GetSelectedPackages());
+		PjcActions::DeleteWithGroup(GetSelectedPackages());
 		return FReply::Handled();
 	}
 	return FReply::Unhandled();
@@ -1236,55 +1235,6 @@ void SPjcTabUnused::GetFolderUnused(const FString& Path, TArray<FName>& OutPacka
 	for (const int32 Index : Indices) {
 		OutPackages.Add(Result.Assets[Index].PackageName);
 	}
-}
-
-void SPjcTabUnused::DeleteWithGroup(const TArray<FName>& Packages) {
-	if (Packages.Num() == 0) return;
-
-	const FPjcScanResult& Result = UPjcSubsystem::GetScanResult();
-	TArray<FName> GroupPackages;
-	FPjcUnusedTree::GetDeleteGroup(Result, Packages, GroupPackages);
-
-	// asset data of scanned assets and redirectors
-	TMap<FName, const FAssetData*> ByPackage;
-	for (const auto& Asset : Result.Assets) {
-		ByPackage.Add(Asset.PackageName, &Asset);
-	}
-	for (const auto& Asset : Result.Redirectors) {
-		ByPackage.Add(Asset.PackageName, &Asset);
-	}
-	const auto ToAssets = [&ByPackage](const TArray<FName>& Names, TArray<FAssetData>& Out) {
-		for (const FName Name : Names) {
-			if (const FAssetData* const* Found = ByPackage.Find(Name)) {
-				Out.Add(**Found);
-			}
-		}
-	};
-	TArray<FAssetData> Selected;
-	TArray<FAssetData> With;
-	ToAssets(Packages, Selected);
-	ToAssets(GroupPackages, With);
-
-	// what the last delete could not remove
-	TArray<FString> Held;
-	const TMap<FName, FString>& Kept = UPjcSubsystem::GetLastCleanupKept();
-	for (const auto& Asset : Selected) {
-		if (const FString* Holder = Kept.Find(Asset.PackageName)) {
-			Held.Add(*Holder);
-		}
-	}
-	for (const auto& Asset : With) {
-		if (const FString* Holder = Kept.Find(Asset.PackageName)) {
-			Held.Add(*Holder);
-		}
-	}
-
-	if (!SPjcDeleteDialog::Confirm(Selected, With, Held)) return;
-
-	TArray<FAssetData> All = Selected;
-	All.Append(With);
-	UPjcSubsystem::DeleteAssets(All, true, true);
-	SPjcScanBar::ScanProject();
 }
 
 void SPjcTabUnused::OnAssetSelectionChanged(FAssetRowPtr Row, ESelectInfo::Type SelectInfo) {
@@ -1332,7 +1282,7 @@ TSharedRef<SWidget> SPjcTabUnused::MakeFooter() {
 				.ToolTipText(FText::FromString(TEXT("Deletes the selection with the unused assets that reference it (Delete)")))
 				.IsEnabled_Lambda(HasSelection)
 				.OnClicked_Lambda([this]() {
-					DeleteWithGroup(GetSelectedPackages());
+					PjcActions::DeleteWithGroup(GetSelectedPackages());
 					return FReply::Handled();
 				})
 				[
@@ -1425,40 +1375,6 @@ void SPjcTabUnused::AddExcludeEntries(FMenuBuilder& Menu) {
 	);
 }
 
-void SPjcTabUnused::Exclude(const TArray<FString>& Folders, const TArray<FString>& Classes, const TArray<FString>& Assets, const FString& Message) {
-	UPjcAssetExcludeSettings* Settings = GetMutableDefault<UPjcAssetExcludeSettings>();
-	for (const auto& Folder : Folders) {
-		if (!Settings->ExcludedFolders.ContainsByPredicate([&Folder](const FDirectoryPath& Path) {
-				return Path.Path.Equals(Folder);
-			})) {
-			Settings->ExcludedFolders.Add(FDirectoryPath {Folder});
-		}
-	}
-	for (const auto& Class : Classes) {
-		Settings->ExcludedClasses.AddUnique(TSoftClassPtr<UObject> {FSoftObjectPath {Class}});
-	}
-	for (const auto& Asset : Assets) {
-		Settings->ExcludedAssets.AddUnique(TSoftObjectPtr<UObject> {FSoftObjectPath {Asset}});
-	}
-	PjcShim::UpdateDefaultConfigFile(Settings);
-
-	// an edited draft keeps its edits and gets the exclusions too, so Rescan does not drop them
-	FPjcScanDraft& Draft = FPjcScanDraft::Get();
-	for (const auto& Folder : Folders) {
-		Draft.ExcludedFolders.AddUnique(Folder);
-	}
-	for (const auto& Class : Classes) {
-		Draft.ExcludedClasses.AddUnique(Class);
-	}
-	for (const auto& Asset : Assets) {
-		Draft.ExcludedAssets.AddUnique(Asset);
-	}
-	FPjcScanDraft::OnEdited().Broadcast();
-
-	UPjcSubsystem::ShowNotification(Message + TEXT(" · saved to Config/DefaultEditor.ini"), SNotificationItem::CS_Success, 4.0f);
-	SPjcScanBar::ScanProject();
-}
-
 void SPjcTabUnused::ExcludeSelectedAssets() {
 	const FPjcScanResult& Result = UPjcSubsystem::GetScanResult();
 	TArray<FString> Assets;
@@ -1469,7 +1385,9 @@ void SPjcTabUnused::ExcludeSelectedAssets() {
 	}
 	if (Assets.Num() == 0) return;
 
-	Exclude({}, {}, Assets, FString::Printf(TEXT("Excluded %s asset%s"), *PjcFormat::Count(Assets.Num()), Assets.Num() == 1 ? TEXT("") : TEXT("s")));
+	PjcActions::Exclude(
+		{}, {}, Assets, FString::Printf(TEXT("Excluded %s asset%s"), *PjcFormat::Count(Assets.Num()), Assets.Num() == 1 ? TEXT("") : TEXT("s"))
+	);
 }
 
 void SPjcTabUnused::ExcludeSelectedClasses() {
@@ -1485,11 +1403,11 @@ void SPjcTabUnused::ExcludeSelectedClasses() {
 	}
 	if (Classes.Num() == 0) return;
 
-	Exclude({}, Classes, {}, TEXT("Excluded ") + FString::Join(Labels, TEXT(", ")));
+	PjcActions::Exclude({}, Classes, {}, TEXT("Excluded ") + FString::Join(Labels, TEXT(", ")));
 }
 
 void SPjcTabUnused::ExcludeFolder(const FString& Path) {
-	Exclude({Path}, {}, {}, TEXT("Excluded folder ") + Path);
+	PjcActions::Exclude({Path}, {}, {}, TEXT("Excluded folder ") + Path);
 }
 
 void SPjcTabUnused::InspectSelected() const {

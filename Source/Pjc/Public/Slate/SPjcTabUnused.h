@@ -111,11 +111,7 @@ class SPjcTabUnused final : public SCompoundWidget
 
 	// actions
 	TArray<FName> GetSelectedPackages() const;
-	/** Asks, then deletes the packages with the unused assets that reference them, and scans again */
-	void DeleteWithGroup(const TArray<FName>& Packages);
 	void GetFolderUnused(const FString& Path, TArray<FName>& OutPackages) const;
-	/** Adds exclusions to the project settings (and the settings draft), saves DefaultEditor.ini, scans again */
-	void Exclude(const TArray<FString>& Folders, const TArray<FString>& Classes, const TArray<FString>& Assets, const FString& Message);
 	void ExcludeSelectedAssets();
 	void ExcludeSelectedClasses();
 	void ExcludeFolder(const FString& Path);
