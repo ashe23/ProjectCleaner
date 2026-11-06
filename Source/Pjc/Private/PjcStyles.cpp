@@ -163,6 +163,7 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create() {
 	Style->Set("ProjectCleaner.Color.Accent", FLinearColor {FColor::FromHex(TEXT("#2F7DE1"))});
 	Style->Set("ProjectCleaner.Color.ShipFill", FLinearColor {FColor::FromHex(TEXT("#3A8D5C"))});
 	Style->Set("ProjectCleaner.Color.KeepFill", FLinearColor {FColor::FromHex(TEXT("#56606B"))});
+	Style->Set("ProjectCleaner.Color.FolderTint", FLinearColor {FColor::FromHex(TEXT("#C9A55A"))});
 
 #if ENGINE_MAJOR_VERSION >= 5
 	// cards of the Overview, 4.27 takes the editor group border (PjcShim::GetBrushCard)
