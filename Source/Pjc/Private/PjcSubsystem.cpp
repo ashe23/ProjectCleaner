@@ -460,6 +460,11 @@ void UPjcSubsystem::ComputeAssetsUsed(
 	TArray<FPjcAssetIndirectInfo> AssetsIndirectInfos;
 
 	GetAssetsAll(AssetsAll);
+	// the registry gives assets and references in another order each editor session: walked in name order, every
+	// package gets the same parent and chain start in every scan
+	AssetsAll.Sort([](const FAssetData& A, const FAssetData& B) {
+		return A.PackageName.LexicalLess(B.PackageName);
+	});
 	GetAssetsEngineReferenced(AssetsEngineReferenced, bShowSlowTask);
 	const TSet<FAssetData> AssetsEngineReferencedSet {AssetsEngineReferenced};
 	GetAssetsIndirect(AssetsIndirect, AssetsIndirectInfos, bShowSlowTask);
@@ -589,6 +594,7 @@ void UPjcSubsystem::ComputeAssetsUsed(
 	TSet<FName> FolderLabels;
 	TMap<FName, FName> LabelAssets;
 	GetFolderLabels(AssetsAll, Usage, FolderLabels, LabelAssets);
+	LabelAssets.KeySort(FNameLexicalLess {});
 	for (const auto& LabelAsset : LabelAssets) {
 		AddUsed(LabelAsset.Key, EPjcUsageReason::FolderLabelAsset, LabelAsset.Value, FString {});
 	}
@@ -620,6 +626,7 @@ void UPjcSubsystem::ComputeAssetsUsed(
 
 			Deps.Reset();
 			GetModuleAssetRegistry().Get().GetDependencies(PackageName, Deps);
+			Deps.Sort(FNameLexicalLess {});
 
 			for (const auto& Dep : Deps) {
 				if (!PathIsInsideProject(Dep.ToString())) continue;
@@ -675,7 +682,9 @@ void UPjcSubsystem::ComputeAssetsUsed(
 	FollowDependencies(FolderLabels, false);
 
 	if (FolderLabels.Num() > 0) {
-		Queue.Append(FolderLabels.Array());
+		TArray<FName> FolderLabelsSorted = FolderLabels.Array();
+		FolderLabelsSorted.Sort(FNameLexicalLess {});
+		Queue.Append(FolderLabelsSorted);
 		FollowDependencies(TSet<FName> {}, true);
 		AddLocalized();
 		FollowDependencies(TSet<FName> {}, true);
