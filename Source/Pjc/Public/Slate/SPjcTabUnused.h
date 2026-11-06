@@ -8,6 +8,7 @@
 #include "Widgets/Views/STreeView.h"
 
 class FMenuBuilder;
+class SPjcSizeMap;
 class FTabManager;
 class SBox;
 class SHorizontalBox;
@@ -78,6 +79,14 @@ class SPjcTabUnused final : public SCompoundWidget
 	void OnFolderSearchChanged(const FText& Text);
 	TSharedPtr<SWidget> OnFolderContextMenu();
 	TSharedRef<SWidget> MakeViewMenu();
+
+	// size map of the selected folder
+	TSharedRef<SWidget> MakeMapBar();
+	TSharedRef<SWidget> MakeMapLegend() const;
+	void SetMapView(const bool bMap);
+	void RefreshMap();
+	void RebuildBreadcrumb();
+	void OnMapAssetClicked(int32 Index);
 
 	// unused assets of the selected folder
 	using FAssetRowPtr = TSharedPtr<FPjcUnusedAssetRow>;
@@ -155,6 +164,12 @@ class SPjcTabUnused final : public SCompoundWidget
 	TMap<FName, int32> GroupSizes;
 	/** Unused assets that go with the selection */
 	int32 NumSelectionGroup = 0;
+
+	// size map
+	bool bMapView = false;
+	bool bMapAll = false;
+	TSharedPtr<SPjcSizeMap> SizeMap;
+	TSharedPtr<SHorizontalBox> Breadcrumb;
 	TSet<FName> ClassFilter;
 	bool bSubfolders = true;
 	FString AssetSearch;

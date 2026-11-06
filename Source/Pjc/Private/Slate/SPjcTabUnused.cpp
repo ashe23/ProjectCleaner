@@ -5,6 +5,7 @@
 #include "Slate/PjcWidgets.h"
 #include "Slate/SPjcDeleteDialog.h"
 #include "Slate/SPjcScanBar.h"
+#include "Slate/SPjcSizeMap.h"
 #include "Slate/SPjcToolFrame.h"
 #include "PjcFormat.h"
 #include "PjcScanDraft.h"
@@ -27,6 +28,7 @@
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Input/SCheckBox.h"
 #include "Widgets/Input/SComboButton.h"
+#include "Widgets/Input/SHyperlink.h"
 #include "Widgets/Input/SSearchBox.h"
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
@@ -301,6 +303,8 @@ void SPjcTabUnused::Construct(const FArguments& InArgs) {
 			FolderSortMode = bSortDescending ? EColumnSortMode::Descending : EColumnSortMode::Ascending;
 		}
 		GConfig->GetBool(PjcUnusedSection, TEXT("Subfolders"), bSubfolders, GEditorPerProjectIni);
+		GConfig->GetBool(PjcUnusedSection, TEXT("SizeMap"), bMapView, GEditorPerProjectIni);
+		GConfig->GetBool(PjcUnusedSection, TEXT("SizeMapAll"), bMapAll, GEditorPerProjectIni);
 		if (GConfig->GetString(PjcUnusedSection, TEXT("AssetSort"), SortColumn, GEditorPerProjectIni) && !SortColumn.IsEmpty()) {
 			AssetSortColumn = FName {*SortColumn};
 		}
@@ -438,15 +442,46 @@ TSharedRef<SWidget> SPjcTabUnused::MakeFolderPane() {
 			+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {8.0f, 6.0f})
 			[
 				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 8.0f, 0.0f})
+				[
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot().AutoWidth()
+					[
+						SNew(SCheckBox)
+						.Style(&PjcShim::GetStyle().GetWidgetStyle<FCheckBoxStyle>(TEXT("ToggleButtonCheckbox")))
+						.ToolTipText(FText::FromString(TEXT("Folders with their unused totals")))
+						.IsChecked_Lambda([this]() { return bMapView ? ECheckBoxState::Unchecked : ECheckBoxState::Checked; })
+						.OnCheckStateChanged_Lambda([this](ECheckBoxState) { SetMapView(false); })
+						[
+							SNew(SBox).Padding(FMargin {8.0f, 1.0f})[SNew(STextBlock).Text(FText::FromString(TEXT("Tree")))]
+						]
+					]
+					+ SHorizontalBox::Slot().AutoWidth()
+					[
+						SNew(SCheckBox)
+						.Style(&PjcShim::GetStyle().GetWidgetStyle<FCheckBoxStyle>(TEXT("ToggleButtonCheckbox")))
+						.ToolTipText(FText::FromString(TEXT("Boxes as big as the unused assets in them, click a folder to open it")))
+						.IsChecked_Lambda([this]() { return bMapView ? ECheckBoxState::Checked : ECheckBoxState::Unchecked; })
+						.OnCheckStateChanged_Lambda([this](ECheckBoxState) { SetMapView(true); })
+						[
+							SNew(SBox).Padding(FMargin {8.0f, 1.0f})[SNew(STextBlock).Text(FText::FromString(TEXT("Size map")))]
+						]
+					]
+				]
 				+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
 				[
-					SNew(SSearchBox)
-					.HintText(FText::FromString(TEXT("Search folders")))
-					.OnTextChanged(this, &SPjcTabUnused::OnFolderSearchChanged)
+					SNew(SBox)
+					.Visibility_Lambda([this]() { return bMapView ? EVisibility::Collapsed : EVisibility::Visible; })
+					[
+						SNew(SSearchBox)
+						.HintText(FText::FromString(TEXT("Search folders")))
+						.OnTextChanged(this, &SPjcTabUnused::OnFolderSearchChanged)
+					]
 				]
 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
 				[
 					SNew(SComboButton)
+					.Visibility_Lambda([this]() { return bMapView ? EVisibility::Collapsed : EVisibility::Visible; })
 					.ToolTipText(FText::FromString(TEXT("View options")))
 					.OnGetMenuContent(this, &SPjcTabUnused::MakeViewMenu)
 					.ButtonContent()
@@ -457,7 +492,29 @@ TSharedRef<SWidget> SPjcTabUnused::MakeFolderPane() {
 			]
 			+ SVerticalBox::Slot().FillHeight(1.0f)
 			[
-				TreeView.ToSharedRef()
+				SNew(SBox)
+				.Visibility_Lambda([this]() { return bMapView ? EVisibility::Collapsed : EVisibility::Visible; })
+				[
+					TreeView.ToSharedRef()
+				]
+			]
+			+ SVerticalBox::Slot().AutoHeight()
+			[
+				MakeMapBar()
+			]
+			+ SVerticalBox::Slot().FillHeight(1.0f).Padding(FMargin {6.0f})
+			[
+				SNew(SBox)
+				.Visibility_Lambda([this]() { return bMapView ? EVisibility::Visible : EVisibility::Collapsed; })
+				[
+					SAssignNew(SizeMap, SPjcSizeMap)
+					.OnFolderClicked_Lambda([this](const FString& Path) { SelectFolder(Path); })
+					.OnAssetClicked(this, &SPjcTabUnused::OnMapAssetClicked)
+				]
+			]
+			+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {10.0f, 0.0f, 10.0f, 6.0f})
+			[
+				MakeMapLegend()
 			]
 		];
 	// clang-format on
@@ -622,6 +679,14 @@ TSharedPtr<SWidget> SPjcTabUnused::OnFolderContextMenu() {
 		})}
 	);
 	Menu.AddSeparator();
+	Menu.AddMenuEntry(
+		FText::FromString(TEXT("Size map here")),
+		FText::FromString(TEXT("Shows the folder as a size map")),
+		FSlateIcon {},
+		FUIAction {FExecuteAction::CreateLambda([this]() {
+			SetMapView(true);
+		})}
+	);
 	Menu.AddMenuEntry(
 		FText::FromString(TEXT("Expand all")),
 		FText::FromString(TEXT("Opens every subfolder")),
@@ -860,6 +925,7 @@ void SPjcTabUnused::RefreshAssets() {
 
 	RebuildChips();
 	ApplyAssetFilter();
+	RefreshMap();
 }
 
 void SPjcTabUnused::ApplyAssetFilter() {
@@ -1071,6 +1137,8 @@ void SPjcTabUnused::SaveViewState() const {
 	GConfig->SetString(PjcUnusedSection, TEXT("FolderSort"), *FolderSortColumn.ToString(), GEditorPerProjectIni);
 	GConfig->SetBool(PjcUnusedSection, TEXT("FolderSortDescending"), FolderSortMode == EColumnSortMode::Descending, GEditorPerProjectIni);
 	GConfig->SetBool(PjcUnusedSection, TEXT("Subfolders"), bSubfolders, GEditorPerProjectIni);
+	GConfig->SetBool(PjcUnusedSection, TEXT("SizeMap"), bMapView, GEditorPerProjectIni);
+	GConfig->SetBool(PjcUnusedSection, TEXT("SizeMapAll"), bMapAll, GEditorPerProjectIni);
 	GConfig->SetString(PjcUnusedSection, TEXT("AssetSort"), *AssetSortColumn.ToString(), GEditorPerProjectIni);
 	GConfig->SetBool(PjcUnusedSection, TEXT("AssetSortDescending"), AssetSortMode == EColumnSortMode::Descending, GEditorPerProjectIni);
 }
@@ -1192,6 +1260,12 @@ void SPjcTabUnused::OnAssetSelectionChanged(FAssetRowPtr Row, ESelectInfo::Type 
 		FPjcUnusedTree::GetDeleteGroup(UPjcSubsystem::GetScanResult(), Packages, Group);
 	}
 	NumSelectionGroup = Group.Num();
+
+	TSet<int32> Indices;
+	for (const auto& Selected : ListView->GetSelectedItems()) {
+		Indices.Add(Selected->Index);
+	}
+	SizeMap->SetSelected(Indices);
 }
 
 TSharedRef<SWidget> SPjcTabUnused::MakeFooter() {
@@ -1429,4 +1503,156 @@ FText SPjcTabUnused::GetSelectionGroupText() const {
 	if (NumSelectionGroup == 0 || !ListView.IsValid() || ListView->GetNumItemsSelected() == 0) return FText::GetEmpty();
 
 	return FText::FromString(FString::Printf(TEXT("  ·  +%s go with them"), *PjcFormat::Count(NumSelectionGroup)));
+}
+
+TSharedRef<SWidget> SPjcTabUnused::MakeMapBar() {
+	const auto AreaToggle = [this](const FString& Label, const bool bAll, const FString& ToolTip) {
+		// clang-format off
+		return SNew(SCheckBox)
+			.Style(&PjcShim::GetStyle().GetWidgetStyle<FCheckBoxStyle>(TEXT("ToggleButtonCheckbox")))
+			.ToolTipText(FText::FromString(ToolTip))
+			.IsChecked_Lambda([this, bAll]() { return bMapAll == bAll ? ECheckBoxState::Checked : ECheckBoxState::Unchecked; })
+			.OnCheckStateChanged_Lambda([this, bAll](ECheckBoxState) {
+				bMapAll = bAll;
+				SaveViewState();
+				RefreshMap();
+			})
+			[
+				SNew(SBox).Padding(FMargin {8.0f, 0.0f})[SNew(STextBlock).Text(FText::FromString(Label))]
+			];
+		// clang-format on
+	};
+
+	// clang-format off
+	return SNew(SBox)
+		.Visibility_Lambda([this]() { return bMapView ? EVisibility::Visible : EVisibility::Collapsed; })
+		.Padding(FMargin {10.0f, 2.0f, 8.0f, 2.0f})
+		[
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
+			[
+				SAssignNew(Breadcrumb, SHorizontalBox)
+			]
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {8.0f, 0.0f, 6.0f, 0.0f})
+			[
+				SNew(STextBlock).Text(FText::FromString(TEXT("Area"))).ColorAndOpacity(FSlateColor::UseSubduedForeground())
+			]
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+			[
+				AreaToggle(TEXT("Unused"), false, TEXT("Only unused assets take space"))
+			]
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+			[
+				AreaToggle(TEXT("All"), true, TEXT("All assets, folders tinted by their unused share"))
+			]
+		];
+	// clang-format on
+}
+
+TSharedRef<SWidget> SPjcTabUnused::MakeMapLegend() const {
+	const auto Entry = [](const FLinearColor& Color, const FString& Label) {
+		// clang-format off
+		return SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 5.0f, 0.0f})
+			[
+				PjcWidgets::MakeSwatch(Color)
+			]
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 14.0f, 0.0f})
+			[
+				SNew(STextBlock).Text(FText::FromString(Label)).ColorAndOpacity(FSlateColor::UseSubduedForeground())
+			];
+		// clang-format on
+	};
+
+	// clang-format off
+	return SNew(SBox)
+		.Visibility_Lambda([this]() { return bMapView ? EVisibility::Visible : EVisibility::Collapsed; })
+		[
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot().AutoWidth()
+			[
+				Entry(FLinearColor {FColor::FromHex(TEXT("#7A3236"))}, TEXT("Unused asset"))
+			]
+			+ SHorizontalBox::Slot().AutoWidth()
+			[
+				SNew(SBox)
+				.Visibility_Lambda([this]() { return bMapAll ? EVisibility::Visible : EVisibility::Collapsed; })
+				[
+					Entry(FLinearColor {FColor::FromHex(TEXT("#2A3B3A"))}, TEXT("Used asset"))
+				]
+			]
+			+ SHorizontalBox::Slot().AutoWidth()
+			[
+				SNew(STextBlock)
+				.Text_Lambda([this]() {
+					return FText::FromString(bMapAll ? TEXT("Folders tinted by their unused share") : TEXT("Folders sized by their unused assets"));
+				})
+				.ColorAndOpacity(FSlateColor::UseSubduedForeground())
+			]
+		];
+	// clang-format on
+}
+
+void SPjcTabUnused::SetMapView(const bool bMap) {
+	bMapView = bMap;
+	SaveViewState();
+	RefreshMap();
+}
+
+void SPjcTabUnused::RefreshMap() {
+	if (!SizeMap.IsValid()) return;
+
+	SizeMap->SetFolder(&UPjcSubsystem::GetScanResult(), Tree.Find(SelectedFolder), bMapAll);
+	RebuildBreadcrumb();
+}
+
+void SPjcTabUnused::RebuildBreadcrumb() {
+	if (!Breadcrumb.IsValid()) return;
+
+	Breadcrumb->ClearChildren();
+	TArray<TSharedPtr<FPjcUnusedFolder>> Chain;
+	for (TSharedPtr<FPjcUnusedFolder> Folder = Tree.Find(SelectedFolder); Folder.IsValid(); Folder = Folder->Parent.Pin()) {
+		Chain.Insert(Folder, 0);
+	}
+	for (int32 Index = 0; Index < Chain.Num(); ++Index) {
+		const TSharedPtr<FPjcUnusedFolder> Folder = Chain[Index];
+		const FText Name = FText::FromString(Folder->IsRoot() ? Folder->Path.Mid(1) : Folder->Name);
+		if (Index == Chain.Num() - 1) {
+			Breadcrumb->AddSlot().AutoWidth().VAlign(VAlign_Center)[SNew(STextBlock).Text(Name)];
+			continue;
+		}
+
+		const FString Path = Folder->Path;
+		Breadcrumb->AddSlot().AutoWidth().VAlign(VAlign_Center)[SNew(SHyperlink).Text(Name).OnNavigate_Lambda([this, Path]() {
+			SelectFolder(Path);
+		})];
+		Breadcrumb->AddSlot()
+			.AutoWidth()
+			.VAlign(VAlign_Center)
+			.Padding(FMargin {4.0f, 0.0f})[SNew(STextBlock).Text(FText::FromString(TEXT("›"))).ColorAndOpacity(FSlateColor::UseSubduedForeground())];
+	}
+}
+
+void SPjcTabUnused::OnMapAssetClicked(int32 Index) {
+	const FPjcScanResult& Result = UPjcSubsystem::GetScanResult();
+	if (!Result.Assets.IsValidIndex(Index)) return;
+
+	// assets of subfolders are listed only with Subfolders on
+	if (!bSubfolders) {
+		bSubfolders = true;
+		SaveViewState();
+		RefreshAssets();
+	}
+	ClassFilter.Reset();
+	AssetSearch.Reset();
+	ApplyAssetFilter();
+
+	const FName Package = Result.Assets[Index].PackageName;
+	for (const auto& Row : ListRows) {
+		if (Row->Package == Package) {
+			ListView->SetSelection(Row);
+			ListView->RequestScrollIntoView(Row);
+			break;
+		}
+	}
 }
