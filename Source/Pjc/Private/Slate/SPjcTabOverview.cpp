@@ -11,11 +11,14 @@
 #include "PjcSubsystem.h"
 // Engine Headers
 #include "Framework/Docking/TabManager.h"
+#include "Misc/Paths.h"
 #include "Styling/CoreStyle.h"
 #include "Widgets/Images/SImage.h"
+#include "Widgets/Input/SButton.h"
 #include "Widgets/Input/SHyperlink.h"
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/Layout/SScrollBox.h"
+#include "Widgets/Layout/SWrapBox.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/SToolTip.h"
 #include "Widgets/Text/STextBlock.h"
@@ -70,6 +73,10 @@ void SPjcTabOverview::Rebuild() {
 		+ SVerticalBox::Slot().AutoHeight()
 		[
 			MakeSummary()
+		]
+		+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {0.0f, 14.0f, 0.0f, 0.0f})
+		[
+			MakeIssues()
 		]
 	);
 	// clang-format on
@@ -209,4 +216,126 @@ TSharedRef<SWidget> SPjcTabOverview::MakeSummary() {
 		FMargin {1.0f}
 	);
 	// clang-format on
+}
+
+TSharedRef<SWidget> SPjcTabOverview::MakeIssues() {
+	const FPjcScanResult& Result = UPjcSubsystem::GetScanResult();
+
+	struct FIssue
+	{
+		FString Title;
+		FString Lower;
+		int32 Num;
+		FString ToolTip;
+		FName TabId;
+	};
+	const FString ExternalExample
+		= Result.FilesExternal.Num() > 0 ? FString::Printf(TEXT(", e.g. %s"), *FPaths::GetCleanFilename(Result.FilesExternal[0])) : FString {};
+	const TArray<FIssue> Issues {
+	  {TEXT("Redirectors"),
+	   TEXT("redirectors"),
+	   Result.Redirectors.Num(),
+	   TEXT("Left by renamed or moved assets. Scanning follows them, fixing resaves the assets that still use the old path."),
+	   PjcConstants::TabAssetsUnused},
+	  {TEXT("External files"),
+	   TEXT("external files"),
+	   Result.FilesExternal.Num(),
+	   FString::Printf(
+		   TEXT("Files in content folders the engine does not use%s. %s more are kept: used by the project, or excluded in settings."),
+	   *ExternalExample,
+	   *PjcFormat::Count(Result.FilesExternalKept.Num())
+	   ), PjcConstants::TabFilesExternal},
+	  {TEXT("Corrupted files"),
+	   TEXT("corrupted files"),
+	   Result.FilesCorrupted.Num(),
+	   TEXT("Asset files the engine cannot read."),
+	   PjcConstants::TabAssetsCorrupted},
+	  {TEXT("Empty folders"),
+	   TEXT("empty folders"),
+	   Result.FoldersEmpty.Num(),
+	   TEXT("Folders without assets or files."),
+	   PjcConstants::TabAssetsUnused},
+	  {TEXT("Not deleted"),
+	   TEXT("assets left by the last cleanup"),
+	   UPjcSubsystem::GetLastCleanupKept().Num(),
+	   TEXT("Unused assets the last cleanup could not delete, because something holds them."),
+	   PjcConstants::TabAssetsUnused},
+	};
+
+	const FLinearColor ColorWarn = PjcWidgets::GetColor("ProjectCleaner.Color.Yellow");
+	const TSharedRef<SWrapBox> Row = SNew(SWrapBox).UseAllottedSize(true).InnerSlotPadding(FVector2D {8.0f, 8.0f});
+	TArray<FString> None;
+	TArray<FString> NoneLines;
+	for (const auto& Issue : Issues) {
+		if (Issue.Num == 0) {
+			None.Add(Issue.Lower);
+			NoneLines.Add(Issue.Title + TEXT(": none"));
+			continue;
+		}
+
+		const FName TabId = Issue.TabId;
+		// clang-format off
+		Row->AddSlot()
+		[
+			PjcWidgets::MakeCard(
+				SNew(SHorizontalBox)
+				.ToolTip(PjcWidgets::MakeToolTip(Issue.Title, Issue.ToolTip))
+				+ SHorizontalBox::Slot().AutoWidth()
+				[
+					SNew(SBox).WidthOverride(3.0f)
+					[
+						SNew(SImage).Image(FCoreStyle::Get().GetBrush("WhiteBrush")).ColorAndOpacity(ColorWarn)
+					]
+				]
+				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {10.0f, 4.0f, 8.0f, 4.0f})
+				[
+					SNew(STextBlock).Text(FText::FromString(PjcFormat::Count(Issue.Num))).Font(PjcWidgets::GetFontMono(11)).ColorAndOpacity(ColorWarn)
+				]
+				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+				[
+					SNew(STextBlock).Text(FText::FromString(Issue.Title))
+				]
+				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {10.0f, 3.0f, 6.0f, 3.0f})
+				[
+					SNew(SButton)
+					.ContentPadding(FMargin {8.0f, 0.0f})
+					.OnClicked_Lambda([this, TabId]() {
+						OpenTab(TabId);
+						return FReply::Handled();
+					})
+					[
+						SNew(STextBlock).Text(FText::FromString(TEXT("Review")))
+					]
+				],
+				FMargin {1.0f}
+			)
+		];
+		// clang-format on
+	}
+
+	if (None.Num() > 0) {
+		FString Clear = TEXT("No issues found");
+		if (None.Num() < Issues.Num()) {
+			const FString Last = None.Pop();
+			Clear = TEXT("No ") + (None.Num() > 0 ? FString::Join(None, TEXT(", ")) + TEXT(" or ") : FString {}) + Last;
+		}
+
+		// clang-format off
+		Row->AddSlot().VAlign(VAlign_Center)
+		[
+			SNew(SHorizontalBox)
+			.ToolTip(PjcWidgets::MakeToolTip(TEXT("No issues"), FString::Join(NoneLines, TEXT("\n"))))
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {2.0f, 0.0f, 6.0f, 0.0f})
+			[
+				SNew(STextBlock).Text(FText::FromString(TEXT("✓"))).ColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.Ok"))
+			]
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+			[
+				SNew(STextBlock).Text(FText::FromString(Clear)).ColorAndOpacity(FSlateColor::UseSubduedForeground())
+			]
+		];
+		// clang-format on
+	}
+
+	return Row;
 }

@@ -29,6 +29,7 @@ class SPjcTabOverview final : public SCompoundWidget
 	void OpenTab(const FName TabId) const;
 
 	TSharedRef<SWidget> MakeSummary();
+	TSharedRef<SWidget> MakeIssues();
 
 	FDelegateHandle ScanFinishedHandle;
 	TWeakPtr<FTabManager> TabManager;
