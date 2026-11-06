@@ -95,18 +95,10 @@ class SPjcTabUnused final : public SCompoundWidget
 
 	// unused assets of the selected folder
 	using FAssetRowPtr = TSharedPtr<FPjcUnusedAssetRow>;
-	struct FTypeInfo
-	{
-		FString Label;
-		FLinearColor Color;
-		const FSlateBrush* Icon = nullptr;
-	};
-
 	TSharedRef<SWidget> MakeAssetPane();
 	void RefreshAssets();
 	void ApplyAssetFilter();
 	void RebuildChips();
-	const FTypeInfo& GetTypeInfo(const FAssetData& Asset);
 	TSharedRef<ITableRow> OnGenerateAssetRow(FAssetRowPtr Row, const TSharedRef<STableViewBase>& Table);
 	void OnAssetSort(EColumnSortPriority::Type Priority, const FName& Column, EColumnSortMode::Type Mode);
 	EColumnSortMode::Type GetAssetSortMode(const FName Column) const;
@@ -162,7 +154,6 @@ class SPjcTabUnused final : public SCompoundWidget
 	TArray<FAssetRowPtr> ListRows;
 	TSharedPtr<SListView<FAssetRowPtr>> ListView;
 	TSharedPtr<SHorizontalBox> ChipsBox;
-	TMap<FName, FTypeInfo> TypeInfos;
 	/** Assets only folder labels keep (unused while Folder labels is off) */
 	TSet<FName> LabelOnly;
 	/** Delete group size per package, made when listed */

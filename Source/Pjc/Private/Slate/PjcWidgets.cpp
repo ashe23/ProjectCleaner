@@ -4,6 +4,11 @@
 #include "PjcShim.h"
 #include "PjcStyles.h"
 // Engine Headers
+#include "AssetRegistry/AssetData.h"
+#include "AssetToolsModule.h"
+#include "IAssetTypeActions.h"
+#include "Misc/Paths.h"
+#include "Styling/SlateIconFinder.h"
 #include "Styling/CoreStyle.h"
 #include "Widgets/Images/SImage.h"
 #include "Widgets/Layout/SBorder.h"
@@ -16,6 +21,28 @@
 
 namespace PjcWidgets
 {
+	const FAssetType& GetAssetType(const FAssetData& Asset) {
+		static TMap<FName, FAssetType> Types;
+		const FName ClassName = PjcShim::GetAssetClassName(Asset);
+		if (const FAssetType* Found = Types.Find(ClassName)) return *Found;
+
+		// as the Content Browser shows the type: its name, color and icon
+		FAssetType Type;
+		Type.Label = FPaths::GetExtension(ClassName.ToString()).IsEmpty() ? ClassName.ToString() : FPaths::GetExtension(ClassName.ToString());
+		Type.Color = FLinearColor {FColor::FromHex(TEXT("#8A9099"))};
+		const UClass* AssetClass = Asset.GetClass();
+		if (AssetClass) {
+			const TSharedPtr<IAssetTypeActions> Actions
+				= FModuleManager::LoadModuleChecked<FAssetToolsModule>(TEXT("AssetTools")).Get().GetAssetTypeActionsForClass(AssetClass).Pin();
+			if (Actions.IsValid()) {
+				Type.Label = Actions->GetName().ToString();
+				Type.Color = FLinearColor {Actions->GetTypeColor()};
+			}
+			Type.Icon = FSlateIconFinder::FindIconBrushForClass(AssetClass);
+		}
+		return Types.Add(ClassName, Type);
+	}
+
 	TSharedRef<SToolTip> MakeToolTip(const FString& Title, const FString& Text, const FString& More) {
 		const TSharedRef<SVerticalBox> Lines = SNew(SVerticalBox);
 		Lines->AddSlot().AutoHeight()[SNew(STextBlock).Text(FText::FromString(Title)).Font(FPjcStyles::GetFont("Bold", 9))];

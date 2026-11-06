@@ -8,10 +8,23 @@
 
 class SToolTip;
 class SWidget;
+struct FAssetData;
+struct FSlateBrush;
 
 /** Small widgets the Project Cleaner tools share */
 namespace PjcWidgets
 {
+	/** Type of an asset as the Content Browser shows it */
+	struct FAssetType
+	{
+		FString Label;
+		FLinearColor Color = FLinearColor::Gray;
+		const FSlateBrush* Icon = nullptr;
+	};
+
+	/** Name, color and icon of the asset type, cached per class */
+	const FAssetType& GetAssetType(const FAssetData& Asset);
+
 	/** Tooltip with a bold title, the text, and optional muted lines */
 	TSharedRef<SToolTip> MakeToolTip(const FString& Title, const FString& Text, const FString& More = FString {});
 

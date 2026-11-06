@@ -14,16 +14,13 @@
 #include "PjcStyles.h"
 #include "PjcSubsystem.h"
 // Engine Headers
-#include "AssetToolsModule.h"
 #include "ContentBrowserModule.h"
 #include "IContentBrowserSingleton.h"
 #include "Framework/Application/SlateApplication.h"
 #include "Framework/MultiBox/MultiBoxBuilder.h"
-#include "IAssetTypeActions.h"
 #include "Misc/ConfigCacheIni.h"
 #include "Misc/Paths.h"
 #include "Styling/CoreStyle.h"
-#include "Styling/SlateIconFinder.h"
 #include "Widgets/Images/SImage.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Input/SCheckBox.h"
@@ -910,7 +907,7 @@ void SPjcTabUnused::RefreshAssets() {
 	FolderRows.Reset(Indices.Num());
 	for (const int32 Index : Indices) {
 		const FAssetData& Asset = Result.Assets[Index];
-		const FTypeInfo& Type = GetTypeInfo(Asset);
+		const PjcWidgets::FAssetType& Type = PjcWidgets::GetAssetType(Asset);
 		const FString Path = Asset.PackagePath.ToString();
 
 		const FAssetRowPtr Row = MakeShared<FPjcUnusedAssetRow>();
@@ -1000,7 +997,7 @@ void SPjcTabUnused::RebuildChips() {
 	struct FChip
 	{
 		FName ClassName;
-		FTypeInfo Type;
+		PjcWidgets::FAssetType Type;
 		int32 Num = 0;
 		int64 Size = 0;
 	};
@@ -1008,7 +1005,7 @@ void SPjcTabUnused::RebuildChips() {
 	for (const auto& Row : FolderRows) {
 		FChip& Chip = Chips.FindOrAdd(Row->ClassName);
 		Chip.ClassName = Row->ClassName;
-		Chip.Type = FTypeInfo {Row->ClassLabel, Row->Color, Row->Icon};
+		Chip.Type = PjcWidgets::FAssetType {Row->ClassLabel, Row->Color, Row->Icon};
 		++Chip.Num;
 		Chip.Size += Row->Size;
 	}
@@ -1103,27 +1100,6 @@ void SPjcTabUnused::RebuildChips() {
 			FString::Printf(TEXT("%s · %s\nCtrl+click adds it to the filter"), *Chip.ClassName.ToString(), *PjcFormat::Size(Chip.Size))
 		)];
 	}
-}
-
-const SPjcTabUnused::FTypeInfo& SPjcTabUnused::GetTypeInfo(const FAssetData& Asset) {
-	const FName ClassName = PjcShim::GetAssetClassName(Asset);
-	if (const FTypeInfo* Found = TypeInfos.Find(ClassName)) return *Found;
-
-	// as the Content Browser shows the type: its name, color and icon
-	FTypeInfo Info;
-	Info.Label = FPaths::GetExtension(ClassName.ToString()).IsEmpty() ? ClassName.ToString() : FPaths::GetExtension(ClassName.ToString());
-	Info.Color = FLinearColor {FColor::FromHex(TEXT("#8A9099"))};
-	const UClass* AssetClass = Asset.GetClass();
-	if (AssetClass) {
-		const TSharedPtr<IAssetTypeActions> Actions
-			= FModuleManager::LoadModuleChecked<FAssetToolsModule>(TEXT("AssetTools")).Get().GetAssetTypeActionsForClass(AssetClass).Pin();
-		if (Actions.IsValid()) {
-			Info.Label = Actions->GetName().ToString();
-			Info.Color = FLinearColor {Actions->GetTypeColor()};
-		}
-		Info.Icon = FSlateIconFinder::FindIconBrushForClass(AssetClass);
-	}
-	return TypeInfos.Add(ClassName, Info);
 }
 
 TSharedRef<ITableRow> SPjcTabUnused::OnGenerateAssetRow(FAssetRowPtr Row, const TSharedRef<STableViewBase>& Table) {
