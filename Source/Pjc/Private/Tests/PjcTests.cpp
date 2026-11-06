@@ -1052,6 +1052,41 @@ bool FPjcTestIssuesRedirectors::RunTest(const FString& Parameters) {
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPjcTestIssuesFiles, "ProjectCleaner.Issues.Files", PJC_TEST_FLAGS)
+
+bool FPjcTestIssuesFiles::RunTest(const FString& Parameters) {
+	if (!FPjcTestFixture::IsTestHost()) {
+		AddInfo(TEXT("Skipped, deletes fixture files, runs only in test host projects"));
+		return true;
+	}
+
+	FPjcScopedScanSettings ScopedSettings {false};
+	FPjcTestFixture Fixture;
+	if (!Fixture.Build(*this)) return false;
+
+	// a folder exclusion keeps every file in it
+	UPjcFileExcludeSettings* FileSettings = GetMutableDefault<UPjcFileExcludeSettings>();
+	const FString ExternalFile = Fixture.ExternalFile();
+	TestFalse(TEXT("external file to review"), UPjcSubsystem::FileIsExcluded(ExternalFile));
+	FileSettings->ExcludedFolders = {FDirectoryPath {UPjcSubsystem::PathConvertToRelative(FPaths::GetPath(ExternalFile))}};
+	TestTrue(TEXT("folder exclusion keeps it"), UPjcSubsystem::FileIsExcluded(ExternalFile));
+	TestEqual(TEXT("kept reason"), UPjcSubsystem::GetFileKeptReason(ExternalFile), FString {TEXT("Excluded in settings")});
+	FileSettings->ExcludedFolders.Reset();
+
+	// deleting files and empty folders (subfolders go with their parent)
+	TestEqual(TEXT("file deleted"), UPjcSubsystem::DeleteFiles({ExternalFile}), 1);
+	TestFalse(TEXT("file gone"), FPaths::FileExists(ExternalFile));
+	TArray<FString> Folders = Fixture.EmptyFolders();
+	Folders.Sort([](const FString& A, const FString& B) {
+		return A.Len() < B.Len();
+	});
+	TestEqual(TEXT("folders deleted"), UPjcSubsystem::DeleteFolders(Folders), Folders.Num());
+	for (const auto& Folder : Folders) {
+		TestFalse(*FString::Printf(TEXT("%s gone"), *Folder), IFileManager::Get().DirectoryExists(*Folder));
+	}
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPjcTestScanGraph, "ProjectCleaner.Scan.Graph", PJC_TEST_FLAGS)
 
 bool FPjcTestScanGraph::RunTest(const FString& Parameters) {

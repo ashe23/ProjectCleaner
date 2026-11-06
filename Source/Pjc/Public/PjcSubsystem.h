@@ -297,6 +297,12 @@ class UPjcSubsystem final : public UEditorSubsystem
 	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Path")
 	static bool DeleteFoldersEmpty(const bool bShowSlowTask = true, const bool bShowEditorNotification = false);
 
+	/** Deletes files that are not assets (external, corrupted), read-only ones too. Returns how many are gone */
+	static int32 DeleteFiles(const TArray<FString>& Files);
+
+	/** Deletes empty folders and removes them from the asset registry paths. Returns how many are gone */
+	static int32 DeleteFolders(const TArray<FString>& Folders);
+
 	/**
 	 * @brief Delete all external files in project. This does not delete excluded files.
 	 * @param bShowSlowTask bool

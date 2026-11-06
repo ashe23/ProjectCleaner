@@ -9,13 +9,17 @@
 #include "PjcSettings.h"
 #include "PjcShim.h"
 #include "PjcStyles.h"
+#include "PjcTypes.h"
 #include "PjcSubsystem.h"
 // Engine Headers
+#include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "Misc/PackageName.h"
 #include "Misc/Paths.h"
 #include "Styling/CoreStyle.h"
 #include "Widgets/Images/SImage.h"
 #include "Widgets/Input/SButton.h"
+#include "Widgets/Input/SCheckBox.h"
+#include "Widgets/Input/SComboButton.h"
 #include "Widgets/Input/SSearchBox.h"
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
@@ -170,6 +174,11 @@ void SPjcTabIssues::Construct(const FArguments& InArgs) {
 					[
 						MakeHeader()
 					]
+					+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {12.0f, 0.0f, 8.0f, 6.0f})
+					[
+						SAssignNew(Chips, SHorizontalBox)
+						.Visibility_Lambda([this]() { return Category == EPjcIssueCategory::External && bKept ? EVisibility::Visible : EVisibility::Collapsed; })
+					]
 					+ SVerticalBox::Slot().FillHeight(1.0f)
 					[
 						SAssignNew(ListBox, SBox)
@@ -195,10 +204,12 @@ SPjcTabIssues::~SPjcTabIssues() {
 	UPjcSubsystem::OnScanFinished().Remove(ScanFinishedHandle);
 }
 
-void SPjcTabIssues::ShowCategory(const EPjcIssueCategory InCategory) {
-	if (Category == InCategory) return;
+void SPjcTabIssues::ShowCategory(const EPjcIssueCategory InCategory, const bool bShowKept) {
+	if (Category == InCategory && bKept == bShowKept) return;
 
 	Category = InCategory;
+	bKept = bShowKept && InCategory == EPjcIssueCategory::External;
+	KeptReason.Reset();
 	RebuildRows();
 	RebuildList();
 }
@@ -282,6 +293,21 @@ void SPjcTabIssues::RebuildRows() {
 			break;
 
 		case EPjcIssueCategory::External :
+			if (bKept) {
+				for (int32 Index = 0; Index < Result.FilesExternalKept.Num(); ++Index) {
+					const FString& File = Result.FilesExternalKept[Index];
+					const FString Reason = Result.FilesExternalKeptReasons.IsValidIndex(Index) ? Result.FilesExternalKeptReasons[Index] : FString {};
+					if (!KeptReason.IsEmpty() && Reason != KeptReason) continue;
+
+					FPjcIssueRow& Row = AddFile(File);
+					Row.Sub = FPaths::GetPath(PjcIssueRelative(File));
+					Row.Reason = Reason;
+					Row.Cells = {TEXT(".") + FPaths::GetExtension(File).ToLower(), PjcFormat::Size(Row.Size), Reason};
+					Row.CellColors = {TEXT("ProjectCleaner.Color.Gray"), NAME_None, TEXT("ProjectCleaner.Color.Gray")};
+					Row.ToolTip = PjcIssueRelative(File) + TEXT("\nKept: ") + Reason + TEXT(". The plugin never deletes it.");
+				}
+				break;
+			}
 			for (const auto& File : Result.FilesExternal) {
 				FPjcIssueRow& Row = AddFile(File);
 				Row.Cells = {TEXT(".") + FPaths::GetExtension(File).ToLower(), PjcFormat::Size(Row.Size), FPaths::GetPath(PjcIssueRelative(File))};
@@ -311,6 +337,7 @@ void SPjcTabIssues::RebuildRows() {
 	}
 
 	ApplyFilter();
+	RebuildChips();
 }
 
 TArray<SPjcTabIssues::FColumn> SPjcTabIssues::GetColumns() const {
@@ -338,7 +365,12 @@ TArray<SPjcTabIssues::FColumn> SPjcTabIssues::GetColumns() const {
 			Add(TEXT("File"), 0.0f, 1.0f, false, false);
 			Add(TEXT("Type"), 80.0f, 0.0f, false, true);
 			Add(TEXT("Size"), 90.0f, 0.0f, true, true);
-			Add(TEXT("Folder"), 0.0f, 0.7f, false, false);
+			if (bKept) {
+				Add(TEXT("Kept by"), 220.0f, 0.0f, false, false, TEXT("Why the plugin never deletes it"));
+			}
+			else {
+				Add(TEXT("Folder"), 0.0f, 0.7f, false, false);
+			}
 			break;
 		case EPjcIssueCategory::Corrupted :
 			Add(TEXT("File"), 0.0f, 1.0f, false, false);
@@ -493,6 +525,52 @@ TSharedRef<SWidget> SPjcTabIssues::MakeHeader() {
 				.ColorAndOpacity(FSlateColor::UseSubduedForeground())
 				.Clipping(EWidgetClipping::ClipToBounds)
 			]
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 8.0f, 0.0f})
+			[
+				SNew(SHorizontalBox)
+				.Visibility_Lambda([this]() { return Category == EPjcIssueCategory::External ? EVisibility::Visible : EVisibility::Collapsed; })
+				+ SHorizontalBox::Slot().AutoWidth()
+				[
+					SNew(SCheckBox)
+					.Style(&PjcShim::GetStyle().GetWidgetStyle<FCheckBoxStyle>(TEXT("ToggleButtonCheckbox")))
+					.ToolTipText(FText::FromString(TEXT("Not assets and not used by the engine or the project")))
+					.IsChecked_Lambda([this]() { return bKept ? ECheckBoxState::Unchecked : ECheckBoxState::Checked; })
+					.OnCheckStateChanged_Lambda([this](ECheckBoxState) {
+						bKept = false;
+						RebuildRows();
+						RebuildList();
+					})
+					[
+						SNew(SBox).Padding(FMargin {8.0f, 1.0f})
+						[
+							SNew(STextBlock).Text_Lambda([]() {
+								return FText::FromString(TEXT("To review  ") + PjcFormat::Count(UPjcSubsystem::GetScanResult().FilesExternal.Num()));
+							})
+						]
+					]
+				]
+				+ SHorizontalBox::Slot().AutoWidth()
+				[
+					SNew(SCheckBox)
+					.Style(&PjcShim::GetStyle().GetWidgetStyle<FCheckBoxStyle>(TEXT("ToggleButtonCheckbox")))
+					.ToolTipText(FText::FromString(TEXT("Files the plugin never deletes: engine folders, staged folders, names in source or config, exclusions")))
+					.IsChecked_Lambda([this]() { return bKept ? ECheckBoxState::Checked : ECheckBoxState::Unchecked; })
+					.OnCheckStateChanged_Lambda([this](ECheckBoxState) {
+						bKept = true;
+						KeptReason.Reset();
+						RebuildRows();
+						RebuildList();
+					})
+					[
+						SNew(SBox).Padding(FMargin {8.0f, 1.0f})
+						[
+							SNew(STextBlock).Text_Lambda([]() {
+								return FText::FromString(TEXT("Kept  ") + PjcFormat::Count(UPjcSubsystem::GetScanResult().FilesExternalKept.Num()));
+							})
+						]
+					]
+				]
+			]
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 			[
 				SNew(SBox).WidthOverride(200.0f)
@@ -581,7 +659,53 @@ TSharedRef<SWidget> SPjcTabIssues::MakeFooter() {
 					)
 				]
 			]
-			// files
+			// files and folders
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
+			[
+				SNew(SBox).Visibility_Lambda([this]() {
+					return Category == EPjcIssueCategory::Corrupted || Category == EPjcIssueCategory::Empty || (Category == EPjcIssueCategory::External && !bKept)
+						? EVisibility::Visible
+						: EVisibility::Collapsed;
+				})
+				[
+					Button(
+						TEXT("Delete…"),
+						TEXT("Deletes the selection from disk"),
+						TEXT("ProjectCleaner.Color.UnusedFill"),
+						[this]() { DeleteRows(GetSelected()); },
+						[this]() { return GetSelected().Num() > 0; }
+					)
+				]
+			]
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
+			[
+				SNew(SBox).Visibility_Lambda([this]() {
+					return Category == EPjcIssueCategory::External && !bKept ? EVisibility::Visible : EVisibility::Collapsed;
+				})
+				[
+					SNew(SComboButton)
+					.ToolTipText(FText::FromString(TEXT("Keeps them: by file, extension or folder, saved to Config/DefaultEditor.ini")))
+					.IsEnabled_Lambda([this]() { return GetSelected().Num() > 0; })
+					.OnGetMenuContent(this, &SPjcTabIssues::MakeExcludeMenu)
+					.ButtonContent()
+					[
+						SNew(STextBlock).Text(FText::FromString(TEXT("Exclude")))
+					]
+				]
+			]
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
+			[
+				SNew(SBox).Visibility_Lambda(Is(EPjcIssueCategory::Empty))
+				[
+					Button(
+						TEXT("Delete all"),
+						TEXT("Deletes every empty folder"),
+						NAME_None,
+						[this]() { DeleteRows(AllRows); },
+						[this]() { return AllRows.Num() > 0; }
+					)
+				]
+			]
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
 			[
 				SNew(SBox).Visibility_Lambda([this]() {
@@ -619,7 +743,10 @@ FText SPjcTabIssues::GetDescription() const {
 		case EPjcIssueCategory::Redirectors :
 			return FText::FromString(TEXT("Found in your project. Scanning follows them; fixing resaves the assets that still use the old path."));
 		case EPjcIssueCategory::External :
-			return FText::FromString(TEXT("Not assets and not used by the engine or the project. Review before deleting."));
+			return FText::FromString(
+				bKept ? TEXT("Files the plugin never deletes: engine folders, staged folders, names in source or config, exclusions.")
+					  : TEXT("Not assets and not used by the engine or the project. Review before deleting.")
+			);
 		case EPjcIssueCategory::Corrupted :
 			return FText::FromString(TEXT("Asset files the engine cannot load. Deleting them is the only fix the plugin offers."));
 		case EPjcIssueCategory::Empty : return FText::FromString(TEXT("Folders without assets or files, often left after moving assets."));
@@ -753,4 +880,172 @@ void SPjcTabIssues::FixRedirectors(const TArray<int32>& Indices) {
 	SPjcDialog::Show(
 		FString::Printf(TEXT("Fixed %s of %s"), *PjcFormat::Count(Result.Deleted.Num()), *PjcFormat::Count(Can.Num())), Report, FString {}
 	);
+}
+
+void SPjcTabIssues::RebuildChips() {
+	if (!Chips.IsValid()) return;
+
+	Chips->ClearChildren();
+	const FPjcScanResult& Result = UPjcSubsystem::GetScanResult();
+	TMap<FString, int32> ByReason;
+	for (const auto& Reason : Result.FilesExternalKeptReasons) {
+		ByReason.FindOrAdd(Reason)++;
+	}
+	ByReason.ValueSort([](const int32 A, const int32 B) {
+		return A > B;
+	});
+
+	const auto Chip = [this](const FString& Reason, const FString& Label, const int32 Num) {
+		// clang-format off
+		return SNew(SCheckBox)
+			.Style(&PjcShim::GetStyle().GetWidgetStyle<FCheckBoxStyle>(TEXT("ToggleButtonCheckbox")))
+			.IsChecked_Lambda([this, Reason]() { return KeptReason == Reason ? ECheckBoxState::Checked : ECheckBoxState::Unchecked; })
+			.OnCheckStateChanged_Lambda([this, Reason](ECheckBoxState) {
+				KeptReason = Reason;
+				RebuildRows();
+				RebuildList();
+			})
+			[
+				SNew(SBox).Padding(FMargin {8.0f, 1.0f})
+				[
+					SNew(STextBlock).Text(FText::FromString(Label + TEXT("  ") + PjcFormat::Count(Num)))
+				]
+			];
+		// clang-format on
+	};
+	Chips->AddSlot().AutoWidth().Padding(FMargin {0.0f, 0.0f, 4.0f, 0.0f})[Chip(FString {}, TEXT("All"), Result.FilesExternalKept.Num())];
+	for (const auto& Pair : ByReason) {
+		Chips->AddSlot().AutoWidth().Padding(FMargin {0.0f, 0.0f, 4.0f, 0.0f})[Chip(Pair.Key, Pair.Key, Pair.Value)];
+	}
+}
+
+void SPjcTabIssues::DeleteRows(const TArray<FRowPtr>& InRows) {
+	if (InRows.Num() == 0) return;
+
+	const bool bFolders = Category == EPjcIssueCategory::Empty;
+	TArray<FString> Paths;
+	int64 Size = 0;
+	FPjcDialogPart List;
+	for (const auto& Row : InRows) {
+		Paths.Add(Row->Id);
+		Size += FMath::Max<int64>(Row->Size, 0);
+		List.Rows.Emplace(Row->Name, Row->Size >= 0 ? PjcFormat::Size(Row->Size) : FString {});
+	}
+	List.Heading = bFolders ? FString::Printf(TEXT("Folders · %s"), *PjcFormat::Count(Paths.Num()))
+							: FString::Printf(TEXT("Files · %s · %s"), *PjcFormat::Count(Paths.Num()), *PjcFormat::Size(Size));
+
+	const FString What = FString::Printf(
+		TEXT("%s %s%s"), *PjcFormat::Count(Paths.Num()), bFolders ? TEXT("folder") : TEXT("file"), Paths.Num() == 1 ? TEXT("") : TEXT("s")
+	);
+	if (!SPjcDialog::Show(
+			TEXT("Delete ") + What, {List, SPjcDialog::MakeVersionControlNote()}, TEXT("Delete"), TEXT("ProjectCleaner.Color.UnusedFill")
+		)) {
+		return;
+	}
+
+	const int32 NumDeleted = bFolders ? UPjcSubsystem::DeleteFolders(Paths) : UPjcSubsystem::DeleteFiles(Paths);
+	if (NumDeleted == Paths.Num()) {
+		UPjcSubsystem::ShowNotification(TEXT("Deleted ") + What, SNotificationItem::CS_Success, 4.0f);
+	}
+	else {
+		UPjcSubsystem::ShowNotificationWithOutputLog(
+			FString::Printf(TEXT("Deleted %s of %s, see Output Log for the others"), *PjcFormat::Count(NumDeleted), *What),
+			SNotificationItem::CS_Fail,
+			6.0f
+		);
+	}
+	SPjcScanBar::ScanProject();
+}
+
+TSharedRef<SWidget> SPjcTabIssues::MakeExcludeMenu() {
+	TArray<FString> Files;
+	TSet<FString> Extensions;
+	TSet<FString> Folders;
+	for (const auto& Row : GetSelected()) {
+		Files.Add(Row->Id);
+		Extensions.Add(FPaths::GetExtension(Row->Id).ToLower());
+		Folders.Add(UPjcSubsystem::PathConvertToRelative(FPaths::GetPath(Row->Id)));
+	}
+	TArray<FString> ExtensionList = Extensions.Array();
+	TArray<FString> FolderList = Folders.Array();
+	FolderList.RemoveAll([](const FString& Folder) {
+		return !Folder.StartsWith(TEXT("/"));
+	});
+	TArray<FString> Dotted;
+	for (const auto& Extension : ExtensionList) {
+		Dotted.Add(TEXT(".") + Extension);
+	}
+
+	FMenuBuilder Menu {true, nullptr};
+	Menu.AddMenuEntry(
+		FText::FromString(FString::Printf(TEXT("Exclude files (%s)"), *PjcFormat::Count(Files.Num()))),
+		FText::FromString(TEXT("Keeps the selected files")),
+		FSlateIcon {},
+		FUIAction {FExecuteAction::CreateLambda([this, Files]() {
+			ExcludeFiles(Files, {}, {}, FString::Printf(TEXT("%s file%s"), *PjcFormat::Count(Files.Num()), Files.Num() == 1 ? TEXT("") : TEXT("s")));
+		})}
+	);
+	Menu.AddMenuEntry(
+		FText::FromString(TEXT("Exclude extension ") + FString::Join(Dotted, TEXT(" "))),
+		FText::FromString(TEXT("Keeps every file with the extension")),
+		FSlateIcon {},
+		FUIAction {FExecuteAction::CreateLambda([this, ExtensionList, Dotted]() {
+			ExcludeFiles({}, ExtensionList, {}, TEXT("extension ") + FString::Join(Dotted, TEXT(" ")));
+		})}
+	);
+	Menu.AddMenuEntry(
+		FText::FromString(
+			FolderList.Num() == 1 ? TEXT("Exclude folder ") + FPaths::GetCleanFilename(FolderList[0])
+								  : FString::Printf(TEXT("Exclude %s folders"), *PjcFormat::Count(FolderList.Num()))
+		),
+		FText::FromString(TEXT("Keeps every file in the folder of the selection")),
+		FSlateIcon {},
+		FUIAction {
+		  FExecuteAction::CreateLambda([this, FolderList]() {
+			  ExcludeFiles(
+				  {}, {}, FolderList, FolderList.Num() == 1 ? FolderList[0] : FString::Printf(TEXT("%s folders"), *PjcFormat::Count(FolderList.Num()))
+			  );
+		  }),
+		  FCanExecuteAction::CreateLambda([FolderList]() {
+			  return FolderList.Num() > 0;
+		  })
+		}
+	);
+	return Menu.MakeWidget();
+}
+
+void SPjcTabIssues::ExcludeFiles(
+	const TArray<FString>& Files,
+	const TArray<FString>& Extensions,
+	const TArray<FString>& Folders,
+	const FString& What
+) {
+	UPjcFileExcludeSettings* Settings = GetMutableDefault<UPjcFileExcludeSettings>();
+	const FString ProjectDir = UPjcSubsystem::PathNormalize(FPaths::ConvertRelativePathToFull(FPaths::ProjectDir())) + TEXT("/");
+	for (const auto& File : Files) {
+		// relative to the project, like the settings picker
+		FString Relative = UPjcSubsystem::PathNormalize(File);
+		Relative.RemoveFromStart(ProjectDir);
+		if (!Settings->ExcludedFiles.ContainsByPredicate([&Relative](const FFilePath& Path) {
+				return Path.FilePath == Relative;
+			})) {
+			FFilePath Path;
+			Path.FilePath = Relative;
+			Settings->ExcludedFiles.Add(Path);
+		}
+	}
+	for (const auto& Extension : Extensions) {
+		Settings->ExcludedExtensions.AddUnique(Extension);
+	}
+	for (const auto& Folder : Folders) {
+		if (!Settings->ExcludedFolders.ContainsByPredicate([&Folder](const FDirectoryPath& Path) {
+				return Path.Path == Folder;
+			})) {
+			Settings->ExcludedFolders.Add(FDirectoryPath {Folder});
+		}
+	}
+	PjcShim::UpdateDefaultConfigFile(Settings);
+
+	UPjcSubsystem::ShowNotification(TEXT("Excluded ") + What + TEXT(" · saved to Config/DefaultEditor.ini"), SNotificationItem::CS_Success, 4.0f);
+	SPjcScanBar::ScanProject();
 }

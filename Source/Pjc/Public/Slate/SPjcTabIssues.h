@@ -9,6 +9,7 @@
 
 class FTabManager;
 class SBox;
+class SHorizontalBox;
 class SVerticalBox;
 
 enum class EPjcIssueCategory : uint8
@@ -56,7 +57,8 @@ class SPjcTabIssues final : public SCompoundWidget
 	void Construct(const FArguments& InArgs);
 	virtual ~SPjcTabIssues() override;
 
-	void ShowCategory(const EPjcIssueCategory InCategory);
+	/** Shows a category; for external files the kept ones when asked */
+	void ShowCategory(const EPjcIssueCategory InCategory, const bool bShowKept = false);
 
 	EPjcIssueCategory GetCategory() const {
 		return Category;
@@ -100,6 +102,13 @@ class SPjcTabIssues final : public SCompoundWidget
 	// redirectors
 	void FixRedirectors(const TArray<int32>& Indices);
 
+	// files and folders
+	void RebuildChips();
+	void DeleteRows(const TArray<FRowPtr>& InRows);
+	TSharedRef<SWidget> MakeExcludeMenu();
+	/** Adds file exclusions to the project settings (DefaultEditor.ini) and scans again */
+	void ExcludeFiles(const TArray<FString>& Files, const TArray<FString>& Extensions, const TArray<FString>& Folders, const FString& What);
+
 	FDelegateHandle ScanFinishedHandle;
 	TWeakPtr<FTabManager> TabManager;
 
@@ -111,6 +120,11 @@ class SPjcTabIssues final : public SCompoundWidget
 	TArray<FRowPtr> AllRows;
 	TArray<FRowPtr> Rows;
 	FString Search;
+	/** External files: kept ones instead of those to review */
+	bool bKept = false;
+	/** Kept files of one reason, empty for all */
+	FString KeptReason;
+	TSharedPtr<SHorizontalBox> Chips;
 	TSharedPtr<SBox> ListBox;
 	TSharedPtr<SListView<FRowPtr>> ListView;
 };

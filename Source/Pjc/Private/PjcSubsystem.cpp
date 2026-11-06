@@ -1714,6 +1714,38 @@ bool UPjcSubsystem::DeleteAssets(const TArray<FAssetData>& Assets, const bool bS
 	return !bErrors && NumAssetsDeleted == NumAssetsTotal;
 }
 
+int32 UPjcSubsystem::DeleteFiles(const TArray<FString>& Files) {
+	int32 NumDeleted = 0;
+	for (const auto& File : Files) {
+		if (IFileManager::Get().Delete(*File, false, true, true) && !FPaths::FileExists(File)) {
+			++NumDeleted;
+		}
+		else {
+			UE_LOG(LogProjectCleaner, Error, TEXT("Failed to delete file: %s"), *File);
+		}
+	}
+	return NumDeleted;
+}
+
+int32 UPjcSubsystem::DeleteFolders(const TArray<FString>& Folders) {
+	int32 NumDeleted = 0;
+	for (const auto& Folder : Folders) {
+		// gone with an empty parent folder deleted before it
+		if (!IFileManager::Get().DirectoryExists(*Folder)) {
+			++NumDeleted;
+			GetModuleAssetRegistry().Get().RemovePath(PathConvertToRelative(Folder));
+			continue;
+		}
+		if (!FolderIsEmpty(Folder) || !IFileManager::Get().DeleteDirectory(*Folder, true, true)) {
+			UE_LOG(LogProjectCleaner, Error, TEXT("Failed to delete folder: %s"), *Folder);
+			continue;
+		}
+		++NumDeleted;
+		GetModuleAssetRegistry().Get().RemovePath(PathConvertToRelative(Folder));
+	}
+	return NumDeleted;
+}
+
 bool UPjcSubsystem::DeleteFoldersEmpty(const bool bShowSlowTask, const bool bShowEditorNotification) {
 	TArray<FString> FoldersEmpty;
 	GetFoldersEmpty(FoldersEmpty);
