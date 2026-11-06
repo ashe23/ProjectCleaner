@@ -1,4 +1,4 @@
-﻿// Copyright Ashot Barkhudaryan. All Rights Reserved.
+// Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "PjcSubsystem.h"
 #include "PjcFormat.h"
@@ -114,7 +114,6 @@ FPjcScanCacheScope::~FPjcScanCacheScope() {
 void UPjcSubsystem::Initialize(FSubsystemCollectionBase& Collection) {
 	Super::Initialize(Collection);
 
-	bFirstScan = true;
 	MoveExclusionsToProject();
 }
 

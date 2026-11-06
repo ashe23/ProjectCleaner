@@ -1,4 +1,4 @@
-﻿// Copyright Ashot Barkhudaryan. All Rights Reserved.
+// Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #pragma once
 
@@ -501,20 +501,6 @@ class UPjcSubsystem final : public UEditorSubsystem
 
 	UPROPERTY(Config)
 	bool bShowFilesExternal = true;
-
-	UPROPERTY(Config)
-	bool bShowFoldersEmpty = true;
-
-	UPROPERTY(Config)
-	bool bShowFoldersExcluded = true;
-
-	UPROPERTY(Config)
-	bool bShowFoldersUsed = true;
-
-	UPROPERTY(Config)
-	bool bShowFoldersEngine = true;
-
-	bool bFirstScan = true;
 
   private:
 

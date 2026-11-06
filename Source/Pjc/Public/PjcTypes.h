@@ -1,4 +1,4 @@
-﻿// Copyright Ashot Barkhudaryan. All Rights Reserved.
+// Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #pragma once
 
@@ -83,18 +83,6 @@ class UPjcFileExcludeSettings : public UObject
 #endif
 };
 
-struct FPjcStatItem
-{
-	FText Name;
-	FText Num;
-	FText Size;
-	FText TooltipName;
-	FText ToolTipNum;
-	FText ToolTipSize;
-	FLinearColor TextColor {FLinearColor::White};
-	FMargin NamePadding {FMargin {0.0f}};
-};
-
 struct FPjcFileExternalItem
 {
 	int64 FileSize = 0;
@@ -110,35 +98,6 @@ struct FPjcCorruptedAssetItem
 	FString FileName;
 	FString FileExt;
 	FString FilePath;
-};
-
-struct FPjcTreeItem
-{
-	FString FolderPath;
-	FString FolderName;
-	bool bIsDev = false;
-	bool bIsRoot = false;
-	bool bIsEmpty = false;
-	bool bIsExcluded = false;
-	bool bIsExpanded = false;
-	bool bIsVisible = false;
-	int32 NumAssetsTotal = 0;
-	int32 NumAssetsUsed = 0;
-	int32 NumAssetsUnused = 0;
-	float SizeAssetsUnused = 0;
-	float PercentageUnused = 0;
-	float PercentageUnusedNormalized = 0;
-
-	TSharedPtr<FPjcTreeItem> Parent;
-	TArray<TSharedPtr<FPjcTreeItem>> SubItems;
-
-	bool operator==(const FPjcTreeItem& Other) const {
-		return FolderPath.Equals(Other.FolderPath);
-	}
-
-	bool operator!=(const FPjcTreeItem& Other) const {
-		return !FolderPath.Equals(Other.FolderPath);
-	}
 };
 
 USTRUCT(BlueprintType)
