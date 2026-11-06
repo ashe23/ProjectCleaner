@@ -823,7 +823,11 @@ bool FPjcTestCookShipped::RunTest(const FString& Parameters) {
 		const auto AddPackage = [&State](const FName Package, const int64 DiskSize) {
 			State.CreateOrGetAssetPackageData(Package)->DiskSize = DiskSize;
 		};
+		// made from the editor package as it is now: same saved hash (guid before 5.4)
+		*State.CreateOrGetAssetPackageData(PackageOf(Fixture, TEXT("BP_Primary")))
+			= PjcShim::GetAssetPackageData(PackageOf(Fixture, TEXT("BP_Primary")));
 		AddPackage(PackageOf(Fixture, TEXT("BP_Primary")), 1000);
+		AddPackage(FName {TEXT("/Script/Engine")}, 0);
 		AddPackage(PackageOf(Fixture, TEXT("C_UnusedLeaf")), 77);
 		AddPackage(PackageOf(Fixture, TEXT("EUB_Tool")), -1);
 		AddPackage(FName {TEXT("/Engine/PjcTest/EngineThing")}, 500);
@@ -859,12 +863,34 @@ bool FPjcTestCookShipped::RunTest(const FString& Parameters) {
 	TestEqual(TEXT("deleted since"), Shipped.NumDeleted, 1);
 	TestEqual(TEXT("nothing changed since"), Shipped.NumChanged, 0);
 
-	// an asset saved after the cook
-	FString File;
-	if (TestTrue(TEXT("asset file"), PjcShim::DoesPackageExist(PackageOf(Fixture, TEXT("C_UnusedLeaf")).ToString(), &File))) {
-		IFileManager::Get().SetTimeStamp(*File, Cook.Time + FTimespan::FromMinutes(1.0));
+	TestFalse(TEXT("script packages left out"), Cook.Cooked.Contains(FName {TEXT("/Script/Engine")}));
+	TestTrue(TEXT("saved digest read"), Cook.SavedDigests.FindRef(PackageOf(Fixture, TEXT("BP_Primary"))) != 0);
+
+	// files touched after the cook: changed only when what they were saved with differs, file time when that is not known
+	FString PrimaryFile;
+	FString LeafFile;
+	const bool bFiles = PjcShim::DoesPackageExist(PackageOf(Fixture, TEXT("BP_Primary")).ToString(), &PrimaryFile)
+		&& PjcShim::DoesPackageExist(PackageOf(Fixture, TEXT("C_UnusedLeaf")).ToString(), &LeafFile);
+	if (TestTrue(TEXT("asset files"), bFiles)) {
+		IFileManager::Get().SetTimeStamp(*PrimaryFile, Cook.Time + FTimespan::FromMinutes(1.0));
+		Shipped = FPjcOverview::MakeShipped(Result, Cook);
+		TestEqual(TEXT("touched, same content"), Shipped.NumChanged, 0);
+
+		IFileManager::Get().SetTimeStamp(*LeafFile, Cook.Time + FTimespan::FromMinutes(1.0));
 		Shipped = FPjcOverview::MakeShipped(Result, Cook);
 		TestEqual(TEXT("changed since"), Shipped.NumChanged, 1);
+	}
+
+	// not seen by the cook: counts only when the game uses it (new since the cook)
+	FString UnusedFile;
+	FString IndirectFile;
+	const bool bUnseenFiles = PjcShim::DoesPackageExist(PackageOf(Fixture, TEXT("C_Unused_fr")).ToString(), &UnusedFile)
+		&& PjcShim::DoesPackageExist(PackageOf(Fixture, TEXT("C_Indirect")).ToString(), &IndirectFile);
+	if (TestTrue(TEXT("unseen asset files"), bUnseenFiles)) {
+		IFileManager::Get().SetTimeStamp(*UnusedFile, Cook.Time + FTimespan::FromMinutes(1.0));
+		IFileManager::Get().SetTimeStamp(*IndirectFile, Cook.Time + FTimespan::FromMinutes(1.0));
+		Shipped = FPjcOverview::MakeShipped(Result, Cook);
+		TestEqual(TEXT("new used asset since"), Shipped.NumChanged, 2);
 	}
 
 	IFileManager::Get().DeleteDirectory(*PlatformDir, false, true);

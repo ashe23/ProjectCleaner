@@ -39,6 +39,10 @@ namespace PjcShim
 	FName GetLevelEditorToolBarName(const EPjcToolbarLocation Location);
 	TSet<FName> GetCachedEmptyPackages();
 	FAssetPackageData GetAssetPackageData(const FName PackageName);
+	/** Digest of what a package file was saved with (5.4+ saved hash, a new guid per save before), 0 when unknown */
+	uint32 GetPackageSavedDigest(const FAssetPackageData& PackageData);
+	/** Same for a package of the editor asset registry, 0 when it has none */
+	uint32 GetPackageSavedDigest(const FName PackageName);
 	FString GetPathExternalActors();
 	FString GetPathExternalObjects();
 	// one file per actor folder names (World Partition and OFPA levels)

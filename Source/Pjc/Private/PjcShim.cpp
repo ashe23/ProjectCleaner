@@ -143,6 +143,28 @@ namespace PjcShim
 #endif
 	}
 
+	uint32 GetPackageSavedDigest(const FAssetPackageData& PackageData) {
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 4
+		const FIoHash Hash = PackageData.GetPackageSavedHash();
+		return Hash.IsZero() ? 0 : GetTypeHash(Hash);
+#else
+		PRAGMA_DISABLE_DEPRECATION_WARNINGS
+		return PackageData.PackageGuid.IsValid() ? GetTypeHash(PackageData.PackageGuid) : 0;
+		PRAGMA_ENABLE_DEPRECATION_WARNINGS
+#endif
+	}
+
+	uint32 GetPackageSavedDigest(const FName PackageName) {
+		const IAssetRegistry& AssetRegistry = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(PjcConstants::ModuleAssetRegistry).Get();
+#if ENGINE_MAJOR_VERSION == 5
+		const TOptional<FAssetPackageData> Data = AssetRegistry.GetAssetPackageDataCopy(PackageName);
+		return Data.IsSet() ? GetPackageSavedDigest(Data.GetValue()) : 0;
+#else
+		const FAssetPackageData* Data = AssetRegistry.GetAssetPackageData(PackageName);
+		return Data ? GetPackageSavedDigest(*Data) : 0;
+#endif
+	}
+
 	FString GetPathExternalActors() {
 		return TEXT("/Game/") + GetExternalActorsFolderName();
 	}

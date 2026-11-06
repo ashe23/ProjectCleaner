@@ -20,8 +20,11 @@ struct FPjcCookInfo
 	/** When the cook finished (UTC): time of its registry file. 0 ticks when there is no cook (4.27 does not zero FDateTime) */
 	FDateTime Time {0};
 
-	/** Every package the cook saved, with its cooked size (before pak compression) */
+	/** Every content package the cook saved, with its cooked size (before pak compression). Script packages left out */
 	TMap<FName, int64> Cooked;
+
+	/** Digest of the editor package each content package of the cook was made from, cooked or not (PjcShim::GetPackageSavedDigest) */
+	TMap<FName, uint32> SavedDigests;
 
 	/** A registry was found but could not be read, e.g. written by another engine version */
 	bool bReadFailed = false;
@@ -40,6 +43,6 @@ struct FPjcCookInfo
 	/** Folder the cooks of this project are in: Saved/Cooked */
 	static FString GetCookedDir();
 
-	/** Reads the packages a development asset registry lists as cooked */
-	static bool Read(const FString& InFile, TMap<FName, int64>& OutCooked);
+	/** Reads the packages a development asset registry lists, and which of them are cooked */
+	static bool Read(const FString& InFile, TMap<FName, int64>& OutCooked, TMap<FName, uint32>& OutSavedDigests);
 };

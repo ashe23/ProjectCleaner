@@ -130,7 +130,17 @@ FPjcOverview::FShipped FPjcOverview::MakeShipped(const FPjcScanResult& Result, c
 			Reasons.FindOrAdd(GetGroupReason(Result, Package)).Add(Size);
 		}
 
-		// saved or added after the cook (saving writes a new file, so creation time does not tell added ones apart)
+		// saved since the cook: what the package was saved with differs. File time when that is not known (restoring
+		// from source control touches files without changes). Assets the cook did not see matter when the game uses
+		// them: they are new since (what reaches them changed too, or they are a root such as a map)
+		const uint32* CookDigest = Cook.SavedDigests.Find(Package);
+		if (!CookDigest && Result.GetStatus(Package) != EPjcAssetStatus::Used) continue;
+
+		const uint32 EditorDigest = CookDigest && *CookDigest != 0 ? PjcShim::GetPackageSavedDigest(Package) : 0;
+		if (EditorDigest != 0) {
+			Shipped.NumChanged += EditorDigest != *CookDigest ? 1 : 0;
+			continue;
+		}
 		FString File;
 		if (PjcShim::DoesPackageExist(Package.ToString(), &File) && IFileManager::Get().GetTimeStamp(*File) > Cook.Time) {
 			++Shipped.NumChanged;
