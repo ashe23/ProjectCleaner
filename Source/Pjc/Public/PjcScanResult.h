@@ -66,6 +66,9 @@ struct FPjcScanResult
 	/** Files in content folders that are not assets but kept: used by the project or engine, or excluded in settings */
 	TArray<FString> FilesExternalKept;
 
+	/** Why each kept file is kept (UPjcSubsystem::GetFileKeptReason), same order as FilesExternalKept */
+	TArray<FString> FilesExternalKeptReasons;
+
 	/** Asset files the asset registry does not know, absolute paths */
 	TArray<FString> FilesCorrupted;
 

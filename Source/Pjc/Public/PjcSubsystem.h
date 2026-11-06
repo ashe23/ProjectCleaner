@@ -179,6 +179,8 @@ class UPjcSubsystem final : public UEditorSubsystem
 	 * settings of older versions into the project settings, once. Returns how many entries moved.
 	 */
 	static int32 MoveExclusionsToProject();
+	/** Moves the file exclusions of versions before 3.1 (per user) to the project settings, part of MoveExclusionsToProject */
+	static int32 MoveFileExclusionsToProject();
 
 	/**
 	 * @brief Returns all editor assets class names
@@ -458,6 +460,9 @@ class UPjcSubsystem final : public UEditorSubsystem
 	/** Absolute disk folders of scanned content roots */
 	static TArray<FString> GetProjectContentDirs();
 	static bool FileIsExcluded(const FString& InFile);
+	/** Why an external file is kept: Engine folder (Localization), Staged folder, Named in source or config, Excluded in settings. Empty when not
+	 * kept */
+	static FString GetFileKeptReason(const FString& InFile);
 	/** Non asset file the engine or project reads from content folders (localization, staged folders, named in code or config) */
 	static bool FileIsUsedByProject(const FString& InFile);
 	static void GetFoldersUsedByProject(TArray<FString>& Folders);

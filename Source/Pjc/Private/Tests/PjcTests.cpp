@@ -794,6 +794,26 @@ bool FPjcTestExclusionsMoved::RunTest(const FString& Parameters) {
 	TestEqual(TEXT("per user settings emptied"), Left.Num(), 0);
 	TestEqual(TEXT("moves only once"), UPjcSubsystem::MoveExclusionsToProject(), 0);
 
+	// file exclusions are shared too
+	UPjcFileExcludeSettings* FileSettings = GetMutableDefault<UPjcFileExcludeSettings>();
+	const TArray<FFilePath> SavedFiles = FileSettings->ExcludedFiles;
+	const TArray<FString> SavedExtensions = FileSettings->ExcludedExtensions;
+	FileSettings->ExcludedFiles.Reset();
+	FileSettings->ExcludedExtensions = {TEXT("md")};
+	const FString FileSection = UPjcFileExcludeSettings::StaticClass()->GetPathName();
+	GConfig->SetArray(*FileSection, TEXT("ExcludedFiles"), {TEXT("(FilePath=\"Content/PjcMoved/notes.txt\")")}, GEditorPerProjectIni);
+	GConfig->SetArray(*FileSection, TEXT("ExcludedExtensions"), {TEXT("md"), TEXT("zip")}, GEditorPerProjectIni);
+	TestEqual(TEXT("moved file exclusions, the shared extension is not doubled"), UPjcSubsystem::MoveExclusionsToProject(), 2);
+	TestTrue(
+		TEXT("moved file"), FileSettings->ExcludedFiles.Num() == 1 && FileSettings->ExcludedFiles[0].FilePath == TEXT("Content/PjcMoved/notes.txt")
+	);
+	TestTrue(TEXT("moved extension"), FileSettings->ExcludedExtensions.Contains(TEXT("zip")) && FileSettings->ExcludedExtensions.Num() == 2);
+	GConfig->GetArray(*FileSection, TEXT("ExcludedExtensions"), Left, GEditorPerProjectIni);
+	TestEqual(TEXT("per user file settings emptied"), Left.Num(), 0);
+	FileSettings->ExcludedFiles = SavedFiles;
+	FileSettings->ExcludedExtensions = SavedExtensions;
+	PjcShim::UpdateDefaultConfigFile(FileSettings);
+
 	Settings->ExcludedFolders = SavedFolders;
 	Settings->ExcludedClasses = SavedClasses;
 	Settings->ExcludedAssets = SavedAssets;
@@ -973,6 +993,31 @@ bool FPjcTestIssuesRedirectors::RunTest(const FString& Parameters) {
 	FPjcTestFixture Fixture;
 	if (!Fixture.Build(*this, true, true, true)) return false;
 	if (!TestTrue(TEXT("scanned"), UPjcSubsystem::Scan(false))) return false;
+
+	// why external files are kept
+	const FPjcScanResult& ScanResult = UPjcSubsystem::GetScanResult();
+	TestEqual(TEXT("a reason per kept file"), ScanResult.FilesExternalKeptReasons.Num(), ScanResult.FilesExternalKept.Num());
+	const auto Reason = [&ScanResult](const FString& File) {
+		const FString Wanted = UPjcSubsystem::PathNormalize(File);
+		for (int32 Index = 0; Index < ScanResult.FilesExternalKept.Num(); ++Index) {
+			if (UPjcSubsystem::PathNormalize(ScanResult.FilesExternalKept[Index]) == Wanted) return ScanResult.FilesExternalKeptReasons[Index];
+		}
+		return FString {TEXT("not kept")};
+	};
+	TArray<FString> KeptFiles = Fixture.LyraKeptFiles();
+	// the external files of the scanned content (plugins not scanned, disabled plugins never touched)
+	KeptFiles.RemoveAll([](const FString& File) {
+		return !File.Contains(TEXT("/Content/Localization/PjcTests/")) && !File.EndsWith(TEXT("/Staged/license.txt"))
+			&& !File.EndsWith(TEXT("/T_RawIcon.svg"));
+	});
+	TestEqual(TEXT("fixture kept files"), KeptFiles.Num(), 3);
+	for (const auto& File : KeptFiles) {
+		const FString Expected = File.Contains(TEXT("/Localization/")) ? TEXT("Engine folder (Localization)")
+			: File.Contains(TEXT("/Staged/"))						   ? TEXT("Staged folder")
+																	   : TEXT("Named in source or config");
+		TestEqual(*FString::Printf(TEXT("%s kept reason"), *FPaths::GetCleanFilename(File)), Reason(File), Expected);
+	}
+	TestEqual(TEXT("excluded file kept reason"), Reason(Fixture.ExternalExcludedFile()), FString {TEXT("Excluded in settings")});
 
 	// states: used through, nothing points through it, target missing
 	TArray<FPjcRedirectorInfo> Redirectors;
@@ -1182,7 +1227,7 @@ bool FPjcFixtureBuild::RunTest(const FString& Parameters) {
 
 	// commandlet runs in another process, it must see same settings (host config files, removed by pjc.py)
 	PjcShim::UpdateDefaultConfigFile(GetMutableDefault<UPjcAssetExcludeSettings>());
-	GetMutableDefault<UPjcFileExcludeSettings>()->SaveConfig();
+	PjcShim::UpdateDefaultConfigFile(GetMutableDefault<UPjcFileExcludeSettings>());
 	PjcShim::UpdateDefaultConfigFile(ScanSettings);
 
 	const TArray<FString> UsedNames = Fixture.UsedNames(true);

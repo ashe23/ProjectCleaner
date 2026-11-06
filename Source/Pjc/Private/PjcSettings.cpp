@@ -12,6 +12,12 @@ void UPjcAssetExcludeSettings::PostEditChangeProperty(FPropertyChangedEvent& Pro
 
 	PjcShim::UpdateDefaultConfigFile(this);
 }
+
+void UPjcFileExcludeSettings::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) {
+	Super::PostEditChangeProperty(PropertyChangedEvent);
+
+	PjcShim::UpdateDefaultConfigFile(this);
+}
 #endif
 
 FName UPjcScanSettings::GetCategoryName() const {

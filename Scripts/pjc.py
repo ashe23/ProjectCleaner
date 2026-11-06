@@ -953,7 +953,7 @@ def remove_fixture(host, expected=None):
         if os.path.isfile(default_editor):
             with open(default_editor, encoding="utf-8", errors="replace") as f:
                 content = f.read()
-            generated = "PjcScanSettings" in content or "PjcAssetExcludeSettings" in content
+            generated = "PjcScanSettings" in content or "PjcAssetExcludeSettings" in content or "PjcFileExcludeSettings" in content
             if generated:
                 os.remove(default_editor)
     expected_file = os.path.join(host.dir, "Saved", "PjcFixture", "expected.json")
@@ -1311,7 +1311,7 @@ def polygon_write_settings(p, overrides):
     section = "\n".join(["[{}]".format(SCAN_SETTINGS_SECTION)] + ["{}={}".format(k, v) for k, v in settings.items()])
     with open(ini, "w", encoding="utf-8", newline="\n") as f:
         f.write(_ini_without_sections(text, SCAN_SETTINGS_SECTION) + "\n\n" + section + "\n")
-    # exclude settings are per user (Saved), keep them out of the way
+    # versions before 3.1 kept exclude settings per user (Saved), keep them out of the way
     for user_ini in glob.glob(os.path.join(p.dir, "Saved", "Config", "*", "EditorPerProjectUserSettings.ini")):
         with open(user_ini, encoding="utf-8-sig", errors="replace") as f:
             content = f.read()

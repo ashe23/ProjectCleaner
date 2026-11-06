@@ -120,6 +120,8 @@ void UPjcSubsystem::Initialize(FSubsystemCollectionBase& Collection) {
 int32 UPjcSubsystem::MoveExclusionsToProject() {
 	if (!GConfig) return 0;
 
+	const int32 NumFilesMoved = MoveFileExclusionsToProject();
+
 	const FString Section = UPjcAssetExcludeSettings::StaticClass()->GetPathName();
 	TArray<FString> Folders;
 	TArray<FString> Classes;
@@ -127,7 +129,7 @@ int32 UPjcSubsystem::MoveExclusionsToProject() {
 	GConfig->GetArray(*Section, TEXT("ExcludedFolders"), Folders, GEditorPerProjectIni);
 	GConfig->GetArray(*Section, TEXT("ExcludedClasses"), Classes, GEditorPerProjectIni);
 	GConfig->GetArray(*Section, TEXT("ExcludedAssets"), Assets, GEditorPerProjectIni);
-	if (Folders.Num() + Classes.Num() + Assets.Num() == 0) return 0;
+	if (Folders.Num() + Classes.Num() + Assets.Num() == 0) return NumFilesMoved;
 
 	const auto Unquote = [](FString Value) {
 		Value.TrimStartAndEndInline();
@@ -176,6 +178,47 @@ int32 UPjcSubsystem::MoveExclusionsToProject() {
 		TEXT("Moved %d exclusion(s) from your editor preferences to the project settings (Config/DefaultEditor.ini), shared with the team"),
 		NumMoved
 	);
+	return NumMoved + NumFilesMoved;
+}
+
+int32 UPjcSubsystem::MoveFileExclusionsToProject() {
+	const FString Section = UPjcFileExcludeSettings::StaticClass()->GetPathName();
+	TArray<FString> Files;
+	TArray<FString> Extensions;
+	GConfig->GetArray(*Section, TEXT("ExcludedFiles"), Files, GEditorPerProjectIni);
+	GConfig->GetArray(*Section, TEXT("ExcludedExtensions"), Extensions, GEditorPerProjectIni);
+	if (Files.Num() + Extensions.Num() == 0) return 0;
+
+	UPjcFileExcludeSettings* Settings = GetMutableDefault<UPjcFileExcludeSettings>();
+	int32 NumMoved = 0;
+	for (const auto& Entry : Files) {
+		FString Path;
+		if (!FParse::Value(*Entry, TEXT("FilePath="), Path)) continue;
+
+		Path.RemoveFromEnd(TEXT(")"));
+		Path.TrimStartAndEndInline();
+		Path.TrimQuotesInline();
+		if (Path.IsEmpty() || Settings->ExcludedFiles.ContainsByPredicate([&Path](const FFilePath& File) {
+				return File.FilePath == Path;
+			}))
+			continue;
+
+		FFilePath FilePath;
+		FilePath.FilePath = Path;
+		Settings->ExcludedFiles.Add(FilePath);
+		++NumMoved;
+	}
+	for (const auto& Entry : Extensions) {
+		const FString Extension = Entry.TrimStartAndEnd().TrimQuotes();
+		if (Extension.IsEmpty() || Settings->ExcludedExtensions.Contains(Extension)) continue;
+
+		Settings->ExcludedExtensions.Add(Extension);
+		++NumMoved;
+	}
+
+	PjcShim::UpdateDefaultConfigFile(Settings);
+	GConfig->EmptySection(*Section, GEditorPerProjectIni);
+	GConfig->Flush(false, GEditorPerProjectIni);
 	return NumMoved;
 }
 
@@ -372,7 +415,14 @@ bool UPjcSubsystem::Scan(const bool bShowSlowTask) {
 	TArray<FString> FilesExternal;
 	GetFilesExternalAll(FilesExternal);
 	for (auto& File : FilesExternal) {
-		(FileIsExcluded(File) ? Result.FilesExternalKept : Result.FilesExternal).Add(MoveTemp(File));
+		FString Reason = GetFileKeptReason(File);
+		if (Reason.IsEmpty()) {
+			Result.FilesExternal.Add(MoveTemp(File));
+		}
+		else {
+			Result.FilesExternalKept.Add(MoveTemp(File));
+			Result.FilesExternalKeptReasons.Add(MoveTemp(Reason));
+		}
 	}
 	GetFilesCorrupted(Result.FilesCorrupted, bShowSlowTask);
 	GetFoldersEmpty(Result.FoldersEmpty);
@@ -2259,6 +2309,16 @@ bool UPjcSubsystem::FileIsExcluded(const FString& InFile) {
 
 	const UPjcFileExcludeSettings* FileExcludeSettings = GetDefault<UPjcFileExcludeSettings>();
 
+	const FString File = PathNormalize(InFile);
+	const bool bInExcludedFolder = FileExcludeSettings->ExcludedFolders.ContainsByPredicate([&File](const FDirectoryPath& Folder) {
+		const FString FolderPath = Folder.Path.TrimStartAndEnd();
+		if (FolderPath.IsEmpty()) return false;
+
+		const FString FolderAbs = PathNormalize(PathConvertToAbsolute(FolderPath));
+		return !FolderAbs.IsEmpty() && File.StartsWith(FolderAbs + TEXT("/"));
+	});
+	if (bInExcludedFolder) return true;
+
 	const FString FileExt = FPaths::GetExtension(InFile, false);
 	const bool bExcludedByExt = FileExcludeSettings->ExcludedExtensions.ContainsByPredicate([&](const FString& ExcludedExt) {
 		FString Ext = ExcludedExt.TrimStartAndEnd();
@@ -2275,6 +2335,32 @@ bool UPjcSubsystem::FileIsExcluded(const FString& InFile) {
 		const FString PathAbs = PathNormalize(FPaths::ConvertRelativePathToFull(Path));
 		return !PathAbs.IsEmpty() && FPaths::IsSamePath(PathAbs, InFile);
 	});
+}
+
+FString UPjcSubsystem::GetFileKeptReason(const FString& InFile) {
+	if (!FileIsExcluded(InFile)) return FString {};
+
+	const FString File = PathNormalize(InFile);
+	for (const auto& ContentDir : GetProjectContentDirs()) {
+		for (const TCHAR* FolderName : {TEXT("Localization"), TEXT("Movies"), TEXT("Splash"), TEXT("Python"), TEXT("Collections")}) {
+			if (File.StartsWith(PathNormalize(ContentDir / FolderName) + TEXT("/"))) {
+				return FString::Printf(TEXT("Engine folder (%s)"), FolderName);
+			}
+		}
+		const FString DevelopersDir = PathNormalize(ContentDir / TEXT("Developers")) + TEXT("/");
+		if (File.StartsWith(DevelopersDir) && File.RightChop(DevelopersDir.Len()).Contains(TEXT("/Collections/"))) {
+			return TEXT("Engine folder (Collections)");
+		}
+	}
+	if (!FileIsUsedByProject(InFile)) return TEXT("Excluded in settings");
+
+	// used by the project: staged as is, or named in source or config
+	TArray<FString> Folders;
+	GetFoldersUsedByProject(Folders);
+	const bool bStaged = Folders.ContainsByPredicate([&File](const FString& Folder) {
+		return File.StartsWith(Folder + TEXT("/"));
+	});
+	return bStaged ? TEXT("Staged folder") : TEXT("Named in source or config");
 }
 
 bool UPjcSubsystem::FileIsUsedByProject(const FString& InFile) {

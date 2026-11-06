@@ -47,7 +47,8 @@ class UPjcAssetExcludeSettings : public UObject
 #endif
 };
 
-UCLASS(Config = EditorPerProjectUserSettings)
+/** Files in content folders that are not assets and are kept: shared with the team in Config/DefaultEditor.ini */
+UCLASS(Config = Editor, DefaultConfig)
 class UPjcFileExcludeSettings : public UObject
 {
 	GENERATED_BODY()
@@ -72,14 +73,19 @@ class UPjcFileExcludeSettings : public UObject
 	)
 	TArray<FString> ExcludedExtensions;
 
+	UPROPERTY(
+		BlueprintReadWrite,
+		EditAnywhere,
+		Config,
+		Category = "FileExcludeSettings",
+		meta = (ContentDir, ToolTip = "Exclude every file in specified folders from scanning")
+	)
+	TArray<FDirectoryPath> ExcludedFolders;
+
   protected:
 
 #if WITH_EDITOR
-	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override {
-		Super::PostEditChangeProperty(PropertyChangedEvent);
-
-		SaveConfig();
-	}
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif
 };
 
