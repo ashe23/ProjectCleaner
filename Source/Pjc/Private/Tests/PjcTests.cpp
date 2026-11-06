@@ -5,6 +5,7 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 #include "PjcAssetGraph.h"
+#include "PjcInspector.h"
 #include "PjcIssues.h"
 #include "PjcCookInfo.h"
 #include "PjcOverview.h"
@@ -1080,6 +1081,72 @@ bool FPjcTestIssuesFiles::RunTest(const FString& Parameters) {
 	TestEqual(TEXT("folders deleted"), UPjcSubsystem::DeleteFolders(Folders), Folders.Num());
 	for (const auto& Folder : Folders) {
 		TestFalse(*FString::Printf(TEXT("%s gone"), *Folder), IFileManager::Get().DirectoryExists(*Folder));
+	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPjcTestInspectorGraph, "ProjectCleaner.Inspector.Graph", PJC_TEST_FLAGS)
+
+bool FPjcTestInspectorGraph::RunTest(const FString& Parameters) {
+	if (!FPjcTestFixture::IsTestHost()) {
+		AddInfo(TEXT("Skipped, fixture tests run only in test host projects"));
+		return true;
+	}
+
+	FPjcScopedScanSettings ScopedSettings {false};
+	FPjcTestFixture Fixture;
+	if (!Fixture.Build(*this)) return false;
+	if (!TestTrue(TEXT("scanned"), UPjcSubsystem::Scan(false))) return false;
+	const FPjcScanResult& Result = UPjcSubsystem::GetScanResult();
+
+	// used: the root on top with its source, the path down to the asset
+	const FName Leaf = PackageOf(Fixture, TEXT("C_ChainLeaf"));
+	const FPjcInspectorGraph Used = FPjcInspectorGraph::Make(Result, Leaf);
+	TestFalse(TEXT("used graph is no unused group"), Used.bUnusedGroup);
+	TestTrue(TEXT("used graph has roots"), Used.NumRoots > 0);
+	const int32 LeafNode = Used.FindNode(Leaf);
+	const int32 ChainNode = Used.FindNode(PackageOf(Fixture, TEXT("OL_Chain")));
+	const int32 RootNode = Used.FindNode(PackageOf(Fixture, TEXT("PAL_Root")));
+	if (TestTrue(TEXT("chain nodes"), LeafNode != INDEX_NONE && ChainNode != INDEX_NONE && RootNode != INDEX_NONE)) {
+		TestTrue(TEXT("root above the chain"), Used.Nodes[RootNode].Layer < Used.Nodes[ChainNode].Layer);
+		TestTrue(TEXT("chain above the asset"), Used.Nodes[ChainNode].Layer < Used.Nodes[LeafNode].Layer);
+		TestTrue(TEXT("root references the chain"), Used.Edges.ContainsByPredicate([&](const FPjcInspectorEdge& Edge) {
+			return Edge.From == RootNode && Edge.To == ChainNode;
+		}));
+		TestTrue(TEXT("chain references the asset"), Used.Edges.ContainsByPredicate([&](const FPjcInspectorEdge& Edge) {
+			return Edge.From == ChainNode && Edge.To == LeafNode;
+		}));
+		TestEqual(
+			TEXT("labels reference editor only (labels do not ship)"),
+			static_cast<int32>(FPjcInspectorGraph::GetLinkKind(PackageOf(Fixture, TEXT("PAL_Root")), PackageOf(Fixture, TEXT("OL_Chain")))),
+			static_cast<int32>(EPjcLinkKind::EditorOnly)
+		);
+		TestEqual(
+			TEXT("object library references hard"),
+			static_cast<int32>(FPjcInspectorGraph::GetLinkKind(PackageOf(Fixture, TEXT("OL_Chain")), Leaf)),
+			static_cast<int32>(EPjcLinkKind::Hard)
+		);
+	}
+	const int32 SourceNode = Used.Nodes.IndexOfByPredicate([&](const FPjcInspectorNode& Node) {
+		return Node.Kind == EPjcInspectorNodeKind::Source && Node.Package == PackageOf(Fixture, TEXT("PAL_Root"));
+	});
+	if (TestTrue(TEXT("source above the root"), SourceNode != INDEX_NONE && RootNode != INDEX_NONE)) {
+		TestTrue(TEXT("source tells why"), !Used.Nodes[SourceNode].Label.IsEmpty());
+		TestTrue(TEXT("source row above the root"), Used.Nodes[SourceNode].Layer < Used.Nodes[RootNode].Layer);
+	}
+
+	// unused: the group around it, what nothing references on top
+	const FName UnusedLeaf = PackageOf(Fixture, TEXT("C_UnusedLeaf"));
+	const FPjcInspectorGraph Unused = FPjcInspectorGraph::Make(Result, UnusedLeaf);
+	TestTrue(TEXT("unused group"), Unused.bUnusedGroup);
+	const int32 UnusedNode = Unused.FindNode(UnusedLeaf);
+	const int32 UnusedRootNode = Unused.FindNode(PackageOf(Fixture, TEXT("OL_UnusedRoot")));
+	if (TestTrue(TEXT("unused group nodes"), UnusedNode != INDEX_NONE && UnusedRootNode != INDEX_NONE)) {
+		TestEqual(TEXT("unreferenced on top"), Unused.Nodes[UnusedRootNode].Layer, 0);
+		TestEqual(TEXT("referenced below"), Unused.Nodes[UnusedNode].Layer, 1);
+		TestTrue(TEXT("unused reference drawn"), Unused.Edges.ContainsByPredicate([&](const FPjcInspectorEdge& Edge) {
+			return Edge.From == UnusedRootNode && Edge.To == UnusedNode;
+		}));
 	}
 	return true;
 }
