@@ -1,6 +1,7 @@
 // Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "Slate/SPjcScanSettings.h"
+#include "Slate/PjcWidgets.h"
 #include "PjcFormat.h"
 #include "PjcShim.h"
 #include "PjcStyles.h"
@@ -374,7 +375,7 @@ TSharedRef<SWidget> SPjcScanSettings::MakeFixedRow(const FString& Label, const i
 		FText::FromString(TEXT("Always on"))
 	)[SNew(SImage).Image(PjcShim::GetIconLock()).ColorAndOpacity(FSlateColor::UseSubduedForeground())];
 
-	return MakeRow(Label, Num > 0 ? PjcFormat::Count(Num) : TEXT("–"), Lock, MakeToolTip(Label, Description, More), false, false);
+	return MakeRow(Label, Num > 0 ? PjcFormat::Count(Num) : TEXT("–"), Lock, PjcWidgets::MakeToolTip(Label, Description, More), false, false);
 }
 
 TSharedRef<SWidget>
@@ -393,7 +394,7 @@ SPjcScanSettings::MakeSwitchRow(const FString& Label, FDraftFlag Flag, const int
 										   });
 
 	const FString Value = Num < 0 ? FString {} : (Num > 0 ? PjcFormat::Count(Num) : TEXT("–"));
-	return MakeRow(Label, Value, Switch, MakeToolTip(Label, Description, Lines), bChanged, !bValue);
+	return MakeRow(Label, Value, Switch, PjcWidgets::MakeToolTip(Label, Description, Lines), bChanged, !bValue);
 }
 
 TSharedRef<SWidget> SPjcScanSettings::MakeListRows(
@@ -423,7 +424,13 @@ TSharedRef<SWidget> SPjcScanSettings::MakeListRows(
 	// clang-format on
 
 	Rows->AddSlot().AutoHeight()[MakeRow(
-		Label, Items.Num() > 0 ? PjcFormat::Count(Items.Num()) : FString {}, Add, MakeToolTip(Label, Description, FString {}), false, false, Indent
+		Label,
+		Items.Num() > 0 ? PjcFormat::Count(Items.Num()) : FString {},
+		Add,
+		PjcWidgets::MakeToolTip(Label, Description, FString {}),
+		false,
+		false,
+		Indent
 	)];
 
 	for (int32 Index = 0; Index < Items.Num(); ++Index) {
@@ -491,16 +498,4 @@ TSharedRef<SWidget> SPjcScanSettings::MakeListRows(
 	}
 
 	return Rows;
-}
-
-TSharedRef<SToolTip> SPjcScanSettings::MakeToolTip(const FString& Title, const FString& Text, const FString& More) {
-	const TSharedRef<SVerticalBox> Lines = SNew(SVerticalBox);
-	Lines->AddSlot().AutoHeight()[SNew(STextBlock).Text(FText::FromString(Title)).Font(FPjcStyles::GetFont("Bold", 9))];
-	Lines->AddSlot().AutoHeight().Padding(FMargin {0.0f, 3.0f, 0.0f, 0.0f})[SNew(STextBlock).Text(FText::FromString(Text)).WrapTextAt(280.0f)];
-	if (!More.IsEmpty()) {
-		Lines->AddSlot().AutoHeight().Padding(
-			FMargin {0.0f, 5.0f, 0.0f, 0.0f}
-		)[SNew(STextBlock).Text(FText::FromString(More)).ColorAndOpacity(FSlateColor::UseSubduedForeground())];
-	}
-	return SNew(SToolTip)[Lines];
 }

@@ -6,6 +6,14 @@
 #include "Styling/SlateStyleRegistry.h"
 #include "Framework/Application/SlateApplication.h"
 #include "Interfaces/IPluginManager.h"
+#include "Brushes/SlateColorBrush.h"
+#include "Brushes/SlateNoResource.h"
+#include "Runtime/Launch/Resources/Version.h"
+#include "Styling/SlateTypes.h"
+#if ENGINE_MAJOR_VERSION >= 5
+#include "Brushes/SlateRoundedBoxBrush.h"
+#include "Styling/StyleColors.h"
+#endif
 
 TSharedPtr<FSlateStyleSet> FPjcStyles::StyleInstance = nullptr;
 
@@ -143,6 +151,31 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create() {
 	Style->Set("ProjectCleaner.Color.Gray", FLinearColor {FColor::FromHex(TEXT("#adb5bd"))});
 	Style->Set("ProjectCleaner.Color.BlueLight", FLinearColor {FColor::FromHex(TEXT("#0496ff"))});
 	Style->Set("ProjectCleaner.Color.DarkGray", FLinearColor {FColor::FromHex(TEXT("#567189"))});
+
+	// asset status: bar fills, text accents
+	Style->Set("ProjectCleaner.Color.UsedFill", FLinearColor {FColor::FromHex(TEXT("#2C766F"))});
+	Style->Set("ProjectCleaner.Color.EditorFill", FLinearColor {FColor::FromHex(TEXT("#3D6DB3"))});
+	Style->Set("ProjectCleaner.Color.UnusedFill", FLinearColor {FColor::FromHex(TEXT("#C4484D"))});
+	Style->Set("ProjectCleaner.Color.Editor", FLinearColor {FColor::FromHex(TEXT("#7FB2FF"))});
+	Style->Set("ProjectCleaner.Color.Ok", FLinearColor {FColor::FromHex(TEXT("#6FCF7A"))});
+	Style->Set("ProjectCleaner.Color.Track", FLinearColor {FColor::FromHex(TEXT("#2D3136"))});
+	Style->Set("ProjectCleaner.Color.Line", FLinearColor {FColor::FromHex(TEXT("#383B40"))});
+
+#if ENGINE_MAJOR_VERSION >= 5
+	// cards of the Overview, 4.27 takes the editor group border (PjcShim::GetBrushCard)
+	Style->Set("ProjectCleaner.Card", new FSlateRoundedBoxBrush(FStyleColors::Panel, 4.0f, FLinearColor {FColor::FromHex(TEXT("#383B40"))}, 1.0f));
+#endif
+
+	// rows that react to the mouse
+	Style->Set(
+		"ProjectCleaner.Button.Row",
+		FButtonStyle {}
+			.SetNormal(FSlateNoResource {})
+			.SetHovered(FSlateColorBrush {FLinearColor {1.0f, 1.0f, 1.0f, 0.04f}})
+			.SetPressed(FSlateColorBrush {FLinearColor {1.0f, 1.0f, 1.0f, 0.07f}})
+			.SetNormalPadding(FMargin {0.0f})
+			.SetPressedPadding(FMargin {0.0f})
+	);
 
 	// backgrounds
 	Style->Set("ProjectCleaner.BgProgressbar", new BOX_BRUSH("BgProgressbar", FMargin(5.f / 12.f)));

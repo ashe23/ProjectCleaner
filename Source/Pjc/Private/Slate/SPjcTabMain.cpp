@@ -204,7 +204,7 @@ FText SPjcTabMain::GetWidgetWarningText() const {
 }
 
 TSharedRef<SDockTab> SPjcTabMain::OnTabOverviewSpawn(const FSpawnTabArgs& Args) const {
-	const auto Frontend = SNew(SDockTab).TabRole(PanelTab).Label(FText::FromString(TEXT("Overview")))[SNew(SPjcTabOverview)];
+	const auto Frontend = SNew(SDockTab).TabRole(PanelTab).Label(FText::FromString(TEXT("Overview")))[SNew(SPjcTabOverview).TabManager(TabManager)];
 
 	Frontend->SetTabIcon(FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.Stat16"));
 

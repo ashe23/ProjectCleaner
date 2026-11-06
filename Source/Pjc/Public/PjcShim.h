@@ -32,6 +32,8 @@ namespace PjcShim
 	const FSlateBrush* GetIconClose();
 	const FSlateBrush* GetIconLock();
 	const FSlateBrush* GetIconSettings();
+	/** Background of a card in the Overview */
+	const FSlateBrush* GetBrushCard();
 	const FButtonStyle& GetPrimaryButtonStyle();
 
 	FName GetLevelEditorToolBarName(const EPjcToolbarLocation Location);

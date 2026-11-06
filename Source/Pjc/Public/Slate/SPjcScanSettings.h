@@ -55,7 +55,6 @@ class SPjcScanSettings final : public SCompoundWidget
 		const FString& Description,
 		const float Indent = 0.0f
 	);
-	static TSharedRef<SToolTip> MakeToolTip(const FString& Title, const FString& Text, const FString& More);
 
 	FSimpleDelegate OnClose;
 	TSharedPtr<SBox> Body;

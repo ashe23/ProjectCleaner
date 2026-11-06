@@ -3,7 +3,11 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "PjcOverview.h"
 #include "Widgets/SCompoundWidget.h"
+
+class FTabManager;
+class SBox;
 
 /** Overview tool: what the shared scan found for the whole project */
 class SPjcTabOverview final : public SCompoundWidget
@@ -11,6 +15,8 @@ class SPjcTabOverview final : public SCompoundWidget
   public:
 
 	SLATE_BEGIN_ARGS(SPjcTabOverview) {}
+	/** Tabs the Overview links to (none in tests) */
+	SLATE_ARGUMENT(TSharedPtr<FTabManager>, TabManager)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
@@ -19,10 +25,13 @@ class SPjcTabOverview final : public SCompoundWidget
   private:
 
 	void OnScanFinished();
-	FText GetSummaryText() const;
+	void Rebuild();
+	void OpenTab(const FName TabId) const;
+
+	TSharedRef<SWidget> MakeSummary();
 
 	FDelegateHandle ScanFinishedHandle;
-	int32 NumUsed = 0;
-	int32 NumEditorOnly = 0;
-	int32 NumUnused = 0;
+	TWeakPtr<FTabManager> TabManager;
+	TSharedPtr<SBox> Body;
+	FPjcOverview Overview;
 };

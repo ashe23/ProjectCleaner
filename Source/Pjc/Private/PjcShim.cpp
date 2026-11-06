@@ -3,6 +3,7 @@
 #include "PjcShim.h"
 #include "PjcConstants.h"
 #include "PjcSettings.h"
+#include "PjcStyles.h"
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "AssetRegistry/ARFilter.h"
 #include "AssetRegistry/AssetData.h"
@@ -65,6 +66,14 @@ namespace PjcShim
 		return GetBrush(TEXT("Icons.Lock"));
 #else
 		return GetBrush(TEXT("PropertyWindow.Locked"));
+#endif
+	}
+
+	const FSlateBrush* GetBrushCard() {
+#if ENGINE_MAJOR_VERSION >= 5
+		return FPjcStyles::Get().GetBrush("ProjectCleaner.Card");
+#else
+		return GetBrush(TEXT("ToolPanel.GroupBorder"));
 #endif
 	}
 
