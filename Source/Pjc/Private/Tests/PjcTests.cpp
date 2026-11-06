@@ -4,7 +4,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-#include "PjcAssetGraph.h"
 #include "PjcInspector.h"
 #include "PjcIssues.h"
 #include "PjcCookInfo.h"
@@ -1148,108 +1147,6 @@ bool FPjcTestInspectorGraph::RunTest(const FString& Parameters) {
 			return Edge.From == UnusedRootNode && Edge.To == UnusedNode;
 		}));
 	}
-	return true;
-}
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPjcTestScanGraph, "ProjectCleaner.Scan.Graph", PJC_TEST_FLAGS)
-
-bool FPjcTestScanGraph::RunTest(const FString& Parameters) {
-	if (!FPjcTestFixture::IsTestHost()) {
-		AddInfo(TEXT("Skipped, fixture tests run only in test host projects"));
-		return true;
-	}
-
-	FPjcScopedScanSettings ScopedSettings {false};
-
-	FPjcTestFixture Fixture;
-	if (!Fixture.Build(*this)) return false;
-
-	TArray<FAssetData> AssetsAll;
-	TMap<FName, FPjcAssetUsage> Usage;
-	UPjcSubsystem::GetAssetsAll(AssetsAll);
-	UPjcSubsystem::GetAssetsUsage(Usage, false);
-
-	TArray<TSharedPtr<FPjcUsageItem>> Items;
-	for (const auto& Asset : AssetsAll) {
-		const TSharedPtr<FPjcUsageItem> Item = MakeShared<FPjcUsageItem>();
-		Item->PackageName = Asset.PackageName;
-		Item->Asset = Asset;
-		Item->Usage = Usage.FindRef(Asset.PackageName);
-		Item->Size = UPjcSubsystem::GetAssetSize(Asset);
-		Item->bScanned = true;
-		Items.Add(Item);
-	}
-
-	FPjcAssetGraph Graph;
-	Graph.Build(Items);
-	const TArray<FPjcGraphNode>& Nodes = Graph.GetNodes();
-	TestEqual(TEXT("node for every scanned asset"), Nodes.Num(), AssetsAll.Num());
-
-	// folders hold every asset, totals add up, circles stay inside their folder
-	const TArray<FPjcGraphFolder>& Folders = Graph.GetFolders();
-	int32 NumInRoots = 0;
-	for (const int32 Root : Graph.GetRootFolders()) {
-		NumInRoots += Folders[Root].NumAssets;
-	}
-	TestEqual(TEXT("folders hold every asset"), NumInRoots, Nodes.Num());
-
-	for (const auto& Folder : Folders) {
-		int32 NumAssets = Folder.Assets.Num();
-		for (const int32 Subfolder : Folder.Folders) {
-			NumAssets += Folders[Subfolder].NumAssets;
-			const double Reach = FVector2D::Distance(Folders[Subfolder].Center, Folder.Center) + Folders[Subfolder].Radius;
-			TestTrue(*FString::Printf(TEXT("%s inside %s"), *Folders[Subfolder].Path, *Folder.Path), Reach <= Folder.Radius + 0.01);
-		}
-		TestEqual(*FString::Printf(TEXT("%s asset count"), *Folder.Path), Folder.NumAssets, NumAssets);
-		for (const int32 Asset : Folder.Assets) {
-			const double Reach = FVector2D::Distance(Nodes[Asset].Position, Folder.Center) + Nodes[Asset].Radius;
-			TestTrue(*FString::Printf(TEXT("%s inside its folder"), *Nodes[Asset].Item->PackageName.ToString()), Reach <= Folder.Radius + 0.01);
-		}
-	}
-
-	const FPjcGraphFolder* UnusedFolder = Folders.FindByPredicate([](const FPjcGraphFolder& Folder) {
-		return Folder.Path == FPjcTestFixture::RootPath() / TEXT("Unused");
-	});
-	if (TestNotNull(TEXT("folder of unused fixture assets"), UnusedFolder)) {
-		TestTrue(TEXT("unused folder counts its unused assets"), UnusedFolder->NumAssets >= 3 && UnusedFolder->NumUnused == UnusedFolder->NumAssets);
-		TestEqual(TEXT("unused folder size is unused"), UnusedFolder->SizeUnused, UnusedFolder->Size);
-	}
-
-	// owner has same verdict, owned sizes add up
-	for (const auto& Node : Nodes) {
-		const FString Name = Node.Item->PackageName.ToString();
-		int64 Size = Node.Item->Size;
-		for (const int32 Owned : Node.Owned) {
-			Size += Nodes[Owned].SizeOwned;
-		}
-		TestEqual(*FString::Printf(TEXT("%s owned size"), *Name), Node.SizeOwned, Size);
-		if (Node.Owner == INDEX_NONE) continue;
-
-		TestEqual(*FString::Printf(TEXT("%s owner verdict"), *Name), Nodes[Node.Owner].Item->Usage.bUsed, Node.Item->Usage.bUsed);
-	}
-
-	const auto TestOwner = [&](const TCHAR* Name, const TCHAR* OwnerName) {
-		const int32 Index = Graph.Find(PackageOf(Fixture, Name));
-		if (!TestTrue(*FString::Printf(TEXT("%s in graph"), Name), Index != INDEX_NONE)) return;
-
-		const int32 Owner = Nodes[Index].Owner;
-		TestEqual(
-			*FString::Printf(TEXT("%s owner"), Name),
-			Owner == INDEX_NONE ? FName {NAME_None} : Nodes[Owner].Item->PackageName,
-			OwnerName ? PackageOf(Fixture, OwnerName) : FName {NAME_None}
-		);
-	};
-
-	// only user owns, chains nest, unused groups and cycles have their own owners
-	TestOwner(TEXT("PAL_Root"), nullptr);
-	TestOwner(TEXT("OL_Chain"), TEXT("PAL_Root"));
-	TestOwner(TEXT("C_ChainLeaf"), TEXT("OL_Chain"));
-	TestOwner(TEXT("C_Labeled"), TEXT("PAL_Folder"));
-	TestOwner(TEXT("OL_UnusedRoot"), nullptr);
-	TestOwner(TEXT("C_UnusedLeaf"), TEXT("OL_UnusedRoot"));
-	TestOwner(TEXT("OL_CircA"), nullptr);
-	TestOwner(TEXT("OL_CircB"), TEXT("OL_CircA"));
-
 	return true;
 }
 

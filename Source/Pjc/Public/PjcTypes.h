@@ -203,20 +203,3 @@ struct FPjcAssetUsage
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "AssetUsage")
 	FString Detail;
 };
-
-/** Package shown in Asset Usage tab */
-struct FPjcUsageItem
-{
-	FName PackageName;
-	/** main asset of package, invalid when registry has no asset for it */
-	FAssetData Asset;
-	FPjcAssetUsage Usage;
-	/** why last cleanup kept it (unused assets only), empty if it was not tried */
-	FString Kept;
-	FString ClassName;
-	/** short reason for lists */
-	FString ReasonText;
-	int64 Size = 0;
-	/** inside scanned content roots, so it has a usage result */
-	bool bScanned = false;
-};
