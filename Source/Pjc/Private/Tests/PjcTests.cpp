@@ -12,6 +12,7 @@
 #include "PjcShim.h"
 #include "PjcSubsystem.h"
 #include "PjcTypes.h"
+#include "PjcUnused.h"
 #include "AssetRegistry/AssetRegistryState.h"
 #include "Curves/CurveFloat.h"
 #include "Engine/AssetManager.h"
@@ -897,6 +898,64 @@ bool FPjcTestCookShipped::RunTest(const FString& Parameters) {
 
 	IFileManager::Get().DeleteDirectory(*PlatformDir, false, true);
 	TestFalse(TEXT("no cook"), FPjcCookInfo::GetLast().IsFound());
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPjcTestUnusedDelete, "ProjectCleaner.Unused.Delete", PJC_TEST_FLAGS)
+
+bool FPjcTestUnusedDelete::RunTest(const FString& Parameters) {
+	if (!FPjcTestFixture::IsTestHost()) {
+		AddInfo(TEXT("Skipped, deletes fixture assets, runs only in test host projects"));
+		return true;
+	}
+
+	FPjcScopedScanSettings ScopedSettings {false};
+	FPjcTestFixture Fixture;
+	if (!Fixture.Build(*this)) return false;
+	if (!TestTrue(TEXT("scanned"), UPjcSubsystem::Scan(false))) return false;
+	const FPjcScanResult& Result = UPjcSubsystem::GetScanResult();
+
+	// folders with their unused totals
+	const FPjcUnusedTree Tree = FPjcUnusedTree::Make(Result);
+	const FString UnusedPath = FPjcTestFixture::RootPath() / TEXT("Unused");
+	const TSharedPtr<FPjcUnusedFolder> Root = Tree.Find(TEXT("/Game"));
+	const TSharedPtr<FPjcUnusedFolder> Unused = Tree.Find(UnusedPath);
+	if (!TestTrue(TEXT("folders found"), Root.IsValid() && Unused.IsValid())) return false;
+	TestTrue(TEXT("/Game is the first root"), Tree.Roots.Num() > 0 && Tree.Roots[0] == Root);
+	TestTrue(TEXT("unused folder is all unused"), Unused->IsAllUnused());
+	TestTrue(TEXT("parent has the subfolder totals"), Tree.Find(FPjcTestFixture::RootPath())->Unused.Num >= Unused->Unused.Num);
+	for (const auto& EmptyFolder : Fixture.EmptyFolders()) {
+		const TSharedPtr<FPjcUnusedFolder> Folder = Tree.Find(UPjcSubsystem::PathConvertToRelative(EmptyFolder));
+		TestTrue(*FString::Printf(TEXT("%s marked empty"), *EmptyFolder), Folder.IsValid() && Folder->bEmpty);
+	}
+	TArray<int32> Direct;
+	TArray<int32> WithSubfolders;
+	Tree.GetUnused(Result, UnusedPath, false, Direct);
+	Tree.GetUnused(Result, UnusedPath, true, WithSubfolders);
+	TestEqual(TEXT("unused with subfolders"), WithSubfolders.Num(), Unused->Unused.Num);
+	TestTrue(TEXT("unused directly in the folder"), Direct.Num() > 0 && Direct.Num() < WithSubfolders.Num());
+
+	// the unused asset that references the leaf goes with it
+	const FName Leaf = PackageOf(Fixture, TEXT("C_UnusedLeaf"));
+	const FName LeafRoot = PackageOf(Fixture, TEXT("OL_UnusedRoot"));
+	TArray<FName> Group;
+	FPjcUnusedTree::GetDeleteGroup(Result, {Leaf}, Group);
+	TestEqual(TEXT("leaf goes with its unused referencer"), Group, TArray<FName> {LeafRoot});
+	FPjcUnusedTree::GetDeleteGroup(Result, {LeafRoot}, Group);
+	TestEqual(TEXT("nothing references the root"), Group.Num(), 0);
+
+	// deletes exactly the given assets
+	TArray<FAssetData> ToDelete;
+	for (const auto& Asset : Result.Assets) {
+		if (Asset.PackageName == Leaf || Asset.PackageName == LeafRoot) {
+			ToDelete.Add(Asset);
+		}
+	}
+	TestEqual(TEXT("assets to delete"), ToDelete.Num(), 2);
+	TestTrue(TEXT("deleted"), UPjcSubsystem::DeleteAssets(ToDelete, false, false));
+	TestFalse(TEXT("leaf gone"), FPackageName::DoesPackageExist(Leaf.ToString()));
+	TestFalse(TEXT("root gone"), FPackageName::DoesPackageExist(LeafRoot.ToString()));
+	TestTrue(TEXT("other unused asset kept"), FPackageName::DoesPackageExist(PackageOf(Fixture, TEXT("C_Unused")).ToString()));
 	return true;
 }
 

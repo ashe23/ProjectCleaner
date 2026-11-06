@@ -107,7 +107,7 @@ class UPjcSubsystem final : public UEditorSubsystem
 	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Asset")
 	static FString GetAssetHolder(const FAssetData& InAsset);
 
-	/** Assets last DeleteAssetsUnused could not delete (by package name) and what kept them */
+	/** Assets the last delete (DeleteAssetsUnused, DeleteAssets) could not delete, by package name, and what kept them */
 	static const TMap<FName, FString>& GetLastCleanupKept();
 	/** Short plain words for usage reason, e.g. "Primary asset Map:L_Main" */
 	static FString GetUsageReasonText(const FPjcAssetUsage& Usage);
@@ -275,6 +275,16 @@ class UPjcSubsystem final : public UEditorSubsystem
 	 */
 	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Asset")
 	static bool DeleteAssetsUnused(const bool bShowSlowTask = true, const bool bShowEditorNotification = false);
+
+	/**
+	 * @brief Delete given assets the way DeleteAssetsUnused does: referencers first, what something holds is kept and recorded (GetLastCleanupKept).
+	 * Callers pass unused assets with the unused assets that reference them; a referenced asset is not deleted.
+	 * @param Assets assets to delete
+	 * @param bShowSlowTask bool
+	 * @param bShowEditorNotification bool
+	 * @return true if all given assets were deleted
+	 */
+	static bool DeleteAssets(const TArray<FAssetData>& Assets, const bool bShowSlowTask = true, const bool bShowEditorNotification = false);
 
 	/**
 	 * @brief Delete all empty folders in project
@@ -508,6 +518,8 @@ class UPjcSubsystem final : public UEditorSubsystem
 
   private:
 
+	/** Asset registry ready, asset editors closed, unsaved assets saved */
+	static bool PrepareDelete();
 	static void BucketFill(TArray<FAssetData>& AssetsUnused, TArray<FAssetData>& Bucket, const int32 BucketSize, const TSet<FName>& PackagesUnused);
 	static int32 DeleteAssetsReferencedByFolderLabels(const TArray<FAssetData>& Assets);
 	static int32 DeleteAssetsHeldByEachOther(const TArray<FAssetData>& Assets);

@@ -2,6 +2,7 @@
 
 #include "Slate/SPjcTabUnused.h"
 #include "Slate/PjcWidgets.h"
+#include "Slate/SPjcDeleteDialog.h"
 #include "Slate/SPjcScanBar.h"
 #include "Slate/SPjcToolFrame.h"
 #include "PjcFormat.h"
@@ -170,6 +171,7 @@ namespace
 	const FName PjcUnusedColClass {TEXT("Class")};
 	const FName PjcUnusedColAssetSize {TEXT("AssetSize")};
 	const FName PjcUnusedColPath {TEXT("Path")};
+	const FName PjcUnusedColGroup {TEXT("Group")};
 
 	/** Unused asset row: type color and icon, name with tags, class, size, folder */
 	class SPjcUnusedAssetRow final : public SMultiColumnTableRow<TSharedPtr<FPjcUnusedAssetRow>>
@@ -251,6 +253,21 @@ namespace
 				return SNew(SBox).VAlign(
 					VAlign_Center
 				)[SNew(STextBlock).Text(FText::FromString(Row->Folder.IsEmpty() ? TEXT("·") : Row->Folder)).ColorAndOpacity(Muted)];
+			}
+
+			if (Column == PjcUnusedColGroup) {
+				const FString Text = Row->Group > 0 ? TEXT("+") + PjcFormat::Count(Row->Group) : FString {};
+				const FString Tip = FString::Printf(TEXT("%s unused assets reference it and are deleted with it"), *PjcFormat::Count(Row->Group));
+				return SNew(SBox)
+					.HAlign(HAlign_Right)
+					.VAlign(VAlign_Center)
+					.Padding(FMargin {0.0f, 0.0f, 8.0f, 0.0f})
+					.ToolTipText(
+						Row->Group > 0 ? FText::FromString(Tip) : FText::GetEmpty()
+					)[SNew(STextBlock)
+						  .Text(FText::FromString(Text))
+						  .Font(PjcWidgets::GetFontMono(9))
+						  .ColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.Yellow"))];
 			}
 
 			return SNullWidget::NullWidget;
@@ -352,6 +369,7 @@ void SPjcTabUnused::OnScanFinished() {
 
 	// assets only folder labels keep are unused while labels do not count: tagged LABEL
 	LabelOnly.Reset();
+	GroupSizes.Reset();
 	if (!GetDefault<UPjcScanSettings>()->bFolderLabelsUsed) {
 		for (const auto& Asset : UPjcSubsystem::GetScanResult().FolderLabelOnly) {
 			LabelOnly.Add(Asset.PackageName);
@@ -575,6 +593,22 @@ TSharedPtr<SWidget> SPjcTabUnused::OnFolderContextMenu() {
 	const FFolderPtr Folder = Selection[0];
 	FMenuBuilder Menu {true, nullptr};
 	Menu.AddMenuEntry(
+		FText::FromString(FString::Printf(TEXT("Delete unused… (%s)"), *PjcFormat::Count(Folder->Unused.Num))),
+		FText::FromString(TEXT("Deletes the unused assets of the folder and its subfolders, with the unused assets that reference them")),
+		FSlateIcon {},
+		FUIAction {
+		  FExecuteAction::CreateLambda([this, Folder]() {
+			  TArray<FName> Packages;
+			  GetFolderUnused(Folder->Path, Packages);
+			  DeleteWithGroup(Packages);
+		  }),
+		  FCanExecuteAction::CreateLambda([Folder]() {
+			  return Folder->Unused.Num > 0;
+		  })
+		}
+	);
+	Menu.AddSeparator();
+	Menu.AddMenuEntry(
 		FText::FromString(TEXT("Expand all")),
 		FText::FromString(TEXT("Opens every subfolder")),
 		FSlateIcon {},
@@ -683,13 +717,22 @@ TSharedRef<SWidget> SPjcTabUnused::MakeAssetPane() {
 		.DefaultTooltip(FText::FromString(TEXT("Subfolder of the selected folder")))
 		.FillWidth(0.5f)
 		.SortMode(this, &SPjcTabUnused::GetAssetSortMode, PjcUnusedColPath)
+		.OnSort(this, &SPjcTabUnused::OnAssetSort)
+		+ SHeaderRow::Column(PjcUnusedColGroup)
+		.DefaultLabel(FText::FromString(TEXT("Group")))
+		.DefaultTooltip(FText::FromString(TEXT("Assets deleted with it: the unused assets that reference it")))
+		.FixedWidth(66.0f)
+		.HAlignHeader(HAlign_Right)
+		.SortMode(this, &SPjcTabUnused::GetAssetSortMode, PjcUnusedColGroup)
 		.OnSort(this, &SPjcTabUnused::OnAssetSort);
 
 	SAssignNew(ListView, SListView<FAssetRowPtr>)
 		.ListItemsSource(&ListRows)
 		.SelectionMode(ESelectionMode::Multi)
 		.HeaderRow(Header)
-		.OnGenerateRow(this, &SPjcTabUnused::OnGenerateAssetRow);
+		.OnGenerateRow(this, &SPjcTabUnused::OnGenerateAssetRow)
+		.OnContextMenuOpening(this, &SPjcTabUnused::OnAssetContextMenu)
+		.OnKeyDownHandler(this, &SPjcTabUnused::OnAssetKeyDown);
 
 	return SNew(SBorder)
 		.BorderImage(PjcShim::GetBrush(TEXT("ToolPanel.GroupBorder")))
@@ -773,6 +816,14 @@ void SPjcTabUnused::RefreshAssets() {
 		Row->Size = Result.GetSize(Asset.PackageName);
 		Row->Folder = Path.Len() > SelectedFolder.Len() ? Path.Mid(SelectedFolder.Len() + 1) : FString {};
 		Row->bLabel = LabelOnly.Contains(Asset.PackageName);
+		if (const int32* Group = GroupSizes.Find(Asset.PackageName)) {
+			Row->Group = *Group;
+		}
+		else {
+			TArray<FName> With;
+			FPjcUnusedTree::GetDeleteGroup(Result, {Asset.PackageName}, With);
+			Row->Group = GroupSizes.Add(Asset.PackageName, With.Num());
+		}
 		FolderRows.Add(Row);
 	}
 
@@ -811,6 +862,9 @@ void SPjcTabUnused::ApplyAssetFilter() {
 		}
 		else if (Column == PjcUnusedColClass) {
 			Compare = A->ClassLabel.Compare(B->ClassLabel, ESearchCase::IgnoreCase);
+		}
+		else if (Column == PjcUnusedColGroup) {
+			Compare = A->Group < B->Group ? -1 : (A->Group > B->Group ? 1 : 0);
 		}
 		else if (Column == PjcUnusedColPath) {
 			Compare = A->Folder.Compare(B->Folder, ESearchCase::IgnoreCase);
@@ -934,7 +988,7 @@ TSharedRef<ITableRow> SPjcTabUnused::OnGenerateAssetRow(FAssetRowPtr Row, const 
 void SPjcTabUnused::OnAssetSort(EColumnSortPriority::Type Priority, const FName& Column, EColumnSortMode::Type Mode) {
 	// a new column starts with the biggest (names a to z)
 	if (Column != AssetSortColumn) {
-		Mode = Column == PjcUnusedColAssetSize ? EColumnSortMode::Descending : EColumnSortMode::Ascending;
+		Mode = Column == PjcUnusedColAssetSize || Column == PjcUnusedColGroup ? EColumnSortMode::Descending : EColumnSortMode::Ascending;
 	}
 	AssetSortColumn = Column;
 	AssetSortMode = Mode;
@@ -995,4 +1049,97 @@ void SPjcTabUnused::SaveViewState() const {
 	GConfig->SetBool(PjcUnusedSection, TEXT("Subfolders"), bSubfolders, GEditorPerProjectIni);
 	GConfig->SetString(PjcUnusedSection, TEXT("AssetSort"), *AssetSortColumn.ToString(), GEditorPerProjectIni);
 	GConfig->SetBool(PjcUnusedSection, TEXT("AssetSortDescending"), AssetSortMode == EColumnSortMode::Descending, GEditorPerProjectIni);
+}
+
+TSharedPtr<SWidget> SPjcTabUnused::OnAssetContextMenu() {
+	const TArray<FName> Packages = GetSelectedPackages();
+	if (Packages.Num() == 0) return nullptr;
+
+	FMenuBuilder Menu {true, nullptr};
+	Menu.AddMenuEntry(
+		FText::FromString(FString::Printf(TEXT("Delete… (%s)"), *PjcFormat::Count(Packages.Num()))),
+		FText::FromString(TEXT("Deletes the selection with the unused assets that reference it")),
+		FSlateIcon {},
+		FUIAction {FExecuteAction::CreateLambda([this, Packages]() {
+			DeleteWithGroup(Packages);
+		})}
+	);
+	return Menu.MakeWidget();
+}
+
+FReply SPjcTabUnused::OnAssetKeyDown(const FGeometry& Geometry, const FKeyEvent& KeyEvent) {
+	if (KeyEvent.GetKey() == EKeys::Delete && ListView->GetNumItemsSelected() > 0) {
+		DeleteWithGroup(GetSelectedPackages());
+		return FReply::Handled();
+	}
+	return FReply::Unhandled();
+}
+
+TArray<FName> SPjcTabUnused::GetSelectedPackages() const {
+	TArray<FName> Packages;
+	for (const auto& Row : ListRows) {
+		if (ListView->IsItemSelected(Row)) {
+			Packages.Add(Row->Package);
+		}
+	}
+	return Packages;
+}
+
+void SPjcTabUnused::GetFolderUnused(const FString& Path, TArray<FName>& OutPackages) const {
+	const FPjcScanResult& Result = UPjcSubsystem::GetScanResult();
+	TArray<int32> Indices;
+	Tree.GetUnused(Result, Path, true, Indices);
+	OutPackages.Reset(Indices.Num());
+	for (const int32 Index : Indices) {
+		OutPackages.Add(Result.Assets[Index].PackageName);
+	}
+}
+
+void SPjcTabUnused::DeleteWithGroup(const TArray<FName>& Packages) {
+	if (Packages.Num() == 0) return;
+
+	const FPjcScanResult& Result = UPjcSubsystem::GetScanResult();
+	TArray<FName> GroupPackages;
+	FPjcUnusedTree::GetDeleteGroup(Result, Packages, GroupPackages);
+
+	// asset data of scanned assets and redirectors
+	TMap<FName, const FAssetData*> ByPackage;
+	for (const auto& Asset : Result.Assets) {
+		ByPackage.Add(Asset.PackageName, &Asset);
+	}
+	for (const auto& Asset : Result.Redirectors) {
+		ByPackage.Add(Asset.PackageName, &Asset);
+	}
+	const auto ToAssets = [&ByPackage](const TArray<FName>& Names, TArray<FAssetData>& Out) {
+		for (const FName Name : Names) {
+			if (const FAssetData* const* Found = ByPackage.Find(Name)) {
+				Out.Add(**Found);
+			}
+		}
+	};
+	TArray<FAssetData> Selected;
+	TArray<FAssetData> With;
+	ToAssets(Packages, Selected);
+	ToAssets(GroupPackages, With);
+
+	// what the last delete could not remove
+	TArray<FString> Held;
+	const TMap<FName, FString>& Kept = UPjcSubsystem::GetLastCleanupKept();
+	for (const auto& Asset : Selected) {
+		if (const FString* Holder = Kept.Find(Asset.PackageName)) {
+			Held.Add(*Holder);
+		}
+	}
+	for (const auto& Asset : With) {
+		if (const FString* Holder = Kept.Find(Asset.PackageName)) {
+			Held.Add(*Holder);
+		}
+	}
+
+	if (!SPjcDeleteDialog::Confirm(Selected, With, Held)) return;
+
+	TArray<FAssetData> All = Selected;
+	All.Append(With);
+	UPjcSubsystem::DeleteAssets(All, true, true);
+	SPjcScanBar::ScanProject();
 }

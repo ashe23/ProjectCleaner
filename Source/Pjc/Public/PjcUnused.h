@@ -51,4 +51,10 @@ struct FPjcUnusedTree
 
 	/** Unused assets in a folder, and in its subfolders when asked, as indices into FPjcScanResult::Assets */
 	void GetUnused(const FPjcScanResult& Result, const FString& Path, const bool bSubfolders, TArray<int32>& OutAssets) const;
+
+	/**
+	 * What goes with deleting the given packages: the unused assets and redirectors that reference them, transitively.
+	 * The engine does not delete an asset something still references. Given packages are not in the group.
+	 */
+	static void GetDeleteGroup(const FPjcScanResult& Result, const TArray<FName>& Packages, TArray<FName>& OutGroup);
 };

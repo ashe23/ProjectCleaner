@@ -59,6 +59,30 @@ FPjcUnusedTree FPjcUnusedTree::Make(const FPjcScanResult& Result) {
 	return Tree;
 }
 
+void FPjcUnusedTree::GetDeleteGroup(const FPjcScanResult& Result, const TArray<FName>& Packages, TArray<FName>& OutGroup) {
+	OutGroup.Reset();
+
+	TSet<FName> Seen {Packages};
+	TArray<FName> Stack = Packages;
+	TArray<FName> Referencers;
+	while (Stack.Num() > 0) {
+		const FName Package = Stack.Pop();
+		Referencers.Reset();
+		UPjcSubsystem::GetModuleAssetRegistry().Get().GetReferencers(Package, Referencers);
+		Referencers.Sort(FNameLexicalLess {});
+
+		for (const FName Referencer : Referencers) {
+			// unused: nothing used reaches it (redirectors included, usage has them)
+			const FPjcAssetUsage* Usage = Result.Usage.Find(Referencer);
+			if (!Usage || Usage->bUsed || Seen.Contains(Referencer)) continue;
+
+			Seen.Add(Referencer);
+			OutGroup.Add(Referencer);
+			Stack.Add(Referencer);
+		}
+	}
+}
+
 void FPjcUnusedTree::GetUnused(const FPjcScanResult& Result, const FString& Path, const bool bSubfolders, TArray<int32>& OutAssets) const {
 	OutAssets.Reset();
 

@@ -29,6 +29,8 @@ struct FPjcUnusedAssetRow
 	FString Folder;
 	/** Only a folder label keeps it, while Folder labels is on */
 	bool bLabel = false;
+	/** Unused assets that reference it and are deleted with it */
+	int32 Group = 0;
 };
 
 /**
@@ -97,6 +99,14 @@ class SPjcTabUnused final : public SCompoundWidget
 	void OnChipClicked(const FName ClassName);
 	FText GetWhereText() const;
 	FText GetWhereInfoText() const;
+	TSharedPtr<SWidget> OnAssetContextMenu();
+	FReply OnAssetKeyDown(const FGeometry& Geometry, const FKeyEvent& KeyEvent);
+
+	// actions
+	TArray<FName> GetSelectedPackages() const;
+	/** Asks, then deletes the packages with the unused assets that reference them, and scans again */
+	void DeleteWithGroup(const TArray<FName>& Packages);
+	void GetFolderUnused(const FString& Path, TArray<FName>& OutPackages) const;
 
 	void SaveViewState() const;
 
@@ -127,6 +137,8 @@ class SPjcTabUnused final : public SCompoundWidget
 	TMap<FName, FTypeInfo> TypeInfos;
 	/** Assets only folder labels keep (unused while Folder labels is off) */
 	TSet<FName> LabelOnly;
+	/** Delete group size per package, made when listed */
+	TMap<FName, int32> GroupSizes;
 	TSet<FName> ClassFilter;
 	bool bSubfolders = true;
 	FString AssetSearch;

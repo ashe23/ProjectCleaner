@@ -1476,6 +1476,21 @@ void UPjcSubsystem::GetFoldersEmpty(TArray<FString>& Folders) {
 }
 
 bool UPjcSubsystem::DeleteAssetsUnused(const bool bShowSlowTask, const bool bShowEditorNotification) {
+	// saved first: unsaved edits could reference assets that look unused on disk
+	if (!PrepareDelete()) return false;
+
+	TArray<FAssetData> AssetsUnused;
+	GetAssetsUnused(AssetsUnused);
+
+	if (AssetsUnused.Num() == 0) {
+		UE_LOG(LogProjectCleaner, Display, TEXT("The project currently contains no unused assets, thus there are no items to delete."));
+		return true;
+	}
+
+	return DeleteAssets(AssetsUnused, bShowSlowTask, bShowEditorNotification);
+}
+
+bool UPjcSubsystem::PrepareDelete() {
 	if (GetModuleAssetRegistry().Get().IsLoadingAssets()) {
 		UE_LOG(LogProjectCleaner, Warning, TEXT("Failed to delete unused assets, because AssetRegistry still discovering assets."));
 		UE_LOG(LogProjectCleaner, Warning, TEXT("Please wait until it finished and then try again."));
@@ -1500,13 +1515,14 @@ bool UPjcSubsystem::DeleteAssetsUnused(const bool bShowSlowTask, const bool bSho
 		return false;
 	}
 
-	TArray<FAssetData> AssetsUnused;
-	GetAssetsUnused(AssetsUnused);
+	return true;
+}
 
-	if (AssetsUnused.Num() == 0) {
-		UE_LOG(LogProjectCleaner, Display, TEXT("The project currently contains no unused assets, thus there are no items to delete."));
-		return true;
-	}
+bool UPjcSubsystem::DeleteAssets(const TArray<FAssetData>& Assets, const bool bShowSlowTask, const bool bShowEditorNotification) {
+	if (!PrepareDelete()) return false;
+	if (Assets.Num() == 0) return true;
+
+	TArray<FAssetData> AssetsUnused = Assets;
 
 	// asset delete handlers (e.g. RigVM) create it on first use, building it while assets are half deleted asserts (UE 5.4)
 	FBlueprintActionDatabase::Get();
