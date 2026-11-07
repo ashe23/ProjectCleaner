@@ -28,6 +28,7 @@
 #include "Engine/ObjectLibrary.h"
 #include "Engine/PrimaryAssetLabel.h"
 #include "Factories/Factory.h"
+#include "Misc/CoreMisc.h"
 #include "GameFramework/Actor.h"
 #include "GameFramework/PlayerController.h"
 #include "HAL/FileManager.h"
@@ -216,8 +217,9 @@ bool FPjcTestFixture::Build(FAutomationTestBase& Test, const bool bApplyExcludeS
 	}
 
 #if PLATFORM_LINUX && ENGINE_MAJOR_VERSION < 5
-	// UE 4.27 on Linux logs as an error that the directory watcher cannot unwatch the fixture folders it deletes (5.0+: a warning)
-	Test.AddExpectedError(TEXT("inotify_rm_watch cannot remove descriptor"), EAutomationExpectedErrorFlags::Contains, 0);
+	// UE 4.27 on Linux logs as an error that the directory watcher cannot unwatch the fixture folders tests delete (5.0+: a warning).
+	// Muted for the test host session: an expected error would fail the tests that delete no folder (4.27 has no "zero or more")
+	FSelfRegisteringExec::StaticExec(nullptr, TEXT("log LogDirectoryWatcher Fatal"), *GLog);
 #endif
 
 	// editor asset discovery is async, all checks below need complete registry
