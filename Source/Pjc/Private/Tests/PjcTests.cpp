@@ -587,7 +587,8 @@ bool FPjcTestScanResult::RunTest(const FString& Parameters) {
 	TestFalse(TEXT("R_Test not in unused"), Result.Unused.ContainsByPredicate(IsRedirectorPackage));
 	TestFalse(TEXT("R_Test has no size"), Result.Sizes.Contains(RedirectorPackage));
 	TestTrue(TEXT("R_Test keeps its usage"), Result.Usage.Contains(RedirectorPackage));
-	TestTrue(TEXT("R_Test is an unused redirector"), AssetsUnused.ContainsByPredicate(IsRedirectorPackage));
+	TestFalse(TEXT("R_Test is no unused asset"), AssetsUnused.ContainsByPredicate(IsRedirectorPackage));
+	TestFalse(TEXT("R_Test is no asset"), AssetsAll.ContainsByPredicate(IsRedirectorPackage));
 	TestTrue(TEXT("redirectors are not in assets"), ToObjectPaths(Result.Assets).Intersect(Redirectors).Num() == 0);
 	TestEqual(TEXT("result assets"), ToObjectPaths(Result.Assets).Num(), WithoutRedirectors(AssetsAll).Num());
 	TestTrue(TEXT("result used assets"), ToObjectPaths(Result.Used).Difference(ToObjectPaths(AssetsUsed)).Num() == 0);
@@ -1009,6 +1010,16 @@ bool FPjcTestIssuesRedirectors::RunTest(const FString& Parameters) {
 	TestEqual(TEXT("R_Dangling broken"), static_cast<int32>(Dangling->State), static_cast<int32>(EPjcRedirectorState::Broken));
 	TestTrue(TEXT("unused broken redirector can be fixed"), Dangling->CanFix());
 
+	// redirectors are not assets; a real asset with a redirector inside is an asset, not a redirector
+	TestNull(TEXT("C_WithRedirector is no redirector"), Find(TEXT("C_WithRedirector")));
+	TArray<FAssetData> AssetsAll;
+	UPjcSubsystem::GetAssetsAll(AssetsAll);
+	const TSet<FString> Assets = FixtureAssets(AssetsAll);
+	TestTrue(TEXT("C_WithRedirector is an asset"), Assets.Contains(Fixture.ObjectPath(TEXT("C_WithRedirector"))));
+	for (const auto& Name : Fixture.RedirectorNames()) {
+		TestFalse(*FString::Printf(TEXT("%s is no asset"), *Name), Assets.Contains(Fixture.ObjectPath(Name)));
+	}
+
 	// fix: users resaved, every redirector deleted, targets kept
 	const FPjcRedirectorFixResult Result = UPjcSubsystem::FixRedirectorsWithReport({Moved->Asset, Stale->Asset, Dangling->Asset}, false);
 	TestEqual(TEXT("nothing kept"), Result.Kept.Num(), 0);
@@ -1207,6 +1218,10 @@ bool FPjcFixtureBuild::RunTest(const FString& Parameters) {
 	}
 	for (const auto& Name : UnusedNames) {
 		DeletedFiles.Add(RelativeToProject(Fixture.PackageFile(Name)));
+	}
+	// redirectors are not assets, only fixing them removes them
+	for (const auto& Name : Fixture.RedirectorNames()) {
+		KeptFiles.Add(RelativeToProject(Fixture.PackageFile(Name)));
 	}
 	KeptFiles.Add(RelativeToProject(Fixture.ExternalExcludedFile()));
 	KeptFiles.Add(RelativeToProject(FPjcTestFixture::IndirectConfigFile()));

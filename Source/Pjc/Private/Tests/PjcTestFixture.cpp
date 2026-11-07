@@ -37,7 +37,9 @@
 #include "Misc/FileHelper.h"
 #include "Misc/Parse.h"
 #include "Misc/Paths.h"
+#include "Misc/RedirectCollector.h"
 #include "UObject/ObjectRedirector.h"
+#include "UObject/UObjectHash.h"
 
 namespace
 {
@@ -281,7 +283,7 @@ bool FPjcTestFixture::CreateAssets(FAutomationTestBase& Test) {
 		return false;
 	}
 
-	// redirectors: used one keeps its target used, unused ones are deleted without touching their targets
+	// redirectors are not assets: used one keeps its target used, cleanup leaves all of them, only fixing removes them
 	UCurveFloat* Gone = nullptr;
 	if (bLyraLayout) {
 		UCurveFloat* Target = NewAsset<UCurveFloat>(Register(TEXT("Redirectors"), TEXT("C_Target")), Packages);
@@ -291,6 +293,20 @@ bool FPjcTestFixture::CreateAssets(FAutomationTestBase& Test) {
 		Gone = NewObject<UCurveFloat>(CreatePackage(*(RootPath() / TEXT("Redirectors/C_Gone"))), TEXT("C_Gone"), RF_Public);
 		NewRedirector(Register(TEXT("Redirectors"), TEXT("R_Dangling")), Gone, Packages);
 		Label->ExplicitAssets.Add(TSoftObjectPtr<UObject> {FSoftObjectPath {ObjectPath(TEXT("R_Moved"))}});
+
+		// real asset with a redirector inside (Level Sequence with a renamed Director Blueprint): an asset, not a redirector
+		UCurveFloat* WithRedirector = NewAsset<UCurveFloat>(Register(TEXT("Redirectors"), TEXT("C_WithRedirector")), Packages);
+		const FName InnerName {TEXT("C_WithRedirector_Old")};
+		UObjectRedirector* Inner = NewObject<UObjectRedirector>(WithRedirector->GetOutermost(), InnerName, RF_Public | RF_Standalone);
+		Inner->DestinationObject = WithRedirector;
+		FAssetRegistryModule::AssetCreated(Inner);
+		// registry before 5.5 unregisters the redirection on delete but does not register it on create (ensure)
+#if ENGINE_MAJOR_VERSION < 5 || (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION == 0)
+		GRedirectCollector.AddAssetPathRedirection(FName {*Inner->GetPathName()}, FName {*WithRedirector->GetPathName()});
+#elif ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION < 5
+		GRedirectCollector.AddAssetPathRedirection(FSoftObjectPath {Inner}, FSoftObjectPath {WithRedirector});
+#endif
+		Label->ExplicitAssets.Add(TSoftObjectPtr<UObject> {WithRedirector});
 	}
 
 	// folder label (cook rule) references everything in its folder
@@ -619,6 +635,21 @@ void FPjcTestFixture::Cleanup() {
 		}
 	}
 
+	// redirectors inside an asset package (C_WithRedirector) would keep the package alive and listed: in memory only, the
+	// engine deletes redirectors only when loaded from disk
+	for (const UObject* Object : Objects) {
+		const auto ForgetInnerRedirector = [Object](UObject* Inner) {
+			UObjectRedirector* Redirector = Cast<UObjectRedirector>(Inner);
+			if (Redirector && Inner != Object) {
+				FAssetRegistryModule::AssetDeleted(Redirector);
+				Redirector->DestinationObject = nullptr;
+				Redirector->ClearFlags(RF_Public | RF_Standalone);
+			}
+			return true;
+		};
+		ForEachObjectWithPackage(Object->GetOutermost(), ForgetInnerRedirector, false);
+	}
+
 	if (Objects.Num() > 0) {
 		ObjectTools::ForceDeleteObjects(Objects, false);
 	}
@@ -750,8 +781,8 @@ TArray<FString> FPjcTestFixture::UsedNames(const bool bScanPlugins, const bool b
 	}
 
 	if (bLyraLayout) {
-		// used redirector and its target, BP_Placed referenced only by external actor package of L_Feature
-		Names.Append({TEXT("R_Moved"), TEXT("C_Target"), TEXT("BP_Placed")});
+		// target of the used redirector, asset with a redirector inside, BP_Placed referenced only by external actor package of L_Feature
+		Names.Append({TEXT("C_Target"), TEXT("C_WithRedirector"), TEXT("BP_Placed")});
 		if (bScanPlugins) {
 			Names.Append({TEXT("C_FeatureIndirect"), TEXT("L_Feature")});
 #if ENGINE_MAJOR_VERSION >= 5
@@ -788,14 +819,15 @@ TArray<FString> FPjcTestFixture::UnusedNames(const bool bScanPlugins, const bool
 		Names.Add(TEXT("C_RefByPlugin"));
 	}
 
-	if (bLyraLayout) {
-		Names.Append({TEXT("R_Stale"), TEXT("R_Dangling")});
-		if (bScanPlugins) {
-			Names.Add(TEXT("C_FeatureUnused"));
-		}
+	if (bLyraLayout && bScanPlugins) {
+		Names.Add(TEXT("C_FeatureUnused"));
 	}
 
 	return Names;
+}
+
+TArray<FString> FPjcTestFixture::RedirectorNames() const {
+	return bLyraLayout ? TArray<FString> {TEXT("R_Moved"), TEXT("R_Stale"), TEXT("R_Dangling")} : TArray<FString> {};
 }
 
 TArray<FString> FPjcTestFixture::PrimaryNames() const {

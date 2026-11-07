@@ -1453,7 +1453,7 @@ def polygon_verify(p, scenario, settings, snapshot, text_refs, report, status, c
     modified_files = {path for code_, path in status if code_.strip() == "M"}
     added_files = {path for code_, path in status if code_ == "??"}
     deleted_packages = {file_to_package[f.lower()] for f in deleted_files if f.lower() in file_to_package}
-    # fixed redirectors are deleted after their referencers were resaved, unused ones are deleted as any asset
+    # redirectors are not assets: only fixing deletes them, after their referencers were resaved
     redirectors = {name for name in deleted_packages if any(c in REDIRECTOR_CLASSES for c in packages[name]["classes"])} if fixing else set()
     labels = {name for name, info in packages.items() if any(c in LABEL_CLASSES for c in info["classes"])}
 

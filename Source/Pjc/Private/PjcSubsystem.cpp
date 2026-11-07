@@ -236,6 +236,19 @@ void UPjcSubsystem::PostEditChangeProperty(FPropertyChangedEvent& PropertyChange
 
 void UPjcSubsystem::GetAssetsAll(TArray<FAssetData>& Assets) {
 	if (GetModuleAssetRegistry().Get().IsLoadingAssets()) return;
+
+	GetAssetsScanned(Assets);
+
+	// redirectors are not content: GetProjectRedirectors lists them and only fixing them removes them
+	TSet<FName> PackagesRedirector;
+	GetPackagesRedirector(PackagesRedirector);
+	Assets.RemoveAll([&PackagesRedirector](const FAssetData& Asset) {
+		return PackagesRedirector.Contains(Asset.PackageName);
+	});
+}
+
+void UPjcSubsystem::GetAssetsScanned(TArray<FAssetData>& Assets) {
+	if (GetModuleAssetRegistry().Get().IsLoadingAssets()) return;
 	if (ScanCacheGet(ScanCache.AssetsAll, Assets)) return;
 
 	Assets.Reset();
@@ -311,25 +324,17 @@ bool UPjcSubsystem::Scan(const bool bShowSlowTask) {
 	GetAssetsUnused(Result.Unused, bShowSlowTask);
 	GetAssetsFolderLabelOnly(Result.FolderLabelOnly, bShowSlowTask);
 
-	// redirectors are not content: they get their own list (one per package, its main asset) and leave the others
+	// redirectors are not content (none of the lists above has them): one per package, its main asset
 	TArray<FAssetData> Redirectors;
 	GetProjectRedirectors(Redirectors);
-	TSet<FName> RedirectorPackages;
+	TMap<FName, FAssetData> RedirectorByPackage;
 	for (const auto& Redirector : Redirectors) {
-		RedirectorPackages.Add(Redirector.PackageName);
-	}
-	const auto IsRedirector = [&RedirectorPackages](const FAssetData& Asset) {
-		return RedirectorPackages.Contains(Asset.PackageName);
-	};
-	for (const auto& Asset : Result.Assets) {
-		if (IsRedirector(Asset)) {
-			Result.Redirectors.Add(Asset);
+		const FAssetData* Found = RedirectorByPackage.Find(Redirector.PackageName);
+		if (!Found || (!Found->IsUAsset() && Redirector.IsUAsset())) {
+			RedirectorByPackage.Add(Redirector.PackageName, Redirector);
 		}
 	}
-	Result.Assets.RemoveAll(IsRedirector);
-	Result.Used.RemoveAll(IsRedirector);
-	Result.Unused.RemoveAll(IsRedirector);
-	Result.FolderLabelOnly.RemoveAll(IsRedirector);
+	RedirectorByPackage.GenerateValueArray(Result.Redirectors);
 
 	Result.Sizes.Reserve(Result.Assets.Num());
 	for (const auto& Asset : Result.Assets) {
@@ -506,7 +511,7 @@ void UPjcSubsystem::ComputeAssetsUsed(
 	TArray<FAssetData> AssetsEngineReferenced;
 	TArray<FPjcAssetIndirectInfo> AssetsIndirectInfos;
 
-	GetAssetsAll(AssetsAll);
+	GetAssetsScanned(AssetsAll);
 	// the registry gives assets and references in another order each editor session: walked in name order, every
 	// package gets the same parent and chain start in every scan
 	AssetsAll.Sort([](const FAssetData& A, const FAssetData& B) {
@@ -729,7 +734,10 @@ void UPjcSubsystem::ComputeAssetsUsed(
 		FollowDependencies(TSet<FName> {}, true);
 	}
 
-	// dependencies come per package, map them back to scanned assets so used + unused = all
+	// dependencies come per package, map them back to scanned assets so used + unused = all. Redirectors keep their
+	// usage (chains go through them), but are neither used nor unused assets
+	TSet<FName> PackagesRedirector;
+	GetPackagesRedirector(PackagesRedirector);
 	OutUsed.Reset(AssetsAll.Num());
 	OutFolderLabelOnly.Reset();
 	OutUsage.Reset();
@@ -737,7 +745,7 @@ void UPjcSubsystem::ComputeAssetsUsed(
 	for (const auto& Asset : AssetsAll) {
 		const FPjcAssetUsage* AssetUsage = Usage.Find(Asset.PackageName);
 		OutUsage.Add(Asset.PackageName, AssetUsage ? *AssetUsage : FPjcAssetUsage {});
-		if (!AssetUsage) continue;
+		if (!AssetUsage || PackagesRedirector.Contains(Asset.PackageName)) continue;
 
 		if (AssetUsage->bUsed) {
 			OutUsed.Emplace(Asset);
@@ -800,7 +808,7 @@ void UPjcSubsystem::GetAssetsPrimary(TArray<FAssetData>& Assets, const bool bSho
 	if (GetModuleAssetRegistry().Get().IsLoadingAssets()) return;
 
 	TArray<FAssetData> AssetsAll;
-	GetAssetsAll(AssetsAll);
+	GetAssetsScanned(AssetsAll);
 
 	TSet<FName> PackagesPrimary;
 	GetPackagesPrimary(PackagesPrimary);
@@ -888,7 +896,7 @@ void UPjcSubsystem::GetAssetsCircular(TArray<FAssetData>& Assets, const bool bSh
 	if (GetModuleAssetRegistry().Get().IsLoadingAssets()) return;
 
 	TArray<FAssetData> AssetsAll;
-	GetAssetsAll(AssetsAll);
+	GetAssetsScanned(AssetsAll);
 
 	Assets.Reset(AssetsAll.Num());
 
@@ -914,7 +922,7 @@ void UPjcSubsystem::GetAssetsEditor(TArray<FAssetData>& Assets, const bool bShow
 	if (GetModuleAssetRegistry().Get().IsLoadingAssets()) return;
 
 	TArray<FAssetData> AssetsAll;
-	GetAssetsAll(AssetsAll);
+	GetAssetsScanned(AssetsAll);
 
 	TSet<FName> ClassNamesEditor;
 	GetClassNamesEditor(ClassNamesEditor);
@@ -951,7 +959,7 @@ void UPjcSubsystem::GetAssetsExcluded(TArray<FAssetData>& Assets, const bool bSh
 	SlowTask.EnterProgressFrame(1.0f);
 
 	TArray<FAssetData> AssetsAll;
-	GetAssetsAll(AssetsAll);
+	GetAssetsScanned(AssetsAll);
 
 	TSet<FAssetData> AssetsExcluded;
 	AssetsExcluded.Reserve(AssetsAll.Num());
@@ -1034,7 +1042,7 @@ void UPjcSubsystem::GetAssetsEngineReferenced(TArray<FAssetData>& Assets, const 
 	if (ScanCacheGet(ScanCache.AssetsEngineReferenced, Assets)) return;
 
 	TArray<FAssetData> AssetsAll;
-	GetAssetsAll(AssetsAll);
+	GetAssetsScanned(AssetsAll);
 
 	Assets.Reset(AssetsAll.Num());
 
@@ -1097,7 +1105,7 @@ void UPjcSubsystem::GetPackagesPrimary(TSet<FName>& Packages) {
 
 	// levels are opened by name, so every map is primary, not only the ones the Asset Manager registers (e.g. Lyra TransitionMap)
 	TArray<FAssetData> AssetsAll;
-	GetAssetsAll(AssetsAll);
+	GetAssetsScanned(AssetsAll);
 	const FName ClassNameWorld = PjcShim::GetClassName(UWorld::StaticClass());
 	for (const auto& Asset : AssetsAll) {
 		if (PjcShim::GetAssetClassName(Asset) == ClassNameWorld) {
@@ -1905,7 +1913,37 @@ void UPjcSubsystem::GetProjectRedirectors(TArray<FAssetData>& Redirectors) {
 	PjcShim::AddFilterClass(Filter, UObjectRedirector::StaticClass());
 
 	Redirectors.Reset();
-	GetModuleAssetRegistry().Get().GetAssets(Filter, Redirectors);
+	IAssetRegistry& AssetRegistry = GetModuleAssetRegistry().Get();
+	AssetRegistry.GetAssets(Filter, Redirectors);
+
+	// a redirector next to a real asset (e.g. of a renamed Director Blueprint inside a Level Sequence) is part of that
+	// asset: fixing cannot delete it, only resaving that asset does
+	const FName RedirectorClass = PjcShim::GetClassName(UObjectRedirector::StaticClass());
+	TMap<FName, bool> PackagesRedirectorOnly;
+	TArray<FAssetData> PackageAssets;
+	for (const auto& Redirector : Redirectors) {
+		if (PackagesRedirectorOnly.Contains(Redirector.PackageName)) continue;
+
+		PackageAssets.Reset();
+		AssetRegistry.GetAssetsByPackageName(Redirector.PackageName, PackageAssets);
+		const bool bHasOtherAsset = PackageAssets.ContainsByPredicate([&RedirectorClass](const FAssetData& Asset) {
+			return PjcShim::GetAssetClassName(Asset) != RedirectorClass;
+		});
+		PackagesRedirectorOnly.Add(Redirector.PackageName, !bHasOtherAsset);
+	}
+	Redirectors.RemoveAll([&PackagesRedirectorOnly](const FAssetData& Redirector) {
+		return !PackagesRedirectorOnly.FindRef(Redirector.PackageName);
+	});
+}
+
+void UPjcSubsystem::GetPackagesRedirector(TSet<FName>& Packages) {
+	TArray<FAssetData> Redirectors;
+	GetProjectRedirectors(Redirectors);
+
+	Packages.Reset();
+	for (const auto& Redirector : Redirectors) {
+		Packages.Add(Redirector.PackageName);
+	}
 }
 
 bool UPjcSubsystem::ProjectHasRedirectors() {

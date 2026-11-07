@@ -127,7 +127,7 @@ int32 UPjcCommandlet::Main(const FString& Params) {
 		ReportInit();
 	}
 
-	// scanning works with redirectors (they are assets like any other), fixing them is optional
+	// redirectors are not assets: scans and cleanups leave them, only fixing them removes them
 	if (bFixRedirectors && UPjcSubsystem::ProjectHasRedirectors()) {
 		TArray<FAssetData> Redirectors;
 		UPjcSubsystem::GetProjectRedirectors(Redirectors);

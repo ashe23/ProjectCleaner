@@ -44,7 +44,8 @@ class UPjcSubsystem final : public UEditorSubsystem
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif
 
-	// Returns all assets in scanned content roots (/Game and project plugins if enabled in settings)
+	// Returns all assets in scanned content roots (/Game and project plugins if enabled in settings).
+	// Redirectors are not assets here, see GetProjectRedirectors
 	// @param Assets TArray<FAssetData>
 	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Asset")
 	static void GetAssetsAll(TArray<FAssetData>& Assets);
@@ -261,7 +262,7 @@ class UPjcSubsystem final : public UEditorSubsystem
 	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Path")
 	static bool DeleteFilesCorrupted(const bool bShowSlowTask = true, const bool bShowEditorNotification = false);
 
-	// Returns all redirectors in project
+	// Returns all redirectors in project, in packages that hold nothing else (a redirector next to a real asset is part of it)
 	// @param Redirectors TArray<FAssetData>
 	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Asset")
 	static void GetProjectRedirectors(TArray<FAssetData>& Redirectors);
@@ -423,6 +424,10 @@ class UPjcSubsystem final : public UEditorSubsystem
 
   private:
 
+	// Assets of the scanned roots, one per package, redirectors included: reference chains and roots go through them
+	static void GetAssetsScanned(TArray<FAssetData>& Assets);
+	// Packages of GetProjectRedirectors
+	static void GetPackagesRedirector(TSet<FName>& Packages);
 	// Asset registry ready, asset editors closed, unsaved assets saved
 	static bool PrepareDelete();
 	static void BucketFill(TArray<FAssetData>& AssetsUnused, TArray<FAssetData>& Bucket, const int32 BucketSize, const TSet<FName>& PackagesUnused);

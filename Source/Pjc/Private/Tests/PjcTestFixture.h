@@ -122,6 +122,8 @@ class FPjcTestFixture
 
 	TArray<FString> UsedNames(const bool bScanPlugins, const bool bFolderLabelsUsed = true) const;
 	TArray<FString> UnusedNames(const bool bScanPlugins, const bool bFolderLabelsUsed = true) const;
+	// redirectors are in neither list above, cleanups leave them
+	TArray<FString> RedirectorNames() const;
 	TArray<FString> PrimaryNames() const;
 	TArray<FString> ExcludedNames() const;
 	TArray<FString> EmptyFolders() const;

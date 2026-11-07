@@ -30,7 +30,7 @@ struct FPjcScanResult
 	// How long the scan took
 	double Seconds = 0.0;
 
-	// Scanned assets, one per package (GetAssetsAll without redirectors).
+	// Scanned assets, one per package (GetAssetsAll).
 	// Redirectors are not content: they are left out of Assets, Used, Unused, FolderLabelOnly and Sizes.
 	TArray<FAssetData> Assets;
 
