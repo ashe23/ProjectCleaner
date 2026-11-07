@@ -855,6 +855,13 @@ void UPjcSubsystem::GetAssetsIndirect(TArray<FAssetData>& Assets, TArray<FPjcAss
 				while (Match.EndsWith(TEXT(".")) || Match.EndsWith(TEXT("/"))) {
 					Match.LeftChopInline(1);
 				}
+				// package file names count as package names, e.g. "/Game/Maps/Main.umap" in a map list
+				for (const FString& Extension : {FPackageName::GetAssetPackageExtension(), FPackageName::GetMapPackageExtension()}) {
+					if (Match.EndsWith(Extension)) {
+						Match.LeftChopInline(Extension.Len());
+						break;
+					}
+				}
 				FString ObjectPath = PathConvertToObjectPath(Match);
 
 				// package names are common in configs too, e.g. "/Game/Maps/Main" instead of "/Game/Maps/Main.Main"

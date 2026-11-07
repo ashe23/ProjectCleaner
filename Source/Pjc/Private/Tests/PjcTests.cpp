@@ -287,7 +287,9 @@ bool FPjcTestScanClassification::RunTest(const FString& Parameters) {
 
 	TArray<FPjcAssetIndirectInfo> IndirectInfos;
 	UPjcSubsystem::GetAssetsIndirect(Assets, IndirectInfos, false);
-	const TArray<FString> IndirectNames {TEXT("C_Indirect"), TEXT("C_IndirectPackage"), TEXT("C_InPython"), TEXT("C_InPlatformConfig")};
+	const TArray<FString> IndirectNames {
+	  TEXT("C_Indirect"), TEXT("C_IndirectPackage"), TEXT("C_IndirectFile"), TEXT("C_InPython"), TEXT("C_InPlatformConfig")
+	};
 	const TSet<FString> Indirect = ObjectPaths(Fixture, IndirectNames);
 	TestSetEqual(*this, TEXT("indirect"), FixtureAssets(Assets), Indirect);
 

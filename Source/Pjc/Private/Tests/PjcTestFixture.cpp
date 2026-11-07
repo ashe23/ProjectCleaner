@@ -331,6 +331,7 @@ bool FPjcTestFixture::CreateAssets(FAutomationTestBase& Test) {
 	}
 	NewAsset<UCurveFloat>(Register(TEXT("Indirect"), TEXT("C_Indirect")), Packages);
 	NewAsset<UCurveFloat>(Register(TEXT("Indirect"), TEXT("C_IndirectPackage")), Packages);
+	NewAsset<UCurveFloat>(Register(TEXT("Indirect"), TEXT("C_IndirectFile")), Packages);
 	NewAsset<UCurveFloat>(Register(TEXT("Indirect"), TEXT("C_InPython")), Packages);
 	NewAsset<UCurveFloat>(Register(TEXT("Indirect"), TEXT("C_InPlatformConfig")), Packages);
 	NewAsset<UCurveFloat>(Register(TEXT("AlwaysCook"), TEXT("C_AlwaysCooked")), Packages);
@@ -523,7 +524,10 @@ void FPjcTestFixture::CreateFiles(const bool bCreateCorruptedFile) {
 
 	const FString IndirectAsset = ObjectPath(TEXT("C_Indirect"));
 	const FString IndirectPackage = *PackageNames.Find(TEXT("C_IndirectPackage"));
+	// package file name, like a map list entry "/Game/Maps/Main.umap"
+	const FString IndirectFile = *PackageNames.Find(TEXT("C_IndirectFile")) + FPackageName::GetAssetPackageExtension();
 	FString Config = FString::Printf(TEXT("[PjcTests]\nIndirectAsset=%s\nIndirectPackage=%s\n"), *IndirectAsset, *IndirectPackage);
+	Config += FString::Printf(TEXT("IndirectFile=%s\n"), *IndirectFile);
 	// Lyra layout: raw file loaded by its file name
 	if (bLyraLayout) {
 		Config += TEXT("RawIcon=PjcTests/Files/T_RawIcon.svg\n");
@@ -726,6 +730,7 @@ TArray<FString> FPjcTestFixture::UsedNames(const bool bScanPlugins, const bool b
 	  TEXT("C_ByFolder"),	  TEXT("CLC_ByClass"),		 TEXT("C_ByAsset"),			 TEXT("LS_Cinematic"),	 TEXT("EUB_Tool"),
 	  TEXT("BP_Primary"),	  TEXT("BP_PrimaryOutside"), TEXT("PAL_Folder"),		 TEXT("C_Indirect_fr"),	 TEXT("C_AlwaysCooked"),
 	  TEXT("C_RegistryData"), TEXT("C_InPython"),		 TEXT("C_InPlatformConfig"), TEXT("PAL_Collection"), TEXT("C_InCollection"),
+	  TEXT("C_IndirectFile"),
 	};
 
 	if (ValidatorBaseClass()) {
