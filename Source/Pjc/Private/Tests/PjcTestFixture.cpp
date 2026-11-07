@@ -215,6 +215,11 @@ bool FPjcTestFixture::Build(FAutomationTestBase& Test, const bool bApplyExcludeS
 		return false;
 	}
 
+#if PLATFORM_LINUX && ENGINE_MAJOR_VERSION < 5
+	// UE 4.27 on Linux logs as an error that the directory watcher cannot unwatch the fixture folders it deletes (5.0+: a warning)
+	Test.AddExpectedError(TEXT("inotify_rm_watch cannot remove descriptor"), EAutomationExpectedErrorFlags::Contains, 0);
+#endif
+
 	// editor asset discovery is async, all checks below need complete registry
 	AssetRegistry().SearchAllAssets(true);
 
