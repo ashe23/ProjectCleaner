@@ -1,5 +1,5 @@
 # ProjectCleaner
-Unreal engine plugin for managing unused assets and empty folders in your project.
+Unreal Engine plugin that finds unused assets and other content problems in your project, and cleans them up.
 
 No more need for Migration and other hacky methods.
 
@@ -20,17 +20,17 @@ Project Cleaner deletes files and can not know every way a project loads assets,
 3. Clean, then open the project and play your main levels before committing.
 
 # Features
-* Detection of unused assets, indirect assets (used in source code or config files), corrupted assets, external files and empty folders
-* Per-folder asset usage information
-* Inspector: why an asset is used, as a graph from every root down to it, with what uses it and what it uses
-* Optional scanning of project plugins content (for plugin based projects like Lyra)
-* Configurable scanning and exclusion settings
+* **Overview**: project numbers, what keeps assets used, storage by class and folder, issues, and the last cook compared with the scan
+* **Assets Unused**: unused assets folder by folder, as a tree or a size map; delete them with the assets that must go with them, or exclude them
+* **Inspector**: why an asset is used, as a graph from every root down to it, with what uses it and what it uses
+* **Issues**: redirectors, external files, corrupted files and empty folders
+* Scan bar and scan settings panel on every tab, optional scanning of project plugins content (for plugin based projects like Lyra)
 * Subsystem for Blueprints and Python, command line interface
 
-An asset is used when a used asset references it, or for its own reason: primary asset (like maps), named in source or config files, editor utility, excluded by you or referenced from outside scanned content. Cleanup never force deletes, assets still held in memory are kept and listed in Output Log.
+An asset is used when a used asset references it, or for its own reason: a map or primary asset, in a folder a Primary Asset Label covers, named in source or config files, an editor utility or editor tool data, a cinematic, a class you mark as always used, excluded by you or referenced from outside scanned content. Editor only uses count as used but are shown apart, because they do not ship with the game. Cleanup never force deletes: assets still held in memory are kept and marked as not deleted.
 
 # Settings
-Project Cleaner window > Settings menu, or **Project Settings > Plugins > Project Cleaner** (rules shared with the team) and **Editor Preferences > Plugins > Project Cleaner** (personal preferences).
+Scan settings panel on every tab, or **Project Settings > Plugins > Project Cleaner** (rules shared with the team). Personal preferences: **Editor Preferences > Plugins > Project Cleaner**. Both open from the Settings menu of the Project Cleaner window.
 
 # Command line
 ```
