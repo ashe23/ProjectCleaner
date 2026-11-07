@@ -1426,18 +1426,14 @@ def polygon_verify(p, scenario, settings, snapshot, text_refs, report, status, c
                 kept_live.add(m.group(1))
 
     expected_result = "cleaned" if cleanup else "scanned"
-    if cleanup and report.get("result") == "failed" and kept_live:
-        expected_result = "failed"
     if report.get("result") != expected_result:
         problems.append("commandlet exit {}, result '{}' (expected '{}')".format(code, report.get("result"), expected_result))
         if "before" not in report:
             return problems, notes
     elif code != 0:
         # engine turns any logged error into exit code 1 (e.g. ensures in engine background tasks)
+        # assets kept because something holds them are no error: cleanup still exits 0 for them
         plugin_errors = [e for e in log_lines(log, r": Error: ", 200) if "Pjc" in e or "ProjectCleaner" in e]
-        if kept_live:
-            # cleanup reports failure on purpose when it kept assets something holds in memory
-            plugin_errors = [e for e in plugin_errors if "Cleanup finished with errors" not in e]
         if plugin_errors:
             problems.append("commandlet exit {}: {}".format(code, plugin_errors[0][:200]))
         else:

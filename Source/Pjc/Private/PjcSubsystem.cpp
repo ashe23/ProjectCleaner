@@ -1662,6 +1662,7 @@ bool UPjcSubsystem::DeleteAssets(const TArray<FAssetData>& Assets, const bool bS
 
 	// assets can be deleted together with other assets, so count what is really gone
 	TArray<UObject*> AssetsRemaining;
+	int32 NumNotLoaded = 0;
 	for (const auto& Asset : AssetsToDelete) {
 		if (!FPackageName::DoesPackageExist(Asset.PackageName.ToString())) continue;
 
@@ -1671,6 +1672,7 @@ bool UPjcSubsystem::DeleteAssets(const TArray<FAssetData>& Assets, const bool bS
 		else {
 			UE_LOG(LogProjectCleaner, Warning, TEXT("Not deleted: %s"), *PjcShim::GetObjectPathString(Asset));
 			LastCleanupKept.Add(Asset.PackageName, TEXT("could not be loaded"));
+			++NumNotLoaded;
 		}
 	}
 
@@ -1706,7 +1708,8 @@ bool UPjcSubsystem::DeleteAssets(const TArray<FAssetData>& Assets, const bool bS
 		}
 	}
 
-	return !bErrors && NumAssetsDeleted == NumAssetsTotal;
+	// kept on purpose is no failure: something still holds those assets, deleting them would break it
+	return !bErrors && NumNotLoaded == 0;
 }
 
 int32 UPjcSubsystem::DeleteFiles(const TArray<FString>& Files) {

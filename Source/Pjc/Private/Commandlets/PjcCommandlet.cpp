@@ -182,6 +182,10 @@ int32 UPjcCommandlet::Main(const FString& Params) {
 	if (!bSuccess) {
 		UE_LOG(LogProjectCleanerCLI, Error, TEXT("Cleanup finished with errors, see log above."));
 	}
+	else if (const int32 NumKept = UPjcSubsystem::GetLastCleanupKept().Num()) {
+		// kept on purpose, not an error: the exit code stays 0
+		UE_LOG(LogProjectCleanerCLI, Warning, TEXT("Kept %d asset(s) that are still referenced, see warnings above."), NumKept);
+	}
 
 	ReportWrite(bSuccess ? TEXT("cleaned") : TEXT("failed"));
 

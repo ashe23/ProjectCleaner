@@ -223,7 +223,7 @@ class UPjcSubsystem final : public UEditorSubsystem
 	// Delete all unused assets in project. This does not delete excluded assets.
 	// @param bShowSlowTask bool
 	// @param bShowEditorNotification bool
-	// @return true if all unused assets were deleted
+	// @return true if nothing failed; assets kept because something still holds them count as success (GetLastCleanupKept)
 	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Asset")
 	static bool DeleteAssetsUnused(const bool bShowSlowTask = true, const bool bShowEditorNotification = false);
 
@@ -232,7 +232,7 @@ class UPjcSubsystem final : public UEditorSubsystem
 	// @param Assets assets to delete
 	// @param bShowSlowTask bool
 	// @param bShowEditorNotification bool
-	// @return true if all given assets were deleted
+	// @return true if nothing failed; assets kept because something still holds them count as success (GetLastCleanupKept)
 	static bool DeleteAssets(const TArray<FAssetData>& Assets, const bool bShowSlowTask = true, const bool bShowEditorNotification = false);
 
 	// Delete all empty folders in project
