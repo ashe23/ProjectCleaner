@@ -723,9 +723,14 @@ def log_lines(log_path, pattern, limit=25):
 
 
 def run_for_hosts(hosts, func, jobs, title):
-    """Runs func(host) -> (ok, summary) for every host, in parallel when jobs > 1."""
-    print(cyan("== {} ({} engine{}, {} job{})".format(title, len(hosts), "" if len(hosts) == 1 else "s", jobs, "" if jobs == 1 else "s")))
-    results = {}
+    """Runs func(host) -> (ok, summary) for every host, in parallel when jobs > 1.
+    Polygon passes projects, several can share one engine: results are kept per item, not per engine."""
+    noun = "project" if any(isinstance(h, Polygon) for h in hosts) else "engine"
+    print(cyan("== {} ({} {}{}, {} job{})".format(title, len(hosts), noun, "" if len(hosts) == 1 else "s", jobs, "" if jobs == 1 else "s")))
+    results = []
+
+    def label(host):
+        return "{} ({})".format(host.name, host.engine.version) if isinstance(host, Polygon) else host.engine.version
 
     def wrapped(host):
         start = time.time()
@@ -742,13 +747,13 @@ def run_for_hosts(hosts, func, jobs, title):
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, jobs)) as pool:
         for host, ok in pool.map(wrapped, hosts):
-            results[host.engine.version] = ok
+            results.append((label(host), ok))
 
-    failed = [v for v, ok in results.items() if not ok]
+    failed = [name for name, ok in results if not ok]
     if failed:
-        print(red("== {} failed for: {}".format(title, ", ".join(failed))))
+        print(red("== {} failed for {} of {}: {}".format(title, len(failed), len(results), ", ".join(failed))))
     else:
-        print(green("== {} passed for all {} engine(s)".format(title, len(results))))
+        print(green("== {} passed for all {} {}(s)".format(title, len(results), noun)))
     return not failed
 
 
