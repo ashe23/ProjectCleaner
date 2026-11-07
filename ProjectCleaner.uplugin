@@ -34,11 +34,17 @@
     "Plugins": [
         {
             "Name": "AssetManagerEditor",
-            "Enabled": true
+            "Enabled": true,
+            "WhitelistTargets": [
+                "Editor"
+            ]
         },
         {
             "Name": "EditorScriptingUtilities",
-            "Enabled": true
+            "Enabled": true,
+            "WhitelistTargets": [
+                "Editor"
+            ]
         }
     ]
 }
