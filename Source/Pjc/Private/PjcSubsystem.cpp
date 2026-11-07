@@ -14,7 +14,11 @@
 #include "EditorUtilityWidgetBlueprint.h"
 #include "FileHelpers.h"
 #include "ISourceControlModule.h"
+#if ENGINE_MAJOR_VERSION >= 5
 #include "HAL/PlatformFileManager.h"
+#else
+#include "HAL/PlatformFilemanager.h"
+#endif
 #include "ObjectTools.h"
 #include "ShaderCompiler.h"
 #include "Misc/ScopeExit.h"
