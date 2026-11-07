@@ -40,6 +40,7 @@ public class Pjc : ModuleRules
 				"Json",
 				"JsonUtilities",
                 // editor modules
+				"AnimationModifiers",
 				"AssetManagerEditor",
 				"Blutility",
 				"BlueprintGraph",
@@ -66,6 +67,8 @@ public class Pjc : ModuleRules
 			PrivateDependencyModuleNames.Add("RenderCore");
 			PrivateDependencyModuleNames.Add("EditorFramework");
 			PrivateDependencyModuleNames.Add("DeveloperToolSettings");
+			// AnimationModifier.h includes it
+			PrivateDependencyModuleNames.Add("AnimationBlueprintLibrary");
 		}
 	}
 }

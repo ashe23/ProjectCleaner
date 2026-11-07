@@ -9,6 +9,7 @@
 // Engine Headers
 #include "AssetManagerEditorModule.h"
 #include "BlueprintActionDatabase.h"
+#include "AnimationModifier.h"
 #include "EditorUtilityBlueprint.h"
 #include "EditorUtilityWidget.h"
 #include "EditorUtilityWidgetBlueprint.h"
@@ -1164,10 +1165,12 @@ void UPjcSubsystem::GetConfigFolders(TMap<FString, FString>& Folders) {
 void UPjcSubsystem::GetClassNamesEditor(TSet<FName>& ClassNames) {
 	ClassNames.Empty();
 
+	// animation modifiers are editor tools too: applied to animations in the editor, never used by the game
 	TArray<FName> ClassNamesEditorBase {
 	  PjcShim::GetClassName(UEditorUtilityWidget::StaticClass()),
 	  PjcShim::GetClassName(UEditorUtilityBlueprint::StaticClass()),
-	  PjcShim::GetClassName(UEditorUtilityWidgetBlueprint::StaticClass())
+	  PjcShim::GetClassName(UEditorUtilityWidgetBlueprint::StaticClass()),
+	  PjcShim::GetClassName(UAnimationModifier::StaticClass())
 	};
 	for (const auto& ClassPath : UPjcScanSettings::GetEditorClassPaths()) {
 		// no loading: classes of disabled plugins or other engine versions are just skipped

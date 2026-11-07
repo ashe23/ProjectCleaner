@@ -18,6 +18,7 @@
 #if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 6
 #include "ICollectionContainer.h"
 #endif
+#include "AnimationModifier.h"
 #include "AssetToolsModule.h"
 #include "EditorUtilityBlueprint.h"
 #include "EditorUtilityObject.h"
@@ -376,6 +377,10 @@ bool FPjcTestFixture::CreateAssets(FAutomationTestBase& Test) {
 	const UBlueprint* BlueprintPrimary = NewBlueprint(PrimaryPath, APlayerController::StaticClass(), UBlueprint::StaticClass(), Packages);
 	const FString UnusedPath = Register(TEXT("Blueprints"), TEXT("BP_Unused"));
 	const UBlueprint* BlueprintUnused = NewBlueprint(UnusedPath, AActor::StaticClass(), UBlueprint::StaticClass(), Packages);
+	if (!NewBlueprint(Register(TEXT("Editor"), TEXT("BP_AnimModifier")), UAnimationModifier::StaticClass(), UBlueprint::StaticClass(), Packages)) {
+		Test.AddError(TEXT("Failed to create animation modifier blueprint"));
+		return false;
+	}
 	if (UClass* ValidatorClass = ValidatorBaseClass()) {
 		if (!NewBlueprint(Register(TEXT("Editor"), TEXT("BP_Validator")), ValidatorClass, UBlueprint::StaticClass(), Packages)) {
 			Test.AddError(TEXT("Failed to create validator blueprint"));
@@ -768,6 +773,8 @@ TArray<FString> FPjcTestFixture::UsedNames(const bool bScanPlugins, const bool b
 	  TEXT("C_IndirectFile"),
 	};
 
+	// editor tools
+	Names.Add(TEXT("BP_AnimModifier"));
 	if (ValidatorBaseClass()) {
 		Names.Add(TEXT("BP_Validator"));
 	}

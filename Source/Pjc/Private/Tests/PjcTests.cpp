@@ -273,7 +273,7 @@ bool FPjcTestScanClassification::RunTest(const FString& Parameters) {
 	TestSetEqual(*this, TEXT("primary"), FixtureAssets(Assets), ObjectPaths(Fixture, Fixture.PrimaryNames()));
 
 	UPjcSubsystem::GetAssetsEditor(Assets, false);
-	TArray<FString> EditorNames {TEXT("EUB_Tool")};
+	TArray<FString> EditorNames {TEXT("EUB_Tool"), TEXT("BP_AnimModifier")};
 	if (FPjcTestFixture::ValidatorBaseClass()) {
 		EditorNames.Add(TEXT("BP_Validator"));
 	}
@@ -483,6 +483,7 @@ bool FPjcTestScanUsage::RunTest(const FString& Parameters) {
 	TestReason(TEXT("C_Indirect"), EPjcUsageReason::Indirect, nullptr, TEXT("PjcTests.ini, line 2"));
 	TestReason(TEXT("C_RefByPlugin"), EPjcUsageReason::EngineReferenced, nullptr, TEXT("/PjcTestContent/"));
 	TestReason(TEXT("EUB_Tool"), EPjcUsageReason::Editor, nullptr, nullptr);
+	TestReason(TEXT("BP_AnimModifier"), EPjcUsageReason::Editor, nullptr, nullptr);
 	if (FPjcTestFixture::ValidatorBaseClass()) {
 		TestReason(TEXT("BP_Validator"), EPjcUsageReason::Editor, nullptr, nullptr);
 	}
