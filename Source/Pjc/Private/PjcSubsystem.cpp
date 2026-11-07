@@ -2151,7 +2151,8 @@ FString UPjcSubsystem::PathNormalize(const FString& InPath) {
 		return {};
 	}
 
-	FString Path = FPaths::ConvertRelativePathToFull(InPath).TrimStartAndEnd();
+	// backslashes first: on Linux a path starting with one "\" counts as relative, and the engine dir gets prepended
+	FString Path = FPaths::ConvertRelativePathToFull(InPath.Replace(TEXT("\\"), TEXT("/"))).TrimStartAndEnd();
 	FPaths::RemoveDuplicateSlashes(Path);
 
 	// Collapse any ".." or "." references in the path
