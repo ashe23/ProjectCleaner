@@ -891,9 +891,12 @@ STAT_KEYS = {
 
 
 def parse_cli_stats(log):
-    """Returns list of stats blocks printed by the commandlet (before and after cleanup)."""
+    """Returns list of stats blocks printed by the commandlet (before and after cleanup).
+    On Linux -stdout with -FullStdOutLogOutput prints every log line twice: a line repeating the last key and value counts once,
+    and so does a block repeating the block before it."""
     blocks = []
     current = None
+    last = None
     regex = re.compile(r"LogProjectCleanerCLI: Display: ([A-Za-z ]+?) - (\d+)")
     with open(log, encoding="utf-8", errors="replace") as f:
         for line in f:
@@ -901,11 +904,15 @@ def parse_cli_stats(log):
             if not m or m.group(1) not in STAT_KEYS:
                 continue
             key = STAT_KEYS[m.group(1)]
+            value = int(m.group(2))
+            if (key, value) == last:
+                continue
+            last = (key, value)
             if current is None or key in current:
                 current = {}
                 blocks.append(current)
-            current[key] = int(m.group(2))
-    return blocks
+            current[key] = value
+    return [b for i, b in enumerate(blocks) if i == 0 or b != blocks[i - 1]]
 
 
 def commandlet_failed(code, log):
