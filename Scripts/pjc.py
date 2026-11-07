@@ -1451,6 +1451,15 @@ def polygon_verify(p, scenario, settings, snapshot, text_refs, report, status, c
     deleted_packages = {file_to_package[f.lower()] for f in deleted_files if f.lower() in file_to_package}
     # redirectors are not assets: only fixing deletes them, after their referencers were resaved
     redirectors = {name for name in deleted_packages if any(c in REDIRECTOR_CLASSES for c in packages[name]["classes"])} if fixing else set()
+    # cleanup deletes an unreferenced redirector together with the asset it points to
+    referenced = {dep for info in packages.values() for dep in info["deps"]}
+    stale = set()
+    if cleanup:
+        for name in deleted_packages:
+            classes = packages[name]["classes"]
+            only_redirector = classes and all(c in REDIRECTOR_CLASSES for c in classes)
+            if only_redirector and name not in referenced and set(packages[name]["deps"]) & deleted_packages:
+                stale.add(name)
     labels = {name for name, info in packages.items() if any(c in LABEL_CLASSES for c in info["classes"])}
 
     unused = {package_of(a) for a in before["assets_unused"]}
@@ -1499,7 +1508,7 @@ def polygon_verify(p, scenario, settings, snapshot, text_refs, report, status, c
 
     if cleanup:
         external = {p.rel(f).lower() for f in before["files_external"] + before["files_corrupted"]}
-        allowed_deleted = unused | redirectors
+        allowed_deleted = unused | redirectors | stale
         unexpected = sorted(f for f in deleted_files if file_to_package.get(f.lower()) not in allowed_deleted and f.lower() not in external)
         if unexpected:
             problems.append("{} file(s) deleted but not reported: {}".format(len(unexpected), ", ".join(unexpected[:8])))
@@ -1515,7 +1524,9 @@ def polygon_verify(p, scenario, settings, snapshot, text_refs, report, status, c
         if leftovers:
             problems.append("rescan after cleanup not clean: {}".format(leftovers))
         other_files = [f for f in deleted_files if f.lower() not in file_to_package]
-        notes.append("deleted {} assets, {} other files".format(len(deleted_packages - redirectors), len(other_files)))
+        notes.append("deleted {} assets, {} other files".format(len(deleted_packages - redirectors - stale), len(other_files)))
+        if stale:
+            notes.append("deleted {} redirector(s) to deleted assets".format(len(stale)))
     else:
         unexpected = sorted(name for name in deleted_packages if name not in redirectors)
         if unexpected:

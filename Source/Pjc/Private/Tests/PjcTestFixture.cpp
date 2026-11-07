@@ -315,7 +315,11 @@ bool FPjcTestFixture::CreateAssets(FAutomationTestBase& Test) {
 	FolderLabel->bLabelAssetsInMyDirectory = true;
 
 	// unused
-	NewAsset<UCurveFloat>(Register(TEXT("Unused"), TEXT("C_Unused")), Packages);
+	UCurveFloat* Unused = NewAsset<UCurveFloat>(Register(TEXT("Unused"), TEXT("C_Unused")), Packages);
+	if (bLyraLayout) {
+		// nothing references it and its target is unused: cleanup deletes both
+		NewRedirector(Register(TEXT("Redirectors"), TEXT("R_ToUnused")), Unused, Packages);
+	}
 	NewAsset<UCurveFloat>(RegisterPlugin(TEXT("C_PluginUnused")), Packages);
 	UCurveFloat* UnusedLeaf = NewAsset<UCurveFloat>(Register(TEXT("Unused"), TEXT("C_UnusedLeaf")), Packages);
 	UObjectLibrary* UnusedRoot = NewAsset<UObjectLibrary>(Register(TEXT("Unused"), TEXT("OL_UnusedRoot")), Packages);
@@ -827,7 +831,7 @@ TArray<FString> FPjcTestFixture::UnusedNames(const bool bScanPlugins, const bool
 }
 
 TArray<FString> FPjcTestFixture::RedirectorNames() const {
-	return bLyraLayout ? TArray<FString> {TEXT("R_Moved"), TEXT("R_Stale"), TEXT("R_Dangling")} : TArray<FString> {};
+	return bLyraLayout ? TArray<FString> {TEXT("R_Moved"), TEXT("R_Stale"), TEXT("R_Dangling"), TEXT("R_ToUnused")} : TArray<FString> {};
 }
 
 TArray<FString> FPjcTestFixture::PrimaryNames() const {

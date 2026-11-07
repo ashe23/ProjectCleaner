@@ -1587,6 +1587,15 @@ bool UPjcSubsystem::DeleteAssets(const TArray<FAssetData>& Assets, const bool bS
 	const int32 NumAssetsTotal = AssetsUnused.Num();
 	int32 NumAssetsDeleted = 0;
 
+	// an unreferenced redirector to an asset that goes would be left broken and hold that asset: it goes first.
+	// Redirectors are no unused assets, only this and fixing remove them
+	TArray<FAssetData> RedirectorsStale;
+	GetRedirectorsStale(PackagesUnused, RedirectorsStale);
+	if (RedirectorsStale.Num() > 0) {
+		const FPjcRedirectorFixResult Fixed = FixRedirectorsWithReport(RedirectorsStale, false);
+		UE_LOG(LogProjectCleaner, Display, TEXT("Deleted %d redirector(s) to deleted assets"), Fixed.Deleted.Num());
+	}
+
 	// Engine asks before loading many assets (UE 5.4+). In commandlets and unattended runs nobody can answer,
 	// default answer cancels loading and deletion aborts. Users can skip it too, they already confirmed deletion (#60).
 	UContentBrowserSettings* ContentBrowserSettings = GetMutableDefault<UContentBrowserSettings>();
@@ -1936,6 +1945,33 @@ void UPjcSubsystem::GetProjectRedirectors(TArray<FAssetData>& Redirectors) {
 	}
 	Redirectors.RemoveAll([&PackagesRedirectorOnly](const FAssetData& Redirector) {
 		return !PackagesRedirectorOnly.FindRef(Redirector.PackageName);
+	});
+}
+
+void UPjcSubsystem::GetRedirectorsStale(const TSet<FName>& PackagesDeleted, TArray<FAssetData>& Redirectors) {
+	GetProjectRedirectors(Redirectors);
+
+	// nothing references them and they point to a deleted package
+	IAssetRegistry& AssetRegistry = GetModuleAssetRegistry().Get();
+	TMap<FName, bool> PackagesStale;
+	TArray<FName> Links;
+	for (const auto& Redirector : Redirectors) {
+		if (PackagesStale.Contains(Redirector.PackageName)) continue;
+
+		Links.Reset();
+		AssetRegistry.GetReferencers(Redirector.PackageName, Links);
+		bool bStale = Links.Num() == 0;
+		if (bStale) {
+			Links.Reset();
+			AssetRegistry.GetDependencies(Redirector.PackageName, Links);
+			bStale = Links.ContainsByPredicate([&PackagesDeleted](const FName& Dependency) {
+				return PackagesDeleted.Contains(Dependency);
+			});
+		}
+		PackagesStale.Add(Redirector.PackageName, bStale);
+	}
+	Redirectors.RemoveAll([&PackagesStale](const FAssetData& Redirector) {
+		return !PackagesStale.FindRef(Redirector.PackageName);
 	});
 }
 

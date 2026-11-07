@@ -1002,7 +1002,8 @@ bool FPjcTestIssuesRedirectors::RunTest(const FString& Parameters) {
 	const FPjcRedirectorInfo* Moved = Find(TEXT("R_Moved"));
 	const FPjcRedirectorInfo* Stale = Find(TEXT("R_Stale"));
 	const FPjcRedirectorInfo* Dangling = Find(TEXT("R_Dangling"));
-	if (!TestTrue(TEXT("fixture redirectors found"), Moved && Stale && Dangling)) return false;
+	const FPjcRedirectorInfo* ToUnused = Find(TEXT("R_ToUnused"));
+	if (!TestTrue(TEXT("fixture redirectors found"), Moved && Stale && Dangling && ToUnused)) return false;
 	TestEqual(TEXT("R_Moved in use"), static_cast<int32>(Moved->State), static_cast<int32>(EPjcRedirectorState::InUse));
 	TestTrue(TEXT("R_Moved used by PAL_Root"), Moved->UsedBy.Contains(PackageOf(Fixture, TEXT("PAL_Root"))));
 	TestEqual(TEXT("R_Moved points to C_Target"), Moved->Target, PackageOf(Fixture, TEXT("C_Target")));
@@ -1021,13 +1022,14 @@ bool FPjcTestIssuesRedirectors::RunTest(const FString& Parameters) {
 	}
 
 	// fix: users resaved, every redirector deleted, targets kept
-	const FPjcRedirectorFixResult Result = UPjcSubsystem::FixRedirectorsWithReport({Moved->Asset, Stale->Asset, Dangling->Asset}, false);
+	const TArray<FAssetData> ToFix {Moved->Asset, Stale->Asset, Dangling->Asset, ToUnused->Asset};
+	const FPjcRedirectorFixResult Result = UPjcSubsystem::FixRedirectorsWithReport(ToFix, false);
 	TestEqual(TEXT("nothing kept"), Result.Kept.Num(), 0);
 	TestEqual(TEXT("nothing failed to resave"), Result.NotResaved.Num(), 0);
-	TestEqual(TEXT("redirectors deleted"), Result.Deleted.Num(), 3);
+	TestEqual(TEXT("redirectors deleted"), Result.Deleted.Num(), ToFix.Num());
 	TestTrue(TEXT("user resaved"), Result.NumResaved >= 1);
-	for (const TCHAR* Name : {TEXT("R_Moved"), TEXT("R_Stale"), TEXT("R_Dangling")}) {
-		TestFalse(*FString::Printf(TEXT("%s gone"), Name), FPackageName::DoesPackageExist(PackageOf(Fixture, Name).ToString()));
+	for (const auto& Name : Fixture.RedirectorNames()) {
+		TestFalse(*FString::Printf(TEXT("%s gone"), *Name), FPackageName::DoesPackageExist(PackageOf(Fixture, *Name).ToString()));
 	}
 	TestTrue(TEXT("C_Target kept"), FPackageName::DoesPackageExist(PackageOf(Fixture, TEXT("C_Target")).ToString()));
 	TestTrue(TEXT("C_ChainLeaf kept"), FPackageName::DoesPackageExist(PackageOf(Fixture, TEXT("C_ChainLeaf")).ToString()));
@@ -1219,9 +1221,10 @@ bool FPjcFixtureBuild::RunTest(const FString& Parameters) {
 	for (const auto& Name : UnusedNames) {
 		DeletedFiles.Add(RelativeToProject(Fixture.PackageFile(Name)));
 	}
-	// redirectors are not assets, only fixing them removes them
+	// redirectors are not assets, only fixing them removes them; one to a deleted asset goes with it
 	for (const auto& Name : Fixture.RedirectorNames()) {
-		KeptFiles.Add(RelativeToProject(Fixture.PackageFile(Name)));
+		const FString File = RelativeToProject(Fixture.PackageFile(Name));
+		(Name == TEXT("R_ToUnused") ? DeletedFiles : KeptFiles).Add(File);
 	}
 	KeptFiles.Add(RelativeToProject(Fixture.ExternalExcludedFile()));
 	KeptFiles.Add(RelativeToProject(FPjcTestFixture::IndirectConfigFile()));

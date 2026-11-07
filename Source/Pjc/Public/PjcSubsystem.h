@@ -428,6 +428,8 @@ class UPjcSubsystem final : public UEditorSubsystem
 	static void GetAssetsScanned(TArray<FAssetData>& Assets);
 	// Packages of GetProjectRedirectors
 	static void GetPackagesRedirector(TSet<FName>& Packages);
+	// Redirectors nothing references that point to one of the given packages
+	static void GetRedirectorsStale(const TSet<FName>& PackagesDeleted, TArray<FAssetData>& Redirectors);
 	// Asset registry ready, asset editors closed, unsaved assets saved
 	static bool PrepareDelete();
 	static void BucketFill(TArray<FAssetData>& AssetsUnused, TArray<FAssetData>& Bucket, const int32 BucketSize, const TSet<FName>& PackagesUnused);
