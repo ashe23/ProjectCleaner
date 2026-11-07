@@ -1452,18 +1452,17 @@ def polygon_verify(p, scenario, settings, snapshot, text_refs, report, status, c
     deleted_packages = {file_to_package[f.lower()] for f in deleted_files if f.lower() in file_to_package}
     # redirectors are not assets: only fixing deletes them, after their referencers were resaved
     redirectors = {name for name in deleted_packages if any(c in REDIRECTOR_CLASSES for c in packages[name]["classes"])} if fixing else set()
-    # cleanup deletes an unreferenced redirector together with the asset it points to
-    referenced = {dep for info in packages.values() for dep in info["deps"]}
-    stale = set()
-    if cleanup:
-        for name in deleted_packages:
-            classes = packages[name]["classes"]
-            only_redirector = classes and all(c in REDIRECTOR_CLASSES for c in classes)
-            if only_redirector and name not in referenced and set(packages[name]["deps"]) & deleted_packages:
-                stale.add(name)
     labels = {name for name, info in packages.items() if any(c in LABEL_CLASSES for c in info["classes"])}
 
     unused = {package_of(a) for a in before["assets_unused"]}
+    # cleanup deletes an unreferenced redirector together with the asset it points to
+    referenced = {dep for info in packages.values() for dep in info["deps"]}
+
+    def stale_redirectors(removed):
+        only_redirector = lambda classes: classes and all(c in REDIRECTOR_CLASSES for c in classes)
+        return {n for n, info in packages.items() if only_redirector(info["classes"]) and n not in referenced and set(info["deps"]) & removed}
+
+    stale = (stale_redirectors(deleted_packages) & deleted_packages) if cleanup else stale_redirectors(unused)
     # primary, editor and indirect assets are always used, never listed unused
     used_rules = {rule: {package_of(a) for a in before["assets_" + rule]} for rule in ("excluded", "primary", "editor", "indirect")}
     for rule, used in used_rules.items():
@@ -1472,7 +1471,7 @@ def polygon_verify(p, scenario, settings, snapshot, text_refs, report, status, c
             problems.append("{} {} asset(s) also listed unused: {}".format(len(clash), rule, ", ".join(clash[:5])))
 
     # cleanup simulation (scan scenarios) or real deletion (cleanup scenarios)
-    gone = (deleted_packages - redirectors) if cleanup else unused
+    gone = (deleted_packages - redirectors) if cleanup else unused | stale
     gone_all = gone | redirectors
 
     broken = []
