@@ -662,6 +662,9 @@ def child_env(engine=None):
         env["DOTNET_ROOT"] = dotnet
         env["DOTNET_MULTILEVEL_LOOKUP"] = "0"
         env["DOTNET_ROLL_FORWARD"] = "LatestMajor"
+    # UE 5.0 bundles .NET Core 3.1, which aborts on newer ICU ("Couldn't find a valid ICU package", Linux Mint 22.3 has ICU 74)
+    if engine is not None and IS_LINUX and engine.key == (5, 0):
+        env["DOTNET_SYSTEM_GLOBALIZATION_INVARIANT"] = "1"
     return env
 
 
@@ -1765,14 +1768,12 @@ def _header_index(roots):
 
 
 def check_include_case(engines):
-    """Windows and default Mac file systems ignore case, Linux does not. Catch mismatches before users do."""
+    """Windows and default Mac file systems ignore case, Linux does not. Catch mismatches before users do.
+    Each engine is checked on its own: a header can change case between versions (UE 4.27 HAL/PlatformFilemanager.h).
+    An include written in both spellings in one file (an engine version switch) passes when one of them matches."""
     source_dir = os.path.join(REPO_DIR, "Source")
-    roots = [source_dir]
-    for e in engines:
-        roots += [os.path.join(e.root, "Engine", "Source"), os.path.join(e.root, "Engine", "Plugins")]
-    index = _header_index(roots)
     include_re = re.compile(r'^\s*#\s*include\s*[<"]([^>"]+)[>"]')
-    problems = []
+    groups = {}
     for dirpath, _, files in os.walk(source_dir):
         for name in files:
             if not name.endswith((".h", ".cpp")):
@@ -1784,12 +1785,20 @@ def check_include_case(engines):
                     if not m or m.group(1).endswith(".generated.h"):
                         continue
                     inc = m.group(1).replace("\\", "/")
-                    candidates = index.get(os.path.basename(inc).lower(), [])
-                    exact = [c for c in candidates if c.endswith("/" + inc)]
-                    folded = [c for c in candidates if c.lower().endswith("/" + inc.lower())]
-                    if folded and not exact:
-                        real = folded[0][len(folded[0]) - len(inc):]
-                        problems.append("{}:{}: include \"{}\" has wrong case, file is \"{}\"".format(os.path.relpath(path, REPO_DIR), num, inc, real))
+                    groups.setdefault((path, inc.lower()), []).append((num, inc))
+    targets = [(e.version, [source_dir, os.path.join(e.root, "Engine", "Source"), os.path.join(e.root, "Engine", "Plugins")]) for e in engines]
+    problems = []
+    for label, roots in targets or [(None, [source_dir])]:
+        index = _header_index(roots)
+        for (path, low), spellings in groups.items():
+            candidates = index.get(os.path.basename(low), [])
+            folded = [c for c in candidates if c.lower().endswith("/" + low)]
+            if not folded or any(c.endswith("/" + inc) for c in folded for _, inc in spellings):
+                continue
+            num, inc = spellings[0]
+            real = folded[0][len(folded[0]) - len(inc):]
+            where = " for " + label if label else ""
+            problems.append("{}:{}: include \"{}\" has wrong case{}, file is \"{}\"".format(os.path.relpath(path, REPO_DIR), num, inc, where, real))
     return problems
 
 
