@@ -33,40 +33,32 @@ void SPjcTabMain::Construct(
 
 	Cmds = MakeShareable(new FUICommandList);
 
-	Cmds->MapAction(FPjcCmds::Get().OpenGithub, FExecuteAction::CreateLambda([]() {
-						FPlatformProcess::LaunchURL(*PjcConstants::UrlGithub, nullptr, nullptr);
-					}));
+	const auto OpenUrl = [](const FString& Url) {
+		return FExecuteAction::CreateLambda([Url]() {
+			FPlatformProcess::LaunchURL(*Url, nullptr, nullptr);
+		});
+	};
+	const auto OpenSettings = [](const FName Container, const FName Section) {
+		return FExecuteAction::CreateLambda([Container, Section]() {
+			FModuleManager::LoadModuleChecked<ISettingsModule>("Settings").ShowViewer(Container, "Plugins", Section);
+		});
+	};
+	Cmds->MapAction(FPjcCmds::Get().OpenGithub, OpenUrl(PjcConstants::UrlGithub));
+	Cmds->MapAction(FPjcCmds::Get().OpenWiki, OpenUrl(PjcConstants::UrlDocs));
+	Cmds->MapAction(FPjcCmds::Get().OpenBugReport, OpenUrl(PjcConstants::UrlIssueTracker));
+	Cmds->MapAction(FPjcCmds::Get().OpenSettingsProject, OpenSettings("Project", "PjcScanSettings"));
+	Cmds->MapAction(FPjcCmds::Get().OpenSettingsEditor, OpenSettings("Editor", "PjcEditorSettings"));
 
-	Cmds->MapAction(FPjcCmds::Get().OpenWiki, FExecuteAction::CreateLambda([]() {
-						FPlatformProcess::LaunchURL(*PjcConstants::UrlDocs, nullptr, nullptr);
-					}));
-
-	Cmds->MapAction(FPjcCmds::Get().OpenBugReport, FExecuteAction::CreateLambda([]() {
-						FPlatformProcess::LaunchURL(*PjcConstants::UrlIssueTracker, nullptr, nullptr);
-					}));
-
-	Cmds->MapAction(FPjcCmds::Get().OpenSettingsProject, FExecuteAction::CreateLambda([]() {
-						FModuleManager::LoadModuleChecked<ISettingsModule>("Settings").ShowViewer("Project", "Plugins", "PjcScanSettings");
-					}));
-
-	Cmds->MapAction(FPjcCmds::Get().OpenSettingsEditor, FExecuteAction::CreateLambda([]() {
-						FModuleManager::LoadModuleChecked<ISettingsModule>("Settings").ShowViewer("Editor", "Plugins", "PjcEditorSettings");
-					}));
-
-	TabLayout = FTabManager::NewLayout("PjcTabLayout")
-					->AddArea(
-						FTabManager::NewPrimaryArea()
-							->SetOrientation(Orient_Horizontal)
-							->Split(
-								FTabManager::NewStack()
-									->AddTab(PjcConstants::TabOverview, ETabState::OpenedTab)
-									->AddTab(PjcConstants::TabAssetsUnused, ETabState::OpenedTab)
-									->AddTab(PjcConstants::TabInspector, ETabState::OpenedTab)
-									->AddTab(PjcConstants::TabIssues, ETabState::OpenedTab)
-									->SetForegroundTab(PjcConstants::TabOverview)
-									->SetSizeCoefficient(1.0f)
-							)
-					);
+	// clang-format off
+	const TSharedRef<FTabManager::FStack> Stack = FTabManager::NewStack()
+		->AddTab(PjcConstants::TabOverview, ETabState::OpenedTab)
+		->AddTab(PjcConstants::TabAssetsUnused, ETabState::OpenedTab)
+		->AddTab(PjcConstants::TabInspector, ETabState::OpenedTab)
+		->AddTab(PjcConstants::TabIssues, ETabState::OpenedTab)
+		->SetForegroundTab(PjcConstants::TabOverview)
+		->SetSizeCoefficient(1.0f);
+	// clang-format on
+	TabLayout = FTabManager::NewLayout("PjcTabLayout")->AddArea(FTabManager::NewPrimaryArea()->SetOrientation(Orient_Horizontal)->Split(Stack));
 
 	TabManager->RegisterTabSpawner(PjcConstants::TabOverview, FOnSpawnTab::CreateRaw(this, &SPjcTabMain::OnTabOverviewSpawn))
 		.SetTooltipText(FText::FromString(TEXT("Open Overview Tab")))
@@ -94,15 +86,12 @@ void SPjcTabMain::Construct(
 
 	FMenuBarBuilder MenuBarBuilder = FMenuBarBuilder(Cmds);
 
-	MenuBarBuilder.AddPullDownMenu(
-		FText::FromString(TEXT("Tabs")), FText::GetEmpty(), FNewMenuDelegate::CreateRaw(this, &SPjcTabMain::CreateMenuBarTabs, TabManager), "Window"
-	);
-	MenuBarBuilder.AddPullDownMenu(
-		FText::FromString(TEXT("Settings")), FText::GetEmpty(), FNewMenuDelegate::CreateRaw(this, &SPjcTabMain::CreateMenuBarSettings), "Settings"
-	);
-	MenuBarBuilder.AddPullDownMenu(
-		FText::FromString(TEXT("Help")), FText::GetEmpty(), FNewMenuDelegate::CreateRaw(this, &SPjcTabMain::CreateMenuBarHelp, TabManager), "Tabs"
-	);
+	const FNewMenuDelegate TabsMenu = FNewMenuDelegate::CreateRaw(this, &SPjcTabMain::CreateMenuBarTabs, TabManager);
+	const FNewMenuDelegate SettingsMenu = FNewMenuDelegate::CreateRaw(this, &SPjcTabMain::CreateMenuBarSettings);
+	const FNewMenuDelegate HelpMenu = FNewMenuDelegate::CreateRaw(this, &SPjcTabMain::CreateMenuBarHelp, TabManager);
+	MenuBarBuilder.AddPullDownMenu(FText::FromString(TEXT("Tabs")), FText::GetEmpty(), TabsMenu, "Window");
+	MenuBarBuilder.AddPullDownMenu(FText::FromString(TEXT("Settings")), FText::GetEmpty(), SettingsMenu, "Settings");
+	MenuBarBuilder.AddPullDownMenu(FText::FromString(TEXT("Help")), FText::GetEmpty(), HelpMenu, "Tabs");
 
 	// clang-format off
 	ChildSlot

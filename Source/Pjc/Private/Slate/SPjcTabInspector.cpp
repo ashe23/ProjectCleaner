@@ -1150,13 +1150,10 @@ TSharedRef<SWidget> SPjcTabInspector::MakeLinkList(const bool bUsedBy) {
 
 TSharedRef<ITableRow> SPjcTabInspector::OnGenerateLinkRow(FRowPtr Row, const TSharedRef<STableViewBase>& Table) {
 	const bool bGroup = Graph.Nodes.IsValidIndex(Selected) && Graph.Nodes[Selected].Kind == EPjcInspectorNodeKind::Group;
-	const FString ToolTip = FString::Printf(
-		TEXT("%s\n%s \u00B7 %s%s\nDouble-click to inspect it"),
-		*Row->Package.ToString(),
-		*Row->ClassLabel,
-		PjcInspectorStatusText(Row->Status, Row->bScanned),
-		Row->bInGraph ? TEXT(" \u00B7 drawn in the graph") : TEXT("")
-	);
+	const FString Where = Row->Package.ToString() + TEXT("\n") + Row->ClassLabel;
+	const TCHAR* Drawn = Row->bInGraph ? TEXT(" \u00B7 drawn in the graph") : TEXT("");
+	const TCHAR* Status = PjcInspectorStatusText(Row->Status, Row->bScanned);
+	const FString ToolTip = FString::Printf(TEXT("%s \u00B7 %s%s\nDouble-click to inspect it"), *Where, Status, Drawn);
 	const FName Package = Row->Package;
 
 	// clang-format off
@@ -1224,31 +1221,18 @@ TSharedRef<SWidget> SPjcTabInspector::MakeExcludeMenu() {
 	const FString ClassPath = AssetClass ? AssetClass->GetPathName() : FString {};
 	const FString ClassLabel = PjcWidgets::GetAssetType(Asset).Label;
 
-	Menu.AddMenuEntry(
-		FText::FromString(TEXT("Exclude asset ") + Asset.AssetName.ToString()),
-		FText::FromString(TEXT("Counts this asset as used")),
-		FSlateIcon {},
-		FUIAction {FExecuteAction::CreateLambda([ObjectPath, Asset]() {
-			PjcActions::Exclude({}, {}, {ObjectPath}, TEXT("Excluded ") + Asset.AssetName.ToString());
-		})}
-	);
-	Menu.AddMenuEntry(
-		FText::FromString(TEXT("Exclude folder ") + Folder),
-		FText::FromString(TEXT("Counts every asset of the folder and its subfolders as used")),
-		FSlateIcon {},
-		FUIAction {FExecuteAction::CreateLambda([Folder]() {
-			PjcActions::Exclude({Folder}, {}, {}, TEXT("Excluded folder ") + Folder);
-		})}
-	);
+	PjcWidgets::AddMenuEntry(Menu, TEXT("Exclude asset ") + Asset.AssetName.ToString(), TEXT("Counts this asset as used"), [ObjectPath, Asset]() {
+		PjcActions::Exclude({}, {}, {ObjectPath}, TEXT("Excluded ") + Asset.AssetName.ToString());
+	});
+	const TCHAR* FolderTip = TEXT("Counts every asset of the folder and its subfolders as used");
+	PjcWidgets::AddMenuEntry(Menu, TEXT("Exclude folder ") + Folder, FolderTip, [Folder]() {
+		PjcActions::Exclude({Folder}, {}, {}, TEXT("Excluded folder ") + Folder);
+	});
 	if (!ClassPath.IsEmpty()) {
-		Menu.AddMenuEntry(
-			FText::FromString(TEXT("Exclude class ") + ClassLabel),
-			FText::FromString(TEXT("Counts every asset of the class as used")),
-			FSlateIcon {},
-			FUIAction {FExecuteAction::CreateLambda([ClassPath, ClassLabel]() {
-				PjcActions::Exclude({}, {ClassPath}, {}, TEXT("Excluded ") + ClassLabel);
-			})}
-		);
+		const TCHAR* ClassTip = TEXT("Counts every asset of the class as used");
+		PjcWidgets::AddMenuEntry(Menu, TEXT("Exclude class ") + ClassLabel, ClassTip, [ClassPath, ClassLabel]() {
+			PjcActions::Exclude({}, {ClassPath}, {}, TEXT("Excluded ") + ClassLabel);
+		});
 	}
 	return Menu.MakeWidget();
 }

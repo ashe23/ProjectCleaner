@@ -71,14 +71,12 @@ namespace
 			// shared content first, kits use it
 			const int32 NumShared = FMath::Max(20, NumAssetsMax / 150);
 			for (int32 Index = 0; Index < NumShared; ++Index) {
-				SharedTextures.Add(
-					NewCurve(TEXT("Shared/Textures"), FString::Printf(TEXT("T_Shared_%04d"), Index), RandomSize(16.0f, 1.0f, 2048.0f))
-				);
+				const FString TextureName = FString::Printf(TEXT("T_Shared_%04d"), Index);
+				SharedTextures.Add(NewCurve(TEXT("Shared/Textures"), TextureName, RandomSize(16.0f, 1.0f, 2048.0f)));
 			}
 			for (int32 Index = 0; Index < FMath::Max(5, NumAssetsMax / 600); ++Index) {
-				SharedMaterials.Add(
-					NewLibrary(TEXT("Shared/Materials"), FString::Printf(TEXT("M_Master_%03d"), Index), PickSome(SharedTextures, 1, 3))
-				);
+				const FString MaterialName = FString::Printf(TEXT("M_Master_%03d"), Index);
+				SharedMaterials.Add(NewLibrary(TEXT("Shared/Materials"), MaterialName, PickSome(SharedTextures, 1, 3)));
 			}
 
 			int32 TotalWeight = 0;
@@ -193,9 +191,9 @@ namespace
 						Uses.AddUnique(Extra);
 					}
 				}
-				Placed.Add(
-					NewLibrary(Path / TEXT("Blueprints"), FString::Printf(TEXT("%s%s_%02d"), bWidgets ? TEXT("W_") : TEXT("BP_"), *Name, Index), Uses)
-				);
+				const TCHAR* Prefix = bWidgets ? TEXT("W_") : TEXT("BP_");
+				const FString PlacedName = FString::Printf(TEXT("%s%s_%02d"), Prefix, *Name, Index);
+				Placed.Add(NewLibrary(Path / TEXT("Blueprints"), PlacedName, Uses));
 			}
 
 			// maps place most meshes directly

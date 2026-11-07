@@ -176,12 +176,8 @@ int32 UPjcSubsystem::MoveExclusionsToProject() {
 	GConfig->EmptySection(*Section, GEditorPerProjectIni);
 	GConfig->Flush(false, GEditorPerProjectIni);
 
-	UE_LOG(
-		LogProjectCleaner,
-		Display,
-		TEXT("Moved %d exclusion(s) from your editor preferences to the project settings (Config/DefaultEditor.ini), shared with the team"),
-		NumMoved
-	);
+	const TCHAR* Where = TEXT("the project settings (Config/DefaultEditor.ini)");
+	UE_LOG(LogProjectCleaner, Display, TEXT("Moved %d exclusion(s) from your editor preferences to %s, shared with the team"), NumMoved, Where);
 	return NumMoved + NumFilesMoved;
 }
 
@@ -375,14 +371,13 @@ bool UPjcSubsystem::Scan(const bool bShowSlowTask) {
 	}
 
 	TArray<FName> Deps;
+	IAssetRegistry& Registry = GetModuleAssetRegistry().Get();
 	const auto WalkGameReferences = [&]() {
 		while (Stack.Num() > 0) {
 			const FName Current = PjcShim::PopArray(Stack);
 
 			Deps.Reset();
-			GetModuleAssetRegistry().Get().GetDependencies(
-				Current, Deps, UE::AssetRegistry::EDependencyCategory::Package, UE::AssetRegistry::EDependencyQuery::Game
-			);
+			Registry.GetDependencies(Current, Deps, UE::AssetRegistry::EDependencyCategory::Package, UE::AssetRegistry::EDependencyQuery::Game);
 			for (const auto& Dep : Deps) {
 				if (Labels.Contains(Dep) || !PathIsInsideProject(Dep.ToString())) continue;
 
@@ -593,12 +588,8 @@ void UPjcSubsystem::ComputeAssetsUsed(
 		for (const auto& Asset : AssetsExcluded) {
 			if (Usage.Contains(Asset.PackageName)) continue;
 
-			AddUsed(
-				Asset.PackageName,
-				EPjcUsageReason::Excluded,
-				NAME_None,
-				GetExcludedDetail(Asset, ClassNamesUserExcluded, ClassNamesUsedClasses, ClassNamesCinematic)
-			);
+			const FString ExcludedDetail = GetExcludedDetail(Asset, ClassNamesUserExcluded, ClassNamesUsedClasses, ClassNamesCinematic);
+			AddUsed(Asset.PackageName, EPjcUsageReason::Excluded, NAME_None, ExcludedDetail);
 		}
 	}
 
@@ -617,12 +608,8 @@ void UPjcSubsystem::ComputeAssetsUsed(
 		TArray<FName> CollectionPackages;
 		PjcShim::GetPackagesInCollection(Label->AssetCollection.CollectionName, CollectionPackages);
 		for (const auto& CollectionPackage : CollectionPackages) {
-			AddUsed(
-				CollectionPackage,
-				EPjcUsageReason::Dependency,
-				Asset.PackageName,
-				TEXT("in collection ") + Label->AssetCollection.CollectionName.ToString()
-			);
+			const FString InCollection = TEXT("in collection ") + Label->AssetCollection.CollectionName.ToString();
+			AddUsed(CollectionPackage, EPjcUsageReason::Dependency, Asset.PackageName, InCollection);
 		}
 	}
 
@@ -771,14 +758,11 @@ void UPjcSubsystem::ComputeAssetsUsed(
 		}
 		if (NumOnlyByLabel == 0) continue;
 
-		UE_LOG(
-			LogProjectCleaner,
-			Display,
-			TEXT("Folder label %s: %d asset(s) referenced only by it are %s (Project Settings > Plugins > Project Cleaner > Folder Labels Used)"),
-			*FolderLabel.ToString(),
-			NumOnlyByLabel,
-			ScanSettings->bFolderLabelsUsed ? TEXT("kept used") : TEXT("unused")
-		);
+		const FString LabelName = FolderLabel.ToString();
+		const TCHAR* LabelState = ScanSettings->bFolderLabelsUsed ? TEXT("kept used") : TEXT("unused");
+		const TCHAR* LabelSetting = TEXT("Project Settings > Plugins > Project Cleaner > Folder Labels Used");
+		const FString LabelDetail = FString::Printf(TEXT("%d asset(s) referenced only by it are %s (%s)"), NumOnlyByLabel, LabelState, LabelSetting);
+		UE_LOG(LogProjectCleaner, Display, TEXT("Folder label %s: %s"), *LabelName, *LabelDetail);
 	}
 }
 
@@ -1089,9 +1073,8 @@ void UPjcSubsystem::GetClassNamesPrimary(TSet<FName>& ClassNames) {
 		// type registered without real base class (e.g. GameFeature plugins in Lyra like projects)
 		// would make every asset used (#58)
 		if (AssetTypeInfo.AssetBaseClassLoaded == UObject::StaticClass()) {
-			UE_LOG(
-				LogProjectCleaner, Verbose, TEXT("Primary asset type %s has UObject base class, ignored"), *AssetTypeInfo.PrimaryAssetType.ToString()
-			);
+			const FString TypeName = AssetTypeInfo.PrimaryAssetType.ToString();
+			UE_LOG(LogProjectCleaner, Verbose, TEXT("Primary asset type %s has UObject base class, ignored"), *TypeName);
 			continue;
 		}
 
@@ -1551,11 +1534,10 @@ bool UPjcSubsystem::PrepareDelete() {
 
 	if (GEditor && !GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->CloseAllAssetEditors()) {
 		UE_LOG(LogProjectCleaner, Warning, TEXT("Failed to delete unused assets because some editor windows are still open."));
-		UE_LOG(
-			LogProjectCleaner,
-			Warning,
-			TEXT("Please try again, check the OutputLog for reasons why certain windows haven't closed, or try to manually close all editor windows.")
-		);
+		// clang-format off
+		UE_LOG(LogProjectCleaner, Warning, TEXT("Please try again, check the OutputLog for reasons why certain windows haven't closed, ")
+			TEXT("or try to manually close all editor windows."));
+		// clang-format on
 		return false;
 	}
 
@@ -1683,13 +1665,8 @@ bool UPjcSubsystem::DeleteAssets(const TArray<FAssetData>& Assets, const bool bS
 	RemoveAssetsHeldOutside(HeldByEachOther, &Holders);
 	for (const UObject* Asset : AssetsRemaining) {
 		const FString* Holder = Holders.Find(Asset->GetPathName());
-		UE_LOG(
-			LogProjectCleaner,
-			Warning,
-			TEXT("Not deleted, still referenced: %s (%s)"),
-			*Asset->GetPathName(),
-			Holder ? **Holder : TEXT("by asset that is kept")
-		);
+		const TCHAR* HeldBy = Holder ? **Holder : TEXT("by asset that is kept");
+		UE_LOG(LogProjectCleaner, Warning, TEXT("Not deleted, still referenced: %s (%s)"), *Asset->GetPathName(), HeldBy);
 		LastCleanupKept.Add(Asset->GetOutermost()->GetFName(), Holder ? *Holder : TEXT("referenced by asset that is kept"));
 	}
 	int32 NumAssetsRemaining = 0;
@@ -2067,9 +2044,8 @@ FPjcRedirectorFixResult UPjcSubsystem::FixRedirectorsWithReport(const TArray<FAs
 
 		// a redirector to a missing asset goes when nothing uses it; assets that use it need a repair by hand
 		if (User && !RedirectorObject->DestinationObject) {
-			Result.Kept.Add(
-				PackageName, FString::Printf(TEXT("its target is missing, %s uses it: repair it by hand"), *FPackageName::GetShortName(*User))
-			);
+			const FString Missing = FString::Printf(TEXT("its target is missing, %s uses it: repair it by hand"), *FPackageName::GetShortName(*User));
+			Result.Kept.Add(PackageName, Missing);
 		}
 		else if (User) {
 			FString Reason = FPackageName::GetShortName(*User) + TEXT(" still uses it");
@@ -3012,9 +2988,8 @@ int32 UPjcSubsystem::DeleteAssetsReferencedByFolderLabels(const TArray<FAssetDat
 		UEditorLoadingAndSavingUtils::SavePackages(LabelPackages, false);
 	}
 
-	UE_LOG(
-		LogProjectCleaner, Display, TEXT("Deleted %d asset(s) referenced only by folder labels, resaved %d label(s)"), NumDeleted, LabelPackages.Num()
-	);
+	const int32 NumLabels = LabelPackages.Num();
+	UE_LOG(LogProjectCleaner, Display, TEXT("Deleted %d asset(s) referenced only by folder labels, resaved %d label(s)"), NumDeleted, NumLabels);
 	return NumDeleted;
 }
 
@@ -3036,17 +3011,17 @@ void UPjcSubsystem::GetExternalActorsDependencies(TSet<FName>& OutPackages) {
 			if (!FPackageName::TryConvertFilenameToLongPackageName(File, PackageName)) continue;
 
 			const bool bWasLoaded = FindPackage(nullptr, *PackageName) != nullptr;
-			FLinkerLoad* Linker = LoadPackageLinker(
-				nullptr, *PackageName, LOAD_NoVerify | LOAD_Quiet | LOAD_NoWarn, nullptr, nullptr, nullptr, [&](FLinkerLoad* LoadedLinker) {
-					if (!LoadedLinker) return;
+			const auto OnLinker = [&](FLinkerLoad* LoadedLinker) {
+				if (!LoadedLinker) return;
 
-					for (const FObjectImport& Import : LoadedLinker->ImportMap) {
-						if (Import.OuterIndex.IsNull() && Import.ClassName == NAME_Package) {
-							OutPackages.Add(Import.ObjectName);
-						}
+				for (const FObjectImport& Import : LoadedLinker->ImportMap) {
+					if (Import.OuterIndex.IsNull() && Import.ClassName == NAME_Package) {
+						OutPackages.Add(Import.ObjectName);
 					}
 				}
-			);
+			};
+			const uint32 LoadFlags = LOAD_NoVerify | LOAD_Quiet | LOAD_NoWarn;
+			FLinkerLoad* Linker = LoadPackageLinker(nullptr, *PackageName, LoadFlags, nullptr, nullptr, nullptr, OnLinker);
 
 			// release file handles of packages opened only for this
 			if (Linker && Linker->LinkerRoot && !bWasLoaded) {

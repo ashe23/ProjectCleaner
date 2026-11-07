@@ -6,6 +6,7 @@
 #include "Fonts/SlateFontInfo.h"
 #include "Layout/Margin.h"
 
+class FMenuBuilder;
 class SToolTip;
 class SWidget;
 struct FAssetData;
@@ -51,4 +52,11 @@ namespace PjcWidgets
 
 	// Segments side by side, each as long as its share of Total (their sum when Total is smaller), on a dark track
 	TSharedRef<SWidget> MakeBar(const TArray<FBarSegment>& Segments, const float Height, const double Total = 0.0);
+
+	// Menu entry that runs OnClick, greyed out when not enabled
+	void AddMenuEntry(FMenuBuilder& Menu, const FString& Label, const FString& ToolTip, TFunction<void()> OnClick);
+	void AddMenuEntry(FMenuBuilder& Menu, const FString& Label, const FString& ToolTip, const bool bEnabled, TFunction<void()> OnClick);
+
+	// Menu entry with a check mark while *bChecked is true; OnClick changes it
+	void AddMenuToggle(FMenuBuilder& Menu, const FString& Label, const FString& ToolTip, const bool* bChecked, TFunction<void()> OnClick);
 }	// namespace PjcWidgets

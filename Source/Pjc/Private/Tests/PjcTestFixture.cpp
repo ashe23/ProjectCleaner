@@ -157,9 +157,8 @@ namespace
 	NewBlueprint(const FString& PackageName, UClass* ParentClass, TSubclassOf<UBlueprint> BlueprintClass, TArray<UPackage*>& OutPackages) {
 		UPackage* Package = NewPackage(PackageName, OutPackages);
 		const FName AssetName {*FPackageName::GetLongPackageAssetName(PackageName)};
-		UBlueprint* Blueprint = FKismetEditorUtilities::CreateBlueprint(
-			ParentClass, Package, AssetName, BPTYPE_Normal, BlueprintClass, UBlueprintGeneratedClass::StaticClass()
-		);
+		UClass* Generated = UBlueprintGeneratedClass::StaticClass();
+		UBlueprint* Blueprint = FKismetEditorUtilities::CreateBlueprint(ParentClass, Package, AssetName, BPTYPE_Normal, BlueprintClass, Generated);
 		if (!Blueprint) return nullptr;
 
 		FAssetRegistryModule::AssetCreated(Blueprint);
@@ -515,18 +514,17 @@ void FPjcTestFixture::CreateFiles(const bool bCreateCorruptedFile) {
 		FFileHelper::SaveStringToFile(TEXT("this is not an unreal package"), *CorruptedFile());
 	}
 
-	FString Config = FString::Printf(
-		TEXT("[PjcTests]\nIndirectAsset=%s\nIndirectPackage=%s\n"), *ObjectPath(TEXT("C_Indirect")), **PackageNames.Find(TEXT("C_IndirectPackage"))
-	);
+	const FString IndirectAsset = ObjectPath(TEXT("C_Indirect"));
+	const FString IndirectPackage = *PackageNames.Find(TEXT("C_IndirectPackage"));
+	FString Config = FString::Printf(TEXT("[PjcTests]\nIndirectAsset=%s\nIndirectPackage=%s\n"), *IndirectAsset, *IndirectPackage);
 	// Lyra layout: raw file loaded by its file name
 	if (bLyraLayout) {
 		Config += TEXT("RawIcon=PjcTests/Files/T_RawIcon.svg\n");
 	}
 	FFileHelper::SaveStringToFile(Config, *IndirectConfigFile());
 
-	FFileHelper::SaveStringToFile(
-		FString::Printf(TEXT("import unreal\n\nasset = unreal.load_asset(\"%s\")\n"), *ObjectPath(TEXT("C_InPython"))), *PythonFile()
-	);
+	const FString Python = FString::Printf(TEXT("import unreal\n\nasset = unreal.load_asset(\"%s\")\n"), *ObjectPath(TEXT("C_InPython")));
+	FFileHelper::SaveStringToFile(Python, *PythonFile());
 	FFileHelper::SaveStringToFile(FString::Printf(TEXT("[PjcTests]\nAsset=%s\n"), *ObjectPath(TEXT("C_InPlatformConfig"))), *PlatformConfigFile());
 }
 

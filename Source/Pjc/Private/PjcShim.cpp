@@ -345,25 +345,22 @@ namespace PjcShim
 		ICollectionManager& CollectionManager = FCollectionManagerModule::GetModule().Get();
 #if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 6
 		TArray<FSoftObjectPath> ObjectPaths;
-		CollectionManager.GetProjectCollectionContainer()->GetAssetsInCollection(
-			CollectionName, ECollectionShareType::CST_All, ObjectPaths, ECollectionRecursionFlags::SelfAndChildren
-		);
+		const TSharedRef<ICollectionContainer>& Collections = CollectionManager.GetProjectCollectionContainer();
+		Collections->GetAssetsInCollection(CollectionName, ECollectionShareType::CST_All, ObjectPaths, ECollectionRecursionFlags::SelfAndChildren);
 		for (const auto& ObjectPath : ObjectPaths) {
 			OutPackages.AddUnique(FName {*ObjectPath.GetLongPackageName()});
 		}
 #elif ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1
 		TArray<FSoftObjectPath> ObjectPaths;
-		CollectionManager.GetAssetsInCollection(
-			CollectionName, ECollectionShareType::CST_All, ObjectPaths, ECollectionRecursionFlags::SelfAndChildren
-		);
+		const auto Recursion = ECollectionRecursionFlags::SelfAndChildren;
+		CollectionManager.GetAssetsInCollection(CollectionName, ECollectionShareType::CST_All, ObjectPaths, Recursion);
 		for (const auto& ObjectPath : ObjectPaths) {
 			OutPackages.AddUnique(FName {*ObjectPath.GetLongPackageName()});
 		}
 #else
 		TArray<FName> ObjectPaths;
-		CollectionManager.GetAssetsInCollection(
-			CollectionName, ECollectionShareType::CST_All, ObjectPaths, ECollectionRecursionFlags::SelfAndChildren
-		);
+		const auto Recursion = ECollectionRecursionFlags::SelfAndChildren;
+		CollectionManager.GetAssetsInCollection(CollectionName, ECollectionShareType::CST_All, ObjectPaths, Recursion);
 		for (const auto& ObjectPath : ObjectPaths) {
 			OutPackages.AddUnique(FName {*FPackageName::ObjectPathToPackageName(ObjectPath.ToString())});
 		}

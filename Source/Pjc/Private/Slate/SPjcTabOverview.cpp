@@ -211,42 +211,20 @@ TSharedRef<SWidget> SPjcTabOverview::MakeSummary() {
 		];
 		// clang-format on
 	};
-	AddColumn(Column(
-		TEXT("Assets"),
-		{},
-		All.Num,
-		PjcFormat::Size(All.Size),
-		FSlateColor::UseForeground(),
-		TEXT("Every scanned asset. Redirectors are not counted."),
-		SNullWidget::NullWidget
-	));
-	AddColumn(Column(
-		TEXT("Used"),
-		ColorUsed,
-		Overview.Used.Num,
-		Share(Overview.Used),
-		FSlateColor::UseForeground(),
-		TEXT("The game uses them: maps, primary assets and other roots, and what they reference."),
-		SNullWidget::NullWidget
-	));
-	AddColumn(Column(
-		TEXT("Editor only"),
-		ColorEditor,
-		Overview.EditorOnly.Num,
-		Share(Overview.EditorOnly),
-		FSlateColor::UseForeground(),
-		TEXT("Kept, but only the editor uses them: editor assets, and what only editor-only references or labels reach. They do not ship."),
-		SNullWidget::NullWidget
-	));
-	AddColumn(Column(
-		TEXT("Unused"),
-		ColorUnused,
-		Overview.Unused.Num,
-		Share(Overview.Unused),
-		Overview.Unused.Num > 0 ? FSlateColor {PjcWidgets::GetColor("ProjectCleaner.Color.Red")} : FSlateColor::UseForeground(),
-		TEXT("Nothing used references them. Cleanup deletes them."),
-		Review
-	));
+	const FSlateColor PlainColor = FSlateColor::UseForeground();
+	const TSharedRef<SWidget> NoLink = SNullWidget::NullWidget;
+	const FSlateColor UnusedNumColor = Overview.Unused.Num > 0 ? FSlateColor {PjcWidgets::GetColor("ProjectCleaner.Color.Red")} : PlainColor;
+	// clang-format off
+	const TCHAR* AssetsTip = TEXT("Every scanned asset. Redirectors are not counted.");
+	const TCHAR* UsedTip = TEXT("The game uses them: maps, primary assets and other roots, and what they reference.");
+	const TCHAR* EditorTip = TEXT("Kept, but only the editor uses them: editor assets, and what only editor-only references or labels reach. ")
+		TEXT("They do not ship.");
+	const TCHAR* UnusedTip = TEXT("Nothing used references them. Cleanup deletes them.");
+	// clang-format on
+	AddColumn(Column(TEXT("Assets"), {}, All.Num, PjcFormat::Size(All.Size), PlainColor, AssetsTip, NoLink));
+	AddColumn(Column(TEXT("Used"), ColorUsed, Overview.Used.Num, Share(Overview.Used), PlainColor, UsedTip, NoLink));
+	AddColumn(Column(TEXT("Editor only"), ColorEditor, Overview.EditorOnly.Num, Share(Overview.EditorOnly), PlainColor, EditorTip, NoLink));
+	AddColumn(Column(TEXT("Unused"), ColorUnused, Overview.Unused.Num, Share(Overview.Unused), UnusedNumColor, UnusedTip, Review));
 
 	// storage along the bottom, by size
 	TArray<PjcWidgets::FBarSegment> Segments;
@@ -289,36 +267,25 @@ TSharedRef<SWidget> SPjcTabOverview::MakeIssues() {
 		int32 Category;
 	};
 	const FString ExternalExample = Result.FilesExternal.Num() > 0 ? TEXT(", e.g. ") + FPaths::GetCleanFilename(Result.FilesExternal[0]) : FString {};
+	const FString KeptText = PjcFormat::Count(Result.FilesExternalKept.Num());
+	const FString ExternalKept = FString::Printf(TEXT(" %s more are kept: used by the project, or excluded in settings."), *KeptText);
+	const FString ExternalTip = TEXT("Files in content folders the engine does not use") + ExternalExample + TEXT(".") + ExternalKept;
+	const int32 NumKept = UPjcSubsystem::GetLastCleanupKept().Num();
+	// clang-format off
+	const TCHAR* RedirectorsTip = TEXT("Left by renamed or moved assets. ")
+		TEXT("Scanning follows them, fixing resaves the assets that still use the old path.");
+	const TCHAR* CorruptedTip = TEXT("Asset files the engine cannot read.");
+	const TCHAR* EmptyTip = TEXT("Folders without assets or files.");
+	const TCHAR* NotDeletedTip = TEXT("Unused assets the last cleanup could not delete, because something holds them.");
+	const auto ToIndex = [](const EPjcIssueCategory Value) { return static_cast<int32>(Value); };
 	const TArray<FIssue> Issues {
-	  {TEXT("Redirectors"),
-	   TEXT("redirectors"),
-	   Result.Redirectors.Num(),
-	   TEXT("Left by renamed or moved assets. Scanning follows them, fixing resaves the assets that still use the old path."),
-	   static_cast<int32>(EPjcIssueCategory::Redirectors)},
-	  {TEXT("External files"),
-	   TEXT("external files"),
-	   Result.FilesExternal.Num(),
-	   FString::Printf(
-		   TEXT("Files in content folders the engine does not use%s. %s more are kept: used by the project, or excluded in settings."),
-	   *ExternalExample,
-	   *PjcFormat::Count(Result.FilesExternalKept.Num())
-	   ), static_cast<int32>(EPjcIssueCategory::External)},
-	  {TEXT("Corrupted files"),
-	   TEXT("corrupted files"),
-	   Result.FilesCorrupted.Num(),
-	   TEXT("Asset files the engine cannot read."),
-	   static_cast<int32>(EPjcIssueCategory::Corrupted)},
-	  {TEXT("Empty folders"),
-	   TEXT("empty folders"),
-	   Result.FoldersEmpty.Num(),
-	   TEXT("Folders without assets or files."),
-	   static_cast<int32>(EPjcIssueCategory::Empty)},
-	  {TEXT("Not deleted"),
-	   TEXT("assets left by the last cleanup"),
-	   UPjcSubsystem::GetLastCleanupKept().Num(),
-	   TEXT("Unused assets the last cleanup could not delete, because something holds them."),
-	   -1},
+		{TEXT("Redirectors"), TEXT("redirectors"), Result.Redirectors.Num(), RedirectorsTip, ToIndex(EPjcIssueCategory::Redirectors)},
+		{TEXT("External files"), TEXT("external files"), Result.FilesExternal.Num(), ExternalTip, ToIndex(EPjcIssueCategory::External)},
+		{TEXT("Corrupted files"), TEXT("corrupted files"), Result.FilesCorrupted.Num(), CorruptedTip, ToIndex(EPjcIssueCategory::Corrupted)},
+		{TEXT("Empty folders"), TEXT("empty folders"), Result.FoldersEmpty.Num(), EmptyTip, ToIndex(EPjcIssueCategory::Empty)},
+		{TEXT("Not deleted"), TEXT("assets left by the last cleanup"), NumKept, NotDeletedTip, -1},
 	};
+	// clang-format on
 
 	const FLinearColor ColorWarn = PjcWidgets::GetColor("ProjectCleaner.Color.Yellow");
 	const TSharedRef<SWrapBox> Row = SNew(SWrapBox).UseAllottedSize(true).InnerSlotPadding(FVector2D {8.0f, 8.0f});
@@ -486,12 +453,10 @@ TSharedRef<SWidget> SPjcTabOverview::MakeClasses() const {
 		}
 
 		const FString Text = FString::Printf(TEXT("%s assets, %s"), *PjcFormat::Count(Class.Total.Num), *PjcFormat::Size(Class.Total.Size));
-		const FString Lines = FString::Printf(
-			TEXT("Used: %s\nEditor only: %s\nUnused: %s"),
-			*PjcFormat::Size(Class.SizeUsed),
-			*PjcFormat::Size(Class.SizeEditorOnly),
-			*PjcFormat::Size(Class.SizeUnused)
-		);
+		const FString SizeUsedText = PjcFormat::Size(Class.SizeUsed);
+		const FString SizeEditorText = PjcFormat::Size(Class.SizeEditorOnly);
+		const FString SizeUnusedText = PjcFormat::Size(Class.SizeUnused);
+		const FString Lines = FString::Printf(TEXT("Used: %s\nEditor only: %s\nUnused: %s"), *SizeUsedText, *SizeEditorText, *SizeUnusedText);
 		const TSharedRef<SWidget> Name = SNew(STextBlock).Text(FText::FromString(GetClassShortName(Class.Name)));
 		const TSharedRef<SToolTip> Tip = PjcWidgets::MakeToolTip(Class.Name.ToString(), Text, Lines);
 		// clang-format off
@@ -776,15 +741,10 @@ TSharedRef<SWidget> SPjcTabOverview::MakeShippedCard() const {
 		PjcWidgets::FBarSegment& Segment = Segments.AddDefaulted_GetRef();
 		Segment.Value = static_cast<double>(Total.Size);
 		Segment.Color = Color;
-		Segment.ToolTip = PjcWidgets::MakeToolTip(
-			Label,
-			FString::Printf(
-				TEXT("%s assets \u00B7 %s in the editor (%s)"),
-				*PjcFormat::Count(Total.Num),
-				*PjcFormat::Size(Total.Size),
-				*PjcFormat::Percent(Total.Size, AllSize)
-			)
-		);
+		const FString NumText = PjcFormat::Count(Total.Num);
+		const FString PercentText = PjcFormat::Percent(Total.Size, AllSize);
+		const FString Sizes = FString::Printf(TEXT("%s assets \u00B7 %s in the editor (%s)"), *NumText, *PjcFormat::Size(Total.Size), *PercentText);
+		Segment.ToolTip = PjcWidgets::MakeToolTip(Label, Sizes);
 	};
 	AddSegment(TEXT("Shipped"), Ship.Shipped, PjcWidgets::GetColor("ProjectCleaner.Color.ShipFill"));
 	AddSegment(TEXT("Unused, shipped"), Ship.UnusedShipped, PjcWidgets::GetColor("ProjectCleaner.Color.Yellow"));
@@ -858,57 +818,32 @@ TSharedRef<SWidget> SPjcTabOverview::MakeShippedCard() const {
 		];
 		// clang-format on
 	};
-	AddColumn(Column(
-		TEXT("Shipped"),
-		PjcWidgets::GetColor("ProjectCleaner.Color.ShipFill"),
-		PjcFormat::Count(NumShipped),
-		FSlateColor::UseForeground(),
-		PjcFormat::Size(SizeShippedCooked) + TEXT(" cooked"),
-		FString::Printf(
-			TEXT("Packaged in the game for %s: %s cooked, %s in the editor. Cooked size is before pak compression."),
-			*Cook.Platform,
-			*PjcFormat::Size(SizeShippedCooked),
-			*PjcFormat::Size(SizeShippedEditor)
-		)
-	));
+	const FSlateColor PlainColor = FSlateColor::UseForeground();
+	const FString ShipCooked = PjcFormat::Size(SizeShippedCooked);
+	const FString ShipEditor = PjcFormat::Size(SizeShippedEditor);
+	const FString ShipWhere = FString::Printf(TEXT("Packaged in the game for %s: %s cooked, "), *Cook.Platform, *ShipCooked);
+	const FString ShipTip = ShipWhere + ShipEditor + TEXT(" in the editor. Cooked size is before pak compression.");
+	const FLinearColor ShipColor = PjcWidgets::GetColor("ProjectCleaner.Color.ShipFill");
+	const FLinearColor KeepColor = PjcWidgets::GetColor("ProjectCleaner.Color.KeepFill");
+	const FLinearColor UnusedFillColor = PjcWidgets::GetColor("ProjectCleaner.Color.UnusedFill");
+	AddColumn(Column(TEXT("Shipped"), ShipColor, PjcFormat::Count(NumShipped), PlainColor, ShipCooked + TEXT(" cooked"), ShipTip));
 	const FString NotCooked = TEXT("Used in the editor, or only by content that is not cooked: ");
 	const FString LeftOut = TEXT("editor-only references, maps and tools left out of the cook. By chain start:\n");
 	const FString NotShippedTip = NotCooked + LeftOut + FString::Join(ReasonLines, TEXT("\n"));
-	AddColumn(Column(
-		TEXT("Used, not shipped"),
-		PjcWidgets::GetColor("ProjectCleaner.Color.KeepFill"),
-		PjcFormat::Count(Ship.UsedNotShipped.Num),
-		FSlateColor::UseForeground(),
-		Share(Ship.UsedNotShipped),
-		NotShippedTip
-	));
-	AddColumn(Column(
-		TEXT("Unused"),
-		PjcWidgets::GetColor("ProjectCleaner.Color.UnusedFill"),
-		PjcFormat::Count(Ship.Unused.Num),
-		FSlateColor::UseForeground(),
-		Share(Ship.Unused),
-		TEXT("Not shipped and not used. Cleanup deletes them.")
-	));
+	const FString NotShippedNum = PjcFormat::Count(Ship.UsedNotShipped.Num);
+	AddColumn(Column(TEXT("Used, not shipped"), KeepColor, NotShippedNum, PlainColor, Share(Ship.UsedNotShipped), NotShippedTip));
+	const TCHAR* ShipUnusedTip = TEXT("Not shipped and not used. Cleanup deletes them.");
+	AddColumn(Column(TEXT("Unused"), UnusedFillColor, PjcFormat::Count(Ship.Unused.Num), PlainColor, Share(Ship.Unused), ShipUnusedTip));
 	if (Ship.UnusedShipped.Num > 0) {
-		AddColumn(Column(
-			TEXT("Unused, shipped"),
-			{},
-			PjcFormat::Count(Ship.UnusedShipped.Num),
-			PjcWidgets::GetColor("ProjectCleaner.Color.Yellow"),
-			PjcFormat::Size(Ship.UnusedShippedCooked) + TEXT(" cooked"),
-			TEXT("The cook packages them but the scan marks them unused. Check them before deleting.")
-		));
+		const FString UnusedShippedSize = PjcFormat::Size(Ship.UnusedShippedCooked) + TEXT(" cooked");
+		const TCHAR* CheckTip = TEXT("The cook packages them but the scan marks them unused. Check them before deleting.");
+		const FLinearColor CheckColor = PjcWidgets::GetColor("ProjectCleaner.Color.Yellow");
+		AddColumn(Column(TEXT("Unused, shipped"), {}, PjcFormat::Count(Ship.UnusedShipped.Num), CheckColor, UnusedShippedSize, CheckTip));
 	}
 	else {
-		AddColumn(Column(
-			TEXT("Unused, shipped"),
-			{},
-			TEXT("\u2713 0"),
-			PjcWidgets::GetColor("ProjectCleaner.Color.Ok"),
-			TEXT("scan and cook agree"),
-			TEXT("No asset the scan marks unused is in the cook.")
-		));
+		const FLinearColor AgreeColor = PjcWidgets::GetColor("ProjectCleaner.Color.Ok");
+		const TCHAR* AgreeTip = TEXT("No asset the scan marks unused is in the cook.");
+		AddColumn(Column(TEXT("Unused, shipped"), {}, TEXT("\u2713 0"), AgreeColor, TEXT("scan and cook agree"), AgreeTip));
 	}
 
 	// what else the cook packaged

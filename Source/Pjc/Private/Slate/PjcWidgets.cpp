@@ -6,6 +6,7 @@
 // Engine Headers
 #include "AssetRegistry/AssetData.h"
 #include "AssetToolsModule.h"
+#include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "IAssetTypeActions.h"
 #include "Misc/Paths.h"
 #include "Styling/SlateIconFinder.h"
@@ -155,5 +156,26 @@ namespace PjcWidgets
 				]
 			];
 		// clang-format on
+	}
+
+	void AddMenuEntry(FMenuBuilder& Menu, const FString& Label, const FString& ToolTip, TFunction<void()> OnClick) {
+		AddMenuEntry(Menu, Label, ToolTip, true, MoveTemp(OnClick));
+	}
+
+	void AddMenuEntry(FMenuBuilder& Menu, const FString& Label, const FString& ToolTip, const bool bEnabled, TFunction<void()> OnClick) {
+		const FCanExecuteAction CanClick = FCanExecuteAction::CreateLambda([bEnabled]() {
+			return bEnabled;
+		});
+		const FUIAction Action {FExecuteAction::CreateLambda(MoveTemp(OnClick)), CanClick};
+		Menu.AddMenuEntry(FText::FromString(Label), FText::FromString(ToolTip), FSlateIcon {}, Action);
+	}
+
+	void AddMenuToggle(FMenuBuilder& Menu, const FString& Label, const FString& ToolTip, const bool* bChecked, TFunction<void()> OnClick) {
+		const FIsActionChecked IsChecked = FIsActionChecked::CreateLambda([bChecked]() {
+			return bChecked && *bChecked;
+		});
+		const FUIAction Action {FExecuteAction::CreateLambda(MoveTemp(OnClick)), FCanExecuteAction {}, IsChecked};
+		const FText Tip = FText::FromString(ToolTip);
+		Menu.AddMenuEntry(FText::FromString(Label), Tip, FSlateIcon {}, Action, NAME_None, EUserInterfaceActionType::ToggleButton);
 	}
 }	// namespace PjcWidgets

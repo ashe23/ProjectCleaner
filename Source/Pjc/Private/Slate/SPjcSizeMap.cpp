@@ -240,9 +240,8 @@ int32 SPjcSizeMap::OnPaint(
 	const FSlateFontInfo FontSmall = FCoreStyle::GetDefaultFontStyle("Mono", 7);
 
 	const auto Box = [&](const int32 Layer, const FVector2D& Position, const FVector2D& Size, const FLinearColor& Color) {
-		FSlateDrawElement::MakeBox(
-			OutDrawElements, Layer, AllottedGeometry.ToPaintGeometry(Size, FSlateLayoutTransform {Position}), White, ESlateDrawEffect::None, Color
-		);
+		const FPaintGeometry BoxGeometry = AllottedGeometry.ToPaintGeometry(Size, FSlateLayoutTransform {Position});
+		FSlateDrawElement::MakeBox(OutDrawElements, Layer, BoxGeometry, White, ESlateDrawEffect::None, Color);
 	};
 	const auto Text = [&](const int32 Layer,
 						  const FVector2D& Position,
@@ -260,15 +259,8 @@ int32 SPjcSizeMap::OnPaint(
 			Shown = Fits > 0 ? Shown.Left(Fits) + TEXT("\u2026") : FString {};
 		}
 		const FVector2D Size {FontMeasure->Measure(Shown, TextFont)};
-		FSlateDrawElement::MakeText(
-			OutDrawElements,
-			Layer,
-			AllottedGeometry.ToPaintGeometry(Size, FSlateLayoutTransform {Position}),
-			Shown,
-			TextFont,
-			ESlateDrawEffect::None,
-			Color
-		);
+		const FPaintGeometry TextGeometry = AllottedGeometry.ToPaintGeometry(Size, FSlateLayoutTransform {Position});
+		FSlateDrawElement::MakeText(OutDrawElements, Layer, TextGeometry, Shown, TextFont, ESlateDrawEffect::None, Color);
 	};
 	const auto Outline = [&](const int32 Layer, const FVector2D& Position, const FVector2D& Size, const float Width, const FLinearColor& Color) {
 		Box(Layer, Position, FVector2D {Size.X, Width}, Color);

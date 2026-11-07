@@ -185,17 +185,13 @@ bool FPjcTestPaths::RunTest(const FString& Parameters) {
 	TestEqual(TEXT("absolute of /Game"), UPjcSubsystem::PathConvertToAbsolute(TEXT("/Game")), ContentDir);
 	TestEqual(TEXT("absolute of /Game/Foo"), UPjcSubsystem::PathConvertToAbsolute(TEXT("/Game/Foo")), ContentDir / TEXT("Foo"));
 	TestEqual(TEXT("relative of content dir"), UPjcSubsystem::PathConvertToRelative(ContentDir), FString {TEXT("/Game")});
-	TestEqual(
-		TEXT("relative of content subdir"), UPjcSubsystem::PathConvertToRelative(ContentDir / TEXT("Foo/Bar")), FString {TEXT("/Game/Foo/Bar")}
-	);
+	const FString RelativeSubdir = UPjcSubsystem::PathConvertToRelative(ContentDir / TEXT("Foo/Bar"));
+	TestEqual(TEXT("relative of content subdir"), RelativeSubdir, FString {TEXT("/Game/Foo/Bar")});
 
 	TestEqual(TEXT("object path"), UPjcSubsystem::PathConvertToObjectPath(TEXT("/Game/Foo/Bar.Bar")), FString {TEXT("/Game/Foo/Bar.Bar")});
 	TestEqual(TEXT("object path of class"), UPjcSubsystem::PathConvertToObjectPath(TEXT("/Game/Foo/BP.BP_C")), FString {TEXT("/Game/Foo/BP.BP")});
-	TestEqual(
-		TEXT("object path of export text"),
-		UPjcSubsystem::PathConvertToObjectPath(TEXT("Blueprint'/Game/Foo/BP.BP'")),
-		FString {TEXT("/Game/Foo/BP.BP")}
-	);
+	const FString ExportTextPath = UPjcSubsystem::PathConvertToObjectPath(TEXT("Blueprint'/Game/Foo/BP.BP'"));
+	TestEqual(TEXT("object path of export text"), ExportTextPath, FString {TEXT("/Game/Foo/BP.BP")});
 	TestEqual(TEXT("object path of package"), UPjcSubsystem::PathConvertToObjectPath(TEXT("/Game/Foo/Bar")), FString {});
 	TestEqual(TEXT("object path outside project"), UPjcSubsystem::PathConvertToObjectPath(TEXT("/Engine/Foo/Bar.Bar")), FString {});
 
@@ -227,11 +223,8 @@ bool FPjcTestPrimaryTypes::RunTest(const FString& Parameters) {
 	UAssetManager::Get().GetPrimaryAssetTypeInfoList(TypeInfos);
 	for (const auto& TypeInfo : TypeInfos) {
 		const UClass* BaseClass = TypeInfo.AssetBaseClassLoaded;
-		AddInfo(
-			FString::Printf(
-				TEXT("primary type %s, base class %s"), *TypeInfo.PrimaryAssetType.ToString(), BaseClass ? *BaseClass->GetPathName() : TEXT("none")
-			)
-		);
+		const FString BaseName = BaseClass ? BaseClass->GetPathName() : FString {TEXT("none")};
+		AddInfo(FString::Printf(TEXT("primary type %s, base class %s"), *TypeInfo.PrimaryAssetType.ToString(), *BaseName));
 	}
 
 	TSet<FName> ClassNames;
@@ -294,22 +287,17 @@ bool FPjcTestScanClassification::RunTest(const FString& Parameters) {
 
 	TArray<FPjcAssetIndirectInfo> IndirectInfos;
 	UPjcSubsystem::GetAssetsIndirect(Assets, IndirectInfos, false);
-	TestSetEqual(
-		*this,
-		TEXT("indirect"),
-		FixtureAssets(Assets),
-		ObjectPaths(Fixture, {TEXT("C_Indirect"), TEXT("C_IndirectPackage"), TEXT("C_InPython"), TEXT("C_InPlatformConfig")})
-	);
+	const TArray<FString> IndirectNames {TEXT("C_Indirect"), TEXT("C_IndirectPackage"), TEXT("C_InPython"), TEXT("C_InPlatformConfig")};
+	const TSet<FString> Indirect = ObjectPaths(Fixture, IndirectNames);
+	TestSetEqual(*this, TEXT("indirect"), FixtureAssets(Assets), Indirect);
 
 	const FPjcAssetIndirectInfo* IndirectInfo = IndirectInfos.FindByPredicate([&](const FPjcAssetIndirectInfo& Info) {
 		return PjcShim::GetObjectPathString(Info.Asset).Equals(Fixture.ObjectPath(TEXT("C_Indirect")));
 	});
 	if (TestNotNull(TEXT("indirect info"), IndirectInfo)) {
-		TestEqual(
-			TEXT("indirect info file"),
-			UPjcSubsystem::PathNormalize(IndirectInfo->FilePath),
-			UPjcSubsystem::PathNormalize(FPjcTestFixture::IndirectConfigFile())
-		);
+		const FString InfoFile = UPjcSubsystem::PathNormalize(IndirectInfo->FilePath);
+		const FString ConfigFile = UPjcSubsystem::PathNormalize(FPjcTestFixture::IndirectConfigFile());
+		TestEqual(TEXT("indirect info file"), InfoFile, ConfigFile);
 		TestEqual(TEXT("indirect info line"), IndirectInfo->FileNum, 2);
 	}
 
@@ -410,12 +398,8 @@ bool FPjcTestScanSettings::RunTest(const FString& Parameters) {
 	Settings->UsedClasses.Reset();
 
 	Settings->bUnregisteredPrimaryUsed = false;
-	TestSetEqual(
-		*this,
-		TEXT("unregistered primary classes not used"),
-		UnusedFixtureAssets(),
-		UnusedDefault.Union(ObjectPaths(Fixture, {TEXT("BP_PrimaryOutside")}))
-	);
+	const TSet<FString> WithOutside = UnusedDefault.Union(ObjectPaths(Fixture, {TEXT("BP_PrimaryOutside")}));
+	TestSetEqual(*this, TEXT("unregistered primary classes not used"), UnusedFixtureAssets(), WithOutside);
 	Settings->bUnregisteredPrimaryUsed = true;
 
 	TArray<FAssetData> LabelOnly;
@@ -484,9 +468,8 @@ bool FPjcTestScanUsage::RunTest(const FString& Parameters) {
 		TestEqual(*FString::Printf(TEXT("%s reason"), Name), static_cast<int32>(AssetUsage->Reason), static_cast<int32>(Reason));
 		TestEqual(*FString::Printf(TEXT("%s parent"), Name), AssetUsage->Parent, Parent ? PackageOf(Fixture, Parent) : FName {NAME_None});
 		if (DetailPart) {
-			TestTrue(
-				*FString::Printf(TEXT("%s detail '%s' has '%s'"), Name, *AssetUsage->Detail, DetailPart), AssetUsage->Detail.Contains(DetailPart)
-			);
+			const FString DetailCheck = FString::Printf(TEXT("%s detail '%s' has '%s'"), Name, *AssetUsage->Detail, DetailPart);
+			TestTrue(*DetailCheck, AssetUsage->Detail.Contains(DetailPart));
 		}
 	};
 
@@ -632,9 +615,8 @@ bool FPjcTestScanResult::RunTest(const FString& Parameters) {
 	const auto TestStatus = [&](const TCHAR* Name, const EPjcAssetStatus Status, const EPjcUsageReason ChainReason) {
 		const FName Package = PackageOf(Fixture, Name);
 		TestEqual(*FString::Printf(TEXT("%s status"), Name), static_cast<int32>(Result.GetStatus(Package)), static_cast<int32>(Status));
-		TestEqual(
-			*FString::Printf(TEXT("%s chain reason"), Name), static_cast<int32>(Result.GetChainReason(Package)), static_cast<int32>(ChainReason)
-		);
+		const int32 ChainActual = static_cast<int32>(Result.GetChainReason(Package));
+		TestEqual(*FString::Printf(TEXT("%s chain reason"), Name), ChainActual, static_cast<int32>(ChainReason));
 	};
 	// labels cook nothing themselves; without cook rules what they list or keep ships only through other references
 	TestStatus(TEXT("PAL_Root"), EPjcAssetStatus::EditorOnly, EPjcUsageReason::Primary);
@@ -672,29 +654,23 @@ bool FPjcTestScanResult::RunTest(const FString& Parameters) {
 	for (int32 Index = 0; Index < Overview.Classes.Num(); ++Index) {
 		const FPjcOverview::FClass& Class = Overview.Classes[Index];
 		NumByClass += Class.Total.Num;
-		TestEqual(
-			*FString::Printf(TEXT("%s size by status"), *Class.Name.ToString()),
-			Class.SizeUsed + Class.SizeEditorOnly + Class.SizeUnused,
-			Class.Total.Size
-		);
+		const int64 SizeSum = Class.SizeUsed + Class.SizeEditorOnly + Class.SizeUnused;
+		TestEqual(*FString::Printf(TEXT("%s size by status"), *Class.Name.ToString()), SizeSum, Class.Total.Size);
 		TestTrue(TEXT("classes biggest first"), Index == 0 || Overview.Classes[Index - 1].Total.Size >= Class.Total.Size);
 	}
 	TestEqual(TEXT("overview by class"), NumByClass, Overview.All.Num);
-	TestEqual(
-		TEXT("largest unused"), Overview.LargestUnused.Num(), FMath::Min(Result.Unused.Num(), static_cast<int32>(FPjcOverview::MaxLargestUnused))
-	);
+	const int32 MaxLargest = FMath::Min(Result.Unused.Num(), static_cast<int32>(FPjcOverview::MaxLargestUnused));
+	TestEqual(TEXT("largest unused"), Overview.LargestUnused.Num(), MaxLargest);
 	for (int32 Index = 1; Index < Overview.LargestUnused.Num(); ++Index) {
 		TestTrue(TEXT("largest unused biggest first"), Overview.LargestUnused[Index - 1].Size >= Overview.LargestUnused[Index].Size);
 	}
 	TestTrue(TEXT("unused folders found"), Overview.UnusedFolders.Num() > 0);
 	for (const auto& Folder : Overview.UnusedFolders) {
 		TestTrue(*FString::Printf(TEXT("%s mostly unused"), *Folder.Path), Folder.Unused.Size * 2 >= Folder.All.Size && Folder.Unused.Num > 0);
-		TestFalse(
-			*FString::Printf(TEXT("%s parent not listed"), *Folder.Path),
-			Overview.UnusedFolders.ContainsByPredicate([&Folder](const FPjcOverview::FFolder& Other) {
-				return Folder.Path.StartsWith(Other.Path + TEXT("/"));
-			})
-		);
+		const bool bParentListed = Overview.UnusedFolders.ContainsByPredicate([&Folder](const FPjcOverview::FFolder& Other) {
+			return Folder.Path.StartsWith(Other.Path + TEXT("/"));
+		});
+		TestFalse(*FString::Printf(TEXT("%s parent not listed"), *Folder.Path), bParentListed);
 	}
 
 	// issues: same answers as the separate queries
@@ -779,14 +755,10 @@ bool FPjcTestExclusionsMoved::RunTest(const FString& Parameters) {
 	TestTrue(TEXT("moved folder"), Settings->ExcludedFolders.ContainsByPredicate([](const FDirectoryPath& Dir) {
 		return Dir.Path == TEXT("/Game/PjcMoved");
 	}));
-	TestTrue(
-		TEXT("moved class"),
-		Settings->ExcludedClasses.Num() == 1 && Settings->ExcludedClasses[0].ToSoftObjectPath().ToString() == TEXT("/Script/Engine.CurveFloat")
-	);
-	TestTrue(
-		TEXT("moved asset"),
-		Settings->ExcludedAssets.Num() == 1 && Settings->ExcludedAssets[0].ToSoftObjectPath().ToString() == TEXT("/Game/PjcMoved/C_Moved.C_Moved")
-	);
+	const FString MovedClass = Settings->ExcludedClasses.Num() == 1 ? Settings->ExcludedClasses[0].ToSoftObjectPath().ToString() : FString {};
+	const FString MovedAsset = Settings->ExcludedAssets.Num() == 1 ? Settings->ExcludedAssets[0].ToSoftObjectPath().ToString() : FString {};
+	TestEqual(TEXT("moved class"), MovedClass, FString {TEXT("/Script/Engine.CurveFloat")});
+	TestEqual(TEXT("moved asset"), MovedAsset, FString {TEXT("/Game/PjcMoved/C_Moved.C_Moved")});
 
 	TArray<FString> Left;
 	GConfig->GetArray(*Section, TEXT("ExcludedFolders"), Left, GEditorPerProjectIni);
@@ -803,9 +775,8 @@ bool FPjcTestExclusionsMoved::RunTest(const FString& Parameters) {
 	GConfig->SetArray(*FileSection, TEXT("ExcludedFiles"), {TEXT("(FilePath=\"Content/PjcMoved/notes.txt\")")}, GEditorPerProjectIni);
 	GConfig->SetArray(*FileSection, TEXT("ExcludedExtensions"), {TEXT("md"), TEXT("zip")}, GEditorPerProjectIni);
 	TestEqual(TEXT("moved file exclusions, the shared extension is not doubled"), UPjcSubsystem::MoveExclusionsToProject(), 2);
-	TestTrue(
-		TEXT("moved file"), FileSettings->ExcludedFiles.Num() == 1 && FileSettings->ExcludedFiles[0].FilePath == TEXT("Content/PjcMoved/notes.txt")
-	);
+	const FString MovedFile = FileSettings->ExcludedFiles.Num() == 1 ? FileSettings->ExcludedFiles[0].FilePath : FString {};
+	TestEqual(TEXT("moved file"), MovedFile, FString {TEXT("Content/PjcMoved/notes.txt")});
 	TestTrue(TEXT("moved extension"), FileSettings->ExcludedExtensions.Contains(TEXT("zip")) && FileSettings->ExcludedExtensions.Num() == 2);
 	GConfig->GetArray(*FileSection, TEXT("ExcludedExtensions"), Left, GEditorPerProjectIni);
 	TestEqual(TEXT("per user file settings emptied"), Left.Num(), 0);
@@ -1116,16 +1087,11 @@ bool FPjcTestInspectorGraph::RunTest(const FString& Parameters) {
 		TestTrue(TEXT("chain references the asset"), Used.Edges.ContainsByPredicate([&](const FPjcInspectorEdge& Edge) {
 			return Edge.From == ChainNode && Edge.To == LeafNode;
 		}));
-		TestEqual(
-			TEXT("labels reference editor only (labels do not ship)"),
-			static_cast<int32>(FPjcInspectorGraph::GetLinkKind(PackageOf(Fixture, TEXT("PAL_Root")), PackageOf(Fixture, TEXT("OL_Chain")))),
-			static_cast<int32>(EPjcLinkKind::EditorOnly)
-		);
-		TestEqual(
-			TEXT("object library references hard"),
-			static_cast<int32>(FPjcInspectorGraph::GetLinkKind(PackageOf(Fixture, TEXT("OL_Chain")), Leaf)),
-			static_cast<int32>(EPjcLinkKind::Hard)
-		);
+		const FName Library = PackageOf(Fixture, TEXT("OL_Chain"));
+		const int32 LabelLink = static_cast<int32>(FPjcInspectorGraph::GetLinkKind(PackageOf(Fixture, TEXT("PAL_Root")), Library));
+		TestEqual(TEXT("labels reference editor only (labels do not ship)"), LabelLink, static_cast<int32>(EPjcLinkKind::EditorOnly));
+		const int32 LibraryLink = static_cast<int32>(FPjcInspectorGraph::GetLinkKind(Library, Leaf));
+		TestEqual(TEXT("object library references hard"), LibraryLink, static_cast<int32>(EPjcLinkKind::Hard));
 	}
 	const int32 SourceNode = Used.Nodes.IndexOfByPredicate([&](const FPjcInspectorNode& Node) {
 		return Node.Kind == EPjcInspectorNodeKind::Source && Node.Package == PackageOf(Fixture, TEXT("PAL_Root"));

@@ -692,63 +692,31 @@ TSharedPtr<SWidget> SPjcTabUnused::OnFolderContextMenu() {
 
 	const FFolderPtr Folder = Selection[0];
 	FMenuBuilder Menu {true, nullptr};
-	Menu.AddMenuEntry(
-		FText::FromString(FString::Printf(TEXT("Delete unused\u2026 (%s)"), *PjcFormat::Count(Folder->Unused.Num))),
-		FText::FromString(TEXT("Deletes the unused assets of the folder and its subfolders, with the unused assets that reference them")),
-		FSlateIcon {},
-		FUIAction {
-		  FExecuteAction::CreateLambda([this, Folder]() {
-			  TArray<FName> Packages;
-			  GetFolderUnused(Folder->Path, Packages);
-			  PjcActions::DeleteWithGroup(Packages);
-		  }),
-		  FCanExecuteAction::CreateLambda([Folder]() {
-			  return Folder->Unused.Num > 0;
-		  })
-		}
-	);
-	Menu.AddMenuEntry(
-		FText::FromString(TEXT("Exclude folder")),
-		FText::FromString(TEXT("Keeps every asset in the folder, saved to Config/DefaultEditor.ini")),
-		FSlateIcon {},
-		FUIAction {FExecuteAction::CreateLambda([this, Folder]() {
-			ExcludeFolder(Folder->Path);
-		})}
-	);
+	const FString DeleteLabel = FString::Printf(TEXT("Delete unused\u2026 (%s)"), *PjcFormat::Count(Folder->Unused.Num));
+	const FString DeleteTip = TEXT("Deletes the unused assets of the folder and its subfolders, with the unused assets that reference them");
+	PjcWidgets::AddMenuEntry(Menu, DeleteLabel, DeleteTip, Folder->Unused.Num > 0, [this, Folder]() {
+		TArray<FName> Packages;
+		GetFolderUnused(Folder->Path, Packages);
+		PjcActions::DeleteWithGroup(Packages);
+	});
+	const FString ExcludeTip = TEXT("Keeps every asset in the folder, saved to Config/DefaultEditor.ini");
+	PjcWidgets::AddMenuEntry(Menu, TEXT("Exclude folder"), ExcludeTip, [this, Folder]() {
+		ExcludeFolder(Folder->Path);
+	});
 	Menu.AddSeparator();
-	Menu.AddMenuEntry(
-		FText::FromString(TEXT("Size map here")),
-		FText::FromString(TEXT("Shows the folder as a size map")),
-		FSlateIcon {},
-		FUIAction {FExecuteAction::CreateLambda([this]() {
-			SetMapView(true);
-		})}
-	);
-	Menu.AddMenuEntry(
-		FText::FromString(TEXT("Expand all")),
-		FText::FromString(TEXT("Opens every subfolder")),
-		FSlateIcon {},
-		FUIAction {FExecuteAction::CreateLambda([this, Folder]() {
-			SetExpansionRecursive(Folder, true);
-		})}
-	);
-	Menu.AddMenuEntry(
-		FText::FromString(TEXT("Collapse all")),
-		FText::FromString(TEXT("Closes every subfolder")),
-		FSlateIcon {},
-		FUIAction {FExecuteAction::CreateLambda([this, Folder]() {
-			SetExpansionRecursive(Folder, false);
-		})}
-	);
+	PjcWidgets::AddMenuEntry(Menu, TEXT("Size map here"), TEXT("Shows the folder as a size map"), [this]() {
+		SetMapView(true);
+	});
+	PjcWidgets::AddMenuEntry(Menu, TEXT("Expand all"), TEXT("Opens every subfolder"), [this, Folder]() {
+		SetExpansionRecursive(Folder, true);
+	});
+	PjcWidgets::AddMenuEntry(Menu, TEXT("Collapse all"), TEXT("Closes every subfolder"), [this, Folder]() {
+		SetExpansionRecursive(Folder, false);
+	});
 	Menu.AddSeparator();
-	Menu.AddMenuEntry(
-		FText::FromString(TEXT("Show in Explorer")),
-		FText::FromString(TEXT("Opens the folder in the file explorer")),
-		FSlateIcon {},
-		FUIAction {FExecuteAction::CreateLambda([Folder]() {
-			UPjcSubsystem::OpenPathInFileExplorer(UPjcSubsystem::PathConvertToAbsolute(Folder->Path));
-		})}
-	);
+	PjcWidgets::AddMenuEntry(Menu, TEXT("Show in Explorer"), TEXT("Opens the folder in the file explorer"), [Folder]() {
+		UPjcSubsystem::OpenPathInFileExplorer(UPjcSubsystem::PathConvertToAbsolute(Folder->Path));
+	});
 	return Menu.MakeWidget();
 }
 
@@ -759,41 +727,16 @@ TSharedRef<SWidget> SPjcTabUnused::MakeViewMenu() {
 	}
 
 	FMenuBuilder Menu {true, nullptr};
-	Menu.AddMenuEntry(
-		FText::FromString(TEXT("Only folders with unused")),
-		FText::FromString(TEXT("Hides folders without unused assets")),
-		FSlateIcon {},
-		FUIAction {
-		  FExecuteAction::CreateLambda([this]() {
-			  bOnlyUnused = !bOnlyUnused;
-			  SaveViewState();
-			  OnFolderSearchChanged(FText::FromString(FolderSearch));
-		  }),
-		  FCanExecuteAction {},
-		  FIsActionChecked::CreateLambda([this]() {
-			  return bOnlyUnused;
-		  })
-		},
-		NAME_None,
-		EUserInterfaceActionType::ToggleButton
-	);
-	Menu.AddMenuEntry(
-		FText::FromString(FString::Printf(TEXT("Empty folders (%s)"), *PjcFormat::Count(NumEmpty))),
-		FText::FromString(TEXT("Shows empty folders, cleanup deletes them")),
-		FSlateIcon {},
-		FUIAction {
-		  FExecuteAction::CreateLambda([this]() {
-			  bShowEmpty = !bShowEmpty;
-			  OnFolderSearchChanged(FText::FromString(FolderSearch));
-		  }),
-		  FCanExecuteAction {},
-		  FIsActionChecked::CreateLambda([this]() {
-			  return bShowEmpty;
-		  })
-		},
-		NAME_None,
-		EUserInterfaceActionType::ToggleButton
-	);
+	PjcWidgets::AddMenuToggle(Menu, TEXT("Only folders with unused"), TEXT("Hides folders without unused assets"), &bOnlyUnused, [this]() {
+		bOnlyUnused = !bOnlyUnused;
+		SaveViewState();
+		OnFolderSearchChanged(FText::FromString(FolderSearch));
+	});
+	const FString EmptyLabel = FString::Printf(TEXT("Empty folders (%s)"), *PjcFormat::Count(NumEmpty));
+	PjcWidgets::AddMenuToggle(Menu, EmptyLabel, TEXT("Shows empty folders, cleanup deletes them"), &bShowEmpty, [this]() {
+		bShowEmpty = !bShowEmpty;
+		OnFolderSearchChanged(FText::FromString(FolderSearch));
+	});
 	Menu.AddSeparator();
 	Menu.AddMenuEntry(FText::FromString(TEXT("Expand all")), FText::GetEmpty(), FSlateIcon {}, FUIAction {FExecuteAction::CreateLambda([this]() {
 						  for (const auto& Root : TreeRoots) {
@@ -1036,13 +979,7 @@ void SPjcTabUnused::RebuildChips() {
 		return A.Size != B.Size ? A.Size > B.Size : A.Type.Label < B.Type.Label;
 	});
 
-	const auto MakeChip = [this](
-							  const FName ClassName,
-							  const FString& Label,
-							  const TOptional<FLinearColor>& Color,
-							  const int32 Num,
-							  const FString& ToolTip
-						  ) {
+	const auto MakeChip = [this](FName ClassName, const FString& Label, const TOptional<FLinearColor>& Color, int32 Num, const FString& ToolTip) {
 		const TSharedRef<SHorizontalBox> Content = SNew(SHorizontalBox);
 		if (Color.IsSet()) {
 			// clang-format off
@@ -1228,31 +1165,19 @@ TSharedPtr<SWidget> SPjcTabUnused::OnAssetContextMenu() {
 	if (Packages.Num() == 0) return nullptr;
 
 	FMenuBuilder Menu {true, nullptr};
-	Menu.AddMenuEntry(
-		FText::FromString(FString::Printf(TEXT("Delete\u2026 (%s)"), *PjcFormat::Count(Packages.Num()))),
-		FText::FromString(TEXT("Deletes the selection with the unused assets that reference it")),
-		FSlateIcon {},
-		FUIAction {FExecuteAction::CreateLambda([this, Packages]() {
-			PjcActions::DeleteWithGroup(Packages);
-		})}
-	);
+	const FString DeleteLabel = FString::Printf(TEXT("Delete\u2026 (%s)"), *PjcFormat::Count(Packages.Num()));
+	PjcWidgets::AddMenuEntry(Menu, DeleteLabel, TEXT("Deletes the selection with the unused assets that reference it"), [Packages]() {
+		PjcActions::DeleteWithGroup(Packages);
+	});
 	Menu.AddSeparator();
 	AddExcludeEntries(Menu);
 	Menu.AddSeparator();
-	Menu.AddMenuEntry(
-		FText::FromString(TEXT("Inspect")),
-		FText::FromString(TEXT("Shows why it is unused in the Inspector")),
-		FSlateIcon {},
-		FUIAction {FExecuteAction::CreateSP(this, &SPjcTabUnused::InspectSelected), FCanExecuteAction::CreateLambda([Packages]() {
-					   return Packages.Num() == 1;
-				   })}
-	);
-	Menu.AddMenuEntry(
-		FText::FromString(TEXT("Browse")),
-		FText::FromString(TEXT("Shows the selection in the Content Browser")),
-		FSlateIcon {},
-		FUIAction {FExecuteAction::CreateSP(this, &SPjcTabUnused::BrowseSelected)}
-	);
+	PjcWidgets::AddMenuEntry(Menu, TEXT("Inspect"), TEXT("Shows why it is unused in the Inspector"), Packages.Num() == 1, [this]() {
+		InspectSelected();
+	});
+	PjcWidgets::AddMenuEntry(Menu, TEXT("Browse"), TEXT("Shows the selection in the Content Browser"), [this]() {
+		BrowseSelected();
+	});
 	return Menu.MakeWidget();
 }
 
@@ -1398,26 +1323,18 @@ void SPjcTabUnused::AddExcludeEntries(FMenuBuilder& Menu) {
 	SelectedFolder.FindLastChar(TEXT('/'), Slash);
 	const FString FolderName = SelectedFolder.Mid(Slash + 1);
 
-	Menu.AddMenuEntry(
-		FText::FromString(FString::Printf(TEXT("Exclude assets (%s)"), *PjcFormat::Count(NumSelected))),
-		FText::FromString(TEXT("Keeps the selected assets, saved to Config/DefaultEditor.ini")),
-		FSlateIcon {},
-		FUIAction {FExecuteAction::CreateSP(this, &SPjcTabUnused::ExcludeSelectedAssets)}
-	);
-	Menu.AddMenuEntry(
-		FText::FromString(FString::Printf(TEXT("Exclude folder %s"), *FolderName)),
-		FText::FromString(TEXT("Keeps every asset in the selected folder, saved to Config/DefaultEditor.ini")),
-		FSlateIcon {},
-		FUIAction {FExecuteAction::CreateLambda([this]() {
-			ExcludeFolder(SelectedFolder);
-		})}
-	);
-	Menu.AddMenuEntry(
-		FText::FromString(FString::Printf(TEXT("Exclude class %s"), *ClassText)),
-		FText::FromString(TEXT("Keeps every asset of the class, saved to Config/DefaultEditor.ini")),
-		FSlateIcon {},
-		FUIAction {FExecuteAction::CreateSP(this, &SPjcTabUnused::ExcludeSelectedClasses)}
-	);
+	const FString AssetsLabel = FString::Printf(TEXT("Exclude assets (%s)"), *PjcFormat::Count(NumSelected));
+	PjcWidgets::AddMenuEntry(Menu, AssetsLabel, TEXT("Keeps the selected assets, saved to Config/DefaultEditor.ini"), [this]() {
+		ExcludeSelectedAssets();
+	});
+	const FString FolderLabel = TEXT("Exclude folder ") + FolderName;
+	PjcWidgets::AddMenuEntry(Menu, FolderLabel, TEXT("Keeps every asset in the selected folder, saved to Config/DefaultEditor.ini"), [this]() {
+		ExcludeFolder(SelectedFolder);
+	});
+	const FString ClassLabel = TEXT("Exclude class ") + ClassText;
+	PjcWidgets::AddMenuEntry(Menu, ClassLabel, TEXT("Keeps every asset of the class, saved to Config/DefaultEditor.ini"), [this]() {
+		ExcludeSelectedClasses();
+	});
 }
 
 void SPjcTabUnused::ExcludeSelectedAssets() {
@@ -1430,9 +1347,8 @@ void SPjcTabUnused::ExcludeSelectedAssets() {
 	}
 	if (Assets.Num() == 0) return;
 
-	PjcActions::Exclude(
-		{}, {}, Assets, FString::Printf(TEXT("Excluded %s asset%s"), *PjcFormat::Count(Assets.Num()), Assets.Num() == 1 ? TEXT("") : TEXT("s"))
-	);
+	const TCHAR* Plural = Assets.Num() == 1 ? TEXT("") : TEXT("s");
+	PjcActions::Exclude({}, {}, Assets, FString::Printf(TEXT("Excluded %s asset%s"), *PjcFormat::Count(Assets.Num()), Plural));
 }
 
 void SPjcTabUnused::ExcludeSelectedClasses() {

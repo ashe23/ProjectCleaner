@@ -104,15 +104,15 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create() {
 #endif
 
 	// rows that react to the mouse
-	Style->Set(
-		"ProjectCleaner.Button.Row",
-		FButtonStyle {}
-			.SetNormal(FSlateNoResource {})
-			.SetHovered(FSlateColorBrush {FLinearColor {1.0f, 1.0f, 1.0f, 0.04f}})
-			.SetPressed(FSlateColorBrush {FLinearColor {1.0f, 1.0f, 1.0f, 0.07f}})
-			.SetNormalPadding(FMargin {0.0f})
-			.SetPressedPadding(FMargin {0.0f})
-	);
+	// clang-format off
+	const FButtonStyle RowButton = FButtonStyle {}
+		.SetNormal(FSlateNoResource {})
+		.SetHovered(FSlateColorBrush {FLinearColor {1.0f, 1.0f, 1.0f, 0.04f}})
+		.SetPressed(FSlateColorBrush {FLinearColor {1.0f, 1.0f, 1.0f, 0.07f}})
+		.SetNormalPadding(FMargin {0.0f})
+		.SetPressedPadding(FMargin {0.0f});
+	// clang-format on
+	Style->Set("ProjectCleaner.Button.Row", RowButton);
 
 	return Style;
 }

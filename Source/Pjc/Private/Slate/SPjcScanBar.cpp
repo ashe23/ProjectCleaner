@@ -76,18 +76,14 @@ SPjcScanBar::~SPjcScanBar() {
 
 void SPjcScanBar::ScanProject() {
 	if (UPjcSubsystem::GetModuleAssetRegistry().Get().IsLoadingAssets()) {
-		UPjcSubsystem::ShowNotificationWithOutputLog(
-			TEXT("Scan waits for the Asset Registry: it is still discovering assets. Scan again when it has finished."),
-			SNotificationItem::CS_Fail,
-			5.0f
-		);
+		const TCHAR* Discovering = TEXT("Scan waits for the Asset Registry: it is still discovering assets. Scan again when it has finished.");
+		UPjcSubsystem::ShowNotificationWithOutputLog(Discovering, SNotificationItem::CS_Fail, 5.0f);
 		return;
 	}
 
 	if (!FEditorFileUtils::SaveDirtyPackages(true, true, true, false, false, false)) {
-		UPjcSubsystem::ShowNotificationWithOutputLog(
-			TEXT("Scan needs every asset saved, the scan reads them from disk."), SNotificationItem::CS_Fail, 5.0f
-		);
+		const TCHAR* Unsaved = TEXT("Scan needs every asset saved, the scan reads them from disk.");
+		UPjcSubsystem::ShowNotificationWithOutputLog(Unsaved, SNotificationItem::CS_Fail, 5.0f);
 		return;
 	}
 
@@ -104,16 +100,12 @@ void SPjcScanBar::CleanProject() {
 	UPjcSubsystem::GetFoldersEmpty(FoldersEmpty);
 
 	const FText Title = FText::FromString(TEXT("Clean Project"));
-	const FText Message = FText::FromString(
-		FString::Printf(
-			TEXT("Delete %s unused asset(s) (%s) and %s empty folder(s)?\n\n")
-				TEXT("Assets something still holds in memory are kept and listed in Output Log.\n\n%s"),
-			*PjcFormat::Count(Result.Unused.Num()),
-			*PjcFormat::Size(UnusedBytes),
-			*PjcFormat::Count(FoldersEmpty.Num()),
-			*UPjcSubsystem::GetDeleteWarning()
-		)
-	);
+	const FString UnusedText = PjcFormat::Count(Result.Unused.Num());
+	const FString FoldersText = PjcFormat::Count(FoldersEmpty.Num());
+	const FString SizeText = PjcFormat::Size(UnusedBytes);
+	const FString Question = FString::Printf(TEXT("Delete %s unused asset(s) (%s) and %s empty folder(s)?"), *UnusedText, *SizeText, *FoldersText);
+	const FString Held = TEXT("Assets something still holds in memory are kept and listed in Output Log.");
+	const FText Message = FText::FromString(Question + TEXT("\n\n") + Held + TEXT("\n\n") + UPjcSubsystem::GetDeleteWarning());
 
 	const EAppReturnType::Type ReturnType = PjcShim::ShowDialog(Title, Message, EAppMsgType::YesNo);
 	if (ReturnType != EAppReturnType::Yes) return;

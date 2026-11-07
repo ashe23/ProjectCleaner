@@ -29,18 +29,15 @@ void FPjc::StartupModule() {
 	UToolMenus::RegisterStartupCallback(FSimpleMulticastDelegate::FDelegate::CreateRaw(this, &FPjc::RegisterMenus));
 	GetMutableDefault<UPjcEditorSettings>()->OnChanged.AddRaw(this, &FPjc::OnSettingsChanged);
 
+	const FOnSpawnTab OnSpawnTab = FOnSpawnTab::CreateLambda([](const FSpawnTabArgs& SpawnTabArgs) -> TSharedRef<SDockTab> {
+		const TSharedRef<SDockTab> DockTab = SNew(SDockTab).TabRole(MajorTab);
+		DockTab->SetContent(SNew(SPjcTabMain, DockTab, SpawnTabArgs.GetOwnerWindow()));
+		return DockTab;
+	});
+	const FText TabTitle = FText::FromString(PjcConstants::ModulePjcTitle.ToString());
 	FGlobalTabmanager::Get()
-		->RegisterTabSpawner(
-			PjcConstants::TabProjectCleaner, FOnSpawnTab::CreateLambda([&](const FSpawnTabArgs& SpawnTabArgs) -> TSharedRef<SDockTab> {
-				const TSharedRef<SDockTab> DockTab = SNew(SDockTab).TabRole(MajorTab);
-				const TSharedRef<SPjcTabMain> Frontend = SNew(SPjcTabMain, DockTab, SpawnTabArgs.GetOwnerWindow());
-
-				DockTab->SetContent(Frontend);
-
-				return DockTab;
-			})
-		)
-		.SetDisplayName(FText::FromString(PjcConstants::ModulePjcTitle.ToString()))
+		->RegisterTabSpawner(PjcConstants::TabProjectCleaner, OnSpawnTab)
+		.SetDisplayName(TabTitle)
 		.SetMenuType(ETabSpawnerMenuType::Hidden)
 		.SetIcon(FPjcStyles::GetIcon("ProjectCleaner.Icon.Bin16"));
 }
@@ -63,11 +60,8 @@ void FPjc::RegisterMenus() {
 	FToolMenuOwnerScoped OwnerScoped(this);
 
 	UToolMenu* Menu = UToolMenus::Get()->ExtendMenu("LevelEditor.MainMenu.Window");
-	FToolMenuSection& Section = Menu->AddSection(
-		"PjcSectionAssetManagementTools",
-		FText::FromString(TEXT("Project Management Tools")),
-		FToolMenuInsert("WindowLayout", EToolMenuInsertType::After)
-	);
+	const FToolMenuInsert Insert {"WindowLayout", EToolMenuInsertType::After};
+	FToolMenuSection& Section = Menu->AddSection("PjcSectionAssetManagementTools", FText::FromString(TEXT("Project Management Tools")), Insert);
 	Section.AddMenuEntryWithCommandList(FPjcCmds::Get().TabMain, Cmds);
 
 	const EPjcToolbarLocation ToolbarLocation = GetDefault<UPjcEditorSettings>()->ToolbarLocation;

@@ -79,9 +79,8 @@ namespace
 
 EPjcLinkKind FPjcInspectorGraph::GetLinkKind(const FName From, const FName To) {
 	TArray<FAssetDependency> Dependencies;
-	UPjcSubsystem::GetModuleAssetRegistry().Get().GetDependencies(
-		FAssetIdentifier {From}, Dependencies, UE::AssetRegistry::EDependencyCategory::Package
-	);
+	IAssetRegistry& Registry = UPjcSubsystem::GetModuleAssetRegistry().Get();
+	Registry.GetDependencies(FAssetIdentifier {From}, Dependencies, UE::AssetRegistry::EDependencyCategory::Package);
 	for (const auto& Dependency : Dependencies) {
 		if (Dependency.AssetId.PackageName != To) continue;
 

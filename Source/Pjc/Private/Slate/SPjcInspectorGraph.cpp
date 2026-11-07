@@ -340,14 +340,8 @@ int32 SPjcInspectorGraph::OnPaint(
 
 	// graph space box, scaled with the view
 	const auto Box = [&](const int32 Layer, const FVector2D& Position, const FVector2D& Size, const FSlateBrush* Brush, const FLinearColor& Color) {
-		FSlateDrawElement::MakeBox(
-			OutDrawElements,
-			Layer,
-			AllottedGeometry.ToPaintGeometry(Size, FSlateLayoutTransform {Zoom, ToLocal(Position)}),
-			Brush,
-			ESlateDrawEffect::None,
-			Color
-		);
+		const FPaintGeometry BoxGeometry = AllottedGeometry.ToPaintGeometry(Size, FSlateLayoutTransform {Zoom, ToLocal(Position)});
+		FSlateDrawElement::MakeBox(OutDrawElements, Layer, BoxGeometry, Brush, ESlateDrawEffect::None, Color);
 	};
 	const auto Text = [&](const int32 Layer,
 						  const FVector2D& Position,
@@ -363,15 +357,8 @@ int32 SPjcInspectorGraph::OnPaint(
 			Cut = Fits > 0 ? Cut.Left(Fits) + TEXT("\u2026") : FString {};
 		}
 		const FVector2D Size {FontMeasure->Measure(Cut, Font)};
-		FSlateDrawElement::MakeText(
-			OutDrawElements,
-			Layer,
-			AllottedGeometry.ToPaintGeometry(Size, FSlateLayoutTransform {Zoom, ToLocal(Position)}),
-			Cut,
-			Font,
-			ESlateDrawEffect::None,
-			Color
-		);
+		const FPaintGeometry TextGeometry = AllottedGeometry.ToPaintGeometry(Size, FSlateLayoutTransform {Zoom, ToLocal(Position)});
+		FSlateDrawElement::MakeText(OutDrawElements, Layer, TextGeometry, Cut, Font, ESlateDrawEffect::None, Color);
 		return Size;
 	};
 	const auto Ring = [&](const FVector2D& Position, const FSlateBrush* Brush, const FLinearColor& Color) {
@@ -431,10 +418,9 @@ int32 SPjcInspectorGraph::OnPaint(
 			Points.Add(ToLocal(PjcGraphBezier(Start, C1, C2, End, static_cast<float>(Step) / Steps)));
 		}
 		const float Thickness = FMath::Max(1.0f, Width * Zoom);
+		const FPaintGeometry EdgeGeometry = AllottedGeometry.ToPaintGeometry();
 		if (DashOn <= 0.0f) {
-			FSlateDrawElement::MakeLines(
-				OutDrawElements, LayerEdges, AllottedGeometry.ToPaintGeometry(), Points, ESlateDrawEffect::None, Color, true, Thickness
-			);
+			FSlateDrawElement::MakeLines(OutDrawElements, LayerEdges, EdgeGeometry, Points, ESlateDrawEffect::None, Color, true, Thickness);
 		}
 		else {
 			// dashes along the curve, in graph units
@@ -454,9 +440,7 @@ int32 SPjcInspectorGraph::OnPaint(
 						Dash.Reset();
 						Dash.Add(A + (B - A) * (Along / Length));
 						Dash.Add(A + (B - A) * ((Along + Span) / Length));
-						FSlateDrawElement::MakeLines(
-							OutDrawElements, LayerEdges, AllottedGeometry.ToPaintGeometry(), Dash, ESlateDrawEffect::None, Color, true, Thickness
-						);
+						FSlateDrawElement::MakeLines(OutDrawElements, LayerEdges, EdgeGeometry, Dash, ESlateDrawEffect::None, Color, true, Thickness);
 					}
 					Along += FMath::Max(Span, 0.01f);
 				}
@@ -472,9 +456,7 @@ int32 SPjcInspectorGraph::OnPaint(
 		Dash.Add(ToLocal(Base + Side * 4.5f));
 		Dash.Add(ToLocal(Tip));
 		Dash.Add(ToLocal(Base - Side * 4.5f));
-		FSlateDrawElement::MakeLines(
-			OutDrawElements, LayerEdges, AllottedGeometry.ToPaintGeometry(), Dash, ESlateDrawEffect::None, Color, true, Thickness
-		);
+		FSlateDrawElement::MakeLines(OutDrawElements, LayerEdges, EdgeGeometry, Dash, ESlateDrawEffect::None, Color, true, Thickness);
 
 		// what the link is, when not a plain hard reference
 		FString Label;
@@ -492,14 +474,8 @@ int32 SPjcInspectorGraph::OnPaint(
 			const FVector2D Position = bSameColumn ? FVector2D {End.X + 10.0f, End.Y - 30.0f} : FVector2D {Start.X + 10.0f, Start.Y + 8.0f};
 			const FVector2D Size {FontMeasure->Measure(Label, FontLabel)};
 			Box(LayerLabels, Position, Size + FVector2D {10.0f, 4.0f}, BrushNode, Background);
-			Text(
-				LayerLabels + 1,
-				Position + FVector2D {5.0f, 2.0f},
-				static_cast<float>(Size.X) + 1.0f,
-				Label,
-				FontLabel,
-				bTouched ? SelectedColor : Foreground
-			);
+			const FVector2D LabelPosition = Position + FVector2D {5.0f, 2.0f};
+			Text(LayerLabels + 1, LabelPosition, static_cast<float>(Size.X) + 1.0f, Label, FontLabel, bTouched ? SelectedColor : Foreground);
 		}
 	}
 
@@ -551,9 +527,8 @@ int32 SPjcInspectorGraph::OnPaint(
 		Box(LayerBody + 1, MorePosition + FVector2D {1.0f, 1.0f}, Size - FVector2D {2.0f, 2.0f}, BrushPill, Background);
 		const FString More = FString::Printf(TEXT("+%s more roots"), *PjcFormat::Count(Graph.NumHidden));
 		const float Width = static_cast<float>(FontMeasure->Measure(More, FontLine).X);
-		Text(
-			LayerContent, MorePosition + FVector2D {(NodeWidth - Width) * 0.5f, 15.0f}, Width + 1.0f, More, FontLine, PjcGraphColor(TEXT("#D9C9A3"))
-		);
+		const FVector2D MoreAt = MorePosition + FVector2D {(NodeWidth - Width) * 0.5f, 15.0f};
+		Text(LayerContent, MoreAt, Width + 1.0f, More, FontLine, PjcGraphColor(TEXT("#D9C9A3")));
 	}
 
 	return LayerContent + 1;

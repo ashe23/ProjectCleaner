@@ -58,9 +58,8 @@ namespace
 			Columns = InArgs._Columns;
 			MonoColumns = InArgs._MonoColumns;
 			RightColumns = InArgs._RightColumns;
-			SMultiColumnTableRow::Construct(
-				SMultiColumnTableRow::FArguments().Padding(FMargin {0.0f, 2.0f}).ToolTipText(FText::FromString(Row->ToolTip)), InTable
-			);
+			const FText ToolTip = FText::FromString(Row->ToolTip);
+			SMultiColumnTableRow::Construct(SMultiColumnTableRow::FArguments().Padding(FMargin {0.0f, 2.0f}).ToolTipText(ToolTip), InTable);
 		}
 
 		virtual TSharedRef<SWidget> GenerateWidgetForColumn(const FName& Column) override {
@@ -273,9 +272,8 @@ void SPjcTabIssues::RebuildRows() {
 					Row->TagToolTip = *Kept;
 				}
 				Row->Cells.Add(Info.Target.IsNone() ? TEXT("outside scan") : TEXT("\u2192 ") + FPackageName::GetShortName(Info.Target));
-				Row->CellSubs.Add(
-					Info.Target.IsNone() ? FString {} : FPaths::GetPath(Target).Mid(1) + (Info.bTargetExists ? TEXT("") : TEXT(" \u00B7 missing"))
-				);
+				const TCHAR* Missing = Info.bTargetExists ? TEXT("") : TEXT(" \u00B7 missing");
+				Row->CellSubs.Add(Info.Target.IsNone() ? FString {} : FPaths::GetPath(Target).Mid(1) + Missing);
 				Row->CellColors.Add(Info.Target.IsNone() ? FName {} : (Info.bTargetExists ? FName {} : FName {TEXT("ProjectCleaner.Color.Red")}));
 				Row->Cells.Add(Info.UsedBy.Num() > 0 ? PjcFormat::Count(Info.UsedBy.Num()) : TEXT("\u2014"));
 				Row->CellSubs.Add(FString {});
@@ -290,12 +288,8 @@ void SPjcTabIssues::RebuildRows() {
 				for (const FName User : Info.UsedBy) {
 					Users.Add(FPackageName::GetShortName(User));
 				}
-				Row->ToolTip = FString::Printf(
-					TEXT("%s\n%s%s"),
-					*Path,
-					*PjcIssues::GetStateDescription(Info.State),
-					Users.Num() > 0 ? *(TEXT("\nUsed by: ") + FString::Join(Users, TEXT(", "))) : TEXT("")
-				);
+				const FString UsedByText = Users.Num() > 0 ? TEXT("\nUsed by: ") + FString::Join(Users, TEXT(", ")) : FString {};
+				Row->ToolTip = FString::Printf(TEXT("%s\n%s%s"), *Path, *PjcIssues::GetStateDescription(Info.State), *UsedByText);
 				AllRows.Add(Row);
 			}
 			break;
@@ -852,10 +846,8 @@ void SPjcTabIssues::FixRedirectors(const TArray<int32>& Indices) {
 		List.Note = TEXT("Target missing and still used: repair the assets that use them by hand.");
 		List.NoteColor = TEXT("ProjectCleaner.Color.Red");
 		for (const int32 Index : Cannot) {
-			List.Rows.Emplace(
-				FPackageName::GetShortName(Redirectors[Index].Asset.PackageName),
-				FString::Printf(TEXT("%s use it"), *PjcFormat::Count(Redirectors[Index].UsedBy.Num()))
-			);
+			const FString UseText = FString::Printf(TEXT("%s use it"), *PjcFormat::Count(Redirectors[Index].UsedBy.Num()));
+			List.Rows.Emplace(FPackageName::GetShortName(Redirectors[Index].Asset.PackageName), UseText);
 		}
 	}
 	Parts.Add(SPjcDialog::MakeVersionControlNote());
@@ -872,24 +864,19 @@ void SPjcTabIssues::FixRedirectors(const TArray<int32>& Indices) {
 	SPjcScanBar::ScanProject();
 
 	if (Result.Kept.Num() == 0 && Result.NotResaved.Num() == 0) {
-		UPjcSubsystem::ShowNotification(
-			FString::Printf(
-				TEXT("Fixed %s redirectors \u00B7 resaved %s assets"), *PjcFormat::Count(Result.Deleted.Num()), *PjcFormat::Count(Result.NumResaved)
-			),
-			SNotificationItem::CS_Success,
-			4.0f
-		);
+		const FString ResavedText = PjcFormat::Count(Result.NumResaved);
+		const FString DeletedText = PjcFormat::Count(Result.Deleted.Num());
+		const FString FixedText = FString::Printf(TEXT("Fixed %s redirectors \u00B7 resaved %s assets"), *DeletedText, *ResavedText);
+		UPjcSubsystem::ShowNotification(FixedText, SNotificationItem::CS_Success, 4.0f);
 		return;
 	}
 
 	// what stays, and why: never a bare "failed"
 	TArray<FPjcDialogPart> Report;
 	FPjcDialogPart& Note = Report.AddDefaulted_GetRef();
-	Note.Note = FString::Printf(
-		TEXT("%s redirector%s stay. The project still works: a redirector keeps the old path pointing to the real asset."),
-		*PjcFormat::Count(Result.Kept.Num()),
-		Result.Kept.Num() == 1 ? TEXT("") : TEXT("s")
-	);
+	const TCHAR* KeptPlural = Result.Kept.Num() == 1 ? TEXT("") : TEXT("s");
+	const FString Stay = FString::Printf(TEXT("%s redirector%s stay."), *PjcFormat::Count(Result.Kept.Num()), KeptPlural);
+	Note.Note = Stay + TEXT(" The project still works: a redirector keeps the old path pointing to the real asset.");
 	Note.NoteColor = TEXT("ProjectCleaner.Color.Red");
 	if (Result.NotResaved.Num() > 0) {
 		FPjcDialogPart& List = Report.AddDefaulted_GetRef();
@@ -903,9 +890,8 @@ void SPjcTabIssues::FixRedirectors(const TArray<int32>& Indices) {
 	for (const auto& Pair : Result.Kept) {
 		Kept.Rows.Emplace(FPackageName::GetShortName(Pair.Key), Pair.Value);
 	}
-	SPjcDialog::Show(
-		FString::Printf(TEXT("Fixed %s of %s"), *PjcFormat::Count(Result.Deleted.Num()), *PjcFormat::Count(Can.Num())), Report, FString {}
-	);
+	const FString ReportTitle = FString::Printf(TEXT("Fixed %s of %s"), *PjcFormat::Count(Result.Deleted.Num()), *PjcFormat::Count(Can.Num()));
+	SPjcDialog::Show(ReportTitle, Report, FString {});
 }
 
 void SPjcTabIssues::RebuildChips() {
@@ -971,12 +957,10 @@ void SPjcTabIssues::DeleteRows(const TArray<FRowPtr>& InRows) {
 	const FString FilesText = FString::Printf(TEXT("Files \u00B7 %s \u00B7 %s"), *PathsText, *PjcFormat::Size(Size));
 	List.Heading = bFolders ? FString::Printf(TEXT("Folders \u00B7 %s"), *PathsText) : FilesText;
 
-	const FString What = FString::Printf(
-		TEXT("%s %s%s"), *PjcFormat::Count(Paths.Num()), bFolders ? TEXT("folder") : TEXT("file"), Paths.Num() == 1 ? TEXT("") : TEXT("s")
-	);
-	if (!SPjcDialog::Show(
-			TEXT("Delete ") + What, {List, SPjcDialog::MakeVersionControlNote()}, TEXT("Delete"), TEXT("ProjectCleaner.Color.UnusedFill")
-		)) {
+	const TCHAR* Noun = bFolders ? TEXT("folder") : TEXT("file");
+	const FString What = FString::Printf(TEXT("%s %s%s"), *PjcFormat::Count(Paths.Num()), Noun, Paths.Num() == 1 ? TEXT("") : TEXT("s"));
+	const TArray<FPjcDialogPart> DeleteParts {List, SPjcDialog::MakeVersionControlNote()};
+	if (!SPjcDialog::Show(TEXT("Delete ") + What, DeleteParts, TEXT("Delete"), TEXT("ProjectCleaner.Color.UnusedFill"))) {
 		return;
 	}
 
@@ -985,11 +969,8 @@ void SPjcTabIssues::DeleteRows(const TArray<FRowPtr>& InRows) {
 		UPjcSubsystem::ShowNotification(TEXT("Deleted ") + What, SNotificationItem::CS_Success, 4.0f);
 	}
 	else {
-		UPjcSubsystem::ShowNotificationWithOutputLog(
-			FString::Printf(TEXT("Deleted %s of %s, see Output Log for the others"), *PjcFormat::Count(NumDeleted), *What),
-			SNotificationItem::CS_Fail,
-			6.0f
-		);
+		const FString Partly = FString::Printf(TEXT("Deleted %s of %s, see Output Log for the others"), *PjcFormat::Count(NumDeleted), *What);
+		UPjcSubsystem::ShowNotificationWithOutputLog(Partly, SNotificationItem::CS_Fail, 6.0f);
 	}
 	SPjcScanBar::ScanProject();
 }
@@ -1014,39 +995,24 @@ TSharedRef<SWidget> SPjcTabIssues::MakeExcludeMenu() {
 	}
 
 	FMenuBuilder Menu {true, nullptr};
-	Menu.AddMenuEntry(
-		FText::FromString(FString::Printf(TEXT("Exclude files (%s)"), *PjcFormat::Count(Files.Num()))),
-		FText::FromString(TEXT("Keeps the selected files")),
-		FSlateIcon {},
-		FUIAction {FExecuteAction::CreateLambda([this, Files]() {
-			ExcludeFiles(Files, {}, {}, FString::Printf(TEXT("%s file%s"), *PjcFormat::Count(Files.Num()), Files.Num() == 1 ? TEXT("") : TEXT("s")));
-		})}
-	);
-	Menu.AddMenuEntry(
-		FText::FromString(TEXT("Exclude extension ") + FString::Join(Dotted, TEXT(" "))),
-		FText::FromString(TEXT("Keeps every file with the extension")),
-		FSlateIcon {},
-		FUIAction {FExecuteAction::CreateLambda([this, ExtensionList, Dotted]() {
-			ExcludeFiles({}, ExtensionList, {}, TEXT("extension ") + FString::Join(Dotted, TEXT(" ")));
-		})}
-	);
+	const FString FilesLabel = FString::Printf(TEXT("Exclude files (%s)"), *PjcFormat::Count(Files.Num()));
+	const FString FilesWhat = FString::Printf(TEXT("%s file%s"), *PjcFormat::Count(Files.Num()), Files.Num() == 1 ? TEXT("") : TEXT("s"));
+	PjcWidgets::AddMenuEntry(Menu, FilesLabel, TEXT("Keeps the selected files"), [this, Files, FilesWhat]() {
+		ExcludeFiles(Files, {}, {}, FilesWhat);
+	});
+	const FString DottedText = FString::Join(Dotted, TEXT(" "));
+	const FString ExtensionLabel = TEXT("Exclude extension ") + DottedText;
+	PjcWidgets::AddMenuEntry(Menu, ExtensionLabel, TEXT("Keeps every file with the extension"), [this, ExtensionList, DottedText]() {
+		ExcludeFiles({}, ExtensionList, {}, TEXT("extension ") + DottedText);
+	});
 	const FString FoldersText = FString::Printf(TEXT("%s folders"), *PjcFormat::Count(FolderList.Num()));
 	const FString FirstFolder = FolderList.Num() == 1 ? FPaths::GetCleanFilename(FolderList[0]) : FString {};
 	const FString ExcludeLabel = FolderList.Num() == 1 ? TEXT("Exclude folder ") + FirstFolder : TEXT("Exclude ") + FoldersText;
 	const FString FolderWhat = FolderList.Num() == 1 ? FolderList[0] : FoldersText;
-	Menu.AddMenuEntry(
-		FText::FromString(ExcludeLabel),
-		FText::FromString(TEXT("Keeps every file in the folder of the selection")),
-		FSlateIcon {},
-		FUIAction {
-		  FExecuteAction::CreateLambda([this, FolderList, FolderWhat]() {
-			  ExcludeFiles({}, {}, FolderList, FolderWhat);
-		  }),
-		  FCanExecuteAction::CreateLambda([FolderList]() {
-			  return FolderList.Num() > 0;
-		  })
-		}
-	);
+	const TCHAR* FolderTip = TEXT("Keeps every file in the folder of the selection");
+	PjcWidgets::AddMenuEntry(Menu, ExcludeLabel, FolderTip, FolderList.Num() > 0, [this, FolderList, FolderWhat]() {
+		ExcludeFiles({}, {}, FolderList, FolderWhat);
+	});
 	return Menu.MakeWidget();
 }
 
