@@ -37,8 +37,9 @@ def main():
     result = {"engine": unreal.SystemLibrary.get_engine_version(), "mounts": {}, "packages": {}}
 
     for mount, content_dir in sorted(mounts.items()):
-        # plugins that are present but not enabled are not mounted, their content is not part of the project
-        mounted = registry.has_assets(mount, True)
+        # plugins that are present but not enabled are not mounted, their content is not part of the project.
+        # UE 4.27 has_assets is false for a mount that holds only subfolders, the sub paths tell it is mounted
+        mounted = registry.has_assets(mount, True) or bool(registry.get_sub_paths(mount, False))
         result["mounts"][mount] = {"dir": content_dir, "mounted": bool(mounted)}
         if not mounted:
             continue

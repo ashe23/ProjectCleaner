@@ -38,6 +38,7 @@ import json
 import os
 import re
 import shutil
+import signal
 import subprocess
 import sys
 import time
@@ -1147,7 +1148,7 @@ SCAN_SETTINGS_DEFAULT = {
 }
 REDIRECTOR_CLASSES = ("/Script/CoreUObject.ObjectRedirector", "ObjectRedirector")
 LABEL_CLASSES = ("/Script/Engine.PrimaryAssetLabel", "PrimaryAssetLabel")
-SNAPSHOT_VERSION = 2
+SNAPSHOT_VERSION = 3
 TEXT_REF_EXTENSIONS = (".ini", ".h", ".cpp", ".cs", ".py", ".json")
 
 # name: (scan settings overrides, commandlet switches)
@@ -1603,13 +1604,30 @@ def polygon_game_checks(cfg):
     return [{"url": "", "expect": r"LogLoad: Took .* to LoadMap"}] + checks
 
 
+def kill_tree(proc):
+    """Stops a process with its children: the bootstrap exe of a content-only game starts UnrealGame as a child."""
+    if IS_WIN:
+        if proc.poll() is None:
+            subprocess.run(["taskkill", "/F", "/T", "/PID", str(proc.pid)], capture_output=True)
+    else:
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+        except (ProcessLookupError, PermissionError):
+            pass
+    if proc.poll() is None:
+        proc.kill()
+    proc.wait()
+
+
 def polygon_run_game(p, exe, check, tag):
     """Starts packaged game without rendering, waits for expected log line or failure, then stops it."""
     log_dir = os.path.join(os.path.dirname(exe), "Saved", "Logs")
     remove_tree(log_dir)
     log = p.log(tag)
     cmd = [exe] + ([check["url"]] if check["url"] else []) + ["-nullrhi", "-unattended", "-nosound", "-nosplash", "-log", "-abslog=" + log]
-    proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL)
+    # own process group on Linux and Mac, so the game started by a bootstrap script stops with it
+    group = {} if IS_WIN else {"start_new_session": True}
+    proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL, **group)
     expect = re.compile(check["expect"])
     failure = re.compile(GAME_FAILURE)
     deadline = time.time() + 300
@@ -1627,9 +1645,7 @@ def polygon_run_game(p, exe, check, tag):
                 time.sleep(5 if found else 0)
                 break
     finally:
-        if proc.poll() is None:
-            proc.kill()
-            proc.wait()
+        kill_tree(proc)
     if os.path.isfile(log):
         failures = log_lines(log, GAME_FAILURE, 10)
     return found, failures
@@ -1642,8 +1658,35 @@ def polygon_game_exes(archive, p):
         return sorted(glob.glob(os.path.join(archive, "*", "*.app", "Contents", "MacOS", "*")))
     binaries = glob.glob(os.path.join(archive, "*", project, "Binaries", p.engine.platform, "*"))
     if IS_WIN:
-        return sorted(e for e in binaries if e.lower().endswith(".exe"))
-    return sorted(e for e in binaries if "." not in os.path.basename(e) and os.access(e, os.X_OK))
+        exes = sorted(e for e in binaries if e.lower().endswith(".exe"))
+    else:
+        exes = sorted(e for e in binaries if "." not in os.path.basename(e) and os.access(e, os.X_OK))
+    # content-only projects ship the prebuilt game (UnrealGame), started by {project}.exe or .sh next to the project folder
+    return exes or sorted(glob.glob(os.path.join(archive, "*", project + (".exe" if IS_WIN else ".sh"))))
+
+
+def polygon_editor_target(p):
+    """BuildCookRun with -nocompileeditor needs Binaries/{platform}/{project}Editor.target. Content-only projects with code
+    plugins count as code projects, and samples ship that file under their original project name: build it first."""
+    target = os.path.join(p.dir, "Binaries", p.engine.platform, p.name + "Editor.target")
+    if os.path.isdir(os.path.join(p.dir, "Source")) or os.path.isfile(target):
+        return None
+    # UAT writes the temporary Target.cs files of such projects, pure content projects get none (prebuilt editor)
+    platform = "-platform=" + p.engine.platform
+    cmd = [p.engine.uat_script, "BuildCookRun", "-project=" + p.uproject, "-noP4", platform, "-clientconfig=Development", "-build", "-skipcook"]
+    run_logged(cmd + ["-nocompileeditor", "-unattended", "-utf8output"], p.log("editor_target_uat"), timeout=3600, engine=p.engine)
+    if not os.path.isfile(os.path.join(p.dir, "Intermediate", "Source", p.name + "Editor.Target.cs")):
+        return None
+    build = [p.engine.build_script, p.name + "Editor", p.engine.platform, "Development", "-Project=" + p.uproject, "-WaitMutex"]
+    # installed test build has no source, UBT needs module rules of every enabled plugin: left out for this build
+    aside = os.path.join(p.work_dir, "plugin_aside")
+    remove_tree(aside)
+    shutil.move(p.plugin_dir, aside)
+    try:
+        code = run_logged(build, p.log("editor_target"), timeout=3600, engine=p.engine)
+    finally:
+        shutil.move(aside, p.plugin_dir)
+    return "built {}Editor.target (exit {})".format(p.name, code)
 
 
 def polygon_package(p, scenario, cfg):
@@ -1657,6 +1700,10 @@ def polygon_package(p, scenario, cfg):
         code = polygon_editor(p, ["-run=Pjc"] + switches, p.log(scenario + "_cleanup"))
         deleted = sum(1 for code_, _ in git_status(p.dir) if code_.strip() == "D")
         notes.append("cleanup exit {}, {} files deleted".format(code, deleted))
+
+    built = polygon_editor_target(p)
+    if built:
+        notes.append(built)
 
     archive = os.path.join(p.work_dir, "package_" + scenario)
     remove_tree(archive)
