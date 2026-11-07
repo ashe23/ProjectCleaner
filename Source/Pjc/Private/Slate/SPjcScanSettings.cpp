@@ -41,7 +41,12 @@ void SPjcScanSettings::Construct(const FArguments& InArgs) {
 	ScanFinishedHandle = UPjcSubsystem::OnScanFinished().AddSP(this, &SPjcScanSettings::OnScanFinished);
 	DraftEditedHandle = FPjcScanDraft::OnEdited().AddSP(this, &SPjcScanSettings::RequestRebuild);
 
-	ChildSlot[SAssignNew(Body, SBox)];
+	// clang-format off
+	ChildSlot
+	[
+		SAssignNew(Body, SBox)
+	];
+	// clang-format on
 	OnScanFinished();
 }
 
@@ -104,112 +109,162 @@ void SPjcScanSettings::Rebuild() {
 	const FString UnregisteredKeep = Edited.bUnregisteredPrimaryUsed ? TEXT("Keeps") : TEXT("Would keep");
 
 	const TSharedRef<SVerticalBox> Scope = SNew(SVerticalBox);
-	Scope->AddSlot().AutoHeight()[MakeSwitchRow(
-		TEXT("Project plugins"),
-		&FPjcScanDraft::bScanProjectPlugins,
-		Edited.bScanProjectPlugins ? NumProjectPlugins : -1,
-		TEXT("Content of project plugins is scanned too, not only /Game."),
-		Edited.bScanProjectPlugins ? FString::Printf(TEXT("%s project plugins with content"), *PjcFormat::Count(NumProjectPlugins)) : FString {}
-	)];
+	// clang-format off
+	Scope->AddSlot().AutoHeight()
+	[
+		MakeSwitchRow(
+			TEXT("Project plugins"),
+			&FPjcScanDraft::bScanProjectPlugins,
+			Edited.bScanProjectPlugins ? NumProjectPlugins : -1,
+			TEXT("Content of project plugins is scanned too, not only /Game."),
+			Edited.bScanProjectPlugins ? FString::Printf(TEXT("%s project plugins with content"), *PjcFormat::Count(NumProjectPlugins)) : FString {}
+		)
+	];
+	// clang-format on
 	if (Edited.bScanProjectPlugins) {
-		Scope->AddSlot().AutoHeight()[MakeListRows(
-			TEXT("IgnoredPlugins"),
-			TEXT("Ignored plugins"),
-			&FPjcScanDraft::IgnoredPlugins,
-			TEXT("Plugin name…"),
-			TEXT("Plugins left out of the scan. Nothing in them is reported as unused."),
-			14.0f
-		)];
+		// clang-format off
+		Scope->AddSlot().AutoHeight()
+		[
+			MakeListRows(
+				TEXT("IgnoredPlugins"),
+				TEXT("Ignored plugins"),
+				&FPjcScanDraft::IgnoredPlugins,
+				TEXT("Plugin name\u2026"),
+				TEXT("Plugins left out of the scan. Nothing in them is reported as unused."),
+				14.0f
+			)
+		];
+		// clang-format on
 	}
 
 	const int32 NumUnregistered = Roots(EPjcUsageReason::PrimaryClass);
+	const FString UnregisteredUsed = FString::Printf(TEXT("%s %s assets used"), *UnregisteredKeep, *PjcFormat::Count(NumUnregistered));
+	const FString UnregisteredMore = NumUnregistered > 0 ? UnregisteredUsed : TEXT("None in the last scan");
 	const TSharedRef<SVerticalBox> Used = SNew(SVerticalBox);
-	Used->AddSlot().AutoHeight()[MakeFixedRow(
-		TEXT("Primary assets"),
-		Roots(EPjcUsageReason::Primary),
-		TEXT("primary assets"),
-		TEXT("Maps and the assets the Asset Manager registers count as used and start chains, ")
-			TEXT("with the assets and collections Primary Asset Labels list.")
-	)];
-	Used->AddSlot().AutoHeight()[MakeFixedRow(
-		TEXT("Editor assets"),
-		Roots(EPjcUsageReason::Editor),
-		TEXT("editor assets"),
-		TEXT("Editor utilities, validators, scriptable tools and tool data such as bookmarks, presets and poses count as used, shown as editor only.")
-	)];
-	Used->AddSlot().AutoHeight()[MakeFixedRow(
-		TEXT("Source & config"),
-		Roots(EPjcUsageReason::Indirect),
-		TEXT("assets named"),
-		TEXT("Assets named in C++, Python and .ini files count as used, platform configs included.")
-	)];
-	Used->AddSlot().AutoHeight()[MakeFixedRow(
-		TEXT("Config folders"),
-		Roots(EPjcUsageReason::ConfigFolder),
-		TEXT("assets in config folders"),
-		TEXT("Folders set to always cook and Data Registry scan folders keep every asset inside used.")
-	)];
-	Used->AddSlot().AutoHeight()[MakeFixedRow(
-		TEXT("Localized assets"),
-		NumLocalized,
-		TEXT("localized assets"),
-		TEXT("Language copies in L10N folders count as used when their original is used.")
-	)];
-	Used->AddSlot().AutoHeight()[MakeSwitchRow(
-		TEXT("Unregistered primary classes"),
-		&FPjcScanDraft::bUnregisteredPrimaryUsed,
-		NumUnregistered,
-		TEXT("Assets of a primary asset class that the Asset Manager did not register count as used: ")
-			TEXT("outside its folders, or in a game feature plugin that is not registered yet."),
-		NumUnregistered > 0 ? FString::Printf(TEXT("%s %s assets used"), *UnregisteredKeep, *PjcFormat::Count(NumUnregistered))
-							: TEXT("None in the last scan")
-	)];
-	Used->AddSlot().AutoHeight()[MakeSwitchRow(
-		TEXT("Folder labels"),
-		&FPjcScanDraft::bFolderLabelsUsed,
-		NumFolderLabelOnly,
-		TEXT("Primary Asset Labels with Label Assets In My Directory keep every asset in their folder used."),
-		FString::Printf(TEXT("%s %s assets used (%s)"), *LabelsKeep, *PjcFormat::Count(NumFolderLabelOnly), *PjcFormat::Size(SizeFolderLabelOnly))
-	)];
-	Used->AddSlot().AutoHeight()[MakeSwitchRow(
-		TEXT("Cinematics"),
-		&FPjcScanDraft::bCinematicAssetsUsed,
-		-1,
-		TEXT("Level Sequences and Movie Render Queue configs count as used."),
-		FString {}
-	)];
-	const TSharedRef<SVerticalBox> Exclusions = SNew(SVerticalBox);
-	Exclusions->AddSlot().AutoHeight()[MakeListRows(
-		TEXT("ExcludedFolders"),
-		TEXT("Folders"),
-		&FPjcScanDraft::ExcludedFolders,
-		TEXT("Folder, e.g. /Game/Keep"),
-		TEXT("Every asset in these folders is kept.")
-	)];
-	Exclusions->AddSlot().AutoHeight()[MakeListRows(
-		TEXT("ExcludedClasses"),
-		TEXT("Classes"),
-		&FPjcScanDraft::ExcludedClasses,
-		TEXT("Class path, e.g. /Script/Engine.Texture2D"),
-		TEXT("Assets of these classes are kept.")
-	)];
-	Exclusions->AddSlot().AutoHeight()[MakeListRows(
-		TEXT("ExcludedAssets"),
-		TEXT("Assets"),
-		&FPjcScanDraft::ExcludedAssets,
-		TEXT("Asset path, e.g. /Game/Maps/L_Main.L_Main"),
-		TEXT("These assets are kept.")
-	)];
-
-	Used->AddSlot().AutoHeight()[MakeListRows(
-		TEXT("UsedClasses"),
-		TEXT("Always used classes"),
-		&FPjcScanDraft::UsedClasses,
-		TEXT("Class path, e.g. /Script/Engine.CurveFloat"),
-		TEXT("Assets of these classes, and what they reference, count as used.")
-	)];
-
 	// clang-format off
+	Used->AddSlot().AutoHeight()
+	[
+		MakeFixedRow(
+			TEXT("Primary assets"),
+			Roots(EPjcUsageReason::Primary),
+			TEXT("primary assets"),
+			TEXT("Maps and the assets the Asset Manager registers count as used and start chains, ")
+				TEXT("with the assets and collections Primary Asset Labels list.")
+		)
+	];
+	Used->AddSlot().AutoHeight()
+	[
+		MakeFixedRow(
+			TEXT("Editor assets"),
+			Roots(EPjcUsageReason::Editor),
+			TEXT("editor assets"),
+			TEXT("Editor utilities, validators, scriptable tools and tool data such as bookmarks, presets and poses count as used, ")
+				TEXT("shown as editor only.")
+		)
+	];
+	Used->AddSlot().AutoHeight()
+	[
+		MakeFixedRow(
+			TEXT("Source & config"),
+			Roots(EPjcUsageReason::Indirect),
+			TEXT("assets named"),
+			TEXT("Assets named in C++, Python and .ini files count as used, platform configs included.")
+		)
+	];
+	Used->AddSlot().AutoHeight()
+	[
+		MakeFixedRow(
+			TEXT("Config folders"),
+			Roots(EPjcUsageReason::ConfigFolder),
+			TEXT("assets in config folders"),
+			TEXT("Folders set to always cook and Data Registry scan folders keep every asset inside used.")
+		)
+	];
+	Used->AddSlot().AutoHeight()
+	[
+		MakeFixedRow(
+			TEXT("Localized assets"),
+			NumLocalized,
+			TEXT("localized assets"),
+			TEXT("Language copies in L10N folders count as used when their original is used.")
+		)
+	];
+	Used->AddSlot().AutoHeight()
+	[
+		MakeSwitchRow(
+			TEXT("Unregistered primary classes"),
+			&FPjcScanDraft::bUnregisteredPrimaryUsed,
+			NumUnregistered,
+			TEXT("Assets of a primary asset class that the Asset Manager did not register count as used: ")
+				TEXT("outside its folders, or in a game feature plugin that is not registered yet."),
+			UnregisteredMore
+		)
+	];
+	Used->AddSlot().AutoHeight()
+	[
+		MakeSwitchRow(
+			TEXT("Folder labels"),
+			&FPjcScanDraft::bFolderLabelsUsed,
+			NumFolderLabelOnly,
+			TEXT("Primary Asset Labels with Label Assets In My Directory keep every asset in their folder used."),
+			FString::Printf(TEXT("%s %s assets used (%s)"), *LabelsKeep, *PjcFormat::Count(NumFolderLabelOnly), *PjcFormat::Size(SizeFolderLabelOnly))
+		)
+	];
+	Used->AddSlot().AutoHeight()
+	[
+		MakeSwitchRow(
+			TEXT("Cinematics"),
+			&FPjcScanDraft::bCinematicAssetsUsed,
+			-1,
+			TEXT("Level Sequences and Movie Render Queue configs count as used."),
+			FString {}
+		)
+	];
+	// clang-format on
+	const TSharedRef<SVerticalBox> Exclusions = SNew(SVerticalBox);
+	// clang-format off
+	Exclusions->AddSlot().AutoHeight()
+	[
+		MakeListRows(
+			TEXT("ExcludedFolders"),
+			TEXT("Folders"),
+			&FPjcScanDraft::ExcludedFolders,
+			TEXT("Folder, e.g. /Game/Keep"),
+			TEXT("Every asset in these folders is kept.")
+		)
+	];
+	Exclusions->AddSlot().AutoHeight()
+	[
+		MakeListRows(
+			TEXT("ExcludedClasses"),
+			TEXT("Classes"),
+			&FPjcScanDraft::ExcludedClasses,
+			TEXT("Class path, e.g. /Script/Engine.Texture2D"),
+			TEXT("Assets of these classes are kept.")
+		)
+	];
+	Exclusions->AddSlot().AutoHeight()
+	[
+		MakeListRows(
+			TEXT("ExcludedAssets"),
+			TEXT("Assets"),
+			&FPjcScanDraft::ExcludedAssets,
+			TEXT("Asset path, e.g. /Game/Maps/L_Main.L_Main"),
+			TEXT("These assets are kept.")
+		)
+	];
+
+	Used->AddSlot().AutoHeight()
+	[
+		MakeListRows(
+			TEXT("UsedClasses"),
+			TEXT("Always used classes"),
+			&FPjcScanDraft::UsedClasses,
+			TEXT("Class path, e.g. /Script/Engine.CurveFloat"),
+			TEXT("Assets of these classes, and what they reference, count as used.")
+		)
+	];
+
 	Body->SetContent(
 		SNew(SVerticalBox)
 		+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {6.0f, 6.0f, 4.0f, 8.0f})
@@ -231,7 +286,7 @@ void SPjcScanSettings::Rebuild() {
 		+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {8.0f, 6.0f})
 		[
 			SNew(STextBlock)
-			.Text(FText::FromString(TEXT("Shared with the team · DefaultEditor.ini")))
+			.Text(FText::FromString(TEXT("Shared with the team \u00B7 DefaultEditor.ini")))
 			.ToolTipText(FText::FromString(TEXT("Settings are saved in Config/DefaultEditor.ini, so the team shares them through source control")))
 			.ColorAndOpacity(FSlateColor::UseSubduedForeground())
 			.Font(FPjcStyles::GetFont("Regular", 8))
@@ -283,7 +338,7 @@ TSharedRef<SWidget> SPjcScanSettings::MakeHeader() {
 				return FReply::Handled();
 			})
 			[
-				SNew(STextBlock).Text(FText::FromString(TEXT("«"))).ColorAndOpacity(FSlateColor::UseSubduedForeground())
+				SNew(STextBlock).Text(FText::FromString(TEXT("\u00AB"))).ColorAndOpacity(FSlateColor::UseSubduedForeground())
 			]
 		];
 	// clang-format on
@@ -308,10 +363,7 @@ SPjcScanSettings::MakeCategory(const FName Id, const FString& Title, const FStri
 		})
 		.HeaderContent()
 		[
-			SNew(STextBlock)
-			.Text(FText::FromString(Title))
-			.ToolTipText(FText::FromString(ToolTip))
-			.Font(FPjcStyles::GetFont("Bold", 10))
+			SNew(STextBlock).Text(FText::FromString(Title)).ToolTipText(FText::FromString(ToolTip)).Font(FPjcStyles::GetFont("Bold", 10))
 		]
 		.BodyContent()
 		[
@@ -369,13 +421,16 @@ TSharedRef<SWidget> SPjcScanSettings::MakeRow(
 }
 
 TSharedRef<SWidget> SPjcScanSettings::MakeFixedRow(const FString& Label, const int32 Num, const FString& What, const FString& Description) const {
-	const FString More
-		= (Num > 0 ? FString::Printf(TEXT("%s %s"), *PjcFormat::Count(Num), *What) : TEXT("No ") + What) + TEXT(" in the last scan\nAlways on");
-	const TSharedRef<SWidget> Lock = SNew(SBox).WidthOverride(12.0f).HeightOverride(12.0f).ToolTipText(
-		FText::FromString(TEXT("Always on"))
-	)[SNew(SImage).Image(PjcShim::GetIconLock()).ColorAndOpacity(FSlateColor::UseSubduedForeground())];
+	const FString Found = Num > 0 ? FString::Printf(TEXT("%s %s"), *PjcFormat::Count(Num), *What) : TEXT("No ") + What;
+	const FString More = Found + TEXT(" in the last scan\nAlways on");
+	// clang-format off
+	const TSharedRef<SWidget> Lock = SNew(SBox).WidthOverride(12.0f).HeightOverride(12.0f).ToolTipText(FText::FromString(TEXT("Always on")))
+		[
+			SNew(SImage).Image(PjcShim::GetIconLock()).ColorAndOpacity(FSlateColor::UseSubduedForeground())
+		];
+	// clang-format on
 
-	return MakeRow(Label, Num > 0 ? PjcFormat::Count(Num) : TEXT("–"), Lock, PjcWidgets::MakeToolTip(Label, Description, More), false, false);
+	return MakeRow(Label, Num > 0 ? PjcFormat::Count(Num) : TEXT("\u2013"), Lock, PjcWidgets::MakeToolTip(Label, Description, More), false, false);
 }
 
 TSharedRef<SWidget>
@@ -383,17 +438,20 @@ SPjcScanSettings::MakeSwitchRow(const FString& Label, FDraftFlag Flag, const int
 	const bool bValue = FPjcScanDraft::Get().*Flag;
 	const bool bDefault = FPjcScanDraft {}.*Flag;
 	const bool bChanged = bValue != bDefault;
-	const FString Lines = (More.IsEmpty() ? FString {} : More + TEXT("\n"))
-		+ FString::Printf(TEXT("Default: %s"), bDefault ? TEXT("on") : TEXT("off")) + (bChanged ? TEXT(" · changed") : TEXT(""));
+	const FString MoreLine = More.IsEmpty() ? FString {} : More + TEXT("\n");
+	const FString DefaultText = FString::Printf(TEXT("Default: %s"), bDefault ? TEXT("on") : TEXT("off"));
+	const FString Lines = MoreLine + DefaultText + (bChanged ? TEXT(" \u00B7 changed") : TEXT(""));
 
+	// clang-format off
 	const TSharedRef<SWidget> Switch = SNew(SCheckBox)
-										   .IsChecked(bValue ? ECheckBoxState::Checked : ECheckBoxState::Unchecked)
-										   .OnCheckStateChanged_Lambda([this, Flag](const ECheckBoxState State) {
-											   FPjcScanDraft::Get().*Flag = State == ECheckBoxState::Checked;
-											   FPjcScanDraft::NotifyEdited();
-										   });
+		.IsChecked(bValue ? ECheckBoxState::Checked : ECheckBoxState::Unchecked)
+		.OnCheckStateChanged_Lambda([this, Flag](const ECheckBoxState State) {
+			FPjcScanDraft::Get().*Flag = State == ECheckBoxState::Checked;
+			FPjcScanDraft::NotifyEdited();
+		});
+	// clang-format on
 
-	const FString Value = Num < 0 ? FString {} : (Num > 0 ? PjcFormat::Count(Num) : TEXT("–"));
+	const FString Value = Num < 0 ? FString {} : (Num > 0 ? PjcFormat::Count(Num) : TEXT("\u2013"));
 	return MakeRow(Label, Value, Switch, PjcWidgets::MakeToolTip(Label, Description, Lines), bChanged, !bValue);
 }
 
@@ -421,17 +479,20 @@ TSharedRef<SWidget> SPjcScanSettings::MakeListRows(
 		[
 			SNew(STextBlock).Text(FText::FromString(TEXT("+"))).Font(FPjcStyles::GetFont("Bold", 11))
 		];
-	// clang-format on
 
-	Rows->AddSlot().AutoHeight()[MakeRow(
-		Label,
-		Items.Num() > 0 ? PjcFormat::Count(Items.Num()) : FString {},
-		Add,
-		PjcWidgets::MakeToolTip(Label, Description, FString {}),
-		false,
-		false,
-		Indent
-	)];
+	Rows->AddSlot().AutoHeight()
+	[
+		MakeRow(
+			Label,
+			Items.Num() > 0 ? PjcFormat::Count(Items.Num()) : FString {},
+			Add,
+			PjcWidgets::MakeToolTip(Label, Description, FString {}),
+			false,
+			false,
+			Indent
+		)
+	];
+	// clang-format on
 
 	for (int32 Index = 0; Index < Items.Num(); ++Index) {
 		const FString Item = Items[Index];
@@ -463,7 +524,7 @@ TSharedRef<SWidget> SPjcScanSettings::MakeListRows(
 						return FReply::Handled();
 					})
 					[
-						SNew(STextBlock).Text(FText::FromString(TEXT("×"))).ColorAndOpacity(FSlateColor::UseSubduedForeground())
+						SNew(STextBlock).Text(FText::FromString(TEXT("\u00D7"))).ColorAndOpacity(FSlateColor::UseSubduedForeground())
 					]
 				]
 			]

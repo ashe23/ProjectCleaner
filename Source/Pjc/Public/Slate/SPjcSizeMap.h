@@ -25,7 +25,7 @@ class SPjcSizeMap final : public SLeafWidget
 
 	void Construct(const FArguments& InArgs);
 
-	/** Folder to show; Result must stay alive while shown (the shared scan result) */
+	// Folder to show; Result must stay alive while shown (the shared scan result)
 	void SetFolder(const FPjcScanResult* InResult, const TSharedPtr<FPjcUnusedFolder>& InFolder, const bool bInAreaAll);
 	void SetSelected(const TSet<int32>& InSelected);
 
@@ -59,7 +59,7 @@ class SPjcSizeMap final : public SLeafWidget
 		FVector2D Size = FVector2D::ZeroVector;
 		ECellKind Kind = ECellKind::Asset;
 		int32 Depth = 0;
-		/** Folder cell: the deepest folder of a one-child chain */
+		// Folder cell: the deepest folder of a one-child chain
 		TSharedPtr<FPjcUnusedFolder> Folder;
 		FString Label;
 		int32 Asset = INDEX_NONE;

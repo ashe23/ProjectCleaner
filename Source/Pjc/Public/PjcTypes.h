@@ -47,7 +47,7 @@ class UPjcAssetExcludeSettings : public UObject
 #endif
 };
 
-/** Files in content folders that are not assets and are kept: shared with the team in Config/DefaultEditor.ini */
+// Files in content folders that are not assets and are kept: shared with the team in Config/DefaultEditor.ini
 UCLASS(Config = Editor, DefaultConfig)
 class UPjcFileExcludeSettings : public UObject
 {
@@ -132,50 +132,50 @@ struct FPjcAssetIndirectInfo
 	}
 };
 
-/** Why an asset counts as used, see UPjcSubsystem::GetAssetsUsage */
+// Why an asset counts as used, see UPjcSubsystem::GetAssetsUsage
 UENUM(BlueprintType)
 enum class EPjcUsageReason : uint8
 {
-	/** nothing used references it */
+	// nothing used references it
 	None,
-	/** primary asset: every map, and every asset the Asset Manager registered (labels, types from project settings or game features) */
+	// primary asset: every map, and every asset the Asset Manager registered (labels, types from project settings or game features)
 	Primary,
-	/** asset of a primary asset class that the Asset Manager did not register (outside the type's folders, or game feature not registered yet) */
+	// asset of a primary asset class that the Asset Manager did not register (outside the type's folders, or game feature not registered yet)
 	PrimaryClass,
-	/** referenced from outside scanned content: engine, not scanned plugins, actors saved in their own files */
+	// referenced from outside scanned content: engine, not scanned plugins, actors saved in their own files
 	EngineReferenced,
-	/** named in project or plugin Source/Config files */
+	// named in project or plugin Source/Config files
 	Indirect,
-	/** exclude settings, always used classes or cinematic assets */
+	// exclude settings, always used classes or cinematic assets
 	Excluded,
-	/** editor utility blueprint or widget */
+	// editor utility blueprint or widget
 	Editor,
-	/** GameplayCue notify, loaded by its tag */
+	// GameplayCue notify, loaded by its tag
 	GameplayCue,
-	/** localized copy (L10N/<culture> folder) of a used asset, loaded in its place for that culture (Parent: the source) */
+	// localized copy (L10N/<culture> folder) of a used asset, loaded in its place for that culture (Parent: the source)
 	Localized,
-	/** in a folder the cook always takes whole: Additional Asset Directories to Cook, Data Registry scan folders */
+	// in a folder the cook always takes whole: Additional Asset Directories to Cook, Data Registry scan folders
 	ConfigFolder,
-	/** Megascans preset */
+	// Megascans preset
 	Megascans,
-	/** listed explicitly by a Primary Asset Label */
+	// listed explicitly by a Primary Asset Label
 	FolderLabelAsset,
-	/** referenced by another used asset (Parent) */
+	// referenced by another used asset (Parent)
 	Dependency,
-	/** in folder of a Primary Asset Label with "Label Assets In My Directory" (Parent) */
+	// in folder of a Primary Asset Label with "Label Assets In My Directory" (Parent)
 	FolderLabel,
 };
 
-/** What fixing redirectors did */
+// What fixing redirectors did
 struct FPjcRedirectorFixResult
 {
-	/** Assets that used a redirector and were resaved */
+	// Assets that used a redirector and were resaved
 	int32 NumResaved = 0;
-	/** Redirector packages deleted */
+	// Redirector packages deleted
 	TArray<FName> Deleted;
-	/** Assets that use a redirector and could not be resaved, and why */
+	// Assets that use a redirector and could not be resaved, and why
 	TMap<FName, FString> NotResaved;
-	/** Redirector packages that stay, and why */
+	// Redirector packages that stay, and why
 	TMap<FName, FString> Kept;
 };
 
@@ -184,22 +184,22 @@ struct FPjcAssetUsage
 {
 	GENERATED_BODY()
 
-	/** False for unused assets and for assets only folder labels keep while "Folder Labels Used" is off */
+	// False for unused assets and for assets only folder labels keep while "Folder Labels Used" is off
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "AssetUsage")
 	bool bUsed = false;
 
-	/** Only a folder label keeps it, directly or through assets that only a folder label keeps */
+	// Only a folder label keeps it, directly or through assets that only a folder label keeps
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "AssetUsage")
 	bool bFolderLabelOnly = false;
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "AssetUsage")
 	EPjcUsageReason Reason = EPjcUsageReason::None;
 
-	/** Package that pulled it in (Dependency, FolderLabel, FolderLabelAsset). Following parents leads to the asset that is used for its own reason */
+	// Package that pulled it in (Dependency, FolderLabel, FolderLabelAsset). Following parents leads to the asset that is used for its own reason
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "AssetUsage")
 	FName Parent;
 
-	/** Reason specifics: primary asset id, file and line, exclude rule, referencing package outside scanned content */
+	// Reason specifics: primary asset id, file and line, exclude rule, referencing package outside scanned content
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "AssetUsage")
 	FString Detail;
 };

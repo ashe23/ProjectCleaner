@@ -19,10 +19,10 @@ class SPjcScanBar final : public SCompoundWidget
 	void Construct(const FArguments& InArgs);
 	virtual ~SPjcScanBar() override;
 
-	/** Scans the project for every tool. Asks to save unsaved assets first, the scan reads them from disk. */
+	// Scans the project for every tool. Asks to save unsaved assets first, the scan reads them from disk.
 	static void ScanProject();
 
-	/** Asks for confirmation, deletes every unused asset and empty folder, then scans again */
+	// Asks for confirmation, deletes every unused asset and empty folder, then scans again
 	static void CleanProject();
 
   private:

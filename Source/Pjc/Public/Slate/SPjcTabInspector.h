@@ -13,7 +13,7 @@ class SPjcInspectorGraph;
 class SSearchBox;
 class SWrapBox;
 
-/** Asset of the finder or of the Used by and Uses lists */
+// Asset of the finder or of the Used by and Uses lists
 struct FPjcInspectorRow
 {
 	FName Package;
@@ -24,7 +24,7 @@ struct FPjcInspectorRow
 	FLinearColor IconColor = FLinearColor::White;
 	EPjcAssetStatus Status = EPjcAssetStatus::Used;
 	bool bScanned = true;
-	/** Lists: how the selected asset and this one reference each other, and whether the graph shows it */
+	// Lists: how the selected asset and this one reference each other, and whether the graph shows it
 	EPjcLinkKind Kind = EPjcLinkKind::Hard;
 	bool bInGraph = false;
 };
@@ -39,14 +39,14 @@ class SPjcTabInspector final : public SCompoundWidget
   public:
 
 	SLATE_BEGIN_ARGS(SPjcTabInspector) {}
-	/** Tabs it links to (none in tests) */
+	// Tabs it links to (none in tests)
 	SLATE_ARGUMENT(TSharedPtr<FTabManager>, TabManager)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
 	virtual ~SPjcTabInspector() override;
 
-	/** Shows the asset, after the scan when none is done yet */
+	// Shows the asset, after the scan when none is done yet
 	void Inspect(const FName Package);
 
 	FName GetFocus() const {
@@ -114,7 +114,7 @@ class SPjcTabInspector final : public SCompoundWidget
 	FDelegateHandle ScanFinishedHandle;
 
 	FName Focus;
-	/** Inspect asked before a scan */
+	// Inspect asked before a scan
 	FName Pending;
 	FPjcInspectorGraph Graph;
 	TSet<FName> OpenGroups;

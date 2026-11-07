@@ -63,7 +63,7 @@ class SPjcScanSettings final : public SCompoundWidget
 
 	bool bRebuildPending = false;
 
-	/** List whose text field is open */
+	// List whose text field is open
 	FName AddingList;
 
 	// numbers from the last scan

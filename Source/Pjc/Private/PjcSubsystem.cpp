@@ -395,8 +395,8 @@ bool UPjcSubsystem::Scan(const bool bShowSlowTask) {
 	// localized copies ship with their source, the cooker adds them
 	for (const auto& Pair : Result.Usage) {
 		const FPjcAssetUsage& AssetUsage = Pair.Value;
-		if (AssetUsage.Reason == EPjcUsageReason::Localized && AssetUsage.bUsed && GameUsed.Contains(AssetUsage.Parent)
-			&& !GameUsed.Contains(Pair.Key)) {
+		const bool bLocalizedUsed = AssetUsage.Reason == EPjcUsageReason::Localized && AssetUsage.bUsed;
+		if (bLocalizedUsed && GameUsed.Contains(AssetUsage.Parent) && !GameUsed.Contains(Pair.Key)) {
 			GameUsed.Add(Pair.Key);
 			Stack.Add(Pair.Key);
 		}
@@ -405,9 +405,8 @@ bool UPjcSubsystem::Scan(const bool bShowSlowTask) {
 
 	Result.Status.Reserve(Result.Assets.Num());
 	for (const auto& Asset : Result.Assets) {
-		const EPjcAssetStatus Status = !Result.IsUsed(Asset.PackageName) ? EPjcAssetStatus::Unused
-			: GameUsed.Contains(Asset.PackageName)						 ? EPjcAssetStatus::Used
-																		 : EPjcAssetStatus::EditorOnly;
+		const EPjcAssetStatus UsedStatus = GameUsed.Contains(Asset.PackageName) ? EPjcAssetStatus::Used : EPjcAssetStatus::EditorOnly;
+		const EPjcAssetStatus Status = Result.IsUsed(Asset.PackageName) ? UsedStatus : EPjcAssetStatus::Unused;
 		Result.Status.Add(Asset.PackageName, Status);
 	}
 
@@ -1629,8 +1628,8 @@ bool UPjcSubsystem::DeleteAssets(const TArray<FAssetData>& Assets, const bool bS
 		}
 
 		NumAssetsDeleted += BucketDelete(LoadedAssets);
-		const FString ProgressMsg
-			= FString::Printf(TEXT("Deleted %s of %s assets"), *PjcFormat::Count(NumAssetsDeleted), *PjcFormat::Count(NumAssetsTotal));
+		const FString DeletedText = PjcFormat::Count(NumAssetsDeleted);
+		const FString ProgressMsg = FString::Printf(TEXT("Deleted %s of %s assets"), *DeletedText, *PjcFormat::Count(NumAssetsTotal));
 		const int32 ProgressWork = FMath::Min(Bucket.Num(), NumAssetsTotal - NumProgress);
 		NumProgress += ProgressWork;
 		SlowTask.EnterProgressFrame(ProgressWork, FText::FromString(ProgressMsg));
@@ -1782,8 +1781,8 @@ bool UPjcSubsystem::DeleteFoldersEmpty(const bool bShowSlowTask, const bool bSho
 		GetModuleAssetRegistry().Get().RemovePath(PathConvertToRelative(Folder));
 	}
 
-	const FString Msg
-		= FString::Printf(TEXT("Deleted %s of %s empty folders"), *PjcFormat::Count(NumFoldersDeleted), *PjcFormat::Count(NumFoldersTotal));
+	const FString DeletedText = PjcFormat::Count(NumFoldersDeleted);
+	const FString Msg = FString::Printf(TEXT("Deleted %s of %s empty folders"), *DeletedText, *PjcFormat::Count(NumFoldersTotal));
 	UE_LOG(LogProjectCleaner, Display, TEXT("%s"), *Msg);
 
 	if (bErrors) {
@@ -1833,8 +1832,8 @@ bool UPjcSubsystem::DeleteFilesExternal(const bool bShowSlowTask, const bool bSh
 		++NumFilesDeleted;
 	}
 
-	const FString Msg
-		= FString::Printf(TEXT("Deleted %s of %s external files"), *PjcFormat::Count(NumFilesDeleted), *PjcFormat::Count(NumFilesTotal));
+	const FString DeletedText = PjcFormat::Count(NumFilesDeleted);
+	const FString Msg = FString::Printf(TEXT("Deleted %s of %s external files"), *DeletedText, *PjcFormat::Count(NumFilesTotal));
 	UE_LOG(LogProjectCleaner, Display, TEXT("%s"), *Msg);
 
 	if (bErrors) {
@@ -1889,8 +1888,8 @@ bool UPjcSubsystem::DeleteFilesCorrupted(const bool bShowSlowTask, const bool bS
 		++NumFilesDeleted;
 	}
 
-	const FString Msg
-		= FString::Printf(TEXT("Deleted %s of %s corrupted files"), *PjcFormat::Count(NumFilesDeleted), *PjcFormat::Count(NumFilesTotal));
+	const FString DeletedText = PjcFormat::Count(NumFilesDeleted);
+	const FString Msg = FString::Printf(TEXT("Deleted %s of %s corrupted files"), *DeletedText, *PjcFormat::Count(NumFilesTotal));
 	UE_LOG(LogProjectCleaner, Display, TEXT("%s"), *Msg);
 
 	if (bErrors) {
@@ -2085,8 +2084,8 @@ FPjcRedirectorFixResult UPjcSubsystem::FixRedirectorsWithReport(const TArray<FAs
 		// target path: its destination, or for a missing one the package it was saved with
 		for (UObject* Object : ObjectsToDelete) {
 			const UObjectRedirector* RedirectorObject = Cast<UObjectRedirector>(Object);
-			FString TargetPath
-				= RedirectorObject && RedirectorObject->DestinationObject ? RedirectorObject->DestinationObject->GetPathName() : FString {};
+			const UObject* Destination = RedirectorObject ? RedirectorObject->DestinationObject : nullptr;
+			FString TargetPath = Destination ? Destination->GetPathName() : FString {};
 			if (TargetPath.IsEmpty()) {
 				TArray<FName> Dependencies;
 				AssetRegistry.GetDependencies(Object->GetOutermost()->GetFName(), Dependencies);
@@ -2215,8 +2214,9 @@ FString UPjcSubsystem::PathConvertToRelative(const FString& InPath) {
 
 	// files convert as is, folders (including content root itself) need trailing slash
 	FString RelativePath;
-	if (FPackageName::TryConvertFilenameToLongPackageName(PathNormalized, RelativePath)
-		|| FPackageName::TryConvertFilenameToLongPackageName(PathNormalized + TEXT("/"), RelativePath)) {
+	bool bConverted = FPackageName::TryConvertFilenameToLongPackageName(PathNormalized, RelativePath);
+	if (!bConverted) bConverted = FPackageName::TryConvertFilenameToLongPackageName(PathNormalized + TEXT("/"), RelativePath);
+	if (bConverted) {
 		return PathNormalize(RelativePath);
 	}
 

@@ -41,7 +41,7 @@ namespace
 		return Path;
 	}
 
-	/** Issues row: name with tag and muted path, then cells */
+	// Issues row: name with tag and muted path, then cells
 	class SPjcIssueRowWidget final : public SMultiColumnTableRow<TSharedPtr<FPjcIssueRow>>
 	{
 	  public:
@@ -69,32 +69,37 @@ namespace
 
 			if (Index == 0) {
 				const TSharedRef<SHorizontalBox> CellBox = SNew(SHorizontalBox).Clipping(EWidgetClipping::ClipToBounds);
-				CellBox->AddSlot()
-					.AutoWidth()
-					.VAlign(VAlign_Center)
-					.Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})[SNew(STextBlock).Text(FText::FromString(Row->Name))];
+				// clang-format off
+				CellBox->AddSlot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
+				[
+					SNew(STextBlock).Text(FText::FromString(Row->Name))
+				];
+				// clang-format on
 				if (!Row->Tag.IsEmpty()) {
-					CellBox->AddSlot()
-						.AutoWidth()
-						.VAlign(VAlign_Center)
-						.Padding(
-							FMargin {6.0f, 0.0f, 0.0f, 0.0f}
-						)[SNew(SBorder)
-							  .BorderImage(FCoreStyle::Get().GetBrush("WhiteBrush"))
-							  .BorderBackgroundColor(PjcWidgets::GetColor(Row->TagColor) * FLinearColor {0.3f, 0.3f, 0.3f, 1.0f})
-							  .Padding(FMargin {4.0f, 0.0f})
-							  .ToolTipText(FText::FromString(Row->TagToolTip))[SNew(STextBlock)
-																				   .Text(FText::FromString(Row->Tag))
-																				   .Font(PjcWidgets::GetFontMono(7))
-																				   .ColorAndOpacity(PjcWidgets::GetColor(Row->TagColor))]];
+					// clang-format off
+					CellBox->AddSlot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
+					[
+						SNew(SBorder)
+						.BorderImage(FCoreStyle::Get().GetBrush("WhiteBrush"))
+						.BorderBackgroundColor(PjcWidgets::GetColor(Row->TagColor) * FLinearColor {0.3f, 0.3f, 0.3f, 1.0f})
+						.Padding(FMargin {4.0f, 0.0f})
+						.ToolTipText(FText::FromString(Row->TagToolTip))
+						[
+							SNew(STextBlock)
+							.Text(FText::FromString(Row->Tag))
+							.Font(PjcWidgets::GetFontMono(7))
+							.ColorAndOpacity(PjcWidgets::GetColor(Row->TagColor))
+						]
+					];
+					// clang-format on
 				}
 				if (!Row->Sub.IsEmpty()) {
-					CellBox->AddSlot()
-						.FillWidth(1.0f)
-						.VAlign(VAlign_Center)
-						.Padding(
-							FMargin {7.0f, 0.0f, 0.0f, 0.0f}
-						)[SNew(STextBlock).Text(FText::FromString(Row->Sub)).Font(FPjcStyles::GetFont("Regular", 8)).ColorAndOpacity(Muted)];
+					// clang-format off
+					CellBox->AddSlot().FillWidth(1.0f).VAlign(VAlign_Center).Padding(FMargin {7.0f, 0.0f, 0.0f, 0.0f})
+					[
+						SNew(STextBlock).Text(FText::FromString(Row->Sub)).Font(FPjcStyles::GetFont("Regular", 8)).ColorAndOpacity(Muted)
+					];
+					// clang-format on
 				}
 				return CellBox;
 			}
@@ -106,21 +111,29 @@ namespace
 			const bool bMono = MonoColumns.IsValidIndex(Index) && MonoColumns[Index];
 			const bool bRight = RightColumns.IsValidIndex(Index) && RightColumns[Index];
 			const TSharedRef<SHorizontalBox> CellBox = SNew(SHorizontalBox).Clipping(EWidgetClipping::ClipToBounds);
-			CellBox->AddSlot().AutoWidth().VAlign(
-				VAlign_Center
-			)[SNew(STextBlock)
-				  .Text(FText::FromString(Row->Cells[Cell]))
-				  .Font(bMono ? PjcWidgets::GetFontMono(9) : FPjcStyles::GetFont("Regular", 9))
-				  .ColorAndOpacity(Color.IsNone() ? FSlateColor::UseForeground() : FSlateColor {PjcWidgets::GetColor(Color)})];
+			// clang-format off
+			CellBox->AddSlot().AutoWidth().VAlign(VAlign_Center)
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString(Row->Cells[Cell]))
+				.Font(bMono ? PjcWidgets::GetFontMono(9) : FPjcStyles::GetFont("Regular", 9))
+				.ColorAndOpacity(Color.IsNone() ? FSlateColor::UseForeground() : FSlateColor {PjcWidgets::GetColor(Color)})
+			];
+			// clang-format on
 			if (Row->CellSubs.IsValidIndex(Cell) && !Row->CellSubs[Cell].IsEmpty()) {
-				CellBox->AddSlot()
-					.FillWidth(1.0f)
-					.VAlign(VAlign_Center)
-					.Padding(
-						FMargin {7.0f, 0.0f, 0.0f, 0.0f}
-					)[SNew(STextBlock).Text(FText::FromString(Row->CellSubs[Cell])).Font(FPjcStyles::GetFont("Regular", 8)).ColorAndOpacity(Muted)];
+				// clang-format off
+				CellBox->AddSlot().FillWidth(1.0f).VAlign(VAlign_Center).Padding(FMargin {7.0f, 0.0f, 0.0f, 0.0f})
+				[
+					SNew(STextBlock).Text(FText::FromString(Row->CellSubs[Cell])).Font(FPjcStyles::GetFont("Regular", 8)).ColorAndOpacity(Muted)
+				];
+				// clang-format on
 			}
-			return SNew(SBox).HAlign(bRight ? HAlign_Right : HAlign_Fill).Padding(FMargin {4.0f, 0.0f, bRight ? 8.0f : 4.0f, 0.0f})[CellBox];
+			// clang-format off
+			return SNew(SBox).HAlign(bRight ? HAlign_Right : HAlign_Fill).Padding(FMargin {4.0f, 0.0f, bRight ? 8.0f : 4.0f, 0.0f})
+				[
+					CellBox
+				];
+			// clang-format on
 		}
 
 	  private:
@@ -139,18 +152,14 @@ void SPjcTabIssues::Construct(const FArguments& InArgs) {
 	// clang-format off
 	ChildSlot
 	[
-		SNew(SPjcToolFrame)
-		.PageName(TEXT("Issues"))
-		.PanelOpen(false)
+		SNew(SPjcToolFrame).PageName(TEXT("Issues")).PanelOpen(false)
 		[
 			SNew(SHorizontalBox)
 			+ SHorizontalBox::Slot().AutoWidth()
 			[
 				SNew(SBox).WidthOverride(200.0f)
 				[
-					SNew(SBorder)
-					.BorderImage(PjcShim::GetBrush(TEXT("ToolPanel.GroupBorder")))
-					.Padding(FMargin {0.0f, 8.0f})
+					SNew(SBorder).BorderImage(PjcShim::GetBrush(TEXT("ToolPanel.GroupBorder"))).Padding(FMargin {0.0f, 8.0f})
 					[
 						MakeCategories()
 					]
@@ -165,9 +174,7 @@ void SPjcTabIssues::Construct(const FArguments& InArgs) {
 			]
 			+ SHorizontalBox::Slot().FillWidth(1.0f)
 			[
-				SNew(SBorder)
-				.BorderImage(PjcShim::GetBrush(TEXT("ToolPanel.GroupBorder")))
-				.Padding(0.0f)
+				SNew(SBorder).BorderImage(PjcShim::GetBrush(TEXT("ToolPanel.GroupBorder"))).Padding(0.0f)
 				[
 					SNew(SVerticalBox)
 					+ SVerticalBox::Slot().AutoHeight()
@@ -177,7 +184,9 @@ void SPjcTabIssues::Construct(const FArguments& InArgs) {
 					+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {12.0f, 0.0f, 8.0f, 6.0f})
 					[
 						SAssignNew(Chips, SHorizontalBox)
-						.Visibility_Lambda([this]() { return Category == EPjcIssueCategory::External && bKept ? EVisibility::Visible : EVisibility::Collapsed; })
+						.Visibility_Lambda([this]() {
+							return Category == EPjcIssueCategory::External && bKept ? EVisibility::Visible : EVisibility::Collapsed;
+						})
 					]
 					+ SVerticalBox::Slot().FillHeight(1.0f)
 					[
@@ -263,21 +272,20 @@ void SPjcTabIssues::RebuildRows() {
 					Row->TagColor = TEXT("ProjectCleaner.Color.Red");
 					Row->TagToolTip = *Kept;
 				}
-				Row->Cells.Add(Info.Target.IsNone() ? TEXT("outside scan") : TEXT("→ ") + FPackageName::GetShortName(Info.Target));
+				Row->Cells.Add(Info.Target.IsNone() ? TEXT("outside scan") : TEXT("\u2192 ") + FPackageName::GetShortName(Info.Target));
 				Row->CellSubs.Add(
-					Info.Target.IsNone() ? FString {} : FPaths::GetPath(Target).Mid(1) + (Info.bTargetExists ? TEXT("") : TEXT(" · missing"))
+					Info.Target.IsNone() ? FString {} : FPaths::GetPath(Target).Mid(1) + (Info.bTargetExists ? TEXT("") : TEXT(" \u00B7 missing"))
 				);
 				Row->CellColors.Add(Info.Target.IsNone() ? FName {} : (Info.bTargetExists ? FName {} : FName {TEXT("ProjectCleaner.Color.Red")}));
-				Row->Cells.Add(Info.UsedBy.Num() > 0 ? PjcFormat::Count(Info.UsedBy.Num()) : TEXT("—"));
+				Row->Cells.Add(Info.UsedBy.Num() > 0 ? PjcFormat::Count(Info.UsedBy.Num()) : TEXT("\u2014"));
 				Row->CellSubs.Add(FString {});
 				Row->CellColors.Add(NAME_None);
 				Row->Cells.Add(PjcIssues::GetStateName(Info.State));
 				Row->CellSubs.Add(FString {});
-				Row->CellColors.Add(
-					Info.State == EPjcRedirectorState::Broken	   ? FName {TEXT("ProjectCleaner.Color.Red")}
-						: Info.State == EPjcRedirectorState::InUse ? FName {TEXT("ProjectCleaner.Color.Yellow")}
-																   : FName {TEXT("ProjectCleaner.Color.Gray")}
-				);
+				FName StateColor {TEXT("ProjectCleaner.Color.Gray")};
+				if (Info.State == EPjcRedirectorState::Broken) StateColor = TEXT("ProjectCleaner.Color.Red");
+				if (Info.State == EPjcRedirectorState::InUse) StateColor = TEXT("ProjectCleaner.Color.Yellow");
+				Row->CellColors.Add(StateColor);
 				TArray<FString> Users;
 				for (const FName User : Info.UsedBy) {
 					Users.Add(FPackageName::GetShortName(User));
@@ -342,17 +350,16 @@ void SPjcTabIssues::RebuildRows() {
 
 TArray<SPjcTabIssues::FColumn> SPjcTabIssues::GetColumns() const {
 	TArray<FColumn> Columns;
-	const auto Add
-		= [&Columns](const TCHAR* Label, const float Width, const float Fill, const bool bRight, const bool bMono, const TCHAR* ToolTip = TEXT("")) {
-			  FColumn& Column = Columns.AddDefaulted_GetRef();
-			  Column.Id = Columns.Num() == 1 ? PjcIssueColFirst : FName {Label};
-			  Column.Label = Label;
-			  Column.Width = Width;
-			  Column.Fill = Fill;
-			  Column.bRight = bRight;
-			  Column.bMono = bMono;
-			  Column.ToolTip = ToolTip;
-		  };
+	const auto Add = [&Columns](const TCHAR* Label, float Width, float Fill, bool bRight, bool bMono, const TCHAR* ToolTip = TEXT("")) {
+		FColumn& Column = Columns.AddDefaulted_GetRef();
+		Column.Id = Columns.Num() == 1 ? PjcIssueColFirst : FName {Label};
+		Column.Label = Label;
+		Column.Width = Width;
+		Column.Fill = Fill;
+		Column.bRight = bRight;
+		Column.bMono = bMono;
+		Column.ToolTip = ToolTip;
+	};
 
 	switch (Category) {
 		case EPjcIssueCategory::Redirectors :
@@ -406,13 +413,15 @@ void SPjcTabIssues::RebuildList() {
 		Right.Add(Column.bRight);
 	}
 
+	// clang-format off
 	SAssignNew(ListView, SListView<FRowPtr>)
-		.ListItemsSource(&Rows)
-		.SelectionMode(ESelectionMode::Multi)
-		.HeaderRow(Header)
-		.OnGenerateRow_Lambda([Ids, Mono, Right](FRowPtr Row, const TSharedRef<STableViewBase>& Table) -> TSharedRef<ITableRow> {
-			return SNew(SPjcIssueRowWidget, Table).Row(Row).Columns(Ids).MonoColumns(Mono).RightColumns(Right);
-		});
+	.ListItemsSource(&Rows)
+	.SelectionMode(ESelectionMode::Multi)
+	.HeaderRow(Header)
+	.OnGenerateRow_Lambda([Ids, Mono, Right](FRowPtr Row, const TSharedRef<STableViewBase>& Table) -> TSharedRef<ITableRow> {
+		return SNew(SPjcIssueRowWidget, Table).Row(Row).Columns(Ids).MonoColumns(Mono).RightColumns(Right);
+	});
+	// clang-format on
 
 	if (AllRows.Num() == 0) {
 		// clang-format off
@@ -422,11 +431,16 @@ void SPjcTabIssues::RebuildList() {
 				SNew(SVerticalBox)
 				+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center)
 				[
-					SNew(STextBlock).Text(FText::FromString(TEXT("✓ None"))).Font(FPjcStyles::GetFont("Bold", 11)).ColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.Ok"))
+					SNew(STextBlock)
+					.Text(FText::FromString(TEXT("\u2713 None")))
+					.Font(FPjcStyles::GetFont("Bold", 11))
+					.ColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.Ok"))
 				]
 				+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center).Padding(FMargin {0.0f, 4.0f})
 				[
-					SNew(STextBlock).Text(FText::FromString(GetTitle().ToString() + TEXT(": nothing found in this scan."))).ColorAndOpacity(FSlateColor::UseSubduedForeground())
+					SNew(STextBlock)
+					.Text(FText::FromString(GetTitle().ToString() + TEXT(": nothing found in this scan.")))
+					.ColorAndOpacity(FSlateColor::UseSubduedForeground())
 				]
 			]
 		);
@@ -450,7 +464,12 @@ void SPjcTabIssues::ApplyFilter() {
 
 TSharedRef<SWidget> SPjcTabIssues::MakeCategories() {
 	const TSharedRef<SVerticalBox> Box = SNew(SVerticalBox);
-	Box->AddSlot().AutoHeight().Padding(FMargin {12.0f, 0.0f, 12.0f, 8.0f})[PjcWidgets::MakeCardTitle(TEXT("Issues"))];
+	// clang-format off
+	Box->AddSlot().AutoHeight().Padding(FMargin {12.0f, 0.0f, 12.0f, 8.0f})
+	[
+		PjcWidgets::MakeCardTitle(TEXT("Issues"))
+	];
+	// clang-format on
 
 	struct FEntry
 	{
@@ -496,7 +515,8 @@ TSharedRef<SWidget> SPjcTabIssues::MakeCategories() {
 						.Font(PjcWidgets::GetFontMono(9))
 						.Text_Lambda([this, EntryCategory]() { return FText::FromString(PjcFormat::Count(GetCount(EntryCategory))); })
 						.ColorAndOpacity_Lambda([this, EntryCategory]() {
-							return FSlateColor {PjcWidgets::GetColor(GetCount(EntryCategory) > 0 ? "ProjectCleaner.Color.Yellow" : "ProjectCleaner.Color.Ok")};
+							const TCHAR* Color = GetCount(EntryCategory) > 0 ? TEXT("ProjectCleaner.Color.Yellow") : TEXT("ProjectCleaner.Color.Ok");
+							return FSlateColor {PjcWidgets::GetColor(Color)};
 						})
 					]
 				]
@@ -509,8 +529,7 @@ TSharedRef<SWidget> SPjcTabIssues::MakeCategories() {
 
 TSharedRef<SWidget> SPjcTabIssues::MakeHeader() {
 	// clang-format off
-	return SNew(SBox)
-		.Padding(FMargin {12.0f, 8.0f, 8.0f, 8.0f})
+	return SNew(SBox).Padding(FMargin {12.0f, 8.0f, 8.0f, 8.0f})
 		[
 			SNew(SHorizontalBox)
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
@@ -543,7 +562,8 @@ TSharedRef<SWidget> SPjcTabIssues::MakeHeader() {
 					[
 						SNew(SBox).Padding(FMargin {8.0f, 1.0f})
 						[
-							SNew(STextBlock).Text_Lambda([]() {
+							SNew(STextBlock)
+							.Text_Lambda([]() {
 								return FText::FromString(TEXT("To review  ") + PjcFormat::Count(UPjcSubsystem::GetScanResult().FilesExternal.Num()));
 							})
 						]
@@ -553,7 +573,11 @@ TSharedRef<SWidget> SPjcTabIssues::MakeHeader() {
 				[
 					SNew(SCheckBox)
 					.Style(&PjcShim::GetStyle().GetWidgetStyle<FCheckBoxStyle>(TEXT("ToggleButtonCheckbox")))
-					.ToolTipText(FText::FromString(TEXT("Files the plugin never deletes: engine folders, staged folders, names in source or config, exclusions")))
+					.ToolTipText(
+						FText::FromString(
+							TEXT("Files the plugin never deletes: engine folders, staged folders, names in source or config, exclusions")
+						)
+					)
 					.IsChecked_Lambda([this]() { return bKept ? ECheckBoxState::Checked : ECheckBoxState::Unchecked; })
 					.OnCheckStateChanged_Lambda([this](ECheckBoxState) {
 						bKept = true;
@@ -564,7 +588,8 @@ TSharedRef<SWidget> SPjcTabIssues::MakeHeader() {
 					[
 						SNew(SBox).Padding(FMargin {8.0f, 1.0f})
 						[
-							SNew(STextBlock).Text_Lambda([]() {
+							SNew(STextBlock)
+							.Text_Lambda([]() {
 								return FText::FromString(TEXT("Kept  ") + PjcFormat::Count(UPjcSubsystem::GetScanResult().FilesExternalKept.Num()));
 							})
 						]
@@ -605,7 +630,9 @@ TSharedRef<SWidget> SPjcTabIssues::MakeFooter() {
 				return FReply::Handled();
 			})
 			[
-				SNew(STextBlock).Text(FText::FromString(Label)).ColorAndOpacity(Color.IsNone() ? FSlateColor::UseForeground() : FSlateColor {FLinearColor::White})
+				SNew(STextBlock)
+				.Text(FText::FromString(Label))
+				.ColorAndOpacity(Color.IsNone() ? FSlateColor::UseForeground() : FSlateColor {FLinearColor::White})
 			];
 		// clang-format on
 	};
@@ -638,7 +665,9 @@ TSharedRef<SWidget> SPjcTabIssues::MakeFooter() {
 						TEXT("Fixes the selected redirectors"),
 						TEXT("ProjectCleaner.Color.Accent"),
 						[this, SelectedRedirectors]() { FixRedirectors(SelectedRedirectors()); },
-						[this, SelectedRedirectors]() { return SelectedRedirectors().ContainsByPredicate([this](const int32 Index) { return Redirectors[Index].CanFix(); }); }
+						[this, SelectedRedirectors]() {
+							return SelectedRedirectors().ContainsByPredicate([this](const int32 Index) { return Redirectors[Index].CanFix(); });
+						}
 					)
 				]
 			]
@@ -663,13 +692,12 @@ TSharedRef<SWidget> SPjcTabIssues::MakeFooter() {
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
 			[
 				SNew(SBox).Visibility_Lambda([this]() {
-					return Category == EPjcIssueCategory::Corrupted || Category == EPjcIssueCategory::Empty || (Category == EPjcIssueCategory::External && !bKept)
-						? EVisibility::Visible
-						: EVisibility::Collapsed;
+					const bool bFiles = Category == EPjcIssueCategory::Corrupted || Category == EPjcIssueCategory::Empty;
+					return bFiles || (Category == EPjcIssueCategory::External && !bKept) ? EVisibility::Visible : EVisibility::Collapsed;
 				})
 				[
 					Button(
-						TEXT("Delete…"),
+						TEXT("Delete\u2026"),
 						TEXT("Deletes the selection from disk"),
 						TEXT("ProjectCleaner.Color.UnusedFill"),
 						[this]() { DeleteRows(GetSelected()); },
@@ -709,7 +737,8 @@ TSharedRef<SWidget> SPjcTabIssues::MakeFooter() {
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
 			[
 				SNew(SBox).Visibility_Lambda([this]() {
-					return Category == EPjcIssueCategory::External || Category == EPjcIssueCategory::Corrupted ? EVisibility::Visible : EVisibility::Collapsed;
+					const bool bFiles = Category == EPjcIssueCategory::External || Category == EPjcIssueCategory::Corrupted;
+					return bFiles ? EVisibility::Visible : EVisibility::Collapsed;
 				})
 				[
 					Button(
@@ -743,10 +772,11 @@ FText SPjcTabIssues::GetDescription() const {
 		case EPjcIssueCategory::Redirectors :
 			return FText::FromString(TEXT("Found in your project. Scanning follows them; fixing resaves the assets that still use the old path."));
 		case EPjcIssueCategory::External :
-			return FText::FromString(
-				bKept ? TEXT("Files the plugin never deletes: engine folders, staged folders, names in source or config, exclusions.")
-					  : TEXT("Not assets and not used by the engine or the project. Review before deleting.")
-			);
+			{
+				const TCHAR* Kept = TEXT("Files the plugin never deletes: engine folders, staged folders, names in source or config, exclusions.");
+				const TCHAR* ToReview = TEXT("Not assets and not used by the engine or the project. Review before deleting.");
+				return FText::FromString(bKept ? Kept : ToReview);
+			}
 		case EPjcIssueCategory::Corrupted :
 			return FText::FromString(TEXT("Asset files the engine cannot load. Deleting them is the only fix the plugin offers."));
 		case EPjcIssueCategory::Empty : return FText::FromString(TEXT("Folders without assets or files, often left after moving assets."));
@@ -770,16 +800,14 @@ FText SPjcTabIssues::GetSelectionText() const {
 	if (AllRows.Num() == 0) return FText::GetEmpty();
 
 	const TArray<FRowPtr> Selected = GetSelected();
-	if (Selected.Num() == 0) return FText::FromString(TEXT("No selection · Ctrl or Shift selects more"));
+	if (Selected.Num() == 0) return FText::FromString(TEXT("No selection \u00B7 Ctrl or Shift selects more"));
 
 	int64 Size = 0;
 	for (const auto& Row : Selected) {
 		Size += FMath::Max<int64>(Row->Size, 0);
 	}
-	return FText::FromString(
-		Size > 0 ? FString::Printf(TEXT("%s selected · %s"), *PjcFormat::Count(Selected.Num()), *PjcFormat::Size(Size))
-				 : FString::Printf(TEXT("%s selected"), *PjcFormat::Count(Selected.Num()))
-	);
+	const FString SelectedText = FString::Printf(TEXT("%s selected"), *PjcFormat::Count(Selected.Num()));
+	return FText::FromString(Size > 0 ? SelectedText + TEXT(" \u00B7 ") + PjcFormat::Size(Size) : SelectedText);
 }
 
 void SPjcTabIssues::FixRedirectors(const TArray<int32>& Indices) {
@@ -797,32 +825,30 @@ void SPjcTabIssues::FixRedirectors(const TArray<int32>& Indices) {
 
 	TArray<FPjcDialogPart> Parts;
 	FPjcDialogPart& What = Parts.AddDefaulted_GetRef();
-	What.Note = Users.Num() > 0 ? FString::Printf(
-									  TEXT("Resaves %s asset%s so they point to the real asset, then deletes the redirectors."),
-									  *PjcFormat::Count(Users.Num()),
-									  Users.Num() == 1 ? TEXT("") : TEXT("s")
-								  )
-								: FString {TEXT("Nothing points through them: they are deleted.")};
+	const TCHAR* Plural = Users.Num() == 1 ? TEXT("") : TEXT("s");
+	const FString Resaves = FString::Printf(TEXT("Resaves %s asset%s so they point to the real asset"), *PjcFormat::Count(Users.Num()), Plural);
+	const FString ResaveNote = Resaves + TEXT(", then deletes the redirectors.");
+	What.Note = Users.Num() > 0 ? ResaveNote : FString {TEXT("Nothing points through them: they are deleted.")};
 	FPjcDialogPart& Team = Parts.AddDefaulted_GetRef();
 	Team.Note = TEXT("Team project: teammates' unsubmitted work may still use the old paths. Fix after everyone has checked in.");
 	Team.NoteColor = TEXT("ProjectCleaner.Color.Yellow");
 	if (Can.Num() > 0) {
 		FPjcDialogPart& List = Parts.AddDefaulted_GetRef();
-		List.Heading = FString::Printf(TEXT("Redirectors · %s"), *PjcFormat::Count(Can.Num()));
+		List.Heading = FString::Printf(TEXT("Redirectors \u00B7 %s"), *PjcFormat::Count(Can.Num()));
 		for (const int32 Index : Can) {
 			List.Rows.Emplace(FPackageName::GetShortName(Redirectors[Index].Asset.PackageName), PjcIssues::GetStateName(Redirectors[Index].State));
 		}
 	}
 	if (Users.Num() > 0) {
 		FPjcDialogPart& List = Parts.AddDefaulted_GetRef();
-		List.Heading = FString::Printf(TEXT("Resaved · %s"), *PjcFormat::Count(Users.Num()));
+		List.Heading = FString::Printf(TEXT("Resaved \u00B7 %s"), *PjcFormat::Count(Users.Num()));
 		for (const FName User : Users) {
 			List.Rows.Emplace(FPackageName::GetShortName(User), FPaths::GetPath(User.ToString()).Mid(1));
 		}
 	}
 	if (Cannot.Num() > 0) {
 		FPjcDialogPart& List = Parts.AddDefaulted_GetRef();
-		List.Heading = FString::Printf(TEXT("Not fixable · %s"), *PjcFormat::Count(Cannot.Num()));
+		List.Heading = FString::Printf(TEXT("Not fixable \u00B7 %s"), *PjcFormat::Count(Cannot.Num()));
 		List.Note = TEXT("Target missing and still used: repair the assets that use them by hand.");
 		List.NoteColor = TEXT("ProjectCleaner.Color.Red");
 		for (const int32 Index : Cannot) {
@@ -848,7 +874,7 @@ void SPjcTabIssues::FixRedirectors(const TArray<int32>& Indices) {
 	if (Result.Kept.Num() == 0 && Result.NotResaved.Num() == 0) {
 		UPjcSubsystem::ShowNotification(
 			FString::Printf(
-				TEXT("Fixed %s redirectors · resaved %s assets"), *PjcFormat::Count(Result.Deleted.Num()), *PjcFormat::Count(Result.NumResaved)
+				TEXT("Fixed %s redirectors \u00B7 resaved %s assets"), *PjcFormat::Count(Result.Deleted.Num()), *PjcFormat::Count(Result.NumResaved)
 			),
 			SNotificationItem::CS_Success,
 			4.0f
@@ -867,13 +893,13 @@ void SPjcTabIssues::FixRedirectors(const TArray<int32>& Indices) {
 	Note.NoteColor = TEXT("ProjectCleaner.Color.Red");
 	if (Result.NotResaved.Num() > 0) {
 		FPjcDialogPart& List = Report.AddDefaulted_GetRef();
-		List.Heading = FString::Printf(TEXT("Not resaved · %s"), *PjcFormat::Count(Result.NotResaved.Num()));
+		List.Heading = FString::Printf(TEXT("Not resaved \u00B7 %s"), *PjcFormat::Count(Result.NotResaved.Num()));
 		for (const auto& Pair : Result.NotResaved) {
 			List.Rows.Emplace(FPackageName::GetShortName(Pair.Key), Pair.Value);
 		}
 	}
 	FPjcDialogPart& Kept = Report.AddDefaulted_GetRef();
-	Kept.Heading = FString::Printf(TEXT("Redirectors kept · %s"), *PjcFormat::Count(Result.Kept.Num()));
+	Kept.Heading = FString::Printf(TEXT("Redirectors kept \u00B7 %s"), *PjcFormat::Count(Result.Kept.Num()));
 	for (const auto& Pair : Result.Kept) {
 		Kept.Rows.Emplace(FPackageName::GetShortName(Pair.Key), Pair.Value);
 	}
@@ -913,9 +939,19 @@ void SPjcTabIssues::RebuildChips() {
 			];
 		// clang-format on
 	};
-	Chips->AddSlot().AutoWidth().Padding(FMargin {0.0f, 0.0f, 4.0f, 0.0f})[Chip(FString {}, TEXT("All"), Result.FilesExternalKept.Num())];
+	// clang-format off
+	Chips->AddSlot().AutoWidth().Padding(FMargin {0.0f, 0.0f, 4.0f, 0.0f})
+	[
+		Chip(FString {}, TEXT("All"), Result.FilesExternalKept.Num())
+	];
+	// clang-format on
 	for (const auto& Pair : ByReason) {
-		Chips->AddSlot().AutoWidth().Padding(FMargin {0.0f, 0.0f, 4.0f, 0.0f})[Chip(Pair.Key, Pair.Key, Pair.Value)];
+		// clang-format off
+		Chips->AddSlot().AutoWidth().Padding(FMargin {0.0f, 0.0f, 4.0f, 0.0f})
+		[
+			Chip(Pair.Key, Pair.Key, Pair.Value)
+		];
+		// clang-format on
 	}
 }
 
@@ -931,8 +967,9 @@ void SPjcTabIssues::DeleteRows(const TArray<FRowPtr>& InRows) {
 		Size += FMath::Max<int64>(Row->Size, 0);
 		List.Rows.Emplace(Row->Name, Row->Size >= 0 ? PjcFormat::Size(Row->Size) : FString {});
 	}
-	List.Heading = bFolders ? FString::Printf(TEXT("Folders · %s"), *PjcFormat::Count(Paths.Num()))
-							: FString::Printf(TEXT("Files · %s · %s"), *PjcFormat::Count(Paths.Num()), *PjcFormat::Size(Size));
+	const FString PathsText = PjcFormat::Count(Paths.Num());
+	const FString FilesText = FString::Printf(TEXT("Files \u00B7 %s \u00B7 %s"), *PathsText, *PjcFormat::Size(Size));
+	List.Heading = bFolders ? FString::Printf(TEXT("Folders \u00B7 %s"), *PathsText) : FilesText;
 
 	const FString What = FString::Printf(
 		TEXT("%s %s%s"), *PjcFormat::Count(Paths.Num()), bFolders ? TEXT("folder") : TEXT("file"), Paths.Num() == 1 ? TEXT("") : TEXT("s")
@@ -993,18 +1030,17 @@ TSharedRef<SWidget> SPjcTabIssues::MakeExcludeMenu() {
 			ExcludeFiles({}, ExtensionList, {}, TEXT("extension ") + FString::Join(Dotted, TEXT(" ")));
 		})}
 	);
+	const FString FoldersText = FString::Printf(TEXT("%s folders"), *PjcFormat::Count(FolderList.Num()));
+	const FString FirstFolder = FolderList.Num() == 1 ? FPaths::GetCleanFilename(FolderList[0]) : FString {};
+	const FString ExcludeLabel = FolderList.Num() == 1 ? TEXT("Exclude folder ") + FirstFolder : TEXT("Exclude ") + FoldersText;
+	const FString FolderWhat = FolderList.Num() == 1 ? FolderList[0] : FoldersText;
 	Menu.AddMenuEntry(
-		FText::FromString(
-			FolderList.Num() == 1 ? TEXT("Exclude folder ") + FPaths::GetCleanFilename(FolderList[0])
-								  : FString::Printf(TEXT("Exclude %s folders"), *PjcFormat::Count(FolderList.Num()))
-		),
+		FText::FromString(ExcludeLabel),
 		FText::FromString(TEXT("Keeps every file in the folder of the selection")),
 		FSlateIcon {},
 		FUIAction {
-		  FExecuteAction::CreateLambda([this, FolderList]() {
-			  ExcludeFiles(
-				  {}, {}, FolderList, FolderList.Num() == 1 ? FolderList[0] : FString::Printf(TEXT("%s folders"), *PjcFormat::Count(FolderList.Num()))
-			  );
+		  FExecuteAction::CreateLambda([this, FolderList, FolderWhat]() {
+			  ExcludeFiles({}, {}, FolderList, FolderWhat);
 		  }),
 		  FCanExecuteAction::CreateLambda([FolderList]() {
 			  return FolderList.Num() > 0;
@@ -1046,6 +1082,7 @@ void SPjcTabIssues::ExcludeFiles(
 	}
 	PjcShim::UpdateDefaultConfigFile(Settings);
 
-	UPjcSubsystem::ShowNotification(TEXT("Excluded ") + What + TEXT(" · saved to Config/DefaultEditor.ini"), SNotificationItem::CS_Success, 4.0f);
+	const FString Note = TEXT("Excluded ") + What + TEXT(" \u00B7 saved to Config/DefaultEditor.ini");
+	UPjcSubsystem::ShowNotification(Note, SNotificationItem::CS_Success, 4.0f);
 	SPjcScanBar::ScanProject();
 }

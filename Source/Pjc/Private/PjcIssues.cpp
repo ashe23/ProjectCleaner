@@ -56,8 +56,10 @@ namespace PjcIssues
 		}
 
 		OutRedirectors.Sort([](const FPjcRedirectorInfo& A, const FPjcRedirectorInfo& B) {
-			return A.State != B.State ? static_cast<uint8>(A.State) < static_cast<uint8>(B.State)
-									  : A.Asset.PackageName.LexicalLess(B.Asset.PackageName);
+			if (A.State != B.State) {
+				return static_cast<uint8>(A.State) < static_cast<uint8>(B.State);
+			}
+			return A.Asset.PackageName.LexicalLess(B.Asset.PackageName);
 		});
 	}
 

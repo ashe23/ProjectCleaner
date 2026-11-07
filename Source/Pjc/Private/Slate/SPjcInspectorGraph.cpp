@@ -26,7 +26,7 @@ namespace
 		return FLinearColor {FColor::FromHex(Hex)};
 	}
 
-	/** Who keeps a root used, the title of its source box */
+	// Who keeps a root used, the title of its source box
 	const TCHAR* PjcGraphSourceTitle(const EPjcUsageReason Reason) {
 		switch (Reason) {
 			case EPjcUsageReason::Primary :
@@ -51,7 +51,7 @@ namespace
 		return Assets.Num() > 0 ? Assets[0] : FAssetData {};
 	}
 
-	/** Point on a cubic curve */
+	// Point on a cubic curve
 	FVector2D PjcGraphBezier(const FVector2D& P0, const FVector2D& P1, const FVector2D& P2, const FVector2D& P3, const float T) {
 		const float U = 1.0f - T;
 		return P0 * (U * U * U) + P1 * (3.0f * U * U * T) + P2 * (3.0f * U * T * T) + P3 * (T * T * T);
@@ -185,13 +185,11 @@ void SPjcInspectorGraph::UpdateLayout() {
 				return Existing.From == Index;
 			});
 			const FPjcInspectorNode* Target = Edge ? &Graph.Nodes[Edge->To] : nullptr;
-			const FName Root = Target && Target->Kind == EPjcInspectorNodeKind::Group && Target->Roots.Num() > 0
-				? Target->Roots[0]
-				: (Target ? Target->Package : Node.Package);
+			const bool bGroup = Target && Target->Kind == EPjcInspectorNodeKind::Group;
+			const FName Root = bGroup && Target->Roots.Num() > 0 ? Target->Roots[0] : (Target ? Target->Package : Node.Package);
 			const FPjcAssetUsage* Usage = Result ? Result->Usage.Find(Root) : nullptr;
 			Item.Title = PjcGraphSourceTitle(Usage ? Usage->Reason : EPjcUsageReason::None);
-			Item.Line = Target && Target->Kind == EPjcInspectorNodeKind::Group ? FString::Printf(TEXT("%d × %s"), Target->Roots.Num(), *Node.Label)
-																			   : Node.Label;
+			Item.Line = bGroup ? FString::Printf(TEXT("%d \u00D7 %s"), Target->Roots.Num(), *Node.Label) : Node.Label;
 			Item.LineColor = PjcGraphColor(TEXT("#D9C9A3"));
 			Item.ToolTip = Item.Title + TEXT("\n") + Item.Line;
 			continue;
@@ -204,8 +202,8 @@ void SPjcInspectorGraph::UpdateLayout() {
 			for (const FName Root : Node.Roots) {
 				Size += Result ? Result->GetSize(Root) : 0;
 			}
-			Item.Title = FString::Printf(TEXT("%d × %s"), Node.Roots.Num(), *Type.Label);
-			Item.Line = FString::Printf(TEXT("roots · %s · click to list"), *PjcFormat::Size(Size));
+			Item.Title = FString::Printf(TEXT("%d \u00D7 %s"), Node.Roots.Num(), *Type.Label);
+			Item.Line = FString::Printf(TEXT("roots \u00B7 %s \u00B7 click to list"), *PjcFormat::Size(Size));
 			Item.LineColor = Gold;
 			Item.Icon = Type.Icon;
 			Item.IconColor = Type.Color;
@@ -224,11 +222,11 @@ void SPjcInspectorGraph::UpdateLayout() {
 
 		Item.Title = FPackageName::GetShortName(Node.Package);
 		Item.Line.Reset();
-		if (!bScanned) Item.Line += TEXT("not scanned · ");
-		if (bRoot) Item.Line += TEXT("root · ");
-		if (bEditorOnly && !bRoot) Item.Line += TEXT("editor only · ");
+		if (!bScanned) Item.Line += TEXT("not scanned \u00B7 ");
+		if (bRoot) Item.Line += TEXT("root \u00B7 ");
+		if (bEditorOnly && !bRoot) Item.Line += TEXT("editor only \u00B7 ");
 		Item.Line += Type.Label;
-		if (bScanned) Item.Line += TEXT(" · ") + PjcFormat::Size(Result->GetSize(Node.Package));
+		if (bScanned) Item.Line += TEXT(" \u00B7 ") + PjcFormat::Size(Result->GetSize(Node.Package));
 		Item.LineColor = bRoot ? Gold : (bEditorOnly ? Editor : Muted);
 		Item.Icon = Type.Icon;
 		Item.IconColor = Type.Color;
@@ -264,8 +262,9 @@ void SPjcInspectorGraph::FitAuto(const FVector2D& InViewSize) const {
 	const int32 Focus = Graph.FindNode(Graph.Focus);
 	const float ViewWidth = static_cast<float>(InViewSize.X);
 	const float ViewHeight = static_cast<float>(InViewSize.Y);
-	const float Fit
-		= FMath::Min3(1.0f, (ViewWidth - 20.0f) / static_cast<float>(GraphSize.X), (ViewHeight - 20.0f) / static_cast<float>(GraphSize.Y));
+	const float FitX = (ViewWidth - 20.0f) / static_cast<float>(GraphSize.X);
+	const float FitY = (ViewHeight - 20.0f) / static_cast<float>(GraphSize.Y);
+	const float Fit = FMath::Min3(1.0f, FitX, FitY);
 	if (Fit >= PjcGraphReadable || Focus == INDEX_NONE) {
 		FitAll(InViewSize);
 		return;
@@ -361,7 +360,7 @@ int32 SPjcInspectorGraph::OnPaint(
 		FString Cut = String;
 		if (FontMeasure->Measure(Cut, Font).X > MaxWidth) {
 			const int32 Fits = FontMeasure->FindLastWholeCharacterIndexBeforeOffset(Cut, Font, FMath::Max(1, FMath::FloorToInt(MaxWidth - 8.0f)));
-			Cut = Fits > 0 ? Cut.Left(Fits) + TEXT("…") : FString {};
+			Cut = Fits > 0 ? Cut.Left(Fits) + TEXT("\u2026") : FString {};
 		}
 		const FVector2D Size {FontMeasure->Measure(Cut, Font)};
 		FSlateDrawElement::MakeText(

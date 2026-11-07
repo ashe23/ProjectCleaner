@@ -32,8 +32,8 @@ namespace PjcWidgets
 		Type.Color = FLinearColor {FColor::FromHex(TEXT("#8A9099"))};
 		const UClass* AssetClass = Asset.GetClass();
 		if (AssetClass) {
-			const TSharedPtr<IAssetTypeActions> Actions
-				= FModuleManager::LoadModuleChecked<FAssetToolsModule>(TEXT("AssetTools")).Get().GetAssetTypeActionsForClass(AssetClass).Pin();
+			IAssetTools& AssetTools = FModuleManager::LoadModuleChecked<FAssetToolsModule>(TEXT("AssetTools")).Get();
+			const TSharedPtr<IAssetTypeActions> Actions = AssetTools.GetAssetTypeActionsForClass(AssetClass).Pin();
 			if (Actions.IsValid()) {
 				Type.Label = Actions->GetName().ToString();
 				Type.Color = FLinearColor {Actions->GetTypeColor()};
@@ -45,18 +45,34 @@ namespace PjcWidgets
 
 	TSharedRef<SToolTip> MakeToolTip(const FString& Title, const FString& Text, const FString& More) {
 		const TSharedRef<SVerticalBox> Lines = SNew(SVerticalBox);
-		Lines->AddSlot().AutoHeight()[SNew(STextBlock).Text(FText::FromString(Title)).Font(FPjcStyles::GetFont("Bold", 9))];
+		// clang-format off
+		Lines->AddSlot().AutoHeight()
+		[
+			SNew(STextBlock).Text(FText::FromString(Title)).Font(FPjcStyles::GetFont("Bold", 9))
+		];
+		// clang-format on
 		if (!Text.IsEmpty()) {
-			Lines->AddSlot().AutoHeight().Padding(
-				FMargin {0.0f, 3.0f, 0.0f, 0.0f}
-			)[SNew(STextBlock).Text(FText::FromString(Text)).WrapTextAt(280.0f)];
+			// clang-format off
+			Lines->AddSlot().AutoHeight().Padding(FMargin {0.0f, 3.0f, 0.0f, 0.0f})
+			[
+				SNew(STextBlock).Text(FText::FromString(Text)).WrapTextAt(280.0f)
+			];
+			// clang-format on
 		}
 		if (!More.IsEmpty()) {
-			Lines->AddSlot().AutoHeight().Padding(
-				FMargin {0.0f, 5.0f, 0.0f, 0.0f}
-			)[SNew(STextBlock).Text(FText::FromString(More)).ColorAndOpacity(FSlateColor::UseSubduedForeground())];
+			// clang-format off
+			Lines->AddSlot().AutoHeight().Padding(FMargin {0.0f, 5.0f, 0.0f, 0.0f})
+			[
+				SNew(STextBlock).Text(FText::FromString(More)).ColorAndOpacity(FSlateColor::UseSubduedForeground())
+			];
+			// clang-format on
 		}
-		return SNew(SToolTip)[Lines];
+		// clang-format off
+		return SNew(SToolTip)
+			[
+				Lines
+			];
+		// clang-format on
 	}
 
 	FLinearColor GetColor(const FName Name) {
@@ -68,20 +84,30 @@ namespace PjcWidgets
 	}
 
 	TSharedRef<SWidget> MakeCard(const TSharedRef<SWidget>& Content, const FMargin& Padding) {
-		return SNew(SBorder).BorderImage(PjcShim::GetBrushCard()).Padding(Padding)[Content];
+		// clang-format off
+		return SNew(SBorder).BorderImage(PjcShim::GetBrushCard()).Padding(Padding)
+			[
+				Content
+			];
+		// clang-format on
 	}
 
 	TSharedRef<SWidget> MakeCardTitle(const FString& Title) {
+		// clang-format off
 		return SNew(STextBlock)
 			.Text(FText::FromString(Title.ToUpper()))
 			.Font(FPjcStyles::GetFont("Bold", 8))
 			.ColorAndOpacity(FSlateColor::UseSubduedForeground());
+		// clang-format on
 	}
 
 	TSharedRef<SWidget> MakeSwatch(const FLinearColor& Color, const float Size) {
-		return SNew(SBox).WidthOverride(Size).HeightOverride(
-			Size
-		)[SNew(SImage).Image(FCoreStyle::Get().GetBrush("WhiteBrush")).ColorAndOpacity(Color)];
+		// clang-format off
+		return SNew(SBox).WidthOverride(Size).HeightOverride(Size)
+			[
+				SNew(SImage).Image(FCoreStyle::Get().GetBrush("WhiteBrush")).ColorAndOpacity(Color)
+			];
+		// clang-format on
 	}
 
 	TSharedRef<SWidget> MakeBar(const TArray<FBarSegment>& Segments, const float Height, const double Total) {
@@ -98,18 +124,25 @@ namespace PjcWidgets
 
 				// a tiny share stays visible
 				const float Share = FMath::Max(static_cast<float>(Segment.Value / Scale), 0.003f);
-				Fill->AddSlot().FillWidth(
-					Share
-				)[SNew(SImage).Image(FCoreStyle::Get().GetBrush("WhiteBrush")).ColorAndOpacity(Segment.Color).ToolTip(Segment.ToolTip)];
+				// clang-format off
+				Fill->AddSlot().FillWidth(Share)
+				[
+					SNew(SImage).Image(FCoreStyle::Get().GetBrush("WhiteBrush")).ColorAndOpacity(Segment.Color).ToolTip(Segment.ToolTip)
+				];
+				// clang-format on
 			}
 			if (Scale > Sum) {
-				Fill->AddSlot().FillWidth(static_cast<float>((Scale - Sum) / Scale))[SNew(SSpacer)];
+				// clang-format off
+				Fill->AddSlot().FillWidth(static_cast<float>((Scale - Sum) / Scale))
+				[
+					SNew(SSpacer)
+				];
+				// clang-format on
 			}
 		}
 
 		// clang-format off
-		return SNew(SBox)
-			.HeightOverride(Height)
+		return SNew(SBox).HeightOverride(Height)
 			[
 				SNew(SOverlay)
 				+ SOverlay::Slot()

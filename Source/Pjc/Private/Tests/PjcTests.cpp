@@ -43,8 +43,10 @@ namespace
 	}
 
 	bool IsFixturePath(const FString& Path) {
-		return Path.StartsWith(FPjcTestFixture::RootPath() + TEXT("/")) || Path.StartsWith(FPjcTestFixture::LocalizedRootPath() + TEXT("/"))
-			|| Path.StartsWith(FPjcTestFixture::PluginRootPath() + TEXT("/"));
+		const TArray<FString> Roots {FPjcTestFixture::RootPath(), FPjcTestFixture::LocalizedRootPath(), FPjcTestFixture::PluginRootPath()};
+		return Roots.ContainsByPredicate([&Path](const FString& Root) {
+			return Path.StartsWith(Root + TEXT("/"));
+		});
 	}
 
 	TSet<FString> FixtureAssets(const TArray<FAssetData>& Assets) {
@@ -94,7 +96,7 @@ namespace
 		}
 	}
 
-	/** Changes scan settings for one test, restores them on destruction */
+	// Changes scan settings for one test, restores them on destruction
 	struct FPjcScopedScanSettings
 	{
 		UPjcScanSettings* Settings;
@@ -148,7 +150,7 @@ namespace
 		return Result;
 	}
 
-	/** Same keys as Scripts/pjc.py parses from commandlet output */
+	// Same keys as Scripts/pjc.py parses from commandlet output
 	FString JsonStats(const int32 All, const int32 Used, const int32 Unused, const int32 External, const int32 Corrupted, const int32 FoldersEmpty) {
 		TArray<FString> Items;
 		Items.Add(FString::Printf(TEXT("\"assets_all\": %d"), All));
@@ -470,8 +472,8 @@ bool FPjcTestScanUsage::RunTest(const FString& Parameters) {
 			Step = Usage.Find(Step->Parent);
 			++NumSteps;
 		}
-		const bool bReachesRoot = Step && Step->Parent.IsNone() && Step->Reason != EPjcUsageReason::None
-			&& Step->Reason != EPjcUsageReason::Dependency && Step->Reason != EPjcUsageReason::FolderLabel;
+		const bool bRootReason = Step && Step->Reason != EPjcUsageReason::None && Step->Reason != EPjcUsageReason::Dependency;
+		const bool bReachesRoot = bRootReason && Step->Parent.IsNone() && Step->Reason != EPjcUsageReason::FolderLabel;
 		TestTrue(*FString::Printf(TEXT("%s chain reaches asset used for its own reason"), *Asset.PackageName.ToString()), bReachesRoot);
 	}
 
@@ -846,8 +848,8 @@ bool FPjcTestCookShipped::RunTest(const FString& Parameters) {
 			State.CreateOrGetAssetPackageData(Package)->DiskSize = DiskSize;
 		};
 		// made from the editor package as it is now: same saved hash (guid before 5.4)
-		*State.CreateOrGetAssetPackageData(PackageOf(Fixture, TEXT("BP_Primary")))
-			= PjcShim::GetAssetPackageData(PackageOf(Fixture, TEXT("BP_Primary")));
+		const FName Primary = PackageOf(Fixture, TEXT("BP_Primary"));
+		*State.CreateOrGetAssetPackageData(Primary) = PjcShim::GetAssetPackageData(Primary);
 		AddPackage(PackageOf(Fixture, TEXT("BP_Primary")), 1000);
 		AddPackage(FName {TEXT("/Script/Engine")}, 0);
 		AddPackage(PackageOf(Fixture, TEXT("C_UnusedLeaf")), 77);
@@ -891,8 +893,8 @@ bool FPjcTestCookShipped::RunTest(const FString& Parameters) {
 	// files touched after the cook: changed only when what they were saved with differs, file time when that is not known
 	FString PrimaryFile;
 	FString LeafFile;
-	const bool bFiles = PjcShim::DoesPackageExist(PackageOf(Fixture, TEXT("BP_Primary")).ToString(), &PrimaryFile)
-		&& PjcShim::DoesPackageExist(PackageOf(Fixture, TEXT("C_UnusedLeaf")).ToString(), &LeafFile);
+	const bool bPrimaryFile = PjcShim::DoesPackageExist(PackageOf(Fixture, TEXT("BP_Primary")).ToString(), &PrimaryFile);
+	const bool bFiles = bPrimaryFile && PjcShim::DoesPackageExist(PackageOf(Fixture, TEXT("C_UnusedLeaf")).ToString(), &LeafFile);
 	if (TestTrue(TEXT("asset files"), bFiles)) {
 		IFileManager::Get().SetTimeStamp(*PrimaryFile, Cook.Time + FTimespan::FromMinutes(1.0));
 		Shipped = FPjcOverview::MakeShipped(Result, Cook);
@@ -906,8 +908,8 @@ bool FPjcTestCookShipped::RunTest(const FString& Parameters) {
 	// not seen by the cook: counts only when the game uses it (new since the cook)
 	FString UnusedFile;
 	FString IndirectFile;
-	const bool bUnseenFiles = PjcShim::DoesPackageExist(PackageOf(Fixture, TEXT("C_Unused_fr")).ToString(), &UnusedFile)
-		&& PjcShim::DoesPackageExist(PackageOf(Fixture, TEXT("C_Indirect")).ToString(), &IndirectFile);
+	const bool bUnusedFile = PjcShim::DoesPackageExist(PackageOf(Fixture, TEXT("C_Unused_fr")).ToString(), &UnusedFile);
+	const bool bUnseenFiles = bUnusedFile && PjcShim::DoesPackageExist(PackageOf(Fixture, TEXT("C_Indirect")).ToString(), &IndirectFile);
 	if (TestTrue(TEXT("unseen asset files"), bUnseenFiles)) {
 		IFileManager::Get().SetTimeStamp(*UnusedFile, Cook.Time + FTimespan::FromMinutes(1.0));
 		IFileManager::Get().SetTimeStamp(*IndirectFile, Cook.Time + FTimespan::FromMinutes(1.0));
@@ -1004,14 +1006,13 @@ bool FPjcTestIssuesRedirectors::RunTest(const FString& Parameters) {
 	TArray<FString> KeptFiles = Fixture.LyraKeptFiles();
 	// the external files of the scanned content (plugins not scanned, disabled plugins never touched)
 	KeptFiles.RemoveAll([](const FString& File) {
-		return !File.Contains(TEXT("/Content/Localization/PjcTests/")) && !File.EndsWith(TEXT("/Staged/license.txt"))
-			&& !File.EndsWith(TEXT("/T_RawIcon.svg"));
+		const bool bKeptFile = File.Contains(TEXT("/Content/Localization/PjcTests/")) || File.EndsWith(TEXT("/Staged/license.txt"));
+		return !bKeptFile && !File.EndsWith(TEXT("/T_RawIcon.svg"));
 	});
 	TestEqual(TEXT("fixture kept files"), KeptFiles.Num(), 3);
 	for (const auto& File : KeptFiles) {
-		const FString Expected = File.Contains(TEXT("/Localization/")) ? TEXT("Engine folder (Localization)")
-			: File.Contains(TEXT("/Staged/"))						   ? TEXT("Staged folder")
-																	   : TEXT("Named in source or config");
+		const TCHAR* OtherReason = File.Contains(TEXT("/Staged/")) ? TEXT("Staged folder") : TEXT("Named in source or config");
+		const FString Expected = File.Contains(TEXT("/Localization/")) ? TEXT("Engine folder (Localization)") : OtherReason;
 		TestEqual(*FString::Printf(TEXT("%s kept reason"), *FPaths::GetCleanFilename(File)), Reason(File), Expected);
 	}
 	TestEqual(TEXT("excluded file kept reason"), Reason(Fixture.ExternalExcludedFile()), FString {TEXT("Excluded in settings")});
@@ -1210,10 +1211,8 @@ bool FPjcTestUiTabs::RunTest(const FString& Parameters) {
 	return true;
 }
 
-/**
- * Not part of ProjectCleaner.* tests. Leaves fixture content on disk and writes expected results,
- * so Scripts/pjc.py can verify the commandlet (-run=Pjc) in a separate process.
- */
+// Not part of ProjectCleaner.* tests. Leaves fixture content on disk and writes expected results,
+// so Scripts/pjc.py can verify the commandlet (-run=Pjc) in a separate process.
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPjcFixtureBuild, "PjcFixture.Build", PJC_TEST_FLAGS)
 
 bool FPjcFixtureBuild::RunTest(const FString& Parameters) {

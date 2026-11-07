@@ -20,10 +20,10 @@ enum class EPjcIssueCategory : uint8
 	Empty,
 };
 
-/** Row of an Issues list: the first column is a name with a tag and a muted path, then plain cells */
+// Row of an Issues list: the first column is a name with a tag and a muted path, then plain cells
 struct FPjcIssueRow
 {
-	/** Package name or absolute path */
+	// Package name or absolute path
 	FString Id;
 	FString Name;
 	FString Sub;
@@ -35,9 +35,9 @@ struct FPjcIssueRow
 	TArray<FName> CellColors;
 	FString ToolTip;
 	int64 Size = -1;
-	/** Index into the redirectors */
+	// Index into the redirectors
 	int32 Redirector = INDEX_NONE;
-	/** Why a kept file is kept */
+	// Why a kept file is kept
 	FString Reason;
 };
 
@@ -50,14 +50,14 @@ class SPjcTabIssues final : public SCompoundWidget
   public:
 
 	SLATE_BEGIN_ARGS(SPjcTabIssues) {}
-	/** Tabs it links to (none in tests) */
+	// Tabs it links to (none in tests)
 	SLATE_ARGUMENT(TSharedPtr<FTabManager>, TabManager)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
 	virtual ~SPjcTabIssues() override;
 
-	/** Shows a category; for external files the kept ones when asked */
+	// Shows a category; for external files the kept ones when asked
 	void ShowCategory(const EPjcIssueCategory InCategory, const bool bShowKept = false);
 
 	EPjcIssueCategory GetCategory() const {
@@ -76,7 +76,7 @@ class SPjcTabIssues final : public SCompoundWidget
 	{
 		FName Id;
 		FString Label;
-		/** Fixed width, 0 fills with Fill */
+		// Fixed width, 0 fills with Fill
 		float Width = 0.0f;
 		float Fill = 1.0f;
 		bool bRight = false;
@@ -106,7 +106,7 @@ class SPjcTabIssues final : public SCompoundWidget
 	void RebuildChips();
 	void DeleteRows(const TArray<FRowPtr>& InRows);
 	TSharedRef<SWidget> MakeExcludeMenu();
-	/** Adds file exclusions to the project settings (DefaultEditor.ini) and scans again */
+	// Adds file exclusions to the project settings (DefaultEditor.ini) and scans again
 	void ExcludeFiles(const TArray<FString>& Files, const TArray<FString>& Extensions, const TArray<FString>& Folders, const FString& What);
 
 	FDelegateHandle ScanFinishedHandle;
@@ -114,15 +114,15 @@ class SPjcTabIssues final : public SCompoundWidget
 
 	EPjcIssueCategory Category = EPjcIssueCategory::Redirectors;
 	TArray<FPjcRedirectorInfo> Redirectors;
-	/** Redirectors the last fix kept, and why */
+	// Redirectors the last fix kept, and why
 	TMap<FName, FString> FixKept;
 
 	TArray<FRowPtr> AllRows;
 	TArray<FRowPtr> Rows;
 	FString Search;
-	/** External files: kept ones instead of those to review */
+	// External files: kept ones instead of those to review
 	bool bKept = false;
-	/** Kept files of one reason, empty for all */
+	// Kept files of one reason, empty for all
 	FString KeptReason;
 	TSharedPtr<SHorizontalBox> Chips;
 	TSharedPtr<SBox> ListBox;

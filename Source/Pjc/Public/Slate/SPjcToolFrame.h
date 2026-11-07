@@ -16,9 +16,9 @@ class SPjcToolFrame final : public SCompoundWidget
   public:
 
 	SLATE_BEGIN_ARGS(SPjcToolFrame) : _PanelOpen(false) {}
-	/** Name the open state is saved under */
+	// Name the open state is saved under
 	SLATE_ARGUMENT(FName, PageName)
-	/** Open state the first time the tool is shown */
+	// Open state the first time the tool is shown
 	SLATE_ARGUMENT(bool, PanelOpen)
 	SLATE_DEFAULT_SLOT(FArguments, Content)
 	SLATE_END_ARGS()

@@ -84,8 +84,8 @@ namespace
 		if (!DataClass) return nullptr;
 
 		UPackage* Package = NewPackage(PackageName, OutPackages);
-		UObject* Data
-			= NewObject<UObject>(Package, DataClass, FName {*FPackageName::GetLongPackageAssetName(PackageName)}, RF_Public | RF_Standalone);
+		const FName AssetName {*FPackageName::GetLongPackageAssetName(PackageName)};
+		UObject* Data = NewObject<UObject>(Package, DataClass, AssetName, RF_Public | RF_Standalone);
 		if (!ImportPropertyText(Data, TEXT("PrimaryAssetTypesToScan"), PrimaryAssetTypes)) return nullptr;
 
 		FAssetRegistryModule::AssetCreated(Data);
@@ -144,12 +144,9 @@ namespace
 		if (!AssetClass || !FactoryClass) return nullptr;
 
 		UFactory* Factory = NewObject<UFactory>(GetTransientPackage(), FactoryClass);
-		UObject* Asset
-			= FModuleManager::LoadModuleChecked<FAssetToolsModule>(TEXT("AssetTools"))
-				  .Get()
-				  .CreateAsset(
-					  FPackageName::GetLongPackageAssetName(PackageName), FPackageName::GetLongPackagePath(PackageName), AssetClass, Factory
-				  );
+		IAssetTools& AssetTools = FModuleManager::LoadModuleChecked<FAssetToolsModule>(TEXT("AssetTools")).Get();
+		const FString AssetName = FPackageName::GetLongPackageAssetName(PackageName);
+		UObject* Asset = AssetTools.CreateAsset(AssetName, FPackageName::GetLongPackagePath(PackageName), AssetClass, Factory);
 		if (!Asset) return nullptr;
 
 		OutPackages.Add(Asset->GetOutermost());
@@ -346,21 +343,20 @@ bool FPjcTestFixture::CreateAssets(FAutomationTestBase& Test) {
 	NewAsset<UCurveFloat>(Register(TEXT("Misc"), TEXT("C_ByAsset")), Packages);
 
 	// blueprints
-	const UBlueprint* EditorTool = NewBlueprint(
-		Register(TEXT("Editor"), TEXT("EUB_Tool")), UEditorUtilityObject::StaticClass(), UEditorUtilityBlueprint::StaticClass(), Packages
-	);
-	const UBlueprint* BlueprintPrimary
-		= NewBlueprint(Register(TEXT("Blueprints"), TEXT("BP_Primary")), APlayerController::StaticClass(), UBlueprint::StaticClass(), Packages);
-	const UBlueprint* BlueprintUnused
-		= NewBlueprint(Register(TEXT("Blueprints"), TEXT("BP_Unused")), AActor::StaticClass(), UBlueprint::StaticClass(), Packages);
+	const FString ToolPath = Register(TEXT("Editor"), TEXT("EUB_Tool"));
+	const UBlueprint* EditorTool = NewBlueprint(ToolPath, UEditorUtilityObject::StaticClass(), UEditorUtilityBlueprint::StaticClass(), Packages);
+	const FString PrimaryPath = Register(TEXT("Blueprints"), TEXT("BP_Primary"));
+	const UBlueprint* BlueprintPrimary = NewBlueprint(PrimaryPath, APlayerController::StaticClass(), UBlueprint::StaticClass(), Packages);
+	const FString UnusedPath = Register(TEXT("Blueprints"), TEXT("BP_Unused"));
+	const UBlueprint* BlueprintUnused = NewBlueprint(UnusedPath, AActor::StaticClass(), UBlueprint::StaticClass(), Packages);
 	if (UClass* ValidatorClass = ValidatorBaseClass()) {
 		if (!NewBlueprint(Register(TEXT("Editor"), TEXT("BP_Validator")), ValidatorClass, UBlueprint::StaticClass(), Packages)) {
 			Test.AddError(TEXT("Failed to create validator blueprint"));
 			return false;
 		}
 	}
-	const UBlueprint* BlueprintPrimaryOutside
-		= NewBlueprint(Register(TEXT("Misc"), TEXT("BP_PrimaryOutside")), APlayerController::StaticClass(), UBlueprint::StaticClass(), Packages);
+	const FString OutsidePath = Register(TEXT("Misc"), TEXT("BP_PrimaryOutside"));
+	const UBlueprint* BlueprintPrimaryOutside = NewBlueprint(OutsidePath, APlayerController::StaticClass(), UBlueprint::StaticClass(), Packages);
 
 	if (!EditorTool || !BlueprintPrimary || !BlueprintUnused || !BlueprintPrimaryOutside) {
 		Test.AddError(TEXT("Failed to create fixture blueprints"));
@@ -406,10 +402,11 @@ bool FPjcTestFixture::CreateLyraAssets(FAutomationTestBase& Test) {
 #if ENGINE_MAJOR_VERSION >= 5
 	// game feature data registers its own primary type, like ShooterCore registers experiences.
 	// UE4 game features (experimental) do not register data saved this way (Plugin_Missing_GameFeatureData)
-	const TCHAR* PrimaryAssetTypes
-		= TEXT("((PrimaryAssetType=\"PjcFeatureExperience\",AssetBaseClass=\"/Script/Engine.CurveVector\",bHasBlueprintClasses=False,")
-			TEXT("bIsEditorOnly=False,Directories=((Path=\"/PjcFeature/Experiences\")),Rules=(Priority=-1,ChunkId=-1,bApplyRecursively=True)))");
-	if (!NewGameFeatureData(Register(FeatureRootPath() / TEXT("PjcFeature")), PrimaryAssetTypes, LyraPackages)) {
+	const FString TypeName = TEXT("PrimaryAssetType=\"PjcFeatureExperience\",AssetBaseClass=\"/Script/Engine.CurveVector\"");
+	const FString TypeFolder = TEXT("bHasBlueprintClasses=False,bIsEditorOnly=False,Directories=((Path=\"/PjcFeature/Experiences\"))");
+	const FString TypeRules = TEXT("Rules=(Priority=-1,ChunkId=-1,bApplyRecursively=True)");
+	const FString PrimaryAssetTypes = FString::Printf(TEXT("((%s,%s,%s))"), *TypeName, *TypeFolder, *TypeRules);
+	if (!NewGameFeatureData(Register(FeatureRootPath() / TEXT("PjcFeature")), *PrimaryAssetTypes, LyraPackages)) {
 		Test.AddError(TEXT("Failed to create game feature data, GameFeatures plugin must be enabled in test host"));
 		return false;
 	}
@@ -419,8 +416,8 @@ bool FPjcTestFixture::CreateLyraAssets(FAutomationTestBase& Test) {
 	NewAsset<UCurveFloat>(Register(FeatureRootPath() / TEXT("Unused/C_FeatureUnused")), LyraPackages);
 	NewAsset<UCurveFloat>(Register(FeatureRootPath() / TEXT("Indirect/C_FeatureIndirect")), LyraPackages);
 
-	const UBlueprint* Placed
-		= NewBlueprint(Register(RootPath() / TEXT("Lyra/BP_Placed")), AActor::StaticClass(), UBlueprint::StaticClass(), LyraPackages);
+	const FString PlacedPath = Register(RootPath() / TEXT("Lyra/BP_Placed"));
+	const UBlueprint* Placed = NewBlueprint(PlacedPath, AActor::StaticClass(), UBlueprint::StaticClass(), LyraPackages);
 	if (!Placed || !Placed->GeneratedClass) {
 		Test.AddError(TEXT("Failed to create fixture blueprint BP_Placed"));
 		return false;
@@ -665,14 +662,14 @@ bool FPjcTestFixture::CreateCollection(const FString& ObjectPath) {
 	ICollectionManager& CollectionManager = FCollectionManagerModule::GetModule().Get();
 #if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 6
 	const TSharedRef<ICollectionContainer>& Collections = CollectionManager.GetProjectCollectionContainer();
-	return Collections->CreateCollection(CollectionName(), ECollectionShareType::CST_Local, ECollectionStorageMode::Static)
-		&& Collections->AddToCollection(CollectionName(), ECollectionShareType::CST_Local, FSoftObjectPath {ObjectPath});
+	if (!Collections->CreateCollection(CollectionName(), ECollectionShareType::CST_Local, ECollectionStorageMode::Static)) return false;
+	return Collections->AddToCollection(CollectionName(), ECollectionShareType::CST_Local, FSoftObjectPath {ObjectPath});
 #elif ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1
-	return CollectionManager.CreateCollection(CollectionName(), ECollectionShareType::CST_Local, ECollectionStorageMode::Static)
-		&& CollectionManager.AddToCollection(CollectionName(), ECollectionShareType::CST_Local, FSoftObjectPath {ObjectPath});
+	if (!CollectionManager.CreateCollection(CollectionName(), ECollectionShareType::CST_Local, ECollectionStorageMode::Static)) return false;
+	return CollectionManager.AddToCollection(CollectionName(), ECollectionShareType::CST_Local, FSoftObjectPath {ObjectPath});
 #else
-	return CollectionManager.CreateCollection(CollectionName(), ECollectionShareType::CST_Local, ECollectionStorageMode::Static)
-		&& CollectionManager.AddToCollection(CollectionName(), ECollectionShareType::CST_Local, FName {*ObjectPath});
+	if (!CollectionManager.CreateCollection(CollectionName(), ECollectionShareType::CST_Local, ECollectionStorageMode::Static)) return false;
+	return CollectionManager.AddToCollection(CollectionName(), ECollectionShareType::CST_Local, FName {*ObjectPath});
 #endif
 }
 

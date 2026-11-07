@@ -22,6 +22,11 @@ namespace
 {
 	// unity builds join files: names unique to this file
 	constexpr int32 PjcDeleteDialogMaxListed = 60;
+	const TCHAR* const PjcDeleteDialogVcsFound = TEXT("Version control found. Deleted assets can be restored from it.");
+	// clang-format off
+	const TCHAR* const PjcDeleteDialogVcsMissing = TEXT("No version control found for this project. ")
+		TEXT("Deleted files cannot be restored: copy the project folder somewhere safe first.");
+	// clang-format on
 
 	TSharedRef<SWidget> PjcDeleteDialogNote(const FString& Text, const FName Color) {
 		// clang-format off
@@ -35,9 +40,7 @@ namespace
 			]
 			+ SHorizontalBox::Slot().FillWidth(1.0f)
 			[
-				SNew(SBorder)
-				.BorderImage(PjcShim::GetBrush(TEXT("ToolPanel.DarkGroupBorder")))
-				.Padding(FMargin {10.0f, 6.0f})
+				SNew(SBorder).BorderImage(PjcShim::GetBrush(TEXT("ToolPanel.DarkGroupBorder"))).Padding(FMargin {10.0f, 6.0f})
 				[
 					SNew(STextBlock).Text(FText::FromString(Text)).AutoWrapText(true).ColorAndOpacity(FSlateColor::UseSubduedForeground())
 				]
@@ -94,7 +97,7 @@ void SPjcDeleteDialog::Construct(const FArguments& InArgs) {
 	];
 	Body->AddSlot().AutoHeight().Padding(FMargin {0.0f, 0.0f, 0.0f, 4.0f})
 	[
-		PjcDeleteDialogHeading(FString::Printf(TEXT("Selected · %s"), *PjcFormat::Count(InArgs._Selected.Num())))
+		PjcDeleteDialogHeading(FString::Printf(TEXT("Selected \u00B7 %s"), *PjcFormat::Count(InArgs._Selected.Num())))
 	];
 	Body->AddSlot().AutoHeight().Padding(FMargin {0.0f, 0.0f, 0.0f, 10.0f})
 	[
@@ -103,7 +106,7 @@ void SPjcDeleteDialog::Construct(const FArguments& InArgs) {
 	if (InArgs._With.Num() > 0) {
 		Body->AddSlot().AutoHeight().Padding(FMargin {0.0f, 0.0f, 0.0f, 4.0f})
 		[
-			PjcDeleteDialogHeading(FString::Printf(TEXT("Deleted with them · %s"), *PjcFormat::Count(InArgs._With.Num())))
+			PjcDeleteDialogHeading(FString::Printf(TEXT("Deleted with them \u00B7 %s"), *PjcFormat::Count(InArgs._With.Num())))
 		];
 		Body->AddSlot().AutoHeight().Padding(FMargin {0.0f, 0.0f, 0.0f, 6.0f})
 		[
@@ -131,21 +134,17 @@ void SPjcDeleteDialog::Construct(const FArguments& InArgs) {
 			)
 		];
 	}
+	const bool bVersionControl = UPjcSubsystem::ProjectHasVersionControl();
+	const TCHAR* VcsNote = bVersionControl ? PjcDeleteDialogVcsFound : PjcDeleteDialogVcsMissing;
+	const FName VcsColor = bVersionControl ? TEXT("ProjectCleaner.Color.Ok") : TEXT("ProjectCleaner.Color.Yellow");
 	Body->AddSlot().AutoHeight()
 	[
-		UPjcSubsystem::ProjectHasVersionControl()
-			? PjcDeleteDialogNote(TEXT("Version control found. Deleted assets can be restored from it."), TEXT("ProjectCleaner.Color.Ok"))
-			: PjcDeleteDialogNote(
-				TEXT("No version control found for this project. Deleted files cannot be restored: copy the project folder somewhere safe first."),
-				TEXT("ProjectCleaner.Color.Yellow")
-			)
+		PjcDeleteDialogNote(VcsNote, VcsColor)
 	];
 
 	ChildSlot
 	[
-		SNew(SBorder)
-		.BorderImage(PjcShim::GetBrush(TEXT("ToolPanel.GroupBorder")))
-		.Padding(0.0f)
+		SNew(SBorder).BorderImage(PjcShim::GetBrush(TEXT("ToolPanel.GroupBorder"))).Padding(0.0f)
 		[
 			SNew(SVerticalBox)
 			+ SVerticalBox::Slot().FillHeight(1.0f)
@@ -201,12 +200,14 @@ void SPjcDeleteDialog::Construct(const FArguments& InArgs) {
 bool SPjcDeleteDialog::Confirm(const TArray<FAssetData>& Selected, const TArray<FAssetData>& With, const TArray<FString>& Held) {
 	if (Selected.Num() == 0) return false;
 
+	// clang-format off
 	const TSharedRef<SWindow> DialogWindow = SNew(SWindow)
-												 .Title(GetTitle(Selected.Num() + With.Num()))
-												 .ClientSize(FVector2D {560.0f, With.Num() > 0 ? 560.0f : 420.0f})
-												 .SupportsMaximize(false)
-												 .SupportsMinimize(false)
-												 .SizingRule(ESizingRule::UserSized);
+		.Title(GetTitle(Selected.Num() + With.Num()))
+		.ClientSize(FVector2D {560.0f, With.Num() > 0 ? 560.0f : 420.0f})
+		.SupportsMaximize(false)
+		.SupportsMinimize(false)
+		.SizingRule(ESizingRule::UserSized);
+	// clang-format on
 	const TSharedRef<SPjcDeleteDialog> Dialog = SNew(SPjcDeleteDialog).Selected(Selected).With(With).Held(Held).Window(DialogWindow);
 	DialogWindow->SetContent(Dialog);
 
@@ -225,8 +226,7 @@ TSharedRef<SWidget> SPjcDeleteDialog::MakeList(const TArray<FAssetData>& Assets)
 		// clang-format off
 		List->AddSlot().AutoHeight().Padding(FMargin {0.0f, 1.0f})
 		[
-			SNew(SHorizontalBox)
-			.ToolTipText(FText::FromName(Asset.PackageName))
+			SNew(SHorizontalBox).ToolTipText(FText::FromName(Asset.PackageName))
 			+ SHorizontalBox::Slot().FillWidth(1.0f)
 			[
 				SNew(STextBlock).Text(FText::FromName(Asset.AssetName))
@@ -242,11 +242,23 @@ TSharedRef<SWidget> SPjcDeleteDialog::MakeList(const TArray<FAssetData>& Assets)
 		// clang-format on
 	}
 	if (Assets.Num() > PjcDeleteDialogMaxListed) {
-		List->AddSlot().AutoHeight().Padding(
-			FMargin {0.0f, 2.0f}
-		)[SNew(STextBlock)
-			  .Text(FText::FromString(FString::Printf(TEXT("and %s more"), *PjcFormat::Count(Assets.Num() - PjcDeleteDialogMaxListed))))
-			  .ColorAndOpacity(FSlateColor::UseSubduedForeground())];
+		// clang-format off
+		List->AddSlot().AutoHeight().Padding(FMargin {0.0f, 2.0f})
+		[
+			SNew(STextBlock)
+			.Text(FText::FromString(FString::Printf(TEXT("and %s more"), *PjcFormat::Count(Assets.Num() - PjcDeleteDialogMaxListed))))
+			.ColorAndOpacity(FSlateColor::UseSubduedForeground())
+		];
+		// clang-format on
 	}
-	return SNew(SBox).MaxDesiredHeight(160.0f)[SNew(SScrollBox) + SScrollBox::Slot()[List]];
+	// clang-format off
+	return SNew(SBox).MaxDesiredHeight(160.0f)
+		[
+			SNew(SScrollBox)
+			+ SScrollBox::Slot()
+			[
+				List
+			]
+		];
+	// clang-format on
 }

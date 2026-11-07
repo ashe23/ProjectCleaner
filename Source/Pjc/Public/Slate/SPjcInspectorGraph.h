@@ -24,11 +24,11 @@ class SPjcInspectorGraph final : public SLeafWidget
 
 	void Construct(const FArguments& InArgs);
 
-	/** Graph to show; Result must stay alive while shown (the shared scan result). The view fits it on the next paint. */
+	// Graph to show; Result must stay alive while shown (the shared scan result). The view fits it on the next paint.
 	void SetGraph(const FPjcScanResult* InResult, const FPjcInspectorGraph& InGraph);
 	const FPjcInspectorGraph& GetGraph() const;
 	void SetSelected(const int32 Node);
-	/** Node marked while the pointer is over it somewhere else (the details lists) */
+	// Node marked while the pointer is over it somewhere else (the details lists)
 	void SetHighlighted(const int32 Node);
 
 	void FitAll();
@@ -63,7 +63,7 @@ class SPjcInspectorGraph final : public SLeafWidget
 
   private:
 
-	/** Node as drawn: graph space position and its text */
+	// Node as drawn: graph space position and its text
 	struct FShownNode
 	{
 		FVector2D Position = FVector2D::ZeroVector;
@@ -93,7 +93,7 @@ class SPjcInspectorGraph final : public SLeafWidget
 	FPjcInspectorGraph Graph;
 	TArray<FShownNode> Shown;
 	FVector2D GraphSize = FVector2D::ZeroVector;
-	/** "+N more roots" box, when root paths are hidden */
+	// "+N more roots" box, when root paths are hidden
 	FVector2D MorePosition = FVector2D::ZeroVector;
 	int32 Selected = INDEX_NONE;
 	int32 Highlighted = INDEX_NONE;

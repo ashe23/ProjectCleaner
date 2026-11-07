@@ -82,10 +82,11 @@ void FPjcScanDraft::ApplyToSettings() const {
 }
 
 bool FPjcScanDraft::operator==(const FPjcScanDraft& Other) const {
-	return bScanProjectPlugins == Other.bScanProjectPlugins && IgnoredPlugins == Other.IgnoredPlugins
-		&& bUnregisteredPrimaryUsed == Other.bUnregisteredPrimaryUsed && bFolderLabelsUsed == Other.bFolderLabelsUsed
-		&& bCinematicAssetsUsed == Other.bCinematicAssetsUsed && UsedClasses == Other.UsedClasses && ExcludedFolders == Other.ExcludedFolders
-		&& ExcludedClasses == Other.ExcludedClasses && ExcludedAssets == Other.ExcludedAssets;
+	const bool bScope = bScanProjectPlugins == Other.bScanProjectPlugins && IgnoredPlugins == Other.IgnoredPlugins;
+	const bool bRules = bUnregisteredPrimaryUsed == Other.bUnregisteredPrimaryUsed && bFolderLabelsUsed == Other.bFolderLabelsUsed;
+	const bool bUsed = bCinematicAssetsUsed == Other.bCinematicAssetsUsed && UsedClasses == Other.UsedClasses;
+	const bool bExcluded = ExcludedFolders == Other.ExcludedFolders && ExcludedClasses == Other.ExcludedClasses;
+	return bScope && bRules && bUsed && bExcluded && ExcludedAssets == Other.ExcludedAssets;
 }
 
 FPjcScanDraft& FPjcScanDraft::Get() {

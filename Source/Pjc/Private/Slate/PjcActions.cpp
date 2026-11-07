@@ -93,7 +93,7 @@ namespace PjcActions
 		}
 		FPjcScanDraft::OnEdited().Broadcast();
 
-		UPjcSubsystem::ShowNotification(Message + TEXT(" · saved to Config/DefaultEditor.ini"), SNotificationItem::CS_Success, 4.0f);
+		UPjcSubsystem::ShowNotification(Message + TEXT(" \u00B7 saved to Config/DefaultEditor.ini"), SNotificationItem::CS_Success, 4.0f);
 		SPjcScanBar::ScanProject();
 	}
 }	// namespace PjcActions

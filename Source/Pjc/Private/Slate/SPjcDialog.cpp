@@ -29,7 +29,12 @@ void SPjcDialog::Construct(const FArguments& InArgs) {
 	const TSharedRef<SVerticalBox> Body = SNew(SVerticalBox);
 	for (const auto& Part : InArgs._Parts) {
 		if (!Part.Heading.IsEmpty()) {
-			Body->AddSlot().AutoHeight().Padding(FMargin {0.0f, 0.0f, 0.0f, 4.0f})[PjcWidgets::MakeCardTitle(Part.Heading)];
+			// clang-format off
+			Body->AddSlot().AutoHeight().Padding(FMargin {0.0f, 0.0f, 0.0f, 4.0f})
+			[
+				PjcWidgets::MakeCardTitle(Part.Heading)
+			];
+			// clang-format on
 		}
 		if (!Part.Note.IsEmpty()) {
 			// clang-format off
@@ -45,9 +50,7 @@ void SPjcDialog::Construct(const FArguments& InArgs) {
 				]
 				+ SHorizontalBox::Slot().FillWidth(1.0f)
 				[
-					SNew(SBorder)
-					.BorderImage(PjcShim::GetBrush(TEXT("ToolPanel.DarkGroupBorder")))
-					.Padding(FMargin {10.0f, 6.0f})
+					SNew(SBorder).BorderImage(PjcShim::GetBrush(TEXT("ToolPanel.DarkGroupBorder"))).Padding(FMargin {10.0f, 6.0f})
 					[
 						SNew(STextBlock).Text(FText::FromString(Part.Note)).AutoWrapText(true).ColorAndOpacity(FSlateColor::UseSubduedForeground())
 					]
@@ -74,14 +77,28 @@ void SPjcDialog::Construct(const FArguments& InArgs) {
 				// clang-format on
 			}
 			if (Part.Rows.Num() > PjcDialogMaxRows) {
+				// clang-format off
 				List->AddSlot().AutoHeight()
-					[SNew(STextBlock)
-						 .Text(FText::FromString(FString::Printf(TEXT("and %s more"), *PjcFormat::Count(Part.Rows.Num() - PjcDialogMaxRows))))
-						 .ColorAndOpacity(FSlateColor::UseSubduedForeground())];
+				[
+					SNew(STextBlock)
+					.Text(FText::FromString(FString::Printf(TEXT("and %s more"), *PjcFormat::Count(Part.Rows.Num() - PjcDialogMaxRows))))
+					.ColorAndOpacity(FSlateColor::UseSubduedForeground())
+				];
+				// clang-format on
 			}
-			Body->AddSlot().AutoHeight().Padding(
-				FMargin {0.0f, 0.0f, 0.0f, 10.0f}
-			)[SNew(SBox).MaxDesiredHeight(160.0f)[SNew(SScrollBox) + SScrollBox::Slot()[List]]];
+			// clang-format off
+			Body->AddSlot().AutoHeight().Padding(FMargin {0.0f, 0.0f, 0.0f, 10.0f})
+			[
+				SNew(SBox).MaxDesiredHeight(160.0f)
+				[
+					SNew(SScrollBox)
+					+ SScrollBox::Slot()
+					[
+						List
+					]
+				]
+			];
+			// clang-format on
 		}
 	}
 
@@ -92,28 +109,40 @@ void SPjcDialog::Construct(const FArguments& InArgs) {
 		return FReply::Handled();
 	};
 	if (!InArgs._ConfirmText.IsEmpty()) {
-		Buttons->AddSlot().AutoWidth().Padding(
-			FMargin {0.0f, 0.0f, 8.0f, 0.0f}
-		)[SNew(SButton).ContentPadding(FMargin {14.0f, 3.0f}).OnClicked_Lambda([Close]() {
-			return Close(false);
-		})[SNew(STextBlock).Text(FText::FromString(TEXT("Cancel")))]];
+		// clang-format off
+		Buttons->AddSlot().AutoWidth().Padding(FMargin {0.0f, 0.0f, 8.0f, 0.0f})
+		[
+			SNew(SButton)
+			.ContentPadding(FMargin {14.0f, 3.0f})
+			.OnClicked_Lambda([Close]() {
+				return Close(false);
+			})
+			[
+				SNew(STextBlock).Text(FText::FromString(TEXT("Cancel")))
+			]
+		];
+		// clang-format on
 	}
 	const FName ConfirmColor = InArgs._ConfirmColor.IsNone() ? FName {TEXT("ProjectCleaner.Color.Accent")} : InArgs._ConfirmColor;
-	Buttons->AddSlot().AutoWidth()[SNew(SButton)
-									   .ButtonColorAndOpacity(PjcWidgets::GetColor(ConfirmColor))
-									   .ContentPadding(FMargin {14.0f, 3.0f})
-									   .OnClicked_Lambda([Close]() {
-										   return Close(true);
-									   })[SNew(STextBlock)
-											  .Text(FText::FromString(InArgs._ConfirmText.IsEmpty() ? TEXT("OK") : InArgs._ConfirmText))
-											  .ColorAndOpacity(FLinearColor::White)]];
-
 	// clang-format off
+	Buttons->AddSlot().AutoWidth()
+	[
+		SNew(SButton)
+		.ButtonColorAndOpacity(PjcWidgets::GetColor(ConfirmColor))
+		.ContentPadding(FMargin {14.0f, 3.0f})
+		.OnClicked_Lambda([Close]() {
+			return Close(true);
+		})
+		[
+			SNew(STextBlock)
+			.Text(FText::FromString(InArgs._ConfirmText.IsEmpty() ? TEXT("OK") : InArgs._ConfirmText))
+			.ColorAndOpacity(FLinearColor::White)
+		]
+	];
+
 	ChildSlot
 	[
-		SNew(SBorder)
-		.BorderImage(PjcShim::GetBrush(TEXT("ToolPanel.GroupBorder")))
-		.Padding(0.0f)
+		SNew(SBorder).BorderImage(PjcShim::GetBrush(TEXT("ToolPanel.GroupBorder"))).Padding(0.0f)
 		[
 			SNew(SVerticalBox)
 			+ SVerticalBox::Slot().FillHeight(1.0f)
@@ -145,12 +174,14 @@ bool SPjcDialog::Show(const FString& Title, const TArray<FPjcDialogPart>& Parts,
 	for (const auto& Part : Parts) {
 		NumRows += FMath::Min(Part.Rows.Num(), 8) + 3;
 	}
+	// clang-format off
 	const TSharedRef<SWindow> DialogWindow = SNew(SWindow)
-												 .Title(FText::FromString(Title))
-												 .ClientSize(FVector2D {560.0f, FMath::Clamp(120.0f + NumRows * 20.0f, 220.0f, 620.0f)})
-												 .SupportsMaximize(false)
-												 .SupportsMinimize(false)
-												 .SizingRule(ESizingRule::UserSized);
+		.Title(FText::FromString(Title))
+		.ClientSize(FVector2D {560.0f, FMath::Clamp(120.0f + NumRows * 20.0f, 220.0f, 620.0f)})
+		.SupportsMaximize(false)
+		.SupportsMinimize(false)
+		.SizingRule(ESizingRule::UserSized);
+	// clang-format on
 	const TSharedRef<SPjcDialog> Dialog = SNew(SPjcDialog).Parts(Parts).ConfirmText(ConfirmText).ConfirmColor(ConfirmColor).Window(DialogWindow);
 	DialogWindow->SetContent(Dialog);
 

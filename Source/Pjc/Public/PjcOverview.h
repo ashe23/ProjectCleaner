@@ -7,10 +7,10 @@
 
 struct FPjcCookInfo;
 
-/** What the Overview tool shows, made from a scan result */
+// What the Overview tool shows, made from a scan result
 struct FPjcOverview
 {
-	/** Number of assets and their size on disk */
+	// Number of assets and their size on disk
 	struct FTotal
 	{
 		int32 Num = 0;
@@ -22,15 +22,15 @@ struct FPjcOverview
 		}
 	};
 
-	/** Assets grouped by what starts their usage chain */
+	// Assets grouped by what starts their usage chain
 	struct FReason
 	{
-		/** Reason of the asset that starts the chain, None for unused assets */
+		// Reason of the asset that starts the chain, None for unused assets
 		EPjcUsageReason Reason = EPjcUsageReason::None;
 		FTotal Total;
 	};
 
-	/** Assets of one class */
+	// Assets of one class
 	struct FClass
 	{
 		FName Name;
@@ -40,7 +40,7 @@ struct FPjcOverview
 		int64 SizeUnused = 0;
 	};
 
-	/** Folder with its assets and the unused ones among them */
+	// Folder with its assets and the unused ones among them
 	struct FFolder
 	{
 		FString Path;
@@ -48,7 +48,7 @@ struct FPjcOverview
 		FTotal Unused;
 	};
 
-	/** Unused asset */
+	// Unused asset
 	struct FAsset
 	{
 		FName Package;
@@ -56,63 +56,63 @@ struct FPjcOverview
 		int64 Size = 0;
 	};
 
-	/** Scanned assets against the last cook */
+	// Scanned assets against the last cook
 	struct FShipped
 	{
-		/** Used and cooked */
+		// Used and cooked
 		FTotal Shipped;
 		int64 ShippedCooked = 0;
 
-		/** Unused but cooked: the scan and the cook disagree */
+		// Unused but cooked: the scan and the cook disagree
 		FTotal UnusedShipped;
 		int64 UnusedShippedCooked = 0;
 
-		/** Used in the editor, not cooked; by chain start, biggest first */
+		// Used in the editor, not cooked; by chain start, biggest first
 		FTotal UsedNotShipped;
 		TArray<FReason> UsedNotShippedReasons;
 
-		/** Unused and not cooked */
+		// Unused and not cooked
 		FTotal Unused;
 
-		/** Cooked packages outside the scan (engine, plugins not scanned), by top folder, biggest first */
+		// Cooked packages outside the scan (engine, plugins not scanned), by top folder, biggest first
 		int32 NumOutside = 0;
 		int64 SizeOutside = 0;
 		TArray<TPair<FString, int32>> OutsideRoots;
 
-		/** Packages the cook generates, e.g. World Partition cells */
+		// Packages the cook generates, e.g. World Partition cells
 		int32 NumGenerated = 0;
 
-		/** Scanned assets saved or added after the cook, and cooked ones deleted since */
+		// Scanned assets saved or added after the cook, and cooked ones deleted since
 		int32 NumChanged = 0;
 		int32 NumDeleted = 0;
 	};
 
-	/** Every scanned asset (redirectors are not content) */
+	// Every scanned asset (redirectors are not content)
 	FTotal All;
 	FTotal Used;
 	FTotal EditorOnly;
 	FTotal Unused;
 
-	/** Biggest first */
+	// Biggest first
 	TArray<FReason> Reasons;
 
-	/** Biggest first */
+	// Biggest first
 	TArray<FClass> Classes;
 
-	/** Folders with half of their size or more unused, while their parent has less; most unused bytes first */
+	// Folders with half of their size or more unused, while their parent has less; most unused bytes first
 	TArray<FFolder> UnusedFolders;
 
-	/** Biggest unused assets, biggest first */
+	// Biggest unused assets, biggest first
 	TArray<FAsset> LargestUnused;
 
 	static constexpr int32 MaxLargestUnused = 50;
 
 	static FPjcOverview Make(const FPjcScanResult& Result);
 
-	/** Scan against a cook, reads the file times of the scanned assets */
+	// Scan against a cook, reads the file times of the scanned assets
 	static FShipped MakeShipped(const FPjcScanResult& Result, const FPjcCookInfo& Cook);
 
-	/** Reason a chain is grouped under: assets a Primary Asset Label lists are primary assets too */
+	// Reason a chain is grouped under: assets a Primary Asset Label lists are primary assets too
 	static EPjcUsageReason GetGroupReason(const FPjcScanResult& Result, const FName Package);
 
   private:

@@ -14,26 +14,26 @@ class SBox;
 class SHorizontalBox;
 struct FSlateBrush;
 
-/** Unused asset in the list of the Assets Unused tool */
+// Unused asset in the list of the Assets Unused tool
 struct FPjcUnusedAssetRow
 {
-	/** Index into FPjcScanResult::Assets */
+	// Index into FPjcScanResult::Assets
 	int32 Index = INDEX_NONE;
 	FName Package;
 	FString Name;
 	FName ClassName;
-	/** Type name as the Content Browser shows it */
+	// Type name as the Content Browser shows it
 	FString ClassLabel;
 	FLinearColor Color = FLinearColor::White;
 	const FSlateBrush* Icon = nullptr;
 	int64 Size = 0;
-	/** Folder relative to the selected folder */
+	// Folder relative to the selected folder
 	FString Folder;
-	/** Only a folder label keeps it, while Folder labels is on */
+	// Only a folder label keeps it, while Folder labels is on
 	bool bLabel = false;
-	/** Unused assets that reference it and are deleted with it */
+	// Unused assets that reference it and are deleted with it
 	int32 Group = 0;
-	/** What held it when the last delete could not remove it, empty when it was not kept */
+	// What held it when the last delete could not remove it, empty when it was not kept
 	FString Holder;
 };
 
@@ -46,21 +46,21 @@ class SPjcTabUnused final : public SCompoundWidget
   public:
 
 	SLATE_BEGIN_ARGS(SPjcTabUnused) {}
-	/** Tabs it links to (none in tests) */
+	// Tabs it links to (none in tests)
 	SLATE_ARGUMENT(TSharedPtr<FTabManager>, TabManager)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
 	virtual ~SPjcTabUnused() override;
 
-	/** Shows a folder, e.g. a folder the Overview links to */
+	// Shows a folder, e.g. a folder the Overview links to
 	void SelectFolder(const FString& Path);
 
 	const FString& GetSelectedFolder() const {
 		return SelectedFolder;
 	}
 
-	/** Shows the assets the last delete could not remove */
+	// Shows the assets the last delete could not remove
 	void ShowNotDeleted();
 
   private:
@@ -142,7 +142,7 @@ class SPjcTabUnused final : public SCompoundWidget
 	FName FolderSortColumn = TEXT("Size");
 	EColumnSortMode::Type FolderSortMode = EColumnSortMode::Descending;
 	FString FolderSearch;
-	/** Folders matching the search, with their parents */
+	// Folders matching the search, with their parents
 	TSet<FString> SearchMatches;
 
 	// asset list
@@ -150,11 +150,11 @@ class SPjcTabUnused final : public SCompoundWidget
 	TArray<FAssetRowPtr> ListRows;
 	TSharedPtr<SListView<FAssetRowPtr>> ListView;
 	TSharedPtr<SHorizontalBox> ChipsBox;
-	/** Assets only folder labels keep (unused while Folder labels is off) */
+	// Assets only folder labels keep (unused while Folder labels is off)
 	TSet<FName> LabelOnly;
-	/** Delete group size per package, made when listed */
+	// Delete group size per package, made when listed
 	TMap<FName, int32> GroupSizes;
-	/** Unused assets that go with the selection */
+	// Unused assets that go with the selection
 	int32 NumSelectionGroup = 0;
 
 	// size map
@@ -163,7 +163,7 @@ class SPjcTabUnused final : public SCompoundWidget
 	TSharedPtr<SPjcSizeMap> SizeMap;
 	TSharedPtr<SHorizontalBox> Breadcrumb;
 	TSet<FName> ClassFilter;
-	/** Only assets the last delete could not remove */
+	// Only assets the last delete could not remove
 	bool bHeldOnly = false;
 	bool bSubfolders = true;
 	FString AssetSearch;

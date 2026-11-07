@@ -37,9 +37,7 @@ void SPjcTabOverview::Construct(const FArguments& InArgs) {
 	// clang-format off
 	ChildSlot
 	[
-		SNew(SPjcToolFrame)
-		.PageName(TEXT("Overview"))
-		.PanelOpen(true)
+		SNew(SPjcToolFrame).PageName(TEXT("Overview")).PanelOpen(true)
 		[
 			SNew(SScrollBox)
 			+ SScrollBox::Slot()
@@ -79,9 +77,13 @@ void SPjcTabOverview::OnScanFinished() {
 
 void SPjcTabOverview::Rebuild() {
 	if (!UPjcSubsystem::GetScanResult().IsValid()) {
-		Body->SetContent(SNew(STextBlock)
-							 .Text(FText::FromString(TEXT("Not scanned yet. Press Scan to see the project overview.")))
-							 .ColorAndOpacity(FSlateColor::UseSubduedForeground()));
+		// clang-format off
+		Body->SetContent(
+			SNew(STextBlock)
+			.Text(FText::FromString(TEXT("Not scanned yet. Press Scan to see the project overview.")))
+			.ColorAndOpacity(FSlateColor::UseSubduedForeground())
+		);
+		// clang-format on
 		return;
 	}
 
@@ -131,7 +133,7 @@ TSharedRef<SWidget> SPjcTabOverview::MakeSummary() {
 	const FLinearColor ColorUnused = PjcWidgets::GetColor("ProjectCleaner.Color.UnusedFill");
 
 	const auto Share = [&All](const FPjcOverview::FTotal& Total) {
-		return FString::Printf(TEXT("%s · %s"), *PjcFormat::Size(Total.Size), *PjcFormat::Percent(Total.Size, All.Size));
+		return FString::Printf(TEXT("%s \u00B7 %s"), *PjcFormat::Size(Total.Size), *PjcFormat::Percent(Total.Size, All.Size));
 	};
 
 	// one column per number: label (with its bar color), count, size
@@ -144,17 +146,24 @@ TSharedRef<SWidget> SPjcTabOverview::MakeSummary() {
 						   const TSharedRef<SWidget>& Extra) {
 		const TSharedRef<SHorizontalBox> Head = SNew(SHorizontalBox);
 		if (Swatch.IsSet()) {
-			Head->AddSlot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 6.0f, 0.0f})[PjcWidgets::MakeSwatch(Swatch.GetValue())];
+			// clang-format off
+			Head->AddSlot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 6.0f, 0.0f})
+			[
+				PjcWidgets::MakeSwatch(Swatch.GetValue())
+			];
+			// clang-format on
 		}
-		Head->AddSlot().FillWidth(1.0f).VAlign(
-			VAlign_Center
-		)[SNew(STextBlock).Text(FText::FromString(Label)).ColorAndOpacity(FSlateColor::UseSubduedForeground())];
-		Head->AddSlot().AutoWidth().VAlign(VAlign_Center)[Extra];
-
 		// clang-format off
-		return SNew(SBox)
-			.Padding(FMargin {16.0f, 11.0f, 16.0f, 10.0f})
-			.ToolTip(PjcWidgets::MakeToolTip(Label, ToolTip))
+		Head->AddSlot().FillWidth(1.0f).VAlign(VAlign_Center)
+		[
+			SNew(STextBlock).Text(FText::FromString(Label)).ColorAndOpacity(FSlateColor::UseSubduedForeground())
+		];
+		Head->AddSlot().AutoWidth().VAlign(VAlign_Center)
+		[
+			Extra
+		];
+
+		return SNew(SBox).Padding(FMargin {16.0f, 11.0f, 16.0f, 10.0f}).ToolTip(PjcWidgets::MakeToolTip(Label, ToolTip))
 			[
 				SNew(SVerticalBox)
 				+ SVerticalBox::Slot().AutoHeight()
@@ -173,21 +182,34 @@ TSharedRef<SWidget> SPjcTabOverview::MakeSummary() {
 		// clang-format on
 	};
 
+	// clang-format off
 	const TSharedRef<SWidget> Review = SNew(SHyperlink)
-										   .Text(FText::FromString(TEXT("Review ›")))
-										   .ToolTipText(FText::FromString(TEXT("Opens Assets Unused")))
-										   .OnNavigate_Lambda([this]() {
-											   OpenTab(PjcConstants::TabAssetsUnused);
-										   });
+		.Text(FText::FromString(TEXT("Review \u203A")))
+		.ToolTipText(FText::FromString(TEXT("Opens Assets Unused")))
+		.OnNavigate_Lambda([this]() {
+			OpenTab(PjcConstants::TabAssetsUnused);
+		});
+	// clang-format on
 
 	const TSharedRef<SHorizontalBox> Columns = SNew(SHorizontalBox);
 	const auto AddColumn = [&Columns](const TSharedRef<SWidget>& Widget) {
 		if (Columns->NumSlots() > 0) {
-			Columns->AddSlot().AutoWidth()[SNew(SBox).WidthOverride(
-				1.0f
-			)[SNew(SImage).Image(FCoreStyle::Get().GetBrush("WhiteBrush")).ColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.Line"))]];
+			// clang-format off
+			Columns->AddSlot().AutoWidth()
+			[
+				SNew(SBox).WidthOverride(1.0f)
+				[
+					SNew(SImage).Image(FCoreStyle::Get().GetBrush("WhiteBrush")).ColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.Line"))
+				]
+			];
+			// clang-format on
 		}
-		Columns->AddSlot().FillWidth(1.0f)[Widget];
+		// clang-format off
+		Columns->AddSlot().FillWidth(1.0f)
+		[
+			Widget
+		];
+		// clang-format on
 	};
 	AddColumn(Column(
 		TEXT("Assets"),
@@ -232,7 +254,7 @@ TSharedRef<SWidget> SPjcTabOverview::MakeSummary() {
 		PjcWidgets::FBarSegment& Segment = Segments.AddDefaulted_GetRef();
 		Segment.Value = static_cast<double>(Total.Size);
 		Segment.Color = Color;
-		Segment.ToolTip = PjcWidgets::MakeToolTip(Label, Share(Total) + TEXT(" · ") + PjcFormat::Count(Total.Num) + TEXT(" assets"));
+		Segment.ToolTip = PjcWidgets::MakeToolTip(Label, Share(Total) + TEXT(" \u00B7 ") + PjcFormat::Count(Total.Num) + TEXT(" assets"));
 	};
 	AddSegment(TEXT("Used"), Overview.Used, ColorUsed);
 	AddSegment(TEXT("Editor only"), Overview.EditorOnly, ColorEditor);
@@ -263,11 +285,10 @@ TSharedRef<SWidget> SPjcTabOverview::MakeIssues() {
 		FString Lower;
 		int32 Num;
 		FString ToolTip;
-		/** Issues category, -1 for the assets the last delete kept */
+		// Issues category, -1 for the assets the last delete kept
 		int32 Category;
 	};
-	const FString ExternalExample
-		= Result.FilesExternal.Num() > 0 ? FString::Printf(TEXT(", e.g. %s"), *FPaths::GetCleanFilename(Result.FilesExternal[0])) : FString {};
+	const FString ExternalExample = Result.FilesExternal.Num() > 0 ? TEXT(", e.g. ") + FPaths::GetCleanFilename(Result.FilesExternal[0]) : FString {};
 	const TArray<FIssue> Issues {
 	  {TEXT("Redirectors"),
 	   TEXT("redirectors"),
@@ -366,11 +387,10 @@ TSharedRef<SWidget> SPjcTabOverview::MakeIssues() {
 		// clang-format off
 		Row->AddSlot().VAlign(VAlign_Center)
 		[
-			SNew(SHorizontalBox)
-			.ToolTip(PjcWidgets::MakeToolTip(TEXT("No issues"), FString::Join(NoneLines, TEXT("\n"))))
+			SNew(SHorizontalBox).ToolTip(PjcWidgets::MakeToolTip(TEXT("No issues"), FString::Join(NoneLines, TEXT("\n"))))
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {2.0f, 0.0f, 6.0f, 0.0f})
 			[
-				SNew(STextBlock).Text(FText::FromString(TEXT("✓"))).ColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.Ok"))
+				SNew(STextBlock).Text(FText::FromString(TEXT("\u2713"))).ColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.Ok"))
 			]
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 			[
@@ -408,15 +428,21 @@ TSharedRef<SWidget> SPjcTabOverview::MakeReasons() const {
 				SNew(STextBlock).Text(FText::FromString(Name))
 			];
 		// clang-format on
-		const FString ValueText = FString::Printf(TEXT("%s · %s"), *PjcFormat::Size(Row.Total.Size), *PjcFormat::Count(Row.Total.Num));
+		const FString ValueText = FString::Printf(TEXT("%s \u00B7 %s"), *PjcFormat::Size(Row.Total.Size), *PjcFormat::Count(Row.Total.Num));
+		// clang-format off
 		const TSharedRef<SWidget> Value = SNew(STextBlock)
-											  .Text(FText::FromString(ValueText))
-											  .Font(PjcWidgets::GetFontMono(9))
-											  .ColorAndOpacity(FSlateColor::UseSubduedForeground());
+			.Text(FText::FromString(ValueText))
+			.Font(PjcWidgets::GetFontMono(9))
+			.ColorAndOpacity(FSlateColor::UseSubduedForeground());
+		// clang-format on
 		const FString Share = FString::Printf(TEXT("%s of the project size"), *PjcFormat::Percent(Row.Total.Size, Overview.All.Size));
 
-		Rows->AddSlot()
-			.AutoHeight()[MakeRow(NameWidget, Value, {Segment}, static_cast<double>(MaxSize), PjcWidgets::MakeToolTip(Name, ToolTip, Share))];
+		// clang-format off
+		Rows->AddSlot().AutoHeight()
+		[
+			MakeRow(NameWidget, Value, {Segment}, static_cast<double>(MaxSize), PjcWidgets::MakeToolTip(Name, ToolTip, Share))
+		];
+		// clang-format on
 	}
 
 	return MakeSection(TEXT("Usage reasons"), TEXT("by chain start"), Rows);
@@ -439,17 +465,24 @@ TSharedRef<SWidget> SPjcTabOverview::MakeClasses() const {
 		Segments[2].Value = static_cast<double>(Class.SizeUnused);
 		Segments[2].Color = PjcWidgets::GetColor("ProjectCleaner.Color.UnusedFill");
 
-		const FString ValueText = FString::Printf(TEXT("%s · %s"), *PjcFormat::Size(Class.Total.Size), *PjcFormat::Count(Class.Total.Num));
+		const FString ValueText = FString::Printf(TEXT("%s \u00B7 %s"), *PjcFormat::Size(Class.Total.Size), *PjcFormat::Count(Class.Total.Num));
 		const TSharedRef<SHorizontalBox> Value = SNew(SHorizontalBox);
-		Value->AddSlot().AutoWidth()[SNew(STextBlock)
-										 .Text(FText::FromString(ValueText))
-										 .Font(PjcWidgets::GetFontMono(9))
-										 .ColorAndOpacity(FSlateColor::UseSubduedForeground())];
+		// clang-format off
+		Value->AddSlot().AutoWidth()
+		[
+			SNew(STextBlock).Text(FText::FromString(ValueText)).Font(PjcWidgets::GetFontMono(9)).ColorAndOpacity(FSlateColor::UseSubduedForeground())
+		];
+		// clang-format on
 		if (Class.SizeUnused > 0) {
-			Value->AddSlot().AutoWidth()[SNew(STextBlock)
-											 .Text(FText::FromString(FString::Printf(TEXT(" · %s unused"), *PjcFormat::Size(Class.SizeUnused))))
-											 .Font(PjcWidgets::GetFontMono(9))
-											 .ColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.Red"))];
+			// clang-format off
+			Value->AddSlot().AutoWidth()
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString(FString::Printf(TEXT(" \u00B7 %s unused"), *PjcFormat::Size(Class.SizeUnused))))
+				.Font(PjcWidgets::GetFontMono(9))
+				.ColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.Red"))
+			];
+			// clang-format on
 		}
 
 		const FString Text = FString::Printf(TEXT("%s assets, %s"), *PjcFormat::Count(Class.Total.Num), *PjcFormat::Size(Class.Total.Size));
@@ -459,13 +492,14 @@ TSharedRef<SWidget> SPjcTabOverview::MakeClasses() const {
 			*PjcFormat::Size(Class.SizeEditorOnly),
 			*PjcFormat::Size(Class.SizeUnused)
 		);
-		Rows->AddSlot().AutoHeight()[MakeRow(
-			SNew(STextBlock).Text(FText::FromString(GetClassShortName(Class.Name))),
-			Value,
-			Segments,
-			static_cast<double>(MaxSize),
-			PjcWidgets::MakeToolTip(Class.Name.ToString(), Text, Lines)
-		)];
+		const TSharedRef<SWidget> Name = SNew(STextBlock).Text(FText::FromString(GetClassShortName(Class.Name)));
+		const TSharedRef<SToolTip> Tip = PjcWidgets::MakeToolTip(Class.Name.ToString(), Text, Lines);
+		// clang-format off
+		Rows->AddSlot().AutoHeight()
+		[
+			MakeRow(Name, Value, Segments, static_cast<double>(MaxSize), Tip)
+		];
+		// clang-format on
 	}
 
 	return MakeSection(TEXT("Classes"), FString::Printf(TEXT("top %d by size"), MaxRows), Rows);
@@ -505,7 +539,7 @@ TSharedRef<SWidget> SPjcTabOverview::MakeUnusedFolders() {
 			+ SHorizontalBox::Slot().AutoWidth()
 			[
 				SNew(STextBlock)
-				.Text(FText::FromString(PjcFormat::Size(Folder.Unused.Size) + TEXT(" · ")))
+				.Text(FText::FromString(PjcFormat::Size(Folder.Unused.Size) + TEXT(" \u00B7 ")))
 				.Font(PjcWidgets::GetFontMono(9))
 				.ColorAndOpacity(FSlateColor::UseSubduedForeground())
 			]
@@ -519,13 +553,13 @@ TSharedRef<SWidget> SPjcTabOverview::MakeUnusedFolders() {
 			+ SHorizontalBox::Slot().AutoWidth()
 			[
 				SNew(STextBlock)
-				.Text(FText::FromString(TEXT(" · ") + PjcFormat::Count(Folder.Unused.Num)))
+				.Text(FText::FromString(TEXT(" \u00B7 ") + PjcFormat::Count(Folder.Unused.Num)))
 				.Font(PjcWidgets::GetFontMono(9))
 				.ColorAndOpacity(FSlateColor::UseSubduedForeground())
 			]
 			+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin {8.0f, 0.0f, 0.0f, 0.0f})
 			[
-				SNew(STextBlock).Text(FText::FromString(TEXT("Review ›"))).ColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.Accent"))
+				SNew(STextBlock).Text(FText::FromString(TEXT("Review \u203A"))).ColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.Accent"))
 			];
 		// clang-format on
 
@@ -533,25 +567,33 @@ TSharedRef<SWidget> SPjcTabOverview::MakeUnusedFolders() {
 		Segment.Value = static_cast<double>(Folder.Unused.Size);
 		Segment.Color = PjcWidgets::GetColor("ProjectCleaner.Color.UnusedFill");
 
-		const FString Text = bAllUnused
-			? FString::Printf(TEXT("All %s assets unused"), *PjcFormat::Count(Folder.All.Num))
-			: FString::Printf(TEXT("%s of %s assets unused"), *PjcFormat::Count(Folder.Unused.Num), *PjcFormat::Count(Folder.All.Num));
-		const FString Sizes
-			= FString::Printf(TEXT("%s of %s\nOpens Assets Unused"), *PjcFormat::Size(Folder.Unused.Size), *PjcFormat::Size(Folder.All.Size));
-		Rows->AddSlot().AutoHeight()[MakeRow(
-			NameWidget,
-			Value,
-			{Segment},
-			static_cast<double>(MaxSize),
-			PjcWidgets::MakeToolTip(Folder.Path, Text, Sizes),
-			FSimpleDelegate::CreateSP(this, &SPjcTabOverview::ShowFolder, Folder.Path)
-		)];
+		const FString AllText = PjcFormat::Count(Folder.All.Num);
+		const FString SomeText = FString::Printf(TEXT("%s of %s assets unused"), *PjcFormat::Count(Folder.Unused.Num), *AllText);
+		const FString Text = bAllUnused ? FString::Printf(TEXT("All %s assets unused"), *AllText) : SomeText;
+		const FString UnusedSize = PjcFormat::Size(Folder.Unused.Size);
+		const FString Sizes = FString::Printf(TEXT("%s of %s\nOpens Assets Unused"), *UnusedSize, *PjcFormat::Size(Folder.All.Size));
+		// clang-format off
+		Rows->AddSlot().AutoHeight()
+		[
+			MakeRow(
+				NameWidget,
+				Value,
+				{Segment},
+				static_cast<double>(MaxSize),
+				PjcWidgets::MakeToolTip(Folder.Path, Text, Sizes),
+				FSimpleDelegate::CreateSP(this, &SPjcTabOverview::ShowFolder, Folder.Path)
+			)
+		];
+		// clang-format on
 	}
 
 	if (Overview.UnusedFolders.Num() == 0) {
-		Rows->AddSlot().AutoHeight().Padding(
-			FMargin {6.0f, 4.0f}
-		)[SNew(STextBlock).Text(FText::FromString(TEXT("No folder is mostly unused."))).ColorAndOpacity(FSlateColor::UseSubduedForeground())];
+		// clang-format off
+		Rows->AddSlot().AutoHeight().Padding(FMargin {6.0f, 4.0f})
+		[
+			SNew(STextBlock).Text(FText::FromString(TEXT("No folder is mostly unused."))).ColorAndOpacity(FSlateColor::UseSubduedForeground())
+		];
+		// clang-format on
 	}
 
 	return MakeSection(TEXT("Unused by folder"), TEXT("50% or more unused"), Rows);
@@ -591,7 +633,7 @@ TSharedRef<SWidget> SPjcTabOverview::MakeLargestUnused() {
 			]
 			+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin {8.0f, 0.0f, 0.0f, 0.0f})
 			[
-				SNew(STextBlock).Text(FText::FromString(TEXT("Inspect ›"))).ColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.Accent"))
+				SNew(STextBlock).Text(FText::FromString(TEXT("Inspect \u203A"))).ColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.Accent"))
 			];
 		// clang-format on
 
@@ -600,20 +642,28 @@ TSharedRef<SWidget> SPjcTabOverview::MakeLargestUnused() {
 		Segment.Color = PjcWidgets::GetColor("ProjectCleaner.Color.UnusedFill");
 
 		const FString More = FString::Printf(TEXT("%s, %s\nOpens it in the Inspector"), *ClassName, *PjcFormat::Size(Asset.Size));
-		Rows->AddSlot().AutoHeight()[MakeRow(
-			NameWidget,
-			Value,
-			{Segment},
-			static_cast<double>(MaxSize),
-			PjcWidgets::MakeToolTip(Name, Asset.Package.ToString(), More),
-			FSimpleDelegate::CreateSP(this, &SPjcTabOverview::Inspect, Asset.Package)
-		)];
+		// clang-format off
+		Rows->AddSlot().AutoHeight()
+		[
+			MakeRow(
+				NameWidget,
+				Value,
+				{Segment},
+				static_cast<double>(MaxSize),
+				PjcWidgets::MakeToolTip(Name, Asset.Package.ToString(), More),
+				FSimpleDelegate::CreateSP(this, &SPjcTabOverview::Inspect, Asset.Package)
+			)
+		];
+		// clang-format on
 	}
 
 	if (Overview.LargestUnused.Num() == 0) {
-		Rows->AddSlot().AutoHeight().Padding(
-			FMargin {6.0f, 4.0f}
-		)[SNew(STextBlock).Text(FText::FromString(TEXT("Nothing unused."))).ColorAndOpacity(FSlateColor::UseSubduedForeground())];
+		// clang-format off
+		Rows->AddSlot().AutoHeight().Padding(FMargin {6.0f, 4.0f})
+		[
+			SNew(STextBlock).Text(FText::FromString(TEXT("Nothing unused."))).ColorAndOpacity(FSlateColor::UseSubduedForeground())
+		];
+		// clang-format on
 	}
 
 	return MakeSection(TEXT("Largest unused"), FString::Printf(TEXT("top %d by size"), MaxRows), Rows);
@@ -653,27 +703,43 @@ TSharedRef<SWidget> SPjcTabOverview::MakeShippedCard() const {
 		TEXT("Cooks made on another machine are not seen.");
 	if (!Cook.IsFound()) {
 #if ENGINE_MAJOR_VERSION >= 5
-		const FString HowTo = FString::Printf(TEXT("Platforms › %s › Cook Content"), ANSI_TO_TCHAR(FPlatformProperties::IniPlatformName()));
+		const FString HowTo = FString::Printf(TEXT("Platforms \u203A %s \u203A Cook Content"), ANSI_TO_TCHAR(FPlatformProperties::IniPlatformName()));
 #else
-		const FString HowTo = FString::Printf(TEXT("File › Cook Content for %s"), ANSI_TO_TCHAR(FPlatformProperties::IniPlatformName()));
+		const FString HowTo = FString::Printf(TEXT("File \u203A Cook Content for %s"), ANSI_TO_TCHAR(FPlatformProperties::IniPlatformName()));
 #endif
 		const FString Message = FString::Printf(TEXT("No cook found for this project. Cook it for a platform (%s) to see what ships."), *HowTo);
-		return Card(SNullWidget::NullWidget, SNew(SBox).ToolTip(PjcWidgets::MakeToolTip(TEXT("No cook"), Where))[Text(Message)]);
+		// clang-format off
+		return Card(
+			SNullWidget::NullWidget,
+			SNew(SBox).ToolTip(PjcWidgets::MakeToolTip(TEXT("No cook"), Where))
+			[
+				Text(Message)
+			]
+		);
+		// clang-format on
 	}
 	if (!Shipped.IsSet()) {
-		const FString Message
-			= FString::Printf(TEXT("The last cook (%s) could not be read. It may come from another engine version."), *Cook.Platform);
-		return Card(SNullWidget::NullWidget, SNew(SBox).ToolTip(PjcWidgets::MakeToolTip(TEXT("Last cook"), Cook.File, Where))[Text(Message)]);
+		const FString Message = TEXT("The last cook (") + Cook.Platform + TEXT(") could not be read. It may come from another engine version.");
+		// clang-format off
+		return Card(
+			SNullWidget::NullWidget,
+			SNew(SBox).ToolTip(PjcWidgets::MakeToolTip(TEXT("Last cook"), Cook.File, Where))
+			[
+				Text(Message)
+			]
+		);
+		// clang-format on
 	}
 
 	const FPjcOverview::FShipped& Ship = Shipped.GetValue();
 
 	// cook time and whether assets changed since
 	const FTimespan Age = FDateTime::UtcNow() - Cook.Time;
-	const FString Ago = Age.GetTotalMinutes() < 1.0 ? TEXT("just now")
-		: Age.GetTotalHours() < 1.0					? FString::Printf(TEXT("%d min ago"), FMath::FloorToInt(Age.GetTotalMinutes()))
-		: Age.GetTotalDays() < 1.0					? FString::Printf(TEXT("%d h ago"), FMath::FloorToInt(Age.GetTotalHours()))
-													: FString::Printf(TEXT("%d days ago"), FMath::FloorToInt(Age.GetTotalDays()));
+	const int32 Minutes = FMath::FloorToInt(Age.GetTotalMinutes());
+	const FString AgeShort = Minutes < 1 ? FString {TEXT("just now")} : FString::Printf(TEXT("%d min ago"), Minutes);
+	const FString AgeDays = FString::Printf(TEXT("%d days ago"), Minutes / (60 * 24));
+	const FString AgeLong = Minutes < 60 * 24 ? FString::Printf(TEXT("%d h ago"), Minutes / 60) : AgeDays;
+	const FString Ago = Minutes < 60 ? AgeShort : AgeLong;
 	const FDateTime LocalTime = Cook.Time + (FDateTime::Now() - FDateTime::UtcNow());
 	const FString When = TEXT("Last cook: ") + LocalTime.ToString(TEXT("%Y-%m-%d %H:%M"));
 	const bool bUpToDate = Ship.NumChanged == 0 && Ship.NumDeleted == 0;
@@ -681,20 +747,19 @@ TSharedRef<SWidget> SPjcTabOverview::MakeShippedCard() const {
 	if (Ship.NumChanged > 0) Since.Add(FString::Printf(TEXT("%s changed"), *PjcFormat::Count(Ship.NumChanged)));
 	if (Ship.NumDeleted > 0) Since.Add(FString::Printf(TEXT("%s deleted"), *PjcFormat::Count(Ship.NumDeleted)));
 	const FString Fresh = bUpToDate ? TEXT("up to date") : FString::Join(Since, TEXT(", ")) + TEXT(" since");
-	const FString FreshTip = bUpToDate
-		? TEXT("No scanned asset was saved, added or deleted since the cook.")
-		: TEXT("Assets were saved, added or deleted after the cook, so these numbers can be out of date. Cook again for current numbers.");
+	const FString UpToDateTip = TEXT("No scanned asset was saved, added or deleted since the cook.");
+	const FString OutdatedTip = TEXT("Assets were saved, added or deleted after the cook, so these numbers can be out of date.");
+	const FString FreshTip = bUpToDate ? UpToDateTip : OutdatedTip + TEXT(" Cook again for current numbers.");
 
 	// clang-format off
-	const TSharedRef<SWidget> Status = SNew(SHorizontalBox)
-		.ToolTip(PjcWidgets::MakeToolTip(When, FreshTip, Cook.File))
+	const TSharedRef<SWidget> Status = SNew(SHorizontalBox).ToolTip(PjcWidgets::MakeToolTip(When, FreshTip, Cook.File))
 		+ SHorizontalBox::Slot().AutoWidth()
 		[
 			SNew(STextBlock).Text(FText::FromString(Cook.Platform)).Font(FPjcStyles::GetFont("Bold", 9))
 		]
 		+ SHorizontalBox::Slot().AutoWidth()
 		[
-			Text(TEXT(" · cooked ") + Ago + TEXT(" · "))
+			Text(TEXT(" \u00B7 cooked ") + Ago + TEXT(" \u00B7 "))
 		]
 		+ SHorizontalBox::Slot().AutoWidth()
 		[
@@ -714,7 +779,7 @@ TSharedRef<SWidget> SPjcTabOverview::MakeShippedCard() const {
 		Segment.ToolTip = PjcWidgets::MakeToolTip(
 			Label,
 			FString::Printf(
-				TEXT("%s assets · %s in the editor (%s)"),
+				TEXT("%s assets \u00B7 %s in the editor (%s)"),
 				*PjcFormat::Count(Total.Num),
 				*PjcFormat::Size(Total.Size),
 				*PjcFormat::Percent(Total.Size, AllSize)
@@ -737,13 +802,20 @@ TSharedRef<SWidget> SPjcTabOverview::MakeShippedCard() const {
 						) {
 		const TSharedRef<SHorizontalBox> Head = SNew(SHorizontalBox);
 		if (Swatch.IsSet()) {
-			Head->AddSlot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 6.0f, 0.0f})[PjcWidgets::MakeSwatch(Swatch.GetValue())];
+			// clang-format off
+			Head->AddSlot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 6.0f, 0.0f})
+			[
+				PjcWidgets::MakeSwatch(Swatch.GetValue())
+			];
+			// clang-format on
 		}
-		Head->AddSlot().AutoWidth().VAlign(VAlign_Center)[SNew(STextBlock).Text(FText::FromString(Label)).ColorAndOpacity(Muted)];
-
 		// clang-format off
-		return SNew(SBox)
-			.ToolTip(PjcWidgets::MakeToolTip(Label, ToolTip))
+		Head->AddSlot().AutoWidth().VAlign(VAlign_Center)
+		[
+			SNew(STextBlock).Text(FText::FromString(Label)).ColorAndOpacity(Muted)
+		];
+
+		return SNew(SBox).ToolTip(PjcWidgets::MakeToolTip(Label, ToolTip))
 			[
 				SNew(SVerticalBox)
 				+ SVerticalBox::Slot().AutoHeight()
@@ -771,7 +843,7 @@ TSharedRef<SWidget> SPjcTabOverview::MakeShippedCard() const {
 		ReasonLines.Add(FString::Printf(TEXT("%s: %s"), *Name, *PjcFormat::Count(Row.Total.Num)));
 	}
 	const auto Share = [AllSize](const FPjcOverview::FTotal& Total) {
-		return FString::Printf(TEXT("%s · %s"), *PjcFormat::Size(Total.Size), *PjcFormat::Percent(Total.Size, AllSize));
+		return FString::Printf(TEXT("%s \u00B7 %s"), *PjcFormat::Size(Total.Size), *PjcFormat::Percent(Total.Size, AllSize));
 	};
 	const int32 NumShipped = Ship.Shipped.Num + Ship.UnusedShipped.Num;
 	const int64 SizeShippedCooked = Ship.ShippedCooked + Ship.UnusedShippedCooked;
@@ -779,7 +851,12 @@ TSharedRef<SWidget> SPjcTabOverview::MakeShippedCard() const {
 
 	const TSharedRef<SHorizontalBox> Columns = SNew(SHorizontalBox);
 	const auto AddColumn = [&Columns](const TSharedRef<SWidget>& Widget) {
-		Columns->AddSlot().FillWidth(1.0f).Padding(FMargin {0.0f, 0.0f, 10.0f, 0.0f})[Widget];
+		// clang-format off
+		Columns->AddSlot().FillWidth(1.0f).Padding(FMargin {0.0f, 0.0f, 10.0f, 0.0f})
+		[
+			Widget
+		];
+		// clang-format on
 	};
 	AddColumn(Column(
 		TEXT("Shipped"),
@@ -794,15 +871,16 @@ TSharedRef<SWidget> SPjcTabOverview::MakeShippedCard() const {
 			*PjcFormat::Size(SizeShippedEditor)
 		)
 	));
+	const FString NotCooked = TEXT("Used in the editor, or only by content that is not cooked: ");
+	const FString LeftOut = TEXT("editor-only references, maps and tools left out of the cook. By chain start:\n");
+	const FString NotShippedTip = NotCooked + LeftOut + FString::Join(ReasonLines, TEXT("\n"));
 	AddColumn(Column(
 		TEXT("Used, not shipped"),
 		PjcWidgets::GetColor("ProjectCleaner.Color.KeepFill"),
 		PjcFormat::Count(Ship.UsedNotShipped.Num),
 		FSlateColor::UseForeground(),
 		Share(Ship.UsedNotShipped),
-		TEXT("Used in the editor, or only by content that is not cooked: editor-only references, maps and tools left out of the cook. ")
-				TEXT("By chain start:\n")
-			+ FString::Join(ReasonLines, TEXT("\n"))
+		NotShippedTip
 	));
 	AddColumn(Column(
 		TEXT("Unused"),
@@ -826,7 +904,7 @@ TSharedRef<SWidget> SPjcTabOverview::MakeShippedCard() const {
 		AddColumn(Column(
 			TEXT("Unused, shipped"),
 			{},
-			TEXT("✓ 0"),
+			TEXT("\u2713 0"),
 			PjcWidgets::GetColor("ProjectCleaner.Color.Ok"),
 			TEXT("scan and cook agree"),
 			TEXT("No asset the scan marks unused is in the cook.")
@@ -839,16 +917,32 @@ TSharedRef<SWidget> SPjcTabOverview::MakeShippedCard() const {
 		RootLines.Add(FString::Printf(TEXT("%s: %s"), *Ship.OutsideRoots[Index].Key, *PjcFormat::Count(Ship.OutsideRoots[Index].Value)));
 	}
 	const TSharedRef<SHorizontalBox> Footer = SNew(SHorizontalBox);
-	Footer->AddSlot()
-		.AutoWidth()[SNew(SBox).ToolTip(PjcWidgets::MakeToolTip(TEXT("Shipped outside the scan"), FString::Join(RootLines, TEXT("\n"))))[Text(
-			FString::Printf(
-				TEXT("Also shipped: %s engine and plugin packages, %s cooked"), *PjcFormat::Count(Ship.NumOutside), *PjcFormat::Size(Ship.SizeOutside)
+	// clang-format off
+	Footer->AddSlot().AutoWidth()
+	[
+		SNew(SBox).ToolTip(PjcWidgets::MakeToolTip(TEXT("Shipped outside the scan"), FString::Join(RootLines, TEXT("\n"))))
+		[
+			Text(
+				FString::Printf(
+					TEXT("Also shipped: %s engine and plugin packages, %s cooked"),
+					*PjcFormat::Count(Ship.NumOutside),
+					*PjcFormat::Size(Ship.SizeOutside)
+				)
 			)
-		)]];
+		]
+	];
+	// clang-format on
 	if (Ship.NumGenerated > 0) {
-		Footer->AddSlot().AutoWidth().Padding(FMargin {18.0f, 0.0f, 0.0f, 0.0f})[SNew(SBox).ToolTip(
-			PjcWidgets::MakeToolTip(TEXT("Generated packages"), TEXT("World Partition cells and other packages the cook generates."))
-		)[Text(FString::Printf(TEXT("%s generated packages"), *PjcFormat::Count(Ship.NumGenerated)))]];
+		// clang-format off
+		Footer->AddSlot().AutoWidth().Padding(FMargin {18.0f, 0.0f, 0.0f, 0.0f})
+		[
+			SNew(SBox)
+			.ToolTip(PjcWidgets::MakeToolTip(TEXT("Generated packages"), TEXT("World Partition cells and other packages the cook generates.")))
+			[
+				Text(FString::Printf(TEXT("%s generated packages"), *PjcFormat::Count(Ship.NumGenerated)))
+			]
+		];
+		// clang-format on
 	}
 
 	// clang-format off
@@ -897,7 +991,10 @@ TSharedRef<SWidget> SPjcTabOverview::MakeSection(const FString& Title, const FSt
 			]
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 			[
-				SNew(STextBlock).Text(FText::FromString(Hint)).Font(FPjcStyles::GetFont("Regular", 8)).ColorAndOpacity(FSlateColor::UseSubduedForeground())
+				SNew(STextBlock)
+				.Text(FText::FromString(Hint))
+				.Font(FPjcStyles::GetFont("Regular", 8))
+				.ColorAndOpacity(FSlateColor::UseSubduedForeground())
 			]
 		]
 		+ SVerticalBox::Slot().AutoHeight()
@@ -936,8 +1033,7 @@ TSharedRef<SWidget> SPjcTabOverview::MakeRow(
 	const FSimpleDelegate& OnClick
 ) {
 	// clang-format off
-	const TSharedRef<SWidget> Content = SNew(SBox)
-		.Padding(FMargin {6.0f, 5.0f})
+	const TSharedRef<SWidget> Content = SNew(SBox).Padding(FMargin {6.0f, 5.0f})
 		[
 			SNew(SVerticalBox)
 			+ SVerticalBox::Slot().AutoHeight()
@@ -959,7 +1055,10 @@ TSharedRef<SWidget> SPjcTabOverview::MakeRow(
 		];
 
 	if (!OnClick.IsBound()) {
-		return SNew(SBox).ToolTip(ToolTip)[Content];
+		return SNew(SBox).ToolTip(ToolTip)
+			[
+				Content
+			];
 	}
 
 	return SNew(SButton)

@@ -17,7 +17,7 @@ namespace
 	constexpr int32 PjcMapMaxDepth = 9;
 	constexpr float PjcMapHeader = 18.0f;
 
-	/** Rectangle of the treemap layout */
+	// Rectangle of the treemap layout
 	struct FPjcMapRect
 	{
 		double X = 0.0;
@@ -30,7 +30,7 @@ namespace
 		return FLinearColor {FColor::FromHex(Hex)};
 	}
 
-	/** Squarified treemap: rectangles for values sorted biggest first, as square as the area allows */
+	// Squarified treemap: rectangles for values sorted biggest first, as square as the area allows
 	void PjcMapSquarify(const TArray<double>& Values, double X, double Y, double W, double H, TArray<FPjcMapRect>& Out) {
 		Out.SetNumZeroed(Values.Num());
 		double Total = 0.0;
@@ -255,9 +255,9 @@ int32 SPjcSizeMap::OnPaint(
 		// cut to the width
 		FString Shown = String;
 		if (FontMeasure->Measure(Shown, TextFont).X > MaxWidth) {
-			const int32 Fits
-				= FontMeasure->FindLastWholeCharacterIndexBeforeOffset(Shown, TextFont, FMath::Max(1, FMath::FloorToInt(MaxWidth - 6.0f)));
-			Shown = Fits > 0 ? Shown.Left(Fits) + TEXT("…") : FString {};
+			const int32 Offset = FMath::Max(1, FMath::FloorToInt(MaxWidth - 6.0f));
+			const int32 Fits = FontMeasure->FindLastWholeCharacterIndexBeforeOffset(Shown, TextFont, Offset);
+			Shown = Fits > 0 ? Shown.Left(Fits) + TEXT("\u2026") : FString {};
 		}
 		const FVector2D Size {FontMeasure->Measure(Shown, TextFont)};
 		FSlateDrawElement::MakeText(
@@ -291,9 +291,8 @@ int32 SPjcSizeMap::OnPaint(
 		const bool bHovered = Index == Hovered;
 
 		if (Cell.Kind == ECellKind::Folder) {
-			const float Share = Cell.Folder->All.Size > 0
-				? static_cast<float>(static_cast<double>(Cell.Folder->Unused.Size) / static_cast<double>(Cell.Folder->All.Size))
-				: 0.0f;
+			const double FolderSize = static_cast<double>(Cell.Folder->All.Size);
+			const float Share = FolderSize > 0.0 ? static_cast<float>(static_cast<double>(Cell.Folder->Unused.Size) / FolderSize) : 0.0f;
 			const FLinearColor Fill = bAreaAll ? FLinearColor::LerpUsingHSV(FolderFill, FolderTint, Share) : FolderFill;
 			Box(Layer, Cell.Position, Cell.Size, bHovered ? PjcMapColor(TEXT("#6A7078")) : FolderLine);
 			Box(Layer, Cell.Position + FVector2D {1.0f, 1.0f}, Cell.Size - FVector2D {2.0f, 2.0f}, Fill);
@@ -344,8 +343,8 @@ int32 SPjcSizeMap::FindCell(const FVector2D& LocalPosition) const {
 	// topmost: children come after their folder
 	for (int32 Index = Cells.Num() - 1; Index >= 0; --Index) {
 		const FCell& Cell = Cells[Index];
-		if (LocalPosition.X >= Cell.Position.X && LocalPosition.Y >= Cell.Position.Y && LocalPosition.X < Cell.Position.X + Cell.Size.X
-			&& LocalPosition.Y < Cell.Position.Y + Cell.Size.Y) {
+		const auto CellEnd = Cell.Position + Cell.Size;
+		if (LocalPosition.X >= Cell.Position.X && LocalPosition.Y >= Cell.Position.Y && LocalPosition.X < CellEnd.X && LocalPosition.Y < CellEnd.Y) {
 			return Index;
 		}
 	}
@@ -397,7 +396,7 @@ FText SPjcSizeMap::GetHoverText() const {
 		const FPjcUnusedFolder& Shown = *Cell.Folder;
 		return FText::FromString(
 			FString::Printf(
-				TEXT("%s\nUnused %s of %s · %s of %s assets\nClick to open"),
+				TEXT("%s\nUnused %s of %s \u00B7 %s of %s assets\nClick to open"),
 				*Shown.Path,
 				*PjcFormat::Size(Shown.Unused.Size),
 				*PjcFormat::Size(Shown.All.Size),
@@ -407,17 +406,17 @@ FText SPjcSizeMap::GetHoverText() const {
 		);
 	}
 	if (Cell.Kind == ECellKind::More) {
-		return FText::FromString(FString::Printf(TEXT("%s smaller items · %s"), *PjcFormat::Count(Cell.NumMore), *PjcFormat::Size(Cell.Value)));
+		return FText::FromString(FString::Printf(TEXT("%s smaller items \u00B7 %s"), *PjcFormat::Count(Cell.NumMore), *PjcFormat::Size(Cell.Value)));
 	}
 
 	const FAssetData& Asset = Result->Assets[Cell.Asset];
 	return FText::FromString(
 		FString::Printf(
-			TEXT("%s\n%s · %s%s"),
+			TEXT("%s\n%s \u00B7 %s%s"),
 			*Asset.PackageName.ToString(),
 			*PjcShim::GetAssetClassName(Asset).ToString(),
 			*PjcFormat::Size(Cell.Value),
-			Cell.bUnused ? TEXT(" · unused, click to select it") : TEXT(" · used, listed in the Content Browser")
+			Cell.bUnused ? TEXT(" \u00B7 unused, click to select it") : TEXT(" \u00B7 used, listed in the Content Browser")
 		)
 	);
 }

@@ -12,13 +12,13 @@ class FTabManager;
 class SBox;
 class SToolTip;
 
-/** Overview tool: what the shared scan found for the whole project */
+// Overview tool: what the shared scan found for the whole project
 class SPjcTabOverview final : public SCompoundWidget
 {
   public:
 
 	SLATE_BEGIN_ARGS(SPjcTabOverview) {}
-	/** Tabs the Overview links to (none in tests) */
+	// Tabs the Overview links to (none in tests)
 	SLATE_ARGUMENT(TSharedPtr<FTabManager>, TabManager)
 	SLATE_END_ARGS()
 
@@ -30,9 +30,9 @@ class SPjcTabOverview final : public SCompoundWidget
 	void OnScanFinished();
 	void Rebuild();
 	void OpenTab(const FName TabId) const;
-	/** Shows the asset in Asset Usage */
+	// Shows the asset in Asset Usage
 	void Inspect(const FName Package) const;
-	/** Shows the folder in Assets Unused */
+	// Shows the folder in Assets Unused
 	void ShowFolder(const FString Path) const;
 
 	TSharedRef<SWidget> MakeSummary();
@@ -43,11 +43,11 @@ class SPjcTabOverview final : public SCompoundWidget
 	TSharedRef<SWidget> MakeLargestUnused();
 	TSharedRef<SWidget> MakeShippedCard() const;
 
-	/** Card with a title, a hint on the right and its rows */
+	// Card with a title, a hint on the right and its rows
 	static TSharedRef<SWidget> MakeSection(const FString& Title, const FString& Hint, const TSharedRef<SWidget>& Content);
-	/** Two cards side by side, as high as the higher one */
+	// Two cards side by side, as high as the higher one
 	static TSharedRef<SWidget> MakeColumns(const TSharedRef<SWidget>& Left, const TSharedRef<SWidget>& Right);
-	/** Name and value on one line, a bar under them; a button when OnClick is bound */
+	// Name and value on one line, a bar under them; a button when OnClick is bound
 	static TSharedRef<SWidget> MakeRow(
 		const TSharedRef<SWidget>& Name,
 		const TSharedRef<SWidget>& Value,
@@ -56,7 +56,7 @@ class SPjcTabOverview final : public SCompoundWidget
 		const TSharedPtr<SToolTip>& ToolTip,
 		const FSimpleDelegate& OnClick = FSimpleDelegate {}
 	);
-	/** UE5 class names are paths (/Script/Engine.Texture2D): the name after the dot */
+	// UE5 class names are paths (/Script/Engine.Texture2D): the name after the dot
 	static FString GetClassShortName(const FName ClassName);
 	static void GetReasonInfo(const EPjcUsageReason Reason, FString& OutName, FString& OutToolTip, FLinearColor& OutColor);
 
@@ -65,7 +65,7 @@ class SPjcTabOverview final : public SCompoundWidget
 	TSharedPtr<SBox> Body;
 	FPjcOverview Overview;
 
-	/** Last cook, without its package list */
+	// Last cook, without its package list
 	FPjcCookInfo Cook;
 	TOptional<FPjcOverview::FShipped> Shipped;
 };

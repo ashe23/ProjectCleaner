@@ -32,16 +32,16 @@ namespace PjcShim
 	const FSlateBrush* GetIconClose();
 	const FSlateBrush* GetIconLock();
 	const FSlateBrush* GetIconSettings();
-	/** Background of a card in the Overview */
+	// Background of a card in the Overview
 	const FSlateBrush* GetBrushCard();
 	const FButtonStyle& GetPrimaryButtonStyle();
 
 	FName GetLevelEditorToolBarName(const EPjcToolbarLocation Location);
 	TSet<FName> GetCachedEmptyPackages();
 	FAssetPackageData GetAssetPackageData(const FName PackageName);
-	/** Digest of what a package file was saved with (5.4+ saved hash, a new guid per save before), 0 when unknown */
+	// Digest of what a package file was saved with (5.4+ saved hash, a new guid per save before), 0 when unknown
 	uint32 GetPackageSavedDigest(const FAssetPackageData& PackageData);
-	/** Same for a package of the editor asset registry, 0 when it has none */
+	// Same for a package of the editor asset registry, 0 when it has none
 	uint32 GetPackageSavedDigest(const FName PackageName);
 	FString GetPathExternalActors();
 	FString GetPathExternalObjects();
@@ -61,29 +61,25 @@ namespace PjcShim
 
 	FAssetData GetAssetByObjectPath(const FString& InObjectPath);
 	bool DoesPackageExist(const FString& InPackageName, FString* OutFilename);
-	/** Waits for async asset compilation (UE5: textures, meshes, animations, ...) and shader jobs, they hold loaded assets */
+	// Waits for async asset compilation (UE5: textures, meshes, animations, ...) and shader jobs, they hold loaded assets
 	void FinishAssetCompilation();
-	/**
-	 * Drops transient helpers assets keep for themselves while loaded in the editor (UE5 animation data controller).
-	 * Helper references asset internals, so engine treats it as outside reference and refuses deleting the asset.
-	 * Asset creates it again when needed. Returns true if any was dropped (collect garbage before deleting).
-	 */
+	// Drops transient helpers assets keep for themselves while loaded in the editor (UE5 animation data controller).
+	// Helper references asset internals, so engine treats it as outside reference and refuses deleting the asset.
+	// Asset creates it again when needed. Returns true if any was dropped (collect garbage before deleting).
 	bool ReleaseEditorHelpers(const TArray<UObject*>& Assets);
-	/**
-	 * Before 5.5 deleting a redirector removes its redirection and ensures it was registered; loaded redirectors
-	 * are not always registered (4.27). Registers it to TargetObjectPath when missing.
-	 */
+	// Before 5.5 deleting a redirector removes its redirection and ensures it was registered; loaded redirectors
+	// are not always registered (4.27). Registers it to TargetObjectPath when missing.
 	void RegisterRedirection(const UObject* Redirector, const FString& TargetObjectPath);
 	void GetDerivedClassNames(const TArray<FName>& ClassNames, const TSet<FName>& ExcludedClassNames, TSet<FName>& OutDerivedClassNames);
 	void OpenAssetEditor(const FAssetData& InAssetData);
 	FString GetObjectPathString(const FAssetData& InAssetData);
 
 	bool IsAssetManagerValid();
-	/** Packages of the assets in a collection of any share type, with its child collections */
+	// Packages of the assets in a collection of any share type, with its child collections
 	void GetPackagesInCollection(const FName CollectionName, TArray<FName>& OutPackages);
 	EAppReturnType::Type ShowDialog(const FText& Title, const FText& Message, const EAppMsgType::Type MessageType);
 
-	/** Writes object config to project default config file (e.g. Config/DefaultEditor.ini) */
+	// Writes object config to project default config file (e.g. Config/DefaultEditor.ini)
 	void UpdateDefaultConfigFile(UObject* InObject);
 
 	bool LoadAssetsIfNeeded(const TArray<FString>& ObjectPaths, TArray<UObject*>& LoadedObjects, bool bAllowedToPromptToLoad, bool bLoadRedirects);

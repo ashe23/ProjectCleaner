@@ -64,9 +64,9 @@ void SPjcToolFrame::Construct(const FArguments& InArgs) {
 						.ButtonStyle(&PjcShim::GetStyle().GetWidgetStyle<FButtonStyle>(TEXT("NoBorder")))
 						.ContentPadding(FMargin {0.0f, 8.0f})
 						.ToolTipText_Lambda([this]() {
-							return FText::FromString(FString::Printf(
-								TEXT("%s scan settings%s"), bPanelOpen ? TEXT("Hide") : TEXT("Show"), FPjcScanDraft::IsChanged() ? TEXT(" · changed, not scanned yet") : TEXT("")
-							));
+							const TCHAR* Action = bPanelOpen ? TEXT("Hide") : TEXT("Show");
+							const TCHAR* Changed = FPjcScanDraft::IsChanged() ? TEXT(" \u00B7 changed, not scanned yet") : TEXT("");
+							return FText::FromString(FString::Printf(TEXT("%s scan settings%s"), Action, Changed));
 						})
 						.OnClicked_Lambda([this]() {
 							TogglePanel();

@@ -1,4 +1,4 @@
-﻿// Copyright Ashot Barkhudaryan. All Rights Reserved.
+// Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "Pjc.h"
 #include "PjcShim.h"

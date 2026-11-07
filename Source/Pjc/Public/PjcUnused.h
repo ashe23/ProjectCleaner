@@ -5,23 +5,23 @@
 #include "CoreMinimal.h"
 #include "PjcOverview.h"
 
-/** Folder of the scanned content with what is inside it, subfolders included */
+// Folder of the scanned content with what is inside it, subfolders included
 struct FPjcUnusedFolder
 {
-	/** Content path, e.g. /Game/Characters */
+	// Content path, e.g. /Game/Characters
 	FString Path;
 	FString Name;
 
 	TWeakPtr<FPjcUnusedFolder> Parent;
 	TArray<TSharedPtr<FPjcUnusedFolder>> Children;
 
-	/** Assets directly in this folder, as indices into FPjcScanResult::Assets */
+	// Assets directly in this folder, as indices into FPjcScanResult::Assets
 	TArray<int32> Assets;
 
 	FPjcOverview::FTotal All;
 	FPjcOverview::FTotal Unused;
 
-	/** Empty folder cleanup deletes */
+	// Empty folder cleanup deletes
 	bool bEmpty = false;
 
 	bool IsRoot() const {
@@ -33,13 +33,13 @@ struct FPjcUnusedFolder
 	}
 };
 
-/** Folders of a scan with their unused totals, for the Assets Unused tool */
+// Folders of a scan with their unused totals, for the Assets Unused tool
 struct FPjcUnusedTree
 {
-	/** Every folder by path */
+	// Every folder by path
 	TMap<FString, TSharedPtr<FPjcUnusedFolder>> Folders;
 
-	/** Content roots: /Game first, then the most unused */
+	// Content roots: /Game first, then the most unused
 	TArray<TSharedPtr<FPjcUnusedFolder>> Roots;
 
 	static FPjcUnusedTree Make(const FPjcScanResult& Result);
@@ -49,12 +49,10 @@ struct FPjcUnusedTree
 		return Found ? *Found : nullptr;
 	}
 
-	/** Unused assets in a folder, and in its subfolders when asked, as indices into FPjcScanResult::Assets */
+	// Unused assets in a folder, and in its subfolders when asked, as indices into FPjcScanResult::Assets
 	void GetUnused(const FPjcScanResult& Result, const FString& Path, const bool bSubfolders, TArray<int32>& OutAssets) const;
 
-	/**
-	 * What goes with deleting the given packages: the unused assets and redirectors that reference them, transitively.
-	 * The engine does not delete an asset something still references. Given packages are not in the group.
-	 */
+	// What goes with deleting the given packages: the unused assets and redirectors that reference them, transitively.
+	// The engine does not delete an asset something still references. Given packages are not in the group.
 	static void GetDeleteGroup(const FPjcScanResult& Result, const TArray<FName>& Packages, TArray<FName>& OutGroup);
 };

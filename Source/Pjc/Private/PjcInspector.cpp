@@ -10,7 +10,7 @@ namespace
 {
 	// unity builds join files: names unique to this file
 
-	/** Root path: root first, the focus last */
+	// Root path: root first, the focus last
 	struct FPjcRootPath
 	{
 		FName Root;
@@ -22,7 +22,7 @@ namespace
 		return Usage && Usage->bUsed && Usage->Parent.IsNone();
 	}
 
-	/** Every root that keeps the package used, with the shortest path from it, breadth first over used referencers */
+	// Every root that keeps the package used, with the shortest path from it, breadth first over used referencers
 	void PjcInspectorRootPaths(const FPjcScanResult& Result, const FName Focus, TArray<FPjcRootPath>& OutPaths) {
 		IAssetRegistry& AssetRegistry = UPjcSubsystem::GetModuleAssetRegistry().Get();
 		TMap<FName, FName> Next;
@@ -202,7 +202,7 @@ FPjcInspectorGraph FPjcInspectorGraph::Make(const FPjcScanResult& Result, const 
 
 	struct FItem
 	{
-		/** Group class, None for one root */
+		// Group class, None for one root
 		FName Group;
 		TArray<int32> Paths;
 		int32 Length = 0;

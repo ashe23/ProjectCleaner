@@ -34,53 +34,45 @@ class UPjcScanSettings final : public UDeveloperSettings
 	virtual FText GetSectionDescription() const override;
 #endif
 
-	/**
-	 * Scan content of project plugins too, not only /Game.
-	 * Needed for plugin based projects (e.g. Lyra GameFeatures). Plugin assets used only by unused assets become unused.
-	 * When off, references from project plugins still keep /Game assets used.
-	 */
+	// Scan content of project plugins too, not only /Game.
+	// Needed for plugin based projects (e.g. Lyra GameFeatures). Plugin assets used only by unused assets become unused.
+	// When off, references from project plugins still keep /Game assets used.
 	UPROPERTY(EditAnywhere, Config, Category = "Scan Roots")
 	bool bScanProjectPlugins = false;
 
-	/** Project plugins that are never scanned (plugin names). Their assets are never deleted. */
+	// Project plugins that are never scanned (plugin names). Their assets are never deleted.
 	UPROPERTY(EditAnywhere, Config, Category = "Scan Roots", meta = (EditCondition = "bScanProjectPlugins"))
 	TArray<FString> IgnoredPlugins;
 
 	// always used, not settings: primary assets (every map and what the Asset Manager registers), editor assets,
 	// assets named in source and config files
 
-	/**
-	 * Assets of a primary asset class that the Asset Manager did not register are used: outside the folders of their
-	 * type, or in a game feature plugin that is not registered yet. On by default, the game may still load them.
-	 * Turn off when a type has a very broad base class and too many assets stay used.
-	 */
+	// Assets of a primary asset class that the Asset Manager did not register are used: outside the folders of their
+	// type, or in a game feature plugin that is not registered yet. On by default, the game may still load them.
+	// Turn off when a type has a very broad base class and too many assets stay used.
 	UPROPERTY(EditAnywhere, Config, Category = "Used Assets", meta = (DisplayName = "Unregistered Primary Classes Used"))
 	bool bUnregisteredPrimaryUsed = true;
 
-	/**
-	 * Primary Asset Labels with "Label Assets In My Directory" make every asset in their folder used.
-	 * Such labels are cook rules, often added for content loaded by path, so by default their assets stay used.
-	 * A label in content root (e.g. Lyra DefaultGame_Label) makes whole project used: turn off to review those assets.
-	 * Label itself and its explicit assets, blueprints and collection are always used.
-	 */
+	// Primary Asset Labels with "Label Assets In My Directory" make every asset in their folder used.
+	// Such labels are cook rules, often added for content loaded by path, so by default their assets stay used.
+	// A label in content root (e.g. Lyra DefaultGame_Label) makes whole project used: turn off to review those assets.
+	// Label itself and its explicit assets, blueprints and collection are always used.
 	UPROPERTY(EditAnywhere, Config, Category = "Used Assets")
 	bool bFolderLabelsUsed = true;
 
-	/**
-	 * Cinematic assets are used: Level Sequences, Template Sequences, Movie Render Queue and Movie Render Graph configs.
-	 * They are usually rendered or played without being referenced by any level.
-	 */
+	// Cinematic assets are used: Level Sequences, Template Sequences, Movie Render Queue and Movie Render Graph configs.
+	// They are usually rendered or played without being referenced by any level.
 	UPROPERTY(EditAnywhere, Config, Category = "Used Assets")
 	bool bCinematicAssetsUsed = true;
 
-	/** Assets of these classes (and derived classes) are always used. */
+	// Assets of these classes (and derived classes) are always used.
 	UPROPERTY(EditAnywhere, Config, Category = "Used Assets", meta = (AllowAbstract = "true"))
 	TArray<TSoftClassPtr<UObject>> UsedClasses;
 
-	/** Classes that are cinematic assets, resolved for current engine version */
+	// Classes that are cinematic assets, resolved for current engine version
 	static TArray<FString> GetCinematicClassPaths();
 
-	/** Editor tools and editor tool data from engine plugins (with derived classes), resolved for current engine version */
+	// Editor tools and editor tool data from engine plugins (with derived classes), resolved for current engine version
 	static TArray<FString> GetEditorClassPaths();
 };
 
@@ -103,25 +95,21 @@ class UPjcEditorSettings final : public UDeveloperSettings
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif
 
-	/** Where Project Cleaner button is shown in level editor toolbar. Window menu entry is always available. */
+	// Where Project Cleaner button is shown in level editor toolbar. Window menu entry is always available.
 	UPROPERTY(EditAnywhere, Config, Category = "Interface")
 	EPjcToolbarLocation ToolbarLocation = EPjcToolbarLocation::PlayToolbar;
 
-	/** Scan project when Project Cleaner window opens. When off, press Scan Project manually. */
+	// Scan project when Project Cleaner window opens. When off, press Scan Project manually.
 	UPROPERTY(EditAnywhere, Config, Category = "Scanning")
 	bool bScanOnOpen = true;
 
-	/**
-	 * Ask before Fix Redirectors runs. Fixing resaves (and checks out from source control) every asset
-	 * that references a redirector. Scanning does not need fixed redirectors.
-	 */
+	// Ask before Fix Redirectors runs. Fixing resaves (and checks out from source control) every asset
+	// that references a redirector. Scanning does not need fixed redirectors.
 	UPROPERTY(EditAnywhere, Config, Category = "Scanning")
 	bool bConfirmRedirectorsFix = true;
 
-	/**
-	 * Skip engine "About to load N assets" question while Project Cleaner deletes assets (UE 5.4+).
-	 * Project Cleaner already asks for confirmation before deleting. Always skipped in commandlets.
-	 */
+	// Skip engine "About to load N assets" question while Project Cleaner deletes assets (UE 5.4+).
+	// Project Cleaner already asks for confirmation before deleting. Always skipped in commandlets.
 	UPROPERTY(EditAnywhere, Config, Category = "Deletion")
 	bool bSkipAssetLoadWarning = true;
 

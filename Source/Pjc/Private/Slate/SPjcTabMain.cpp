@@ -1,4 +1,4 @@
-﻿// Copyright Ashot Barkhudaryan. All Rights Reserved.
+// Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "Slate/SPjcTabMain.h"
 #include "Slate/SPjcTabOverview.h"
@@ -28,8 +28,8 @@ void SPjcTabMain::Construct(
 	const TSharedPtr<SWindow>& ConstructUnderWindow
 ) {
 	TabManager = FGlobalTabmanager::Get()->NewTabManager(ConstructUnderMajorTab);
-	const TSharedRef<FWorkspaceItem> AppMenuGroup
-		= TabManager->AddLocalWorkspaceMenuCategory(FText::FromString(PjcConstants::ModulePjcName.ToString()));
+	const FText MenuName = FText::FromString(PjcConstants::ModulePjcName.ToString());
+	const TSharedRef<FWorkspaceItem> AppMenuGroup = TabManager->AddLocalWorkspaceMenuCategory(MenuName);
 
 	Cmds = MakeShareable(new FUICommandList);
 
@@ -123,27 +123,17 @@ void SPjcTabMain::Construct(
 		+ SWidgetSwitcher::Slot()
 		[
 			SNew(SVerticalBox)
-			+ SVerticalBox::Slot()
-			.FillHeight(1.0f)
-			.HAlign(HAlign_Center)
-			.VAlign(VAlign_Center)
+			+ SVerticalBox::Slot().FillHeight(1.0f).HAlign(HAlign_Center).VAlign(VAlign_Center)
 			[
 				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot()
-				.AutoWidth()
-				.HAlign(HAlign_Center)
-				.VAlign(VAlign_Center)
+				+ SHorizontalBox::Slot().AutoWidth().HAlign(HAlign_Center).VAlign(VAlign_Center)
 				[
 					SNew(SBox).WidthOverride(32.0f).HeightOverride(32.0f)
 					[
 						SNew(SImage).Image(FPjcStyles::GetIcon("ProjectCleaner.Icon.Warning32").GetIcon())
 					]
 				]
-				+ SHorizontalBox::Slot()
-				.FillWidth(1.0f)
-				.Padding(FMargin{5.0f, 2.0f, 0.0f, 0.0f})
-				.HAlign(HAlign_Center)
-				.VAlign(VAlign_Center)
+				+ SHorizontalBox::Slot().FillWidth(1.0f).Padding(FMargin{5.0f, 2.0f, 0.0f, 0.0f}).HAlign(HAlign_Center).VAlign(VAlign_Center)
 				[
 					SNew(STextBlock)
 					.Justification(ETextJustify::Center)
@@ -169,8 +159,8 @@ SPjcTabMain::~SPjcTabMain() {
 }
 
 int32 SPjcTabMain::GetWidgetIndex() const {
-	return UPjcSubsystem::EditorIsInPlayMode() || UPjcSubsystem::GetModuleAssetRegistry().Get().IsLoadingAssets() ? PjcConstants::WidgetIndexWorking
-																												  : PjcConstants::WidgetIndexIdle;
+	const bool bBusy = UPjcSubsystem::EditorIsInPlayMode() || UPjcSubsystem::GetModuleAssetRegistry().Get().IsLoadingAssets();
+	return bBusy ? PjcConstants::WidgetIndexWorking : PjcConstants::WidgetIndexIdle;
 }
 
 FText SPjcTabMain::GetWidgetWarningText() const {
@@ -186,7 +176,12 @@ FText SPjcTabMain::GetWidgetWarningText() const {
 }
 
 TSharedRef<SDockTab> SPjcTabMain::OnTabOverviewSpawn(const FSpawnTabArgs& Args) const {
-	const auto Frontend = SNew(SDockTab).TabRole(PanelTab).Label(FText::FromString(TEXT("Overview")))[SNew(SPjcTabOverview).TabManager(TabManager)];
+	// clang-format off
+	const auto Frontend = SNew(SDockTab).TabRole(PanelTab).Label(FText::FromString(TEXT("Overview")))
+		[
+			SNew(SPjcTabOverview).TabManager(TabManager)
+		];
+	// clang-format on
 
 	Frontend->SetTabIcon(FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.Stat16"));
 
@@ -194,7 +189,12 @@ TSharedRef<SDockTab> SPjcTabMain::OnTabOverviewSpawn(const FSpawnTabArgs& Args) 
 }
 
 TSharedRef<SDockTab> SPjcTabMain::OnTabIssuesSpawn(const FSpawnTabArgs& Args) const {
-	const auto Frontend = SNew(SDockTab).TabRole(PanelTab).Label(FText::FromString(TEXT("Issues")))[SNew(SPjcTabIssues).TabManager(TabManager)];
+	// clang-format off
+	const auto Frontend = SNew(SDockTab).TabRole(PanelTab).Label(FText::FromString(TEXT("Issues")))
+		[
+			SNew(SPjcTabIssues).TabManager(TabManager)
+		];
+	// clang-format on
 
 	Frontend->SetTabIcon(FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.CorruptedFile16"));
 
@@ -202,8 +202,12 @@ TSharedRef<SDockTab> SPjcTabMain::OnTabIssuesSpawn(const FSpawnTabArgs& Args) co
 }
 
 TSharedRef<SDockTab> SPjcTabMain::OnTabAssetsUnusedSpawn(const FSpawnTabArgs& Args) const {
-	const auto Frontend
-		= SNew(SDockTab).TabRole(PanelTab).Label(FText::FromString(TEXT("Assets Unused")))[SNew(SPjcTabUnused).TabManager(TabManager)];
+	// clang-format off
+	const auto Frontend = SNew(SDockTab).TabRole(PanelTab).Label(FText::FromString(TEXT("Assets Unused")))
+		[
+			SNew(SPjcTabUnused).TabManager(TabManager)
+		];
+	// clang-format on
 
 	Frontend->SetTabIcon(FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.PieChart16"));
 
@@ -211,7 +215,12 @@ TSharedRef<SDockTab> SPjcTabMain::OnTabAssetsUnusedSpawn(const FSpawnTabArgs& Ar
 }
 
 TSharedRef<SDockTab> SPjcTabMain::OnTabInspectorSpawn(const FSpawnTabArgs& Args) const {
-	const auto Frontend = SNew(SDockTab).TabRole(PanelTab).Label(FText::FromString(TEXT("Inspector")))[SNew(SPjcTabInspector).TabManager(TabManager)];
+	// clang-format off
+	const auto Frontend = SNew(SDockTab).TabRole(PanelTab).Label(FText::FromString(TEXT("Inspector")))
+		[
+			SNew(SPjcTabInspector).TabManager(TabManager)
+		];
+	// clang-format on
 
 	Frontend->SetTabIcon(FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.Graph16"));
 

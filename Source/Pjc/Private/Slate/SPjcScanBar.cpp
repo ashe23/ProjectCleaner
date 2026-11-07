@@ -21,14 +21,10 @@ void SPjcScanBar::Construct(const FArguments& InArgs) {
 	// clang-format off
 	ChildSlot
 	[
-		SNew(SBorder)
-		.BorderImage(PjcShim::GetBrush(TEXT("ToolPanel.GroupBorder")))
-		.Padding(FMargin {6.0f, 4.0f})
+		SNew(SBorder).BorderImage(PjcShim::GetBrush(TEXT("ToolPanel.GroupBorder"))).Padding(FMargin {6.0f, 4.0f})
 		[
 			SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot()
-			.AutoWidth()
-			.VAlign(VAlign_Center)
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 			[
 				SNew(SButton)
 				.ContentPadding(FMargin {12.0f, 2.0f})
@@ -39,9 +35,7 @@ void SPjcScanBar::Construct(const FArguments& InArgs) {
 					SNew(STextBlock).Text(FText::FromString(TEXT("Scan")))
 				]
 			]
-			+ SHorizontalBox::Slot()
-			.AutoWidth()
-			.VAlign(VAlign_Center)
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 			[
 				SNew(SButton)
 				.ButtonStyle(&PjcShim::GetPrimaryButtonStyle())
@@ -53,19 +47,14 @@ void SPjcScanBar::Construct(const FArguments& InArgs) {
 					SNew(STextBlock).Text(FText::FromString(TEXT("Rescan")))
 				]
 			]
-			+ SHorizontalBox::Slot()
-			.FillWidth(1.0f)
-			.VAlign(VAlign_Center)
-			.Padding(FMargin {10.0f, 0.0f})
+			+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center).Padding(FMargin {10.0f, 0.0f})
 			[
 				SNew(STextBlock)
 				.Text(this, &SPjcScanBar::GetStatusText)
 				.ColorAndOpacity(this, &SPjcScanBar::GetStatusColor)
 				.ToolTipText(this, &SPjcScanBar::GetStatusToolTip)
 			]
-			+ SHorizontalBox::Slot()
-			.AutoWidth()
-			.VAlign(VAlign_Center)
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 			[
 				SNew(SButton)
 				.ContentPadding(FMargin {12.0f, 2.0f})
@@ -73,7 +62,7 @@ void SPjcScanBar::Construct(const FArguments& InArgs) {
 				.IsEnabled(this, &SPjcScanBar::IsCleanEnabled)
 				.OnClicked(this, &SPjcScanBar::OnCleanClicked)
 				[
-					SNew(STextBlock).Text(FText::FromString(TEXT("Clean project…")))
+					SNew(STextBlock).Text(FText::FromString(TEXT("Clean project\u2026")))
 				]
 			]
 		]
@@ -165,7 +154,7 @@ FReply SPjcScanBar::OnCleanClicked() const {
 
 FText SPjcScanBar::GetStatusText() const {
 	if (FPjcScanDraft::IsChanged()) {
-		return FText::FromString(TEXT("Settings changed · results are from the last scan"));
+		return FText::FromString(TEXT("Settings changed \u00B7 results are from the last scan"));
 	}
 
 	const FPjcScanResult& Result = UPjcSubsystem::GetScanResult();
@@ -174,17 +163,17 @@ FText SPjcScanBar::GetStatusText() const {
 	}
 
 	const FTimespan Age = FDateTime::UtcNow() - Result.Time;
-	const FString Scanned = Age.GetTotalMinutes() < 1.0 ? TEXT("scanned just now")
-		: Age.GetTotalHours() < 1.0						? FString::Printf(TEXT("scanned %d min ago"), FMath::FloorToInt(Age.GetTotalMinutes()))
-														: FString::Printf(TEXT("scanned %d h ago"), FMath::FloorToInt(Age.GetTotalHours()));
+	const int32 Minutes = FMath::FloorToInt(Age.GetTotalMinutes());
+	const FString Ago = Minutes < 60 ? FString::Printf(TEXT("%d min ago"), Minutes) : FString::Printf(TEXT("%d h ago"), Minutes / 60);
+	const FString Scanned = Minutes < 1 ? FString {TEXT("scanned just now")} : TEXT("scanned ") + Ago;
 
 	if (NumUnused == 0) {
-		return FText::FromString(FString::Printf(TEXT("No unused assets · %s assets · %s"), *PjcFormat::Count(NumAssets), *Scanned));
+		return FText::FromString(FString::Printf(TEXT("No unused assets \u00B7 %s assets \u00B7 %s"), *PjcFormat::Count(NumAssets), *Scanned));
 	}
 
 	return FText::FromString(
 		FString::Printf(
-			TEXT("%s unused · %s · of %s assets · %s"),
+			TEXT("%s unused \u00B7 %s \u00B7 of %s assets \u00B7 %s"),
 			*PjcFormat::Count(NumUnused),
 			*PjcFormat::Size(SizeUnused),
 			*PjcFormat::Count(NumAssets),

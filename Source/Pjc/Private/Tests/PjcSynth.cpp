@@ -16,7 +16,7 @@
 
 namespace
 {
-	/** What one kit (character, environment set, prop group, ...) is made of, counts are min..max */
+	// What one kit (character, environment set, prop group, ...) is made of, counts are min..max
 	struct FPjcSynthKitShape
 	{
 		const TCHAR* Area;
@@ -267,7 +267,7 @@ namespace
 			return true;
 		}
 
-		/** Log normal around median, most assets small, few big */
+		// Log normal around median, most assets small, few big
 		int64 RandomSize(const float MedianKb, const float Spread, const float MaxKb) {
 			const float U1 = FMath::Max(Random.FRand(), 1e-6f);
 			const float U2 = Random.FRand();
@@ -303,10 +303,8 @@ namespace
 	};
 }	// namespace
 
-/**
- * Not part of ProjectCleaner.* tests. Fills /Game/PjcSynth with a large game like project (Scripts/pjc.py synth),
- * -PjcSynthAssets=N sets asset count, -PjcSynthSeed=N makes another project of same size.
- */
+// Not part of ProjectCleaner.* tests. Fills /Game/PjcSynth with a large game like project (Scripts/pjc.py synth),
+// -PjcSynthAssets=N sets asset count, -PjcSynthSeed=N makes another project of same size.
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPjcFixtureSynth, "PjcFixture.Synth", PJC_TEST_FLAGS)
 
 bool FPjcFixtureSynth::RunTest(const FString& Parameters) {

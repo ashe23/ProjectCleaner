@@ -87,9 +87,9 @@ class FPjcTestFixture
 	static bool IsTestHost();
 	static FString RootPath();
 	static FString LocalizedRootPath();
-	/** Name of the local collection PAL_Collection names */
+	// Name of the local collection PAL_Collection names
 	static FName CollectionName();
-	/** EditorValidatorBase, null when DataValidation is not loaded */
+	// EditorValidatorBase, null when DataValidation is not loaded
 	static UClass* ValidatorBaseClass();
 	static FString PluginRootPath();
 	static FString FeatureRootPath();
@@ -101,11 +101,9 @@ class FPjcTestFixture
 	FPjcTestFixture();
 	~FPjcTestFixture();
 
-	/**
-	 * Creates all fixture content and applies exclude settings. Adds test errors on failure.
-	 * @param bCreateCorruptedFile false when content is kept for another process: editor asset discovery
-	 * logs errors for corrupted packages a frame later, CLI tests create that file themselves.
-	 */
+	// Creates all fixture content and applies exclude settings. Adds test errors on failure.
+	// @param bCreateCorruptedFile false when content is kept for another process: editor asset discovery
+	// logs errors for corrupted packages a frame later, CLI tests create that file themselves.
 	bool Build(
 		FAutomationTestBase& Test,
 		const bool bApplyExcludeSettings = true,
@@ -113,10 +111,10 @@ class FPjcTestFixture
 		const bool bInLyraLayout = false
 	);
 
-	/** Removes all fixture content and restores settings. Called on destruction too. */
+	// Removes all fixture content and restores settings. Called on destruction too.
 	void Cleanup();
 
-	/** Prevent cleanup, so content stays on disk (used by CLI tests). */
+	// Prevent cleanup, so content stays on disk (used by CLI tests).
 	void Keep();
 
 	FString ObjectPath(const FString& Name) const;
@@ -131,9 +129,9 @@ class FPjcTestFixture
 	FString ExternalExcludedFile() const;
 	FString CorruptedFile() const;
 
-	/** Lyra layout files and folders that cleanup must leave untouched */
+	// Lyra layout files and folders that cleanup must leave untouched
 	TArray<FString> LyraKeptFiles() const;
-	/** Project relative paths pjc.py removes after commandlet tests */
+	// Project relative paths pjc.py removes after commandlet tests
 	TArray<FString> LyraCleanupPaths() const;
 
   private:

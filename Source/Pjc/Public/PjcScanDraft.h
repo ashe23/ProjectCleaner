@@ -17,18 +17,18 @@ struct FPjcScanDraft
 	bool bFolderLabelsUsed = true;
 	bool bCinematicAssetsUsed = true;
 
-	/** Always used classes, as class paths */
+	// Always used classes, as class paths
 	TArray<FString> UsedClasses;
 
-	/** Exclusions (UPjcAssetExcludeSettings): folder paths, class paths, asset object paths */
+	// Exclusions (UPjcAssetExcludeSettings): folder paths, class paths, asset object paths
 	TArray<FString> ExcludedFolders;
 	TArray<FString> ExcludedClasses;
 	TArray<FString> ExcludedAssets;
 
-	/** What the project settings hold now */
+	// What the project settings hold now
 	static FPjcScanDraft FromSettings();
 
-	/** Writes the draft into the project settings and exclusions, and DefaultEditor.ini */
+	// Writes the draft into the project settings and exclusions, and DefaultEditor.ini
 	void ApplyToSettings() const;
 
 	bool operator==(const FPjcScanDraft& Other) const;
@@ -36,18 +36,18 @@ struct FPjcScanDraft
 		return !(*this == Other);
 	}
 
-	/** The draft every tool edits. Follows the project settings until it is edited (NotifyEdited). */
+	// The draft every tool edits. Follows the project settings until it is edited (NotifyEdited).
 	static FPjcScanDraft& Get();
 
-	/** True when the draft differs from the project settings: results are from the last scan */
+	// True when the draft differs from the project settings: results are from the last scan
 	static bool IsChanged();
 
-	/** Call after editing the draft: it stops following the settings and every panel shows the edit */
+	// Call after editing the draft: it stops following the settings and every panel shows the edit
 	static void NotifyEdited();
 
-	/** Back to the project settings (Undo) */
+	// Back to the project settings (Undo)
 	static void Revert();
 
-	/** Broadcast after the draft was edited or reverted, so every Scan settings panel shows it */
+	// Broadcast after the draft was edited or reverted, so every Scan settings panel shows it
 	static FSimpleMulticastDelegate& OnEdited();
 };

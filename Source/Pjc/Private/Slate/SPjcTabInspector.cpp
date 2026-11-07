@@ -90,7 +90,7 @@ namespace
 		return Assets.Num() > 0 ? Assets[0] : FAssetData {};
 	}
 
-	/** Toggle of a row of filters, on while IsOn */
+	// Toggle of a row of filters, on while IsOn
 	TSharedRef<SWidget> PjcInspectorToggle(const FString& Label, const FString& ToolTip, TFunction<bool()> IsOn, TFunction<void()> OnClick) {
 		// clang-format off
 		return SNew(SCheckBox)
@@ -118,12 +118,14 @@ namespace
 				return FReply::Handled();
 			})
 			[
-				SNew(STextBlock).Text(FText::FromString(Label)).ColorAndOpacity(Color.IsNone() ? FSlateColor::UseForeground() : FSlateColor {FLinearColor::White})
+				SNew(STextBlock)
+				.Text(FText::FromString(Label))
+				.ColorAndOpacity(Color.IsNone() ? FSlateColor::UseForeground() : FSlateColor {FLinearColor::White})
 			];
 		// clang-format on
 	}
 
-	/** Fact of the details: muted label, then the value */
+	// Fact of the details: muted label, then the value
 	TSharedRef<SWidget> PjcInspectorFact(const FString& Label, const TSharedRef<SWidget>& Value) {
 		// clang-format off
 		return SNew(SHorizontalBox)
@@ -153,12 +155,9 @@ void SPjcTabInspector::Construct(const FArguments& InArgs) {
 	// clang-format off
 	ChildSlot
 	[
-		SNew(SPjcToolFrame)
-		.PageName(TEXT("Inspector"))
-		.PanelOpen(false)
+		SNew(SPjcToolFrame).PageName(TEXT("Inspector")).PanelOpen(false)
 		[
-			SNew(SSplitter)
-			.PhysicalSplitterHandleSize(3.0f)
+			SNew(SSplitter).PhysicalSplitterHandleSize(3.0f)
 			+ SSplitter::Slot().Value(0.22f)
 			[
 				MakeFinder()
@@ -326,9 +325,7 @@ TSharedRef<SWidget> SPjcTabInspector::MakeFinder() {
 	};
 
 	// clang-format off
-	return SNew(SBorder)
-		.BorderImage(PjcShim::GetBrush(TEXT("ToolPanel.GroupBorder")))
-		.Padding(0.0f)
+	return SNew(SBorder).BorderImage(PjcShim::GetBrush(TEXT("ToolPanel.GroupBorder"))).Padding(0.0f)
 		[
 			SNew(SVerticalBox)
 			+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {8.0f, 8.0f, 8.0f, 4.0f})
@@ -343,15 +340,29 @@ TSharedRef<SWidget> SPjcTabInspector::MakeFinder() {
 			+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {8.0f, 0.0f, 8.0f, 4.0f})
 			[
 				SNew(SWrapBox).UseAllottedSize(true).InnerSlotPadding(FVector2D {2.0f, 2.0f})
-				+ SWrapBox::Slot()[Status(EStatusFilter::All, TEXT("All"), TEXT("Every scanned asset"))]
-				+ SWrapBox::Slot()[Status(EStatusFilter::Used, TEXT("Used"), TEXT("Used by the game"))]
-				+ SWrapBox::Slot()[Status(EStatusFilter::EditorOnly, TEXT("Editor only"), TEXT("Used, but only the editor needs it. Cleanup keeps it."))]
-				+ SWrapBox::Slot()[Status(EStatusFilter::Unused, TEXT("Unused"), TEXT("Nothing used references it. Cleanup deletes it."))]
+				+ SWrapBox::Slot()
+				[
+					Status(EStatusFilter::All, TEXT("All"), TEXT("Every scanned asset"))
+				]
+				+ SWrapBox::Slot()
+				[
+					Status(EStatusFilter::Used, TEXT("Used"), TEXT("Used by the game"))
+				]
+				+ SWrapBox::Slot()
+				[
+					Status(EStatusFilter::EditorOnly, TEXT("Editor only"), TEXT("Used, but only the editor needs it. Cleanup keeps it."))
+				]
+				+ SWrapBox::Slot()
+				[
+					Status(EStatusFilter::Unused, TEXT("Unused"), TEXT("Nothing used references it. Cleanup deletes it."))
+				]
 			]
 			+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {10.0f, 0.0f, 8.0f, 4.0f})
 			[
 				SNew(STextBlock)
-				.Text_Lambda([this]() { return FText::FromString(PjcFormat::Count(FinderRows.Num()) + (FinderRows.Num() == 1 ? TEXT(" asset") : TEXT(" assets"))); })
+				.Text_Lambda([this]() {
+					return FText::FromString(PjcFormat::Count(FinderRows.Num()) + (FinderRows.Num() == 1 ? TEXT(" asset") : TEXT(" assets")));
+				})
 				.ColorAndOpacity(FSlateColor::UseSubduedForeground())
 				.Font(FPjcStyles::GetFont("Regular", 8))
 			]
@@ -419,7 +430,9 @@ TSharedRef<ITableRow> SPjcTabInspector::OnGenerateFinderRow(FRowPtr Row, const T
 	// clang-format off
 	return SNew(STableRow<FRowPtr>, Table)
 		.Padding(FMargin {6.0f, 2.0f})
-		.ToolTipText(FText::FromString(Row->Package.ToString() + TEXT("\n") + Row->ClassLabel + TEXT(" · ") + PjcInspectorStatusText(Row->Status, true)))
+		.ToolTipText(
+			FText::FromString(Row->Package.ToString() + TEXT("\n") + Row->ClassLabel + TEXT(" \u00B7 ") + PjcInspectorStatusText(Row->Status, true))
+		)
 		[
 			SNew(SHorizontalBox)
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 6.0f, 0.0f})
@@ -458,8 +471,7 @@ TSharedRef<ITableRow> SPjcTabInspector::OnGenerateFinderRow(FRowPtr Row, const T
 TSharedRef<SWidget> SPjcTabInspector::MakeGraphPane() {
 	const auto Legend = [](const FString& Label, const FString& Color, const FString& ToolTip) {
 		// clang-format off
-		return SNew(SHorizontalBox)
-			.ToolTipText(FText::FromString(ToolTip))
+		return SNew(SHorizontalBox).ToolTipText(FText::FromString(ToolTip))
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 5.0f, 0.0f})
 			[
 				SNew(SBox).WidthOverride(16.0f).HeightOverride(2.0f)
@@ -469,7 +481,10 @@ TSharedRef<SWidget> SPjcTabInspector::MakeGraphPane() {
 			]
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 			[
-				SNew(STextBlock).Text(FText::FromString(Label)).Font(FPjcStyles::GetFont("Regular", 8)).ColorAndOpacity(FSlateColor::UseSubduedForeground())
+				SNew(STextBlock)
+				.Text(FText::FromString(Label))
+				.Font(FPjcStyles::GetFont("Regular", 8))
+				.ColorAndOpacity(FSlateColor::UseSubduedForeground())
 			];
 		// clang-format on
 	};
@@ -539,7 +554,10 @@ TSharedRef<SWidget> SPjcTabInspector::MakeGraphPane() {
 						]
 						+ SVerticalBox::Slot().AutoHeight()
 						[
-							SNew(STextBlock).Text(this, &SPjcTabInspector::GetGraphSubtitle).Font(FPjcStyles::GetFont("Regular", 8)).ColorAndOpacity(FSlateColor::UseSubduedForeground())
+							SNew(STextBlock)
+							.Text(this, &SPjcTabInspector::GetGraphSubtitle)
+							.Font(FPjcStyles::GetFont("Regular", 8))
+							.ColorAndOpacity(FSlateColor::UseSubduedForeground())
 						]
 					]
 				]
@@ -575,14 +593,16 @@ TSharedRef<SWidget> SPjcTabInspector::MakeGraphPane() {
 						SNew(SHorizontalBox)
 						+ SHorizontalBox::Slot().AutoWidth()
 						[
-							Small(TEXT("−"), TEXT("Zoom out (mouse wheel)"), [this]() { GraphView->ZoomBy(0.8f); })
+							Small(TEXT("\u2212"), TEXT("Zoom out (mouse wheel)"), [this]() { GraphView->ZoomBy(0.8f); })
 						]
 						+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {4.0f, 0.0f})
 						[
 							SNew(SBox).WidthOverride(40.0f).HAlign(HAlign_Center)
 							[
 								SNew(STextBlock)
-								.Text_Lambda([this]() { return FText::FromString(FString::Printf(TEXT("%d%%"), FMath::RoundToInt(GraphView->GetZoom() * 100.0f))); })
+								.Text_Lambda([this]() {
+									return FText::FromString(FString::Printf(TEXT("%d%%"), FMath::RoundToInt(GraphView->GetZoom() * 100.0f)));
+								})
 								.Font(PjcWidgets::GetFontMono(8))
 								.ColorAndOpacity(FSlateColor::UseSubduedForeground())
 							]
@@ -610,14 +630,26 @@ TSharedRef<SWidget> SPjcTabInspector::MakeGraphPane() {
 				.Padding(FMargin {10.0f, 5.0f})
 				[
 					SNew(SWrapBox).UseAllottedSize(true).InnerSlotPadding(FVector2D {14.0f, 2.0f})
-					+ SWrapBox::Slot()[Legend(TEXT("Root source"), TEXT("#8A7440"), TEXT("Why the root is used: Asset Manager, config, code, exclusions"))]
-					+ SWrapBox::Slot()[Legend(TEXT("Hard"), TEXT("#2C9A8F"), TEXT("Loads with the asset that references it"))]
-					+ SWrapBox::Slot()[Legend(TEXT("Soft (dashed)"), TEXT("#2C9A8F"), TEXT("Loaded on demand by path"))]
-					+ SWrapBox::Slot()[Legend(TEXT("Editor only (dotted)"), TEXT("#7FB2FF"), TEXT("Kept in the editor, not cooked"))]
+					+ SWrapBox::Slot()
+					[
+						Legend(TEXT("Root source"), TEXT("#8A7440"), TEXT("Why the root is used: Asset Manager, config, code, exclusions"))
+					]
+					+ SWrapBox::Slot()
+					[
+						Legend(TEXT("Hard"), TEXT("#2C9A8F"), TEXT("Loads with the asset that references it"))
+					]
+					+ SWrapBox::Slot()
+					[
+						Legend(TEXT("Soft (dashed)"), TEXT("#2C9A8F"), TEXT("Loaded on demand by path"))
+					]
+					+ SWrapBox::Slot()
+					[
+						Legend(TEXT("Editor only (dotted)"), TEXT("#7FB2FF"), TEXT("Kept in the editor, not cooked"))
+					]
 					+ SWrapBox::Slot()
 					[
 						SNew(STextBlock)
-						.Text(FText::FromString(TEXT("Wheel zoom · Drag pan · F frame · Home fit · Double-click inspect")))
+						.Text(FText::FromString(TEXT("Wheel zoom \u00B7 Drag pan \u00B7 F frame \u00B7 Home fit \u00B7 Double-click inspect")))
 						.Font(FPjcStyles::GetFont("Regular", 8))
 						.ColorAndOpacity(FSlateColor::UseSubduedForeground())
 					]
@@ -665,17 +697,16 @@ FText SPjcTabInspector::GetGraphSubtitle() const {
 
 	if (Graph.bUnusedGroup) {
 		const int32 Num = Graph.Nodes.Num();
-		return FText::FromString(
-			Num > 1 ? FString::Printf(TEXT("Unused · deleted together with %d unused asset%s around it"), Num - 1, Num == 2 ? TEXT("") : TEXT("s"))
-					: TEXT("Unused · nothing references it")
-		);
+		const TCHAR* Plural = Num == 2 ? TEXT("") : TEXT("s");
+		const FString Together = FString::Printf(TEXT("Unused \u00B7 deleted together with %d unused asset%s around it"), Num - 1, Plural);
+		return FText::FromString(Num > 1 ? Together : FString {TEXT("Unused \u00B7 nothing references it")});
 	}
-	if (Graph.NumRoots == 0) return FText::FromString(TEXT("Not scanned · outside the scanned content"));
+	if (Graph.NumRoots == 0) return FText::FromString(TEXT("Not scanned \u00B7 outside the scanned content"));
 
-	FString Text
-		= Graph.NumRoots == 1 ? TEXT("1 root keeps it used") : FString::Printf(TEXT("%s roots keep it used"), *PjcFormat::Count(Graph.NumRoots));
+	const FString RootsText = PjcFormat::Count(Graph.NumRoots);
+	FString Text = Graph.NumRoots == 1 ? TEXT("1 root keeps it used") : FString::Printf(TEXT("%s roots keep it used"), *RootsText);
 	if (Graph.NumHidden > 0) {
-		Text += FString::Printf(TEXT(" · %d longest paths drawn"), FPjcInspectorGraph::MaxPaths);
+		Text += FString::Printf(TEXT(" \u00B7 %d longest paths drawn"), FPjcInspectorGraph::MaxPaths);
 	}
 	return FText::FromString(Text);
 }
@@ -684,9 +715,7 @@ FText SPjcTabInspector::GetGraphSubtitle() const {
 
 TSharedRef<SWidget> SPjcTabInspector::MakeDetails() {
 	// clang-format off
-	return SNew(SBorder)
-		.BorderImage(PjcShim::GetBrush(TEXT("ToolPanel.GroupBorder")))
-		.Padding(0.0f)
+	return SNew(SBorder).BorderImage(PjcShim::GetBrush(TEXT("ToolPanel.GroupBorder"))).Padding(0.0f)
 		[
 			SAssignNew(DetailsBox, SBox)
 		];
@@ -709,9 +738,7 @@ void SPjcTabInspector::RebuildDetails() {
 		DetailsBox->SetContent(
 			SNew(SBox).Padding(16.0f).HAlign(HAlign_Center).VAlign(VAlign_Center)
 			[
-				SNew(STextBlock)
-				.Text(FText::FromString(TEXT("Select an asset in the graph")))
-				.ColorAndOpacity(FSlateColor::UseSubduedForeground())
+				SNew(STextBlock).Text(FText::FromString(TEXT("Select an asset in the graph"))).ColorAndOpacity(FSlateColor::UseSubduedForeground())
 			]
 		);
 		// clang-format on
@@ -750,8 +777,8 @@ void SPjcTabInspector::RebuildDetails() {
 			Row->Kind = EPjcLinkKind::EditorOnly;
 		}
 		else {
-			Row->Kind
-				= EnumHasAnyFlags(Dependency.Properties, UE::AssetRegistry::EDependencyProperty::Hard) ? EPjcLinkKind::Hard : EPjcLinkKind::Soft;
+			const bool bHardLink = EnumHasAnyFlags(Dependency.Properties, UE::AssetRegistry::EDependencyProperty::Hard);
+			Row->Kind = bHardLink ? EPjcLinkKind::Hard : EPjcLinkKind::Soft;
 		}
 		Row->bInGraph = InGraph(Package, Name);
 		UsesRows.Add(Row);
@@ -797,14 +824,21 @@ void SPjcTabInspector::RebuildDetails() {
 					.BorderBackgroundColor(StatusColor * FLinearColor {0.35f, 0.35f, 0.35f, 1.0f})
 					.Padding(FMargin {7.0f, 1.0f})
 					[
-						SNew(STextBlock).Text(FText::FromString(PjcInspectorStatusText(Status, bScanned))).ColorAndOpacity(StatusColor).Font(FPjcStyles::GetFont("Bold", 8))
+						SNew(STextBlock)
+						.Text(FText::FromString(PjcInspectorStatusText(Status, bScanned)))
+						.ColorAndOpacity(StatusColor)
+						.Font(FPjcStyles::GetFont("Bold", 8))
 					]
 				]
 			]
 			+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {0.0f, 4.0f, 0.0f, 8.0f})
 			[
 				SNew(STextBlock)
-				.Text(FText::FromString(FString::Printf(TEXT("%s · %s · %s"), *Type.Label, *PjcFormat::Size(Result.GetSize(Package)), *Package.ToString())))
+				.Text(
+					FText::FromString(
+						FString::Printf(TEXT("%s \u00B7 %s \u00B7 %s"), *Type.Label, *PjcFormat::Size(Result.GetSize(Package)), *Package.ToString())
+					)
+				)
 				.ColorAndOpacity(FSlateColor::UseSubduedForeground())
 				.AutoWrapText(true)
 			]
@@ -819,9 +853,7 @@ void SPjcTabInspector::RebuildDetails() {
 		]
 		+ SVerticalBox::Slot().FillHeight(1.0f)
 		[
-			SNew(SSplitter)
-			.Orientation(Orient_Vertical)
-			.PhysicalSplitterHandleSize(3.0f)
+			SNew(SSplitter).Orientation(Orient_Vertical).PhysicalSplitterHandleSize(3.0f)
 			+ SSplitter::Slot().Value(0.5f)
 			[
 				MakeLinkList(true)
@@ -841,7 +873,12 @@ TSharedRef<SWidget> SPjcTabInspector::MakeFacts() {
 	const FPjcAssetUsage* Usage = Result.Usage.Find(Package);
 	const TSharedRef<SVerticalBox> Facts = SNew(SVerticalBox);
 	const auto Add = [&Facts](const FString& Label, const TSharedRef<SWidget>& Value) {
-		Facts->AddSlot().AutoHeight().Padding(FMargin {0.0f, 2.0f})[PjcInspectorFact(Label, Value)];
+		// clang-format off
+		Facts->AddSlot().AutoHeight().Padding(FMargin {0.0f, 2.0f})
+		[
+			PjcInspectorFact(Label, Value)
+		];
+		// clang-format on
 	};
 
 	if (!Usage) {
@@ -864,10 +901,11 @@ TSharedRef<SWidget> SPjcTabInspector::MakeFacts() {
 					return Existing.Kind == EPjcInspectorNodeKind::Group && Existing.Roots.Contains(Root.Package);
 				});
 			}
-			const FString Steps
-				= Root.Steps == 0 ? TEXT("itself") : FString::Printf(TEXT("%d step%s"), Root.Steps, Root.Steps == 1 ? TEXT("") : TEXT("s"));
-			const FString ToolTip = (RootUsage ? UPjcSubsystem::GetUsageReasonText(*RootUsage) : FString {})
-				+ (Node == INDEX_NONE ? TEXT("\nNot drawn: the graph shows the longest paths") : TEXT("\nClick to select it in the graph"));
+			const TCHAR* StepPlural = Root.Steps == 1 ? TEXT("") : TEXT("s");
+			const FString Steps = Root.Steps == 0 ? TEXT("itself") : FString::Printf(TEXT("%d step%s"), Root.Steps, StepPlural);
+			const FString ReasonText = RootUsage ? UPjcSubsystem::GetUsageReasonText(*RootUsage) : FString {};
+			const TCHAR* NotDrawn = TEXT("\nNot drawn: the graph shows the longest paths");
+			const FString ToolTip = ReasonText + (Node == INDEX_NONE ? NotDrawn : TEXT("\nClick to select it in the graph"));
 			// clang-format off
 			Chips->AddSlot()
 			[
@@ -892,16 +930,22 @@ TSharedRef<SWidget> SPjcTabInspector::MakeFacts() {
 					]
 					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {5.0f, 0.0f, 0.0f, 0.0f})
 					[
-						SNew(STextBlock).Text(FText::FromString(Steps)).Font(FPjcStyles::GetFont("Regular", 7)).ColorAndOpacity(FSlateColor::UseSubduedForeground())
+						SNew(STextBlock)
+						.Text(FText::FromString(Steps))
+						.Font(FPjcStyles::GetFont("Regular", 7))
+						.ColorAndOpacity(FSlateColor::UseSubduedForeground())
 					]
 				]
 			];
 			// clang-format on
 		}
 		if (Own.Roots.Num() > PjcInspectorMaxChips) {
-			Chips->AddSlot()[PjcInspectorText(
-				FString::Printf(TEXT("+%s more"), *PjcFormat::Count(Own.Roots.Num() - PjcInspectorMaxChips)), FLinearColor::Gray
-			)];
+			// clang-format off
+			Chips->AddSlot()
+			[
+				PjcInspectorText(FString::Printf(TEXT("+%s more"), *PjcFormat::Count(Own.Roots.Num() - PjcInspectorMaxChips)), FLinearColor::Gray)
+			];
+			// clang-format on
 		}
 		if (Own.Roots.Num() > 0) {
 			Add(Own.Roots.Num() == 1 ? TEXT("Root") : FString::Printf(TEXT("Roots (%s)"), *PjcFormat::Count(Own.Roots.Num())), Chips);
@@ -920,18 +964,14 @@ TSharedRef<SWidget> SPjcTabInspector::MakeFacts() {
 	for (const FName Other : Group) {
 		Size += Result.GetSize(Other);
 	}
-	Add(TEXT("Cleanup"),
-		PjcInspectorText(
-			Group.Num() > 0 ? FString::Printf(
-								  TEXT("Deleted with %s unused asset%s · %s"),
-								  *PjcFormat::Count(Group.Num()),
-								  Group.Num() == 1 ? TEXT("") : TEXT("s"),
-								  *PjcFormat::Size(Size)
-							  )
-							: FString::Printf(TEXT("Deleted · %s"), *PjcFormat::Size(Size))
-		));
+	const TCHAR* GroupPlural = Group.Num() == 1 ? TEXT("") : TEXT("s");
+	const FString SizeText = PjcFormat::Size(Size);
+	const FString GroupText = PjcFormat::Count(Group.Num());
+	const FString WithGroup = FString::Printf(TEXT("Deleted with %s unused asset%s \u00B7 %s"), *GroupText, GroupPlural, *SizeText);
+	const FString Cleanup = Group.Num() > 0 ? WithGroup : FString::Printf(TEXT("Deleted \u00B7 %s"), *SizeText);
+	Add(TEXT("Cleanup"), PjcInspectorText(Cleanup));
 	if (const FString* Holder = UPjcSubsystem::GetLastCleanupKept().Find(Package)) {
-		Add(TEXT("Last cleanup"), PjcInspectorText(TEXT("Not deleted · ") + *Holder, PjcInspectorHex(TEXT("#FFCB77"))));
+		Add(TEXT("Last cleanup"), PjcInspectorText(TEXT("Not deleted \u00B7 ") + *Holder, PjcInspectorHex(TEXT("#FFCB77"))));
 	}
 	return Facts;
 }
@@ -943,18 +983,30 @@ TSharedRef<SWidget> SPjcTabInspector::MakeActions() {
 	const TSharedRef<SWrapBox> Actions = SNew(SWrapBox).UseAllottedSize(true).InnerSlotPadding(FVector2D {4.0f, 4.0f});
 
 	if (Package != Focus) {
-		Actions->AddSlot()[PjcInspectorButton(
-			TEXT("Inspect"), TEXT("Shows why this asset is used"), TEXT("ProjectCleaner.Color.Accent"), [this, Package]() {
-				SetFocus(Package, true);
-			}
-		)];
+		// clang-format off
+		Actions->AddSlot()
+		[
+			PjcInspectorButton(
+				TEXT("Inspect"),
+				TEXT("Shows why this asset is used"),
+				TEXT("ProjectCleaner.Color.Accent"),
+				[this, Package]() { SetFocus(Package, true); }
+			)
+		];
+		// clang-format on
 	}
 	if (bScanned && !Result.IsUsed(Package)) {
-		Actions->AddSlot()[PjcInspectorButton(
-			TEXT("Delete…"), TEXT("Deletes it with the unused assets only it keeps, after asking"), TEXT("ProjectCleaner.Color.Red"), [this]() {
-				DeleteSelected();
-			}
-		)];
+		// clang-format off
+		Actions->AddSlot()
+		[
+			PjcInspectorButton(
+				TEXT("Delete\u2026"),
+				TEXT("Deletes it with the unused assets only it keeps, after asking"),
+				TEXT("ProjectCleaner.Color.Red"),
+				[this]() { DeleteSelected(); }
+			)
+		];
+		// clang-format on
 	}
 	if (bScanned) {
 		// clang-format off
@@ -971,12 +1023,16 @@ TSharedRef<SWidget> SPjcTabInspector::MakeActions() {
 		];
 		// clang-format on
 	}
-	Actions->AddSlot()[PjcInspectorButton(TEXT("Open"), TEXT("Opens the asset editor"), NAME_None, [this]() {
-		OpenSelected();
-	})];
-	Actions->AddSlot()[PjcInspectorButton(TEXT("Browse"), TEXT("Selects the asset in the Content Browser"), NAME_None, [this]() {
-		BrowseSelected();
-	})];
+	// clang-format off
+	Actions->AddSlot()
+	[
+		PjcInspectorButton(TEXT("Open"), TEXT("Opens the asset editor"), NAME_None, [this]() { OpenSelected(); })
+	];
+	Actions->AddSlot()
+	[
+		PjcInspectorButton(TEXT("Browse"), TEXT("Selects the asset in the Content Browser"), NAME_None, [this]() { BrowseSelected(); })
+	];
+	// clang-format on
 	return Actions;
 }
 
@@ -1012,23 +1068,26 @@ TSharedRef<SWidget> SPjcTabInspector::MakeGroupDetails(const FPjcInspectorNode& 
 				]
 				+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
 				[
-					SNew(STextBlock).Text(FText::FromString(FString::Printf(TEXT("%d × %s roots"), Node.Roots.Num(), *Type.Label))).Font(FPjcStyles::GetFont("Bold", 11))
+					SNew(STextBlock)
+					.Text(FText::FromString(FString::Printf(TEXT("%d \u00D7 %s roots"), Node.Roots.Num(), *Type.Label)))
+					.Font(FPjcStyles::GetFont("Bold", 11))
 				]
 			]
 			+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {0.0f, 4.0f, 0.0f, 8.0f})
 			[
-				PjcInspectorText(FString::Printf(TEXT("Roots of one class, drawn as one box · %s"), *PjcFormat::Size(Size)), FLinearColor::Gray)
+				PjcInspectorText(FString::Printf(TEXT("Roots of one class, drawn as one box \u00B7 %s"), *PjcFormat::Size(Size)), FLinearColor::Gray)
 			]
 			+ SVerticalBox::Slot().AutoHeight()
 			[
 				SNew(SHorizontalBox)
 				+ SHorizontalBox::Slot().AutoWidth()
 				[
-					PjcInspectorButton(TEXT("Show each"), TEXT("Draws the roots one by one (also: double-click the box)"), TEXT("ProjectCleaner.Color.Accent"), [this, GroupClass]() {
-						OpenGroups.Add(GroupClass);
-						RebuildGraph();
-						Select(Graph.FindNode(Focus));
-					})
+					PjcInspectorButton(
+						TEXT("Show each"),
+						TEXT("Draws the roots one by one (also: double-click the box)"),
+						TEXT("ProjectCleaner.Color.Accent"),
+						[this, GroupClass]() { OpenGroups.Add(GroupClass); RebuildGraph(); Select(Graph.FindNode(Focus)); }
+					)
 				]
 			]
 		]
@@ -1049,19 +1108,17 @@ TSharedRef<SWidget> SPjcTabInspector::MakeLinkList(const bool bUsedBy) {
 	FString Title = bGroup ? TEXT("Roots") : (bUsedBy ? TEXT("Used by") : TEXT("Uses"));
 	Title += FString::Printf(TEXT("  %s"), *PjcFormat::Count(Rows.Num()));
 	if (NumUnused > 0) {
-		Title += FString::Printf(TEXT(" · %s unused"), *PjcFormat::Count(NumUnused));
+		Title += FString::Printf(TEXT(" \u00B7 %s unused"), *PjcFormat::Count(NumUnused));
 	}
-	const FString Empty
-		= bUsedBy ? (Graph.bUnusedGroup ? TEXT("Nothing references it") : TEXT("Nothing references it: it is a root")) : TEXT("Uses no other asset");
+	const TCHAR* NoUsers = Graph.bUnusedGroup ? TEXT("Nothing references it") : TEXT("Nothing references it: it is a root");
+	const FString Empty = bUsedBy ? NoUsers : TEXT("Uses no other asset");
 
 	TSharedPtr<SListView<FRowPtr>>& List = bUsedBy ? UsedByList : UsesList;
 	// clang-format off
 	return SNew(SVerticalBox)
 		+ SVerticalBox::Slot().AutoHeight()
 		[
-			SNew(SBorder)
-			.BorderImage(PjcShim::GetBrush(TEXT("ToolPanel.DarkGroupBorder")))
-			.Padding(FMargin {12.0f, 4.0f})
+			SNew(SBorder).BorderImage(PjcShim::GetBrush(TEXT("ToolPanel.DarkGroupBorder"))).Padding(FMargin {12.0f, 4.0f})
 			[
 				SNew(STextBlock).Text(FText::FromString(Title)).Font(FPjcStyles::GetFont("Bold", 9))
 			]
@@ -1094,18 +1151,16 @@ TSharedRef<SWidget> SPjcTabInspector::MakeLinkList(const bool bUsedBy) {
 TSharedRef<ITableRow> SPjcTabInspector::OnGenerateLinkRow(FRowPtr Row, const TSharedRef<STableViewBase>& Table) {
 	const bool bGroup = Graph.Nodes.IsValidIndex(Selected) && Graph.Nodes[Selected].Kind == EPjcInspectorNodeKind::Group;
 	const FString ToolTip = FString::Printf(
-		TEXT("%s\n%s · %s%s\nDouble-click to inspect it"),
+		TEXT("%s\n%s \u00B7 %s%s\nDouble-click to inspect it"),
 		*Row->Package.ToString(),
 		*Row->ClassLabel,
 		PjcInspectorStatusText(Row->Status, Row->bScanned),
-		Row->bInGraph ? TEXT(" · drawn in the graph") : TEXT("")
+		Row->bInGraph ? TEXT(" \u00B7 drawn in the graph") : TEXT("")
 	);
 	const FName Package = Row->Package;
 
 	// clang-format off
-	return SNew(STableRow<FRowPtr>, Table)
-		.Padding(FMargin {8.0f, 2.0f})
-		.ToolTipText(FText::FromString(ToolTip))
+	return SNew(STableRow<FRowPtr>, Table).Padding(FMargin {8.0f, 2.0f}).ToolTipText(FText::FromString(ToolTip))
 		[
 			SNew(SHorizontalBox)
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 6.0f, 0.0f})
@@ -1121,9 +1176,7 @@ TSharedRef<ITableRow> SPjcTabInspector::OnGenerateLinkRow(FRowPtr Row, const TSh
 			]
 			+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
 			[
-				SNew(STextBlock)
-				.Text(FText::FromString(Row->Name))
-				.Font(FPjcStyles::GetFont(Row->bInGraph ? "Bold" : "Regular", 9))
+				SNew(STextBlock).Text(FText::FromString(Row->Name)).Font(FPjcStyles::GetFont(Row->bInGraph ? "Bold" : "Regular", 9))
 			]
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
 			[
@@ -1145,7 +1198,7 @@ TSharedRef<ITableRow> SPjcTabInspector::OnGenerateLinkRow(FRowPtr Row, const TSh
 					return FReply::Handled();
 				})
 				[
-					SNew(STextBlock).Text(FText::FromString(TEXT("→"))).Font(FPjcStyles::GetFont("Regular", 8))
+					SNew(STextBlock).Text(FText::FromString(TEXT("\u2192"))).Font(FPjcStyles::GetFont("Regular", 8))
 				]
 			]
 		];
