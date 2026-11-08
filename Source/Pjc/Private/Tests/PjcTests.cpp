@@ -206,6 +206,9 @@ bool FPjcTestPaths::RunTest(const FString& Parameters) {
 #if ENGINE_MAJOR_VERSION >= 5
 	TestTrue(TEXT("external actors folder"), UPjcSubsystem::FolderIsExternal(TEXT("/Game/__ExternalActors__/Maps/Main")));
 	TestTrue(TEXT("external objects folder"), UPjcSubsystem::FolderIsExternal(TEXT("/Game/__ExternalObjects__/Maps/Main")));
+	FPjcTestFixture::Case(*this, TEXT("external actor folders"));
+#else
+	FPjcTestFixture::Case(*this, TEXT("external actor folders"), TEXT("UE 4 has no external actors"));
 #endif
 	TestFalse(TEXT("regular folder is not external"), UPjcSubsystem::FolderIsExternal(TEXT("/Game/Maps")));
 
@@ -481,9 +484,10 @@ bool FPjcTestScanUsage::RunTest(const FString& Parameters) {
 	TestReason(TEXT("BP_AnimModifier"), EPjcUsageReason::Editor, nullptr, nullptr);
 	if (FPjcTestFixture::ValidatorBaseClass()) {
 		TestReason(TEXT("BP_Validator"), EPjcUsageReason::Editor, nullptr, nullptr);
+		FPjcTestFixture::Case(*this, TEXT("validator blueprint"));
 	}
 	else {
-		AddInfo(TEXT("DataValidation not loaded, validator blueprint not tested"));
+		FPjcTestFixture::Case(*this, TEXT("validator blueprint"), TEXT("DataValidation plugin not loaded"));
 	}
 	TestReason(TEXT("C_ByAsset"), EPjcUsageReason::Excluded, nullptr, TEXT("Excluded asset"));
 	TestReason(TEXT("C_ByFolder"), EPjcUsageReason::Excluded, nullptr, TEXT("In excluded folder"));
@@ -507,9 +511,10 @@ bool FPjcTestScanUsage::RunTest(const FString& Parameters) {
 		TestReason(TEXT("GC_PjcTest_Unfired"), EPjcUsageReason::GameplayCueNotFired, nullptr, TEXT("GameplayCue.PjcTest.Unfired"));
 		TestReason(TEXT("GC_PjcTest_ByUnused"), EPjcUsageReason::GameplayCueNotFired, nullptr, nullptr);
 		TestReason(TEXT("GC_PjcTest_Outside"), EPjcUsageReason::GameplayCueNotFired, nullptr, TEXT("outside"));
+		FPjcTestFixture::Case(*this, TEXT("GameplayCue reasons"));
 	}
 	else {
-		AddInfo(TEXT("GameplayAbilities not loaded, GameplayCue cases skipped"));
+		FPjcTestFixture::Case(*this, TEXT("GameplayCue reasons"), TEXT("GameplayAbilities plugin not loaded"));
 	}
 
 	const FPjcAssetUsage* Packaged = Usage.Find(PackageOf(Fixture, TEXT("C_Packaged")));
@@ -1395,9 +1400,10 @@ bool FPjcTestUiReport::RunTest(const FString& Parameters) {
 		const FString LogText = SPjcReportWindow::GetLogText();
 		TestTrue(TEXT("log lines include the plugin line"), LogText.Contains(Marker));
 		TestFalse(TEXT("log lines are only the plugin's"), LogText.Contains(TEXT("LogInit:")));
+		FPjcTestFixture::Case(*this, TEXT("report log lines"));
 	}
 	else {
-		AddInfo(TEXT("Log lines not checked: this editor writes no log file"));
+		FPjcTestFixture::Case(*this, TEXT("report log lines"), TEXT("this editor writes no log file"));
 	}
 
 	// the last crash, only with Project Cleaner in its call stack
@@ -1412,7 +1418,7 @@ bool FPjcTestUiReport::RunTest(const FString& Parameters) {
 	TestTrue(TEXT("crash without the plugin not offered"), SPjcReportWindow::GetLastCrashText().IsEmpty());
 
 	if (!FSlateApplication::IsInitialized()) {
-		AddInfo(TEXT("Report window not built: Slate is not initialized"));
+		FPjcTestFixture::Case(*this, TEXT("report window"), TEXT("Slate is not initialized"));
 		return true;
 	}
 
@@ -1423,6 +1429,7 @@ bool FPjcTestUiReport::RunTest(const FString& Parameters) {
 	TestTrue(TEXT("report has system info"), Text.Contains(TEXT("### System info")));
 	TestTrue(TEXT("report has scan settings"), Text.Contains(TEXT("### Scan settings")));
 	TestFalse(TEXT("report hides the user"), !User.IsEmpty() && Text.Contains(User));
+	FPjcTestFixture::Case(*this, TEXT("report window"));
 	return true;
 }
 

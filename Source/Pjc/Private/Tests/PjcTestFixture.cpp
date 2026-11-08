@@ -187,6 +187,12 @@ bool FPjcTestFixture::IsTestHost() {
 	return FParse::Param(FCommandLine::Get(), TEXT("PjcTestHost"));
 }
 
+void FPjcTestFixture::Case(FAutomationTestBase& Test, const TCHAR* Name, const FString& SkippedWhy) {
+	const FString Ran = FString::Printf(TEXT("PjcCase ran: %s"), Name);
+	const FString Skipped = FString::Printf(TEXT("PjcCase skipped: %s: %s"), Name, *SkippedWhy);
+	Test.AddInfo(SkippedWhy.IsEmpty() ? Ran : Skipped);
+}
+
 FString FPjcTestFixture::RootPath() {
 	return TEXT("/Game/PjcTests");
 }
@@ -445,6 +451,7 @@ bool FPjcTestFixture::CreateAssets(FAutomationTestBase& Test) {
 		Label->ExplicitAssets.Add(TSoftObjectPtr<UObject> {FSoftObjectPath {ObjectPath(TEXT("BP_CueUser"))}});
 		bCues = true;
 	}
+	Case(Test, TEXT("GameplayCue notifies"), bCues ? FString {} : FString {TEXT("GameplayAbilities plugin not loaded")});
 
 	if (!UEditorLoadingAndSavingUtils::SavePackages(Packages, false)) {
 		Test.AddError(TEXT("Failed to save fixture packages"));
@@ -495,6 +502,9 @@ bool FPjcTestFixture::CreateLyraAssets(FAutomationTestBase& Test) {
 	}
 
 	NewAsset<UCurveVector>(Register(FeatureRootPath() / TEXT("Experiences/CV_Experience")), LyraPackages);
+	Case(Test, TEXT("game feature primary type"));
+#else
+	Case(Test, TEXT("game feature primary type"), TEXT("UE 4 game features do not register primary types"));
 #endif
 	NewAsset<UCurveFloat>(Register(FeatureRootPath() / TEXT("Unused/C_FeatureUnused")), LyraPackages);
 	NewAsset<UCurveFloat>(Register(FeatureRootPath() / TEXT("Indirect/C_FeatureIndirect")), LyraPackages);

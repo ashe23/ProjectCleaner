@@ -94,6 +94,9 @@ class FPjcTestFixture
 	static constexpr int32 NumBulkAssets = 25;
 
 	static bool IsTestHost();
+	// Coverage for Scripts/pjc.py test: a feature case that ran, or why it was skipped (the feature is not in this
+	// engine or project). The table lists every case by engine.
+	static void Case(FAutomationTestBase& Test, const TCHAR* Name, const FString& SkippedWhy = FString {});
 	static FString RootPath();
 	static FString LocalizedRootPath();
 	// Name of the local collection PAL_Collection names

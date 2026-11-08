@@ -887,6 +887,7 @@ def run_automation(host, test_filter, tag, extra=()):
     with open(index, encoding="utf-8-sig") as f:
         report = json.load(f)
     tests = report.get("tests", [])
+    write_coverage(host, tag, report)
     failed = [t for t in tests if t.get("state") not in ("Success", "Skipped")]
     lines = []
     for t in failed:
@@ -899,6 +900,115 @@ def run_automation(host, test_filter, tag, extra=()):
         return False, "no tests matched '{}'  log: {}".format(test_filter, log)
     summary = "{} passed, {} failed".format(len(tests) - len(failed), len(failed))
     return not failed, "\n".join([summary] + lines)
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+# coverage: which tests and feature cases ran on each engine, and why the others were skipped
+# ----------------------------------------------------------------------------------------------------------------------
+
+# FPjcTestFixture::Case: "PjcCase ran: <name>" or "PjcCase skipped: <name>: <why>"
+CASE_REGEX = re.compile(r"^PjcCase (ran|skipped): ([^:]+)(?:: (.*))?$")
+# a test that skips itself: AddInfo("Skipped, <why>")
+SKIP_PREFIX = "Skipped, "
+
+
+def coverage_from_report(report):
+    """Tests: path -> {state: ok|failed|skipped, why}. Cases: name -> {state: ran|skipped, why}; ran in any test wins."""
+    tests = {}
+    cases = {}
+    for t in report.get("tests", []):
+        path = t.get("fullTestPath", t.get("testDisplayName", "?"))
+        why = ""
+        for entry in t.get("entries", []):
+            message = entry.get("event", {}).get("message", "").strip()
+            m = CASE_REGEX.match(message)
+            if m:
+                state, name, reason = m.group(1), m.group(2).strip(), (m.group(3) or "").strip()
+                if cases.get(name, {}).get("state") != "ran":
+                    cases[name] = {"state": state, "why": reason}
+            elif message.startswith(SKIP_PREFIX) and not why:
+                why = message[len(SKIP_PREFIX):]
+        state = t.get("state")
+        if state == "Success":
+            tests[path] = {"state": "skipped" if why else "ok", "why": why}
+        elif state == "Skipped":
+            tests[path] = {"state": "skipped", "why": why or "skipped by the engine"}
+        else:
+            tests[path] = {"state": "failed", "why": ""}
+    return tests, cases
+
+
+def coverage_file(host, tag):
+    return os.path.join(host.logs_dir, "coverage_{}.json".format(tag))
+
+
+def write_coverage(host, tag, report):
+    tests, cases = coverage_from_report(report)
+    with open(coverage_file(host, tag), "w", encoding="utf-8") as f:
+        json.dump({"tests": tests, "cases": cases}, f, indent=1)
+
+
+def read_coverage(host):
+    tests = {}
+    cases = {}
+    for tag in ("automation", "fixture"):
+        path = coverage_file(host, tag)
+        if not os.path.isfile(path):
+            continue
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+        tests.update(data.get("tests", {}))
+        for name, case in data.get("cases", {}).items():
+            if cases.get(name, {}).get("state") != "ran":
+                cases[name] = case
+    return tests, cases
+
+
+def print_coverage(hosts):
+    """Table of tests and feature cases by engine. A cell: ok / ran, skip, FAIL, or - when it did not run there."""
+    columns = [(h.engine.version, read_coverage(h)) for h in hosts]
+    test_names = sorted({name for _, (tests, _) in columns for name in tests})
+    case_names = sorted({name for _, (_, cases) in columns for name in cases}, key=str.lower)
+    if not test_names and not case_names:
+        return
+    colors = {"ok": green, "ran": green, "skip": yellow, "FAIL": red, "-": lambda t: t}
+    width = max([len(n.replace("ProjectCleaner.", "")) for n in test_names] + [len(n) for n in case_names] + [10]) + 2
+
+    def row(label, cells):
+        return "  " + label.ljust(width) + "".join(colors[c](c.ljust(7)) for c in cells)
+
+    print(cyan("== coverage"))
+    header = "".join(v.ljust(7) for v, _ in columns)
+    print("  " + "test".ljust(width) + header)
+    for name in test_names:
+        cells = []
+        for _, (tests, _) in columns:
+            state = tests.get(name, {}).get("state")
+            cells.append({"ok": "ok", "skipped": "skip", "failed": "FAIL"}.get(state, "-"))
+        print(row(name.replace("ProjectCleaner.", ""), cells))
+    if case_names:
+        print("  " + "feature case".ljust(width) + header)
+        for name in case_names:
+            cells = []
+            for _, (_, cases) in columns:
+                state = cases.get(name, {}).get("state")
+                cells.append({"ran": "ran", "skipped": "skip"}.get(state, "-"))
+            print(row(name, cells))
+
+    skipped = []
+    for version, (tests, cases) in columns:
+        for name in test_names:
+            test = tests.get(name, {})
+            if test.get("state") == "skipped":
+                skipped.append("{:<6} {}: {}".format(version, name.replace("ProjectCleaner.", ""), test.get("why", "")))
+        for name in case_names:
+            case = cases.get(name, {})
+            if case.get("state") == "skipped":
+                skipped.append("{:<6} {}: {}".format(version, name, case.get("why", "")))
+    if skipped:
+        print("  skipped:")
+        for line in skipped:
+            print("    " + line)
 
 
 def run_commandlet(host, switches, tag):
@@ -1050,6 +1160,11 @@ def run_cli_tests(host):
 
 
 def cmd_test(args, hosts):
+    for host in hosts:
+        for tag in ("automation", "fixture"):
+            if os.path.isfile(coverage_file(host, tag)):
+                os.remove(coverage_file(host, tag))
+
     def work(host):
         if not args.no_build:
             ok, summary = build_host(host, args.clang)
@@ -1069,7 +1184,9 @@ def cmd_test(args, hosts):
             results.append("cli: " + summary)
         return ok_all, "\n".join(results)
 
-    return run_for_hosts(hosts, work, args.jobs, "test")
+    ok = run_for_hosts(hosts, work, args.jobs, "test")
+    print_coverage(hosts)
+    return ok
 
 
 def cmd_cli(args, hosts):
