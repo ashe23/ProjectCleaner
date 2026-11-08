@@ -1444,7 +1444,12 @@ bool FPjcTestUiReport::RunTest(const FString& Parameters) {
 	const FString Marker = FString::Printf(TEXT("PjcReportMarker %s"), *FGuid::NewGuid().ToString());
 	UE_LOG(LogProjectCleaner, Display, TEXT("%s"), *Marker);
 	if (IFileManager::Get().FileExists(*FPlatformOutputDevices::GetAbsoluteLogFilename())) {
-		const FString LogText = SPjcReportWindow::GetLogText();
+		// the log file catches up on its own thread: UE 4.27 on Linux wrote the line a moment late (1 run in 6)
+		FString LogText = SPjcReportWindow::GetLogText();
+		for (int32 Try = 0; Try < 30 && !LogText.Contains(Marker); ++Try) {
+			FPlatformProcess::Sleep(0.1f);
+			LogText = SPjcReportWindow::GetLogText();
+		}
 		TestTrue(TEXT("log lines include the plugin line"), LogText.Contains(Marker));
 		TestFalse(TEXT("log lines are only the plugin's"), LogText.Contains(TEXT("LogInit:")));
 		FPjcTestFixture::Case(*this, TEXT("report log lines"));
