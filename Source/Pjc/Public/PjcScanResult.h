@@ -20,6 +20,25 @@ enum class EPjcAssetStatus : uint8
 	Review,
 };
 
+// Rule in Scan settings > Exclusions that keeps an asset
+enum class EPjcExclusionKind : uint8
+{
+	Asset,
+	Folder,
+	Class,
+};
+
+struct FPjcExclusion
+{
+	EPjcExclusionKind Kind = EPjcExclusionKind::Asset;
+
+	// Folder path, class path or asset object path, as the rule has it
+	FString Value;
+
+	// Used even without the rule: another reason or a used asset outside exclusions keeps it
+	bool bUsedAnyway = false;
+};
+
 // Unused assets compared with the last cook of every platform in Saved/Cooked
 struct FPjcCookCheck
 {
@@ -103,6 +122,9 @@ struct FPjcScanResult
 
 	// The scan against the last cooks
 	FPjcCookCheck CookCheck;
+
+	// Assets an exclusion rule matches, whatever else keeps them
+	TMap<FName, FPjcExclusion> Excluded;
 
 	// Reasons that put an asset in Review: the scan is not sure, cleanup keeps it and the user decides
 	static bool IsReviewReason(const EPjcUsageReason Reason) {

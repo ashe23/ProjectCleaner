@@ -26,7 +26,7 @@ class SPjcSizeMap final : public SLeafWidget
 	void Construct(const FArguments& InArgs);
 
 	// Folder to show; Result must stay alive while shown (the shared scan result)
-	void SetFolder(const FPjcScanResult* InResult, const TSharedPtr<FPjcUnusedFolder>& InFolder, const bool bInAreaAll);
+	void SetFolder(const FPjcScanResult* InResult, const TSharedPtr<FPjcUnusedFolder>& InFolder, const bool bInAreaAll, const EPjcAssetSet InSet);
 	void SetSelected(const TSet<int32>& InSelected);
 
 	virtual int32 OnPaint(
@@ -63,7 +63,7 @@ class SPjcSizeMap final : public SLeafWidget
 		TSharedPtr<FPjcUnusedFolder> Folder;
 		FString Label;
 		int32 Asset = INDEX_NONE;
-		bool bUnused = false;
+		bool bListed = false;
 		int64 Value = 0;
 		int32 NumMore = 0;
 	};
@@ -73,7 +73,7 @@ class SPjcSizeMap final : public SLeafWidget
 		ECellKind Kind = ECellKind::Asset;
 		TSharedPtr<FPjcUnusedFolder> Folder;
 		int32 Asset = INDEX_NONE;
-		bool bUnused = false;
+		bool bListed = false;
 		int64 Value = 0;
 		int32 NumMore = 0;
 	};
@@ -90,6 +90,7 @@ class SPjcSizeMap final : public SLeafWidget
 	const FPjcScanResult* Result = nullptr;
 	TSharedPtr<FPjcUnusedFolder> Folder;
 	bool bAreaAll = false;
+	EPjcAssetSet Set = EPjcAssetSet::Unused;
 	TSet<int32> Selected;
 
 	mutable TArray<FCell> Cells;

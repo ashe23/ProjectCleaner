@@ -25,6 +25,9 @@ class SPjcTabOverview final : public SCompoundWidget
 	void Construct(const FArguments& InArgs);
 	virtual ~SPjcTabOverview() override;
 
+	// Name, explanation and color of a usage reason as the tools show it (Assets uses it for its Used list)
+	static void GetReasonInfo(const EPjcUsageReason Reason, FString& OutName, FString& OutToolTip, FLinearColor& OutColor);
+
   private:
 
 	void OnScanFinished();
@@ -58,7 +61,6 @@ class SPjcTabOverview final : public SCompoundWidget
 	);
 	// UE5 class names are paths (/Script/Engine.Texture2D): the name after the dot
 	static FString GetClassShortName(const FName ClassName);
-	static void GetReasonInfo(const EPjcUsageReason Reason, FString& OutName, FString& OutToolTip, FLinearColor& OutColor);
 
 	FDelegateHandle ScanFinishedHandle;
 	TWeakPtr<FTabManager> TabManager;

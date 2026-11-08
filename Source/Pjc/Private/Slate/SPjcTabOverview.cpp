@@ -12,6 +12,7 @@
 #include "PjcSettings.h"
 #include "PjcStyles.h"
 #include "PjcSubsystem.h"
+#include "PjcUnused.h"
 #include "Runtime/Launch/Resources/Version.h"
 // Engine Headers
 #include "Framework/Docking/TabManager.h"
@@ -186,9 +187,16 @@ TSharedRef<SWidget> SPjcTabOverview::MakeSummary() {
 	// clang-format off
 	const TSharedRef<SWidget> ShowUnused = SNew(SHyperlink)
 		.Text(FText::FromString(TEXT("Show \u203A")))
-		.ToolTipText(FText::FromString(TEXT("Opens Assets Unused")))
+		.ToolTipText(FText::FromString(TEXT("Opens Assets \u203A Unused")))
 		.OnNavigate_Lambda([this]() {
-			OpenTab(PjcConstants::TabAssetsUnused);
+			PjcTabs::ShowSet(TabManager, EPjcAssetSet::Unused);
+		});
+	const TSharedRef<SWidget> ShowReview = SNew(SHyperlink)
+		.Text(FText::FromString(TEXT("Show \u203A")))
+		.ToolTipText(FText::FromString(TEXT("Opens Assets \u203A Review")))
+		.Visibility(Overview.Review.Num > 0 ? EVisibility::Visible : EVisibility::Collapsed)
+		.OnNavigate_Lambda([this]() {
+			PjcTabs::ShowSet(TabManager, EPjcAssetSet::Review);
 		});
 	// clang-format on
 
@@ -230,7 +238,7 @@ TSharedRef<SWidget> SPjcTabOverview::MakeSummary() {
 	AddColumn(Column(TEXT("Assets"), {}, All.Num, PjcFormat::Size(All.Size), PlainColor, AssetsTip, NoLink));
 	AddColumn(Column(TEXT("Used"), ColorUsed, Overview.Used.Num, Share(Overview.Used), PlainColor, UsedTip, NoLink));
 	AddColumn(Column(TEXT("Editor only"), ColorEditor, Overview.EditorOnly.Num, Share(Overview.EditorOnly), PlainColor, EditorTip, NoLink));
-	AddColumn(Column(TEXT("Review"), ColorReview, Overview.Review.Num, ReviewSub, ReviewNumColor, ReviewTip, NoLink));
+	AddColumn(Column(TEXT("Review"), ColorReview, Overview.Review.Num, ReviewSub, ReviewNumColor, ReviewTip, ShowReview));
 	AddColumn(Column(TEXT("Unused"), ColorUnused, Overview.Unused.Num, Share(Overview.Unused), UnusedNumColor, UnusedTip, ShowUnused));
 
 	// storage along the bottom, by size
@@ -548,7 +556,7 @@ TSharedRef<SWidget> SPjcTabOverview::MakeUnusedFolders() {
 		const FString SomeText = FString::Printf(TEXT("%s of %s assets unused"), *PjcFormat::Count(Folder.Unused.Num), *AllText);
 		const FString Text = bAllUnused ? FString::Printf(TEXT("All %s assets unused"), *AllText) : SomeText;
 		const FString UnusedSize = PjcFormat::Size(Folder.Unused.Size);
-		const FString Sizes = FString::Printf(TEXT("%s of %s\nOpens Assets Unused"), *UnusedSize, *PjcFormat::Size(Folder.All.Size));
+		const FString Sizes = FString::Printf(TEXT("%s of %s\nOpens Assets \u203A Unused"), *UnusedSize, *PjcFormat::Size(Folder.All.Size));
 		// clang-format off
 		Rows->AddSlot().AutoHeight()
 		[

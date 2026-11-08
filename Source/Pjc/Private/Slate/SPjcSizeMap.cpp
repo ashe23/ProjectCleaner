@@ -1,6 +1,7 @@
 // Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "Slate/SPjcSizeMap.h"
+#include "Slate/PjcWidgets.h"
 #include "PjcFormat.h"
 #include "PjcShim.h"
 #include "PjcStyles.h"
@@ -107,10 +108,11 @@ void SPjcSizeMap::Construct(const FArguments& InArgs) {
 	SetToolTipText(TAttribute<FText>::Create(TAttribute<FText>::FGetter::CreateSP(this, &SPjcSizeMap::GetHoverText)));
 }
 
-void SPjcSizeMap::SetFolder(const FPjcScanResult* InResult, const TSharedPtr<FPjcUnusedFolder>& InFolder, const bool bInAreaAll) {
+void SPjcSizeMap::SetFolder(const FPjcScanResult* InResult, const TSharedPtr<FPjcUnusedFolder>& InFolder, const bool bAll, const EPjcAssetSet InSet) {
 	Result = InResult;
 	Folder = InFolder;
-	bAreaAll = bInAreaAll;
+	bAreaAll = bAll;
+	Set = InSet;
 	bLayoutDirty = true;
 	Hovered = INDEX_NONE;
 	Invalidate(EInvalidateWidgetReason::Paint);
@@ -128,7 +130,7 @@ FVector2D SPjcSizeMap::ComputeDesiredSize(float LayoutScaleMultiplier) const {
 void SPjcSizeMap::GetItems(const FPjcUnusedFolder& InFolder, TArray<FItem>& OutItems) const {
 	OutItems.Reset();
 	for (const auto& Child : InFolder.Children) {
-		const int64 Value = bAreaAll ? Child->All.Size : Child->Unused.Size;
+		const int64 Value = bAreaAll ? Child->All.Size : Child->Listed.Size;
 		if (Value > 0) {
 			FItem& Item = OutItems.AddDefaulted_GetRef();
 			Item.Kind = ECellKind::Folder;
@@ -138,14 +140,14 @@ void SPjcSizeMap::GetItems(const FPjcUnusedFolder& InFolder, TArray<FItem>& OutI
 	}
 	for (const int32 Index : InFolder.Assets) {
 		const FName Package = Result->Assets[Index].PackageName;
-		const bool bUnused = Result->GetStatus(Package) == EPjcAssetStatus::Unused;
+		const bool bListed = FPjcUnusedTree::IsInSet(*Result, Package, Set);
 		const int64 Value = Result->GetSize(Package);
-		if ((!bAreaAll && !bUnused) || Value <= 0) continue;
+		if ((!bAreaAll && !bListed) || Value <= 0) continue;
 
 		FItem& Item = OutItems.AddDefaulted_GetRef();
 		Item.Kind = ECellKind::Asset;
 		Item.Asset = Index;
-		Item.bUnused = bUnused;
+		Item.bListed = bListed;
 		Item.Value = Value;
 	}
 	OutItems.Sort([](const FItem& A, const FItem& B) {
@@ -188,7 +190,7 @@ void SPjcSizeMap::LayoutFolder(const FPjcUnusedFolder& InFolder, const FVector2D
 		Cell.Kind = Item.Kind;
 		Cell.Depth = Depth;
 		Cell.Asset = Item.Asset;
-		Cell.bUnused = Item.bUnused;
+		Cell.bListed = Item.bListed;
 		Cell.Value = Item.Value;
 		Cell.NumMore = Item.NumMore;
 		if (Item.Kind != ECellKind::Folder) continue;
@@ -271,10 +273,11 @@ int32 SPjcSizeMap::OnPaint(
 
 	const FLinearColor FolderFill = PjcMapColor(TEXT("#24272B"));
 	const FLinearColor FolderLine = PjcMapColor(TEXT("#3C4148"));
-	const FLinearColor FolderTint = PjcMapColor(TEXT("#8E3A3F"));
+	const PjcWidgets::FSetColors SetColors = PjcWidgets::GetSetColors(Set);
+	const FLinearColor FolderTint = SetColors.Tint;
 	const FLinearColor HeaderFill = PjcMapColor(TEXT("#2B2F34"));
-	const FLinearColor UnusedFill = PjcMapColor(TEXT("#7A3236"));
-	const FLinearColor UsedFill = PjcMapColor(TEXT("#2A3B3A"));
+	const FLinearColor ListedFill = SetColors.Box;
+	const FLinearColor OtherFill = PjcMapColor(Set == EPjcAssetSet::Unused ? TEXT("#2A3B3A") : TEXT("#30343A"));
 	const FLinearColor Muted = PjcMapColor(TEXT("#8A9099"));
 
 	for (int32 Index = 0; Index < Cells.Num(); ++Index) {
@@ -284,7 +287,7 @@ int32 SPjcSizeMap::OnPaint(
 
 		if (Cell.Kind == ECellKind::Folder) {
 			const double FolderSize = static_cast<double>(Cell.Folder->All.Size);
-			const float Share = FolderSize > 0.0 ? static_cast<float>(static_cast<double>(Cell.Folder->Unused.Size) / FolderSize) : 0.0f;
+			const float Share = FolderSize > 0.0 ? static_cast<float>(static_cast<double>(Cell.Folder->Listed.Size) / FolderSize) : 0.0f;
 			const FLinearColor Fill = bAreaAll ? FLinearColor::LerpUsingHSV(FolderFill, FolderTint, Share) : FolderFill;
 			Box(Layer, Cell.Position, Cell.Size, bHovered ? PjcMapColor(TEXT("#6A7078")) : FolderLine);
 			Box(Layer, Cell.Position + FVector2D {1.0f, 1.0f}, Cell.Size - FVector2D {2.0f, 2.0f}, Fill);
@@ -311,7 +314,7 @@ int32 SPjcSizeMap::OnPaint(
 			continue;
 		}
 
-		FLinearColor Fill = Cell.bUnused ? UnusedFill : UsedFill;
+		FLinearColor Fill = Cell.bListed ? ListedFill : OtherFill;
 		if (bHovered) {
 			Fill = Fill * 1.25f;
 			Fill.A = 1.0f;
@@ -322,7 +325,7 @@ int32 SPjcSizeMap::OnPaint(
 			Outline(Layer + 1, Cell.Position, Cell.Size, 2.0f, FLinearColor::White);
 		}
 		if (Cell.Size.X > 54.0f && Cell.Size.Y > 30.0f) {
-			const FLinearColor Label = Cell.bUnused ? PjcMapColor(TEXT("#FFE1E2")) : PjcMapColor(TEXT("#BFE3DF"));
+			const FLinearColor Label = Cell.bListed ? SetColors.BoxText : PjcMapColor(TEXT("#BFC4C9"));
 			Text(Layer + 2, Cell.Position + FVector2D {5.0f, 3.0f}, Cell.Size.X - 9.0f, Result->Assets[Cell.Asset].AssetName.ToString(), Font, Label);
 			Text(Layer + 2, Cell.Position + FVector2D {5.0f, 17.0f}, Cell.Size.X - 9.0f, PjcFormat::Size(Cell.Value), FontSmall, Label * 0.85f);
 		}
@@ -360,7 +363,7 @@ FReply SPjcSizeMap::OnMouseButtonUp(const FGeometry& MyGeometry, const FPointerE
 	if (Cell.Kind == ECellKind::Folder) {
 		OnFolderClicked.ExecuteIfBound(Cell.Folder->Path);
 	}
-	else if (Cell.Kind == ECellKind::Asset && Cell.bUnused) {
+	else if (Cell.Kind == ECellKind::Asset && Cell.bListed) {
 		OnAssetClicked.ExecuteIfBound(Cell.Asset);
 	}
 	return FReply::Handled();
@@ -388,11 +391,12 @@ FText SPjcSizeMap::GetHoverText() const {
 		const FPjcUnusedFolder& Shown = *Cell.Folder;
 		return FText::FromString(
 			FString::Printf(
-				TEXT("%s\nUnused %s of %s \u00B7 %s of %s assets\nClick to open"),
+				TEXT("%s\n%s %s of %s \u00B7 %s of %s assets\nClick to open"),
 				*Shown.Path,
-				*PjcFormat::Size(Shown.Unused.Size),
+				*PjcWidgets::GetSetLabel(Set),
+				*PjcFormat::Size(Shown.Listed.Size),
 				*PjcFormat::Size(Shown.All.Size),
-				*PjcFormat::Count(Shown.Unused.Num),
+				*PjcFormat::Count(Shown.Listed.Num),
 				*PjcFormat::Count(Shown.All.Num)
 			)
 		);
@@ -402,13 +406,14 @@ FText SPjcSizeMap::GetHoverText() const {
 	}
 
 	const FAssetData& Asset = Result->Assets[Cell.Asset];
+	const FString Listed = TEXT(" \u00B7 ") + PjcWidgets::GetSetWord(Set) + TEXT(", click to select it");
 	return FText::FromString(
 		FString::Printf(
 			TEXT("%s\n%s \u00B7 %s%s"),
 			*Asset.PackageName.ToString(),
 			*PjcShim::GetAssetClassName(Asset).ToString(),
 			*PjcFormat::Size(Cell.Value),
-			Cell.bUnused ? TEXT(" \u00B7 unused, click to select it") : TEXT(" \u00B7 used, listed in the Content Browser")
+			Cell.bListed ? *Listed : TEXT(" \u00B7 not in this list")
 		)
 	);
 }

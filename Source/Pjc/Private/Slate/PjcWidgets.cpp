@@ -1,6 +1,7 @@
 // Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "Slate/PjcWidgets.h"
+#include "PjcUnused.h"
 #include "PjcShim.h"
 #include "PjcStyles.h"
 // Engine Headers
@@ -78,6 +79,36 @@ namespace PjcWidgets
 
 	FLinearColor GetColor(const FName Name) {
 		return FPjcStyles::Get().GetColor(Name);
+	}
+
+	FSetColors GetSetColors(const EPjcAssetSet Set) {
+		const auto Hex = [](const TCHAR* Value) {
+			return FLinearColor {FColor::FromHex(Value)};
+		};
+		const FLinearColor UsedBar = GetColor("ProjectCleaner.Color.UsedFill");
+		const FLinearColor ReviewBar = GetColor("ProjectCleaner.Color.ReviewFill");
+		const FLinearColor UnusedBar = GetColor("ProjectCleaner.Color.UnusedFill");
+		switch (Set) {
+			case EPjcAssetSet::Excluded : return FSetColors {Hex(TEXT("#6B7480")), Hex(TEXT("#4F555D")), Hex(TEXT("#E6E8EA")), Hex(TEXT("#6B7480"))};
+			case EPjcAssetSet::Used :	  return FSetColors {UsedBar, Hex(TEXT("#2A5F5A")), Hex(TEXT("#D8F1EE")), Hex(TEXT("#2C766F"))};
+			case EPjcAssetSet::Review :	  return FSetColors {ReviewBar, Hex(TEXT("#7A5F26")), Hex(TEXT("#FFF1D6")), Hex(TEXT("#8F6F2A"))};
+			case EPjcAssetSet::Unused :
+			default :					  return FSetColors {UnusedBar, Hex(TEXT("#7A3236")), Hex(TEXT("#FFE1E2")), Hex(TEXT("#8E3A3F"))};
+		}
+	}
+
+	FString GetSetLabel(const EPjcAssetSet Set) {
+		switch (Set) {
+			case EPjcAssetSet::Excluded : return TEXT("Excluded");
+			case EPjcAssetSet::Used :	  return TEXT("Used");
+			case EPjcAssetSet::Review :	  return TEXT("Review");
+			case EPjcAssetSet::Unused :
+			default :					  return TEXT("Unused");
+		}
+	}
+
+	FString GetSetWord(const EPjcAssetSet Set) {
+		return Set == EPjcAssetSet::Review ? TEXT("to review") : GetSetLabel(Set).ToLower();
 	}
 
 	FSlateFontInfo GetFontMono(const int32 Size) {

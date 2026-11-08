@@ -453,6 +453,8 @@ class UPjcSubsystem final : public UEditorSubsystem
 	static FString
 	GetExcludedDetail(const FAssetData& Asset, const TSet<FName>& UserExcluded, const TSet<FName>& UsedClasses, const TSet<FName>& Cinematic);
 	static FString GetPrimaryDetail(const FAssetData& Asset);
+	// Exclusion rule that matches the asset (excluded classes match exactly and must be loaded), false when none does
+	static bool GetExclusion(const FAssetData& Asset, FPjcExclusion& OutExclusion);
 	static FString GetEngineReferencedDetail(const FAssetData& Asset);
 	static void GetExternalActorsDependencies(TSet<FName>& OutPackages);
 	static bool BucketPrepare(const TArray<FAssetData>& Bucket, TArray<UObject*>& LoadedAssets);

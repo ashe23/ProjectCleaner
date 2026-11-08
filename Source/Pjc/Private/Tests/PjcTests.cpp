@@ -953,18 +953,60 @@ bool FPjcTestUnusedDelete::RunTest(const FString& Parameters) {
 	const TSharedPtr<FPjcUnusedFolder> Unused = Tree.Find(UnusedPath);
 	if (!TestTrue(TEXT("folders found"), Root.IsValid() && Unused.IsValid())) return false;
 	TestTrue(TEXT("/Game is the first root"), Tree.Roots.Num() > 0 && Tree.Roots[0] == Root);
-	TestTrue(TEXT("unused folder is all unused"), Unused->IsAllUnused());
-	TestTrue(TEXT("parent has the subfolder totals"), Tree.Find(FPjcTestFixture::RootPath())->Unused.Num >= Unused->Unused.Num);
+	TestTrue(TEXT("unused folder is all unused"), Unused->IsAllListed());
+	TestTrue(TEXT("parent has the subfolder totals"), Tree.Find(FPjcTestFixture::RootPath())->Listed.Num >= Unused->Listed.Num);
 	for (const auto& EmptyFolder : Fixture.EmptyFolders()) {
 		const TSharedPtr<FPjcUnusedFolder> Folder = Tree.Find(UPjcSubsystem::PathConvertToRelative(EmptyFolder));
 		TestTrue(*FString::Printf(TEXT("%s marked empty"), *EmptyFolder), Folder.IsValid() && Folder->bEmpty);
 	}
 	TArray<int32> Direct;
 	TArray<int32> WithSubfolders;
-	Tree.GetUnused(Result, UnusedPath, false, Direct);
-	Tree.GetUnused(Result, UnusedPath, true, WithSubfolders);
-	TestEqual(TEXT("unused with subfolders"), WithSubfolders.Num(), Unused->Unused.Num);
+	Tree.GetListed(Result, UnusedPath, false, Direct);
+	Tree.GetListed(Result, UnusedPath, true, WithSubfolders);
+	TestEqual(TEXT("unused with subfolders"), WithSubfolders.Num(), Unused->Listed.Num);
 	TestTrue(TEXT("unused directly in the folder"), Direct.Num() > 0 && Direct.Num() < WithSubfolders.Num());
+
+	// every list counts its own assets: unused, used, review and excluded
+	const auto NumInSet = [&Result](const EPjcAssetSet Set) {
+		int32 Num = 0;
+		for (const auto& Asset : Result.Assets) {
+			Num += FPjcUnusedTree::IsInSet(Result, Asset.PackageName, Set) ? 1 : 0;
+		}
+		return Num;
+	};
+	const int32 NumUsed = NumInSet(EPjcAssetSet::Used);
+	const int32 NumReview = NumInSet(EPjcAssetSet::Review);
+	TestEqual(TEXT("lists cover every asset"), NumInSet(EPjcAssetSet::Unused) + NumUsed + NumReview, Result.Assets.Num());
+	TestEqual(TEXT("unused list"), NumInSet(EPjcAssetSet::Unused), Result.Unused.Num());
+	TestEqual(TEXT("review list"), NumReview, Fixture.ReviewNames().Num());
+	for (const EPjcAssetSet Set : {EPjcAssetSet::Used, EPjcAssetSet::Review, EPjcAssetSet::Excluded}) {
+		const FPjcUnusedTree SetTree = FPjcUnusedTree::Make(Result, Set);
+		int32 NumRoots = 0;
+		for (const auto& SetRoot : SetTree.Roots) {
+			NumRoots += SetRoot->Listed.Num;
+		}
+		TestEqual(*FString::Printf(TEXT("list %d totals"), static_cast<int32>(Set)), NumRoots, NumInSet(Set));
+	}
+
+	// exclusion rules: which one keeps each asset, and that only the rule keeps it
+	const auto TestExclusion = [&](const TCHAR* Name, const EPjcExclusionKind Kind) {
+		const FPjcExclusion* Exclusion = Result.Excluded.Find(PackageOf(Fixture, Name));
+		if (!TestNotNull(*FString::Printf(TEXT("%s excluded"), Name), Exclusion)) return;
+
+		TestEqual(*FString::Printf(TEXT("%s rule"), Name), static_cast<int32>(Exclusion->Kind), static_cast<int32>(Kind));
+		TestFalse(*FString::Printf(TEXT("%s unused without its rule"), Name), Exclusion->bUsedAnyway);
+	};
+	TestExclusion(TEXT("C_ByAsset"), EPjcExclusionKind::Asset);
+	TestExclusion(TEXT("C_ByFolder"), EPjcExclusionKind::Folder);
+	TestExclusion(TEXT("CLC_ByClass"), EPjcExclusionKind::Class);
+	TestEqual(TEXT("excluded list"), NumInSet(EPjcAssetSet::Excluded), Result.Excluded.Num());
+
+	// a used asset that references the selection refuses the delete: it would break
+	TArray<FName> Holders;
+	FPjcUnusedTree::GetUsedHolders(Result, {PackageOf(Fixture, TEXT("C_ChainLeaf"))}, Holders);
+	TestEqual(TEXT("used referencer holds a used asset"), Holders, TArray<FName> {PackageOf(Fixture, TEXT("OL_Chain"))});
+	FPjcUnusedTree::GetUsedHolders(Result, {PackageOf(Fixture, TEXT("C_UnusedLeaf"))}, Holders);
+	TestEqual(TEXT("nothing used holds an unused asset"), Holders.Num(), 0);
 
 	// the unused asset that references the leaf goes with it
 	const FName Leaf = PackageOf(Fixture, TEXT("C_UnusedLeaf"));

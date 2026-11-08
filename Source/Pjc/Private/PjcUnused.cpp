@@ -2,9 +2,12 @@
 
 #include "PjcUnused.h"
 #include "PjcSubsystem.h"
+// Engine Headers
+#include "Engine/PrimaryAssetLabel.h"
 
-FPjcUnusedTree FPjcUnusedTree::Make(const FPjcScanResult& Result) {
+FPjcUnusedTree FPjcUnusedTree::Make(const FPjcScanResult& Result, const EPjcAssetSet InSet) {
 	FPjcUnusedTree Tree;
+	Tree.Set = InSet;
 
 	// folder and its parents, made when first needed
 	TFunction<TSharedPtr<FPjcUnusedFolder>(const FString&)> Ensure;
@@ -32,14 +35,14 @@ FPjcUnusedTree FPjcUnusedTree::Make(const FPjcScanResult& Result) {
 	for (int32 Index = 0; Index < Result.Assets.Num(); ++Index) {
 		const FAssetData& Asset = Result.Assets[Index];
 		const int64 Size = Result.GetSize(Asset.PackageName);
-		const bool bUnused = Result.GetStatus(Asset.PackageName) == EPjcAssetStatus::Unused;
+		const bool bListed = IsInSet(Result, Asset.PackageName, InSet);
 
 		TSharedPtr<FPjcUnusedFolder> Folder = Ensure(Asset.PackagePath.ToString());
 		Folder->Assets.Add(Index);
 		for (; Folder.IsValid(); Folder = Folder->Parent.Pin()) {
 			Folder->All.Add(Size);
-			if (bUnused) {
-				Folder->Unused.Add(Size);
+			if (bListed) {
+				Folder->Listed.Add(Size);
 			}
 		}
 	}
@@ -53,10 +56,21 @@ FPjcUnusedTree FPjcUnusedTree::Make(const FPjcScanResult& Result) {
 
 	Tree.Roots.Sort([](const TSharedPtr<FPjcUnusedFolder>& A, const TSharedPtr<FPjcUnusedFolder>& B) {
 		if (A->Path.Equals(TEXT("/Game")) != B->Path.Equals(TEXT("/Game"))) return A->Path.Equals(TEXT("/Game"));
-		return A->Unused.Size != B->Unused.Size ? A->Unused.Size > B->Unused.Size : A->Path < B->Path;
+		return A->Listed.Size != B->Listed.Size ? A->Listed.Size > B->Listed.Size : A->Path < B->Path;
 	});
 
 	return Tree;
+}
+
+bool FPjcUnusedTree::IsInSet(const FPjcScanResult& Result, const FName Package, const EPjcAssetSet InSet) {
+	const EPjcAssetStatus Status = Result.GetStatus(Package);
+	switch (InSet) {
+		case EPjcAssetSet::Excluded : return Result.Excluded.Contains(Package);
+		case EPjcAssetSet::Used :	  return Status == EPjcAssetStatus::Used || Status == EPjcAssetStatus::EditorOnly;
+		case EPjcAssetSet::Review :	  return Status == EPjcAssetStatus::Review;
+		case EPjcAssetSet::Unused :
+		default :					  return Status == EPjcAssetStatus::Unused;
+	}
 }
 
 void FPjcUnusedTree::GetDeleteGroup(const FPjcScanResult& Result, const TArray<FName>& Packages, TArray<FName>& OutGroup) {
@@ -72,9 +86,10 @@ void FPjcUnusedTree::GetDeleteGroup(const FPjcScanResult& Result, const TArray<F
 		Referencers.Sort(FNameLexicalLess {});
 
 		for (const FName Referencer : Referencers) {
-			// unused: nothing used reaches it (redirectors included, usage has them)
+			// unused: nothing used reaches it (redirectors included, usage has them). Review assets are kept only for review
 			const FPjcAssetUsage* Usage = Result.Usage.Find(Referencer);
-			if (!Usage || Usage->bUsed || Seen.Contains(Referencer)) continue;
+			const bool bReview = Result.Status.Contains(Referencer) && Result.GetStatus(Referencer) == EPjcAssetStatus::Review;
+			if (!Usage || (Usage->bUsed && !bReview) || Seen.Contains(Referencer)) continue;
 
 			Seen.Add(Referencer);
 			OutGroup.Add(Referencer);
@@ -83,7 +98,39 @@ void FPjcUnusedTree::GetDeleteGroup(const FPjcScanResult& Result, const TArray<F
 	}
 }
 
-void FPjcUnusedTree::GetUnused(const FPjcScanResult& Result, const FString& Path, const bool bSubfolders, TArray<int32>& OutAssets) const {
+void FPjcUnusedTree::GetUsedHolders(const FPjcScanResult& Result, const TArray<FName>& Packages, TArray<FName>& OutHolders) {
+	OutHolders.Reset();
+
+	TArray<FName> Group;
+	GetDeleteGroup(Result, Packages, Group);
+	TSet<FName> Deleted {Packages};
+	Deleted.Append(Group);
+
+	TSet<FName> Labels;
+	for (const auto& Asset : Result.Assets) {
+		const UClass* AssetClass = Asset.GetClass();
+		if (AssetClass && AssetClass->IsChildOf(UPrimaryAssetLabel::StaticClass())) {
+			Labels.Add(Asset.PackageName);
+		}
+	}
+
+	TSet<FName> Holders;
+	TArray<FName> Referencers;
+	for (const auto& Package : Deleted) {
+		Referencers.Reset();
+		UPjcSubsystem::GetModuleAssetRegistry().Get().GetReferencers(Package, Referencers);
+		for (const FName Referencer : Referencers) {
+			if (Deleted.Contains(Referencer) || Labels.Contains(Referencer) || !Result.Status.Contains(Referencer)) continue;
+			if (Result.GetStatus(Referencer) == EPjcAssetStatus::Used || Result.GetStatus(Referencer) == EPjcAssetStatus::EditorOnly) {
+				Holders.Add(Referencer);
+			}
+		}
+	}
+	OutHolders = Holders.Array();
+	OutHolders.Sort(FNameLexicalLess {});
+}
+
+void FPjcUnusedTree::GetListed(const FPjcScanResult& Result, const FString& Path, const bool bSubfolders, TArray<int32>& OutAssets) const {
 	OutAssets.Reset();
 
 	TArray<TSharedPtr<FPjcUnusedFolder>> Stack;
@@ -93,7 +140,7 @@ void FPjcUnusedTree::GetUnused(const FPjcScanResult& Result, const FString& Path
 	while (Stack.Num() > 0) {
 		const TSharedPtr<FPjcUnusedFolder> Folder = Stack.Pop();
 		for (const int32 Index : Folder->Assets) {
-			if (Result.GetStatus(Result.Assets[Index].PackageName) == EPjcAssetStatus::Unused) {
+			if (IsInSet(Result, Result.Assets[Index].PackageName, Set)) {
 				OutAssets.Add(Index);
 			}
 		}

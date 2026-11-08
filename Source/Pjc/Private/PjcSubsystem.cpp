@@ -446,6 +446,26 @@ bool UPjcSubsystem::Scan(const bool bShowSlowTask) {
 		Result.Status.Add(Asset.PackageName, Result.IsUsed(Asset.PackageName) ? UsedStatus : EPjcAssetStatus::Unused);
 	}
 
+	// exclusion rules: what each keeps, and whether it is used without the rule (a used referencer outside exclusions)
+	TSet<FName> ClassNamesUserExcluded;
+	TSet<FName> ClassNamesUsed;
+	TSet<FName> ClassNamesCinematic;
+	GetClassNamesExcludedBy(ClassNamesUserExcluded, ClassNamesUsed, ClassNamesCinematic);
+	TArray<FName> Referencers;
+	for (const auto& Asset : Result.Assets) {
+		FPjcExclusion Exclusion;
+		if (!GetExclusion(Asset, Exclusion)) continue;
+
+		Exclusion.bUsedAnyway = Result.GetChainReason(Asset.PackageName) != EPjcUsageReason::Excluded;
+		Referencers.Reset();
+		Registry.GetReferencers(Asset.PackageName, Referencers);
+		for (const auto& Referencer : Referencers) {
+			const bool bUsedOutside = Result.IsUsed(Referencer) && Result.GetChainReason(Referencer) != EPjcUsageReason::Excluded;
+			Exclusion.bUsedAnyway |= bUsedOutside && Referencer != Asset.PackageName;
+		}
+		Result.Excluded.Add(Asset.PackageName, Exclusion);
+	}
+
 	// cook check: what the cooks saw of the unused assets
 	const TArray<const FPjcCookInfo*> Cooks = FPjcCookInfo::GetAll();
 	for (const auto& Cook : Cooks) {
@@ -1486,6 +1506,42 @@ FString UPjcSubsystem::GetExcludedDetail(
 	if (HasClass(Cinematic)) return TEXT("Cinematic asset (Cinematic Assets Used setting)");
 
 	return TEXT("Excluded");
+}
+
+bool UPjcSubsystem::GetExclusion(const FAssetData& Asset, FPjcExclusion& OutExclusion) {
+	const UPjcAssetExcludeSettings* AssetExcludeSettings = GetDefault<UPjcAssetExcludeSettings>();
+
+	for (const auto& ExcludedAsset : AssetExcludeSettings->ExcludedAssets) {
+		if (ExcludedAsset.ToSoftObjectPath().GetLongPackageName() == Asset.PackageName.ToString()) {
+			OutExclusion.Kind = EPjcExclusionKind::Asset;
+			OutExclusion.Value = ExcludedAsset.ToSoftObjectPath().ToString();
+			return true;
+		}
+	}
+
+	const FString PackagePath = Asset.PackagePath.ToString();
+	for (const auto& ExcludedFolder : AssetExcludeSettings->ExcludedFolders) {
+		if (PackagePath == ExcludedFolder.Path || PackagePath.StartsWith(ExcludedFolder.Path + TEXT("/"))) {
+			OutExclusion.Kind = EPjcExclusionKind::Folder;
+			OutExclusion.Value = ExcludedFolder.Path;
+			return true;
+		}
+	}
+
+	// classes match exactly, as the scan excludes them (loaded by GetClassNamesExcludedBy)
+	const FName ClassName = PjcShim::GetAssetClassName(Asset);
+	const FName ExactClassName = GetAssetExactClassName(Asset);
+	for (const auto& ExcludedClass : AssetExcludeSettings->ExcludedClasses) {
+		const UClass* Class = ExcludedClass.Get();
+		const FName ExcludedName = Class ? PjcShim::GetClassName(Class) : NAME_None;
+		if (!ExcludedName.IsNone() && (ExcludedName == ClassName || ExcludedName == ExactClassName)) {
+			OutExclusion.Kind = EPjcExclusionKind::Class;
+			OutExclusion.Value = ExcludedClass.ToSoftObjectPath().ToString();
+			return true;
+		}
+	}
+
+	return false;
 }
 
 FString UPjcSubsystem::GetPrimaryDetail(const FAssetData& Asset) {

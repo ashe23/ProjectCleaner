@@ -11,6 +11,7 @@ class SToolTip;
 class SWidget;
 struct FAssetData;
 struct FSlateBrush;
+enum class EPjcAssetSet : uint8;
 
 // Small widgets the Project Cleaner tools share
 namespace PjcWidgets
@@ -31,6 +32,20 @@ namespace PjcWidgets
 
 	// Color of the plugin style, e.g. ProjectCleaner.Color.Red
 	FLinearColor GetColor(const FName Name);
+
+	// Colors of an Assets set: bars, size map boxes and their text, folders tinted by their share
+	struct FSetColors
+	{
+		FLinearColor Bar;
+		FLinearColor Box;
+		FLinearColor BoxText;
+		FLinearColor Tint;
+	};
+	FSetColors GetSetColors(const EPjcAssetSet Set);
+
+	// Name of an Assets set (Unused), and the word lists use (unused, to review)
+	FString GetSetLabel(const EPjcAssetSet Set);
+	FString GetSetWord(const EPjcAssetSet Set);
 
 	FSlateFontInfo GetFontMono(const int32 Size);
 

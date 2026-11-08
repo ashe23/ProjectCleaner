@@ -74,7 +74,7 @@ void SPjcTabMain::Construct(
 
 	TabManager->RegisterTabSpawner(PjcConstants::TabAssetsUnused, FOnSpawnTab::CreateRaw(this, &SPjcTabMain::OnTabAssetsUnusedSpawn))
 		.SetTooltipText(FText::FromString(TEXT("Open Unused Assets Tab")))
-		.SetDisplayName(FText::FromString(TEXT("Assets Unused")))
+		.SetDisplayName(FText::FromString(TEXT("Assets")))
 		.SetIcon(FPjcStyles::GetIcon("ProjectCleaner.Icon.PieChart16"))
 		.SetGroup(AppMenuGroup);
 
@@ -192,7 +192,7 @@ TSharedRef<SDockTab> SPjcTabMain::OnTabIssuesSpawn(const FSpawnTabArgs& Args) co
 
 TSharedRef<SDockTab> SPjcTabMain::OnTabAssetsUnusedSpawn(const FSpawnTabArgs& Args) const {
 	// clang-format off
-	const auto Frontend = SNew(SDockTab).TabRole(PanelTab).Label(FText::FromString(TEXT("Assets Unused")))
+	const auto Frontend = SNew(SDockTab).TabRole(PanelTab).Label(FText::FromString(TEXT("Assets")))
 		[
 			SNew(SPjcTabUnused).TabManager(TabManager)
 		];

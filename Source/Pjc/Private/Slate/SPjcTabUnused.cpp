@@ -6,6 +6,7 @@
 #include "Slate/PjcWidgets.h"
 #include "Slate/SPjcScanBar.h"
 #include "Slate/SPjcSizeMap.h"
+#include "Slate/SPjcTabOverview.h"
 #include "Slate/SPjcToolFrame.h"
 #include "PjcFormat.h"
 #include "PjcSettings.h"
@@ -30,6 +31,7 @@
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SSplitter.h"
+#include "Widgets/SOverlay.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/Text/STextBlock.h"
 #include "Widgets/Views/SExpanderArrow.h"
@@ -45,25 +47,27 @@ namespace
 	const FName PjcUnusedColSize {TEXT("Size")};
 	const FName PjcUnusedColAssets {TEXT("Assets")};
 
-	// Folder tree row: name, unused share bar, unused size, unused / all assets
+	// Folder tree row: name, share bar of the list, its size, listed / all assets
 	class SPjcUnusedFolderRow final : public SMultiColumnTableRow<TSharedPtr<FPjcUnusedFolder>>
 	{
 	  public:
 
 		SLATE_BEGIN_ARGS(SPjcUnusedFolderRow) {}
 		SLATE_ARGUMENT(TSharedPtr<FPjcUnusedFolder>, Folder)
+		SLATE_ARGUMENT(EPjcAssetSet, Set)
 		SLATE_ATTRIBUTE(FText, HighlightText)
 		SLATE_END_ARGS()
 
 		void Construct(const FArguments& InArgs, const TSharedRef<STableViewBase>& InTable) {
 			Folder = InArgs._Folder;
+			Set = InArgs._Set;
 			HighlightText = InArgs._HighlightText;
 			SMultiColumnTableRow::Construct(SMultiColumnTableRow::FArguments().Padding(FMargin {0.0f, 1.0f}), InTable);
 		}
 
 		virtual TSharedRef<SWidget> GenerateWidgetForColumn(const FName& Column) override {
 			const FSlateColor Muted = FSlateColor::UseSubduedForeground();
-			const bool bAnyUnused = Folder->Unused.Num > 0;
+			const bool bAnyListed = Folder->Listed.Num > 0;
 
 			if (Column == PjcUnusedColFolder) {
 				// clang-format off
@@ -89,7 +93,7 @@ namespace
 					SNew(STextBlock).Text(FText::FromString(Folder->IsRoot() ? Folder->Path.Mid(1) : Folder->Name)).HighlightText(HighlightText)
 				];
 				// clang-format on
-				if (Folder->IsAllUnused()) {
+				if (Set == EPjcAssetSet::Unused && Folder->IsAllListed()) {
 					// clang-format off
 					NameBox->AddSlot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
 					[
@@ -110,8 +114,8 @@ namespace
 
 			if (Column == PjcUnusedColShare) {
 				PjcWidgets::FBarSegment Segment;
-				Segment.Value = static_cast<double>(Folder->Unused.Size);
-				Segment.Color = PjcWidgets::GetColor("ProjectCleaner.Color.UnusedFill");
+				Segment.Value = static_cast<double>(Folder->Listed.Size);
+				Segment.Color = PjcWidgets::GetSetColors(Set).Bar;
 
 				// clang-format off
 				return SNew(SHorizontalBox)
@@ -124,7 +128,7 @@ namespace
 						SNew(SBox).WidthOverride(34.0f)
 						[
 							SNew(STextBlock)
-							.Text(FText::FromString(bAnyUnused ? PjcFormat::Percent(Folder->Unused.Size, Folder->All.Size) : FString {}))
+							.Text(FText::FromString(bAnyListed ? PjcFormat::Percent(Folder->Listed.Size, Folder->All.Size) : FString {}))
 							.Font(PjcWidgets::GetFontMono(8))
 							.ColorAndOpacity(Muted)
 							.Justification(ETextJustify::Right)
@@ -138,16 +142,16 @@ namespace
 				return SNew(SBox).HAlign(HAlign_Right).VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 8.0f, 0.0f})
 					[
 						SNew(STextBlock)
-						.Text(FText::FromString(bAnyUnused ? PjcFormat::Size(Folder->Unused.Size) : TEXT("\u2014")))
+						.Text(FText::FromString(bAnyListed ? PjcFormat::Size(Folder->Listed.Size) : TEXT("\u2014")))
 						.Font(PjcWidgets::GetFontMono(9))
-						.ColorAndOpacity(bAnyUnused ? FSlateColor::UseForeground() : Muted)
+						.ColorAndOpacity(bAnyListed ? FSlateColor::UseForeground() : Muted)
 					];
 				// clang-format on
 			}
 
 			if (Column == PjcUnusedColAssets) {
 				const FString AllText = PjcFormat::Count(Folder->All.Num);
-				const FString Text = bAnyUnused ? PjcFormat::Count(Folder->Unused.Num) + TEXT(" / ") + AllText : AllText;
+				const FString Text = bAnyListed ? PjcFormat::Count(Folder->Listed.Num) + TEXT(" / ") + AllText : AllText;
 				// clang-format off
 				return SNew(SBox).HAlign(HAlign_Right).VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 8.0f, 0.0f})
 					[
@@ -175,16 +179,17 @@ namespace
 		}
 
 		TSharedPtr<FPjcUnusedFolder> Folder;
+		EPjcAssetSet Set = EPjcAssetSet::Unused;
 		TAttribute<FText> HighlightText;
 	};
 
 	const FName PjcUnusedColName {TEXT("Name")};
+	const FName PjcUnusedColReason {TEXT("Reason")};
 	const FName PjcUnusedColClass {TEXT("Class")};
 	const FName PjcUnusedColAssetSize {TEXT("AssetSize")};
 	const FName PjcUnusedColPath {TEXT("Path")};
-	const FName PjcUnusedColGroup {TEXT("Group")};
 
-	// Unused asset row: type color and icon, name with tags, class, size, folder
+	// Asset row: type color and icon, name with tags, reason, class, size, folder
 	class SPjcUnusedAssetRow final : public SMultiColumnTableRow<TSharedPtr<FPjcUnusedAssetRow>>
 	{
 	  public:
@@ -295,20 +300,15 @@ namespace
 				// clang-format on
 			}
 
-			if (Column == PjcUnusedColGroup) {
-				const FString Text = Row->Group > 0 ? TEXT("+") + PjcFormat::Count(Row->Group) : FString {};
-				const FString Tip = FString::Printf(TEXT("%s unused assets reference it and are deleted with it"), *PjcFormat::Count(Row->Group));
+			if (Column == PjcUnusedColReason) {
+				const FSlateColor ReasonColor = Row->bReasonWarn ? FSlateColor {PjcWidgets::GetColor("ProjectCleaner.Color.Yellow")} : Muted;
 				// clang-format off
 				return SNew(SBox)
-					.HAlign(HAlign_Right)
 					.VAlign(VAlign_Center)
 					.Padding(FMargin {0.0f, 0.0f, 8.0f, 0.0f})
-					.ToolTipText(Row->Group > 0 ? FText::FromString(Tip) : FText::GetEmpty())
+					.ToolTipText(FText::FromString(Row->ReasonTip))
 					[
-						SNew(STextBlock)
-						.Text(FText::FromString(Text))
-						.Font(PjcWidgets::GetFontMono(9))
-						.ColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.Yellow"))
+						SNew(STextBlock).Text(FText::FromString(Row->Reason)).ColorAndOpacity(ReasonColor)
 					];
 				// clang-format on
 			}
@@ -395,8 +395,36 @@ void SPjcTabUnused::SelectFolder(const FString& Path) {
 	TreeView->RequestScrollIntoView(Folder);
 }
 
+void SPjcTabUnused::ShowSet(const EPjcAssetSet InSet) {
+	if (InSet == Set) return;
+
+	Set = InSet;
+	ClassFilter.Reset();
+	ReasonFilter.Reset();
+	bHeldOnly = false;
+	RebuildTree();
+	OnFolderSearchChanged(FText::FromString(FolderSearch));
+	RefreshAssets();
+}
+
 void SPjcTabUnused::OnScanFinished() {
-	Tree = FPjcUnusedTree::Make(UPjcSubsystem::GetScanResult());
+	const FPjcScanResult& Result = UPjcSubsystem::GetScanResult();
+	SetCounts.Reset();
+	for (const auto& Asset : Result.Assets) {
+		for (const EPjcAssetSet Each : {EPjcAssetSet::Unused, EPjcAssetSet::Excluded, EPjcAssetSet::Used, EPjcAssetSet::Review}) {
+			SetCounts.FindOrAdd(Each) += FPjcUnusedTree::IsInSet(Result, Asset.PackageName, Each) ? 1 : 0;
+		}
+	}
+
+	RebuildTree();
+	GroupSizes.Reset();
+
+	RefreshTree();
+	RefreshAssets();
+}
+
+void SPjcTabUnused::RebuildTree() {
+	Tree = FPjcUnusedTree::Make(UPjcSubsystem::GetScanResult(), Set);
 
 	// first scan: roots open
 	if (!bExpansionSynced) {
@@ -408,11 +436,125 @@ void SPjcTabUnused::OnScanFinished() {
 	if (!Tree.Find(SelectedFolder).IsValid() && Tree.Roots.Num() > 0) {
 		SelectedFolder = Tree.Roots[0]->Path;
 	}
+}
 
-	GroupSizes.Reset();
+TSharedRef<SWidget> SPjcTabUnused::MakeSetSwitch() {
+	const TSharedRef<SHorizontalBox> Switch = SNew(SHorizontalBox);
+	const auto AddSet = [this, &Switch](const EPjcAssetSet Each, const FString& ToolTip) {
+		// clang-format off
+		Switch->AddSlot().AutoWidth()
+		[
+			SNew(SCheckBox)
+			.Style(&PjcShim::GetStyle().GetWidgetStyle<FCheckBoxStyle>(TEXT("ToggleButtonCheckbox")))
+			.ToolTip(PjcWidgets::MakeToolTip(PjcWidgets::GetSetLabel(Each), ToolTip))
+			.IsChecked_Lambda([this, Each]() { return Set == Each ? ECheckBoxState::Checked : ECheckBoxState::Unchecked; })
+			.OnCheckStateChanged_Lambda([this, Each](ECheckBoxState) { ShowSet(Each); })
+			[
+				SNew(SBox).Padding(FMargin {8.0f, 1.0f})
+				[
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+					[
+						SNew(STextBlock).Text(FText::FromString(PjcWidgets::GetSetLabel(Each)))
+					]
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
+					[
+						SNew(STextBlock)
+						.Text_Lambda([this, Each]() { return FText::FromString(PjcFormat::Count(SetCounts.FindRef(Each))); })
+						.Font(PjcWidgets::GetFontMono(8))
+						.ColorAndOpacity_Lambda([this, Each]() {
+							const bool bReviewWaits = Each == EPjcAssetSet::Review && SetCounts.FindRef(Each) > 0;
+							return bReviewWaits ? FSlateColor {PjcWidgets::GetColor("ProjectCleaner.Color.Review")} : FSlateColor::UseSubduedForeground();
+						})
+					]
+				]
+			]
+		];
+		// clang-format on
+	};
+	AddSet(EPjcAssetSet::Unused, TEXT("Nothing used references them. Clean project deletes them."));
+	AddSet(EPjcAssetSet::Excluded, TEXT("Assets your exclusion rules keep: never deleted. Rules are in Scan settings > Exclusions."));
+	AddSet(EPjcAssetSet::Used, TEXT("Used assets, by why they are used: the asset their chain starts at."));
+	AddSet(EPjcAssetSet::Review, TEXT("Assets the scan is not sure about. Clean project keeps them; delete or keep each."));
+	return Switch;
+}
 
-	RefreshTree();
-	RefreshAssets();
+void SPjcTabUnused::MakeRowReason(const FPjcScanResult& Result, FPjcUnusedAssetRow& Row) {
+	const FPjcAssetUsage* Usage = Result.Usage.Find(Row.Package);
+
+	if (Set == EPjcAssetSet::Unused) {
+		const FString Count = PjcFormat::Count(Row.Group);
+		Row.Reason = Row.Group > 0 ? TEXT("Used only by unused \u00B7 +") + Count : TEXT("Nothing uses it");
+		Row.ReasonTip = Row.Group > 0 ? Count + TEXT(" unused assets reference it and are deleted with it") : TEXT("Nothing references it");
+		return;
+	}
+
+	if (Set == EPjcAssetSet::Excluded) {
+		const FPjcExclusion* Exclusion = Result.Excluded.Find(Row.Package);
+		if (!Exclusion) return;
+
+		FString Rule;
+		if (Exclusion->Kind == EPjcExclusionKind::Folder) {
+			Rule = TEXT("Folder ") + FPaths::GetCleanFilename(Exclusion->Value);
+		}
+		else if (Exclusion->Kind == EPjcExclusionKind::Class) {
+			Rule = TEXT("Class ") + FSoftObjectPath {Exclusion->Value}.GetAssetName();
+		}
+		else {
+			Rule = TEXT("Asset rule");
+		}
+		const TCHAR* Without = Exclusion->bUsedAnyway ? TEXT("used anyway") : TEXT("unused without it");
+		const TCHAR* WithoutTip = Exclusion->bUsedAnyway ? TEXT("Used even without the rule: the rule changes nothing for it")
+														 : TEXT("Without the rule Clean project would delete it");
+		Row.Reason = Rule + TEXT(" \u00B7 ") + Without;
+		Row.ReasonTip = Exclusion->Value + TEXT("\n") + WithoutTip;
+		Row.ReasonKey = Rule;
+		Row.bReasonWarn = !Exclusion->bUsedAnyway;
+		return;
+	}
+
+	// the asset its chain starts at
+	FName Root = Row.Package;
+	const FPjcAssetUsage* RootUsage = Usage;
+	for (int32 NumSteps = 0; RootUsage && RootUsage->Reason == EPjcUsageReason::Dependency && NumSteps < 1024; ++NumSteps) {
+		Root = RootUsage->Parent;
+		RootUsage = Result.Usage.Find(Root);
+	}
+	const EPjcUsageReason ChainReason = RootUsage ? RootUsage->Reason : EPjcUsageReason::None;
+
+	if (Set == EPjcAssetSet::Review) {
+		const bool bCue = ChainReason == EPjcUsageReason::GameplayCueNotFired;
+		const bool bOutside = bCue && RootUsage->Detail.Contains(TEXT("outside"));
+		// clang-format off
+		const TCHAR* CookTip = TEXT("Nothing the scan sees uses it, but the last cook packaged it: ")
+			TEXT("the game may load it in a way the scan cannot follow.");
+		// clang-format on
+		const TCHAR* CueTip = TEXT("GameplayCue notify whose tag no used asset, C++ or config file names. Tags can also be built at runtime.");
+		const TCHAR* OutsideTip = TEXT("GameplayCue notify outside the cue notify paths: the cue manager never loads it by its tag.");
+		const FString RootName = FPackageName::GetShortName(Root);
+		Row.ReasonKey = bCue ? TEXT("Cue never fired") : TEXT("Packaged by last cook");
+		if (Root != Row.Package) {
+			Row.Reason = TEXT("Only used by ") + RootName;
+			Row.ReasonTip = RootName + TEXT(" uses it and is in Review, so it stays with it. Clean project deletes neither.");
+			return;
+		}
+		Row.Reason = bOutside ? TEXT("Outside cue paths") : Row.ReasonKey;
+		Row.ReasonTip = bOutside ? OutsideTip : (bCue ? CueTip : CookTip);
+		return;
+	}
+
+	// used: named like the Overview reasons, cinematics apart from exclusions
+	const bool bCinematic = ChainReason == EPjcUsageReason::Excluded && RootUsage->Detail.StartsWith(TEXT("Cinematic"));
+	FString Name;
+	FString ToolTip;
+	FLinearColor Color;
+	SPjcTabOverview::GetReasonInfo(FPjcOverview::GetGroupReason(Result, Row.Package), Name, ToolTip, Color);
+	Row.Reason = bCinematic ? TEXT("Cinematics") : Name;
+	Row.ReasonTip = bCinematic ? TEXT("Level Sequences and Movie Render Queue configs, and what they use") : ToolTip;
+	if (Root != Row.Package) {
+		Row.ReasonTip += TEXT("\nChain starts at ") + FPackageName::GetShortName(Root);
+	}
+	Row.ReasonKey = Row.Reason;
 }
 
 TSharedRef<SWidget> SPjcTabUnused::MakeFolderPane() {
@@ -424,21 +566,21 @@ TSharedRef<SWidget> SPjcTabUnused::MakeFolderPane() {
 		.SortMode(this, &SPjcTabUnused::GetFolderSortMode, PjcUnusedColFolder)
 		.OnSort(this, &SPjcTabUnused::OnFolderSort)
 		+ SHeaderRow::Column(PjcUnusedColShare)
-		.DefaultLabel(FText::FromString(TEXT("Unused")))
-		.DefaultTooltip(FText::FromString(TEXT("Share of the folder size that is unused")))
+		.DefaultLabel_Lambda([this]() { return FText::FromString(PjcWidgets::GetSetLabel(Set)); })
+		.DefaultTooltip_Lambda([this]() { return FText::FromString(TEXT("Share of the folder size that is ") + PjcWidgets::GetSetWord(Set)); })
 		.FixedWidth(128.0f)
 		.SortMode(this, &SPjcTabUnused::GetFolderSortMode, PjcUnusedColShare)
 		.OnSort(this, &SPjcTabUnused::OnFolderSort)
 		+ SHeaderRow::Column(PjcUnusedColSize)
 		.DefaultLabel(FText::FromString(TEXT("Size")))
-		.DefaultTooltip(FText::FromString(TEXT("Size of the unused assets, subfolders included")))
+		.DefaultTooltip_Lambda([this]() { return FText::FromString(TEXT("Size of the assets ") + PjcWidgets::GetSetWord(Set) + TEXT(", subfolders included")); })
 		.FixedWidth(80.0f)
 		.HAlignHeader(HAlign_Right)
 		.SortMode(this, &SPjcTabUnused::GetFolderSortMode, PjcUnusedColSize)
 		.OnSort(this, &SPjcTabUnused::OnFolderSort)
 		+ SHeaderRow::Column(PjcUnusedColAssets)
 		.DefaultLabel(FText::FromString(TEXT("Assets")))
-		.DefaultTooltip(FText::FromString(TEXT("Unused assets / all assets, subfolders included")))
+		.DefaultTooltip_Lambda([this]() { return FText::FromString(TEXT("Assets ") + PjcWidgets::GetSetWord(Set) + TEXT(" / all assets, subfolders included")); })
 		.FixedWidth(100.0f)
 		.HAlignHeader(HAlign_Right)
 		.SortMode(this, &SPjcTabUnused::GetFolderSortMode, PjcUnusedColAssets)
@@ -472,7 +614,7 @@ TSharedRef<SWidget> SPjcTabUnused::MakeFolderPane() {
 					[
 						SNew(SCheckBox)
 						.Style(&PjcShim::GetStyle().GetWidgetStyle<FCheckBoxStyle>(TEXT("ToggleButtonCheckbox")))
-						.ToolTipText(FText::FromString(TEXT("Folders with their unused totals")))
+						.ToolTipText(FText::FromString(TEXT("Folders with the totals of the list")))
 						.IsChecked_Lambda([this]() { return bMapView ? ECheckBoxState::Unchecked : ECheckBoxState::Checked; })
 						.OnCheckStateChanged_Lambda([this](ECheckBoxState) { SetMapView(false); })
 						[
@@ -486,7 +628,7 @@ TSharedRef<SWidget> SPjcTabUnused::MakeFolderPane() {
 					[
 						SNew(SCheckBox)
 						.Style(&PjcShim::GetStyle().GetWidgetStyle<FCheckBoxStyle>(TEXT("ToggleButtonCheckbox")))
-						.ToolTipText(FText::FromString(TEXT("Boxes as big as the unused assets in them, click a folder to open it")))
+						.ToolTipText(FText::FromString(TEXT("Boxes as big as the listed assets in them, click a folder to open it")))
 						.IsChecked_Lambda([this]() { return bMapView ? ECheckBoxState::Checked : ECheckBoxState::Unchecked; })
 						.OnCheckStateChanged_Lambda([this](ECheckBoxState) { SetMapView(true); })
 						[
@@ -572,7 +714,7 @@ void SPjcTabUnused::RefreshTree() {
 bool SPjcTabUnused::IsFolderShown(const FPjcUnusedFolder& Folder) const {
 	if (!FolderSearch.IsEmpty() && !SearchMatches.Contains(Folder.Path)) return false;
 
-	return !bOnlyUnused || Folder.Unused.Num > 0 || (bShowEmpty && Folder.bEmpty) || Folder.Path.Equals(SelectedFolder);
+	return !bOnlyUnused || Folder.Listed.Num > 0 || (bShowEmpty && Folder.bEmpty) || Folder.Path.Equals(SelectedFolder);
 }
 
 void SPjcTabUnused::SortFolders(TArray<FFolderPtr>& Folders) const {
@@ -586,16 +728,16 @@ void SPjcTabUnused::SortFolders(TArray<FFolderPtr>& Folders) const {
 			return bAscending ? Compare < 0 : Compare > 0;
 		}
 		if (Column == PjcUnusedColShare) {
-			KeyA = A->All.Size > 0 ? static_cast<double>(A->Unused.Size) / static_cast<double>(A->All.Size) : 0.0;
-			KeyB = B->All.Size > 0 ? static_cast<double>(B->Unused.Size) / static_cast<double>(B->All.Size) : 0.0;
+			KeyA = A->All.Size > 0 ? static_cast<double>(A->Listed.Size) / static_cast<double>(A->All.Size) : 0.0;
+			KeyB = B->All.Size > 0 ? static_cast<double>(B->Listed.Size) / static_cast<double>(B->All.Size) : 0.0;
 		}
 		else if (Column == PjcUnusedColAssets) {
-			KeyA = A->Unused.Num;
-			KeyB = B->Unused.Num;
+			KeyA = A->Listed.Num;
+			KeyB = B->Listed.Num;
 		}
 		else {
-			KeyA = static_cast<double>(A->Unused.Size);
-			KeyB = static_cast<double>(B->Unused.Size);
+			KeyA = static_cast<double>(A->Listed.Size);
+			KeyB = static_cast<double>(B->Listed.Size);
 		}
 		if (KeyA == KeyB) return A->Name.Compare(B->Name, ESearchCase::IgnoreCase) < 0;
 		return bAscending ? KeyA < KeyB : KeyA > KeyB;
@@ -613,6 +755,7 @@ TSharedRef<ITableRow> SPjcTabUnused::OnGenerateFolderRow(FFolderPtr Folder, cons
 	// clang-format off
 	return SNew(SPjcUnusedFolderRow, Table)
 		.Folder(Folder)
+		.Set(Set)
 		.HighlightText_Lambda([this]() {
 			return FText::FromString(FolderSearch);
 		});
@@ -668,7 +811,7 @@ void SPjcTabUnused::OnFolderSearchChanged(const FText& Text) {
 	if (!FolderSearch.IsEmpty()) {
 		for (const auto& Pair : Tree.Folders) {
 			const FPjcUnusedFolder& Folder = *Pair.Value;
-			const bool bShown = !bOnlyUnused || Folder.Unused.Num > 0 || (bShowEmpty && Folder.bEmpty);
+			const bool bShown = !bOnlyUnused || Folder.Listed.Num > 0 || (bShowEmpty && Folder.bEmpty);
 			if (!bShown || !Folder.Path.Contains(FolderSearch)) continue;
 
 			for (FFolderPtr Shown = Pair.Value; Shown.IsValid(); Shown = Shown->Parent.Pin()) {
@@ -685,18 +828,23 @@ TSharedPtr<SWidget> SPjcTabUnused::OnFolderContextMenu() {
 
 	const FFolderPtr Folder = Selection[0];
 	FMenuBuilder Menu {true, nullptr};
-	const FString DeleteLabel = FString::Printf(TEXT("Delete unused\u2026 (%s)"), *PjcFormat::Count(Folder->Unused.Num));
-	const FString DeleteTip = TEXT("Deletes the unused assets of the folder and its subfolders, with the unused assets that reference them");
-	PjcWidgets::AddMenuEntry(Menu, DeleteLabel, DeleteTip, Folder->Unused.Num > 0, [this, Folder]() {
-		TArray<FName> Packages;
-		GetFolderUnused(Folder->Path, Packages);
-		PjcActions::DeleteWithGroup(Packages);
-	});
-	const FString ExcludeTip = TEXT("Keeps every asset in the folder, saved to Config/DefaultEditor.ini");
-	PjcWidgets::AddMenuEntry(Menu, TEXT("Exclude folder"), ExcludeTip, [this, Folder]() {
-		ExcludeFolder(Folder->Path);
-	});
-	Menu.AddSeparator();
+	if (Set == EPjcAssetSet::Unused) {
+		const FString DeleteLabel = FString::Printf(TEXT("Delete unused\u2026 (%s)"), *PjcFormat::Count(Folder->Listed.Num));
+		const FString DeleteTip = TEXT("Deletes the unused assets of the folder and its subfolders, with the unused assets that reference them");
+		PjcWidgets::AddMenuEntry(Menu, DeleteLabel, DeleteTip, Folder->Listed.Num > 0, [this, Folder]() {
+			TArray<FName> Packages;
+			GetFolderUnused(Folder->Path, Packages);
+			PjcActions::DeleteWithGroup(Packages);
+		});
+	}
+	if (Set == EPjcAssetSet::Unused || Set == EPjcAssetSet::Review) {
+		const FString ExcludeTip = TEXT("Keeps every asset in the folder, saved to Config/DefaultEditor.ini");
+		const TCHAR* ExcludeLabel = Set == EPjcAssetSet::Review ? TEXT("Keep folder") : TEXT("Exclude folder");
+		PjcWidgets::AddMenuEntry(Menu, ExcludeLabel, ExcludeTip, [this, Folder]() {
+			ExcludeFolder(Folder->Path);
+		});
+		Menu.AddSeparator();
+	}
 	PjcWidgets::AddMenuEntry(Menu, TEXT("Size map here"), TEXT("Shows the folder as a size map"), [this]() {
 		SetMapView(true);
 	});
@@ -720,7 +868,9 @@ TSharedRef<SWidget> SPjcTabUnused::MakeViewMenu() {
 	}
 
 	FMenuBuilder Menu {true, nullptr};
-	PjcWidgets::AddMenuToggle(Menu, TEXT("Only folders with unused"), TEXT("Hides folders without unused assets"), &bOnlyUnused, [this]() {
+	const FString OnlyLabel = TEXT("Only folders with ") + PjcWidgets::GetSetWord(Set);
+	const FString OnlyTip = TEXT("Hides folders without assets ") + PjcWidgets::GetSetWord(Set);
+	PjcWidgets::AddMenuToggle(Menu, OnlyLabel, OnlyTip, &bOnlyUnused, [this]() {
 		bOnlyUnused = !bOnlyUnused;
 		SaveViewState();
 		OnFolderSearchChanged(FText::FromString(FolderSearch));
@@ -753,6 +903,12 @@ TSharedRef<SWidget> SPjcTabUnused::MakeAssetPane() {
 		.FillWidth(1.0f)
 		.SortMode(this, &SPjcTabUnused::GetAssetSortMode, PjcUnusedColName)
 		.OnSort(this, &SPjcTabUnused::OnAssetSort)
+		+ SHeaderRow::Column(PjcUnusedColReason)
+		.DefaultLabel(FText::FromString(TEXT("Reason")))
+		.DefaultTooltip(FText::FromString(TEXT("Why it is in the list")))
+		.FillWidth(0.8f)
+		.SortMode(this, &SPjcTabUnused::GetAssetSortMode, PjcUnusedColReason)
+		.OnSort(this, &SPjcTabUnused::OnAssetSort)
 		+ SHeaderRow::Column(PjcUnusedColClass)
 		.DefaultLabel(FText::FromString(TEXT("Class")))
 		.FixedWidth(150.0f)
@@ -769,13 +925,6 @@ TSharedRef<SWidget> SPjcTabUnused::MakeAssetPane() {
 		.DefaultTooltip(FText::FromString(TEXT("Subfolder of the selected folder")))
 		.FillWidth(0.5f)
 		.SortMode(this, &SPjcTabUnused::GetAssetSortMode, PjcUnusedColPath)
-		.OnSort(this, &SPjcTabUnused::OnAssetSort)
-		+ SHeaderRow::Column(PjcUnusedColGroup)
-		.DefaultLabel(FText::FromString(TEXT("Group")))
-		.DefaultTooltip(FText::FromString(TEXT("Assets deleted with it: the unused assets that reference it")))
-		.FixedWidth(66.0f)
-		.HAlignHeader(HAlign_Right)
-		.SortMode(this, &SPjcTabUnused::GetAssetSortMode, PjcUnusedColGroup)
 		.OnSort(this, &SPjcTabUnused::OnAssetSort);
 
 	SAssignNew(ListView, SListView<FAssetRowPtr>)
@@ -797,22 +946,37 @@ TSharedRef<SWidget> SPjcTabUnused::MakeAssetPane() {
 		.Padding(0.0f)
 		[
 			SNew(SVerticalBox)
-			// where: folder, its unused total, subfolders, search
-			+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {10.0f, 6.0f, 8.0f, 6.0f})
+			// the list and the folder
+			+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {8.0f, 6.0f, 8.0f, 6.0f})
 			[
 				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 10.0f, 0.0f})
 				[
-					SNew(STextBlock).Text(this, &SPjcTabUnused::GetWhereText).Font(FPjcStyles::GetFont("Bold", 9))
+					MakeSetSwitch()
 				]
 				+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
 				[
-					SNew(STextBlock).Text(this, &SPjcTabUnused::GetWhereInfoText).ColorAndOpacity(FSlateColor::UseSubduedForeground())
+					SNew(STextBlock).Text(this, &SPjcTabUnused::GetWhereText).Font(FPjcStyles::GetFont("Bold", 9)).Clipping(EWidgetClipping::ClipToBounds)
+				]
+			]
+			// reason and class filters, biggest first, subfolders, search
+			+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {8.0f, 0.0f, 8.0f, 6.0f})
+			[
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
+				[
+					SNew(SScrollBox)
+					.Orientation(Orient_Horizontal)
+					.ScrollBarThickness(FVector2D {4.0f, 4.0f})
+					+ SScrollBox::Slot()
+					[
+						SAssignNew(ChipsBox, SHorizontalBox)
+					]
 				]
 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {8.0f, 0.0f})
 				[
 					SNew(SCheckBox)
-					.ToolTipText(FText::FromString(TEXT("Lists the unused assets of subfolders too")))
+					.ToolTipText(FText::FromString(TEXT("Lists the assets of subfolders too")))
 					.IsChecked_Lambda([this]() { return bSubfolders ? ECheckBoxState::Checked : ECheckBoxState::Unchecked; })
 					.OnCheckStateChanged_Lambda([this](const ECheckBoxState State) {
 						bSubfolders = State == ECheckBoxState::Checked;
@@ -825,28 +989,30 @@ TSharedRef<SWidget> SPjcTabUnused::MakeAssetPane() {
 				]
 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 				[
-					SNew(SBox).WidthOverride(200.0f)
+					SNew(SBox).WidthOverride(170.0f)
 					[
 						SNew(SSearchBox)
-						.HintText(FText::FromString(TEXT("Search unused assets")))
+						.HintText_Lambda([this]() { return FText::FromString(TEXT("Search assets ") + PjcWidgets::GetSetWord(Set)); })
 						.OnTextChanged(this, &SPjcTabUnused::OnAssetSearchChanged)
 					]
 				]
 			]
-			// class filters, biggest first
-			+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {8.0f, 0.0f, 8.0f, 6.0f})
-			[
-				SNew(SScrollBox)
-				.Orientation(Orient_Horizontal)
-				.ScrollBarThickness(FVector2D {4.0f, 4.0f})
-				+ SScrollBox::Slot()
-				[
-					SAssignNew(ChipsBox, SHorizontalBox)
-				]
-			]
 			+ SVerticalBox::Slot().FillHeight(1.0f)
 			[
-				ListView.ToSharedRef()
+				SNew(SOverlay)
+				+ SOverlay::Slot()
+				[
+					ListView.ToSharedRef()
+				]
+				+ SOverlay::Slot().HAlign(HAlign_Center).VAlign(VAlign_Center).Padding(FMargin {16.0f})
+				[
+					SNew(STextBlock)
+					.Text(this, &SPjcTabUnused::GetEmptyText)
+					.Visibility_Lambda([this]() { return ListRows.Num() == 0 ? EVisibility::HitTestInvisible : EVisibility::Collapsed; })
+					.ColorAndOpacity(FSlateColor::UseSubduedForeground())
+					.AutoWrapText(true)
+					.Justification(ETextJustify::Center)
+				]
 			]
 			+ SVerticalBox::Slot().AutoHeight()
 			[
@@ -859,7 +1025,8 @@ TSharedRef<SWidget> SPjcTabUnused::MakeAssetPane() {
 void SPjcTabUnused::RefreshAssets() {
 	const FPjcScanResult& Result = UPjcSubsystem::GetScanResult();
 	TArray<int32> Indices;
-	Tree.GetUnused(Result, SelectedFolder, bSubfolders, Indices);
+	Tree.GetListed(Result, SelectedFolder, bSubfolders, Indices);
+	const bool bGroups = Set == EPjcAssetSet::Unused || Set == EPjcAssetSet::Review;
 
 	FolderRows.Reset(Indices.Num());
 	for (const int32 Index : Indices) {
@@ -879,7 +1046,10 @@ void SPjcTabUnused::RefreshAssets() {
 		Row->Folder = Path.Len() > SelectedFolder.Len() ? Path.Mid(SelectedFolder.Len() + 1) : FString {};
 		Row->bLabel = Result.FolderLabelUnused.Contains(Asset.PackageName);
 		Row->Holder = UPjcSubsystem::GetLastCleanupKept().FindRef(Asset.PackageName);
-		if (const int32* Group = GroupSizes.Find(Asset.PackageName)) {
+		if (!bGroups) {
+			Row->Group = 0;
+		}
+		else if (const int32* Group = GroupSizes.Find(Asset.PackageName)) {
 			Row->Group = *Group;
 		}
 		else {
@@ -887,15 +1057,21 @@ void SPjcTabUnused::RefreshAssets() {
 			FPjcUnusedTree::GetDeleteGroup(Result, {Asset.PackageName}, With);
 			Row->Group = GroupSizes.Add(Asset.PackageName, With.Num());
 		}
+		MakeRowReason(Result, *Row);
 		FolderRows.Add(Row);
 	}
 
-	// filters of classes no longer here go
+	// filters of classes and reasons no longer here go
 	TSet<FName> Classes;
+	TSet<FString> Reasons;
 	for (const auto& Row : FolderRows) {
 		Classes.Add(Row->ClassName);
+		Reasons.Add(Row->ReasonKey);
 	}
 	ClassFilter = ClassFilter.Intersect(Classes);
+	if (!Reasons.Contains(ReasonFilter)) {
+		ReasonFilter.Reset();
+	}
 
 	RebuildChips();
 	ApplyAssetFilter();
@@ -912,6 +1088,7 @@ void SPjcTabUnused::ApplyAssetFilter() {
 	ListRows.Reset();
 	for (const auto& Row : FolderRows) {
 		if (ClassFilter.Num() > 0 && !ClassFilter.Contains(Row->ClassName)) continue;
+		if (!ReasonFilter.IsEmpty() && Row->ReasonKey != ReasonFilter) continue;
 		if (bHeldOnly && Row->Holder.IsEmpty()) continue;
 		if (!AssetSearch.IsEmpty() && !Row->Name.Contains(AssetSearch) && !Row->ClassLabel.Contains(AssetSearch)) continue;
 
@@ -928,8 +1105,8 @@ void SPjcTabUnused::ApplyAssetFilter() {
 		else if (Column == PjcUnusedColClass) {
 			Compare = A->ClassLabel.Compare(B->ClassLabel, ESearchCase::IgnoreCase);
 		}
-		else if (Column == PjcUnusedColGroup) {
-			Compare = A->Group < B->Group ? -1 : (A->Group > B->Group ? 1 : 0);
+		else if (Column == PjcUnusedColReason) {
+			Compare = A->Reason.Compare(B->Reason, ESearchCase::IgnoreCase);
 		}
 		else if (Column == PjcUnusedColPath) {
 			Compare = A->Folder.Compare(B->Folder, ESearchCase::IgnoreCase);
@@ -1055,9 +1232,62 @@ void SPjcTabUnused::RebuildChips() {
 	// clang-format off
 	ChipsBox->AddSlot().AutoWidth().Padding(FMargin {0.0f, 0.0f, 4.0f, 0.0f})
 	[
-		MakeChip(NAME_None, TEXT("All"), {}, FolderRows.Num(), TEXT("Every unused asset here"))
+		MakeChip(NAME_None, TEXT("All"), {}, FolderRows.Num(), TEXT("Every asset here ") + PjcWidgets::GetSetWord(Set))
 	];
 	// clang-format on
+
+	// reasons, biggest first (not for unused assets: nothing uses any of them)
+	struct FReasonChip
+	{
+		FString Key;
+		int32 Num = 0;
+		int64 Size = 0;
+	};
+	TMap<FString, FReasonChip> ReasonChips;
+	for (const auto& Row : FolderRows) {
+		if (Set == EPjcAssetSet::Unused || Row->ReasonKey.IsEmpty()) continue;
+
+		FReasonChip& Chip = ReasonChips.FindOrAdd(Row->ReasonKey);
+		Chip.Key = Row->ReasonKey;
+		++Chip.Num;
+		Chip.Size += Row->Size;
+	}
+	TArray<FReasonChip> ReasonsSorted;
+	ReasonChips.GenerateValueArray(ReasonsSorted);
+	ReasonsSorted.Sort([](const FReasonChip& A, const FReasonChip& B) {
+		return A.Size != B.Size ? A.Size > B.Size : A.Key < B.Key;
+	});
+	for (const auto& Chip : ReasonsSorted) {
+		const FString Key = Chip.Key;
+		const FString Tip = FString::Printf(TEXT("%s \u00B7 %s"), *Chip.Key, *PjcFormat::Size(Chip.Size));
+		// clang-format off
+		ChipsBox->AddSlot().AutoWidth().Padding(FMargin {0.0f, 0.0f, 4.0f, 0.0f})
+		[
+			SNew(SCheckBox)
+			.Style(&PjcShim::GetStyle().GetWidgetStyle<FCheckBoxStyle>(TEXT("ToggleButtonCheckbox")))
+			.ToolTipText(FText::FromString(Tip))
+			.IsChecked_Lambda([this, Key]() { return ReasonFilter == Key ? ECheckBoxState::Checked : ECheckBoxState::Unchecked; })
+			.OnCheckStateChanged_Lambda([this, Key](ECheckBoxState) { OnReasonChipClicked(Key); })
+			[
+				SNew(SBox).Padding(FMargin {8.0f, 2.0f})
+				[
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+					[
+						SNew(STextBlock).Text(FText::FromString(Chip.Key)).ColorAndOpacity(PjcWidgets::GetSetColors(Set).BoxText)
+					]
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
+					[
+						SNew(STextBlock)
+						.Text(FText::FromString(PjcFormat::Count(Chip.Num)))
+						.Font(PjcWidgets::GetFontMono(8))
+						.ColorAndOpacity(FSlateColor::UseSubduedForeground())
+					]
+				]
+			]
+		];
+		// clang-format on
+	}
 	for (const auto& Chip : Sorted) {
 		// clang-format off
 		ChipsBox->AddSlot().AutoWidth().Padding(FMargin {0.0f, 0.0f, 4.0f, 0.0f})
@@ -1087,7 +1317,7 @@ TSharedRef<ITableRow> SPjcTabUnused::OnGenerateAssetRow(FAssetRowPtr Row, const 
 void SPjcTabUnused::OnAssetSort(EColumnSortPriority::Type Priority, const FName& Column, EColumnSortMode::Type Mode) {
 	// a new column starts with the biggest (names a to z)
 	if (Column != AssetSortColumn) {
-		Mode = Column == PjcUnusedColAssetSize || Column == PjcUnusedColGroup ? EColumnSortMode::Descending : EColumnSortMode::Ascending;
+		Mode = Column == PjcUnusedColAssetSize ? EColumnSortMode::Descending : EColumnSortMode::Ascending;
 	}
 	AssetSortColumn = Column;
 	AssetSortMode = Mode;
@@ -1108,6 +1338,7 @@ void SPjcTabUnused::OnChipClicked(const FName ClassName) {
 	// a click shows one class (again: all), Ctrl+click adds or removes it
 	if (ClassName.IsNone()) {
 		ClassFilter.Reset();
+		ReasonFilter.Reset();
 		bHeldOnly = false;
 	}
 	else if (FSlateApplication::Get().GetModifierKeys().IsControlDown()) {
@@ -1128,16 +1359,26 @@ void SPjcTabUnused::OnChipClicked(const FName ClassName) {
 	ApplyAssetFilter();
 }
 
+void SPjcTabUnused::OnReasonChipClicked(const FString& Key) {
+	ReasonFilter = ReasonFilter == Key ? FString {} : Key;
+	ApplyAssetFilter();
+}
+
 FText SPjcTabUnused::GetWhereText() const {
 	return FText::FromString(SelectedFolder.Mid(1));
 }
 
-FText SPjcTabUnused::GetWhereInfoText() const {
-	int64 Size = 0;
-	for (const auto& Row : FolderRows) {
-		Size += Row->Size;
+FText SPjcTabUnused::GetEmptyText() const {
+	if (SetCounts.FindRef(Set) > 0) {
+		return FText::FromString(TEXT("No assets ") + PjcWidgets::GetSetWord(Set) + TEXT(" here"));
 	}
-	return FText::FromString(FString::Printf(TEXT("  \u00B7  %s unused \u00B7 %s"), *PjcFormat::Count(FolderRows.Num()), *PjcFormat::Size(Size)));
+	switch (Set) {
+		case EPjcAssetSet::Excluded : return FText::FromString(TEXT("Nothing excluded. Rules are in Scan settings > Exclusions."));
+		case EPjcAssetSet::Used :	  return FText::FromString(TEXT("No used assets."));
+		case EPjcAssetSet::Review :	  return FText::FromString(TEXT("Nothing to review. The scan is sure about every asset."));
+		case EPjcAssetSet::Unused :
+		default :					  return FText::FromString(TEXT("No unused assets. The project is clean."));
+	}
 }
 
 void SPjcTabUnused::SaveViewState() const {
@@ -1158,14 +1399,22 @@ TSharedPtr<SWidget> SPjcTabUnused::OnAssetContextMenu() {
 	if (Packages.Num() == 0) return nullptr;
 
 	FMenuBuilder Menu {true, nullptr};
-	const FString DeleteLabel = FString::Printf(TEXT("Delete\u2026 (%s)"), *PjcFormat::Count(Packages.Num()));
-	PjcWidgets::AddMenuEntry(Menu, DeleteLabel, TEXT("Deletes the selection with the unused assets that reference it"), [Packages]() {
-		PjcActions::DeleteWithGroup(Packages);
-	});
-	Menu.AddSeparator();
-	AddExcludeEntries(Menu);
-	Menu.AddSeparator();
-	PjcWidgets::AddMenuEntry(Menu, TEXT("Inspect"), TEXT("Shows why it is unused in the Inspector"), Packages.Num() == 1, [this]() {
+	if (Set == EPjcAssetSet::Unused || Set == EPjcAssetSet::Review) {
+		const FString DeleteLabel = FString::Printf(TEXT("Delete\u2026 (%s)"), *PjcFormat::Count(Packages.Num()));
+		PjcWidgets::AddMenuEntry(Menu, DeleteLabel, TEXT("Deletes the selection with the unused assets that reference it"), [Packages]() {
+			PjcActions::DeleteWithGroup(Packages);
+		});
+		Menu.AddSeparator();
+		AddExcludeEntries(Menu);
+		Menu.AddSeparator();
+	}
+	if (Set == EPjcAssetSet::Excluded) {
+		PjcWidgets::AddMenuEntry(Menu, TEXT("Remove exclusion"), TEXT("Removes the rules that keep the selection"), [this]() {
+			RemoveSelectedExclusions();
+		});
+		Menu.AddSeparator();
+	}
+	PjcWidgets::AddMenuEntry(Menu, TEXT("Inspect"), TEXT("Shows why it is in the list in the Inspector"), Packages.Num() == 1, [this]() {
 		InspectSelected();
 	});
 	PjcWidgets::AddMenuEntry(Menu, TEXT("Browse"), TEXT("Shows the selection in the Content Browser"), [this]() {
@@ -1175,7 +1424,8 @@ TSharedPtr<SWidget> SPjcTabUnused::OnAssetContextMenu() {
 }
 
 FReply SPjcTabUnused::OnAssetKeyDown(const FGeometry& Geometry, const FKeyEvent& KeyEvent) {
-	if (KeyEvent.GetKey() == EKeys::Delete && ListView->GetNumItemsSelected() > 0) {
+	const bool bDeletable = Set == EPjcAssetSet::Unused || Set == EPjcAssetSet::Review;
+	if (bDeletable && KeyEvent.GetKey() == EKeys::Delete && ListView->GetNumItemsSelected() > 0) {
 		PjcActions::DeleteWithGroup(GetSelectedPackages());
 		return FReply::Handled();
 	}
@@ -1195,7 +1445,7 @@ TArray<FName> SPjcTabUnused::GetSelectedPackages() const {
 void SPjcTabUnused::GetFolderUnused(const FString& Path, TArray<FName>& OutPackages) const {
 	const FPjcScanResult& Result = UPjcSubsystem::GetScanResult();
 	TArray<int32> Indices;
-	Tree.GetUnused(Result, Path, true, Indices);
+	Tree.GetListed(Result, Path, true, Indices);
 	OutPackages.Reset(Indices.Num());
 	for (const int32 Index : Indices) {
 		OutPackages.Add(Result.Assets[Index].PackageName);
@@ -1205,7 +1455,7 @@ void SPjcTabUnused::GetFolderUnused(const FString& Path, TArray<FName>& OutPacka
 void SPjcTabUnused::OnAssetSelectionChanged(FAssetRowPtr Row, ESelectInfo::Type SelectInfo) {
 	TArray<FName> Group;
 	const TArray<FName> Packages = GetSelectedPackages();
-	if (Packages.Num() > 0) {
+	if (Packages.Num() > 0 && (Set == EPjcAssetSet::Unused || Set == EPjcAssetSet::Review)) {
 		FPjcUnusedTree::GetDeleteGroup(UPjcSubsystem::GetScanResult(), Packages, Group);
 	}
 	NumSelectionGroup = Group.Num();
@@ -1221,16 +1471,24 @@ TSharedRef<SWidget> SPjcTabUnused::MakeFooter() {
 	const auto HasSelection = [this]() {
 		return ListView.IsValid() && ListView->GetNumItemsSelected() > 0;
 	};
+	const auto ShownFor = [this](const bool bUnused, const bool bExcluded, const bool bReview) {
+		return [this, bUnused, bExcluded, bReview]() {
+			const bool bUnusedShown = Set == EPjcAssetSet::Unused && bUnused;
+			const bool bOtherShown = (Set == EPjcAssetSet::Excluded && bExcluded) || (Set == EPjcAssetSet::Review && bReview);
+			const bool bShown = bUnusedShown || bOtherShown;
+			return bShown ? EVisibility::Visible : EVisibility::Collapsed;
+		};
+	};
 
 	// clang-format off
 	return SNew(SBorder).BorderImage(PjcShim::GetBrush(TEXT("ToolPanel.DarkGroupBorder"))).Padding(FMargin {10.0f, 6.0f})
 		[
 			SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
-			[
-				SNew(STextBlock).Text(this, &SPjcTabUnused::GetSelectionText)
-			]
 			+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
+			[
+				SNew(STextBlock).Text(this, &SPjcTabUnused::GetSelectionText).Clipping(EWidgetClipping::ClipToBounds)
+			]
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 			[
 				SNew(STextBlock)
 				.Text(this, &SPjcTabUnused::GetSelectionGroupText)
@@ -1243,6 +1501,7 @@ TSharedRef<SWidget> SPjcTabUnused::MakeFooter() {
 				.ButtonColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.UnusedFill"))
 				.ContentPadding(FMargin {10.0f, 2.0f})
 				.ToolTipText(FText::FromString(TEXT("Deletes the selection with the unused assets that reference it (Delete)")))
+				.Visibility_Lambda(ShownFor(true, false, true))
 				.IsEnabled_Lambda(HasSelection)
 				.OnClicked_Lambda([this]() {
 					PjcActions::DeleteWithGroup(GetSelectedPackages());
@@ -1255,19 +1514,35 @@ TSharedRef<SWidget> SPjcTabUnused::MakeFooter() {
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
 			[
 				SNew(SComboButton)
-				.ToolTipText(FText::FromString(TEXT("Keeps the selection, its folder or its class from cleanup")))
+				.ToolTipText(FText::FromString(TEXT("Keeps the selection, its folder or its class from cleanup: adds exclusions")))
+				.Visibility_Lambda(ShownFor(true, false, true))
 				.IsEnabled_Lambda(HasSelection)
 				.OnGetMenuContent(this, &SPjcTabUnused::MakeExcludeMenu)
 				.ButtonContent()
 				[
-					SNew(STextBlock).Text(FText::FromString(TEXT("Exclude")))
+					SNew(STextBlock).Text_Lambda([this]() { return FText::FromString(Set == EPjcAssetSet::Review ? TEXT("Keep") : TEXT("Exclude")); })
 				]
 			]
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
 			[
 				SNew(SButton)
 				.ContentPadding(FMargin {10.0f, 2.0f})
-				.ToolTipText(FText::FromString(TEXT("Shows why it is unused in the Inspector")))
+				.ToolTipText(FText::FromString(TEXT("Removes the rules that keep the selection; the next scan shows what they are without them")))
+				.Visibility_Lambda(ShownFor(false, true, false))
+				.IsEnabled_Lambda(HasSelection)
+				.OnClicked_Lambda([this]() {
+					RemoveSelectedExclusions();
+					return FReply::Handled();
+				})
+				[
+					SNew(STextBlock).Text(FText::FromString(TEXT("Remove exclusion")))
+				]
+			]
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
+			[
+				SNew(SButton)
+				.ContentPadding(FMargin {10.0f, 2.0f})
+				.ToolTipText(FText::FromString(TEXT("Shows why it is in the list in the Inspector")))
 				.IsEnabled_Lambda([this]() { return ListView.IsValid() && ListView->GetNumItemsSelected() == 1; })
 				.OnClicked_Lambda([this]() {
 					InspectSelected();
@@ -1316,15 +1591,16 @@ void SPjcTabUnused::AddExcludeEntries(FMenuBuilder& Menu) {
 	SelectedFolder.FindLastChar(TEXT('/'), Slash);
 	const FString FolderName = SelectedFolder.Mid(Slash + 1);
 
-	const FString AssetsLabel = FString::Printf(TEXT("Exclude assets (%s)"), *PjcFormat::Count(NumSelected));
+	const FString Verb = Set == EPjcAssetSet::Review ? TEXT("Keep") : TEXT("Exclude");
+	const FString AssetsLabel = FString::Printf(TEXT("%s assets (%s)"), *Verb, *PjcFormat::Count(NumSelected));
 	PjcWidgets::AddMenuEntry(Menu, AssetsLabel, TEXT("Keeps the selected assets, saved to Config/DefaultEditor.ini"), [this]() {
 		ExcludeSelectedAssets();
 	});
-	const FString FolderLabel = TEXT("Exclude folder ") + FolderName;
+	const FString FolderLabel = Verb + TEXT(" folder ") + FolderName;
 	PjcWidgets::AddMenuEntry(Menu, FolderLabel, TEXT("Keeps every asset in the selected folder, saved to Config/DefaultEditor.ini"), [this]() {
 		ExcludeFolder(SelectedFolder);
 	});
-	const FString ClassLabel = TEXT("Exclude class ") + ClassText;
+	const FString ClassLabel = Verb + TEXT(" class ") + ClassText;
 	PjcWidgets::AddMenuEntry(Menu, ClassLabel, TEXT("Keeps every asset of the class, saved to Config/DefaultEditor.ini"), [this]() {
 		ExcludeSelectedClasses();
 	});
@@ -1341,7 +1617,8 @@ void SPjcTabUnused::ExcludeSelectedAssets() {
 	if (Assets.Num() == 0) return;
 
 	const TCHAR* Plural = Assets.Num() == 1 ? TEXT("") : TEXT("s");
-	PjcActions::Exclude({}, {}, Assets, FString::Printf(TEXT("Excluded %s asset%s"), *PjcFormat::Count(Assets.Num()), Plural));
+	const TCHAR* Done = Set == EPjcAssetSet::Review ? TEXT("Kept") : TEXT("Excluded");
+	PjcActions::Exclude({}, {}, Assets, FString::Printf(TEXT("%s %s asset%s"), Done, *PjcFormat::Count(Assets.Num()), Plural));
 }
 
 void SPjcTabUnused::ExcludeSelectedClasses() {
@@ -1361,7 +1638,39 @@ void SPjcTabUnused::ExcludeSelectedClasses() {
 }
 
 void SPjcTabUnused::ExcludeFolder(const FString& Path) {
-	PjcActions::Exclude({Path}, {}, {}, TEXT("Excluded folder ") + Path);
+	const TCHAR* Done = Set == EPjcAssetSet::Review ? TEXT("Kept") : TEXT("Excluded");
+	PjcActions::Exclude({Path}, {}, {}, FString::Printf(TEXT("%s folder %s"), Done, *Path));
+}
+
+void SPjcTabUnused::RemoveSelectedExclusions() {
+	const FPjcScanResult& Result = UPjcSubsystem::GetScanResult();
+	TArray<FString> Folders;
+	TArray<FString> Classes;
+	TArray<FString> Assets;
+	for (const FName Package : GetSelectedPackages()) {
+		const FPjcExclusion* Exclusion = Result.Excluded.Find(Package);
+		if (!Exclusion) continue;
+
+		TArray<FString>& RulesOfKind = Exclusion->Kind == EPjcExclusionKind::Class ? Classes : Assets;
+		TArray<FString>& Rules = Exclusion->Kind == EPjcExclusionKind::Folder ? Folders : RulesOfKind;
+		Rules.AddUnique(Exclusion->Value);
+	}
+	if (Folders.Num() + Classes.Num() + Assets.Num() == 0) return;
+
+	// folder and class rules keep other assets too: they go only after a confirm
+	if (Folders.Num() + Classes.Num() > 0) {
+		TArray<FString> Rules = Folders;
+		for (const auto& Class : Classes) {
+			Rules.Add(FSoftObjectPath {Class}.GetAssetName());
+		}
+		const FString Message = TEXT("These rules keep other assets too:\n\n") + FString::Join(Rules, TEXT("\n")) + TEXT("\n\nRemove them?");
+		const FText Title = FText::FromString(TEXT("Remove exclusion"));
+		if (PjcShim::ShowDialog(Title, FText::FromString(Message), EAppMsgType::YesNo) != EAppReturnType::Yes) return;
+	}
+
+	const int32 NumRules = Folders.Num() + Classes.Num() + Assets.Num();
+	const TCHAR* Plural = NumRules == 1 ? TEXT("") : TEXT("s");
+	PjcActions::RemoveExclusions(Folders, Classes, Assets, FString::Printf(TEXT("Removed %s exclusion%s"), *PjcFormat::Count(NumRules), Plural));
 }
 
 void SPjcTabUnused::InspectSelected() const {
@@ -1386,7 +1695,13 @@ void SPjcTabUnused::BrowseSelected() const {
 
 FText SPjcTabUnused::GetSelectionText() const {
 	if (!ListView.IsValid() || ListView->GetNumItemsSelected() == 0) {
-		return FText::FromString(TEXT("No selection \u00B7 Ctrl or Shift selects more"));
+		switch (Set) {
+			case EPjcAssetSet::Excluded : return FText::FromString(TEXT("No selection \u00B7 Never deleted while a rule keeps them"));
+			case EPjcAssetSet::Used :	  return FText::FromString(TEXT("No selection \u00B7 Inspect shows the whole chain"));
+			case EPjcAssetSet::Review :	  return FText::FromString(TEXT("No selection \u00B7 Clean project keeps these \u00B7 Delete or Keep each"));
+			case EPjcAssetSet::Unused :
+			default :					  return FText::FromString(TEXT("No selection \u00B7 Ctrl or Shift selects more"));
+		}
 	}
 
 	int32 Num = 0;
@@ -1449,11 +1764,11 @@ TSharedRef<SWidget> SPjcTabUnused::MakeMapBar() {
 			]
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 			[
-				AreaToggle(TEXT("Unused"), false, TEXT("Only unused assets take space"))
+				AreaToggle(TEXT("Listed"), false, TEXT("Only the assets of the list take space"))
 			]
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 			[
-				AreaToggle(TEXT("All"), true, TEXT("All assets, folders tinted by their unused share"))
+				AreaToggle(TEXT("All"), true, TEXT("All assets, folders tinted by the share of the list"))
 			]
 		];
 	// clang-format on
@@ -1480,20 +1795,44 @@ TSharedRef<SWidget> SPjcTabUnused::MakeMapLegend() const {
 			SNew(SHorizontalBox)
 			+ SHorizontalBox::Slot().AutoWidth()
 			[
-				Entry(FLinearColor {FColor::FromHex(TEXT("#7A3236"))}, TEXT("Unused asset"))
+				SNew(SBox).Visibility_Lambda([this]() { return Set == EPjcAssetSet::Unused ? EVisibility::Visible : EVisibility::Collapsed; })
+				[
+					Entry(PjcWidgets::GetSetColors(EPjcAssetSet::Unused).Box, TEXT("Unused asset"))
+				]
+			]
+			+ SHorizontalBox::Slot().AutoWidth()
+			[
+				SNew(SBox).Visibility_Lambda([this]() { return Set == EPjcAssetSet::Excluded ? EVisibility::Visible : EVisibility::Collapsed; })
+				[
+					Entry(PjcWidgets::GetSetColors(EPjcAssetSet::Excluded).Box, TEXT("Excluded asset"))
+				]
+			]
+			+ SHorizontalBox::Slot().AutoWidth()
+			[
+				SNew(SBox).Visibility_Lambda([this]() { return Set == EPjcAssetSet::Used ? EVisibility::Visible : EVisibility::Collapsed; })
+				[
+					Entry(PjcWidgets::GetSetColors(EPjcAssetSet::Used).Box, TEXT("Used asset"))
+				]
+			]
+			+ SHorizontalBox::Slot().AutoWidth()
+			[
+				SNew(SBox).Visibility_Lambda([this]() { return Set == EPjcAssetSet::Review ? EVisibility::Visible : EVisibility::Collapsed; })
+				[
+					Entry(PjcWidgets::GetSetColors(EPjcAssetSet::Review).Box, TEXT("Asset to review"))
+				]
 			]
 			+ SHorizontalBox::Slot().AutoWidth()
 			[
 				SNew(SBox).Visibility_Lambda([this]() { return bMapAll ? EVisibility::Visible : EVisibility::Collapsed; })
 				[
-					Entry(FLinearColor {FColor::FromHex(TEXT("#2A3B3A"))}, TEXT("Used asset"))
+					Entry(FLinearColor {FColor::FromHex(Set == EPjcAssetSet::Unused ? TEXT("#2A3B3A") : TEXT("#30343A"))}, TEXT("Other asset"))
 				]
 			]
 			+ SHorizontalBox::Slot().AutoWidth()
 			[
 				SNew(STextBlock)
 				.Text_Lambda([this]() {
-					return FText::FromString(bMapAll ? TEXT("Folders tinted by their unused share") : TEXT("Folders sized by their unused assets"));
+					return FText::FromString(bMapAll ? TEXT("Folders tinted by the share of the list") : TEXT("Folders sized by the assets of the list"));
 				})
 				.ColorAndOpacity(FSlateColor::UseSubduedForeground())
 			]
@@ -1510,7 +1849,7 @@ void SPjcTabUnused::SetMapView(const bool bMap) {
 void SPjcTabUnused::RefreshMap() {
 	if (!SizeMap.IsValid()) return;
 
-	SizeMap->SetFolder(&UPjcSubsystem::GetScanResult(), Tree.Find(SelectedFolder), bMapAll);
+	SizeMap->SetFolder(&UPjcSubsystem::GetScanResult(), Tree.Find(SelectedFolder), bMapAll, Set);
 	RebuildBreadcrumb();
 }
 
@@ -1578,6 +1917,8 @@ void SPjcTabUnused::OnMapAssetClicked(int32 Index) {
 }
 
 void SPjcTabUnused::ShowNotDeleted() {
+	ShowSet(EPjcAssetSet::Unused);
+
 	// the root of the first asset the last delete kept, with subfolders
 	const FPjcScanResult& Result = UPjcSubsystem::GetScanResult();
 	const TMap<FName, FString>& Kept = UPjcSubsystem::GetLastCleanupKept();

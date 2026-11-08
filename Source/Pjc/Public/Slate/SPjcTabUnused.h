@@ -14,7 +14,7 @@ class SBox;
 class SHorizontalBox;
 struct FSlateBrush;
 
-// Unused asset in the list of the Assets Unused tool
+// Asset in the list of the Assets tool
 struct FPjcUnusedAssetRow
 {
 	// Index into FPjcScanResult::Assets
@@ -29,17 +29,24 @@ struct FPjcUnusedAssetRow
 	int64 Size = 0;
 	// Folder relative to the selected folder
 	FString Folder;
-	// Only a folder label keeps it, while Folder labels is on
+	// In the folder of a label whose cook rule does not package it
 	bool bLabel = false;
-	// Unused assets that reference it and are deleted with it
+	// Unused or review assets that reference it and are deleted with it
 	int32 Group = 0;
 	// What held it when the last delete could not remove it, empty when it was not kept
 	FString Holder;
+	// Why it is in the list, with its explanation; reason chips filter by key
+	FString Reason;
+	FString ReasonTip;
+	FString ReasonKey;
+	// Reason shown as a warning (excluded, unused without its rule)
+	bool bReasonWarn = false;
 };
 
 /**
- * Assets Unused tool: cleanup folder by folder. Left the folder tree with unused totals, right the unused assets of
- * the selected folder. Used assets are not listed (the Content Browser has them).
+ * Assets tool, folder by folder, in four lists: Unused (cleanup deletes them), Excluded (what exclusion rules keep),
+ * Used (why each is used) and Review (the scan is not sure, the user decides). Left the folder tree with the totals of
+ * the list, right the assets of the selected folder.
  */
 class SPjcTabUnused final : public SCompoundWidget
 {
@@ -63,11 +70,21 @@ class SPjcTabUnused final : public SCompoundWidget
 	// Shows the assets the last delete could not remove
 	void ShowNotDeleted();
 
+	// Shows one of the lists
+	void ShowSet(const EPjcAssetSet InSet);
+
+	EPjcAssetSet GetSet() const {
+		return Set;
+	}
+
   private:
 
 	using FFolderPtr = TSharedPtr<FPjcUnusedFolder>;
 
 	void OnScanFinished();
+	void RebuildTree();
+	TSharedRef<SWidget> MakeSetSwitch();
+	void MakeRowReason(const FPjcScanResult& Result, FPjcUnusedAssetRow& Row);
 
 	// folder tree
 	TSharedRef<SWidget> MakeFolderPane();
@@ -104,8 +121,9 @@ class SPjcTabUnused final : public SCompoundWidget
 	EColumnSortMode::Type GetAssetSortMode(const FName Column) const;
 	void OnAssetSearchChanged(const FText& Text);
 	void OnChipClicked(const FName ClassName);
+	void OnReasonChipClicked(const FString& Key);
 	FText GetWhereText() const;
-	FText GetWhereInfoText() const;
+	FText GetEmptyText() const;
 	TSharedPtr<SWidget> OnAssetContextMenu();
 	FReply OnAssetKeyDown(const FGeometry& Geometry, const FKeyEvent& KeyEvent);
 
@@ -115,6 +133,7 @@ class SPjcTabUnused final : public SCompoundWidget
 	void ExcludeSelectedAssets();
 	void ExcludeSelectedClasses();
 	void ExcludeFolder(const FString& Path);
+	void RemoveSelectedExclusions();
 	void InspectSelected() const;
 	void BrowseSelected() const;
 	void OnAssetSelectionChanged(FAssetRowPtr Row, ESelectInfo::Type SelectInfo);
@@ -128,6 +147,10 @@ class SPjcTabUnused final : public SCompoundWidget
 
 	FDelegateHandle ScanFinishedHandle;
 	TWeakPtr<FTabManager> TabManager;
+
+	// list shown, and how many assets each list has
+	EPjcAssetSet Set = EPjcAssetSet::Unused;
+	TMap<EPjcAssetSet, int32> SetCounts;
 
 	FPjcUnusedTree Tree;
 	TArray<FFolderPtr> TreeRoots;
@@ -161,6 +184,8 @@ class SPjcTabUnused final : public SCompoundWidget
 	TSharedPtr<SPjcSizeMap> SizeMap;
 	TSharedPtr<SHorizontalBox> Breadcrumb;
 	TSet<FName> ClassFilter;
+	// Reason chip key, empty for every reason
+	FString ReasonFilter;
 	// Only assets the last delete could not remove
 	bool bHeldOnly = false;
 	bool bSubfolders = true;
