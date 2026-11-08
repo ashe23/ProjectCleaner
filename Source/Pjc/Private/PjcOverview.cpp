@@ -123,12 +123,20 @@ FPjcOverview::FShipped FPjcOverview::MakeShipped(const FPjcScanResult& Result, c
 		Scanned.Add(Package);
 
 		const int64 Size = Result.GetSize(Package);
-		const bool bUnused = Result.GetStatus(Package) == EPjcAssetStatus::Unused;
+		const EPjcAssetStatus Status = Result.GetStatus(Package);
+		const bool bUnused = Status == EPjcAssetStatus::Unused;
+		const bool bPackagedReview = Result.GetChainReason(Package) == EPjcUsageReason::CookPackaged;
 		if (const int64* CookedSize = Cook.Cooked.Find(Package)) {
-			(bUnused ? Shipped.UnusedShipped : Shipped.Shipped).Add(Size);
-			(bUnused ? Shipped.UnusedShippedCooked : Shipped.ShippedCooked) += *CookedSize;
+			if (bUnused) {
+				// saved since the cook: not checked
+				Shipped.Unused.Add(Size);
+			}
+			else {
+				(bPackagedReview ? Shipped.UnusedShipped : Shipped.Shipped).Add(Size);
+				(bPackagedReview ? Shipped.UnusedShippedCooked : Shipped.ShippedCooked) += *CookedSize;
+			}
 		}
-		else if (bUnused) {
+		else if (bUnused || Status == EPjcAssetStatus::Review) {
 			Shipped.Unused.Add(Size);
 		}
 		else {

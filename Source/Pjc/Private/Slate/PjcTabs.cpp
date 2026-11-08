@@ -35,11 +35,11 @@ namespace PjcTabs
 		}
 	}
 
-	void ShowSet(const TWeakPtr<FTabManager>& Tabs, const EPjcAssetSet Set) {
+	void ShowSet(const TWeakPtr<FTabManager>& Tabs, const EPjcAssetSet Set, const FString& Reason) {
 		const TSharedPtr<FTabManager> Manager = Tabs.Pin();
 		const TSharedPtr<SDockTab> Tab = Manager.IsValid() ? Manager->TryInvokeTab(FTabId {PjcConstants::TabAssetsUnused}) : nullptr;
 		if (Tab.IsValid() && Tab->GetContent()->GetType() == TEXT("SPjcTabUnused")) {
-			StaticCastSharedRef<SPjcTabUnused>(Tab->GetContent())->ShowSet(Set);
+			StaticCastSharedRef<SPjcTabUnused>(Tab->GetContent())->ShowSet(Set, Reason);
 		}
 	}
 

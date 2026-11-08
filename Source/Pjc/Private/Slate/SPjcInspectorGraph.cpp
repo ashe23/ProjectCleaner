@@ -35,6 +35,7 @@ namespace
 			case EPjcUsageReason::EngineReferenced : return TEXT("Outside scanned content");
 			case EPjcUsageReason::Indirect :		 return TEXT("Code or config");
 			case EPjcUsageReason::Excluded :		 return TEXT("Exclusion");
+			case EPjcUsageReason::Cinematic :		 return TEXT("Cinematics");
 			case EPjcUsageReason::Editor :			 return TEXT("Editor");
 			case EPjcUsageReason::GameplayCue :		 return TEXT("GameplayCue");
 			case EPjcUsageReason::Megascans :		 return TEXT("Megascans");

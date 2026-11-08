@@ -19,8 +19,8 @@ namespace PjcTabs
 	// Shows the folder in the Unused list of Assets
 	void ShowFolder(const TWeakPtr<FTabManager>& Tabs, const FString& Path);
 
-	// Shows a list of Assets
-	void ShowSet(const TWeakPtr<FTabManager>& Tabs, const EPjcAssetSet Set);
+	// Shows a list of Assets, only the assets of one reason when given
+	void ShowSet(const TWeakPtr<FTabManager>& Tabs, const EPjcAssetSet Set, const FString& Reason = FString {});
 
 	// Shows a category of Issues, EPjcIssueCategory as number
 	void ShowIssues(const TWeakPtr<FTabManager>& Tabs, const uint8 Category);

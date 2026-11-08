@@ -482,7 +482,7 @@ bool FPjcTestScanUsage::RunTest(const FString& Parameters) {
 	TestReason(TEXT("C_ByAsset"), EPjcUsageReason::Excluded, nullptr, TEXT("Excluded asset"));
 	TestReason(TEXT("C_ByFolder"), EPjcUsageReason::Excluded, nullptr, TEXT("In excluded folder"));
 	TestReason(TEXT("CLC_ByClass"), EPjcUsageReason::Excluded, nullptr, TEXT("Excluded class"));
-	TestReason(TEXT("LS_Cinematic"), EPjcUsageReason::Excluded, nullptr, TEXT("Cinematic"));
+	TestReason(TEXT("LS_Cinematic"), EPjcUsageReason::Cinematic, nullptr, TEXT("Cinematic"));
 	TestReason(TEXT("C_Labeled"), EPjcUsageReason::None, nullptr, nullptr);
 	TestReason(TEXT("C_Packaged"), EPjcUsageReason::FolderLabel, TEXT("PAL_Packaged"), nullptr);
 	TestReason(TEXT("C_UnusedLeaf"), EPjcUsageReason::None, nullptr, nullptr);
@@ -873,12 +873,18 @@ bool FPjcTestCookShipped::RunTest(const FString& Parameters) {
 	TestEqual(TEXT("cooked size"), Cook.Cooked.FindRef(PackageOf(Fixture, TEXT("BP_Primary"))), static_cast<int64>(1000));
 	TestFalse(TEXT("not cooked is left out"), Cook.Cooked.Contains(PackageOf(Fixture, TEXT("EUB_Tool"))));
 
+	// the scan made before the cook: its unused assets in the cook were saved before it, so the scan did not check them;
+	// assets to review that were not cooked go with the unused ones
+	int32 NumReview = 0;
+	for (const auto& Pair : Result.Status) {
+		NumReview += Pair.Value == EPjcAssetStatus::Review ? 1 : 0;
+	}
 	FPjcOverview::FShipped Shipped = FPjcOverview::MakeShipped(Result, Cook);
 	TestEqual(TEXT("shipped"), Shipped.Shipped.Num, 1);
 	TestEqual(TEXT("shipped cooked size"), Shipped.ShippedCooked, static_cast<int64>(1000));
-	TestEqual(TEXT("unused shipped"), Shipped.UnusedShipped.Num, 2);
-	TestEqual(TEXT("used, not shipped"), Shipped.UsedNotShipped.Num, Result.Used.Num() - 1);
-	TestEqual(TEXT("unused, not shipped"), Shipped.Unused.Num, Result.Unused.Num() - 2);
+	TestEqual(TEXT("unused shipped, nothing in review yet"), Shipped.UnusedShipped.Num, 0);
+	TestEqual(TEXT("used, not shipped"), Shipped.UsedNotShipped.Num, Result.Used.Num() - 1 - NumReview);
+	TestEqual(TEXT("unused, not shipped"), Shipped.Unused.Num, Result.Unused.Num() + NumReview);
 	TestEqual(TEXT("outside the scan"), Shipped.NumOutside, 1);
 	TestEqual(TEXT("outside size"), Shipped.SizeOutside, static_cast<int64>(500));
 	TestTrue(TEXT("outside root"), Shipped.OutsideRoots.Num() == 1 && Shipped.OutsideRoots[0].Key == TEXT("/Engine"));
@@ -938,6 +944,7 @@ bool FPjcTestCookShipped::RunTest(const FString& Parameters) {
 		return Asset.PackageName == UnusedRoot || Asset.PackageName == UnusedLeaf;
 	};
 	TestFalse(TEXT("cleanup keeps review assets"), UnusedWithCook.ContainsByPredicate(IsReviewAsset));
+	TestEqual(TEXT("packaged review assets are unused, shipped"), FPjcOverview::MakeShipped(Checked, Cook).UnusedShipped.Num, 2);
 
 	IFileManager::Get().DeleteDirectory(*PlatformDir, false, true);
 	TestFalse(TEXT("no cook"), FPjcCookInfo::GetLast().IsFound());

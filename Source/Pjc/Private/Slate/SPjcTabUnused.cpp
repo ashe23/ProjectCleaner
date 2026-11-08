@@ -391,8 +391,12 @@ void SPjcTabUnused::SelectFolder(const FString& Path) {
 	TreeView->RequestScrollIntoView(Folder);
 }
 
-void SPjcTabUnused::ShowSet(const EPjcAssetSet InSet) {
-	if (InSet == Set) return;
+void SPjcTabUnused::ShowSet(const EPjcAssetSet InSet, const FString& Reason) {
+	if (InSet == Set) {
+		ReasonFilter = Reason;
+		ApplyAssetFilter();
+		return;
+	}
 
 	Set = InSet;
 	ClassFilter.Reset();
@@ -401,6 +405,8 @@ void SPjcTabUnused::ShowSet(const EPjcAssetSet InSet) {
 	RebuildTree();
 	OnFolderSearchChanged(FText::FromString(FolderSearch));
 	RefreshAssets();
+	ReasonFilter = Reason;
+	ApplyAssetFilter();
 }
 
 void SPjcTabUnused::OnScanFinished() {
@@ -539,14 +545,13 @@ void SPjcTabUnused::MakeRowReason(const FPjcScanResult& Result, FPjcUnusedAssetR
 		return;
 	}
 
-	// used: named like the Overview reasons, cinematics apart from exclusions
-	const bool bCinematic = ChainReason == EPjcUsageReason::Excluded && RootUsage->Detail.StartsWith(TEXT("Cinematic"));
+	// used: named like the Overview reasons
 	FString Name;
 	FString ToolTip;
 	FLinearColor Color;
 	SPjcTabOverview::GetReasonInfo(FPjcOverview::GetGroupReason(Result, Row.Package), Name, ToolTip, Color);
-	Row.Reason = bCinematic ? TEXT("Cinematics") : Name;
-	Row.ReasonTip = bCinematic ? TEXT("Level Sequences and Movie Render Queue configs, and what they use") : ToolTip;
+	Row.Reason = Name;
+	Row.ReasonTip = ToolTip;
 	if (Root != Row.Package) {
 		Row.ReasonTip += TEXT("\nChain starts at ") + FPackageName::GetShortName(Root);
 	}

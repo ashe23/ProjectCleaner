@@ -419,12 +419,21 @@ TSharedRef<SWidget> SPjcTabOverview::MakeReasons() const {
 		// clang-format off
 		Rows->AddSlot().AutoHeight()
 		[
-			MakeRow(NameWidget, Value, {Segment}, static_cast<double>(MaxSize), PjcWidgets::MakeToolTip(Name, ToolTip, Share))
+			MakeRow(
+				NameWidget,
+				Value,
+				{Segment},
+				static_cast<double>(MaxSize),
+				PjcWidgets::MakeToolTip(Name, ToolTip, Share + TEXT("\nOpens Assets \u203A Used")),
+				FSimpleDelegate::CreateLambda([this, Name]() {
+					PjcTabs::ShowSet(TabManager, EPjcAssetSet::Used, Name);
+				})
+			)
 		];
 		// clang-format on
 	}
 
-	return MakeSection(TEXT("Usage reasons"), TEXT("by chain start"), Rows);
+	return MakeSection(TEXT("Used"), TEXT("by chain start"), Rows);
 }
 
 TSharedRef<SWidget> SPjcTabOverview::MakeClasses() const {
@@ -768,14 +777,27 @@ TSharedRef<SWidget> SPjcTabOverview::MakeShippedCard() const {
 	AddSegment(TEXT("Unused"), Ship.Unused, PjcWidgets::GetColor("ProjectCleaner.Color.UnusedFill"));
 
 	// one column per group
-	const auto Column = [&Muted](
+	const auto Column = [this, &Muted](
 							const FString& Label,
 							const TOptional<FLinearColor>& Swatch,
 							const FString& Number,
 							const FSlateColor& NumberColor,
 							const FString& Sub,
-							const FString& ToolTip
+							const FString& ToolTip,
+							const TOptional<EPjcAssetSet>& Link
 						) {
+		// the line under the number opens the list it names
+		TSharedRef<SWidget> SubWidget = SNew(STextBlock).Text(FText::FromString(Sub)).ColorAndOpacity(Muted);
+		if (Link.IsSet()) {
+			const EPjcAssetSet Set = Link.GetValue();
+			// clang-format off
+			SubWidget = SNew(SHyperlink)
+				.Text(FText::FromString(Sub + TEXT(" \u203A")))
+				.OnNavigate_Lambda([this, Set]() {
+					PjcTabs::ShowSet(TabManager, Set);
+				});
+			// clang-format on
+		}
 		const TSharedRef<SHorizontalBox> Head = SNew(SHorizontalBox);
 		if (Swatch.IsSet()) {
 			// clang-format off
@@ -804,7 +826,7 @@ TSharedRef<SWidget> SPjcTabOverview::MakeShippedCard() const {
 				]
 				+ SVerticalBox::Slot().AutoHeight()
 				[
-					SNew(STextBlock).Text(FText::FromString(Sub)).ColorAndOpacity(Muted)
+					SubWidget
 				]
 			];
 		// clang-format on
@@ -841,25 +863,29 @@ TSharedRef<SWidget> SPjcTabOverview::MakeShippedCard() const {
 	const FString ShipTip = ShipWhere + ShipEditor + TEXT(" in the editor. Cooked size is before pak compression.");
 	const FLinearColor ShipColor = PjcWidgets::GetColor("ProjectCleaner.Color.ShipFill");
 	const FLinearColor KeepColor = PjcWidgets::GetColor("ProjectCleaner.Color.KeepFill");
-	const FLinearColor UnusedFillColor = PjcWidgets::GetColor("ProjectCleaner.Color.UnusedFill");
-	AddColumn(Column(TEXT("Shipped"), ShipColor, PjcFormat::Count(NumShipped), PlainColor, ShipCooked + TEXT(" cooked"), ShipTip));
+	const TOptional<EPjcAssetSet> NoList;
+	AddColumn(Column(TEXT("Shipped"), ShipColor, PjcFormat::Count(NumShipped), PlainColor, ShipCooked + TEXT(" cooked"), ShipTip, NoList));
 	const FString NotCooked = TEXT("Used in the editor, or only by content that is not cooked: ");
 	const FString LeftOut = TEXT("editor-only references, maps and tools left out of the cook. By chain start:\n");
 	const FString NotShippedTip = NotCooked + LeftOut + FString::Join(ReasonLines, TEXT("\n"));
 	const FString NotShippedNum = PjcFormat::Count(Ship.UsedNotShipped.Num);
-	AddColumn(Column(TEXT("Used, not shipped"), KeepColor, NotShippedNum, PlainColor, Share(Ship.UsedNotShipped), NotShippedTip));
-	const TCHAR* ShipUnusedTip = TEXT("Not shipped and not used. Cleanup deletes them.");
-	AddColumn(Column(TEXT("Unused"), UnusedFillColor, PjcFormat::Count(Ship.Unused.Num), PlainColor, Share(Ship.Unused), ShipUnusedTip));
+	AddColumn(Column(TEXT("Used, not shipped"), KeepColor, NotShippedNum, PlainColor, Share(Ship.UsedNotShipped), NotShippedTip, NoList));
 	if (Ship.UnusedShipped.Num > 0) {
-		const FString UnusedShippedSize = PjcFormat::Size(Ship.UnusedShippedCooked) + TEXT(" cooked");
-		const TCHAR* CheckTip = TEXT("The cook packages them but the scan marks them unused. Check them before deleting.");
-		const FLinearColor CheckColor = PjcWidgets::GetColor("ProjectCleaner.Color.Yellow");
-		AddColumn(Column(TEXT("Unused, shipped"), {}, PjcFormat::Count(Ship.UnusedShipped.Num), CheckColor, UnusedShippedSize, CheckTip));
+		const TCHAR* CheckTip = TEXT("The last cook packaged them, but the scan finds nothing that uses them: the game may load them in a way ")
+			TEXT("the scan cannot follow. They are in Review and Clean project keeps them.");
+		const FLinearColor CheckColor = PjcWidgets::GetColor("ProjectCleaner.Color.Review");
+		const FString CheckNum = TEXT("\u26A0 ") + PjcFormat::Count(Ship.UnusedShipped.Num);
+		AddColumn(Column(TEXT("Unused, shipped"), {}, CheckNum, CheckColor, TEXT("in Review"), CheckTip, EPjcAssetSet::Review));
 	}
 	else {
+		const int32 NumNotChecked = UPjcSubsystem::GetScanResult().CookCheck.NumNotChecked;
 		const FLinearColor AgreeColor = PjcWidgets::GetColor("ProjectCleaner.Color.Ok");
-		const TCHAR* AgreeTip = TEXT("No asset the scan marks unused is in the cook.");
-		AddColumn(Column(TEXT("Unused, shipped"), {}, TEXT("\u2713 0"), AgreeColor, TEXT("scan and cook agree"), AgreeTip));
+		const FString NotCheckedCount = PjcFormat::Count(NumNotChecked);
+		const FString NotChecked = NotCheckedCount + TEXT(" unused not checked");
+		const FString NotCheckedTip = TEXT(" ") + NotCheckedCount + TEXT(" unused assets were saved or added after the cook and are not checked.");
+		const FString AgreeTip = TEXT("No asset the scan marks unused is in the cook.") + (NumNotChecked > 0 ? NotCheckedTip : FString {});
+		const FString AgreeSub = NumNotChecked > 0 ? NotChecked : TEXT("scan and cook agree");
+		AddColumn(Column(TEXT("Unused, shipped"), {}, TEXT("\u2713 0"), AgreeColor, AgreeSub, AgreeTip, NoList));
 	}
 
 	// what else the cook packaged
@@ -1071,8 +1097,13 @@ void SPjcTabOverview::GetReasonInfo(const EPjcUsageReason Reason, FString& OutNa
 			break;
 		case EPjcUsageReason::Excluded :
 			OutName = TEXT("Excluded");
-			OutToolTip = TEXT("Excluded in settings, always used classes and cinematics.");
+			OutToolTip = TEXT("Excluded in settings and always used classes, and what they use.");
 			Color = TEXT("#8A9099");
+			break;
+		case EPjcUsageReason::Cinematic :
+			OutName = TEXT("Cinematics");
+			OutToolTip = TEXT("Level Sequences and Movie Render Queue configs, and what they use.");
+			Color = TEXT("#C08457");
 			break;
 		case EPjcUsageReason::GameplayCue :
 			OutName = TEXT("GameplayCue notifies");

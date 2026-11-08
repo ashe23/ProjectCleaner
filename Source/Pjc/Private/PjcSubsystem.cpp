@@ -95,6 +95,9 @@ namespace
 	UPjcSubsystem::FPjcDelegateScanFinished ScanFinished;
 	FPjcProjectChanges ProjectChanges;
 
+	// detail of the cinematic reason, then the class
+	const FString PjcCinematicDetail = TEXT("Cinematic ");
+
 	template<typename T>
 	bool ScanCacheGet(const TOptional<T>& Cached, T& Out) {
 		if (ScanCache.Depth == 0 || !Cached.IsSet()) return false;
@@ -626,6 +629,7 @@ FString UPjcSubsystem::GetUsageReasonText(const FPjcAssetUsage& Usage) {
 		case EPjcUsageReason::FolderLabel :			return TEXT("In folder of label ") + FPackageName::GetShortName(Usage.Parent);
 		case EPjcUsageReason::CookPackaged :		return TEXT("Packaged by the last cook (") + Usage.Detail + TEXT(")");
 		case EPjcUsageReason::GameplayCueNotFired : return TEXT("GameplayCue notify nothing fires: ") + Usage.Detail;
+		case EPjcUsageReason::Cinematic :			return Usage.Detail;
 		case EPjcUsageReason::None :
 		default :									return TEXT("Nothing used references it");
 	}
@@ -737,7 +741,8 @@ void UPjcSubsystem::ComputeAssetsUsed(
 			if (Usage.Contains(Asset.PackageName)) continue;
 
 			const FString ExcludedDetail = GetExcludedDetail(Asset, ClassNamesUserExcluded, ClassNamesUsedClasses, ClassNamesCinematic);
-			AddUsed(Asset.PackageName, EPjcUsageReason::Excluded, NAME_None, ExcludedDetail);
+			const bool bCinematic = ExcludedDetail.StartsWith(PjcCinematicDetail);
+			AddUsed(Asset.PackageName, bCinematic ? EPjcUsageReason::Cinematic : EPjcUsageReason::Excluded, NAME_None, ExcludedDetail);
 		}
 	}
 
@@ -1567,7 +1572,7 @@ FString UPjcSubsystem::GetExcludedDetail(
 
 	if (HasClass(UserExcluded)) return TEXT("Excluded class ") + ExactClassName.ToString();
 	if (HasClass(UsedClasses)) return TEXT("Always used class ") + ExactClassName.ToString();
-	if (HasClass(Cinematic)) return TEXT("Cinematic asset (Cinematic Assets Used setting)");
+	if (HasClass(Cinematic)) return PjcCinematicDetail + ExactClassName.ToString();
 
 	return TEXT("Excluded");
 }

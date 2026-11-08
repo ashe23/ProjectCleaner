@@ -70,8 +70,8 @@ class SPjcTabUnused final : public SCompoundWidget
 	// Shows the assets the last delete could not remove
 	void ShowNotDeleted();
 
-	// Shows one of the lists
-	void ShowSet(const EPjcAssetSet InSet);
+	// Shows one of the lists, only the assets of one reason when given (as the reason column names it)
+	void ShowSet(const EPjcAssetSet InSet, const FString& Reason = FString {});
 
 	EPjcAssetSet GetSet() const {
 		return Set;

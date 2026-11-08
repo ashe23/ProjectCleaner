@@ -64,7 +64,7 @@ struct FPjcOverview
 		FTotal Shipped;
 		int64 ShippedCooked = 0;
 
-		// Unused but cooked: the scan and the cook disagree
+		// Cooked though nothing the scan sees uses them: in Review (packaged by the last cook)
 		FTotal UnusedShipped;
 		int64 UnusedShippedCooked = 0;
 
@@ -72,7 +72,7 @@ struct FPjcOverview
 		FTotal UsedNotShipped;
 		TArray<FReason> UsedNotShippedReasons;
 
-		// Unused and not cooked
+		// Unused or to review, and not cooked; unused assets saved since the cook too (not checked)
 		FTotal Unused;
 
 		// Cooked packages outside the scan (engine, plugins not scanned), by top folder, biggest first

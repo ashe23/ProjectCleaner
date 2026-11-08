@@ -146,7 +146,7 @@ enum class EPjcUsageReason : uint8
 	EngineReferenced,
 	// named in project or plugin Source/Config files
 	Indirect,
-	// exclude settings, always used classes or cinematic assets
+	// exclude settings or always used classes
 	Excluded,
 	// editor utility blueprint or widget
 	Editor,
@@ -168,6 +168,8 @@ enum class EPjcUsageReason : uint8
 	CookPackaged,
 	// Review: GameplayCue notify whose tag nothing used, no source and no config file names, or outside the cue notify paths
 	GameplayCueNotFired,
+	// Level Sequence, Template Sequence, Movie Render Queue or Movie Render Graph config while Cinematics is on
+	Cinematic,
 };
 
 // What fixing redirectors did
