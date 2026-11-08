@@ -23,12 +23,15 @@ class SPjcScanWindow final : public SCompoundWidget
 	void Construct(const FArguments& InArgs);
 
 	// Scans in the window, true when the scan finished (false when canceled or the registry was not ready)
-	static bool Run();
+	// bStayOpen: the window shows the result until the user closes it (the Scan button); scans after an action
+	// (delete, exclude, fix) close it by themselves
+	static bool Run(const bool bStayOpen);
 
   private:
 
-	// runs the scan, the window drawn between its steps, then closes the window
+	// runs the scan, the window drawn between its steps
 	void StartScan();
+	void Close() const;
 	float GetPercent() const;
 	static void PumpUi();
 
@@ -37,6 +40,7 @@ class SPjcScanWindow final : public SCompoundWidget
 	bool bScanned = false;
 	bool bFinished = false;
 	double StartTime = 0.0;
+	double EndTime = 0.0;
 	int32 StepIndex = 0;
 	FString CurrentText;
 	TArray<FString> Found;

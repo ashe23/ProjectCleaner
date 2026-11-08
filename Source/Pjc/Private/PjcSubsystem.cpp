@@ -631,7 +631,7 @@ bool UPjcSubsystem::Scan(const bool bShowSlowTask, FPjcScanProgress* Progress) {
 	if (Result.CookCheck.IsFound()) {
 		PjcScanStep(EPjcScanStep::Cook);
 		const FString Packaged = PjcFormat::Count(Result.CookCheck.NumPackaged) + TEXT(" packaged \u00B7 in Review");
-		const FString Checked = PjcFormat::Count(Result.CookCheck.NumChecked) + TEXT(" unused checked");
+		const FString Checked = PjcFormat::Count(Result.CookCheck.NumChecked) + TEXT(" unused the cook left out");
 		PjcScanFound(EPjcScanStep::Cook, Result.CookCheck.NumPackaged > 0 ? Packaged : Checked);
 	}
 	if (IsCanceled()) return false;

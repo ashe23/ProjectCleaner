@@ -835,8 +835,10 @@ TSharedRef<SWidget> SPjcTabOverview::MakeShippedCard() const {
 		const FLinearColor AgreeColor = PjcWidgets::GetColor("ProjectCleaner.Color.Ok");
 		const FString NotCheckedCount = PjcFormat::Count(NumNotChecked);
 		const FString NotChecked = NotCheckedCount + TEXT(" unused not checked");
-		const FString NotCheckedTip = TEXT(" ") + NotCheckedCount + TEXT(" unused assets were saved or added after the cook and are not checked.");
-		const FString AgreeTip = TEXT("No asset the scan marks unused is in the cook.") + (NumNotChecked > 0 ? NotCheckedTip : FString {});
+		const FString NotCheckedTip = TEXT("\n") + NotCheckedCount + TEXT(" unused assets changed after the cook: it cannot tell about them.");
+		const TCHAR* AgreeText = TEXT("The last cook packaged none of the unused assets: nothing it cooked needed them. A cook of ")
+			TEXT("only some maps leaves out more, so the check covers what that cook took.");
+		const FString AgreeTip = AgreeText + (NumNotChecked > 0 ? NotCheckedTip : FString {});
 		const FString AgreeSub = NumNotChecked > 0 ? NotChecked : TEXT("scan and cook agree");
 		AddColumn(Column(TEXT("Unused, shipped"), {}, TEXT("\u2713 0"), AgreeColor, AgreeSub, AgreeTip, NoList));
 	}

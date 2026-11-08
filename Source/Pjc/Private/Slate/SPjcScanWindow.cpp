@@ -95,7 +95,10 @@ void SPjcScanWindow::Construct(const FArguments& InArgs) {
 			+ SHorizontalBox::Slot().FillWidth(1.0f)
 			[
 				SNew(STextBlock)
-				.Text_Lambda([this]() { return FText::FromString(bFinished ? TEXT("\u2713 Scan finished") : TEXT("Scanning project")); })
+				.Text_Lambda([this]() {
+					const TCHAR* Done = bScanned ? TEXT("\u2713 Scan finished") : TEXT("Scan canceled");
+					return FText::FromString(bFinished ? Done : TEXT("Scanning project"));
+				})
 				.Font(FPjcStyles::GetFont("Bold", 12))
 			]
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
@@ -143,24 +146,38 @@ void SPjcScanWindow::Construct(const FArguments& InArgs) {
 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 12.0f, 0.0f})
 				[
 					SNew(STextBlock)
-					.Text_Lambda([this]() { return FText::FromString(FString::Printf(TEXT("%.1f s"), FPlatformTime::Seconds() - StartTime)); })
+					.Text_Lambda([this]() {
+						const double Now = bFinished ? EndTime : FPlatformTime::Seconds();
+						return FText::FromString(FString::Printf(TEXT("%.1f s"), Now - StartTime));
+					})
 					.Font(PjcWidgets::GetFontMono(9))
 				]
 				+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
 				[
-					SNew(STextBlock).Text(FText::FromString(TEXT("The last result stays if you cancel"))).ColorAndOpacity(FSlateColor::UseSubduedForeground())
+					SNew(STextBlock)
+					.Text_Lambda([this]() {
+						const FString Scanned = PjcFormat::Count(UPjcSubsystem::GetScanResult().Assets.Num()) + TEXT(" assets scanned");
+						const FString Done = bScanned ? Scanned : FString {TEXT("The last result stays")};
+						return FText::FromString(bFinished ? Done : FString {TEXT("The last result stays if you cancel")});
+					})
+					.ColorAndOpacity(FSlateColor::UseSubduedForeground())
 				]
 				+ SHorizontalBox::Slot().AutoWidth()
 				[
 					SNew(SButton)
 					.ContentPadding(FMargin {12.0f, 2.0f})
-					.IsEnabled_Lambda([this]() { return !Progress.bCancelRequested && !bFinished; })
+					.IsEnabled_Lambda([this]() { return bFinished || !Progress.bCancelRequested; })
 					.OnClicked_Lambda([this]() {
-						Progress.bCancelRequested = true;
+						if (bFinished) {
+							Close();
+						}
+						else {
+							Progress.bCancelRequested = true;
+						}
 						return FReply::Handled();
 					})
 					[
-						SNew(STextBlock).Text(FText::FromString(TEXT("Cancel")))
+						SNew(STextBlock).Text_Lambda([this]() { return FText::FromString(bFinished ? TEXT("Close") : TEXT("Cancel")); })
 					]
 				]
 			]
@@ -181,7 +198,7 @@ void SPjcScanWindow::Construct(const FArguments& InArgs) {
 	StartTime = FPlatformTime::Seconds();
 }
 
-bool SPjcScanWindow::Run() {
+bool SPjcScanWindow::Run(const bool bStayOpen) {
 	// clang-format off
 	const TSharedRef<SWindow> ScanWindow = SNew(SWindow)
 		.Title(FText::FromString(TEXT("Scan")))
@@ -206,26 +223,35 @@ bool SPjcScanWindow::Run() {
 
 	// modal without a loop of its own, like the engine's progress windows: the scan runs right here and draws the
 	// window between its steps. A scan started from a widget timer would start again in every Tick it calls
+	// the tools behind stay dimmed until the window is closed
 	PjcTabs::SetWindowOpen(true);
+	ScanWindow->SetOnWindowClosed(FOnWindowClosed::CreateLambda([](const TSharedRef<SWindow>&) {
+		PjcTabs::SetWindowOpen(false);
+	}));
 	FSlateApplication::Get().AddModalWindow(ScanWindow, FSlateApplication::Get().GetActiveTopLevelWindow(), true);
 	ScanWindow->ShowWindow();
 	Content->StartScan();
-	PjcTabs::SetWindowOpen(false);
+	if (!bStayOpen) {
+		// every step ticked for a moment, then the window closes
+		FPlatformProcess::Sleep(Content->bScanned ? 0.35f : 0.0f);
+		Content->Close();
+	}
 	return Content->bScanned;
+}
+
+void SPjcScanWindow::Close() const {
+	if (const TSharedPtr<SWindow> Pinned = Window.Pin()) {
+		Pinned->RequestDestroyWindow();
+	}
 }
 
 void SPjcScanWindow::StartScan() {
 	PumpUi();
 	bScanned = UPjcSubsystem::Scan(false, &Progress);
 	bFinished = true;
+	EndTime = FPlatformTime::Seconds();
 	CurrentText.Reset();
 	PumpUi();
-
-	// every step ticked for a moment, then the window closes
-	FPlatformProcess::Sleep(bScanned ? 0.35f : 0.0f);
-	if (const TSharedPtr<SWindow> Pinned = Window.Pin()) {
-		Pinned->RequestDestroyWindow();
-	}
 }
 
 float SPjcScanWindow::GetPercent() const {

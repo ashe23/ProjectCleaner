@@ -20,7 +20,8 @@ class SPjcScanBar final : public SCompoundWidget
 	virtual ~SPjcScanBar() override;
 
 	// Scans the project for every tool. Asks to save unsaved assets first, the scan reads them from disk.
-	static void ScanProject();
+	// bByUser: the Scan window stays open with the result until the user closes it
+	static void ScanProject(const bool bByUser = false);
 
 	// Opens the Clean project window: what gets deleted and the checks, the progress, the result
 	static void CleanProject();

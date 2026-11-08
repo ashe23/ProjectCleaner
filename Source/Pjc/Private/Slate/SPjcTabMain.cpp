@@ -65,7 +65,7 @@ void SPjcTabMain::Construct(
 	TabManager->RegisterTabSpawner(PjcConstants::TabIssues, FOnSpawnTab::CreateRaw(this, &SPjcTabMain::OnTabIssuesSpawn))
 		.SetTooltipText(FText::FromString(TEXT("Open Issues Tab: redirectors, external files, corrupted files, empty folders")))
 		.SetDisplayName(FText::FromString(TEXT("Issues")))
-		.SetIcon(FPjcStyles::GetIcon("ProjectCleaner.Icon.CorruptedFile16"))
+		.SetIcon(FPjcStyles::GetIcon("ProjectCleaner.Icon.Issues16"))
 		.SetGroup(AppMenuGroup);
 
 	TabManager->RegisterTabSpawner(PjcConstants::TabAssetsUnused, FOnSpawnTab::CreateRaw(this, &SPjcTabMain::OnTabAssetsUnusedSpawn))
@@ -83,7 +83,7 @@ void SPjcTabMain::Construct(
 	TabManager->RegisterTabSpawner(PjcConstants::TabHelp, FOnSpawnTab::CreateRaw(this, &SPjcTabMain::OnTabHelpSpawn))
 		.SetTooltipText(FText::FromString(TEXT("Open Help Tab: documentation, Report a bug, system info")))
 		.SetDisplayName(FText::FromString(TEXT("Help")))
-		.SetIcon(FPjcStyles::GetIcon("ProjectCleaner.OpenWiki.Small"))
+		.SetIcon(FPjcStyles::GetIcon("ProjectCleaner.Icon.Help16"))
 		.SetGroup(AppMenuGroup);
 
 	FMenuBarBuilder MenuBarBuilder = FMenuBarBuilder(Cmds);
@@ -186,7 +186,7 @@ TSharedRef<SDockTab> SPjcTabMain::OnTabIssuesSpawn(const FSpawnTabArgs& Args) co
 		];
 	// clang-format on
 
-	Frontend->SetTabIcon(FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.CorruptedFile16"));
+	Frontend->SetTabIcon(FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.Issues16"));
 
 	return Frontend;
 }
@@ -225,7 +225,7 @@ TSharedRef<SDockTab> SPjcTabMain::OnTabHelpSpawn(const FSpawnTabArgs& Args) cons
 		];
 	// clang-format on
 
-	Frontend->SetTabIcon(FPjcStyles::Get().GetBrush("ProjectCleaner.OpenWiki.Small"));
+	Frontend->SetTabIcon(FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.Help16"));
 
 	return Frontend;
 }

@@ -9,7 +9,7 @@ Platform: Windows, Linux and Mac
 <img src="https://github.com/ashe23/ProjectCleaner/assets/8270558/265ed34e-1b7b-46fb-953c-bc0d37c10fd1" />
 
 # Installation
-* [Marketplace](https://www.unrealengine.com/marketplace/en-US/product/4d7f5dc837fc4b009bb91e678adf9fd0)
+* [Fab](https://www.unrealengine.com/marketplace/en-US/product/4d7f5dc837fc4b009bb91e678adf9fd0)
 * From GitHub: download the zip for your engine version from releases and extract it to `<YourProject>/Plugins`
 * From source: clone this repository (`main` branch) into `<YourProject>/Plugins` and build your project
 
@@ -24,7 +24,7 @@ Project Cleaner deletes files and can not know every way a project loads assets,
 * **Assets**: unused, excluded, used and to review assets folder by folder, as a tree or a size map, each with the reason it is in the list; delete them with the assets that must go with them, exclude or keep them
 * **Inspector**: why an asset is used, as a graph from every root down to it, with what uses it and what it uses
 * **Issues**: redirectors, external files, corrupted files and empty folders
-* **Help**: documentation and links, Report a bug (you see and choose what goes into the GitHub issue; nothing is sent), system info
+* **Help**: documentation and links, bug reports, system info
 * Scan bar and scan settings panel on every tab, optional scanning of project plugins content (for plugin based projects like Lyra)
 * Subsystem for Blueprints and Python, command line interface
 

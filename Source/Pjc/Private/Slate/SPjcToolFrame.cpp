@@ -152,6 +152,14 @@ void SPjcToolFrame::Construct(const FArguments& InArgs) {
 						InArgs._Content.Widget
 					]
 				]
+				// a window in front (scan, clean project) dims the tool behind it
+				+ SOverlay::Slot()
+				[
+					SNew(SBorder)
+					.BorderImage(FCoreStyle::Get().GetBrush("WhiteBrush"))
+					.BorderBackgroundColor(FLinearColor {0.0f, 0.0f, 0.0f, 0.6f})
+					.Visibility_Lambda([]() { return PjcTabs::IsWindowOpen() ? EVisibility::Visible : EVisibility::Collapsed; })
+				]
 				+ SOverlay::Slot().HAlign(HAlign_Center).VAlign(VAlign_Center)
 				[
 					SNew(SVerticalBox)
@@ -175,7 +183,7 @@ void SPjcToolFrame::Construct(const FArguments& InArgs) {
 							if (FPjcScanDraft::IsChanged()) {
 								FPjcScanDraft::Get().ApplyToSettings();
 							}
-							SPjcScanBar::ScanProject();
+							SPjcScanBar::ScanProject(true);
 							return FReply::Handled();
 						})
 						[

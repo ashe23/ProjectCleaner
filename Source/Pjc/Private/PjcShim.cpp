@@ -103,6 +103,10 @@ namespace PjcShim
 #endif
 	}
 
+	const FButtonStyle& GetDangerButtonStyle() {
+		return GetStyle().GetWidgetStyle<FButtonStyle>(TEXT("FlatButton.Danger"));
+	}
+
 	FSlateColor GetSlateColor(const FName PropertyName, const ANSICHAR* Specifier) {
 #if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1
 		return FAppStyle::GetSlateColor(PropertyName, Specifier);

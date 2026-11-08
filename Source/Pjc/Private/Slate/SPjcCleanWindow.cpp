@@ -362,8 +362,8 @@ TSharedRef<SWidget> SPjcCleanWindow::MakeConfirm() {
 		AddCheck(MakeCheck(ECheck::Ok, TEXT("Cook check"), Packaged, NoExtra));
 	}
 	else {
-		const FString NotChecked = FString::Printf(TEXT(" \u00B7 %s saved after it are not checked"), *PjcFormat::Count(Cook.NumNotChecked));
-		const FString NoneCooked = TEXT("None of them is in the last cook") + (Cook.NumNotChecked > 0 ? NotChecked : FString {});
+		const FString NotChecked = FString::Printf(TEXT(" \u00B7 %s changed after it, not checked"), *PjcFormat::Count(Cook.NumNotChecked));
+		const FString NoneCooked = TEXT("The last cook packaged none of them") + (Cook.NumNotChecked > 0 ? NotChecked : FString {});
 		AddCheck(MakeCheck(ECheck::Ok, TEXT("Cook check"), NoneCooked, NoExtra));
 	}
 	if (UPjcSubsystem::GetModuleAssetRegistry().Get().IsLoadingAssets()) {
@@ -707,7 +707,8 @@ TSharedRef<SWidget> SPjcCleanWindow::MakeDone() {
 	if (NotDeleted.Num() > 0) {
 		const FString Lines = FString::Join(TArray<FString> {NotDeleted.GetData(), FMath::Min(NotDeleted.Num(), 8)}, TEXT("\n"));
 		const FString Held = FString::Printf(TEXT("%s not deleted, each with what still holds it. "), *PjcFormat::Count(NotDeleted.Num()));
-		const TCHAR* Next = TEXT("They stay in Assets. The Content Browser's own delete can force them.\n");
+		const TCHAR* Next = TEXT("They stay in Assets. To delete one anyway, delete it in the Content Browser and choose Force Delete, ")
+			TEXT("only when you are sure nothing uses it.\n");
 		AddNote(Held + Next + Lines, true);
 	}
 	if (Broken.Num() > 0) {

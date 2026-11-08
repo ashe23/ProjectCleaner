@@ -37,6 +37,8 @@ namespace PjcShim
 	// Background of a card in the Overview
 	const FSlateBrush* GetBrushCard();
 	const FButtonStyle& GetPrimaryButtonStyle();
+	// Red button for actions that delete (Clean project)
+	const FButtonStyle& GetDangerButtonStyle();
 
 	FName GetLevelEditorToolBarName(const EPjcToolbarLocation Location);
 	TSet<FName> GetCachedEmptyPackages();

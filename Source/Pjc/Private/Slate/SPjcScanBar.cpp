@@ -60,12 +60,13 @@ void SPjcScanBar::Construct(const FArguments& InArgs) {
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 			[
 				SNew(SButton)
+				.ButtonStyle(&PjcShim::GetDangerButtonStyle())
 				.ContentPadding(FMargin {12.0f, 2.0f})
 				.ToolTipText(this, &SPjcScanBar::GetCleanToolTip)
 				.IsEnabled(this, &SPjcScanBar::IsCleanEnabled)
 				.OnClicked(this, &SPjcScanBar::OnCleanClicked)
 				[
-					SNew(STextBlock).Text(FText::FromString(TEXT("Clean project\u2026")))
+					SNew(STextBlock).Text(FText::FromString(TEXT("Clean project")))
 				]
 			]
 		]
@@ -79,7 +80,7 @@ bool SPjcScanBar::NeedsRescan() {
 	return FPjcScanDraft::IsChanged() || (UPjcSubsystem::GetScanResult().IsValid() && UPjcSubsystem::GetChangesSinceScan().Num() > 0);
 }
 
-void SPjcScanBar::ScanProject() {
+void SPjcScanBar::ScanProject(const bool bByUser) {
 	if (UPjcSubsystem::GetModuleAssetRegistry().Get().IsLoadingAssets()) {
 		const TCHAR* Discovering = TEXT("Scan waits for the Asset Registry: it is still discovering assets. Scan again when it has finished.");
 		UPjcSubsystem::ShowNotificationWithOutputLog(Discovering, SNotificationItem::CS_Fail, 5.0f);
@@ -92,8 +93,12 @@ void SPjcScanBar::ScanProject() {
 		return;
 	}
 
+	// the window tells how the scan went: it stays open for the user, a scan after an action only notifies
 	const double StartTime = FPlatformTime::Seconds();
-	if (!SPjcScanWindow::Run()) {
+	const bool bScanned = SPjcScanWindow::Run(bByUser);
+	if (bByUser) return;
+
+	if (!bScanned) {
 		UPjcSubsystem::ShowNotification(TEXT("Scan canceled \u00B7 results are from the last scan"), SNotificationItem::CS_None, 3.0f);
 		return;
 	}
@@ -107,7 +112,7 @@ void SPjcScanBar::CleanProject() {
 }
 
 FReply SPjcScanBar::OnScanClicked() const {
-	ScanProject();
+	ScanProject(true);
 	return FReply::Handled();
 }
 
@@ -115,7 +120,7 @@ FReply SPjcScanBar::OnRescanClicked() const {
 	if (FPjcScanDraft::IsChanged()) {
 		FPjcScanDraft::Get().ApplyToSettings();
 	}
-	ScanProject();
+	ScanProject(true);
 	return FReply::Handled();
 }
 
