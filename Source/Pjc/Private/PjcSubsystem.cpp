@@ -87,6 +87,32 @@ namespace
 
 	FPjcScanCache ScanCache;
 
+	// progress of the running scan, for the Scan window
+	FPjcScanProgress* PjcScanProgress = nullptr;
+	EPjcScanStep PjcScanStepNow = EPjcScanStep::Registry;
+	double PjcScanProgressTime = 0.0;
+
+	void PjcScanStep(const EPjcScanStep Step, const FString& Current = FString {}) {
+		PjcScanStepNow = Step;
+		PjcScanProgressTime = FPlatformTime::Seconds();
+		if (PjcScanProgress && PjcScanProgress->OnStep) {
+			PjcScanProgress->OnStep(Step, Current);
+		}
+	}
+
+	void PjcScanFound(const EPjcScanStep Step, const FString& Found) {
+		if (PjcScanProgress && PjcScanProgress->OnFound) {
+			PjcScanProgress->OnFound(Step, Found);
+		}
+	}
+
+	// the item being read, at most 20 times a second
+	void PjcScanCurrent(const FString& Current) {
+		if (!PjcScanProgress || FPlatformTime::Seconds() - PjcScanProgressTime < 0.05) return;
+
+		PjcScanStep(PjcScanStepNow, Current);
+	}
+
 	// what kept each asset last cleanup could not delete, shown by the Inspector and Assets Unused
 	TMap<FName, FString> LastCleanupKept;
 
@@ -379,20 +405,47 @@ void UPjcSubsystem::GetAssetsFolderLabelOnly(TArray<FAssetData>& Assets, const b
 	ScanCacheSet(ScanCache.AssetsUsage, AssetsUsage);
 }
 
-bool UPjcSubsystem::Scan(const bool bShowSlowTask) {
+bool UPjcSubsystem::Scan(const bool bShowSlowTask, FPjcScanProgress* Progress) {
 	if (GetModuleAssetRegistry().Get().IsLoadingAssets()) return false;
 
 	const double StartTime = FPlatformTime::Seconds();
+	PjcScanProgress = Progress;
+	ON_SCOPE_EXIT {
+		PjcScanProgress = nullptr;
+	};
+	// a cancel ends the scan between steps, the last result stays
+	const auto IsCanceled = [Progress]() {
+		if (Progress && Progress->bCancelRequested) {
+			Progress->bCanceled = true;
+		}
+		return Progress && Progress->bCanceled;
+	};
+	PjcScanStep(EPjcScanStep::Registry);
+	PjcScanFound(EPjcScanStep::Registry, TEXT("ready"));
 
 	// the queries below share their intermediate results (references, source and config search)
 	FPjcScanCacheScope ScanCacheScope;
 
 	FPjcScanResult Result;
+	PjcScanStep(EPjcScanStep::Assets);
 	GetAssetsAll(Result.Assets);
+	TSet<FName> Folders;
+	for (const auto& Asset : Result.Assets) {
+		Folders.Add(Asset.PackagePath);
+	}
+	const FString NumAssets = PjcFormat::Count(Result.Assets.Num());
+	PjcScanFound(EPjcScanStep::Assets, FString::Printf(TEXT("%s assets \u00B7 %s folders"), *NumAssets, *PjcFormat::Count(Folders.Num())));
+	if (IsCanceled()) return false;
+
 	GetAssetsUsage(Result.Usage, bShowSlowTask);
+	if (IsCanceled()) return false;
+
 	GetAssetsUsed(Result.Used, bShowSlowTask);
 	GetAssetsUnused(Result.Unused, bShowSlowTask);
 	GetAssetsFolderLabelOnly(Result.FolderLabelOnly, bShowSlowTask);
+	const FString NumUsed = PjcFormat::Count(Result.Used.Num());
+	PjcScanFound(EPjcScanStep::References, FString::Printf(TEXT("%s used \u00B7 %s unused"), *NumUsed, *PjcFormat::Count(Result.Unused.Num())));
+	if (IsCanceled()) return false;
 
 	// redirectors are not content (none of the lists above has them): one per package, its main asset
 	TArray<FAssetData> Redirectors;
@@ -552,6 +605,7 @@ bool UPjcSubsystem::Scan(const bool bShowSlowTask) {
 	Result.CookCheck.NumChecked += Result.CookCheck.NumPackaged;
 
 	// files that are not assets, and empty folders
+	PjcScanStep(EPjcScanStep::Files);
 	TArray<FString> FilesExternal;
 	GetFilesExternalAll(FilesExternal);
 	for (auto& File : FilesExternal) {
@@ -566,6 +620,18 @@ bool UPjcSubsystem::Scan(const bool bShowSlowTask) {
 	}
 	GetFilesCorrupted(Result.FilesCorrupted, bShowSlowTask);
 	GetFoldersEmpty(Result.FoldersEmpty);
+	const FString NumExternal = PjcFormat::Count(Result.FilesExternal.Num());
+	const FString NumCorrupted = PjcFormat::Count(Result.FilesCorrupted.Num());
+	const FString NumEmpty = PjcFormat::Count(Result.FoldersEmpty.Num());
+	const FString FilesFound = FString::Printf(TEXT("%s external \u00B7 %s corrupted \u00B7 %s empty"), *NumExternal, *NumCorrupted, *NumEmpty);
+	PjcScanFound(EPjcScanStep::Files, FilesFound);
+	if (Result.CookCheck.IsFound()) {
+		PjcScanStep(EPjcScanStep::Cook);
+		const FString Packaged = PjcFormat::Count(Result.CookCheck.NumPackaged) + TEXT(" packaged \u00B7 in Review");
+		const FString Checked = PjcFormat::Count(Result.CookCheck.NumChecked) + TEXT(" unused checked");
+		PjcScanFound(EPjcScanStep::Cook, Result.CookCheck.NumPackaged > 0 ? Packaged : Checked);
+	}
+	if (IsCanceled()) return false;
 
 	Result.Time = FDateTime::UtcNow();
 	Result.Seconds = FPlatformTime::Seconds() - StartTime;
@@ -660,7 +726,17 @@ void UPjcSubsystem::ComputeAssetsUsed(
 	});
 	GetAssetsEngineReferenced(AssetsEngineReferenced, bShowSlowTask);
 	const TSet<FAssetData> AssetsEngineReferencedSet {AssetsEngineReferenced};
+	PjcScanStep(EPjcScanStep::SourceConfig);
 	GetAssetsIndirect(AssetsIndirect, AssetsIndirectInfos, bShowSlowTask);
+	TSet<FName> PackagesNamed;
+	for (const auto& Info : AssetsIndirectInfos) {
+		PackagesNamed.Add(Info.Asset.PackageName);
+	}
+	for (const auto& Asset : AssetsIndirect) {
+		PackagesNamed.Add(Asset.PackageName);
+	}
+	PjcScanFound(EPjcScanStep::SourceConfig, PjcFormat::Count(PackagesNamed.Num()) + TEXT(" assets named"));
+	PjcScanStep(EPjcScanStep::Rules);
 	GetAssetsExcluded(AssetsExcluded, bShowSlowTask);
 	GetClassNamesPrimary(ClassNamesPrimary);
 	GetClassNamesEditor(ClassNamesEditor);
@@ -698,6 +774,7 @@ void UPjcSubsystem::ComputeAssetsUsed(
 
 	// first reason found is the one reported, most telling first
 	for (const auto& Asset : AssetsAll) {
+		PjcScanCurrent(Asset.PackageName.ToString());
 		SlowTask.EnterProgressFrame(1.0f, FText::FromString(Asset.GetFullName()));
 
 		const FName AssetClassName = PjcShim::GetAssetClassName(Asset);
@@ -807,6 +884,8 @@ void UPjcSubsystem::ComputeAssetsUsed(
 			const FName PackageName = Queue[QueueHead++];
 			if (FolderLabels.Contains(PackageName)) continue;
 
+			PjcScanCurrent(PackageName.ToString());
+
 			// packages that are not scanned assets (e.g. actors saved in their own files) pass their parent on
 			FName Parent = PackageName;
 			FString Detail;
@@ -854,6 +933,16 @@ void UPjcSubsystem::ComputeAssetsUsed(
 		}
 	};
 
+	// roots by their own reason, then what they reach
+	TMap<EPjcUsageReason, int32> NumRoots;
+	for (const auto& Pair : Usage) {
+		NumRoots.FindOrAdd(Pair.Value.Reason)++;
+	}
+	const FString NumPrimary = PjcFormat::Count(NumRoots.FindRef(EPjcUsageReason::Primary));
+	const FString NumEditor = PjcFormat::Count(NumRoots.FindRef(EPjcUsageReason::Editor));
+	const FString NumExcluded = PjcFormat::Count(NumRoots.FindRef(EPjcUsageReason::Excluded) + NumRoots.FindRef(EPjcUsageReason::Cinematic));
+	PjcScanFound(EPjcScanStep::Rules, FString::Printf(TEXT("%s primary \u00B7 %s editor \u00B7 %s excluded"), *NumPrimary, *NumEditor, *NumExcluded));
+	PjcScanStep(EPjcScanStep::References);
 	FollowDependencies(false);
 
 	// assets of a primary class the Asset Manager did not register (outside the type's folders, or in a game feature
@@ -1157,6 +1246,7 @@ void UPjcSubsystem::GetAssetsIndirect(TArray<FAssetData>& Assets, TArray<FPjcAss
 	TArray<FString> Lines;
 	for (const auto& File : ScanFiles) {
 		SlowTask.EnterProgressFrame(1.0f, FText::FromString(File));
+		PjcScanCurrent(File);
 
 		Lines.Reset();
 		FFileHelper::LoadFileToStringArray(Lines, *File);

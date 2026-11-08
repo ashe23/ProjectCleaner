@@ -13,6 +13,7 @@ namespace
 {
 	// unity builds join files: names unique to this file
 	TWeakPtr<FTabManager> PjcTabsMain;
+	int32 PjcTabsWindowsOpen = 0;
 }	// namespace
 
 namespace PjcTabs
@@ -23,6 +24,14 @@ namespace PjcTabs
 
 	TWeakPtr<FTabManager> GetMain() {
 		return PjcTabsMain;
+	}
+
+	void SetWindowOpen(const bool bOpen) {
+		PjcTabsWindowsOpen = FMath::Max(0, PjcTabsWindowsOpen + (bOpen ? 1 : -1));
+	}
+
+	bool IsWindowOpen() {
+		return PjcTabsWindowsOpen > 0;
 	}
 
 	void Open(const TWeakPtr<FTabManager>& Tabs, const FName TabId) {

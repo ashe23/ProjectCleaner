@@ -2,6 +2,7 @@
 
 #include "Slate/SPjcScanBar.h"
 #include "Slate/SPjcCleanWindow.h"
+#include "Slate/SPjcScanWindow.h"
 #include "PjcFormat.h"
 #include "PjcScanDraft.h"
 #include "PjcStyles.h"
@@ -91,7 +92,14 @@ void SPjcScanBar::ScanProject() {
 		return;
 	}
 
-	UPjcSubsystem::Scan(true);
+	const double StartTime = FPlatformTime::Seconds();
+	if (!SPjcScanWindow::Run()) {
+		UPjcSubsystem::ShowNotification(TEXT("Scan canceled \u00B7 results are from the last scan"), SNotificationItem::CS_None, 3.0f);
+		return;
+	}
+	const FString Assets = PjcFormat::Count(UPjcSubsystem::GetScanResult().Assets.Num());
+	const FString Message = FString::Printf(TEXT("Scanned %s assets in %.1f s"), *Assets, FPlatformTime::Seconds() - StartTime);
+	UPjcSubsystem::ShowNotification(Message, SNotificationItem::CS_Success, 3.0f);
 }
 
 void SPjcScanBar::CleanProject() {

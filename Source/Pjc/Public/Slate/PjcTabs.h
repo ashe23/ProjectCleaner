@@ -17,6 +17,10 @@ namespace PjcTabs
 	void SetMain(const TSharedPtr<FTabManager>& Tabs);
 	TWeakPtr<FTabManager> GetMain();
 
+	// A Scan or Clean project window is open: the tool content behind it is greyed
+	void SetWindowOpen(const bool bOpen);
+	bool IsWindowOpen();
+
 	// Shows the asset in the Inspector
 	void Inspect(const TWeakPtr<FTabManager>& Tabs, const FName Package);
 

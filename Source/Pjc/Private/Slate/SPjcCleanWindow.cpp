@@ -93,7 +93,9 @@ void SPjcCleanWindow::Open() {
 		}
 	}));
 
+	PjcTabs::SetWindowOpen(true);
 	FSlateApplication::Get().AddModalWindow(CleanWindow, FSlateApplication::Get().GetActiveTopLevelWindow());
+	PjcTabs::SetWindowOpen(false);
 }
 
 void SPjcCleanWindow::Rebuild() {

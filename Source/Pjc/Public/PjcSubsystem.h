@@ -34,6 +34,31 @@ struct FPjcDeleteProgress
 	int32 NumTried = 0;
 };
 
+// Steps of a scan, as the Scan window lists them
+enum class EPjcScanStep : uint8
+{
+	Registry,
+	Assets,
+	SourceConfig,
+	Rules,
+	References,
+	Files,
+	Cook,
+	Num,
+};
+
+// Progress of Scan for a window that shows it: told when a step starts or reads an item, and what a step found; a
+// cancel request ends the scan at the next step, the last result stays
+struct FPjcScanProgress
+{
+	TFunction<void(EPjcScanStep Step, const FString& Current)> OnStep;
+	TFunction<void(EPjcScanStep Step, const FString& Found)> OnFound;
+	bool bCancelRequested = false;
+
+	// out: the scan stopped on request
+	bool bCanceled = false;
+};
+
 class FPjcScanCacheScope
 {
   public:
@@ -94,8 +119,9 @@ class UPjcSubsystem final : public UEditorSubsystem
 	DECLARE_MULTICAST_DELEGATE(FPjcDelegateScanFinished);
 
 	// Scans the project once for every tab: scanned assets, used and unused, usage reasons and sizes.
-	// Returns false and keeps the last result while the asset registry is still discovering assets.
-	static bool Scan(const bool bShowSlowTask = true);
+	// Returns false and keeps the last result while the asset registry is still discovering assets, or when canceled.
+	// @param Progress tells a window about every step and cancels on request, may be null
+	static bool Scan(const bool bShowSlowTask = true, FPjcScanProgress* Progress = nullptr);
 
 	// Result of the last Scan, IsValid() is false before the first one
 	static const FPjcScanResult& GetScanResult();

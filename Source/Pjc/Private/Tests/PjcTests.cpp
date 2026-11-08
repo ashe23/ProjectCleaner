@@ -707,6 +707,24 @@ bool FPjcTestScanResult::RunTest(const FString& Parameters) {
 	TestTrue(TEXT("scanned again"), UPjcSubsystem::Scan(false));
 	TestEqual(TEXT("no change after the new scan"), UPjcSubsystem::GetChangesSinceScan().Num(), 0);
 
+	// a window follows the scan step by step; a cancel keeps the last result
+	TSet<int32> StepsFound;
+	FPjcScanProgress Progress;
+	Progress.OnFound = [&StepsFound](const EPjcScanStep Step, const FString& Found) {
+		StepsFound.Add(static_cast<int32>(Step));
+	};
+	TestTrue(TEXT("scanned with progress"), UPjcSubsystem::Scan(false, &Progress));
+	// every step up to Files (Cook check only with a cook)
+	for (int32 Step = 0; Step <= static_cast<int32>(EPjcScanStep::Files); ++Step) {
+		TestTrue(*FString::Printf(TEXT("step %d found"), Step), StepsFound.Contains(Step));
+	}
+	const FDateTime LastTime = UPjcSubsystem::GetScanResult().Time;
+	FPjcScanProgress Cancel;
+	Cancel.bCancelRequested = true;
+	TestFalse(TEXT("canceled scan"), UPjcSubsystem::Scan(false, &Cancel));
+	TestTrue(TEXT("cancel told"), Cancel.bCanceled);
+	TestEqual(TEXT("last result stays"), UPjcSubsystem::GetScanResult().Time, LastTime);
+
 	return true;
 }
 

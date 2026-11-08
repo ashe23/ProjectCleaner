@@ -2,6 +2,7 @@
 
 #include "Slate/SPjcToolFrame.h"
 #include "Slate/SPjcScanBar.h"
+#include "Slate/PjcTabs.h"
 #include "Slate/SPjcScanSettings.h"
 #include "PjcScanDraft.h"
 #include "PjcShim.h"
@@ -146,7 +147,7 @@ void SPjcToolFrame::Construct(const FArguments& InArgs) {
 				[
 					SNew(SBox)
 					.Visibility_Lambda([]() { return UPjcSubsystem::GetScanResult().IsValid() ? EVisibility::Visible : EVisibility::Collapsed; })
-					.IsEnabled_Lambda([]() { return !SPjcScanBar::NeedsRescan(); })
+					.IsEnabled_Lambda([]() { return !SPjcScanBar::NeedsRescan() && !PjcTabs::IsWindowOpen(); })
 					[
 						InArgs._Content.Widget
 					]
