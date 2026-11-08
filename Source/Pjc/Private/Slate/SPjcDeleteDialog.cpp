@@ -125,8 +125,7 @@ void SPjcDeleteDialog::Construct(const FArguments& InArgs) {
 		[
 			PjcDeleteDialogNote(
 				FString::Printf(
-					TEXT("%s of them were not deleted last time: something held them in memory (%s). ")
-						TEXT("An editor restart releases transient holders."),
+					TEXT("%s of them were not deleted last time: %s."),
 					*PjcFormat::Count(InArgs._Held.Num()),
 					*InArgs._Held[0]
 				),

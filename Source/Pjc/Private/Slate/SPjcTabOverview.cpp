@@ -296,14 +296,14 @@ TSharedRef<SWidget> SPjcTabOverview::MakeIssues() {
 		TEXT("Scanning follows them, fixing resaves the assets that still use the old path.");
 	const TCHAR* CorruptedTip = TEXT("Asset files the engine cannot read.");
 	const TCHAR* EmptyTip = TEXT("Folders without assets or files.");
-	const TCHAR* NotDeletedTip = TEXT("Unused assets the last cleanup could not delete, because something holds them.");
+	const TCHAR* NotDeletedTip = TEXT("Unused assets the last cleanup could not delete: a live object or a saved asset still holds them.");
 	const auto ToIndex = [](const EPjcIssueCategory Value) { return static_cast<int32>(Value); };
 	const TArray<FIssue> Issues {
 		{TEXT("Redirectors"), Result.Redirectors.Num(), TEXT("to fix"), RedirectorsTip, ToIndex(EPjcIssueCategory::Redirectors)},
 		{TEXT("External files"), Result.FilesExternal.Num(), ExternalWhat, ExternalTip, ToIndex(EPjcIssueCategory::External)},
 		{TEXT("Corrupted files"), Result.FilesCorrupted.Num(), TEXT("to delete"), CorruptedTip, ToIndex(EPjcIssueCategory::Corrupted)},
 		{TEXT("Empty folders"), Result.FoldersEmpty.Num(), TEXT("to delete"), EmptyTip, ToIndex(EPjcIssueCategory::Empty)},
-		{TEXT("Not deleted"), NumKept, TEXT("held in memory"), NotDeletedTip, -1},
+		{TEXT("Not deleted"), NumKept, TEXT("still held"), NotDeletedTip, -1},
 	};
 	// clang-format on
 

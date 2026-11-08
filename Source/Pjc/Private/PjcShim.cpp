@@ -20,6 +20,7 @@
 #include "Misc/RedirectCollector.h"
 #include "Styling/SlateTypes.h"
 #include "ShaderCompiler.h"
+#include "UObject/ReferencerFinder.h"
 #if ENGINE_MAJOR_VERSION >= 5
 #include "AssetCompilingManager.h"
 #include "Animation/AnimSequenceBase.h"
@@ -441,6 +442,14 @@ namespace PjcShim
 			GShaderCompilingManager->FinishAllCompilation();
 		}
 		FlushAsyncLoading();
+	}
+
+	TArray<UObject*> GetDeleteBlockers(const TArray<UObject*>& Referencees, const TSet<UObject*>* Ignore) {
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1
+		return FReferencerFinder::GetAllReferencers(Referencees, Ignore, EReferencerFinderFlags::SkipWeakReferences);
+#else
+		return FReferencerFinder::GetAllReferencers(Referencees, Ignore);
+#endif
 	}
 
 	bool ReleaseEditorHelpers(const TArray<UObject*>& Assets) {

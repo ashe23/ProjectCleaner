@@ -366,6 +366,8 @@ bool FPjcTestFixture::CreateAssets(FAutomationTestBase& Test) {
 
 	// folder labels (cook rules) reference everything in their folder; only the Always Cook one packages it
 	NewAsset<UCurveFloat>(Register(TEXT("Labeled"), TEXT("C_Labeled")), Packages);
+	// a blueprint the label folder holds: deleting it needs the folder label pass (cleanup tests hold it weakly)
+	NewBlueprint(Register(TEXT("Labeled"), TEXT("BP_Labeled")), AActor::StaticClass(), UBlueprint::StaticClass(), Packages);
 	UPrimaryAssetLabel* FolderLabel = NewAsset<UPrimaryAssetLabel>(Register(TEXT("Labeled"), TEXT("PAL_Folder")), Packages);
 	FolderLabel->bLabelAssetsInMyDirectory = true;
 	NewAsset<UCurveFloat>(Register(TEXT("Packaged"), TEXT("C_Packaged")), Packages);
@@ -1034,6 +1036,7 @@ TArray<FString> FPjcTestFixture::UnusedNames(const bool bScanPlugins) const {
 	  TEXT("BP_Unused"),
 	  TEXT("C_Unused_fr"),
 	  TEXT("C_Labeled"),
+	  TEXT("BP_Labeled"),
 	};
 
 	if (bCues) {

@@ -638,7 +638,7 @@ bool FPjcTestScanResult::RunTest(const FString& Parameters) {
 	TestStatus(TEXT("C_Packaged"), EPjcAssetStatus::Used, EPjcUsageReason::FolderLabel);
 	TestStatus(TEXT("PAL_Packaged"), EPjcAssetStatus::Used, EPjcUsageReason::Primary);
 	TestTrue(TEXT("C_Labeled listed by its folder label"), Result.FolderLabelUnused.Contains(PackageOf(Fixture, TEXT("C_Labeled"))));
-	TestEqual(TEXT("unused assets folder labels list"), Result.FolderLabelUnused.Num(), 1);
+	TestEqual(TEXT("unused assets folder labels list: C_Labeled, BP_Labeled"), Result.FolderLabelUnused.Num(), 2);
 	TestStatus(TEXT("BP_Primary"), EPjcAssetStatus::Used, EPjcUsageReason::Primary);
 	TestStatus(TEXT("C_Indirect"), EPjcAssetStatus::Used, EPjcUsageReason::Indirect);
 	TestStatus(TEXT("C_Indirect_fr"), EPjcAssetStatus::Used, EPjcUsageReason::Localized);
@@ -1159,6 +1159,20 @@ bool FPjcTestUnusedDelete::RunTest(const FString& Parameters) {
 	TArray<FName> Broken;
 	FPjcCleanPlan::GetBrokenReferencers({Leaf, LeafRoot}, Broken);
 	TestEqual(TEXT("nothing kept references what was deleted"), Broken.Num(), 0);
+
+	// a weak cache does not hold an asset: a used blueprint lists the unused one as its dependent, as compiling does
+	// (macro libraries and parents in Lyra). The engine's delete ignores weak references, so must the folder label pass
+	// this asset needs (its folder label references it on disk)
+	const FName WeakHeld = PackageOf(Fixture, TEXT("BP_Labeled"));
+	UBlueprint* Dependent = Cast<UBlueprint>(FSoftObjectPath {Fixture.ObjectPath(TEXT("BP_Labeled"))}.TryLoad());
+	UBlueprint* Dependency = Cast<UBlueprint>(FSoftObjectPath {Fixture.ObjectPath(TEXT("BP_Primary"))}.TryLoad());
+	if (TestTrue(TEXT("blueprints loaded"), Dependent && Dependency)) {
+		Dependency->CachedDependents.Add(Dependent);
+		const FAssetData WeakAsset = PjcShim::GetAssetByObjectPath(Fixture.ObjectPath(TEXT("BP_Labeled")));
+		UPjcSubsystem::DeleteAssets({WeakAsset}, false, false);
+		TestFalse(TEXT("blueprint only a weak cache lists is deleted"), FPackageName::DoesPackageExist(WeakHeld.ToString()));
+		TestFalse(TEXT("not listed as kept"), UPjcSubsystem::GetLastCleanupKept().Contains(WeakHeld));
+	}
 	return true;
 }
 

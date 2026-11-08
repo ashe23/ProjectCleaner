@@ -504,6 +504,8 @@ class UPjcSubsystem final : public UEditorSubsystem
 	static int32 DeleteAssetsReferencedByFolderLabels(const TArray<FAssetData>& Assets);
 	static int32 DeleteAssetsHeldByEachOther(const TArray<FAssetData>& Assets);
 	static void RemoveAssetsHeldOutside(TArray<UObject*>& Assets, TMap<FString, FString>* OutHolders = nullptr);
+	// Why an asset no live object holds was not deleted: the first saved asset that references it
+	static FString GetKeptReason(const FName& PackageName);
 	// Label with "Label Assets In My Directory" in the package, null when there is none
 	static const UPrimaryAssetLabel* GetFolderLabel(const FName& PackageName);
 	// The cook packages every asset in the label's folder: Always Cook or a Development Always rule, label type not editor only

@@ -533,7 +533,7 @@ TSharedRef<SWidget> SPjcCleanWindow::MakeRun() {
 			]
 			+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {0.0f, 12.0f, 0.0f, 0.0f})
 			[
-				MakeNote(TEXT("The editor deletes in batches. Assets something holds in memory are kept and listed at the end."), false)
+				MakeNote(TEXT("The editor deletes in batches. Assets something still holds are kept and listed at the end."), false)
 			]
 		]
 		+ SVerticalBox::Slot().AutoHeight()
@@ -706,8 +706,9 @@ TSharedRef<SWidget> SPjcCleanWindow::MakeDone() {
 	}
 	if (NotDeleted.Num() > 0) {
 		const FString Lines = FString::Join(TArray<FString> {NotDeleted.GetData(), FMath::Min(NotDeleted.Num(), 8)}, TEXT("\n"));
-		const FString Held = FString::Printf(TEXT("%s not deleted: something holds them in memory. "), *PjcFormat::Count(NotDeleted.Num()));
-		AddNote(Held + TEXT("An editor restart releases transient holders; then delete them again from Assets.\n") + Lines, true);
+		const FString Held = FString::Printf(TEXT("%s not deleted, each with what still holds it. "), *PjcFormat::Count(NotDeleted.Num()));
+		const TCHAR* Next = TEXT("They stay in Assets. The Content Browser's own delete can force them.\n");
+		AddNote(Held + Next + Lines, true);
 	}
 	if (Broken.Num() > 0) {
 		TArray<FString> Names;

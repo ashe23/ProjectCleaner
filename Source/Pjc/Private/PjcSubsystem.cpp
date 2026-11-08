@@ -2152,9 +2152,9 @@ bool UPjcSubsystem::DeleteAssets(
 	RemoveAssetsHeldOutside(HeldByEachOther, &Holders);
 	for (const UObject* Asset : AssetsRemaining) {
 		const FString* Holder = Holders.Find(Asset->GetPathName());
-		const TCHAR* HeldBy = Holder ? **Holder : TEXT("by asset that is kept");
-		UE_LOG(LogProjectCleaner, Warning, TEXT("Not deleted, still referenced: %s (%s)"), *Asset->GetPathName(), HeldBy);
-		LastCleanupKept.Add(Asset->GetOutermost()->GetFName(), Holder ? *Holder : TEXT("referenced by asset that is kept"));
+		const FString HeldBy = Holder ? *Holder : GetKeptReason(Asset->GetOutermost()->GetFName());
+		UE_LOG(LogProjectCleaner, Warning, TEXT("Not deleted: %s (%s)"), *Asset->GetPathName(), *HeldBy);
+		LastCleanupKept.Add(Asset->GetOutermost()->GetFName(), HeldBy);
 	}
 	int32 NumAssetsRemaining = 0;
 	for (const auto& Asset : AssetsDone) {
@@ -3750,6 +3750,19 @@ int32 UPjcSubsystem::DeleteAssetsHeldByEachOther(const TArray<FAssetData>& Asset
 	return NumDeleted;
 }
 
+FString UPjcSubsystem::GetKeptReason(const FName& PackageName) {
+	// nothing live holds it: a saved asset that stays references it
+	TArray<FName> Referencers;
+	GetModuleAssetRegistry().Get().GetReferencers(PackageName, Referencers);
+	for (const auto& Referencer : Referencers) {
+		if (Referencer == PackageName || !PathIsInsideProject(Referencer.ToString())) continue;
+		if (!FPackageName::DoesPackageExist(Referencer.ToString())) continue;
+
+		return TEXT("referenced by ") + Referencer.ToString();
+	}
+	return TEXT("the editor refused to delete it, see the Output Log");
+}
+
 void UPjcSubsystem::RemoveAssetsHeldOutside(TArray<UObject*>& Assets, TMap<FString, FString>* OutHolders) {
 	// objects of other assets in the set (and own subobjects) do not count, repeat until nothing changes
 	bool bChanged = true;
@@ -3765,12 +3778,17 @@ void UPjcSubsystem::RemoveAssetsHeldOutside(TArray<UObject*>& Assets, TMap<FStri
 		}
 
 		for (int32 i = Assets.Num() - 1; i >= 0; --i) {
-			// engine refuses delete when anything outside holds asset or any of its subobjects (e.g. montage notifies)
+			// engine refuses delete when anything outside holds asset or any of its subobjects (e.g. montage notifies), or
+			// a blueprint's generated class. Weak caches do not hold it (a macro library's or parent's dependents)
 			TArray<UObject*> Referencees;
 			GetObjectsWithOuter(Assets[i], Referencees);
 			Referencees.Add(Assets[i]);
+			const UBlueprint* Blueprint = Cast<UBlueprint>(Assets[i]);
+			if (Blueprint && Blueprint->GeneratedClass) {
+				Referencees.Add(Blueprint->GeneratedClass);
+			}
 
-			TArray<UObject*> Holders = FReferencerFinder::GetAllReferencers(Referencees, &ObjectsInSet);
+			TArray<UObject*> Holders = PjcShim::GetDeleteBlockers(Referencees, &ObjectsInSet);
 			Holders.RemoveAll([](const UObject* Holder) {
 				return !IsValid(Holder);
 			});

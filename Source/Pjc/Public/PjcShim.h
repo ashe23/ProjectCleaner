@@ -69,6 +69,10 @@ namespace PjcShim
 	// Helper references asset internals, so engine treats it as outside reference and refuses deleting the asset.
 	// Asset creates it again when needed. Returns true if any was dropped (collect garbage before deleting).
 	bool ReleaseEditorHelpers(const TArray<UObject*>& Assets);
+	// Objects outside Ignore whose references make the engine refuse deleting Referencees, as its delete check finds
+	// them: strong references from UE 5.1 on (weak caches such as a parent blueprint's dependents do not count), every
+	// reference before
+	TArray<UObject*> GetDeleteBlockers(const TArray<UObject*>& Referencees, const TSet<UObject*>* Ignore);
 	// Before 5.5 deleting a redirector removes its redirection and ensures it was registered; loaded redirectors
 	// are not always registered (4.27). Registers it to TargetObjectPath when missing.
 	void RegisterRedirection(const UObject* Redirector, const FString& TargetObjectPath);

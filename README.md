@@ -28,7 +28,7 @@ Project Cleaner deletes files and can not know every way a project loads assets,
 * Scan bar and scan settings panel on every tab, optional scanning of project plugins content (for plugin based projects like Lyra)
 * Subsystem for Blueprints and Python, command line interface
 
-An asset is used when a used asset references it, or for its own reason: a map or primary asset, in the folder of a Primary Asset Label whose cook rule packages it, named in source or config files, a GameplayCue notify whose tag a used asset, source or config fires, an editor utility or editor tool data, a cinematic, a class you mark as always used, excluded by you or referenced from outside scanned content. Editor only uses count as used but are shown apart, because they do not ship with the game. Assets the scan is not sure about are kept for review: unused assets the last cook packaged, and GameplayCue notifies nothing fires. Cleanup never force deletes: assets still held in memory are kept and marked as not deleted. Redirectors are not assets: cleanup deletes only those nothing uses that point to an asset it deletes, Fix redirectors handles the rest.
+An asset is used when a used asset references it, or for its own reason: a map or primary asset, in the folder of a Primary Asset Label whose cook rule packages it, named in source or config files, a GameplayCue notify whose tag a used asset, source or config fires, an editor utility or editor tool data, a cinematic, a class you mark as always used, excluded by you or referenced from outside scanned content. Editor only uses count as used but are shown apart, because they do not ship with the game. Assets the scan is not sure about are kept for review: unused assets the last cook packaged, and GameplayCue notifies nothing fires. Cleanup never force deletes: assets something still holds (a live object, or a saved asset that stays) are kept and marked as not deleted, with what holds them. Redirectors are not assets: cleanup deletes only those nothing uses that point to an asset it deletes, Fix redirectors handles the rest.
 
 # Settings
 Scan settings panel on every tab, or **Project Settings > Plugins > Project Cleaner** (rules shared with the team). Personal preferences: **Editor Preferences > Plugins > Project Cleaner**. Both open from the Settings menu of the Project Cleaner window.
@@ -49,7 +49,7 @@ UnrealEditor-Cmd.exe <Project.uproject> -run=Pjc <switches>
 | `-list` | print found items, not only counts |
 | `-report=<file.json>` | write results as json |
 
-UE4 uses `UE4Editor-Cmd.exe`. The exit code is 0 unless something failed; assets kept because they are still held in memory are warnings.
+UE4 uses `UE4Editor-Cmd.exe`. The exit code is 0 unless something failed; assets kept because something still holds them are warnings.
 
 # Development
 `python Scripts/pjc.py --help` builds and tests the plugin against every installed engine.

@@ -348,7 +348,7 @@ namespace
 						.Padding(FMargin {4.0f, 0.0f})
 						.ToolTipText(
 							FText::FromString(
-								FString::Printf(TEXT("Not deleted: held by %s. An editor restart releases transient holders."), *Row->Holder)
+								FString::Printf(TEXT("Not deleted last time: %s"), *Row->Holder)
 							)
 						)
 						[
@@ -1309,7 +1309,7 @@ void SPjcTabUnused::RebuildChips() {
 		[
 			SNew(SCheckBox)
 			.Style(&PjcShim::GetStyle().GetWidgetStyle<FCheckBoxStyle>(TEXT("ToggleButtonCheckbox")))
-			.ToolTipText(FText::FromString(TEXT("The last delete could not remove them: something holds them in memory")))
+			.ToolTipText(FText::FromString(TEXT("The last delete could not remove them: something still holds them")))
 			.IsChecked_Lambda([this]() { return bHeldOnly ? ECheckBoxState::Checked : ECheckBoxState::Unchecked; })
 			.OnCheckStateChanged_Lambda([this](ECheckBoxState) {
 				bHeldOnly = !bHeldOnly;
