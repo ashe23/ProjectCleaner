@@ -938,6 +938,11 @@ bool FPjcTestCookShipped::RunTest(const FString& Parameters) {
 
 	TestFalse(TEXT("script packages left out"), Cook.Cooked.Contains(FName {TEXT("/Script/Engine")}));
 	TestTrue(TEXT("saved digest read"), Cook.SavedDigests.FindRef(PackageOf(Fixture, TEXT("BP_Primary"))) != 0);
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 4
+	FPjcTestFixture::Case(*this, TEXT("cook saved hash"));
+#else
+	FPjcTestFixture::Case(*this, TEXT("cook saved hash"), TEXT("UE before 5.4 saves no package hash, the package guid is compared"));
+#endif
 
 	// files touched after the cook: changed only when what they were saved with differs, file time when that is not known
 	FString PrimaryFile;

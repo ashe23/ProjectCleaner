@@ -35,6 +35,13 @@
 #include "Factories/Factory.h"
 #include "Misc/CoreMisc.h"
 #include "GameFramework/Actor.h"
+#include "Components/AudioComponent.h"
+#include "Sound/AmbientSound.h"
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1
+#include "WorldPartition/DataLayer/DataLayerAsset.h"
+#include "WorldPartition/DataLayer/DataLayerInstanceWithAsset.h"
+#include "WorldPartition/DataLayer/WorldDataLayers.h"
+#endif
 #include "GameFramework/PlayerController.h"
 #include "HAL/FileManager.h"
 #include "Kismet2/KismetEditorUtilities.h"
@@ -100,6 +107,35 @@ namespace
 		Package->MarkPackageDirty();
 		return Data;
 	}
+
+#if ENGINE_MAJOR_VERSION >= 5
+	// open world level: World Partition, every actor in its own package. Values from UWorldFactory
+	UWorld* NewOpenWorld(const FString& PackageName, TArray<UPackage*>& OutPackages) {
+		UPackage* Package = NewPackage(PackageName, OutPackages);
+		UWorld::InitializationValues Values;
+		Values.ShouldSimulatePhysics(false).EnableTraceCollision(true).CreateNavigation(false).CreateAISystem(false).CreateWorldPartition(true);
+		const FName WorldName {*FPackageName::GetLongPackageAssetName(PackageName)};
+		UWorld* World = UWorld::CreateWorld(EWorldType::Inactive, false, WorldName, Package, true, ERHIFeatureLevel::Num, &Values);
+		if (!World) return nullptr;
+
+		World->SetFlags(RF_Public | RF_Standalone);
+		FAssetRegistryModule::AssetCreated(World);
+		Package->MarkPackageDirty();
+		return World;
+	}
+
+	// an asset made by its editor factory, as the Content Browser does: the factory sets up what the asset needs
+	UObject* NewFactoryAsset(const FString& PackageName, const TCHAR* FactoryClassPath) {
+		UClass* FactoryClass = PjcShim::FindClass(FactoryClassPath);
+		if (!FactoryClass) return nullptr;
+
+		UFactory* Factory = NewObject<UFactory>(GetTransientPackage(), FactoryClass);
+		IAssetTools& AssetTools = FModuleManager::LoadModuleChecked<FAssetToolsModule>(TEXT("AssetTools")).Get();
+		const FString Name = FPackageName::GetLongPackageAssetName(PackageName);
+		const FString Path = FPackageName::GetLongPackagePath(PackageName);
+		return AssetTools.CreateAsset(Name, Path, Factory->GetSupportedClass(), Factory);
+	}
+#endif
 
 	// level with one file per actor: actor is saved in its own package under __ExternalActors__
 	UWorld* NewWorldWithExternalActor(const FString& PackageName, UClass* ActorClass, TArray<UPackage*>& OutPackages) {
@@ -523,11 +559,16 @@ bool FPjcTestFixture::CreateLyraAssets(FAutomationTestBase& Test) {
 	}
 	MapNames.Add(TEXT("L_Feature"));
 
+	UWorld* OpenWorld = CreateOpenWorld(Test, LyraPackages);
 	const bool bSaved = UEditorLoadingAndSavingUtils::SavePackages(LyraPackages, false);
 
-	// level is not needed in memory anymore, a world left alive would block its deletion and leak on exit
-	World->DestroyWorld(false);
-	World->RemoveFromRoot();
+	// levels are not needed in memory anymore, a world left alive would block its deletion and leak on exit
+	for (UWorld* Level : {World, OpenWorld}) {
+		if (Level) {
+			Level->DestroyWorld(false);
+			Level->RemoveFromRoot();
+		}
+	}
 	Packages.Append(LyraPackages);
 
 	if (!bSaved) {
@@ -557,6 +598,117 @@ bool FPjcTestFixture::CreateLyraAssets(FAutomationTestBase& Test) {
 	}
 
 	return true;
+}
+
+UWorld* FPjcTestFixture::CreateOpenWorld(FAutomationTestBase& Test, TArray<UPackage*>& OutPackages) {
+	OpenUsed.Reset();
+	OpenUnused.Reset();
+#if ENGINE_MAJOR_VERSION >= 5
+	const auto Register = [this](const FString& Name) {
+		const FString PackageName = FeatureRootPath() / TEXT("OpenWorld") / Name;
+		PackageNames.Add(Name, PackageName);
+		return PackageName;
+	};
+
+	PackageNames.Add(TEXT("L_Open"), FeatureRootPath() / TEXT("Maps/L_Open"));
+	UWorld* World = NewOpenWorld(FeatureRootPath() / TEXT("Maps/L_Open"), OutPackages);
+	const UBlueprint* Placed = NewBlueprint(Register(TEXT("BP_OpenPlaced")), AActor::StaticClass(), UBlueprint::StaticClass(), OutPackages);
+	if (!World || !World->GetWorldPartition() || !Placed || !Placed->GeneratedClass) {
+		Test.AddError(TEXT("Failed to create the open world level"));
+		return World;
+	}
+	MapNames.Add(TEXT("L_Open"));
+	OpenUsed.Append({TEXT("L_Open"), TEXT("BP_OpenPlaced")});
+
+	// UE4 style: no actor packages unless asked
+	FActorSpawnParameters SpawnParameters;
+	SpawnParameters.bCreateActorPackage = true;
+	AActor* PlacedActor = World->SpawnActor(Placed->GeneratedClass, nullptr, nullptr, SpawnParameters);
+	if (!PlacedActor || !PlacedActor->GetExternalPackage()) {
+		Test.AddError(TEXT("Open world level actor has no package of its own"));
+		return World;
+	}
+	Case(Test, TEXT("World Partition level"));
+
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1
+	// data layer asset: referenced by the level's data layer instance and the actor in it
+	UDataLayerAsset* Layer = NewAsset<UDataLayerAsset>(Register(TEXT("DL_Used")), OutPackages);
+	NewAsset<UDataLayerAsset>(Register(TEXT("DL_Unused")), OutPackages);
+	AWorldDataLayers* WorldDataLayers = World->GetWorldDataLayers();
+	UDataLayerInstanceWithAsset* LayerInstance = WorldDataLayers ? WorldDataLayers->CreateDataLayer<UDataLayerInstanceWithAsset>(Layer) : nullptr;
+	if (!LayerInstance || !PlacedActor || !PlacedActor->AddDataLayer(LayerInstance)) {
+		Test.AddError(TEXT("Failed to add the data layer to the open world level"));
+		return World;
+	}
+	OpenUsed.Add(TEXT("DL_Used"));
+	OpenUnused.Add(TEXT("DL_Unused"));
+	Case(Test, TEXT("data layer assets"));
+#else
+	Case(Test, TEXT("data layer assets"), TEXT("UE 5.0 data layers are not assets"));
+#endif
+
+	// PCG graph set on a PCG component in the level
+	UClass* PcgComponentClass = PjcShim::FindClass(TEXT("/Script/PCG.PCGComponent"));
+	UObject* PcgGraph = PcgComponentClass ? NewFactoryAsset(Register(TEXT("PCG_Used")), TEXT("/Script/PCGEditor.PCGGraphFactory")) : nullptr;
+	UObject* PcgUnused = PcgGraph ? NewFactoryAsset(Register(TEXT("PCG_Unused")), TEXT("/Script/PCGEditor.PCGGraphFactory")) : nullptr;
+	if (PcgGraph && PcgUnused) {
+		AActor* PcgActor = World->SpawnActor(AActor::StaticClass(), nullptr, nullptr, SpawnParameters);
+		UActorComponent* PcgComponent = PcgActor ? NewObject<UActorComponent>(PcgActor, PcgComponentClass, TEXT("PCG")) : nullptr;
+		UFunction* SetGraph = PcgComponent ? PcgComponent->FindFunction(TEXT("SetGraph")) : nullptr;
+		if (!SetGraph) {
+			Test.AddError(TEXT("Failed to add a PCG component to the open world level"));
+			return World;
+		}
+		PcgActor->AddInstanceComponent(PcgComponent);
+		PcgComponent->RegisterComponent();
+		struct
+		{
+			UObject* Graph;
+		} SetGraphParams {PcgGraph};
+		PcgComponent->ProcessEvent(SetGraph, &SetGraphParams);
+		OutPackages.Append({PcgGraph->GetPackage(), PcgUnused->GetPackage()});
+		OpenUsed.Add(TEXT("PCG_Used"));
+		OpenUnused.Add(TEXT("PCG_Unused"));
+		Case(Test, TEXT("PCG graphs"));
+	}
+	else {
+		Case(Test, TEXT("PCG graphs"), TEXT("PCG plugin not loaded"));
+	}
+
+	// MetaSound source played by an ambient sound in the level, a patch nothing uses
+	UObject* Source = NewFactoryAsset(Register(TEXT("MS_Used")), TEXT("/Script/MetasoundEditor.MetaSoundSourceFactory"));
+	UObject* Patch = Source ? NewFactoryAsset(Register(TEXT("MS_Unused")), TEXT("/Script/MetasoundEditor.MetaSoundFactory")) : nullptr;
+	if (Source && Patch) {
+		const AAmbientSound* Sound = World->SpawnActor<AAmbientSound>(AAmbientSound::StaticClass(), FTransform::Identity, SpawnParameters);
+		if (!Sound || !Cast<USoundBase>(Source)) {
+			Test.AddError(TEXT("Failed to place the MetaSound in the open world level"));
+			return World;
+		}
+		Sound->GetAudioComponent()->SetSound(Cast<USoundBase>(Source));
+		OutPackages.Append({Source->GetPackage(), Patch->GetPackage()});
+		OpenUsed.Add(TEXT("MS_Used"));
+		OpenUnused.Add(TEXT("MS_Unused"));
+		Case(Test, TEXT("MetaSounds"));
+	}
+	else {
+		Case(Test, TEXT("MetaSounds"), TEXT("MetaSound plugin not loaded"));
+	}
+
+	// actor and data layer packages: the level does not list them, they are saved with it
+	const FString External = FeatureRootPath() / TEXT("__External");
+	for (TObjectIterator<UPackage> It; It; ++It) {
+		if (It->IsDirty() && It->GetName().StartsWith(External)) {
+			OutPackages.AddUnique(*It);
+		}
+	}
+	return World;
+#else
+	Case(Test, TEXT("World Partition level"), TEXT("UE 4 has no World Partition"));
+	Case(Test, TEXT("data layer assets"), TEXT("UE 4 has no data layer assets"));
+	Case(Test, TEXT("PCG graphs"), TEXT("UE 4 has no PCG"));
+	Case(Test, TEXT("MetaSounds"), TEXT("UE 4 has no MetaSounds"));
+	return nullptr;
+#endif
 }
 
 void FPjcTestFixture::CreateLyraFiles() {
@@ -862,6 +1014,7 @@ TArray<FString> FPjcTestFixture::UsedNames(const bool bScanPlugins) const {
 		Names.Append({TEXT("C_Target"), TEXT("C_WithRedirector"), TEXT("BP_Placed")});
 		if (bScanPlugins) {
 			Names.Append({TEXT("C_FeatureIndirect"), TEXT("L_Feature")});
+			Names.Append(OpenUsed);
 #if ENGINE_MAJOR_VERSION >= 5
 			Names.Append({TEXT("PjcFeature"), TEXT("CV_Experience")});
 #endif
@@ -899,6 +1052,7 @@ TArray<FString> FPjcTestFixture::UnusedNames(const bool bScanPlugins) const {
 
 	if (bLyraLayout && bScanPlugins) {
 		Names.Add(TEXT("C_FeatureUnused"));
+		Names.Append(OpenUnused);
 	}
 
 	return Names;

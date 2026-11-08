@@ -160,6 +160,9 @@ class FPjcTestFixture
 
 	bool CreateAssets(FAutomationTestBase& Test);
 	bool CreateLyraAssets(FAutomationTestBase& Test);
+	// Open world level L_Open in the game feature plugin: what its actors and data layers use. Each part only where its
+	// feature exists (World Partition, data layer assets, PCG, MetaSound), reported as feature cases
+	UWorld* CreateOpenWorld(FAutomationTestBase& Test, TArray<UPackage*>& OutPackages);
 	void CreateFiles(const bool bCreateCorruptedFile);
 	void CreateLyraFiles();
 	void ApplyExcludeSettings();
@@ -173,6 +176,9 @@ class FPjcTestFixture
 	TArray<UPackage*> Packages;
 	bool bLyraLayout = false;
 	bool bCues = false;
+	// made by CreateOpenWorld, used and unused when scanning plugins
+	TArray<FString> OpenUsed;
+	TArray<FString> OpenUnused;
 	TArray<FString> SavedExcludedFolders;
 	TArray<FSoftClassPath> SavedExcludedClasses;
 	TArray<FSoftObjectPath> SavedExcludedAssets;

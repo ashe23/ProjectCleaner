@@ -408,6 +408,18 @@ class Host:
         return os.path.join(self.logs_dir, name + ".log")
 
 
+# engine plugins the fixture feature cases use, enabled in the test host where the engine has them (PCG: 5.1+)
+FEATURE_PLUGINS = ["PCG", "Metasound"]
+
+
+def engine_has_plugin(engine, name):
+    plugins = os.path.join(engine.root, "Engine", "Plugins")
+    for base in ("", "Experimental", "Runtime"):
+        if os.path.isfile(os.path.join(plugins, base, name, name + ".uplugin")):
+            return True
+    return False
+
+
 def _uproject_json(host):
     data = {
         "FileVersion": 3,
@@ -422,7 +434,8 @@ def _uproject_json(host):
             {"Name": "ModularGameplay", "Enabled": True},
             {"Name": TEST_FEATURE_PLUGIN, "Enabled": True},
             {"Name": "GameplayAbilities", "Enabled": True},
-        ],
+        ]
+        + [{"Name": name, "Enabled": True} for name in FEATURE_PLUGINS if engine_has_plugin(host.engine, name)],
     }
     return json.dumps(data, indent="\t") + "\n"
 
