@@ -28,6 +28,10 @@
 #include "Engine/BlueprintGeneratedClass.h"
 #include "Engine/ObjectLibrary.h"
 #include "Engine/PrimaryAssetLabel.h"
+#include "EdGraphSchema_K2.h"
+#include "GameplayTagContainer.h"
+#include "GameplayTagsManager.h"
+#include "Kismet2/BlueprintEditorUtils.h"
 #include "Factories/Factory.h"
 #include "Misc/CoreMisc.h"
 #include "GameFramework/Actor.h"
@@ -168,6 +172,14 @@ namespace
 		FAssetRegistryModule::AssetCreated(Blueprint);
 		Package->MarkPackageDirty();
 		return Blueprint;
+	}
+
+	// blueprint variable holding a gameplay tag: saved as a searchable name, the way effects and abilities name cues
+	void AddTagVariable(UBlueprint* Blueprint, const TCHAR* Name, const TCHAR* Tag) {
+		FEdGraphPinType PinType;
+		PinType.PinCategory = UEdGraphSchema_K2::PC_Struct;
+		PinType.PinSubCategoryObject = FGameplayTag::StaticStruct();
+		FBlueprintEditorUtils::AddMemberVariable(Blueprint, FName {Name}, PinType, FString::Printf(TEXT("(TagName=\"%s\")"), Tag));
 	}
 }	// namespace
 
@@ -397,6 +409,41 @@ bool FPjcTestFixture::CreateAssets(FAutomationTestBase& Test) {
 	if (!EditorTool || !BlueprintPrimary || !BlueprintUnused || !BlueprintPrimaryOutside) {
 		Test.AddError(TEXT("Failed to create fixture blueprints"));
 		return false;
+	}
+
+	// GameplayCue notifies, named so the engine derives their tag (GC_PjcTest_Fired: GameplayCue.PjcTest.Fired). Host
+	// config registers the tags and the cue notify path
+	bCues = false;
+	if (UClass* NotifyClass = CueNotifyClass()) {
+		if (!UGameplayTagsManager::Get().RequestGameplayTag(FName {TEXT("GameplayCue.PjcTest.Fired")}, false).IsValid()) {
+			Test.AddError(TEXT("Host config has no GameplayCue.PjcTest tags, run pjc.py setup"));
+			return false;
+		}
+
+		const TArray<FString> CueNames {TEXT("Fired"), TEXT("Parent"), TEXT("Native"), TEXT("Unfired"), TEXT("ByUnused")};
+		for (const auto& CueName : CueNames) {
+			if (!NewBlueprint(Register(TEXT("Cues"), TEXT("GC_PjcTest_") + CueName), NotifyClass, UBlueprint::StaticClass(), Packages)) {
+				Test.AddError(TEXT("Failed to create GameplayCue notify ") + CueName);
+				return false;
+			}
+		}
+		UClass* BlueprintClass = UBlueprint::StaticClass();
+		const UBlueprint* Outside = NewBlueprint(Register(TEXT("Misc"), TEXT("GC_PjcTest_Outside")), NotifyClass, BlueprintClass, Packages);
+		UBlueprint* CueUser = NewBlueprint(Register(TEXT("Blueprints"), TEXT("BP_CueUser")), AActor::StaticClass(), BlueprintClass, Packages);
+		UBlueprint* CueUnused = NewBlueprint(Register(TEXT("Blueprints"), TEXT("BP_CueUnused")), AActor::StaticClass(), BlueprintClass, Packages);
+		if (!Outside || !CueUser || !CueUnused) {
+			Test.AddError(TEXT("Failed to create GameplayCue blueprints"));
+			return false;
+		}
+
+		AddTagVariable(CueUser, TEXT("CueFired"), TEXT("GameplayCue.PjcTest.Fired"));
+		AddTagVariable(CueUser, TEXT("CueChild"), TEXT("GameplayCue.PjcTest.Parent.Child"));
+		AddTagVariable(CueUser, TEXT("CueOutside"), TEXT("GameplayCue.PjcTest.Outside"));
+		AddTagVariable(CueUnused, TEXT("CueByUnused"), TEXT("GameplayCue.PjcTest.ByUnused"));
+		FKismetEditorUtilities::CompileBlueprint(CueUser);
+		FKismetEditorUtilities::CompileBlueprint(CueUnused);
+		Label->ExplicitAssets.Add(TSoftObjectPtr<UObject> {FSoftObjectPath {ObjectPath(TEXT("BP_CueUser"))}});
+		bCues = true;
 	}
 
 	if (!UEditorLoadingAndSavingUtils::SavePackages(Packages, false)) {
@@ -742,6 +789,10 @@ void FPjcTestFixture::DestroyCollection() {
 #endif
 }
 
+UClass* FPjcTestFixture::CueNotifyClass() {
+	return FSoftClassPath {TEXT("/Script/GameplayAbilities.GameplayCueNotify_Static")}.ResolveClass();
+}
+
 UClass* FPjcTestFixture::ValidatorBaseClass() {
 	return FSoftClassPath {TEXT("/Script/DataValidation.EditorValidatorBase")}.ResolveClass();
 }
@@ -791,6 +842,11 @@ TArray<FString> FPjcTestFixture::UsedNames(const bool bScanPlugins) const {
 		Names.Add(TEXT("C_RefByPlugin"));
 	}
 
+	if (bCues) {
+		Names.Append({TEXT("GC_PjcTest_Fired"), TEXT("GC_PjcTest_Parent"), TEXT("GC_PjcTest_Native"), TEXT("BP_CueUser")});
+		Names.Append(ReviewNames());
+	}
+
 	if (bLyraLayout) {
 		// target of the used redirector, asset with a redirector inside, BP_Placed referenced only by external actor package of L_Feature
 		Names.Append({TEXT("C_Target"), TEXT("C_WithRedirector"), TEXT("BP_Placed")});
@@ -817,6 +873,10 @@ TArray<FString> FPjcTestFixture::UnusedNames(const bool bScanPlugins) const {
 	  TEXT("C_Labeled"),
 	};
 
+	if (bCues) {
+		Names.Add(TEXT("BP_CueUnused"));
+	}
+
 	for (int32 i = 0; i < NumBulkAssets; ++i) {
 		Names.Add(FString::Printf(TEXT("C_Bulk_%02d"), i));
 	}
@@ -836,6 +896,10 @@ TArray<FString> FPjcTestFixture::UnusedNames(const bool bScanPlugins) const {
 
 TArray<FString> FPjcTestFixture::RedirectorNames() const {
 	return bLyraLayout ? TArray<FString> {TEXT("R_Moved"), TEXT("R_Stale"), TEXT("R_Dangling"), TEXT("R_ToUnused")} : TArray<FString> {};
+}
+
+TArray<FString> FPjcTestFixture::ReviewNames() const {
+	return bCues ? TArray<FString> {TEXT("GC_PjcTest_Unfired"), TEXT("GC_PjcTest_ByUnused"), TEXT("GC_PjcTest_Outside")} : TArray<FString> {};
 }
 
 TArray<FString> FPjcTestFixture::PrimaryNames() const {

@@ -28,6 +28,8 @@
 #include "Settings/ProjectPackagingSettings.h"
 #include "Engine/AssetManager.h"
 #include "Engine/PrimaryAssetLabel.h"
+#include "GameplayTagContainer.h"
+#include "GameplayTagsManager.h"
 #include "Framework/Application/SlateApplication.h"
 #include "Framework/Notifications/NotificationManager.h"
 #include "Internationalization/Regex.h"
@@ -525,22 +527,23 @@ const TMap<FName, FString>& UPjcSubsystem::GetLastCleanupKept() {
 
 FString UPjcSubsystem::GetUsageReasonText(const FPjcAssetUsage& Usage) {
 	switch (Usage.Reason) {
-		case EPjcUsageReason::Primary :			 return Usage.Detail.IsEmpty() ? TEXT("Primary asset") : TEXT("Primary asset ") + Usage.Detail;
-		case EPjcUsageReason::PrimaryClass :	 return TEXT("Primary class, not registered by the Asset Manager");
-		case EPjcUsageReason::EngineReferenced : return TEXT("Referenced outside scanned content");
-		case EPjcUsageReason::Indirect :		 return TEXT("Named in ") + Usage.Detail;
-		case EPjcUsageReason::Excluded :		 return Usage.Detail.IsEmpty() ? TEXT("Excluded") : Usage.Detail;
-		case EPjcUsageReason::Editor :			 return TEXT("Editor asset");
-		case EPjcUsageReason::GameplayCue :		 return TEXT("GameplayCue notify ") + Usage.Detail;
-		case EPjcUsageReason::Megascans :		 return TEXT("Megascans preset");
-		case EPjcUsageReason::Localized :		 return TEXT("Localized copy of ") + FPackageName::GetShortName(Usage.Parent);
-		case EPjcUsageReason::ConfigFolder :	 return TEXT("In folder ") + Usage.Detail;
-		case EPjcUsageReason::FolderLabelAsset : return TEXT("Listed by folder label ") + FPackageName::GetShortName(Usage.Parent);
-		case EPjcUsageReason::Dependency :		 return TEXT("Referenced by ") + FPackageName::GetShortName(Usage.Parent);
-		case EPjcUsageReason::FolderLabel :		 return TEXT("In folder of label ") + FPackageName::GetShortName(Usage.Parent);
-		case EPjcUsageReason::CookPackaged :	 return TEXT("Packaged by the last cook (") + Usage.Detail + TEXT(")");
+		case EPjcUsageReason::Primary :				return Usage.Detail.IsEmpty() ? TEXT("Primary asset") : TEXT("Primary asset ") + Usage.Detail;
+		case EPjcUsageReason::PrimaryClass :		return TEXT("Primary class, not registered by the Asset Manager");
+		case EPjcUsageReason::EngineReferenced :	return TEXT("Referenced outside scanned content");
+		case EPjcUsageReason::Indirect :			return TEXT("Named in ") + Usage.Detail;
+		case EPjcUsageReason::Excluded :			return Usage.Detail.IsEmpty() ? TEXT("Excluded") : Usage.Detail;
+		case EPjcUsageReason::Editor :				return TEXT("Editor asset");
+		case EPjcUsageReason::GameplayCue :			return TEXT("GameplayCue notify ") + Usage.Detail;
+		case EPjcUsageReason::Megascans :			return TEXT("Megascans preset");
+		case EPjcUsageReason::Localized :			return TEXT("Localized copy of ") + FPackageName::GetShortName(Usage.Parent);
+		case EPjcUsageReason::ConfigFolder :		return TEXT("In folder ") + Usage.Detail;
+		case EPjcUsageReason::FolderLabelAsset :	return TEXT("Listed by folder label ") + FPackageName::GetShortName(Usage.Parent);
+		case EPjcUsageReason::Dependency :			return TEXT("Referenced by ") + FPackageName::GetShortName(Usage.Parent);
+		case EPjcUsageReason::FolderLabel :			return TEXT("In folder of label ") + FPackageName::GetShortName(Usage.Parent);
+		case EPjcUsageReason::CookPackaged :		return TEXT("Packaged by the last cook (") + Usage.Detail + TEXT(")");
+		case EPjcUsageReason::GameplayCueNotFired : return TEXT("GameplayCue notify nothing fires: ") + Usage.Detail;
 		case EPjcUsageReason::None :
-		default :								 return TEXT("Nothing used references it");
+		default :									return TEXT("Nothing used references it");
 	}
 }
 
@@ -580,6 +583,10 @@ void UPjcSubsystem::ComputeAssetsUsed(
 		GetModuleAssetRegistry().Get().GetAssetsByPath(PjcConstants::PathMSPresets, AssetsMegascans, true);
 	}
 
+	// GameplayCue notifies (package -> tag, folder)
+	TMap<FName, FName> CueNotifies;
+	TMap<FName, FString> CueNotifyPaths;
+
 	// every used package remembers why: its own reason, or the used package that references it (closest to a root)
 	TMap<FName, FPjcAssetUsage> Usage;
 	TArray<FName> Queue;
@@ -618,9 +625,11 @@ void UPjcSubsystem::ComputeAssetsUsed(
 			AddUsed(Asset.PackageName, EPjcUsageReason::Editor, NAME_None, FString {});
 		}
 		else if (AssetIsLoadedByTag(Asset)) {
+			// fired by tag: decided after what references them
 			FString GameplayCueName;
 			Asset.GetTagValue(FName {TEXT("GameplayCueName")}, GameplayCueName);
-			AddUsed(Asset.PackageName, EPjcUsageReason::GameplayCue, NAME_None, GameplayCueName);
+			CueNotifies.Add(Asset.PackageName, FName {*GameplayCueName});
+			CueNotifyPaths.Add(Asset.PackageName, Asset.PackagePath.ToString());
 		}
 	}
 
@@ -775,6 +784,117 @@ void UPjcSubsystem::ComputeAssetsUsed(
 	AddLocalized();
 	FollowDependencies(false);
 
+	// GameplayCue notifies are loaded by their tag from the cue notify paths, nothing references them. A tag fires the
+	// notify of that tag, or of its nearest parent tag that has one. Tags in assets are searchable names in the registry
+	TMap<FName, TArray<FName>> NotifiesByTag;
+	for (const auto& Notify : CueNotifies) {
+		NotifiesByTag.FindOrAdd(Notify.Value).Add(Notify.Key);
+	}
+	const auto FindNotifyTag = [&NotifiesByTag](FString Tag) {
+		while (!Tag.IsEmpty()) {
+			const FName TagName {*Tag};
+			if (NotifiesByTag.Contains(TagName)) return TagName;
+
+			int32 Dot = INDEX_NONE;
+			if (!Tag.FindLastChar(TEXT('.'), Dot)) break;
+			Tag.LeftInline(Dot);
+		}
+		return FName {};
+	};
+
+	// notify tag -> (referencing package, tag it references); a notify references its own tag
+	TMap<FName, TArray<TPair<FName, FName>>> CueReferencers;
+	TMap<FName, FName> CueNamed;
+	if (CueNotifies.Num() > 0) {
+		TSet<FName> Tags;
+		NotifiesByTag.GetKeys(Tags);
+		FGameplayTagContainer AllTags;
+		UGameplayTagsManager::Get().RequestAllGameplayTags(AllTags, false);
+		for (const auto& Tag : AllTags) {
+			Tags.Add(Tag.GetTagName());
+		}
+		TArray<FName> TagsSorted = Tags.Array();
+		TagsSorted.Sort(FNameLexicalLess {});
+
+		TArray<FAssetIdentifier> TagReferencers;
+		for (const auto& Tag : TagsSorted) {
+			const FName NotifyTag = FindNotifyTag(Tag.ToString());
+			if (NotifyTag.IsNone()) continue;
+
+			TagReferencers.Reset();
+			const FAssetIdentifier TagId {FGameplayTag::StaticStruct(), Tag};
+			GetModuleAssetRegistry().Get().GetReferencers(TagId, TagReferencers, UE::AssetRegistry::EDependencyCategory::SearchableName);
+			for (const auto& Referencer : TagReferencers) {
+				const FName* ReferencerTag = CueNotifies.Find(Referencer.PackageName);
+				if (ReferencerTag && *ReferencerTag == NotifyTag) continue;
+
+				CueReferencers.FindOrAdd(NotifyTag).Emplace(Referencer.PackageName, Tag);
+			}
+		}
+
+		TSet<FName> NamedTags;
+		GetSourceAndConfigTagNames(NamedTags);
+		TArray<FName> NamedSorted = NamedTags.Array();
+		NamedSorted.Sort(FNameLexicalLess {});
+		for (const auto& Named : NamedSorted) {
+			const FName NotifyTag = FindNotifyTag(Named.ToString());
+			if (!NotifyTag.IsNone() && !CueNamed.Contains(NotifyTag)) {
+				CueNamed.Add(NotifyTag, Named);
+			}
+		}
+		for (auto& Pair : CueReferencers) {
+			Pair.Value.Sort([](const TPair<FName, FName>& A, const TPair<FName, FName>& B) {
+				return A.Key.LexicalLess(B.Key);
+			});
+		}
+	}
+
+	TArray<FString> CuePaths;
+	if (CueNotifies.Num() > 0) {
+		GetGameplayCueNotifyPaths(CuePaths);
+	}
+	const auto IsInCuePaths = [&CuePaths, &CueNotifyPaths](const FName Notify) {
+		const FString& NotifyPath = CueNotifyPaths.FindRef(Notify);
+		return CuePaths.ContainsByPredicate([&NotifyPath](const FString& CuePath) {
+			return NotifyPath == CuePath || NotifyPath.StartsWith(CuePath + TEXT("/"));
+		});
+	};
+
+	// until nothing more fires: fired notifies may fire others
+	const auto FireCues = [&](const bool bFolderLabelOnly) {
+		bool bFired = CueNotifies.Num() > 0;
+		while (bFired) {
+			bFired = false;
+			for (const auto& Notify : CueNotifies) {
+				if (Usage.Contains(Notify.Key) || !IsInCuePaths(Notify.Key)) continue;
+
+				FString Fired;
+				if (const FName* Named = CueNamed.Find(Notify.Value)) {
+					Fired = Named->ToString() + TEXT(", named in source or config");
+				}
+				for (const auto& Referencer : CueReferencers.FindRef(Notify.Value)) {
+					const FPjcAssetUsage* ReferencerUsage = Usage.Find(Referencer.Key);
+					if (!Fired.IsEmpty() || !ReferencerUsage || !ReferencerUsage->bUsed) continue;
+
+					Fired = Referencer.Value.ToString() + TEXT(", fired by ") + FPackageName::GetShortName(Referencer.Key);
+				}
+				if (Fired.IsEmpty()) continue;
+
+				FPjcAssetUsage* CueUsage = AddUsed(Notify.Key, EPjcUsageReason::GameplayCue, NAME_None, Fired);
+				if (CueUsage) {
+					CueUsage->bFolderLabelOnly = bFolderLabelOnly;
+				}
+				bFired = true;
+			}
+			if (bFired) {
+				FollowDependencies(bFolderLabelOnly);
+				AddLocalized();
+				FollowDependencies(bFolderLabelOnly);
+			}
+		}
+	};
+	FireCues(false);
+
 	// the cook takes the whole folder as it is now (the label finds it again when it loads), not the list it saved
 	TArray<FName> FolderLabelsPackagedSorted = FolderLabelsPackaged.Array();
 	FolderLabelsPackagedSorted.Sort(FNameLexicalLess {});
@@ -794,7 +914,19 @@ void UPjcSubsystem::ComputeAssetsUsed(
 		FollowDependencies(true);
 		AddLocalized();
 		FollowDependencies(true);
+		FireCues(true);
 	}
+
+	// notifies nothing fires, or outside the cue notify paths: tags can be built at runtime, so kept for review
+	for (const auto& Notify : CueNotifies) {
+		if (Usage.Contains(Notify.Key)) continue;
+
+		const FString Outside = IsInCuePaths(Notify.Key) ? FString {} : TEXT(", outside the GameplayCue notify paths");
+		AddUsed(Notify.Key, EPjcUsageReason::GameplayCueNotFired, NAME_None, Notify.Value.ToString() + Outside);
+	}
+	FollowDependencies(false);
+	AddLocalized();
+	FollowDependencies(false);
 
 	// unused assets the last cook of a platform packaged: the game may load them in a way the scan cannot follow, so
 	// they are kept for review with what they use. Assets saved since that cook are not checked
@@ -2639,6 +2771,115 @@ void UPjcSubsystem::GetSourceAndConfigWords(TSet<FString>& Words) {
 				Start = INDEX_NONE;
 			}
 		}
+	}
+}
+
+void UPjcSubsystem::GetSourceAndConfigTagNames(TSet<FName>& Names) {
+	Names.Reset();
+
+	TSet<FString> Files;
+	GetSourceAndConfigFiles(Files);
+
+	// sections that define gameplay tags: a definition does not use the tag
+	const TCHAR* TagSettings = TEXT("[/Script/GameplayTags.GameplayTagsSettings]");
+	const TCHAR* TagList = TEXT("[/Script/GameplayTags.GameplayTagsList]");
+
+	FString Content;
+	TArray<FString> Lines;
+	for (const auto& File : Files) {
+		Content.Reset();
+		if (!FFileHelper::LoadFileToString(Content, *File)) continue;
+
+		const bool bConfig = FPaths::GetExtension(File).Equals(TEXT("ini"), ESearchCase::IgnoreCase);
+		bool bTagDefinitions = false;
+		Lines.Reset();
+		Content.ParseIntoArrayLines(Lines, false);
+		for (const auto& Line : Lines) {
+			if (bConfig) {
+				const FString Trimmed = Line.TrimStartAndEnd();
+				if (Trimmed.StartsWith(TEXT("["))) {
+					bTagDefinitions = Trimmed.Equals(TagSettings) || Trimmed.Equals(TagList);
+					continue;
+				}
+				if (bTagDefinitions) continue;
+			}
+
+			// names of word parts joined by dots
+			int32 Start = INDEX_NONE;
+			for (int32 i = 0; i <= Line.Len(); ++i) {
+				const bool bNameChar = i < Line.Len() && (FChar::IsAlnum(Line[i]) || Line[i] == TCHAR('_') || Line[i] == TCHAR('.'));
+				if (bNameChar && Start == INDEX_NONE) {
+					Start = i;
+				}
+				else if (!bNameChar && Start != INDEX_NONE) {
+					FString Name = Line.Mid(Start, i - Start);
+					Name.TrimCharInline(TCHAR('.'), nullptr);
+					if (Name.Contains(TEXT("."))) {
+						Names.Add(FName {*Name});
+					}
+					Start = INDEX_NONE;
+				}
+			}
+		}
+	}
+}
+
+void UPjcSubsystem::GetGameplayCueNotifyPaths(TArray<FString>& Paths) {
+	Paths.Reset();
+
+	// AbilitySystemGlobals (and project classes based on it) and GameplayAbilitiesDeveloperSettings
+	if (GConfig) {
+		TArray<FString> Sections;
+		GConfig->GetSectionNames(GGameIni, Sections);
+		for (const auto& Section : Sections) {
+			TArray<FString> Values;
+			GConfig->GetArray(*Section, TEXT("GameplayCueNotifyPaths"), Values, GGameIni);
+			Paths.Append(Values);
+		}
+	}
+
+	// game feature actions that add cue folders (e.g. Lyra AddGameplayCuePath): their directory lists, a folder that
+	// is not a package path is inside the plugin (UGameFeaturesSubsystem::FixPluginPackagePath)
+	UClass* FeatureDataClass = FindObject<UClass>(nullptr, TEXT("/Script/GameFeatures.GameFeatureData"));
+	TArray<FAssetData> FeatureDatas;
+	if (FeatureDataClass) {
+		FARFilter Filter;
+		PjcShim::AddFilterClass(Filter, FeatureDataClass);
+		Filter.bRecursiveClasses = true;
+		GetModuleAssetRegistry().Get().GetAssets(Filter, FeatureDatas);
+	}
+	for (const auto& FeatureData : FeatureDatas) {
+		const UObject* Data = FeatureData.GetAsset();
+		const FArrayProperty* ActionsProperty = Data ? FindFProperty<FArrayProperty>(Data->GetClass(), TEXT("Actions")) : nullptr;
+		const FObjectPropertyBase* ActionProperty = ActionsProperty ? CastField<FObjectPropertyBase>(ActionsProperty->Inner) : nullptr;
+		if (!ActionProperty) continue;
+
+		const FString PackageName = FeatureData.PackageName.ToString();
+		const int32 RootEnd = PackageName.Find(TEXT("/"), ESearchCase::CaseSensitive, ESearchDir::FromStart, 1);
+		const FString PluginRoot = RootEnd > 0 ? PackageName.Left(RootEnd) : PackageName;
+		FScriptArrayHelper Actions {ActionsProperty, ActionsProperty->ContainerPtrToValuePtr<void>(Data)};
+		for (int32 ActionIndex = 0; ActionIndex < Actions.Num(); ++ActionIndex) {
+			const UObject* Action = ActionProperty->GetObjectPropertyValue(Actions.GetRawPtr(ActionIndex));
+			if (!Action || !Action->GetClass()->GetName().Contains(TEXT("GameplayCue"))) continue;
+
+			for (TFieldIterator<FArrayProperty> It {Action->GetClass()}; It; ++It) {
+				const FStructProperty* DirectoryProperty = CastField<FStructProperty>(It->Inner);
+				if (!DirectoryProperty || DirectoryProperty->Struct->GetFName() != FName {TEXT("DirectoryPath")}) continue;
+
+				FScriptArrayHelper Directories {*It, It->ContainerPtrToValuePtr<void>(Action)};
+				for (int32 DirectoryIndex = 0; DirectoryIndex < Directories.Num(); ++DirectoryIndex) {
+					const FString& Path = reinterpret_cast<const FDirectoryPath*>(Directories.GetRawPtr(DirectoryIndex))->Path;
+					Paths.Add(FPackageName::IsValidLongPackageName(Path) ? Path : PluginRoot / Path);
+				}
+			}
+		}
+	}
+
+	if (Paths.Num() == 0) {
+		Paths.Add(TEXT("/Game"));
+	}
+	for (auto& Path : Paths) {
+		Path.RemoveFromEnd(TEXT("/"));
 	}
 }
 

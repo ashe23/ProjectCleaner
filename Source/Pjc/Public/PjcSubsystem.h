@@ -379,6 +379,11 @@ class UPjcSubsystem final : public UEditorSubsystem
 	static bool FileIsUsedByProject(const FString& InFile);
 	static void GetFoldersUsedByProject(TArray<FString>& Folders);
 	static void GetSourceAndConfigWords(TSet<FString>& Words);
+	// Dotted names in source and config files (e.g. GameplayCue.Weapon.Fire), leaving out the config sections that define gameplay tags
+	static void GetSourceAndConfigTagNames(TSet<FName>& Names);
+	// Folders the GameplayCue manager finds notifies in: GameplayCueNotifyPaths in the game config, folders game feature
+	// actions add (relative to their plugin), /Game when none is set
+	static void GetGameplayCueNotifyPaths(TArray<FString>& Paths);
 	static bool PathIsInsideProject(const FString& InPath);
 	static bool AssetIsInsideProject(const FAssetData& InAsset);
 

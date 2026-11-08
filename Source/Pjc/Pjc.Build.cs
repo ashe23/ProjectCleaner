@@ -54,6 +54,7 @@ public class Pjc : ModuleRules
 				"EditorScriptingUtilities",
 				"EditorWidgets",
 				"InputCore",
+				"GameplayTags",
 				"ContentBrowser",
 				"ContentBrowserData",
 				"CollectionManager",

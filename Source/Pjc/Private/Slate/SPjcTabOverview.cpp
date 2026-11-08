@@ -223,8 +223,8 @@ TSharedRef<SWidget> SPjcTabOverview::MakeSummary() {
 	const TCHAR* UsedTip = TEXT("The game uses them: maps, primary assets and other roots, and what they reference.");
 	const TCHAR* EditorTip = TEXT("Kept, but only the editor uses them: editor assets, and what only editor-only references or labels reach. ")
 		TEXT("They do not ship.");
-	const TCHAR* ReviewTip = TEXT("The scan is not sure about them: unused assets the last cook packaged. ")
-		TEXT("Cleanup keeps them, and the unused assets they use.");
+	const TCHAR* ReviewTip = TEXT("The scan is not sure about them: unused assets the last cook packaged, GameplayCue notifies ")
+		TEXT("nothing fires. Cleanup keeps them, and the unused assets they use.");
 	const TCHAR* UnusedTip = TEXT("Nothing used references them. Cleanup deletes them.");
 	// clang-format on
 	AddColumn(Column(TEXT("Assets"), {}, All.Num, PjcFormat::Size(All.Size), PlainColor, AssetsTip, NoLink));

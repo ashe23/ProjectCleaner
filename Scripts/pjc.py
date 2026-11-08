@@ -421,6 +421,7 @@ def _uproject_json(host):
             {"Name": "GameFeatures", "Enabled": True},
             {"Name": "ModularGameplay", "Enabled": True},
             {"Name": TEST_FEATURE_PLUGIN, "Enabled": True},
+            {"Name": "GameplayAbilities", "Enabled": True},
         ],
     }
     return json.dumps(data, indent="\t") + "\n"
@@ -501,6 +502,7 @@ def setup_host(host):
     # PrimaryAssetLabel: not editor only (engine default is), so a label with Always Cook packages its folder (Packaged/PAL_Packaged)
     # staged folder: raw files shipped with packaged builds, never "external files"
     # always cook and data registry folders: every asset inside is used
+    # GameplayCue notifies: found in /Game/PjcTests/Cues, GameplayCue.PjcTest.Native is named in config (fixture GC_PjcTest_*)
     write_if_changed(
         os.path.join(host.dir, "Config", "DefaultGame.ini"),
         "[/Script/EngineSettings.GeneralProjectSettings]\n"
@@ -525,7 +527,20 @@ def setup_host(host):
         '+DirectoriesToAlwaysCook=(Path="/Game/PjcTests/AlwaysCook")\n'
         "\n"
         "[/Script/DataRegistry.DataRegistrySettings]\n"
-        '+DirectoriesToScan=(Path="/Game/PjcTests/Registry")\n'.format(host.name),
+        '+DirectoriesToScan=(Path="/Game/PjcTests/Registry")\n'
+        "\n"
+        "[/Script/GameplayAbilities.AbilitySystemGlobals]\n"
+        "+GameplayCueNotifyPaths=/Game/PjcTests/Cues\n"
+        "\n"
+        "[/Script/{}.PjcTests]\n"
+        "Cue=GameplayCue.PjcTest.Native\n".format(host.name, host.name),
+    )
+    # tag definitions do not use the tags: GC_PjcTest_Unfired stays in Review
+    cue_tags = ["Fired", "Parent", "Parent.Child", "Native", "Unfired", "ByUnused", "Outside"]
+    write_if_changed(
+        os.path.join(host.dir, "Config", "DefaultGameplayTags.ini"),
+        "[/Script/GameplayTags.GameplayTagsSettings]\n"
+        + "".join('+GameplayTagList=(Tag="GameplayCue.PjcTest.{}",DevComment="")\n'.format(t) for t in cue_tags),
     )
     write_if_changed(os.path.join(host.dir, "Config", "DefaultEngine.ini"), "[/Script/Engine.Engine]\n")
 

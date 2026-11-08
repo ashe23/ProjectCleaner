@@ -150,7 +150,7 @@ enum class EPjcUsageReason : uint8
 	Excluded,
 	// editor utility blueprint or widget
 	Editor,
-	// GameplayCue notify, loaded by its tag
+	// GameplayCue notify a used asset, source or config file fires by its tag or a child tag (Detail: tag and by what)
 	GameplayCue,
 	// localized copy (L10N/<culture> folder) of a used asset, loaded in its place for that culture (Parent: the source)
 	Localized,
@@ -166,6 +166,8 @@ enum class EPjcUsageReason : uint8
 	FolderLabel,
 	// Review: nothing the scan sees uses it, but the last cook packaged it (Detail: the platform)
 	CookPackaged,
+	// Review: GameplayCue notify whose tag nothing used, no source and no config file names, or outside the cue notify paths
+	GameplayCueNotFired,
 };
 
 // What fixing redirectors did

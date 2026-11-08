@@ -494,6 +494,17 @@ bool FPjcTestScanUsage::RunTest(const FString& Parameters) {
 	TestReason(TEXT("C_InPlatformConfig"), EPjcUsageReason::Indirect, nullptr, TEXT("PjcPlatformTests.ini"));
 	TestReason(TEXT("C_RegistryData"), EPjcUsageReason::ConfigFolder, nullptr, TEXT("/Game/PjcTests/Registry"));
 	TestReason(TEXT("C_Unused_fr"), EPjcUsageReason::None, nullptr, nullptr);
+	if (Fixture.HasCues()) {
+		TestReason(TEXT("GC_PjcTest_Fired"), EPjcUsageReason::GameplayCue, nullptr, TEXT("fired by BP_CueUser"));
+		TestReason(TEXT("GC_PjcTest_Parent"), EPjcUsageReason::GameplayCue, nullptr, TEXT("GameplayCue.PjcTest.Parent.Child"));
+		TestReason(TEXT("GC_PjcTest_Native"), EPjcUsageReason::GameplayCue, nullptr, TEXT("named in source or config"));
+		TestReason(TEXT("GC_PjcTest_Unfired"), EPjcUsageReason::GameplayCueNotFired, nullptr, TEXT("GameplayCue.PjcTest.Unfired"));
+		TestReason(TEXT("GC_PjcTest_ByUnused"), EPjcUsageReason::GameplayCueNotFired, nullptr, nullptr);
+		TestReason(TEXT("GC_PjcTest_Outside"), EPjcUsageReason::GameplayCueNotFired, nullptr, TEXT("outside"));
+	}
+	else {
+		AddInfo(TEXT("GameplayAbilities not loaded, GameplayCue cases skipped"));
+	}
 
 	const FPjcAssetUsage* Packaged = Usage.Find(PackageOf(Fixture, TEXT("C_Packaged")));
 	if (TestNotNull(TEXT("usage of C_Packaged"), Packaged)) {
@@ -623,6 +634,13 @@ bool FPjcTestScanResult::RunTest(const FString& Parameters) {
 	TestStatus(TEXT("C_Unused_fr"), EPjcAssetStatus::Unused, EPjcUsageReason::None);
 	TestStatus(TEXT("EUB_Tool"), EPjcAssetStatus::EditorOnly, EPjcUsageReason::Editor);
 	TestStatus(TEXT("C_UnusedLeaf"), EPjcAssetStatus::Unused, EPjcUsageReason::None);
+	if (Fixture.HasCues()) {
+		TestStatus(TEXT("GC_PjcTest_Fired"), EPjcAssetStatus::Used, EPjcUsageReason::GameplayCue);
+		for (const auto& Name : Fixture.ReviewNames()) {
+			TestStatus(*Name, EPjcAssetStatus::Review, EPjcUsageReason::GameplayCueNotFired);
+		}
+		TestStatus(TEXT("BP_CueUnused"), EPjcAssetStatus::Unused, EPjcUsageReason::None);
+	}
 
 	// overview: every asset counted once by status, by reason and by class
 	const FPjcOverview Overview = FPjcOverview::Make(Result);

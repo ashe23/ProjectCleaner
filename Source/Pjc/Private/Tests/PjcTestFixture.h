@@ -50,6 +50,12 @@
  *   Packaged/PAL_Packaged    PrimaryAssetLabel with "Label Assets In My Directory", cook rule Always Cook (label type
  *                            is not editor only in host config)
  *   Packaged/C_Packaged      only in that label's folder: used, the cook packages it
+ *   Cues/GC_PjcTest_*        GameplayCue notifies (only when GameplayAbilities is loaded), tag from the name, cue path in
+ *                            host config: Fired (fired by BP_CueUser), Parent (by its child tag), Native (named in config),
+ *                            Unfired (tag only defined) and ByUnused (fired only by BP_CueUnused) are Review
+ *   Misc/GC_PjcTest_Outside  notify outside the cue notify path, fired by BP_CueUser: Review
+ *   Blueprints/BP_CueUser    references cue tags, used through PAL_Root
+ *   Blueprints/BP_CueUnused  references a cue tag, unused
  *   Empty/A/B                empty folders
  *   Files/readme.txt         external file
  *   Files/notes.md           external file excluded by extension
@@ -94,6 +100,8 @@ class FPjcTestFixture
 	static FName CollectionName();
 	// EditorValidatorBase, null when DataValidation is not loaded
 	static UClass* ValidatorBaseClass();
+	// GameplayCueNotify_Static, null when GameplayAbilities is not loaded
+	static UClass* CueNotifyClass();
 	static FString PluginRootPath();
 	static FString FeatureRootPath();
 	static FString IndirectConfigFile();
@@ -127,6 +135,12 @@ class FPjcTestFixture
 	TArray<FString> UnusedNames(const bool bScanPlugins) const;
 	// redirectors are in neither list above, cleanups leave them (R_ToUnused goes with its unused target)
 	TArray<FString> RedirectorNames() const;
+	// in UsedNames too: cleanup keeps them
+	TArray<FString> ReviewNames() const;
+	// GameplayCue cases were made (GameplayAbilities loaded)
+	bool HasCues() const {
+		return bCues;
+	}
 	TArray<FString> PrimaryNames() const;
 	TArray<FString> ExcludedNames() const;
 	TArray<FString> EmptyFolders() const;
@@ -155,6 +169,7 @@ class FPjcTestFixture
 	TSet<FString> MapNames;
 	TArray<UPackage*> Packages;
 	bool bLyraLayout = false;
+	bool bCues = false;
 	TArray<FString> SavedExcludedFolders;
 	TArray<FSoftClassPath> SavedExcludedClasses;
 	TArray<FSoftObjectPath> SavedExcludedAssets;
