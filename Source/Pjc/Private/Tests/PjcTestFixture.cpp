@@ -310,10 +310,14 @@ bool FPjcTestFixture::CreateAssets(FAutomationTestBase& Test) {
 		Label->ExplicitAssets.Add(TSoftObjectPtr<UObject> {WithRedirector});
 	}
 
-	// folder label (cook rule) references everything in its folder
+	// folder labels (cook rules) reference everything in their folder; only the Always Cook one packages it
 	NewAsset<UCurveFloat>(Register(TEXT("Labeled"), TEXT("C_Labeled")), Packages);
 	UPrimaryAssetLabel* FolderLabel = NewAsset<UPrimaryAssetLabel>(Register(TEXT("Labeled"), TEXT("PAL_Folder")), Packages);
 	FolderLabel->bLabelAssetsInMyDirectory = true;
+	NewAsset<UCurveFloat>(Register(TEXT("Packaged"), TEXT("C_Packaged")), Packages);
+	UPrimaryAssetLabel* PackagedLabel = NewAsset<UPrimaryAssetLabel>(Register(TEXT("Packaged"), TEXT("PAL_Packaged")), Packages);
+	PackagedLabel->bLabelAssetsInMyDirectory = true;
+	PackagedLabel->Rules.CookRule = EPrimaryAssetCookRule::AlwaysCook;
 
 	// unused
 	UCurveFloat* Unused = NewAsset<UCurveFloat>(Register(TEXT("Unused"), TEXT("C_Unused")), Packages);
@@ -656,7 +660,7 @@ void FPjcTestFixture::Cleanup() {
 			}
 			return true;
 		};
-		ForEachObjectWithPackage(Object->GetOutermost(), ForgetInnerRedirector, false);
+		ForEachObjectWithPackage(Object->GetOutermost(), ForgetInnerRedirector);
 	}
 
 	if (Objects.Num() > 0) {
@@ -764,23 +768,19 @@ FString FPjcTestFixture::PackageFile(const FString& Name) const {
 	return FPaths::ConvertRelativePathToFull(FPackageName::LongPackageNameToFilename(*PackageName, Extension));
 }
 
-TArray<FString> FPjcTestFixture::UsedNames(const bool bScanPlugins, const bool bFolderLabelsUsed) const {
+TArray<FString> FPjcTestFixture::UsedNames(const bool bScanPlugins) const {
 	TArray<FString> Names {
 	  TEXT("PAL_Root"),		  TEXT("OL_Chain"),			 TEXT("C_ChainLeaf"),		 TEXT("C_Indirect"),	 TEXT("C_IndirectPackage"),
 	  TEXT("C_ByFolder"),	  TEXT("CLC_ByClass"),		 TEXT("C_ByAsset"),			 TEXT("LS_Cinematic"),	 TEXT("EUB_Tool"),
 	  TEXT("BP_Primary"),	  TEXT("BP_PrimaryOutside"), TEXT("PAL_Folder"),		 TEXT("C_Indirect_fr"),	 TEXT("C_AlwaysCooked"),
 	  TEXT("C_RegistryData"), TEXT("C_InPython"),		 TEXT("C_InPlatformConfig"), TEXT("PAL_Collection"), TEXT("C_InCollection"),
-	  TEXT("C_IndirectFile"),
+	  TEXT("C_IndirectFile"), TEXT("PAL_Packaged"),		 TEXT("C_Packaged"),
 	};
 
 	// editor tools
 	Names.Add(TEXT("BP_AnimModifier"));
 	if (ValidatorBaseClass()) {
 		Names.Add(TEXT("BP_Validator"));
-	}
-
-	if (bFolderLabelsUsed) {
-		Names.Add(TEXT("C_Labeled"));
 	}
 
 	if (bScanPlugins) {
@@ -805,7 +805,7 @@ TArray<FString> FPjcTestFixture::UsedNames(const bool bScanPlugins, const bool b
 	return Names;
 }
 
-TArray<FString> FPjcTestFixture::UnusedNames(const bool bScanPlugins, const bool bFolderLabelsUsed) const {
+TArray<FString> FPjcTestFixture::UnusedNames(const bool bScanPlugins) const {
 	TArray<FString> Names {
 	  TEXT("C_Unused"),
 	  TEXT("OL_UnusedRoot"),
@@ -814,11 +814,8 @@ TArray<FString> FPjcTestFixture::UnusedNames(const bool bScanPlugins, const bool
 	  TEXT("OL_CircB"),
 	  TEXT("BP_Unused"),
 	  TEXT("C_Unused_fr"),
+	  TEXT("C_Labeled"),
 	};
-
-	if (!bFolderLabelsUsed) {
-		Names.Add(TEXT("C_Labeled"));
-	}
 
 	for (int32 i = 0; i < NumBulkAssets; ++i) {
 		Names.Add(FString::Printf(TEXT("C_Bulk_%02d"), i));
@@ -842,7 +839,7 @@ TArray<FString> FPjcTestFixture::RedirectorNames() const {
 }
 
 TArray<FString> FPjcTestFixture::PrimaryNames() const {
-	return {TEXT("PAL_Root"), TEXT("PAL_Collection"), TEXT("BP_Primary"), TEXT("PAL_Folder")};
+	return {TEXT("PAL_Root"), TEXT("PAL_Collection"), TEXT("BP_Primary"), TEXT("PAL_Folder"), TEXT("PAL_Packaged")};
 }
 
 TArray<FString> FPjcTestFixture::ExcludedNames() const {

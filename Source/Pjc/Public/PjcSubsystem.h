@@ -14,6 +14,7 @@
 
 class FPropertyEditorModule;
 class UObjectRedirector;
+class UPrimaryAssetLabel;
 
 /**
  * While alive, expensive asset queries (all, used, unused, indirect, excluded, externally referenced) are computed
@@ -62,8 +63,8 @@ class UPjcSubsystem final : public UEditorSubsystem
 	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Asset")
 	static void GetAssetsUnused(TArray<FAssetData>& Assets, const bool bShowSlowTask = true);
 
-	// Returns assets that only folder labels (Primary Asset Labels with "Label Assets In My Directory") keep used.
-	// Filled whatever "Folder Labels Used" setting is, so it shows what that setting changes.
+	// Returns assets that only folder labels (Primary Asset Labels with "Label Assets In My Directory") keep used:
+	// in the folder of a label whose cook rule packages it, and nothing else uses them.
 	// @param Assets TArray<FAssetData>
 	// @param bShowSlowTask bool
 	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Asset")
@@ -387,11 +388,13 @@ class UPjcSubsystem final : public UEditorSubsystem
 	static bool FolderIsExternal(const FString& InPath);
 	static void GetSourceAndConfigFiles(TSet<FString>& Files);
 	static void GetAssetsDependencies(TSet<FAssetData>& Assets, const TSet<FName>& PackagesNotFollowed = {});
-	// Used labels with "Label Assets In My Directory" and assets they list explicitly (asset package -> label package)
+	// Used labels with "Label Assets In My Directory", those whose cook rule packages their folder, and assets they
+	// list explicitly (asset package -> label package)
 	static void GetFolderLabels(
 		const TArray<FAssetData>& AssetsAll,
 		const TMap<FName, FPjcAssetUsage>& Usage,
 		TSet<FName>& OutFolderLabels,
+		TSet<FName>& OutFolderLabelsPackaged,
 		TMap<FName, FName>& OutLabelAssets
 	);
 	static void ComputeAssetsUsed(
@@ -436,7 +439,10 @@ class UPjcSubsystem final : public UEditorSubsystem
 	static int32 DeleteAssetsReferencedByFolderLabels(const TArray<FAssetData>& Assets);
 	static int32 DeleteAssetsHeldByEachOther(const TArray<FAssetData>& Assets);
 	static void RemoveAssetsHeldOutside(TArray<UObject*>& Assets, TMap<FString, FString>* OutHolders = nullptr);
-	static bool PackageIsFolderLabel(const FName& PackageName);
+	// Label with "Label Assets In My Directory" in the package, null when there is none
+	static const UPrimaryAssetLabel* GetFolderLabel(const FName& PackageName);
+	// The cook packages every asset in the label's folder: Always Cook or a Development Always rule, label type not editor only
+	static bool FolderLabelIsPackaged(const UPrimaryAssetLabel& Label);
 	// Class names that exclude settings make used: excluded by user (exact), always used classes and cinematic classes (derived)
 	static void GetClassNamesExcludedBy(TSet<FName>& OutUserExcluded, TSet<FName>& OutUsedClasses, TSet<FName>& OutCinematic);
 	static FString

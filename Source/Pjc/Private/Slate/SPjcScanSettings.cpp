@@ -62,15 +62,16 @@ void SPjcScanSettings::OnScanFinished() {
 	NumRoots.Reset();
 	NumLocalized = 0;
 	NumFolderLabelOnly = 0;
-	SizeFolderLabelOnly = 0;
+	NumFolderLabelUnused = Result.FolderLabelUnused.Num();
+	SizeFolderLabelUnused = 0;
+	for (const auto& Package : Result.FolderLabelUnused) {
+		SizeFolderLabelUnused += Result.GetSize(Package);
+	}
 	for (const auto& Asset : Result.Assets) {
 		const FPjcAssetUsage* Usage = Result.Usage.Find(Asset.PackageName);
 		if (!Usage) continue;
 
-		if (Usage->bFolderLabelOnly) {
-			++NumFolderLabelOnly;
-			SizeFolderLabelOnly += Result.GetSize(Asset.PackageName);
-		}
+		NumFolderLabelOnly += Usage->bFolderLabelOnly ? 1 : 0;
 		if (Usage->Reason == EPjcUsageReason::Localized && Usage->bUsed) {
 			++NumLocalized;
 		}
@@ -105,7 +106,6 @@ void SPjcScanSettings::Rebuild() {
 		const int32* Num = NumRoots.Find(Reason);
 		return Num ? *Num : 0;
 	};
-	const FString LabelsKeep = Edited.bFolderLabelsUsed ? TEXT("Keeps") : TEXT("Would keep");
 	const FString UnregisteredKeep = Edited.bUnregisteredPrimaryUsed ? TEXT("Keeps") : TEXT("Would keep");
 
 	const TSharedRef<SVerticalBox> Scope = SNew(SVerticalBox);
@@ -140,6 +140,10 @@ void SPjcScanSettings::Rebuild() {
 	const int32 NumUnregistered = Roots(EPjcUsageReason::PrimaryClass);
 	const FString UnregisteredUsed = FString::Printf(TEXT("%s %s assets used"), *UnregisteredKeep, *PjcFormat::Count(NumUnregistered));
 	const FString UnregisteredMore = NumUnregistered > 0 ? UnregisteredUsed : TEXT("None in the last scan");
+	const FString LabelCount = PjcFormat::Count(NumFolderLabelUnused);
+	const FString LabelSize = PjcFormat::Size(SizeFolderLabelUnused);
+	const FString LabelText = FString::Printf(TEXT("%s assets in label folders (%s) follow their references"), *LabelCount, *LabelSize);
+	const FString LabelUnused = NumFolderLabelUnused > 0 ? LabelText : FString {};
 	const TSharedRef<SVerticalBox> Used = SNew(SVerticalBox);
 	// clang-format off
 	Used->AddSlot().AutoHeight()
@@ -202,12 +206,15 @@ void SPjcScanSettings::Rebuild() {
 	];
 	Used->AddSlot().AutoHeight()
 	[
-		MakeSwitchRow(
+		MakeFixedRow(
 			TEXT("Folder labels"),
-			&FPjcScanDraft::bFolderLabelsUsed,
 			NumFolderLabelOnly,
-			TEXT("Primary Asset Labels with Label Assets In My Directory keep every asset in their folder used."),
-			FString::Printf(TEXT("%s %s assets used (%s)"), *LabelsKeep, *PjcFormat::Count(NumFolderLabelOnly), *PjcFormat::Size(SizeFolderLabelOnly))
+			TEXT("assets in packaged label folders"),
+			TEXT("Primary Asset Labels with Label Assets In My Directory count the assets in their folder as used ")
+				TEXT("when the label's cook rule packages them: Always Cook or a Development Always rule, on a label type ")
+				TEXT("that is not editor only. Other labels only sort assets into chunks, ")
+				TEXT("so their assets count as used only if something references them."),
+			LabelUnused
 		)
 	];
 	Used->AddSlot().AutoHeight()
@@ -420,9 +427,11 @@ TSharedRef<SWidget> SPjcScanSettings::MakeRow(
 	// clang-format on
 }
 
-TSharedRef<SWidget> SPjcScanSettings::MakeFixedRow(const FString& Label, const int32 Num, const FString& What, const FString& Description) const {
+TSharedRef<SWidget>
+SPjcScanSettings::MakeFixedRow(const FString& Label, const int32 Num, const FString& What, const FString& Description, const FString& Extra) const {
 	const FString Found = Num > 0 ? FString::Printf(TEXT("%s %s"), *PjcFormat::Count(Num), *What) : TEXT("No ") + What;
-	const FString More = Found + TEXT(" in the last scan\nAlways on");
+	const FString ExtraLine = Extra.IsEmpty() ? FString {} : Extra + TEXT("\n");
+	const FString More = Found + TEXT(" in the last scan\n") + ExtraLine + TEXT("Always on");
 	// clang-format off
 	const TSharedRef<SWidget> Lock = SNew(SBox).WidthOverride(12.0f).HeightOverride(12.0f).ToolTipText(FText::FromString(TEXT("Always on")))
 		[

@@ -12,6 +12,8 @@ class FTabManager;
 enum class EPjcToolbarLocation : uint8;
 class FMultiBox;
 struct FARFilter;
+struct FAssetBundleEntry;
+enum class EPrimaryAssetCookRule : uint8;
 struct FButtonStyle;
 
 #if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1
@@ -75,6 +77,10 @@ namespace PjcShim
 	FString GetObjectPathString(const FAssetData& InAssetData);
 
 	bool IsAssetManagerValid();
+	// Cook rules UAssetManager::ModifyCook cooks by: Always Cook and the Development Always rules
+	bool IsCookRuleAlways(const EPrimaryAssetCookRule CookRule);
+	// Packages of the assets in an asset bundle
+	void GetBundlePackages(const FAssetBundleEntry& Entry, TArray<FName>& OutPackages);
 	// Packages of the assets in a collection of any share type, with its child collections
 	void GetPackagesInCollection(const FName CollectionName, TArray<FName>& OutPackages);
 	EAppReturnType::Type ShowDialog(const FText& Title, const FText& Message, const EAppMsgType::Type MessageType);

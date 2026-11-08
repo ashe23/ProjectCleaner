@@ -14,7 +14,6 @@ struct FPjcScanDraft
 	bool bScanProjectPlugins = false;
 	TArray<FString> IgnoredPlugins;
 	bool bUnregisteredPrimaryUsed = true;
-	bool bFolderLabelsUsed = true;
 	bool bCinematicAssetsUsed = true;
 
 	// Always used classes, as class paths

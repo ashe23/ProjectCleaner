@@ -342,16 +342,36 @@ bool UPjcSubsystem::Scan(const bool bShowSlowTask) {
 		Result.Sizes.Add(Asset.PackageName, GetAssetSize(Asset));
 	}
 
-	// the game uses what ships: roots that are not editor assets, assets the Asset Manager cooks by its rules, and what
-	// those reach through the references the cooker follows (game hard and soft references). Labels are left out with
-	// their references: they cook nothing themselves, and editor only label types ignore AlwaysCook rules, so what a
-	// label lists ships only through a cook rule or another reference. What only editor assets, labels or editor-only
-	// references reach is editor only.
+	// the game uses what ships: roots that are not editor assets, assets the Asset Manager cooks by its rules (folders
+	// of labels among them), and what those reach through the references the cooker follows (game hard and soft
+	// references). Labels are left out with their references: they cook nothing themselves, and editor only label
+	// types ignore AlwaysCook rules, so what a label lists ships only through a cook rule or another reference. What
+	// only editor assets, labels or editor-only references reach is editor only.
 	TSet<FName> Labels;
 	for (const auto& Asset : Result.Assets) {
 		const UClass* AssetClass = Asset.GetClass();
 		if (AssetClass && AssetClass->IsChildOf(UPrimaryAssetLabel::StaticClass())) {
 			Labels.Add(Asset.PackageName);
+		}
+	}
+
+	// a label whose cook rule packages its folder is cooked itself. Unused assets other folder labels list: their cook
+	// rule does not package them
+	TSet<FName> LabelsPackaged;
+	for (const auto& Label : Labels) {
+		const UPrimaryAssetLabel* FolderLabel = GetFolderLabel(Label);
+		if (!FolderLabel) continue;
+		if (FolderLabelIsPackaged(*FolderLabel)) {
+			LabelsPackaged.Add(Label);
+			continue;
+		}
+
+		const FString LabelPath = FPackageName::GetLongPackagePath(Label.ToString());
+		for (const auto& Asset : Result.Unused) {
+			const FString AssetPath = Asset.PackagePath.ToString();
+			if (AssetPath == LabelPath || AssetPath.StartsWith(LabelPath + TEXT("/"))) {
+				Result.FolderLabelUnused.Add(Asset.PackageName);
+			}
 		}
 	}
 
@@ -367,10 +387,17 @@ bool UPjcSubsystem::Scan(const bool bShowSlowTask) {
 	TArray<FName> Stack;
 	for (const auto& Pair : Result.Usage) {
 		const FPjcAssetUsage& AssetUsage = Pair.Value;
-		if (!AssetUsage.bUsed || Labels.Contains(Pair.Key)) continue;
+		if (!AssetUsage.bUsed) continue;
+		if (Labels.Contains(Pair.Key)) {
+			if (LabelsPackaged.Contains(Pair.Key)) {
+				GameUsed.Add(Pair.Key);
+			}
+			continue;
+		}
 
 		const bool bRoot = AssetUsage.Parent.IsNone() && AssetUsage.Reason != EPjcUsageReason::Editor;
-		if (bRoot || IsCookedByRule(Pair.Key)) {
+		const bool bLabelPackaged = AssetUsage.Reason == EPjcUsageReason::FolderLabel;
+		if (bRoot || bLabelPackaged || IsCookedByRule(Pair.Key)) {
 			GameUsed.Add(Pair.Key);
 			Stack.Add(Pair.Key);
 		}
@@ -634,11 +661,13 @@ void UPjcSubsystem::ComputeAssetsUsed(
 		}
 	}
 
-	// folder labels reference every asset in their folder. That is a cook rule, so labels are followed last:
-	// what only they keep is told apart (and unused when "Folder Labels Used" is off)
+	// folder labels reference every asset in their folder. That is a cook rule, not usage: their references are never
+	// followed. A label whose cook rule packages its folder keeps every asset in it used, added last so what only labels
+	// keep is told apart. Other folder labels only sort assets into chunks, their folder assets follow their references
 	TSet<FName> FolderLabels;
+	TSet<FName> FolderLabelsPackaged;
 	TMap<FName, FName> LabelAssets;
-	GetFolderLabels(AssetsAll, Usage, FolderLabels, LabelAssets);
+	GetFolderLabels(AssetsAll, Usage, FolderLabels, FolderLabelsPackaged, LabelAssets);
 	LabelAssets.KeySort(FNameLexicalLess {});
 	for (const auto& LabelAsset : LabelAssets) {
 		AddUsed(LabelAsset.Key, EPjcUsageReason::FolderLabelAsset, LabelAsset.Value, FString {});
@@ -653,10 +682,10 @@ void UPjcSubsystem::ComputeAssetsUsed(
 	// breadth first, so parent chains are short
 	int32 QueueHead = 0;
 	TArray<FName> Deps;
-	const auto FollowDependencies = [&](const TSet<FName>& PackagesNotFollowed, const bool bFolderLabelOnly) {
+	const auto FollowDependencies = [&](const bool bFolderLabelOnly) {
 		while (QueueHead < Queue.Num()) {
 			const FName PackageName = Queue[QueueHead++];
-			if (PackagesNotFollowed.Contains(PackageName)) continue;
+			if (FolderLabels.Contains(PackageName)) continue;
 
 			// packages that are not scanned assets (e.g. actors saved in their own files) pass their parent on
 			FName Parent = PackageName;
@@ -676,11 +705,9 @@ void UPjcSubsystem::ComputeAssetsUsed(
 			for (const auto& Dep : Deps) {
 				if (!PathIsInsideProject(Dep.ToString())) continue;
 
-				const bool bFromLabel = FolderLabels.Contains(PackageName);
-				FPjcAssetUsage* DepUsage = AddUsed(Dep, bFromLabel ? EPjcUsageReason::FolderLabel : EPjcUsageReason::Dependency, Parent, Detail);
+				FPjcAssetUsage* DepUsage = AddUsed(Dep, EPjcUsageReason::Dependency, Parent, Detail);
 				if (DepUsage && bFolderLabelOnly) {
 					DepUsage->bFolderLabelOnly = true;
-					DepUsage->bUsed = ScanSettings->bFolderLabelsUsed;
 				}
 			}
 		}
@@ -707,11 +734,11 @@ void UPjcSubsystem::ComputeAssetsUsed(
 		}
 	};
 
-	FollowDependencies(FolderLabels, false);
+	FollowDependencies(false);
 
 	// assets of a primary class the Asset Manager did not register (outside the type's folders, or in a game feature
 	// plugin that is not registered yet) are uncertain, so used. After the references above, which tell more, and
-	// before folder labels, so they stay used when labels do not count
+	// before folder labels, so labels keep only what nothing else does
 	for (const auto& Asset : AssetsAll) {
 		if (!ScanSettings->bUnregisteredPrimaryUsed) break;
 		if (Usage.Contains(Asset.PackageName)) continue;
@@ -722,17 +749,29 @@ void UPjcSubsystem::ComputeAssetsUsed(
 			AddUsed(Asset.PackageName, EPjcUsageReason::PrimaryClass, NAME_None, AssetExactClassName.ToString());
 		}
 	}
-	FollowDependencies(FolderLabels, false);
+	FollowDependencies(false);
 	AddLocalized();
-	FollowDependencies(FolderLabels, false);
+	FollowDependencies(false);
 
-	if (FolderLabels.Num() > 0) {
-		TArray<FName> FolderLabelsSorted = FolderLabels.Array();
-		FolderLabelsSorted.Sort(FNameLexicalLess {});
-		Queue.Append(FolderLabelsSorted);
-		FollowDependencies(TSet<FName> {}, true);
+	// the cook takes the whole folder as it is now (the label finds it again when it loads), not the list it saved
+	TArray<FName> FolderLabelsPackagedSorted = FolderLabelsPackaged.Array();
+	FolderLabelsPackagedSorted.Sort(FNameLexicalLess {});
+	for (const auto& FolderLabel : FolderLabelsPackagedSorted) {
+		const FString LabelPath = FPackageName::GetLongPackagePath(FolderLabel.ToString());
+		for (const auto& Asset : AssetsAll) {
+			const FString AssetPath = Asset.PackagePath.ToString();
+			if (AssetPath != LabelPath && !AssetPath.StartsWith(LabelPath + TEXT("/"))) continue;
+
+			FPjcAssetUsage* LabelUsage = AddUsed(Asset.PackageName, EPjcUsageReason::FolderLabel, FolderLabel, FString {});
+			if (LabelUsage) {
+				LabelUsage->bFolderLabelOnly = true;
+			}
+		}
+	}
+	if (FolderLabelsPackaged.Num() > 0) {
+		FollowDependencies(true);
 		AddLocalized();
-		FollowDependencies(TSet<FName> {}, true);
+		FollowDependencies(true);
 	}
 
 	// dependencies come per package, map them back to scanned assets so used + unused = all. Redirectors keep their
@@ -757,21 +796,27 @@ void UPjcSubsystem::ComputeAssetsUsed(
 	}
 	OutUsed.Shrink();
 
-	// tell which label decides how many assets, e.g. Lyra DefaultGame_Label keeps hundreds of otherwise unused assets
+	// tell what each folder label decides, e.g. Lyra DefaultGame_Label covers all of /Game but packages nothing
 	for (const auto& FolderLabel : FolderLabels) {
-		TArray<FName> LabelDeps;
-		GetModuleAssetRegistry().Get().GetDependencies(FolderLabel, LabelDeps);
+		const FString LabelPath = FPackageName::GetLongPackagePath(FolderLabel.ToString());
 		int32 NumOnlyByLabel = 0;
-		for (const auto& Asset : OutFolderLabelOnly) {
-			NumOnlyByLabel += LabelDeps.Contains(Asset.PackageName) ? 1 : 0;
-		}
-		if (NumOnlyByLabel == 0) continue;
+		int32 NumUnused = 0;
+		for (const auto& Asset : AssetsAll) {
+			const FString AssetPath = Asset.PackagePath.ToString();
+			if (AssetPath != LabelPath && !AssetPath.StartsWith(LabelPath + TEXT("/"))) continue;
 
-		const FString LabelName = FolderLabel.ToString();
-		const TCHAR* LabelState = ScanSettings->bFolderLabelsUsed ? TEXT("kept used") : TEXT("unused");
-		const TCHAR* LabelSetting = TEXT("Project Settings > Plugins > Project Cleaner > Folder Labels Used");
-		const FString LabelDetail = FString::Printf(TEXT("%d asset(s) referenced only by it are %s (%s)"), NumOnlyByLabel, LabelState, LabelSetting);
-		UE_LOG(LogProjectCleaner, Display, TEXT("Folder label %s: %s"), *LabelName, *LabelDetail);
+			const FPjcAssetUsage* AssetUsage = Usage.Find(Asset.PackageName);
+			NumOnlyByLabel += AssetUsage && AssetUsage->Reason == EPjcUsageReason::FolderLabel && AssetUsage->Parent == FolderLabel ? 1 : 0;
+			NumUnused += AssetUsage ? 0 : 1;
+		}
+
+		const bool bPackaged = FolderLabelsPackaged.Contains(FolderLabel);
+		if (!bPackaged && NumUnused == 0) continue;
+
+		const FString Packaged = FString::Printf(TEXT("packages its folder, %d asset(s) used only by it"), NumOnlyByLabel);
+		const FString NotPackaged = FString::Printf(TEXT("does not package its folder, %d asset(s) in it are unused"), NumUnused);
+		const FString& LabelDetail = bPackaged ? Packaged : NotPackaged;
+		UE_LOG(LogProjectCleaner, Display, TEXT("Folder label %s: its cook rule %s"), *FolderLabel.ToString(), *LabelDetail);
 	}
 }
 
@@ -2697,6 +2742,7 @@ void UPjcSubsystem::GetFolderLabels(
 	const TArray<FAssetData>& AssetsAll,
 	const TMap<FName, FPjcAssetUsage>& Usage,
 	TSet<FName>& OutFolderLabels,
+	TSet<FName>& OutFolderLabelsPackaged,
 	TMap<FName, FName>& OutLabelAssets
 ) {
 	// "Label Assets In My Directory" saves a reference to every asset in label folder. That is a cook rule, not usage:
@@ -2706,9 +2752,12 @@ void UPjcSubsystem::GetFolderLabels(
 		if (!AssetClass || !AssetClass->IsChildOf(UPrimaryAssetLabel::StaticClass()) || !Usage.Contains(Asset.PackageName)) continue;
 
 		const UPrimaryAssetLabel* Label = Cast<UPrimaryAssetLabel>(Asset.GetAsset());
-		if (!Label || !Label->bLabelAssetsInMyDirectory || !Label->AssetCollection.CollectionName.IsNone()) continue;
+		if (!Label || !Label->bLabelAssetsInMyDirectory) continue;
 
 		OutFolderLabels.Add(Asset.PackageName);
+		if (FolderLabelIsPackaged(*Label)) {
+			OutFolderLabelsPackaged.Add(Asset.PackageName);
+		}
 
 		TArray<FSoftObjectPath> ExplicitPaths;
 		for (const auto& ExplicitAsset : Label->ExplicitAssets) {
@@ -2994,8 +3043,6 @@ void UPjcSubsystem::BucketFill(
 }
 
 int32 UPjcSubsystem::DeleteAssetsReferencedByFolderLabels(const TArray<FAssetData>& Assets) {
-	if (GetDefault<UPjcScanSettings>()->bFolderLabelsUsed) return 0;
-
 	// engine never deletes assets with referencers on disk. Folder labels reference every asset in their folder (cook
 	// rule, not usage), so unused assets there are left over. Delete those whose only referencers are folder labels or
 	// other assets deleted together, then resave labels so they stop referencing them.
@@ -3014,7 +3061,7 @@ int32 UPjcSubsystem::DeleteAssetsReferencedByFolderLabels(const TArray<FAssetDat
 	TMap<FName, bool> LabelCache;
 	auto IsFolderLabel = [&](const FName& PackageName) {
 		if (const bool* bCached = LabelCache.Find(PackageName)) return *bCached;
-		return LabelCache.Add(PackageName, PackageIsFolderLabel(PackageName));
+		return LabelCache.Add(PackageName, GetFolderLabel(PackageName) != nullptr);
 	};
 
 	// assets referenced by anything that stays (on disk) are not deleted, repeat until nothing changes
@@ -3214,7 +3261,7 @@ void UPjcSubsystem::RemoveAssetsHeldOutside(TArray<UObject*>& Assets, TMap<FStri
 	}
 }
 
-bool UPjcSubsystem::PackageIsFolderLabel(const FName& PackageName) {
+const UPrimaryAssetLabel* UPjcSubsystem::GetFolderLabel(const FName& PackageName) {
 	TArray<FAssetData> Assets;
 	GetModuleAssetRegistry().Get().GetAssetsByPackageName(PackageName, Assets);
 
@@ -3223,10 +3270,29 @@ bool UPjcSubsystem::PackageIsFolderLabel(const FName& PackageName) {
 		if (!AssetClass || !AssetClass->IsChildOf(UPrimaryAssetLabel::StaticClass())) continue;
 
 		const UPrimaryAssetLabel* Label = Cast<UPrimaryAssetLabel>(Asset.GetAsset());
-		if (Label && Label->bLabelAssetsInMyDirectory && Label->AssetCollection.CollectionName.IsNone()) return true;
+		if (Label && Label->bLabelAssetsInMyDirectory) return Label;
 	}
 
-	return false;
+	return nullptr;
+}
+
+bool UPjcSubsystem::FolderLabelIsPackaged(const UPrimaryAssetLabel& Label) {
+	// UAssetManager::ModifyCook cooks the bundles of a registered label, its folder among them, when the label type is
+	// not editor only and the label's rule is Always Cook or a Development Always rule. The engine default label type is
+	// editor only: such labels only sort assets into chunks
+	if (!PjcShim::IsAssetManagerValid()) return false;
+
+	const UAssetManager& AssetManager = UAssetManager::Get();
+	const FPrimaryAssetId LabelId = Label.GetPrimaryAssetId();
+	FPrimaryAssetTypeInfo TypeInfo;
+	FAssetData LabelData;
+	if (!LabelId.IsValid() || !AssetManager.GetPrimaryAssetTypeInfo(LabelId.PrimaryAssetType, TypeInfo) || TypeInfo.bIsEditorOnly) return false;
+	if (!AssetManager.GetPrimaryAssetData(LabelId, LabelData)) return false;
+
+	// a loaded label sets its own rule over its type's rule, unless it leaves it Unknown
+	const EPrimaryAssetCookRule LabelRule = Label.Rules.CookRule;
+	const EPrimaryAssetCookRule TypeRule = AssetManager.GetPrimaryAssetRules(LabelId).CookRule;
+	return PjcShim::IsCookRuleAlways(LabelRule != EPrimaryAssetCookRule::Unknown ? LabelRule : TypeRule);
 }
 
 bool UPjcSubsystem::BucketPrepare(const TArray<FAssetData>& Bucket, TArray<UObject*>& LoadedAssets) {

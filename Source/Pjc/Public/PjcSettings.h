@@ -45,20 +45,13 @@ class UPjcScanSettings final : public UDeveloperSettings
 	TArray<FString> IgnoredPlugins;
 
 	// always used, not settings: primary assets (every map and what the Asset Manager registers), editor assets,
-	// assets named in source and config files
+	// assets named in source and config files, assets in the folder of a Primary Asset Label whose cook rule packages it
 
 	// Assets of a primary asset class that the Asset Manager did not register are used: outside the folders of their
 	// type, or in a game feature plugin that is not registered yet. On by default, the game may still load them.
 	// Turn off when a type has a very broad base class and too many assets stay used.
 	UPROPERTY(EditAnywhere, Config, Category = "Used Assets", meta = (DisplayName = "Unregistered Primary Classes Used"))
 	bool bUnregisteredPrimaryUsed = true;
-
-	// Primary Asset Labels with "Label Assets In My Directory" make every asset in their folder used.
-	// Such labels are cook rules, often added for content loaded by path, so by default their assets stay used.
-	// A label in content root (e.g. Lyra DefaultGame_Label) makes whole project used: turn off to review those assets.
-	// Label itself and its explicit assets, blueprints and collection are always used.
-	UPROPERTY(EditAnywhere, Config, Category = "Used Assets")
-	bool bFolderLabelsUsed = true;
 
 	// Cinematic assets are used: Level Sequences, Template Sequences, Movie Render Queue and Movie Render Graph configs.
 	// They are usually rendered or played without being referenced by any level.

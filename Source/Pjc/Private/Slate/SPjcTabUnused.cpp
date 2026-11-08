@@ -255,7 +255,7 @@ namespace
 						.BorderImage(FCoreStyle::Get().GetBrush("WhiteBrush"))
 						.BorderBackgroundColor(FLinearColor {FColor::FromHex(TEXT("#2E2716"))})
 						.Padding(FMargin {4.0f, 0.0f})
-						.ToolTipText(FText::FromString(TEXT("A folder label keeps it while Folder labels is on")))
+						.ToolTipText(FText::FromString(TEXT("In the folder of a Primary Asset Label whose cook rule does not package it: only references keep it")))
 						[
 							SNew(STextBlock)
 							.Text(FText::FromString(TEXT("LABEL")))
@@ -409,14 +409,7 @@ void SPjcTabUnused::OnScanFinished() {
 		SelectedFolder = Tree.Roots[0]->Path;
 	}
 
-	// assets only folder labels keep are unused while labels do not count: tagged LABEL
-	LabelOnly.Reset();
 	GroupSizes.Reset();
-	if (!GetDefault<UPjcScanSettings>()->bFolderLabelsUsed) {
-		for (const auto& Asset : UPjcSubsystem::GetScanResult().FolderLabelOnly) {
-			LabelOnly.Add(Asset.PackageName);
-		}
-	}
 
 	RefreshTree();
 	RefreshAssets();
@@ -884,7 +877,7 @@ void SPjcTabUnused::RefreshAssets() {
 		Row->Icon = Type.Icon;
 		Row->Size = Result.GetSize(Asset.PackageName);
 		Row->Folder = Path.Len() > SelectedFolder.Len() ? Path.Mid(SelectedFolder.Len() + 1) : FString {};
-		Row->bLabel = LabelOnly.Contains(Asset.PackageName);
+		Row->bLabel = Result.FolderLabelUnused.Contains(Asset.PackageName);
 		Row->Holder = UPjcSubsystem::GetLastCleanupKept().FindRef(Asset.PackageName);
 		if (const int32* Group = GroupSizes.Find(Asset.PackageName)) {
 			Row->Group = *Group;

@@ -150,8 +150,6 @@ class SPjcTabUnused final : public SCompoundWidget
 	TArray<FAssetRowPtr> ListRows;
 	TSharedPtr<SListView<FAssetRowPtr>> ListView;
 	TSharedPtr<SHorizontalBox> ChipsBox;
-	// Assets only folder labels keep (unused while Folder labels is off)
-	TSet<FName> LabelOnly;
 	// Delete group size per package, made when listed
 	TMap<FName, int32> GroupSizes;
 	// Unused assets that go with the selection

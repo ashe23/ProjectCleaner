@@ -45,7 +45,8 @@ class SPjcScanSettings final : public SCompoundWidget
 		const bool bDim,
 		const float Indent = 0.0f
 	) const;
-	TSharedRef<SWidget> MakeFixedRow(const FString& Label, const int32 Num, const FString& What, const FString& Description) const;
+	TSharedRef<SWidget>
+	MakeFixedRow(const FString& Label, const int32 Num, const FString& What, const FString& Description, const FString& Extra = FString {}) const;
 	TSharedRef<SWidget> MakeSwitchRow(const FString& Label, FDraftFlag Flag, const int32 Num, const FString& Description, const FString& More);
 	TSharedRef<SWidget> MakeListRows(
 		const FName Id,
@@ -70,6 +71,7 @@ class SPjcScanSettings final : public SCompoundWidget
 	TMap<EPjcUsageReason, int32> NumRoots;
 	int32 NumLocalized = 0;
 	int32 NumFolderLabelOnly = 0;
-	int64 SizeFolderLabelOnly = 0;
+	int32 NumFolderLabelUnused = 0;
+	int64 SizeFolderLabelUnused = 0;
 	int32 NumProjectPlugins = 0;
 };

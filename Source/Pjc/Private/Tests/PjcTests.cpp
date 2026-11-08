@@ -103,7 +103,6 @@ namespace
 		bool bScanProjectPlugins;
 		TArray<FString> IgnoredPlugins;
 		bool bUnregisteredPrimaryUsed;
-		bool bFolderLabelsUsed;
 		bool bCinematicAssetsUsed;
 		TArray<TSoftClassPtr<UObject>> UsedClasses;
 
@@ -111,7 +110,6 @@ namespace
 			bScanProjectPlugins = Settings->bScanProjectPlugins;
 			IgnoredPlugins = Settings->IgnoredPlugins;
 			bUnregisteredPrimaryUsed = Settings->bUnregisteredPrimaryUsed;
-			bFolderLabelsUsed = Settings->bFolderLabelsUsed;
 			bCinematicAssetsUsed = Settings->bCinematicAssetsUsed;
 			UsedClasses = Settings->UsedClasses;
 
@@ -119,7 +117,6 @@ namespace
 			Settings->bScanProjectPlugins = bInScanProjectPlugins;
 			Settings->IgnoredPlugins.Reset();
 			Settings->bUnregisteredPrimaryUsed = true;
-			Settings->bFolderLabelsUsed = true;
 			Settings->bCinematicAssetsUsed = true;
 			Settings->UsedClasses.Reset();
 		}
@@ -128,7 +125,6 @@ namespace
 			Settings->bScanProjectPlugins = bScanProjectPlugins;
 			Settings->IgnoredPlugins = IgnoredPlugins;
 			Settings->bUnregisteredPrimaryUsed = bUnregisteredPrimaryUsed;
-			Settings->bFolderLabelsUsed = bFolderLabelsUsed;
 			Settings->bCinematicAssetsUsed = bCinematicAssetsUsed;
 			Settings->UsedClasses = UsedClasses;
 		}
@@ -328,20 +324,19 @@ bool FPjcTestScanCleanup::RunTest(const FString& Parameters) {
 		return true;
 	}
 
-	// plugins scanned: deletion inside plugin content is covered too. Folder labels off: asset only a folder label
-	// references is deleted (engine refuses, label pass does it) and label is kept
+	// plugins scanned: deletion inside plugin content is covered too. Asset only a folder label that does not package
+	// it references is deleted (engine refuses, label pass does it) and label is kept
 	FPjcScopedScanSettings ScopedSettings {true};
-	ScopedSettings.Settings->bFolderLabelsUsed = false;
 
 	FPjcTestFixture Fixture;
 	if (!Fixture.Build(*this)) return false;
 
 	TestTrue(TEXT("DeleteAssetsUnused succeeded"), UPjcSubsystem::DeleteAssetsUnused(false, false));
 
-	for (const auto& Name : Fixture.UnusedNames(true, false)) {
+	for (const auto& Name : Fixture.UnusedNames(true)) {
 		TestFalse(FString::Printf(TEXT("unused %s deleted"), *Name), FPaths::FileExists(Fixture.PackageFile(Name)));
 	}
-	for (const auto& Name : Fixture.UsedNames(true, false)) {
+	for (const auto& Name : Fixture.UsedNames(true)) {
 		TestTrue(FString::Printf(TEXT("used %s kept"), *Name), FPaths::FileExists(Fixture.PackageFile(Name)));
 	}
 
@@ -406,13 +401,7 @@ bool FPjcTestScanSettings::RunTest(const FString& Parameters) {
 
 	TArray<FAssetData> LabelOnly;
 	UPjcSubsystem::GetAssetsFolderLabelOnly(LabelOnly, false);
-	TestSetEqual(*this, TEXT("kept only by folder labels"), FixtureAssets(LabelOnly), ObjectPaths(Fixture, {TEXT("C_Labeled")}));
-
-	Settings->bFolderLabelsUsed = false;
-	TestSetEqual(*this, TEXT("folder labels not used"), UnusedFixtureAssets(), UnusedDefault.Union(ObjectPaths(Fixture, {TEXT("C_Labeled")})));
-	UPjcSubsystem::GetAssetsFolderLabelOnly(LabelOnly, false);
-	TestSetEqual(*this, TEXT("only by folder labels, setting off"), FixtureAssets(LabelOnly), ObjectPaths(Fixture, {TEXT("C_Labeled")}));
-	Settings->bFolderLabelsUsed = true;
+	TestSetEqual(*this, TEXT("kept only by packaged folder labels"), FixtureAssets(LabelOnly), ObjectPaths(Fixture, {TEXT("C_Packaged")}));
 
 	Settings->bScanProjectPlugins = true;
 	Settings->IgnoredPlugins.Add(TEXT("PjcTestContent"));
@@ -494,7 +483,8 @@ bool FPjcTestScanUsage::RunTest(const FString& Parameters) {
 	TestReason(TEXT("C_ByFolder"), EPjcUsageReason::Excluded, nullptr, TEXT("In excluded folder"));
 	TestReason(TEXT("CLC_ByClass"), EPjcUsageReason::Excluded, nullptr, TEXT("Excluded class"));
 	TestReason(TEXT("LS_Cinematic"), EPjcUsageReason::Excluded, nullptr, TEXT("Cinematic"));
-	TestReason(TEXT("C_Labeled"), EPjcUsageReason::FolderLabel, TEXT("PAL_Folder"), nullptr);
+	TestReason(TEXT("C_Labeled"), EPjcUsageReason::None, nullptr, nullptr);
+	TestReason(TEXT("C_Packaged"), EPjcUsageReason::FolderLabel, TEXT("PAL_Packaged"), nullptr);
 	TestReason(TEXT("C_UnusedLeaf"), EPjcUsageReason::None, nullptr, nullptr);
 	TestReason(TEXT("C_Indirect_fr"), EPjcUsageReason::Localized, TEXT("C_Indirect"), nullptr);
 	TestReason(TEXT("C_AlwaysCooked"), EPjcUsageReason::ConfigFolder, nullptr, TEXT("/Game/PjcTests/AlwaysCook"));
@@ -505,18 +495,13 @@ bool FPjcTestScanUsage::RunTest(const FString& Parameters) {
 	TestReason(TEXT("C_RegistryData"), EPjcUsageReason::ConfigFolder, nullptr, TEXT("/Game/PjcTests/Registry"));
 	TestReason(TEXT("C_Unused_fr"), EPjcUsageReason::None, nullptr, nullptr);
 
+	const FPjcAssetUsage* Packaged = Usage.Find(PackageOf(Fixture, TEXT("C_Packaged")));
+	if (TestNotNull(TEXT("usage of C_Packaged"), Packaged)) {
+		TestTrue(TEXT("C_Packaged kept only by folder label"), Packaged->bFolderLabelOnly && Packaged->bUsed);
+	}
 	const FPjcAssetUsage* Labeled = Usage.Find(PackageOf(Fixture, TEXT("C_Labeled")));
 	if (TestNotNull(TEXT("usage of C_Labeled"), Labeled)) {
-		TestTrue(TEXT("C_Labeled kept only by folder label"), Labeled->bFolderLabelOnly);
-		TestTrue(TEXT("C_Labeled used while folder labels are used"), Labeled->bUsed);
-	}
-
-	ScopedSettings.Settings->bFolderLabelsUsed = false;
-	UPjcSubsystem::GetAssetsUsage(Usage, false);
-	Labeled = Usage.Find(PackageOf(Fixture, TEXT("C_Labeled")));
-	if (TestNotNull(TEXT("usage of C_Labeled, folder labels off"), Labeled)) {
-		TestFalse(TEXT("C_Labeled unused while folder labels are not used"), Labeled->bUsed);
-		TestTrue(TEXT("C_Labeled still tells its folder label"), Labeled->bFolderLabelOnly && Labeled->Reason == EPjcUsageReason::FolderLabel);
+		TestFalse(TEXT("C_Labeled unused, its label does not package it"), Labeled->bUsed || Labeled->bFolderLabelOnly);
 	}
 
 	return true;
@@ -626,7 +611,11 @@ bool FPjcTestScanResult::RunTest(const FString& Parameters) {
 	TestStatus(TEXT("PAL_Root"), EPjcAssetStatus::EditorOnly, EPjcUsageReason::Primary);
 	TestStatus(TEXT("OL_Chain"), EPjcAssetStatus::EditorOnly, EPjcUsageReason::Primary);
 	TestStatus(TEXT("C_ChainLeaf"), EPjcAssetStatus::EditorOnly, EPjcUsageReason::Primary);
-	TestStatus(TEXT("C_Labeled"), EPjcAssetStatus::EditorOnly, EPjcUsageReason::FolderLabel);
+	TestStatus(TEXT("C_Labeled"), EPjcAssetStatus::Unused, EPjcUsageReason::None);
+	TestStatus(TEXT("C_Packaged"), EPjcAssetStatus::Used, EPjcUsageReason::FolderLabel);
+	TestStatus(TEXT("PAL_Packaged"), EPjcAssetStatus::Used, EPjcUsageReason::Primary);
+	TestTrue(TEXT("C_Labeled listed by its folder label"), Result.FolderLabelUnused.Contains(PackageOf(Fixture, TEXT("C_Labeled"))));
+	TestEqual(TEXT("unused assets folder labels list"), Result.FolderLabelUnused.Num(), 1);
 	TestStatus(TEXT("BP_Primary"), EPjcAssetStatus::Used, EPjcUsageReason::Primary);
 	TestStatus(TEXT("C_Indirect"), EPjcAssetStatus::Used, EPjcUsageReason::Indirect);
 	TestStatus(TEXT("C_Indirect_fr"), EPjcAssetStatus::Used, EPjcUsageReason::Localized);
@@ -699,18 +688,18 @@ bool FPjcTestScanDraft::RunTest(const FString& Parameters) {
 	TestFalse(TEXT("draft starts as the settings"), FPjcScanDraft::IsChanged());
 
 	// not edited yet: follows the settings when they change elsewhere
-	ScopedSettings.Settings->bFolderLabelsUsed = false;
-	TestFalse(TEXT("draft follows settings until edited"), FPjcScanDraft::Get().bFolderLabelsUsed || FPjcScanDraft::IsChanged());
-	ScopedSettings.Settings->bFolderLabelsUsed = true;
+	ScopedSettings.Settings->bUnregisteredPrimaryUsed = false;
+	TestFalse(TEXT("draft follows settings until edited"), FPjcScanDraft::Get().bUnregisteredPrimaryUsed || FPjcScanDraft::IsChanged());
+	ScopedSettings.Settings->bUnregisteredPrimaryUsed = true;
 
 	// editing the draft leaves the settings alone until applied
-	FPjcScanDraft::Get().bFolderLabelsUsed = false;
+	FPjcScanDraft::Get().bUnregisteredPrimaryUsed = false;
 	FPjcScanDraft::NotifyEdited();
 	TestTrue(TEXT("edited draft is changed"), FPjcScanDraft::IsChanged());
-	TestTrue(TEXT("settings untouched by the draft"), ScopedSettings.Settings->bFolderLabelsUsed);
+	TestTrue(TEXT("settings untouched by the draft"), ScopedSettings.Settings->bUnregisteredPrimaryUsed);
 	FPjcScanDraft::Revert();
 	TestFalse(TEXT("undo back to the settings"), FPjcScanDraft::IsChanged());
-	TestTrue(TEXT("undo restores the value"), FPjcScanDraft::Get().bFolderLabelsUsed);
+	TestTrue(TEXT("undo restores the value"), FPjcScanDraft::Get().bUnregisteredPrimaryUsed);
 
 	FPjcScanDraft::Get().bCinematicAssetsUsed = false;
 	FPjcScanDraft::Get().UsedClasses.Add(UCurveFloat::StaticClass()->GetPathName());
@@ -722,7 +711,7 @@ bool FPjcTestScanDraft::RunTest(const FString& Parameters) {
 		TestEqual(TEXT("used class resolves"), ScopedSettings.Settings->UsedClasses[0].LoadSynchronous(), UCurveFloat::StaticClass());
 	}
 
-	TestTrue(TEXT("plugin defaults"), FPjcScanDraft {}.bUnregisteredPrimaryUsed && FPjcScanDraft {}.bFolderLabelsUsed);
+	TestTrue(TEXT("plugin defaults"), FPjcScanDraft {}.bUnregisteredPrimaryUsed && FPjcScanDraft {}.bCinematicAssetsUsed);
 
 	// DefaultEditor.ini back to what it was
 	ScopedSettings.Settings->bCinematicAssetsUsed = true;

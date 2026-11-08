@@ -375,6 +375,27 @@ namespace PjcShim
 #endif
 	}
 
+	bool IsCookRuleAlways(const EPrimaryAssetCookRule CookRule) {
+		const bool bAlways = CookRule == EPrimaryAssetCookRule::AlwaysCook || CookRule == EPrimaryAssetCookRule::DevelopmentAlwaysCook;
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 2
+		return bAlways || CookRule == EPrimaryAssetCookRule::DevelopmentAlwaysProductionUnknownCook;
+#else
+		return bAlways;
+#endif
+	}
+
+	void GetBundlePackages(const FAssetBundleEntry& Entry, TArray<FName>& OutPackages) {
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1
+		for (const auto& AssetPath : Entry.AssetPaths) {
+			OutPackages.Add(AssetPath.GetPackageName());
+		}
+#else
+		for (const auto& AssetPath : Entry.BundleAssets) {
+			OutPackages.Add(FName {*AssetPath.GetLongPackageName()});
+		}
+#endif
+	}
+
 	EAppReturnType::Type ShowDialog(const FText& Title, const FText& Message, const EAppMsgType::Type MessageType) {
 #if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3
 		return FMessageDialog::Open(MessageType, Message, Title);

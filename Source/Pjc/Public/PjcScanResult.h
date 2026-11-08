@@ -34,14 +34,18 @@ struct FPjcScanResult
 	// Redirectors are not content: they are left out of Assets, Used, Unused, FolderLabelOnly and Sizes.
 	TArray<FAssetData> Assets;
 
-	// Used assets, folder label assets included while folder labels are used (GetAssetsUsed)
+	// Used assets (GetAssetsUsed)
 	TArray<FAssetData> Used;
 
 	// Unused assets (GetAssetsUnused)
 	TArray<FAssetData> Unused;
 
-	// Assets only folder labels keep (GetAssetsFolderLabelOnly)
+	// Assets only folder labels keep: their cook rule packages the folder (GetAssetsFolderLabelOnly)
 	TArray<FAssetData> FolderLabelOnly;
+
+	// Unused assets in the folder of a label whose cook rule does not package it: the label lists them, only
+	// references would keep them
+	TSet<FName> FolderLabelUnused;
 
 	// Redirectors in scanned content, one per package
 	TArray<FAssetData> Redirectors;

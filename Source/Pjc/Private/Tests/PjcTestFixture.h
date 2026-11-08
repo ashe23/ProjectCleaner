@@ -45,8 +45,11 @@
  *   Misc/BP_PrimaryOutside   PlayerController Blueprint outside the PjcTestPrimary folder: primary class, not registered
  *   Used/PAL_Collection      PrimaryAssetLabel naming local collection PjcTestCollection
  *   Misc/C_InCollection      only in collection PjcTestCollection: used through PAL_Collection
- *   Labeled/PAL_Folder       PrimaryAssetLabel with "Label Assets In My Directory"
- *   Labeled/C_Labeled        only referenced by folder label: used unless bFolderLabelsUsed is off
+ *   Labeled/PAL_Folder       PrimaryAssetLabel with "Label Assets In My Directory", cook rule Unknown
+ *   Labeled/C_Labeled        only referenced by that folder label: unused, its cook rule does not package it
+ *   Packaged/PAL_Packaged    PrimaryAssetLabel with "Label Assets In My Directory", cook rule Always Cook (label type
+ *                            is not editor only in host config)
+ *   Packaged/C_Packaged      only in that label's folder: used, the cook packages it
  *   Empty/A/B                empty folders
  *   Files/readme.txt         external file
  *   Files/notes.md           external file excluded by extension
@@ -120,8 +123,8 @@ class FPjcTestFixture
 	FString ObjectPath(const FString& Name) const;
 	FString PackageFile(const FString& Name) const;
 
-	TArray<FString> UsedNames(const bool bScanPlugins, const bool bFolderLabelsUsed = true) const;
-	TArray<FString> UnusedNames(const bool bScanPlugins, const bool bFolderLabelsUsed = true) const;
+	TArray<FString> UsedNames(const bool bScanPlugins) const;
+	TArray<FString> UnusedNames(const bool bScanPlugins) const;
 	// redirectors are in neither list above, cleanups leave them (R_ToUnused goes with its unused target)
 	TArray<FString> RedirectorNames() const;
 	TArray<FString> PrimaryNames() const;

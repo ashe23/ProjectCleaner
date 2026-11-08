@@ -498,6 +498,7 @@ def setup_host(host):
 
     # PjcTestPrimary: blueprint based primary type used by fixture tests (Blueprints/BP_Primary)
     # GameFeatureData: required by game feature plugins (same rule as Lyra)
+    # PrimaryAssetLabel: not editor only (engine default is), so a label with Always Cook packages its folder (Packaged/PAL_Packaged)
     # staged folder: raw files shipped with packaged builds, never "external files"
     # always cook and data registry folders: every asset inside is used
     write_if_changed(
@@ -512,6 +513,12 @@ def setup_host(host):
         '+PrimaryAssetTypesToScan=(PrimaryAssetType="GameFeatureData",AssetBaseClass="/Script/GameFeatures.GameFeatureData",'
         "bHasBlueprintClasses=False,bIsEditorOnly=False,Directories=,SpecificAssets=,"
         "Rules=(Priority=-1,ChunkId=-1,bApplyRecursively=True,CookRule=AlwaysCook))\n"
+        '-PrimaryAssetTypesToScan=(PrimaryAssetType="PrimaryAssetLabel",AssetBaseClass=/Script/Engine.PrimaryAssetLabel,'
+        'bHasBlueprintClasses=False,bIsEditorOnly=True,Directories=((Path="/Game")),SpecificAssets=,'
+        "Rules=(Priority=-1,ChunkId=-1,bApplyRecursively=True,CookRule=Unknown))\n"
+        '+PrimaryAssetTypesToScan=(PrimaryAssetType="PrimaryAssetLabel",AssetBaseClass=/Script/Engine.PrimaryAssetLabel,'
+        'bHasBlueprintClasses=False,bIsEditorOnly=False,Directories=((Path="/Game")),SpecificAssets=,'
+        "Rules=(Priority=-1,ChunkId=-1,bApplyRecursively=True,CookRule=Unknown))\n"
         "\n"
         "[/Script/UnrealEd.ProjectPackagingSettings]\n"
         '+DirectoriesToAlwaysStageAsNonUFS=(Path="PjcTests/Staged")\n'
@@ -1143,7 +1150,6 @@ SCAN_SETTINGS_SECTION = "/Script/Pjc.PjcScanSettings"
 SCAN_SETTINGS_DEFAULT = {
     "bScanProjectPlugins": False,
     "bUnregisteredPrimaryUsed": True,
-    "bFolderLabelsUsed": True,
     "bCinematicAssetsUsed": True,
 }
 REDIRECTOR_CLASSES = ("/Script/CoreUObject.ObjectRedirector", "ObjectRedirector")
@@ -1157,18 +1163,15 @@ POLYGON_SCENARIOS = {
     "scan_plugins": ({"bScanProjectPlugins": True}, ["-scan_only"]),
     "no_unregistered_primary": ({"bUnregisteredPrimaryUsed": False}, ["-scan_only"]),
     "no_cinematic": ({"bCinematicAssetsUsed": False}, ["-scan_only"]),
-    "no_folder_labels": ({"bFolderLabelsUsed": False}, ["-scan_only"]),
     "fix_redirectors": ({"bScanProjectPlugins": True}, ["-scan_only", "-fix_redirectors"]),
     "cleanup": ({}, ["-full_cleanup"]),
     "cleanup_plugins": ({"bScanProjectPlugins": True}, ["-full_cleanup"]),
-    "cleanup_no_folder_labels": ({"bScanProjectPlugins": True, "bFolderLabelsUsed": False}, ["-full_cleanup"]),
 }
 # (wider, narrower): turning a "used" rule off can only add unused assets, never remove them
 POLYGON_SUPERSETS = [
     ("scan_plugins", "scan"),
     ("no_unregistered_primary", "scan"),
     ("no_cinematic", "scan"),
-    ("no_folder_labels", "scan"),
 ]
 
 
@@ -1479,7 +1482,7 @@ def polygon_verify(p, scenario, settings, snapshot, text_refs, report, status, c
         if name in gone_all:
             continue
         # folder labels reference their whole folder (cook rule), cleanup resaves them without deleted assets
-        if name in labels and not settings["bFolderLabelsUsed"]:
+        if name in labels:
             continue
         deps = _resolved_deps(name, packages, gone_all) if fixing else set(packages[name]["deps"])
         for dep in sorted(deps & gone):
@@ -1534,7 +1537,7 @@ def polygon_verify(p, scenario, settings, snapshot, text_refs, report, status, c
 
     referencers = {name for name, info in packages.items() if set(info["deps"]) & redirectors}
     allowed_modified = {"config/defaulteditor.ini"} | {p.rel(packages[n]["file"]).lower() for n in referencers}
-    if cleanup and not settings["bFolderLabelsUsed"]:
+    if cleanup:
         allowed_modified |= {p.rel(packages[n]["file"]).lower() for n in labels}
     unexpected = sorted(f for f in modified_files if f.lower() not in allowed_modified)
     text_files = [f for f in unexpected if not f.lower().endswith((".uasset", ".umap"))]
