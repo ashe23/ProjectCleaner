@@ -985,8 +985,10 @@ bool FPjcTestCookShipped::RunTest(const FString& Parameters) {
 	TestEqual(TEXT("what it uses in review"), static_cast<int32>(Checked.GetStatus(UnusedLeaf)), ReviewStatus);
 	TestEqual(TEXT("cook check platforms"), Checked.CookCheck.Platforms, TArray<FString> {TEXT("PjcTestPlatform")});
 	TestEqual(TEXT("cook check packaged"), Checked.CookCheck.NumPackaged, 1);
-	TestEqual(TEXT("cook check checked"), Checked.CookCheck.NumChecked, 1);
-	TestEqual(TEXT("cook check not checked"), Checked.CookCheck.NumNotChecked, Checked.Unused.Num());
+	// left out by the cook and not saved since: checked, like a real cook that never visits what nothing references.
+	// C_Unused_fr was touched after the cook
+	TestEqual(TEXT("cook check not checked"), Checked.CookCheck.NumNotChecked, 1);
+	TestEqual(TEXT("cook check checked, with the packaged one"), Checked.CookCheck.NumChecked, Checked.Unused.Num() - 1 + 1);
 	TArray<FAssetData> UnusedWithCook;
 	UPjcSubsystem::GetAssetsUnused(UnusedWithCook, false);
 	const auto IsReviewAsset = [&UnusedRoot, &UnusedLeaf](const FAssetData& Asset) {

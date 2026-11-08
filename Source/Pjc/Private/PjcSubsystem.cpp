@@ -594,9 +594,11 @@ bool UPjcSubsystem::Scan(const bool bShowSlowTask, FPjcScanProgress* Progress) {
 	for (const auto& Pair : Result.Usage) {
 		Result.CookCheck.NumPackaged += Pair.Value.Reason == EPjcUsageReason::CookPackaged ? 1 : 0;
 	}
+	// a cook lists only the packages it visited: an unused asset nothing references is not in it, and the cook left it
+	// out. Checked unless saved or added after the cook
 	for (const auto& Asset : Result.Unused) {
 		const auto IsChecked = [&Asset](const FPjcCookInfo* Cook) {
-			return Cook->IsValid() && Cook->SavedDigests.Contains(Asset.PackageName) && !Cook->IsSavedSince(Asset.PackageName);
+			return Cook->IsValid() && !Cook->IsSavedSince(Asset.PackageName);
 		};
 		const bool bChecked = Cooks.ContainsByPredicate(IsChecked);
 		Result.CookCheck.NumChecked += bChecked ? 1 : 0;

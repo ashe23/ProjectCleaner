@@ -76,7 +76,7 @@ struct FPjcCookCheck
 	// Time of the newest cook (UTC), 0 ticks when there is none
 	FDateTime Time {0};
 
-	// Unused assets a cook saw and that were not saved since
+	// Unused assets the cooks left out, not saved or added since
 	int32 NumChecked = 0;
 
 	// Unused assets saved since the cooks, or new since: the cooks cannot tell about them
