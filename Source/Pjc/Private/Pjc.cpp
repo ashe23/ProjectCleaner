@@ -7,6 +7,7 @@
 #include "PjcStyles.h"
 #include "PjcConstants.h"
 #include "Slate/SPjcTabMain.h"
+#include "Slate/SPjcTabHelp.h"
 // Engine Headers
 #include "ToolMenus.h"
 #include "Widgets/Docking/SDockTab.h"
@@ -30,7 +31,8 @@ void FPjc::StartupModule() {
 	GetMutableDefault<UPjcEditorSettings>()->OnChanged.AddRaw(this, &FPjc::OnSettingsChanged);
 
 	const FOnSpawnTab OnSpawnTab = FOnSpawnTab::CreateLambda([](const FSpawnTabArgs& SpawnTabArgs) -> TSharedRef<SDockTab> {
-		const TSharedRef<SDockTab> DockTab = SNew(SDockTab).TabRole(MajorTab);
+		const FString Title = PjcConstants::ModulePjcTitle.ToString() + TEXT(" ") + SPjcTabHelp::GetPluginVersion();
+		const TSharedRef<SDockTab> DockTab = SNew(SDockTab).TabRole(MajorTab).Label(FText::FromString(Title));
 		DockTab->SetContent(SNew(SPjcTabMain, DockTab, SpawnTabArgs.GetOwnerWindow()));
 		return DockTab;
 	});

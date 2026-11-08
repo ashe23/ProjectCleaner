@@ -24,7 +24,11 @@
 #include "Slate/SPjcTabUnused.h"
 #include "Slate/SPjcTabInspector.h"
 #include "Slate/SPjcTabOverview.h"
+#include "Slate/SPjcTabHelp.h"
+#include "Pjc.h"
 #include "HAL/FileManager.h"
+#include "HAL/PlatformOutputDevices.h"
+#include "Misc/EngineVersion.h"
 #include "Misc/App.h"
 #include "Misc/FileHelper.h"
 #include "Misc/PackageName.h"
@@ -1323,7 +1327,7 @@ bool FPjcTestUiTabs::RunTest(const FString& Parameters) {
 	const TSharedRef<SPjcTabInspector> TabInspector = SNew(SPjcTabInspector);
 	const TSharedRef<SPjcTabUnused> TabUnused = SNew(SPjcTabUnused);
 	const TSharedRef<SPjcTabIssues> TabIssues = SNew(SPjcTabIssues);
-	const TSharedRef<SWidget> Tabs[] = {SNew(SPjcTabOverview), TabUnused, TabIssues, TabInspector};
+	const TSharedRef<SWidget> Tabs[] = {SNew(SPjcTabOverview), TabUnused, TabIssues, TabInspector, SNew(SPjcTabHelp)};
 	for (const auto& Tab : Tabs) {
 		TestTrue(FString::Printf(TEXT("%s has content"), *Tab->GetTypeAsString()), Tab->GetChildren()->Num() > 0);
 	}
@@ -1359,6 +1363,66 @@ bool FPjcTestUiTabs::RunTest(const FString& Parameters) {
 	TabInspector->Inspect(Outside);
 	TestEqual(TEXT("inspector shows a package outside the scan"), TabInspector->GetFocus(), Outside);
 
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPjcTestUiReport, "ProjectCleaner.UI.Report", PJC_TEST_FLAGS)
+
+bool FPjcTestUiReport::RunTest(const FString& Parameters) {
+	// system info: plugin, engine and OS
+	const FString Info = SPjcTabHelp::GetSystemInfo();
+	TestFalse(TEXT("plugin version known"), SPjcTabHelp::GetPluginVersion() == TEXT("?"));
+	TestTrue(TEXT("system info has the plugin version"), Info.Contains(TEXT("Project Cleaner ") + SPjcTabHelp::GetPluginVersion()));
+	TestTrue(TEXT("system info has the engine version"), Info.Contains(FEngineVersion::Current().ToString()));
+	TestTrue(TEXT("scan settings listed"), SPjcReportWindow::GetScanSettingsText().Contains(TEXT("excluded folders")));
+
+	// private parts hidden
+	const FString User = FPlatformProcess::UserName();
+	const FString Machine = FPlatformProcess::ComputerName();
+	const FString Private = FString::Printf(TEXT("C:/Users/%s/Proj on %s: /Game/Maps/L_Main.L_Main kept"), *User, *Machine);
+	const FString Hidden = SPjcReportWindow::HidePrivate(Private, true, false);
+	TestFalse(TEXT("user name hidden"), !User.IsEmpty() && Hidden.Contains(User));
+	TestFalse(TEXT("machine name hidden"), !Machine.IsEmpty() && Hidden.Contains(Machine));
+	TestTrue(TEXT("asset path kept"), Hidden.Contains(TEXT("/Game/Maps/L_Main.L_Main")));
+	const FString NoPaths = SPjcReportWindow::HidePrivate(Private, false, true);
+	TestTrue(TEXT("asset path hidden"), NoPaths.EndsWith(TEXT(": <asset> kept")));
+	TestTrue(TEXT("user kept when not asked"), User.IsEmpty() || NoPaths.Contains(User));
+
+	// own log lines only
+	const FString Marker = FString::Printf(TEXT("PjcReportMarker %s"), *FGuid::NewGuid().ToString());
+	UE_LOG(LogProjectCleaner, Display, TEXT("%s"), *Marker);
+	if (IFileManager::Get().FileExists(*FPlatformOutputDevices::GetAbsoluteLogFilename())) {
+		const FString LogText = SPjcReportWindow::GetLogText();
+		TestTrue(TEXT("log lines include the plugin line"), LogText.Contains(Marker));
+		TestFalse(TEXT("log lines are only the plugin's"), LogText.Contains(TEXT("LogInit:")));
+	}
+	else {
+		AddInfo(TEXT("Log lines not checked: this editor writes no log file"));
+	}
+
+	// the last crash, only with Project Cleaner in its call stack
+	const FString CrashDir = FPaths::ProjectSavedDir() / TEXT("Crashes") / TEXT("PjcTestCrash");
+	const FString CrashFile = CrashDir / TEXT("CrashContext.runtime-xml");
+	ON_SCOPE_EXIT {
+		IFileManager::Get().DeleteDirectory(*CrashDir, false, true);
+	};
+	FFileHelper::SaveStringToFile(TEXT("<Root><CallStack>UnrealEditor_Pjc!UPjcSubsystem::Scan()\nUnrealEditor_Core</CallStack></Root>"), *CrashFile);
+	TestTrue(TEXT("crash with the plugin offered"), SPjcReportWindow::GetLastCrashText().Contains(TEXT("UPjcSubsystem::Scan")));
+	FFileHelper::SaveStringToFile(TEXT("<Root><CallStack>UnrealEditor_Renderer!Draw()</CallStack></Root>"), *CrashFile);
+	TestTrue(TEXT("crash without the plugin not offered"), SPjcReportWindow::GetLastCrashText().IsEmpty());
+
+	if (!FSlateApplication::IsInitialized()) {
+		AddInfo(TEXT("Report window not built: Slate is not initialized"));
+		return true;
+	}
+
+	// the report: what happened first, every chosen part, user hidden by default
+	const TSharedRef<SPjcReportWindow> Report = SNew(SPjcReportWindow);
+	const FString Text = Report->MakeReport();
+	TestTrue(TEXT("report starts with what happened"), Text.StartsWith(TEXT("### What happened")));
+	TestTrue(TEXT("report has system info"), Text.Contains(TEXT("### System info")));
+	TestTrue(TEXT("report has scan settings"), Text.Contains(TEXT("### Scan settings")));
+	TestFalse(TEXT("report hides the user"), !User.IsEmpty() && Text.Contains(User));
 	return true;
 }
 

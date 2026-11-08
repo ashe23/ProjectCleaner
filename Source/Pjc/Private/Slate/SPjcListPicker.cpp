@@ -166,7 +166,7 @@ TSharedRef<ITableRow> SPjcListPicker::OnGenerateRow(FItemPtr Item, const TShared
 				SNew(SBox).WidthOverride(12.0f)
 				[
 					SNew(STextBlock)
-					.Text(FText::FromString(bAdded ? TEXT("\\u2713") : TEXT("")))
+					.Text(FText::FromString(bAdded ? TEXT("\u2713") : TEXT("")))
 					.ColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.Ok"))
 				]
 			]

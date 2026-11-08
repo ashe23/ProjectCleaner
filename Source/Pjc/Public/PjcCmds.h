@@ -16,10 +16,6 @@ class FPjcCmds final : public TCommands<FPjcCmds>
 	TSharedPtr<FUICommandInfo> TabMain;
 
 	// Generic Commands
-
-	TSharedPtr<FUICommandInfo> OpenGithub;
-	TSharedPtr<FUICommandInfo> OpenWiki;
-	TSharedPtr<FUICommandInfo> OpenBugReport;
 	TSharedPtr<FUICommandInfo> OpenSettingsProject;
 	TSharedPtr<FUICommandInfo> OpenSettingsEditor;
 };

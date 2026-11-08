@@ -24,6 +24,7 @@ Project Cleaner deletes files and can not know every way a project loads assets,
 * **Assets**: unused, excluded, used and to review assets folder by folder, as a tree or a size map, each with the reason it is in the list; delete them with the assets that must go with them, exclude or keep them
 * **Inspector**: why an asset is used, as a graph from every root down to it, with what uses it and what it uses
 * **Issues**: redirectors, external files, corrupted files and empty folders
+* **Help**: documentation and links, Report a bug (you see and choose what goes into the GitHub issue; nothing is sent), system info
 * Scan bar and scan settings panel on every tab, optional scanning of project plugins content (for plugin based projects like Lyra)
 * Subsystem for Blueprints and Python, command line interface
 

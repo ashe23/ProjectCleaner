@@ -27,6 +27,7 @@ namespace PjcConstants
 	static const FName TabAssetsUnused {TEXT("TabAssetsUnused")};
 	static const FName TabInspector {TEXT("TabInspector")};
 	static const FName TabIssues {TEXT("TabIssues")};
+	static const FName TabHelp {TEXT("TabHelp")};
 
 	// widget index
 	static int32 WidgetIndexIdle = 0;
@@ -42,4 +43,6 @@ namespace PjcConstants
 	static const FString UrlGithub {TEXT("https://github.com/ashe23/ProjectCleaner")};
 	static const FString UrlDocs {TEXT("https://github.com/ashe23/ProjectCleaner/wiki")};
 	static const FString UrlIssueTracker {TEXT("https://github.com/ashe23/ProjectCleaner/issues")};
+	static const FString UrlAuthor {TEXT("https://github.com/ashe23")};
+	static const FString UrlFab {TEXT("https://www.unrealengine.com/marketplace/en-US/product/4d7f5dc837fc4b009bb91e678adf9fd0")};
 }	// namespace PjcConstants

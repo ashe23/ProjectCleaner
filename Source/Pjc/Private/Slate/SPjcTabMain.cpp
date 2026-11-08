@@ -6,6 +6,7 @@
 #include "Slate/SPjcTabUnused.h"
 #include "Slate/SPjcTabIssues.h"
 #include "Slate/SPjcTabInspector.h"
+#include "Slate/SPjcTabHelp.h"
 #include "PjcConstants.h"
 #include "PjcSubsystem.h"
 #include "PjcStyles.h"
@@ -35,19 +36,11 @@ void SPjcTabMain::Construct(
 
 	Cmds = MakeShareable(new FUICommandList);
 
-	const auto OpenUrl = [](const FString& Url) {
-		return FExecuteAction::CreateLambda([Url]() {
-			FPlatformProcess::LaunchURL(*Url, nullptr, nullptr);
-		});
-	};
 	const auto OpenSettings = [](const FName Container, const FName Section) {
 		return FExecuteAction::CreateLambda([Container, Section]() {
 			FModuleManager::LoadModuleChecked<ISettingsModule>("Settings").ShowViewer(Container, "Plugins", Section);
 		});
 	};
-	Cmds->MapAction(FPjcCmds::Get().OpenGithub, OpenUrl(PjcConstants::UrlGithub));
-	Cmds->MapAction(FPjcCmds::Get().OpenWiki, OpenUrl(PjcConstants::UrlDocs));
-	Cmds->MapAction(FPjcCmds::Get().OpenBugReport, OpenUrl(PjcConstants::UrlIssueTracker));
 	Cmds->MapAction(FPjcCmds::Get().OpenSettingsProject, OpenSettings("Project", "PjcScanSettings"));
 	Cmds->MapAction(FPjcCmds::Get().OpenSettingsEditor, OpenSettings("Editor", "PjcEditorSettings"));
 
@@ -57,6 +50,7 @@ void SPjcTabMain::Construct(
 		->AddTab(PjcConstants::TabAssetsUnused, ETabState::OpenedTab)
 		->AddTab(PjcConstants::TabInspector, ETabState::OpenedTab)
 		->AddTab(PjcConstants::TabIssues, ETabState::OpenedTab)
+		->AddTab(PjcConstants::TabHelp, ETabState::OpenedTab)
 		->SetForegroundTab(PjcConstants::TabOverview)
 		->SetSizeCoefficient(1.0f);
 	// clang-format on
@@ -86,14 +80,18 @@ void SPjcTabMain::Construct(
 		.SetIcon(FPjcStyles::GetIcon("ProjectCleaner.Icon.Graph16"))
 		.SetGroup(AppMenuGroup);
 
+	TabManager->RegisterTabSpawner(PjcConstants::TabHelp, FOnSpawnTab::CreateRaw(this, &SPjcTabMain::OnTabHelpSpawn))
+		.SetTooltipText(FText::FromString(TEXT("Open Help Tab: documentation, Report a bug, system info")))
+		.SetDisplayName(FText::FromString(TEXT("Help")))
+		.SetIcon(FPjcStyles::GetIcon("ProjectCleaner.OpenWiki.Small"))
+		.SetGroup(AppMenuGroup);
+
 	FMenuBarBuilder MenuBarBuilder = FMenuBarBuilder(Cmds);
 
 	const FNewMenuDelegate TabsMenu = FNewMenuDelegate::CreateRaw(this, &SPjcTabMain::CreateMenuBarTabs, TabManager);
 	const FNewMenuDelegate SettingsMenu = FNewMenuDelegate::CreateRaw(this, &SPjcTabMain::CreateMenuBarSettings);
-	const FNewMenuDelegate HelpMenu = FNewMenuDelegate::CreateRaw(this, &SPjcTabMain::CreateMenuBarHelp, TabManager);
 	MenuBarBuilder.AddPullDownMenu(FText::FromString(TEXT("Tabs")), FText::GetEmpty(), TabsMenu, "Window");
 	MenuBarBuilder.AddPullDownMenu(FText::FromString(TEXT("Settings")), FText::GetEmpty(), SettingsMenu, "Settings");
-	MenuBarBuilder.AddPullDownMenu(FText::FromString(TEXT("Help")), FText::GetEmpty(), HelpMenu, "Tabs");
 
 	// clang-format off
 	ChildSlot
@@ -147,6 +145,7 @@ SPjcTabMain::~SPjcTabMain() {
 	FGlobalTabmanager::Get()->UnregisterTabSpawner(PjcConstants::TabAssetsUnused);
 	FGlobalTabmanager::Get()->UnregisterTabSpawner(PjcConstants::TabIssues);
 	FGlobalTabmanager::Get()->UnregisterTabSpawner(PjcConstants::TabInspector);
+	FGlobalTabmanager::Get()->UnregisterTabSpawner(PjcConstants::TabHelp);
 }
 
 int32 SPjcTabMain::GetWidgetIndex() const {
@@ -218,6 +217,19 @@ TSharedRef<SDockTab> SPjcTabMain::OnTabInspectorSpawn(const FSpawnTabArgs& Args)
 	return Frontend;
 }
 
+TSharedRef<SDockTab> SPjcTabMain::OnTabHelpSpawn(const FSpawnTabArgs& Args) const {
+	// clang-format off
+	const auto Frontend = SNew(SDockTab).TabRole(PanelTab).Label(FText::FromString(TEXT("Help")))
+		[
+			SNew(SPjcTabHelp)
+		];
+	// clang-format on
+
+	Frontend->SetTabIcon(FPjcStyles::Get().GetBrush("ProjectCleaner.OpenWiki.Small"));
+
+	return Frontend;
+}
+
 void SPjcTabMain::CreateMenuBarTabs(FMenuBuilder& MenuBuilder, const TSharedPtr<FTabManager> TabManagerPtr) {
 	if (!TabManagerPtr.IsValid()) return;
 
@@ -231,11 +243,4 @@ void SPjcTabMain::CreateMenuBarTabs(FMenuBuilder& MenuBuilder, const TSharedPtr<
 void SPjcTabMain::CreateMenuBarSettings(FMenuBuilder& MenuBuilder) {
 	MenuBuilder.AddMenuEntry(FPjcCmds::Get().OpenSettingsProject);
 	MenuBuilder.AddMenuEntry(FPjcCmds::Get().OpenSettingsEditor);
-}
-
-void SPjcTabMain::CreateMenuBarHelp(FMenuBuilder& MenuBuilder, const TSharedPtr<FTabManager> TabManagerPtr) {
-	MenuBuilder.AddMenuEntry(FPjcCmds::Get().OpenGithub);
-	MenuBuilder.AddMenuEntry(FPjcCmds::Get().OpenWiki);
-	MenuBuilder.AddSeparator();
-	MenuBuilder.AddMenuEntry(FPjcCmds::Get().OpenBugReport);
 }
