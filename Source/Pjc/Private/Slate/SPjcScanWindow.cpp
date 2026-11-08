@@ -178,9 +178,7 @@ void SPjcScanWindow::Construct(const FArguments& InArgs) {
 		PumpUi();
 	};
 
-	// the scan starts once the window is shown
 	StartTime = FPlatformTime::Seconds();
-	RegisterActiveTimer(0.0f, FWidgetActiveTimerDelegate::CreateSP(this, &SPjcScanWindow::StartScan));
 }
 
 bool SPjcScanWindow::Run() {
@@ -206,13 +204,18 @@ bool SPjcScanWindow::Run() {
 		FSlateApplication::Get().RequestDestroyWindow(Closing);
 	}));
 
+	// modal without a loop of its own, like the engine's progress windows: the scan runs right here and draws the
+	// window between its steps. A scan started from a widget timer would start again in every Tick it calls
 	PjcTabs::SetWindowOpen(true);
-	FSlateApplication::Get().AddModalWindow(ScanWindow, FSlateApplication::Get().GetActiveTopLevelWindow());
+	FSlateApplication::Get().AddModalWindow(ScanWindow, FSlateApplication::Get().GetActiveTopLevelWindow(), true);
+	ScanWindow->ShowWindow();
+	Content->StartScan();
 	PjcTabs::SetWindowOpen(false);
 	return Content->bScanned;
 }
 
-EActiveTimerReturnType SPjcScanWindow::StartScan(double CurrentTime, float DeltaTime) {
+void SPjcScanWindow::StartScan() {
+	PumpUi();
 	bScanned = UPjcSubsystem::Scan(false, &Progress);
 	bFinished = true;
 	CurrentText.Reset();
@@ -223,7 +226,6 @@ EActiveTimerReturnType SPjcScanWindow::StartScan(double CurrentTime, float Delta
 	if (const TSharedPtr<SWindow> Pinned = Window.Pin()) {
 		Pinned->RequestDestroyWindow();
 	}
-	return EActiveTimerReturnType::Stop;
 }
 
 float SPjcScanWindow::GetPercent() const {

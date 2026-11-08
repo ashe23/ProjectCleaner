@@ -27,7 +27,8 @@ class SPjcScanWindow final : public SCompoundWidget
 
   private:
 
-	EActiveTimerReturnType StartScan(double CurrentTime, float DeltaTime);
+	// runs the scan, the window drawn between its steps, then closes the window
+	void StartScan();
 	float GetPercent() const;
 	static void PumpUi();
 
