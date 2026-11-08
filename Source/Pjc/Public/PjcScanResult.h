@@ -15,6 +15,32 @@ enum class EPjcAssetStatus : uint8
 	Used,
 	// only the editor uses it: editor assets, or reached only through editor-only references. Cleanup keeps it.
 	EditorOnly,
+	// the scan is not sure: kept by cleanup, the user decides. Its chain starts at a review reason (packaged by the
+	// last cook), or it is what such an asset uses
+	Review,
+};
+
+// Unused assets compared with the last cook of every platform in Saved/Cooked
+struct FPjcCookCheck
+{
+	// Platforms of the cooks read, newest first
+	TArray<FString> Platforms;
+
+	// Time of the newest cook (UTC), 0 ticks when there is none
+	FDateTime Time {0};
+
+	// Unused assets a cook saw and that were not saved since
+	int32 NumChecked = 0;
+
+	// Unused assets saved since the cooks, or new since: the cooks cannot tell about them
+	int32 NumNotChecked = 0;
+
+	// Assets nothing the scan sees uses, but a cook packaged: Review (EPjcUsageReason::CookPackaged)
+	int32 NumPackaged = 0;
+
+	bool IsFound() const {
+		return Platforms.Num() > 0;
+	}
 };
 
 /**
@@ -74,6 +100,14 @@ struct FPjcScanResult
 
 	// Empty folders cleanup deletes, absolute paths
 	TArray<FString> FoldersEmpty;
+
+	// The scan against the last cooks
+	FPjcCookCheck CookCheck;
+
+	// Reasons that put an asset in Review: the scan is not sure, cleanup keeps it and the user decides
+	static bool IsReviewReason(const EPjcUsageReason Reason) {
+		return Reason == EPjcUsageReason::CookPackaged;
+	}
 
 	EPjcAssetStatus GetStatus(const FName Package) const {
 		const EPjcAssetStatus* Found = Status.Find(Package);

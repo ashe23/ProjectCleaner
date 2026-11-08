@@ -37,8 +37,15 @@ struct FPjcCookInfo
 		return IsFound() && !bReadFailed;
 	}
 
+	// The package was saved since this cook: what it was saved with differs, or its file is newer when that is not
+	// known (packages the cook did not see too)
+	bool IsSavedSince(const FName Package) const;
+
 	// Newest cook of this project folder for any platform. Read again only when its file changes.
 	static const FPjcCookInfo& GetLast();
+
+	// Last cook of this project folder for every platform, newest first. Each is read again only when its file changes.
+	static TArray<const FPjcCookInfo*> GetAll();
 
 	// Folder the cooks of this project are in: Saved/Cooked
 	static FString GetCookedDir();

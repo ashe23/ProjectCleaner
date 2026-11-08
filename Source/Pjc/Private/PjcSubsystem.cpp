@@ -1,6 +1,7 @@
 // Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "PjcSubsystem.h"
+#include "PjcCookInfo.h"
 #include "PjcFormat.h"
 #include "PjcConstants.h"
 #include "PjcShim.h"
@@ -437,10 +438,30 @@ bool UPjcSubsystem::Scan(const bool bShowSlowTask) {
 
 	Result.Status.Reserve(Result.Assets.Num());
 	for (const auto& Asset : Result.Assets) {
-		const EPjcAssetStatus UsedStatus = GameUsed.Contains(Asset.PackageName) ? EPjcAssetStatus::Used : EPjcAssetStatus::EditorOnly;
-		const EPjcAssetStatus Status = Result.IsUsed(Asset.PackageName) ? UsedStatus : EPjcAssetStatus::Unused;
-		Result.Status.Add(Asset.PackageName, Status);
+		const bool bReview = FPjcScanResult::IsReviewReason(Result.GetChainReason(Asset.PackageName));
+		const EPjcAssetStatus GameStatus = GameUsed.Contains(Asset.PackageName) ? EPjcAssetStatus::Used : EPjcAssetStatus::EditorOnly;
+		const EPjcAssetStatus UsedStatus = bReview ? EPjcAssetStatus::Review : GameStatus;
+		Result.Status.Add(Asset.PackageName, Result.IsUsed(Asset.PackageName) ? UsedStatus : EPjcAssetStatus::Unused);
 	}
+
+	// cook check: what the cooks saw of the unused assets
+	const TArray<const FPjcCookInfo*> Cooks = FPjcCookInfo::GetAll();
+	for (const auto& Cook : Cooks) {
+		Result.CookCheck.Platforms.Add(Cook->Platform);
+	}
+	Result.CookCheck.Time = Cooks.Num() > 0 ? Cooks[0]->Time : FDateTime {0};
+	for (const auto& Pair : Result.Usage) {
+		Result.CookCheck.NumPackaged += Pair.Value.Reason == EPjcUsageReason::CookPackaged ? 1 : 0;
+	}
+	for (const auto& Asset : Result.Unused) {
+		const auto IsChecked = [&Asset](const FPjcCookInfo* Cook) {
+			return Cook->IsValid() && Cook->SavedDigests.Contains(Asset.PackageName) && !Cook->IsSavedSince(Asset.PackageName);
+		};
+		const bool bChecked = Cooks.ContainsByPredicate(IsChecked);
+		Result.CookCheck.NumChecked += bChecked ? 1 : 0;
+		Result.CookCheck.NumNotChecked += bChecked || Cooks.Num() == 0 ? 0 : 1;
+	}
+	Result.CookCheck.NumChecked += Result.CookCheck.NumPackaged;
 
 	// files that are not assets, and empty folders
 	TArray<FString> FilesExternal;
@@ -517,6 +538,7 @@ FString UPjcSubsystem::GetUsageReasonText(const FPjcAssetUsage& Usage) {
 		case EPjcUsageReason::FolderLabelAsset : return TEXT("Listed by folder label ") + FPackageName::GetShortName(Usage.Parent);
 		case EPjcUsageReason::Dependency :		 return TEXT("Referenced by ") + FPackageName::GetShortName(Usage.Parent);
 		case EPjcUsageReason::FolderLabel :		 return TEXT("In folder of label ") + FPackageName::GetShortName(Usage.Parent);
+		case EPjcUsageReason::CookPackaged :	 return TEXT("Packaged by the last cook (") + Usage.Detail + TEXT(")");
 		case EPjcUsageReason::None :
 		default :								 return TEXT("Nothing used references it");
 	}
@@ -773,6 +795,23 @@ void UPjcSubsystem::ComputeAssetsUsed(
 		AddLocalized();
 		FollowDependencies(true);
 	}
+
+	// unused assets the last cook of a platform packaged: the game may load them in a way the scan cannot follow, so
+	// they are kept for review with what they use. Assets saved since that cook are not checked
+	const TArray<const FPjcCookInfo*> Cooks = FPjcCookInfo::GetAll();
+	for (const auto& Asset : AssetsAll) {
+		if (Usage.Contains(Asset.PackageName) || Cooks.Num() == 0) continue;
+
+		for (const auto& Cook : Cooks) {
+			if (!Cook->IsValid() || !Cook->Cooked.Contains(Asset.PackageName) || Cook->IsSavedSince(Asset.PackageName)) continue;
+
+			AddUsed(Asset.PackageName, EPjcUsageReason::CookPackaged, NAME_None, Cook->Platform);
+			break;
+		}
+	}
+	FollowDependencies(false);
+	AddLocalized();
+	FollowDependencies(false);
 
 	// dependencies come per package, map them back to scanned assets so used + unused = all. Redirectors keep their
 	// usage (chains go through them), but are neither used nor unused assets

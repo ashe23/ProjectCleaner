@@ -87,6 +87,8 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create() {
 	Style->Set("ProjectCleaner.Color.UsedFill", FLinearColor {FColor::FromHex(TEXT("#2C766F"))});
 	Style->Set("ProjectCleaner.Color.EditorFill", FLinearColor {FColor::FromHex(TEXT("#3D6DB3"))});
 	Style->Set("ProjectCleaner.Color.UnusedFill", FLinearColor {FColor::FromHex(TEXT("#C4484D"))});
+	Style->Set("ProjectCleaner.Color.ReviewFill", FLinearColor {FColor::FromHex(TEXT("#8F6F2A"))});
+	Style->Set("ProjectCleaner.Color.Review", FLinearColor {FColor::FromHex(TEXT("#E0B050"))});
 	Style->Set("ProjectCleaner.Color.Ok", FLinearColor {FColor::FromHex(TEXT("#6FCF7A"))});
 	Style->Set("ProjectCleaner.Color.Track", FLinearColor {FColor::FromHex(TEXT("#2D3136"))});
 	Style->Set("ProjectCleaner.Color.Line", FLinearColor {FColor::FromHex(TEXT("#383B40"))});

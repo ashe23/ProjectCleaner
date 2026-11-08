@@ -55,6 +55,7 @@ namespace
 		int32 NumUsed = 0;
 		int32 NumUnused = 0;
 		TArray<FAssetData> EditorOnly;
+		TArray<FAssetData> Review;
 		TMap<FString, int32> ChainReasons;
 		for (const auto& Asset : Result.Assets) {
 			const EPjcAssetStatus Status = Result.GetStatus(Asset.PackageName);
@@ -63,14 +64,22 @@ namespace
 				continue;
 			}
 
-			if (Status == EPjcAssetStatus::Used) {
-				++NumUsed;
-			}
-			else {
+			NumUsed += Status == EPjcAssetStatus::Used ? 1 : 0;
+			if (Status == EPjcAssetStatus::EditorOnly) {
 				EditorOnly.Add(Asset);
+			}
+			if (Status == EPjcAssetStatus::Review) {
+				Review.Add(Asset);
 			}
 			ChainReasons.FindOrAdd(UEnum::GetValueAsString(Result.GetChainReason(Asset.PackageName)))++;
 		}
+
+		const FPjcCookCheck& Check = Result.CookCheck;
+		const TSharedRef<FJsonObject> CookCheck = MakeShared<FJsonObject>();
+		CookCheck->SetArrayField(TEXT("platforms"), JsonStrings(Check.Platforms));
+		CookCheck->SetNumberField(TEXT("checked"), Check.NumChecked);
+		CookCheck->SetNumberField(TEXT("not_checked"), Check.NumNotChecked);
+		CookCheck->SetNumberField(TEXT("packaged"), Check.NumPackaged);
 
 		const TSharedRef<FJsonObject> Reasons = MakeShared<FJsonObject>();
 		for (const auto& Pair : ChainReasons) {
@@ -81,6 +90,7 @@ namespace
 		Object->SetNumberField(TEXT("assets"), Result.Assets.Num());
 		Object->SetNumberField(TEXT("used"), NumUsed);
 		Object->SetNumberField(TEXT("editor_only"), EditorOnly.Num());
+		Object->SetNumberField(TEXT("review"), Review.Num());
 		Object->SetNumberField(TEXT("unused"), NumUnused);
 		Object->SetNumberField(TEXT("redirectors"), Result.Redirectors.Num());
 		Object->SetNumberField(TEXT("files_external"), Result.FilesExternal.Num());
@@ -90,6 +100,8 @@ namespace
 		Object->SetNumberField(TEXT("seconds"), Result.Seconds);
 		Object->SetObjectField(TEXT("chain_reasons"), Reasons);
 		Object->SetArrayField(TEXT("assets_editor_only"), JsonAssets(EditorOnly));
+		Object->SetArrayField(TEXT("assets_review"), JsonAssets(Review));
+		Object->SetObjectField(TEXT("cook_check"), CookCheck);
 		Object->SetArrayField(TEXT("redirectors_list"), JsonAssets(Result.Redirectors));
 		return Object;
 	}

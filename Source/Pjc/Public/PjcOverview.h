@@ -37,6 +37,7 @@ struct FPjcOverview
 		FTotal Total;
 		int64 SizeUsed = 0;
 		int64 SizeEditorOnly = 0;
+		int64 SizeReview = 0;
 		int64 SizeUnused = 0;
 	};
 
@@ -91,6 +92,7 @@ struct FPjcOverview
 	FTotal All;
 	FTotal Used;
 	FTotal EditorOnly;
+	FTotal Review;
 	FTotal Unused;
 
 	// Biggest first

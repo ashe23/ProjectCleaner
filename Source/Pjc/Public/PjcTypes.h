@@ -162,8 +162,10 @@ enum class EPjcUsageReason : uint8
 	FolderLabelAsset,
 	// referenced by another used asset (Parent)
 	Dependency,
-	// in folder of a Primary Asset Label with "Label Assets In My Directory" (Parent)
+	// in folder of a Primary Asset Label with "Label Assets In My Directory" whose cook rule packages it (Parent)
 	FolderLabel,
+	// Review: nothing the scan sees uses it, but the last cook packaged it (Detail: the platform)
+	CookPackaged,
 };
 
 // What fixing redirectors did
@@ -184,7 +186,7 @@ struct FPjcAssetUsage
 {
 	GENERATED_BODY()
 
-	// False for unused assets and for assets only folder labels keep while "Folder Labels Used" is off
+	// False for unused assets. Assets to review are kept by cleanup: used, with a review reason starting their chain
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "AssetUsage")
 	bool bUsed = false;
 

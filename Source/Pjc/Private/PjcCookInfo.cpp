@@ -14,40 +14,63 @@
 namespace
 {
 	// unity builds join files: names unique to this file
-	FPjcCookInfo PjcCookInfoLast;
+	const FPjcCookInfo PjcCookInfoNone;
+	// by platform folder
+	TMap<FString, FPjcCookInfo> PjcCookInfoCache;
 }	// namespace
 
+bool FPjcCookInfo::IsSavedSince(const FName Package) const {
+	// what the package was saved with tells it exactly; file time when that is not known (restoring from source
+	// control touches files without changes)
+	const uint32* CookDigest = SavedDigests.Find(Package);
+	const uint32 EditorDigest = CookDigest && *CookDigest != 0 ? PjcShim::GetPackageSavedDigest(Package) : 0;
+	if (EditorDigest != 0) return EditorDigest != *CookDigest;
+
+	FString PackageFile;
+	return PjcShim::DoesPackageExist(Package.ToString(), &PackageFile) && IFileManager::Get().GetTimeStamp(*PackageFile) > Time;
+}
+
 const FPjcCookInfo& FPjcCookInfo::GetLast() {
-	// newest registry over every platform folder
-	FString NewestPlatform;
-	FString NewestFile;
-	FDateTime NewestTime {0};
+	const TArray<const FPjcCookInfo*> Cooks = GetAll();
+	return Cooks.Num() > 0 ? *Cooks[0] : PjcCookInfoNone;
+}
+
+TArray<const FPjcCookInfo*> FPjcCookInfo::GetAll() {
 	TArray<FString> Platforms;
 	IFileManager::Get().FindFiles(Platforms, *(GetCookedDir() / TEXT("*")), false, true);
+	Platforms.Sort();
+
+	TArray<const FPjcCookInfo*> Cooks;
 	for (const auto& Platform : Platforms) {
 		const FString File = GetCookedDir() / Platform / FApp::GetProjectName() / TEXT("Metadata") / TEXT("DevelopmentAssetRegistry.bin");
 		const FDateTime Time = IFileManager::Get().GetTimeStamp(*File);
-		if (Time != FDateTime::MinValue() && Time > NewestTime) {
-			NewestPlatform = Platform;
-			NewestFile = File;
-			NewestTime = Time;
+		if (Time == FDateTime::MinValue()) {
+			PjcCookInfoCache.Remove(Platform);
+			continue;
+		}
+
+		FPjcCookInfo& Cook = PjcCookInfoCache.FindOrAdd(Platform);
+		if (Cook.File != File || Cook.Time != Time) {
+			Cook = FPjcCookInfo {};
+			Cook.Platform = Platform;
+			Cook.File = File;
+			Cook.Time = Time;
+			Cook.bReadFailed = !Read(File, Cook.Cooked, Cook.SavedDigests);
+		}
+		Cooks.Add(&Cook);
+	}
+
+	// platform folders that are gone
+	for (auto It = PjcCookInfoCache.CreateIterator(); It; ++It) {
+		if (!Platforms.Contains(It.Key())) {
+			It.RemoveCurrent();
 		}
 	}
 
-	if (NewestFile.IsEmpty()) {
-		PjcCookInfoLast = FPjcCookInfo {};
-		return PjcCookInfoLast;
-	}
-	if (PjcCookInfoLast.File == NewestFile && PjcCookInfoLast.Time == NewestTime) {
-		return PjcCookInfoLast;
-	}
-
-	PjcCookInfoLast = FPjcCookInfo {};
-	PjcCookInfoLast.Platform = NewestPlatform;
-	PjcCookInfoLast.File = NewestFile;
-	PjcCookInfoLast.Time = NewestTime;
-	PjcCookInfoLast.bReadFailed = !Read(NewestFile, PjcCookInfoLast.Cooked, PjcCookInfoLast.SavedDigests);
-	return PjcCookInfoLast;
+	Cooks.Sort([](const FPjcCookInfo& A, const FPjcCookInfo& B) {
+		return A.Time != B.Time ? A.Time > B.Time : A.Platform < B.Platform;
+	});
+	return Cooks;
 }
 
 FString FPjcCookInfo::GetCookedDir() {

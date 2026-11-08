@@ -130,6 +130,7 @@ TSharedRef<SWidget> SPjcTabOverview::MakeSummary() {
 	const FPjcOverview::FTotal& All = Overview.All;
 	const FLinearColor ColorUsed = PjcWidgets::GetColor("ProjectCleaner.Color.UsedFill");
 	const FLinearColor ColorEditor = PjcWidgets::GetColor("ProjectCleaner.Color.EditorFill");
+	const FLinearColor ColorReview = PjcWidgets::GetColor("ProjectCleaner.Color.ReviewFill");
 	const FLinearColor ColorUnused = PjcWidgets::GetColor("ProjectCleaner.Color.UnusedFill");
 
 	const auto Share = [&All](const FPjcOverview::FTotal& Total) {
@@ -183,8 +184,8 @@ TSharedRef<SWidget> SPjcTabOverview::MakeSummary() {
 	};
 
 	// clang-format off
-	const TSharedRef<SWidget> Review = SNew(SHyperlink)
-		.Text(FText::FromString(TEXT("Review \u203A")))
+	const TSharedRef<SWidget> ShowUnused = SNew(SHyperlink)
+		.Text(FText::FromString(TEXT("Show \u203A")))
 		.ToolTipText(FText::FromString(TEXT("Opens Assets Unused")))
 		.OnNavigate_Lambda([this]() {
 			OpenTab(PjcConstants::TabAssetsUnused);
@@ -214,17 +215,23 @@ TSharedRef<SWidget> SPjcTabOverview::MakeSummary() {
 	const FSlateColor PlainColor = FSlateColor::UseForeground();
 	const TSharedRef<SWidget> NoLink = SNullWidget::NullWidget;
 	const FSlateColor UnusedNumColor = Overview.Unused.Num > 0 ? FSlateColor {PjcWidgets::GetColor("ProjectCleaner.Color.Red")} : PlainColor;
+	const FSlateColor MutedColor = FSlateColor::UseSubduedForeground();
+	const FSlateColor ReviewNumColor = Overview.Review.Num > 0 ? FSlateColor {PjcWidgets::GetColor("ProjectCleaner.Color.Review")} : MutedColor;
+	const FString ReviewSub = Overview.Review.Num > 0 ? Share(Overview.Review) : TEXT("nothing to review");
 	// clang-format off
 	const TCHAR* AssetsTip = TEXT("Every scanned asset. Redirectors are not counted.");
 	const TCHAR* UsedTip = TEXT("The game uses them: maps, primary assets and other roots, and what they reference.");
 	const TCHAR* EditorTip = TEXT("Kept, but only the editor uses them: editor assets, and what only editor-only references or labels reach. ")
 		TEXT("They do not ship.");
+	const TCHAR* ReviewTip = TEXT("The scan is not sure about them: unused assets the last cook packaged. ")
+		TEXT("Cleanup keeps them, and the unused assets they use.");
 	const TCHAR* UnusedTip = TEXT("Nothing used references them. Cleanup deletes them.");
 	// clang-format on
 	AddColumn(Column(TEXT("Assets"), {}, All.Num, PjcFormat::Size(All.Size), PlainColor, AssetsTip, NoLink));
 	AddColumn(Column(TEXT("Used"), ColorUsed, Overview.Used.Num, Share(Overview.Used), PlainColor, UsedTip, NoLink));
 	AddColumn(Column(TEXT("Editor only"), ColorEditor, Overview.EditorOnly.Num, Share(Overview.EditorOnly), PlainColor, EditorTip, NoLink));
-	AddColumn(Column(TEXT("Unused"), ColorUnused, Overview.Unused.Num, Share(Overview.Unused), UnusedNumColor, UnusedTip, Review));
+	AddColumn(Column(TEXT("Review"), ColorReview, Overview.Review.Num, ReviewSub, ReviewNumColor, ReviewTip, NoLink));
+	AddColumn(Column(TEXT("Unused"), ColorUnused, Overview.Unused.Num, Share(Overview.Unused), UnusedNumColor, UnusedTip, ShowUnused));
 
 	// storage along the bottom, by size
 	TArray<PjcWidgets::FBarSegment> Segments;
@@ -236,6 +243,7 @@ TSharedRef<SWidget> SPjcTabOverview::MakeSummary() {
 	};
 	AddSegment(TEXT("Used"), Overview.Used, ColorUsed);
 	AddSegment(TEXT("Editor only"), Overview.EditorOnly, ColorEditor);
+	AddSegment(TEXT("Review"), Overview.Review, ColorReview);
 	AddSegment(TEXT("Unused"), Overview.Unused, ColorUnused);
 
 	// clang-format off
@@ -424,13 +432,15 @@ TSharedRef<SWidget> SPjcTabOverview::MakeClasses() const {
 		const FPjcOverview::FClass& Class = Overview.Classes[Index];
 
 		TArray<PjcWidgets::FBarSegment> Segments;
-		Segments.AddDefaulted(3);
+		Segments.AddDefaulted(4);
 		Segments[0].Value = static_cast<double>(Class.SizeUsed);
 		Segments[0].Color = PjcWidgets::GetColor("ProjectCleaner.Color.UsedFill");
 		Segments[1].Value = static_cast<double>(Class.SizeEditorOnly);
 		Segments[1].Color = PjcWidgets::GetColor("ProjectCleaner.Color.EditorFill");
-		Segments[2].Value = static_cast<double>(Class.SizeUnused);
-		Segments[2].Color = PjcWidgets::GetColor("ProjectCleaner.Color.UnusedFill");
+		Segments[2].Value = static_cast<double>(Class.SizeReview);
+		Segments[2].Color = PjcWidgets::GetColor("ProjectCleaner.Color.ReviewFill");
+		Segments[3].Value = static_cast<double>(Class.SizeUnused);
+		Segments[3].Color = PjcWidgets::GetColor("ProjectCleaner.Color.UnusedFill");
 
 		const FString ValueText = FString::Printf(TEXT("%s \u00B7 %s"), *PjcFormat::Size(Class.Total.Size), *PjcFormat::Count(Class.Total.Num));
 		const TSharedRef<SHorizontalBox> Value = SNew(SHorizontalBox);
@@ -456,7 +466,9 @@ TSharedRef<SWidget> SPjcTabOverview::MakeClasses() const {
 		const FString SizeUsedText = PjcFormat::Size(Class.SizeUsed);
 		const FString SizeEditorText = PjcFormat::Size(Class.SizeEditorOnly);
 		const FString SizeUnusedText = PjcFormat::Size(Class.SizeUnused);
-		const FString Lines = FString::Printf(TEXT("Used: %s\nEditor only: %s\nUnused: %s"), *SizeUsedText, *SizeEditorText, *SizeUnusedText);
+		const FString ReviewLine = Class.SizeReview > 0 ? TEXT("\nReview: ") + PjcFormat::Size(Class.SizeReview) : FString {};
+		const FString UsedLines = FString::Printf(TEXT("Used: %s\nEditor only: %s"), *SizeUsedText, *SizeEditorText);
+		const FString Lines = UsedLines + ReviewLine + TEXT("\nUnused: ") + SizeUnusedText;
 		const TSharedRef<SWidget> Name = SNew(STextBlock).Text(FText::FromString(GetClassShortName(Class.Name)));
 		const TSharedRef<SToolTip> Tip = PjcWidgets::MakeToolTip(Class.Name.ToString(), Text, Lines);
 		// clang-format off

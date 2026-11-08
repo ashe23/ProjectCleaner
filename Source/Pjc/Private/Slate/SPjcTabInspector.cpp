@@ -47,6 +47,7 @@ namespace
 		switch (Status) {
 			case EPjcAssetStatus::Unused :	   return PjcInspectorHex(TEXT("#FE6D73"));
 			case EPjcAssetStatus::EditorOnly : return PjcInspectorHex(TEXT("#7FB2FF"));
+			case EPjcAssetStatus::Review :	   return PjcInspectorHex(TEXT("#E0B050"));
 			default :						   return PjcInspectorHex(TEXT("#17C3B2"));
 		}
 	}
@@ -56,6 +57,7 @@ namespace
 		switch (Status) {
 			case EPjcAssetStatus::Unused :	   return TEXT("Unused");
 			case EPjcAssetStatus::EditorOnly : return TEXT("Editor only");
+			case EPjcAssetStatus::Review :	   return TEXT("Review");
 			default :						   return TEXT("Used");
 		}
 	}

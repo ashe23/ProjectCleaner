@@ -627,7 +627,8 @@ bool FPjcTestScanResult::RunTest(const FString& Parameters) {
 	// overview: every asset counted once by status, by reason and by class
 	const FPjcOverview Overview = FPjcOverview::Make(Result);
 	TestEqual(TEXT("overview all"), Overview.All.Num, Result.Assets.Num());
-	TestEqual(TEXT("overview by status"), Overview.Used.Num + Overview.EditorOnly.Num + Overview.Unused.Num, Overview.All.Num);
+	const int32 NumByStatus = Overview.Used.Num + Overview.EditorOnly.Num + Overview.Review.Num + Overview.Unused.Num;
+	TestEqual(TEXT("overview by status"), NumByStatus, Overview.All.Num);
 	TestEqual(TEXT("overview unused"), Overview.Unused.Num, Result.Unused.Num());
 	int32 NumByReason = 0;
 	int64 SizeByReason = 0;
@@ -639,15 +640,16 @@ bool FPjcTestScanResult::RunTest(const FString& Parameters) {
 		Unreferenced = Row.Reason == EPjcUsageReason::None ? &Row : Unreferenced;
 		Indirect = Row.Reason == EPjcUsageReason::Indirect ? &Row : Indirect;
 	}
-	TestEqual(TEXT("overview by reason"), NumByReason, Overview.All.Num);
-	TestEqual(TEXT("overview size by reason"), SizeByReason, Overview.All.Size);
-	TestTrue(TEXT("overview unused reason"), Unreferenced && Unreferenced->Total.Num == Overview.Unused.Num);
+	// reasons tell why assets are used: unused and review ones are not counted
+	TestEqual(TEXT("overview by reason"), NumByReason, Overview.Used.Num + Overview.EditorOnly.Num);
+	TestEqual(TEXT("overview size by reason"), SizeByReason, Overview.Used.Size + Overview.EditorOnly.Size);
+	TestTrue(TEXT("overview has no unused reason"), Unreferenced == nullptr);
 	TestTrue(TEXT("overview source and config reason"), Indirect && Indirect->Total.Num > 0);
 	int32 NumByClass = 0;
 	for (int32 Index = 0; Index < Overview.Classes.Num(); ++Index) {
 		const FPjcOverview::FClass& Class = Overview.Classes[Index];
 		NumByClass += Class.Total.Num;
-		const int64 SizeSum = Class.SizeUsed + Class.SizeEditorOnly + Class.SizeUnused;
+		const int64 SizeSum = Class.SizeUsed + Class.SizeEditorOnly + Class.SizeReview + Class.SizeUnused;
 		TestEqual(*FString::Printf(TEXT("%s size by status"), *Class.Name.ToString()), SizeSum, Class.Total.Size);
 		TestTrue(TEXT("classes biggest first"), Index == 0 || Overview.Classes[Index - 1].Total.Size >= Class.Total.Size);
 	}
@@ -817,6 +819,7 @@ bool FPjcTestCookShipped::RunTest(const FString& Parameters) {
 		AddPackage(PackageOf(Fixture, TEXT("BP_Primary")), 1000);
 		AddPackage(FName {TEXT("/Script/Engine")}, 0);
 		AddPackage(PackageOf(Fixture, TEXT("C_UnusedLeaf")), 77);
+		AddPackage(PackageOf(Fixture, TEXT("OL_UnusedRoot")), 88);
 		AddPackage(PackageOf(Fixture, TEXT("EUB_Tool")), -1);
 		AddPackage(FName {TEXT("/Engine/PjcTest/EngineThing")}, 500);
 		AddPackage(FName {*(FPjcTestFixture::RootPath() / TEXT("_Generated_/Cell"))}, 10);
@@ -834,16 +837,16 @@ bool FPjcTestCookShipped::RunTest(const FString& Parameters) {
 	const FPjcCookInfo& Cook = FPjcCookInfo::GetLast();
 	TestTrue(TEXT("cook found"), Cook.IsValid());
 	TestEqual(TEXT("cook platform"), Cook.Platform, FString {TEXT("PjcTestPlatform")});
-	TestEqual(TEXT("cooked packages"), Cook.Cooked.Num(), 5);
+	TestEqual(TEXT("cooked packages"), Cook.Cooked.Num(), 6);
 	TestEqual(TEXT("cooked size"), Cook.Cooked.FindRef(PackageOf(Fixture, TEXT("BP_Primary"))), static_cast<int64>(1000));
 	TestFalse(TEXT("not cooked is left out"), Cook.Cooked.Contains(PackageOf(Fixture, TEXT("EUB_Tool"))));
 
 	FPjcOverview::FShipped Shipped = FPjcOverview::MakeShipped(Result, Cook);
 	TestEqual(TEXT("shipped"), Shipped.Shipped.Num, 1);
 	TestEqual(TEXT("shipped cooked size"), Shipped.ShippedCooked, static_cast<int64>(1000));
-	TestEqual(TEXT("unused shipped"), Shipped.UnusedShipped.Num, 1);
+	TestEqual(TEXT("unused shipped"), Shipped.UnusedShipped.Num, 2);
 	TestEqual(TEXT("used, not shipped"), Shipped.UsedNotShipped.Num, Result.Used.Num() - 1);
-	TestEqual(TEXT("unused, not shipped"), Shipped.Unused.Num, Result.Unused.Num() - 1);
+	TestEqual(TEXT("unused, not shipped"), Shipped.Unused.Num, Result.Unused.Num() - 2);
 	TestEqual(TEXT("outside the scan"), Shipped.NumOutside, 1);
 	TestEqual(TEXT("outside size"), Shipped.SizeOutside, static_cast<int64>(500));
 	TestTrue(TEXT("outside root"), Shipped.OutsideRoots.Num() == 1 && Shipped.OutsideRoots[0].Key == TEXT("/Engine"));
@@ -881,8 +884,33 @@ bool FPjcTestCookShipped::RunTest(const FString& Parameters) {
 		TestEqual(TEXT("new used asset since"), Shipped.NumChanged, 2);
 	}
 
+	// cook check: an unused asset the cook packaged goes to Review with what it uses (C_UnusedLeaf, saved since the
+	// cook, so not checked itself). Cleanup keeps both
+	if (!TestTrue(TEXT("scanned with the cook"), UPjcSubsystem::Scan(false))) return false;
+	const FPjcScanResult& Checked = UPjcSubsystem::GetScanResult();
+	const FName UnusedRoot = PackageOf(Fixture, TEXT("OL_UnusedRoot"));
+	const FName UnusedLeaf = PackageOf(Fixture, TEXT("C_UnusedLeaf"));
+	const FPjcAssetUsage* RootUsage = Checked.Usage.Find(UnusedRoot);
+	const bool bPackagedRoot = RootUsage && RootUsage->Reason == EPjcUsageReason::CookPackaged;
+	TestTrue(TEXT("packaged by the last cook"), bPackagedRoot && RootUsage->Detail == TEXT("PjcTestPlatform"));
+	const int32 ReviewStatus = static_cast<int32>(EPjcAssetStatus::Review);
+	TestEqual(TEXT("packaged unused asset in review"), static_cast<int32>(Checked.GetStatus(UnusedRoot)), ReviewStatus);
+	TestEqual(TEXT("what it uses in review"), static_cast<int32>(Checked.GetStatus(UnusedLeaf)), ReviewStatus);
+	TestEqual(TEXT("cook check platforms"), Checked.CookCheck.Platforms, TArray<FString> {TEXT("PjcTestPlatform")});
+	TestEqual(TEXT("cook check packaged"), Checked.CookCheck.NumPackaged, 1);
+	TestEqual(TEXT("cook check checked"), Checked.CookCheck.NumChecked, 1);
+	TestEqual(TEXT("cook check not checked"), Checked.CookCheck.NumNotChecked, Checked.Unused.Num());
+	TArray<FAssetData> UnusedWithCook;
+	UPjcSubsystem::GetAssetsUnused(UnusedWithCook, false);
+	const auto IsReviewAsset = [&UnusedRoot, &UnusedLeaf](const FAssetData& Asset) {
+		return Asset.PackageName == UnusedRoot || Asset.PackageName == UnusedLeaf;
+	};
+	TestFalse(TEXT("cleanup keeps review assets"), UnusedWithCook.ContainsByPredicate(IsReviewAsset));
+
 	IFileManager::Get().DeleteDirectory(*PlatformDir, false, true);
 	TestFalse(TEXT("no cook"), FPjcCookInfo::GetLast().IsFound());
+	UPjcSubsystem::GetAssetsUnused(UnusedWithCook, false);
+	TestTrue(TEXT("unused again without the cook"), UnusedWithCook.ContainsByPredicate(IsReviewAsset));
 	return true;
 }
 
