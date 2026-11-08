@@ -107,6 +107,8 @@ class FPjcTestFixture
 	static UClass* CueNotifyClass();
 	static FString PluginRootPath();
 	static FString FeatureRootPath();
+	// asset in the project's Splash folder (outside the fixture root)
+	static FString SplashPackage();
 	static FString IndirectConfigFile();
 	static FString PythonFile();
 	static FString PlatformConfigFile();

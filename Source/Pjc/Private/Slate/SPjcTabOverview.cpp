@@ -1072,6 +1072,11 @@ void SPjcTabOverview::GetReasonInfo(const EPjcUsageReason Reason, FString& OutNa
 			OutName = TEXT("Megascans presets");
 			OutToolTip = TEXT("Presets the Megascans plugin uses.");
 			break;
+		case EPjcUsageReason::Splash :
+			OutName = TEXT("Splash content");
+			OutToolTip = TEXT("Texture copies of the splash images in Content/Splash: the editor imports them again when deleted.");
+			Color = TEXT("#9FC3FF");
+			break;
 		default :
 			OutName = TEXT("Other");
 			OutToolTip = FString {};

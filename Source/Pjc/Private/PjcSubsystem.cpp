@@ -517,7 +517,8 @@ bool UPjcSubsystem::Scan(const bool bShowSlowTask, FPjcScanProgress* Progress) {
 			continue;
 		}
 
-		const bool bRoot = AssetUsage.Parent.IsNone() && AssetUsage.Reason != EPjcUsageReason::Editor;
+		const bool bEditorRoot = AssetUsage.Reason == EPjcUsageReason::Editor || AssetUsage.Reason == EPjcUsageReason::Splash;
+		const bool bRoot = AssetUsage.Parent.IsNone() && !bEditorRoot;
 		const bool bLabelPackaged = AssetUsage.Reason == EPjcUsageReason::FolderLabel;
 		if (bRoot || bLabelPackaged || IsCookedByRule(Pair.Key)) {
 			GameUsed.Add(Pair.Key);
@@ -698,6 +699,7 @@ FString UPjcSubsystem::GetUsageReasonText(const FPjcAssetUsage& Usage) {
 		case EPjcUsageReason::CookPackaged :		return TEXT("Packaged by the last cook (") + Usage.Detail + TEXT(")");
 		case EPjcUsageReason::GameplayCueNotFired : return TEXT("GameplayCue notify nothing fires: ") + Usage.Detail;
 		case EPjcUsageReason::Cinematic :			return Usage.Detail;
+		case EPjcUsageReason::Splash :				return TEXT("Splash content");
 		case EPjcUsageReason::None :
 		default :									return TEXT("Nothing used references it");
 	}
@@ -829,6 +831,16 @@ void UPjcSubsystem::ComputeAssetsUsed(
 		AddUsed(Asset.PackageName, EPjcUsageReason::Megascans, NAME_None, FString {});
 	}
 
+	// the Splash folder holds the editor and game splash images (Content/Splash/EdSplash.png, Splash.png). The engine
+	// shows the image files; the editor imports texture copies of them, and imports them again after a delete
+	const FString SplashFolder = TEXT("/Game/Splash");
+	for (const auto& Asset : AssetsAll) {
+		const FString AssetPath = Asset.PackagePath.ToString();
+		if (AssetPath == SplashFolder || AssetPath.StartsWith(SplashFolder + TEXT("/"))) {
+			AddUsed(Asset.PackageName, EPjcUsageReason::Splash, NAME_None, FString {});
+		}
+	}
+
 	// assets in the collection a used Primary Asset Label names are labeled like its explicit assets
 	for (const auto& Asset : AssetsAll) {
 		const UClass* AssetClass = Asset.GetClass();
@@ -941,7 +953,7 @@ void UPjcSubsystem::ComputeAssetsUsed(
 		NumRoots.FindOrAdd(Pair.Value.Reason)++;
 	}
 	const FString NumPrimary = PjcFormat::Count(NumRoots.FindRef(EPjcUsageReason::Primary));
-	const FString NumEditor = PjcFormat::Count(NumRoots.FindRef(EPjcUsageReason::Editor));
+	const FString NumEditor = PjcFormat::Count(NumRoots.FindRef(EPjcUsageReason::Editor) + NumRoots.FindRef(EPjcUsageReason::Splash));
 	const FString NumExcluded = PjcFormat::Count(NumRoots.FindRef(EPjcUsageReason::Excluded) + NumRoots.FindRef(EPjcUsageReason::Cinematic));
 	PjcScanFound(EPjcScanStep::Rules, FString::Printf(TEXT("%s primary \u00B7 %s editor \u00B7 %s excluded"), *NumPrimary, *NumEditor, *NumExcluded));
 	PjcScanStep(EPjcScanStep::References);

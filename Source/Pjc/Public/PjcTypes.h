@@ -170,6 +170,9 @@ enum class EPjcUsageReason : uint8
 	GameplayCueNotFired,
 	// Level Sequence, Template Sequence, Movie Render Queue or Movie Render Graph config while Cinematics is on
 	Cinematic,
+	// in the project's Splash folder: texture copies of the splash images the editor imports, and imports again when
+	// deleted (the engine shows the image files). Editor only
+	Splash,
 };
 
 // What fixing redirectors did

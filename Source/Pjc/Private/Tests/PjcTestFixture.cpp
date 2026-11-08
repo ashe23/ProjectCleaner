@@ -241,6 +241,10 @@ FString FPjcTestFixture::PluginRootPath() {
 	return TEXT("/PjcTestContent");
 }
 
+FString FPjcTestFixture::SplashPackage() {
+	return TEXT("/Game/Splash/C_PjcSplash");
+}
+
 FString FPjcTestFixture::FeatureRootPath() {
 	return TEXT("/PjcFeature");
 }
@@ -368,6 +372,10 @@ bool FPjcTestFixture::CreateAssets(FAutomationTestBase& Test) {
 	NewAsset<UCurveFloat>(Register(TEXT("Labeled"), TEXT("C_Labeled")), Packages);
 	// a blueprint the label folder holds: deleting it needs the folder label pass (cleanup tests hold it weakly)
 	NewBlueprint(Register(TEXT("Labeled"), TEXT("BP_Labeled")), AActor::StaticClass(), UBlueprint::StaticClass(), Packages);
+
+	// in the project's Splash folder, where the editor imports the splash images: editor only, never deleted
+	PackageNames.Add(TEXT("C_PjcSplash"), SplashPackage());
+	NewAsset<UCurveFloat>(SplashPackage(), Packages);
 	UPrimaryAssetLabel* FolderLabel = NewAsset<UPrimaryAssetLabel>(Register(TEXT("Labeled"), TEXT("PAL_Folder")), Packages);
 	FolderLabel->bLabelAssetsInMyDirectory = true;
 	NewAsset<UCurveFloat>(Register(TEXT("Packaged"), TEXT("C_Packaged")), Packages);
@@ -880,6 +888,10 @@ void FPjcTestFixture::Cleanup() {
 
 	// leftovers that were not loaded (kept runs) and non asset files
 	IFileManager::Get().DeleteDirectory(*(ContentDir() / TEXT("PjcTests")), false, true);
+	// the splash asset, and its folder when the fixture made it
+	const FString SplashFile = FPackageName::LongPackageNameToFilename(SplashPackage(), FPackageName::GetAssetPackageExtension());
+	IFileManager::Get().Delete(*SplashFile, false, true, true);
+	IFileManager::Get().DeleteDirectory(*(ContentDir() / TEXT("Splash")), false, false);
 	IFileManager::Get().Delete(*(PluginContentDir() / TEXT("C_PluginUsed.uasset")), false, true, true);
 	IFileManager::Get().Delete(*(PluginContentDir() / TEXT("C_PluginUnused.uasset")), false, true, true);
 	IFileManager::Get().Delete(*(PluginContentDir() / TEXT("OL_PluginLib.uasset")), false, true, true);
@@ -989,7 +1001,7 @@ TArray<FString> FPjcTestFixture::UsedNames(const bool bScanPlugins) const {
 	  TEXT("C_ByFolder"),	  TEXT("CLC_ByClass"),		 TEXT("C_ByAsset"),			 TEXT("LS_Cinematic"),	 TEXT("EUB_Tool"),
 	  TEXT("BP_Primary"),	  TEXT("BP_PrimaryOutside"), TEXT("PAL_Folder"),		 TEXT("C_Indirect_fr"),	 TEXT("C_AlwaysCooked"),
 	  TEXT("C_RegistryData"), TEXT("C_InPython"),		 TEXT("C_InPlatformConfig"), TEXT("PAL_Collection"), TEXT("C_InCollection"),
-	  TEXT("C_IndirectFile"), TEXT("PAL_Packaged"),		 TEXT("C_Packaged"),
+	  TEXT("C_IndirectFile"), TEXT("PAL_Packaged"),		 TEXT("C_Packaged"),		 TEXT("C_PjcSplash"),
 	};
 
 	// editor tools

@@ -170,6 +170,16 @@ void SPjcScanSettings::Rebuild() {
 	Used->AddSlot().AutoHeight()
 	[
 		MakeFixedRow(
+			TEXT("Splash content"),
+			Roots(EPjcUsageReason::Splash),
+			TEXT("splash assets"),
+			TEXT("Assets in Content/Splash count as used, shown as editor only: the editor imports the splash images there ")
+				TEXT("as textures, and imports them again when they are deleted.")
+		)
+	];
+	Used->AddSlot().AutoHeight()
+	[
+		MakeFixedRow(
 			TEXT("Source & config"),
 			Roots(EPjcUsageReason::Indirect),
 			TEXT("assets named"),

@@ -51,9 +51,11 @@ namespace
 
 	bool IsFixturePath(const FString& Path) {
 		const TArray<FString> Roots {FPjcTestFixture::RootPath(), FPjcTestFixture::LocalizedRootPath(), FPjcTestFixture::PluginRootPath()};
-		return Roots.ContainsByPredicate([&Path](const FString& Root) {
+		const bool bInRoot = Roots.ContainsByPredicate([&Path](const FString& Root) {
 			return Path.StartsWith(Root + TEXT("/"));
 		});
+		// the splash asset lives in the project's Splash folder
+		return bInRoot || Path.StartsWith(FPjcTestFixture::SplashPackage() + TEXT("."));
 	}
 
 	TSet<FString> FixtureAssets(const TArray<FAssetData>& Assets) {
@@ -494,6 +496,7 @@ bool FPjcTestScanUsage::RunTest(const FString& Parameters) {
 	TestReason(TEXT("C_ByFolder"), EPjcUsageReason::Excluded, nullptr, TEXT("In excluded folder"));
 	TestReason(TEXT("CLC_ByClass"), EPjcUsageReason::Excluded, nullptr, TEXT("Excluded class"));
 	TestReason(TEXT("LS_Cinematic"), EPjcUsageReason::Cinematic, nullptr, TEXT("Cinematic"));
+	TestReason(TEXT("C_PjcSplash"), EPjcUsageReason::Splash, nullptr, nullptr);
 	TestReason(TEXT("C_Labeled"), EPjcUsageReason::None, nullptr, nullptr);
 	TestReason(TEXT("C_Packaged"), EPjcUsageReason::FolderLabel, TEXT("PAL_Packaged"), nullptr);
 	TestReason(TEXT("C_UnusedLeaf"), EPjcUsageReason::None, nullptr, nullptr);
@@ -635,6 +638,7 @@ bool FPjcTestScanResult::RunTest(const FString& Parameters) {
 	TestStatus(TEXT("OL_Chain"), EPjcAssetStatus::EditorOnly, EPjcUsageReason::Primary);
 	TestStatus(TEXT("C_ChainLeaf"), EPjcAssetStatus::EditorOnly, EPjcUsageReason::Primary);
 	TestStatus(TEXT("C_Labeled"), EPjcAssetStatus::Unused, EPjcUsageReason::None);
+	TestStatus(TEXT("C_PjcSplash"), EPjcAssetStatus::EditorOnly, EPjcUsageReason::Splash);
 	TestStatus(TEXT("C_Packaged"), EPjcAssetStatus::Used, EPjcUsageReason::FolderLabel);
 	TestStatus(TEXT("PAL_Packaged"), EPjcAssetStatus::Used, EPjcUsageReason::Primary);
 	TestTrue(TEXT("C_Labeled listed by its folder label"), Result.FolderLabelUnused.Contains(PackageOf(Fixture, TEXT("C_Labeled"))));
