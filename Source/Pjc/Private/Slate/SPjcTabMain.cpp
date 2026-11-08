@@ -1,6 +1,7 @@
 // Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "Slate/SPjcTabMain.h"
+#include "Slate/PjcTabs.h"
 #include "Slate/SPjcTabOverview.h"
 #include "Slate/SPjcTabUnused.h"
 #include "Slate/SPjcTabIssues.h"
@@ -28,6 +29,7 @@ void SPjcTabMain::Construct(
 	const TSharedPtr<SWindow>& ConstructUnderWindow
 ) {
 	TabManager = FGlobalTabmanager::Get()->NewTabManager(ConstructUnderMajorTab);
+	PjcTabs::SetMain(TabManager);
 	const FText MenuName = FText::FromString(PjcConstants::ModulePjcName.ToString());
 	const TSharedRef<FWorkspaceItem> AppMenuGroup = TabManager->AddLocalWorkspaceMenuCategory(MenuName);
 

@@ -1,6 +1,7 @@
 // Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "Slate/SPjcScanBar.h"
+#include "Slate/SPjcCleanWindow.h"
 #include "PjcFormat.h"
 #include "PjcScanDraft.h"
 #include "PjcStyles.h"
@@ -94,29 +95,7 @@ void SPjcScanBar::ScanProject() {
 }
 
 void SPjcScanBar::CleanProject() {
-	const FPjcScanResult& Result = UPjcSubsystem::GetScanResult();
-	int64 UnusedBytes = 0;
-	for (const auto& Asset : Result.Unused) {
-		UnusedBytes += Result.GetSize(Asset.PackageName);
-	}
-	TArray<FString> FoldersEmpty;
-	UPjcSubsystem::GetFoldersEmpty(FoldersEmpty);
-
-	const FText Title = FText::FromString(TEXT("Clean Project"));
-	const FString UnusedText = PjcFormat::Count(Result.Unused.Num());
-	const FString FoldersText = PjcFormat::Count(FoldersEmpty.Num());
-	const FString SizeText = PjcFormat::Size(UnusedBytes);
-	const FString Question = FString::Printf(TEXT("Delete %s unused asset(s) (%s) and %s empty folder(s)?"), *UnusedText, *SizeText, *FoldersText);
-	const FString Held = TEXT("Assets something still holds in memory are kept and listed in Output Log.");
-	const FText Message = FText::FromString(Question + TEXT("\n\n") + Held + TEXT("\n\n") + UPjcSubsystem::GetDeleteWarning());
-
-	const EAppReturnType::Type ReturnType = PjcShim::ShowDialog(Title, Message, EAppMsgType::YesNo);
-	if (ReturnType != EAppReturnType::Yes) return;
-
-	UPjcSubsystem::DeleteAssetsUnused(true, true);
-	UPjcSubsystem::DeleteFoldersEmpty(true, true);
-
-	ScanProject();
+	SPjcCleanWindow::Open();
 }
 
 FReply SPjcScanBar::OnScanClicked() const {

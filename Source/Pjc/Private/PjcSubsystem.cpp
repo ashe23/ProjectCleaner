@@ -1911,7 +1911,12 @@ bool UPjcSubsystem::PrepareDelete() {
 	return true;
 }
 
-bool UPjcSubsystem::DeleteAssets(const TArray<FAssetData>& Assets, const bool bShowSlowTask, const bool bShowEditorNotification) {
+bool UPjcSubsystem::DeleteAssets(
+	const TArray<FAssetData>& Assets,
+	const bool bShowSlowTask,
+	const bool bShowEditorNotification,
+	FPjcDeleteProgress* Progress
+) {
 	if (!PrepareDelete()) return false;
 	if (Assets.Num() == 0) return true;
 
@@ -1967,6 +1972,8 @@ bool UPjcSubsystem::DeleteAssets(const TArray<FAssetData>& Assets, const bool bS
 
 	bool bErrors = false;
 	int32 NumProgress = 0;
+	// what the batches tried: after a stop only these are looked at
+	TArray<FAssetData> AssetsTried;
 
 	while (AssetsUnused.Num() > 0) {
 		BucketFill(AssetsUnused, Bucket, BucketSize, PackagesUnused);
@@ -1974,6 +1981,7 @@ bool UPjcSubsystem::DeleteAssets(const TArray<FAssetData>& Assets, const bool bS
 		if (Bucket.Num() == 0) {
 			break;
 		}
+		AssetsTried.Append(Bucket);
 
 		if (!BucketPrepare(Bucket, LoadedAssets)) {
 			bErrors = true;
@@ -1988,14 +1996,30 @@ bool UPjcSubsystem::DeleteAssets(const TArray<FAssetData>& Assets, const bool bS
 		NumProgress += ProgressWork;
 		SlowTask.EnterProgressFrame(ProgressWork, FText::FromString(ProgressMsg));
 
+		if (Progress) {
+			Progress->NumTried = AssetsTried.Num();
+			if (Progress->OnBatch) {
+				Progress->OnBatch(AssetsTried.Num(), NumAssetsTotal, Bucket.Last().AssetName.ToString());
+			}
+			if (Progress->bStopRequested && AssetsUnused.Num() > 0) {
+				Progress->bStopped = true;
+				Bucket.Reset();
+				LoadedAssets.Reset();
+				break;
+			}
+		}
+
 		Bucket.Reset();
 		LoadedAssets.Reset();
 	}
 
+	// stopped: what was not tried stays as it is
+	const TArray<FAssetData> AssetsDone = Progress && Progress->bStopped ? AssetsTried : AssetsToDelete;
+
 	// packages left empty by this deletion only: registry "empty" list also holds packages of other loaded assets
 	const TSet<FName> EmptyPackages = PjcShim::GetCachedEmptyPackages();
 	TArray<UPackage*> AssetPackages;
-	for (const auto& Asset : AssetsToDelete) {
+	for (const auto& Asset : AssetsDone) {
 		if (!EmptyPackages.Contains(Asset.PackageName)) continue;
 
 		UPackage* Package = FindPackage(nullptr, *Asset.PackageName.ToString());
@@ -2008,15 +2032,15 @@ bool UPjcSubsystem::DeleteAssets(const TArray<FAssetData>& Assets, const bool bS
 		ObjectTools::CleanupAfterSuccessfulDelete(AssetPackages);
 	}
 
-	DeleteAssetsReferencedByFolderLabels(AssetsToDelete);
-	DeleteAssetsHeldByEachOther(AssetsToDelete);
+	DeleteAssetsReferencedByFolderLabels(AssetsDone);
+	DeleteAssetsHeldByEachOther(AssetsDone);
 
 	ShaderCompilationEnable();
 
 	// assets can be deleted together with other assets, so count what is really gone
 	TArray<UObject*> AssetsRemaining;
 	int32 NumNotLoaded = 0;
-	for (const auto& Asset : AssetsToDelete) {
+	for (const auto& Asset : AssetsDone) {
 		if (!FPackageName::DoesPackageExist(Asset.PackageName.ToString())) continue;
 
 		if (UObject* Object = FindObject<UObject>(nullptr, *PjcShim::GetObjectPathString(Asset))) {
@@ -2040,10 +2064,10 @@ bool UPjcSubsystem::DeleteAssets(const TArray<FAssetData>& Assets, const bool bS
 		LastCleanupKept.Add(Asset->GetOutermost()->GetFName(), Holder ? *Holder : TEXT("referenced by asset that is kept"));
 	}
 	int32 NumAssetsRemaining = 0;
-	for (const auto& Asset : AssetsToDelete) {
+	for (const auto& Asset : AssetsDone) {
 		NumAssetsRemaining += FPackageName::DoesPackageExist(Asset.PackageName.ToString()) ? 1 : 0;
 	}
-	NumAssetsDeleted = NumAssetsTotal - NumAssetsRemaining;
+	NumAssetsDeleted = AssetsDone.Num() - NumAssetsRemaining;
 
 	const FString Msg = FString::Printf(TEXT("Deleted %s of %s assets"), *PjcFormat::Count(NumAssetsDeleted), *PjcFormat::Count(NumAssetsTotal));
 	UE_LOG(LogProjectCleaner, Display, TEXT("%s"), *Msg);

@@ -6,6 +6,7 @@
 
 #include "PjcInspector.h"
 #include "PjcIssues.h"
+#include "PjcClean.h"
 #include "PjcCookInfo.h"
 #include "PjcOverview.h"
 #include "PjcScanDraft.h"
@@ -1045,11 +1046,34 @@ bool FPjcTestUnusedDelete::RunTest(const FString& Parameters) {
 			ToDelete.Add(Asset);
 		}
 	}
+	// what Clean project would delete and keep
+	const FPjcCleanPlan Plan = FPjcCleanPlan::Make(Result);
+	int64 UnusedSize = 0;
+	for (const auto& Asset : Result.Unused) {
+		UnusedSize += Result.GetSize(Asset.PackageName);
+	}
+	TestEqual(TEXT("plan deletes the unused assets"), Plan.Assets.Num(), Result.Unused.Num());
+	TestEqual(TEXT("plan size"), Plan.Size, UnusedSize);
+	TestEqual(TEXT("plan keeps review assets"), Plan.NumReview, Fixture.ReviewNames().Num());
+	TestEqual(TEXT("plan keeps excluded assets"), Plan.NumExcluded, Result.Excluded.Num());
+	TestTrue(TEXT("plan folders and classes"), Plan.Folders.Num() > 0 && Plan.Classes.Num() > 0);
+	TestTrue(TEXT("unused folder left empty"), Plan.NumFoldersEmpty > Result.FoldersEmpty.Num());
+
+	// a window follows the delete batch by batch
 	TestEqual(TEXT("assets to delete"), ToDelete.Num(), 2);
-	TestTrue(TEXT("deleted"), UPjcSubsystem::DeleteAssets(ToDelete, false, false));
+	int32 NumBatches = 0;
+	FPjcDeleteProgress Progress;
+	Progress.OnBatch = [&NumBatches](const int32 NumTried, const int32 NumTotal, const FString& Current) {
+		++NumBatches;
+	};
+	TestTrue(TEXT("deleted"), UPjcSubsystem::DeleteAssets(ToDelete, false, false, &Progress));
+	TestTrue(TEXT("progress told"), NumBatches > 0 && Progress.NumTried == 2 && !Progress.bStopped);
 	TestFalse(TEXT("leaf gone"), FPackageName::DoesPackageExist(Leaf.ToString()));
 	TestFalse(TEXT("root gone"), FPackageName::DoesPackageExist(LeafRoot.ToString()));
 	TestTrue(TEXT("other unused asset kept"), FPackageName::DoesPackageExist(PackageOf(Fixture, TEXT("C_Unused")).ToString()));
+	TArray<FName> Broken;
+	FPjcCleanPlan::GetBrokenReferencers({Leaf, LeafRoot}, Broken);
+	TestEqual(TEXT("nothing kept references what was deleted"), Broken.Num(), 0);
 	return true;
 }
 

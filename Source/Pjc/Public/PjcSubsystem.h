@@ -20,6 +20,20 @@ class UPrimaryAssetLabel;
  * While alive, expensive asset queries (all, used, unused, indirect, excluded, externally referenced) are computed
  * once and reused. Use it around a batch of read only queries, never across deleting or creating assets.
  */
+// Progress of DeleteAssets for a window that shows it: told after every batch; a stop request ends the delete after
+// the batch that runs, what is deleted stays deleted
+struct FPjcDeleteProgress
+{
+	// assets tried so far (deleted or kept), of all, and the last one
+	TFunction<void(int32 NumTried, int32 NumTotal, const FString& Current)> OnBatch;
+
+	bool bStopRequested = false;
+
+	// out: the delete stopped before every asset was tried
+	bool bStopped = false;
+	int32 NumTried = 0;
+};
+
 class FPjcScanCacheScope
 {
   public:
@@ -237,7 +251,13 @@ class UPjcSubsystem final : public UEditorSubsystem
 	// @param bShowSlowTask bool
 	// @param bShowEditorNotification bool
 	// @return true if nothing failed; assets kept because something still holds them count as success (GetLastCleanupKept)
-	static bool DeleteAssets(const TArray<FAssetData>& Assets, const bool bShowSlowTask = true, const bool bShowEditorNotification = false);
+	// @param Progress tells a window about every batch and stops on request, may be null
+	static bool DeleteAssets(
+		const TArray<FAssetData>& Assets,
+		const bool bShowSlowTask = true,
+		const bool bShowEditorNotification = false,
+		FPjcDeleteProgress* Progress = nullptr
+	);
 
 	// Delete all empty folders in project
 	// @param bShowSlowTask bool

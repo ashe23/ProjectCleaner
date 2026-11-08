@@ -9,8 +9,22 @@
 #include "Framework/Docking/TabManager.h"
 #include "Widgets/Docking/SDockTab.h"
 
+namespace
+{
+	// unity builds join files: names unique to this file
+	TWeakPtr<FTabManager> PjcTabsMain;
+}	// namespace
+
 namespace PjcTabs
 {
+	void SetMain(const TSharedPtr<FTabManager>& Tabs) {
+		PjcTabsMain = Tabs;
+	}
+
+	TWeakPtr<FTabManager> GetMain() {
+		return PjcTabsMain;
+	}
+
 	void Open(const TWeakPtr<FTabManager>& Tabs, const FName TabId) {
 		if (const TSharedPtr<FTabManager> Manager = Tabs.Pin()) {
 			Manager->TryInvokeTab(FTabId {TabId});

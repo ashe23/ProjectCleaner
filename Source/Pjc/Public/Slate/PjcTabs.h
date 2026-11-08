@@ -13,6 +13,10 @@ namespace PjcTabs
 {
 	void Open(const TWeakPtr<FTabManager>& Tabs, const FName TabId);
 
+	// Tabs of the Project Cleaner window, for links from windows outside the tools (Clean project)
+	void SetMain(const TSharedPtr<FTabManager>& Tabs);
+	TWeakPtr<FTabManager> GetMain();
+
 	// Shows the asset in the Inspector
 	void Inspect(const TWeakPtr<FTabManager>& Tabs, const FName Package);
 

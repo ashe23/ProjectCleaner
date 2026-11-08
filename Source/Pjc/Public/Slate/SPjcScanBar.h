@@ -22,7 +22,7 @@ class SPjcScanBar final : public SCompoundWidget
 	// Scans the project for every tool. Asks to save unsaved assets first, the scan reads them from disk.
 	static void ScanProject();
 
-	// Asks for confirmation, deletes every unused asset and empty folder, then scans again
+	// Opens the Clean project window: what gets deleted and the checks, the progress, the result
 	static void CleanProject();
 
 	// Results are from before a change: scan settings edited, or assets changed since the scan
