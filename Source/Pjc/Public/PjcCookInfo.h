@@ -44,7 +44,8 @@ struct FPjcCookInfo
 	// Newest cook of this project folder for any platform. Read again only when its file changes.
 	static const FPjcCookInfo& GetLast();
 
-	// Last cook of this project folder for every platform, newest first. Each is read again only when its file changes.
+	// Last cook of this project folder for every platform, and the cook of the Build Machine Cook Metadata setting, newest
+	// first. Each is read again only when its file changes.
 	static TArray<const FPjcCookInfo*> GetAll();
 
 	// Folder the cooks of this project are in: Saved/Cooked

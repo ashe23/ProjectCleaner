@@ -62,6 +62,12 @@ class UPjcScanSettings final : public UDeveloperSettings
 	UPROPERTY(EditAnywhere, Config, Category = "Used Assets", meta = (AllowAbstract = "true"))
 	TArray<TSoftClassPtr<UObject>> UsedClasses;
 
+	// Metadata folder of a cook made on another machine, e.g. a build machine (Saved/Cooked/<Platform>/<Project>/Metadata,
+	// with DevelopmentAssetRegistry.bin). The cook check reads it with the cooks of this project folder. Project Cleaner
+	// never cooks by itself.
+	UPROPERTY(EditAnywhere, Config, Category = "Cook Check", meta = (DisplayName = "Build Machine Cook Metadata"))
+	FDirectoryPath CookMetadataFolder;
+
 	// Classes that are cinematic assets, resolved for current engine version
 	static TArray<FString> GetCinematicClassPaths();
 

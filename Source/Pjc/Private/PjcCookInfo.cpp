@@ -1,6 +1,7 @@
 // Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "PjcCookInfo.h"
+#include "PjcSettings.h"
 #include "PjcShim.h"
 // Engine Headers
 #include "AssetRegistry/AssetData.h"
@@ -40,14 +41,31 @@ TArray<const FPjcCookInfo*> FPjcCookInfo::GetAll() {
 	IFileManager::Get().FindFiles(Platforms, *(GetCookedDir() / TEXT("*")), false, true);
 	Platforms.Sort();
 
-	TArray<const FPjcCookInfo*> Cooks;
+	// platform folders here, and a build machine's Metadata folder (its platform from .../Cooked/<Platform>/...)
+	TArray<TPair<FString, FString>> Registries;
 	for (const auto& Platform : Platforms) {
 		const FString File = GetCookedDir() / Platform / FApp::GetProjectName() / TEXT("Metadata") / TEXT("DevelopmentAssetRegistry.bin");
+		Registries.Emplace(Platform, File);
+	}
+	const FString MetadataFolder = GetDefault<UPjcScanSettings>()->CookMetadataFolder.Path;
+	if (!MetadataFolder.IsEmpty()) {
+		FString Folder = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir(), MetadataFolder);
+		FPaths::NormalizeFilename(Folder);
+		const FString File = Folder.EndsWith(TEXT(".bin")) ? Folder : Folder / TEXT("DevelopmentAssetRegistry.bin");
+		TArray<FString> Parts;
+		FPaths::GetPath(File).ParseIntoArray(Parts, TEXT("/"));
+		const int32 Cooked = Parts.IndexOfByKey(TEXT("Cooked"));
+		const FString Platform = Parts.IsValidIndex(Cooked + 1) ? Parts[Cooked + 1] + TEXT(" (build machine)") : TEXT("Build machine");
+		Registries.Emplace(Platform, File);
+	}
+
+	// the cache first, then pointers into it: adding to a map moves its entries
+	TArray<FString> Found;
+	for (const auto& Registry : Registries) {
+		const FString& Platform = Registry.Key;
+		const FString& File = Registry.Value;
 		const FDateTime Time = IFileManager::Get().GetTimeStamp(*File);
-		if (Time == FDateTime::MinValue()) {
-			PjcCookInfoCache.Remove(Platform);
-			continue;
-		}
+		if (Time == FDateTime::MinValue()) continue;
 
 		FPjcCookInfo& Cook = PjcCookInfoCache.FindOrAdd(Platform);
 		if (Cook.File != File || Cook.Time != Time) {
@@ -57,14 +75,19 @@ TArray<const FPjcCookInfo*> FPjcCookInfo::GetAll() {
 			Cook.Time = Time;
 			Cook.bReadFailed = !Read(File, Cook.Cooked, Cook.SavedDigests);
 		}
-		Cooks.Add(&Cook);
+		Found.Add(Platform);
 	}
 
-	// platform folders that are gone
+	// cooks that are gone
 	for (auto It = PjcCookInfoCache.CreateIterator(); It; ++It) {
-		if (!Platforms.Contains(It.Key())) {
+		if (!Found.Contains(It.Key())) {
 			It.RemoveCurrent();
 		}
+	}
+
+	TArray<const FPjcCookInfo*> Cooks;
+	for (const auto& Pair : PjcCookInfoCache) {
+		Cooks.Add(&Pair.Value);
 	}
 
 	Cooks.Sort([](const FPjcCookInfo& A, const FPjcCookInfo& B) {

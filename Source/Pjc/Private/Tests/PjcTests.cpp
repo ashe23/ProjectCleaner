@@ -981,6 +981,19 @@ bool FPjcTestCookShipped::RunTest(const FString& Parameters) {
 	TestFalse(TEXT("cleanup keeps review assets"), UnusedWithCook.ContainsByPredicate(IsReviewAsset));
 	TestEqual(TEXT("packaged review assets are unused, shipped"), FPjcOverview::MakeShipped(Checked, Cook).UnusedShipped.Num, 2);
 
+	// a build machine's cook, from the setting: its platform from the path
+	const FString MachineDir = FPaths::ConvertRelativePathToFull(FPaths::ProjectSavedDir() / TEXT("PjcBuildMachine"));
+	const FString MachineMetadata = MachineDir / TEXT("Cooked/PjcMachine") / FApp::GetProjectName() / TEXT("Metadata");
+	IFileManager::Get().Copy(*(MachineMetadata / TEXT("DevelopmentAssetRegistry.bin")), *RegistryFile);
+	UPjcScanSettings* ScanSettings = GetMutableDefault<UPjcScanSettings>();
+	ScanSettings->CookMetadataFolder.Path = MachineMetadata;
+	const bool bMachineCook = FPjcCookInfo::GetAll().ContainsByPredicate([](const FPjcCookInfo* Other) {
+		return Other->Platform == TEXT("PjcMachine (build machine)") && Other->IsValid();
+	});
+	TestTrue(TEXT("build machine cook read"), bMachineCook);
+	ScanSettings->CookMetadataFolder.Path.Reset();
+	IFileManager::Get().DeleteDirectory(*MachineDir, false, true);
+
 	IFileManager::Get().DeleteDirectory(*PlatformDir, false, true);
 	TestFalse(TEXT("no cook"), FPjcCookInfo::GetLast().IsFound());
 	UPjcSubsystem::GetAssetsUnused(UnusedWithCook, false);
