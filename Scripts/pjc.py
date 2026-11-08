@@ -33,6 +33,7 @@ symlink elsewhere), so every engine compiles the same working tree with its own 
 import argparse
 import concurrent.futures
 import configparser
+import fnmatch
 import glob
 import json
 import os
@@ -1745,10 +1746,57 @@ POLYGON_PACKAGE_SCENARIOS = {
 GAME_FAILURE = r"Fatal error|Critical error|Assertion failed|Unhandled Exception|LogLinker: Warning: .*(?:Failed to load|Can't find file)|Failed to load package|LoadErrors"
 
 
-def polygon_game_checks(cfg):
-    """[{"url": map url or "" for default map, "expect": regex}] from 'polygon_game' in pjc.local.json"""
-    checks = cfg.get("polygon_game") or []
-    return [{"url": "", "expect": r"LogLoad: Took .* to LoadMap"}] + checks
+def polygon_game_checks(cfg, p, maps):
+    """Default map, every cooked map, and the project's own checks from 'polygon_game' in pjc.local.json:
+    [{"url": map url or "" for default map, "expect": regex, "project": optional project name glob}]"""
+    checks = [{"url": "", "expect": r"LogLoad: Took .* to LoadMap"}]
+    checks += [{"url": m, "expect": r"to LoadMap\(" + re.escape(m) + r"\)"} for m in maps]
+    for check in cfg.get("polygon_game") or []:
+        if fnmatch.fnmatch(p.name.lower(), check.get("project", "*").lower()):
+            checks.append({"url": check.get("url", ""), "expect": check["expect"]})
+    return checks
+
+
+def polygon_cooked_dir(p):
+    """Platform folder of the newest cook: Saved/Cooked/<platform>"""
+    cooked = os.path.join(p.dir, "Saved", "Cooked")
+    dirs = [os.path.join(cooked, d) for d in os.listdir(cooked)] if os.path.isdir(cooked) else []
+    dirs = [d for d in dirs if os.path.isdir(d)]
+    return max(dirs, key=os.path.getmtime) if dirs else None
+
+
+def cooked_map_url(rel, project):
+    """<Project>/Content/X.umap is /Game/X, <Project>/Plugins/.../<Plugin>/Content/X.umap is /<Plugin>/X. Engine maps and
+    World Partition cells (generated) are left out."""
+    parts = rel[: -len(".umap")].split("/")
+    if parts[0].lower() != project.lower() or "Content" not in parts or "_Generated_" in parts:
+        return None
+    i = parts.index("Content")
+    mount = "Game" if i == 1 else parts[i - 1]
+    return "/" + mount + "/" + "/".join(parts[i + 1 :])
+
+
+def polygon_cooked_packages(p, archive):
+    """Cooked .uasset and .umap files (paths like <Project>/Content/X.uasset), and the maps among them as game URLs.
+    From the archived build's Manifest_UFSFiles_*.txt: a Zen store cook (UE 5 default) writes no loose files. Else the
+    loose files of the newest cook in Saved/Cooked."""
+    rels = []
+    manifests = glob.glob(os.path.join(archive, "*", "Manifest_UFSFiles_*.txt"))
+    if manifests:
+        with open(manifests[0], encoding="utf-8", errors="replace") as f:
+            rels = [line.split("\t")[0].strip().replace("\\", "/") for line in f]
+    else:
+        root = polygon_cooked_dir(p)
+        for dirpath, _, names in os.walk(root) if root else []:
+            rels += [os.path.relpath(os.path.join(dirpath, n), root).replace("\\", "/") for n in names]
+    files = sorted(r for r in rels if r.endswith((".uasset", ".umap")))
+    maps = sorted(filter(None, (cooked_map_url(r, p.name) for r in files if r.endswith(".umap"))))
+    return files, maps
+
+
+def game_failure_key(line):
+    """A failure line without its time and frame prefix, to compare runs."""
+    return re.sub(r"^\[[^\]]*\]\[[^\]]*\]", "", line).strip()
 
 
 def kill_tree(proc):
@@ -1794,7 +1842,7 @@ def polygon_run_game(p, exe, check, tag):
     finally:
         kill_tree(proc)
     if os.path.isfile(log):
-        failures = log_lines(log, GAME_FAILURE, 10)
+        failures = log_lines(log, GAME_FAILURE, 500)
     return found, failures
 
 
@@ -1836,7 +1884,9 @@ def polygon_editor_target(p):
     return "built {}Editor.target (exit {})".format(p.name, code)
 
 
-def polygon_package(p, scenario, cfg):
+def polygon_package(p, scenario, cfg, baseline):
+    """baseline: the run before cleanup ("package") is part of this run. Then a cleanup run's game problems are what changed
+    against it (polygon_compare_packages), and the baseline's own failures are notes: the project has them without cleanup."""
     spec = POLYGON_PACKAGE_SCENARIOS[scenario]
     polygon_reset(p)
     notes, problems = [], []
@@ -1876,20 +1926,66 @@ def polygon_package(p, scenario, cfg):
     cook_errors = [line for line in log_lines(log, r"LogCook: Error|LogInit: Display: .*Error:|Error: \[", 200)]
     notes.append("BuildCookRun exit {}, {} cook error line(s)".format(code, len(cook_errors)))
     exes = polygon_game_exes(archive, p)
+    cooked, maps = polygon_cooked_packages(p, archive)
+    cooked_file = os.path.join(p.logs_dir, scenario + "_cooked.txt")
+    with open(cooked_file, "w", encoding="utf-8") as f:
+        f.write("\n".join(cooked))
+    notes.append("{} cooked packages, {} maps".format(len(cooked), len(maps)))
+    game = {}
     if code != 0 or not exes:
         problems.append("packaging failed (exit {})  log: {}".format(code, log))
     else:
-        for i, check in enumerate(polygon_game_checks(cfg)):
+        own = baseline and not spec
+        compared = baseline and spec
+        failed = 0
+        for i, check in enumerate(polygon_game_checks(cfg, p, maps)):
             found, failures = polygon_run_game(p, exes[0], check, "{}_game{}".format(scenario, i))
             what = check["url"] or "default map"
+            # the same map with another expected line (a project's own check) is its own run
+            what = what if what not in game else "{} ({})".format(what, check["expect"])
+            game[what] = {"found": found, "failures": [game_failure_key(x) for x in failures]}
+            failed += 0 if found and not failures else 1
+            if own or compared:
+                continue
             if not found:
                 problems.append("game {}: '{}' not in log".format(what, check["expect"]))
             if failures:
                 problems.append("game {}: {}".format(what, failures[0][:200]))
-            notes.append("game {}: {}".format(what, "ok" if found and not failures else "FAILED"))
+        notes.append("game: {} of {} runs clean{}".format(len(game) - failed, len(game), " (the project's own, before cleanup)" if own and failed else ""))
     with open(os.path.join(p.logs_dir, scenario + "_cook_errors.txt"), "w", encoding="utf-8") as f:
         f.write("\n".join(cook_errors))
-    return {"scenario": scenario, "ok": not problems, "seconds": round(time.time() - start), "problems": problems, "notes": notes, "report": "", "log": log}
+    seconds = round(time.time() - start)
+    result = {"scenario": scenario, "ok": not problems, "seconds": seconds, "problems": problems, "notes": notes, "report": "", "log": log}
+    result.update({"cooked": cooked_file, "game": game})
+    return result
+
+
+def polygon_compare_packages(results):
+    """A cleanup must not change the game: its cooked packages and game logs are compared with the run before cleanup."""
+    base = next((r for r in results if r["scenario"] == "package" and r.get("game")), None)
+    if not base:
+        return []
+    with open(base["cooked"], encoding="utf-8") as f:
+        base_cooked = set(f.read().split())
+    problems = []
+    for r in results:
+        if r is base or r["scenario"] not in POLYGON_PACKAGE_SCENARIOS or not r.get("cooked"):
+            continue
+        with open(r["cooked"], encoding="utf-8") as f:
+            lost = sorted(base_cooked - set(f.read().split()))
+        if lost:
+            problems.append("{}: {} cooked package(s) gone after cleanup: {}".format(r["scenario"], len(lost), ", ".join(lost[:5])))
+        for what, game in r.get("game", {}).items():
+            before = base["game"].get(what)
+            if not before:
+                continue
+            if before["found"] and not game["found"]:
+                problems.append("{}: game {} loaded before cleanup, not after".format(r["scenario"], what))
+            known = set(before["failures"])
+            new = [x for x in game["failures"] if x not in known]
+            if new:
+                problems.append("{}: game {}: {} new failure line(s) after cleanup: {}".format(r["scenario"], what, len(new), new[0][:200]))
+    return problems
 
 
 def polygon_supersets(results):
@@ -1915,6 +2011,10 @@ def cmd_polygon(args, cfg, engines):
     if not projects:
         die("no polygon projects for selected engines")
     scenarios = [s.strip() for s in args.scenarios.split(",")] if args.scenarios else list(POLYGON_SCENARIOS)
+    # the run before cleanup goes first: cleanup runs are compared with it
+    if "package" in scenarios:
+        scenarios = ["package"] + [s for s in scenarios if s != "package"]
+    baseline = "package" in scenarios
     unknown = [s for s in scenarios if s not in POLYGON_SCENARIOS and s not in POLYGON_PACKAGE_SCENARIOS]
     if unknown:
         die("unknown scenario(s): {}. Known: {}".format(", ".join(unknown), ", ".join(list(POLYGON_SCENARIOS) + list(POLYGON_PACKAGE_SCENARIOS))))
@@ -1940,7 +2040,7 @@ def cmd_polygon(args, cfg, engines):
                 text_refs = polygon_text_refs(p, snapshot["packages"])
             for scenario in scenarios:
                 if scenario in POLYGON_PACKAGE_SCENARIOS:
-                    results.append(polygon_package(p, scenario, cfg))
+                    results.append(polygon_package(p, scenario, cfg, baseline))
                 else:
                     results.append(polygon_run(p, scenario, snapshot, text_refs))
         finally:
@@ -1948,7 +2048,7 @@ def cmd_polygon(args, cfg, engines):
             if not args.keep_plugin:
                 remove_tree(p.plugin_dir)
                 polygon_restore_plugins(p)
-        extra = polygon_supersets(results)
+        extra = polygon_supersets(results) + polygon_compare_packages(results)
         with open(os.path.join(p.logs_dir, "polygon.json"), "w", encoding="utf-8") as f:
             json.dump({"project": p.uproject, "engine": str(p.engine), "results": results, "problems": extra}, f, indent=1)
         lines = []
