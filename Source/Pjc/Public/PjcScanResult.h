@@ -20,6 +20,34 @@ enum class EPjcAssetStatus : uint8
 	Review,
 };
 
+// What changed in the project after the last scan. Project Cleaner's own deletes and fixes count too until the scan
+// that follows them
+struct FPjcProjectChanges
+{
+	int32 NumAdded = 0;
+	int32 NumRemoved = 0;
+	int32 NumRenamed = 0;
+	int32 NumSaved = 0;
+
+	// Packages that changed last, newest last
+	TArray<FName> Recent;
+
+	static constexpr int32 MaxRecent = 8;
+
+	int32 Num() const {
+		return NumAdded + NumRemoved + NumRenamed + NumSaved;
+	}
+
+	void Add(int32& Counter, const FName Package) {
+		++Counter;
+		Recent.Remove(Package);
+		Recent.Add(Package);
+		if (Recent.Num() > MaxRecent) {
+			Recent.RemoveAt(0);
+		}
+	}
+};
+
 // Rule in Scan settings > Exclusions that keeps an asset
 enum class EPjcExclusionKind : uint8
 {

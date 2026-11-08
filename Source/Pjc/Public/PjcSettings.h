@@ -92,10 +92,6 @@ class UPjcEditorSettings final : public UDeveloperSettings
 	UPROPERTY(EditAnywhere, Config, Category = "Interface")
 	EPjcToolbarLocation ToolbarLocation = EPjcToolbarLocation::PlayToolbar;
 
-	// Scan project when Project Cleaner window opens. When off, press Scan Project manually.
-	UPROPERTY(EditAnywhere, Config, Category = "Scanning")
-	bool bScanOnOpen = true;
-
 	// Ask before Fix Redirectors runs. Fixing resaves (and checks out from source control) every asset
 	// that references a redirector. Scanning does not need fixed redirectors.
 	UPROPERTY(EditAnywhere, Config, Category = "Scanning")

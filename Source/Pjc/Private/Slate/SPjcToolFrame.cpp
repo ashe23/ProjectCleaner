@@ -16,6 +16,8 @@
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/SCanvas.h"
+#include "Widgets/SOverlay.h"
+#include "PjcSubsystem.h"
 #include "Widgets/Text/STextBlock.h"
 
 namespace
@@ -138,7 +140,48 @@ void SPjcToolFrame::Construct(const FArguments& InArgs) {
 			]
 			+ SHorizontalBox::Slot().FillWidth(1.0f)
 			[
-				InArgs._Content.Widget
+				SNew(SOverlay)
+				// results from before a change are greyed and take no clicks: only Rescan and Scan settings work
+				+ SOverlay::Slot()
+				[
+					SNew(SBox)
+					.Visibility_Lambda([]() { return UPjcSubsystem::GetScanResult().IsValid() ? EVisibility::Visible : EVisibility::Collapsed; })
+					.IsEnabled_Lambda([]() { return !SPjcScanBar::NeedsRescan(); })
+					[
+						InArgs._Content.Widget
+					]
+				]
+				+ SOverlay::Slot().HAlign(HAlign_Center).VAlign(VAlign_Center)
+				[
+					SNew(SVerticalBox)
+					.Visibility_Lambda([]() { return UPjcSubsystem::GetScanResult().IsValid() ? EVisibility::Collapsed : EVisibility::Visible; })
+					+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center)
+					[
+						SNew(STextBlock).Text(FText::FromString(TEXT("Not scanned yet"))).Font(FPjcStyles::GetFont("Bold", 12))
+					]
+					+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center).Padding(FMargin {0.0f, 6.0f, 0.0f, 12.0f})
+					[
+						SNew(STextBlock)
+						.Text(FText::FromString(TEXT("Scan the project to see which assets are used, unused or to review.")))
+						.ColorAndOpacity(FSlateColor::UseSubduedForeground())
+					]
+					+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center)
+					[
+						SNew(SButton)
+						.ButtonStyle(&PjcShim::GetPrimaryButtonStyle())
+						.ContentPadding(FMargin {16.0f, 4.0f})
+						.OnClicked_Lambda([]() {
+							if (FPjcScanDraft::IsChanged()) {
+								FPjcScanDraft::Get().ApplyToSettings();
+							}
+							SPjcScanBar::ScanProject();
+							return FReply::Handled();
+						})
+						[
+							SNew(STextBlock).Text(FText::FromString(TEXT("Scan project")))
+						]
+					]
+				]
 			]
 		]
 	];

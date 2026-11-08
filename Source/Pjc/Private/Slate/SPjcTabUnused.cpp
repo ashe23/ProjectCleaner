@@ -367,10 +367,6 @@ void SPjcTabUnused::Construct(const FArguments& InArgs) {
 	// clang-format on
 
 	OnScanFinished();
-
-	if (!UPjcSubsystem::GetScanResult().IsValid() && GetDefault<UPjcEditorSettings>()->bScanOnOpen) {
-		SPjcScanBar::ScanProject();
-	}
 }
 
 SPjcTabUnused::~SPjcTabUnused() {

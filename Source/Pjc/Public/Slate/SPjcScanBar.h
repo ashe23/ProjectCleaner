@@ -6,8 +6,8 @@
 #include "Widgets/SCompoundWidget.h"
 
 /**
- * Bar under the tabs of every Project Cleaner tool: Scan, what the last scan found, Clean project.
- * Every tool shows the same shared scan result (UPjcSubsystem::GetScanResult).
+ * Bar under the tabs of every Project Cleaner tool: Scan (Rescan when settings or the project changed), when the last
+ * scan was, Clean project. Every tool shows the same shared scan result (UPjcSubsystem::GetScanResult).
  */
 class SPjcScanBar final : public SCompoundWidget
 {
@@ -25,6 +25,9 @@ class SPjcScanBar final : public SCompoundWidget
 	// Asks for confirmation, deletes every unused asset and empty folder, then scans again
 	static void CleanProject();
 
+	// Results are from before a change: scan settings edited, or assets changed since the scan
+	static bool NeedsRescan();
+
   private:
 
 	FReply OnScanClicked() const;
@@ -36,10 +39,5 @@ class SPjcScanBar final : public SCompoundWidget
 	FText GetStatusText() const;
 	FText GetStatusToolTip() const;
 	bool IsCleanEnabled() const;
-	void OnScanFinished();
-
-	FDelegateHandle ScanFinishedHandle;
-	int32 NumAssets = 0;
-	int32 NumUnused = 0;
-	int64 SizeUnused = 0;
+	FText GetCleanToolTip() const;
 };

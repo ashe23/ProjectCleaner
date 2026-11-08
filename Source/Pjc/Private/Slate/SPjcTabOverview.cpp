@@ -50,10 +50,6 @@ void SPjcTabOverview::Construct(const FArguments& InArgs) {
 	// clang-format on
 
 	OnScanFinished();
-
-	if (!UPjcSubsystem::GetScanResult().IsValid() && GetDefault<UPjcEditorSettings>()->bScanOnOpen) {
-		SPjcScanBar::ScanProject();
-	}
 }
 
 SPjcTabOverview::~SPjcTabOverview() {

@@ -89,6 +89,9 @@ class UPjcSubsystem final : public UEditorSubsystem
 	// Broadcast after every Scan that made a new result
 	static FPjcDelegateScanFinished& OnScanFinished();
 
+	// Assets added, removed, renamed or saved in the scanned content since the last scan; nothing before the first scan
+	static const FPjcProjectChanges& GetChangesSinceScan();
+
 	// Returns what holds given asset in memory, so deleting it is refused. Empty when asset is not loaded or nothing outside it holds it.
 	// @param InAsset FAssetData
 	// @return FString
@@ -431,6 +434,17 @@ class UPjcSubsystem final : public UEditorSubsystem
 	static FPropertyEditorModule& GetModulePropertyEditor();
 
   private:
+
+	// project changes since the last scan
+	void OnAssetAddedEvent(const FAssetData& Asset);
+	void OnAssetRemovedEvent(const FAssetData& Asset);
+	void OnAssetRenamedEvent(const FAssetData& Asset, const FString& OldObjectPath);
+	void OnPackageSavedEvent(const FString& Filename, UObject* Package);
+	static bool IsProjectChange(const FName Package);
+	FDelegateHandle AssetAddedHandle;
+	FDelegateHandle AssetRemovedHandle;
+	FDelegateHandle AssetRenamedHandle;
+	FDelegateHandle PackageSavedHandle;
 
 	// Assets of the scanned roots, one per package, redirectors included: reference chains and roots go through them
 	static void GetAssetsScanned(TArray<FAssetData>& Assets);

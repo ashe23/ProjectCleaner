@@ -692,6 +692,20 @@ bool FPjcTestScanResult::RunTest(const FString& Parameters) {
 	TestSetEqual(*this, TEXT("result corrupted files"), FixtureFiles(Result.FilesCorrupted), Normalized({Fixture.CorruptedFile()}));
 	TestSetEqual(*this, TEXT("result empty folders"), FixtureFiles(Result.FoldersEmpty), Normalized(Fixture.EmptyFolders()));
 
+	// project changes after the scan: an asset added and removed outside Project Cleaner, a new scan starts over
+	TestEqual(TEXT("no change right after the scan"), UPjcSubsystem::GetChangesSinceScan().Num(), 0);
+	const FString ChangedPackageName = FPjcTestFixture::RootPath() / TEXT("Misc/C_Changed");
+	UCurveFloat* Changed = NewObject<UCurveFloat>(CreatePackage(*ChangedPackageName), TEXT("C_Changed"), RF_Public | RF_Standalone);
+	FAssetRegistryModule::AssetCreated(Changed);
+	TestEqual(TEXT("added asset counted"), UPjcSubsystem::GetChangesSinceScan().NumAdded, 1);
+	FAssetRegistryModule::AssetDeleted(Changed);
+	Changed->ClearFlags(RF_Public | RF_Standalone);
+	TestEqual(TEXT("removed asset counted"), UPjcSubsystem::GetChangesSinceScan().NumRemoved, 1);
+	const bool bRecent = UPjcSubsystem::GetChangesSinceScan().Recent.Contains(FName {*ChangedPackageName});
+	TestTrue(TEXT("changed package listed"), bRecent);
+	TestTrue(TEXT("scanned again"), UPjcSubsystem::Scan(false));
+	TestEqual(TEXT("no change after the new scan"), UPjcSubsystem::GetChangesSinceScan().Num(), 0);
+
 	return true;
 }
 
@@ -1223,9 +1237,10 @@ bool FPjcTestUiTabs::RunTest(const FString& Parameters) {
 	FPjcTestFixture Fixture;
 	if (FPjcTestFixture::IsTestHost() && !Fixture.Build(*this)) return false;
 
-	UPjcEditorSettings* EditorSettings = GetMutableDefault<UPjcEditorSettings>();
-	const bool bScanOnOpen = EditorSettings->bScanOnOpen;
-	EditorSettings->bScanOnOpen = true;
+	// tabs never scan by themselves: they show "Not scanned yet" until a scan
+	if (FPjcTestFixture::IsTestHost()) {
+		TestTrue(TEXT("scanned"), UPjcSubsystem::Scan(false));
+	}
 
 	const TSharedRef<SPjcTabInspector> TabInspector = SNew(SPjcTabInspector);
 	const TSharedRef<SPjcTabUnused> TabUnused = SNew(SPjcTabUnused);
@@ -1266,7 +1281,6 @@ bool FPjcTestUiTabs::RunTest(const FString& Parameters) {
 	TabInspector->Inspect(Outside);
 	TestEqual(TEXT("inspector shows a package outside the scan"), TabInspector->GetFocus(), Outside);
 
-	EditorSettings->bScanOnOpen = bScanOnOpen;
 	return true;
 }
 

@@ -8,6 +8,7 @@
 #include "PjcSubsystem.h"
 // Engine Headers
 #include "FileHelpers.h"
+#include "Misc/PackageName.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SSpacer.h"
@@ -15,9 +16,6 @@
 #include "Widgets/Text/STextBlock.h"
 
 void SPjcScanBar::Construct(const FArguments& InArgs) {
-	ScanFinishedHandle = UPjcSubsystem::OnScanFinished().AddSP(this, &SPjcScanBar::OnScanFinished);
-	OnScanFinished();
-
 	// clang-format off
 	ChildSlot
 	[
@@ -40,7 +38,10 @@ void SPjcScanBar::Construct(const FArguments& InArgs) {
 				SNew(SButton)
 				.ButtonStyle(&PjcShim::GetPrimaryButtonStyle())
 				.ContentPadding(FMargin {12.0f, 2.0f})
-				.ToolTipText(FText::FromString(TEXT("Applies the changed scan settings and scans again")))
+				.ToolTipText_Lambda([]() {
+					const TCHAR* Settings = TEXT("Applies the changed scan settings and scans again");
+					return FText::FromString(FPjcScanDraft::IsChanged() ? Settings : TEXT("Scans the changed project again"));
+				})
 				.Visibility(this, &SPjcScanBar::GetRescanVisibility)
 				.OnClicked(this, &SPjcScanBar::OnRescanClicked)
 				[
@@ -58,7 +59,7 @@ void SPjcScanBar::Construct(const FArguments& InArgs) {
 			[
 				SNew(SButton)
 				.ContentPadding(FMargin {12.0f, 2.0f})
-				.ToolTipText(FText::FromString(TEXT("Deletes every unused asset and empty folder in the project")))
+				.ToolTipText(this, &SPjcScanBar::GetCleanToolTip)
 				.IsEnabled(this, &SPjcScanBar::IsCleanEnabled)
 				.OnClicked(this, &SPjcScanBar::OnCleanClicked)
 				[
@@ -70,8 +71,10 @@ void SPjcScanBar::Construct(const FArguments& InArgs) {
 	// clang-format on
 }
 
-SPjcScanBar::~SPjcScanBar() {
-	UPjcSubsystem::OnScanFinished().Remove(ScanFinishedHandle);
+SPjcScanBar::~SPjcScanBar() {}
+
+bool SPjcScanBar::NeedsRescan() {
+	return FPjcScanDraft::IsChanged() || (UPjcSubsystem::GetScanResult().IsValid() && UPjcSubsystem::GetChangesSinceScan().Num() > 0);
 }
 
 void SPjcScanBar::ScanProject() {
@@ -122,21 +125,23 @@ FReply SPjcScanBar::OnScanClicked() const {
 }
 
 FReply SPjcScanBar::OnRescanClicked() const {
-	FPjcScanDraft::Get().ApplyToSettings();
+	if (FPjcScanDraft::IsChanged()) {
+		FPjcScanDraft::Get().ApplyToSettings();
+	}
 	ScanProject();
 	return FReply::Handled();
 }
 
 EVisibility SPjcScanBar::GetScanVisibility() const {
-	return FPjcScanDraft::IsChanged() ? EVisibility::Collapsed : EVisibility::Visible;
+	return NeedsRescan() ? EVisibility::Collapsed : EVisibility::Visible;
 }
 
 EVisibility SPjcScanBar::GetRescanVisibility() const {
-	return FPjcScanDraft::IsChanged() ? EVisibility::Visible : EVisibility::Collapsed;
+	return NeedsRescan() ? EVisibility::Visible : EVisibility::Collapsed;
 }
 
 FSlateColor SPjcScanBar::GetStatusColor() const {
-	return FPjcScanDraft::IsChanged() ? FSlateColor {FPjcStyles::Get().GetColor("ProjectCleaner.Color.Yellow")} : FSlateColor::UseForeground();
+	return NeedsRescan() ? FSlateColor {FPjcStyles::Get().GetColor("ProjectCleaner.Color.Yellow")} : FSlateColor::UseSubduedForeground();
 }
 
 FReply SPjcScanBar::OnCleanClicked() const {
@@ -145,56 +150,66 @@ FReply SPjcScanBar::OnCleanClicked() const {
 }
 
 FText SPjcScanBar::GetStatusText() const {
+	const FPjcScanResult& Result = UPjcSubsystem::GetScanResult();
 	if (FPjcScanDraft::IsChanged()) {
 		return FText::FromString(TEXT("Settings changed \u00B7 results are from the last scan"));
 	}
-
-	const FPjcScanResult& Result = UPjcSubsystem::GetScanResult();
 	if (!Result.IsValid()) {
 		return FText::FromString(TEXT("Not scanned yet"));
+	}
+	if (UPjcSubsystem::GetChangesSinceScan().Num() > 0) {
+		return FText::FromString(TEXT("Project changed \u00B7 results are from the last scan"));
 	}
 
 	const FTimespan Age = FDateTime::UtcNow() - Result.Time;
 	const int32 Minutes = FMath::FloorToInt(Age.GetTotalMinutes());
 	const FString Ago = Minutes < 60 ? FString::Printf(TEXT("%d min ago"), Minutes) : FString::Printf(TEXT("%d h ago"), Minutes / 60);
-	const FString Scanned = Minutes < 1 ? FString {TEXT("scanned just now")} : TEXT("scanned ") + Ago;
-
-	if (NumUnused == 0) {
-		return FText::FromString(FString::Printf(TEXT("No unused assets \u00B7 %s assets \u00B7 %s"), *PjcFormat::Count(NumAssets), *Scanned));
-	}
-
-	return FText::FromString(
-		FString::Printf(
-			TEXT("%s unused \u00B7 %s \u00B7 of %s assets \u00B7 %s"),
-			*PjcFormat::Count(NumUnused),
-			*PjcFormat::Size(SizeUnused),
-			*PjcFormat::Count(NumAssets),
-			*Scanned
-		)
-	);
+	return FText::FromString(Minutes < 1 ? FString {TEXT("Scanned just now")} : TEXT("Scanned ") + Ago);
 }
 
 FText SPjcScanBar::GetStatusToolTip() const {
 	const FPjcScanResult& Result = UPjcSubsystem::GetScanResult();
 	if (!Result.IsValid()) {
-		return FText::FromString(TEXT("Press Scan to find unused assets"));
+		return FText::FromString(TEXT("Scan finds which assets are used, unused or to review"));
 	}
 
-	return FText::FromString(
-		FString::Printf(TEXT("Last scan: %s, took %.1f s"), *Result.Time.ToString(TEXT("%Y-%m-%d %H:%M:%S UTC")), Result.Seconds)
-	);
+	const FString When = FString::Printf(TEXT("Last scan %s, took %.1f s"), *Result.Time.ToString(TEXT("%Y-%m-%d %H:%M UTC")), Result.Seconds);
+	const FPjcProjectChanges& Changes = UPjcSubsystem::GetChangesSinceScan();
+	if (FPjcScanDraft::IsChanged() || Changes.Num() == 0) {
+		return FText::FromString(When);
+	}
+
+	// what changed since, the newest first
+	TArray<FString> Lines;
+	const auto AddCount = [&Lines](const int32 Num, const TCHAR* What) {
+		if (Num > 0) {
+			Lines.Add(FString::Printf(TEXT("%s %s"), *PjcFormat::Count(Num), What));
+		}
+	};
+	AddCount(Changes.NumAdded, TEXT("added"));
+	AddCount(Changes.NumRemoved, TEXT("removed"));
+	AddCount(Changes.NumRenamed, TEXT("renamed"));
+	AddCount(Changes.NumSaved, TEXT("saved"));
+	const FString Counts = FString::Join(Lines, TEXT(" \u00B7 "));
+	TArray<FString> Names;
+	for (int32 Index = Changes.Recent.Num() - 1; Index >= 0; --Index) {
+		Names.Add(FPackageName::GetShortName(Changes.Recent[Index]));
+	}
+	return FText::FromString(When + TEXT("\nSince: ") + Counts + TEXT("\n") + FString::Join(Names, TEXT(", ")));
 }
 
 bool SPjcScanBar::IsCleanEnabled() const {
-	return NumUnused > 0;
+	const FPjcScanResult& Result = UPjcSubsystem::GetScanResult();
+	return Result.IsValid() && !NeedsRescan() && Result.Unused.Num() > 0;
 }
 
-void SPjcScanBar::OnScanFinished() {
+FText SPjcScanBar::GetCleanToolTip() const {
 	const FPjcScanResult& Result = UPjcSubsystem::GetScanResult();
-	NumAssets = Result.Assets.Num();
-	NumUnused = Result.Unused.Num();
-	SizeUnused = 0;
-	for (const auto& Asset : Result.Unused) {
-		SizeUnused += Result.GetSize(Asset.PackageName);
+	if (!Result.IsValid()) {
+		return FText::FromString(TEXT("Scan first"));
 	}
+	if (NeedsRescan()) {
+		return FText::FromString(TEXT("Rescan first: results are from before the change"));
+	}
+	return FText::FromString(TEXT("Deletes every unused asset and empty folder in the project"));
 }

@@ -18,6 +18,7 @@
 #include "ISourceControlModule.h"
 #if ENGINE_MAJOR_VERSION >= 5
 #include "HAL/PlatformFileManager.h"
+#include "UObject/ObjectSaveContext.h"
 #else
 #include "HAL/PlatformFilemanager.h"
 #endif
@@ -92,6 +93,7 @@ namespace
 	// last Scan, shared by every tab
 	FPjcScanResult LastScan;
 	UPjcSubsystem::FPjcDelegateScanFinished ScanFinished;
+	FPjcProjectChanges ProjectChanges;
 
 	template<typename T>
 	bool ScanCacheGet(const TOptional<T>& Cached, T& Out) {
@@ -123,6 +125,19 @@ void UPjcSubsystem::Initialize(FSubsystemCollectionBase& Collection) {
 	Super::Initialize(Collection);
 
 	MoveExclusionsToProject();
+
+	IAssetRegistry& Registry = GetModuleAssetRegistry().Get();
+	AssetAddedHandle = Registry.OnAssetAdded().AddUObject(this, &UPjcSubsystem::OnAssetAddedEvent);
+	AssetRemovedHandle = Registry.OnAssetRemoved().AddUObject(this, &UPjcSubsystem::OnAssetRemovedEvent);
+	AssetRenamedHandle = Registry.OnAssetRenamed().AddUObject(this, &UPjcSubsystem::OnAssetRenamedEvent);
+#if ENGINE_MAJOR_VERSION >= 5
+	const auto OnSaved = [this](const FString& Filename, UPackage* Package, FObjectPostSaveContext) {
+		OnPackageSavedEvent(Filename, Package);
+	};
+	PackageSavedHandle = UPackage::PackageSavedWithContextEvent.AddWeakLambda(this, OnSaved);
+#else
+	PackageSavedHandle = UPackage::PackageSavedEvent.AddUObject(this, &UPjcSubsystem::OnPackageSavedEvent);
+#endif
 }
 
 int32 UPjcSubsystem::MoveExclusionsToProject() {
@@ -227,7 +242,55 @@ int32 UPjcSubsystem::MoveFileExclusionsToProject() {
 }
 
 void UPjcSubsystem::Deinitialize() {
+	if (FModuleManager::Get().IsModuleLoaded(TEXT("AssetRegistry"))) {
+		IAssetRegistry& Registry = GetModuleAssetRegistry().Get();
+		Registry.OnAssetAdded().Remove(AssetAddedHandle);
+		Registry.OnAssetRemoved().Remove(AssetRemovedHandle);
+		Registry.OnAssetRenamed().Remove(AssetRenamedHandle);
+	}
+#if ENGINE_MAJOR_VERSION >= 5
+	UPackage::PackageSavedWithContextEvent.Remove(PackageSavedHandle);
+#else
+	UPackage::PackageSavedEvent.Remove(PackageSavedHandle);
+#endif
+
 	Super::Deinitialize();
+}
+
+const FPjcProjectChanges& UPjcSubsystem::GetChangesSinceScan() {
+	return ProjectChanges;
+}
+
+bool UPjcSubsystem::IsProjectChange(const FName Package) {
+	// before the first scan and while the registry discovers assets nothing is compared yet
+	if (!LastScan.IsValid() || GetModuleAssetRegistry().Get().IsLoadingAssets()) return false;
+
+	return PathIsInsideProject(Package.ToString());
+}
+
+void UPjcSubsystem::OnAssetAddedEvent(const FAssetData& Asset) {
+	if (IsProjectChange(Asset.PackageName)) {
+		ProjectChanges.Add(ProjectChanges.NumAdded, Asset.PackageName);
+	}
+}
+
+void UPjcSubsystem::OnAssetRemovedEvent(const FAssetData& Asset) {
+	if (IsProjectChange(Asset.PackageName)) {
+		ProjectChanges.Add(ProjectChanges.NumRemoved, Asset.PackageName);
+	}
+}
+
+void UPjcSubsystem::OnAssetRenamedEvent(const FAssetData& Asset, const FString& OldObjectPath) {
+	if (IsProjectChange(Asset.PackageName)) {
+		ProjectChanges.Add(ProjectChanges.NumRenamed, Asset.PackageName);
+	}
+}
+
+void UPjcSubsystem::OnPackageSavedEvent(const FString& Filename, UObject* Package) {
+	const FName PackageName = Package ? Package->GetOutermost()->GetFName() : NAME_None;
+	if (!PackageName.IsNone() && IsProjectChange(PackageName)) {
+		ProjectChanges.Add(ProjectChanges.NumSaved, PackageName);
+	}
 }
 
 #if WITH_EDITOR
@@ -504,6 +567,7 @@ bool UPjcSubsystem::Scan(const bool bShowSlowTask) {
 	Result.Time = FDateTime::UtcNow();
 	Result.Seconds = FPlatformTime::Seconds() - StartTime;
 	LastScan = MoveTemp(Result);
+	ProjectChanges = FPjcProjectChanges {};
 
 	ScanFinished.Broadcast();
 	return true;

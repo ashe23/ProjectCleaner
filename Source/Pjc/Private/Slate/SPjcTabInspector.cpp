@@ -177,10 +177,6 @@ void SPjcTabInspector::Construct(const FArguments& InArgs) {
 	// clang-format on
 
 	OnScanFinished();
-
-	if (!UPjcSubsystem::GetScanResult().IsValid() && GetDefault<UPjcEditorSettings>()->bScanOnOpen) {
-		SPjcScanBar::ScanProject();
-	}
 }
 
 SPjcTabInspector::~SPjcTabInspector() {
