@@ -375,6 +375,17 @@ namespace PjcShim
 #endif
 	}
 
+	UClass* FindClass(const FString& Name) {
+		if (Name.Contains(TEXT("/"))) {
+			return FSoftClassPath {Name}.ResolveClass();
+		}
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1
+		return FindFirstObject<UClass>(*Name, EFindFirstObjectOptions::None);
+#else
+		return FindObject<UClass>(ANY_PACKAGE, *Name);
+#endif
+	}
+
 	bool IsCookRuleAlways(const EPrimaryAssetCookRule CookRule) {
 		const bool bAlways = CookRule == EPrimaryAssetCookRule::AlwaysCook || CookRule == EPrimaryAssetCookRule::DevelopmentAlwaysCook;
 #if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 2

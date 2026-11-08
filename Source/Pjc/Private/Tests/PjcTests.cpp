@@ -7,6 +7,7 @@
 #include "PjcInspector.h"
 #include "PjcIssues.h"
 #include "PjcClean.h"
+#include "Slate/SPjcScanSettings.h"
 #include "PjcCookInfo.h"
 #include "PjcOverview.h"
 #include "PjcScanDraft.h"
@@ -706,6 +707,21 @@ bool FPjcTestScanResult::RunTest(const FString& Parameters) {
 	TestTrue(TEXT("changed package listed"), bRecent);
 	TestTrue(TEXT("scanned again"), UPjcSubsystem::Scan(false));
 	TestEqual(TEXT("no change after the new scan"), UPjcSubsystem::GetChangesSinceScan().Num(), 0);
+
+	// what the Scan settings pickers offer
+	TArray<FPjcPickerItem> Picked;
+	SPjcScanSettings::GetPickerItems(FName {TEXT("ExcludedClasses")}, Picked);
+	const FPjcPickerItem* CurveClass = Picked.FindByPredicate([](const FPjcPickerItem& Item) {
+		return Item.Value == UCurveFloat::StaticClass()->GetPathName();
+	});
+	TestTrue(TEXT("picker classes with their assets"), CurveClass && CurveClass->Sort > 0 && CurveClass->Label == TEXT("CurveFloat"));
+	SPjcScanSettings::GetPickerItems(FName {TEXT("ExcludedFolders")}, Picked);
+	const bool bFolder = Picked.ContainsByPredicate([](const FPjcPickerItem& Item) {
+		return Item.Value == FPjcTestFixture::RootPath() / TEXT("Unused");
+	});
+	TestTrue(TEXT("picker folders"), bFolder);
+	SPjcScanSettings::GetPickerItems(FName {TEXT("ExcludedAssets")}, Picked);
+	TestEqual(TEXT("picker assets"), Picked.Num(), UPjcSubsystem::GetScanResult().Assets.Num());
 
 	// a window follows the scan step by step; a cancel keeps the last result
 	TSet<int32> StepsFound;

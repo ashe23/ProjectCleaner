@@ -77,6 +77,8 @@ namespace PjcShim
 	FString GetObjectPathString(const FAssetData& InAssetData);
 
 	bool IsAssetManagerValid();
+	// Class by its name (Texture2D) or path, null when there is none
+	UClass* FindClass(const FString& Name);
 	// Cook rules UAssetManager::ModifyCook cooks by: Always Cook and the Development Always rules
 	bool IsCookRuleAlways(const EPrimaryAssetCookRule CookRule);
 	// Packages of the assets in an asset bundle

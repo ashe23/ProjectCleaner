@@ -15,6 +15,7 @@
 #include "Widgets/Input/SCheckBox.h"
 #include "Widgets/Input/SEditableTextBox.h"
 #include "Widgets/Input/SHyperlink.h"
+#include "Widgets/Input/SMenuAnchor.h"
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/Layout/SExpandableArea.h"
@@ -475,20 +476,81 @@ TSharedRef<SWidget> SPjcScanSettings::MakeListRows(
 	const TArray<FString>& Items = FPjcScanDraft::Get().*List;
 	const TSharedRef<SVerticalBox> Rows = SNew(SVerticalBox);
 
+	// + opens the picker, floating over the rows below (above them when there is no room)
+	const bool bTypedIsPath = Id == FName {TEXT("ExcludedFolders")} || Id == FName {TEXT("ExcludedAssets")};
+	const bool bTypedAllowed = Id != FName {TEXT("IgnoredPlugins")};
+	const int32 MaxBeforeTyping = Id == FName {TEXT("ExcludedAssets")} ? 20 : 0;
+	const auto MakePicker = [this, Id, List, Placeholder, bTypedIsPath, bTypedAllowed, MaxBeforeTyping]() -> TSharedRef<SWidget> {
+		TArray<FPjcPickerItem> PickerItems;
+		GetPickerItems(Id, PickerItems);
+		// clang-format off
+		const TSharedRef<SPjcListPicker> NewPicker = SNew(SPjcListPicker)
+			.Items(PickerItems)
+			.Added(FPjcScanDraft::Get().*List)
+			.Hint(Placeholder)
+			.Query(PickerQuery)
+			.MaxBeforeTyping(MaxBeforeTyping)
+			.bAllowTyped(bTypedAllowed)
+			.bTypedIsPath(bTypedIsPath)
+			.OnPicked_Lambda([this, List](const FString& Value) {
+				// a class name typed by hand is stored as its path
+				const bool bClassList = List == &FPjcScanDraft::UsedClasses || List == &FPjcScanDraft::ExcludedClasses;
+				const UClass* TypedClass = bClassList && !Value.Contains(TEXT("/")) ? PjcShim::FindClass(Value) : nullptr;
+				const TSharedPtr<SPjcListPicker> Open = Picker.Pin();
+				PickerQuery = Open.IsValid() ? Open->GetQuery() : FString {};
+				(FPjcScanDraft::Get().*List).AddUnique(TypedClass ? TypedClass->GetPathName() : Value);
+				FPjcScanDraft::NotifyEdited();
+			})
+			.OnClose_Lambda([this]() {
+				AddingList = NAME_None;
+				PickerQuery.Reset();
+				RequestRebuild();
+			});
+		// clang-format on
+		Picker = NewPicker;
+		return NewPicker;
+	};
+	TSharedPtr<SMenuAnchor> Anchor;
 	// clang-format off
-	const TSharedRef<SWidget> Add = SNew(SButton)
-		.ButtonStyle(&PjcShim::GetStyle().GetWidgetStyle<FButtonStyle>(TEXT("NoBorder")))
-		.ContentPadding(FMargin {4.0f, 0.0f})
-		.ToolTipText(FText::FromString(TEXT("Add")))
-		.OnClicked_Lambda([this, Id]() {
-			AddingList = AddingList == Id ? NAME_None : Id;
-			RequestRebuild();
-			return FReply::Handled();
+	SAssignNew(Anchor, SMenuAnchor)
+		.Placement(MenuPlacement_BelowAnchor)
+		.OnGetMenuContent_Lambda(MakePicker)
+		.OnMenuOpenChanged_Lambda([this, Id](const bool bOpen) {
+			if (!bOpen && AddingList == Id && !bRebuildPending) {
+				AddingList = NAME_None;
+				PickerQuery.Reset();
+			}
 		})
 		[
-			SNew(STextBlock).Text(FText::FromString(TEXT("+"))).Font(FPjcStyles::GetFont("Bold", 11))
+			SNew(SButton)
+			.ButtonStyle(&PjcShim::GetStyle().GetWidgetStyle<FButtonStyle>(TEXT("NoBorder")))
+			.ContentPadding(FMargin {4.0f, 0.0f})
+			.ToolTipText(FText::FromString(TEXT("Add")))
+			.OnClicked_Lambda([this, Id]() {
+				const bool bOpen = AddingList != Id;
+				AddingList = bOpen ? Id : NAME_None;
+				PickerQuery.Reset();
+				RequestRebuild();
+				return FReply::Handled();
+			})
+			[
+				SNew(STextBlock).Text(FText::FromString(TEXT("+"))).Font(FPjcStyles::GetFont("Bold", 11))
+			]
 		];
-
+	// clang-format on
+	const TSharedRef<SWidget> Add = Anchor.ToSharedRef();
+	if (AddingList == Id) {
+		// open once the rebuilt panel is shown
+		const TWeakPtr<SMenuAnchor> WeakAnchor = Anchor;
+		const auto OpenPicker = [WeakAnchor](double, float) {
+			if (const TSharedPtr<SMenuAnchor> Pinned = WeakAnchor.Pin()) {
+				Pinned->SetIsOpen(true);
+			}
+			return EActiveTimerReturnType::Stop;
+		};
+		RegisterActiveTimer(0.0f, FWidgetActiveTimerDelegate::CreateLambda(OpenPicker));
+	}
+	// clang-format off
 	Rows->AddSlot().AutoHeight()
 	[
 		MakeRow(
@@ -541,31 +603,102 @@ TSharedRef<SWidget> SPjcScanSettings::MakeListRows(
 		// clang-format on
 	}
 
-	if (AddingList == Id) {
-		TSharedPtr<SEditableTextBox> Input;
+	// a list of two or more can be emptied at once (Undo and Defaults still work)
+	if (Items.Num() >= 2) {
+		const FString Entries = PjcFormat::Count(Items.Num());
+		const FString ClearTip = FString::Printf(TEXT("Removes all %s entries of %s. Other settings stay. Undo brings them back."), *Entries, *Label);
 		// clang-format off
-		Rows->AddSlot().AutoHeight().Padding(FMargin {14.0f + Indent, 2.0f, 6.0f, 4.0f})
+		Rows->AddSlot().AutoHeight().HAlign(HAlign_Left).Padding(FMargin {14.0f + Indent, 1.0f, 6.0f, 2.0f})
 		[
-			SAssignNew(Input, SEditableTextBox)
-			.HintText(FText::FromString(Placeholder))
-			.OnTextCommitted_Lambda([this, List](const FText& Text, const ETextCommit::Type CommitType) {
-				const FString Value = Text.ToString().TrimStartAndEnd();
-				if (CommitType == ETextCommit::OnEnter && !Value.IsEmpty()) {
-					(FPjcScanDraft::Get().*List).AddUnique(Value);
-					FPjcScanDraft::NotifyEdited();
-				}
-				else if (Value.IsEmpty() || CommitType == ETextCommit::OnCleared) {
-					AddingList = NAME_None;
-				}
-				else {
-					return;
-				}
-				RequestRebuild();
+			SNew(SHyperlink)
+			.Text(FText::FromString(TEXT("Clear all")))
+			.ToolTipText(FText::FromString(ClearTip))
+			.OnNavigate_Lambda([List]() {
+				(FPjcScanDraft::Get().*List).Reset();
+				FPjcScanDraft::NotifyEdited();
 			})
 		];
 		// clang-format on
-		FSlateApplication::Get().SetKeyboardFocus(Input, EFocusCause::SetDirectly);
 	}
 
 	return Rows;
+}
+
+void SPjcScanSettings::GetPickerItems(const FName Id, TArray<FPjcPickerItem>& OutItems) {
+	OutItems.Reset();
+	const FPjcScanResult& Result = UPjcSubsystem::GetScanResult();
+
+	// project plugins with content, with their assets
+	if (Id == FName {TEXT("IgnoredPlugins")}) {
+		for (const auto& Plugin : IPluginManager::Get().GetEnabledPluginsWithContent()) {
+			if (Plugin->GetLoadedFrom() != EPluginLoadedFrom::Project) continue;
+
+			TArray<FAssetData> PluginAssets;
+			UPjcSubsystem::GetModuleAssetRegistry().Get().GetAssetsByPath(FName {*(TEXT("/") + Plugin->GetName())}, PluginAssets, true);
+			FPjcPickerItem& Item = OutItems.AddDefaulted_GetRef();
+			Item.Value = Plugin->GetName();
+			Item.Meta = PjcFormat::Count(PluginAssets.Num()) + TEXT(" assets");
+			Item.Sort = PluginAssets.Num();
+		}
+		return;
+	}
+
+	// classes with assets in the project, most assets first
+	if (Id == FName {TEXT("UsedClasses")} || Id == FName {TEXT("ExcludedClasses")}) {
+		TMap<FName, TPair<FString, int32>> Classes;
+		for (const auto& Asset : Result.Assets) {
+			const FName ClassName = PjcShim::GetAssetClassName(Asset);
+			TPair<FString, int32>* Found = Classes.Find(ClassName);
+			if (!Found) {
+				const UClass* AssetClass = Asset.GetClass();
+				Found = &Classes.Add(ClassName, TPair<FString, int32> {AssetClass ? AssetClass->GetPathName() : ClassName.ToString(), 0});
+			}
+			++Found->Value;
+		}
+		for (const auto& Pair : Classes) {
+			FPjcPickerItem& Item = OutItems.AddDefaulted_GetRef();
+			Item.Value = Pair.Value.Key;
+			Item.Label = FSoftObjectPath {Pair.Value.Key}.GetAssetName();
+			Item.Meta = PjcFormat::Count(Pair.Value.Value) + TEXT(" assets");
+			Item.Sort = Pair.Value.Value;
+		}
+		OutItems.Sort([](const FPjcPickerItem& A, const FPjcPickerItem& B) {
+			return A.Sort > B.Sort;
+		});
+		return;
+	}
+
+	// every folder with its assets, by path
+	if (Id == FName {TEXT("ExcludedFolders")}) {
+		TMap<FString, int32> Folders;
+		for (const auto& Asset : Result.Assets) {
+			FString Path = Asset.PackagePath.ToString();
+			while (!Path.IsEmpty()) {
+				++Folders.FindOrAdd(Path);
+				int32 Slash = INDEX_NONE;
+				if (!Path.FindLastChar(TEXT('/'), Slash) || Slash == 0) break;
+				Path.LeftInline(Slash);
+			}
+		}
+		Folders.KeySort([](const FString& A, const FString& B) {
+			return A < B;
+		});
+		for (const auto& Pair : Folders) {
+			FPjcPickerItem& Item = OutItems.AddDefaulted_GetRef();
+			Item.Value = Pair.Key;
+			Item.Meta = PjcFormat::Count(Pair.Value) + TEXT(" assets");
+			Item.Sort = Pair.Value;
+		}
+		return;
+	}
+
+	// assets by name, with their class and size
+	for (const auto& Asset : Result.Assets) {
+		const int64 Size = Result.GetSize(Asset.PackageName);
+		FPjcPickerItem& Item = OutItems.AddDefaulted_GetRef();
+		Item.Value = PjcShim::GetObjectPathString(Asset);
+		Item.Label = Asset.AssetName.ToString();
+		Item.Meta = FString::Printf(TEXT("%s \u00B7 %s"), *PjcWidgets::GetAssetType(Asset).Label, *PjcFormat::Size(Size));
+		Item.Sort = Size;
+	}
 }

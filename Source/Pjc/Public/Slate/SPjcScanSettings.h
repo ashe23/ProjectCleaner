@@ -6,6 +6,7 @@
 #include "PjcScanDraft.h"
 #include "PjcTypes.h"
 #include "Widgets/SCompoundWidget.h"
+#include "Slate/SPjcListPicker.h"
 
 class SBox;
 class SToolTip;
@@ -24,6 +25,10 @@ class SPjcScanSettings final : public SCompoundWidget
 
 	void Construct(const FArguments& InArgs);
 	virtual ~SPjcScanSettings() override;
+
+	// What a list can hold (IgnoredPlugins, UsedClasses, ExcludedClasses, ExcludedFolders, ExcludedAssets), from the
+	// last scan and the plugin manager, with what each item is
+	static void GetPickerItems(const FName Id, TArray<FPjcPickerItem>& OutItems);
 
   private:
 
@@ -64,8 +69,10 @@ class SPjcScanSettings final : public SCompoundWidget
 
 	bool bRebuildPending = false;
 
-	// List whose text field is open
+	// List whose picker is open, and its search text: the picker opens again after the panel is rebuilt
 	FName AddingList;
+	FString PickerQuery;
+	TWeakPtr<class SPjcListPicker> Picker;
 
 	// numbers from the last scan
 	TMap<EPjcUsageReason, int32> NumRoots;
