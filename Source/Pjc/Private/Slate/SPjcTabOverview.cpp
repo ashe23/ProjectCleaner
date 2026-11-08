@@ -123,6 +123,73 @@ void SPjcTabOverview::ShowFolder(const FString Path) const {
 	PjcTabs::ShowFolder(TabManager, Path);
 }
 
+TSharedRef<SWidget> SPjcTabOverview::MakeNumberColumn(
+	const FString& Label,
+	const TOptional<FLinearColor>& Swatch,
+	const int32 Num,
+	const FString& Sub,
+	const FSlateColor& NumColor,
+	const FString& ToolTip,
+	const TSharedRef<SWidget>& Extra
+) {
+	const TSharedRef<SHorizontalBox> Head = SNew(SHorizontalBox);
+	if (Swatch.IsSet()) {
+		// clang-format off
+		Head->AddSlot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 6.0f, 0.0f})
+		[
+			PjcWidgets::MakeSwatch(Swatch.GetValue())
+		];
+		// clang-format on
+	}
+	// clang-format off
+	Head->AddSlot().FillWidth(1.0f).VAlign(VAlign_Center)
+	[
+		SNew(STextBlock).Text(FText::FromString(Label)).ColorAndOpacity(FSlateColor::UseSubduedForeground())
+	];
+	Head->AddSlot().AutoWidth().VAlign(VAlign_Center)
+	[
+		Extra
+	];
+
+	return SNew(SBox).Padding(FMargin {16.0f, 11.0f, 16.0f, 10.0f}).ToolTip(PjcWidgets::MakeToolTip(Label, ToolTip))
+		[
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot().AutoHeight()
+			[
+				Head
+			]
+			+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {0.0f, 2.0f, 0.0f, 1.0f})
+			[
+				SNew(STextBlock).Text(FText::FromString(PjcFormat::Count(Num))).Font(PjcWidgets::GetFontMono(18)).ColorAndOpacity(NumColor)
+			]
+			+ SVerticalBox::Slot().AutoHeight()
+			[
+				SNew(STextBlock).Text(FText::FromString(Sub)).ColorAndOpacity(FSlateColor::UseSubduedForeground())
+			]
+		];
+	// clang-format on
+}
+
+void SPjcTabOverview::AddNumberColumn(const TSharedRef<SHorizontalBox>& Columns, const TSharedRef<SWidget>& Column) {
+	if (Columns->NumSlots() > 0) {
+		// clang-format off
+		Columns->AddSlot().AutoWidth()
+		[
+			SNew(SBox).WidthOverride(1.0f)
+			[
+				SNew(SImage).Image(FCoreStyle::Get().GetBrush("WhiteBrush")).ColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.Line"))
+			]
+		];
+		// clang-format on
+	}
+	// clang-format off
+	Columns->AddSlot().FillWidth(1.0f)
+	[
+		Column
+	];
+	// clang-format on
+}
+
 TSharedRef<SWidget> SPjcTabOverview::MakeSummary() {
 	const FPjcOverview::FTotal& All = Overview.All;
 	const FLinearColor ColorUsed = PjcWidgets::GetColor("ProjectCleaner.Color.UsedFill");
@@ -132,52 +199,6 @@ TSharedRef<SWidget> SPjcTabOverview::MakeSummary() {
 
 	const auto Share = [&All](const FPjcOverview::FTotal& Total) {
 		return FString::Printf(TEXT("%s \u00B7 %s"), *PjcFormat::Size(Total.Size), *PjcFormat::Percent(Total.Size, All.Size));
-	};
-
-	// one column per number: label (with its bar color), count, size
-	const auto Column = [](const FString& Label,
-						   const TOptional<FLinearColor>& Swatch,
-						   const int32 Num,
-						   const FString& Sub,
-						   const FSlateColor& NumColor,
-						   const FString& ToolTip,
-						   const TSharedRef<SWidget>& Extra) {
-		const TSharedRef<SHorizontalBox> Head = SNew(SHorizontalBox);
-		if (Swatch.IsSet()) {
-			// clang-format off
-			Head->AddSlot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 6.0f, 0.0f})
-			[
-				PjcWidgets::MakeSwatch(Swatch.GetValue())
-			];
-			// clang-format on
-		}
-		// clang-format off
-		Head->AddSlot().FillWidth(1.0f).VAlign(VAlign_Center)
-		[
-			SNew(STextBlock).Text(FText::FromString(Label)).ColorAndOpacity(FSlateColor::UseSubduedForeground())
-		];
-		Head->AddSlot().AutoWidth().VAlign(VAlign_Center)
-		[
-			Extra
-		];
-
-		return SNew(SBox).Padding(FMargin {16.0f, 11.0f, 16.0f, 10.0f}).ToolTip(PjcWidgets::MakeToolTip(Label, ToolTip))
-			[
-				SNew(SVerticalBox)
-				+ SVerticalBox::Slot().AutoHeight()
-				[
-					Head
-				]
-				+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {0.0f, 2.0f, 0.0f, 1.0f})
-				[
-					SNew(STextBlock).Text(FText::FromString(PjcFormat::Count(Num))).Font(PjcWidgets::GetFontMono(18)).ColorAndOpacity(NumColor)
-				]
-				+ SVerticalBox::Slot().AutoHeight()
-				[
-					SNew(STextBlock).Text(FText::FromString(Sub)).ColorAndOpacity(FSlateColor::UseSubduedForeground())
-				]
-			];
-		// clang-format on
 	};
 
 	// clang-format off
@@ -198,24 +219,9 @@ TSharedRef<SWidget> SPjcTabOverview::MakeSummary() {
 
 	const TSharedRef<SHorizontalBox> Columns = SNew(SHorizontalBox);
 	const auto AddColumn = [&Columns](const TSharedRef<SWidget>& Widget) {
-		if (Columns->NumSlots() > 0) {
-			// clang-format off
-			Columns->AddSlot().AutoWidth()
-			[
-				SNew(SBox).WidthOverride(1.0f)
-				[
-					SNew(SImage).Image(FCoreStyle::Get().GetBrush("WhiteBrush")).ColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.Line"))
-				]
-			];
-			// clang-format on
-		}
-		// clang-format off
-		Columns->AddSlot().FillWidth(1.0f)
-		[
-			Widget
-		];
-		// clang-format on
+		AddNumberColumn(Columns, Widget);
 	};
+	const auto Column = &SPjcTabOverview::MakeNumberColumn;
 	const FSlateColor PlainColor = FSlateColor::UseForeground();
 	const TSharedRef<SWidget> NoLink = SNullWidget::NullWidget;
 	const FSlateColor UnusedNumColor = Overview.Unused.Num > 0 ? FSlateColor {PjcWidgets::GetColor("ProjectCleaner.Color.Red")} : PlainColor;
@@ -272,8 +278,9 @@ TSharedRef<SWidget> SPjcTabOverview::MakeIssues() {
 	struct FIssue
 	{
 		FString Title;
-		FString Lower;
 		int32 Num;
+		// what to do with them, under the number
+		FString What;
 		FString ToolTip;
 		// Issues category, -1 for the assets the last delete kept
 		int32 Category;
@@ -282,6 +289,7 @@ TSharedRef<SWidget> SPjcTabOverview::MakeIssues() {
 	const FString KeptText = PjcFormat::Count(Result.FilesExternalKept.Num());
 	const FString ExternalKept = FString::Printf(TEXT(" %s more are kept: used by the project, or excluded in settings."), *KeptText);
 	const FString ExternalTip = TEXT("Files in content folders the engine does not use") + ExternalExample + TEXT(".") + ExternalKept;
+	const FString ExternalWhat = TEXT("to review \u00B7 ") + KeptText + TEXT(" kept");
 	const int32 NumKept = UPjcSubsystem::GetLastCleanupKept().Num();
 	// clang-format off
 	const TCHAR* RedirectorsTip = TEXT("Left by renamed or moved assets. ")
@@ -291,95 +299,40 @@ TSharedRef<SWidget> SPjcTabOverview::MakeIssues() {
 	const TCHAR* NotDeletedTip = TEXT("Unused assets the last cleanup could not delete, because something holds them.");
 	const auto ToIndex = [](const EPjcIssueCategory Value) { return static_cast<int32>(Value); };
 	const TArray<FIssue> Issues {
-		{TEXT("Redirectors"), TEXT("redirectors"), Result.Redirectors.Num(), RedirectorsTip, ToIndex(EPjcIssueCategory::Redirectors)},
-		{TEXT("External files"), TEXT("external files"), Result.FilesExternal.Num(), ExternalTip, ToIndex(EPjcIssueCategory::External)},
-		{TEXT("Corrupted files"), TEXT("corrupted files"), Result.FilesCorrupted.Num(), CorruptedTip, ToIndex(EPjcIssueCategory::Corrupted)},
-		{TEXT("Empty folders"), TEXT("empty folders"), Result.FoldersEmpty.Num(), EmptyTip, ToIndex(EPjcIssueCategory::Empty)},
-		{TEXT("Not deleted"), TEXT("assets left by the last cleanup"), NumKept, NotDeletedTip, -1},
+		{TEXT("Redirectors"), Result.Redirectors.Num(), TEXT("to fix"), RedirectorsTip, ToIndex(EPjcIssueCategory::Redirectors)},
+		{TEXT("External files"), Result.FilesExternal.Num(), ExternalWhat, ExternalTip, ToIndex(EPjcIssueCategory::External)},
+		{TEXT("Corrupted files"), Result.FilesCorrupted.Num(), TEXT("to delete"), CorruptedTip, ToIndex(EPjcIssueCategory::Corrupted)},
+		{TEXT("Empty folders"), Result.FoldersEmpty.Num(), TEXT("to delete"), EmptyTip, ToIndex(EPjcIssueCategory::Empty)},
+		{TEXT("Not deleted"), NumKept, TEXT("held in memory"), NotDeletedTip, -1},
 	};
 	// clang-format on
 
-	const FLinearColor ColorWarn = PjcWidgets::GetColor("ProjectCleaner.Color.Yellow");
-	const TSharedRef<SWrapBox> Row = SNew(SWrapBox).UseAllottedSize(true).InnerSlotPadding(FVector2D {8.0f, 8.0f});
-	TArray<FString> None;
-	TArray<FString> NoneLines;
+	// one number per issue: muted with none at 0, Show when there is something
+	const FSlateColor WarnColor {PjcWidgets::GetColor("ProjectCleaner.Color.Yellow")};
+	const FSlateColor MutedColor = FSlateColor::UseSubduedForeground();
+	const TSharedRef<SHorizontalBox> Columns = SNew(SHorizontalBox);
 	for (const auto& Issue : Issues) {
-		if (Issue.Num == 0) {
-			None.Add(Issue.Lower);
-			NoneLines.Add(Issue.Title + TEXT(": none"));
-			continue;
-		}
-
 		const int32 IssueCategory = Issue.Category;
 		// clang-format off
-		Row->AddSlot()
-		[
-			PjcWidgets::MakeCard(
-				SNew(SHorizontalBox)
-				.ToolTip(PjcWidgets::MakeToolTip(Issue.Title, Issue.ToolTip))
-				+ SHorizontalBox::Slot().AutoWidth()
-				[
-					SNew(SBox).WidthOverride(3.0f)
-					[
-						SNew(SImage).Image(FCoreStyle::Get().GetBrush("WhiteBrush")).ColorAndOpacity(ColorWarn)
-					]
-				]
-				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {10.0f, 4.0f, 8.0f, 4.0f})
-				[
-					SNew(STextBlock).Text(FText::FromString(PjcFormat::Count(Issue.Num))).Font(PjcWidgets::GetFontMono(11)).ColorAndOpacity(ColorWarn)
-				]
-				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
-				[
-					SNew(STextBlock).Text(FText::FromString(Issue.Title))
-				]
-				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {10.0f, 3.0f, 6.0f, 3.0f})
-				[
-					SNew(SButton)
-					.ContentPadding(FMargin {8.0f, 0.0f})
-					.OnClicked_Lambda([this, IssueCategory]() {
-						// Not deleted: the kept assets in Assets Unused
-						if (IssueCategory < 0) {
-							PjcTabs::ShowNotDeleted(TabManager);
-						}
-						else {
-							PjcTabs::ShowIssues(TabManager, static_cast<uint8>(IssueCategory));
-						}
-						return FReply::Handled();
-					})
-					[
-						SNew(STextBlock).Text(FText::FromString(TEXT("Review")))
-					]
-				],
-				FMargin {1.0f}
-			)
-		];
+		const TSharedRef<SWidget> Show = Issue.Num == 0 ? SNullWidget::NullWidget : StaticCastSharedRef<SWidget>(
+			SNew(SHyperlink)
+			.Text(FText::FromString(TEXT("Show \u203A")))
+			.OnNavigate_Lambda([this, IssueCategory]() {
+				// Not deleted: the kept assets in Assets
+				if (IssueCategory < 0) {
+					PjcTabs::ShowNotDeleted(TabManager);
+				}
+				else {
+					PjcTabs::ShowIssues(TabManager, static_cast<uint8>(IssueCategory));
+				}
+			}));
 		// clang-format on
+		const FString Sub = Issue.Num > 0 ? Issue.What : TEXT("none");
+		const FSlateColor NumColor = Issue.Num > 0 ? WarnColor : MutedColor;
+		AddNumberColumn(Columns, MakeNumberColumn(Issue.Title, {}, Issue.Num, Sub, NumColor, Issue.ToolTip, Show));
 	}
 
-	if (None.Num() > 0) {
-		FString Clear = TEXT("No issues found");
-		if (None.Num() < Issues.Num()) {
-			const FString Last = None.Pop();
-			Clear = TEXT("No ") + (None.Num() > 0 ? FString::Join(None, TEXT(", ")) + TEXT(" or ") : FString {}) + Last;
-		}
-
-		// clang-format off
-		Row->AddSlot().VAlign(VAlign_Center)
-		[
-			SNew(SHorizontalBox).ToolTip(PjcWidgets::MakeToolTip(TEXT("No issues"), FString::Join(NoneLines, TEXT("\n"))))
-			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {2.0f, 0.0f, 6.0f, 0.0f})
-			[
-				SNew(STextBlock).Text(FText::FromString(TEXT("\u2713"))).ColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.Ok"))
-			]
-			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
-			[
-				SNew(STextBlock).Text(FText::FromString(Clear)).ColorAndOpacity(FSlateColor::UseSubduedForeground())
-			]
-		];
-		// clang-format on
-	}
-
-	return Row;
+	return PjcWidgets::MakeCard(Columns, FMargin {1.0f});
 }
 
 TSharedRef<SWidget> SPjcTabOverview::MakeReasons() const {

@@ -10,6 +10,8 @@
 
 class FTabManager;
 class SBox;
+class SHorizontalBox;
+struct FSlateColor;
 class SToolTip;
 
 // Overview tool: what the shared scan found for the whole project
@@ -46,6 +48,18 @@ class SPjcTabOverview final : public SCompoundWidget
 	TSharedRef<SWidget> MakeLargestUnused();
 	TSharedRef<SWidget> MakeShippedCard() const;
 
+	// One number of a number card: label (with its color), count, the line under it, a link right of the label
+	static TSharedRef<SWidget> MakeNumberColumn(
+		const FString& Label,
+		const TOptional<FLinearColor>& Swatch,
+		const int32 Num,
+		const FString& Sub,
+		const FSlateColor& NumColor,
+		const FString& ToolTip,
+		const TSharedRef<SWidget>& Extra
+	);
+	// Adds a number to a number card, a line between numbers
+	static void AddNumberColumn(const TSharedRef<SHorizontalBox>& Columns, const TSharedRef<SWidget>& Column);
 	// Card with a title, a hint on the right and its rows
 	static TSharedRef<SWidget> MakeSection(const FString& Title, const FString& Hint, const TSharedRef<SWidget>& Content);
 	// Two cards side by side, as high as the higher one
