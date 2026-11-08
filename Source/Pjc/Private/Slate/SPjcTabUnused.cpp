@@ -18,6 +18,7 @@
 #include "IContentBrowserSingleton.h"
 #include "Framework/Application/SlateApplication.h"
 #include "Framework/MultiBox/MultiBoxBuilder.h"
+#include "Input/DragAndDrop.h"
 #include "Misc/ConfigCacheIni.h"
 #include "Misc/Paths.h"
 #include "Styling/CoreStyle.h"
@@ -189,6 +190,113 @@ namespace
 	const FName PjcUnusedColAssetSize {TEXT("AssetSize")};
 	const FName PjcUnusedColPath {TEXT("Path")};
 
+	// A column header being dragged to another place
+	class FPjcColumnDrag final : public FDragDropOperation
+	{
+	  public:
+
+		DRAG_DROP_OPERATOR_TYPE(FPjcColumnDrag, FDragDropOperation)
+
+		FName Column;
+		FString Label;
+
+		static TSharedRef<FPjcColumnDrag> New(const FName InColumn, const FString& InLabel) {
+			const TSharedRef<FPjcColumnDrag> Operation = MakeShared<FPjcColumnDrag>();
+			Operation->Column = InColumn;
+			Operation->Label = InLabel;
+			Operation->Construct();
+			return Operation;
+		}
+
+		virtual TSharedPtr<SWidget> GetDefaultDecorator() const override {
+			// clang-format off
+			return SNew(SBorder).BorderImage(PjcShim::GetBrush(TEXT("Menu.Background"))).Padding(FMargin {8.0f, 3.0f})
+				[
+					SNew(STextBlock).Text(FText::FromString(Label))
+				];
+			// clang-format on
+		}
+	};
+
+	DECLARE_DELEGATE_TwoParams(FPjcOnColumnMoved, const FName /* Column */, const FName /* Before */);
+
+	// Header label: a click sorts, a drag onto another header moves the column there
+	class SPjcColumnLabel final : public SCompoundWidget
+	{
+	  public:
+
+		SLATE_BEGIN_ARGS(SPjcColumnLabel) {}
+		SLATE_ARGUMENT(FName, Column)
+		SLATE_ARGUMENT(FString, Label)
+		SLATE_ARGUMENT(EHorizontalAlignment, HAlign)
+		SLATE_EVENT(FPjcOnColumnMoved, OnMoved)
+		SLATE_EVENT(FSimpleDelegate, OnClicked)
+		SLATE_END_ARGS()
+
+		void Construct(const FArguments& InArgs) {
+			Column = InArgs._Column;
+			Label = InArgs._Label;
+			OnMoved = InArgs._OnMoved;
+			OnClicked = InArgs._OnClicked;
+			// clang-format off
+			ChildSlot
+			.HAlign(InArgs._HAlign)
+			[
+				SNew(SBorder)
+				.BorderImage(FCoreStyle::Get().GetBrush("WhiteBrush"))
+				.BorderBackgroundColor_Lambda([this]() { return bDropTarget ? FLinearColor {1.0f, 1.0f, 1.0f, 0.12f} : FLinearColor::Transparent; })
+				.Padding(FMargin {0.0f})
+				[
+					SNew(STextBlock).Text(FText::FromString(Label))
+				]
+			];
+			// clang-format on
+		}
+
+		virtual FReply OnMouseButtonDown(const FGeometry& Geometry, const FPointerEvent& Event) override {
+			if (Event.GetEffectingButton() != EKeys::LeftMouseButton) return FReply::Unhandled();
+
+			return FReply::Handled().DetectDrag(SharedThis(this), EKeys::LeftMouseButton);
+		}
+
+		virtual FReply OnMouseButtonUp(const FGeometry& Geometry, const FPointerEvent& Event) override {
+			if (Event.GetEffectingButton() != EKeys::LeftMouseButton) return FReply::Unhandled();
+
+			OnClicked.ExecuteIfBound();
+			return FReply::Handled();
+		}
+
+		virtual FReply OnDragDetected(const FGeometry& Geometry, const FPointerEvent& Event) override {
+			return FReply::Handled().BeginDragDrop(FPjcColumnDrag::New(Column, Label));
+		}
+
+		virtual void OnDragEnter(const FGeometry& Geometry, const FDragDropEvent& Event) override {
+			const TSharedPtr<FPjcColumnDrag> Drag = Event.GetOperationAs<FPjcColumnDrag>();
+			bDropTarget = Drag.IsValid() && Drag->Column != Column;
+		}
+
+		virtual void OnDragLeave(const FDragDropEvent& Event) override {
+			bDropTarget = false;
+		}
+
+		virtual FReply OnDrop(const FGeometry& Geometry, const FDragDropEvent& Event) override {
+			bDropTarget = false;
+			const TSharedPtr<FPjcColumnDrag> Drag = Event.GetOperationAs<FPjcColumnDrag>();
+			if (!Drag.IsValid() || Drag->Column == Column) return FReply::Unhandled();
+
+			OnMoved.ExecuteIfBound(Drag->Column, Column);
+			return FReply::Handled();
+		}
+
+	  private:
+
+		FName Column;
+		FString Label;
+		FPjcOnColumnMoved OnMoved;
+		FSimpleDelegate OnClicked;
+		bool bDropTarget = false;
+	};
+
 	// Asset row: type color and icon, name with tags, reason, class, size, folder
 	class SPjcUnusedAssetRow final : public SMultiColumnTableRow<TSharedPtr<FPjcUnusedAssetRow>>
 	{
@@ -345,6 +453,24 @@ void SPjcTabUnused::Construct(const FArguments& InArgs) {
 		}
 		if (GConfig->GetBool(PjcUnusedSection, TEXT("AssetSortDescending"), bSortDescending, GEditorPerProjectIni)) {
 			AssetSortMode = bSortDescending ? EColumnSortMode::Descending : EColumnSortMode::Ascending;
+		}
+	}
+
+	// the saved column order, when it still has every column once
+	ColumnOrder = GetDefaultColumns();
+	FString Columns;
+	if (GConfig && GConfig->GetString(PjcUnusedSection, TEXT("Columns"), Columns, GEditorPerProjectIni)) {
+		TArray<FString> Parts;
+		Columns.ParseIntoArray(Parts, TEXT(","));
+		TArray<FName> Saved;
+		for (const auto& Part : Parts) {
+			Saved.AddUnique(FName {*Part});
+		}
+		const bool bComplete = Saved.Num() == ColumnOrder.Num() && !ColumnOrder.ContainsByPredicate([&Saved](const FName Column) {
+			return !Saved.Contains(Column);
+		});
+		if (bComplete) {
+			ColumnOrder = Saved;
 		}
 	}
 
@@ -887,6 +1013,12 @@ TSharedRef<SWidget> SPjcTabUnused::MakeViewMenu() {
 							  SetExpansionRecursive(Root, true);
 						  }
 					  })});
+	PjcWidgets::AddMenuEntry(Menu, TEXT("Reset columns"), TEXT("Puts the asset list columns back in their first order"), [this]() {
+		ColumnOrder = GetDefaultColumns();
+		SaveViewState();
+		RebuildHeader();
+	});
+	Menu.AddSeparator();
 	Menu.AddMenuEntry(FText::FromString(TEXT("Collapse all")), FText::GetEmpty(), FSlateIcon {}, FUIAction {FExecuteAction::CreateLambda([this]() {
 						  for (const auto& Root : TreeRoots) {
 							  SetExpansionRecursive(Root, false);
@@ -897,41 +1029,14 @@ TSharedRef<SWidget> SPjcTabUnused::MakeViewMenu() {
 }
 
 TSharedRef<SWidget> SPjcTabUnused::MakeAssetPane() {
-	// clang-format off
-	const TSharedRef<SHeaderRow> Header = SNew(SHeaderRow)
-		+ SHeaderRow::Column(PjcUnusedColName)
-		.DefaultLabel(FText::FromString(TEXT("Name")))
-		.FillWidth(1.0f)
-		.SortMode(this, &SPjcTabUnused::GetAssetSortMode, PjcUnusedColName)
-		.OnSort(this, &SPjcTabUnused::OnAssetSort)
-		+ SHeaderRow::Column(PjcUnusedColReason)
-		.DefaultLabel(FText::FromString(TEXT("Reason")))
-		.DefaultTooltip(FText::FromString(TEXT("Why it is in the list")))
-		.FillWidth(0.8f)
-		.SortMode(this, &SPjcTabUnused::GetAssetSortMode, PjcUnusedColReason)
-		.OnSort(this, &SPjcTabUnused::OnAssetSort)
-		+ SHeaderRow::Column(PjcUnusedColClass)
-		.DefaultLabel(FText::FromString(TEXT("Class")))
-		.FixedWidth(150.0f)
-		.SortMode(this, &SPjcTabUnused::GetAssetSortMode, PjcUnusedColClass)
-		.OnSort(this, &SPjcTabUnused::OnAssetSort)
-		+ SHeaderRow::Column(PjcUnusedColAssetSize)
-		.DefaultLabel(FText::FromString(TEXT("Size")))
-		.FixedWidth(84.0f)
-		.HAlignHeader(HAlign_Right)
-		.SortMode(this, &SPjcTabUnused::GetAssetSortMode, PjcUnusedColAssetSize)
-		.OnSort(this, &SPjcTabUnused::OnAssetSort)
-		+ SHeaderRow::Column(PjcUnusedColPath)
-		.DefaultLabel(FText::FromString(TEXT("Folder")))
-		.DefaultTooltip(FText::FromString(TEXT("Subfolder of the selected folder")))
-		.FillWidth(0.5f)
-		.SortMode(this, &SPjcTabUnused::GetAssetSortMode, PjcUnusedColPath)
-		.OnSort(this, &SPjcTabUnused::OnAssetSort);
+	SAssignNew(AssetHeader, SHeaderRow);
+	RebuildHeader();
 
+	// clang-format off
 	SAssignNew(ListView, SListView<FAssetRowPtr>)
 	.ListItemsSource(&ListRows)
 	.SelectionMode(ESelectionMode::Multi)
-	.HeaderRow(Header)
+	.HeaderRow(AssetHeader)
 	.OnGenerateRow(this, &SPjcTabUnused::OnGenerateAssetRow)
 	.OnContextMenuOpening(this, &SPjcTabUnused::OnAssetContextMenu)
 	.OnSelectionChanged(this, &SPjcTabUnused::OnAssetSelectionChanged)
@@ -1360,6 +1465,68 @@ void SPjcTabUnused::OnChipClicked(const FName ClassName) {
 	ApplyAssetFilter();
 }
 
+TArray<FName> SPjcTabUnused::GetDefaultColumns() {
+	return {PjcUnusedColName, PjcUnusedColReason, PjcUnusedColClass, PjcUnusedColAssetSize, PjcUnusedColPath};
+}
+
+void SPjcTabUnused::RebuildHeader() {
+	AssetHeader->ClearColumns();
+	for (const FName Column : ColumnOrder) {
+		FString Label = TEXT("Name");
+		FString ToolTip;
+		Label = Column == PjcUnusedColReason ? TEXT("Reason") : Label;
+		Label = Column == PjcUnusedColClass ? TEXT("Class") : Label;
+		Label = Column == PjcUnusedColAssetSize ? TEXT("Size") : Label;
+		Label = Column == PjcUnusedColPath ? TEXT("Folder") : Label;
+		ToolTip = Column == PjcUnusedColReason ? TEXT("Why it is in the list") : ToolTip;
+		ToolTip = Column == PjcUnusedColPath ? TEXT("Subfolder of the selected folder") : ToolTip;
+		const bool bSize = Column == PjcUnusedColAssetSize;
+
+		// clang-format off
+		SHeaderRow::FColumn::FArguments Args = SHeaderRow::Column(Column)
+			.DefaultTooltip(FText::FromString(ToolTip + (ToolTip.IsEmpty() ? TEXT("") : TEXT("\n")) + TEXT("Drag onto another header to move it")))
+			.SortMode(this, &SPjcTabUnused::GetAssetSortMode, Column)
+			.OnSort(this, &SPjcTabUnused::OnAssetSort)
+			.HAlignHeader(bSize ? HAlign_Right : HAlign_Fill)
+			[
+				SNew(SPjcColumnLabel)
+				.Column(Column)
+				.Label(Label)
+				.HAlign(bSize ? HAlign_Right : HAlign_Left)
+				.OnMoved(this, &SPjcTabUnused::MoveColumn)
+				.OnClicked_Lambda([this, Column]() { SortByColumn(Column); })
+			];
+		// clang-format on
+		if (Column == PjcUnusedColClass) {
+			Args.FixedWidth(150.0f);
+		}
+		else if (bSize) {
+			Args.FixedWidth(84.0f);
+		}
+		else {
+			Args.FillWidth(Column == PjcUnusedColName ? 1.0f : (Column == PjcUnusedColReason ? 0.8f : 0.5f));
+		}
+		AssetHeader->AddColumn(Args);
+	}
+	if (ListView.IsValid()) {
+		ListView->RebuildList();
+	}
+}
+
+void SPjcTabUnused::MoveColumn(const FName Column, const FName Before) {
+	ColumnOrder.Remove(Column);
+	ColumnOrder.Insert(Column, FMath::Max(0, ColumnOrder.IndexOfByKey(Before)));
+	SaveViewState();
+	RebuildHeader();
+}
+
+void SPjcTabUnused::SortByColumn(const FName Column) {
+	// same column again: the other way round
+	const bool bSame = Column == AssetSortColumn;
+	const EColumnSortMode::Type Flipped = AssetSortMode == EColumnSortMode::Ascending ? EColumnSortMode::Descending : EColumnSortMode::Ascending;
+	OnAssetSort(EColumnSortPriority::Primary, Column, bSame ? Flipped : EColumnSortMode::Ascending);
+}
+
 void SPjcTabUnused::OnReasonChipClicked(const FString& Key) {
 	ReasonFilter = ReasonFilter == Key ? FString {} : Key;
 	ApplyAssetFilter();
@@ -1393,6 +1560,11 @@ void SPjcTabUnused::SaveViewState() const {
 	GConfig->SetBool(PjcUnusedSection, TEXT("SizeMapAll"), bMapAll, GEditorPerProjectIni);
 	GConfig->SetString(PjcUnusedSection, TEXT("AssetSort"), *AssetSortColumn.ToString(), GEditorPerProjectIni);
 	GConfig->SetBool(PjcUnusedSection, TEXT("AssetSortDescending"), AssetSortMode == EColumnSortMode::Descending, GEditorPerProjectIni);
+	TArray<FString> Columns;
+	for (const FName Column : ColumnOrder) {
+		Columns.Add(Column.ToString());
+	}
+	GConfig->SetString(PjcUnusedSection, TEXT("Columns"), *FString::Join(Columns, TEXT(",")), GEditorPerProjectIni);
 }
 
 TSharedPtr<SWidget> SPjcTabUnused::OnAssetContextMenu() {

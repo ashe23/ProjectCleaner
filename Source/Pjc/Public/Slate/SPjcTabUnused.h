@@ -124,6 +124,12 @@ class SPjcTabUnused final : public SCompoundWidget
 	void OnReasonChipClicked(const FString& Key);
 	FText GetWhereText() const;
 	FText GetEmptyText() const;
+
+	// asset list columns: headers can be dragged onto another to move there, the order is saved per user
+	void RebuildHeader();
+	void MoveColumn(const FName Column, const FName Before);
+	void SortByColumn(const FName Column);
+	static TArray<FName> GetDefaultColumns();
 	TSharedPtr<SWidget> OnAssetContextMenu();
 	FReply OnAssetKeyDown(const FGeometry& Geometry, const FKeyEvent& KeyEvent);
 
@@ -192,4 +198,6 @@ class SPjcTabUnused final : public SCompoundWidget
 	FString AssetSearch;
 	FName AssetSortColumn = TEXT("Size");
 	EColumnSortMode::Type AssetSortMode = EColumnSortMode::Descending;
+	TArray<FName> ColumnOrder;
+	TSharedPtr<SHeaderRow> AssetHeader;
 };
