@@ -352,6 +352,10 @@ TSharedRef<SWidget> SPjcTabInspector::MakeFinder() {
 				]
 				+ SWrapBox::Slot()
 				[
+					Status(EStatusFilter::Review, TEXT("Review"), TEXT("The scan is not sure about it. Cleanup keeps it."))
+				]
+				+ SWrapBox::Slot()
+				[
 					Status(EStatusFilter::Unused, TEXT("Unused"), TEXT("Nothing used references it. Cleanup deletes it."))
 				]
 			]
@@ -407,6 +411,7 @@ void SPjcTabInspector::ApplyFinderFilter() {
 	for (const FRowPtr& Row : FinderAll) {
 		if (FinderStatus == EStatusFilter::Used && Row->Status != EPjcAssetStatus::Used) continue;
 		if (FinderStatus == EStatusFilter::EditorOnly && Row->Status != EPjcAssetStatus::EditorOnly) continue;
+		if (FinderStatus == EStatusFilter::Review && Row->Status != EPjcAssetStatus::Review) continue;
 		if (FinderStatus == EStatusFilter::Unused && Row->Status != EPjcAssetStatus::Unused) continue;
 		if (!FinderText.IsEmpty() && !Row->Name.Contains(FinderText) && !Row->Path.Contains(FinderText) && !Row->ClassLabel.Contains(FinderText))
 			continue;
@@ -952,6 +957,10 @@ TSharedRef<SWidget> SPjcTabInspector::MakeFacts() {
 			Add(TEXT("Shipping"),
 				PjcInspectorText(TEXT("Not shipped: only the editor uses it. Cleanup keeps it."), PjcInspectorHex(TEXT("#9FC3FF"))));
 		}
+		if (Result.GetStatus(Package) == EPjcAssetStatus::Review) {
+			const TCHAR* ReviewText = TEXT("The scan is not sure about it. Cleanup keeps it: delete or keep it.");
+			Add(TEXT("Review"), PjcInspectorText(ReviewText, PjcInspectorHex(TEXT("#E0B050"))));
+		}
 		return Facts;
 	}
 
@@ -993,7 +1002,8 @@ TSharedRef<SWidget> SPjcTabInspector::MakeActions() {
 		];
 		// clang-format on
 	}
-	if (bScanned && !Result.IsUsed(Package)) {
+	const bool bDeletable = !Result.IsUsed(Package) || Result.GetStatus(Package) == EPjcAssetStatus::Review;
+	if (bScanned && bDeletable) {
 		// clang-format off
 		Actions->AddSlot()
 		[

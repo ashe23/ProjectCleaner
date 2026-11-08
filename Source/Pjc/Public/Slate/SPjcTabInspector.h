@@ -70,6 +70,7 @@ class SPjcTabInspector final : public SCompoundWidget
 		All,
 		Used,
 		EditorOnly,
+		Review,
 		Unused,
 	};
 
