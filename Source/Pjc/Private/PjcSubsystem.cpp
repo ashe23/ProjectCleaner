@@ -2089,9 +2089,10 @@ bool UPjcSubsystem::DeleteAssets(
 		SlowTask.EnterProgressFrame(ProgressWork, FText::FromString(ProgressMsg));
 
 		if (Progress) {
-			Progress->NumTried = AssetsTried.Num();
+			// assets taken off the list, each once
+			Progress->NumTried = NumAssetsTotal - AssetsUnused.Num();
 			if (Progress->OnBatch) {
-				Progress->OnBatch(AssetsTried.Num(), NumAssetsTotal, Bucket.Last().AssetName.ToString());
+				Progress->OnBatch(Progress->NumTried, NumAssetsTotal, Bucket.Last().AssetName.ToString());
 			}
 			if (Progress->bStopRequested && AssetsUnused.Num() > 0) {
 				Progress->bStopped = true;
@@ -3547,9 +3548,11 @@ void UPjcSubsystem::BucketFill(
 			// only unused referencers go with it, a used one (e.g. folder label) must never be deleted
 			if (!PackagesUnused.Contains(Ref)) continue;
 
+			// and only those not tried yet: one a batch before could not delete is held in memory, trying it again in
+			// every later batch only costs time (and counted it twice)
 			const FString ObjectPath = Ref.ToString() + TEXT(".") + FPaths::GetBaseFilename(*Ref.ToString());
 			const FAssetData AssetData = PjcShim::GetAssetByObjectPath(ObjectPath);
-			if (AssetData.IsValid()) {
+			if (AssetData.IsValid() && AssetsUnused.Contains(AssetData)) {
 				if (!Bucket.Contains(AssetData)) {
 					Stack.Add(AssetData);
 				}

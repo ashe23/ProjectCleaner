@@ -18,6 +18,7 @@
 #include "PjcUnused.h"
 #include "AssetRegistry/AssetRegistryState.h"
 #include "Curves/CurveFloat.h"
+#include "Engine/ObjectLibrary.h"
 #include "Engine/AssetManager.h"
 #include "Framework/Application/SlateApplication.h"
 #include "Slate/SPjcTabIssues.h"
@@ -1122,8 +1123,29 @@ bool FPjcTestUnusedDelete::RunTest(const FString& Parameters) {
 	TestTrue(TEXT("plan folders and classes"), Plan.Folders.Num() > 0 && Plan.Classes.Num() > 0);
 	TestTrue(TEXT("unused folder left empty"), Plan.NumFoldersEmpty > Result.FoldersEmpty.Num());
 
-	// a window follows the delete batch by batch
+	// held in memory by a live object (the engine ignores an asset's own root flag): kept with its holder, what it
+	// uses stays (still referenced), each asset tried once
 	TestEqual(TEXT("assets to delete"), ToDelete.Num(), 2);
+	UObject* Held = FSoftObjectPath {Fixture.ObjectPath(TEXT("OL_UnusedRoot"))}.TryLoad();
+	UObjectLibrary* Holder = NewObject<UObjectLibrary>(GetTransientPackage());
+	if (TestNotNull(TEXT("held asset loaded"), Held)) {
+		Holder->AddToRoot();
+		TestTrue(TEXT("holder references the asset"), Holder->AddObject(Held));
+		int32 MaxTried = 0;
+		FPjcDeleteProgress HeldProgress;
+		HeldProgress.OnBatch = [&MaxTried](const int32 NumTried, const int32 NumTotal, const FString& Current) {
+			MaxTried = FMath::Max(MaxTried, NumTried);
+		};
+		UPjcSubsystem::DeleteAssets(ToDelete, false, false, &HeldProgress);
+		Holder->RemoveObject(Held);
+		Holder->RemoveFromRoot();
+		TestTrue(TEXT("held asset kept"), UPjcSubsystem::GetLastCleanupKept().Contains(LeafRoot));
+		TestTrue(TEXT("held asset file stays"), FPackageName::DoesPackageExist(LeafRoot.ToString()));
+		TestTrue(TEXT("what it uses stays"), FPackageName::DoesPackageExist(Leaf.ToString()));
+		TestEqual(TEXT("each asset tried once"), MaxTried, ToDelete.Num());
+	}
+
+	// a window follows the delete batch by batch
 	int32 NumBatches = 0;
 	FPjcDeleteProgress Progress;
 	Progress.OnBatch = [&NumBatches](const int32 NumTried, const int32 NumTotal, const FString& Current) {
