@@ -2165,7 +2165,8 @@ bool UPjcSubsystem::DeleteAssets(
 	for (const UObject* Asset : AssetsRemaining) {
 		const FString* Holder = Holders.Find(Asset->GetPathName());
 		const FString HeldBy = Holder ? *Holder : GetKeptReason(Asset->GetOutermost()->GetFName());
-		UE_LOG(LogProjectCleaner, Warning, TEXT("Not deleted: %s (%s)"), *Asset->GetPathName(), *HeldBy);
+		// the line CI scripts and polygon read: keep its start as it is
+		UE_LOG(LogProjectCleaner, Warning, TEXT("Not deleted, still referenced: %s (%s)"), *Asset->GetPathName(), *HeldBy);
 		LastCleanupKept.Add(Asset->GetOutermost()->GetFName(), HeldBy);
 	}
 	int32 NumAssetsRemaining = 0;

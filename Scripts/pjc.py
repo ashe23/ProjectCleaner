@@ -877,6 +877,20 @@ def editor_args(host, extra):
     ]
 
 
+# The engine itself can die while it starts, before any plugin code runs: UE 5.6 and 5.7 derived data cache setup with
+# several editors starting at once (DerivedDataBackends.cpp line 208). Such a run says nothing about the plugin and
+# changed nothing: it runs once more, the first log is kept next to the new one
+ENGINE_START_FAILURE = r"Fatal error: \[File:[^\]]*DerivedDataBackends\.cpp\]"
+
+
+def run_editor_logged(cmd, log, **kwargs):
+    code = run_logged(cmd, log, **kwargs)
+    if code != 0 and os.path.isfile(log) and log_lines(log, ENGINE_START_FAILURE, 1):
+        os.replace(log, log[: -len(".log")] + "_engine_start_failure.log")
+        code = run_logged(cmd, log, **kwargs)
+    return code
+
+
 def run_automation(host, test_filter, tag, extra=()):
     report_dir = os.path.join(host.logs_dir, "report_" + tag)
     remove_tree(report_dir)
@@ -891,7 +905,7 @@ def run_automation(host, test_filter, tag, extra=()):
         + list(extra),
     )
     log = host.log(tag)
-    code = run_logged(cmd, log, timeout=2400, engine=host.engine)
+    code = run_editor_logged(cmd, log, timeout=2400, engine=host.engine)
 
     index = os.path.join(report_dir, "index.json")
     if not os.path.isfile(index):
@@ -1028,7 +1042,7 @@ def print_coverage(hosts):
 def run_commandlet(host, switches, tag):
     cmd = editor_args(host, ["-run=Pjc"] + switches)
     log = host.log(tag)
-    code = run_logged(cmd, log, timeout=1800, engine=host.engine)
+    code = run_editor_logged(cmd, log, timeout=1800, engine=host.engine)
     return code, log
 
 
@@ -1489,7 +1503,7 @@ def polygon_write_settings(p, overrides):
 
 def polygon_editor(p, extra, log, timeout=1800, extra_env=None):
     cmd = [p.engine.editor_cmd, p.uproject] + extra + ["-unattended", "-nopause", "-nosplash", "-nullrhi", "-NoSound", "-stdout", "-FullStdOutLogOutput"]
-    return run_logged(cmd, log, timeout=timeout, engine=p.engine, extra_env=extra_env)
+    return run_editor_logged(cmd, log, timeout=timeout, engine=p.engine, extra_env=extra_env)
 
 
 def polygon_snapshot(p):
