@@ -1022,6 +1022,56 @@ bool FPjcTestCookShipped::RunTest(const FString& Parameters) {
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPjcTestCookAll, "ProjectCleaner.Cook.All", PJC_TEST_FLAGS)
+
+bool FPjcTestCookAll::RunTest(const FString& Parameters) {
+	if (!FPjcTestFixture::IsTestHost()) {
+		AddInfo(TEXT("Skipped, writes a cook into Saved/Cooked, runs only in test host projects"));
+		return true;
+	}
+
+	FPjcScopedScanSettings ScopedSettings {false};
+	FPjcTestFixture Fixture;
+	if (!Fixture.Build(*this)) return false;
+	if (!TestTrue(TEXT("scanned"), UPjcSubsystem::Scan(false))) return false;
+
+	const TArray<FAssetData> Assets = UPjcSubsystem::GetScanResult().Assets;
+	const int32 NumUnused = UPjcSubsystem::GetScanResult().Unused.Num();
+	TestTrue(TEXT("enough unused assets to tell"), NumUnused >= 10);
+
+	// a cook of everything: unused assets too
+	const FString PlatformDir = FPjcCookInfo::GetCookedDir() / TEXT("PjcTestCookAll");
+	const FString RegistryFile = PlatformDir / FApp::GetProjectName() / TEXT("Metadata") / TEXT("DevelopmentAssetRegistry.bin");
+	const bool bCookedDirExisted = IFileManager::Get().DirectoryExists(*FPjcCookInfo::GetCookedDir());
+	ON_SCOPE_EXIT {
+		IFileManager::Get().DeleteDirectory(*(bCookedDirExisted ? PlatformDir : FPjcCookInfo::GetCookedDir()), false, true);
+	};
+	{
+		FAssetRegistryState State;
+		for (const auto& Asset : Assets) {
+			State.CreateOrGetAssetPackageData(Asset.PackageName)->DiskSize = 100;
+		}
+		FAssetRegistrySerializationOptions Options;
+		Options.bSerializeAssetRegistry = true;
+		Options.bSerializePackageData = true;
+		TArray<uint8> Bytes;
+		FMemoryWriter Writer {Bytes};
+		State.Serialize(Writer, Options);
+		TestTrue(TEXT("cook written"), FFileHelper::SaveArrayToFile(Bytes, *RegistryFile));
+	}
+
+	// it says nothing about them: not in Review, and not counted as checked
+	if (!TestTrue(TEXT("scanned with the cook"), UPjcSubsystem::Scan(false))) return false;
+	const FPjcScanResult& Checked = UPjcSubsystem::GetScanResult();
+	TestTrue(TEXT("cook of everything found"), Checked.CookCheck.IsCookAll());
+	TestEqual(TEXT("its platform"), Checked.CookCheck.PlatformsCookAll, TArray<FString> {TEXT("PjcTestCookAll")});
+	TestEqual(TEXT("nothing moved to review"), Checked.CookCheck.NumPackaged, 0);
+	TestEqual(TEXT("unused stay unused"), Checked.Unused.Num(), NumUnused);
+	TestEqual(TEXT("not counted as checked"), Checked.CookCheck.NumChecked, 0);
+	TestEqual(TEXT("not counted as not checked"), Checked.CookCheck.NumNotChecked, 0);
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPjcTestUnusedDelete, "ProjectCleaner.Unused.Delete", PJC_TEST_FLAGS)
 
 bool FPjcTestUnusedDelete::RunTest(const FString& Parameters) {

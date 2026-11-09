@@ -41,6 +41,9 @@ void SPjcListPicker::Construct(const FArguments& InArgs) {
 				+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {0.0f, 0.0f, 0.0f, 4.0f})
 				[
 					SAssignNew(Search, SEditableTextBox)
+#if ENGINE_MAJOR_VERSION < 5
+					.Style(&PjcShim::GetTextBoxStyle427())
+#endif
 					.Text(FText::FromString(Query))
 					.HintText(FText::FromString(InArgs._Hint))
 					.OnTextChanged_Lambda([this](const FText& Text) {
@@ -157,6 +160,9 @@ TSharedRef<ITableRow> SPjcListPicker::OnGenerateRow(FItemPtr Item, const TShared
 	const FSlateColor NameColor = bAdded ? FSlateColor::UseSubduedForeground() : FSlateColor::UseForeground();
 	// clang-format off
 	return SNew(STableRow<FItemPtr>, Table)
+#if ENGINE_MAJOR_VERSION < 5
+		.Style(&PjcShim::GetRowStyle427())
+#endif
 		.Padding(FMargin {4.0f, 2.0f})
 		.ToolTipText(FText::FromString(Item->Value))
 		[

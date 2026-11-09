@@ -27,6 +27,10 @@ void SPjcScanBar::Construct(const FArguments& InArgs) {
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 			[
 				SNew(SButton)
+#if ENGINE_MAJOR_VERSION < 5
+				.ButtonStyle(&PjcShim::GetButtonStyle427(false))
+				.ForegroundColor(FSlateColor::UseForeground())
+#endif
 				.ContentPadding(FMargin {12.0f, 2.0f})
 				.ToolTipText(FText::FromString(TEXT("Scans the project again")))
 				.Visibility(this, &SPjcScanBar::GetScanVisibility)
@@ -38,6 +42,9 @@ void SPjcScanBar::Construct(const FArguments& InArgs) {
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 			[
 				SNew(SButton)
+#if ENGINE_MAJOR_VERSION < 5
+				.ForegroundColor(FSlateColor::UseForeground())
+#endif
 				.ButtonStyle(&PjcShim::GetPrimaryButtonStyle())
 				.ContentPadding(FMargin {12.0f, 2.0f})
 				.ToolTipText_Lambda([]() {
@@ -60,6 +67,9 @@ void SPjcScanBar::Construct(const FArguments& InArgs) {
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 			[
 				SNew(SButton)
+#if ENGINE_MAJOR_VERSION < 5
+				.ForegroundColor(FSlateColor::UseForeground())
+#endif
 				.ButtonStyle(&PjcShim::GetDangerButtonStyle())
 				.ContentPadding(FMargin {12.0f, 2.0f})
 				.ToolTipText(this, &SPjcScanBar::GetCleanToolTip)

@@ -15,6 +15,11 @@ struct FARFilter;
 struct FAssetBundleEntry;
 enum class EPrimaryAssetCookRule : uint8;
 struct FButtonStyle;
+struct FCheckBoxStyle;
+struct FEditableTextBoxStyle;
+struct FProgressBarStyle;
+struct FSearchBoxStyle;
+struct FTableRowStyle;
 
 #if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1
 #include "Styling/AppStyle.h"
@@ -36,9 +41,20 @@ namespace PjcShim
 	const FSlateBrush* GetIconSettings();
 	// Background of a card in the Overview
 	const FSlateBrush* GetBrushCard();
+	// Background of a tool page, behind its panels
+	const FSlateBrush* GetBrushPage();
 	const FButtonStyle& GetPrimaryButtonStyle();
 	// Red button for actions that delete (Clean project)
 	const FButtonStyle& GetDangerButtonStyle();
+	// On and off buttons (filter chips)
+	const FCheckBoxStyle& GetToggleStyle();
+#if ENGINE_MAJOR_VERSION < 5
+	const FButtonStyle& GetButtonStyle427(const bool bColored);
+	const FSearchBoxStyle& GetSearchBoxStyle427();
+	const FEditableTextBoxStyle& GetTextBoxStyle427();
+	const FTableRowStyle& GetRowStyle427();
+	const FProgressBarStyle& GetProgressStyle427();
+#endif
 
 	FName GetLevelEditorToolBarName(const EPjcToolbarLocation Location);
 	TSet<FName> GetCachedEmptyPackages();

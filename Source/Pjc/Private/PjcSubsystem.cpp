@@ -67,6 +67,7 @@ namespace
 		TOptional<TArray<FAssetData>> AssetsEngineReferenced;
 		TOptional<TArray<FAssetData>> AssetsFolderLabelOnly;
 		TOptional<TMap<FName, FPjcAssetUsage>> AssetsUsage;
+		TOptional<TArray<FString>> PlatformsCookAll;
 		TOptional<TArray<FString>> FoldersUsedByProject;
 		TOptional<TSet<FString>> SourceAndConfigWords;
 
@@ -80,6 +81,7 @@ namespace
 			AssetsEngineReferenced.Reset();
 			AssetsFolderLabelOnly.Reset();
 			AssetsUsage.Reset();
+			PlatformsCookAll.Reset();
 			FoldersUsedByProject.Reset();
 			SourceAndConfigWords.Reset();
 		}
@@ -587,11 +589,15 @@ bool UPjcSubsystem::Scan(const bool bShowSlowTask, FPjcScanProgress* Progress) {
 	}
 
 	// cook check: what the cooks saw of the unused assets
-	const TArray<const FPjcCookInfo*> Cooks = FPjcCookInfo::GetAll();
+	TArray<const FPjcCookInfo*> Cooks = FPjcCookInfo::GetAll();
 	for (const auto& Cook : Cooks) {
 		Result.CookCheck.Platforms.Add(Cook->Platform);
 	}
 	Result.CookCheck.Time = Cooks.Num() > 0 ? Cooks[0]->Time : FDateTime {0};
+	ScanCacheGet(ScanCache.PlatformsCookAll, Result.CookCheck.PlatformsCookAll);
+	Cooks.RemoveAll([&Result](const FPjcCookInfo* Cook) {
+		return Result.CookCheck.PlatformsCookAll.Contains(Cook->Platform);
+	});
 	for (const auto& Pair : Result.Usage) {
 		Result.CookCheck.NumPackaged += Pair.Value.Reason == EPjcUsageReason::CookPackaged ? 1 : 0;
 	}
@@ -632,7 +638,8 @@ bool UPjcSubsystem::Scan(const bool bShowSlowTask, FPjcScanProgress* Progress) {
 		PjcScanStep(EPjcScanStep::Cook);
 		const FString Packaged = PjcFormat::Count(Result.CookCheck.NumPackaged) + TEXT(" packaged \u00B7 in Review");
 		const FString Checked = PjcFormat::Count(Result.CookCheck.NumChecked) + TEXT(" unused the cook left out");
-		PjcScanFound(EPjcScanStep::Cook, Result.CookCheck.NumPackaged > 0 ? Packaged : Checked);
+		const TCHAR* CookAll = TEXT("cook took nearly all assets \u00B7 not compared");
+		PjcScanFound(EPjcScanStep::Cook, Result.CookCheck.IsCookAll() ? FString {CookAll} : (Result.CookCheck.NumPackaged > 0 ? Packaged : Checked));
 	}
 	if (IsCanceled()) return false;
 
@@ -703,6 +710,25 @@ FString UPjcSubsystem::GetUsageReasonText(const FPjcAssetUsage& Usage) {
 		case EPjcUsageReason::None :
 		default :									return TEXT("Nothing used references it");
 	}
+}
+
+// The cook took nearly every asset of the project, and nearly every asset nothing uses: the cooker was told to take
+// everything, or not told what to take. Such a cook says nothing about what the game needs. Few unused assets cannot show it
+static bool IsCookOfEverything(const FPjcCookInfo& Cook, const TArray<FAssetData>& Assets, const TMap<FName, FPjcAssetUsage>& Usage) {
+	if (!Cook.IsValid()) return false;
+
+	int32 NumCooked = 0;
+	int32 NumUnused = 0;
+	int32 NumUnusedCooked = 0;
+	for (const auto& Asset : Assets) {
+		const bool bCooked = Cook.Cooked.Contains(Asset.PackageName);
+		NumCooked += bCooked ? 1 : 0;
+		if (Usage.Contains(Asset.PackageName) || Cook.IsSavedSince(Asset.PackageName)) continue;
+
+		++NumUnused;
+		NumUnusedCooked += bCooked ? 1 : 0;
+	}
+	return NumUnused >= 10 && NumUnusedCooked * 10 >= NumUnused * 9 && NumCooked * 10 >= Assets.Num() * 9;
 }
 
 void UPjcSubsystem::ComputeAssetsUsed(
@@ -1122,7 +1148,16 @@ void UPjcSubsystem::ComputeAssetsUsed(
 
 	// unused assets the last cook of a platform packaged: the game may load them in a way the scan cannot follow, so
 	// they are kept for review with what they use. Assets saved since that cook are not checked
-	const TArray<const FPjcCookInfo*> Cooks = FPjcCookInfo::GetAll();
+	TArray<const FPjcCookInfo*> Cooks = FPjcCookInfo::GetAll();
+	TArray<FString> PlatformsCookAll;
+	Cooks.RemoveAll([&AssetsAll, &Usage, &PlatformsCookAll](const FPjcCookInfo* Cook) {
+		const bool bCookAll = IsCookOfEverything(*Cook, AssetsAll, Usage);
+		if (bCookAll) {
+			PlatformsCookAll.Add(Cook->Platform);
+		}
+		return bCookAll;
+	});
+	ScanCacheSet(ScanCache.PlatformsCookAll, PlatformsCookAll);
 	for (const auto& Asset : AssetsAll) {
 		if (Usage.Contains(Asset.PackageName) || Cooks.Num() == 0) continue;
 

@@ -89,6 +89,9 @@ namespace
 		return SNew(SBox).WidthOverride(250.0f)
 			[
 				SNew(SButton)
+#if ENGINE_MAJOR_VERSION < 5
+				.ForegroundColor(FSlateColor::UseForeground())
+#endif
 				.ButtonStyle(&ButtonStyle)
 				.ContentPadding(FMargin {0.0f})
 				.ToolTip(PjcWidgets::MakeToolTip(Link.Title, Link.Tip, Url))
@@ -180,6 +183,10 @@ void SPjcTabHelp::Construct(const FArguments& InArgs) {
 						+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Left).Padding(FMargin {0.0f, 10.0f, 0.0f, 0.0f})
 						[
 							SNew(SButton)
+#if ENGINE_MAJOR_VERSION < 5
+							.ButtonStyle(&PjcShim::GetButtonStyle427(false))
+							.ForegroundColor(FSlateColor::UseForeground())
+#endif
 							.ContentPadding(FMargin {12.0f, 2.0f})
 							.ToolTipText(FText::FromString(TEXT("Copies the lines above, to paste into a bug report")))
 							.OnClicked_Lambda([]() {
@@ -298,113 +305,136 @@ void SPjcReportWindow::Construct(const FArguments& InArgs) {
 	// clang-format off
 	ChildSlot
 	[
-		SNew(SVerticalBox)
-		+ SVerticalBox::Slot().FillHeight(1.0f).Padding(FMargin {16.0f, 12.0f})
+		SNew(SBorder).BorderImage(PjcShim::GetBrushPage()).Padding(0.0f)
 		[
 			SNew(SVerticalBox)
-			+ SVerticalBox::Slot().AutoHeight()
+			+ SVerticalBox::Slot().FillHeight(1.0f).Padding(FMargin {16.0f, 12.0f})
 			[
-				SNew(STextBlock).Text(FText::FromString(TEXT("Title")))
-			]
-			+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {0.0f, 2.0f, 0.0f, 8.0f})
-			[
-				SNew(SEditableTextBox)
-				.HintText(FText::FromString(TEXT("Short summary")))
-				.OnTextChanged_Lambda([this](const FText& Text) { Title = Text.ToString(); })
-			]
-			+ SVerticalBox::Slot().AutoHeight()
-			[
-				SNew(STextBlock).Text(FText::FromString(TEXT("What happened")))
-			]
-			+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {0.0f, 2.0f, 0.0f, 8.0f})
-			[
-				SNew(SBox).HeightOverride(64.0f)
+				SNew(SVerticalBox)
+				+ SVerticalBox::Slot().AutoHeight()
 				[
-					SNew(SMultiLineEditableTextBox)
-					.HintText(FText::FromString(TEXT("What you did, what you expected, what happened")))
-					.OnTextChanged_Lambda([this](const FText& Text) { WhatHappened = Text.ToString(); })
+					SNew(STextBlock).Text(FText::FromString(TEXT("Title")))
 				]
-			]
-			+ SVerticalBox::Slot().FillHeight(1.0f)
-			[
-				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin {0.0f, 0.0f, 14.0f, 0.0f})
+				+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {0.0f, 2.0f, 0.0f, 8.0f})
 				[
-					SNew(SBox).WidthOverride(240.0f)
-					[
-						Include
-					]
+					SNew(SEditableTextBox)
+#if ENGINE_MAJOR_VERSION < 5
+					.Style(&PjcShim::GetTextBoxStyle427())
+#endif
+					.HintText(FText::FromString(TEXT("Short summary")))
+					.OnTextChanged_Lambda([this](const FText& Text) { Title = Text.ToString(); })
 				]
-				+ SHorizontalBox::Slot().FillWidth(1.0f)
+				+ SVerticalBox::Slot().AutoHeight()
 				[
-					SNew(SVerticalBox)
-					+ SVerticalBox::Slot().AutoHeight()
-					[
-						SNew(STextBlock)
-						.Text_Lambda([this]() { return FText::FromString(FString::Printf(TEXT("Preview \u00B7 %s characters"), *PjcFormat::Count(MakeReport().Len()))); })
-						.ColorAndOpacity(FSlateColor::UseSubduedForeground())
-					]
-					+ SVerticalBox::Slot().FillHeight(1.0f).Padding(FMargin {0.0f, 2.0f})
+					SNew(STextBlock).Text(FText::FromString(TEXT("What happened")))
+				]
+				+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {0.0f, 2.0f, 0.0f, 8.0f})
+				[
+					SNew(SBox).HeightOverride(64.0f)
 					[
 						SNew(SMultiLineEditableTextBox)
-						.IsReadOnly(true)
-						.Font(PjcWidgets::GetFontMono(8))
-						.Text_Lambda([this]() { return FText::FromString(MakeReport()); })
+#if ENGINE_MAJOR_VERSION < 5
+						.Style(&PjcShim::GetTextBoxStyle427())
+#endif
+						.HintText(FText::FromString(TEXT("What you did, what you expected, what happened")))
+						.OnTextChanged_Lambda([this](const FText& Text) { WhatHappened = Text.ToString(); })
 					]
+				]
+				+ SVerticalBox::Slot().FillHeight(1.0f)
+				[
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin {0.0f, 0.0f, 14.0f, 0.0f})
+					[
+						SNew(SBox).WidthOverride(240.0f)
+						[
+							Include
+						]
+					]
+					+ SHorizontalBox::Slot().FillWidth(1.0f)
+					[
+						SNew(SVerticalBox)
+						+ SVerticalBox::Slot().AutoHeight()
+						[
+							SNew(STextBlock)
+							.Text_Lambda([this]() { return FText::FromString(FString::Printf(TEXT("Preview \u00B7 %s characters"), *PjcFormat::Count(MakeReport().Len()))); })
+							.ColorAndOpacity(FSlateColor::UseSubduedForeground())
+						]
+						+ SVerticalBox::Slot().FillHeight(1.0f).Padding(FMargin {0.0f, 2.0f})
+						[
+							SNew(SMultiLineEditableTextBox)
+#if ENGINE_MAJOR_VERSION < 5
+							.Style(&PjcShim::GetTextBoxStyle427())
+#endif
+							.IsReadOnly(true)
+							.Font(PjcWidgets::GetFontMono(8))
+							.Text_Lambda([this]() { return FText::FromString(MakeReport()); })
+						]
+					]
+				]
+				+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {0.0f, 8.0f, 0.0f, 0.0f})
+				[
+					SNew(STextBlock)
+					.Text(FText::FromString(TEXT("Project Cleaner sends nothing. You post the report yourself, and GitHub issues are public: check the preview first.")))
+					.ColorAndOpacity(FSlateColor::UseSubduedForeground())
+					.AutoWrapText(true)
 				]
 			]
-			+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {0.0f, 8.0f, 0.0f, 0.0f})
+			+ SVerticalBox::Slot().AutoHeight()
 			[
-				SNew(STextBlock)
-				.Text(FText::FromString(TEXT("Project Cleaner sends nothing. You post the report yourself, and GitHub issues are public: check the preview first.")))
-				.ColorAndOpacity(FSlateColor::UseSubduedForeground())
-				.AutoWrapText(true)
-			]
-		]
-		+ SVerticalBox::Slot().AutoHeight()
-		[
-			SNew(SBorder).BorderImage(PjcShim::GetBrush(TEXT("ToolPanel.DarkGroupBorder"))).Padding(FMargin {16.0f, 8.0f})
-			[
-				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot().AutoWidth()
+				SNew(SBorder).BorderImage(PjcShim::GetBrush(TEXT("ToolPanel.DarkGroupBorder"))).Padding(FMargin {16.0f, 8.0f})
 				[
-					SNew(SButton)
-					.ContentPadding(FMargin {12.0f, 2.0f})
-					.ToolTipText(FText::FromString(TEXT("Saves the report as a text file, to attach or send another way")))
-					.OnClicked_Lambda([this]() {
-						SaveAsFile();
-						return FReply::Handled();
-					})
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot().AutoWidth()
 					[
-						SNew(STextBlock).Text(FText::FromString(TEXT("Save as file\u2026")))
+						SNew(SButton)
+#if ENGINE_MAJOR_VERSION < 5
+						.ButtonStyle(&PjcShim::GetButtonStyle427(false))
+						.ForegroundColor(FSlateColor::UseForeground())
+#endif
+						.ContentPadding(FMargin {12.0f, 2.0f})
+						.ToolTipText(FText::FromString(TEXT("Saves the report as a text file, to attach or send another way")))
+						.OnClicked_Lambda([this]() {
+							SaveAsFile();
+							return FReply::Handled();
+						})
+						[
+							SNew(STextBlock).Text(FText::FromString(TEXT("Save as file\u2026")))
+						]
 					]
-				]
-				+ SHorizontalBox::Slot().FillWidth(1.0f)
-				+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin {8.0f, 0.0f, 0.0f, 0.0f})
-				[
-					SNew(SButton)
-					.ContentPadding(FMargin {12.0f, 2.0f})
-					.OnClicked_Lambda([this]() {
-						Close();
-						return FReply::Handled();
-					})
+					+ SHorizontalBox::Slot().FillWidth(1.0f)
+					+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin {8.0f, 0.0f, 0.0f, 0.0f})
 					[
-						SNew(STextBlock).Text(FText::FromString(TEXT("Cancel")))
+						SNew(SButton)
+#if ENGINE_MAJOR_VERSION < 5
+						.ButtonStyle(&PjcShim::GetButtonStyle427(false))
+						.ForegroundColor(FSlateColor::UseForeground())
+#endif
+						.ContentPadding(FMargin {12.0f, 2.0f})
+						.OnClicked_Lambda([this]() {
+							Close();
+							return FReply::Handled();
+						})
+						[
+							SNew(STextBlock).Text(FText::FromString(TEXT("Cancel")))
+						]
 					]
-				]
-				+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin {8.0f, 0.0f, 0.0f, 0.0f})
-				[
-					SNew(SButton)
-					.ButtonStyle(&PjcShim::GetPrimaryButtonStyle())
-					.ContentPadding(FMargin {12.0f, 2.0f})
-					.ToolTipText(FText::FromString(TEXT("Opens a new GitHub issue with this title and text. A long report is copied to the clipboard instead.")))
-					.OnClicked_Lambda([this]() {
-						OpenIssue();
-						Close();
-						return FReply::Handled();
-					})
+					+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin {8.0f, 0.0f, 0.0f, 0.0f})
 					[
-						SNew(STextBlock).Text(FText::FromString(TEXT("Open GitHub issue")))
+						SNew(SButton)
+#if ENGINE_MAJOR_VERSION < 5
+						.ForegroundColor(FSlateColor::UseForeground())
+#endif
+						.ButtonStyle(&PjcShim::GetPrimaryButtonStyle())
+						.ContentPadding(FMargin {12.0f, 2.0f})
+						.ToolTipText(FText::FromString(TEXT("Opens a new GitHub issue with this title and text. A long report is copied to the clipboard instead.")))
+						.OnClicked_Lambda([this]() {
+							OpenIssue();
+							Close();
+							return FReply::Handled();
+						})
+						[
+							SNew(STextBlock).Text(FText::FromString(TEXT("Open GitHub issue")))
+						]
 					]
 				]
 			]

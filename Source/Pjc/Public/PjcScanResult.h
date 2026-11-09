@@ -85,8 +85,17 @@ struct FPjcCookCheck
 	// Assets nothing the scan sees uses, but a cook packaged: Review (EPjcUsageReason::CookPackaged)
 	int32 NumPackaged = 0;
 
+	// Platforms of the cooks that took nearly every asset, unused ones too: they cannot tell what the game needs, so
+	// they are not compared with the unused assets
+	TArray<FString> PlatformsCookAll;
+
 	bool IsFound() const {
 		return Platforms.Num() > 0;
+	}
+
+	// Every cook read took nearly every asset: nothing was compared
+	bool IsCookAll() const {
+		return IsFound() && PlatformsCookAll.Num() == Platforms.Num();
 	}
 };
 

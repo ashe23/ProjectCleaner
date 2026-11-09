@@ -112,6 +112,86 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create() {
 	// clang-format on
 	Style->Set("ProjectCleaner.Button.Row", RowButton);
 
+#if ENGINE_MAJOR_VERSION < 5
+	// UE 4.27 widgets in the colors of the UE5 ones (PjcShim)
+	const auto Hex = [](const TCHAR* Value) {
+		return FSlateColorBrush {FLinearColor {FColor::FromHex(Value)}};
+	};
+	const FLinearColor Foreground {FColor::FromHex(TEXT("#C0C0C0"))};
+	Style->Set("ProjectCleaner.Page", new FSlateColorBrush {FLinearColor {FColor::FromHex(TEXT("#151515"))}});
+	Style->Set("ProjectCleaner.Panel", new FSlateColorBrush {FLinearColor {FColor::FromHex(TEXT("#242424"))}});
+	Style->Set("ProjectCleaner.PanelDark", new FSlateColorBrush {FLinearColor {FColor::FromHex(TEXT("#1A1A1A"))}});
+	Style->Set("ProjectCleaner.Header", new FSlateColorBrush {FLinearColor {FColor::FromHex(TEXT("#2F2F2F"))}});
+
+	const FMargin ButtonPadding {2.0f};
+	// clang-format off
+	Style->Set("ProjectCleaner.Button", FButtonStyle {}
+		.SetNormal(Hex(TEXT("#383838")))
+		.SetHovered(Hex(TEXT("#575757")))
+		.SetPressed(Hex(TEXT("#1F1F1F")))
+		.SetDisabled(Hex(TEXT("#2A2A2A")))
+		.SetNormalPadding(ButtonPadding)
+		.SetPressedPadding(ButtonPadding));
+	// drawn tinted (ButtonColorAndOpacity)
+	Style->Set("ProjectCleaner.Button.Colored", FButtonStyle {}
+		.SetNormal(FSlateColorBrush {FLinearColor {0.7f, 0.7f, 0.7f}})
+		.SetHovered(FSlateColorBrush {FLinearColor::White})
+		.SetPressed(FSlateColorBrush {FLinearColor {0.45f, 0.45f, 0.45f}})
+		.SetDisabled(FSlateColorBrush {FLinearColor {0.2f, 0.2f, 0.2f}})
+		.SetNormalPadding(ButtonPadding)
+		.SetPressedPadding(ButtonPadding));
+	Style->Set("ProjectCleaner.Button.Primary", FButtonStyle {}
+		.SetNormal(Hex(TEXT("#0070E0")))
+		.SetHovered(Hex(TEXT("#0E86FF")))
+		.SetPressed(Hex(TEXT("#0050A0")))
+		.SetDisabled(Hex(TEXT("#2C323A")))
+		.SetNormalPadding(ButtonPadding)
+		.SetPressedPadding(ButtonPadding));
+	Style->Set("ProjectCleaner.Button.Danger", FButtonStyle {}
+		.SetNormal(FSlateColorBrush {FLinearColor {0.70117f, 0.08464f, 0.07593f}})
+		.SetHovered(FSlateColorBrush {FLinearColor {0.85f, 0.14f, 0.13f}})
+		.SetPressed(FSlateColorBrush {FLinearColor {0.45f, 0.05f, 0.05f}})
+		.SetDisabled(Hex(TEXT("#3A2A2A")))
+		.SetNormalPadding(ButtonPadding)
+		.SetPressedPadding(ButtonPadding));
+	Style->Set("ProjectCleaner.Toggle", FCheckBoxStyle {}
+		.SetCheckBoxType(ESlateCheckBoxType::ToggleButton)
+		.SetUncheckedImage(Hex(TEXT("#383838")))
+		.SetUncheckedHoveredImage(Hex(TEXT("#575757")))
+		.SetUncheckedPressedImage(Hex(TEXT("#1F1F1F")))
+		.SetCheckedImage(Hex(TEXT("#0070E0")))
+		.SetCheckedHoveredImage(Hex(TEXT("#0E86FF")))
+		.SetCheckedPressedImage(Hex(TEXT("#0050A0"))));
+	Style->Set("ProjectCleaner.Row", FTableRowStyle {FCoreStyle::Get().GetWidgetStyle<FTableRowStyle>("TableView.Row")}
+		.SetActiveBrush(Hex(TEXT("#0070E0")))
+		.SetActiveHoveredBrush(Hex(TEXT("#0E86FF")))
+		.SetInactiveBrush(Hex(TEXT("#40576F")))
+		.SetInactiveHoveredBrush(Hex(TEXT("#40576F")))
+		.SetSelectedTextColor(FLinearColor::White));
+	Style->Set("ProjectCleaner.Progress", FProgressBarStyle {FCoreStyle::Get().GetWidgetStyle<FProgressBarStyle>("ProgressBar")}
+		.SetBackgroundImage(Hex(TEXT("#1A1A1A")))
+		.SetFillImage(Hex(TEXT("#0070E0"))));
+	// clang-format on
+
+	const auto MakeDarkBox = [&Hex, &Foreground](const FEditableTextBoxStyle& Base) {
+		// clang-format off
+		return FEditableTextBoxStyle {Base}
+			.SetBackgroundImageNormal(Hex(TEXT("#0F0F0F")))
+			.SetBackgroundImageHovered(Hex(TEXT("#0F0F0F")))
+			.SetBackgroundImageFocused(Hex(TEXT("#0F0F0F")))
+			.SetBackgroundImageReadOnly(Hex(TEXT("#1A1A1A")))
+			.SetForegroundColor(Foreground)
+			.SetReadOnlyForegroundColor(Foreground);
+		// clang-format on
+	};
+	Style->Set("ProjectCleaner.TextBox", MakeDarkBox(FCoreStyle::Get().GetWidgetStyle<FEditableTextBoxStyle>("NormalEditableTextBox")));
+	FSearchBoxStyle SearchBox = FCoreStyle::Get().GetWidgetStyle<FSearchBoxStyle>("SearchBox");
+	SearchBox.SetTextBoxStyle(MakeDarkBox(SearchBox.TextBoxStyle));
+	SearchBox.GlassImage.TintColor = FSlateColor {Foreground};
+	SearchBox.ClearImage.TintColor = FSlateColor {Foreground};
+	Style->Set("ProjectCleaner.SearchBox", SearchBox);
+#endif
+
 	return Style;
 }
 

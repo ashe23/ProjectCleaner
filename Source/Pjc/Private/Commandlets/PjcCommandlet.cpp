@@ -80,6 +80,7 @@ namespace
 		CookCheck->SetNumberField(TEXT("checked"), Check.NumChecked);
 		CookCheck->SetNumberField(TEXT("not_checked"), Check.NumNotChecked);
 		CookCheck->SetNumberField(TEXT("packaged"), Check.NumPackaged);
+		CookCheck->SetArrayField(TEXT("platforms_cook_all"), JsonStrings(Check.PlatformsCookAll));
 
 		const TSharedRef<FJsonObject> Reasons = MakeShared<FJsonObject>();
 		for (const auto& Pair : ChainReasons) {

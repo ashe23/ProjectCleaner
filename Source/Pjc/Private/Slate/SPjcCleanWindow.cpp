@@ -66,7 +66,10 @@ void SPjcCleanWindow::Construct(const FArguments& InArgs) {
 	// clang-format off
 	ChildSlot
 	[
-		SAssignNew(Body, SBox)
+		SNew(SBorder).BorderImage(PjcShim::GetBrushPage()).Padding(0.0f)
+		[
+			SAssignNew(Body, SBox)
+		]
 	];
 	// clang-format on
 	Rebuild();
@@ -297,6 +300,10 @@ TSharedRef<SWidget> SPjcCleanWindow::MakeConfirm() {
 		// clang-format off
 		return StaticCastSharedRef<SWidget>(
 			SNew(SButton)
+#if ENGINE_MAJOR_VERSION < 5
+			.ButtonStyle(&PjcShim::GetButtonStyle427(false))
+			.ForegroundColor(FSlateColor::UseForeground())
+#endif
 			.ContentPadding(FMargin {8.0f, 0.0f})
 			.OnClicked_Lambda([OnClick]() {
 				OnClick();
@@ -356,6 +363,9 @@ TSharedRef<SWidget> SPjcCleanWindow::MakeConfirm() {
 	const FPjcCookCheck& Cook = Result.CookCheck;
 	if (!Cook.IsFound()) {
 		AddCheck(MakeCheck(ECheck::None, TEXT("Cook check"), TEXT("No cook found \u00B7 optional"), NoExtra));
+	}
+	else if (Cook.IsCookAll()) {
+		AddCheck(MakeCheck(ECheck::None, TEXT("Cook check"), TEXT("The last cook took nearly all assets \u00B7 not compared"), NoExtra));
 	}
 	else if (Cook.NumPackaged > 0) {
 		const FString Packaged = PjcFormat::Count(Cook.NumPackaged) + TEXT(" unused assets the last cook packaged are in Review and kept");
@@ -435,6 +445,10 @@ TSharedRef<SWidget> SPjcCleanWindow::MakeConfirm() {
 				+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin {8.0f, 0.0f, 0.0f, 0.0f})
 				[
 					SNew(SButton)
+#if ENGINE_MAJOR_VERSION < 5
+					.ButtonStyle(&PjcShim::GetButtonStyle427(false))
+					.ForegroundColor(FSlateColor::UseForeground())
+#endif
 					.ContentPadding(FMargin {12.0f, 2.0f})
 					.OnClicked_Lambda([this]() {
 						Close();
@@ -447,6 +461,10 @@ TSharedRef<SWidget> SPjcCleanWindow::MakeConfirm() {
 				+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin {8.0f, 0.0f, 0.0f, 0.0f})
 				[
 					SNew(SButton)
+#if ENGINE_MAJOR_VERSION < 5
+					.ButtonStyle(&PjcShim::GetButtonStyle427(true))
+					.ForegroundColor(FSlateColor::UseForeground())
+#endif
 					.ButtonColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.UnusedFill"))
 					.ContentPadding(FMargin {12.0f, 2.0f})
 					.IsEnabled_Lambda([this]() { return GetBlockReason().IsEmpty(); })
@@ -515,7 +533,11 @@ TSharedRef<SWidget> SPjcCleanWindow::MakeRun() {
 				SNew(SHorizontalBox)
 				+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
 				[
-					SNew(SProgressBar).Percent_Lambda([this]() { return TOptional<float> {Percent}; })
+					SNew(SProgressBar)
+#if ENGINE_MAJOR_VERSION < 5
+					.Style(&PjcShim::GetProgressStyle427())
+#endif
+					.Percent_Lambda([this]() { return TOptional<float> {Percent}; })
 				]
 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {10.0f, 0.0f, 0.0f, 0.0f})
 				[
@@ -550,6 +572,10 @@ TSharedRef<SWidget> SPjcCleanWindow::MakeRun() {
 				+ SHorizontalBox::Slot().AutoWidth()
 				[
 					SNew(SButton)
+#if ENGINE_MAJOR_VERSION < 5
+					.ButtonStyle(&PjcShim::GetButtonStyle427(false))
+					.ForegroundColor(FSlateColor::UseForeground())
+#endif
 					.ContentPadding(FMargin {12.0f, 2.0f})
 					.ToolTipText(FText::FromString(TEXT("Stops after the batch that is running. What is deleted stays deleted.")))
 					.IsEnabled_Lambda([this]() { return !bStopRequested; })
@@ -760,6 +786,10 @@ TSharedRef<SWidget> SPjcCleanWindow::MakeDone() {
 				+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin {8.0f, 0.0f, 0.0f, 0.0f})
 				[
 					SNew(SButton)
+#if ENGINE_MAJOR_VERSION < 5
+					.ButtonStyle(&PjcShim::GetButtonStyle427(false))
+					.ForegroundColor(FSlateColor::UseForeground())
+#endif
 					.Visibility(bHeld ? EVisibility::Visible : EVisibility::Collapsed)
 					.ContentPadding(FMargin {12.0f, 2.0f})
 					.OnClicked_Lambda([this]() {
@@ -774,6 +804,10 @@ TSharedRef<SWidget> SPjcCleanWindow::MakeDone() {
 				+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin {8.0f, 0.0f, 0.0f, 0.0f})
 				[
 					SNew(SButton)
+#if ENGINE_MAJOR_VERSION < 5
+					.ButtonStyle(&PjcShim::GetButtonStyle427(false))
+					.ForegroundColor(FSlateColor::UseForeground())
+#endif
 					.ContentPadding(FMargin {12.0f, 2.0f})
 					.OnClicked_Lambda([]() {
 						FGlobalTabmanager::Get()->TryInvokeTab(FTabId {FName {TEXT("OutputLog")}});
@@ -786,6 +820,9 @@ TSharedRef<SWidget> SPjcCleanWindow::MakeDone() {
 				+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin {8.0f, 0.0f, 0.0f, 0.0f})
 				[
 					SNew(SButton)
+#if ENGINE_MAJOR_VERSION < 5
+					.ForegroundColor(FSlateColor::UseForeground())
+#endif
 					.ButtonStyle(&PjcShim::GetPrimaryButtonStyle())
 					.ContentPadding(FMargin {12.0f, 2.0f})
 					.OnClicked_Lambda([this]() {

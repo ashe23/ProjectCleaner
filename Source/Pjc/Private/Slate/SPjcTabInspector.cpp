@@ -96,7 +96,7 @@ namespace
 	TSharedRef<SWidget> PjcInspectorToggle(const FString& Label, const FString& ToolTip, TFunction<bool()> IsOn, TFunction<void()> OnClick) {
 		// clang-format off
 		return SNew(SCheckBox)
-			.Style(&PjcShim::GetStyle().GetWidgetStyle<FCheckBoxStyle>(TEXT("ToggleButtonCheckbox")))
+			.Style(&PjcShim::GetToggleStyle())
 			.ToolTipText(FText::FromString(ToolTip))
 			.IsChecked_Lambda([IsOn]() { return IsOn() ? ECheckBoxState::Checked : ECheckBoxState::Unchecked; })
 			.OnCheckStateChanged_Lambda([OnClick](ECheckBoxState) { OnClick(); })
@@ -112,6 +112,10 @@ namespace
 	TSharedRef<SWidget> PjcInspectorButton(const FString& Label, const FString& ToolTip, const FName Color, TFunction<void()> OnClick) {
 		// clang-format off
 		return SNew(SButton)
+#if ENGINE_MAJOR_VERSION < 5
+			.ButtonStyle(&PjcShim::GetButtonStyle427(!Color.IsNone()))
+			.ForegroundColor(FSlateColor::UseForeground())
+#endif
 			.ButtonColorAndOpacity(Color.IsNone() ? FLinearColor::White : PjcWidgets::GetColor(Color))
 			.ContentPadding(FMargin {10.0f, 2.0f})
 			.ToolTipText(FText::FromString(ToolTip))
@@ -329,6 +333,9 @@ TSharedRef<SWidget> SPjcTabInspector::MakeFinder() {
 			+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {8.0f, 8.0f, 8.0f, 4.0f})
 			[
 				SAssignNew(FinderSearch, SSearchBox)
+#if ENGINE_MAJOR_VERSION < 5
+				.Style(&PjcShim::GetSearchBoxStyle427())
+#endif
 				.HintText(FText::FromString(TEXT("Search assets")))
 				.OnTextChanged_Lambda([this](const FText& Text) {
 					FinderText = Text.ToString();
@@ -432,6 +439,9 @@ void SPjcTabInspector::ApplyFinderFilter() {
 TSharedRef<ITableRow> SPjcTabInspector::OnGenerateFinderRow(FRowPtr Row, const TSharedRef<STableViewBase>& Table) {
 	// clang-format off
 	return SNew(STableRow<FRowPtr>, Table)
+#if ENGINE_MAJOR_VERSION < 5
+		.Style(&PjcShim::GetRowStyle427())
+#endif
 		.Padding(FMargin {6.0f, 2.0f})
 		.ToolTipText(
 			FText::FromString(Row->Package.ToString() + TEXT("\n") + Row->ClassLabel + TEXT(" \u00B7 ") + PjcInspectorStatusText(Row->Status, true))
@@ -494,6 +504,10 @@ TSharedRef<SWidget> SPjcTabInspector::MakeGraphPane() {
 	const auto Small = [](const FString& Label, const FString& ToolTip, TFunction<void()> OnClick) {
 		// clang-format off
 		return SNew(SButton)
+#if ENGINE_MAJOR_VERSION < 5
+			.ButtonStyle(&PjcShim::GetButtonStyle427(false))
+			.ForegroundColor(FSlateColor::UseForeground())
+#endif
 			.ContentPadding(FMargin {6.0f, 1.0f})
 			.ToolTipText(FText::FromString(ToolTip))
 			.OnClicked_Lambda([OnClick]() {
@@ -523,6 +537,9 @@ TSharedRef<SWidget> SPjcTabInspector::MakeGraphPane() {
 					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 					[
 						SNew(SButton)
+#if ENGINE_MAJOR_VERSION < 5
+						.ForegroundColor(FSlateColor::UseForeground())
+#endif
 						.ButtonStyle(&FPjcStyles::Get().GetWidgetStyle<FButtonStyle>("ProjectCleaner.Button.Row"))
 						.ToolTipText(FText::FromString(TEXT("Back")))
 						.IsEnabled_Lambda([this]() { return HistoryBack.Num() > 0; })
@@ -537,6 +554,9 @@ TSharedRef<SWidget> SPjcTabInspector::MakeGraphPane() {
 					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {2.0f, 0.0f, 8.0f, 0.0f})
 					[
 						SNew(SButton)
+#if ENGINE_MAJOR_VERSION < 5
+						.ForegroundColor(FSlateColor::UseForeground())
+#endif
 						.ButtonStyle(&FPjcStyles::Get().GetWidgetStyle<FButtonStyle>("ProjectCleaner.Button.Row"))
 						.ToolTipText(FText::FromString(TEXT("Forward")))
 						.IsEnabled_Lambda([this]() { return HistoryForward.Num() > 0; })
@@ -913,6 +933,10 @@ TSharedRef<SWidget> SPjcTabInspector::MakeFacts() {
 			Chips->AddSlot()
 			[
 				SNew(SButton)
+#if ENGINE_MAJOR_VERSION < 5
+				.ButtonStyle(&PjcShim::GetButtonStyle427(false))
+				.ForegroundColor(FSlateColor::UseForeground())
+#endif
 				.ContentPadding(FMargin {6.0f, 1.0f})
 				.ToolTipText(FText::FromString(ToolTip))
 				.OnClicked_Lambda([this, Node]() {
@@ -1021,6 +1045,10 @@ TSharedRef<SWidget> SPjcTabInspector::MakeActions() {
 		Actions->AddSlot()
 		[
 			SNew(SComboButton)
+#if ENGINE_MAJOR_VERSION < 5
+			.ButtonStyle(&PjcShim::GetButtonStyle427(false))
+			.ForegroundColor(FSlateColor::UseForeground())
+#endif
 			.ContentPadding(FMargin {6.0f, 1.0f})
 			.ToolTipText(FText::FromString(TEXT("Counts it as used from now on, saved to the project settings")))
 			.OnGetMenuContent(this, &SPjcTabInspector::MakeExcludeMenu)
@@ -1165,7 +1193,12 @@ TSharedRef<ITableRow> SPjcTabInspector::OnGenerateLinkRow(FRowPtr Row, const TSh
 	const FName Package = Row->Package;
 
 	// clang-format off
-	return SNew(STableRow<FRowPtr>, Table).Padding(FMargin {8.0f, 2.0f}).ToolTipText(FText::FromString(ToolTip))
+	return SNew(STableRow<FRowPtr>, Table)
+#if ENGINE_MAJOR_VERSION < 5
+		.Style(&PjcShim::GetRowStyle427())
+#endif
+		.Padding(FMargin {8.0f, 2.0f})
+		.ToolTipText(FText::FromString(ToolTip))
 		[
 			SNew(SHorizontalBox)
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 6.0f, 0.0f})
@@ -1195,6 +1228,9 @@ TSharedRef<ITableRow> SPjcTabInspector::OnGenerateLinkRow(FRowPtr Row, const TSh
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {4.0f, 0.0f, 0.0f, 0.0f})
 			[
 				SNew(SButton)
+#if ENGINE_MAJOR_VERSION < 5
+				.ForegroundColor(FSlateColor::UseForeground())
+#endif
 				.ButtonStyle(&FPjcStyles::Get().GetWidgetStyle<FButtonStyle>("ProjectCleaner.Button.Row"))
 				.ContentPadding(FMargin {4.0f, 0.0f})
 				.ToolTipText(FText::FromString(TEXT("Inspect ") + Row->Name))

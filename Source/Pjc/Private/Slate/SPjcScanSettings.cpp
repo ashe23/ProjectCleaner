@@ -348,6 +348,9 @@ TSharedRef<SWidget> SPjcScanSettings::MakeHeader() {
 		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 		[
 			SNew(SButton)
+#if ENGINE_MAJOR_VERSION < 5
+			.ForegroundColor(FSlateColor::UseForeground())
+#endif
 			.ButtonStyle(&PjcShim::GetStyle().GetWidgetStyle<FButtonStyle>(TEXT("NoBorder")))
 			.ContentPadding(FMargin {4.0f, 0.0f})
 			.ToolTipText(FText::FromString(TEXT("Hide scan settings")))
@@ -533,6 +536,9 @@ TSharedRef<SWidget> SPjcScanSettings::MakeListRows(
 		})
 		[
 			SNew(SButton)
+#if ENGINE_MAJOR_VERSION < 5
+			.ForegroundColor(FSlateColor::UseForeground())
+#endif
 			.ButtonStyle(&PjcShim::GetStyle().GetWidgetStyle<FButtonStyle>(TEXT("NoBorder")))
 			.ContentPadding(FMargin {4.0f, 0.0f})
 			.ToolTipText(FText::FromString(TEXT("Add")))
@@ -596,6 +602,9 @@ TSharedRef<SWidget> SPjcScanSettings::MakeListRows(
 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 				[
 					SNew(SButton)
+#if ENGINE_MAJOR_VERSION < 5
+					.ForegroundColor(FSlateColor::UseForeground())
+#endif
 					.ButtonStyle(&PjcShim::GetStyle().GetWidgetStyle<FButtonStyle>(TEXT("NoBorder")))
 					.ContentPadding(FMargin {4.0f, 0.0f})
 					.ToolTipText(FText::FromString(TEXT("Remove")))

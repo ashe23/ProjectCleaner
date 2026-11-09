@@ -59,7 +59,11 @@ namespace
 			MonoColumns = InArgs._MonoColumns;
 			RightColumns = InArgs._RightColumns;
 			const FText ToolTip = FText::FromString(Row->ToolTip);
-			SMultiColumnTableRow::Construct(SMultiColumnTableRow::FArguments().Padding(FMargin {0.0f, 2.0f}).ToolTipText(ToolTip), InTable);
+			SMultiColumnTableRow::FArguments RowArgs;
+#if ENGINE_MAJOR_VERSION < 5
+			RowArgs.Style(&PjcShim::GetRowStyle427());
+#endif
+			SMultiColumnTableRow::Construct(RowArgs.Padding(FMargin {0.0f, 2.0f}).ToolTipText(ToolTip), InTable);
 		}
 
 		virtual TSharedRef<SWidget> GenerateWidgetForColumn(const FName& Column) override {
@@ -479,6 +483,9 @@ TSharedRef<SWidget> SPjcTabIssues::MakeCategories() {
 		Box->AddSlot().AutoHeight()
 		[
 			SNew(SButton)
+#if ENGINE_MAJOR_VERSION < 5
+			.ForegroundColor(FSlateColor::UseForeground())
+#endif
 			.ButtonStyle(&FPjcStyles::Get().GetWidgetStyle<FButtonStyle>("ProjectCleaner.Button.Row"))
 			.ContentPadding(FMargin {0.0f})
 			.ToolTipText(FText::FromString(Entry.ToolTip))
@@ -541,7 +548,7 @@ TSharedRef<SWidget> SPjcTabIssues::MakeHeader() {
 				+ SHorizontalBox::Slot().AutoWidth()
 				[
 					SNew(SCheckBox)
-					.Style(&PjcShim::GetStyle().GetWidgetStyle<FCheckBoxStyle>(TEXT("ToggleButtonCheckbox")))
+					.Style(&PjcShim::GetToggleStyle())
 					.ToolTipText(FText::FromString(TEXT("Not assets and not used by the engine or the project")))
 					.IsChecked_Lambda([this]() { return bKept ? ECheckBoxState::Unchecked : ECheckBoxState::Checked; })
 					.OnCheckStateChanged_Lambda([this](ECheckBoxState) {
@@ -562,7 +569,7 @@ TSharedRef<SWidget> SPjcTabIssues::MakeHeader() {
 				+ SHorizontalBox::Slot().AutoWidth()
 				[
 					SNew(SCheckBox)
-					.Style(&PjcShim::GetStyle().GetWidgetStyle<FCheckBoxStyle>(TEXT("ToggleButtonCheckbox")))
+					.Style(&PjcShim::GetToggleStyle())
 					.ToolTipText(
 						FText::FromString(
 							TEXT("Files the plugin never deletes: engine folders, staged folders, names in source or config, exclusions")
@@ -591,6 +598,9 @@ TSharedRef<SWidget> SPjcTabIssues::MakeHeader() {
 				SNew(SBox).WidthOverride(200.0f)
 				[
 					SNew(SSearchBox)
+#if ENGINE_MAJOR_VERSION < 5
+					.Style(&PjcShim::GetSearchBoxStyle427())
+#endif
 					.HintText(FText::FromString(TEXT("Search")))
 					.OnTextChanged_Lambda([this](const FText& Text) {
 						Search = Text.ToString().TrimStartAndEnd();
@@ -611,6 +621,10 @@ TSharedRef<SWidget> SPjcTabIssues::MakeFooter() {
 	const auto Button = [](const FString& Label, const FString& ToolTip, const FName Color, TFunction<void()> OnClick, TFunction<bool()> IsEnabled) {
 		// clang-format off
 		return SNew(SButton)
+#if ENGINE_MAJOR_VERSION < 5
+			.ButtonStyle(&PjcShim::GetButtonStyle427(!Color.IsNone()))
+			.ForegroundColor(FSlateColor::UseForeground())
+#endif
 			.ButtonColorAndOpacity(Color.IsNone() ? FLinearColor::White : PjcWidgets::GetColor(Color))
 			.ContentPadding(FMargin {10.0f, 2.0f})
 			.ToolTipText(FText::FromString(ToolTip))
@@ -702,6 +716,10 @@ TSharedRef<SWidget> SPjcTabIssues::MakeFooter() {
 				})
 				[
 					SNew(SComboButton)
+#if ENGINE_MAJOR_VERSION < 5
+					.ButtonStyle(&PjcShim::GetButtonStyle427(false))
+					.ForegroundColor(FSlateColor::UseForeground())
+#endif
 					.ToolTipText(FText::FromString(TEXT("Keeps them: by file, extension or folder, saved to Config/DefaultEditor.ini")))
 					.IsEnabled_Lambda([this]() { return GetSelected().Num() > 0; })
 					.OnGetMenuContent(this, &SPjcTabIssues::MakeExcludeMenu)
@@ -906,7 +924,7 @@ void SPjcTabIssues::RebuildChips() {
 	const auto Chip = [this](const FString& Reason, const FString& Label, const int32 Num) {
 		// clang-format off
 		return SNew(SCheckBox)
-			.Style(&PjcShim::GetStyle().GetWidgetStyle<FCheckBoxStyle>(TEXT("ToggleButtonCheckbox")))
+			.Style(&PjcShim::GetToggleStyle())
 			.IsChecked_Lambda([this, Reason]() { return KeptReason == Reason ? ECheckBoxState::Checked : ECheckBoxState::Unchecked; })
 			.OnCheckStateChanged_Lambda([this, Reason](ECheckBoxState) {
 				KeptReason = Reason;

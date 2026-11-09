@@ -43,6 +43,17 @@ namespace PjcShim
 #if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1
 		return FAppStyle::GetBrush(PropertyName, Specifier);
 #else
+#if ENGINE_MAJOR_VERSION < 5
+		// panels in the colors UE5 draws them
+		static const TMap<FName, FName> PanelBrushes {
+		  {	   TEXT("ToolPanel.GroupBorder"),	  TEXT("ProjectCleaner.Panel")},
+		  {TEXT("ToolPanel.DarkGroupBorder"), TEXT("ProjectCleaner.PanelDark")},
+		  {	 TEXT("DetailsView.CategoryTop"),	 TEXT("ProjectCleaner.Header")},
+		};
+		if (const FName* PanelBrush = Specifier ? nullptr : PanelBrushes.Find(PropertyName)) {
+			return FPjcStyles::Get().GetBrush(*PanelBrush);
+		}
+#endif
 		return FEditorStyle::GetBrush(PropertyName, Specifier);
 #endif
 	}
@@ -79,6 +90,14 @@ namespace PjcShim
 #endif
 	}
 
+	const FSlateBrush* GetBrushPage() {
+#if ENGINE_MAJOR_VERSION >= 5
+		return FCoreStyle::Get().GetBrush("NoBrush");
+#else
+		return FPjcStyles::Get().GetBrush("ProjectCleaner.Page");
+#endif
+	}
+
 	const FSlateBrush* GetIconSettings() {
 #if ENGINE_MAJOR_VERSION == 5
 		return GetBrush(TEXT("Icons.Settings"));
@@ -99,13 +118,47 @@ namespace PjcShim
 #if ENGINE_MAJOR_VERSION == 5
 		return GetStyle().GetWidgetStyle<FButtonStyle>(TEXT("PrimaryButton"));
 #else
-		return GetStyle().GetWidgetStyle<FButtonStyle>(TEXT("FlatButton.Primary"));
+		return FPjcStyles::Get().GetWidgetStyle<FButtonStyle>("ProjectCleaner.Button.Primary");
 #endif
 	}
 
 	const FButtonStyle& GetDangerButtonStyle() {
+#if ENGINE_MAJOR_VERSION == 5
 		return GetStyle().GetWidgetStyle<FButtonStyle>(TEXT("FlatButton.Danger"));
+#else
+		return FPjcStyles::Get().GetWidgetStyle<FButtonStyle>("ProjectCleaner.Button.Danger");
+#endif
 	}
+
+	const FCheckBoxStyle& GetToggleStyle() {
+#if ENGINE_MAJOR_VERSION >= 5
+		return GetStyle().GetWidgetStyle<FCheckBoxStyle>(TEXT("ToggleButtonCheckbox"));
+#else
+		return FPjcStyles::Get().GetWidgetStyle<FCheckBoxStyle>("ProjectCleaner.Toggle");
+#endif
+	}
+
+#if ENGINE_MAJOR_VERSION < 5
+	const FButtonStyle& GetButtonStyle427(const bool bColored) {
+		return FPjcStyles::Get().GetWidgetStyle<FButtonStyle>(bColored ? "ProjectCleaner.Button.Colored" : "ProjectCleaner.Button");
+	}
+
+	const FSearchBoxStyle& GetSearchBoxStyle427() {
+		return FPjcStyles::Get().GetWidgetStyle<FSearchBoxStyle>("ProjectCleaner.SearchBox");
+	}
+
+	const FEditableTextBoxStyle& GetTextBoxStyle427() {
+		return FPjcStyles::Get().GetWidgetStyle<FEditableTextBoxStyle>("ProjectCleaner.TextBox");
+	}
+
+	const FTableRowStyle& GetRowStyle427() {
+		return FPjcStyles::Get().GetWidgetStyle<FTableRowStyle>("ProjectCleaner.Row");
+	}
+
+	const FProgressBarStyle& GetProgressStyle427() {
+		return FPjcStyles::Get().GetWidgetStyle<FProgressBarStyle>("ProjectCleaner.Progress");
+	}
+#endif
 
 	FSlateColor GetSlateColor(const FName PropertyName, const ANSICHAR* Specifier) {
 #if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1

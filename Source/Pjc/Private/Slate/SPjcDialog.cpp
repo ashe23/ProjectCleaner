@@ -113,6 +113,10 @@ void SPjcDialog::Construct(const FArguments& InArgs) {
 		Buttons->AddSlot().AutoWidth().Padding(FMargin {0.0f, 0.0f, 8.0f, 0.0f})
 		[
 			SNew(SButton)
+#if ENGINE_MAJOR_VERSION < 5
+			.ButtonStyle(&PjcShim::GetButtonStyle427(false))
+			.ForegroundColor(FSlateColor::UseForeground())
+#endif
 			.ContentPadding(FMargin {14.0f, 3.0f})
 			.OnClicked_Lambda([Close]() {
 				return Close(false);
@@ -128,6 +132,10 @@ void SPjcDialog::Construct(const FArguments& InArgs) {
 	Buttons->AddSlot().AutoWidth()
 	[
 		SNew(SButton)
+#if ENGINE_MAJOR_VERSION < 5
+		.ButtonStyle(&PjcShim::GetButtonStyle427(true))
+		.ForegroundColor(FSlateColor::UseForeground())
+#endif
 		.ButtonColorAndOpacity(PjcWidgets::GetColor(ConfirmColor))
 		.ContentPadding(FMargin {14.0f, 3.0f})
 		.OnClicked_Lambda([Close]() {

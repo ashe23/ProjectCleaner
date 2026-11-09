@@ -63,7 +63,11 @@ namespace
 			Folder = InArgs._Folder;
 			Set = InArgs._Set;
 			HighlightText = InArgs._HighlightText;
-			SMultiColumnTableRow::Construct(SMultiColumnTableRow::FArguments().Padding(FMargin {0.0f, 1.0f}), InTable);
+			SMultiColumnTableRow::FArguments RowArgs;
+#if ENGINE_MAJOR_VERSION < 5
+			RowArgs.Style(&PjcShim::GetRowStyle427());
+#endif
+			SMultiColumnTableRow::Construct(RowArgs.Padding(FMargin {0.0f, 1.0f}), InTable);
 		}
 
 		virtual TSharedRef<SWidget> GenerateWidgetForColumn(const FName& Column) override {
@@ -310,7 +314,11 @@ namespace
 		void Construct(const FArguments& InArgs, const TSharedRef<STableViewBase>& InTable) {
 			Row = InArgs._Row;
 			HighlightText = InArgs._HighlightText;
-			SMultiColumnTableRow::Construct(SMultiColumnTableRow::FArguments().Padding(FMargin {0.0f, 1.0f}), InTable);
+			SMultiColumnTableRow::FArguments RowArgs;
+#if ENGINE_MAJOR_VERSION < 5
+			RowArgs.Style(&PjcShim::GetRowStyle427());
+#endif
+			SMultiColumnTableRow::Construct(RowArgs.Padding(FMargin {0.0f, 1.0f}), InTable);
 		}
 
 		virtual TSharedRef<SWidget> GenerateWidgetForColumn(const FName& Column) override {
@@ -573,7 +581,7 @@ TSharedRef<SWidget> SPjcTabUnused::MakeSetSwitch() {
 		Switch->AddSlot().AutoWidth()
 		[
 			SNew(SCheckBox)
-			.Style(&PjcShim::GetStyle().GetWidgetStyle<FCheckBoxStyle>(TEXT("ToggleButtonCheckbox")))
+			.Style(&PjcShim::GetToggleStyle())
 			.ToolTip(PjcWidgets::MakeToolTip(PjcWidgets::GetSetLabel(Each), ToolTip))
 			.IsChecked_Lambda([this, Each]() { return Set == Each ? ECheckBoxState::Checked : ECheckBoxState::Unchecked; })
 			.OnCheckStateChanged_Lambda([this, Each](ECheckBoxState) { ShowSet(Each); })
@@ -740,7 +748,7 @@ TSharedRef<SWidget> SPjcTabUnused::MakeFolderPane() {
 					+ SHorizontalBox::Slot().AutoWidth()
 					[
 						SNew(SCheckBox)
-						.Style(&PjcShim::GetStyle().GetWidgetStyle<FCheckBoxStyle>(TEXT("ToggleButtonCheckbox")))
+						.Style(&PjcShim::GetToggleStyle())
 						.ToolTipText(FText::FromString(TEXT("Folders with the totals of the list")))
 						.IsChecked_Lambda([this]() { return bMapView ? ECheckBoxState::Unchecked : ECheckBoxState::Checked; })
 						.OnCheckStateChanged_Lambda([this](ECheckBoxState) { SetMapView(false); })
@@ -754,7 +762,7 @@ TSharedRef<SWidget> SPjcTabUnused::MakeFolderPane() {
 					+ SHorizontalBox::Slot().AutoWidth()
 					[
 						SNew(SCheckBox)
-						.Style(&PjcShim::GetStyle().GetWidgetStyle<FCheckBoxStyle>(TEXT("ToggleButtonCheckbox")))
+						.Style(&PjcShim::GetToggleStyle())
 						.ToolTipText(FText::FromString(TEXT("Boxes as big as the listed assets in them, click a folder to open it")))
 						.IsChecked_Lambda([this]() { return bMapView ? ECheckBoxState::Checked : ECheckBoxState::Unchecked; })
 						.OnCheckStateChanged_Lambda([this](ECheckBoxState) { SetMapView(true); })
@@ -771,6 +779,9 @@ TSharedRef<SWidget> SPjcTabUnused::MakeFolderPane() {
 					SNew(SBox).Visibility_Lambda([this]() { return bMapView ? EVisibility::Collapsed : EVisibility::Visible; })
 					[
 						SNew(SSearchBox)
+#if ENGINE_MAJOR_VERSION < 5
+						.Style(&PjcShim::GetSearchBoxStyle427())
+#endif
 						.HintText(FText::FromString(TEXT("Search folders")))
 						.OnTextChanged(this, &SPjcTabUnused::OnFolderSearchChanged)
 					]
@@ -778,6 +789,10 @@ TSharedRef<SWidget> SPjcTabUnused::MakeFolderPane() {
 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
 				[
 					SNew(SComboButton)
+#if ENGINE_MAJOR_VERSION < 5
+					.ButtonStyle(&PjcShim::GetButtonStyle427(false))
+					.ForegroundColor(FSlateColor::UseForeground())
+#endif
 					.Visibility_Lambda([this]() { return bMapView ? EVisibility::Collapsed : EVisibility::Visible; })
 					.ToolTipText(FText::FromString(TEXT("View options")))
 					.OnGetMenuContent(this, &SPjcTabUnused::MakeViewMenu)
@@ -1098,6 +1113,9 @@ TSharedRef<SWidget> SPjcTabUnused::MakeAssetPane() {
 					SNew(SBox).WidthOverride(170.0f)
 					[
 						SNew(SSearchBox)
+#if ENGINE_MAJOR_VERSION < 5
+						.Style(&PjcShim::GetSearchBoxStyle427())
+#endif
 						.HintText_Lambda([this]() { return FText::FromString(TEXT("Search assets ") + PjcWidgets::GetSetWord(Set)); })
 						.OnTextChanged(this, &SPjcTabUnused::OnAssetSearchChanged)
 					]
@@ -1279,7 +1297,7 @@ void SPjcTabUnused::RebuildChips() {
 		];
 
 	return SNew(SCheckBox)
-		.Style(&PjcShim::GetStyle().GetWidgetStyle<FCheckBoxStyle>(TEXT("ToggleButtonCheckbox")))
+		.Style(&PjcShim::GetToggleStyle())
 		.ToolTipText(FText::FromString(ToolTip))
 		.IsChecked_Lambda([this, ClassName]() {
 			const bool bOn = ClassName.IsNone() ? ClassFilter.Num() == 0 : ClassFilter.Contains(ClassName);
@@ -1308,7 +1326,7 @@ void SPjcTabUnused::RebuildChips() {
 		ChipsBox->AddSlot().AutoWidth().Padding(FMargin {0.0f, 0.0f, 4.0f, 0.0f})
 		[
 			SNew(SCheckBox)
-			.Style(&PjcShim::GetStyle().GetWidgetStyle<FCheckBoxStyle>(TEXT("ToggleButtonCheckbox")))
+			.Style(&PjcShim::GetToggleStyle())
 			.ToolTipText(FText::FromString(TEXT("The last delete could not remove them: something still holds them")))
 			.IsChecked_Lambda([this]() { return bHeldOnly ? ECheckBoxState::Checked : ECheckBoxState::Unchecked; })
 			.OnCheckStateChanged_Lambda([this](ECheckBoxState) {
@@ -1370,7 +1388,7 @@ void SPjcTabUnused::RebuildChips() {
 		ChipsBox->AddSlot().AutoWidth().Padding(FMargin {0.0f, 0.0f, 4.0f, 0.0f})
 		[
 			SNew(SCheckBox)
-			.Style(&PjcShim::GetStyle().GetWidgetStyle<FCheckBoxStyle>(TEXT("ToggleButtonCheckbox")))
+			.Style(&PjcShim::GetToggleStyle())
 			.ToolTipText(FText::FromString(Tip))
 			.IsChecked_Lambda([this, Key]() { return ReasonFilter == Key ? ECheckBoxState::Checked : ECheckBoxState::Unchecked; })
 			.OnCheckStateChanged_Lambda([this, Key](ECheckBoxState) { OnReasonChipClicked(Key); })
@@ -1671,6 +1689,10 @@ TSharedRef<SWidget> SPjcTabUnused::MakeFooter() {
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
 			[
 				SNew(SButton)
+#if ENGINE_MAJOR_VERSION < 5
+				.ButtonStyle(&PjcShim::GetButtonStyle427(true))
+				.ForegroundColor(FSlateColor::UseForeground())
+#endif
 				.ButtonColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.UnusedFill"))
 				.ContentPadding(FMargin {10.0f, 2.0f})
 				.ToolTipText(FText::FromString(TEXT("Deletes the selection with the unused assets that reference it (Delete)")))
@@ -1687,6 +1709,10 @@ TSharedRef<SWidget> SPjcTabUnused::MakeFooter() {
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
 			[
 				SNew(SComboButton)
+#if ENGINE_MAJOR_VERSION < 5
+				.ButtonStyle(&PjcShim::GetButtonStyle427(false))
+				.ForegroundColor(FSlateColor::UseForeground())
+#endif
 				.ToolTipText(FText::FromString(TEXT("Keeps the selection, its folder or its class from cleanup: adds exclusions")))
 				.Visibility_Lambda(ShownFor(true, false, true))
 				.IsEnabled_Lambda(HasSelection)
@@ -1699,6 +1725,10 @@ TSharedRef<SWidget> SPjcTabUnused::MakeFooter() {
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
 			[
 				SNew(SButton)
+#if ENGINE_MAJOR_VERSION < 5
+				.ButtonStyle(&PjcShim::GetButtonStyle427(false))
+				.ForegroundColor(FSlateColor::UseForeground())
+#endif
 				.ContentPadding(FMargin {10.0f, 2.0f})
 				.ToolTipText(FText::FromString(TEXT("Removes the rules that keep the selection; the next scan shows what they are without them")))
 				.Visibility_Lambda(ShownFor(false, true, false))
@@ -1714,6 +1744,10 @@ TSharedRef<SWidget> SPjcTabUnused::MakeFooter() {
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
 			[
 				SNew(SButton)
+#if ENGINE_MAJOR_VERSION < 5
+				.ButtonStyle(&PjcShim::GetButtonStyle427(false))
+				.ForegroundColor(FSlateColor::UseForeground())
+#endif
 				.ContentPadding(FMargin {10.0f, 2.0f})
 				.ToolTipText(FText::FromString(TEXT("Shows why it is in the list in the Inspector")))
 				.IsEnabled_Lambda([this]() { return ListView.IsValid() && ListView->GetNumItemsSelected() == 1; })
@@ -1728,6 +1762,10 @@ TSharedRef<SWidget> SPjcTabUnused::MakeFooter() {
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
 			[
 				SNew(SButton)
+#if ENGINE_MAJOR_VERSION < 5
+				.ButtonStyle(&PjcShim::GetButtonStyle427(false))
+				.ForegroundColor(FSlateColor::UseForeground())
+#endif
 				.ContentPadding(FMargin {10.0f, 2.0f})
 				.ToolTipText(FText::FromString(TEXT("Shows the selection in the Content Browser")))
 				.IsEnabled_Lambda(HasSelection)
@@ -1904,7 +1942,7 @@ TSharedRef<SWidget> SPjcTabUnused::MakeMapBar() {
 	const auto AreaToggle = [this](const FString& Label, const bool bAll, const FString& ToolTip) {
 		// clang-format off
 		return SNew(SCheckBox)
-			.Style(&PjcShim::GetStyle().GetWidgetStyle<FCheckBoxStyle>(TEXT("ToggleButtonCheckbox")))
+			.Style(&PjcShim::GetToggleStyle())
 			.ToolTipText(FText::FromString(ToolTip))
 			.IsChecked_Lambda([this, bAll]() { return bMapAll == bAll ? ECheckBoxState::Checked : ECheckBoxState::Unchecked; })
 			.OnCheckStateChanged_Lambda([this, bAll](ECheckBoxState) {

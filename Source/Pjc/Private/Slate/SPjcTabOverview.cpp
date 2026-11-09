@@ -9,6 +9,7 @@
 #include "Slate/SPjcToolFrame.h"
 #include "PjcConstants.h"
 #include "PjcFormat.h"
+#include "PjcShim.h"
 #include "PjcSettings.h"
 #include "PjcStyles.h"
 #include "PjcSubsystem.h"
@@ -823,7 +824,12 @@ TSharedRef<SWidget> SPjcTabOverview::MakeShippedCard() const {
 	const FString NotShippedTip = NotCooked + LeftOut + FString::Join(ReasonLines, TEXT("\n"));
 	const FString NotShippedNum = PjcFormat::Count(Ship.UsedNotShipped.Num);
 	AddColumn(Column(TEXT("Used, not shipped"), KeepColor, NotShippedNum, PlainColor, Share(Ship.UsedNotShipped), NotShippedTip, NoList));
-	if (Ship.UnusedShipped.Num > 0) {
+	if (UPjcSubsystem::GetScanResult().CookCheck.PlatformsCookAll.Contains(Cook.Platform)) {
+		const TCHAR* CookAllTip = TEXT("This cook took nearly every asset, unused ones too, so it cannot tell what the game needs. ")
+			TEXT("A cook of only the maps the game uses makes this check work.");
+		AddColumn(Column(TEXT("Unused, shipped"), {}, TEXT("\u2013"), PlainColor, TEXT("cook took nearly all"), CookAllTip, NoList));
+	}
+	else if (Ship.UnusedShipped.Num > 0) {
 		const TCHAR* CheckTip = TEXT("The last cook packaged them, but the scan finds nothing that uses them: the game may load them in a way ")
 			TEXT("the scan cannot follow. They are in Review and Clean project keeps them.");
 		const FLinearColor CheckColor = PjcWidgets::GetColor("ProjectCleaner.Color.Review");
@@ -994,6 +1000,9 @@ TSharedRef<SWidget> SPjcTabOverview::MakeRow(
 	}
 
 	return SNew(SButton)
+#if ENGINE_MAJOR_VERSION < 5
+		.ForegroundColor(FSlateColor::UseForeground())
+#endif
 		.ButtonStyle(&FPjcStyles::Get().GetWidgetStyle<FButtonStyle>("ProjectCleaner.Button.Row"))
 		.ContentPadding(FMargin {0.0f})
 		.ToolTip(ToolTip)

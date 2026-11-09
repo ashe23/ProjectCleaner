@@ -88,96 +88,107 @@ void SPjcScanWindow::Construct(const FArguments& InArgs) {
 	// clang-format off
 	ChildSlot
 	[
-		SNew(SVerticalBox)
-		+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {16.0f, 14.0f, 16.0f, 8.0f})
-		[
-			SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot().FillWidth(1.0f)
-			[
-				SNew(STextBlock)
-				.Text_Lambda([this]() {
-					const TCHAR* Done = bScanned ? TEXT("\u2713 Scan finished") : TEXT("Scan canceled");
-					return FText::FromString(bFinished ? Done : TEXT("Scanning project"));
-				})
-				.Font(FPjcStyles::GetFont("Bold", 12))
-			]
-			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
-			[
-				SNew(STextBlock).Text(FText::FromString(FApp::GetProjectName())).ColorAndOpacity(FSlateColor::UseSubduedForeground())
-			]
-		]
-		+ SVerticalBox::Slot().FillHeight(1.0f).Padding(FMargin {16.0f, 4.0f})
+		SNew(SBorder).BorderImage(PjcShim::GetBrushPage()).Padding(0.0f)
 		[
 			SNew(SVerticalBox)
-			+ SVerticalBox::Slot().AutoHeight()
-			[
-				Steps
-			]
-			+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {0.0f, 12.0f, 0.0f, 4.0f})
+			+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {16.0f, 14.0f, 16.0f, 8.0f})
 			[
 				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
+				+ SHorizontalBox::Slot().FillWidth(1.0f)
 				[
-					SNew(SProgressBar).Percent_Lambda([this]() { return TOptional<float> {GetPercent()}; })
+					SNew(STextBlock)
+					.Text_Lambda([this]() {
+						const TCHAR* Done = bScanned ? TEXT("\u2713 Scan finished") : TEXT("Scan canceled");
+						return FText::FromString(bFinished ? Done : TEXT("Scanning project"));
+					})
+					.Font(FPjcStyles::GetFont("Bold", 12))
 				]
-				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {10.0f, 0.0f, 0.0f, 0.0f})
+				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 				[
-					SNew(SBox).WidthOverride(40.0f)
+					SNew(STextBlock).Text(FText::FromString(FApp::GetProjectName())).ColorAndOpacity(FSlateColor::UseSubduedForeground())
+				]
+			]
+			+ SVerticalBox::Slot().FillHeight(1.0f).Padding(FMargin {16.0f, 4.0f})
+			[
+				SNew(SVerticalBox)
+				+ SVerticalBox::Slot().AutoHeight()
+				[
+					Steps
+				]
+				+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {0.0f, 12.0f, 0.0f, 4.0f})
+				[
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
 					[
-						SNew(STextBlock)
-						.Text_Lambda([this]() { return FText::FromString(FString::Printf(TEXT("%d%%"), FMath::FloorToInt(GetPercent() * 100.0f))); })
-						.Font(PjcWidgets::GetFontMono(9))
+						SNew(SProgressBar)
+#if ENGINE_MAJOR_VERSION < 5
+						.Style(&PjcShim::GetProgressStyle427())
+#endif
+						.Percent_Lambda([this]() { return TOptional<float> {GetPercent()}; })
+					]
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {10.0f, 0.0f, 0.0f, 0.0f})
+					[
+						SNew(SBox).WidthOverride(40.0f)
+						[
+							SNew(STextBlock)
+							.Text_Lambda([this]() { return FText::FromString(FString::Printf(TEXT("%d%%"), FMath::FloorToInt(GetPercent() * 100.0f))); })
+							.Font(PjcWidgets::GetFontMono(9))
+						]
 					]
 				]
+				+ SVerticalBox::Slot().AutoHeight()
+				[
+					SNew(STextBlock)
+					.Text_Lambda([this]() { return FText::FromString(CurrentText); })
+					.ColorAndOpacity(FSlateColor::UseSubduedForeground())
+					.Clipping(EWidgetClipping::ClipToBounds)
+				]
 			]
 			+ SVerticalBox::Slot().AutoHeight()
 			[
-				SNew(STextBlock)
-				.Text_Lambda([this]() { return FText::FromString(CurrentText); })
-				.ColorAndOpacity(FSlateColor::UseSubduedForeground())
-				.Clipping(EWidgetClipping::ClipToBounds)
-			]
-		]
-		+ SVerticalBox::Slot().AutoHeight()
-		[
-			SNew(SBorder).BorderImage(PjcShim::GetBrush(TEXT("ToolPanel.DarkGroupBorder"))).Padding(FMargin {16.0f, 8.0f})
-			[
-				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 12.0f, 0.0f})
+				SNew(SBorder).BorderImage(PjcShim::GetBrush(TEXT("ToolPanel.DarkGroupBorder"))).Padding(FMargin {16.0f, 8.0f})
 				[
-					SNew(STextBlock)
-					.Text_Lambda([this]() {
-						const double Now = bFinished ? EndTime : FPlatformTime::Seconds();
-						return FText::FromString(FString::Printf(TEXT("%.1f s"), Now - StartTime));
-					})
-					.Font(PjcWidgets::GetFontMono(9))
-				]
-				+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
-				[
-					SNew(STextBlock)
-					.Text_Lambda([this]() {
-						const FString Scanned = PjcFormat::Count(UPjcSubsystem::GetScanResult().Assets.Num()) + TEXT(" assets scanned");
-						const FString Done = bScanned ? Scanned : FString {TEXT("The last result stays")};
-						return FText::FromString(bFinished ? Done : FString {TEXT("The last result stays if you cancel")});
-					})
-					.ColorAndOpacity(FSlateColor::UseSubduedForeground())
-				]
-				+ SHorizontalBox::Slot().AutoWidth()
-				[
-					SNew(SButton)
-					.ContentPadding(FMargin {12.0f, 2.0f})
-					.IsEnabled_Lambda([this]() { return bFinished || !Progress.bCancelRequested; })
-					.OnClicked_Lambda([this]() {
-						if (bFinished) {
-							Close();
-						}
-						else {
-							Progress.bCancelRequested = true;
-						}
-						return FReply::Handled();
-					})
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 12.0f, 0.0f})
 					[
-						SNew(STextBlock).Text_Lambda([this]() { return FText::FromString(bFinished ? TEXT("Close") : TEXT("Cancel")); })
+						SNew(STextBlock)
+						.Text_Lambda([this]() {
+							const double Now = bFinished ? EndTime : FPlatformTime::Seconds();
+							return FText::FromString(FString::Printf(TEXT("%.1f s"), Now - StartTime));
+						})
+						.Font(PjcWidgets::GetFontMono(9))
+					]
+					+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
+					[
+						SNew(STextBlock)
+						.Text_Lambda([this]() {
+							const FString Scanned = PjcFormat::Count(UPjcSubsystem::GetScanResult().Assets.Num()) + TEXT(" assets scanned");
+							const FString Done = bScanned ? Scanned : FString {TEXT("The last result stays")};
+							return FText::FromString(bFinished ? Done : FString {TEXT("The last result stays if you cancel")});
+						})
+						.ColorAndOpacity(FSlateColor::UseSubduedForeground())
+					]
+					+ SHorizontalBox::Slot().AutoWidth()
+					[
+						SNew(SButton)
+#if ENGINE_MAJOR_VERSION < 5
+						.ButtonStyle(&PjcShim::GetButtonStyle427(false))
+						.ForegroundColor(FSlateColor::UseForeground())
+#endif
+						.ContentPadding(FMargin {12.0f, 2.0f})
+						.IsEnabled_Lambda([this]() { return bFinished || !Progress.bCancelRequested; })
+						.OnClicked_Lambda([this]() {
+							if (bFinished) {
+								Close();
+							}
+							else {
+								Progress.bCancelRequested = true;
+							}
+							return FReply::Handled();
+						})
+						[
+							SNew(STextBlock).Text_Lambda([this]() { return FText::FromString(bFinished ? TEXT("Close") : TEXT("Cancel")); })
+						]
 					]
 				]
 			]

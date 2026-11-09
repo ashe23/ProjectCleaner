@@ -46,148 +46,157 @@ void SPjcToolFrame::Construct(const FArguments& InArgs) {
 	// clang-format off
 	ChildSlot
 	[
-		SNew(SVerticalBox)
-		+ SVerticalBox::Slot().AutoHeight()
+		SNew(SBorder).BorderImage(PjcShim::GetBrushPage()).Padding(0.0f)
 		[
-			SNew(SPjcScanBar)
-		]
-		+ SVerticalBox::Slot().FillHeight(1.0f)
-		[
-			SNew(SHorizontalBox)
-			// strip with the Scan settings tab, label rotated (a canvas keeps its full length, a box would clip it)
-			+ SHorizontalBox::Slot().AutoWidth()
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot().AutoHeight()
 			[
-				SNew(SBorder)
-				.BorderImage(PjcShim::GetBrush(TEXT("ToolPanel.GroupBorder")))
-				.Padding(0.0f)
-				[
-					SNew(SBox).WidthOverride(StripWidth).VAlign(VAlign_Top)
-					[
-						SNew(SButton)
-						.ButtonStyle(&PjcShim::GetStyle().GetWidgetStyle<FButtonStyle>(TEXT("NoBorder")))
-						.ContentPadding(FMargin {0.0f, 8.0f})
-						.ToolTipText_Lambda([this]() {
-							const TCHAR* Action = bPanelOpen ? TEXT("Hide") : TEXT("Show");
-							const TCHAR* Changed = FPjcScanDraft::IsChanged() ? TEXT(" \u00B7 changed, not scanned yet") : TEXT("");
-							return FText::FromString(FString::Printf(TEXT("%s scan settings%s"), Action, Changed));
-						})
-						.OnClicked_Lambda([this]() {
-							TogglePanel();
-							return FReply::Handled();
-						})
-						[
-							SNew(SVerticalBox)
-							+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center)
-							[
-								SNew(SBox).WidthOverride(16.0f).HeightOverride(16.0f)
-								[
-									SNew(SImage).Image(PjcShim::GetIconSettings())
-								]
-							]
-							+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center).Padding(FMargin {0.0f, 6.0f})
-							[
-								SNew(SBox).WidthOverride(StripWidth).HeightOverride(LabelLength)
-								[
-									SNew(SCanvas)
-									+ SCanvas::Slot()
-									.Position(FVector2D {StripWidth * 0.5f, LabelLength * 0.5f})
-									.Size(FVector2D {LabelLength, StripWidth})
-									.HAlign(HAlign_Center)
-									.VAlign(VAlign_Center)
-									[
-										SNew(SBox).HAlign(HAlign_Center).VAlign(VAlign_Center)
-										.RenderTransform(FSlateRenderTransform {FQuat2D {FMath::DegreesToRadians(-90.0f)}})
-										.RenderTransformPivot(FVector2D {0.5f, 0.5f})
-										[
-											SNew(STextBlock).Text(FText::FromString(TEXT("Scan settings")))
-										]
-									]
-								]
-							]
-							+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center)
-							[
-								// changed, not scanned yet
-								SNew(SBox).WidthOverride(6.0f).HeightOverride(6.0f)
-								.Visibility_Lambda([]() { return FPjcScanDraft::IsChanged() ? EVisibility::Visible : EVisibility::Hidden; })
-								[
-									SNew(SImage)
-									.Image(FCoreStyle::Get().GetBrush("WhiteBrush"))
-									.ColorAndOpacity(FSlateColor {FPjcStyles::Get().GetColor("ProjectCleaner.Color.Yellow")})
-								]
-							]
-						]
-					]
-				]
+				SNew(SPjcScanBar)
 			]
-			// panel slides out by its width, pushing the tool content
-			+ SHorizontalBox::Slot().AutoWidth()
+			+ SVerticalBox::Slot().FillHeight(1.0f)
 			[
-				SNew(SBox)
-				.WidthOverride(this, &SPjcToolFrame::GetPanelWidth)
-				.Visibility(this, &SPjcToolFrame::GetPanelVisibility)
-				.Clipping(EWidgetClipping::ClipToBounds)
+				SNew(SHorizontalBox)
+				// strip with the Scan settings tab, label rotated (a canvas keeps its full length, a box would clip it)
+				+ SHorizontalBox::Slot().AutoWidth()
 				[
 					SNew(SBorder)
 					.BorderImage(PjcShim::GetBrush(TEXT("ToolPanel.GroupBorder")))
-					.Padding(FMargin {4.0f, 0.0f})
+					.Padding(0.0f)
 					[
-						SNew(SScrollBox)
-						+ SScrollBox::Slot()
+						SNew(SBox).WidthOverride(StripWidth).VAlign(VAlign_Top)
 						[
-							SNew(SPjcScanSettings).OnClose(this, &SPjcToolFrame::TogglePanel)
+							SNew(SButton)
+#if ENGINE_MAJOR_VERSION < 5
+							.ForegroundColor(FSlateColor::UseForeground())
+#endif
+							.ButtonStyle(&PjcShim::GetStyle().GetWidgetStyle<FButtonStyle>(TEXT("NoBorder")))
+							.ContentPadding(FMargin {0.0f, 8.0f})
+							.ToolTipText_Lambda([this]() {
+								const TCHAR* Action = bPanelOpen ? TEXT("Hide") : TEXT("Show");
+								const TCHAR* Changed = FPjcScanDraft::IsChanged() ? TEXT(" \u00B7 changed, not scanned yet") : TEXT("");
+								return FText::FromString(FString::Printf(TEXT("%s scan settings%s"), Action, Changed));
+							})
+							.OnClicked_Lambda([this]() {
+								TogglePanel();
+								return FReply::Handled();
+							})
+							[
+								SNew(SVerticalBox)
+								+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center)
+								[
+									SNew(SBox).WidthOverride(16.0f).HeightOverride(16.0f)
+									[
+										SNew(SImage).Image(PjcShim::GetIconSettings())
+									]
+								]
+								+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center).Padding(FMargin {0.0f, 6.0f})
+								[
+									SNew(SBox).WidthOverride(StripWidth).HeightOverride(LabelLength)
+									[
+										SNew(SCanvas)
+										+ SCanvas::Slot()
+										.Position(FVector2D {StripWidth * 0.5f, LabelLength * 0.5f})
+										.Size(FVector2D {LabelLength, StripWidth})
+										.HAlign(HAlign_Center)
+										.VAlign(VAlign_Center)
+										[
+											SNew(SBox).HAlign(HAlign_Center).VAlign(VAlign_Center)
+											.RenderTransform(FSlateRenderTransform {FQuat2D {FMath::DegreesToRadians(-90.0f)}})
+											.RenderTransformPivot(FVector2D {0.5f, 0.5f})
+											[
+												SNew(STextBlock).Text(FText::FromString(TEXT("Scan settings")))
+											]
+										]
+									]
+								]
+								+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center)
+								[
+									// changed, not scanned yet
+									SNew(SBox).WidthOverride(6.0f).HeightOverride(6.0f)
+									.Visibility_Lambda([]() { return FPjcScanDraft::IsChanged() ? EVisibility::Visible : EVisibility::Hidden; })
+									[
+										SNew(SImage)
+										.Image(FCoreStyle::Get().GetBrush("WhiteBrush"))
+										.ColorAndOpacity(FSlateColor {FPjcStyles::Get().GetColor("ProjectCleaner.Color.Yellow")})
+									]
+								]
+							]
 						]
 					]
 				]
-			]
-			+ SHorizontalBox::Slot().FillWidth(1.0f)
-			[
-				SNew(SOverlay)
-				// results from before a change are greyed and take no clicks: only Rescan and Scan settings work
-				+ SOverlay::Slot()
+				// panel slides out by its width, pushing the tool content
+				+ SHorizontalBox::Slot().AutoWidth()
 				[
 					SNew(SBox)
-					.Visibility_Lambda([]() { return UPjcSubsystem::GetScanResult().IsValid() ? EVisibility::Visible : EVisibility::Collapsed; })
-					.IsEnabled_Lambda([]() { return !SPjcScanBar::NeedsRescan() && !PjcTabs::IsWindowOpen(); })
+					.WidthOverride(this, &SPjcToolFrame::GetPanelWidth)
+					.Visibility(this, &SPjcToolFrame::GetPanelVisibility)
+					.Clipping(EWidgetClipping::ClipToBounds)
 					[
-						InArgs._Content.Widget
-					]
-				]
-				// a window in front (scan, clean project) dims the tool behind it
-				+ SOverlay::Slot()
-				[
-					SNew(SBorder)
-					.BorderImage(FCoreStyle::Get().GetBrush("WhiteBrush"))
-					.BorderBackgroundColor(FLinearColor {0.0f, 0.0f, 0.0f, 0.6f})
-					.Visibility_Lambda([]() { return PjcTabs::IsWindowOpen() ? EVisibility::Visible : EVisibility::Collapsed; })
-				]
-				+ SOverlay::Slot().HAlign(HAlign_Center).VAlign(VAlign_Center)
-				[
-					SNew(SVerticalBox)
-					.Visibility_Lambda([]() { return UPjcSubsystem::GetScanResult().IsValid() ? EVisibility::Collapsed : EVisibility::Visible; })
-					+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center)
-					[
-						SNew(STextBlock).Text(FText::FromString(TEXT("Not scanned yet"))).Font(FPjcStyles::GetFont("Bold", 12))
-					]
-					+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center).Padding(FMargin {0.0f, 6.0f, 0.0f, 12.0f})
-					[
-						SNew(STextBlock)
-						.Text(FText::FromString(TEXT("Scan the project to see which assets are used, unused or to review.")))
-						.ColorAndOpacity(FSlateColor::UseSubduedForeground())
-					]
-					+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center)
-					[
-						SNew(SButton)
-						.ButtonStyle(&PjcShim::GetPrimaryButtonStyle())
-						.ContentPadding(FMargin {16.0f, 4.0f})
-						.OnClicked_Lambda([]() {
-							if (FPjcScanDraft::IsChanged()) {
-								FPjcScanDraft::Get().ApplyToSettings();
-							}
-							SPjcScanBar::ScanProject(true);
-							return FReply::Handled();
-						})
+						SNew(SBorder)
+						.BorderImage(PjcShim::GetBrush(TEXT("ToolPanel.GroupBorder")))
+						.Padding(FMargin {4.0f, 0.0f})
 						[
-							SNew(STextBlock).Text(FText::FromString(TEXT("Scan project")))
+							SNew(SScrollBox)
+							+ SScrollBox::Slot()
+							[
+								SNew(SPjcScanSettings).OnClose(this, &SPjcToolFrame::TogglePanel)
+							]
+						]
+					]
+				]
+				+ SHorizontalBox::Slot().FillWidth(1.0f)
+				[
+					SNew(SOverlay)
+					// results from before a change are greyed and take no clicks: only Rescan and Scan settings work
+					+ SOverlay::Slot()
+					[
+						SNew(SBox)
+						.Visibility_Lambda([]() { return UPjcSubsystem::GetScanResult().IsValid() ? EVisibility::Visible : EVisibility::Collapsed; })
+						.IsEnabled_Lambda([]() { return !SPjcScanBar::NeedsRescan() && !PjcTabs::IsWindowOpen(); })
+						[
+							InArgs._Content.Widget
+						]
+					]
+					// a window in front (scan, clean project) dims the tool behind it
+					+ SOverlay::Slot()
+					[
+						SNew(SBorder)
+						.BorderImage(FCoreStyle::Get().GetBrush("WhiteBrush"))
+						.BorderBackgroundColor(FLinearColor {0.0f, 0.0f, 0.0f, 0.6f})
+						.Visibility_Lambda([]() { return PjcTabs::IsWindowOpen() ? EVisibility::Visible : EVisibility::Collapsed; })
+					]
+					+ SOverlay::Slot().HAlign(HAlign_Center).VAlign(VAlign_Center)
+					[
+						SNew(SVerticalBox)
+						.Visibility_Lambda([]() { return UPjcSubsystem::GetScanResult().IsValid() ? EVisibility::Collapsed : EVisibility::Visible; })
+						+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center)
+						[
+							SNew(STextBlock).Text(FText::FromString(TEXT("Not scanned yet"))).Font(FPjcStyles::GetFont("Bold", 12))
+						]
+						+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center).Padding(FMargin {0.0f, 6.0f, 0.0f, 12.0f})
+						[
+							SNew(STextBlock)
+							.Text(FText::FromString(TEXT("Scan the project to see which assets are used, unused or to review.")))
+							.ColorAndOpacity(FSlateColor::UseSubduedForeground())
+						]
+						+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center)
+						[
+							SNew(SButton)
+#if ENGINE_MAJOR_VERSION < 5
+							.ForegroundColor(FSlateColor::UseForeground())
+#endif
+							.ButtonStyle(&PjcShim::GetPrimaryButtonStyle())
+							.ContentPadding(FMargin {16.0f, 4.0f})
+							.OnClicked_Lambda([]() {
+								if (FPjcScanDraft::IsChanged()) {
+									FPjcScanDraft::Get().ApplyToSettings();
+								}
+								SPjcScanBar::ScanProject(true);
+								return FReply::Handled();
+							})
+							[
+								SNew(STextBlock).Text(FText::FromString(TEXT("Scan project")))
+							]
 						]
 					]
 				]

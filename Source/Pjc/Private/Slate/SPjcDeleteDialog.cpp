@@ -167,6 +167,10 @@ void SPjcDeleteDialog::Construct(const FArguments& InArgs) {
 				+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin {0.0f, 0.0f, 8.0f, 0.0f})
 				[
 					SNew(SButton)
+#if ENGINE_MAJOR_VERSION < 5
+					.ButtonStyle(&PjcShim::GetButtonStyle427(false))
+					.ForegroundColor(FSlateColor::UseForeground())
+#endif
 					.ContentPadding(FMargin {14.0f, 3.0f})
 					.OnClicked_Lambda([this]() {
 						if (const TSharedPtr<SWindow> Owner = Window.Pin()) Owner->RequestDestroyWindow();
@@ -179,6 +183,10 @@ void SPjcDeleteDialog::Construct(const FArguments& InArgs) {
 				+ SHorizontalBox::Slot().AutoWidth()
 				[
 					SNew(SButton)
+#if ENGINE_MAJOR_VERSION < 5
+					.ButtonStyle(&PjcShim::GetButtonStyle427(true))
+					.ForegroundColor(FSlateColor::UseForeground())
+#endif
 					.ButtonColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.UnusedFill"))
 					.ContentPadding(FMargin {14.0f, 3.0f})
 					.OnClicked_Lambda([this]() {
