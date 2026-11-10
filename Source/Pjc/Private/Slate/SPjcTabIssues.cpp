@@ -191,13 +191,14 @@ void SPjcTabIssues::Construct(const FArguments& InArgs) {
 							return Category == EPjcIssueCategory::External && bKept ? EVisibility::Visible : EVisibility::Collapsed;
 						})
 					]
-					+ SVerticalBox::Slot().FillHeight(1.0f)
-					[
-						SAssignNew(ListBox, SBox)
-					]
+					// the selection and its actions, above the list
 					+ SVerticalBox::Slot().AutoHeight()
 					[
 						MakeFooter()
+					]
+					+ SVerticalBox::Slot().FillHeight(1.0f)
+					[
+						SAssignNew(ListBox, SBox)
 					]
 				]
 			]
@@ -652,17 +653,24 @@ TSharedRef<SWidget> SPjcTabIssues::MakeFooter() {
 	// clang-format off
 	return SNew(SBorder)
 		.BorderImage(PjcShim::GetBrush(TEXT("ToolPanel.DarkGroupBorder")))
-		.Padding(FMargin {12.0f, 6.0f})
+		.Padding(FMargin {12.0f, 4.0f})
 		[
 			SNew(SHorizontalBox)
 			+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
 			[
-				SNew(STextBlock).Text(this, &SPjcTabIssues::GetSelectionText)
+				SNew(SBox).MinDesiredHeight(24.0f).VAlign(VAlign_Center)
+				[
+					SNew(STextBlock)
+					.Text(this, &SPjcTabIssues::GetSelectionText)
+					.ColorAndOpacity_Lambda([this]() { return GetSelected().Num() > 0 ? FSlateColor::UseForeground() : FSlateColor::UseSubduedForeground(); })
+				]
 			]
 			// redirectors
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
 			[
-				SNew(SBox).Visibility_Lambda(Is(EPjcIssueCategory::Redirectors))
+				SNew(SBox).Visibility_Lambda([this]() {
+					return Category == EPjcIssueCategory::Redirectors && GetSelected().Num() > 0 ? EVisibility::Visible : EVisibility::Collapsed;
+				})
 				[
 					Button(
 						TEXT("Fix"),
@@ -697,7 +705,8 @@ TSharedRef<SWidget> SPjcTabIssues::MakeFooter() {
 			[
 				SNew(SBox).Visibility_Lambda([this]() {
 					const bool bFiles = Category == EPjcIssueCategory::Corrupted || Category == EPjcIssueCategory::Empty;
-					return bFiles || (Category == EPjcIssueCategory::External && !bKept) ? EVisibility::Visible : EVisibility::Collapsed;
+					const bool bHere = bFiles || (Category == EPjcIssueCategory::External && !bKept);
+					return bHere && GetSelected().Num() > 0 ? EVisibility::Visible : EVisibility::Collapsed;
 				})
 				[
 					Button(
@@ -712,7 +721,7 @@ TSharedRef<SWidget> SPjcTabIssues::MakeFooter() {
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
 			[
 				SNew(SBox).Visibility_Lambda([this]() {
-					return Category == EPjcIssueCategory::External && !bKept ? EVisibility::Visible : EVisibility::Collapsed;
+					return Category == EPjcIssueCategory::External && !bKept && GetSelected().Num() > 0 ? EVisibility::Visible : EVisibility::Collapsed;
 				})
 				[
 					SNew(SComboButton)
@@ -808,7 +817,16 @@ FText SPjcTabIssues::GetSelectionText() const {
 	if (AllRows.Num() == 0) return FText::GetEmpty();
 
 	const TArray<FRowPtr> Selected = GetSelected();
-	if (Selected.Num() == 0) return FText::FromString(TEXT("No selection \u00B7 Ctrl or Shift selects more"));
+	if (Selected.Num() == 0) {
+		// what selecting is for
+		if (Category == EPjcIssueCategory::Redirectors) return FText::FromString(TEXT("Select redirectors to fix"));
+		if (Category == EPjcIssueCategory::Empty) return FText::FromString(TEXT("Select folders to delete"));
+		if (Category == EPjcIssueCategory::External && bKept) return FText::FromString(TEXT("Never deleted"));
+
+		return FText::FromString(
+			Category == EPjcIssueCategory::External ? TEXT("Select files to delete or exclude") : TEXT("Select files to delete")
+		);
+	}
 
 	int64 Size = 0;
 	for (const auto& Row : Selected) {

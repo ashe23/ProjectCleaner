@@ -12,6 +12,8 @@ class SPjcSizeMap;
 class FTabManager;
 class SBox;
 class SHorizontalBox;
+class SVerticalBox;
+class SPjcClassBar;
 struct FSlateBrush;
 
 // Asset in the list of the Assets tool
@@ -120,7 +122,6 @@ class SPjcTabUnused final : public SCompoundWidget
 	void OnAssetSort(EColumnSortPriority::Type Priority, const FName& Column, EColumnSortMode::Type Mode);
 	EColumnSortMode::Type GetAssetSortMode(const FName Column) const;
 	void OnAssetSearchChanged(const FText& Text);
-	void OnChipClicked(const FName ClassName);
 	void OnReasonChipClicked(const FString& Key);
 	FText GetWhereText() const;
 	FText GetEmptyText() const;
@@ -178,7 +179,11 @@ class SPjcTabUnused final : public SCompoundWidget
 	TArray<FAssetRowPtr> FolderRows;
 	TArray<FAssetRowPtr> ListRows;
 	TSharedPtr<SListView<FAssetRowPtr>> ListView;
-	TSharedPtr<SHorizontalBox> ChipsBox;
+	// Reason filters above the class bar
+	TSharedPtr<SVerticalBox> ChipsBox;
+	TSharedPtr<SPjcClassBar> ClassBar;
+	// Count and size of the listed assets, for the line above the list
+	FString ListSummary;
 	// Delete group size per package, made when listed
 	TMap<FName, int32> GroupSizes;
 	// Unused assets that go with the selection
@@ -189,7 +194,6 @@ class SPjcTabUnused final : public SCompoundWidget
 	bool bMapAll = false;
 	TSharedPtr<SPjcSizeMap> SizeMap;
 	TSharedPtr<SHorizontalBox> Breadcrumb;
-	TSet<FName> ClassFilter;
 	// Reason chip key, empty for every reason
 	FString ReasonFilter;
 	// Only assets the last delete could not remove

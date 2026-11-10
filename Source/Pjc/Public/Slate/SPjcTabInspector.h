@@ -9,6 +9,7 @@
 
 class FTabManager;
 class SBox;
+class SPjcClassBar;
 class SPjcInspectorGraph;
 class SSearchBox;
 class SWrapBox;
@@ -19,6 +20,7 @@ struct FPjcInspectorRow
 	FName Package;
 	FString Name;
 	FString Path;
+	FName ClassName;
 	FString ClassLabel;
 	const FSlateBrush* Icon = nullptr;
 	FLinearColor IconColor = FLinearColor::White;
@@ -85,6 +87,8 @@ class SPjcTabInspector final : public SCompoundWidget
 	TSharedRef<SWidget> MakeFinder();
 	void RebuildFinder();
 	void ApplyFinderFilter();
+	// The class bar's part of the filter: lists what its classes leave of the rows status and search kept
+	void FilterFinderRows();
 	TSharedRef<ITableRow> OnGenerateFinderRow(FRowPtr Row, const TSharedRef<STableViewBase>& Table);
 
 	// graph
@@ -125,6 +129,9 @@ class SPjcTabInspector final : public SCompoundWidget
 
 	TArray<FRowPtr> FinderAll;
 	TArray<FRowPtr> FinderRows;
+	// Rows that pass status and search, before the class bar
+	TArray<FRowPtr> FinderBase;
+	TSharedPtr<SPjcClassBar> FinderClasses;
 	TSharedPtr<SListView<FRowPtr>> FinderList;
 	TSharedPtr<SSearchBox> FinderSearch;
 	FString FinderText;

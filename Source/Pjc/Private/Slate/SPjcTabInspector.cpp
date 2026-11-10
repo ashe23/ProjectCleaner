@@ -3,6 +3,7 @@
 #include "Slate/SPjcTabInspector.h"
 #include "Slate/PjcActions.h"
 #include "Slate/PjcWidgets.h"
+#include "Slate/SPjcClassBar.h"
 #include "Slate/SPjcInspectorGraph.h"
 #include "Slate/SPjcScanBar.h"
 #include "Slate/SPjcToolFrame.h"
@@ -164,11 +165,11 @@ void SPjcTabInspector::Construct(const FArguments& InArgs) {
 		SNew(SPjcToolFrame).PageName(TEXT("Inspector")).PanelOpen(false)
 		[
 			SNew(SSplitter).PhysicalSplitterHandleSize(3.0f)
-			+ SSplitter::Slot().Value(0.22f)
+			+ SSplitter::Slot().Value(0.26f)
 			[
 				MakeFinder()
 			]
-			+ SSplitter::Slot().Value(0.48f)
+			+ SSplitter::Slot().Value(0.44f)
 			[
 				MakeGraphPane()
 			]
@@ -377,15 +378,30 @@ TSharedRef<SWidget> SPjcTabInspector::MakeFinder() {
 			]
 			+ SVerticalBox::Slot().FillHeight(1.0f)
 			[
-				SAssignNew(FinderList, SListView<FRowPtr>)
-				.ListItemsSource(&FinderRows)
-				.SelectionMode(ESelectionMode::Single)
-				.OnGenerateRow(this, &SPjcTabInspector::OnGenerateFinderRow)
-				.OnSelectionChanged_Lambda([this](FRowPtr Row, ESelectInfo::Type SelectInfo) {
-					if (Row.IsValid() && SelectInfo != ESelectInfo::Direct && Row->Package != Focus) {
-						SetFocus(Row->Package, true);
-					}
-				})
+				SNew(SHorizontalBox)
+				// class bar, as in the Assets tab: a class in its color is listed
+				+ SHorizontalBox::Slot().AutoWidth()
+				[
+					SNew(SBox).WidthOverride(184.0f)
+					[
+						SNew(SBorder).BorderImage(PjcShim::GetBrush(TEXT("ToolPanel.DarkGroupBorder"))).Padding(FMargin {0.0f, 4.0f})
+						[
+							SAssignNew(FinderClasses, SPjcClassBar).OnChanged(FSimpleDelegate::CreateSP(this, &SPjcTabInspector::FilterFinderRows))
+						]
+					]
+				]
+				+ SHorizontalBox::Slot().FillWidth(1.0f)
+				[
+					SAssignNew(FinderList, SListView<FRowPtr>)
+					.ListItemsSource(&FinderRows)
+					.SelectionMode(ESelectionMode::Single)
+					.OnGenerateRow(this, &SPjcTabInspector::OnGenerateFinderRow)
+					.OnSelectionChanged_Lambda([this](FRowPtr Row, ESelectInfo::Type SelectInfo) {
+						if (Row.IsValid() && SelectInfo != ESelectInfo::Direct && Row->Package != Focus) {
+							SetFocus(Row->Package, true);
+						}
+					})
+				]
 			]
 		];
 	// clang-format on
@@ -400,6 +416,7 @@ void SPjcTabInspector::RebuildFinder() {
 		Row->Package = Asset.PackageName;
 		Row->Name = Asset.AssetName.ToString();
 		Row->Path = Asset.PackagePath.ToString();
+		Row->ClassName = PjcShim::GetAssetClassName(Asset);
 		Row->ClassLabel = Type.Label;
 		Row->Icon = Type.Icon;
 		Row->IconColor = Type.Color;
@@ -414,7 +431,9 @@ void SPjcTabInspector::RebuildFinder() {
 }
 
 void SPjcTabInspector::ApplyFinderFilter() {
-	FinderRows.Reset();
+	// status and search first: the class bar counts what they leave
+	FinderBase.Reset();
+	TMap<FName, FPjcClassBarItem> Classes;
 	for (const FRowPtr& Row : FinderAll) {
 		if (FinderStatus == EStatusFilter::Used && Row->Status != EPjcAssetStatus::Used) continue;
 		if (FinderStatus == EStatusFilter::EditorOnly && Row->Status != EPjcAssetStatus::EditorOnly) continue;
@@ -422,6 +441,30 @@ void SPjcTabInspector::ApplyFinderFilter() {
 		if (FinderStatus == EStatusFilter::Unused && Row->Status != EPjcAssetStatus::Unused) continue;
 		if (!FinderText.IsEmpty() && !Row->Name.Contains(FinderText) && !Row->Path.Contains(FinderText) && !Row->ClassLabel.Contains(FinderText))
 			continue;
+
+		FinderBase.Add(Row);
+		FPjcClassBarItem& Item = Classes.FindOrAdd(Row->ClassName);
+		Item.ClassName = Row->ClassName;
+		Item.Label = Row->ClassLabel;
+		Item.Color = Row->IconColor;
+		Item.ToolTip = Row->ClassName.ToString();
+		++Item.Num;
+	}
+	if (FinderClasses.IsValid()) {
+		TArray<FPjcClassBarItem> Items;
+		Classes.GenerateValueArray(Items);
+		Items.Sort([](const FPjcClassBarItem& A, const FPjcClassBarItem& B) {
+			return A.Num != B.Num ? A.Num > B.Num : A.Label < B.Label;
+		});
+		FinderClasses->SetItems(Items);
+	}
+	FilterFinderRows();
+}
+
+void SPjcTabInspector::FilterFinderRows() {
+	FinderRows.Reset();
+	for (const FRowPtr& Row : FinderBase) {
+		if (FinderClasses.IsValid() && !FinderClasses->IsShown(Row->ClassName)) continue;
 
 		FinderRows.Add(Row);
 	}
@@ -861,7 +904,7 @@ void SPjcTabInspector::RebuildDetails() {
 		]
 		+ SVerticalBox::Slot().FillHeight(1.0f)
 		[
-			SNew(SSplitter).Orientation(Orient_Vertical).PhysicalSplitterHandleSize(3.0f)
+			SNew(SSplitter).Orientation(Orient_Horizontal).PhysicalSplitterHandleSize(3.0f)
 			+ SSplitter::Slot().Value(0.5f)
 			[
 				MakeLinkList(true)

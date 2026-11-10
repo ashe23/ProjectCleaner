@@ -13,6 +13,9 @@
 #include "Misc/PackageName.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Layout/SBorder.h"
+#include "Styling/CoreStyle.h"
+#include "Widgets/Images/SImage.h"
+#include "Widgets/Layout/SBox.h"
 #include "Widgets/Layout/SSpacer.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/Text/STextBlock.h"
@@ -57,12 +60,13 @@ void SPjcScanBar::Construct(const FArguments& InArgs) {
 					SNew(STextBlock).Text(FText::FromString(TEXT("Rescan")))
 				]
 			]
-			+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center).Padding(FMargin {10.0f, 0.0f})
+			// a line between the two project wide actions
+			+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin {8.0f, 2.0f})
 			[
-				SNew(STextBlock)
-				.Text(this, &SPjcScanBar::GetStatusText)
-				.ColorAndOpacity(this, &SPjcScanBar::GetStatusColor)
-				.ToolTipText(this, &SPjcScanBar::GetStatusToolTip)
+				SNew(SBox).WidthOverride(1.0f)
+				[
+					SNew(SImage).Image(FCoreStyle::Get().GetBrush("WhiteBrush")).ColorAndOpacity(FLinearColor {1.0f, 1.0f, 1.0f, 0.12f})
+				]
 			]
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 			[
@@ -78,6 +82,13 @@ void SPjcScanBar::Construct(const FArguments& InArgs) {
 				[
 					SNew(STextBlock).Text(FText::FromString(TEXT("Clean project")))
 				]
+			]
+			+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center).Padding(FMargin {10.0f, 0.0f})
+			[
+				SNew(STextBlock)
+				.Text(this, &SPjcScanBar::GetStatusText)
+				.ColorAndOpacity(this, &SPjcScanBar::GetStatusColor)
+				.ToolTipText(this, &SPjcScanBar::GetStatusToolTip)
 			]
 		]
 	];

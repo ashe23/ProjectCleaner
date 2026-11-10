@@ -4,6 +4,7 @@
 #include "Slate/PjcActions.h"
 #include "Slate/PjcTabs.h"
 #include "Slate/PjcWidgets.h"
+#include "Slate/SPjcClassBar.h"
 #include "Slate/SPjcScanBar.h"
 #include "Slate/SPjcSizeMap.h"
 #include "Slate/SPjcTabOverview.h"
@@ -517,7 +518,7 @@ void SPjcTabUnused::SelectFolder(const FString& Path) {
 	}
 	if (!Path.Equals(SelectedFolder)) {
 		SelectedFolder = Path;
-		ClassFilter.Reset();
+		ClassBar->Reset();
 		RefreshTree();
 		RefreshAssets();
 	}
@@ -533,7 +534,7 @@ void SPjcTabUnused::ShowSet(const EPjcAssetSet InSet, const FString& Reason) {
 	}
 
 	Set = InSet;
-	ClassFilter.Reset();
+	ClassBar->Reset();
 	ReasonFilter.Reset();
 	bHeldOnly = false;
 	RebuildTree();
@@ -575,23 +576,33 @@ void SPjcTabUnused::RebuildTree() {
 }
 
 TSharedRef<SWidget> SPjcTabUnused::MakeSetSwitch() {
+	// tabs: text with a line under the open one, so they do not look like the action buttons
 	const TSharedRef<SHorizontalBox> Switch = SNew(SHorizontalBox);
 	const auto AddSet = [this, &Switch](const EPjcAssetSet Each, const FString& ToolTip) {
 		// clang-format off
-		Switch->AddSlot().AutoWidth()
+		Switch->AddSlot().AutoWidth().Padding(FMargin {0.0f, 0.0f, 2.0f, 0.0f})
 		[
-			SNew(SCheckBox)
-			.Style(&PjcShim::GetToggleStyle())
+			SNew(SButton)
+#if ENGINE_MAJOR_VERSION < 5
+			.ForegroundColor(FSlateColor::UseForeground())
+#endif
+			.ButtonStyle(&PjcShim::GetStyle().GetWidgetStyle<FButtonStyle>(TEXT("NoBorder")))
+			.ContentPadding(FMargin {10.0f, 4.0f, 10.0f, 0.0f})
 			.ToolTip(PjcWidgets::MakeToolTip(PjcWidgets::GetSetLabel(Each), ToolTip))
-			.IsChecked_Lambda([this, Each]() { return Set == Each ? ECheckBoxState::Checked : ECheckBoxState::Unchecked; })
-			.OnCheckStateChanged_Lambda([this, Each](ECheckBoxState) { ShowSet(Each); })
+			.OnClicked_Lambda([this, Each]() {
+				ShowSet(Each);
+				return FReply::Handled();
+			})
 			[
-				SNew(SBox).Padding(FMargin {8.0f, 1.0f})
+				SNew(SVerticalBox)
+				+ SVerticalBox::Slot().AutoHeight()
 				[
 					SNew(SHorizontalBox)
 					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 					[
-						SNew(STextBlock).Text(FText::FromString(PjcWidgets::GetSetLabel(Each)))
+						SNew(STextBlock)
+						.Text(FText::FromString(PjcWidgets::GetSetLabel(Each)))
+						.ColorAndOpacity_Lambda([this, Each]() { return Set == Each ? FSlateColor {FLinearColor::White} : FSlateColor::UseSubduedForeground(); })
 					]
 					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
 					[
@@ -601,6 +612,17 @@ TSharedRef<SWidget> SPjcTabUnused::MakeSetSwitch() {
 						.ColorAndOpacity_Lambda([this, Each]() {
 							const bool bReviewWaits = Each == EPjcAssetSet::Review && SetCounts.FindRef(Each) > 0;
 							return bReviewWaits ? FSlateColor {PjcWidgets::GetColor("ProjectCleaner.Color.Review")} : FSlateColor::UseSubduedForeground();
+						})
+					]
+				]
+				+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {0.0f, 5.0f, 0.0f, 0.0f})
+				[
+					SNew(SBox).HeightOverride(2.0f)
+					[
+						SNew(SImage)
+						.Image(FCoreStyle::Get().GetBrush("WhiteBrush"))
+						.ColorAndOpacity_Lambda([this, Each]() {
+							return FSlateColor {Set == Each ? PjcWidgets::GetColor("ProjectCleaner.Color.Accent") : FLinearColor::Transparent};
 						})
 					]
 				]
@@ -917,7 +939,7 @@ void SPjcTabUnused::OnFolderSelectionChanged(FFolderPtr Folder, ESelectInfo::Typ
 	if (!Folder.IsValid() || Folder->Path.Equals(SelectedFolder)) return;
 
 	SelectedFolder = Folder->Path;
-	ClassFilter.Reset();
+	ClassBar->Reset();
 	RefreshAssets();
 }
 
@@ -1079,32 +1101,13 @@ TSharedRef<SWidget> SPjcTabUnused::MakeAssetPane() {
 		.Padding(0.0f)
 		[
 			SNew(SVerticalBox)
-			// the list and the folder
-			+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {8.0f, 6.0f, 8.0f, 6.0f})
+			// the four lists as tabs, then what narrows the list: subfolders, search
+			+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {8.0f, 4.0f, 8.0f, 0.0f})
 			[
 				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 10.0f, 0.0f})
+				+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Bottom)
 				[
 					MakeSetSwitch()
-				]
-				+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
-				[
-					SNew(STextBlock).Text(this, &SPjcTabUnused::GetWhereText).Font(FPjcStyles::GetFont("Bold", 9)).Clipping(EWidgetClipping::ClipToBounds)
-				]
-			]
-			// reason and class filters, biggest first, subfolders, search
-			+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {8.0f, 0.0f, 8.0f, 6.0f})
-			[
-				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
-				[
-					SNew(SScrollBox)
-					.Orientation(Orient_Horizontal)
-					.ScrollBarThickness(FVector2D {4.0f, 4.0f})
-					+ SScrollBox::Slot()
-					[
-						SAssignNew(ChipsBox, SHorizontalBox)
-					]
 				]
 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {8.0f, 0.0f})
 				[
@@ -1133,26 +1136,61 @@ TSharedRef<SWidget> SPjcTabUnused::MakeAssetPane() {
 					]
 				]
 			]
-			+ SVerticalBox::Slot().FillHeight(1.0f)
-			[
-				SNew(SOverlay)
-				+ SOverlay::Slot()
-				[
-					ListView.ToSharedRef()
-				]
-				+ SOverlay::Slot().HAlign(HAlign_Center).VAlign(VAlign_Center).Padding(FMargin {16.0f})
-				[
-					SNew(STextBlock)
-					.Text(this, &SPjcTabUnused::GetEmptyText)
-					.Visibility_Lambda([this]() { return ListRows.Num() == 0 ? EVisibility::HitTestInvisible : EVisibility::Collapsed; })
-					.ColorAndOpacity(FSlateColor::UseSubduedForeground())
-					.AutoWrapText(true)
-					.Justification(ETextJustify::Center)
-				]
-			]
 			+ SVerticalBox::Slot().AutoHeight()
 			[
-				MakeFooter()
+				SNew(SBox).HeightOverride(1.0f)
+				[
+					SNew(SImage).Image(FCoreStyle::Get().GetBrush("WhiteBrush")).ColorAndOpacity(FLinearColor {0.0f, 0.0f, 0.0f, 0.6f})
+				]
+			]
+			+ SVerticalBox::Slot().FillHeight(1.0f)
+			[
+				SNew(SHorizontalBox)
+				// reason filters and the class bar next to the list: a class in its color is listed
+				+ SHorizontalBox::Slot().AutoWidth()
+				[
+					SNew(SBox).WidthOverride(196.0f)
+					[
+						SNew(SBorder).BorderImage(PjcShim::GetBrush(TEXT("ToolPanel.DarkGroupBorder"))).Padding(FMargin {0.0f, 4.0f})
+						[
+							SNew(SVerticalBox)
+							+ SVerticalBox::Slot().AutoHeight()
+							[
+								SAssignNew(ChipsBox, SVerticalBox)
+							]
+							+ SVerticalBox::Slot().FillHeight(1.0f)
+							[
+								SAssignNew(ClassBar, SPjcClassBar).OnChanged(FSimpleDelegate::CreateSP(this, &SPjcTabUnused::ApplyAssetFilter))
+							]
+						]
+					]
+				]
+				+ SHorizontalBox::Slot().FillWidth(1.0f)
+				[
+					SNew(SVerticalBox)
+					// where the list is, the selection and its actions
+					+ SVerticalBox::Slot().AutoHeight()
+					[
+						MakeFooter()
+					]
+					+ SVerticalBox::Slot().FillHeight(1.0f)
+					[
+						SNew(SOverlay)
+						+ SOverlay::Slot()
+						[
+							ListView.ToSharedRef()
+						]
+						+ SOverlay::Slot().HAlign(HAlign_Center).VAlign(VAlign_Center).Padding(FMargin {16.0f})
+						[
+							SNew(STextBlock)
+							.Text(this, &SPjcTabUnused::GetEmptyText)
+							.Visibility_Lambda([this]() { return ListRows.Num() == 0 ? EVisibility::HitTestInvisible : EVisibility::Collapsed; })
+							.ColorAndOpacity(FSlateColor::UseSubduedForeground())
+							.AutoWrapText(true)
+							.Justification(ETextJustify::Center)
+						]
+					]
+				]
 			]
 		];
 	// clang-format on
@@ -1198,13 +1236,10 @@ void SPjcTabUnused::RefreshAssets() {
 	}
 
 	// filters of classes and reasons no longer here go
-	TSet<FName> Classes;
 	TSet<FString> Reasons;
 	for (const auto& Row : FolderRows) {
-		Classes.Add(Row->ClassName);
 		Reasons.Add(Row->ReasonKey);
 	}
-	ClassFilter = ClassFilter.Intersect(Classes);
 	if (!Reasons.Contains(ReasonFilter)) {
 		ReasonFilter.Reset();
 	}
@@ -1223,13 +1258,22 @@ void SPjcTabUnused::ApplyAssetFilter() {
 
 	ListRows.Reset();
 	for (const auto& Row : FolderRows) {
-		if (ClassFilter.Num() > 0 && !ClassFilter.Contains(Row->ClassName)) continue;
+		if (!ClassBar->IsShown(Row->ClassName)) continue;
 		if (!ReasonFilter.IsEmpty() && Row->ReasonKey != ReasonFilter) continue;
 		if (bHeldOnly && Row->Holder.IsEmpty()) continue;
 		if (!AssetSearch.IsEmpty() && !Row->Name.Contains(AssetSearch) && !Row->ClassLabel.Contains(AssetSearch)) continue;
 
 		ListRows.Add(Row);
 	}
+
+	// what the line above the list says about it
+	int64 ListSize = 0;
+	for (const auto& Row : ListRows) {
+		ListSize += Row->Size;
+	}
+	const FString Shown = PjcFormat::Count(ListRows.Num());
+	const FString Count = ListRows.Num() == FolderRows.Num() ? Shown : Shown + TEXT(" of ") + PjcFormat::Count(FolderRows.Num());
+	ListSummary = FString::Printf(TEXT("\u00B7 %s assets \u00B7 %s"), *Count, *PjcFormat::Size(ListSize));
 
 	const bool bAscending = AssetSortMode == EColumnSortMode::Ascending;
 	const FName Column = AssetSortColumn;
@@ -1285,46 +1329,6 @@ void SPjcTabUnused::RebuildChips() {
 		return A.Size != B.Size ? A.Size > B.Size : A.Type.Label < B.Type.Label;
 	});
 
-	const auto MakeChip = [this](FName ClassName, const FString& Label, const TOptional<FLinearColor>& Color, int32 Num, const FString& ToolTip) {
-		const TSharedRef<SHorizontalBox> Content = SNew(SHorizontalBox);
-		if (Color.IsSet()) {
-			// clang-format off
-			Content->AddSlot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 5.0f, 0.0f})
-			[
-				PjcWidgets::MakeSwatch(Color.GetValue(), 8.0f)
-			];
-			// clang-format on
-		}
-		// clang-format off
-		Content->AddSlot().AutoWidth().VAlign(VAlign_Center)
-		[
-			SNew(STextBlock).Text(FText::FromString(Label))
-		];
-		Content->AddSlot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
-		[
-			SNew(STextBlock)
-			.Text(FText::FromString(PjcFormat::Count(Num)))
-			.Font(PjcWidgets::GetFontMono(8))
-			.ColorAndOpacity(FSlateColor::UseSubduedForeground())
-		];
-
-	return SNew(SCheckBox)
-		.Style(&PjcShim::GetToggleStyle())
-		.ToolTipText(FText::FromString(ToolTip))
-		.IsChecked_Lambda([this, ClassName]() {
-			const bool bOn = ClassName.IsNone() ? ClassFilter.Num() == 0 : ClassFilter.Contains(ClassName);
-			return bOn ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
-		})
-		.OnCheckStateChanged_Lambda([this, ClassName](ECheckBoxState) { OnChipClicked(ClassName); })
-		[
-			SNew(SBox).Padding(FMargin {8.0f, 2.0f})
-			[
-				Content
-			]
-		];
-		// clang-format on
-	};
-
 	ChipsBox->ClearChildren();
 	int32 NumHeld = 0;
 	for (const auto& Row : FolderRows) {
@@ -1335,7 +1339,7 @@ void SPjcTabUnused::RebuildChips() {
 	}
 	else {
 		// clang-format off
-		ChipsBox->AddSlot().AutoWidth().Padding(FMargin {0.0f, 0.0f, 4.0f, 0.0f})
+		ChipsBox->AddSlot().AutoHeight().Padding(FMargin {6.0f, 0.0f, 6.0f, 3.0f})
 		[
 			SNew(SCheckBox)
 			.Style(&PjcShim::GetToggleStyle())
@@ -1365,13 +1369,6 @@ void SPjcTabUnused::RebuildChips() {
 		];
 		// clang-format on
 	}
-	// clang-format off
-	ChipsBox->AddSlot().AutoWidth().Padding(FMargin {0.0f, 0.0f, 4.0f, 0.0f})
-	[
-		MakeChip(NAME_None, TEXT("All"), {}, FolderRows.Num(), TEXT("Every asset here ") + PjcWidgets::GetSetWord(Set))
-	];
-	// clang-format on
-
 	// reasons, biggest first (not for unused assets: nothing uses any of them)
 	struct FReasonChip
 	{
@@ -1397,7 +1394,7 @@ void SPjcTabUnused::RebuildChips() {
 		const FString Key = Chip.Key;
 		const FString Tip = FString::Printf(TEXT("%s \u00B7 %s"), *Chip.Key, *PjcFormat::Size(Chip.Size));
 		// clang-format off
-		ChipsBox->AddSlot().AutoWidth().Padding(FMargin {0.0f, 0.0f, 4.0f, 0.0f})
+		ChipsBox->AddSlot().AutoHeight().Padding(FMargin {6.0f, 0.0f, 6.0f, 3.0f})
 		[
 			SNew(SCheckBox)
 			.Style(&PjcShim::GetToggleStyle())
@@ -1424,20 +1421,16 @@ void SPjcTabUnused::RebuildChips() {
 		];
 		// clang-format on
 	}
+	TArray<FPjcClassBarItem> Items;
 	for (const auto& Chip : Sorted) {
-		// clang-format off
-		ChipsBox->AddSlot().AutoWidth().Padding(FMargin {0.0f, 0.0f, 4.0f, 0.0f})
-		[
-			MakeChip(
-				Chip.ClassName,
-				Chip.Type.Label,
-				Chip.Type.Color,
-				Chip.Num,
-				FString::Printf(TEXT("%s \u00B7 %s\nCtrl+click adds it to the filter"), *Chip.ClassName.ToString(), *PjcFormat::Size(Chip.Size))
-			)
-		];
-		// clang-format on
+		FPjcClassBarItem& Item = Items.AddDefaulted_GetRef();
+		Item.ClassName = Chip.ClassName;
+		Item.Label = Chip.Type.Label;
+		Item.Color = Chip.Type.Color;
+		Item.Num = Chip.Num;
+		Item.ToolTip = FString::Printf(TEXT("%s \u00B7 %s"), *Chip.ClassName.ToString(), *PjcFormat::Size(Chip.Size));
 	}
+	ClassBar->SetItems(Items);
 }
 
 TSharedRef<ITableRow> SPjcTabUnused::OnGenerateAssetRow(FAssetRowPtr Row, const TSharedRef<STableViewBase>& Table) {
@@ -1467,31 +1460,6 @@ EColumnSortMode::Type SPjcTabUnused::GetAssetSortMode(const FName Column) const 
 
 void SPjcTabUnused::OnAssetSearchChanged(const FText& Text) {
 	AssetSearch = Text.ToString().TrimStartAndEnd();
-	ApplyAssetFilter();
-}
-
-void SPjcTabUnused::OnChipClicked(const FName ClassName) {
-	// a click shows one class (again: all), Ctrl+click adds or removes it
-	if (ClassName.IsNone()) {
-		ClassFilter.Reset();
-		ReasonFilter.Reset();
-		bHeldOnly = false;
-	}
-	else if (FSlateApplication::Get().GetModifierKeys().IsControlDown()) {
-		if (ClassFilter.Contains(ClassName)) {
-			ClassFilter.Remove(ClassName);
-		}
-		else {
-			ClassFilter.Add(ClassName);
-		}
-	}
-	else {
-		const bool bOnly = ClassFilter.Num() == 1 && ClassFilter.Contains(ClassName);
-		ClassFilter.Reset();
-		if (!bOnly) {
-			ClassFilter.Add(ClassName);
-		}
-	}
 	ApplyAssetFilter();
 }
 
@@ -1682,18 +1650,41 @@ TSharedRef<SWidget> SPjcTabUnused::MakeFooter() {
 		return [this, bUnused, bExcluded, bReview]() {
 			const bool bUnusedShown = Set == EPjcAssetSet::Unused && bUnused;
 			const bool bOtherShown = (Set == EPjcAssetSet::Excluded && bExcluded) || (Set == EPjcAssetSet::Review && bReview);
-			const bool bShown = bUnusedShown || bOtherShown;
+			// actions are there only when there is something to act on
+			const bool bShown = (bUnusedShown || bOtherShown) && ListView.IsValid() && ListView->GetNumItemsSelected() > 0;
 			return bShown ? EVisibility::Visible : EVisibility::Collapsed;
 		};
 	};
 
 	// clang-format off
-	return SNew(SBorder).BorderImage(PjcShim::GetBrush(TEXT("ToolPanel.DarkGroupBorder"))).Padding(FMargin {10.0f, 6.0f})
+	const auto WithSelection = [HasSelection]() {
+		return HasSelection() ? EVisibility::Visible : EVisibility::Collapsed;
+	};
+	return SNew(SBorder).BorderImage(PjcShim::GetBrush(TEXT("ToolPanel.DarkGroupBorder"))).Padding(FMargin {10.0f, 4.0f})
 		[
 			SNew(SHorizontalBox)
+			// where the list is and how much it holds
 			+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
 			[
-				SNew(STextBlock).Text(this, &SPjcTabUnused::GetSelectionText).Clipping(EWidgetClipping::ClipToBounds)
+				SNew(SBox).Clipping(EWidgetClipping::ClipToBounds).MinDesiredHeight(24.0f).VAlign(VAlign_Center)
+				[
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+					[
+						SNew(STextBlock).Text(this, &SPjcTabUnused::GetWhereText).Font(FPjcStyles::GetFont("Bold", 9))
+					]
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
+					[
+						SNew(STextBlock).Text_Lambda([this]() { return FText::FromString(ListSummary); }).ColorAndOpacity(FSlateColor::UseSubduedForeground())
+					]
+				]
+			]
+			// the selection, or what selecting is for
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {12.0f, 0.0f, 0.0f, 0.0f})
+			[
+				SNew(STextBlock)
+				.Text(this, &SPjcTabUnused::GetSelectionText)
+				.ColorAndOpacity_Lambda([HasSelection]() { return HasSelection() ? FSlateColor::UseForeground() : FSlateColor::UseSubduedForeground(); })
 			]
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 			[
@@ -1766,6 +1757,7 @@ TSharedRef<SWidget> SPjcTabUnused::MakeFooter() {
 #endif
 				.ContentPadding(FMargin {10.0f, 2.0f})
 				.ToolTipText(FText::FromString(TEXT("Shows why it is in the list in the Inspector")))
+				.Visibility_Lambda(WithSelection)
 				.IsEnabled_Lambda([this]() { return ListView.IsValid() && ListView->GetNumItemsSelected() == 1; })
 				.OnClicked_Lambda([this]() {
 					InspectSelected();
@@ -1784,6 +1776,7 @@ TSharedRef<SWidget> SPjcTabUnused::MakeFooter() {
 #endif
 				.ContentPadding(FMargin {10.0f, 2.0f})
 				.ToolTipText(FText::FromString(TEXT("Shows the selection in the Content Browser")))
+				.Visibility_Lambda(WithSelection)
 				.IsEnabled_Lambda(HasSelection)
 				.OnClicked_Lambda([this]() {
 					BrowseSelected();
@@ -1929,11 +1922,11 @@ void SPjcTabUnused::BrowseSelected() const {
 FText SPjcTabUnused::GetSelectionText() const {
 	if (!ListView.IsValid() || ListView->GetNumItemsSelected() == 0) {
 		switch (Set) {
-			case EPjcAssetSet::Excluded : return FText::FromString(TEXT("No selection \u00B7 Never deleted while a rule keeps them"));
-			case EPjcAssetSet::Used :	  return FText::FromString(TEXT("No selection \u00B7 Inspect shows the whole chain"));
-			case EPjcAssetSet::Review :	  return FText::FromString(TEXT("No selection \u00B7 Clean project keeps these \u00B7 Delete or Keep each"));
+			case EPjcAssetSet::Excluded : return FText::FromString(TEXT("Select assets to remove their exclusion"));
+			case EPjcAssetSet::Used :	  return FText::FromString(TEXT("Select an asset to inspect"));
+			case EPjcAssetSet::Review :	  return FText::FromString(TEXT("Select assets to delete or keep"));
 			case EPjcAssetSet::Unused :
-			default :					  return FText::FromString(TEXT("No selection \u00B7 Ctrl or Shift selects more"));
+			default :					  return FText::FromString(TEXT("Select assets to delete, exclude or inspect"));
 		}
 	}
 
@@ -2135,7 +2128,7 @@ void SPjcTabUnused::OnMapAssetClicked(int32 Index) {
 		SaveViewState();
 		RefreshAssets();
 	}
-	ClassFilter.Reset();
+	ClassBar->Reset();
 	AssetSearch.Reset();
 	ApplyAssetFilter();
 
