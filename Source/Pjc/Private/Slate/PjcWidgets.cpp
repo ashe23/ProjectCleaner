@@ -189,16 +189,39 @@ namespace PjcWidgets
 		// clang-format on
 	}
 
-	void AddMenuEntry(FMenuBuilder& Menu, const FString& Label, const FString& ToolTip, TFunction<void()> OnClick) {
-		AddMenuEntry(Menu, Label, ToolTip, true, MoveTemp(OnClick));
+	FSlateIcon GetMenuIcon(const EPjcMenuIcon Icon) {
+		switch (Icon) {
+			case EPjcMenuIcon::Inspect :  return PjcShim::GetEditorIcon(TEXT("Icons.Search"), TEXT("Symbols.SearchGlass"));
+			case EPjcMenuIcon::Browse :	  return PjcShim::GetEditorIcon(TEXT("Icons.BrowseContent"), TEXT("SystemWideCommands.FindInContentBrowser"));
+			case EPjcMenuIcon::Delete :	  return PjcShim::GetEditorIcon(TEXT("Icons.Delete"), TEXT("ContentBrowser.AssetActions.Delete"));
+			case EPjcMenuIcon::Exclude :  return PjcShim::GetEditorIcon(TEXT("Icons.Hidden"), TEXT("Level.NotVisibleIcon16x"));
+			case EPjcMenuIcon::Include :  return PjcShim::GetEditorIcon(TEXT("Icons.Visible"), TEXT("Level.VisibleIcon16x"));
+			case EPjcMenuIcon::Explorer : return PjcShim::GetEditorIcon(TEXT("Icons.FolderOpen"), TEXT("ContentBrowser.AssetTreeFolderOpen"));
+			case EPjcMenuIcon::SizeMap :  return PjcShim::GetEditorIcon(TEXT("ContentBrowser.SizeMap"), TEXT(""));
+			case EPjcMenuIcon::Expand :	  return PjcShim::GetEditorIcon(TEXT("Icons.ChevronDown"), TEXT("TreeArrow_Expanded"));
+			case EPjcMenuIcon::Collapse : return PjcShim::GetEditorIcon(TEXT("Icons.ChevronRight"), TEXT("TreeArrow_Collapsed"));
+			case EPjcMenuIcon::Reset :	  return PjcShim::GetEditorIcon(TEXT("Icons.Refresh"), TEXT("Icons.Refresh"));
+			default :					  return FSlateIcon {};
+		}
 	}
 
-	void AddMenuEntry(FMenuBuilder& Menu, const FString& Label, const FString& ToolTip, const bool bEnabled, TFunction<void()> OnClick) {
+	void AddMenuEntry(FMenuBuilder& Menu, const EPjcMenuIcon Icon, const FString& Label, const FString& ToolTip, TFunction<void()> OnClick) {
+		AddMenuEntry(Menu, Icon, Label, ToolTip, true, MoveTemp(OnClick));
+	}
+
+	void AddMenuEntry(
+		FMenuBuilder& Menu,
+		const EPjcMenuIcon Icon,
+		const FString& Label,
+		const FString& ToolTip,
+		const bool bEnabled,
+		TFunction<void()> OnClick
+	) {
 		const FCanExecuteAction CanClick = FCanExecuteAction::CreateLambda([bEnabled]() {
 			return bEnabled;
 		});
 		const FUIAction Action {FExecuteAction::CreateLambda(MoveTemp(OnClick)), CanClick};
-		Menu.AddMenuEntry(FText::FromString(Label), FText::FromString(ToolTip), FSlateIcon {}, Action);
+		Menu.AddMenuEntry(FText::FromString(Label), FText::FromString(ToolTip), GetMenuIcon(Icon), Action);
 	}
 
 	void AddMenuToggle(FMenuBuilder& Menu, const FString& Label, const FString& ToolTip, const bool* bChecked, TFunction<void()> OnClick) {

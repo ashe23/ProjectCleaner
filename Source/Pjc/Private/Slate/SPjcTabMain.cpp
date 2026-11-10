@@ -17,7 +17,9 @@
 #include "Widgets/Layout/SWidgetSwitcher.h"
 #include "Widgets/Text/STextBlock.h"
 #include "Widgets/Images/SImage.h"
+#include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
+#include "Widgets/SOverlay.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/Docking/SDockTab.h"
 #include "Framework/MultiBox/MultiBoxBuilder.h"
@@ -96,43 +98,55 @@ void SPjcTabMain::Construct(
 	// clang-format off
 	ChildSlot
 	[
-		SNew(SWidgetSwitcher).WidgetIndex_Raw(this, &SPjcTabMain::GetWidgetIndex)
-		+ SWidgetSwitcher::Slot()
+		SNew(SOverlay)
+		+ SOverlay::Slot()
 		[
-			SNew(SVerticalBox)
-			+ SVerticalBox::Slot().AutoHeight()
+			SNew(SWidgetSwitcher).WidgetIndex_Raw(this, &SPjcTabMain::GetWidgetIndex)
+			+ SWidgetSwitcher::Slot()
 			[
-				MenuBarBuilder.MakeWidget()
-			]
-			+ SVerticalBox::Slot().FillHeight(1.0f)
-			[
-				TabManager->RestoreFrom(TabLayout.ToSharedRef(), ConstructUnderWindow).ToSharedRef()
-			]
-		]
-		+ SWidgetSwitcher::Slot()
-		[
-			SNew(SVerticalBox)
-			+ SVerticalBox::Slot().FillHeight(1.0f).HAlign(HAlign_Center).VAlign(VAlign_Center)
-			[
-				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot().AutoWidth().HAlign(HAlign_Center).VAlign(VAlign_Center)
+				SNew(SVerticalBox)
+				+ SVerticalBox::Slot().AutoHeight()
 				[
-					SNew(SBox).WidthOverride(32.0f).HeightOverride(32.0f)
+					MenuBarBuilder.MakeWidget()
+				]
+				+ SVerticalBox::Slot().FillHeight(1.0f)
+				[
+					TabManager->RestoreFrom(TabLayout.ToSharedRef(), ConstructUnderWindow).ToSharedRef()
+				]
+			]
+			+ SWidgetSwitcher::Slot()
+			[
+				SNew(SVerticalBox)
+				+ SVerticalBox::Slot().FillHeight(1.0f).HAlign(HAlign_Center).VAlign(VAlign_Center)
+				[
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot().AutoWidth().HAlign(HAlign_Center).VAlign(VAlign_Center)
 					[
-						SNew(SImage).Image(FPjcStyles::GetIcon("ProjectCleaner.Icon.Warning32").GetIcon())
+						SNew(SBox).WidthOverride(32.0f).HeightOverride(32.0f)
+						[
+							SNew(SImage).Image(FPjcStyles::GetIcon("ProjectCleaner.Icon.Warning32").GetIcon())
+						]
+					]
+					+ SHorizontalBox::Slot().FillWidth(1.0f).Padding(FMargin{5.0f, 2.0f, 0.0f, 0.0f}).HAlign(HAlign_Center).VAlign(VAlign_Center)
+					[
+						SNew(STextBlock)
+						.Justification(ETextJustify::Center)
+						.ShadowOffset(FVector2D{1.5f, 1.5f})
+						.ShadowColorAndOpacity(FLinearColor::Black)
+						.Font(FPjcStyles::GetFont("Bold", 18))
+						.Text_Raw(this, &SPjcTabMain::GetWidgetWarningText)
+						.ColorAndOpacity(FPjcStyles::Get().GetColor("ProjectCleaner.Color.Gray"))
 					]
 				]
-				+ SHorizontalBox::Slot().FillWidth(1.0f).Padding(FMargin{5.0f, 2.0f, 0.0f, 0.0f}).HAlign(HAlign_Center).VAlign(VAlign_Center)
-				[
-					SNew(STextBlock)
-					.Justification(ETextJustify::Center)
-					.ShadowOffset(FVector2D{1.5f, 1.5f})
-					.ShadowColorAndOpacity(FLinearColor::Black)
-					.Font(FPjcStyles::GetFont("Bold", 18))
-					.Text_Raw(this, &SPjcTabMain::GetWidgetWarningText)
-					.ColorAndOpacity(FPjcStyles::Get().GetColor("ProjectCleaner.Color.Gray"))
-				]
 			]
+		]
+		// a window in front (scan, clean project) dims everything of the plugin behind it
+		+ SOverlay::Slot()
+		[
+			SNew(SBorder)
+			.BorderImage(FCoreStyle::Get().GetBrush("WhiteBrush"))
+			.BorderBackgroundColor(FLinearColor {0.0f, 0.0f, 0.0f, 0.6f})
+			.Visibility_Lambda([]() { return PjcTabs::IsWindowOpen() ? EVisibility::Visible : EVisibility::Collapsed; })
 		]
 	];
 	// clang-format on

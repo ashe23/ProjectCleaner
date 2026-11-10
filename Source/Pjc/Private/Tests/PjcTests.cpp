@@ -1408,6 +1408,82 @@ bool FPjcTestInspectorGraph::RunTest(const FString& Parameters) {
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPjcTestInspectorLinks, "ProjectCleaner.Inspector.Links", PJC_TEST_FLAGS)
+
+bool FPjcTestInspectorLinks::RunTest(const FString& Parameters) {
+	if (!FPjcTestFixture::IsTestHost()) {
+		AddInfo(TEXT("Skipped, fixture tests run only in test host projects"));
+		return true;
+	}
+
+	TestTrue(TEXT("actor file"), FPjcInspectorGraph::IsExternal(TEXT("/Game/__ExternalActors__/Maps/Main/A/BC/Hash")));
+	TestTrue(TEXT("object file"), FPjcInspectorGraph::IsExternal(TEXT("/Game/__ExternalObjects__/Maps/Main/A/BC/Hash")));
+	TestFalse(TEXT("an asset is no actor file"), FPjcInspectorGraph::IsExternal(TEXT("/Game/Maps/Main")));
+
+#if ENGINE_MAJOR_VERSION >= 5
+	// L_Feature saves its actor (a BP_Placed) in its own file: the lists leave the file out and go through it
+	FPjcScopedScanSettings ScopedSettings {false};
+	FPjcTestFixture Fixture;
+	if (!Fixture.Build(*this, true, true, true)) return false;
+	if (!TestTrue(TEXT("scanned"), UPjcSubsystem::Scan(false))) return false;
+	const FName Level = PackageOf(Fixture, TEXT("L_Feature"));
+	const FName Placed = PackageOf(Fixture, TEXT("BP_Placed"));
+	const auto IsActorFile = [](const FPjcInspectorLink& Link) {
+		return FPjcInspectorGraph::IsExternal(Link.Package);
+	};
+
+	TArray<FPjcInspectorLink> Links;
+	int32 Through = 0;
+	FPjcInspectorGraph::GetLinks(Level, false, Links, Through);
+	TestTrue(TEXT("level uses: went through its actor file"), Through > 0);
+	TestFalse(TEXT("level uses: no actor file listed"), Links.ContainsByPredicate(IsActorFile));
+	const FPjcInspectorLink* Used = Links.FindByPredicate([Placed](const FPjcInspectorLink& Link) {
+		return Link.Package == Placed;
+	});
+	if (TestNotNull(TEXT("level uses the blueprint of its actor"), Used)) {
+		TestTrue(TEXT("through the actor file"), Used->bThrough);
+	}
+
+	FPjcInspectorGraph::GetLinks(Placed, true, Links, Through);
+	TestTrue(TEXT("blueprint used by: went through the actor file"), Through > 0);
+	TestFalse(TEXT("blueprint used by: no actor file listed"), Links.ContainsByPredicate(IsActorFile));
+	TestTrue(TEXT("blueprint is used by the level"), Links.ContainsByPredicate([Level](const FPjcInspectorLink& Link) {
+		return Link.Package == Level && Link.bThrough;
+	}));
+
+	FPjcInspectorGraph::GetLinks(Level, true, Links, Through);
+	TestFalse(TEXT("level used by: its own actor file is not listed"), Links.ContainsByPredicate(IsActorFile));
+	TestEqual(TEXT("level used by: its own actor file is not counted"), Through, 0);
+	FPjcTestFixture::Case(*this, TEXT("inspector through actor files"));
+	// the actor of the fixture level stays in memory until a garbage collection: the fixture cleanup would take it as an
+	// instance of BP_Placed to delete, lose it on the way and log an ensure
+	CollectGarbage(GARBAGE_COLLECTION_KEEPFLAGS);
+#else
+	// UE 4.27 crashes in its Find in Blueprints index when a second test of one editor session builds that level
+	FPjcTestFixture::Case(*this, TEXT("inspector through actor files"), TEXT("UE 4 has no World Partition, actor files are experimental"));
+#endif
+
+	// every menu icon is one the editor style of this engine has
+	const FSlateBrush* Missing = PjcShim::GetStyle().GetDefaultBrush();
+	for (const EPjcMenuIcon Icon :
+		 {EPjcMenuIcon::Inspect,
+		  EPjcMenuIcon::Browse,
+		  EPjcMenuIcon::Delete,
+		  EPjcMenuIcon::Exclude,
+		  EPjcMenuIcon::Include,
+		  EPjcMenuIcon::Explorer,
+		  EPjcMenuIcon::SizeMap,
+		  EPjcMenuIcon::Expand,
+		  EPjcMenuIcon::Collapse,
+		  EPjcMenuIcon::Reset}) {
+		const FSlateIcon SlateIcon = PjcWidgets::GetMenuIcon(Icon);
+		if (!SlateIcon.IsSet()) continue;
+
+		TestTrue(*FString::Printf(TEXT("menu icon %s exists"), *SlateIcon.GetStyleName().ToString()), SlateIcon.GetIcon() != Missing);
+	}
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPjcTestUiTabs, "ProjectCleaner.UI.Tabs", PJC_TEST_FLAGS)
 
 bool FPjcTestUiTabs::RunTest(const FString& Parameters) {

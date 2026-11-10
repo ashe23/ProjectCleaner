@@ -135,6 +135,9 @@ class SPjcTabInspector final : public SCompoundWidget
 	TSharedPtr<SBox> DetailsBox;
 	TArray<FRowPtr> UsedByRows;
 	TArray<FRowPtr> UsesRows;
+	// Level actors saved in their own files the lists went through
+	int32 UsedByThrough = 0;
+	int32 UsesThrough = 0;
 	TSharedPtr<SListView<FRowPtr>> UsedByList;
 	TSharedPtr<SListView<FRowPtr>> UsesList;
 };

@@ -840,8 +840,10 @@ TSharedRef<SWidget> SPjcTabOverview::MakeShippedCard() const {
 		const int32 NumNotChecked = UPjcSubsystem::GetScanResult().CookCheck.NumNotChecked;
 		const FLinearColor AgreeColor = PjcWidgets::GetColor("ProjectCleaner.Color.Ok");
 		const FString NotCheckedCount = PjcFormat::Count(NumNotChecked);
-		const FString NotChecked = NotCheckedCount + TEXT(" unused not checked");
-		const FString NotCheckedTip = TEXT("\n") + NotCheckedCount + TEXT(" unused assets changed after the cook: it cannot tell about them.");
+		const FString NotChecked = NotCheckedCount + TEXT(" changed since the cook \u00B7 cook again to check");
+		const FString NotCheckedTip = TEXT("\n") + NotCheckedCount
+			+ TEXT(" unused assets were saved after the cook (or put back by source control, which ")
+				TEXT("gives the files a new date), so it cannot tell about them. Cook the project again to check them.");
 		const TCHAR* AgreeText = TEXT("The last cook packaged none of the unused assets: nothing it cooked needed them. A cook of ")
 			TEXT("only some maps leaves out more, so the check covers what that cook took.");
 		const FString AgreeTip = AgreeText + (NumNotChecked > 0 ? NotCheckedTip : FString {});

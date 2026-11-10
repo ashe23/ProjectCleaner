@@ -224,7 +224,13 @@ void SPjcInspectorGraph::UpdateLayout() {
 
 		Item.Title = FPackageName::GetShortName(Node.Package);
 		Item.Line.Reset();
-		if (!bScanned) Item.Line += TEXT("not scanned \u00B7 ");
+		if (!bScanned) {
+			// outside the scanned content: say whose it is
+			const FString Path = Node.Package.ToString();
+			const bool bEngine = Path.StartsWith(TEXT("/Engine/"));
+			const bool bGame = Path.StartsWith(TEXT("/Game/"));
+			Item.Line += bEngine ? TEXT("engine content \u00B7 ") : (bGame ? TEXT("not scanned \u00B7 ") : TEXT("plugin content \u00B7 "));
+		}
 		if (bRoot) Item.Line += TEXT("root \u00B7 ");
 		if (bEditorOnly && !bRoot) Item.Line += TEXT("editor only \u00B7 ");
 		Item.Line += Type.Label;

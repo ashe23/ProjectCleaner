@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Fonts/SlateFontInfo.h"
 #include "Layout/Margin.h"
+#include "Textures/SlateIcon.h"
 
 class FMenuBuilder;
 class SToolTip;
@@ -12,6 +13,23 @@ class SWidget;
 struct FAssetData;
 struct FSlateBrush;
 enum class EPjcAssetSet : uint8;
+
+// What a menu entry does, for its icon
+enum class EPjcMenuIcon : uint8
+{
+	None,
+	Inspect,
+	Browse,
+	Delete,
+	Exclude,
+	// remove an exclusion
+	Include,
+	Explorer,
+	SizeMap,
+	Expand,
+	Collapse,
+	Reset,
+};
 
 // Small widgets the Project Cleaner tools share
 namespace PjcWidgets
@@ -68,9 +86,19 @@ namespace PjcWidgets
 	// Segments side by side, each as long as its share of Total (their sum when Total is smaller), on a dark track
 	TSharedRef<SWidget> MakeBar(const TArray<FBarSegment>& Segments, const float Height, const double Total = 0.0);
 
+	// The editor's own icon for a menu entry
+	FSlateIcon GetMenuIcon(const EPjcMenuIcon Icon);
+
 	// Menu entry that runs OnClick, greyed out when not enabled
-	void AddMenuEntry(FMenuBuilder& Menu, const FString& Label, const FString& ToolTip, TFunction<void()> OnClick);
-	void AddMenuEntry(FMenuBuilder& Menu, const FString& Label, const FString& ToolTip, const bool bEnabled, TFunction<void()> OnClick);
+	void AddMenuEntry(FMenuBuilder& Menu, const EPjcMenuIcon Icon, const FString& Label, const FString& ToolTip, TFunction<void()> OnClick);
+	void AddMenuEntry(
+		FMenuBuilder& Menu,
+		const EPjcMenuIcon Icon,
+		const FString& Label,
+		const FString& ToolTip,
+		const bool bEnabled,
+		TFunction<void()> OnClick
+	);
 
 	// Menu entry with a check mark while *bChecked is true; OnClick changes it
 	void AddMenuToggle(FMenuBuilder& Menu, const FString& Label, const FString& ToolTip, const bool* bChecked, TFunction<void()> OnClick);

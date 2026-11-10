@@ -1011,20 +1011,22 @@ TSharedRef<SWidget> SPjcTabIssues::MakeExcludeMenu() {
 	FMenuBuilder Menu {true, nullptr};
 	const FString FilesLabel = FString::Printf(TEXT("Exclude files (%s)"), *PjcFormat::Count(Files.Num()));
 	const FString FilesWhat = FString::Printf(TEXT("%s file%s"), *PjcFormat::Count(Files.Num()), Files.Num() == 1 ? TEXT("") : TEXT("s"));
-	PjcWidgets::AddMenuEntry(Menu, FilesLabel, TEXT("Keeps the selected files"), [this, Files, FilesWhat]() {
+	PjcWidgets::AddMenuEntry(Menu, EPjcMenuIcon::Exclude, FilesLabel, TEXT("Keeps the selected files"), [this, Files, FilesWhat]() {
 		ExcludeFiles(Files, {}, {}, FilesWhat);
 	});
 	const FString DottedText = FString::Join(Dotted, TEXT(" "));
 	const FString ExtensionLabel = TEXT("Exclude extension ") + DottedText;
-	PjcWidgets::AddMenuEntry(Menu, ExtensionLabel, TEXT("Keeps every file with the extension"), [this, ExtensionList, DottedText]() {
-		ExcludeFiles({}, ExtensionList, {}, TEXT("extension ") + DottedText);
-	});
+	PjcWidgets::AddMenuEntry(
+		Menu, EPjcMenuIcon::Exclude, ExtensionLabel, TEXT("Keeps every file with the extension"), [this, ExtensionList, DottedText]() {
+			ExcludeFiles({}, ExtensionList, {}, TEXT("extension ") + DottedText);
+		}
+	);
 	const FString FoldersText = FString::Printf(TEXT("%s folders"), *PjcFormat::Count(FolderList.Num()));
 	const FString FirstFolder = FolderList.Num() == 1 ? FPaths::GetCleanFilename(FolderList[0]) : FString {};
 	const FString ExcludeLabel = FolderList.Num() == 1 ? TEXT("Exclude folder ") + FirstFolder : TEXT("Exclude ") + FoldersText;
 	const FString FolderWhat = FolderList.Num() == 1 ? FolderList[0] : FoldersText;
 	const TCHAR* FolderTip = TEXT("Keeps every file in the folder of the selection");
-	PjcWidgets::AddMenuEntry(Menu, ExcludeLabel, FolderTip, FolderList.Num() > 0, [this, FolderList, FolderWhat]() {
+	PjcWidgets::AddMenuEntry(Menu, EPjcMenuIcon::Exclude, ExcludeLabel, FolderTip, FolderList.Num() > 0, [this, FolderList, FolderWhat]() {
 		ExcludeFiles({}, {}, FolderList, FolderWhat);
 	});
 	return Menu.MakeWidget();

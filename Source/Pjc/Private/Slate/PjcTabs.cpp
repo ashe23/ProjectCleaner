@@ -6,8 +6,10 @@
 #include "Slate/SPjcTabUnused.h"
 #include "PjcConstants.h"
 // Engine Headers
+#include "Framework/Application/SlateApplication.h"
 #include "Framework/Docking/TabManager.h"
 #include "Widgets/Docking/SDockTab.h"
+#include "Widgets/SWindow.h"
 
 namespace
 {
@@ -28,6 +30,18 @@ namespace PjcTabs
 
 	void SetWindowOpen(const bool bOpen) {
 		PjcTabsWindowsOpen = FMath::Max(0, PjcTabsWindowsOpen + (bOpen ? 1 : -1));
+		if (!bOpen || !FSlateApplication::IsInitialized()) return;
+
+		// while a modal window is open Slate draws only that window: draw the dimmed tools once before it opens
+		const TSharedPtr<FTabManager> Manager = PjcTabsMain.Pin();
+		const TSharedPtr<SDockTab> Tab = Manager.IsValid() ? Manager->GetOwnerTab() : nullptr;
+		TSharedPtr<SWindow> Window = Tab.IsValid() ? Tab->GetParentWindow() : nullptr;
+		if (!Window.IsValid()) {
+			Window = FSlateApplication::Get().GetActiveTopLevelWindow();
+		}
+		if (Window.IsValid()) {
+			FSlateApplication::Get().ForceRedrawWindow(Window.ToSharedRef());
+		}
 	}
 
 	bool IsWindowOpen() {

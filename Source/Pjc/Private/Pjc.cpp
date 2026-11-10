@@ -31,7 +31,7 @@ void FPjc::StartupModule() {
 	GetMutableDefault<UPjcEditorSettings>()->OnChanged.AddRaw(this, &FPjc::OnSettingsChanged);
 
 	const FOnSpawnTab OnSpawnTab = FOnSpawnTab::CreateLambda([](const FSpawnTabArgs& SpawnTabArgs) -> TSharedRef<SDockTab> {
-		const FString Title = PjcConstants::ModulePjcTitle.ToString() + TEXT(" ") + SPjcTabHelp::GetPluginVersion();
+		const FString Title = PjcConstants::ModulePjcTitle.ToString() + TEXT(" v") + SPjcTabHelp::GetPluginVersion();
 		const TSharedRef<SDockTab> DockTab = SNew(SDockTab).TabRole(MajorTab).Label(FText::FromString(Title));
 		DockTab->SetContent(SNew(SPjcTabMain, DockTab, SpawnTabArgs.GetOwnerWindow()));
 		return DockTab;

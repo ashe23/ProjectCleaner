@@ -768,8 +768,7 @@ void SPjcTabInspector::RebuildDetails() {
 		return;
 	}
 
-	// what uses it and what it uses
-	IAssetRegistry& AssetRegistry = UPjcSubsystem::GetModuleAssetRegistry().Get();
+	// what uses it and what it uses, through the actors a map saves in their own files
 	const auto InGraph = [this](const FName From, const FName To) {
 		const int32 FromNode = Graph.FindNode(From);
 		const int32 ToNode = Graph.FindNode(To);
@@ -777,33 +776,19 @@ void SPjcTabInspector::RebuildDetails() {
 			return Edge.From == FromNode && Edge.To == ToNode;
 		});
 	};
-	TArray<FName> Referencers;
-	AssetRegistry.GetReferencers(Package, Referencers);
-	for (const FName Referencer : Referencers) {
-		if (Referencer == Package) continue;
-
-		const FRowPtr Row = MakeRow(Referencer);
-		Row->Kind = FPjcInspectorGraph::GetLinkKind(Referencer, Package);
-		Row->bInGraph = InGraph(Referencer, Package);
+	TArray<FPjcInspectorLink> Links;
+	FPjcInspectorGraph::GetLinks(Package, true, Links, UsedByThrough);
+	for (const FPjcInspectorLink& Link : Links) {
+		const FRowPtr Row = MakeRow(Link.Package);
+		Row->Kind = Link.Kind;
+		Row->bInGraph = InGraph(Link.Package, Package);
 		UsedByRows.Add(Row);
 	}
-	TArray<FAssetDependency> Dependencies;
-	AssetRegistry.GetDependencies(FAssetIdentifier {Package}, Dependencies, UE::AssetRegistry::EDependencyCategory::Package);
-	TSet<FName> Seen;
-	for (const FAssetDependency& Dependency : Dependencies) {
-		const FName Name = Dependency.AssetId.PackageName;
-		if (Name.IsNone() || Name == Package || Seen.Contains(Name) || Name.ToString().StartsWith(TEXT("/Script/"))) continue;
-
-		Seen.Add(Name);
-		const FRowPtr Row = MakeRow(Name);
-		if (!EnumHasAnyFlags(Dependency.Properties, UE::AssetRegistry::EDependencyProperty::Game)) {
-			Row->Kind = EPjcLinkKind::EditorOnly;
-		}
-		else {
-			const bool bHardLink = EnumHasAnyFlags(Dependency.Properties, UE::AssetRegistry::EDependencyProperty::Hard);
-			Row->Kind = bHardLink ? EPjcLinkKind::Hard : EPjcLinkKind::Soft;
-		}
-		Row->bInGraph = InGraph(Package, Name);
+	FPjcInspectorGraph::GetLinks(Package, false, Links, UsesThrough);
+	for (const FPjcInspectorLink& Link : Links) {
+		const FRowPtr Row = MakeRow(Link.Package);
+		Row->Kind = Link.Kind;
+		Row->bInGraph = InGraph(Package, Link.Package);
 		UsesRows.Add(Row);
 	}
 	const auto ByName = [](const FRowPtr& A, const FRowPtr& B) {
@@ -1146,6 +1131,13 @@ TSharedRef<SWidget> SPjcTabInspector::MakeLinkList(const bool bUsedBy) {
 	if (NumUnused > 0) {
 		Title += FString::Printf(TEXT(" \u00B7 %s unused"), *PjcFormat::Count(NumUnused));
 	}
+	// actors a World Partition map saves in their own files are not listed: the list goes on through them
+	const int32 NumThrough = bGroup ? 0 : (bUsedBy ? UsedByThrough : UsesThrough);
+	const FString Through = NumThrough == 0
+		? FString {}
+		: FString::Printf(TEXT("through %s level actor%s"), *PjcFormat::Count(NumThrough), NumThrough == 1 ? TEXT("") : TEXT("s"));
+	const TCHAR* ThroughTip = TEXT("World Partition saves each actor of a level in its own file. They are part of the level, not assets: ")
+		TEXT("the list shows what is on their other side.");
 	const TCHAR* NoUsers = Graph.bUnusedGroup ? TEXT("Nothing references it") : TEXT("Nothing references it: it is a root");
 	const FString Empty = bUsedBy ? NoUsers : TEXT("Uses no other asset");
 
@@ -1156,7 +1148,20 @@ TSharedRef<SWidget> SPjcTabInspector::MakeLinkList(const bool bUsedBy) {
 		[
 			SNew(SBorder).BorderImage(PjcShim::GetBrush(TEXT("ToolPanel.DarkGroupBorder"))).Padding(FMargin {12.0f, 4.0f})
 			[
-				SNew(STextBlock).Text(FText::FromString(Title)).Font(FPjcStyles::GetFont("Bold", 9))
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+				[
+					SNew(STextBlock).Text(FText::FromString(Title)).Font(FPjcStyles::GetFont("Bold", 9))
+				]
+				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {8.0f, 0.0f, 0.0f, 0.0f})
+				[
+					SNew(STextBlock)
+					.Text(FText::FromString(Through))
+					.ToolTipText(FText::FromString(ThroughTip))
+					.Font(FPjcStyles::GetFont("Regular", 8))
+					.ColorAndOpacity(FSlateColor::UseSubduedForeground())
+					.Visibility(NumThrough > 0 ? EVisibility::Visible : EVisibility::Collapsed)
+				]
 			]
 		]
 		+ SVerticalBox::Slot().FillHeight(1.0f)
@@ -1265,16 +1270,18 @@ TSharedRef<SWidget> SPjcTabInspector::MakeExcludeMenu() {
 	const FString ClassPath = AssetClass ? AssetClass->GetPathName() : FString {};
 	const FString ClassLabel = PjcWidgets::GetAssetType(Asset).Label;
 
-	PjcWidgets::AddMenuEntry(Menu, TEXT("Exclude asset ") + Asset.AssetName.ToString(), TEXT("Counts this asset as used"), [ObjectPath, Asset]() {
-		PjcActions::Exclude({}, {}, {ObjectPath}, TEXT("Excluded ") + Asset.AssetName.ToString());
-	});
+	PjcWidgets::AddMenuEntry(
+		Menu, EPjcMenuIcon::Exclude, TEXT("Exclude asset ") + Asset.AssetName.ToString(), TEXT("Counts this asset as used"), [ObjectPath, Asset]() {
+			PjcActions::Exclude({}, {}, {ObjectPath}, TEXT("Excluded ") + Asset.AssetName.ToString());
+		}
+	);
 	const TCHAR* FolderTip = TEXT("Counts every asset of the folder and its subfolders as used");
-	PjcWidgets::AddMenuEntry(Menu, TEXT("Exclude folder ") + Folder, FolderTip, [Folder]() {
+	PjcWidgets::AddMenuEntry(Menu, EPjcMenuIcon::Exclude, TEXT("Exclude folder ") + Folder, FolderTip, [Folder]() {
 		PjcActions::Exclude({Folder}, {}, {}, TEXT("Excluded folder ") + Folder);
 	});
 	if (!ClassPath.IsEmpty()) {
 		const TCHAR* ClassTip = TEXT("Counts every asset of the class as used");
-		PjcWidgets::AddMenuEntry(Menu, TEXT("Exclude class ") + ClassLabel, ClassTip, [ClassPath, ClassLabel]() {
+		PjcWidgets::AddMenuEntry(Menu, EPjcMenuIcon::Exclude, TEXT("Exclude class ") + ClassLabel, ClassTip, [ClassPath, ClassLabel]() {
 			PjcActions::Exclude({}, {ClassPath}, {}, TEXT("Excluded ") + ClassLabel);
 		});
 	}

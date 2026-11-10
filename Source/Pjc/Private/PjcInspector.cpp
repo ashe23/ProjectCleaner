@@ -10,6 +10,47 @@ namespace
 {
 	// unity builds join files: names unique to this file
 
+	EPjcLinkKind PjcInspectorKindOf(const FAssetDependency& Dependency) {
+		if (!EnumHasAnyFlags(Dependency.Properties, UE::AssetRegistry::EDependencyProperty::Game)) return EPjcLinkKind::EditorOnly;
+		return EnumHasAnyFlags(Dependency.Properties, UE::AssetRegistry::EDependencyProperty::Hard) ? EPjcLinkKind::Hard : EPjcLinkKind::Soft;
+	}
+
+	// The map an actor or object file belongs to: '/Game/__ExternalActors__/Maps/Main/A/BC/Hash' is of '/Game/Maps/Main'
+	FName PjcInspectorOwnerOf(const FName External) {
+		FString Path = External.ToString();
+		for (const auto& Folder : {PjcShim::GetExternalActorsFolderName(), PjcShim::GetExternalObjectsFolderName()}) {
+			const FString Segment = TEXT("/") + Folder + TEXT("/");
+			const int32 At = Folder.IsEmpty() ? INDEX_NONE : Path.Find(Segment, ESearchCase::CaseSensitive);
+			if (At == INDEX_NONE) continue;
+
+			Path = Path.Left(At) + TEXT("/") + Path.Mid(At + Segment.Len());
+			break;
+		}
+
+		// the file sits a few hashed folders below the path of its map: the longest part that is a package
+		IAssetRegistry& Registry = UPjcSubsystem::GetModuleAssetRegistry().Get();
+		TArray<FAssetData> Assets;
+		for (int32 Step = 0; Step < 4; ++Step) {
+			int32 Slash = INDEX_NONE;
+			if (!Path.FindLastChar(TEXT('/'), Slash) || Slash <= 0) break;
+
+			Path = Path.Left(Slash);
+			Assets.Reset();
+			Registry.GetAssetsByPackageName(FName {*Path}, Assets);
+			if (Assets.Num() > 0) return FName {*Path};
+		}
+		return NAME_None;
+	}
+
+	void PjcInspectorNames(const FName Package, const bool bUsedBy, TArray<FName>& Out) {
+		TArray<FPjcInspectorLink> Links;
+		int32 Through = 0;
+		FPjcInspectorGraph::GetLinks(Package, bUsedBy, Links, Through);
+		for (const FPjcInspectorLink& Link : Links) {
+			Out.Add(Link.Package);
+		}
+	}
+
 	// Root path: root first, the focus last
 	struct FPjcRootPath
 	{
@@ -24,7 +65,6 @@ namespace
 
 	// Every root that keeps the package used, with the shortest path from it, breadth first over used referencers
 	void PjcInspectorRootPaths(const FPjcScanResult& Result, const FName Focus, TArray<FPjcRootPath>& OutPaths) {
-		IAssetRegistry& AssetRegistry = UPjcSubsystem::GetModuleAssetRegistry().Get();
 		TMap<FName, FName> Next;
 		Next.Add(Focus, NAME_None);
 		TArray<FName> Queue {Focus};
@@ -37,7 +77,7 @@ namespace
 			}
 
 			Referencers.Reset();
-			AssetRegistry.GetReferencers(Current, Referencers);
+			PjcInspectorNames(Current, true, Referencers);
 			Referencers.Sort(FNameLexicalLess {});
 			for (const FName Referencer : Referencers) {
 				const FPjcAssetUsage* Usage = Result.Usage.Find(Referencer);
@@ -82,12 +122,97 @@ EPjcLinkKind FPjcInspectorGraph::GetLinkKind(const FName From, const FName To) {
 	IAssetRegistry& Registry = UPjcSubsystem::GetModuleAssetRegistry().Get();
 	Registry.GetDependencies(FAssetIdentifier {From}, Dependencies, UE::AssetRegistry::EDependencyCategory::Package);
 	for (const auto& Dependency : Dependencies) {
-		if (Dependency.AssetId.PackageName != To) continue;
+		if (Dependency.AssetId.PackageName == To) return PjcInspectorKindOf(Dependency);
+	}
 
-		if (!EnumHasAnyFlags(Dependency.Properties, UE::AssetRegistry::EDependencyProperty::Game)) return EPjcLinkKind::EditorOnly;
-		return EnumHasAnyFlags(Dependency.Properties, UE::AssetRegistry::EDependencyProperty::Hard) ? EPjcLinkKind::Hard : EPjcLinkKind::Soft;
+	// no reference of its own: through an actor the map saves in its own file
+	TArray<FPjcInspectorLink> Links;
+	int32 Through = 0;
+	GetLinks(From, false, Links, Through);
+	for (const FPjcInspectorLink& Link : Links) {
+		if (Link.Package == To) return Link.Kind;
 	}
 	return EPjcLinkKind::Hard;
+}
+
+bool FPjcInspectorGraph::IsExternal(const FName Package) {
+	return UPjcSubsystem::FolderIsExternal(FPackageName::GetLongPackagePath(Package.ToString()));
+}
+
+void FPjcInspectorGraph::GetLinks(const FName Package, const bool bUsedBy, TArray<FPjcInspectorLink>& Out, int32& OutThrough) {
+	Out.Reset();
+	OutThrough = 0;
+	IAssetRegistry& Registry = UPjcSubsystem::GetModuleAssetRegistry().Get();
+	TArray<FAssetDependency> Uses;
+	TArray<FAssetDependency> UsedBy;
+	Registry.GetDependencies(FAssetIdentifier {Package}, Uses, UE::AssetRegistry::EDependencyCategory::Package);
+	Registry.GetReferencers(FAssetIdentifier {Package}, UsedBy, UE::AssetRegistry::EDependencyCategory::Package);
+
+	TSet<FName> Seen {Package};
+	const auto Add = [&Out, &Seen](const FName Name, const EPjcLinkKind Kind, const bool bThrough) {
+		if (Name.IsNone() || Seen.Contains(Name) || IsExternal(Name) || Name.ToString().StartsWith(TEXT("/Script/"))) return;
+
+		Seen.Add(Name);
+		Out.Add(FPjcInspectorLink {Name, Kind, bThrough});
+	};
+
+	// its own references first
+	for (const FAssetDependency& Link : bUsedBy ? UsedBy : Uses) {
+		Add(Link.AssetId.PackageName, PjcInspectorKindOf(Link), false);
+	}
+
+	TSet<FName> Through;
+	TArray<FAssetDependency> Far;
+	if (bUsedBy) {
+		// an actor file references it: the map of that actor uses it
+		for (const FAssetDependency& Link : UsedBy) {
+			const FName Actor = Link.AssetId.PackageName;
+			if (!IsExternal(Actor)) continue;
+
+			const FName Owner = PjcInspectorOwnerOf(Actor);
+			if (Owner == Package) continue;
+
+			Through.Add(Actor);
+			if (!Owner.IsNone()) {
+				Add(Owner, PjcInspectorKindOf(Link), true);
+				continue;
+			}
+			Far.Reset();
+			Registry.GetReferencers(FAssetIdentifier {Actor}, Far, UE::AssetRegistry::EDependencyCategory::Package);
+			for (const FAssetDependency& User : Far) {
+				Add(User.AssetId.PackageName, PjcInspectorKindOf(Link), true);
+			}
+		}
+		OutThrough = Through.Num();
+		return;
+	}
+
+	// a map uses what its actor files use: the files it references and the ones that say they are its own.
+	// An actor file of another map stands for that map
+	for (const FAssetDependency& Link : Uses) {
+		const FName Actor = Link.AssetId.PackageName;
+		if (!IsExternal(Actor)) continue;
+
+		const FName Owner = PjcInspectorOwnerOf(Actor);
+		Through.Add(Actor);
+		if (!Owner.IsNone() && Owner != Package) {
+			Add(Owner, PjcInspectorKindOf(Link), true);
+			Through.Remove(Actor);
+			++OutThrough;
+		}
+	}
+	for (const FAssetDependency& Link : UsedBy) {
+		const FName Actor = Link.AssetId.PackageName;
+		if (IsExternal(Actor) && PjcInspectorOwnerOf(Actor) == Package) Through.Add(Actor);
+	}
+	OutThrough += Through.Num();
+	for (const FName Actor : Through) {
+		Far.Reset();
+		Registry.GetDependencies(FAssetIdentifier {Actor}, Far, UE::AssetRegistry::EDependencyCategory::Package);
+		for (const FAssetDependency& Used : Far) {
+			Add(Used.AssetId.PackageName, PjcInspectorKindOf(Used), true);
+		}
+	}
 }
 
 int32 FPjcInspectorGraph::FindNode(const FName Package) const {
@@ -99,7 +224,6 @@ int32 FPjcInspectorGraph::FindNode(const FName Package) const {
 FPjcInspectorGraph FPjcInspectorGraph::Make(const FPjcScanResult& Result, const FName Focus, const TSet<FName>& OpenGroups) {
 	FPjcInspectorGraph Graph;
 	Graph.Focus = Focus;
-	IAssetRegistry& AssetRegistry = UPjcSubsystem::GetModuleAssetRegistry().Get();
 
 	const auto AddEdge = [&Graph](const int32 From, const int32 To, const EPjcLinkKind Kind) {
 		if (From == INDEX_NONE || To == INDEX_NONE || From == To) return;
@@ -122,8 +246,8 @@ FPjcInspectorGraph FPjcInspectorGraph::Make(const FPjcScanResult& Result, const 
 		TArray<FName> Names;
 		for (int32 Head = 0; Head < Group.Num() && Group.Num() < 200; ++Head) {
 			Names.Reset();
-			AssetRegistry.GetReferencers(Group[Head], Names);
-			AssetRegistry.GetDependencies(Group[Head], Names);
+			PjcInspectorNames(Group[Head], true, Names);
+			PjcInspectorNames(Group[Head], false, Names);
 			Names.Sort(FNameLexicalLess {});
 			for (const FName Name : Names) {
 				const FPjcAssetUsage* Usage = Result.Usage.Find(Name);
@@ -142,7 +266,7 @@ FPjcInspectorGraph FPjcInspectorGraph::Make(const FPjcScanResult& Result, const 
 		TMap<FName, TArray<FName>> Uses;
 		for (const FName Name : Group) {
 			Names.Reset();
-			AssetRegistry.GetDependencies(Name, Names);
+			PjcInspectorNames(Name, false, Names);
 			TArray<FName>& Inside = Uses.Add(Name);
 			for (const FName Dependency : Names) {
 				if (InGroup.Contains(Dependency) && Dependency != Name) Inside.Add(Dependency);

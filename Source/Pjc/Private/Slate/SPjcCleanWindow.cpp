@@ -372,7 +372,8 @@ TSharedRef<SWidget> SPjcCleanWindow::MakeConfirm() {
 		AddCheck(MakeCheck(ECheck::Ok, TEXT("Cook check"), Packaged, NoExtra));
 	}
 	else {
-		const FString NotChecked = FString::Printf(TEXT(" \u00B7 %s changed after it, not checked"), *PjcFormat::Count(Cook.NumNotChecked));
+		const FString NotChecked
+			= FString::Printf(TEXT(" \u00B7 %s changed after it: cook again to check them"), *PjcFormat::Count(Cook.NumNotChecked));
 		const FString NoneCooked = TEXT("The last cook packaged none of them") + (Cook.NumNotChecked > 0 ? NotChecked : FString {});
 		AddCheck(MakeCheck(ECheck::Ok, TEXT("Cook check"), NoneCooked, NoExtra));
 	}

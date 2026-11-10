@@ -106,6 +106,15 @@ namespace PjcShim
 #endif
 	}
 
+	FSlateIcon GetEditorIcon(const TCHAR* Name, const TCHAR* Name427) {
+#if ENGINE_MAJOR_VERSION == 5
+		const FName IconName {Name};
+#else
+		const FName IconName {Name427};
+#endif
+		return IconName.IsNone() ? FSlateIcon {} : FSlateIcon {GetStyle().GetStyleSetName(), IconName};
+	}
+
 	const FSlateBrush* GetIconClose() {
 #if ENGINE_MAJOR_VERSION == 5
 		return GetBrush(TEXT("Icons.X"));

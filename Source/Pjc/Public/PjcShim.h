@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "AssetRegistry/AssetData.h"
 #include "Styling/SlateColor.h"
+#include "Textures/SlateIcon.h"
 #include "Runtime/Launch/Resources/Version.h"
 #include "Settings/ContentBrowserSettings.h"
 
@@ -39,6 +40,8 @@ namespace PjcShim
 	const FSlateBrush* GetIconClose();
 	const FSlateBrush* GetIconLock();
 	const FSlateBrush* GetIconSettings();
+	// Icon of the editor style by its name in UE 5 and in UE 4.27 (the names differ), no icon for an empty name
+	FSlateIcon GetEditorIcon(const TCHAR* Name, const TCHAR* Name427);
 	// Background of a card in the Overview
 	const FSlateBrush* GetBrushCard();
 	// Background of a tool page, behind its panels

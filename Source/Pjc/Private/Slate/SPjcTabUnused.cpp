@@ -973,7 +973,7 @@ TSharedPtr<SWidget> SPjcTabUnused::OnFolderContextMenu() {
 	if (Set == EPjcAssetSet::Unused) {
 		const FString DeleteLabel = FString::Printf(TEXT("Delete unused\u2026 (%s)"), *PjcFormat::Count(Folder->Listed.Num));
 		const FString DeleteTip = TEXT("Deletes the unused assets of the folder and its subfolders, with the unused assets that reference them");
-		PjcWidgets::AddMenuEntry(Menu, DeleteLabel, DeleteTip, Folder->Listed.Num > 0, [this, Folder]() {
+		PjcWidgets::AddMenuEntry(Menu, EPjcMenuIcon::Delete, DeleteLabel, DeleteTip, Folder->Listed.Num > 0, [this, Folder]() {
 			TArray<FName> Packages;
 			GetFolderUnused(Folder->Path, Packages);
 			PjcActions::DeleteWithGroup(Packages);
@@ -982,22 +982,22 @@ TSharedPtr<SWidget> SPjcTabUnused::OnFolderContextMenu() {
 	if (Set == EPjcAssetSet::Unused || Set == EPjcAssetSet::Review) {
 		const FString ExcludeTip = TEXT("Keeps every asset in the folder, saved to Config/DefaultEditor.ini");
 		const TCHAR* ExcludeLabel = Set == EPjcAssetSet::Review ? TEXT("Keep folder") : TEXT("Exclude folder");
-		PjcWidgets::AddMenuEntry(Menu, ExcludeLabel, ExcludeTip, [this, Folder]() {
+		PjcWidgets::AddMenuEntry(Menu, EPjcMenuIcon::Exclude, ExcludeLabel, ExcludeTip, [this, Folder]() {
 			ExcludeFolder(Folder->Path);
 		});
 		Menu.AddSeparator();
 	}
-	PjcWidgets::AddMenuEntry(Menu, TEXT("Size map here"), TEXT("Shows the folder as a size map"), [this]() {
+	PjcWidgets::AddMenuEntry(Menu, EPjcMenuIcon::SizeMap, TEXT("Size map here"), TEXT("Shows the folder as a size map"), [this]() {
 		SetMapView(true);
 	});
-	PjcWidgets::AddMenuEntry(Menu, TEXT("Expand all"), TEXT("Opens every subfolder"), [this, Folder]() {
+	PjcWidgets::AddMenuEntry(Menu, EPjcMenuIcon::Expand, TEXT("Expand all"), TEXT("Opens every subfolder"), [this, Folder]() {
 		SetExpansionRecursive(Folder, true);
 	});
-	PjcWidgets::AddMenuEntry(Menu, TEXT("Collapse all"), TEXT("Closes every subfolder"), [this, Folder]() {
+	PjcWidgets::AddMenuEntry(Menu, EPjcMenuIcon::Collapse, TEXT("Collapse all"), TEXT("Closes every subfolder"), [this, Folder]() {
 		SetExpansionRecursive(Folder, false);
 	});
 	Menu.AddSeparator();
-	PjcWidgets::AddMenuEntry(Menu, TEXT("Show in Explorer"), TEXT("Opens the folder in the file explorer"), [Folder]() {
+	PjcWidgets::AddMenuEntry(Menu, EPjcMenuIcon::Explorer, TEXT("Show in Explorer"), TEXT("Opens the folder in the file explorer"), [Folder]() {
 		UPjcSubsystem::OpenPathInFileExplorer(UPjcSubsystem::PathConvertToAbsolute(Folder->Path));
 	});
 	return Menu.MakeWidget();
@@ -1023,23 +1023,35 @@ TSharedRef<SWidget> SPjcTabUnused::MakeViewMenu() {
 		OnFolderSearchChanged(FText::FromString(FolderSearch));
 	});
 	Menu.AddSeparator();
-	Menu.AddMenuEntry(FText::FromString(TEXT("Expand all")), FText::GetEmpty(), FSlateIcon {}, FUIAction {FExecuteAction::CreateLambda([this]() {
-						  for (const auto& Root : TreeRoots) {
-							  SetExpansionRecursive(Root, true);
-						  }
-					  })});
-	PjcWidgets::AddMenuEntry(Menu, TEXT("Reset columns"), TEXT("Puts the asset list columns back in their first order"), [this]() {
-		ColumnOrder = GetDefaultColumns();
-		SaveViewState();
-		RebuildHeader();
-	});
+	Menu.AddMenuEntry(
+		FText::FromString(TEXT("Expand all")),
+		FText::GetEmpty(),
+		PjcWidgets::GetMenuIcon(EPjcMenuIcon::Expand),
+		FUIAction {FExecuteAction::CreateLambda([this]() {
+			for (const auto& Root : TreeRoots) {
+				SetExpansionRecursive(Root, true);
+			}
+		})}
+	);
+	PjcWidgets::AddMenuEntry(
+		Menu, EPjcMenuIcon::Reset, TEXT("Reset columns"), TEXT("Puts the asset list columns back in their first order"), [this]() {
+			ColumnOrder = GetDefaultColumns();
+			SaveViewState();
+			RebuildHeader();
+		}
+	);
 	Menu.AddSeparator();
-	Menu.AddMenuEntry(FText::FromString(TEXT("Collapse all")), FText::GetEmpty(), FSlateIcon {}, FUIAction {FExecuteAction::CreateLambda([this]() {
-						  for (const auto& Root : TreeRoots) {
-							  SetExpansionRecursive(Root, false);
-							  TreeView->SetItemExpansion(Root, true);
-						  }
-					  })});
+	Menu.AddMenuEntry(
+		FText::FromString(TEXT("Collapse all")),
+		FText::GetEmpty(),
+		PjcWidgets::GetMenuIcon(EPjcMenuIcon::Collapse),
+		FUIAction {FExecuteAction::CreateLambda([this]() {
+			for (const auto& Root : TreeRoots) {
+				SetExpansionRecursive(Root, false);
+				TreeView->SetItemExpansion(Root, true);
+			}
+		})}
+	);
 	return Menu.MakeWidget();
 }
 
@@ -1592,23 +1604,27 @@ TSharedPtr<SWidget> SPjcTabUnused::OnAssetContextMenu() {
 	FMenuBuilder Menu {true, nullptr};
 	if (Set == EPjcAssetSet::Unused || Set == EPjcAssetSet::Review) {
 		const FString DeleteLabel = FString::Printf(TEXT("Delete\u2026 (%s)"), *PjcFormat::Count(Packages.Num()));
-		PjcWidgets::AddMenuEntry(Menu, DeleteLabel, TEXT("Deletes the selection with the unused assets that reference it"), [Packages]() {
-			PjcActions::DeleteWithGroup(Packages);
-		});
+		PjcWidgets::AddMenuEntry(
+			Menu, EPjcMenuIcon::Delete, DeleteLabel, TEXT("Deletes the selection with the unused assets that reference it"), [Packages]() {
+				PjcActions::DeleteWithGroup(Packages);
+			}
+		);
 		Menu.AddSeparator();
 		AddExcludeEntries(Menu);
 		Menu.AddSeparator();
 	}
 	if (Set == EPjcAssetSet::Excluded) {
-		PjcWidgets::AddMenuEntry(Menu, TEXT("Remove exclusion"), TEXT("Removes the rules that keep the selection"), [this]() {
+		PjcWidgets::AddMenuEntry(Menu, EPjcMenuIcon::Include, TEXT("Remove exclusion"), TEXT("Removes the rules that keep the selection"), [this]() {
 			RemoveSelectedExclusions();
 		});
 		Menu.AddSeparator();
 	}
-	PjcWidgets::AddMenuEntry(Menu, TEXT("Inspect"), TEXT("Shows why it is in the list in the Inspector"), Packages.Num() == 1, [this]() {
-		InspectSelected();
-	});
-	PjcWidgets::AddMenuEntry(Menu, TEXT("Browse"), TEXT("Shows the selection in the Content Browser"), [this]() {
+	PjcWidgets::AddMenuEntry(
+		Menu, EPjcMenuIcon::Inspect, TEXT("Inspect"), TEXT("Shows why it is in the list in the Inspector"), Packages.Num() == 1, [this]() {
+			InspectSelected();
+		}
+	);
+	PjcWidgets::AddMenuEntry(Menu, EPjcMenuIcon::Browse, TEXT("Browse"), TEXT("Shows the selection in the Content Browser"), [this]() {
 		BrowseSelected();
 	});
 	return Menu.MakeWidget();
@@ -1804,17 +1820,23 @@ void SPjcTabUnused::AddExcludeEntries(FMenuBuilder& Menu) {
 
 	const FString Verb = Set == EPjcAssetSet::Review ? TEXT("Keep") : TEXT("Exclude");
 	const FString AssetsLabel = FString::Printf(TEXT("%s assets (%s)"), *Verb, *PjcFormat::Count(NumSelected));
-	PjcWidgets::AddMenuEntry(Menu, AssetsLabel, TEXT("Keeps the selected assets, saved to Config/DefaultEditor.ini"), [this]() {
-		ExcludeSelectedAssets();
-	});
+	PjcWidgets::AddMenuEntry(
+		Menu, EPjcMenuIcon::Exclude, AssetsLabel, TEXT("Keeps the selected assets, saved to Config/DefaultEditor.ini"), [this]() {
+			ExcludeSelectedAssets();
+		}
+	);
 	const FString FolderLabel = Verb + TEXT(" folder ") + FolderName;
-	PjcWidgets::AddMenuEntry(Menu, FolderLabel, TEXT("Keeps every asset in the selected folder, saved to Config/DefaultEditor.ini"), [this]() {
-		ExcludeFolder(SelectedFolder);
-	});
+	PjcWidgets::AddMenuEntry(
+		Menu, EPjcMenuIcon::Exclude, FolderLabel, TEXT("Keeps every asset in the selected folder, saved to Config/DefaultEditor.ini"), [this]() {
+			ExcludeFolder(SelectedFolder);
+		}
+	);
 	const FString ClassLabel = Verb + TEXT(" class ") + ClassText;
-	PjcWidgets::AddMenuEntry(Menu, ClassLabel, TEXT("Keeps every asset of the class, saved to Config/DefaultEditor.ini"), [this]() {
-		ExcludeSelectedClasses();
-	});
+	PjcWidgets::AddMenuEntry(
+		Menu, EPjcMenuIcon::Exclude, ClassLabel, TEXT("Keeps every asset of the class, saved to Config/DefaultEditor.ini"), [this]() {
+			ExcludeSelectedClasses();
+		}
+	);
 }
 
 void SPjcTabUnused::ExcludeSelectedAssets() {

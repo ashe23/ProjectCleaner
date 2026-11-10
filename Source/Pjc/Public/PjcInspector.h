@@ -50,6 +50,15 @@ struct FPjcInspectorEdge
 	int32 NumLinks = 1;
 };
 
+// One row of an asset's "Used by" or "Uses" list
+struct FPjcInspectorLink
+{
+	FName Package;
+	EPjcLinkKind Kind = EPjcLinkKind::Hard;
+	// Not a reference of its own: it goes through an actor or object the map saves in its own file
+	bool bThrough = false;
+};
+
 struct FPjcInspectorRoot
 {
 	FName Package;
@@ -84,6 +93,12 @@ struct FPjcInspectorGraph
 
 	// Kind of the reference From has to To, Hard when there is none
 	static EPjcLinkKind GetLinkKind(const FName From, const FName To);
+	// What uses the package (bUsedBy) or what it uses. Actors and objects a World Partition map saves in their own
+	// files are part of their map, not assets: they are left out and the list goes on through them, so a map lists
+	// the meshes its actors use and a mesh lists the maps. OutThrough: how many of those files the list went through
+	static void GetLinks(const FName Package, const bool bUsedBy, TArray<FPjcInspectorLink>& Out, int32& OutThrough);
+	// Package of an actor or object saved in its own file ('__ExternalActors__', '__ExternalObjects__')
+	static bool IsExternal(const FName Package);
 
 	int32 FindNode(const FName Package) const;
 };
