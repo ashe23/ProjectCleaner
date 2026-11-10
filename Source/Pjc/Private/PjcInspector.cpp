@@ -221,7 +221,7 @@ int32 FPjcInspectorGraph::FindNode(const FName Package) const {
 	});
 }
 
-FPjcInspectorGraph FPjcInspectorGraph::Make(const FPjcScanResult& Result, const FName Focus, const TSet<FName>& OpenGroups) {
+FPjcInspectorGraph FPjcInspectorGraph::Make(const FPjcScanResult& Result, const FName Focus, const TSet<FName>& OpenGroups, const bool bEditorLinks) {
 	FPjcInspectorGraph Graph;
 	Graph.Focus = Focus;
 
@@ -238,74 +238,287 @@ FPjcInspectorGraph FPjcInspectorGraph::Make(const FPjcScanResult& Result, const 
 		Graph.Edges.Add(FPjcInspectorEdge {From, To, Kind, 1});
 	};
 
-	// unused: the unused assets around it, top row what nothing of them references, then down along the references
+	// unused: the unused assets around it as one picture
 	if (!Result.IsUsed(Focus) && Result.Usage.Contains(Focus)) {
 		Graph.bUnusedGroup = true;
 		TArray<FName> Group {Focus};
-		TSet<FName> Seen {Focus};
-		TArray<FName> Names;
-		for (int32 Head = 0; Head < Group.Num() && Group.Num() < 200; ++Head) {
-			Names.Reset();
-			PjcInspectorNames(Group[Head], true, Names);
-			PjcInspectorNames(Group[Head], false, Names);
-			Names.Sort(FNameLexicalLess {});
-			for (const FName Name : Names) {
-				const FPjcAssetUsage* Usage = Result.Usage.Find(Name);
-				if (!Usage || Usage->bUsed || Seen.Contains(Name)) continue;
+		TMap<FName, int32> IndexOf;
+		IndexOf.Add(Focus, 0);
+		TArray<FPjcInspectorLink> Links;
+		int32 Through = 0;
+		for (int32 Head = 0; Head < Group.Num() && Group.Num() < MaxGroup; ++Head) {
+			for (const bool bUsedBy : {true, false}) {
+				GetLinks(Group[Head], bUsedBy, Links, Through);
+				Links.Sort([](const FPjcInspectorLink& A, const FPjcInspectorLink& B) {
+					return A.Package.LexicalLess(B.Package);
+				});
+				for (const FPjcInspectorLink& Link : Links) {
+					const FPjcAssetUsage* Usage = Result.Usage.Find(Link.Package);
+					if (!Usage || Usage->bUsed || IndexOf.Contains(Link.Package) || Group.Num() >= MaxGroup) continue;
 
-				Seen.Add(Name);
-				Group.Add(Name);
-			}
-		}
-		if (Group.Num() > MaxUnused) {
-			Group.SetNum(MaxUnused);
-		}
-		const TSet<FName> InGroup {Group};
-
-		// layer: longest reference chain down from a top asset
-		TMap<FName, TArray<FName>> Uses;
-		for (const FName Name : Group) {
-			Names.Reset();
-			PjcInspectorNames(Name, false, Names);
-			TArray<FName>& Inside = Uses.Add(Name);
-			for (const FName Dependency : Names) {
-				if (InGroup.Contains(Dependency) && Dependency != Name) Inside.Add(Dependency);
-			}
-		}
-		TMap<FName, int32> Layers;
-		for (const FName Name : Group) {
-			const bool bReferenced = Group.ContainsByPredicate([&Uses, Name](const FName Other) {
-				return Uses[Other].Contains(Name);
-			});
-			if (!bReferenced) Layers.Add(Name, 0);
-		}
-		if (Layers.Num() == 0) Layers.Add(Focus, 0);
-		for (int32 Pass = 0; Pass < Group.Num(); ++Pass) {
-			for (const FName Name : Group) {
-				const int32* Layer = Layers.Find(Name);
-				if (!Layer) continue;
-
-				const int32 Below = *Layer + 1;
-				for (const FName Dependency : Uses[Name]) {
-					const int32* Current = Layers.Find(Dependency);
-					if ((!Current || *Current < Below) && Below < Group.Num()) Layers.Add(Dependency, Below);
+					IndexOf.Add(Link.Package, Group.Num());
+					Group.Add(Link.Package);
 				}
 			}
 		}
+		const int32 Num = Group.Num();
+		Graph.NumGroup = Num;
 
-		Group.Sort([](const FName A, const FName B) {
-			return FPackageName::GetShortName(A) < FPackageName::GetShortName(B);
-		});
-		TMap<int32, int32> Columns;
-		for (const FName Name : Group) {
-			FPjcInspectorNode& Node = Graph.Nodes.AddDefaulted_GetRef();
-			Node.Package = Name;
-			Node.Layer = Layers.Contains(Name) ? Layers[Name] : 0;
-			Node.Column = Columns.FindOrAdd(Node.Layer)++;
+		// the picture is built from the references the game follows; editor-only ones are drawn on top and move nothing
+		struct FLink
+		{
+			int32 From = 0;
+			int32 To = 0;
+			EPjcLinkKind Kind = EPjcLinkKind::Hard;
+		};
+		TArray<FLink> Game;
+		TArray<FLink> Editor;
+		for (int32 From = 0; From < Num; ++From) {
+			GetLinks(Group[From], false, Links, Through);
+			for (const FPjcInspectorLink& Link : Links) {
+				const int32* To = IndexOf.Find(Link.Package);
+				if (!To || *To == From) continue;
+
+				(Link.Kind == EPjcLinkKind::EditorOnly ? Editor : Game).Add(FLink {From, *To, Link.Kind});
+			}
 		}
-		for (const FName Name : Group) {
-			for (const FName Dependency : Uses[Name]) {
-				AddEdge(Graph.FindNode(Name), Graph.FindNode(Dependency), GetLinkKind(Name, Dependency));
+
+		// shared: what many of the group use. A line from each user would cover the picture
+		TArray<int32> NumUsers;
+		NumUsers.SetNumZeroed(Num);
+		for (const FLink& Link : Game) {
+			++NumUsers[Link.To];
+		}
+		const auto IsHub = [&NumUsers](const int32 Index) {
+			return Index != 0 && NumUsers[Index] >= HubAt;
+		};
+
+		// same class, same users, same uses: one stack
+		TArray<TArray<int32>> Ins;
+		TArray<TArray<int32>> Outs;
+		Ins.SetNum(Num);
+		Outs.SetNum(Num);
+		for (const FLink& Link : Game) {
+			if (IsHub(Link.From) || IsHub(Link.To)) continue;
+
+			Outs[Link.From].AddUnique(Link.To);
+			Ins[Link.To].AddUnique(Link.From);
+		}
+		const auto Joined = [](TArray<int32>& Indices) {
+			Indices.Sort();
+			FString Text;
+			for (const int32 Index : Indices) {
+				Text += FString::FromInt(Index) + TEXT(",");
+			}
+			return Text;
+		};
+		TArray<FName> Classes;
+		Classes.SetNum(Num);
+		TArray<FString> Signatures;
+		TMap<FString, TArray<int32>> BySignature;
+		for (int32 Index = 0; Index < Num; ++Index) {
+			Classes[Index] = PjcInspectorClassOf(Group[Index]);
+			if (IsHub(Index)) continue;
+
+			const FString Signature
+				= Index == 0 ? FString {TEXT("focus")} : Classes[Index].ToString() + TEXT("|") + Joined(Ins[Index]) + TEXT("|") + Joined(Outs[Index]);
+			if (!BySignature.Contains(Signature)) Signatures.Add(Signature);
+			BySignature.FindOrAdd(Signature).Add(Index);
+		}
+		TArray<int32> BoxOf;
+		BoxOf.Init(INDEX_NONE, Num);
+		for (const FString& Signature : Signatures) {
+			TArray<int32>& Members = BySignature[Signature];
+			Members.Sort([&Group](const int32 A, const int32 B) {
+				return FPackageName::GetShortName(Group[A]) < FPackageName::GetShortName(Group[B]);
+			});
+			FPjcInspectorNode& Node = Graph.Nodes.AddDefaulted_GetRef();
+			if (Members.Num() > 1) {
+				Node.Kind = EPjcInspectorNodeKind::Stack;
+				Node.GroupClass = Classes[Members[0]];
+				for (const int32 Member : Members) {
+					Node.Roots.Add(Group[Member]);
+				}
+			}
+			else {
+				Node.Package = Group[Members[0]];
+			}
+			for (const int32 Member : Members) {
+				BoxOf[Member] = Graph.Nodes.Num() - 1;
+			}
+		}
+		const int32 NumBoxes = Graph.Nodes.Num();
+		for (int32 Index = 0; Index < Num; ++Index) {
+			if (!IsHub(Index)) continue;
+
+			FPjcInspectorNode& Node = Graph.Nodes.AddDefaulted_GetRef();
+			Node.Package = Group[Index];
+			Node.bHub = true;
+			Node.NumUsers = NumUsers[Index];
+			BoxOf[Index] = Graph.Nodes.Num() - 1;
+		}
+		for (const FLink& Link : Game) {
+			if (IsHub(Link.To) && !IsHub(Link.From)) Graph.Nodes[BoxOf[Link.From]].Hubs.AddUnique(BoxOf[Link.To]);
+		}
+
+		// lines between the boxes
+		TMap<uint64, int32> EdgeOf;
+		const auto EdgeKey = [](const int32 From, const int32 To) {
+			return (static_cast<uint64>(From) << 32) | static_cast<uint32>(To);
+		};
+		TArray<TArray<int32>> Preds;
+		TArray<TArray<int32>> Succs;
+		Preds.SetNum(NumBoxes);
+		Succs.SetNum(NumBoxes);
+		for (const FLink& Link : Game) {
+			if (IsHub(Link.From) || IsHub(Link.To)) continue;
+
+			const int32 From = BoxOf[Link.From];
+			const int32 To = BoxOf[Link.To];
+			if (From == To) continue;
+
+			if (const int32* Existing = EdgeOf.Find(EdgeKey(From, To))) {
+				FPjcInspectorEdge& Edge = Graph.Edges[*Existing];
+				++Edge.NumLinks;
+				if (Link.Kind == EPjcLinkKind::Hard) Edge.Kind = EPjcLinkKind::Hard;
+				continue;
+			}
+			EdgeOf.Add(EdgeKey(From, To), Graph.Edges.Add(FPjcInspectorEdge {From, To, Link.Kind, 1}));
+			Preds[To].Add(From);
+			Succs[From].Add(To);
+		}
+
+		// row: the longest chain from the top. A reference that closes a circle does not count and goes back up
+		TArray<int32> Layers;
+		TArray<uint8> State;
+		Layers.SetNumZeroed(NumBoxes);
+		State.SetNumZeroed(NumBoxes);
+		TFunction<int32(int32)> Depth = [&](const int32 Box) -> int32 {
+			if (State[Box] == 2) return Layers[Box];
+
+			State[Box] = 1;
+			int32 Deepest = 0;
+			for (const int32 Pred : Preds[Box]) {
+				if (State[Pred] == 1) {
+					Graph.Edges[EdgeOf[EdgeKey(Pred, Box)]].bCircle = true;
+					continue;
+				}
+				Deepest = FMath::Max(Deepest, Depth(Pred) + 1);
+			}
+			State[Box] = 2;
+			Layers[Box] = Deepest;
+			return Deepest;
+		};
+		const int32 FocusBox = BoxOf[0];
+		TArray<int32> Lone;
+		TArray<TArray<int32>> Rows;
+		for (int32 Box = 0; Box < NumBoxes; ++Box) {
+			Depth(Box);
+		}
+		for (int32 Box = 0; Box < NumBoxes; ++Box) {
+			if (Preds[Box].Num() == 0 && Succs[Box].Num() == 0 && Box != FocusBox) {
+				Lone.Add(Box);
+				continue;
+			}
+			if (!Rows.IsValidIndex(Layers[Box])) Rows.SetNum(Layers[Box] + 1);
+			Rows[Layers[Box]].Add(Box);
+		}
+		const auto TitleOf = [&Graph](const int32 Box) {
+			const FPjcInspectorNode& Node = Graph.Nodes[Box];
+			return Node.Kind == EPjcInspectorNodeKind::Stack ? FString {TEXT("~")} : FPackageName::GetShortName(Node.Package);
+		};
+		for (TArray<int32>& Row : Rows) {
+			Row.Sort([&TitleOf](const int32 A, const int32 B) {
+				return TitleOf(A) < TitleOf(B);
+			});
+		}
+		// order in the rows: next to what a box is linked with, a few sweeps down and up
+		TArray<float> At;
+		At.SetNumZeroed(NumBoxes);
+		const auto Place = [&Rows, &At]() {
+			for (const TArray<int32>& Row : Rows) {
+				for (int32 Index = 0; Index < Row.Num(); ++Index) {
+					At[Row[Index]] = Row.Num() > 1 ? static_cast<float>(Index) / (Row.Num() - 1) : 0.5f;
+				}
+			}
+		};
+		Place();
+		for (int32 Sweep = 0; Sweep < 6; ++Sweep) {
+			const bool bDown = Sweep % 2 == 0;
+			for (int32 Step = 0; Step < Rows.Num(); ++Step) {
+				TArray<int32>& Row = Rows[bDown ? Step : Rows.Num() - 1 - Step];
+				TMap<int32, float> Middle;
+				for (const int32 Box : Row) {
+					const TArray<int32>& Linked = bDown ? Preds[Box] : Succs[Box];
+					float Sum = 0.0f;
+					for (const int32 Other : Linked) {
+						Sum += At[Other];
+					}
+					Middle.Add(Box, Linked.Num() > 0 ? Sum / Linked.Num() : At[Box]);
+				}
+				Row.StableSort([&Middle](const int32 A, const int32 B) {
+					return Middle[A] < Middle[B];
+				});
+				Place();
+			}
+		}
+		int32 Widest = 4;
+		for (const TArray<int32>& Row : Rows) {
+			Widest = FMath::Max(Widest, Row.Num());
+		}
+		for (int32 Layer = 0; Layer < Rows.Num(); ++Layer) {
+			for (int32 Index = 0; Index < Rows[Layer].Num(); ++Index) {
+				FPjcInspectorNode& Node = Graph.Nodes[Rows[Layer][Index]];
+				Node.Layer = Layer;
+				Node.Column = Index + (Widest - Rows[Layer].Num()) * 0.5f;
+			}
+		}
+		int32 Next = Rows.Num();
+		if (Lone.Num() > 0) {
+			Graph.Captions.Add(FPjcInspectorCaption {Next, TEXT("Linked only through the shared assets")});
+			for (int32 Index = 0; Index < Lone.Num(); ++Index) {
+				FPjcInspectorNode& Node = Graph.Nodes[Lone[Index]];
+				Node.Layer = Next + Index / Widest;
+				Node.Column = static_cast<float>(Index % Widest);
+			}
+			Next += (Lone.Num() + Widest - 1) / Widest;
+		}
+		if (Graph.Nodes.Num() > NumBoxes) {
+			Graph.Captions.Add(FPjcInspectorCaption {Next, TEXT("Shared by many: a dot on every asset that uses it, no lines")});
+			for (int32 Index = NumBoxes; Index < Graph.Nodes.Num(); ++Index) {
+				Graph.Nodes[Index].Layer = Next;
+				Graph.Nodes[Index].Column = (Index - NumBoxes) * 2.0f;
+			}
+		}
+
+		// editor-only references on top. One that leads back to an asset that reaches it closes a circle
+		if (bEditorLinks) {
+			const auto Reaches = [&Succs](const int32 From, const int32 To) {
+				TArray<int32> Queue {From};
+				TSet<int32> Seen {From};
+				while (Queue.Num() > 0) {
+					const int32 Box = Queue.Pop();
+					if (Box == To) return true;
+
+					for (const int32 Other : Succs[Box]) {
+						if (!Seen.Contains(Other)) {
+							Seen.Add(Other);
+							Queue.Add(Other);
+						}
+					}
+				}
+				return false;
+			};
+			for (const FLink& Link : Editor) {
+				if (IsHub(Link.From) || IsHub(Link.To)) continue;
+
+				const int32 From = BoxOf[Link.From];
+				const int32 To = BoxOf[Link.To];
+				if (From == To || EdgeOf.Contains(EdgeKey(From, To))) continue;
+
+				FPjcInspectorEdge Edge {From, To, EPjcLinkKind::EditorOnly, 1};
+				Edge.bCircle = Reaches(To, From);
+				EdgeOf.Add(EdgeKey(From, To), Graph.Edges.Add(Edge));
 			}
 		}
 		return Graph;
@@ -382,7 +595,7 @@ FPjcInspectorGraph FPjcInspectorGraph::Make(const FPjcScanResult& Result, const 
 		FPjcInspectorNode& Node = Graph.Nodes.AddDefaulted_GetRef();
 		Node.Package = Pair.Key;
 		Node.Layer = 2 + MaxDistance - Pair.Value;
-		Node.Column = Column[Pair.Key];
+		Node.Column = static_cast<float>(Column[Pair.Key]);
 	}
 
 	for (int32 ItemIndex = 0; ItemIndex < Items.Num(); ++ItemIndex) {
@@ -403,7 +616,7 @@ FPjcInspectorGraph FPjcInspectorGraph::Make(const FPjcScanResult& Result, const 
 				}
 			}
 			Node.Layer = Layer == TNumericLimits<int32>::Max() ? 1 : Layer;
-			Node.Column = ItemIndex;
+			Node.Column = static_cast<float>(ItemIndex);
 			Top = Graph.Nodes.Num() - 1;
 		}
 		else {
@@ -414,7 +627,7 @@ FPjcInspectorGraph FPjcInspectorGraph::Make(const FPjcScanResult& Result, const 
 		FPjcInspectorNode Source;
 		Source.Kind = EPjcInspectorNodeKind::Source;
 		Source.Layer = Graph.Nodes[Top].Layer - 1;
-		Source.Column = ItemIndex;
+		Source.Column = static_cast<float>(ItemIndex);
 		if (!Item.Group.IsNone()) {
 			Source.Package = Item.Group;
 			const FPjcAssetUsage* Usage = Result.Usage.Find(Paths[Item.Paths[0]].Root);

@@ -23,6 +23,8 @@ enum class EPjcInspectorNodeKind : uint8
 	Group,
 	// why a root is used: the box above it
 	Source,
+	// unused assets of one class with the same links, as one box
+	Stack,
 };
 
 struct FPjcInspectorNode
@@ -30,14 +32,18 @@ struct FPjcInspectorNode
 	EPjcInspectorNodeKind Kind = EPjcInspectorNodeKind::Asset;
 	// Asset: its package. Source: the root (or group class) it is above
 	FName Package;
-	// Group: the class and the roots it stands for
+	// Group: the class and the roots it stands for. Stack: the class and its assets
 	FName GroupClass;
 	TArray<FName> Roots;
+	// Unused group: an asset many of the group use. It has no lines; its users carry a dot (Hubs: indices of such nodes)
+	bool bHub = false;
+	int32 NumUsers = 0;
+	TArray<int32> Hubs;
 	// Source: why the root is used
 	FString Label;
-	// Row, top 0, and order in the row
+	// Row, top 0, and place in the row (a row of the unused group is centered, so half steps)
 	int32 Layer = 0;
-	int32 Column = 0;
+	float Column = 0.0f;
 };
 
 struct FPjcInspectorEdge
@@ -48,6 +54,15 @@ struct FPjcInspectorEdge
 	EPjcLinkKind Kind = EPjcLinkKind::Hard;
 	// Group edges stand for the references of every root in the group
 	int32 NumLinks = 1;
+	// The reference closes a circle: what it points to leads back to it
+	bool bCircle = false;
+};
+
+// Line of text above a row of the unused group
+struct FPjcInspectorCaption
+{
+	int32 Layer = 0;
+	FString Text;
 };
 
 // One row of an asset's "Used by" or "Uses" list
@@ -69,7 +84,9 @@ struct FPjcInspectorRoot
 /**
  * What keeps an asset used, as a graph for the Inspector: every root at once, top to bottom, each with the shortest path
  * from it to the asset (paths merge into the asset at the bottom) and a source box above it. For an unused asset: the
- * unused assets that reference each other around it (cleanup deletes them together).
+ * unused assets that reference each other around it (cleanup deletes them together), as one picture: assets with the
+ * same links stand as one stack, an asset many of them use has no lines but a dot on its users, editor-only links are
+ * left out unless asked for.
  */
 struct FPjcInspectorGraph
 {
@@ -83,13 +100,20 @@ struct FPjcInspectorGraph
 	int32 NumHidden = 0;
 	// The graph is the unused group around an unused asset
 	bool bUnusedGroup = false;
+	// Unused group: how many assets it has (they stand as fewer boxes), and the text above some of its rows
+	int32 NumGroup = 0;
+	TArray<FPjcInspectorCaption> Captions;
 
 	static constexpr int32 MaxPaths = 6;
 	static constexpr int32 GroupAt = 4;
-	static constexpr int32 MaxUnused = 24;
+	// Unused group: assets followed at most, and from how many users on an asset stands apart as shared
+	static constexpr int32 MaxGroup = 400;
+	static constexpr int32 HubAt = 8;
 
-	// OpenGroups: classes whose roots are drawn one by one instead of as a group
-	static FPjcInspectorGraph Make(const FPjcScanResult& Result, const FName Focus, const TSet<FName>& OpenGroups = {});
+	// OpenGroups: classes whose roots are drawn one by one instead of as a group.
+	// bEditorLinks: draw the editor-only links of an unused group too (on top, they move nothing)
+	static FPjcInspectorGraph
+	Make(const FPjcScanResult& Result, const FName Focus, const TSet<FName>& OpenGroups = {}, const bool bEditorLinks = false);
 
 	// Kind of the reference From has to To, Hard when there is none
 	static EPjcLinkKind GetLinkKind(const FName From, const FName To);

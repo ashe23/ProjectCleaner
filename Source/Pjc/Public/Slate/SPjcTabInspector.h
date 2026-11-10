@@ -123,6 +123,8 @@ class SPjcTabInspector final : public SCompoundWidget
 	FName Pending;
 	FPjcInspectorGraph Graph;
 	TSet<FName> OpenGroups;
+	// Unused group: draw its editor-only links too
+	bool bEditorLinks = false;
 	int32 Selected = INDEX_NONE;
 	TArray<FName> HistoryBack;
 	TArray<FName> HistoryForward;

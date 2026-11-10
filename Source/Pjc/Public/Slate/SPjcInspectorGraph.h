@@ -9,8 +9,10 @@
 DECLARE_DELEGATE_OneParam(FPjcOnInspectorNode, int32 /* Index into FPjcInspectorGraph::Nodes */);
 
 /**
- * Draws an Inspector graph top to bottom: sources, roots, the paths down to the asset. Drag to pan, wheel to zoom,
- * F frames the selected node, Home fits the graph.
+ * Draws an Inspector graph top to bottom: sources, roots, the paths down to the asset; for an unused asset the group
+ * it is deleted with. Links have no arrowheads: a box uses what is below it. The box under the pointer is lit with its
+ * links and the boxes on their other end, the rest dims; a lit link flows from the asset to what it uses. A click
+ * keeps a box lit (again or Esc: release). Drag to pan, wheel to zoom, F frames the selected node, Home fits the graph.
  */
 class SPjcInspectorGraph final : public SLeafWidget
 {
@@ -30,6 +32,9 @@ class SPjcInspectorGraph final : public SLeafWidget
 	void SetSelected(const int32 Node);
 	// Node marked while the pointer is over it somewhere else (the details lists)
 	void SetHighlighted(const int32 Node);
+	// Keeps a box lit with its links, as a click on it does; INDEX_NONE releases
+	void SetLocked(const int32 Node);
+	int32 GetLocked() const;
 
 	void FitAll();
 	void FrameSelected();
@@ -75,6 +80,8 @@ class SPjcInspectorGraph final : public SLeafWidget
 		FLinearColor IconColor = FLinearColor::White;
 		bool bUsed = true;
 		FString ToolTip;
+		// Colors of the shared assets it uses, drawn as dots
+		TArray<FLinearColor> Dots;
 	};
 
 	void UpdateLayout();
@@ -82,6 +89,11 @@ class SPjcInspectorGraph final : public SLeafWidget
 	void FitAll(const FVector2D& ViewSize) const;
 	void Frame(const int32 Node, const FVector2D& ViewSize) const;
 	int32 FindNodeAt(const FVector2D& LocalPosition) const;
+	// The box that is lit: the one a click keeps lit, else the one under the pointer
+	int32 GetLit() const;
+	// Lit links flow: repaints every frame while a box is lit
+	void UpdateFlow();
+	EActiveTimerReturnType TickFlow(double CurrentTime, float DeltaTime);
 	FVector2D ToLocal(const FVector2D& GraphPosition) const;
 	FText GetHoverText() const;
 
@@ -98,6 +110,9 @@ class SPjcInspectorGraph final : public SLeafWidget
 	int32 Selected = INDEX_NONE;
 	int32 Highlighted = INDEX_NONE;
 	int32 Hovered = INDEX_NONE;
+	// Box a click keeps lit
+	int32 Locked = INDEX_NONE;
+	TSharedPtr<FActiveTimerHandle> FlowTimer;
 
 	// view: local = Offset + graph * Zoom
 	mutable FVector2D Offset = FVector2D::ZeroVector;

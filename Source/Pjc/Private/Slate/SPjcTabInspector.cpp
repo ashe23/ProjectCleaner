@@ -256,7 +256,7 @@ void SPjcTabInspector::SetFocus(const FName Package, const bool bRecord) {
 
 void SPjcTabInspector::RebuildGraph() {
 	const FPjcScanResult& Result = UPjcSubsystem::GetScanResult();
-	Graph = Focus.IsNone() || !Result.IsValid() ? FPjcInspectorGraph {} : FPjcInspectorGraph::Make(Result, Focus, OpenGroups);
+	Graph = Focus.IsNone() || !Result.IsValid() ? FPjcInspectorGraph {} : FPjcInspectorGraph::Make(Result, Focus, OpenGroups, bEditorLinks);
 	Selected = INDEX_NONE;
 	if (GraphView.IsValid()) {
 		GraphView->SetGraph(&Result, Graph);
@@ -698,6 +698,22 @@ TSharedRef<SWidget> SPjcTabInspector::MakeGraphPane() {
 					SNew(SWrapBox).UseAllottedSize(true).InnerSlotPadding(FVector2D {14.0f, 2.0f})
 					+ SWrapBox::Slot()
 					[
+						// unused group: its editor-only links are left out, they often close circles and do not ship
+						SNew(SCheckBox)
+						.ToolTipText(FText::FromString(TEXT("Draws the editor-only links of the group too. They do not ship and move nothing in the picture.")))
+						.Visibility_Lambda([this]() { return Graph.bUnusedGroup ? EVisibility::Visible : EVisibility::Collapsed; })
+						.IsChecked_Lambda([this]() { return bEditorLinks ? ECheckBoxState::Checked : ECheckBoxState::Unchecked; })
+						.OnCheckStateChanged_Lambda([this](const ECheckBoxState State) {
+							bEditorLinks = State == ECheckBoxState::Checked;
+							RebuildGraph();
+							Select(Graph.FindNode(Focus));
+						})
+						[
+							SNew(STextBlock).Text(FText::FromString(TEXT("Editor-only links"))).Font(FPjcStyles::GetFont("Regular", 8))
+						]
+					]
+					+ SWrapBox::Slot()
+					[
 						Legend(TEXT("Root source"), TEXT("#8A7440"), TEXT("Why the root is used: Asset Manager, config, code, exclusions"))
 					]
 					+ SWrapBox::Slot()
@@ -715,7 +731,7 @@ TSharedRef<SWidget> SPjcTabInspector::MakeGraphPane() {
 					+ SWrapBox::Slot()
 					[
 						SNew(STextBlock)
-						.Text(FText::FromString(TEXT("Wheel zoom \u00B7 Drag pan \u00B7 F frame \u00B7 Home fit \u00B7 Double-click inspect")))
+						.Text(FText::FromString(TEXT("Hover lights a box and its links \u00B7 Click keeps them lit \u00B7 Double-click inspect \u00B7 Wheel zoom \u00B7 Drag pan \u00B7 F frame \u00B7 Home fit")))
 						.Font(FPjcStyles::GetFont("Regular", 8))
 						.ColorAndOpacity(FSlateColor::UseSubduedForeground())
 					]
@@ -762,9 +778,10 @@ FText SPjcTabInspector::GetGraphSubtitle() const {
 	if (Focus.IsNone()) return FText::FromString(TEXT("Why an asset is used, from every root down to it"));
 
 	if (Graph.bUnusedGroup) {
-		const int32 Num = Graph.Nodes.Num();
+		const int32 Num = Graph.NumGroup;
 		const TCHAR* Plural = Num == 2 ? TEXT("") : TEXT("s");
-		const FString Together = FString::Printf(TEXT("Unused \u00B7 deleted together with %d unused asset%s around it"), Num - 1, Plural);
+		// the group is what references each other; what a delete of this one takes with it is in the details
+		const FString Together = FString::Printf(TEXT("Unused \u00B7 %d unused asset%s around it reference each other"), Num - 1, Plural);
 		return FText::FromString(Num > 1 ? Together : FString {TEXT("Unused \u00B7 nothing references it")});
 	}
 	if (Graph.NumRoots == 0) return FText::FromString(TEXT("Not scanned \u00B7 outside the scanned content"));
@@ -793,7 +810,10 @@ void SPjcTabInspector::RebuildDetails() {
 
 	UsedByRows.Reset();
 	UsesRows.Reset();
-	if (Graph.Nodes.IsValidIndex(Selected) && Graph.Nodes[Selected].Kind == EPjcInspectorNodeKind::Group) {
+	const bool bSeveral
+		= Graph.Nodes.IsValidIndex(Selected) && Graph.Nodes[Selected].Kind != EPjcInspectorNodeKind::Asset && Graph.Nodes[Selected].Roots.Num() > 0;
+	if (bSeveral) {
+		// a group of roots, or a stack of unused assets with the same links
 		DetailsBox->SetContent(MakeGroupDetails(Graph.Nodes[Selected]));
 		return;
 	}
@@ -1114,6 +1134,10 @@ TSharedRef<SWidget> SPjcTabInspector::MakeGroupDetails(const FPjcInspectorNode& 
 		UsedByRows.Add(MakeRow(Node.Roots[Index]));
 	}
 	const FName GroupClass = Node.GroupClass;
+	const bool bStack = Node.Kind == EPjcInspectorNodeKind::Stack;
+	const FString Each = FString::Printf(TEXT("%d × %s"), Node.Roots.Num(), *Type.Label);
+	const FString Title = bStack ? Each : Each + TEXT(" roots");
+	const TCHAR* What = bStack ? TEXT("Unused assets with the same links, drawn as one box") : TEXT("Roots of one class, drawn as one box");
 
 	// clang-format off
 	return SNew(SVerticalBox)
@@ -1133,17 +1157,18 @@ TSharedRef<SWidget> SPjcTabInspector::MakeGroupDetails(const FPjcInspectorNode& 
 				+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
 				[
 					SNew(STextBlock)
-					.Text(FText::FromString(FString::Printf(TEXT("%d \u00D7 %s roots"), Node.Roots.Num(), *Type.Label)))
+					.Text(FText::FromString(Title))
 					.Font(FPjcStyles::GetFont("Bold", 11))
 				]
 			]
 			+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {0.0f, 4.0f, 0.0f, 8.0f})
 			[
-				PjcInspectorText(FString::Printf(TEXT("Roots of one class, drawn as one box \u00B7 %s"), *PjcFormat::Size(Size)), FLinearColor::Gray)
+				PjcInspectorText(FString::Printf(TEXT("%s \u00B7 %s"), What, *PjcFormat::Size(Size)), FLinearColor::Gray)
 			]
 			+ SVerticalBox::Slot().AutoHeight()
 			[
 				SNew(SHorizontalBox)
+				.Visibility(bStack ? EVisibility::Collapsed : EVisibility::Visible)
 				+ SHorizontalBox::Slot().AutoWidth()
 				[
 					PjcInspectorButton(
@@ -1163,13 +1188,14 @@ TSharedRef<SWidget> SPjcTabInspector::MakeGroupDetails(const FPjcInspectorNode& 
 }
 
 TSharedRef<SWidget> SPjcTabInspector::MakeLinkList(const bool bUsedBy) {
-	const bool bGroup = Graph.Nodes.IsValidIndex(Selected) && Graph.Nodes[Selected].Kind == EPjcInspectorNodeKind::Group;
+	const bool bStack = Graph.Nodes.IsValidIndex(Selected) && Graph.Nodes[Selected].Kind == EPjcInspectorNodeKind::Stack;
+	const bool bGroup = bStack || (Graph.Nodes.IsValidIndex(Selected) && Graph.Nodes[Selected].Kind == EPjcInspectorNodeKind::Group);
 	TArray<FRowPtr>& Rows = bUsedBy ? UsedByRows : UsesRows;
 	int32 NumUnused = 0;
 	for (const FRowPtr& Row : Rows) {
 		if (Row->bScanned && Row->Status == EPjcAssetStatus::Unused) ++NumUnused;
 	}
-	FString Title = bGroup ? TEXT("Roots") : (bUsedBy ? TEXT("Used by") : TEXT("Uses"));
+	FString Title = bStack ? TEXT("Assets") : (bGroup ? TEXT("Roots") : (bUsedBy ? TEXT("Used by") : TEXT("Uses")));
 	Title += FString::Printf(TEXT("  %s"), *PjcFormat::Count(Rows.Num()));
 	if (NumUnused > 0) {
 		Title += FString::Printf(TEXT(" \u00B7 %s unused"), *PjcFormat::Count(NumUnused));
@@ -1233,7 +1259,8 @@ TSharedRef<SWidget> SPjcTabInspector::MakeLinkList(const bool bUsedBy) {
 }
 
 TSharedRef<ITableRow> SPjcTabInspector::OnGenerateLinkRow(FRowPtr Row, const TSharedRef<STableViewBase>& Table) {
-	const bool bGroup = Graph.Nodes.IsValidIndex(Selected) && Graph.Nodes[Selected].Kind == EPjcInspectorNodeKind::Group;
+	const bool bStack = Graph.Nodes.IsValidIndex(Selected) && Graph.Nodes[Selected].Kind == EPjcInspectorNodeKind::Stack;
+	const bool bGroup = bStack || (Graph.Nodes.IsValidIndex(Selected) && Graph.Nodes[Selected].Kind == EPjcInspectorNodeKind::Group);
 	const FString Where = Row->Package.ToString() + TEXT("\n") + Row->ClassLabel;
 	const TCHAR* Drawn = Row->bInGraph ? TEXT(" \u00B7 drawn in the graph") : TEXT("");
 	const TCHAR* Status = PjcInspectorStatusText(Row->Status, Row->bScanned);

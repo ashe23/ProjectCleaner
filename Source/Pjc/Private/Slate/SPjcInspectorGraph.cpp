@@ -18,6 +18,8 @@ namespace
 	// unity builds join files: names unique to this file
 	constexpr float PjcGraphPad = 24.0f;
 	constexpr float PjcGraphGapX = 70.0f;
+	// unused group: boxes of a row stand close, the lines between rows need the height
+	constexpr float PjcGraphGapXGroup = 22.0f;
 	constexpr float PjcGraphGapY = 74.0f;
 	constexpr float PjcGraphReadable = 0.65f;
 	constexpr float PjcGraphTextZoom = 0.3f;
@@ -71,6 +73,7 @@ void SPjcInspectorGraph::Construct(const FArguments& InArgs) {
 void SPjcInspectorGraph::SetGraph(const FPjcScanResult* InResult, const FPjcInspectorGraph& InGraph) {
 	Result = InResult;
 	Graph = InGraph;
+	Locked = INDEX_NONE;
 	Selected = INDEX_NONE;
 	Highlighted = INDEX_NONE;
 	Hovered = INDEX_NONE;
@@ -92,6 +95,15 @@ void SPjcInspectorGraph::SetSelected(const int32 Node) {
 void SPjcInspectorGraph::SetHighlighted(const int32 Node) {
 	Highlighted = Graph.Nodes.IsValidIndex(Node) ? Node : INDEX_NONE;
 	Invalidate(EInvalidateWidgetReason::Paint);
+}
+
+void SPjcInspectorGraph::SetLocked(const int32 Node) {
+	Locked = Graph.Nodes.IsValidIndex(Node) && Graph.Nodes[Node].Kind != EPjcInspectorNodeKind::Source ? Node : INDEX_NONE;
+	UpdateFlow();
+}
+
+int32 SPjcInspectorGraph::GetLocked() const {
+	return Locked;
 }
 
 void SPjcInspectorGraph::FitAll() {
@@ -140,6 +152,25 @@ void SPjcInspectorGraph::UpdateLayout() {
 	GraphSize = FVector2D::ZeroVector;
 	if (Graph.Nodes.Num() == 0) return;
 
+	if (Graph.bUnusedGroup) {
+		// the model placed every box: rows from 0, centered
+		float MaxColumn = 0.0f;
+		int32 LastRow = 0;
+		bool bShared = false;
+		for (int32 Index = 0; Index < Graph.Nodes.Num(); ++Index) {
+			const FPjcInspectorNode& Node = Graph.Nodes[Index];
+			Shown[Index].Position
+				= FVector2D {PjcGraphPad + Node.Column * (NodeWidth + PjcGraphGapXGroup), PjcGraphPad + Node.Layer * (NodeHeight + PjcGraphGapY)};
+			MaxColumn = FMath::Max(MaxColumn, Node.Column);
+			LastRow = FMath::Max(LastRow, Node.Layer);
+			bShared |= Node.bHub;
+		}
+		GraphSize = FVector2D {
+		  PjcGraphPad * 2.0f + MaxColumn * (NodeWidth + PjcGraphGapXGroup) + NodeWidth + 50.0f,
+		  PjcGraphPad * 2.0f + LastRow * (NodeHeight + PjcGraphGapY) + NodeHeight
+		};
+	}
+
 	// rows from 0, nodes of a row in column order without overlaps
 	int32 MinLayer = TNumericLimits<int32>::Max();
 	for (const FPjcInspectorNode& Node : Graph.Nodes) {
@@ -152,13 +183,15 @@ void SPjcInspectorGraph::UpdateLayout() {
 	int32 MaxSlot = 0;
 	int32 MaxRow = 0;
 	for (auto& Pair : Rows) {
+		if (Graph.bUnusedGroup) break;
+
 		Pair.Value.Sort([this](const int32 A, const int32 B) {
 			if (Graph.Nodes[A].Column != Graph.Nodes[B].Column) return Graph.Nodes[A].Column < Graph.Nodes[B].Column;
 			return A < B;
 		});
 		int32 Slot = -1;
 		for (const int32 Index : Pair.Value) {
-			Slot = FMath::Max(Graph.Nodes[Index].Column, Slot + 1);
+			Slot = FMath::Max(FMath::RoundToInt(Graph.Nodes[Index].Column), Slot + 1);
 			Shown[Index].Position = FVector2D {PjcGraphPad + Slot * (NodeWidth + PjcGraphGapX), PjcGraphPad + Pair.Key * (NodeHeight + PjcGraphGapY)};
 			MaxSlot = FMath::Max(MaxSlot, Slot);
 		}
@@ -168,10 +201,12 @@ void SPjcInspectorGraph::UpdateLayout() {
 		++MaxSlot;
 		MorePosition = FVector2D {PjcGraphPad + MaxSlot * (NodeWidth + PjcGraphGapX), PjcGraphPad};
 	}
-	GraphSize = FVector2D {
-	  PjcGraphPad * 2.0f + MaxSlot * (NodeWidth + PjcGraphGapX) + NodeWidth + 120.0f,
-	  PjcGraphPad * 2.0f + MaxRow * (NodeHeight + PjcGraphGapY) + NodeHeight
-	};
+	if (!Graph.bUnusedGroup) {
+		GraphSize = FVector2D {
+		  PjcGraphPad * 2.0f + MaxSlot * (NodeWidth + PjcGraphGapX) + NodeWidth + 120.0f,
+		  PjcGraphPad * 2.0f + MaxRow * (NodeHeight + PjcGraphGapY) + NodeHeight
+		};
+	}
 
 	// text of the nodes
 	const FLinearColor Muted = PjcGraphColor(TEXT("#8A9099"));
@@ -214,6 +249,31 @@ void SPjcInspectorGraph::UpdateLayout() {
 			continue;
 		}
 
+		if (Node.Kind == EPjcInspectorNodeKind::Stack) {
+			// unused assets with the same links, as one box
+			const FAssetData Asset = Node.Roots.Num() > 0 ? PjcGraphAssetOf(Node.Roots[0]) : FAssetData {};
+			const PjcWidgets::FAssetType& Type = PjcWidgets::GetAssetType(Asset);
+			int64 Size = 0;
+			for (const FName Member : Node.Roots) {
+				Size += Result ? Result->GetSize(Member) : 0;
+			}
+			Item.Title = FString::Printf(TEXT("%d \u00D7 %s"), Node.Roots.Num(), *Type.Label);
+			Item.Line = FString::Printf(TEXT("%s \u00B7 same links \u00B7 click to list"), *PjcFormat::Size(Size));
+			Item.LineColor = Muted;
+			Item.Icon = Type.Icon;
+			Item.IconColor = Type.Color;
+			Item.bUsed = false;
+			Item.Stripe = PjcGraphColor(TEXT("#FE6D73"));
+			Item.ToolTip = FString::Printf(TEXT("%d %s assets with the same links, drawn as one box"), Node.Roots.Num(), *Type.Label);
+			for (int32 Member = 0; Member < Node.Roots.Num() && Member < 12; ++Member) {
+				Item.ToolTip += TEXT("\n") + FPackageName::GetShortName(Node.Roots[Member]);
+			}
+			if (Node.Roots.Num() > 12) {
+				Item.ToolTip += FString::Printf(TEXT("\n+%d more"), Node.Roots.Num() - 12);
+			}
+			continue;
+		}
+
 		const FAssetData Asset = PjcGraphAssetOf(Node.Package);
 		const PjcWidgets::FAssetType& Type = PjcWidgets::GetAssetType(Asset);
 		const FPjcAssetUsage* Usage = Result ? Result->Usage.Find(Node.Package) : nullptr;
@@ -244,10 +304,40 @@ void SPjcInspectorGraph::UpdateLayout() {
 		if (Usage) {
 			Item.ToolTip += TEXT("\n") + UPjcSubsystem::GetUsageReasonText(*Usage);
 		}
+		if (Node.bHub) {
+			Item.Line += FString::Printf(TEXT(" \u00B7 used by %d of %d"), Node.NumUsers, Graph.NumGroup);
+		}
 		if (Node.Package != Graph.Focus) {
 			Item.ToolTip += TEXT("\nDouble-click to inspect it");
 		}
 	}
+	// a dot for every shared asset a box uses, in that asset's color
+	for (int32 Index = 0; Index < Graph.Nodes.Num(); ++Index) {
+		for (const int32 Hub : Graph.Nodes[Index].Hubs) {
+			if (Shown.IsValidIndex(Hub)) Shown[Index].Dots.Add(Shown[Hub].IconColor);
+		}
+	}
+}
+
+int32 SPjcInspectorGraph::GetLit() const {
+	if (Shown.IsValidIndex(Locked)) return Locked;
+
+	return Shown.IsValidIndex(Hovered) && Graph.Nodes[Hovered].Kind != EPjcInspectorNodeKind::Source ? Hovered : INDEX_NONE;
+}
+
+void SPjcInspectorGraph::UpdateFlow() {
+	Invalidate(EInvalidateWidgetReason::Paint);
+	if (GetLit() != INDEX_NONE && !FlowTimer.IsValid()) {
+		FlowTimer = RegisterActiveTimer(0.0f, FWidgetActiveTimerDelegate::CreateSP(this, &SPjcInspectorGraph::TickFlow));
+	}
+}
+
+EActiveTimerReturnType SPjcInspectorGraph::TickFlow(double CurrentTime, float DeltaTime) {
+	Invalidate(EInvalidateWidgetReason::Paint);
+	if (GetLit() != INDEX_NONE) return EActiveTimerReturnType::Continue;
+
+	FlowTimer.Reset();
+	return EActiveTimerReturnType::Stop;
 }
 
 FVector2D SPjcInspectorGraph::ToLocal(const FVector2D& GraphPosition) const {
@@ -273,7 +363,8 @@ void SPjcInspectorGraph::FitAuto(const FVector2D& InViewSize) const {
 	const float FitX = (ViewWidth - 20.0f) / static_cast<float>(GraphSize.X);
 	const float FitY = (ViewHeight - 20.0f) / static_cast<float>(GraphSize.Y);
 	const float Fit = FMath::Min3(1.0f, FitX, FitY);
-	if (Fit >= PjcGraphReadable || Focus == INDEX_NONE) {
+	// the unused group is one picture: always whole, the wheel zooms in
+	if (Fit >= PjcGraphReadable || Focus == INDEX_NONE || Graph.bUnusedGroup) {
 		FitAll(InViewSize);
 		return;
 	}
@@ -376,14 +467,51 @@ int32 SPjcInspectorGraph::OnPaint(
 
 	FSlateDrawElement::MakeBox(OutDrawElements, LayerId, AllottedGeometry.ToPaintGeometry(), White, ESlateDrawEffect::None, Background);
 
-	// references: curves from the bottom of one box to the top of the next
+	// what is lit: the box a click keeps lit or the one under the pointer, its links and the boxes on their other end
+	const int32 Lit = GetLit();
+	const bool bDim = Shown.IsValidIndex(Lit);
+	TArray<bool> LitNodes;
+	LitNodes.Init(false, Shown.Num());
+	if (bDim) {
+		LitNodes[Lit] = true;
+		for (const FPjcInspectorEdge& Edge : Graph.Edges) {
+			if (Edge.From == Lit && Shown.IsValidIndex(Edge.To)) LitNodes[Edge.To] = true;
+			if (Edge.To == Lit && Shown.IsValidIndex(Edge.From)) LitNodes[Edge.From] = true;
+		}
+		for (const int32 Hub : Graph.Nodes[Lit].Hubs) {
+			if (Shown.IsValidIndex(Hub)) LitNodes[Hub] = true;
+		}
+		for (int32 Index = 0; Index < Shown.Num(); ++Index) {
+			if (Graph.Nodes[Index].Hubs.Contains(Lit)) LitNodes[Index] = true;
+		}
+	}
+	const auto Faded = [&Background, bDim](const FLinearColor& Color, const bool bLit) {
+		return bDim && !bLit ? FMath::Lerp(Background, Color, 0.28f) : Color;
+	};
+	const FLinearColor Amber = PjcGraphColor(TEXT("#D2A640"));
+	// lit links flow: their dashes move this far along, in graph units
+	constexpr float FlowOn = 10.0f;
+	constexpr float FlowOff = 7.0f;
+	const float Flow = static_cast<float>(FMath::Fmod(FSlateApplication::Get().GetCurrentTime() * 26.0, static_cast<double>(FlowOn + FlowOff)));
+
+	// references: no arrowheads, a box uses what is below it. Two boxes that use each other share one line with a mark;
+	// a reference that leads back up goes over the row or round the side
 	TArray<FVector2D> Points;
 	TArray<FVector2D> Dash;
 	for (const FPjcInspectorEdge& Edge : Graph.Edges) {
 		if (!Shown.IsValidIndex(Edge.From) || !Shown.IsValidIndex(Edge.To)) continue;
 
-		const bool bSource = Graph.Nodes[Edge.From].Kind == EPjcInspectorNodeKind::Source;
-		const bool bTouched = !bSource && Selected != INDEX_NONE && (Edge.From == Selected || Edge.To == Selected);
+		const FPjcInspectorNode& NodeFrom = Graph.Nodes[Edge.From];
+		const FPjcInspectorNode& NodeTo = Graph.Nodes[Edge.To];
+		const bool bSource = NodeFrom.Kind == EPjcInspectorNodeKind::Source;
+		const FPjcInspectorEdge* Back = bSource ? nullptr : Graph.Edges.FindByPredicate([&Edge](const FPjcInspectorEdge& Other) {
+			return Other.From == Edge.To && Other.To == Edge.From;
+		});
+		const bool bUp = !bSource && NodeTo.Layer <= NodeFrom.Layer;
+		const bool bBackUp = NodeFrom.Layer <= NodeTo.Layer;
+		if (Back && bUp && (!bBackUp || Edge.From > Edge.To)) continue;
+
+		const bool bLit = bDim && (Edge.From == Lit || Edge.To == Lit);
 		FLinearColor Color = PjcGraphColor(TEXT("#2C9A8F"));
 		float Width = 2.2f;
 		float DashOn = 0.0f;
@@ -392,11 +520,15 @@ int32 SPjcInspectorGraph::OnPaint(
 			Color = PjcGraphColor(TEXT("#8A7440"));
 			Width = 2.5f;
 		}
-		else if (Graph.bUnusedGroup) {
-			Color = PjcGraphColor(TEXT("#A8565A"));
+		else if (Back || (bUp && Edge.bCircle)) {
+			Color = Amber;
 		}
 		else if (Edge.Kind == EPjcLinkKind::EditorOnly) {
 			Color = PjcGraphColor(TEXT("#7FB2FF"));
+		}
+		else if (Graph.bUnusedGroup) {
+			Color = PjcGraphColor(TEXT("#A8565A"));
+			Width = 1.8f;
 		}
 		if (!bSource && Edge.Kind == EPjcLinkKind::Soft) {
 			DashOn = 6.0f;
@@ -406,19 +538,34 @@ int32 SPjcInspectorGraph::OnPaint(
 			DashOn = 2.0f;
 			DashOff = 4.0f;
 		}
-		if (bTouched) {
-			Color = SelectedColor;
-			Width = 3.0f;
+		if (bLit) {
+			Width = 3.2f;
+			DashOn = FlowOn;
+			DashOff = FlowOff;
 		}
+		// links that are not lit go further back than the boxes
+		Color = bDim && !bLit ? FMath::Lerp(Background, Color, 0.18f) : Color;
 
 		const FVector2D& From = Shown[Edge.From].Position;
 		const FVector2D& To = Shown[Edge.To].Position;
-		const FVector2D Start {From.X + NodeWidth * 0.5f, From.Y + NodeHeight};
-		const FVector2D Tip {To.X + NodeWidth * 0.5f, To.Y - 1.0f};
-		const FVector2D End {Tip.X, Tip.Y - 8.0f};
-		const bool bDown = End.Y > Start.Y;
-		const FVector2D C1 = bDown ? FVector2D {Start.X, End.Y - 30.0f} : FVector2D {Start.X + 60.0f, Start.Y + 40.0f};
-		const FVector2D C2 = bDown ? FVector2D {End.X, Start.Y + 30.0f} : FVector2D {End.X + 60.0f, End.Y - 40.0f};
+		FVector2D Start {From.X + NodeWidth * 0.5f, From.Y + NodeHeight};
+		FVector2D End {To.X + NodeWidth * 0.5f, To.Y - 2.0f};
+		FVector2D C1 {Start.X, End.Y - 30.0f};
+		FVector2D C2 {End.X, Start.Y + 30.0f};
+		if (bUp && NodeFrom.Layer == NodeTo.Layer) {
+			// neighbours in a row: over their tops
+			Start = FVector2D {From.X + NodeWidth * 0.5f, From.Y};
+			C1 = FVector2D {Start.X, Start.Y - 34.0f};
+			C2 = FVector2D {End.X, End.Y - 34.0f};
+		}
+		else if (bUp) {
+			// back up: round the right side
+			Start = FVector2D {From.X + NodeWidth, From.Y + NodeHeight * 0.5f};
+			End = FVector2D {To.X + NodeWidth + 3.0f, To.Y + NodeHeight * 0.5f};
+			const float Out = static_cast<float>(FMath::Max(Start.X, End.X)) + 44.0f;
+			C1 = FVector2D {Out, Start.Y};
+			C2 = FVector2D {Out, End.Y};
+		}
 
 		Points.Reset();
 		constexpr int32 Steps = 32;
@@ -431,10 +578,10 @@ int32 SPjcInspectorGraph::OnPaint(
 			FSlateDrawElement::MakeLines(OutDrawElements, LayerEdges, EdgeGeometry, Points, ESlateDrawEffect::None, Color, true, Thickness);
 		}
 		else {
-			// dashes along the curve, in graph units
+			// dashes along the curve, in graph units; on a lit link they move from the asset to what it uses
 			const float On = DashOn * Zoom;
 			const float Period = (DashOn + DashOff) * Zoom;
-			float Walked = 0.0f;
+			float Walked = bLit ? Period - Flow * Zoom : 0.0f;
 			for (int32 Index = 1; Index < Points.Num(); ++Index) {
 				const FVector2D A = Points[Index - 1];
 				const FVector2D B = Points[Index];
@@ -456,19 +603,29 @@ int32 SPjcInspectorGraph::OnPaint(
 			}
 		}
 
-		// arrow head
-		const FVector2D Direction = (Tip - C2).GetSafeNormal();
-		const FVector2D Side {-Direction.Y, Direction.X};
-		const FVector2D Base = Tip - Direction * 9.0f;
-		Dash.Reset();
-		Dash.Add(ToLocal(Base + Side * 4.5f));
-		Dash.Add(ToLocal(Tip));
-		Dash.Add(ToLocal(Base - Side * 4.5f));
-		FSlateDrawElement::MakeLines(OutDrawElements, LayerEdges, EdgeGeometry, Dash, ESlateDrawEffect::None, Color, true, Thickness);
+		// mark on a line two boxes share (they use each other) or that closes a circle of references
+		if (!bSource && (Back || Edge.bCircle) && Zoom >= PjcGraphTextZoom) {
+			const FVector2D Middle = PjcGraphBezier(Start, C1, C2, End, 0.5f);
+			const FLinearColor MarkFill = PjcGraphColor(TEXT("#2A2416"));
+			const FLinearColor MarkSign = Faded(PjcGraphColor(TEXT("#E6C15A")), bLit);
+			Box(LayerLabels, Middle - FVector2D {9.0f, 9.0f}, FVector2D {18.0f, 18.0f}, BrushPill, Faded(Amber, bLit));
+			Box(LayerLabels + 1, Middle - FVector2D {8.0f, 8.0f}, FVector2D {16.0f, 16.0f}, BrushPill, MarkFill);
+			if (Back) {
+				// both ways
+				const FString Sign {TEXT("\u2194")};
+				const FVector2D SignSize {FontMeasure->Measure(Sign, FontLine)};
+				Text(LayerRing, Middle - SignSize * 0.5f, static_cast<float>(SignSize.X) + 1.0f, Sign, FontLine, MarkSign);
+			}
+			else {
+				// a circle: drawn as a ring, the glyph for it is not in every font
+				Box(LayerRing, Middle - FVector2D {5.0f, 5.0f}, FVector2D {10.0f, 10.0f}, BrushPill, MarkSign);
+				Box(LayerRing + 1, Middle - FVector2D {3.0f, 3.0f}, FVector2D {6.0f, 6.0f}, BrushPill, MarkFill);
+			}
+		}
 
-		// what the link is, when not a plain hard reference
+		// what the link is, when not a plain hard reference (the unused group says it with the line alone)
 		FString Label;
-		if (Graph.Nodes[Edge.From].Kind == EPjcInspectorNodeKind::Group) {
+		if (NodeFrom.Kind == EPjcInspectorNodeKind::Group) {
 			Label = FString::Printf(TEXT("%d references"), Edge.NumLinks);
 		}
 		else if (!bSource && Edge.Kind == EPjcLinkKind::Soft) {
@@ -477,13 +634,13 @@ int32 SPjcInspectorGraph::OnPaint(
 		else if (!bSource && Edge.Kind == EPjcLinkKind::EditorOnly) {
 			Label = TEXT("editor only");
 		}
-		if (!Label.IsEmpty() && Zoom >= PjcGraphTextZoom) {
+		if (!Label.IsEmpty() && !Graph.bUnusedGroup && Zoom >= PjcGraphTextZoom) {
 			const bool bSameColumn = FMath::Abs(Start.X - End.X) < 1.0;
 			const FVector2D Position = bSameColumn ? FVector2D {End.X + 10.0f, End.Y - 30.0f} : FVector2D {Start.X + 10.0f, Start.Y + 8.0f};
 			const FVector2D Size {FontMeasure->Measure(Label, FontLabel)};
 			Box(LayerLabels, Position, Size + FVector2D {10.0f, 4.0f}, BrushNode, Background);
 			const FVector2D LabelPosition = Position + FVector2D {5.0f, 2.0f};
-			Text(LayerLabels + 1, LabelPosition, static_cast<float>(Size.X) + 1.0f, Label, FontLabel, bTouched ? SelectedColor : Foreground);
+			Text(LayerLabels + 1, LabelPosition, static_cast<float>(Size.X) + 1.0f, Label, FontLabel, Faded(Foreground, bLit));
 		}
 	}
 
@@ -494,38 +651,73 @@ int32 SPjcInspectorGraph::OnPaint(
 		const FShownNode& Item = Shown[Index];
 		const FVector2D& Position = Item.Position;
 		const FVector2D Size {NodeWidth, NodeHeight};
+		const bool bLit = LitNodes[Index];
 
 		if (Node.Kind == EPjcInspectorNodeKind::Source) {
-			Box(LayerBody, Position, Size, BrushPill, SourceLine);
-			Box(LayerBody + 1, Position + FVector2D {1.0f, 1.0f}, Size - FVector2D {2.0f, 2.0f}, BrushPill, SourceFill);
-			Text(LayerContent, Position + FVector2D {16.0f, 7.0f}, NodeWidth - 30.0f, Item.Title, FontTitle, Gold);
-			Text(LayerContent, Position + FVector2D {16.0f, 24.0f}, NodeWidth - 30.0f, Item.Line, FontLine, Item.LineColor);
+			Box(LayerBody, Position, Size, BrushPill, Faded(SourceLine, bLit));
+			Box(LayerBody + 1, Position + FVector2D {1.0f, 1.0f}, Size - FVector2D {2.0f, 2.0f}, BrushPill, Faded(SourceFill, bLit));
+			Text(LayerContent, Position + FVector2D {16.0f, 7.0f}, NodeWidth - 30.0f, Item.Title, FontTitle, Faded(Gold, bLit));
+			Text(LayerContent, Position + FVector2D {16.0f, 24.0f}, NodeWidth - 30.0f, Item.Line, FontLine, Faded(Item.LineColor, bLit));
 			continue;
 		}
 
 		const bool bFocus = Index == Focus;
-		if (Index == Selected) {
+		if (Index == Locked) {
+			// kept lit by a click
+			Ring(Position, BrushNode, Amber);
+		}
+		else if (Index == Selected) {
 			Ring(Position, BrushNode, SelectedColor);
 		}
 		else if (Index == Highlighted) {
 			Ring(Position, BrushNode, SelectedColor * FLinearColor {1.0f, 1.0f, 1.0f, 0.55f});
+		}
+		else if (Node.Kind == EPjcInspectorNodeKind::Stack) {
+			// a second box behind it: a stack
+			const FVector2D Behind = Position + FVector2D {5.0f, -5.0f};
+			Box(LayerRing, Behind, Size, BrushNode, Faded(Line, bLit));
+			Box(
+				LayerRing + 1, Behind + FVector2D {1.0f, 1.0f}, Size - FVector2D {2.0f, 2.0f}, BrushNode, Faded(PjcGraphColor(TEXT("#202327")), bLit)
+			);
 		}
 
 		FLinearColor Body = Index == Hovered ? FillHovered : Fill;
 		if (bFocus) {
 			Body = Item.bUsed ? PjcGraphColor(TEXT("#20302F")) : PjcGraphColor(TEXT("#33232A"));
 		}
-		Box(LayerBody, Position, Size, BrushNode, bFocus ? Item.Stripe : Line);
-		Box(LayerBody + 1, Position, FVector2D {6.0f, NodeHeight}, BrushNode, Item.Stripe);
-		Box(LayerBody + 2, Position + FVector2D {3.0f, 1.0f}, Size - FVector2D {4.0f, 2.0f}, BrushNode, Body);
+		Box(LayerBody, Position, Size, BrushNode, Faded(bFocus ? Item.Stripe : Line, bLit));
+		Box(LayerBody + 1, Position, FVector2D {6.0f, NodeHeight}, BrushNode, Faded(Item.Stripe, bLit));
+		Box(LayerBody + 2, Position + FVector2D {3.0f, 1.0f}, Size - FVector2D {4.0f, 2.0f}, BrushNode, Faded(Body, bLit));
 
 		float TextLeft = 12.0f;
 		if (Item.Icon && Zoom >= PjcGraphTextZoom) {
-			Box(LayerContent, Position + FVector2D {11.0f, 13.0f}, FVector2D {20.0f, 20.0f}, Item.Icon, Item.IconColor);
+			const FLinearColor IconTint = Item.IconColor * FLinearColor {1.0f, 1.0f, 1.0f, bDim && !bLit ? 0.3f : 1.0f};
+			Box(LayerContent, Position + FVector2D {11.0f, 13.0f}, FVector2D {20.0f, 20.0f}, Item.Icon, IconTint);
 			TextLeft = 39.0f;
 		}
-		Text(LayerContent, Position + FVector2D {TextLeft, 6.0f}, NodeWidth - TextLeft - 8.0f, Item.Title, FontTitle, Foreground);
-		Text(LayerContent, Position + FVector2D {TextLeft, 24.0f}, NodeWidth - TextLeft - 8.0f, Item.Line, FontLine, Item.LineColor);
+		const float DotsWidth = Item.Dots.Num() * 10.0f;
+		Text(
+			LayerContent,
+			Position + FVector2D {TextLeft, 6.0f},
+			NodeWidth - TextLeft - 8.0f - DotsWidth,
+			Item.Title,
+			FontTitle,
+			Faded(Foreground, bLit)
+		);
+		Text(LayerContent, Position + FVector2D {TextLeft, 24.0f}, NodeWidth - TextLeft - 8.0f, Item.Line, FontLine, Faded(Item.LineColor, bLit));
+		for (int32 Dot = 0; Dot < Item.Dots.Num(); ++Dot) {
+			Box(LayerContent,
+				Position + FVector2D {NodeWidth - 13.0f - Dot * 10.0f, 7.0f},
+				FVector2D {7.0f, 7.0f},
+				BrushPill,
+				Faded(Item.Dots[Dot], bLit));
+		}
+	}
+
+	// text above some rows of the unused group
+	for (const FPjcInspectorCaption& Caption : Graph.Captions) {
+		const FVector2D At {PjcGraphPad, PjcGraphPad + Caption.Layer * (NodeHeight + PjcGraphGapY) - 22.0f};
+		Text(LayerContent, At, 600.0f, Caption.Text, FontLine, Faded(PjcGraphColor(TEXT("#8A9099")), false));
 	}
 
 	// root paths not drawn
@@ -563,6 +755,11 @@ FReply SPjcInspectorGraph::OnMouseButtonUp(const FGeometry& MyGeometry, const FP
 	if (!bPanning && MouseEvent.GetEffectingButton() == EKeys::LeftMouseButton) {
 		const int32 Node = FindNodeAt(Local);
 		if (Node != INDEX_NONE && Node == Pressed) {
+			// a click keeps the box lit with its links, a second one releases it
+			if (Graph.Nodes[Node].Kind != EPjcInspectorNodeKind::Source) {
+				Locked = Locked == Node ? INDEX_NONE : Node;
+				UpdateFlow();
+			}
 			OnNodeClicked.ExecuteIfBound(Node);
 		}
 	}
@@ -600,7 +797,7 @@ FReply SPjcInspectorGraph::OnMouseMove(const FGeometry& MyGeometry, const FPoint
 	const int32 Node = FindNodeAt(Local);
 	if (Node != Hovered) {
 		Hovered = Node;
-		Invalidate(EInvalidateWidgetReason::Paint);
+		UpdateFlow();
 	}
 	return FReply::Unhandled();
 }
@@ -632,6 +829,11 @@ FReply SPjcInspectorGraph::OnKeyDown(const FGeometry& MyGeometry, const FKeyEven
 	}
 	if (InKeyEvent.GetKey() == EKeys::Home) {
 		FitAll();
+		return FReply::Handled();
+	}
+	if (InKeyEvent.GetKey() == EKeys::Escape && Locked != INDEX_NONE) {
+		Locked = INDEX_NONE;
+		UpdateFlow();
 		return FReply::Handled();
 	}
 	return FReply::Unhandled();
