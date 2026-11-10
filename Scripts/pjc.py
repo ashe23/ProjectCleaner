@@ -10,7 +10,8 @@ ProjectCleaner dev tool - build, test and package the plugin against every insta
   python Scripts/pjc.py cli     -e 5.5 -- -scan_only    run ProjectCleaner commandlet with given switches
   python Scripts/pjc.py package [-e ...]            RunUAT BuildPlugin (same build Fab/Marketplace does)
   python Scripts/pjc.py polygon [projects]          clean real projects (e.g. Lyra) in local git repos, verify, reset
-  python Scripts/pjc.py lint                        include path case check (Linux/Mac) + clang-format check
+  python Scripts/pjc.py lint                        include path case check (Linux/Mac) + clang-format + version check
+  python Scripts/pjc.py release                     show what a release would do; with --message and --confirm X.Y.Z do it
   python Scripts/pjc.py synth   [-e 5.8] [--assets N]   large synthetic project in its own host, to try views on many assets
   python Scripts/pjc.py clean   [-e ...]            delete host Binaries/Intermediate/Saved/DerivedDataCache
 
@@ -2161,6 +2162,163 @@ def cmd_lint(args, engines):
         print(red(msg))
     else:
         print((green if fmt_ok else yellow)(msg))
+    ver_ok, msg = check_version()
+    if ver_ok is False:
+        ok = False
+        print(red(msg))
+    else:
+        print((green if ver_ok else yellow)(msg))
+    return ok
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+# version and release
+# ----------------------------------------------------------------------------------------------------------------------
+# A release is the tag vX.Y.Z on main, and nothing else is ever tagged. Work goes to dev as plain commits, a dev build
+# is named by VersionName and its commit. VersionName on dev is the release in work: the first commit after a release
+# sets the next one. A release moves main to dev (fast-forward, so dev has no merge commits), tags it and pushes
+# main, dev and the tag to every remote.
+
+RELEASE_BRANCH = "main"
+DEV_BRANCH = "dev"
+VERSION_RE = re.compile(r"^(\d+)\.(\d+)\.(\d+)$")
+
+
+def plugin_version():
+    with open(PLUGIN_FILE, encoding="utf-8-sig") as f:
+        return str(json.load(f).get("VersionName", ""))
+
+
+def parse_version(text):
+    m = VERSION_RE.match(text)
+    return tuple(int(x) for x in m.groups()) if m else None
+
+
+def git_try(*args):
+    """stdout of a git command in the repo, None when it fails (no git, not a repo, unknown ref)."""
+    try:
+        result = subprocess.run(["git", "-C", REPO_DIR] + list(args), capture_output=True, text=True, encoding="utf-8", errors="replace")
+    except OSError:
+        return None
+    return result.stdout.strip() if result.returncode == 0 else None
+
+
+def latest_release(ref="HEAD"):
+    """(version tuple, tag) of the highest vX.Y.Z tag that ref contains, None without one."""
+    found = [(parse_version(t[1:]), t) for t in (git_try("tag", "--merged", ref, "--list", "v*") or "").split()]
+    found = [x for x in found if x[0]]
+    return max(found) if found else None
+
+
+def check_version():
+    """(ok, message); ok is None when there is nothing to compare with (no git, no release tag)."""
+    name = plugin_version()
+    version = parse_version(name)
+    if not version:
+        return False, 'VersionName "{}" in {}.uplugin is not X.Y.Z'.format(name, PLUGIN_NAME)
+    head = git_try("rev-parse", "HEAD")
+    last = latest_release() if head else None
+    if not last:
+        return None, "version {}: no release tag to compare with, skipped".format(name)
+    last_version, tag = last
+    after = int(git_try("rev-list", "--count", tag + "..HEAD") or 0)
+    merges = int(git_try("rev-list", "--count", "--merges", tag + "..HEAD") or 0)
+    if merges:
+        return False, "{} merge commit(s) after {}: a release fast-forwards {} to {}, keep the history linear (rebase)".format(merges, tag, RELEASE_BRANCH, DEV_BRANCH)
+    if version < last_version or (after and version == last_version):
+        return False, "VersionName is {}, but {} is released and {} commit(s) came after it: set the next version in {}.uplugin".format(name, tag, after, PLUGIN_NAME)
+    if not after:
+        return True, "version {}: at release {}".format(name, tag)
+    return True, "version {}: {} commit(s) after {}, no merges".format(name, after, tag)
+
+
+def remote_refs(remote):
+    """{ref: commit} of a remote's branches and tags, annotated tags as the commit they point to."""
+    out = git_try("ls-remote", "--heads", "--tags", remote)
+    if out is None:
+        return None
+    refs = {}
+    for line in out.splitlines():
+        sha, _, ref = line.partition("\t")
+        if ref.endswith("^{}"):
+            refs[ref[:-3]] = sha
+        else:
+            refs.setdefault(ref, sha)
+    return refs
+
+
+def cmd_release(args):
+    name = plugin_version()
+    tag = "v" + name
+    head = git_try("rev-parse", "HEAD")
+    if not head:
+        die("not a git repo: " + REPO_DIR)
+    problems = []
+    ver_ok, msg = check_version()
+    last = latest_release()
+    if ver_ok is False:
+        problems.append(msg)
+    elif last and parse_version(name) == last[0]:
+        problems.append("{} is released already: nothing new to release".format(last[1]))
+    branch = git_try("rev-parse", "--abbrev-ref", "HEAD")
+    if branch != DEV_BRANCH:
+        problems.append("on branch {}: a release is made from {}".format(branch, DEV_BRANCH))
+    if git_try("status", "--porcelain"):
+        problems.append("the working tree has changes that are not committed")
+    if git_try("rev-parse", "-q", "--verify", "refs/tags/" + tag):
+        problems.append("tag {} exists already".format(tag))
+    main_local = git_try("rev-parse", "-q", "--verify", "refs/heads/" + RELEASE_BRANCH)
+    if main_local and git_try("merge-base", "--is-ancestor", main_local, head) is None:
+        problems.append("local {} has commits {} does not have: no fast-forward".format(RELEASE_BRANCH, DEV_BRANCH))
+    remotes = (git_try("remote") or "").split()
+    if not remotes:
+        problems.append("no git remote to push to")
+    tags_seen = {}
+    for remote in remotes:
+        refs = remote_refs(remote)
+        if refs is None:
+            problems.append("{}: cannot be reached".format(remote))
+            continue
+        tags_seen[remote] = {r: s for r, s in refs.items() if r.startswith("refs/tags/")}
+        if refs.get("refs/heads/" + DEV_BRANCH) != head:
+            problems.append("{}: {} is not at {}, push it first (what gets released is what was pushed and tested)".format(remote, DEV_BRANCH, head[:7]))
+        main_remote = refs.get("refs/heads/" + RELEASE_BRANCH)
+        if main_remote and git_try("merge-base", "--is-ancestor", main_remote, head) is None:
+            problems.append("{}: {} has commits {} does not have (or they are not fetched): no fast-forward".format(remote, RELEASE_BRANCH, DEV_BRANCH))
+        if "refs/tags/" + tag in refs:
+            problems.append("{}: tag {} exists already".format(remote, tag))
+    if len({json.dumps(t, sort_keys=True) for t in tags_seen.values()}) > 1:
+        problems.append("the remotes do not have the same tags: " + ", ".join("{} {}".format(r, len(t)) for r, t in tags_seen.items()))
+
+    subject = git_try("log", "-1", "--format=%s") or ""
+    count = git_try("rev-list", "--count", (main_local + ".." if main_local else "") + "HEAD") or "?"
+    print(cyan("== release {}".format(tag)))
+    print("  commit  {} {}".format(head[:7], subject[:100]))
+    print("  {:<7} {} -> {} ({} commits, fast-forward)".format(RELEASE_BRANCH, main_local[:7] if main_local else "none", head[:7], count))
+    print('  tag     {}: "{}"'.format(tag, "{}: {}".format(tag, args.message) if args.message else "--message is missing"))
+    print("  push    {}, {}, {} to: {}".format(RELEASE_BRANCH, DEV_BRANCH, tag, ", ".join(remotes) or "-"))
+    for p in problems:
+        print(red("  problem: " + p))
+    if problems:
+        return False
+    if args.confirm != name or not args.message:
+        print(yellow('nothing changed. To release: pjc.py release --message "<one sentence>" --confirm {}'.format(name)))
+        return True
+
+    git(REPO_DIR, "branch", "-f", RELEASE_BRANCH, head)
+    git(REPO_DIR, "tag", "-a", tag, "-m", "{}: {}".format(tag, args.message), head)
+    ok = True
+    for remote in remotes:
+        try:
+            git(REPO_DIR, "push", remote, RELEASE_BRANCH, DEV_BRANCH, tag)
+        except RuntimeError as e:
+            ok = False
+            print(red("  {}: push failed, run it again by hand: git push {} {} {} {}\n    {}".format(remote, remote, RELEASE_BRANCH, DEV_BRANCH, tag, e)))
+            continue
+        refs = remote_refs(remote) or {}
+        same = all(refs.get(r) == head for r in ("refs/heads/" + RELEASE_BRANCH, "refs/heads/" + DEV_BRANCH, "refs/tags/" + tag))
+        ok = ok and same
+        print((green if same else red)("  {}: {}, {} and {} {} {}".format(remote, RELEASE_BRANCH, DEV_BRANCH, tag, "are at" if same else "are NOT all at", head[:7])))
     return ok
 
 
@@ -2201,7 +2359,10 @@ def main():
     p.add_argument("--keep-plugin", action="store_true", help="leave the tested plugin build installed afterwards")
     p = add("package", "RunUAT BuildPlugin for each engine")
     p.add_argument("--out", help="output folder (default: <hosts dir>/../packages)")
-    add("lint", "include case and clang-format checks")
+    add("lint", "include case, clang-format and version checks")
+    p = sub.add_parser("release", help="fast-forward main to dev, tag vX.Y.Z (VersionName), push main, dev and the tag to every remote")
+    p.add_argument("--message", help="one sentence for the tag message, stored as 'vX.Y.Z: <message>'")
+    p.add_argument("--confirm", metavar="X.Y.Z", help="the version to release, typed out; without it nothing is changed")
     add("clean", "delete host build products")
     p = add("synth", "generate large synthetic project in its own host (default: newest engine), to try views on many assets")
     p.set_defaults(engines="newest")
@@ -2210,6 +2371,8 @@ def main():
     p.add_argument("--remove", action="store_true", help="delete synthetic content instead of generating it")
 
     args = parser.parse_args()
+    if args.command == "release":
+        return cmd_release(args)
     cfg = load_local_config()
     engines = discover_engines(cfg)
 
