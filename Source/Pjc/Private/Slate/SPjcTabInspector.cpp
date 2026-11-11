@@ -739,7 +739,7 @@ TSharedRef<SWidget> SPjcTabInspector::MakeGraphPane() {
 					]
 					+ SWrapBox::Slot()
 					[
-						Legend(TEXT("Circular"), TEXT("#D2A640"), TEXT("Assets that reference each other in a circle. Arrows on the line: two assets use each other. A ring: the reference leads back to an asset that reaches it. Point at the mark to see which"))
+						Legend(TEXT("Circular"), TEXT("#FF8A3D"), TEXT("Assets that reference each other in a circle. Two arrows: two assets use each other. A loop: the reference leads back to an asset that reaches it. Point at the mark to see which"))
 					]
 					+ SWrapBox::Slot()
 					[

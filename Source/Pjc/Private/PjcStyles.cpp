@@ -73,6 +73,10 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create() {
 	// 32 px images drawn at 16: sharp on high DPI screens
 	Style->Set("ProjectCleaner.Icon.Issues16", new IMAGE_BRUSH(TEXT("IconIssues32"), FVector2D {16.0f, 16.0f}));
 	Style->Set("ProjectCleaner.Icon.Help16", new IMAGE_BRUSH(TEXT("IconHelp32"), FVector2D {16.0f, 16.0f}));
+	// marks on circular links of the Inspector graph: white, tinted when drawn (sources: IconLoop.svg, IconPair.svg)
+	Style->Set("ProjectCleaner.Graph.Disc", new IMAGE_BRUSH(TEXT("IconDisc64"), FVector2D {16.0f, 16.0f}));
+	Style->Set("ProjectCleaner.Graph.Loop", new IMAGE_BRUSH(TEXT("IconLoop64"), FVector2D {16.0f, 16.0f}));
+	Style->Set("ProjectCleaner.Graph.Pair", new IMAGE_BRUSH(TEXT("IconPair64"), FVector2D {16.0f, 16.0f}));
 
 	// pallet colors
 	Style->Set("ProjectCleaner.Color.Yellow", FLinearColor {FColor::FromHex(TEXT("#FFCB77"))});

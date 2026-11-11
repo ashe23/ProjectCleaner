@@ -416,6 +416,9 @@ int32 SPjcInspectorGraph::OnPaint(
 	const FSlateBrush* BrushNode = White;
 	const FSlateBrush* BrushPill = White;
 #endif
+	const FSlateBrush* BrushDisc = FPjcStyles::Get().GetBrush("ProjectCleaner.Graph.Disc");
+	const FSlateBrush* BrushLoop = FPjcStyles::Get().GetBrush("ProjectCleaner.Graph.Loop");
+	const FSlateBrush* BrushPair = FPjcStyles::Get().GetBrush("ProjectCleaner.Graph.Pair");
 	const TSharedRef<FSlateFontMeasure> FontMeasure = FSlateApplication::Get().GetRenderer()->GetFontMeasureService();
 	const FSlateFontInfo FontTitle = FPjcStyles::GetFont("Bold", 9);
 	const FSlateFontInfo FontLine = FPjcStyles::GetFont("Regular", 8);
@@ -489,6 +492,8 @@ int32 SPjcInspectorGraph::OnPaint(
 		return bDim && !bLit ? FMath::Lerp(Background, Color, 0.28f) : Color;
 	};
 	const FLinearColor Amber = PjcGraphColor(TEXT("#D2A640"));
+	// circular links have a colour of their own: the root sources are gold already
+	const FLinearColor Circular = PjcGraphColor(TEXT("#FF8A3D"));
 	// lit links flow: their dashes move this far along, in graph units
 	constexpr float FlowOn = 10.0f;
 	constexpr float FlowOff = 7.0f;
@@ -523,7 +528,7 @@ int32 SPjcInspectorGraph::OnPaint(
 			Width = 2.5f;
 		}
 		else if (Back || (bUp && Edge.bCircle)) {
-			Color = Amber;
+			Color = Circular;
 		}
 		else if (Edge.Kind == EPjcLinkKind::EditorOnly) {
 			Color = PjcGraphColor(TEXT("#7FB2FF"));
@@ -627,21 +632,12 @@ int32 SPjcInspectorGraph::OnPaint(
 					   : FString::Printf(TEXT("%s uses %s, which leads back to it: a circle of references"), *NameFrom, *NameTo)
 				}
 			);
-			const FLinearColor MarkFill = PjcGraphColor(TEXT("#2A2416"));
-			const FLinearColor MarkSign = Faded(PjcGraphColor(TEXT("#E6C15A")), bLit);
-			Box(LayerLabels, Middle - FVector2D {9.0f, 9.0f}, FVector2D {18.0f, 18.0f}, BrushPill, Faded(Amber, bLit));
-			Box(LayerLabels + 1, Middle - FVector2D {8.0f, 8.0f}, FVector2D {16.0f, 16.0f}, BrushPill, MarkFill);
-			if (Back) {
-				// both ways
-				const FString Sign {TEXT("\u2194")};
-				const FVector2D SignSize {FontMeasure->Measure(Sign, FontLine)};
-				Text(LayerRing, Middle - SignSize * 0.5f, static_cast<float>(SignSize.X) + 1.0f, Sign, FontLine, MarkSign);
-			}
-			else {
-				// a circle: drawn as a ring, the glyph for it is not in every font
-				Box(LayerRing, Middle - FVector2D {5.0f, 5.0f}, FVector2D {10.0f, 10.0f}, BrushPill, MarkSign);
-				Box(LayerRing + 1, Middle - FVector2D {3.0f, 3.0f}, FVector2D {6.0f, 6.0f}, BrushPill, MarkFill);
-			}
+			// a round badge in the colour of the link: two arrows for both ways, a loop for a circle. Images, not
+			// glyphs: they look the same with every font and engine
+			const FLinearColor MarkColor = Faded(Circular, bLit);
+			Box(LayerLabels, Middle - FVector2D {10.0f, 10.0f}, FVector2D {20.0f, 20.0f}, BrushDisc, MarkColor);
+			Box(LayerLabels + 1, Middle - FVector2D {8.5f, 8.5f}, FVector2D {17.0f, 17.0f}, BrushDisc, PjcGraphColor(TEXT("#17191C")));
+			Box(LayerRing, Middle - FVector2D {6.5f, 6.5f}, FVector2D {13.0f, 13.0f}, Back ? BrushPair : BrushLoop, MarkColor);
 		}
 
 		// what the link is, when not a plain hard reference (the unused group says it with the line alone)
