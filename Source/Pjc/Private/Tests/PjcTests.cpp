@@ -7,6 +7,7 @@
 #include "PjcGraphRouter.h"
 #include "PjcInspector.h"
 #include "PjcIssues.h"
+#include "PjcLocations.h"
 #include "PjcClean.h"
 #include "Slate/SPjcScanSettings.h"
 #include "PjcCookInfo.h"
@@ -1407,6 +1408,38 @@ bool FPjcTestInspectorGraph::RunTest(const FString& Parameters) {
 	const FPjcInspectorGraph Used = FPjcInspectorGraph::Make(Result, Leaf);
 	TestFalse(TEXT("used graph is no unused group"), Used.bUnusedGroup);
 	TestTrue(TEXT("used graph has roots"), Used.NumRoots > 0);
+
+	// reference locations: the asset is loaded and says which of its properties holds the asset it uses
+	{
+		const FName Library = PackageOf(Fixture, TEXT("OL_Chain"));
+		FPjcLocations Read;
+		TestTrue(TEXT("an asset can be read"), FPjcLocationReader::CanRead(Library));
+		if (TestTrue(TEXT("locations read"), FPjcLocationReader::Read(Library, Read))) {
+			const FPjcLocation* Place = Read.Places.FindByPredicate([Leaf](const FPjcLocation& Existing) {
+				return Existing.Target == Leaf;
+			});
+			if (TestNotNull(TEXT("the property that holds the used asset is found"), Place)) {
+				TestFalse(TEXT("the place names a property"), Place->Property.IsEmpty());
+				TestTrue(TEXT("the place names a part of the asset"), Place->Parts.Num() > 0);
+			}
+			TestFalse(TEXT("an asset found in a property is not listed as not found"), Read.NotFound.Contains(Leaf));
+			TArray<FPjcInspectorLink> Uses;
+			int32 Through = 0;
+			FPjcInspectorGraph::GetLinks(Library, false, Uses, Through);
+			TSet<FName> Listed;
+			for (const FPjcInspectorLink& Link : Uses) {
+				Listed.Add(Link.Package);
+				const bool bPlaced = Read.Places.ContainsByPredicate([&Link](const FPjcLocation& Existing) {
+					return Existing.Target == Link.Package;
+				});
+				TestTrue(TEXT("every used asset has a place or is listed as not found"), bPlaced || Read.NotFound.Contains(Link.Package));
+			}
+			for (const FPjcLocation& Existing : Read.Places) {
+				TestTrue(TEXT("every place is of an asset the lists show"), Listed.Contains(Existing.Target));
+			}
+		}
+		TestFalse(TEXT("nothing to read for no asset"), FPjcLocationReader::CanRead(TEXT("/Game/Pjc/NoSuchAsset")));
+	}
 	const int32 LeafNode = Used.FindNode(Leaf);
 	const int32 ChainNode = Used.FindNode(PackageOf(Fixture, TEXT("OL_Chain")));
 	const int32 RootNode = Used.FindNode(PackageOf(Fixture, TEXT("PAL_Root")));

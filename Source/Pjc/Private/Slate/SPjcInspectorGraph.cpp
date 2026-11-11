@@ -110,6 +110,11 @@ void SPjcInspectorGraph::SetLocked(const int32 Node) {
 	UpdateFlow();
 }
 
+void SPjcInspectorGraph::SetLoaded(const TArray<FName>& Packages) {
+	Loaded = TSet<FName> {Packages};
+	Invalidate(EInvalidateWidgetReason::Paint);
+}
+
 int32 SPjcInspectorGraph::GetLocked() const {
 	return Locked;
 }
@@ -832,6 +837,14 @@ int32 SPjcInspectorGraph::OnPaint(
 			Faded(Foreground, bLit)
 		);
 		Text(LayerContent, Position + FVector2D {TextLeft, 24.0f}, NodeWidth - TextLeft - 8.0f, Item.Line, FontLine, Faded(Item.LineColor, bLit));
+		if (Node.Kind == EPjcInspectorNodeKind::Asset && Loaded.Contains(Node.Package) && Zoom >= PjcGraphTextZoom) {
+			// loaded by the Inspector to read where it holds its references
+			Box(LayerContent,
+				Position + FVector2D {NodeWidth - 12.0f, NodeHeight - 12.0f},
+				FVector2D {7.0f, 7.0f},
+				BrushDisc,
+				PjcGraphColor(TEXT("#E8D27A")));
+		}
 		for (int32 Dot = 0; Dot < Item.Dots.Num(); ++Dot) {
 			Box(LayerContent,
 				Position + FVector2D {NodeWidth - 13.0f - Dot * 10.0f, 7.0f},

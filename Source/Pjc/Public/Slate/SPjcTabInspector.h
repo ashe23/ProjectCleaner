@@ -4,8 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "PjcInspector.h"
+#include "PjcLocations.h"
 #include "Widgets/SCompoundWidget.h"
 #include "Widgets/Views/SListView.h"
+#include "Widgets/Views/STreeView.h"
 
 class FTabManager;
 class SBox;
@@ -29,6 +31,17 @@ struct FPjcInspectorRow
 	// Lists: how the selected asset and this one reference each other, and whether the graph shows it
 	EPjcLinkKind Kind = EPjcLinkKind::Hard;
 	bool bInGraph = false;
+};
+
+// Row of the reference locations: a part of the asset (with how many references it holds), or a property with the
+// asset that is set there
+struct FPjcLocationItem
+{
+	FString Label;
+	int32 Num = 0;
+	// The asset set there; None for a part
+	FName Target;
+	TArray<TSharedPtr<FPjcLocationItem>> Children;
 };
 
 /**
@@ -61,6 +74,14 @@ class SPjcTabInspector final : public SCompoundWidget
 
 	int32 GetNumFinderRows() const {
 		return FinderRows.Num();
+	}
+
+	// Reference locations of the selected asset: what the buttons of that panel do, and what was read
+	// bAsk: a big load is asked about first
+	void LoadLocations(const bool bAsk = true);
+	void UnloadLocations();
+	const TMap<FName, FPjcLocations>& GetLocations() const {
+		return Locations;
 	}
 
   private:
@@ -152,4 +173,15 @@ class SPjcTabInspector final : public SCompoundWidget
 	int32 UsesThrough = 0;
 	TSharedPtr<SListView<FRowPtr>> UsedByList;
 	TSharedPtr<SListView<FRowPtr>> UsesList;
+
+	// Reference locations: where inside the selected asset each asset it uses is set. The asset must be loaded for
+	// that, so it is read only when asked for, and what was loaded for it can be let go again
+	using FLocationPtr = TSharedPtr<FPjcLocationItem>;
+	TSharedRef<SWidget> MakeLocations();
+	TSharedRef<ITableRow> OnGenerateLocationRow(FLocationPtr Item, const TSharedRef<STableViewBase>& Table);
+	// Read assets of this scan, and the ones that were not in memory before they were read
+	TMap<FName, FPjcLocations> Locations;
+	TArray<FName> LoadedHere;
+	TArray<FLocationPtr> LocationItems;
+	TSharedPtr<STreeView<FLocationPtr>> LocationTree;
 };

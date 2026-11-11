@@ -4,6 +4,7 @@
 #include "Slate/PjcActions.h"
 #include "Slate/PjcWidgets.h"
 #include "Slate/SPjcClassBar.h"
+#include "Slate/SPjcDialog.h"
 #include "Slate/SPjcInspectorGraph.h"
 #include "Slate/SPjcScanBar.h"
 #include "Slate/SPjcToolFrame.h"
@@ -260,6 +261,8 @@ void SPjcTabInspector::RebuildGraph() {
 	if (Result.Time != CacheTime) {
 		Cache.Reset();
 		CacheTime = Result.Time;
+		// what was read belongs to the scan it was read in; what was loaded for it stays to be unloaded
+		Locations.Reset();
 	}
 	// a map with thousands of actors takes seconds the first time: a progress window once it takes long
 	FScopedSlowTask Reading {1.0f, FText::FromString(TEXT("Reading references..."))};
@@ -949,14 +952,22 @@ void SPjcTabInspector::RebuildDetails() {
 		]
 		+ SVerticalBox::Slot().FillHeight(1.0f)
 		[
-			SNew(SSplitter).Orientation(Orient_Horizontal).PhysicalSplitterHandleSize(3.0f)
+			SNew(SSplitter).Orientation(Orient_Vertical).PhysicalSplitterHandleSize(3.0f)
 			+ SSplitter::Slot().Value(0.5f)
 			[
-				MakeLinkList(true)
+				SNew(SSplitter).Orientation(Orient_Horizontal).PhysicalSplitterHandleSize(3.0f)
+				+ SSplitter::Slot().Value(0.5f)
+				[
+					MakeLinkList(true)
+				]
+				+ SSplitter::Slot().Value(0.5f)
+				[
+					MakeLinkList(false)
+				]
 			]
 			+ SSplitter::Slot().Value(0.5f)
 			[
-				MakeLinkList(false)
+				MakeLocations()
 			]
 		]
 	);
@@ -1232,6 +1243,8 @@ TSharedRef<SWidget> SPjcTabInspector::MakeLinkList(const bool bUsedBy) {
 		: FString::Printf(TEXT("through %s level actor%s"), *PjcFormat::Count(NumThrough), NumThrough == 1 ? TEXT("") : TEXT("s"));
 	const TCHAR* ThroughTip = TEXT("World Partition saves each actor of a level in its own file. They are part of the level, not assets: ")
 		TEXT("the list shows what is on their other side.");
+	const FString SelectedName = FPackageName::GetShortName(GetSelectedPackage());
+	const FString Way = bGroup ? FString {} : (bUsedBy ? TEXT("these use ") + SelectedName : SelectedName + TEXT(" uses these"));
 	const TCHAR* NoUsers = Graph.bUnusedGroup ? TEXT("Nothing references it") : TEXT("Nothing references it: it is a root");
 	const FString Empty = bUsedBy ? NoUsers : TEXT("Uses no other asset");
 
@@ -1246,6 +1259,14 @@ TSharedRef<SWidget> SPjcTabInspector::MakeLinkList(const bool bUsedBy) {
 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 				[
 					SNew(STextBlock).Text(FText::FromString(Title)).Font(FPjcStyles::GetFont("Bold", 9))
+				]
+				+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center).Padding(FMargin {8.0f, 0.0f, 0.0f, 0.0f})
+				[
+					SNew(STextBlock)
+					.Text(FText::FromString(Way))
+					.Font(FPjcStyles::GetFont("Regular", 8))
+					.ColorAndOpacity(FSlateColor::UseSubduedForeground())
+					.Clipping(EWidgetClipping::ClipToBounds)
 				]
 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {8.0f, 0.0f, 0.0f, 0.0f})
 				[
@@ -1344,6 +1365,283 @@ TSharedRef<ITableRow> SPjcTabInspector::OnGenerateLinkRow(FRowPtr Row, const TSh
 			]
 		];
 	// clang-format on
+}
+
+TSharedRef<SWidget> SPjcTabInspector::MakeLocations() {
+	const FName Package = GetSelectedPackage();
+	const FPjcLocations* Read = Locations.Find(Package);
+	const bool bCanRead = FPjcLocationReader::CanRead(Package);
+	const FString Name = FPackageName::GetShortName(Package);
+
+	// parts of the asset as a tree, a property with its asset as a leaf
+	LocationItems.Reset();
+	const auto Child = [](TArray<FLocationPtr>& Items, const FString& Label) {
+		for (const FLocationPtr& Item : Items) {
+			if (Item->Target.IsNone() && Item->Label == Label) return Item;
+		}
+		FLocationPtr Item = MakeShared<FPjcLocationItem>();
+		Item->Label = Label;
+		Items.Add(Item);
+		return Item;
+	};
+	if (Read) {
+		for (const FPjcLocation& Place : Read->Places) {
+			TArray<FLocationPtr>* Items = &LocationItems;
+			for (const FString& Part : Place.Parts) {
+				const FLocationPtr Item = Child(*Items, Part);
+				++Item->Num;
+				Items = &Item->Children;
+			}
+			FLocationPtr Leaf = MakeShared<FPjcLocationItem>();
+			Leaf->Label = Place.Property;
+			Leaf->Target = Place.Target;
+			Items->Add(Leaf);
+		}
+		for (const FName Target : Read->NotFound) {
+			const FLocationPtr Item = Child(LocationItems, TEXT("Not in a property"));
+			++Item->Num;
+			FLocationPtr Leaf = MakeShared<FPjcLocationItem>();
+			Leaf->Target = Target;
+			Item->Children.Add(Leaf);
+		}
+	}
+
+	const FString Explain
+		= FString::Printf(TEXT("Where inside %s each asset it uses is set: the property, component or graph that holds the reference"), *Name);
+	const FString LoadTip = FString::Printf(
+		TEXT("The asset registry knows which assets %s uses, not where. To show where, the editor loads %s (%s on disk)"),
+		*Name,
+		*Name,
+		*PjcFormat::Size(UPjcSubsystem::GetScanResult().GetSize(Package))
+	);
+	const FString UnloadTip = FString::Printf(
+		TEXT("Lets go of the %s the Inspector loaded; what was read is forgotten. An asset the editor still uses stays in memory"),
+		LoadedHere.Num() == 1 ? TEXT("asset") : *FString::Printf(TEXT("%d assets"), LoadedHere.Num())
+	);
+	const TCHAR* EmptyText = Read ? TEXT("Uses no asset.") : (bCanRead ? TEXT("Not loaded.") : TEXT("Levels are not loaded."));
+
+	// clang-format off
+	const TSharedRef<SHorizontalBox> Head = SNew(SHorizontalBox)
+		.ToolTipText(FText::FromString(Explain))
+		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+		[
+			SNew(STextBlock).Text(FText::FromString(TEXT("Reference locations"))).Font(FPjcStyles::GetFont("Bold", 9))
+		]
+		+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center).Padding(FMargin {8.0f, 0.0f})
+		[
+			SNew(STextBlock)
+			.Text(FText::FromString(TEXT("in ") + Name))
+			.Font(FPjcStyles::GetFont("Regular", 8))
+			.ColorAndOpacity(FSlateColor::UseSubduedForeground())
+			.Clipping(EWidgetClipping::ClipToBounds)
+		];
+	if (Read) {
+		Head->AddSlot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 8.0f, 0.0f})
+		[
+			SNew(STextBlock)
+			.Text(FText::FromString(TEXT("\u25CF loaded")))
+			.ToolTipText(FText::FromString(TEXT("The Inspector loaded this asset and read it")))
+			.Font(FPjcStyles::GetFont("Regular", 8))
+			.ColorAndOpacity(PjcInspectorHex(TEXT("#E8D27A")))
+		];
+	}
+	if (Read || LoadedHere.Num() > 0) {
+		Head->AddSlot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 4.0f, 0.0f})
+		[
+			PjcInspectorButton(TEXT("Unload"), UnloadTip, TEXT("ProjectCleaner.Color.UnusedFill"), [this]() { UnloadLocations(); })
+		];
+	}
+	if (!Read && bCanRead) {
+		Head->AddSlot().AutoWidth().VAlign(VAlign_Center)
+		[
+			PjcInspectorButton(TEXT("Load to show"), LoadTip, TEXT("ProjectCleaner.Color.Accent"), [this]() { LoadLocations(); })
+		];
+	}
+
+	const TSharedRef<SWidget> Body = SNew(SOverlay)
+		+ SOverlay::Slot()
+		[
+			SAssignNew(LocationTree, STreeView<FLocationPtr>)
+			.TreeItemsSource(&LocationItems)
+			.SelectionMode(ESelectionMode::Single)
+			.OnGenerateRow(this, &SPjcTabInspector::OnGenerateLocationRow)
+			.OnGetChildren_Lambda([](FLocationPtr Item, TArray<FLocationPtr>& OutChildren) { OutChildren = Item->Children; })
+			.OnSelectionChanged_Lambda([this](FLocationPtr Item, ESelectInfo::Type) {
+				if (Item.IsValid() && !Item->Target.IsNone() && GraphView.IsValid()) GraphView->SetHighlighted(Graph.FindNode(Item->Target));
+			})
+			.OnMouseButtonDoubleClick_Lambda([this](FLocationPtr Item) {
+				if (Item.IsValid() && !Item->Target.IsNone()) SetFocus(Item->Target, true);
+			})
+		]
+		+ SOverlay::Slot().HAlign(HAlign_Left).VAlign(VAlign_Top).Padding(FMargin {12.0f, 10.0f})
+		[
+			SNew(STextBlock)
+			.Visibility(LocationItems.Num() == 0 ? EVisibility::HitTestInvisible : EVisibility::Collapsed)
+			.Text(FText::FromString(EmptyText))
+			.ColorAndOpacity(FSlateColor::UseSubduedForeground())
+		];
+	// clang-format on
+
+	// every part open: the tree is the answer, not a menu
+	TArray<FLocationPtr> Open = LocationItems;
+	while (Open.Num() > 0) {
+		const FLocationPtr Item = Open.Pop();
+		LocationTree->SetItemExpansion(Item, true);
+		Open.Append(Item->Children);
+	}
+
+	// clang-format off
+	return SNew(SVerticalBox)
+		+ SVerticalBox::Slot().AutoHeight()
+		[
+			SNew(SBorder).BorderImage(PjcShim::GetBrush(TEXT("ToolPanel.DarkGroupBorder"))).Padding(FMargin {12.0f, 4.0f, 6.0f, 4.0f})
+			[
+				Head
+			]
+		]
+		+ SVerticalBox::Slot().FillHeight(1.0f)
+		[
+			Body
+		];
+	// clang-format on
+}
+
+TSharedRef<ITableRow> SPjcTabInspector::OnGenerateLocationRow(FLocationPtr Item, const TSharedRef<STableViewBase>& Table) {
+	const TSharedRef<STableRow<FLocationPtr>> TableRow = SNew(STableRow<FLocationPtr>, Table).Padding(FMargin {4.0f, 1.0f});
+	if (Item->Target.IsNone()) {
+		// a part of the asset and how many references it holds
+		// clang-format off
+		TableRow->SetContent(
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
+			[
+				SNew(STextBlock).Text(FText::FromString(Item->Label)).Font(FPjcStyles::GetFont("Bold", 9))
+			]
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {8.0f, 0.0f})
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString(PjcFormat::Count(Item->Num)))
+				.Font(PjcWidgets::GetFontMono(8))
+				.ColorAndOpacity(FSlateColor::UseSubduedForeground())
+			]
+		);
+		// clang-format on
+		return TableRow;
+	}
+
+	// a property and the asset set there
+	const FRowPtr Row = MakeRow(Item->Target);
+	const FRowPtr* Listed = UsesRows.FindByPredicate([&Item](const FRowPtr& Existing) {
+		return Existing->Package == Item->Target;
+	});
+	const EPjcLinkKind Kind = Listed ? (*Listed)->Kind : EPjcLinkKind::Hard;
+	const FName Target = Item->Target;
+	const FString ToolTip = Target.ToString() + TEXT("\n") + Row->ClassLabel + TEXT("\nDouble-click to inspect it");
+	// clang-format off
+	TableRow->SetContent(
+		SNew(SHorizontalBox)
+		.ToolTipText(FText::FromString(ToolTip))
+		+ SHorizontalBox::Slot().FillWidth(0.42f).VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 8.0f, 0.0f})
+		[
+			SNew(STextBlock)
+			.Text(FText::FromString(Item->Label))
+			.Font(FPjcStyles::GetFont("Regular", 9))
+			.ColorAndOpacity(FSlateColor::UseSubduedForeground())
+			.Clipping(EWidgetClipping::ClipToBounds)
+		]
+		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 6.0f, 0.0f})
+		[
+			PjcWidgets::MakeSwatch(PjcInspectorStatusColor(Row->Status, Row->bScanned), 7.0f)
+		]
+		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 6.0f, 0.0f})
+		[
+			SNew(SBox).WidthOverride(16.0f).HeightOverride(16.0f)
+			[
+				SNew(SImage).Image(Row->Icon).ColorAndOpacity(Row->IconColor)
+			]
+		]
+		+ SHorizontalBox::Slot().FillWidth(0.58f).VAlign(VAlign_Center)
+		[
+			SNew(STextBlock).Text(FText::FromString(Row->Name)).Font(FPjcStyles::GetFont("Regular", 9)).Clipping(EWidgetClipping::ClipToBounds)
+		]
+		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
+		[
+			SNew(STextBlock)
+			.Text(FText::FromString(PjcInspectorKindText(Kind)))
+			.ToolTipText(FText::FromString(PjcInspectorKindToolTip(Kind)))
+			.Font(PjcWidgets::GetFontMono(7))
+			.ColorAndOpacity(PjcInspectorKindColor(Kind))
+		]
+		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {4.0f, 0.0f, 0.0f, 0.0f})
+		[
+			SNew(SButton)
+#if ENGINE_MAJOR_VERSION < 5
+			.ForegroundColor(FSlateColor::UseForeground())
+#endif
+			.ButtonStyle(&FPjcStyles::Get().GetWidgetStyle<FButtonStyle>("ProjectCleaner.Button.Row"))
+			.ContentPadding(FMargin {4.0f, 0.0f})
+			.ToolTipText(FText::FromString(TEXT("Inspect ") + Row->Name))
+			.OnClicked_Lambda([this, Target]() {
+				SetFocus(Target, true);
+				return FReply::Handled();
+			})
+			[
+				SNew(STextBlock).Text(FText::FromString(TEXT("\u2192"))).Font(FPjcStyles::GetFont("Regular", 8))
+			]
+		]
+	);
+	// clang-format on
+	return TableRow;
+}
+
+void SPjcTabInspector::LoadLocations(const bool bAsk) {
+	const FName Package = GetSelectedPackage();
+	if (!FPjcLocationReader::CanRead(Package)) return;
+
+	const FString Name = FPackageName::GetShortName(Package);
+	// a big load is asked about first: the editor stops while it loads
+	constexpr int64 AskAbove = 200ll * 1024 * 1024;
+	const int64 Size = FPjcLocationReader::GetLoadSize(Package);
+	if (bAsk && Size > AskAbove) {
+		TArray<FPjcDialogPart> Parts;
+		FPjcDialogPart& What = Parts.AddDefaulted_GetRef();
+		What.Note = TEXT("To show where it holds its references, the editor loads the asset with everything it loads with it. ")
+			TEXT("The editor may stop for a while.");
+		What.NoteColor = TEXT("ProjectCleaner.Color.Yellow");
+		What.Rows.Emplace(Name, PjcFormat::Size(Size) + TEXT(" on disk, not in memory yet"));
+		if (!SPjcDialog::Show(TEXT("Load ") + Name, Parts, TEXT("Load"))) return;
+	}
+
+	FPjcLocations Read;
+	bool bRead = false;
+	{
+		FScopedSlowTask Loading {1.0f, FText::FromString(TEXT("Loading ") + Name + TEXT("..."))};
+		Loading.MakeDialog();
+		Loading.EnterProgressFrame(1.0f);
+		bRead = FPjcLocationReader::Read(Package, Read);
+	}
+	if (!bRead) {
+		UPjcSubsystem::ShowNotification(Name + TEXT(" could not be loaded"), SNotificationItem::CS_Fail, 4.0f);
+		return;
+	}
+	if (Read.bLoadedHere) LoadedHere.AddUnique(Package);
+	Locations.Add(Package, MoveTemp(Read));
+	if (GraphView.IsValid()) GraphView->SetLoaded(LoadedHere);
+	RebuildDetails();
+}
+
+void SPjcTabInspector::UnloadLocations() {
+	const int32 Num = LoadedHere.Num();
+	const int32 Gone = FPjcLocationReader::Unload(LoadedHere);
+	Locations.Reset();
+	LoadedHere.Reset();
+	if (GraphView.IsValid()) GraphView->SetLoaded(LoadedHere);
+	if (Num > 0) {
+		const FString Text = Gone == Num ? FString::Printf(TEXT("Unloaded %d asset%s"), Num, Num == 1 ? TEXT("") : TEXT("s"))
+										 : FString::Printf(TEXT("Unloaded %d of %d assets: the editor still uses the rest"), Gone, Num);
+		UPjcSubsystem::ShowNotification(Text, SNotificationItem::CS_None, 4.0f);
+	}
+	RebuildDetails();
 }
 
 void SPjcTabInspector::OnLinkClicked(FRowPtr Row) {

@@ -37,6 +37,8 @@ class SPjcInspectorGraph final : public SLeafWidget
 	// Keeps a box lit with its links, as a click on it does; INDEX_NONE releases
 	void SetLocked(const int32 Node);
 	int32 GetLocked() const;
+	// Assets the Inspector loaded to read them: their boxes get a mark
+	void SetLoaded(const TArray<FName>& Packages);
 
 	void FitAll();
 	void FrameSelected();
@@ -150,6 +152,7 @@ class SPjcInspectorGraph final : public SLeafWidget
 	TArray<TArray<FVector2D>> Routes;
 	TArray<FVector2D> RouteMiddles;
 	// boxes the user moved, until another asset is inspected
+	TSet<FName> Loaded;
 	TMap<FName, FVector2D> Moved;
 	FName MovedFocus;
 	bool bDragging = false;
