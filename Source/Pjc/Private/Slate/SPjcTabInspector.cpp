@@ -694,6 +694,15 @@ TSharedRef<SWidget> SPjcTabInspector::MakeGraphPane() {
 						[
 							Small(TEXT("Frame selected"), TEXT("Frames the selected asset (F)"), [this]() { GraphView->FrameSelected(); })
 						]
+						+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin {4.0f, 0.0f, 0.0f, 0.0f})
+						[
+							// only once a box of the unused group was dragged somewhere
+							SNew(SBox)
+							.Visibility_Lambda([this]() { return GraphView.IsValid() && GraphView->HasMoved() ? EVisibility::Visible : EVisibility::Collapsed; })
+							[
+								Small(TEXT("Reset layout"), TEXT("Puts every box back where the layout placed it"), [this]() { GraphView->ResetLayout(); })
+							]
+						]
 					]
 				]
 			]
@@ -744,7 +753,7 @@ TSharedRef<SWidget> SPjcTabInspector::MakeGraphPane() {
 					+ SWrapBox::Slot()
 					[
 						SNew(STextBlock)
-						.Text(FText::FromString(TEXT("Hover lights a box and its links \u00B7 Click keeps them lit \u00B7 Double-click inspect \u00B7 Wheel zoom \u00B7 Drag pan \u00B7 F frame \u00B7 Home fit")))
+						.Text(FText::FromString(TEXT("Hover lights a box and its links \u00B7 Click keeps them lit \u00B7 Double-click inspect \u00B7 Drag a box of an unused group to make room \u00B7 Wheel zoom \u00B7 Drag pan \u00B7 F frame \u00B7 Home fit")))
 						.Font(FPjcStyles::GetFont("Regular", 8))
 						.ColorAndOpacity(FSlateColor::UseSubduedForeground())
 					]

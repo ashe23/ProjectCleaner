@@ -4,6 +4,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
+#include "PjcGraphRouter.h"
 #include "PjcInspector.h"
 #include "PjcIssues.h"
 #include "PjcClean.h"
@@ -1445,6 +1446,103 @@ bool FPjcTestInspectorGraph::RunTest(const FString& Parameters) {
 			return Edge.From == UnusedRootNode && Edge.To == UnusedNode;
 		}));
 	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPjcTestInspectorWiring, "ProjectCleaner.Inspector.Wiring", PJC_TEST_FLAGS)
+
+bool FPjcTestInspectorWiring::RunTest(const FString& Parameters) {
+	// boxes of the graph, no assets. Top uses Bottom with Between in the way, and Left and Right in the row of Bottom;
+	// Bottom uses Top too (a line that goes up); Top and Beside stand in one row
+	enum
+	{
+		Top,
+		Between,
+		Bottom,
+		Left,
+		Right,
+		Beside,
+	};
+	const FVector2D Size {214.0f, 46.0f};
+	const TArray<FVector2D> Boxes {
+	  FVector2D {400.0f,   0.0f},
+	  FVector2D {400.0f, 120.0f},
+	  FVector2D {400.0f, 240.0f},
+	  FVector2D {130.0f, 240.0f},
+	  FVector2D {670.0f, 240.0f},
+	  FVector2D {800.0f,   0.0f}
+	};
+	const TArray<FPjcRouteLink> Links {
+	  FPjcRouteLink {	Top, Bottom},
+		 FPjcRouteLink {   Top,	  Left},
+		  FPjcRouteLink {	Top,  Right},
+		FPjcRouteLink {	  Top, Beside},
+	   FPjcRouteLink {Bottom,	 Top}
+	};
+	TArray<TArray<FVector2D>> Routes;
+	PjcGraphRouter::Route(Boxes, Size, Links, Routes);
+	if (!TestEqual(TEXT("a line for every link"), Routes.Num(), Links.Num())) return false;
+
+	const auto X = [](const FVector2D& Point) {
+		return static_cast<float>(Point.X);
+	};
+	const auto Y = [](const FVector2D& Point) {
+		return static_cast<float>(Point.Y);
+	};
+	// inside a box, not on its border: a line starts and ends on a border
+	const auto InBox = [&](const float AtX, const float AtY) {
+		for (const FVector2D& Box : Boxes) {
+			if (AtX > X(Box) + 1.0f && AtX < X(Box) + X(Size) - 1.0f && AtY > Y(Box) + 1.0f && AtY < Y(Box) + Y(Size) - 1.0f) return true;
+		}
+		return false;
+	};
+	for (int32 Index = 0; Index < Routes.Num(); ++Index) {
+		const TArray<FVector2D>& Line = Routes[Index];
+		if (!TestTrue(FString::Printf(TEXT("line %d has a start and an end"), Index), Line.Num() >= 2)) return false;
+
+		bool bRightAngles = true;
+		bool bThroughBox = false;
+		for (int32 Point = 1; Point < Line.Num(); ++Point) {
+			const float DeltaX = X(Line[Point]) - X(Line[Point - 1]);
+			const float DeltaY = Y(Line[Point]) - Y(Line[Point - 1]);
+			bRightAngles &= FMath::Abs(DeltaX) < 0.01f || FMath::Abs(DeltaY) < 0.01f;
+			const int32 Steps = FMath::Max(1, FMath::CeilToInt((FMath::Abs(DeltaX) + FMath::Abs(DeltaY)) / 4.0f));
+			for (int32 Step = 0; Step <= Steps; ++Step) {
+				const float At = static_cast<float>(Step) / Steps;
+				bThroughBox |= InBox(X(Line[Point - 1]) + DeltaX * At, Y(Line[Point - 1]) + DeltaY * At);
+			}
+		}
+		TestTrue(FString::Printf(TEXT("line %d runs at right angles"), Index), bRightAngles);
+		TestFalse(FString::Printf(TEXT("line %d goes through no box"), Index), bThroughBox);
+	}
+
+	// a box uses what is below it: out at the bottom, in at the top. A line that goes up does the opposite
+	TestEqual(TEXT("leaves the bottom of the box that uses"), Y(Routes[0][0]), 46.0f, 0.01f);
+	TestEqual(TEXT("arrives at the top of the used box"), Y(Routes[0].Last()), 240.0f, 0.01f);
+	TestTrue(TEXT("goes round the box in the way"), Routes[0].Num() > 2);
+	TestEqual(TEXT("a line up leaves the top"), Y(Routes[4][0]), 240.0f, 0.01f);
+	TestEqual(TEXT("a line up arrives at the bottom"), Y(Routes[4].Last()), 46.0f, 0.01f);
+	// one row: side to side, straight
+	TestEqual(TEXT("neighbours: out at the side"), X(Routes[3][0]), 614.0f, 0.01f);
+	TestEqual(TEXT("neighbours: in at the side"), X(Routes[3].Last()), 800.0f, 0.01f);
+	TestEqual(TEXT("neighbours: a straight line"), Routes[3].Num(), 2);
+	// ends on one side are spread along it, in the order of where they lead
+	const TSet<int32> Ends {
+	  FMath::RoundToInt(X(Routes[0][0])),
+	  FMath::RoundToInt(X(Routes[1][0])),
+	  FMath::RoundToInt(X(Routes[2][0])),
+	  FMath::RoundToInt(X(Routes[4].Last()))
+	};
+	TestEqual(TEXT("four ends on the bottom of one box, each at its own place"), Ends.Num(), 4);
+	TestTrue(TEXT("the end that leads left is left of the one that leads right"), X(Routes[1][0]) < X(Routes[2][0]));
+
+	// round corners keep the ends
+	const TArray<FVector2D> Rounded = PjcGraphRouter::Round(Routes[1], 8.0f);
+	TestTrue(TEXT("round corners add points"), Rounded.Num() > Routes[1].Num());
+	TestTrue(TEXT("round corners keep the start"), Rounded[0].Equals(Routes[1][0], 0.01f));
+	TestTrue(TEXT("round corners keep the end"), Rounded.Last().Equals(Routes[1].Last(), 0.01f));
+	const FVector2D Middle = PjcGraphRouter::Middle(Routes[3]);
+	TestEqual(TEXT("the middle of a straight line"), X(Middle), 707.0f, 0.01f);
 	return true;
 }
 

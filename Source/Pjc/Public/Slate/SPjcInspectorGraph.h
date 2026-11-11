@@ -11,8 +11,10 @@ DECLARE_DELEGATE_OneParam(FPjcOnInspectorNode, int32 /* Index into FPjcInspector
 /**
  * Draws an Inspector graph top to bottom: sources, roots, the paths down to the asset; for an unused asset the group
  * it is deleted with. Links have no arrowheads: a box uses what is below it. The box under the pointer is lit with its
- * links and the boxes on their other end, the rest dims; a lit link flows from the asset to what it uses. A click
- * keeps a box lit (again or Esc: release). Drag to pan, wheel to zoom, F frames the selected node, Home fits the graph.
+ * links and the boxes on their other end, the rest dims; a lit link is a solid line with dashes that travel from the
+ * asset to what it uses. A click keeps a box lit (again or Esc: release). The lines of the unused group run at right
+ * angles around the boxes, and its boxes can be dragged to make room: the lines are laid again. Drag the background to
+ * pan, wheel to zoom, F frames the selected node, Home fits the graph.
  */
 class SPjcInspectorGraph final : public SLeafWidget
 {
@@ -38,6 +40,9 @@ class SPjcInspectorGraph final : public SLeafWidget
 
 	void FitAll();
 	void FrameSelected();
+	// Unused group: whether the user moved a box, and every box back where the layout placed it
+	bool HasMoved() const;
+	void ResetLayout();
 	void ZoomBy(const float Factor);
 	float GetZoom() const;
 
@@ -85,6 +90,14 @@ class SPjcInspectorGraph final : public SLeafWidget
 	};
 
 	void UpdateLayout();
+	// Unused group: the size of the picture with the boxes where they stand, and its lines laid around them (OnlyNode:
+	// only the lines of that box, while it is dragged)
+	void UpdateGroupSize();
+	void RouteGroup(const int32 OnlyNode = INDEX_NONE);
+	// Whether a link has a line of its own: two boxes that use each other share one
+	bool IsDrawn(const FPjcInspectorEdge& Edge) const;
+	// What a moved box is remembered by
+	FName GetMoveKey(const int32 Node) const;
 	void FitAuto(const FVector2D& ViewSize) const;
 	void FitAll(const FVector2D& ViewSize) const;
 	void Frame(const int32 Node, const FVector2D& ViewSize) const;
@@ -132,4 +145,13 @@ class SPjcInspectorGraph final : public SLeafWidget
 	mutable TArray<FMark> Marks;
 	int32 Pressed = INDEX_NONE;
 	bool bPanning = false;
+
+	// unused group: the line of every link (as Graph.Edges, empty when it has none) in graph space, and its middle
+	TArray<TArray<FVector2D>> Routes;
+	TArray<FVector2D> RouteMiddles;
+	// boxes the user moved, until another asset is inspected
+	TMap<FName, FVector2D> Moved;
+	FName MovedFocus;
+	bool bDragging = false;
+	FVector2D DragFrom = FVector2D::ZeroVector;
 };

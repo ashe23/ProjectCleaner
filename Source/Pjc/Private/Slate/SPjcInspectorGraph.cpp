@@ -3,6 +3,7 @@
 #include "Slate/SPjcInspectorGraph.h"
 #include "Slate/PjcWidgets.h"
 #include "PjcFormat.h"
+#include "PjcGraphRouter.h"
 #include "PjcShim.h"
 #include "PjcStyles.h"
 #include "PjcSubsystem.h"
@@ -18,8 +19,10 @@ namespace
 	// unity builds join files: names unique to this file
 	constexpr float PjcGraphPad = 24.0f;
 	constexpr float PjcGraphGapX = 70.0f;
-	// unused group: boxes of a row stand close, the lines between rows need the height
-	constexpr float PjcGraphGapXGroup = 22.0f;
+	// unused group: its lines run at right angles and need lanes between the boxes of a row and around the picture
+	constexpr float PjcGraphGapXGroup = 56.0f;
+	constexpr float PjcGraphPadGroup = 90.0f;
+	constexpr float PjcGraphCorner = 8.0f;
 	constexpr float PjcGraphGapY = 74.0f;
 	constexpr float PjcGraphReadable = 0.65f;
 	constexpr float PjcGraphTextZoom = 0.3f;
@@ -73,6 +76,11 @@ void SPjcInspectorGraph::Construct(const FArguments& InArgs) {
 void SPjcInspectorGraph::SetGraph(const FPjcScanResult* InResult, const FPjcInspectorGraph& InGraph) {
 	Result = InResult;
 	Graph = InGraph;
+	if (!Graph.bUnusedGroup || Graph.Focus != MovedFocus) {
+		Moved.Reset();
+		MovedFocus = Graph.Focus;
+	}
+	bDragging = false;
 	Locked = INDEX_NONE;
 	Selected = INDEX_NONE;
 	Highlighted = INDEX_NONE;
@@ -153,23 +161,19 @@ void SPjcInspectorGraph::UpdateLayout() {
 	if (Graph.Nodes.Num() == 0) return;
 
 	if (Graph.bUnusedGroup) {
-		// the model placed every box: rows from 0, centered
-		float MaxColumn = 0.0f;
-		int32 LastRow = 0;
-		bool bShared = false;
+		// the model placed every box (rows from 0, centered); the user may have moved some
 		for (int32 Index = 0; Index < Graph.Nodes.Num(); ++Index) {
 			const FPjcInspectorNode& Node = Graph.Nodes[Index];
-			Shown[Index].Position
-				= FVector2D {PjcGraphPad + Node.Column * (NodeWidth + PjcGraphGapXGroup), PjcGraphPad + Node.Layer * (NodeHeight + PjcGraphGapY)};
-			MaxColumn = FMath::Max(MaxColumn, Node.Column);
-			LastRow = FMath::Max(LastRow, Node.Layer);
-			bShared |= Node.bHub;
+			const FVector2D* Own = Moved.Find(GetMoveKey(Index));
+			Shown[Index].Position = Own
+				? *Own
+				: FVector2D {
+					PjcGraphPadGroup + Node.Column * (NodeWidth + PjcGraphGapXGroup), PjcGraphPadGroup + Node.Layer * (NodeHeight + PjcGraphGapY)
+				  };
 		}
-		GraphSize = FVector2D {
-		  PjcGraphPad * 2.0f + MaxColumn * (NodeWidth + PjcGraphGapXGroup) + NodeWidth + 50.0f,
-		  PjcGraphPad * 2.0f + LastRow * (NodeHeight + PjcGraphGapY) + NodeHeight
-		};
+		UpdateGroupSize();
 	}
+	RouteGroup();
 
 	// rows from 0, nodes of a row in column order without overlaps
 	int32 MinLayer = TNumericLimits<int32>::Max();
@@ -319,6 +323,78 @@ void SPjcInspectorGraph::UpdateLayout() {
 	}
 }
 
+FName SPjcInspectorGraph::GetMoveKey(const int32 Node) const {
+	const FPjcInspectorNode& Item = Graph.Nodes[Node];
+	return Item.Kind == EPjcInspectorNodeKind::Stack && Item.Roots.Num() > 0 ? Item.Roots[0] : Item.Package;
+}
+
+bool SPjcInspectorGraph::IsDrawn(const FPjcInspectorEdge& Edge) const {
+	if (!Shown.IsValidIndex(Edge.From) || !Shown.IsValidIndex(Edge.To)) return false;
+
+	const FPjcInspectorNode& NodeFrom = Graph.Nodes[Edge.From];
+	const FPjcInspectorNode& NodeTo = Graph.Nodes[Edge.To];
+	if (NodeFrom.Kind == EPjcInspectorNodeKind::Source) return true;
+
+	const bool bBack = Graph.Edges.ContainsByPredicate([&Edge](const FPjcInspectorEdge& Other) {
+		return Other.From == Edge.To && Other.To == Edge.From;
+	});
+	const bool bUp = NodeTo.Layer <= NodeFrom.Layer;
+	const bool bBackUp = NodeFrom.Layer <= NodeTo.Layer;
+	return !(bBack && bUp && (!bBackUp || Edge.From > Edge.To));
+}
+
+void SPjcInspectorGraph::UpdateGroupSize() {
+	GraphSize = FVector2D::ZeroVector;
+	for (const FShownNode& Item : Shown) {
+		GraphSize.X = FMath::Max(GraphSize.X, Item.Position.X + NodeWidth + PjcGraphPadGroup);
+		GraphSize.Y = FMath::Max(GraphSize.Y, Item.Position.Y + NodeHeight + PjcGraphPadGroup);
+	}
+}
+
+void SPjcInspectorGraph::RouteGroup(const int32 OnlyNode) {
+	if (OnlyNode == INDEX_NONE) {
+		Routes.Reset();
+		RouteMiddles.Reset();
+	}
+	Routes.SetNum(Graph.Edges.Num());
+	RouteMiddles.SetNum(Graph.Edges.Num());
+	if (!Graph.bUnusedGroup) return;
+
+	TArray<FVector2D> Boxes;
+	for (const FShownNode& Item : Shown) {
+		Boxes.Add(Item.Position);
+	}
+	TArray<FPjcRouteLink> Links;
+	TArray<int32> EdgeOf;
+	for (int32 Index = 0; Index < Graph.Edges.Num(); ++Index) {
+		const FPjcInspectorEdge& Edge = Graph.Edges[Index];
+		if (!IsDrawn(Edge) || (OnlyNode != INDEX_NONE && Edge.From != OnlyNode && Edge.To != OnlyNode)) continue;
+
+		Links.Add(FPjcRouteLink {Edge.From, Edge.To});
+		EdgeOf.Add(Index);
+	}
+	TArray<TArray<FVector2D>> Corners;
+	PjcGraphRouter::Route(Boxes, FVector2D {NodeWidth, NodeHeight}, Links, Corners);
+	for (int32 Index = 0; Index < EdgeOf.Num(); ++Index) {
+		Routes[EdgeOf[Index]] = PjcGraphRouter::Round(Corners[Index], PjcGraphCorner);
+		RouteMiddles[EdgeOf[Index]] = PjcGraphRouter::Middle(Routes[EdgeOf[Index]]);
+	}
+}
+
+bool SPjcInspectorGraph::HasMoved() const {
+	return Moved.Num() > 0;
+}
+
+void SPjcInspectorGraph::ResetLayout() {
+	if (Moved.Num() == 0) return;
+
+	Moved.Reset();
+	UpdateLayout();
+	bFitPending = true;
+	Invalidate(EInvalidateWidgetReason::Paint);
+	OnViewChanged.ExecuteIfBound();
+}
+
 int32 SPjcInspectorGraph::GetLit() const {
 	if (Shown.IsValidIndex(Locked)) return Locked;
 
@@ -435,10 +511,11 @@ int32 SPjcInspectorGraph::OnPaint(
 	const FLinearColor Gold = PjcGraphColor(TEXT("#FFCB77"));
 
 	const int32 LayerEdges = LayerId + 1;
-	const int32 LayerLabels = LayerId + 2;
-	const int32 LayerRing = LayerId + 3;
-	const int32 LayerBody = LayerId + 5;
-	const int32 LayerContent = LayerId + 8;
+	const int32 LayerFlow = LayerId + 2;
+	const int32 LayerLabels = LayerId + 3;
+	const int32 LayerRing = LayerId + 5;
+	const int32 LayerBody = LayerId + 7;
+	const int32 LayerContent = LayerId + 10;
 
 	// graph space box, scaled with the view
 	const auto Box = [&](const int32 Layer, const FVector2D& Position, const FVector2D& Size, const FSlateBrush* Brush, const FLinearColor& Color) {
@@ -494,9 +571,9 @@ int32 SPjcInspectorGraph::OnPaint(
 	const FLinearColor Amber = PjcGraphColor(TEXT("#D2A640"));
 	// circular links have a colour of their own: the root sources are gold already
 	const FLinearColor Circular = PjcGraphColor(TEXT("#FF8A3D"));
-	// lit links flow: their dashes move this far along, in graph units
-	constexpr float FlowOn = 10.0f;
-	constexpr float FlowOff = 7.0f;
+	// a lit link is a solid line with lighter dashes on it that travel along it; their place now, in graph units
+	constexpr float FlowOn = 8.0f;
+	constexpr float FlowOff = 14.0f;
 	// in doubles: the time is a big number, and UE 4 has Fmod for floats only, in which the dashes stand still
 	const double FlowPeriod = static_cast<double>(FlowOn + FlowOff);
 	const double FlowTravel = FSlateApplication::Get().GetCurrentTime() * 26.0;
@@ -508,8 +585,52 @@ int32 SPjcInspectorGraph::OnPaint(
 	TArray<FVector2D> Dash;
 	TArray<float> Lengths;
 	Marks.Reset();
-	for (const FPjcInspectorEdge& Edge : Graph.Edges) {
-		if (!Shown.IsValidIndex(Edge.From) || !Shown.IsValidIndex(Edge.To)) continue;
+	const FPaintGeometry EdgeGeometry = AllottedGeometry.ToPaintGeometry();
+	const auto Solid = [&](const int32 Layer, const TArray<FVector2D>& Along, const FLinearColor& Tint, const float Thickness) {
+		FSlateDrawElement::MakeLines(OutDrawElements, Layer, EdgeGeometry, Along, ESlateDrawEffect::None, Tint, true, Thickness);
+	};
+	// dashes along a line, the first one starts at First. A dash is one line over the bends: cut at every bend, its cuts
+	// stand still while the dash moves
+	const auto Dashes = [&](const int32 Layer,
+							const TArray<FVector2D>& Along,
+							const float On,
+							const float Period,
+							const float First,
+							const FLinearColor& Tint,
+							const float Thickness) {
+		Lengths.Reset();
+		Lengths.Add(0.0f);
+		for (int32 Index = 1; Index < Along.Num(); ++Index) {
+			Lengths.Add(Lengths.Last() + static_cast<float>(FVector2D::Distance(Along[Index - 1], Along[Index])));
+		}
+		const float Total = Lengths.Last();
+		const auto PointAt = [&Along, &Lengths](const int32 Piece, const float At) {
+			const float Length = Lengths[Piece + 1] - Lengths[Piece];
+			return Along[Piece] + (Along[Piece + 1] - Along[Piece]) * (Length > 0.0f ? (At - Lengths[Piece]) / Length : 0.0f);
+		};
+		int32 Piece = 0;
+		for (float Begin = First; Begin < Total; Begin += Period) {
+			const float DashFrom = FMath::Max(Begin, 0.0f);
+			const float DashTo = FMath::Min(Begin + On, Total);
+			if (DashTo - DashFrom <= 0.01f) continue;
+
+			while (Piece < Along.Num() - 2 && Lengths[Piece + 1] <= DashFrom) {
+				++Piece;
+			}
+			Dash.Reset();
+			Dash.Add(PointAt(Piece, DashFrom));
+			int32 Last = Piece;
+			while (Last < Along.Num() - 2 && Lengths[Last + 1] < DashTo) {
+				++Last;
+				Dash.Add(Along[Last]);
+			}
+			Dash.Add(PointAt(Last, DashTo));
+			FSlateDrawElement::MakeLines(OutDrawElements, Layer, EdgeGeometry, Dash, ESlateDrawEffect::None, Tint, true, Thickness);
+		}
+	};
+	for (int32 EdgeIndex = 0; EdgeIndex < Graph.Edges.Num(); ++EdgeIndex) {
+		const FPjcInspectorEdge& Edge = Graph.Edges[EdgeIndex];
+		if (!IsDrawn(Edge)) continue;
 
 		const FPjcInspectorNode& NodeFrom = Graph.Nodes[Edge.From];
 		const FPjcInspectorNode& NodeTo = Graph.Nodes[Edge.To];
@@ -518,8 +639,6 @@ int32 SPjcInspectorGraph::OnPaint(
 			return Other.From == Edge.To && Other.To == Edge.From;
 		});
 		const bool bUp = !bSource && NodeTo.Layer <= NodeFrom.Layer;
-		const bool bBackUp = NodeFrom.Layer <= NodeTo.Layer;
-		if (Back && bUp && (!bBackUp || Edge.From > Edge.To)) continue;
 
 		const bool bLit = bDim && (Edge.From == Lit || Edge.To == Lit);
 		FLinearColor Color = PjcGraphColor(TEXT("#2C9A8F"));
@@ -550,8 +669,6 @@ int32 SPjcInspectorGraph::OnPaint(
 		}
 		if (bLit) {
 			Width = 3.2f;
-			DashOn = FlowOn;
-			DashOff = FlowOff;
 		}
 		// links that are not lit go further back than the boxes
 		Color = bDim && !bLit ? FMath::Lerp(Background, Color, 0.18f) : Color;
@@ -577,55 +694,45 @@ int32 SPjcInspectorGraph::OnPaint(
 			C2 = FVector2D {Out, End.Y};
 		}
 
+		// the unused group has its lines laid at right angles around the boxes, the other graphs draw curves
+		const bool bRouted = Routes.IsValidIndex(EdgeIndex) && Routes[EdgeIndex].Num() > 1;
 		Points.Reset();
-		constexpr int32 Steps = 32;
-		for (int32 Step = 0; Step <= Steps; ++Step) {
-			Points.Add(ToLocal(PjcGraphBezier(Start, C1, C2, End, static_cast<float>(Step) / Steps)));
-		}
-		const float Thickness = FMath::Max(1.0f, Width * Zoom);
-		const FPaintGeometry EdgeGeometry = AllottedGeometry.ToPaintGeometry();
-		if (DashOn <= 0.0f) {
-			FSlateDrawElement::MakeLines(OutDrawElements, LayerEdges, EdgeGeometry, Points, ESlateDrawEffect::None, Color, true, Thickness);
+		if (bRouted) {
+			for (const FVector2D& Point : Routes[EdgeIndex]) {
+				Points.Add(ToLocal(Point));
+			}
 		}
 		else {
-			// dashes along the curve, in graph units; on a lit link they move from the asset to what it uses. A dash is
-			// one line over the bends of the curve: cut at every bend, its cuts stand still while the dash moves
-			const float On = DashOn * Zoom;
-			const float Period = (DashOn + DashOff) * Zoom;
-			Lengths.Reset();
-			Lengths.Add(0.0f);
-			for (int32 Index = 1; Index < Points.Num(); ++Index) {
-				Lengths.Add(Lengths.Last() + static_cast<float>(FVector2D::Distance(Points[Index - 1], Points[Index])));
+			constexpr int32 Steps = 32;
+			for (int32 Step = 0; Step <= Steps; ++Step) {
+				Points.Add(ToLocal(PjcGraphBezier(Start, C1, C2, End, static_cast<float>(Step) / Steps)));
 			}
-			const float Total = Lengths.Last();
-			const auto PointAt = [&Points, &Lengths](const int32 Piece, const float At) {
-				const float Length = Lengths[Piece + 1] - Lengths[Piece];
-				return Points[Piece] + (Points[Piece + 1] - Points[Piece]) * (Length > 0.0f ? (At - Lengths[Piece]) / Length : 0.0f);
-			};
-			int32 Piece = 0;
-			for (float Begin = bLit ? Flow * Zoom - Period : 0.0f; Begin < Total; Begin += Period) {
-				const float DashFrom = FMath::Max(Begin, 0.0f);
-				const float DashTo = FMath::Min(Begin + On, Total);
-				if (DashTo - DashFrom <= 0.01f) continue;
-
-				while (Piece < Points.Num() - 2 && Lengths[Piece + 1] <= DashFrom) {
-					++Piece;
-				}
-				Dash.Reset();
-				Dash.Add(PointAt(Piece, DashFrom));
-				int32 Last = Piece;
-				while (Last < Points.Num() - 2 && Lengths[Last + 1] < DashTo) {
-					++Last;
-					Dash.Add(Points[Last]);
-				}
-				Dash.Add(PointAt(Last, DashTo));
-				FSlateDrawElement::MakeLines(OutDrawElements, LayerEdges, EdgeGeometry, Dash, ESlateDrawEffect::None, Color, true, Thickness);
-			}
+		}
+		const float Thickness = FMath::Max(1.0f, Width * Zoom);
+		if (bLit) {
+			// lit: solid, and the lighter dashes on it travel from the asset to what it uses
+			const float FlowPeriodNow = (FlowOn + FlowOff) * Zoom;
+			Solid(LayerEdges, Points, Color, Thickness);
+			Dashes(
+				LayerFlow,
+				Points,
+				FlowOn * Zoom,
+				FlowPeriodNow,
+				Flow * Zoom - FlowPeriodNow,
+				FMath::Lerp(Color, FLinearColor::White, 0.6f),
+				FMath::Max(1.0f, 2.2f * Zoom)
+			);
+		}
+		else if (DashOn <= 0.0f) {
+			Solid(LayerEdges, Points, Color, Thickness);
+		}
+		else {
+			Dashes(LayerEdges, Points, DashOn * Zoom, (DashOn + DashOff) * Zoom, 0.0f, Color, Thickness);
 		}
 
 		// mark on a line two boxes share (they use each other) or that closes a circle of references
 		if (!bSource && (Back || Edge.bCircle) && Zoom >= PjcGraphTextZoom) {
-			const FVector2D Middle = PjcGraphBezier(Start, C1, C2, End, 0.5f);
+			const FVector2D Middle = bRouted ? RouteMiddles[EdgeIndex] : PjcGraphBezier(Start, C1, C2, End, 0.5f);
 			const FString NameFrom = Shown[Edge.From].Title;
 			const FString NameTo = Shown[Edge.To].Title;
 			Marks.Add(
@@ -736,7 +843,7 @@ int32 SPjcInspectorGraph::OnPaint(
 
 	// text above some rows of the unused group
 	for (const FPjcInspectorCaption& Caption : Graph.Captions) {
-		const FVector2D At {PjcGraphPad, PjcGraphPad + Caption.Layer * (NodeHeight + PjcGraphGapY) - 22.0f};
+		const FVector2D At {PjcGraphPadGroup, PjcGraphPadGroup + Caption.Layer * (NodeHeight + PjcGraphGapY) - 22.0f};
 		Text(LayerContent, At, 600.0f, Caption.Text, FontLine, Faded(PjcGraphColor(TEXT("#8A9099")), false));
 	}
 
@@ -765,6 +872,8 @@ FReply SPjcInspectorGraph::OnMouseButtonDown(const FGeometry& MyGeometry, const 
 	MouseDown = FVector2D {MyGeometry.AbsoluteToLocal(MouseEvent.GetScreenSpacePosition())};
 	Pressed = Button == EKeys::LeftMouseButton ? FindNodeAt(MouseDown) : INDEX_NONE;
 	bPanning = false;
+	bDragging = false;
+	DragFrom = Shown.IsValidIndex(Pressed) ? Shown[Pressed].Position : FVector2D::ZeroVector;
 	return FReply::Handled().CaptureMouse(SharedThis(this)).SetUserFocus(SharedThis(this), EFocusCause::Mouse);
 }
 
@@ -772,7 +881,16 @@ FReply SPjcInspectorGraph::OnMouseButtonUp(const FGeometry& MyGeometry, const FP
 	if (!HasMouseCapture()) return FReply::Unhandled();
 
 	const FVector2D Local {MyGeometry.AbsoluteToLocal(MouseEvent.GetScreenSpacePosition())};
-	if (!bPanning && MouseEvent.GetEffectingButton() == EKeys::LeftMouseButton) {
+	if (bDragging) {
+		// dropped: every line is laid again, so the others go round the box where it stands now
+		bDragging = false;
+		UpdateGroupSize();
+		RouteGroup();
+		Hovered = FindNodeAt(Local);
+		UpdateFlow();
+		OnViewChanged.ExecuteIfBound();
+	}
+	else if (!bPanning && MouseEvent.GetEffectingButton() == EKeys::LeftMouseButton) {
 		const int32 Node = FindNodeAt(Local);
 		if (Node != INDEX_NONE && Node == Pressed) {
 			// a click keeps the box lit with its links, a second one releases it
@@ -801,9 +919,27 @@ FReply SPjcInspectorGraph::OnMouseButtonDoubleClick(const FGeometry& MyGeometry,
 FReply SPjcInspectorGraph::OnMouseMove(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) {
 	const FVector2D Local {MyGeometry.AbsoluteToLocal(MouseEvent.GetScreenSpacePosition())};
 	if (HasMouseCapture()) {
-		if (!bPanning && FVector2D::Distance(Local, MouseDown) > 4.0f) {
-			bPanning = true;
-			Hovered = INDEX_NONE;
+		if (!bPanning && !bDragging && FVector2D::Distance(Local, MouseDown) > 4.0f) {
+			// a box of the unused group is moved, anything else pans the view
+			bDragging = Graph.bUnusedGroup && Shown.IsValidIndex(Pressed);
+			bPanning = !bDragging;
+			Hovered = bDragging ? Pressed : INDEX_NONE;
+			if (bDragging) UpdateFlow();
+		}
+		if (bDragging) {
+			// on the grid of the lines; only its own lines follow while it moves
+			const FVector2D To = DragFrom + (Local - MouseDown) / Zoom;
+			const FVector2D Snapped {
+			  FMath::RoundToFloat(static_cast<float>(To.X) / PjcGraphRouter::Grid) * PjcGraphRouter::Grid,
+			  FMath::RoundToFloat(static_cast<float>(To.Y) / PjcGraphRouter::Grid) * PjcGraphRouter::Grid
+			};
+			if (!Snapped.Equals(Shown[Pressed].Position, 0.01f)) {
+				Shown[Pressed].Position = Snapped;
+				Moved.Add(GetMoveKey(Pressed), Snapped);
+				RouteGroup(Pressed);
+				Invalidate(EInvalidateWidgetReason::Paint);
+			}
+			return FReply::Handled();
 		}
 		if (bPanning) {
 			Offset += FVector2D {MouseEvent.GetCursorDelta()} / MyGeometry.Scale;
@@ -861,13 +997,13 @@ FReply SPjcInspectorGraph::OnKeyDown(const FGeometry& MyGeometry, const FKeyEven
 }
 
 FCursorReply SPjcInspectorGraph::OnCursorQuery(const FGeometry& MyGeometry, const FPointerEvent& CursorEvent) const {
-	if (bPanning) return FCursorReply::Cursor(EMouseCursor::GrabHandClosed);
+	if (bPanning || bDragging) return FCursorReply::Cursor(EMouseCursor::GrabHandClosed);
 	if (Hovered != INDEX_NONE && Graph.Nodes[Hovered].Kind != EPjcInspectorNodeKind::Source) return FCursorReply::Cursor(EMouseCursor::Hand);
 	return FCursorReply::Cursor(EMouseCursor::Default);
 }
 
 FText SPjcInspectorGraph::GetHoverText() const {
-	if (bPanning) return FText::GetEmpty();
+	if (bPanning || bDragging) return FText::GetEmpty();
 	if (!Shown.IsValidIndex(Hovered)) {
 		for (const FMark& Mark : Marks) {
 			if (FVector2D::Distance(Mark.Position, MouseAt) <= 11.0f) return FText::FromString(Mark.ToolTip);
