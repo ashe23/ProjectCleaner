@@ -58,6 +58,14 @@ struct FPjcInspectorEdge
 	bool bCircle = false;
 };
 
+// One reference inside a group of assets: indices into the group's names
+struct FPjcGroupLink
+{
+	int32 From = 0;
+	int32 To = 0;
+	EPjcLinkKind Kind = EPjcLinkKind::Hard;
+};
+
 // Line of text above a row of the unused group
 struct FPjcInspectorCaption
 {
@@ -115,6 +123,10 @@ struct FPjcInspectorGraph
 	static FPjcInspectorGraph
 	Make(const FPjcScanResult& Result, const FName Focus, const TSet<FName>& OpenGroups = {}, const bool bEditorLinks = false);
 
+	// The unused group as one picture, from its assets alone: Group[0] is the asset in focus, Classes their classes,
+	// Links every reference inside the group. It asks no asset registry, so a test can build a group by hand
+	static FPjcInspectorGraph
+	MakeGroup(const TArray<FName>& Group, const TArray<FName>& Classes, const TArray<FPjcGroupLink>& Links, const bool bEditorLinks);
 	// Kind of the reference From has to To, Hard when there is none
 	static EPjcLinkKind GetLinkKind(const FName From, const FName To);
 	// What uses the package (bUsedBy) or what it uses. Actors and objects a World Partition map saves in their own

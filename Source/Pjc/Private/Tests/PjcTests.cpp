@@ -1448,6 +1448,165 @@ bool FPjcTestInspectorGraph::RunTest(const FString& Parameters) {
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPjcTestInspectorGroup, "ProjectCleaner.Inspector.Group", PJC_TEST_FLAGS)
+
+bool FPjcTestInspectorGroup::RunTest(const FString& Parameters) {
+	// a group built by hand, no assets: User uses Focus; Focus uses three textures and P; P and Q use each other;
+	// R uses nothing of them; all eight use Shared. One texture has an editor-only reference back to User
+	enum
+	{
+		Focus,
+		User,
+		T1,
+		T2,
+		T3,
+		Shared,
+		P,
+		Q,
+		R,
+		Num
+	};
+	const TArray<FName> Names {
+	  TEXT("/Game/Focus"),
+	  TEXT("/Game/User"),
+	  TEXT("/Game/T1"),
+	  TEXT("/Game/T2"),
+	  TEXT("/Game/T3"),
+	  TEXT("/Game/Shared"),
+	  TEXT("/Game/P"),
+	  TEXT("/Game/Q"),
+	  TEXT("/Game/R")
+	};
+	const TArray<FName> Classes {
+	  TEXT("Blueprint"),
+	  TEXT("Blueprint"),
+	  TEXT("Texture2D"),
+	  TEXT("Texture2D"),
+	  TEXT("Texture2D"),
+	  TEXT("Skeleton"),
+	  TEXT("Material"),
+	  TEXT("Material"),
+	  TEXT("SoundWave")
+	};
+	TArray<FPjcGroupLink> Links;
+	Links.Add(FPjcGroupLink {User, Focus, EPjcLinkKind::Hard});
+	for (const int32 Texture : {T1, T2, T3}) {
+		Links.Add(FPjcGroupLink {Focus, Texture, EPjcLinkKind::Hard});
+	}
+	Links.Add(FPjcGroupLink {Focus, P, EPjcLinkKind::Soft});
+	Links.Add(FPjcGroupLink {P, Q, EPjcLinkKind::Hard});
+	Links.Add(FPjcGroupLink {Q, P, EPjcLinkKind::Hard});
+	for (const int32 Each : {Focus, User, T1, T2, T3, P, Q, R}) {
+		Links.Add(FPjcGroupLink {Each, Shared, EPjcLinkKind::Hard});
+	}
+	Links.Add(FPjcGroupLink {T1, User, EPjcLinkKind::EditorOnly});
+	if (!TestEqual(TEXT("names of the hand made group"), Names.Num(), static_cast<int32>(Num))) return false;
+
+	const FPjcInspectorGraph Graph = FPjcInspectorGraph::MakeGroup(Names, Classes, Links, false);
+	TestTrue(TEXT("unused group"), Graph.bUnusedGroup);
+	TestEqual(TEXT("assets in the group"), Graph.NumGroup, static_cast<int32>(Num));
+	TestEqual(TEXT("boxes: focus, user, the textures as one, shared, P, Q, R"), Graph.Nodes.Num(), 7);
+
+	const auto BoxOf = [&Graph, &Names](const int32 Index) {
+		return Graph.Nodes.IndexOfByPredicate([&](const FPjcInspectorNode& Node) {
+			return Node.Kind == EPjcInspectorNodeKind::Stack ? Node.Roots.Contains(Names[Index]) : Node.Package == Names[Index];
+		});
+	};
+	const auto EdgeOf = [&Graph](const int32 From, const int32 To) {
+		return Graph.Edges.FindByPredicate([From, To](const FPjcInspectorEdge& Edge) {
+			return Edge.From == From && Edge.To == To;
+		});
+	};
+	const int32 FocusBox = BoxOf(Focus);
+	const int32 UserBox = BoxOf(User);
+	const int32 Stack = BoxOf(T1);
+	const int32 SharedBox = BoxOf(Shared);
+	const int32 PBox = BoxOf(P);
+	const int32 QBox = BoxOf(Q);
+	const int32 RBox = BoxOf(R);
+	for (const int32 Box : {FocusBox, UserBox, Stack, SharedBox, PBox, QBox, RBox}) {
+		if (!TestTrue(TEXT("every asset has a box"), Graph.Nodes.IsValidIndex(Box))) return false;
+	}
+
+	// same class, same users, same uses: one stack. The asset in focus is never part of one
+	TestEqual(TEXT("focus is found as an asset"), Graph.FindNode(Names[Focus]), FocusBox);
+	TestTrue(TEXT("the textures are a stack"), Graph.Nodes[Stack].Kind == EPjcInspectorNodeKind::Stack);
+	TestEqual(TEXT("stack size"), Graph.Nodes[Stack].Roots.Num(), 3);
+	TestEqual(TEXT("stack class"), Graph.Nodes[Stack].GroupClass, Classes[T1]);
+	TestEqual(TEXT("textures share their box"), BoxOf(T2), Stack);
+	TestTrue(TEXT("P and Q are not merged: they use each other, not the same things"), PBox != QBox);
+	const FPjcInspectorEdge* ToStack = EdgeOf(FocusBox, Stack);
+	if (TestNotNull(TEXT("focus uses the stack"), ToStack)) {
+		TestEqual(TEXT("one line for the three references"), ToStack->NumLinks, 3);
+	}
+
+	// shared: used by 8 of the group, so no lines, a dot on each user
+	TestTrue(TEXT("shared asset stands apart"), Graph.Nodes[SharedBox].bHub);
+	TestEqual(TEXT("shared asset users"), Graph.Nodes[SharedBox].NumUsers, static_cast<int32>(FPjcInspectorGraph::HubAt));
+	TestFalse(TEXT("no line touches the shared asset"), Graph.Edges.ContainsByPredicate([SharedBox](const FPjcInspectorEdge& Edge) {
+		return Edge.From == SharedBox || Edge.To == SharedBox;
+	}));
+	for (const int32 Box : {FocusBox, UserBox, Stack, PBox, QBox, RBox}) {
+		TestTrue(TEXT("every user of the shared asset carries its dot"), Graph.Nodes[Box].Hubs.Contains(SharedBox));
+	}
+
+	// rows: a box is below what uses it; boxes linked only through the shared asset and the shared ones come last
+	TestTrue(TEXT("user above focus"), Graph.Nodes[UserBox].Layer < Graph.Nodes[FocusBox].Layer);
+	TestTrue(TEXT("focus above the stack"), Graph.Nodes[FocusBox].Layer < Graph.Nodes[Stack].Layer);
+	int32 LastLinked = 0;
+	for (const int32 Box : {FocusBox, UserBox, Stack, PBox, QBox}) {
+		LastLinked = FMath::Max(LastLinked, Graph.Nodes[Box].Layer);
+	}
+	TestFalse(TEXT("R has no lines"), Graph.Edges.ContainsByPredicate([RBox](const FPjcInspectorEdge& Edge) {
+		return Edge.From == RBox || Edge.To == RBox;
+	}));
+	TestTrue(TEXT("R below the linked boxes"), Graph.Nodes[RBox].Layer > LastLinked);
+	TestTrue(TEXT("shared asset in the last row"), Graph.Nodes[SharedBox].Layer > Graph.Nodes[RBox].Layer);
+	TestEqual(TEXT("a caption for each of the two extra rows"), Graph.Captions.Num(), 2);
+	if (Graph.Captions.Num() == 2) {
+		TestEqual(TEXT("caption above R"), Graph.Captions[0].Layer, Graph.Nodes[RBox].Layer);
+		TestEqual(TEXT("caption above the shared asset"), Graph.Captions[1].Layer, Graph.Nodes[SharedBox].Layer);
+	}
+
+	// P and Q use each other: both references are there, one of them closes the circle
+	const FPjcInspectorEdge* PToQ = EdgeOf(PBox, QBox);
+	const FPjcInspectorEdge* QToP = EdgeOf(QBox, PBox);
+	if (TestTrue(TEXT("both references of the pair"), PToQ && QToP)) {
+		TestTrue(TEXT("exactly one closes the circle"), PToQ->bCircle != QToP->bCircle);
+	}
+	const FPjcInspectorEdge* ToP = EdgeOf(FocusBox, PBox);
+	if (TestNotNull(TEXT("focus uses P"), ToP)) {
+		TestEqual(TEXT("soft reference kept"), static_cast<int32>(ToP->Kind), static_cast<int32>(EPjcLinkKind::Soft));
+		TestFalse(TEXT("a plain reference closes no circle"), ToP->bCircle);
+	}
+
+	// editor-only references: left out unless asked for, then drawn on top without moving a box
+	TestFalse(TEXT("no editor-only line by default"), Graph.Edges.ContainsByPredicate([](const FPjcInspectorEdge& Edge) {
+		return Edge.Kind == EPjcLinkKind::EditorOnly;
+	}));
+	const FPjcInspectorGraph WithEditor = FPjcInspectorGraph::MakeGroup(Names, Classes, Links, true);
+	TestEqual(TEXT("editor-only: same boxes"), WithEditor.Nodes.Num(), Graph.Nodes.Num());
+	TestEqual(TEXT("editor-only: one more line"), WithEditor.Edges.Num(), Graph.Edges.Num() + 1);
+	for (int32 Box = 0; Box < Graph.Nodes.Num() && Box < WithEditor.Nodes.Num(); ++Box) {
+		TestEqual(TEXT("editor-only: rows stay"), WithEditor.Nodes[Box].Layer, Graph.Nodes[Box].Layer);
+		TestEqual(TEXT("editor-only: places stay"), WithEditor.Nodes[Box].Column, Graph.Nodes[Box].Column);
+	}
+	const FPjcInspectorEdge* BackUp = WithEditor.Edges.FindByPredicate([Stack, UserBox](const FPjcInspectorEdge& Edge) {
+		return Edge.From == Stack && Edge.To == UserBox;
+	});
+	if (TestNotNull(TEXT("editor-only line from the stack back to the user"), BackUp)) {
+		TestEqual(TEXT("it is editor only"), static_cast<int32>(BackUp->Kind), static_cast<int32>(EPjcLinkKind::EditorOnly));
+		TestTrue(TEXT("it closes a circle: the user leads to the stack"), BackUp->bCircle);
+	}
+
+	// one asset alone
+	const FPjcInspectorGraph Alone = FPjcInspectorGraph::MakeGroup({Names[Focus]}, {Classes[Focus]}, {}, false);
+	TestEqual(TEXT("alone: one box"), Alone.Nodes.Num(), 1);
+	TestEqual(TEXT("alone: no lines"), Alone.Edges.Num(), 0);
+	TestEqual(TEXT("alone: no captions"), Alone.Captions.Num(), 0);
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPjcTestInspectorLinks, "ProjectCleaner.Inspector.Links", PJC_TEST_FLAGS)
 
 bool FPjcTestInspectorLinks::RunTest(const FString& Parameters) {
