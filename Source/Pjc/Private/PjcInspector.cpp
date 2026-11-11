@@ -5,6 +5,7 @@
 #include "PjcSubsystem.h"
 // Engine Headers
 #include "Misc/PackageName.h"
+#include "Misc/ScopedSlowTask.h"
 
 namespace
 {
@@ -16,7 +17,7 @@ namespace
 	}
 
 	// The map an actor or object file belongs to: '/Game/__ExternalActors__/Maps/Main/A/BC/Hash' is of '/Game/Maps/Main'
-	FName PjcInspectorOwnerOf(const FName External) {
+	FName PjcInspectorFindOwner(const FName External) {
 		FString Path = External.ToString();
 		for (const auto& Folder : {PjcShim::GetExternalActorsFolderName(), PjcShim::GetExternalObjectsFolderName()}) {
 			const FString Segment = TEXT("/") + Folder + TEXT("/");
@@ -42,10 +43,22 @@ namespace
 		return NAME_None;
 	}
 
-	void PjcInspectorNames(const FName Package, const bool bUsedBy, TArray<FName>& Out) {
+	FName PjcInspectorOwnerOf(const FName External, FPjcInspectorCache* Cache) {
+		if (!Cache) return PjcInspectorFindOwner(External);
+		if (const FName* Known = Cache->Owners.Find(External)) return *Known;
+
+		const FName Owner = PjcInspectorFindOwner(External);
+		Cache->Owners.Add(External, Owner);
+		return Owner;
+	}
+
+	// from this many files on a list shows that it works: a map can have thousands
+	constexpr int32 PjcInspectorSlowAt = 64;
+
+	void PjcInspectorNames(const FName Package, const bool bUsedBy, TArray<FName>& Out, FPjcInspectorCache* Cache) {
 		TArray<FPjcInspectorLink> Links;
 		int32 Through = 0;
-		FPjcInspectorGraph::GetLinks(Package, bUsedBy, Links, Through);
+		FPjcInspectorGraph::GetLinks(Package, bUsedBy, Links, Through, Cache);
 		for (const FPjcInspectorLink& Link : Links) {
 			Out.Add(Link.Package);
 		}
@@ -64,7 +77,7 @@ namespace
 	}
 
 	// Every root that keeps the package used, with the shortest path from it, breadth first over used referencers
-	void PjcInspectorRootPaths(const FPjcScanResult& Result, const FName Focus, TArray<FPjcRootPath>& OutPaths) {
+	void PjcInspectorRootPaths(const FPjcScanResult& Result, const FName Focus, TArray<FPjcRootPath>& OutPaths, FPjcInspectorCache* Cache) {
 		TMap<FName, FName> Next;
 		Next.Add(Focus, NAME_None);
 		TArray<FName> Queue {Focus};
@@ -77,7 +90,7 @@ namespace
 			}
 
 			Referencers.Reset();
-			PjcInspectorNames(Current, true, Referencers);
+			PjcInspectorNames(Current, true, Referencers, Cache);
 			Referencers.Sort(FNameLexicalLess {});
 			for (const FName Referencer : Referencers) {
 				const FPjcAssetUsage* Usage = Result.Usage.Find(Referencer);
@@ -117,7 +130,7 @@ namespace
 	}
 }	// namespace
 
-EPjcLinkKind FPjcInspectorGraph::GetLinkKind(const FName From, const FName To) {
+EPjcLinkKind FPjcInspectorGraph::GetLinkKind(const FName From, const FName To, FPjcInspectorCache* Cache) {
 	TArray<FAssetDependency> Dependencies;
 	IAssetRegistry& Registry = UPjcSubsystem::GetModuleAssetRegistry().Get();
 	Registry.GetDependencies(FAssetIdentifier {From}, Dependencies, UE::AssetRegistry::EDependencyCategory::Package);
@@ -125,12 +138,15 @@ EPjcLinkKind FPjcInspectorGraph::GetLinkKind(const FName From, const FName To) {
 		if (Dependency.AssetId.PackageName == To) return PjcInspectorKindOf(Dependency);
 	}
 
-	// no reference of its own: through an actor the map saves in its own file
+	// no reference of its own: through an actor the map saves in its own file. What uses To is the short list (the few
+	// actors with it); what From uses is every actor file of the map
 	TArray<FPjcInspectorLink> Links;
 	int32 Through = 0;
-	GetLinks(From, false, Links, Through);
-	for (const FPjcInspectorLink& Link : Links) {
-		if (Link.Package == To) return Link.Kind;
+	for (const bool bUsedBy : {true, false}) {
+		GetLinks(bUsedBy ? To : From, bUsedBy, Links, Through, Cache);
+		for (const FPjcInspectorLink& Link : Links) {
+			if (Link.Package == (bUsedBy ? From : To)) return Link.Kind;
+		}
 	}
 	return EPjcLinkKind::Hard;
 }
@@ -139,7 +155,33 @@ bool FPjcInspectorGraph::IsExternal(const FName Package) {
 	return UPjcSubsystem::FolderIsExternal(FPackageName::GetLongPackagePath(Package.ToString()));
 }
 
-void FPjcInspectorGraph::GetLinks(const FName Package, const bool bUsedBy, TArray<FPjcInspectorLink>& Out, int32& OutThrough) {
+void FPjcInspectorGraph::GetLinks(
+	const FName Package,
+	const bool bUsedBy,
+	TArray<FPjcInspectorLink>& Out,
+	int32& OutThrough,
+	FPjcInspectorCache* Cache
+) {
+	if (Cache) {
+		if (const FPjcInspectorCache::FLinks* Known = (bUsedBy ? Cache->UsedBy : Cache->Uses).Find(Package)) {
+			Out = Known->Links;
+			OutThrough = Known->Through;
+			return;
+		}
+	}
+	ReadLinks(Package, bUsedBy, Out, OutThrough, Cache);
+	if (Cache) {
+		(bUsedBy ? Cache->UsedBy : Cache->Uses).Add(Package, FPjcInspectorCache::FLinks {Out, OutThrough});
+	}
+}
+
+void FPjcInspectorGraph::ReadLinks(
+	const FName Package,
+	const bool bUsedBy,
+	TArray<FPjcInspectorLink>& Out,
+	int32& OutThrough,
+	FPjcInspectorCache* Cache
+) {
 	Out.Reset();
 	OutThrough = 0;
 	IAssetRegistry& Registry = UPjcSubsystem::GetModuleAssetRegistry().Get();
@@ -147,6 +189,12 @@ void FPjcInspectorGraph::GetLinks(const FName Package, const bool bUsedBy, TArra
 	TArray<FAssetDependency> UsedBy;
 	Registry.GetDependencies(FAssetIdentifier {Package}, Uses, UE::AssetRegistry::EDependencyCategory::Package);
 	Registry.GetReferencers(FAssetIdentifier {Package}, UsedBy, UE::AssetRegistry::EDependencyCategory::Package);
+	// a window that waits for the answer shows its progress once this takes long (the Inspector tab opens one)
+	const bool bSlow = (bUsedBy ? UsedBy : Uses).Num() + (bUsedBy ? 0 : UsedBy.Num()) >= PjcInspectorSlowAt;
+	FScopedSlowTask Reading {static_cast<float>((UsedBy.Num() + Uses.Num()) * 2 + 1), FText::GetEmpty(), bSlow};
+	const auto Step = [&Reading, bSlow]() {
+		if (bSlow) Reading.EnterProgressFrame(1.0f);
+	};
 
 	TSet<FName> Seen {Package};
 	const auto Add = [&Out, &Seen](const FName Name, const EPjcLinkKind Kind, const bool bThrough) {
@@ -166,10 +214,11 @@ void FPjcInspectorGraph::GetLinks(const FName Package, const bool bUsedBy, TArra
 	if (bUsedBy) {
 		// an actor file references it: the map of that actor uses it
 		for (const FAssetDependency& Link : UsedBy) {
+			Step();
 			const FName Actor = Link.AssetId.PackageName;
 			if (!IsExternal(Actor)) continue;
 
-			const FName Owner = PjcInspectorOwnerOf(Actor);
+			const FName Owner = PjcInspectorOwnerOf(Actor, Cache);
 			if (Owner == Package) continue;
 
 			Through.Add(Actor);
@@ -190,10 +239,11 @@ void FPjcInspectorGraph::GetLinks(const FName Package, const bool bUsedBy, TArra
 	// a map uses what its actor files use: the files it references and the ones that say they are its own.
 	// An actor file of another map stands for that map
 	for (const FAssetDependency& Link : Uses) {
+		Step();
 		const FName Actor = Link.AssetId.PackageName;
 		if (!IsExternal(Actor)) continue;
 
-		const FName Owner = PjcInspectorOwnerOf(Actor);
+		const FName Owner = PjcInspectorOwnerOf(Actor, Cache);
 		Through.Add(Actor);
 		if (!Owner.IsNone() && Owner != Package) {
 			Add(Owner, PjcInspectorKindOf(Link), true);
@@ -202,11 +252,13 @@ void FPjcInspectorGraph::GetLinks(const FName Package, const bool bUsedBy, TArra
 		}
 	}
 	for (const FAssetDependency& Link : UsedBy) {
+		Step();
 		const FName Actor = Link.AssetId.PackageName;
-		if (IsExternal(Actor) && PjcInspectorOwnerOf(Actor) == Package) Through.Add(Actor);
+		if (IsExternal(Actor) && PjcInspectorOwnerOf(Actor, Cache) == Package) Through.Add(Actor);
 	}
 	OutThrough += Through.Num();
 	for (const FName Actor : Through) {
+		Step();
 		Far.Reset();
 		Registry.GetDependencies(FAssetIdentifier {Actor}, Far, UE::AssetRegistry::EDependencyCategory::Package);
 		for (const FAssetDependency& Used : Far) {
@@ -478,9 +530,18 @@ FPjcInspectorGraph::MakeGroup(const TArray<FName>& Group, const TArray<FName>& C
 	return Graph;
 }
 
-FPjcInspectorGraph FPjcInspectorGraph::Make(const FPjcScanResult& Result, const FName Focus, const TSet<FName>& OpenGroups, const bool bEditorLinks) {
+FPjcInspectorGraph FPjcInspectorGraph::Make(
+	const FPjcScanResult& Result,
+	const FName Focus,
+	const TSet<FName>& OpenGroups,
+	const bool bEditorLinks,
+	FPjcInspectorCache* Cache
+) {
 	FPjcInspectorGraph Graph;
 	Graph.Focus = Focus;
+	// the same assets are asked again and again while the graph is built
+	FPjcInspectorCache OwnCache;
+	if (!Cache) Cache = &OwnCache;
 
 	const auto AddEdge = [&Graph](const int32 From, const int32 To, const EPjcLinkKind Kind) {
 		if (From == INDEX_NONE || To == INDEX_NONE || From == To) return;
@@ -504,7 +565,7 @@ FPjcInspectorGraph FPjcInspectorGraph::Make(const FPjcScanResult& Result, const 
 		int32 Through = 0;
 		for (int32 Head = 0; Head < Group.Num() && Group.Num() < MaxGroup; ++Head) {
 			for (const bool bUsedBy : {true, false}) {
-				GetLinks(Group[Head], bUsedBy, Links, Through);
+				GetLinks(Group[Head], bUsedBy, Links, Through, Cache);
 				Links.Sort([](const FPjcInspectorLink& A, const FPjcInspectorLink& B) {
 					return A.Package.LexicalLess(B.Package);
 				});
@@ -521,7 +582,7 @@ FPjcInspectorGraph FPjcInspectorGraph::Make(const FPjcScanResult& Result, const 
 		TArray<FPjcGroupLink> GroupLinks;
 		for (int32 From = 0; From < Group.Num(); ++From) {
 			Classes.Add(PjcInspectorClassOf(Group[From]));
-			GetLinks(Group[From], false, Links, Through);
+			GetLinks(Group[From], false, Links, Through, Cache);
 			for (const FPjcInspectorLink& Link : Links) {
 				const int32* To = IndexOf.Find(Link.Package);
 				if (To && *To != From) GroupLinks.Add(FPjcGroupLink {From, *To, Link.Kind});
@@ -532,7 +593,7 @@ FPjcInspectorGraph FPjcInspectorGraph::Make(const FPjcScanResult& Result, const 
 
 	// used: root paths, roots of one class from GroupAt on as one group node
 	TArray<FPjcRootPath> Paths;
-	PjcInspectorRootPaths(Result, Focus, Paths);
+	PjcInspectorRootPaths(Result, Focus, Paths, Cache);
 	Graph.NumRoots = Paths.Num();
 	for (const FPjcRootPath& Path : Paths) {
 		Graph.Roots.Add(FPjcInspectorRoot {Path.Root, Path.Path.Num() - 1});
@@ -651,7 +712,7 @@ FPjcInspectorGraph FPjcInspectorGraph::Make(const FPjcScanResult& Result, const 
 			const TArray<FName>& Path = Paths[PathIndex].Path;
 			for (int32 Step = 1; Step < Path.Num(); ++Step) {
 				const int32 From = Step == 1 && !Item.Group.IsNone() ? Top : Graph.FindNode(Path[Step - 1]);
-				AddEdge(From, Graph.FindNode(Path[Step]), GetLinkKind(Path[Step - 1], Path[Step]));
+				AddEdge(From, Graph.FindNode(Path[Step]), GetLinkKind(Path[Step - 1], Path[Step], Cache));
 			}
 		}
 	}

@@ -121,6 +121,15 @@ class SPjcInspectorGraph final : public SLeafWidget
 	mutable bool bFitPending = false;
 
 	FVector2D MouseDown = FVector2D::ZeroVector;
+	// Where the mouse is, and the marks painted on links (two assets that use each other, a circle of references):
+	// a mark under the mouse says what it means
+	struct FMark
+	{
+		FVector2D Position = FVector2D::ZeroVector;
+		FString ToolTip;
+	};
+	FVector2D MouseAt = FVector2D::ZeroVector;
+	mutable TArray<FMark> Marks;
 	int32 Pressed = INDEX_NONE;
 	bool bPanning = false;
 };

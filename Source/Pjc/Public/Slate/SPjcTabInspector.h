@@ -122,6 +122,9 @@ class SPjcTabInspector final : public SCompoundWidget
 	// Inspect asked before a scan
 	FName Pending;
 	FPjcInspectorGraph Graph;
+	// what was read for the graphs and lists of this scan
+	FPjcInspectorCache Cache;
+	FDateTime CacheTime {0};
 	TSet<FName> OpenGroups;
 	// Unused group: draw its editor-only links too
 	bool bEditorLinks = false;

@@ -18,6 +18,7 @@
 #include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "IContentBrowserSingleton.h"
 #include "Misc/PackageName.h"
+#include "Misc/ScopedSlowTask.h"
 #include "Styling/CoreStyle.h"
 #include "Widgets/Images/SImage.h"
 #include "Widgets/Input/SButton.h"
@@ -256,7 +257,15 @@ void SPjcTabInspector::SetFocus(const FName Package, const bool bRecord) {
 
 void SPjcTabInspector::RebuildGraph() {
 	const FPjcScanResult& Result = UPjcSubsystem::GetScanResult();
-	Graph = Focus.IsNone() || !Result.IsValid() ? FPjcInspectorGraph {} : FPjcInspectorGraph::Make(Result, Focus, OpenGroups, bEditorLinks);
+	if (Result.Time != CacheTime) {
+		Cache.Reset();
+		CacheTime = Result.Time;
+	}
+	// a map with thousands of actors takes seconds the first time: a progress window once it takes long
+	FScopedSlowTask Reading {1.0f, FText::FromString(TEXT("Reading references..."))};
+	Reading.MakeDialogDelayed(0.4f);
+	Reading.EnterProgressFrame(1.0f);
+	Graph = Focus.IsNone() || !Result.IsValid() ? FPjcInspectorGraph {} : FPjcInspectorGraph::Make(Result, Focus, OpenGroups, bEditorLinks, &Cache);
 	Selected = INDEX_NONE;
 	if (GraphView.IsValid()) {
 		GraphView->SetGraph(&Result, Graph);
@@ -730,6 +739,10 @@ TSharedRef<SWidget> SPjcTabInspector::MakeGraphPane() {
 					]
 					+ SWrapBox::Slot()
 					[
+						Legend(TEXT("Circular"), TEXT("#D2A640"), TEXT("Assets that reference each other in a circle. Arrows on the line: two assets use each other. A ring: the reference leads back to an asset that reaches it. Point at the mark to see which"))
+					]
+					+ SWrapBox::Slot()
+					[
 						SNew(STextBlock)
 						.Text(FText::FromString(TEXT("Hover lights a box and its links \u00B7 Click keeps them lit \u00B7 Double-click inspect \u00B7 Wheel zoom \u00B7 Drag pan \u00B7 F frame \u00B7 Home fit")))
 						.Font(FPjcStyles::GetFont("Regular", 8))
@@ -840,14 +853,17 @@ void SPjcTabInspector::RebuildDetails() {
 		});
 	};
 	TArray<FPjcInspectorLink> Links;
-	FPjcInspectorGraph::GetLinks(Package, true, Links, UsedByThrough);
+	FScopedSlowTask Reading {1.0f, FText::FromString(TEXT("Reading references..."))};
+	Reading.MakeDialogDelayed(0.4f);
+	Reading.EnterProgressFrame(1.0f);
+	FPjcInspectorGraph::GetLinks(Package, true, Links, UsedByThrough, &Cache);
 	for (const FPjcInspectorLink& Link : Links) {
 		const FRowPtr Row = MakeRow(Link.Package);
 		Row->Kind = Link.Kind;
 		Row->bInGraph = InGraph(Link.Package, Package);
 		UsedByRows.Add(Row);
 	}
-	FPjcInspectorGraph::GetLinks(Package, false, Links, UsesThrough);
+	FPjcInspectorGraph::GetLinks(Package, false, Links, UsesThrough, &Cache);
 	for (const FPjcInspectorLink& Link : Links) {
 		const FRowPtr Row = MakeRow(Link.Package);
 		Row->Kind = Link.Kind;
@@ -961,7 +977,7 @@ TSharedRef<SWidget> SPjcTabInspector::MakeFacts() {
 
 	if (Usage->bUsed) {
 		// roots of the asset: of the focus when it is the selection, else only the selection's own chain
-		const FPjcInspectorGraph Own = Package == Focus ? Graph : FPjcInspectorGraph::Make(Result, Package);
+		const FPjcInspectorGraph Own = Package == Focus ? Graph : FPjcInspectorGraph::Make(Result, Package, {}, false, &Cache);
 		const TSharedRef<SWrapBox> Chips = SNew(SWrapBox).UseAllottedSize(true).InnerSlotPadding(FVector2D {4.0f, 4.0f});
 		for (int32 Index = 0; Index < Own.Roots.Num() && Index < PjcInspectorMaxChips; ++Index) {
 			const FPjcInspectorRoot& Root = Own.Roots[Index];

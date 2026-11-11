@@ -498,6 +498,8 @@ int32 SPjcInspectorGraph::OnPaint(
 	// a reference that leads back up goes over the row or round the side
 	TArray<FVector2D> Points;
 	TArray<FVector2D> Dash;
+	TArray<float> Lengths;
+	Marks.Reset();
 	for (const FPjcInspectorEdge& Edge : Graph.Edges) {
 		if (!Shown.IsValidIndex(Edge.From) || !Shown.IsValidIndex(Edge.To)) continue;
 
@@ -578,34 +580,53 @@ int32 SPjcInspectorGraph::OnPaint(
 			FSlateDrawElement::MakeLines(OutDrawElements, LayerEdges, EdgeGeometry, Points, ESlateDrawEffect::None, Color, true, Thickness);
 		}
 		else {
-			// dashes along the curve, in graph units; on a lit link they move from the asset to what it uses
+			// dashes along the curve, in graph units; on a lit link they move from the asset to what it uses. A dash is
+			// one line over the bends of the curve: cut at every bend, its cuts stand still while the dash moves
 			const float On = DashOn * Zoom;
 			const float Period = (DashOn + DashOff) * Zoom;
-			float Walked = bLit ? Period - Flow * Zoom : 0.0f;
+			Lengths.Reset();
+			Lengths.Add(0.0f);
 			for (int32 Index = 1; Index < Points.Num(); ++Index) {
-				const FVector2D A = Points[Index - 1];
-				const FVector2D B = Points[Index];
-				const float Length = static_cast<float>(FVector2D::Distance(A, B));
-				float Along = 0.0f;
-				while (Along < Length) {
-					const float Phase = FMath::Fmod(Walked + Along, Period);
-					const bool bOn = Phase < On;
-					const float Span = FMath::Min(Length - Along, bOn ? On - Phase : Period - Phase);
-					if (bOn && Span > 0.01f) {
-						Dash.Reset();
-						Dash.Add(A + (B - A) * (Along / Length));
-						Dash.Add(A + (B - A) * ((Along + Span) / Length));
-						FSlateDrawElement::MakeLines(OutDrawElements, LayerEdges, EdgeGeometry, Dash, ESlateDrawEffect::None, Color, true, Thickness);
-					}
-					Along += FMath::Max(Span, 0.01f);
+				Lengths.Add(Lengths.Last() + static_cast<float>(FVector2D::Distance(Points[Index - 1], Points[Index])));
+			}
+			const float Total = Lengths.Last();
+			const auto PointAt = [&Points, &Lengths](const int32 Piece, const float At) {
+				const float Length = Lengths[Piece + 1] - Lengths[Piece];
+				return Points[Piece] + (Points[Piece + 1] - Points[Piece]) * (Length > 0.0f ? (At - Lengths[Piece]) / Length : 0.0f);
+			};
+			int32 Piece = 0;
+			for (float Begin = bLit ? Flow * Zoom - Period : 0.0f; Begin < Total; Begin += Period) {
+				const float DashFrom = FMath::Max(Begin, 0.0f);
+				const float DashTo = FMath::Min(Begin + On, Total);
+				if (DashTo - DashFrom <= 0.01f) continue;
+
+				while (Piece < Points.Num() - 2 && Lengths[Piece + 1] <= DashFrom) {
+					++Piece;
 				}
-				Walked += Length;
+				Dash.Reset();
+				Dash.Add(PointAt(Piece, DashFrom));
+				int32 Last = Piece;
+				while (Last < Points.Num() - 2 && Lengths[Last + 1] < DashTo) {
+					++Last;
+					Dash.Add(Points[Last]);
+				}
+				Dash.Add(PointAt(Last, DashTo));
+				FSlateDrawElement::MakeLines(OutDrawElements, LayerEdges, EdgeGeometry, Dash, ESlateDrawEffect::None, Color, true, Thickness);
 			}
 		}
 
 		// mark on a line two boxes share (they use each other) or that closes a circle of references
 		if (!bSource && (Back || Edge.bCircle) && Zoom >= PjcGraphTextZoom) {
 			const FVector2D Middle = PjcGraphBezier(Start, C1, C2, End, 0.5f);
+			const FString NameFrom = Shown[Edge.From].Title;
+			const FString NameTo = Shown[Edge.To].Title;
+			Marks.Add(
+				FMark {
+				  ToLocal(Middle),
+				  Back ? FString::Printf(TEXT("%s and %s use each other"), *NameFrom, *NameTo)
+					   : FString::Printf(TEXT("%s uses %s, which leads back to it: a circle of references"), *NameFrom, *NameTo)
+				}
+			);
 			const FLinearColor MarkFill = PjcGraphColor(TEXT("#2A2416"));
 			const FLinearColor MarkSign = Faded(PjcGraphColor(TEXT("#E6C15A")), bLit);
 			Box(LayerLabels, Middle - FVector2D {9.0f, 9.0f}, FVector2D {18.0f, 18.0f}, BrushPill, Faded(Amber, bLit));
@@ -794,6 +815,7 @@ FReply SPjcInspectorGraph::OnMouseMove(const FGeometry& MyGeometry, const FPoint
 		return FReply::Handled();
 	}
 
+	MouseAt = Local;
 	const int32 Node = FindNodeAt(Local);
 	if (Node != Hovered) {
 		Hovered = Node;
@@ -846,7 +868,13 @@ FCursorReply SPjcInspectorGraph::OnCursorQuery(const FGeometry& MyGeometry, cons
 }
 
 FText SPjcInspectorGraph::GetHoverText() const {
-	if (bPanning || !Shown.IsValidIndex(Hovered)) return FText::GetEmpty();
+	if (bPanning) return FText::GetEmpty();
+	if (!Shown.IsValidIndex(Hovered)) {
+		for (const FMark& Mark : Marks) {
+			if (FVector2D::Distance(Mark.Position, MouseAt) <= 11.0f) return FText::FromString(Mark.ToolTip);
+		}
+		return FText::GetEmpty();
+	}
 
 	return FText::FromString(Shown[Hovered].ToolTip);
 }

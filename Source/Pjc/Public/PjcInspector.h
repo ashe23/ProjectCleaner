@@ -82,6 +82,28 @@ struct FPjcInspectorLink
 	bool bThrough = false;
 };
 
+// What the Inspector read from the asset registry, kept so the next asset opens fast: a map with thousands of actor
+// files takes seconds to read. Its owner empties it when the project is scanned again
+struct FPjcInspectorCache
+{
+	struct FLinks
+	{
+		TArray<FPjcInspectorLink> Links;
+		int32 Through = 0;
+	};
+
+	TMap<FName, FLinks> UsedBy;
+	TMap<FName, FLinks> Uses;
+	// actor or object file -> its map, None when it has none
+	TMap<FName, FName> Owners;
+
+	void Reset() {
+		UsedBy.Reset();
+		Uses.Reset();
+		Owners.Reset();
+	}
+};
+
 struct FPjcInspectorRoot
 {
 	FName Package;
@@ -120,21 +142,33 @@ struct FPjcInspectorGraph
 
 	// OpenGroups: classes whose roots are drawn one by one instead of as a group.
 	// bEditorLinks: draw the editor-only links of an unused group too (on top, they move nothing)
-	static FPjcInspectorGraph
-	Make(const FPjcScanResult& Result, const FName Focus, const TSet<FName>& OpenGroups = {}, const bool bEditorLinks = false);
+	static FPjcInspectorGraph Make(
+		const FPjcScanResult& Result,
+		const FName Focus,
+		const TSet<FName>& OpenGroups = {},
+		const bool bEditorLinks = false,
+		FPjcInspectorCache* Cache = nullptr
+	);
 
 	// The unused group as one picture, from its assets alone: Group[0] is the asset in focus, Classes their classes,
 	// Links every reference inside the group. It asks no asset registry, so a test can build a group by hand
 	static FPjcInspectorGraph
 	MakeGroup(const TArray<FName>& Group, const TArray<FName>& Classes, const TArray<FPjcGroupLink>& Links, const bool bEditorLinks);
 	// Kind of the reference From has to To, Hard when there is none
-	static EPjcLinkKind GetLinkKind(const FName From, const FName To);
+	static EPjcLinkKind GetLinkKind(const FName From, const FName To, FPjcInspectorCache* Cache = nullptr);
 	// What uses the package (bUsedBy) or what it uses. Actors and objects a World Partition map saves in their own
 	// files are part of their map, not assets: they are left out and the list goes on through them, so a map lists
 	// the meshes its actors use and a mesh lists the maps. OutThrough: how many of those files the list went through
-	static void GetLinks(const FName Package, const bool bUsedBy, TArray<FPjcInspectorLink>& Out, int32& OutThrough);
+	static void
+	GetLinks(const FName Package, const bool bUsedBy, TArray<FPjcInspectorLink>& Out, int32& OutThrough, FPjcInspectorCache* Cache = nullptr);
 	// Package of an actor or object saved in its own file ('__ExternalActors__', '__ExternalObjects__')
 	static bool IsExternal(const FName Package);
+
+  private:
+
+	static void ReadLinks(const FName Package, const bool bUsedBy, TArray<FPjcInspectorLink>& Out, int32& OutThrough, FPjcInspectorCache* Cache);
+
+  public:
 
 	int32 FindNode(const FName Package) const;
 };
