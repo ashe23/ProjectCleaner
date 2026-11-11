@@ -98,11 +98,6 @@ class UPjcEditorSettings final : public UDeveloperSettings
 	UPROPERTY(EditAnywhere, Config, Category = "Interface")
 	EPjcToolbarLocation ToolbarLocation = EPjcToolbarLocation::PlayToolbar;
 
-	// Ask before Fix Redirectors runs. Fixing resaves (and checks out from source control) every asset
-	// that references a redirector. Scanning does not need fixed redirectors.
-	UPROPERTY(EditAnywhere, Config, Category = "Scanning")
-	bool bConfirmRedirectorsFix = true;
-
 	// Skip engine "About to load N assets" question while Project Cleaner deletes assets (UE 5.4+).
 	// Project Cleaner already asks for confirmation before deleting. Always skipped in commandlets.
 	UPROPERTY(EditAnywhere, Config, Category = "Deletion")

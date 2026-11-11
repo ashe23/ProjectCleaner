@@ -708,7 +708,7 @@ FString UPjcSubsystem::GetUsageReasonText(const FPjcAssetUsage& Usage) {
 		case EPjcUsageReason::Cinematic :			return Usage.Detail;
 		case EPjcUsageReason::Splash :				return TEXT("Splash content");
 		case EPjcUsageReason::None :
-		default :									return TEXT("Nothing used references it");
+		default :									return TEXT("Nothing uses it");
 	}
 }
 

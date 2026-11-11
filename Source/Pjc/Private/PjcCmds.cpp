@@ -6,7 +6,7 @@
 #define LOCTEXT_NAMESPACE "FPjc"
 
 FPjcCmds::FPjcCmds() :
-	TCommands(TEXT("ProjectCleaner"), NSLOCTEXT("Contexts", "ProjectCleaner", "ProjectCleaner Plugin"), NAME_None, FPjcStyles::GetStyleSetName()) {}
+	TCommands(TEXT("ProjectCleaner"), NSLOCTEXT("Contexts", "ProjectCleaner", "Project Cleaner"), NAME_None, FPjcStyles::GetStyleSetName()) {}
 
 void FPjcCmds::RegisterCommands() {
 	UI_COMMAND(TabMain, "Project Cleaner", "Open Project Cleaner Main Window", EUserInterfaceActionType::Button, FInputChord());

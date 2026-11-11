@@ -2,7 +2,7 @@
     "FileVersion": 3,
     "Version": 4,
     "VersionName": "3.1.0",
-    "FriendlyName": "ProjectCleaner",
+    "FriendlyName": "Project Cleaner",
     "Description": "Unreal engine plugin for managing all unused assets and empty folders in project.",
     "Category": "ProjectManagementTools",
     "CreatedBy": "Ashot Barkhudaryan",

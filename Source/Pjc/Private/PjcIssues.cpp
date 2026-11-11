@@ -77,7 +77,8 @@ namespace PjcIssues
 		switch (State) {
 			case EPjcRedirectorState::InUse :		  return TEXT("Assets still point through it. Fix resaves them, then deletes the redirector.");
 			case EPjcRedirectorState::NotReferenced : return TEXT("Nothing points through it. Fix deletes it.");
-			case EPjcRedirectorState::TargetUnused :  return TEXT("Its target is unused: cleanup deletes it with the target. Fix deletes it now.");
+			case EPjcRedirectorState::TargetUnused :
+				return TEXT("Its target is unused: Clean project deletes it with the target. Fix deletes it now.");
 			case EPjcRedirectorState::Broken :
 				return TEXT("Its target is missing. Assets that use it have broken references and need a repair by hand.");
 		}

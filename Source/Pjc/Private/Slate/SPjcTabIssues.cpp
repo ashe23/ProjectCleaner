@@ -673,7 +673,7 @@ TSharedRef<SWidget> SPjcTabIssues::MakeFooter() {
 				})
 				[
 					Button(
-						TEXT("Fix"),
+						TEXT("Fix\u2026"),
 						TEXT("Fixes the selected redirectors"),
 						TEXT("ProjectCleaner.Color.Accent"),
 						[this, SelectedRedirectors]() { FixRedirectors(SelectedRedirectors()); },
@@ -688,7 +688,7 @@ TSharedRef<SWidget> SPjcTabIssues::MakeFooter() {
 				SNew(SBox).Visibility_Lambda(Is(EPjcIssueCategory::Redirectors))
 				[
 					Button(
-						TEXT("Fix all"),
+						TEXT("Fix all\u2026"),
 						TEXT("Fixes every redirector that can be fixed"),
 						NAME_None,
 						[this]() {
@@ -743,7 +743,7 @@ TSharedRef<SWidget> SPjcTabIssues::MakeFooter() {
 				SNew(SBox).Visibility_Lambda(Is(EPjcIssueCategory::Empty))
 				[
 					Button(
-						TEXT("Delete all"),
+						TEXT("Delete all\u2026"),
 						TEXT("Deletes every empty folder"),
 						NAME_None,
 						[this]() { DeleteRows(AllRows); },

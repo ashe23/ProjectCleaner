@@ -242,7 +242,7 @@ FString SPjcCleanWindow::GetBlockReason() const {
 	FString VcsDetail;
 
 	if (UPjcSubsystem::GetModuleAssetRegistry().Get().IsLoadingAssets()) return TEXT("Wait for the asset registry");
-	if (SPjcScanBar::NeedsRescan()) return TEXT("Scan again first: results are from before a change");
+	if (SPjcScanBar::NeedsRescan()) return TEXT("Rescan first: results are from before the change");
 	if (Dirty.Num() > 0) return TEXT("Save and scan first");
 	if (!PjcCleanVersionControl(VcsName, VcsDetail) && !bBackup) return TEXT("Confirm you have a backup");
 	if (Plan.Assets.Num() == 0) return TEXT("Nothing to delete");
@@ -327,7 +327,7 @@ TSharedRef<SWidget> SPjcCleanWindow::MakeConfirm() {
 		const TCHAR* What = bSettings ? TEXT("Scan settings changed since the last scan") : TEXT("Project changed since the last scan");
 		const FString Count = PjcFormat::Count(UPjcSubsystem::GetChangesSinceScan().Num()) + TEXT(" changes \u00B7 these numbers are old");
 		const FString Detail = bSettings ? TEXT("these numbers are old") : Count;
-		AddCheck(MakeCheck(ECheck::Warn, What, Detail, MakeButton(TEXT("Scan again"), OnScanAgain)));
+		AddCheck(MakeCheck(ECheck::Warn, What, Detail, MakeButton(TEXT("Rescan"), OnScanAgain)));
 	}
 	if (Plan.NumReview > 0) {
 		const FString ReviewTitle = FString::Printf(TEXT("%s assets to review"), *PjcFormat::Count(Plan.NumReview));

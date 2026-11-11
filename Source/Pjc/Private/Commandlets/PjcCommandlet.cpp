@@ -117,7 +117,7 @@ UPjcCommandlet::UPjcCommandlet() {
 
 int32 UPjcCommandlet::Main(const FString& Params) {
 	UE_LOG(LogProjectCleanerCLI, Display, TEXT("===================================="));
-	UE_LOG(LogProjectCleanerCLI, Display, TEXT("=======  ProjectCleaner CLI  ======="));
+	UE_LOG(LogProjectCleanerCLI, Display, TEXT("======  Project Cleaner CLI  ======="));
 	UE_LOG(LogProjectCleanerCLI, Display, TEXT("===================================="));
 
 	ParseCommandLinesArguments(Params);

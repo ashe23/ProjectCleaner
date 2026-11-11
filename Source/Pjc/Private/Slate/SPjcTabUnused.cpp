@@ -362,7 +362,7 @@ namespace
 						)
 						[
 							SNew(STextBlock)
-							.Text(FText::FromString(TEXT("HELD")))
+							.Text(FText::FromString(TEXT("NOT DELETED")))
 							.Font(PjcWidgets::GetFontMono(7))
 							.ColorAndOpacity(FLinearColor {FColor::FromHex(TEXT("#FFB3B6"))})
 						]
@@ -630,9 +630,9 @@ TSharedRef<SWidget> SPjcTabUnused::MakeSetSwitch() {
 		];
 		// clang-format on
 	};
-	AddSet(EPjcAssetSet::Unused, TEXT("Nothing used references them. Clean project deletes them."));
+	AddSet(EPjcAssetSet::Unused, TEXT("Nothing uses them. Clean project deletes them."));
 	AddSet(EPjcAssetSet::Excluded, TEXT("Assets your exclusion rules keep: never deleted. Rules are in Scan settings > Exclusions."));
-	AddSet(EPjcAssetSet::Used, TEXT("Used assets, by why they are used: the asset their chain starts at."));
+	AddSet(EPjcAssetSet::Used, TEXT("Used assets, by why they are used: the asset their chain starts at. Editor only assets are in this list too."));
 	AddSet(EPjcAssetSet::Review, TEXT("Assets the scan is not sure about. Clean project keeps them; delete or keep each."));
 	return Switch;
 }
@@ -1040,7 +1040,7 @@ TSharedRef<SWidget> SPjcTabUnused::MakeViewMenu() {
 		OnFolderSearchChanged(FText::FromString(FolderSearch));
 	});
 	const FString EmptyLabel = FString::Printf(TEXT("Empty folders (%s)"), *PjcFormat::Count(NumEmpty));
-	PjcWidgets::AddMenuToggle(Menu, EmptyLabel, TEXT("Shows empty folders, cleanup deletes them"), &bShowEmpty, [this]() {
+	PjcWidgets::AddMenuToggle(Menu, EmptyLabel, TEXT("Shows empty folders, Clean project deletes them"), &bShowEmpty, [this]() {
 		bShowEmpty = !bShowEmpty;
 		OnFolderSearchChanged(FText::FromString(FolderSearch));
 	});
@@ -1814,7 +1814,7 @@ void SPjcTabUnused::AddExcludeEntries(FMenuBuilder& Menu) {
 	const FString Verb = Set == EPjcAssetSet::Review ? TEXT("Keep") : TEXT("Exclude");
 	const FString AssetsLabel = FString::Printf(TEXT("%s assets (%s)"), *Verb, *PjcFormat::Count(NumSelected));
 	PjcWidgets::AddMenuEntry(
-		Menu, EPjcMenuIcon::Exclude, AssetsLabel, TEXT("Keeps the selected assets, saved to Config/DefaultEditor.ini"), [this]() {
+		Menu, EPjcMenuIcon::Exclude, AssetsLabel, TEXT("Counts them as used and never deletes them, saved to Config/DefaultEditor.ini"), [this]() {
 			ExcludeSelectedAssets();
 		}
 	);

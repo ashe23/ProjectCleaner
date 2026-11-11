@@ -365,15 +365,15 @@ TSharedRef<SWidget> SPjcTabInspector::MakeFinder() {
 				]
 				+ SWrapBox::Slot()
 				[
-					Status(EStatusFilter::EditorOnly, TEXT("Editor only"), TEXT("Used, but only the editor needs it. Cleanup keeps it."))
+					Status(EStatusFilter::EditorOnly, TEXT("Editor only"), TEXT("Used, but only the editor needs it. Clean project keeps it."))
 				]
 				+ SWrapBox::Slot()
 				[
-					Status(EStatusFilter::Review, TEXT("Review"), TEXT("The scan is not sure about it. Cleanup keeps it."))
+					Status(EStatusFilter::Review, TEXT("Review"), TEXT("The scan is not sure about it. Clean project keeps it."))
 				]
 				+ SWrapBox::Slot()
 				[
-					Status(EStatusFilter::Unused, TEXT("Unused"), TEXT("Nothing used references it. Cleanup deletes it."))
+					Status(EStatusFilter::Unused, TEXT("Unused"), TEXT("Nothing uses it. Clean project deletes it."))
 				]
 			]
 			+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {10.0f, 0.0f, 8.0f, 4.0f})
@@ -1052,10 +1052,10 @@ TSharedRef<SWidget> SPjcTabInspector::MakeFacts() {
 		}
 		if (Result.GetStatus(Package) == EPjcAssetStatus::EditorOnly) {
 			Add(TEXT("Shipping"),
-				PjcInspectorText(TEXT("Not shipped: only the editor uses it. Cleanup keeps it."), PjcInspectorHex(TEXT("#9FC3FF"))));
+				PjcInspectorText(TEXT("Not shipped: only the editor uses it. Clean project keeps it."), PjcInspectorHex(TEXT("#9FC3FF"))));
 		}
 		if (Result.GetStatus(Package) == EPjcAssetStatus::Review) {
-			const TCHAR* ReviewText = TEXT("The scan is not sure about it. Cleanup keeps it: delete or keep it.");
+			const TCHAR* ReviewText = TEXT("The scan is not sure about it. Clean project keeps it: delete or keep it.");
 			Add(TEXT("Review"), PjcInspectorText(ReviewText, PjcInspectorHex(TEXT("#E0B050"))));
 		}
 		return Facts;
@@ -1366,7 +1366,11 @@ TSharedRef<SWidget> SPjcTabInspector::MakeExcludeMenu() {
 	const FString ClassLabel = PjcWidgets::GetAssetType(Asset).Label;
 
 	PjcWidgets::AddMenuEntry(
-		Menu, EPjcMenuIcon::Exclude, TEXT("Exclude asset ") + Asset.AssetName.ToString(), TEXT("Counts this asset as used"), [ObjectPath, Asset]() {
+		Menu,
+		EPjcMenuIcon::Exclude,
+		TEXT("Exclude asset ") + Asset.AssetName.ToString(),
+		TEXT("Counts as used and is never deleted"),
+		[ObjectPath, Asset]() {
 			PjcActions::Exclude({}, {}, {ObjectPath}, TEXT("Excluded ") + Asset.AssetName.ToString());
 		}
 	);

@@ -38,7 +38,7 @@ namespace
 			case EPjcUsageReason::ConfigFolder :	 return TEXT("Asset Manager");
 			case EPjcUsageReason::PrimaryClass :	 return TEXT("Primary class");
 			case EPjcUsageReason::EngineReferenced : return TEXT("Outside scanned content");
-			case EPjcUsageReason::Indirect :		 return TEXT("Code or config");
+			case EPjcUsageReason::Indirect :		 return TEXT("Source & config");
 			case EPjcUsageReason::Excluded :		 return TEXT("Exclusion");
 			case EPjcUsageReason::Cinematic :		 return TEXT("Cinematics");
 			case EPjcUsageReason::Editor :			 return TEXT("Editor");

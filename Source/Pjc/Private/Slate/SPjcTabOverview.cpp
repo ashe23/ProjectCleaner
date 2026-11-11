@@ -235,8 +235,8 @@ TSharedRef<SWidget> SPjcTabOverview::MakeSummary() {
 	const TCHAR* EditorTip = TEXT("Kept, but only the editor uses them: editor assets, and what only editor-only references or labels reach. ")
 		TEXT("They do not ship.");
 	const TCHAR* ReviewTip = TEXT("The scan is not sure about them: unused assets the last cook packaged, GameplayCue notifies ")
-		TEXT("nothing fires. Cleanup keeps them, and the unused assets they use.");
-	const TCHAR* UnusedTip = TEXT("Nothing used references them. Cleanup deletes them.");
+		TEXT("nothing fires. Clean project keeps them, and the unused assets they use.");
+	const TCHAR* UnusedTip = TEXT("Nothing uses them. Clean project deletes them.");
 	// clang-format on
 	AddColumn(Column(TEXT("Assets"), {}, All.Num, PjcFormat::Size(All.Size), PlainColor, AssetsTip, NoLink));
 	AddColumn(Column(TEXT("Used"), ColorUsed, Overview.Used.Num, Share(Overview.Used), PlainColor, UsedTip, NoLink));
@@ -503,7 +503,7 @@ TSharedRef<SWidget> SPjcTabOverview::MakeUnusedFolders() {
 			]
 			+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin {8.0f, 0.0f, 0.0f, 0.0f})
 			[
-				SNew(STextBlock).Text(FText::FromString(TEXT("Review \u203A"))).ColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.Accent"))
+				SNew(STextBlock).Text(FText::FromString(TEXT("Open \u203A"))).ColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.Accent"))
 			];
 		// clang-format on
 
@@ -1022,8 +1022,8 @@ void SPjcTabOverview::GetReasonInfo(const EPjcUsageReason Reason, FString& OutNa
 	const TCHAR* Color = TEXT("#6FA8A2");
 	switch (Reason) {
 		case EPjcUsageReason::None :
-			OutName = TEXT("Unreferenced");
-			OutToolTip = TEXT("Nothing used references them. Cleanup deletes them.");
+			OutName = TEXT("Nothing uses it");
+			OutToolTip = TEXT("Nothing uses them. Clean project deletes them.");
 			Color = TEXT("#FE6D73");
 			break;
 		case EPjcUsageReason::Primary :
@@ -1037,7 +1037,7 @@ void SPjcTabOverview::GetReasonInfo(const EPjcUsageReason Reason, FString& OutNa
 			Color = TEXT("#7A9FD0");
 			break;
 		case EPjcUsageReason::EngineReferenced :
-			OutName = TEXT("External references");
+			OutName = TEXT("Outside scanned content");
 			OutToolTip = TEXT("Referenced by engine content, plugins left out of the scan, or level actors saved in their own files.");
 			Color = TEXT("#9B8CF0");
 			break;

@@ -268,7 +268,7 @@ void SPjcScanSettings::Rebuild() {
 			TEXT("Assets"),
 			&FPjcScanDraft::ExcludedAssets,
 			TEXT("Asset path, e.g. /Game/Maps/L_Main.L_Main"),
-			TEXT("These assets are kept.")
+			TEXT("These assets count as used and are never deleted.")
 		)
 	];
 

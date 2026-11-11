@@ -33,7 +33,7 @@ void SPjcTabMain::Construct(
 ) {
 	TabManager = FGlobalTabmanager::Get()->NewTabManager(ConstructUnderMajorTab);
 	PjcTabs::SetMain(TabManager);
-	const FText MenuName = FText::FromString(PjcConstants::ModulePjcName.ToString());
+	const FText MenuName = FText::FromString(TEXT("Project Cleaner"));
 	const TSharedRef<FWorkspaceItem> AppMenuGroup = TabManager->AddLocalWorkspaceMenuCategory(MenuName);
 
 	Cmds = MakeShareable(new FUICommandList);
