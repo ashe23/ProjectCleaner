@@ -497,7 +497,10 @@ int32 SPjcInspectorGraph::OnPaint(
 	// lit links flow: their dashes move this far along, in graph units
 	constexpr float FlowOn = 10.0f;
 	constexpr float FlowOff = 7.0f;
-	const float Flow = static_cast<float>(FMath::Fmod(FSlateApplication::Get().GetCurrentTime() * 26.0, static_cast<double>(FlowOn + FlowOff)));
+	// in doubles: the time is a big number, and UE 4 has Fmod for floats only, in which the dashes stand still
+	const double FlowPeriod = static_cast<double>(FlowOn + FlowOff);
+	const double FlowTravel = FSlateApplication::Get().GetCurrentTime() * 26.0;
+	const float Flow = static_cast<float>(FlowTravel - FMath::FloorToDouble(FlowTravel / FlowPeriod) * FlowPeriod);
 
 	// references: no arrowheads, a box uses what is below it. Two boxes that use each other share one line with a mark;
 	// a reference that leads back up goes over the row or round the side
