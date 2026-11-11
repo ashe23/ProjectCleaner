@@ -32,7 +32,7 @@ namespace
 	const FPjcScanWindowStep PjcScanWindowSteps[] = {
 		{TEXT("Asset registry"), TEXT("Waits until the asset registry has found every asset"), 0.5f},
 		{TEXT("Assets"), TEXT("Lists assets, folders and redirectors"), 0.5f},
-		{TEXT("Source & config"), TEXT("Searches C++, Python and .ini files for asset paths"), 1.5f},
+		{TEXT("Source & config"), TEXT("Searches C++, C#, Python and .ini files for asset paths"), 1.5f},
 		{TEXT("Rules"), TEXT("Primary assets, labels, editor assets, cinematics and exclusions"), 0.8f},
 		{TEXT("References"), TEXT("Follows references from every root"), 2.2f},
 		{TEXT("Files"), TEXT("External files, corrupted files and empty folders"), 0.7f},

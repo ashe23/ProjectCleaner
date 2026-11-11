@@ -644,7 +644,7 @@ TSharedRef<SWidget> SPjcTabOverview::MakeShippedCard() const {
 	};
 
 	const FString Where = TEXT("The card reads the last cook of this project folder: Saved/Cooked/[Platform]/[Project]/Metadata. ")
-		TEXT("For a cook made on a build machine, set its Metadata folder in Project Settings > Project Cleaner > Cook Check.");
+		TEXT("For a cook made on a build machine, set its Metadata folder in Project Settings > Plugins > Project Cleaner > Cook Check.");
 	if (!Cook.IsFound()) {
 #if ENGINE_MAJOR_VERSION >= 5
 		const FString HowTo = FString::Printf(TEXT("Platforms \u203A %s \u203A Cook Content"), ANSI_TO_TCHAR(FPlatformProperties::IniPlatformName()));
@@ -1043,7 +1043,7 @@ void SPjcTabOverview::GetReasonInfo(const EPjcUsageReason Reason, FString& OutNa
 			break;
 		case EPjcUsageReason::Indirect :
 			OutName = TEXT("Source & config");
-			OutToolTip = TEXT("C++, Python and .ini files name them by path.");
+			OutToolTip = TEXT("C++, C#, Python and .ini files name them by path.");
 			Color = TEXT("#E0A85A");
 			break;
 		case EPjcUsageReason::ConfigFolder :
@@ -1068,7 +1068,7 @@ void SPjcTabOverview::GetReasonInfo(const EPjcUsageReason Reason, FString& OutNa
 			break;
 		case EPjcUsageReason::Cinematic :
 			OutName = TEXT("Cinematics");
-			OutToolTip = TEXT("Level Sequences and Movie Render Queue configs, and what they use.");
+			OutToolTip = TEXT("Level Sequences, Template Sequences and Movie Render configs, and what they use.");
 			Color = TEXT("#C08457");
 			break;
 		case EPjcUsageReason::GameplayCue :

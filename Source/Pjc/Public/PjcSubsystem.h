@@ -149,7 +149,7 @@ class UPjcSubsystem final : public UEditorSubsystem
 	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Asset")
 	static void GetAssetsPrimary(TArray<FAssetData>& Assets, const bool bShowSlowTask = true);
 
-	// Returns assets that used in source code or config files indirectly.
+	// Returns assets that are named in source code or config files.
 	// @param Assets TArray<FAssetData> - Assets
 	// @param AssetsIndirectInfos TArray<FPjcAssetIndirectInfo> - Assets and their usage information
 	// @param bShowSlowTask bool - Show slow task progress bar or not
@@ -162,7 +162,7 @@ class UPjcSubsystem final : public UEditorSubsystem
 	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Asset")
 	static void GetAssetsCircular(TArray<FAssetData>& Assets, const bool bShowSlowTask = true);
 
-	// Returns assets that are editor specific. Like Tutorial asset, EditorUtilityBlueprint or EditorUtilityWidgets.
+	// Returns assets that are editor specific, like EditorUtilityBlueprint or EditorUtilityWidget.
 	// @param Assets TArray<FAssetData>
 	// @param bShowSlowTask bool
 	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Asset")
@@ -229,7 +229,7 @@ class UPjcSubsystem final : public UEditorSubsystem
 		TArray<FString>& OutFiles
 	);
 
-	// Returns all external files in project. Files that dont .uasset or .umap extensions
+	// Returns all external files in the project: files in content folders that are not assets
 	// @param Files
 	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Path")
 	static void GetFilesExternalAll(TArray<FString>& Files);
@@ -240,7 +240,7 @@ class UPjcSubsystem final : public UEditorSubsystem
 	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Path")
 	static void GetFilesExternalFiltered(TArray<FString>& Files, const bool bShowSlowTask = true);
 
-	// Returns all external files that has been excluded
+	// Returns all external files that have been excluded
 	// @param Files
 	// @param bShowSlowTask bool
 	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Path")

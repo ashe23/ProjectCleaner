@@ -2033,7 +2033,7 @@ bool UPjcSubsystem::PrepareDelete() {
 	if (GEditor && !GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->CloseAllAssetEditors()) {
 		UE_LOG(LogProjectCleaner, Warning, TEXT("Failed to delete unused assets because some editor windows are still open."));
 		// clang-format off
-		UE_LOG(LogProjectCleaner, Warning, TEXT("Please try again, check the OutputLog for reasons why certain windows haven't closed, ")
+		UE_LOG(LogProjectCleaner, Warning, TEXT("Please try again, check the Output Log for reasons why certain windows haven't closed, ")
 			TEXT("or try to manually close all editor windows."));
 		// clang-format on
 		return false;
@@ -2043,7 +2043,7 @@ bool UPjcSubsystem::PrepareDelete() {
 	// only get dirty when loading updates them (e.g. Niagara systems after redirector fixup) and nobody can answer a prompt
 	if (!IsRunningCommandlet() && !FEditorFileUtils::SaveDirtyPackages(true, true, true, false, false, false)) {
 		UE_LOG(LogProjectCleaner, Warning, TEXT("Failed to delete unused assets because project contains unsaved assets."));
-		UE_LOG(LogProjectCleaner, Warning, TEXT("Please save those assets and then try again. Check OutputLog for more information"));
+		UE_LOG(LogProjectCleaner, Warning, TEXT("Please save those assets and then try again. Check the Output Log for more information"));
 		return false;
 	}
 
@@ -2214,7 +2214,7 @@ bool UPjcSubsystem::DeleteAssets(
 	UE_LOG(LogProjectCleaner, Display, TEXT("%s"), *Msg);
 
 	if (bErrors) {
-		UE_LOG(LogProjectCleaner, Error, TEXT("There very some errors while deleting assets. Please check OutputLog for more information."));
+		UE_LOG(LogProjectCleaner, Error, TEXT("There were some errors while deleting assets. Please check the Output Log for more information."));
 	}
 
 	if (bShowEditorNotification && GEditor) {
@@ -2303,7 +2303,7 @@ bool UPjcSubsystem::DeleteFoldersEmpty(const bool bShowSlowTask, const bool bSho
 	UE_LOG(LogProjectCleaner, Display, TEXT("%s"), *Msg);
 
 	if (bErrors) {
-		UE_LOG(LogProjectCleaner, Error, TEXT("Failed to delete some folders. Please check OutputLog for more information"));
+		UE_LOG(LogProjectCleaner, Error, TEXT("Failed to delete some folders. Please check the Output Log for more information"));
 	}
 
 	if (bShowEditorNotification && GEditor) {
@@ -2354,7 +2354,7 @@ bool UPjcSubsystem::DeleteFilesExternal(const bool bShowSlowTask, const bool bSh
 	UE_LOG(LogProjectCleaner, Display, TEXT("%s"), *Msg);
 
 	if (bErrors) {
-		UE_LOG(LogProjectCleaner, Error, TEXT("Failed to delete some files. Please check OutputLog for more information"));
+		UE_LOG(LogProjectCleaner, Error, TEXT("Failed to delete some files. Please check the Output Log for more information"));
 	}
 
 	if (bShowEditorNotification && GEditor) {
@@ -2410,7 +2410,7 @@ bool UPjcSubsystem::DeleteFilesCorrupted(const bool bShowSlowTask, const bool bS
 	UE_LOG(LogProjectCleaner, Display, TEXT("%s"), *Msg);
 
 	if (bErrors) {
-		UE_LOG(LogProjectCleaner, Error, TEXT("Failed to delete some files. Please check OutputLog for more information"));
+		UE_LOG(LogProjectCleaner, Error, TEXT("Failed to delete some files. Please check the Output Log for more information"));
 	}
 
 	if (bShowEditorNotification && GEditor) {
@@ -3441,7 +3441,7 @@ void UPjcSubsystem::ShowNotificationWithOutputLog(const FString& Msg, const SNot
 	Info.Hyperlink = FSimpleDelegate::CreateLambda([]() {
 		FGlobalTabmanager::Get()->TryInvokeTab(FName {TEXT("OutputLog")});
 	});
-	Info.HyperlinkText = FText::FromString(TEXT("Show OutputLog..."));
+	Info.HyperlinkText = FText::FromString(TEXT("Show Output Log..."));
 
 	const auto NotificationPtr = FSlateNotificationManager::Get().AddNotification(Info);
 	if (!NotificationPtr.IsValid()) return;

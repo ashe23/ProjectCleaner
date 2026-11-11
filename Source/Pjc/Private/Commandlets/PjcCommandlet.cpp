@@ -183,7 +183,8 @@ int32 UPjcCommandlet::Main(const FString& Params) {
 		bSuccess &= UPjcSubsystem::DeleteFoldersEmpty(false, false);
 	}
 
-	if (bFullCleanup || bDeleteAssetsUnused || bDeleteFilesExternal || bDeleteFilesCorrupted || bDeleteFoldersEmpty) {
+	const bool bDeletes = bFullCleanup || bDeleteAssetsUnused || bDeleteFilesExternal || bDeleteFilesCorrupted || bDeleteFoldersEmpty;
+	if (bDeletes) {
 		const FCleanupStats StatsAfter = StatsCollect(bList, TEXT("after"));
 
 		UE_LOG(LogProjectCleanerCLI, Display, TEXT("======================================"));
@@ -200,7 +201,8 @@ int32 UPjcCommandlet::Main(const FString& Params) {
 		UE_LOG(LogProjectCleanerCLI, Warning, TEXT("Kept %d asset(s) that are still referenced, see warnings above."), NumKept);
 	}
 
-	ReportWrite(bSuccess ? TEXT("cleaned") : TEXT("failed"));
+	// without a delete switch nothing was cleaned: the run only scanned (and fixed redirectors when asked)
+	ReportWrite(!bSuccess ? TEXT("failed") : (bDeletes ? TEXT("cleaned") : TEXT("scanned")));
 
 	return bSuccess ? 0 : 1;
 }

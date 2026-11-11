@@ -71,7 +71,7 @@ void SPjcTabMain::Construct(
 		.SetGroup(AppMenuGroup);
 
 	TabManager->RegisterTabSpawner(PjcConstants::TabAssetsUnused, FOnSpawnTab::CreateRaw(this, &SPjcTabMain::OnTabAssetsUnusedSpawn))
-		.SetTooltipText(FText::FromString(TEXT("Open Unused Assets Tab")))
+		.SetTooltipText(FText::FromString(TEXT("Open Assets Tab: unused, excluded, used and to review assets")))
 		.SetDisplayName(FText::FromString(TEXT("Assets")))
 		.SetIcon(FPjcStyles::GetIcon("ProjectCleaner.Icon.PieChart16"))
 		.SetGroup(AppMenuGroup);
@@ -83,7 +83,7 @@ void SPjcTabMain::Construct(
 		.SetGroup(AppMenuGroup);
 
 	TabManager->RegisterTabSpawner(PjcConstants::TabHelp, FOnSpawnTab::CreateRaw(this, &SPjcTabMain::OnTabHelpSpawn))
-		.SetTooltipText(FText::FromString(TEXT("Open Help Tab: documentation, Report a bug, system info")))
+		.SetTooltipText(FText::FromString(TEXT("Open Help Tab: links, bug report, system info")))
 		.SetDisplayName(FText::FromString(TEXT("Help")))
 		.SetIcon(FPjcStyles::GetIcon("ProjectCleaner.Icon.Help16"))
 		.SetGroup(AppMenuGroup);

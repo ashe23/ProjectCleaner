@@ -183,7 +183,7 @@ void SPjcScanSettings::Rebuild() {
 			TEXT("Source & config"),
 			Roots(EPjcUsageReason::Indirect),
 			TEXT("assets named"),
-			TEXT("Assets named in C++, Python and .ini files count as used, platform configs included.")
+			TEXT("Assets named in C++, C#, Python and .ini files count as used, platform configs included.")
 		)
 	];
 	Used->AddSlot().AutoHeight()
@@ -234,7 +234,7 @@ void SPjcScanSettings::Rebuild() {
 			TEXT("Cinematics"),
 			&FPjcScanDraft::bCinematicAssetsUsed,
 			-1,
-			TEXT("Level Sequences and Movie Render Queue configs count as used."),
+			TEXT("Level Sequences, Template Sequences and Movie Render configs count as used."),
 			FString {}
 		)
 	];
