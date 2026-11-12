@@ -1442,6 +1442,60 @@ bool FPjcTestInspectorGraph::RunTest(const FString& Parameters) {
 		TestEqual(TEXT("roots stay"), FanPaths[0][0], FName {TEXT("/Game/Root0")});
 		TestEqual(TEXT("the asset all lead to stays"), FanPaths[0][2], FName {TEXT("/Game/Map")});
 		TestEqual(TEXT("an asset of a single path stays"), FanPaths[5][1], FName {TEXT("/Game/Shot5")});
+
+		// two levels and paths of different length: a stack that leads to a stack, a short path beside them
+		TArray<TArray<FName>> Deep;
+		TArray<bool> bDeep;
+		for (int32 Index = 0; Index < 4; ++Index) {
+			Deep.Add({
+			  FName {*FString::Printf(TEXT("/Game/R%d"), Index)},
+			  FName {*FString::Printf(TEXT("/Game/A%d"), Index)},
+			  FName {*FString::Printf(TEXT("/Game/B%d"), Index)},
+			  TEXT("/Game/Focus"),
+			});
+			bDeep.Add(true);
+		}
+		Deep.Add({TEXT("/Game/R9"), TEXT("/Game/Focus")});
+		bDeep.Add(true);
+		// a path that is not drawn has no say
+		Deep.Add({});
+		bDeep.Add(false);
+		TMap<FName, TArray<FName>> DeepStacks;
+		FPjcInspectorGraph::StackPaths(
+			Deep,
+			bDeep,
+			[](const FName) {
+				return FName {TEXT("LevelSequence")};
+			},
+			DeepStacks
+		);
+		TestEqual(TEXT("two levels are two stacks"), DeepStacks.Num(), 2);
+		TestEqual(TEXT("the paths share the lower stack"), Deep[0][2], Deep[3][2]);
+		TestEqual(TEXT("the paths share the upper stack"), Deep[0][1], Deep[3][1]);
+		TestNotEqual(TEXT("the two stacks are not one"), Deep[0][1], Deep[0][2]);
+		TestEqual(TEXT("the short path is as it was"), Deep[4].Num(), 2);
+
+		// fewer than a group, and two classes to the same asset: no stack
+		TArray<TArray<FName>> Few;
+		TArray<bool> bFew;
+		for (int32 Index = 0; Index < 6; ++Index) {
+			Few.Add(
+				{FName {*FString::Printf(TEXT("/Game/R%d"), Index)},
+				 FName {*FString::Printf(TEXT("/Game/%s%d"), Index < 3 ? TEXT("Seq") : TEXT("Mat"), Index)},
+				 TEXT("/Game/Focus")}
+			);
+			bFew.Add(true);
+		}
+		TMap<FName, TArray<FName>> FewStacks;
+		FPjcInspectorGraph::StackPaths(
+			Few,
+			bFew,
+			[](const FName Package) {
+				return FName {Package.ToString().Contains(TEXT("Seq")) ? TEXT("LevelSequence") : TEXT("Material")};
+			},
+			FewStacks
+		);
+		TestEqual(TEXT("three of a class are no stack"), FewStacks.Num(), 0);
 	}
 
 	// reference locations: the asset is loaded and says which of its properties holds the asset it uses

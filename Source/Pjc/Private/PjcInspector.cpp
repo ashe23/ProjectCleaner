@@ -704,13 +704,12 @@ FPjcInspectorGraph FPjcInspectorGraph::Make(
 	TArray<bool> bStack;
 	Drawn.Reserve(Paths.Num());
 	bStack.Init(false, Paths.Num());
-	for (const FPjcRootPath& Path : Paths) {
-		Drawn.Add(Path.Path);
-	}
+	// paths past MaxPaths are not drawn: they stay empty and keep no asset as a box of its own
+	Drawn.SetNum(Paths.Num());
 	for (const FItem& Item : Items) {
-		if (Item.Group.IsNone()) continue;
 		for (const int32 PathIndex : Item.Paths) {
-			bStack[PathIndex] = true;
+			Drawn[PathIndex] = Paths[PathIndex].Path;
+			bStack[PathIndex] = !Item.Group.IsNone();
 		}
 	}
 	TMap<FName, TArray<FName>> Stacks;

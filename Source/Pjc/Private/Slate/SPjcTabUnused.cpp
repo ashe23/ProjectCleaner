@@ -717,7 +717,7 @@ void SPjcTabUnused::MakeRowReason(const FPjcScanResult& Result, FPjcUnusedAssetR
 	if (ChainReason == EPjcUsageReason::Indirect && RootUsage && !RootUsage->Detail.IsEmpty()) {
 		FString File;
 		FString Line;
-		if (RootUsage->Detail.Split(TEXT(", line "), &File, &Line)) {
+		if (RootUsage->Detail.Split(TEXT(", line "), &File, &Line, ESearchCase::CaseSensitive, ESearchDir::FromEnd)) {
 			const FString Place = FPaths::GetCleanFilename(File) + TEXT(":") + Line;
 			Row.Reason = Root == Row.Package ? Place : TEXT("Used by ") + FPackageName::GetShortName(Root) + TEXT(" · ") + Place;
 		}

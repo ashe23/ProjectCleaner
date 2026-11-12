@@ -259,7 +259,8 @@ void SPjcInspectorGraph::UpdateLayout() {
 		}
 
 		if (Node.Kind == EPjcInspectorNodeKind::Stack) {
-			// unused assets with the same links, as one box
+			// unused assets with the same links, or used assets that lead to the same asset, as one box
+			const bool bUnused = Graph.bUnusedGroup;
 			const FAssetData Asset = Node.Roots.Num() > 0 ? PjcGraphAssetOf(Node.Roots[0]) : FAssetData {};
 			const PjcWidgets::FAssetType& Type = PjcWidgets::GetAssetType(Asset);
 			int64 Size = 0;
@@ -267,13 +268,20 @@ void SPjcInspectorGraph::UpdateLayout() {
 				Size += Result ? Result->GetSize(Member) : 0;
 			}
 			Item.Title = FString::Printf(TEXT("%d \u00D7 %s"), Node.Roots.Num(), *Type.Label);
-			Item.Line = FString::Printf(TEXT("%s \u00B7 same links \u00B7 click to list"), *PjcFormat::Size(Size));
+			Item.Line = FString::Printf(
+				TEXT("%s \u00B7 %s \u00B7 click to list"), *PjcFormat::Size(Size), bUnused ? TEXT("same links") : TEXT("same next asset")
+			);
 			Item.LineColor = Muted;
 			Item.Icon = Type.Icon;
 			Item.IconColor = Type.Color;
-			Item.bUsed = false;
-			Item.Stripe = PjcGraphColor(TEXT("#FE6D73"));
-			Item.ToolTip = FString::Printf(TEXT("%d %s assets with the same links, drawn as one box"), Node.Roots.Num(), *Type.Label);
+			Item.bUsed = !bUnused;
+			Item.Stripe = PjcGraphColor(bUnused ? TEXT("#FE6D73") : TEXT("#17C3B2"));
+			Item.ToolTip = FString::Printf(
+				TEXT("%d %s assets %s, drawn as one box"),
+				Node.Roots.Num(),
+				*Type.Label,
+				bUnused ? TEXT("with the same links") : TEXT("that lead to the same asset")
+			);
 			for (int32 Member = 0; Member < Node.Roots.Num() && Member < 12; ++Member) {
 				Item.ToolTip += TEXT("\n") + FPackageName::GetShortName(Node.Roots[Member]);
 			}
