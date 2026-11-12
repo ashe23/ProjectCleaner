@@ -1409,6 +1409,41 @@ bool FPjcTestInspectorGraph::RunTest(const FString& Parameters) {
 	TestFalse(TEXT("used graph is no unused group"), Used.bUnusedGroup);
 	TestTrue(TEXT("used graph has roots"), Used.NumRoots > 0);
 
+	// a fan: many roots, each through an asset of its own to the same asset. The assets between stand as one box
+	{
+		TArray<TArray<FName>> FanPaths;
+		TArray<bool> bFan;
+		for (int32 Index = 0; Index < 6; ++Index) {
+			FanPaths.Add(
+				{FName {*FString::Printf(TEXT("/Game/Root%d"), Index)},
+				 FName {*FString::Printf(TEXT("/Game/Shot%d"), Index)},
+				 TEXT("/Game/Map"),
+				 TEXT("/Game/Focus")}
+			);
+			bFan.Add(true);
+		}
+		// a path drawn step by step keeps its assets as they are, also for the others
+		FanPaths.Add({TEXT("/Game/Alone"), TEXT("/Game/Shot5"), TEXT("/Game/Map"), TEXT("/Game/Focus")});
+		bFan.Add(false);
+		TMap<FName, TArray<FName>> FanStacks;
+		FPjcInspectorGraph::StackPaths(
+			FanPaths,
+			bFan,
+			[](const FName) {
+				return FName {TEXT("LevelSequence")};
+			},
+			FanStacks
+		);
+		TestEqual(TEXT("the fan is one stack"), FanStacks.Num(), 1);
+		for (const auto& Pair : FanStacks) {
+			TestEqual(TEXT("the stack has the assets no other path needs"), Pair.Value.Num(), 5);
+			TestEqual(TEXT("the path goes through the stack"), FanPaths[0][1], Pair.Key);
+		}
+		TestEqual(TEXT("roots stay"), FanPaths[0][0], FName {TEXT("/Game/Root0")});
+		TestEqual(TEXT("the asset all lead to stays"), FanPaths[0][2], FName {TEXT("/Game/Map")});
+		TestEqual(TEXT("an asset of a single path stays"), FanPaths[5][1], FName {TEXT("/Game/Shot5")});
+	}
+
 	// reference locations: the asset is loaded and says which of its properties holds the asset it uses
 	{
 		const FName Library = PackageOf(Fixture, TEXT("OL_Chain"));

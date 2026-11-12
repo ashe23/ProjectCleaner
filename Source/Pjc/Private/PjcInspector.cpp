@@ -130,6 +130,64 @@ namespace
 	}
 }	// namespace
 
+void FPjcInspectorGraph::StackPaths(
+	TArray<TArray<FName>>& Paths,
+	const TArray<bool>& bStack,
+	TFunctionRef<FName(FName)> ClassOf,
+	TMap<FName, TArray<FName>>& OutStacks
+) {
+	// what a path drawn step by step goes through stays a box of its own
+	TSet<FName> Single;
+	int32 Longest = 0;
+	for (int32 Index = 0; Index < Paths.Num(); ++Index) {
+		if (bStack.IsValidIndex(Index) && bStack[Index]) {
+			Longest = FMath::Max(Longest, Paths[Index].Num());
+			continue;
+		}
+		Single.Append(Paths[Index]);
+	}
+
+	// from the asset in focus outwards: the next asset of a step is then already the name that is drawn
+	for (int32 Back = 1; Back < Longest - 1; ++Back) {
+		TMap<TPair<FName, FName>, TArray<FName>> Same;
+		TSet<FName> Seen;
+		for (int32 Index = 0; Index < Paths.Num(); ++Index) {
+			if (!bStack.IsValidIndex(Index) || !bStack[Index]) continue;
+
+			const TArray<FName>& Path = Paths[Index];
+			const int32 Step = Path.Num() - 1 - Back;
+			if (Step < 1 || Single.Contains(Path[Step]) || Seen.Contains(Path[Step])) continue;
+
+			Seen.Add(Path[Step]);
+			const FName Class = ClassOf(Path[Step]);
+			if (!Class.IsNone()) Same.FindOrAdd(TPair<FName, FName> {Class, Path[Step + 1]}).Add(Path[Step]);
+		}
+
+		TMap<FName, FName> Drawn;
+		for (auto& Pair : Same) {
+			if (Pair.Value.Num() < GroupAt) continue;
+
+			Pair.Value.Sort([](const FName A, const FName B) {
+				return FPackageName::GetShortName(A) < FPackageName::GetShortName(B);
+			});
+			const FName Name {*FString::Printf(TEXT("PjcStack_%d"), OutStacks.Num())};
+			for (const FName Member : Pair.Value) {
+				Drawn.Add(Member, Name);
+			}
+			OutStacks.Add(Name, MoveTemp(Pair.Value));
+		}
+		if (Drawn.Num() == 0) continue;
+
+		for (int32 Index = 0; Index < Paths.Num(); ++Index) {
+			if (!bStack.IsValidIndex(Index) || !bStack[Index]) continue;
+
+			const int32 Step = Paths[Index].Num() - 1 - Back;
+			if (Step < 1) continue;
+			if (const FName* Name = Drawn.Find(Paths[Index][Step])) Paths[Index][Step] = *Name;
+		}
+	}
+}
+
 EPjcLinkKind FPjcInspectorGraph::GetLinkKind(const FName From, const FName To, FPjcInspectorCache* Cache) {
 	TArray<FAssetDependency> Dependencies;
 	IAssetRegistry& Registry = UPjcSubsystem::GetModuleAssetRegistry().Get();
@@ -640,13 +698,45 @@ FPjcInspectorGraph FPjcInspectorGraph::Make(
 		Items.SetNum(MaxPaths);
 	}
 
+	// under a group of roots: what the roots reach first is often as many assets again (every sequence has its own
+	// shot, all of one map). They stand as one box too
+	TArray<TArray<FName>> Drawn;
+	TArray<bool> bStack;
+	Drawn.Reserve(Paths.Num());
+	bStack.Init(false, Paths.Num());
+	for (const FPjcRootPath& Path : Paths) {
+		Drawn.Add(Path.Path);
+	}
+	for (const FItem& Item : Items) {
+		if (Item.Group.IsNone()) continue;
+		for (const int32 PathIndex : Item.Paths) {
+			bStack[PathIndex] = true;
+		}
+	}
+	TMap<FName, TArray<FName>> Stacks;
+	TMap<FName, FName> ClassCache;
+	StackPaths(
+		Drawn,
+		bStack,
+		[&ClassCache](const FName Package) {
+			FName* Class = ClassCache.Find(Package);
+			return Class ? *Class : ClassCache.Add(Package, PjcInspectorClassOf(Package));
+		},
+		Stacks
+	);
+	TMap<FName, int32> StackNodes;
+	const auto NodeOf = [&Graph, &StackNodes](const FName Name) {
+		const int32* Index = StackNodes.Find(Name);
+		return Index ? *Index : Graph.FindNode(Name);
+	};
+
 	// distance from the bottom: the longest path through a node decides its row
 	TMap<FName, int32> Distance;
 	TMap<FName, int32> Column;
 	for (int32 ItemIndex = 0; ItemIndex < Items.Num(); ++ItemIndex) {
 		const FItem& Item = Items[ItemIndex];
 		for (const int32 PathIndex : Item.Paths) {
-			const TArray<FName>& Path = Paths[PathIndex].Path;
+			const TArray<FName>& Path = Drawn[PathIndex];
 			for (int32 Step = Item.Group.IsNone() ? 0 : 1; Step < Path.Num(); ++Step) {
 				int32& Dist = Distance.FindOrAdd(Path[Step], -1);
 				Dist = FMath::Max(Dist, Path.Num() - 1 - Step);
@@ -660,9 +750,16 @@ FPjcInspectorGraph FPjcInspectorGraph::Make(
 	}
 	for (const auto& Pair : Distance) {
 		FPjcInspectorNode& Node = Graph.Nodes.AddDefaulted_GetRef();
-		Node.Package = Pair.Key;
 		Node.Layer = 2 + MaxDistance - Pair.Value;
 		Node.Column = static_cast<float>(Column[Pair.Key]);
+		if (const TArray<FName>* Members = Stacks.Find(Pair.Key)) {
+			Node.Kind = EPjcInspectorNodeKind::Stack;
+			Node.GroupClass = ClassCache.FindRef((*Members)[0]);
+			Node.Roots = *Members;
+			StackNodes.Add(Pair.Key, Graph.Nodes.Num() - 1);
+			continue;
+		}
+		Node.Package = Pair.Key;
 	}
 
 	for (int32 ItemIndex = 0; ItemIndex < Items.Num(); ++ItemIndex) {
@@ -676,9 +773,9 @@ FPjcInspectorGraph FPjcInspectorGraph::Make(
 			int32 Layer = TNumericLimits<int32>::Max();
 			for (const int32 PathIndex : Item.Paths) {
 				Node.Roots.Add(Paths[PathIndex].Root);
-				const TArray<FName>& Path = Paths[PathIndex].Path;
+				const TArray<FName>& Path = Drawn[PathIndex];
 				if (Path.Num() > 1) {
-					const int32 Next = Graph.FindNode(Path[1]);
+					const int32 Next = NodeOf(Path[1]);
 					Layer = FMath::Min(Layer, Next != INDEX_NONE ? Graph.Nodes[Next].Layer - 1 : 1);
 				}
 			}
@@ -710,9 +807,19 @@ FPjcInspectorGraph FPjcInspectorGraph::Make(
 
 		for (const int32 PathIndex : Item.Paths) {
 			const TArray<FName>& Path = Paths[PathIndex].Path;
+			const TArray<FName>& Shown = Drawn[PathIndex];
 			for (int32 Step = 1; Step < Path.Num(); ++Step) {
-				const int32 From = Step == 1 && !Item.Group.IsNone() ? Top : Graph.FindNode(Path[Step - 1]);
-				AddEdge(From, Graph.FindNode(Path[Step]), GetLinkKind(Path[Step - 1], Path[Step], Cache));
+				const int32 From = Step == 1 && !Item.Group.IsNone() ? Top : NodeOf(Shown[Step - 1]);
+				const int32 To = NodeOf(Shown[Step]);
+				// a line that stands for many references: the kind of the first is drawn, the others are only counted
+				FPjcInspectorEdge* Edge = Graph.Edges.FindByPredicate([From, To](const FPjcInspectorEdge& Existing) {
+					return Existing.From == From && Existing.To == To;
+				});
+				if (Edge) {
+					++Edge->NumLinks;
+					continue;
+				}
+				AddEdge(From, To, GetLinkKind(Path[Step - 1], Path[Step], Cache));
 			}
 		}
 	}

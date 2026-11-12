@@ -712,6 +712,17 @@ void SPjcTabUnused::MakeRowReason(const FPjcScanResult& Result, FPjcUnusedAssetR
 		Row.ReasonTip += TEXT("\nChain starts at ") + FPackageName::GetShortName(Root);
 	}
 	Row.ReasonKey = Row.Reason;
+
+	// source and config: the file and the line that names it (the asset itself, or the one its chain starts at)
+	if (ChainReason == EPjcUsageReason::Indirect && RootUsage && !RootUsage->Detail.IsEmpty()) {
+		FString File;
+		FString Line;
+		if (RootUsage->Detail.Split(TEXT(", line "), &File, &Line)) {
+			const FString Place = FPaths::GetCleanFilename(File) + TEXT(":") + Line;
+			Row.Reason = Root == Row.Package ? Place : TEXT("Used by ") + FPackageName::GetShortName(Root) + TEXT(" · ") + Place;
+		}
+		Row.ReasonTip += (Root == Row.Package ? TEXT("\nNamed in ") : TEXT("\nIt is named in ")) + RootUsage->Detail;
+	}
 }
 
 TSharedRef<SWidget> SPjcTabUnused::MakeFolderPane() {

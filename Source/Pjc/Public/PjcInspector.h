@@ -154,6 +154,12 @@ struct FPjcInspectorGraph
 	// Links every reference inside the group. It asks no asset registry, so a test can build a group by hand
 	static FPjcInspectorGraph
 	MakeGroup(const TArray<FName>& Group, const TArray<FName>& Classes, const TArray<FPjcGroupLink>& Links, const bool bEditorLinks);
+	// Used graph: assets of one class that all lead to the same next asset become one name in the paths, from GroupAt
+	// on (a thousand sequences of one map are one box, not a thousand). Paths run from the root to the asset in focus;
+	// step 0 (the root) stays as it is, and so does every asset on a path with bStack false. OutStacks: the new name
+	// and the assets it stands for
+	static void
+	StackPaths(TArray<TArray<FName>>& Paths, const TArray<bool>& bStack, TFunctionRef<FName(FName)> ClassOf, TMap<FName, TArray<FName>>& OutStacks);
 	// Kind of the reference From has to To, Hard when there is none
 	static EPjcLinkKind GetLinkKind(const FName From, const FName To, FPjcInspectorCache* Cache = nullptr);
 	// What uses the package (bUsedBy) or what it uses. Actors and objects a World Partition map saves in their own
