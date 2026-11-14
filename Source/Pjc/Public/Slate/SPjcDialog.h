@@ -15,9 +15,6 @@ struct FPjcDialogPart
 	// Style color of the note edge, e.g. ProjectCleaner.Color.Yellow
 	FName NoteColor = TEXT("ProjectCleaner.Color.Line");
 	TArray<TPair<FString, FString>> Rows;
-	// optional checkbox; CheckValue must outlive the dialog
-	FString CheckLabel;
-	bool* CheckValue = nullptr;
 };
 
 // Modal dialog of the tools: parts, then Cancel and a confirm button (or only OK)

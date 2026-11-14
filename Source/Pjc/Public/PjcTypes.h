@@ -186,6 +186,8 @@ struct FPjcRedirectorFixResult
 	TMap<FName, FString> NotResaved;
 	// Redirector packages that stay, and why
 	TMap<FName, FString> Kept;
+	// What to do about each redirector that stays
+	TMap<FName, FString> KeptHints;
 	// Redirectors whose old path now resolves through a redirect in Config/DefaultEngine.ini
 	int32 NumRedirects = 0;
 	// Folders the fix left empty and deleted
@@ -203,6 +205,9 @@ struct FPjcRedirectorFixOptions
 	// Keep redirectors files name or content outside the scan uses. Only Clean project skips it: the redirectors it removes point
 	// to deleted assets, nothing can need them
 	bool bCheckNeeded = true;
+	// Redirectors whose target is missing: the assets that use them are resaved with the reference empty (it already loads
+	// empty), then the redirectors go. Off: they stay with their users
+	bool bClearBroken = false;
 };
 
 USTRUCT(BlueprintType)

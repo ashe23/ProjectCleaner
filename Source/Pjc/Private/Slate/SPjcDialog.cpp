@@ -10,7 +10,6 @@
 #include "Styling/CoreStyle.h"
 #include "Widgets/Images/SImage.h"
 #include "Widgets/Input/SButton.h"
-#include "Widgets/Input/SCheckBox.h"
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/Layout/SScrollBox.h"
@@ -55,21 +54,6 @@ void SPjcDialog::Construct(const FArguments& InArgs) {
 					[
 						SNew(STextBlock).Text(FText::FromString(Part.Note)).AutoWrapText(true).ColorAndOpacity(FSlateColor::UseSubduedForeground())
 					]
-				]
-			];
-			// clang-format on
-		}
-		if (Part.CheckValue) {
-			bool* Value = Part.CheckValue;
-			// clang-format off
-			Body->AddSlot().AutoHeight().Padding(FMargin {0.0f, 0.0f, 0.0f, 8.0f})
-			[
-				SNew(SCheckBox)
-				.Style(&PjcShim::GetCheckBoxStyle())
-				.IsChecked_Lambda([Value]() { return *Value ? ECheckBoxState::Checked : ECheckBoxState::Unchecked; })
-				.OnCheckStateChanged_Lambda([Value](const ECheckBoxState State) { *Value = State == ECheckBoxState::Checked; })
-				[
-					SNew(STextBlock).Text(FText::FromString(Part.CheckLabel)).AutoWrapText(true)
 				]
 			];
 			// clang-format on

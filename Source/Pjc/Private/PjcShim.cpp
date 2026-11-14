@@ -192,7 +192,8 @@ namespace PjcShim
 		const FAssetRegistryModule& AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(PjcConstants::ModuleAssetRegistry);
 
 #if ENGINE_MAJOR_VERSION == 5
-		return AssetRegistryModule.Get().GetAssetPackageDataCopy(PackageName).GetValue();
+		// none for an asset made in memory and not yet read from a file (a new, unsaved one)
+		return AssetRegistryModule.Get().GetAssetPackageDataCopy(PackageName).Get(FAssetPackageData {});
 #else
 		const FAssetPackageData* Data = AssetRegistryModule.Get().GetAssetPackageData(PackageName);
 		return Data ? *Data : FAssetPackageData {};

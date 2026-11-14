@@ -339,6 +339,12 @@ class UPjcSubsystem final : public UEditorSubsystem
 
 	// Redirectors that something besides the scanned assets needs: files that name their old path (C++, Python, config), with
 	// the file and line, and content the scan leaves out (engine, other plugins, Developers, UE 4.27 actor files)
+	// Points a redirector to another asset (repair of a broken one) and saves it. Loaded assets that use it are loaded again,
+	// so they find the new asset. Empty when done, else why not
+	static FString RepointRedirector(const FAssetData& Redirector, const FAssetData& Target);
+	// Class of the asset the redirector was saved pointing to, read from its package also when that asset is gone; null when
+	// unknown
+	static UClass* GetRedirectorTargetClass(const FAssetData& Redirector);
 	static void
 	GetRedirectorsNeededOutside(const TArray<FAssetData>& Redirectors, TMap<FName, FString>& OutNamedInFiles, TMap<FName, FString>& OutUsedOutside);
 	// Redirectors that go with deleted packages: their chain ends at one of them, and only those packages or such redirectors
@@ -520,8 +526,9 @@ class UPjcSubsystem final : public UEditorSubsystem
 	// Adds redirects for the old paths of the redirectors to Config/DefaultEngine.ini ([CoreRedirects]) and to this session,
 	// how many redirectors got one
 	static int32 AddCoreRedirects(const TArray<UObjectRedirector*>& Redirectors);
-	// Why a redirector cannot be deleted now (checked out by someone else, not at the latest revision), empty when it can
-	static FString GetRedirectorDeleteBlock(const FName Package);
+	// Why a redirector cannot be deleted now (checked out by someone else, not at the latest revision) and what to do, empty
+	// when it can
+	static FString GetRedirectorDeleteBlock(const FName Package, FString& OutHint);
 	// Why a package does not load when its file name differs from the asset name only in letter case, empty otherwise
 	static FString GetCaseMismatch(const FName Package);
 	// Asset registry ready, asset editors closed, unsaved assets saved

@@ -8,6 +8,7 @@
 #include "Widgets/Views/SListView.h"
 
 class FMenuBuilder;
+struct FPjcRedirectorFixResult;
 class FTabManager;
 class SBox;
 class SHorizontalBox;
@@ -109,8 +110,12 @@ class SPjcTabIssues final : public SCompoundWidget
 	FText GetSelectionText() const;
 	TArray<FRowPtr> GetSelected() const;
 
-	// redirectors
+	// redirectors: fixed, a broken one repaired (pointed to another asset, or its references cleared), and what stays
 	void FixRedirectors(const TArray<int32>& Indices);
+	void RepairRedirector(const int32 Index);
+	void ShowFixResult(const FPjcRedirectorFixResult& Result);
+	// Assets with unsaved changes that a fix resaves: saved first when the user agrees. False: nothing is fixed
+	static bool SaveFirst(const TArray<FName>& Packages);
 
 	// filters of the category, under the categories: several can be picked
 	void RebuildFilters();

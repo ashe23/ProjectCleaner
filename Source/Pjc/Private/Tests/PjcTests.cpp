@@ -40,6 +40,7 @@
 #include "Misc/ScopeExit.h"
 #include "FileHelpers.h"
 #include "ObjectTools.h"
+#include "PackageTools.h"
 #include "Serialization/MemoryWriter.h"
 #include "UObject/ObjectRedirector.h"
 
@@ -1603,6 +1604,152 @@ bool FPjcTestIssuesRedirectorCases::RunTest(const FString& Parameters) {
 	TestTrue(TEXT("by unused deleted"), Result.Deleted.Contains(FName {*(Root / TEXT("R_ByUnused"))}));
 	TestEqual(TEXT("library resaved"), Result.NumResaved, 1);
 	TestTrue(TEXT("by unused target kept"), FileExists(ByUnusedTargetPackage.ToString()));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPjcTestIssuesRedirectorRepair, "ProjectCleaner.Issues.RedirectorRepair", PJC_TEST_FLAGS)
+
+bool FPjcTestIssuesRedirectorRepair::RunTest(const FString& Parameters) {
+	if (!FPjcTestFixture::IsTestHost()) {
+		AddInfo(TEXT("Skipped, saves and deletes redirectors, runs only in test host projects"));
+		return true;
+	}
+
+	FPjcScopedScanSettings ScopedSettings {false};
+	FPjcTestFixture Fixture;
+	if (!Fixture.Build(*this)) return false;
+
+	IAssetRegistry& Registry = UPjcSubsystem::GetModuleAssetRegistry().Get();
+	const FString Root = FPjcTestFixture::RootPath() / TEXT("RedirectorRepair");
+	const FString ClearPath = Root / TEXT("R_Clear");
+	const FString PointPath = Root / TEXT("R_Point");
+	const FString NewTargetPath = Root / TEXT("C_NewTarget");
+	const auto FileOf = [](const FString& Package) {
+		return FPaths::ConvertRelativePathToFull(FPackageName::LongPackageNameToFilename(Package, FPackageName::GetAssetPackageExtension()));
+	};
+	ON_SCOPE_EXIT {
+		TArray<UObject*> Left;
+		for (const TCHAR* Name : {TEXT("R_Clear"), TEXT("R_Point"), TEXT("OL_ClearUser"), TEXT("OL_PointUser"), TEXT("C_NewTarget")}) {
+			UObject* Object = FindObject<UObject>(nullptr, *FString::Printf(TEXT("%s/%s.%s"), *Root, Name, Name));
+			if (!IsValid(Object)) continue;
+
+			// before 5.5 the registry ensures when deleting a redirector whose redirection it never registered
+			if (const UObjectRedirector* Redirector = Cast<UObjectRedirector>(Object)) {
+				const FString Target
+					= Redirector->DestinationObject ? Redirector->DestinationObject->GetPathName() : NewTargetPath + TEXT(".C_NewTarget");
+				PjcShim::RegisterRedirection(Redirector, Target);
+			}
+			Left.Add(Object);
+		}
+		if (Left.Num() > 0) {
+			ObjectTools::ForceDeleteObjects(Left, false);
+		}
+	};
+
+	// assets at their old paths, each used by a library saved before the rename
+	TArray<UPackage*> Packages;
+	const auto NewPackage = [&Packages](const FString& PackageName) {
+		UPackage* Package = CreatePackage(*PackageName);
+		Package->MarkPackageDirty();
+		Packages.Add(Package);
+		return Package;
+	};
+	TMap<FString, UCurveFloat*> Olds;
+	for (const auto& Pair :
+		 {MakeTuple(FString {TEXT("R_Clear")}, FString {TEXT("OL_ClearUser")}),
+		  MakeTuple(FString {TEXT("R_Point")}, FString {TEXT("OL_PointUser")})}) {
+		UCurveFloat* Old = NewObject<UCurveFloat>(NewPackage(Root / Pair.Get<0>()), *Pair.Get<0>(), RF_Public | RF_Standalone);
+		FAssetRegistryModule::AssetCreated(Old);
+		UObjectLibrary* User = NewObject<UObjectLibrary>(NewPackage(Root / Pair.Get<1>()), *Pair.Get<1>(), RF_Public | RF_Standalone);
+		User->ObjectBaseClass = UCurveFloat::StaticClass();
+		User->AddObject(Old);
+		FAssetRegistryModule::AssetCreated(User);
+		Olds.Add(Pair.Get<0>(), Old);
+	}
+	UCurveFloat* NewTarget = NewObject<UCurveFloat>(NewPackage(NewTargetPath), TEXT("C_NewTarget"), RF_Public | RF_Standalone);
+	FAssetRegistryModule::AssetCreated(NewTarget);
+	if (!TestTrue(TEXT("saved"), UEditorLoadingAndSavingUtils::SavePackages(Packages, false))) return false;
+	// dependencies are read from the saved files
+	TArray<FString> SavedFiles;
+	for (const UPackage* Package : Packages) {
+		SavedFiles.Add(FileOf(Package->GetName()));
+	}
+	Registry.ScanFilesSynchronous(SavedFiles, true);
+
+	// renamed, and the new copy never saved: a redirector to a missing asset stays at the old path
+	TArray<UPackage*> Redirected;
+	TArray<UCurveFloat*> Moved;
+	TArray<FString> Files;
+	for (const auto& Pair : Olds) {
+		UCurveFloat* Old = Pair.Value;
+		UPackage* Package = Old->GetOutermost();
+		FAssetRegistryModule::AssetDeleted(Old);
+		Old->ClearFlags(RF_Public | RF_Standalone);
+		Old->Rename(nullptr, GetTransientPackage(), REN_DontCreateRedirectors | REN_NonTransactional);
+		const FString MovedName = Pair.Key + TEXT("_Moved");
+		UCurveFloat* Copy = NewObject<UCurveFloat>(CreatePackage(*(Root / MovedName)), *MovedName, RF_Public);
+		UObjectRedirector* Redirector = NewObject<UObjectRedirector>(Package, *Pair.Key, RF_Public | RF_Standalone);
+		Redirector->DestinationObject = Copy;
+		Package->MarkPackageDirty();
+		Redirected.Add(Package);
+		Moved.Add(Copy);
+		Files.Add(FileOf(Package->GetName()));
+	}
+	if (!TestTrue(TEXT("redirectors saved"), UEditorLoadingAndSavingUtils::SavePackages(Redirected, false))) return false;
+	for (UCurveFloat* Copy : Moved) {
+		Copy->Rename(nullptr, GetTransientPackage(), REN_DontCreateRedirectors | REN_NonTransactional);
+	}
+	Registry.ScanFilesSynchronous(Files, true);
+	// loaded from disk again: the redirectors lead nowhere, the libraries load the reference empty
+	TArray<UPackage*> Reload = Redirected;
+	Reload.Add(FindPackage(nullptr, *(Root / TEXT("OL_ClearUser"))));
+	Reload.Add(FindPackage(nullptr, *(Root / TEXT("OL_PointUser"))));
+	AddExpectedError(TEXT("Failed import for CurveFloat"), EAutomationExpectedErrorFlags::Contains, 0);
+	FText ReloadError;
+	if (!TestTrue(TEXT("reloaded"), UPackageTools::ReloadPackages(Reload, ReloadError, EReloadPackagesInteractionMode::AssumePositive))) return false;
+
+	if (!TestTrue(TEXT("scanned"), UPjcSubsystem::Scan(false))) return false;
+	TArray<FPjcRedirectorInfo> Infos;
+	PjcIssues::GetRedirectors(UPjcSubsystem::GetScanResult(), Infos);
+	const auto Find = [&Infos](const FString& PackageName) {
+		return Infos.FindByPredicate([&PackageName](const FPjcRedirectorInfo& Info) {
+			return Info.Asset.PackageName == FName {*PackageName};
+		});
+	};
+	const FPjcRedirectorInfo* Clear = Find(ClearPath);
+	const FPjcRedirectorInfo* Point = Find(PointPath);
+	if (!TestTrue(TEXT("broken redirectors found"), Clear && Point)) return false;
+	TestEqual(TEXT("broken"), static_cast<int32>(Clear->State), static_cast<int32>(EPjcRedirectorState::Broken));
+	TestEqual(TEXT("used by its library"), Clear->UsedBy.Num(), 1);
+	TestFalse(TEXT("broken and used: not fixable"), Clear->CanFix());
+	TestTrue(TEXT("type of the missing asset"), UPjcSubsystem::GetRedirectorTargetClass(Point->Asset) == UCurveFloat::StaticClass());
+
+	const FName ClearPackage {*ClearPath};
+	FPjcRedirectorFixResult Result = UPjcSubsystem::FixRedirectorsWithReport({Clear->Asset}, false, FPjcRedirectorFixOptions {});
+	TestTrue(TEXT("kept without a repair"), Result.Kept.Contains(ClearPackage));
+	TestTrue(TEXT("the hint says repair"), Result.KeptHints.FindRef(ClearPackage).StartsWith(TEXT("Repair")));
+
+	// clear: the library is resaved without the reference, the redirector goes
+	FPjcRedirectorFixOptions ClearOptions;
+	ClearOptions.bClearBroken = true;
+	Result = UPjcSubsystem::FixRedirectorsWithReport({Clear->Asset}, false, ClearOptions);
+	TestTrue(TEXT("cleared redirector deleted"), Result.Deleted.Contains(ClearPackage));
+	TestEqual(TEXT("its library resaved"), Result.NumResaved, 1);
+	TestFalse(TEXT("cleared redirector gone from disk"), FPaths::FileExists(FileOf(ClearPath)));
+	TArray<FName> Dependencies;
+	Registry.GetDependencies(FName {*(Root / TEXT("OL_ClearUser"))}, Dependencies);
+	TestFalse(TEXT("library no longer uses it"), Dependencies.Contains(ClearPackage));
+
+	// point: the redirector leads to C_NewTarget, the library loads it from there and is resaved, the redirector goes
+	const FName PointPackage {*PointPath};
+	TestEqual(TEXT("pointed"), UPjcSubsystem::RepointRedirector(Point->Asset, FAssetData {NewTarget}), FString {});
+	Result = UPjcSubsystem::FixRedirectorsWithReport({Point->Asset}, false, FPjcRedirectorFixOptions {});
+	TestTrue(TEXT("pointed redirector deleted"), Result.Deleted.Contains(PointPackage));
+	TestEqual(TEXT("its library resaved"), Result.NumResaved, 1);
+	Dependencies.Reset();
+	Registry.GetDependencies(FName {*(Root / TEXT("OL_PointUser"))}, Dependencies);
+	TestTrue(TEXT("library uses the new asset"), Dependencies.Contains(FName {*NewTargetPath}));
+	TestFalse(TEXT("library no longer uses the redirector"), Dependencies.Contains(PointPackage));
 	return true;
 }
 
