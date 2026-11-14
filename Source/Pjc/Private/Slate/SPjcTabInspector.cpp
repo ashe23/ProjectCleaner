@@ -323,32 +323,35 @@ TSharedRef<SWidget> SPjcTabInspector::MakeFinder() {
 					ApplyFinderFilter();
 				})
 			]
-			// status filters with their counts, as the filters of the Assets and Issues tabs
-			+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {8.0f, 0.0f, 8.0f, 8.0f})
-			[
-				SAssignNew(FinderPills, SWrapBox).UseAllottedSize(true).InnerSlotPadding(FVector2D {4.0f, 4.0f})
-			]
-			+ SVerticalBox::Slot().AutoHeight()
-			[
-				SNew(SBox).HeightOverride(1.0f)
-				[
-					SNew(SImage).Image(FCoreStyle::Get().GetBrush("WhiteBrush")).ColorAndOpacity(PjcInspectorColor("ProjectCleaner.Color.Line"))
-				]
-			]
 			+ SVerticalBox::Slot().FillHeight(1.0f)
 			[
 				SNew(SHorizontalBox)
-				// class bar, as in the Assets tab: a class in its color is listed
+				// filters next to the list, as in the Assets tab: status filters one above the other, then the class bar
 				+ SHorizontalBox::Slot().AutoWidth()
 				[
-					SNew(SBox).WidthOverride(168.0f)
+					SNew(SBox).WidthOverride(196.0f)
 					[
-						SNew(SBorder).BorderImage(PjcShim::GetBrush(TEXT("ToolPanel.DarkGroupBorder"))).Padding(FMargin {0.0f, 0.0f, 0.0f, 4.0f})
+						SNew(SBorder).BorderImage(PjcShim::GetBrush(TEXT("ToolPanel.DarkGroupBorder"))).Padding(FMargin {0.0f, 4.0f})
 						[
 							SNew(SVerticalBox)
-							+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {10.0f, 8.0f, 10.0f, 4.0f})
+							+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {10.0f, 2.0f, 10.0f, 5.0f})
 							[
-								PjcWidgets::MakeFilterHeading(FText::FromString(TEXT("CLASSES")), FText::FromString(TEXT("A class in its color is listed")))
+								PjcWidgets::MakeFilterHeading(FText::FromString(TEXT("STATUS FILTERS")), FText::FromString(TEXT("Which assets the list shows, by status")))
+							]
+							+ SVerticalBox::Slot().AutoHeight()
+							[
+								SAssignNew(FinderPills, SVerticalBox)
+							]
+							+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {6.0f, 2.0f, 6.0f, 6.0f})
+							[
+								SNew(SBox).HeightOverride(1.0f)
+								[
+									SNew(SImage).Image(FCoreStyle::Get().GetBrush("WhiteBrush")).ColorAndOpacity(PjcInspectorColor("ProjectCleaner.Color.Line"))
+								]
+							]
+							+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {10.0f, 2.0f, 10.0f, 5.0f})
+							[
+								PjcWidgets::MakeFilterHeading(FText::FromString(TEXT("ASSET FILTERS")), FText::FromString(TEXT("Filter by asset class: a class in its color is listed")))
 							]
 							+ SVerticalBox::Slot().FillHeight(1.0f)
 							[
@@ -423,7 +426,7 @@ void SPjcTabInspector::RebuildFinderPills(const TMap<EStatusFilter, int32>& Coun
 	for (const FPill& Pill : Pills) {
 		const EStatusFilter Filter = Pill.Filter;
 		// clang-format off
-		FinderPills->AddSlot()
+		FinderPills->AddSlot().AutoHeight().Padding(FMargin {6.0f, 0.0f, 6.0f, 4.0f})
 		[
 			PjcWidgets::MakeFilterPill(
 				Pill.Label,
@@ -433,7 +436,7 @@ void SPjcTabInspector::RebuildFinderPills(const TMap<EStatusFilter, int32>& Coun
 				Counts.FindRef(Filter),
 				Filter != EStatusFilter::All,
 				[this, Filter]() { return FinderStatus == Filter; },
-				[]() { return false; },
+				[this, Filter]() { return Filter != EStatusFilter::All && FinderStatus != EStatusFilter::All && FinderStatus != Filter; },
 				[this, Filter]() {
 					FinderStatus = Filter;
 					ApplyFinderFilter();

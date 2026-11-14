@@ -14,6 +14,7 @@ class SBox;
 class SPjcClassBar;
 class SPjcInspectorGraph;
 class SSearchBox;
+class SVerticalBox;
 class SWrapBox;
 
 // Asset of the finder or of the Used by and Uses lists
@@ -162,7 +163,7 @@ class SPjcTabInspector final : public SCompoundWidget
 	TSharedPtr<SPjcClassBar> FinderClasses;
 	TSharedPtr<SListView<FRowPtr>> FinderList;
 	TSharedPtr<SSearchBox> FinderSearch;
-	TSharedPtr<SWrapBox> FinderPills;
+	TSharedPtr<SVerticalBox> FinderPills;
 	FString FinderText;
 	EStatusFilter FinderStatus = EStatusFilter::All;
 
