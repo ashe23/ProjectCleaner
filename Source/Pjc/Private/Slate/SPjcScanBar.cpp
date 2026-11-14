@@ -96,7 +96,6 @@ void SPjcScanBar::Construct(const FArguments& InArgs) {
 				.ColorAndOpacity(this, &SPjcScanBar::GetStatusColor)
 				.ToolTipText(this, &SPjcScanBar::GetStatusToolTip)
 			]
-			// the plugin's version, small, at the right end (user, 2026-11-14)
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {10.0f, 0.0f, 4.0f, 0.0f})
 			[
 				SNew(STextBlock)

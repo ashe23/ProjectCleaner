@@ -118,7 +118,7 @@ struct FPjcOverview
 	// Scan against a cook, reads the file times of the scanned assets
 	static FShipped MakeShipped(const FPjcScanResult& Result, const FPjcCookInfo& Cook);
 
-	// Why a used asset counts (user, 2026-11-14): its own reason where a chain starts, so Primary assets are exactly the
+	// Why a used asset counts: its own reason where a chain starts, so Primary assets are exactly the
 	// primary assets, or Dependency for what a used asset references. Assets a Primary Asset Label lists are primary
 	// assets too, assets in config folders count under source and config
 	static EPjcUsageReason GetGroupReason(const FPjcScanResult& Result, const FName Package);

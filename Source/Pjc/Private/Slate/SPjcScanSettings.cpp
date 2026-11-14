@@ -168,7 +168,6 @@ void SPjcScanSettings::Rebuild() {
 		// clang-format on
 	}
 
-	// Content/Developers: off by default, nothing of the developers' own assets is touched (user, 2026-11-14)
 	const TCHAR* DevelopersText = TEXT("Content/Developers: each developer's own test assets. Off: left out of the scan like an ignored ")
 		TEXT("plugin, so nothing in them is listed or deleted, and what they use counts as used.");
 	if (NumDeveloperFolders == 0) {
@@ -395,7 +394,6 @@ TSharedRef<SWidget> SPjcScanSettings::MakeHeader() {
 			.Visibility_Lambda([]() { return FPjcScanDraft::IsChanged() ? EVisibility::Visible : EVisibility::Collapsed; })
 			.OnNavigate_Lambda(Edit([]() { FPjcScanDraft::Revert(); }))
 		]
-		// gray with the reset icon, asks first (user, 2026-11-14)
 		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 4.0f, 0.0f})
 		[
 			SNew(SButton)
@@ -609,7 +607,6 @@ void SPjcScanSettings::ConfirmReset() {
 	Part.Note = TEXT("The settings are saved to DefaultEditor.ini and the project is scanned right away.");
 	if (!SPjcDialog::Show(TEXT("Reset scan settings to defaults"), {Part}, TEXT("Reset and scan"))) return;
 
-	// reset and scan at once: no second click on Scan (user, 2026-11-14)
 	FPjcScanDraft::Get() = Defaults;
 	FPjcScanDraft::NotifyEdited();
 	FPjcScanDraft::Get().ApplyToSettings();

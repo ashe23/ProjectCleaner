@@ -19,7 +19,7 @@ enum class EPjcIssueCategory : uint8
 	External,
 	Corrupted,
 	Empty,
-	// assets the scan is not sure about (user, 2026-11-14: moved here from Assets), listed first
+	// assets the scan is not sure about, listed first
 	Review,
 };
 

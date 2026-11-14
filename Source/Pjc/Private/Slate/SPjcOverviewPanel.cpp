@@ -143,7 +143,7 @@ TSharedRef<SWidget> SPjcOverviewPanel::MakeStatus() {
 	};
 	const FSlateColor ReviewNumber = Overview.Review.Num > 0 ? FSlateColor {PjcWidgets::GetColor("ProjectCleaner.Color.Review")} : Muted;
 	const FSlateColor UnusedNumber = Overview.Unused.Num > 0 ? FSlateColor {PjcWidgets::GetColor("ProjectCleaner.Color.Red")} : Muted;
-	// Editor only is part of Used (user, 2026-11-14): its assets show under Editor assets and as Used, not shipped
+	// Editor only is part of Used: its assets show under Editor assets and as Used, not shipped
 	FPjcOverview::FTotal Used = Overview.Used;
 	Used.Num += Overview.EditorOnly.Num;
 	Used.Size += Overview.EditorOnly.Size;
@@ -189,7 +189,7 @@ TSharedRef<SWidget> SPjcOverviewPanel::MakeStatus() {
 }
 
 void SPjcOverviewPanel::AddReasonRows(const TSharedRef<SVerticalBox>& Rows) {
-	// why used, as 2.0 showed it (user, 2026-11-14): the assets where a chain starts by their reason, then everything they
+	// why used: the assets where a chain starts by their reason, then everything they
 	// reference as Dependencies, Other last. Compact: small, under the Used name
 	TArray<FPjcOverview::FReason> Sorted = Overview.Reasons;
 	const auto Rank = [](const FPjcOverview::FReason& Row) {

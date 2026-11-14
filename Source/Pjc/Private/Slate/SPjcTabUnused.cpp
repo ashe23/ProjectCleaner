@@ -137,7 +137,7 @@ namespace
 			const bool bAnyListed = Folder->Listed.Num > 0;
 
 			if (Column == PjcUnusedColFolder) {
-				// the folder icon says its state, no tags (user, 2026-11-14): gold, red when all of it is unused, gray when empty
+				// folder icon: gold, red when all of it is unused, gray when empty
 				const bool bAllUnused = Set == EPjcAssetSet::Unused && Folder->IsAllListed();
 				const FName Tint
 					= Folder->bEmpty ? "ProjectCleaner.Color.Muted" : (bAllUnused ? "ProjectCleaner.Color.Red" : "ProjectCleaner.Color.FolderTint");
@@ -251,7 +251,6 @@ namespace
 	const FName PjcUnusedColPath {TEXT("Path")};
 	// Source & config rows: where the asset is named
 	const FName PjcUnusedColNamedIn {TEXT("NamedIn")};
-	// the selection checkbox at the start of each row (user, 2026-11-14: as the proto)
 	const FName PjcUnusedColCheck {TEXT("Check")};
 	const FName PjcUnusedColLine {TEXT("Line")};
 	const TCHAR* PjcUnusedReasonSource = TEXT("Source & config");
@@ -591,7 +590,6 @@ void SPjcTabUnused::Construct(const FArguments& InArgs) {
 		if (GConfig->GetBool(PjcUnusedSection, TEXT("FolderSortDescending"), bSortDescending, GEditorPerProjectIni)) {
 			FolderSortMode = bSortDescending ? EColumnSortMode::Descending : EColumnSortMode::Ascending;
 		}
-		// on by default (user, 2026-11-14), a new key: the old Subfolders checkbox is gone
 		GConfig->GetBool(PjcUnusedSection, TEXT("IncludeSubfolders"), bSubfolders, GEditorPerProjectIni);
 		GConfig->GetBool(PjcUnusedSection, TEXT("GridView"), bGridView, GEditorPerProjectIni);
 		GConfig->GetInt(PjcUnusedSection, TEXT("TileSize"), TileSize, GEditorPerProjectIni);
@@ -644,8 +642,6 @@ void SPjcTabUnused::Construct(const FArguments& InArgs) {
 		]
 		[
 			SNew(SVerticalBox)
-			// the lists as tabs over both panes (user, 2026-11-14): the tree and the list show the list they pick, and the two
-			// toolbars under them line up
 			+ SVerticalBox::Slot().AutoHeight()
 			[
 				MakeTabsRow()
@@ -695,7 +691,7 @@ void SPjcTabUnused::SelectFolder(const FString& Path) {
 }
 
 void SPjcTabUnused::ShowSet(const EPjcAssetSet InSet, const FString& Reason) {
-	// two lists (user, 2026-11-14): excluded assets are used ones kept by a rule, assets to review are in Issues
+	// two lists: excluded assets are used ones kept by a rule, assets to review are in Issues
 	if (InSet == EPjcAssetSet::Excluded) {
 		ShowSet(EPjcAssetSet::Used, PjcUnusedReasonExcluded);
 		return;
@@ -799,8 +795,6 @@ TSharedRef<SWidget> SPjcTabUnused::MakeTabsRow() {
 }
 
 TSharedRef<SWidget> SPjcTabUnused::MakeSetSwitch() {
-	// tabs (user, 2026-11-14): Unused and Used, the name and its count in a small pill, a line under the open one, both in the
-	// list's color
 	const TSharedRef<SHorizontalBox> Switch = SNew(SHorizontalBox);
 	const auto AddSet = [this, &Switch](const EPjcAssetSet Each, const FName ColorName, const FName QuietName, const FString& ToolTip) {
 		const FLinearColor Color = PjcWidgets::GetColor(ColorName);
@@ -1288,7 +1282,7 @@ TSharedRef<SWidget> SPjcTabUnused::MakeViewMenu() {
 		SaveViewState();
 	});
 	Menu.AddSeparator();
-	// what a folder lists (user, 2026-11-14: moved here from the list)
+	// what a folder lists
 	PjcWidgets::AddMenuToggle(
 		Menu, TEXT("Include subfolders"), TEXT("The list shows the assets of the subfolders of the folder too"), &bSubfolders, [this]() {
 			bSubfolders = !bSubfolders;
@@ -1376,7 +1370,6 @@ TSharedRef<SWidget> SPjcTabUnused::MakeAssetPane() {
 						SNew(SBorder).BorderImage(PjcShim::GetBrush(TEXT("ToolPanel.DarkGroupBorder"))).Padding(FMargin {0.0f, 4.0f})
 						[
 							SNew(SVerticalBox)
-							// the filters above the classes, one above the other: more of them never need a scroll (user, 2026-11-14)
 							+ SVerticalBox::Slot().AutoHeight()
 							[
 								SNew(SVerticalBox)
@@ -1404,7 +1397,6 @@ TSharedRef<SWidget> SPjcTabUnused::MakeAssetPane() {
 									]
 								]
 							]
-							// the class filters, named as such (user, 2026-11-14)
 							+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {10.0f, 2.0f, 10.0f, 5.0f})
 							[
 								SNew(STextBlock)
@@ -1518,7 +1510,7 @@ void SPjcTabUnused::ApplyAssetFilter() {
 		Selected.Add(Row->Package);
 	}
 
-	// only Source & config picked: a row for every place a file names the asset (user, 2026-11-14, as the 3.0 Indirect tab)
+	// only Source & config picked: a row for every place a file names the asset
 	const bool bSource = Set == EPjcAssetSet::Used && ReasonFilters.Num() == 1 && ReasonFilters.Contains(PjcUnusedReasonSource) && !bGridView;
 	if (bSource != bSourceRows) {
 		bSourceRows = bSource;
@@ -1636,7 +1628,7 @@ void SPjcTabUnused::RebuildChips() {
 	});
 
 	// the filter pills: All, then what keeps the assets in the list (Used), Delete failed (Unused). Picked ones are in their
-	// color, the others grey while one is picked (user, 2026-11-14)
+	// color, the others grey while one is picked
 	struct FPill
 	{
 		FString Key;
@@ -1914,7 +1906,7 @@ void SPjcTabUnused::OnReasonChipClicked(const FString& Key) {
 			ReasonFilters.Add(Key);
 		}
 		bHeldOnly = false;
-		// every filter picked is all of them: All again (user, 2026-11-14)
+		// every filter picked is all of them: All again
 		const TSet<FString> Keys = GetReasonKeys();
 		if (Keys.Num() > 0 && Keys.Difference(ReasonFilters).Num() == 0) {
 			ReasonFilters.Reset();
@@ -2045,7 +2037,6 @@ TSharedRef<SWidget> SPjcTabUnused::MakeToolbar() {
 	const auto HasSelection = [this]() {
 		return ListView.IsValid() && GetView()->GetNumItemsSelected() > 0;
 	};
-	// the actions of the open list are always there, greyed until something is selected (user, 2026-11-14: on the left)
 	const auto ShownFor = [this](const bool bUnused, const bool bExcluded) {
 		return [this, bUnused, bExcluded]() {
 			const bool bExcludedShown = Set == EPjcAssetSet::Used && ReasonFilters.Contains(PjcUnusedReasonExcluded);
@@ -2338,7 +2329,7 @@ void SPjcTabUnused::SetGridView(const bool bGrid) {
 }
 
 float SPjcTabUnused::GetTileWidth() const {
-	// the tiles fill the line (user, 2026-11-14): as many of the chosen size as fit, each grown to share what is left
+	// the tiles fill the line: as many of the chosen size as fit, each grown to share what is left
 	const float Size = PjcUnusedTileWidths[FMath::Clamp(TileSize, 0, 3)];
 	const float Available = TileBox.IsValid() ? TileBox->GetCachedGeometry().GetLocalSize().X - PjcUnusedTileScrollbar : 0.0f;
 	if (Available < 2.0f * (Size + PjcUnusedTileGap)) return Size;
@@ -2364,7 +2355,6 @@ TSharedRef<ITableRow> SPjcTabUnused::OnGenerateAssetTile(FAssetRowPtr Row, const
 		.ToolTipText(FText::FromString(Tip));
 	// clang-format on
 
-	// the card: a border, lighter on hover, blue with a blue tint when selected (user, 2026-11-14)
 	const TWeakPtr<STableRow<FAssetRowPtr>> WeakRow = TileRow;
 	const auto IsSelected = [WeakRow]() {
 		const TSharedPtr<STableRow<FAssetRowPtr>> Pinned = WeakRow.Pin();

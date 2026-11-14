@@ -98,7 +98,7 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create() {
 	Style->Set("ProjectCleaner.Color.DangerIcon", ColorDangerIcon);
 	Style->Set("ProjectCleaner.Color.DangerQuiet", Color(TEXT("#4A2427")));
 	// asset status: a fill for bars and boxes, a light shade for text, a quiet one for backgrounds. Used and shipped are
-	// one light green (user, 2026-11-14)
+	// one light green
 	Style->Set("ProjectCleaner.Color.UsedFill", ColorUsed);
 	Style->Set("ProjectCleaner.Color.UsedQuiet", Color(TEXT("#20302F")));
 	Style->Set("ProjectCleaner.Color.ShipFill", ColorUsed);

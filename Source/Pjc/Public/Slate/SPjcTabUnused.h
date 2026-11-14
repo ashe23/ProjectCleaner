@@ -168,7 +168,7 @@ class SPjcTabUnused final : public SCompoundWidget
 
 	void SaveViewState() const;
 
-	// the list as rows or as a grid of tiles (user, 2026-11-14), sharing the rows, their order and the selection
+	// the list as rows or as a grid of tiles, sharing the rows, their order and the selection
 	TSharedPtr<SListView<TSharedPtr<FPjcUnusedAssetRow>>> GetView() const;
 	void SetGridView(const bool bGrid);
 	TSharedRef<ITableRow> OnGenerateAssetTile(TSharedPtr<FPjcUnusedAssetRow> Row, const TSharedRef<STableViewBase>& Table);
@@ -192,7 +192,7 @@ class SPjcTabUnused final : public SCompoundWidget
 	// folder view options
 	bool bOnlyUnused = true;
 	bool bShowEmpty = false;
-	// thin lines down the tree under each open folder (View), on by default (user, 2026-11-14)
+	// thin lines down the tree under each open folder (View), on by default
 	bool bFolderGuides = true;
 	FName FolderSortColumn = TEXT("Size");
 	EColumnSortMode::Type FolderSortMode = EColumnSortMode::Descending;
@@ -220,7 +220,7 @@ class SPjcTabUnused final : public SCompoundWidget
 	bool bMapAll = false;
 	TSharedPtr<SPjcSizeMap> SizeMap;
 	TSharedPtr<SHorizontalBox> Breadcrumb;
-	// Reason keys of the picked filter pills, none for every reason; several can be picked (user, 2026-11-14)
+	// Reason keys of the picked filter pills, none for every reason; several can be picked
 	TSet<FString> ReasonFilters;
 	// Only Source & config picked: a row for every place a file names the asset, with the file and the line
 	bool bSourceRows = false;

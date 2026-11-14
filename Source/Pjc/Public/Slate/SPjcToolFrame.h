@@ -23,7 +23,7 @@ class SPjcToolFrame final : public SCompoundWidget
 	SLATE_ARGUMENT(FName, PageName)
 	// Open state the first time the tool is shown
 	SLATE_ARGUMENT(bool, PanelOpen)
-	// false: no scan settings at all, e.g. Issues (user, 2026-11-14: they are set once, in Assets)
+	// false: no scan settings at all, e.g. Issues
 	SLATE_ARGUMENT(bool, Settings)
 	// Column left of the content, above the scan settings (Assets: the overview)
 	SLATE_NAMED_SLOT(FArguments, Side)
