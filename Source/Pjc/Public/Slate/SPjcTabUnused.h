@@ -171,6 +171,8 @@ class SPjcTabUnused final : public SCompoundWidget
 	// folder view options
 	bool bOnlyUnused = true;
 	bool bShowEmpty = false;
+	// thin lines down the tree under each open folder (View), on by default (user, 2026-11-14)
+	bool bFolderGuides = true;
 	FName FolderSortColumn = TEXT("Size");
 	EColumnSortMode::Type FolderSortMode = EColumnSortMode::Descending;
 	FString FolderSearch;

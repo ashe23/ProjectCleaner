@@ -723,8 +723,8 @@ TSharedRef<SWidget> SPjcTabIssues::MakeFooter() {
 				})
 				[
 					SNew(SComboButton)
+					.ComboButtonStyle(&PjcShim::GetComboButtonStyle())
 #if ENGINE_MAJOR_VERSION < 5
-					.ButtonStyle(&PjcShim::GetButtonStyle427(false))
 					.ForegroundColor(FSlateColor::UseForeground())
 #endif
 					.ToolTipText(FText::FromString(TEXT("Keeps them: by file, extension or folder, saved to Config/DefaultEditor.ini")))

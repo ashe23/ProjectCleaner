@@ -123,6 +123,10 @@ namespace PjcShim
 		return FPjcStyles::Get().GetWidgetStyle<FSearchBoxStyle>("ProjectCleaner.SearchBox");
 	}
 
+	const FComboButtonStyle& GetComboButtonStyle() {
+		return FPjcStyles::Get().GetWidgetStyle<FComboButtonStyle>("ProjectCleaner.ComboButton");
+	}
+
 	const FCheckBoxStyle& GetCheckBoxStyle() {
 		return FPjcStyles::Get().GetWidgetStyle<FCheckBoxStyle>("ProjectCleaner.CheckBox");
 	}

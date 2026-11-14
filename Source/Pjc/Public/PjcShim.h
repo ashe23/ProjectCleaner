@@ -56,6 +56,8 @@ namespace PjcShim
 	// The plugin's own checkbox and search box, the same in every engine
 	const FCheckBoxStyle& GetCheckBoxStyle();
 	const FSearchBoxStyle& GetSearchBoxStyle();
+	// Drop-down buttons (View, Exclude), the same in every engine
+	const FComboButtonStyle& GetComboButtonStyle();
 #if ENGINE_MAJOR_VERSION < 5
 	const FButtonStyle& GetButtonStyle427(const bool bColored);
 	const FEditableTextBoxStyle& GetTextBoxStyle427();

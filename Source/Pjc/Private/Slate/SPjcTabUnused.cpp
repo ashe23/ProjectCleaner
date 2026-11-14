@@ -34,6 +34,7 @@
 #include "Widgets/Layout/SWrapBox.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SSplitter.h"
+#include "Widgets/SLeafWidget.h"
 #include "Widgets/SOverlay.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/Text/STextBlock.h"
@@ -50,6 +51,54 @@ namespace
 	const FName PjcUnusedColSize {TEXT("Size")};
 	const FName PjcUnusedColAssets {TEXT("Assets")};
 
+	// tree indent and the middle of the arrow: where a folder's guide runs
+	constexpr float PjcUnusedIndent = 14.0f;
+	constexpr float PjcUnusedArrowMiddle = 5.0f;
+
+	// Folder guides (View): a thin line under the arrow of every folder above, down through its subfolders. Drawn by the
+	// plugin: the engine's tree wires look different in UE 4.27 and UE5
+	class SPjcTreeGuides final : public SLeafWidget
+	{
+	  public:
+
+		SLATE_BEGIN_ARGS(SPjcTreeGuides) {}
+		SLATE_ATTRIBUTE(int32, Depth)
+		SLATE_END_ARGS()
+
+		void Construct(const FArguments& InArgs) {
+			Depth = InArgs._Depth;
+		}
+
+		virtual FVector2D ComputeDesiredSize(float) const override {
+			return FVector2D {0.0f, 0.0f};
+		}
+
+		virtual int32 OnPaint(
+			const FPaintArgs&,
+			const FGeometry& AllottedGeometry,
+			const FSlateRect&,
+			FSlateWindowElementList& OutDrawElements,
+			int32 LayerId,
+			const FWidgetStyle&,
+			bool
+		) const override {
+			const FSlateBrush* Brush = FCoreStyle::Get().GetBrush("WhiteBrush");
+			const FLinearColor Color = PjcWidgets::GetColor("ProjectCleaner.Color.Line");
+			const FVector2D Size {1.0f, AllottedGeometry.GetLocalSize().Y};
+			const int32 Levels = Depth.Get(0);
+			for (int32 Level = 0; Level < Levels; ++Level) {
+				const FVector2D Position {PjcUnusedIndent * Level + PjcUnusedArrowMiddle, 0.0f};
+				const FPaintGeometry Line = AllottedGeometry.ToPaintGeometry(Size, FSlateLayoutTransform {Position});
+				FSlateDrawElement::MakeBox(OutDrawElements, LayerId, Line, Brush, ESlateDrawEffect::None, Color);
+			}
+			return LayerId;
+		}
+
+	  private:
+
+		TAttribute<int32> Depth;
+	};
+
 	// Folder tree row: name, share bar of the list, its size, listed / all assets
 	class SPjcUnusedFolderRow final : public SMultiColumnTableRow<TSharedPtr<FPjcUnusedFolder>>
 	{
@@ -59,17 +108,20 @@ namespace
 		SLATE_ARGUMENT(TSharedPtr<FPjcUnusedFolder>, Folder)
 		SLATE_ARGUMENT(EPjcAssetSet, Set)
 		SLATE_ATTRIBUTE(FText, HighlightText)
+		SLATE_ATTRIBUTE(bool, ShowGuides)
 		SLATE_END_ARGS()
 
 		void Construct(const FArguments& InArgs, const TSharedRef<STableViewBase>& InTable) {
 			Folder = InArgs._Folder;
 			Set = InArgs._Set;
 			HighlightText = InArgs._HighlightText;
+			ShowGuides = InArgs._ShowGuides;
 			SMultiColumnTableRow::FArguments RowArgs;
 #if ENGINE_MAJOR_VERSION < 5
 			RowArgs.Style(&PjcShim::GetRowStyle427());
 #endif
-			SMultiColumnTableRow::Construct(RowArgs.Padding(FMargin {0.0f, 1.0f}), InTable);
+			// no gap between rows: the folder guides run through (the name column keeps the row height)
+			SMultiColumnTableRow::Construct(RowArgs.Padding(FMargin {0.0f}), InTable);
 		}
 
 		virtual TSharedRef<SWidget> GenerateWidgetForColumn(const FName& Column) override {
@@ -77,13 +129,24 @@ namespace
 			const bool bAnyListed = Folder->Listed.Num > 0;
 
 			if (Column == PjcUnusedColFolder) {
+				// the folder icon says its state, no tags (user, 2026-11-14): gold, red when all of it is unused, gray when empty
+				const bool bAllUnused = Set == EPjcAssetSet::Unused && Folder->IsAllListed();
+				const FName Tint
+					= Folder->bEmpty ? "ProjectCleaner.Color.Muted" : (bAllUnused ? "ProjectCleaner.Color.Red" : "ProjectCleaner.Color.FolderTint");
+				FString ToolTip = Folder->Path;
+				if (Folder->bEmpty) {
+					ToolTip += TEXT("\nEmpty: no assets or files. Clean project deletes it.");
+				}
+				else if (bAllUnused) {
+					ToolTip += TEXT("\nAll unused: Clean project deletes the whole folder.");
+				}
 				// clang-format off
 				const TSharedRef<SHorizontalBox> NameBox = SNew(SHorizontalBox)
 					.Clipping(EWidgetClipping::ClipToBounds)
-					.ToolTipText(FText::FromString(Folder->Path));
+					.ToolTipText(FText::FromString(ToolTip));
 				NameBox->AddSlot().AutoWidth().VAlign(VAlign_Center)
 				[
-					SNew(SExpanderArrow, SharedThis(this)).StyleSet(&FPjcStyles::Get()).IndentAmount(14).ShouldDrawWires(false)
+					SNew(SExpanderArrow, SharedThis(this)).StyleSet(&FPjcStyles::Get()).IndentAmount(PjcUnusedIndent).ShouldDrawWires(false)
 				];
 				NameBox->AddSlot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 5.0f, 0.0f})
 				[
@@ -91,30 +154,27 @@ namespace
 					.Image_Lambda([this]() {
 						return FPjcStyles::Get().GetBrush(IsItemExpanded() ? "ProjectCleaner.Icon.FolderOpen" : "ProjectCleaner.Icon.Folder");
 					})
-					.ColorAndOpacity(Folder->IsRoot() ? Muted : FSlateColor {PjcWidgets::GetColor("ProjectCleaner.Color.FolderTint")})
+					.ColorAndOpacity(PjcWidgets::GetColor(Tint))
 				];
 				NameBox->AddSlot().AutoWidth().VAlign(VAlign_Center)
 				[
 					SNew(STextBlock).Text(FText::FromString(Folder->IsRoot() ? Folder->Path.Mid(1) : Folder->Name)).HighlightText(HighlightText)
 				];
+				return SNew(SOverlay)
+					+ SOverlay::Slot()
+					[
+						SNew(SPjcTreeGuides)
+						.Visibility_Lambda([this]() { return ShowGuides.Get(true) ? EVisibility::HitTestInvisible : EVisibility::Collapsed; })
+						.Depth_Lambda([this]() { return GetIndentLevel(); })
+					]
+					+ SOverlay::Slot()
+					[
+						SNew(SBox).Padding(FMargin {0.0f, 1.0f})
+						[
+							NameBox
+						]
+					];
 				// clang-format on
-				if (Set == EPjcAssetSet::Unused && Folder->IsAllListed()) {
-					// clang-format off
-					NameBox->AddSlot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
-					[
-						MakeTag(TEXT("all unused"), PjcWidgets::GetColor("ProjectCleaner.Color.Red"), PjcWidgets::GetColor("ProjectCleaner.Color.Page"))
-					];
-					// clang-format on
-				}
-				if (Folder->bEmpty) {
-					// clang-format off
-					NameBox->AddSlot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
-					[
-						MakeTag(TEXT("EMPTY"), PjcWidgets::GetColor("ProjectCleaner.Color.Track"), PjcWidgets::GetColor("ProjectCleaner.Color.Muted"))
-					];
-					// clang-format on
-				}
-				return NameBox;
 			}
 
 			if (Column == PjcUnusedColShare) {
@@ -170,22 +230,10 @@ namespace
 
 	  private:
 
-		static TSharedRef<SWidget> MakeTag(const FString& Text, const FLinearColor& Background, const FLinearColor& Foreground) {
-			// clang-format off
-			return SNew(SBorder)
-				.BorderImage(FCoreStyle::Get().GetBrush("WhiteBrush"))
-				.BorderBackgroundColor(Background)
-				.Padding(FMargin {5.0f, 0.0f})
-				.VAlign(VAlign_Center)
-				[
-					SNew(STextBlock).Text(FText::FromString(Text)).Font(FPjcStyles::GetFont("Bold", 7)).ColorAndOpacity(Foreground)
-				];
-			// clang-format on
-		}
-
 		TSharedPtr<FPjcUnusedFolder> Folder;
 		EPjcAssetSet Set = EPjcAssetSet::Unused;
 		TAttribute<FText> HighlightText;
+		TAttribute<bool> ShowGuides;
 	};
 
 	const FName PjcUnusedColName {TEXT("Name")};
@@ -447,6 +495,7 @@ void SPjcTabUnused::Construct(const FArguments& InArgs) {
 		FString SortColumn;
 		bool bSortDescending = true;
 		GConfig->GetBool(PjcUnusedSection, TEXT("OnlyFoldersWithUnused"), bOnlyUnused, GEditorPerProjectIni);
+		GConfig->GetBool(PjcUnusedSection, TEXT("FolderGuides"), bFolderGuides, GEditorPerProjectIni);
 		if (GConfig->GetString(PjcUnusedSection, TEXT("FolderSort"), SortColumn, GEditorPerProjectIni) && !SortColumn.IsEmpty()) {
 			FolderSortColumn = FName {*SortColumn};
 		}
@@ -838,8 +887,8 @@ TSharedRef<SWidget> SPjcTabUnused::MakeFolderPane() {
 					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
 					[
 						SNew(SComboButton)
+						.ComboButtonStyle(&PjcShim::GetComboButtonStyle())
 #if ENGINE_MAJOR_VERSION < 5
-						.ButtonStyle(&PjcShim::GetButtonStyle427(false))
 						.ForegroundColor(FSlateColor::UseForeground())
 #endif
 						.Visibility_Lambda([this]() { return bMapView ? EVisibility::Collapsed : EVisibility::Visible; })
@@ -950,6 +999,9 @@ TSharedRef<ITableRow> SPjcTabUnused::OnGenerateFolderRow(FFolderPtr Folder, cons
 		.Set(Set)
 		.HighlightText_Lambda([this]() {
 			return FText::FromString(FolderSearch);
+		})
+		.ShowGuides_Lambda([this]() {
+			return bFolderGuides;
 		});
 	// clang-format on
 }
@@ -1071,6 +1123,10 @@ TSharedRef<SWidget> SPjcTabUnused::MakeViewMenu() {
 	PjcWidgets::AddMenuToggle(Menu, EmptyLabel, TEXT("Shows empty folders, Clean project deletes them"), &bShowEmpty, [this]() {
 		bShowEmpty = !bShowEmpty;
 		OnFolderSearchChanged(FText::FromString(FolderSearch));
+	});
+	PjcWidgets::AddMenuToggle(Menu, TEXT("Folder guides"), TEXT("A thin line down the tree under each open folder"), &bFolderGuides, [this]() {
+		bFolderGuides = !bFolderGuides;
+		SaveViewState();
 	});
 	Menu.AddSeparator();
 	Menu.AddMenuEntry(
@@ -1583,6 +1639,7 @@ void SPjcTabUnused::SaveViewState() const {
 	if (!GConfig) return;
 
 	GConfig->SetBool(PjcUnusedSection, TEXT("OnlyFoldersWithUnused"), bOnlyUnused, GEditorPerProjectIni);
+	GConfig->SetBool(PjcUnusedSection, TEXT("FolderGuides"), bFolderGuides, GEditorPerProjectIni);
 	GConfig->SetString(PjcUnusedSection, TEXT("FolderSort"), *FolderSortColumn.ToString(), GEditorPerProjectIni);
 	GConfig->SetBool(PjcUnusedSection, TEXT("FolderSortDescending"), FolderSortMode == EColumnSortMode::Descending, GEditorPerProjectIni);
 	GConfig->SetBool(PjcUnusedSection, TEXT("Subfolders"), bSubfolders, GEditorPerProjectIni);
@@ -1747,8 +1804,8 @@ TSharedRef<SWidget> SPjcTabUnused::MakeFooter() {
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
 			[
 				SNew(SComboButton)
+				.ComboButtonStyle(&PjcShim::GetComboButtonStyle())
 #if ENGINE_MAJOR_VERSION < 5
-				.ButtonStyle(&PjcShim::GetButtonStyle427(false))
 				.ForegroundColor(FSlateColor::UseForeground())
 #endif
 				.ToolTipText(FText::FromString(TEXT("Keeps the selection, its folder or its class from cleanup: adds exclusions")))
@@ -2017,7 +2074,7 @@ TSharedRef<SWidget> SPjcTabUnused::MakeMapBar() {
 			]
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {8.0f, 0.0f, 6.0f, 0.0f})
 			[
-				SNew(STextBlock).Text(FText::FromString(TEXT("Area"))).ColorAndOpacity(FSlateColor::UseSubduedForeground())
+				SNew(STextBlock).Text(FText::FromString(TEXT("Area:"))).ColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.Muted"))
 			]
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 			[

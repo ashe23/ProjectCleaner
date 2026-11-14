@@ -258,12 +258,33 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create() {
 	SearchBox.SetTextBoxStyle(SearchText);
 	SearchBox.SetGlassImage(Icon(TEXT("Scan"), 14.0f, ColorMuted));
 	SearchBox.SetClearImage(Icon(TEXT("Close"), 12.0f, ColorMuted));
+	// room left of the lens, as UE5 has it (4.27 has none)
+	SearchBox.SetImagePadding(FMargin {4.0f, 0.0f, 0.0f, 0.0f});
 #if ENGINE_MAJOR_VERSION >= 5
 	SearchBox.SetLeftAlignGlassImageAndClearButton(true);
 #else
 	SearchBox.SetLeftAlignButtons(true);
 #endif
 	Style->Set("ProjectCleaner.SearchBox", SearchBox);
+
+	// drop-down buttons (View, Exclude): a dark box with a thin outline and the chevron of the icon set, as UE5's combo
+	// buttons, in every engine (4.27 draws a flat box with a triangle)
+	const auto Outline = [&Style](const TCHAR* Name) {
+		return FSlateBoxBrush {Style->RootToContentDir(Name, TEXT(".png")), FMargin {4.0f / 16.0f}};
+	};
+	// clang-format off
+	const FButtonStyle DropButton = FButtonStyle {}
+		.SetNormal(Outline(TEXT("RoundedOutline16")))
+		.SetHovered(Outline(TEXT("RoundedOutlineHover16")))
+		.SetPressed(Outline(TEXT("RoundedOutlineHover16")))
+		.SetDisabled(Outline(TEXT("RoundedOutline16")))
+		.SetNormalPadding(FMargin {8.0f, 1.0f, 8.0f, 1.0f})
+		.SetPressedPadding(FMargin {8.0f, 2.0f, 8.0f, 0.0f});
+	// clang-format on
+	FComboButtonStyle DropDown = FCoreStyle::Get().GetWidgetStyle<FComboButtonStyle>("ComboButton");
+	DropDown.SetButtonStyle(DropButton);
+	DropDown.SetDownArrowImage(Icon(TEXT("Expand"), 10.0f, ColorText));
+	Style->Set("ProjectCleaner.ComboButton", DropDown);
 
 #if ENGINE_MAJOR_VERSION < 5
 	// UE 4.27 widgets in the colors of the UE5 ones (PjcShim)

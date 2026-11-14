@@ -1131,8 +1131,8 @@ TSharedRef<SWidget> SPjcTabInspector::MakeActions() {
 		Actions->AddSlot()
 		[
 			SNew(SComboButton)
+			.ComboButtonStyle(&PjcShim::GetComboButtonStyle())
 #if ENGINE_MAJOR_VERSION < 5
-			.ButtonStyle(&PjcShim::GetButtonStyle427(false))
 			.ForegroundColor(FSlateColor::UseForeground())
 #endif
 			.ContentPadding(FMargin {6.0f, 1.0f})
