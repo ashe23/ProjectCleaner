@@ -27,10 +27,6 @@ namespace
 		double H = 0.0;
 	};
 
-	FLinearColor PjcMapColor(const TCHAR* Hex) {
-		return FLinearColor {FColor::FromHex(Hex)};
-	}
-
 	// Squarified treemap: rectangles for values sorted biggest first, as square as the area allows
 	void PjcMapSquarify(const TArray<double>& Values, double X, double Y, double W, double H, TArray<FPjcMapRect>& Out) {
 		Out.SetNumZeroed(Values.Num());
@@ -271,14 +267,18 @@ int32 SPjcSizeMap::OnPaint(
 		Box(Layer, Position + FVector2D {Size.X - Width, 0.0f}, FVector2D {Width, Size.Y}, Color);
 	};
 
-	const FLinearColor FolderFill = PjcMapColor(TEXT("#24272B"));
-	const FLinearColor FolderLine = PjcMapColor(TEXT("#3C4148"));
+	const FLinearColor FolderFill = PjcWidgets::GetColor("ProjectCleaner.Color.Panel");
+	const FLinearColor FolderLine = PjcWidgets::GetColor("ProjectCleaner.Color.Line");
 	const PjcWidgets::FSetColors SetColors = PjcWidgets::GetSetColors(Set);
 	const FLinearColor FolderTint = SetColors.Tint;
-	const FLinearColor HeaderFill = PjcMapColor(TEXT("#2B2F34"));
+	const FLinearColor HeaderFill = PjcWidgets::GetColor("ProjectCleaner.Color.Header");
 	const FLinearColor ListedFill = SetColors.Box;
-	const FLinearColor OtherFill = PjcMapColor(Set == EPjcAssetSet::Unused ? TEXT("#2A3B3A") : TEXT("#30343A"));
-	const FLinearColor Muted = PjcMapColor(TEXT("#8A9099"));
+	// the rest of the project: used assets when unused ones are listed
+	const FLinearColor OtherFill
+		= PjcWidgets::GetColor(Set == EPjcAssetSet::Unused ? FName {"ProjectCleaner.Color.UsedQuiet"} : FName {"ProjectCleaner.Color.Hover"});
+	const FLinearColor Muted = PjcWidgets::GetColor("ProjectCleaner.Color.Muted");
+	const FLinearColor TextColor = PjcWidgets::GetColor("ProjectCleaner.Color.Text");
+	const FLinearColor Strong = PjcWidgets::GetColor("ProjectCleaner.Color.Strong");
 
 	for (int32 Index = 0; Index < Cells.Num(); ++Index) {
 		const FCell& Cell = Cells[Index];
@@ -289,14 +289,14 @@ int32 SPjcSizeMap::OnPaint(
 			const double FolderSize = static_cast<double>(Cell.Folder->All.Size);
 			const float Share = FolderSize > 0.0 ? static_cast<float>(static_cast<double>(Cell.Folder->Listed.Size) / FolderSize) : 0.0f;
 			const FLinearColor Fill = bAreaAll ? FLinearColor::LerpUsingHSV(FolderFill, FolderTint, Share) : FolderFill;
-			Box(Layer, Cell.Position, Cell.Size, bHovered ? PjcMapColor(TEXT("#6A7078")) : FolderLine);
+			Box(Layer, Cell.Position, Cell.Size, bHovered ? Muted : FolderLine);
 			Box(Layer, Cell.Position + FVector2D {1.0f, 1.0f}, Cell.Size - FVector2D {2.0f, 2.0f}, Fill);
 			if (Cell.Size.X > 46.0f && Cell.Size.Y > 22.0f) {
 				Box(Layer + 1, Cell.Position + FVector2D {1.0f, 1.0f}, FVector2D {Cell.Size.X - 2.0f, PjcMapHeader}, HeaderFill);
 				const FString Value = PjcFormat::Size(Cell.Value);
 				const float ValueWidth = FontMeasure->Measure(Value, FontSmall).X;
 				const float NameWidth = FMath::Min(FontMeasure->Measure(Cell.Label, FontBold).X, Cell.Size.X - ValueWidth - 22.0f);
-				Text(Layer + 2, Cell.Position + FVector2D {6.0f, 2.0f}, NameWidth + 1.0f, Cell.Label, FontBold, FLinearColor {0.85f, 0.86f, 0.88f});
+				Text(Layer + 2, Cell.Position + FVector2D {6.0f, 2.0f}, NameWidth + 1.0f, Cell.Label, FontBold, Strong);
 				if (NameWidth + ValueWidth + 22.0f < Cell.Size.X) {
 					Text(Layer + 2, Cell.Position + FVector2D {12.0f + NameWidth, 4.0f}, ValueWidth + 1.0f, Value, FontSmall, Muted);
 				}
@@ -306,7 +306,7 @@ int32 SPjcSizeMap::OnPaint(
 
 		if (Cell.Kind == ECellKind::More) {
 			Box(Layer, Cell.Position, Cell.Size, FolderLine);
-			Box(Layer, Cell.Position + FVector2D {1.0f, 1.0f}, Cell.Size - FVector2D {2.0f, 2.0f}, PjcMapColor(TEXT("#2A2D31")));
+			Box(Layer, Cell.Position + FVector2D {1.0f, 1.0f}, Cell.Size - FVector2D {2.0f, 2.0f}, HeaderFill);
 			if (Cell.Size.X > 60.0f && Cell.Size.Y > 30.0f) {
 				Text(Layer + 2, Cell.Position + FVector2D {5.0f, 3.0f}, Cell.Size.X - 9.0f, TEXT("+") + PjcFormat::Count(Cell.NumMore), Font, Muted);
 				Text(Layer + 2, Cell.Position + FVector2D {5.0f, 17.0f}, Cell.Size.X - 9.0f, PjcFormat::Size(Cell.Value), FontSmall, Muted);
@@ -325,7 +325,7 @@ int32 SPjcSizeMap::OnPaint(
 			Outline(Layer + 1, Cell.Position, Cell.Size, 2.0f, FLinearColor::White);
 		}
 		if (Cell.Size.X > 54.0f && Cell.Size.Y > 30.0f) {
-			const FLinearColor Label = Cell.bListed ? SetColors.BoxText : PjcMapColor(TEXT("#BFC4C9"));
+			const FLinearColor Label = Cell.bListed ? SetColors.BoxText : TextColor;
 			Text(Layer + 2, Cell.Position + FVector2D {5.0f, 3.0f}, Cell.Size.X - 9.0f, Result->Assets[Cell.Asset].AssetName.ToString(), Font, Label);
 			Text(Layer + 2, Cell.Position + FVector2D {5.0f, 17.0f}, Cell.Size.X - 9.0f, PjcFormat::Size(Cell.Value), FontSmall, Label * 0.85f);
 		}

@@ -41,17 +41,18 @@ namespace
 	constexpr int32 PjcInspectorMaxChips = 8;
 	constexpr int32 PjcInspectorMaxGroupRoots = 100;
 
-	FLinearColor PjcInspectorHex(const TCHAR* Hex) {
-		return FLinearColor {FColor::FromHex(Hex)};
+	FLinearColor PjcInspectorColor(const FName Name) {
+		return PjcWidgets::GetColor(Name);
 	}
 
+	// status as text and swatches show it: the light shade of each status color
 	FLinearColor PjcInspectorStatusColor(const EPjcAssetStatus Status, const bool bScanned) {
-		if (!bScanned) return PjcInspectorHex(TEXT("#8A9099"));
+		if (!bScanned) return PjcInspectorColor("ProjectCleaner.Color.Muted");
 		switch (Status) {
-			case EPjcAssetStatus::Unused :	   return PjcInspectorHex(TEXT("#FE6D73"));
-			case EPjcAssetStatus::EditorOnly : return PjcInspectorHex(TEXT("#7FB2FF"));
-			case EPjcAssetStatus::Review :	   return PjcInspectorHex(TEXT("#E0B050"));
-			default :						   return PjcInspectorHex(TEXT("#17C3B2"));
+			case EPjcAssetStatus::Unused :	   return PjcInspectorColor("ProjectCleaner.Color.Red");
+			case EPjcAssetStatus::EditorOnly : return PjcInspectorColor("ProjectCleaner.Color.Editor");
+			case EPjcAssetStatus::Review :	   return PjcInspectorColor("ProjectCleaner.Color.Review");
+			default :						   return PjcInspectorColor("ProjectCleaner.Color.Ok");
 		}
 	}
 
@@ -83,9 +84,9 @@ namespace
 
 	FLinearColor PjcInspectorKindColor(const EPjcLinkKind Kind) {
 		switch (Kind) {
-			case EPjcLinkKind::Soft :		return PjcInspectorHex(TEXT("#C4A7FF"));
-			case EPjcLinkKind::EditorOnly : return PjcInspectorHex(TEXT("#7FB2FF"));
-			default :						return PjcInspectorHex(TEXT("#9FB3C8"));
+			case EPjcLinkKind::Soft :		return PjcInspectorColor("ProjectCleaner.Color.SoftLink");
+			case EPjcLinkKind::EditorOnly : return PjcInspectorColor("ProjectCleaner.Color.Editor");
+			default :						return PjcInspectorColor("ProjectCleaner.Color.Muted");
 		}
 	}
 
@@ -535,14 +536,14 @@ TSharedRef<ITableRow> SPjcTabInspector::OnGenerateFinderRow(FRowPtr Row, const T
 // graph
 
 TSharedRef<SWidget> SPjcTabInspector::MakeGraphPane() {
-	const auto Legend = [](const FString& Label, const FString& Color, const FString& ToolTip) {
+	const auto Legend = [](const FString& Label, const FName Color, const FString& ToolTip) {
 		// clang-format off
 		return SNew(SHorizontalBox).ToolTipText(FText::FromString(ToolTip))
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 5.0f, 0.0f})
 			[
 				SNew(SBox).WidthOverride(16.0f).HeightOverride(2.0f)
 				[
-					SNew(SImage).Image(FCoreStyle::Get().GetBrush("WhiteBrush")).ColorAndOpacity(PjcInspectorHex(*Color))
+					SNew(SImage).Image(FCoreStyle::Get().GetBrush("WhiteBrush")).ColorAndOpacity(PjcInspectorColor(Color))
 				]
 			]
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
@@ -734,23 +735,23 @@ TSharedRef<SWidget> SPjcTabInspector::MakeGraphPane() {
 					]
 					+ SWrapBox::Slot()
 					[
-						Legend(TEXT("Root source"), TEXT("#8A7440"), TEXT("Why the root is used: Asset Manager, config, code, exclusions"))
+						Legend(TEXT("Root source"), "ProjectCleaner.Color.ReviewFill", TEXT("Why the root is used: Asset Manager, config, code, exclusions"))
 					]
 					+ SWrapBox::Slot()
 					[
-						Legend(TEXT("Hard"), TEXT("#2C9A8F"), TEXT("Loads with the asset that references it"))
+						Legend(TEXT("Hard"), "ProjectCleaner.Color.UsedFill", TEXT("Loads with the asset that references it"))
 					]
 					+ SWrapBox::Slot()
 					[
-						Legend(TEXT("Soft (dashed)"), TEXT("#2C9A8F"), TEXT("Loaded on demand by path"))
+						Legend(TEXT("Soft (dashed)"), "ProjectCleaner.Color.UsedFill", TEXT("Loaded on demand by path"))
 					]
 					+ SWrapBox::Slot()
 					[
-						Legend(TEXT("Editor only (dotted)"), TEXT("#7FB2FF"), TEXT("Kept in the editor, not cooked"))
+						Legend(TEXT("Editor only (dotted)"), "ProjectCleaner.Color.Editor", TEXT("Kept in the editor, not cooked"))
 					]
 					+ SWrapBox::Slot()
 					[
-						Legend(TEXT("Circular"), TEXT("#FF8A3D"), TEXT("Assets that reference each other in a circle. Two arrows: two assets use each other. A loop: the reference leads back to an asset that reaches it. Point at the mark to see which"))
+						Legend(TEXT("Circular"), "ProjectCleaner.Color.Circular", TEXT("Assets that reference each other in a circle. Two arrows: two assets use each other. A loop: the reference leads back to an asset that reaches it. Point at the mark to see which"))
 					]
 					+ SWrapBox::Slot()
 					[
@@ -1032,7 +1033,7 @@ TSharedRef<SWidget> SPjcTabInspector::MakeFacts() {
 					SNew(SHorizontalBox)
 					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 5.0f, 0.0f})
 					[
-						PjcWidgets::MakeSwatch(PjcInspectorHex(TEXT("#FFCB77")), 7.0f)
+						PjcWidgets::MakeSwatch(PjcInspectorColor("ProjectCleaner.Color.Yellow"), 7.0f)
 					]
 					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 					[
@@ -1062,11 +1063,13 @@ TSharedRef<SWidget> SPjcTabInspector::MakeFacts() {
 		}
 		if (Result.GetStatus(Package) == EPjcAssetStatus::EditorOnly) {
 			Add(TEXT("Shipping"),
-				PjcInspectorText(TEXT("Not shipped: only the editor uses it. Clean project keeps it."), PjcInspectorHex(TEXT("#9FC3FF"))));
+				PjcInspectorText(
+					TEXT("Not shipped: only the editor uses it. Clean project keeps it."), PjcInspectorColor("ProjectCleaner.Color.Editor")
+				));
 		}
 		if (Result.GetStatus(Package) == EPjcAssetStatus::Review) {
 			const TCHAR* ReviewText = TEXT("The scan is not sure about it. Clean project keeps it: delete or keep it.");
-			Add(TEXT("Review"), PjcInspectorText(ReviewText, PjcInspectorHex(TEXT("#E0B050"))));
+			Add(TEXT("Review"), PjcInspectorText(ReviewText, PjcInspectorColor("ProjectCleaner.Color.Review")));
 		}
 		return Facts;
 	}
@@ -1085,7 +1088,7 @@ TSharedRef<SWidget> SPjcTabInspector::MakeFacts() {
 	const FString Cleanup = Group.Num() > 0 ? WithGroup : FString::Printf(TEXT("Deleted \u00B7 %s"), *SizeText);
 	Add(TEXT("Cleanup"), PjcInspectorText(Cleanup));
 	if (const FString* Holder = UPjcSubsystem::GetLastCleanupKept().Find(Package)) {
-		Add(TEXT("Last cleanup"), PjcInspectorText(TEXT("Delete failed \u00B7 ") + *Holder, PjcInspectorHex(TEXT("#FFCB77"))));
+		Add(TEXT("Last cleanup"), PjcInspectorText(TEXT("Delete failed \u00B7 ") + *Holder, PjcInspectorColor("ProjectCleaner.Color.Yellow")));
 	}
 	return Facts;
 }
@@ -1443,7 +1446,7 @@ TSharedRef<SWidget> SPjcTabInspector::MakeLocations() {
 			.Text(FText::FromString(TEXT("\u25CF loaded")))
 			.ToolTipText(FText::FromString(TEXT("The Inspector loaded this asset and read it")))
 			.Font(FPjcStyles::GetFont("Regular", 8))
-			.ColorAndOpacity(PjcInspectorHex(TEXT("#E8D27A")))
+			.ColorAndOpacity(PjcInspectorColor("ProjectCleaner.Color.Yellow"))
 		];
 	}
 	if (Read || LoadedHere.Num() > 0) {

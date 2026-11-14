@@ -27,8 +27,8 @@ namespace
 	constexpr float PjcGraphReadable = 0.65f;
 	constexpr float PjcGraphTextZoom = 0.3f;
 
-	FLinearColor PjcGraphColor(const TCHAR* Hex) {
-		return FLinearColor {FColor::FromHex(Hex)};
+	FLinearColor PjcGraphColor(const FName Name) {
+		return PjcWidgets::GetColor(Name);
 	}
 
 	// Who keeps a root used, the title of its source box
@@ -218,9 +218,11 @@ void SPjcInspectorGraph::UpdateLayout() {
 	}
 
 	// text of the nodes
-	const FLinearColor Muted = PjcGraphColor(TEXT("#8A9099"));
-	const FLinearColor Gold = PjcGraphColor(TEXT("#FFCB77"));
-	const FLinearColor Editor = PjcGraphColor(TEXT("#7FB2FF"));
+	const FLinearColor Muted = PjcGraphColor("ProjectCleaner.Color.Muted");
+	const FLinearColor Gold = PjcGraphColor("ProjectCleaner.Color.Yellow");
+	const FLinearColor Editor = PjcGraphColor("ProjectCleaner.Color.Editor");
+	const FLinearColor Used = PjcGraphColor("ProjectCleaner.Color.UsedFill");
+	const FLinearColor Unused = PjcGraphColor("ProjectCleaner.Color.Red");
 	for (int32 Index = 0; Index < Graph.Nodes.Num(); ++Index) {
 		const FPjcInspectorNode& Node = Graph.Nodes[Index];
 		FShownNode& Item = Shown[Index];
@@ -236,7 +238,7 @@ void SPjcInspectorGraph::UpdateLayout() {
 			const FPjcAssetUsage* Usage = Result ? Result->Usage.Find(Root) : nullptr;
 			Item.Title = PjcGraphSourceTitle(Usage ? Usage->Reason : EPjcUsageReason::None);
 			Item.Line = bGroup ? FString::Printf(TEXT("%d \u00D7 %s"), Target->Roots.Num(), *Node.Label) : Node.Label;
-			Item.LineColor = PjcGraphColor(TEXT("#D9C9A3"));
+			Item.LineColor = PjcGraphColor("ProjectCleaner.Color.Review");
 			Item.ToolTip = Item.Title + TEXT("\n") + Item.Line;
 			continue;
 		}
@@ -253,7 +255,7 @@ void SPjcInspectorGraph::UpdateLayout() {
 			Item.LineColor = Gold;
 			Item.Icon = Type.Icon;
 			Item.IconColor = Type.Color;
-			Item.Stripe = PjcGraphColor(TEXT("#17C3B2"));
+			Item.Stripe = Used;
 			Item.ToolTip = FString::Printf(TEXT("%d %s roots, drawn as one box\nClick to list them"), Node.Roots.Num(), *Type.Label);
 			continue;
 		}
@@ -275,7 +277,7 @@ void SPjcInspectorGraph::UpdateLayout() {
 			Item.Icon = Type.Icon;
 			Item.IconColor = Type.Color;
 			Item.bUsed = !bUnused;
-			Item.Stripe = PjcGraphColor(bUnused ? TEXT("#FE6D73") : TEXT("#17C3B2"));
+			Item.Stripe = bUnused ? Unused : Used;
 			Item.ToolTip = FString::Printf(
 				TEXT("%d %s assets %s, drawn as one box"),
 				Node.Roots.Num(),
@@ -316,7 +318,7 @@ void SPjcInspectorGraph::UpdateLayout() {
 		Item.Icon = Type.Icon;
 		Item.IconColor = Type.Color;
 		Item.bUsed = !bScanned || Usage->bUsed;
-		Item.Stripe = Item.bUsed ? (bEditorOnly ? Editor : PjcGraphColor(TEXT("#17C3B2"))) : PjcGraphColor(TEXT("#FE6D73"));
+		Item.Stripe = Item.bUsed ? (bEditorOnly ? Editor : Used) : Unused;
 		Item.ToolTip = Node.Package.ToString();
 		if (Usage) {
 			Item.ToolTip += TEXT("\n") + UPjcSubsystem::GetUsageReasonText(*Usage);
@@ -513,15 +515,22 @@ int32 SPjcInspectorGraph::OnPaint(
 	const FSlateFontInfo FontLine = FPjcStyles::GetFont("Regular", 8);
 	const FSlateFontInfo FontLabel = PjcWidgets::GetFontMono(7);
 
-	const FLinearColor Background = PjcGraphColor(TEXT("#18191C"));
-	const FLinearColor Line = PjcGraphColor(TEXT("#34383E"));
-	const FLinearColor Fill = PjcGraphColor(TEXT("#26292D"));
-	const FLinearColor FillHovered = PjcGraphColor(TEXT("#2D3136"));
-	const FLinearColor SelectedColor = PjcGraphColor(TEXT("#4D9BFF"));
-	const FLinearColor Foreground = PjcGraphColor(TEXT("#D6D9DD"));
-	const FLinearColor SourceFill = PjcGraphColor(TEXT("#2E2716"));
-	const FLinearColor SourceLine = PjcGraphColor(TEXT("#6B5626"));
-	const FLinearColor Gold = PjcGraphColor(TEXT("#FFCB77"));
+	const FLinearColor Background = PjcGraphColor("ProjectCleaner.Color.Recess");
+	const FLinearColor Line = PjcGraphColor("ProjectCleaner.Color.Line");
+	const FLinearColor Fill = PjcGraphColor("ProjectCleaner.Color.Panel");
+	const FLinearColor FillHovered = PjcGraphColor("ProjectCleaner.Color.Hover");
+	const FLinearColor SelectedColor = PjcGraphColor("ProjectCleaner.Color.Link");
+	const FLinearColor Foreground = PjcGraphColor("ProjectCleaner.Color.Text");
+	const FLinearColor Muted = PjcGraphColor("ProjectCleaner.Color.Muted");
+	const FLinearColor SourceFill = PjcGraphColor("ProjectCleaner.Color.ReviewQuiet");
+	const FLinearColor SourceLine = PjcGraphColor("ProjectCleaner.Color.ReviewFill");
+	const FLinearColor SourceText = PjcGraphColor("ProjectCleaner.Color.Review");
+	const FLinearColor Gold = PjcGraphColor("ProjectCleaner.Color.Yellow");
+	const FLinearColor UsedLink = PjcGraphColor("ProjectCleaner.Color.UsedFill");
+	const FLinearColor UnusedLink = PjcGraphColor("ProjectCleaner.Color.UnusedFill");
+	const FLinearColor EditorLink = PjcGraphColor("ProjectCleaner.Color.Editor");
+	const FLinearColor UsedBody = PjcGraphColor("ProjectCleaner.Color.UsedQuiet");
+	const FLinearColor UnusedBody = PjcGraphColor("ProjectCleaner.Color.DangerQuiet");
 
 	const int32 LayerEdges = LayerId + 1;
 	const int32 LayerFlow = LayerId + 2;
@@ -581,9 +590,8 @@ int32 SPjcInspectorGraph::OnPaint(
 	const auto Faded = [&Background, bDim](const FLinearColor& Color, const bool bLit) {
 		return bDim && !bLit ? FMath::Lerp(Background, Color, 0.28f) : Color;
 	};
-	const FLinearColor Amber = PjcGraphColor(TEXT("#D2A640"));
 	// circular links have a colour of their own: the root sources are gold already
-	const FLinearColor Circular = PjcGraphColor(TEXT("#FF8A3D"));
+	const FLinearColor Circular = PjcGraphColor("ProjectCleaner.Color.Circular");
 	// a lit link is a solid line with lighter dashes on it that travel along it; their place now, in graph units
 	constexpr float FlowOn = 8.0f;
 	constexpr float FlowOff = 14.0f;
@@ -654,22 +662,22 @@ int32 SPjcInspectorGraph::OnPaint(
 		const bool bUp = !bSource && NodeTo.Layer <= NodeFrom.Layer;
 
 		const bool bLit = bDim && (Edge.From == Lit || Edge.To == Lit);
-		FLinearColor Color = PjcGraphColor(TEXT("#2C9A8F"));
+		FLinearColor Color = UsedLink;
 		float Width = 2.2f;
 		float DashOn = 0.0f;
 		float DashOff = 0.0f;
 		if (bSource) {
-			Color = PjcGraphColor(TEXT("#8A7440"));
+			Color = SourceLine;
 			Width = 2.5f;
 		}
 		else if (Back || (bUp && Edge.bCircle)) {
 			Color = Circular;
 		}
 		else if (Edge.Kind == EPjcLinkKind::EditorOnly) {
-			Color = PjcGraphColor(TEXT("#7FB2FF"));
+			Color = EditorLink;
 		}
 		else if (Graph.bUnusedGroup) {
-			Color = PjcGraphColor(TEXT("#A8565A"));
+			Color = UnusedLink;
 			Width = 1.8f;
 		}
 		if (!bSource && Edge.Kind == EPjcLinkKind::Soft) {
@@ -759,7 +767,7 @@ int32 SPjcInspectorGraph::OnPaint(
 			// glyphs: they look the same with every font and engine
 			const FLinearColor MarkColor = Faded(Circular, bLit);
 			Box(LayerLabels, Middle - FVector2D {10.0f, 10.0f}, FVector2D {20.0f, 20.0f}, BrushDisc, MarkColor);
-			Box(LayerLabels + 1, Middle - FVector2D {8.5f, 8.5f}, FVector2D {17.0f, 17.0f}, BrushDisc, PjcGraphColor(TEXT("#17191C")));
+			Box(LayerLabels + 1, Middle - FVector2D {8.5f, 8.5f}, FVector2D {17.0f, 17.0f}, BrushDisc, Background);
 			Box(LayerRing, Middle - FVector2D {6.5f, 6.5f}, FVector2D {13.0f, 13.0f}, Back ? BrushPair : BrushLoop, MarkColor);
 		}
 
@@ -804,7 +812,7 @@ int32 SPjcInspectorGraph::OnPaint(
 		const bool bFocus = Index == Focus;
 		if (Index == Locked) {
 			// kept lit by a click
-			Ring(Position, BrushNode, Amber);
+			Ring(Position, BrushNode, Gold);
 		}
 		else if (Index == Selected) {
 			Ring(Position, BrushNode, SelectedColor);
@@ -816,14 +824,12 @@ int32 SPjcInspectorGraph::OnPaint(
 			// a second box behind it: a stack
 			const FVector2D Behind = Position + FVector2D {5.0f, -5.0f};
 			Box(LayerRing, Behind, Size, BrushNode, Faded(Line, bLit));
-			Box(
-				LayerRing + 1, Behind + FVector2D {1.0f, 1.0f}, Size - FVector2D {2.0f, 2.0f}, BrushNode, Faded(PjcGraphColor(TEXT("#202327")), bLit)
-			);
+			Box(LayerRing + 1, Behind + FVector2D {1.0f, 1.0f}, Size - FVector2D {2.0f, 2.0f}, BrushNode, Faded(Fill, bLit));
 		}
 
 		FLinearColor Body = Index == Hovered ? FillHovered : Fill;
 		if (bFocus) {
-			Body = Item.bUsed ? PjcGraphColor(TEXT("#20302F")) : PjcGraphColor(TEXT("#33232A"));
+			Body = Item.bUsed ? UsedBody : UnusedBody;
 		}
 		Box(LayerBody, Position, Size, BrushNode, Faded(bFocus ? Item.Stripe : Line, bLit));
 		Box(LayerBody + 1, Position, FVector2D {6.0f, NodeHeight}, BrushNode, Faded(Item.Stripe, bLit));
@@ -847,11 +853,7 @@ int32 SPjcInspectorGraph::OnPaint(
 		Text(LayerContent, Position + FVector2D {TextLeft, 24.0f}, NodeWidth - TextLeft - 8.0f, Item.Line, FontLine, Faded(Item.LineColor, bLit));
 		if (Node.Kind == EPjcInspectorNodeKind::Asset && Loaded.Contains(Node.Package) && Zoom >= PjcGraphTextZoom) {
 			// loaded by the Inspector to read where it holds its references
-			Box(LayerContent,
-				Position + FVector2D {NodeWidth - 12.0f, NodeHeight - 12.0f},
-				FVector2D {7.0f, 7.0f},
-				BrushDisc,
-				PjcGraphColor(TEXT("#E8D27A")));
+			Box(LayerContent, Position + FVector2D {NodeWidth - 12.0f, NodeHeight - 12.0f}, FVector2D {7.0f, 7.0f}, BrushDisc, Gold);
 		}
 		for (int32 Dot = 0; Dot < Item.Dots.Num(); ++Dot) {
 			Box(LayerContent,
@@ -865,7 +867,7 @@ int32 SPjcInspectorGraph::OnPaint(
 	// text above some rows of the unused group
 	for (const FPjcInspectorCaption& Caption : Graph.Captions) {
 		const FVector2D At {PjcGraphPadGroup, PjcGraphPadGroup + Caption.Layer * (NodeHeight + PjcGraphGapY) - 22.0f};
-		Text(LayerContent, At, 600.0f, Caption.Text, FontLine, Faded(PjcGraphColor(TEXT("#8A9099")), false));
+		Text(LayerContent, At, 600.0f, Caption.Text, FontLine, Faded(Muted, false));
 	}
 
 	// root paths not drawn
@@ -876,7 +878,7 @@ int32 SPjcInspectorGraph::OnPaint(
 		const FString More = FString::Printf(TEXT("+%s more roots"), *PjcFormat::Count(Graph.NumHidden));
 		const float Width = static_cast<float>(FontMeasure->Measure(More, FontLine).X);
 		const FVector2D MoreAt = MorePosition + FVector2D {(NodeWidth - Width) * 0.5f, 15.0f};
-		Text(LayerContent, MoreAt, Width + 1.0f, More, FontLine, PjcGraphColor(TEXT("#D9C9A3")));
+		Text(LayerContent, MoreAt, Width + 1.0f, More, FontLine, SourceText);
 	}
 
 	return LayerContent + 1;

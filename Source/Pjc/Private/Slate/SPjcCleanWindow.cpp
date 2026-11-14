@@ -36,10 +36,6 @@ namespace
 	// unity builds join files: names unique to this file
 	constexpr int32 PjcCleanTopRows = 5;
 
-	FLinearColor PjcCleanHex(const TCHAR* Hex) {
-		return FLinearColor {FColor::FromHex(Hex)};
-	}
-
 	// Version control of the project: provider name and what it means for deleted files, empty when there is none
 	bool PjcCleanVersionControl(FString& OutName, FString& OutDetail) {
 		ISourceControlModule& SourceControl = ISourceControlModule::Get();
@@ -174,7 +170,7 @@ TSharedRef<SWidget> SPjcCleanWindow::MakeNote(const FString& Text, const bool bW
 	// clang-format off
 	return SNew(SBorder)
 		.BorderImage(FCoreStyle::Get().GetBrush("WhiteBrush"))
-		.BorderBackgroundColor(PjcCleanHex(TEXT("#222427")))
+		.BorderBackgroundColor(PjcWidgets::GetColor("ProjectCleaner.Color.Panel"))
 		.Padding(0.0f)
 		[
 			SNew(SHorizontalBox)
@@ -204,7 +200,7 @@ TSharedRef<SWidget> SPjcCleanWindow::MakeCheck(const ECheck Kind, const FString&
 	// clang-format off
 	return SNew(SBorder)
 		.BorderImage(FCoreStyle::Get().GetBrush("WhiteBrush"))
-		.BorderBackgroundColor(PjcCleanHex(TEXT("#1B1D20")))
+		.BorderBackgroundColor(PjcWidgets::GetColor("ProjectCleaner.Color.Recess"))
 		.Padding(FMargin {10.0f, 5.0f})
 		[
 			SNew(SHorizontalBox)

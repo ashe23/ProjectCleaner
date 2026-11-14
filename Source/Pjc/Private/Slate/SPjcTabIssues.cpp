@@ -498,7 +498,7 @@ TSharedRef<SWidget> SPjcTabIssues::MakeCategories() {
 				SNew(SBorder)
 				.BorderImage(FCoreStyle::Get().GetBrush("WhiteBrush"))
 				.BorderBackgroundColor_Lambda([this, EntryCategory]() {
-					return Category == EntryCategory ? FLinearColor {FColor::FromHex(TEXT("#1D2A3A"))} : FLinearColor::Transparent;
+					return Category == EntryCategory ? PjcWidgets::GetColor("ProjectCleaner.Color.Marked") : FLinearColor::Transparent;
 				})
 				.Padding(FMargin {12.0f, 6.0f})
 				[

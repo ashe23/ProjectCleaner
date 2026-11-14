@@ -31,7 +31,7 @@ namespace PjcWidgets
 		// as the Content Browser shows the type: its name, color and icon
 		FAssetType Type;
 		Type.Label = FPaths::GetExtension(ClassName.ToString()).IsEmpty() ? ClassName.ToString() : FPaths::GetExtension(ClassName.ToString());
-		Type.Color = FLinearColor {FColor::FromHex(TEXT("#8A9099"))};
+		Type.Color = GetColor("ProjectCleaner.Color.Muted");
 		const UClass* AssetClass = Asset.GetClass();
 		if (AssetClass) {
 			IAssetTools& AssetTools = FModuleManager::LoadModuleChecked<FAssetToolsModule>(TEXT("AssetTools")).Get();
@@ -82,18 +82,21 @@ namespace PjcWidgets
 	}
 
 	FSetColors GetSetColors(const EPjcAssetSet Set) {
-		const auto Hex = [](const TCHAR* Value) {
-			return FLinearColor {FColor::FromHex(Value)};
+		// the set's palette color for bars and folder tints; size map boxes a shade darker, so white names read on them
+		const auto Make = [](const FName Fill) {
+			FSetColors Colors;
+			Colors.Bar = GetColor(Fill);
+			Colors.Box = Colors.Bar * FLinearColor {0.5f, 0.5f, 0.5f, 1.0f};
+			Colors.BoxText = GetColor("ProjectCleaner.Color.Strong");
+			Colors.Tint = Colors.Bar;
+			return Colors;
 		};
-		const FLinearColor UsedBar = GetColor("ProjectCleaner.Color.UsedFill");
-		const FLinearColor ReviewBar = GetColor("ProjectCleaner.Color.ReviewFill");
-		const FLinearColor UnusedBar = GetColor("ProjectCleaner.Color.UnusedFill");
 		switch (Set) {
-			case EPjcAssetSet::Excluded : return FSetColors {Hex(TEXT("#6B7480")), Hex(TEXT("#4F555D")), Hex(TEXT("#E6E8EA")), Hex(TEXT("#6B7480"))};
-			case EPjcAssetSet::Used :	  return FSetColors {UsedBar, Hex(TEXT("#2F6E4D")), Hex(TEXT("#DCF2E4")), Hex(TEXT("#3F9B68"))};
-			case EPjcAssetSet::Review :	  return FSetColors {ReviewBar, Hex(TEXT("#7A5F26")), Hex(TEXT("#FFF1D6")), Hex(TEXT("#8F6F2A"))};
+			case EPjcAssetSet::Excluded : return Make("ProjectCleaner.Color.ExcludedFill");
+			case EPjcAssetSet::Used :	  return Make("ProjectCleaner.Color.UsedFill");
+			case EPjcAssetSet::Review :	  return Make("ProjectCleaner.Color.ReviewFill");
 			case EPjcAssetSet::Unused :
-			default :					  return FSetColors {UnusedBar, Hex(TEXT("#7A3236")), Hex(TEXT("#FFE1E2")), Hex(TEXT("#8E3A3F"))};
+			default :					  return Make("ProjectCleaner.Color.UnusedFill");
 		}
 	}
 

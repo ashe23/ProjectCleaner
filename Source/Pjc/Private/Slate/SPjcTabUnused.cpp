@@ -102,7 +102,7 @@ namespace
 					// clang-format off
 					NameBox->AddSlot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
 					[
-						MakeTag(TEXT("all unused"), PjcWidgets::GetColor("ProjectCleaner.Color.Red"), FLinearColor {FColor::FromHex(TEXT("#1B0D0E"))})
+						MakeTag(TEXT("all unused"), PjcWidgets::GetColor("ProjectCleaner.Color.Red"), PjcWidgets::GetColor("ProjectCleaner.Color.Page"))
 					];
 					// clang-format on
 				}
@@ -110,7 +110,7 @@ namespace
 					// clang-format off
 					NameBox->AddSlot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
 					[
-						MakeTag(TEXT("EMPTY"), PjcWidgets::GetColor("ProjectCleaner.Color.Track"), FLinearColor {FColor::FromHex(TEXT("#8A9099"))})
+						MakeTag(TEXT("EMPTY"), PjcWidgets::GetColor("ProjectCleaner.Color.Track"), PjcWidgets::GetColor("ProjectCleaner.Color.Muted"))
 					];
 					// clang-format on
 				}
@@ -352,7 +352,7 @@ namespace
 					[
 						SNew(SBorder)
 						.BorderImage(FCoreStyle::Get().GetBrush("WhiteBrush"))
-						.BorderBackgroundColor(FLinearColor {FColor::FromHex(TEXT("#3A1F22"))})
+						.BorderBackgroundColor(PjcWidgets::GetColor("ProjectCleaner.Color.DangerQuiet"))
 						.Padding(FMargin {4.0f, 0.0f})
 						.ToolTipText(
 							FText::FromString(
@@ -361,9 +361,9 @@ namespace
 						)
 						[
 							SNew(STextBlock)
-							.Text(FText::FromString(TEXT("NOT DELETED")))
+							.Text(FText::FromString(TEXT("DELETE FAILED")))
 							.Font(PjcWidgets::GetFontMono(7))
-							.ColorAndOpacity(FLinearColor {FColor::FromHex(TEXT("#FFB3B6"))})
+							.ColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.DangerText"))
 						]
 					];
 					// clang-format on
@@ -374,7 +374,7 @@ namespace
 					[
 						SNew(SBorder)
 						.BorderImage(FCoreStyle::Get().GetBrush("WhiteBrush"))
-						.BorderBackgroundColor(FLinearColor {FColor::FromHex(TEXT("#2E2716"))})
+						.BorderBackgroundColor(PjcWidgets::GetColor("ProjectCleaner.Color.ReviewQuiet"))
 						.Padding(FMargin {4.0f, 0.0f})
 						.ToolTipText(FText::FromString(TEXT("In the folder of a Primary Asset Label whose cook rule does not package it: only references keep it")))
 						[
@@ -1387,7 +1387,7 @@ void SPjcTabUnused::RebuildChips() {
 					SNew(SHorizontalBox)
 					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 					[
-						SNew(STextBlock).Text(FText::FromString(TEXT("Delete failed"))).ColorAndOpacity(FLinearColor {FColor::FromHex(TEXT("#FFB3B6"))})
+						SNew(STextBlock).Text(FText::FromString(TEXT("Delete failed"))).ColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.DangerText"))
 					]
 					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
 					[
@@ -2082,7 +2082,7 @@ TSharedRef<SWidget> SPjcTabUnused::MakeMapLegend() const {
 			[
 				SNew(SBox).Visibility_Lambda([this]() { return bMapAll ? EVisibility::Visible : EVisibility::Collapsed; })
 				[
-					Entry(FLinearColor {FColor::FromHex(Set == EPjcAssetSet::Unused ? TEXT("#2A3B3A") : TEXT("#30343A"))}, TEXT("Other asset"))
+					Entry(PjcWidgets::GetColor(Set == EPjcAssetSet::Unused ? FName {"ProjectCleaner.Color.UsedQuiet"} : FName {"ProjectCleaner.Color.Hover"}), TEXT("Other asset"))
 				]
 			]
 			+ SHorizontalBox::Slot().AutoWidth()

@@ -96,16 +96,37 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create() {
 	Style->Set("ProjectCleaner.Color.Danger", Color(TEXT("#DA524E")));
 	Style->Set("ProjectCleaner.Color.DangerText", Color(TEXT("#FFB3B6")));
 	Style->Set("ProjectCleaner.Color.DangerIcon", ColorDangerIcon);
-	// asset status: used and shipped are one light green (user, 2026-11-14)
+	Style->Set("ProjectCleaner.Color.DangerQuiet", Color(TEXT("#4A2427")));
+	// asset status: a fill for bars and boxes, a light shade for text, a quiet one for backgrounds. Used and shipped are
+	// one light green (user, 2026-11-14)
 	Style->Set("ProjectCleaner.Color.UsedFill", ColorUsed);
+	Style->Set("ProjectCleaner.Color.UsedQuiet", Color(TEXT("#20302F")));
 	Style->Set("ProjectCleaner.Color.ShipFill", ColorUsed);
 	Style->Set("ProjectCleaner.Color.EditorFill", Color(TEXT("#3D6DB3")));
+	Style->Set("ProjectCleaner.Color.Editor", Color(TEXT("#7FB2FF")));
 	Style->Set("ProjectCleaner.Color.ReviewFill", Color(TEXT("#8F6F2A")));
 	Style->Set("ProjectCleaner.Color.Review", Color(TEXT("#E0B050")));
+	Style->Set("ProjectCleaner.Color.ReviewQuiet", Color(TEXT("#2E2716")));
 	Style->Set("ProjectCleaner.Color.UnusedFill", Color(TEXT("#C4484D")));
 	Style->Set("ProjectCleaner.Color.ExcludedFill", Color(TEXT("#6B7480")));
 	Style->Set("ProjectCleaner.Color.KeepFill", Color(TEXT("#56606B")));
 	Style->Set("ProjectCleaner.Color.FolderTint", ColorFolder);
+	// references in the Inspector: hard ones are Muted, editor-only ones Editor
+	Style->Set("ProjectCleaner.Color.SoftLink", Color(TEXT("#9B8CF0")));
+	Style->Set("ProjectCleaner.Color.Circular", Color(TEXT("#FF8A3D")));
+	// why used: reason chips and bars (none: Red, editor: Editor, excluded: Muted, folder labels: Yellow)
+	// clang-format off
+	Style->Set("ProjectCleaner.Color.Reason.Primary",		Color(TEXT("#4F9DF0")));
+	Style->Set("ProjectCleaner.Color.Reason.PrimaryClass",	Color(TEXT("#7A9FD0")));
+	Style->Set("ProjectCleaner.Color.Reason.Outside",		Color(TEXT("#9B8CF0")));
+	Style->Set("ProjectCleaner.Color.Reason.Source",		Color(TEXT("#E0A85A")));
+	Style->Set("ProjectCleaner.Color.Reason.ConfigFolder",	Color(TEXT("#C9A04A")));
+	Style->Set("ProjectCleaner.Color.Reason.Localized",		Color(TEXT("#5FC4A8")));
+	Style->Set("ProjectCleaner.Color.Reason.Cinematic",		Color(TEXT("#C08457")));
+	Style->Set("ProjectCleaner.Color.Reason.GameplayCue",	Color(TEXT("#D679C8")));
+	Style->Set("ProjectCleaner.Color.Reason.Splash",		Color(TEXT("#9FC3FF")));
+	Style->Set("ProjectCleaner.Color.Reason.Other",			Color(TEXT("#6FA8A2")));
+	// clang-format on
 
 	// icon set (proto/style, originals in Media/Icons): white 64 px images, the same in every engine. Widgets draw
 	// them in a color; tabs, menus and the toolbar, which the engine draws, get brushes with the color in them
@@ -206,7 +227,7 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create() {
 		.SetCheckedHoveredImage(Round(TEXT("#0E86FF")))
 		.SetCheckedPressedImage(Round(TEXT("#383838")))
 		.SetPadding(FMargin {16.0f, 2.0f})
-		.SetForegroundColor(FLinearColor {FColor::FromHex(TEXT("#C0C0C0"))}));
+		.SetForegroundColor(ColorText));
 	// checkboxes: a dark rounded box, blue with a white check when on, a dash when mixed (the engine's differ per version)
 	const auto Check = [&Icon](const TCHAR* Name) {
 		return Icon(Name, 16.0f, FLinearColor::White);
@@ -223,7 +244,7 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create() {
 		.SetUndeterminedHoveredImage(Check(TEXT("CheckMixedHover")))
 		.SetUndeterminedPressedImage(Check(TEXT("CheckMixedHover")))
 		.SetPadding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
-		.SetForegroundColor(FLinearColor {FColor::FromHex(TEXT("#C0C0C0"))}));
+		.SetForegroundColor(ColorText));
 	// clang-format on
 
 	// search boxes: rounded, the lens of the icon set on the left, the same in every engine
@@ -233,7 +254,7 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create() {
 	SearchText.SetBackgroundImageHovered(Round(TEXT("#0F0F0F")));
 	SearchText.SetBackgroundImageFocused(Round(TEXT("#0F0F0F")));
 	SearchText.SetBackgroundImageReadOnly(Round(TEXT("#1A1A1A")));
-	SearchText.SetForegroundColor(FLinearColor {FColor::FromHex(TEXT("#C0C0C0"))});
+	SearchText.SetForegroundColor(ColorText);
 	SearchBox.SetTextBoxStyle(SearchText);
 	SearchBox.SetGlassImage(Icon(TEXT("Scan"), 14.0f, ColorMuted));
 	SearchBox.SetClearImage(Icon(TEXT("Close"), 12.0f, ColorMuted));
@@ -249,7 +270,7 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create() {
 	const auto Hex = [](const TCHAR* Value) {
 		return FSlateColorBrush {FLinearColor {FColor::FromHex(Value)}};
 	};
-	const FLinearColor Foreground {FColor::FromHex(TEXT("#C0C0C0"))};
+	const FLinearColor Foreground = ColorText;
 	Style->Set("ProjectCleaner.Page", new FSlateColorBrush {FLinearColor {FColor::FromHex(TEXT("#151515"))}});
 	Style->Set("ProjectCleaner.Panel", new FSlateColorBrush {FLinearColor {FColor::FromHex(TEXT("#242424"))}});
 	Style->Set("ProjectCleaner.PanelDark", new FSlateColorBrush {FLinearColor {FColor::FromHex(TEXT("#1A1A1A"))}});

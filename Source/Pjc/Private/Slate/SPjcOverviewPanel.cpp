@@ -31,7 +31,7 @@ namespace
 	const TCHAR* PjcOverviewReasonCooked = TEXT("Packaged by last cook");
 
 	FLinearColor PjcOverviewMarked() {
-		return FLinearColor {FColor::FromHex(TEXT("#1D2A3A"))};
+		return PjcWidgets::GetColor("ProjectCleaner.Color.Marked");
 	}
 }	// namespace
 
@@ -743,67 +743,67 @@ FString SPjcOverviewPanel::FormatAgo(const FDateTime& UtcTime) {
 }
 
 void SPjcOverviewPanel::GetReasonInfo(const EPjcUsageReason Reason, FString& OutName, FString& OutToolTip, FLinearColor& OutColor) {
-	const TCHAR* Color = TEXT("#6FA8A2");
+	FName Color {"ProjectCleaner.Color.Reason.Other"};
 	switch (Reason) {
 		case EPjcUsageReason::None :
 			OutName = TEXT("Nothing uses it");
 			OutToolTip = TEXT("Nothing uses them. Clean project deletes them.");
-			Color = TEXT("#FE6D73");
+			Color = "ProjectCleaner.Color.Red";
 			break;
 		case EPjcUsageReason::Primary :
 			OutName = TEXT("Primary assets");
 			OutToolTip = TEXT("Maps, and the assets the Asset Manager registers or Primary Asset Labels list.");
-			Color = TEXT("#4F9DF0");
+			Color = "ProjectCleaner.Color.Reason.Primary";
 			break;
 		case EPjcUsageReason::PrimaryClass :
 			OutName = TEXT("Unregistered primary classes");
 			OutToolTip = TEXT("Assets of a primary asset class the Asset Manager did not register.");
-			Color = TEXT("#7A9FD0");
+			Color = "ProjectCleaner.Color.Reason.PrimaryClass";
 			break;
 		case EPjcUsageReason::EngineReferenced :
 			OutName = TEXT("Outside scanned content");
 			OutToolTip = TEXT("Referenced by engine content, plugins left out of the scan, or level actors saved in their own files.");
-			Color = TEXT("#9B8CF0");
+			Color = "ProjectCleaner.Color.Reason.Outside";
 			break;
 		case EPjcUsageReason::Indirect :
 			OutName = TEXT("Source & config");
 			OutToolTip = TEXT("C++, C#, Python and .ini files name them by path.");
-			Color = TEXT("#E0A85A");
+			Color = "ProjectCleaner.Color.Reason.Source";
 			break;
 		case EPjcUsageReason::ConfigFolder :
 			OutName = TEXT("Config folders");
 			OutToolTip = TEXT("Inside folders set to always cook or scanned for Data Registries.");
-			Color = TEXT("#C9A04A");
+			Color = "ProjectCleaner.Color.Reason.ConfigFolder";
 			break;
 		case EPjcUsageReason::Localized :
 			OutName = TEXT("Localized assets");
 			OutToolTip = TEXT("Language copies of used assets in L10N folders.");
-			Color = TEXT("#5FC4A8");
+			Color = "ProjectCleaner.Color.Reason.Localized";
 			break;
 		case EPjcUsageReason::Editor :
 			OutName = PjcOverviewReasonEditor;
 			OutToolTip = TEXT("Editor utilities, validators, scriptable tools and editor tool data.");
-			Color = TEXT("#7FB2FF");
+			Color = "ProjectCleaner.Color.Editor";
 			break;
 		case EPjcUsageReason::Excluded :
 			OutName = TEXT("Excluded");
 			OutToolTip = TEXT("Excluded in settings and always used classes, and what they use.");
-			Color = TEXT("#8A9099");
+			Color = "ProjectCleaner.Color.Muted";
 			break;
 		case EPjcUsageReason::Cinematic :
 			OutName = TEXT("Cinematics");
 			OutToolTip = TEXT("Level Sequences, Template Sequences and Movie Render configs, and what they use.");
-			Color = TEXT("#C08457");
+			Color = "ProjectCleaner.Color.Reason.Cinematic";
 			break;
 		case EPjcUsageReason::GameplayCue :
 			OutName = TEXT("GameplayCue notifies");
 			OutToolTip = TEXT("Loaded by their tag by the GameplayCue manager.");
-			Color = TEXT("#D679C8");
+			Color = "ProjectCleaner.Color.Reason.GameplayCue";
 			break;
 		case EPjcUsageReason::FolderLabel :
 			OutName = TEXT("Folder labels");
 			OutToolTip = TEXT("In the folder of a Primary Asset Label with Label Assets In My Directory.");
-			Color = TEXT("#FFCB77");
+			Color = "ProjectCleaner.Color.Yellow";
 			break;
 		case EPjcUsageReason::Megascans :
 			OutName = TEXT("Megascans presets");
@@ -812,12 +812,12 @@ void SPjcOverviewPanel::GetReasonInfo(const EPjcUsageReason Reason, FString& Out
 		case EPjcUsageReason::Splash :
 			OutName = TEXT("Splash content");
 			OutToolTip = TEXT("Texture copies of the splash images in Content/Splash: the editor imports them again when deleted.");
-			Color = TEXT("#9FC3FF");
+			Color = "ProjectCleaner.Color.Reason.Splash";
 			break;
 		default :
 			OutName = TEXT("Other");
 			OutToolTip = FString {};
 			break;
 	}
-	OutColor = FLinearColor {FColor::FromHex(Color)};
+	OutColor = PjcWidgets::GetColor(Color);
 }
