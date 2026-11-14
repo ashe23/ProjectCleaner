@@ -23,6 +23,8 @@
 #include "Input/DragAndDrop.h"
 #include "Misc/ConfigCacheIni.h"
 #include "Misc/Paths.h"
+#include "HAL/PlatformProcess.h"
+#include "SourceCodeNavigation.h"
 #include "Styling/CoreStyle.h"
 #include "Widgets/Images/SImage.h"
 #include "Widgets/Input/SButton.h"
@@ -246,6 +248,19 @@ namespace
 	const FName PjcUnusedColClass {TEXT("Class")};
 	const FName PjcUnusedColAssetSize {TEXT("AssetSize")};
 	const FName PjcUnusedColPath {TEXT("Path")};
+	// Source & config rows: where the asset is named
+	const FName PjcUnusedColNamedIn {TEXT("NamedIn")};
+	const FName PjcUnusedColLine {TEXT("Line")};
+	const TCHAR* PjcUnusedReasonSource = TEXT("Source & config");
+
+	// Opens a file of the project at a line: in the code editor, or the program the system opens it with
+	void PjcUnusedOpenFile(const FString& File, const int32 Line) {
+		const FString Path = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() / File);
+		if (!FPaths::FileExists(Path)) return;
+		if (FSourceCodeNavigation::OpenSourceFile(Path, FMath::Max(Line, 1), 0)) return;
+
+		FPlatformProcess::LaunchFileInDefaultExternalApplication(*Path);
+	}
 
 	// A column header being dragged to another place
 	class FPjcColumnDrag final : public FDragDropOperation
@@ -465,6 +480,46 @@ namespace
 				return SNew(SBox).VAlign(VAlign_Center)
 					[
 						SNew(STextBlock).Text(FText::FromString(Row->Folder.IsEmpty() ? TEXT("\u00B7") : Row->Folder)).ColorAndOpacity(Muted)
+					];
+				// clang-format on
+			}
+
+			if (Column == PjcUnusedColNamedIn) {
+				const FString File = Row->RefFile;
+				const int32 Line = Row->RefLine;
+				const bool bFile = Line > 0;
+				const FString Tip = bFile ? FString::Printf(TEXT("%s, line %d\nClick: open it at the line"), *File, Line) : File;
+				// clang-format off
+				return SNew(SBox).VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 8.0f, 0.0f}).Clipping(EWidgetClipping::ClipToBounds)
+					[
+						SNew(SButton)
+						.ButtonStyle(&PjcShim::GetStyle().GetWidgetStyle<FButtonStyle>(TEXT("NoBorder")))
+#if ENGINE_MAJOR_VERSION < 5
+						.ForegroundColor(FSlateColor::UseForeground())
+#endif
+						.ContentPadding(FMargin {0.0f})
+						.IsEnabled(bFile)
+						.ToolTipText(FText::FromString(Tip))
+						.Cursor(bFile ? EMouseCursor::Hand : EMouseCursor::Default)
+						.OnClicked_Lambda([File, Line]() {
+							PjcUnusedOpenFile(File, Line);
+							return FReply::Handled();
+						})
+						[
+							SNew(STextBlock)
+							.Text(FText::FromString(File))
+							.HighlightText(HighlightText)
+							.ColorAndOpacity(bFile ? FSlateColor {PjcWidgets::GetColor("ProjectCleaner.Color.Link")} : Muted)
+						]
+					];
+				// clang-format on
+			}
+
+			if (Column == PjcUnusedColLine) {
+				// clang-format off
+				return SNew(SBox).HAlign(HAlign_Right).VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 8.0f, 0.0f})
+					[
+						SNew(STextBlock).Text(FText::FromString(Row->RefLine > 0 ? FString::FromInt(Row->RefLine) : TEXT("\u2014"))).Font(PjcWidgets::GetFontMono(9)).ColorAndOpacity(Muted)
 					];
 				// clang-format on
 			}
@@ -1372,14 +1427,46 @@ void SPjcTabUnused::ApplyAssetFilter() {
 		Selected.Add(Row->Package);
 	}
 
+	// only Source & config picked: a row for every place a file names the asset (user, 2026-11-14, as the 3.0 Indirect tab)
+	const bool bSource = Set == EPjcAssetSet::Used && ReasonFilters.Num() == 1 && ReasonFilters.Contains(PjcUnusedReasonSource);
+	if (bSource != bSourceRows) {
+		bSourceRows = bSource;
+		RebuildHeader();
+	}
+	const FPjcScanResult& Result = UPjcSubsystem::GetScanResult();
 	ListRows.Reset();
+	int32 NumAssets = 0;
 	for (const auto& Row : FolderRows) {
 		if (!ClassBar->IsShown(Row->ClassName)) continue;
 		if (ReasonFilters.Num() > 0 && !ReasonFilters.Contains(Row->ReasonKey)) continue;
 		if (bHeldOnly && Row->Holder.IsEmpty()) continue;
-		if (!AssetSearch.IsEmpty() && !Row->Name.Contains(AssetSearch) && !Row->ClassLabel.Contains(AssetSearch)) continue;
 
-		ListRows.Add(Row);
+		const TArray<FPjcSourceRef>* Refs = bSource ? Result.SourceRefs.Find(Row->Package) : nullptr;
+		const bool bFileMatch = Refs && Refs->ContainsByPredicate([this](const FPjcSourceRef& Ref) {
+			return Ref.File.Contains(AssetSearch);
+		});
+		if (!AssetSearch.IsEmpty() && !Row->Name.Contains(AssetSearch) && !Row->ClassLabel.Contains(AssetSearch) && !bFileMatch) continue;
+
+		++NumAssets;
+		if (!bSource) {
+			ListRows.Add(Row);
+			continue;
+		}
+		if (!Refs || Refs->Num() == 0) {
+			// named by a folder the config always cooks, or no line known
+			const FPjcAssetUsage* Usage = Result.Usage.Find(Row->Package);
+			const FAssetRowPtr Place = MakeShared<FPjcUnusedAssetRow>(*Row);
+			Place->RefFile = Usage && !Usage->Detail.IsEmpty() ? UPjcSubsystem::GetUsageReasonText(*Usage) : Row->Reason;
+			Place->RefLine = 0;
+			ListRows.Add(Place);
+			continue;
+		}
+		for (const auto& Ref : *Refs) {
+			const FAssetRowPtr Place = MakeShared<FPjcUnusedAssetRow>(*Row);
+			Place->RefFile = Ref.File;
+			Place->RefLine = Ref.Line;
+			ListRows.Add(Place);
+		}
 	}
 
 	// what the line above the list says about it
@@ -1387,9 +1474,12 @@ void SPjcTabUnused::ApplyAssetFilter() {
 	for (const auto& Row : ListRows) {
 		ListSize += Row->Size;
 	}
-	const FString Shown = PjcFormat::Count(ListRows.Num());
-	const FString Count = ListRows.Num() == FolderRows.Num() ? Shown : Shown + TEXT(" of ") + PjcFormat::Count(FolderRows.Num());
+	const FString Shown = PjcFormat::Count(NumAssets);
+	const FString Count = NumAssets == FolderRows.Num() ? Shown : Shown + TEXT(" of ") + PjcFormat::Count(FolderRows.Num());
 	ListSummary = FString::Printf(TEXT("\u00B7 %s assets \u00B7 %s"), *Count, *PjcFormat::Size(ListSize));
+	if (bSource) {
+		ListSummary = FString::Printf(TEXT("\u00B7 %s assets \u00B7 %s places"), *Count, *PjcFormat::Count(ListRows.Num()));
+	}
 
 	const bool bAscending = AssetSortMode == EColumnSortMode::Ascending;
 	const FName Column = AssetSortColumn;
@@ -1406,6 +1496,13 @@ void SPjcTabUnused::ApplyAssetFilter() {
 		}
 		else if (Column == PjcUnusedColPath) {
 			Compare = A->Folder.Compare(B->Folder, ESearchCase::IgnoreCase);
+		}
+		else if (Column == PjcUnusedColNamedIn) {
+			Compare = A->RefFile.Compare(B->RefFile, ESearchCase::IgnoreCase);
+			Compare = Compare != 0 ? Compare : (A->RefLine < B->RefLine ? -1 : (A->RefLine > B->RefLine ? 1 : 0));
+		}
+		else if (Column == PjcUnusedColLine) {
+			Compare = A->RefLine < B->RefLine ? -1 : (A->RefLine > B->RefLine ? 1 : 0);
 		}
 		else {
 			Compare = A->Size < B->Size ? -1 : (A->Size > B->Size ? 1 : 0);
@@ -1630,6 +1727,52 @@ TArray<FName> SPjcTabUnused::GetDefaultColumns() {
 
 void SPjcTabUnused::RebuildHeader() {
 	AssetHeader->ClearColumns();
+	if (bSourceRows) {
+		// one row per place: name, the file and the line, class, size
+		struct FSourceColumn
+		{
+			FName Id;
+			const TCHAR* Label;
+			const TCHAR* ToolTip;
+			float Width;
+			float Fill;
+			bool bRight;
+		};
+		const FSourceColumn Columns[] = {
+		  {		PjcUnusedColName,	  TEXT("Name"),														TEXT(""),	0.0f, 1.0f, false},
+		  {	 PjcUnusedColNamedIn, TEXT("Named in"), TEXT("The file that names it: click to open it at the line"),	0.0f, 0.9f, false},
+		  {		PjcUnusedColLine,	  TEXT("Line"),														TEXT(""),  60.0f, 0.0f,	 true},
+		  {	   PjcUnusedColClass,	 TEXT("Class"),														TEXT(""), 150.0f, 0.0f, false},
+		  {PjcUnusedColAssetSize,	  TEXT("Size"),														TEXT(""),  84.0f, 0.0f,	 true},
+		};
+		for (const auto& Each : Columns) {
+			const FName Column = Each.Id;
+			// clang-format off
+			SHeaderRow::FColumn::FArguments Args = SHeaderRow::Column(Column)
+				.DefaultTooltip(FText::FromString(Each.ToolTip))
+				.SortMode(this, &SPjcTabUnused::GetAssetSortMode, Column)
+				.OnSort(this, &SPjcTabUnused::OnAssetSort)
+				.HAlignHeader(Each.bRight ? HAlign_Right : HAlign_Fill)
+				[
+					SNew(SBox).HAlign(Each.bRight ? HAlign_Right : HAlign_Left)
+					[
+						SNew(STextBlock).Text(FText::FromString(Each.Label))
+					]
+				];
+			// clang-format on
+			if (Each.Width > 0.0f) {
+				Args.FixedWidth(Each.Width);
+			}
+			else {
+				Args.FillWidth(Each.Fill);
+			}
+			AssetHeader->AddColumn(Args);
+		}
+		if (ListView.IsValid()) {
+			ListView->RebuildList();
+		}
+		return;
+	}
 	for (const FName Column : ColumnOrder) {
 		FString Label = TEXT("Name");
 		FString ToolTip;
@@ -1783,7 +1926,7 @@ TArray<FName> SPjcTabUnused::GetSelectedPackages() const {
 	TArray<FName> Packages;
 	for (const auto& Row : ListRows) {
 		if (ListView->IsItemSelected(Row)) {
-			Packages.Add(Row->Package);
+			Packages.AddUnique(Row->Package);
 		}
 	}
 	return Packages;

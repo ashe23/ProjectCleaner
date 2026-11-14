@@ -67,6 +67,13 @@ struct FPjcExclusion
 	bool bUsedAnyway = false;
 };
 
+// A place a C++, Python or config file names an asset (Source & config): the file, relative to the project, and its line
+struct FPjcSourceRef
+{
+	FString File;
+	int32 Line = 0;
+};
+
 // Unused assets compared with the last cook of every platform in Saved/Cooked
 struct FPjcCookCheck
 {
@@ -159,6 +166,9 @@ struct FPjcScanResult
 
 	// The scan against the last cooks
 	FPjcCookCheck CookCheck;
+
+	// Every place C++, Python or config files name a scanned asset, by package (the Source & config list of Assets)
+	TMap<FName, TArray<FPjcSourceRef>> SourceRefs;
 
 	// Assets an exclusion rule matches, whatever else keeps them
 	TMap<FName, FPjcExclusion> Excluded;

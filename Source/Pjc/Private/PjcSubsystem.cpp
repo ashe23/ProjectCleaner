@@ -443,6 +443,21 @@ bool UPjcSubsystem::Scan(const bool bShowSlowTask, FPjcScanProgress* Progress) {
 	GetAssetsUsage(Result.Usage, bShowSlowTask);
 	if (IsCanceled()) return false;
 
+	// every place source and config files name an asset (the usage keeps the first), from the files the usage read
+	{
+		TArray<FAssetData> AssetsIndirect;
+		TArray<FPjcAssetIndirectInfo> AssetsIndirectInfos;
+		GetAssetsIndirect(AssetsIndirect, AssetsIndirectInfos, false);
+		const FString ProjectDir = PathNormalize(FPaths::ConvertRelativePathToFull(FPaths::ProjectDir())) + TEXT("/");
+		for (const auto& Info : AssetsIndirectInfos) {
+			FString File = PathNormalize(Info.FilePath);
+			FPaths::MakePathRelativeTo(File, *ProjectDir);
+			FPjcSourceRef& Ref = Result.SourceRefs.FindOrAdd(Info.Asset.PackageName).AddDefaulted_GetRef();
+			Ref.File = File;
+			Ref.Line = Info.FileNum;
+		}
+	}
+
 	GetAssetsUsed(Result.Used, bShowSlowTask);
 	GetAssetsUnused(Result.Unused, bShowSlowTask);
 	GetAssetsFolderLabelOnly(Result.FolderLabelOnly, bShowSlowTask);

@@ -43,6 +43,9 @@ struct FPjcUnusedAssetRow
 	FString ReasonTip;
 	FString ReasonKey;
 	FLinearColor ReasonColor = FLinearColor::Gray;
+	// Source & config rows: one place the asset is named, the file relative to the project and its line (0: none)
+	FString RefFile;
+	int32 RefLine = 0;
 	// Reason shown as a warning (excluded, unused without its rule)
 	bool bReasonWarn = false;
 };
@@ -208,6 +211,8 @@ class SPjcTabUnused final : public SCompoundWidget
 	TSharedPtr<SHorizontalBox> Breadcrumb;
 	// Reason keys of the picked filter pills, none for every reason; several can be picked (user, 2026-11-14)
 	TSet<FString> ReasonFilters;
+	// Only Source & config picked: a row for every place a file names the asset, with the file and the line
+	bool bSourceRows = false;
 	// Only assets the last delete could not remove
 	bool bHeldOnly = false;
 	bool bSubfolders = true;

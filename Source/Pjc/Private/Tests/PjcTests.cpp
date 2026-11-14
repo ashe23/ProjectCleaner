@@ -662,6 +662,15 @@ bool FPjcTestScanResult::RunTest(const FString& Parameters) {
 	const FPjcScanResult& Result = UPjcSubsystem::GetScanResult();
 	TestTrue(TEXT("result is valid"), Result.IsValid());
 
+	// every place a file names an asset, for the Source & config list of Assets: the fixture config names C_Indirect on line 2
+	const TArray<FPjcSourceRef>* SourceRefs = Result.SourceRefs.Find(PackageOf(Fixture, TEXT("C_Indirect")));
+	if (TestNotNull(TEXT("source places of C_Indirect"), SourceRefs)) {
+		const bool bConfigLine = SourceRefs->ContainsByPredicate([](const FPjcSourceRef& Ref) {
+			return Ref.File.EndsWith(TEXT("PjcTests.ini")) && Ref.Line == 2 && FPaths::IsRelative(Ref.File);
+		});
+		TestTrue(TEXT("C_Indirect named in PjcTests.ini on line 2, relative to the project"), bConfigLine);
+	}
+
 	// same answers as the separate queries
 	TArray<FAssetData> AssetsAll;
 	TArray<FAssetData> AssetsUsed;
