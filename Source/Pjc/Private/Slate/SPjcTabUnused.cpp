@@ -1384,7 +1384,7 @@ TSharedRef<SWidget> SPjcTabUnused::MakeAssetPane() {
 								+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {10.0f, 2.0f, 10.0f, 5.0f})
 								[
 									SNew(STextBlock)
-									.Text_Lambda([this]() { return FText::FromString(Set == EPjcAssetSet::Used ? TEXT("REASON") : TEXT("FILTERS")); })
+									.Text_Lambda([this]() { return FText::FromString(Set == EPjcAssetSet::Used ? TEXT("USAGE FILTERS") : TEXT("STATUS FILTERS")); })
 									.ToolTipText_Lambda([this]() {
 										const TCHAR* Used = TEXT("Why the assets are used, as the Reason column says. Several can be picked.");
 										return FText::FromString(Set == EPjcAssetSet::Used ? Used : TEXT("Assets the last delete could not remove"));
@@ -1403,6 +1403,15 @@ TSharedRef<SWidget> SPjcTabUnused::MakeAssetPane() {
 										SNew(SImage).Image(FCoreStyle::Get().GetBrush("WhiteBrush")).ColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.Line"))
 									]
 								]
+							]
+							// the class filters, named as such (user, 2026-11-14)
+							+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {10.0f, 2.0f, 10.0f, 5.0f})
+							[
+								SNew(STextBlock)
+								.Text(FText::FromString(TEXT("ASSET FILTERS")))
+								.ToolTipText(FText::FromString(TEXT("Filter by asset class: a class in its color is listed")))
+								.Font(FPjcStyles::GetFont("Bold", 8))
+								.ColorAndOpacity(FSlateColor::UseSubduedForeground())
 							]
 							+ SVerticalBox::Slot().FillHeight(1.0f)
 							[
