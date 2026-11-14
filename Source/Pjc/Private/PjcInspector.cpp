@@ -17,15 +17,11 @@ namespace
 	}
 
 	// The map an actor or object file belongs to: '/Game/__ExternalActors__/Maps/Main/A/BC/Hash' is of '/Game/Maps/Main'
-	FName PjcInspectorFindOwner(const FName External) {
-		return UPjcSubsystem::GetExternalOwner(External);
-	}
-
 	FName PjcInspectorOwnerOf(const FName External, FPjcInspectorCache* Cache) {
-		if (!Cache) return PjcInspectorFindOwner(External);
+		if (!Cache) return UPjcSubsystem::GetExternalOwner(External);
 		if (const FName* Known = Cache->Owners.Find(External)) return *Known;
 
-		const FName Owner = PjcInspectorFindOwner(External);
+		const FName Owner = UPjcSubsystem::GetExternalOwner(External);
 		Cache->Owners.Add(External, Owner);
 		return Owner;
 	}
@@ -33,165 +29,473 @@ namespace
 	// from this many files on a list shows that it works: a map can have thousands
 	constexpr int32 PjcInspectorSlowAt = 64;
 
-	void PjcInspectorNames(const FName Package, const bool bUsedBy, TArray<FName>& Out, FPjcInspectorCache* Cache) {
-		TArray<FPjcInspectorLink> Links;
-		int32 Through = 0;
-		FPjcInspectorGraph::GetLinks(Package, bUsedBy, Links, Through, Cache);
-		for (const FPjcInspectorLink& Link : Links) {
-			Out.Add(Link.Package);
+	// Order of the kinds of root when a route is picked: what the game needs first, what only the editor or the last
+	// cook keeps last
+	int32 PjcInspectorRootRank(const EPjcUsageReason Reason) {
+		switch (Reason) {
+			case EPjcUsageReason::Primary :
+			case EPjcUsageReason::PrimaryClass :		return 0;
+			case EPjcUsageReason::GameplayCue :			return 1;
+			case EPjcUsageReason::Cinematic :			return 2;
+			case EPjcUsageReason::EngineReferenced :	return 4;
+			case EPjcUsageReason::Editor :
+			case EPjcUsageReason::Splash :				return 5;
+			case EPjcUsageReason::CookPackaged :
+			case EPjcUsageReason::GameplayCueNotFired : return 6;
+			default :									return 3;
 		}
 	}
 
-	// Root path: root first, the focus last
-	struct FPjcRootPath
-	{
-		FName Root;
-		TArray<FName> Path;
-	};
-
-	bool PjcInspectorIsRoot(const FPjcScanResult& Result, const FName Package) {
-		const FPjcAssetUsage* Usage = Result.Usage.Find(Package);
-		return Usage && Usage->bUsed && Usage->Parent.IsNone();
-	}
-
-	// Every root that keeps the package used, with the shortest path from it, breadth first over used referencers
-	void PjcInspectorRootPaths(const FPjcScanResult& Result, const FName Focus, TArray<FPjcRootPath>& OutPaths, FPjcInspectorCache* Cache) {
-		TMap<FName, FName> Next;
-		Next.Add(Focus, NAME_None);
-		TArray<FName> Queue {Focus};
-		TArray<FName> Roots;
-		TArray<FName> Referencers;
-		for (int32 Head = 0; Head < Queue.Num(); ++Head) {
-			const FName Current = Queue[Head];
-			if (PjcInspectorIsRoot(Result, Current)) {
-				Roots.Add(Current);
-			}
-
-			Referencers.Reset();
-			PjcInspectorNames(Current, true, Referencers, Cache);
-			Referencers.Sort(FNameLexicalLess {});
-			for (const FName Referencer : Referencers) {
-				const FPjcAssetUsage* Usage = Result.Usage.Find(Referencer);
-				if (!Usage || !Usage->bUsed || Next.Contains(Referencer)) continue;
-
-				Next.Add(Referencer, Current);
-				Queue.Add(Referencer);
-			}
-		}
-
-		for (const FName Root : Roots) {
-			FPjcRootPath& RootPath = OutPaths.AddDefaulted_GetRef();
-			RootPath.Root = Root;
-			for (FName Step = Root; !Step.IsNone(); Step = Next.FindRef(Step)) {
-				RootPath.Path.Add(Step);
-			}
-		}
-
-		// used without a referencer chain (localized copies, labels): the chain the scan recorded
-		if (OutPaths.Num() == 0 && Result.IsUsed(Focus)) {
-			TArray<FName> Chain {Focus};
-			const FPjcAssetUsage* Usage = Result.Usage.Find(Focus);
-			for (int32 Steps = 0; Usage && !Usage->Parent.IsNone() && Steps < 256; ++Steps) {
-				Chain.Insert(Usage->Parent, 0);
-				Usage = Result.Usage.Find(Usage->Parent);
-			}
-			FPjcRootPath& RootPath = OutPaths.AddDefaulted_GetRef();
-			RootPath.Root = Chain[0];
-			RootPath.Path = MoveTemp(Chain);
-		}
-	}
-
-	FName PjcInspectorClassOf(const FName Package) {
-		TArray<FAssetData> Assets;
-		UPjcSubsystem::GetModuleAssetRegistry().Get().GetAssetsByPackageName(Package, Assets);
-		return Assets.Num() > 0 ? PjcShim::GetAssetClassName(Assets[0]) : NAME_None;
+	int32 PjcInspectorKindRank(const FPjcModelLink& Link) {
+		if (Link.Via != EPjcUsageReason::None) return 0;
+		return Link.Kind == EPjcLinkKind::Hard ? 0 : Link.Kind == EPjcLinkKind::Soft ? 1 : 2;
 	}
 }	// namespace
 
-void FPjcInspectorGraph::StackPaths(
-	TArray<TArray<FName>>& Paths,
-	const TArray<bool>& bStack,
-	TFunctionRef<FName(FName)> ClassOf,
-	TMap<FName, TArray<FName>>& OutStacks
-) {
-	// what a path drawn step by step goes through stays a box of its own
-	TSet<FName> Single;
-	int32 Longest = 0;
-	for (int32 Index = 0; Index < Paths.Num(); ++Index) {
-		if (bStack.IsValidIndex(Index) && bStack[Index]) {
-			Longest = FMath::Max(Longest, Paths[Index].Num());
-			continue;
-		}
-		Single.Append(Paths[Index]);
+void FPjcInspectorModel::Build(const FPjcScanResult& Result, FPjcInspectorCache* Cache) {
+	Time = Result.Time;
+	Packages.Reset();
+	Assets.Reset();
+	Uses.Reset();
+	UsedBy.Reset();
+	Sizes.Reset();
+	bScanned.Reset();
+	bUsed.Reset();
+	bRoot.Reset();
+	Reasons.Reset();
+	IndexOf.Reset();
+	DominatorCache.Reset();
+	FPjcInspectorCache OwnCache;
+	if (!Cache) Cache = &OwnCache;
+
+	TMap<FName, const FAssetData*> Known;
+	for (const FAssetData& Asset : Result.Assets) {
+		Known.Add(Asset.PackageName, &Asset);
 	}
-
-	// from the asset in focus outwards: the next asset of a step is then already the name that is drawn
-	for (int32 Back = 1; Back < Longest - 1; ++Back) {
-		TMap<TPair<FName, FName>, TArray<FName>> Same;
-		TSet<FName> Seen;
-		for (int32 Index = 0; Index < Paths.Num(); ++Index) {
-			if (!bStack.IsValidIndex(Index) || !bStack[Index]) continue;
-
-			const TArray<FName>& Path = Paths[Index];
-			const int32 Step = Path.Num() - 1 - Back;
-			if (Step < 1 || Single.Contains(Path[Step]) || Seen.Contains(Path[Step])) continue;
-
-			Seen.Add(Path[Step]);
-			const FName Class = ClassOf(Path[Step]);
-			if (!Class.IsNone()) Same.FindOrAdd(TPair<FName, FName> {Class, Path[Step + 1]}).Add(Path[Step]);
-		}
-
-		TMap<FName, FName> Drawn;
-		for (auto& Pair : Same) {
-			if (Pair.Value.Num() < GroupAt) continue;
-
-			Pair.Value.Sort([](const FName A, const FName B) {
-				return FPackageName::GetShortName(A) < FPackageName::GetShortName(B);
-			});
-			const FName Name {*FString::Printf(TEXT("PjcStack_%d"), OutStacks.Num())};
-			for (const FName Member : Pair.Value) {
-				Drawn.Add(Member, Name);
-			}
-			OutStacks.Add(Name, MoveTemp(Pair.Value));
-		}
-		if (Drawn.Num() == 0) continue;
-
-		for (int32 Index = 0; Index < Paths.Num(); ++Index) {
-			if (!bStack.IsValidIndex(Index) || !bStack[Index]) continue;
-
-			const int32 Step = Paths[Index].Num() - 1 - Back;
-			if (Step < 1) continue;
-			if (const FName* Name = Drawn.Find(Paths[Index][Step])) Paths[Index][Step] = *Name;
-		}
+	for (const FAssetData& Asset : Result.Redirectors) {
+		Known.Add(Asset.PackageName, &Asset);
 	}
-}
-
-EPjcLinkKind FPjcInspectorGraph::GetLinkKind(const FName From, const FName To, FPjcInspectorCache* Cache) {
-	TArray<FAssetDependency> Dependencies;
 	IAssetRegistry& Registry = UPjcSubsystem::GetModuleAssetRegistry().Get();
-	Registry.GetDependencies(FAssetIdentifier {From}, Dependencies, UE::AssetRegistry::EDependencyCategory::Package);
-	for (const auto& Dependency : Dependencies) {
-		if (Dependency.AssetId.PackageName == To) return PjcInspectorKindOf(Dependency);
+	TArray<FAssetData> Found;
+	const auto Add = [&](const FName Package) {
+		if (const int32* Existing = IndexOf.Find(Package)) return *Existing;
+
+		const int32 Index = Packages.Add(Package);
+		IndexOf.Add(Package, Index);
+		if (const FAssetData* const* Asset = Known.Find(Package)) {
+			Assets.Add(**Asset);
+		}
+		else {
+			Found.Reset();
+			Registry.GetAssetsByPackageName(Package, Found);
+			Assets.Add(Found.Num() > 0 ? Found[0] : FAssetData {});
+		}
+		Uses.AddDefaulted();
+		UsedBy.AddDefaulted();
+		Sizes.Add(Result.GetSize(Package));
+		const FPjcAssetUsage* Usage = Result.Usage.Find(Package);
+		bScanned.Add(Usage != nullptr);
+		bUsed.Add(Usage && Usage->bUsed);
+		bRoot.Add(Usage && Usage->bUsed && Usage->Parent.IsNone());
+		Reasons.Add(Usage ? Usage->Reason : EPjcUsageReason::None);
+		return Index;
+	};
+
+	TArray<FName> Scanned;
+	Result.Usage.GenerateKeyArray(Scanned);
+	Scanned.Sort(FNameLexicalLess {});
+	for (const FName Package : Scanned) {
+		Add(Package);
 	}
 
-	// no reference of its own: through an actor the map saves in its own file. What uses To is the short list (the few
-	// actors with it); what From uses is every actor file of the map
+	// a project with thousands of assets takes a moment: a progress window once it does
+	FScopedSlowTask Reading {static_cast<float>(Scanned.Num()), FText::FromString(TEXT("Reading references..."))};
+	Reading.MakeDialogDelayed(0.5f);
 	TArray<FPjcInspectorLink> Links;
 	int32 Through = 0;
-	for (const bool bUsedBy : {true, false}) {
-		GetLinks(bUsedBy ? To : From, bUsedBy, Links, Through, Cache);
+	for (int32 From = 0; From < Scanned.Num(); ++From) {
+		Reading.EnterProgressFrame(1.0f);
+		GetLinks(Scanned[From], false, Links, Through, Cache);
 		for (const FPjcInspectorLink& Link : Links) {
-			if (Link.Package == (bUsedBy ? From : To)) return Link.Kind;
+			const int32 To = Add(Link.Package);
+			if (To == From) continue;
+
+			Uses[From].Add(FPjcModelLink {To, Link.Kind, EPjcUsageReason::None, Link.bThrough});
+			UsedBy[To].Add(FPjcModelLink {From, Link.Kind, EPjcUsageReason::None, Link.bThrough});
 		}
 	}
-	return EPjcLinkKind::Hard;
+
+	// kept for another asset, not through a reference of the game: a localized copy for its source, an asset for the
+	// label that lists it or whose folder it is in, a cue for what fires it. The route goes through that asset
+	for (int32 Node = 0; Node < Scanned.Num(); ++Node) {
+		const FPjcAssetUsage* Usage = Result.Usage.Find(Scanned[Node]);
+		if (!Usage || !Usage->bUsed || Usage->Parent.IsNone() || Usage->Reason == EPjcUsageReason::Dependency) continue;
+
+		const int32* Parent = IndexOf.Find(Usage->Parent);
+		if (!Parent || *Parent == Node) continue;
+
+		FPjcModelLink* Existing = Uses[*Parent].FindByPredicate([Node](const FPjcModelLink& Link) {
+			return Link.Other == Node;
+		});
+		if (Existing) {
+			Existing->Via = Usage->Reason;
+			FPjcModelLink* Back = UsedBy[Node].FindByPredicate([Parent](const FPjcModelLink& Link) {
+				return Link.Other == *Parent;
+			});
+			if (Back) Back->Via = Usage->Reason;
+			continue;
+		}
+		Uses[*Parent].Add(FPjcModelLink {Node, EPjcLinkKind::Hard, Usage->Reason, false});
+		UsedBy[Node].Add(FPjcModelLink {*Parent, EPjcLinkKind::Hard, Usage->Reason, false});
+	}
 }
 
-bool FPjcInspectorGraph::IsExternal(const FName Package) {
+int32 FPjcInspectorModel::Find(const FName Package) const {
+	const int32* Index = IndexOf.Find(Package);
+	return Index ? *Index : INDEX_NONE;
+}
+
+const FPjcInspectorModel::FDominators& FPjcInspectorModel::GetDominators(const uint8 Kinds) const {
+	for (const FDominators& Existing : DominatorCache) {
+		if (Existing.Kinds == Kinds) return Existing;
+	}
+
+	// Cooper, Harvey and Kennedy over a virtual root above every root: an asset's dominator subtree is what goes when
+	// it goes, its immediate dominator the one asset every route passes
+	const int32 N = Num();
+	const int32 V = N;
+	TArray<int32> Roots;
+	for (int32 Node = 0; Node < N; ++Node) {
+		if (bRoot[Node]) Roots.Add(Node);
+	}
+	const auto Counted = [this, Kinds](const FPjcModelLink& Link) {
+		return Counts(Kinds, Link) || Link.Via != EPjcUsageReason::None;
+	};
+
+	// depth first from the virtual root: post order
+	TArray<int32> Post;
+	Post.Reserve(N + 1);
+	TArray<int32> PostNum;
+	PostNum.Init(INDEX_NONE, N + 1);
+	TArray<bool> Seen;
+	Seen.Init(false, N + 1);
+	struct FFrame
+	{
+		int32 Node;
+		int32 Next;
+	};
+	TArray<FFrame> Stack;
+	Stack.Add(FFrame {V, 0});
+	Seen[V] = true;
+	while (Stack.Num() > 0) {
+		const int32 Top = Stack.Num() - 1;
+		const int32 Node = Stack[Top].Node;
+		int32 Pushed = INDEX_NONE;
+		if (Node == V) {
+			while (Pushed == INDEX_NONE && Stack[Top].Next < Roots.Num()) {
+				const int32 Root = Roots[Stack[Top].Next++];
+				if (!Seen[Root]) Pushed = Root;
+			}
+		}
+		else {
+			const TArray<FPjcModelLink>& Links = Uses[Node];
+			while (Pushed == INDEX_NONE && Stack[Top].Next < Links.Num()) {
+				const FPjcModelLink& Link = Links[Stack[Top].Next++];
+				if (Counted(Link) && !Seen[Link.Other]) Pushed = Link.Other;
+			}
+		}
+		if (Pushed != INDEX_NONE) {
+			Seen[Pushed] = true;
+			Stack.Add(FFrame {Pushed, 0});
+			continue;
+		}
+		PostNum[Node] = Post.Num();
+		Post.Add(Node);
+		PjcShim::PopArray(Stack);
+	}
+
+	TArray<int32> Idom;
+	Idom.Init(INDEX_NONE, N + 1);
+	Idom[V] = V;
+	const auto Intersect = [&Idom, &PostNum](int32 A, int32 B) {
+		while (A != B) {
+			while (PostNum[A] < PostNum[B]) A = Idom[A];
+			while (PostNum[B] < PostNum[A]) B = Idom[B];
+		}
+		return A;
+	};
+	for (bool bChanged = true; bChanged;) {
+		bChanged = false;
+		for (int32 Order = Post.Num() - 1; Order >= 0; --Order) {
+			const int32 Node = Post[Order];
+			if (Node == V) continue;
+
+			int32 New = bRoot[Node] ? V : INDEX_NONE;
+			for (const FPjcModelLink& Link : UsedBy[Node]) {
+				if (!Counted(Link) || !Seen[Link.Other] || Idom[Link.Other] == INDEX_NONE) continue;
+				New = New == INDEX_NONE ? Link.Other : Intersect(Link.Other, New);
+			}
+			if (New != INDEX_NONE && Idom[Node] != New) {
+				Idom[Node] = New;
+				bChanged = true;
+			}
+		}
+	}
+
+	FDominators& Out = DominatorCache.AddDefaulted_GetRef();
+	Out.Kinds = Kinds;
+	Out.Idom.SetNum(N);
+	Out.Kids.SetNum(N);
+	for (int32 Node = 0; Node < N; ++Node) {
+		Out.Idom[Node] = Idom[Node] == V ? Virtual : Idom[Node];
+		if (Idom[Node] >= 0 && Idom[Node] < N) Out.Kids[Idom[Node]].Add(Node);
+	}
+	// steps from the nearest root
+	Out.Depth.Init(INDEX_NONE, N);
+	TArray<int32> Queue = Roots;
+	for (const int32 Root : Roots) {
+		Out.Depth[Root] = 0;
+	}
+	for (int32 Head = 0; Head < Queue.Num(); ++Head) {
+		for (const FPjcModelLink& Link : Uses[Queue[Head]]) {
+			if (!Counted(Link) || Out.Depth[Link.Other] != INDEX_NONE) continue;
+
+			Out.Depth[Link.Other] = Out.Depth[Queue[Head]] + 1;
+			Queue.Add(Link.Other);
+		}
+	}
+	return Out;
+}
+
+int32 FPjcInspectorModel::GetDepth(const int32 Node, const uint8 Kinds) const {
+	return Packages.IsValidIndex(Node) ? GetDominators(Kinds).Depth[Node] : INDEX_NONE;
+}
+
+TArray<int32> FPjcInspectorModel::GetRetained(const int32 Node, const uint8 Kinds) const {
+	TArray<int32> Out;
+	if (!Packages.IsValidIndex(Node)) return Out;
+
+	const FDominators& Dominators = GetDominators(Kinds);
+	if (Dominators.Idom[Node] == INDEX_NONE) return Out;
+
+	Out.Add(Node);
+	for (int32 Head = 0; Head < Out.Num(); ++Head) {
+		Out.Append(Dominators.Kids[Out[Head]]);
+	}
+	return Out;
+}
+
+TArray<int32> FPjcInspectorModel::GetChoke(const int32 Node, const uint8 Kinds) const {
+	TArray<int32> Out;
+	if (!Packages.IsValidIndex(Node)) return Out;
+
+	const FDominators& Dominators = GetDominators(Kinds);
+	for (int32 Step = Dominators.Idom[Node]; Step >= 0 && Out.Num() < Num(); Step = Dominators.Idom[Step]) {
+		Out.Add(Step);
+	}
+	return Out;
+}
+
+int32 FPjcInspectorModel::GetKeeper(const int32 Node, const uint8 Kinds) const {
+	if (!Packages.IsValidIndex(Node) || bRoot[Node]) return INDEX_NONE;
+
+	const int32 Idom = GetDominators(Kinds).Idom[Node];
+	return Idom == Virtual ? SeveralRoots : Idom;
+}
+
+TArray<FPjcRoute> FPjcInspectorModel::GetRoutes(const int32 Node, const uint8 Kinds, const TMap<int32, int32>& Prefer) const {
+	TArray<FPjcRoute> Routes;
+	if (!Packages.IsValidIndex(Node)) return Routes;
+
+	// up from the asset, breadth first over the used assets that use it: the shortest route to every root
+	TMap<int32, int32> Next;
+	Next.Add(Node, INDEX_NONE);
+	TArray<int32> Queue {Node};
+	TArray<int32> Roots;
+	for (int32 Head = 0; Head < Queue.Num(); ++Head) {
+		const int32 Current = Queue[Head];
+		if (bRoot[Current]) Roots.Add(Current);
+		for (const FPjcModelLink& Link : UsedBy[Current]) {
+			if ((!Counts(Kinds, Link) && Link.Via == EPjcUsageReason::None) || !bUsed[Link.Other] || Next.Contains(Link.Other)) continue;
+
+			Next.Add(Link.Other, Current);
+			Queue.Add(Link.Other);
+		}
+	}
+
+	struct FScored
+	{
+		FPjcRoute Route;
+		TArray<int32, TInlineAllocator<6>> Score;
+	};
+	TArray<FScored> Scored;
+	for (const int32 Root : Roots) {
+		FScored& Item = Scored.AddDefaulted_GetRef();
+		for (int32 Step = Root; Step != INDEX_NONE; Step = Next.FindRef(Step)) {
+			Item.Route.Path.Add(Step);
+			if (Step == Node) break;
+		}
+		Item.Route.Root = Root;
+		Item.Route.Steps = Item.Route.Path.Num() - 1;
+		int32 Worst = 0;
+		for (int32 Index = 1; Index < Item.Route.Path.Num(); ++Index) {
+			const int32 To = Item.Route.Path[Index];
+			const FPjcModelLink* Link = Uses[Item.Route.Path[Index - 1]].FindByPredicate([To](const FPjcModelLink& Existing) {
+				return Existing.Other == To;
+			});
+			Worst = FMath::Max(Worst, Link ? PjcInspectorKindRank(*Link) : 0);
+		}
+		const EPjcUsageReason RootReason = Reasons[Root];
+		Item.Route.bEditor = Worst == 2 || RootReason == EPjcUsageReason::Editor || RootReason == EPjcUsageReason::Splash;
+		const bool bProject = Packages[Root].ToString().StartsWith(TEXT("/Game/"));
+		Item.Score = {-Prefer.FindRef(Root), Item.Route.bEditor ? 1 : 0, PjcInspectorRootRank(RootReason), Worst, bProject ? 0 : 1, Item.Route.Steps};
+	}
+	Scored.Sort([this](const FScored& A, const FScored& B) {
+		for (int32 Index = 0; Index < A.Score.Num(); ++Index) {
+			if (A.Score[Index] != B.Score[Index]) return A.Score[Index] < B.Score[Index];
+		}
+		return Packages[A.Route.Root].LexicalLess(Packages[B.Route.Root]);
+	});
+	for (FScored& Item : Scored) {
+		Routes.Add(MoveTemp(Item.Route));
+	}
+	return Routes;
+}
+
+TArray<int32> FPjcInspectorModel::GetKeyRoutes(const TArray<FPjcRoute>& Routes) const {
+	TArray<int32> Out;
+	if (Routes.Num() == 0) return Out;
+
+	Out.Add(0);
+	const auto ClassOf = [this](const FPjcRoute& Route) {
+		return PjcShim::GetAssetClassName(Assets[Route.Root]);
+	};
+	const auto UserOf = [](const FPjcRoute& Route) {
+		return Route.Path.Num() > 1 ? Route.Path[Route.Path.Num() - 2] : Route.Root;
+	};
+	// first the routes that differ in both, then in one of them
+	for (const bool bBoth : {true, false}) {
+		for (int32 Index = 1; Index < Routes.Num() && Out.Num() < 3; ++Index) {
+			if (Out.Contains(Index)) continue;
+
+			const bool bClash = Out.ContainsByPredicate([&](const int32 Taken) {
+				const bool bClass = ClassOf(Routes[Taken]) != ClassOf(Routes[Index]);
+				const bool bUser = UserOf(Routes[Taken]) != UserOf(Routes[Index]);
+				return bBoth ? !(bClass && bUser) : !(bClass || bUser);
+			});
+			if (!bClash) Out.Add(Index);
+		}
+	}
+	return Out;
+}
+
+FPjcInspectorModel::FReach FPjcInspectorModel::GetReach(const int32 Node, const bool bUsedBy, const uint8 Kinds) const {
+	FReach Reach;
+	if (!Packages.IsValidIndex(Node)) return Reach;
+
+	TSet<int32> Seen {Node};
+	TArray<int32> Queue {Node};
+	for (int32 Head = 0; Head < Queue.Num(); ++Head) {
+		for (const FPjcModelLink& Link : (bUsedBy ? UsedBy : Uses)[Queue[Head]]) {
+			if (!Counts(Kinds, Link) || Seen.Contains(Link.Other)) continue;
+
+			Seen.Add(Link.Other);
+			Queue.Add(Link.Other);
+			++Reach.Num;
+			Reach.Size += Sizes[Link.Other];
+		}
+	}
+	return Reach;
+}
+
+FPjcInspectorModel::FWhatIf FPjcInspectorModel::GetWhatIf(const int32 Focus, const int32 User, const uint8 Kinds) const {
+	FWhatIf Out;
+	if (!Packages.IsValidIndex(Focus) || !Packages.IsValidIndex(User)) return Out;
+
+	// every root but the user, never through the user
+	TArray<int32> Prev;
+	Prev.Init(INDEX_NONE, Num());
+	TArray<bool> Seen;
+	Seen.Init(false, Num());
+	TArray<int32> Queue;
+	for (int32 Node = 0; Node < Num(); ++Node) {
+		if (!bRoot[Node] || Node == User) continue;
+
+		Seen[Node] = true;
+		Queue.Add(Node);
+	}
+	for (int32 Head = 0; Head < Queue.Num(); ++Head) {
+		for (const FPjcModelLink& Link : Uses[Queue[Head]]) {
+			if ((!Counts(Kinds, Link) && Link.Via == EPjcUsageReason::None) || Link.Other == User || Seen[Link.Other]) continue;
+
+			Seen[Link.Other] = true;
+			Prev[Link.Other] = Queue[Head];
+			Queue.Add(Link.Other);
+		}
+	}
+	if (Seen[Focus]) {
+		Out.bStill = true;
+		for (int32 Step = Focus; Step != INDEX_NONE; Step = Prev[Step]) {
+			Out.Path.Insert(Step, 0);
+		}
+		Out.bEditor = Reasons[Out.Path[0]] == EPjcUsageReason::Editor;
+		for (int32 Index = 1; Index < Out.Path.Num(); ++Index) {
+			const int32 To = Out.Path[Index];
+			const FPjcModelLink* Link = Uses[Out.Path[Index - 1]].FindByPredicate([To](const FPjcModelLink& Existing) {
+				return Existing.Other == To;
+			});
+			if (Link && PjcInspectorKindRank(*Link) == 2) Out.bEditor = true;
+		}
+		return Out;
+	}
+	// what no other root reaches then becomes unused with it
+	const FDominators& Dominators = GetDominators(Kinds);
+	for (int32 Node = 0; Node < Num(); ++Node) {
+		if (Node == User || Seen[Node] || Dominators.Idom[Node] == INDEX_NONE) continue;
+
+		++Out.Num;
+		Out.Size += Sizes[Node];
+	}
+	return Out;
+}
+
+FPjcInspectorModel::FSearch FPjcInspectorModel::Search(
+	const int32 Node,
+	const bool bUsedBy,
+	const uint8 Kinds,
+	TFunctionRef<bool(const int32 From, const FPjcModelLink& Link)> Match
+) const {
+	FSearch Out;
+	if (!Packages.IsValidIndex(Node)) return Out;
+
+	TMap<int32, int32> Prev;
+	Prev.Add(Node, INDEX_NONE);
+	TArray<int32> Queue {Node};
+	TArray<int32> Hits;
+	for (int32 Head = 0; Head < Queue.Num() && Hits.Num() < MaxHits; ++Head) {
+		for (const FPjcModelLink& Link : (bUsedBy ? UsedBy : Uses)[Queue[Head]]) {
+			if (!Counts(Kinds, Link) || Prev.Contains(Link.Other)) continue;
+
+			Prev.Add(Link.Other, Queue[Head]);
+			Queue.Add(Link.Other);
+			if (Match(Queue[Head], Link)) Hits.Add(Link.Other);
+		}
+	}
+	Out.Searched = Queue.Num() - 1;
+	for (const int32 Hit : Hits) {
+		Out.Hits.Add(Hit);
+		for (int32 Step = Hit; Step != INDEX_NONE && Step != Node && !Out.Keep.Contains(Step); Step = Prev.FindRef(Step)) {
+			Out.Keep.Add(Step);
+		}
+	}
+	return Out;
+}
+
+bool FPjcInspectorModel::IsExternal(const FName Package) {
 	return UPjcSubsystem::FolderIsExternal(FPackageName::GetLongPackagePath(Package.ToString()));
 }
 
-void FPjcInspectorGraph::GetLinks(
+void FPjcInspectorModel::GetLinks(
 	const FName Package,
 	const bool bUsedBy,
 	TArray<FPjcInspectorLink>& Out,
@@ -211,7 +515,7 @@ void FPjcInspectorGraph::GetLinks(
 	}
 }
 
-void FPjcInspectorGraph::ReadLinks(
+void FPjcInspectorModel::ReadLinks(
 	const FName Package,
 	const bool bUsedBy,
 	TArray<FPjcInspectorLink>& Out,
@@ -301,510 +605,4 @@ void FPjcInspectorGraph::ReadLinks(
 			Add(Used.AssetId.PackageName, PjcInspectorKindOf(Used), true);
 		}
 	}
-}
-
-int32 FPjcInspectorGraph::FindNode(const FName Package) const {
-	return Nodes.IndexOfByPredicate([Package](const FPjcInspectorNode& Node) {
-		return Node.Kind == EPjcInspectorNodeKind::Asset && Node.Package == Package;
-	});
-}
-
-FPjcInspectorGraph
-FPjcInspectorGraph::MakeGroup(const TArray<FName>& Group, const TArray<FName>& Classes, const TArray<FPjcGroupLink>& Links, const bool bEditorLinks) {
-	FPjcInspectorGraph Graph;
-	const int32 Num = Group.Num();
-	if (Num == 0 || Classes.Num() != Num) return Graph;
-
-	Graph.Focus = Group[0];
-	Graph.bUnusedGroup = true;
-	Graph.NumGroup = Num;
-
-	// the picture is built from the references the game follows; editor-only ones are drawn on top and move nothing
-	TArray<FPjcGroupLink> Game;
-	TArray<FPjcGroupLink> Editor;
-	for (const FPjcGroupLink& Link : Links) {
-		if (!Group.IsValidIndex(Link.From) || !Group.IsValidIndex(Link.To) || Link.From == Link.To) continue;
-
-		(Link.Kind == EPjcLinkKind::EditorOnly ? Editor : Game).Add(Link);
-	}
-
-	// shared: what many of the group use. A line from each user would cover the picture
-	TArray<int32> NumUsers;
-	NumUsers.SetNumZeroed(Num);
-	for (const FPjcGroupLink& Link : Game) {
-		++NumUsers[Link.To];
-	}
-	const auto IsHub = [&NumUsers](const int32 Index) {
-		return Index != 0 && NumUsers[Index] >= HubAt;
-	};
-
-	// same class, same users, same uses: one stack
-	TArray<TArray<int32>> Ins;
-	TArray<TArray<int32>> Outs;
-	Ins.SetNum(Num);
-	Outs.SetNum(Num);
-	for (const FPjcGroupLink& Link : Game) {
-		if (IsHub(Link.From) || IsHub(Link.To)) continue;
-
-		Outs[Link.From].AddUnique(Link.To);
-		Ins[Link.To].AddUnique(Link.From);
-	}
-	const auto Joined = [](TArray<int32>& Indices) {
-		Indices.Sort();
-		FString Text;
-		for (const int32 Index : Indices) {
-			Text += FString::FromInt(Index) + TEXT(",");
-		}
-		return Text;
-	};
-	TArray<FString> Signatures;
-	TMap<FString, TArray<int32>> BySignature;
-	for (int32 Index = 0; Index < Num; ++Index) {
-		if (IsHub(Index)) continue;
-
-		const FString Signature
-			= Index == 0 ? FString {TEXT("focus")} : Classes[Index].ToString() + TEXT("|") + Joined(Ins[Index]) + TEXT("|") + Joined(Outs[Index]);
-		if (!BySignature.Contains(Signature)) Signatures.Add(Signature);
-		BySignature.FindOrAdd(Signature).Add(Index);
-	}
-	TArray<int32> BoxOf;
-	BoxOf.Init(INDEX_NONE, Num);
-	for (const FString& Signature : Signatures) {
-		TArray<int32>& Members = BySignature[Signature];
-		Members.Sort([&Group](const int32 A, const int32 B) {
-			return FPackageName::GetShortName(Group[A]) < FPackageName::GetShortName(Group[B]);
-		});
-		FPjcInspectorNode& Node = Graph.Nodes.AddDefaulted_GetRef();
-		if (Members.Num() > 1) {
-			Node.Kind = EPjcInspectorNodeKind::Stack;
-			Node.GroupClass = Classes[Members[0]];
-			for (const int32 Member : Members) {
-				Node.Roots.Add(Group[Member]);
-			}
-		}
-		else {
-			Node.Package = Group[Members[0]];
-		}
-		for (const int32 Member : Members) {
-			BoxOf[Member] = Graph.Nodes.Num() - 1;
-		}
-	}
-	const int32 NumBoxes = Graph.Nodes.Num();
-	for (int32 Index = 0; Index < Num; ++Index) {
-		if (!IsHub(Index)) continue;
-
-		FPjcInspectorNode& Node = Graph.Nodes.AddDefaulted_GetRef();
-		Node.Package = Group[Index];
-		Node.bHub = true;
-		Node.NumUsers = NumUsers[Index];
-		BoxOf[Index] = Graph.Nodes.Num() - 1;
-	}
-	for (const FPjcGroupLink& Link : Game) {
-		if (IsHub(Link.To) && !IsHub(Link.From)) Graph.Nodes[BoxOf[Link.From]].Hubs.AddUnique(BoxOf[Link.To]);
-	}
-
-	// lines between the boxes
-	TMap<uint64, int32> EdgeOf;
-	const auto EdgeKey = [](const int32 From, const int32 To) {
-		return (static_cast<uint64>(From) << 32) | static_cast<uint32>(To);
-	};
-	TArray<TArray<int32>> Preds;
-	TArray<TArray<int32>> Succs;
-	Preds.SetNum(NumBoxes);
-	Succs.SetNum(NumBoxes);
-	for (const FPjcGroupLink& Link : Game) {
-		if (IsHub(Link.From) || IsHub(Link.To)) continue;
-
-		const int32 From = BoxOf[Link.From];
-		const int32 To = BoxOf[Link.To];
-		if (From == To) continue;
-
-		if (const int32* Existing = EdgeOf.Find(EdgeKey(From, To))) {
-			FPjcInspectorEdge& Edge = Graph.Edges[*Existing];
-			++Edge.NumLinks;
-			if (Link.Kind == EPjcLinkKind::Hard) Edge.Kind = EPjcLinkKind::Hard;
-			continue;
-		}
-		EdgeOf.Add(EdgeKey(From, To), Graph.Edges.Add(FPjcInspectorEdge {From, To, Link.Kind, 1}));
-		Preds[To].Add(From);
-		Succs[From].Add(To);
-	}
-
-	// row: the longest chain from the top. A reference that closes a circle does not count and goes back up
-	TArray<int32> Layers;
-	TArray<uint8> State;
-	Layers.SetNumZeroed(NumBoxes);
-	State.SetNumZeroed(NumBoxes);
-	TFunction<int32(int32)> Depth = [&](const int32 Box) -> int32 {
-		if (State[Box] == 2) return Layers[Box];
-
-		State[Box] = 1;
-		int32 Deepest = 0;
-		for (const int32 Pred : Preds[Box]) {
-			if (State[Pred] == 1) {
-				Graph.Edges[EdgeOf[EdgeKey(Pred, Box)]].bCircle = true;
-				continue;
-			}
-			Deepest = FMath::Max(Deepest, Depth(Pred) + 1);
-		}
-		State[Box] = 2;
-		Layers[Box] = Deepest;
-		return Deepest;
-	};
-	const int32 FocusBox = BoxOf[0];
-	TArray<int32> Lone;
-	TArray<TArray<int32>> Rows;
-	for (int32 Box = 0; Box < NumBoxes; ++Box) {
-		Depth(Box);
-	}
-	for (int32 Box = 0; Box < NumBoxes; ++Box) {
-		if (Preds[Box].Num() == 0 && Succs[Box].Num() == 0 && Box != FocusBox) {
-			Lone.Add(Box);
-			continue;
-		}
-		if (!Rows.IsValidIndex(Layers[Box])) Rows.SetNum(Layers[Box] + 1);
-		Rows[Layers[Box]].Add(Box);
-	}
-	const auto TitleOf = [&Graph](const int32 Box) {
-		const FPjcInspectorNode& Node = Graph.Nodes[Box];
-		return Node.Kind == EPjcInspectorNodeKind::Stack ? FString {TEXT("~")} : FPackageName::GetShortName(Node.Package);
-	};
-	for (TArray<int32>& Row : Rows) {
-		Row.Sort([&TitleOf](const int32 A, const int32 B) {
-			return TitleOf(A) < TitleOf(B);
-		});
-	}
-	// order in the rows: next to what a box is linked with, a few sweeps down and up
-	TArray<float> At;
-	At.SetNumZeroed(NumBoxes);
-	const auto Place = [&Rows, &At]() {
-		for (const TArray<int32>& Row : Rows) {
-			for (int32 Index = 0; Index < Row.Num(); ++Index) {
-				At[Row[Index]] = Row.Num() > 1 ? static_cast<float>(Index) / (Row.Num() - 1) : 0.5f;
-			}
-		}
-	};
-	Place();
-	for (int32 Sweep = 0; Sweep < 6; ++Sweep) {
-		const bool bDown = Sweep % 2 == 0;
-		for (int32 Step = 0; Step < Rows.Num(); ++Step) {
-			TArray<int32>& Row = Rows[bDown ? Step : Rows.Num() - 1 - Step];
-			TMap<int32, float> Middle;
-			for (const int32 Box : Row) {
-				const TArray<int32>& Linked = bDown ? Preds[Box] : Succs[Box];
-				float Sum = 0.0f;
-				for (const int32 Other : Linked) {
-					Sum += At[Other];
-				}
-				Middle.Add(Box, Linked.Num() > 0 ? Sum / Linked.Num() : At[Box]);
-			}
-			Row.StableSort([&Middle](const int32 A, const int32 B) {
-				return Middle[A] < Middle[B];
-			});
-			Place();
-		}
-	}
-	int32 Widest = 4;
-	for (const TArray<int32>& Row : Rows) {
-		Widest = FMath::Max(Widest, Row.Num());
-	}
-	for (int32 Layer = 0; Layer < Rows.Num(); ++Layer) {
-		for (int32 Index = 0; Index < Rows[Layer].Num(); ++Index) {
-			FPjcInspectorNode& Node = Graph.Nodes[Rows[Layer][Index]];
-			Node.Layer = Layer;
-			Node.Column = Index + (Widest - Rows[Layer].Num()) * 0.5f;
-		}
-	}
-	int32 Next = Rows.Num();
-	if (Lone.Num() > 0) {
-		Graph.Captions.Add(FPjcInspectorCaption {Next, TEXT("Linked only through the shared assets")});
-		for (int32 Index = 0; Index < Lone.Num(); ++Index) {
-			FPjcInspectorNode& Node = Graph.Nodes[Lone[Index]];
-			Node.Layer = Next + Index / Widest;
-			Node.Column = static_cast<float>(Index % Widest);
-		}
-		Next += (Lone.Num() + Widest - 1) / Widest;
-	}
-	if (Graph.Nodes.Num() > NumBoxes) {
-		Graph.Captions.Add(FPjcInspectorCaption {Next, TEXT("Shared by many: a dot on every asset that uses it, no lines")});
-		for (int32 Index = NumBoxes; Index < Graph.Nodes.Num(); ++Index) {
-			Graph.Nodes[Index].Layer = Next;
-			Graph.Nodes[Index].Column = (Index - NumBoxes) * 2.0f;
-		}
-	}
-
-	// editor-only references on top. One that leads back to an asset that reaches it closes a circle
-	if (bEditorLinks) {
-		const auto Reaches = [&Succs](const int32 From, const int32 To) {
-			TArray<int32> Queue {From};
-			TSet<int32> Seen {From};
-			while (Queue.Num() > 0) {
-				const int32 Box = Queue.Pop();
-				if (Box == To) return true;
-
-				for (const int32 Other : Succs[Box]) {
-					if (!Seen.Contains(Other)) {
-						Seen.Add(Other);
-						Queue.Add(Other);
-					}
-				}
-			}
-			return false;
-		};
-		for (const FPjcGroupLink& Link : Editor) {
-			if (IsHub(Link.From) || IsHub(Link.To)) continue;
-
-			const int32 From = BoxOf[Link.From];
-			const int32 To = BoxOf[Link.To];
-			if (From == To || EdgeOf.Contains(EdgeKey(From, To))) continue;
-
-			FPjcInspectorEdge Edge {From, To, EPjcLinkKind::EditorOnly, 1};
-			Edge.bCircle = Reaches(To, From);
-			EdgeOf.Add(EdgeKey(From, To), Graph.Edges.Add(Edge));
-		}
-	}
-	return Graph;
-}
-
-FPjcInspectorGraph FPjcInspectorGraph::Make(
-	const FPjcScanResult& Result,
-	const FName Focus,
-	const TSet<FName>& OpenGroups,
-	const bool bEditorLinks,
-	FPjcInspectorCache* Cache
-) {
-	FPjcInspectorGraph Graph;
-	Graph.Focus = Focus;
-	// the same assets are asked again and again while the graph is built
-	FPjcInspectorCache OwnCache;
-	if (!Cache) Cache = &OwnCache;
-
-	const auto AddEdge = [&Graph](const int32 From, const int32 To, const EPjcLinkKind Kind) {
-		if (From == INDEX_NONE || To == INDEX_NONE || From == To) return;
-
-		FPjcInspectorEdge* Edge = Graph.Edges.FindByPredicate([From, To](const FPjcInspectorEdge& Existing) {
-			return Existing.From == From && Existing.To == To;
-		});
-		if (Edge) {
-			++Edge->NumLinks;
-			return;
-		}
-		Graph.Edges.Add(FPjcInspectorEdge {From, To, Kind, 1});
-	};
-
-	// unused: the unused assets around it as one picture
-	if (!Result.IsUsed(Focus) && Result.Usage.Contains(Focus)) {
-		TArray<FName> Group {Focus};
-		TMap<FName, int32> IndexOf;
-		IndexOf.Add(Focus, 0);
-		TArray<FPjcInspectorLink> Links;
-		int32 Through = 0;
-		for (int32 Head = 0; Head < Group.Num() && Group.Num() < MaxGroup; ++Head) {
-			for (const bool bUsedBy : {true, false}) {
-				GetLinks(Group[Head], bUsedBy, Links, Through, Cache);
-				Links.Sort([](const FPjcInspectorLink& A, const FPjcInspectorLink& B) {
-					return A.Package.LexicalLess(B.Package);
-				});
-				for (const FPjcInspectorLink& Link : Links) {
-					const FPjcAssetUsage* Usage = Result.Usage.Find(Link.Package);
-					if (!Usage || Usage->bUsed || IndexOf.Contains(Link.Package) || Group.Num() >= MaxGroup) continue;
-
-					IndexOf.Add(Link.Package, Group.Num());
-					Group.Add(Link.Package);
-				}
-			}
-		}
-		TArray<FName> Classes;
-		TArray<FPjcGroupLink> GroupLinks;
-		for (int32 From = 0; From < Group.Num(); ++From) {
-			Classes.Add(PjcInspectorClassOf(Group[From]));
-			GetLinks(Group[From], false, Links, Through, Cache);
-			for (const FPjcInspectorLink& Link : Links) {
-				const int32* To = IndexOf.Find(Link.Package);
-				if (To && *To != From) GroupLinks.Add(FPjcGroupLink {From, *To, Link.Kind});
-			}
-		}
-		return MakeGroup(Group, Classes, GroupLinks, bEditorLinks);
-	}
-
-	// used: root paths, roots of one class from GroupAt on as one group node
-	TArray<FPjcRootPath> Paths;
-	PjcInspectorRootPaths(Result, Focus, Paths, Cache);
-	Graph.NumRoots = Paths.Num();
-	for (const FPjcRootPath& Path : Paths) {
-		Graph.Roots.Add(FPjcInspectorRoot {Path.Root, Path.Path.Num() - 1});
-	}
-	Graph.Roots.Sort([](const FPjcInspectorRoot& A, const FPjcInspectorRoot& B) {
-		if (A.Steps != B.Steps) return A.Steps < B.Steps;
-		return A.Package.LexicalLess(B.Package);
-	});
-
-	struct FItem
-	{
-		// Group class, None for one root
-		FName Group;
-		TArray<int32> Paths;
-		int32 Length = 0;
-	};
-	TMap<FName, TArray<int32>> ByClass;
-	for (int32 Index = 0; Index < Paths.Num(); ++Index) {
-		ByClass.FindOrAdd(PjcInspectorClassOf(Paths[Index].Root)).Add(Index);
-	}
-	TArray<FItem> Items;
-	for (const auto& Pair : ByClass) {
-		if (Pair.Value.Num() >= GroupAt && !Pair.Key.IsNone() && !OpenGroups.Contains(Pair.Key)) {
-			FItem& Item = Items.AddDefaulted_GetRef();
-			Item.Group = Pair.Key;
-			Item.Paths = Pair.Value;
-			for (const int32 Index : Pair.Value) {
-				Item.Length = FMath::Max(Item.Length, Paths[Index].Path.Num());
-			}
-			continue;
-		}
-		for (const int32 Index : Pair.Value) {
-			FItem& Item = Items.AddDefaulted_GetRef();
-			Item.Paths = {Index};
-			Item.Length = Paths[Index].Path.Num();
-		}
-	}
-	Items.Sort([&Paths](const FItem& A, const FItem& B) {
-		if (A.Length != B.Length) return A.Length > B.Length;
-		return Paths[A.Paths[0]].Root.LexicalLess(Paths[B.Paths[0]].Root);
-	});
-	Graph.NumHidden = FMath::Max(0, Items.Num() - MaxPaths);
-	if (Items.Num() > MaxPaths) {
-		Items.SetNum(MaxPaths);
-	}
-
-	// under a group of roots: what the roots reach first is often as many assets again (every sequence has its own
-	// shot, all of one map). They stand as one box too
-	TArray<TArray<FName>> Drawn;
-	TArray<bool> bStack;
-	Drawn.Reserve(Paths.Num());
-	bStack.Init(false, Paths.Num());
-	// paths past MaxPaths are not drawn: they stay empty and keep no asset as a box of its own
-	Drawn.SetNum(Paths.Num());
-	for (const FItem& Item : Items) {
-		for (const int32 PathIndex : Item.Paths) {
-			Drawn[PathIndex] = Paths[PathIndex].Path;
-			bStack[PathIndex] = !Item.Group.IsNone();
-		}
-	}
-	TMap<FName, TArray<FName>> Stacks;
-	TMap<FName, FName> ClassCache;
-	StackPaths(
-		Drawn,
-		bStack,
-		[&ClassCache](const FName Package) {
-			FName* Class = ClassCache.Find(Package);
-			return Class ? *Class : ClassCache.Add(Package, PjcInspectorClassOf(Package));
-		},
-		Stacks
-	);
-	TMap<FName, int32> StackNodes;
-	const auto NodeOf = [&Graph, &StackNodes](const FName Name) {
-		const int32* Index = StackNodes.Find(Name);
-		return Index ? *Index : Graph.FindNode(Name);
-	};
-
-	// distance from the bottom: the longest path through a node decides its row
-	TMap<FName, int32> Distance;
-	TMap<FName, int32> Column;
-	for (int32 ItemIndex = 0; ItemIndex < Items.Num(); ++ItemIndex) {
-		const FItem& Item = Items[ItemIndex];
-		for (const int32 PathIndex : Item.Paths) {
-			const TArray<FName>& Path = Drawn[PathIndex];
-			for (int32 Step = Item.Group.IsNone() ? 0 : 1; Step < Path.Num(); ++Step) {
-				int32& Dist = Distance.FindOrAdd(Path[Step], -1);
-				Dist = FMath::Max(Dist, Path.Num() - 1 - Step);
-				Column.FindOrAdd(Path[Step], ItemIndex);
-			}
-		}
-	}
-	int32 MaxDistance = 0;
-	for (const auto& Pair : Distance) {
-		MaxDistance = FMath::Max(MaxDistance, Pair.Value);
-	}
-	for (const auto& Pair : Distance) {
-		FPjcInspectorNode& Node = Graph.Nodes.AddDefaulted_GetRef();
-		Node.Layer = 2 + MaxDistance - Pair.Value;
-		Node.Column = static_cast<float>(Column[Pair.Key]);
-		if (const TArray<FName>* Members = Stacks.Find(Pair.Key)) {
-			Node.Kind = EPjcInspectorNodeKind::Stack;
-			Node.GroupClass = ClassCache.FindRef((*Members)[0]);
-			Node.Roots = *Members;
-			StackNodes.Add(Pair.Key, Graph.Nodes.Num() - 1);
-			continue;
-		}
-		Node.Package = Pair.Key;
-	}
-
-	for (int32 ItemIndex = 0; ItemIndex < Items.Num(); ++ItemIndex) {
-		const FItem& Item = Items[ItemIndex];
-		int32 Top = INDEX_NONE;
-		if (!Item.Group.IsNone()) {
-			// the group stands where its roots would: one row above the asset they all reach first
-			FPjcInspectorNode& Node = Graph.Nodes.AddDefaulted_GetRef();
-			Node.Kind = EPjcInspectorNodeKind::Group;
-			Node.GroupClass = Item.Group;
-			int32 Layer = TNumericLimits<int32>::Max();
-			for (const int32 PathIndex : Item.Paths) {
-				Node.Roots.Add(Paths[PathIndex].Root);
-				const TArray<FName>& Path = Drawn[PathIndex];
-				if (Path.Num() > 1) {
-					const int32 Next = NodeOf(Path[1]);
-					Layer = FMath::Min(Layer, Next != INDEX_NONE ? Graph.Nodes[Next].Layer - 1 : 1);
-				}
-			}
-			Node.Layer = Layer == TNumericLimits<int32>::Max() ? 1 : Layer;
-			Node.Column = static_cast<float>(ItemIndex);
-			Top = Graph.Nodes.Num() - 1;
-		}
-		else {
-			Top = Graph.FindNode(Paths[Item.Paths[0]].Root);
-		}
-
-		// the source above: why the root is used
-		FPjcInspectorNode Source;
-		Source.Kind = EPjcInspectorNodeKind::Source;
-		Source.Layer = Graph.Nodes[Top].Layer - 1;
-		Source.Column = static_cast<float>(ItemIndex);
-		if (!Item.Group.IsNone()) {
-			Source.Package = Item.Group;
-			const FPjcAssetUsage* Usage = Result.Usage.Find(Paths[Item.Paths[0]].Root);
-			Source.Label = Usage ? UPjcSubsystem::GetUsageReasonText(*Usage) : FString {};
-		}
-		else {
-			Source.Package = Paths[Item.Paths[0]].Root;
-			const FPjcAssetUsage* Usage = Result.Usage.Find(Source.Package);
-			Source.Label = Usage ? UPjcSubsystem::GetUsageReasonText(*Usage) : FString {};
-		}
-		const int32 SourceIndex = Graph.Nodes.Add(Source);
-		Graph.Edges.Add(FPjcInspectorEdge {SourceIndex, Top, EPjcLinkKind::Hard, 1});
-
-		for (const int32 PathIndex : Item.Paths) {
-			const TArray<FName>& Path = Paths[PathIndex].Path;
-			const TArray<FName>& Shown = Drawn[PathIndex];
-			for (int32 Step = 1; Step < Path.Num(); ++Step) {
-				const int32 From = Step == 1 && !Item.Group.IsNone() ? Top : NodeOf(Shown[Step - 1]);
-				const int32 To = NodeOf(Shown[Step]);
-				// a line that stands for many references: the kind of the first is drawn, the others are only counted
-				FPjcInspectorEdge* Edge = Graph.Edges.FindByPredicate([From, To](const FPjcInspectorEdge& Existing) {
-					return Existing.From == From && Existing.To == To;
-				});
-				if (Edge) {
-					++Edge->NumLinks;
-					continue;
-				}
-				AddEdge(From, To, GetLinkKind(Path[Step - 1], Path[Step], Cache));
-			}
-		}
-	}
-
-	// a used asset without any root (should not happen) still shows itself
-	if (Graph.FindNode(Focus) == INDEX_NONE) {
-		FPjcInspectorNode& Node = Graph.Nodes.AddDefaulted_GetRef();
-		Node.Package = Focus;
-	}
-	return Graph;
 }

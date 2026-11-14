@@ -174,8 +174,7 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create() {
 	Style->Set("TreeArrow_Collapsed_Hovered", new FSlateImageBrush {Icon(TEXT("CaretRight"), 10.0f, ColorText)});
 	Style->Set("TreeArrow_Expanded", new FSlateImageBrush {Icon(TEXT("CaretDown"), 10.0f, ColorMuted)});
 	Style->Set("TreeArrow_Expanded_Hovered", new FSlateImageBrush {Icon(TEXT("CaretDown"), 10.0f, ColorText)});
-	// marks on circular links of the Inspector graph: white, tinted when drawn
-	Style->Set("ProjectCleaner.Graph.Disc", new FSlateImageBrush {Icon(TEXT("Disc"), 16.0f, White)});
+	// marks of circular references (Inspector) and redirector fixes (Issues): white, tinted when drawn
 	Style->Set("ProjectCleaner.Graph.Loop", new FSlateImageBrush {Icon(TEXT("Loop"), 16.0f, White)});
 	Style->Set("ProjectCleaner.Graph.Pair", new FSlateImageBrush {Icon(TEXT("Pair"), 16.0f, White)});
 
@@ -184,9 +183,6 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create() {
 	Style->Set("ProjectCleaner.Page", new FSlateColorBrush {FStyleColors::Background});
 	// cards of the Overview, 4.27 takes the editor group border (PjcShim::GetBrushCard)
 	Style->Set("ProjectCleaner.Card", new FSlateRoundedBoxBrush(FStyleColors::Panel, 4.0f, FLinearColor {FColor::FromHex(TEXT("#383838"))}, 1.0f));
-	// Inspector graph boxes, white: drawn tinted. 4.27 draws square boxes.
-	Style->Set("ProjectCleaner.Graph.Node", new FSlateRoundedBoxBrush(FLinearColor::White, 3.0f));
-	Style->Set("ProjectCleaner.Graph.Pill", new FSlateRoundedBoxBrush(FLinearColor::White, 23.0f));
 #endif
 
 	// rows that react to the mouse

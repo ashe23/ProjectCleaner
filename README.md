@@ -22,7 +22,7 @@ Project Cleaner deletes files and can not know every way a project loads assets,
 # Features
 * **Overview**: project numbers, what keeps assets used, storage by class and folder, issues, and the last cook compared with the scan
 * **Assets**: unused, excluded, used and to review assets folder by folder, as a tree or a size map, each with the reason it is in the list; delete them with the assets that must go with them, exclude or keep them
-* **Inspector**: why an asset is used, as a graph from every root down to it, with what uses it and what it uses
+* **Inspector**: why an asset is used or unused, what keeps it and what goes with it, with what uses it and what it uses over all levels
 * **Issues**: redirectors, external files, corrupted files and empty folders
 * **Help**: documentation and links, bug reports, system info
 * Scan bar and scan settings panel on every tab, optional scanning of project plugins content (for plugin based projects like Lyra)

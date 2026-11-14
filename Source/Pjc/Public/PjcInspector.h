@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "AssetRegistry/AssetData.h"
 #include "PjcScanResult.h"
 
 // What a reference is, from the asset registry dependency properties
@@ -16,62 +17,18 @@ enum class EPjcLinkKind : uint8
 	EditorOnly,
 };
 
-enum class EPjcInspectorNodeKind : uint8
+// Reference kinds an answer counts, one bit per EPjcLinkKind
+namespace PjcLinkKinds
 {
-	Asset,
-	// roots of one class, 4 or more, as one node
-	Group,
-	// why a root is used: the box above it
-	Source,
-	// unused assets of one class with the same links, as one box
-	Stack,
-};
+	constexpr uint8 Hard = 1;
+	constexpr uint8 Soft = 2;
+	constexpr uint8 EditorOnly = 4;
+	constexpr uint8 All = Hard | Soft | EditorOnly;
 
-struct FPjcInspectorNode
-{
-	EPjcInspectorNodeKind Kind = EPjcInspectorNodeKind::Asset;
-	// Asset: its package. Source: the root (or group class) it is above
-	FName Package;
-	// Group: the class and the roots it stands for. Stack: the class and its assets
-	FName GroupClass;
-	TArray<FName> Roots;
-	// Unused group: an asset many of the group use. It has no lines; its users carry a dot (Hubs: indices of such nodes)
-	bool bHub = false;
-	int32 NumUsers = 0;
-	TArray<int32> Hubs;
-	// Source: why the root is used
-	FString Label;
-	// Row, top 0, and place in the row (a row of the unused group is centered, so half steps)
-	int32 Layer = 0;
-	float Column = 0.0f;
-};
-
-struct FPjcInspectorEdge
-{
-	// Indices into the nodes; From references To
-	int32 From = INDEX_NONE;
-	int32 To = INDEX_NONE;
-	EPjcLinkKind Kind = EPjcLinkKind::Hard;
-	// Group edges stand for the references of every root in the group
-	int32 NumLinks = 1;
-	// The reference closes a circle: what it points to leads back to it
-	bool bCircle = false;
-};
-
-// One reference inside a group of assets: indices into the group's names
-struct FPjcGroupLink
-{
-	int32 From = 0;
-	int32 To = 0;
-	EPjcLinkKind Kind = EPjcLinkKind::Hard;
-};
-
-// Line of text above a row of the unused group
-struct FPjcInspectorCaption
-{
-	int32 Layer = 0;
-	FString Text;
-};
+	inline uint8 Of(const EPjcLinkKind Kind) {
+		return Kind == EPjcLinkKind::Hard ? Hard : Kind == EPjcLinkKind::Soft ? Soft : EditorOnly;
+	}
+}	// namespace PjcLinkKinds
 
 // One row of an asset's "Used by" or "Uses" list
 struct FPjcInspectorLink
@@ -104,65 +61,110 @@ struct FPjcInspectorCache
 	}
 };
 
-struct FPjcInspectorRoot
+// A reference between two assets of the model
+struct FPjcModelLink
 {
-	FName Package;
-	// References from the root down to the asset, 0 when the asset is the root
+	int32 Other = INDEX_NONE;
+	EPjcLinkKind Kind = EPjcLinkKind::Hard;
+	// Not a reference: the scan keeps the asset for this one (a localized copy, an asset in the folder of a label)
+	EPjcUsageReason Via = EPjcUsageReason::None;
+	bool bThrough = false;
+};
+
+// A chain of references from a root down to an asset, root first
+struct FPjcRoute
+{
+	TArray<int32> Path;
+	int32 Root = INDEX_NONE;
 	int32 Steps = 0;
+	// the root is an editor asset or a reference on the way is editor only: only the editor needs it this way
+	bool bEditor = false;
 };
 
 /**
- * What keeps an asset used, as a graph for the Inspector: every root at once, top to bottom, each with the shortest path
- * from it to the asset (paths merge into the asset at the bottom) and a source box above it. For an unused asset: the
- * unused assets that reference each other around it (cleanup deletes them together), as one picture: assets with the
- * same links stand as one stack, an asset many of them use has no lines but a dot on its users, editor-only links are
- * left out unless asked for.
+ * Every reference between the scanned assets, read once per scan for the Inspector. It answers one question at a time
+ * about an asset: which root keeps it and through what, what every route passes, what goes when it goes, what uses it
+ * and what it uses over all levels. Assets outside the scanned content are in it as the ends of references.
  */
-struct FPjcInspectorGraph
+struct FPjcInspectorModel
 {
-	FName Focus;
-	TArray<FPjcInspectorNode> Nodes;
-	TArray<FPjcInspectorEdge> Edges;
-	// Every root that keeps the asset used, nearest first
-	TArray<FPjcInspectorRoot> Roots;
-	int32 NumRoots = 0;
-	// Root paths not drawn, past MaxPaths
-	int32 NumHidden = 0;
-	// The graph is the unused group around an unused asset
-	bool bUnusedGroup = false;
-	// Unused group: how many assets it has (they stand as fewer boxes), and the text above some of its rows
-	int32 NumGroup = 0;
-	TArray<FPjcInspectorCaption> Captions;
+	// The scan it was read for
+	FDateTime Time {0};
+	TArray<FName> Packages;
+	TArray<FAssetData> Assets;
+	TArray<TArray<FPjcModelLink>> Uses;
+	TArray<TArray<FPjcModelLink>> UsedBy;
+	TArray<int64> Sizes;
+	// Scanned: in the scan result. Used: kept by the scan (Review too). Root: kept for its own reason, not through another asset
+	TArray<bool> bScanned;
+	TArray<bool> bUsed;
+	TArray<bool> bRoot;
+	TArray<EPjcUsageReason> Reasons;
 
-	static constexpr int32 MaxPaths = 6;
-	static constexpr int32 GroupAt = 4;
-	// Unused group: assets followed at most, and from how many users on an asset stands apart as shared
-	static constexpr int32 MaxGroup = 400;
-	static constexpr int32 HubAt = 8;
+	// Reads every reference of the scanned assets (a progress window when it takes long)
+	void Build(const FPjcScanResult& Result, FPjcInspectorCache* Cache = nullptr);
+	bool IsBuiltFor(const FPjcScanResult& Result) const {
+		return Result.IsValid() && Time == Result.Time;
+	}
+	int32 Find(const FName Package) const;
+	int32 Num() const {
+		return Packages.Num();
+	}
+	static bool Counts(const uint8 Kinds, const FPjcModelLink& Link) {
+		return (PjcLinkKinds::Of(Link.Kind) & Kinds) != 0;
+	}
 
-	// OpenGroups: classes whose roots are drawn one by one instead of as a group.
-	// bEditorLinks: draw the editor-only links of an unused group too (on top, they move nothing)
-	static FPjcInspectorGraph Make(
-		const FPjcScanResult& Result,
-		const FName Focus,
-		const TSet<FName>& OpenGroups = {},
-		const bool bEditorLinks = false,
-		FPjcInspectorCache* Cache = nullptr
-	);
+	// Steps from the nearest root over the kinds in scope, INDEX_NONE when no root reaches it
+	int32 GetDepth(const int32 Node, const uint8 Kinds) const;
+	// What goes when it goes: the asset and every asset only it keeps used, the asset first. Empty when no root reaches it
+	TArray<int32> GetRetained(const int32 Node, const uint8 Kinds) const;
+	// The assets every route to it passes, closest first. Empty when several roots keep it with nothing they all pass
+	TArray<int32> GetChoke(const int32 Node, const uint8 Kinds) const;
+	// The asset that keeps it used on every route (its first choke), INDEX_NONE for a root, for several roots with no
+	// single keeper (-2), or for an asset no root reaches
+	int32 GetKeeper(const int32 Node, const uint8 Kinds) const;
+	static constexpr int32 SeveralRoots = -2;
 
-	// The unused group as one picture, from its assets alone: Group[0] is the asset in focus, Classes their classes,
-	// Links every reference inside the group. It asks no asset registry, so a test can build a group by hand
-	static FPjcInspectorGraph
-	MakeGroup(const TArray<FName>& Group, const TArray<FName>& Classes, const TArray<FPjcGroupLink>& Links, const bool bEditorLinks);
-	// Used graph: assets of one class that all lead to the same next asset become one name in the paths, from GroupAt
-	// on (a thousand sequences of one map are one box, not a thousand). Paths run from the root to the asset in focus;
-	// step 0 (the root) stays as it is, and so does every asset on a path with bStack false. An empty path has no say.
-	// The paths must come from one tree: an asset has one next asset and one distance to the focus. OutStacks: the
-	// new name and the assets it stands for
-	static void
-	StackPaths(TArray<TArray<FName>>& Paths, const TArray<bool>& bStack, TFunctionRef<FName(FName)> ClassOf, TMap<FName, TArray<FName>>& OutStacks);
-	// Kind of the reference From has to To, Hard when there is none
-	static EPjcLinkKind GetLinkKind(const FName From, const FName To, FPjcInspectorCache* Cache = nullptr);
+	// Every root that keeps it with its shortest route, best first: preferred roots, routes the game needs, the kind of
+	// root (primary asset, cue, cinematic, config, engine, editor, review), hard before soft before editor only, project
+	// before plugin content, then fewer steps. Prefer: root node -> 1 preferred, -1 avoided
+	TArray<FPjcRoute> GetRoutes(const int32 Node, const uint8 Kinds, const TMap<int32, int32>& Prefer = {}) const;
+	// The top route and up to two that differ most from it: another class of root, another asset using it
+	TArray<int32> GetKeyRoutes(const TArray<FPjcRoute>& Routes) const;
+
+	struct FReach
+	{
+		int32 Num = 0;
+		int64 Size = 0;
+	};
+	// Every asset that uses it over all levels (bUsedBy), or that it uses
+	FReach GetReach(const int32 Node, const bool bUsedBy, const uint8 Kinds) const;
+
+	struct FWhatIf
+	{
+		// Still used: the route that keeps it then
+		bool bStill = false;
+		TArray<int32> Path;
+		bool bEditor = false;
+		// Not used then: how many assets become unused with it and their size
+		int32 Num = 0;
+		int64 Size = 0;
+	};
+	// If User did not use Focus: what keeps it used, or what becomes unused
+	FWhatIf GetWhatIf(const int32 Focus, const int32 User, const uint8 Kinds) const;
+
+	struct FSearch
+	{
+		// Assets on the branches from the asset to a match, the matches, how many assets were looked at
+		TSet<int32> Keep;
+		TSet<int32> Hits;
+		int32 Searched = 0;
+	};
+	static constexpr int32 MaxHits = 100;
+	// Search over all levels of what uses it (bUsedBy) or what it uses
+	FSearch
+	Search(const int32 Node, const bool bUsedBy, const uint8 Kinds, TFunctionRef<bool(const int32 From, const FPjcModelLink& Link)> Match) const;
+
 	// What uses the package (bUsedBy) or what it uses. Actors and objects a World Partition map saves in their own
 	// files are part of their map, not assets: they are left out and the list goes on through them, so a map lists
 	// the meshes its actors use and a mesh lists the maps. OutThrough: how many of those files the list went through
@@ -173,9 +175,19 @@ struct FPjcInspectorGraph
 
   private:
 
+	struct FDominators
+	{
+		uint8 Kinds = 0;
+		// Immediate dominator of each node; Virtual for a root's, INDEX_NONE when no root reaches it
+		TArray<int32> Idom;
+		TArray<TArray<int32>> Kids;
+		TArray<int32> Depth;
+	};
+	static constexpr int32 Virtual = -3;
+	const FDominators& GetDominators(const uint8 Kinds) const;
+	mutable TArray<FDominators> DominatorCache;
+
+	TMap<FName, int32> IndexOf;
+
 	static void ReadLinks(const FName Package, const bool bUsedBy, TArray<FPjcInspectorLink>& Out, int32& OutThrough, FPjcInspectorCache* Cache);
-
-  public:
-
-	int32 FindNode(const FName Package) const;
 };

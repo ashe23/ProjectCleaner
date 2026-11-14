@@ -4,7 +4,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-#include "PjcGraphRouter.h"
 #include "PjcInspector.h"
 #include "PjcIssues.h"
 #include "PjcLocations.h"
@@ -199,12 +198,12 @@ namespace
 		const FName Level = PackageOf(Fixture, TEXT("L_Feature"));
 		const FName Placed = PackageOf(Fixture, TEXT("BP_Placed"));
 		const auto IsActorFile = [](const FPjcInspectorLink& Link) {
-			return FPjcInspectorGraph::IsExternal(Link.Package);
+			return FPjcInspectorModel::IsExternal(Link.Package);
 		};
 
 		TArray<FPjcInspectorLink> Links;
 		int32 Through = 0;
-		FPjcInspectorGraph::GetLinks(Level, false, Links, Through);
+		FPjcInspectorModel::GetLinks(Level, false, Links, Through);
 		Test.TestTrue(TEXT("level uses: went through its actor file"), Through > 0);
 		Test.TestFalse(TEXT("level uses: no actor file listed"), Links.ContainsByPredicate(IsActorFile));
 		const FPjcInspectorLink* Used = Links.FindByPredicate([Placed](const FPjcInspectorLink& Link) {
@@ -214,14 +213,14 @@ namespace
 			Test.TestTrue(TEXT("through the actor file"), Used->bThrough);
 		}
 
-		FPjcInspectorGraph::GetLinks(Placed, true, Links, Through);
+		FPjcInspectorModel::GetLinks(Placed, true, Links, Through);
 		Test.TestTrue(TEXT("blueprint used by: went through the actor file"), Through > 0);
 		Test.TestFalse(TEXT("blueprint used by: no actor file listed"), Links.ContainsByPredicate(IsActorFile));
 		Test.TestTrue(TEXT("blueprint is used by the level"), Links.ContainsByPredicate([Level](const FPjcInspectorLink& Link) {
 			return Link.Package == Level && Link.bThrough;
 		}));
 
-		FPjcInspectorGraph::GetLinks(Level, true, Links, Through);
+		FPjcInspectorModel::GetLinks(Level, true, Links, Through);
 		Test.TestFalse(TEXT("level used by: its own actor file is not listed"), Links.ContainsByPredicate(IsActorFile));
 		Test.TestEqual(TEXT("level used by: its own actor file is not counted"), Through, 0);
 		FPjcTestFixture::Case(Test, TEXT("inspector through actor files"));
@@ -1788,9 +1787,106 @@ bool FPjcTestIssuesFiles::RunTest(const FString& Parameters) {
 	return true;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPjcTestInspectorGraph, "ProjectCleaner.Inspector.Graph", PJC_TEST_FLAGS)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPjcTestInspectorModel, "ProjectCleaner.Inspector.Model", PJC_TEST_FLAGS)
 
-bool FPjcTestInspectorGraph::RunTest(const FString& Parameters) {
+bool FPjcTestInspectorModel::RunTest(const FString& Parameters) {
+	// a graph by hand: two roots reach Focus through A and B, both through C; Focus alone keeps D, E is kept by R1 too
+	enum
+	{
+		R1,
+		R2,
+		A,
+		B,
+		C,
+		Focus,
+		D,
+		E,
+		Num
+	};
+	FPjcInspectorModel Model;
+	const TCHAR* Names[] = {
+	  TEXT("/Game/R1"), TEXT("/Game/R2"), TEXT("/Game/A"), TEXT("/Game/B"), TEXT("/Game/C"), TEXT("/Game/Focus"), TEXT("/Game/D"), TEXT("/Game/E")
+	};
+	for (int32 Node = 0; Node < Num; ++Node) {
+		Model.Packages.Add(FName {Names[Node]});
+		Model.Assets.AddDefaulted();
+		Model.Uses.AddDefaulted();
+		Model.UsedBy.AddDefaulted();
+		Model.Sizes.Add(100);
+		Model.bScanned.Add(true);
+		Model.bUsed.Add(true);
+		Model.bRoot.Add(Node == R1 || Node == R2);
+		Model.Reasons.Add(Node == R1 || Node == R2 ? EPjcUsageReason::Primary : EPjcUsageReason::Dependency);
+	}
+	const auto Link = [&Model](const int32 From, const int32 To, const EPjcLinkKind Kind) {
+		Model.Uses[From].Add(FPjcModelLink {To, Kind});
+		Model.UsedBy[To].Add(FPjcModelLink {From, Kind});
+	};
+	Link(R1, A, EPjcLinkKind::Hard);
+	Link(R2, B, EPjcLinkKind::Soft);
+	Link(A, C, EPjcLinkKind::Hard);
+	Link(B, C, EPjcLinkKind::Hard);
+	Link(C, Focus, EPjcLinkKind::Hard);
+	Link(Focus, D, EPjcLinkKind::Hard);
+	Link(D, E, EPjcLinkKind::Hard);
+	Link(R1, E, EPjcLinkKind::EditorOnly);
+	const uint8 All = PjcLinkKinds::All;
+
+	const TArray<FPjcRoute> Routes = Model.GetRoutes(Focus, All);
+	if (TestEqual(TEXT("every root keeps it"), Routes.Num(), 2)) {
+		TestEqual(TEXT("the hard route first"), Routes[0].Root, static_cast<int32>(R1));
+		TestEqual(TEXT("a route runs from the root to the asset"), Routes[0].Path.Last(), static_cast<int32>(Focus));
+		TestEqual(TEXT("steps of the route"), Routes[0].Steps, 3);
+	}
+	// key routes differ in the class of the root or the asset using it: these two share both (C), one is enough
+	TestEqual(TEXT("routes alike are one key route"), Model.GetKeyRoutes(Routes).Num(), 1);
+	TestEqual(TEXT("steps from the nearest root"), Model.GetDepth(Focus, All), 3);
+
+	const TArray<int32> Choke = Model.GetChoke(Focus, All);
+	TestTrue(TEXT("every route passes C"), Choke.Num() > 0 && Choke[0] == C);
+	TestEqual(TEXT("C keeps it"), Model.GetKeeper(Focus, All), static_cast<int32>(C));
+	TestEqual(TEXT("two roots keep C, no single asset"), Model.GetKeeper(C, All), FPjcInspectorModel::SeveralRoots);
+	TestEqual(TEXT("a root has no keeper"), Model.GetKeeper(R1, All), static_cast<int32>(INDEX_NONE));
+
+	const TArray<int32> Retained = Model.GetRetained(Focus, All);
+	TestTrue(TEXT("what goes with it: itself first"), Retained.Num() > 0 && Retained[0] == Focus);
+	TestTrue(TEXT("D goes with it"), Retained.Contains(D));
+	TestFalse(TEXT("E stays: R1 keeps it too"), Retained.Contains(E));
+	// without editor-only references only Focus keeps E
+	TestTrue(
+		TEXT("E goes too when editor-only references do not count"), Model.GetRetained(Focus, PjcLinkKinds::Hard | PjcLinkKinds::Soft).Contains(E)
+	);
+	// without soft references R2 does not reach it
+	TestEqual(TEXT("hard references only: one route"), Model.GetRoutes(Focus, PjcLinkKinds::Hard).Num(), 1);
+
+	const FPjcInspectorModel::FReach Up = Model.GetReach(Focus, true, All);
+	TestEqual(TEXT("what uses it over all levels"), Up.Num, 5);
+	const FPjcInspectorModel::FReach Down = Model.GetReach(Focus, false, All);
+	TestEqual(TEXT("what it uses over all levels"), Down.Num, 2);
+	TestEqual(TEXT("size it pulls in"), Down.Size, static_cast<int64>(200));
+
+	const FPjcInspectorModel::FWhatIf Without = Model.GetWhatIf(Focus, C, All);
+	TestFalse(TEXT("without C it is unused"), Without.bStill);
+	TestEqual(TEXT("without C it goes with D"), Without.Num, 2);
+	const FPjcInspectorModel::FWhatIf WithoutA = Model.GetWhatIf(C, A, All);
+	TestTrue(TEXT("without A, C is still used"), WithoutA.bStill);
+	TestTrue(TEXT("still used through B"), WithoutA.Path.Contains(B));
+
+	const FPjcInspectorModel::FSearch Found = Model.Search(Focus, false, All, [&Model](const int32, const FPjcModelLink& Each) {
+		return Model.Packages[Each.Other] == FName {TEXT("/Game/E")};
+	});
+	TestTrue(TEXT("search finds E over two levels"), Found.Hits.Contains(E));
+	TestTrue(TEXT("the branch to it stays"), Found.Keep.Contains(D));
+
+	// a circle does not hang the answers
+	Link(Focus, C, EPjcLinkKind::Hard);
+	TestEqual(TEXT("circle: routes still found"), Model.GetRoutes(Focus, PjcLinkKinds::Hard | PjcLinkKinds::Soft).Num(), 2);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPjcTestInspectorScan, "ProjectCleaner.Inspector.Scan", PJC_TEST_FLAGS)
+
+bool FPjcTestInspectorScan::RunTest(const FString& Parameters) {
 	if (!FPjcTestFixture::IsTestHost()) {
 		AddInfo(TEXT("Skipped, fixture tests run only in test host projects"));
 		return true;
@@ -1802,125 +1898,78 @@ bool FPjcTestInspectorGraph::RunTest(const FString& Parameters) {
 	if (!TestTrue(TEXT("scanned"), UPjcSubsystem::Scan(false))) return false;
 	const FPjcScanResult& Result = UPjcSubsystem::GetScanResult();
 
-	// used: the root on top with its source, the path down to the asset
-	const FName Leaf = PackageOf(Fixture, TEXT("C_ChainLeaf"));
-	const FPjcInspectorGraph Used = FPjcInspectorGraph::Make(Result, Leaf);
-	TestFalse(TEXT("used graph is no unused group"), Used.bUnusedGroup);
-	TestTrue(TEXT("used graph has roots"), Used.NumRoots > 0);
+	FPjcInspectorModel Model;
+	Model.Build(Result);
+	TestTrue(TEXT("model of this scan"), Model.IsBuiltFor(Result));
+	const int32 Leaf = Model.Find(PackageOf(Fixture, TEXT("C_ChainLeaf")));
+	const int32 Chain = Model.Find(PackageOf(Fixture, TEXT("OL_Chain")));
+	const int32 Root = Model.Find(PackageOf(Fixture, TEXT("PAL_Root")));
+	if (!TestTrue(TEXT("chain assets in the model"), Leaf != INDEX_NONE && Chain != INDEX_NONE && Root != INDEX_NONE)) return false;
 
-	// a fan: many roots, each through an asset of its own to the same asset. The assets between stand as one box
-	{
-		TArray<TArray<FName>> FanPaths;
-		TArray<bool> bFan;
-		for (int32 Index = 0; Index < 6; ++Index) {
-			FanPaths.Add(
-				{FName {*FString::Printf(TEXT("/Game/Root%d"), Index)},
-				 FName {*FString::Printf(TEXT("/Game/Shot%d"), Index)},
-				 TEXT("/Game/Map"),
-				 TEXT("/Game/Focus")}
-			);
-			bFan.Add(true);
-		}
-		// a path drawn step by step keeps its assets as they are, also for the others
-		FanPaths.Add({TEXT("/Game/Alone"), TEXT("/Game/Shot5"), TEXT("/Game/Map"), TEXT("/Game/Focus")});
-		bFan.Add(false);
-		TMap<FName, TArray<FName>> FanStacks;
-		FPjcInspectorGraph::StackPaths(
-			FanPaths,
-			bFan,
-			[](const FName) {
-				return FName {TEXT("LevelSequence")};
-			},
-			FanStacks
+	// used: the label keeps the library, the library the leaf
+	TestTrue(TEXT("the label is a root"), Model.bRoot[Root]);
+	const TArray<FPjcRoute> Routes = Model.GetRoutes(Leaf, PjcLinkKinds::All);
+	const FPjcRoute* Route = Routes.FindByPredicate([Root](const FPjcRoute& Each) {
+		return Each.Root == Root;
+	});
+	if (TestNotNull(TEXT("the label keeps the leaf"), Route)) {
+		TestTrue(TEXT("through the library"), Route->Path.Contains(Chain));
+		TestEqual(TEXT("ending in the leaf"), Route->Path.Last(), Leaf);
+	}
+	const FPjcModelLink* LabelLink = Model.Uses[Root].FindByPredicate([Chain](const FPjcModelLink& Each) {
+		return Each.Other == Chain;
+	});
+	if (TestNotNull(TEXT("label references the library"), LabelLink)) {
+		TestEqual(
+			TEXT("labels reference editor only (labels do not ship)"),
+			static_cast<int32>(LabelLink->Kind),
+			static_cast<int32>(EPjcLinkKind::EditorOnly)
 		);
-		TestEqual(TEXT("the fan is one stack"), FanStacks.Num(), 1);
-		for (const auto& Pair : FanStacks) {
-			TestEqual(TEXT("the stack has the assets no other path needs"), Pair.Value.Num(), 5);
-			TestEqual(TEXT("the path goes through the stack"), FanPaths[0][1], Pair.Key);
-		}
-		TestEqual(TEXT("roots stay"), FanPaths[0][0], FName {TEXT("/Game/Root0")});
-		TestEqual(TEXT("the asset all lead to stays"), FanPaths[0][2], FName {TEXT("/Game/Map")});
-		TestEqual(TEXT("an asset of a single path stays"), FanPaths[5][1], FName {TEXT("/Game/Shot5")});
+	}
+	const FPjcModelLink* LibraryLink = Model.Uses[Chain].FindByPredicate([Leaf](const FPjcModelLink& Each) {
+		return Each.Other == Leaf;
+	});
+	if (TestNotNull(TEXT("library references the leaf"), LibraryLink)) {
+		TestEqual(TEXT("object library references hard"), static_cast<int32>(LibraryLink->Kind), static_cast<int32>(EPjcLinkKind::Hard));
+	}
+	TestTrue(TEXT("a root reaches the leaf"), Model.GetDepth(Leaf, PjcLinkKinds::All) != INDEX_NONE);
 
-		// two levels and paths of different length: a stack that leads to a stack, a short path beside them
-		TArray<TArray<FName>> Deep;
-		TArray<bool> bDeep;
-		for (int32 Index = 0; Index < 4; ++Index) {
-			Deep.Add({
-			  FName {*FString::Printf(TEXT("/Game/R%d"), Index)},
-			  FName {*FString::Printf(TEXT("/Game/A%d"), Index)},
-			  FName {*FString::Printf(TEXT("/Game/B%d"), Index)},
-			  TEXT("/Game/Focus"),
-			});
-			bDeep.Add(true);
-		}
-		Deep.Add({TEXT("/Game/R9"), TEXT("/Game/Focus")});
-		bDeep.Add(true);
-		// a path that is not drawn has no say
-		Deep.Add({});
-		bDeep.Add(false);
-		TMap<FName, TArray<FName>> DeepStacks;
-		FPjcInspectorGraph::StackPaths(
-			Deep,
-			bDeep,
-			[](const FName) {
-				return FName {TEXT("LevelSequence")};
-			},
-			DeepStacks
-		);
-		TestEqual(TEXT("two levels are two stacks"), DeepStacks.Num(), 2);
-		TestEqual(TEXT("the paths share the lower stack"), Deep[0][2], Deep[3][2]);
-		TestEqual(TEXT("the paths share the upper stack"), Deep[0][1], Deep[3][1]);
-		TestNotEqual(TEXT("the two stacks are not one"), Deep[0][1], Deep[0][2]);
-		TestEqual(TEXT("the short path is as it was"), Deep[4].Num(), 2);
-
-		// fewer than a group, and two classes to the same asset: no stack
-		TArray<TArray<FName>> Few;
-		TArray<bool> bFew;
-		for (int32 Index = 0; Index < 6; ++Index) {
-			Few.Add(
-				{FName {*FString::Printf(TEXT("/Game/R%d"), Index)},
-				 FName {*FString::Printf(TEXT("/Game/%s%d"), Index < 3 ? TEXT("Seq") : TEXT("Mat"), Index)},
-				 TEXT("/Game/Focus")}
-			);
-			bFew.Add(true);
-		}
-		TMap<FName, TArray<FName>> FewStacks;
-		FPjcInspectorGraph::StackPaths(
-			Few,
-			bFew,
-			[](const FName Package) {
-				return FName {Package.ToString().Contains(TEXT("Seq")) ? TEXT("LevelSequence") : TEXT("Material")};
-			},
-			FewStacks
-		);
-		TestEqual(TEXT("three of a class are no stack"), FewStacks.Num(), 0);
+	// unused: no root reaches it, nothing goes with it as used
+	const int32 Unused = Model.Find(PackageOf(Fixture, TEXT("C_UnusedLeaf")));
+	if (TestTrue(TEXT("unused leaf in the model"), Unused != INDEX_NONE)) {
+		TestFalse(TEXT("unused"), Model.bUsed[Unused]);
+		TestEqual(TEXT("no root reaches an unused asset"), Model.GetDepth(Unused, PjcLinkKinds::All), static_cast<int32>(INDEX_NONE));
+		TestEqual(TEXT("an unused asset has no route"), Model.GetRoutes(Unused, PjcLinkKinds::All).Num(), 0);
+		TestTrue(TEXT("its unused user is in the model"), Model.UsedBy[Unused].ContainsByPredicate([&Model, &Fixture](const FPjcModelLink& Each) {
+			return Model.Packages[Each.Other] == PackageOf(Fixture, TEXT("OL_UnusedRoot"));
+		}));
 	}
 
 	// reference locations: the asset is loaded and says which of its properties holds the asset it uses
 	{
 		const FName Library = PackageOf(Fixture, TEXT("OL_Chain"));
+		const FName LeafPackage = PackageOf(Fixture, TEXT("C_ChainLeaf"));
 		FPjcLocations Read;
 		TestTrue(TEXT("an asset can be read"), FPjcLocationReader::CanRead(Library));
 		if (TestTrue(TEXT("locations read"), FPjcLocationReader::Read(Library, Read))) {
-			const FPjcLocation* Place = Read.Places.FindByPredicate([Leaf](const FPjcLocation& Existing) {
-				return Existing.Target == Leaf;
+			const FPjcLocation* Place = Read.Places.FindByPredicate([LeafPackage](const FPjcLocation& Existing) {
+				return Existing.Target == LeafPackage;
 			});
 			if (TestNotNull(TEXT("the property that holds the used asset is found"), Place)) {
 				TestFalse(TEXT("the place names a property"), Place->Property.IsEmpty());
 				TestTrue(TEXT("the place names a part of the asset"), Place->Parts.Num() > 0);
 			}
-			TestFalse(TEXT("an asset found in a property is not listed as not found"), Read.NotFound.Contains(Leaf));
+			TestFalse(TEXT("an asset found in a property is not listed as not found"), Read.NotFound.Contains(LeafPackage));
 			TArray<FPjcInspectorLink> Uses;
 			int32 Through = 0;
-			FPjcInspectorGraph::GetLinks(Library, false, Uses, Through);
+			FPjcInspectorModel::GetLinks(Library, false, Uses, Through);
 			TSet<FName> Listed;
-			for (const FPjcInspectorLink& Link : Uses) {
-				Listed.Add(Link.Package);
-				const bool bPlaced = Read.Places.ContainsByPredicate([&Link](const FPjcLocation& Existing) {
-					return Existing.Target == Link.Package;
+			for (const FPjcInspectorLink& Each : Uses) {
+				Listed.Add(Each.Package);
+				const bool bPlaced = Read.Places.ContainsByPredicate([&Each](const FPjcLocation& Existing) {
+					return Existing.Target == Each.Package;
 				});
-				TestTrue(TEXT("every used asset has a place or is listed as not found"), bPlaced || Read.NotFound.Contains(Link.Package));
+				TestTrue(TEXT("every used asset has a place or is listed as not found"), bPlaced || Read.NotFound.Contains(Each.Package));
 			}
 			for (const FPjcLocation& Existing : Read.Places) {
 				TestTrue(TEXT("every place is of an asset the lists show"), Listed.Contains(Existing.Target));
@@ -1928,301 +1977,6 @@ bool FPjcTestInspectorGraph::RunTest(const FString& Parameters) {
 		}
 		TestFalse(TEXT("nothing to read for no asset"), FPjcLocationReader::CanRead(TEXT("/Game/Pjc/NoSuchAsset")));
 	}
-	const int32 LeafNode = Used.FindNode(Leaf);
-	const int32 ChainNode = Used.FindNode(PackageOf(Fixture, TEXT("OL_Chain")));
-	const int32 RootNode = Used.FindNode(PackageOf(Fixture, TEXT("PAL_Root")));
-	if (TestTrue(TEXT("chain nodes"), LeafNode != INDEX_NONE && ChainNode != INDEX_NONE && RootNode != INDEX_NONE)) {
-		TestTrue(TEXT("root above the chain"), Used.Nodes[RootNode].Layer < Used.Nodes[ChainNode].Layer);
-		TestTrue(TEXT("chain above the asset"), Used.Nodes[ChainNode].Layer < Used.Nodes[LeafNode].Layer);
-		TestTrue(TEXT("root references the chain"), Used.Edges.ContainsByPredicate([&](const FPjcInspectorEdge& Edge) {
-			return Edge.From == RootNode && Edge.To == ChainNode;
-		}));
-		TestTrue(TEXT("chain references the asset"), Used.Edges.ContainsByPredicate([&](const FPjcInspectorEdge& Edge) {
-			return Edge.From == ChainNode && Edge.To == LeafNode;
-		}));
-		const FName Library = PackageOf(Fixture, TEXT("OL_Chain"));
-		const int32 LabelLink = static_cast<int32>(FPjcInspectorGraph::GetLinkKind(PackageOf(Fixture, TEXT("PAL_Root")), Library));
-		TestEqual(TEXT("labels reference editor only (labels do not ship)"), LabelLink, static_cast<int32>(EPjcLinkKind::EditorOnly));
-		const int32 LibraryLink = static_cast<int32>(FPjcInspectorGraph::GetLinkKind(Library, Leaf));
-		TestEqual(TEXT("object library references hard"), LibraryLink, static_cast<int32>(EPjcLinkKind::Hard));
-	}
-	const int32 SourceNode = Used.Nodes.IndexOfByPredicate([&](const FPjcInspectorNode& Node) {
-		return Node.Kind == EPjcInspectorNodeKind::Source && Node.Package == PackageOf(Fixture, TEXT("PAL_Root"));
-	});
-	if (TestTrue(TEXT("source above the root"), SourceNode != INDEX_NONE && RootNode != INDEX_NONE)) {
-		TestTrue(TEXT("source tells why"), !Used.Nodes[SourceNode].Label.IsEmpty());
-		TestTrue(TEXT("source row above the root"), Used.Nodes[SourceNode].Layer < Used.Nodes[RootNode].Layer);
-	}
-
-	// unused: the group around it, what nothing references on top
-	const FName UnusedLeaf = PackageOf(Fixture, TEXT("C_UnusedLeaf"));
-	const FPjcInspectorGraph Unused = FPjcInspectorGraph::Make(Result, UnusedLeaf);
-	TestTrue(TEXT("unused group"), Unused.bUnusedGroup);
-	const int32 UnusedNode = Unused.FindNode(UnusedLeaf);
-	const int32 UnusedRootNode = Unused.FindNode(PackageOf(Fixture, TEXT("OL_UnusedRoot")));
-	if (TestTrue(TEXT("unused group nodes"), UnusedNode != INDEX_NONE && UnusedRootNode != INDEX_NONE)) {
-		TestEqual(TEXT("unreferenced on top"), Unused.Nodes[UnusedRootNode].Layer, 0);
-		TestEqual(TEXT("referenced below"), Unused.Nodes[UnusedNode].Layer, 1);
-		TestTrue(TEXT("unused reference drawn"), Unused.Edges.ContainsByPredicate([&](const FPjcInspectorEdge& Edge) {
-			return Edge.From == UnusedRootNode && Edge.To == UnusedNode;
-		}));
-	}
-	return true;
-}
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPjcTestInspectorWiring, "ProjectCleaner.Inspector.Wiring", PJC_TEST_FLAGS)
-
-bool FPjcTestInspectorWiring::RunTest(const FString& Parameters) {
-	// boxes of the graph, no assets. Top uses Bottom with Between in the way, and Left and Right in the row of Bottom;
-	// Bottom uses Top too (a line that goes up); Top and Beside stand in one row
-	enum
-	{
-		Top,
-		Between,
-		Bottom,
-		Left,
-		Right,
-		Beside,
-	};
-	const FVector2D Size {214.0f, 46.0f};
-	const TArray<FVector2D> Boxes {
-	  FVector2D {400.0f,   0.0f},
-	  FVector2D {400.0f, 120.0f},
-	  FVector2D {400.0f, 240.0f},
-	  FVector2D {130.0f, 240.0f},
-	  FVector2D {670.0f, 240.0f},
-	  FVector2D {800.0f,   0.0f}
-	};
-	const TArray<FPjcRouteLink> Links {
-	  FPjcRouteLink {	Top, Bottom},
-		 FPjcRouteLink {   Top,	  Left},
-		  FPjcRouteLink {	Top,  Right},
-		FPjcRouteLink {	  Top, Beside},
-	   FPjcRouteLink {Bottom,	 Top}
-	};
-	TArray<TArray<FVector2D>> Routes;
-	PjcGraphRouter::Route(Boxes, Size, Links, Routes);
-	if (!TestEqual(TEXT("a line for every link"), Routes.Num(), Links.Num())) return false;
-
-	const auto X = [](const FVector2D& Point) {
-		return static_cast<float>(Point.X);
-	};
-	const auto Y = [](const FVector2D& Point) {
-		return static_cast<float>(Point.Y);
-	};
-	// inside a box, not on its border: a line starts and ends on a border
-	const auto InBox = [&](const float AtX, const float AtY) {
-		for (const FVector2D& Box : Boxes) {
-			if (AtX > X(Box) + 1.0f && AtX < X(Box) + X(Size) - 1.0f && AtY > Y(Box) + 1.0f && AtY < Y(Box) + Y(Size) - 1.0f) return true;
-		}
-		return false;
-	};
-	for (int32 Index = 0; Index < Routes.Num(); ++Index) {
-		const TArray<FVector2D>& Line = Routes[Index];
-		if (!TestTrue(FString::Printf(TEXT("line %d has a start and an end"), Index), Line.Num() >= 2)) return false;
-
-		bool bRightAngles = true;
-		bool bThroughBox = false;
-		for (int32 Point = 1; Point < Line.Num(); ++Point) {
-			const float DeltaX = X(Line[Point]) - X(Line[Point - 1]);
-			const float DeltaY = Y(Line[Point]) - Y(Line[Point - 1]);
-			bRightAngles &= FMath::Abs(DeltaX) < 0.01f || FMath::Abs(DeltaY) < 0.01f;
-			const int32 Steps = FMath::Max(1, FMath::CeilToInt((FMath::Abs(DeltaX) + FMath::Abs(DeltaY)) / 4.0f));
-			for (int32 Step = 0; Step <= Steps; ++Step) {
-				const float At = static_cast<float>(Step) / Steps;
-				bThroughBox |= InBox(X(Line[Point - 1]) + DeltaX * At, Y(Line[Point - 1]) + DeltaY * At);
-			}
-		}
-		TestTrue(FString::Printf(TEXT("line %d runs at right angles"), Index), bRightAngles);
-		TestFalse(FString::Printf(TEXT("line %d goes through no box"), Index), bThroughBox);
-	}
-
-	// a box uses what is below it: out at the bottom, in at the top. A line that goes up does the opposite
-	TestEqual(TEXT("leaves the bottom of the box that uses"), Y(Routes[0][0]), 46.0f, 0.01f);
-	TestEqual(TEXT("arrives at the top of the used box"), Y(Routes[0].Last()), 240.0f, 0.01f);
-	TestTrue(TEXT("goes round the box in the way"), Routes[0].Num() > 2);
-	TestEqual(TEXT("a line up leaves the top"), Y(Routes[4][0]), 240.0f, 0.01f);
-	TestEqual(TEXT("a line up arrives at the bottom"), Y(Routes[4].Last()), 46.0f, 0.01f);
-	// one row: side to side, straight
-	TestEqual(TEXT("neighbours: out at the side"), X(Routes[3][0]), 614.0f, 0.01f);
-	TestEqual(TEXT("neighbours: in at the side"), X(Routes[3].Last()), 800.0f, 0.01f);
-	TestEqual(TEXT("neighbours: a straight line"), Routes[3].Num(), 2);
-	// ends on one side are spread along it, in the order of where they lead
-	const TSet<int32> Ends {
-	  FMath::RoundToInt(X(Routes[0][0])),
-	  FMath::RoundToInt(X(Routes[1][0])),
-	  FMath::RoundToInt(X(Routes[2][0])),
-	  FMath::RoundToInt(X(Routes[4].Last()))
-	};
-	TestEqual(TEXT("four ends on the bottom of one box, each at its own place"), Ends.Num(), 4);
-	TestTrue(TEXT("the end that leads left is left of the one that leads right"), X(Routes[1][0]) < X(Routes[2][0]));
-
-	// round corners keep the ends
-	const TArray<FVector2D> Rounded = PjcGraphRouter::Round(Routes[1], 8.0f);
-	TestTrue(TEXT("round corners add points"), Rounded.Num() > Routes[1].Num());
-	TestTrue(TEXT("round corners keep the start"), Rounded[0].Equals(Routes[1][0], 0.01f));
-	TestTrue(TEXT("round corners keep the end"), Rounded.Last().Equals(Routes[1].Last(), 0.01f));
-	const FVector2D Middle = PjcGraphRouter::Middle(Routes[3]);
-	TestEqual(TEXT("the middle of a straight line"), X(Middle), 707.0f, 0.01f);
-	return true;
-}
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPjcTestInspectorGroup, "ProjectCleaner.Inspector.Group", PJC_TEST_FLAGS)
-
-bool FPjcTestInspectorGroup::RunTest(const FString& Parameters) {
-	// a group built by hand, no assets: User uses Focus; Focus uses three textures and P; P and Q use each other;
-	// R uses nothing of them; all eight use Shared. One texture has an editor-only reference back to User
-	enum
-	{
-		Focus,
-		User,
-		T1,
-		T2,
-		T3,
-		Shared,
-		P,
-		Q,
-		R,
-		Num
-	};
-	const TArray<FName> Names {
-	  TEXT("/Game/Focus"),
-	  TEXT("/Game/User"),
-	  TEXT("/Game/T1"),
-	  TEXT("/Game/T2"),
-	  TEXT("/Game/T3"),
-	  TEXT("/Game/Shared"),
-	  TEXT("/Game/P"),
-	  TEXT("/Game/Q"),
-	  TEXT("/Game/R")
-	};
-	const TArray<FName> Classes {
-	  TEXT("Blueprint"),
-	  TEXT("Blueprint"),
-	  TEXT("Texture2D"),
-	  TEXT("Texture2D"),
-	  TEXT("Texture2D"),
-	  TEXT("Skeleton"),
-	  TEXT("Material"),
-	  TEXT("Material"),
-	  TEXT("SoundWave")
-	};
-	TArray<FPjcGroupLink> Links;
-	Links.Add(FPjcGroupLink {User, Focus, EPjcLinkKind::Hard});
-	for (const int32 Texture : {T1, T2, T3}) {
-		Links.Add(FPjcGroupLink {Focus, Texture, EPjcLinkKind::Hard});
-	}
-	Links.Add(FPjcGroupLink {Focus, P, EPjcLinkKind::Soft});
-	Links.Add(FPjcGroupLink {P, Q, EPjcLinkKind::Hard});
-	Links.Add(FPjcGroupLink {Q, P, EPjcLinkKind::Hard});
-	for (const int32 Each : {Focus, User, T1, T2, T3, P, Q, R}) {
-		Links.Add(FPjcGroupLink {Each, Shared, EPjcLinkKind::Hard});
-	}
-	Links.Add(FPjcGroupLink {T1, User, EPjcLinkKind::EditorOnly});
-	if (!TestEqual(TEXT("names of the hand made group"), Names.Num(), static_cast<int32>(Num))) return false;
-
-	const FPjcInspectorGraph Graph = FPjcInspectorGraph::MakeGroup(Names, Classes, Links, false);
-	TestTrue(TEXT("unused group"), Graph.bUnusedGroup);
-	TestEqual(TEXT("assets in the group"), Graph.NumGroup, static_cast<int32>(Num));
-	TestEqual(TEXT("boxes: focus, user, the textures as one, shared, P, Q, R"), Graph.Nodes.Num(), 7);
-
-	const auto BoxOf = [&Graph, &Names](const int32 Index) {
-		return Graph.Nodes.IndexOfByPredicate([&](const FPjcInspectorNode& Node) {
-			return Node.Kind == EPjcInspectorNodeKind::Stack ? Node.Roots.Contains(Names[Index]) : Node.Package == Names[Index];
-		});
-	};
-	const auto EdgeOf = [&Graph](const int32 From, const int32 To) {
-		return Graph.Edges.FindByPredicate([From, To](const FPjcInspectorEdge& Edge) {
-			return Edge.From == From && Edge.To == To;
-		});
-	};
-	const int32 FocusBox = BoxOf(Focus);
-	const int32 UserBox = BoxOf(User);
-	const int32 Stack = BoxOf(T1);
-	const int32 SharedBox = BoxOf(Shared);
-	const int32 PBox = BoxOf(P);
-	const int32 QBox = BoxOf(Q);
-	const int32 RBox = BoxOf(R);
-	for (const int32 Box : {FocusBox, UserBox, Stack, SharedBox, PBox, QBox, RBox}) {
-		if (!TestTrue(TEXT("every asset has a box"), Graph.Nodes.IsValidIndex(Box))) return false;
-	}
-
-	// same class, same users, same uses: one stack. The asset in focus is never part of one
-	TestEqual(TEXT("focus is found as an asset"), Graph.FindNode(Names[Focus]), FocusBox);
-	TestTrue(TEXT("the textures are a stack"), Graph.Nodes[Stack].Kind == EPjcInspectorNodeKind::Stack);
-	TestEqual(TEXT("stack size"), Graph.Nodes[Stack].Roots.Num(), 3);
-	TestEqual(TEXT("stack class"), Graph.Nodes[Stack].GroupClass, Classes[T1]);
-	TestEqual(TEXT("textures share their box"), BoxOf(T2), Stack);
-	TestTrue(TEXT("P and Q are not merged: they use each other, not the same things"), PBox != QBox);
-	const FPjcInspectorEdge* ToStack = EdgeOf(FocusBox, Stack);
-	if (TestNotNull(TEXT("focus uses the stack"), ToStack)) {
-		TestEqual(TEXT("one line for the three references"), ToStack->NumLinks, 3);
-	}
-
-	// shared: used by 8 of the group, so no lines, a dot on each user
-	TestTrue(TEXT("shared asset stands apart"), Graph.Nodes[SharedBox].bHub);
-	TestEqual(TEXT("shared asset users"), Graph.Nodes[SharedBox].NumUsers, static_cast<int32>(FPjcInspectorGraph::HubAt));
-	TestFalse(TEXT("no line touches the shared asset"), Graph.Edges.ContainsByPredicate([SharedBox](const FPjcInspectorEdge& Edge) {
-		return Edge.From == SharedBox || Edge.To == SharedBox;
-	}));
-	for (const int32 Box : {FocusBox, UserBox, Stack, PBox, QBox, RBox}) {
-		TestTrue(TEXT("every user of the shared asset carries its dot"), Graph.Nodes[Box].Hubs.Contains(SharedBox));
-	}
-
-	// rows: a box is below what uses it; boxes linked only through the shared asset and the shared ones come last
-	TestTrue(TEXT("user above focus"), Graph.Nodes[UserBox].Layer < Graph.Nodes[FocusBox].Layer);
-	TestTrue(TEXT("focus above the stack"), Graph.Nodes[FocusBox].Layer < Graph.Nodes[Stack].Layer);
-	int32 LastLinked = 0;
-	for (const int32 Box : {FocusBox, UserBox, Stack, PBox, QBox}) {
-		LastLinked = FMath::Max(LastLinked, Graph.Nodes[Box].Layer);
-	}
-	TestFalse(TEXT("R has no lines"), Graph.Edges.ContainsByPredicate([RBox](const FPjcInspectorEdge& Edge) {
-		return Edge.From == RBox || Edge.To == RBox;
-	}));
-	TestTrue(TEXT("R below the linked boxes"), Graph.Nodes[RBox].Layer > LastLinked);
-	TestTrue(TEXT("shared asset in the last row"), Graph.Nodes[SharedBox].Layer > Graph.Nodes[RBox].Layer);
-	TestEqual(TEXT("a caption for each of the two extra rows"), Graph.Captions.Num(), 2);
-	if (Graph.Captions.Num() == 2) {
-		TestEqual(TEXT("caption above R"), Graph.Captions[0].Layer, Graph.Nodes[RBox].Layer);
-		TestEqual(TEXT("caption above the shared asset"), Graph.Captions[1].Layer, Graph.Nodes[SharedBox].Layer);
-	}
-
-	// P and Q use each other: both references are there, one of them closes the circle
-	const FPjcInspectorEdge* PToQ = EdgeOf(PBox, QBox);
-	const FPjcInspectorEdge* QToP = EdgeOf(QBox, PBox);
-	if (TestTrue(TEXT("both references of the pair"), PToQ && QToP)) {
-		TestTrue(TEXT("exactly one closes the circle"), PToQ->bCircle != QToP->bCircle);
-	}
-	const FPjcInspectorEdge* ToP = EdgeOf(FocusBox, PBox);
-	if (TestNotNull(TEXT("focus uses P"), ToP)) {
-		TestEqual(TEXT("soft reference kept"), static_cast<int32>(ToP->Kind), static_cast<int32>(EPjcLinkKind::Soft));
-		TestFalse(TEXT("a plain reference closes no circle"), ToP->bCircle);
-	}
-
-	// editor-only references: left out unless asked for, then drawn on top without moving a box
-	TestFalse(TEXT("no editor-only line by default"), Graph.Edges.ContainsByPredicate([](const FPjcInspectorEdge& Edge) {
-		return Edge.Kind == EPjcLinkKind::EditorOnly;
-	}));
-	const FPjcInspectorGraph WithEditor = FPjcInspectorGraph::MakeGroup(Names, Classes, Links, true);
-	TestEqual(TEXT("editor-only: same boxes"), WithEditor.Nodes.Num(), Graph.Nodes.Num());
-	TestEqual(TEXT("editor-only: one more line"), WithEditor.Edges.Num(), Graph.Edges.Num() + 1);
-	for (int32 Box = 0; Box < Graph.Nodes.Num() && Box < WithEditor.Nodes.Num(); ++Box) {
-		TestEqual(TEXT("editor-only: rows stay"), WithEditor.Nodes[Box].Layer, Graph.Nodes[Box].Layer);
-		TestEqual(TEXT("editor-only: places stay"), WithEditor.Nodes[Box].Column, Graph.Nodes[Box].Column);
-	}
-	const FPjcInspectorEdge* BackUp = WithEditor.Edges.FindByPredicate([Stack, UserBox](const FPjcInspectorEdge& Edge) {
-		return Edge.From == Stack && Edge.To == UserBox;
-	});
-	if (TestNotNull(TEXT("editor-only line from the stack back to the user"), BackUp)) {
-		TestEqual(TEXT("it is editor only"), static_cast<int32>(BackUp->Kind), static_cast<int32>(EPjcLinkKind::EditorOnly));
-		TestTrue(TEXT("it closes a circle: the user leads to the stack"), BackUp->bCircle);
-	}
-
-	// one asset alone
-	const FPjcInspectorGraph Alone = FPjcInspectorGraph::MakeGroup({Names[Focus]}, {Classes[Focus]}, {}, false);
-	TestEqual(TEXT("alone: one box"), Alone.Nodes.Num(), 1);
-	TestEqual(TEXT("alone: no lines"), Alone.Edges.Num(), 0);
-	TestEqual(TEXT("alone: no captions"), Alone.Captions.Num(), 0);
 	return true;
 }
 
@@ -2234,9 +1988,9 @@ bool FPjcTestInspectorLinks::RunTest(const FString& Parameters) {
 		return true;
 	}
 
-	TestTrue(TEXT("actor file"), FPjcInspectorGraph::IsExternal(TEXT("/Game/__ExternalActors__/Maps/Main/A/BC/Hash")));
-	TestTrue(TEXT("object file"), FPjcInspectorGraph::IsExternal(TEXT("/Game/__ExternalObjects__/Maps/Main/A/BC/Hash")));
-	TestFalse(TEXT("an asset is no actor file"), FPjcInspectorGraph::IsExternal(TEXT("/Game/Maps/Main")));
+	TestTrue(TEXT("actor file"), FPjcInspectorModel::IsExternal(TEXT("/Game/__ExternalActors__/Maps/Main/A/BC/Hash")));
+	TestTrue(TEXT("object file"), FPjcInspectorModel::IsExternal(TEXT("/Game/__ExternalObjects__/Maps/Main/A/BC/Hash")));
+	TestFalse(TEXT("an asset is no actor file"), FPjcInspectorModel::IsExternal(TEXT("/Game/Maps/Main")));
 
 	// every menu icon is one the editor style of this engine has
 	const FSlateBrush* Missing = PjcShim::GetStyle().GetDefaultBrush();
@@ -2309,8 +2063,17 @@ bool FPjcTestUiTabs::RunTest(const FString& Parameters) {
 			const FName Package = PackageOf(Fixture, Name);
 			TabInspector->Inspect(Package);
 			TestEqual(FString::Printf(TEXT("inspector shows %s"), Name), TabInspector->GetFocus(), Package);
-			TestTrue(FString::Printf(TEXT("inspector graph of %s has the asset"), Name), TabInspector->GetGraph().FindNode(Package) != INDEX_NONE);
+			TestTrue(FString::Printf(TEXT("inspector model has %s"), Name), TabInspector->GetModel().Find(Package) != INDEX_NONE);
 		}
+	}
+	if (FPjcTestFixture::IsTestHost()) {
+		TabInspector->Inspect(PackageOf(Fixture, TEXT("C_ChainLeaf")));
+		TabInspector->ShowUses(false);
+		TestTrue(TEXT("inspector lists what uses a used asset"), TabInspector->GetTreeItems().Num() > 0);
+		TabInspector->Inspect(PackageOf(Fixture, TEXT("OL_Chain")));
+		TabInspector->ShowUses(true);
+		TestTrue(TEXT("inspector lists what an asset uses"), TabInspector->GetTreeItems().Num() > 0);
+		TabInspector->ShowUses(false);
 	}
 	const FName Outside {TEXT("/Engine/EngineMaterials/WorldGridMaterial")};
 	TabInspector->Inspect(Outside);

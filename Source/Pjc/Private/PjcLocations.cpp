@@ -185,7 +185,7 @@ namespace
 }	// namespace
 
 bool FPjcLocationReader::CanRead(const FName Package) {
-	if (Package.IsNone() || FPjcInspectorGraph::IsExternal(Package)) return false;
+	if (Package.IsNone() || FPjcInspectorModel::IsExternal(Package)) return false;
 
 	TArray<FAssetData> Assets;
 	UPjcSubsystem::GetModuleAssetRegistry().Get().GetAssetsByPackageName(Package, Assets);
@@ -273,7 +273,7 @@ bool FPjcLocationReader::Read(const FName Package, FPjcLocations& Out) {
 	}
 	TArray<FPjcInspectorLink> Links;
 	int32 Through = 0;
-	FPjcInspectorGraph::GetLinks(Package, false, Links, Through);
+	FPjcInspectorModel::GetLinks(Package, false, Links, Through);
 	TSet<FName> Listed;
 	for (const FPjcInspectorLink& Link : Links) {
 		Listed.Add(Link.Package);

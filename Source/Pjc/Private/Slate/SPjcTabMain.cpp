@@ -68,7 +68,7 @@ void SPjcTabMain::Construct(
 		.SetGroup(AppMenuGroup);
 
 	TabManager->RegisterTabSpawner(PjcConstants::TabInspector, FOnSpawnTab::CreateRaw(this, &SPjcTabMain::OnTabInspectorSpawn))
-		.SetTooltipText(FText::FromString(TEXT("Open Inspector Tab: why an asset is used, from every root down to it")))
+		.SetTooltipText(FText::FromString(TEXT("Open Inspector Tab: why an asset is used, what uses it and what it uses")))
 		.SetDisplayName(FText::FromString(TEXT("Inspector")))
 		.SetIcon(FPjcStyles::GetIcon("ProjectCleaner.Tab.Inspector"))
 		.SetGroup(AppMenuGroup);
