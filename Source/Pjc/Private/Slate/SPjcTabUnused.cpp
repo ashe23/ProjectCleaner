@@ -53,6 +53,8 @@ namespace
 	const FName PjcUnusedColAssets {TEXT("Assets")};
 	// the reason of excluded assets in the Used list, as the Overview names it
 	const TCHAR* PjcUnusedReasonExcluded = TEXT("Excluded");
+	// key of the Delete failed pill
+	const TCHAR* PjcUnusedPillHeld = TEXT("__held");
 
 	// tree indent and the middle of the arrow: where a folder's guide runs
 	constexpr float PjcUnusedIndent = 14.0f;
@@ -545,7 +547,8 @@ void SPjcTabUnused::Construct(const FArguments& InArgs) {
 				ShowSet(InSet, Reason);
 			})
 			.IsSetShown_Lambda([this](const EPjcAssetSet InSet, const FString& Reason) {
-				return Set == InSet && ReasonFilter.Equals(Reason) && !bHeldOnly;
+				const bool bReason = Reason.IsEmpty() ? ReasonFilters.Num() == 0 : ReasonFilters.Num() == 1 && ReasonFilters.Contains(Reason);
+				return Set == InSet && bReason && !bHeldOnly;
 			})
 			.OnShowDeleteFailed_Lambda([this]() {
 				ShowNotDeleted();
@@ -614,19 +617,25 @@ void SPjcTabUnused::ShowSet(const EPjcAssetSet InSet, const FString& Reason) {
 		return;
 	}
 	if (InSet == Set) {
-		ReasonFilter = Reason;
+		ReasonFilters.Reset();
+		if (!Reason.IsEmpty()) ReasonFilters.Add(Reason);
+		bHeldOnly = false;
+		RebuildChips();
 		ApplyAssetFilter();
 		return;
 	}
 
 	Set = InSet;
 	ClassBar->Reset();
-	ReasonFilter.Reset();
+	ReasonFilters.Reset();
 	bHeldOnly = false;
 	RebuildTree();
 	OnFolderSearchChanged(FText::FromString(FolderSearch));
 	RefreshAssets();
-	ReasonFilter = Reason;
+	if (!Reason.IsEmpty()) {
+		ReasonFilters.Add(Reason);
+		RebuildChips();
+	}
 	ApplyAssetFilter();
 }
 
@@ -801,6 +810,7 @@ void SPjcTabUnused::MakeRowReason(const FPjcScanResult& Result, FPjcUnusedAssetR
 	FLinearColor Color;
 	SPjcOverviewPanel::GetReasonInfo(FPjcOverview::GetGroupReason(Result, Row.Package), Name, ToolTip, Color);
 	Row.ReasonKey = Name;
+	Row.ReasonColor = Color;
 	if (Usage && Usage->Reason == EPjcUsageReason::Dependency && !Usage->Parent.IsNone()) {
 		const FString ParentName = FPackageName::GetShortName(Usage->Parent);
 		Row.Reason = TEXT("Used by ") + ParentName;
@@ -1255,28 +1265,30 @@ TSharedRef<SWidget> SPjcTabUnused::MakeAssetPane() {
 			+ SVerticalBox::Slot().FillHeight(1.0f)
 			[
 				SNew(SHorizontalBox)
-				// reason filters and the class bar next to the list: a class in its color is listed
+				// the class bar next to the list: a class in its color is listed
 				+ SHorizontalBox::Slot().AutoWidth()
 				[
 					SNew(SBox).WidthOverride(196.0f)
 					[
 						SNew(SBorder).BorderImage(PjcShim::GetBrush(TEXT("ToolPanel.DarkGroupBorder"))).Padding(FMargin {0.0f, 4.0f})
 						[
-							SNew(SVerticalBox)
-							+ SVerticalBox::Slot().AutoHeight()
-							[
-								SAssignNew(ChipsBox, SVerticalBox)
-							]
-							+ SVerticalBox::Slot().FillHeight(1.0f)
-							[
-								SAssignNew(ClassBar, SPjcClassBar).OnChanged(FSimpleDelegate::CreateSP(this, &SPjcTabUnused::ApplyAssetFilter))
-							]
+							SAssignNew(ClassBar, SPjcClassBar).OnChanged(FSimpleDelegate::CreateSP(this, &SPjcTabUnused::ApplyAssetFilter))
 						]
 					]
 				]
 				+ SHorizontalBox::Slot().FillWidth(1.0f)
 				[
 					SNew(SVerticalBox)
+					// the filter pills, over the list (user, 2026-11-14)
+					+ SVerticalBox::Slot().AutoHeight()
+					[
+						SNew(SBox)
+						.Padding(FMargin {10.0f, 6.0f})
+						.Visibility_Lambda([this]() { return bHasPills ? EVisibility::Visible : EVisibility::Collapsed; })
+						[
+							SAssignNew(PillsBox, SWrapBox).UseAllottedSize(true).InnerSlotPadding(FVector2D {6.0f, 6.0f})
+						]
+					]
 					+ SVerticalBox::Slot().FillHeight(1.0f)
 					[
 						SNew(SOverlay)
@@ -1344,8 +1356,8 @@ void SPjcTabUnused::RefreshAssets() {
 	for (const auto& Row : FolderRows) {
 		Reasons.Add(Row->ReasonKey);
 	}
-	if (!Reasons.Contains(ReasonFilter)) {
-		ReasonFilter.Reset();
+	for (auto It = ReasonFilters.CreateIterator(); It; ++It) {
+		if (!Reasons.Contains(*It)) It.RemoveCurrent();
 	}
 
 	RebuildChips();
@@ -1363,7 +1375,7 @@ void SPjcTabUnused::ApplyAssetFilter() {
 	ListRows.Reset();
 	for (const auto& Row : FolderRows) {
 		if (!ClassBar->IsShown(Row->ClassName)) continue;
-		if (!ReasonFilter.IsEmpty() && Row->ReasonKey != ReasonFilter) continue;
+		if (ReasonFilters.Num() > 0 && !ReasonFilters.Contains(Row->ReasonKey)) continue;
 		if (bHeldOnly && Row->Holder.IsEmpty()) continue;
 		if (!AssetSearch.IsEmpty() && !Row->Name.Contains(AssetSearch) && !Row->ClassLabel.Contains(AssetSearch)) continue;
 
@@ -1433,98 +1445,143 @@ void SPjcTabUnused::RebuildChips() {
 		return A.Size != B.Size ? A.Size > B.Size : A.Type.Label < B.Type.Label;
 	});
 
-	ChipsBox->ClearChildren();
+	// the filter pills: All, then what keeps the assets in the list (Used), Delete failed (Unused). Picked ones are in their
+	// color, the others grey while one is picked (user, 2026-11-14)
+	struct FPill
+	{
+		FString Key;
+		FString ToolTip;
+		FLinearColor Color;
+		int32 Num = 0;
+		int64 Size = 0;
+	};
+	TMap<FString, FPill> Pills;
 	int32 NumHeld = 0;
 	for (const auto& Row : FolderRows) {
 		NumHeld += Row->Holder.IsEmpty() ? 0 : 1;
+		if (Set != EPjcAssetSet::Used || Row->ReasonKey.IsEmpty()) continue;
+
+		FPill& Pill = Pills.FindOrAdd(Row->ReasonKey);
+		Pill.Key = Row->ReasonKey;
+		Pill.Color = Row->ReasonColor;
+		++Pill.Num;
+		Pill.Size += Row->Size;
+	}
+	// a picked filter this folder has none of stays, so it can be taken off
+	for (const FString& Key : ReasonFilters) {
+		FPill& Pill = Pills.FindOrAdd(Key);
+		Pill.Key = Key;
 	}
 	if (NumHeld == 0) {
 		bHeldOnly = false;
 	}
-	else {
+	TArray<FPill> PillsSorted;
+	Pills.GenerateValueArray(PillsSorted);
+	for (auto& Pill : PillsSorted) {
+		Pill.ToolTip = FString::Printf(TEXT("%s assets \u00B7 %s"), *PjcFormat::Count(Pill.Num), *PjcFormat::Size(Pill.Size));
+		if (Pill.Num == 0) {
+			Pill.Color = PjcWidgets::GetColor("ProjectCleaner.Color.Muted");
+		}
+	}
+	// as the Overview: most assets first, Dependencies and Other last
+	const auto Last = [](const FString& Key) {
+		return Key == TEXT("Other") ? 2 : (Key == TEXT("Dependencies") ? 1 : 0);
+	};
+	PillsSorted.Sort([&Last](const FPill& A, const FPill& B) {
+		return Last(A.Key) != Last(B.Key) ? Last(A.Key) < Last(B.Key) : (A.Num != B.Num ? A.Num > B.Num : A.Key < B.Key);
+	});
+
+	PillsBox->ClearChildren();
+	bHasPills = PillsSorted.Num() > 0 || NumHeld > 0;
+	const FLinearColor ColorLine = PjcWidgets::GetColor("ProjectCleaner.Color.Line");
+	const FLinearColor ColorRecess = PjcWidgets::GetColor("ProjectCleaner.Color.Recess");
+	const FLinearColor ColorGrey = PjcWidgets::GetColor("ProjectCleaner.Color.Hover");
+	const auto AddPill = [this, &ColorLine, &ColorRecess, &ColorGrey](
+							 const FString& Key, const FString& Label, const FString& ToolTip, const FLinearColor& Color, const int32 Num
+						 ) {
+		const auto IsOn = [this, Key]() {
+			if (Key.IsEmpty()) return ReasonFilters.Num() == 0 && !bHeldOnly;
+			return Key == PjcUnusedPillHeld ? bHeldOnly : ReasonFilters.Contains(Key);
+		};
+		const auto IsGrey = [this, Key, IsOn]() {
+			return !Key.IsEmpty() && !IsOn() && (ReasonFilters.Num() > 0 || bHeldOnly);
+		};
+		const FLinearColor Fill = FMath::Lerp(ColorRecess, Color, 0.22f);
+		const FLinearColor Line = ColorLine;
+		const FLinearColor Recess = ColorRecess;
+		const FLinearColor Grey = ColorGrey;
+		const FString More = Key.IsEmpty() ? TEXT("Click: every asset of the list") : TEXT("Click: show them, click more to add them");
 		// clang-format off
-		ChipsBox->AddSlot().AutoHeight().Padding(FMargin {6.0f, 0.0f, 6.0f, 3.0f})
+		PillsBox->AddSlot().VAlign(VAlign_Center)
 		[
-			SNew(SCheckBox)
-			.Style(&PjcShim::GetToggleStyle())
-			.ToolTipText(FText::FromString(TEXT("The last delete could not remove them: something still holds them")))
-			.IsChecked_Lambda([this]() { return bHeldOnly ? ECheckBoxState::Checked : ECheckBoxState::Unchecked; })
-			.OnCheckStateChanged_Lambda([this](ECheckBoxState) {
-				bHeldOnly = !bHeldOnly;
-				ApplyAssetFilter();
+			SNew(SButton)
+			.ButtonStyle(&PjcShim::GetStyle().GetWidgetStyle<FButtonStyle>(TEXT("NoBorder")))
+#if ENGINE_MAJOR_VERSION < 5
+			.ForegroundColor(FSlateColor::UseForeground())
+#endif
+			.ContentPadding(FMargin {0.0f})
+			.ToolTip(PjcWidgets::MakeToolTip(Label, ToolTip, More))
+			.OnClicked_Lambda([this, Key]() {
+				OnReasonChipClicked(Key);
+				return FReply::Handled();
 			})
 			[
-				SNew(SBox).Padding(FMargin {8.0f, 2.0f})
+				SNew(SBorder)
+				.BorderImage(FPjcStyles::Get().GetBrush("ProjectCleaner.Pill"))
+				.BorderBackgroundColor_Lambda([IsOn, Color, Line]() { return FSlateColor {IsOn() ? Color : Line}; })
+				.Padding(FMargin {1.0f})
 				[
-					SNew(SHorizontalBox)
-					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+					SNew(SBorder)
+					.BorderImage(FPjcStyles::Get().GetBrush("ProjectCleaner.Pill"))
+					.BorderBackgroundColor_Lambda([IsOn, Fill, Recess]() { return FSlateColor {IsOn() ? Fill : Recess}; })
+					.Padding(FMargin {Key.IsEmpty() ? 10.0f : 8.0f, 2.0f, 10.0f, 2.0f})
 					[
-						SNew(STextBlock).Text(FText::FromString(TEXT("Delete failed"))).ColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.DangerText"))
-					]
-					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
-					[
-						SNew(STextBlock)
-						.Text(FText::FromString(PjcFormat::Count(NumHeld)))
-						.Font(PjcWidgets::GetFontMono(8))
-						.ColorAndOpacity(FSlateColor::UseSubduedForeground())
+						SNew(SHorizontalBox)
+						+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 6.0f, 0.0f})
+						[
+							SNew(SBox).WidthOverride(7.0f).HeightOverride(7.0f).Visibility(Key.IsEmpty() ? EVisibility::Collapsed : EVisibility::Visible)
+							[
+								SNew(SImage)
+								.Image(FPjcStyles::Get().GetBrush("ProjectCleaner.Dot"))
+								.ColorAndOpacity_Lambda([IsGrey, Color, Grey]() { return FSlateColor {IsGrey() ? Grey : Color}; })
+							]
+						]
+						+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+						[
+							SNew(STextBlock)
+							.Text(FText::FromString(Label))
+							.ColorAndOpacity_Lambda([IsGrey]() { return IsGrey() ? FSlateColor::UseSubduedForeground() : FSlateColor::UseForeground(); })
+						]
+						+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {7.0f, 0.0f, 0.0f, 0.0f})
+						[
+							SNew(STextBlock)
+							.Text(FText::FromString(PjcFormat::Count(Num)))
+							.Font(PjcWidgets::GetFontMono(8))
+							.ColorAndOpacity_Lambda([IsOn]() { return IsOn() ? FSlateColor::UseForeground() : FSlateColor::UseSubduedForeground(); })
+						]
 					]
 				]
 			]
 		];
 		// clang-format on
-	}
-	// reasons, biggest first (not for unused assets: nothing uses any of them)
-	struct FReasonChip
-	{
-		FString Key;
-		int32 Num = 0;
-		int64 Size = 0;
 	};
-	TMap<FString, FReasonChip> ReasonChips;
-	for (const auto& Row : FolderRows) {
-		if (Set == EPjcAssetSet::Unused || Row->ReasonKey.IsEmpty()) continue;
+	if (bHasPills) {
+		AddPill(
+			FString {},
+			TEXT("All"),
+			TEXT("Every asset of the list in this folder"),
+			PjcWidgets::GetColor("ProjectCleaner.Color.Accent"),
+			FolderRows.Num()
+		);
+		for (const auto& Pill : PillsSorted) {
+			AddPill(Pill.Key, Pill.Key, Pill.ToolTip, Pill.Color, Pill.Num);
+		}
+		if (NumHeld > 0) {
+			const TCHAR* HeldTip = TEXT("The last delete could not remove them: something still holds them. An editor restart releases them.");
+			AddPill(PjcUnusedPillHeld, TEXT("Delete failed"), HeldTip, PjcWidgets::GetColor("ProjectCleaner.Color.Red"), NumHeld);
+		}
+	}
 
-		FReasonChip& Chip = ReasonChips.FindOrAdd(Row->ReasonKey);
-		Chip.Key = Row->ReasonKey;
-		++Chip.Num;
-		Chip.Size += Row->Size;
-	}
-	TArray<FReasonChip> ReasonsSorted;
-	ReasonChips.GenerateValueArray(ReasonsSorted);
-	ReasonsSorted.Sort([](const FReasonChip& A, const FReasonChip& B) {
-		return A.Size != B.Size ? A.Size > B.Size : A.Key < B.Key;
-	});
-	for (const auto& Chip : ReasonsSorted) {
-		const FString Key = Chip.Key;
-		const FString Tip = FString::Printf(TEXT("%s \u00B7 %s"), *Chip.Key, *PjcFormat::Size(Chip.Size));
-		// clang-format off
-		ChipsBox->AddSlot().AutoHeight().Padding(FMargin {6.0f, 0.0f, 6.0f, 3.0f})
-		[
-			SNew(SCheckBox)
-			.Style(&PjcShim::GetToggleStyle())
-			.ToolTipText(FText::FromString(Tip))
-			.IsChecked_Lambda([this, Key]() { return ReasonFilter == Key ? ECheckBoxState::Checked : ECheckBoxState::Unchecked; })
-			.OnCheckStateChanged_Lambda([this, Key](ECheckBoxState) { OnReasonChipClicked(Key); })
-			[
-				SNew(SBox).Padding(FMargin {8.0f, 2.0f})
-				[
-					SNew(SHorizontalBox)
-					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
-					[
-						SNew(STextBlock).Text(FText::FromString(Chip.Key)).ColorAndOpacity(PjcWidgets::GetSetColors(Set).BoxText)
-					]
-					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
-					[
-						SNew(STextBlock)
-						.Text(FText::FromString(PjcFormat::Count(Chip.Num)))
-						.Font(PjcWidgets::GetFontMono(8))
-						.ColorAndOpacity(FSlateColor::UseSubduedForeground())
-					]
-				]
-			]
-		];
-		// clang-format on
-	}
 	TArray<FPjcClassBarItem> Items;
 	for (const auto& Chip : Sorted) {
 		FPjcClassBarItem& Item = Items.AddDefaulted_GetRef();
@@ -1630,7 +1687,24 @@ void SPjcTabUnused::SortByColumn(const FName Column) {
 }
 
 void SPjcTabUnused::OnReasonChipClicked(const FString& Key) {
-	ReasonFilter = ReasonFilter == Key ? FString {} : Key;
+	// All: every asset; Delete failed: on its own; a reason: added to the picked ones, or taken off
+	if (Key.IsEmpty()) {
+		ReasonFilters.Reset();
+		bHeldOnly = false;
+	}
+	else if (Key == PjcUnusedPillHeld) {
+		bHeldOnly = !bHeldOnly;
+		ReasonFilters.Reset();
+	}
+	else {
+		if (ReasonFilters.Contains(Key)) {
+			ReasonFilters.Remove(Key);
+		}
+		else {
+			ReasonFilters.Add(Key);
+		}
+		bHeldOnly = false;
+	}
 	ApplyAssetFilter();
 }
 
@@ -1747,7 +1821,7 @@ TSharedRef<SWidget> SPjcTabUnused::MakeToolbar() {
 	// the actions of the open list are always there, greyed until something is selected (user, 2026-11-14: on the left)
 	const auto ShownFor = [this](const bool bUnused, const bool bExcluded) {
 		return [this, bUnused, bExcluded]() {
-			const bool bExcludedShown = Set == EPjcAssetSet::Used && ReasonFilter == PjcUnusedReasonExcluded;
+			const bool bExcludedShown = Set == EPjcAssetSet::Used && ReasonFilters.Contains(PjcUnusedReasonExcluded);
 			const bool bShown = (Set == EPjcAssetSet::Unused && bUnused) || (bExcludedShown && bExcluded);
 			return bShown ? EVisibility::Visible : EVisibility::Collapsed;
 		};
@@ -2084,7 +2158,7 @@ void SPjcTabUnused::BrowseSelected() const {
 FText SPjcTabUnused::GetSelectionText() const {
 	if (!ListView.IsValid() || ListView->GetNumItemsSelected() == 0) {
 		if (Set == EPjcAssetSet::Used) {
-			const bool bExcluded = ReasonFilter == PjcUnusedReasonExcluded;
+			const bool bExcluded = ReasonFilters.Contains(PjcUnusedReasonExcluded);
 			return FText::FromString(bExcluded ? TEXT("Select assets to remove their exclusion") : TEXT("Select an asset to inspect"));
 		}
 		return FText::FromString(TEXT("Select assets to delete, exclude or inspect"));

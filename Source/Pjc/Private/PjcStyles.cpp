@@ -249,6 +249,13 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create() {
 
 	// pills (counts on tabs, filters): a white circle nine-sliced into a capsule, tinted where it is drawn
 	Style->Set("ProjectCleaner.Pill", new FSlateBoxBrush {Style->RootToContentDir(TEXT("Pill16"), TEXT(".png")), FMargin {0.5f}});
+	// a round dot (filter pills), the same circle drawn whole
+	Style->Set(
+		"ProjectCleaner.Dot",
+		new FSlateImageBrush {
+		  Style->RootToContentDir(TEXT("Pill16"), TEXT(".png")), FVector2D {8.0f, 8.0f}
+	}
+	);
 	// splitters between panes: a gap with a thin line in its middle, blue while hovered or dragged. Both brushes are the same
 	// line: UE5 draws the normal brush in the highlight tint when hovered, UE 4.27 the highlight brush
 	const FString SplitterLine = Style->RootToContentDir(TEXT("SplitterLine"), TEXT(".png"));

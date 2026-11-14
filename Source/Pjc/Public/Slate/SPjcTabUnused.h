@@ -13,6 +13,7 @@ class FTabManager;
 class SBox;
 class SHorizontalBox;
 class SVerticalBox;
+class SWrapBox;
 class SPjcClassBar;
 struct FSlateBrush;
 
@@ -37,10 +38,11 @@ struct FPjcUnusedAssetRow
 	int32 Group = 0;
 	// What held it when the last delete could not remove it, empty when it was not kept
 	FString Holder;
-	// Why it is in the list, with its explanation; reason chips filter by key
+	// Why it is in the list, with its explanation; the filter pills filter by key, in the key's color
 	FString Reason;
 	FString ReasonTip;
 	FString ReasonKey;
+	FLinearColor ReasonColor = FLinearColor::Gray;
 	// Reason shown as a warning (excluded, unused without its rule)
 	bool bReasonWarn = false;
 };
@@ -188,8 +190,9 @@ class SPjcTabUnused final : public SCompoundWidget
 	TArray<FAssetRowPtr> FolderRows;
 	TArray<FAssetRowPtr> ListRows;
 	TSharedPtr<SListView<FAssetRowPtr>> ListView;
-	// Reason filters above the class bar
-	TSharedPtr<SVerticalBox> ChipsBox;
+	// Filter pills above the list: what keeps the assets in the list (Used), Delete failed (Unused)
+	TSharedPtr<SWrapBox> PillsBox;
+	bool bHasPills = false;
 	TSharedPtr<SPjcClassBar> ClassBar;
 	// Count and size of the listed assets, for the line above the list
 	FString ListSummary;
@@ -203,8 +206,8 @@ class SPjcTabUnused final : public SCompoundWidget
 	bool bMapAll = false;
 	TSharedPtr<SPjcSizeMap> SizeMap;
 	TSharedPtr<SHorizontalBox> Breadcrumb;
-	// Reason chip key, empty for every reason
-	FString ReasonFilter;
+	// Reason keys of the picked filter pills, none for every reason; several can be picked (user, 2026-11-14)
+	TSet<FString> ReasonFilters;
 	// Only assets the last delete could not remove
 	bool bHeldOnly = false;
 	bool bSubfolders = true;
