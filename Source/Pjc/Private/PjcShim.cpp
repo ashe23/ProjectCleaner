@@ -140,11 +140,8 @@ namespace PjcShim
 	}
 
 	const FCheckBoxStyle& GetToggleStyle() {
-#if ENGINE_MAJOR_VERSION >= 5
-		return GetStyle().GetWidgetStyle<FCheckBoxStyle>(TEXT("ToggleButtonCheckbox"));
-#else
+		// the plugin's own, so UE 4.27 and UE5 look the same
 		return FPjcStyles::Get().GetWidgetStyle<FCheckBoxStyle>("ProjectCleaner.Toggle");
-#endif
 	}
 
 #if ENGINE_MAJOR_VERSION < 5

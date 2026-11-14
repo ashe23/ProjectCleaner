@@ -16,7 +16,6 @@
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/Layout/SScrollBox.h"
-#include "Widgets/Layout/SSplitter.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/SCanvas.h"
 #include "Widgets/SOverlay.h"
@@ -28,6 +27,9 @@ namespace
 	const TCHAR* PanelSection = TEXT("ProjectCleaner.ScanSettingsPanel");
 	constexpr float StripWidth = 30.0f;
 	constexpr float LabelLength = 96.0f;
+	// width the side column cards need, and the gap with the resize line in its middle
+	constexpr float SideMinWidth = 300.0f;
+	constexpr float SideHandleWidth = 12.0f;
 }	// namespace
 
 void SPjcToolFrame::Construct(const FArguments& InArgs) {
@@ -172,45 +174,90 @@ TSharedRef<SWidget> SPjcToolFrame::MakeSideColumn(const TSharedRef<SWidget>& Sid
 	if (GConfig) {
 		GConfig->GetFloat(PanelSection, *(PageName.ToString() + TEXT("Side")), SideShare, GEditorPerProjectIni);
 	}
-	SideShare = FMath::Clamp(SideShare, 0.15f, 0.5f);
+	SideShare = FMath::Clamp(SideShare, 0.1f, 0.6f);
 
 	// clang-format off
-	return SNew(SSplitter).PhysicalSplitterHandleSize(3.0f)
-		+ SSplitter::Slot()
-		.Value(SideShare)
-		.OnSlotResized(SSplitter::FOnSlotResized::CreateLambda([this](const float Value) {
-			SideShare = Value;
-			if (GConfig) {
-				GConfig->SetFloat(PanelSection, *(PageName.ToString() + TEXT("Side")), SideShare, GEditorPerProjectIni);
-			}
-		}))
+	return SNew(SHorizontalBox)
+		// a share of the frame, never narrower than the cards need (an SSplitter has no minimum in UE 4.27)
+		+ SHorizontalBox::Slot().AutoWidth()
 		[
-			SNew(SScrollBox)
-			// the numbers of the scan: none before the first scan, greyed while the results are out of date
-			+ SScrollBox::Slot().Padding(FMargin {8.0f, 8.0f, 8.0f, 0.0f})
+			SNew(SBox).WidthOverride(this, &SPjcToolFrame::GetSideWidth)
 			[
-				SNew(SBox)
-				.Visibility_Lambda([]() { return UPjcSubsystem::GetScanResult().IsValid() ? EVisibility::Visible : EVisibility::Collapsed; })
-				.IsEnabled_Lambda([]() { return !SPjcScanBar::NeedsRescan() && !PjcTabs::IsWindowOpen(); })
+				SNew(SScrollBox)
+				// the numbers of the scan: none before the first scan, greyed while the results are out of date
+				+ SScrollBox::Slot().Padding(FMargin {8.0f, 8.0f, 0.0f, 0.0f})
 				[
-					Side
+					SNew(SBox)
+					.Visibility_Lambda([]() { return UPjcSubsystem::GetScanResult().IsValid() ? EVisibility::Visible : EVisibility::Collapsed; })
+					.IsEnabled_Lambda([]() { return !SPjcScanBar::NeedsRescan() && !PjcTabs::IsWindowOpen(); })
+					[
+						Side
+					]
+				]
+				+ SScrollBox::Slot().Padding(FMargin {8.0f, 0.0f, 0.0f, 8.0f})
+				[
+					PjcWidgets::MakeCard(SNew(SPjcScanSettings), FMargin {4.0f, 6.0f})
 				]
 			]
-			+ SScrollBox::Slot().Padding(FMargin {8.0f, 0.0f, 8.0f, 8.0f})
+		]
+		// drag to resize: a line in the middle of the gap, lit on hover
+		+ SHorizontalBox::Slot().AutoWidth()
+		[
+			SAssignNew(SideHandle, SBorder)
+			.BorderImage(FCoreStyle::Get().GetBrush("NoBrush"))
+			.Padding(0.0f)
+			.Cursor(EMouseCursor::ResizeLeftRight)
+			.ToolTipText(FText::FromString(TEXT("Drag to resize")))
+			.OnMouseButtonDown_Lambda([this](const FGeometry&, const FPointerEvent& Event) {
+				if (Event.GetEffectingButton() != EKeys::LeftMouseButton) return FReply::Unhandled();
+				bSideDragging = true;
+				return FReply::Handled().CaptureMouse(SideHandle.ToSharedRef());
+			})
+			.OnMouseButtonUp_Lambda([this](const FGeometry&, const FPointerEvent& Event) {
+				if (!bSideDragging || Event.GetEffectingButton() != EKeys::LeftMouseButton) return FReply::Unhandled();
+				bSideDragging = false;
+				if (GConfig) {
+					GConfig->SetFloat(PanelSection, *(PageName.ToString() + TEXT("Side")), SideShare, GEditorPerProjectIni);
+				}
+				return FReply::Handled().ReleaseMouseCapture();
+			})
+			.OnMouseMove_Lambda([this](const FGeometry& Geometry, const FPointerEvent& Event) {
+				if (!bSideDragging) return FReply::Unhandled();
+				const float FrameWidth = GetCachedGeometry().GetLocalSize().X;
+				if (FrameWidth > 0.0f) {
+					const float Width = GetSideWidth().Get() + Event.GetCursorDelta().X / FMath::Max(Geometry.Scale, 0.01f);
+					SideShare = FMath::Clamp(Width / FrameWidth, 0.1f, 0.6f);
+				}
+				return FReply::Handled();
+			})
 			[
-				PjcWidgets::MakeCard(SNew(SPjcScanSettings), FMargin {4.0f, 6.0f})
+				SNew(SBox).WidthOverride(SideHandleWidth).HAlign(HAlign_Center)
+				[
+					SNew(SBox).WidthOverride(2.0f)
+					[
+						SNew(SImage)
+						.Image(FCoreStyle::Get().GetBrush("WhiteBrush"))
+						.ColorAndOpacity_Lambda([this]() {
+							const bool bLit = bSideDragging || (SideHandle.IsValid() && SideHandle->IsHovered());
+							return FSlateColor {bLit ? PjcWidgets::GetColor("ProjectCleaner.Color.Accent") : PjcWidgets::GetColor("ProjectCleaner.Color.Line")};
+						})
+					]
+				]
 			]
 		]
-		+ SSplitter::Slot()
-		.Value(1.0f - SideShare)
+		// on a card with a margin, its content inside with a padding
+		+ SHorizontalBox::Slot().FillWidth(1.0f).Padding(FMargin {0.0f, 8.0f, 8.0f, 8.0f})
 		[
-			// on a card with a margin: the gap shows where the column can be resized
-			SNew(SBox).Padding(FMargin {4.0f, 8.0f, 8.0f, 8.0f})
-			[
-				PjcWidgets::MakeCard(Content, FMargin {1.0f})
-			]
+			PjcWidgets::MakeCard(Content, FMargin {8.0f})
 		];
 	// clang-format on
+}
+
+FOptionalSize SPjcToolFrame::GetSideWidth() const {
+	// the content keeps at least a third of the frame
+	const float FrameWidth = GetCachedGeometry().GetLocalSize().X;
+	const float MaxWidth = FMath::Max(SideMinWidth, FrameWidth * 0.66f);
+	return FOptionalSize {FMath::Clamp(SideShare * FrameWidth, SideMinWidth, MaxWidth)};
 }
 
 TSharedRef<SWidget> SPjcToolFrame::MakeContent(const TSharedRef<SWidget>& Content) const {

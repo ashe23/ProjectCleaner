@@ -12,6 +12,8 @@
  * Each tool remembers whether its panel is open (per user).
  * With a Side widget there is no strip: a resizable column on the left holds the Side widget and the scan settings under it.
  */
+class SBorder;
+
 class SPjcToolFrame final : public SCompoundWidget
 {
   public:
@@ -42,6 +44,7 @@ class SPjcToolFrame final : public SCompoundWidget
 	TSharedRef<SWidget> MakeContent(const TSharedRef<SWidget>& Content) const;
 	TSharedRef<SWidget> MakeStrip();
 	TSharedRef<SWidget> MakeSideColumn(const TSharedRef<SWidget>& Side, const TSharedRef<SWidget>& Content);
+	FOptionalSize GetSideWidth() const;
 	EVisibility GetPanelVisibility() const;
 
 	FName PageName;
@@ -50,4 +53,6 @@ class SPjcToolFrame final : public SCompoundWidget
 	FCurveHandle SlideCurve;
 	// Share of the side column, saved per user
 	float SideShare = 0.3f;
+	TSharedPtr<SBorder> SideHandle;
+	bool bSideDragging = false;
 };

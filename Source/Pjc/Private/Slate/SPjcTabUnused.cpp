@@ -31,6 +31,7 @@
 #include "Widgets/Input/SSearchBox.h"
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
+#include "Widgets/Layout/SWrapBox.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SSplitter.h"
 #include "Widgets/SOverlay.h"
@@ -1125,38 +1126,43 @@ TSharedRef<SWidget> SPjcTabUnused::MakeAssetPane() {
 		.Padding(0.0f)
 		[
 			SNew(SVerticalBox)
-			// the four lists as tabs, then what narrows the list: subfolders, search
+			// the four lists as tabs, then what narrows the list: subfolders, search. Wrapped to a second line when the pane is
+			// narrow, they never draw over each other
 			+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {8.0f, 4.0f, 8.0f, 0.0f})
 			[
-				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Bottom)
+				SNew(SWrapBox).UseAllottedSize(true).InnerSlotPadding(FVector2D {16.0f, 4.0f})
+				+ SWrapBox::Slot().VAlign(VAlign_Bottom)
 				[
 					MakeSetSwitch()
 				]
-				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {8.0f, 0.0f})
+				+ SWrapBox::Slot().VAlign(VAlign_Center)
 				[
-					SNew(SCheckBox)
-					.ToolTipText(FText::FromString(TEXT("Lists the assets of subfolders too")))
-					.IsChecked_Lambda([this]() { return bSubfolders ? ECheckBoxState::Checked : ECheckBoxState::Unchecked; })
-					.OnCheckStateChanged_Lambda([this](const ECheckBoxState State) {
-						bSubfolders = State == ECheckBoxState::Checked;
-						SaveViewState();
-						RefreshAssets();
-					})
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 8.0f, 0.0f})
 					[
-						SNew(STextBlock).Text(FText::FromString(TEXT("Subfolders")))
+						SNew(SCheckBox)
+						.ToolTipText(FText::FromString(TEXT("Lists the assets of subfolders too")))
+						.IsChecked_Lambda([this]() { return bSubfolders ? ECheckBoxState::Checked : ECheckBoxState::Unchecked; })
+						.OnCheckStateChanged_Lambda([this](const ECheckBoxState State) {
+							bSubfolders = State == ECheckBoxState::Checked;
+							SaveViewState();
+							RefreshAssets();
+						})
+						[
+							SNew(STextBlock).Text(FText::FromString(TEXT("Subfolders")))
+						]
 					]
-				]
-				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
-				[
-					SNew(SBox).WidthOverride(170.0f)
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 					[
-						SNew(SSearchBox)
+						SNew(SBox).WidthOverride(170.0f)
+						[
+							SNew(SSearchBox)
 #if ENGINE_MAJOR_VERSION < 5
-						.Style(&PjcShim::GetSearchBoxStyle427())
+							.Style(&PjcShim::GetSearchBoxStyle427())
 #endif
-						.HintText_Lambda([this]() { return FText::FromString(TEXT("Search assets ") + PjcWidgets::GetSetWord(Set)); })
-						.OnTextChanged(this, &SPjcTabUnused::OnAssetSearchChanged)
+							.HintText_Lambda([this]() { return FText::FromString(TEXT("Search assets ") + PjcWidgets::GetSetWord(Set)); })
+							.OnTextChanged(this, &SPjcTabUnused::OnAssetSearchChanged)
+						]
 					]
 				]
 			]

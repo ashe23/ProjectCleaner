@@ -347,8 +347,9 @@ TSharedRef<SWidget> SPjcOverviewPanel::MakeCookRow(const int32 Index) {
 	// clang-format off
 	const TSharedRef<SWidget> Line = SNew(SBox).Padding(FMargin {6.0f, 2.0f}).MinDesiredHeight(22.0f).VAlign(VAlign_Center)
 		[
+			// platform and state keep their width, the time is cut when the column is narrow
 			SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 			[
 				SNew(STextBlock).Text(FText::FromString(Cook.Platform)).Font(FPjcStyles::GetFont("Bold", 9))
 			]
@@ -356,9 +357,12 @@ TSharedRef<SWidget> SPjcOverviewPanel::MakeCookRow(const int32 Index) {
 			[
 				SNew(STextBlock).Text(FText::FromString(State)).ColorAndOpacity(StateColor)
 			]
-			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {8.0f, 0.0f, 0.0f, 0.0f})
+			+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center).HAlign(HAlign_Right).Padding(FMargin {8.0f, 0.0f, 0.0f, 0.0f})
 			[
-				SNew(STextBlock).Text(FText::FromString(When)).Font(PjcWidgets::GetFontMono(8)).ColorAndOpacity(FSlateColor::UseSubduedForeground())
+				SNew(SBox).Clipping(EWidgetClipping::ClipToBounds)
+				[
+					SNew(STextBlock).Text(FText::FromString(When)).Font(PjcWidgets::GetFontMono(8)).ColorAndOpacity(FSlateColor::UseSubduedForeground())
+				]
 			]
 		];
 	// clang-format on
@@ -487,10 +491,15 @@ TSharedRef<SWidget> SPjcOverviewPanel::MakeCookNumbers(const FCook& Cook) const 
 	// unused, shipped: the cook check of this platform
 	const FSlateColor Muted = FSlateColor::UseSubduedForeground();
 	if (UPjcSubsystem::GetScanResult().CookCheck.PlatformsCookAll.Contains(Cook.Platform)) {
-		const TCHAR* CookAllTip = TEXT("This cook took nearly every asset, unused ones too, so it cannot tell what the game needs. ")
-			TEXT("A cook of only the maps the game uses makes this check work.");
-		const TSharedRef<SToolTip> Tip = PjcWidgets::MakeToolTip(TEXT("Unused, shipped"), CookAllTip);
-		AddRow(MakeRow(WarnColor, TEXT("Unused, shipped"), TEXT("–"), Muted, TEXT("cook took nearly all"), FString {}, Tip, {}, false, 0.0f));
+		// clang-format off
+		const TCHAR* CookAllTip = TEXT("This cook packaged nearly every asset of the project, unused ones too, so it cannot tell which ")
+			TEXT("assets the game needs. The check is skipped, nothing goes to Review because of it.");
+		const TCHAR* CookAllHowTo = TEXT("To check: in Project Settings > Packaging, add the maps the game ships to List of maps to include ")
+			TEXT("in a packaged build, turn off Cook everything in the project content directory, then cook again. Without a map list ")
+			TEXT("the engine cooks every map, and template maps (Starter Content) use nearly everything.");
+		// clang-format on
+		const TSharedRef<SToolTip> Tip = PjcWidgets::MakeToolTip(TEXT("Unused, shipped: not checked"), CookAllTip, CookAllHowTo);
+		AddRow(MakeRow(WarnColor, TEXT("Unused, shipped"), TEXT("–"), Muted, TEXT("not checked"), FString {}, Tip, {}, false, 0.0f));
 	}
 	else if (Ship.UnusedShipped.Num > 0) {
 		const TCHAR* CheckTip = TEXT("This cook packaged them, but the scan finds nothing that uses them: the game may load them in a way ")

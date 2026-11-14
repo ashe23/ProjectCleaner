@@ -123,18 +123,12 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create() {
 	// clang-format on
 	Style->Set("ProjectCleaner.Button.Row", RowButton);
 
-	// rounded corners as the UE5 widgets have them
-#if ENGINE_MAJOR_VERSION >= 5
-	const auto Round = [](const TCHAR* Value) {
-		return FSlateRoundedBoxBrush {FLinearColor {FColor::FromHex(Value)}, 4.0f};
-	};
-#else
-	// UE 4.27 has no rounded box brush: a white 16 px box with 4 px corners, nine-sliced and tinted
+	// rounded corners as the UE5 widgets have them: a white 16 px box with 4 px corners, nine-sliced and tinted. The same image
+	// in every engine (UE 4.27 has no rounded box brush), so the plugin's own buttons and toggles look the same everywhere
 	const FString RoundedBox = Style->RootToContentDir(TEXT("RoundedBox16"), TEXT(".png"));
 	const auto Round = [&RoundedBox](const TCHAR* Value) {
 		return FSlateBoxBrush {RoundedBox, FMargin {4.0f / 16.0f}, FLinearColor {FColor::FromHex(Value)}};
 	};
-#endif
 
 	// Clean project in the scan bar: dark red, so its red bin icon stands out (confirm buttons stay solid red)
 	// clang-format off
@@ -145,6 +139,18 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create() {
 		.SetDisabled(Round(TEXT("#2E2224")))
 		.SetNormalPadding(FMargin {2.0f})
 		.SetPressedPadding(FMargin {2.0f}));
+	// on and off buttons (Tree and Size map, filter chips): nothing when off, a box on hover, blue when on, as UE5
+	// ToggleButtonCheckbox
+	Style->Set("ProjectCleaner.Toggle", FCheckBoxStyle {}
+		.SetCheckBoxType(ESlateCheckBoxType::ToggleButton)
+		.SetUncheckedImage(FSlateNoResource {})
+		.SetUncheckedHoveredImage(Round(TEXT("#383838")))
+		.SetUncheckedPressedImage(Round(TEXT("#383838")))
+		.SetCheckedImage(Round(TEXT("#0070E0")))
+		.SetCheckedHoveredImage(Round(TEXT("#0E86FF")))
+		.SetCheckedPressedImage(Round(TEXT("#383838")))
+		.SetPadding(FMargin {16.0f, 2.0f})
+		.SetForegroundColor(FLinearColor {FColor::FromHex(TEXT("#C0C0C0"))}));
 	// clang-format on
 
 #if ENGINE_MAJOR_VERSION < 5
@@ -189,14 +195,6 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create() {
 		.SetDisabled(Round(TEXT("#3A2A2A")))
 		.SetNormalPadding(ButtonPadding)
 		.SetPressedPadding(ButtonPadding));
-	Style->Set("ProjectCleaner.Toggle", FCheckBoxStyle {}
-		.SetCheckBoxType(ESlateCheckBoxType::ToggleButton)
-		.SetUncheckedImage(FSlateNoResource {})
-		.SetUncheckedHoveredImage(Round(TEXT("#383838")))
-		.SetUncheckedPressedImage(Round(TEXT("#383838")))
-		.SetCheckedImage(Round(TEXT("#0070E0")))
-		.SetCheckedHoveredImage(Round(TEXT("#0E86FF")))
-		.SetCheckedPressedImage(Round(TEXT("#383838"))));
 	Style->Set("ProjectCleaner.Row", FTableRowStyle {FCoreStyle::Get().GetWidgetStyle<FTableRowStyle>("TableView.Row")}
 		.SetActiveBrush(Hex(TEXT("#0070E0")))
 		.SetActiveHoveredBrush(Hex(TEXT("#0E86FF")))
@@ -208,13 +206,13 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create() {
 		.SetFillImage(Hex(TEXT("#0070E0"))));
 	// clang-format on
 
-	const auto MakeDarkBox = [&Hex, &Foreground](const FEditableTextBoxStyle& Base) {
+	const auto MakeDarkBox = [&Round, &Foreground](const FEditableTextBoxStyle& Base) {
 		// clang-format off
 		return FEditableTextBoxStyle {Base}
-			.SetBackgroundImageNormal(Hex(TEXT("#0F0F0F")))
-			.SetBackgroundImageHovered(Hex(TEXT("#0F0F0F")))
-			.SetBackgroundImageFocused(Hex(TEXT("#0F0F0F")))
-			.SetBackgroundImageReadOnly(Hex(TEXT("#1A1A1A")))
+			.SetBackgroundImageNormal(Round(TEXT("#0F0F0F")))
+			.SetBackgroundImageHovered(Round(TEXT("#0F0F0F")))
+			.SetBackgroundImageFocused(Round(TEXT("#0F0F0F")))
+			.SetBackgroundImageReadOnly(Round(TEXT("#1A1A1A")))
 			.SetForegroundColor(Foreground)
 			.SetReadOnlyForegroundColor(Foreground);
 		// clang-format on
@@ -224,6 +222,8 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create() {
 	SearchBox.SetTextBoxStyle(MakeDarkBox(SearchBox.TextBoxStyle));
 	SearchBox.GlassImage.TintColor = FSlateColor {Foreground};
 	SearchBox.ClearImage.TintColor = FSlateColor {Foreground};
+	// search icon on the left, as UE5
+	SearchBox.SetLeftAlignButtons(true);
 	Style->Set("ProjectCleaner.SearchBox", SearchBox);
 #endif
 
