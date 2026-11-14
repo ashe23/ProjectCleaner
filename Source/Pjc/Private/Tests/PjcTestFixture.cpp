@@ -780,6 +780,8 @@ void FPjcTestFixture::CreateFiles(const bool bCreateCorruptedFile) {
 	if (bLyraLayout) {
 		Config += TEXT("RawIcon=PjcTests/Files/T_RawIcon.svg\n");
 	}
+	// an exclusion as the plugin saves it (Exclude in Assets): naming an asset there does not make it Source & config
+	Config += FString::Printf(TEXT("[/Script/Pjc.PjcAssetExcludeSettings]\n+ExcludedAssets=%s\n"), *ObjectPath(TEXT("C_Unused")));
 	FFileHelper::SaveStringToFile(Config, *IndirectConfigFile());
 
 	const FString Python = FString::Printf(TEXT("import unreal\n\nasset = unreal.load_asset(\"%s\")\n"), *ObjectPath(TEXT("C_InPython")));

@@ -1383,8 +1383,19 @@ void UPjcSubsystem::GetAssetsIndirect(TArray<FAssetData>& Assets, TArray<FPjcAss
 		Lines.Reset();
 		FFileHelper::LoadFileToStringArray(Lines, *File);
 		const FString FilePathAbs = FPaths::ConvertRelativePathToFull(File);
+		// the plugin's own settings name assets without using them: exclusions added with Exclude are not Source & config
+		const bool bConfig = FPaths::GetExtension(File).Equals(TEXT("ini"), ESearchCase::IgnoreCase);
+		bool bPluginSection = false;
 
 		for (int32 i = 0; i < Lines.Num(); ++i) {
+			if (bConfig) {
+				const FString Trimmed = Lines[i].TrimStartAndEnd();
+				if (Trimmed.StartsWith(TEXT("[")) && Trimmed.EndsWith(TEXT("]"))) {
+					bPluginSection = Trimmed.StartsWith(TEXT("[/Script/Pjc."));
+					continue;
+				}
+				if (bPluginSection) continue;
+			}
 			FRegexMatcher Matcher(Pattern, Lines[i]);
 			while (Matcher.FindNext()) {
 				FString Match = Matcher.GetCaptureGroup(0);
