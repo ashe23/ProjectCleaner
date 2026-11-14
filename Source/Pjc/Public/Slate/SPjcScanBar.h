@@ -31,6 +31,9 @@ class SPjcScanBar final : public SCompoundWidget
 
   private:
 
+	// Icon and text of a scan bar button
+	static TSharedRef<SWidget> MakeButtonLabel(const FString& Text);
+
 	FReply OnScanClicked() const;
 	FReply OnRescanClicked() const;
 	EVisibility GetScanVisibility() const;

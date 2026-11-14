@@ -354,6 +354,8 @@ TSharedRef<SWidget> SPjcScanSettings::MakeHeader() {
 			.ButtonStyle(&PjcShim::GetStyle().GetWidgetStyle<FButtonStyle>(TEXT("NoBorder")))
 			.ContentPadding(FMargin {4.0f, 0.0f})
 			.ToolTipText(FText::FromString(TEXT("Hide scan settings")))
+			// in the side column of Assets the settings stay: no hide
+			.Visibility(OnClose.IsBound() ? EVisibility::Visible : EVisibility::Collapsed)
 			.OnClicked_Lambda([this]() {
 				OnClose.ExecuteIfBound();
 				return FReply::Handled();

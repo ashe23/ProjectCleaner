@@ -2187,7 +2187,7 @@ bool UPjcSubsystem::DeleteAssets(
 			AssetsRemaining.Add(Object);
 		}
 		else {
-			UE_LOG(LogProjectCleaner, Warning, TEXT("Not deleted: %s"), *PjcShim::GetObjectPathString(Asset));
+			UE_LOG(LogProjectCleaner, Warning, TEXT("Delete failed: %s"), *PjcShim::GetObjectPathString(Asset));
 			LastCleanupKept.Add(Asset.PackageName, TEXT("could not be loaded"));
 			++NumNotLoaded;
 		}
@@ -2201,7 +2201,7 @@ bool UPjcSubsystem::DeleteAssets(
 		const FString* Holder = Holders.Find(Asset->GetPathName());
 		const FString HeldBy = Holder ? *Holder : GetKeptReason(Asset->GetOutermost()->GetFName());
 		// the line CI scripts and polygon read: keep its start as it is
-		UE_LOG(LogProjectCleaner, Warning, TEXT("Not deleted, still referenced: %s (%s)"), *Asset->GetPathName(), *HeldBy);
+		UE_LOG(LogProjectCleaner, Warning, TEXT("Delete failed, still referenced: %s (%s)"), *Asset->GetPathName(), *HeldBy);
 		LastCleanupKept.Add(Asset->GetOutermost()->GetFName(), HeldBy);
 	}
 	int32 NumAssetsRemaining = 0;

@@ -25,7 +25,6 @@ class SPjcTabMain final : public SCompoundWidget
 
 	int32 GetWidgetIndex() const;
 	FText GetWidgetWarningText() const;
-	TSharedRef<SDockTab> OnTabOverviewSpawn(const FSpawnTabArgs& Args) const;
 	TSharedRef<SDockTab> OnTabAssetsUnusedSpawn(const FSpawnTabArgs& Args) const;
 	TSharedRef<SDockTab> OnTabIssuesSpawn(const FSpawnTabArgs& Args) const;
 	TSharedRef<SDockTab> OnTabInspectorSpawn(const FSpawnTabArgs& Args) const;

@@ -2,7 +2,6 @@
 
 #include "Slate/SPjcTabMain.h"
 #include "Slate/PjcTabs.h"
-#include "Slate/SPjcTabOverview.h"
 #include "Slate/SPjcTabUnused.h"
 #include "Slate/SPjcTabIssues.h"
 #include "Slate/SPjcTabInspector.h"
@@ -48,21 +47,14 @@ void SPjcTabMain::Construct(
 
 	// clang-format off
 	const TSharedRef<FTabManager::FStack> Stack = FTabManager::NewStack()
-		->AddTab(PjcConstants::TabOverview, ETabState::OpenedTab)
 		->AddTab(PjcConstants::TabAssetsUnused, ETabState::OpenedTab)
 		->AddTab(PjcConstants::TabInspector, ETabState::OpenedTab)
 		->AddTab(PjcConstants::TabIssues, ETabState::OpenedTab)
 		->AddTab(PjcConstants::TabHelp, ETabState::OpenedTab)
-		->SetForegroundTab(PjcConstants::TabOverview)
+		->SetForegroundTab(PjcConstants::TabAssetsUnused)
 		->SetSizeCoefficient(1.0f);
 	// clang-format on
 	TabLayout = FTabManager::NewLayout("PjcTabLayout")->AddArea(FTabManager::NewPrimaryArea()->SetOrientation(Orient_Horizontal)->Split(Stack));
-
-	TabManager->RegisterTabSpawner(PjcConstants::TabOverview, FOnSpawnTab::CreateRaw(this, &SPjcTabMain::OnTabOverviewSpawn))
-		.SetTooltipText(FText::FromString(TEXT("Open Overview Tab")))
-		.SetDisplayName(FText::FromString(TEXT("Overview")))
-		.SetIcon(FPjcStyles::GetIcon("ProjectCleaner.Icon.Stat16"))
-		.SetGroup(AppMenuGroup);
 
 	TabManager->RegisterTabSpawner(PjcConstants::TabIssues, FOnSpawnTab::CreateRaw(this, &SPjcTabMain::OnTabIssuesSpawn))
 		.SetTooltipText(FText::FromString(TEXT("Open Issues Tab: redirectors, external files, corrupted files, empty folders")))
@@ -71,7 +63,7 @@ void SPjcTabMain::Construct(
 		.SetGroup(AppMenuGroup);
 
 	TabManager->RegisterTabSpawner(PjcConstants::TabAssetsUnused, FOnSpawnTab::CreateRaw(this, &SPjcTabMain::OnTabAssetsUnusedSpawn))
-		.SetTooltipText(FText::FromString(TEXT("Open Assets Tab: unused, excluded, used and to review assets")))
+		.SetTooltipText(FText::FromString(TEXT("Open Assets Tab: the overview of the scan, and the unused, excluded, used and to review assets")))
 		.SetDisplayName(FText::FromString(TEXT("Assets")))
 		.SetIcon(FPjcStyles::GetIcon("ProjectCleaner.Icon.PieChart16"))
 		.SetGroup(AppMenuGroup);
@@ -155,7 +147,6 @@ void SPjcTabMain::Construct(
 }
 
 SPjcTabMain::~SPjcTabMain() {
-	FGlobalTabmanager::Get()->UnregisterTabSpawner(PjcConstants::TabOverview);
 	FGlobalTabmanager::Get()->UnregisterTabSpawner(PjcConstants::TabAssetsUnused);
 	FGlobalTabmanager::Get()->UnregisterTabSpawner(PjcConstants::TabIssues);
 	FGlobalTabmanager::Get()->UnregisterTabSpawner(PjcConstants::TabInspector);
@@ -177,19 +168,6 @@ FText SPjcTabMain::GetWidgetWarningText() const {
 	}
 
 	return FText::FromString(TEXT(""));
-}
-
-TSharedRef<SDockTab> SPjcTabMain::OnTabOverviewSpawn(const FSpawnTabArgs& Args) const {
-	// clang-format off
-	const auto Frontend = SNew(SDockTab).TabRole(PanelTab).Label(FText::FromString(TEXT("Overview")))
-		[
-			SNew(SPjcTabOverview).TabManager(TabManager)
-		];
-	// clang-format on
-
-	Frontend->SetTabIcon(FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.Stat16"));
-
-	return Frontend;
 }
 
 TSharedRef<SDockTab> SPjcTabMain::OnTabIssuesSpawn(const FSpawnTabArgs& Args) const {

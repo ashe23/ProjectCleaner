@@ -24,7 +24,7 @@ void SPjcScanBar::Construct(const FArguments& InArgs) {
 	// clang-format off
 	ChildSlot
 	[
-		SNew(SBorder).BorderImage(PjcShim::GetBrush(TEXT("ToolPanel.GroupBorder"))).Padding(FMargin {6.0f, 4.0f})
+		SNew(SBorder).BorderImage(PjcShim::GetBrush(TEXT("ToolPanel.GroupBorder"))).Padding(FMargin {6.0f, 5.0f})
 		[
 			SNew(SHorizontalBox)
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
@@ -34,12 +34,12 @@ void SPjcScanBar::Construct(const FArguments& InArgs) {
 				.ButtonStyle(&PjcShim::GetButtonStyle427(false))
 				.ForegroundColor(FSlateColor::UseForeground())
 #endif
-				.ContentPadding(FMargin {12.0f, 2.0f})
+				.ContentPadding(FMargin {10.0f, 4.0f, 14.0f, 4.0f})
 				.ToolTipText(FText::FromString(TEXT("Scans the project again")))
 				.Visibility(this, &SPjcScanBar::GetScanVisibility)
 				.OnClicked(this, &SPjcScanBar::OnScanClicked)
 				[
-					SNew(STextBlock).Text(FText::FromString(TEXT("Scan")))
+					MakeButtonLabel(TEXT("Scan"))
 				]
 			]
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
@@ -49,7 +49,7 @@ void SPjcScanBar::Construct(const FArguments& InArgs) {
 				.ForegroundColor(FSlateColor::UseForeground())
 #endif
 				.ButtonStyle(&PjcShim::GetPrimaryButtonStyle())
-				.ContentPadding(FMargin {12.0f, 2.0f})
+				.ContentPadding(FMargin {10.0f, 4.0f, 14.0f, 4.0f})
 				.ToolTipText_Lambda([]() {
 					const TCHAR* Settings = TEXT("Applies the changed scan settings and scans again");
 					return FText::FromString(FPjcScanDraft::IsChanged() ? Settings : TEXT("Scans the changed project again"));
@@ -57,7 +57,7 @@ void SPjcScanBar::Construct(const FArguments& InArgs) {
 				.Visibility(this, &SPjcScanBar::GetRescanVisibility)
 				.OnClicked(this, &SPjcScanBar::OnRescanClicked)
 				[
-					SNew(STextBlock).Text(FText::FromString(TEXT("Rescan")))
+					MakeButtonLabel(TEXT("Rescan"))
 				]
 			]
 			// a line between the two project wide actions
@@ -75,12 +75,12 @@ void SPjcScanBar::Construct(const FArguments& InArgs) {
 				.ForegroundColor(FSlateColor::UseForeground())
 #endif
 				.ButtonStyle(&PjcShim::GetDangerButtonStyle())
-				.ContentPadding(FMargin {12.0f, 2.0f})
+				.ContentPadding(FMargin {10.0f, 4.0f, 14.0f, 4.0f})
 				.ToolTipText(this, &SPjcScanBar::GetCleanToolTip)
 				.IsEnabled(this, &SPjcScanBar::IsCleanEnabled)
 				.OnClicked(this, &SPjcScanBar::OnCleanClicked)
 				[
-					SNew(STextBlock).Text(FText::FromString(TEXT("Clean project")))
+					MakeButtonLabel(TEXT("Clean project"))
 				]
 			]
 			+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center).Padding(FMargin {10.0f, 0.0f})
@@ -96,6 +96,25 @@ void SPjcScanBar::Construct(const FArguments& InArgs) {
 }
 
 SPjcScanBar::~SPjcScanBar() {}
+
+TSharedRef<SWidget> SPjcScanBar::MakeButtonLabel(const FString& Text) {
+	// Clean project: the red bin, Scan and Rescan: the arrows
+	const FName Icon = Text.Equals(TEXT("Clean project")) ? TEXT("ProjectCleaner.Icon.Clean20") : TEXT("ProjectCleaner.Icon.Scan20");
+	// clang-format off
+	return SNew(SHorizontalBox)
+		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 7.0f, 0.0f})
+		[
+			SNew(SBox).WidthOverride(20.0f).HeightOverride(20.0f)
+			[
+				SNew(SImage).Image(FPjcStyles::Get().GetBrush(Icon))
+			]
+		]
+		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+		[
+			SNew(STextBlock).Text(FText::FromString(Text)).Font(FPjcStyles::GetFont("Regular", 10))
+		];
+	// clang-format on
+}
 
 bool SPjcScanBar::NeedsRescan() {
 	return FPjcScanDraft::IsChanged() || (UPjcSubsystem::GetScanResult().IsValid() && UPjcSubsystem::GetChangesSinceScan().Num() > 0);

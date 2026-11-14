@@ -331,7 +331,7 @@ TSharedRef<SWidget> SPjcCleanWindow::MakeConfirm() {
 	}
 	if (Plan.NumReview > 0) {
 		const FString ReviewTitle = FString::Printf(TEXT("%s assets to review"), *PjcFormat::Count(Plan.NumReview));
-		const TCHAR* ReviewDetail = TEXT("Not deleted: the scan is not sure about them");
+		const TCHAR* ReviewDetail = TEXT("Kept: the scan is not sure about them");
 		AddCheck(MakeCheck(ECheck::Info, ReviewTitle, ReviewDetail, MakeButton(TEXT("Review"), OnReview)));
 	}
 	TArray<UPackage*> Dirty;
@@ -733,7 +733,7 @@ TSharedRef<SWidget> SPjcCleanWindow::MakeDone() {
 	}
 	if (NotDeleted.Num() > 0) {
 		const FString Lines = FString::Join(TArray<FString> {NotDeleted.GetData(), FMath::Min(NotDeleted.Num(), 8)}, TEXT("\n"));
-		const FString Held = FString::Printf(TEXT("%s not deleted, each with what still holds it. "), *PjcFormat::Count(NotDeleted.Num()));
+		const FString Held = FString::Printf(TEXT("%s failed to delete, each with what still holds it. "), *PjcFormat::Count(NotDeleted.Num()));
 		const TCHAR* Next = TEXT("They stay in Assets. To delete one anyway, delete it in the Content Browser and choose Force Delete, ")
 			TEXT("only when you are sure nothing uses it.\n");
 		AddNote(Held + Next + Lines, true);
@@ -799,7 +799,7 @@ TSharedRef<SWidget> SPjcCleanWindow::MakeDone() {
 						return FReply::Handled();
 					})
 					[
-						SNew(STextBlock).Text(FText::FromString(TEXT("Show not deleted")))
+						SNew(STextBlock).Text(FText::FromString(TEXT("Show failed")))
 					]
 				]
 				+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin {8.0f, 0.0f, 0.0f, 0.0f})

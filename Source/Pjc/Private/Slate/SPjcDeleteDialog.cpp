@@ -125,7 +125,7 @@ void SPjcDeleteDialog::Construct(const FArguments& InArgs) {
 		[
 			PjcDeleteDialogNote(
 				FString::Printf(
-					TEXT("%s of them were not deleted last time: %s."),
+					TEXT("%s of them failed to delete last time: %s."),
 					*PjcFormat::Count(InArgs._Held.Num()),
 					*InArgs._Held[0]
 				),

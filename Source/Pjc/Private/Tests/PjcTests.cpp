@@ -26,7 +26,7 @@
 #include "Slate/SPjcTabIssues.h"
 #include "Slate/SPjcTabUnused.h"
 #include "Slate/SPjcTabInspector.h"
-#include "Slate/SPjcTabOverview.h"
+#include "Slate/SPjcOverviewPanel.h"
 #include "Slate/SPjcTabHelp.h"
 #include "Pjc.h"
 #include "HAL/FileManager.h"
@@ -1881,7 +1881,7 @@ bool FPjcTestUiTabs::RunTest(const FString& Parameters) {
 	const TSharedRef<SPjcTabInspector> TabInspector = SNew(SPjcTabInspector);
 	const TSharedRef<SPjcTabUnused> TabUnused = SNew(SPjcTabUnused);
 	const TSharedRef<SPjcTabIssues> TabIssues = SNew(SPjcTabIssues);
-	const TSharedRef<SWidget> Tabs[] = {SNew(SPjcTabOverview), TabUnused, TabIssues, TabInspector, SNew(SPjcTabHelp)};
+	const TSharedRef<SWidget> Tabs[] = {SNew(SPjcOverviewPanel), TabUnused, TabIssues, TabInspector, SNew(SPjcTabHelp)};
 	for (const auto& Tab : Tabs) {
 		TestTrue(FString::Printf(TEXT("%s has content"), *Tab->GetTypeAsString()), Tab->GetChildren()->Num() > 0);
 	}

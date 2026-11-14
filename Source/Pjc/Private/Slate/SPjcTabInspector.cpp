@@ -1086,7 +1086,7 @@ TSharedRef<SWidget> SPjcTabInspector::MakeFacts() {
 	const FString Cleanup = Group.Num() > 0 ? WithGroup : FString::Printf(TEXT("Deleted \u00B7 %s"), *SizeText);
 	Add(TEXT("Cleanup"), PjcInspectorText(Cleanup));
 	if (const FString* Holder = UPjcSubsystem::GetLastCleanupKept().Find(Package)) {
-		Add(TEXT("Last cleanup"), PjcInspectorText(TEXT("Not deleted \u00B7 ") + *Holder, PjcInspectorHex(TEXT("#FFCB77"))));
+		Add(TEXT("Last cleanup"), PjcInspectorText(TEXT("Delete failed \u00B7 ") + *Holder, PjcInspectorHex(TEXT("#FFCB77"))));
 	}
 	return Facts;
 }

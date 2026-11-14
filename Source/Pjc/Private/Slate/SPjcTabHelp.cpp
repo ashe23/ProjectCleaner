@@ -490,7 +490,7 @@ FString SPjcReportWindow::GetLastScanText() {
 	const FString Counts = FString::Printf(TEXT("%s assets \u00B7 %s unused \u00B7 %d to review"), *Assets, *Unused, NumReview);
 	const FString Scan = FString::Printf(TEXT("Last scan: %s \u00B7 %s excluded \u00B7 %.1f s"), *Counts, *Excluded, Result.Seconds);
 	const int32 NumKept = UPjcSubsystem::GetLastCleanupKept().Num();
-	return Scan + (NumKept > 0 ? FString::Printf(TEXT("\nLast cleanup: %d not deleted"), NumKept) : FString {});
+	return Scan + (NumKept > 0 ? FString::Printf(TEXT("\nLast cleanup: %d failed to delete"), NumKept) : FString {});
 }
 
 FString SPjcReportWindow::GetLogText(const int32 MaxLines) {

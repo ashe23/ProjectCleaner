@@ -7,7 +7,7 @@
 #include "Slate/SPjcClassBar.h"
 #include "Slate/SPjcScanBar.h"
 #include "Slate/SPjcSizeMap.h"
-#include "Slate/SPjcTabOverview.h"
+#include "Slate/SPjcOverviewPanel.h"
 #include "Slate/SPjcToolFrame.h"
 #include "PjcFormat.h"
 #include "PjcSettings.h"
@@ -357,7 +357,7 @@ namespace
 						.Padding(FMargin {4.0f, 0.0f})
 						.ToolTipText(
 							FText::FromString(
-								FString::Printf(TEXT("Not deleted last time: %s"), *Row->Holder)
+								FString::Printf(TEXT("Delete failed last time: %s"), *Row->Holder)
 							)
 						)
 						[
@@ -455,7 +455,6 @@ void SPjcTabUnused::Construct(const FArguments& InArgs) {
 			FolderSortMode = bSortDescending ? EColumnSortMode::Descending : EColumnSortMode::Ascending;
 		}
 		GConfig->GetBool(PjcUnusedSection, TEXT("Subfolders"), bSubfolders, GEditorPerProjectIni);
-		GConfig->GetBool(PjcUnusedSection, TEXT("SizeMap"), bMapView, GEditorPerProjectIni);
 		GConfig->GetBool(PjcUnusedSection, TEXT("SizeMapAll"), bMapAll, GEditorPerProjectIni);
 		if (GConfig->GetString(PjcUnusedSection, TEXT("AssetSort"), SortColumn, GEditorPerProjectIni) && !SortColumn.IsEmpty()) {
 			AssetSortColumn = FName {*SortColumn};
@@ -486,7 +485,21 @@ void SPjcTabUnused::Construct(const FArguments& InArgs) {
 	// clang-format off
 	ChildSlot
 	[
-		SNew(SPjcToolFrame).PageName(TEXT("AssetsUnused")).PanelOpen(false)
+		SNew(SPjcToolFrame).PageName(TEXT("AssetsUnused"))
+		.Side()
+		[
+			SNew(SPjcOverviewPanel)
+			.TabManager(TabManager.Pin())
+			.OnShowSet_Lambda([this](const EPjcAssetSet InSet, const FString& Reason) {
+				ShowSet(InSet, Reason);
+			})
+			.IsSetShown_Lambda([this](const EPjcAssetSet InSet, const FString& Reason) {
+				return Set == InSet && ReasonFilter.Equals(Reason) && !bHeldOnly;
+			})
+			.OnShowDeleteFailed_Lambda([this]() {
+				ShowNotDeleted();
+			})
+		]
 		[
 			SNew(SSplitter).PhysicalSplitterHandleSize(3.0f)
 			+ SSplitter::Slot().Value(0.46f)
@@ -705,7 +718,7 @@ void SPjcTabUnused::MakeRowReason(const FPjcScanResult& Result, FPjcUnusedAssetR
 	FString Name;
 	FString ToolTip;
 	FLinearColor Color;
-	SPjcTabOverview::GetReasonInfo(FPjcOverview::GetGroupReason(Result, Row.Package), Name, ToolTip, Color);
+	SPjcOverviewPanel::GetReasonInfo(FPjcOverview::GetGroupReason(Result, Row.Package), Name, ToolTip, Color);
 	Row.Reason = Name;
 	Row.ReasonTip = ToolTip;
 	if (Root != Row.Package) {
@@ -1366,7 +1379,7 @@ void SPjcTabUnused::RebuildChips() {
 					SNew(SHorizontalBox)
 					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 					[
-						SNew(STextBlock).Text(FText::FromString(TEXT("Not deleted"))).ColorAndOpacity(FLinearColor {FColor::FromHex(TEXT("#FFB3B6"))})
+						SNew(STextBlock).Text(FText::FromString(TEXT("Delete failed"))).ColorAndOpacity(FLinearColor {FColor::FromHex(TEXT("#FFB3B6"))})
 					]
 					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
 					[
@@ -1565,7 +1578,6 @@ void SPjcTabUnused::SaveViewState() const {
 	GConfig->SetString(PjcUnusedSection, TEXT("FolderSort"), *FolderSortColumn.ToString(), GEditorPerProjectIni);
 	GConfig->SetBool(PjcUnusedSection, TEXT("FolderSortDescending"), FolderSortMode == EColumnSortMode::Descending, GEditorPerProjectIni);
 	GConfig->SetBool(PjcUnusedSection, TEXT("Subfolders"), bSubfolders, GEditorPerProjectIni);
-	GConfig->SetBool(PjcUnusedSection, TEXT("SizeMap"), bMapView, GEditorPerProjectIni);
 	GConfig->SetBool(PjcUnusedSection, TEXT("SizeMapAll"), bMapAll, GEditorPerProjectIni);
 	GConfig->SetString(PjcUnusedSection, TEXT("AssetSort"), *AssetSortColumn.ToString(), GEditorPerProjectIni);
 	GConfig->SetBool(PjcUnusedSection, TEXT("AssetSortDescending"), AssetSortMode == EColumnSortMode::Descending, GEditorPerProjectIni);

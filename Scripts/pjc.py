@@ -1635,8 +1635,8 @@ def polygon_verify(p, scenario, settings, snapshot, text_refs, report, status, c
     # record, e.g. MetaSound graphs) are kept on purpose, plugin logs who holds each of them
     kept_live = set()
     if cleanup:
-        for line in log_lines(log, r"Not deleted, (?:still )?referenced", 100000):
-            m = re.search(r"(/[\w\-/]+)\.[\w\-]+", line.split("Not deleted", 1)[1])
+        for line in log_lines(log, r"(?:Not deleted|Delete failed), (?:still )?referenced", 100000):
+            m = re.search(r"(/[\w\-/]+)\.[\w\-]+", re.split(r"Not deleted|Delete failed", line, 1)[1])
             if m:
                 kept_live.add(m.group(1))
 
