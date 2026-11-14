@@ -98,6 +98,8 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create() {
 	Style->Set("ProjectCleaner.Color.FolderTint", FLinearColor {FColor::FromHex(TEXT("#C9A55A"))});
 
 #if ENGINE_MAJOR_VERSION >= 5
+	// tool pages: dark theme background behind the panels and cards, 4.27 sets its own below
+	Style->Set("ProjectCleaner.Page", new FSlateColorBrush {FStyleColors::Background});
 	// cards of the Overview, 4.27 takes the editor group border (PjcShim::GetBrushCard)
 	Style->Set("ProjectCleaner.Card", new FSlateRoundedBoxBrush(FStyleColors::Panel, 4.0f, FLinearColor {FColor::FromHex(TEXT("#383B40"))}, 1.0f));
 	// Inspector graph boxes, white: drawn tinted. 4.27 draws square boxes.

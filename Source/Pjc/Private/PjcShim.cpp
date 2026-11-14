@@ -91,11 +91,7 @@ namespace PjcShim
 	}
 
 	const FSlateBrush* GetBrushPage() {
-#if ENGINE_MAJOR_VERSION >= 5
-		return FCoreStyle::Get().GetBrush("NoBrush");
-#else
 		return FPjcStyles::Get().GetBrush("ProjectCleaner.Page");
-#endif
 	}
 
 	const FSlateBrush* GetIconSettings() {
