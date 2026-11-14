@@ -1,6 +1,7 @@
 // Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "Slate/SPjcCleanWindow.h"
+#include "Slate/SPjcTabIssues.h"
 #include "Slate/PjcTabs.h"
 #include "Slate/PjcWidgets.h"
 #include "Slate/SPjcScanBar.h"
@@ -316,7 +317,7 @@ TSharedRef<SWidget> SPjcCleanWindow::MakeConfirm() {
 	};
 	const auto OnReview = [this]() {
 		Close();
-		PjcTabs::ShowSet(PjcTabs::GetMain(), EPjcAssetSet::Review);
+		PjcTabs::ShowIssues(PjcTabs::GetMain(), static_cast<uint8>(EPjcIssueCategory::Review));
 	};
 	if (SPjcScanBar::NeedsRescan()) {
 		const bool bSettings = FPjcScanDraft::IsChanged();

@@ -80,11 +80,11 @@ namespace PjcTabs
 		}
 	}
 
-	void ShowIssues(const TWeakPtr<FTabManager>& Tabs, const uint8 Category) {
+	void ShowIssues(const TWeakPtr<FTabManager>& Tabs, const uint8 Category, const FString& Reason) {
 		const TSharedPtr<FTabManager> Manager = Tabs.Pin();
 		const TSharedPtr<SDockTab> Tab = Manager.IsValid() ? Manager->TryInvokeTab(FTabId {PjcConstants::TabIssues}) : nullptr;
 		if (Tab.IsValid() && Tab->GetContent()->GetType() == TEXT("SPjcTabIssues")) {
-			StaticCastSharedRef<SPjcTabIssues>(Tab->GetContent())->ShowCategory(static_cast<EPjcIssueCategory>(Category));
+			StaticCastSharedRef<SPjcTabIssues>(Tab->GetContent())->ShowCategory(static_cast<EPjcIssueCategory>(Category), false, Reason);
 		}
 	}
 

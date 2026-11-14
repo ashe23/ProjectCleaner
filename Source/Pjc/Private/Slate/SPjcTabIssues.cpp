@@ -1,6 +1,8 @@
 // Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "Slate/SPjcTabIssues.h"
+#include "Slate/PjcActions.h"
+#include "Slate/PjcTabs.h"
 #include "Slate/PjcWidgets.h"
 #include "Slate/SPjcDialog.h"
 #include "Slate/SPjcScanBar.h"
@@ -11,6 +13,7 @@
 #include "PjcStyles.h"
 #include "PjcTypes.h"
 #include "PjcSubsystem.h"
+#include "PjcUnused.h"
 // Engine Headers
 #include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "Misc/PackageName.h"
@@ -148,6 +151,50 @@ namespace
 	};
 }	// namespace
 
+namespace
+{
+	// Why an asset is to review: the reason of the asset its chain starts at. Key groups the chips
+	void PjcIssueReviewReason(
+		const FPjcScanResult& Result,
+		const FName Package,
+		FString& OutKey,
+		FString& OutReason,
+		FString& OutDetail,
+		FString& OutTip
+	) {
+		FName Root = Package;
+		const FPjcAssetUsage* RootUsage = Result.Usage.Find(Package);
+		for (int32 NumSteps = 0; RootUsage && RootUsage->Reason == EPjcUsageReason::Dependency && NumSteps < 1024; ++NumSteps) {
+			Root = RootUsage->Parent;
+			RootUsage = Result.Usage.Find(Root);
+		}
+		const bool bCue = RootUsage && RootUsage->Reason == EPjcUsageReason::GameplayCueNotFired;
+		const bool bOutside = bCue && RootUsage->Detail.Contains(TEXT("outside"));
+		OutKey = bCue ? TEXT("Cue never fired") : TEXT("Packaged by last cook");
+		if (Root != Package) {
+			const FString RootName = FPackageName::GetShortName(Root);
+			OutReason = OutKey;
+			OutDetail = TEXT("Only used by ") + RootName;
+			OutTip = RootName + TEXT(" uses it and is to review, so it stays with it. Clean project deletes neither.");
+			return;
+		}
+		// clang-format off
+		const TCHAR* CookTip = TEXT("Nothing the scan sees uses it, but the last cook packaged it: ")
+			TEXT("the game may load it in a way the scan cannot follow.");
+		// clang-format on
+		const TCHAR* CueTip = TEXT("GameplayCue notify whose tag no used asset, C++ or config file names. Tags can also be built at runtime.");
+		const TCHAR* OutsideTip = TEXT("GameplayCue notify outside the cue notify paths: the cue manager never loads it by its tag.");
+		FString Detail = RootUsage ? RootUsage->Detail : FString {};
+		int32 Comma = INDEX_NONE;
+		if (bCue && Detail.FindChar(TEXT(','), Comma)) {
+			Detail.LeftInline(Comma);
+		}
+		OutReason = bOutside ? TEXT("Outside cue paths") : OutKey;
+		OutDetail = bCue ? Detail : TEXT("Cooked for ") + Detail;
+		OutTip = bOutside ? OutsideTip : (bCue ? CueTip : CookTip);
+	}
+}	// namespace
+
 void SPjcTabIssues::Construct(const FArguments& InArgs) {
 	TabManager = InArgs._TabManager;
 	ScanFinishedHandle = UPjcSubsystem::OnScanFinished().AddSP(this, &SPjcTabIssues::OnScanFinished);
@@ -188,7 +235,8 @@ void SPjcTabIssues::Construct(const FArguments& InArgs) {
 					[
 						SAssignNew(Chips, SHorizontalBox)
 						.Visibility_Lambda([this]() {
-							return Category == EPjcIssueCategory::External && bKept ? EVisibility::Visible : EVisibility::Collapsed;
+							const bool bShown = (Category == EPjcIssueCategory::External && bKept) || (Category == EPjcIssueCategory::Review && NumReview > 0);
+							return bShown ? EVisibility::Visible : EVisibility::Collapsed;
 						})
 					]
 					// the selection and its actions, above the list
@@ -207,24 +255,33 @@ void SPjcTabIssues::Construct(const FArguments& InArgs) {
 	// clang-format on
 
 	OnScanFinished();
+	// assets to review come first when there are some
+	if (NumReview > 0) {
+		ShowCategory(EPjcIssueCategory::Review);
+	}
 }
 
 SPjcTabIssues::~SPjcTabIssues() {
 	UPjcSubsystem::OnScanFinished().Remove(ScanFinishedHandle);
 }
 
-void SPjcTabIssues::ShowCategory(const EPjcIssueCategory InCategory, const bool bShowKept) {
-	if (Category == InCategory && bKept == bShowKept) return;
+void SPjcTabIssues::ShowCategory(const EPjcIssueCategory InCategory, const bool bShowKept, const FString& InReason) {
+	if (Category == InCategory && bKept == bShowKept && ChipFilter == InReason) return;
 
 	Category = InCategory;
 	bKept = bShowKept && InCategory == EPjcIssueCategory::External;
-	KeptReason.Reset();
+	ChipFilter = InCategory == EPjcIssueCategory::Review ? InReason : FString {};
 	RebuildRows();
 	RebuildList();
 }
 
 void SPjcTabIssues::OnScanFinished() {
-	PjcIssues::GetRedirectors(UPjcSubsystem::GetScanResult(), Redirectors);
+	const FPjcScanResult& Result = UPjcSubsystem::GetScanResult();
+	PjcIssues::GetRedirectors(Result, Redirectors);
+	NumReview = 0;
+	for (const auto& Asset : Result.Assets) {
+		NumReview += FPjcUnusedTree::IsInSet(Result, Asset.PackageName, EPjcAssetSet::Review) ? 1 : 0;
+	}
 	RebuildRows();
 	RebuildList();
 }
@@ -236,6 +293,7 @@ int32 SPjcTabIssues::GetCount(const EPjcIssueCategory InCategory) const {
 		case EPjcIssueCategory::External :	  return Result.FilesExternal.Num();
 		case EPjcIssueCategory::Corrupted :	  return Result.FilesCorrupted.Num();
 		case EPjcIssueCategory::Empty :		  return Result.FoldersEmpty.Num();
+		case EPjcIssueCategory::Review :	  return NumReview;
 	}
 	return 0;
 }
@@ -256,6 +314,38 @@ void SPjcTabIssues::RebuildRows() {
 	};
 
 	switch (Category) {
+		case EPjcIssueCategory::Review :
+			ReviewReasons.Reset();
+			for (int32 Index = 0; Index < Result.Assets.Num(); ++Index) {
+				const FAssetData& Asset = Result.Assets[Index];
+				if (!FPjcUnusedTree::IsInSet(Result, Asset.PackageName, EPjcAssetSet::Review)) continue;
+
+				FString Key;
+				FString Reason;
+				FString Detail;
+				FString Tip;
+				PjcIssueReviewReason(Result, Asset.PackageName, Key, Reason, Detail, Tip);
+				ReviewReasons.FindOrAdd(Key)++;
+				if (!ChipFilter.IsEmpty() && Key != ChipFilter) continue;
+
+				const FRowPtr Row = MakeShared<FPjcIssueRow>();
+				Row->Id = Asset.PackageName.ToString();
+				Row->Package = Asset.PackageName;
+				Row->Asset = Index;
+				Row->Name = Asset.AssetName.ToString();
+				Row->Sub = PjcWidgets::GetAssetType(Asset).Label + TEXT(" \u00B7 ") + Asset.PackagePath.ToString().Mid(1);
+				Row->Reason = Key;
+				Row->Size = Result.GetSize(Asset.PackageName);
+				Row->Cells = {Reason, Detail, PjcFormat::Size(Row->Size)};
+				Row->CellColors = {TEXT("ProjectCleaner.Color.Review"), TEXT("ProjectCleaner.Color.Gray"), NAME_None};
+				Row->ToolTip = Row->Id + TEXT("\n") + Tip;
+				AllRows.Add(Row);
+			}
+			AllRows.Sort([](const FRowPtr& A, const FRowPtr& B) {
+				return A->Size != B->Size ? A->Size > B->Size : A->Name < B->Name;
+			});
+			break;
+
 		case EPjcIssueCategory::Redirectors :
 			for (int32 Index = 0; Index < Redirectors.Num(); ++Index) {
 				const FPjcRedirectorInfo& Info = Redirectors[Index];
@@ -300,7 +390,7 @@ void SPjcTabIssues::RebuildRows() {
 				for (int32 Index = 0; Index < Result.FilesExternalKept.Num(); ++Index) {
 					const FString& File = Result.FilesExternalKept[Index];
 					const FString Reason = Result.FilesExternalKeptReasons.IsValidIndex(Index) ? Result.FilesExternalKeptReasons[Index] : FString {};
-					if (!KeptReason.IsEmpty() && Reason != KeptReason) continue;
+					if (!ChipFilter.IsEmpty() && Reason != ChipFilter) continue;
 
 					FPjcIssueRow& Row = AddFile(File);
 					Row.Sub = FPaths::GetPath(PjcIssueRelative(File));
@@ -357,6 +447,12 @@ TArray<SPjcTabIssues::FColumn> SPjcTabIssues::GetColumns() const {
 	};
 
 	switch (Category) {
+		case EPjcIssueCategory::Review :
+			Add(TEXT("Asset"), 0.0f, 1.0f, false, false);
+			Add(TEXT("Reason"), 170.0f, 0.0f, false, false, TEXT("Why the scan is not sure"));
+			Add(TEXT("Detail"), 0.0f, 0.6f, false, false);
+			Add(TEXT("Size"), 90.0f, 0.0f, true, true);
+			break;
 		case EPjcIssueCategory::Redirectors :
 			Add(TEXT("Redirector"), 0.0f, 1.0f, false, false);
 			Add(TEXT("Points to"), 0.0f, 0.8f, false, false, TEXT("The asset it points to"));
@@ -473,10 +569,13 @@ TSharedRef<SWidget> SPjcTabIssues::MakeCategories() {
 		const TCHAR* ToolTip;
 	};
 	const FEntry Entries[] = {
-	  {EPjcIssueCategory::Redirectors,	   TEXT("Redirectors"),				 TEXT("Left by moved or renamed assets")},
-	  {	  EPjcIssueCategory::External,	TEXT("External files"), TEXT("Files in content folders that are not assets")},
-	  {	 EPjcIssueCategory::Corrupted, TEXT("Corrupted files"),			  TEXT("Asset files the engine cannot read")},
-	  {		 EPjcIssueCategory::Empty,	 TEXT("Empty folders"),				 TEXT("Folders without assets or files")},
+	  {		EPjcIssueCategory::Review,
+	   TEXT("Assets to review"),
+	   TEXT("Assets the scan is not sure about: Clean project keeps them until you delete or keep them")							   },
+	  {EPjcIssueCategory::Redirectors,	   TEXT("Redirectors"),									TEXT("Left by moved or renamed assets")},
+	  {	  EPjcIssueCategory::External,	TEXT("External files"),					   TEXT("Files in content folders that are not assets")},
+	  {	 EPjcIssueCategory::Corrupted, TEXT("Corrupted files"),								 TEXT("Asset files the engine cannot read")},
+	  {		 EPjcIssueCategory::Empty,	 TEXT("Empty folders"),									TEXT("Folders without assets or files")},
 	};
 	for (const auto& Entry : Entries) {
 		const EPjcIssueCategory EntryCategory = Entry.Category;
@@ -579,7 +678,7 @@ TSharedRef<SWidget> SPjcTabIssues::MakeHeader() {
 					.IsChecked_Lambda([this]() { return bKept ? ECheckBoxState::Checked : ECheckBoxState::Unchecked; })
 					.OnCheckStateChanged_Lambda([this](ECheckBoxState) {
 						bKept = true;
-						KeptReason.Reset();
+						ChipFilter.Reset();
 						RebuildRows();
 						RebuildList();
 					})
@@ -661,6 +760,49 @@ TSharedRef<SWidget> SPjcTabIssues::MakeFooter() {
 					SNew(STextBlock)
 					.Text(this, &SPjcTabIssues::GetSelectionText)
 					.ColorAndOpacity_Lambda([this]() { return GetSelected().Num() > 0 ? FSlateColor::UseForeground() : FSlateColor::UseSubduedForeground(); })
+				]
+			]
+			// assets to review
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
+			[
+				SNew(SBox).Visibility_Lambda(Is(EPjcIssueCategory::Review))
+				[
+					Button(
+						TEXT("Delete\u2026"),
+						TEXT("Deletes the selection with the unused assets that reference it"),
+						TEXT("ProjectCleaner.Color.UnusedFill"),
+						[this]() { DeleteAssets(GetSelected()); },
+						[this]() { return GetSelected().Num() > 0; }
+					)
+				]
+			]
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
+			[
+				SNew(SBox).Visibility_Lambda(Is(EPjcIssueCategory::Review))
+				[
+					Button(
+						TEXT("Keep"),
+						TEXT("Keeps them for good: adds them to the exclusions (Config/DefaultEditor.ini), so they count as used"),
+						NAME_None,
+						[this]() { KeepAssets(GetSelected()); },
+						[this]() { return GetSelected().Num() > 0; }
+					)
+				]
+			]
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
+			[
+				SNew(SBox).Visibility_Lambda(Is(EPjcIssueCategory::Review))
+				[
+					Button(
+						TEXT("Inspect"),
+						TEXT("Shows why the scan is not sure in the Inspector"),
+						NAME_None,
+						[this]() {
+							const TArray<FRowPtr> Selected = GetSelected();
+							if (Selected.Num() == 1) PjcTabs::Inspect(TabManager, Selected[0]->Package);
+						},
+						[this]() { return GetSelected().Num() == 1; }
+					)
 				]
 			]
 			// redirectors
@@ -778,6 +920,7 @@ FText SPjcTabIssues::GetTitle() const {
 		case EPjcIssueCategory::External :	  return FText::FromString(TEXT("External files"));
 		case EPjcIssueCategory::Corrupted :	  return FText::FromString(TEXT("Corrupted files"));
 		case EPjcIssueCategory::Empty :		  return FText::FromString(TEXT("Empty folders"));
+		case EPjcIssueCategory::Review :	  return FText::FromString(TEXT("Assets to review"));
 	}
 	return FText::GetEmpty();
 }
@@ -795,6 +938,8 @@ FText SPjcTabIssues::GetDescription() const {
 		case EPjcIssueCategory::Corrupted :
 			return FText::FromString(TEXT("Asset files the engine cannot load. Deleting them is the only fix the plugin offers."));
 		case EPjcIssueCategory::Empty : return FText::FromString(TEXT("Folders without assets or files, often left after moving assets."));
+		case EPjcIssueCategory::Review :
+			return FText::FromString(TEXT("The scan is not sure about them. Clean project keeps them: delete them, or keep them for good."));
 	}
 	return FText::GetEmpty();
 }
@@ -817,6 +962,7 @@ FText SPjcTabIssues::GetSelectionText() const {
 	const TArray<FRowPtr> Selected = GetSelected();
 	if (Selected.Num() == 0) {
 		// what selecting is for
+		if (Category == EPjcIssueCategory::Review) return FText::FromString(TEXT("Select assets to delete or keep"));
 		if (Category == EPjcIssueCategory::Redirectors) return FText::FromString(TEXT("Select redirectors to fix"));
 		if (Category == EPjcIssueCategory::Empty) return FText::FromString(TEXT("Select folders to delete"));
 		if (Category == EPjcIssueCategory::External && bKept) return FText::FromString(TEXT("Never deleted"));
@@ -929,9 +1075,13 @@ void SPjcTabIssues::RebuildChips() {
 
 	Chips->ClearChildren();
 	const FPjcScanResult& Result = UPjcSubsystem::GetScanResult();
-	TMap<FString, int32> ByReason;
-	for (const auto& Reason : Result.FilesExternalKeptReasons) {
-		ByReason.FindOrAdd(Reason)++;
+	const bool bReview = Category == EPjcIssueCategory::Review;
+	TMap<FString, int32> ByReason = ReviewReasons;
+	if (!bReview) {
+		ByReason.Reset();
+		for (const auto& Reason : Result.FilesExternalKeptReasons) {
+			ByReason.FindOrAdd(Reason)++;
+		}
 	}
 	ByReason.ValueSort([](const int32 A, const int32 B) {
 		return A > B;
@@ -941,9 +1091,9 @@ void SPjcTabIssues::RebuildChips() {
 		// clang-format off
 		return SNew(SCheckBox)
 			.Style(&PjcShim::GetToggleStyle())
-			.IsChecked_Lambda([this, Reason]() { return KeptReason == Reason ? ECheckBoxState::Checked : ECheckBoxState::Unchecked; })
+			.IsChecked_Lambda([this, Reason]() { return ChipFilter == Reason ? ECheckBoxState::Checked : ECheckBoxState::Unchecked; })
 			.OnCheckStateChanged_Lambda([this, Reason](ECheckBoxState) {
-				KeptReason = Reason;
+				ChipFilter = Reason;
 				RebuildRows();
 				RebuildList();
 			})
@@ -958,7 +1108,7 @@ void SPjcTabIssues::RebuildChips() {
 	// clang-format off
 	Chips->AddSlot().AutoWidth().Padding(FMargin {0.0f, 0.0f, 4.0f, 0.0f})
 	[
-		Chip(FString {}, TEXT("All"), Result.FilesExternalKept.Num())
+		Chip(FString {}, TEXT("All"), bReview ? NumReview : Result.FilesExternalKept.Num())
 	];
 	// clang-format on
 	for (const auto& Pair : ByReason) {
@@ -1003,6 +1153,30 @@ void SPjcTabIssues::DeleteRows(const TArray<FRowPtr>& InRows) {
 		UPjcSubsystem::ShowNotificationWithOutputLog(Partly, SNotificationItem::CS_Fail, 6.0f);
 	}
 	SPjcScanBar::ScanProject();
+}
+
+void SPjcTabIssues::KeepAssets(const TArray<FRowPtr>& InRows) {
+	const FPjcScanResult& Result = UPjcSubsystem::GetScanResult();
+	TArray<FString> Assets;
+	for (const auto& Row : InRows) {
+		if (Result.Assets.IsValidIndex(Row->Asset)) {
+			Assets.Add(PjcShim::GetObjectPathString(Result.Assets[Row->Asset]));
+		}
+	}
+	if (Assets.Num() == 0) return;
+
+	const TCHAR* Plural = Assets.Num() == 1 ? TEXT("") : TEXT("s");
+	PjcActions::Exclude({}, {}, Assets, FString::Printf(TEXT("Kept %s asset%s"), *PjcFormat::Count(Assets.Num()), Plural));
+}
+
+void SPjcTabIssues::DeleteAssets(const TArray<FRowPtr>& InRows) {
+	TArray<FName> Packages;
+	for (const auto& Row : InRows) {
+		Packages.Add(Row->Package);
+	}
+	if (Packages.Num() > 0) {
+		PjcActions::DeleteWithGroup(Packages);
+	}
 }
 
 TSharedRef<SWidget> SPjcTabIssues::MakeExcludeMenu() {

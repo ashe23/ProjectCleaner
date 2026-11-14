@@ -7,6 +7,7 @@
 #include "Slate/SPjcClassBar.h"
 #include "Slate/SPjcScanBar.h"
 #include "Slate/SPjcSizeMap.h"
+#include "Slate/SPjcTabIssues.h"
 #include "Slate/SPjcOverviewPanel.h"
 #include "Slate/SPjcToolFrame.h"
 #include "PjcFormat.h"
@@ -50,6 +51,8 @@ namespace
 	const FName PjcUnusedColShare {TEXT("Unused")};
 	const FName PjcUnusedColSize {TEXT("Size")};
 	const FName PjcUnusedColAssets {TEXT("Assets")};
+	// the reason of excluded assets in the Used list, as the Overview names it
+	const TCHAR* PjcUnusedReasonExcluded = TEXT("Excluded");
 
 	// tree indent and the middle of the arrow: where a folder's guide runs
 	constexpr float PjcUnusedIndent = 14.0f;
@@ -601,6 +604,15 @@ void SPjcTabUnused::SelectFolder(const FString& Path) {
 }
 
 void SPjcTabUnused::ShowSet(const EPjcAssetSet InSet, const FString& Reason) {
+	// two lists (user, 2026-11-14): excluded assets are used ones kept by a rule, assets to review are in Issues
+	if (InSet == EPjcAssetSet::Excluded) {
+		ShowSet(EPjcAssetSet::Used, PjcUnusedReasonExcluded);
+		return;
+	}
+	if (InSet == EPjcAssetSet::Review) {
+		PjcTabs::ShowIssues(TabManager, static_cast<uint8>(EPjcIssueCategory::Review), Reason);
+		return;
+	}
 	if (InSet == Set) {
 		ReasonFilter = Reason;
 		ApplyAssetFilter();
@@ -622,7 +634,7 @@ void SPjcTabUnused::OnScanFinished() {
 	const FPjcScanResult& Result = UPjcSubsystem::GetScanResult();
 	SetCounts.Reset();
 	for (const auto& Asset : Result.Assets) {
-		for (const EPjcAssetSet Each : {EPjcAssetSet::Unused, EPjcAssetSet::Excluded, EPjcAssetSet::Used, EPjcAssetSet::Review}) {
+		for (const EPjcAssetSet Each : {EPjcAssetSet::Unused, EPjcAssetSet::Used}) {
 			SetCounts.FindOrAdd(Each) += FPjcUnusedTree::IsInSet(Result, Asset.PackageName, Each) ? 1 : 0;
 		}
 	}
@@ -690,7 +702,8 @@ TSharedRef<SWidget> SPjcTabUnused::MakeTabsRow() {
 }
 
 TSharedRef<SWidget> SPjcTabUnused::MakeSetSwitch() {
-	// tabs (user, 2026-11-14): the name and its count in a small pill, a line under the open one, both in the list's color
+	// tabs (user, 2026-11-14): Unused and Used, the name and its count in a small pill, a line under the open one, both in the
+	// list's color
 	const TSharedRef<SHorizontalBox> Switch = SNew(SHorizontalBox);
 	const auto AddSet = [this, &Switch](const EPjcAssetSet Each, const FName ColorName, const FName QuietName, const FString& ToolTip) {
 		const FLinearColor Color = PjcWidgets::GetColor(ColorName);
@@ -734,11 +747,7 @@ TSharedRef<SWidget> SPjcTabUnused::MakeSetSwitch() {
 							SNew(STextBlock)
 							.Text_Lambda([this, Each]() { return FText::FromString(PjcFormat::Count(SetCounts.FindRef(Each))); })
 							.Font(PjcWidgets::GetFontMono(8))
-							.ColorAndOpacity_Lambda([this, Each, Color]() {
-								// a list with assets to review stays yellow when it is not open
-								const bool bReviewWaits = Each == EPjcAssetSet::Review && SetCounts.FindRef(Each) > 0;
-								return Set == Each || bReviewWaits ? FSlateColor {Color} : FSlateColor::UseSubduedForeground();
-							})
+							.ColorAndOpacity_Lambda([this, Each, Color]() { return Set == Each ? FSlateColor {Color} : FSlateColor::UseSubduedForeground(); })
 						]
 					]
 				]
@@ -759,22 +768,10 @@ TSharedRef<SWidget> SPjcTabUnused::MakeSetSwitch() {
 		EPjcAssetSet::Unused, "ProjectCleaner.Color.Red", "ProjectCleaner.Color.DangerQuiet", TEXT("Nothing uses them. Clean project deletes them.")
 	);
 	AddSet(
-		EPjcAssetSet::Excluded,
-		"ProjectCleaner.Color.Muted",
-		"ProjectCleaner.Color.Track",
-		TEXT("Assets your exclusion rules keep: never deleted. Rules are in Scan settings > Exclusions.")
-	);
-	AddSet(
 		EPjcAssetSet::Used,
 		"ProjectCleaner.Color.Ok",
 		"ProjectCleaner.Color.UsedQuiet",
 		TEXT("Used assets, by why they are used: the asset their chain starts at. Editor only assets are in this list too.")
-	);
-	AddSet(
-		EPjcAssetSet::Review,
-		"ProjectCleaner.Color.Review",
-		"ProjectCleaner.Color.ReviewQuiet",
-		TEXT("Assets the scan is not sure about. Clean project keeps them; delete or keep each.")
 	);
 	return Switch;
 }
@@ -789,30 +786,6 @@ void SPjcTabUnused::MakeRowReason(const FPjcScanResult& Result, FPjcUnusedAssetR
 		return;
 	}
 
-	if (Set == EPjcAssetSet::Excluded) {
-		const FPjcExclusion* Exclusion = Result.Excluded.Find(Row.Package);
-		if (!Exclusion) return;
-
-		FString Rule;
-		if (Exclusion->Kind == EPjcExclusionKind::Folder) {
-			Rule = TEXT("Folder ") + FPaths::GetCleanFilename(Exclusion->Value);
-		}
-		else if (Exclusion->Kind == EPjcExclusionKind::Class) {
-			Rule = TEXT("Class ") + FSoftObjectPath {Exclusion->Value}.GetAssetName();
-		}
-		else {
-			Rule = TEXT("Asset rule");
-		}
-		const TCHAR* Without = Exclusion->bUsedAnyway ? TEXT("used anyway") : TEXT("unused without it");
-		const TCHAR* WithoutTip = Exclusion->bUsedAnyway ? TEXT("Used even without the rule: the rule changes nothing for it")
-														 : TEXT("Without the rule Clean project would delete it");
-		Row.Reason = Rule + TEXT(" \u00B7 ") + Without;
-		Row.ReasonTip = Exclusion->Value + TEXT("\n") + WithoutTip;
-		Row.ReasonKey = Rule;
-		Row.bReasonWarn = !Exclusion->bUsedAnyway;
-		return;
-	}
-
 	// the asset its chain starts at
 	FName Root = Row.Package;
 	const FPjcAssetUsage* RootUsage = Usage;
@@ -821,27 +794,6 @@ void SPjcTabUnused::MakeRowReason(const FPjcScanResult& Result, FPjcUnusedAssetR
 		RootUsage = Result.Usage.Find(Root);
 	}
 	const EPjcUsageReason ChainReason = RootUsage ? RootUsage->Reason : EPjcUsageReason::None;
-
-	if (Set == EPjcAssetSet::Review) {
-		const bool bCue = ChainReason == EPjcUsageReason::GameplayCueNotFired;
-		const bool bOutside = bCue && RootUsage->Detail.Contains(TEXT("outside"));
-		// clang-format off
-		const TCHAR* CookTip = TEXT("Nothing the scan sees uses it, but the last cook packaged it: ")
-			TEXT("the game may load it in a way the scan cannot follow.");
-		// clang-format on
-		const TCHAR* CueTip = TEXT("GameplayCue notify whose tag no used asset, C++ or config file names. Tags can also be built at runtime.");
-		const TCHAR* OutsideTip = TEXT("GameplayCue notify outside the cue notify paths: the cue manager never loads it by its tag.");
-		const FString RootName = FPackageName::GetShortName(Root);
-		Row.ReasonKey = bCue ? TEXT("Cue never fired") : TEXT("Packaged by last cook");
-		if (Root != Row.Package) {
-			Row.Reason = TEXT("Only used by ") + RootName;
-			Row.ReasonTip = RootName + TEXT(" uses it and is in Review, so it stays with it. Clean project deletes neither.");
-			return;
-		}
-		Row.Reason = bOutside ? TEXT("Outside cue paths") : Row.ReasonKey;
-		Row.ReasonTip = bOutside ? OutsideTip : (bCue ? CueTip : CookTip);
-		return;
-	}
 
 	// used: named like the Overview rows. Where a chain starts its reason, else what uses it (a Dependency)
 	FString Name;
@@ -860,6 +812,27 @@ void SPjcTabUnused::MakeRowReason(const FPjcScanResult& Result, FPjcUnusedAssetR
 	}
 	if (Root != Row.Package) {
 		Row.ReasonTip += TEXT("\nChain starts at ") + FPackageName::GetShortName(Root);
+	}
+
+	// excluded: the rule that keeps it, and what it would be without it
+	const FPjcExclusion* Exclusion = Row.ReasonKey == PjcUnusedReasonExcluded ? Result.Excluded.Find(Row.Package) : nullptr;
+	if (Exclusion) {
+		FString Rule;
+		if (Exclusion->Kind == EPjcExclusionKind::Folder) {
+			Rule = TEXT("Folder ") + FPaths::GetCleanFilename(Exclusion->Value);
+		}
+		else if (Exclusion->Kind == EPjcExclusionKind::Class) {
+			Rule = TEXT("Class ") + FSoftObjectPath {Exclusion->Value}.GetAssetName();
+		}
+		else {
+			Rule = TEXT("Asset rule");
+		}
+		const TCHAR* Without = Exclusion->bUsedAnyway ? TEXT("used anyway") : TEXT("unused without it");
+		const TCHAR* WithoutTip = Exclusion->bUsedAnyway ? TEXT("Used even without the rule: the rule changes nothing for it")
+														 : TEXT("Without the rule Clean project would delete it");
+		Row.Reason = Rule + TEXT(" \u00B7 ") + Without;
+		Row.ReasonTip = Exclusion->Value + TEXT("\n") + WithoutTip;
+		Row.bReasonWarn = !Exclusion->bUsedAnyway;
 	}
 
 	// source and config: the file and the line that names it (the asset itself, or the one its chain starts at)
@@ -1170,10 +1143,9 @@ TSharedPtr<SWidget> SPjcTabUnused::OnFolderContextMenu() {
 			PjcActions::DeleteWithGroup(Packages);
 		});
 	}
-	if (Set == EPjcAssetSet::Unused || Set == EPjcAssetSet::Review) {
+	if (Set == EPjcAssetSet::Unused) {
 		const FString ExcludeTip = TEXT("Keeps every asset in the folder, saved to Config/DefaultEditor.ini");
-		const TCHAR* ExcludeLabel = Set == EPjcAssetSet::Review ? TEXT("Keep folder") : TEXT("Exclude folder");
-		PjcWidgets::AddMenuEntry(Menu, EPjcMenuIcon::Exclude, ExcludeLabel, ExcludeTip, [this, Folder]() {
+		PjcWidgets::AddMenuEntry(Menu, EPjcMenuIcon::Exclude, TEXT("Exclude folder"), ExcludeTip, [this, Folder]() {
 			ExcludeFolder(Folder->Path);
 		});
 		Menu.AddSeparator();
@@ -1332,7 +1304,7 @@ void SPjcTabUnused::RefreshAssets() {
 	const FPjcScanResult& Result = UPjcSubsystem::GetScanResult();
 	TArray<int32> Indices;
 	Tree.GetListed(Result, SelectedFolder, bSubfolders, Indices);
-	const bool bGroups = Set == EPjcAssetSet::Unused || Set == EPjcAssetSet::Review;
+	const bool bGroups = Set == EPjcAssetSet::Unused;
 
 	FolderRows.Reset(Indices.Num());
 	for (const int32 Index : Indices) {
@@ -1670,13 +1642,7 @@ FText SPjcTabUnused::GetEmptyText() const {
 	if (SetCounts.FindRef(Set) > 0) {
 		return FText::FromString(TEXT("No assets ") + PjcWidgets::GetSetWord(Set) + TEXT(" here"));
 	}
-	switch (Set) {
-		case EPjcAssetSet::Excluded : return FText::FromString(TEXT("Nothing excluded. Rules are in Scan settings > Exclusions."));
-		case EPjcAssetSet::Used :	  return FText::FromString(TEXT("No used assets."));
-		case EPjcAssetSet::Review :	  return FText::FromString(TEXT("Nothing to review. The scan is sure about every asset."));
-		case EPjcAssetSet::Unused :
-		default :					  return FText::FromString(TEXT("No unused assets. The project is clean."));
-	}
+	return FText::FromString(Set == EPjcAssetSet::Used ? TEXT("No used assets.") : TEXT("No unused assets. The project is clean."));
 }
 
 void SPjcTabUnused::SaveViewState() const {
@@ -1702,7 +1668,7 @@ TSharedPtr<SWidget> SPjcTabUnused::OnAssetContextMenu() {
 	if (Packages.Num() == 0) return nullptr;
 
 	FMenuBuilder Menu {true, nullptr};
-	if (Set == EPjcAssetSet::Unused || Set == EPjcAssetSet::Review) {
+	if (Set == EPjcAssetSet::Unused) {
 		const FString DeleteLabel = FString::Printf(TEXT("Delete\u2026 (%s)"), *PjcFormat::Count(Packages.Num()));
 		PjcWidgets::AddMenuEntry(
 			Menu, EPjcMenuIcon::Delete, DeleteLabel, TEXT("Deletes the selection with the unused assets that reference it"), [Packages]() {
@@ -1713,7 +1679,7 @@ TSharedPtr<SWidget> SPjcTabUnused::OnAssetContextMenu() {
 		AddExcludeEntries(Menu);
 		Menu.AddSeparator();
 	}
-	if (Set == EPjcAssetSet::Excluded) {
+	if (Set == EPjcAssetSet::Used && HasSelectedExclusions()) {
 		PjcWidgets::AddMenuEntry(Menu, EPjcMenuIcon::Include, TEXT("Remove exclusion"), TEXT("Removes the rules that keep the selection"), [this]() {
 			RemoveSelectedExclusions();
 		});
@@ -1731,7 +1697,7 @@ TSharedPtr<SWidget> SPjcTabUnused::OnAssetContextMenu() {
 }
 
 FReply SPjcTabUnused::OnAssetKeyDown(const FGeometry& Geometry, const FKeyEvent& KeyEvent) {
-	const bool bDeletable = Set == EPjcAssetSet::Unused || Set == EPjcAssetSet::Review;
+	const bool bDeletable = Set == EPjcAssetSet::Unused;
 	if (bDeletable && KeyEvent.GetKey() == EKeys::Delete && ListView->GetNumItemsSelected() > 0) {
 		PjcActions::DeleteWithGroup(GetSelectedPackages());
 		return FReply::Handled();
@@ -1762,7 +1728,7 @@ void SPjcTabUnused::GetFolderUnused(const FString& Path, TArray<FName>& OutPacka
 void SPjcTabUnused::OnAssetSelectionChanged(FAssetRowPtr Row, ESelectInfo::Type SelectInfo) {
 	TArray<FName> Group;
 	const TArray<FName> Packages = GetSelectedPackages();
-	if (Packages.Num() > 0 && (Set == EPjcAssetSet::Unused || Set == EPjcAssetSet::Review)) {
+	if (Packages.Num() > 0 && Set == EPjcAssetSet::Unused) {
 		FPjcUnusedTree::GetDeleteGroup(UPjcSubsystem::GetScanResult(), Packages, Group);
 	}
 	NumSelectionGroup = Group.Num();
@@ -1779,10 +1745,10 @@ TSharedRef<SWidget> SPjcTabUnused::MakeToolbar() {
 		return ListView.IsValid() && ListView->GetNumItemsSelected() > 0;
 	};
 	// the actions of the open list are always there, greyed until something is selected (user, 2026-11-14: on the left)
-	const auto ShownFor = [this](const bool bUnused, const bool bExcluded, const bool bReview) {
-		return [this, bUnused, bExcluded, bReview]() {
-			const bool bShown = (Set == EPjcAssetSet::Unused && bUnused) || (Set == EPjcAssetSet::Excluded && bExcluded)
-				|| (Set == EPjcAssetSet::Review && bReview);
+	const auto ShownFor = [this](const bool bUnused, const bool bExcluded) {
+		return [this, bUnused, bExcluded]() {
+			const bool bExcludedShown = Set == EPjcAssetSet::Used && ReasonFilter == PjcUnusedReasonExcluded;
+			const bool bShown = (Set == EPjcAssetSet::Unused && bUnused) || (bExcludedShown && bExcluded);
 			return bShown ? EVisibility::Visible : EVisibility::Collapsed;
 		};
 	};
@@ -1821,7 +1787,7 @@ TSharedRef<SWidget> SPjcTabUnused::MakeToolbar() {
 					[
 						SNew(SSearchBox)
 						.Style(&PjcShim::GetSearchBoxStyle())
-						.HintText_Lambda([this]() { return FText::FromString(Set == EPjcAssetSet::Review ? FString {TEXT("Search assets to review")} : TEXT("Search ") + PjcWidgets::GetSetWord(Set) + TEXT(" assets")); })
+						.HintText_Lambda([this]() { return FText::FromString(TEXT("Search ") + PjcWidgets::GetSetWord(Set) + TEXT(" assets")); })
 						.OnTextChanged(this, &SPjcTabUnused::OnAssetSearchChanged)
 					]
 				]
@@ -1841,7 +1807,7 @@ TSharedRef<SWidget> SPjcTabUnused::MakeToolbar() {
 #endif
 					.ContentPadding(FMargin {8.0f, 1.0f, 10.0f, 1.0f})
 					.ToolTipText(FText::FromString(TEXT("Deletes the selection with the unused assets that reference it (Delete)")))
-					.Visibility_Lambda(ShownFor(true, false, true))
+					.Visibility_Lambda(ShownFor(true, false))
 					.IsEnabled_Lambda(HasSelection)
 					.OnClicked_Lambda([this]() {
 						PjcActions::DeleteWithGroup(GetSelectedPackages());
@@ -1859,16 +1825,14 @@ TSharedRef<SWidget> SPjcTabUnused::MakeToolbar() {
 					.ForegroundColor(FSlateColor::UseForeground())
 #endif
 					.ToolTipText(FText::FromString(TEXT("Keeps the selection, its folder or its class from cleanup: adds exclusions")))
-					.Visibility_Lambda(ShownFor(true, false, true))
+					.Visibility_Lambda(ShownFor(true, false))
 					.IsEnabled_Lambda(HasSelection)
 					.OnGetMenuContent(this, &SPjcTabUnused::MakeExcludeMenu)
 					.ButtonContent()
 					[
 						Label(
 							"ProjectCleaner.Menu.Exclude",
-							TAttribute<FText>::Create(TAttribute<FText>::FGetter::CreateLambda([this]() {
-								return FText::FromString(Set == EPjcAssetSet::Review ? TEXT("Keep") : TEXT("Exclude"));
-							})),
+							Static(TEXT("Exclude")),
 							FSlateColor::UseForeground()
 						)
 					]
@@ -1882,7 +1846,7 @@ TSharedRef<SWidget> SPjcTabUnused::MakeToolbar() {
 #endif
 					.ContentPadding(FMargin {8.0f, 1.0f, 10.0f, 1.0f})
 					.ToolTipText(FText::FromString(TEXT("Removes the rules that keep the selection; the next scan shows what they are without them")))
-					.Visibility_Lambda(ShownFor(false, true, false))
+					.Visibility_Lambda(ShownFor(false, true))
 					.IsEnabled_Lambda(HasSelection)
 					.OnClicked_Lambda([this]() {
 						RemoveSelectedExclusions();
@@ -2001,7 +1965,7 @@ void SPjcTabUnused::AddExcludeEntries(FMenuBuilder& Menu) {
 	SelectedFolder.FindLastChar(TEXT('/'), Slash);
 	const FString FolderName = SelectedFolder.Mid(Slash + 1);
 
-	const FString Verb = Set == EPjcAssetSet::Review ? TEXT("Keep") : TEXT("Exclude");
+	const FString Verb = TEXT("Exclude");
 	const FString AssetsLabel = FString::Printf(TEXT("%s assets (%s)"), *Verb, *PjcFormat::Count(NumSelected));
 	PjcWidgets::AddMenuEntry(
 		Menu, EPjcMenuIcon::Exclude, AssetsLabel, TEXT("Counts them as used and never deletes them, saved to Config/DefaultEditor.ini"), [this]() {
@@ -2033,7 +1997,7 @@ void SPjcTabUnused::ExcludeSelectedAssets() {
 	if (Assets.Num() == 0) return;
 
 	const TCHAR* Plural = Assets.Num() == 1 ? TEXT("") : TEXT("s");
-	const TCHAR* Done = Set == EPjcAssetSet::Review ? TEXT("Kept") : TEXT("Excluded");
+	const TCHAR* Done = TEXT("Excluded");
 	PjcActions::Exclude({}, {}, Assets, FString::Printf(TEXT("%s %s asset%s"), Done, *PjcFormat::Count(Assets.Num()), Plural));
 }
 
@@ -2054,8 +2018,16 @@ void SPjcTabUnused::ExcludeSelectedClasses() {
 }
 
 void SPjcTabUnused::ExcludeFolder(const FString& Path) {
-	const TCHAR* Done = Set == EPjcAssetSet::Review ? TEXT("Kept") : TEXT("Excluded");
+	const TCHAR* Done = TEXT("Excluded");
 	PjcActions::Exclude({Path}, {}, {}, FString::Printf(TEXT("%s folder %s"), Done, *Path));
+}
+
+bool SPjcTabUnused::HasSelectedExclusions() const {
+	const FPjcScanResult& Result = UPjcSubsystem::GetScanResult();
+	for (const FName Package : GetSelectedPackages()) {
+		if (Result.Excluded.Contains(Package)) return true;
+	}
+	return false;
 }
 
 void SPjcTabUnused::RemoveSelectedExclusions() {
@@ -2111,13 +2083,11 @@ void SPjcTabUnused::BrowseSelected() const {
 
 FText SPjcTabUnused::GetSelectionText() const {
 	if (!ListView.IsValid() || ListView->GetNumItemsSelected() == 0) {
-		switch (Set) {
-			case EPjcAssetSet::Excluded : return FText::FromString(TEXT("Select assets to remove their exclusion"));
-			case EPjcAssetSet::Used :	  return FText::FromString(TEXT("Select an asset to inspect"));
-			case EPjcAssetSet::Review :	  return FText::FromString(TEXT("Select assets to delete or keep"));
-			case EPjcAssetSet::Unused :
-			default :					  return FText::FromString(TEXT("Select assets to delete, exclude or inspect"));
+		if (Set == EPjcAssetSet::Used) {
+			const bool bExcluded = ReasonFilter == PjcUnusedReasonExcluded;
+			return FText::FromString(bExcluded ? TEXT("Select assets to remove their exclusion") : TEXT("Select an asset to inspect"));
 		}
+		return FText::FromString(TEXT("Select assets to delete, exclude or inspect"));
 	}
 
 	int32 Num = 0;
@@ -2218,23 +2188,9 @@ TSharedRef<SWidget> SPjcTabUnused::MakeMapLegend() const {
 			]
 			+ SHorizontalBox::Slot().AutoWidth()
 			[
-				SNew(SBox).Visibility_Lambda([this]() { return Set == EPjcAssetSet::Excluded ? EVisibility::Visible : EVisibility::Collapsed; })
-				[
-					Entry(PjcWidgets::GetSetColors(EPjcAssetSet::Excluded).Box, TEXT("Excluded asset"))
-				]
-			]
-			+ SHorizontalBox::Slot().AutoWidth()
-			[
 				SNew(SBox).Visibility_Lambda([this]() { return Set == EPjcAssetSet::Used ? EVisibility::Visible : EVisibility::Collapsed; })
 				[
 					Entry(PjcWidgets::GetSetColors(EPjcAssetSet::Used).Box, TEXT("Used asset"))
-				]
-			]
-			+ SHorizontalBox::Slot().AutoWidth()
-			[
-				SNew(SBox).Visibility_Lambda([this]() { return Set == EPjcAssetSet::Review ? EVisibility::Visible : EVisibility::Collapsed; })
-				[
-					Entry(PjcWidgets::GetSetColors(EPjcAssetSet::Review).Box, TEXT("Asset to review"))
 				]
 			]
 			+ SHorizontalBox::Slot().AutoWidth()

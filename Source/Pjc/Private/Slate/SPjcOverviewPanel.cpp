@@ -122,7 +122,8 @@ TSharedRef<SWidget> SPjcOverviewPanel::MakeStatus() {
 							const FSlateColor& NumberColor,
 							const TCHAR* ToolTip,
 							const EPjcAssetSet Set,
-							const FString& Reason
+							const FString& Reason,
+							const FString& RowClickTip = FString {}
 						) {
 		const FString Size = Total.Num > 0 ? PjcFormat::Size(Total.Size) : FString {};
 		const FString Share = Total.Num > 0 ? PjcFormat::Percent(Total.Size, All.Size) : FString {};
@@ -132,7 +133,7 @@ TSharedRef<SWidget> SPjcOverviewPanel::MakeStatus() {
 		const TAttribute<bool> IsOn = TAttribute<bool>::Create([this, Set, Reason]() {
 			return IsSetShown.IsBound() && IsSetShown.Execute(Set, Reason);
 		});
-		const TSharedRef<SToolTip> Tip = PjcWidgets::MakeToolTip(Name, ToolTip, ClickTip);
+		const TSharedRef<SToolTip> Tip = PjcWidgets::MakeToolTip(Name, ToolTip, RowClickTip.IsEmpty() ? ClickTip : RowClickTip);
 		// clang-format off
 		Rows->AddSlot().AutoHeight()
 		[
@@ -148,7 +149,9 @@ TSharedRef<SWidget> SPjcOverviewPanel::MakeStatus() {
 	Used.Size += Overview.EditorOnly.Size;
 	AddRow(TEXT("Used"), ColorUsed, Used, Plain, UsedTip, EPjcAssetSet::Used, FString {});
 	AddReasonRows(Rows);
-	AddRow(TEXT("Review"), ColorReview, Overview.Review, ReviewNumber, ReviewTip, EPjcAssetSet::Review, FString {});
+	AddRow(
+		TEXT("Review"), ColorReview, Overview.Review, ReviewNumber, ReviewTip, EPjcAssetSet::Review, FString {}, TEXT("Click: open them in Issues")
+	);
 	AddRow(TEXT("Unused"), ColorUnused, Overview.Unused, UnusedNumber, UnusedTip, EPjcAssetSet::Unused, FString {});
 
 	// storage by size
@@ -315,7 +318,9 @@ TSharedRef<SWidget> SPjcOverviewPanel::MakeIssues() {
 	const TCHAR* EmptyTip = TEXT("Folders without assets or files.");
 	const TCHAR* DeleteFailedTip = TEXT("Unused assets the last cleanup could not delete: a live object or a saved asset still holds them.");
 	const auto ToIndex = [](const EPjcIssueCategory Value) { return static_cast<int32>(Value); };
+	const TCHAR* ReviewTip = TEXT("Assets the scan is not sure about: Clean project keeps them until you delete or keep them.");
 	const TArray<FIssue> Issues {
+		{TEXT("Assets to review"), Overview.Review.Num, TEXT("to decide"), ReviewTip, ToIndex(EPjcIssueCategory::Review)},
 		{TEXT("Redirectors"), Result.Redirectors.Num(), TEXT("to fix"), RedirectorsTip, ToIndex(EPjcIssueCategory::Redirectors)},
 		{TEXT("External files"), Result.FilesExternal.Num(), ExternalWhat, ExternalTip, ToIndex(EPjcIssueCategory::External)},
 		{TEXT("Corrupted files"), Result.FilesCorrupted.Num(), TEXT("to delete"), CorruptedTip, ToIndex(EPjcIssueCategory::Corrupted)},
@@ -608,8 +613,8 @@ TSharedRef<SWidget> SPjcOverviewPanel::MakeCookNumbers(const FCook& Cook) const 
 	}
 	else if (Ship.UnusedShipped.Num > 0) {
 		const TCHAR* CheckTip = TEXT("This cook packaged them, but the scan finds nothing that uses them: the game may load them in a way ")
-			TEXT("the scan cannot follow. They are in Review and Clean project keeps them.");
-		const TSharedRef<SToolTip> Tip = PjcWidgets::MakeToolTip(TEXT("Unused, shipped"), CheckTip, TEXT("Click: list them on the right"));
+			TEXT("the scan cannot follow. They are to review and Clean project keeps them.");
+		const TSharedRef<SToolTip> Tip = PjcWidgets::MakeToolTip(TEXT("Unused, shipped"), CheckTip, TEXT("Click: open them in Issues"));
 		const FString CheckNum = TEXT("\u26A0 ") + PjcFormat::Count(Ship.UnusedShipped.Num);
 		const FSlateColor CheckColor {PjcWidgets::GetColor("ProjectCleaner.Color.Review")};
 		const FSimpleDelegate OnClick = FSimpleDelegate::CreateLambda([this]() {

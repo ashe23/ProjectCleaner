@@ -46,9 +46,9 @@ struct FPjcUnusedAssetRow
 };
 
 /**
- * Assets tool, folder by folder, in four lists: Unused (cleanup deletes them), Excluded (what exclusion rules keep),
- * Used (why each is used) and Review (the scan is not sure, the user decides). Left the folder tree with the totals of
- * the list, right the assets of the selected folder.
+ * Assets tool, folder by folder, in two lists: Unused (cleanup deletes them) and Used (why each is used, the assets
+ * exclusion rules keep among them). Assets to review are in Issues. Left the folder tree with the totals of the list,
+ * right the assets of the selected folder.
  */
 class SPjcTabUnused final : public SCompoundWidget
 {
@@ -145,6 +145,7 @@ class SPjcTabUnused final : public SCompoundWidget
 	void ExcludeSelectedClasses();
 	void ExcludeFolder(const FString& Path);
 	void RemoveSelectedExclusions();
+	bool HasSelectedExclusions() const;
 	void InspectSelected() const;
 	void BrowseSelected() const;
 	void OnAssetSelectionChanged(FAssetRowPtr Row, ESelectInfo::Type SelectInfo);

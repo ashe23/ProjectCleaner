@@ -18,6 +18,8 @@ enum class EPjcIssueCategory : uint8
 	External,
 	Corrupted,
 	Empty,
+	// assets the scan is not sure about (user, 2026-11-14: moved here from Assets), listed first
+	Review,
 };
 
 // Row of an Issues list: the first column is a name with a tag and a muted path, then plain cells
@@ -37,13 +39,16 @@ struct FPjcIssueRow
 	int64 Size = -1;
 	// Index into the redirectors
 	int32 Redirector = INDEX_NONE;
+	// Assets to review: the asset, index into FPjcScanResult::Assets
+	FName Package;
+	int32 Asset = INDEX_NONE;
 	// Why a kept file is kept
 	FString Reason;
 };
 
 /**
- * Issues tool: what the scan found besides unused assets. Redirectors, external files, corrupted files and empty
- * folders, each with its list and the actions that fix it.
+ * Issues tool: what the scan found besides unused assets. Assets to review, redirectors, external files, corrupted files
+ * and empty folders, each with its list and the actions that fix it.
  */
 class SPjcTabIssues final : public SCompoundWidget
 {
@@ -57,8 +62,8 @@ class SPjcTabIssues final : public SCompoundWidget
 	void Construct(const FArguments& InArgs);
 	virtual ~SPjcTabIssues() override;
 
-	// Shows a category; for external files the kept ones when asked
-	void ShowCategory(const EPjcIssueCategory InCategory, const bool bShowKept = false);
+	// Shows a category; for external files the kept ones when asked, for assets to review only one reason when given
+	void ShowCategory(const EPjcIssueCategory InCategory, const bool bShowKept = false, const FString& InReason = FString {});
 
 	EPjcIssueCategory GetCategory() const {
 		return Category;
@@ -106,6 +111,9 @@ class SPjcTabIssues final : public SCompoundWidget
 	void RebuildChips();
 	void DeleteRows(const TArray<FRowPtr>& InRows);
 	TSharedRef<SWidget> MakeExcludeMenu();
+	// Assets to review: kept for good (exclusions), deleted, or inspected
+	void KeepAssets(const TArray<FRowPtr>& InRows);
+	void DeleteAssets(const TArray<FRowPtr>& InRows);
 	// Adds file exclusions to the project settings (DefaultEditor.ini) and scans again
 	void ExcludeFiles(const TArray<FString>& Files, const TArray<FString>& Extensions, const TArray<FString>& Folders, const FString& What);
 
@@ -122,8 +130,11 @@ class SPjcTabIssues final : public SCompoundWidget
 	FString Search;
 	// External files: kept ones instead of those to review
 	bool bKept = false;
-	// Kept files of one reason, empty for all
-	FString KeptReason;
+	// Kept files or assets to review of one reason, empty for all
+	FString ChipFilter;
+	// Assets to review, and how many of each reason
+	int32 NumReview = 0;
+	TMap<FString, int32> ReviewReasons;
 	TSharedPtr<SHorizontalBox> Chips;
 	TSharedPtr<SBox> ListBox;
 	TSharedPtr<SListView<FRowPtr>> ListView;
