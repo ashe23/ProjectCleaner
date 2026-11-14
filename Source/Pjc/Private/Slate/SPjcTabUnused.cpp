@@ -251,14 +251,18 @@ namespace
 	const FName PjcUnusedColPath {TEXT("Path")};
 	// Source & config rows: where the asset is named
 	const FName PjcUnusedColNamedIn {TEXT("NamedIn")};
+	// the selection checkbox at the start of each row (user, 2026-11-14: as the proto)
+	const FName PjcUnusedColCheck {TEXT("Check")};
 	const FName PjcUnusedColLine {TEXT("Line")};
 	const TCHAR* PjcUnusedReasonSource = TEXT("Source & config");
 
 	// grid tiles: the width of each size, and what is under the square thumbnail (strip, name on two lines, class and size)
 	const float PjcUnusedTileWidths[] = {84.0f, 112.0f, 148.0f, 200.0f};
 	const TCHAR* PjcUnusedTileNames[] = {TEXT("Small tiles"), TEXT("Medium tiles"), TEXT("Large tiles"), TEXT("Huge tiles")};
-	constexpr float PjcUnusedTileText = 58.0f;
+	constexpr float PjcUnusedTileText = 60.0f;
 	constexpr float PjcUnusedTileGap = 8.0f;
+	// room the grid's scrollbar takes from the line
+	constexpr float PjcUnusedTileScrollbar = 18.0f;
 
 	// Opens a file of the project at a line: in the code editor, or the program the system opens it with
 	void PjcUnusedOpenFile(const FString& File, const int32 Line) {
@@ -398,6 +402,24 @@ namespace
 
 		virtual TSharedRef<SWidget> GenerateWidgetForColumn(const FName& Column) override {
 			const FSlateColor Muted = FSlateColor::UseSubduedForeground();
+
+			if (Column == PjcUnusedColCheck) {
+				// a click adds the row to the selection or takes it off, the others stay
+				// clang-format off
+				return SNew(SBox).HAlign(HAlign_Center).VAlign(VAlign_Center)
+					[
+						SNew(SCheckBox)
+						.Style(&PjcShim::GetCheckBoxStyle())
+						.IsChecked_Lambda([this]() { return IsSelected() ? ECheckBoxState::Checked : ECheckBoxState::Unchecked; })
+						.OnCheckStateChanged_Lambda([this](ECheckBoxState) {
+							const TSharedPtr<ITypedTableView<TSharedPtr<FPjcUnusedAssetRow>>> Table = OwnerTablePtr.Pin();
+							if (!Table.IsValid()) return;
+							Table->Private_SetItemSelection(Row, !IsSelected(), true);
+							Table->Private_SignalSelectionChanged(ESelectInfo::OnMouseClick);
+						})
+					];
+				// clang-format on
+			}
 
 			if (Column == PjcUnusedColName) {
 				const TSharedRef<SHorizontalBox> NameBox = SNew(SHorizontalBox).Clipping(EWidgetClipping::ClipToBounds);
@@ -569,7 +591,8 @@ void SPjcTabUnused::Construct(const FArguments& InArgs) {
 		if (GConfig->GetBool(PjcUnusedSection, TEXT("FolderSortDescending"), bSortDescending, GEditorPerProjectIni)) {
 			FolderSortMode = bSortDescending ? EColumnSortMode::Descending : EColumnSortMode::Ascending;
 		}
-		GConfig->GetBool(PjcUnusedSection, TEXT("Subfolders"), bSubfolders, GEditorPerProjectIni);
+		// on by default (user, 2026-11-14), a new key: the old Subfolders checkbox is gone
+		GConfig->GetBool(PjcUnusedSection, TEXT("IncludeSubfolders"), bSubfolders, GEditorPerProjectIni);
 		GConfig->GetBool(PjcUnusedSection, TEXT("GridView"), bGridView, GEditorPerProjectIni);
 		GConfig->GetInt(PjcUnusedSection, TEXT("TileSize"), TileSize, GEditorPerProjectIni);
 		TileSize = FMath::Clamp(TileSize, 0, 3);
@@ -1352,23 +1375,41 @@ TSharedRef<SWidget> SPjcTabUnused::MakeAssetPane() {
 					[
 						SNew(SBorder).BorderImage(PjcShim::GetBrush(TEXT("ToolPanel.DarkGroupBorder"))).Padding(FMargin {0.0f, 4.0f})
 						[
-							SAssignNew(ClassBar, SPjcClassBar).OnChanged(FSimpleDelegate::CreateSP(this, &SPjcTabUnused::ApplyAssetFilter))
+							SNew(SVerticalBox)
+							+ SVerticalBox::Slot().FillHeight(1.0f)
+							[
+								SAssignNew(ClassBar, SPjcClassBar).OnChanged(FSimpleDelegate::CreateSP(this, &SPjcTabUnused::ApplyAssetFilter))
+							]
+							// the filters under the classes, one above the other: more of them never need a scroll (user, 2026-11-14)
+							+ SVerticalBox::Slot().AutoHeight()
+							[
+								SNew(SVerticalBox)
+								.Visibility_Lambda([this]() { return bHasPills ? EVisibility::Visible : EVisibility::Collapsed; })
+								+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {6.0f, 4.0f, 6.0f, 6.0f})
+								[
+									SNew(SBox).HeightOverride(1.0f)
+									[
+										SNew(SImage).Image(FCoreStyle::Get().GetBrush("WhiteBrush")).ColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.Line"))
+									]
+								]
+								+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {10.0f, 0.0f, 10.0f, 5.0f})
+								[
+									SNew(STextBlock)
+									.Text_Lambda([this]() { return FText::FromString(Set == EPjcAssetSet::Used ? TEXT("WHY USED") : TEXT("FILTERS")); })
+									.Font(FPjcStyles::GetFont("Bold", 8))
+									.ColorAndOpacity(FSlateColor::UseSubduedForeground())
+								]
+								+ SVerticalBox::Slot().AutoHeight()
+								[
+									SAssignNew(PillsBox, SVerticalBox)
+								]
+							]
 						]
 					]
 				]
 				+ SHorizontalBox::Slot().FillWidth(1.0f)
 				[
 					SNew(SVerticalBox)
-					// the filter pills, over the list (user, 2026-11-14)
-					+ SVerticalBox::Slot().AutoHeight()
-					[
-						SNew(SBox)
-						.Padding(FMargin {10.0f, 6.0f})
-						.Visibility_Lambda([this]() { return bHasPills ? EVisibility::Visible : EVisibility::Collapsed; })
-						[
-							SAssignNew(PillsBox, SWrapBox).UseAllottedSize(true).InnerSlotPadding(FVector2D {6.0f, 6.0f})
-						]
-					]
 					+ SVerticalBox::Slot().FillHeight(1.0f)
 					[
 						SNew(SOverlay)
@@ -1381,7 +1422,7 @@ TSharedRef<SWidget> SPjcTabUnused::MakeAssetPane() {
 						]
 						+ SOverlay::Slot().Padding(FMargin {6.0f, 6.0f, 0.0f, 0.0f})
 						[
-							SNew(SBox).Visibility_Lambda([this]() { return bGridView ? EVisibility::Visible : EVisibility::Collapsed; })
+							SAssignNew(TileBox, SBox).Visibility_Lambda([this]() { return bGridView ? EVisibility::Visible : EVisibility::Collapsed; })
 							[
 								TileView.ToSharedRef()
 							]
@@ -1648,7 +1689,7 @@ void SPjcTabUnused::RebuildChips() {
 		const FLinearColor Grey = ColorGrey;
 		const FString More = Key.IsEmpty() ? TEXT("Click: every asset of the list") : TEXT("Click: show them, click more to add them");
 		// clang-format off
-		PillsBox->AddSlot().VAlign(VAlign_Center)
+		PillsBox->AddSlot().AutoHeight().Padding(FMargin {6.0f, 0.0f, 6.0f, 4.0f})
 		[
 			SNew(SButton)
 			.ButtonStyle(&PjcShim::GetStyle().GetWidgetStyle<FButtonStyle>(TEXT("NoBorder")))
@@ -1682,11 +1723,14 @@ void SPjcTabUnused::RebuildChips() {
 								.ColorAndOpacity_Lambda([IsGrey, Color, Grey]() { return FSlateColor {IsGrey() ? Grey : Color}; })
 							]
 						]
-						+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+						+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
 						[
-							SNew(STextBlock)
-							.Text(FText::FromString(Label))
-							.ColorAndOpacity_Lambda([IsGrey]() { return IsGrey() ? FSlateColor::UseSubduedForeground() : FSlateColor::UseForeground(); })
+							SNew(SBox).Clipping(EWidgetClipping::ClipToBounds)
+							[
+								SNew(STextBlock)
+								.Text(FText::FromString(Label))
+								.ColorAndOpacity_Lambda([IsGrey]() { return IsGrey() ? FSlateColor::UseSubduedForeground() : FSlateColor::UseForeground(); })
+							]
 						]
 						+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {7.0f, 0.0f, 0.0f, 0.0f})
 						[
@@ -1766,6 +1810,36 @@ TArray<FName> SPjcTabUnused::GetDefaultColumns() {
 
 void SPjcTabUnused::RebuildHeader() {
 	AssetHeader->ClearColumns();
+	// select all, or none when all are selected
+	// clang-format off
+	AssetHeader->AddColumn(
+		SHeaderRow::Column(PjcUnusedColCheck)
+		.FixedWidth(30.0f)
+		.HAlignHeader(HAlign_Center)
+		.HAlignCell(HAlign_Center)
+		[
+			SNew(SCheckBox)
+			.Style(&PjcShim::GetCheckBoxStyle())
+			.ToolTipText(FText::FromString(TEXT("Select all, or none")))
+			.IsChecked_Lambda([this]() {
+				const int32 NumSelected = ListView.IsValid() ? ListView->GetNumItemsSelected() : 0;
+				if (NumSelected == 0) return ECheckBoxState::Unchecked;
+				return NumSelected >= ListRows.Num() ? ECheckBoxState::Checked : ECheckBoxState::Undetermined;
+			})
+			.OnCheckStateChanged_Lambda([this](ECheckBoxState) {
+				if (!ListView.IsValid()) return;
+				const bool bAll = ListRows.Num() > 0 && ListView->GetNumItemsSelected() >= ListRows.Num();
+				ListView->ClearSelection();
+				if (!bAll) {
+					for (const auto& Row : ListRows) {
+						ListView->Private_SetItemSelection(Row, true, false);
+					}
+				}
+				ListView->Private_SignalSelectionChanged(ESelectInfo::OnMouseClick);
+			})
+		]
+	);
+	// clang-format on
 	if (bSourceRows) {
 		// one row per place: name, the file and the line, class, size
 		struct FSourceColumn
@@ -1886,8 +1960,23 @@ void SPjcTabUnused::OnReasonChipClicked(const FString& Key) {
 			ReasonFilters.Add(Key);
 		}
 		bHeldOnly = false;
+		// every filter picked is all of them: All again (user, 2026-11-14)
+		const TSet<FString> Keys = GetReasonKeys();
+		if (Keys.Num() > 0 && Keys.Difference(ReasonFilters).Num() == 0) {
+			ReasonFilters.Reset();
+		}
 	}
 	ApplyAssetFilter();
+}
+
+TSet<FString> SPjcTabUnused::GetReasonKeys() const {
+	TSet<FString> Keys;
+	if (Set != EPjcAssetSet::Used) return Keys;
+
+	for (const auto& Row : FolderRows) {
+		if (!Row->ReasonKey.IsEmpty()) Keys.Add(Row->ReasonKey);
+	}
+	return Keys;
 }
 
 FText SPjcTabUnused::GetWhereText() const {
@@ -1908,7 +1997,7 @@ void SPjcTabUnused::SaveViewState() const {
 	GConfig->SetBool(PjcUnusedSection, TEXT("FolderGuides"), bFolderGuides, GEditorPerProjectIni);
 	GConfig->SetString(PjcUnusedSection, TEXT("FolderSort"), *FolderSortColumn.ToString(), GEditorPerProjectIni);
 	GConfig->SetBool(PjcUnusedSection, TEXT("FolderSortDescending"), FolderSortMode == EColumnSortMode::Descending, GEditorPerProjectIni);
-	GConfig->SetBool(PjcUnusedSection, TEXT("Subfolders"), bSubfolders, GEditorPerProjectIni);
+	GConfig->SetBool(PjcUnusedSection, TEXT("IncludeSubfolders"), bSubfolders, GEditorPerProjectIni);
 	GConfig->SetBool(PjcUnusedSection, TEXT("GridView"), bGridView, GEditorPerProjectIni);
 	GConfig->SetInt(PjcUnusedSection, TEXT("TileSize"), TileSize, GEditorPerProjectIni);
 	GConfig->SetBool(PjcUnusedSection, TEXT("SizeMapAll"), bMapAll, GEditorPerProjectIni);
@@ -2295,7 +2384,13 @@ void SPjcTabUnused::SetGridView(const bool bGrid) {
 }
 
 float SPjcTabUnused::GetTileWidth() const {
-	return PjcUnusedTileWidths[FMath::Clamp(TileSize, 0, 3)];
+	// the tiles fill the line (user, 2026-11-14): as many of the chosen size as fit, each grown to share what is left
+	const float Size = PjcUnusedTileWidths[FMath::Clamp(TileSize, 0, 3)];
+	const float Available = TileBox.IsValid() ? TileBox->GetCachedGeometry().GetLocalSize().X - PjcUnusedTileScrollbar : 0.0f;
+	if (Available < 2.0f * (Size + PjcUnusedTileGap)) return Size;
+
+	const int32 Columns = FMath::FloorToInt(Available / (Size + PjcUnusedTileGap));
+	return FMath::Min(FMath::FloorToFloat(Available / Columns) - PjcUnusedTileGap, Size * 1.5f);
 }
 
 FReply SPjcTabUnused::OnKeyDown(const FGeometry& Geometry, const FKeyEvent& KeyEvent) {
@@ -2307,13 +2402,39 @@ TSharedRef<ITableRow> SPjcTabUnused::OnGenerateAssetTile(FAssetRowPtr Row, const
 	const FSlateColor Muted = FSlateColor::UseSubduedForeground();
 	const FString Tip = FString::Printf(TEXT("%s\n%s \u00B7 %s\n%s"), *Row->Name, *Row->ClassLabel, *PjcFormat::Size(Row->Size), *Row->Reason);
 	// clang-format off
-	return SNew(STableRow<FAssetRowPtr>, Table)
+	const TSharedRef<STableRow<FAssetRowPtr>> TileRow = SNew(STableRow<FAssetRowPtr>, Table)
+		.Style(&FPjcStyles::Get().GetWidgetStyle<FTableRowStyle>("ProjectCleaner.TileRow"))
 		.Padding(FMargin {0.0f, 0.0f, PjcUnusedTileGap, PjcUnusedTileGap})
-		.ToolTipText(FText::FromString(Tip))
+		.ToolTipText(FText::FromString(Tip));
+	// clang-format on
+
+	// the card: a border, lighter on hover, blue with a blue tint when selected (user, 2026-11-14)
+	const TWeakPtr<STableRow<FAssetRowPtr>> WeakRow = TileRow;
+	const auto IsSelected = [WeakRow]() {
+		const TSharedPtr<STableRow<FAssetRowPtr>> Pinned = WeakRow.Pin();
+		return Pinned.IsValid() && Pinned->IsSelected();
+	};
+	const auto IsHovered = [WeakRow]() {
+		const TSharedPtr<STableRow<FAssetRowPtr>> Pinned = WeakRow.Pin();
+		return Pinned.IsValid() && Pinned->IsHovered();
+	};
+	const FLinearColor ColorAccent = PjcWidgets::GetColor("ProjectCleaner.Color.Accent");
+	const FLinearColor ColorLine = PjcWidgets::GetColor("ProjectCleaner.Color.Line");
+	const FLinearColor ColorHover = FLinearColor {FColor::FromHex(TEXT("#5A6068"))};
+	const FLinearColor ColorCard = PjcWidgets::GetColor("ProjectCleaner.Color.Header");
+	const FLinearColor ColorMarked = PjcWidgets::GetColor("ProjectCleaner.Color.Marked");
+	// clang-format off
+	TileRow->SetContent(
+		SNew(SBorder)
+		.BorderImage(FCoreStyle::Get().GetBrush("WhiteBrush"))
+		.BorderBackgroundColor_Lambda([IsSelected, IsHovered, ColorAccent, ColorLine, ColorHover]() {
+			return FSlateColor {IsSelected() ? ColorAccent : (IsHovered() ? ColorHover : ColorLine)};
+		})
+		.Padding(FMargin {1.0f})
 		[
 			SNew(SBorder)
 			.BorderImage(FCoreStyle::Get().GetBrush("WhiteBrush"))
-			.BorderBackgroundColor(PjcWidgets::GetColor("ProjectCleaner.Color.Header"))
+			.BorderBackgroundColor_Lambda([IsSelected, ColorCard, ColorMarked]() { return FSlateColor {IsSelected() ? ColorMarked : ColorCard}; })
 			.Padding(FMargin {0.0f})
 			[
 				SNew(SVerticalBox)
@@ -2321,7 +2442,7 @@ TSharedRef<ITableRow> SPjcTabUnused::OnGenerateAssetTile(FAssetRowPtr Row, const
 				+ SVerticalBox::Slot().AutoHeight()
 				[
 					SNew(SBox)
-					.HeightOverride_Lambda([this]() { return GetTileWidth(); })
+					.HeightOverride_Lambda([this]() { return GetTileWidth() - 2.0f; })
 					[
 						SNew(SBorder)
 						.BorderImage(FCoreStyle::Get().GetBrush("WhiteBrush"))
@@ -2356,6 +2477,7 @@ TSharedRef<ITableRow> SPjcTabUnused::OnGenerateAssetTile(FAssetRowPtr Row, const
 						.AutoWrapText(true)
 						.WrappingPolicy(ETextWrappingPolicy::AllowPerCharacterWrapping)
 						.Font(FPjcStyles::GetFont("Regular", 9))
+						.ColorAndOpacity_Lambda([IsSelected]() { return IsSelected() ? FSlateColor {FLinearColor::White} : FSlateColor::UseForeground(); })
 					]
 				]
 				+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {6.0f, 2.0f, 6.0f, 5.0f})
@@ -2376,8 +2498,10 @@ TSharedRef<ITableRow> SPjcTabUnused::OnGenerateAssetTile(FAssetRowPtr Row, const
 					]
 				]
 			]
-		];
+		]
+	);
 	// clang-format on
+	return TileRow;
 }
 
 TSharedRef<SWidget> SPjcTabUnused::MakeExcludeMenu() {

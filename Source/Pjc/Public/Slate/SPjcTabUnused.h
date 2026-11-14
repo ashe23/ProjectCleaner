@@ -14,7 +14,6 @@ class FTabManager;
 class SBox;
 class SHorizontalBox;
 class SVerticalBox;
-class SWrapBox;
 class SPjcClassBar;
 struct FSlateBrush;
 
@@ -135,6 +134,8 @@ class SPjcTabUnused final : public SCompoundWidget
 	EColumnSortMode::Type GetAssetSortMode(const FName Column) const;
 	void OnAssetSearchChanged(const FText& Text);
 	void OnReasonChipClicked(const FString& Key);
+	// Reason keys the folder's assets have (the filters offered)
+	TSet<FString> GetReasonKeys() const;
 	FText GetWhereText() const;
 	FText GetEmptyText() const;
 
@@ -203,8 +204,8 @@ class SPjcTabUnused final : public SCompoundWidget
 	TArray<FAssetRowPtr> FolderRows;
 	TArray<FAssetRowPtr> ListRows;
 	TSharedPtr<SListView<FAssetRowPtr>> ListView;
-	// Filter pills above the list: what keeps the assets in the list (Used), Delete failed (Unused)
-	TSharedPtr<SWrapBox> PillsBox;
+	// Filters under the class bar, one above the other: what keeps the assets in the list (Used), Delete failed (Unused)
+	TSharedPtr<SVerticalBox> PillsBox;
 	bool bHasPills = false;
 	TSharedPtr<SPjcClassBar> ClassBar;
 	// Count and size of the listed assets, for the line above the list
@@ -232,6 +233,8 @@ class SPjcTabUnused final : public SCompoundWidget
 	TArray<FName> ColumnOrder;
 	TSharedPtr<SHeaderRow> AssetHeader;
 	TSharedPtr<STileView<TSharedPtr<FPjcUnusedAssetRow>>> TileView;
+	// the grid's box: its width sets how many tiles fit in a line
+	TSharedPtr<SBox> TileBox;
 	bool bGridView = false;
 	// Small, Medium, Large, Huge
 	int32 TileSize = 1;

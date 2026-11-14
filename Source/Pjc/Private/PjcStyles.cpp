@@ -257,6 +257,17 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create() {
 		  Style->RootToContentDir(TEXT("Pill16"), TEXT(".png")), FVector2D {8.0f, 8.0f}
 	}
 	);
+	// grid tiles draw their own border and selection: the table row under them draws nothing
+	{
+		FTableRowStyle TileRow = FCoreStyle::Get().GetWidgetStyle<FTableRowStyle>("TableView.Row");
+		const FSlateNoResource None;
+		TileRow.SetSelectorFocusedBrush(None).SetActiveHoveredBrush(None).SetActiveBrush(None).SetInactiveHoveredBrush(None).SetInactiveBrush(None);
+		TileRow.SetEvenRowBackgroundHoveredBrush(None).SetEvenRowBackgroundBrush(None).SetOddRowBackgroundHoveredBrush(None).SetOddRowBackgroundBrush(
+			None
+		);
+		TileRow.SetActiveHighlightedBrush(None).SetInactiveHighlightedBrush(None);
+		Style->Set("ProjectCleaner.TileRow", TileRow);
+	}
 	// splitters between panes: a gap with a thin line in its middle, blue while hovered or dragged. Both brushes are the same
 	// line: UE5 draws the normal brush in the highlight tint when hovered, UE 4.27 the highlight brush
 	const FString SplitterLine = Style->RootToContentDir(TEXT("SplitterLine"), TEXT(".png"));
