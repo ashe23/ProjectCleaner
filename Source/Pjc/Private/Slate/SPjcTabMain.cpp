@@ -5,7 +5,7 @@
 #include "Slate/SPjcTabUnused.h"
 #include "Slate/SPjcTabIssues.h"
 #include "Slate/SPjcTabInspector.h"
-#include "Slate/SPjcTabHelp.h"
+#include "Slate/SPjcHelpWindow.h"
 #include "PjcConstants.h"
 #include "PjcSubsystem.h"
 #include "PjcStyles.h"
@@ -50,7 +50,6 @@ void SPjcTabMain::Construct(
 		->AddTab(PjcConstants::TabAssetsUnused, ETabState::OpenedTab)
 		->AddTab(PjcConstants::TabInspector, ETabState::OpenedTab)
 		->AddTab(PjcConstants::TabIssues, ETabState::OpenedTab)
-		->AddTab(PjcConstants::TabHelp, ETabState::OpenedTab)
 		->SetForegroundTab(PjcConstants::TabAssetsUnused)
 		->SetSizeCoefficient(1.0f);
 	// clang-format on
@@ -74,18 +73,19 @@ void SPjcTabMain::Construct(
 		.SetIcon(FPjcStyles::GetIcon("ProjectCleaner.Tab.Inspector"))
 		.SetGroup(AppMenuGroup);
 
-	TabManager->RegisterTabSpawner(PjcConstants::TabHelp, FOnSpawnTab::CreateRaw(this, &SPjcTabMain::OnTabHelpSpawn))
-		.SetTooltipText(FText::FromString(TEXT("Open Help Tab: links, bug report, system info")))
-		.SetDisplayName(FText::FromString(TEXT("Help")))
-		.SetIcon(FPjcStyles::GetIcon("ProjectCleaner.Tab.Help"))
-		.SetGroup(AppMenuGroup);
-
 	FMenuBarBuilder MenuBarBuilder = FMenuBarBuilder(Cmds);
 
 	const FNewMenuDelegate TabsMenu = FNewMenuDelegate::CreateRaw(this, &SPjcTabMain::CreateMenuBarTabs, TabManager);
 	const FNewMenuDelegate SettingsMenu = FNewMenuDelegate::CreateRaw(this, &SPjcTabMain::CreateMenuBarSettings);
 	MenuBarBuilder.AddPullDownMenu(FText::FromString(TEXT("Tabs")), FText::GetEmpty(), TabsMenu, "Window");
 	MenuBarBuilder.AddPullDownMenu(FText::FromString(TEXT("Settings")), FText::GetEmpty(), SettingsMenu, "Settings");
+	// one click opens its window
+	const FUIAction OpenHelp {FExecuteAction::CreateLambda([]() {
+		SPjcHelpWindow::Show();
+	})};
+	MenuBarBuilder.AddMenuEntry(
+		FText::FromString(TEXT("Help")), FText::FromString(TEXT("Links, system info, report a bug")), FSlateIcon {}, OpenHelp
+	);
 
 	// clang-format off
 	ChildSlot
@@ -150,7 +150,6 @@ SPjcTabMain::~SPjcTabMain() {
 	FGlobalTabmanager::Get()->UnregisterTabSpawner(PjcConstants::TabAssetsUnused);
 	FGlobalTabmanager::Get()->UnregisterTabSpawner(PjcConstants::TabIssues);
 	FGlobalTabmanager::Get()->UnregisterTabSpawner(PjcConstants::TabInspector);
-	FGlobalTabmanager::Get()->UnregisterTabSpawner(PjcConstants::TabHelp);
 }
 
 int32 SPjcTabMain::GetWidgetIndex() const {
@@ -205,19 +204,6 @@ TSharedRef<SDockTab> SPjcTabMain::OnTabInspectorSpawn(const FSpawnTabArgs& Args)
 	// clang-format on
 
 	Frontend->SetTabIcon(FPjcStyles::Get().GetBrush("ProjectCleaner.Tab.Inspector"));
-
-	return Frontend;
-}
-
-TSharedRef<SDockTab> SPjcTabMain::OnTabHelpSpawn(const FSpawnTabArgs& Args) const {
-	// clang-format off
-	const auto Frontend = SNew(SDockTab).TabRole(PanelTab).Label(FText::FromString(TEXT("Help")))
-		[
-			SNew(SPjcTabHelp)
-		];
-	// clang-format on
-
-	Frontend->SetTabIcon(FPjcStyles::Get().GetBrush("ProjectCleaner.Tab.Help"));
 
 	return Frontend;
 }

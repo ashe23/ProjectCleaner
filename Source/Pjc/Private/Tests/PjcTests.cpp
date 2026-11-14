@@ -27,7 +27,7 @@
 #include "Slate/SPjcTabUnused.h"
 #include "Slate/SPjcTabInspector.h"
 #include "Slate/SPjcOverviewPanel.h"
-#include "Slate/SPjcTabHelp.h"
+#include "Slate/SPjcHelpWindow.h"
 #include "Pjc.h"
 #include "HAL/FileManager.h"
 #include "HAL/PlatformOutputDevices.h"
@@ -2280,7 +2280,7 @@ bool FPjcTestUiTabs::RunTest(const FString& Parameters) {
 	const TSharedRef<SPjcTabInspector> TabInspector = SNew(SPjcTabInspector);
 	const TSharedRef<SPjcTabUnused> TabUnused = SNew(SPjcTabUnused);
 	const TSharedRef<SPjcTabIssues> TabIssues = SNew(SPjcTabIssues);
-	const TSharedRef<SWidget> Tabs[] = {SNew(SPjcOverviewPanel), TabUnused, TabIssues, TabInspector, SNew(SPjcTabHelp)};
+	const TSharedRef<SWidget> Tabs[] = {SNew(SPjcOverviewPanel), TabUnused, TabIssues, TabInspector, SNew(SPjcHelpWindow)};
 	for (const auto& Tab : Tabs) {
 		TestTrue(FString::Printf(TEXT("%s has content"), *Tab->GetTypeAsString()), Tab->GetChildren()->Num() > 0);
 	}
@@ -2323,9 +2323,9 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPjcTestUiReport, "ProjectCleaner.UI.Report", P
 
 bool FPjcTestUiReport::RunTest(const FString& Parameters) {
 	// system info: plugin, engine and OS
-	const FString Info = SPjcTabHelp::GetSystemInfo();
-	TestFalse(TEXT("plugin version known"), SPjcTabHelp::GetPluginVersion() == TEXT("?"));
-	TestTrue(TEXT("system info has the plugin version"), Info.Contains(TEXT("Project Cleaner ") + SPjcTabHelp::GetPluginVersion()));
+	const FString Info = SPjcHelpWindow::GetSystemInfo();
+	TestFalse(TEXT("plugin version known"), SPjcHelpWindow::GetPluginVersion() == TEXT("?"));
+	TestTrue(TEXT("system info has the plugin version"), Info.Contains(TEXT("Project Cleaner ") + SPjcHelpWindow::GetPluginVersion()));
 	TestTrue(TEXT("system info has the engine version"), Info.Contains(FEngineVersion::Current().ToString()));
 	TestTrue(TEXT("scan settings listed"), SPjcReportWindow::GetScanSettingsText().Contains(TEXT("excluded folders")));
 

@@ -6,22 +6,33 @@
 #include "Widgets/SCompoundWidget.h"
 
 /**
- * Help tool: documentation and links, Report a bug, and the system info a bug report needs, with Copy.
+ * Help window, from Help in the plugin menu: the links, the system info a bug report needs with Copy, and Report a bug.
  */
-class SPjcTabHelp final : public SCompoundWidget
+class SPjcHelpWindow final : public SCompoundWidget
 {
   public:
 
-	SLATE_BEGIN_ARGS(SPjcTabHelp) {}
+	SLATE_BEGIN_ARGS(SPjcHelpWindow) {}
+	SLATE_ARGUMENT(TWeakPtr<SWindow>, Window)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
+
+	// Opens the window until it is closed; Report a bug opens its own window after it
+	static void Show();
 
 	// Plugin version from its descriptor, e.g. 3.1.0
 	static FString GetPluginVersion();
 
 	// Plugin, engine and OS versions, the project and its last scan, the scan settings in one line
 	static FString GetSystemInfo();
+
+  private:
+
+	void Close(const bool bInReport);
+
+	TWeakPtr<SWindow> Window;
+	bool bReport = false;
 };
 
 /**

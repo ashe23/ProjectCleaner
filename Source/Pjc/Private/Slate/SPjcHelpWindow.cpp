@@ -1,6 +1,7 @@
 // Copyright Ashot Barkhudaryan. All Rights Reserved.
 
-#include "Slate/SPjcTabHelp.h"
+#include "Slate/SPjcHelpWindow.h"
+#include "Slate/PjcTabs.h"
 #include "Slate/PjcWidgets.h"
 #include "PjcConstants.h"
 #include "PjcFormat.h"
@@ -20,6 +21,8 @@
 #include "Misc/EngineVersion.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
+#include "Styling/CoreStyle.h"
+#include "Widgets/Images/SImage.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Input/SCheckBox.h"
 #include "Widgets/Input/SEditableTextBox.h"
@@ -27,7 +30,7 @@
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/Layout/SScrollBox.h"
-#include "Widgets/Layout/SWrapBox.h"
+#include "Widgets/Layout/SUniformGridPanel.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/SWindow.h"
 #include "Widgets/Text/STextBlock.h"
@@ -42,8 +45,6 @@ namespace
 		const TCHAR* Title;
 		const TCHAR* Tip;
 		FString Url;
-		// opens Url when unbound
-		TFunction<void()> OnOpen;
 	};
 
 	// longer new issue links are cut by browsers: the report goes to the clipboard instead
@@ -69,137 +70,231 @@ namespace
 		return bOn ? TEXT("on") : TEXT("off");
 	}
 
-	TSharedRef<SWidget> PjcHelpCard(const FPjcHelpLink& Link) {
-		const FString Url = Link.Url;
-		const TFunction<void()> OnOpen = Link.OnOpen;
-		const FString Address = Url.Replace(TEXT("https://"), TEXT("")).Replace(TEXT("www."), TEXT(""));
-		const FString Shown = Address.Len() > 33 ? Address.Left(32) + TEXT("\u2026") : Address;
-		const FLinearColor Accent = PjcWidgets::GetColor("ProjectCleaner.Color.Accent");
-		const FButtonStyle& ButtonStyle = FPjcStyles::Get().GetWidgetStyle<FButtonStyle>("ProjectCleaner.Button.Row");
-		const auto OnClicked = [Url, OnOpen]() {
-			if (OnOpen) {
-				OnOpen();
-			}
-			else {
-				FPlatformProcess::LaunchURL(*Url, nullptr, nullptr);
-			}
-			return FReply::Handled();
-		};
+	const FSlateBrush* PjcHelpWhite() {
+		return FCoreStyle::Get().GetBrush("WhiteBrush");
+	}
+
+	TSharedRef<SWidget> PjcHelpLine() {
 		// clang-format off
-		return SNew(SBox).WidthOverride(250.0f)
+		return SNew(SBox).HeightOverride(1.0f)
 			[
-				SNew(SButton)
-#if ENGINE_MAJOR_VERSION < 5
-				.ForegroundColor(FSlateColor::UseForeground())
-#endif
-				.ButtonStyle(&ButtonStyle)
-				.ContentPadding(FMargin {0.0f})
-				.ToolTip(PjcWidgets::MakeToolTip(Link.Title, Link.Tip, Url))
-				.OnClicked_Lambda(OnClicked)
-				[
-					PjcWidgets::MakeCard(
-						SNew(SVerticalBox)
-						+ SVerticalBox::Slot().AutoHeight()
-						[
-							SNew(SHorizontalBox)
-							+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin {0.0f, 0.0f, 8.0f, 0.0f})
-							[
-								SNew(STextBlock).Text(FText::FromString(Link.Icon)).Font(PjcWidgets::GetFontMono(11)).ColorAndOpacity(Accent)
-							]
-							+ SHorizontalBox::Slot().FillWidth(1.0f)
-							[
-								SNew(STextBlock).Text(FText::FromString(Link.Title)).Font(FPjcStyles::GetFont("Bold", 10))
-							]
-						]
-						+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {0.0f, 4.0f})
-						[
-							SNew(STextBlock)
-							.Text(FText::FromString(Shown))
-							.ColorAndOpacity(FSlateColor::UseSubduedForeground())
-							.Clipping(EWidgetClipping::ClipToBounds)
-						]
-						+ SVerticalBox::Slot().AutoHeight()
-						[
-							SNew(STextBlock).Text(FText::FromString(TEXT("Open \u203A"))).ColorAndOpacity(Accent)
-						],
-						FMargin {14.0f, 10.0f}
-					)
-				]
+				SNew(SImage).Image(PjcHelpWhite()).ColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.Line"))
 			];
 		// clang-format on
 	}
-}	// namespace
 
-void SPjcTabHelp::Construct(const FArguments& InArgs) {
-	const TFunction<void()> OpenReport = []() {
-		SPjcReportWindow::Open();
-	};
-	const TCHAR* ReportTip = TEXT("Collects what helps, shows it, and you choose what goes into the GitHub issue");
-	// clang-format off
-	const FPjcHelpLink Links[] = {
-		{TEXT("?"), TEXT("Documentation"), TEXT("Guides for every tab and setting"), PjcConstants::UrlDocs, {}},
-		{TEXT("!"), TEXT("Report a bug"), ReportTip, PjcConstants::UrlIssueTracker + TEXT("/new"), OpenReport},
-		{TEXT("@"), TEXT("Contact"), TEXT("Questions and feedback for the author"), PjcConstants::UrlAuthor, {}},
-		{TEXT("\u2197"), TEXT("Release notes"), TEXT("What changed in each version"), PjcConstants::UrlGithub + TEXT("/releases"), {}},
-		{TEXT("</>"), TEXT("Source code"), TEXT("The plugin's GitHub repository"), PjcConstants::UrlGithub, {}},
-		{TEXT("\u2605"), TEXT("Fab page"), TEXT("Rate the plugin or download other versions"), PjcConstants::UrlFab, {}},
-	};
-	// clang-format on
-	const TSharedRef<SWrapBox> Cards = SNew(SWrapBox).UseAllottedSize(true).InnerSlotPadding(FVector2D {10.0f, 10.0f});
-	for (const auto& Link : Links) {
-		Cards->AddSlot()[PjcHelpCard(Link)];
-	}
-
-	// clang-format off
-
-	ChildSlot
-	[
-		SNew(SBorder).BorderImage(PjcShim::GetBrush(TEXT("ToolPanel.GroupBorder"))).Padding(0.0f)
+	// a link: a box in the grid, lighter while the mouse is over it
+	TSharedRef<SWidget> PjcHelpLinkRow(const FPjcHelpLink& Link) {
+		const FString Url = Link.Url;
+		const FSlateColor Muted = FSlateColor::UseSubduedForeground();
+		// weak: the button owns the box that asks it
+		const TSharedRef<TWeakPtr<SButton>> Owner = MakeShared<TWeakPtr<SButton>>();
+		const auto IsHovered = [Owner]() {
+			const TSharedPtr<SButton> Button = Owner->Pin();
+			return Button.IsValid() && Button->IsHovered();
+		};
+		const auto Outline = [IsHovered]() {
+			return IsHovered() ? FLinearColor {FColor::FromHex(TEXT("#4A5058"))} : PjcWidgets::GetColor("ProjectCleaner.Color.Line");
+		};
+		const auto Fill = [IsHovered]() {
+			return FLinearColor {FColor::FromHex(IsHovered() ? TEXT("#262A2F") : TEXT("#1F1F1F"))};
+		};
+		TSharedPtr<SButton> Button;
+		// clang-format off
+		SAssignNew(Button, SButton)
+#if ENGINE_MAJOR_VERSION < 5
+		.ForegroundColor(FSlateColor::UseForeground())
+#endif
+		.ButtonStyle(&FCoreStyle::Get().GetWidgetStyle<FButtonStyle>("NoBorder"))
+		.ContentPadding(FMargin {0.0f})
+		.ToolTip(PjcWidgets::MakeToolTip(Link.Title, Link.Tip, Url))
+		.OnClicked_Lambda([Url]() {
+			FPlatformProcess::LaunchURL(*Url, nullptr, nullptr);
+			return FReply::Handled();
+		})
 		[
-			SNew(SScrollBox)
-			+ SScrollBox::Slot().Padding(FMargin {20.0f, 16.0f})
+			SNew(SBorder).BorderImage(PjcHelpWhite()).BorderBackgroundColor_Lambda(Outline).Padding(1.0f)
 			[
-				SNew(SVerticalBox)
-				+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {0.0f, 0.0f, 0.0f, 6.0f})
+				SNew(SBorder).BorderImage(PjcHelpWhite()).BorderBackgroundColor_Lambda(Fill).Padding(FMargin {10.0f, 7.0f})
 				[
-					PjcWidgets::MakeCardTitle(TEXT("Links"))
-				]
-				+ SVerticalBox::Slot().AutoHeight()
-				[
-					Cards
-				]
-				+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {0.0f, 18.0f, 0.0f, 6.0f})
-				[
-					PjcWidgets::MakeCardTitle(TEXT("System info"))
-				]
-				+ SVerticalBox::Slot().AutoHeight()
-				[
-					PjcWidgets::MakeCard(
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 9.0f, 0.0f})
+					[
+						SNew(SBox).WidthOverride(26.0f).HeightOverride(26.0f)
+						[
+							SNew(SBorder).BorderImage(PjcHelpWhite()).BorderBackgroundColor(PjcWidgets::GetColor("ProjectCleaner.Color.Hover"))
+							.HAlign(HAlign_Center).VAlign(VAlign_Center)
+							[
+								SNew(STextBlock).Text(FText::FromString(Link.Icon)).Font(PjcWidgets::GetFontMono(9))
+							]
+						]
+					]
+					+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
+					[
 						SNew(SVerticalBox)
 						+ SVerticalBox::Slot().AutoHeight()
 						[
-							SNew(STextBlock).Text_Lambda([]() { return FText::FromString(GetSystemInfo()); }).Font(PjcWidgets::GetFontMono(9))
+							SNew(STextBlock).Text(FText::FromString(Link.Title)).Font(FPjcStyles::GetFont("Bold", 9))
 						]
-						+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Left).Padding(FMargin {0.0f, 10.0f, 0.0f, 0.0f})
+						+ SVerticalBox::Slot().AutoHeight()
 						[
-							SNew(SButton)
-#if ENGINE_MAJOR_VERSION < 5
-							.ButtonStyle(&PjcShim::GetButtonStyle427(false))
-							.ForegroundColor(FSlateColor::UseForeground())
-#endif
-							.ContentPadding(FMargin {12.0f, 2.0f})
-							.ToolTipText(FText::FromString(TEXT("Copies the lines above, to paste into a bug report")))
-							.OnClicked_Lambda([]() {
-								FPlatformApplicationMisc::ClipboardCopy(*GetSystemInfo());
-								UPjcSubsystem::ShowNotification(TEXT("Copied \u00B7 paste it into the bug report"), SNotificationItem::CS_Success, 3.0f);
-								return FReply::Handled();
-							})
+							SNew(STextBlock).Text(FText::FromString(Link.Tip)).Font(FPjcStyles::GetFont("Regular", 8)).ColorAndOpacity(Muted)
+							.Clipping(EWidgetClipping::ClipToBounds)
+						]
+					]
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {8.0f, 0.0f, 0.0f, 0.0f})
+					[
+						SNew(STextBlock).Text(FText::FromString(TEXT("↗"))).ColorAndOpacity(Muted)
+					]
+				]
+			]
+		];
+		// clang-format on
+		*Owner = Button;
+		return Button.ToSharedRef();
+	}
+}	// namespace
+
+void SPjcHelpWindow::Construct(const FArguments& InArgs) {
+	Window = InArgs._Window;
+	// clang-format off
+	const FPjcHelpLink Links[] = {
+		{TEXT("?"), TEXT("Documentation"), TEXT("Guides for every tab and setting"), PjcConstants::UrlDocs},
+		{TEXT("↗"), TEXT("Release notes"), TEXT("What changed in each version"), PjcConstants::UrlGithub + TEXT("/releases")},
+		{TEXT("@"), TEXT("Contact"), TEXT("Questions and feedback for the author"), PjcConstants::UrlAuthor},
+		{TEXT("</>"), TEXT("Source code"), TEXT("The plugin's GitHub repository"), PjcConstants::UrlGithub},
+		{TEXT("★"), TEXT("Fab page"), TEXT("Rate the plugin or download other versions"), PjcConstants::UrlFab},
+	};
+	// clang-format on
+	const TSharedRef<SUniformGridPanel> Grid = SNew(SUniformGridPanel).SlotPadding(FMargin {3.0f});
+	for (int32 Index = 0; Index < UE_ARRAY_COUNT(Links); ++Index) {
+		Grid->AddSlot(Index % 2, Index / 2)[PjcHelpLinkRow(Links[Index])];
+	}
+	const FSlateColor Muted = FSlateColor::UseSubduedForeground();
+
+	// clang-format off
+	ChildSlot
+	[
+		SNew(SBorder).BorderImage(PjcHelpWhite()).BorderBackgroundColor(PjcWidgets::GetColor("ProjectCleaner.Color.Panel")).Padding(0.0f)
+		[
+			SNew(SBox).WidthOverride(640.0f)
+			[
+				SNew(SVerticalBox)
+				+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {16.0f, 14.0f, 16.0f, 12.0f})
+				[
+					SNew(SVerticalBox)
+					+ SVerticalBox::Slot().AutoHeight()
+					[
+						SNew(SHorizontalBox)
+						+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+						[
+							SNew(STextBlock).Text(FText::FromString(TEXT("Project Cleaner"))).Font(FPjcStyles::GetFont("Bold", 12))
+						]
+						+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {8.0f, 0.0f, 0.0f, 0.0f})
+						[
+							SNew(SBorder)
+							.BorderImage(FPjcStyles::Get().GetBrush("ProjectCleaner.Pill"))
+							.BorderBackgroundColor(PjcWidgets::GetColor("ProjectCleaner.Color.Hover"))
+							.Padding(FMargin {7.0f, 0.0f})
 							[
-								SNew(STextBlock).Text(FText::FromString(TEXT("Copy")))
+								SNew(STextBlock).Text(FText::FromString(GetPluginVersion())).Font(PjcWidgets::GetFontMono(8)).ColorAndOpacity(Muted)
 							]
-						],
-						FMargin {14.0f, 12.0f}
-					)
+						]
+					]
+					+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {0.0f, 4.0f, 0.0f, 0.0f})
+					[
+						SNew(STextBlock).Text(FText::FromString(TEXT("Supports UE 4.27 and 5.0 to 5.8. Links open in the browser."))).ColorAndOpacity(Muted)
+					]
+				]
+				+ SVerticalBox::Slot().AutoHeight()
+				[
+					PjcHelpLine()
+				]
+				+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {16.0f, 12.0f, 16.0f, 6.0f})
+				[
+					PjcWidgets::MakeCardTitle(TEXT("Links"))
+				]
+				+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {13.0f, 0.0f})
+				[
+					Grid
+				]
+				+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {16.0f, 12.0f, 16.0f, 6.0f})
+				[
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
+					[
+						PjcWidgets::MakeCardTitle(TEXT("System info"))
+					]
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+					[
+						SNew(SButton)
+#if ENGINE_MAJOR_VERSION < 5
+						.ButtonStyle(&PjcShim::GetButtonStyle427(false))
+						.ForegroundColor(FSlateColor::UseForeground())
+#endif
+						.ContentPadding(FMargin {8.0f, 0.0f})
+						.ToolTipText(FText::FromString(TEXT("Copies the lines below, to paste into a bug report")))
+						.OnClicked_Lambda([]() {
+							FPlatformApplicationMisc::ClipboardCopy(*GetSystemInfo());
+							UPjcSubsystem::ShowNotification(TEXT("Copied · paste it into the bug report"), SNotificationItem::CS_Success, 3.0f);
+							return FReply::Handled();
+						})
+						[
+							SNew(STextBlock).Text(FText::FromString(TEXT("Copy"))).Font(FPjcStyles::GetFont("Regular", 8))
+						]
+					]
+				]
+				+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {16.0f, 0.0f, 16.0f, 14.0f})
+				[
+					SNew(SBorder).BorderImage(PjcHelpWhite()).BorderBackgroundColor(PjcWidgets::GetColor("ProjectCleaner.Color.Line")).Padding(1.0f)
+					[
+						SNew(SBorder).BorderImage(PjcHelpWhite()).BorderBackgroundColor(PjcWidgets::GetColor("ProjectCleaner.Color.Recess")).Padding(FMargin {10.0f, 8.0f})
+						[
+							SNew(STextBlock).Text_Lambda([]() { return FText::FromString(GetSystemInfo()); }).Font(PjcWidgets::GetFontMono(8)).AutoWrapText(true)
+						]
+					]
+				]
+				+ SVerticalBox::Slot().AutoHeight()
+				[
+					PjcHelpLine()
+				]
+				+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {16.0f, 10.0f, 16.0f, 12.0f})
+				[
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot().AutoWidth()
+					[
+						SNew(SButton)
+#if ENGINE_MAJOR_VERSION < 5
+						.ButtonStyle(&PjcShim::GetButtonStyle427(false))
+						.ForegroundColor(FSlateColor::UseForeground())
+#endif
+						.ContentPadding(FMargin {14.0f, 3.0f})
+						.ToolTipText(FText::FromString(TEXT("Collects what helps, shows it, and you choose what goes into the GitHub issue")))
+						.OnClicked_Lambda([this]() {
+							Close(true);
+							return FReply::Handled();
+						})
+						[
+							SNew(STextBlock).Text(FText::FromString(TEXT("Report a bug…")))
+						]
+					]
+					+ SHorizontalBox::Slot().FillWidth(1.0f)
+					+ SHorizontalBox::Slot().AutoWidth()
+					[
+						SNew(SButton)
+#if ENGINE_MAJOR_VERSION < 5
+						.ForegroundColor(FSlateColor::UseForeground())
+#endif
+						.ButtonStyle(&PjcShim::GetPrimaryButtonStyle())
+						.ContentPadding(FMargin {14.0f, 3.0f})
+						.OnClicked_Lambda([this]() {
+							Close(false);
+							return FReply::Handled();
+						})
+						[
+							SNew(STextBlock).Text(FText::FromString(TEXT("Close"))).ColorAndOpacity(FLinearColor::White)
+						]
+					]
 				]
 			]
 		]
@@ -207,12 +302,37 @@ void SPjcTabHelp::Construct(const FArguments& InArgs) {
 	// clang-format on
 }
 
-FString SPjcTabHelp::GetPluginVersion() {
+void SPjcHelpWindow::Show() {
+	// clang-format off
+	const TSharedRef<SWindow> HelpWindow = SNew(SWindow)
+		.Title(FText::FromString(TEXT("Help")))
+		.SupportsMaximize(false)
+		.SupportsMinimize(false)
+		.SizingRule(ESizingRule::Autosized);
+	// clang-format on
+	const TSharedRef<SPjcHelpWindow> Content = SNew(SPjcHelpWindow).Window(HelpWindow);
+	HelpWindow->SetContent(Content);
+	PjcTabs::SetWindowOpen(true);
+	FSlateApplication::Get().AddModalWindow(HelpWindow, FSlateApplication::Get().GetActiveTopLevelWindow());
+	if (Content->bReport) {
+		SPjcReportWindow::Open();
+	}
+	PjcTabs::SetWindowOpen(false);
+}
+
+void SPjcHelpWindow::Close(const bool bInReport) {
+	bReport = bInReport;
+	if (const TSharedPtr<SWindow> Owner = Window.Pin()) {
+		Owner->RequestDestroyWindow();
+	}
+}
+
+FString SPjcHelpWindow::GetPluginVersion() {
 	const TSharedPtr<IPlugin> Plugin = IPluginManager::Get().FindPlugin(PjcConstants::ModulePjcName.ToString());
 	return Plugin.IsValid() ? Plugin->GetDescriptor().VersionName : FString {TEXT("?")};
 }
 
-FString SPjcTabHelp::GetSystemInfo() {
+FString SPjcHelpWindow::GetSystemInfo() {
 	FString OsLabel;
 	FString OsVersion;
 	FPlatformMisc::GetOSVersions(OsLabel, OsVersion);
@@ -238,7 +358,7 @@ FString SPjcTabHelp::GetSystemInfo() {
 
 void SPjcReportWindow::Construct(const FArguments& InArgs) {
 	Window = InArgs._Window;
-	SystemText = SPjcTabHelp::GetSystemInfo();
+	SystemText = SPjcHelpWindow::GetSystemInfo();
 	SettingsText = GetScanSettingsText();
 	ScanText = GetLastScanText();
 	LogText = GetLogText();

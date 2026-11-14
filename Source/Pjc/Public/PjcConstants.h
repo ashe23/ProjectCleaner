@@ -26,7 +26,6 @@ namespace PjcConstants
 	static const FName TabAssetsUnused {TEXT("TabAssetsUnused")};
 	static const FName TabInspector {TEXT("TabInspector")};
 	static const FName TabIssues {TEXT("TabIssues")};
-	static const FName TabHelp {TEXT("TabHelp")};
 
 	// widget index
 	static int32 WidgetIndexIdle = 0;

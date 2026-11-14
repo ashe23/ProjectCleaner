@@ -143,7 +143,6 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create() {
 	Style->Set("ProjectCleaner.Tab.Assets", new FSlateImageBrush {Icon(TEXT("Assets"), 16.0f, ColorUsed)});
 	Style->Set("ProjectCleaner.Tab.Inspector", new FSlateImageBrush {Icon(TEXT("Inspector"), 16.0f, ColorLink)});
 	Style->Set("ProjectCleaner.Tab.Issues", new FSlateImageBrush {Icon(TEXT("Issues"), 16.0f, ColorWarning)});
-	Style->Set("ProjectCleaner.Tab.Help", new FSlateImageBrush {Icon(TEXT("Help"), 16.0f, ColorLink)});
 	// the warning sign of the Issues card and of the busy message
 	Style->Set("ProjectCleaner.Icon.Warning", new FSlateImageBrush {Icon(TEXT("Issues"), 32.0f, ColorWarning)});
 	// white, drawn in the color of where they sit
