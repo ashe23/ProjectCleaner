@@ -259,7 +259,7 @@ namespace
 	// grid tiles: the width of each size, and what is under the square thumbnail (strip, name on two lines, class and size)
 	const float PjcUnusedTileWidths[] = {84.0f, 112.0f, 148.0f, 200.0f};
 	const TCHAR* PjcUnusedTileNames[] = {TEXT("Small tiles"), TEXT("Medium tiles"), TEXT("Large tiles"), TEXT("Huge tiles")};
-	constexpr float PjcUnusedTileText = 60.0f;
+	constexpr float PjcUnusedTileText = 62.0f;
 	constexpr float PjcUnusedTileGap = 8.0f;
 	// room the grid's scrollbar takes from the line
 	constexpr float PjcUnusedTileScrollbar = 18.0f;
@@ -923,7 +923,7 @@ void SPjcTabUnused::MakeRowReason(const FPjcScanResult& Result, FPjcUnusedAssetR
 			Rule = TEXT("Class ") + FSoftObjectPath {Exclusion->Value}.GetAssetName();
 		}
 		else {
-			Rule = TEXT("Asset rule");
+			Rule = TEXT("Excluded");
 		}
 		const TCHAR* Without = Exclusion->bUsedAnyway ? TEXT("used anyway") : TEXT("unused without it");
 		const TCHAR* WithoutTip = Exclusion->bUsedAnyway ? TEXT("Used even without the rule: the rule changes nothing for it")
@@ -1376,26 +1376,19 @@ TSharedRef<SWidget> SPjcTabUnused::MakeAssetPane() {
 						SNew(SBorder).BorderImage(PjcShim::GetBrush(TEXT("ToolPanel.DarkGroupBorder"))).Padding(FMargin {0.0f, 4.0f})
 						[
 							SNew(SVerticalBox)
-							+ SVerticalBox::Slot().FillHeight(1.0f)
-							[
-								SAssignNew(ClassBar, SPjcClassBar).OnChanged(FSimpleDelegate::CreateSP(this, &SPjcTabUnused::ApplyAssetFilter))
-							]
-							// the filters under the classes, one above the other: more of them never need a scroll (user, 2026-11-14)
+							// the filters above the classes, one above the other: more of them never need a scroll (user, 2026-11-14)
 							+ SVerticalBox::Slot().AutoHeight()
 							[
 								SNew(SVerticalBox)
 								.Visibility_Lambda([this]() { return bHasPills ? EVisibility::Visible : EVisibility::Collapsed; })
-								+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {6.0f, 4.0f, 6.0f, 6.0f})
-								[
-									SNew(SBox).HeightOverride(1.0f)
-									[
-										SNew(SImage).Image(FCoreStyle::Get().GetBrush("WhiteBrush")).ColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.Line"))
-									]
-								]
-								+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {10.0f, 0.0f, 10.0f, 5.0f})
+								+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {10.0f, 2.0f, 10.0f, 5.0f})
 								[
 									SNew(STextBlock)
-									.Text_Lambda([this]() { return FText::FromString(Set == EPjcAssetSet::Used ? TEXT("WHY USED") : TEXT("FILTERS")); })
+									.Text_Lambda([this]() { return FText::FromString(Set == EPjcAssetSet::Used ? TEXT("REASON") : TEXT("FILTERS")); })
+									.ToolTipText_Lambda([this]() {
+										const TCHAR* Used = TEXT("Why the assets are used, as the Reason column says. Several can be picked.");
+										return FText::FromString(Set == EPjcAssetSet::Used ? Used : TEXT("Assets the last delete could not remove"));
+									})
 									.Font(FPjcStyles::GetFont("Bold", 8))
 									.ColorAndOpacity(FSlateColor::UseSubduedForeground())
 								]
@@ -1403,6 +1396,17 @@ TSharedRef<SWidget> SPjcTabUnused::MakeAssetPane() {
 								[
 									SAssignNew(PillsBox, SVerticalBox)
 								]
+								+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {6.0f, 2.0f, 6.0f, 6.0f})
+								[
+									SNew(SBox).HeightOverride(1.0f)
+									[
+										SNew(SImage).Image(FCoreStyle::Get().GetBrush("WhiteBrush")).ColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.Line"))
+									]
+								]
+							]
+							+ SVerticalBox::Slot().FillHeight(1.0f)
+							[
+								SAssignNew(ClassBar, SPjcClassBar).OnChanged(FSimpleDelegate::CreateSP(this, &SPjcTabUnused::ApplyAssetFilter))
 							]
 						]
 					]
@@ -2399,7 +2403,9 @@ FReply SPjcTabUnused::OnKeyDown(const FGeometry& Geometry, const FKeyEvent& KeyE
 }
 
 TSharedRef<ITableRow> SPjcTabUnused::OnGenerateAssetTile(FAssetRowPtr Row, const TSharedRef<STableViewBase>& Table) {
-	const FSlateColor Muted = FSlateColor::UseSubduedForeground();
+	// explicit colors: a selected table row turns the foreground dark
+	const FSlateColor Muted {PjcWidgets::GetColor("ProjectCleaner.Color.Muted")};
+	const FLinearColor ColorText = PjcWidgets::GetColor("ProjectCleaner.Color.Text");
 	const FString Tip = FString::Printf(TEXT("%s\n%s \u00B7 %s\n%s"), *Row->Name, *Row->ClassLabel, *PjcFormat::Size(Row->Size), *Row->Reason);
 	// clang-format off
 	const TSharedRef<STableRow<FAssetRowPtr>> TileRow = SNew(STableRow<FAssetRowPtr>, Table)
@@ -2432,6 +2438,12 @@ TSharedRef<ITableRow> SPjcTabUnused::OnGenerateAssetTile(FAssetRowPtr Row, const
 		})
 		.Padding(FMargin {1.0f})
 		[
+			// a second line of the border: blue too when selected, so the selection reads at a glance (2 px)
+			SNew(SBorder)
+			.BorderImage(FCoreStyle::Get().GetBrush("WhiteBrush"))
+			.BorderBackgroundColor_Lambda([IsSelected, ColorAccent, ColorCard]() { return FSlateColor {IsSelected() ? ColorAccent : ColorCard}; })
+			.Padding(FMargin {1.0f})
+			[
 			SNew(SBorder)
 			.BorderImage(FCoreStyle::Get().GetBrush("WhiteBrush"))
 			.BorderBackgroundColor_Lambda([IsSelected, ColorCard, ColorMarked]() { return FSlateColor {IsSelected() ? ColorMarked : ColorCard}; })
@@ -2442,7 +2454,7 @@ TSharedRef<ITableRow> SPjcTabUnused::OnGenerateAssetTile(FAssetRowPtr Row, const
 				+ SVerticalBox::Slot().AutoHeight()
 				[
 					SNew(SBox)
-					.HeightOverride_Lambda([this]() { return GetTileWidth() - 2.0f; })
+					.HeightOverride_Lambda([this]() { return GetTileWidth() - 4.0f; })
 					[
 						SNew(SBorder)
 						.BorderImage(FCoreStyle::Get().GetBrush("WhiteBrush"))
@@ -2477,7 +2489,7 @@ TSharedRef<ITableRow> SPjcTabUnused::OnGenerateAssetTile(FAssetRowPtr Row, const
 						.AutoWrapText(true)
 						.WrappingPolicy(ETextWrappingPolicy::AllowPerCharacterWrapping)
 						.Font(FPjcStyles::GetFont("Regular", 9))
-						.ColorAndOpacity_Lambda([IsSelected]() { return IsSelected() ? FSlateColor {FLinearColor::White} : FSlateColor::UseForeground(); })
+						.ColorAndOpacity_Lambda([IsSelected, ColorText]() { return FSlateColor {IsSelected() ? FLinearColor::White : ColorText}; })
 					]
 				]
 				+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {6.0f, 2.0f, 6.0f, 5.0f})
@@ -2497,6 +2509,7 @@ TSharedRef<ITableRow> SPjcTabUnused::OnGenerateAssetTile(FAssetRowPtr Row, const
 						SNew(STextBlock).Text(FText::FromString(PjcFormat::Size(Row->Size))).Font(PjcWidgets::GetFontMono(8)).ColorAndOpacity(Muted)
 					]
 				]
+			]
 			]
 		]
 	);
