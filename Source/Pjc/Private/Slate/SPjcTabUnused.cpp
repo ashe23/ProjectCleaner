@@ -656,11 +656,11 @@ void SPjcTabUnused::Construct(const FArguments& InArgs) {
 				.Style(&FPjcStyles::Get().GetWidgetStyle<FSplitterStyle>("ProjectCleaner.Splitter"))
 				.PhysicalSplitterHandleSize(12.0f)
 				.HitDetectionSplitterHandleSize(12.0f)
-				+ SSplitter::Slot().Value(0.46f)
+				+ SSplitter::Slot().Value(0.3f)
 				[
 					MakeFolderPane()
 				]
-				+ SSplitter::Slot().Value(0.54f)
+				+ SSplitter::Slot().Value(0.7f)
 				[
 					MakeAssetPane()
 				]
