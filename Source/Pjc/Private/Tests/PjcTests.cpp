@@ -145,6 +145,49 @@ namespace
 		return FName {*FPackageName::ObjectPathToPackageName(Fixture.ObjectPath(Name))};
 	}
 
+	// BP_Placed is used only by the actor file of L_Feature, a level of the PjcFeature plugin. It counts as a dependency of
+	// L_Feature when that level is scanned, as an outside reference when it is not; used either way. Scans the project
+	// with plugins and again without, so the scan is as before for the rest of the test
+	void TestActorFileReason(FAutomationTestBase& Test, const FPjcTestFixture& Fixture) {
+		const FName Level = PackageOf(Fixture, TEXT("L_Feature"));
+		const FName Placed = PackageOf(Fixture, TEXT("BP_Placed"));
+		const auto Check = [&Test, Placed](const TCHAR* When, const EPjcUsageReason Reason, const FName Parent) {
+			const FPjcAssetUsage* Usage = UPjcSubsystem::GetScanResult().Usage.Find(Placed);
+			if (!Test.TestNotNull(*FString::Printf(TEXT("%s: blueprint scanned"), When), Usage)) return;
+
+			Test.TestTrue(*FString::Printf(TEXT("%s: blueprint used"), When), Usage->bUsed);
+			Test.TestEqual(*FString::Printf(TEXT("%s: blueprint reason"), When), static_cast<int32>(Usage->Reason), static_cast<int32>(Reason));
+			Test.TestEqual(*FString::Printf(TEXT("%s: blueprint parent"), When), Usage->Parent, Parent);
+		};
+
+		// the level is in a plugin left out of the scan: an outside reference (UE4 reads actor files of scanned content only)
+#if ENGINE_MAJOR_VERSION >= 5
+		Check(TEXT("level not scanned"), EPjcUsageReason::EngineReferenced, NAME_None);
+#else
+		const FPjcAssetUsage* NotScanned = UPjcSubsystem::GetScanResult().Usage.Find(Placed);
+		Test.TestTrue(TEXT("level not scanned: blueprint used"), NotScanned && NotScanned->bUsed);
+#endif
+
+		// an actor file of a map that does not exist belongs to no map: never relabeled
+		const FString Missing = TEXT("/Game/") + PjcShim::GetExternalActorsFolderName() + TEXT("/Maps/PjcNoSuchMap/A/BC/PjcNoSuchActor");
+		Test.TestTrue(TEXT("actor file of a deleted map has no owner"), UPjcSubsystem::GetExternalOwner(FName {*Missing}).IsNone());
+
+		UPjcScanSettings* Settings = GetMutableDefault<UPjcScanSettings>();
+		Settings->bScanProjectPlugins = true;
+		if (Test.TestTrue(TEXT("scanned with plugins"), UPjcSubsystem::Scan(false))) {
+#if ENGINE_MAJOR_VERSION >= 5
+			Check(TEXT("level scanned"), EPjcUsageReason::Dependency, Level);
+			const FPjcAssetUsage* Usage = UPjcSubsystem::GetScanResult().Usage.Find(Placed);
+			Test.TestTrue(TEXT("placed in the level"), Usage && UPjcSubsystem::GetUsageReasonText(*Usage).StartsWith(TEXT("Placed in")));
+#else
+			const FPjcAssetUsage* Usage = UPjcSubsystem::GetScanResult().Usage.Find(Placed);
+			Test.TestTrue(TEXT("level scanned: blueprint used"), Usage && Usage->bUsed);
+#endif
+		}
+		Settings->bScanProjectPlugins = false;
+		Test.TestTrue(TEXT("scanned without plugins again"), UPjcSubsystem::Scan(false));
+	}
+
 	// Inspector lists of L_Feature, a level that saves its actor (a BP_Placed) in its own file: the lists leave the file out
 	// and go through it. Runs inside the one test that builds the Lyra layout: a second build of it in one editor session
 	// crashes UE 4.27 (Find in Blueprints index) and UE 5.3 on Linux (World Partition keeps the actors of the first level)
@@ -1284,6 +1327,7 @@ bool FPjcTestIssuesRedirectors::RunTest(const FString& Parameters) {
 	if (!Fixture.Build(*this, true, true, true)) return false;
 	if (!TestTrue(TEXT("scanned"), UPjcSubsystem::Scan(false))) return false;
 	TestInspectorActorFiles(*this, Fixture);
+	TestActorFileReason(*this, Fixture);
 
 	// why external files are kept
 	const FPjcScanResult& ScanResult = UPjcSubsystem::GetScanResult();

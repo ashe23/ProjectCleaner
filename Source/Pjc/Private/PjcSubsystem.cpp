@@ -691,18 +691,20 @@ const TMap<FName, FString>& UPjcSubsystem::GetLastCleanupKept() {
 
 FString UPjcSubsystem::GetUsageReasonText(const FPjcAssetUsage& Usage) {
 	switch (Usage.Reason) {
-		case EPjcUsageReason::Primary :				return Usage.Detail.IsEmpty() ? TEXT("Primary asset") : TEXT("Primary asset ") + Usage.Detail;
-		case EPjcUsageReason::PrimaryClass :		return TEXT("Primary class, not registered by the Asset Manager");
-		case EPjcUsageReason::EngineReferenced :	return TEXT("Referenced outside scanned content");
-		case EPjcUsageReason::Indirect :			return TEXT("Named in ") + Usage.Detail;
-		case EPjcUsageReason::Excluded :			return Usage.Detail.IsEmpty() ? TEXT("Excluded") : Usage.Detail;
-		case EPjcUsageReason::Editor :				return TEXT("Editor asset");
-		case EPjcUsageReason::GameplayCue :			return TEXT("GameplayCue notify ") + Usage.Detail;
-		case EPjcUsageReason::Megascans :			return TEXT("Megascans preset");
-		case EPjcUsageReason::Localized :			return TEXT("Localized copy of ") + FPackageName::GetShortName(Usage.Parent);
-		case EPjcUsageReason::ConfigFolder :		return TEXT("In folder ") + Usage.Detail;
-		case EPjcUsageReason::FolderLabelAsset :	return TEXT("Listed by folder label ") + FPackageName::GetShortName(Usage.Parent);
-		case EPjcUsageReason::Dependency :			return TEXT("Referenced by ") + FPackageName::GetShortName(Usage.Parent);
+		case EPjcUsageReason::Primary :			 return Usage.Detail.IsEmpty() ? TEXT("Primary asset") : TEXT("Primary asset ") + Usage.Detail;
+		case EPjcUsageReason::PrimaryClass :	 return TEXT("Primary class, not registered by the Asset Manager");
+		case EPjcUsageReason::EngineReferenced : return TEXT("Used by engine or plugins");
+		case EPjcUsageReason::Indirect :		 return TEXT("Named in ") + Usage.Detail;
+		case EPjcUsageReason::Excluded :		 return Usage.Detail.IsEmpty() ? TEXT("Excluded") : Usage.Detail;
+		case EPjcUsageReason::Editor :			 return TEXT("Editor asset");
+		case EPjcUsageReason::GameplayCue :		 return TEXT("GameplayCue notify ") + Usage.Detail;
+		case EPjcUsageReason::Megascans :		 return TEXT("Megascans preset");
+		case EPjcUsageReason::Localized :		 return TEXT("Localized copy of ") + FPackageName::GetShortName(Usage.Parent);
+		case EPjcUsageReason::ConfigFolder :	 return TEXT("In folder ") + Usage.Detail;
+		case EPjcUsageReason::FolderLabelAsset : return TEXT("Listed by folder label ") + FPackageName::GetShortName(Usage.Parent);
+		case EPjcUsageReason::Dependency :
+			// placed in a level by its actor file (World Partition, One File Per Actor)
+			return (FolderIsExternal(Usage.Detail) ? TEXT("Placed in ") : TEXT("Referenced by ")) + FPackageName::GetShortName(Usage.Parent);
 		case EPjcUsageReason::FolderLabel :			return TEXT("In folder of label ") + FPackageName::GetShortName(Usage.Parent);
 		case EPjcUsageReason::CookPackaged :		return TEXT("Packaged by the last cook (") + Usage.Detail + TEXT(")");
 		case EPjcUsageReason::GameplayCueNotFired : return TEXT("GameplayCue notify nothing fires: ") + Usage.Detail;
@@ -1172,6 +1174,71 @@ void UPjcSubsystem::ComputeAssetsUsed(
 	FollowDependencies(false);
 	AddLocalized();
 	FollowDependencies(false);
+
+	// assets placed in a level that saves each actor in its own file (World Partition, One File Per Actor) are used
+	// because their map is (user, 2026-11-14): they show as its dependencies. Only the reason changes, never whether an
+	// asset is used: they stay used as above. The map does not reference its actor files (the files point to the map),
+	// so following references from the map would never reach them. Kept as outside references when any other outside
+	// package references them, or a map of their actor files is not scanned or not used (actor files of a deleted map)
+	{
+		TMap<FName, TArray<FName>> ActorFilesOf;
+#if ENGINE_MAJOR_VERSION < 5
+		// UE4 registry has no dependencies of actor packages: read from the files
+		TSet<FName> ActorFileDependencies;
+		GetExternalActorsDependencies(ActorFileDependencies, &ActorFilesOf);
+#endif
+		IAssetRegistry& Registry = GetModuleAssetRegistry().Get();
+		for (auto& Pair : Usage) {
+			FPjcAssetUsage& AssetUsage = Pair.Value;
+			if (!AssetUsage.bUsed || AssetUsage.Reason != EPjcUsageReason::EngineReferenced || !AssetUsage.Parent.IsNone()) continue;
+
+			TArray<FName> ActorFiles;
+			bool bOtherOutside = false;
+			TArray<FName> Referencers;
+			Registry.GetReferencers(Pair.Key, Referencers);
+			for (const auto& Referencer : Referencers) {
+				if (FolderIsExternal(Referencer.ToString())) {
+					ActorFiles.AddUnique(Referencer);
+				}
+				else if (!PathIsInsideProject(Referencer.ToString())) {
+					bOtherOutside = true;
+				}
+			}
+			if (const TArray<FName>* Read = ActorFilesOf.Find(Pair.Key)) {
+				for (const auto& ActorFile : *Read) {
+					ActorFiles.AddUnique(ActorFile);
+				}
+			}
+			if (bOtherOutside || ActorFiles.Num() == 0) continue;
+
+			// every actor file belongs to a scanned, used map whose chain does not go through this asset
+			FName Map;
+			bool bAllMapsUsed = true;
+			for (const auto& ActorFile : ActorFiles) {
+				const FName Owner = GetExternalOwner(ActorFile);
+				const FPjcAssetUsage* MapUsage = Owner.IsNone() ? nullptr : Usage.Find(Owner);
+				if (!MapUsage || !MapUsage->bUsed || Owner == Pair.Key) {
+					bAllMapsUsed = false;
+					break;
+				}
+				const FPjcAssetUsage* Step = MapUsage;
+				for (int32 NumSteps = 0; Step && !Step->Parent.IsNone() && NumSteps < 1024; ++NumSteps) {
+					if (Step->Parent == Pair.Key) {
+						bAllMapsUsed = false;
+						break;
+					}
+					Step = Usage.Find(Step->Parent);
+				}
+				if (!bAllMapsUsed) break;
+				Map = Map.IsNone() || Owner.LexicalLess(Map) ? Owner : Map;
+			}
+			if (!bAllMapsUsed || Map.IsNone()) continue;
+
+			AssetUsage.Reason = EPjcUsageReason::Dependency;
+			AssetUsage.Parent = Map;
+			AssetUsage.Detail = ActorFiles[0].ToString();
+		}
+	}
 
 	// dependencies come per package, map them back to scanned assets so used + unused = all. Redirectors keep their
 	// usage (chains go through them), but are neither used nor unused assets
@@ -3257,6 +3324,32 @@ bool UPjcSubsystem::FolderIsEngineGenerated(const FString& InPath) {
 	return EngineGeneratedPaths.Contains(InPath);
 }
 
+FName UPjcSubsystem::GetExternalOwner(const FName External) {
+	FString Path = External.ToString();
+	for (const auto& Folder : {PjcShim::GetExternalActorsFolderName(), PjcShim::GetExternalObjectsFolderName()}) {
+		const FString Segment = TEXT("/") + Folder + TEXT("/");
+		const int32 At = Folder.IsEmpty() ? INDEX_NONE : Path.Find(Segment, ESearchCase::CaseSensitive);
+		if (At == INDEX_NONE) continue;
+
+		Path = Path.Left(At) + TEXT("/") + Path.Mid(At + Segment.Len());
+		break;
+	}
+
+	// the file sits a few hashed folders below the path of its map: the longest part that is a package
+	IAssetRegistry& Registry = GetModuleAssetRegistry().Get();
+	TArray<FAssetData> Assets;
+	for (int32 Step = 0; Step < 4; ++Step) {
+		int32 Slash = INDEX_NONE;
+		if (!Path.FindLastChar(TEXT('/'), Slash) || Slash <= 0) break;
+
+		Path = Path.Left(Slash);
+		Assets.Reset();
+		Registry.GetAssetsByPackageName(FName {*Path}, Assets);
+		if (Assets.Num() > 0) return FName {*Path};
+	}
+	return NAME_None;
+}
+
 bool UPjcSubsystem::FolderIsExternal(const FString& InPath) {
 	// World Partition external actors/objects live directly under any content root: /Game/__ExternalActors__, /MyPlugin/__ExternalObjects__
 	for (const auto& FolderName : {PjcShim::GetExternalActorsFolderName(), PjcShim::GetExternalObjectsFolderName()}) {
@@ -3715,8 +3808,11 @@ int32 UPjcSubsystem::DeleteAssetsReferencedByFolderLabels(const TArray<FAssetDat
 	return NumDeleted;
 }
 
-void UPjcSubsystem::GetExternalActorsDependencies(TSet<FName>& OutPackages) {
+void UPjcSubsystem::GetExternalActorsDependencies(TSet<FName>& OutPackages, TMap<FName, TArray<FName>>* OutActorFiles) {
 	OutPackages.Reset();
+	if (OutActorFiles) {
+		OutActorFiles->Reset();
+	}
 
 #if ENGINE_MAJOR_VERSION < 5
 	// UE4 asset registry does not read one file per actor packages (levels with external actors, 4.26+), so assets
@@ -3739,6 +3835,9 @@ void UPjcSubsystem::GetExternalActorsDependencies(TSet<FName>& OutPackages) {
 				for (const FObjectImport& Import : LoadedLinker->ImportMap) {
 					if (Import.OuterIndex.IsNull() && Import.ClassName == NAME_Package) {
 						OutPackages.Add(Import.ObjectName);
+						if (OutActorFiles) {
+							OutActorFiles->FindOrAdd(Import.ObjectName).AddUnique(FName {*PackageName});
+						}
 					}
 				}
 			};

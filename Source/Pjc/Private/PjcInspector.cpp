@@ -18,29 +18,7 @@ namespace
 
 	// The map an actor or object file belongs to: '/Game/__ExternalActors__/Maps/Main/A/BC/Hash' is of '/Game/Maps/Main'
 	FName PjcInspectorFindOwner(const FName External) {
-		FString Path = External.ToString();
-		for (const auto& Folder : {PjcShim::GetExternalActorsFolderName(), PjcShim::GetExternalObjectsFolderName()}) {
-			const FString Segment = TEXT("/") + Folder + TEXT("/");
-			const int32 At = Folder.IsEmpty() ? INDEX_NONE : Path.Find(Segment, ESearchCase::CaseSensitive);
-			if (At == INDEX_NONE) continue;
-
-			Path = Path.Left(At) + TEXT("/") + Path.Mid(At + Segment.Len());
-			break;
-		}
-
-		// the file sits a few hashed folders below the path of its map: the longest part that is a package
-		IAssetRegistry& Registry = UPjcSubsystem::GetModuleAssetRegistry().Get();
-		TArray<FAssetData> Assets;
-		for (int32 Step = 0; Step < 4; ++Step) {
-			int32 Slash = INDEX_NONE;
-			if (!Path.FindLastChar(TEXT('/'), Slash) || Slash <= 0) break;
-
-			Path = Path.Left(Slash);
-			Assets.Reset();
-			Registry.GetAssetsByPackageName(FName {*Path}, Assets);
-			if (Assets.Num() > 0) return FName {*Path};
-		}
-		return NAME_None;
+		return UPjcSubsystem::GetExternalOwner(External);
 	}
 
 	FName PjcInspectorOwnerOf(const FName External, FPjcInspectorCache* Cache) {

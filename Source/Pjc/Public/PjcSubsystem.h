@@ -442,6 +442,9 @@ class UPjcSubsystem final : public UEditorSubsystem
 	static bool FolderIsExcluded(const FString& InPath);
 	static bool FolderIsEngineGenerated(const FString& InPath);
 	static bool FolderIsExternal(const FString& InPath);
+	// The map an actor or object file belongs to ('/Game/__ExternalActors__/Maps/Main/A/BC/Hash' is of '/Game/Maps/Main'),
+	// None when that map does not exist
+	static FName GetExternalOwner(const FName External);
 	static void GetSourceAndConfigFiles(TSet<FString>& Files);
 	static void GetAssetsDependencies(TSet<FAssetData>& Assets, const TSet<FName>& PackagesNotFollowed = {});
 	// Used labels with "Label Assets In My Directory", those whose cook rule packages their folder, and assets they
@@ -520,7 +523,7 @@ class UPjcSubsystem final : public UEditorSubsystem
 	// Exclusion rule that matches the asset (excluded classes match exactly and must be loaded), false when none does
 	static bool GetExclusion(const FAssetData& Asset, FPjcExclusion& OutExclusion);
 	static FString GetEngineReferencedDetail(const FAssetData& Asset);
-	static void GetExternalActorsDependencies(TSet<FName>& OutPackages);
+	static void GetExternalActorsDependencies(TSet<FName>& OutPackages, TMap<FName, TArray<FName>>* OutActorFiles = nullptr);
 	static bool BucketPrepare(const TArray<FAssetData>& Bucket, TArray<UObject*>& LoadedAssets);
 	static int32 BucketDelete(const TArray<UObject*>& LoadedAssets);
 };
