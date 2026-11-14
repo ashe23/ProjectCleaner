@@ -549,14 +549,27 @@ void SPjcTabUnused::Construct(const FArguments& InArgs) {
 			})
 		]
 		[
-			SNew(SSplitter).PhysicalSplitterHandleSize(3.0f)
-			+ SSplitter::Slot().Value(0.46f)
+			SNew(SVerticalBox)
+			// the lists as tabs over both panes (user, 2026-11-14): the tree and the list show the list they pick, and the two
+			// toolbars under them line up
+			+ SVerticalBox::Slot().AutoHeight()
 			[
-				MakeFolderPane()
+				MakeTabsRow()
 			]
-			+ SSplitter::Slot().Value(0.54f)
+			+ SVerticalBox::Slot().FillHeight(1.0f)
 			[
-				MakeAssetPane()
+				SNew(SSplitter)
+				.Style(&FPjcStyles::Get().GetWidgetStyle<FSplitterStyle>("ProjectCleaner.Splitter"))
+				.PhysicalSplitterHandleSize(12.0f)
+				.HitDetectionSplitterHandleSize(12.0f)
+				+ SSplitter::Slot().Value(0.46f)
+				[
+					MakeFolderPane()
+				]
+				+ SSplitter::Slot().Value(0.54f)
+				[
+					MakeAssetPane()
+				]
 			]
 		]
 	];
@@ -636,10 +649,52 @@ void SPjcTabUnused::RebuildTree() {
 	}
 }
 
+TSharedRef<SWidget> SPjcTabUnused::MakeTabsRow() {
+	// clang-format off
+	return SNew(SVerticalBox)
+		+ SVerticalBox::Slot().AutoHeight()
+		[
+			SNew(SBox).HeightOverride(36.0f)
+			[
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot().AutoWidth()
+				[
+					MakeSetSwitch()
+				]
+				// the folder and what its list holds
+				+ SHorizontalBox::Slot().FillWidth(1.0f).HAlign(HAlign_Right).VAlign(VAlign_Center).Padding(FMargin {16.0f, 0.0f, 6.0f, 0.0f})
+				[
+					SNew(SBox).Clipping(EWidgetClipping::ClipToBounds)
+					[
+						SNew(SHorizontalBox)
+						+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+						[
+							SNew(STextBlock).Text(this, &SPjcTabUnused::GetWhereText).Font(FPjcStyles::GetFont("Bold", 9))
+						]
+						+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
+						[
+							SNew(STextBlock).Text_Lambda([this]() { return FText::FromString(ListSummary); }).ColorAndOpacity(FSlateColor::UseSubduedForeground())
+						]
+					]
+				]
+			]
+		]
+		+ SVerticalBox::Slot().AutoHeight()
+		[
+			SNew(SBox).HeightOverride(1.0f)
+			[
+				SNew(SImage).Image(FCoreStyle::Get().GetBrush("WhiteBrush")).ColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.Line"))
+			]
+		];
+	// clang-format on
+}
+
 TSharedRef<SWidget> SPjcTabUnused::MakeSetSwitch() {
-	// tabs: text with a line under the open one, so they do not look like the action buttons
+	// tabs (user, 2026-11-14): the name and its count in a small pill, a line under the open one, both in the list's color
 	const TSharedRef<SHorizontalBox> Switch = SNew(SHorizontalBox);
-	const auto AddSet = [this, &Switch](const EPjcAssetSet Each, const FString& ToolTip) {
+	const auto AddSet = [this, &Switch](const EPjcAssetSet Each, const FName ColorName, const FName QuietName, const FString& ToolTip) {
+		const FLinearColor Color = PjcWidgets::GetColor(ColorName);
+		const FLinearColor Quiet = PjcWidgets::GetColor(QuietName);
 		// clang-format off
 		Switch->AddSlot().AutoWidth().Padding(FMargin {0.0f, 0.0f, 2.0f, 0.0f})
 		[
@@ -648,7 +703,8 @@ TSharedRef<SWidget> SPjcTabUnused::MakeSetSwitch() {
 			.ForegroundColor(FSlateColor::UseForeground())
 #endif
 			.ButtonStyle(&PjcShim::GetStyle().GetWidgetStyle<FButtonStyle>(TEXT("NoBorder")))
-			.ContentPadding(FMargin {10.0f, 4.0f, 10.0f, 0.0f})
+			.ContentPadding(FMargin {10.0f, 0.0f})
+			.VAlign(VAlign_Fill)
 			.ToolTip(PjcWidgets::MakeToolTip(PjcWidgets::GetSetLabel(Each), ToolTip))
 			.OnClicked_Lambda([this, Each]() {
 				ShowSet(Each);
@@ -656,45 +712,70 @@ TSharedRef<SWidget> SPjcTabUnused::MakeSetSwitch() {
 			})
 			[
 				SNew(SVerticalBox)
-				+ SVerticalBox::Slot().AutoHeight()
+				+ SVerticalBox::Slot().FillHeight(1.0f).VAlign(VAlign_Center)
 				[
 					SNew(SHorizontalBox)
 					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 					[
 						SNew(STextBlock)
 						.Text(FText::FromString(PjcWidgets::GetSetLabel(Each)))
+						.Font_Lambda([this, Each]() { return FPjcStyles::GetFont(Set == Each ? TEXT("Bold") : TEXT("Regular"), 9); })
 						.ColorAndOpacity_Lambda([this, Each]() { return Set == Each ? FSlateColor {FLinearColor::White} : FSlateColor::UseSubduedForeground(); })
 					]
-					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {7.0f, 0.0f, 0.0f, 0.0f})
 					[
-						SNew(STextBlock)
-						.Text_Lambda([this, Each]() { return FText::FromString(PjcFormat::Count(SetCounts.FindRef(Each))); })
-						.Font(PjcWidgets::GetFontMono(8))
-						.ColorAndOpacity_Lambda([this, Each]() {
-							const bool bReviewWaits = Each == EPjcAssetSet::Review && SetCounts.FindRef(Each) > 0;
-							return bReviewWaits ? FSlateColor {PjcWidgets::GetColor("ProjectCleaner.Color.Review")} : FSlateColor::UseSubduedForeground();
+						SNew(SBorder)
+						.BorderImage(FPjcStyles::Get().GetBrush("ProjectCleaner.Pill"))
+						.BorderBackgroundColor_Lambda([this, Each, Quiet]() {
+							return FSlateColor {Set == Each ? Quiet : PjcWidgets::GetColor("ProjectCleaner.Color.Track")};
 						})
+						.Padding(FMargin {6.0f, 1.0f})
+						[
+							SNew(STextBlock)
+							.Text_Lambda([this, Each]() { return FText::FromString(PjcFormat::Count(SetCounts.FindRef(Each))); })
+							.Font(PjcWidgets::GetFontMono(8))
+							.ColorAndOpacity_Lambda([this, Each, Color]() {
+								// a list with assets to review stays yellow when it is not open
+								const bool bReviewWaits = Each == EPjcAssetSet::Review && SetCounts.FindRef(Each) > 0;
+								return Set == Each || bReviewWaits ? FSlateColor {Color} : FSlateColor::UseSubduedForeground();
+							})
+						]
 					]
 				]
-				+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {0.0f, 5.0f, 0.0f, 0.0f})
+				+ SVerticalBox::Slot().AutoHeight()
 				[
 					SNew(SBox).HeightOverride(2.0f)
 					[
 						SNew(SImage)
 						.Image(FCoreStyle::Get().GetBrush("WhiteBrush"))
-						.ColorAndOpacity_Lambda([this, Each]() {
-							return FSlateColor {Set == Each ? PjcWidgets::GetColor("ProjectCleaner.Color.Accent") : FLinearColor::Transparent};
-						})
+						.ColorAndOpacity_Lambda([this, Each, Color]() { return FSlateColor {Set == Each ? Color : FLinearColor::Transparent}; })
 					]
 				]
 			]
 		];
 		// clang-format on
 	};
-	AddSet(EPjcAssetSet::Unused, TEXT("Nothing uses them. Clean project deletes them."));
-	AddSet(EPjcAssetSet::Excluded, TEXT("Assets your exclusion rules keep: never deleted. Rules are in Scan settings > Exclusions."));
-	AddSet(EPjcAssetSet::Used, TEXT("Used assets, by why they are used: the asset their chain starts at. Editor only assets are in this list too."));
-	AddSet(EPjcAssetSet::Review, TEXT("Assets the scan is not sure about. Clean project keeps them; delete or keep each."));
+	AddSet(
+		EPjcAssetSet::Unused, "ProjectCleaner.Color.Red", "ProjectCleaner.Color.DangerQuiet", TEXT("Nothing uses them. Clean project deletes them.")
+	);
+	AddSet(
+		EPjcAssetSet::Excluded,
+		"ProjectCleaner.Color.Muted",
+		"ProjectCleaner.Color.Track",
+		TEXT("Assets your exclusion rules keep: never deleted. Rules are in Scan settings > Exclusions.")
+	);
+	AddSet(
+		EPjcAssetSet::Used,
+		"ProjectCleaner.Color.Ok",
+		"ProjectCleaner.Color.UsedQuiet",
+		TEXT("Used assets, by why they are used: the asset their chain starts at. Editor only assets are in this list too.")
+	);
+	AddSet(
+		EPjcAssetSet::Review,
+		"ProjectCleaner.Color.Review",
+		"ProjectCleaner.Color.ReviewQuiet",
+		TEXT("Assets the scan is not sure about. Clean project keeps them; delete or keep each.")
+	);
 	return Switch;
 }
 
@@ -1137,6 +1218,15 @@ TSharedRef<SWidget> SPjcTabUnused::MakeViewMenu() {
 		SaveViewState();
 	});
 	Menu.AddSeparator();
+	// what a folder lists (user, 2026-11-14: moved here from the list)
+	PjcWidgets::AddMenuToggle(
+		Menu, TEXT("Include subfolders"), TEXT("The list shows the assets of the subfolders of the folder too"), &bSubfolders, [this]() {
+			bSubfolders = !bSubfolders;
+			SaveViewState();
+			RefreshAssets();
+		}
+	);
+	Menu.AddSeparator();
 	Menu.AddMenuEntry(
 		FText::FromString(TEXT("Expand all")),
 		FText::GetEmpty(),
@@ -1147,14 +1237,6 @@ TSharedRef<SWidget> SPjcTabUnused::MakeViewMenu() {
 			}
 		})}
 	);
-	PjcWidgets::AddMenuEntry(
-		Menu, EPjcMenuIcon::Reset, TEXT("Reset columns"), TEXT("Puts the asset list columns back in their first order"), [this]() {
-			ColumnOrder = GetDefaultColumns();
-			SaveViewState();
-			RebuildHeader();
-		}
-	);
-	Menu.AddSeparator();
 	Menu.AddMenuEntry(
 		FText::FromString(TEXT("Collapse all")),
 		FText::GetEmpty(),
@@ -1193,51 +1275,10 @@ TSharedRef<SWidget> SPjcTabUnused::MakeAssetPane() {
 		.Padding(0.0f)
 		[
 			SNew(SVerticalBox)
-			// the four lists as tabs, then what narrows the list: subfolders, search. Wrapped to a second line when the pane is
-			// narrow, they never draw over each other
-			+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {8.0f, 4.0f, 8.0f, 0.0f})
+			// one height with the folder pane's toolbar, so they line up under the tabs
+			+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {8.0f, 6.0f})
 			[
-				SNew(SWrapBox).UseAllottedSize(true).InnerSlotPadding(FVector2D {16.0f, 4.0f})
-				+ SWrapBox::Slot().VAlign(VAlign_Bottom)
-				[
-					MakeSetSwitch()
-				]
-				+ SWrapBox::Slot().VAlign(VAlign_Center)
-				[
-					SNew(SHorizontalBox)
-					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 8.0f, 0.0f})
-					[
-						SNew(SCheckBox)
-						.Style(&PjcShim::GetCheckBoxStyle())
-						.ToolTipText(FText::FromString(TEXT("Lists the assets of subfolders too")))
-						.IsChecked_Lambda([this]() { return bSubfolders ? ECheckBoxState::Checked : ECheckBoxState::Unchecked; })
-						.OnCheckStateChanged_Lambda([this](const ECheckBoxState State) {
-							bSubfolders = State == ECheckBoxState::Checked;
-							SaveViewState();
-							RefreshAssets();
-						})
-						[
-							SNew(STextBlock).Text(FText::FromString(TEXT("Subfolders")))
-						]
-					]
-					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
-					[
-						SNew(SBox).WidthOverride(170.0f)
-						[
-							SNew(SSearchBox)
-							.Style(&PjcShim::GetSearchBoxStyle())
-							.HintText_Lambda([this]() { return FText::FromString(TEXT("Search assets ") + PjcWidgets::GetSetWord(Set)); })
-							.OnTextChanged(this, &SPjcTabUnused::OnAssetSearchChanged)
-						]
-					]
-				]
-			]
-			+ SVerticalBox::Slot().AutoHeight()
-			[
-				SNew(SBox).HeightOverride(1.0f)
-				[
-					SNew(SImage).Image(FCoreStyle::Get().GetBrush("WhiteBrush")).ColorAndOpacity(FLinearColor {0.0f, 0.0f, 0.0f, 0.6f})
-				]
+				MakeToolbar()
 			]
 			+ SVerticalBox::Slot().FillHeight(1.0f)
 			[
@@ -1264,11 +1305,6 @@ TSharedRef<SWidget> SPjcTabUnused::MakeAssetPane() {
 				+ SHorizontalBox::Slot().FillWidth(1.0f)
 				[
 					SNew(SVerticalBox)
-					// where the list is, the selection and its actions
-					+ SVerticalBox::Slot().AutoHeight()
-					[
-						MakeFooter()
-					]
 					+ SVerticalBox::Slot().FillHeight(1.0f)
 					[
 						SNew(SOverlay)
@@ -1627,7 +1663,7 @@ void SPjcTabUnused::OnReasonChipClicked(const FString& Key) {
 }
 
 FText SPjcTabUnused::GetWhereText() const {
-	return FText::FromString(SelectedFolder.Mid(1));
+	return FText::FromString(SelectedFolder.Mid(1) + (bSubfolders ? TEXT("") : TEXT(" (this folder only)")));
 }
 
 FText SPjcTabUnused::GetEmptyText() const {
@@ -1738,152 +1774,210 @@ void SPjcTabUnused::OnAssetSelectionChanged(FAssetRowPtr Row, ESelectInfo::Type 
 	SizeMap->SetSelected(Indices);
 }
 
-TSharedRef<SWidget> SPjcTabUnused::MakeFooter() {
+TSharedRef<SWidget> SPjcTabUnused::MakeToolbar() {
 	const auto HasSelection = [this]() {
 		return ListView.IsValid() && ListView->GetNumItemsSelected() > 0;
 	};
+	// the actions of the open list are always there, greyed until something is selected (user, 2026-11-14: on the left)
 	const auto ShownFor = [this](const bool bUnused, const bool bExcluded, const bool bReview) {
 		return [this, bUnused, bExcluded, bReview]() {
-			const bool bUnusedShown = Set == EPjcAssetSet::Unused && bUnused;
-			const bool bOtherShown = (Set == EPjcAssetSet::Excluded && bExcluded) || (Set == EPjcAssetSet::Review && bReview);
-			// actions are there only when there is something to act on
-			const bool bShown = (bUnusedShown || bOtherShown) && ListView.IsValid() && ListView->GetNumItemsSelected() > 0;
+			const bool bShown = (Set == EPjcAssetSet::Unused && bUnused) || (Set == EPjcAssetSet::Excluded && bExcluded)
+				|| (Set == EPjcAssetSet::Review && bReview);
 			return bShown ? EVisibility::Visible : EVisibility::Collapsed;
 		};
 	};
-
-	// clang-format off
-	const auto WithSelection = [HasSelection]() {
-		return HasSelection() ? EVisibility::Visible : EVisibility::Collapsed;
-	};
-	return SNew(SBorder).BorderImage(PjcShim::GetBrush(TEXT("ToolPanel.DarkGroupBorder"))).Padding(FMargin {10.0f, 4.0f})
-		[
-			SNew(SHorizontalBox)
-			// where the list is and how much it holds
-			+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
+	// an action: its icon (as in the menus) and its name
+	const auto Label = [](const FName Brush, const TAttribute<FText>& Text, const FSlateColor& TextColor) -> TSharedRef<SWidget> {
+		// clang-format off
+		return SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 6.0f, 0.0f})
 			[
-				SNew(SBox).Clipping(EWidgetClipping::ClipToBounds).MinDesiredHeight(24.0f).VAlign(VAlign_Center)
+				SNew(SBox).WidthOverride(14.0f).HeightOverride(14.0f)
 				[
-					SNew(SHorizontalBox)
-					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
-					[
-						SNew(STextBlock).Text(this, &SPjcTabUnused::GetWhereText).Font(FPjcStyles::GetFont("Bold", 9))
-					]
-					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
-					[
-						SNew(STextBlock).Text_Lambda([this]() { return FText::FromString(ListSummary); }).ColorAndOpacity(FSlateColor::UseSubduedForeground())
-					]
+					SNew(SImage).Image(FPjcStyles::Get().GetBrush(Brush))
 				]
-			]
-			// the selection, or what selecting is for
-			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {12.0f, 0.0f, 0.0f, 0.0f})
-			[
-				SNew(STextBlock)
-				.Text(this, &SPjcTabUnused::GetSelectionText)
-				.ColorAndOpacity_Lambda([HasSelection]() { return HasSelection() ? FSlateColor::UseForeground() : FSlateColor::UseSubduedForeground(); })
 			]
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 			[
-				SNew(STextBlock)
-				.Text(this, &SPjcTabUnused::GetSelectionGroupText)
-				.ToolTipText(FText::FromString(TEXT("Unused assets that reference the selection: deleted with it")))
-				.ColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.Yellow"))
-			]
-			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
+				SNew(STextBlock).Text(Text).ColorAndOpacity(TextColor)
+			];
+		// clang-format on
+	};
+	const auto Static = [](const TCHAR* Text) {
+		return TAttribute<FText> {FText::FromString(Text)};
+	};
+
+	// clang-format off
+	// the search and the actions wrap to a second line when the pane is narrow; View stays at the right
+	return SNew(SBox).MinDesiredHeight(28.0f)
+		[
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
 			[
-				SNew(SButton)
-#if ENGINE_MAJOR_VERSION < 5
-				.ButtonStyle(&PjcShim::GetButtonStyle427(true))
-				.ForegroundColor(FSlateColor::UseForeground())
-#endif
-				.ButtonColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.UnusedFill"))
-				.ContentPadding(FMargin {10.0f, 2.0f})
-				.ToolTipText(FText::FromString(TEXT("Deletes the selection with the unused assets that reference it (Delete)")))
-				.Visibility_Lambda(ShownFor(true, false, true))
-				.IsEnabled_Lambda(HasSelection)
-				.OnClicked_Lambda([this]() {
-					PjcActions::DeleteWithGroup(GetSelectedPackages());
-					return FReply::Handled();
-				})
+				SNew(SWrapBox).UseAllottedSize(true).InnerSlotPadding(FVector2D {6.0f, 4.0f})
+				+ SWrapBox::Slot().VAlign(VAlign_Center)
 				[
-					SNew(STextBlock).Text(FText::FromString(TEXT("Delete\u2026"))).ColorAndOpacity(FLinearColor::White)
+					SNew(SBox).WidthOverride(240.0f)
+					[
+						SNew(SSearchBox)
+						.Style(&PjcShim::GetSearchBoxStyle())
+						.HintText_Lambda([this]() { return FText::FromString(Set == EPjcAssetSet::Review ? FString {TEXT("Search assets to review")} : TEXT("Search ") + PjcWidgets::GetSetWord(Set) + TEXT(" assets")); })
+						.OnTextChanged(this, &SPjcTabUnused::OnAssetSearchChanged)
+					]
+				]
+				+ SWrapBox::Slot().VAlign(VAlign_Center).Padding(FMargin {2.0f, 0.0f})
+				[
+					SNew(SBox).WidthOverride(1.0f).HeightOverride(22.0f)
+					[
+						SNew(SImage).Image(FCoreStyle::Get().GetBrush("WhiteBrush")).ColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.Line"))
+					]
+				]
+				+ SWrapBox::Slot().VAlign(VAlign_Center)
+				[
+					SNew(SButton)
+					.ButtonStyle(&FPjcStyles::Get().GetWidgetStyle<FButtonStyle>("ProjectCleaner.Button.DangerQuiet"))
+#if ENGINE_MAJOR_VERSION < 5
+					.ForegroundColor(FSlateColor::UseForeground())
+#endif
+					.ContentPadding(FMargin {8.0f, 1.0f, 10.0f, 1.0f})
+					.ToolTipText(FText::FromString(TEXT("Deletes the selection with the unused assets that reference it (Delete)")))
+					.Visibility_Lambda(ShownFor(true, false, true))
+					.IsEnabled_Lambda(HasSelection)
+					.OnClicked_Lambda([this]() {
+						PjcActions::DeleteWithGroup(GetSelectedPackages());
+						return FReply::Handled();
+					})
+					[
+						Label("ProjectCleaner.Menu.Delete", Static(TEXT("Delete\u2026")), PjcWidgets::GetColor("ProjectCleaner.Color.DangerText"))
+					]
+				]
+				+ SWrapBox::Slot().VAlign(VAlign_Center)
+				[
+					SNew(SComboButton)
+					.ComboButtonStyle(&PjcShim::GetComboButtonStyle())
+#if ENGINE_MAJOR_VERSION < 5
+					.ForegroundColor(FSlateColor::UseForeground())
+#endif
+					.ToolTipText(FText::FromString(TEXT("Keeps the selection, its folder or its class from cleanup: adds exclusions")))
+					.Visibility_Lambda(ShownFor(true, false, true))
+					.IsEnabled_Lambda(HasSelection)
+					.OnGetMenuContent(this, &SPjcTabUnused::MakeExcludeMenu)
+					.ButtonContent()
+					[
+						Label(
+							"ProjectCleaner.Menu.Exclude",
+							TAttribute<FText>::Create(TAttribute<FText>::FGetter::CreateLambda([this]() {
+								return FText::FromString(Set == EPjcAssetSet::Review ? TEXT("Keep") : TEXT("Exclude"));
+							})),
+							FSlateColor::UseForeground()
+						)
+					]
+				]
+				+ SWrapBox::Slot().VAlign(VAlign_Center)
+				[
+					SNew(SButton)
+#if ENGINE_MAJOR_VERSION < 5
+					.ButtonStyle(&PjcShim::GetButtonStyle427(false))
+					.ForegroundColor(FSlateColor::UseForeground())
+#endif
+					.ContentPadding(FMargin {8.0f, 1.0f, 10.0f, 1.0f})
+					.ToolTipText(FText::FromString(TEXT("Removes the rules that keep the selection; the next scan shows what they are without them")))
+					.Visibility_Lambda(ShownFor(false, true, false))
+					.IsEnabled_Lambda(HasSelection)
+					.OnClicked_Lambda([this]() {
+						RemoveSelectedExclusions();
+						return FReply::Handled();
+					})
+					[
+						Label("ProjectCleaner.Menu.Include", Static(TEXT("Remove exclusion")), FSlateColor::UseForeground())
+					]
+				]
+				+ SWrapBox::Slot().VAlign(VAlign_Center)
+				[
+					SNew(SButton)
+#if ENGINE_MAJOR_VERSION < 5
+					.ButtonStyle(&PjcShim::GetButtonStyle427(false))
+					.ForegroundColor(FSlateColor::UseForeground())
+#endif
+					.ContentPadding(FMargin {8.0f, 1.0f, 10.0f, 1.0f})
+					.ToolTipText(FText::FromString(TEXT("Shows why it is in the list in the Inspector")))
+					.IsEnabled_Lambda([this]() { return ListView.IsValid() && ListView->GetNumItemsSelected() == 1; })
+					.OnClicked_Lambda([this]() {
+						InspectSelected();
+						return FReply::Handled();
+					})
+					[
+						Label("ProjectCleaner.Menu.Inspect", Static(TEXT("Inspect")), FSlateColor::UseForeground())
+					]
+				]
+				+ SWrapBox::Slot().VAlign(VAlign_Center)
+				[
+					SNew(SButton)
+#if ENGINE_MAJOR_VERSION < 5
+					.ButtonStyle(&PjcShim::GetButtonStyle427(false))
+					.ForegroundColor(FSlateColor::UseForeground())
+#endif
+					.ContentPadding(FMargin {8.0f, 1.0f, 10.0f, 1.0f})
+					.ToolTipText(FText::FromString(TEXT("Shows the selection in the Content Browser")))
+					.IsEnabled_Lambda(HasSelection)
+					.OnClicked_Lambda([this]() {
+						BrowseSelected();
+						return FReply::Handled();
+					})
+					[
+						Label("ProjectCleaner.Menu.Browse", Static(TEXT("Browse")), FSlateColor::UseForeground())
+					]
+				]
+				// the selection, or what selecting is for
+				+ SWrapBox::Slot().VAlign(VAlign_Center).Padding(FMargin {4.0f, 0.0f, 0.0f, 0.0f})
+				[
+					SNew(SBox)
+					[
+						SNew(SHorizontalBox)
+						+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+						[
+							SNew(STextBlock)
+							.Text(this, &SPjcTabUnused::GetSelectionText)
+							.ColorAndOpacity_Lambda([HasSelection]() { return HasSelection() ? FSlateColor::UseForeground() : FSlateColor::UseSubduedForeground(); })
+						]
+						+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+						[
+							SNew(STextBlock)
+							.Text(this, &SPjcTabUnused::GetSelectionGroupText)
+							.ToolTipText(FText::FromString(TEXT("Unused assets that reference the selection: deleted with it")))
+							.ColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.Yellow"))
+						]
+					]
 				]
 			]
-			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Top).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
 			[
 				SNew(SComboButton)
 				.ComboButtonStyle(&PjcShim::GetComboButtonStyle())
 #if ENGINE_MAJOR_VERSION < 5
 				.ForegroundColor(FSlateColor::UseForeground())
 #endif
-				.ToolTipText(FText::FromString(TEXT("Keeps the selection, its folder or its class from cleanup: adds exclusions")))
-				.Visibility_Lambda(ShownFor(true, false, true))
-				.IsEnabled_Lambda(HasSelection)
-				.OnGetMenuContent(this, &SPjcTabUnused::MakeExcludeMenu)
+				.ToolTipText(FText::FromString(TEXT("View options of the list")))
+				.OnGetMenuContent(this, &SPjcTabUnused::MakeListViewMenu)
 				.ButtonContent()
 				[
-					SNew(STextBlock).Text_Lambda([this]() { return FText::FromString(Set == EPjcAssetSet::Review ? TEXT("Keep") : TEXT("Exclude")); })
-				]
-			]
-			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
-			[
-				SNew(SButton)
-#if ENGINE_MAJOR_VERSION < 5
-				.ButtonStyle(&PjcShim::GetButtonStyle427(false))
-				.ForegroundColor(FSlateColor::UseForeground())
-#endif
-				.ContentPadding(FMargin {10.0f, 2.0f})
-				.ToolTipText(FText::FromString(TEXT("Removes the rules that keep the selection; the next scan shows what they are without them")))
-				.Visibility_Lambda(ShownFor(false, true, false))
-				.IsEnabled_Lambda(HasSelection)
-				.OnClicked_Lambda([this]() {
-					RemoveSelectedExclusions();
-					return FReply::Handled();
-				})
-				[
-					SNew(STextBlock).Text(FText::FromString(TEXT("Remove exclusion")))
-				]
-			]
-			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
-			[
-				SNew(SButton)
-#if ENGINE_MAJOR_VERSION < 5
-				.ButtonStyle(&PjcShim::GetButtonStyle427(false))
-				.ForegroundColor(FSlateColor::UseForeground())
-#endif
-				.ContentPadding(FMargin {10.0f, 2.0f})
-				.ToolTipText(FText::FromString(TEXT("Shows why it is in the list in the Inspector")))
-				.Visibility_Lambda(WithSelection)
-				.IsEnabled_Lambda([this]() { return ListView.IsValid() && ListView->GetNumItemsSelected() == 1; })
-				.OnClicked_Lambda([this]() {
-					InspectSelected();
-					return FReply::Handled();
-				})
-				[
-					SNew(STextBlock).Text(FText::FromString(TEXT("Inspect")))
-				]
-			]
-			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
-			[
-				SNew(SButton)
-#if ENGINE_MAJOR_VERSION < 5
-				.ButtonStyle(&PjcShim::GetButtonStyle427(false))
-				.ForegroundColor(FSlateColor::UseForeground())
-#endif
-				.ContentPadding(FMargin {10.0f, 2.0f})
-				.ToolTipText(FText::FromString(TEXT("Shows the selection in the Content Browser")))
-				.Visibility_Lambda(WithSelection)
-				.IsEnabled_Lambda(HasSelection)
-				.OnClicked_Lambda([this]() {
-					BrowseSelected();
-					return FReply::Handled();
-				})
-				[
-					SNew(STextBlock).Text(FText::FromString(TEXT("Browse")))
+					SNew(STextBlock).Text(FText::FromString(TEXT("View")))
 				]
 			]
 		];
 	// clang-format on
+}
+
+TSharedRef<SWidget> SPjcTabUnused::MakeListViewMenu() {
+	FMenuBuilder Menu {true, nullptr};
+	PjcWidgets::AddMenuEntry(
+		Menu, EPjcMenuIcon::Reset, TEXT("Reset columns"), TEXT("Puts the asset list columns back in their first order"), [this]() {
+			ColumnOrder = GetDefaultColumns();
+			SaveViewState();
+			RebuildHeader();
+		}
+	);
+	return Menu.MakeWidget();
 }
 
 TSharedRef<SWidget> SPjcTabUnused::MakeExcludeMenu() {

@@ -247,6 +247,19 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create() {
 		.SetForegroundColor(ColorText));
 	// clang-format on
 
+	// pills (counts on tabs, filters): a white circle nine-sliced into a capsule, tinted where it is drawn
+	Style->Set("ProjectCleaner.Pill", new FSlateBoxBrush {Style->RootToContentDir(TEXT("Pill16"), TEXT(".png")), FMargin {0.5f}});
+	// splitters between panes: a gap with a thin line in its middle, blue while hovered or dragged. Both brushes are the same
+	// line: UE5 draws the normal brush in the highlight tint when hovered, UE 4.27 the highlight brush
+	const FString SplitterLine = Style->RootToContentDir(TEXT("SplitterLine"), TEXT(".png"));
+	const FVector2D LineSize {12.0f, 4.0f};
+	FSlateImageBrush LineNormal {SplitterLine, LineSize};
+	LineNormal.Tiling = ESlateBrushTileType::Vertical;
+	LineNormal.TintColor = FSlateColor {FLinearColor {FColor::FromHex(TEXT("#383838"))}};
+	FSlateImageBrush LineLit = LineNormal;
+	LineLit.TintColor = FSlateColor {FLinearColor {FColor::FromHex(TEXT("#0070E0"))}};
+	Style->Set("ProjectCleaner.Splitter", FSplitterStyle {}.SetHandleNormalBrush(LineNormal).SetHandleHighlightBrush(LineLit));
+
 	// search boxes: rounded, the lens of the icon set on the left, the same in every engine
 	FSearchBoxStyle SearchBox = FCoreStyle::Get().GetWidgetStyle<FSearchBoxStyle>("SearchBox");
 	FEditableTextBoxStyle SearchText = SearchBox.TextBoxStyle;

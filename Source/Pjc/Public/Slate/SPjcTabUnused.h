@@ -85,6 +85,8 @@ class SPjcTabUnused final : public SCompoundWidget
 
 	void OnScanFinished();
 	void RebuildTree();
+	// the lists as tabs over both panes, with the folder and what its list holds
+	TSharedRef<SWidget> MakeTabsRow();
 	TSharedRef<SWidget> MakeSetSwitch();
 	void MakeRowReason(const FPjcScanResult& Result, FPjcUnusedAssetRow& Row);
 
@@ -146,7 +148,9 @@ class SPjcTabUnused final : public SCompoundWidget
 	void InspectSelected() const;
 	void BrowseSelected() const;
 	void OnAssetSelectionChanged(FAssetRowPtr Row, ESelectInfo::Type SelectInfo);
-	TSharedRef<SWidget> MakeFooter();
+	// search, the actions on the selection, View
+	TSharedRef<SWidget> MakeToolbar();
+	TSharedRef<SWidget> MakeListViewMenu();
 	TSharedRef<SWidget> MakeExcludeMenu();
 	void AddExcludeEntries(FMenuBuilder& Menu);
 	FText GetSelectionText() const;
