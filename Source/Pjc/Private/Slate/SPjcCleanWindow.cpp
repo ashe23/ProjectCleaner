@@ -352,6 +352,7 @@ TSharedRef<SWidget> SPjcCleanWindow::MakeConfirm() {
 	else {
 		// clang-format off
 		const TSharedRef<SWidget> Backup = SNew(SCheckBox)
+			.Style(&PjcShim::GetCheckBoxStyle())
 			.IsChecked_Lambda([this]() { return bBackup ? ECheckBoxState::Checked : ECheckBoxState::Unchecked; })
 			.OnCheckStateChanged_Lambda([this](const ECheckBoxState State) { bBackup = State == ECheckBoxState::Checked; })
 			[

@@ -59,57 +59,104 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create() {
 	TSharedRef<FSlateStyleSet> Style = MakeShareable(new FSlateStyleSet(PjcConstants::ModulePjcStylesName));
 	Style->SetContentRoot(IPluginManager::Get().FindPlugin(PjcConstants::ModulePjcName.ToString())->GetBaseDir() / TEXT("Resources"));
 
-	// cmds icons big
-	Style->Set("ProjectCleaner.TabMain", new IMAGE_BRUSH(TEXT("IconBin40"), FVector2D {40.0f, 40.0f}));
+	// palette (proto/style): one set of colors for every engine. Surfaces, text and blue follow the UE5 editor theme, the
+	// status colors are the plugin's own. Asset types keep the engine's class colors.
+	const auto Color = [](const TCHAR* Value) {
+		return FLinearColor {FColor::FromHex(Value)};
+	};
+	const FLinearColor ColorText = Color(TEXT("#C0C0C0"));
+	const FLinearColor ColorMuted = Color(TEXT("#8A9099"));
+	const FLinearColor ColorLink = Color(TEXT("#4D9BFF"));
+	const FLinearColor ColorWarning = Color(TEXT("#FFCB77"));
+	const FLinearColor ColorDangerIcon = Color(TEXT("#FF6B70"));
+	const FLinearColor ColorUsed = Color(TEXT("#3F9B68"));
+	const FLinearColor ColorFolder = Color(TEXT("#C9A55A"));
+	// surfaces
+	Style->Set("ProjectCleaner.Color.Page", Color(TEXT("#151515")));
+	Style->Set("ProjectCleaner.Color.Panel", Color(TEXT("#242424")));
+	Style->Set("ProjectCleaner.Color.Header", Color(TEXT("#2F2F2F")));
+	Style->Set("ProjectCleaner.Color.Recess", Color(TEXT("#1A1A1A")));
+	Style->Set("ProjectCleaner.Color.Input", Color(TEXT("#0F0F0F")));
+	Style->Set("ProjectCleaner.Color.Hover", Color(TEXT("#383838")));
+	Style->Set("ProjectCleaner.Color.Line", Color(TEXT("#383838")));
+	Style->Set("ProjectCleaner.Color.Track", Color(TEXT("#383838")));
+	Style->Set("ProjectCleaner.Color.Marked", Color(TEXT("#1D2A3A")));
+	// text and interaction
+	Style->Set("ProjectCleaner.Color.Text", ColorText);
+	Style->Set("ProjectCleaner.Color.Strong", Color(TEXT("#FFFFFF")));
+	Style->Set("ProjectCleaner.Color.Muted", ColorMuted);
+	Style->Set("ProjectCleaner.Color.Gray", ColorMuted);
+	Style->Set("ProjectCleaner.Color.Accent", Color(TEXT("#0070E0")));
+	Style->Set("ProjectCleaner.Color.AccentHover", Color(TEXT("#0E86FF")));
+	Style->Set("ProjectCleaner.Color.Link", ColorLink);
+	// meaning
+	Style->Set("ProjectCleaner.Color.Ok", Color(TEXT("#6FCF7A")));
+	Style->Set("ProjectCleaner.Color.Yellow", ColorWarning);
+	Style->Set("ProjectCleaner.Color.Red", Color(TEXT("#FE6D73")));
+	Style->Set("ProjectCleaner.Color.Danger", Color(TEXT("#DA524E")));
+	Style->Set("ProjectCleaner.Color.DangerText", Color(TEXT("#FFB3B6")));
+	Style->Set("ProjectCleaner.Color.DangerIcon", ColorDangerIcon);
+	// asset status: used and shipped are one light green (user, 2026-11-14)
+	Style->Set("ProjectCleaner.Color.UsedFill", ColorUsed);
+	Style->Set("ProjectCleaner.Color.ShipFill", ColorUsed);
+	Style->Set("ProjectCleaner.Color.EditorFill", Color(TEXT("#3D6DB3")));
+	Style->Set("ProjectCleaner.Color.ReviewFill", Color(TEXT("#8F6F2A")));
+	Style->Set("ProjectCleaner.Color.Review", Color(TEXT("#E0B050")));
+	Style->Set("ProjectCleaner.Color.UnusedFill", Color(TEXT("#C4484D")));
+	Style->Set("ProjectCleaner.Color.ExcludedFill", Color(TEXT("#6B7480")));
+	Style->Set("ProjectCleaner.Color.KeepFill", Color(TEXT("#56606B")));
+	Style->Set("ProjectCleaner.Color.FolderTint", ColorFolder);
 
-	// cmds icons small
-	Style->Set("ProjectCleaner.TabMain.Small", new IMAGE_BRUSH(TEXT("IconBin20"), FVector2D {20.0f, 20.0f}));
-
-	// icons
-	Style->Set("ProjectCleaner.Icon.Bin16", new IMAGE_BRUSH(TEXT("IconBin16"), FVector2D {16.0f, 16.0f}));
-	Style->Set("ProjectCleaner.Icon.Warning32", new IMAGE_BRUSH(TEXT("IconWarning32"), FVector2D {32.0f, 32.0f}));
-	Style->Set("ProjectCleaner.Icon.PieChart16", new IMAGE_BRUSH(TEXT("IconPieChart16"), FVector2D {16.0f, 16.0f}));
-	Style->Set("ProjectCleaner.Icon.Graph16", new IMAGE_BRUSH(TEXT("IconGraph20"), FVector2D {16.0f, 16.0f}));
-	// 32 px images drawn at 16: sharp on high DPI screens
-	// Issues tab: the yellow warning icon (warnings, not errors), 2026-11-14
-	Style->Set("ProjectCleaner.Icon.Issues16", new IMAGE_BRUSH(TEXT("IconWarning32"), FVector2D {16.0f, 16.0f}));
-	Style->Set("ProjectCleaner.Icon.Help16", new IMAGE_BRUSH(TEXT("IconHelp32"), FVector2D {16.0f, 16.0f}));
-	// Scan and Clean project buttons, as in 2.0: 40 px images drawn at 20 (from a 128 px image UE5 draws them washed out)
-	Style->Set("ProjectCleaner.Icon.Scan20", new IMAGE_BRUSH(TEXT("IconRefresh40"), FVector2D {20.0f, 20.0f}));
-	Style->Set("ProjectCleaner.Icon.Clean20", new IMAGE_BRUSH(TEXT("IconBinRed40"), FVector2D {20.0f, 20.0f}));
-	// Tree and Size map of Assets: white, drawn in the button's text color
-	Style->Set("ProjectCleaner.Icon.Tree16", new IMAGE_BRUSH(TEXT("IconTree64"), FVector2D {16.0f, 16.0f}));
-	Style->Set("ProjectCleaner.Icon.SizeMap16", new IMAGE_BRUSH(TEXT("IconSizeMap64"), FVector2D {16.0f, 16.0f}));
-	// marks on circular links of the Inspector graph: white, tinted when drawn (sources: IconLoop.svg, IconPair.svg)
-	Style->Set("ProjectCleaner.Graph.Disc", new IMAGE_BRUSH(TEXT("IconDisc64"), FVector2D {16.0f, 16.0f}));
-	Style->Set("ProjectCleaner.Graph.Loop", new IMAGE_BRUSH(TEXT("IconLoop64"), FVector2D {16.0f, 16.0f}));
-	Style->Set("ProjectCleaner.Graph.Pair", new IMAGE_BRUSH(TEXT("IconPair64"), FVector2D {16.0f, 16.0f}));
-
-	// pallet colors
-	Style->Set("ProjectCleaner.Color.Yellow", FLinearColor {FColor::FromHex(TEXT("#FFCB77"))});
-	Style->Set("ProjectCleaner.Color.Red", FLinearColor {FColor::FromHex(TEXT("#FE6D73"))});
-	Style->Set("ProjectCleaner.Color.Gray", FLinearColor {FColor::FromHex(TEXT("#adb5bd"))});
-
-	// asset status: bar fills, text accents
-	// used and shipped: one light green (user, 2026-11-14)
-	Style->Set("ProjectCleaner.Color.UsedFill", FLinearColor {FColor::FromHex(TEXT("#3F9B68"))});
-	Style->Set("ProjectCleaner.Color.EditorFill", FLinearColor {FColor::FromHex(TEXT("#3D6DB3"))});
-	Style->Set("ProjectCleaner.Color.UnusedFill", FLinearColor {FColor::FromHex(TEXT("#C4484D"))});
-	Style->Set("ProjectCleaner.Color.ReviewFill", FLinearColor {FColor::FromHex(TEXT("#8F6F2A"))});
-	Style->Set("ProjectCleaner.Color.Review", FLinearColor {FColor::FromHex(TEXT("#E0B050"))});
-	Style->Set("ProjectCleaner.Color.Ok", FLinearColor {FColor::FromHex(TEXT("#6FCF7A"))});
-	Style->Set("ProjectCleaner.Color.Track", FLinearColor {FColor::FromHex(TEXT("#2D3136"))});
-	Style->Set("ProjectCleaner.Color.Line", FLinearColor {FColor::FromHex(TEXT("#383B40"))});
-	Style->Set("ProjectCleaner.Color.Accent", FLinearColor {FColor::FromHex(TEXT("#2F7DE1"))});
-	Style->Set("ProjectCleaner.Color.ShipFill", FLinearColor {FColor::FromHex(TEXT("#3F9B68"))});
-	Style->Set("ProjectCleaner.Color.KeepFill", FLinearColor {FColor::FromHex(TEXT("#56606B"))});
-	Style->Set("ProjectCleaner.Color.FolderTint", FLinearColor {FColor::FromHex(TEXT("#C9A55A"))});
+	// icon set (proto/style, sources in Resources/Icons/Source): white 64 px images, the same in every engine. Widgets draw
+	// them in a color; tabs, menus and the toolbar, which the engine draws, get brushes with the color in them
+	const auto Icon = [&Style](const TCHAR* Name, const float Size, const FLinearColor& Tint) {
+		return FSlateImageBrush {Style->RootToContentDir(FString {TEXT("Icons/")} + Name, TEXT(".png")), FVector2D {Size, Size}, Tint};
+	};
+	const FLinearColor White = FLinearColor::White;
+	// the plugin: Tools menu, toolbar, its window tab
+	Style->Set("ProjectCleaner.TabMain", new FSlateImageBrush {Icon(TEXT("App"), 40.0f, ColorDangerIcon)});
+	Style->Set("ProjectCleaner.TabMain.Small", new FSlateImageBrush {Icon(TEXT("App"), 20.0f, ColorDangerIcon)});
+	Style->Set("ProjectCleaner.Icon.App16", new FSlateImageBrush {Icon(TEXT("App"), 16.0f, ColorDangerIcon)});
+	// tabs
+	Style->Set("ProjectCleaner.Tab.Assets", new FSlateImageBrush {Icon(TEXT("Assets"), 16.0f, ColorUsed)});
+	Style->Set("ProjectCleaner.Tab.Inspector", new FSlateImageBrush {Icon(TEXT("Inspector"), 16.0f, ColorLink)});
+	Style->Set("ProjectCleaner.Tab.Issues", new FSlateImageBrush {Icon(TEXT("Issues"), 16.0f, ColorWarning)});
+	Style->Set("ProjectCleaner.Tab.Help", new FSlateImageBrush {Icon(TEXT("Help"), 16.0f, ColorLink)});
+	// the warning sign of the Issues card and of the busy message
+	Style->Set("ProjectCleaner.Icon.Warning", new FSlateImageBrush {Icon(TEXT("Issues"), 32.0f, ColorWarning)});
+	// white, drawn in the color of where they sit
+	for (const TCHAR* Name : {TEXT("Scan"), TEXT("Clean"), TEXT("Tree"), TEXT("SizeMap"), TEXT("Settings"), TEXT("Lock"), TEXT("Close"),
+							  TEXT("Add"), TEXT("Back"), TEXT("Forward"), TEXT("Folder"), TEXT("FolderOpen")}) {
+		Style->Set(FName {*(FString {TEXT("ProjectCleaner.Icon.")} + Name)}, new FSlateImageBrush {Icon(Name, 16.0f, White)});
+	}
+	Style->Set("ProjectCleaner.Icon.Scan20", new FSlateImageBrush {Icon(TEXT("Scan"), 20.0f, White)});
+	Style->Set("ProjectCleaner.Icon.Clean20", new FSlateImageBrush {Icon(TEXT("Clean"), 20.0f, White)});
+	// menu entries (PjcWidgets::GetMenuIcon)
+	Style->Set("ProjectCleaner.Menu.Inspect", new FSlateImageBrush {Icon(TEXT("Inspector"), 16.0f, ColorLink)});
+	Style->Set("ProjectCleaner.Menu.Browse", new FSlateImageBrush {Icon(TEXT("Browse"), 16.0f, ColorText)});
+	Style->Set("ProjectCleaner.Menu.Delete", new FSlateImageBrush {Icon(TEXT("Clean"), 16.0f, ColorDangerIcon)});
+	Style->Set("ProjectCleaner.Menu.Exclude", new FSlateImageBrush {Icon(TEXT("Exclude"), 16.0f, ColorText)});
+	Style->Set("ProjectCleaner.Menu.Include", new FSlateImageBrush {Icon(TEXT("Include"), 16.0f, ColorText)});
+	Style->Set("ProjectCleaner.Menu.Explorer", new FSlateImageBrush {Icon(TEXT("Explorer"), 16.0f, ColorFolder)});
+	Style->Set("ProjectCleaner.Menu.SizeMap", new FSlateImageBrush {Icon(TEXT("SizeMap"), 16.0f, ColorText)});
+	Style->Set("ProjectCleaner.Menu.Expand", new FSlateImageBrush {Icon(TEXT("Expand"), 16.0f, ColorText)});
+	Style->Set("ProjectCleaner.Menu.Collapse", new FSlateImageBrush {Icon(TEXT("Collapse"), 16.0f, ColorText)});
+	Style->Set("ProjectCleaner.Menu.Reset", new FSlateImageBrush {Icon(TEXT("Reset"), 16.0f, ColorText)});
+	// tree rows (SExpanderArrow with this style set): the engine draws triangles in UE 4.27, chevrons in UE5
+	Style->Set("TreeArrow_Collapsed", new FSlateImageBrush {Icon(TEXT("CaretRight"), 10.0f, ColorMuted)});
+	Style->Set("TreeArrow_Collapsed_Hovered", new FSlateImageBrush {Icon(TEXT("CaretRight"), 10.0f, ColorText)});
+	Style->Set("TreeArrow_Expanded", new FSlateImageBrush {Icon(TEXT("CaretDown"), 10.0f, ColorMuted)});
+	Style->Set("TreeArrow_Expanded_Hovered", new FSlateImageBrush {Icon(TEXT("CaretDown"), 10.0f, ColorText)});
+	// marks on circular links of the Inspector graph: white, tinted when drawn
+	Style->Set("ProjectCleaner.Graph.Disc", new FSlateImageBrush {Icon(TEXT("Disc"), 16.0f, White)});
+	Style->Set("ProjectCleaner.Graph.Loop", new FSlateImageBrush {Icon(TEXT("Loop"), 16.0f, White)});
+	Style->Set("ProjectCleaner.Graph.Pair", new FSlateImageBrush {Icon(TEXT("Pair"), 16.0f, White)});
 
 #if ENGINE_MAJOR_VERSION >= 5
 	// tool pages: dark theme background behind the panels and cards, 4.27 sets its own below
 	Style->Set("ProjectCleaner.Page", new FSlateColorBrush {FStyleColors::Background});
 	// cards of the Overview, 4.27 takes the editor group border (PjcShim::GetBrushCard)
-	Style->Set("ProjectCleaner.Card", new FSlateRoundedBoxBrush(FStyleColors::Panel, 4.0f, FLinearColor {FColor::FromHex(TEXT("#383B40"))}, 1.0f));
+	Style->Set("ProjectCleaner.Card", new FSlateRoundedBoxBrush(FStyleColors::Panel, 4.0f, FLinearColor {FColor::FromHex(TEXT("#383838"))}, 1.0f));
 	// Inspector graph boxes, white: drawn tinted. 4.27 draws square boxes.
 	Style->Set("ProjectCleaner.Graph.Node", new FSlateRoundedBoxBrush(FLinearColor::White, 3.0f));
 	Style->Set("ProjectCleaner.Graph.Pill", new FSlateRoundedBoxBrush(FLinearColor::White, 23.0f));
@@ -154,7 +201,42 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create() {
 		.SetCheckedPressedImage(Round(TEXT("#383838")))
 		.SetPadding(FMargin {16.0f, 2.0f})
 		.SetForegroundColor(FLinearColor {FColor::FromHex(TEXT("#C0C0C0"))}));
+	// checkboxes: a dark rounded box, blue with a white check when on, a dash when mixed (the engine's differ per version)
+	const auto Check = [&Style](const TCHAR* Name) {
+		return FSlateImageBrush {Style->RootToContentDir(FString {TEXT("Icons/")} + Name, TEXT(".png")), FVector2D {16.0f, 16.0f}};
+	};
+	Style->Set("ProjectCleaner.CheckBox", FCheckBoxStyle {}
+		.SetCheckBoxType(ESlateCheckBoxType::CheckBox)
+		.SetUncheckedImage(Check(TEXT("CheckOff")))
+		.SetUncheckedHoveredImage(Check(TEXT("CheckOffHover")))
+		.SetUncheckedPressedImage(Check(TEXT("CheckOffHover")))
+		.SetCheckedImage(Check(TEXT("CheckOn")))
+		.SetCheckedHoveredImage(Check(TEXT("CheckOnHover")))
+		.SetCheckedPressedImage(Check(TEXT("CheckOnHover")))
+		.SetUndeterminedImage(Check(TEXT("CheckMixed")))
+		.SetUndeterminedHoveredImage(Check(TEXT("CheckMixedHover")))
+		.SetUndeterminedPressedImage(Check(TEXT("CheckMixedHover")))
+		.SetPadding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
+		.SetForegroundColor(FLinearColor {FColor::FromHex(TEXT("#C0C0C0"))}));
 	// clang-format on
+
+	// search boxes: rounded, the lens of the icon set on the left, the same in every engine
+	FSearchBoxStyle SearchBox = FCoreStyle::Get().GetWidgetStyle<FSearchBoxStyle>("SearchBox");
+	FEditableTextBoxStyle SearchText = SearchBox.TextBoxStyle;
+	SearchText.SetBackgroundImageNormal(Round(TEXT("#0F0F0F")));
+	SearchText.SetBackgroundImageHovered(Round(TEXT("#0F0F0F")));
+	SearchText.SetBackgroundImageFocused(Round(TEXT("#0F0F0F")));
+	SearchText.SetBackgroundImageReadOnly(Round(TEXT("#1A1A1A")));
+	SearchText.SetForegroundColor(FLinearColor {FColor::FromHex(TEXT("#C0C0C0"))});
+	SearchBox.SetTextBoxStyle(SearchText);
+	SearchBox.SetGlassImage(FSlateImageBrush {Style->RootToContentDir(TEXT("Icons/Scan"), TEXT(".png")), FVector2D {14.0f, 14.0f}, ColorMuted});
+	SearchBox.SetClearImage(FSlateImageBrush {Style->RootToContentDir(TEXT("Icons/Close"), TEXT(".png")), FVector2D {12.0f, 12.0f}, ColorMuted});
+#if ENGINE_MAJOR_VERSION >= 5
+	SearchBox.SetLeftAlignGlassImageAndClearButton(true);
+#else
+	SearchBox.SetLeftAlignButtons(true);
+#endif
+	Style->Set("ProjectCleaner.SearchBox", SearchBox);
 
 #if ENGINE_MAJOR_VERSION < 5
 	// UE 4.27 widgets in the colors of the UE5 ones (PjcShim)
@@ -221,13 +303,6 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create() {
 		// clang-format on
 	};
 	Style->Set("ProjectCleaner.TextBox", MakeDarkBox(FCoreStyle::Get().GetWidgetStyle<FEditableTextBoxStyle>("NormalEditableTextBox")));
-	FSearchBoxStyle SearchBox = FCoreStyle::Get().GetWidgetStyle<FSearchBoxStyle>("SearchBox");
-	SearchBox.SetTextBoxStyle(MakeDarkBox(SearchBox.TextBoxStyle));
-	SearchBox.GlassImage.TintColor = FSlateColor {Foreground};
-	SearchBox.ClearImage.TintColor = FSlateColor {Foreground};
-	// search icon on the left, as UE5
-	SearchBox.SetLeftAlignButtons(true);
-	Style->Set("ProjectCleaner.SearchBox", SearchBox);
 #endif
 
 	return Style;

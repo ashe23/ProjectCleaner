@@ -41,7 +41,7 @@ void FPjc::StartupModule() {
 		->RegisterTabSpawner(PjcConstants::TabProjectCleaner, OnSpawnTab)
 		.SetDisplayName(TabTitle)
 		.SetMenuType(ETabSpawnerMenuType::Hidden)
-		.SetIcon(FPjcStyles::GetIcon("ProjectCleaner.Icon.Bin16"));
+		.SetIcon(FPjcStyles::GetIcon("ProjectCleaner.Icon.App16"));
 }
 
 void FPjc::ShutdownModule() {

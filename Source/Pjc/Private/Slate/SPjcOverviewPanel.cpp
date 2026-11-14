@@ -156,15 +156,15 @@ TSharedRef<SWidget> SPjcOverviewPanel::MakeStatus() {
 		PjcWidgets::FBarSegment& Segment = Segments.AddDefaulted_GetRef();
 		Segment.Value = static_cast<double>(Total.Size);
 		Segment.Color = Color;
-		const FString Sizes = FString::Printf(TEXT("%s · %s"), *PjcFormat::Size(Total.Size), *PjcFormat::Percent(Total.Size, All.Size));
-		Segment.ToolTip = PjcWidgets::MakeToolTip(Label, Sizes + TEXT(" · ") + PjcFormat::Count(Total.Num) + TEXT(" assets"));
+		const FString Sizes = FString::Printf(TEXT("%s \u00B7 %s"), *PjcFormat::Size(Total.Size), *PjcFormat::Percent(Total.Size, All.Size));
+		Segment.ToolTip = PjcWidgets::MakeToolTip(Label, Sizes + TEXT(" \u00B7 ") + PjcFormat::Count(Total.Num) + TEXT(" assets"));
 	};
 	AddSegment(TEXT("Used"), Overview.Used, ColorUsed);
 	AddSegment(TEXT("Editor only"), Overview.EditorOnly, ColorEditor);
 	AddSegment(TEXT("Review"), Overview.Review, ColorReview);
 	AddSegment(TEXT("Unused"), Overview.Unused, ColorUnused);
 
-	const FString Totals = FString::Printf(TEXT("%s · %s"), *PjcFormat::Count(All.Num), *PjcFormat::Size(All.Size));
+	const FString Totals = FString::Printf(TEXT("%s \u00B7 %s"), *PjcFormat::Count(All.Num), *PjcFormat::Size(All.Size));
 	// clang-format off
 	return MakeCard(
 		TEXT("Assets"),
@@ -202,7 +202,7 @@ TSharedRef<SWidget> SPjcOverviewPanel::MakeIssues() {
 	const FString KeptText = PjcFormat::Count(Result.FilesExternalKept.Num());
 	const FString ExternalKept = FString::Printf(TEXT(" %s more are kept: used by the project, or excluded in settings."), *KeptText);
 	const FString ExternalTip = TEXT("Files in content folders the engine does not use") + ExternalExample + TEXT(".") + ExternalKept;
-	const FString ExternalWhat = TEXT("to review · ") + KeptText + TEXT(" kept");
+	const FString ExternalWhat = TEXT("to review \u00B7 ") + KeptText + TEXT(" kept");
 	// clang-format off
 	const TCHAR* RedirectorsTip = TEXT("Left by renamed or moved assets. ")
 		TEXT("Scanning follows them, fixing resaves the assets that still use the old path.");
@@ -241,7 +241,7 @@ TSharedRef<SWidget> SPjcOverviewPanel::MakeIssues() {
 		// clang-format off
 		Rows->AddSlot().AutoHeight()
 		[
-			MakeRow({}, Issue.Title, PjcFormat::Count(Issue.Num), Warn, Issue.What, TEXT("›"), Tip, OnClick, false, 0.0f)
+			MakeRow({}, Issue.Title, PjcFormat::Count(Issue.Num), Warn, Issue.What, TEXT("\u203A"), Tip, OnClick, false, 0.0f)
 		];
 		// clang-format on
 	}
@@ -254,7 +254,7 @@ TSharedRef<SWidget> SPjcOverviewPanel::MakeIssues() {
 		.Text(FText::FromString(PjcFormat::Count(NumFound) + TEXT(" to look at")))
 		.Font(PjcWidgets::GetFontMono(9)),
 		Rows,
-		FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.Warning32"),
+		FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.Warning"),
 		PjcWidgets::GetColor("ProjectCleaner.Color.Yellow")
 	);
 	// clang-format on
@@ -265,16 +265,16 @@ TSharedRef<SWidget> SPjcOverviewPanel::MakeShipped() {
 		TEXT("For a cook made on a build machine, set its Metadata folder in Project Settings > Plugins > Project Cleaner > Cook Check.");
 	if (Cooks.Num() == 0) {
 #if ENGINE_MAJOR_VERSION >= 5
-		const FString HowTo = FString::Printf(TEXT("Platforms › %s › Cook Content"), ANSI_TO_TCHAR(FPlatformProperties::IniPlatformName()));
+		const FString HowTo = FString::Printf(TEXT("Platforms \u203A %s \u203A Cook Content"), ANSI_TO_TCHAR(FPlatformProperties::IniPlatformName()));
 #else
-		const FString HowTo = FString::Printf(TEXT("File › Cook Content for %s"), ANSI_TO_TCHAR(FPlatformProperties::IniPlatformName()));
+		const FString HowTo = FString::Printf(TEXT("File \u203A Cook Content for %s"), ANSI_TO_TCHAR(FPlatformProperties::IniPlatformName()));
 #endif
 		const FString Optional = TEXT("Optional. Shows what a cook packages, for projects that ship a game: cook the project (") + HowTo + TEXT(").");
 		// clang-format off
 		return MakeCard(
 			TEXT("Shipped"),
 			SNew(STextBlock)
-			.Text(FText::FromString(TEXT("No cook found · optional")))
+			.Text(FText::FromString(TEXT("No cook found \u00B7 optional")))
 			.ColorAndOpacity(FSlateColor::UseSubduedForeground())
 			.ToolTip(PjcWidgets::MakeToolTip(TEXT("No cook found"), Optional, Where)),
 			SNullWidget::NullWidget
@@ -340,9 +340,9 @@ TSharedRef<SWidget> SPjcOverviewPanel::MakeCookRow(const int32 Index) {
 		StateTip = FString::Join(Since, TEXT(", ")) + TEXT(" since this cook, so its numbers can be out of date. Cook again for current numbers.");
 	}
 	const bool bMany = Cooks.Num() > 1;
-	const FString Title = Cook.Platform + TEXT(" · last cook ") + FormatCookTime(Cook.Time, true);
+	const FString Title = Cook.Platform + TEXT(" \u00B7 last cook ") + FormatCookTime(Cook.Time, true);
 	const FString More = Cook.File + (bMany ? TEXT("\nClick: show its numbers") : TEXT(""));
-	const FString When = FormatCookTime(Cook.Time, false) + TEXT(" · ") + FormatAgo(Cook.Time);
+	const FString When = FormatCookTime(Cook.Time, false) + TEXT(" \u00B7 ") + FormatAgo(Cook.Time);
 
 	// clang-format off
 	const TSharedRef<SWidget> Line = SNew(SBox).Padding(FMargin {6.0f, 2.0f}).MinDesiredHeight(22.0f).VAlign(VAlign_Center)
@@ -428,7 +428,7 @@ TSharedRef<SWidget> SPjcOverviewPanel::MakeCookNumbers(const FCook& Cook) const 
 		Segment.Color = Color;
 		const FString NumText = PjcFormat::Count(Total.Num);
 		const FString PercentText = PjcFormat::Percent(Total.Size, AllSize);
-		const FString Sizes = FString::Printf(TEXT("%s assets · %s in the editor (%s)"), *NumText, *PjcFormat::Size(Total.Size), *PercentText);
+		const FString Sizes = FString::Printf(TEXT("%s assets \u00B7 %s in the editor (%s)"), *NumText, *PjcFormat::Size(Total.Size), *PercentText);
 		Segment.ToolTip = PjcWidgets::MakeToolTip(Label, Sizes);
 	};
 	AddSegment(TEXT("Shipped"), Ship.Shipped, ShipColor);
@@ -499,13 +499,13 @@ TSharedRef<SWidget> SPjcOverviewPanel::MakeCookNumbers(const FCook& Cook) const 
 			TEXT("the engine cooks every map, and template maps (Starter Content) use nearly everything.");
 		// clang-format on
 		const TSharedRef<SToolTip> Tip = PjcWidgets::MakeToolTip(TEXT("Unused, shipped: not checked"), CookAllTip, CookAllHowTo);
-		AddRow(MakeRow(WarnColor, TEXT("Unused, shipped"), TEXT("–"), Muted, TEXT("not checked"), FString {}, Tip, {}, false, 0.0f));
+		AddRow(MakeRow(WarnColor, TEXT("Unused, shipped"), TEXT("\u2013"), Muted, TEXT("not checked"), FString {}, Tip, {}, false, 0.0f));
 	}
 	else if (Ship.UnusedShipped.Num > 0) {
 		const TCHAR* CheckTip = TEXT("This cook packaged them, but the scan finds nothing that uses them: the game may load them in a way ")
 			TEXT("the scan cannot follow. They are in Review and Clean project keeps them.");
 		const TSharedRef<SToolTip> Tip = PjcWidgets::MakeToolTip(TEXT("Unused, shipped"), CheckTip, TEXT("Click: list them on the right"));
-		const FString CheckNum = TEXT("⚠ ") + PjcFormat::Count(Ship.UnusedShipped.Num);
+		const FString CheckNum = TEXT("\u26A0 ") + PjcFormat::Count(Ship.UnusedShipped.Num);
 		const FSlateColor CheckColor {PjcWidgets::GetColor("ProjectCleaner.Color.Review")};
 		const FSimpleDelegate OnClick = FSimpleDelegate::CreateLambda([this]() {
 			OnShowSet.ExecuteIfBound(EPjcAssetSet::Review, PjcOverviewReasonCooked);
@@ -514,7 +514,7 @@ TSharedRef<SWidget> SPjcOverviewPanel::MakeCookNumbers(const FCook& Cook) const 
 			return IsSetShown.IsBound() && IsSetShown.Execute(EPjcAssetSet::Review, PjcOverviewReasonCooked);
 		});
 		const FString CheckSize = PjcFormat::Size(Ship.UnusedShipped.Size);
-		AddRow(MakeRow(WarnColor, TEXT("Unused, shipped"), CheckNum, CheckColor, CheckSize, TEXT("›"), Tip, OnClick, IsOn));
+		AddRow(MakeRow(WarnColor, TEXT("Unused, shipped"), CheckNum, CheckColor, CheckSize, TEXT("\u203A"), Tip, OnClick, IsOn));
 	}
 	else {
 		const int32 NumNotChecked = UPjcSubsystem::GetScanResult().CookCheck.NumNotChecked;
@@ -527,12 +527,19 @@ TSharedRef<SWidget> SPjcOverviewPanel::MakeCookNumbers(const FCook& Cook) const 
 		const FString Agree = NumNotChecked > 0 ? NotCheckedCount + TEXT(" unused changed since the cook") : TEXT("Scan and cook agree");
 		// clang-format off
 		AddRow(
-			SNew(SBox).Padding(FMargin {6.0f, 3.0f, 6.0f, 0.0f}).ToolTip(PjcWidgets::MakeToolTip(TEXT("Unused, shipped"), AgreeText, NumNotChecked > 0 ? NotCheckedTip : FString {}))
+			SNew(SBox)
+			.Padding(FMargin {6.0f, 2.0f})
+			.MinDesiredHeight(22.0f)
+			.VAlign(VAlign_Center)
+			.ToolTip(PjcWidgets::MakeToolTip(TEXT("Unused, shipped"), AgreeText, NumNotChecked > 0 ? NotCheckedTip : FString {}))
 			[
 				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 5.0f, 0.0f})
+				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 7.0f, 0.0f})
 				[
-					SNew(STextBlock).Text(FText::FromString(TEXT("✓"))).ColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.Ok"))
+					SNew(SBox).WidthOverride(9.0f).HAlign(HAlign_Center)
+					[
+						SNew(STextBlock).Text(FText::FromString(TEXT("\u2713"))).ColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.Ok"))
+					]
 				]
 				+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
 				[
@@ -650,8 +657,8 @@ TSharedRef<SWidget> SPjcOverviewPanel::MakeRow(
 		];
 		// clang-format on
 	}
-	// a share of only "›" opens something: in the accent color
-	const bool bLink = Share.Equals(TEXT("›"));
+	// a share of only "\u203A" opens something: in the accent color
+	const bool bLink = Share.Equals(TEXT("\u203A"));
 	const FSlateColor ShareColor = bLink ? FSlateColor {PjcWidgets::GetColor("ProjectCleaner.Color.Accent")} : Muted;
 	// clang-format off
 	Line->AddSlot().FillWidth(1.0f).VAlign(VAlign_Center)

@@ -346,9 +346,7 @@ TSharedRef<SWidget> SPjcTabInspector::MakeFinder() {
 			+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {8.0f, 8.0f, 8.0f, 4.0f})
 			[
 				SAssignNew(FinderSearch, SSearchBox)
-#if ENGINE_MAJOR_VERSION < 5
-				.Style(&PjcShim::GetSearchBoxStyle427())
-#endif
+				.Style(&PjcShim::GetSearchBoxStyle())
 				.HintText(FText::FromString(TEXT("Search assets")))
 				.OnTextChanged_Lambda([this](const FText& Text) {
 					FinderText = Text.ToString();
@@ -721,6 +719,7 @@ TSharedRef<SWidget> SPjcTabInspector::MakeGraphPane() {
 					[
 						// unused group: its editor-only links are left out, they often close circles and do not ship
 						SNew(SCheckBox)
+						.Style(&PjcShim::GetCheckBoxStyle())
 						.ToolTipText(FText::FromString(TEXT("Draws the editor-only links of the group too. They do not ship and move nothing in the picture.")))
 						.Visibility_Lambda([this]() { return Graph.bUnusedGroup ? EVisibility::Visible : EVisibility::Collapsed; })
 						.IsChecked_Lambda([this]() { return bEditorLinks ? ECheckBoxState::Checked : ECheckBoxState::Unchecked; })

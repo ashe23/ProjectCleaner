@@ -1,6 +1,7 @@
 // Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "Slate/SPjcScanBar.h"
+#include "Slate/PjcWidgets.h"
 #include "Slate/SPjcCleanWindow.h"
 #include "Slate/SPjcScanWindow.h"
 #include "PjcFormat.h"
@@ -101,15 +102,17 @@ TSharedRef<SWidget> SPjcScanBar::MakeButtonLabel(const FString& Text) {
 	// Clean project: the red bin, Scan and Rescan: the arrows
 	const bool bClean = Text.Equals(TEXT("Clean project"));
 	const FName Icon = bClean ? TEXT("ProjectCleaner.Icon.Clean20") : TEXT("ProjectCleaner.Icon.Scan20");
-	// light red on the dark red button
-	const FSlateColor TextColor = bClean ? FSlateColor {FLinearColor {FColor::FromHex(TEXT("#FFB3B6"))}} : FSlateColor::UseForeground();
+	// light red on the dark red button; the lens blue, white on the blue Rescan button
+	const FSlateColor TextColor = bClean ? FSlateColor {PjcWidgets::GetColor("ProjectCleaner.Color.DangerText")} : FSlateColor::UseForeground();
+	const FLinearColor ScanColor = Text.Equals(TEXT("Rescan")) ? FLinearColor::White : PjcWidgets::GetColor("ProjectCleaner.Color.Link");
+	const FLinearColor IconColor = bClean ? PjcWidgets::GetColor("ProjectCleaner.Color.DangerIcon") : ScanColor;
 	// clang-format off
 	return SNew(SHorizontalBox)
 		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 7.0f, 0.0f})
 		[
 			SNew(SBox).WidthOverride(20.0f).HeightOverride(20.0f)
 			[
-				SNew(SImage).Image(FPjcStyles::Get().GetBrush(Icon))
+				SNew(SImage).Image(FPjcStyles::Get().GetBrush(Icon)).ColorAndOpacity(IconColor)
 			]
 		]
 		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)

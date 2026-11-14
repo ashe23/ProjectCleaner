@@ -83,15 +83,13 @@ namespace
 					.ToolTipText(FText::FromString(Folder->Path));
 				NameBox->AddSlot().AutoWidth().VAlign(VAlign_Center)
 				[
-					SNew(SExpanderArrow, SharedThis(this)).IndentAmount(14).ShouldDrawWires(false)
+					SNew(SExpanderArrow, SharedThis(this)).StyleSet(&FPjcStyles::Get()).IndentAmount(14).ShouldDrawWires(false)
 				];
 				NameBox->AddSlot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 5.0f, 0.0f})
 				[
 					SNew(SImage)
 					.Image_Lambda([this]() {
-						return PjcShim::GetBrush(
-							IsItemExpanded() ? TEXT("ContentBrowser.AssetTreeFolderOpen") : TEXT("ContentBrowser.AssetTreeFolderClosed")
-						);
+						return FPjcStyles::Get().GetBrush(IsItemExpanded() ? "ProjectCleaner.Icon.FolderOpen" : "ProjectCleaner.Icon.Folder");
 					})
 					.ColorAndOpacity(Folder->IsRoot() ? Muted : FSlateColor {PjcWidgets::GetColor("ProjectCleaner.Color.FolderTint")})
 				];
@@ -812,7 +810,7 @@ TSharedRef<SWidget> SPjcTabUnused::MakeFolderPane() {
 							.IsChecked_Lambda([this]() { return bMapView ? ECheckBoxState::Unchecked : ECheckBoxState::Checked; })
 							.OnCheckStateChanged_Lambda([this](ECheckBoxState) { SetMapView(false); })
 							[
-								MakeViewIcon(TEXT("ProjectCleaner.Icon.Tree16"))
+								MakeViewIcon(TEXT("ProjectCleaner.Icon.Tree"))
 							]
 						]
 						+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin {2.0f, 0.0f, 0.0f, 0.0f})
@@ -823,7 +821,7 @@ TSharedRef<SWidget> SPjcTabUnused::MakeFolderPane() {
 							.IsChecked_Lambda([this]() { return bMapView ? ECheckBoxState::Checked : ECheckBoxState::Unchecked; })
 							.OnCheckStateChanged_Lambda([this](ECheckBoxState) { SetMapView(true); })
 							[
-								MakeViewIcon(TEXT("ProjectCleaner.Icon.SizeMap16"))
+								MakeViewIcon(TEXT("ProjectCleaner.Icon.SizeMap"))
 							]
 						]
 					]
@@ -832,9 +830,7 @@ TSharedRef<SWidget> SPjcTabUnused::MakeFolderPane() {
 						SNew(SBox).Visibility_Lambda([this]() { return bMapView ? EVisibility::Collapsed : EVisibility::Visible; })
 						[
 							SNew(SSearchBox)
-#if ENGINE_MAJOR_VERSION < 5
-							.Style(&PjcShim::GetSearchBoxStyle427())
-#endif
+							.Style(&PjcShim::GetSearchBoxStyle())
 							.HintText(FText::FromString(TEXT("Search folders")))
 							.OnTextChanged(this, &SPjcTabUnused::OnFolderSearchChanged)
 						]
@@ -1148,6 +1144,7 @@ TSharedRef<SWidget> SPjcTabUnused::MakeAssetPane() {
 					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 8.0f, 0.0f})
 					[
 						SNew(SCheckBox)
+						.Style(&PjcShim::GetCheckBoxStyle())
 						.ToolTipText(FText::FromString(TEXT("Lists the assets of subfolders too")))
 						.IsChecked_Lambda([this]() { return bSubfolders ? ECheckBoxState::Checked : ECheckBoxState::Unchecked; })
 						.OnCheckStateChanged_Lambda([this](const ECheckBoxState State) {
@@ -1164,9 +1161,7 @@ TSharedRef<SWidget> SPjcTabUnused::MakeAssetPane() {
 						SNew(SBox).WidthOverride(170.0f)
 						[
 							SNew(SSearchBox)
-#if ENGINE_MAJOR_VERSION < 5
-							.Style(&PjcShim::GetSearchBoxStyle427())
-#endif
+							.Style(&PjcShim::GetSearchBoxStyle())
 							.HintText_Lambda([this]() { return FText::FromString(TEXT("Search assets ") + PjcWidgets::GetSetWord(Set)); })
 							.OnTextChanged(this, &SPjcTabUnused::OnAssetSearchChanged)
 						]

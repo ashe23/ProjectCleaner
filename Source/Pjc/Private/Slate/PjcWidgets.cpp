@@ -191,16 +191,16 @@ namespace PjcWidgets
 
 	FSlateIcon GetMenuIcon(const EPjcMenuIcon Icon) {
 		switch (Icon) {
-			case EPjcMenuIcon::Inspect :  return PjcShim::GetEditorIcon(TEXT("Icons.Search"), TEXT("Symbols.SearchGlass"));
-			case EPjcMenuIcon::Browse :	  return PjcShim::GetEditorIcon(TEXT("Icons.BrowseContent"), TEXT("SystemWideCommands.FindInContentBrowser"));
-			case EPjcMenuIcon::Delete :	  return PjcShim::GetEditorIcon(TEXT("Icons.Delete"), TEXT("ContentBrowser.AssetActions.Delete"));
-			case EPjcMenuIcon::Exclude :  return PjcShim::GetEditorIcon(TEXT("Icons.Hidden"), TEXT("Level.NotVisibleIcon16x"));
-			case EPjcMenuIcon::Include :  return PjcShim::GetEditorIcon(TEXT("Icons.Visible"), TEXT("Level.VisibleIcon16x"));
-			case EPjcMenuIcon::Explorer : return PjcShim::GetEditorIcon(TEXT("Icons.FolderOpen"), TEXT("ContentBrowser.AssetTreeFolderOpen"));
-			case EPjcMenuIcon::SizeMap :  return PjcShim::GetEditorIcon(TEXT("ContentBrowser.SizeMap"), TEXT(""));
-			case EPjcMenuIcon::Expand :	  return PjcShim::GetEditorIcon(TEXT("Icons.ChevronDown"), TEXT("TreeArrow_Expanded"));
-			case EPjcMenuIcon::Collapse : return PjcShim::GetEditorIcon(TEXT("Icons.ChevronRight"), TEXT("TreeArrow_Collapsed"));
-			case EPjcMenuIcon::Reset :	  return PjcShim::GetEditorIcon(TEXT("Icons.Refresh"), TEXT("Icons.Refresh"));
+			case EPjcMenuIcon::Inspect :  return FPjcStyles::GetIcon("ProjectCleaner.Menu.Inspect");
+			case EPjcMenuIcon::Browse :	  return FPjcStyles::GetIcon("ProjectCleaner.Menu.Browse");
+			case EPjcMenuIcon::Delete :	  return FPjcStyles::GetIcon("ProjectCleaner.Menu.Delete");
+			case EPjcMenuIcon::Exclude :  return FPjcStyles::GetIcon("ProjectCleaner.Menu.Exclude");
+			case EPjcMenuIcon::Include :  return FPjcStyles::GetIcon("ProjectCleaner.Menu.Include");
+			case EPjcMenuIcon::Explorer : return FPjcStyles::GetIcon("ProjectCleaner.Menu.Explorer");
+			case EPjcMenuIcon::SizeMap :  return FPjcStyles::GetIcon("ProjectCleaner.Menu.SizeMap");
+			case EPjcMenuIcon::Expand :	  return FPjcStyles::GetIcon("ProjectCleaner.Menu.Expand");
+			case EPjcMenuIcon::Collapse : return FPjcStyles::GetIcon("ProjectCleaner.Menu.Collapse");
+			case EPjcMenuIcon::Reset :	  return FPjcStyles::GetIcon("ProjectCleaner.Menu.Reset");
 			default :					  return FSlateIcon {};
 		}
 	}

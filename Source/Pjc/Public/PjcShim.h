@@ -53,9 +53,11 @@ namespace PjcShim
 	const FButtonStyle& GetDangerQuietButtonStyle();
 	// On and off buttons (filter chips)
 	const FCheckBoxStyle& GetToggleStyle();
+	// The plugin's own checkbox and search box, the same in every engine
+	const FCheckBoxStyle& GetCheckBoxStyle();
+	const FSearchBoxStyle& GetSearchBoxStyle();
 #if ENGINE_MAJOR_VERSION < 5
 	const FButtonStyle& GetButtonStyle427(const bool bColored);
-	const FSearchBoxStyle& GetSearchBoxStyle427();
 	const FEditableTextBoxStyle& GetTextBoxStyle427();
 	const FTableRowStyle& GetRowStyle427();
 	const FProgressBarStyle& GetProgressStyle427();

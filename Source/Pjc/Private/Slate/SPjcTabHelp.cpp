@@ -262,6 +262,7 @@ void SPjcReportWindow::Construct(const FArguments& InArgs) {
 		}
 		// clang-format off
 		return SNew(SCheckBox)
+			.Style(&PjcShim::GetCheckBoxStyle())
 			.IsEnabled(!bPart || !Text.IsEmpty())
 			.IsChecked_Lambda([Flag]() { return *Flag ? ECheckBoxState::Checked : ECheckBoxState::Unchecked; })
 			.OnCheckStateChanged_Lambda([Flag](const ECheckBoxState State) { *Flag = State == ECheckBoxState::Checked; })

@@ -599,9 +599,7 @@ TSharedRef<SWidget> SPjcTabIssues::MakeHeader() {
 				SNew(SBox).WidthOverride(200.0f)
 				[
 					SNew(SSearchBox)
-#if ENGINE_MAJOR_VERSION < 5
-					.Style(&PjcShim::GetSearchBoxStyle427())
-#endif
+					.Style(&PjcShim::GetSearchBoxStyle())
 					.HintText(FText::FromString(TEXT("Search")))
 					.OnTextChanged_Lambda([this](const FText& Text) {
 						Search = Text.ToString().TrimStartAndEnd();

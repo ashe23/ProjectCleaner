@@ -59,27 +59,15 @@ namespace PjcShim
 	}
 
 	const FSlateBrush* GetIconBack() {
-#if ENGINE_MAJOR_VERSION == 5
-		return GetBrush(TEXT("Icons.ArrowLeft"));
-#else
-		return GetBrush(TEXT("ContentBrowser.HistoryBack"));
-#endif
+		return FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.Back");
 	}
 
 	const FSlateBrush* GetIconForward() {
-#if ENGINE_MAJOR_VERSION == 5
-		return GetBrush(TEXT("Icons.ArrowRight"));
-#else
-		return GetBrush(TEXT("ContentBrowser.HistoryForward"));
-#endif
+		return FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.Forward");
 	}
 
 	const FSlateBrush* GetIconLock() {
-#if ENGINE_MAJOR_VERSION == 5
-		return GetBrush(TEXT("Icons.Lock"));
-#else
-		return GetBrush(TEXT("PropertyWindow.Locked"));
-#endif
+		return FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.Lock");
 	}
 
 	const FSlateBrush* GetBrushCard() {
@@ -95,11 +83,7 @@ namespace PjcShim
 	}
 
 	const FSlateBrush* GetIconSettings() {
-#if ENGINE_MAJOR_VERSION == 5
-		return GetBrush(TEXT("Icons.Settings"));
-#else
-		return GetBrush(TEXT("LevelEditor.GameSettings"));
-#endif
+		return FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.Settings");
 	}
 
 	FSlateIcon GetEditorIcon(const TCHAR* Name, const TCHAR* Name427) {
@@ -112,11 +96,7 @@ namespace PjcShim
 	}
 
 	const FSlateBrush* GetIconClose() {
-#if ENGINE_MAJOR_VERSION == 5
-		return GetBrush(TEXT("Icons.X"));
-#else
-		return GetBrush(TEXT("Icons.Cross"));
-#endif
+		return FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.Close");
 	}
 
 	const FButtonStyle& GetPrimaryButtonStyle() {
@@ -139,6 +119,14 @@ namespace PjcShim
 		return FPjcStyles::Get().GetWidgetStyle<FButtonStyle>("ProjectCleaner.Button.DangerQuiet");
 	}
 
+	const FSearchBoxStyle& GetSearchBoxStyle() {
+		return FPjcStyles::Get().GetWidgetStyle<FSearchBoxStyle>("ProjectCleaner.SearchBox");
+	}
+
+	const FCheckBoxStyle& GetCheckBoxStyle() {
+		return FPjcStyles::Get().GetWidgetStyle<FCheckBoxStyle>("ProjectCleaner.CheckBox");
+	}
+
 	const FCheckBoxStyle& GetToggleStyle() {
 		// the plugin's own, so UE 4.27 and UE5 look the same
 		return FPjcStyles::Get().GetWidgetStyle<FCheckBoxStyle>("ProjectCleaner.Toggle");
@@ -149,9 +137,6 @@ namespace PjcShim
 		return FPjcStyles::Get().GetWidgetStyle<FButtonStyle>(bColored ? "ProjectCleaner.Button.Colored" : "ProjectCleaner.Button");
 	}
 
-	const FSearchBoxStyle& GetSearchBoxStyle427() {
-		return FPjcStyles::Get().GetWidgetStyle<FSearchBoxStyle>("ProjectCleaner.SearchBox");
-	}
 
 	const FEditableTextBoxStyle& GetTextBoxStyle427() {
 		return FPjcStyles::Get().GetWidgetStyle<FEditableTextBoxStyle>("ProjectCleaner.TextBox");

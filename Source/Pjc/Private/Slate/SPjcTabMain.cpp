@@ -59,25 +59,25 @@ void SPjcTabMain::Construct(
 	TabManager->RegisterTabSpawner(PjcConstants::TabIssues, FOnSpawnTab::CreateRaw(this, &SPjcTabMain::OnTabIssuesSpawn))
 		.SetTooltipText(FText::FromString(TEXT("Open Issues Tab: redirectors, external files, corrupted files, empty folders")))
 		.SetDisplayName(FText::FromString(TEXT("Issues")))
-		.SetIcon(FPjcStyles::GetIcon("ProjectCleaner.Icon.Issues16"))
+		.SetIcon(FPjcStyles::GetIcon("ProjectCleaner.Tab.Issues"))
 		.SetGroup(AppMenuGroup);
 
 	TabManager->RegisterTabSpawner(PjcConstants::TabAssetsUnused, FOnSpawnTab::CreateRaw(this, &SPjcTabMain::OnTabAssetsUnusedSpawn))
 		.SetTooltipText(FText::FromString(TEXT("Open Assets Tab: the overview of the scan, and the unused, excluded, used and to review assets")))
 		.SetDisplayName(FText::FromString(TEXT("Assets")))
-		.SetIcon(FPjcStyles::GetIcon("ProjectCleaner.Icon.PieChart16"))
+		.SetIcon(FPjcStyles::GetIcon("ProjectCleaner.Tab.Assets"))
 		.SetGroup(AppMenuGroup);
 
 	TabManager->RegisterTabSpawner(PjcConstants::TabInspector, FOnSpawnTab::CreateRaw(this, &SPjcTabMain::OnTabInspectorSpawn))
 		.SetTooltipText(FText::FromString(TEXT("Open Inspector Tab: why an asset is used, from every root down to it")))
 		.SetDisplayName(FText::FromString(TEXT("Inspector")))
-		.SetIcon(FPjcStyles::GetIcon("ProjectCleaner.Icon.Graph16"))
+		.SetIcon(FPjcStyles::GetIcon("ProjectCleaner.Tab.Inspector"))
 		.SetGroup(AppMenuGroup);
 
 	TabManager->RegisterTabSpawner(PjcConstants::TabHelp, FOnSpawnTab::CreateRaw(this, &SPjcTabMain::OnTabHelpSpawn))
 		.SetTooltipText(FText::FromString(TEXT("Open Help Tab: links, bug report, system info")))
 		.SetDisplayName(FText::FromString(TEXT("Help")))
-		.SetIcon(FPjcStyles::GetIcon("ProjectCleaner.Icon.Help16"))
+		.SetIcon(FPjcStyles::GetIcon("ProjectCleaner.Tab.Help"))
 		.SetGroup(AppMenuGroup);
 
 	FMenuBarBuilder MenuBarBuilder = FMenuBarBuilder(Cmds);
@@ -116,7 +116,7 @@ void SPjcTabMain::Construct(
 					[
 						SNew(SBox).WidthOverride(32.0f).HeightOverride(32.0f)
 						[
-							SNew(SImage).Image(FPjcStyles::GetIcon("ProjectCleaner.Icon.Warning32").GetIcon())
+							SNew(SImage).Image(FPjcStyles::GetIcon("ProjectCleaner.Icon.Warning").GetIcon())
 						]
 					]
 					+ SHorizontalBox::Slot().FillWidth(1.0f).Padding(FMargin{5.0f, 2.0f, 0.0f, 0.0f}).HAlign(HAlign_Center).VAlign(VAlign_Center)
@@ -178,7 +178,7 @@ TSharedRef<SDockTab> SPjcTabMain::OnTabIssuesSpawn(const FSpawnTabArgs& Args) co
 		];
 	// clang-format on
 
-	Frontend->SetTabIcon(FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.Issues16"));
+	Frontend->SetTabIcon(FPjcStyles::Get().GetBrush("ProjectCleaner.Tab.Issues"));
 
 	return Frontend;
 }
@@ -191,7 +191,7 @@ TSharedRef<SDockTab> SPjcTabMain::OnTabAssetsUnusedSpawn(const FSpawnTabArgs& Ar
 		];
 	// clang-format on
 
-	Frontend->SetTabIcon(FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.PieChart16"));
+	Frontend->SetTabIcon(FPjcStyles::Get().GetBrush("ProjectCleaner.Tab.Assets"));
 
 	return Frontend;
 }
@@ -204,7 +204,7 @@ TSharedRef<SDockTab> SPjcTabMain::OnTabInspectorSpawn(const FSpawnTabArgs& Args)
 		];
 	// clang-format on
 
-	Frontend->SetTabIcon(FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.Graph16"));
+	Frontend->SetTabIcon(FPjcStyles::Get().GetBrush("ProjectCleaner.Tab.Inspector"));
 
 	return Frontend;
 }
@@ -217,7 +217,7 @@ TSharedRef<SDockTab> SPjcTabMain::OnTabHelpSpawn(const FSpawnTabArgs& Args) cons
 		];
 	// clang-format on
 
-	Frontend->SetTabIcon(FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.Help16"));
+	Frontend->SetTabIcon(FPjcStyles::Get().GetBrush("ProjectCleaner.Tab.Help"));
 
 	return Frontend;
 }

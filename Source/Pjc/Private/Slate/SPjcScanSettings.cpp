@@ -469,6 +469,7 @@ SPjcScanSettings::MakeSwitchRow(const FString& Label, FDraftFlag Flag, const int
 
 	// clang-format off
 	const TSharedRef<SWidget> Switch = SNew(SCheckBox)
+		.Style(&PjcShim::GetCheckBoxStyle())
 		.IsChecked(bValue ? ECheckBoxState::Checked : ECheckBoxState::Unchecked)
 		.OnCheckStateChanged_Lambda([this, Flag](const ECheckBoxState State) {
 			FPjcScanDraft::Get().*Flag = State == ECheckBoxState::Checked;
@@ -552,7 +553,10 @@ TSharedRef<SWidget> SPjcScanSettings::MakeListRows(
 				return FReply::Handled();
 			})
 			[
-				SNew(STextBlock).Text(FText::FromString(TEXT("+"))).Font(FPjcStyles::GetFont("Bold", 11))
+				SNew(SBox).WidthOverride(12.0f).HeightOverride(12.0f)
+				[
+					SNew(SImage).Image(FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.Add")).ColorAndOpacity(FSlateColor::UseForeground())
+				]
 			]
 		];
 	// clang-format on
@@ -616,7 +620,10 @@ TSharedRef<SWidget> SPjcScanSettings::MakeListRows(
 						return FReply::Handled();
 					})
 					[
-						SNew(STextBlock).Text(FText::FromString(TEXT("\u00D7"))).ColorAndOpacity(FSlateColor::UseSubduedForeground())
+						SNew(SBox).WidthOverride(10.0f).HeightOverride(10.0f)
+						[
+							SNew(SImage).Image(FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.Close")).ColorAndOpacity(FSlateColor::UseSubduedForeground())
+						]
 					]
 				]
 			]
