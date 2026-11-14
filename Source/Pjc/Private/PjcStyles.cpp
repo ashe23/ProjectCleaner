@@ -71,7 +71,8 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create() {
 	Style->Set("ProjectCleaner.Icon.Stat16", new IMAGE_BRUSH(TEXT("IconStat16"), FVector2D {16.0f, 16.0f}));
 	Style->Set("ProjectCleaner.Icon.Graph16", new IMAGE_BRUSH(TEXT("IconGraph20"), FVector2D {16.0f, 16.0f}));
 	// 32 px images drawn at 16: sharp on high DPI screens
-	Style->Set("ProjectCleaner.Icon.Issues16", new IMAGE_BRUSH(TEXT("IconIssues32"), FVector2D {16.0f, 16.0f}));
+	// Issues tab: the yellow warning icon (warnings, not errors), 2026-11-14
+	Style->Set("ProjectCleaner.Icon.Issues16", new IMAGE_BRUSH(TEXT("IconWarning32"), FVector2D {16.0f, 16.0f}));
 	Style->Set("ProjectCleaner.Icon.Help16", new IMAGE_BRUSH(TEXT("IconHelp32"), FVector2D {16.0f, 16.0f}));
 	// marks on circular links of the Inspector graph: white, tinted when drawn (sources: IconLoop.svg, IconPair.svg)
 	Style->Set("ProjectCleaner.Graph.Disc", new IMAGE_BRUSH(TEXT("IconDisc64"), FVector2D {16.0f, 16.0f}));
