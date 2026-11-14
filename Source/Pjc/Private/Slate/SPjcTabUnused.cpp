@@ -1683,12 +1683,7 @@ void SPjcTabUnused::RebuildChips() {
 
 	PillsBox->ClearChildren();
 	bHasPills = PillsSorted.Num() > 0 || NumHeld > 0;
-	const FLinearColor ColorLine = PjcWidgets::GetColor("ProjectCleaner.Color.Line");
-	const FLinearColor ColorRecess = PjcWidgets::GetColor("ProjectCleaner.Color.Recess");
-	const FLinearColor ColorGrey = PjcWidgets::GetColor("ProjectCleaner.Color.Hover");
-	const auto AddPill = [this, &ColorLine, &ColorRecess, &ColorGrey](
-							 const FString& Key, const FString& Label, const FString& ToolTip, const FLinearColor& Color, const int32 Num
-						 ) {
+	const auto AddPill = [this](const FString& Key, const FString& Label, const FString& ToolTip, const FLinearColor& Color, const int32 Num) {
 		const auto IsOn = [this, Key]() {
 			if (Key.IsEmpty()) return ReasonFilters.Num() == 0 && !bHeldOnly;
 			return Key == PjcUnusedPillHeld ? bHeldOnly : ReasonFilters.Contains(Key);
@@ -1696,65 +1691,11 @@ void SPjcTabUnused::RebuildChips() {
 		const auto IsGrey = [this, Key, IsOn]() {
 			return !Key.IsEmpty() && !IsOn() && (ReasonFilters.Num() > 0 || bHeldOnly);
 		};
-		const FLinearColor Fill = FMath::Lerp(ColorRecess, Color, 0.22f);
-		const FLinearColor Line = ColorLine;
-		const FLinearColor Recess = ColorRecess;
-		const FLinearColor Grey = ColorGrey;
 		const FString More = Key.IsEmpty() ? TEXT("Click: every asset of the list") : TEXT("Click: show them, click more to add them");
 		// clang-format off
 		PillsBox->AddSlot().AutoHeight().Padding(FMargin {6.0f, 0.0f, 6.0f, 4.0f})
 		[
-			SNew(SButton)
-			.ButtonStyle(&PjcShim::GetStyle().GetWidgetStyle<FButtonStyle>(TEXT("NoBorder")))
-#if ENGINE_MAJOR_VERSION < 5
-			.ForegroundColor(FSlateColor::UseForeground())
-#endif
-			.ContentPadding(FMargin {0.0f})
-			.ToolTip(PjcWidgets::MakeToolTip(Label, ToolTip, More))
-			.OnClicked_Lambda([this, Key]() {
-				OnReasonChipClicked(Key);
-				return FReply::Handled();
-			})
-			[
-				SNew(SBorder)
-				.BorderImage(FPjcStyles::Get().GetBrush("ProjectCleaner.Pill"))
-				.BorderBackgroundColor_Lambda([IsOn, Color, Line]() { return FSlateColor {IsOn() ? Color : Line}; })
-				.Padding(FMargin {1.0f})
-				[
-					SNew(SBorder)
-					.BorderImage(FPjcStyles::Get().GetBrush("ProjectCleaner.Pill"))
-					.BorderBackgroundColor_Lambda([IsOn, Fill, Recess]() { return FSlateColor {IsOn() ? Fill : Recess}; })
-					.Padding(FMargin {Key.IsEmpty() ? 10.0f : 8.0f, 2.0f, 10.0f, 2.0f})
-					[
-						SNew(SHorizontalBox)
-						+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 6.0f, 0.0f})
-						[
-							SNew(SBox).WidthOverride(7.0f).HeightOverride(7.0f).Visibility(Key.IsEmpty() ? EVisibility::Collapsed : EVisibility::Visible)
-							[
-								SNew(SImage)
-								.Image(FPjcStyles::Get().GetBrush("ProjectCleaner.Dot"))
-								.ColorAndOpacity_Lambda([IsGrey, Color, Grey]() { return FSlateColor {IsGrey() ? Grey : Color}; })
-							]
-						]
-						+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
-						[
-							SNew(SBox).Clipping(EWidgetClipping::ClipToBounds)
-							[
-								SNew(STextBlock)
-								.Text(FText::FromString(Label))
-								.ColorAndOpacity_Lambda([IsGrey]() { return IsGrey() ? FSlateColor::UseSubduedForeground() : FSlateColor::UseForeground(); })
-							]
-						]
-						+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {7.0f, 0.0f, 0.0f, 0.0f})
-						[
-							SNew(STextBlock)
-							.Text(FText::FromString(PjcFormat::Count(Num)))
-							.Font(PjcWidgets::GetFontMono(8))
-							.ColorAndOpacity_Lambda([IsOn]() { return IsOn() ? FSlateColor::UseForeground() : FSlateColor::UseSubduedForeground(); })
-						]
-					]
-				]
-			]
+			PjcWidgets::MakeFilterPill(Label, ToolTip, More, Color, Num, !Key.IsEmpty(), IsOn, IsGrey, [this, Key]() { OnReasonChipClicked(Key); })
 		];
 		// clang-format on
 	};

@@ -76,6 +76,23 @@ namespace PjcWidgets
 	// Color sample of a legend
 	TSharedRef<SWidget> MakeSwatch(const FLinearColor& Color, const float Size = 9.0f);
 
+	// Filter of a list in a side column, one above the other: a dot in its color, the name, a count, as a pill. Picked: in its
+	// color; grey while other filters are picked (Assets, Issues)
+	TSharedRef<SWidget> MakeFilterPill(
+		const FString& Label,
+		const FString& ToolTip,
+		const FString& More,
+		const FLinearColor& Color,
+		const int32 Num,
+		const bool bDot,
+		TFunction<bool()> IsOn,
+		TFunction<bool()> IsGrey,
+		TFunction<void()> OnClick
+	);
+
+	// Heading over a group of filters: small, bold, upper case, muted
+	TSharedRef<SWidget> MakeFilterHeading(const TAttribute<FText>& Text, const TAttribute<FText>& ToolTip);
+
 	struct FBarSegment
 	{
 		double Value = 0.0;

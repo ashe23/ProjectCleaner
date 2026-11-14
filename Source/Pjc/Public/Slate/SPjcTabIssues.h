@@ -7,6 +7,7 @@
 #include "Widgets/SCompoundWidget.h"
 #include "Widgets/Views/SListView.h"
 
+class FMenuBuilder;
 class FTabManager;
 class SBox;
 class SHorizontalBox;
@@ -44,6 +45,8 @@ struct FPjcIssueRow
 	int32 Asset = INDEX_NONE;
 	// Why a kept file is kept
 	FString Reason;
+	// What the filters of the list match: reason to review, redirector state, why kept
+	FString FilterKey;
 };
 
 /**
@@ -98,7 +101,9 @@ class SPjcTabIssues final : public SCompoundWidget
 
 	TSharedRef<SWidget> MakeCategories();
 	TSharedRef<SWidget> MakeHeader();
-	TSharedRef<SWidget> MakeFooter();
+	// search, the actions of the category with icons, the selection
+	TSharedRef<SWidget> MakeToolbar();
+	FText GetCountText() const;
 	FText GetTitle() const;
 	FText GetDescription() const;
 	FText GetSelectionText() const;
@@ -107,8 +112,16 @@ class SPjcTabIssues final : public SCompoundWidget
 	// redirectors
 	void FixRedirectors(const TArray<int32>& Indices);
 
+	// filters of the category, under the categories: several can be picked
+	void RebuildFilters();
+	void OnFilterClicked(const FString& Key);
+	// sort by a column, right-click menu, Delete key (as Assets)
+	void OnSort(EColumnSortPriority::Type Priority, const FName& Column, EColumnSortMode::Type Mode);
+	TSharedPtr<SWidget> OnContextMenu();
+	FReply OnListKeyDown(const FGeometry& Geometry, const FKeyEvent& KeyEvent);
+	void AddExcludeEntries(FMenuBuilder& Menu);
+
 	// files and folders
-	void RebuildChips();
 	void DeleteRows(const TArray<FRowPtr>& InRows);
 	TSharedRef<SWidget> MakeExcludeMenu();
 	// Assets to review: kept for good (exclusions), deleted, or inspected
@@ -130,12 +143,18 @@ class SPjcTabIssues final : public SCompoundWidget
 	FString Search;
 	// External files: kept ones instead of those to review
 	bool bKept = false;
-	// Kept files or assets to review of one reason, empty for all
-	FString ChipFilter;
+	// Picked filters (reason, state, why kept), none for all
+	TSet<FString> Filters;
+	// Every filter the category offers: all picked is all
+	TSet<FString> FilterKeys;
+	TSharedPtr<SVerticalBox> FilterBox;
+	bool bHasFilters = false;
+	// Sorted by this column (index), none: as found
+	int32 SortColumn = INDEX_NONE;
+	EColumnSortMode::Type SortMode = EColumnSortMode::Ascending;
 	// Assets to review, and how many of each reason
 	int32 NumReview = 0;
 	TMap<FString, int32> ReviewReasons;
-	TSharedPtr<SHorizontalBox> Chips;
 	TSharedPtr<SBox> ListBox;
 	TSharedPtr<SListView<FRowPtr>> ListView;
 };

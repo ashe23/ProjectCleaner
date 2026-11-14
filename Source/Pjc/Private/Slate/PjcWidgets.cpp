@@ -2,6 +2,7 @@
 
 #include "Slate/PjcWidgets.h"
 #include "PjcUnused.h"
+#include "PjcFormat.h"
 #include "PjcShim.h"
 #include "PjcStyles.h"
 // Engine Headers
@@ -13,6 +14,7 @@
 #include "Styling/SlateIconFinder.h"
 #include "Styling/CoreStyle.h"
 #include "Widgets/Images/SImage.h"
+#include "Widgets/Input/SButton.h"
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/Layout/SSpacer.h"
@@ -190,6 +192,84 @@ namespace PjcWidgets
 				]
 			];
 		// clang-format on
+	}
+
+	TSharedRef<SWidget> MakeFilterPill(
+		const FString& Label,
+		const FString& ToolTip,
+		const FString& More,
+		const FLinearColor& Color,
+		const int32 Num,
+		const bool bDot,
+		TFunction<bool()> IsOn,
+		TFunction<bool()> IsGrey,
+		TFunction<void()> OnClick
+	) {
+		const FLinearColor Recess = GetColor("ProjectCleaner.Color.Recess");
+		const FLinearColor Line = GetColor("ProjectCleaner.Color.Line");
+		const FLinearColor Grey = GetColor("ProjectCleaner.Color.Hover");
+		const FLinearColor Fill = FMath::Lerp(Recess, Color, 0.22f);
+		// clang-format off
+		return SNew(SButton)
+			.ButtonStyle(&PjcShim::GetStyle().GetWidgetStyle<FButtonStyle>(TEXT("NoBorder")))
+#if ENGINE_MAJOR_VERSION < 5
+			.ForegroundColor(FSlateColor::UseForeground())
+#endif
+			.ContentPadding(FMargin {0.0f})
+			.ToolTip(MakeToolTip(Label, ToolTip, More))
+			.OnClicked_Lambda([OnClick]() {
+				OnClick();
+				return FReply::Handled();
+			})
+			[
+				SNew(SBorder)
+				.BorderImage(FPjcStyles::Get().GetBrush("ProjectCleaner.Pill"))
+				.BorderBackgroundColor_Lambda([IsOn, Color, Line]() { return FSlateColor {IsOn() ? Color : Line}; })
+				.Padding(FMargin {1.0f})
+				[
+					SNew(SBorder)
+					.BorderImage(FPjcStyles::Get().GetBrush("ProjectCleaner.Pill"))
+					.BorderBackgroundColor_Lambda([IsOn, Fill, Recess]() { return FSlateColor {IsOn() ? Fill : Recess}; })
+					.Padding(FMargin {bDot ? 8.0f : 10.0f, 2.0f, 10.0f, 2.0f})
+					[
+						SNew(SHorizontalBox)
+						+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 6.0f, 0.0f})
+						[
+							SNew(SBox).WidthOverride(7.0f).HeightOverride(7.0f).Visibility(bDot ? EVisibility::Visible : EVisibility::Collapsed)
+							[
+								SNew(SImage)
+								.Image(FPjcStyles::Get().GetBrush("ProjectCleaner.Dot"))
+								.ColorAndOpacity_Lambda([IsGrey, Color, Grey]() { return FSlateColor {IsGrey() ? Grey : Color}; })
+							]
+						]
+						+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
+						[
+							SNew(SBox).Clipping(EWidgetClipping::ClipToBounds)
+							[
+								SNew(STextBlock)
+								.Text(FText::FromString(Label))
+								.ColorAndOpacity_Lambda([IsGrey]() { return IsGrey() ? FSlateColor::UseSubduedForeground() : FSlateColor::UseForeground(); })
+							]
+						]
+						+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {7.0f, 0.0f, 0.0f, 0.0f})
+						[
+							SNew(STextBlock)
+							.Text(FText::FromString(PjcFormat::Count(Num)))
+							.Font(GetFontMono(8))
+							.ColorAndOpacity_Lambda([IsOn]() { return IsOn() ? FSlateColor::UseForeground() : FSlateColor::UseSubduedForeground(); })
+						]
+					]
+				]
+			];
+		// clang-format on
+	}
+
+	TSharedRef<SWidget> MakeFilterHeading(const TAttribute<FText>& Text, const TAttribute<FText>& ToolTip) {
+		return SNew(STextBlock)
+			.Text(Text)
+			.ToolTipText(ToolTip)
+			.Font(FPjcStyles::GetFont("Bold", 8))
+			.ColorAndOpacity(FSlateColor::UseSubduedForeground());
 	}
 
 	FSlateIcon GetMenuIcon(const EPjcMenuIcon Icon) {

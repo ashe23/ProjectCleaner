@@ -50,7 +50,8 @@ void SPjcToolFrame::Construct(const FArguments& InArgs) {
 	const TSharedRef<SWidget> Side = InArgs._Side.Widget;
 	const TSharedRef<SWidget> Content = MakeContent(InArgs._Content.Widget);
 	// clang-format off
-	const TSharedRef<SWidget> Work = Side != SNullWidget::NullWidget ? MakeSideColumn(Side, Content) : StaticCastSharedRef<SWidget>(
+	const TSharedRef<SWidget> Plain = SNew(SBox).Padding(FMargin {8.0f})[Content];
+	const TSharedRef<SWidget> Work = !InArgs._Settings ? Plain : Side != SNullWidget::NullWidget ? MakeSideColumn(Side, Content) : StaticCastSharedRef<SWidget>(
 		SNew(SHorizontalBox)
 		+ SHorizontalBox::Slot().AutoWidth()
 		[
