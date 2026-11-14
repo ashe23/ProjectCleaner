@@ -284,6 +284,10 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create() {
 	FComboButtonStyle DropDown = FCoreStyle::Get().GetWidgetStyle<FComboButtonStyle>("ComboButton");
 	DropDown.SetButtonStyle(DropButton);
 	DropDown.SetDownArrowImage(Icon(TEXT("Expand"), 10.0f, ColorText));
+#if ENGINE_MAJOR_VERSION >= 5
+	// UE 4.27 pads the content by 5 unless told otherwise, UE5 takes it from the style (0 in the engine's)
+	DropDown.SetContentPadding(FMargin {5.0f});
+#endif
 	Style->Set("ProjectCleaner.ComboButton", DropDown);
 
 #if ENGINE_MAJOR_VERSION < 5
