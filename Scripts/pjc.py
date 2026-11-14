@@ -430,7 +430,8 @@ def engine_has_plugin(engine, name):
     return False
 
 
-def _uproject_json(host):
+def _uproject_json(host, feature=False):
+    """The game feature test plugin only while tests run: without the GameFeatureData the fixture makes, a cook fails on it."""
     data = {
         "FileVersion": 3,
         "EngineAssociation": host.engine.version,
@@ -442,7 +443,7 @@ def _uproject_json(host):
             {"Name": TEST_CONTENT_PLUGIN, "Enabled": True},
             {"Name": "GameFeatures", "Enabled": True},
             {"Name": "ModularGameplay", "Enabled": True},
-            {"Name": TEST_FEATURE_PLUGIN, "Enabled": True},
+            {"Name": TEST_FEATURE_PLUGIN, "Enabled": feature},
             {"Name": "GameplayAbilities", "Enabled": True},
         ]
         + [{"Name": name, "Enabled": True} for name in FEATURE_PLUGINS if engine_has_plugin(host.engine, name)],
@@ -1212,14 +1213,19 @@ def cmd_test(args, hosts):
         ok_all = True
         # leftovers of crashed runs would show up as unexpected assets
         remove_fixture(host)
-        if not args.cli_only:
-            ok, summary = run_automation(host, args.filter, "automation")
-            ok_all &= ok
-            results.append("automation: " + summary)
-        if not args.automation_only:
-            ok, summary = run_cli_tests(host)
-            ok_all &= ok
-            results.append("cli: " + summary)
+        # the Lyra like layout needs the game feature plugin; off again after, so the host cooks
+        write_if_changed(host.uproject, _uproject_json(host, feature=True))
+        try:
+            if not args.cli_only:
+                ok, summary = run_automation(host, args.filter, "automation")
+                ok_all &= ok
+                results.append("automation: " + summary)
+            if not args.automation_only:
+                ok, summary = run_cli_tests(host)
+                ok_all &= ok
+                results.append("cli: " + summary)
+        finally:
+            write_if_changed(host.uproject, _uproject_json(host))
         return ok_all, "\n".join(results)
 
     ok = run_for_hosts(hosts, work, args.jobs, "test")
