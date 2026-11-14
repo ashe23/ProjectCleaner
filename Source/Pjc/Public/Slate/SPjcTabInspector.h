@@ -108,6 +108,8 @@ class SPjcTabInspector final : public SCompoundWidget
 	TSharedRef<SWidget> MakeFinder();
 	void RebuildFinder();
 	void ApplyFinderFilter();
+	// Status filters as pills, each with how many assets the search leaves of it
+	void RebuildFinderPills(const TMap<EStatusFilter, int32>& Counts);
 	// The class bar's part of the filter: lists what its classes leave of the rows status and search kept
 	void FilterFinderRows();
 	TSharedRef<ITableRow> OnGenerateFinderRow(FRowPtr Row, const TSharedRef<STableViewBase>& Table);
@@ -160,6 +162,7 @@ class SPjcTabInspector final : public SCompoundWidget
 	TSharedPtr<SPjcClassBar> FinderClasses;
 	TSharedPtr<SListView<FRowPtr>> FinderList;
 	TSharedPtr<SSearchBox> FinderSearch;
+	TSharedPtr<SWrapBox> FinderPills;
 	FString FinderText;
 	EStatusFilter FinderStatus = EStatusFilter::All;
 

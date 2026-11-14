@@ -96,23 +96,6 @@ namespace
 		return Assets.Num() > 0 ? Assets[0] : FAssetData {};
 	}
 
-	// Toggle of a row of filters, on while IsOn
-	TSharedRef<SWidget> PjcInspectorToggle(const FString& Label, const FString& ToolTip, TFunction<bool()> IsOn, TFunction<void()> OnClick) {
-		// clang-format off
-		return SNew(SCheckBox)
-			.Style(&PjcShim::GetToggleStyle())
-			.ToolTipText(FText::FromString(ToolTip))
-			.IsChecked_Lambda([IsOn]() { return IsOn() ? ECheckBoxState::Checked : ECheckBoxState::Unchecked; })
-			.OnCheckStateChanged_Lambda([OnClick](ECheckBoxState) { OnClick(); })
-			[
-				SNew(SBox).Padding(FMargin {4.0f, 1.0f})
-				[
-					SNew(STextBlock).Text(FText::FromString(Label)).Font(FPjcStyles::GetFont("Regular", 8))
-				]
-			];
-		// clang-format on
-	}
-
 	TSharedRef<SWidget> PjcInspectorButton(const FString& Label, const FString& ToolTip, const FName Color, TFunction<void()> OnClick) {
 		// clang-format off
 		return SNew(SButton)
@@ -168,15 +151,15 @@ void SPjcTabInspector::Construct(const FArguments& InArgs) {
 		SNew(SPjcToolFrame).PageName(TEXT("Inspector")).PanelOpen(false)
 		[
 			SNew(SSplitter).PhysicalSplitterHandleSize(3.0f)
-			+ SSplitter::Slot().Value(0.26f)
+			+ SSplitter::Slot().Value(0.34f)
 			[
 				MakeFinder()
 			]
-			+ SSplitter::Slot().Value(0.44f)
+			+ SSplitter::Slot().Value(0.38f)
 			[
 				MakeGraphPane()
 			]
-			+ SSplitter::Slot().Value(0.30f)
+			+ SSplitter::Slot().Value(0.28f)
 			[
 				MakeDetails()
 			]
@@ -326,25 +309,11 @@ SPjcTabInspector::FRowPtr SPjcTabInspector::MakeRow(const FName Package) const {
 // finder
 
 TSharedRef<SWidget> SPjcTabInspector::MakeFinder() {
-	const auto Status = [this](const EStatusFilter Filter, const FString& Label, const FString& ToolTip) {
-		return PjcInspectorToggle(
-			Label,
-			ToolTip,
-			[this, Filter]() {
-				return FinderStatus == Filter;
-			},
-			[this, Filter]() {
-				FinderStatus = Filter;
-				ApplyFinderFilter();
-			}
-		);
-	};
-
 	// clang-format off
 	return SNew(SBorder).BorderImage(PjcShim::GetBrush(TEXT("ToolPanel.GroupBorder"))).Padding(0.0f)
 		[
 			SNew(SVerticalBox)
-			+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {8.0f, 8.0f, 8.0f, 4.0f})
+			+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {8.0f, 8.0f, 8.0f, 6.0f})
 			[
 				SAssignNew(FinderSearch, SSearchBox)
 				.Style(&PjcShim::GetSearchBoxStyle())
@@ -354,38 +323,17 @@ TSharedRef<SWidget> SPjcTabInspector::MakeFinder() {
 					ApplyFinderFilter();
 				})
 			]
-			+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {8.0f, 0.0f, 8.0f, 4.0f})
+			// status filters with their counts, as the filters of the Assets and Issues tabs
+			+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {8.0f, 0.0f, 8.0f, 8.0f})
 			[
-				SNew(SWrapBox).UseAllottedSize(true).InnerSlotPadding(FVector2D {2.0f, 2.0f})
-				+ SWrapBox::Slot()
-				[
-					Status(EStatusFilter::All, TEXT("All"), TEXT("Every scanned asset"))
-				]
-				+ SWrapBox::Slot()
-				[
-					Status(EStatusFilter::Used, TEXT("Used"), TEXT("Used by the game"))
-				]
-				+ SWrapBox::Slot()
-				[
-					Status(EStatusFilter::EditorOnly, TEXT("Editor only"), TEXT("Used, but only the editor needs it. Clean project keeps it."))
-				]
-				+ SWrapBox::Slot()
-				[
-					Status(EStatusFilter::Review, TEXT("Review"), TEXT("The scan is not sure about it. Clean project keeps it."))
-				]
-				+ SWrapBox::Slot()
-				[
-					Status(EStatusFilter::Unused, TEXT("Unused"), TEXT("Nothing uses it. Clean project deletes it."))
-				]
+				SAssignNew(FinderPills, SWrapBox).UseAllottedSize(true).InnerSlotPadding(FVector2D {4.0f, 4.0f})
 			]
-			+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {10.0f, 0.0f, 8.0f, 4.0f})
+			+ SVerticalBox::Slot().AutoHeight()
 			[
-				SNew(STextBlock)
-				.Text_Lambda([this]() {
-					return FText::FromString(PjcFormat::Count(FinderRows.Num()) + (FinderRows.Num() == 1 ? TEXT(" asset") : TEXT(" assets")));
-				})
-				.ColorAndOpacity(FSlateColor::UseSubduedForeground())
-				.Font(FPjcStyles::GetFont("Regular", 8))
+				SNew(SBox).HeightOverride(1.0f)
+				[
+					SNew(SImage).Image(FCoreStyle::Get().GetBrush("WhiteBrush")).ColorAndOpacity(PjcInspectorColor("ProjectCleaner.Color.Line"))
+				]
 			]
 			+ SVerticalBox::Slot().FillHeight(1.0f)
 			[
@@ -393,29 +341,107 @@ TSharedRef<SWidget> SPjcTabInspector::MakeFinder() {
 				// class bar, as in the Assets tab: a class in its color is listed
 				+ SHorizontalBox::Slot().AutoWidth()
 				[
-					SNew(SBox).WidthOverride(184.0f)
+					SNew(SBox).WidthOverride(168.0f)
 					[
-						SNew(SBorder).BorderImage(PjcShim::GetBrush(TEXT("ToolPanel.DarkGroupBorder"))).Padding(FMargin {0.0f, 4.0f})
+						SNew(SBorder).BorderImage(PjcShim::GetBrush(TEXT("ToolPanel.DarkGroupBorder"))).Padding(FMargin {0.0f, 0.0f, 0.0f, 4.0f})
 						[
-							SAssignNew(FinderClasses, SPjcClassBar).OnChanged(FSimpleDelegate::CreateSP(this, &SPjcTabInspector::FilterFinderRows))
+							SNew(SVerticalBox)
+							+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {10.0f, 8.0f, 10.0f, 4.0f})
+							[
+								PjcWidgets::MakeFilterHeading(FText::FromString(TEXT("CLASSES")), FText::FromString(TEXT("A class in its color is listed")))
+							]
+							+ SVerticalBox::Slot().FillHeight(1.0f)
+							[
+								SAssignNew(FinderClasses, SPjcClassBar).OnChanged(FSimpleDelegate::CreateSP(this, &SPjcTabInspector::FilterFinderRows))
+							]
 						]
 					]
 				]
 				+ SHorizontalBox::Slot().FillWidth(1.0f)
 				[
-					SAssignNew(FinderList, SListView<FRowPtr>)
-					.ListItemsSource(&FinderRows)
-					.SelectionMode(ESelectionMode::Single)
-					.OnGenerateRow(this, &SPjcTabInspector::OnGenerateFinderRow)
-					.OnSelectionChanged_Lambda([this](FRowPtr Row, ESelectInfo::Type SelectInfo) {
-						if (Row.IsValid() && SelectInfo != ESelectInfo::Direct && Row->Package != Focus) {
-							SetFocus(Row->Package, true);
-						}
-					})
+					SNew(SVerticalBox)
+					+ SVerticalBox::Slot().AutoHeight()
+					[
+						SNew(SBorder)
+						.BorderImage(FCoreStyle::Get().GetBrush("WhiteBrush"))
+						.BorderBackgroundColor(PjcInspectorColor("ProjectCleaner.Color.Header"))
+						.Padding(FMargin {10.0f, 5.0f})
+						[
+							SNew(SHorizontalBox)
+							+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
+							[
+								SNew(STextBlock).Text(FText::FromString(TEXT("NAME"))).Font(FPjcStyles::GetFont("Bold", 8)).ColorAndOpacity(FSlateColor::UseSubduedForeground())
+							]
+							+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+							[
+								SNew(STextBlock)
+								.Text_Lambda([this]() { return FText::FromString(PjcFormat::Count(FinderRows.Num())); })
+								.ToolTipText(FText::FromString(TEXT("Assets listed")))
+								.Font(PjcWidgets::GetFontMono(8))
+								.ColorAndOpacity(FSlateColor::UseSubduedForeground())
+							]
+						]
+					]
+					+ SVerticalBox::Slot().FillHeight(1.0f)
+					[
+						SAssignNew(FinderList, SListView<FRowPtr>)
+						.ListItemsSource(&FinderRows)
+						.SelectionMode(ESelectionMode::Single)
+						.OnGenerateRow(this, &SPjcTabInspector::OnGenerateFinderRow)
+						.OnSelectionChanged_Lambda([this](FRowPtr Row, ESelectInfo::Type SelectInfo) {
+							if (Row.IsValid() && SelectInfo != ESelectInfo::Direct && Row->Package != Focus) {
+								SetFocus(Row->Package, true);
+							}
+						})
+					]
 				]
 			]
 		];
 	// clang-format on
+}
+
+void SPjcTabInspector::RebuildFinderPills(const TMap<EStatusFilter, int32>& Counts) {
+	if (!FinderPills.IsValid()) return;
+
+	struct FPill
+	{
+		EStatusFilter Filter;
+		const TCHAR* Label;
+		const TCHAR* ToolTip;
+		const TCHAR* Color;
+	};
+	// clang-format off
+	const FPill Pills[] = {
+		{EStatusFilter::All, TEXT("All"), TEXT("Every scanned asset"), TEXT("ProjectCleaner.Color.Accent")},
+		{EStatusFilter::Used, TEXT("Used"), TEXT("Used by the game"), TEXT("ProjectCleaner.Color.UsedFill")},
+		{EStatusFilter::EditorOnly, TEXT("Editor only"), TEXT("Used, but only the editor needs it. Clean project keeps it."), TEXT("ProjectCleaner.Color.EditorFill")},
+		{EStatusFilter::Unused, TEXT("Unused"), TEXT("Nothing uses it. Clean project deletes it."), TEXT("ProjectCleaner.Color.UnusedFill")},
+		{EStatusFilter::Review, TEXT("Review"), TEXT("The scan is not sure about it. Clean project keeps it."), TEXT("ProjectCleaner.Color.ReviewFill")},
+	};
+	// clang-format on
+	FinderPills->ClearChildren();
+	for (const FPill& Pill : Pills) {
+		const EStatusFilter Filter = Pill.Filter;
+		// clang-format off
+		FinderPills->AddSlot()
+		[
+			PjcWidgets::MakeFilterPill(
+				Pill.Label,
+				Pill.ToolTip,
+				FString {},
+				PjcInspectorColor(Pill.Color),
+				Counts.FindRef(Filter),
+				Filter != EStatusFilter::All,
+				[this, Filter]() { return FinderStatus == Filter; },
+				[]() { return false; },
+				[this, Filter]() {
+					FinderStatus = Filter;
+					ApplyFinderFilter();
+				}
+			)
+		];
+		// clang-format on
+	}
 }
 
 void SPjcTabInspector::RebuildFinder() {
@@ -445,13 +471,18 @@ void SPjcTabInspector::ApplyFinderFilter() {
 	// status and search first: the class bar counts what they leave
 	FinderBase.Reset();
 	TMap<FName, FPjcClassBarItem> Classes;
+	TMap<EStatusFilter, int32> Counts;
 	for (const FRowPtr& Row : FinderAll) {
-		if (FinderStatus == EStatusFilter::Used && Row->Status != EPjcAssetStatus::Used) continue;
-		if (FinderStatus == EStatusFilter::EditorOnly && Row->Status != EPjcAssetStatus::EditorOnly) continue;
-		if (FinderStatus == EStatusFilter::Review && Row->Status != EPjcAssetStatus::Review) continue;
-		if (FinderStatus == EStatusFilter::Unused && Row->Status != EPjcAssetStatus::Unused) continue;
 		if (!FinderText.IsEmpty() && !Row->Name.Contains(FinderText) && !Row->Path.Contains(FinderText) && !Row->ClassLabel.Contains(FinderText))
 			continue;
+
+		const EStatusFilter RowFilter = Row->Status == EPjcAssetStatus::Used ? EStatusFilter::Used
+			: Row->Status == EPjcAssetStatus::EditorOnly					 ? EStatusFilter::EditorOnly
+			: Row->Status == EPjcAssetStatus::Review						 ? EStatusFilter::Review
+																			 : EStatusFilter::Unused;
+		++Counts.FindOrAdd(EStatusFilter::All);
+		++Counts.FindOrAdd(RowFilter);
+		if (FinderStatus != EStatusFilter::All && FinderStatus != RowFilter) continue;
 
 		FinderBase.Add(Row);
 		FPjcClassBarItem& Item = Classes.FindOrAdd(Row->ClassName);
@@ -469,6 +500,7 @@ void SPjcTabInspector::ApplyFinderFilter() {
 		});
 		FinderClasses->SetItems(Items);
 	}
+	RebuildFinderPills(Counts);
 	FilterFinderRows();
 }
 
@@ -491,43 +523,46 @@ void SPjcTabInspector::FilterFinderRows() {
 }
 
 TSharedRef<ITableRow> SPjcTabInspector::OnGenerateFinderRow(FRowPtr Row, const TSharedRef<STableViewBase>& Table) {
+	// one line as in the Assets list: class stripe, class icon, name; the status only when it is not Used
+	const FString Size = PjcFormat::Size(UPjcSubsystem::GetScanResult().GetSize(Row->Package));
+	const FString More = Row->ClassLabel + TEXT(" \u00B7 ") + Size + TEXT(" \u00B7 ") + PjcInspectorStatusText(Row->Status, true);
 	// clang-format off
 	return SNew(STableRow<FRowPtr>, Table)
 #if ENGINE_MAJOR_VERSION < 5
 		.Style(&PjcShim::GetRowStyle427())
 #endif
-		.Padding(FMargin {6.0f, 2.0f})
-		.ToolTipText(
-			FText::FromString(Row->Package.ToString() + TEXT("\n") + Row->ClassLabel + TEXT(" \u00B7 ") + PjcInspectorStatusText(Row->Status, true))
-		)
+		.Padding(FMargin {4.0f, 3.0f, 8.0f, 3.0f})
+		.ToolTip(PjcWidgets::MakeToolTip(Row->Name, Row->Package.ToString(), More))
 		[
 			SNew(SHorizontalBox)
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 6.0f, 0.0f})
 			[
-				PjcWidgets::MakeSwatch(PjcInspectorStatusColor(Row->Status, true), 7.0f)
+				SNew(SBox).WidthOverride(3.0f).HeightOverride(16.0f)
+				[
+					SNew(SImage).Image(FCoreStyle::Get().GetBrush("WhiteBrush")).ColorAndOpacity(Row->IconColor)
+				]
 			]
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 6.0f, 0.0f})
 			[
 				SNew(SBox).WidthOverride(16.0f).HeightOverride(16.0f)
 				[
-					SNew(SImage).Image(Row->Icon).ColorAndOpacity(Row->IconColor)
+					SNew(SImage).Image(Row->Icon)
 				]
 			]
 			+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
 			[
-				SNew(SVerticalBox)
-				+ SVerticalBox::Slot().AutoHeight()
-				[
-					SNew(STextBlock).Text(FText::FromString(Row->Name)).HighlightText_Lambda([this]() { return FText::FromString(FinderText); })
-				]
-				+ SVerticalBox::Slot().AutoHeight()
-				[
-					SNew(STextBlock)
-					.Text(FText::FromString(Row->Path))
-					.Font(FPjcStyles::GetFont("Regular", 7))
-					.ColorAndOpacity(FSlateColor::UseSubduedForeground())
-					.HighlightText_Lambda([this]() { return FText::FromString(FinderText); })
-				]
+				SNew(STextBlock)
+				.Text(FText::FromString(Row->Name))
+				.HighlightText_Lambda([this]() { return FText::FromString(FinderText); })
+				.Clipping(EWidgetClipping::ClipToBounds)
+			]
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
+			[
+				SNew(STextBlock)
+				.Visibility(Row->Status == EPjcAssetStatus::Used ? EVisibility::Collapsed : EVisibility::Visible)
+				.Text(FText::FromString(PjcInspectorStatusText(Row->Status, true)))
+				.Font(FPjcStyles::GetFont("Regular", 8))
+				.ColorAndOpacity(PjcInspectorStatusColor(Row->Status, true))
 			]
 		];
 	// clang-format on
