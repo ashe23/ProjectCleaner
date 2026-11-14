@@ -1,6 +1,7 @@
 // Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "Slate/SPjcTabIssues.h"
+#include "FileHelpers.h"
 #include "Slate/PjcActions.h"
 #include "Slate/PjcTabs.h"
 #include "Slate/PjcWidgets.h"
@@ -219,7 +220,6 @@ void SPjcTabIssues::Construct(const FArguments& InArgs) {
 						[
 							MakeCategories()
 						]
-						// the filters of the list shown, under the categories, one above the other (user, 2026-11-14: as Assets)
 						+ SScrollBox::Slot().Padding(FMargin {0.0f, 6.0f, 0.0f, 0.0f})
 						[
 							SNew(SVerticalBox)
@@ -255,7 +255,6 @@ void SPjcTabIssues::Construct(const FArguments& InArgs) {
 					[
 						MakeHeader()
 					]
-					// search and actions on the left (user, 2026-11-14: as Assets)
 					+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {12.0f, 4.0f, 12.0f, 6.0f})
 					[
 						MakeToolbar()
@@ -375,7 +374,7 @@ void SPjcTabIssues::RebuildRows() {
 				const FString StateName = PjcIssues::GetStateName(Info.State);
 				if (Filters.Num() > 0 && !Filters.Contains(StateName)) continue;
 				const FString Path = Info.Asset.PackageName.ToString();
-				const FString Target = Info.Target.ToString();
+				const FString Final = Info.FinalTarget.ToString();
 				const FRowPtr Row = MakeShared<FPjcIssueRow>();
 				Row->Id = Path;
 				Row->Redirector = Index;
@@ -387,10 +386,14 @@ void SPjcTabIssues::RebuildRows() {
 					Row->TagColor = TEXT("ProjectCleaner.Color.Red");
 					Row->TagToolTip = *Kept;
 				}
-				Row->Cells.Add(Info.Target.IsNone() ? TEXT("outside scan") : TEXT("\u2192 ") + FPackageName::GetShortName(Info.Target));
+				Row->Cells.Add(Info.FinalTarget.IsNone() ? TEXT("outside scan") : TEXT("\u2192 ") + FPackageName::GetShortName(Info.FinalTarget));
 				const TCHAR* Missing = Info.bTargetExists ? TEXT("") : TEXT(" \u00B7 missing");
-				Row->CellSubs.Add(Info.Target.IsNone() ? FString {} : FPaths::GetPath(Target).Mid(1) + Missing);
-				Row->CellColors.Add(Info.Target.IsNone() ? FName {} : (Info.bTargetExists ? FName {} : FName {TEXT("ProjectCleaner.Color.Red")}));
+				const FString Through
+					= Info.Via.Num() > 0 ? FString::Printf(TEXT(" \u00B7 through %s"), *PjcFormat::Count(Info.Via.Num())) : FString {};
+				Row->CellSubs.Add(Info.FinalTarget.IsNone() ? FString {} : FPaths::GetPath(Final).Mid(1) + Missing + Through);
+				Row->CellColors.Add(
+					Info.FinalTarget.IsNone() ? FName {} : (Info.bTargetExists ? FName {} : FName {TEXT("ProjectCleaner.Color.Red")})
+				);
 				Row->Cells.Add(Info.UsedBy.Num() > 0 ? PjcFormat::Count(Info.UsedBy.Num()) : TEXT("\u2014"));
 				Row->CellSubs.Add(FString {});
 				Row->CellColors.Add(NAME_None);
@@ -399,13 +402,22 @@ void SPjcTabIssues::RebuildRows() {
 				FName StateColor {TEXT("ProjectCleaner.Color.Gray")};
 				if (Info.State == EPjcRedirectorState::Broken) StateColor = TEXT("ProjectCleaner.Color.Red");
 				if (Info.State == EPjcRedirectorState::InUse) StateColor = TEXT("ProjectCleaner.Color.Yellow");
+				if (Info.State == EPjcRedirectorState::NamedInFiles) StateColor = TEXT("ProjectCleaner.Color.Reason.Source");
+				if (Info.State == EPjcRedirectorState::UsedOutside) StateColor = TEXT("ProjectCleaner.Color.Reason.Outside");
 				Row->CellColors.Add(StateColor);
 				TArray<FString> Users;
 				for (const FName User : Info.UsedBy) {
 					Users.Add(FPackageName::GetShortName(User));
 				}
 				const FString UsedByText = Users.Num() > 0 ? TEXT("\nUsed by: ") + FString::Join(Users, TEXT(", ")) : FString {};
-				Row->ToolTip = FString::Printf(TEXT("%s\n%s%s"), *Path, *PjcIssues::GetStateDescription(Info.State), *UsedByText);
+				const FString KeptText = Info.KeptBy.IsEmpty() ? FString {} : TEXT("\n") + Info.KeptBy;
+				TArray<FString> ViaNames;
+				for (const FName Via : Info.Via) {
+					ViaNames.Add(FPackageName::GetShortName(Via));
+				}
+				const FString ViaText = ViaNames.Num() > 0 ? TEXT("\nThrough ") + FString::Join(ViaNames, TEXT(" \u2192 ")) : FString {};
+				Row->ToolTip
+					= FString::Printf(TEXT("%s\n%s%s%s%s"), *Path, *PjcIssues::GetStateDescription(Info.State), *KeptText, *ViaText, *UsedByText);
 				AllRows.Add(Row);
 			}
 			break;
@@ -515,7 +527,6 @@ void SPjcTabIssues::RebuildList() {
 		SHeaderRow::FColumn::FArguments Arguments;
 		const int32 Index = Ids.Num();
 		Arguments.ColumnId(Column.Id).DefaultLabel(FText::FromString(Column.Label)).DefaultTooltip(FText::FromString(Column.ToolTip));
-		// a click sorts by the column, again turns it around (user, 2026-11-14: as Assets)
 		Arguments.SortMode_Lambda([this, Index]() {
 			return SortColumn == Index ? SortMode : EColumnSortMode::None;
 		});
@@ -768,7 +779,6 @@ TSharedRef<SWidget> SPjcTabIssues::MakeToolbar() {
 		}
 		return Indices;
 	};
-	// an action: its icon (as in the menus) and its name, always there, greyed until it can run (user, 2026-11-14: as Assets)
 	const auto Label = [](const FName Brush, const TCHAR* Text, const FSlateColor& TextColor) -> TSharedRef<SWidget> {
 		// clang-format off
 		return SNew(SHorizontalBox)
@@ -1030,18 +1040,34 @@ FText SPjcTabIssues::GetSelectionText() const {
 }
 
 void SPjcTabIssues::FixRedirectors(const TArray<int32>& Indices) {
+	// fixable, named in files (fixed only with a redirect), kept
 	TArray<int32> Can;
+	TArray<int32> Named;
 	TArray<int32> Cannot;
 	for (const int32 Index : Indices) {
-		(Redirectors[Index].CanFix() ? Can : Cannot).Add(Index);
+		const FPjcRedirectorInfo& Info = Redirectors[Index];
+		if (!Info.CanFix()) {
+			Cannot.Add(Index);
+		}
+		else if (Info.State == EPjcRedirectorState::NamedInFiles) {
+			Named.Add(Index);
+		}
+		else {
+			Can.Add(Index);
+		}
 	}
-	if (Can.Num() == 0 && Cannot.Num() == 0) return;
+	if (Can.Num() == 0 && Named.Num() == 0 && Cannot.Num() == 0) return;
 
 	TSet<FName> Users;
 	for (const int32 Index : Can) {
 		Users.Append(Redirectors[Index].UsedBy);
 	}
+	for (const int32 Index : Named) {
+		Users.Append(Redirectors[Index].UsedBy);
+	}
 
+	static bool bAddRedirects = true;
+	static bool bDeleteEmptyFolders = true;
 	TArray<FPjcDialogPart> Parts;
 	FPjcDialogPart& What = Parts.AddDefaulted_GetRef();
 	const TCHAR* Plural = Users.Num() == 1 ? TEXT("") : TEXT("s");
@@ -1065,33 +1091,80 @@ void SPjcTabIssues::FixRedirectors(const TArray<int32>& Indices) {
 			List.Rows.Emplace(FPackageName::GetShortName(User), FPaths::GetPath(User.ToString()).Mid(1));
 		}
 	}
-	if (Cannot.Num() > 0) {
+	if (Named.Num() > 0) {
 		FPjcDialogPart& List = Parts.AddDefaulted_GetRef();
-		List.Heading = FString::Printf(TEXT("Not fixable \u00B7 %s"), *PjcFormat::Count(Cannot.Num()));
-		List.Note = TEXT("Target missing and still used: repair the assets that use them by hand.");
-		List.NoteColor = TEXT("ProjectCleaner.Color.Red");
-		for (const int32 Index : Cannot) {
-			const FString UseText = FString::Printf(TEXT("%s use it"), *PjcFormat::Count(Redirectors[Index].UsedBy.Num()));
-			List.Rows.Emplace(FPackageName::GetShortName(Redirectors[Index].Asset.PackageName), UseText);
+		List.Heading = FString::Printf(TEXT("Named in files \u00B7 %s"), *PjcFormat::Count(Named.Num()));
+		List.Note = TEXT(
+			"Files name their old paths. With the option below they are fixed and a redirect keeps the old paths working; without it they stay."
+		);
+		List.NoteColor = TEXT("ProjectCleaner.Color.Reason.Source");
+		for (const int32 Index : Named) {
+			List.Rows.Emplace(FPackageName::GetShortName(Redirectors[Index].Asset.PackageName), Redirectors[Index].KeptBy);
 		}
 	}
+	if (Cannot.Num() > 0) {
+		FPjcDialogPart& List = Parts.AddDefaulted_GetRef();
+		List.Heading = FString::Printf(TEXT("Kept \u00B7 %s"), *PjcFormat::Count(Cannot.Num()));
+		List.Note = TEXT("Fixing cannot do these safely: repair broken references by hand, or scan the content that uses them.");
+		List.NoteColor = TEXT("ProjectCleaner.Color.Red");
+		for (const int32 Index : Cannot) {
+			const FPjcRedirectorInfo& Info = Redirectors[Index];
+			const FString UseText = FString::Printf(TEXT("%s use it, target missing"), *PjcFormat::Count(Info.UsedBy.Num()));
+			List.Rows.Emplace(
+				FPackageName::GetShortName(Info.Asset.PackageName), Info.State == EPjcRedirectorState::UsedOutside ? Info.KeptBy : UseText
+			);
+		}
+	}
+	if (Named.Num() > 0) {
+		FPjcDialogPart& Option = Parts.AddDefaulted_GetRef();
+		Option.CheckLabel = TEXT("Keep old paths named in files working: add redirects to Config/DefaultEngine.ini");
+		Option.CheckValue = &bAddRedirects;
+	}
+	FPjcDialogPart& Folders = Parts.AddDefaulted_GetRef();
+	Folders.CheckLabel = TEXT("Delete folders left empty");
+	Folders.CheckValue = &bDeleteEmptyFolders;
 	Parts.Add(SPjcDialog::MakeVersionControlNote());
 
-	const FString Title = FString::Printf(TEXT("Fix %s redirector%s"), *PjcFormat::Count(Can.Num()), Can.Num() == 1 ? TEXT("") : TEXT("s"));
-	if (!SPjcDialog::Show(Title, Parts, Can.Num() > 0 ? TEXT("Fix") : FString {}) || Can.Num() == 0) return;
+	const int32 NumToFix = Can.Num() + Named.Num();
+	if (!SPjcDialog::Show(TEXT("Fix redirectors"), Parts, NumToFix > 0 ? TEXT("Fix") : FString {}) || NumToFix == 0) return;
+
+	// unsaved referencers are saved first, or nothing is fixed
+	TArray<UPackage*> Dirty;
+	for (const FName User : Users) {
+		UPackage* Package = FindPackage(nullptr, *User.ToString());
+		if (Package && Package->IsDirty()) {
+			Dirty.Add(Package);
+		}
+	}
+	if (Dirty.Num() > 0) {
+		const FEditorFileUtils::EPromptReturnCode Saved = FEditorFileUtils::PromptForCheckoutAndSave(Dirty, false, true);
+		if (Saved != FEditorFileUtils::PR_Success) return;
+	}
 
 	TArray<FAssetData> Assets;
 	for (const int32 Index : Can) {
 		Assets.Add(Redirectors[Index].Asset);
 	}
-	const FPjcRedirectorFixResult Result = UPjcSubsystem::FixRedirectorsWithReport(Assets, true);
+	for (const int32 Index : Named) {
+		Assets.Add(Redirectors[Index].Asset);
+	}
+	FPjcRedirectorFixOptions Options;
+	Options.bAddRedirects = bAddRedirects;
+	Options.bDeleteEmptyFolders = bDeleteEmptyFolders;
+	const FPjcRedirectorFixResult Result = UPjcSubsystem::FixRedirectorsWithReport(Assets, true, Options);
 	FixKept = Result.Kept;
 	SPjcScanBar::ScanProject();
 
+	const FString Redirected
+		= Result.NumRedirects > 0 ? FString::Printf(TEXT(" \u00B7 %s redirects added"), *PjcFormat::Count(Result.NumRedirects)) : FString {};
+	const FString FoldersText = Result.NumFoldersDeleted > 0
+		? FString::Printf(TEXT(" \u00B7 %s empty folders deleted"), *PjcFormat::Count(Result.NumFoldersDeleted))
+		: FString {};
 	if (Result.Kept.Num() == 0 && Result.NotResaved.Num() == 0) {
 		const FString ResavedText = PjcFormat::Count(Result.NumResaved);
 		const FString DeletedText = PjcFormat::Count(Result.Deleted.Num());
-		const FString FixedText = FString::Printf(TEXT("Fixed %s redirectors \u00B7 resaved %s assets"), *DeletedText, *ResavedText);
+		const FString FixedText
+			= FString::Printf(TEXT("Fixed %s redirectors \u00B7 resaved %s assets"), *DeletedText, *ResavedText) + Redirected + FoldersText;
 		UPjcSubsystem::ShowNotification(FixedText, SNotificationItem::CS_Success, 4.0f);
 		return;
 	}
@@ -1115,7 +1188,8 @@ void SPjcTabIssues::FixRedirectors(const TArray<int32>& Indices) {
 	for (const auto& Pair : Result.Kept) {
 		Kept.Rows.Emplace(FPackageName::GetShortName(Pair.Key), Pair.Value);
 	}
-	const FString ReportTitle = FString::Printf(TEXT("Fixed %s of %s"), *PjcFormat::Count(Result.Deleted.Num()), *PjcFormat::Count(Can.Num()));
+	const FString ReportTitle
+		= FString::Printf(TEXT("Fixed %s of %s"), *PjcFormat::Count(Result.Deleted.Num()), *PjcFormat::Count(Assets.Num())) + Redirected;
 	SPjcDialog::Show(ReportTitle, Report, FString {});
 }
 
@@ -1172,10 +1246,13 @@ void SPjcTabIssues::RebuildFilters() {
 		AddHeading(TEXT("STATUS FILTERS"), TEXT("What each redirector needs"));
 		AddPill(FString {}, TEXT("All"), TEXT("Every redirector"), Accent, Redirectors.Num());
 		const TPair<EPjcRedirectorState, FName> States[] = {
-		  TPair<EPjcRedirectorState, FName> {		 EPjcRedirectorState::InUse, FName {TEXT("ProjectCleaner.Color.Yellow")}},
-		  TPair<EPjcRedirectorState, FName> {EPjcRedirectorState::NotReferenced,  FName {TEXT("ProjectCleaner.Color.Muted")}},
-		  TPair<EPjcRedirectorState, FName> { EPjcRedirectorState::TargetUnused, FName {TEXT("ProjectCleaner.Color.Editor")}},
-		  TPair<EPjcRedirectorState, FName> {		EPjcRedirectorState::Broken,	FName {TEXT("ProjectCleaner.Color.Red")}},
+		  TPair<EPjcRedirectorState, FName> {		 EPjcRedirectorState::InUse,		 FName {TEXT("ProjectCleaner.Color.Yellow")}},
+		  TPair<EPjcRedirectorState, FName> { EPjcRedirectorState::UsedByUnused,		 FName {TEXT("ProjectCleaner.Color.Editor")}},
+		  TPair<EPjcRedirectorState, FName> { EPjcRedirectorState::NamedInFiles,  FName {TEXT("ProjectCleaner.Color.Reason.Source")}},
+		  TPair<EPjcRedirectorState, FName> {  EPjcRedirectorState::UsedOutside, FName {TEXT("ProjectCleaner.Color.Reason.Outside")}},
+		  TPair<EPjcRedirectorState, FName> {EPjcRedirectorState::NotReferenced,		  FName {TEXT("ProjectCleaner.Color.Muted")}},
+		  TPair<EPjcRedirectorState, FName> { EPjcRedirectorState::TargetUnused,		 FName {TEXT("ProjectCleaner.Color.Editor")}},
+		  TPair<EPjcRedirectorState, FName> {		EPjcRedirectorState::Broken,			FName {TEXT("ProjectCleaner.Color.Red")}},
 		};
 		for (const auto& State : States) {
 			const int32 Num = Redirectors

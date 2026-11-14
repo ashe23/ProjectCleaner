@@ -145,6 +145,7 @@ int32 UPjcCommandlet::Main(const FString& Params) {
 		TArray<FAssetData> Redirectors;
 		UPjcSubsystem::GetProjectRedirectors(Redirectors);
 		UE_LOG(LogProjectCleanerCLI, Display, TEXT("Fixing %d redirectors..."), Redirectors.Num());
+		UE_LOG(LogProjectCleanerCLI, Warning, TEXT("Fixing redirectors: on a team, fix after everyone has checked in"));
 		UPjcSubsystem::FixProjectRedirectors(Redirectors, false);
 
 		UPjcSubsystem::GetProjectRedirectors(Redirectors);

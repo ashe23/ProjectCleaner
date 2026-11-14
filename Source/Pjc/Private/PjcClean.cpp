@@ -44,11 +44,11 @@ FPjcCleanPlan FPjcCleanPlan::Make(const FPjcScanResult& Result) {
 
 	Plan.NumFoldersEmpty = CountFoldersEmptyAfter(Result, Deleted);
 
-	TArray<FPjcRedirectorInfo> Redirectors;
-	PjcIssues::GetRedirectors(Result, Redirectors);
-	for (const auto& Redirector : Redirectors) {
-		Plan.NumRedirectors += Redirector.State == EPjcRedirectorState::TargetUnused ? 1 : 0;
-	}
+	// the redirectors Clean project removes: those that go with the deleted assets (chains, used only by unused assets too)
+	TArray<FAssetData> RedirectorsStale;
+	UPjcSubsystem::GetRedirectorsStale(Deleted, RedirectorsStale);
+	Plan.NumRedirectors = RedirectorsStale.Num();
+	Plan.NumRedirectorsLeft = FMath::Max(0, Result.Redirectors.Num() - Plan.NumRedirectors);
 
 	Plan.NumExcluded = Result.Excluded.Num();
 	for (const auto& Pair : Result.Status) {

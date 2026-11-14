@@ -383,6 +383,16 @@ TSharedRef<SWidget> SPjcCleanWindow::MakeConfirm() {
 	}
 	const TCHAR* EditorsDetail = TEXT("Editors that show an asset in the list are closed before deleting");
 	AddCheck(MakeCheck(ECheck::Info, TEXT("Asset editors close first"), EditorsDetail, NoExtra));
+	// redirectors never block Clean: the scan follows them, so nothing used is deleted through one
+	if (Plan.NumRedirectorsLeft > 0) {
+		const auto OnRedirectors = [this]() {
+			Close();
+			PjcTabs::ShowIssues(PjcTabs::GetMain(), static_cast<uint8>(EPjcIssueCategory::Redirectors));
+		};
+		const FString StayTitle = FString::Printf(TEXT("%s redirectors stay"), *PjcFormat::Count(Plan.NumRedirectorsLeft));
+		const TCHAR* StayDetail = TEXT("Nothing used is deleted through them: fix them in Issues when your team is ready");
+		AddCheck(MakeCheck(ECheck::Info, StayTitle, StayDetail, MakeButton(TEXT("Issues"), OnRedirectors)));
+	}
 
 	const FString Kept = TEXT("Kept: ") + PjcFormat::Count(Plan.NumExcluded) + TEXT(" excluded \u00B7 every used, editor only and Review asset");
 	const FString DeleteLabel = FString::Printf(TEXT("Delete %s assets"), *PjcFormat::Count(Plan.Assets.Num()));

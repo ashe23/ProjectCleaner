@@ -17,6 +17,8 @@ struct FPjcCleanPlan
 
 	// Redirectors nothing uses that point to an asset the delete removes: they go with it
 	int32 NumRedirectors = 0;
+	// Redirectors Clean project leaves: nothing used is deleted through them, Issues fixes them
+	int32 NumRedirectorsLeft = 0;
 
 	// Where and what, biggest first: folders two levels deep (/Game/Characters) and classes
 	TArray<TPair<FString, FPjcOverview::FTotal>> Folders;

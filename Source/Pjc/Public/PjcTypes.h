@@ -186,6 +186,23 @@ struct FPjcRedirectorFixResult
 	TMap<FName, FString> NotResaved;
 	// Redirector packages that stay, and why
 	TMap<FName, FString> Kept;
+	// Redirectors whose old path now resolves through a redirect in Config/DefaultEngine.ini
+	int32 NumRedirects = 0;
+	// Folders the fix left empty and deleted
+	int32 NumFoldersDeleted = 0;
+};
+
+// How redirectors are fixed
+struct FPjcRedirectorFixOptions
+{
+	// Keep the old paths that C++, Python or config files name working: add redirects to Config/DefaultEngine.ini
+	// ([CoreRedirects]), then fix those redirectors too. Off: they stay
+	bool bAddRedirects = false;
+	// Delete the folders the fix leaves empty
+	bool bDeleteEmptyFolders = false;
+	// Keep redirectors files name or content outside the scan uses. Only Clean project skips it: the redirectors it removes point
+	// to deleted assets, nothing can need them
+	bool bCheckNeeded = true;
 };
 
 USTRUCT(BlueprintType)

@@ -38,6 +38,8 @@
 #include "Misc/Paths.h"
 #include "Misc/RedirectCollector.h"
 #include "Misc/ScopeExit.h"
+#include "FileHelpers.h"
+#include "ObjectTools.h"
 #include "Serialization/MemoryWriter.h"
 #include "UObject/ObjectRedirector.h"
 
@@ -1381,6 +1383,7 @@ bool FPjcTestIssuesRedirectors::RunTest(const FString& Parameters) {
 	TestEqual(TEXT("R_Stale not referenced"), static_cast<int32>(Stale->State), static_cast<int32>(EPjcRedirectorState::NotReferenced));
 	TestEqual(TEXT("R_Dangling broken"), static_cast<int32>(Dangling->State), static_cast<int32>(EPjcRedirectorState::Broken));
 	TestTrue(TEXT("unused broken redirector can be fixed"), Dangling->CanFix());
+	TestEqual(TEXT("R_ToUnused target unused"), static_cast<int32>(ToUnused->State), static_cast<int32>(EPjcRedirectorState::TargetUnused));
 
 	// redirectors are not assets; a real asset with a redirector inside is an asset, not a redirector
 	TestNull(TEXT("C_WithRedirector is no redirector"), Find(TEXT("C_WithRedirector")));
@@ -1404,6 +1407,202 @@ bool FPjcTestIssuesRedirectors::RunTest(const FString& Parameters) {
 	}
 	TestTrue(TEXT("C_Target kept"), FPackageName::DoesPackageExist(PackageOf(Fixture, TEXT("C_Target")).ToString()));
 	TestTrue(TEXT("C_ChainLeaf kept"), FPackageName::DoesPackageExist(PackageOf(Fixture, TEXT("C_ChainLeaf")).ToString()));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPjcTestIssuesRedirectorCases, "ProjectCleaner.Issues.RedirectorCases", PJC_TEST_FLAGS)
+
+bool FPjcTestIssuesRedirectorCases::RunTest(const FString& Parameters) {
+	if (!FPjcTestFixture::IsTestHost()) {
+		AddInfo(TEXT("Skipped, writes redirects to the project config, runs only in test host projects"));
+		return true;
+	}
+
+	FPjcScopedScanSettings ScopedSettings {false};
+	FPjcTestFixture Fixture;
+	if (!Fixture.Build(*this)) return false;
+
+	// the fix writes redirects to the project's DefaultEngine.ini: restored afterwards
+	const FString EngineIni = FPaths::ConvertRelativePathToFull(FPaths::ProjectConfigDir() / TEXT("DefaultEngine.ini"));
+	const FString NamingIni = FPaths::ConvertRelativePathToFull(FPaths::ProjectConfigDir() / TEXT("PjcRedirectorTests.ini"));
+	const bool bHadEngineIni = FPaths::FileExists(EngineIni);
+	FString EngineIniText;
+	FFileHelper::LoadFileToString(EngineIniText, *EngineIni);
+	const FString Root = FPjcTestFixture::RootPath() / TEXT("RedirectorCases");
+	ON_SCOPE_EXIT {
+		if (bHadEngineIni) {
+			FFileHelper::SaveStringToFile(EngineIniText, *EngineIni);
+		}
+		else {
+			IFileManager::Get().Delete(*EngineIni, false, true, true);
+		}
+		IFileManager::Get().Delete(*NamingIni, false, true, true);
+		TArray<UObject*> Left;
+		for (const TCHAR* Name :
+			 {TEXT("C_ChainEnd"),
+			  TEXT("R_ChainA"),
+			  TEXT("R_ChainB"),
+			  TEXT("C_ByUnusedTarget"),
+			  TEXT("R_ByUnused"),
+			  TEXT("OL_ByUnused"),
+			  TEXT("C_NamedTarget")}) {
+			UObject* Object = FindObject<UObject>(nullptr, *FString::Printf(TEXT("%s/%s.%s"), *Root, Name, Name));
+			if (IsValid(Object)) {
+				Left.Add(Object);
+			}
+		}
+		UObject* Named = FindObject<UObject>(nullptr, *(Root / TEXT("Named/R_Named.R_Named")));
+		if (IsValid(Named)) {
+			Left.Add(Named);
+		}
+		// before 5.5 the registry ensures when deleting a redirector whose redirection it never registered
+		for (const UObject* Object : Left) {
+			const UObjectRedirector* Redirector = Cast<UObjectRedirector>(Object);
+			if (Redirector && Redirector->DestinationObject) {
+				PjcShim::RegisterRedirection(Redirector, Redirector->DestinationObject->GetPathName());
+			}
+		}
+		if (Left.Num() > 0) {
+			ObjectTools::ForceDeleteObjects(Left, false);
+		}
+	};
+
+	TArray<UPackage*> Packages;
+	const auto NewPackage = [&Packages](const FString& PackageName) {
+		UPackage* Package = CreatePackage(*PackageName);
+		Package->MarkPackageDirty();
+		Packages.Add(Package);
+		return Package;
+	};
+	const auto NewCurve = [&](const FString& PackageName) {
+		UCurveFloat* Curve
+			= NewObject<UCurveFloat>(NewPackage(PackageName), FName {*FPackageName::GetShortName(PackageName)}, RF_Public | RF_Standalone);
+		FAssetRegistryModule::AssetCreated(Curve);
+		return Curve;
+	};
+	const auto NewRedirector = [&](const FString& PackageName, UObject* Destination) {
+		const FName Name {*FPackageName::GetShortName(PackageName)};
+		UObjectRedirector* Redirector = NewObject<UObjectRedirector>(NewPackage(PackageName), Name, RF_Public | RF_Standalone);
+		Redirector->DestinationObject = Destination;
+		FAssetRegistryModule::AssetCreated(Redirector);
+		return Redirector;
+	};
+
+	// R_ChainA -> R_ChainB -> C_ChainEnd (unused)
+	UCurveFloat* ChainEnd = NewCurve(Root / TEXT("C_ChainEnd"));
+	UObjectRedirector* ChainB = NewRedirector(Root / TEXT("R_ChainB"), ChainEnd);
+	NewRedirector(Root / TEXT("R_ChainA"), ChainB);
+	// used only by an unused asset
+	UCurveFloat* ByUnusedTarget = NewCurve(Root / TEXT("C_ByUnusedTarget"));
+	UObjectRedirector* ByUnused = NewRedirector(Root / TEXT("R_ByUnused"), ByUnusedTarget);
+	UObjectLibrary* Library = NewObject<UObjectLibrary>(NewPackage(Root / TEXT("OL_ByUnused")), TEXT("OL_ByUnused"), RF_Public | RF_Standalone);
+	Library->ObjectBaseClass = UObject::StaticClass();
+	Library->AddObject(ByUnused);
+	FAssetRegistryModule::AssetCreated(Library);
+	// named in a config file, alone in its folder
+	UCurveFloat* NamedTarget = NewCurve(Root / TEXT("C_NamedTarget"));
+	NewRedirector(Root / TEXT("Named/R_Named"), NamedTarget);
+	const FString NamedPath = Root / TEXT("Named/R_Named");
+	FFileHelper::SaveStringToFile(FString::Printf(TEXT("[PjcRedirectorTests]\nAsset=%s.R_Named\n"), *NamedPath), *NamingIni);
+
+	if (!TestTrue(TEXT("cases saved"), UEditorLoadingAndSavingUtils::SavePackages(Packages, false))) return false;
+	TArray<FString> Files;
+	for (const UPackage* Package : Packages) {
+		Files.Add(FPackageName::LongPackageNameToFilename(Package->GetName(), FPackageName::GetAssetPackageExtension()));
+	}
+	UPjcSubsystem::GetModuleAssetRegistry().Get().ScanFilesSynchronous(Files, true);
+	// loaded from disk the library would hold the target, not the redirector
+	Library->RemoveObject(ByUnused);
+	Library->AddObject(ByUnusedTarget);
+
+	if (!TestTrue(TEXT("scanned"), UPjcSubsystem::Scan(false))) return false;
+	TArray<FPjcRedirectorInfo> Redirectors;
+	PjcIssues::GetRedirectors(UPjcSubsystem::GetScanResult(), Redirectors);
+	const auto Find = [&Redirectors](const FString& PackageName) {
+		return Redirectors.FindByPredicate([&PackageName](const FPjcRedirectorInfo& Info) {
+			return Info.Asset.PackageName == FName {*PackageName};
+		});
+	};
+	const auto State = [](const FPjcRedirectorInfo* Info) {
+		return Info ? static_cast<int32>(Info->State) : -1;
+	};
+	const FPjcRedirectorInfo* InfoA = Find(Root / TEXT("R_ChainA"));
+	const FPjcRedirectorInfo* InfoB = Find(Root / TEXT("R_ChainB"));
+	const FPjcRedirectorInfo* InfoByUnused = Find(Root / TEXT("R_ByUnused"));
+	const FPjcRedirectorInfo* InfoNamed = Find(NamedPath);
+	if (!TestTrue(TEXT("case redirectors found"), InfoA && InfoB && InfoByUnused && InfoNamed)) return false;
+
+	const FName ChainEndPackage {*(Root / TEXT("C_ChainEnd"))};
+	TestEqual(TEXT("chain A points to B"), InfoA->Target, FName {*(Root / TEXT("R_ChainB"))});
+	TestEqual(TEXT("chain A ends at C_ChainEnd"), InfoA->FinalTarget, ChainEndPackage);
+	TestEqual(TEXT("chain A goes through B"), InfoA->Via.Num(), 1);
+	TestEqual(TEXT("chain B ends at C_ChainEnd"), InfoB->FinalTarget, ChainEndPackage);
+	TestTrue(TEXT("chain end exists"), InfoA->bTargetExists);
+	TestEqual(TEXT("chain A target unused"), State(InfoA), static_cast<int32>(EPjcRedirectorState::TargetUnused));
+	TestEqual(TEXT("used only by unused"), State(InfoByUnused), static_cast<int32>(EPjcRedirectorState::UsedByUnused));
+	TestEqual(TEXT("named in files"), State(InfoNamed), static_cast<int32>(EPjcRedirectorState::NamedInFiles));
+	TestTrue(TEXT("named in files says where"), InfoNamed->KeptBy.Contains(TEXT("PjcRedirectorTests.ini")));
+	TestTrue(TEXT("named in files can be fixed"), InfoNamed->CanFix());
+
+	// stale after Clean project
+	const auto StaleNames = [](const TSet<FName>& Deleted) {
+		TArray<FAssetData> Stale;
+		UPjcSubsystem::GetRedirectorsStale(Deleted, Stale);
+		TSet<FString> Names;
+		for (const auto& Asset : Stale) {
+			Names.Add(FPackageName::GetShortName(Asset.PackageName));
+		}
+		return Names;
+	};
+	const TSet<FString> StaleChain = StaleNames({ChainEndPackage});
+	TestTrue(TEXT("chain A stale"), StaleChain.Contains(TEXT("R_ChainA")));
+	TestTrue(TEXT("chain B stale"), StaleChain.Contains(TEXT("R_ChainB")));
+	const FName ByUnusedTargetPackage {*(Root / TEXT("C_ByUnusedTarget"))};
+	const FName LibraryPackage {*(Root / TEXT("OL_ByUnused"))};
+	TestTrue(TEXT("used only by deleted: stale"), StaleNames({ByUnusedTargetPackage, LibraryPackage}).Contains(TEXT("R_ByUnused")));
+	TestFalse(TEXT("used by an asset that stays: not stale"), StaleNames({ByUnusedTargetPackage}).Contains(TEXT("R_ByUnused")));
+
+	const auto FileExists = [](const FString& PackageName) {
+		return FPaths::FileExists(FPackageName::LongPackageNameToFilename(PackageName, FPackageName::GetAssetPackageExtension()));
+	};
+
+	FPjcRedirectorFixOptions Options;
+	FPjcRedirectorFixResult Result = UPjcSubsystem::FixRedirectorsWithReport({InfoNamed->Asset}, false, Options);
+	TestTrue(TEXT("named kept without redirect"), Result.Kept.Contains(FName {*NamedPath}));
+	TestTrue(TEXT("named still on disk"), FileExists(NamedPath));
+	TestEqual(TEXT("no redirects added"), Result.NumRedirects, 0);
+
+	Options.bAddRedirects = true;
+	Options.bDeleteEmptyFolders = true;
+	Result = UPjcSubsystem::FixRedirectorsWithReport({InfoNamed->Asset}, false, Options);
+	TestEqual(TEXT("one redirect added"), Result.NumRedirects, 1);
+	TestTrue(TEXT("named deleted"), Result.Deleted.Contains(FName {*NamedPath}));
+	TestFalse(TEXT("named gone from disk"), FileExists(NamedPath));
+	FString EngineIniNow;
+	FFileHelper::LoadFileToString(EngineIniNow, *EngineIni);
+	TestTrue(TEXT("redirect section"), EngineIniNow.Contains(TEXT("[CoreRedirects]")));
+	const FString Redirect = FString::Printf(TEXT("+PackageRedirects=(OldName=\"%s\",NewName=\"%s\")"), *NamedPath, *(Root / TEXT("C_NamedTarget")));
+	TestTrue(TEXT("package redirect written"), EngineIniNow.Contains(Redirect));
+	TestEqual(TEXT("empty folder deleted"), Result.NumFoldersDeleted, 1);
+	TestFalse(TEXT("folder gone"), IFileManager::Get().DirectoryExists(*UPjcSubsystem::PathConvertToAbsolute(Root / TEXT("Named"))));
+	const int32 Lines = EngineIniNow.Len();
+	TestEqual(TEXT("config unchanged without redirectors to redirect"), UPjcSubsystem::FixRedirectorsWithReport({}, false, Options).NumRedirects, 0);
+	FFileHelper::LoadFileToString(EngineIniNow, *EngineIni);
+	TestEqual(TEXT("config written once"), EngineIniNow.Len(), Lines);
+
+	// fixing the middle of a chain re-points the first redirector to the real asset
+	Result = UPjcSubsystem::FixRedirectorsWithReport({InfoB->Asset}, false, Options);
+	TestTrue(TEXT("chain B deleted"), Result.Deleted.Contains(FName {*(Root / TEXT("R_ChainB"))}));
+	TestEqual(TEXT("chain A resaved"), Result.NumResaved, 1);
+	TArray<FName> Dependencies;
+	UPjcSubsystem::GetModuleAssetRegistry().Get().GetDependencies(FName {*(Root / TEXT("R_ChainA"))}, Dependencies);
+	TestTrue(TEXT("chain A points to the real asset"), Dependencies.Contains(ChainEndPackage));
+	TestTrue(TEXT("chain end kept"), FileExists(ChainEndPackage.ToString()));
+
+	Result = UPjcSubsystem::FixRedirectorsWithReport({InfoByUnused->Asset}, false, Options);
+	TestTrue(TEXT("by unused deleted"), Result.Deleted.Contains(FName {*(Root / TEXT("R_ByUnused"))}));
+	TestEqual(TEXT("library resaved"), Result.NumResaved, 1);
+	TestTrue(TEXT("by unused target kept"), FileExists(ByUnusedTargetPackage.ToString()));
 	return true;
 }
 

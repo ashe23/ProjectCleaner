@@ -150,4 +150,8 @@ namespace PjcShim
 #endif
 	}
 
+	// Collections that list a redirector point to its target instead (the engine's fixup does it too), false when one failed to save
+	bool HandleCollectionRedirectorDeleted(const UObject* Redirector);
+	// UE 5.1+: lets the packages of a level instance world be saved again (the engine's fixup does it before resaving)
+	void ResetLoadersForWorld(const FString& WorldPackage);
 }	// namespace PjcShim

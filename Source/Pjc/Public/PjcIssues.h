@@ -16,6 +16,12 @@ enum class EPjcRedirectorState : uint8
 	TargetUnused,
 	// its target is missing: assets that use it need a repair by hand
 	Broken,
+	// C++, Python or config files name its old path: deleting it breaks them, unless a redirect keeps the path working
+	NamedInFiles,
+	// content the scan leaves out uses it (engine, other plugins, Developers, UE 4.27 actor files): fixing cannot resave that
+	UsedOutside,
+	// only unused assets point through it: Clean project deletes it with them
+	UsedByUnused,
 };
 
 // Redirector of the scanned content, for the Issues tool
@@ -24,14 +30,19 @@ struct FPjcRedirectorInfo
 	FAssetData Asset;
 	// Package it points to, None when not known
 	FName Target;
+	// The real asset at the end of a chain (redirector to redirector), and the redirectors on the way
+	FName FinalTarget;
+	TArray<FName> Via;
 	bool bTargetExists = true;
-	// Assets that point through it (redirectors left out)
+	// Assets of the scan that point through it (redirectors left out)
 	TArray<FName> UsedBy;
 	EPjcRedirectorState State = EPjcRedirectorState::NotReferenced;
+	// Why it must stay: the file and line that name it, or what outside the scan uses it
+	FString KeptBy;
 
-	// Broken and used: nothing to resave it to
+	// Broken and used: nothing to resave it to. Used outside the scan: fixing cannot resave that content
 	bool CanFix() const {
-		return !(State == EPjcRedirectorState::Broken && UsedBy.Num() > 0);
+		return !(State == EPjcRedirectorState::Broken && UsedBy.Num() > 0) && State != EPjcRedirectorState::UsedOutside;
 	}
 };
 

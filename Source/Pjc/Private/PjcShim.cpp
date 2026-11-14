@@ -18,6 +18,9 @@
 #include "Misc/MessageDialog.h"
 #include "Misc/PackageName.h"
 #include "Misc/RedirectCollector.h"
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1
+#include "LevelInstance/LevelInstanceSubsystem.h"
+#endif
 #include "Styling/SlateTypes.h"
 #include "ShaderCompiler.h"
 #include "UObject/ReferencerFinder.h"
@@ -416,6 +419,23 @@ namespace PjcShim
 		for (const auto& ObjectPath : ObjectPaths) {
 			OutPackages.AddUnique(FName {*FPackageName::ObjectPathToPackageName(ObjectPath.ToString())});
 		}
+#endif
+	}
+
+	bool HandleCollectionRedirectorDeleted(const UObject* Redirector) {
+		if (!Redirector || !FCollectionManagerModule::IsModuleAvailable()) return true;
+
+		ICollectionManager& CollectionManager = FCollectionManagerModule::GetModule().Get();
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1
+		return CollectionManager.HandleRedirectorDeleted(FSoftObjectPath {Redirector});
+#else
+		return CollectionManager.HandleRedirectorDeleted(FName {*Redirector->GetPathName()});
+#endif
+	}
+
+	void ResetLoadersForWorld(const FString& WorldPackage) {
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1
+		ULevelInstanceSubsystem::ResetLoadersForWorldAsset(WorldPackage);
 #endif
 	}
 

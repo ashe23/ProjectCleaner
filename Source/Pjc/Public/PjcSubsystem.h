@@ -331,7 +331,21 @@ class UPjcSubsystem final : public UEditorSubsystem
 	// Fixes redirectors without the engine dialogs: resaves the assets that use them (checked out when source control
 	// is on), then deletes the redirectors nothing points to anymore. Redirectors to missing assets stay, with their
 	// users. Tells what was not resaved and which redirectors stay, and why.
-	static FPjcRedirectorFixResult FixRedirectorsWithReport(const TArray<FAssetData>& Redirectors, const bool bShowSlowTask = true);
+	static FPjcRedirectorFixResult FixRedirectorsWithReport(
+		const TArray<FAssetData>& Redirectors,
+		const bool bShowSlowTask = true,
+		const FPjcRedirectorFixOptions& Options = FPjcRedirectorFixOptions {}
+	);
+
+	// Redirectors that something besides the scanned assets needs: files that name their old path (C++, Python, config), with
+	// the file and line, and content the scan leaves out (engine, other plugins, Developers, UE 4.27 actor files)
+	static void
+	GetRedirectorsNeededOutside(const TArray<FAssetData>& Redirectors, TMap<FName, FString>& OutNamedInFiles, TMap<FName, FString>& OutUsedOutside);
+	// Redirectors that go with deleted packages: their chain ends at one of them, and only those packages or such redirectors
+	// point through them (chains, redirectors used only by unused assets)
+	static void GetRedirectorsStale(const TSet<FName>& PackagesDeleted, TArray<FAssetData>& Redirectors);
+	// Packages a level's actor files reference (UE 4.27 keeps them out of the asset registry), by package the actor files
+	static void GetExternalActorsDependencies(TSet<FName>& OutPackages, TMap<FName, TArray<FName>>* OutActorFiles = nullptr);
 
 	// Checks if editor is in play mode or simulation or not
 	// @return bool
@@ -501,8 +515,15 @@ class UPjcSubsystem final : public UEditorSubsystem
 	static void GetAssetsScanned(TArray<FAssetData>& Assets);
 	// Packages of GetProjectRedirectors
 	static void GetPackagesRedirector(TSet<FName>& Packages);
-	// Redirectors nothing references that point to one of the given packages
-	static void GetRedirectorsStale(const TSet<FName>& PackagesDeleted, TArray<FAssetData>& Redirectors);
+	// Localized copies (L10N) of the redirectors that are redirectors too: they are fixed together
+	static void AddLocalizedRedirectors(TArray<FAssetData>& Redirectors);
+	// Adds redirects for the old paths of the redirectors to Config/DefaultEngine.ini ([CoreRedirects]) and to this session,
+	// how many redirectors got one
+	static int32 AddCoreRedirects(const TArray<UObjectRedirector*>& Redirectors);
+	// Why a redirector cannot be deleted now (checked out by someone else, not at the latest revision), empty when it can
+	static FString GetRedirectorDeleteBlock(const FName Package);
+	// Why a package does not load when its file name differs from the asset name only in letter case, empty otherwise
+	static FString GetCaseMismatch(const FName Package);
 	// Asset registry ready, asset editors closed, unsaved assets saved
 	static bool PrepareDelete();
 	static void BucketFill(TArray<FAssetData>& AssetsUnused, TArray<FAssetData>& Bucket, const int32 BucketSize, const TSet<FName>& PackagesUnused);
@@ -523,7 +544,6 @@ class UPjcSubsystem final : public UEditorSubsystem
 	// Exclusion rule that matches the asset (excluded classes match exactly and must be loaded), false when none does
 	static bool GetExclusion(const FAssetData& Asset, FPjcExclusion& OutExclusion);
 	static FString GetEngineReferencedDetail(const FAssetData& Asset);
-	static void GetExternalActorsDependencies(TSet<FName>& OutPackages, TMap<FName, TArray<FName>>* OutActorFiles = nullptr);
 	static bool BucketPrepare(const TArray<FAssetData>& Bucket, TArray<UObject*>& LoadedAssets);
 	static int32 BucketDelete(const TArray<UObject*>& LoadedAssets);
 };

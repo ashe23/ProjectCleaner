@@ -1,6 +1,8 @@
 // Copyright Ashot Barkhudaryan. All Rights Reserved.
 
 #include "PjcSubsystem.h"
+#include "SourceControlHelpers.h"
+#include "UObject/CoreRedirects.h"
 #include "PjcCookInfo.h"
 #include "PjcFormat.h"
 #include "PjcConstants.h"
@@ -139,6 +141,18 @@ namespace
 		if (ScanCache.Depth == 0) return;
 
 		Cached = Value;
+	}
+
+	// the real asset at the end of a chain (redirector to redirector to asset), null when the chain ends nowhere
+	UObject* GetFinalDestination(const UObjectRedirector* Redirector) {
+		UObject* Destination = Redirector ? Redirector->DestinationObject : nullptr;
+		for (int32 Step = 0; Step < 64; ++Step) {
+			const UObjectRedirector* Next = Cast<UObjectRedirector>(Destination);
+			if (!Next) return Destination;
+
+			Destination = Next->DestinationObject;
+		}
+		return nullptr;
 	}
 }	// namespace
 
@@ -1191,7 +1205,7 @@ void UPjcSubsystem::ComputeAssetsUsed(
 	FollowDependencies(false);
 
 	// assets placed in a level that saves each actor in its own file (World Partition, One File Per Actor) are used
-	// because their map is (user, 2026-11-14): they show as its dependencies. Only the reason changes, never whether an
+	// because their map is: they show as its dependencies. Only the reason changes, never whether an
 	// asset is used: they stay used as above. The map does not reference its actor files (the files point to the map),
 	// so following references from the map would never reach them. Kept as outside references when any other outside
 	// package references them, or a map of their actor files is not scanned or not used (actor files of a deleted map)
@@ -2178,7 +2192,9 @@ bool UPjcSubsystem::DeleteAssets(
 	TArray<FAssetData> RedirectorsStale;
 	GetRedirectorsStale(PackagesUnused, RedirectorsStale);
 	if (RedirectorsStale.Num() > 0) {
-		const FPjcRedirectorFixResult Fixed = FixRedirectorsWithReport(RedirectorsStale, false);
+		FPjcRedirectorFixOptions Options;
+		Options.bCheckNeeded = false;
+		const FPjcRedirectorFixResult Fixed = FixRedirectorsWithReport(RedirectorsStale, false, Options);
 		UE_LOG(LogProjectCleaner, Display, TEXT("Deleted %d redirector(s) to deleted assets"), Fixed.Deleted.Num());
 	}
 
@@ -2561,28 +2577,234 @@ void UPjcSubsystem::GetProjectRedirectors(TArray<FAssetData>& Redirectors) {
 void UPjcSubsystem::GetRedirectorsStale(const TSet<FName>& PackagesDeleted, TArray<FAssetData>& Redirectors) {
 	GetProjectRedirectors(Redirectors);
 
-	// nothing references them and they point to a deleted package
+	// the package each redirector points to
 	IAssetRegistry& AssetRegistry = GetModuleAssetRegistry().Get();
-	TMap<FName, bool> PackagesStale;
+	TMap<FName, FName> TargetOf;
 	TArray<FName> Links;
 	for (const auto& Redirector : Redirectors) {
-		if (PackagesStale.Contains(Redirector.PackageName)) continue;
-
 		Links.Reset();
-		AssetRegistry.GetReferencers(Redirector.PackageName, Links);
-		bool bStale = Links.Num() == 0;
-		if (bStale) {
-			Links.Reset();
-			AssetRegistry.GetDependencies(Redirector.PackageName, Links);
-			bStale = Links.ContainsByPredicate([&PackagesDeleted](const FName& Dependency) {
-				return PackagesDeleted.Contains(Dependency);
-			});
+		AssetRegistry.GetDependencies(Redirector.PackageName, Links);
+		Links.Sort(FNameLexicalLess {});
+		for (const FName Dependency : Links) {
+			if (Dependency.ToString().StartsWith(TEXT("/Script/")) || Dependency == Redirector.PackageName) continue;
+
+			TargetOf.Add(Redirector.PackageName, Dependency);
+			break;
 		}
-		PackagesStale.Add(Redirector.PackageName, bStale);
 	}
-	Redirectors.RemoveAll([&PackagesStale](const FAssetData& Redirector) {
-		return !PackagesStale.FindRef(Redirector.PackageName);
+
+	// candidates: the chain ends at a deleted package (redirector to redirector to asset)
+	TSet<FName> Stale;
+	for (const auto& Pair : TargetOf) {
+		FName End = Pair.Value;
+		for (int32 Step = 0; Step < 64 && TargetOf.Contains(End); ++Step) {
+			End = TargetOf[End];
+		}
+		if (PackagesDeleted.Contains(End)) {
+			Stale.Add(Pair.Key);
+		}
+	}
+	// a candidate something staying still points through stays, until nothing changes: only deleted packages and other
+	// stale redirectors may use one (redirectors used only by unused assets, chains)
+	for (bool bChanged = true; bChanged;) {
+		bChanged = false;
+		for (const FName Package : Stale.Array()) {
+			Links.Reset();
+			AssetRegistry.GetReferencers(Package, Links);
+			const bool bUsed = Links.ContainsByPredicate([&](const FName Referencer) {
+				return !PackagesDeleted.Contains(Referencer) && !Stale.Contains(Referencer);
+			});
+			if (bUsed) {
+				Stale.Remove(Package);
+				bChanged = true;
+			}
+		}
+	}
+	Redirectors.RemoveAll([&Stale](const FAssetData& Redirector) {
+		return !Stale.Contains(Redirector.PackageName);
 	});
+}
+
+void UPjcSubsystem::AddLocalizedRedirectors(TArray<FAssetData>& Redirectors) {
+	// "/Game/L10N/fr/UI/Old" is the French copy of "/Game/UI/Old"
+	TSet<FName> Sources;
+	for (const auto& Redirector : Redirectors) {
+		Sources.Add(Redirector.PackageName);
+	}
+	TArray<FAssetData> All;
+	GetProjectRedirectors(All);
+	for (const auto& Redirector : All) {
+		const FString Path = Redirector.PackageName.ToString();
+		const int32 L10N = Path.Find(TEXT("/L10N/"), ESearchCase::IgnoreCase);
+		if (L10N == INDEX_NONE || Sources.Contains(Redirector.PackageName)) continue;
+
+		const int32 CultureEnd = Path.Find(TEXT("/"), ESearchCase::CaseSensitive, ESearchDir::FromStart, L10N + 6);
+		if (CultureEnd == INDEX_NONE) continue;
+
+		const FName Source {*(Path.Left(L10N) + Path.Mid(CultureEnd))};
+		if (Sources.Contains(Source)) {
+			Redirectors.Add(Redirector);
+		}
+	}
+}
+
+void UPjcSubsystem::GetRedirectorsNeededOutside(
+	const TArray<FAssetData>& Redirectors,
+	TMap<FName, FString>& OutNamedInFiles,
+	TMap<FName, FString>& OutUsedOutside
+) {
+	OutNamedInFiles.Reset();
+	OutUsedOutside.Reset();
+	TSet<FName> Packages;
+	for (const auto& Redirector : Redirectors) {
+		Packages.Add(Redirector.PackageName);
+	}
+	if (Packages.Num() == 0) return;
+
+	// files that name the old path: C++, Python, config
+	{
+		FPjcScanCacheScope ScanCacheScope;
+		TArray<FAssetData> AssetsIndirect;
+		TArray<FPjcAssetIndirectInfo> AssetsIndirectInfos;
+		GetAssetsIndirect(AssetsIndirect, AssetsIndirectInfos, false);
+		const FString ProjectDir = PathNormalize(FPaths::ConvertRelativePathToFull(FPaths::ProjectDir())) + TEXT("/");
+		for (const auto& Info : AssetsIndirectInfos) {
+			if (!Packages.Contains(Info.Asset.PackageName) || OutNamedInFiles.Contains(Info.Asset.PackageName)) continue;
+
+			FString File = PathNormalize(Info.FilePath);
+			FPaths::MakePathRelativeTo(File, *ProjectDir);
+			OutNamedInFiles.Add(Info.Asset.PackageName, FString::Printf(TEXT("named in %s, line %d"), *File, Info.FileNum));
+		}
+	}
+
+	// content the scan leaves out: engine, other plugins, Developers folders
+	IAssetRegistry& AssetRegistry = GetModuleAssetRegistry().Get();
+	TArray<FName> Referencers;
+	for (const FName Package : Packages) {
+		Referencers.Reset();
+		AssetRegistry.GetReferencers(Package, Referencers);
+		const FName* Outside = Referencers.FindByPredicate([&Packages](const FName Referencer) {
+			return !Packages.Contains(Referencer) && !Referencer.ToString().StartsWith(TEXT("/Script/"))
+				&& !PathIsInsideProject(Referencer.ToString());
+		});
+		if (Outside) {
+			OutUsedOutside.Add(Package, FString::Printf(TEXT("used by %s, which the scan leaves out"), *Outside->ToString()));
+		}
+	}
+#if ENGINE_MAJOR_VERSION < 5
+	// UE 4.27: a level's actor files are not in the asset registry, fixing cannot find and resave them
+	TSet<FName> ActorFileDependencies;
+	GetExternalActorsDependencies(ActorFileDependencies);
+	for (const FName Package : Packages) {
+		if (ActorFileDependencies.Contains(Package) && !OutUsedOutside.Contains(Package)) {
+			OutUsedOutside.Add(Package, TEXT("placed in a level by its actor files, which UE 4.27 cannot resave here"));
+		}
+	}
+#endif
+}
+
+int32 UPjcSubsystem::AddCoreRedirects(const TArray<UObjectRedirector*>& Redirectors) {
+	// the old package, the old object (when renamed) and a Blueprint's old class name resolve to the new ones
+	TArray<FString> Lines;
+	TArray<FCoreRedirect> Redirects;
+	int32 NumRedirected = 0;
+	for (const UObjectRedirector* Redirector : Redirectors) {
+		const UObject* Destination = GetFinalDestination(Redirector);
+		if (!Destination) continue;
+
+		const FString OldPackage = Redirector->GetOutermost()->GetName();
+		const FString NewPackage = Destination->GetOutermost()->GetName();
+		const FString OldObject = Redirector->GetPathName();
+		const FString NewObject = Destination->GetPathName();
+		const int32 Before = Lines.Num();
+		if (OldPackage != NewPackage) {
+			Lines.Add(FString::Printf(TEXT("+PackageRedirects=(OldName=\"%s\",NewName=\"%s\")"), *OldPackage, *NewPackage));
+			Redirects.Emplace(ECoreRedirectFlags::Type_Package, OldPackage, NewPackage);
+		}
+		if (OldObject != NewObject) {
+			Lines.Add(FString::Printf(TEXT("+ObjectRedirects=(OldName=\"%s\",NewName=\"%s\")"), *OldObject, *NewObject));
+			Redirects.Emplace(ECoreRedirectFlags::Type_Object, OldObject, NewObject);
+			if (Cast<UBlueprint>(Destination)) {
+				Lines.Add(FString::Printf(TEXT("+ClassRedirects=(OldName=\"%s_C\",NewName=\"%s_C\")"), *OldObject, *NewObject));
+				Redirects.Emplace(ECoreRedirectFlags::Type_Class, OldObject + TEXT("_C"), NewObject + TEXT("_C"));
+			}
+		}
+		NumRedirected += Lines.Num() > Before ? 1 : 0;
+	}
+	if (Lines.Num() == 0) return 0;
+
+	// Config/DefaultEngine.ini, in its [CoreRedirects] section (made when missing), lines already there not again
+	const FString File = FPaths::ConvertRelativePathToFull(FPaths::ProjectConfigDir() / TEXT("DefaultEngine.ini"));
+	if (ISourceControlModule::Get().IsEnabled()) {
+		USourceControlHelpers::CheckOutOrAddFile(File);
+	}
+	if (IFileManager::Get().IsReadOnly(*File)) {
+		FPlatformFileManager::Get().GetPlatformFile().SetReadOnly(*File, false);
+	}
+	TArray<FString> Text;
+	FFileHelper::LoadFileToStringArray(Text, *File);
+	Lines.RemoveAll([&Text](const FString& Line) {
+		return Text.Contains(Line);
+	});
+	if (Lines.Num() > 0) {
+		const int32 Section = Text.IndexOfByPredicate([](const FString& Line) {
+			return Line.TrimStartAndEnd().Equals(TEXT("[CoreRedirects]"), ESearchCase::IgnoreCase);
+		});
+		if (Section == INDEX_NONE) {
+			if (Text.Num() > 0 && !Text.Last().TrimStartAndEnd().IsEmpty()) {
+				Text.Add(FString {});
+			}
+			Text.Add(TEXT("[CoreRedirects]"));
+			Text.Append(Lines);
+		}
+		else {
+			int32 End = Section + 1;
+			while (End < Text.Num() && !Text[End].TrimStart().StartsWith(TEXT("["))) {
+				++End;
+			}
+			while (End > Section + 1 && Text[End - 1].TrimStartAndEnd().IsEmpty()) {
+				--End;
+			}
+			Text.Insert(Lines, End);
+		}
+		if (!FFileHelper::SaveStringArrayToFile(Text, *File)) {
+			UE_LOG(LogProjectCleaner, Error, TEXT("Could not write redirects to %s"), *File);
+			return 0;
+		}
+	}
+	// this session too: the old paths resolve without a restart
+	FCoreRedirects::AddRedirectList(Redirects, TEXT("ProjectCleaner"));
+	UE_LOG(LogProjectCleaner, Display, TEXT("Added redirects for %d redirector(s) to %s"), NumRedirected, *File);
+	return NumRedirected;
+}
+
+FString UPjcSubsystem::GetRedirectorDeleteBlock(const FName Package) {
+	if (!ISourceControlModule::Get().IsEnabled()) return FString {};
+
+	FString Filename;
+	if (!PjcShim::DoesPackageExist(Package.ToString(), &Filename)) return FString {};
+
+	ISourceControlProvider& Provider = ISourceControlModule::Get().GetProvider();
+	const FSourceControlStatePtr State = Provider.GetState(FPaths::ConvertRelativePathToFull(Filename), EStateCacheUsage::ForceUpdate);
+	if (!State.IsValid()) return FString {};
+	if (State->IsCheckedOutOther()) return TEXT("checked out by someone else: fix it when they are done");
+	if (State->IsSourceControlled() && !State->IsCurrent()) return TEXT("not at the latest revision: get the latest first");
+	return FString {};
+}
+
+FString UPjcSubsystem::GetCaseMismatch(const FName Package) {
+	// the file is there, but its name differs in letter case from the package (a case-only rename): it does not load
+	const FString Expected = FPackageName::LongPackageNameToFilename(Package.ToString(), FPackageName::GetAssetPackageExtension());
+	const FString Directory = FPaths::GetPath(Expected);
+	TArray<FString> Files;
+	IFileManager::Get().FindFiles(Files, *Directory, *FPackageName::GetAssetPackageExtension());
+	const FString Wanted = FPaths::GetCleanFilename(Expected);
+	for (const auto& File : Files) {
+		if (File.Equals(Wanted, ESearchCase::IgnoreCase) && !File.Equals(Wanted, ESearchCase::CaseSensitive)) {
+			return FString::Printf(TEXT("its file is named %s on disk: rename the asset back or the file to match"), *File);
+		}
+	}
+	return FString {};
 }
 
 void UPjcSubsystem::GetPackagesRedirector(TSet<FName>& Packages) {
@@ -2605,35 +2827,53 @@ bool UPjcSubsystem::ProjectHasRedirectors() {
 void UPjcSubsystem::FixProjectRedirectors(const TArray<FAssetData>& Redirectors, const bool bShowSlowTask) {
 	if (Redirectors.Num() == 0) return;
 
-	FScopedSlowTask SlowTask {
-	  static_cast<float>(Redirectors.Num()), FText::FromString(TEXT("Fixing redirectors...")), bShowSlowTask && GIsEditor && !IsRunningCommandlet()
-	};
-	SlowTask.MakeDialog(false, false);
-
-	TArray<UObjectRedirector*> RedirectorObjects;
-	RedirectorObjects.Reserve(Redirectors.Num());
-
-	for (const auto& Redirector : Redirectors) {
-		SlowTask.EnterProgressFrame(1.0f, FText::FromString(Redirector.GetFullName()));
-
-		UObjectRedirector* RedirectorObject = Cast<UObjectRedirector>(Redirector.GetAsset());
-		if (!RedirectorObject) continue;
-
-		RedirectorObjects.Emplace(RedirectorObject);
+	// same fix as Issues: keeps what files or content outside the scan still need
+	const FPjcRedirectorFixResult Result = FixRedirectorsWithReport(Redirectors, bShowSlowTask);
+	for (const auto& Pair : Result.Kept) {
+		UE_LOG(LogProjectCleaner, Warning, TEXT("Redirector %s kept: %s"), *Pair.Key.ToString(), *Pair.Value);
 	}
-
-	// engine fixup ends with a modal report window (UE 5.4+), which can not exist without Slate (commandlets)
-	if (IsRunningCommandlet() || !FSlateApplication::IsInitialized()) {
-		FixRedirectorsWithReport(Redirectors, bShowSlowTask);
-		return;
-	}
-
-	GetModuleAssetTools().Get().FixupReferencers(RedirectorObjects, false);
 }
 
-FPjcRedirectorFixResult UPjcSubsystem::FixRedirectorsWithReport(const TArray<FAssetData>& Redirectors, const bool bShowSlowTask) {
+FPjcRedirectorFixResult
+UPjcSubsystem::FixRedirectorsWithReport(const TArray<FAssetData>& InRedirectors, const bool bShowSlowTask, const FPjcRedirectorFixOptions& Options) {
 	FPjcRedirectorFixResult Result;
 	IAssetRegistry& AssetRegistry = GetModuleAssetRegistry().Get();
+
+	// every referencer must be known before a redirector goes
+	if (AssetRegistry.IsLoadingAssets()) {
+		for (const auto& Redirector : InRedirectors) {
+			Result.Kept.Add(Redirector.PackageName, TEXT("the asset registry is still loading: fix again when it is done"));
+		}
+		return Result;
+	}
+
+	// localized copies (L10N) go with their redirector
+	TArray<FAssetData> Redirectors = InRedirectors;
+	AddLocalizedRedirectors(Redirectors);
+
+	// what still needs the old path stays: files that name it, unless a redirect keeps it working, and
+	// content the scan leaves out, which fixing cannot resave
+	TSet<FName> Redirected;
+	if (Options.bCheckNeeded) {
+		TMap<FName, FString> NamedInFiles;
+		TMap<FName, FString> UsedOutside;
+		GetRedirectorsNeededOutside(Redirectors, NamedInFiles, UsedOutside);
+		Redirectors.RemoveAll([&](const FAssetData& Redirector) {
+			if (const FString* Why = UsedOutside.Find(Redirector.PackageName)) {
+				Result.Kept.Add(Redirector.PackageName, *Why + TEXT(": fixing cannot resave it"));
+				return true;
+			}
+			if (const FString* Why = NamedInFiles.Find(Redirector.PackageName)) {
+				if (Options.bAddRedirects) {
+					Redirected.Add(Redirector.PackageName);
+					return false;
+				}
+				Result.Kept.Add(Redirector.PackageName, *Why + TEXT(": deleting it breaks that file, a redirect for the old path fixes it"));
+				return true;
+			}
+			return false;
+		});
+	}
 
 	FScopedSlowTask SlowTask {3.0f, FText::FromString(TEXT("Fixing redirectors...")), bShowSlowTask && GIsEditor && !IsRunningCommandlet()};
 	SlowTask.MakeDialog(false, false);
@@ -2645,23 +2885,44 @@ FPjcRedirectorFixResult UPjcSubsystem::FixRedirectorsWithReport(const TArray<FAs
 			RedirectorObjects.Add(RedirectorObject);
 		}
 		else {
-			Result.Kept.Add(Redirector.PackageName, TEXT("could not be loaded"));
+			const FString CaseMismatch = GetCaseMismatch(Redirector.PackageName);
+			Result.Kept.Add(Redirector.PackageName, CaseMismatch.IsEmpty() ? FString {TEXT("could not be loaded")} : CaseMismatch);
 		}
 	}
 
-	// resaving rewrites soft references through registered redirections (not always registered before 5.5)
+	// old paths that files name keep working through a redirect (Config/DefaultEngine.ini)
+	if (Redirected.Num() > 0) {
+		const TArray<UObjectRedirector*> ToRedirect = RedirectorObjects.FilterByPredicate([&Redirected](const UObjectRedirector* Object) {
+			return Redirected.Contains(Object->GetOutermost()->GetFName());
+		});
+		Result.NumRedirects = AddCoreRedirects(ToRedirect);
+	}
+
+	// resaving rewrites soft references through registered redirections (not always registered before 5.5), and soft paths
+	// of a Blueprint's class and defaults (_C, Default__) like the engine's fixup
 	TSet<FName> RedirectorPackageNames;
+	TMap<FSoftObjectPath, FSoftObjectPath> SoftPaths;
 	for (const auto& RedirectorObject : RedirectorObjects) {
 		RedirectorPackageNames.Add(RedirectorObject->GetOutermost()->GetFName());
-		if (RedirectorObject->DestinationObject) {
-			PjcShim::RegisterRedirection(RedirectorObject, RedirectorObject->DestinationObject->GetPathName());
+		const UObject* Destination = GetFinalDestination(RedirectorObject);
+		if (!Destination) continue;
+
+		PjcShim::RegisterRedirection(RedirectorObject, Destination->GetPathName());
+		const FSoftObjectPath OldPath {RedirectorObject};
+		const FSoftObjectPath NewPath {Destination};
+		SoftPaths.Add(OldPath, NewPath);
+		if (Cast<UBlueprint>(Destination)) {
+			SoftPaths.Add(FSoftObjectPath {OldPath.ToString() + TEXT("_C")}, FSoftObjectPath {NewPath.ToString() + TEXT("_C")});
+			const FString OldDefault = FString::Printf(TEXT("%s.Default__%s_C"), *OldPath.GetLongPackageName(), *OldPath.GetAssetName());
+			const FString NewDefault = FString::Printf(TEXT("%s.Default__%s_C"), *NewPath.GetLongPackageName(), *NewPath.GetAssetName());
+			SoftPaths.Add(FSoftObjectPath {OldDefault}, FSoftObjectPath {NewDefault});
 		}
 	}
 
 	// redirector to missing asset: resaving its referencers would replace the broken reference with null, keep both
 	TSet<FName> ReferencersToSkip;
 	for (const auto& RedirectorObject : RedirectorObjects) {
-		if (RedirectorObject->DestinationObject) continue;
+		if (GetFinalDestination(RedirectorObject)) continue;
 
 		TArray<FName> Referencers;
 		AssetRegistry.GetReferencers(RedirectorObject->GetOutermost()->GetFName(), Referencers);
@@ -2669,12 +2930,14 @@ FPjcRedirectorFixResult UPjcSubsystem::FixRedirectorsWithReport(const TArray<FAs
 		UE_LOG(LogProjectCleaner, Warning, TEXT("Redirector %s points to missing asset, not fixed"), *RedirectorObject->GetPathName());
 	}
 
+	// referencers of the scan only: content it leaves out is never edited
 	TSet<FName> ReferencerNames;
 	for (const FName& PackageName : RedirectorPackageNames) {
 		TArray<FName> Referencers;
 		AssetRegistry.GetReferencers(PackageName, Referencers);
 		for (const FName& Referencer : Referencers) {
-			if (!RedirectorPackageNames.Contains(Referencer) && !ReferencersToSkip.Contains(Referencer)) {
+			const bool bInside = PathIsInsideProject(Referencer.ToString());
+			if (bInside && !RedirectorPackageNames.Contains(Referencer) && !ReferencersToSkip.Contains(Referencer)) {
 				ReferencerNames.Add(Referencer);
 			}
 		}
@@ -2684,6 +2947,8 @@ FPjcRedirectorFixResult UPjcSubsystem::FixRedirectorsWithReport(const TArray<FAs
 	SlowTask.EnterProgressFrame(1.0f, FText::FromString(TEXT("Resaving the assets that use them")));
 	TArray<UPackage*> PackagesToSave;
 	TArray<FString> PackageFiles;
+	int32 NumLoaded = 0;
+	TSet<FString> Worlds;
 	for (const FName& ReferencerName : ReferencerNames) {
 		FString Filename;
 		if (!PjcShim::DoesPackageExist(ReferencerName.ToString(), &Filename)) continue;
@@ -2691,6 +2956,7 @@ FPjcRedirectorFixResult UPjcSubsystem::FixRedirectorsWithReport(const TArray<FAs
 		UPackage* Package = FindPackage(nullptr, *ReferencerName.ToString());
 		if (!Package) {
 			Package = LoadPackage(nullptr, *ReferencerName.ToString(), LOAD_None);
+			NumLoaded += Package ? 1 : 0;
 		}
 		if (!Package) {
 			Result.NotResaved.Add(ReferencerName, TEXT("could not be loaded"));
@@ -2698,8 +2964,27 @@ FPjcRedirectorFixResult UPjcSubsystem::FixRedirectorsWithReport(const TArray<FAs
 		}
 		if (Package->HasAnyPackageFlags(PKG_CompiledIn)) continue;
 
+		// a redirector that points to one of these (a chain) points to the real asset from now on
+		UObjectRedirector* Link = FindObject<UObjectRedirector>(Package, *FPackageName::GetShortName(ReferencerName));
+		UObject* LinkFinal = Link ? GetFinalDestination(Link) : nullptr;
+		if (LinkFinal && Link->DestinationObject != LinkFinal) {
+			Link->DestinationObject = LinkFinal;
+			Package->MarkPackageDirty();
+		}
+
 		PackagesToSave.Add(Package);
 		PackageFiles.Add(FPaths::ConvertRelativePathToFull(Filename));
+		// a level's actor files and the level itself: its loaders are reset before saving (the engine does it too)
+		const FName Owner = FolderIsExternal(ReferencerName.ToString()) ? GetExternalOwner(ReferencerName) : NAME_None;
+		if (!Owner.IsNone()) {
+			Worlds.Add(Owner.ToString());
+		}
+	}
+	for (const auto& World : Worlds) {
+		PjcShim::ResetLoadersForWorld(World);
+	}
+	if (PackagesToSave.Num() > 0 && SoftPaths.Num() > 0) {
+		GetModuleAssetTools().Get().RenameReferencingSoftObjectPaths(PackagesToSave, SoftPaths);
 	}
 
 	if (PackagesToSave.Num() > 0 && ISourceControlModule::Get().IsEnabled()) {
@@ -2737,7 +3022,8 @@ FPjcRedirectorFixResult UPjcSubsystem::FixRedirectorsWithReport(const TArray<FAs
 		});
 
 		// a redirector to a missing asset goes when nothing uses it; assets that use it need a repair by hand
-		if (User && !RedirectorObject->DestinationObject) {
+		const FString Block = User ? FString {} : GetRedirectorDeleteBlock(PackageName);
+		if (User && !GetFinalDestination(RedirectorObject)) {
 			const FString Missing = FString::Printf(TEXT("its target is missing, %s uses it: repair it by hand"), *FPackageName::GetShortName(*User));
 			Result.Kept.Add(PackageName, Missing);
 		}
@@ -2747,6 +3033,9 @@ FPjcRedirectorFixResult UPjcSubsystem::FixRedirectorsWithReport(const TArray<FAs
 				Reason += TEXT(": ") + *Why;
 			}
 			Result.Kept.Add(PackageName, Reason);
+		}
+		else if (!Block.IsEmpty()) {
+			Result.Kept.Add(PackageName, Block);
 		}
 		else {
 			ObjectsToDelete.Add(RedirectorObject);
@@ -2758,7 +3047,7 @@ FPjcRedirectorFixResult UPjcSubsystem::FixRedirectorsWithReport(const TArray<FAs
 		// target path: its destination, or for a missing one the package it was saved with
 		for (UObject* Object : ObjectsToDelete) {
 			const UObjectRedirector* RedirectorObject = Cast<UObjectRedirector>(Object);
-			const UObject* Destination = RedirectorObject ? RedirectorObject->DestinationObject : nullptr;
+			const UObject* Destination = GetFinalDestination(RedirectorObject);
 			FString TargetPath = Destination ? Destination->GetPathName() : FString {};
 			if (TargetPath.IsEmpty()) {
 				TArray<FName> Dependencies;
@@ -2771,11 +3060,19 @@ FPjcRedirectorFixResult UPjcSubsystem::FixRedirectorsWithReport(const TArray<FAs
 				}
 			}
 			PjcShim::RegisterRedirection(Object, TargetPath);
+			// collections that list the redirector list its target instead
+			if (!PjcShim::HandleCollectionRedirectorDeleted(Object)) {
+				UE_LOG(LogProjectCleaner, Warning, TEXT("A collection listing %s could not be saved"), *Object->GetPathName());
+			}
 		}
 		ObjectTools::DeleteObjects(ObjectsToDelete, false);
 	}
+	// gone from disk and from the asset registry (a package can stay in memory)
+	TArray<FAssetData> Left;
 	for (const FName& PackageName : PackagesToDelete) {
-		if (PjcShim::DoesPackageExist(PackageName.ToString(), nullptr)) {
+		Left.Reset();
+		AssetRegistry.GetAssetsByPackageName(PackageName, Left);
+		if (PjcShim::DoesPackageExist(PackageName.ToString(), nullptr) || Left.Num() > 0) {
 			Result.Kept.Add(PackageName, TEXT("could not be deleted, see Output Log"));
 		}
 		else {
@@ -2783,6 +3080,25 @@ FPjcRedirectorFixResult UPjcSubsystem::FixRedirectorsWithReport(const TArray<FAs
 		}
 	}
 
+	// folders that held only the deleted redirectors
+	if (Options.bDeleteEmptyFolders && Result.Deleted.Num() > 0) {
+		TSet<FString> Folders;
+		for (const FName& PackageName : Result.Deleted) {
+			Folders.Add(FPackageName::GetLongPackagePath(PackageName.ToString()));
+		}
+		TArray<FString> Empty;
+		for (const auto& Folder : Folders) {
+			if (FolderIsEmpty(Folder)) {
+				Empty.Add(PathConvertToAbsolute(Folder));
+			}
+		}
+		Result.NumFoldersDeleted = Empty.Num() > 0 ? DeleteFolders(Empty) : 0;
+	}
+
+	// what fixing loaded leaves memory
+	if (NumLoaded > 0) {
+		CollectGarbage(GARBAGE_COLLECTION_KEEPFLAGS);
+	}
 	return Result;
 }
 
