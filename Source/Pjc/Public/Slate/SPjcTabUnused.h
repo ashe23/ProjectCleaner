@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "PjcUnused.h"
 #include "Widgets/SCompoundWidget.h"
+#include "Widgets/Views/STileView.h"
 #include "Widgets/Views/STreeView.h"
 
 class FMenuBuilder;
@@ -29,6 +30,8 @@ struct FPjcUnusedAssetRow
 	FString ClassLabel;
 	FLinearColor Color = FLinearColor::White;
 	const FSlateBrush* Icon = nullptr;
+	// Big class icon for the grid (the Content Browser's class thumbnail), the icon when there is none
+	const FSlateBrush* Thumb = nullptr;
 	int64 Size = 0;
 	// Folder relative to the selected folder
 	FString Folder;
@@ -164,6 +167,13 @@ class SPjcTabUnused final : public SCompoundWidget
 
 	void SaveViewState() const;
 
+	// the list as rows or as a grid of tiles (user, 2026-11-14), sharing the rows, their order and the selection
+	TSharedPtr<SListView<TSharedPtr<FPjcUnusedAssetRow>>> GetView() const;
+	void SetGridView(const bool bGrid);
+	TSharedRef<ITableRow> OnGenerateAssetTile(TSharedPtr<FPjcUnusedAssetRow> Row, const TSharedRef<STableViewBase>& Table);
+	float GetTileWidth() const;
+	virtual FReply OnKeyDown(const FGeometry& Geometry, const FKeyEvent& KeyEvent) override;
+
 	FDelegateHandle ScanFinishedHandle;
 	TWeakPtr<FTabManager> TabManager;
 
@@ -221,4 +231,8 @@ class SPjcTabUnused final : public SCompoundWidget
 	EColumnSortMode::Type AssetSortMode = EColumnSortMode::Descending;
 	TArray<FName> ColumnOrder;
 	TSharedPtr<SHeaderRow> AssetHeader;
+	TSharedPtr<STileView<TSharedPtr<FPjcUnusedAssetRow>>> TileView;
+	bool bGridView = false;
+	// Small, Medium, Large, Huge
+	int32 TileSize = 1;
 };
