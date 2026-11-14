@@ -434,6 +434,8 @@ class UPjcSubsystem final : public UEditorSubsystem
 	// actions add (relative to their plugin), /Game when none is set
 	static void GetGameplayCueNotifyPaths(TArray<FString>& Paths);
 	static bool PathIsInsideProject(const FString& InPath);
+	// Content/Developers while Scan settings leave it out: treated as content outside the project, like an ignored plugin
+	static bool PathIsLeftOut(const FString& InPath);
 	static bool AssetIsInsideProject(const FAssetData& InAsset);
 
 	static bool FolderIsEmpty(const FString& InPath);

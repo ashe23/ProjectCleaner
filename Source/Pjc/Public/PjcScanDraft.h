@@ -13,6 +13,7 @@ struct FPjcScanDraft
 {
 	bool bScanProjectPlugins = false;
 	TArray<FString> IgnoredPlugins;
+	bool bScanDevelopers = false;
 	bool bUnregisteredPrimaryUsed = true;
 	bool bCinematicAssetsUsed = true;
 

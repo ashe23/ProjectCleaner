@@ -21,6 +21,8 @@ class SPjcScanSettings final : public SCompoundWidget
 
 	SLATE_BEGIN_ARGS(SPjcScanSettings) {}
 	SLATE_EVENT(FSimpleDelegate, OnClose)
+	// set where the settings sit in a column (Assets): they fold up and down, remembered under this name
+	SLATE_ARGUMENT(FName, FoldKey)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
@@ -40,6 +42,10 @@ class SPjcScanSettings final : public SCompoundWidget
 	void OnScanFinished();
 
 	TSharedRef<SWidget> MakeHeader();
+	// Asks, then sets every setting to the plugin default, saves and scans
+	static void ConfirmReset();
+	// A row with words in place of a control, e.g. No plugins
+	TSharedRef<SWidget> MakeNoteRow(const FString& Label, const FString& Note, const FString& Description, const FString& More) const;
 	TSharedRef<SWidget> MakeCategory(const FName Id, const FString& Title, const FString& ToolTip, const TSharedRef<SWidget>& Content) const;
 	TSharedRef<SWidget> MakeRow(
 		const FString& Label,
@@ -48,7 +54,8 @@ class SPjcScanSettings final : public SCompoundWidget
 		const TSharedRef<SToolTip>& ToolTip,
 		const bool bChanged,
 		const bool bDim,
-		const float Indent = 0.0f
+		const float Indent = 0.0f,
+		const TSharedPtr<SWidget>& Extra = nullptr
 	) const;
 	TSharedRef<SWidget>
 	MakeFixedRow(const FString& Label, const int32 Num, const FString& What, const FString& Description, const FString& Extra = FString {}) const;
@@ -63,6 +70,8 @@ class SPjcScanSettings final : public SCompoundWidget
 	);
 
 	FSimpleDelegate OnClose;
+	FName FoldKey;
+	bool bFolded = false;
 	TSharedPtr<SBox> Body;
 	FDelegateHandle ScanFinishedHandle;
 	FDelegateHandle DraftEditedHandle;
@@ -81,4 +90,5 @@ class SPjcScanSettings final : public SCompoundWidget
 	int32 NumFolderLabelUnused = 0;
 	int64 SizeFolderLabelUnused = 0;
 	int32 NumProjectPlugins = 0;
+	int32 NumDeveloperFolders = 0;
 };

@@ -4,6 +4,7 @@
 #include "Slate/PjcWidgets.h"
 #include "Slate/SPjcCleanWindow.h"
 #include "Slate/SPjcScanWindow.h"
+#include "PjcConstants.h"
 #include "PjcFormat.h"
 #include "PjcScanDraft.h"
 #include "PjcStyles.h"
@@ -11,6 +12,7 @@
 #include "PjcSubsystem.h"
 // Engine Headers
 #include "FileHelpers.h"
+#include "Interfaces/IPluginManager.h"
 #include "Misc/PackageName.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Layout/SBorder.h"
@@ -22,6 +24,9 @@
 #include "Widgets/Text/STextBlock.h"
 
 void SPjcScanBar::Construct(const FArguments& InArgs) {
+	const TSharedPtr<IPlugin> Plugin = IPluginManager::Get().FindPlugin(PjcConstants::ModulePjcName.ToString());
+	const FString Version = Plugin.IsValid() ? Plugin->GetDescriptor().VersionName : FString {};
+
 	// clang-format off
 	ChildSlot
 	[
@@ -91,6 +96,15 @@ void SPjcScanBar::Construct(const FArguments& InArgs) {
 				.ColorAndOpacity(this, &SPjcScanBar::GetStatusColor)
 				.ToolTipText(this, &SPjcScanBar::GetStatusToolTip)
 			]
+			// the plugin's version, small, at the right end (user, 2026-11-14)
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {10.0f, 0.0f, 4.0f, 0.0f})
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString(TEXT("v") + Version))
+				.ToolTipText(FText::FromString(TEXT("Project Cleaner ") + Version))
+				.Font(PjcWidgets::GetFontMono(8))
+				.ColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.Muted"))
+			]
 		]
 	];
 	// clang-format on
@@ -139,13 +153,13 @@ void SPjcScanBar::ScanProject(const bool bByUser) {
 		return;
 	}
 
-	// the window tells how the scan went: it stays open for the user, a scan after an action only notifies
+	// the window closes when the scan ends, a notification says how it went (a failed scan the user started stays open)
 	const double StartTime = FPlatformTime::Seconds();
 	const bool bScanned = SPjcScanWindow::Run(bByUser);
-	if (bByUser) return;
-
 	if (!bScanned) {
-		UPjcSubsystem::ShowNotification(TEXT("Scan canceled \u00B7 results are from the last scan"), SNotificationItem::CS_None, 3.0f);
+		if (!bByUser) {
+			UPjcSubsystem::ShowNotification(TEXT("Scan canceled \u00B7 results are from the last scan"), SNotificationItem::CS_None, 3.0f);
+		}
 		return;
 	}
 	const FString Assets = PjcFormat::Count(UPjcSubsystem::GetScanResult().Assets.Num());

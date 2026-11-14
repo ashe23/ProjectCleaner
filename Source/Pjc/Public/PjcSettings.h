@@ -44,6 +44,11 @@ class UPjcScanSettings final : public UDeveloperSettings
 	UPROPERTY(EditAnywhere, Config, Category = "Scan Roots", meta = (EditCondition = "bScanProjectPlugins"))
 	TArray<FString> IgnoredPlugins;
 
+	// Scan Content/Developers too: each developer's own test assets. Off by default: the folder is left out like an
+	// ignored plugin, nothing in it is listed or deleted, and what its assets use stays used.
+	UPROPERTY(EditAnywhere, Config, Category = "Scan Roots")
+	bool bScanDevelopers = false;
+
 	// always used, not settings: primary assets (every map and what the Asset Manager registers), editor assets,
 	// assets named in source and config files, assets in the folder of a Primary Asset Label whose cook rule packages it
 

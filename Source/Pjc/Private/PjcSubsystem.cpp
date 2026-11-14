@@ -371,6 +371,7 @@ void UPjcSubsystem::GetAssetsScanned(TArray<FAssetData>& Assets) {
 	PjcShim::RemoveAllSwapArray(Assets, [&](const FAssetData& Asset) {
 		// World Partition actors and objects ('__ExternalActors__', '__ExternalObjects__') belong to their map
 		if (FolderIsExternal(Asset.PackagePath.ToString())) return true;
+		if (PathIsLeftOut(Asset.PackagePath.ToString())) return true;
 		if (PackagesWithMainAsset.Contains(Asset.PackageName) && !Asset.IsUAsset()) return true;
 
 		bool bAlreadyAdded = false;
@@ -1871,6 +1872,9 @@ void UPjcSubsystem::GetFilesExternalAll(TArray<FString>& Files) {
 		GetFilesByExt(ContentDir, true, true, PjcConstants::EngineFileExtensions, RootFiles);
 		Files.Append(RootFiles);
 	}
+	PjcShim::RemoveAllSwapArray(Files, [](const FString& File) {
+		return PathIsLeftOut(PathConvertToRelative(FPaths::GetPath(File)));
+	});
 }
 
 void UPjcSubsystem::GetFilesExternalFiltered(TArray<FString>& Files, const bool bShowSlowTask) {
@@ -1949,7 +1953,8 @@ void UPjcSubsystem::GetFilesCorrupted(TArray<FString>& Files, const bool bShowSl
 	for (const auto& File : FileAssets) {
 		SlowTask.EnterProgressFrame(1.0f, FText::FromString(File));
 
-		if (FolderIsExternal(PathConvertToRelative(FPaths::GetPath(File)))) continue;
+		const FString FileFolder = PathConvertToRelative(FPaths::GetPath(File));
+		if (FolderIsExternal(FileFolder) || PathIsLeftOut(FileFolder)) continue;
 
 		const FString Path = PathConvertToObjectPath(File);
 		if (Path.IsEmpty()) continue;
@@ -2000,7 +2005,7 @@ void UPjcSubsystem::GetFoldersEmpty(TArray<FString>& Folders) {
 	Folders.Reset(FoldersAll.Num());
 
 	for (const auto& Folder : FoldersAll) {
-		if (FolderIsEmpty(Folder) && !FolderIsEngineGenerated(Folder) && !FolderIsExcluded(Folder)) {
+		if (FolderIsEmpty(Folder) && !FolderIsEngineGenerated(Folder) && !FolderIsExcluded(Folder) && !PathIsLeftOut(PathConvertToRelative(Folder))) {
 			Folders.Emplace(Folder);
 		}
 	}
@@ -2436,6 +2441,9 @@ void UPjcSubsystem::GetProjectRedirectors(TArray<FAssetData>& Redirectors) {
 	Redirectors.Reset();
 	IAssetRegistry& AssetRegistry = GetModuleAssetRegistry().Get();
 	AssetRegistry.GetAssets(Filter, Redirectors);
+	PjcShim::RemoveAllSwapArray(Redirectors, [](const FAssetData& Redirector) {
+		return PathIsLeftOut(Redirector.PackagePath.ToString());
+	});
 
 	// a redirector next to a real asset (e.g. of a renamed Director Blueprint inside a Level Sequence) is part of that
 	// asset: fixing cannot delete it, only resaving that asset does
@@ -3178,10 +3186,17 @@ bool UPjcSubsystem::PathIsInsideProject(const FString& InPath) {
 	for (const auto& RootPath : RootPaths) {
 		// "/GameData" or "/MyPluginExtra" must not match "/Game" or "/MyPlugin"
 		if (InPath.Equals(RootPath) || InPath.StartsWith(RootPath + TEXT("/"))) {
-			return true;
+			return !PathIsLeftOut(InPath);
 		}
 	}
 	return false;
+}
+
+bool UPjcSubsystem::PathIsLeftOut(const FString& InPath) {
+	if (GetDefault<UPjcScanSettings>()->bScanDevelopers) return false;
+
+	const FString Developers = PjcConstants::PathDevelopers.ToString();
+	return InPath.Equals(Developers) || InPath.StartsWith(Developers + TEXT("/"));
 }
 
 bool UPjcSubsystem::AssetIsInsideProject(const FAssetData& InAsset) {

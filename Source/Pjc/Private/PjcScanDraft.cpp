@@ -23,6 +23,7 @@ FPjcScanDraft FPjcScanDraft::FromSettings() {
 	FPjcScanDraft Result;
 	Result.bScanProjectPlugins = Settings->bScanProjectPlugins;
 	Result.IgnoredPlugins = Settings->IgnoredPlugins;
+	Result.bScanDevelopers = Settings->bScanDevelopers;
 	Result.bUnregisteredPrimaryUsed = Settings->bUnregisteredPrimaryUsed;
 	Result.bCinematicAssetsUsed = Settings->bCinematicAssetsUsed;
 	for (const auto& UsedClass : Settings->UsedClasses) {
@@ -52,6 +53,7 @@ void FPjcScanDraft::ApplyToSettings() const {
 	UPjcScanSettings* Settings = GetMutableDefault<UPjcScanSettings>();
 	Settings->bScanProjectPlugins = bScanProjectPlugins;
 	Settings->IgnoredPlugins = IgnoredPlugins;
+	Settings->bScanDevelopers = bScanDevelopers;
 	Settings->bUnregisteredPrimaryUsed = bUnregisteredPrimaryUsed;
 	Settings->bCinematicAssetsUsed = bCinematicAssetsUsed;
 	Settings->UsedClasses.Reset();
@@ -80,7 +82,8 @@ void FPjcScanDraft::ApplyToSettings() const {
 }
 
 bool FPjcScanDraft::operator==(const FPjcScanDraft& Other) const {
-	const bool bScope = bScanProjectPlugins == Other.bScanProjectPlugins && IgnoredPlugins == Other.IgnoredPlugins;
+	const bool bScope
+		= bScanProjectPlugins == Other.bScanProjectPlugins && IgnoredPlugins == Other.IgnoredPlugins && bScanDevelopers == Other.bScanDevelopers;
 	const bool bRules = bUnregisteredPrimaryUsed == Other.bUnregisteredPrimaryUsed && bCinematicAssetsUsed == Other.bCinematicAssetsUsed;
 	const bool bUsed = UsedClasses == Other.UsedClasses;
 	const bool bExcluded = ExcludedFolders == Other.ExcludedFolders && ExcludedClasses == Other.ExcludedClasses;

@@ -150,7 +150,7 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create() {
 	// clang-format off
 	const TCHAR* WhiteIcons[] = {
 		TEXT("Scan"), TEXT("Clean"), TEXT("Tree"), TEXT("SizeMap"), TEXT("Settings"), TEXT("Lock"), TEXT("Close"), TEXT("Add"), TEXT("Back"),
-		TEXT("Forward"), TEXT("Folder"), TEXT("FolderOpen"),
+		TEXT("Forward"), TEXT("Folder"), TEXT("FolderOpen"), TEXT("Reset"), TEXT("Expand"), TEXT("ChevronUp"),
 	};
 	// clang-format on
 	for (const TCHAR* Name : WhiteIcons) {

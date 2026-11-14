@@ -196,7 +196,7 @@ TSharedRef<SWidget> SPjcToolFrame::MakeSideColumn(const TSharedRef<SWidget>& Sid
 				]
 				+ SScrollBox::Slot().Padding(FMargin {8.0f, 0.0f, 0.0f, 8.0f})
 				[
-					PjcWidgets::MakeCard(SNew(SPjcScanSettings), FMargin {4.0f, 6.0f})
+					PjcWidgets::MakeCard(SNew(SPjcScanSettings).FoldKey(FName {*(PageName.ToString() + TEXT("Folded"))}), FMargin {4.0f, 6.0f})
 				]
 			]
 		]
@@ -284,7 +284,7 @@ TSharedRef<SWidget> SPjcToolFrame::MakeContent(const TSharedRef<SWidget>& Conten
 			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center).Padding(FMargin {0.0f, 6.0f, 0.0f, 12.0f})
 			[
 				SNew(STextBlock)
-				.Text(FText::FromString(TEXT("Scan the project to see which assets are used, unused or to review.")))
+				.Text(FText::FromString(TEXT("Scan the project to see which assets are used, unused or need review.")))
 				.ColorAndOpacity(FSlateColor::UseSubduedForeground())
 			]
 			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center)
@@ -294,7 +294,7 @@ TSharedRef<SWidget> SPjcToolFrame::MakeContent(const TSharedRef<SWidget>& Conten
 				.ForegroundColor(FSlateColor::UseForeground())
 #endif
 				.ButtonStyle(&PjcShim::GetPrimaryButtonStyle())
-				.ContentPadding(FMargin {16.0f, 4.0f})
+				.ContentPadding(FMargin {10.0f, 4.0f, 16.0f, 4.0f})
 				.OnClicked_Lambda([]() {
 					if (FPjcScanDraft::IsChanged()) {
 						FPjcScanDraft::Get().ApplyToSettings();
@@ -303,7 +303,19 @@ TSharedRef<SWidget> SPjcToolFrame::MakeContent(const TSharedRef<SWidget>& Conten
 					return FReply::Handled();
 				})
 				[
-					SNew(STextBlock).Text(FText::FromString(TEXT("Scan project")))
+					// the lens, as Scan in the scan bar
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 7.0f, 0.0f})
+					[
+						SNew(SBox).WidthOverride(18.0f).HeightOverride(18.0f)
+						[
+							SNew(SImage).Image(FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.Scan20")).ColorAndOpacity(FLinearColor::White)
+						]
+					]
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+					[
+						SNew(STextBlock).Text(FText::FromString(TEXT("Scan project")))
+					]
 				]
 			]
 		];

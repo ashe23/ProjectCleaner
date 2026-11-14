@@ -2,13 +2,19 @@
 
 #include "Slate/SPjcScanSettings.h"
 #include "Slate/PjcWidgets.h"
+#include "Slate/SPjcDialog.h"
+#include "Slate/SPjcScanBar.h"
+#include "PjcConstants.h"
 #include "PjcFormat.h"
 #include "PjcShim.h"
 #include "PjcStyles.h"
 #include "PjcSubsystem.h"
 // Engine Headers
 #include "Framework/Application/SlateApplication.h"
+#include "HAL/FileManager.h"
 #include "Interfaces/IPluginManager.h"
+#include "Misc/ConfigCacheIni.h"
+#include "Misc/Paths.h"
 #include "Styling/CoreStyle.h"
 #include "Widgets/Images/SImage.h"
 #include "Widgets/Input/SButton.h"
@@ -28,6 +34,9 @@ namespace
 	// folded categories, shared by the panels of every tool
 	TSet<FName> CollapsedCategories;
 
+	// where a folded panel is remembered
+	const TCHAR* PjcSettingsFoldSection = TEXT("ProjectCleaner.ScanSettings");
+
 	FSlateColor ColorChanged() {
 		return FSlateColor {FPjcStyles::Get().GetColor("ProjectCleaner.Color.Yellow")};
 	}
@@ -39,6 +48,10 @@ namespace
 
 void SPjcScanSettings::Construct(const FArguments& InArgs) {
 	OnClose = InArgs._OnClose;
+	FoldKey = InArgs._FoldKey;
+	if (!FoldKey.IsNone() && GConfig) {
+		GConfig->GetBool(PjcSettingsFoldSection, *FoldKey.ToString(), bFolded, GEditorPerProjectIni);
+	}
 	ScanFinishedHandle = UPjcSubsystem::OnScanFinished().AddSP(this, &SPjcScanSettings::OnScanFinished);
 	DraftEditedHandle = FPjcScanDraft::OnEdited().AddSP(this, &SPjcScanSettings::RequestRebuild);
 
@@ -83,8 +96,14 @@ void SPjcScanSettings::OnScanFinished() {
 
 	NumProjectPlugins = 0;
 	for (const auto& Plugin : IPluginManager::Get().GetEnabledPluginsWithContent()) {
-		NumProjectPlugins += Plugin->GetLoadedFrom() == EPluginLoadedFrom::Project ? 1 : 0;
+		const bool bOwn = Plugin->GetName().Equals(PjcConstants::ModulePjcName.ToString());
+		NumProjectPlugins += Plugin->GetLoadedFrom() == EPluginLoadedFrom::Project && !bOwn ? 1 : 0;
 	}
+
+	// Content/Developers/<name>: one folder per developer
+	TArray<FString> DeveloperFolders;
+	IFileManager::Get().FindFiles(DeveloperFolders, *(FPaths::ProjectContentDir() / TEXT("Developers") / TEXT("*")), false, true);
+	NumDeveloperFolders = DeveloperFolders.Num();
 
 	Rebuild();
 }
@@ -110,19 +129,30 @@ void SPjcScanSettings::Rebuild() {
 	const FString UnregisteredKeep = Edited.bUnregisteredPrimaryUsed ? TEXT("Keeps") : TEXT("Would keep");
 
 	const TSharedRef<SVerticalBox> Scope = SNew(SVerticalBox);
-	// clang-format off
-	Scope->AddSlot().AutoHeight()
-	[
-		MakeSwitchRow(
-			TEXT("Project plugins"),
-			&FPjcScanDraft::bScanProjectPlugins,
-			Edited.bScanProjectPlugins ? NumProjectPlugins : -1,
-			TEXT("Content of project plugins is scanned too, not only /Game."),
-			Edited.bScanProjectPlugins ? FString::Printf(TEXT("%s project plugins with content"), *PjcFormat::Count(NumProjectPlugins)) : FString {}
-		)
-	];
-	// clang-format on
-	if (Edited.bScanProjectPlugins) {
+	const TCHAR* PluginsText = TEXT("Content of project plugins is scanned too, not only /Game.");
+	if (NumProjectPlugins == 0) {
+		// clang-format off
+		Scope->AddSlot().AutoHeight()
+		[
+			MakeNoteRow(TEXT("Project plugins"), TEXT("No plugins"), PluginsText, TEXT("The project has no plugins with content in its Plugins folder"))
+		];
+		// clang-format on
+	}
+	else {
+		// clang-format off
+		Scope->AddSlot().AutoHeight()
+		[
+			MakeSwitchRow(
+				TEXT("Project plugins"),
+				&FPjcScanDraft::bScanProjectPlugins,
+				Edited.bScanProjectPlugins ? NumProjectPlugins : -1,
+				PluginsText,
+				Edited.bScanProjectPlugins ? FString::Printf(TEXT("%s project plugins with content"), *PjcFormat::Count(NumProjectPlugins)) : FString {}
+			)
+		];
+		// clang-format on
+	}
+	if (Edited.bScanProjectPlugins && NumProjectPlugins > 0) {
 		// clang-format off
 		Scope->AddSlot().AutoHeight()
 		[
@@ -133,6 +163,36 @@ void SPjcScanSettings::Rebuild() {
 				TEXT("Plugin name\u2026"),
 				TEXT("Plugins left out of the scan. Nothing in them is reported as unused."),
 				14.0f
+			)
+		];
+		// clang-format on
+	}
+
+	// Content/Developers: off by default, nothing of the developers' own assets is touched (user, 2026-11-14)
+	const TCHAR* DevelopersText = TEXT("Content/Developers: each developer's own test assets. Off: left out of the scan like an ignored ")
+		TEXT("plugin, so nothing in them is listed or deleted, and what they use counts as used.");
+	if (NumDeveloperFolders == 0) {
+		// clang-format off
+		Scope->AddSlot().AutoHeight()
+		[
+			MakeNoteRow(TEXT("Developers folders"), TEXT("No Developers folder"), DevelopersText, TEXT("The project has no Content/Developers folder"))
+		];
+		// clang-format on
+	}
+	else {
+		const FString Folders = PjcFormat::Count(NumDeveloperFolders);
+		const FString DevelopersMore = Edited.bScanDevelopers
+			? FString::Printf(TEXT("%s developer folders: their unused assets are listed and Clean project deletes them"), *Folders)
+			: FString::Printf(TEXT("%s developer folders left out"), *Folders);
+		// clang-format off
+		Scope->AddSlot().AutoHeight()
+		[
+			MakeSwitchRow(
+				TEXT("Developers folders"),
+				&FPjcScanDraft::bScanDevelopers,
+				Edited.bScanDevelopers ? NumDeveloperFolders : -1,
+				DevelopersText,
+				DevelopersMore
 			)
 		];
 		// clang-format on
@@ -181,18 +241,10 @@ void SPjcScanSettings::Rebuild() {
 	[
 		MakeFixedRow(
 			TEXT("Source & config"),
-			Roots(EPjcUsageReason::Indirect),
-			TEXT("assets named"),
-			TEXT("Assets named in C++, C#, Python and .ini files count as used, platform configs included.")
-		)
-	];
-	Used->AddSlot().AutoHeight()
-	[
-		MakeFixedRow(
-			TEXT("Config folders"),
-			Roots(EPjcUsageReason::ConfigFolder),
-			TEXT("assets in config folders"),
-			TEXT("Folders set to always cook and Data Registry scan folders keep every asset inside used.")
+			Roots(EPjcUsageReason::Indirect) + Roots(EPjcUsageReason::ConfigFolder),
+			TEXT("assets named or in config folders"),
+			TEXT("Assets named in C++, C#, Python and .ini files count as used, platform configs included, and every asset in ")
+				TEXT("folders the config always cooks (Additional Asset Directories to Cook, Data Registry scan folders).")
 		)
 	];
 	Used->AddSlot().AutoHeight()
@@ -283,6 +335,11 @@ void SPjcScanSettings::Rebuild() {
 		)
 	];
 
+	if (bFolded) {
+		Body->SetContent(SNew(SBox).Padding(FMargin {6.0f, 6.0f, 4.0f, 6.0f})[MakeHeader()]);
+		return;
+	}
+
 	Body->SetContent(
 		SNew(SVerticalBox)
 		+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {6.0f, 6.0f, 4.0f, 8.0f})
@@ -338,12 +395,66 @@ TSharedRef<SWidget> SPjcScanSettings::MakeHeader() {
 			.Visibility_Lambda([]() { return FPjcScanDraft::IsChanged() ? EVisibility::Visible : EVisibility::Collapsed; })
 			.OnNavigate_Lambda(Edit([]() { FPjcScanDraft::Revert(); }))
 		]
-		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 8.0f, 0.0f})
+		// gray with the reset icon, asks first (user, 2026-11-14)
+		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 4.0f, 0.0f})
 		[
-			SNew(SHyperlink)
-			.Text(FText::FromString(TEXT("Defaults")))
-			.ToolTipText(FText::FromString(TEXT("Back to the plugin defaults")))
-			.OnNavigate_Lambda(Edit([]() { FPjcScanDraft::Get() = FPjcScanDraft {}; }))
+			SNew(SButton)
+#if ENGINE_MAJOR_VERSION < 5
+			.ForegroundColor(FSlateColor::UseForeground())
+#endif
+			.ButtonStyle(&PjcShim::GetStyle().GetWidgetStyle<FButtonStyle>(TEXT("NoBorder")))
+			.ContentPadding(FMargin {4.0f, 1.0f})
+			.IsEnabled_Lambda([]() { return FPjcScanDraft::Get() != FPjcScanDraft {}; })
+			.ToolTipText_Lambda([]() {
+				const bool bDefaults = FPjcScanDraft::Get() == FPjcScanDraft {};
+				return FText::FromString(bDefaults ? TEXT("The settings are the plugin defaults") : TEXT("Every scan setting back to the plugin defaults, then a scan. Asks first."));
+			})
+			.OnClicked_Lambda([]() {
+				ConfirmReset();
+				return FReply::Handled();
+			})
+			[
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 5.0f, 0.0f})
+				[
+					SNew(SBox).WidthOverride(12.0f).HeightOverride(12.0f)
+					[
+						SNew(SImage).Image(FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.Reset")).ColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.Muted"))
+					]
+				]
+				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+				[
+					SNew(STextBlock).Text(FText::FromString(TEXT("Reset to defaults"))).Font(FPjcStyles::GetFont("Regular", 9))
+				]
+			]
+		]
+		// in a column (Assets): fold up and down
+		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+		[
+			SNew(SButton)
+#if ENGINE_MAJOR_VERSION < 5
+			.ForegroundColor(FSlateColor::UseForeground())
+#endif
+			.ButtonStyle(&PjcShim::GetStyle().GetWidgetStyle<FButtonStyle>(TEXT("NoBorder")))
+			.ContentPadding(FMargin {4.0f, 2.0f})
+			.Visibility(FoldKey.IsNone() ? EVisibility::Collapsed : EVisibility::Visible)
+			.ToolTipText(FText::FromString(bFolded ? TEXT("Expand scan settings") : TEXT("Collapse scan settings")))
+			.OnClicked_Lambda([this]() {
+				bFolded = !bFolded;
+				if (GConfig) {
+					GConfig->SetBool(PjcSettingsFoldSection, *FoldKey.ToString(), bFolded, GEditorPerProjectIni);
+				}
+				RequestRebuild();
+				return FReply::Handled();
+			})
+			[
+				SNew(SBox).WidthOverride(12.0f).HeightOverride(12.0f)
+				[
+					SNew(SImage)
+					.Image(FPjcStyles::Get().GetBrush(bFolded ? "ProjectCleaner.Icon.Expand" : "ProjectCleaner.Icon.ChevronUp"))
+					.ColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.Muted"))
+				]
+			]
 		]
 		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 		[
@@ -402,7 +513,8 @@ TSharedRef<SWidget> SPjcScanSettings::MakeRow(
 	const TSharedRef<SToolTip>& ToolTip,
 	const bool bChanged,
 	const bool bDim,
-	const float Indent
+	const float Indent,
+	const TSharedPtr<SWidget>& Extra
 ) const {
 	// clang-format off
 	return SNew(SBorder)
@@ -434,6 +546,10 @@ TSharedRef<SWidget> SPjcScanSettings::MakeRow(
 			]
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 			[
+				Extra.IsValid() ? Extra.ToSharedRef() : SNullWidget::NullWidget
+			]
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+			[
 				SNew(SBox).WidthOverride(32.0f).HAlign(HAlign_Center).VAlign(VAlign_Center)
 				[
 					Control
@@ -441,6 +557,63 @@ TSharedRef<SWidget> SPjcScanSettings::MakeRow(
 			]
 		];
 	// clang-format on
+}
+
+TSharedRef<SWidget> SPjcScanSettings::MakeNoteRow(const FString& Label, const FString& Note, const FString& Description, const FString& More) const {
+	// clang-format off
+	return SNew(SBorder)
+		.BorderImage(FCoreStyle::Get().GetBrush("NoBrush"))
+		.Padding(0.0f)
+		.ToolTip(PjcWidgets::MakeToolTip(Label, Description, More))
+		[
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center).Padding(FMargin {8.0f, 4.0f, 6.0f, 4.0f})
+			[
+				SNew(STextBlock).Text(FText::FromString(Label))
+			]
+			// on the right, where the controls end
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {4.0f, 0.0f, 8.0f, 0.0f})
+			[
+				SNew(STextBlock).Text(FText::FromString(Note)).ColorAndOpacity(FSlateColor::UseSubduedForeground())
+			]
+		];
+	// clang-format on
+}
+
+void SPjcScanSettings::ConfirmReset() {
+	const FPjcScanDraft& Now = FPjcScanDraft::Get();
+	const FPjcScanDraft Defaults;
+
+	// what changes, as it is now and as it will be
+	FPjcDialogPart Part;
+	Part.Heading = TEXT("These settings go back to the plugin defaults");
+	const auto Flag = [&Part](const TCHAR* Name, const bool bNow, const bool bDefault) {
+		if (bNow != bDefault) {
+			Part.Rows.Emplace(Name, FString::Printf(TEXT("%s \u2192 %s"), bNow ? TEXT("on") : TEXT("off"), bDefault ? TEXT("on") : TEXT("off")));
+		}
+	};
+	const auto List = [&Part](const TCHAR* Name, const TArray<FString>& Items) {
+		if (Items.Num() > 0) {
+			Part.Rows.Emplace(Name, FString::Printf(TEXT("%s \u2192 none"), *PjcFormat::Count(Items.Num())));
+		}
+	};
+	Flag(TEXT("Project plugins"), Now.bScanProjectPlugins, Defaults.bScanProjectPlugins);
+	List(TEXT("Ignored plugins"), Now.IgnoredPlugins);
+	Flag(TEXT("Developers folders"), Now.bScanDevelopers, Defaults.bScanDevelopers);
+	Flag(TEXT("Unregistered primary classes"), Now.bUnregisteredPrimaryUsed, Defaults.bUnregisteredPrimaryUsed);
+	Flag(TEXT("Cinematics"), Now.bCinematicAssetsUsed, Defaults.bCinematicAssetsUsed);
+	List(TEXT("Always used classes"), Now.UsedClasses);
+	List(TEXT("Excluded folders"), Now.ExcludedFolders);
+	List(TEXT("Excluded classes"), Now.ExcludedClasses);
+	List(TEXT("Excluded assets"), Now.ExcludedAssets);
+	Part.Note = TEXT("The settings are saved to DefaultEditor.ini and the project is scanned right away.");
+	if (!SPjcDialog::Show(TEXT("Reset scan settings to defaults"), {Part}, TEXT("Reset and scan"))) return;
+
+	// reset and scan at once: no second click on Scan (user, 2026-11-14)
+	FPjcScanDraft::Get() = Defaults;
+	FPjcScanDraft::NotifyEdited();
+	FPjcScanDraft::Get().ApplyToSettings();
+	SPjcScanBar::ScanProject(true);
 }
 
 TSharedRef<SWidget>
@@ -572,6 +745,32 @@ TSharedRef<SWidget> SPjcScanSettings::MakeListRows(
 		};
 		RegisterActiveTimer(0.0f, FWidgetActiveTimerDelegate::CreateLambda(OpenPicker));
 	}
+	// a list of two or more can be emptied at once: the reset icon next to Add (Undo brings it back)
+	TSharedPtr<SWidget> Clear;
+	if (Items.Num() >= 2) {
+		const FString ClearTip
+			= FString::Printf(TEXT("Clear all: removes all %s entries of %s. Undo brings them back."), *PjcFormat::Count(Items.Num()), *Label);
+		// clang-format off
+		Clear = SNew(SButton)
+#if ENGINE_MAJOR_VERSION < 5
+			.ForegroundColor(FSlateColor::UseForeground())
+#endif
+			.ButtonStyle(&PjcShim::GetStyle().GetWidgetStyle<FButtonStyle>(TEXT("NoBorder")))
+			.ContentPadding(FMargin {4.0f, 0.0f})
+			.ToolTipText(FText::FromString(ClearTip))
+			.OnClicked_Lambda([List]() {
+				(FPjcScanDraft::Get().*List).Reset();
+				FPjcScanDraft::NotifyEdited();
+				return FReply::Handled();
+			})
+			[
+				SNew(SBox).WidthOverride(12.0f).HeightOverride(12.0f)
+				[
+					SNew(SImage).Image(FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.Reset")).ColorAndOpacity(FSlateColor::UseSubduedForeground())
+				]
+			];
+		// clang-format on
+	}
 	// clang-format off
 	Rows->AddSlot().AutoHeight()
 	[
@@ -582,7 +781,8 @@ TSharedRef<SWidget> SPjcScanSettings::MakeListRows(
 			PjcWidgets::MakeToolTip(Label, Description, FString {}),
 			false,
 			false,
-			Indent
+			Indent,
+			Clear
 		)
 	];
 	// clang-format on
@@ -598,12 +798,14 @@ TSharedRef<SWidget> SPjcScanSettings::MakeListRows(
 			.ToolTipText(FText::FromString(Item))
 			[
 				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+				// as wide as the column allows, long paths wrap
+				+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
 				[
-					SNew(SBox).MaxDesiredWidth(220.0f)
-					[
-						SNew(STextBlock).Text(FText::FromString(Item)).Font(FontMono())
-					]
+					SNew(STextBlock)
+					.Text(FText::FromString(Item))
+					.Font(FontMono())
+					.AutoWrapText(true)
+					.WrappingPolicy(ETextWrappingPolicy::AllowPerCharacterWrapping)
 				]
 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 				[
@@ -627,24 +829,6 @@ TSharedRef<SWidget> SPjcScanSettings::MakeListRows(
 					]
 				]
 			]
-		];
-		// clang-format on
-	}
-
-	// a list of two or more can be emptied at once (Undo and Defaults still work)
-	if (Items.Num() >= 2) {
-		const FString Entries = PjcFormat::Count(Items.Num());
-		const FString ClearTip = FString::Printf(TEXT("Removes all %s entries of %s. Other settings stay. Undo brings them back."), *Entries, *Label);
-		// clang-format off
-		Rows->AddSlot().AutoHeight().HAlign(HAlign_Left).Padding(FMargin {14.0f + Indent, 1.0f, 6.0f, 2.0f})
-		[
-			SNew(SHyperlink)
-			.Text(FText::FromString(TEXT("Clear all")))
-			.ToolTipText(FText::FromString(ClearTip))
-			.OnNavigate_Lambda([List]() {
-				(FPjcScanDraft::Get().*List).Reset();
-				FPjcScanDraft::NotifyEdited();
-			})
 		];
 		// clang-format on
 	}

@@ -242,8 +242,10 @@ bool SPjcScanWindow::Run(const bool bStayOpen) {
 	FSlateApplication::Get().AddModalWindow(ScanWindow, FSlateApplication::Get().GetActiveTopLevelWindow(), true);
 	ScanWindow->ShowWindow();
 	Content->StartScan();
-	if (!bStayOpen) {
-		// every step ticked for a moment, then the window closes
+	// closes by itself when the scan ends (user, 2026-11-14): every step ticked for a moment, then the window closes and
+	// a notification says how it went. Only a scan that failed stays open, when asked, for the user to read
+	const bool bCanceled = Content->Progress.bCancelRequested;
+	if (Content->bScanned || bCanceled || !bStayOpen) {
 		FPlatformProcess::Sleep(Content->bScanned ? 0.35f : 0.0f);
 		Content->Close();
 	}
