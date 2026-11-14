@@ -90,6 +90,8 @@ class SPjcTabUnused final : public SCompoundWidget
 
 	// folder tree
 	TSharedRef<SWidget> MakeFolderPane();
+	// Icon of the Tree and Size map buttons, in the button's text color
+	static TSharedRef<SWidget> MakeViewIcon(const FName Brush);
 	void RefreshTree();
 	bool IsFolderShown(const FPjcUnusedFolder& Folder) const;
 	void SortFolders(TArray<FFolderPtr>& Folders) const;

@@ -739,6 +739,15 @@ void SPjcTabUnused::MakeRowReason(const FPjcScanResult& Result, FPjcUnusedAssetR
 	}
 }
 
+TSharedRef<SWidget> SPjcTabUnused::MakeViewIcon(const FName Brush) {
+	// clang-format off
+	return SNew(SBox).WidthOverride(16.0f).HeightOverride(16.0f)
+		[
+			SNew(SImage).Image(FPjcStyles::Get().GetBrush(Brush)).ColorAndOpacity(FSlateColor::UseForeground())
+		];
+	// clang-format on
+}
+
 TSharedRef<SWidget> SPjcTabUnused::MakeFolderPane() {
 	// clang-format off
 	const TSharedRef<SHeaderRow> Header = SNew(SHeaderRow)
@@ -786,66 +795,64 @@ TSharedRef<SWidget> SPjcTabUnused::MakeFolderPane() {
 	return SNew(SBorder).BorderImage(PjcShim::GetBrush(TEXT("ToolPanel.GroupBorder"))).Padding(0.0f)
 		[
 			SNew(SVerticalBox)
+			// one height in both views: the search box and View are hidden in the size map
 			+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {8.0f, 6.0f})
 			[
-				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 8.0f, 0.0f})
+				SNew(SBox).HeightOverride(28.0f)
 				[
 					SNew(SHorizontalBox)
-					+ SHorizontalBox::Slot().AutoWidth()
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 8.0f, 0.0f})
 					[
-						SNew(SCheckBox)
-						.Style(&PjcShim::GetToggleStyle())
-						.ToolTipText(FText::FromString(TEXT("Folders with the totals of the list")))
-						.IsChecked_Lambda([this]() { return bMapView ? ECheckBoxState::Unchecked : ECheckBoxState::Checked; })
-						.OnCheckStateChanged_Lambda([this](ECheckBoxState) { SetMapView(false); })
+						SNew(SHorizontalBox)
+						+ SHorizontalBox::Slot().AutoWidth()
 						[
-							SNew(SBox).Padding(FMargin {8.0f, 1.0f})
+							SNew(SCheckBox)
+							.Style(&PjcShim::GetToggleStyle())
+							.ToolTip(PjcWidgets::MakeToolTip(TEXT("Tree"), TEXT("Folders with the totals of the list")))
+							.IsChecked_Lambda([this]() { return bMapView ? ECheckBoxState::Unchecked : ECheckBoxState::Checked; })
+							.OnCheckStateChanged_Lambda([this](ECheckBoxState) { SetMapView(false); })
 							[
-								SNew(STextBlock).Text(FText::FromString(TEXT("Tree")))
+								MakeViewIcon(TEXT("ProjectCleaner.Icon.Tree16"))
+							]
+						]
+						+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin {2.0f, 0.0f, 0.0f, 0.0f})
+						[
+							SNew(SCheckBox)
+							.Style(&PjcShim::GetToggleStyle())
+							.ToolTip(PjcWidgets::MakeToolTip(TEXT("Size map"), TEXT("Boxes as big as the listed assets in them, click a folder to open it")))
+							.IsChecked_Lambda([this]() { return bMapView ? ECheckBoxState::Checked : ECheckBoxState::Unchecked; })
+							.OnCheckStateChanged_Lambda([this](ECheckBoxState) { SetMapView(true); })
+							[
+								MakeViewIcon(TEXT("ProjectCleaner.Icon.SizeMap16"))
 							]
 						]
 					]
-					+ SHorizontalBox::Slot().AutoWidth()
+					+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
 					[
-						SNew(SCheckBox)
-						.Style(&PjcShim::GetToggleStyle())
-						.ToolTipText(FText::FromString(TEXT("Boxes as big as the listed assets in them, click a folder to open it")))
-						.IsChecked_Lambda([this]() { return bMapView ? ECheckBoxState::Checked : ECheckBoxState::Unchecked; })
-						.OnCheckStateChanged_Lambda([this](ECheckBoxState) { SetMapView(true); })
+						SNew(SBox).Visibility_Lambda([this]() { return bMapView ? EVisibility::Collapsed : EVisibility::Visible; })
 						[
-							SNew(SBox).Padding(FMargin {8.0f, 1.0f})
-							[
-								SNew(STextBlock).Text(FText::FromString(TEXT("Size map")))
-							]
+							SNew(SSearchBox)
+#if ENGINE_MAJOR_VERSION < 5
+							.Style(&PjcShim::GetSearchBoxStyle427())
+#endif
+							.HintText(FText::FromString(TEXT("Search folders")))
+							.OnTextChanged(this, &SPjcTabUnused::OnFolderSearchChanged)
 						]
 					]
-				]
-				+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
-				[
-					SNew(SBox).Visibility_Lambda([this]() { return bMapView ? EVisibility::Collapsed : EVisibility::Visible; })
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
 					[
-						SNew(SSearchBox)
+						SNew(SComboButton)
 #if ENGINE_MAJOR_VERSION < 5
-						.Style(&PjcShim::GetSearchBoxStyle427())
+						.ButtonStyle(&PjcShim::GetButtonStyle427(false))
+						.ForegroundColor(FSlateColor::UseForeground())
 #endif
-						.HintText(FText::FromString(TEXT("Search folders")))
-						.OnTextChanged(this, &SPjcTabUnused::OnFolderSearchChanged)
-					]
-				]
-				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
-				[
-					SNew(SComboButton)
-#if ENGINE_MAJOR_VERSION < 5
-					.ButtonStyle(&PjcShim::GetButtonStyle427(false))
-					.ForegroundColor(FSlateColor::UseForeground())
-#endif
-					.Visibility_Lambda([this]() { return bMapView ? EVisibility::Collapsed : EVisibility::Visible; })
-					.ToolTipText(FText::FromString(TEXT("View options")))
-					.OnGetMenuContent(this, &SPjcTabUnused::MakeViewMenu)
-					.ButtonContent()
-					[
-						SNew(STextBlock).Text(FText::FromString(TEXT("View")))
+						.Visibility_Lambda([this]() { return bMapView ? EVisibility::Collapsed : EVisibility::Visible; })
+						.ToolTipText(FText::FromString(TEXT("View options")))
+						.OnGetMenuContent(this, &SPjcTabUnused::MakeViewMenu)
+						.ButtonContent()
+						[
+							SNew(STextBlock).Text(FText::FromString(TEXT("View")))
+						]
 					]
 				]
 			]

@@ -74,9 +74,12 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create() {
 	// Issues tab: the yellow warning icon (warnings, not errors), 2026-11-14
 	Style->Set("ProjectCleaner.Icon.Issues16", new IMAGE_BRUSH(TEXT("IconWarning32"), FVector2D {16.0f, 16.0f}));
 	Style->Set("ProjectCleaner.Icon.Help16", new IMAGE_BRUSH(TEXT("IconHelp32"), FVector2D {16.0f, 16.0f}));
-	// Scan and Clean project buttons, as in 2.0
-	Style->Set("ProjectCleaner.Icon.Scan20", new IMAGE_BRUSH(TEXT("IconRefresh128"), FVector2D {20.0f, 20.0f}));
-	Style->Set("ProjectCleaner.Icon.Clean20", new IMAGE_BRUSH(TEXT("IconBinRed128"), FVector2D {20.0f, 20.0f}));
+	// Scan and Clean project buttons, as in 2.0: 40 px images drawn at 20 (from a 128 px image UE5 draws them washed out)
+	Style->Set("ProjectCleaner.Icon.Scan20", new IMAGE_BRUSH(TEXT("IconRefresh40"), FVector2D {20.0f, 20.0f}));
+	Style->Set("ProjectCleaner.Icon.Clean20", new IMAGE_BRUSH(TEXT("IconBinRed40"), FVector2D {20.0f, 20.0f}));
+	// Tree and Size map of Assets: white, drawn in the button's text color
+	Style->Set("ProjectCleaner.Icon.Tree16", new IMAGE_BRUSH(TEXT("IconTree64"), FVector2D {16.0f, 16.0f}));
+	Style->Set("ProjectCleaner.Icon.SizeMap16", new IMAGE_BRUSH(TEXT("IconSizeMap64"), FVector2D {16.0f, 16.0f}));
 	// marks on circular links of the Inspector graph: white, tinted when drawn (sources: IconLoop.svg, IconPair.svg)
 	Style->Set("ProjectCleaner.Graph.Disc", new IMAGE_BRUSH(TEXT("IconDisc64"), FVector2D {16.0f, 16.0f}));
 	Style->Set("ProjectCleaner.Graph.Loop", new IMAGE_BRUSH(TEXT("IconLoop64"), FVector2D {16.0f, 16.0f}));
