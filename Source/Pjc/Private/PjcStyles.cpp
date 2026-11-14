@@ -6,6 +6,7 @@
 #include "Styling/SlateStyleRegistry.h"
 #include "Framework/Application/SlateApplication.h"
 #include "Interfaces/IPluginManager.h"
+#include "Brushes/SlateBoxBrush.h"
 #include "Brushes/SlateColorBrush.h"
 #include "Brushes/SlateNoResource.h"
 #include "Runtime/Launch/Resources/Version.h"
@@ -87,7 +88,8 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create() {
 	Style->Set("ProjectCleaner.Color.Gray", FLinearColor {FColor::FromHex(TEXT("#adb5bd"))});
 
 	// asset status: bar fills, text accents
-	Style->Set("ProjectCleaner.Color.UsedFill", FLinearColor {FColor::FromHex(TEXT("#2C766F"))});
+	// used and shipped: one light green (user, 2026-11-14)
+	Style->Set("ProjectCleaner.Color.UsedFill", FLinearColor {FColor::FromHex(TEXT("#3F9B68"))});
 	Style->Set("ProjectCleaner.Color.EditorFill", FLinearColor {FColor::FromHex(TEXT("#3D6DB3"))});
 	Style->Set("ProjectCleaner.Color.UnusedFill", FLinearColor {FColor::FromHex(TEXT("#C4484D"))});
 	Style->Set("ProjectCleaner.Color.ReviewFill", FLinearColor {FColor::FromHex(TEXT("#8F6F2A"))});
@@ -96,7 +98,7 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create() {
 	Style->Set("ProjectCleaner.Color.Track", FLinearColor {FColor::FromHex(TEXT("#2D3136"))});
 	Style->Set("ProjectCleaner.Color.Line", FLinearColor {FColor::FromHex(TEXT("#383B40"))});
 	Style->Set("ProjectCleaner.Color.Accent", FLinearColor {FColor::FromHex(TEXT("#2F7DE1"))});
-	Style->Set("ProjectCleaner.Color.ShipFill", FLinearColor {FColor::FromHex(TEXT("#3A8D5C"))});
+	Style->Set("ProjectCleaner.Color.ShipFill", FLinearColor {FColor::FromHex(TEXT("#3F9B68"))});
 	Style->Set("ProjectCleaner.Color.KeepFill", FLinearColor {FColor::FromHex(TEXT("#56606B"))});
 	Style->Set("ProjectCleaner.Color.FolderTint", FLinearColor {FColor::FromHex(TEXT("#C9A55A"))});
 
@@ -121,6 +123,30 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create() {
 	// clang-format on
 	Style->Set("ProjectCleaner.Button.Row", RowButton);
 
+	// rounded corners as the UE5 widgets have them
+#if ENGINE_MAJOR_VERSION >= 5
+	const auto Round = [](const TCHAR* Value) {
+		return FSlateRoundedBoxBrush {FLinearColor {FColor::FromHex(Value)}, 4.0f};
+	};
+#else
+	// UE 4.27 has no rounded box brush: a white 16 px box with 4 px corners, nine-sliced and tinted
+	const FString RoundedBox = Style->RootToContentDir(TEXT("RoundedBox16"), TEXT(".png"));
+	const auto Round = [&RoundedBox](const TCHAR* Value) {
+		return FSlateBoxBrush {RoundedBox, FMargin {4.0f / 16.0f}, FLinearColor {FColor::FromHex(Value)}};
+	};
+#endif
+
+	// Clean project in the scan bar: dark red, so its red bin icon stands out (confirm buttons stay solid red)
+	// clang-format off
+	Style->Set("ProjectCleaner.Button.DangerQuiet", FButtonStyle {}
+		.SetNormal(Round(TEXT("#4A2427")))
+		.SetHovered(Round(TEXT("#5C2B2F")))
+		.SetPressed(Round(TEXT("#3A1D20")))
+		.SetDisabled(Round(TEXT("#2E2224")))
+		.SetNormalPadding(FMargin {2.0f})
+		.SetPressedPadding(FMargin {2.0f}));
+	// clang-format on
+
 #if ENGINE_MAJOR_VERSION < 5
 	// UE 4.27 widgets in the colors of the UE5 ones (PjcShim)
 	const auto Hex = [](const TCHAR* Value) {
@@ -135,10 +161,10 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create() {
 	const FMargin ButtonPadding {2.0f};
 	// clang-format off
 	Style->Set("ProjectCleaner.Button", FButtonStyle {}
-		.SetNormal(Hex(TEXT("#383838")))
-		.SetHovered(Hex(TEXT("#575757")))
-		.SetPressed(Hex(TEXT("#1F1F1F")))
-		.SetDisabled(Hex(TEXT("#2A2A2A")))
+		.SetNormal(Round(TEXT("#383838")))
+		.SetHovered(Round(TEXT("#575757")))
+		.SetPressed(Round(TEXT("#1F1F1F")))
+		.SetDisabled(Round(TEXT("#2A2A2A")))
 		.SetNormalPadding(ButtonPadding)
 		.SetPressedPadding(ButtonPadding));
 	// drawn tinted (ButtonColorAndOpacity)
@@ -150,27 +176,27 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create() {
 		.SetNormalPadding(ButtonPadding)
 		.SetPressedPadding(ButtonPadding));
 	Style->Set("ProjectCleaner.Button.Primary", FButtonStyle {}
-		.SetNormal(Hex(TEXT("#0070E0")))
-		.SetHovered(Hex(TEXT("#0E86FF")))
-		.SetPressed(Hex(TEXT("#0050A0")))
-		.SetDisabled(Hex(TEXT("#2C323A")))
+		.SetNormal(Round(TEXT("#0070E0")))
+		.SetHovered(Round(TEXT("#0E86FF")))
+		.SetPressed(Round(TEXT("#0050A0")))
+		.SetDisabled(Round(TEXT("#2C323A")))
 		.SetNormalPadding(ButtonPadding)
 		.SetPressedPadding(ButtonPadding));
 	Style->Set("ProjectCleaner.Button.Danger", FButtonStyle {}
-		.SetNormal(FSlateColorBrush {FLinearColor {0.70117f, 0.08464f, 0.07593f}})
-		.SetHovered(FSlateColorBrush {FLinearColor {0.85f, 0.14f, 0.13f}})
-		.SetPressed(FSlateColorBrush {FLinearColor {0.45f, 0.05f, 0.05f}})
-		.SetDisabled(Hex(TEXT("#3A2A2A")))
+		.SetNormal(Round(TEXT("#DA524E")))
+		.SetHovered(Round(TEXT("#ED6966")))
+		.SetPressed(Round(TEXT("#B33F3F")))
+		.SetDisabled(Round(TEXT("#3A2A2A")))
 		.SetNormalPadding(ButtonPadding)
 		.SetPressedPadding(ButtonPadding));
 	Style->Set("ProjectCleaner.Toggle", FCheckBoxStyle {}
 		.SetCheckBoxType(ESlateCheckBoxType::ToggleButton)
-		.SetUncheckedImage(Hex(TEXT("#383838")))
-		.SetUncheckedHoveredImage(Hex(TEXT("#575757")))
-		.SetUncheckedPressedImage(Hex(TEXT("#1F1F1F")))
-		.SetCheckedImage(Hex(TEXT("#0070E0")))
-		.SetCheckedHoveredImage(Hex(TEXT("#0E86FF")))
-		.SetCheckedPressedImage(Hex(TEXT("#0050A0"))));
+		.SetUncheckedImage(FSlateNoResource {})
+		.SetUncheckedHoveredImage(Round(TEXT("#383838")))
+		.SetUncheckedPressedImage(Round(TEXT("#383838")))
+		.SetCheckedImage(Round(TEXT("#0070E0")))
+		.SetCheckedHoveredImage(Round(TEXT("#0E86FF")))
+		.SetCheckedPressedImage(Round(TEXT("#383838"))));
 	Style->Set("ProjectCleaner.Row", FTableRowStyle {FCoreStyle::Get().GetWidgetStyle<FTableRowStyle>("TableView.Row")}
 		.SetActiveBrush(Hex(TEXT("#0070E0")))
 		.SetActiveHoveredBrush(Hex(TEXT("#0E86FF")))

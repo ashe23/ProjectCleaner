@@ -47,8 +47,10 @@ namespace PjcShim
 	// Background of a tool page, behind its panels
 	const FSlateBrush* GetBrushPage();
 	const FButtonStyle& GetPrimaryButtonStyle();
-	// Red button for actions that delete (Clean project)
+	// Red button that confirms a delete
 	const FButtonStyle& GetDangerButtonStyle();
+	// Dark red button for Clean project in the scan bar: its red icon stays visible
+	const FButtonStyle& GetDangerQuietButtonStyle();
 	// On and off buttons (filter chips)
 	const FCheckBoxStyle& GetToggleStyle();
 #if ENGINE_MAJOR_VERSION < 5

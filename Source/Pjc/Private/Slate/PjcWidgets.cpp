@@ -90,7 +90,7 @@ namespace PjcWidgets
 		const FLinearColor UnusedBar = GetColor("ProjectCleaner.Color.UnusedFill");
 		switch (Set) {
 			case EPjcAssetSet::Excluded : return FSetColors {Hex(TEXT("#6B7480")), Hex(TEXT("#4F555D")), Hex(TEXT("#E6E8EA")), Hex(TEXT("#6B7480"))};
-			case EPjcAssetSet::Used :	  return FSetColors {UsedBar, Hex(TEXT("#2A5F5A")), Hex(TEXT("#D8F1EE")), Hex(TEXT("#2C766F"))};
+			case EPjcAssetSet::Used :	  return FSetColors {UsedBar, Hex(TEXT("#2F6E4D")), Hex(TEXT("#DCF2E4")), Hex(TEXT("#3F9B68"))};
 			case EPjcAssetSet::Review :	  return FSetColors {ReviewBar, Hex(TEXT("#7A5F26")), Hex(TEXT("#FFF1D6")), Hex(TEXT("#8F6F2A"))};
 			case EPjcAssetSet::Unused :
 			default :					  return FSetColors {UnusedBar, Hex(TEXT("#7A3236")), Hex(TEXT("#FFE1E2")), Hex(TEXT("#8E3A3F"))};

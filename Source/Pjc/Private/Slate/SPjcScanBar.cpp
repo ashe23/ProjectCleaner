@@ -74,7 +74,7 @@ void SPjcScanBar::Construct(const FArguments& InArgs) {
 #if ENGINE_MAJOR_VERSION < 5
 				.ForegroundColor(FSlateColor::UseForeground())
 #endif
-				.ButtonStyle(&PjcShim::GetDangerButtonStyle())
+				.ButtonStyle(&PjcShim::GetDangerQuietButtonStyle())
 				.ContentPadding(FMargin {10.0f, 4.0f, 14.0f, 4.0f})
 				.ToolTipText(this, &SPjcScanBar::GetCleanToolTip)
 				.IsEnabled(this, &SPjcScanBar::IsCleanEnabled)
@@ -99,7 +99,10 @@ SPjcScanBar::~SPjcScanBar() {}
 
 TSharedRef<SWidget> SPjcScanBar::MakeButtonLabel(const FString& Text) {
 	// Clean project: the red bin, Scan and Rescan: the arrows
-	const FName Icon = Text.Equals(TEXT("Clean project")) ? TEXT("ProjectCleaner.Icon.Clean20") : TEXT("ProjectCleaner.Icon.Scan20");
+	const bool bClean = Text.Equals(TEXT("Clean project"));
+	const FName Icon = bClean ? TEXT("ProjectCleaner.Icon.Clean20") : TEXT("ProjectCleaner.Icon.Scan20");
+	// light red on the dark red button
+	const FSlateColor TextColor = bClean ? FSlateColor {FLinearColor {FColor::FromHex(TEXT("#FFB3B6"))}} : FSlateColor::UseForeground();
 	// clang-format off
 	return SNew(SHorizontalBox)
 		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 7.0f, 0.0f})
@@ -111,7 +114,7 @@ TSharedRef<SWidget> SPjcScanBar::MakeButtonLabel(const FString& Text) {
 		]
 		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 		[
-			SNew(STextBlock).Text(FText::FromString(Text)).Font(FPjcStyles::GetFont("Regular", 10))
+			SNew(STextBlock).Text(FText::FromString(Text)).Font(FPjcStyles::GetFont("Regular", 10)).ColorAndOpacity(TextColor)
 		];
 	// clang-format on
 }

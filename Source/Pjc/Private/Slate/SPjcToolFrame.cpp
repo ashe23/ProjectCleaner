@@ -204,7 +204,11 @@ TSharedRef<SWidget> SPjcToolFrame::MakeSideColumn(const TSharedRef<SWidget>& Sid
 		+ SSplitter::Slot()
 		.Value(1.0f - SideShare)
 		[
-			Content
+			// on a card with a margin: the gap shows where the column can be resized
+			SNew(SBox).Padding(FMargin {4.0f, 8.0f, 8.0f, 8.0f})
+			[
+				PjcWidgets::MakeCard(Content, FMargin {1.0f})
+			]
 		];
 	// clang-format on
 }

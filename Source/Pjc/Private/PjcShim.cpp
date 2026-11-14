@@ -135,6 +135,10 @@ namespace PjcShim
 #endif
 	}
 
+	const FButtonStyle& GetDangerQuietButtonStyle() {
+		return FPjcStyles::Get().GetWidgetStyle<FButtonStyle>("ProjectCleaner.Button.DangerQuiet");
+	}
+
 	const FCheckBoxStyle& GetToggleStyle() {
 #if ENGINE_MAJOR_VERSION >= 5
 		return GetStyle().GetWidgetStyle<FCheckBoxStyle>(TEXT("ToggleButtonCheckbox"));
