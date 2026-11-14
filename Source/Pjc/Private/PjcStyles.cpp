@@ -107,10 +107,11 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create() {
 	Style->Set("ProjectCleaner.Color.KeepFill", Color(TEXT("#56606B")));
 	Style->Set("ProjectCleaner.Color.FolderTint", ColorFolder);
 
-	// icon set (proto/style, sources in Resources/Icons/Source): white 64 px images, the same in every engine. Widgets draw
+	// icon set (proto/style, originals in Media/Icons): white 64 px images, the same in every engine. Widgets draw
 	// them in a color; tabs, menus and the toolbar, which the engine draws, get brushes with the color in them
 	const auto Icon = [&Style](const TCHAR* Name, const float Size, const FLinearColor& Tint) {
-		return FSlateImageBrush {Style->RootToContentDir(FString {TEXT("Icons/")} + Name, TEXT(".png")), FVector2D {Size, Size}, Tint};
+		const FString Path = Style->RootToContentDir(FString {TEXT("Icons/")} + Name, TEXT(".png"));
+		return FSlateImageBrush(Path, FVector2D {Size, Size}, Tint);
 	};
 	const FLinearColor White = FLinearColor::White;
 	// the plugin: Tools menu, toolbar, its window tab
@@ -125,8 +126,13 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create() {
 	// the warning sign of the Issues card and of the busy message
 	Style->Set("ProjectCleaner.Icon.Warning", new FSlateImageBrush {Icon(TEXT("Issues"), 32.0f, ColorWarning)});
 	// white, drawn in the color of where they sit
-	for (const TCHAR* Name : {TEXT("Scan"), TEXT("Clean"), TEXT("Tree"), TEXT("SizeMap"), TEXT("Settings"), TEXT("Lock"), TEXT("Close"),
-							  TEXT("Add"), TEXT("Back"), TEXT("Forward"), TEXT("Folder"), TEXT("FolderOpen")}) {
+	// clang-format off
+	const TCHAR* WhiteIcons[] = {
+		TEXT("Scan"), TEXT("Clean"), TEXT("Tree"), TEXT("SizeMap"), TEXT("Settings"), TEXT("Lock"), TEXT("Close"), TEXT("Add"), TEXT("Back"),
+		TEXT("Forward"), TEXT("Folder"), TEXT("FolderOpen"),
+	};
+	// clang-format on
+	for (const TCHAR* Name : WhiteIcons) {
 		Style->Set(FName {*(FString {TEXT("ProjectCleaner.Icon.")} + Name)}, new FSlateImageBrush {Icon(Name, 16.0f, White)});
 	}
 	Style->Set("ProjectCleaner.Icon.Scan20", new FSlateImageBrush {Icon(TEXT("Scan"), 20.0f, White)});
@@ -202,8 +208,8 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create() {
 		.SetPadding(FMargin {16.0f, 2.0f})
 		.SetForegroundColor(FLinearColor {FColor::FromHex(TEXT("#C0C0C0"))}));
 	// checkboxes: a dark rounded box, blue with a white check when on, a dash when mixed (the engine's differ per version)
-	const auto Check = [&Style](const TCHAR* Name) {
-		return FSlateImageBrush {Style->RootToContentDir(FString {TEXT("Icons/")} + Name, TEXT(".png")), FVector2D {16.0f, 16.0f}};
+	const auto Check = [&Icon](const TCHAR* Name) {
+		return Icon(Name, 16.0f, FLinearColor::White);
 	};
 	Style->Set("ProjectCleaner.CheckBox", FCheckBoxStyle {}
 		.SetCheckBoxType(ESlateCheckBoxType::CheckBox)
@@ -229,8 +235,8 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create() {
 	SearchText.SetBackgroundImageReadOnly(Round(TEXT("#1A1A1A")));
 	SearchText.SetForegroundColor(FLinearColor {FColor::FromHex(TEXT("#C0C0C0"))});
 	SearchBox.SetTextBoxStyle(SearchText);
-	SearchBox.SetGlassImage(FSlateImageBrush {Style->RootToContentDir(TEXT("Icons/Scan"), TEXT(".png")), FVector2D {14.0f, 14.0f}, ColorMuted});
-	SearchBox.SetClearImage(FSlateImageBrush {Style->RootToContentDir(TEXT("Icons/Close"), TEXT(".png")), FVector2D {12.0f, 12.0f}, ColorMuted});
+	SearchBox.SetGlassImage(Icon(TEXT("Scan"), 14.0f, ColorMuted));
+	SearchBox.SetClearImage(Icon(TEXT("Close"), 12.0f, ColorMuted));
 #if ENGINE_MAJOR_VERSION >= 5
 	SearchBox.SetLeftAlignGlassImageAndClearButton(true);
 #else

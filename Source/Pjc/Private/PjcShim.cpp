@@ -137,7 +137,6 @@ namespace PjcShim
 		return FPjcStyles::Get().GetWidgetStyle<FButtonStyle>(bColored ? "ProjectCleaner.Button.Colored" : "ProjectCleaner.Button");
 	}
 
-
 	const FEditableTextBoxStyle& GetTextBoxStyle427() {
 		return FPjcStyles::Get().GetWidgetStyle<FEditableTextBoxStyle>("ProjectCleaner.TextBox");
 	}
