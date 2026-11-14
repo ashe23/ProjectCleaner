@@ -14,6 +14,7 @@ ProjectCleaner dev tool - build, test and package the plugin against every insta
   python Scripts/pjc.py release                     show what a release would do; with --message and --confirm X.Y.Z do it
   python Scripts/pjc.py synth   [-e 5.8] [--assets N]   large synthetic project in its own host, to try views on many assets
   python Scripts/pjc.py clean   [-e ...]            delete host Binaries/Intermediate/Saved/DerivedDataCache
+  python Scripts/pjc.py open    [-e 4.27,5.8]       build, then open host projects in the editor (default: oldest and newest engine)
 
 Engine versions for -e: "all" (default), "5.4", "5.4,5.6", "5.0-5.3", "4.27,5.5-".
 
@@ -168,6 +169,13 @@ class Engine:
         if IS_MAC:
             return os.path.join(binaries, "Mac", self.editor_name + ".app", "Contents", "MacOS", self.editor_name)
         return os.path.join(binaries, "Linux", self.editor_name)
+
+    @property
+    def editor_gui(self):
+        """Editor with its window (pjc.py open), the -Cmd one on Windows has none."""
+        if IS_WIN:
+            return os.path.join(self.root, "Engine", "Binaries", "Win64", self.editor_name + ".exe")
+        return self.editor_cmd
 
     def __str__(self):
         return "{}.{}.{}".format(self.major, self.minor, self.patch)
@@ -1304,6 +1312,47 @@ def cmd_clean(args, hosts):
     return run_for_hosts(hosts, work, 1, "clean")
 
 
+def editor_command_lines():
+    """Command lines of the running editors, lower case with forward slashes. Empty when they can't be read."""
+    try:
+        if IS_WIN:
+            query = "Get-CimInstance Win32_Process -Filter \"Name like 'UnrealEditor%' or Name like 'UE4Editor%'\" | ForEach-Object { $_.CommandLine }"
+            out = subprocess.run(["powershell", "-NoProfile", "-Command", query], capture_output=True, text=True, timeout=60).stdout
+        else:
+            out = subprocess.run(["ps", "-eo", "args"], capture_output=True, text=True, timeout=60).stdout
+    except (OSError, subprocess.SubprocessError):
+        return []
+    return [line.replace("\\", "/").lower() for line in out.splitlines() if line.strip()]
+
+
+def cmd_open(args, hosts):
+    running = editor_command_lines()
+
+    def work(host):
+        # a build under an open editor fails (locked binaries, Live Coding) and a second editor on one project conflicts
+        if any(host.uproject.replace("\\", "/").lower() in line for line in running):
+            return False, "already open in the editor, close it first"
+        if args.no_build:
+            setup_host(host)
+        else:
+            ok, summary = build_host(host)
+            if not ok:
+                return False, "build failed, not opened: " + summary
+        # detached: the editor stays open after this tool exits
+        flags = {"creationflags": subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP} if IS_WIN else {"start_new_session": True}
+        subprocess.Popen(
+            [host.engine.editor_gui, host.uproject],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            env=child_env(host.engine),
+            **flags,
+        )
+        return True, "opening " + host.uproject
+
+    return run_for_hosts(hosts, work, args.jobs, "open")
+
+
 # ----------------------------------------------------------------------------------------------------------------------
 # polygon: real projects (e.g. Lyra) in local git repos are scanned and cleaned for real, verified, then reset
 # ----------------------------------------------------------------------------------------------------------------------
@@ -2364,6 +2413,9 @@ def main():
     p.add_argument("--message", help="one sentence for the tag message, stored as 'vX.Y.Z: <message>'")
     p.add_argument("--confirm", metavar="X.Y.Z", help="the version to release, typed out; without it nothing is changed")
     add("clean", "delete host build products")
+    p = add("open", "build, then open host projects in the editor (default: oldest and newest engine)", jobs=2)
+    p.set_defaults(engines="ends")
+    p.add_argument("--no-build", action="store_true", help="skip build step, open with the existing plugin binaries")
     p = add("synth", "generate large synthetic project in its own host (default: newest engine), to try views on many assets")
     p.set_defaults(engines="newest")
     p.add_argument("--assets", type=int, default=30000, help="number of assets (default: %(default)s)")
@@ -2393,7 +2445,8 @@ def main():
         with HostsLock(root):
             return cmd_synth(args, [Host(e, root) for e in selected])
 
-    selected = select_engines(engines, args.engines)
+    # open: oldest and newest engine unless -e is given (UI checks on both ends of the supported range)
+    selected = engines[:1] + engines[1:][-1:] if args.engines == "ends" else select_engines(engines, args.engines)
     root = hosts_dir(cfg)
     hosts = [Host(e, root) for e in selected]
 
@@ -2405,6 +2458,7 @@ def main():
         "cli": lambda: cmd_cli(args, hosts),
         "package": lambda: cmd_package(args, hosts, cfg),
         "clean": lambda: cmd_clean(args, hosts),
+        "open": lambda: cmd_open(args, hosts),
     }
     with HostsLock(root):
         return commands[args.command]()
