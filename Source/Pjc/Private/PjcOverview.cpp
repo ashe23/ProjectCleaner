@@ -10,6 +10,7 @@
 FPjcOverview FPjcOverview::Make(const FPjcScanResult& Result) {
 	FPjcOverview Overview;
 	TMap<EPjcUsageReason, FTotal> Reasons;
+	TMap<EPjcUsageReason, FTotal> DependencyChains;
 	TMap<FName, FClass> Classes;
 
 	for (const auto& Asset : Result.Assets) {
@@ -43,9 +44,20 @@ FPjcOverview FPjcOverview::Make(const FPjcScanResult& Result) {
 
 		// reasons tell why assets are used: neither unused nor review ones
 		if (Status == EPjcAssetStatus::Used || Status == EPjcAssetStatus::EditorOnly) {
-			Reasons.FindOrAdd(GetGroupReason(Result, Asset.PackageName)).Add(Size);
+			const EPjcUsageReason Group = GetGroupReason(Result, Asset.PackageName);
+			Reasons.FindOrAdd(Group).Add(Size);
+			if (Group == EPjcUsageReason::Dependency) {
+				DependencyChains.FindOrAdd(GetChainGroupReason(Result, Asset.PackageName)).Add(Size);
+			}
 		}
 	}
+
+	for (const auto& Pair : DependencyChains) {
+		Overview.DependencyChains.Add(FReason {Pair.Key, Pair.Value});
+	}
+	Overview.DependencyChains.Sort([](const FReason& A, const FReason& B) {
+		return A.Total.Num > B.Total.Num;
+	});
 
 	for (const auto& Pair : Reasons) {
 		Overview.Reasons.Add(FReason {Pair.Key, Pair.Value});
@@ -141,7 +153,7 @@ FPjcOverview::FShipped FPjcOverview::MakeShipped(const FPjcScanResult& Result, c
 		}
 		else {
 			Shipped.UsedNotShipped.Add(Size);
-			Reasons.FindOrAdd(GetGroupReason(Result, Package)).Add(Size);
+			Reasons.FindOrAdd(GetChainGroupReason(Result, Package)).Add(Size);
 		}
 
 		// assets the cook did not see matter when the game uses them: they are new since (what reaches them changed
@@ -198,7 +210,23 @@ FPjcOverview::FShipped FPjcOverview::MakeShipped(const FPjcScanResult& Result, c
 	return Shipped;
 }
 
+namespace
+{
+	// rows the tools show: listed by a label as primary assets, config folders with source and config
+	EPjcUsageReason PjcOverviewGroup(const EPjcUsageReason Reason) {
+		switch (Reason) {
+			case EPjcUsageReason::FolderLabelAsset : return EPjcUsageReason::Primary;
+			case EPjcUsageReason::ConfigFolder :	 return EPjcUsageReason::Indirect;
+			default :								 return Reason;
+		}
+	}
+}	// namespace
+
 EPjcUsageReason FPjcOverview::GetGroupReason(const FPjcScanResult& Result, const FName Package) {
-	const EPjcUsageReason Reason = Result.GetChainReason(Package);
-	return Reason == EPjcUsageReason::FolderLabelAsset ? EPjcUsageReason::Primary : Reason;
+	const FPjcAssetUsage* Usage = Result.Usage.Find(Package);
+	return Usage ? PjcOverviewGroup(Usage->Reason) : EPjcUsageReason::None;
+}
+
+EPjcUsageReason FPjcOverview::GetChainGroupReason(const FPjcScanResult& Result, const FName Package) {
+	return PjcOverviewGroup(Result.GetChainReason(Package));
 }

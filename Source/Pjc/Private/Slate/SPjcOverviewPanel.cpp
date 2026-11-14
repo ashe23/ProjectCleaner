@@ -101,16 +101,13 @@ void SPjcOverviewPanel::Rebuild() {
 TSharedRef<SWidget> SPjcOverviewPanel::MakeStatus() {
 	const FPjcOverview::FTotal& All = Overview.All;
 	const FLinearColor ColorUsed = PjcWidgets::GetColor("ProjectCleaner.Color.UsedFill");
-	const FLinearColor ColorEditor = PjcWidgets::GetColor("ProjectCleaner.Color.EditorFill");
 	const FLinearColor ColorReview = PjcWidgets::GetColor("ProjectCleaner.Color.ReviewFill");
 	const FLinearColor ColorUnused = PjcWidgets::GetColor("ProjectCleaner.Color.UnusedFill");
 	const FSlateColor Plain = FSlateColor::UseForeground();
 	const FSlateColor Muted = FSlateColor::UseSubduedForeground();
 
 	// clang-format off
-	const TCHAR* UsedTip = TEXT("The game uses them: maps, primary assets and other roots, and what they reference.");
-	const TCHAR* EditorTip = TEXT("Kept, but only the editor uses them: editor assets, and what only editor-only references or labels reach. ")
-		TEXT("They do not ship.");
+	const TCHAR* UsedTip = TEXT("Kept: the game or the editor uses them. The rows below say why.");
 	const TCHAR* ReviewTip = TEXT("The scan is not sure about them: unused assets a cook packaged, GameplayCue notifies ")
 		TEXT("nothing fires. Clean project keeps them, and the unused assets they use.");
 	const TCHAR* UnusedTip = TEXT("Nothing uses them. Clean project deletes them.");
@@ -145,8 +142,12 @@ TSharedRef<SWidget> SPjcOverviewPanel::MakeStatus() {
 	};
 	const FSlateColor ReviewNumber = Overview.Review.Num > 0 ? FSlateColor {PjcWidgets::GetColor("ProjectCleaner.Color.Review")} : Muted;
 	const FSlateColor UnusedNumber = Overview.Unused.Num > 0 ? FSlateColor {PjcWidgets::GetColor("ProjectCleaner.Color.Red")} : Muted;
-	AddRow(TEXT("Used"), ColorUsed, Overview.Used, Plain, UsedTip, EPjcAssetSet::Used, FString {});
-	AddRow(TEXT("Editor only"), ColorEditor, Overview.EditorOnly, Plain, EditorTip, EPjcAssetSet::Used, PjcOverviewReasonEditor);
+	// Editor only is part of Used (user, 2026-11-14): its assets show under Editor assets and as Used, not shipped
+	FPjcOverview::FTotal Used = Overview.Used;
+	Used.Num += Overview.EditorOnly.Num;
+	Used.Size += Overview.EditorOnly.Size;
+	AddRow(TEXT("Used"), ColorUsed, Used, Plain, UsedTip, EPjcAssetSet::Used, FString {});
+	AddReasonRows(Rows);
 	AddRow(TEXT("Review"), ColorReview, Overview.Review, ReviewNumber, ReviewTip, EPjcAssetSet::Review, FString {});
 	AddRow(TEXT("Unused"), ColorUnused, Overview.Unused, UnusedNumber, UnusedTip, EPjcAssetSet::Unused, FString {});
 
@@ -159,8 +160,7 @@ TSharedRef<SWidget> SPjcOverviewPanel::MakeStatus() {
 		const FString Sizes = FString::Printf(TEXT("%s \u00B7 %s"), *PjcFormat::Size(Total.Size), *PjcFormat::Percent(Total.Size, All.Size));
 		Segment.ToolTip = PjcWidgets::MakeToolTip(Label, Sizes + TEXT(" \u00B7 ") + PjcFormat::Count(Total.Num) + TEXT(" assets"));
 	};
-	AddSegment(TEXT("Used"), Overview.Used, ColorUsed);
-	AddSegment(TEXT("Editor only"), Overview.EditorOnly, ColorEditor);
+	AddSegment(TEXT("Used"), Used, ColorUsed);
 	AddSegment(TEXT("Review"), Overview.Review, ColorReview);
 	AddSegment(TEXT("Unused"), Overview.Unused, ColorUnused);
 
@@ -183,6 +183,111 @@ TSharedRef<SWidget> SPjcOverviewPanel::MakeStatus() {
 		]
 	);
 	// clang-format on
+}
+
+void SPjcOverviewPanel::AddReasonRows(const TSharedRef<SVerticalBox>& Rows) {
+	// why used, as 2.0 showed it (user, 2026-11-14): the assets where a chain starts by their reason, then everything they
+	// reference as Dependencies, Other last. Compact: small, under the Used name
+	TArray<FPjcOverview::FReason> Sorted = Overview.Reasons;
+	const auto Rank = [](const FPjcOverview::FReason& Row) {
+		FString Name;
+		FString ToolTip;
+		FLinearColor Color;
+		GetReasonInfo(Row.Reason, Name, ToolTip, Color);
+		return Row.Reason == EPjcUsageReason::Dependency ? 1 : (Name.Equals(TEXT("Other")) ? 2 : 0);
+	};
+	Sorted.Sort([&Rank](const FPjcOverview::FReason& A, const FPjcOverview::FReason& B) {
+		const int32 RankA = Rank(A);
+		const int32 RankB = Rank(B);
+		return RankA != RankB ? RankA < RankB : A.Total.Num > B.Total.Num;
+	});
+
+	const int64 AllSize = Overview.All.Size;
+	for (const FPjcOverview::FReason& Row : Sorted) {
+		if (Row.Total.Num == 0) continue;
+
+		FString Name;
+		FString Description;
+		FLinearColor Color;
+		GetReasonInfo(Row.Reason, Name, Description, Color);
+		// Dependencies: which chains they belong to
+		FString More;
+		if (Row.Reason == EPjcUsageReason::Dependency) {
+			TArray<FString> Parts;
+			for (const FPjcOverview::FReason& Chain : Overview.DependencyChains) {
+				FString ChainName;
+				FString ChainTip;
+				FLinearColor ChainColor;
+				GetReasonInfo(Chain.Reason, ChainName, ChainTip, ChainColor);
+				Parts.Add(ChainName.ToLower() + TEXT(" ") + PjcFormat::Count(Chain.Total.Num));
+			}
+			More = TEXT("Through ") + FString::Join(Parts, TEXT(" \u00B7 ")) + TEXT("\n");
+		}
+		const TSharedRef<SToolTip> Tip = PjcWidgets::MakeToolTip(Name, Description, More + TEXT("Click: list them on the right"));
+		const FSimpleDelegate OnClick = FSimpleDelegate::CreateLambda([this, Name]() {
+			OnShowSet.ExecuteIfBound(EPjcAssetSet::Used, Name);
+		});
+		const TAttribute<bool> IsOn = TAttribute<bool>::Create([this, Name]() {
+			return IsSetShown.IsBound() && IsSetShown.Execute(EPjcAssetSet::Used, Name);
+		});
+		const FSlateColor Muted = FSlateColor::UseSubduedForeground();
+		// clang-format off
+		const TSharedRef<SWidget> Line = SNew(SBox).Padding(FMargin {6.0f, 1.0f}).MinDesiredHeight(18.0f).VAlign(VAlign_Center)
+			[
+				SNew(SHorizontalBox)
+				// the dot under the Used name
+				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {16.0f, 0.0f, 6.0f, 0.0f})
+				[
+					PjcWidgets::MakeSwatch(Color, 6.0f)
+				]
+				+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
+				[
+					SNew(STextBlock).Text(FText::FromString(Name)).Font(FPjcStyles::GetFont("Regular", 9)).ColorAndOpacity(Muted)
+				]
+				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {8.0f, 0.0f, 0.0f, 0.0f})
+				[
+					SNew(STextBlock).Text(FText::FromString(PjcFormat::Count(Row.Total.Num))).Font(PjcWidgets::GetFontMono(9)).ColorAndOpacity(Muted)
+				]
+				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {8.0f, 0.0f, 0.0f, 0.0f})
+				[
+					SNew(SBox).WidthOverride(64.0f).HAlign(HAlign_Right)
+					[
+						SNew(STextBlock).Text(FText::FromString(PjcFormat::Size(Row.Total.Size))).Font(PjcWidgets::GetFontMono(8)).ColorAndOpacity(Muted)
+					]
+				]
+				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
+				[
+					SNew(SBox).WidthOverride(34.0f).HAlign(HAlign_Right)
+					[
+						SNew(STextBlock).Text(FText::FromString(PjcFormat::Percent(Row.Total.Size, AllSize))).Font(PjcWidgets::GetFontMono(8)).ColorAndOpacity(Muted)
+					]
+				]
+			];
+		Rows->AddSlot().AutoHeight()
+		[
+			SNew(SBorder)
+			.BorderImage(FCoreStyle::Get().GetBrush("WhiteBrush"))
+			.BorderBackgroundColor_Lambda([IsOn]() { return IsOn.Get() ? PjcOverviewMarked() : FLinearColor::Transparent; })
+			.Padding(0.0f)
+			[
+				SNew(SButton)
+#if ENGINE_MAJOR_VERSION < 5
+				.ForegroundColor(FSlateColor::UseForeground())
+#endif
+				.ButtonStyle(&FPjcStyles::Get().GetWidgetStyle<FButtonStyle>("ProjectCleaner.Button.Row"))
+				.ContentPadding(FMargin {0.0f})
+				.ToolTip(Tip)
+				.OnClicked_Lambda([OnClick]() {
+					OnClick.ExecuteIfBound();
+					return FReply::Handled();
+				})
+				[
+					Line
+				]
+			]
+		];
+		// clang-format on
+	}
 }
 
 TSharedRef<SWidget> SPjcOverviewPanel::MakeIssues() {
@@ -761,13 +866,14 @@ void SPjcOverviewPanel::GetReasonInfo(const EPjcUsageReason Reason, FString& Out
 			Color = "ProjectCleaner.Color.Reason.PrimaryClass";
 			break;
 		case EPjcUsageReason::EngineReferenced :
-			OutName = TEXT("Outside scanned content");
-			OutToolTip = TEXT("Referenced by engine content, plugins left out of the scan, or level actors saved in their own files.");
+			OutName = TEXT("Used by engine or plugins");
+			OutToolTip = TEXT("Engine content, a plugin or Developers folder left out of the scan, or an actor file of a level outside the ")
+				TEXT("scan references them. The scan cannot read those, so it keeps them.");
 			Color = "ProjectCleaner.Color.Reason.Outside";
 			break;
 		case EPjcUsageReason::Indirect :
 			OutName = TEXT("Source & config");
-			OutToolTip = TEXT("C++, C#, Python and .ini files name them by path.");
+			OutToolTip = TEXT("C++, C#, Python and .ini files name them by path, or they are in a folder the config always cooks.");
 			Color = "ProjectCleaner.Color.Reason.Source";
 			break;
 		case EPjcUsageReason::ConfigFolder :
@@ -787,12 +893,12 @@ void SPjcOverviewPanel::GetReasonInfo(const EPjcUsageReason Reason, FString& Out
 			break;
 		case EPjcUsageReason::Excluded :
 			OutName = TEXT("Excluded");
-			OutToolTip = TEXT("Excluded in settings and always used classes, and what they use.");
+			OutToolTip = TEXT("Kept by your exclusions and always used classes (Scan settings).");
 			Color = "ProjectCleaner.Color.Muted";
 			break;
 		case EPjcUsageReason::Cinematic :
 			OutName = TEXT("Cinematics");
-			OutToolTip = TEXT("Level Sequences, Template Sequences and Movie Render configs, and what they use.");
+			OutToolTip = TEXT("Level Sequences, Template Sequences and Movie Render configs.");
 			Color = "ProjectCleaner.Color.Reason.Cinematic";
 			break;
 		case EPjcUsageReason::GameplayCue :
@@ -814,9 +920,14 @@ void SPjcOverviewPanel::GetReasonInfo(const EPjcUsageReason Reason, FString& Out
 			OutToolTip = TEXT("Texture copies of the splash images in Content/Splash: the editor imports them again when deleted.");
 			Color = "ProjectCleaner.Color.Reason.Splash";
 			break;
+		case EPjcUsageReason::Dependency :
+			OutName = TEXT("Dependencies");
+			OutToolTip = TEXT("Used because a used asset references them.");
+			Color = "ProjectCleaner.Color.UsedFill";
+			break;
 		default :
 			OutName = TEXT("Other");
-			OutToolTip = FString {};
+			OutToolTip = TEXT("Used for a reason the rows above do not name.");
 			break;
 	}
 	OutColor = PjcWidgets::GetColor(Color);

@@ -762,27 +762,35 @@ void SPjcTabUnused::MakeRowReason(const FPjcScanResult& Result, FPjcUnusedAssetR
 		return;
 	}
 
-	// used: named like the Overview reasons
+	// used: named like the Overview rows. Where a chain starts its reason, else what uses it (a Dependency)
 	FString Name;
 	FString ToolTip;
 	FLinearColor Color;
 	SPjcOverviewPanel::GetReasonInfo(FPjcOverview::GetGroupReason(Result, Row.Package), Name, ToolTip, Color);
-	Row.Reason = Name;
-	Row.ReasonTip = ToolTip;
+	Row.ReasonKey = Name;
+	if (Usage && Usage->Reason == EPjcUsageReason::Dependency && !Usage->Parent.IsNone()) {
+		const FString ParentName = FPackageName::GetShortName(Usage->Parent);
+		Row.Reason = TEXT("Used by ") + ParentName;
+		Row.ReasonTip = ParentName + TEXT(" uses it");
+	}
+	else {
+		Row.Reason = Name;
+		Row.ReasonTip = ToolTip;
+	}
 	if (Root != Row.Package) {
 		Row.ReasonTip += TEXT("\nChain starts at ") + FPackageName::GetShortName(Root);
 	}
-	Row.ReasonKey = Row.Reason;
 
 	// source and config: the file and the line that names it (the asset itself, or the one its chain starts at)
 	if (ChainReason == EPjcUsageReason::Indirect && RootUsage && !RootUsage->Detail.IsEmpty()) {
 		FString File;
 		FString Line;
 		if (RootUsage->Detail.Split(TEXT(", line "), &File, &Line, ESearchCase::CaseSensitive, ESearchDir::FromEnd)) {
-			const FString Place = FPaths::GetCleanFilename(File) + TEXT(":") + Line;
-			Row.Reason = Root == Row.Package ? Place : TEXT("Used by ") + FPackageName::GetShortName(Root) + TEXT(" · ") + Place;
+			if (Root == Row.Package) {
+				Row.Reason = FPaths::GetCleanFilename(File) + TEXT(":") + Line;
+			}
 		}
-		Row.ReasonTip += (Root == Row.Package ? TEXT("\nNamed in ") : TEXT("\nIt is named in ")) + RootUsage->Detail;
+		Row.ReasonTip += (Root == Row.Package ? TEXT("\nNamed in ") : TEXT("\nThe chain start is named in ")) + RootUsage->Detail;
 	}
 }
 

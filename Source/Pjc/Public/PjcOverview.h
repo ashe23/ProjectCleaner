@@ -95,8 +95,12 @@ struct FPjcOverview
 	FTotal Review;
 	FTotal Unused;
 
-	// Biggest first
+	// Why used assets are used, biggest first: one row per reason of the assets where a chain starts, Dependency for
+	// what used assets reference
 	TArray<FReason> Reasons;
+
+	// Dependencies by the reason of the chain they belong to, most first
+	TArray<FReason> DependencyChains;
 
 	// Biggest first
 	TArray<FClass> Classes;
@@ -114,8 +118,13 @@ struct FPjcOverview
 	// Scan against a cook, reads the file times of the scanned assets
 	static FShipped MakeShipped(const FPjcScanResult& Result, const FPjcCookInfo& Cook);
 
-	// Reason a chain is grouped under: assets a Primary Asset Label lists are primary assets too
+	// Why a used asset counts (user, 2026-11-14): its own reason where a chain starts, so Primary assets are exactly the
+	// primary assets, or Dependency for what a used asset references. Assets a Primary Asset Label lists are primary
+	// assets too, assets in config folders count under source and config
 	static EPjcUsageReason GetGroupReason(const FPjcScanResult& Result, const FName Package);
+
+	// The reason of the chain an asset belongs to (where it starts), grouped as GetGroupReason does
+	static EPjcUsageReason GetChainGroupReason(const FPjcScanResult& Result, const FName Package);
 
   private:
 

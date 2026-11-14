@@ -1173,7 +1173,7 @@ TSharedRef<SWidget> SPjcTabInspector::MakeGroupDetails(const FPjcInspectorNode& 
 	}
 	const FName GroupClass = Node.GroupClass;
 	const bool bStack = Node.Kind == EPjcInspectorNodeKind::Stack;
-	const FString Each = FString::Printf(TEXT("%d × %s"), Node.Roots.Num(), *Type.Label);
+	const FString Each = FString::Printf(TEXT("%d \u00D7 %s"), Node.Roots.Num(), *Type.Label);
 	const FString Title = bStack ? Each : Each + TEXT(" roots");
 	const TCHAR* What = bStack ? (Graph.bUnusedGroup ? TEXT("Unused assets with the same links, drawn as one box")
 													 : TEXT("Assets of one class that lead to the same asset, drawn as one box"))

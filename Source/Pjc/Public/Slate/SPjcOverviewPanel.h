@@ -56,6 +56,8 @@ class SPjcOverviewPanel final : public SCompoundWidget
 	void Rebuild();
 
 	TSharedRef<SWidget> MakeStatus();
+	// Why used: a small row per reason under Used, Dependencies and Other last
+	void AddReasonRows(const TSharedRef<SVerticalBox>& Rows);
 	// Empty when nothing was found
 	TSharedRef<SWidget> MakeIssues();
 	TSharedRef<SWidget> MakeShipped();
