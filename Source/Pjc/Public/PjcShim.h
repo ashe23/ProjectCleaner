@@ -116,6 +116,8 @@ namespace PjcShim
 	void GetBundlePackages(const FAssetBundleEntry& Entry, TArray<FName>& OutPackages);
 	// Packages of the assets in a collection of any share type, with its child collections
 	void GetPackagesInCollection(const FName CollectionName, TArray<FName>& OutPackages);
+	// A new local collection of the assets, named after BaseName (made unique). False when it could not be made
+	bool MakeCollection(const FString& BaseName, const TArray<FAssetData>& Assets, FName& OutName);
 	EAppReturnType::Type ShowDialog(const FText& Title, const FText& Message, const EAppMsgType::Type MessageType);
 
 	// Writes object config to project default config file (e.g. Config/DefaultEditor.ini)

@@ -22,6 +22,7 @@
 #include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "Input/DragAndDrop.h"
 #include "Misc/ConfigCacheIni.h"
+#include "Misc/PackageName.h"
 #include "Misc/Paths.h"
 #include "HAL/PlatformProcess.h"
 #include "SourceCodeNavigation.h"
@@ -2799,6 +2800,54 @@ void SPjcTabUnused::OnMapAssetClicked(int32 Index) {
 			break;
 		}
 	}
+}
+
+void SPjcTabUnused::SelectAssets(const TArray<FName>& Packages) {
+	const FPjcScanResult& Result = UPjcSubsystem::GetScanResult();
+	TArray<FName> Scanned;
+	for (const FName Package : Packages) {
+		if (Result.Usage.Contains(Package)) Scanned.Add(Package);
+	}
+	if (Scanned.Num() == 0) return;
+
+	const bool bUnused = Scanned.ContainsByPredicate([&Result](const FName Package) {
+		return !Result.IsUsed(Package);
+	});
+	ShowSet(bUnused ? EPjcAssetSet::Unused : EPjcAssetSet::Used);
+
+	// the folder they all are in, with subfolders: the root of the first when they share none
+	FString Common = FPackageName::GetLongPackagePath(Scanned[0].ToString());
+	for (const FName Package : Scanned) {
+		const FString Path = FPackageName::GetLongPackagePath(Package.ToString());
+		while (!Common.IsEmpty() && Path != Common && !Path.StartsWith(Common + TEXT("/"))) {
+			Common = FPackageName::GetLongPackagePath(Common);
+		}
+	}
+	if (Common.IsEmpty()) {
+		const FString First = FPackageName::GetLongPackagePath(Scanned[0].ToString());
+		const int32 Slash = First.Find(TEXT("/"), ESearchCase::CaseSensitive, ESearchDir::FromStart, 1);
+		Common = Slash > 0 ? First.Left(Slash) : First;
+	}
+	if (!bSubfolders) {
+		bSubfolders = true;
+		SaveViewState();
+	}
+	SelectFolder(Common);
+	RefreshAssets();
+
+	const TSharedPtr<SListView<FAssetRowPtr>> View = GetView();
+	if (!View.IsValid()) return;
+
+	const TSet<FName> Wanted {Scanned};
+	View->ClearSelection();
+	FAssetRowPtr First;
+	for (const FAssetRowPtr& Row : ListRows) {
+		if (!Wanted.Contains(Row->Package)) continue;
+
+		View->SetItemSelection(Row, true, ESelectInfo::Direct);
+		if (!First.IsValid()) First = Row;
+	}
+	if (First.IsValid()) View->RequestScrollIntoView(First);
 }
 
 void SPjcTabUnused::ShowNotDeleted() {

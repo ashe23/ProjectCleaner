@@ -144,7 +144,7 @@ namespace
 					]
 					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {8.0f, 0.0f, 0.0f, 0.0f})
 					[
-						SNew(STextBlock).Text(FText::FromString(TEXT("↗"))).ColorAndOpacity(Muted)
+						SNew(STextBlock).Text(FText::FromString(TEXT("\u2197"))).ColorAndOpacity(Muted)
 					]
 				]
 			]
@@ -160,10 +160,10 @@ void SPjcHelpWindow::Construct(const FArguments& InArgs) {
 	// clang-format off
 	const FPjcHelpLink Links[] = {
 		{TEXT("?"), TEXT("Documentation"), TEXT("Guides for every tab and setting"), PjcConstants::UrlDocs},
-		{TEXT("↗"), TEXT("Release notes"), TEXT("What changed in each version"), PjcConstants::UrlGithub + TEXT("/releases")},
+		{TEXT("\u2197"), TEXT("Release notes"), TEXT("What changed in each version"), PjcConstants::UrlGithub + TEXT("/releases")},
 		{TEXT("@"), TEXT("Contact"), TEXT("Questions and feedback for the author"), PjcConstants::UrlAuthor},
 		{TEXT("</>"), TEXT("Source code"), TEXT("The plugin's GitHub repository"), PjcConstants::UrlGithub},
-		{TEXT("★"), TEXT("Fab page"), TEXT("Rate the plugin or download other versions"), PjcConstants::UrlFab},
+		{TEXT("\u2605"), TEXT("Fab page"), TEXT("Rate the plugin or download other versions"), PjcConstants::UrlFab},
 	};
 	// clang-format on
 	const TSharedRef<SUniformGridPanel> Grid = SNew(SUniformGridPanel).SlotPadding(FMargin {3.0f});
@@ -236,7 +236,7 @@ void SPjcHelpWindow::Construct(const FArguments& InArgs) {
 						.ToolTipText(FText::FromString(TEXT("Copies the lines below, to paste into a bug report")))
 						.OnClicked_Lambda([]() {
 							FPlatformApplicationMisc::ClipboardCopy(*GetSystemInfo());
-							UPjcSubsystem::ShowNotification(TEXT("Copied · paste it into the bug report"), SNotificationItem::CS_Success, 3.0f);
+							UPjcSubsystem::ShowNotification(TEXT("Copied \u00B7 paste it into the bug report"), SNotificationItem::CS_Success, 3.0f);
 							return FReply::Handled();
 						})
 						[
@@ -275,7 +275,7 @@ void SPjcHelpWindow::Construct(const FArguments& InArgs) {
 							return FReply::Handled();
 						})
 						[
-							SNew(STextBlock).Text(FText::FromString(TEXT("Report a bug…")))
+							SNew(STextBlock).Text(FText::FromString(TEXT("Report a bug\u2026")))
 						]
 					]
 					+ SHorizontalBox::Slot().FillWidth(1.0f)

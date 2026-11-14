@@ -319,7 +319,7 @@ TSharedRef<SWidget> SPjcFixWindow::MakeContent(const FPjcFixView& View) {
 			SNew(SHorizontalBox)
 			+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin {0.0f, 0.0f, 8.0f, 0.0f})
 			[
-				SNew(STextBlock).Text(FText::FromString(TEXT("⚠"))).ColorAndOpacity(Yellow)
+				SNew(STextBlock).Text(FText::FromString(TEXT("\u26A0"))).ColorAndOpacity(Yellow)
 			]
 			+ SHorizontalBox::Slot().FillWidth(1.0f)
 			[
@@ -479,7 +479,7 @@ TSharedRef<SWidget> SPjcFixWindow::MakeRow(const FPjcFixRow& Row) {
 		// clang-format off
 		NameLine->AddSlot().AutoWidth().Padding(FMargin {6.0f, 0.0f})
 		[
-			SNew(STextBlock).Text(FText::FromString(TEXT("→"))).ColorAndOpacity(Muted)
+			SNew(STextBlock).Text(FText::FromString(TEXT("\u2192"))).ColorAndOpacity(Muted)
 		];
 		NameLine->AddSlot().AutoWidth()
 		[
@@ -508,7 +508,7 @@ TSharedRef<SWidget> SPjcFixWindow::MakeRow(const FPjcFixRow& Row) {
 		// clang-format off
 		Lines->AddSlot().AutoHeight().Padding(FMargin {0.0f, 1.0f, 0.0f, 0.0f})
 		[
-			SNew(STextBlock).Text(FText::FromString(TEXT("→ ") + Row.Hint)).AutoWrapText(true).Font(Small).ColorAndOpacity(PjcFixHex(TEXT("#9AA0A8")))
+			SNew(STextBlock).Text(FText::FromString(TEXT("\u2192 ") + Row.Hint)).AutoWrapText(true).Font(Small).ColorAndOpacity(PjcFixHex(TEXT("#9AA0A8")))
 		];
 		// clang-format on
 	}
@@ -602,7 +602,7 @@ TSharedRef<SWidget> SPjcFixWindow::MakeFooter(const FPjcFixView& View) {
 		]
 		+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
 		[
-			SNew(STextBlock).Text(FText::FromString(TEXT(" · ") + VcsDetail)).ColorAndOpacity(FSlateColor::UseSubduedForeground()).Clipping(EWidgetClipping::ClipToBounds)
+			SNew(STextBlock).Text(FText::FromString(TEXT(" \u00B7 ") + VcsDetail)).ColorAndOpacity(FSlateColor::UseSubduedForeground()).Clipping(EWidgetClipping::ClipToBounds)
 		]
 	];
 	// clang-format on

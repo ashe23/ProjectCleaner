@@ -190,6 +190,8 @@ class SPjcTabInspector final : public SCompoundWidget
 	TSharedRef<ITableRow> OnGenerateTreeRow(FItemPtr Item, const TSharedRef<STableViewBase>& Table);
 	TSharedPtr<SWidget> OnTreeContextMenu();
 	void OnTreeDoubleClick(FItemPtr Item);
+	// The right-click menu of the selected row, at the row (Shift+F10)
+	void OpenTreeMenu();
 	void ShowMore(const FItemPtr& Item);
 	FItemPtr GetSelectedItem() const;
 	TSharedRef<SWidget> MakeCell(const FItemPtr& Item, const FName Column, const TSharedRef<ITableRow>& TableRow);
@@ -233,6 +235,8 @@ class SPjcTabInspector final : public SCompoundWidget
 	FString TreeSearch;
 	FPjcInspectorModel::FSearch SearchResult;
 	TMap<int32, int32> Prefer;
+	// roots preferred (1) or avoided (-1) when a route is picked, for every asset until the editor closes
+	TMap<FName, int32> PreferPackages;
 	TArray<FPjcRoute> Routes;
 	TArray<int32> KeyRoutes;
 	TArray<int32> Retained;

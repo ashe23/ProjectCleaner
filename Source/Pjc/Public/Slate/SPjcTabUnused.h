@@ -79,6 +79,9 @@ class SPjcTabUnused final : public SCompoundWidget
 	// Shows the assets the last delete could not remove
 	void ShowNotDeleted();
 
+	// Shows the assets selected: in Unused when one of them is unused, else in Used, in the folder they share
+	void SelectAssets(const TArray<FName>& Packages);
+
 	// Shows one of the lists, only the assets of one reason when given (as the reason column names it)
 	void ShowSet(const EPjcAssetSet InSet, const FString& Reason = FString {});
 

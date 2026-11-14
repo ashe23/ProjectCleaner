@@ -423,6 +423,43 @@ namespace PjcShim
 #endif
 	}
 
+	bool MakeCollection(const FString& BaseName, const TArray<FAssetData>& Assets, FName& OutName) {
+		if (Assets.Num() == 0 || !FCollectionManagerModule::IsModuleAvailable()) return false;
+
+		// local: only this user sees it, nothing goes to source control
+		const ECollectionShareType::Type Share = ECollectionShareType::CST_Local;
+		ICollectionManager& CollectionManager = FCollectionManagerModule::GetModule().Get();
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 6
+		const TSharedRef<ICollectionContainer>& Collections = CollectionManager.GetProjectCollectionContainer();
+		Collections->CreateUniqueCollectionName(FName {*BaseName}, Share, OutName);
+		if (!Collections->CreateCollection(OutName, Share, ECollectionStorageMode::Static)) return false;
+
+		TArray<FSoftObjectPath> ObjectPaths;
+		for (const FAssetData& Asset : Assets) {
+			ObjectPaths.Add(FSoftObjectPath {GetObjectPathString(Asset)});
+		}
+		return Collections->AddToCollection(OutName, Share, ObjectPaths);
+#elif ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1
+		CollectionManager.CreateUniqueCollectionName(FName {*BaseName}, Share, OutName);
+		if (!CollectionManager.CreateCollection(OutName, Share, ECollectionStorageMode::Static)) return false;
+
+		TArray<FSoftObjectPath> ObjectPaths;
+		for (const FAssetData& Asset : Assets) {
+			ObjectPaths.Add(FSoftObjectPath {GetObjectPathString(Asset)});
+		}
+		return CollectionManager.AddToCollection(OutName, Share, ObjectPaths);
+#else
+		CollectionManager.CreateUniqueCollectionName(FName {*BaseName}, Share, OutName);
+		if (!CollectionManager.CreateCollection(OutName, Share, ECollectionStorageMode::Static)) return false;
+
+		TArray<FName> ObjectPaths;
+		for (const FAssetData& Asset : Assets) {
+			ObjectPaths.Add(FName {*GetObjectPathString(Asset)});
+		}
+		return CollectionManager.AddToCollection(OutName, Share, ObjectPaths);
+#endif
+	}
+
 	bool HandleCollectionRedirectorDeleted(const UObject* Redirector) {
 		if (!Redirector || !FCollectionManagerModule::IsModuleAvailable()) return true;
 

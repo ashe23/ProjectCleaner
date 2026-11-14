@@ -35,4 +35,6 @@ namespace PjcTabs
 
 	// Shows the assets the last delete could not remove in Assets
 	void ShowNotDeleted(const TWeakPtr<FTabManager>& Tabs);
+	// Selects the assets in Assets
+	void SelectAssets(const TWeakPtr<FTabManager>& Tabs, const TArray<FName>& Packages);
 }	// namespace PjcTabs

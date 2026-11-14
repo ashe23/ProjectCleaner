@@ -2,6 +2,7 @@
 
 #include "Slate/SPjcTabInspector.h"
 #include "Slate/PjcActions.h"
+#include "Slate/PjcTabs.h"
 #include "Slate/PjcWidgets.h"
 #include "Slate/SPjcClassBar.h"
 #include "Slate/SPjcDialog.h"
@@ -15,6 +16,7 @@
 #include "PjcUnused.h"
 // Engine Headers
 #include "ContentBrowserModule.h"
+#include "Framework/Application/SlateApplication.h"
 #include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "HAL/PlatformApplicationMisc.h"
 #include "IContentBrowserSingleton.h"
@@ -824,7 +826,7 @@ TSharedRef<SWidget> SPjcTabInspector::MakeMain() {
 				[
 					SNew(STextBlock)
 					.Visibility_Lambda([this]() { return NeedRead.Num() == 0 && LoadedHere.Num() > 0 ? EVisibility::Visible : EVisibility::Collapsed; })
-					.Text_Lambda([this]() { return FText::FromString(FString::Printf(TEXT("● %d loaded"), LoadedHere.Num())); })
+					.Text_Lambda([this]() { return FText::FromString(FString::Printf(TEXT("\u25CF %d loaded"), LoadedHere.Num())); })
 					.ToolTipText(FText::FromString(TEXT("The Inspector loaded these assets to read where")))
 					.Font(FPjcStyles::GetFont("Regular", 8))
 					.ColorAndOpacity(PjcInspectorColor("ProjectCleaner.Color.Yellow"))
@@ -931,6 +933,11 @@ void SPjcTabInspector::ComputeAnswer() {
 	ReachDown = {};
 	if (FocusNode == INDEX_NONE) return;
 
+	Prefer.Reset();
+	for (const auto& Pair : PreferPackages) {
+		const int32 Node = Model.Find(Pair.Key);
+		if (Node != INDEX_NONE) Prefer.Add(Node, Pair.Value);
+	}
 	if (Model.bUsed[FocusNode]) {
 		Routes = Model.GetRoutes(FocusNode, Kinds, Prefer);
 		KeyRoutes = Model.GetKeyRoutes(Routes);
@@ -1044,7 +1051,7 @@ TSharedRef<SWidget> SPjcTabInspector::MakeHead() {
 		];
 		Trail->AddSlot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {3.0f, 0.0f})
 		[
-			SNew(STextBlock).Text(FText::FromString(TEXT("›"))).Font(FPjcStyles::GetFont("Regular", 8)).ColorAndOpacity(FSlateColor::UseSubduedForeground())
+			SNew(STextBlock).Text(FText::FromString(TEXT("\u203A"))).Font(FPjcStyles::GetFont("Regular", 8)).ColorAndOpacity(FSlateColor::UseSubduedForeground())
 		];
 		// clang-format on
 	}
@@ -1102,7 +1109,7 @@ TSharedRef<SWidget> SPjcTabInspector::MakeHead() {
 			SNew(SHorizontalBox)
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 			[
-				SNew(STextBlock).Text(FText::FromString(Type.Label + TEXT("  ·  "))).Font(FPjcStyles::GetFont("Regular", 8)).ColorAndOpacity(FSlateColor::UseSubduedForeground())
+				SNew(STextBlock).Text(FText::FromString(Type.Label + TEXT("  \u00B7  "))).Font(FPjcStyles::GetFont("Regular", 8)).ColorAndOpacity(FSlateColor::UseSubduedForeground())
 			]
 			+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
 			[
@@ -1155,8 +1162,8 @@ FString SPjcTabInspector::GetBasisText() const {
 	for (const FPjcRoute& Route : Routes) {
 		if (Model.Reasons[Route.Root] == EPjcUsageReason::Indirect) ++Named;
 	}
-	FString Text = TEXT("Based on saved asset data · ") + FString::Join(KindNames, TEXT(" + ")) + TEXT(" references");
-	if (Named > 0) Text += FString::Printf(TEXT(" · %s named in config or source, counted as used"), *PjcInspectorPlural(Named, TEXT("root")));
+	FString Text = TEXT("Based on saved asset data \u00B7 ") + FString::Join(KindNames, TEXT(" + ")) + TEXT(" references");
+	if (Named > 0) Text += FString::Printf(TEXT(" \u00B7 %s named in config or source, counted as used"), *PjcInspectorPlural(Named, TEXT("root")));
 	return Text;
 }
 
@@ -1171,7 +1178,7 @@ TSharedRef<SWidget> SPjcTabInspector::MakeToolbar() {
 	return SNew(SHorizontalBox)
 		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 4.0f, 0.0f})
 		[
-			PjcInspectorToolButton("ProjectCleaner.Menu.Delete", TEXT("Delete…"),
+			PjcInspectorToolButton("ProjectCleaner.Menu.Delete", TEXT("Delete\u2026"),
 				bDeletable ? TEXT("Deletes it with the unused assets only it keeps, after asking") : TEXT("Only unused assets and assets to review are deleted here"),
 				true, [bDeletable]() { return bDeletable; }, [this]() { DeleteFocus(); })
 		]
@@ -1241,7 +1248,7 @@ TSharedRef<SWidget> SPjcTabInspector::MakeChip(const int32 Node) {
 	const PjcWidgets::FAssetType& Type = PjcWidgets::GetAssetType(Asset);
 	const FName Package = Model.Packages[Node];
 	const FString Name = bMe ? FString {TEXT("this")} : PjcInspectorShortName(Package);
-	const FString More = Type.Label + TEXT(" · ") + PjcFormat::Size(Model.Sizes[Node]) + (bMe ? TEXT("") : TEXT("\nClick: inspect it"));
+	const FString More = Type.Label + TEXT(" \u00B7 ") + PjcFormat::Size(Model.Sizes[Node]) + (bMe ? TEXT("") : TEXT("\nClick: inspect it"));
 	// clang-format off
 	return SNew(SButton)
 		.ButtonStyle(&PjcShim::GetStyle().GetWidgetStyle<FButtonStyle>(TEXT("NoBorder")))
@@ -1306,7 +1313,7 @@ TSharedRef<SWidget> SPjcTabInspector::MakeAnswer() {
 		Box->AddSlot().VAlign(VAlign_Center)[Widget];
 	};
 	const auto Separator = []() {
-		return PjcInspectorText(TEXT("›"), TEXT("ProjectCleaner.Color.Muted"));
+		return PjcInspectorText(TEXT("\u203A"), TEXT("ProjectCleaner.Color.Muted"));
 	};
 	const auto ShowButton = [this](const int32 Num) -> TSharedRef<SWidget> {
 		if (Num <= 0) return SNullWidget::NullWidget;
@@ -1349,7 +1356,7 @@ TSharedRef<SWidget> SPjcTabInspector::MakeAnswer() {
 				for (const int32 User : Users) Add(Why, MakeChip(User));
 			}
 			else {
-				Add(Why, PjcInspectorText(TEXT("·")));
+				Add(Why, PjcInspectorText(TEXT("\u00B7")));
 				Add(Why, PjcInspectorNumber(PjcFormat::Count(Users.Num())));
 				Add(Why, PjcInspectorText(TEXT("of them")));
 			}
@@ -1369,10 +1376,10 @@ TSharedRef<SWidget> SPjcTabInspector::MakeAnswer() {
 		if (Group.Num() > 0) {
 			Add(Deleted, PjcInspectorText(TEXT("Goes together with")));
 			Add(Deleted, PjcInspectorNumber(PjcFormat::Count(Group.Num())));
-			Add(Deleted, PjcInspectorText(Group.Num() == 1 ? TEXT("other unused asset · frees") : TEXT("other unused assets · frees")));
+			Add(Deleted, PjcInspectorText(Group.Num() == 1 ? TEXT("other unused asset \u00B7 frees") : TEXT("other unused assets \u00B7 frees")));
 		}
 		else {
-			Add(Deleted, PjcInspectorText(TEXT("Goes alone · frees")));
+			Add(Deleted, PjcInspectorText(TEXT("Goes alone \u00B7 frees")));
 		}
 		Add(Deleted, PjcInspectorNumber(PjcFormat::Size(Size)));
 		Add(Deleted, ShowButton(Group.Num()));
@@ -1392,7 +1399,7 @@ TSharedRef<SWidget> SPjcTabInspector::MakeAnswer() {
 		}
 		else if (Route->Steps == 0) {
 			const FPjcAssetUsage* Usage = Result.Usage.Find(Focus);
-			Add(Why, PjcInspectorText(TEXT("It is a root · ") + (Usage ? UPjcSubsystem::GetUsageReasonText(*Usage) : FString {})));
+			Add(Why, PjcInspectorText(TEXT("It is a root \u00B7 ") + (Usage ? UPjcSubsystem::GetUsageReasonText(*Usage) : FString {})));
 		}
 		else {
 			const TArray<int32>& Path = Route->Path;
@@ -1447,7 +1454,7 @@ TSharedRef<SWidget> SPjcTabInspector::MakeAnswer() {
 		if (NumRoutes > 0 && !(NumRoutes == 1 && Routes[0].Steps == 0)) {
 			const TSharedRef<SWrapBox> Kept = Line();
 			if (NumRoutes == 1) {
-				Add(Kept, PjcInspectorText(TEXT("1 root · ") + PjcWidgets::GetAssetType(Model.Assets[Routes[0].Root]).Label));
+				Add(Kept, PjcInspectorText(TEXT("1 root \u00B7 ") + PjcWidgets::GetAssetType(Model.Assets[Routes[0].Root]).Label));
 			}
 			else {
 				TMap<FString, int32> ByClass;
@@ -1466,15 +1473,15 @@ TSharedRef<SWidget> SPjcTabInspector::MakeAnswer() {
 					Parts.Add(PjcFormat::Count(Pair.Value) + TEXT(" ") + PjcInspectorClassPlural(Pair.Value, Pair.Key));
 				}
 				Add(Kept, PjcInspectorNumber(PjcFormat::Count(NumRoutes)));
-				Add(Kept, PjcInspectorText(TEXT("roots · ") + FString::Join(Parts, TEXT(" · "))));
+				Add(Kept, PjcInspectorText(TEXT("roots \u00B7 ") + FString::Join(Parts, TEXT(" \u00B7 "))));
 			}
 			if (!Model.bRoot[FocusNode]) {
 				if (Choke.Num() > 0) {
-					Add(Kept, PjcInspectorText(TEXT("· every route passes")));
+					Add(Kept, PjcInspectorText(TEXT("\u00B7 every route passes")));
 					Add(Kept, MakeChip(Choke[0]));
 				}
 				else if (NumRoutes > 1) {
-					Add(Kept, PjcInspectorText(TEXT("· no single asset on every route"), TEXT("ProjectCleaner.Color.Muted")));
+					Add(Kept, PjcInspectorText(TEXT("\u00B7 no single asset on every route"), TEXT("ProjectCleaner.Color.Muted")));
 				}
 			}
 			Fact(TEXT("KEPT BY"), Kept, TEXT("The roots that keep it used, and the one asset every route passes"));
@@ -1501,10 +1508,13 @@ TSharedRef<SWidget> SPjcTabInspector::MakeAnswer() {
 			const TSharedRef<SWrapBox> Deleted = Line();
 			if (Others > 0) {
 				Add(Deleted, PjcInspectorNumber(PjcFormat::Count(Others)));
-				Add(Deleted, PjcInspectorText(Others == 1 ? TEXT("other asset becomes unused · frees") : TEXT("other assets become unused · frees")));
+				Add(
+					Deleted,
+					PjcInspectorText(Others == 1 ? TEXT("other asset becomes unused \u00B7 frees") : TEXT("other assets become unused \u00B7 frees"))
+				);
 			}
 			else {
-				Add(Deleted, PjcInspectorText(TEXT("Nothing else becomes unused · frees")));
+				Add(Deleted, PjcInspectorText(TEXT("Nothing else becomes unused \u00B7 frees")));
 			}
 			Add(Deleted, PjcInspectorNumber(PjcFormat::Size(Size)));
 			Add(Deleted, ShowButton(Others));
@@ -1518,7 +1528,7 @@ TSharedRef<SWidget> SPjcTabInspector::MakeAnswer() {
 		const TSharedRef<SWrapBox> Review = Line();
 		const FString Text = Usage && FPjcScanResult::IsReviewReason(Usage->Reason) ? UPjcSubsystem::GetUsageReasonText(*Usage)
 																					: TEXT("Used only through assets to review");
-		Add(Review, PjcInspectorText(Text + TEXT(" · Clean project keeps it: delete or keep it"), TEXT("ProjectCleaner.Color.Review")));
+		Add(Review, PjcInspectorText(Text + TEXT(" \u00B7 Clean project keeps it: delete or keep it"), TEXT("ProjectCleaner.Color.Review")));
 		Fact(TEXT("REVIEW"), Review);
 	}
 
@@ -1540,8 +1550,8 @@ TSharedRef<SWidget> SPjcTabInspector::MakeAnswer() {
 			const int32 Others = FMath::Max(0, What.Num - 1);
 			Add(If,
 				PjcInspectorText(
-					Others > 0 ? FString::Printf(TEXT("it becomes unused, with %s · frees"), *PjcInspectorPlural(Others, TEXT("other asset")))
-							   : TEXT("it becomes unused · frees"),
+					Others > 0 ? FString::Printf(TEXT("it becomes unused, with %s \u00B7 frees"), *PjcInspectorPlural(Others, TEXT("other asset")))
+							   : TEXT("it becomes unused \u00B7 frees"),
 					TEXT("ProjectCleaner.Color.Red")
 				));
 			Add(If, PjcInspectorNumber(PjcFormat::Size(What.Size)));
@@ -1578,7 +1588,7 @@ TSharedRef<SWidget> SPjcTabInspector::MakeAnswer() {
 																			   : TEXT("nothing: unused");
 				Add(Keep, PjcInspectorText(FString::Printf(TEXT("%s %s"), What, *PjcFormat::Count(Num)), TEXT("ProjectCleaner.Color.Muted")));
 			}
-			if (Index + 2 < Keepers.Num()) Add(Keep, PjcInspectorText(TEXT("·"), TEXT("ProjectCleaner.Color.Muted")));
+			if (Index + 2 < Keepers.Num()) Add(Keep, PjcInspectorText(TEXT("\u00B7"), TEXT("ProjectCleaner.Color.Muted")));
 		}
 		// clang-format off
 		Add(Keep, SNew(SButton)
@@ -1634,8 +1644,9 @@ TSharedRef<SWidget> SPjcTabInspector::MakeAnswer() {
 			// clang-format on
 		}
 		if (GoesWith.Num() > PjcInspectorMaxList) {
-			TArray<FAssetData> All;
-			for (const int32 Node : GoesWith) All.Add(Model.Assets[Node]);
+			TArray<FName> All;
+			for (const int32 Node : GoesWith) All.Add(Model.Packages[Node]);
+			const TWeakPtr<FTabManager> Tabs = TabManager;
 			// clang-format off
 			List->AddSlot().AutoHeight()
 			[
@@ -1645,11 +1656,11 @@ TSharedRef<SWidget> SPjcTabInspector::MakeAnswer() {
 				.ForegroundColor(FSlateColor::UseForeground())
 #endif
 				.ContentPadding(FMargin {8.0f, 2.0f})
-				.ToolTipText(FText::FromString(TEXT("Selects them all in the Content Browser")))
-				.OnClicked_Lambda([All]() { PjcInspectorBrowse(All); return FReply::Handled(); })
+				.ToolTipText(FText::FromString(TEXT("Selects them all in the Assets tab")))
+				.OnClicked_Lambda([Tabs, All]() { PjcTabs::SelectAssets(Tabs, All); return FReply::Handled(); })
 				[
 					SNew(STextBlock)
-					.Text(FText::FromString(FString::Printf(TEXT("+%s more · Browse to them all"), *PjcFormat::Count(GoesWith.Num() - PjcInspectorMaxList))))
+					.Text(FText::FromString(FString::Printf(TEXT("+%s more \u00B7 Select in Assets"), *PjcFormat::Count(GoesWith.Num() - PjcInspectorMaxList))))
 					.ColorAndOpacity(FSlateColor::UseSubduedForeground())
 				]
 			];
@@ -1675,10 +1686,10 @@ TSharedRef<SWidget> SPjcTabInspector::MakeRouteMenu() {
 	FMenuBuilder Menu {true, nullptr};
 	const FPjcRoute* Picked = GetPickedRoute();
 	const auto Label = [this, Picked](const FPjcRoute& Route, const bool bVia) {
-		FString Text = (Picked && Picked->Root == Route.Root ? TEXT("✓ ") : TEXT("")) + PjcInspectorShortName(Model.Packages[Route.Root]);
-		Text += TEXT(" · ") + FString {PjcInspectorSourceTitle(Model.Reasons[Route.Root])};
-		if (bVia && Route.Path.Num() > 2) Text += TEXT(" · via ") + PjcInspectorShortName(Model.Packages[Route.Path[Route.Path.Num() - 2]]);
-		Text += TEXT(" · ") + PjcInspectorSteps(Route.Steps) + (Route.bEditor ? TEXT(" · editor only") : TEXT(""));
+		FString Text = (Picked && Picked->Root == Route.Root ? TEXT("\u2713 ") : TEXT("")) + PjcInspectorShortName(Model.Packages[Route.Root]);
+		Text += TEXT(" \u00B7 ") + FString {PjcInspectorSourceTitle(Model.Reasons[Route.Root])};
+		if (bVia && Route.Path.Num() > 2) Text += TEXT(" \u00B7 via ") + PjcInspectorShortName(Model.Packages[Route.Path[Route.Path.Num() - 2]]);
+		Text += TEXT(" \u00B7 ") + PjcInspectorSteps(Route.Steps) + (Route.bEditor ? TEXT(" \u00B7 editor only") : TEXT(""));
 		return Text;
 	};
 	const auto Pick = [this](const int32 Root) {
@@ -1699,6 +1710,57 @@ TSharedRef<SWidget> SPjcTabInspector::MakeRouteMenu() {
 	}
 	Menu.EndSection();
 
+	if (Picked) {
+		// the ranking can be told: a root to take first, or last, for every asset
+		const FName RootPackage = Model.Packages[Picked->Root];
+		const FString RootName = PjcInspectorShortName(RootPackage);
+		const int32 Now = PreferPackages.FindRef(RootPackage);
+		const auto SetPrefer = [this, RootPackage](const int32 Value) {
+			if (PreferPackages.FindRef(RootPackage) == Value)
+				PreferPackages.Remove(RootPackage);
+			else
+				PreferPackages.Add(RootPackage, Value);
+			RouteRoot = INDEX_NONE;
+			Expanded.Reset();
+			Closed.Reset();
+			RebuildAll();
+		};
+		Menu.BeginSection(NAME_None, FText::FromString(TEXT("This root")));
+		const FString Mark = TEXT("\u2713 ");
+		PjcWidgets::AddMenuEntry(
+			Menu,
+			EPjcMenuIcon::None,
+			(Now == 1 ? Mark : FString {}) + TEXT("Prefer ") + RootName,
+			TEXT("Takes routes from this root first, for every asset. Again: forget it"),
+			[SetPrefer]() {
+				SetPrefer(1);
+			}
+		);
+		PjcWidgets::AddMenuEntry(
+			Menu,
+			EPjcMenuIcon::None,
+			(Now == -1 ? Mark : FString {}) + TEXT("Avoid ") + RootName,
+			TEXT("Takes routes from this root last, for every asset. Again: forget it"),
+			[SetPrefer]() {
+				SetPrefer(-1);
+			}
+		);
+		if (PreferPackages.Num() > 0) {
+			PjcWidgets::AddMenuEntry(
+				Menu,
+				EPjcMenuIcon::Reset,
+				FString::Printf(TEXT("Forget preferred and avoided roots (%d)"), PreferPackages.Num()),
+				TEXT("Routes are ranked as the scan sees them again"),
+				[this]() {
+					PreferPackages.Reset();
+					RouteRoot = INDEX_NONE;
+					RebuildAll();
+				}
+			);
+		}
+		Menu.EndSection();
+	}
+
 	const int32 Rest = Routes.Num() - KeyRoutes.Num();
 	if (Rest > 0) {
 		// every route by the class of its root, each class in a menu of its own
@@ -1710,7 +1772,7 @@ TSharedRef<SWidget> SPjcTabInspector::MakeRouteMenu() {
 			return A.Num() > B.Num();
 		});
 		Menu.BeginSection(
-			NAME_None, FText::FromString(FString::Printf(TEXT("%s · by kind of root"), *PjcInspectorPlural(Routes.Num(), TEXT("route"))))
+			NAME_None, FText::FromString(FString::Printf(TEXT("%s \u00B7 by kind of root"), *PjcInspectorPlural(Routes.Num(), TEXT("route"))))
 		);
 		for (const auto& Pair : ByClass) {
 			const TArray<int32> Indices = Pair.Value;
@@ -2043,7 +2105,7 @@ SPjcTabInspector::MakeLevel(const int32 Owner, const int32 Depth, const FItemPtr
 					  }
 					  const FItemPtr Item = MakeShared<FPjcInspectorItem>();
 					  Item->Kind = FPjcInspectorItem::EKind::Category;
-					  Item->Label = FString::Join(Label, TEXT(" › "));
+					  Item->Label = FString::Join(Label, TEXT(" \u203A "));
 					  Item->Key = UpKey + TEXT("|c:") + FString::Join(Label, TEXT("/"));
 					  Item->Depth = AtDepth;
 					  Item->Parent = Up;
@@ -2303,7 +2365,7 @@ FString SPjcTabInspector::GetWhereText(const FPjcInspectorItem& Item, FString& O
 	}
 	if (Item.Link.bThrough) {
 		OutToolTip = TEXT("Through an actor the level saves in its own file (World Partition)");
-		return TEXT("▣ level actor");
+		return TEXT("\u25A3 level actor");
 	}
 	if (!FPjcLocationReader::CanRead(Holder)) {
 		OutToolTip = FString::Printf(TEXT("Levels are not loaded, so where inside %s is not known"), *HolderName);
@@ -2313,13 +2375,13 @@ FString SPjcTabInspector::GetWhereText(const FPjcInspectorItem& Item, FString& O
 	if (!Read) {
 		OutToolTip = FString::Printf(TEXT("Where: not read yet. Show in the heading loads %s to read it"), *HolderName);
 		OutColor = TEXT("ProjectCleaner.Color.Line");
-		return TEXT("·");
+		return TEXT("\u00B7");
 	}
 	TArray<FString> Places;
 	for (const FPjcLocation& Place : Read->Places) {
 		if (Place.Target != Target) continue;
 
-		Places.Add(FString::Join(Place.Parts, TEXT(" › ")) + (Place.Parts.Num() > 0 ? TEXT(" › ") : TEXT("")) + Place.Property);
+		Places.Add(FString::Join(Place.Parts, TEXT(" \u203A ")) + (Place.Parts.Num() > 0 ? TEXT(" \u203A ") : TEXT("")) + Place.Property);
 	}
 	if (Places.Num() == 0) {
 		OutColor = TEXT("ProjectCleaner.Color.Yellow");
@@ -2337,7 +2399,7 @@ FString SPjcTabInspector::GetWhereText(const FPjcInspectorItem& Item, FString& O
 	TArray<FString> Short;
 	if (First->Parts.Num() > 0) Short.Add(First->Parts.Last());
 	Short.Add(First->Property);
-	return FString::Join(Short, TEXT(" › ")) + (Places.Num() > 1 ? FString::Printf(TEXT("  +%d"), Places.Num() - 1) : FString {});
+	return FString::Join(Short, TEXT(" \u203A ")) + (Places.Num() > 1 ? FString::Printf(TEXT("  +%d"), Places.Num() - 1) : FString {});
 }
 
 FString SPjcTabInspector::GetStatsText() const {
@@ -2345,7 +2407,7 @@ FString SPjcTabInspector::GetStatsText() const {
 	if (IsTreeSearch()) {
 		const int32 Hits = SearchResult.Hits.Num();
 		return FString::Printf(
-			TEXT("%s%s in %s · the branches that lead to them"),
+			TEXT("%s%s in %s \u00B7 the branches that lead to them"),
 			*PjcInspectorPlural(Hits, TEXT("match")).Replace(TEXT("matchs"), TEXT("matches")),
 			Hits >= FPjcInspectorModel::MaxHits ? TEXT(" (the first)") : TEXT(""),
 			*PjcInspectorPlural(SearchResult.Searched, TEXT("asset"))
@@ -2356,14 +2418,16 @@ FString SPjcTabInspector::GetStatsText() const {
 		if (FPjcInspectorModel::Counts(Kinds, Link) || Link.Via != EPjcUsageReason::None) ++Direct;
 	}
 	if (!bUses)
-		return FString::Printf(TEXT("%s direct · %s in all · closest to a root first"), *PjcFormat::Count(Direct), *PjcFormat::Count(ReachUp.Num));
+		return FString::Printf(
+			TEXT("%s direct \u00B7 %s in all \u00B7 closest to a root first"), *PjcFormat::Count(Direct), *PjcFormat::Count(ReachUp.Num)
+		);
 
-	FString Text = FString::Printf(TEXT("%s direct · %s in all"), *PjcFormat::Count(Direct), *PjcFormat::Count(ReachDown.Num));
-	if (ReachDown.Num > 0) Text += TEXT(" · ") + PjcFormat::Size(ReachDown.Size) + TEXT(" pulled in");
+	FString Text = FString::Printf(TEXT("%s direct \u00B7 %s in all"), *PjcFormat::Count(Direct), *PjcFormat::Count(ReachDown.Num));
+	if (ReachDown.Num > 0) Text += TEXT(" \u00B7 ") + PjcFormat::Size(ReachDown.Size) + TEXT(" pulled in");
 	if (Retained.Num() > 1) {
 		int64 Only = 0;
 		for (int32 Index = 1; Index < Retained.Num(); ++Index) Only += Model.Sizes[Retained[Index]];
-		Text += TEXT(" · ") + PjcFormat::Size(Only) + TEXT(" only through this");
+		Text += TEXT(" \u00B7 ") + PjcFormat::Size(Only) + TEXT(" only through this");
 	}
 	return Text;
 }
@@ -2410,7 +2474,7 @@ TSharedRef<SWidget> SPjcTabInspector::MakeCell(const FItemPtr& Item, const FName
 		if (bAsset) {
 			const PjcWidgets::FAssetType& Type = PjcWidgets::GetAssetType(Model.Assets[Item->Node]);
 			const EPjcAssetStatus Status = Result.GetStatus(Package);
-			const FString More = Type.Label + TEXT(" · ") + PjcFormat::Size(Model.Sizes[Item->Node]) + TEXT(" · ")
+			const FString More = Type.Label + TEXT(" \u00B7 ") + PjcFormat::Size(Model.Sizes[Item->Node]) + TEXT(" \u00B7 ")
 				+ PjcInspectorStatusText(Status, Model.bScanned[Item->Node]) + TEXT("\nDouble-click or Enter: inspect it");
 			// clang-format off
 			Box->AddSlot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 6.0f, 0.0f})
@@ -2492,7 +2556,7 @@ TSharedRef<SWidget> SPjcTabInspector::MakeCell(const FItemPtr& Item, const FName
 		Box->AddSlot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {8.0f, 0.0f, 0.0f, 0.0f})
 		[
 			SNew(STextBlock)
-			.Text(FText::FromString(FString::Printf(TEXT("%s not shown · or Browse to the group's assets"), *PjcFormat::Count(Item->Shown))))
+			.Text(FText::FromString(FString::Printf(TEXT("%s not shown \u00B7 or Browse to the group's assets"), *PjcFormat::Count(Item->Shown))))
 			.Font(FPjcStyles::GetFont("Regular", 8))
 			.ColorAndOpacity(FSlateColor::UseSubduedForeground())
 		];
@@ -2571,7 +2635,7 @@ TSharedRef<SWidget> SPjcTabInspector::MakeCell(const FItemPtr& Item, const FName
 				if (Model.bRoot[Item->Node]) {
 					const FPjcAssetUsage* Usage = Result.Usage.Find(Package);
 					return Small(
-						TEXT("Root · ") + FString {PjcInspectorSourceTitle(Model.Reasons[Item->Node])},
+						TEXT("Root \u00B7 ") + FString {PjcInspectorSourceTitle(Model.Reasons[Item->Node])},
 						TEXT("ProjectCleaner.Color.Yellow"),
 						false,
 						Usage ? UPjcSubsystem::GetUsageReasonText(*Usage) : FString {}
@@ -2684,6 +2748,17 @@ TSharedPtr<SWidget> SPjcTabInspector::OnTreeContextMenu() {
 		PjcWidgets::AddMenuEntry(Menu, EPjcMenuIcon::None, TEXT("Copy name"), FString {}, [Name]() {
 			PjcInspectorCopy(Name, Name);
 		});
+		const TWeakPtr<FTabManager> Tabs = TabManager;
+		PjcWidgets::AddMenuEntry(
+			Menu,
+			EPjcMenuIcon::None,
+			TEXT("Select in Assets"),
+			TEXT("Shows it selected in the Assets tab"),
+			Model.bScanned[Item->Node],
+			[Tabs, Package]() {
+				PjcTabs::SelectAssets(Tabs, {Package});
+			}
+		);
 		Menu.EndSection();
 		Menu.BeginSection(NAME_None);
 		const FName Holder = Model.Packages[Item->Holder];
@@ -2719,11 +2794,41 @@ TSharedPtr<SWidget> SPjcTabInspector::OnTreeContextMenu() {
 	if (Item->Kind == FPjcInspectorItem::EKind::Group) {
 		TArray<FAssetData> Assets;
 		TArray<FString> Paths;
+		TArray<FName> Packages;
 		for (const FPjcModelLink& Link : Item->Members) {
 			Assets.Add(Model.Assets[Link.Other]);
 			Paths.Add(Model.Packages[Link.Other].ToString());
+			Packages.Add(Model.Packages[Link.Other]);
 		}
 		const FItemPtr Group = Item;
+		const TWeakPtr<FTabManager> Tabs = TabManager;
+		PjcWidgets::AddMenuEntry(
+			Menu,
+			EPjcMenuIcon::None,
+			FString::Printf(TEXT("Select in Assets (%s)"), *PjcFormat::Count(Packages.Num())),
+			TEXT("Shows them selected in the Assets tab"),
+			[Tabs, Packages]() {
+				PjcTabs::SelectAssets(Tabs, Packages);
+			}
+		);
+		const FString CollectionName = TEXT("PJC ") + Group->Label;
+		PjcWidgets::AddMenuEntry(
+			Menu,
+			EPjcMenuIcon::None,
+			TEXT("Make collection"),
+			TEXT("A local collection of them, in the Content Browser"),
+			[Assets, CollectionName]() {
+				FName Made;
+				if (PjcShim::MakeCollection(CollectionName, Assets, Made)) {
+					const FString Text
+						= FString::Printf(TEXT("Collection %s made with %s"), *Made.ToString(), *PjcInspectorPlural(Assets.Num(), TEXT("asset")));
+					UPjcSubsystem::ShowNotification(Text, SNotificationItem::CS_Success, 4.0f);
+				}
+				else {
+					UPjcSubsystem::ShowNotification(TEXT("The collection could not be made"), SNotificationItem::CS_Fail, 4.0f);
+				}
+			}
+		);
 		PjcWidgets::AddMenuEntry(
 			Menu,
 			EPjcMenuIcon::Browse,
@@ -2772,6 +2877,23 @@ void SPjcTabInspector::ShowKeepers(const FItemPtr& Group) {
 	}
 	KeepersLabel = FString::Printf(TEXT("%s %s:"), *PjcFormat::Count(Group->Members.Num()), *Group->Label);
 	RebuildHead();
+}
+
+void SPjcTabInspector::OpenTreeMenu() {
+	const FItemPtr Item = GetSelectedItem();
+	const TSharedPtr<SWidget> Menu = Item.IsValid() ? OnTreeContextMenu() : nullptr;
+	if (!Menu.IsValid()) return;
+
+	// under the row, a little in from its left
+	FVector2D Where = FSlateApplication::Get().GetCursorPos();
+	const TSharedPtr<ITableRow> Row = TreeView->WidgetFromItem(Item);
+	if (Row.IsValid()) {
+		const FGeometry Geometry = Row->AsWidget()->GetTickSpaceGeometry();
+		Where = Geometry.LocalToAbsolute(FVector2D {40.0f, Geometry.GetLocalSize().Y});
+	}
+	FSlateApplication::Get().PushMenu(
+		AsShared(), FWidgetPath {}, Menu.ToSharedRef(), Where, FPopupTransitionEffect {FPopupTransitionEffect::ContextMenu}
+	);
 }
 
 void SPjcTabInspector::OnTreeDoubleClick(FItemPtr Item) {
@@ -2842,7 +2964,7 @@ void SPjcTabInspector::UnloadRead() {
 	LoadedHere.Reset();
 	if (Num > 0) {
 		const FString Text = Gone == Num
-			? FString::Printf(TEXT("Unloaded %s · what was read stays until the next scan"), *PjcInspectorPlural(Num, TEXT("asset")))
+			? FString::Printf(TEXT("Unloaded %s \u00B7 what was read stays until the next scan"), *PjcInspectorPlural(Num, TEXT("asset")))
 			: FString::Printf(TEXT("Unloaded %d of %d assets: the editor still uses the rest"), Gone, Num);
 		UPjcSubsystem::ShowNotification(Text, SNotificationItem::CS_None, 4.0f);
 	}
@@ -2865,12 +2987,20 @@ FReply SPjcTabInspector::OnKeyDown(const FGeometry& MyGeometry, const FKeyEvent&
 		Back();
 		return FReply::Handled();
 	}
+	if (Key == EKeys::Slash && TreeSearchBox.IsValid() && FocusNode != INDEX_NONE) {
+		FSlateApplication::Get().SetKeyboardFocus(TreeSearchBox, EFocusCause::Navigation);
+		return FReply::Handled();
+	}
 
 	const bool bTree = TreeView.IsValid() && TreeView->HasKeyboardFocus();
 	const FItemPtr Item = bTree ? GetSelectedItem() : nullptr;
 	if (!Item.IsValid()) return FReply::Unhandled();
 
 	const bool bAsset = Item->Kind == FPjcInspectorItem::EKind::Asset;
+	if (Key == EKeys::F10 && InKeyEvent.IsShiftDown()) {
+		OpenTreeMenu();
+		return FReply::Handled();
+	}
 	if (Key == EKeys::Enter) {
 		OnTreeDoubleClick(Item);
 		return FReply::Handled();
