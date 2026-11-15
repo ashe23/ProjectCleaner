@@ -50,6 +50,3 @@ UnrealEditor-Cmd.exe <Project.uproject> -run=Pjc <switches>
 | `-report=<file.json>` | write results as json |
 
 UE4 uses `UE4Editor-Cmd.exe`. The exit code is 0 unless something failed; assets kept because something still holds them are warnings.
-
-# Development
-`python Scripts/pjc.py --help` builds and tests the plugin against every installed engine.

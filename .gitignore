@@ -79,5 +79,4 @@ Plugins/*/Intermediate/*
 DerivedDataCache/*
 
 # Dev tool
-Scripts/pjc.local.json
 __pycache__/
