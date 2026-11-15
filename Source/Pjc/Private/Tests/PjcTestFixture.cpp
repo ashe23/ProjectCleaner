@@ -468,7 +468,7 @@ bool FPjcTestFixture::CreateAssets(FAutomationTestBase& Test) {
 	bCues = false;
 	if (UClass* NotifyClass = CueNotifyClass()) {
 		if (!UGameplayTagsManager::Get().RequestGameplayTag(FName {TEXT("GameplayCue.PjcTest.Fired")}, false).IsValid()) {
-			Test.AddError(TEXT("Host config has no GameplayCue.PjcTest tags, run pjc.py setup"));
+			Test.AddError(TEXT("Host config has no GameplayCue.PjcTest tags, run uedev setup"));
 			return false;
 		}
 

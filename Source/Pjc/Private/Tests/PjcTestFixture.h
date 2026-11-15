@@ -15,7 +15,7 @@
  * Test content with known expected scan results.
  *
  * Creates real assets, folders and files inside the project, so it refuses to run outside of generated
- * test host projects (Scripts/pjc.py passes -PjcTestHost). Layout (all under /Game/PjcTests):
+ * test host projects (the dev tool passes -PjcTestHost). Layout (all under /Game/PjcTests):
  *
  *   Used/PAL_Root            PrimaryAssetLabel (primary), soft references OL_Chain (and R_Moved in Lyra layout)
  *   Used/OL_Chain            ObjectLibrary, hard references C_ChainLeaf and /PjcTestContent/C_PluginUsed
@@ -94,7 +94,7 @@ class FPjcTestFixture
 	static constexpr int32 NumBulkAssets = 25;
 
 	static bool IsTestHost();
-	// Coverage for Scripts/pjc.py test: a feature case that ran, or why it was skipped (the feature is not in this
+	// Coverage for the dev tool's test run: a feature case that ran, or why it was skipped (the feature is not in this
 	// engine or project). The table lists every case by engine.
 	static void Case(FAutomationTestBase& Test, const TCHAR* Name, const FString& SkippedWhy = FString {});
 	static FString RootPath();
@@ -155,7 +155,7 @@ class FPjcTestFixture
 
 	// Lyra layout files and folders that cleanup must leave untouched
 	TArray<FString> LyraKeptFiles() const;
-	// Project relative paths pjc.py removes after commandlet tests
+	// Project relative paths the dev tool removes after commandlet tests
 	TArray<FString> LyraCleanupPaths() const;
 
   private:

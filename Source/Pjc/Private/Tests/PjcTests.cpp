@@ -241,7 +241,7 @@ namespace
 		return Result;
 	}
 
-	// Same keys as Scripts/pjc.py parses from commandlet output
+	// Same keys as the dev tool parses from commandlet output
 	FString JsonStats(const int32 All, const int32 Used, const int32 Unused, const int32 External, const int32 Corrupted, const int32 FoldersEmpty) {
 		TArray<FString> Items;
 		Items.Add(FString::Printf(TEXT("\"assets_all\": %d"), All));
@@ -2150,7 +2150,7 @@ bool FPjcTestUiReport::RunTest(const FString& Parameters) {
 }
 
 // Not part of ProjectCleaner.* tests. Leaves fixture content on disk and writes expected results,
-// so Scripts/pjc.py can verify the commandlet (-run=Pjc) in a separate process.
+// so the dev tool can verify the commandlet (-run=Pjc) in a separate process.
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPjcFixtureBuild, "PjcFixture.Build", PJC_TEST_FLAGS)
 
 bool FPjcFixtureBuild::RunTest(const FString& Parameters) {
@@ -2162,7 +2162,7 @@ bool FPjcFixtureBuild::RunTest(const FString& Parameters) {
 	FPjcTestFixture Fixture;
 	if (!Fixture.Build(*this, true, false, true)) return false;
 
-	// commandlet runs in another process, it must see same settings (host config files, removed by pjc.py)
+	// commandlet runs in another process, it must see same settings (host config files, removed by the dev tool)
 	PjcShim::UpdateDefaultConfigFile(GetMutableDefault<UPjcAssetExcludeSettings>());
 	PjcShim::UpdateDefaultConfigFile(GetMutableDefault<UPjcFileExcludeSettings>());
 	PjcShim::UpdateDefaultConfigFile(ScanSettings);
