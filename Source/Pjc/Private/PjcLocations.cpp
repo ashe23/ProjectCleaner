@@ -91,9 +91,18 @@ namespace
 
 				// "Node" is the property every anim graph node keeps its values in: no part of its own
 				const bool bOwnPart = Label != TEXT("Node");
-				if (bOwnPart) Parts.Add(Label);
+				// an entry of an array of structs ("Materials[1]"): one part for the whole array, the entry's index goes on
+				// what the entry holds ("[1] Material Interface")
+				FString Part = Label;
+				FString Index;
+				int32 Open = INDEX_NONE;
+				if (Label.EndsWith(TEXT("]")) && Label.FindLastChar(TEXT('['), Open) && Open > 0) {
+					Index = Label.Mid(Open) + TEXT(" ");
+					Part = Label.Left(Open);
+				}
+				if (bOwnPart) Parts.Add(Part);
 				for (TFieldIterator<FProperty> It {Struct->Struct}; It; ++It) {
-					Value(*It, It->ContainerPtrToValuePtr<void>(Data), Parts, LabelOf(*It), Depth + 1);
+					Value(*It, It->ContainerPtrToValuePtr<void>(Data), Parts, Index + LabelOf(*It), Depth + 1);
 				}
 				if (bOwnPart) Parts.Pop();
 				return;

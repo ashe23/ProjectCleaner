@@ -27,6 +27,7 @@
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Input/SCheckBox.h"
 #include "Widgets/Input/SComboButton.h"
+#include "Widgets/Input/SMenuAnchor.h"
 #include "Widgets/Input/SSearchBox.h"
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
@@ -209,11 +210,12 @@ namespace
 		const bool bDanger,
 		TFunction<bool()> Enabled,
 		TFunction<void()> OnClick,
-		const FSlateBrush* Icon = nullptr
+		const FSlateBrush* Icon = nullptr,
+		const bool bMenu = false
 	) {
 		const FSlateColor TextColor = bDanger ? FSlateColor {PjcInspectorColor("ProjectCleaner.Color.DangerText")} : FSlateColor::UseForeground();
 		// clang-format off
-		const TSharedRef<SWidget> Content = SNew(SHorizontalBox)
+		const TSharedRef<SHorizontalBox> Content = SNew(SHorizontalBox)
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 6.0f, 0.0f})
 			[
 				SNew(SBox).WidthOverride(14.0f).HeightOverride(14.0f)
@@ -225,6 +227,16 @@ namespace
 			[
 				SNew(STextBlock).Text(FText::FromString(Label)).ColorAndOpacity(TextColor)
 			];
+		// a button that opens a menu: the chevron the other menus have
+		if (bMenu) {
+			Content->AddSlot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
+			[
+				SNew(SBox).WidthOverride(10.0f).HeightOverride(10.0f)
+				[
+					SNew(SImage).Image(FPjcStyles::Get().GetBrush("TreeArrow_Expanded"))
+				]
+			];
+		}
 		if (bDanger) {
 			return SNew(SButton)
 				.ButtonStyle(&FPjcStyles::Get().GetWidgetStyle<FButtonStyle>("ProjectCleaner.Button.DangerQuiet"))
@@ -1173,6 +1185,7 @@ TSharedRef<SWidget> SPjcTabInspector::MakeToolbar() {
 	const bool bDeletable = bScanned && (!Result.IsUsed(Focus) || Result.GetStatus(Focus) == EPjcAssetStatus::Review);
 	const FAssetData Asset = FocusNode != INDEX_NONE ? Model.Assets[FocusNode] : FAssetData {};
 	const FSlateBrush* ClassIcon = PjcWidgets::GetAssetType(Asset).Icon;
+	const TSharedRef<TSharedPtr<SMenuAnchor>> ExcludeMenu = MakeShared<TSharedPtr<SMenuAnchor>>();
 
 	// clang-format off
 	return SNew(SHorizontalBox)
@@ -1184,29 +1197,15 @@ TSharedRef<SWidget> SPjcTabInspector::MakeToolbar() {
 		]
 		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 4.0f, 0.0f})
 		[
-			SNew(SComboButton)
-			.ComboButtonStyle(&PjcShim::GetComboButtonStyle())
-#if ENGINE_MAJOR_VERSION < 5
-			.ForegroundColor(FSlateColor::UseForeground())
-#endif
-			.IsEnabled(bScanned)
-			.ContentPadding(FMargin {6.0f, 1.0f})
-			.ToolTipText(FText::FromString(TEXT("Counts it as used from now on, saved to the project settings")))
+			// the same button as Open, Browse and Size map, opening the menu
+			SAssignNew(*ExcludeMenu, SMenuAnchor)
+			.Placement(MenuPlacement_BelowAnchor)
 			.OnGetMenuContent(this, &SPjcTabInspector::MakeExcludeMenu)
-			.ButtonContent()
 			[
-				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 6.0f, 0.0f})
-				[
-					SNew(SBox).WidthOverride(14.0f).HeightOverride(14.0f)
-					[
-						SNew(SImage).Image(FPjcStyles::Get().GetBrush("ProjectCleaner.Menu.Exclude"))
-					]
-				]
-				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
-				[
-					SNew(STextBlock).Text(FText::FromString(TEXT("Exclude")))
-				]
+				PjcInspectorToolButton("ProjectCleaner.Menu.Exclude", TEXT("Exclude"), TEXT("Counts it as used from now on, saved to the project settings"), false,
+					[bScanned]() { return bScanned; },
+					[ExcludeMenu]() { if (ExcludeMenu->IsValid()) (*ExcludeMenu)->SetIsOpen(!(*ExcludeMenu)->IsOpen()); },
+					nullptr, true)
 			]
 		]
 		+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin {4.0f, 3.0f})
@@ -2090,8 +2089,15 @@ SPjcTabInspector::MakeLevel(const int32 Owner, const int32 Depth, const FItemPtr
 				Child(Root, Where)->Rows.Emplace(Link, FString {});
 			}
 		}
+		// entries of an array in index order: "[2] ..." before "[10] ..."
+		const auto EntryIndex = [](const FString& Property) {
+			return Property.StartsWith(TEXT("[")) ? FCString::Atoi(*Property + 1) : INDEX_NONE;
+		};
 		const TFunction<void(const TSharedPtr<FCat>&, int32, const FItemPtr&, const FString&, TArray<FItemPtr>&)> Draw
 			= [&](const TSharedPtr<FCat>& Cat, const int32 AtDepth, const FItemPtr& Up, const FString& UpKey, TArray<FItemPtr>& Into) {
+				  Cat->Rows.StableSort([&EntryIndex](const TPair<FPjcModelLink, FString>& A, const TPair<FPjcModelLink, FString>& B) {
+					  return EntryIndex(A.Value) < EntryIndex(B.Value);
+				  });
 				  for (const TPair<FPjcModelLink, FString>& Row : Cat->Rows) {
 					  const FItemPtr Item = MakeAssetItem(Owner, Row.Key, AtDepth, Up, UpKey);
 					  Item->Property = Row.Value;
