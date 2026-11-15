@@ -836,12 +836,26 @@ TSharedRef<SWidget> SPjcTabInspector::MakeMain() {
 				]
 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {8.0f, 0.0f, 0.0f, 0.0f})
 				[
-					SNew(STextBlock)
+					// a link: selects what the Inspector loaded in Assets
+					SNew(SButton)
+#if ENGINE_MAJOR_VERSION < 5
+					.ForegroundColor(FSlateColor::UseForeground())
+#endif
+					.ButtonStyle(&PjcShim::GetStyle().GetWidgetStyle<FButtonStyle>(TEXT("NoBorder")))
+					.ContentPadding(FMargin {0.0f})
+					.Cursor(EMouseCursor::Hand)
 					.Visibility_Lambda([this]() { return NeedRead.Num() == 0 && LoadedHere.Num() > 0 ? EVisibility::Visible : EVisibility::Collapsed; })
-					.Text_Lambda([this]() { return FText::FromString(FString::Printf(TEXT("\u25CF %d loaded"), LoadedHere.Num())); })
-					.ToolTipText(FText::FromString(TEXT("The Inspector loaded these assets to read where")))
-					.Font(FPjcStyles::GetFont("Regular", 8))
-					.ColorAndOpacity(PjcInspectorColor("ProjectCleaner.Color.Yellow"))
+					.ToolTipText(FText::FromString(TEXT("The Inspector loaded these assets to read where. Click: select them in Assets")))
+					.OnClicked_Lambda([this]() {
+						PjcTabs::SelectAssets(TabManager, LoadedHere);
+						return FReply::Handled();
+					})
+					[
+						SNew(STextBlock)
+						.Text_Lambda([this]() { return FText::FromString(FString::Printf(TEXT("\u25CF %d loaded"), LoadedHere.Num())); })
+						.Font(FPjcStyles::GetFont("Regular", 8))
+						.ColorAndOpacity(PjcInspectorColor("ProjectCleaner.Color.Yellow"))
+					]
 				]
 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
 				[
@@ -858,7 +872,7 @@ TSharedRef<SWidget> SPjcTabInspector::MakeMain() {
 						return FReply::Handled();
 					})
 					[
-						SNew(STextBlock).Text(FText::FromString(TEXT("Unload"))).Font(FPjcStyles::GetFont("Regular", 8))
+						SNew(STextBlock).Text(FText::FromString(TEXT("Unload all"))).Font(FPjcStyles::GetFont("Regular", 8))
 					]
 				]
 			]
