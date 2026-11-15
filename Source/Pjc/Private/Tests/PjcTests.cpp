@@ -1704,6 +1704,10 @@ bool FPjcTestIssuesRedirectorRepair::RunTest(const FString& Parameters) {
 	Reload.Add(FindPackage(nullptr, *(Root / TEXT("OL_ClearUser"))));
 	Reload.Add(FindPackage(nullptr, *(Root / TEXT("OL_PointUser"))));
 	AddExpectedError(TEXT("Failed import for CurveFloat"), EAutomationExpectedErrorFlags::Contains, 0);
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION <= 4
+	// UE 5.0 to 5.4 also log the missing redirector targets as load errors (an expected error that does not come fails)
+	AddExpectedError(TEXT("_Moved': Can't find file"), EAutomationExpectedErrorFlags::Contains, 0);
+#endif
 	FText ReloadError;
 	if (!TestTrue(TEXT("reloaded"), UPackageTools::ReloadPackages(Reload, ReloadError, EReloadPackagesInteractionMode::AssumePositive))) return false;
 
