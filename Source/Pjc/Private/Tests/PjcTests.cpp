@@ -1002,6 +1002,8 @@ bool FPjcTestCookShipped::RunTest(const FString& Parameters) {
 		AddPackage(FName {TEXT("/Script/Engine")}, 0);
 		AddPackage(PackageOf(Fixture, TEXT("C_UnusedLeaf")), 77);
 		AddPackage(PackageOf(Fixture, TEXT("OL_UnusedRoot")), 88);
+		// editor only by its references (a label keeps it), but packaged
+		AddPackage(PackageOf(Fixture, TEXT("C_ChainLeaf")), 55);
 		AddPackage(PackageOf(Fixture, TEXT("EUB_Tool")), -1);
 		AddPackage(FName {TEXT("/Engine/PjcTest/EngineThing")}, 500);
 		AddPackage(FName {*(FPjcTestFixture::RootPath() / TEXT("_Generated_/Cell"))}, 10);
@@ -1019,7 +1021,7 @@ bool FPjcTestCookShipped::RunTest(const FString& Parameters) {
 	const FPjcCookInfo& Cook = FPjcCookInfo::GetLast();
 	TestTrue(TEXT("cook found"), Cook.IsValid());
 	TestEqual(TEXT("cook platform"), Cook.Platform, FString {TEXT("PjcTestPlatform")});
-	TestEqual(TEXT("cooked packages"), Cook.Cooked.Num(), 6);
+	TestEqual(TEXT("cooked packages"), Cook.Cooked.Num(), 7);
 	TestEqual(TEXT("cooked size"), Cook.Cooked.FindRef(PackageOf(Fixture, TEXT("BP_Primary"))), static_cast<int64>(1000));
 	TestFalse(TEXT("not cooked is left out"), Cook.Cooked.Contains(PackageOf(Fixture, TEXT("EUB_Tool"))));
 
@@ -1030,10 +1032,10 @@ bool FPjcTestCookShipped::RunTest(const FString& Parameters) {
 		NumReview += Pair.Value == EPjcAssetStatus::Review ? 1 : 0;
 	}
 	FPjcOverview::FShipped Shipped = FPjcOverview::MakeShipped(Result, Cook);
-	TestEqual(TEXT("shipped"), Shipped.Shipped.Num, 1);
-	TestEqual(TEXT("shipped cooked size"), Shipped.ShippedCooked, static_cast<int64>(1000));
+	TestEqual(TEXT("shipped"), Shipped.Shipped.Num, 2);
+	TestEqual(TEXT("shipped cooked size"), Shipped.ShippedCooked, static_cast<int64>(1055));
 	TestEqual(TEXT("unused shipped, nothing in review yet"), Shipped.UnusedShipped.Num, 0);
-	TestEqual(TEXT("used, not shipped"), Shipped.UsedNotShipped.Num, Result.Used.Num() - 1 - NumReview);
+	TestEqual(TEXT("used, not shipped"), Shipped.UsedNotShipped.Num, Result.Used.Num() - 2 - NumReview);
 	TestEqual(TEXT("unused, not shipped"), Shipped.Unused.Num, Result.Unused.Num() + NumReview);
 	TestEqual(TEXT("outside the scan"), Shipped.NumOutside, 1);
 	TestEqual(TEXT("outside size"), Shipped.SizeOutside, static_cast<int64>(500));
@@ -1102,6 +1104,12 @@ bool FPjcTestCookShipped::RunTest(const FString& Parameters) {
 	};
 	TestFalse(TEXT("cleanup keeps review assets"), UnusedWithCook.ContainsByPredicate(IsReviewAsset));
 	TestEqual(TEXT("packaged review assets are unused, shipped"), FPjcOverview::MakeShipped(Checked, Cook).UnusedShipped.Num, 2);
+	// what the cook packaged is not editor only, whatever its references say; what it left out stays editor only
+	const FName ChainLeaf = PackageOf(Fixture, TEXT("C_ChainLeaf"));
+	TestEqual(TEXT("packaged: used"), static_cast<int32>(Checked.GetStatus(ChainLeaf)), static_cast<int32>(EPjcAssetStatus::Used));
+	TestTrue(TEXT("used because the cook packaged it"), Checked.CookShipped.Contains(ChainLeaf));
+	const FName Tool = PackageOf(Fixture, TEXT("EUB_Tool"));
+	TestEqual(TEXT("left out: editor only"), static_cast<int32>(Checked.GetStatus(Tool)), static_cast<int32>(EPjcAssetStatus::EditorOnly));
 
 	// a build machine's cook, from the setting: its platform from the path
 	const FString MachineDir = FPaths::ConvertRelativePathToFull(FPaths::ProjectSavedDir() / TEXT("PjcBuildMachine"));

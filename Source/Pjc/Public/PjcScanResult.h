@@ -140,6 +140,10 @@ struct FPjcScanResult
 	// usage, so nothing follows their references
 	TSet<FName> FolderLabels;
 
+	// Used assets no game reference reaches but a cook packaged: Used, not Editor only. The asset registry records some
+	// references the game makes as editor only (a blueprint's class defaults, the widget its graph creates)
+	TSet<FName> CookShipped;
+
 	// Redirectors in scanned content, one per package
 	TArray<FAssetData> Redirectors;
 

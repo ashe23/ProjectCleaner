@@ -626,10 +626,26 @@ bool UPjcSubsystem::Scan(const bool bShowSlowTask, FPjcScanProgress* Progress) {
 	}
 	WalkGameReferences();
 
+	// a cook is what ships: what it packaged is not editor only, whatever the references say. Cooks that took nearly
+	// every asset tell nothing
+	TArray<FString> PlatformsCookAll;
+	ScanCacheGet(ScanCache.PlatformsCookAll, PlatformsCookAll);
+	TArray<const FPjcCookInfo*> ShipCooks = FPjcCookInfo::GetAll();
+	ShipCooks.RemoveAll([&PlatformsCookAll](const FPjcCookInfo* Cook) {
+		return !Cook->IsValid() || PlatformsCookAll.Contains(Cook->Platform);
+	});
+
 	Result.Status.Reserve(Result.Assets.Num());
 	for (const auto& Asset : Result.Assets) {
 		const bool bReview = FPjcScanResult::IsReviewReason(Result.GetChainReason(Asset.PackageName));
-		const EPjcAssetStatus GameStatus = GameUsed.Contains(Asset.PackageName) ? EPjcAssetStatus::Used : EPjcAssetStatus::EditorOnly;
+		EPjcAssetStatus GameStatus = GameUsed.Contains(Asset.PackageName) ? EPjcAssetStatus::Used : EPjcAssetStatus::EditorOnly;
+		const bool bCooked = GameStatus == EPjcAssetStatus::EditorOnly && ShipCooks.ContainsByPredicate([&Asset](const FPjcCookInfo* Cook) {
+			return Cook->Cooked.Contains(Asset.PackageName);
+		});
+		if (bCooked && Result.IsUsed(Asset.PackageName) && !bReview) {
+			GameStatus = EPjcAssetStatus::Used;
+			Result.CookShipped.Add(Asset.PackageName);
+		}
 		const EPjcAssetStatus UsedStatus = bReview ? EPjcAssetStatus::Review : GameStatus;
 		Result.Status.Add(Asset.PackageName, Result.IsUsed(Asset.PackageName) ? UsedStatus : EPjcAssetStatus::Unused);
 	}

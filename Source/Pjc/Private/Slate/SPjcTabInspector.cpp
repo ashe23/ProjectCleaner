@@ -1443,6 +1443,10 @@ TSharedRef<SWidget> SPjcTabInspector::MakeAnswer() {
 				if (Index < Path.Num() - 1) Add(Why, Separator());
 			}
 			if (Route->bEditor) Add(Why, PjcInspectorText(TEXT("editor only"), TEXT("ProjectCleaner.Color.Editor"), true));
+			// the references say editor only, the cook packaged it: it ships
+			if (Route->bEditor && Result.CookShipped.Contains(Focus)) {
+				Add(Why, PjcInspectorText(TEXT("but the last cook packaged it"), TEXT("ProjectCleaner.Color.Muted")));
+			}
 		}
 		if (NumRoutes > 1) {
 			const int32 Picked = Routes.IndexOfByPredicate([Route](const FPjcRoute& Existing) {
