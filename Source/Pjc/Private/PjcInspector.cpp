@@ -42,6 +42,7 @@ namespace
 			case EPjcUsageReason::Cinematic :			return 2;
 			case EPjcUsageReason::EngineReferenced :	return 4;
 			case EPjcUsageReason::Editor :
+			case EPjcUsageReason::EditorSource :
 			case EPjcUsageReason::Splash :				return 5;
 			case EPjcUsageReason::CookPackaged :
 			case EPjcUsageReason::GameplayCueNotFired : return 6;
@@ -363,7 +364,8 @@ TArray<FPjcRoute> FPjcInspectorModel::GetRoutes(const int32 Node, const uint8 Ki
 			Worst = FMath::Max(Worst, Link ? PjcInspectorKindRank(*Link) : 0);
 		}
 		const EPjcUsageReason RootReason = Reasons[Root];
-		Item.Route.bEditor = Worst == 2 || RootReason == EPjcUsageReason::Editor || RootReason == EPjcUsageReason::Splash;
+		Item.Route.bEditor = Worst == 2 || RootReason == EPjcUsageReason::Editor || RootReason == EPjcUsageReason::Splash
+			|| RootReason == EPjcUsageReason::EditorSource;
 		const bool bProject = Packages[Root].ToString().StartsWith(TEXT("/Game/"));
 		// among primary assets: where the game starts, then what it loads by type (experiences, game data), then maps
 		int32 RootRank = PjcInspectorRootRank(RootReason) * 3;
@@ -463,7 +465,7 @@ FPjcInspectorModel::FWhatIf FPjcInspectorModel::GetWhatIf(const int32 Focus, con
 		for (int32 Step = Focus; Step != INDEX_NONE; Step = Prev[Step]) {
 			Out.Path.Insert(Step, 0);
 		}
-		Out.bEditor = Reasons[Out.Path[0]] == EPjcUsageReason::Editor;
+		Out.bEditor = Reasons[Out.Path[0]] == EPjcUsageReason::Editor || Reasons[Out.Path[0]] == EPjcUsageReason::EditorSource;
 		for (int32 Index = 1; Index < Out.Path.Num(); ++Index) {
 			const int32 To = Out.Path[Index];
 			const FPjcModelLink* Link = Uses[Out.Path[Index - 1]].FindByPredicate([To](const FPjcModelLink& Existing) {

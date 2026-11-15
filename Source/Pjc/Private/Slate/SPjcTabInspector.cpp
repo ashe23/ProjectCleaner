@@ -136,6 +136,7 @@ namespace
 			case EPjcUsageReason::Cinematic :			return TEXT("Cinematics");
 			case EPjcUsageReason::Editor :				return TEXT("Editor asset");
 			case EPjcUsageReason::Splash :				return TEXT("Splash folder");
+			case EPjcUsageReason::EditorSource :		return TEXT("Editor code");
 			case EPjcUsageReason::GameplayCue :			return TEXT("GameplayCue");
 			case EPjcUsageReason::Megascans :			return TEXT("Megascans");
 			case EPjcUsageReason::Localized :			return TEXT("Localization");

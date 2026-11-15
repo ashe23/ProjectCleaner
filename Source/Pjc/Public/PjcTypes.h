@@ -123,6 +123,10 @@ struct FPjcAssetIndirectInfo
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "AssetIndirectInfo")
 	int32 FileNum = 0;
 
+	// a file only the editor reads: a source file of an editor module, a Python script, an editor config file
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "AssetIndirectInfo")
+	bool bEditorOnly = false;
+
 	bool operator==(const FPjcAssetIndirectInfo& Other) const {
 		return Asset == Other.Asset && FilePath.Equals(Other.FilePath) && FileNum == Other.FileNum;
 	}
@@ -173,6 +177,8 @@ enum class EPjcUsageReason : uint8
 	// in the project's Splash folder: texture copies of the splash images the editor imports, and imports again when
 	// deleted (the engine shows the image files). Editor only
 	Splash,
+	// named only in files the editor reads: editor modules' source, Python scripts, editor config. Editor only
+	EditorSource,
 };
 
 // What fixing redirectors did

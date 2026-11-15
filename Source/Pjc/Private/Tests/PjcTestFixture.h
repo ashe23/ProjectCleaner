@@ -112,6 +112,9 @@ class FPjcTestFixture
 	static FString IndirectConfigFile();
 	static FString PythonFile();
 	static FString PlatformConfigFile();
+	// an editor module of a plugin nothing enables (no build compiles it), and an editor config file
+	static FString EditorCodePluginDir();
+	static FString EditorConfigFile();
 	static FString FeatureConfigFile();
 
 	FPjcTestFixture();

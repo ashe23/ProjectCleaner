@@ -66,7 +66,9 @@ namespace PjcIssues
 			// what needs the old path besides assets: files that name it (C++, Python, config), content outside the scan
 			const FPjcAssetUsage* Usage = Result.Usage.Find(Redirector.PackageName);
 			const TArray<FPjcSourceRef>* Refs = Result.SourceRefs.Find(Redirector.PackageName);
-			const bool bNamedUsage = Usage && (Usage->Reason == EPjcUsageReason::Indirect || Usage->Reason == EPjcUsageReason::ConfigFolder);
+			const bool bNamedUsage = Usage
+				&& (Usage->Reason == EPjcUsageReason::Indirect || Usage->Reason == EPjcUsageReason::EditorSource
+					|| Usage->Reason == EPjcUsageReason::ConfigFolder);
 			const bool bNamed = (Refs && Refs->Num() > 0) || bNamedUsage;
 			bool bOutside = !Outside.IsNone() || (Usage && Usage->Reason == EPjcUsageReason::EngineReferenced);
 #if ENGINE_MAJOR_VERSION < 5

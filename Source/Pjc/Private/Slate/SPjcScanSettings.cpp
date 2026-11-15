@@ -239,10 +239,20 @@ void SPjcScanSettings::Rebuild() {
 	Used->AddSlot().AutoHeight()
 	[
 		MakeFixedRow(
+			TEXT("Editor code"),
+			Roots(EPjcUsageReason::EditorSource),
+			TEXT("assets named in editor code"),
+			TEXT("Assets named only in editor modules (module type Editor or UncookedOnly), Python scripts and editor config ")
+				TEXT("files (DefaultEditor*.ini) count as used, shown as editor only.")
+		)
+	];
+	Used->AddSlot().AutoHeight()
+	[
+		MakeFixedRow(
 			TEXT("Source & config"),
 			Roots(EPjcUsageReason::Indirect) + Roots(EPjcUsageReason::ConfigFolder),
 			TEXT("assets named or in config folders"),
-			TEXT("Assets named in C++, C#, Python and .ini files count as used, platform configs included, and every asset in ")
+			TEXT("Assets named in game C++, C# and .ini files count as used, platform configs included, and every asset in ")
 				TEXT("folders the config always cooks (Additional Asset Directories to Cook, Data Registry scan folders).")
 		)
 	];

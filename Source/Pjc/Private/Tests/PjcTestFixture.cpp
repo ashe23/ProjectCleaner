@@ -261,6 +261,14 @@ FString FPjcTestFixture::PlatformConfigFile() {
 	return FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() / TEXT("Platforms/PjcPlatform/Config/PjcPlatformTests.ini"));
 }
 
+FString FPjcTestFixture::EditorCodePluginDir() {
+	return FPaths::ConvertRelativePathToFull(FPaths::ProjectPluginsDir() / TEXT("PjcTestEditorCode"));
+}
+
+FString FPjcTestFixture::EditorConfigFile() {
+	return FPaths::ConvertRelativePathToFull(FPaths::ProjectConfigDir() / TEXT("DefaultEditorPjcTests.ini"));
+}
+
 FString FPjcTestFixture::FeatureConfigFile() {
 	return FeaturePluginDir() / TEXT("Config/PjcFeatureTests.ini");
 }
@@ -423,6 +431,8 @@ bool FPjcTestFixture::CreateAssets(FAutomationTestBase& Test) {
 	NewAsset<UCurveFloat>(Register(TEXT("Indirect"), TEXT("C_IndirectFile")), Packages);
 	NewAsset<UCurveFloat>(Register(TEXT("Indirect"), TEXT("C_InPython")), Packages);
 	NewAsset<UCurveFloat>(Register(TEXT("Indirect"), TEXT("C_InPlatformConfig")), Packages);
+	NewAsset<UCurveFloat>(Register(TEXT("Indirect"), TEXT("C_InEditorCode")), Packages);
+	NewAsset<UCurveFloat>(Register(TEXT("Indirect"), TEXT("C_InEditorConfig")), Packages);
 	NewAsset<UCurveFloat>(Register(TEXT("AlwaysCook"), TEXT("C_AlwaysCooked")), Packages);
 	NewAsset<UCurveFloat>(Register(TEXT("Registry"), TEXT("C_RegistryData")), Packages);
 
@@ -787,6 +797,19 @@ void FPjcTestFixture::CreateFiles(const bool bCreateCorruptedFile) {
 	const FString Python = FString::Printf(TEXT("import unreal\n\nasset = unreal.load_asset(\"%s\")\n"), *ObjectPath(TEXT("C_InPython")));
 	FFileHelper::SaveStringToFile(Python, *PythonFile());
 	FFileHelper::SaveStringToFile(FString::Printf(TEXT("[PjcTests]\nAsset=%s\n"), *ObjectPath(TEXT("C_InPlatformConfig"))), *PlatformConfigFile());
+
+	// files only the editor reads: an editor module's source, an editor config file
+	const FString EditorModuleDir = EditorCodePluginDir() / TEXT("Source/PjcTestEditorCode");
+	FFileHelper::SaveStringToFile(
+		TEXT("{\"FileVersion\": 3, \"EnabledByDefault\": false, \"Modules\": [{\"Name\": \"PjcTestEditorCode\", \"Type\": \"Editor\"}]}\n"),
+		*(EditorCodePluginDir() / TEXT("PjcTestEditorCode.uplugin"))
+	);
+	FFileHelper::SaveStringToFile(TEXT("// module rules\n"), *(EditorModuleDir / TEXT("PjcTestEditorCode.Build.cs")));
+	FFileHelper::SaveStringToFile(
+		FString::Printf(TEXT("static const TCHAR* PjcEditorAsset = TEXT(\"%s\");\n"), *ObjectPath(TEXT("C_InEditorCode"))),
+		*(EditorModuleDir / TEXT("Private/PjcTestEditorCode.cpp"))
+	);
+	FFileHelper::SaveStringToFile(FString::Printf(TEXT("[PjcTests]\nAsset=%s\n"), *ObjectPath(TEXT("C_InEditorConfig"))), *EditorConfigFile());
 }
 
 void FPjcTestFixture::ApplyExcludeSettings() {
@@ -898,6 +921,8 @@ void FPjcTestFixture::Cleanup() {
 	IFileManager::Get().Delete(*(PluginContentDir() / TEXT("C_PluginUnused.uasset")), false, true, true);
 	IFileManager::Get().Delete(*(PluginContentDir() / TEXT("OL_PluginLib.uasset")), false, true, true);
 	IFileManager::Get().Delete(*IndirectConfigFile(), false, true, true);
+	IFileManager::Get().Delete(*EditorConfigFile(), false, true, true);
+	IFileManager::Get().DeleteDirectory(*EditorCodePluginDir(), false, true);
 	// Python script and platform config, and their folders when the fixture made them
 	IFileManager::Get().Delete(*PythonFile(), false, true, true);
 	IFileManager::Get().DeleteDirectory(*FPaths::GetPath(PythonFile()), false, false);
@@ -1003,7 +1028,8 @@ TArray<FString> FPjcTestFixture::UsedNames(const bool bScanPlugins) const {
 	  TEXT("C_ByFolder"),	  TEXT("CLC_ByClass"),		 TEXT("C_ByAsset"),			 TEXT("LS_Cinematic"),	 TEXT("EUB_Tool"),
 	  TEXT("BP_Primary"),	  TEXT("BP_PrimaryOutside"), TEXT("PAL_Folder"),		 TEXT("C_Indirect_fr"),	 TEXT("C_AlwaysCooked"),
 	  TEXT("C_RegistryData"), TEXT("C_InPython"),		 TEXT("C_InPlatformConfig"), TEXT("PAL_Collection"), TEXT("C_InCollection"),
-	  TEXT("C_IndirectFile"), TEXT("PAL_Packaged"),		 TEXT("C_Packaged"),		 TEXT("C_PjcSplash"),
+	  TEXT("C_InEditorCode"), TEXT("C_InEditorConfig"),	 TEXT("C_IndirectFile"),	 TEXT("PAL_Packaged"),	 TEXT("C_Packaged"),
+	  TEXT("C_PjcSplash"),
 	};
 
 	// editor tools

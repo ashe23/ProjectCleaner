@@ -878,7 +878,7 @@ void SPjcOverviewPanel::GetReasonInfo(const EPjcUsageReason Reason, FString& Out
 			break;
 		case EPjcUsageReason::Indirect :
 			OutName = TEXT("Source & config");
-			OutToolTip = TEXT("C++, C#, Python and .ini files name them by path, or they are in a folder the config always cooks.");
+			OutToolTip = TEXT("Game C++, C# and .ini files name them by path, or they are in a folder the config always cooks.");
 			Color = "ProjectCleaner.Color.Reason.Source";
 			break;
 		case EPjcUsageReason::ConfigFolder :
@@ -894,6 +894,12 @@ void SPjcOverviewPanel::GetReasonInfo(const EPjcUsageReason Reason, FString& Out
 		case EPjcUsageReason::Editor :
 			OutName = PjcOverviewReasonEditor;
 			OutToolTip = TEXT("Editor utilities, validators, scriptable tools and editor tool data.");
+			Color = "ProjectCleaner.Color.Editor";
+			break;
+		case EPjcUsageReason::EditorSource :
+			OutName = TEXT("Editor code");
+			OutToolTip
+				= TEXT("Only editor modules, Python scripts or editor config files name them by path: the editor uses them, the game does not.");
 			Color = "ProjectCleaner.Color.Editor";
 			break;
 		case EPjcUsageReason::Excluded :

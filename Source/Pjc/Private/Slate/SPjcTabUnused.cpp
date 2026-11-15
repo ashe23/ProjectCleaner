@@ -930,7 +930,7 @@ void SPjcTabUnused::MakeRowReason(const FPjcScanResult& Result, FPjcUnusedAssetR
 	}
 
 	// source and config: the file and the line that names it (the asset itself, or the one its chain starts at)
-	if (ChainReason == EPjcUsageReason::Indirect && RootUsage && !RootUsage->Detail.IsEmpty()) {
+	if ((ChainReason == EPjcUsageReason::Indirect || ChainReason == EPjcUsageReason::EditorSource) && RootUsage && !RootUsage->Detail.IsEmpty()) {
 		FString File;
 		FString Line;
 		if (RootUsage->Detail.Split(TEXT(", line "), &File, &Line, ESearchCase::CaseSensitive, ESearchDir::FromEnd)) {

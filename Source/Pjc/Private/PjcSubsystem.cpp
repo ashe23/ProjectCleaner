@@ -38,6 +38,9 @@
 #include "Framework/Notifications/NotificationManager.h"
 #include "Internationalization/Regex.h"
 #include "Misc/FileHelper.h"
+#include "Dom/JsonObject.h"
+#include "Serialization/JsonReader.h"
+#include "Serialization/JsonSerializer.h"
 #include "Interfaces/IPluginManager.h"
 #include "Misc/ScopedSlowTask.h"
 #include "Editor.h"
@@ -155,6 +158,89 @@ namespace
 		}
 		return nullptr;
 	}
+
+	// Files only the editor reads, so a name in them keeps an asset for the editor only: the source of an editor module
+	// (its type in the .uproject or a .uplugin: Editor, EditorNoCommandlet, EditorAndProgram, UncookedOnly), Python
+	// scripts (the editor runs them) and editor config files (DefaultEditor*.ini, <Platform>/<Platform>Editor*.ini).
+	// Everything else counts for the game: a module no descriptor names, Developer modules (development games load
+	// them), game config
+	class FPjcEditorFiles
+	{
+	  public:
+
+		FPjcEditorFiles() {
+			ProjectDir = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir());
+			ProjectDir.RemoveFromEnd(TEXT("/"));
+
+			TArray<FString> Descriptors;
+			IFileManager::Get().FindFilesRecursive(Descriptors, *FPaths::ProjectPluginsDir(), TEXT("*.uplugin"), true, false);
+			Descriptors.Add(FPaths::GetProjectFilePath());
+			for (const FString& Descriptor : Descriptors) {
+				FString Text;
+				TSharedPtr<FJsonObject> Root;
+				if (!FFileHelper::LoadFileToString(Text, *Descriptor) || !FJsonSerializer::Deserialize(TJsonReaderFactory<>::Create(Text), Root)
+					|| !Root.IsValid()) {
+					continue;
+				}
+
+				const TArray<TSharedPtr<FJsonValue>>* ModuleList = nullptr;
+				if (!Root->TryGetArrayField(TEXT("Modules"), ModuleList)) continue;
+
+				for (const TSharedPtr<FJsonValue>& Value : *ModuleList) {
+					const TSharedPtr<FJsonObject>* Module = nullptr;
+					FString Name;
+					FString Type;
+					if (!Value->TryGetObject(Module) || !(*Module)->TryGetStringField(TEXT("Name"), Name)
+						|| !(*Module)->TryGetStringField(TEXT("Type"), Type)) {
+						continue;
+					}
+					(IsEditorType(Type) ? EditorModules : GameModules).Add(Name);
+				}
+			}
+		}
+
+		bool Contains(const FString& File) const {
+			const FString Extension = FPaths::GetExtension(File);
+			if (PjcConstants::PythonFileExtensions.Contains(Extension)) return true;
+
+			if (PjcConstants::ConfigFileExtensions.Contains(Extension)) {
+				const FString Name = FPaths::GetBaseFilename(File);
+				const FString Platform = FPaths::GetCleanFilename(FPaths::GetPath(File));
+				return Name.StartsWith(TEXT("DefaultEditor")) || Name.StartsWith(Platform + TEXT("Editor"));
+			}
+
+			const FString Module = ModuleOf(FPaths::GetPath(File));
+			return EditorModules.Contains(Module) && !GameModules.Contains(Module);
+		}
+
+	  private:
+
+		static bool IsEditorType(const FString& Type) {
+			return Type == TEXT("Editor") || Type == TEXT("EditorNoCommandlet") || Type == TEXT("EditorAndProgram") || Type == TEXT("UncookedOnly");
+		}
+
+		// the module a folder belongs to: the nearest folder up with a <Module>.Build.cs, inside the project
+		FString ModuleOf(const FString& Folder) const {
+			if (const FString* Known = FolderModules.Find(Folder)) return *Known;
+
+			FString Module;
+			TArray<FString> BuildFiles;
+			IFileManager::Get().FindFiles(BuildFiles, *(Folder / TEXT("*.Build.cs")), true, false);
+			if (BuildFiles.Num() > 0) {
+				Module = BuildFiles[0].LeftChop(FString {TEXT(".Build.cs")}.Len());
+			}
+			else if (Folder.Len() > ProjectDir.Len() && Folder.StartsWith(ProjectDir)) {
+				Module = ModuleOf(FPaths::GetPath(Folder));
+			}
+			FolderModules.Add(Folder, Module);
+			return Module;
+		}
+
+		FString ProjectDir;
+		TSet<FString> EditorModules;
+		TSet<FString> GameModules;
+		mutable TMap<FString, FString> FolderModules;
+	};
 }	// namespace
 
 FPjcScanCacheScope::FPjcScanCacheScope() {
@@ -510,17 +596,12 @@ bool UPjcSubsystem::Scan(const bool bShowSlowTask, FPjcScanProgress* Progress) {
 		}
 	}
 
-	// a label whose cook rule packages its folder is cooked itself. Unused assets other folder labels list: their cook
-	// rule does not package them
-	TSet<FName> LabelsPackaged;
+	// unused assets a folder label lists whose cook rule does not package them
 	for (const auto& Label : Labels) {
 		const UPrimaryAssetLabel* FolderLabel = GetFolderLabel(Label);
 		if (!FolderLabel) continue;
 		Result.FolderLabels.Add(Label);
-		if (FolderLabelIsPackaged(*FolderLabel)) {
-			LabelsPackaged.Add(Label);
-			continue;
-		}
+		if (FolderLabelIsPackaged(*FolderLabel)) continue;
 
 		const FString LabelPath = FPackageName::GetLongPackagePath(Label.ToString());
 		for (const auto& Asset : Result.Unused) {
@@ -544,14 +625,11 @@ bool UPjcSubsystem::Scan(const bool bShowSlowTask, FPjcScanProgress* Progress) {
 	for (const auto& Pair : Result.Usage) {
 		const FPjcAssetUsage& AssetUsage = Pair.Value;
 		if (!AssetUsage.bUsed) continue;
-		if (Labels.Contains(Pair.Key)) {
-			if (LabelsPackaged.Contains(Pair.Key)) {
-				GameUsed.Add(Pair.Key);
-			}
-			continue;
-		}
+		// the cook packages what a label labels, not the label: editor only, unless a cook packaged it (below)
+		if (Labels.Contains(Pair.Key)) continue;
 
-		const bool bEditorRoot = AssetUsage.Reason == EPjcUsageReason::Editor || AssetUsage.Reason == EPjcUsageReason::Splash;
+		const bool bEditorRoot = AssetUsage.Reason == EPjcUsageReason::Editor || AssetUsage.Reason == EPjcUsageReason::Splash
+			|| AssetUsage.Reason == EPjcUsageReason::EditorSource;
 		const bool bRoot = AssetUsage.Parent.IsNone() && !bEditorRoot;
 		const bool bLabelPackaged = AssetUsage.Reason == EPjcUsageReason::FolderLabel;
 		if (bRoot || bLabelPackaged || IsCookedByRule(Pair.Key)) {
@@ -797,6 +875,7 @@ FString UPjcSubsystem::GetUsageReasonText(const FPjcAssetUsage& Usage) {
 		case EPjcUsageReason::GameplayCueNotFired : return TEXT("GameplayCue notify nothing fires: ") + Usage.Detail;
 		case EPjcUsageReason::Cinematic :			return Usage.Detail;
 		case EPjcUsageReason::Splash :				return TEXT("Splash content");
+		case EPjcUsageReason::EditorSource :		return TEXT("Named in editor code, ") + Usage.Detail;
 		case EPjcUsageReason::None :
 		default :									return TEXT("Nothing uses it");
 	}
@@ -919,12 +998,22 @@ void UPjcSubsystem::ComputeAssetsUsed(
 	}
 
 	const FString ProjectDir = PathNormalize(FPaths::ConvertRelativePathToFull(FPaths::ProjectDir())) + TEXT("/");
-	for (const auto& Info : AssetsIndirectInfos) {
+	const auto FileAndLine = [&ProjectDir](const FPjcAssetIndirectInfo& Info) {
 		FString File = PathNormalize(Info.FilePath);
 		FPaths::MakePathRelativeTo(File, *ProjectDir);
-		AddUsed(Info.Asset.PackageName, EPjcUsageReason::Indirect, NAME_None, FString::Printf(TEXT("%s, line %d"), *File, Info.FileNum));
+		return FString::Printf(TEXT("%s, line %d"), *File, Info.FileNum);
+	};
+	// named in game files: used. Named only in files the editor reads: an editor root, added with the other editor roots
+	TSet<FName> NamedInEditorOnly;
+	for (const auto& Info : AssetsIndirectInfos) {
+		if (Info.bEditorOnly) {
+			NamedInEditorOnly.Add(Info.Asset.PackageName);
+			continue;
+		}
+		AddUsed(Info.Asset.PackageName, EPjcUsageReason::Indirect, NAME_None, FileAndLine(Info));
 	}
 	for (const auto& Asset : AssetsIndirect) {
+		if (NamedInEditorOnly.Contains(Asset.PackageName)) continue;
 		AddUsed(Asset.PackageName, EPjcUsageReason::Indirect, NAME_None, FString {});
 	}
 
@@ -955,6 +1044,9 @@ void UPjcSubsystem::ComputeAssetsUsed(
 		if (AssetPath == SplashFolder || AssetPath.StartsWith(SplashFolder + TEXT("/"))) {
 			AddUsed(Asset.PackageName, EPjcUsageReason::Splash, NAME_None, FString {});
 		}
+	}
+	for (const auto& Info : AssetsIndirectInfos) {
+		if (Info.bEditorOnly) AddUsed(Info.Asset.PackageName, EPjcUsageReason::EditorSource, NAME_None, FileAndLine(Info));
 	}
 
 	// assets in the collection a used Primary Asset Label names are labeled like its explicit assets
@@ -1069,7 +1161,9 @@ void UPjcSubsystem::ComputeAssetsUsed(
 		NumRoots.FindOrAdd(Pair.Value.Reason)++;
 	}
 	const FString NumPrimary = PjcFormat::Count(NumRoots.FindRef(EPjcUsageReason::Primary));
-	const FString NumEditor = PjcFormat::Count(NumRoots.FindRef(EPjcUsageReason::Editor) + NumRoots.FindRef(EPjcUsageReason::Splash));
+	const FString NumEditor = PjcFormat::Count(
+		NumRoots.FindRef(EPjcUsageReason::Editor) + NumRoots.FindRef(EPjcUsageReason::Splash) + NumRoots.FindRef(EPjcUsageReason::EditorSource)
+	);
 	const FString NumExcluded = PjcFormat::Count(NumRoots.FindRef(EPjcUsageReason::Excluded) + NumRoots.FindRef(EPjcUsageReason::Cinematic));
 	PjcScanFound(EPjcScanStep::Rules, FString::Printf(TEXT("%s primary \u00B7 %s editor \u00B7 %s excluded"), *NumPrimary, *NumEditor, *NumExcluded));
 	PjcScanStep(EPjcScanStep::References);
@@ -1447,6 +1541,7 @@ void UPjcSubsystem::GetAssetsIndirect(TArray<FAssetData>& Assets, TArray<FPjcAss
 	// everything allowed in package names (e.g. "ButtonStyle-Primary-M"), stops at quotes, separators and brackets
 	const FRegexPattern Pattern {FString::Printf(TEXT(R"((%s)\/[^\s"'`,:;=*?<>|&!~@#\\()\[\]{}]+)"), *FString::Join(RootPatterns, TEXT("|")))};
 
+	const FPjcEditorFiles EditorFiles;
 	TArray<FString> Lines;
 	for (const auto& File : ScanFiles) {
 		SlowTask.EnterProgressFrame(1.0f, FText::FromString(File));
@@ -1455,6 +1550,7 @@ void UPjcSubsystem::GetAssetsIndirect(TArray<FAssetData>& Assets, TArray<FPjcAss
 		Lines.Reset();
 		FFileHelper::LoadFileToStringArray(Lines, *File);
 		const FString FilePathAbs = FPaths::ConvertRelativePathToFull(File);
+		const bool bEditorFile = EditorFiles.Contains(FilePathAbs);
 		// the plugin's own settings name assets without using them: exclusions added with Exclude are not Source & config
 		const bool bConfig = FPaths::GetExtension(File).Equals(TEXT("ini"), ESearchCase::IgnoreCase);
 		bool bPluginSection = false;
@@ -1493,7 +1589,7 @@ void UPjcSubsystem::GetAssetsIndirect(TArray<FAssetData>& Assets, TArray<FPjcAss
 				const FAssetData AssetData = PjcShim::GetAssetByObjectPath(ObjectPath);
 				if (!AssetData.IsValid() || FolderIsExternal(AssetData.PackagePath.ToString())) continue;
 
-				AssetsIndirectInfos.AddUnique(FPjcAssetIndirectInfo {AssetData, FilePathAbs, i + 1});
+				AssetsIndirectInfos.AddUnique(FPjcAssetIndirectInfo {AssetData, FilePathAbs, i + 1, bEditorFile});
 				Assets.AddUnique(AssetData);
 			}
 		}

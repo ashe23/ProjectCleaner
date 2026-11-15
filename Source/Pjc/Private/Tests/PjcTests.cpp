@@ -388,7 +388,13 @@ bool FPjcTestScanClassification::RunTest(const FString& Parameters) {
 	TArray<FPjcAssetIndirectInfo> IndirectInfos;
 	UPjcSubsystem::GetAssetsIndirect(Assets, IndirectInfos, false);
 	const TArray<FString> IndirectNames {
-	  TEXT("C_Indirect"), TEXT("C_IndirectPackage"), TEXT("C_IndirectFile"), TEXT("C_InPython"), TEXT("C_InPlatformConfig")
+	  TEXT("C_Indirect"),
+	  TEXT("C_IndirectPackage"),
+	  TEXT("C_IndirectFile"),
+	  TEXT("C_InPython"),
+	  TEXT("C_InPlatformConfig"),
+	  TEXT("C_InEditorCode"),
+	  TEXT("C_InEditorConfig")
 	};
 	const TSet<FString> Indirect = ObjectPaths(Fixture, IndirectNames);
 	TestSetEqual(*this, TEXT("indirect"), FixtureAssets(Assets), Indirect);
@@ -594,7 +600,9 @@ bool FPjcTestScanUsage::RunTest(const FString& Parameters) {
 	TestReason(TEXT("C_UnusedLeaf"), EPjcUsageReason::None, nullptr, nullptr);
 	TestReason(TEXT("C_Indirect_fr"), EPjcUsageReason::Localized, TEXT("C_Indirect"), nullptr);
 	TestReason(TEXT("C_AlwaysCooked"), EPjcUsageReason::ConfigFolder, nullptr, TEXT("/Game/PjcTests/AlwaysCook"));
-	TestReason(TEXT("C_InPython"), EPjcUsageReason::Indirect, nullptr, TEXT("PjcTests.py"));
+	TestReason(TEXT("C_InPython"), EPjcUsageReason::EditorSource, nullptr, TEXT("PjcTests.py"));
+	TestReason(TEXT("C_InEditorCode"), EPjcUsageReason::EditorSource, nullptr, TEXT("PjcTestEditorCode.cpp"));
+	TestReason(TEXT("C_InEditorConfig"), EPjcUsageReason::EditorSource, nullptr, TEXT("DefaultEditorPjcTests.ini"));
 	TestReason(TEXT("PAL_Collection"), EPjcUsageReason::Primary, nullptr, nullptr);
 	TestReason(TEXT("C_InCollection"), EPjcUsageReason::Dependency, TEXT("PAL_Collection"), TEXT("PjcTestCollection"));
 	TestReason(TEXT("C_InPlatformConfig"), EPjcUsageReason::Indirect, nullptr, TEXT("PjcPlatformTests.ini"));
@@ -741,7 +749,7 @@ bool FPjcTestScanResult::RunTest(const FString& Parameters) {
 	TestStatus(TEXT("C_Labeled"), EPjcAssetStatus::Unused, EPjcUsageReason::None);
 	TestStatus(TEXT("C_PjcSplash"), EPjcAssetStatus::EditorOnly, EPjcUsageReason::Splash);
 	TestStatus(TEXT("C_Packaged"), EPjcAssetStatus::Used, EPjcUsageReason::FolderLabel);
-	TestStatus(TEXT("PAL_Packaged"), EPjcAssetStatus::Used, EPjcUsageReason::Primary);
+	TestStatus(TEXT("PAL_Packaged"), EPjcAssetStatus::EditorOnly, EPjcUsageReason::Primary);
 	TestTrue(TEXT("C_Labeled listed by its folder label"), Result.FolderLabelUnused.Contains(PackageOf(Fixture, TEXT("C_Labeled"))));
 	TestEqual(TEXT("unused assets folder labels list: C_Labeled, BP_Labeled"), Result.FolderLabelUnused.Num(), 2);
 	TestStatus(TEXT("BP_Primary"), EPjcAssetStatus::Used, EPjcUsageReason::Primary);
@@ -750,6 +758,11 @@ bool FPjcTestScanResult::RunTest(const FString& Parameters) {
 	TestStatus(TEXT("C_AlwaysCooked"), EPjcAssetStatus::Used, EPjcUsageReason::ConfigFolder);
 	TestStatus(TEXT("C_Unused_fr"), EPjcAssetStatus::Unused, EPjcUsageReason::None);
 	TestStatus(TEXT("EUB_Tool"), EPjcAssetStatus::EditorOnly, EPjcUsageReason::Editor);
+	// named only in files the editor reads
+	TestStatus(TEXT("C_InPython"), EPjcAssetStatus::EditorOnly, EPjcUsageReason::EditorSource);
+	TestStatus(TEXT("C_InEditorCode"), EPjcAssetStatus::EditorOnly, EPjcUsageReason::EditorSource);
+	TestStatus(TEXT("C_InEditorConfig"), EPjcAssetStatus::EditorOnly, EPjcUsageReason::EditorSource);
+	TestStatus(TEXT("C_InPlatformConfig"), EPjcAssetStatus::Used, EPjcUsageReason::Indirect);
 	TestStatus(TEXT("C_UnusedLeaf"), EPjcAssetStatus::Unused, EPjcUsageReason::None);
 	if (Fixture.HasCues()) {
 		TestStatus(TEXT("GC_PjcTest_Fired"), EPjcAssetStatus::Used, EPjcUsageReason::GameplayCue);
