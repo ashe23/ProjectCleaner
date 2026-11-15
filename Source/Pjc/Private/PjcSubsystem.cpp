@@ -567,20 +567,21 @@ bool UPjcSubsystem::Scan(const bool bShowSlowTask, FPjcScanProgress* Progress) {
 	// they use in game ships with the map
 	TMap<FName, TArray<FName>> ActorFilesOfMap;
 #if ENGINE_MAJOR_VERSION >= 5
-	TArray<FString> ContentRoots;
-	FPackageName::QueryRootContentPaths(ContentRoots);
-	TArray<FAssetData> ActorFiles;
-	for (const FString& ContentRoot : ContentRoots) {
-		if (!PathIsInsideProject(ContentRoot)) continue;
-
+	// from the files: the registry of 5.0 does not list actor files by path
+	TArray<FString> ActorFiles;
+	for (const FString& ContentDir : GetProjectContentDirs()) {
 		for (const FString& Folder : {PjcShim::GetExternalActorsFolderName(), PjcShim::GetExternalObjectsFolderName()}) {
-			if (Folder.IsEmpty()) continue;
+			const FString Dir = ContentDir / Folder;
+			if (Folder.IsEmpty() || !IFileManager::Get().DirectoryExists(*Dir)) continue;
 
 			ActorFiles.Reset();
-			Registry.GetAssetsByPath(FName {*(ContentRoot / Folder)}, ActorFiles, true);
-			for (const FAssetData& ActorFile : ActorFiles) {
-				const FName Map = GetExternalOwner(ActorFile.PackageName);
-				if (!Map.IsNone()) ActorFilesOfMap.FindOrAdd(Map).AddUnique(ActorFile.PackageName);
+			IFileManager::Get().FindFilesRecursive(ActorFiles, *Dir, *(TEXT("*") + FPackageName::GetAssetPackageExtension()), true, false);
+			for (const FString& File : ActorFiles) {
+				FString PackageName;
+				if (!FPackageName::TryConvertFilenameToLongPackageName(File, PackageName)) continue;
+
+				const FName Map = GetExternalOwner(FName {*PackageName});
+				if (!Map.IsNone()) ActorFilesOfMap.FindOrAdd(Map).AddUnique(FName {*PackageName});
 			}
 		}
 	}
@@ -600,8 +601,13 @@ bool UPjcSubsystem::Scan(const bool bShowSlowTask, FPjcScanProgress* Progress) {
 				}
 			}
 
+			UE::AssetRegistry::EDependencyQuery Query = UE::AssetRegistry::EDependencyQuery::Game;
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION == 0
+			// the 5.0 registry records no game flag on what actor files reference: their hard references count
+			if (FolderIsExternal(Current.ToString())) Query = UE::AssetRegistry::EDependencyQuery::Hard;
+#endif
 			Deps.Reset();
-			Registry.GetDependencies(Current, Deps, UE::AssetRegistry::EDependencyCategory::Package, UE::AssetRegistry::EDependencyQuery::Game);
+			Registry.GetDependencies(Current, Deps, UE::AssetRegistry::EDependencyCategory::Package, Query);
 			for (const auto& Dep : Deps) {
 				if (Labels.Contains(Dep) || !PathIsInsideProject(Dep.ToString())) continue;
 
