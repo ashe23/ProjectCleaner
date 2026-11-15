@@ -390,6 +390,11 @@ bool FPjcTestFixture::CreateAssets(FAutomationTestBase& Test) {
 	UPrimaryAssetLabel* PackagedLabel = NewAsset<UPrimaryAssetLabel>(Register(TEXT("Packaged"), TEXT("PAL_Packaged")), Packages);
 	PackagedLabel->bLabelAssetsInMyDirectory = true;
 	PackagedLabel->Rules.CookRule = EPrimaryAssetCookRule::AlwaysCook;
+	// a label that packages the one asset it lists, not its folder
+	UCurveFloat* Explicit = NewAsset<UCurveFloat>(Register(TEXT("ExplicitTarget"), TEXT("C_Explicit")), Packages);
+	UPrimaryAssetLabel* ExplicitLabel = NewAsset<UPrimaryAssetLabel>(Register(TEXT("Explicit"), TEXT("PAL_Explicit")), Packages);
+	ExplicitLabel->ExplicitAssets.Add(TSoftObjectPtr<UObject> {Explicit});
+	ExplicitLabel->Rules.CookRule = EPrimaryAssetCookRule::AlwaysCook;
 
 	// unused
 	UCurveFloat* Unused = NewAsset<UCurveFloat>(Register(TEXT("Unused"), TEXT("C_Unused")), Packages);
@@ -1028,8 +1033,8 @@ TArray<FString> FPjcTestFixture::UsedNames(const bool bScanPlugins) const {
 	  TEXT("C_ByFolder"),	  TEXT("CLC_ByClass"),		 TEXT("C_ByAsset"),			 TEXT("LS_Cinematic"),	 TEXT("EUB_Tool"),
 	  TEXT("BP_Primary"),	  TEXT("BP_PrimaryOutside"), TEXT("PAL_Folder"),		 TEXT("C_Indirect_fr"),	 TEXT("C_AlwaysCooked"),
 	  TEXT("C_RegistryData"), TEXT("C_InPython"),		 TEXT("C_InPlatformConfig"), TEXT("PAL_Collection"), TEXT("C_InCollection"),
-	  TEXT("C_InEditorCode"), TEXT("C_InEditorConfig"),	 TEXT("C_IndirectFile"),	 TEXT("PAL_Packaged"),	 TEXT("C_Packaged"),
-	  TEXT("C_PjcSplash"),
+	  TEXT("C_InEditorCode"), TEXT("C_InEditorConfig"),	 TEXT("PAL_Explicit"),		 TEXT("C_Explicit"),	 TEXT("C_IndirectFile"),
+	  TEXT("PAL_Packaged"),	  TEXT("C_Packaged"),		 TEXT("C_PjcSplash"),
 	};
 
 	// editor tools
@@ -1110,7 +1115,7 @@ TArray<FString> FPjcTestFixture::ReviewNames() const {
 }
 
 TArray<FString> FPjcTestFixture::PrimaryNames() const {
-	return {TEXT("PAL_Root"), TEXT("PAL_Collection"), TEXT("BP_Primary"), TEXT("PAL_Folder"), TEXT("PAL_Packaged")};
+	return {TEXT("PAL_Root"), TEXT("PAL_Collection"), TEXT("BP_Primary"), TEXT("PAL_Folder"), TEXT("PAL_Packaged"), TEXT("PAL_Explicit")};
 }
 
 TArray<FString> FPjcTestFixture::ExcludedNames() const {

@@ -750,6 +750,8 @@ bool FPjcTestScanResult::RunTest(const FString& Parameters) {
 	TestStatus(TEXT("C_PjcSplash"), EPjcAssetStatus::EditorOnly, EPjcUsageReason::Splash);
 	TestStatus(TEXT("C_Packaged"), EPjcAssetStatus::Used, EPjcUsageReason::FolderLabel);
 	TestStatus(TEXT("PAL_Packaged"), EPjcAssetStatus::EditorOnly, EPjcUsageReason::Primary);
+	TestStatus(TEXT("PAL_Explicit"), EPjcAssetStatus::EditorOnly, EPjcUsageReason::Primary);
+	TestStatus(TEXT("C_Explicit"), EPjcAssetStatus::Used, EPjcUsageReason::Primary);
 	TestTrue(TEXT("C_Labeled listed by its folder label"), Result.FolderLabelUnused.Contains(PackageOf(Fixture, TEXT("C_Labeled"))));
 	TestEqual(TEXT("unused assets folder labels list: C_Labeled, BP_Labeled"), Result.FolderLabelUnused.Num(), 2);
 	TestStatus(TEXT("BP_Primary"), EPjcAssetStatus::Used, EPjcUsageReason::Primary);

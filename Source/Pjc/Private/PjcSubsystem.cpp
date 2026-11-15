@@ -641,6 +641,35 @@ bool UPjcSubsystem::Scan(const bool bShowSlowTask, FPjcScanProgress* Progress) {
 	TArray<FName> Deps;
 	IAssetRegistry& Registry = GetModuleAssetRegistry().Get();
 
+	// a label whose cook rule packages it ships what it lists (explicit assets and Blueprints, its collection), as a
+	// folder label ships its folder
+	for (const auto& Label : Labels) {
+		TArray<FAssetData> LabelData;
+		Registry.GetAssetsByPackageName(Label, LabelData);
+		const UPrimaryAssetLabel* LabelAsset = LabelData.Num() > 0 ? Cast<UPrimaryAssetLabel>(LabelData[0].GetAsset()) : nullptr;
+		if (!LabelAsset || !FolderLabelIsPackaged(*LabelAsset)) continue;
+
+		TArray<FName> Listed;
+		for (const auto& Explicit : LabelAsset->ExplicitAssets) {
+			Listed.Add(FName {*Explicit.ToSoftObjectPath().GetLongPackageName()});
+		}
+		for (const auto& Explicit : LabelAsset->ExplicitBlueprints) {
+			Listed.Add(FName {*Explicit.ToSoftObjectPath().GetLongPackageName()});
+		}
+		if (!LabelAsset->AssetCollection.CollectionName.IsNone()) {
+			TArray<FName> InCollection;
+			PjcShim::GetPackagesInCollection(LabelAsset->AssetCollection.CollectionName, InCollection);
+			Listed.Append(InCollection);
+		}
+		for (const FName Package : Listed) {
+			if (!Result.IsUsed(Package)) continue;
+
+			bool bAlreadyUsed = false;
+			GameUsed.Add(Package, &bAlreadyUsed);
+			if (!bAlreadyUsed) Stack.Add(Package);
+		}
+	}
+
 	// a map ships with its actor files (World Partition, one file per actor) though it does not reference them: what
 	// they use in game ships with the map
 	TMap<FName, TArray<FName>> ActorFilesOfMap;
