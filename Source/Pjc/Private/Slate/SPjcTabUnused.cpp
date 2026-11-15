@@ -32,6 +32,7 @@
 #include "Widgets/Input/SCheckBox.h"
 #include "Widgets/Input/SComboButton.h"
 #include "Widgets/Input/SHyperlink.h"
+#include "Widgets/Input/SMenuAnchor.h"
 #include "Widgets/Input/SSearchBox.h"
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
@@ -2035,6 +2036,7 @@ void SPjcTabUnused::OnAssetSelectionChanged(FAssetRowPtr Row, ESelectInfo::Type 
 }
 
 TSharedRef<SWidget> SPjcTabUnused::MakeToolbar() {
+	const TSharedRef<TSharedPtr<SMenuAnchor>> ExcludeMenu = MakeShared<TSharedPtr<SMenuAnchor>>();
 	const auto HasSelection = [this]() {
 		return ListView.IsValid() && GetView()->GetNumItemsSelected() > 0;
 	};
@@ -2138,22 +2140,38 @@ TSharedRef<SWidget> SPjcTabUnused::MakeToolbar() {
 				]
 				+ SWrapBox::Slot().VAlign(VAlign_Center)
 				[
-					SNew(SComboButton)
-					.ComboButtonStyle(&PjcShim::GetComboButtonStyle())
-#if ENGINE_MAJOR_VERSION < 5
-					.ForegroundColor(FSlateColor::UseForeground())
-#endif
-					.ToolTipText(FText::FromString(TEXT("Keeps the selection, its folder or its class from cleanup: adds exclusions")))
+					// the same button as Delete next to it, opening the menu (as in the Inspector)
+					SAssignNew(*ExcludeMenu, SMenuAnchor)
+					.Placement(MenuPlacement_BelowAnchor)
 					.Visibility_Lambda(ShownFor(true, false))
-					.IsEnabled_Lambda(HasSelection)
 					.OnGetMenuContent(this, &SPjcTabUnused::MakeExcludeMenu)
-					.ButtonContent()
 					[
-						Label(
-							"ProjectCleaner.Menu.Exclude",
-							Static(TEXT("Exclude")),
-							FSlateColor::UseForeground()
-						)
+						SNew(SButton)
+#if ENGINE_MAJOR_VERSION < 5
+						.ButtonStyle(&PjcShim::GetButtonStyle427(false))
+						.ForegroundColor(FSlateColor::UseForeground())
+#endif
+						.ContentPadding(FMargin {8.0f, 1.0f, 10.0f, 1.0f})
+						.ToolTipText(FText::FromString(TEXT("Keeps the selection, its folder or its class from cleanup: adds exclusions")))
+						.IsEnabled_Lambda(HasSelection)
+						.OnClicked_Lambda([ExcludeMenu]() {
+							if (ExcludeMenu->IsValid()) (*ExcludeMenu)->SetIsOpen(!(*ExcludeMenu)->IsOpen());
+							return FReply::Handled();
+						})
+						[
+							SNew(SHorizontalBox)
+							+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+							[
+								Label("ProjectCleaner.Menu.Exclude", Static(TEXT("Exclude")), FSlateColor::UseForeground())
+							]
+							+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
+							[
+								SNew(SBox).WidthOverride(10.0f).HeightOverride(10.0f)
+								[
+									SNew(SImage).Image(FPjcStyles::Get().GetBrush("TreeArrow_Expanded"))
+								]
+							]
+						]
 					]
 				]
 				+ SWrapBox::Slot().VAlign(VAlign_Center)
