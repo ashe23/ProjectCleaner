@@ -34,6 +34,6 @@ struct FPjcCleanPlan
 	static int32 CountFoldersEmptyAfter(const FPjcScanResult& Result, const TSet<FName>& Deleted);
 
 	// Assets still on disk that reference a deleted package: they lost a reference. Folder labels are left out, their
-	// folder references are not usage and cleanup resaves them
+	// folder references are not usage (a cook rule), losing one breaks nothing
 	static void GetBrokenReferencers(const TArray<FName>& Deleted, TArray<FName>& OutReferencers);
 };

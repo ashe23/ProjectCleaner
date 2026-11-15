@@ -562,9 +562,43 @@ bool UPjcSubsystem::Scan(const bool bShowSlowTask, FPjcScanProgress* Progress) {
 
 	TArray<FName> Deps;
 	IAssetRegistry& Registry = GetModuleAssetRegistry().Get();
+
+	// a map ships with its actor files (World Partition, one file per actor) though it does not reference them: what
+	// they use in game ships with the map
+	TMap<FName, TArray<FName>> ActorFilesOfMap;
+#if ENGINE_MAJOR_VERSION >= 5
+	TArray<FString> ContentRoots;
+	FPackageName::QueryRootContentPaths(ContentRoots);
+	TArray<FAssetData> ActorFiles;
+	for (const FString& ContentRoot : ContentRoots) {
+		if (!PathIsInsideProject(ContentRoot)) continue;
+
+		for (const FString& Folder : {PjcShim::GetExternalActorsFolderName(), PjcShim::GetExternalObjectsFolderName()}) {
+			if (Folder.IsEmpty()) continue;
+
+			ActorFiles.Reset();
+			Registry.GetAssetsByPath(FName {*(ContentRoot / Folder)}, ActorFiles, true);
+			for (const FAssetData& ActorFile : ActorFiles) {
+				const FName Map = GetExternalOwner(ActorFile.PackageName);
+				if (!Map.IsNone()) ActorFilesOfMap.FindOrAdd(Map).AddUnique(ActorFile.PackageName);
+			}
+		}
+	}
+#endif
+
 	const auto WalkGameReferences = [&]() {
 		while (Stack.Num() > 0) {
 			const FName Current = PjcShim::PopArray(Stack);
+
+			if (const TArray<FName>* Files = ActorFilesOfMap.Find(Current)) {
+				for (const FName File : *Files) {
+					bool bAlreadyUsed = false;
+					GameUsed.Add(File, &bAlreadyUsed);
+					if (!bAlreadyUsed) {
+						Stack.Add(File);
+					}
+				}
+			}
 
 			Deps.Reset();
 			Registry.GetDependencies(Current, Deps, UE::AssetRegistry::EDependencyCategory::Package, UE::AssetRegistry::EDependencyQuery::Game);
@@ -4150,7 +4184,9 @@ void UPjcSubsystem::BucketFill(
 int32 UPjcSubsystem::DeleteAssetsReferencedByFolderLabels(const TArray<FAssetData>& Assets) {
 	// engine never deletes assets with referencers on disk. Folder labels reference every asset in their folder (cook
 	// rule, not usage), so unused assets there are left over. Delete those whose only referencers are folder labels or
-	// other assets deleted together, then resave labels so they stop referencing them.
+	// other assets deleted together. The labels are not saved: saving one makes its list again from every asset in its
+	// folder, and UE 5.7 writes entries there that its cook cannot read (a sequence director class). A label lists a
+	// deleted asset until it is saved next.
 	TMap<FName, FAssetData> Candidates;
 	for (const auto& Asset : Assets) {
 		if (FPackageName::DoesPackageExist(Asset.PackageName.ToString())) {
@@ -4216,20 +4252,7 @@ int32 UPjcSubsystem::DeleteAssetsReferencedByFolderLabels(const TArray<FAssetDat
 	FEditorDelegates::OnAssetsPreDelete.Broadcast(LoadedAssets);
 	const int32 NumDeleted = ObjectTools::DeleteObjectsUnchecked(LoadedAssets);
 
-	TArray<UPackage*> LabelPackages;
-	for (const auto& Label : Labels) {
-		if (UPackage* Package = LoadPackage(nullptr, *Label.ToString(), LOAD_None)) {
-			Package->MarkPackageDirty();
-			LabelPackages.Add(Package);
-		}
-	}
-	if (LabelPackages.Num() > 0) {
-		// saving updates label asset bundles, deleted assets are not referenced anymore
-		UEditorLoadingAndSavingUtils::SavePackages(LabelPackages, false);
-	}
-
-	const int32 NumLabels = LabelPackages.Num();
-	UE_LOG(LogProjectCleaner, Display, TEXT("Deleted %d asset(s) referenced only by folder labels, resaved %d label(s)"), NumDeleted, NumLabels);
+	UE_LOG(LogProjectCleaner, Display, TEXT("Deleted %d asset(s) referenced only by %d folder label(s)"), NumDeleted, Labels.Num());
 	return NumDeleted;
 }
 

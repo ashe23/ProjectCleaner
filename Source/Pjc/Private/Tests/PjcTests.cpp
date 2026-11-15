@@ -181,6 +181,12 @@ namespace
 			Check(TEXT("level scanned"), EPjcUsageReason::Dependency, Level);
 			const FPjcAssetUsage* Usage = UPjcSubsystem::GetScanResult().Usage.Find(Placed);
 			Test.TestTrue(TEXT("placed in the level"), Usage && UPjcSubsystem::GetUsageReasonText(*Usage).StartsWith(TEXT("Placed in")));
+			// the level does not reference its actor files, the cook takes them with it: what they use ships
+			Test.TestEqual(
+				TEXT("placed in a level: ships with it"),
+				static_cast<int32>(UPjcSubsystem::GetScanResult().GetStatus(Placed)),
+				static_cast<int32>(EPjcAssetStatus::Used)
+			);
 #else
 			const FPjcAssetUsage* Usage = UPjcSubsystem::GetScanResult().Usage.Find(Placed);
 			Test.TestTrue(TEXT("level scanned: blueprint used"), Usage && Usage->bUsed);

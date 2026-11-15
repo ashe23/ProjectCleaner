@@ -77,6 +77,6 @@ struct FPjcUnusedTree
 	static void GetDeleteGroup(const FPjcScanResult& Result, const TArray<FName>& Packages, TArray<FName>& OutGroup);
 
 	// Used assets that reference the packages or their delete group: deleting them would break those. Folder labels
-	// are left out, their folder references are not usage (cleanup resaves them).
+	// are left out, their folder references are not usage (a cook rule).
 	static void GetUsedHolders(const FPjcScanResult& Result, const TArray<FName>& Packages, TArray<FName>& OutHolders);
 };
