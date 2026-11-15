@@ -287,7 +287,7 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create() {
 	SearchBox.SetClearImage(Icon(TEXT("Close"), 12.0f, ColorMuted));
 	// room left of the lens, as UE5 has it (4.27 has none)
 	SearchBox.SetImagePadding(FMargin {4.0f, 0.0f, 0.0f, 0.0f});
-#if ENGINE_MAJOR_VERSION >= 5
+#if ENGINE_MAJOR_VERSION > 5 || (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 	SearchBox.SetLeftAlignGlassImageAndClearButton(true);
 #else
 	SearchBox.SetLeftAlignButtons(true);

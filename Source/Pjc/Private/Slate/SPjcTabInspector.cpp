@@ -1099,7 +1099,7 @@ TSharedRef<SWidget> SPjcTabInspector::MakeHead() {
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 			[
 				SNew(STextBlock)
-				.Text(FText::FromString(PjcFormat::Size(Result.GetSize(Focus))))
+				.Text(FText::FromString(bScanned || Result.GetSize(Focus) > 0 ? PjcFormat::Size(Result.GetSize(Focus)) : FString {}))
 				.ToolTipText(FText::FromString(TEXT("Size on disk")))
 				.Font(PjcWidgets::GetFontMono(9))
 			]
@@ -1179,7 +1179,7 @@ TSharedRef<SWidget> SPjcTabInspector::MakeToolbar() {
 		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 4.0f, 0.0f})
 		[
 			PjcInspectorToolButton("ProjectCleaner.Menu.Delete", TEXT("Delete\u2026"),
-				bDeletable ? TEXT("Deletes it with the unused assets only it keeps, after asking") : TEXT("Only unused assets and assets to review are deleted here"),
+				bDeletable ? TEXT("Deletes it with the unused assets that use it, after asking") : TEXT("Only unused assets and assets to review are deleted here"),
 				true, [bDeletable]() { return bDeletable; }, [this]() { DeleteFocus(); })
 		]
 		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 4.0f, 0.0f})
@@ -1361,6 +1361,9 @@ TSharedRef<SWidget> SPjcTabInspector::MakeAnswer() {
 				Add(Why, PjcInspectorText(TEXT("of them")));
 			}
 		}
+		if (Result.FolderLabelUnused.Contains(Model.Packages[FocusNode])) {
+			Add(Why, PjcInspectorText(TEXT("\u00B7 its folder label does not package it"), TEXT("ProjectCleaner.Color.Muted")));
+		}
 		Fact(TEXT("WHY UNUSED"), Why);
 
 		// what Delete takes with it
@@ -1383,7 +1386,7 @@ TSharedRef<SWidget> SPjcTabInspector::MakeAnswer() {
 		}
 		Add(Deleted, PjcInspectorNumber(PjcFormat::Size(Size)));
 		Add(Deleted, ShowButton(Group.Num()));
-		Fact(TEXT("IF DELETED"), Deleted, TEXT("What Delete takes with it: the unused assets only it keeps"));
+		Fact(TEXT("IF DELETED"), Deleted, TEXT("What Delete takes with it: the unused assets that use it, so no reference breaks"));
 		if (const FString* Holder = UPjcSubsystem::GetLastCleanupKept().Find(Focus)) {
 			const TSharedRef<SWrapBox> Failed = Line();
 			Add(Failed, PjcInspectorText(TEXT("The last delete could not remove it: ") + *Holder, TEXT("ProjectCleaner.Color.Yellow")));
@@ -1467,7 +1470,7 @@ TSharedRef<SWidget> SPjcTabInspector::MakeAnswer() {
 				TArray<FString> Parts;
 				for (const auto& Pair : ByClass) {
 					if (Parts.Num() == 3) {
-						Parts.Add(FString::Printf(TEXT("+%d kinds"), ByClass.Num() - 3));
+						Parts.Add(TEXT("+") + PjcInspectorPlural(ByClass.Num() - 3, TEXT("kind")));
 						break;
 					}
 					Parts.Add(PjcFormat::Count(Pair.Value) + TEXT(" ") + PjcInspectorClassPlural(Pair.Value, Pair.Key));
@@ -2663,9 +2666,12 @@ TSharedRef<SWidget> SPjcTabInspector::MakeCell(const FItemPtr& Item, const FName
 						FMargin {0.0f, 0.0f, 6.0f, 0.0f}
 					)[Small(TEXT("only here"), TEXT("ProjectCleaner.Color.Ok"), false, TEXT("Only this asset keeps it used"))];
 			}
-			Box->AddSlot().AutoWidth().VAlign(
-				VAlign_Center
-			)[Small(PjcFormat::Size(Model.Sizes[Item->Node]), TEXT("ProjectCleaner.Color.Text"), true)];
+			// content outside the scan has no size: no "0 B" next to Not scanned
+			if (bScanned || Model.Sizes[Item->Node] > 0) {
+				Box->AddSlot().AutoWidth().VAlign(
+					VAlign_Center
+				)[Small(PjcFormat::Size(Model.Sizes[Item->Node]), TEXT("ProjectCleaner.Color.Text"), true)];
+			}
 			return Box;
 		}
 		if (Item->Kind == FPjcInspectorItem::EKind::Group) {

@@ -136,6 +136,10 @@ struct FPjcScanResult
 	// references would keep them
 	TSet<FName> FolderLabelUnused;
 
+	// Labels that list every asset of their folder ("Label Assets In My Directory"): that list is a cook rule, never
+	// usage, so nothing follows their references
+	TSet<FName> FolderLabels;
+
 	// Redirectors in scanned content, one per package
 	TArray<FAssetData> Redirectors;
 

@@ -115,6 +115,10 @@ void FPjcInspectorModel::Build(const FPjcScanResult& Result, FPjcInspectorCache*
 	int32 Through = 0;
 	for (int32 From = 0; From < Scanned.Num(); ++From) {
 		Reading.EnterProgressFrame(1.0f);
+		// a folder label references every asset of its folder: a cook rule, not usage, as in the scan. What the label
+		// keeps (its folder when its cook rule packages it, the assets it names) comes in below, through it
+		if (Result.FolderLabels.Contains(Scanned[From])) continue;
+
 		GetLinks(Scanned[From], false, Links, Through, Cache);
 		for (const FPjcInspectorLink& Link : Links) {
 			const int32 To = Add(Link.Package);

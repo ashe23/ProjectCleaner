@@ -516,6 +516,7 @@ bool UPjcSubsystem::Scan(const bool bShowSlowTask, FPjcScanProgress* Progress) {
 	for (const auto& Label : Labels) {
 		const UPrimaryAssetLabel* FolderLabel = GetFolderLabel(Label);
 		if (!FolderLabel) continue;
+		Result.FolderLabels.Add(Label);
 		if (FolderLabelIsPackaged(*FolderLabel)) {
 			LabelsPackaged.Add(Label);
 			continue;

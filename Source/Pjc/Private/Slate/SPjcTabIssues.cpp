@@ -1669,8 +1669,8 @@ TSharedPtr<SWidget> SPjcTabIssues::OnContextMenu() {
 			});
 			PjcWidgets::AddMenuEntry(
 				Menu, EPjcMenuIcon::Inspect, TEXT("Inspect"), TEXT("Shows why the scan is not sure"), Selected.Num() == 1, [this]() {
-					const TArray<FRowPtr> Rows = GetSelected();
-					if (Rows.Num() == 1) PjcTabs::Inspect(TabManager, Rows[0]->Package);
+					const TArray<FRowPtr> Picked = GetSelected();
+					if (Picked.Num() == 1) PjcTabs::Inspect(TabManager, Picked[0]->Package);
 				}
 			);
 			break;
@@ -1705,8 +1705,8 @@ TSharedPtr<SWidget> SPjcTabIssues::OnContextMenu() {
 				Menu.AddSeparator();
 			}
 			PjcWidgets::AddMenuEntry(Menu, EPjcMenuIcon::Explorer, TEXT("Show in Explorer"), TEXT("Opens the folder of the file"), [this]() {
-				const TArray<FRowPtr> Rows = GetSelected();
-				if (Rows.Num() > 0) UPjcSubsystem::OpenPathInFileExplorer(FPaths::GetPath(Rows[0]->Id));
+				const TArray<FRowPtr> Picked = GetSelected();
+				if (Picked.Num() > 0) UPjcSubsystem::OpenPathInFileExplorer(FPaths::GetPath(Picked[0]->Id));
 			});
 			break;
 		case EPjcIssueCategory::Corrupted :
@@ -1714,8 +1714,8 @@ TSharedPtr<SWidget> SPjcTabIssues::OnContextMenu() {
 				DeleteRows(GetSelected());
 			});
 			PjcWidgets::AddMenuEntry(Menu, EPjcMenuIcon::Explorer, TEXT("Show in Explorer"), TEXT("Opens the folder of the file"), [this]() {
-				const TArray<FRowPtr> Rows = GetSelected();
-				if (Rows.Num() > 0) UPjcSubsystem::OpenPathInFileExplorer(FPaths::GetPath(Rows[0]->Id));
+				const TArray<FRowPtr> Picked = GetSelected();
+				if (Picked.Num() > 0) UPjcSubsystem::OpenPathInFileExplorer(FPaths::GetPath(Picked[0]->Id));
 			});
 			break;
 		case EPjcIssueCategory::Empty :

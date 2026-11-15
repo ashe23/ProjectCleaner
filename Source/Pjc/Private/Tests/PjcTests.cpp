@@ -1945,6 +1945,32 @@ bool FPjcTestInspectorScan::RunTest(const FString& Parameters) {
 		}));
 	}
 
+	// folder labels: their list of the folder is a cook rule, not a user. A label that does not package its folder is
+	// no user of what it lists; one that does keeps its folder, through it
+	const int32 Labeled = Model.Find(PackageOf(Fixture, TEXT("C_Labeled")));
+	const int32 FolderLabel = Model.Find(PackageOf(Fixture, TEXT("PAL_Folder")));
+	const int32 Packaged = Model.Find(PackageOf(Fixture, TEXT("C_Packaged")));
+	const int32 PackagedLabel = Model.Find(PackageOf(Fixture, TEXT("PAL_Packaged")));
+	if (TestTrue(
+			TEXT("folder label assets in the model"),
+			Labeled != INDEX_NONE && FolderLabel != INDEX_NONE && Packaged != INDEX_NONE && PackagedLabel != INDEX_NONE
+		)) {
+		TestTrue(TEXT("the scan lists its folder labels"), Result.FolderLabels.Contains(Model.Packages[FolderLabel]));
+		TestFalse(
+			TEXT("a folder label that does not package it is no user"),
+			Model.UsedBy[Labeled].ContainsByPredicate([FolderLabel](const FPjcModelLink& Each) {
+				return Each.Other == FolderLabel;
+			})
+		);
+		TestEqual(TEXT("so nothing keeps the listed asset"), Model.GetRoutes(Labeled, PjcLinkKinds::All).Num(), 0);
+		const FPjcModelLink* Keeps = Model.UsedBy[Packaged].FindByPredicate([PackagedLabel](const FPjcModelLink& Each) {
+			return Each.Other == PackagedLabel;
+		});
+		if (TestNotNull(TEXT("a label that packages its folder keeps it"), Keeps)) {
+			TestEqual(TEXT("through its cook rule"), static_cast<int32>(Keeps->Via), static_cast<int32>(EPjcUsageReason::FolderLabel));
+		}
+	}
+
 	// reference locations: the asset is loaded and says which of its properties holds the asset it uses
 	{
 		const FName Library = PackageOf(Fixture, TEXT("OL_Chain"));
