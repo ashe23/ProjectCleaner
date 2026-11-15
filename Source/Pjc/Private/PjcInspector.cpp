@@ -4,8 +4,11 @@
 #include "PjcShim.h"
 #include "PjcSubsystem.h"
 // Engine Headers
+#include "Engine/World.h"
+#include "Misc/ConfigCacheIni.h"
 #include "Misc/PackageName.h"
 #include "Misc/ScopedSlowTask.h"
+#include "UObject/SoftObjectPath.h"
 
 namespace
 {
@@ -63,6 +66,7 @@ void FPjcInspectorModel::Build(const FPjcScanResult& Result, FPjcInspectorCache*
 	bUsed.Reset();
 	bRoot.Reset();
 	Reasons.Reset();
+	StartRoots.Reset();
 	IndexOf.Reset();
 	DominatorCache.Reset();
 	FPjcInspectorCache OwnCache;
@@ -106,6 +110,15 @@ void FPjcInspectorModel::Build(const FPjcScanResult& Result, FPjcInspectorCache*
 	Scanned.Sort(FNameLexicalLess {});
 	for (const FName Package : Scanned) {
 		Add(Package);
+	}
+
+	// the maps the game starts in, from the project settings (Maps & Modes)
+	for (const TCHAR* Key : {TEXT("GameDefaultMap"), TEXT("ServerDefaultMap"), TEXT("TransitionMap")}) {
+		FString Map;
+		if (!GConfig->GetString(TEXT("/Script/EngineSettings.GameMapsSettings"), Key, Map, GEngineIni) || Map.IsEmpty()) continue;
+
+		const int32* Node = IndexOf.Find(FName {*FSoftObjectPath {Map}.GetLongPackageName()});
+		if (Node && bRoot[*Node]) StartRoots.Add(*Node);
 	}
 
 	// a project with thousands of assets takes a moment: a progress window once it does
@@ -352,7 +365,15 @@ TArray<FPjcRoute> FPjcInspectorModel::GetRoutes(const int32 Node, const uint8 Ki
 		const EPjcUsageReason RootReason = Reasons[Root];
 		Item.Route.bEditor = Worst == 2 || RootReason == EPjcUsageReason::Editor || RootReason == EPjcUsageReason::Splash;
 		const bool bProject = Packages[Root].ToString().StartsWith(TEXT("/Game/"));
-		Item.Score = {-Prefer.FindRef(Root), Item.Route.bEditor ? 1 : 0, PjcInspectorRootRank(RootReason), Worst, bProject ? 0 : 1, Item.Route.Steps};
+		// among primary assets: where the game starts, then what it loads by type (experiences, game data), then maps
+		int32 RootRank = PjcInspectorRootRank(RootReason) * 3;
+		if (StartRoots.Contains(Root)) {
+			RootRank = 0;
+		}
+		else if (RootRank == 0) {
+			RootRank = Assets[Root].IsValid() && Assets[Root].GetClass() == UWorld::StaticClass() ? 2 : 1;
+		}
+		Item.Score = {-Prefer.FindRef(Root), Item.Route.bEditor ? 1 : 0, RootRank, Worst, bProject ? 0 : 1, Item.Route.Steps};
 	}
 	Scored.Sort([this](const FScored& A, const FScored& B) {
 		for (int32 Index = 0; Index < A.Score.Num(); ++Index) {

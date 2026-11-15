@@ -100,6 +100,9 @@ struct FPjcInspectorModel
 	TArray<bool> bUsed;
 	TArray<bool> bRoot;
 	TArray<EPjcUsageReason> Reasons;
+	// Roots the game starts from: the default, server and transition maps of the project settings. Routes from them come
+	// first, then from other primary assets, then from maps (often test maps)
+	TSet<int32> StartRoots;
 
 	// Reads every reference of the scanned assets (a progress window when it takes long)
 	void Build(const FPjcScanResult& Result, FPjcInspectorCache* Cache = nullptr);
