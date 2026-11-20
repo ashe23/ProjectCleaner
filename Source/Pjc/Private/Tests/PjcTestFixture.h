@@ -111,6 +111,8 @@ class FPjcTestFixture
 	static FString FeatureRootPath();
 	// asset in the project's Splash folder (outside the fixture root)
 	static FString SplashPackage();
+	// asset in the project's MSPresets folder (outside the fixture root)
+	static FString PresetPackage();
 	static FString IndirectConfigFile();
 	static FString PythonFile();
 	static FString PlatformConfigFile();

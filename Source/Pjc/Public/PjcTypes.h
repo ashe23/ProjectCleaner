@@ -160,7 +160,7 @@ enum class EPjcUsageReason : uint8
 	Localized,
 	// in a folder the cook always takes whole: Additional Asset Directories to Cook, Data Registry scan folders
 	ConfigFolder,
-	// Megascans preset
+	// in the project's MSPresets folder: presets the Megascans plugin loads by path when it imports. Editor only
 	Megascans,
 	// listed explicitly by a Primary Asset Label
 	FolderLabelAsset,

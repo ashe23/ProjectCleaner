@@ -629,7 +629,7 @@ bool UPjcSubsystem::Scan(const bool bShowSlowTask, FPjcScanProgress* Progress) {
 		if (Labels.Contains(Pair.Key)) continue;
 
 		const bool bEditorRoot = AssetUsage.Reason == EPjcUsageReason::Editor || AssetUsage.Reason == EPjcUsageReason::Splash
-			|| AssetUsage.Reason == EPjcUsageReason::EditorSource;
+			|| AssetUsage.Reason == EPjcUsageReason::EditorSource || AssetUsage.Reason == EPjcUsageReason::Megascans;
 		const bool bRoot = AssetUsage.Parent.IsNone() && !bEditorRoot;
 		const bool bLabelPackaged = AssetUsage.Reason == EPjcUsageReason::FolderLabel;
 		if (bRoot || bLabelPackaged || IsCookedByRule(Pair.Key)) {
@@ -971,9 +971,9 @@ void UPjcSubsystem::ComputeAssetsUsed(
 	TSet<FName> PackagesPrimary;
 	GetPackagesPrimary(PackagesPrimary);
 
-	if (FModuleManager::Get().IsModuleLoaded(PjcConstants::ModuleMegascans)) {
-		GetModuleAssetRegistry().Get().GetAssetsByPath(PjcConstants::PathMSPresets, AssetsMegascans, true);
-	}
+	// the Megascans plugin (Bridge) loads its presets by path when it imports, also on a machine where it is not loaded
+	// now: the folder is kept with or without the plugin's module
+	GetModuleAssetRegistry().Get().GetAssetsByPath(PjcConstants::PathMSPresets, AssetsMegascans, true);
 
 	// GameplayCue notifies (package -> tag, folder)
 	TMap<FName, FName> CueNotifies;
@@ -1192,6 +1192,7 @@ void UPjcSubsystem::ComputeAssetsUsed(
 	const FString NumPrimary = PjcFormat::Count(NumRoots.FindRef(EPjcUsageReason::Primary));
 	const FString NumEditor = PjcFormat::Count(
 		NumRoots.FindRef(EPjcUsageReason::Editor) + NumRoots.FindRef(EPjcUsageReason::Splash) + NumRoots.FindRef(EPjcUsageReason::EditorSource)
+		+ NumRoots.FindRef(EPjcUsageReason::Megascans)
 	);
 	const FString NumExcluded = PjcFormat::Count(NumRoots.FindRef(EPjcUsageReason::Excluded) + NumRoots.FindRef(EPjcUsageReason::Cinematic));
 	PjcScanFound(EPjcScanStep::Rules, FString::Printf(TEXT("%s primary \u00B7 %s editor \u00B7 %s excluded"), *NumPrimary, *NumEditor, *NumExcluded));

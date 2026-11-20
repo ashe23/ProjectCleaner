@@ -14,7 +14,6 @@ namespace PjcConstants
 	static const FName ModuleAssetTools {TEXT("AssetTools")};
 	static const FName ModuleContentBrowser {TEXT("ContentBrowser")};
 	static const FName ModulePropertyEditor {TEXT("PropertyEditor")};
-	static const FName ModuleMegascans {TEXT("MegascansPlugin")};
 
 	// paths
 	static FName PathDevelopers {TEXT("/Game/Developers")};

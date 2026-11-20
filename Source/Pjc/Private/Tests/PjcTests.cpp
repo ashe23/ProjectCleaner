@@ -58,8 +58,9 @@ namespace
 		const bool bInRoot = Roots.ContainsByPredicate([&Path](const FString& Root) {
 			return Path.StartsWith(Root + TEXT("/"));
 		});
-		// the splash asset lives in the project's Splash folder
-		return bInRoot || Path.StartsWith(FPjcTestFixture::SplashPackage() + TEXT("."));
+		// the splash and the preset asset live in the project's Splash and MSPresets folders
+		return bInRoot || Path.StartsWith(FPjcTestFixture::SplashPackage() + TEXT("."))
+			|| Path.StartsWith(FPjcTestFixture::PresetPackage() + TEXT("."));
 	}
 
 	TSet<FString> FixtureAssets(const TArray<FAssetData>& Assets) {
@@ -607,6 +608,7 @@ bool FPjcTestScanUsage::RunTest(const FString& Parameters) {
 	TestReason(TEXT("CLC_ByClass"), EPjcUsageReason::Excluded, nullptr, TEXT("Excluded class"));
 	TestReason(TEXT("LS_Cinematic"), EPjcUsageReason::Cinematic, nullptr, TEXT("Cinematic"));
 	TestReason(TEXT("C_PjcSplash"), EPjcUsageReason::Splash, nullptr, nullptr);
+	TestReason(TEXT("C_PjcPreset"), EPjcUsageReason::Megascans, nullptr, nullptr);
 	TestReason(TEXT("C_Labeled"), EPjcUsageReason::None, nullptr, nullptr);
 	TestReason(TEXT("C_Packaged"), EPjcUsageReason::FolderLabel, TEXT("PAL_Packaged"), nullptr);
 	TestReason(TEXT("C_UnusedLeaf"), EPjcUsageReason::None, nullptr, nullptr);
@@ -760,6 +762,7 @@ bool FPjcTestScanResult::RunTest(const FString& Parameters) {
 	TestStatus(TEXT("C_ChainLeaf"), EPjcAssetStatus::EditorOnly, EPjcUsageReason::Primary);
 	TestStatus(TEXT("C_Labeled"), EPjcAssetStatus::Unused, EPjcUsageReason::None);
 	TestStatus(TEXT("C_PjcSplash"), EPjcAssetStatus::EditorOnly, EPjcUsageReason::Splash);
+	TestStatus(TEXT("C_PjcPreset"), EPjcAssetStatus::EditorOnly, EPjcUsageReason::Megascans);
 	TestStatus(TEXT("C_Packaged"), EPjcAssetStatus::Used, EPjcUsageReason::FolderLabel);
 	TestStatus(TEXT("PAL_Packaged"), EPjcAssetStatus::EditorOnly, EPjcUsageReason::Primary);
 	TestStatus(TEXT("PAL_Explicit"), EPjcAssetStatus::EditorOnly, EPjcUsageReason::Primary);

@@ -924,7 +924,7 @@ void SPjcOverviewPanel::GetReasonInfo(const EPjcUsageReason Reason, FString& Out
 			break;
 		case EPjcUsageReason::Megascans :
 			OutName = TEXT("Megascans presets");
-			OutToolTip = TEXT("Presets the Megascans plugin uses.");
+			OutToolTip = TEXT("Presets in MSPresets: the Megascans plugin loads them on import.");
 			break;
 		case EPjcUsageReason::Splash :
 			OutName = TEXT("Splash content");

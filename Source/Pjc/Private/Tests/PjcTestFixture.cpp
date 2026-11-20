@@ -246,6 +246,10 @@ FString FPjcTestFixture::SplashPackage() {
 	return TEXT("/Game/Splash/C_PjcSplash");
 }
 
+FString FPjcTestFixture::PresetPackage() {
+	return TEXT("/Game/MSPresets/C_PjcPreset");
+}
+
 FString FPjcTestFixture::FeatureRootPath() {
 	return TEXT("/PjcFeature");
 }
@@ -388,6 +392,9 @@ bool FPjcTestFixture::CreateAssets(FAutomationTestBase& Test) {
 	// in the project's Splash folder, where the editor imports the splash images: editor only, never deleted
 	PackageNames.Add(TEXT("C_PjcSplash"), SplashPackage());
 	NewAsset<UCurveFloat>(SplashPackage(), Packages);
+	// in the project's MSPresets folder, nothing references it: the Megascans plugin loads its presets by path, editor only
+	PackageNames.Add(TEXT("C_PjcPreset"), PresetPackage());
+	NewAsset<UCurveFloat>(PresetPackage(), Packages);
 	UPrimaryAssetLabel* FolderLabel = NewAsset<UPrimaryAssetLabel>(Register(TEXT("Labeled"), TEXT("PAL_Folder")), Packages);
 	FolderLabel->bLabelAssetsInMyDirectory = true;
 	NewAsset<UCurveFloat>(Register(TEXT("Packaged"), TEXT("C_Packaged")), Packages);
@@ -928,6 +935,10 @@ void FPjcTestFixture::Cleanup() {
 	const FString SplashFile = FPackageName::LongPackageNameToFilename(SplashPackage(), FPackageName::GetAssetPackageExtension());
 	IFileManager::Get().Delete(*SplashFile, false, true, true);
 	IFileManager::Get().DeleteDirectory(*(ContentDir() / TEXT("Splash")), false, false);
+	// the preset asset, and its folder when the fixture made it
+	const FString PresetFile = FPackageName::LongPackageNameToFilename(PresetPackage(), FPackageName::GetAssetPackageExtension());
+	IFileManager::Get().Delete(*PresetFile, false, true, true);
+	IFileManager::Get().DeleteDirectory(*(ContentDir() / TEXT("MSPresets")), false, false);
 	IFileManager::Get().Delete(*(PluginContentDir() / TEXT("C_PluginUsed.uasset")), false, true, true);
 	IFileManager::Get().Delete(*(PluginContentDir() / TEXT("C_PluginUnused.uasset")), false, true, true);
 	IFileManager::Get().Delete(*(PluginContentDir() / TEXT("OL_PluginLib.uasset")), false, true, true);
@@ -1042,7 +1053,7 @@ TArray<FString> FPjcTestFixture::UsedNames(const bool bScanPlugins) const {
 	  TEXT("BP_Primary"),	  TEXT("BP_PrimaryOutside"), TEXT("PAL_Folder"),		 TEXT("C_Indirect_fr"),	 TEXT("C_AlwaysCooked"),
 	  TEXT("C_RegistryData"), TEXT("C_InPython"),		 TEXT("C_InPlatformConfig"), TEXT("PAL_Collection"), TEXT("C_InCollection"),
 	  TEXT("C_InEditorCode"), TEXT("C_InEditorConfig"),	 TEXT("PAL_Explicit"),		 TEXT("C_Explicit"),	 TEXT("C_IndirectFile"),
-	  TEXT("PAL_Packaged"),	  TEXT("C_Packaged"),		 TEXT("C_PjcSplash"),		 TEXT("C_Renamed_1"),
+	  TEXT("PAL_Packaged"),	  TEXT("C_Packaged"),		 TEXT("C_PjcSplash"),		 TEXT("C_Renamed_1"),	 TEXT("C_PjcPreset"),
 	};
 
 	// editor tools
