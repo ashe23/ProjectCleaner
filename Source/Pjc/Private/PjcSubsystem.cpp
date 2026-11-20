@@ -1773,6 +1773,37 @@ void UPjcSubsystem::GetAssetsExcluded(TArray<FAssetData>& Assets, const bool bSh
 	ScanCacheSet(ScanCache.AssetsExcluded, Assets);
 }
 
+void UPjcSubsystem::SplitAssetsExcluded(
+	const TArray<FAssetData>& Excluded,
+	TArray<FAssetData>& OutByUser,
+	TArray<FAssetData>& OutAlwaysUsed,
+	TArray<FAssetData>& OutCinematic
+) {
+	OutByUser.Reset();
+	OutAlwaysUsed.Reset();
+	OutCinematic.Reset();
+
+	TSet<FName> ClassNamesUserExcluded;
+	TSet<FName> ClassNamesUsedClasses;
+	TSet<FName> ClassNamesCinematic;
+	GetClassNamesExcludedBy(ClassNamesUserExcluded, ClassNamesUsedClasses, ClassNamesCinematic);
+
+	for (const auto& Asset : Excluded) {
+		const FName ClassName = PjcShim::GetAssetClassName(Asset);
+		const FName ExactClassName = GetAssetExactClassName(Asset);
+		FPjcExclusion Exclusion;
+		if (GetExclusion(Asset, Exclusion)) {
+			OutByUser.Emplace(Asset);
+		}
+		else if (ClassNamesUsedClasses.Contains(ClassName) || ClassNamesUsedClasses.Contains(ExactClassName)) {
+			OutAlwaysUsed.Emplace(Asset);
+		}
+		else {
+			OutCinematic.Emplace(Asset);
+		}
+	}
+}
+
 void UPjcSubsystem::GetAssetsEngineReferenced(TArray<FAssetData>& Assets, const bool bShowSlowTask) {
 	if (GetModuleAssetRegistry().Get().IsLoadingAssets()) return;
 	if (ScanCacheGet(ScanCache.AssetsEngineReferenced, Assets)) return;
@@ -2246,9 +2277,11 @@ void UPjcSubsystem::GetFilesCorrupted(TArray<FString>& Files, const bool bShowSl
 		const FString FileFolder = PathConvertToRelative(FPaths::GetPath(File));
 		if (FolderIsExternal(FileFolder) || PathIsLeftOut(FileFolder)) continue;
 
-		const FString Path = PathConvertToObjectPath(File);
-		if (Path.IsEmpty()) continue;
-		if (PjcShim::GetAssetByObjectPath(Path).IsValid()) continue;
+		// by package: the asset in a package can have another name than its file (Line271_1.uasset holds Line271)
+		const FName PackageName {*(FileFolder / FPaths::GetBaseFilename(File))};
+		TArray<FAssetData> PackageAssets;
+		GetModuleAssetRegistry().Get().GetAssetsByPackageName(PackageName, PackageAssets, true);
+		if (PackageAssets.Num() > 0) continue;
 
 		Files.Emplace(File);
 	}
@@ -4602,7 +4635,14 @@ bool UPjcSubsystem::BucketPrepare(const TArray<FAssetData>& Bucket, TArray<UObje
 		// package could be gone already, deleted together with assets of previous bucket
 		if (!FPackageName::DoesPackageExist(Asset.PackageName.ToString())) continue;
 
-		ObjectPaths.Add(PjcShim::GetObjectPathString(Asset));
+		const FString ObjectPath = PjcShim::GetObjectPathString(Asset);
+		ObjectPaths.Add(ObjectPath);
+
+		// the engine (UE 5.8) loads each asset by its package name too, which fails when the asset is named unlike its
+		// package (Line271_1 holds Line271): loaded first by object path, the engine takes it as it is
+		if (Asset.AssetName.ToString() != FPackageName::GetShortName(Asset.PackageName)) {
+			LoadObject<UObject>(nullptr, *ObjectPath, nullptr, LOAD_NoRedirects);
+		}
 	}
 
 	if (ObjectPaths.Num() == 0) return true;

@@ -174,6 +174,15 @@ class UPjcSubsystem final : public UEditorSubsystem
 	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Asset")
 	static void GetAssetsExcluded(TArray<FAssetData>& Assets, const bool bShowSlowTask = true);
 
+	// Splits excluded assets by rule: the user's exclude settings (assets, folders, classes), the always used classes of
+	// the scan settings, the cinematic classes. An asset the user excluded counts there, as the scan reports it
+	static void SplitAssetsExcluded(
+		const TArray<FAssetData>& Excluded,
+		TArray<FAssetData>& OutByUser,
+		TArray<FAssetData>& OutAlwaysUsed,
+		TArray<FAssetData>& OutCinematic
+	);
+
 	// Returns all assets that have referencers outside scanned content roots (e.g. Engine or not scanned plugins)
 	// @param Assets TArray<FAssetData>
 	//  @param bShowSlowTask bool

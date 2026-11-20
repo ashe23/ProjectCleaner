@@ -382,6 +382,17 @@ bool FPjcTestScanClassification::RunTest(const FString& Parameters) {
 	UPjcSubsystem::GetAssetsExcluded(Assets, false);
 	TestSetEqual(*this, TEXT("excluded"), FixtureAssets(Assets), ObjectPaths(Fixture, Fixture.ExcludedNames()));
 
+	// the report splits them by rule: no always used classes here, cinematic assets apart from the user's exclusions
+	TArray<FAssetData> ByUser;
+	TArray<FAssetData> AlwaysUsed;
+	TArray<FAssetData> Cinematic;
+	UPjcSubsystem::SplitAssetsExcluded(Assets, ByUser, AlwaysUsed, Cinematic);
+	TestSetEqual(
+		*this, TEXT("excluded by user"), FixtureAssets(ByUser), ObjectPaths(Fixture, {TEXT("C_ByFolder"), TEXT("CLC_ByClass"), TEXT("C_ByAsset")})
+	);
+	TestSetEqual(*this, TEXT("excluded always used"), FixtureAssets(AlwaysUsed), {});
+	TestSetEqual(*this, TEXT("excluded cinematic"), FixtureAssets(Cinematic), ObjectPaths(Fixture, {TEXT("LS_Cinematic")}));
+
 	UPjcSubsystem::GetAssetsCircular(Assets, false);
 	TestSetEqual(*this, TEXT("circular"), FixtureAssets(Assets), ObjectPaths(Fixture, {TEXT("OL_CircA"), TEXT("OL_CircB")}));
 
@@ -460,6 +471,7 @@ bool FPjcTestScanCleanup::RunTest(const FString& Parameters) {
 
 	TestTrue(TEXT("DeleteFilesCorrupted succeeded"), UPjcSubsystem::DeleteFilesCorrupted(false, false));
 	TestFalse(TEXT("corrupted file deleted"), FPaths::FileExists(Fixture.CorruptedFile()));
+	TestTrue(TEXT("asset named unlike its file kept"), FPaths::FileExists(Fixture.PackageFile(TEXT("C_Renamed_1"))));
 
 	TestTrue(TEXT("DeleteFoldersEmpty succeeded"), UPjcSubsystem::DeleteFoldersEmpty(false, false));
 	for (const auto& Folder : Fixture.EmptyFolders()) {

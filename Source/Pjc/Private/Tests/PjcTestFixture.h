@@ -20,9 +20,11 @@
  *   Used/PAL_Root            PrimaryAssetLabel (primary), soft references OL_Chain (and R_Moved in Lyra layout)
  *   Used/OL_Chain            ObjectLibrary, hard references C_ChainLeaf and /PjcTestContent/C_PluginUsed
  *   Used/C_ChainLeaf         used through dependency chain
+ *   Used/C_Renamed_1         holds asset C_Renamed (named unlike its file), referenced by OL_Chain: used, not corrupted
  *   Unused/C_Unused          not referenced
  *   Unused/OL_UnusedRoot     not referenced, references C_UnusedLeaf
  *   Unused/C_UnusedLeaf      referenced only by unused asset
+ *   Unused/C_RenamedUnused_1 holds asset C_RenamedUnused, not referenced: unused, not corrupted
  *   Unused/Bulk/C_Bulk_XX    many unused assets, more than engine "load many assets" warning threshold
  *   Circular/OL_CircA,B      reference each other, nothing references them
  *   Indirect/C_Indirect      referenced only from Config/PjcTests.ini (object path)
@@ -177,6 +179,7 @@ class FPjcTestFixture
 	void RestoreSettings();
 
 	TMap<FString, FString> PackageNames;   // short name -> long package name
+	TMap<FString, FString> ObjectNames;	  // short name -> asset name, when the asset is not named like its package
 	TSet<FString> MapNames;
 	TArray<UPackage*> Packages;
 	bool bLyraLayout = false;

@@ -172,9 +172,10 @@ namespace
 	}
 
 	template<typename T>
-	T* NewAsset(const FString& PackageName, TArray<UPackage*>& OutPackages) {
+	// the asset is named like its package unless Name is given
+	T* NewAsset(const FString& PackageName, TArray<UPackage*>& OutPackages, const FString& Name = FString {}) {
 		UPackage* Package = NewPackage(PackageName, OutPackages);
-		const FName AssetName {*FPackageName::GetLongPackageAssetName(PackageName)};
+		const FName AssetName {Name.IsEmpty() ? *FPackageName::GetLongPackageAssetName(PackageName) : *Name};
 		T* Asset = NewObject<T>(Package, T::StaticClass(), AssetName, RF_Public | RF_Standalone);
 		FAssetRegistryModule::AssetCreated(Asset);
 		Package->MarkPackageDirty();
@@ -338,6 +339,9 @@ bool FPjcTestFixture::CreateAssets(FAutomationTestBase& Test) {
 	Chain->ObjectBaseClass = UCurveFloat::StaticClass();
 	Chain->AddObject(ChainLeaf);
 	Chain->AddObject(PluginUsed);
+	// asset named unlike its file (Line271_1.uasset holds Line271): not a corrupted file
+	ObjectNames.Add(TEXT("C_Renamed_1"), TEXT("C_Renamed"));
+	Chain->AddObject(NewAsset<UCurveFloat>(Register(TEXT("Used"), TEXT("C_Renamed_1")), Packages, TEXT("C_Renamed")));
 	UPrimaryAssetLabel* Label = NewAsset<UPrimaryAssetLabel>(Register(TEXT("Used"), TEXT("PAL_Root")), Packages);
 	Label->ExplicitAssets.Add(TSoftObjectPtr<UObject> {Chain});
 
@@ -407,6 +411,8 @@ bool FPjcTestFixture::CreateAssets(FAutomationTestBase& Test) {
 	UObjectLibrary* UnusedRoot = NewAsset<UObjectLibrary>(Register(TEXT("Unused"), TEXT("OL_UnusedRoot")), Packages);
 	UnusedRoot->ObjectBaseClass = UCurveFloat::StaticClass();
 	UnusedRoot->AddObject(UnusedLeaf);
+	ObjectNames.Add(TEXT("C_RenamedUnused_1"), TEXT("C_RenamedUnused"));
+	NewAsset<UCurveFloat>(Register(TEXT("Unused"), TEXT("C_RenamedUnused_1")), Packages, TEXT("C_RenamedUnused"));
 
 	for (int32 i = 0; i < NumBulkAssets; ++i) {
 		NewAsset<UCurveFloat>(Register(TEXT("Unused/Bulk"), FString::Printf(TEXT("C_Bulk_%02d"), i)), Packages);
@@ -954,6 +960,7 @@ void FPjcTestFixture::Cleanup() {
 	RefreshAssetManager();
 
 	PackageNames.Reset();
+	ObjectNames.Reset();
 	MapNames.Reset();
 	Packages.Reset();
 	bBuilt = false;
@@ -1015,8 +1022,9 @@ FString FPjcTestFixture::ObjectPath(const FString& Name) const {
 	const FString* PackageName = PackageNames.Find(Name);
 	if (!PackageName) return {};
 
-	// object is named like its package; keys can differ (localized copies)
-	return FString::Printf(TEXT("%s.%s"), **PackageName, *FPackageName::GetLongPackageAssetName(*PackageName));
+	// object is named like its package unless ObjectNames says otherwise; keys can differ (localized copies)
+	const FString* ObjectName = ObjectNames.Find(Name);
+	return FString::Printf(TEXT("%s.%s"), **PackageName, ObjectName ? **ObjectName : *FPackageName::GetLongPackageAssetName(*PackageName));
 }
 
 FString FPjcTestFixture::PackageFile(const FString& Name) const {
@@ -1034,7 +1042,7 @@ TArray<FString> FPjcTestFixture::UsedNames(const bool bScanPlugins) const {
 	  TEXT("BP_Primary"),	  TEXT("BP_PrimaryOutside"), TEXT("PAL_Folder"),		 TEXT("C_Indirect_fr"),	 TEXT("C_AlwaysCooked"),
 	  TEXT("C_RegistryData"), TEXT("C_InPython"),		 TEXT("C_InPlatformConfig"), TEXT("PAL_Collection"), TEXT("C_InCollection"),
 	  TEXT("C_InEditorCode"), TEXT("C_InEditorConfig"),	 TEXT("PAL_Explicit"),		 TEXT("C_Explicit"),	 TEXT("C_IndirectFile"),
-	  TEXT("PAL_Packaged"),	  TEXT("C_Packaged"),		 TEXT("C_PjcSplash"),
+	  TEXT("PAL_Packaged"),	  TEXT("C_Packaged"),		 TEXT("C_PjcSplash"),		 TEXT("C_Renamed_1"),
 	};
 
 	// editor tools
@@ -1082,6 +1090,7 @@ TArray<FString> FPjcTestFixture::UnusedNames(const bool bScanPlugins) const {
 	  TEXT("C_Unused_fr"),
 	  TEXT("C_Labeled"),
 	  TEXT("BP_Labeled"),
+	  TEXT("C_RenamedUnused_1"),
 	};
 
 	if (bCues) {

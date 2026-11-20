@@ -299,6 +299,12 @@ UPjcCommandlet::FCleanupStats UPjcCommandlet::StatsCollect(const bool bPrintList
 		UPjcSubsystem::GetFilesExternalExcluded(FilesExternalExcluded, false);
 		UPjcSubsystem::GetProjectRedirectors(Redirectors);
 
+		// excluded assets by rule: the user's exclude settings, the always used classes, the cinematic classes
+		TArray<FAssetData> AssetsByUser;
+		TArray<FAssetData> AssetsAlwaysUsed;
+		TArray<FAssetData> AssetsCinematic;
+		UPjcSubsystem::SplitAssetsExcluded(AssetsExcluded, AssetsByUser, AssetsAlwaysUsed, AssetsCinematic);
+
 		const TSharedRef<FJsonObject> StatsJson = MakeShared<FJsonObject>();
 		StatsJson->SetNumberField(TEXT("assets_all"), Stats.NumAssetsAll);
 		StatsJson->SetNumberField(TEXT("assets_used"), Stats.NumAssetsUsed);
@@ -313,7 +319,9 @@ UPjcCommandlet::FCleanupStats UPjcCommandlet::StatsCollect(const bool bPrintList
 		Block->SetArrayField(TEXT("assets_primary"), JsonAssets(AssetsPrimary));
 		Block->SetArrayField(TEXT("assets_editor"), JsonAssets(AssetsEditor));
 		Block->SetArrayField(TEXT("assets_indirect"), JsonAssets(AssetsIndirect));
-		Block->SetArrayField(TEXT("assets_excluded"), JsonAssets(AssetsExcluded));
+		Block->SetArrayField(TEXT("assets_excluded"), JsonAssets(AssetsByUser));
+		Block->SetArrayField(TEXT("assets_always_used"), JsonAssets(AssetsAlwaysUsed));
+		Block->SetArrayField(TEXT("assets_cinematic"), JsonAssets(AssetsCinematic));
 		Block->SetArrayField(TEXT("assets_engine_referenced"), JsonAssets(AssetsEngineReferenced));
 		Block->SetArrayField(TEXT("assets_folder_label_only"), JsonAssets(AssetsFolderLabelOnly));
 		Block->SetArrayField(TEXT("folders_empty"), JsonStrings(FoldersEmpty));
