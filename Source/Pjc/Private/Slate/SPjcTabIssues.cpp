@@ -95,12 +95,19 @@ namespace
 			Columns = InArgs._Columns;
 			MonoColumns = InArgs._MonoColumns;
 			RightColumns = InArgs._RightColumns;
-			const FText ToolTip = FText::FromString(Row->ToolTip);
 			SMultiColumnTableRow::FArguments RowArgs;
 #if ENGINE_MAJOR_VERSION < 5
 			RowArgs.Style(&PjcShim::GetRowStyle427());
 #endif
-			SMultiColumnTableRow::Construct(RowArgs.Padding(FMargin {0.0f, 2.0f}).ToolTipText(ToolTip), InTable);
+			SMultiColumnTableRow::Construct(RowArgs.Padding(FMargin {0.0f, 2.0f}), InTable);
+			// the tooltip in the arguments is applied only by SNew, not by a direct Construct of the base row
+			if (!Row->ToolTip.IsEmpty()) {
+				// first line: the path, as the title; the lines below it: the explanation
+				FString Title = Row->ToolTip;
+				FString Text;
+				Row->ToolTip.Split(TEXT("\n"), &Title, &Text);
+				SetToolTip(PjcWidgets::MakeToolTip(Title, Text));
+			}
 		}
 
 		virtual TSharedRef<SWidget> GenerateWidgetForColumn(const FName& Column) override {
