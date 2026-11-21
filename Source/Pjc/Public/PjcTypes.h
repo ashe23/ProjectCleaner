@@ -179,6 +179,9 @@ enum class EPjcUsageReason : uint8
 	Splash,
 	// named only in files the editor reads: editor modules' source, Python scripts, editor config. Editor only
 	EditorSource,
+	// Review: only engine content references it (the engine, or a plugin in the engine folder), and nothing used in the
+	// project uses that engine content (Detail: the engine package)
+	EngineContentOnly,
 };
 
 // What fixing redirectors did

@@ -204,7 +204,8 @@ namespace
 		}
 		const bool bCue = RootUsage && RootUsage->Reason == EPjcUsageReason::GameplayCueNotFired;
 		const bool bOutside = bCue && RootUsage->Detail.Contains(TEXT("outside"));
-		OutKey = bCue ? TEXT("Cue never fired") : TEXT("Packaged by last cook");
+		const bool bEngine = RootUsage && RootUsage->Reason == EPjcUsageReason::EngineContentOnly;
+		OutKey = bCue ? TEXT("Cue never fired") : bEngine ? TEXT("Engine content only") : TEXT("Packaged by last cook");
 		if (Root != Package) {
 			const FString RootName = FPackageName::GetShortName(Root);
 			OutReason = OutKey;
@@ -222,6 +223,12 @@ namespace
 		int32 Comma = INDEX_NONE;
 		if (bCue && Detail.FindChar(TEXT(','), Comma)) {
 			Detail.LeftInline(Comma);
+		}
+		if (bEngine) {
+			OutReason = OutKey;
+			OutDetail = TEXT("Referenced by ") + FPackageName::GetShortName(Detail);
+			OutTip = TEXT("Nothing in your project uses this asset. Only an engine asset references it: ") + Detail + TEXT(".");
+			return;
 		}
 		OutReason = bOutside ? TEXT("Outside cue paths") : OutKey;
 		OutDetail = bCue ? Detail : TEXT("Cooked for ") + Detail;

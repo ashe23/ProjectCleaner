@@ -5,6 +5,7 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 #include "PjcTypes.h"
+#include "PjcSubsystem.h"
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "Curves/CurveFloat.h"
 #include "Curves/CurveLinearColor.h"
@@ -250,6 +251,19 @@ FString FPjcTestFixture::PresetPackage() {
 	return TEXT("/Game/MSPresets/C_PjcPreset");
 }
 
+FString FPjcTestFixture::EngineNamedPackage() {
+	// the Control Rig sample meshes of the engine name the mannequin rig of the template projects in a soft reference
+	return TEXT("/Game/Characters/Mannequins/Rigs/CR_Mannequin_Body");
+}
+
+bool FPjcTestFixture::HasEngineNamed() {
+	TArray<FName> Referencers;
+	UPjcSubsystem::GetModuleAssetRegistry().Get().GetReferencers(FName {*EngineNamedPackage()}, Referencers);
+	return Referencers.ContainsByPredicate([](const FName& Referencer) {
+		return UPjcSubsystem::PathIsEngineContent(Referencer.ToString());
+	});
+}
+
 FString FPjcTestFixture::FeatureRootPath() {
 	return TEXT("/PjcFeature");
 }
@@ -395,6 +409,10 @@ bool FPjcTestFixture::CreateAssets(FAutomationTestBase& Test) {
 	// in the project's MSPresets folder, nothing references it: the Megascans plugin loads its presets by path, editor only
 	PackageNames.Add(TEXT("C_PjcPreset"), PresetPackage());
 	NewAsset<UCurveFloat>(PresetPackage(), Packages);
+	// at a path only sample content of the engine names, and the project does not use that content: to review. Unused
+	// on engines whose content does not name it
+	PackageNames.Add(TEXT("C_EngineNamed"), EngineNamedPackage());
+	NewAsset<UCurveFloat>(EngineNamedPackage(), Packages);
 	UPrimaryAssetLabel* FolderLabel = NewAsset<UPrimaryAssetLabel>(Register(TEXT("Labeled"), TEXT("PAL_Folder")), Packages);
 	FolderLabel->bLabelAssetsInMyDirectory = true;
 	NewAsset<UCurveFloat>(Register(TEXT("Packaged"), TEXT("C_Packaged")), Packages);
@@ -939,6 +957,12 @@ void FPjcTestFixture::Cleanup() {
 	const FString PresetFile = FPackageName::LongPackageNameToFilename(PresetPackage(), FPackageName::GetAssetPackageExtension());
 	IFileManager::Get().Delete(*PresetFile, false, true, true);
 	IFileManager::Get().DeleteDirectory(*(ContentDir() / TEXT("MSPresets")), false, false);
+	// the engine-named asset, and its folders when the fixture made them
+	const FString EngineNamedFile = FPackageName::LongPackageNameToFilename(EngineNamedPackage(), FPackageName::GetAssetPackageExtension());
+	IFileManager::Get().Delete(*EngineNamedFile, false, true, true);
+	for (const TCHAR* Folder : {TEXT("Characters/Mannequins/Rigs"), TEXT("Characters/Mannequins"), TEXT("Characters")}) {
+		IFileManager::Get().DeleteDirectory(*(ContentDir() / Folder), false, false);
+	}
 	IFileManager::Get().Delete(*(PluginContentDir() / TEXT("C_PluginUsed.uasset")), false, true, true);
 	IFileManager::Get().Delete(*(PluginContentDir() / TEXT("C_PluginUnused.uasset")), false, true, true);
 	IFileManager::Get().Delete(*(PluginContentDir() / TEXT("OL_PluginLib.uasset")), false, true, true);
@@ -1072,8 +1096,8 @@ TArray<FString> FPjcTestFixture::UsedNames(const bool bScanPlugins) const {
 
 	if (bCues) {
 		Names.Append({TEXT("GC_PjcTest_Fired"), TEXT("GC_PjcTest_Parent"), TEXT("GC_PjcTest_Native"), TEXT("BP_CueUser")});
-		Names.Append(ReviewNames());
 	}
+	Names.Append(ReviewNames());
 
 	if (bLyraLayout) {
 		// target of the used redirector, asset with a redirector inside, BP_Placed referenced only by external actor package of L_Feature
@@ -1107,6 +1131,9 @@ TArray<FString> FPjcTestFixture::UnusedNames(const bool bScanPlugins) const {
 	if (bCues) {
 		Names.Add(TEXT("BP_CueUnused"));
 	}
+	if (!HasEngineNamed()) {
+		Names.Add(TEXT("C_EngineNamed"));
+	}
 
 	for (int32 i = 0; i < NumBulkAssets; ++i) {
 		Names.Add(FString::Printf(TEXT("C_Bulk_%02d"), i));
@@ -1131,7 +1158,14 @@ TArray<FString> FPjcTestFixture::RedirectorNames() const {
 }
 
 TArray<FString> FPjcTestFixture::ReviewNames() const {
-	return bCues ? TArray<FString> {TEXT("GC_PjcTest_Unfired"), TEXT("GC_PjcTest_ByUnused"), TEXT("GC_PjcTest_Outside")} : TArray<FString> {};
+	TArray<FString> Names;
+	if (bCues) {
+		Names.Append({TEXT("GC_PjcTest_Unfired"), TEXT("GC_PjcTest_ByUnused"), TEXT("GC_PjcTest_Outside")});
+	}
+	if (HasEngineNamed()) {
+		Names.Add(TEXT("C_EngineNamed"));
+	}
+	return Names;
 }
 
 TArray<FString> FPjcTestFixture::PrimaryNames() const {

@@ -905,8 +905,10 @@ FString UPjcSubsystem::GetUsageReasonText(const FPjcAssetUsage& Usage) {
 		case EPjcUsageReason::Cinematic :			return Usage.Detail;
 		case EPjcUsageReason::Splash :				return TEXT("Splash content");
 		case EPjcUsageReason::EditorSource :		return TEXT("Named in editor code, ") + Usage.Detail;
+		case EPjcUsageReason::EngineContentOnly :
+			return TEXT("Referenced only by engine content (") + FPackageName::GetShortName(Usage.Detail) + TEXT(")");
 		case EPjcUsageReason::None :
-		default :									return TEXT("Nothing uses it");
+		default :					 return TEXT("Nothing uses it");
 	}
 }
 
@@ -995,6 +997,41 @@ void UPjcSubsystem::ComputeAssetsUsed(
 		return &AssetUsage;
 	};
 
+	// actor files (World Partition, One File Per Actor) and what they reference. The UE4 registry does not have them
+	TSet<FName> ActorFileDependencies;
+	TMap<FName, TArray<FName>> ActorFilesOf;
+#if ENGINE_MAJOR_VERSION < 5
+	GetExternalActorsDependencies(ActorFileDependencies, &ActorFilesOf);
+#endif
+
+	// engine content names some project paths without the project using it: sample content of the engine points to the
+	// mannequin rig of the template projects. Such an asset is used only when the project uses that engine content.
+	// Assets every outside referencer of which is engine content wait here (asset -> its engine referencers) until the
+	// used assets of the project are known
+	TMap<FName, TArray<FName>> EngineOnly;
+	TArray<FName> EngineReferencers;
+	const auto FindEngineOnlyReferencers = [&ActorFileDependencies](const FName PackageName, TArray<FName>& OutEngine) {
+		OutEngine.Reset();
+		if (ActorFileDependencies.Contains(PackageName)) return false;
+
+		TArray<FName> Referencers;
+		GetModuleAssetRegistry().Get().GetReferencers(PackageName, Referencers);
+		Referencers.Sort(FNameLexicalLess {});
+		for (const auto& Referencer : Referencers) {
+			const FString Path = Referencer.ToString();
+			const bool bActorFile = FolderIsExternal(Path);
+			if (!bActorFile && PathIsInsideProject(Path)) continue;
+
+			// actor files, plugins left out of the scan, Developers folders: used, as before
+			if (bActorFile || !PathIsEngineContent(Path)) {
+				OutEngine.Reset();
+				return false;
+			}
+			OutEngine.Add(Referencer);
+		}
+		return OutEngine.Num() > 0;
+	};
+
 	FScopedSlowTask SlowTask {
 	  static_cast<float>(AssetsAll.Num()), FText::FromString(TEXT("Searching used assets...")), bShowSlowTask && GIsEditor && !IsRunningCommandlet()
 	};
@@ -1008,10 +1045,11 @@ void UPjcSubsystem::ComputeAssetsUsed(
 		const FName AssetClassName = PjcShim::GetAssetClassName(Asset);
 		const FName AssetExactClassName = GetAssetExactClassName(Asset);
 
+		EngineReferencers.Reset();
 		if (PackagesPrimary.Contains(Asset.PackageName)) {
 			AddUsed(Asset.PackageName, EPjcUsageReason::Primary, NAME_None, GetPrimaryDetail(Asset));
 		}
-		else if (AssetsEngineReferencedSet.Contains(Asset)) {
+		else if (AssetsEngineReferencedSet.Contains(Asset) && !FindEngineOnlyReferencers(Asset.PackageName, EngineReferencers)) {
 			AddUsed(Asset.PackageName, EPjcUsageReason::EngineReferenced, NAME_None, GetEngineReferencedDetail(Asset));
 		}
 		else if (ClassNamesEditor.Contains(AssetClassName) || ClassNamesEditor.Contains(AssetExactClassName)) {
@@ -1023,6 +1061,9 @@ void UPjcSubsystem::ComputeAssetsUsed(
 			Asset.GetTagValue(FName {TEXT("GameplayCueName")}, GameplayCueName);
 			CueNotifies.Add(Asset.PackageName, FName {*GameplayCueName});
 			CueNotifyPaths.Add(Asset.PackageName, Asset.PackagePath.ToString());
+		}
+		if (EngineReferencers.Num() > 0) {
+			EngineOnly.Add(Asset.PackageName, EngineReferencers);
 		}
 	}
 
@@ -1327,6 +1368,78 @@ void UPjcSubsystem::ComputeAssetsUsed(
 	};
 	FireCues(false);
 
+	// engine content the project uses: a used project asset references it, directly or through other engine content.
+	// Anything else that references it and is not engine content counts as a user too (not scanned, so not known)
+	TSet<FName> EngineContentUsed;
+	const auto IsEngineContentUsed = [&](const FName EnginePackage) {
+		if (EngineContentUsed.Contains(EnginePackage)) return true;
+
+		constexpr int32 MaxVisited = 4096;
+		TSet<FName> Visited {EnginePackage};
+		TArray<FName> Stack {EnginePackage};
+		TArray<FName> Referencers;
+		bool bUsed = false;
+		while (Stack.Num() > 0 && !bUsed) {
+			const FName Current = Stack.Last();
+			Stack.RemoveAt(Stack.Num() - 1);
+			Referencers.Reset();
+			GetModuleAssetRegistry().Get().GetReferencers(Current, Referencers);
+			for (const auto& Referencer : Referencers) {
+				const FString Path = Referencer.ToString();
+				if (FolderIsExternal(Path)) {
+					// an actor placed in a level: used as its map is
+					const FPjcAssetUsage* MapUsage = Usage.Find(GetExternalOwner(Referencer));
+					bUsed = MapUsage && MapUsage->bUsed;
+				}
+				else if (PathIsInsideProject(Path)) {
+					const FPjcAssetUsage* ReferencerUsage = Usage.Find(Referencer);
+					bUsed = ReferencerUsage && ReferencerUsage->bUsed;
+				}
+				else if (!PathIsEngineContent(Path) || Visited.Num() >= MaxVisited) {
+					// not sure means used
+					bUsed = true;
+				}
+				else if (!Visited.Contains(Referencer)) {
+					Visited.Add(Referencer);
+					Stack.Add(Referencer);
+				}
+				if (bUsed) break;
+			}
+		}
+		if (bUsed) {
+			EngineContentUsed.Add(EnginePackage);
+		}
+		return bUsed;
+	};
+	EngineOnly.KeySort(FNameLexicalLess {});
+	const auto AddEngineReferenced = [&](const bool bFolderLabelOnly) {
+		bool bAdded = false;
+		for (const auto& Pair : EngineOnly) {
+			if (Usage.Contains(Pair.Key)) continue;
+
+			for (const auto& EnginePackage : Pair.Value) {
+				if (!IsEngineContentUsed(EnginePackage)) continue;
+
+				FPjcAssetUsage* EngineUsage = AddUsed(Pair.Key, EPjcUsageReason::EngineReferenced, NAME_None, EnginePackage.ToString());
+				if (EngineUsage) {
+					EngineUsage->bFolderLabelOnly = bFolderLabelOnly;
+				}
+				bAdded = true;
+				break;
+			}
+		}
+		if (bAdded) {
+			FollowDependencies(bFolderLabelOnly);
+			AddLocalized();
+			FollowDependencies(bFolderLabelOnly);
+		}
+		return bAdded;
+	};
+	// until nothing more is added: what they use may use more engine content, and fire cues
+	while (AddEngineReferenced(false)) {
+		FireCues(false);
+	}
+
 	// the cook takes the whole folder as it is now (the label finds it again when it loads), not the list it saved
 	TArray<FName> FolderLabelsPackagedSorted = FolderLabelsPackaged.Array();
 	FolderLabelsPackagedSorted.Sort(FNameLexicalLess {});
@@ -1347,6 +1460,9 @@ void UPjcSubsystem::ComputeAssetsUsed(
 		AddLocalized();
 		FollowDependencies(true);
 		FireCues(true);
+		while (AddEngineReferenced(true)) {
+			FireCues(true);
+		}
 	}
 
 	// notifies nothing fires, or outside the cue notify paths: tags can be built at runtime, so kept for review
@@ -1355,6 +1471,17 @@ void UPjcSubsystem::ComputeAssetsUsed(
 
 		const FString Outside = IsInCuePaths(Notify.Key) ? FString {} : TEXT(", outside the GameplayCue notify paths");
 		AddUsed(Notify.Key, EPjcUsageReason::GameplayCueNotFired, NAME_None, Notify.Value.ToString() + Outside);
+	}
+	FollowDependencies(false);
+	AddLocalized();
+	FollowDependencies(false);
+
+	// only engine content references them, and the project does not use that engine content. Engine code can still
+	// load its content by path, which the scan cannot see, so they are kept for review with what they use
+	for (const auto& Pair : EngineOnly) {
+		if (Usage.Contains(Pair.Key)) continue;
+
+		AddUsed(Pair.Key, EPjcUsageReason::EngineContentOnly, NAME_None, Pair.Value[0].ToString());
 	}
 	FollowDependencies(false);
 	AddLocalized();
@@ -1392,12 +1519,6 @@ void UPjcSubsystem::ComputeAssetsUsed(
 	// so following references from the map would never reach them. Kept as outside references when any other outside
 	// package references them, or a map of their actor files is not scanned or not used (actor files of a deleted map)
 	{
-		TMap<FName, TArray<FName>> ActorFilesOf;
-#if ENGINE_MAJOR_VERSION < 5
-		// UE4 registry has no dependencies of actor packages: read from the files
-		TSet<FName> ActorFileDependencies;
-		GetExternalActorsDependencies(ActorFileDependencies, &ActorFilesOf);
-#endif
 		IAssetRegistry& Registry = GetModuleAssetRegistry().Get();
 		for (auto& Pair : Usage) {
 			FPjcAssetUsage& AssetUsage = Pair.Value;
@@ -3897,6 +4018,18 @@ bool UPjcSubsystem::PathIsInsideProject(const FString& InPath) {
 		}
 	}
 	return false;
+}
+
+bool UPjcSubsystem::PathIsEngineContent(const FString& InPath) {
+	if (!InPath.StartsWith(TEXT("/"))) return false;
+
+	int32 End = INDEX_NONE;
+	const FString Rest = InPath.Mid(1);
+	const FString Root = Rest.FindChar(TEXT('/'), End) ? Rest.Left(End) : Rest;
+	if (Root == TEXT("Engine")) return true;
+
+	const TSharedPtr<IPlugin> Plugin = IPluginManager::Get().FindPlugin(Root);
+	return Plugin.IsValid() && Plugin->GetLoadedFrom() == EPluginLoadedFrom::Engine;
 }
 
 bool UPjcSubsystem::PathIsLeftOut(const FString& InPath) {

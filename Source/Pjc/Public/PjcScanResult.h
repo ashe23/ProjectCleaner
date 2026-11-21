@@ -16,7 +16,7 @@ enum class EPjcAssetStatus : uint8
 	// only the editor uses it: editor assets, or reached only through editor-only references. Cleanup keeps it.
 	EditorOnly,
 	// the scan is not sure: kept by cleanup, the user decides. Its chain starts at a review reason (packaged by the
-	// last cook, GameplayCue notify nothing fires), or it is what such an asset uses
+	// last cook, GameplayCue notify nothing fires, referenced only by engine content), or it is what such an asset uses
 	Review,
 };
 
@@ -183,7 +183,8 @@ struct FPjcScanResult
 
 	// Reasons that put an asset in Review: the scan is not sure, cleanup keeps it and the user decides
 	static bool IsReviewReason(const EPjcUsageReason Reason) {
-		return Reason == EPjcUsageReason::CookPackaged || Reason == EPjcUsageReason::GameplayCueNotFired;
+		return Reason == EPjcUsageReason::CookPackaged || Reason == EPjcUsageReason::GameplayCueNotFired
+			|| Reason == EPjcUsageReason::EngineContentOnly;
 	}
 
 	EPjcAssetStatus GetStatus(const FName Package) const {

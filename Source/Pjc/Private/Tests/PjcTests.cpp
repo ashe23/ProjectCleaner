@@ -58,9 +58,9 @@ namespace
 		const bool bInRoot = Roots.ContainsByPredicate([&Path](const FString& Root) {
 			return Path.StartsWith(Root + TEXT("/"));
 		});
-		// the splash and the preset asset live in the project's Splash and MSPresets folders
+		// the splash, the preset and the engine-named asset live in folders of the project outside the fixture root
 		return bInRoot || Path.StartsWith(FPjcTestFixture::SplashPackage() + TEXT("."))
-			|| Path.StartsWith(FPjcTestFixture::PresetPackage() + TEXT("."));
+			|| Path.StartsWith(FPjcTestFixture::PresetPackage() + TEXT(".")) || Path.StartsWith(FPjcTestFixture::EngineNamedPackage() + TEXT("."));
 	}
 
 	TSet<FString> FixtureAssets(const TArray<FAssetData>& Assets) {
@@ -364,7 +364,11 @@ bool FPjcTestScanClassification::RunTest(const FString& Parameters) {
 		TestSetEqual(*this, Mode + TEXT(", unused"), FixtureAssets(Assets), ExpectedUnused);
 
 		UPjcSubsystem::GetAssetsEngineReferenced(Assets, false);
-		const TArray<FString> ExternallyReferenced = bPlugins ? TArray<FString> {} : TArray<FString> {TEXT("C_RefByPlugin")};
+		TArray<FString> ExternallyReferenced = bPlugins ? TArray<FString> {} : TArray<FString> {TEXT("C_RefByPlugin")};
+		// the list holds every asset with a referencer outside the scan, engine content too
+		if (FPjcTestFixture::HasEngineNamed()) {
+			ExternallyReferenced.Add(TEXT("C_EngineNamed"));
+		}
 		TestSetEqual(*this, Mode + TEXT(", externally referenced"), FixtureAssets(Assets), ObjectPaths(Fixture, ExternallyReferenced));
 	}
 
@@ -609,6 +613,14 @@ bool FPjcTestScanUsage::RunTest(const FString& Parameters) {
 	TestReason(TEXT("LS_Cinematic"), EPjcUsageReason::Cinematic, nullptr, TEXT("Cinematic"));
 	TestReason(TEXT("C_PjcSplash"), EPjcUsageReason::Splash, nullptr, nullptr);
 	TestReason(TEXT("C_PjcPreset"), EPjcUsageReason::Megascans, nullptr, nullptr);
+	if (FPjcTestFixture::HasEngineNamed()) {
+		TestReason(TEXT("C_EngineNamed"), EPjcUsageReason::EngineContentOnly, nullptr, TEXT("/"));
+		FPjcTestFixture::Case(*this, TEXT("referenced only by engine content"));
+	}
+	else {
+		TestReason(TEXT("C_EngineNamed"), EPjcUsageReason::None, nullptr, nullptr);
+		FPjcTestFixture::Case(*this, TEXT("referenced only by engine content"), TEXT("no engine content names the path"));
+	}
 	TestReason(TEXT("C_Labeled"), EPjcUsageReason::None, nullptr, nullptr);
 	TestReason(TEXT("C_Packaged"), EPjcUsageReason::FolderLabel, TEXT("PAL_Packaged"), nullptr);
 	TestReason(TEXT("C_UnusedLeaf"), EPjcUsageReason::None, nullptr, nullptr);
@@ -763,6 +775,12 @@ bool FPjcTestScanResult::RunTest(const FString& Parameters) {
 	TestStatus(TEXT("C_Labeled"), EPjcAssetStatus::Unused, EPjcUsageReason::None);
 	TestStatus(TEXT("C_PjcSplash"), EPjcAssetStatus::EditorOnly, EPjcUsageReason::Splash);
 	TestStatus(TEXT("C_PjcPreset"), EPjcAssetStatus::EditorOnly, EPjcUsageReason::Megascans);
+	if (FPjcTestFixture::HasEngineNamed()) {
+		TestStatus(TEXT("C_EngineNamed"), EPjcAssetStatus::Review, EPjcUsageReason::EngineContentOnly);
+	}
+	else {
+		TestStatus(TEXT("C_EngineNamed"), EPjcAssetStatus::Unused, EPjcUsageReason::None);
+	}
 	TestStatus(TEXT("C_Packaged"), EPjcAssetStatus::Used, EPjcUsageReason::FolderLabel);
 	TestStatus(TEXT("PAL_Packaged"), EPjcAssetStatus::EditorOnly, EPjcUsageReason::Primary);
 	TestStatus(TEXT("PAL_Explicit"), EPjcAssetStatus::EditorOnly, EPjcUsageReason::Primary);
@@ -784,6 +802,7 @@ bool FPjcTestScanResult::RunTest(const FString& Parameters) {
 	if (Fixture.HasCues()) {
 		TestStatus(TEXT("GC_PjcTest_Fired"), EPjcAssetStatus::Used, EPjcUsageReason::GameplayCue);
 		for (const auto& Name : Fixture.ReviewNames()) {
+			if (Name == TEXT("C_EngineNamed")) continue;
 			TestStatus(*Name, EPjcAssetStatus::Review, EPjcUsageReason::GameplayCueNotFired);
 		}
 		TestStatus(TEXT("BP_CueUnused"), EPjcAssetStatus::Unused, EPjcUsageReason::None);

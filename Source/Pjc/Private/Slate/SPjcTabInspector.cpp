@@ -144,6 +144,7 @@ namespace
 			case EPjcUsageReason::FolderLabel :			return TEXT("Folder label");
 			case EPjcUsageReason::CookPackaged :		return TEXT("Last cook");
 			case EPjcUsageReason::GameplayCueNotFired : return TEXT("Cue nothing fires");
+			case EPjcUsageReason::EngineContentOnly :	return TEXT("Engine content only");
 			default :									return TEXT("Root");
 		}
 	}

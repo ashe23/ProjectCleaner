@@ -113,6 +113,10 @@ class FPjcTestFixture
 	static FString SplashPackage();
 	// asset in the project's MSPresets folder (outside the fixture root)
 	static FString PresetPackage();
+	// asset at a path sample content of the engine names (outside the fixture root): CR_Mannequin_Body
+	static FString EngineNamedPackage();
+	// engine content of this engine references EngineNamedPackage
+	static bool HasEngineNamed();
 	static FString IndirectConfigFile();
 	static FString PythonFile();
 	static FString PlatformConfigFile();
