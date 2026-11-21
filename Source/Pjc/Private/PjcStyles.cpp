@@ -174,6 +174,8 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create() {
 	Style->Set("TreeArrow_Collapsed_Hovered", new FSlateImageBrush {Icon(TEXT("CaretRight"), 10.0f, ColorText)});
 	Style->Set("TreeArrow_Expanded", new FSlateImageBrush {Icon(TEXT("CaretDown"), 10.0f, ColorMuted)});
 	Style->Set("TreeArrow_Expanded_Hovered", new FSlateImageBrush {Icon(TEXT("CaretDown"), 10.0f, ColorText)});
+	// SExpanderArrow asks its style set for the wire brush on every paint, also with the wires off
+	Style->Set("WhiteBrush", new FSlateColorBrush {FLinearColor::White});
 	// marks of circular references (Inspector) and redirector fixes (Issues): white, tinted when drawn
 	Style->Set("ProjectCleaner.Graph.Loop", new FSlateImageBrush {Icon(TEXT("Loop"), 16.0f, White)});
 	Style->Set("ProjectCleaner.Graph.Pair", new FSlateImageBrush {Icon(TEXT("Pair"), 16.0f, White)});
