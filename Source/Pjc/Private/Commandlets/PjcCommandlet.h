@@ -22,7 +22,7 @@ class FJsonObject;
  *   -list                    print found items, not only counts
  *   -report=<file.json>      write stats and every found item as json (for CI and scripts)
  *
- * Returns 0 on success, 1 when something failed to delete.
+ * Returns 0 on success, 1 when something failed to delete, 2 when -scan_only comes with a switch that changes files.
  */
 UCLASS()
 class UPjcCommandlet : public UCommandlet

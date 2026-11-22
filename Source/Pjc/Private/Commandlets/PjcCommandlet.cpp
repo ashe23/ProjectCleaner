@@ -122,6 +122,25 @@ int32 UPjcCommandlet::Main(const FString& Params) {
 
 	ParseCommandLinesArguments(Params);
 
+	// -scan_only changes nothing: a switch that changes files with it is a mistake in the command line, not a choice
+	TArray<FString> Changing;
+	if (bFixRedirectors) Changing.Add(TEXT("-fix_redirectors"));
+	if (bFullCleanup) Changing.Add(TEXT("-full_cleanup"));
+	if (bDeleteAssetsUnused) Changing.Add(TEXT("-delete_assets_unused"));
+	if (bDeleteFoldersEmpty) Changing.Add(TEXT("-delete_folders_empty"));
+	if (bDeleteFilesExternal) Changing.Add(TEXT("-delete_files_external"));
+	if (bDeleteFilesCorrupted) Changing.Add(TEXT("-delete_files_corrupted"));
+	if (bScanOnly && Changing.Num() > 0) {
+		UE_LOG(
+			LogProjectCleanerCLI,
+			Error,
+			TEXT("-scan_only changes nothing, but %s %s files. Remove one of them. Nothing was done."),
+			*FString::Join(Changing, TEXT(", ")),
+			Changing.Num() == 1 ? TEXT("changes") : TEXT("change")
+		);
+		return 2;
+	}
+
 	// cli arguments
 	//- scan_only
 	//- full_cleanup

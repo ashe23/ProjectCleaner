@@ -39,7 +39,7 @@ UnrealEditor-Cmd.exe <Project.uproject> -run=Pjc <switches>
 ```
 | Switch | Description |
 |---|---|
-| `-scan_only` | print stats only |
+| `-scan_only` | print stats only, change nothing (with a switch that changes files: exit code 2) |
 | `-full_cleanup` | all delete operations below |
 | `-delete_assets_unused` | delete unused assets |
 | `-delete_folders_empty` | delete empty folders |
