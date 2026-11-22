@@ -6,11 +6,13 @@
 #include "PjcSubsystem.h"
 #include "Widgets/SCompoundWidget.h"
 
+class SBox;
 class SWindow;
 
 /**
- * Scan window: a centered modal window while the project is scanned. Steps with what each found, the item being read,
- * elapsed time and percent, Cancel (the last result stays). It closes by itself when the scan is done.
+ * Scan window: a centered modal window while the project is scanned. A stats card (progress, time, step, assets; when
+ * done assets, time, unused, to review), a progress bar, the steps with what each found, the item being read, and Cancel
+ * (the last result stays). It closes by itself when the scan is done.
  */
 class SPjcScanWindow final : public SCompoundWidget
 {
@@ -31,11 +33,14 @@ class SPjcScanWindow final : public SCompoundWidget
 
 	// runs the scan, the window drawn between its steps
 	void StartScan();
+	// the stats card while the scan runs, or of the scan result when it is done
+	TSharedRef<SWidget> MakeStats(const bool bDone);
 	void Close() const;
 	float GetPercent() const;
 	static void PumpUi();
 
 	TWeakPtr<SWindow> Window;
+	TSharedPtr<SBox> StatsBox;
 	FPjcScanProgress Progress;
 	bool bScanned = false;
 	bool bFinished = false;

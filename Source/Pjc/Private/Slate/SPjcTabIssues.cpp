@@ -1885,8 +1885,8 @@ void SPjcTabIssues::DeleteRows(const TArray<FRowPtr>& InRows) {
 	for (const auto& Row : InRows) {
 		Paths.Add(Row->Id);
 		Size += FMath::Max<int64>(Row->Size, 0);
-		List.Rows.Emplace(Row->Name, Row->Size >= 0 ? PjcFormat::Size(Row->Size) : FString {});
 	}
+	List.Table = bFolders ? FPjcTable::MakeFolders(Paths) : FPjcTable::MakeFiles(Paths);
 	const FString PathsText = PjcFormat::Count(Paths.Num());
 	const FString FilesText = FString::Printf(TEXT("Files \u00B7 %s \u00B7 %s"), *PathsText, *PjcFormat::Size(Size));
 	List.Heading = bFolders ? FString::Printf(TEXT("Folders \u00B7 %s"), *PathsText) : FilesText;

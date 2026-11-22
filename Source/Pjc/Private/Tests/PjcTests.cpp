@@ -2415,4 +2415,54 @@ bool FPjcTestForceDelete::RunTest(const FString& Parameters) {
 	return true;
 }
 
+// an exclusion taken in place by the last result gives the same unused assets as a full scan
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPjcTestExcludeInPlace, "ProjectCleaner.Scan.ExcludeInPlace", PJC_TEST_FLAGS)
+
+bool FPjcTestExcludeInPlace::RunTest(const FString& Parameters) {
+	FPjcScopedScanSettings ScopedSettings {false};
+	FPjcTestFixture Fixture;
+	if (!Fixture.Build(*this)) return false;
+	if (!TestTrue(TEXT("scanned"), UPjcSubsystem::Scan(false))) return false;
+
+	// an unused asset that references other unused assets: they become used with it
+	const FPjcScanResult& Result = UPjcSubsystem::GetScanResult();
+	IAssetRegistry& Registry = UPjcSubsystem::GetModuleAssetRegistry().Get();
+	const FAssetData* Picked = nullptr;
+	for (const auto& Asset : Result.Unused) {
+		TArray<FName> Deps;
+		Registry.GetDependencies(Asset.PackageName, Deps);
+		if (Deps.ContainsByPredicate([&Result](const FName Dep) {
+				return Result.Status.Contains(Dep) && !Result.IsUsed(Dep);
+			})) {
+			Picked = &Asset;
+			break;
+		}
+	}
+	if (!TestNotNull(TEXT("an unused asset with unused dependencies"), Picked)) return false;
+	const FAssetData Asset = *Picked;
+
+	UPjcAssetExcludeSettings* Exclusions = GetMutableDefault<UPjcAssetExcludeSettings>();
+	const TArray<TSoftObjectPtr<UObject>> AssetsBefore = Exclusions->ExcludedAssets;
+	Exclusions->ExcludedAssets.Add(TSoftObjectPtr<UObject> {FSoftObjectPath {PjcShim::GetObjectPathString(Asset)}});
+	ON_SCOPE_EXIT {
+		Exclusions->ExcludedAssets = AssetsBefore;
+		UPjcSubsystem::Scan(false);
+	};
+
+	const int32 NumUnusedBefore = Result.Unused.Num();
+	if (!TestTrue(TEXT("applied in place"), UPjcSubsystem::ApplyExclusionsInPlace())) return false;
+	TSet<FName> InPlace;
+	for (const auto& Each : Result.Unused) InPlace.Add(Each.PackageName);
+	TestTrue(TEXT("the excluded asset is used"), Result.IsUsed(Asset.PackageName));
+	TestTrue(TEXT("the excluded asset is in the Excluded list"), Result.Excluded.Contains(Asset.PackageName));
+	TestTrue(TEXT("its unused dependencies are used too"), InPlace.Num() < NumUnusedBefore - 1);
+
+	if (!TestTrue(TEXT("full scan"), UPjcSubsystem::Scan(false))) return false;
+	TSet<FName> Full;
+	for (const auto& Each : Result.Unused) Full.Add(Each.PackageName);
+	TestEqual(TEXT("same unused count as a full scan"), InPlace.Num(), Full.Num());
+	TestTrue(TEXT("same unused assets as a full scan"), InPlace.Difference(Full).Num() == 0 && Full.Difference(InPlace).Num() == 0);
+	return true;
+}
+
 #endif

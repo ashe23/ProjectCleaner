@@ -2362,9 +2362,9 @@ TSharedRef<SWidget> SPjcTabUnused::MakeListViewMenu() {
 			  return bThumbnails;
 		  })
 		};
-		const FText Tip = FText::FromString(TEXT(
-			"Shows the thumbnails saved in the asset files, as the Content Browser does. Assets in memory show a live preview when you "
-		) TEXT("point at them. Nothing is loaded for it. Large lists draw slower."));
+		const TCHAR* TipText = TEXT("Shows the thumbnails saved in the asset files, as the Content Browser does. ")
+			TEXT("Assets in memory show a live preview when you point at them. Nothing is loaded for it.");
+		const FText Tip = FText::FromString(TipText);
 		Menu.AddMenuEntry(FText::FromString(TEXT("Thumbnails")), Tip, FSlateIcon {}, Action, NAME_None, EUserInterfaceActionType::ToggleButton);
 	}
 	Menu.AddSeparator();

@@ -303,17 +303,19 @@ void SPjcHelpWindow::Construct(const FArguments& InArgs) {
 }
 
 void SPjcHelpWindow::Show() {
+	const TSharedRef<SPjcHelpWindow> Content = SNew(SPjcHelpWindow);
 	// clang-format off
 	const TSharedRef<SWindow> HelpWindow = SNew(SWindow)
 		.Title(FText::FromString(TEXT("Help")))
+		.ClientSize(PjcWidgets::GetContentSize(Content))
 		.SupportsMaximize(false)
 		.SupportsMinimize(false)
 		.SizingRule(ESizingRule::Autosized);
 	// clang-format on
-	const TSharedRef<SPjcHelpWindow> Content = SNew(SPjcHelpWindow).Window(HelpWindow);
+	Content->Window = HelpWindow;
 	HelpWindow->SetContent(Content);
 	PjcTabs::SetWindowOpen(true);
-	FSlateApplication::Get().AddModalWindow(HelpWindow, FSlateApplication::Get().GetActiveTopLevelWindow());
+	PjcWidgets::ShowModal(HelpWindow);
 	if (Content->bReport) {
 		SPjcReportWindow::Open();
 	}
@@ -574,7 +576,7 @@ void SPjcReportWindow::Open() {
 		.SizingRule(ESizingRule::UserSized);
 	// clang-format on
 	ReportWindow->SetContent(SNew(SPjcReportWindow).Window(ReportWindow));
-	FSlateApplication::Get().AddModalWindow(ReportWindow, FSlateApplication::Get().GetActiveTopLevelWindow());
+	PjcWidgets::ShowModal(ReportWindow);
 }
 
 FString SPjcReportWindow::GetScanSettingsText() {

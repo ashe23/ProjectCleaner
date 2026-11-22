@@ -21,6 +21,7 @@ namespace
 {
 	// unity builds join files: names unique to this file
 	constexpr int32 PjcDialogMaxRows = 60;
+	constexpr float PjcDialogMaxHeight = 620.0f;
 }	// namespace
 
 void SPjcDialog::Construct(const FArguments& InArgs) {
@@ -100,6 +101,14 @@ void SPjcDialog::Construct(const FArguments& InArgs) {
 			];
 			// clang-format on
 		}
+		if (Part.Table.IsSet()) {
+			// clang-format off
+			Body->AddSlot().AutoHeight().Padding(FMargin {0.0f, 0.0f, 0.0f, 10.0f})
+			[
+				SNew(SPjcTable).Table(Part.Table)
+			];
+			// clang-format on
+		}
 	}
 
 	const TSharedRef<SHorizontalBox> Buttons = SNew(SHorizontalBox);
@@ -148,52 +157,72 @@ void SPjcDialog::Construct(const FArguments& InArgs) {
 		]
 	];
 
+	// a dialog with a width is as high as its content, up to a limit
+	const bool bSized = InArgs._Width > 0.0f;
 	ChildSlot
 	[
-		SNew(SBorder).BorderImage(PjcShim::GetBrush(TEXT("ToolPanel.GroupBorder"))).Padding(0.0f)
+		SNew(SBox)
+		.WidthOverride(bSized ? FOptionalSize {InArgs._Width} : FOptionalSize {})
+		.MaxDesiredHeight(bSized ? FOptionalSize {PjcDialogMaxHeight} : FOptionalSize {})
 		[
-			SNew(SVerticalBox)
-			+ SVerticalBox::Slot().FillHeight(1.0f)
+			SNew(SBorder).BorderImage(PjcShim::GetBrush(TEXT("ToolPanel.GroupBorder"))).Padding(0.0f)
 			[
-				SNew(SScrollBox)
-				+ SScrollBox::Slot().Padding(FMargin {16.0f, 14.0f, 16.0f, 4.0f})
+				SNew(SVerticalBox)
+				+ SVerticalBox::Slot().FillHeight(1.0f)
 				[
-					Body
+					SNew(SScrollBox)
+					+ SScrollBox::Slot().Padding(FMargin {16.0f, 14.0f, 16.0f, 4.0f})
+					[
+						Body
+					]
 				]
-			]
-			+ SVerticalBox::Slot().AutoHeight()
-			[
-				SNew(SBox).HeightOverride(1.0f)
+				+ SVerticalBox::Slot().AutoHeight()
 				[
-					SNew(SImage).Image(FCoreStyle::Get().GetBrush("WhiteBrush")).ColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.Line"))
+					SNew(SBox).HeightOverride(1.0f)
+					[
+						SNew(SImage).Image(FCoreStyle::Get().GetBrush("WhiteBrush")).ColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.Line"))
+					]
 				]
-			]
-			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Right).Padding(FMargin {16.0f, 10.0f})
-			[
-				Buttons
+				+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Right).Padding(FMargin {16.0f, 10.0f})
+				[
+					Buttons
+				]
 			]
 		]
 	];
 	// clang-format on
 }
 
-bool SPjcDialog::Show(const FString& Title, const TArray<FPjcDialogPart>& Parts, const FString& ConfirmText, const FName ConfirmColor) {
+bool SPjcDialog::Show(
+	const FString& Title,
+	const TArray<FPjcDialogPart>& Parts,
+	const FString& ConfirmText,
+	const FName ConfirmColor,
+	const float Width
+) {
+	// a dialog with a table is as high as its content, the others as high as their rows
 	int32 NumRows = 0;
+	bool bTable = false;
 	for (const auto& Part : Parts) {
 		NumRows += FMath::Min(Part.Rows.Num(), 8) + 3;
+		bTable |= Part.Table.IsSet();
 	}
+	const TSharedRef<SPjcDialog> Dialog
+		= SNew(SPjcDialog).Parts(Parts).ConfirmText(ConfirmText).ConfirmColor(ConfirmColor).Width(bTable ? Width : 0.0f);
+	const FVector2D Size
+		= bTable ? PjcWidgets::GetContentSize(Dialog) : FVector2D {Width, FMath::Clamp(120.0f + NumRows * 20.0f, 220.0f, PjcDialogMaxHeight)};
 	// clang-format off
 	const TSharedRef<SWindow> DialogWindow = SNew(SWindow)
 		.Title(FText::FromString(Title))
-		.ClientSize(FVector2D {560.0f, FMath::Clamp(120.0f + NumRows * 20.0f, 220.0f, 620.0f)})
+		.ClientSize(Size)
 		.SupportsMaximize(false)
 		.SupportsMinimize(false)
-		.SizingRule(ESizingRule::UserSized);
+		.SizingRule(bTable ? ESizingRule::Autosized : ESizingRule::UserSized);
 	// clang-format on
-	const TSharedRef<SPjcDialog> Dialog = SNew(SPjcDialog).Parts(Parts).ConfirmText(ConfirmText).ConfirmColor(ConfirmColor).Window(DialogWindow);
+	Dialog->Window = DialogWindow;
 	DialogWindow->SetContent(Dialog);
 
-	FSlateApplication::Get().AddModalWindow(DialogWindow, FSlateApplication::Get().GetActiveTopLevelWindow());
+	PjcWidgets::ShowModal(DialogWindow);
 	return Dialog->bConfirmed;
 }
 

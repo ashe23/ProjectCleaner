@@ -10,6 +10,7 @@
 
 class FMenuBuilder;
 class SToolTip;
+class SWindow;
 class SWidget;
 struct FAssetData;
 struct FSlateBrush;
@@ -57,6 +58,34 @@ namespace PjcWidgets
 
 	// Color of the plugin style, e.g. ProjectCleaner.Color.Red
 	FLinearColor GetColor(const FName Name);
+
+	// Class color of an asset icon, a bit lighter so dark class colors stay readable on dark rows
+	FLinearColor GetIconColor(const FLinearColor& ClassColor);
+
+	// The size of a window's content before the window opens. An auto sized window is centered at the size it opens
+	// with, so it opens with this size to stay centered.
+	FVector2D GetContentSize(const TSharedRef<SWidget>& Content);
+
+	// Shows a modal window centered on the editor window. The engine centers it on a work area it selects, at the size
+	// it opens with, and an auto sized window then grows or shrinks from its top left corner.
+	void ShowModal(const TSharedRef<SWindow>& Window);
+
+	// One number of a stats card: the value (it can change while the card shows), its label and tooltip, the palette
+	// color of a large value
+	struct FStat
+	{
+		TAttribute<FString> Value;
+		FString Label;
+		FString ToolTip;
+		FName Color = TEXT("ProjectCleaner.Color.Strong");
+	};
+
+	// Stats card (Clean project, Scan): the first two numbers large with the label above and the unit smaller, the other
+	// two as label and value lines on the right. A value of 0 or a dash is grey
+	TSharedRef<SWidget> MakeStats(const TArray<FStat>& Stats, const float LinesFill = 1.1f);
+
+	// Mark of a step in a list of steps: a check when done, a spinner while it runs, a dot while it waits
+	TSharedRef<SWidget> MakeStepMark(TFunction<bool()> IsDone, TFunction<bool()> IsRunning);
 
 	// Colors of an Assets set: bars, size map boxes and their text, folders tinted by their share
 	struct FSetColors

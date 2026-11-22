@@ -85,14 +85,16 @@ namespace PjcActions
 	void MarkUnused(const TArray<FName>& Packages) {
 		const FPjcScanResult& Result = UPjcSubsystem::GetScanResult();
 		TArray<FString> Paths;
-		TArray<TPair<FString, FString>> Rows;
+		TArray<FAssetData> Assets;
+		TArray<int64> Sizes;
 		int64 Size = 0;
 		for (const auto& Asset : Result.Assets) {
 			if (!Packages.Contains(Asset.PackageName)) continue;
 
 			Paths.Add(PjcShim::GetObjectPathString(Asset));
-			Size += Result.GetSize(Asset.PackageName);
-			if (Rows.Num() < 12) Rows.Emplace(Asset.AssetName.ToString(), PjcFormat::Size(Result.GetSize(Asset.PackageName)));
+			Assets.Add(Asset);
+			Sizes.Add(Result.GetSize(Asset.PackageName));
+			Size += Sizes.Last();
 		}
 		if (Paths.Num() == 0) return;
 
@@ -110,8 +112,7 @@ namespace PjcActions
 			= TEXT("They leave Review and count as unused. Nothing is deleted now. ") TEXT("Clean project or the Assets tab deletes them later.");
 		FPjcDialogPart& List = Parts.AddDefaulted_GetRef();
 		List.Heading = TEXT("Assets \u00B7 ") + PjcFormat::Size(Size);
-		List.Rows = Rows;
-		if (Paths.Num() > Rows.Num()) List.Rows.Emplace(FString::Printf(TEXT("and %d more"), Paths.Num() - Rows.Num()), FString {});
+		List.Table = FPjcTable::MakeAssets(Assets, Sizes);
 		if (NumWith > 0) {
 			FPjcDialogPart& With = Parts.AddDefaulted_GetRef();
 			With.Note
@@ -173,14 +174,15 @@ namespace PjcActions
 			FPjcDialogPart& What = Parts.AddDefaulted_GetRef();
 			What.Heading = TEXT("Failed to delete, held by");
 			const TMap<FName, FString>& Kept = UPjcSubsystem::GetLastCleanupKept();
-			for (int32 Index = 0; Index < Packages.Num() && Index < 12; ++Index) {
-				const FString* Holder = Kept.Find(Packages[Index]);
-				What.Rows.Emplace(FPackageName::GetShortName(Packages[Index]), Holder ? *Holder : FString {TEXT("something in memory")});
+			TArray<FString> HeldBy;
+			for (const FName Package : Packages) {
+				const FString* Holder = Kept.Find(Package);
+				HeldBy.Add(Holder ? *Holder : FString {TEXT("something in memory")});
 			}
-			if (Packages.Num() > 12) What.Rows.Emplace(FString::Printf(TEXT("and %d more"), Packages.Num() - 12), FString {});
+			What.Table = FPjcTable::MakePackages(Packages, {}, HeldBy);
 			Parts.Add(SPjcDialog::MakeVersionControlNote());
 			const FString Title = FString::Printf(TEXT("Force delete %s"), *PjcFormat::Count(Packages.Num()));
-			if (!SPjcDialog::Show(Title, Parts, TEXT("Force delete"), TEXT("ProjectCleaner.Color.UnusedFill"))) return 0;
+			if (!SPjcDialog::Show(Title, Parts, TEXT("Force delete"), TEXT("ProjectCleaner.Color.UnusedFill"), 760.0f)) return 0;
 		}
 
 		const int32 NumGone = UPjcSubsystem::ForceDeleteAssets(Packages);
@@ -229,7 +231,10 @@ namespace PjcActions
 		FPjcScanDraft::OnEdited().Broadcast();
 
 		UPjcSubsystem::ShowNotification(Message + TEXT(" \u00B7 saved to Config/DefaultEditor.ini"), SNotificationItem::CS_Success, 4.0f);
-		SPjcScanBar::ScanProject();
+		// an exclusion only keeps more assets: the last result takes it at once. Other changed settings still need a scan
+		if (FPjcScanDraft::IsChanged() || !UPjcSubsystem::ApplyExclusionsInPlace()) {
+			SPjcScanBar::ScanProject();
+		}
 	}
 
 	void RemoveExclusions(const TArray<FString>& Folders, const TArray<FString>& Classes, const TArray<FString>& Assets, const FString& Message) {

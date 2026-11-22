@@ -5,6 +5,7 @@
 #include "Slate/PjcTabs.h"
 #include "Slate/PjcWidgets.h"
 #include "Slate/SPjcScanBar.h"
+#include "Slate/SPjcTable.h"
 #include "PjcFormat.h"
 #include "PjcScanDraft.h"
 #include "PjcShim.h"
@@ -36,8 +37,6 @@
 namespace
 {
 	// unity builds join files: names unique to this file
-	constexpr int32 PjcCleanTopRows = 5;
-
 	// Version control of the project: provider name and what it means for deleted files, empty when there is none
 	bool PjcCleanVersionControl(FString& OutName, FString& OutDetail) {
 		ISourceControlModule& SourceControl = ISourceControlModule::Get();
@@ -60,6 +59,10 @@ namespace
 void SPjcCleanWindow::Construct(const FArguments& InArgs) {
 	Window = InArgs._Window;
 	Plan = FPjcCleanPlan::Make(UPjcSubsystem::GetScanResult());
+	if (InArgs._Result.IsSet()) {
+		CleanResult = InArgs._Result.GetValue();
+		Phase = EPhase::Done;
+	}
 
 	// clang-format off
 	ChildSlot
@@ -95,7 +98,7 @@ void SPjcCleanWindow::Open() {
 	}));
 
 	PjcTabs::SetWindowOpen(true);
-	FSlateApplication::Get().AddModalWindow(CleanWindow, FSlateApplication::Get().GetActiveTopLevelWindow());
+	PjcWidgets::ShowModal(CleanWindow);
 	PjcTabs::SetWindowOpen(false);
 }
 
@@ -104,67 +107,83 @@ void SPjcCleanWindow::Rebuild() {
 	Body->SetContent(Content);
 }
 
-TSharedRef<SWidget> SPjcCleanWindow::MakeNumbers(const TArray<TTuple<FString, FString, FString>>& Numbers, const int32 Highlight) {
-	const TSharedRef<SHorizontalBox> Row = SNew(SHorizontalBox);
-	for (int32 Index = 0; Index < Numbers.Num(); ++Index) {
-		const FSlateColor Red {PjcWidgets::GetColor("ProjectCleaner.Color.Red")};
-		const FSlateColor NumColor = Index == Highlight ? Red : FSlateColor::UseForeground();
-		// clang-format off
-		Row->AddSlot().FillWidth(1.0f)
-		[
-			SNew(SBox).Padding(FMargin {12.0f, 8.0f}).ToolTip(PjcWidgets::MakeToolTip(Numbers[Index].Get<1>(), Numbers[Index].Get<2>()))
-			[
-				SNew(SVerticalBox)
-				+ SVerticalBox::Slot().AutoHeight()
-				[
-					SNew(STextBlock).Text(FText::FromString(Numbers[Index].Get<0>())).Font(PjcWidgets::GetFontMono(16)).ColorAndOpacity(NumColor)
-				]
-				+ SVerticalBox::Slot().AutoHeight()
-				[
-					SNew(STextBlock).Text(FText::FromString(Numbers[Index].Get<1>())).ColorAndOpacity(FSlateColor::UseSubduedForeground())
-				]
-			]
-		];
-		// clang-format on
+TSharedRef<SWidget> SPjcCleanWindow::MakeNumbers(const TArray<TTuple<FString, FString, FString>>& Numbers) {
+	TArray<PjcWidgets::FStat> Stats;
+	for (const auto& Number : Numbers) {
+		PjcWidgets::FStat& Stat = Stats.AddDefaulted_GetRef();
+		Stat.Value = Number.Get<0>();
+		Stat.Label = Number.Get<1>();
+		Stat.ToolTip = Number.Get<2>();
 	}
-	return PjcWidgets::MakeCard(Row, FMargin {1.0f});
+	// what the delete removes, in red
+	if (Stats.Num() > 0) Stats[0].Color = TEXT("ProjectCleaner.Color.Red");
+	return PjcWidgets::MakeStats(Stats);
 }
 
-TSharedRef<SWidget> SPjcCleanWindow::MakeTopRows(const FString& Title, const TArray<TPair<FString, FString>>& Rows, const int32 NumMore) {
-	const TSharedRef<SVerticalBox> List = SNew(SVerticalBox);
+TSharedRef<SWidget>
+SPjcCleanWindow::MakeTotals(const FString& Title, const TArray<TPair<FString, FPjcOverview::FTotal>>& Totals, const int64 Size, const bool bFolders) {
+	const auto Column = [](const TCHAR* Label, const float FixedWidth, const bool bNumber, const bool bBar) {
+		FPjcTableColumn Out;
+		Out.Label = Label;
+		Out.FixedWidth = FixedWidth;
+		Out.bNumber = bNumber;
+		Out.bBar = bBar;
+		return Out;
+	};
+	FPjcTable Table;
+	Table.Columns = {
+	  Column(TEXT("Name"), 0.0f, false, false),
+	  Column(TEXT(""), 44.0f, false, true),
+	  Column(TEXT("Size"), 72.0f, true, false),
+	  Column(TEXT("Assets"), 56.0f, true, false),
+	};
+	Table.NumVisible = 6;
+	Table.bFixedHeight = true;
+	for (const auto& Total : Totals) {
+		FPjcTableRow& Row = Table.Rows.AddDefaulted_GetRef();
+		FString Name = Total.Key;
+		if (bFolders) {
+			// Game/ muted, then the folder in it
+			Name.RemoveFromStart(TEXT("/"));
+			int32 Slash = INDEX_NONE;
+			if (Name.FindChar(TEXT('/'), Slash)) {
+				Row.Prefix = Name.Left(Slash + 1);
+				Name.RightChopInline(Slash + 1);
+			}
+		}
+		Row.Cells = {Name, FString {}, PjcFormat::Size(Total.Value.Size), PjcFormat::Count(Total.Value.Num)};
+		Row.Share = Size > 0 ? static_cast<float>(static_cast<double>(Total.Value.Size) / static_cast<double>(Size)) : 0.0f;
+		Row.ToolTipTitle = Total.Key;
+		Row.ToolTip = FString::Printf(
+			TEXT("%s \u00B7 %s \u00B7 %s of space freed"),
+			*FPjcTable::Plural(Total.Value.Num, TEXT("asset")),
+			*PjcFormat::Size(Total.Value.Size),
+			*PjcFormat::Percent(Total.Value.Size, Size)
+		);
+	}
+
 	// clang-format off
-	List->AddSlot().AutoHeight().Padding(FMargin {0.0f, 0.0f, 0.0f, 4.0f})
-	[
-		PjcWidgets::MakeCardTitle(Title)
-	];
-	// clang-format on
-	for (const auto& Row : Rows) {
-		// clang-format off
-		List->AddSlot().AutoHeight().Padding(FMargin {0.0f, 1.0f})
+	return SNew(SVerticalBox)
+		+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {0.0f, 0.0f, 0.0f, 5.0f})
 		[
 			SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot().FillWidth(1.0f)
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 			[
-				SNew(STextBlock).Text(FText::FromString(Row.Key)).Clipping(EWidgetClipping::ClipToBounds)
+				PjcWidgets::MakeCardTitle(Title)
 			]
-			+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin {10.0f, 0.0f, 0.0f, 0.0f})
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
 			[
-				SNew(STextBlock).Text(FText::FromString(Row.Value)).Font(PjcWidgets::GetFontMono(9)).ColorAndOpacity(FSlateColor::UseSubduedForeground())
+				SNew(STextBlock)
+				.Text(FText::FromString(PjcFormat::Count(Totals.Num())))
+				.Font(PjcWidgets::GetFontMono(8))
+				.ColorAndOpacity(FSlateColor::UseSubduedForeground())
 			]
-		];
-		// clang-format on
-	}
-	if (NumMore > 0) {
-		// clang-format off
-		List->AddSlot().AutoHeight()
+		]
+		+ SVerticalBox::Slot().AutoHeight()
 		[
-			SNew(STextBlock)
-			.Text(FText::FromString(FString::Printf(TEXT("and %s more"), *PjcFormat::Count(NumMore))))
-			.ColorAndOpacity(FSlateColor::UseSubduedForeground())
+			SNew(SPjcTable).Table(Table)
 		];
-		// clang-format on
-	}
-	return List;
+	// clang-format on
 }
 
 TSharedRef<SWidget> SPjcCleanWindow::MakeNote(const FString& Text, const bool bWarn) {
@@ -220,9 +239,16 @@ TSharedRef<SWidget> SPjcCleanWindow::MakeCheck(const ECheck Kind, const FString&
 				[
 					SNew(STextBlock).Text(FText::FromString(Title))
 				]
-				+ SHorizontalBox::Slot().FillWidth(1.0f)
+				+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
 				[
-					SNew(STextBlock).Text(FText::FromString(DetailText)).ColorAndOpacity(FSlateColor::UseSubduedForeground()).Clipping(EWidgetClipping::ClipToBounds)
+					SNew(SBox)
+					.ToolTip(Detail.IsEmpty() ? TSharedPtr<SToolTip> {} : TSharedPtr<SToolTip> {PjcWidgets::MakeToolTip(Title, Detail)})
+					[
+						SNew(SPjcFitText)
+						.Text(DetailText)
+						.Font(FCoreStyle::GetDefaultFontStyle("Regular", 9))
+						.ColorAndOpacity(FSlateColor::UseSubduedForeground())
+					]
 				]
 			]
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {8.0f, 0.0f, 0.0f, 0.0f})
@@ -256,34 +282,24 @@ TSharedRef<SWidget> SPjcCleanWindow::MakeConfirm() {
 		return MakeTuple(Value, FString {What}, FString {ToolTip});
 	};
 	const TArray<TTuple<FString, FString, FString>> Numbers {
-	  Number(PjcFormat::Count(Plan.Assets.Num()), TEXT("unused assets"), TEXT("Unused assets from last scan. No used asset references them")),
-	  Number(PjcFormat::Size(Plan.Size), TEXT("freed"), TEXT("Size on disk of deleted assets")),
-	  Number(PjcFormat::Count(Plan.NumFoldersEmpty), TEXT("empty folders"), TEXT("Folders that are empty now or after the delete")),
+	  Number(PjcFormat::Count(Plan.Assets.Num()), TEXT("Unused assets"), TEXT("Unused assets from last scan. No used asset references them")),
+	  Number(PjcFormat::Size(Plan.Size), TEXT("Space freed"), TEXT("Size on disk of deleted assets")),
+	  Number(PjcFormat::Count(Plan.NumFoldersEmpty), TEXT("Empty folders"), TEXT("Folders that are empty now or after the delete")),
 	  Number(
-		  PjcFormat::Count(Plan.NumRedirectors), TEXT("redirectors"), TEXT("Redirectors to deleted assets that nothing uses. They are deleted too")
+		  PjcFormat::Count(Plan.NumRedirectors), TEXT("Redirectors"), TEXT("Redirectors to deleted assets that nothing uses. They are deleted too")
 	  ),
 	};
 
-	// where and what
-	TArray<TPair<FString, FString>> FolderRows;
-	for (int32 Index = 0; Index < Plan.Folders.Num() && Index < PjcCleanTopRows; ++Index) {
-		const auto& Folder = Plan.Folders[Index];
-		const FString Total = FString::Printf(TEXT("%s \u00B7 %s"), *PjcFormat::Size(Folder.Value.Size), *PjcFormat::Count(Folder.Value.Num));
-		FolderRows.Emplace(Folder.Key.Mid(1), Total);
-	}
-	TArray<TPair<FString, FString>> ClassRows;
-	for (int32 Index = 0; Index < Plan.Classes.Num() && Index < PjcCleanTopRows; ++Index) {
-		const auto& Class = Plan.Classes[Index];
+	// where and what: every folder and class
+	TArray<TPair<FString, FPjcOverview::FTotal>> Classes;
+	for (const auto& Class : Plan.Classes) {
 		FString ClassName = Class.Key.ToString();
 		int32 Dot = INDEX_NONE;
 		if (ClassName.FindLastChar(TEXT('.'), Dot)) {
 			ClassName.RightChopInline(Dot + 1);
 		}
-		const FString Total = FString::Printf(TEXT("%s \u00B7 %s"), *PjcFormat::Size(Class.Value.Size), *PjcFormat::Count(Class.Value.Num));
-		ClassRows.Emplace(ClassName, Total);
+		Classes.Emplace(ClassName, Class.Value);
 	}
-	const int32 MoreFolders = FMath::Max(0, Plan.Folders.Num() - PjcCleanTopRows);
-	const int32 MoreClasses = FMath::Max(0, Plan.Classes.Num() - PjcCleanTopRows);
 
 	// checks
 	const TSharedRef<SVerticalBox> Checks = SNew(SVerticalBox);
@@ -424,18 +440,18 @@ TSharedRef<SWidget> SPjcCleanWindow::MakeConfirm() {
 				SNew(SVerticalBox)
 				+ SVerticalBox::Slot().AutoHeight()
 				[
-					MakeNumbers(Numbers, 0)
+					MakeNumbers(Numbers)
 				]
 				+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {0.0f, 12.0f})
 				[
 					SNew(SHorizontalBox)
 					+ SHorizontalBox::Slot().FillWidth(1.0f).Padding(FMargin {0.0f, 0.0f, 14.0f, 0.0f})
 					[
-						MakeTopRows(TEXT("Folders"), FolderRows, MoreFolders)
+						MakeTotals(TEXT("Folders"), Plan.Folders, Plan.Size, true)
 					]
 					+ SHorizontalBox::Slot().FillWidth(1.0f)
 					[
-						MakeTopRows(TEXT("Classes"), ClassRows, MoreClasses)
+						MakeTotals(TEXT("Classes"), Classes, Plan.Size, false)
 					]
 				]
 				+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {0.0f, 0.0f, 0.0f, 12.0f})
@@ -520,20 +536,19 @@ void SPjcCleanWindow::ScanAgain() {
 TSharedRef<SWidget> SPjcCleanWindow::MakeRun() {
 	const TSharedRef<SVerticalBox> StepList = SNew(SVerticalBox);
 	for (int32 Index = 0; Index < Steps.Num(); ++Index) {
+		const auto IsDone = [this, Index]() {
+			return Index < StepIndex;
+		};
+		const auto IsRunning = [this, Index]() {
+			return Index == StepIndex;
+		};
 		// clang-format off
 		StepList->AddSlot().AutoHeight().Padding(FMargin {0.0f, 2.0f})
 		[
 			SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin {0.0f, 0.0f, 8.0f, 0.0f})
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 8.0f, 0.0f})
 			[
-				SNew(SBox).WidthOverride(14.0f).HAlign(HAlign_Center)
-				[
-					SNew(STextBlock)
-					.Text_Lambda([this, Index]() { return FText::FromString(Index < StepIndex ? TEXT("\u2713") : (Index == StepIndex ? TEXT("\u203A") : TEXT("\u00B7"))); })
-					.ColorAndOpacity_Lambda([this, Index]() {
-						return Index < StepIndex ? FSlateColor {PjcWidgets::GetColor("ProjectCleaner.Color.Ok")} : FSlateColor::UseSubduedForeground();
-					})
-				]
+				PjcWidgets::MakeStepMark(IsDone, IsRunning)
 			]
 			+ SHorizontalBox::Slot().FillWidth(1.0f)
 			[
@@ -652,13 +667,13 @@ void SPjcCleanWindow::Run() {
 		UnusedPackages.Add(Asset.PackageName);
 	}
 	TArray<FAssetData> ToDelete;
-	Skipped.Reset();
+	CleanResult.Skipped.Reset();
 	for (const auto& Asset : Plan.Assets) {
 		if (UnusedPackages.Contains(Asset.PackageName)) {
 			ToDelete.Add(Asset);
 		}
 		else {
-			Skipped.Add(Asset.PackageName);
+			CleanResult.Skipped.Add(Asset.PackageName);
 		}
 	}
 	Percent = 0.05f;
@@ -677,44 +692,44 @@ void SPjcCleanWindow::Run() {
 		RedirectorsBefore.Add(Redirector.PackageName.ToString());
 	}
 	UPjcSubsystem::DeleteAssets(ToDelete, false, false, &Progress);
-	bStopped = Progress.bStopped;
-	NumForced = 0;
-	NumInMemory = 0;
-	if (bForceDelete && !bStopped) {
+	CleanResult.bStopped = Progress.bStopped;
+	CleanResult.NumForced = 0;
+	CleanResult.NumInMemory = 0;
+	if (bForceDelete && !CleanResult.bStopped) {
 		TArray<FName> Held;
 		UPjcSubsystem::GetLastCleanupKept().GetKeys(Held);
 		if (Held.Num() > 0) {
 			SetStep(1, FString::Printf(TEXT("Force deleting %s"), *PjcFormat::Count(Held.Num())));
-			NumForced = PjcActions::ForceDelete(Held, false, false, &NumInMemory);
+			CleanResult.NumForced = PjcActions::ForceDelete(Held, false, false, &CleanResult.NumInMemory);
 		}
 	}
 	Percent = 0.85f;
 
 	TArray<FName> Deleted;
-	NumDeleted = 0;
-	SizeFreed = 0;
+	CleanResult.NumDeleted = 0;
+	CleanResult.SizeFreed = 0;
 	for (const auto& Asset : ToDelete) {
 		if (FPackageName::DoesPackageExist(Asset.PackageName.ToString())) continue;
 
 		Deleted.Add(Asset.PackageName);
-		++NumDeleted;
-		SizeFreed += Sizes.FindRef(Asset.PackageName);
+		++CleanResult.NumDeleted;
+		CleanResult.SizeFreed += Sizes.FindRef(Asset.PackageName);
 	}
-	NumLeft = bStopped ? ToDelete.Num() - Progress.NumTried : 0;
-	NumRedirectorsRemoved = 0;
+	CleanResult.NumLeft = CleanResult.bStopped ? ToDelete.Num() - Progress.NumTried : 0;
+	CleanResult.NumRedirectorsRemoved = 0;
 	for (const auto& Redirector : RedirectorsBefore) {
-		NumRedirectorsRemoved += FPackageName::DoesPackageExist(Redirector) ? 0 : 1;
+		CleanResult.NumRedirectorsRemoved += FPackageName::DoesPackageExist(Redirector) ? 0 : 1;
 	}
 
 	// empty folders, not after a stop: the rest is still there
-	NumFoldersRemoved = 0;
-	if (!bStopped) {
+	CleanResult.NumFoldersRemoved = 0;
+	if (!CleanResult.bStopped) {
 		SetStep(2, FString {});
 		TArray<FString> FoldersBefore;
 		UPjcSubsystem::GetFoldersEmpty(FoldersBefore);
 		UPjcSubsystem::DeleteFoldersEmpty(false, false);
 		for (const auto& Folder : FoldersBefore) {
-			NumFoldersRemoved += IFileManager::Get().DirectoryExists(*Folder) ? 0 : 1;
+			CleanResult.NumFoldersRemoved += IFileManager::Get().DirectoryExists(*Folder) ? 0 : 1;
 		}
 	}
 	Percent = 0.9f;
@@ -724,12 +739,12 @@ void SPjcCleanWindow::Run() {
 	Percent = 1.0f;
 
 	// what was not deleted, and what lost a reference
-	NotDeleted.Reset();
+	CleanResult.NotDeleted.Reset();
 	for (const auto& Pair : UPjcSubsystem::GetLastCleanupKept()) {
-		NotDeleted.Add(FString::Printf(TEXT("%s \u00B7 %s"), *FPackageName::GetShortName(Pair.Key), *Pair.Value));
+		CleanResult.NotDeleted.Add(FString::Printf(TEXT("%s \u00B7 %s"), *FPackageName::GetShortName(Pair.Key), *Pair.Value));
 	}
-	FPjcCleanPlan::GetBrokenReferencers(Deleted, Broken);
-	for (const FName Referencer : Broken) {
+	FPjcCleanPlan::GetBrokenReferencers(Deleted, CleanResult.Broken);
+	for (const FName Referencer : CleanResult.Broken) {
 		UE_LOG(LogProjectCleaner, Warning, TEXT("Clean project: %s references a deleted asset"), *Referencer.ToString());
 	}
 
@@ -739,10 +754,12 @@ void SPjcCleanWindow::Run() {
 
 TSharedRef<SWidget> SPjcCleanWindow::MakeDone() {
 	const TArray<TTuple<FString, FString, FString>> Numbers {
-	  MakeTuple(PjcFormat::Count(NumDeleted), FString {TEXT("assets deleted")}, FString {TEXT("Unused assets removed from disk")}),
-	  MakeTuple(PjcFormat::Size(SizeFreed), FString {TEXT("freed")}, FString {TEXT("Size on disk of deleted assets")}),
-	  MakeTuple(PjcFormat::Count(NumFoldersRemoved), FString {TEXT("folders removed")}, FString {TEXT("Empty folders deleted")}),
-	  MakeTuple(PjcFormat::Count(NumRedirectorsRemoved), FString {TEXT("redirectors removed")}, FString {TEXT("Redirectors to deleted assets")}),
+	  MakeTuple(PjcFormat::Count(CleanResult.NumDeleted), FString {TEXT("Assets deleted")}, FString {TEXT("Unused assets removed from disk")}),
+	  MakeTuple(PjcFormat::Size(CleanResult.SizeFreed), FString {TEXT("Space freed")}, FString {TEXT("Size on disk of deleted assets")}),
+	  MakeTuple(PjcFormat::Count(CleanResult.NumFoldersRemoved), FString {TEXT("Folders removed")}, FString {TEXT("Empty folders deleted")}),
+	  MakeTuple(
+		  PjcFormat::Count(CleanResult.NumRedirectorsRemoved), FString {TEXT("Redirectors removed")}, FString {TEXT("Redirectors to deleted assets")}
+	  ),
 	};
 
 	const TSharedRef<SVerticalBox> Notes = SNew(SVerticalBox);
@@ -754,37 +771,41 @@ TSharedRef<SWidget> SPjcCleanWindow::MakeDone() {
 		];
 		// clang-format on
 	};
-	if (bStopped) {
-		const FString Left = PjcFormat::Count(NumLeft);
+	if (CleanResult.bStopped) {
+		const FString Left = PjcFormat::Count(CleanResult.NumLeft);
 		AddNote(TEXT("Stopped after a batch. ") + Left + TEXT(" unused assets are left. Run Clean project again to continue."), true);
 	}
-	if (Skipped.Num() > 0) {
+	if (CleanResult.Skipped.Num() > 0) {
 		TArray<FString> Names;
-		for (int32 Index = 0; Index < Skipped.Num() && Index < 8; ++Index) {
-			Names.Add(FPackageName::GetShortName(Skipped[Index]));
+		for (int32 Index = 0; Index < CleanResult.Skipped.Num() && Index < 8; ++Index) {
+			Names.Add(FPackageName::GetShortName(CleanResult.Skipped[Index]));
 		}
-		const FString SkippedText = FString::Printf(TEXT("%s skipped because they are used now: "), *PjcFormat::Count(Skipped.Num()));
+		const FString SkippedText = FString::Printf(TEXT("%s skipped because they are used now: "), *PjcFormat::Count(CleanResult.Skipped.Num()));
 		AddNote(SkippedText + FString::Join(Names, TEXT(", ")), true);
 	}
-	if (NumForced > 0) {
-		AddNote(FString::Printf(TEXT("%s force deleted."), *PjcFormat::Count(NumForced)), false);
+	if (CleanResult.NumForced > 0) {
+		AddNote(FString::Printf(TEXT("%s force deleted."), *PjcFormat::Count(CleanResult.NumForced)), false);
 	}
-	if (NumInMemory > 0) {
-		const FString InMemory = FString::Printf(TEXT("%s deleted from disk, but the editor still holds them. "), *PjcFormat::Count(NumInMemory));
+	if (CleanResult.NumInMemory > 0) {
+		const FString InMemory
+			= FString::Printf(TEXT("%s deleted from disk, but the editor still holds them. "), *PjcFormat::Count(CleanResult.NumInMemory));
 		AddNote(InMemory + TEXT("Restart the editor to remove them from the lists."), true);
 	}
-	if (NotDeleted.Num() > 0) {
-		const FString Lines = FString::Join(TArray<FString> {NotDeleted.GetData(), FMath::Min(NotDeleted.Num(), 8)}, TEXT("\n"));
-		const FString Held = FString::Printf(TEXT("%s failed to delete. Each line shows what still holds it. "), *PjcFormat::Count(NotDeleted.Num()));
+	if (CleanResult.NotDeleted.Num() > 0) {
+		const FString Lines
+			= FString::Join(TArray<FString> {CleanResult.NotDeleted.GetData(), FMath::Min(CleanResult.NotDeleted.Num(), 8)}, TEXT("\n"));
+		const FString Held
+			= FString::Printf(TEXT("%s failed to delete. Each line shows what still holds it. "), *PjcFormat::Count(CleanResult.NotDeleted.Num()));
 		const TCHAR* Next = TEXT("They stay in Assets. Force delete removes them anyway. Use it only when you are sure nothing uses them.\n");
 		AddNote(Held + Next + Lines, true);
 	}
-	if (Broken.Num() > 0) {
+	if (CleanResult.Broken.Num() > 0) {
 		TArray<FString> Names;
-		for (int32 Index = 0; Index < Broken.Num() && Index < 8; ++Index) {
-			Names.Add(FPackageName::GetShortName(Broken[Index]));
+		for (int32 Index = 0; Index < CleanResult.Broken.Num() && Index < 8; ++Index) {
+			Names.Add(FPackageName::GetShortName(CleanResult.Broken[Index]));
 		}
-		const FString BrokenText = FString::Printf(TEXT("%s assets reference a deleted asset (Output Log): "), *PjcFormat::Count(Broken.Num()));
+		const FString BrokenText
+			= FString::Printf(TEXT("%s assets reference a deleted asset (Output Log): "), *PjcFormat::Count(CleanResult.Broken.Num()));
 		AddNote(BrokenText + FString::Join(Names, TEXT(", ")), true);
 	}
 	else {
@@ -800,7 +821,7 @@ TSharedRef<SWidget> SPjcCleanWindow::MakeDone() {
 	}
 	AddNote(TEXT("Next: open the main maps and play them before you commit."), false);
 
-	const bool bHeld = NotDeleted.Num() > 0;
+	const bool bHeld = CleanResult.NotDeleted.Num() > 0;
 	// clang-format off
 	return SNew(SVerticalBox)
 		+ SVerticalBox::Slot().FillHeight(1.0f)
@@ -811,7 +832,7 @@ TSharedRef<SWidget> SPjcCleanWindow::MakeDone() {
 				SNew(SVerticalBox)
 				+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {0.0f, 0.0f, 0.0f, 12.0f})
 				[
-					MakeNumbers(Numbers, -1)
+					MakeNumbers(Numbers)
 				]
 				+ SVerticalBox::Slot().AutoHeight()
 				[
@@ -861,13 +882,13 @@ TSharedRef<SWidget> SPjcCleanWindow::MakeDone() {
 						if (Gone == 0) return FReply::Handled();
 
 						// the result again, with what is gone now
-						NumForced += Gone;
-						NumInMemory += InMemory;
-						NumDeleted += Gone;
+						CleanResult.NumForced += Gone;
+						CleanResult.NumInMemory += InMemory;
+						CleanResult.NumDeleted += Gone;
 						UPjcSubsystem::Scan(false);
-						NotDeleted.Reset();
+						CleanResult.NotDeleted.Reset();
 						for (const auto& Pair : UPjcSubsystem::GetLastCleanupKept()) {
-							NotDeleted.Add(FString::Printf(TEXT("%s \u00B7 %s"), *FPackageName::GetShortName(Pair.Key), *Pair.Value));
+							CleanResult.NotDeleted.Add(FString::Printf(TEXT("%s \u00B7 %s"), *FPackageName::GetShortName(Pair.Key), *Pair.Value));
 						}
 						Rebuild();
 						return FReply::Handled();

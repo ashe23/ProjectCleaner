@@ -2,6 +2,7 @@
 
 #include "Slate/SPjcDeleteDialog.h"
 #include "Slate/PjcWidgets.h"
+#include "Slate/SPjcTable.h"
 #include "PjcFormat.h"
 #include "PjcShim.h"
 #include "PjcStyles.h"
@@ -21,7 +22,8 @@
 namespace
 {
 	// unity builds join files: names unique to this file
-	constexpr int32 PjcDeleteDialogMaxListed = 60;
+	constexpr float PjcDeleteDialogWidth = 560.0f;
+	constexpr float PjcDeleteDialogMaxHeight = 640.0f;
 	const TCHAR* const PjcDeleteDialogVcsFound = TEXT("Version control found. Deleted assets can be restored from it.");
 	// clang-format off
 	const TCHAR* const PjcDeleteDialogVcsMissing = TEXT("No version control found for this project. ")
@@ -141,61 +143,65 @@ void SPjcDeleteDialog::Construct(const FArguments& InArgs) {
 		PjcDeleteDialogNote(VcsNote, VcsColor)
 	];
 
+	// as high as its content, up to a limit
 	ChildSlot
 	[
-		SNew(SBorder).BorderImage(PjcShim::GetBrush(TEXT("ToolPanel.GroupBorder"))).Padding(0.0f)
+		SNew(SBox).WidthOverride(PjcDeleteDialogWidth).MaxDesiredHeight(PjcDeleteDialogMaxHeight)
 		[
-			SNew(SVerticalBox)
-			+ SVerticalBox::Slot().FillHeight(1.0f)
+			SNew(SBorder).BorderImage(PjcShim::GetBrush(TEXT("ToolPanel.GroupBorder"))).Padding(0.0f)
 			[
-				SNew(SScrollBox)
-				+ SScrollBox::Slot().Padding(FMargin {16.0f, 14.0f, 16.0f, 10.0f})
+				SNew(SVerticalBox)
+				+ SVerticalBox::Slot().FillHeight(1.0f)
 				[
-					Body
-				]
-			]
-			+ SVerticalBox::Slot().AutoHeight()
-			[
-				SNew(SBox).HeightOverride(1.0f)
-				[
-					SNew(SImage).Image(FCoreStyle::Get().GetBrush("WhiteBrush")).ColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.Line"))
-				]
-			]
-			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Right).Padding(FMargin {16.0f, 10.0f})
-			[
-				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin {0.0f, 0.0f, 8.0f, 0.0f})
-				[
-					SNew(SButton)
-#if ENGINE_MAJOR_VERSION < 5
-					.ButtonStyle(&PjcShim::GetButtonStyle427(false))
-					.ForegroundColor(FSlateColor::UseForeground())
-#endif
-					.ContentPadding(FMargin {14.0f, 3.0f})
-					.OnClicked_Lambda([this]() {
-						if (const TSharedPtr<SWindow> Owner = Window.Pin()) Owner->RequestDestroyWindow();
-						return FReply::Handled();
-					})
+					SNew(SScrollBox)
+					+ SScrollBox::Slot().Padding(FMargin {16.0f, 14.0f, 16.0f, 10.0f})
 					[
-						SNew(STextBlock).Text(FText::FromString(TEXT("Cancel")))
+						Body
 					]
 				]
-				+ SHorizontalBox::Slot().AutoWidth()
+				+ SVerticalBox::Slot().AutoHeight()
 				[
-					SNew(SButton)
-#if ENGINE_MAJOR_VERSION < 5
-					.ButtonStyle(&PjcShim::GetButtonStyle427(true))
-					.ForegroundColor(FSlateColor::UseForeground())
-#endif
-					.ButtonColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.UnusedFill"))
-					.ContentPadding(FMargin {14.0f, 3.0f})
-					.OnClicked_Lambda([this]() {
-						bConfirmed = true;
-						if (const TSharedPtr<SWindow> Owner = Window.Pin()) Owner->RequestDestroyWindow();
-						return FReply::Handled();
-					})
+					SNew(SBox).HeightOverride(1.0f)
 					[
-						SNew(STextBlock).Text(FText::FromString(TEXT("Delete"))).ColorAndOpacity(FLinearColor::White)
+						SNew(SImage).Image(FCoreStyle::Get().GetBrush("WhiteBrush")).ColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.Line"))
+					]
+				]
+				+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Right).Padding(FMargin {16.0f, 10.0f})
+				[
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin {0.0f, 0.0f, 8.0f, 0.0f})
+					[
+						SNew(SButton)
+#if ENGINE_MAJOR_VERSION < 5
+						.ButtonStyle(&PjcShim::GetButtonStyle427(false))
+						.ForegroundColor(FSlateColor::UseForeground())
+#endif
+						.ContentPadding(FMargin {14.0f, 3.0f})
+						.OnClicked_Lambda([this]() {
+							if (const TSharedPtr<SWindow> Owner = Window.Pin()) Owner->RequestDestroyWindow();
+							return FReply::Handled();
+						})
+						[
+							SNew(STextBlock).Text(FText::FromString(TEXT("Cancel")))
+						]
+					]
+					+ SHorizontalBox::Slot().AutoWidth()
+					[
+						SNew(SButton)
+#if ENGINE_MAJOR_VERSION < 5
+						.ButtonStyle(&PjcShim::GetButtonStyle427(true))
+						.ForegroundColor(FSlateColor::UseForeground())
+#endif
+						.ButtonColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.UnusedFill"))
+						.ContentPadding(FMargin {14.0f, 3.0f})
+						.OnClicked_Lambda([this]() {
+							bConfirmed = true;
+							if (const TSharedPtr<SWindow> Owner = Window.Pin()) Owner->RequestDestroyWindow();
+							return FReply::Handled();
+						})
+						[
+							SNew(STextBlock).Text(FText::FromString(TEXT("Delete"))).ColorAndOpacity(FLinearColor::White)
+						]
 					]
 				]
 			]
@@ -207,18 +213,19 @@ void SPjcDeleteDialog::Construct(const FArguments& InArgs) {
 bool SPjcDeleteDialog::Confirm(const TArray<FAssetData>& Selected, const TArray<FAssetData>& With, const TArray<FString>& Held) {
 	if (Selected.Num() == 0) return false;
 
+	const TSharedRef<SPjcDeleteDialog> Dialog = SNew(SPjcDeleteDialog).Selected(Selected).With(With).Held(Held);
 	// clang-format off
 	const TSharedRef<SWindow> DialogWindow = SNew(SWindow)
 		.Title(GetTitle(Selected.Num() + With.Num()))
-		.ClientSize(FVector2D {560.0f, With.Num() > 0 ? 560.0f : 420.0f})
+		.ClientSize(PjcWidgets::GetContentSize(Dialog))
 		.SupportsMaximize(false)
 		.SupportsMinimize(false)
-		.SizingRule(ESizingRule::UserSized);
+		.SizingRule(ESizingRule::Autosized);
 	// clang-format on
-	const TSharedRef<SPjcDeleteDialog> Dialog = SNew(SPjcDeleteDialog).Selected(Selected).With(With).Held(Held).Window(DialogWindow);
+	Dialog->Window = DialogWindow;
 	DialogWindow->SetContent(Dialog);
 
-	FSlateApplication::Get().AddModalWindow(DialogWindow, FSlateApplication::Get().GetActiveTopLevelWindow());
+	PjcWidgets::ShowModal(DialogWindow);
 	return Dialog->bConfirmed;
 }
 
@@ -227,45 +234,5 @@ FText SPjcDeleteDialog::GetTitle(const int32 NumAssets) {
 }
 
 TSharedRef<SWidget> SPjcDeleteDialog::MakeList(const TArray<FAssetData>& Assets) {
-	const TSharedRef<SVerticalBox> List = SNew(SVerticalBox);
-	for (int32 Index = 0; Index < Assets.Num() && Index < PjcDeleteDialogMaxListed; ++Index) {
-		const FAssetData& Asset = Assets[Index];
-		// clang-format off
-		List->AddSlot().AutoHeight().Padding(FMargin {0.0f, 1.0f})
-		[
-			SNew(SHorizontalBox).ToolTip(PjcWidgets::MakeToolTip(FText::FromName(Asset.PackageName)))
-			+ SHorizontalBox::Slot().FillWidth(1.0f)
-			[
-				SNew(STextBlock).Text(FText::FromName(Asset.AssetName))
-			]
-			+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin {12.0f, 0.0f, 0.0f, 0.0f})
-			[
-				SNew(STextBlock)
-				.Text(FText::FromString(PjcFormat::Size(UPjcSubsystem::GetAssetSize(Asset))))
-				.Font(PjcWidgets::GetFontMono(9))
-				.ColorAndOpacity(FSlateColor::UseSubduedForeground())
-			]
-		];
-		// clang-format on
-	}
-	if (Assets.Num() > PjcDeleteDialogMaxListed) {
-		// clang-format off
-		List->AddSlot().AutoHeight().Padding(FMargin {0.0f, 2.0f})
-		[
-			SNew(STextBlock)
-			.Text(FText::FromString(FString::Printf(TEXT("and %s more"), *PjcFormat::Count(Assets.Num() - PjcDeleteDialogMaxListed))))
-			.ColorAndOpacity(FSlateColor::UseSubduedForeground())
-		];
-		// clang-format on
-	}
-	// clang-format off
-	return SNew(SBox).MaxDesiredHeight(160.0f)
-		[
-			SNew(SScrollBox)
-			+ SScrollBox::Slot()
-			[
-				List
-			]
-		];
-	// clang-format on
+	return SNew(SPjcTable).Table(FPjcTable::MakeAssets(Assets));
 }

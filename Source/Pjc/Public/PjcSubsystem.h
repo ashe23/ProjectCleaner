@@ -57,6 +57,8 @@ struct FPjcScanProgress
 
 	// out: the scan stopped on request
 	bool bCanceled = false;
+	// out: assets the scan lists, once the Assets step is done (-1 before)
+	int32 NumAssets = -1;
 };
 
 class FPjcScanCacheScope
@@ -125,6 +127,12 @@ class UPjcSubsystem final : public UEditorSubsystem
 
 	// Result of the last Scan, IsValid() is false before the first one
 	static const FPjcScanResult& GetScanResult();
+
+	// After new exclusion rules: the last scan result takes them in place, without a scan. Excluded assets that were
+	// unused or to review become used, with the unused assets and assets to review they reference (as a scan does). Only
+	// more assets become used, never fewer, so nothing more is deleted than after a scan. A full scan can still tell some
+	// of them apart as editor only. False when there is no scan result to update (then scan).
+	static bool ApplyExclusionsInPlace();
 
 	// Broadcast after every Scan that made a new result
 	static FPjcDelegateScanFinished& OnScanFinished();

@@ -205,13 +205,6 @@ namespace
 	}
 
 	// Button of the toolbar: an icon of the plugin set, then the label
-	// class color of an asset icon in the tree, a bit lighter so dark class colors stay readable on the dark rows
-	FLinearColor PjcInspectorIconColor(const FLinearColor& ClassColor) {
-		FLinearColor Color = ClassColor + (FLinearColor::White - ClassColor) * 0.25f;
-		Color.A = 1.0f;
-		return Color;
-	}
-
 	TSharedRef<SWidget> PjcInspectorToolButton(
 		const FName Brush,
 		const FString& Label,
@@ -606,7 +599,7 @@ TSharedRef<SWidget> SPjcTabInspector::MakeFinder() {
 						.Visibility_Lambda([this]() { return FinderStatus == EStatusFilter::Loaded ? EVisibility::Visible : EVisibility::Collapsed; })
 						.BorderImage(FCoreStyle::Get().GetBrush("WhiteBrush"))
 						.BorderBackgroundColor(PjcInspectorColor("ProjectCleaner.Color.Panel"))
-						.Padding(FMargin {8.0f, 4.0f})
+						.Padding(FMargin {4.0f, 4.0f, 8.0f, 4.0f})
 						[
 							SNew(SHorizontalBox)
 							+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 8.0f, 0.0f})
@@ -943,7 +936,11 @@ TSharedRef<SWidget> SPjcTabInspector::MakeMain() {
 			+ SHeaderRow::Column(PjcInspectorColAsset).FillWidth(0.42f)
 			.HeaderContent()
 			[
-				SNew(STextBlock).Text_Lambda([this]() { return FText::FromString(bUses ? TEXT("Uses") : TEXT("Used by")); })
+				// centered as the default labels of the other columns
+				SNew(SBox).VAlign(VAlign_Center)
+				[
+					SNew(STextBlock).Text_Lambda([this]() { return FText::FromString(bUses ? TEXT("Uses") : TEXT("Used by")); })
+				]
 			]
 			+ PjcWidgets::MakeColumn(SHeaderRow::Column(PjcInspectorColKind).FixedWidth(86.0f).DefaultLabel(FText::FromString(TEXT("Kind"))),
 				FText::FromString(TEXT("Hard: loads with the asset. Soft: loaded on demand by path. Editor only: not cooked")))
@@ -1030,7 +1027,11 @@ TSharedRef<SWidget> SPjcTabInspector::MakeMain() {
 			+ SHeaderRow::Column(PjcInspectorColMeta).FixedWidth(150.0f).HAlignHeader(HAlign_Right).HAlignCell(HAlign_Right)
 			.HeaderContent()
 			[
-				SNew(STextBlock).Text_Lambda([this]() { return FText::FromString(bUses ? TEXT("Size") : TEXT("To a root")); })
+				// centered as the default labels of the other columns
+				SNew(SBox).VAlign(VAlign_Center)
+				[
+					SNew(STextBlock).Text_Lambda([this]() { return FText::FromString(bUses ? TEXT("Size") : TEXT("To a root")); })
+				]
 			]
 			+ SHeaderRow::Column(PjcInspectorColGo).FixedWidth(30.0f).DefaultLabel(FText::GetEmpty())
 		);
@@ -2698,7 +2699,7 @@ TSharedRef<SWidget> SPjcTabInspector::MakeCell(const FItemPtr& Item, const FName
 			[
 				SNew(SBox).WidthOverride(16.0f).HeightOverride(16.0f)
 				[
-					SNew(SImage).Image(Type.Icon).ColorAndOpacity(PjcInspectorIconColor(Type.Color))
+					SNew(SImage).Image(Type.Icon).ColorAndOpacity(PjcWidgets::GetIconColor(Type.Color))
 				]
 			];
 			Box->AddSlot().AutoWidth().VAlign(VAlign_Center)
@@ -2713,7 +2714,7 @@ TSharedRef<SWidget> SPjcTabInspector::MakeCell(const FItemPtr& Item, const FName
 		}
 		if (Item->Kind == FPjcInspectorItem::EKind::Group) {
 			const FLinearColor IconColor = !Item->bFolder && Model.Assets.IsValidIndex(Item->IconNode)
-				? PjcInspectorIconColor(PjcWidgets::GetAssetType(Model.Assets[Item->IconNode]).Color)
+				? PjcWidgets::GetIconColor(PjcWidgets::GetAssetType(Model.Assets[Item->IconNode]).Color)
 				: FLinearColor::White;
 			const FSlateBrush* Icon = Item->bFolder			? FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.Folder")
 				: Item->bStatusGroup						? nullptr
@@ -3165,10 +3166,13 @@ void SPjcTabInspector::ShowWhere(const bool bAsk) {
 void SPjcTabInspector::ReadHolders(const TArray<FName>& Holders, const bool bAsk) {
 	if (Holders.Num() == 0) return;
 
-	// a big load is asked about first: the editor stops while it loads
+	// a big load is asked about first: the editor stops while it loads. Each asset counts with what it loads that is not
+	// in memory yet
+	TArray<int64> Sizes;
 	int64 Size = 0;
 	for (const FName Holder : Holders) {
-		Size += FPjcLocationReader::GetLoadSize(Holder);
+		Sizes.Add(FPjcLocationReader::GetLoadSize(Holder));
+		Size += Sizes.Last();
 	}
 	if (bAsk && Size > PjcInspectorAskAbove) {
 		TArray<FPjcDialogPart> Parts;
@@ -3176,8 +3180,12 @@ void SPjcTabInspector::ReadHolders(const TArray<FName>& Holders, const bool bAsk
 		What.Note = TEXT("To show where references are set, the editor loads these assets and all their dependencies. ")
 			TEXT("The editor can stop responding for some time.");
 		What.NoteColor = TEXT("ProjectCleaner.Color.Yellow");
-		What.Rows.Emplace(PjcInspectorPlural(Holders.Num(), TEXT("asset")), PjcFormat::Size(Size) + TEXT(" on disk, not in memory yet"));
-		if (!SPjcDialog::Show(TEXT("Show where"), Parts, TEXT("Load"))) return;
+		FPjcDialogPart& List = Parts.AddDefaulted_GetRef();
+		List.Table = FPjcTable::MakePackages(Holders, Sizes, {}, false);
+		List.Table.bHeader = false;
+		List.Table.bTotalOnTop = true;
+		List.Table.TotalValue = PjcFormat::Size(Size) + TEXT(" on disk");
+		if (!SPjcDialog::Show(TEXT("Show where"), Parts, TEXT("Load"), TEXT("ProjectCleaner.Color.Accent"), 500.0f)) return;
 	}
 
 	int32 Failed = 0;

@@ -243,9 +243,9 @@ class SPjcTabUnused final : public SCompoundWidget
 	TSharedPtr<SBox> TileBox;
 	bool bGridView = false;
 	// Small, Medium, Large, Huge
-	int32 TileSize = 1;
-	// grid: the asset thumbnails of the editor instead of class icons, off by default (large lists draw slower)
-	bool bThumbnails = false;
+	int32 TileSize = 0;
+	// grid: the asset thumbnails of the editor instead of class icons (View, on by default)
+	bool bThumbnails = true;
 	TSharedPtr<class FAssetThumbnailPool> ThumbnailPool;
 	TSharedRef<SWidget> MakeTileImage(const FPjcUnusedAssetRow& Row);
 };

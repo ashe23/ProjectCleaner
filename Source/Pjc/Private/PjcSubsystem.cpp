@@ -115,6 +115,11 @@ namespace
 		}
 	}
 
+	// Cancel in the Scan window: long steps stop in their loop, the scan then ends and the last result stays
+	bool PjcScanCanceled() {
+		return PjcScanProgress && PjcScanProgress->bCancelRequested;
+	}
+
 	// the item being read, at most 20 times a second
 	void PjcScanCurrent(const FString& Current) {
 		if (!PjcScanProgress || FPlatformTime::Seconds() - PjcScanProgressTime < 0.05) return;
@@ -593,6 +598,7 @@ bool UPjcSubsystem::Scan(const bool bShowSlowTask, FPjcScanProgress* Progress) {
 		Folders.Add(Asset.PackagePath);
 	}
 	const FString NumAssets = PjcFormat::Count(Result.Assets.Num());
+	if (PjcScanProgress) PjcScanProgress->NumAssets = Result.Assets.Num();
 	PjcScanFound(EPjcScanStep::Assets, FString::Printf(TEXT("%s assets \u00B7 %s folders"), *NumAssets, *PjcFormat::Count(Folders.Num())));
 	if (IsCanceled()) return false;
 
@@ -921,6 +927,98 @@ bool UPjcSubsystem::Scan(const bool bShowSlowTask, FPjcScanProgress* Progress) {
 	return true;
 }
 
+bool UPjcSubsystem::ApplyExclusionsInPlace() {
+	FPjcScanResult& Result = LastScan;
+	if (!Result.IsValid() || GetModuleAssetRegistry().Get().IsLoadingAssets()) return false;
+
+	// the rules changed: excluded classes and their subclasses are found again
+	PjcExclusionClassPaths.Reset();
+	PjcExclusionClassNames.Reset();
+
+	TSet<FName> Scanned;
+	for (const auto& Asset : Result.Assets) {
+		Scanned.Add(Asset.PackageName);
+	}
+
+	// every asset a rule matches now: listed in Excluded; the ones not used yet start the walk
+	TArray<FName> Queue;
+	TSet<FName> Reached;
+	for (const auto& Asset : Result.Assets) {
+		FPjcExclusion Exclusion;
+		if (!GetExclusion(Asset, Exclusion)) continue;
+
+		const EPjcAssetStatus Status = Result.GetStatus(Asset.PackageName);
+		const bool bWasKept = Status == EPjcAssetStatus::Used || Status == EPjcAssetStatus::EditorOnly;
+		if (!Result.Excluded.Contains(Asset.PackageName)) {
+			Exclusion.bUsedAnyway = bWasKept;
+			Result.Excluded.Add(Asset.PackageName, Exclusion);
+		}
+		if (bWasKept) continue;
+
+		FPjcAssetUsage& Usage = Result.Usage.FindOrAdd(Asset.PackageName);
+		Usage.bUsed = true;
+		Usage.Reason = EPjcUsageReason::Excluded;
+		Usage.Parent = NAME_None;
+		Usage.Detail = Exclusion.Kind == EPjcExclusionKind::Asset ? TEXT("Excluded asset")
+			: Exclusion.Kind == EPjcExclusionKind::Folder		  ? TEXT("In excluded folder ") + Exclusion.Value
+																  : TEXT("Excluded class ") + Exclusion.Value;
+		Queue.Add(Asset.PackageName);
+		Reached.Add(Asset.PackageName);
+	}
+	if (Queue.Num() == 0) {
+		ScanFinished.Broadcast();
+		return true;
+	}
+
+	// what they reference and is not kept yet: used through them, as the scan follows references from a root
+	IAssetRegistry& Registry = GetModuleAssetRegistry().Get();
+	TArray<FName> Deps;
+	for (int32 Head = 0; Head < Queue.Num(); ++Head) {
+		const FName Package = Queue[Head];
+		Deps.Reset();
+		Registry.GetDependencies(Package, Deps);
+		Deps.Sort(FNameLexicalLess {});
+		for (const FName Dep : Deps) {
+			if (Reached.Contains(Dep) || !Scanned.Contains(Dep)) continue;
+
+			const EPjcAssetStatus Status = Result.GetStatus(Dep);
+			if (Status != EPjcAssetStatus::Unused && Status != EPjcAssetStatus::Review) continue;
+
+			FPjcAssetUsage& Usage = Result.Usage.FindOrAdd(Dep);
+			Usage.bUsed = true;
+			Usage.Reason = EPjcUsageReason::Dependency;
+			Usage.Parent = Package;
+			Usage.Detail.Reset();
+			Reached.Add(Dep);
+			Queue.Add(Dep);
+		}
+	}
+
+	// statuses from the new chains: a new used asset counts as Used (a scan can find some of them editor only)
+	Result.Used.Reset();
+	Result.Unused.Reset();
+	for (const auto& Asset : Result.Assets) {
+		EPjcAssetStatus& Status = Result.Status.FindOrAdd(Asset.PackageName);
+		if (!Result.IsUsed(Asset.PackageName)) {
+			Status = EPjcAssetStatus::Unused;
+		}
+		else if (FPjcScanResult::IsReviewReason(Result.GetChainReason(Asset.PackageName))) {
+			Status = EPjcAssetStatus::Review;
+		}
+		else if (Status == EPjcAssetStatus::Unused || Status == EPjcAssetStatus::Review) {
+			Status = EPjcAssetStatus::Used;
+		}
+		(Status == EPjcAssetStatus::Unused ? Result.Unused : Result.Used).Add(Asset);
+	}
+	for (const FName Package : Reached) {
+		Result.MarkedUnused.Remove(Package);
+		Result.MarkedUnusedRoots.Remove(Package);
+	}
+	UE_LOG(LogProjectCleaner, Display, TEXT("Exclusions applied without a scan: %d assets are used now"), Reached.Num());
+	ScanFinished.Broadcast();
+	return true;
+}
+
 const FPjcScanResult& UPjcSubsystem::GetScanResult() {
 	return LastScan;
 }
@@ -1153,6 +1251,8 @@ void UPjcSubsystem::ComputeAssetsUsed(
 
 	// first reason found is the one reported, most telling first
 	for (const auto& Asset : AssetsAll) {
+		if (PjcScanCanceled()) break;
+
 		PjcScanCurrent(Asset.PackageName.ToString());
 		SlowTask.EnterProgressFrame(1.0f, FText::FromString(Asset.GetFullName()));
 
@@ -1287,6 +1387,10 @@ void UPjcSubsystem::ComputeAssetsUsed(
 	TArray<FName> Deps;
 	const auto FollowDependencies = [&](const bool bFolderLabelOnly) {
 		while (QueueHead < Queue.Num()) {
+			if (PjcScanCanceled()) {
+				QueueHead = Queue.Num();
+				return;
+			}
 			const FName PackageName = Queue[QueueHead++];
 			if (FolderLabels.Contains(PackageName)) continue;
 
@@ -1812,6 +1916,8 @@ void UPjcSubsystem::GetAssetsIndirect(TArray<FAssetData>& Assets, TArray<FPjcAss
 	const FPjcEditorFiles EditorFiles;
 	TArray<FString> Lines;
 	for (const auto& File : ScanFiles) {
+		if (PjcScanCanceled()) break;
+
 		SlowTask.EnterProgressFrame(1.0f, FText::FromString(File));
 		PjcScanCurrent(File);
 

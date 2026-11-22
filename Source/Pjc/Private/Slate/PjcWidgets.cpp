@@ -8,18 +8,21 @@
 // Engine Headers
 #include "AssetRegistry/AssetData.h"
 #include "AssetToolsModule.h"
+#include "Framework/Application/SlateApplication.h"
 #include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "IAssetTypeActions.h"
 #include "Misc/Paths.h"
 #include "Styling/SlateIconFinder.h"
 #include "Styling/CoreStyle.h"
 #include "Widgets/Images/SImage.h"
+#include "Widgets/Images/SThrobber.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/Layout/SSpacer.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/SOverlay.h"
+#include "Widgets/SWindow.h"
 #include "Widgets/SToolTip.h"
 #include "Widgets/Text/STextBlock.h"
 
@@ -122,6 +125,218 @@ namespace PjcWidgets
 
 	FLinearColor GetColor(const FName Name) {
 		return FPjcStyles::Get().GetColor(Name);
+	}
+
+	FVector2D GetContentSize(const TSharedRef<SWidget>& Content) {
+		Content->SlatePrepass(1.0f);
+		return FVector2D {Content->GetDesiredSize()};
+	}
+
+	void ShowModal(const TSharedRef<SWindow>& Window) {
+		const TSharedPtr<SWindow> Parent = FSlateApplication::Get().GetActiveTopLevelWindow();
+		if (!Parent.IsValid()) {
+			FSlateApplication::Get().AddModalWindow(Window, Parent);
+			return;
+		}
+		// the center of the editor window, fully on its screen
+		const TWeakPtr<SWindow> WeakParent = Parent;
+		const auto GetCentered = [WeakParent](const FVector2D& Size) {
+			const TSharedPtr<SWindow> Owner = WeakParent.Pin();
+			if (!Owner.IsValid()) return FVector2D::ZeroVector;
+
+			const FSlateRect OwnerRect = Owner->GetRectInScreen();
+			const FSlateRect Area = FSlateApplication::Get().GetWorkArea(OwnerRect);
+			FVector2D Position {(OwnerRect.Left + OwnerRect.Right - Size.X) * 0.5f, (OwnerRect.Top + OwnerRect.Bottom - Size.Y) * 0.5f};
+			Position.X = FMath::Max(Area.Left, FMath::Min(Position.X, Area.Right - Size.X));
+			Position.Y = FMath::Max(Area.Top, FMath::Min(Position.Y, Area.Bottom - Size.Y));
+			return Position;
+		};
+		struct FCentering
+		{
+			FVector2D Size = FVector2D::ZeroVector;
+			FVector2D Position = FVector2D::ZeroVector;
+			double Start = 0.0;
+			bool bOpened = false;
+		};
+		const TSharedRef<FCentering> State = MakeShared<FCentering>();
+
+		// before it opens: the window opens there, at the size it starts with
+		State->Size = FVector2D {Window->GetSizeInScreen()};
+		State->Position = GetCentered(State->Size);
+		Window->MoveWindowTo(State->Position);
+
+		// an auto sized window takes its size in the first frames: centered again on each change, until the user moves it
+		const TWeakPtr<SWindow> WeakWindow = Window;
+		const FDelegateHandle Handle = FSlateApplication::Get().OnPostTick().AddLambda([State, WeakWindow, GetCentered](float) {
+			const TSharedPtr<SWindow> Shown = WeakWindow.Pin();
+			if (!Shown.IsValid() || !Shown->GetNativeWindow().IsValid()) return;
+
+			const double Now = FPlatformTime::Seconds();
+			if (State->Start == 0.0) State->Start = Now;
+			if (Now - State->Start > 2.0) return;
+
+			const FVector2D Size {Shown->GetSizeInScreen()};
+			const FVector2D Position {Shown->GetPositionInScreen()};
+			// the first frame always: the engine can open it elsewhere
+			if (State->bOpened && (Size.Equals(State->Size, 1.0f) || !Position.Equals(State->Position, 2.0f))) return;
+
+			State->bOpened = true;
+			State->Size = Size;
+			State->Position = GetCentered(Size);
+			Shown->MoveWindowTo(State->Position);
+		});
+		FSlateApplication::Get().AddModalWindow(Window, Parent);
+		FSlateApplication::Get().OnPostTick().Remove(Handle);
+	}
+
+	FLinearColor GetIconColor(const FLinearColor& ClassColor) {
+		FLinearColor Color = ClassColor + (FLinearColor::White - ClassColor) * 0.25f;
+		Color.A = 1.0f;
+		return Color;
+	}
+
+	TSharedRef<SWidget> MakeStats(const TArray<FStat>& Stats, const float LinesFill) {
+		if (Stats.Num() < 4) return SNullWidget::NullWidget;
+
+		const FSlateBrush* White = FCoreStyle::Get().GetBrush("WhiteBrush");
+		const FLinearColor Line = GetColor("ProjectCleaner.Color.Line");
+		const FSlateColor Muted = FSlateColor::UseSubduedForeground();
+		const auto IsZero = [](const FString& Value) {
+			return Value == TEXT("0") || Value == TEXT("\u2013") || Value == PjcFormat::Size(0);
+		};
+		// large: the label above, the value with its unit smaller beside it
+		const auto Large = [&](const FStat& Stat) -> TSharedRef<SWidget> {
+			const TAttribute<FString> Value = Stat.Value;
+			const FSlateColor Color {GetColor(Stat.Color)};
+			const auto Number = [Value]() {
+				FString Left = Value.Get();
+				Value.Get().Split(TEXT(" "), &Left, nullptr);
+				return FText::FromString(Left);
+			};
+			const auto Unit = [Value]() {
+				FString Right;
+				Value.Get().Split(TEXT(" "), nullptr, &Right);
+				return FText::FromString(Right);
+			};
+			// clang-format off
+			return SNew(SBox)
+				.Padding(FMargin {14.0f, 9.0f, 14.0f, 10.0f})
+				.ToolTip(MakeToolTip(Stat.Label, Stat.ToolTip))
+				[
+					SNew(SVerticalBox)
+					+ SVerticalBox::Slot().AutoHeight()
+					[
+						MakeCardTitle(Stat.Label)
+					]
+					+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {0.0f, 2.0f, 0.0f, 0.0f})
+					[
+						SNew(SHorizontalBox)
+						+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Bottom)
+						[
+							SNew(STextBlock)
+							.Text_Lambda(Number)
+							.Font(GetFontMono(16))
+							.ColorAndOpacity_Lambda([Value, IsZero, Color, Muted]() { return IsZero(Value.Get()) ? Muted : Color; })
+						]
+						+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Bottom).Padding(FMargin {5.0f, 0.0f, 0.0f, 3.0f})
+						[
+							SNew(STextBlock).Text_Lambda(Unit).Font(GetFontMono(10)).ColorAndOpacity(Muted)
+						]
+					]
+				];
+			// clang-format on
+		};
+		// small: the label, the value on the right
+		const auto Small = [&](const FStat& Stat) -> TSharedRef<SWidget> {
+			const TAttribute<FString> Value = Stat.Value;
+			// clang-format off
+			return SNew(SHorizontalBox).ToolTip(MakeToolTip(Stat.Label, Stat.ToolTip))
+				+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
+				[
+					SNew(STextBlock).Text(FText::FromString(Stat.Label)).ColorAndOpacity(Muted)
+				]
+				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {10.0f, 0.0f, 0.0f, 0.0f})
+				[
+					SNew(STextBlock)
+					.Text_Lambda([Value]() { return FText::FromString(Value.Get()); })
+					.Font(GetFontMono(10))
+					.ColorAndOpacity_Lambda([Value, IsZero, Muted]() { return IsZero(Value.Get()) ? Muted : FSlateColor::UseForeground(); })
+				];
+			// clang-format on
+		};
+		const auto Separator = [White, Line]() -> TSharedRef<SWidget> {
+			// clang-format off
+			return SNew(SBox).WidthOverride(1.0f)
+				[
+					SNew(SImage).Image(White).ColorAndOpacity(Line)
+				];
+			// clang-format on
+		};
+
+		// clang-format off
+		return SNew(SBorder).BorderImage(White).BorderBackgroundColor(Line).Padding(1.0f)
+			[
+				SNew(SBorder).BorderImage(White).BorderBackgroundColor(GetColor("ProjectCleaner.Color.Recess")).Padding(0.0f)
+				[
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot().FillWidth(1.0f)
+					[
+						Large(Stats[0])
+					]
+					+ SHorizontalBox::Slot().AutoWidth()
+					[
+						Separator()
+					]
+					+ SHorizontalBox::Slot().FillWidth(1.0f)
+					[
+						Large(Stats[1])
+					]
+					+ SHorizontalBox::Slot().AutoWidth()
+					[
+						Separator()
+					]
+					+ SHorizontalBox::Slot().FillWidth(LinesFill).VAlign(VAlign_Center).Padding(FMargin {14.0f, 8.0f})
+					[
+						SNew(SVerticalBox)
+						+ SVerticalBox::Slot().AutoHeight()
+						[
+							Small(Stats[2])
+						]
+						+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {0.0f, 5.0f, 0.0f, 0.0f})
+						[
+							Small(Stats[3])
+						]
+					]
+				]
+			];
+		// clang-format on
+	}
+
+	TSharedRef<SWidget> MakeStepMark(TFunction<bool()> IsDone, TFunction<bool()> IsRunning) {
+		const FSlateColor Ok {GetColor("ProjectCleaner.Color.Ok")};
+		// clang-format off
+		return SNew(SBox).WidthOverride(14.0f).HAlign(HAlign_Center).VAlign(VAlign_Center)
+			[
+				SNew(SOverlay)
+				+ SOverlay::Slot().HAlign(HAlign_Center).VAlign(VAlign_Center)
+				[
+					SNew(STextBlock)
+					.Text_Lambda([IsDone]() { return FText::FromString(IsDone() ? TEXT("\u2713") : TEXT("\u00B7")); })
+					.ColorAndOpacity_Lambda([IsDone, Ok]() { return IsDone() ? Ok : FSlateColor::UseSubduedForeground(); })
+					.Visibility_Lambda([IsRunning]() { return IsRunning() ? EVisibility::Hidden : EVisibility::Visible; })
+				]
+				+ SOverlay::Slot().HAlign(HAlign_Center).VAlign(VAlign_Center)
+				[
+					SNew(SCircularThrobber)
+					.PieceImage(FPjcStyles::Get().GetBrush("ProjectCleaner.Spinner"))
+					.NumPieces(10)
+					.Period(0.8f)
+					.Radius(6.0f)
+					.ColorAndOpacity(GetColor("ProjectCleaner.Color.Accent"))
+					.Visibility_Lambda([IsRunning]() { return IsRunning() ? EVisibility::HitTestInvisible : EVisibility::Collapsed; })
+				]
+			];
+		// clang-format on
 	}
 
 	FSetColors GetSetColors(const EPjcAssetSet Set) {

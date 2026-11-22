@@ -81,6 +81,9 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create() {
 	Style->Set("ProjectCleaner.Color.Line", Color(TEXT("#383838")));
 	Style->Set("ProjectCleaner.Color.Track", Color(TEXT("#383838")));
 	Style->Set("ProjectCleaner.Color.Marked", Color(TEXT("#1D2A3A")));
+	// every second row of a dialog table, and a row under the mouse
+	Style->Set("ProjectCleaner.Color.RowOdd", Color(TEXT("#1F1F1F")));
+	Style->Set("ProjectCleaner.Color.RowHover", Color(TEXT("#2A2A2A")));
 	// text and interaction
 	Style->Set("ProjectCleaner.Color.Text", ColorText);
 	Style->Set("ProjectCleaner.Color.Strong", Color(TEXT("#FFFFFF")));
@@ -265,6 +268,44 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create() {
 		TileRow.SetActiveHighlightedBrush(None).SetInactiveHighlightedBrush(None);
 		Style->Set("ProjectCleaner.TileRow", TileRow);
 	}
+	// tables of the dialogs and the Clean project lists: a flat header, rows in the recess color, every second one lighter
+	{
+		const FSlateColorBrush HeaderBrush {Style->GetColor("ProjectCleaner.Color.Header")};
+		FHeaderRowStyle Header = FCoreStyle::Get().GetWidgetStyle<FHeaderRowStyle>("TableView.Header");
+		FTableColumnHeaderStyle Column = Header.ColumnStyle;
+		Column.SetNormalBrush(HeaderBrush).SetHoveredBrush(HeaderBrush);
+		FSplitterStyle Splitter = Header.ColumnSplitterStyle;
+		Splitter.SetHandleNormalBrush(FSlateNoResource {}).SetHandleHighlightBrush(FSlateNoResource {});
+		Header.SetColumnStyle(Column).SetLastColumnStyle(Column).SetColumnSplitterStyle(Splitter).SetBackgroundBrush(HeaderBrush);
+#if ENGINE_MAJOR_VERSION >= 5
+		// no line under the header: the rows start right below it
+		Header.SetHorizontalSeparatorThickness(0.0f);
+#endif
+		Style->Set("ProjectCleaner.TableHeader", Header);
+
+		const FSlateColorBrush Even {Style->GetColor("ProjectCleaner.Color.Recess")};
+		const FSlateColorBrush Odd {Style->GetColor("ProjectCleaner.Color.RowOdd")};
+		const FSlateColorBrush Hover {Style->GetColor("ProjectCleaner.Color.RowHover")};
+		FTableRowStyle Row = FCoreStyle::Get().GetWidgetStyle<FTableRowStyle>("TableView.Row");
+		Row.SetEvenRowBackgroundBrush(Even).SetEvenRowBackgroundHoveredBrush(Hover).SetOddRowBackgroundBrush(Odd).SetOddRowBackgroundHoveredBrush(
+			Hover
+		);
+		Style->Set("ProjectCleaner.TableRow", Row);
+	}
+	// a thin flat progress bar on the track color, its fill drawn in the color the bar gets (FillColorAndOpacity)
+	{
+		const FSlateColorBrush Fill {FLinearColor::White};
+		FProgressBarStyle Flat = FCoreStyle::Get().GetWidgetStyle<FProgressBarStyle>("ProgressBar");
+		Flat.SetBackgroundImage(FSlateColorBrush {Style->GetColor("ProjectCleaner.Color.Track")}).SetFillImage(Fill).SetMarqueeImage(Fill);
+		Style->Set("ProjectCleaner.ProgressFlat", Flat);
+	}
+	// a piece of the spinner of a running step
+	Style->Set(
+		"ProjectCleaner.Spinner",
+		new FSlateImageBrush {
+		  Style->RootToContentDir(TEXT("Pill16"), TEXT(".png")), FVector2D {3.0f, 3.0f}
+	}
+	);
 	// splitters between panes: a gap with a thin line in its middle, blue while hovered or dragged. Both brushes are the same
 	// line: UE5 draws the normal brush in the highlight tint when hovered, UE 4.27 the highlight brush
 	const FString SplitterLine = Style->RootToContentDir(TEXT("SplitterLine"), TEXT(".png"));

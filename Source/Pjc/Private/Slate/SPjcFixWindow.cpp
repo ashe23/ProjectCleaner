@@ -111,17 +111,19 @@ void SPjcFixWindow::Tick(const FGeometry& AllottedGeometry, const double InCurre
 }
 
 bool SPjcFixWindow::Show(const FString& WindowTitle, TFunction<FPjcFixView()> InBuild) {
+	const TSharedRef<SPjcFixWindow> Widget = SNew(SPjcFixWindow).Build(MoveTemp(InBuild));
 	// clang-format off
 	const TSharedRef<SWindow> FixWindow = SNew(SWindow)
 		.Title(FText::FromString(WindowTitle))
+		.ClientSize(PjcWidgets::GetContentSize(Widget))
 		.SupportsMaximize(false)
 		.SupportsMinimize(false)
 		.SizingRule(ESizingRule::Autosized);
 	// clang-format on
-	const TSharedRef<SPjcFixWindow> Widget = SNew(SPjcFixWindow).Build(MoveTemp(InBuild)).Window(FixWindow);
+	Widget->Window = FixWindow;
 	FixWindow->SetContent(Widget);
 	PjcFixOpen = Widget;
-	FSlateApplication::Get().AddModalWindow(FixWindow, FSlateApplication::Get().GetActiveTopLevelWindow());
+	PjcWidgets::ShowModal(FixWindow);
 	PjcFixOpen.Reset();
 
 	if (Widget->AfterClose) {

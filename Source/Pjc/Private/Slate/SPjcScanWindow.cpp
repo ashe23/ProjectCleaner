@@ -3,12 +3,15 @@
 #include "Slate/SPjcScanWindow.h"
 #include "Slate/PjcTabs.h"
 #include "Slate/PjcWidgets.h"
+#include "Slate/SPjcTable.h"
 #include "PjcFormat.h"
 #include "PjcShim.h"
 #include "PjcStyles.h"
 // Engine Headers
 #include "Framework/Application/SlateApplication.h"
 #include "Misc/App.h"
+#include "Styling/CoreStyle.h"
+#include "Widgets/Images/SImage.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
@@ -40,154 +43,183 @@ namespace
 	};
 	// clang-format on
 	constexpr int32 PjcScanWindowNumSteps = UE_ARRAY_COUNT(PjcScanWindowSteps);
+	constexpr float PjcScanWindowWidth = 560.0f;
 }	// namespace
 
 void SPjcScanWindow::Construct(const FArguments& InArgs) {
 	Window = InArgs._Window;
 	Found.SetNum(PjcScanWindowNumSteps);
 
-	const TSharedRef<SVerticalBox> Steps = SNew(SVerticalBox);
+	// the steps: a mark (done, running, waiting), the name, what the step found
+	FPjcTable Steps;
+	FPjcTableColumn Mark;
+	Mark.FixedWidth = 34.0f;
+	Mark.bLead = true;
+	FPjcTableColumn Name;
+	Name.Label = TEXT("Step");
+	FPjcTableColumn Result;
+	Result.Label = TEXT("Found");
+	Result.Fill = 2.2f;
+	Result.bNumber = true;
+	Steps.Columns = {Mark, Name, Result};
+	Steps.NumVisible = PjcScanWindowNumSteps;
+	Steps.bFixedHeight = true;
+	const FSlateColor Strong {PjcWidgets::GetColor("ProjectCleaner.Color.Strong")};
 	for (int32 Index = 0; Index < PjcScanWindowNumSteps; ++Index) {
-		const FPjcScanWindowStep& Step = PjcScanWindowSteps[Index];
-		// clang-format off
-		Steps->AddSlot().AutoHeight().Padding(FMargin {0.0f, 2.0f})
-		[
-			SNew(SHorizontalBox).ToolTip(PjcWidgets::MakeToolTip(FText::FromString(Step.ToolTip)))
-			+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin {0.0f, 0.0f, 8.0f, 0.0f})
-			[
-				SNew(SBox).WidthOverride(14.0f).HAlign(HAlign_Center)
-				[
-					SNew(STextBlock)
-					.Text_Lambda([this, Index]() {
-						const bool bDone = bFinished || Index < StepIndex;
-						return FText::FromString(bDone ? TEXT("\u2713") : (Index == StepIndex ? TEXT("\u203A") : TEXT("\u00B7")));
-					})
-					.ColorAndOpacity_Lambda([this, Index]() {
-						const bool bDone = bFinished || Index < StepIndex;
-						return bDone ? FSlateColor {PjcWidgets::GetColor("ProjectCleaner.Color.Ok")} : FSlateColor::UseSubduedForeground();
-					})
-				]
-			]
-			+ SHorizontalBox::Slot().FillWidth(1.0f)
-			[
-				SNew(STextBlock)
-				.Text(FText::FromString(Step.Name))
-				.ColorAndOpacity_Lambda([this, Index]() { return Index <= StepIndex ? FSlateColor::UseForeground() : FSlateColor::UseSubduedForeground(); })
-			]
-			+ SHorizontalBox::Slot().AutoWidth()
-			[
-				SNew(STextBlock)
-				.Text_Lambda([this, Index]() { return FText::FromString(Found[Index]); })
-				.Font(PjcWidgets::GetFontMono(9))
-				.ColorAndOpacity(FSlateColor::UseSubduedForeground())
-			]
-		];
-		// clang-format on
+		const auto IsDone = [this, Index]() {
+			return bFinished || Index < StepIndex;
+		};
+		const auto IsRunning = [this, Index]() {
+			return !bFinished && Index == StepIndex;
+		};
+		FPjcTableRow& Row = Steps.Rows.AddDefaulted_GetRef();
+		Row.Cells = {
+		  FString {},
+		  FString {PjcScanWindowSteps[Index].Name},
+		  TAttribute<FString>::Create(TAttribute<FString>::FGetter::CreateLambda([this, Index]() {
+			  return Found[Index];
+		  })),
+		};
+		Row.ToolTipTitle = PjcScanWindowSteps[Index].Name;
+		Row.ToolTip = PjcScanWindowSteps[Index].ToolTip;
+		Row.MakeLead = [IsDone, IsRunning]() {
+			return PjcWidgets::MakeStepMark(IsDone, IsRunning);
+		};
+		Row.Marked = TAttribute<bool>::Create(TAttribute<bool>::FGetter::CreateLambda(IsRunning));
+		Row.TextColor = TAttribute<FSlateColor>::Create(TAttribute<FSlateColor>::FGetter::CreateLambda([IsDone, IsRunning, Strong]() {
+			return IsRunning() ? Strong : (IsDone() ? FSlateColor::UseForeground() : FSlateColor::UseSubduedForeground());
+		}));
 	}
 
+	const FSlateBrush* White = FCoreStyle::Get().GetBrush("WhiteBrush");
+	const FLinearColor Accent = PjcWidgets::GetColor("ProjectCleaner.Color.Accent");
+	const FLinearColor Ok = PjcWidgets::GetColor("ProjectCleaner.Color.Ok");
 	// clang-format off
 	ChildSlot
 	[
-		SNew(SBorder).BorderImage(PjcShim::GetBrushPage()).Padding(0.0f)
+		SNew(SBox).WidthOverride(PjcScanWindowWidth)
 		[
-			SNew(SVerticalBox)
-			+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {16.0f, 14.0f, 16.0f, 8.0f})
-			[
-				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot().FillWidth(1.0f)
-				[
-					SNew(STextBlock)
-					.Text_Lambda([this]() {
-						const TCHAR* Done = bScanned ? TEXT("\u2713 Scan finished") : TEXT("Scan canceled");
-						return FText::FromString(bFinished ? Done : TEXT("Scanning project"));
-					})
-					.Font(FPjcStyles::GetFont("Bold", 12))
-				]
-				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
-				[
-					SNew(STextBlock).Text(FText::FromString(FApp::GetProjectName())).ColorAndOpacity(FSlateColor::UseSubduedForeground())
-				]
-			]
-			+ SVerticalBox::Slot().FillHeight(1.0f).Padding(FMargin {16.0f, 4.0f})
+			SNew(SBorder).BorderImage(PjcShim::GetBrush(TEXT("ToolPanel.GroupBorder"))).Padding(0.0f)
 			[
 				SNew(SVerticalBox)
-				+ SVerticalBox::Slot().AutoHeight()
-				[
-					Steps
-				]
-				+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {0.0f, 12.0f, 0.0f, 4.0f})
+				+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {16.0f, 14.0f, 16.0f, 10.0f})
 				[
 					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 8.0f, 0.0f})
+					[
+						SNew(STextBlock)
+						.Text(FText::FromString(TEXT("\u2713")))
+						.Font(FPjcStyles::GetFont("Bold", 12))
+						.ColorAndOpacity(Ok)
+						.Visibility_Lambda([this]() { return bFinished && bScanned ? EVisibility::Visible : EVisibility::Collapsed; })
+					]
 					+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
 					[
-						SNew(SProgressBar)
-#if ENGINE_MAJOR_VERSION < 5
-						.Style(&PjcShim::GetProgressStyle427())
-#endif
-						.Percent_Lambda([this]() { return TOptional<float> {GetPercent()}; })
+						SNew(STextBlock)
+						.Text_Lambda([this]() {
+							const TCHAR* Done = bScanned ? TEXT("Scan finished") : TEXT("Scan canceled");
+							return FText::FromString(bFinished ? Done : TEXT("Scanning project"));
+						})
+						.Font(FPjcStyles::GetFont("Bold", 12))
 					]
-					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {10.0f, 0.0f, 0.0f, 0.0f})
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 					[
-						SNew(SBox).WidthOverride(40.0f)
+						SNew(STextBlock).Text(FText::FromString(FApp::GetProjectName())).ColorAndOpacity(FSlateColor::UseSubduedForeground())
+					]
+				]
+				+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {16.0f, 0.0f, 16.0f, 14.0f})
+				[
+					SNew(SVerticalBox)
+					+ SVerticalBox::Slot().AutoHeight()
+					[
+						SAssignNew(StatsBox, SBox)
 						[
-							SNew(STextBlock)
-							.Text_Lambda([this]() { return FText::FromString(FString::Printf(TEXT("%d%%"), FMath::FloorToInt(GetPercent() * 100.0f))); })
-							.Font(PjcWidgets::GetFontMono(9))
+							MakeStats(false)
+						]
+					]
+					+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {0.0f, 10.0f, 0.0f, 0.0f})
+					[
+						SNew(SBox).HeightOverride(4.0f)
+						[
+							SNew(SProgressBar)
+							.Style(&FPjcStyles::Get().GetWidgetStyle<FProgressBarStyle>("ProjectCleaner.ProgressFlat"))
+							.BorderPadding(FVector2D {0.0f, 0.0f})
+							.FillColorAndOpacity_Lambda([this, Accent, Ok]() { return FSlateColor {bFinished && bScanned ? Ok : Accent}; })
+							.Percent_Lambda([this]() { return TOptional<float> {GetPercent()}; })
+						]
+					]
+					+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {0.0f, 10.0f, 0.0f, 0.0f})
+					[
+						SNew(SPjcTable).Table(Steps)
+					]
+					+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {0.0f, 10.0f, 0.0f, 0.0f})
+					[
+						SNew(SHorizontalBox)
+						.Visibility_Lambda([this]() { return bFinished ? EVisibility::Hidden : EVisibility::Visible; })
+						+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 8.0f, 0.0f})
+						[
+							PjcWidgets::MakeCardTitle(TEXT("Reading"))
+						]
+						+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
+						[
+							SNew(SPjcFitText)
+							.Text_Lambda([this]() { return CurrentText; })
+							.TrimStart(true)
+							.Font(PjcWidgets::GetFontMono(8))
+							.ColorAndOpacity(FSlateColor::UseSubduedForeground())
 						]
 					]
 				]
 				+ SVerticalBox::Slot().AutoHeight()
 				[
-					SNew(STextBlock)
-					.Text_Lambda([this]() { return FText::FromString(CurrentText); })
-					.ColorAndOpacity(FSlateColor::UseSubduedForeground())
-					.Clipping(EWidgetClipping::ClipToBounds)
+					SNew(SBox).HeightOverride(1.0f)
+					[
+						SNew(SImage).Image(White).ColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.Line"))
+					]
 				]
-			]
-			+ SVerticalBox::Slot().AutoHeight()
-			[
-				SNew(SBorder).BorderImage(PjcShim::GetBrush(TEXT("ToolPanel.DarkGroupBorder"))).Padding(FMargin {16.0f, 8.0f})
+				+ SVerticalBox::Slot().AutoHeight()
 				[
-					SNew(SHorizontalBox)
-					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 12.0f, 0.0f})
+					SNew(SBorder)
+					.BorderImage(White)
+					.BorderBackgroundColor(PjcWidgets::GetColor("ProjectCleaner.Color.Recess"))
+					.Padding(FMargin {16.0f, 10.0f})
 					[
-						SNew(STextBlock)
-						.Text_Lambda([this]() {
-							const double Now = bFinished ? EndTime : FPlatformTime::Seconds();
-							return FText::FromString(FString::Printf(TEXT("%.1f s"), Now - StartTime));
-						})
-						.Font(PjcWidgets::GetFontMono(9))
-					]
-					+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
-					[
-						SNew(STextBlock)
-						.Text_Lambda([this]() {
-							const FString Scanned = PjcFormat::Count(UPjcSubsystem::GetScanResult().Assets.Num()) + TEXT(" assets scanned");
-							const FString Done = bScanned ? Scanned : FString {TEXT("Last scan result stays")};
-							return FText::FromString(bFinished ? Done : FString {TEXT("If you cancel, last scan result stays")});
-						})
-						.ColorAndOpacity(FSlateColor::UseSubduedForeground())
-					]
-					+ SHorizontalBox::Slot().AutoWidth()
-					[
-						SNew(SButton)
-#if ENGINE_MAJOR_VERSION < 5
-						.ButtonStyle(&PjcShim::GetButtonStyle427(false))
-						.ForegroundColor(FSlateColor::UseForeground())
-#endif
-						.ContentPadding(FMargin {12.0f, 2.0f})
-						.IsEnabled_Lambda([this]() { return bFinished || !Progress.bCancelRequested; })
-						.OnClicked_Lambda([this]() {
-							if (bFinished) {
-								Close();
-							}
-							else {
-								Progress.bCancelRequested = true;
-							}
-							return FReply::Handled();
-						})
+						SNew(SHorizontalBox)
+						+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
 						[
-							SNew(STextBlock).Text_Lambda([this]() { return FText::FromString(bFinished ? TEXT("Close") : TEXT("Cancel")); })
+							SNew(STextBlock)
+							.Text_Lambda([this]() {
+								const FString Scanned = PjcFormat::Count(UPjcSubsystem::GetScanResult().Assets.Num()) + TEXT(" assets scanned");
+								const FString Done = bScanned ? Scanned : FString {TEXT("Last scan result stays")};
+								return FText::FromString(bFinished ? Done : FString {TEXT("If you cancel, last scan result stays")});
+							})
+							.ColorAndOpacity(FSlateColor::UseSubduedForeground())
+						]
+						+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {10.0f, 0.0f, 0.0f, 0.0f})
+						[
+							SNew(SBox).MinDesiredWidth(76.0f)
+							[
+								SNew(SButton)
+#if ENGINE_MAJOR_VERSION < 5
+								.ButtonStyle(&PjcShim::GetButtonStyle427(false))
+								.ForegroundColor(FSlateColor::UseForeground())
+#endif
+								.HAlign(HAlign_Center)
+								.ContentPadding(FMargin {12.0f, 2.0f})
+								.IsEnabled_Lambda([this]() { return bFinished || !Progress.bCancelRequested; })
+								.OnClicked_Lambda([this]() {
+									if (bFinished) {
+										Close();
+									}
+									else {
+										Progress.bCancelRequested = true;
+									}
+									return FReply::Handled();
+								})
+								[
+									SNew(STextBlock).Text_Lambda([this]() { return FText::FromString(bFinished ? TEXT("Close") : TEXT("Cancel")); })
+								]
+							]
 						]
 					]
 				]
@@ -209,16 +241,63 @@ void SPjcScanWindow::Construct(const FArguments& InArgs) {
 	StartTime = FPlatformTime::Seconds();
 }
 
+TSharedRef<SWidget> SPjcScanWindow::MakeStats(const bool bDone) {
+	const auto Stat = [](const TAttribute<FString>& Value, const TCHAR* Label, const TCHAR* ToolTip) {
+		PjcWidgets::FStat Out;
+		Out.Value = Value;
+		Out.Label = Label;
+		Out.ToolTip = ToolTip;
+		return Out;
+	};
+	const auto Time = TAttribute<FString>::Create(TAttribute<FString>::FGetter::CreateLambda([this]() {
+		const double Now = bFinished ? EndTime : FPlatformTime::Seconds();
+		return FString::Printf(TEXT("%.1f s"), Now - StartTime);
+	}));
+	if (bDone) {
+		const FPjcScanResult& Result = UPjcSubsystem::GetScanResult();
+		int32 NumReview = 0;
+		for (const auto& Pair : Result.Status) {
+			NumReview += Pair.Value == EPjcAssetStatus::Review ? 1 : 0;
+		}
+		const TArray<PjcWidgets::FStat> Done {
+		  Stat(PjcFormat::Count(Result.Assets.Num()), TEXT("Assets"), TEXT("Assets the scan read")),
+		  Stat(Time, TEXT("Time"), TEXT("How long the scan took")),
+		  Stat(PjcFormat::Count(Result.Unused.Num()), TEXT("Unused"), TEXT("No used asset references them")),
+		  Stat(PjcFormat::Count(NumReview), TEXT("To review"), TEXT("The scan is not sure about them. Issues lists them")),
+		};
+		return PjcWidgets::MakeStats(Done, 1.25f);
+	}
+
+	const auto Percent = TAttribute<FString>::Create(TAttribute<FString>::FGetter::CreateLambda([this]() {
+		return FString::Printf(TEXT("%d %%"), FMath::FloorToInt(GetPercent() * 100.0f));
+	}));
+	const auto Step = TAttribute<FString>::Create(TAttribute<FString>::FGetter::CreateLambda([this]() {
+		return FString::Printf(TEXT("%d of %d"), FMath::Min(StepIndex + 1, PjcScanWindowNumSteps), PjcScanWindowNumSteps);
+	}));
+	const auto Assets = TAttribute<FString>::Create(TAttribute<FString>::FGetter::CreateLambda([this]() {
+		return Progress.NumAssets >= 0 ? PjcFormat::Count(Progress.NumAssets) : FString {TEXT("\u2013")};
+	}));
+	const TArray<PjcWidgets::FStat> Running {
+	  Stat(Percent, TEXT("Progress"), TEXT("Share of the scan that is done")),
+	  Stat(Time, TEXT("Time"), TEXT("Time since the scan started")),
+	  Stat(Step, TEXT("Step"), TEXT("The step that runs now")),
+	  Stat(Assets, TEXT("Assets"), TEXT("Assets the scan reads, known after the Assets step")),
+	};
+	return PjcWidgets::MakeStats(Running, 1.25f);
+}
+
 bool SPjcScanWindow::Run(const bool bStayOpen) {
+	// the content first: the window opens with its size, centered
+	const TSharedRef<SPjcScanWindow> Content = SNew(SPjcScanWindow);
 	// clang-format off
 	const TSharedRef<SWindow> ScanWindow = SNew(SWindow)
 		.Title(FText::FromString(TEXT("Scan")))
-		.ClientSize(FVector2D {520.0f, 330.0f})
+		.ClientSize(PjcWidgets::GetContentSize(Content))
 		.SupportsMaximize(false)
 		.SupportsMinimize(false)
 		.SizingRule(ESizingRule::FixedSize);
 	// clang-format on
-	const TSharedRef<SPjcScanWindow> Content = SNew(SPjcScanWindow).Window(ScanWindow);
+	Content->Window = ScanWindow;
 	ScanWindow->SetContent(Content);
 
 	// closing the window cancels the scan
@@ -264,6 +343,7 @@ void SPjcScanWindow::StartScan() {
 	bFinished = true;
 	EndTime = FPlatformTime::Seconds();
 	CurrentText.Reset();
+	if (bScanned) StatsBox->SetContent(MakeStats(true));
 	PumpUi();
 }
 

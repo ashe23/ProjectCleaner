@@ -9,6 +9,27 @@
 class SBox;
 class SWindow;
 
+// What Clean project did, for its result step
+struct FPjcCleanResult
+{
+	int32 NumDeleted = 0;
+	int64 SizeFreed = 0;
+	int32 NumFoldersRemoved = 0;
+	int32 NumRedirectorsRemoved = 0;
+	// stopped after a batch, with the unused assets left
+	bool bStopped = false;
+	int32 NumLeft = 0;
+	int32 NumForced = 0;
+	// force deleted from disk, the editor still holds them
+	int32 NumInMemory = 0;
+	// name and what holds it
+	TArray<FString> NotDeleted;
+	// used by now, not deleted
+	TArray<FName> Skipped;
+	// still on disk, they reference a deleted asset
+	TArray<FName> Broken;
+};
+
 /**
  * Clean project window, three steps in one modal window: what gets deleted with the checks before it, the progress
  * batch by batch (Stop ends after the running batch), and the result with what was not deleted and why.
@@ -19,6 +40,8 @@ class SPjcCleanWindow final : public SCompoundWidget
 
 	SLATE_BEGIN_ARGS(SPjcCleanWindow) {}
 	SLATE_ARGUMENT(TSharedPtr<SWindow>, Window)
+	// Opens on the result step with this result
+	SLATE_ARGUMENT(TOptional<FPjcCleanResult>, Result)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
@@ -49,8 +72,11 @@ class SPjcCleanWindow final : public SCompoundWidget
 	TSharedRef<SWidget> MakeRun();
 	TSharedRef<SWidget> MakeDone();
 	static TSharedRef<SWidget> MakeCheck(const ECheck Kind, const FString& Title, const FString& Detail, const TSharedRef<SWidget>& Extra);
-	static TSharedRef<SWidget> MakeNumbers(const TArray<TTuple<FString, FString, FString>>& Numbers, const int32 Highlight);
-	static TSharedRef<SWidget> MakeTopRows(const FString& Title, const TArray<TPair<FString, FString>>& Rows, const int32 NumMore);
+	// Numbers (value, label, tooltip): the first two large, the first in red, the other two as lines on the right
+	static TSharedRef<SWidget> MakeNumbers(const TArray<TTuple<FString, FString, FString>>& Numbers);
+	// Folders or classes the delete frees space in: name, share, size, assets
+	static TSharedRef<SWidget>
+	MakeTotals(const FString& Title, const TArray<TPair<FString, FPjcOverview::FTotal>>& Totals, const int64 Size, const bool bFolders);
 	static TSharedRef<SWidget> MakeNote(const FString& Text, const bool bWarn);
 
 	// what stops the delete in the confirm step, empty when nothing does
@@ -69,8 +95,6 @@ class SPjcCleanWindow final : public SCompoundWidget
 	bool bBackup = false;
 	// off each time the window opens
 	bool bForceDelete = false;
-	int32 NumForced = 0;
-	int32 NumInMemory = 0;
 
 	// run
 	TArray<FString> Steps;
@@ -79,14 +103,5 @@ class SPjcCleanWindow final : public SCompoundWidget
 	FString CurrentText;
 	bool bStopRequested = false;
 
-	// result
-	int32 NumDeleted = 0;
-	int64 SizeFreed = 0;
-	int32 NumFoldersRemoved = 0;
-	int32 NumRedirectorsRemoved = 0;
-	int32 NumLeft = 0;
-	bool bStopped = false;
-	TArray<FString> NotDeleted;
-	TArray<FName> Skipped;
-	TArray<FName> Broken;
+	FPjcCleanResult CleanResult;
 };
