@@ -371,7 +371,7 @@ void SPjcScanSettings::Rebuild() {
 		[
 			SNew(STextBlock)
 			.Text(FText::FromString(TEXT("Shared with the team \u00B7 DefaultEditor.ini")))
-			.ToolTipText(FText::FromString(TEXT("Settings are saved in Config/DefaultEditor.ini, so the team shares them through source control")))
+			.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Settings are saved in Config/DefaultEditor.ini, so the team shares them through source control"))))
 			.ColorAndOpacity(FSlateColor::UseSubduedForeground())
 			.Font(FPjcStyles::GetFont("Regular", 8))
 		]
@@ -400,7 +400,7 @@ TSharedRef<SWidget> SPjcScanSettings::MakeHeader() {
 		[
 			SNew(SHyperlink)
 			.Text(FText::FromString(TEXT("Undo")))
-			.ToolTipText(FText::FromString(TEXT("Back to the settings of the last scan")))
+			.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Back to the settings of the last scan"))))
 			.Visibility_Lambda([]() { return FPjcScanDraft::IsChanged() ? EVisibility::Visible : EVisibility::Collapsed; })
 			.OnNavigate_Lambda(Edit([]() { FPjcScanDraft::Revert(); }))
 		]
@@ -413,10 +413,10 @@ TSharedRef<SWidget> SPjcScanSettings::MakeHeader() {
 			.ButtonStyle(&PjcShim::GetStyle().GetWidgetStyle<FButtonStyle>(TEXT("NoBorder")))
 			.ContentPadding(FMargin {4.0f, 1.0f})
 			.IsEnabled_Lambda([]() { return FPjcScanDraft::Get() != FPjcScanDraft {}; })
-			.ToolTipText_Lambda([]() {
+			.ToolTip(PjcWidgets::MakeToolTip(TAttribute<FText>::Create(TAttribute<FText>::FGetter::CreateLambda([]() {
 				const bool bDefaults = FPjcScanDraft::Get() == FPjcScanDraft {};
 				return FText::FromString(bDefaults ? TEXT("The settings are the plugin defaults") : TEXT("Every scan setting back to the plugin defaults, then a scan. Asks first."));
-			})
+			}))))
 			.OnClicked_Lambda([]() {
 				ConfirmReset();
 				return FReply::Handled();
@@ -446,7 +446,7 @@ TSharedRef<SWidget> SPjcScanSettings::MakeHeader() {
 			.ButtonStyle(&PjcShim::GetStyle().GetWidgetStyle<FButtonStyle>(TEXT("NoBorder")))
 			.ContentPadding(FMargin {4.0f, 2.0f})
 			.Visibility(FoldKey.IsNone() ? EVisibility::Collapsed : EVisibility::Visible)
-			.ToolTipText(FText::FromString(bFolded ? TEXT("Expand scan settings") : TEXT("Collapse scan settings")))
+			.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(bFolded ? TEXT("Expand scan settings") : TEXT("Collapse scan settings"))))
 			.OnClicked_Lambda([this]() {
 				bFolded = !bFolded;
 				if (GConfig) {
@@ -472,7 +472,7 @@ TSharedRef<SWidget> SPjcScanSettings::MakeHeader() {
 #endif
 			.ButtonStyle(&PjcShim::GetStyle().GetWidgetStyle<FButtonStyle>(TEXT("NoBorder")))
 			.ContentPadding(FMargin {4.0f, 0.0f})
-			.ToolTipText(FText::FromString(TEXT("Hide scan settings")))
+			.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Hide scan settings"))))
 			// in the side column of Assets the settings stay: no hide
 			.Visibility(OnClose.IsBound() ? EVisibility::Visible : EVisibility::Collapsed)
 			.OnClicked_Lambda([this]() {
@@ -505,7 +505,7 @@ SPjcScanSettings::MakeCategory(const FName Id, const FString& Title, const FStri
 		})
 		.HeaderContent()
 		[
-			SNew(STextBlock).Text(FText::FromString(Title)).ToolTipText(FText::FromString(ToolTip)).Font(FPjcStyles::GetFont("Bold", 10))
+			SNew(STextBlock).Text(FText::FromString(Title)).ToolTip(PjcWidgets::MakeToolTip(FText::FromString(ToolTip))).Font(FPjcStyles::GetFont("Bold", 10))
 		]
 		.BodyContent()
 		[
@@ -629,7 +629,7 @@ SPjcScanSettings::MakeFixedRow(const FString& Label, const int32 Num, const FStr
 	const FString ExtraLine = Extra.IsEmpty() ? FString {} : Extra + TEXT("\n");
 	const FString More = Found + TEXT(" in the last scan\n") + ExtraLine + TEXT("Always on");
 	// clang-format off
-	const TSharedRef<SWidget> Lock = SNew(SBox).WidthOverride(12.0f).HeightOverride(12.0f).ToolTipText(FText::FromString(TEXT("Always on")))
+	const TSharedRef<SWidget> Lock = SNew(SBox).WidthOverride(12.0f).HeightOverride(12.0f).ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Always on"))))
 		[
 			SNew(SImage).Image(PjcShim::GetIconLock()).ColorAndOpacity(FSlateColor::UseSubduedForeground())
 		];
@@ -724,7 +724,7 @@ TSharedRef<SWidget> SPjcScanSettings::MakeListRows(
 #endif
 			.ButtonStyle(&PjcShim::GetStyle().GetWidgetStyle<FButtonStyle>(TEXT("NoBorder")))
 			.ContentPadding(FMargin {4.0f, 0.0f})
-			.ToolTipText(FText::FromString(TEXT("Add")))
+			.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Add"))))
 			.OnClicked_Lambda([this, Id]() {
 				const bool bOpen = AddingList != Id;
 				AddingList = bOpen ? Id : NAME_None;
@@ -764,7 +764,7 @@ TSharedRef<SWidget> SPjcScanSettings::MakeListRows(
 #endif
 			.ButtonStyle(&PjcShim::GetStyle().GetWidgetStyle<FButtonStyle>(TEXT("NoBorder")))
 			.ContentPadding(FMargin {4.0f, 0.0f})
-			.ToolTipText(FText::FromString(ClearTip))
+			.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(ClearTip)))
 			.OnClicked_Lambda([List]() {
 				(FPjcScanDraft::Get().*List).Reset();
 				FPjcScanDraft::NotifyEdited();
@@ -802,7 +802,7 @@ TSharedRef<SWidget> SPjcScanSettings::MakeListRows(
 			SNew(SBorder)
 			.BorderImage(PjcShim::GetBrush(TEXT("ToolPanel.DarkGroupBorder")))
 			.Padding(FMargin {6.0f, 1.0f, 2.0f, 1.0f})
-			.ToolTipText(FText::FromString(Item))
+			.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(Item)))
 			[
 				SNew(SHorizontalBox)
 				// as wide as the column allows, long paths wrap
@@ -822,7 +822,7 @@ TSharedRef<SWidget> SPjcScanSettings::MakeListRows(
 #endif
 					.ButtonStyle(&PjcShim::GetStyle().GetWidgetStyle<FButtonStyle>(TEXT("NoBorder")))
 					.ContentPadding(FMargin {4.0f, 0.0f})
-					.ToolTipText(FText::FromString(TEXT("Remove")))
+					.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Remove"))))
 					.OnClicked_Lambda([this, List, Item]() {
 						(FPjcScanDraft::Get().*List).Remove(Item);
 						FPjcScanDraft::NotifyEdited();

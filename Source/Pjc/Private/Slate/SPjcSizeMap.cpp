@@ -101,7 +101,7 @@ namespace
 void SPjcSizeMap::Construct(const FArguments& InArgs) {
 	OnFolderClicked = InArgs._OnFolderClicked;
 	OnAssetClicked = InArgs._OnAssetClicked;
-	SetToolTipText(TAttribute<FText>::Create(TAttribute<FText>::FGetter::CreateSP(this, &SPjcSizeMap::GetHoverText)));
+	SetToolTip(PjcWidgets::MakeToolTip(TAttribute<FText>::Create(TAttribute<FText>::FGetter::CreateSP(this, &SPjcSizeMap::GetHoverText))));
 }
 
 void SPjcSizeMap::SetFolder(const FPjcScanResult* InResult, const TSharedPtr<FPjcUnusedFolder>& InFolder, const bool bAll, const EPjcAssetSet InSet) {

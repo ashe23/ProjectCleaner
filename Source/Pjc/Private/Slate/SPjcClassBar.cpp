@@ -35,7 +35,7 @@ void SPjcClassBar::Construct(const FArguments& InArgs) {
 		[
 			SNew(SCheckBox)
 			.Style(&PjcShim::GetCheckBoxStyle())
-			.ToolTipText(FText::FromString(TEXT("Click: every class on. Click again: every class off")))
+			.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Click: every class on. Click again: every class off"))))
 			.IsChecked_Lambda([this]() {
 				if (bNone) return ECheckBoxState::Unchecked;
 
@@ -137,7 +137,7 @@ TSharedRef<SWidget> SPjcClassBar::MakeRow(const FPjcClassBarItem& Item) {
 #endif
 		.ButtonStyle(&PjcShim::GetStyle().GetWidgetStyle<FButtonStyle>(TEXT("NoBorder")))
 		.ContentPadding(FMargin {8.0f, 2.0f})
-		.ToolTipText(FText::FromString(Item.ToolTip.IsEmpty() ? Item.Label : Item.ToolTip))
+		.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(Item.ToolTip.IsEmpty() ? Item.Label : Item.ToolTip)))
 		.OnClicked_Lambda([this, ClassName]() {
 			Toggle(ClassName);
 			return FReply::Handled();

@@ -41,7 +41,7 @@ void SPjcScanBar::Construct(const FArguments& InArgs) {
 				.ForegroundColor(FSlateColor::UseForeground())
 #endif
 				.ContentPadding(FMargin {10.0f, 4.0f, 14.0f, 4.0f})
-				.ToolTipText(FText::FromString(TEXT("Scans the project again")))
+				.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Scans the project again"))))
 				.Visibility(this, &SPjcScanBar::GetScanVisibility)
 				.OnClicked(this, &SPjcScanBar::OnScanClicked)
 				[
@@ -56,10 +56,10 @@ void SPjcScanBar::Construct(const FArguments& InArgs) {
 #endif
 				.ButtonStyle(&PjcShim::GetPrimaryButtonStyle())
 				.ContentPadding(FMargin {10.0f, 4.0f, 14.0f, 4.0f})
-				.ToolTipText_Lambda([]() {
+				.ToolTip(PjcWidgets::MakeToolTip(TAttribute<FText>::Create(TAttribute<FText>::FGetter::CreateLambda([]() {
 					const TCHAR* Settings = TEXT("Applies the changed scan settings and scans again");
 					return FText::FromString(FPjcScanDraft::IsChanged() ? Settings : TEXT("Scans the changed project again"));
-				})
+				}))))
 				.Visibility(this, &SPjcScanBar::GetRescanVisibility)
 				.OnClicked(this, &SPjcScanBar::OnRescanClicked)
 				[
@@ -82,7 +82,7 @@ void SPjcScanBar::Construct(const FArguments& InArgs) {
 #endif
 				.ButtonStyle(&PjcShim::GetDangerQuietButtonStyle())
 				.ContentPadding(FMargin {10.0f, 4.0f, 14.0f, 4.0f})
-				.ToolTipText(this, &SPjcScanBar::GetCleanToolTip)
+				.ToolTip(PjcWidgets::MakeToolTip(TAttribute<FText>::Create(TAttribute<FText>::FGetter::CreateSP(this, &SPjcScanBar::GetCleanToolTip))))
 				.IsEnabled(this, &SPjcScanBar::IsCleanEnabled)
 				.OnClicked(this, &SPjcScanBar::OnCleanClicked)
 				[
@@ -94,13 +94,13 @@ void SPjcScanBar::Construct(const FArguments& InArgs) {
 				SNew(STextBlock)
 				.Text(this, &SPjcScanBar::GetStatusText)
 				.ColorAndOpacity(this, &SPjcScanBar::GetStatusColor)
-				.ToolTipText(this, &SPjcScanBar::GetStatusToolTip)
+				.ToolTip(PjcWidgets::MakeToolTip(TAttribute<FText>::Create(TAttribute<FText>::FGetter::CreateSP(this, &SPjcScanBar::GetStatusToolTip))))
 			]
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {10.0f, 0.0f, 4.0f, 0.0f})
 			[
 				SNew(STextBlock)
 				.Text(FText::FromString(TEXT("v") + Version))
-				.ToolTipText(FText::FromString(TEXT("Project Cleaner ") + Version))
+				.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Project Cleaner ") + Version)))
 				.Font(PjcWidgets::GetFontMono(8))
 				.ColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.Muted"))
 			]

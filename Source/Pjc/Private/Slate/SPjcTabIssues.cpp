@@ -130,7 +130,7 @@ namespace
 						.BorderImage(FCoreStyle::Get().GetBrush("WhiteBrush"))
 						.BorderBackgroundColor(PjcWidgets::GetColor(Row->TagColor) * FLinearColor {0.3f, 0.3f, 0.3f, 1.0f})
 						.Padding(FMargin {4.0f, 0.0f})
-						.ToolTipText(FText::FromString(Row->TagToolTip))
+						.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(Row->TagToolTip)))
 						[
 							SNew(STextBlock)
 							.Text(FText::FromString(Row->Tag))
@@ -566,7 +566,8 @@ void SPjcTabIssues::RebuildList() {
 	for (const auto& Column : Columns) {
 		SHeaderRow::FColumn::FArguments Arguments;
 		const int32 Index = Ids.Num();
-		Arguments.ColumnId(Column.Id).DefaultLabel(FText::FromString(Column.Label)).DefaultTooltip(FText::FromString(Column.ToolTip));
+		Arguments.ColumnId(Column.Id).DefaultLabel(FText::FromString(Column.Label));
+		Arguments = PjcWidgets::MakeColumn(Arguments, FText::FromString(Column.ToolTip));
 		Arguments.SortMode_Lambda([this, Index]() {
 			return SortColumn == Index ? SortMode : EColumnSortMode::None;
 		});
@@ -718,7 +719,7 @@ TSharedRef<SWidget> SPjcTabIssues::MakeCategories() {
 #endif
 			.ButtonStyle(&FPjcStyles::Get().GetWidgetStyle<FButtonStyle>("ProjectCleaner.Button.Row"))
 			.ContentPadding(FMargin {0.0f})
-			.ToolTipText(FText::FromString(Entry.ToolTip))
+			.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(Entry.ToolTip)))
 			.OnClicked_Lambda([this, EntryCategory]() {
 				ShowCategory(EntryCategory);
 				return FReply::Handled();
@@ -778,7 +779,7 @@ TSharedRef<SWidget> SPjcTabIssues::MakeHeader() {
 				[
 					SNew(STextBlock)
 					.Text(this, &SPjcTabIssues::GetDescription)
-					.ToolTipText(this, &SPjcTabIssues::GetDescription)
+					.ToolTip(PjcWidgets::MakeToolTip(TAttribute<FText>::Create(TAttribute<FText>::FGetter::CreateSP(this, &SPjcTabIssues::GetDescription))))
 					.ColorAndOpacity(FSlateColor::UseSubduedForeground())
 					.Clipping(EWidgetClipping::ClipToBounds)
 				]
@@ -850,7 +851,7 @@ TSharedRef<SWidget> SPjcTabIssues::MakeToolbar() {
 			.ForegroundColor(FSlateColor::UseForeground())
 #endif
 			.ContentPadding(FMargin {8.0f, 1.0f, 10.0f, 1.0f})
-			.ToolTipText(FText::FromString(ToolTip))
+			.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(ToolTip)))
 			.Visibility_Lambda([Visible]() { return Visible(); })
 			.IsEnabled_Lambda([Enabled]() { return Enabled(); })
 			.OnClicked_Lambda([OnClick]() {
@@ -870,7 +871,7 @@ TSharedRef<SWidget> SPjcTabIssues::MakeToolbar() {
 			.ForegroundColor(FSlateColor::UseForeground())
 #endif
 			.ContentPadding(FMargin {8.0f, 1.0f, 10.0f, 1.0f})
-			.ToolTipText(FText::FromString(ToolTip))
+			.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(ToolTip)))
 			.Visibility_Lambda([Visible]() { return Visible(); })
 			.IsEnabled_Lambda([Enabled]() { return Enabled(); })
 			.OnClicked_Lambda([OnClick]() {
@@ -950,7 +951,7 @@ TSharedRef<SWidget> SPjcTabIssues::MakeToolbar() {
 #endif
 				.ButtonColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.Accent"))
 				.ContentPadding(FMargin {8.0f, 1.0f, 10.0f, 1.0f})
-				.ToolTipText(FText::FromString(TEXT("Fixes the selected redirectors")))
+				.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Fixes the selected redirectors"))))
 				.Visibility_Lambda(Is(EPjcIssueCategory::Redirectors))
 				.IsEnabled_Lambda([this, SelectedRedirectors]() {
 					return SelectedRedirectors().ContainsByPredicate([this](const int32 Index) { return Redirectors[Index].CanFix(); });
@@ -994,7 +995,7 @@ TSharedRef<SWidget> SPjcTabIssues::MakeToolbar() {
 #if ENGINE_MAJOR_VERSION < 5
 				.ForegroundColor(FSlateColor::UseForeground())
 #endif
-				.ToolTipText(FText::FromString(TEXT("Keeps them: by file, extension or folder, saved to Config/DefaultEditor.ini")))
+				.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Keeps them: by file, extension or folder, saved to Config/DefaultEditor.ini"))))
 				.Visibility_Lambda([this]() { return Category == EPjcIssueCategory::External && !bKept ? EVisibility::Visible : EVisibility::Collapsed; })
 				.IsEnabled_Lambda(HasSelection)
 				.OnGetMenuContent(this, &SPjcTabIssues::MakeExcludeMenu)

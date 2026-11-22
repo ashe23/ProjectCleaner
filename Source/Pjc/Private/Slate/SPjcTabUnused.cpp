@@ -153,7 +153,7 @@ namespace
 				// clang-format off
 				const TSharedRef<SHorizontalBox> NameBox = SNew(SHorizontalBox)
 					.Clipping(EWidgetClipping::ClipToBounds)
-					.ToolTipText(FText::FromString(ToolTip));
+					.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(ToolTip)));
 				NameBox->AddSlot().AutoWidth().VAlign(VAlign_Center)
 				[
 					SNew(SExpanderArrow, SharedThis(this)).StyleSet(&FPjcStyles::Get()).IndentAmount(PjcUnusedIndent).ShouldDrawWires(false)
@@ -452,11 +452,11 @@ namespace
 						.BorderImage(FCoreStyle::Get().GetBrush("WhiteBrush"))
 						.BorderBackgroundColor(PjcWidgets::GetColor("ProjectCleaner.Color.DangerQuiet"))
 						.Padding(FMargin {4.0f, 0.0f})
-						.ToolTipText(
+						.ToolTip(PjcWidgets::MakeToolTip(
 							FText::FromString(
 								FString::Printf(TEXT("Delete failed last time: %s"), *Row->Holder)
 							)
-						)
+						))
 						[
 							SNew(STextBlock)
 							.Text(FText::FromString(TEXT("DELETE FAILED")))
@@ -474,7 +474,7 @@ namespace
 						.BorderImage(FCoreStyle::Get().GetBrush("WhiteBrush"))
 						.BorderBackgroundColor(PjcWidgets::GetColor("ProjectCleaner.Color.ReviewQuiet"))
 						.Padding(FMargin {4.0f, 0.0f})
-						.ToolTipText(FText::FromString(TEXT("In the folder of a Primary Asset Label whose cook rule does not package it: only references keep it")))
+						.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("In the folder of a Primary Asset Label whose cook rule does not package it: only references keep it"))))
 						[
 							SNew(STextBlock)
 							.Text(FText::FromString(TEXT("LABEL")))
@@ -489,7 +489,7 @@ namespace
 
 			if (Column == PjcUnusedColClass) {
 				// clang-format off
-				return SNew(SBox).VAlign(VAlign_Center).ToolTipText(FText::FromName(Row->ClassName))
+				return SNew(SBox).VAlign(VAlign_Center).ToolTip(PjcWidgets::MakeToolTip(FText::FromName(Row->ClassName)))
 					[
 						SNew(STextBlock).Text(FText::FromString(Row->ClassLabel)).ColorAndOpacity(Muted)
 					];
@@ -529,7 +529,7 @@ namespace
 #endif
 						.ContentPadding(FMargin {0.0f})
 						.IsEnabled(bFile)
-						.ToolTipText(FText::FromString(Tip))
+						.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(Tip)))
 						.Cursor(bFile ? EMouseCursor::Hand : EMouseCursor::Default)
 						.OnClicked_Lambda([File, Line]() {
 							PjcUnusedOpenFile(File, Line);
@@ -560,7 +560,7 @@ namespace
 				return SNew(SBox)
 					.VAlign(VAlign_Center)
 					.Padding(FMargin {0.0f, 0.0f, 8.0f, 0.0f})
-					.ToolTipText(FText::FromString(Row->ReasonTip))
+					.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(Row->ReasonTip)))
 					[
 						SNew(STextBlock).Text(FText::FromString(Row->Reason)).ColorAndOpacity(ReasonColor)
 					];
@@ -959,22 +959,19 @@ TSharedRef<SWidget> SPjcTabUnused::MakeFolderPane() {
 		.FillWidth(1.0f)
 		.SortMode(this, &SPjcTabUnused::GetFolderSortMode, PjcUnusedColFolder)
 		.OnSort(this, &SPjcTabUnused::OnFolderSort)
-		+ SHeaderRow::Column(PjcUnusedColShare)
-		.DefaultLabel_Lambda([this]() { return FText::FromString(PjcWidgets::GetSetLabel(Set)); })
-		.DefaultTooltip_Lambda([this]() { return FText::FromString(TEXT("Share of the folder size that is ") + PjcWidgets::GetSetWord(Set)); })
+		+ PjcWidgets::MakeColumn(SHeaderRow::Column(PjcUnusedColShare).DefaultLabel_Lambda([this]() { return FText::FromString(PjcWidgets::GetSetLabel(Set)); }),
+			TAttribute<FText>::Create(TAttribute<FText>::FGetter::CreateLambda([this]() { return FText::FromString(TEXT("Share of the folder size that is ") + PjcWidgets::GetSetWord(Set)); })))
 		.FixedWidth(128.0f)
 		.SortMode(this, &SPjcTabUnused::GetFolderSortMode, PjcUnusedColShare)
 		.OnSort(this, &SPjcTabUnused::OnFolderSort)
-		+ SHeaderRow::Column(PjcUnusedColSize)
-		.DefaultLabel(FText::FromString(TEXT("Size")))
-		.DefaultTooltip_Lambda([this]() { return FText::FromString(TEXT("Size of the assets ") + PjcWidgets::GetSetWord(Set) + TEXT(", subfolders included")); })
+		+ PjcWidgets::MakeColumn(SHeaderRow::Column(PjcUnusedColSize).DefaultLabel(FText::FromString(TEXT("Size"))),
+			TAttribute<FText>::Create(TAttribute<FText>::FGetter::CreateLambda([this]() { return FText::FromString(TEXT("Size of the assets ") + PjcWidgets::GetSetWord(Set) + TEXT(", subfolders included")); })))
 		.FixedWidth(80.0f)
 		.HAlignHeader(HAlign_Right)
 		.SortMode(this, &SPjcTabUnused::GetFolderSortMode, PjcUnusedColSize)
 		.OnSort(this, &SPjcTabUnused::OnFolderSort)
-		+ SHeaderRow::Column(PjcUnusedColAssets)
-		.DefaultLabel(FText::FromString(TEXT("Assets")))
-		.DefaultTooltip_Lambda([this]() { return FText::FromString(TEXT("Assets ") + PjcWidgets::GetSetWord(Set) + TEXT(" / all assets, subfolders included")); })
+		+ PjcWidgets::MakeColumn(SHeaderRow::Column(PjcUnusedColAssets).DefaultLabel(FText::FromString(TEXT("Assets"))),
+			TAttribute<FText>::Create(TAttribute<FText>::FGetter::CreateLambda([this]() { return FText::FromString(TEXT("Assets ") + PjcWidgets::GetSetWord(Set) + TEXT(" / all assets, subfolders included")); })))
 		.FixedWidth(100.0f)
 		.HAlignHeader(HAlign_Right)
 		.SortMode(this, &SPjcTabUnused::GetFolderSortMode, PjcUnusedColAssets)
@@ -1048,7 +1045,7 @@ TSharedRef<SWidget> SPjcTabUnused::MakeFolderPane() {
 						.ForegroundColor(FSlateColor::UseForeground())
 #endif
 						.Visibility_Lambda([this]() { return bMapView ? EVisibility::Collapsed : EVisibility::Visible; })
-						.ToolTipText(FText::FromString(TEXT("View options")))
+						.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("View options"))))
 						.OnGetMenuContent(this, &SPjcTabUnused::MakeViewMenu)
 						.ButtonContent()
 						[
@@ -1380,10 +1377,10 @@ TSharedRef<SWidget> SPjcTabUnused::MakeAssetPane() {
 								[
 									SNew(STextBlock)
 									.Text_Lambda([this]() { return FText::FromString(Set == EPjcAssetSet::Used ? TEXT("USAGE FILTERS") : TEXT("STATUS FILTERS")); })
-									.ToolTipText_Lambda([this]() {
+									.ToolTip(PjcWidgets::MakeToolTip(TAttribute<FText>::Create(TAttribute<FText>::FGetter::CreateLambda([this]() {
 										const TCHAR* Used = TEXT("Why the assets are used, as the Reason column says. Several can be picked.");
 										return FText::FromString(Set == EPjcAssetSet::Used ? Used : TEXT("Assets the last delete could not remove"));
-									})
+									}))))
 									.Font(FPjcStyles::GetFont("Bold", 8))
 									.ColorAndOpacity(FSlateColor::UseSubduedForeground())
 								]
@@ -1403,7 +1400,7 @@ TSharedRef<SWidget> SPjcTabUnused::MakeAssetPane() {
 							[
 								SNew(STextBlock)
 								.Text(FText::FromString(TEXT("ASSET FILTERS")))
-								.ToolTipText(FText::FromString(TEXT("Filter by asset class: a class in its color is listed")))
+								.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Filter by asset class: a class in its color is listed"))))
 								.Font(FPjcStyles::GetFont("Bold", 8))
 								.ColorAndOpacity(FSlateColor::UseSubduedForeground())
 							]
@@ -1768,7 +1765,7 @@ void SPjcTabUnused::RebuildHeader() {
 		[
 			SNew(SCheckBox)
 			.Style(&PjcShim::GetCheckBoxStyle())
-			.ToolTipText(FText::FromString(TEXT("Select all, or none")))
+			.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Select all, or none"))))
 			.IsChecked_Lambda([this]() {
 				const int32 NumSelected = ListView.IsValid() ? ListView->GetNumItemsSelected() : 0;
 				if (NumSelected == 0) return ECheckBoxState::Unchecked;
@@ -1809,8 +1806,7 @@ void SPjcTabUnused::RebuildHeader() {
 		for (const auto& Each : Columns) {
 			const FName Column = Each.Id;
 			// clang-format off
-			SHeaderRow::FColumn::FArguments Args = SHeaderRow::Column(Column)
-				.DefaultTooltip(FText::FromString(Each.ToolTip))
+			SHeaderRow::FColumn::FArguments Args = PjcWidgets::MakeColumn(SHeaderRow::Column(Column), FText::FromString(Each.ToolTip))
 				.SortMode(this, &SPjcTabUnused::GetAssetSortMode, Column)
 				.OnSort(this, &SPjcTabUnused::OnAssetSort)
 				.HAlignHeader(Each.bRight ? HAlign_Right : HAlign_Fill)
@@ -1846,8 +1842,7 @@ void SPjcTabUnused::RebuildHeader() {
 		const bool bSize = Column == PjcUnusedColAssetSize;
 
 		// clang-format off
-		SHeaderRow::FColumn::FArguments Args = SHeaderRow::Column(Column)
-			.DefaultTooltip(FText::FromString(ToolTip + (ToolTip.IsEmpty() ? TEXT("") : TEXT("\n")) + TEXT("Drag onto another header to move it")))
+		SHeaderRow::FColumn::FArguments Args = PjcWidgets::MakeColumn(SHeaderRow::Column(Column), FText::FromString(ToolTip + (ToolTip.IsEmpty() ? TEXT("") : TEXT("\n")) + TEXT("Drag onto another header to move it")))
 			.SortMode(this, &SPjcTabUnused::GetAssetSortMode, Column)
 			.OnSort(this, &SPjcTabUnused::OnAssetSort)
 			.HAlignHeader(bSize ? HAlign_Right : HAlign_Fill)
@@ -2127,7 +2122,7 @@ TSharedRef<SWidget> SPjcTabUnused::MakeToolbar() {
 					.ForegroundColor(FSlateColor::UseForeground())
 #endif
 					.ContentPadding(FMargin {8.0f, 1.0f, 10.0f, 1.0f})
-					.ToolTipText(FText::FromString(TEXT("Deletes the selection with the unused assets that reference it (Delete)")))
+					.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Deletes the selection with the unused assets that reference it (Delete)"))))
 					.Visibility_Lambda(ShownFor(true, false))
 					.IsEnabled_Lambda(HasSelection)
 					.OnClicked_Lambda([this]() {
@@ -2152,7 +2147,7 @@ TSharedRef<SWidget> SPjcTabUnused::MakeToolbar() {
 						.ForegroundColor(FSlateColor::UseForeground())
 #endif
 						.ContentPadding(FMargin {8.0f, 1.0f, 10.0f, 1.0f})
-						.ToolTipText(FText::FromString(TEXT("Keeps the selection, its folder or its class from cleanup: adds exclusions")))
+						.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Keeps the selection, its folder or its class from cleanup: adds exclusions"))))
 						.IsEnabled_Lambda(HasSelection)
 						.OnClicked_Lambda([ExcludeMenu]() {
 							if (ExcludeMenu->IsValid()) (*ExcludeMenu)->SetIsOpen(!(*ExcludeMenu)->IsOpen());
@@ -2182,7 +2177,7 @@ TSharedRef<SWidget> SPjcTabUnused::MakeToolbar() {
 					.ForegroundColor(FSlateColor::UseForeground())
 #endif
 					.ContentPadding(FMargin {8.0f, 1.0f, 10.0f, 1.0f})
-					.ToolTipText(FText::FromString(TEXT("Removes the rules that keep the selection; the next scan shows what they are without them")))
+					.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Removes the rules that keep the selection; the next scan shows what they are without them"))))
 					.Visibility_Lambda(ShownFor(false, true))
 					.IsEnabled_Lambda(HasSelection)
 					.OnClicked_Lambda([this]() {
@@ -2201,7 +2196,7 @@ TSharedRef<SWidget> SPjcTabUnused::MakeToolbar() {
 					.ForegroundColor(FSlateColor::UseForeground())
 #endif
 					.ContentPadding(FMargin {8.0f, 1.0f, 10.0f, 1.0f})
-					.ToolTipText(FText::FromString(TEXT("Shows why it is in the list in the Inspector")))
+					.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Shows why it is in the list in the Inspector"))))
 					.IsEnabled_Lambda([this]() { return ListView.IsValid() && GetView()->GetNumItemsSelected() == 1; })
 					.OnClicked_Lambda([this]() {
 						InspectSelected();
@@ -2219,7 +2214,7 @@ TSharedRef<SWidget> SPjcTabUnused::MakeToolbar() {
 					.ForegroundColor(FSlateColor::UseForeground())
 #endif
 					.ContentPadding(FMargin {8.0f, 1.0f, 10.0f, 1.0f})
-					.ToolTipText(FText::FromString(TEXT("Shows the selection in the Content Browser")))
+					.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Shows the selection in the Content Browser"))))
 					.IsEnabled_Lambda(HasSelection)
 					.OnClicked_Lambda([this]() {
 						BrowseSelected();
@@ -2245,7 +2240,7 @@ TSharedRef<SWidget> SPjcTabUnused::MakeToolbar() {
 						[
 							SNew(STextBlock)
 							.Text(this, &SPjcTabUnused::GetSelectionGroupText)
-							.ToolTipText(FText::FromString(TEXT("Unused assets that reference the selection: deleted with it")))
+							.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Unused assets that reference the selection: deleted with it"))))
 							.ColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.Yellow"))
 						]
 					]
@@ -2258,7 +2253,7 @@ TSharedRef<SWidget> SPjcTabUnused::MakeToolbar() {
 #if ENGINE_MAJOR_VERSION < 5
 				.ForegroundColor(FSlateColor::UseForeground())
 #endif
-				.ToolTipText(FText::FromString(TEXT("View options of the list")))
+				.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("View options of the list"))))
 				.OnGetMenuContent(this, &SPjcTabUnused::MakeListViewMenu)
 				.ButtonContent()
 				[
@@ -2371,7 +2366,7 @@ TSharedRef<ITableRow> SPjcTabUnused::OnGenerateAssetTile(FAssetRowPtr Row, const
 	const TSharedRef<STableRow<FAssetRowPtr>> TileRow = SNew(STableRow<FAssetRowPtr>, Table)
 		.Style(&FPjcStyles::Get().GetWidgetStyle<FTableRowStyle>("ProjectCleaner.TileRow"))
 		.Padding(FMargin {0.0f, 0.0f, PjcUnusedTileGap, PjcUnusedTileGap})
-		.ToolTipText(FText::FromString(Tip));
+		.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(Tip)));
 	// clang-format on
 
 	const TWeakPtr<STableRow<FAssetRowPtr>> WeakRow = TileRow;
@@ -2650,7 +2645,7 @@ TSharedRef<SWidget> SPjcTabUnused::MakeMapBar() {
 		// clang-format off
 		return SNew(SCheckBox)
 			.Style(&PjcShim::GetToggleStyle())
-			.ToolTipText(FText::FromString(ToolTip))
+			.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(ToolTip)))
 			.IsChecked_Lambda([this, bAll]() { return bMapAll == bAll ? ECheckBoxState::Checked : ECheckBoxState::Unchecked; })
 			.OnCheckStateChanged_Lambda([this, bAll](ECheckBoxState) {
 				bMapAll = bAll;

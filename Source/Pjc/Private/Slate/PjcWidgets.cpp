@@ -79,6 +79,47 @@ namespace PjcWidgets
 		// clang-format on
 	}
 
+	// the engine draws a text-only tooltip in another look, so the text goes in as content
+	class SPjcTextToolTip : public SToolTip
+	{
+	  public:
+
+		SLATE_BEGIN_ARGS(SPjcTextToolTip) {}
+		SLATE_END_ARGS()
+
+		void Construct(const FArguments&, const TAttribute<FText>& InText) {
+			Text = InText;
+			// clang-format off
+			SToolTip::Construct(SToolTip::FArguments()
+				[
+					SNew(STextBlock).Text(InText).WrapTextAt(360.0f)
+				]);
+			// clang-format on
+		}
+
+		virtual bool IsEmpty() const override {
+			return Text.Get().IsEmpty();
+		}
+
+	  private:
+
+		TAttribute<FText> Text;
+	};
+
+	TSharedRef<SToolTip> MakeToolTip(const TAttribute<FText>& Text) {
+		return SNew(SPjcTextToolTip, Text);
+	}
+
+	SHeaderRow::FColumn::FArguments MakeColumn(SHeaderRow::FColumn::FArguments Column, const TAttribute<FText>& ToolTip) {
+#if ENGINE_MAJOR_VERSION < 5
+		// 4.27 headers take only text
+		Column.DefaultTooltip(ToolTip);
+#else
+		Column.ToolTip(TSharedPtr<IToolTip> {MakeToolTip(ToolTip)});
+#endif
+		return Column;
+	}
+
 	FLinearColor GetColor(const FName Name) {
 		return FPjcStyles::Get().GetColor(Name);
 	}
@@ -267,7 +308,7 @@ namespace PjcWidgets
 	TSharedRef<SWidget> MakeFilterHeading(const TAttribute<FText>& Text, const TAttribute<FText>& ToolTip) {
 		return SNew(STextBlock)
 			.Text(Text)
-			.ToolTipText(ToolTip)
+			.ToolTip(PjcWidgets::MakeToolTip(ToolTip))
 			.Font(FPjcStyles::GetFont("Bold", 8))
 			.ColorAndOpacity(FSlateColor::UseSubduedForeground());
 	}

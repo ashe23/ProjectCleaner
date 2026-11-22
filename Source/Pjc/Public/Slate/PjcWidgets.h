@@ -6,6 +6,7 @@
 #include "Fonts/SlateFontInfo.h"
 #include "Layout/Margin.h"
 #include "Textures/SlateIcon.h"
+#include "Widgets/Views/SHeaderRow.h"
 
 class FMenuBuilder;
 class SToolTip;
@@ -47,6 +48,12 @@ namespace PjcWidgets
 
 	// Tooltip with a bold title, the text, and optional muted lines
 	TSharedRef<SToolTip> MakeToolTip(const FString& Title, const FString& Text, const FString& More = FString {});
+
+	// Tooltip with only text, in the same look; shows nothing while the text is empty
+	TSharedRef<SToolTip> MakeToolTip(const TAttribute<FText>& Text);
+
+	// A header column with a tooltip in the same look
+	SHeaderRow::FColumn::FArguments MakeColumn(SHeaderRow::FColumn::FArguments Column, const TAttribute<FText>& ToolTip);
 
 	// Color of the plugin style, e.g. ProjectCleaner.Color.Red
 	FLinearColor GetColor(const FName Name);

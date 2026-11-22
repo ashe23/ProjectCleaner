@@ -233,7 +233,7 @@ TSharedRef<SWidget> SPjcDeleteDialog::MakeList(const TArray<FAssetData>& Assets)
 		// clang-format off
 		List->AddSlot().AutoHeight().Padding(FMargin {0.0f, 1.0f})
 		[
-			SNew(SHorizontalBox).ToolTipText(FText::FromName(Asset.PackageName))
+			SNew(SHorizontalBox).ToolTip(PjcWidgets::MakeToolTip(FText::FromName(Asset.PackageName)))
 			+ SHorizontalBox::Slot().FillWidth(1.0f)
 			[
 				SNew(STextBlock).Text(FText::FromName(Asset.AssetName))

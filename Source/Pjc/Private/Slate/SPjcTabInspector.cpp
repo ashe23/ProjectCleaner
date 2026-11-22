@@ -189,7 +189,7 @@ namespace
 		// clang-format off
 		return SNew(STextBlock)
 			.Text(FText::FromString(Text))
-			.ToolTipText(FText::FromString(ToolTip))
+			.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(ToolTip)))
 			.Font(FPjcStyles::GetFont("Bold", 8))
 			.ColorAndOpacity(FSlateColor::UseSubduedForeground());
 		// clang-format on
@@ -246,7 +246,7 @@ namespace
 				.ForegroundColor(FSlateColor::UseForeground())
 #endif
 				.ContentPadding(FMargin {8.0f, 1.0f, 10.0f, 1.0f})
-				.ToolTipText(FText::FromString(ToolTip))
+				.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(ToolTip)))
 				.IsEnabled_Lambda([Enabled]() { return Enabled(); })
 				.OnClicked_Lambda([OnClick]() { OnClick(); return FReply::Handled(); })
 				[
@@ -259,7 +259,7 @@ namespace
 			.ForegroundColor(FSlateColor::UseForeground())
 #endif
 			.ContentPadding(FMargin {8.0f, 1.0f, 10.0f, 1.0f})
-			.ToolTipText(FText::FromString(ToolTip))
+			.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(ToolTip)))
 			.IsEnabled_Lambda([Enabled]() { return Enabled(); })
 			.OnClicked_Lambda([OnClick]() { OnClick(); return FReply::Handled(); })
 			[
@@ -307,7 +307,7 @@ namespace
 			.ForegroundColor(FSlateColor::UseForeground())
 #endif
 			.ContentPadding(FMargin {0.0f})
-			.ToolTipText(FText::FromString(ToolTip))
+			.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(ToolTip)))
 			.OnClicked_Lambda([OnClick]() { OnClick(); return FReply::Handled(); })
 			[
 				SNew(SBorder)
@@ -586,7 +586,7 @@ TSharedRef<SWidget> SPjcTabInspector::MakeFinder() {
 							[
 								SNew(STextBlock)
 								.Text_Lambda([this]() { return FText::FromString(PjcFormat::Count(FinderRows.Num())); })
-								.ToolTipText(FText::FromString(TEXT("Assets listed")))
+								.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Assets listed"))))
 								.Font(PjcWidgets::GetFontMono(8))
 								.ColorAndOpacity(FSlateColor::UseSubduedForeground())
 							]
@@ -800,8 +800,8 @@ TSharedRef<SWidget> SPjcTabInspector::MakeMain() {
 			[
 				SNew(STextBlock).Text_Lambda([this]() { return FText::FromString(bUses ? TEXT("Uses") : TEXT("Used by")); })
 			]
-			+ SHeaderRow::Column(PjcInspectorColKind).FixedWidth(86.0f).DefaultLabel(FText::FromString(TEXT("Kind")))
-			.DefaultTooltip(FText::FromString(TEXT("Hard: loads with the asset. Soft: loaded on demand by path. Editor only: not cooked")))
+			+ PjcWidgets::MakeColumn(SHeaderRow::Column(PjcInspectorColKind).FixedWidth(86.0f).DefaultLabel(FText::FromString(TEXT("Kind"))),
+				FText::FromString(TEXT("Hard: loads with the asset. Soft: loaded on demand by path. Editor only: not cooked")))
 			+ SHeaderRow::Column(PjcInspectorColWhere).FillWidth(0.4f)
 			.HeaderContent()
 			[
@@ -810,9 +810,9 @@ TSharedRef<SWidget> SPjcTabInspector::MakeMain() {
 				[
 					SNew(STextBlock)
 					.Text(FText::FromString(TEXT("Where")))
-					.ToolTipText_Lambda([this]() {
+					.ToolTip(PjcWidgets::MakeToolTip(TAttribute<FText>::Create(TAttribute<FText>::FGetter::CreateLambda([this]() {
 						return FText::FromString(bUses ? TEXT("Where the asset one level up holds each one") : TEXT("Where each asset holds the one it opens from"));
-					})
+					}))))
 				]
 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {8.0f, 0.0f, 0.0f, 0.0f})
 				[
@@ -847,7 +847,7 @@ TSharedRef<SWidget> SPjcTabInspector::MakeMain() {
 					.ContentPadding(FMargin {0.0f})
 					.Cursor(EMouseCursor::Hand)
 					.Visibility_Lambda([this]() { return NeedRead.Num() == 0 && LoadedHere.Num() > 0 ? EVisibility::Visible : EVisibility::Collapsed; })
-					.ToolTipText(FText::FromString(TEXT("The Inspector loaded these assets to read where. Click: select them in Assets")))
+					.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("The Inspector loaded these assets to read where. Click: select them in Assets"))))
 					.OnClicked_Lambda([this]() {
 						PjcTabs::SelectAssets(TabManager, LoadedHere);
 						return FReply::Handled();
@@ -868,7 +868,7 @@ TSharedRef<SWidget> SPjcTabInspector::MakeMain() {
 #endif
 					.ContentPadding(FMargin {8.0f, 0.0f})
 					.Visibility_Lambda([this]() { return NeedRead.Num() == 0 && LoadedHere.Num() > 0 ? EVisibility::Visible : EVisibility::Collapsed; })
-					.ToolTipText(FText::FromString(TEXT("Lets go of the assets the Inspector loaded. What was read stays until the next scan")))
+					.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Lets go of the assets the Inspector loaded. What was read stays until the next scan"))))
 					.OnClicked_Lambda([this]() {
 						UnloadRead();
 						return FReply::Handled();
@@ -1026,7 +1026,7 @@ TSharedRef<SWidget> SPjcTabInspector::MakeHead() {
 			.ForegroundColor(FSlateColor::UseForeground())
 #endif
 			.ContentPadding(FMargin {4.0f, 3.0f})
-			.ToolTipText(FText::FromString(ToolTip))
+			.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(ToolTip)))
 			.IsEnabled_Lambda([Enabled]() { return Enabled(); })
 			.OnClicked_Lambda([OnClick]() { OnClick(); return FReply::Handled(); })
 			[
@@ -1071,7 +1071,7 @@ TSharedRef<SWidget> SPjcTabInspector::MakeHead() {
 			.ForegroundColor(FSlateColor::UseForeground())
 #endif
 			.ContentPadding(FMargin {2.0f, 0.0f})
-			.ToolTipText(FText::FromString(TEXT("Inspect ") + Earlier.ToString()))
+			.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Inspect ") + Earlier.ToString())))
 			.OnClicked_Lambda([this, Earlier]() { SetFocus(Earlier, true); return FReply::Handled(); })
 			[
 				SNew(STextBlock).Text(FText::FromString(PjcInspectorShortName(Earlier))).Font(FPjcStyles::GetFont("Regular", 8)).ColorAndOpacity(FSlateColor::UseSubduedForeground())
@@ -1128,7 +1128,7 @@ TSharedRef<SWidget> SPjcTabInspector::MakeHead() {
 			[
 				SNew(STextBlock)
 				.Text(FText::FromString(bScanned || Result.GetSize(Focus) > 0 ? PjcFormat::Size(Result.GetSize(Focus)) : FString {}))
-				.ToolTipText(FText::FromString(TEXT("Size on disk")))
+				.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Size on disk"))))
 				.Font(PjcWidgets::GetFontMono(9))
 			]
 		]
@@ -1147,7 +1147,7 @@ TSharedRef<SWidget> SPjcTabInspector::MakeHead() {
 				.ForegroundColor(FSlateColor::UseForeground())
 #endif
 				.ContentPadding(FMargin {0.0f})
-				.ToolTipText(FText::FromString(TEXT("Click to copy the path (Ctrl+C)")))
+				.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Click to copy the path (Ctrl+C)"))))
 				.OnClicked_Lambda([Path]() { PjcInspectorCopy(Path, TEXT("the path")); return FReply::Handled(); })
 				[
 					SNew(STextBlock).Text(FText::FromString(Path)).Font(FPjcStyles::GetFont("Regular", 8)).ColorAndOpacity(FSlateColor::UseSubduedForeground())
@@ -1461,7 +1461,7 @@ TSharedRef<SWidget> SPjcTabInspector::MakeAnswer() {
 				.ForegroundColor(FSlateColor::UseForeground())
 #endif
 				.ContentPadding(FMargin {6.0f, 0.0f})
-				.ToolTipText(FText::FromString(TEXT("The other roots that keep it, and the routes that differ most")))
+				.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("The other roots that keep it, and the routes that differ most"))))
 				.OnGetMenuContent(this, &SPjcTabInspector::MakeRouteMenu)
 				.ButtonContent()
 				[
@@ -1642,7 +1642,7 @@ TSharedRef<SWidget> SPjcTabInspector::MakeAnswer() {
 				.ForegroundColor(FSlateColor::UseForeground())
 #endif
 				.ContentPadding(FMargin {8.0f, 2.0f})
-				.ToolTipText(FText::FromString(Package.ToString() + TEXT("\nClick: inspect it")))
+				.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(Package.ToString() + TEXT("\nClick: inspect it"))))
 				.OnClicked_Lambda([this, Package]() { SetFocus(Package, true); return FReply::Handled(); })
 				[
 					SNew(SHorizontalBox)
@@ -1678,7 +1678,7 @@ TSharedRef<SWidget> SPjcTabInspector::MakeAnswer() {
 				.ForegroundColor(FSlateColor::UseForeground())
 #endif
 				.ContentPadding(FMargin {8.0f, 2.0f})
-				.ToolTipText(FText::FromString(TEXT("Selects them all in the Assets tab")))
+				.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Selects them all in the Assets tab"))))
 				.OnClicked_Lambda([Tabs, All]() { PjcTabs::SelectAssets(Tabs, All); return FReply::Handled(); })
 				[
 					SNew(STextBlock)
@@ -2477,7 +2477,7 @@ TSharedRef<SWidget> SPjcTabInspector::MakeCell(const FItemPtr& Item, const FName
 		// clang-format off
 		return SNew(STextBlock)
 			.Text(FText::FromString(Text))
-			.ToolTipText(FText::FromString(ToolTip))
+			.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(ToolTip)))
 			.Font(bMono ? PjcWidgets::GetFontMono(8) : FPjcStyles::GetFont("Regular", 8))
 			.ColorAndOpacity(PjcInspectorColor(Color));
 		// clang-format on
@@ -2621,7 +2621,7 @@ TSharedRef<SWidget> SPjcTabInspector::MakeCell(const FItemPtr& Item, const FName
 			// clang-format off
 			return SNew(STextBlock)
 				.Text(FText::FromString(Text))
-				.ToolTipText(FText::FromString(ToolTip))
+				.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(ToolTip)))
 				.Font(PjcWidgets::GetFontMono(8))
 				.ColorAndOpacity(PjcInspectorColor(Color))
 				.Clipping(EWidgetClipping::ClipToBounds);
@@ -2716,7 +2716,7 @@ TSharedRef<SWidget> SPjcTabInspector::MakeCell(const FItemPtr& Item, const FName
 			.ForegroundColor(FSlateColor::UseForeground())
 #endif
 			.ContentPadding(FMargin {4.0f, 2.0f})
-			.ToolTipText(FText::FromString(TEXT("Inspect ") + PjcInspectorShortName(Package)))
+			.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Inspect ") + PjcInspectorShortName(Package))))
 			.OnClicked_Lambda([this, Package]() { SetFocus(Package, true); return FReply::Handled(); })
 			[
 				SNew(SBox).WidthOverride(12.0f).HeightOverride(12.0f)

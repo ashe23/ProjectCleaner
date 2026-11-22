@@ -52,7 +52,7 @@ void SPjcScanWindow::Construct(const FArguments& InArgs) {
 		// clang-format off
 		Steps->AddSlot().AutoHeight().Padding(FMargin {0.0f, 2.0f})
 		[
-			SNew(SHorizontalBox).ToolTipText(FText::FromString(Step.ToolTip))
+			SNew(SHorizontalBox).ToolTip(PjcWidgets::MakeToolTip(FText::FromString(Step.ToolTip)))
 			+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin {0.0f, 0.0f, 8.0f, 0.0f})
 			[
 				SNew(SBox).WidthOverride(14.0f).HAlign(HAlign_Center)

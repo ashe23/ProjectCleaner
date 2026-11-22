@@ -586,7 +586,7 @@ TSharedRef<SWidget> SPjcCleanWindow::MakeRun() {
 					.ForegroundColor(FSlateColor::UseForeground())
 #endif
 					.ContentPadding(FMargin {12.0f, 2.0f})
-					.ToolTipText(FText::FromString(TEXT("Stops after the batch that is running. What is deleted stays deleted.")))
+					.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Stops after the batch that is running. What is deleted stays deleted."))))
 					.IsEnabled_Lambda([this]() { return !bStopRequested; })
 					.OnClicked_Lambda([this]() {
 						bStopRequested = true;

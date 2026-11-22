@@ -116,11 +116,11 @@ TSharedRef<SWidget> SPjcToolFrame::MakeStrip() {
 #endif
 				.ButtonStyle(&PjcShim::GetStyle().GetWidgetStyle<FButtonStyle>(TEXT("NoBorder")))
 				.ContentPadding(FMargin {0.0f, 8.0f})
-				.ToolTipText_Lambda([this]() {
+				.ToolTip(PjcWidgets::MakeToolTip(TAttribute<FText>::Create(TAttribute<FText>::FGetter::CreateLambda([this]() {
 					const TCHAR* Action = bPanelOpen ? TEXT("Hide") : TEXT("Show");
 					const TCHAR* Changed = FPjcScanDraft::IsChanged() ? TEXT(" \u00B7 changed, not scanned yet") : TEXT("");
 					return FText::FromString(FString::Printf(TEXT("%s scan settings%s"), Action, Changed));
-				})
+				}))))
 				.OnClicked_Lambda([this]() {
 					TogglePanel();
 					return FReply::Handled();
@@ -208,7 +208,7 @@ TSharedRef<SWidget> SPjcToolFrame::MakeSideColumn(const TSharedRef<SWidget>& Sid
 			.BorderImage(FCoreStyle::Get().GetBrush("NoBrush"))
 			.Padding(0.0f)
 			.Cursor(EMouseCursor::ResizeLeftRight)
-			.ToolTipText(FText::FromString(TEXT("Drag to resize")))
+			.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Drag to resize"))))
 			.OnMouseButtonDown_Lambda([this](const FGeometry&, const FPointerEvent& Event) {
 				if (Event.GetEffectingButton() != EKeys::LeftMouseButton) return FReply::Unhandled();
 				bSideDragging = true;

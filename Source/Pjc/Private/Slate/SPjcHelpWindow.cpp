@@ -233,7 +233,7 @@ void SPjcHelpWindow::Construct(const FArguments& InArgs) {
 						.ForegroundColor(FSlateColor::UseForeground())
 #endif
 						.ContentPadding(FMargin {8.0f, 0.0f})
-						.ToolTipText(FText::FromString(TEXT("Copies the lines below, to paste into a bug report")))
+						.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Copies the lines below, to paste into a bug report"))))
 						.OnClicked_Lambda([]() {
 							FPlatformApplicationMisc::ClipboardCopy(*GetSystemInfo());
 							UPjcSubsystem::ShowNotification(TEXT("Copied \u00B7 paste it into the bug report"), SNotificationItem::CS_Success, 3.0f);
@@ -269,7 +269,7 @@ void SPjcHelpWindow::Construct(const FArguments& InArgs) {
 						.ForegroundColor(FSlateColor::UseForeground())
 #endif
 						.ContentPadding(FMargin {14.0f, 3.0f})
-						.ToolTipText(FText::FromString(TEXT("Collects what helps, shows it, and you choose what goes into the GitHub issue")))
+						.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Collects what helps, shows it, and you choose what goes into the GitHub issue"))))
 						.OnClicked_Lambda([this]() {
 							Close(true);
 							return FReply::Handled();
@@ -386,7 +386,7 @@ void SPjcReportWindow::Construct(const FArguments& InArgs) {
 			.IsEnabled(!bPart || !Text.IsEmpty())
 			.IsChecked_Lambda([Flag]() { return *Flag ? ECheckBoxState::Checked : ECheckBoxState::Unchecked; })
 			.OnCheckStateChanged_Lambda([Flag](const ECheckBoxState State) { *Flag = State == ECheckBoxState::Checked; })
-			.ToolTipText(FText::FromString(Detail))
+			.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(Detail)))
 			[
 				SNew(SHorizontalBox)
 				+ SHorizontalBox::Slot().FillWidth(1.0f)
@@ -513,7 +513,7 @@ void SPjcReportWindow::Construct(const FArguments& InArgs) {
 						.ForegroundColor(FSlateColor::UseForeground())
 #endif
 						.ContentPadding(FMargin {12.0f, 2.0f})
-						.ToolTipText(FText::FromString(TEXT("Saves the report as a text file, to attach or send another way")))
+						.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Saves the report as a text file, to attach or send another way"))))
 						.OnClicked_Lambda([this]() {
 							SaveAsFile();
 							return FReply::Handled();
@@ -547,7 +547,7 @@ void SPjcReportWindow::Construct(const FArguments& InArgs) {
 #endif
 						.ButtonStyle(&PjcShim::GetPrimaryButtonStyle())
 						.ContentPadding(FMargin {12.0f, 2.0f})
-						.ToolTipText(FText::FromString(TEXT("Opens a new GitHub issue with this title and text. A long report is copied to the clipboard instead.")))
+						.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Opens a new GitHub issue with this title and text. A long report is copied to the clipboard instead."))))
 						.OnClicked_Lambda([this]() {
 							OpenIssue();
 							Close();

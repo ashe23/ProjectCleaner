@@ -164,7 +164,7 @@ TSharedRef<ITableRow> SPjcListPicker::OnGenerateRow(FItemPtr Item, const TShared
 		.Style(&PjcShim::GetRowStyle427())
 #endif
 		.Padding(FMargin {4.0f, 2.0f})
-		.ToolTipText(FText::FromString(Item->Value))
+		.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(Item->Value)))
 		[
 			SNew(SHorizontalBox)
 			+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin {0.0f, 0.0f, 6.0f, 0.0f})
