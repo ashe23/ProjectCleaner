@@ -63,8 +63,8 @@ class UPjcScanSettings final : public UDeveloperSettings
 	UPROPERTY(EditAnywhere, Config, Category = "Used Assets")
 	bool bCinematicAssetsUsed = true;
 
-	// Assets of these classes (and derived classes) are always used.
-	UPROPERTY(EditAnywhere, Config, Category = "Used Assets", meta = (AllowAbstract = "true"))
+	// Old place of the excluded classes (Always used classes): moved into the exclusions once at startup, then empty
+	UPROPERTY(Config)
 	TArray<TSoftClassPtr<UObject>> UsedClasses;
 
 	// Metadata folder of a cook made on another machine, e.g. a build machine (Saved/Cooked/<Platform>/<Project>/Metadata,

@@ -5,6 +5,7 @@
 #include "UObject/CoreRedirects.h"
 #include "PjcCookInfo.h"
 #include "PjcFormat.h"
+#include "PjcScanDraft.h"
 #include "PjcConstants.h"
 #include "PjcShim.h"
 #include "PjcSettings.h"
@@ -241,6 +242,32 @@ namespace
 		TSet<FString> GameModules;
 		mutable TMap<FString, FString> FolderModules;
 	};
+
+	// marks of assets that are gone (deleted by a cleanup or elsewhere) come off the settings: the list holds only what exists
+	void PjcPruneMarkedUnused() {
+		UPjcAssetExcludeSettings* Settings = GetMutableDefault<UPjcAssetExcludeSettings>();
+		const auto IsGone = [](const FString& Path) {
+			const FString Package = FSoftObjectPath {Path}.GetLongPackageName();
+			return !Package.IsEmpty() && !FPackageName::DoesPackageExist(Package);
+		};
+		const int32 Num = Settings->MarkedUnusedAssets.RemoveAll([&IsGone](const TSoftObjectPtr<UObject>& Asset) {
+			return IsGone(Asset.ToSoftObjectPath().ToString());
+		});
+		if (Num == 0) return;
+
+		PjcShim::UpdateDefaultConfigFile(Settings);
+		UE_LOG(LogProjectCleaner, Display, TEXT("Removed %d marks of deleted assets"), Num);
+	}
+
+	// packages of the assets to review the user marked unused
+	TSet<FName> PjcGetPackagesMarkedUnused() {
+		TSet<FName> Packages;
+		for (const auto& Asset : GetDefault<UPjcAssetExcludeSettings>()->MarkedUnusedAssets) {
+			const FString Package = Asset.ToSoftObjectPath().GetLongPackageName();
+			if (!Package.IsEmpty()) Packages.Add(FName {*Package});
+		}
+		return Packages;
+	}
 }	// namespace
 
 FPjcScanCacheScope::FPjcScanCacheScope() {
@@ -257,6 +284,7 @@ void UPjcSubsystem::Initialize(FSubsystemCollectionBase& Collection) {
 	Super::Initialize(Collection);
 
 	MoveExclusionsToProject();
+	MoveUsedClassesToExclusions();
 
 	IAssetRegistry& Registry = GetModuleAssetRegistry().Get();
 	AssetAddedHandle = Registry.OnAssetAdded().AddUObject(this, &UPjcSubsystem::OnAssetAddedEvent);
@@ -270,6 +298,25 @@ void UPjcSubsystem::Initialize(FSubsystemCollectionBase& Collection) {
 #else
 	PackageSavedHandle = UPackage::PackageSavedEvent.AddUObject(this, &UPjcSubsystem::OnPackageSavedEvent);
 #endif
+}
+
+int32 UPjcSubsystem::MoveUsedClassesToExclusions() {
+	UPjcScanSettings* ScanSettings = GetMutableDefault<UPjcScanSettings>();
+	if (ScanSettings->UsedClasses.Num() == 0) return 0;
+
+	UPjcAssetExcludeSettings* Exclusions = GetMutableDefault<UPjcAssetExcludeSettings>();
+	int32 NumMoved = 0;
+	for (const auto& UsedClass : ScanSettings->UsedClasses) {
+		if (UsedClass.IsNull() || Exclusions->ExcludedClasses.Contains(UsedClass)) continue;
+
+		Exclusions->ExcludedClasses.Add(UsedClass);
+		++NumMoved;
+	}
+	ScanSettings->UsedClasses.Reset();
+	PjcShim::UpdateDefaultConfigFile(Exclusions);
+	PjcShim::UpdateDefaultConfigFile(ScanSettings);
+	UE_LOG(LogProjectCleaner, Display, TEXT("Moved %d always used classes into the excluded classes"), NumMoved);
+	return NumMoved;
 }
 
 int32 UPjcSubsystem::MoveExclusionsToProject() {
@@ -526,6 +573,7 @@ bool UPjcSubsystem::Scan(const bool bShowSlowTask, FPjcScanProgress* Progress) {
 	};
 	PjcScanStep(EPjcScanStep::Registry);
 	PjcScanFound(EPjcScanStep::Registry, TEXT("ready"));
+	PjcPruneMarkedUnused();
 
 	// the queries below share their intermediate results (references, source and config search)
 	FPjcScanCacheScope ScanCacheScope;
@@ -761,6 +809,25 @@ bool UPjcSubsystem::Scan(const bool bShowSlowTask, FPjcScanProgress* Progress) {
 		}
 		const EPjcAssetStatus UsedStatus = bReview ? EPjcAssetStatus::Review : GameStatus;
 		Result.Status.Add(Asset.PackageName, Result.IsUsed(Asset.PackageName) ? UsedStatus : EPjcAssetStatus::Unused);
+	}
+
+	// marked unused and unused now: the marks, and what only they kept (unused assets they reference)
+	for (const FName Package : PjcGetPackagesMarkedUnused()) {
+		if (!Result.Status.Contains(Package) || Result.IsUsed(Package)) continue;
+
+		Result.MarkedUnusedRoots.Add(Package);
+		TArray<FName> Queue {Package};
+		while (Queue.Num() > 0) {
+			const FName Current = Queue.Pop();
+			if (Result.MarkedUnused.Contains(Current)) continue;
+
+			Result.MarkedUnused.Add(Current);
+			TArray<FName> Dependencies;
+			GetModuleAssetRegistry().Get().GetDependencies(Current, Dependencies);
+			for (const FName Dependency : Dependencies) {
+				if (Result.Status.Contains(Dependency) && !Result.IsUsed(Dependency)) Queue.Add(Dependency);
+			}
+		}
 	}
 
 	// exclusion rules: what each keeps, and whether it is used without the rule (a used referencer outside exclusions)
@@ -1505,9 +1572,12 @@ void UPjcSubsystem::ComputeAssetsUsed(
 		}
 	}
 
+	// assets to review the user marked unused: no review reason keeps them, only a used referencer does (as above)
+	const TSet<FName> PackagesMarked = PjcGetPackagesMarkedUnused();
+
 	// notifies nothing fires, or outside the cue notify paths: tags can be built at runtime, so kept for review
 	for (const auto& Notify : CueNotifies) {
-		if (Usage.Contains(Notify.Key)) continue;
+		if (Usage.Contains(Notify.Key) || PackagesMarked.Contains(Notify.Key)) continue;
 
 		const FString Outside = IsInCuePaths(Notify.Key) ? FString {} : TEXT(", outside the GameplayCue notify paths");
 		AddUsed(Notify.Key, EPjcUsageReason::GameplayCueNotFired, NAME_None, Notify.Value.ToString() + Outside);
@@ -1519,7 +1589,7 @@ void UPjcSubsystem::ComputeAssetsUsed(
 	// only engine content references them, and the project does not use that engine content. Engine code can still
 	// load its content by path, which the scan cannot see, so they are kept for review with what they use
 	for (const auto& Pair : EngineOnly) {
-		if (Usage.Contains(Pair.Key)) continue;
+		if (Usage.Contains(Pair.Key) || PackagesMarked.Contains(Pair.Key)) continue;
 
 		AddUsed(Pair.Key, EPjcUsageReason::EngineContentOnly, NAME_None, Pair.Value[0].ToString());
 	}
@@ -1540,7 +1610,7 @@ void UPjcSubsystem::ComputeAssetsUsed(
 	});
 	ScanCacheSet(ScanCache.PlatformsCookAll, PlatformsCookAll);
 	for (const auto& Asset : AssetsAll) {
-		if (Usage.Contains(Asset.PackageName) || Cooks.Num() == 0) continue;
+		if (Usage.Contains(Asset.PackageName) || Cooks.Num() == 0 || PackagesMarked.Contains(Asset.PackageName)) continue;
 
 		for (const auto& Cook : Cooks) {
 			if (!Cook->IsValid() || !Cook->Cooked.Contains(Asset.PackageName) || Cook->IsSavedSince(Asset.PackageName)) continue;
@@ -2128,12 +2198,16 @@ void UPjcSubsystem::GetClassNamesExcludedBy(TSet<FName>& OutUserExcluded, TSet<F
 	OutUsedClasses.Empty();
 	OutCinematic.Empty();
 
-	// user excluded classes match exactly
+	// excluded classes match with their subclasses
 	const UPjcAssetExcludeSettings* AssetExcludeSettings = GetDefault<UPjcAssetExcludeSettings>();
+	TArray<FName> ClassNamesExcludedBase;
 	for (const auto& ExcludedClass : AssetExcludeSettings->ExcludedClasses) {
 		if (!ExcludedClass.LoadSynchronous() || ExcludedClass.IsNull()) continue;
 
-		OutUserExcluded.Emplace(PjcShim::GetClassName(ExcludedClass.Get()));
+		ClassNamesExcludedBase.Emplace(PjcShim::GetClassName(ExcludedClass.Get()));
+	}
+	if (ClassNamesExcludedBase.Num() > 0) {
+		PjcShim::GetDerivedClassNames(ClassNamesExcludedBase, TSet<FName> {}, OutUserExcluded);
 	}
 
 	// project used classes match with derived classes

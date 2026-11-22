@@ -82,6 +82,78 @@ namespace PjcActions
 		return true;
 	}
 
+	void MarkUnused(const TArray<FName>& Packages) {
+		const FPjcScanResult& Result = UPjcSubsystem::GetScanResult();
+		TArray<FString> Paths;
+		TArray<TPair<FString, FString>> Rows;
+		int64 Size = 0;
+		for (const auto& Asset : Result.Assets) {
+			if (!Packages.Contains(Asset.PackageName)) continue;
+
+			Paths.Add(PjcShim::GetObjectPathString(Asset));
+			Size += Result.GetSize(Asset.PackageName);
+			if (Rows.Num() < 12) Rows.Emplace(Asset.AssetName.ToString(), PjcFormat::Size(Result.GetSize(Asset.PackageName)));
+		}
+		if (Paths.Num() == 0) return;
+
+		// the assets to review only they keep go with them
+		int32 NumWith = 0;
+		for (const auto& Pair : Result.Status) {
+			if (Pair.Value != EPjcAssetStatus::Review || Packages.Contains(Pair.Key)) continue;
+
+			NumWith += Packages.Contains(Result.GetChainRoot(Pair.Key)) ? 1 : 0;
+		}
+
+		TArray<FPjcDialogPart> Parts;
+		FPjcDialogPart& What = Parts.AddDefaulted_GetRef();
+		What.Note = TEXT("They leave Review and count as unused. Nothing is deleted now: Clean project and the Assets tab delete them.");
+		FPjcDialogPart& List = Parts.AddDefaulted_GetRef();
+		List.Heading = TEXT("Assets \u00B7 ") + PjcFormat::Size(Size);
+		List.Rows = Rows;
+		if (Paths.Num() > Rows.Num()) List.Rows.Emplace(FString::Printf(TEXT("and %d more"), Paths.Num() - Rows.Num()), FString {});
+		if (NumWith > 0) {
+			FPjcDialogPart& With = Parts.AddDefaulted_GetRef();
+			With.Note = FString::Printf(TEXT("%s more assets to review only these keep become unused with them."), *PjcFormat::Count(NumWith));
+			With.NoteColor = TEXT("ProjectCleaner.Color.Yellow");
+		}
+		FPjcDialogPart& Saved = Parts.AddDefaulted_GetRef();
+		Saved.Note = TEXT("Saved in Config/DefaultEditor.ini, shared with the team. Issues \u203A Assets to review \u203A Marked unused lists them. ")
+			TEXT("A used asset that references one keeps it used.");
+		const TCHAR* Plural = Paths.Num() == 1 ? TEXT("") : TEXT("s");
+		const FString Title = FString::Printf(TEXT("Mark %s asset%s unused"), *PjcFormat::Count(Paths.Num()), Plural);
+		if (!SPjcDialog::Show(Title, Parts, TEXT("Mark unused"))) return;
+
+		UPjcAssetExcludeSettings* Settings = GetMutableDefault<UPjcAssetExcludeSettings>();
+		for (const auto& Path : Paths) {
+			Settings->MarkedUnusedAssets.AddUnique(TSoftObjectPtr<UObject> {FSoftObjectPath {Path}});
+		}
+		PjcShim::UpdateDefaultConfigFile(Settings);
+
+		const FString Message = FString::Printf(
+			TEXT("Marked %s asset%s unused"), *PjcFormat::Count(Paths.Num() + NumWith), Paths.Num() + NumWith == 1 ? TEXT("") : TEXT("s")
+		);
+		UPjcSubsystem::ShowNotification(Message + TEXT(" \u00B7 saved to Config/DefaultEditor.ini"), SNotificationItem::CS_Success, 4.0f);
+		SPjcScanBar::ScanProject();
+	}
+
+	void RemoveMarks(const TArray<FName>& Packages) {
+		const auto IsOneOf = [&Packages](const FString& Path) {
+			return Packages.Contains(FName {*FSoftObjectPath {Path}.GetLongPackageName()});
+		};
+		UPjcAssetExcludeSettings* Settings = GetMutableDefault<UPjcAssetExcludeSettings>();
+		const int32 Num = Settings->MarkedUnusedAssets.RemoveAll([&IsOneOf](const TSoftObjectPtr<UObject>& Asset) {
+			return IsOneOf(Asset.ToSoftObjectPath().ToString());
+		});
+		if (Num == 0) return;
+
+		PjcShim::UpdateDefaultConfigFile(Settings);
+
+		const FString Message
+			= FString::Printf(TEXT("Removed %s mark%s \u00B7 to review again"), *PjcFormat::Count(Num), Num == 1 ? TEXT("") : TEXT("s"));
+		UPjcSubsystem::ShowNotification(Message, SNotificationItem::CS_Success, 4.0f);
+		SPjcScanBar::ScanProject();
+	}
+
 	FString GetForceDeleteWarning() {
 		return TEXT("Uses the engine's Force Delete, as in the Content Browser: it clears the references to these assets in memory, ")
 			TEXT("also in open asset editors, then deletes them. Unsaved changes in those editors can be lost. It cannot be undone.");

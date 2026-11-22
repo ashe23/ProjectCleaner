@@ -512,15 +512,18 @@ bool FPjcTestScanSettings::RunTest(const FString& Parameters) {
 	TestSetEqual(*this, TEXT("cinematics not used"), UnusedFixtureAssets(), UnusedDefault.Union(ObjectPaths(Fixture, {TEXT("LS_Cinematic")})));
 	Settings->bCinematicAssetsUsed = true;
 
-	Settings->UsedClasses.Add(UCurveFloat::StaticClass());
+	// excluded classes keep their assets, subclasses too (the old Always used classes)
+	UPjcAssetExcludeSettings* ClassExclusions = GetMutableDefault<UPjcAssetExcludeSettings>();
+	const TArray<TSoftClassPtr<UObject>> ClassesBefore = ClassExclusions->ExcludedClasses;
+	ClassExclusions->ExcludedClasses = {UCurveBase::StaticClass()};
 	TArray<FString> NotCurves;
 	for (const auto& Name : Fixture.UnusedNames(false)) {
 		if (!Name.StartsWith(TEXT("C_"))) {
 			NotCurves.Add(Name);
 		}
 	}
-	TestSetEqual(*this, TEXT("curves are used classes"), UnusedFixtureAssets(), ObjectPaths(Fixture, NotCurves));
-	Settings->UsedClasses.Reset();
+	TestSetEqual(*this, TEXT("curves kept by their base class"), UnusedFixtureAssets(), ObjectPaths(Fixture, NotCurves));
+	ClassExclusions->ExcludedClasses = ClassesBefore;
 
 	Settings->bUnregisteredPrimaryUsed = false;
 	const TSet<FString> WithOutside = UnusedDefault.Union(ObjectPaths(Fixture, {TEXT("BP_PrimaryOutside")}));
@@ -807,6 +810,25 @@ bool FPjcTestScanResult::RunTest(const FString& Parameters) {
 			TestStatus(*Name, EPjcAssetStatus::Review, EPjcUsageReason::GameplayCueNotFired);
 		}
 		TestStatus(TEXT("BP_CueUnused"), EPjcAssetStatus::Unused, EPjcUsageReason::None);
+
+		// marked unused (Issues): no review reason keeps it, so it is unused; without the mark it is to review again
+		UPjcAssetExcludeSettings* Exclusions = GetMutableDefault<UPjcAssetExcludeSettings>();
+		const TArray<TSoftObjectPtr<UObject>> MarksBefore = Exclusions->MarkedUnusedAssets;
+		const FName Unfired = PackageOf(Fixture, TEXT("GC_PjcTest_Unfired"));
+		const FString UnfiredPath = Unfired.ToString() + TEXT(".") + FPackageName::GetShortName(Unfired);
+		// a mark of an asset that is gone comes off at the next scan
+		Exclusions->MarkedUnusedAssets = {
+		  TSoftObjectPtr<UObject> {FSoftObjectPath {UnfiredPath}}, TSoftObjectPtr<UObject> {FSoftObjectPath {TEXT("/Game/PjcGone/C_Gone.C_Gone")}}
+		};
+		UPjcSubsystem::Scan(false);
+		TestEqual(TEXT("mark of a deleted asset removed"), Exclusions->MarkedUnusedAssets.Num(), 1);
+		TestStatus(TEXT("GC_PjcTest_Unfired"), EPjcAssetStatus::Unused, EPjcUsageReason::None);
+		TestTrue(TEXT("marked unused listed as a mark"), Result.MarkedUnusedRoots.Contains(Unfired));
+		TestStatus(TEXT("GC_PjcTest_Outside"), EPjcAssetStatus::Review, EPjcUsageReason::GameplayCueNotFired);
+		Exclusions->MarkedUnusedAssets = MarksBefore;
+		UPjcSubsystem::Scan(false);
+		TestStatus(TEXT("GC_PjcTest_Unfired"), EPjcAssetStatus::Review, EPjcUsageReason::GameplayCueNotFired);
+		TestFalse(TEXT("no mark after it is removed"), Result.MarkedUnusedRoots.Contains(Unfired));
 	}
 
 	// overview: every asset counted once by status, by reason and by class
@@ -936,14 +958,25 @@ bool FPjcTestScanDraft::RunTest(const FString& Parameters) {
 	TestTrue(TEXT("undo restores the value"), FPjcScanDraft::Get().bUnregisteredPrimaryUsed);
 
 	FPjcScanDraft::Get().bCinematicAssetsUsed = false;
-	FPjcScanDraft::Get().UsedClasses.Add(UCurveFloat::StaticClass()->GetPathName());
+	UPjcAssetExcludeSettings* Exclusions = GetMutableDefault<UPjcAssetExcludeSettings>();
+	const TArray<TSoftClassPtr<UObject>> ClassesBefore = Exclusions->ExcludedClasses;
+	FPjcScanDraft::Get().ExcludedClasses.Add(UCurveFloat::StaticClass()->GetPathName());
 	FPjcScanDraft::NotifyEdited();
 	FPjcScanDraft::Get().ApplyToSettings();
 	TestFalse(TEXT("applied draft is not changed"), FPjcScanDraft::IsChanged());
 	TestFalse(TEXT("applied to settings"), ScopedSettings.Settings->bCinematicAssetsUsed);
-	if (TestEqual(TEXT("used classes applied"), ScopedSettings.Settings->UsedClasses.Num(), 1)) {
-		TestEqual(TEXT("used class resolves"), ScopedSettings.Settings->UsedClasses[0].LoadSynchronous(), UCurveFloat::StaticClass());
-	}
+	TestTrue(TEXT("excluded class applied"), Exclusions->ExcludedClasses.Contains(TSoftClassPtr<UObject> {UCurveFloat::StaticClass()}));
+
+	// the old Always used classes move into the excluded classes once
+	Exclusions->ExcludedClasses = ClassesBefore;
+	ScopedSettings.Settings->UsedClasses = {UCurveFloat::StaticClass()};
+	TestEqual(
+		TEXT("always used classes moved"), UPjcSubsystem::MoveUsedClassesToExclusions(), ClassesBefore.Contains(UCurveFloat::StaticClass()) ? 0 : 1
+	);
+	TestEqual(TEXT("always used classes empty after the move"), ScopedSettings.Settings->UsedClasses.Num(), 0);
+	TestTrue(TEXT("moved into the excluded classes"), Exclusions->ExcludedClasses.Contains(TSoftClassPtr<UObject> {UCurveFloat::StaticClass()}));
+	Exclusions->ExcludedClasses = ClassesBefore;
+	PjcShim::UpdateDefaultConfigFile(Exclusions);
 
 	TestTrue(TEXT("plugin defaults"), FPjcScanDraft {}.bUnregisteredPrimaryUsed && FPjcScanDraft {}.bCinematicAssetsUsed);
 

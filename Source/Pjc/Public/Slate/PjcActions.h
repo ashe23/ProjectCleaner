@@ -18,6 +18,13 @@ namespace PjcActions
 	// draft, tells Message, then scans again
 	void RemoveExclusions(const TArray<FString>& Folders, const TArray<FString>& Classes, const TArray<FString>& Assets, const FString& Message);
 
+	// Mark unused: assets to review become unused, with the assets to review only they keep. After a dialog, saved to the
+	// project settings and the scan draft, then a scan. Nothing is deleted here: Clean project and the Assets tab do that
+	void MarkUnused(const TArray<FName>& Packages);
+
+	// Takes the marks off (package names): after the scan they are to review again
+	void RemoveMarks(const TArray<FName>& Packages);
+
 	// What Force delete does, for the dialog and the Clean window
 	FString GetForceDeleteWarning();
 

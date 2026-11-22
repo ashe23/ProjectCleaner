@@ -157,6 +157,9 @@ class SPjcTabUnused final : public SCompoundWidget
 	void ExcludeSelectedClasses();
 	void ExcludeFolder(const FString& Path);
 	void RemoveSelectedExclusions();
+	// assets marked unused in Issues among the selection, and taking their marks off
+	bool HasSelectedMarks() const;
+	void RemoveSelectedMarks();
 	bool HasSelectedExclusions() const;
 	void InspectSelected() const;
 	void BrowseSelected() const;

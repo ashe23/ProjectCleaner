@@ -590,7 +590,6 @@ FString SPjcReportWindow::GetScanSettingsText() {
 	Lines.Add(TEXT("Scan settings (Config/DefaultEditor.ini):"));
 	Lines.Add(FString::Printf(TEXT("  project plugins: %s \u00B7 ignored plugins: %s"), PjcHelpOnOff(Settings.bScanProjectPlugins), *Plugins));
 	Lines.Add(FString::Printf(TEXT("  unregistered primary classes: %s \u00B7 cinematics: %s"), Primary, Cinematics));
-	Lines.Add(TEXT("  always used classes: ") + PjcHelpJoined(Settings.UsedClasses));
 	Lines.Add(FString::Printf(TEXT("  excluded folders: %s"), *Folders));
 	Lines.Add(FString::Printf(TEXT("  excluded classes: %s"), *Classes));
 	Lines.Add(FString::Printf(TEXT("  excluded assets: %s"), *Assets));

@@ -33,12 +33,17 @@ class UPjcAssetExcludeSettings : public UObject
 		EditAnywhere,
 		Config,
 		Category = "AssetExcludeSettings",
-		meta = (ToolTip = "Consider assets of specified classes as used")
+		meta = (AllowAbstract = "true", ToolTip = "Consider assets of specified classes and their subclasses as used")
 	)
 	TArray<TSoftClassPtr<UObject>> ExcludedClasses;
 
 	UPROPERTY(Config)
 	TArray<TSoftObjectPtr<UObject>> ExcludedAssets;
+
+	// Assets to review the user marked unused (Issues): the scan does not keep them for review, so they are unused
+	// unless a used asset references them
+	UPROPERTY(Config)
+	TArray<TSoftObjectPtr<UObject>> MarkedUnusedAssets;
 
   protected:
 

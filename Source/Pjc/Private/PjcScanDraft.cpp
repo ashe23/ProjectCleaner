@@ -26,11 +26,6 @@ FPjcScanDraft FPjcScanDraft::FromSettings() {
 	Result.bScanDevelopers = Settings->bScanDevelopers;
 	Result.bUnregisteredPrimaryUsed = Settings->bUnregisteredPrimaryUsed;
 	Result.bCinematicAssetsUsed = Settings->bCinematicAssetsUsed;
-	for (const auto& UsedClass : Settings->UsedClasses) {
-		if (!UsedClass.IsNull()) {
-			Result.UsedClasses.Add(UsedClass.ToSoftObjectPath().ToString());
-		}
-	}
 	for (const auto& Folder : Exclusions->ExcludedFolders) {
 		if (!Folder.Path.IsEmpty()) {
 			Result.ExcludedFolders.Add(Folder.Path);
@@ -56,10 +51,6 @@ void FPjcScanDraft::ApplyToSettings() const {
 	Settings->bScanDevelopers = bScanDevelopers;
 	Settings->bUnregisteredPrimaryUsed = bUnregisteredPrimaryUsed;
 	Settings->bCinematicAssetsUsed = bCinematicAssetsUsed;
-	Settings->UsedClasses.Reset();
-	for (const auto& ClassPath : UsedClasses) {
-		Settings->UsedClasses.Add(TSoftClassPtr<UObject> {FSoftObjectPath {ClassPath}});
-	}
 	PjcShim::UpdateDefaultConfigFile(Settings);
 
 	UPjcAssetExcludeSettings* Exclusions = GetMutableDefault<UPjcAssetExcludeSettings>();
@@ -85,9 +76,8 @@ bool FPjcScanDraft::operator==(const FPjcScanDraft& Other) const {
 	const bool bScope
 		= bScanProjectPlugins == Other.bScanProjectPlugins && IgnoredPlugins == Other.IgnoredPlugins && bScanDevelopers == Other.bScanDevelopers;
 	const bool bRules = bUnregisteredPrimaryUsed == Other.bUnregisteredPrimaryUsed && bCinematicAssetsUsed == Other.bCinematicAssetsUsed;
-	const bool bUsed = UsedClasses == Other.UsedClasses;
 	const bool bExcluded = ExcludedFolders == Other.ExcludedFolders && ExcludedClasses == Other.ExcludedClasses;
-	return bScope && bRules && bUsed && bExcluded && ExcludedAssets == Other.ExcludedAssets;
+	return bScope && bRules && bExcluded && ExcludedAssets == Other.ExcludedAssets;
 }
 
 FPjcScanDraft& FPjcScanDraft::Get() {

@@ -352,6 +352,7 @@ void SPjcTabIssues::ShowCategory(const EPjcIssueCategory InCategory, const bool 
 	}
 	Category = InCategory;
 	bKept = bShowKept && InCategory == EPjcIssueCategory::External;
+	bMarked = false;
 	Filters.Reset();
 	if (InCategory == EPjcIssueCategory::Review && !InReason.IsEmpty()) {
 		Filters.Add(InReason);
@@ -403,6 +404,22 @@ void SPjcTabIssues::RebuildRows() {
 			ReviewReasons.Reset();
 			for (int32 Index = 0; Index < Result.Assets.Num(); ++Index) {
 				const FAssetData& Asset = Result.Assets[Index];
+				if (bMarked && Result.MarkedUnusedRoots.Contains(Asset.PackageName)) {
+					// decided: unused now, until the mark comes off or the asset is deleted
+					const FRowPtr Row = MakeShared<FPjcIssueRow>();
+					Row->Id = Asset.PackageName.ToString();
+					Row->Package = Asset.PackageName;
+					Row->Asset = Index;
+					Row->Name = Asset.AssetName.ToString();
+					Row->Sub = PjcWidgets::GetAssetType(Asset).Label + TEXT(" \u00B7 ") + Asset.PackagePath.ToString().Mid(1);
+					Row->Reason = TEXT("Marked unused");
+					Row->Size = Result.GetSize(Asset.PackageName);
+					Row->Cells = {Row->Reason, TEXT("Clean project deletes it"), PjcFormat::Size(Row->Size)};
+					Row->CellColors = {TEXT("ProjectCleaner.Color.Red"), TEXT("ProjectCleaner.Color.Gray"), NAME_None};
+					Row->ToolTip = Row->Id + TEXT("\nYou marked it unused. Remove mark: it is to review again");
+					AllRows.Add(Row);
+					continue;
+				}
 				if (!FPjcUnusedTree::IsInSet(Result, Asset.PackageName, EPjcAssetSet::Review)) continue;
 
 				FString Key;
@@ -411,7 +428,7 @@ void SPjcTabIssues::RebuildRows() {
 				FString Tip;
 				PjcIssueReviewReason(Result, Asset.PackageName, Key, Reason, Detail, Tip);
 				ReviewReasons.FindOrAdd(Key)++;
-				if (Filters.Num() > 0 && !Filters.Contains(Key)) continue;
+				if (bMarked || (Filters.Num() > 0 && !Filters.Contains(Key))) continue;
 
 				const FRowPtr Row = MakeShared<FPjcIssueRow>();
 				Row->Id = Asset.PackageName.ToString();
@@ -732,7 +749,7 @@ TSharedRef<SWidget> SPjcTabIssues::MakeCategories() {
 	const FEntry Entries[] = {
 	  {		EPjcIssueCategory::Review,
 	   TEXT("Assets to review"),
-	   TEXT("Assets the scan is not sure about: Clean project keeps them until you delete or exclude them"),
+	   TEXT("Assets the scan is not sure about: Clean project keeps them until you decide: mark them unused, or exclude them"),
 	   TEXT("ProjectCleaner.Icon.Warning"),
 	   White							 },
 	  {EPjcIssueCategory::Redirectors,
@@ -858,6 +875,9 @@ TSharedRef<SWidget> SPjcTabIssues::MakeToolbar() {
 			return Category == InCategory ? EVisibility::Visible : EVisibility::Collapsed;
 		};
 	};
+	const auto ToDecide = [this]() {
+		return Category == EPjcIssueCategory::Review && !bMarked ? EVisibility::Visible : EVisibility::Collapsed;
+	};
 	const auto HasSelection = [this]() {
 		return GetSelected().Num() > 0;
 	};
@@ -932,7 +952,8 @@ TSharedRef<SWidget> SPjcTabIssues::MakeToolbar() {
 		// clang-format on
 	};
 	const auto DeletesHere = [this]() {
-		const bool bFiles = Category == EPjcIssueCategory::Corrupted || Category == EPjcIssueCategory::Empty || Category == EPjcIssueCategory::Review;
+		// assets to review are decided here, deleted in Assets and by Clean project
+		const bool bFiles = Category == EPjcIssueCategory::Corrupted || Category == EPjcIssueCategory::Empty;
 		return bFiles || (Category == EPjcIssueCategory::External && !bKept) ? EVisibility::Visible : EVisibility::Collapsed;
 	};
 	const auto ExplorerHere = [this]() {
@@ -967,19 +988,24 @@ TSharedRef<SWidget> SPjcTabIssues::MakeToolbar() {
 			// delete: assets to review with the unused assets that reference them, files and folders from disk
 			+ SWrapBox::Slot().VAlign(VAlign_Center)
 			[
-				DeleteButton(TEXT("Deletes the selection (Delete)"), DeletesHere, HasSelection, [this]() {
-					if (Category == EPjcIssueCategory::Review) {
-						DeleteAssets(GetSelected());
-					}
-					else {
-						DeleteRows(GetSelected());
-					}
-				})
+				DeleteButton(TEXT("Deletes the selection (Delete)"), DeletesHere, HasSelection, [this]() { DeleteRows(GetSelected()); })
+			]
+			+ SWrapBox::Slot().VAlign(VAlign_Center)
+			[
+				Button("ProjectCleaner.Icon.App16", TEXT("Mark unused"),
+					TEXT("They become unused: Clean project deletes them, with the assets only they keep. Shared with the team in Config/DefaultEditor.ini"),
+					ToDecide, HasSelection, [this]() { MarkAssetsUnused(GetSelected()); })
+			]
+			+ SWrapBox::Slot().VAlign(VAlign_Center)
+			[
+				Button("ProjectCleaner.Menu.Include", TEXT("Remove mark"), TEXT("Takes the mark off: they are to review again"),
+					[this]() { return Category == EPjcIssueCategory::Review && bMarked ? EVisibility::Visible : EVisibility::Collapsed; },
+					HasSelection, [this]() { RemoveMarks(GetSelected()); })
 			]
 			+ SWrapBox::Slot().VAlign(VAlign_Center)
 			[
 				Button("ProjectCleaner.Menu.Exclude", TEXT("Exclude"), TEXT("Clean project never deletes them: adds them to the exclusions, saved to Config/DefaultEditor.ini"),
-					Is(EPjcIssueCategory::Review), HasSelection, [this]() { KeepAssets(GetSelected()); })
+					ToDecide, HasSelection, [this]() { KeepAssets(GetSelected()); })
 			]
 			+ SWrapBox::Slot().VAlign(VAlign_Center)
 			[
@@ -1100,7 +1126,9 @@ FText SPjcTabIssues::GetDescription() const {
 			return FText::FromString(TEXT("Asset files the engine cannot load. Deleting them is the only fix the plugin offers."));
 		case EPjcIssueCategory::Empty : return FText::FromString(TEXT("Folders without assets or files, often left after moving assets."));
 		case EPjcIssueCategory::Review :
-			return FText::FromString(TEXT("The scan is not sure about them. Clean project keeps them: delete them, or exclude them."));
+			return FText::FromString(
+				TEXT("The scan is not sure about them. Clean project keeps them until you decide: mark them unused, or exclude them.")
+			);
 	}
 	return FText::GetEmpty();
 }
@@ -1123,7 +1151,10 @@ FText SPjcTabIssues::GetSelectionText() const {
 	const TArray<FRowPtr> Selected = GetSelected();
 	if (Selected.Num() == 0) {
 		// what selecting is for
-		if (Category == EPjcIssueCategory::Review) return FText::FromString(TEXT("Select assets to delete, exclude or inspect"));
+		if (Category == EPjcIssueCategory::Review)
+			return FText::FromString(
+				bMarked ? TEXT("Select assets to remove their mark or inspect") : TEXT("Select assets to mark unused, exclude or inspect")
+			);
 		if (Category == EPjcIssueCategory::Redirectors) return FText::FromString(TEXT("Select redirectors to fix"));
 		if (Category == EPjcIssueCategory::Empty) return FText::FromString(TEXT("Select folders to delete"));
 		if (Category == EPjcIssueCategory::External && bKept) return FText::FromString(TEXT("Never deleted"));
@@ -1587,7 +1618,8 @@ void SPjcTabIssues::RebuildFilters() {
 	};
 	const FLinearColor Accent = PjcWidgets::GetColor("ProjectCleaner.Color.Accent");
 
-	if (Category == EPjcIssueCategory::Review && NumReview > 0) {
+	const int32 NumMarked = Result.MarkedUnusedRoots.Num();
+	if (Category == EPjcIssueCategory::Review && (NumReview > 0 || NumMarked > 0)) {
 		AddHeading(TEXT("REASON FILTERS"), TEXT("Why the scan is not sure about them"));
 		AddPill(FString {}, TEXT("All"), TEXT("Every asset to review"), Accent, NumReview);
 		TArray<FString> Keys;
@@ -1597,6 +1629,31 @@ void SPjcTabIssues::RebuildFilters() {
 			const bool bCue = Key.Contains(TEXT("Cue"));
 			const FLinearColor Color = PjcWidgets::GetColor(bCue ? "ProjectCleaner.Color.Reason.GameplayCue" : "ProjectCleaner.Color.Review");
 			AddPill(Key, Key, FString {}, Color, ReviewReasons[Key]);
+		}
+		if (NumMarked > 0) {
+			// decided ones apart from the ones to decide, as the Loaded filter of the Inspector
+			// clang-format off
+			FilterBox->AddSlot().AutoHeight().Padding(FMargin {8.0f, 2.0f, 8.0f, 6.0f})
+			[
+				SNew(SBox).HeightOverride(1.0f)
+				[
+					SNew(SImage).Image(FCoreStyle::Get().GetBrush("WhiteBrush")).ColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.Line"))
+				]
+			];
+			FilterBox->AddSlot().AutoHeight().Padding(FMargin {6.0f, 0.0f, 6.0f, 4.0f})
+			[
+				PjcWidgets::MakeFilterPill(TEXT("Marked unused"),
+					TEXT("Assets you marked unused: Clean project deletes them, with the assets only they keep. Shared with the team in Config/DefaultEditor.ini."),
+					TEXT("Click: list them, to remove a mark"), PjcWidgets::GetColor("ProjectCleaner.Color.Red"), NumMarked, true,
+					[this]() { return bMarked; }, [this]() { return !bMarked && Filters.Num() > 0; },
+					[this]() {
+						bMarked = true;
+						Filters.Reset();
+						RebuildRows();
+						RebuildList();
+					})
+			];
+			// clang-format on
 		}
 		bHasFilters = true;
 	}
@@ -1677,6 +1734,7 @@ void SPjcTabIssues::RebuildFilters() {
 }
 
 void SPjcTabIssues::OnFilterClicked(const FString& Key) {
+	bMarked = false;
 	// All: every item; a value: added to the picked ones, or taken off; every value picked is All again
 	if (Key.IsEmpty()) {
 		Filters.Reset();
@@ -1722,16 +1780,29 @@ TSharedPtr<SWidget> SPjcTabIssues::OnContextMenu() {
 	const FString DeleteLabel = FString::Printf(TEXT("Delete\u2026 (%s)"), *PjcFormat::Count(Selected.Num()));
 	switch (Category) {
 		case EPjcIssueCategory::Review :
-			PjcWidgets::AddMenuEntry(
-				Menu, EPjcMenuIcon::Delete, DeleteLabel, TEXT("Deletes them with the unused assets that reference them"), [this]() {
-					DeleteAssets(GetSelected());
-				}
-			);
-			PjcWidgets::AddMenuEntry(
-				Menu, EPjcMenuIcon::Exclude, TEXT("Exclude"), TEXT("Clean project never deletes them: adds them to the exclusions"), [this]() {
-					KeepAssets(GetSelected());
-				}
-			);
+			if (bMarked) {
+				PjcWidgets::AddMenuEntry(
+					Menu, EPjcMenuIcon::Include, TEXT("Remove mark"), TEXT("Takes the mark off: they are to review again"), [this]() {
+						RemoveMarks(GetSelected());
+					}
+				);
+			}
+			else {
+				PjcWidgets::AddMenuEntry(
+					Menu,
+					EPjcMenuIcon::None,
+					TEXT("Mark unused"),
+					TEXT("They become unused: Clean project deletes them, with the assets only they keep"),
+					[this]() {
+						MarkAssetsUnused(GetSelected());
+					}
+				);
+				PjcWidgets::AddMenuEntry(
+					Menu, EPjcMenuIcon::Exclude, TEXT("Exclude"), TEXT("Clean project never deletes them: adds them to the exclusions"), [this]() {
+						KeepAssets(GetSelected());
+					}
+				);
+			}
 			PjcWidgets::AddMenuEntry(
 				Menu, EPjcMenuIcon::Inspect, TEXT("Inspect"), TEXT("Shows why the scan is not sure"), Selected.Num() == 1, [this]() {
 					const TArray<FRowPtr> Picked = GetSelected();
@@ -1795,10 +1866,6 @@ TSharedPtr<SWidget> SPjcTabIssues::OnContextMenu() {
 FReply SPjcTabIssues::OnListKeyDown(const FGeometry& Geometry, const FKeyEvent& KeyEvent) {
 	if (KeyEvent.GetKey() != EKeys::Delete || GetSelected().Num() == 0) return FReply::Unhandled();
 
-	if (Category == EPjcIssueCategory::Review) {
-		DeleteAssets(GetSelected());
-		return FReply::Handled();
-	}
 	const bool bFiles = Category == EPjcIssueCategory::Corrupted || Category == EPjcIssueCategory::Empty;
 	if (bFiles || (Category == EPjcIssueCategory::External && !bKept)) {
 		DeleteRows(GetSelected());
@@ -1855,13 +1922,21 @@ void SPjcTabIssues::KeepAssets(const TArray<FRowPtr>& InRows) {
 	PjcActions::Exclude({}, {}, Assets, FString::Printf(TEXT("Kept %s asset%s"), *PjcFormat::Count(Assets.Num()), Plural));
 }
 
-void SPjcTabIssues::DeleteAssets(const TArray<FRowPtr>& InRows) {
+void SPjcTabIssues::RemoveMarks(const TArray<FRowPtr>& InRows) {
+	TArray<FName> Packages;
+	for (const auto& Row : InRows) {
+		Packages.Add(Row->Package);
+	}
+	PjcActions::RemoveMarks(Packages);
+}
+
+void SPjcTabIssues::MarkAssetsUnused(const TArray<FRowPtr>& InRows) {
 	TArray<FName> Packages;
 	for (const auto& Row : InRows) {
 		Packages.Add(Row->Package);
 	}
 	if (Packages.Num() > 0) {
-		PjcActions::DeleteWithGroup(Packages);
+		PjcActions::MarkUnused(Packages);
 	}
 }
 

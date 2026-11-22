@@ -1363,6 +1363,18 @@ TSharedRef<SWidget> SPjcTabInspector::MakeToolbar() {
 					nullptr, true)
 			]
 		]
+		// to review: the user's decision; marked: the mark comes off
+		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 4.0f, 0.0f})
+		[
+			Result.GetStatus(Focus) == EPjcAssetStatus::Review && bScanned
+				? PjcInspectorToolButton("ProjectCleaner.Icon.App16", TEXT("Mark unused"),
+					TEXT("It becomes unused: Clean project deletes it, with the assets only it keeps. Shared with the team in Config/DefaultEditor.ini"), false,
+					[]() { return true; }, [this]() { PjcActions::MarkUnused({Focus}); })
+				: Result.MarkedUnusedRoots.Contains(Focus)
+				? PjcInspectorToolButton("ProjectCleaner.Menu.Include", TEXT("Remove mark"), TEXT("Takes the mark off: it is to review again"), false,
+					[]() { return true; }, [this]() { PjcActions::RemoveMarks({Focus}); })
+				: SNullWidget::NullWidget
+		]
 		+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin {4.0f, 3.0f})
 		[
 			PjcInspectorLine(true)

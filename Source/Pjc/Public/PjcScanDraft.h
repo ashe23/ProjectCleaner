@@ -17,9 +17,6 @@ struct FPjcScanDraft
 	bool bUnregisteredPrimaryUsed = true;
 	bool bCinematicAssetsUsed = true;
 
-	// Always used classes, as class paths
-	TArray<FString> UsedClasses;
-
 	// Exclusions (UPjcAssetExcludeSettings): folder paths, class paths, asset object paths
 	TArray<FString> ExcludedFolders;
 	TArray<FString> ExcludedClasses;

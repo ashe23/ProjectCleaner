@@ -200,6 +200,8 @@ class UPjcSubsystem final : public UEditorSubsystem
 	// Folders the cook always takes whole (package path -> setting): Additional Asset Directories to Cook, Data Registry scan folders
 	static void GetConfigFolders(TMap<FString, FString>& Folders);
 
+	// Always used classes (scan settings) are excluded classes now: moved there once, returns how many
+	static int32 MoveUsedClassesToExclusions();
 	// Exclusions are shared with the team since 3.1 (DefaultEditor.ini). Moves what this user still has in the per user
 	// settings of older versions into the project settings, once. Returns how many entries moved.
 	static int32 MoveExclusionsToProject();

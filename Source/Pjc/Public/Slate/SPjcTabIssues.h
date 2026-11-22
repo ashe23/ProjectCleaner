@@ -131,7 +131,8 @@ class SPjcTabIssues final : public SCompoundWidget
 	TSharedRef<SWidget> MakeExcludeMenu();
 	// Assets to review: kept for good (exclusions), deleted, or inspected
 	void KeepAssets(const TArray<FRowPtr>& InRows);
-	void DeleteAssets(const TArray<FRowPtr>& InRows);
+	void MarkAssetsUnused(const TArray<FRowPtr>& InRows);
+	void RemoveMarks(const TArray<FRowPtr>& InRows);
 	// Adds file exclusions to the project settings (DefaultEditor.ini) and scans again
 	void ExcludeFiles(const TArray<FString>& Files, const TArray<FString>& Extensions, const TArray<FString>& Folders, const FString& What);
 
@@ -148,6 +149,8 @@ class SPjcTabIssues final : public SCompoundWidget
 	FString Search;
 	// External files: kept ones instead of those to review
 	bool bKept = false;
+	// Assets to review: the ones marked unused instead of the ones to decide
+	bool bMarked = false;
 	// Picked filters (reason, state, why kept), none for all
 	TSet<FString> Filters;
 	// Every filter the category offers: all picked is all

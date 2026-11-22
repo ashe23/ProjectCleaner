@@ -872,6 +872,11 @@ TSharedRef<SWidget> SPjcTabUnused::MakeSetSwitch() {
 void SPjcTabUnused::MakeRowReason(const FPjcScanResult& Result, FPjcUnusedAssetRow& Row) {
 	const FPjcAssetUsage* Usage = Result.Usage.Find(Row.Package);
 
+	if (Set == EPjcAssetSet::Unused && Result.MarkedUnusedRoots.Contains(Row.Package)) {
+		Row.Reason = TEXT("Marked unused");
+		Row.ReasonTip = TEXT("You marked it unused in Issues, Assets to review (filter Marked unused). Remove mark: it is to review again");
+		return;
+	}
 	if (Set == EPjcAssetSet::Unused) {
 		const FString Count = PjcFormat::Count(Row.Group);
 		Row.Reason = Row.Group > 0 ? TEXT("Used only by unused \u00B7 +") + Count : TEXT("Nothing uses it");
@@ -1969,6 +1974,12 @@ TSharedPtr<SWidget> SPjcTabUnused::OnAssetContextMenu() {
 		AddExcludeEntries(Menu);
 		Menu.AddSeparator();
 	}
+	if (Set == EPjcAssetSet::Unused && HasSelectedMarks()) {
+		PjcWidgets::AddMenuEntry(Menu, EPjcMenuIcon::Include, TEXT("Remove mark"), TEXT("Takes the mark off: they are to review again"), [this]() {
+			RemoveSelectedMarks();
+		});
+		Menu.AddSeparator();
+	}
 	if (Set == EPjcAssetSet::Used && HasSelectedExclusions()) {
 		PjcWidgets::AddMenuEntry(Menu, EPjcMenuIcon::Include, TEXT("Remove exclusion"), TEXT("Removes the rules that keep the selection"), [this]() {
 			RemoveSelectedExclusions();
@@ -2210,6 +2221,25 @@ TSharedRef<SWidget> SPjcTabUnused::MakeToolbar() {
 					})
 					[
 						Label("ProjectCleaner.Menu.Include", Static(TEXT("Remove exclusion")), FSlateColor::UseForeground())
+					]
+				]
+				// assets marked unused in Issues: the mark comes off, they are to review again
+				+ SWrapBox::Slot().VAlign(VAlign_Center)
+				[
+					SNew(SButton)
+#if ENGINE_MAJOR_VERSION < 5
+					.ButtonStyle(&PjcShim::GetButtonStyle427(false))
+					.ForegroundColor(FSlateColor::UseForeground())
+#endif
+					.ContentPadding(FMargin {8.0f, 1.0f, 10.0f, 1.0f})
+					.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Takes the mark off: they are to review again"))))
+					.Visibility_Lambda([this]() { return Set == EPjcAssetSet::Unused && HasSelectedMarks() ? EVisibility::Visible : EVisibility::Collapsed; })
+					.OnClicked_Lambda([this]() {
+						RemoveSelectedMarks();
+						return FReply::Handled();
+					})
+					[
+						Label("ProjectCleaner.Menu.Include", Static(TEXT("Remove mark")), FSlateColor::UseForeground())
 					]
 				]
 				+ SWrapBox::Slot().VAlign(VAlign_Center)
@@ -2933,4 +2963,20 @@ void SPjcTabUnused::ShowNotDeleted() {
 	RefreshAssets();
 	bHeldOnly = true;
 	ApplyAssetFilter();
+}
+
+bool SPjcTabUnused::HasSelectedMarks() const {
+	const FPjcScanResult& Result = UPjcSubsystem::GetScanResult();
+	return GetSelectedPackages().ContainsByPredicate([&Result](const FName Package) {
+		return Result.MarkedUnusedRoots.Contains(Package);
+	});
+}
+
+void SPjcTabUnused::RemoveSelectedMarks() {
+	const FPjcScanResult& Result = UPjcSubsystem::GetScanResult();
+	TArray<FName> Marked = GetSelectedPackages();
+	Marked.RemoveAll([&Result](const FName Package) {
+		return !Result.MarkedUnusedRoots.Contains(Package);
+	});
+	PjcActions::RemoveMarks(Marked);
 }

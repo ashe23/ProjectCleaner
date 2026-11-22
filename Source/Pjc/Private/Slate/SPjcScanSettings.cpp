@@ -319,7 +319,7 @@ void SPjcScanSettings::Rebuild() {
 			TEXT("Classes"),
 			&FPjcScanDraft::ExcludedClasses,
 			TEXT("Class path, e.g. /Script/Engine.Texture2D"),
-			TEXT("Assets of these classes are kept.")
+			TEXT("Assets of these classes and their subclasses are kept, with what they reference.")
 		)
 	];
 	Exclusions->AddSlot().AutoHeight()
@@ -333,16 +333,6 @@ void SPjcScanSettings::Rebuild() {
 		)
 	];
 
-	Used->AddSlot().AutoHeight()
-	[
-		MakeListRows(
-			TEXT("UsedClasses"),
-			TEXT("Always used classes"),
-			&FPjcScanDraft::UsedClasses,
-			TEXT("Class path, e.g. /Script/Engine.CurveFloat"),
-			TEXT("Assets of these classes, and what they reference, count as used.")
-		)
-	];
 
 	if (bFolded) {
 		Body->SetContent(SNew(SBox).Padding(FMargin {6.0f, 6.0f, 4.0f, 6.0f})[MakeHeader()]);
@@ -367,6 +357,7 @@ void SPjcScanSettings::Rebuild() {
 		[
 			MakeCategory(TEXT("Exclusions"), TEXT("Exclusions"), TEXT("Always kept, never deleted"), Exclusions)
 		]
+
 		+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {8.0f, 6.0f})
 		[
 			SNew(STextBlock)
@@ -610,7 +601,6 @@ void SPjcScanSettings::ConfirmReset() {
 	Flag(TEXT("Developers folders"), Now.bScanDevelopers, Defaults.bScanDevelopers);
 	Flag(TEXT("Unregistered primary classes"), Now.bUnregisteredPrimaryUsed, Defaults.bUnregisteredPrimaryUsed);
 	Flag(TEXT("Cinematics"), Now.bCinematicAssetsUsed, Defaults.bCinematicAssetsUsed);
-	List(TEXT("Always used classes"), Now.UsedClasses);
 	List(TEXT("Excluded folders"), Now.ExcludedFolders);
 	List(TEXT("Excluded classes"), Now.ExcludedClasses);
 	List(TEXT("Excluded assets"), Now.ExcludedAssets);
@@ -690,7 +680,7 @@ TSharedRef<SWidget> SPjcScanSettings::MakeListRows(
 			.bTypedIsPath(bTypedIsPath)
 			.OnPicked_Lambda([this, List](const FString& Value) {
 				// a class name typed by hand is stored as its path
-				const bool bClassList = List == &FPjcScanDraft::UsedClasses || List == &FPjcScanDraft::ExcludedClasses;
+				const bool bClassList = List == &FPjcScanDraft::ExcludedClasses;
 				const UClass* TypedClass = bClassList && !Value.Contains(TEXT("/")) ? PjcShim::FindClass(Value) : nullptr;
 				const TSharedPtr<SPjcListPicker> Open = Picker.Pin();
 				PickerQuery = Open.IsValid() ? Open->GetQuery() : FString {};
@@ -797,7 +787,8 @@ TSharedRef<SWidget> SPjcScanSettings::MakeListRows(
 	for (int32 Index = 0; Index < Items.Num(); ++Index) {
 		const FString Item = Items[Index];
 		// clang-format off
-		Rows->AddSlot().AutoHeight().HAlign(HAlign_Left).Padding(FMargin {14.0f + Indent, 1.0f, 6.0f, 1.0f})
+		// the row fills the panel: a left aligned row keeps the width it had first, so its text would not wrap again on resize
+		Rows->AddSlot().AutoHeight().HAlign(HAlign_Fill).Padding(FMargin {14.0f + Indent, 1.0f, 6.0f, 1.0f})
 		[
 			SNew(SBorder)
 			.BorderImage(PjcShim::GetBrush(TEXT("ToolPanel.DarkGroupBorder")))
@@ -863,7 +854,7 @@ void SPjcScanSettings::GetPickerItems(const FName Id, TArray<FPjcPickerItem>& Ou
 	}
 
 	// classes with assets in the project, most assets first
-	if (Id == FName {TEXT("UsedClasses")} || Id == FName {TEXT("ExcludedClasses")}) {
+	if (Id == FName {TEXT("ExcludedClasses")}) {
 		TMap<FName, TPair<FString, int32>> Classes;
 		for (const auto& Asset : Result.Assets) {
 			const FName ClassName = PjcShim::GetAssetClassName(Asset);

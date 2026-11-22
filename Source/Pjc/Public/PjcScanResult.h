@@ -157,6 +157,11 @@ struct FPjcScanResult
 	// Status of each scanned asset
 	TMap<FName, EPjcAssetStatus> Status;
 
+	// Assets the user marked unused that are unused now: the marked assets, then the assets only they kept
+	TSet<FName> MarkedUnused;
+	// of those, the marked ones themselves (Scan settings, Marked unused)
+	TSet<FName> MarkedUnusedRoots;
+
 	// Files in content folders that are not assets, absolute paths: to review (cleanup deletes them)
 	TArray<FString> FilesExternal;
 
@@ -194,6 +199,17 @@ struct FPjcScanResult
 
 	// Reason of the asset that starts the usage chain of a package, following Parent through Dependency steps:
 	// the own reason of a root, FolderLabel for what a folder label keeps, None for unused packages.
+	// The package that starts the usage chain of a package (itself for a root), None for unused packages
+	FName GetChainRoot(const FName Package) const {
+		FName Current = Package;
+		const FPjcAssetUsage* Step = Usage.Find(Package);
+		for (int32 NumSteps = 0; Step && Step->Reason == EPjcUsageReason::Dependency && NumSteps < 1024; ++NumSteps) {
+			Current = Step->Parent;
+			Step = Usage.Find(Current);
+		}
+		return Step ? Current : NAME_None;
+	}
+
 	EPjcUsageReason GetChainReason(const FName Package) const {
 		const FPjcAssetUsage* Step = Usage.Find(Package);
 		for (int32 NumSteps = 0; Step && Step->Reason == EPjcUsageReason::Dependency && NumSteps < 1024; ++NumSteps) {
