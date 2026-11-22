@@ -411,7 +411,18 @@ bool FPjcTestScanClassification::RunTest(const FString& Parameters) {
 	  TEXT("C_InPython"),
 	  TEXT("C_InPlatformConfig"),
 	  TEXT("C_InEditorCode"),
-	  TEXT("C_InEditorConfig")
+	  TEXT("C_InEditorConfig"),
+	  TEXT("C_CodeFull"),
+	  TEXT("BP_CodeClass"),
+	  TEXT("BP_CodeDoor"),
+	  TEXT("C_CodeMacro"),
+	  TEXT("C_CodeSplit"),
+	  TEXT("C_CodeCase"),
+	  TEXT("C_CodeTwin"),
+	  TEXT("C_CodeTwinB"),
+	  TEXT("C_CodePython"),
+	  TEXT("C_PluginMacro"),
+	  TEXT("C_PluginConfig")
 	};
 	const TSet<FString> Indirect = ObjectPaths(Fixture, IndirectNames);
 	TestSetEqual(*this, TEXT("indirect"), FixtureAssets(Assets), Indirect);
@@ -652,6 +663,39 @@ bool FPjcTestScanUsage::RunTest(const FString& Parameters) {
 	TestReason(TEXT("C_InPlatformConfig"), EPjcUsageReason::Indirect, nullptr, TEXT("PjcPlatformTests.ini"));
 	TestReason(TEXT("C_RegistryData"), EPjcUsageReason::ConfigFolder, nullptr, TEXT("/Game/PjcTests/Registry"));
 	TestReason(TEXT("C_Unused_fr"), EPjcUsageReason::None, nullptr, nullptr);
+
+	// named in code: the host game module, a project plugin's source and config, the Python script
+	const TCHAR* GameCode = TEXT("/PjcTestCode.cpp, line ");
+	TestReason(TEXT("C_CodeFull"), EPjcUsageReason::Indirect, nullptr, GameCode);
+	TestReason(TEXT("BP_CodeClass"), EPjcUsageReason::Indirect, nullptr, GameCode);
+	TestReason(TEXT("BP_CodeDoor"), EPjcUsageReason::Indirect, nullptr, TEXT("/PjcTestCode.cpp, line 17"));
+	TestReason(TEXT("C_CodeMacro"), EPjcUsageReason::Indirect, nullptr, TEXT("/PjcTestCode.cpp, line 6"));
+	TestReason(TEXT("C_CodeMacroOther"), EPjcUsageReason::FolderInCode, nullptr, TEXT("/PjcTestCode.cpp, line 5"));
+	TestReason(TEXT("C_CodeSplit"), EPjcUsageReason::Indirect, nullptr, TEXT("/PjcTestCode.cpp, line 9"));
+	TestReason(TEXT("C_CodeSplitOther"), EPjcUsageReason::FolderInCode, nullptr, TEXT("/PjcTestCode.cpp, line 8"));
+	TestReason(TEXT("C_CodeBuilt"), EPjcUsageReason::FolderInCode, nullptr, TEXT("/PjcTestCode.cpp, line 10"));
+	TestReason(TEXT("C_CodeBuiltSub"), EPjcUsageReason::None, nullptr, nullptr);
+	TestReason(TEXT("C_CodeFormat"), EPjcUsageReason::FolderInCode, nullptr, TEXT("/PjcTestCode.cpp, line 11"));
+	TestReason(TEXT("C_CodeCase"), EPjcUsageReason::Indirect, nullptr, TEXT("/PjcTestCode.cpp, line 12"));
+	TestReason(TEXT("C_CodeTwin"), EPjcUsageReason::Indirect, nullptr, TEXT("/PjcTestCode.cpp, line 13"));
+	TestReason(TEXT("C_CodeTwinB"), EPjcUsageReason::Indirect, nullptr, TEXT("/PjcTestCode.cpp, line 13"));
+	TestReason(TEXT("C_CodeWord"), EPjcUsageReason::None, nullptr, nullptr);
+	TestReason(TEXT("C_CodeLonger"), EPjcUsageReason::None, nullptr, nullptr);
+	TestReason(TEXT("C_CodePython"), EPjcUsageReason::EditorSource, nullptr, TEXT("PjcTests.py, line 5"));
+	TestReason(
+		TEXT("C_PluginMacro"),
+		EPjcUsageReason::Indirect,
+		nullptr,
+		TEXT("Plugins/PjcTestGameCode/Source/PjcTestGameCode/Private/PjcTestGameCode.cpp, line 3")
+	);
+	TestReason(TEXT("C_PluginMacroOther"), EPjcUsageReason::FolderInCode, nullptr, TEXT("PjcTestGameCode.cpp, line 2"));
+	TestReason(TEXT("C_PluginConfig"), EPjcUsageReason::Indirect, nullptr, TEXT("DefaultPjcTestGameCode.ini, line 2"));
+	const FPjcAssetUsage* FolderUsage = Usage.Find(PackageOf(Fixture, TEXT("C_CodeBuilt")));
+	TestTrue(
+		TEXT("folder in code: reason text"),
+		FolderUsage && UPjcSubsystem::GetUsageReasonText(*FolderUsage).StartsWith(TEXT("Folder named in Source/"))
+	);
+
 	if (Fixture.HasCues()) {
 		TestReason(TEXT("GC_PjcTest_Fired"), EPjcUsageReason::GameplayCue, nullptr, TEXT("fired by BP_CueUser"));
 		TestReason(TEXT("GC_PjcTest_Parent"), EPjcUsageReason::GameplayCue, nullptr, TEXT("GameplayCue.PjcTest.Parent.Child"));
@@ -817,10 +861,37 @@ bool FPjcTestScanResult::RunTest(const FString& Parameters) {
 	TestStatus(TEXT("C_InEditorConfig"), EPjcAssetStatus::EditorOnly, EPjcUsageReason::EditorSource);
 	TestStatus(TEXT("C_InPlatformConfig"), EPjcAssetStatus::Used, EPjcUsageReason::Indirect);
 	TestStatus(TEXT("C_UnusedLeaf"), EPjcAssetStatus::Unused, EPjcUsageReason::None);
+	// named in code
+	for (const TCHAR* Name :
+		 {TEXT("C_CodeFull"),
+		  TEXT("BP_CodeClass"),
+		  TEXT("BP_CodeDoor"),
+		  TEXT("C_CodeMacro"),
+		  TEXT("C_CodeSplit"),
+		  TEXT("C_CodeCase"),
+		  TEXT("C_CodeTwin"),
+		  TEXT("C_CodeTwinB"),
+		  TEXT("C_PluginMacro"),
+		  TEXT("C_PluginConfig")}) {
+		TestStatus(Name, EPjcAssetStatus::Used, EPjcUsageReason::Indirect);
+	}
+	TestStatus(TEXT("C_CodePython"), EPjcAssetStatus::EditorOnly, EPjcUsageReason::EditorSource);
+	for (const TCHAR* Name :
+		 {TEXT("C_CodeMacroOther"), TEXT("C_CodeSplitOther"), TEXT("C_CodeBuilt"), TEXT("C_CodeFormat"), TEXT("C_PluginMacroOther")}) {
+		TestStatus(Name, EPjcAssetStatus::Review, EPjcUsageReason::FolderInCode);
+	}
+	for (const TCHAR* Name : {TEXT("C_CodeBuiltSub"), TEXT("C_CodeWord"), TEXT("C_CodeLonger")}) {
+		TestStatus(Name, EPjcAssetStatus::Unused, EPjcUsageReason::None);
+	}
+	// Source & config lists every asset of a shared name, with the line
+	const TArray<FPjcSourceRef>* TwinRefs = Result.SourceRefs.Find(PackageOf(Fixture, TEXT("C_CodeTwinB")));
+	TestTrue(TEXT("C_CodeTwinB listed in Source & config"), TwinRefs && TwinRefs->ContainsByPredicate([](const FPjcSourceRef& Ref) {
+		return Ref.File.EndsWith(TEXT("PjcTestCode.cpp")) && Ref.Line == 13;
+	}));
 	if (Fixture.HasCues()) {
 		TestStatus(TEXT("GC_PjcTest_Fired"), EPjcAssetStatus::Used, EPjcUsageReason::GameplayCue);
 		for (const auto& Name : Fixture.ReviewNames()) {
-			if (Name == TEXT("C_EngineNamed")) continue;
+			if (!Name.StartsWith(TEXT("GC_"))) continue;
 			TestStatus(*Name, EPjcAssetStatus::Review, EPjcUsageReason::GameplayCueNotFired);
 		}
 		TestStatus(TEXT("BP_CueUnused"), EPjcAssetStatus::Unused, EPjcUsageReason::None);
@@ -2349,7 +2420,11 @@ bool FPjcFixtureBuild::RunTest(const FString& Parameters) {
 	  TEXT("Plugins/PjcTestContent/Content/C_PluginUsed.uasset"),
 	  TEXT("Plugins/PjcTestContent/Content/C_PluginUnused.uasset"),
 	  TEXT("Plugins/PjcTestContent/Content/OL_PluginLib.uasset"),
+	  TEXT("Plugins/PjcTestEditorCode"),
+	  TEXT("Plugins/PjcTestGameCode"),
+	  TEXT("Config/DefaultEditorPjcTests.ini"),
 	};
+	CleanupPaths.Add(RelativeToProject(FPjcTestFixture::GameCodeFile()));
 	CleanupPaths.Append(Fixture.LyraCleanupPaths());
 
 	const int32 NumUsed = UsedNames.Num();

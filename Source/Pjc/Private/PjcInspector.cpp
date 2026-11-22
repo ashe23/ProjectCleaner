@@ -46,6 +46,7 @@ namespace
 			case EPjcUsageReason::Splash :				return 5;
 			case EPjcUsageReason::CookPackaged :
 			case EPjcUsageReason::EngineContentOnly :
+			case EPjcUsageReason::FolderInCode :
 			case EPjcUsageReason::GameplayCueNotFired : return 6;
 			default :									return 3;
 		}

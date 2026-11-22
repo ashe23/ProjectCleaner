@@ -230,7 +230,11 @@ namespace
 		const bool bCue = RootUsage && RootUsage->Reason == EPjcUsageReason::GameplayCueNotFired;
 		const bool bOutside = bCue && RootUsage->Detail.Contains(TEXT("outside"));
 		const bool bEngine = RootUsage && RootUsage->Reason == EPjcUsageReason::EngineContentOnly;
-		OutKey = bCue ? TEXT("Cue never fired") : bEngine ? TEXT("Engine content only") : TEXT("Packaged by last cook");
+		const bool bFolder = RootUsage && RootUsage->Reason == EPjcUsageReason::FolderInCode;
+		OutKey = bCue ? TEXT("Cue never fired")
+			: bEngine ? TEXT("Engine content only")
+			: bFolder ? TEXT("Folder in code")
+					  : TEXT("Packaged by last cook");
 		if (Root != Package) {
 			const FString RootName = FPackageName::GetShortName(Root);
 			OutReason = OutKey;
@@ -254,6 +258,15 @@ namespace
 			OutReason = OutKey;
 			OutDetail = TEXT("Referenced by ") + FPackageName::GetShortName(Detail);
 			OutTip = TEXT("Nothing in your project uses this asset. Only the engine asset ") + Detail + TEXT(" references it.");
+			return;
+		}
+		if (bFolder) {
+			OutReason = OutKey;
+			OutDetail = Detail;
+			// clang-format off
+			OutTip = TEXT("Code names the folder of this asset in ") + Detail + TEXT(". ")
+				TEXT("The code can add the asset name at runtime. The scan cannot see this. Nothing else uses the asset.");
+			// clang-format on
 			return;
 		}
 		OutReason = bOutside ? TEXT("Outside cue paths") : OutKey;

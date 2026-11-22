@@ -164,6 +164,10 @@ class UPjcSubsystem final : public UEditorSubsystem
 	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Asset")
 	static void GetAssetsIndirect(TArray<FAssetData>& Assets, TArray<FPjcAssetIndirectInfo>& AssetsIndirectInfos, const bool bShowSlowTask = true);
 
+	// Assets directly in a content folder that C++ or Python code names as a whole string ("/Game/UI/Icons", "/Game/UI/%s"),
+	// with the file and line. Code can build their paths at runtime: the ones nothing else uses are to review
+	static void GetAssetsInNamedFolders(TArray<FPjcAssetIndirectInfo>& Infos, const bool bShowSlowTask = true);
+
 	// Returns assets that have circular dependencies
 	// @param Assets TArray<FAssetData>
 	// @param bShowSlowTask bool
@@ -546,6 +550,13 @@ class UPjcSubsystem final : public UEditorSubsystem
 
 	// Assets of the scanned roots, one per package, redirectors included: reference chains and roots go through them
 	static void GetAssetsScanned(TArray<FAssetData>& Assets);
+	// Reads source and config files once for GetAssetsIndirect and GetAssetsInNamedFolders
+	static void SearchSourceAndConfig(
+		TArray<FAssetData>& Assets,
+		TArray<FPjcAssetIndirectInfo>& Infos,
+		TArray<FPjcAssetIndirectInfo>& FolderInfos,
+		const bool bShowSlowTask
+	);
 	// Packages of GetProjectRedirectors
 	static void GetPackagesRedirector(TSet<FName>& Packages);
 	// Localized copies (L10N) of the redirectors that are redirectors too: they are fixed together

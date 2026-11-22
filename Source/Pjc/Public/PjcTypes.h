@@ -187,6 +187,9 @@ enum class EPjcUsageReason : uint8
 	// Review: only engine content references it (the engine, or a plugin in the engine folder), and nothing used in the
 	// project uses that engine content (Detail: the engine package)
 	EngineContentOnly,
+	// Review: in a folder that C++ or Python code names as a whole string ("/Game/UI/Icons"), and nothing else uses it.
+	// Code can add the asset name at runtime (Detail: file and line)
+	FolderInCode,
 };
 
 // What fixing redirectors did

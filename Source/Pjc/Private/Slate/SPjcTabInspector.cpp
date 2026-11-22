@@ -145,6 +145,7 @@ namespace
 			case EPjcUsageReason::CookPackaged :		return TEXT("Last cook");
 			case EPjcUsageReason::GameplayCueNotFired : return TEXT("Cue nothing fires");
 			case EPjcUsageReason::EngineContentOnly :	return TEXT("Engine content only");
+			case EPjcUsageReason::FolderInCode :		return TEXT("Folder in code");
 			default :									return TEXT("Root");
 		}
 	}

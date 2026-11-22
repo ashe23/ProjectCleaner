@@ -31,6 +31,26 @@
  *   Indirect/C_IndirectPackage  referenced only from Config/PjcTests.ini (package name)
  *   Indirect/C_InPython      named only in Content/Python/PjcTests.py (editor Python script)
  *   Indirect/C_InPlatformConfig  named only in Platforms/PjcPlatform/Config/PjcPlatformTests.ini
+ *   Code/...                 named in code (CreateFiles): the host game module (Source/<Project>/PjcTestCode.cpp), a
+ *                            project plugin (Plugins/PjcTestGameCode: Source, Config) and the Python script
+ *     C_CodeFull             full object path in FObjectFinder: used
+ *     BP_CodeClass           package path without _C in FClassFinder: used
+ *     BP_CodeDoor            class path without its folders ("BP_CodeDoor.BP_CodeDoor_C"): used
+ *     C_CodeMacro            TEXT(MACRO "/C_CodeMacro.C_CodeMacro"), the macro names the folder: used
+ *     C_CodeMacroOther       in that folder, nothing names it: Review (folder in code)
+ *     C_CodeSplit            folder and name in two literals on two lines: used
+ *     C_CodeSplitOther       in that folder ("/Game/.../Split/"): Review
+ *     C_CodeBuilt            folder in FPaths::Combine, the name built at runtime: Review
+ *     C_CodeBuiltSub         in a subfolder of it: unused
+ *     C_CodeFormat           folder in a format string ("/Game/.../Format/%s.%s"): Review
+ *     C_CodeCase             full path in lower case: used
+ *     C_CodeTwin, C_CodeTwinB  two assets named C_CodeTwin, code names "C_CodeTwin.C_CodeTwin": both used
+ *     C_CodePython           f"{folder}/C_CodePython.C_CodePython" in the Python script: editor only
+ *     C_PluginMacro          macro case in the plugin source (like CitySample HoverDrone): used
+ *     C_PluginMacroOther     in that folder: Review
+ *     C_PluginConfig         full path in the plugin's Config/DefaultPjcTestGameCode.ini: used
+ *     C_CodeWord             its name only as a plain word: unused
+ *     C_CodeLonger           code names a path inside its folder that does not exist: unused
  *   AlwaysCook/C_AlwaysCooked  in Additional Asset Directories to Cook (host config): used
  *   Registry/C_RegistryData    in Data Registry Directories to Scan (host config): used
  *   /Game/L10N/fr/PjcTests/Indirect/C_Indirect  localized copy of used C_Indirect (key C_Indirect_fr): used
@@ -124,6 +144,10 @@ class FPjcTestFixture
 	static FString EditorCodePluginDir();
 	static FString EditorConfigFile();
 	static FString FeatureConfigFile();
+	// a source file of the host game module, kept out of builds with #if 0
+	static FString GameCodeFile();
+	// a project plugin with a game module nothing enables: source and config file
+	static FString GameCodePluginDir();
 
 	FPjcTestFixture();
 	~FPjcTestFixture();

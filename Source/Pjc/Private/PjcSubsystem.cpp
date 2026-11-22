@@ -70,6 +70,7 @@ namespace
 		TOptional<TArray<FAssetData>> AssetsUnused;
 		TOptional<TArray<FAssetData>> AssetsIndirect;
 		TOptional<TArray<FPjcAssetIndirectInfo>> AssetsIndirectInfos;
+		TOptional<TArray<FPjcAssetIndirectInfo>> AssetsInNamedFolders;
 		TOptional<TArray<FAssetData>> AssetsExcluded;
 		TOptional<TArray<FAssetData>> AssetsEngineReferenced;
 		TOptional<TArray<FAssetData>> AssetsFolderLabelOnly;
@@ -84,6 +85,7 @@ namespace
 			AssetsUnused.Reset();
 			AssetsIndirect.Reset();
 			AssetsIndirectInfos.Reset();
+			AssetsInNamedFolders.Reset();
 			AssetsExcluded.Reset();
 			AssetsEngineReferenced.Reset();
 			AssetsFolderLabelOnly.Reset();
@@ -113,6 +115,24 @@ namespace
 		if (PjcScanProgress && PjcScanProgress->OnFound) {
 			PjcScanProgress->OnFound(Step, Found);
 		}
+	}
+
+	// The position is inside a quoted string of the line ("..." or '...'), escaped quotes skipped
+	bool PjcIsInQuotes(const FString& Line, const int32 Position) {
+		TCHAR Quote = 0;
+		for (int32 Index = 0; Index < Position && Index < Line.Len(); ++Index) {
+			const TCHAR Char = Line[Index];
+			if (Char == TEXT('\\')) {
+				++Index;
+			}
+			else if (Quote == 0 && (Char == TEXT('"') || Char == TEXT('\''))) {
+				Quote = Char;
+			}
+			else if (Char == Quote) {
+				Quote = 0;
+			}
+		}
+		return Quote != 0;
 	}
 
 	// Cancel in the Scan window: long steps stop in their loop, the scan then ends and the last result stays
@@ -1119,8 +1139,9 @@ FString UPjcSubsystem::GetUsageReasonText(const FPjcAssetUsage& Usage) {
 		case EPjcUsageReason::EditorSource :		return TEXT("Named in editor code, ") + Usage.Detail;
 		case EPjcUsageReason::EngineContentOnly :
 			return TEXT("Referenced only by engine content (") + FPackageName::GetShortName(Usage.Detail) + TEXT(")");
+		case EPjcUsageReason::FolderInCode : return TEXT("Folder named in ") + Usage.Detail;
 		case EPjcUsageReason::None :
-		default :					 return TEXT("Nothing uses it");
+		default :							 return TEXT("Nothing uses it");
 	}
 }
 
@@ -1149,6 +1170,8 @@ void UPjcSubsystem::ComputeAssetsUsed(
 	TMap<FName, FPjcAssetUsage>& OutUsage,
 	const bool bShowSlowTask
 ) {
+	// source and config files are read once for the assets they name and the folders code names
+	FPjcScanCacheScope ScanCacheScope;
 	const UPjcScanSettings* ScanSettings = GetDefault<UPjcScanSettings>();
 
 	TSet<FName> ClassNamesPrimary;
@@ -1734,6 +1757,19 @@ void UPjcSubsystem::ComputeAssetsUsed(
 	AddLocalized();
 	FollowDependencies(false);
 
+	// in a folder code names as a whole string: code can add the asset name at runtime, which the scan cannot follow. Kept
+	// for review with what they use
+	TArray<FPjcAssetIndirectInfo> AssetsInNamedFolders;
+	GetAssetsInNamedFolders(AssetsInNamedFolders, bShowSlowTask);
+	for (const auto& Info : AssetsInNamedFolders) {
+		if (Usage.Contains(Info.Asset.PackageName) || PackagesMarked.Contains(Info.Asset.PackageName)) continue;
+
+		AddUsed(Info.Asset.PackageName, EPjcUsageReason::FolderInCode, NAME_None, FileAndLine(Info));
+	}
+	FollowDependencies(false);
+	AddLocalized();
+	FollowDependencies(false);
+
 	// assets placed in a level that saves each actor in its own file (World Partition, One File Per Actor) are used
 	// because their map is: they show as its dependencies. Only the reason changes, never whether an
 	// asset is used: they stay used as above. The map does not reference its actor files (the files point to the map),
@@ -1892,8 +1928,28 @@ void UPjcSubsystem::GetAssetsIndirect(TArray<FAssetData>& Assets, TArray<FPjcAss
 	if (GetModuleAssetRegistry().Get().IsLoadingAssets()) return;
 	if (ScanCacheGet(ScanCache.AssetsIndirect, Assets) && ScanCacheGet(ScanCache.AssetsIndirectInfos, AssetsIndirectInfos)) return;
 
+	TArray<FPjcAssetIndirectInfo> FolderInfos;
+	SearchSourceAndConfig(Assets, AssetsIndirectInfos, FolderInfos, bShowSlowTask);
+}
+
+void UPjcSubsystem::GetAssetsInNamedFolders(TArray<FPjcAssetIndirectInfo>& Infos, const bool bShowSlowTask) {
+	if (GetModuleAssetRegistry().Get().IsLoadingAssets()) return;
+	if (ScanCacheGet(ScanCache.AssetsInNamedFolders, Infos)) return;
+
+	TArray<FAssetData> Assets;
+	TArray<FPjcAssetIndirectInfo> AssetsIndirectInfos;
+	SearchSourceAndConfig(Assets, AssetsIndirectInfos, Infos, bShowSlowTask);
+}
+
+void UPjcSubsystem::SearchSourceAndConfig(
+	TArray<FAssetData>& Assets,
+	TArray<FPjcAssetIndirectInfo>& AssetsIndirectInfos,
+	TArray<FPjcAssetIndirectInfo>& FolderInfos,
+	const bool bShowSlowTask
+) {
 	Assets.Reset();
 	AssetsIndirectInfos.Reset();
+	FolderInfos.Reset();
 
 	TSet<FString> ScanFiles;
 	GetSourceAndConfigFiles(ScanFiles);
@@ -1910,8 +1966,55 @@ void UPjcSubsystem::GetAssetsIndirect(TArray<FAssetData>& Assets, TArray<FPjcAss
 	for (const auto& RootPath : GetProjectRootPaths()) {
 		RootPatterns.Add(RootPath.Replace(TEXT("/"), TEXT("\\/")));
 	}
-	// everything allowed in package names (e.g. "ButtonStyle-Primary-M"), stops at quotes, separators and brackets
-	const FRegexPattern Pattern {FString::Printf(TEXT(R"((%s)\/[^\s"'`,:;=*?<>|&!~@#\\()\[\]{}]+)"), *FString::Join(RootPatterns, TEXT("|")))};
+	// everything allowed in package names (e.g. "ButtonStyle-Primary-M"), stops at quotes, separators and brackets. Letter
+	// case does not matter, as in the engine: "/game/maps/main.main" loads "/Game/Maps/Main"
+	const FString StopChars = TEXT("\"'`,:;=*?<>|&!~@#\\()[]{}");
+	const FRegexPattern Pattern {FString::Printf(TEXT(R"((?i)(%s)\/[^\s"'`,:;=*?<>|&!~@#\\()\[\]{}]+)"), *FString::Join(RootPatterns, TEXT("|")))};
+	// object path of an asset named like its package, the class of a blueprint too ("BP_Door.BP_Door_C"), also without
+	// its folders: code can build them, as in TEXT(INPUT_PATH "/IA_Move.IA_Move")
+	const FRegexPattern NamePattern {FString {TEXT(R"((?<![\w.\-])([\w\-]+)\.\1(?:_C)?(?![\w.\-]))")}};
+
+	// a path that starts with a mounted root ("/Game/", "/Engine/", "/Script/") is a full path: the search above decides it
+	TArray<FString> MountedRoots;
+	FPackageName::QueryRootContentPaths(MountedRoots, true, false, false);
+
+	TArray<FAssetData> AssetsScanned;
+	GetAssetsScanned(AssetsScanned);
+	TMap<FName, TArray<FAssetData>> AssetsByName;
+	TMap<FName, TArray<FAssetData>> AssetsByFolder;
+	for (const auto& Asset : AssetsScanned) {
+		AssetsByName.FindOrAdd(Asset.AssetName).Add(Asset);
+		if (!Asset.IsRedirector()) {
+			AssetsByFolder.FindOrAdd(Asset.PackagePath).Add(Asset);
+		}
+	}
+
+	const auto IsQuote = [](const TCHAR Char) {
+		return Char == TCHAR('"') || Char == TCHAR('\'');
+	};
+	// a string that is a whole folder path: the literal ends after it, or a format part follows ("%s", "{0}"). Empty when not
+	const auto GetNamedFolder = [&IsQuote](const FString& Line, const int32 Begin, const int32 End) {
+		if (Begin == 0 || !IsQuote(Line[Begin - 1])) return FString {};
+
+		FString Folder = Line.Mid(Begin, End - Begin);
+		const int32 Format = Folder.Find(TEXT("%"));
+		const TCHAR After = End < Line.Len() ? Line[End] : TCHAR('\0');
+		if (Format != INDEX_NONE) {
+			Folder.LeftInline(Format);
+			int32 Slash = INDEX_NONE;
+			Folder.FindLastChar(TCHAR('/'), Slash);
+			Folder.LeftInline(FMath::Max(Slash, 0));
+		}
+		else if (!IsQuote(After) && After != TCHAR('{')) {
+			return FString {};
+		}
+		while (Folder.EndsWith(TEXT("/"))) {
+			Folder.LeftChopInline(1);
+		}
+		// a root alone ("/Game") names no folder
+		const bool bUnderRoot = Folder.Find(TEXT("/"), ESearchCase::CaseSensitive, ESearchDir::FromStart, 1) != INDEX_NONE;
+		return bUnderRoot ? Folder : FString {};
+	};
 
 	const FPjcEditorFiles EditorFiles;
 	TArray<FString> Lines;
@@ -1930,16 +2033,25 @@ void UPjcSubsystem::GetAssetsIndirect(TArray<FAssetData>& Assets, TArray<FPjcAss
 		bool bPluginSection = false;
 
 		for (int32 i = 0; i < Lines.Num(); ++i) {
+			const FString& Line = Lines[i];
 			if (bConfig) {
-				const FString Trimmed = Lines[i].TrimStartAndEnd();
+				const FString Trimmed = Line.TrimStartAndEnd();
 				if (Trimmed.StartsWith(TEXT("[")) && Trimmed.EndsWith(TEXT("]"))) {
 					bPluginSection = Trimmed.StartsWith(TEXT("[/Script/Pjc."));
 					continue;
 				}
 				if (bPluginSection) continue;
 			}
-			FRegexMatcher Matcher(Pattern, Lines[i]);
+			FRegexMatcher Matcher(Pattern, Line);
 			while (Matcher.FindNext()) {
+				// a folder in code. Not in config: Asset Manager and cook settings name folders for their own rules
+				const FString Folder = bConfig ? FString {} : GetNamedFolder(Line, Matcher.GetMatchBeginning(), Matcher.GetMatchEnding());
+				if (const TArray<FAssetData>* InFolder = Folder.IsEmpty() ? nullptr : AssetsByFolder.Find(FName {*Folder})) {
+					for (const auto& Asset : *InFolder) {
+						FolderInfos.AddUnique(FPjcAssetIndirectInfo {Asset, FilePathAbs, i + 1, bEditorFile});
+					}
+				}
+
 				FString Match = Matcher.GetCaptureGroup(0);
 				while (Match.EndsWith(TEXT(".")) || Match.EndsWith(TEXT("/"))) {
 					Match.LeftChopInline(1);
@@ -1966,11 +2078,38 @@ void UPjcSubsystem::GetAssetsIndirect(TArray<FAssetData>& Assets, TArray<FPjcAss
 				AssetsIndirectInfos.AddUnique(FPjcAssetIndirectInfo {AssetData, FilePathAbs, i + 1, bEditorFile});
 				Assets.AddUnique(AssetData);
 			}
+
+			// "Name.Name" without a mounted root before it: every scanned asset of that name, the scan cannot tell which one.
+			// Only inside quotes, as code writes paths: not a name in a comment or an identifier
+			if (!Line.Contains(TEXT("."))) continue;
+
+			FRegexMatcher NameMatcher(NamePattern, Line);
+			while (NameMatcher.FindNext()) {
+				if (!PjcIsInQuotes(Line, NameMatcher.GetMatchBeginning())) continue;
+
+				int32 Start = NameMatcher.GetMatchBeginning();
+				int32 Stop = INDEX_NONE;
+				while (Start > 0 && !FChar::IsWhitespace(Line[Start - 1]) && !StopChars.FindChar(Line[Start - 1], Stop)) {
+					--Start;
+				}
+				const FString Prefix = Line.Mid(Start, NameMatcher.GetMatchBeginning() - Start);
+				const bool bFullPath = MountedRoots.ContainsByPredicate([&Prefix](const FString& Root) {
+					return Prefix.StartsWith(Root);
+				});
+				const TArray<FAssetData>* Named = bFullPath ? nullptr : AssetsByName.Find(FName {*NameMatcher.GetCaptureGroup(1)});
+				if (!Named) continue;
+
+				for (const auto& AssetData : *Named) {
+					AssetsIndirectInfos.AddUnique(FPjcAssetIndirectInfo {AssetData, FilePathAbs, i + 1, bEditorFile});
+					Assets.AddUnique(AssetData);
+				}
+			}
 		}
 	}
 
 	ScanCacheSet(ScanCache.AssetsIndirect, Assets);
 	ScanCacheSet(ScanCache.AssetsIndirectInfos, AssetsIndirectInfos);
+	ScanCacheSet(ScanCache.AssetsInNamedFolders, FolderInfos);
 }
 
 void UPjcSubsystem::GetAssetsCircular(TArray<FAssetData>& Assets, const bool bShowSlowTask) {

@@ -46,6 +46,7 @@
 #include "GameFramework/PlayerController.h"
 #include "HAL/FileManager.h"
 #include "Kismet2/KismetEditorUtilities.h"
+#include "Misc/App.h"
 #include "Misc/CommandLine.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Parse.h"
@@ -292,6 +293,14 @@ FString FPjcTestFixture::FeatureConfigFile() {
 	return FeaturePluginDir() / TEXT("Config/PjcFeatureTests.ini");
 }
 
+FString FPjcTestFixture::GameCodeFile() {
+	return FPaths::ConvertRelativePathToFull(FPaths::GameSourceDir() / FApp::GetProjectName() / TEXT("PjcTestCode.cpp"));
+}
+
+FString FPjcTestFixture::GameCodePluginDir() {
+	return FPaths::ConvertRelativePathToFull(FPaths::ProjectPluginsDir() / TEXT("PjcTestGameCode"));
+}
+
 FPjcTestFixture::FPjcTestFixture() {}
 
 FPjcTestFixture::~FPjcTestFixture() {
@@ -469,6 +478,44 @@ bool FPjcTestFixture::CreateAssets(FAutomationTestBase& Test) {
 	NewAsset<UCurveFloat>(Register(TEXT("Indirect"), TEXT("C_InPlatformConfig")), Packages);
 	NewAsset<UCurveFloat>(Register(TEXT("Indirect"), TEXT("C_InEditorCode")), Packages);
 	NewAsset<UCurveFloat>(Register(TEXT("Indirect"), TEXT("C_InEditorConfig")), Packages);
+	// named in code, see CreateFiles
+	struct FPjcCodeAsset
+	{
+		const TCHAR* Folder;
+		const TCHAR* Name;
+	};
+	const FPjcCodeAsset CodeAssets[] {
+	  {		   TEXT("Code/Full"),		  TEXT("C_CodeFull")},
+	  {		  TEXT("Code/Macro"),		 TEXT("C_CodeMacro")},
+	  {		  TEXT("Code/Macro"),	TEXT("C_CodeMacroOther")},
+	  {		  TEXT("Code/Split"),		 TEXT("C_CodeSplit")},
+	  {		  TEXT("Code/Split"),	TEXT("C_CodeSplitOther")},
+	  {		  TEXT("Code/Built"),		 TEXT("C_CodeBuilt")},
+	  {	  TEXT("Code/Built/Sub"),	  TEXT("C_CodeBuiltSub")},
+	  {		 TEXT("Code/Format"),		TEXT("C_CodeFormat")},
+	  {		   TEXT("Code/Case"),		  TEXT("C_CodeCase")},
+	  {		   TEXT("Code/Word"),		  TEXT("C_CodeWord")},
+	  {		 TEXT("Code/Longer"),		TEXT("C_CodeLonger")},
+	  {		 TEXT("Code/Python"),		TEXT("C_CodePython")},
+	  { TEXT("Code/PluginMacro"),	   TEXT("C_PluginMacro")},
+	  { TEXT("Code/PluginMacro"), TEXT("C_PluginMacroOther")},
+	  {TEXT("Code/PluginConfig"),	  TEXT("C_PluginConfig")},
+	  {		  TEXT("Code/TwinA"),		  TEXT("C_CodeTwin")},
+	};
+	for (const auto& CodeAsset : CodeAssets) {
+		NewAsset<UCurveFloat>(Register(CodeAsset.Folder, CodeAsset.Name), Packages);
+	}
+	// a second asset named C_CodeTwin
+	PackageNames.Add(TEXT("C_CodeTwinB"), RootPath() / TEXT("Code/TwinB/C_CodeTwin"));
+	NewAsset<UCurveFloat>(PackageNames[TEXT("C_CodeTwinB")], Packages);
+	const UBlueprint* CodeClass
+		= NewBlueprint(Register(TEXT("Code/Class"), TEXT("BP_CodeClass")), AActor::StaticClass(), UBlueprint::StaticClass(), Packages);
+	const UBlueprint* CodeDoor
+		= NewBlueprint(Register(TEXT("Code/Door"), TEXT("BP_CodeDoor")), AActor::StaticClass(), UBlueprint::StaticClass(), Packages);
+	if (!CodeClass || !CodeDoor) {
+		Test.AddError(TEXT("Failed to create code class blueprints"));
+		return false;
+	}
 	NewAsset<UCurveFloat>(Register(TEXT("AlwaysCook"), TEXT("C_AlwaysCooked")), Packages);
 	NewAsset<UCurveFloat>(Register(TEXT("Registry"), TEXT("C_RegistryData")), Packages);
 
@@ -830,7 +877,8 @@ void FPjcTestFixture::CreateFiles(const bool bCreateCorruptedFile) {
 	Config += FString::Printf(TEXT("[/Script/Pjc.PjcAssetExcludeSettings]\n+ExcludedAssets=%s\n"), *ObjectPath(TEXT("C_Unused")));
 	FFileHelper::SaveStringToFile(Config, *IndirectConfigFile());
 
-	const FString Python = FString::Printf(TEXT("import unreal\n\nasset = unreal.load_asset(\"%s\")\n"), *ObjectPath(TEXT("C_InPython")));
+	FString Python = FString::Printf(TEXT("import unreal\n\nasset = unreal.load_asset(\"%s\")\n"), *ObjectPath(TEXT("C_InPython")));
+	Python += TEXT("folder = \"/Game/PjcTests/Code/Python\"\nscript = unreal.load_asset(f\"{folder}/C_CodePython.C_CodePython\")\n");
 	FFileHelper::SaveStringToFile(Python, *PythonFile());
 	FFileHelper::SaveStringToFile(FString::Printf(TEXT("[PjcTests]\nAsset=%s\n"), *ObjectPath(TEXT("C_InPlatformConfig"))), *PlatformConfigFile());
 
@@ -846,6 +894,47 @@ void FPjcTestFixture::CreateFiles(const bool bCreateCorruptedFile) {
 		*(EditorModuleDir / TEXT("Private/PjcTestEditorCode.cpp"))
 	);
 	FFileHelper::SaveStringToFile(FString::Printf(TEXT("[PjcTests]\nAsset=%s\n"), *ObjectPath(TEXT("C_InEditorConfig"))), *EditorConfigFile());
+
+	// game code: the host game module and a project plugin. #if 0 keeps the file out of a host build
+	// clang-format off
+	const TCHAR* GameCode =
+		TEXT("// Project Cleaner test code: the scan reads it, builds do not compile it\n")
+		TEXT("#if 0\n")
+		TEXT("static ConstructorHelpers::FObjectFinder<UCurveFloat> Full(TEXT(\"/Game/PjcTests/Code/Full/C_CodeFull.C_CodeFull\"));\n")
+		TEXT("static ConstructorHelpers::FClassFinder<AActor> Class(TEXT(\"/Game/PjcTests/Code/Class/BP_CodeClass\"));\n")
+		TEXT("#define PJC_MACRO_PATH \"/Game/PjcTests/Code/Macro\"\n")
+		TEXT("static ConstructorHelpers::FObjectFinder<UCurveFloat> Macro(TEXT(PJC_MACRO_PATH \"/C_CodeMacro.C_CodeMacro\"));\n")
+		TEXT("#undef PJC_MACRO_PATH\n")
+		TEXT("static const TCHAR* Split = TEXT(\"/Game/PjcTests/Code/Split/\")\n")
+		TEXT("\tTEXT(\"C_CodeSplit.C_CodeSplit\");\n")
+		TEXT("const FString Built = FPaths::Combine(TEXT(\"/Game/PjcTests/Code/Built\"), Name);\n")
+		TEXT("const FString Format = FString::Printf(TEXT(\"/Game/PjcTests/Code/Format/%s.%s\"), *Name, *Name);\n")
+		TEXT("static ConstructorHelpers::FObjectFinder<UCurveFloat> Lower(TEXT(\"/game/pjctests/code/case/c_codecase.c_codecase\"));\n")
+		TEXT("UCurveFloat* Twin = LoadObject<UCurveFloat>(nullptr, *(Folder / TEXT(\"C_CodeTwin.C_CodeTwin\")));\n")
+		TEXT("// C_CodeWord is a plain word, not a path, also as C_CodeWord.C_CodeWord outside quotes\n")
+		TEXT("int32 C_CodeWord = 0;\n")
+		TEXT("static const TCHAR* Longer = TEXT(\"/Game/PjcTests/Code/Longer/Missing\");\n")
+		TEXT("UClass* Door = LoadClass<AActor>(nullptr, *(Folder / TEXT(\"BP_CodeDoor.BP_CodeDoor_C\")));\n")
+		TEXT("#endif\n");
+	const TCHAR* PluginCode =
+		TEXT("#if 0\n")
+		TEXT("#define PJC_PLUGIN_INPUT \"/Game/PjcTests/Code/PluginMacro\"\n")
+		TEXT("static ConstructorHelpers::FObjectFinder<UCurveFloat> Move(TEXT(PJC_PLUGIN_INPUT \"/C_PluginMacro.C_PluginMacro\"));\n")
+		TEXT("#undef PJC_PLUGIN_INPUT\n")
+		TEXT("#endif\n");
+	// clang-format on
+	FFileHelper::SaveStringToFile(GameCode, *GameCodeFile());
+	const FString GameModuleDir = GameCodePluginDir() / TEXT("Source/PjcTestGameCode");
+	FFileHelper::SaveStringToFile(
+		TEXT("{\"FileVersion\": 3, \"EnabledByDefault\": false, \"Modules\": [{\"Name\": \"PjcTestGameCode\", \"Type\": \"Runtime\"}]}\n"),
+		*(GameCodePluginDir() / TEXT("PjcTestGameCode.uplugin"))
+	);
+	FFileHelper::SaveStringToFile(TEXT("// module rules\n"), *(GameModuleDir / TEXT("PjcTestGameCode.Build.cs")));
+	FFileHelper::SaveStringToFile(PluginCode, *(GameModuleDir / TEXT("Private/PjcTestGameCode.cpp")));
+	FFileHelper::SaveStringToFile(
+		FString::Printf(TEXT("[PjcTests]\nAsset=%s\n"), *ObjectPath(TEXT("C_PluginConfig"))),
+		*(GameCodePluginDir() / TEXT("Config/DefaultPjcTestGameCode.ini"))
+	);
 }
 
 void FPjcTestFixture::ApplyExcludeSettings() {
@@ -969,6 +1058,8 @@ void FPjcTestFixture::Cleanup() {
 	IFileManager::Get().Delete(*IndirectConfigFile(), false, true, true);
 	IFileManager::Get().Delete(*EditorConfigFile(), false, true, true);
 	IFileManager::Get().DeleteDirectory(*EditorCodePluginDir(), false, true);
+	IFileManager::Get().DeleteDirectory(*GameCodePluginDir(), false, true);
+	IFileManager::Get().Delete(*GameCodeFile(), false, true, true);
 	// Python script and platform config, and their folders when the fixture made them
 	IFileManager::Get().Delete(*PythonFile(), false, true, true);
 	IFileManager::Get().DeleteDirectory(*FPaths::GetPath(PythonFile()), false, false);
@@ -1079,6 +1170,9 @@ TArray<FString> FPjcTestFixture::UsedNames(const bool bScanPlugins) const {
 	  TEXT("C_InEditorCode"), TEXT("C_InEditorConfig"),	 TEXT("PAL_Explicit"),		 TEXT("C_Explicit"),	 TEXT("C_IndirectFile"),
 	  TEXT("PAL_Packaged"),	  TEXT("C_Packaged"),		 TEXT("C_PjcSplash"),		 TEXT("C_Renamed_1"),	 TEXT("C_PjcPreset"),
 	};
+	// named in code
+	Names.Append({TEXT("C_CodeFull"), TEXT("BP_CodeClass"), TEXT("BP_CodeDoor"), TEXT("C_CodeMacro"), TEXT("C_CodeSplit"), TEXT("C_CodeCase")});
+	Names.Append({TEXT("C_CodeTwin"), TEXT("C_CodeTwinB"), TEXT("C_CodePython"), TEXT("C_PluginMacro"), TEXT("C_PluginConfig")});
 
 	// editor tools
 	Names.Add(TEXT("BP_AnimModifier"));
@@ -1126,6 +1220,9 @@ TArray<FString> FPjcTestFixture::UnusedNames(const bool bScanPlugins) const {
 	  TEXT("C_Labeled"),
 	  TEXT("BP_Labeled"),
 	  TEXT("C_RenamedUnused_1"),
+	  TEXT("C_CodeBuiltSub"),
+	  TEXT("C_CodeWord"),
+	  TEXT("C_CodeLonger"),
 	};
 
 	if (bCues) {
@@ -1158,7 +1255,8 @@ TArray<FString> FPjcTestFixture::RedirectorNames() const {
 }
 
 TArray<FString> FPjcTestFixture::ReviewNames() const {
-	TArray<FString> Names;
+	// in folders code names
+	TArray<FString> Names {TEXT("C_CodeMacroOther"), TEXT("C_CodeSplitOther"), TEXT("C_CodeBuilt"), TEXT("C_CodeFormat"), TEXT("C_PluginMacroOther")};
 	if (bCues) {
 		Names.Append({TEXT("GC_PjcTest_Unfired"), TEXT("GC_PjcTest_ByUnused"), TEXT("GC_PjcTest_Outside")});
 	}
