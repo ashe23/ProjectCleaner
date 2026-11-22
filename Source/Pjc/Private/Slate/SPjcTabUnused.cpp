@@ -5,6 +5,7 @@
 #include "Slate/PjcTabs.h"
 #include "Slate/PjcWidgets.h"
 #include "Slate/SPjcClassBar.h"
+#include "AssetThumbnail.h"
 #include "Slate/SPjcScanBar.h"
 #include "Slate/SPjcSizeMap.h"
 #include "Slate/SPjcTabIssues.h"
@@ -598,6 +599,7 @@ void SPjcTabUnused::Construct(const FArguments& InArgs) {
 		GConfig->GetBool(PjcUnusedSection, TEXT("GridView"), bGridView, GEditorPerProjectIni);
 		GConfig->GetInt(PjcUnusedSection, TEXT("TileSize"), TileSize, GEditorPerProjectIni);
 		TileSize = FMath::Clamp(TileSize, 0, 3);
+		GConfig->GetBool(PjcUnusedSection, TEXT("Thumbnails"), bThumbnails, GEditorPerProjectIni);
 		GConfig->GetBool(PjcUnusedSection, TEXT("SizeMapAll"), bMapAll, GEditorPerProjectIni);
 		if (GConfig->GetString(PjcUnusedSection, TEXT("AssetSort"), SortColumn, GEditorPerProjectIni) && !SortColumn.IsEmpty()) {
 			AssetSortColumn = FName {*SortColumn};
@@ -746,8 +748,8 @@ void SPjcTabUnused::OnScanFinished() {
 void SPjcTabUnused::RebuildTree() {
 	Tree = FPjcUnusedTree::Make(UPjcSubsystem::GetScanResult(), Set);
 
-	// first scan: roots open
-	if (!bExpansionSynced) {
+	// first scan: roots open one level. A tree built before any scan has no roots, so it does not count as the first one
+	if (!bExpansionSynced && Tree.Roots.Num() > 0) {
 		for (const auto& Root : Tree.Roots) {
 			ExpandedFolders.Add(Root->Path);
 		}
@@ -1948,6 +1950,7 @@ void SPjcTabUnused::SaveViewState() const {
 	GConfig->SetBool(PjcUnusedSection, TEXT("IncludeSubfolders"), bSubfolders, GEditorPerProjectIni);
 	GConfig->SetBool(PjcUnusedSection, TEXT("GridView"), bGridView, GEditorPerProjectIni);
 	GConfig->SetInt(PjcUnusedSection, TEXT("TileSize"), TileSize, GEditorPerProjectIni);
+	GConfig->SetBool(PjcUnusedSection, TEXT("Thumbnails"), bThumbnails, GEditorPerProjectIni);
 	GConfig->SetBool(PjcUnusedSection, TEXT("SizeMapAll"), bMapAll, GEditorPerProjectIni);
 	GConfig->SetString(PjcUnusedSection, TEXT("AssetSort"), *AssetSortColumn.ToString(), GEditorPerProjectIni);
 	GConfig->SetBool(PjcUnusedSection, TEXT("AssetSortDescending"), AssetSortMode == EColumnSortMode::Descending, GEditorPerProjectIni);
@@ -2347,6 +2350,24 @@ TSharedRef<SWidget> SPjcTabUnused::MakeListViewMenu() {
 		);
 	}
 	Menu.AddSeparator();
+	{
+		const FUIAction Action {
+		  FExecuteAction::CreateLambda([this]() {
+			  bThumbnails = !bThumbnails;
+			  SaveViewState();
+			  TileView->RebuildList();
+		  }),
+		  FCanExecuteAction {},
+		  FIsActionChecked::CreateLambda([this]() {
+			  return bThumbnails;
+		  })
+		};
+		const FText Tip = FText::FromString(TEXT(
+			"Shows the thumbnails saved in the asset files, as the Content Browser does. Assets in memory show a live preview when you "
+		) TEXT("point at them. Nothing is loaded for it. Large lists draw slower."));
+		Menu.AddMenuEntry(FText::FromString(TEXT("Thumbnails")), Tip, FSlateIcon {}, Action, NAME_None, EUserInterfaceActionType::ToggleButton);
+	}
+	Menu.AddSeparator();
 	const FName OrderColumns[] = {PjcUnusedColName, PjcUnusedColReason, PjcUnusedColClass, PjcUnusedColAssetSize, PjcUnusedColPath};
 	const TCHAR* OrderNames[] = {TEXT("Name"), TEXT("Reason"), TEXT("Class"), TEXT("Size"), TEXT("Folder")};
 	for (int32 Order = 0; Order < UE_ARRAY_COUNT(OrderColumns); ++Order) {
@@ -2409,6 +2430,41 @@ FReply SPjcTabUnused::OnKeyDown(const FGeometry& Geometry, const FKeyEvent& KeyE
 	return bGridView ? OnAssetKeyDown(Geometry, KeyEvent) : SCompoundWidget::OnKeyDown(Geometry, KeyEvent);
 }
 
+TSharedRef<SWidget> SPjcTabUnused::MakeTileImage(const FPjcUnusedAssetRow& Row) {
+	const FPjcScanResult& Result = UPjcSubsystem::GetScanResult();
+	if (bThumbnails && Result.Assets.IsValidIndex(Row.Index)) {
+		if (!ThumbnailPool.IsValid()) {
+#if ENGINE_MAJOR_VERSION < 5
+			ThumbnailPool = MakeShared<FAssetThumbnailPool>(1024, true);
+#else
+			ThumbnailPool = MakeShared<FAssetThumbnailPool>(1024);
+#endif
+		}
+		// the editor's thumbnail: saved in the asset file, live on hover for assets in memory
+		const TSharedRef<FAssetThumbnail> Thumbnail = MakeShared<FAssetThumbnail>(Result.Assets[Row.Index], 256, 256, ThumbnailPool);
+		FAssetThumbnailConfig Config;
+		Config.bAllowFadeIn = false;
+		Config.bAllowHintText = false;
+		Config.ThumbnailLabel = EThumbnailLabel::NoLabel;
+		// clang-format off
+		return SNew(SBox)
+			.WidthOverride_Lambda([this]() { return GetTileWidth() - 4.0f; })
+			.HeightOverride_Lambda([this]() { return GetTileWidth() - 4.0f; })
+			[
+				Thumbnail->MakeThumbnailWidget(Config)
+			];
+		// clang-format on
+	}
+	// clang-format off
+	return SNew(SBox)
+		.WidthOverride_Lambda([this]() { return GetTileWidth() * 0.46f; })
+		.HeightOverride_Lambda([this]() { return GetTileWidth() * 0.46f; })
+		[
+			SNew(SImage).Image(Row.Thumb ? Row.Thumb : Row.Icon)
+		];
+	// clang-format on
+}
+
 TSharedRef<ITableRow> SPjcTabUnused::OnGenerateAssetTile(FAssetRowPtr Row, const TSharedRef<STableViewBase>& Table) {
 	// explicit colors: a selected table row turns the foreground dark
 	const FSlateColor Muted {PjcWidgets::GetColor("ProjectCleaner.Color.Muted")};
@@ -2468,12 +2524,7 @@ TSharedRef<ITableRow> SPjcTabUnused::OnGenerateAssetTile(FAssetRowPtr Row, const
 						.HAlign(HAlign_Center)
 						.VAlign(VAlign_Center)
 						[
-							SNew(SBox)
-							.WidthOverride_Lambda([this]() { return GetTileWidth() * 0.46f; })
-							.HeightOverride_Lambda([this]() { return GetTileWidth() * 0.46f; })
-							[
-								SNew(SImage).Image(Row->Thumb ? Row->Thumb : Row->Icon)
-							]
+							MakeTileImage(*Row)
 						]
 					]
 				]

@@ -91,10 +91,23 @@ void SPjcScanBar::Construct(const FArguments& InArgs) {
 			]
 			+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center).Padding(FMargin {10.0f, 0.0f})
 			[
-				SNew(STextBlock)
-				.Text(this, &SPjcScanBar::GetStatusText)
-				.ColorAndOpacity(this, &SPjcScanBar::GetStatusColor)
+				// the status, and under it the date and time of the last scan
+				SNew(SVerticalBox)
 				.ToolTip(PjcWidgets::MakeToolTip(TAttribute<FText>::Create(TAttribute<FText>::FGetter::CreateSP(this, &SPjcScanBar::GetStatusToolTip))))
+				+ SVerticalBox::Slot().AutoHeight()
+				[
+					SNew(STextBlock)
+					.Text(this, &SPjcScanBar::GetStatusText)
+					.ColorAndOpacity(this, &SPjcScanBar::GetStatusColor)
+				]
+				+ SVerticalBox::Slot().AutoHeight()
+				[
+					SNew(STextBlock)
+					.Visibility_Lambda([]() { return UPjcSubsystem::GetScanResult().IsValid() ? EVisibility::Visible : EVisibility::Collapsed; })
+					.Text_Lambda([]() { return FText::FromString(PjcFormat::DateTime(UPjcSubsystem::GetScanResult().Time, true)); })
+					.Font(FPjcStyles::GetFont("Regular", 8))
+					.ColorAndOpacity(FSlateColor::UseSubduedForeground())
+				]
 			]
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {10.0f, 0.0f, 4.0f, 0.0f})
 			[

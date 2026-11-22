@@ -29,6 +29,27 @@ namespace PjcFormat
 		return FText::AsNumber(Value, &Options).ToString() + TEXT(" ") + Units[Unit];
 	}
 
+	// Local date and time of a UTC time, e.g. Nov 22, 15:48 or Nov 22, 2026, 15:48 (FDateTime::ToString has no month names in UE 4.27)
+	inline FString DateTime(const FDateTime& UtcTime, const bool bWithYear) {
+		static const TCHAR* Months[] = {
+		  TEXT("Jan"),
+		  TEXT("Feb"),
+		  TEXT("Mar"),
+		  TEXT("Apr"),
+		  TEXT("May"),
+		  TEXT("Jun"),
+		  TEXT("Jul"),
+		  TEXT("Aug"),
+		  TEXT("Sep"),
+		  TEXT("Oct"),
+		  TEXT("Nov"),
+		  TEXT("Dec")
+		};
+		const FDateTime Local = UtcTime + (FDateTime::Now() - FDateTime::UtcNow());
+		const FString Year = bWithYear ? FString::Printf(TEXT(", %d"), Local.GetYear()) : FString {};
+		return FString::Printf(TEXT("%s %d%s, %02d:%02d"), Months[Local.GetMonth() - 1], Local.GetDay(), *Year, Local.GetHour(), Local.GetMinute());
+	}
+
 	// Share in whole percent, never rounded to 0% or 100% when it is not, e.g. <1%, 58%, 99%
 	inline FString Percent(const int64 Part, const int64 Total) {
 		if (Total <= 0 || Part <= 0) return TEXT("0%");

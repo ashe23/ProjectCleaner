@@ -523,6 +523,20 @@ bool FPjcTestScanSettings::RunTest(const FString& Parameters) {
 		}
 	}
 	TestSetEqual(*this, TEXT("curves kept by their base class"), UnusedFixtureAssets(), ObjectPaths(Fixture, NotCurves));
+	// the Excluded filter names the rule of a subclass asset too
+	{
+		const TArray<FString> Names = Fixture.UnusedNames(false);
+		const FString* CurveName = Names.FindByPredicate([](const FString& Name) {
+			return Name.StartsWith(TEXT("C_"));
+		});
+		if (TestNotNull(TEXT("a curve in the fixture"), CurveName)) {
+			UPjcSubsystem::Scan(false);
+			const FPjcExclusion* Exclusion = UPjcSubsystem::GetScanResult().Excluded.Find(PackageOf(Fixture, **CurveName));
+			if (TestNotNull(TEXT("subclass asset has its exclusion"), Exclusion)) {
+				TestEqual(TEXT("excluded by the base class"), Exclusion->Value, UCurveBase::StaticClass()->GetPathName());
+			}
+		}
+	}
 	ClassExclusions->ExcludedClasses = ClassesBefore;
 
 	Settings->bUnregisteredPrimaryUsed = false;

@@ -398,7 +398,7 @@ TSharedRef<SWidget> SPjcCleanWindow::MakeConfirm() {
 		const TCHAR* ForceDetail = TEXT("Something in memory holds them \u00B7 the engine's Force Delete \u00B7 cannot be undone");
 		AddCheck(MakeCheck(ECheck::Info, TEXT("Assets that fail to delete"), ForceDetail, Force));
 	}
-	const TCHAR* EditorsDetail = TEXT("Editors that show a listed asset close before the delete");
+	const TCHAR* EditorsDetail = TEXT("All open asset editors close before the delete");
 	AddCheck(MakeCheck(ECheck::Info, TEXT("Asset editors close first"), EditorsDetail, NoExtra));
 	// redirectors never block Clean: the scan follows them, so nothing used is deleted through one
 	if (Plan.NumRedirectorsLeft > 0) {

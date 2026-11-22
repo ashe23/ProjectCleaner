@@ -19,9 +19,7 @@ void FPjcCmds::RegisterCommands() {
 		FInputChord()
 	);
 
-	UI_COMMAND(
-		OpenSettingsEditor, "Editor Preferences", "Toolbar button, redirectors and other preferences", EUserInterfaceActionType::Button, FInputChord()
-	);
+	UI_COMMAND(OpenSettingsEditor, "Editor Preferences", "Toolbar button and asset load warning", EUserInterfaceActionType::Button, FInputChord());
 }
 
 #undef LOCTEXT_NAMESPACE

@@ -836,13 +836,7 @@ TSharedRef<SWidget> SPjcOverviewPanel::MakeRow(
 }
 
 FString SPjcOverviewPanel::FormatCookTime(const FDateTime& UtcTime, const bool bWithYear) {
-	// FDateTime::ToString has no month names in UE 4.27
-	// clang-format off
-	static const TCHAR* Months[] = {TEXT("Jan"), TEXT("Feb"), TEXT("Mar"), TEXT("Apr"), TEXT("May"), TEXT("Jun"), TEXT("Jul"), TEXT("Aug"), TEXT("Sep"), TEXT("Oct"), TEXT("Nov"), TEXT("Dec")};
-	// clang-format on
-	const FDateTime Local = UtcTime + (FDateTime::Now() - FDateTime::UtcNow());
-	const FString Year = bWithYear ? FString::Printf(TEXT(", %d"), Local.GetYear()) : FString {};
-	return FString::Printf(TEXT("%s %d%s, %02d:%02d"), Months[Local.GetMonth() - 1], Local.GetDay(), *Year, Local.GetHour(), Local.GetMinute());
+	return PjcFormat::DateTime(UtcTime, bWithYear);
 }
 
 FString SPjcOverviewPanel::FormatAgo(const FDateTime& UtcTime) {
@@ -906,7 +900,7 @@ void SPjcOverviewPanel::GetReasonInfo(const EPjcUsageReason Reason, FString& Out
 			break;
 		case EPjcUsageReason::Excluded :
 			OutName = TEXT("Excluded");
-			OutToolTip = TEXT("Kept by your exclusions and always used classes (Scan settings).");
+			OutToolTip = TEXT("Kept by your exclusions (Scan settings).");
 			Color = "ProjectCleaner.Color.Muted";
 			break;
 		case EPjcUsageReason::Cinematic :

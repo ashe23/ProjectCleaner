@@ -243,6 +243,11 @@ namespace
 		mutable TMap<FString, FString> FolderModules;
 	};
 
+	// excluded classes and the names of their subclasses, for GetExclusion. Each scan finds them again: new Blueprint
+	// subclasses come with new assets
+	TArray<FString> PjcExclusionClassPaths;
+	TArray<TSet<FName>> PjcExclusionClassNames;
+
 	// marks of assets that are gone (deleted by a cleanup or elsewhere) come off the settings: the list holds only what exists
 	void PjcPruneMarkedUnused() {
 		UPjcAssetExcludeSettings* Settings = GetMutableDefault<UPjcAssetExcludeSettings>();
@@ -574,6 +579,8 @@ bool UPjcSubsystem::Scan(const bool bShowSlowTask, FPjcScanProgress* Progress) {
 	PjcScanStep(EPjcScanStep::Registry);
 	PjcScanFound(EPjcScanStep::Registry, TEXT("ready"));
 	PjcPruneMarkedUnused();
+	PjcExclusionClassPaths.Reset();
+	PjcExclusionClassNames.Reset();
 
 	// the queries below share their intermediate results (references, source and config search)
 	FPjcScanCacheScope ScanCacheScope;
@@ -2294,15 +2301,29 @@ bool UPjcSubsystem::GetExclusion(const FAssetData& Asset, FPjcExclusion& OutExcl
 		}
 	}
 
-	// classes match exactly, as the scan excludes them (loaded by GetClassNamesExcludedBy)
+	// classes match with their subclasses, as the scan excludes them (GetClassNamesExcludedBy). The subclasses of each
+	// excluded class are found once for the current list
+	TArray<FString>& CachedPaths = PjcExclusionClassPaths;
+	TArray<TSet<FName>>& CachedNames = PjcExclusionClassNames;
+	TArray<FString> Paths;
+	for (const auto& ExcludedClass : AssetExcludeSettings->ExcludedClasses) {
+		Paths.Add(ExcludedClass.ToSoftObjectPath().ToString());
+	}
+	if (Paths != CachedPaths) {
+		CachedPaths = Paths;
+		CachedNames.Reset();
+		for (const auto& ExcludedClass : AssetExcludeSettings->ExcludedClasses) {
+			TSet<FName>& Names = CachedNames.AddDefaulted_GetRef();
+			const UClass* Class = ExcludedClass.Get();
+			if (Class) PjcShim::GetDerivedClassNames({PjcShim::GetClassName(Class)}, TSet<FName> {}, Names);
+		}
+	}
 	const FName ClassName = PjcShim::GetAssetClassName(Asset);
 	const FName ExactClassName = GetAssetExactClassName(Asset);
-	for (const auto& ExcludedClass : AssetExcludeSettings->ExcludedClasses) {
-		const UClass* Class = ExcludedClass.Get();
-		const FName ExcludedName = Class ? PjcShim::GetClassName(Class) : NAME_None;
-		if (!ExcludedName.IsNone() && (ExcludedName == ClassName || ExcludedName == ExactClassName)) {
+	for (int32 Index = 0; Index < CachedNames.Num(); ++Index) {
+		if (CachedNames[Index].Contains(ClassName) || CachedNames[Index].Contains(ExactClassName)) {
 			OutExclusion.Kind = EPjcExclusionKind::Class;
-			OutExclusion.Value = ExcludedClass.ToSoftObjectPath().ToString();
+			OutExclusion.Value = CachedPaths[Index];
 			return true;
 		}
 	}
