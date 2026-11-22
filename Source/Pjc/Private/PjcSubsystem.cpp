@@ -879,6 +879,46 @@ FString UPjcSubsystem::GetAssetHolder(const FAssetData& InAsset) {
 	return Holders.FindRef(Object->GetPathName());
 }
 
+int32 UPjcSubsystem::ForceDeleteAssets(const TArray<FName>& Packages) {
+	if (Packages.Num() == 0 || !PrepareDelete()) return 0;
+
+	IAssetRegistry& Registry = GetModuleAssetRegistry().Get();
+	TArray<UObject*> Objects;
+	for (const FName Package : Packages) {
+		TArray<FAssetData> Assets;
+		Registry.GetAssetsByPackageName(Package, Assets, true);
+		for (const FAssetData& Asset : Assets) {
+			if (UObject* Object = Asset.GetAsset()) Objects.AddUnique(Object);
+		}
+	}
+	if (Objects.Num() > 0) {
+		ObjectTools::ForceDeleteObjects(Objects, false);
+	}
+	// before UE 5.7 the engine keeps every string table alive, also after Force Delete: the engine cleanup deletes their
+	// files without the reference check. The pointers above may be gone, so the packages are looked up again
+	TArray<UPackage*> Left;
+	for (const FName Package : Packages) {
+		if (!FPackageName::DoesPackageExist(Package.ToString())) continue;
+
+		if (UPackage* Found = FindPackage(nullptr, *Package.ToString())) Left.Add(Found);
+	}
+	if (Left.Num() > 0) {
+		ObjectTools::CleanupAfterSuccessfulDelete(Left, false);
+	}
+
+	int32 NumGone = 0;
+	for (const FName Package : Packages) {
+		if (FPackageName::DoesPackageExist(Package.ToString())) {
+			UE_LOG(LogProjectCleaner, Warning, TEXT("Force delete failed: %s"), *Package.ToString());
+			continue;
+		}
+		LastCleanupKept.Remove(Package);
+		++NumGone;
+	}
+	UE_LOG(LogProjectCleaner, Display, TEXT("Force deleted %d of %d assets"), NumGone, Packages.Num());
+	return NumGone;
+}
+
 const TMap<FName, FString>& UPjcSubsystem::GetLastCleanupKept() {
 	return LastCleanupKept;
 }

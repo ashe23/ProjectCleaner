@@ -42,6 +42,7 @@
 #include "PackageTools.h"
 #include "Serialization/MemoryWriter.h"
 #include "UObject/ObjectRedirector.h"
+#include "Internationalization/StringTable.h"
 
 namespace
 {
@@ -2322,6 +2323,48 @@ bool FPjcFixtureBuild::RunTest(const FString& Parameters) {
 	if (!TestTrue(TEXT("expected.json written"), FFileHelper::SaveStringToFile(Json, *ExpectedFile))) return false;
 
 	Fixture.Keep();
+	return true;
+}
+
+// the engine keeps every string table asset alive (FStringTableEngineBridge): a normal delete keeps it, Force delete deletes it
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPjcTestForceDelete, "ProjectCleaner.Unused.ForceDelete", PJC_TEST_FLAGS)
+
+bool FPjcTestForceDelete::RunTest(const FString& Parameters) {
+	if (!FPjcTestFixture::IsTestHost()) {
+		AddInfo(TEXT("Skipped, deletes a test asset, runs only in test host projects"));
+		return true;
+	}
+
+	const FString Folder = TEXT("/Game/PjcForceDelete");
+	const FString PackageName = Folder / TEXT("ST_Held");
+	ON_SCOPE_EXIT {
+		IFileManager::Get().DeleteDirectory(*FPackageName::LongPackageNameToFilename(Folder + TEXT("/")), false, true);
+	};
+	UStringTable* Table = NewObject<UStringTable>(CreatePackage(*PackageName), TEXT("ST_Held"), RF_Public | RF_Standalone);
+	FAssetRegistryModule::AssetCreated(Table);
+	Table->MarkPackageDirty();
+	if (!TestTrue(TEXT("saved"), UEditorLoadingAndSavingUtils::SavePackages({Table->GetOutermost()}, false))) return false;
+
+	const FAssetData Asset {Table};
+	Table = nullptr;
+	UPjcSubsystem::DeleteAssets({Asset}, false, false);
+	const bool bKept = FPackageName::DoesPackageExist(PackageName);
+	AddInfo(FString::Printf(TEXT("normal delete: %s"), bKept ? TEXT("kept") : TEXT("deleted")));
+	if (bKept) {
+		TestTrue(TEXT("kept asset recorded"), UPjcSubsystem::GetLastCleanupKept().Contains(Asset.PackageName));
+		TestEqual(TEXT("force delete deletes it"), UPjcSubsystem::ForceDeleteAssets({Asset.PackageName}), 1);
+		TestFalse(TEXT("package gone"), FPackageName::DoesPackageExist(PackageName));
+		TestFalse(TEXT("no longer recorded as kept"), UPjcSubsystem::GetLastCleanupKept().Contains(Asset.PackageName));
+		// a scan after it does not list it. Before UE 5.7 the engine still holds a string table in memory: its file is gone,
+		// the lists show it until the editor restarts
+		UPjcSubsystem::Scan(false);
+		const bool bListed = UPjcSubsystem::GetScanResult().Usage.Contains(Asset.PackageName);
+#if ENGINE_MAJOR_VERSION > 5 || (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
+		TestFalse(TEXT("scan does not list it"), bListed);
+#else
+		AddInfo(FString::Printf(TEXT("listed until a restart: %s"), bListed ? TEXT("yes") : TEXT("no")));
+#endif
+	}
 	return true;
 }
 

@@ -67,6 +67,10 @@ class SPjcCleanWindow final : public SCompoundWidget
 	FPjcCleanPlan Plan;
 	TMap<FName, int64> Sizes;
 	bool bBackup = false;
+	// off each time the window opens
+	bool bForceDelete = false;
+	int32 NumForced = 0;
+	int32 NumInMemory = 0;
 
 	// run
 	TArray<FString> Steps;

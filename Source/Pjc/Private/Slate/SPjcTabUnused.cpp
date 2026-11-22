@@ -2133,6 +2133,30 @@ TSharedRef<SWidget> SPjcTabUnused::MakeToolbar() {
 						Label("ProjectCleaner.Menu.Delete", Static(TEXT("Delete\u2026")), PjcWidgets::GetColor("ProjectCleaner.Color.DangerText"))
 					]
 				]
+				// the Delete failed list: the engine's Force Delete for what the last delete could not remove
+				+ SWrapBox::Slot().VAlign(VAlign_Center)
+				[
+					SNew(SButton)
+					.ButtonStyle(&FPjcStyles::Get().GetWidgetStyle<FButtonStyle>("ProjectCleaner.Button.DangerQuiet"))
+#if ENGINE_MAJOR_VERSION < 5
+					.ForegroundColor(FSlateColor::UseForeground())
+#endif
+					.ContentPadding(FMargin {8.0f, 1.0f, 10.0f, 1.0f})
+					.ToolTip(PjcWidgets::MakeToolTip(TEXT("Force delete"), PjcActions::GetForceDeleteWarning()))
+					.Visibility_Lambda([this]() { return Set == EPjcAssetSet::Unused && bHeldOnly ? EVisibility::Visible : EVisibility::Collapsed; })
+					.IsEnabled_Lambda(HasSelection)
+					.OnClicked_Lambda([this]() {
+						TArray<FName> Held;
+						for (const FName Package : GetSelectedPackages()) {
+							if (UPjcSubsystem::GetLastCleanupKept().Contains(Package)) Held.Add(Package);
+						}
+						PjcActions::ForceDelete(Held, true, true);
+						return FReply::Handled();
+					})
+					[
+						Label("ProjectCleaner.Menu.Delete", Static(TEXT("Force delete\u2026")), PjcWidgets::GetColor("ProjectCleaner.Color.DangerText"))
+					]
+				]
 				+ SWrapBox::Slot().VAlign(VAlign_Center)
 				[
 					// the same button as Delete next to it, opening the menu (as in the Inspector)

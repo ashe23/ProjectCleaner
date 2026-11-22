@@ -24,6 +24,7 @@
 #include "Widgets/Images/SImage.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Input/SCheckBox.h"
+#include "Slate/PjcActions.h"
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/Layout/SScrollBox.h"
@@ -381,6 +382,20 @@ TSharedRef<SWidget> SPjcCleanWindow::MakeConfirm() {
 	else {
 		AddCheck(MakeCheck(ECheck::Ok, TEXT("Asset registry ready"), TEXT("Every asset was found before the scan"), NoExtra));
 	}
+	{
+		// clang-format off
+		const TSharedRef<SWidget> Force = SNew(SCheckBox)
+			.Style(&PjcShim::GetCheckBoxStyle())
+			.ToolTip(PjcWidgets::MakeToolTip(TEXT("Force delete"), PjcActions::GetForceDeleteWarning()))
+			.IsChecked_Lambda([this]() { return bForceDelete ? ECheckBoxState::Checked : ECheckBoxState::Unchecked; })
+			.OnCheckStateChanged_Lambda([this](const ECheckBoxState State) { bForceDelete = State == ECheckBoxState::Checked; })
+			[
+				SNew(STextBlock).Text(FText::FromString(TEXT("Force delete")))
+			];
+		// clang-format on
+		const TCHAR* ForceDetail = TEXT("Something in memory holds them \u00B7 the engine's Force Delete \u00B7 cannot be undone");
+		AddCheck(MakeCheck(ECheck::Info, TEXT("Assets that fail to delete"), ForceDetail, Force));
+	}
 	const TCHAR* EditorsDetail = TEXT("Editors that show an asset in the list are closed before deleting");
 	AddCheck(MakeCheck(ECheck::Info, TEXT("Asset editors close first"), EditorsDetail, NoExtra));
 	// redirectors never block Clean: the scan follows them, so nothing used is deleted through one
@@ -661,6 +676,16 @@ void SPjcCleanWindow::Run() {
 	}
 	UPjcSubsystem::DeleteAssets(ToDelete, false, false, &Progress);
 	bStopped = Progress.bStopped;
+	NumForced = 0;
+	NumInMemory = 0;
+	if (bForceDelete && !bStopped) {
+		TArray<FName> Held;
+		UPjcSubsystem::GetLastCleanupKept().GetKeys(Held);
+		if (Held.Num() > 0) {
+			SetStep(1, FString::Printf(TEXT("Force deleting %s"), *PjcFormat::Count(Held.Num())));
+			NumForced = PjcActions::ForceDelete(Held, false, false, &NumInMemory);
+		}
+	}
 	Percent = 0.85f;
 
 	TArray<FName> Deleted;
@@ -739,11 +764,17 @@ TSharedRef<SWidget> SPjcCleanWindow::MakeDone() {
 		const FString SkippedText = FString::Printf(TEXT("%s skipped, used by now: "), *PjcFormat::Count(Skipped.Num()));
 		AddNote(SkippedText + FString::Join(Names, TEXT(", ")), true);
 	}
+	if (NumForced > 0) {
+		AddNote(FString::Printf(TEXT("%s force deleted."), *PjcFormat::Count(NumForced)), false);
+	}
+	if (NumInMemory > 0) {
+		const FString InMemory = FString::Printf(TEXT("%s deleted from disk, but the editor still holds them: "), *PjcFormat::Count(NumInMemory));
+		AddNote(InMemory + TEXT("restart the editor to remove them from the lists."), true);
+	}
 	if (NotDeleted.Num() > 0) {
 		const FString Lines = FString::Join(TArray<FString> {NotDeleted.GetData(), FMath::Min(NotDeleted.Num(), 8)}, TEXT("\n"));
 		const FString Held = FString::Printf(TEXT("%s failed to delete, each with what still holds it. "), *PjcFormat::Count(NotDeleted.Num()));
-		const TCHAR* Next = TEXT("They stay in Assets. To delete one anyway, delete it in the Content Browser and choose Force Delete, ")
-			TEXT("only when you are sure nothing uses it.\n");
+		const TCHAR* Next = TEXT("They stay in Assets. Force delete removes them anyway: use it only when you are sure nothing uses them.\n");
 		AddNote(Held + Next + Lines, true);
 	}
 	if (Broken.Num() > 0) {
@@ -808,6 +839,39 @@ TSharedRef<SWidget> SPjcCleanWindow::MakeDone() {
 					})
 					[
 						SNew(STextBlock).Text(FText::FromString(TEXT("Show failed")))
+					]
+				]
+				+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin {8.0f, 0.0f, 0.0f, 0.0f})
+				[
+					SNew(SButton)
+					.ButtonStyle(&FPjcStyles::Get().GetWidgetStyle<FButtonStyle>("ProjectCleaner.Button.DangerQuiet"))
+#if ENGINE_MAJOR_VERSION < 5
+					.ForegroundColor(FSlateColor::UseForeground())
+#endif
+					.Visibility(bHeld ? EVisibility::Visible : EVisibility::Collapsed)
+					.ContentPadding(FMargin {12.0f, 2.0f})
+					.ToolTip(PjcWidgets::MakeToolTip(TEXT("Force delete"), PjcActions::GetForceDeleteWarning()))
+					.OnClicked_Lambda([this]() {
+						TArray<FName> Held;
+						UPjcSubsystem::GetLastCleanupKept().GetKeys(Held);
+						int32 InMemory = 0;
+						const int32 Gone = PjcActions::ForceDelete(Held, true, false, &InMemory);
+						if (Gone == 0) return FReply::Handled();
+
+						// the result again, with what is gone now
+						NumForced += Gone;
+						NumInMemory += InMemory;
+						NumDeleted += Gone;
+						UPjcSubsystem::Scan(false);
+						NotDeleted.Reset();
+						for (const auto& Pair : UPjcSubsystem::GetLastCleanupKept()) {
+							NotDeleted.Add(FString::Printf(TEXT("%s \u00B7 %s"), *FPackageName::GetShortName(Pair.Key), *Pair.Value));
+						}
+						Rebuild();
+						return FReply::Handled();
+					})
+					[
+						SNew(STextBlock).Text(FText::FromString(TEXT("Force delete\u2026"))).ColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.DangerText"))
 					]
 				]
 				+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin {8.0f, 0.0f, 0.0f, 0.0f})

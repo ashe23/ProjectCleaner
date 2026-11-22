@@ -294,6 +294,11 @@ class UPjcSubsystem final : public UEditorSubsystem
 		FPjcDeleteProgress* Progress = nullptr
 	);
 
+	// The engine's Force Delete (as in the Content Browser) for assets a normal delete kept because something in memory
+	// holds them: it clears those references, also in open editors, then deletes. Cannot be undone.
+	// @return how many of the packages are gone; the rest stay in GetLastCleanupKept
+	static int32 ForceDeleteAssets(const TArray<FName>& Packages);
+
 	// Delete all empty folders in project
 	// @param bShowSlowTask bool
 	// @param bShowEditorNotification bool

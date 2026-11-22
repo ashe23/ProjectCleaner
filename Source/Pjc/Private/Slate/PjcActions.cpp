@@ -2,7 +2,9 @@
 
 #include "Slate/PjcActions.h"
 #include "Slate/SPjcDeleteDialog.h"
+#include "Slate/SPjcDialog.h"
 #include "Slate/SPjcScanBar.h"
+#include "PjcFormat.h"
 #include "PjcScanDraft.h"
 #include "PjcSettings.h"
 #include "PjcShim.h"
@@ -78,6 +80,47 @@ namespace PjcActions
 		UPjcSubsystem::DeleteAssets(All, true, true);
 		SPjcScanBar::ScanProject();
 		return true;
+	}
+
+	FString GetForceDeleteWarning() {
+		return TEXT("Uses the engine's Force Delete, as in the Content Browser: it clears the references to these assets in memory, ")
+			TEXT("also in open asset editors, then deletes them. Unsaved changes in those editors can be lost. It cannot be undone.");
+	}
+
+	int32 ForceDelete(const TArray<FName>& Packages, const bool bAsk, const bool bScan, int32* OutInMemory) {
+		if (Packages.Num() == 0) return 0;
+
+		if (bAsk) {
+			TArray<FPjcDialogPart> Parts;
+			FPjcDialogPart& Warning = Parts.AddDefaulted_GetRef();
+			Warning.Note = GetForceDeleteWarning();
+			Warning.NoteColor = TEXT("ProjectCleaner.Color.Yellow");
+			FPjcDialogPart& What = Parts.AddDefaulted_GetRef();
+			What.Heading = TEXT("Failed to delete, held by");
+			const TMap<FName, FString>& Kept = UPjcSubsystem::GetLastCleanupKept();
+			for (int32 Index = 0; Index < Packages.Num() && Index < 12; ++Index) {
+				const FString* Holder = Kept.Find(Packages[Index]);
+				What.Rows.Emplace(FPackageName::GetShortName(Packages[Index]), Holder ? *Holder : FString {TEXT("something in memory")});
+			}
+			if (Packages.Num() > 12) What.Rows.Emplace(FString::Printf(TEXT("and %d more"), Packages.Num() - 12), FString {});
+			Parts.Add(SPjcDialog::MakeVersionControlNote());
+			const FString Title = FString::Printf(TEXT("Force delete %s"), *PjcFormat::Count(Packages.Num()));
+			if (!SPjcDialog::Show(Title, Parts, TEXT("Force delete"), TEXT("ProjectCleaner.Color.UnusedFill"))) return 0;
+		}
+
+		const int32 NumGone = UPjcSubsystem::ForceDeleteAssets(Packages);
+		int32 NumInMemory = 0;
+		for (const FName Package : Packages) {
+			if (!FPackageName::DoesPackageExist(Package.ToString()) && FindPackage(nullptr, *Package.ToString())) ++NumInMemory;
+		}
+		if (OutInMemory) *OutInMemory = NumInMemory;
+		if (bAsk) {
+			FString Text = FString::Printf(TEXT("Force deleted %s of %s assets"), *PjcFormat::Count(NumGone), *PjcFormat::Count(Packages.Num()));
+			if (NumInMemory > 0) Text += TEXT(". Restart the editor to remove them from the lists");
+			UPjcSubsystem::ShowNotification(Text, NumGone == Packages.Num() ? SNotificationItem::CS_Success : SNotificationItem::CS_Fail, 5.0f);
+		}
+		if (bScan) SPjcScanBar::ScanProject();
+		return NumGone;
 	}
 
 	void Exclude(const TArray<FString>& Folders, const TArray<FString>& Classes, const TArray<FString>& Assets, const FString& Message) {
