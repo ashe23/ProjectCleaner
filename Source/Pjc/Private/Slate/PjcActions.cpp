@@ -30,7 +30,7 @@ namespace PjcActions
 			}
 			const FString More = Holders.Num() > Names.Num() ? FString::Printf(TEXT(" and %d more"), Holders.Num() - Names.Num()) : FString {};
 			const FString Used = FString::Join(Names, TEXT(", ")) + More;
-			const FString Why = TEXT("Used assets reference them, deleting would break them: ") + Used;
+			const FString Why = TEXT("Used assets reference them. Deleting them breaks these assets: ") + Used;
 			const FString Message = Why + TEXT(".\n\nKeep them, or remove those references first.");
 			PjcShim::ShowDialog(FText::FromString(TEXT("Cannot delete")), FText::FromString(Message), EAppMsgType::Ok);
 			return false;
@@ -106,19 +106,21 @@ namespace PjcActions
 
 		TArray<FPjcDialogPart> Parts;
 		FPjcDialogPart& What = Parts.AddDefaulted_GetRef();
-		What.Note = TEXT("They leave Review and count as unused. Nothing is deleted now: Clean project and the Assets tab delete them.");
+		What.Note
+			= TEXT("They leave Review and count as unused. Nothing is deleted now. ") TEXT("Clean project or the Assets tab deletes them later.");
 		FPjcDialogPart& List = Parts.AddDefaulted_GetRef();
 		List.Heading = TEXT("Assets \u00B7 ") + PjcFormat::Size(Size);
 		List.Rows = Rows;
 		if (Paths.Num() > Rows.Num()) List.Rows.Emplace(FString::Printf(TEXT("and %d more"), Paths.Num() - Rows.Num()), FString {});
 		if (NumWith > 0) {
 			FPjcDialogPart& With = Parts.AddDefaulted_GetRef();
-			With.Note = FString::Printf(TEXT("%s more assets to review only these keep become unused with them."), *PjcFormat::Count(NumWith));
+			With.Note
+				= FString::Printf(TEXT("%s more assets to review also become unused. Only these assets keep them."), *PjcFormat::Count(NumWith));
 			With.NoteColor = TEXT("ProjectCleaner.Color.Yellow");
 		}
 		FPjcDialogPart& Saved = Parts.AddDefaulted_GetRef();
-		Saved.Note = TEXT("Saved in Config/DefaultEditor.ini, shared with the team. Issues \u203A Assets to review \u203A Marked unused lists them. ")
-			TEXT("A used asset that references one keeps it used.");
+		Saved.Note = TEXT("Saved in Config/DefaultEditor.ini. Your team shares this file. ")
+			TEXT("Issues \u203A Assets to review \u203A Marked unused lists them. ") TEXT("If a used asset references one, it stays used.");
 		const TCHAR* Plural = Paths.Num() == 1 ? TEXT("") : TEXT("s");
 		const FString Title = FString::Printf(TEXT("Mark %s asset%s unused"), *PjcFormat::Count(Paths.Num()), Plural);
 		if (!SPjcDialog::Show(Title, Parts, TEXT("Mark unused"))) return;
@@ -155,8 +157,9 @@ namespace PjcActions
 	}
 
 	FString GetForceDeleteWarning() {
-		return TEXT("Uses the engine's Force Delete, as in the Content Browser: it clears the references to these assets in memory, ")
-			TEXT("also in open asset editors, then deletes them. Unsaved changes in those editors can be lost. It cannot be undone.");
+		return TEXT("Uses the engine's Force Delete, as in Content Browser. ")
+			TEXT("It clears references to these assets in memory and in open asset editors. Then it deletes them. ")
+				TEXT("Unsaved changes in those editors can be lost. You cannot undo it.");
 	}
 
 	int32 ForceDelete(const TArray<FName>& Packages, const bool bAsk, const bool bScan, int32* OutInMemory) {

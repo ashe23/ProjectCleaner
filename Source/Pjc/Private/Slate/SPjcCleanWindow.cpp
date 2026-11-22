@@ -45,7 +45,7 @@ namespace
 			OutName = SourceControl.GetProvider().GetName().ToString();
 			const bool bGit = OutName.Contains(TEXT("Git"));
 			OutDetail = bGit ? TEXT("Deleted files can be restored from it")
-							 : TEXT("Files are checked out and marked for delete; submit when the project still works");
+							 : TEXT("Files are checked out and marked for delete. Submit when the project still works");
 			return true;
 		}
 		if (UPjcSubsystem::ProjectHasVersionControl()) {
@@ -239,8 +239,8 @@ FString SPjcCleanWindow::GetBlockReason() const {
 	FString VcsName;
 	FString VcsDetail;
 
-	if (UPjcSubsystem::GetModuleAssetRegistry().Get().IsLoadingAssets()) return TEXT("Wait for the asset registry");
-	if (SPjcScanBar::NeedsRescan()) return TEXT("Rescan first: results are from before the change");
+	if (UPjcSubsystem::GetModuleAssetRegistry().Get().IsLoadingAssets()) return TEXT("Wait for Asset Registry");
+	if (SPjcScanBar::NeedsRescan()) return TEXT("Rescan first. Results are from before the change");
 	if (Dirty.Num() > 0) return TEXT("Save and scan first");
 	if (!PjcCleanVersionControl(VcsName, VcsDetail) && !bBackup) return TEXT("Confirm you have a backup");
 	if (Plan.Assets.Num() == 0) return TEXT("Nothing to delete");
@@ -256,10 +256,12 @@ TSharedRef<SWidget> SPjcCleanWindow::MakeConfirm() {
 		return MakeTuple(Value, FString {What}, FString {ToolTip});
 	};
 	const TArray<TTuple<FString, FString, FString>> Numbers {
-	  Number(PjcFormat::Count(Plan.Assets.Num()), TEXT("unused assets"), TEXT("Unused assets of the last scan: nothing used references them")),
-	  Number(PjcFormat::Size(Plan.Size), TEXT("freed"), TEXT("Size on disk of the deleted assets")),
-	  Number(PjcFormat::Count(Plan.NumFoldersEmpty), TEXT("empty folders"), TEXT("Folders the delete leaves empty, and folders empty now")),
-	  Number(PjcFormat::Count(Plan.NumRedirectors), TEXT("redirectors"), TEXT("Redirectors nothing uses that point to deleted assets go with them")),
+	  Number(PjcFormat::Count(Plan.Assets.Num()), TEXT("unused assets"), TEXT("Unused assets from last scan. No used asset references them")),
+	  Number(PjcFormat::Size(Plan.Size), TEXT("freed"), TEXT("Size on disk of deleted assets")),
+	  Number(PjcFormat::Count(Plan.NumFoldersEmpty), TEXT("empty folders"), TEXT("Folders that are empty now or after the delete")),
+	  Number(
+		  PjcFormat::Count(Plan.NumRedirectors), TEXT("redirectors"), TEXT("Redirectors to deleted assets that nothing uses. They are deleted too")
+	  ),
 	};
 
 	// where and what
@@ -322,21 +324,21 @@ TSharedRef<SWidget> SPjcCleanWindow::MakeConfirm() {
 	};
 	if (SPjcScanBar::NeedsRescan()) {
 		const bool bSettings = FPjcScanDraft::IsChanged();
-		const TCHAR* What = bSettings ? TEXT("Scan settings changed since the last scan") : TEXT("Project changed since the last scan");
+		const TCHAR* What = bSettings ? TEXT("Scan settings changed since last scan") : TEXT("Project changed since last scan");
 		const FString Count = PjcFormat::Count(UPjcSubsystem::GetChangesSinceScan().Num()) + TEXT(" changes \u00B7 these numbers are old");
 		const FString Detail = bSettings ? TEXT("these numbers are old") : Count;
 		AddCheck(MakeCheck(ECheck::Warn, What, Detail, MakeButton(TEXT("Rescan"), OnScanAgain)));
 	}
 	if (Plan.NumReview > 0) {
 		const FString ReviewTitle = FString::Printf(TEXT("%s assets to review"), *PjcFormat::Count(Plan.NumReview));
-		const TCHAR* ReviewDetail = TEXT("Kept: the scan is not sure about them");
+		const TCHAR* ReviewDetail = TEXT("Kept because scan is not sure about them");
 		AddCheck(MakeCheck(ECheck::Info, ReviewTitle, ReviewDetail, MakeButton(TEXT("Review"), OnReview)));
 	}
 	TArray<UPackage*> Dirty;
 	FEditorFileUtils::GetDirtyContentPackages(Dirty);
 	if (Dirty.Num() > 0) {
 		const FString DirtyTitle = FString::Printf(TEXT("%s unsaved assets"), *PjcFormat::Count(Dirty.Num()));
-		const TCHAR* DirtyDetail = TEXT("The scan reads assets from disk: save them and scan again");
+		const TCHAR* DirtyDetail = TEXT("Scan reads assets from disk. Save them and scan again");
 		AddCheck(MakeCheck(ECheck::Warn, DirtyTitle, DirtyDetail, MakeButton(TEXT("Save all and scan"), OnScanAgain)));
 	}
 	else {
@@ -364,23 +366,23 @@ TSharedRef<SWidget> SPjcCleanWindow::MakeConfirm() {
 		AddCheck(MakeCheck(ECheck::None, TEXT("Cook check"), TEXT("No cook found \u00B7 optional"), NoExtra));
 	}
 	else if (Cook.IsCookAll()) {
-		AddCheck(MakeCheck(ECheck::None, TEXT("Cook check"), TEXT("The last cook took nearly all assets \u00B7 not compared"), NoExtra));
+		AddCheck(MakeCheck(ECheck::None, TEXT("Cook check"), TEXT("Last cook includes almost all assets \u00B7 not compared"), NoExtra));
 	}
 	else if (Cook.NumPackaged > 0) {
-		const FString Packaged = PjcFormat::Count(Cook.NumPackaged) + TEXT(" unused assets the last cook packaged are in Review and kept");
+		const FString Packaged = PjcFormat::Count(Cook.NumPackaged) + TEXT(" unused assets are in last cook. Clean project keeps them in Review");
 		AddCheck(MakeCheck(ECheck::Ok, TEXT("Cook check"), Packaged, NoExtra));
 	}
 	else {
 		const FString NotChecked
-			= FString::Printf(TEXT(" \u00B7 %s changed after it: cook again to check them"), *PjcFormat::Count(Cook.NumNotChecked));
-		const FString NoneCooked = TEXT("The last cook packaged none of them") + (Cook.NumNotChecked > 0 ? NotChecked : FString {});
+			= FString::Printf(TEXT(" \u00B7 %s changed after it. Cook again to check them"), *PjcFormat::Count(Cook.NumNotChecked));
+		const FString NoneCooked = TEXT("Last cook includes none of them") + (Cook.NumNotChecked > 0 ? NotChecked : FString {});
 		AddCheck(MakeCheck(ECheck::Ok, TEXT("Cook check"), NoneCooked, NoExtra));
 	}
 	if (UPjcSubsystem::GetModuleAssetRegistry().Get().IsLoadingAssets()) {
-		AddCheck(MakeCheck(ECheck::Warn, TEXT("Asset registry"), TEXT("Still discovering assets"), NoExtra));
+		AddCheck(MakeCheck(ECheck::Warn, TEXT("Asset Registry"), TEXT("Still discovering assets"), NoExtra));
 	}
 	else {
-		AddCheck(MakeCheck(ECheck::Ok, TEXT("Asset registry ready"), TEXT("Every asset was found before the scan"), NoExtra));
+		AddCheck(MakeCheck(ECheck::Ok, TEXT("Asset Registry ready"), TEXT("All assets were found before scan"), NoExtra));
 	}
 	{
 		// clang-format off
@@ -396,7 +398,7 @@ TSharedRef<SWidget> SPjcCleanWindow::MakeConfirm() {
 		const TCHAR* ForceDetail = TEXT("Something in memory holds them \u00B7 the engine's Force Delete \u00B7 cannot be undone");
 		AddCheck(MakeCheck(ECheck::Info, TEXT("Assets that fail to delete"), ForceDetail, Force));
 	}
-	const TCHAR* EditorsDetail = TEXT("Editors that show an asset in the list are closed before deleting");
+	const TCHAR* EditorsDetail = TEXT("Editors that show a listed asset close before the delete");
 	AddCheck(MakeCheck(ECheck::Info, TEXT("Asset editors close first"), EditorsDetail, NoExtra));
 	// redirectors never block Clean: the scan follows them, so nothing used is deleted through one
 	if (Plan.NumRedirectorsLeft > 0) {
@@ -405,11 +407,11 @@ TSharedRef<SWidget> SPjcCleanWindow::MakeConfirm() {
 			PjcTabs::ShowIssues(PjcTabs::GetMain(), static_cast<uint8>(EPjcIssueCategory::Redirectors));
 		};
 		const FString StayTitle = FString::Printf(TEXT("%s redirectors stay"), *PjcFormat::Count(Plan.NumRedirectorsLeft));
-		const TCHAR* StayDetail = TEXT("Nothing used is deleted through them: fix them in Issues when your team is ready");
+		const TCHAR* StayDetail = TEXT("Nothing used is deleted through them. Fix them in Issues when your team is ready");
 		AddCheck(MakeCheck(ECheck::Info, StayTitle, StayDetail, MakeButton(TEXT("Issues"), OnRedirectors)));
 	}
 
-	const FString Kept = TEXT("Kept: ") + PjcFormat::Count(Plan.NumExcluded) + TEXT(" excluded \u00B7 every used, editor only and Review asset");
+	const FString Kept = TEXT("Kept: ") + PjcFormat::Count(Plan.NumExcluded) + TEXT(" excluded \u00B7 all used, editor only and Review assets");
 	const FString DeleteLabel = FString::Printf(TEXT("Delete %s assets"), *PjcFormat::Count(Plan.Assets.Num()));
 
 	// clang-format off
@@ -460,7 +462,7 @@ TSharedRef<SWidget> SPjcCleanWindow::MakeConfirm() {
 					SNew(STextBlock)
 					.Text_Lambda([this]() {
 						const FString Reason = GetBlockReason();
-						return FText::FromString(Reason.IsEmpty() ? TEXT("Each asset is checked again right before it is deleted") : Reason);
+						return FText::FromString(Reason.IsEmpty() ? TEXT("Each asset is checked again before it is deleted") : Reason);
 					})
 					.ColorAndOpacity_Lambda([this]() {
 						return GetBlockReason().IsEmpty() ? FSlateColor::UseSubduedForeground() : FSlateColor {PjcWidgets::GetColor("ProjectCleaner.Color.Review")};
@@ -579,7 +581,7 @@ TSharedRef<SWidget> SPjcCleanWindow::MakeRun() {
 			]
 			+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {0.0f, 12.0f, 0.0f, 0.0f})
 			[
-				MakeNote(TEXT("The editor deletes in batches. Assets something still holds are kept and listed at the end."), false)
+				MakeNote(TEXT("The editor deletes in batches. If something still holds an asset, it is kept and listed at the end."), false)
 			]
 		]
 		+ SVerticalBox::Slot().AutoHeight()
@@ -601,7 +603,7 @@ TSharedRef<SWidget> SPjcCleanWindow::MakeRun() {
 					.ForegroundColor(FSlateColor::UseForeground())
 #endif
 					.ContentPadding(FMargin {12.0f, 2.0f})
-					.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Stops after the batch that is running. What is deleted stays deleted."))))
+					.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Stops after the current batch. Deleted assets stay deleted."))))
 					.IsEnabled_Lambda([this]() { return !bStopRequested; })
 					.OnClicked_Lambda([this]() {
 						bStopRequested = true;
@@ -633,7 +635,7 @@ void SPjcCleanWindow::PumpUi() {
 void SPjcCleanWindow::Run() {
 	Phase = EPhase::Run;
 	Steps = {
-	  TEXT("Checking they are still unused"),
+	  TEXT("Checking that assets are still unused"),
 	  TEXT("Closing asset editors and deleting assets"),
 	  TEXT("Deleting empty folders"),
 	  TEXT("Scanning again"),
@@ -738,7 +740,7 @@ void SPjcCleanWindow::Run() {
 TSharedRef<SWidget> SPjcCleanWindow::MakeDone() {
 	const TArray<TTuple<FString, FString, FString>> Numbers {
 	  MakeTuple(PjcFormat::Count(NumDeleted), FString {TEXT("assets deleted")}, FString {TEXT("Unused assets removed from disk")}),
-	  MakeTuple(PjcFormat::Size(SizeFreed), FString {TEXT("freed")}, FString {TEXT("Size on disk of the deleted assets")}),
+	  MakeTuple(PjcFormat::Size(SizeFreed), FString {TEXT("freed")}, FString {TEXT("Size on disk of deleted assets")}),
 	  MakeTuple(PjcFormat::Count(NumFoldersRemoved), FString {TEXT("folders removed")}, FString {TEXT("Empty folders deleted")}),
 	  MakeTuple(PjcFormat::Count(NumRedirectorsRemoved), FString {TEXT("redirectors removed")}, FString {TEXT("Redirectors to deleted assets")}),
 	};
@@ -754,27 +756,27 @@ TSharedRef<SWidget> SPjcCleanWindow::MakeDone() {
 	};
 	if (bStopped) {
 		const FString Left = PjcFormat::Count(NumLeft);
-		AddNote(TEXT("Stopped after a batch: ") + Left + TEXT(" unused assets are left. Clean project again to continue."), true);
+		AddNote(TEXT("Stopped after a batch. ") + Left + TEXT(" unused assets are left. Run Clean project again to continue."), true);
 	}
 	if (Skipped.Num() > 0) {
 		TArray<FString> Names;
 		for (int32 Index = 0; Index < Skipped.Num() && Index < 8; ++Index) {
 			Names.Add(FPackageName::GetShortName(Skipped[Index]));
 		}
-		const FString SkippedText = FString::Printf(TEXT("%s skipped, used by now: "), *PjcFormat::Count(Skipped.Num()));
+		const FString SkippedText = FString::Printf(TEXT("%s skipped because they are used now: "), *PjcFormat::Count(Skipped.Num()));
 		AddNote(SkippedText + FString::Join(Names, TEXT(", ")), true);
 	}
 	if (NumForced > 0) {
 		AddNote(FString::Printf(TEXT("%s force deleted."), *PjcFormat::Count(NumForced)), false);
 	}
 	if (NumInMemory > 0) {
-		const FString InMemory = FString::Printf(TEXT("%s deleted from disk, but the editor still holds them: "), *PjcFormat::Count(NumInMemory));
-		AddNote(InMemory + TEXT("restart the editor to remove them from the lists."), true);
+		const FString InMemory = FString::Printf(TEXT("%s deleted from disk, but the editor still holds them. "), *PjcFormat::Count(NumInMemory));
+		AddNote(InMemory + TEXT("Restart the editor to remove them from the lists."), true);
 	}
 	if (NotDeleted.Num() > 0) {
 		const FString Lines = FString::Join(TArray<FString> {NotDeleted.GetData(), FMath::Min(NotDeleted.Num(), 8)}, TEXT("\n"));
-		const FString Held = FString::Printf(TEXT("%s failed to delete, each with what still holds it. "), *PjcFormat::Count(NotDeleted.Num()));
-		const TCHAR* Next = TEXT("They stay in Assets. Force delete removes them anyway: use it only when you are sure nothing uses them.\n");
+		const FString Held = FString::Printf(TEXT("%s failed to delete. Each line shows what still holds it. "), *PjcFormat::Count(NotDeleted.Num()));
+		const TCHAR* Next = TEXT("They stay in Assets. Force delete removes them anyway. Use it only when you are sure nothing uses them.\n");
 		AddNote(Held + Next + Lines, true);
 	}
 	if (Broken.Num() > 0) {
@@ -791,10 +793,10 @@ TSharedRef<SWidget> SPjcCleanWindow::MakeDone() {
 	FString VcsName;
 	FString VcsDetail;
 	if (PjcCleanVersionControl(VcsName, VcsDetail)) {
-		AddNote(TEXT("Version control (") + VcsName + TEXT("): the deleted files show as removed. Commit when the project still works."), false);
+		AddNote(TEXT("Version control (") + VcsName + TEXT("): deleted files show as removed. Commit when the project still works."), false);
 	}
 	else {
-		AddNote(TEXT("No version control: keep your backup until the project still works."), true);
+		AddNote(TEXT("No version control. Keep your backup until you are sure the project works."), true);
 	}
 	AddNote(TEXT("Next: open the main maps and play them before you commit."), false);
 

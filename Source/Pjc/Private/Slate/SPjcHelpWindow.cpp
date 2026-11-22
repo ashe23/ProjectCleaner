@@ -233,7 +233,7 @@ void SPjcHelpWindow::Construct(const FArguments& InArgs) {
 						.ForegroundColor(FSlateColor::UseForeground())
 #endif
 						.ContentPadding(FMargin {8.0f, 0.0f})
-						.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Copies the lines below, to paste into a bug report"))))
+						.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Copies the lines below. Paste them into a bug report"))))
 						.OnClicked_Lambda([]() {
 							FPlatformApplicationMisc::ClipboardCopy(*GetSystemInfo());
 							UPjcSubsystem::ShowNotification(TEXT("Copied \u00B7 paste it into the bug report"), SNotificationItem::CS_Success, 3.0f);
@@ -269,7 +269,7 @@ void SPjcHelpWindow::Construct(const FArguments& InArgs) {
 						.ForegroundColor(FSlateColor::UseForeground())
 #endif
 						.ContentPadding(FMargin {14.0f, 3.0f})
-						.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Collects what helps, shows it, and you choose what goes into the GitHub issue"))))
+						.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Collects useful info and shows it. You choose what goes into the GitHub issue"))))
 						.OnClicked_Lambda([this]() {
 							Close(true);
 							return FReply::Handled();
@@ -411,11 +411,11 @@ void SPjcReportWindow::Construct(const FArguments& InArgs) {
 		// clang-format on
 	};
 	AddOption(PjcWidgets::MakeCardTitle(TEXT("Include")));
-	const FString LogTip = TEXT("Only its own lines from this editor's log");
+	const FString LogTip = TEXT("Only Project Cleaner lines from this editor's log");
 	const FString CrashTip = TEXT("Call stack of the newest crash, only when Project Cleaner is in it. No memory dump.");
 	const FString UserTip = TEXT("Your user and machine name become <user> and <machine>");
 	AddOption(Option(&bSystem, TEXT("System info"), TEXT("Plugin, engine and OS versions"), SystemText, true));
-	AddOption(Option(&bSettings, TEXT("Scan settings"), TEXT("Rules and exclusions: they name folders and classes"), SettingsText, true));
+	AddOption(Option(&bSettings, TEXT("Scan settings"), TEXT("Rules and exclusions. They contain folder and class names"), SettingsText, true));
 	AddOption(Option(&bScan, TEXT("Last scan and cleanup"), TEXT("Numbers only"), ScanText, true));
 	AddOption(Option(&bLog, TEXT("Project Cleaner log lines"), LogTip, LogText, true));
 	AddOption(Option(&bCrash, TEXT("Last crash"), CrashTip, CrashText, true));
@@ -495,7 +495,7 @@ void SPjcReportWindow::Construct(const FArguments& InArgs) {
 				+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {0.0f, 8.0f, 0.0f, 0.0f})
 				[
 					SNew(STextBlock)
-					.Text(FText::FromString(TEXT("Project Cleaner sends nothing. You post the report yourself, and GitHub issues are public: check the preview first.")))
+					.Text(FText::FromString(TEXT("Project Cleaner sends nothing. You post the report yourself. GitHub issues are public, so check the preview first.")))
 					.ColorAndOpacity(FSlateColor::UseSubduedForeground())
 					.AutoWrapText(true)
 				]
@@ -513,7 +513,7 @@ void SPjcReportWindow::Construct(const FArguments& InArgs) {
 						.ForegroundColor(FSlateColor::UseForeground())
 #endif
 						.ContentPadding(FMargin {12.0f, 2.0f})
-						.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Saves the report as a text file, to attach or send another way"))))
+						.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Saves the report as a text file. Attach it or send it another way"))))
 						.OnClicked_Lambda([this]() {
 							SaveAsFile();
 							return FReply::Handled();
@@ -719,7 +719,9 @@ void SPjcReportWindow::OpenIssue() const {
 	if (Url.Len() > PjcHelpMaxUrl) {
 		FPlatformApplicationMisc::ClipboardCopy(*Report);
 		Url = Base + TEXT("&body=") + PjcHelpUrlEncode(TEXT("(paste the report from the clipboard here)"));
-		UPjcSubsystem::ShowNotification(TEXT("The report is long: copied it, paste it into the issue"), SNotificationItem::CS_Success, 5.0f);
+		UPjcSubsystem::ShowNotification(
+			TEXT("Report is long and was copied to the clipboard. Paste it into the issue"), SNotificationItem::CS_Success, 5.0f
+		);
 	}
 	FPlatformProcess::LaunchURL(*Url, nullptr, nullptr);
 }

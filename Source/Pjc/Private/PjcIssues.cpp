@@ -126,7 +126,7 @@ namespace PjcIssues
 			case EPjcRedirectorState::TargetUnused :  return TEXT("Target unused");
 			case EPjcRedirectorState::Broken :		  return TEXT("Broken");
 			case EPjcRedirectorState::NamedInFiles :  return TEXT("Named in files");
-			case EPjcRedirectorState::UsedOutside :	  return TEXT("Used outside the scan");
+			case EPjcRedirectorState::UsedOutside :	  return TEXT("Used outside scan");
 			case EPjcRedirectorState::UsedByUnused :  return TEXT("Used only by unused");
 		}
 		return FString {};
@@ -137,18 +137,17 @@ namespace PjcIssues
 			case EPjcRedirectorState::InUse :		  return TEXT("Assets still point through it. Fix resaves them, then deletes the redirector.");
 			case EPjcRedirectorState::NotReferenced : return TEXT("Nothing points through it. Fix deletes it.");
 			case EPjcRedirectorState::TargetUnused :
-				return TEXT("Its target is unused: Clean project deletes it with the target. Fix deletes it now.");
+				return TEXT("Its target is unused. Clean project deletes it with the target. Fix deletes it now.");
 			case EPjcRedirectorState::Broken :
-				return TEXT("Its target is missing. Assets that use it have broken references and need a repair by hand.");
+				return TEXT("Its target is missing. Assets that use it have broken references and need a manual repair.");
 			case EPjcRedirectorState::NamedInFiles :
-				return TEXT(
-					"C++, Python or config files name the old path. Deleting it breaks them: Fix keeps it, unless it adds a redirect for the "
-				) TEXT("old path to Config/DefaultEngine.ini.");
+				return TEXT("C++, Python or config files name the old path. Deleting it breaks those files. ")
+					TEXT("Fix keeps it, unless you let Fix add a redirect for the old path to Config/DefaultEngine.ini.");
 			case EPjcRedirectorState::UsedOutside :
-				return TEXT("Content the scan leaves out uses it (engine, other plugins, Developers folders, a level's actor files in UE 4.27). ")
-					TEXT("Fix cannot resave that content: the redirector stays.");
+				return TEXT("Content outside the scan uses it (engine, other plugins, Developers folders, a level's actor files in UE 4.27). ")
+					TEXT("Fix cannot resave that content, so the redirector stays.");
 			case EPjcRedirectorState::UsedByUnused :
-				return TEXT("Only unused assets point through it: Clean project deletes it with them. Fix resaves them and deletes it now.");
+				return TEXT("Only unused assets point through it. Clean project deletes it with them. Fix resaves them and deletes it now.");
 		}
 		return FString {};
 	}

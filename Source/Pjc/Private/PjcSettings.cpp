@@ -30,7 +30,7 @@ FText UPjcScanSettings::GetSectionText() const {
 }
 
 FText UPjcScanSettings::GetSectionDescription() const {
-	return FText::FromString(TEXT("Rules that decide which assets Project Cleaner considers used. Shared with the team via DefaultEditor.ini."));
+	return FText::FromString(TEXT("Rules that decide which assets Project Cleaner counts as used. Your team shares them through DefaultEditor.ini."));
 }
 #endif
 

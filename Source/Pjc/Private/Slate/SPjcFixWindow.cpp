@@ -72,7 +72,7 @@ namespace
 		if (SourceControl.IsEnabled() && SourceControl.GetProvider().IsAvailable()) {
 			OutName = SourceControl.GetProvider().GetName().ToString();
 			const bool bGit = OutName.Contains(TEXT("Git"));
-			OutDetail = bGit ? TEXT("deleted files can be restored from it") : TEXT("files are checked out first, deleted ones can be restored");
+			OutDetail = bGit ? TEXT("deleted files can be restored from it") : TEXT("files are checked out first, deleted files can be restored");
 			return true;
 		}
 		if (UPjcSubsystem::ProjectHasVersionControl()) {

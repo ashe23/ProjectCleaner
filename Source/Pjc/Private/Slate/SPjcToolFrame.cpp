@@ -285,7 +285,7 @@ TSharedRef<SWidget> SPjcToolFrame::MakeContent(const TSharedRef<SWidget>& Conten
 			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center).Padding(FMargin {0.0f, 6.0f, 0.0f, 12.0f})
 			[
 				SNew(STextBlock)
-				.Text(FText::FromString(TEXT("Scan the project to see which assets are used, unused or need review.")))
+				.Text(FText::FromString(TEXT("Scan project to see which assets are used, unused or need review.")))
 				.ColorAndOpacity(FSlateColor::UseSubduedForeground())
 			]
 			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center)

@@ -406,7 +406,7 @@ FText SPjcSizeMap::GetHoverText() const {
 	}
 
 	const FAssetData& Asset = Result->Assets[Cell.Asset];
-	const FString Listed = TEXT(" \u00B7 ") + PjcWidgets::GetSetWord(Set) + TEXT(", click to select it, Ctrl+click to add it");
+	const FString Listed = TEXT(" \u00B7 ") + PjcWidgets::GetSetWord(Set) + TEXT("\nClick to select it. Ctrl+click to add it to selection");
 	return FText::FromString(
 		FString::Printf(
 			TEXT("%s\n%s \u00B7 %s%s"),

@@ -129,12 +129,12 @@ void SPjcScanSettings::Rebuild() {
 	const FString UnregisteredKeep = Edited.bUnregisteredPrimaryUsed ? TEXT("Keeps") : TEXT("Would keep");
 
 	const TSharedRef<SVerticalBox> Scope = SNew(SVerticalBox);
-	const TCHAR* PluginsText = TEXT("Content of project plugins is scanned too, not only /Game.");
+	const TCHAR* PluginsText = TEXT("Scans content of project plugins too, not only /Game.");
 	if (NumProjectPlugins == 0) {
 		// clang-format off
 		Scope->AddSlot().AutoHeight()
 		[
-			MakeNoteRow(TEXT("Project plugins"), TEXT("No plugins"), PluginsText, TEXT("The project has no plugins with content in its Plugins folder"))
+			MakeNoteRow(TEXT("Project plugins"), TEXT("No plugins"), PluginsText, TEXT("Project has no plugins with content in its Plugins folder"))
 		];
 		// clang-format on
 	}
@@ -161,27 +161,27 @@ void SPjcScanSettings::Rebuild() {
 				TEXT("Ignored plugins"),
 				&FPjcScanDraft::IgnoredPlugins,
 				TEXT("Plugin name\u2026"),
-				TEXT("Plugins left out of the scan. Nothing in them is reported as unused."),
+				TEXT("Scan skips these plugins. Nothing in them shows as unused."),
 				14.0f
 			)
 		];
 		// clang-format on
 	}
 
-	const TCHAR* DevelopersText = TEXT("Content/Developers: each developer's own test assets. Off: left out of the scan like an ignored ")
-		TEXT("plugin, so nothing in them is listed or deleted, and what they use counts as used.");
+	const TCHAR* DevelopersText = TEXT("Content/Developers holds test assets of each developer. When off, scan skips it like an ignored ")
+		TEXT("plugin. Nothing in it is listed or deleted, and assets it uses count as used.");
 	if (NumDeveloperFolders == 0) {
 		// clang-format off
 		Scope->AddSlot().AutoHeight()
 		[
-			MakeNoteRow(TEXT("Developers folders"), TEXT("No Developers folder"), DevelopersText, TEXT("The project has no Content/Developers folder"))
+			MakeNoteRow(TEXT("Developers folders"), TEXT("No Developers folder"), DevelopersText, TEXT("Project has no Content/Developers folder"))
 		];
 		// clang-format on
 	}
 	else {
 		const FString Folders = PjcFormat::Count(NumDeveloperFolders);
 		const FString DevelopersMore = Edited.bScanDevelopers
-			? FString::Printf(TEXT("%s developer folders: their unused assets are listed and Clean project deletes them"), *Folders)
+			? FString::Printf(TEXT("%s developer folders. Their unused assets are listed, and Clean project deletes them"), *Folders)
 			: FString::Printf(TEXT("%s developer folders left out"), *Folders);
 		// clang-format off
 		Scope->AddSlot().AutoHeight()
@@ -199,10 +199,10 @@ void SPjcScanSettings::Rebuild() {
 
 	const int32 NumUnregistered = Roots(EPjcUsageReason::PrimaryClass);
 	const FString UnregisteredUsed = FString::Printf(TEXT("%s %s assets used"), *UnregisteredKeep, *PjcFormat::Count(NumUnregistered));
-	const FString UnregisteredMore = NumUnregistered > 0 ? UnregisteredUsed : TEXT("None in the last scan");
+	const FString UnregisteredMore = NumUnregistered > 0 ? UnregisteredUsed : TEXT("None in last scan");
 	const FString LabelCount = PjcFormat::Count(NumFolderLabelUnused);
 	const FString LabelSize = PjcFormat::Size(SizeFolderLabelUnused);
-	const FString LabelText = FString::Printf(TEXT("%s assets in label folders (%s) follow their references"), *LabelCount, *LabelSize);
+	const FString LabelText = FString::Printf(TEXT("%s assets in label folders (%s) count as used only when referenced"), *LabelCount, *LabelSize);
 	const FString LabelUnused = NumFolderLabelUnused > 0 ? LabelText : FString {};
 	const TSharedRef<SVerticalBox> Used = SNew(SVerticalBox);
 	// clang-format off
@@ -212,8 +212,8 @@ void SPjcScanSettings::Rebuild() {
 			TEXT("Primary assets"),
 			Roots(EPjcUsageReason::Primary),
 			TEXT("primary assets"),
-			TEXT("Maps and the assets the Asset Manager registers count as used and start chains, ")
-				TEXT("with the assets and collections Primary Asset Labels list.")
+			TEXT("Maps and assets that Asset Manager registers count as used. Assets and collections that Primary Asset ")
+				TEXT("Labels list count as used too. Reference chains start from them.")
 		)
 	];
 	Used->AddSlot().AutoHeight()
@@ -222,8 +222,8 @@ void SPjcScanSettings::Rebuild() {
 			TEXT("Editor assets"),
 			Roots(EPjcUsageReason::Editor),
 			TEXT("editor assets"),
-			TEXT("Editor utilities, validators, scriptable tools and tool data such as bookmarks, presets and poses count as used, ")
-				TEXT("shown as editor only.")
+			TEXT("Editor utilities, validators, scriptable tools and tool data (bookmarks, presets, poses) count as used. ")
+				TEXT("They show as Editor only.")
 		)
 	];
 	Used->AddSlot().AutoHeight()
@@ -232,8 +232,8 @@ void SPjcScanSettings::Rebuild() {
 			TEXT("Splash content"),
 			Roots(EPjcUsageReason::Splash),
 			TEXT("splash assets"),
-			TEXT("Assets in Content/Splash count as used, shown as editor only: the editor imports the splash images there ")
-				TEXT("as textures, and imports them again when they are deleted.")
+			TEXT("Assets in Content/Splash count as used and show as Editor only. The editor imports splash images there ")
+				TEXT("as textures. If you delete them, the editor imports them again.")
 		)
 	];
 	Used->AddSlot().AutoHeight()
@@ -242,8 +242,8 @@ void SPjcScanSettings::Rebuild() {
 			TEXT("Editor code"),
 			Roots(EPjcUsageReason::EditorSource),
 			TEXT("assets named in editor code"),
-			TEXT("Assets named only in editor modules (module type Editor or UncookedOnly), Python scripts and editor config ")
-				TEXT("files (DefaultEditor*.ini) count as used, shown as editor only.")
+			TEXT("Assets named only in editor modules (module type Editor or UncookedOnly), Python scripts or editor config ")
+				TEXT("files (DefaultEditor*.ini) count as used. They show as Editor only.")
 		)
 	];
 	Used->AddSlot().AutoHeight()
@@ -252,8 +252,8 @@ void SPjcScanSettings::Rebuild() {
 			TEXT("Source & config"),
 			Roots(EPjcUsageReason::Indirect) + Roots(EPjcUsageReason::ConfigFolder),
 			TEXT("assets named or in config folders"),
-			TEXT("Assets named in game C++, C# and .ini files count as used, platform configs included, and every asset in ")
-				TEXT("folders the config always cooks (Additional Asset Directories to Cook, Data Registry scan folders).")
+			TEXT("Assets named in game C++, C# and .ini files count as used, platform configs included. All assets in folders ")
+				TEXT("that config always cooks count as used too (Additional Asset Directories to Cook, Data Registry scan folders).")
 		)
 	];
 	Used->AddSlot().AutoHeight()
@@ -271,7 +271,7 @@ void SPjcScanSettings::Rebuild() {
 			TEXT("Unregistered primary classes"),
 			&FPjcScanDraft::bUnregisteredPrimaryUsed,
 			NumUnregistered,
-			TEXT("Assets of a primary asset class that the Asset Manager did not register count as used: ")
+			TEXT("Assets of a primary asset class that Asset Manager did not register count as used. For example, assets ")
 				TEXT("outside its folders, or in a game feature plugin that is not registered yet."),
 			UnregisteredMore
 		)
@@ -282,10 +282,10 @@ void SPjcScanSettings::Rebuild() {
 			TEXT("Folder labels"),
 			NumFolderLabelOnly,
 			TEXT("assets in packaged label folders"),
-			TEXT("Primary Asset Labels with Label Assets In My Directory count the assets in their folder as used ")
-				TEXT("when the label's cook rule packages them: Always Cook or a Development Always rule, on a label type ")
-				TEXT("that is not editor only. Other labels only sort assets into chunks, ")
-				TEXT("so their assets count as used only if something references them."),
+			TEXT("Primary Asset Labels with Label Assets In My Directory count the assets in their folder as used when ")
+				TEXT("the label's cook rule packages them. The rule must be Always Cook or a Development Always rule, ")
+				TEXT("on a label type that is not editor only. Other labels only sort assets into chunks. ")
+				TEXT("Their assets count as used only if something references them."),
 			LabelUnused
 		)
 	];
@@ -319,7 +319,7 @@ void SPjcScanSettings::Rebuild() {
 			TEXT("Classes"),
 			&FPjcScanDraft::ExcludedClasses,
 			TEXT("Class path, e.g. /Script/Engine.Texture2D"),
-			TEXT("Assets of these classes and their subclasses are kept, with what they reference.")
+			TEXT("Assets of these classes and their subclasses are kept. Assets they reference are kept too.")
 		)
 	];
 	Exclusions->AddSlot().AutoHeight()
@@ -362,7 +362,7 @@ void SPjcScanSettings::Rebuild() {
 		[
 			SNew(STextBlock)
 			.Text(FText::FromString(TEXT("Shared with the team \u00B7 DefaultEditor.ini")))
-			.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Settings are saved in Config/DefaultEditor.ini, so the team shares them through source control"))))
+			.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Settings are saved in Config/DefaultEditor.ini. Your team shares them through source control"))))
 			.ColorAndOpacity(FSlateColor::UseSubduedForeground())
 			.Font(FPjcStyles::GetFont("Regular", 8))
 		]
@@ -391,7 +391,7 @@ TSharedRef<SWidget> SPjcScanSettings::MakeHeader() {
 		[
 			SNew(SHyperlink)
 			.Text(FText::FromString(TEXT("Undo")))
-			.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Back to the settings of the last scan"))))
+			.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Goes back to settings of last scan"))))
 			.Visibility_Lambda([]() { return FPjcScanDraft::IsChanged() ? EVisibility::Visible : EVisibility::Collapsed; })
 			.OnNavigate_Lambda(Edit([]() { FPjcScanDraft::Revert(); }))
 		]
@@ -406,7 +406,9 @@ TSharedRef<SWidget> SPjcScanSettings::MakeHeader() {
 			.IsEnabled_Lambda([]() { return FPjcScanDraft::Get() != FPjcScanDraft {}; })
 			.ToolTip(PjcWidgets::MakeToolTip(TAttribute<FText>::Create(TAttribute<FText>::FGetter::CreateLambda([]() {
 				const bool bDefaults = FPjcScanDraft::Get() == FPjcScanDraft {};
-				return FText::FromString(bDefaults ? TEXT("The settings are the plugin defaults") : TEXT("Every scan setting back to the plugin defaults, then a scan. Asks first."));
+				return FText::FromString(
+					bDefaults ? TEXT("Settings are already plugin defaults") : TEXT("Sets all scan settings to plugin defaults and scans again. Asks first.")
+				);
 			}))))
 			.OnClicked_Lambda([]() {
 				ConfirmReset();
@@ -585,7 +587,7 @@ void SPjcScanSettings::ConfirmReset() {
 
 	// what changes, as it is now and as it will be
 	FPjcDialogPart Part;
-	Part.Heading = TEXT("These settings go back to the plugin defaults");
+	Part.Heading = TEXT("These settings go back to plugin defaults");
 	const auto Flag = [&Part](const TCHAR* Name, const bool bNow, const bool bDefault) {
 		if (bNow != bDefault) {
 			Part.Rows.Emplace(Name, FString::Printf(TEXT("%s \u2192 %s"), bNow ? TEXT("on") : TEXT("off"), bDefault ? TEXT("on") : TEXT("off")));
@@ -604,7 +606,7 @@ void SPjcScanSettings::ConfirmReset() {
 	List(TEXT("Excluded folders"), Now.ExcludedFolders);
 	List(TEXT("Excluded classes"), Now.ExcludedClasses);
 	List(TEXT("Excluded assets"), Now.ExcludedAssets);
-	Part.Note = TEXT("The settings are saved to DefaultEditor.ini and the project is scanned right away.");
+	Part.Note = TEXT("Project Cleaner saves settings to DefaultEditor.ini and scans the project at once.");
 	if (!SPjcDialog::Show(TEXT("Reset scan settings to defaults"), {Part}, TEXT("Reset and scan"))) return;
 
 	FPjcScanDraft::Get() = Defaults;
@@ -617,7 +619,7 @@ TSharedRef<SWidget>
 SPjcScanSettings::MakeFixedRow(const FString& Label, const int32 Num, const FString& What, const FString& Description, const FString& Extra) const {
 	const FString Found = Num > 0 ? FString::Printf(TEXT("%s %s"), *PjcFormat::Count(Num), *What) : TEXT("No ") + What;
 	const FString ExtraLine = Extra.IsEmpty() ? FString {} : Extra + TEXT("\n");
-	const FString More = Found + TEXT(" in the last scan\n") + ExtraLine + TEXT("Always on");
+	const FString More = Found + TEXT(" in last scan\n") + ExtraLine + TEXT("Always on");
 	// clang-format off
 	const TSharedRef<SWidget> Lock = SNew(SBox).WidthOverride(12.0f).HeightOverride(12.0f).ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Always on"))))
 		[
@@ -745,8 +747,7 @@ TSharedRef<SWidget> SPjcScanSettings::MakeListRows(
 	// a list of two or more can be emptied at once: the reset icon next to Add (Undo brings it back)
 	TSharedPtr<SWidget> Clear;
 	if (Items.Num() >= 2) {
-		const FString ClearTip
-			= FString::Printf(TEXT("Clear all: removes all %s entries of %s. Undo brings them back."), *PjcFormat::Count(Items.Num()), *Label);
+		const FString ClearTip = FString::Printf(TEXT("Clears all %s entries of %s. Undo brings them back."), *PjcFormat::Count(Items.Num()), *Label);
 		// clang-format off
 		Clear = SNew(SButton)
 #if ENGINE_MAJOR_VERSION < 5

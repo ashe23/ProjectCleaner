@@ -204,7 +204,8 @@ FPjcDialogPart SPjcDialog::MakeVersionControlNote() {
 		Part.NoteColor = TEXT("ProjectCleaner.Color.Ok");
 	}
 	else {
-		Part.Note = TEXT("No version control found for this project. Changes cannot be undone: copy the project folder somewhere safe first.");
+		Part.Note
+			= TEXT("No version control found for this project. ") TEXT("Changes cannot be undone. Copy the project folder to a safe place first.");
 		Part.NoteColor = TEXT("ProjectCleaner.Color.Yellow");
 	}
 	return Part;

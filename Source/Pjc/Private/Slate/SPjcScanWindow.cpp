@@ -30,13 +30,13 @@ namespace
 
 	// clang-format off
 	const FPjcScanWindowStep PjcScanWindowSteps[] = {
-		{TEXT("Asset registry"), TEXT("Waits until the asset registry has found every asset"), 0.5f},
+		{TEXT("Asset Registry"), TEXT("Waits until Asset Registry finds all assets"), 0.5f},
 		{TEXT("Assets"), TEXT("Lists assets, folders and redirectors"), 0.5f},
 		{TEXT("Source & config"), TEXT("Searches C++, C#, Python and .ini files for asset paths"), 1.5f},
 		{TEXT("Rules"), TEXT("Primary assets, labels, editor assets, cinematics and exclusions"), 0.8f},
 		{TEXT("References"), TEXT("Follows references from every root"), 2.2f},
 		{TEXT("Files"), TEXT("External files, corrupted files and empty folders"), 0.7f},
-		{TEXT("Cook check"), TEXT("Compares unused assets with the last cook"), 0.4f},
+		{TEXT("Cook check"), TEXT("Compares unused assets with last cook"), 0.4f},
 	};
 	// clang-format on
 	constexpr int32 PjcScanWindowNumSteps = UE_ARRAY_COUNT(PjcScanWindowSteps);
@@ -163,8 +163,8 @@ void SPjcScanWindow::Construct(const FArguments& InArgs) {
 						SNew(STextBlock)
 						.Text_Lambda([this]() {
 							const FString Scanned = PjcFormat::Count(UPjcSubsystem::GetScanResult().Assets.Num()) + TEXT(" assets scanned");
-							const FString Done = bScanned ? Scanned : FString {TEXT("The last result stays")};
-							return FText::FromString(bFinished ? Done : FString {TEXT("The last result stays if you cancel")});
+							const FString Done = bScanned ? Scanned : FString {TEXT("Last scan result stays")};
+							return FText::FromString(bFinished ? Done : FString {TEXT("If you cancel, last scan result stays")});
 						})
 						.ColorAndOpacity(FSlateColor::UseSubduedForeground())
 					]

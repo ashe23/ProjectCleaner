@@ -235,15 +235,16 @@ namespace
 			const FString RootName = FPackageName::GetShortName(Root);
 			OutReason = OutKey;
 			OutDetail = TEXT("Only used by ") + RootName;
-			OutTip = RootName + TEXT(" uses it and is to review, so it stays with it. Clean project deletes neither.");
+			OutTip = TEXT("Only ") + RootName + TEXT(" uses it, and ") + RootName + TEXT(" is to review. Clean project keeps both.");
 			return;
 		}
 		// clang-format off
-		const TCHAR* CookTip = TEXT("Nothing the scan sees uses it, but the last cook packaged it: ")
-			TEXT("the game may load it in a way the scan cannot follow.");
+		const TCHAR* CookTip = TEXT("The scan finds nothing that uses it, but the last cook includes it. ")
+			TEXT("The game can load it in a way the scan does not see.");
+		const TCHAR* CueTip = TEXT("GameplayCue notify. No used asset, C++ file or config file names its tag. ")
+			TEXT("The game can also build tags at runtime.");
 		// clang-format on
-		const TCHAR* CueTip = TEXT("GameplayCue notify whose tag no used asset, C++ or config file names. Tags can also be built at runtime.");
-		const TCHAR* OutsideTip = TEXT("GameplayCue notify outside the cue notify paths: the cue manager never loads it by its tag.");
+		const TCHAR* OutsideTip = TEXT("GameplayCue notify outside the cue notify paths. The cue manager never loads it by its tag.");
 		FString Detail = RootUsage ? RootUsage->Detail : FString {};
 		int32 Comma = INDEX_NONE;
 		if (bCue && Detail.FindChar(TEXT(','), Comma)) {
@@ -252,7 +253,7 @@ namespace
 		if (bEngine) {
 			OutReason = OutKey;
 			OutDetail = TEXT("Referenced by ") + FPackageName::GetShortName(Detail);
-			OutTip = TEXT("Nothing in your project uses this asset. Only an engine asset references it: ") + Detail + TEXT(".");
+			OutTip = TEXT("Nothing in your project uses this asset. Only the engine asset ") + Detail + TEXT(" references it.");
 			return;
 		}
 		OutReason = bOutside ? TEXT("Outside cue paths") : OutKey;
@@ -416,7 +417,7 @@ void SPjcTabIssues::RebuildRows() {
 					Row->Size = Result.GetSize(Asset.PackageName);
 					Row->Cells = {Row->Reason, TEXT("Clean project deletes it"), PjcFormat::Size(Row->Size)};
 					Row->CellColors = {TEXT("ProjectCleaner.Color.Red"), TEXT("ProjectCleaner.Color.Gray"), NAME_None};
-					Row->ToolTip = Row->Id + TEXT("\nYou marked it unused. Remove mark: it is to review again");
+					Row->ToolTip = Row->Id + TEXT("\nYou marked it unused. Remove mark moves it back to Assets to review");
 					AllRows.Add(Row);
 					continue;
 				}
@@ -524,7 +525,7 @@ void SPjcTabIssues::RebuildRows() {
 			for (const auto& File : Result.FilesCorrupted) {
 				FPjcIssueRow& Row = AddFile(File);
 				Row.Sub = FPaths::GetPath(PjcIssueRelative(File));
-				Row.Cells = {PjcFormat::Size(Row.Size), TEXT("The asset registry cannot read it")};
+				Row.Cells = {PjcFormat::Size(Row.Size), TEXT("Asset Registry cannot read it")};
 				Row.CellColors = {NAME_None, TEXT("ProjectCleaner.Color.Gray")};
 			}
 			break;
@@ -680,7 +681,7 @@ void SPjcTabIssues::RebuildList() {
 				+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center).Padding(FMargin {0.0f, 4.0f})
 				[
 					SNew(STextBlock)
-					.Text(FText::FromString(GetTitle().ToString() + TEXT(": nothing found in this scan.")))
+					.Text(FText::FromString(TEXT("No ") + GetTitle().ToString().ToLower() + TEXT(" found in this scan.")))
 					.ColorAndOpacity(FSlateColor::UseSubduedForeground())
 				]
 			]
@@ -749,7 +750,7 @@ TSharedRef<SWidget> SPjcTabIssues::MakeCategories() {
 	const FEntry Entries[] = {
 	  {		EPjcIssueCategory::Review,
 	   TEXT("Assets to review"),
-	   TEXT("Assets the scan is not sure about: Clean project keeps them until you decide: mark them unused, or exclude them"),
+	   TEXT("Assets the scan is not sure about. Clean project keeps them until you mark them unused or exclude them"),
 	   TEXT("ProjectCleaner.Icon.Warning"),
 	   White							 },
 	  {EPjcIssueCategory::Redirectors,
@@ -993,23 +994,23 @@ TSharedRef<SWidget> SPjcTabIssues::MakeToolbar() {
 			+ SWrapBox::Slot().VAlign(VAlign_Center)
 			[
 				Button("ProjectCleaner.Icon.App16", TEXT("Mark unused"),
-					TEXT("They become unused: Clean project deletes them, with the assets only they keep. Shared with the team in Config/DefaultEditor.ini"),
+					TEXT("Marks them unused. Clean project deletes them and the assets that only they use. Saved to Config/DefaultEditor.ini for the team"),
 					ToDecide, HasSelection, [this]() { MarkAssetsUnused(GetSelected()); })
 			]
 			+ SWrapBox::Slot().VAlign(VAlign_Center)
 			[
-				Button("ProjectCleaner.Menu.Include", TEXT("Remove mark"), TEXT("Takes the mark off: they are to review again"),
+				Button("ProjectCleaner.Menu.Include", TEXT("Remove mark"), TEXT("Removes the mark. They move back to Assets to review"),
 					[this]() { return Category == EPjcIssueCategory::Review && bMarked ? EVisibility::Visible : EVisibility::Collapsed; },
 					HasSelection, [this]() { RemoveMarks(GetSelected()); })
 			]
 			+ SWrapBox::Slot().VAlign(VAlign_Center)
 			[
-				Button("ProjectCleaner.Menu.Exclude", TEXT("Exclude"), TEXT("Clean project never deletes them: adds them to the exclusions, saved to Config/DefaultEditor.ini"),
+				Button("ProjectCleaner.Menu.Exclude", TEXT("Exclude"), TEXT("Adds them to the exclusions in Config/DefaultEditor.ini. Clean project never deletes them"),
 					ToDecide, HasSelection, [this]() { KeepAssets(GetSelected()); })
 			]
 			+ SWrapBox::Slot().VAlign(VAlign_Center)
 			[
-				Button("ProjectCleaner.Menu.Inspect", TEXT("Inspect"), TEXT("Shows why the scan is not sure in the Inspector"),
+				Button("ProjectCleaner.Menu.Inspect", TEXT("Inspect"), TEXT("Shows in the Inspector why the scan is not sure"),
 					Is(EPjcIssueCategory::Review), [this]() { return GetSelected().Num() == 1; }, [this]() {
 						const TArray<FRowPtr> Selected = GetSelected();
 						if (Selected.Num() == 1) PjcTabs::Inspect(TabManager, Selected[0]->Package);
@@ -1050,7 +1051,7 @@ TSharedRef<SWidget> SPjcTabIssues::MakeToolbar() {
 			]
 			+ SWrapBox::Slot().VAlign(VAlign_Center)
 			[
-				Button("ProjectCleaner.Graph.Pair", TEXT("Repair\u2026"), TEXT("A broken redirector that is used: point it to another asset, or clear its references"),
+				Button("ProjectCleaner.Graph.Pair", TEXT("Repair\u2026"), TEXT("Repairs a broken redirector that assets use. Points it to another asset or clears its references"),
 					Is(EPjcIssueCategory::Redirectors),
 					[this, SelectedRedirectors]() {
 						const TArray<int32> Selected = SelectedRedirectors();
@@ -1069,7 +1070,7 @@ TSharedRef<SWidget> SPjcTabIssues::MakeToolbar() {
 #if ENGINE_MAJOR_VERSION < 5
 				.ForegroundColor(FSlateColor::UseForeground())
 #endif
-				.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Clean project never deletes them: excludes them by file, extension or folder, saved to Config/DefaultEditor.ini"))))
+				.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Excludes them by file, extension or folder in Config/DefaultEditor.ini. Clean project never deletes them"))))
 				.Visibility_Lambda([this]() { return Category == EPjcIssueCategory::External && !bKept ? EVisibility::Visible : EVisibility::Collapsed; })
 				.IsEnabled_Lambda(HasSelection)
 				.OnGetMenuContent(this, &SPjcTabIssues::MakeExcludeMenu)
@@ -1115,20 +1116,19 @@ FText SPjcTabIssues::GetTitle() const {
 FText SPjcTabIssues::GetDescription() const {
 	switch (Category) {
 		case EPjcIssueCategory::Redirectors :
-			return FText::FromString(TEXT("Found in your project. Scanning follows them; fixing resaves the assets that still use the old path."));
+			return FText::FromString(TEXT("Redirectors in your project. Scan follows them. Fix resaves the assets that still use the old path."));
 		case EPjcIssueCategory::External :
 			{
-				const TCHAR* Kept = TEXT("Files the plugin never deletes: engine folders, staged folders, names in source or config, exclusions.");
-				const TCHAR* ToReview = TEXT("Not assets and not used by the engine or the project. Review before deleting.");
+				const TCHAR* Kept = TEXT("Files in engine folders, staged folders or exclusions, or named in source or config. ")
+					TEXT("The plugin never deletes them.");
+				const TCHAR* ToReview
+					= TEXT("These files are not assets. The engine and the project do not use them. ") TEXT("Review them before you delete them.");
 				return FText::FromString(bKept ? Kept : ToReview);
 			}
-		case EPjcIssueCategory::Corrupted :
-			return FText::FromString(TEXT("Asset files the engine cannot load. Deleting them is the only fix the plugin offers."));
-		case EPjcIssueCategory::Empty : return FText::FromString(TEXT("Folders without assets or files, often left after moving assets."));
+		case EPjcIssueCategory::Corrupted : return FText::FromString(TEXT("Asset files the engine cannot load. The plugin can only delete them."));
+		case EPjcIssueCategory::Empty :		return FText::FromString(TEXT("Folders without assets or files. Moved assets often leave them."));
 		case EPjcIssueCategory::Review :
-			return FText::FromString(
-				TEXT("The scan is not sure about them. Clean project keeps them until you decide: mark them unused, or exclude them.")
-			);
+			return FText::FromString(TEXT("The scan is not sure about them. Clean project keeps them until you mark them unused or exclude them."));
 	}
 	return FText::GetEmpty();
 }
@@ -1175,7 +1175,7 @@ FText SPjcTabIssues::GetSelectionText() const {
 void SPjcTabIssues::FixRedirectors(const TArray<int32>& Indices) {
 	if (Indices.Num() == 0) return;
 	if (UPjcSubsystem::GetModuleAssetRegistry().Get().IsLoadingAssets()) {
-		UPjcSubsystem::ShowNotification(TEXT("The asset registry is still loading: fix again when it is done"), SNotificationItem::CS_Fail, 4.0f);
+		UPjcSubsystem::ShowNotification(TEXT("Asset Registry is still loading. Fix again when it has finished"), SNotificationItem::CS_Fail, 4.0f);
 		return;
 	}
 
@@ -1236,7 +1236,7 @@ void SPjcTabIssues::FixRedirectors(const TArray<int32>& Indices) {
 		FPjcFixView View;
 		View.Title = Num > 0 ? TEXT("Fix ") + PjcIssuePlural(Num, TEXT("redirector")) : FString {TEXT("Fix redirectors")};
 		if (Num == 0) {
-			View.Lead = TEXT("None of them can be fixed safely: why is below.");
+			View.Lead = TEXT("None of them can be fixed safely. The reasons are below.");
 		}
 		else if (Plan.Users.Num() > 0) {
 			const FString Which = Num == 1 ? FString {TEXT("the redirector")} : TEXT("the ") + PjcIssuePlural(Num, TEXT("redirector"));
@@ -1244,7 +1244,7 @@ void SPjcTabIssues::FixRedirectors(const TArray<int32>& Indices) {
 			View.Lead = FString::Printf(TEXT("Resaves %s so they point to the real asset, then deletes %s."), *Resaved, *Which);
 		}
 		else {
-			View.Lead = Num == 1 ? TEXT("Nothing points through it: it is deleted.") : TEXT("Nothing points through them: they are deleted.");
+			View.Lead = Num == 1 ? TEXT("Nothing points through it. Fix deletes it.") : TEXT("Nothing points through them. Fix deletes them.");
 		}
 		View.Stats.Add(PjcIssueStat(Num, TEXT("deleted"), TEXT("ProjectCleaner.Color.Text")));
 		View.Stats.Add(PjcIssueStat(Plan.Users.Num(), TEXT("resaved"), TEXT("ProjectCleaner.Color.Link")));
@@ -1292,10 +1292,10 @@ void SPjcTabIssues::FixRedirectors(const TArray<int32>& Indices) {
 				FPjcFixRow Row = RedirectorRow(Index);
 				Row.DetailColor = TEXT("ProjectCleaner.Color.Yellow");
 				if (Info.State == EPjcRedirectorState::NamedInFiles) {
-					Row.Detail = Info.KeptBy + TEXT(": deleting it breaks that file");
+					Row.Detail = Info.KeptBy + TEXT(". Deleting it breaks that file");
 				}
 				else if (Info.State == EPjcRedirectorState::UsedOutside) {
-					Row.Detail = Info.KeptBy + TEXT(": fixing cannot resave it");
+					Row.Detail = Info.KeptBy + TEXT(". Fix cannot resave it");
 				}
 				else {
 					const FString Users = PjcIssuePlural(Info.UsedBy.Num(), TEXT("asset uses"), TEXT("assets use"));
@@ -1306,8 +1306,9 @@ void SPjcTabIssues::FixRedirectors(const TArray<int32>& Indices) {
 					Row.OnButton = [this, Index]() {
 						RepairRedirector(Index);
 					};
-					Section.Note
-						= TEXT("A broken redirector that is used needs a repair: Repair\u2026 points it to another asset or clears its references.");
+					Section.Note = TEXT(
+						"A broken redirector that assets use needs a repair. Repair\u2026 points it to another asset or clears its references."
+					);
 				}
 				Section.Rows.Add(MoveTemp(Row));
 			}
@@ -1319,7 +1320,7 @@ void SPjcTabIssues::FixRedirectors(const TArray<int32>& Indices) {
 			const TCHAR* Them = Plan.NumNamed == 1 ? TEXT("it") : TEXT("them");
 			const FString Redirects = PjcIssuePlural(Plan.NumNamed, TEXT("redirect"));
 			Option.Description = FString::Printf(
-				TEXT("Adds %s to Config/DefaultEngine.ini, so the C++, Python or config that names %s still finds the asset."), *Redirects, Them
+				TEXT("Adds %s to Config/DefaultEngine.ini. Then C++, Python or config files that name %s still find the asset."), *Redirects, Them
 			);
 			Option.Value = &bAddRedirects;
 		}
@@ -1331,7 +1332,7 @@ void SPjcTabIssues::FixRedirectors(const TArray<int32>& Indices) {
 		}
 		if (bTeam && Num > 0) {
 			View.WarningTitle = TEXT("Team project?");
-			View.Warning = TEXT("Fix after everyone has checked in: work not submitted yet may still use the old paths.");
+			View.Warning = TEXT("Fix after everyone has checked in. Work that is not submitted can still use the old paths.");
 		}
 		View.Confirm = Num > 0 ? TEXT("Fix ") + PjcFormat::Count(Num) : FString {TEXT("Fix")};
 		View.bConfirmEnabled = Num > 0;
@@ -1355,7 +1356,7 @@ void SPjcTabIssues::FixRedirectors(const TArray<int32>& Indices) {
 void SPjcTabIssues::RepairRedirector(const int32 Index) {
 	if (!Redirectors.IsValidIndex(Index)) return;
 	if (UPjcSubsystem::GetModuleAssetRegistry().Get().IsLoadingAssets()) {
-		UPjcSubsystem::ShowNotification(TEXT("The asset registry is still loading: repair it when it is done"), SNotificationItem::CS_Fail, 4.0f);
+		UPjcSubsystem::ShowNotification(TEXT("Asset Registry is still loading. Repair again when it has finished"), SNotificationItem::CS_Fail, 4.0f);
 		return;
 	}
 
@@ -1385,7 +1386,7 @@ void SPjcTabIssues::RepairRedirector(const int32 Index) {
 		FPjcFixView View;
 		View.Title = TEXT("Repair ") + Name;
 		const FString Folder = PjcIssueFolder(Info.FinalTarget);
-		View.Lead = FString::Printf(TEXT("It points to %s (%s), which is missing. %s it: the reference loads empty."), *TargetName, *Folder, *Users);
+		View.Lead = FString::Printf(TEXT("It points to %s (%s), which is missing. %s it. The reference loads empty."), *TargetName, *Folder, *Users);
 
 		FPjcFixSection& Section = View.Sections.AddDefaulted_GetRef();
 		Section.Title = TEXT("Used by");
@@ -1456,7 +1457,7 @@ void SPjcTabIssues::RepairRedirector(const int32 Index) {
 		const FString TheUsers = NumUsers == 1 ? FString {TEXT("the asset")} : TEXT("the ") + PjcIssuePlural(NumUsers, TEXT("asset"));
 		FPjcFixChoice& Point = View.Choices.AddDefaulted_GetRef();
 		Point.Title = TEXT("Point to another asset");
-		Point.Description = FString::Printf(TEXT("The redirector leads there, then Fix resaves %s and deletes it."), *TheUsers);
+		Point.Description = FString::Printf(TEXT("The redirector points there. Then Fix resaves %s and deletes the redirector."), *TheUsers);
 		if (TargetClass) {
 			Point.Description += FString::Printf(TEXT(" Only assets of its type (%s) load in its place."), *TargetClass->GetName());
 		}
@@ -1466,9 +1467,9 @@ void SPjcTabIssues::RepairRedirector(const int32 Index) {
 		Clear.bDanger = true;
 		const TCHAR* Lose = NumUsers == 1 ? TEXT("The asset loses") : TEXT("The assets lose");
 		const TCHAR* Them = NumUsers == 1 ? TEXT("it") : TEXT("them");
-		Clear.Description = FString::Printf(TEXT("%s the reference, which already loads empty. Resaves %s and deletes the redirector."), Lose, Them);
+		Clear.Description = FString::Printf(TEXT("%s the reference. It already loads empty. Fix resaves %s and deletes the redirector."), Lose, Them);
 		View.Choice = &Choice.Get();
-		View.Tip = FString::Printf(TEXT("Or get %s back from version control, then fix the redirector as usual."), *Info.FinalTarget.ToString());
+		View.Tip = FString::Printf(TEXT("Or restore %s from version control. Then fix the redirector as usual."), *Info.FinalTarget.ToString());
 		if (*Choice == 0) {
 			View.Confirm = TEXT("Point and fix");
 			View.bConfirmEnabled = Picked->IsValid();
@@ -1522,7 +1523,7 @@ void SPjcTabIssues::ShowFixResult(const FPjcRedirectorFixResult& Result) {
 		View.Title = NumDeleted > 0 ? Fixed : FString {TEXT("Nothing was fixed")};
 		const TCHAR* Stay = NumKept == 1 ? TEXT("stays") : TEXT("stay");
 		View.Lead = FString::Printf(
-			TEXT("%s %s. The project still works: a redirector that stays keeps the old path pointing to the real asset."),
+			TEXT("%s %s. The project still works. A redirector that stays keeps its old path pointing to the real asset."),
 			*PjcIssuePlural(NumKept, TEXT("redirector")),
 			Stay
 		);
@@ -1562,7 +1563,7 @@ bool SPjcTabIssues::SaveFirst(const TArray<FName>& Packages) {
 		View.Title = TEXT("Save changes first");
 		const TCHAR* Have = Dirty.Num() == 1 ? TEXT("has") : TEXT("have");
 		View.Lead = FString::Printf(
-			TEXT("%s that Fix resaves %s unsaved changes: they are saved first, or nothing is fixed."),
+			TEXT("%s that Fix resaves %s unsaved changes. Save and fix saves them first. Cancel fixes nothing."),
 			*PjcIssuePlural(Dirty.Num(), TEXT("asset")),
 			Have
 		);
@@ -1608,7 +1609,7 @@ void SPjcTabIssues::RebuildFilters() {
 		const auto IsGrey = [this, Key, IsOn]() {
 			return !Key.IsEmpty() && !IsOn() && Filters.Num() > 0;
 		};
-		const FString More = Key.IsEmpty() ? TEXT("Click: every item of the list") : TEXT("Click: show them, click more to add them");
+		const FString More = Key.IsEmpty() ? TEXT("Click to show every item") : TEXT("Click to show them. Click more to add them");
 		// clang-format off
 		FilterBox->AddSlot().AutoHeight().Padding(FMargin {6.0f, 0.0f, 6.0f, 4.0f})
 		[
@@ -1643,8 +1644,8 @@ void SPjcTabIssues::RebuildFilters() {
 			FilterBox->AddSlot().AutoHeight().Padding(FMargin {6.0f, 0.0f, 6.0f, 4.0f})
 			[
 				PjcWidgets::MakeFilterPill(TEXT("Marked unused"),
-					TEXT("Assets you marked unused: Clean project deletes them, with the assets only they keep. Shared with the team in Config/DefaultEditor.ini."),
-					TEXT("Click: list them, to remove a mark"), PjcWidgets::GetColor("ProjectCleaner.Color.Red"), NumMarked, true,
+					TEXT("Assets you marked unused. Clean project deletes them and the assets that only they use. Saved to Config/DefaultEditor.ini for the team."),
+					TEXT("Click to list them and remove marks"), PjcWidgets::GetColor("ProjectCleaner.Color.Red"), NumMarked, true,
 					[this]() { return bMarked; }, [this]() { return !bMarked && Filters.Num() > 0; },
 					[this]() {
 						bMarked = true;
@@ -1683,7 +1684,7 @@ void SPjcTabIssues::RebuildFilters() {
 	}
 	else if (Category == EPjcIssueCategory::External) {
 		// to review or kept: two lists with their own actions
-		AddHeading(TEXT("STATUS FILTERS"), TEXT("Files to review, or the files the plugin never deletes"));
+		AddHeading(TEXT("STATUS FILTERS"), TEXT("Files to review, or files the plugin never deletes"));
 		const auto AddMode = [this](const bool bKeptMode, const TCHAR* Label, const TCHAR* ToolTip, const FName Color, const int32 Num) {
 			const auto IsOn = [this, bKeptMode]() {
 				return bKept == bKeptMode;
@@ -1699,14 +1700,14 @@ void SPjcTabIssues::RebuildFilters() {
 		AddMode(
 			false,
 			TEXT("To review"),
-			TEXT("Not assets and not used by the engine or the project. Review before deleting."),
+			TEXT("These files are not assets. The engine and the project do not use them. Review them before you delete them."),
 			TEXT("ProjectCleaner.Color.Yellow"),
 			Result.FilesExternal.Num()
 		);
 		AddMode(
 			true,
 			TEXT("Kept"),
-			TEXT("Files the plugin never deletes: engine folders, staged folders, names in source or config, exclusions"),
+			TEXT("Files in engine folders, staged folders or exclusions, or named in source or config. The plugin never deletes them"),
 			TEXT("ProjectCleaner.Color.Ok"),
 			Result.FilesExternalKept.Num()
 		);
@@ -1782,7 +1783,7 @@ TSharedPtr<SWidget> SPjcTabIssues::OnContextMenu() {
 		case EPjcIssueCategory::Review :
 			if (bMarked) {
 				PjcWidgets::AddMenuEntry(
-					Menu, EPjcMenuIcon::Include, TEXT("Remove mark"), TEXT("Takes the mark off: they are to review again"), [this]() {
+					Menu, EPjcMenuIcon::Include, TEXT("Remove mark"), TEXT("Removes the mark. They move back to Assets to review"), [this]() {
 						RemoveMarks(GetSelected());
 					}
 				);
@@ -1792,13 +1793,13 @@ TSharedPtr<SWidget> SPjcTabIssues::OnContextMenu() {
 					Menu,
 					EPjcMenuIcon::None,
 					TEXT("Mark unused"),
-					TEXT("They become unused: Clean project deletes them, with the assets only they keep"),
+					TEXT("Marks them unused. Clean project deletes them and the assets that only they use"),
 					[this]() {
 						MarkAssetsUnused(GetSelected());
 					}
 				);
 				PjcWidgets::AddMenuEntry(
-					Menu, EPjcMenuIcon::Exclude, TEXT("Exclude"), TEXT("Clean project never deletes them: adds them to the exclusions"), [this]() {
+					Menu, EPjcMenuIcon::Exclude, TEXT("Exclude"), TEXT("Adds them to the exclusions. Clean project never deletes them"), [this]() {
 						KeepAssets(GetSelected());
 					}
 				);
@@ -1902,7 +1903,7 @@ void SPjcTabIssues::DeleteRows(const TArray<FRowPtr>& InRows) {
 		UPjcSubsystem::ShowNotification(TEXT("Deleted ") + What, SNotificationItem::CS_Success, 4.0f);
 	}
 	else {
-		const FString Partly = FString::Printf(TEXT("Deleted %s of %s, see Output Log for the others"), *PjcFormat::Count(NumDeleted), *What);
+		const FString Partly = FString::Printf(TEXT("Deleted %s of %s. See Output Log for the others"), *PjcFormat::Count(NumDeleted), *What);
 		UPjcSubsystem::ShowNotificationWithOutputLog(Partly, SNotificationItem::CS_Fail, 6.0f);
 	}
 	SPjcScanBar::ScanProject();

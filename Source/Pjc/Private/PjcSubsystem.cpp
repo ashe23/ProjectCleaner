@@ -900,7 +900,7 @@ bool UPjcSubsystem::Scan(const bool bShowSlowTask, FPjcScanProgress* Progress) {
 		PjcScanStep(EPjcScanStep::Cook);
 		const FString Packaged = PjcFormat::Count(Result.CookCheck.NumPackaged) + TEXT(" packaged \u00B7 in Review");
 		const FString Checked = PjcFormat::Count(Result.CookCheck.NumChecked) + TEXT(" unused the cook left out");
-		const TCHAR* CookAll = TEXT("cook took nearly all assets \u00B7 not compared");
+		const TCHAR* CookAll = TEXT("cook includes almost all assets \u00B7 not compared");
 		PjcScanFound(EPjcScanStep::Cook, Result.CookCheck.IsCookAll() ? FString {CookAll} : (Result.CookCheck.NumPackaged > 0 ? Packaged : Checked));
 	}
 	if (IsCanceled()) return false;
@@ -993,7 +993,7 @@ const TMap<FName, FString>& UPjcSubsystem::GetLastCleanupKept() {
 FString UPjcSubsystem::GetUsageReasonText(const FPjcAssetUsage& Usage) {
 	switch (Usage.Reason) {
 		case EPjcUsageReason::Primary :			 return Usage.Detail.IsEmpty() ? TEXT("Primary asset") : TEXT("Primary asset ") + Usage.Detail;
-		case EPjcUsageReason::PrimaryClass :	 return TEXT("Primary class, not registered by the Asset Manager");
+		case EPjcUsageReason::PrimaryClass :	 return TEXT("Primary class that Asset Manager did not register");
 		case EPjcUsageReason::EngineReferenced : return TEXT("Used by engine or plugins");
 		case EPjcUsageReason::Indirect :		 return TEXT("Named in ") + Usage.Detail;
 		case EPjcUsageReason::Excluded :		 return Usage.Detail.IsEmpty() ? TEXT("Excluded") : Usage.Detail;
@@ -1007,8 +1007,8 @@ FString UPjcSubsystem::GetUsageReasonText(const FPjcAssetUsage& Usage) {
 			// placed in a level by its actor file (World Partition, One File Per Actor)
 			return (FolderIsExternal(Usage.Detail) ? TEXT("Placed in ") : TEXT("Referenced by ")) + FPackageName::GetShortName(Usage.Parent);
 		case EPjcUsageReason::FolderLabel :			return TEXT("In folder of label ") + FPackageName::GetShortName(Usage.Parent);
-		case EPjcUsageReason::CookPackaged :		return TEXT("Packaged by the last cook (") + Usage.Detail + TEXT(")");
-		case EPjcUsageReason::GameplayCueNotFired : return TEXT("GameplayCue notify nothing fires: ") + Usage.Detail;
+		case EPjcUsageReason::CookPackaged :		return TEXT("Packaged by last cook (") + Usage.Detail + TEXT(")");
+		case EPjcUsageReason::GameplayCueNotFired : return TEXT("GameplayCue notify that nothing fires (") + Usage.Detail + TEXT(")");
 		case EPjcUsageReason::Cinematic :			return Usage.Detail;
 		case EPjcUsageReason::Splash :				return TEXT("Splash content");
 		case EPjcUsageReason::EditorSource :		return TEXT("Named in editor code, ") + Usage.Detail;
@@ -1789,7 +1789,7 @@ void UPjcSubsystem::GetAssetsIndirect(TArray<FAssetData>& Assets, TArray<FPjcAss
 
 	FScopedSlowTask SlowTask {
 	  static_cast<float>(ScanFiles.Num()),
-	  FText::FromString(TEXT("Searching Indirectly used assets...")),
+	  FText::FromString(TEXT("Searching indirectly used assets...")),
 	  bShowSlowTask && GIsEditor && !IsRunningCommandlet()
 	};
 	SlowTask.MakeDialog(false, false);
@@ -2894,7 +2894,7 @@ bool UPjcSubsystem::DeleteFilesExternal(const bool bShowSlowTask, const bool bSh
 	}
 
 	FScopedSlowTask SlowTask(
-		FilesExternalFiltered.Num(), FText::FromString(TEXT("Deleting external files ...")), bShowSlowTask && GIsEditor && !IsRunningCommandlet()
+		FilesExternalFiltered.Num(), FText::FromString(TEXT("Deleting external files...")), bShowSlowTask && GIsEditor && !IsRunningCommandlet()
 	);
 	SlowTask.MakeDialog(false, false);
 
@@ -2950,7 +2950,7 @@ bool UPjcSubsystem::DeleteFilesCorrupted(const bool bShowSlowTask, const bool bS
 	}
 
 	FScopedSlowTask SlowTask(
-		FilesCorrupted.Num(), FText::FromString(TEXT("Deleting corrupted asset files ...")), bShowSlowTask && GIsEditor && !IsRunningCommandlet()
+		FilesCorrupted.Num(), FText::FromString(TEXT("Deleting corrupted asset files...")), bShowSlowTask && GIsEditor && !IsRunningCommandlet()
 	);
 	SlowTask.MakeDialog(false, false);
 
@@ -3247,7 +3247,7 @@ FString UPjcSubsystem::RepointRedirector(const FAssetData& Redirector, const FAs
 
 	Object->DestinationObject = TargetObject;
 	Package->MarkPackageDirty();
-	if (!UEditorLoadingAndSavingUtils::SavePackages({Package}, false)) return TEXT("Saving it failed, see the Output Log");
+	if (!UEditorLoadingAndSavingUtils::SavePackages({Package}, false)) return TEXT("Saving it failed. See the Output Log");
 	IAssetRegistry& AssetRegistry = GetModuleAssetRegistry().Get();
 	AssetRegistry.ScanFilesSynchronous({Filename}, true);
 	PjcShim::RegisterRedirection(Object, TargetObject->GetPathName());
@@ -3361,7 +3361,7 @@ UPjcSubsystem::FixRedirectorsWithReport(const TArray<FAssetData>& InRedirectors,
 	// every referencer must be known before a redirector goes
 	if (AssetRegistry.IsLoadingAssets()) {
 		for (const auto& Redirector : InRedirectors) {
-			Keep(Redirector.PackageName, TEXT("The asset registry is still loading"), TEXT("Fix again when it is done"));
+			Keep(Redirector.PackageName, TEXT("Asset Registry is still loading"), TEXT("Fix again when it is done"));
 		}
 		return Result;
 	}
@@ -3379,7 +3379,7 @@ UPjcSubsystem::FixRedirectorsWithReport(const TArray<FAssetData>& InRedirectors,
 		GetRedirectorsNeededOutside(Redirectors, NamedInFiles, UsedOutside);
 		Redirectors.RemoveAll([&](const FAssetData& Redirector) {
 			if (const FString* Why = UsedOutside.Find(Redirector.PackageName)) {
-				Keep(Redirector.PackageName, *Why, TEXT("Fixing cannot resave that content: keep it, or scan that content too"));
+				Keep(Redirector.PackageName, *Why, TEXT("Fix cannot resave that content. Keep the redirector, or scan that content too"));
 				return true;
 			}
 			if (const FString* Why = NamedInFiles.Find(Redirector.PackageName)) {
@@ -3387,7 +3387,7 @@ UPjcSubsystem::FixRedirectorsWithReport(const TArray<FAssetData>& InRedirectors,
 					Redirected.Add(Redirector.PackageName);
 					return false;
 				}
-				Keep(Redirector.PackageName, *Why, TEXT("Deleting it breaks that file: fix it with the redirect option on"));
+				Keep(Redirector.PackageName, *Why, TEXT("Deleting it breaks that file. Fix it with the redirect option on"));
 				return true;
 			}
 			return false;
@@ -3557,7 +3557,7 @@ UPjcSubsystem::FixRedirectorsWithReport(const TArray<FAssetData>& InRedirectors,
 		const FString* NotResaved = User ? Result.NotResaved.Find(*User) : nullptr;
 		if (User && !GetFinalDestination(RedirectorObject) && !Options.bClearBroken) {
 			const FString Missing = FString::Printf(TEXT("Its target is missing and %s uses it"), *UserName);
-			Keep(PackageName, Missing, TEXT("Repair it: point it to another asset, or clear the references"));
+			Keep(PackageName, Missing, TEXT("Repair it. Point it to another asset, or clear the references"));
 		}
 		else if (NotResaved) {
 			const bool bReadOnly = NotResaved->Contains(TEXT("read-only"));
@@ -4408,11 +4408,11 @@ bool UPjcSubsystem::ProjectHasVersionControl() {
 }
 
 FString UPjcSubsystem::GetDeleteWarning() {
-	FString Warning = TEXT("Deleted files can not be restored by Project Cleaner. ")
-		TEXT("Make sure your work is saved to version control (Git, Perforce, ...) or the project folder is backed up.");
+	FString Warning = TEXT("Project Cleaner cannot restore deleted files. ")
+		TEXT("Save your work to version control (Git, Perforce, ...) or back up the project folder.");
 
 	if (!ProjectHasVersionControl()) {
-		Warning += TEXT("\n\nNo version control found for this project. Copy the project folder somewhere safe before deleting.");
+		Warning += TEXT("\n\nNo version control found for this project. Copy the project folder to a safe place before you delete.");
 	}
 
 	return Warning;

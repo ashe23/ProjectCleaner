@@ -44,21 +44,21 @@ class UPjcScanSettings final : public UDeveloperSettings
 	UPROPERTY(EditAnywhere, Config, Category = "Scan Roots", meta = (EditCondition = "bScanProjectPlugins"))
 	TArray<FString> IgnoredPlugins;
 
-	// Scan Content/Developers too: each developer's own test assets. Off by default: the folder is left out like an
-	// ignored plugin, nothing in it is listed or deleted, and what its assets use stays used.
+	// Scan Content/Developers too. It holds test assets of each developer. Off by default.
+	// When off, the scan skips the folder like an ignored plugin. Nothing in it is listed or deleted, and assets it uses stay used.
 	UPROPERTY(EditAnywhere, Config, Category = "Scan Roots")
 	bool bScanDevelopers = false;
 
 	// always used, not settings: primary assets (every map and what the Asset Manager registers), editor assets,
 	// assets named in source and config files, assets in the folder of a Primary Asset Label whose cook rule packages it
 
-	// Assets of a primary asset class that the Asset Manager did not register are used: outside the folders of their
-	// type, or in a game feature plugin that is not registered yet. On by default, the game may still load them.
-	// Turn off when a type has a very broad base class and too many assets stay used.
+	// Assets of a primary asset class that Asset Manager did not register count as used. For example, assets outside
+	// the folders of their type, or in a game feature plugin that is not registered yet. On by default, because the game
+	// can still load them. Turn off when a type has a very broad base class and too many assets stay used.
 	UPROPERTY(EditAnywhere, Config, Category = "Used Assets", meta = (DisplayName = "Unregistered Primary Classes Used"))
 	bool bUnregisteredPrimaryUsed = true;
 
-	// Cinematic assets are used: Level Sequences, Template Sequences, Movie Render Queue and Movie Render Graph configs.
+	// Cinematic assets count as used: Level Sequences, Template Sequences, Movie Render Queue and Movie Render Graph configs.
 	// They are usually rendered or played without being referenced by any level.
 	UPROPERTY(EditAnywhere, Config, Category = "Used Assets")
 	bool bCinematicAssetsUsed = true;
@@ -67,9 +67,9 @@ class UPjcScanSettings final : public UDeveloperSettings
 	UPROPERTY(Config)
 	TArray<TSoftClassPtr<UObject>> UsedClasses;
 
-	// Metadata folder of a cook made on another machine, e.g. a build machine (Saved/Cooked/<Platform>/<Project>/Metadata,
-	// with DevelopmentAssetRegistry.bin). The cook check reads it with the cooks of this project folder. Project Cleaner
-	// never cooks by itself.
+	// Metadata folder of a cook from another machine, e.g. a build machine (Saved/Cooked/<Platform>/<Project>/Metadata,
+	// with DevelopmentAssetRegistry.bin). The cook check reads it together with the cooks in this project folder.
+	// Project Cleaner never cooks by itself.
 	UPROPERTY(EditAnywhere, Config, Category = "Cook Check", meta = (DisplayName = "Build Machine Cook Metadata"))
 	FDirectoryPath CookMetadataFolder;
 

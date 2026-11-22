@@ -56,19 +56,19 @@ void SPjcTabMain::Construct(
 	TabLayout = FTabManager::NewLayout("PjcTabLayout")->AddArea(FTabManager::NewPrimaryArea()->SetOrientation(Orient_Horizontal)->Split(Stack));
 
 	TabManager->RegisterTabSpawner(PjcConstants::TabIssues, FOnSpawnTab::CreateRaw(this, &SPjcTabMain::OnTabIssuesSpawn))
-		.SetTooltipText(FText::FromString(TEXT("Open Issues Tab: redirectors, external files, corrupted files, empty folders")))
+		.SetTooltipText(FText::FromString(TEXT("Opens Issues tab with redirectors, external files, corrupted files and empty folders")))
 		.SetDisplayName(FText::FromString(TEXT("Issues")))
 		.SetIcon(FPjcStyles::GetIcon("ProjectCleaner.Tab.Issues"))
 		.SetGroup(AppMenuGroup);
 
 	TabManager->RegisterTabSpawner(PjcConstants::TabAssetsUnused, FOnSpawnTab::CreateRaw(this, &SPjcTabMain::OnTabAssetsUnusedSpawn))
-		.SetTooltipText(FText::FromString(TEXT("Open Assets Tab: the overview of the scan, and the unused, excluded, used and to review assets")))
+		.SetTooltipText(FText::FromString(TEXT("Opens Assets tab with Overview and unused, excluded, used and to review assets")))
 		.SetDisplayName(FText::FromString(TEXT("Assets")))
 		.SetIcon(FPjcStyles::GetIcon("ProjectCleaner.Tab.Assets"))
 		.SetGroup(AppMenuGroup);
 
 	TabManager->RegisterTabSpawner(PjcConstants::TabInspector, FOnSpawnTab::CreateRaw(this, &SPjcTabMain::OnTabInspectorSpawn))
-		.SetTooltipText(FText::FromString(TEXT("Open Inspector Tab: why an asset is used, what uses it and what it uses")))
+		.SetTooltipText(FText::FromString(TEXT("Opens Inspector tab. Shows why an asset is used, what uses it and what it uses")))
 		.SetDisplayName(FText::FromString(TEXT("Inspector")))
 		.SetIcon(FPjcStyles::GetIcon("ProjectCleaner.Tab.Inspector"))
 		.SetGroup(AppMenuGroup);
@@ -159,11 +159,11 @@ int32 SPjcTabMain::GetWidgetIndex() const {
 
 FText SPjcTabMain::GetWidgetWarningText() const {
 	if (UPjcSubsystem::EditorIsInPlayMode()) {
-		return FText::FromString(TEXT("Please exit the editor's play mode before performing any operations in the plugin."));
+		return FText::FromString(TEXT("Exit Play mode before you use Project Cleaner."));
 	}
 
 	if (UPjcSubsystem::GetModuleAssetRegistry().Get().IsLoadingAssets()) {
-		return FText::FromString(TEXT("Please wait until the Asset Registry has discovered all assets in the project."));
+		return FText::FromString(TEXT("Wait until Asset Registry has discovered all assets."));
 	}
 
 	return FText::FromString(TEXT(""));

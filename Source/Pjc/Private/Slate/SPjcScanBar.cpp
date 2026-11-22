@@ -41,7 +41,7 @@ void SPjcScanBar::Construct(const FArguments& InArgs) {
 				.ForegroundColor(FSlateColor::UseForeground())
 #endif
 				.ContentPadding(FMargin {10.0f, 4.0f, 14.0f, 4.0f})
-				.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Scans the project again"))))
+				.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Scans project again"))))
 				.Visibility(this, &SPjcScanBar::GetScanVisibility)
 				.OnClicked(this, &SPjcScanBar::OnScanClicked)
 				[
@@ -57,8 +57,8 @@ void SPjcScanBar::Construct(const FArguments& InArgs) {
 				.ButtonStyle(&PjcShim::GetPrimaryButtonStyle())
 				.ContentPadding(FMargin {10.0f, 4.0f, 14.0f, 4.0f})
 				.ToolTip(PjcWidgets::MakeToolTip(TAttribute<FText>::Create(TAttribute<FText>::FGetter::CreateLambda([]() {
-					const TCHAR* Settings = TEXT("Applies the changed scan settings and scans again");
-					return FText::FromString(FPjcScanDraft::IsChanged() ? Settings : TEXT("Scans the changed project again"));
+					const TCHAR* Settings = TEXT("Applies changed settings and scans again");
+					return FText::FromString(FPjcScanDraft::IsChanged() ? Settings : TEXT("Scans changed project again"));
 				}))))
 				.Visibility(this, &SPjcScanBar::GetRescanVisibility)
 				.OnClicked(this, &SPjcScanBar::OnRescanClicked)
@@ -141,13 +141,13 @@ bool SPjcScanBar::NeedsRescan() {
 
 void SPjcScanBar::ScanProject(const bool bByUser) {
 	if (UPjcSubsystem::GetModuleAssetRegistry().Get().IsLoadingAssets()) {
-		const TCHAR* Discovering = TEXT("Scan waits for the Asset Registry: it is still discovering assets. Scan again when it has finished.");
+		const TCHAR* Discovering = TEXT("Scan waits for Asset Registry: it is still discovering assets. Scan again when it has finished");
 		UPjcSubsystem::ShowNotificationWithOutputLog(Discovering, SNotificationItem::CS_Fail, 5.0f);
 		return;
 	}
 
 	if (!FEditorFileUtils::SaveDirtyPackages(true, true, true, false, false, false)) {
-		const TCHAR* Unsaved = TEXT("Scan needs every asset saved, the scan reads them from disk.");
+		const TCHAR* Unsaved = TEXT("Scan needs all assets saved. It reads them from disk.");
 		UPjcSubsystem::ShowNotificationWithOutputLog(Unsaved, SNotificationItem::CS_Fail, 5.0f);
 		return;
 	}
@@ -157,7 +157,7 @@ void SPjcScanBar::ScanProject(const bool bByUser) {
 	const bool bScanned = SPjcScanWindow::Run(bByUser);
 	if (!bScanned) {
 		if (!bByUser) {
-			UPjcSubsystem::ShowNotification(TEXT("Scan canceled \u00B7 results are from the last scan"), SNotificationItem::CS_None, 3.0f);
+			UPjcSubsystem::ShowNotification(TEXT("Scan canceled \u00B7 results are from last scan"), SNotificationItem::CS_None, 3.0f);
 		}
 		return;
 	}
@@ -203,13 +203,13 @@ FReply SPjcScanBar::OnCleanClicked() const {
 FText SPjcScanBar::GetStatusText() const {
 	const FPjcScanResult& Result = UPjcSubsystem::GetScanResult();
 	if (FPjcScanDraft::IsChanged()) {
-		return FText::FromString(TEXT("Settings changed \u00B7 results are from the last scan"));
+		return FText::FromString(TEXT("Settings changed \u00B7 results are from last scan"));
 	}
 	if (!Result.IsValid()) {
 		return FText::FromString(TEXT("Not scanned yet"));
 	}
 	if (UPjcSubsystem::GetChangesSinceScan().Num() > 0) {
-		return FText::FromString(TEXT("Project changed \u00B7 results are from the last scan"));
+		return FText::FromString(TEXT("Project changed \u00B7 results are from last scan"));
 	}
 
 	const FTimespan Age = FDateTime::UtcNow() - Result.Time;
@@ -260,7 +260,7 @@ FText SPjcScanBar::GetCleanToolTip() const {
 		return FText::FromString(TEXT("Scan first"));
 	}
 	if (NeedsRescan()) {
-		return FText::FromString(TEXT("Rescan first: results are from before the change"));
+		return FText::FromString(TEXT("Rescan first. Results are from before the change"));
 	}
-	return FText::FromString(TEXT("Deletes every unused asset and empty folder in the project"));
+	return FText::FromString(TEXT("Deletes all unused assets and empty folders"));
 }

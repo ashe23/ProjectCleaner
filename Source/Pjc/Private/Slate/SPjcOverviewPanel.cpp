@@ -107,12 +107,12 @@ TSharedRef<SWidget> SPjcOverviewPanel::MakeStatus() {
 	const FSlateColor Muted = FSlateColor::UseSubduedForeground();
 
 	// clang-format off
-	const TCHAR* UsedTip = TEXT("Kept: the game or the editor uses them. The rows below say why.");
-	const TCHAR* ReviewTip = TEXT("The scan is not sure about them: unused assets a cook packaged, GameplayCue notifies ")
-		TEXT("nothing fires. Clean project keeps them, and the unused assets they use.");
+	const TCHAR* UsedTip = TEXT("The game or the editor uses them. The rows below show why.");
+	const TCHAR* ReviewTip = TEXT("Scan is not sure about them. Examples are unused assets that a cook includes, and GameplayCue notifies ")
+		TEXT("that nothing fires. Clean project keeps them and the unused assets they use.");
 	const TCHAR* UnusedTip = TEXT("Nothing uses them. Clean project deletes them.");
 	// clang-format on
-	const FString ClickTip = TEXT("Click: list them on the right");
+	const FString ClickTip = TEXT("Click to list them on the right");
 
 	const TSharedRef<SVerticalBox> Rows = SNew(SVerticalBox);
 	const auto AddRow = [this, &Rows, &All, &ClickTip](
@@ -150,7 +150,7 @@ TSharedRef<SWidget> SPjcOverviewPanel::MakeStatus() {
 	AddRow(TEXT("Used"), ColorUsed, Used, Plain, UsedTip, EPjcAssetSet::Used, FString {});
 	AddReasonRows(Rows);
 	AddRow(
-		TEXT("Review"), ColorReview, Overview.Review, ReviewNumber, ReviewTip, EPjcAssetSet::Review, FString {}, TEXT("Click: open them in Issues")
+		TEXT("Review"), ColorReview, Overview.Review, ReviewNumber, ReviewTip, EPjcAssetSet::Review, FString {}, TEXT("Click to open them in Issues")
 	);
 	AddRow(TEXT("Unused"), ColorUnused, Overview.Unused, UnusedNumber, UnusedTip, EPjcAssetSet::Unused, FString {});
 
@@ -174,7 +174,7 @@ TSharedRef<SWidget> SPjcOverviewPanel::MakeStatus() {
 		SNew(STextBlock)
 		.Text(FText::FromString(Totals))
 		.Font(PjcWidgets::GetFontMono(9))
-		.ToolTip(PjcWidgets::MakeToolTip(TEXT("Assets"), TEXT("Every scanned asset and their size on disk. Redirectors are not counted."))),
+		.ToolTip(PjcWidgets::MakeToolTip(TEXT("Assets"), TEXT("All scanned assets and their size on disk. Redirectors are not counted."))),
 		SNew(SVerticalBox)
 		+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {0.0f, 0.0f, 0.0f, 6.0f})
 		[
@@ -226,7 +226,7 @@ void SPjcOverviewPanel::AddReasonRows(const TSharedRef<SVerticalBox>& Rows) {
 			}
 			More = TEXT("Through ") + FString::Join(Parts, TEXT(" \u00B7 ")) + TEXT("\n");
 		}
-		const TSharedRef<SToolTip> Tip = PjcWidgets::MakeToolTip(Name, Description, More + TEXT("Click: list them on the right"));
+		const TSharedRef<SToolTip> Tip = PjcWidgets::MakeToolTip(Name, Description, More + TEXT("Click to list them on the right"));
 		const FSimpleDelegate OnClick = FSimpleDelegate::CreateLambda([this, Name]() {
 			OnShowSet.ExecuteIfBound(EPjcAssetSet::Used, Name);
 		});
@@ -308,17 +308,18 @@ TSharedRef<SWidget> SPjcOverviewPanel::MakeIssues() {
 	};
 	const FString ExternalExample = Result.FilesExternal.Num() > 0 ? TEXT(", e.g. ") + FPaths::GetCleanFilename(Result.FilesExternal[0]) : FString {};
 	const FString KeptText = PjcFormat::Count(Result.FilesExternalKept.Num());
-	const FString ExternalKept = FString::Printf(TEXT(" %s more are kept: used by the project, or excluded in settings."), *KeptText);
-	const FString ExternalTip = TEXT("Files in content folders the engine does not use") + ExternalExample + TEXT(".") + ExternalKept;
+	const FString ExternalKept = FString::Printf(TEXT(" %s more are kept. The project uses them, or settings exclude them."), *KeptText);
+	const FString ExternalTip = TEXT("Files in content folders that the engine does not use") + ExternalExample + TEXT(".") + ExternalKept;
 	const FString ExternalWhat = TEXT("to review \u00B7 ") + KeptText + TEXT(" kept");
 	// clang-format off
-	const TCHAR* RedirectorsTip = TEXT("Left by renamed or moved assets. ")
-		TEXT("Scanning follows them, fixing resaves the assets that still use the old path.");
+	const TCHAR* RedirectorsTip = TEXT("Renamed or moved assets leave them. ")
+		TEXT("Scan follows them. Fix resaves the assets that still use the old path.");
 	const TCHAR* CorruptedTip = TEXT("Asset files the engine cannot read.");
 	const TCHAR* EmptyTip = TEXT("Folders without assets or files.");
-	const TCHAR* DeleteFailedTip = TEXT("Unused assets the last cleanup could not delete: a live object or a saved asset still holds them.");
+	const TCHAR* DeleteFailedTip = TEXT("Unused assets that the last cleanup could not delete. ")
+		TEXT("A live object or a saved asset still holds them.");
 	const auto ToIndex = [](const EPjcIssueCategory Value) { return static_cast<int32>(Value); };
-	const TCHAR* ReviewTip = TEXT("Assets the scan is not sure about: Clean project keeps them until you delete or exclude them.");
+	const TCHAR* ReviewTip = TEXT("Scan is not sure about these assets. Clean project keeps them until you delete or exclude them.");
 	const TArray<FIssue> Issues {
 		{TEXT("Assets to review"), Overview.Review.Num, TEXT("to decide"), ReviewTip, ToIndex(EPjcIssueCategory::Review)},
 		{TEXT("Redirectors"), Result.Redirectors.Num(), TEXT("to fix"), RedirectorsTip, ToIndex(EPjcIssueCategory::Redirectors)},
@@ -346,7 +347,7 @@ TSharedRef<SWidget> SPjcOverviewPanel::MakeIssues() {
 				PjcTabs::ShowIssues(TabManager, static_cast<uint8>(Category));
 			}
 		});
-		const FString ClickTip = Category < 0 ? TEXT("Click: list them on the right") : TEXT("Click: open them in Issues");
+		const FString ClickTip = Category < 0 ? TEXT("Click to list them on the right") : TEXT("Click to open them in Issues");
 		const TSharedRef<SToolTip> Tip = PjcWidgets::MakeToolTip(Issue.Title, Issue.ToolTip, ClickTip);
 		// clang-format off
 		Rows->AddSlot().AutoHeight()
@@ -371,15 +372,16 @@ TSharedRef<SWidget> SPjcOverviewPanel::MakeIssues() {
 }
 
 TSharedRef<SWidget> SPjcOverviewPanel::MakeShipped() {
-	const FString Where = TEXT("Project Cleaner reads the last cook of each platform: Saved/Cooked/[Platform]/[Project]/Metadata. ")
-		TEXT("For a cook made on a build machine, set its Metadata folder in Project Settings > Plugins > Project Cleaner > Cook Check.");
+	const FString Where = TEXT("Project Cleaner reads the last cook of each platform from Saved/Cooked/[Platform]/[Project]/Metadata. ")
+		TEXT("For a cook from a build machine, set its Metadata folder in Project Settings > Plugins > Project Cleaner > Cook Check.");
 	if (Cooks.Num() == 0) {
 #if ENGINE_MAJOR_VERSION >= 5
 		const FString HowTo = FString::Printf(TEXT("Platforms \u203A %s \u203A Cook Content"), ANSI_TO_TCHAR(FPlatformProperties::IniPlatformName()));
 #else
 		const FString HowTo = FString::Printf(TEXT("File \u203A Cook Content for %s"), ANSI_TO_TCHAR(FPlatformProperties::IniPlatformName()));
 #endif
-		const FString Optional = TEXT("Optional. Shows what a cook packages, for projects that ship a game: cook the project (") + HowTo + TEXT(").");
+		const FString Optional
+			= TEXT("Optional. Shows what a cook includes, for projects that ship a game. To see it, cook the project (") + HowTo + TEXT(").");
 		// clang-format off
 		return MakeCard(
 			TEXT("Shipped"),
@@ -447,11 +449,11 @@ TSharedRef<SWidget> SPjcOverviewPanel::MakeCookRow(const int32 Index) {
 		if (NumChanged > 0) Since.Add(FString::Printf(TEXT("%s saved or added"), *PjcFormat::Count(NumChanged)));
 		if (NumDeleted > 0) Since.Add(FString::Printf(TEXT("%s deleted"), *PjcFormat::Count(NumDeleted)));
 		State = TEXT("out of date");
-		StateTip = FString::Join(Since, TEXT(", ")) + TEXT(" since this cook, so its numbers can be out of date. Cook again for current numbers.");
+		StateTip = FString::Join(Since, TEXT(", ")) + TEXT(" since this cook. Its numbers can be out of date. Cook again for current numbers.");
 	}
 	const bool bMany = Cooks.Num() > 1;
 	const FString Title = Cook.Platform + TEXT(" \u00B7 last cook ") + FormatCookTime(Cook.Time, true);
-	const FString More = Cook.File + (bMany ? TEXT("\nClick: show its numbers") : TEXT(""));
+	const FString More = Cook.File + (bMany ? TEXT("\nClick to show its numbers") : TEXT(""));
 	const FString When = FormatCookTime(Cook.Time, false) + TEXT(" \u00B7 ") + FormatAgo(Cook.Time);
 
 	// clang-format off
@@ -565,7 +567,7 @@ TSharedRef<SWidget> SPjcOverviewPanel::MakeCookNumbers(const FCook& Cook) const 
 	const int32 NumShipped = Ship.Shipped.Num + Ship.UnusedShipped.Num;
 	const int64 SizeShippedEditor = Ship.Shipped.Size + Ship.UnusedShipped.Size;
 	const FString ShipCooked = PjcFormat::Size(Ship.ShippedCooked + Ship.UnusedShippedCooked);
-	const FString ShipWhere = FString::Printf(TEXT("Packaged in the game for %s: %s cooked, "), *Cook.Platform, *ShipCooked);
+	const FString ShipWhere = FString::Printf(TEXT("Included in the game for %s. %s cooked, "), *Cook.Platform, *ShipCooked);
 	const FString ShipTip = ShipWhere + PjcFormat::Size(SizeShippedEditor) + TEXT(" in the editor. Cooked size is before pak compression.");
 	const FString OutsideCount = PjcFormat::Count(Ship.NumOutside);
 	FString Also = FString::Printf(TEXT("Also shipped: %s engine and plugin packages, %s cooked"), *OutsideCount, *PjcFormat::Size(Ship.SizeOutside));
@@ -589,8 +591,8 @@ TSharedRef<SWidget> SPjcOverviewPanel::MakeCookNumbers(const FCook& Cook) const 
 		GetReasonInfo(Row.Reason, Name, ReasonTip, Color);
 		ReasonLines.Add(FString::Printf(TEXT("%s: %s"), *Name, *PjcFormat::Count(Row.Total.Num)));
 	}
-	const FString NotCooked = TEXT("Used in the editor, or only by content that is not cooked: ");
-	const FString LeftOut = TEXT("editor-only references, maps and tools left out of the cook. Not a cleanup list.");
+	const FString NotCooked = TEXT("Used in the editor, or only by content that is not cooked. ");
+	const FString LeftOut = TEXT("For example, editor-only references, and maps and tools that the cook leaves out. Not a cleanup list.");
 	const TSharedRef<SToolTip> KeepToolTip
 		= PjcWidgets::MakeToolTip(TEXT("Used, not shipped"), NotCooked + LeftOut, FString::Join(ReasonLines, TEXT("\n")));
 	const FString KeepNum = PjcFormat::Count(Ship.UsedNotShipped.Num);
@@ -602,19 +604,19 @@ TSharedRef<SWidget> SPjcOverviewPanel::MakeCookNumbers(const FCook& Cook) const 
 	const FSlateColor Muted = FSlateColor::UseSubduedForeground();
 	if (UPjcSubsystem::GetScanResult().CookCheck.PlatformsCookAll.Contains(Cook.Platform)) {
 		// clang-format off
-		const TCHAR* CookAllTip = TEXT("This cook packaged nearly every asset of the project, unused ones too, so it cannot tell which ")
-			TEXT("assets the game needs. The check is skipped, nothing goes to Review because of it.");
-		const TCHAR* CookAllHowTo = TEXT("To check: in Project Settings > Packaging, add the maps the game ships to List of maps to include ")
-			TEXT("in a packaged build, turn off Cook everything in the project content directory, then cook again. Without a map list ")
-			TEXT("the engine cooks every map, and template maps (Starter Content) use nearly everything.");
+		const TCHAR* CookAllTip = TEXT("This cook includes almost all project assets, also unused ones. It does not show which assets the ")
+			TEXT("game needs, so the cook check is skipped.");
+		const TCHAR* CookAllHowTo = TEXT("To check: open Project Settings > Packaging. Add your game maps to List of maps to include in a ")
+			TEXT("packaged build. Turn off Cook everything in the project content directory. Cook again. Without a map list, every map ")
+			TEXT("is cooked, and template maps (Starter Content) use almost all assets.");
 		// clang-format on
 		const TSharedRef<SToolTip> Tip = PjcWidgets::MakeToolTip(TEXT("Unused, shipped: not checked"), CookAllTip, CookAllHowTo);
 		AddRow(MakeRow(WarnColor, TEXT("Unused, shipped"), TEXT("\u2013"), Muted, TEXT("not checked"), FString {}, Tip, {}, false, 0.0f));
 	}
 	else if (Ship.UnusedShipped.Num > 0) {
-		const TCHAR* CheckTip = TEXT("This cook packaged them, but the scan finds nothing that uses them: the game may load them in a way ")
-			TEXT("the scan cannot follow. They are to review and Clean project keeps them.");
-		const TSharedRef<SToolTip> Tip = PjcWidgets::MakeToolTip(TEXT("Unused, shipped"), CheckTip, TEXT("Click: open them in Issues"));
+		const TCHAR* CheckTip = TEXT("This cook includes them, but the scan finds nothing that uses them. The game can load them in a way ")
+			TEXT("the scan does not see. Clean project keeps them until you review them.");
+		const TSharedRef<SToolTip> Tip = PjcWidgets::MakeToolTip(TEXT("Unused, shipped"), CheckTip, TEXT("Click to open them in Issues"));
 		const FString CheckNum = TEXT("\u26A0 ") + PjcFormat::Count(Ship.UnusedShipped.Num);
 		const FSlateColor CheckColor {PjcWidgets::GetColor("ProjectCleaner.Color.Review")};
 		const FSimpleDelegate OnClick = FSimpleDelegate::CreateLambda([this]() {
@@ -629,11 +631,11 @@ TSharedRef<SWidget> SPjcOverviewPanel::MakeCookNumbers(const FCook& Cook) const 
 	else {
 		const int32 NumNotChecked = UPjcSubsystem::GetScanResult().CookCheck.NumNotChecked;
 		const FString NotCheckedCount = PjcFormat::Count(NumNotChecked);
-		const TCHAR* AgreeText = TEXT("This cook packaged none of the unused assets: nothing it cooked needed them. A cook of ")
-			TEXT("only some maps leaves out more, so the check covers what that cook took.");
+		const TCHAR* AgreeText = TEXT("This cook includes no unused assets. Nothing it cooked needs them. A cook of only some maps ")
+			TEXT("leaves out more assets. The check covers only what that cook includes.");
 		const FString NotCheckedTip = NotCheckedCount
-			+ TEXT(" unused assets were saved after the cook (or put back by source control, which gives the files a new date), ")
-			+ TEXT("so it cannot tell about them. Cook the project again to check them.");
+			+ TEXT(" unused assets were saved after the cook, or source control put them back with a new file date. ")
+			+ TEXT("The cook check skips them. Cook the project again to check them.");
 		const FString Agree = NumNotChecked > 0 ? NotCheckedCount + TEXT(" unused changed since the cook") : TEXT("Scan and cook agree");
 		// clang-format off
 		AddRow(
@@ -862,18 +864,18 @@ void SPjcOverviewPanel::GetReasonInfo(const EPjcUsageReason Reason, FString& Out
 			break;
 		case EPjcUsageReason::Primary :
 			OutName = TEXT("Primary assets");
-			OutToolTip = TEXT("Maps, and the assets the Asset Manager registers or Primary Asset Labels list.");
+			OutToolTip = TEXT("Maps, and assets that Asset Manager registers or Primary Asset Labels list.");
 			Color = "ProjectCleaner.Color.Reason.Primary";
 			break;
 		case EPjcUsageReason::PrimaryClass :
 			OutName = TEXT("Unregistered primary classes");
-			OutToolTip = TEXT("Assets of a primary asset class the Asset Manager did not register.");
+			OutToolTip = TEXT("Assets of a primary asset class that Asset Manager did not register.");
 			Color = "ProjectCleaner.Color.Reason.PrimaryClass";
 			break;
 		case EPjcUsageReason::EngineReferenced :
 			OutName = TEXT("Used by engine or plugins");
-			OutToolTip = TEXT("Engine content, a plugin or Developers folder left out of the scan, or an actor file of a level outside the ")
-				TEXT("scan references them. The scan cannot read those, so it keeps them.");
+			OutToolTip = TEXT("Something outside the scan references them. For example, engine content, a plugin or Developers folder ")
+				TEXT("that the scan skips, or an actor file of a level outside the scan. Scan cannot read these and keeps the assets.");
 			Color = "ProjectCleaner.Color.Reason.Outside";
 			break;
 		case EPjcUsageReason::Indirect :
@@ -899,7 +901,7 @@ void SPjcOverviewPanel::GetReasonInfo(const EPjcUsageReason Reason, FString& Out
 		case EPjcUsageReason::EditorSource :
 			OutName = TEXT("Editor code");
 			OutToolTip
-				= TEXT("Only editor modules, Python scripts or editor config files name them by path: the editor uses them, the game does not.");
+				= TEXT("Only editor modules, Python scripts or editor config files name them by path. The editor uses them, the game does not.");
 			Color = "ProjectCleaner.Color.Editor";
 			break;
 		case EPjcUsageReason::Excluded :
@@ -914,7 +916,7 @@ void SPjcOverviewPanel::GetReasonInfo(const EPjcUsageReason Reason, FString& Out
 			break;
 		case EPjcUsageReason::GameplayCue :
 			OutName = TEXT("GameplayCue notifies");
-			OutToolTip = TEXT("Loaded by their tag by the GameplayCue manager.");
+			OutToolTip = TEXT("GameplayCue manager loads them by their tag.");
 			Color = "ProjectCleaner.Color.Reason.GameplayCue";
 			break;
 		case EPjcUsageReason::FolderLabel :
@@ -924,11 +926,11 @@ void SPjcOverviewPanel::GetReasonInfo(const EPjcUsageReason Reason, FString& Out
 			break;
 		case EPjcUsageReason::Megascans :
 			OutName = TEXT("Megascans presets");
-			OutToolTip = TEXT("Presets in MSPresets: the Megascans plugin loads them on import.");
+			OutToolTip = TEXT("Presets in MSPresets. The Megascans plugin loads them on import.");
 			break;
 		case EPjcUsageReason::Splash :
 			OutName = TEXT("Splash content");
-			OutToolTip = TEXT("Texture copies of the splash images in Content/Splash: the editor imports them again when deleted.");
+			OutToolTip = TEXT("Texture copies of splash images in Content/Splash. If you delete them, the editor imports them again.");
 			Color = "ProjectCleaner.Color.Reason.Splash";
 			break;
 		case EPjcUsageReason::Dependency :

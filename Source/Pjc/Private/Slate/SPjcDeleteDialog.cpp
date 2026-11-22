@@ -25,7 +25,7 @@ namespace
 	const TCHAR* const PjcDeleteDialogVcsFound = TEXT("Version control found. Deleted assets can be restored from it.");
 	// clang-format off
 	const TCHAR* const PjcDeleteDialogVcsMissing = TEXT("No version control found for this project. ")
-		TEXT("Deleted files cannot be restored: copy the project folder somewhere safe first.");
+		TEXT("Deleted files cannot be restored. Copy the project folder to a safe place first.");
 	// clang-format on
 
 	TSharedRef<SWidget> PjcDeleteDialogNote(const FString& Text, const FName Color) {
@@ -111,7 +111,7 @@ void SPjcDeleteDialog::Construct(const FArguments& InArgs) {
 		Body->AddSlot().AutoHeight().Padding(FMargin {0.0f, 0.0f, 0.0f, 6.0f})
 		[
 			PjcDeleteDialogNote(
-				TEXT("Unused assets that reference the selection. The engine cannot delete an asset something still references."),
+				TEXT("Unused assets that reference the selection. The engine cannot delete an asset while something references it."),
 				TEXT("ProjectCleaner.Color.Yellow")
 			)
 		];

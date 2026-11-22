@@ -24,7 +24,7 @@ class UPjcAssetExcludeSettings : public UObject
 		EditAnywhere,
 		Config,
 		Category = "AssetExcludeSettings",
-		meta = (ContentDir, ToolTip = "Consider assets in specified folders as used")
+		meta = (ContentDir, ToolTip = "Assets in these folders count as used")
 	)
 	TArray<FDirectoryPath> ExcludedFolders;
 
@@ -33,7 +33,7 @@ class UPjcAssetExcludeSettings : public UObject
 		EditAnywhere,
 		Config,
 		Category = "AssetExcludeSettings",
-		meta = (AllowAbstract = "true", ToolTip = "Consider assets of specified classes and their subclasses as used")
+		meta = (AllowAbstract = "true", ToolTip = "Assets of these classes and their subclasses count as used")
 	)
 	TArray<TSoftClassPtr<UObject>> ExcludedClasses;
 
@@ -65,7 +65,7 @@ class UPjcFileExcludeSettings : public UObject
 		EditAnywhere,
 		Config,
 		Category = "FileExcludeSettings",
-		meta = (RelativeToGameDir, ToolTip = "Exclude specified files from scanning")
+		meta = (RelativeToGameDir, ToolTip = "Excludes these files from the scan")
 	)
 	TArray<FFilePath> ExcludedFiles;
 
@@ -74,7 +74,7 @@ class UPjcFileExcludeSettings : public UObject
 		EditAnywhere,
 		Config,
 		Category = "FileExcludeSettings",
-		meta = (ToolTip = "Exclude files with specified extensions from scanning")
+		meta = (ToolTip = "Excludes files with these extensions from the scan")
 	)
 	TArray<FString> ExcludedExtensions;
 
@@ -83,7 +83,7 @@ class UPjcFileExcludeSettings : public UObject
 		EditAnywhere,
 		Config,
 		Category = "FileExcludeSettings",
-		meta = (ContentDir, ToolTip = "Exclude every file in specified folders from scanning")
+		meta = (ContentDir, ToolTip = "Excludes all files in these folders from the scan")
 	)
 	TArray<FDirectoryPath> ExcludedFolders;
 

@@ -35,7 +35,7 @@ void SPjcClassBar::Construct(const FArguments& InArgs) {
 		[
 			SNew(SCheckBox)
 			.Style(&PjcShim::GetCheckBoxStyle())
-			.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Click: every class on. Click again: every class off"))))
+			.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Click to turn on all classes. Click again to turn them off"))))
 			.IsChecked_Lambda([this]() {
 				if (bNone) return ECheckBoxState::Unchecked;
 
