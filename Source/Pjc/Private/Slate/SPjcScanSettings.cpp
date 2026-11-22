@@ -7,6 +7,8 @@
 #include "PjcConstants.h"
 #include "PjcFormat.h"
 #include "PjcShim.h"
+#include "PjcUnused.h"
+#include "Slate/PjcTabs.h"
 #include "PjcStyles.h"
 #include "PjcSubsystem.h"
 // Engine Headers
@@ -785,8 +787,14 @@ TSharedRef<SWidget> SPjcScanSettings::MakeListRows(
 	];
 	// clang-format on
 
-	for (int32 Index = 0; Index < Items.Num(); ++Index) {
+	// excluded assets can be hundreds: the first ones by name (the path in the tooltip), the rest in Assets, Used, Excluded,
+	// which searches, sorts and removes exclusions
+	const bool bAssets = Id == FName {TEXT("ExcludedAssets")};
+	constexpr int32 MaxAssetRows = 10;
+	const int32 NumRows = bAssets ? FMath::Min(Items.Num(), MaxAssetRows) : Items.Num();
+	for (int32 Index = 0; Index < NumRows; ++Index) {
 		const FString Item = Items[Index];
+		const FString Shown = bAssets ? FPackageName::GetShortName(FSoftObjectPath {Item}.GetLongPackageName()) : Item;
 		// clang-format off
 		// the row fills the panel: a left aligned row keeps the width it had first, so its text would not wrap again on resize
 		Rows->AddSlot().AutoHeight().HAlign(HAlign_Fill).Padding(FMargin {14.0f + Indent, 1.0f, 6.0f, 1.0f})
@@ -801,7 +809,7 @@ TSharedRef<SWidget> SPjcScanSettings::MakeListRows(
 				+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
 				[
 					SNew(STextBlock)
-					.Text(FText::FromString(Item))
+					.Text(FText::FromString(Shown))
 					.Font(FontMono())
 					.AutoWrapText(true)
 					.WrappingPolicy(ETextWrappingPolicy::AllowPerCharacterWrapping)
@@ -828,6 +836,18 @@ TSharedRef<SWidget> SPjcScanSettings::MakeListRows(
 					]
 				]
 			]
+		];
+		// clang-format on
+	}
+	if (Items.Num() > NumRows) {
+		const FString More = FString::Printf(TEXT("and %s more \u00B7 Show in Assets"), *PjcFormat::Count(Items.Num() - NumRows));
+		// clang-format off
+		Rows->AddSlot().AutoHeight().HAlign(HAlign_Left).Padding(FMargin {14.0f + Indent, 2.0f, 6.0f, 2.0f})
+		[
+			SNew(SHyperlink)
+			.Text(FText::FromString(More))
+			.ToolTip(PjcWidgets::MakeToolTip(TEXT("Show in Assets"), TEXT("Opens Assets, Used, Excluded. Search, sort and remove exclusions there.")))
+			.OnNavigate_Lambda([]() { PjcTabs::ShowSet(PjcTabs::GetMain(), EPjcAssetSet::Excluded); })
 		];
 		// clang-format on
 	}
