@@ -124,7 +124,7 @@ class SPjcTabUnused final : public SCompoundWidget
 	void SetMapView(const bool bMap);
 	void RefreshMap();
 	void RebuildBreadcrumb();
-	void OnMapAssetClicked(int32 Index);
+	void OnMapAssetClicked(int32 Index, bool bAdd);
 
 	// unused assets of the selected folder
 	using FAssetRowPtr = TSharedPtr<FPjcUnusedAssetRow>;

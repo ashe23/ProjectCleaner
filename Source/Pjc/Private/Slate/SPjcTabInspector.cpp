@@ -464,6 +464,7 @@ void SPjcTabInspector::SetFocus(const FName Package, const bool bRecord) {
 	TreeSearch.Reset();
 	ClassChips.Reset();
 	Expanded.Reset();
+	bAutoExpand = true;
 	Closed.Reset();
 	Pages.Reset();
 	RebuildAll();
@@ -1550,7 +1551,7 @@ TSharedRef<SWidget> SPjcTabInspector::MakeAnswer() {
 		const TSharedRef<SWrapBox> Review = Line();
 		const FString Text = Usage && FPjcScanResult::IsReviewReason(Usage->Reason) ? UPjcSubsystem::GetUsageReasonText(*Usage)
 																					: TEXT("Used only through assets to review");
-		Add(Review, PjcInspectorText(Text + TEXT(" \u00B7 Clean project keeps it: delete or keep it"), TEXT("ProjectCleaner.Color.Review")));
+		Add(Review, PjcInspectorText(Text + TEXT(" \u00B7 Clean project keeps it: delete or exclude it"), TEXT("ProjectCleaner.Color.Review")));
 		Fact(TEXT("REVIEW"), Review);
 	}
 
@@ -1717,6 +1718,7 @@ TSharedRef<SWidget> SPjcTabInspector::MakeRouteMenu() {
 	const auto Pick = [this](const int32 Root) {
 		RouteRoot = Root;
 		Expanded.Reset();
+		bAutoExpand = true;
 		Closed.Reset();
 		bUses = false;
 		RebuildAll();
@@ -1744,6 +1746,7 @@ TSharedRef<SWidget> SPjcTabInspector::MakeRouteMenu() {
 				PreferPackages.Add(RootPackage, Value);
 			RouteRoot = INDEX_NONE;
 			Expanded.Reset();
+			bAutoExpand = true;
 			Closed.Reset();
 			RebuildAll();
 		};
@@ -1891,6 +1894,7 @@ TSharedRef<SWidget> SPjcTabInspector::MakeTabs() {
 				Kinds ^= Bit;
 				WhatIfUser = INDEX_NONE;
 				Expanded.Reset();
+				bAutoExpand = true;
 				Closed.Reset();
 				RebuildAll();
 			}
@@ -1993,9 +1997,52 @@ void SPjcTabInspector::RebuildTree() {
 
 	if (TreeView.IsValid()) {
 		TreeView->RequestTreeRefresh();
+		if (bAutoExpand && !IsTreeSearch() && TreeItems.Num() > 0) {
+			bAutoExpand = false;
+			AutoExpand();
+		}
 		RestoreExpansion(TreeItems);
 	}
 	UpdateNeedRead();
+}
+
+void SPjcTabInspector::AutoExpand() {
+	// up to three levels on screen, a level only while the tree stays at 30 rows or fewer
+	constexpr int32 MaxRows = 30;
+	constexpr int32 MaxOpenLevels = 2;
+	int32 NumRows = TreeItems.Num();
+	TSet<int32> Opened;
+	TArray<FItemPtr> Level = TreeItems;
+	for (int32 Depth = 0; Depth < MaxOpenLevels && Level.Num() > 0; ++Depth) {
+		TArray<FItemPtr> Open;
+		TArray<FItemPtr> Next;
+		int32 NumAdded = 0;
+		for (const FItemPtr& Item : Level) {
+			if (ShouldExpand(Item)) {
+				// open already (a route): its rows are on screen
+				BuildChildren(Item);
+				NumRows += Item->Children.Num();
+				Next.Append(Item->Children);
+				continue;
+			}
+			if (Item->Kind != FPjcInspectorItem::EKind::Asset || Item->bCircular || Opened.Contains(Item->Node)) continue;
+
+			BuildChildren(Item);
+			if (Item->Children.Num() == 0) continue;
+
+			Open.Add(Item);
+			NumAdded += Item->Children.Num();
+			Next.Append(Item->Children);
+		}
+		if (Open.Num() == 0 || NumRows + NumAdded > MaxRows) break;
+
+		for (const FItemPtr& Item : Open) {
+			Expanded.Add(Item->Key);
+			Opened.Add(Item->Node);
+		}
+		NumRows += NumAdded;
+		Level = MoveTemp(Next);
+	}
 }
 
 void SPjcTabInspector::SortLinks(TArray<FPjcModelLink>& Links) const {

@@ -364,7 +364,7 @@ FReply SPjcSizeMap::OnMouseButtonUp(const FGeometry& MyGeometry, const FPointerE
 		OnFolderClicked.ExecuteIfBound(Cell.Folder->Path);
 	}
 	else if (Cell.Kind == ECellKind::Asset && Cell.bListed) {
-		OnAssetClicked.ExecuteIfBound(Cell.Asset);
+		OnAssetClicked.ExecuteIfBound(Cell.Asset, MouseEvent.IsControlDown() || MouseEvent.IsShiftDown());
 	}
 	return FReply::Handled();
 }
@@ -406,7 +406,7 @@ FText SPjcSizeMap::GetHoverText() const {
 	}
 
 	const FAssetData& Asset = Result->Assets[Cell.Asset];
-	const FString Listed = TEXT(" \u00B7 ") + PjcWidgets::GetSetWord(Set) + TEXT(", click to select it");
+	const FString Listed = TEXT(" \u00B7 ") + PjcWidgets::GetSetWord(Set) + TEXT(", click to select it, Ctrl+click to add it");
 	return FText::FromString(
 		FString::Printf(
 			TEXT("%s\n%s \u00B7 %s%s"),

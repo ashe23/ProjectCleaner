@@ -1235,7 +1235,7 @@ TSharedPtr<SWidget> SPjcTabUnused::OnFolderContextMenu() {
 		});
 	}
 	if (Set == EPjcAssetSet::Unused) {
-		const FString ExcludeTip = TEXT("Keeps every asset in the folder, saved to Config/DefaultEditor.ini");
+		const FString ExcludeTip = TEXT("Excludes every asset in the folder, saved to Config/DefaultEditor.ini");
 		PjcWidgets::AddMenuEntry(Menu, EPjcMenuIcon::Exclude, TEXT("Exclude folder"), ExcludeTip, [this, Folder]() {
 			ExcludeFolder(Folder->Path);
 		});
@@ -2147,7 +2147,7 @@ TSharedRef<SWidget> SPjcTabUnused::MakeToolbar() {
 						.ForegroundColor(FSlateColor::UseForeground())
 #endif
 						.ContentPadding(FMargin {8.0f, 1.0f, 10.0f, 1.0f})
-						.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Keeps the selection, its folder or its class from cleanup: adds exclusions"))))
+						.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Excludes the selection, its folder or its class: Clean project never deletes them"))))
 						.IsEnabled_Lambda(HasSelection)
 						.OnClicked_Lambda([ExcludeMenu]() {
 							if (ExcludeMenu->IsValid()) (*ExcludeMenu)->SetIsOpen(!(*ExcludeMenu)->IsOpen());
@@ -2501,13 +2501,13 @@ void SPjcTabUnused::AddExcludeEntries(FMenuBuilder& Menu) {
 	);
 	const FString FolderLabel = Verb + TEXT(" folder ") + FolderName;
 	PjcWidgets::AddMenuEntry(
-		Menu, EPjcMenuIcon::Exclude, FolderLabel, TEXT("Keeps every asset in the selected folder, saved to Config/DefaultEditor.ini"), [this]() {
+		Menu, EPjcMenuIcon::Exclude, FolderLabel, TEXT("Excludes every asset in the selected folder, saved to Config/DefaultEditor.ini"), [this]() {
 			ExcludeFolder(SelectedFolder);
 		}
 	);
 	const FString ClassLabel = Verb + TEXT(" class ") + ClassText;
 	PjcWidgets::AddMenuEntry(
-		Menu, EPjcMenuIcon::Exclude, ClassLabel, TEXT("Keeps every asset of the class, saved to Config/DefaultEditor.ini"), [this]() {
+		Menu, EPjcMenuIcon::Exclude, ClassLabel, TEXT("Excludes every asset of the class, saved to Config/DefaultEditor.ini"), [this]() {
 			ExcludeSelectedClasses();
 		}
 	);
@@ -2791,28 +2791,49 @@ void SPjcTabUnused::RebuildBreadcrumb() {
 	}
 }
 
-void SPjcTabUnused::OnMapAssetClicked(int32 Index) {
+void SPjcTabUnused::OnMapAssetClicked(int32 Index, bool bAdd) {
 	const FPjcScanResult& Result = UPjcSubsystem::GetScanResult();
 	if (!Result.Assets.IsValidIndex(Index)) return;
 
-	// assets of subfolders are listed only with Subfolders on
-	if (!bSubfolders) {
-		bSubfolders = true;
-		SaveViewState();
-		RefreshAssets();
-	}
-	ClassBar->Reset();
-	AssetSearch.Reset();
-	ApplyAssetFilter();
-
 	const FName Package = Result.Assets[Index].PackageName;
-	for (const auto& Row : ListRows) {
-		if (Row->Package == Package) {
-			GetView()->SetSelection(Row);
-			GetView()->RequestScrollIntoView(Row);
-			break;
+	const auto FindRow = [this, Package]() {
+		const FAssetRowPtr* Found = ListRows.FindByPredicate([Package](const FAssetRowPtr& Row) {
+			return Row->Package == Package;
+		});
+		return Found ? *Found : FAssetRowPtr {};
+	};
+	if (!FindRow().IsValid()) {
+		// assets of subfolders are listed only with Subfolders on; filters off, the selection stays
+		TArray<FName> Kept;
+		for (const auto& Row : GetView()->GetSelectedItems()) {
+			Kept.Add(Row->Package);
+		}
+		if (!bSubfolders) {
+			bSubfolders = true;
+			SaveViewState();
+			RefreshAssets();
+		}
+		ClassBar->Reset();
+		AssetSearch.Reset();
+		ApplyAssetFilter();
+		if (bAdd) {
+			for (const auto& Row : ListRows) {
+				if (Kept.Contains(Row->Package)) GetView()->SetItemSelection(Row, true, ESelectInfo::Direct);
+			}
 		}
 	}
+
+	const FAssetRowPtr Row = FindRow();
+	if (!Row.IsValid()) return;
+
+	if (bAdd) {
+		// Ctrl or Shift click: as Ctrl click in the list
+		GetView()->SetItemSelection(Row, !GetView()->IsItemSelected(Row), ESelectInfo::OnMouseClick);
+	}
+	else {
+		GetView()->SetSelection(Row);
+	}
+	GetView()->RequestScrollIntoView(Row);
 }
 
 void SPjcTabUnused::SelectAssets(const TArray<FName>& Packages) {

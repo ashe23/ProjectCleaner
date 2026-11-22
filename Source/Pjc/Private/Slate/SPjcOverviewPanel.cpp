@@ -318,7 +318,7 @@ TSharedRef<SWidget> SPjcOverviewPanel::MakeIssues() {
 	const TCHAR* EmptyTip = TEXT("Folders without assets or files.");
 	const TCHAR* DeleteFailedTip = TEXT("Unused assets the last cleanup could not delete: a live object or a saved asset still holds them.");
 	const auto ToIndex = [](const EPjcIssueCategory Value) { return static_cast<int32>(Value); };
-	const TCHAR* ReviewTip = TEXT("Assets the scan is not sure about: Clean project keeps them until you delete or keep them.");
+	const TCHAR* ReviewTip = TEXT("Assets the scan is not sure about: Clean project keeps them until you delete or exclude them.");
 	const TArray<FIssue> Issues {
 		{TEXT("Assets to review"), Overview.Review.Num, TEXT("to decide"), ReviewTip, ToIndex(EPjcIssueCategory::Review)},
 		{TEXT("Redirectors"), Result.Redirectors.Num(), TEXT("to fix"), RedirectorsTip, ToIndex(EPjcIssueCategory::Redirectors)},

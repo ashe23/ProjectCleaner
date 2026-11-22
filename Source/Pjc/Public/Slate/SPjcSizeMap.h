@@ -7,7 +7,8 @@
 #include "Widgets/SLeafWidget.h"
 
 DECLARE_DELEGATE_OneParam(FPjcOnMapFolder, const FString& /* Path */);
-DECLARE_DELEGATE_OneParam(FPjcOnMapAsset, int32 /* Index into FPjcScanResult::Assets */);
+// bAdd: Ctrl or Shift was down, so the asset is added to the selection or taken off it
+DECLARE_DELEGATE_TwoParams(FPjcOnMapAsset, int32 /* Index into FPjcScanResult::Assets */, bool /* bAdd */);
 
 /**
  * Size map of a folder: nested boxes as big as their content, down to the assets. Area Unused sizes folders by their

@@ -186,6 +186,7 @@ class SPjcTabInspector final : public SCompoundWidget
 	void SortLinks(TArray<FPjcModelLink>& Links) const;
 	bool ShouldExpand(const FItemPtr& Item) const;
 	void RestoreExpansion(const TArray<FItemPtr>& Items);
+	void AutoExpand();
 	void OnExpansionChanged(FItemPtr Item, bool bExpanded);
 	TSharedRef<ITableRow> OnGenerateTreeRow(FItemPtr Item, const TSharedRef<STableViewBase>& Table);
 	TSharedPtr<SWidget> OnTreeContextMenu();
@@ -248,6 +249,8 @@ class SPjcTabInspector final : public SCompoundWidget
 	TSet<FString> ClassChips;
 	// opened by the user, and rows open by default (route, categories) the user closed
 	TSet<FString> Expanded;
+	// a new asset or view opens the first levels of the tree once, while they stay short
+	bool bAutoExpand = true;
 	TSet<FString> Closed;
 	// the asset each open row stands for: an asset opens once, a second row of it points at the first
 	TMap<int32, TWeakPtr<FPjcInspectorItem>> OpenNodes;

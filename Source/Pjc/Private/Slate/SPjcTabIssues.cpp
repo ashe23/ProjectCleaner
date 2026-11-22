@@ -41,6 +41,7 @@ namespace
 {
 	// unity builds join files: names unique to this file
 	const FName PjcIssueColFirst {TEXT("First")};
+	const FName PjcIssueColCheck {TEXT("Check")};
 
 	FName PjcIssueStateColor(const EPjcRedirectorState State) {
 		switch (State) {
@@ -112,6 +113,23 @@ namespace
 
 		virtual TSharedRef<SWidget> GenerateWidgetForColumn(const FName& Column) override {
 			const FSlateColor Muted = FSlateColor::UseSubduedForeground();
+			if (Column == PjcIssueColCheck) {
+				// a click adds the row to the selection or takes it off, the others stay
+				// clang-format off
+				return SNew(SBox).HAlign(HAlign_Center).VAlign(VAlign_Center)
+					[
+						SNew(SCheckBox)
+						.Style(&PjcShim::GetCheckBoxStyle())
+						.IsChecked_Lambda([this]() { return IsSelected() ? ECheckBoxState::Checked : ECheckBoxState::Unchecked; })
+						.OnCheckStateChanged_Lambda([this](ECheckBoxState) {
+							const TSharedPtr<ITypedTableView<TSharedPtr<FPjcIssueRow>>> Table = OwnerTablePtr.Pin();
+							if (!Table.IsValid()) return;
+							Table->Private_SetItemSelection(Row, !IsSelected(), true);
+							Table->Private_SignalSelectionChanged(ESelectInfo::OnMouseClick);
+						})
+					];
+				// clang-format on
+			}
 			const int32 Index = Columns.IndexOfByKey(Column);
 
 			if (Index == 0) {
@@ -563,6 +581,36 @@ void SPjcTabIssues::RebuildList() {
 	TArray<FName> Ids;
 	TArray<bool> Mono;
 	TArray<bool> Right;
+	// select all, or none when all are selected
+	// clang-format off
+	Header->AddColumn(
+		SHeaderRow::Column(PjcIssueColCheck)
+		.FixedWidth(30.0f)
+		.HAlignHeader(HAlign_Center)
+		.HAlignCell(HAlign_Center)
+		[
+			SNew(SCheckBox)
+			.Style(&PjcShim::GetCheckBoxStyle())
+			.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Select all, or none"))))
+			.IsChecked_Lambda([this]() {
+				const int32 NumSelected = ListView.IsValid() ? ListView->GetNumItemsSelected() : 0;
+				if (NumSelected == 0) return ECheckBoxState::Unchecked;
+				return NumSelected >= Rows.Num() ? ECheckBoxState::Checked : ECheckBoxState::Undetermined;
+			})
+			.OnCheckStateChanged_Lambda([this](ECheckBoxState) {
+				if (!ListView.IsValid()) return;
+				const bool bAll = Rows.Num() > 0 && ListView->GetNumItemsSelected() >= Rows.Num();
+				ListView->ClearSelection();
+				if (!bAll) {
+					for (const auto& Row : Rows) {
+						ListView->Private_SetItemSelection(Row, true, false);
+					}
+				}
+				ListView->Private_SignalSelectionChanged(ESelectInfo::OnMouseClick);
+			})
+		]
+	);
+	// clang-format on
 	for (const auto& Column : Columns) {
 		SHeaderRow::FColumn::FArguments Arguments;
 		const int32 Index = Ids.Num();
@@ -684,7 +732,7 @@ TSharedRef<SWidget> SPjcTabIssues::MakeCategories() {
 	const FEntry Entries[] = {
 	  {		EPjcIssueCategory::Review,
 	   TEXT("Assets to review"),
-	   TEXT("Assets the scan is not sure about: Clean project keeps them until you delete or keep them"),
+	   TEXT("Assets the scan is not sure about: Clean project keeps them until you delete or exclude them"),
 	   TEXT("ProjectCleaner.Icon.Warning"),
 	   White							 },
 	  {EPjcIssueCategory::Redirectors,
@@ -930,7 +978,7 @@ TSharedRef<SWidget> SPjcTabIssues::MakeToolbar() {
 			]
 			+ SWrapBox::Slot().VAlign(VAlign_Center)
 			[
-				Button("ProjectCleaner.Menu.Exclude", TEXT("Keep"), TEXT("Keeps them for good: adds them to the exclusions (Config/DefaultEditor.ini), so they count as used"),
+				Button("ProjectCleaner.Menu.Exclude", TEXT("Exclude"), TEXT("Clean project never deletes them: adds them to the exclusions, saved to Config/DefaultEditor.ini"),
 					Is(EPjcIssueCategory::Review), HasSelection, [this]() { KeepAssets(GetSelected()); })
 			]
 			+ SWrapBox::Slot().VAlign(VAlign_Center)
@@ -987,7 +1035,7 @@ TSharedRef<SWidget> SPjcTabIssues::MakeToolbar() {
 						if (Selected.Num() == 1) RepairRedirector(Selected[0]);
 					})
 			]
-			// external files: keep them by file, extension or folder
+			// external files: exclude them by file, extension or folder
 			+ SWrapBox::Slot().VAlign(VAlign_Center)
 			[
 				SNew(SComboButton)
@@ -995,7 +1043,7 @@ TSharedRef<SWidget> SPjcTabIssues::MakeToolbar() {
 #if ENGINE_MAJOR_VERSION < 5
 				.ForegroundColor(FSlateColor::UseForeground())
 #endif
-				.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Keeps them: by file, extension or folder, saved to Config/DefaultEditor.ini"))))
+				.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Clean project never deletes them: excludes them by file, extension or folder, saved to Config/DefaultEditor.ini"))))
 				.Visibility_Lambda([this]() { return Category == EPjcIssueCategory::External && !bKept ? EVisibility::Visible : EVisibility::Collapsed; })
 				.IsEnabled_Lambda(HasSelection)
 				.OnGetMenuContent(this, &SPjcTabIssues::MakeExcludeMenu)
@@ -1052,7 +1100,7 @@ FText SPjcTabIssues::GetDescription() const {
 			return FText::FromString(TEXT("Asset files the engine cannot load. Deleting them is the only fix the plugin offers."));
 		case EPjcIssueCategory::Empty : return FText::FromString(TEXT("Folders without assets or files, often left after moving assets."));
 		case EPjcIssueCategory::Review :
-			return FText::FromString(TEXT("The scan is not sure about them. Clean project keeps them: delete them, or keep them for good."));
+			return FText::FromString(TEXT("The scan is not sure about them. Clean project keeps them: delete them, or exclude them."));
 	}
 	return FText::GetEmpty();
 }
@@ -1075,7 +1123,7 @@ FText SPjcTabIssues::GetSelectionText() const {
 	const TArray<FRowPtr> Selected = GetSelected();
 	if (Selected.Num() == 0) {
 		// what selecting is for
-		if (Category == EPjcIssueCategory::Review) return FText::FromString(TEXT("Select assets to delete, keep or inspect"));
+		if (Category == EPjcIssueCategory::Review) return FText::FromString(TEXT("Select assets to delete, exclude or inspect"));
 		if (Category == EPjcIssueCategory::Redirectors) return FText::FromString(TEXT("Select redirectors to fix"));
 		if (Category == EPjcIssueCategory::Empty) return FText::FromString(TEXT("Select folders to delete"));
 		if (Category == EPjcIssueCategory::External && bKept) return FText::FromString(TEXT("Never deleted"));
@@ -1679,9 +1727,11 @@ TSharedPtr<SWidget> SPjcTabIssues::OnContextMenu() {
 					DeleteAssets(GetSelected());
 				}
 			);
-			PjcWidgets::AddMenuEntry(Menu, EPjcMenuIcon::Exclude, TEXT("Keep"), TEXT("Keeps them for good: adds them to the exclusions"), [this]() {
-				KeepAssets(GetSelected());
-			});
+			PjcWidgets::AddMenuEntry(
+				Menu, EPjcMenuIcon::Exclude, TEXT("Exclude"), TEXT("Clean project never deletes them: adds them to the exclusions"), [this]() {
+					KeepAssets(GetSelected());
+				}
+			);
 			PjcWidgets::AddMenuEntry(
 				Menu, EPjcMenuIcon::Inspect, TEXT("Inspect"), TEXT("Shows why the scan is not sure"), Selected.Num() == 1, [this]() {
 					const TArray<FRowPtr> Picked = GetSelected();
@@ -1842,13 +1892,13 @@ void SPjcTabIssues::AddExcludeEntries(FMenuBuilder& Menu) {
 
 	const FString FilesLabel = FString::Printf(TEXT("Exclude files (%s)"), *PjcFormat::Count(Files.Num()));
 	const FString FilesWhat = FString::Printf(TEXT("%s file%s"), *PjcFormat::Count(Files.Num()), Files.Num() == 1 ? TEXT("") : TEXT("s"));
-	PjcWidgets::AddMenuEntry(Menu, EPjcMenuIcon::Exclude, FilesLabel, TEXT("Keeps the selected files"), [this, Files, FilesWhat]() {
+	PjcWidgets::AddMenuEntry(Menu, EPjcMenuIcon::Exclude, FilesLabel, TEXT("Excludes the selected files"), [this, Files, FilesWhat]() {
 		ExcludeFiles(Files, {}, {}, FilesWhat);
 	});
 	const FString DottedText = FString::Join(Dotted, TEXT(" "));
 	const FString ExtensionLabel = TEXT("Exclude extension ") + DottedText;
 	PjcWidgets::AddMenuEntry(
-		Menu, EPjcMenuIcon::Exclude, ExtensionLabel, TEXT("Keeps every file with the extension"), [this, ExtensionList, DottedText]() {
+		Menu, EPjcMenuIcon::Exclude, ExtensionLabel, TEXT("Excludes every file with the extension"), [this, ExtensionList, DottedText]() {
 			ExcludeFiles({}, ExtensionList, {}, TEXT("extension ") + DottedText);
 		}
 	);
@@ -1856,7 +1906,7 @@ void SPjcTabIssues::AddExcludeEntries(FMenuBuilder& Menu) {
 	const FString FirstFolder = FolderList.Num() == 1 ? FPaths::GetCleanFilename(FolderList[0]) : FString {};
 	const FString ExcludeLabel = FolderList.Num() == 1 ? TEXT("Exclude folder ") + FirstFolder : TEXT("Exclude ") + FoldersText;
 	const FString FolderWhat = FolderList.Num() == 1 ? FolderList[0] : FoldersText;
-	const TCHAR* FolderTip = TEXT("Keeps every file in the folder of the selection");
+	const TCHAR* FolderTip = TEXT("Excludes every file in the folder of the selection");
 	PjcWidgets::AddMenuEntry(Menu, EPjcMenuIcon::Exclude, ExcludeLabel, FolderTip, FolderList.Num() > 0, [this, FolderList, FolderWhat]() {
 		ExcludeFiles({}, {}, FolderList, FolderWhat);
 	});
