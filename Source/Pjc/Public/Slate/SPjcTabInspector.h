@@ -140,6 +140,8 @@ class SPjcTabInspector final : public SCompoundWidget
 		EditorOnly,
 		Review,
 		Unused,
+		// not a status: the assets the Inspector loaded to read where references are set
+		Loaded,
 	};
 
 	void OnScanFinished();
@@ -202,6 +204,8 @@ class SPjcTabInspector final : public SCompoundWidget
 	void UpdateNeedRead();
 	void ReadHolders(const TArray<FName>& Holders, const bool bAsk);
 	void UnloadRead();
+	// Lets go of these assets the Inspector loaded
+	void UnloadPackages(const TArray<FName>& Packages);
 
 	// what a row shows
 	FString GetWhereText(const FPjcInspectorItem& Item, FString& OutToolTip, FName& OutColor) const;
@@ -277,4 +281,6 @@ class SPjcTabInspector final : public SCompoundWidget
 	// until the next scan, also after the loaded assets are let go
 	TMap<FName, FPjcLocations> Locations;
 	TArray<FName> LoadedHere;
+	// rows checked in the Loaded filter, to unload
+	TSet<FName> UnloadPicked;
 };

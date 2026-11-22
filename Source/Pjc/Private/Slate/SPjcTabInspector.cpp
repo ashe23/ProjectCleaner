@@ -593,6 +593,86 @@ TSharedRef<SWidget> SPjcTabInspector::MakeFinder() {
 							]
 						]
 					]
+					// the Loaded filter: check boxes, Unload and Unload all
+					+ SVerticalBox::Slot().AutoHeight()
+					[
+						SNew(SBorder)
+						.Visibility_Lambda([this]() { return FinderStatus == EStatusFilter::Loaded ? EVisibility::Visible : EVisibility::Collapsed; })
+						.BorderImage(FCoreStyle::Get().GetBrush("WhiteBrush"))
+						.BorderBackgroundColor(PjcInspectorColor("ProjectCleaner.Color.Panel"))
+						.Padding(FMargin {8.0f, 4.0f})
+						[
+							SNew(SHorizontalBox)
+							+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 8.0f, 0.0f})
+							[
+								SNew(SCheckBox)
+								.Style(&PjcShim::GetCheckBoxStyle())
+								.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Select all, or none"))))
+								.IsChecked_Lambda([this]() {
+									if (UnloadPicked.Num() == 0) return ECheckBoxState::Unchecked;
+									return UnloadPicked.Num() >= FinderRows.Num() ? ECheckBoxState::Checked : ECheckBoxState::Undetermined;
+								})
+								.OnCheckStateChanged_Lambda([this](ECheckBoxState) {
+									const bool bAll = FinderRows.Num() > 0 && UnloadPicked.Num() >= FinderRows.Num();
+									UnloadPicked.Reset();
+									if (!bAll) {
+										for (const FRowPtr& Row : FinderRows) UnloadPicked.Add(Row->Package);
+									}
+								})
+							]
+							+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 6.0f, 0.0f})
+							[
+								SNew(SButton)
+								.ButtonStyle(&FPjcStyles::Get().GetWidgetStyle<FButtonStyle>("ProjectCleaner.Button.DangerQuiet"))
+#if ENGINE_MAJOR_VERSION < 5
+								.ForegroundColor(FSlateColor::UseForeground())
+#endif
+								.ContentPadding(FMargin {8.0f, 1.0f})
+								.IsEnabled_Lambda([this]() { return UnloadPicked.Num() > 0; })
+								.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Lets go of the selected assets. What was read about them stays until the next scan"))))
+								.OnClicked_Lambda([this]() {
+									UnloadPackages(UnloadPicked.Array());
+									return FReply::Handled();
+								})
+								[
+									SNew(STextBlock)
+									.Text_Lambda([this]() { return FText::FromString(UnloadPicked.Num() > 0 ? TEXT("Unload ") + PjcFormat::Count(UnloadPicked.Num()) : FString {TEXT("Unload")}); })
+									.Font(FPjcStyles::GetFont("Regular", 9))
+									.ColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.DangerText"))
+								]
+							]
+							+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+							[
+								SNew(SButton)
+#if ENGINE_MAJOR_VERSION < 5
+								.ButtonStyle(&PjcShim::GetButtonStyle427(false))
+								.ForegroundColor(FSlateColor::UseForeground())
+#endif
+								.ContentPadding(FMargin {8.0f, 1.0f})
+								.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Lets go of every asset the Inspector loaded"))))
+								.OnClicked_Lambda([this]() {
+									UnloadRead();
+									return FReply::Handled();
+								})
+								[
+									SNew(STextBlock).Text(FText::FromString(TEXT("Unload all"))).Font(FPjcStyles::GetFont("Regular", 9))
+								]
+							]
+							+ SHorizontalBox::Slot().FillWidth(1.0f).HAlign(HAlign_Right).VAlign(VAlign_Center)
+							[
+								SNew(STextBlock)
+								.Text_Lambda([this]() {
+									const FPjcScanResult& Result = UPjcSubsystem::GetScanResult();
+									int64 Size = 0;
+									for (const FName Package : LoadedHere) Size += Result.GetSize(Package);
+									return FText::FromString(PjcFormat::Size(Size));
+								})
+								.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Size on disk of the loaded assets"))))
+								.Font(PjcWidgets::GetFontMono(8))
+								.ColorAndOpacity(FSlateColor::UseSubduedForeground())
+							]
+						]
+					]
 					+ SVerticalBox::Slot().FillHeight(1.0f)
 					[
 						SAssignNew(FinderList, SListView<FRowPtr>)
@@ -653,6 +733,39 @@ void SPjcTabInspector::RebuildFinderPills(const TMap<EStatusFilter, int32>& Coun
 		];
 		// clang-format on
 	}
+
+	// Loaded is not a status: the assets the Inspector loaded to read where references are set, until unloaded or a new scan
+	const int32 NumLoaded = Counts.FindRef(EStatusFilter::Loaded);
+	// clang-format off
+	FinderPills->AddSlot().AutoHeight().Padding(FMargin {8.0f, 2.0f, 8.0f, 6.0f})
+	[
+		SNew(SBox).HeightOverride(1.0f)
+		[
+			SNew(SImage).Image(FCoreStyle::Get().GetBrush("WhiteBrush")).ColorAndOpacity(PjcInspectorColor("ProjectCleaner.Color.Line"))
+		]
+	];
+	FinderPills->AddSlot().AutoHeight().Padding(FMargin {6.0f, 0.0f, 6.0f, 4.0f})
+	[
+		SNew(SBox)
+		.IsEnabled(NumLoaded > 0)
+		[
+			PjcWidgets::MakeFilterPill(
+				TEXT("Loaded"),
+				TEXT("Assets the Inspector loaded to read where their references are set. They stay in memory until you unload them or scan again."),
+				TEXT("Click: list them, to unload them"),
+				PjcInspectorColor("ProjectCleaner.Color.Yellow"),
+				NumLoaded,
+				true,
+				[this]() { return FinderStatus == EStatusFilter::Loaded; },
+				[this]() { return FinderStatus != EStatusFilter::All && FinderStatus != EStatusFilter::Loaded; },
+				[this]() {
+					FinderStatus = EStatusFilter::Loaded;
+					ApplyFinderFilter();
+				}
+			)
+		]
+	];
+	// clang-format on
 }
 
 void SPjcTabInspector::RebuildFinder() {
@@ -683,6 +796,7 @@ void SPjcTabInspector::ApplyFinderFilter() {
 	FinderBase.Reset();
 	TMap<FName, FPjcClassBarItem> Classes;
 	TMap<EStatusFilter, int32> Counts;
+	if (FinderStatus == EStatusFilter::Loaded && LoadedHere.Num() == 0) FinderStatus = EStatusFilter::All;
 	for (const FRowPtr& Row : FinderAll) {
 		if (!FinderText.IsEmpty() && !Row->Name.Contains(FinderText) && !Row->Path.Contains(FinderText) && !Row->ClassLabel.Contains(FinderText))
 			continue;
@@ -691,9 +805,11 @@ void SPjcTabInspector::ApplyFinderFilter() {
 			: Row->Status == EPjcAssetStatus::EditorOnly					 ? EStatusFilter::EditorOnly
 			: Row->Status == EPjcAssetStatus::Review						 ? EStatusFilter::Review
 																			 : EStatusFilter::Unused;
+		const bool bLoaded = LoadedHere.Contains(Row->Package);
 		++Counts.FindOrAdd(EStatusFilter::All);
 		++Counts.FindOrAdd(RowFilter);
-		if (FinderStatus != EStatusFilter::All && FinderStatus != RowFilter) continue;
+		if (bLoaded) ++Counts.FindOrAdd(EStatusFilter::Loaded);
+		if (FinderStatus == EStatusFilter::Loaded ? !bLoaded : FinderStatus != EStatusFilter::All && FinderStatus != RowFilter) continue;
 
 		FinderBase.Add(Row);
 		FPjcClassBarItem& Item = Classes.FindOrAdd(Row->ClassName);
@@ -748,6 +864,17 @@ TSharedRef<ITableRow> SPjcTabInspector::OnGenerateFinderRow(FRowPtr Row, const T
 			SNew(SHorizontalBox)
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 6.0f, 0.0f})
 			[
+				SNew(SCheckBox)
+				.Style(&PjcShim::GetCheckBoxStyle())
+				.Visibility_Lambda([this]() { return FinderStatus == EStatusFilter::Loaded ? EVisibility::Visible : EVisibility::Collapsed; })
+				.IsChecked_Lambda([this, Row]() { return UnloadPicked.Contains(Row->Package) ? ECheckBoxState::Checked : ECheckBoxState::Unchecked; })
+				.OnCheckStateChanged_Lambda([this, Row](ECheckBoxState) {
+					if (UnloadPicked.Contains(Row->Package)) UnloadPicked.Remove(Row->Package);
+					else UnloadPicked.Add(Row->Package);
+				})
+			]
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 6.0f, 0.0f})
+			[
 				SNew(SBox).WidthOverride(3.0f).HeightOverride(16.0f)
 				[
 					SNew(SImage).Image(FCoreStyle::Get().GetBrush("WhiteBrush")).ColorAndOpacity(Row->IconColor)
@@ -766,6 +893,17 @@ TSharedRef<ITableRow> SPjcTabInspector::OnGenerateFinderRow(FRowPtr Row, const T
 				.Text(FText::FromString(Row->Name))
 				.HighlightText_Lambda([this]() { return FText::FromString(FinderText); })
 				.Clipping(EWidgetClipping::ClipToBounds)
+			]
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
+			[
+				SNew(STextBlock)
+				.Visibility_Lambda([this, Row]() {
+					return FinderStatus != EStatusFilter::Loaded && LoadedHere.Contains(Row->Package) ? EVisibility::Visible : EVisibility::Collapsed;
+				})
+				.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(TEXT("Loaded by the Inspector"))))
+				.Text(FText::FromString(TEXT("\u25CF")))
+				.Font(FPjcStyles::GetFont("Regular", 7))
+				.ColorAndOpacity(PjcInspectorColor("ProjectCleaner.Color.Yellow"))
 			]
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 0.0f, 0.0f})
 			[
@@ -3029,6 +3167,7 @@ void SPjcTabInspector::ReadHolders(const TArray<FName>& Holders, const bool bAsk
 			Locations.Add(Holder, MoveTemp(Read));
 		}
 	}
+	ApplyFinderFilter();
 	if (Failed > 0) {
 		UPjcSubsystem::ShowNotification(
 			FString::Printf(TEXT("%s could not be loaded"), *PjcInspectorPlural(Failed, TEXT("asset"))), SNotificationItem::CS_Fail, 4.0f
@@ -3038,9 +3177,17 @@ void SPjcTabInspector::ReadHolders(const TArray<FName>& Holders, const bool bAsk
 }
 
 void SPjcTabInspector::UnloadRead() {
-	const int32 Num = LoadedHere.Num();
-	const int32 Gone = FPjcLocationReader::Unload(LoadedHere);
-	LoadedHere.Reset();
+	UnloadPackages(TArray<FName> {LoadedHere});
+}
+
+void SPjcTabInspector::UnloadPackages(const TArray<FName>& Packages) {
+	const int32 Num = Packages.Num();
+	const int32 Gone = FPjcLocationReader::Unload(Packages);
+	LoadedHere.RemoveAll([&Packages](const FName Package) {
+		return Packages.Contains(Package);
+	});
+	for (const FName Package : Packages) UnloadPicked.Remove(Package);
+	ApplyFinderFilter();
 	if (Num > 0) {
 		const FString Text = Gone == Num
 			? FString::Printf(TEXT("Unloaded %s \u00B7 what was read stays until the next scan"), *PjcInspectorPlural(Num, TEXT("asset")))
