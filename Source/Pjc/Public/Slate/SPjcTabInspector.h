@@ -256,8 +256,6 @@ class SPjcTabInspector final : public SCompoundWidget
 	// a new asset or view opens the first levels of the tree once, while they stay short
 	bool bAutoExpand = true;
 	TSet<FString> Closed;
-	// the asset each open row stands for: an asset opens once, a second row of it points at the first
-	TMap<int32, TWeakPtr<FPjcInspectorItem>> OpenNodes;
 	TMap<FString, int32> Pages;
 
 	TArray<FRowPtr> FinderAll;

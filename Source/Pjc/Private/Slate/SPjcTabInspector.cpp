@@ -205,6 +205,13 @@ namespace
 	}
 
 	// Button of the toolbar: an icon of the plugin set, then the label
+	// class color of an asset icon in the tree, a bit lighter so dark class colors stay readable on the dark rows
+	FLinearColor PjcInspectorIconColor(const FLinearColor& ClassColor) {
+		FLinearColor Color = ClassColor + (FLinearColor::White - ClassColor) * 0.25f;
+		Color.A = 1.0f;
+		return Color;
+	}
+
 	TSharedRef<SWidget> PjcInspectorToolButton(
 		const FName Brush,
 		const FString& Label,
@@ -442,7 +449,6 @@ bool SPjcTabInspector::EnsureModel() {
 	// what was read belongs to the scan it was read in; what was loaded for it stays to be unloaded
 	Cache.Reset();
 	Locations.Reset();
-	OpenNodes.Reset();
 	Model.Build(Result, &Cache);
 	// the model holds every reference now: the registry answers are not needed again
 	Cache.Reset();
@@ -2088,7 +2094,6 @@ TSharedRef<SWidget> SPjcTabInspector::MakeTabs() {
 
 void SPjcTabInspector::RebuildTree() {
 	TreeItems.Reset();
-	OpenNodes.Reset();
 	if (TreeView.IsValid()) TreeView->ClearExpandedItems();
 
 	SearchResult = FPjcInspectorModel::FSearch {};
@@ -2500,25 +2505,7 @@ void SPjcTabInspector::RestoreExpansion(const TArray<FItemPtr>& Items) {
 void SPjcTabInspector::OnExpansionChanged(FItemPtr Item, bool bExpanded) {
 	if (!Item.IsValid()) return;
 
-	// an asset opens once: a second row of it points at the first
-	if (bExpanded && Item->Kind == FPjcInspectorItem::EKind::Asset) {
-		const TWeakPtr<FPjcInspectorItem>* Open = OpenNodes.Find(Item->Node);
-		const FItemPtr Other = Open ? Open->Pin() : nullptr;
-		if (Other.IsValid() && Other != Item && TreeView->IsItemExpanded(Other)) {
-			TreeView->SetItemExpansion(Item, false);
-			TreeView->SetSelection(Other);
-			TreeView->RequestScrollIntoView(Other);
-			UPjcSubsystem::ShowNotification(
-				PjcInspectorShortName(Model.Packages[Item->Node]) + TEXT(" is already open above"), SNotificationItem::CS_None, 2.0f
-			);
-			return;
-		}
-		OpenNodes.Add(Item->Node, Item);
-	}
-	else if (!bExpanded && Item->Kind == FPjcInspectorItem::EKind::Asset) {
-		const TWeakPtr<FPjcInspectorItem>* Open = OpenNodes.Find(Item->Node);
-		if (Open && Open->Pin() == Item) OpenNodes.Remove(Item->Node);
-	}
+	// every row opens where it is, also when the same asset is open in another row
 
 	if (!IsTreeSearch()) {
 		if (Item->bRoute || Item->Kind == FPjcInspectorItem::EKind::Category) {
@@ -2711,7 +2698,7 @@ TSharedRef<SWidget> SPjcTabInspector::MakeCell(const FItemPtr& Item, const FName
 			[
 				SNew(SBox).WidthOverride(16.0f).HeightOverride(16.0f)
 				[
-					SNew(SImage).Image(Type.Icon)
+					SNew(SImage).Image(Type.Icon).ColorAndOpacity(PjcInspectorIconColor(Type.Color))
 				]
 			];
 			Box->AddSlot().AutoWidth().VAlign(VAlign_Center)
@@ -2725,6 +2712,9 @@ TSharedRef<SWidget> SPjcTabInspector::MakeCell(const FItemPtr& Item, const FName
 			return Box;
 		}
 		if (Item->Kind == FPjcInspectorItem::EKind::Group) {
+			const FLinearColor IconColor = !Item->bFolder && Model.Assets.IsValidIndex(Item->IconNode)
+				? PjcInspectorIconColor(PjcWidgets::GetAssetType(Model.Assets[Item->IconNode]).Color)
+				: FLinearColor::White;
 			const FSlateBrush* Icon = Item->bFolder			? FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.Folder")
 				: Item->bStatusGroup						? nullptr
 				: Model.Assets.IsValidIndex(Item->IconNode) ? PjcWidgets::GetAssetType(Model.Assets[Item->IconNode]).Icon
@@ -2736,7 +2726,7 @@ TSharedRef<SWidget> SPjcTabInspector::MakeCell(const FItemPtr& Item, const FName
 				[
 					Item->bStatusGroup
 						? PjcWidgets::MakeSwatch(PjcInspectorStatusColor(Item->GroupStatus, true), 7.0f)
-						: StaticCastSharedRef<SWidget>(SNew(SImage).Image(Icon).ColorAndOpacity(Item->bFolder ? PjcInspectorColor("ProjectCleaner.Color.FolderTint") : FLinearColor::White))
+						: StaticCastSharedRef<SWidget>(SNew(SImage).Image(Icon).ColorAndOpacity(Item->bFolder ? PjcInspectorColor("ProjectCleaner.Color.FolderTint") : IconColor))
 				]
 			];
 			Box->AddSlot().AutoWidth().VAlign(VAlign_Center)
@@ -2948,6 +2938,28 @@ TSharedPtr<SWidget> SPjcTabInspector::OnTreeContextMenu() {
 			TEXT("Left and Right arrow keys also open and close rows"),
 			[this, Row, bOpen]() {
 				TreeView->SetItemExpansion(Row, !bOpen);
+			}
+		);
+		// the whole tree below the row, breadth first, up to a row count that stays readable
+		PjcWidgets::AddMenuEntry(
+			Menu, EPjcMenuIcon::Expand, TEXT("Expand all below"), TEXT("Opens every row below it, up to 500 rows"), [this, Row]() {
+				constexpr int32 MaxRows = 500;
+				int32 NumRows = 0;
+				TArray<FItemPtr> Queue {Row};
+				for (int32 Index = 0; Index < Queue.Num() && NumRows < MaxRows; ++Index) {
+					const FItemPtr Current = Queue[Index];
+					if (Current->bCircular) continue;
+
+					BuildChildren(Current);
+					if (Current->Children.Num() == 0) continue;
+
+					TreeView->SetItemExpansion(Current, true);
+					NumRows += Current->Children.Num();
+					Queue.Append(Current->Children);
+				}
+				if (NumRows >= MaxRows) {
+					UPjcSubsystem::ShowNotification(TEXT("Opened the first 500 rows. Open more rows one by one"), SNotificationItem::CS_None, 3.0f);
+				}
 			}
 		);
 	};
