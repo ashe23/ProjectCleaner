@@ -148,6 +148,8 @@ TSharedRef<FSlateStyleSet> FPjcStyles::Create() {
 	Style->Set("ProjectCleaner.Tab.Issues", new FSlateImageBrush {Icon(TEXT("Issues"), 16.0f, ColorWarning)});
 	// the warning sign of the Issues card and of the busy message
 	Style->Set("ProjectCleaner.Icon.Warning", new FSlateImageBrush {Icon(TEXT("Issues"), 32.0f, ColorWarning)});
+	// marks a row the last delete could not remove
+	Style->Set("ProjectCleaner.Icon.DeleteFailed", new FSlateImageBrush {Icon(TEXT("Issues"), 12.0f, Color(TEXT("#FE6D73")))});
 	// white, drawn in the color of where they sit
 	// clang-format off
 	const TCHAR* WhiteIcons[] = {

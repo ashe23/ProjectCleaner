@@ -3656,7 +3656,7 @@ void UPjcSubsystem::GetRevisionControlBlocks(const TArray<FName>& Packages, TMap
 			OutBlocked.Add(*Package, Who.IsEmpty() ? TEXT("checked out by someone else") : TEXT("checked out by ") + Who);
 		}
 		else if (!State->IsCurrent()) {
-			OutBlocked.Add(*Package, TEXT("not at the latest revision, get the latest first"));
+			OutBlocked.Add(*Package, TEXT("not at the latest revision"));
 		}
 		else {
 			OutBlocked.Add(*Package, TEXT("revision control does not allow the delete"));

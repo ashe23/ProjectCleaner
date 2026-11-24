@@ -196,7 +196,7 @@ namespace PjcWidgets
 	}
 
 	TSharedRef<SWidget> MakeStats(const TArray<FStat>& Stats, const float LinesFill) {
-		if (Stats.Num() < 4) return SNullWidget::NullWidget;
+		if (Stats.Num() < 3) return SNullWidget::NullWidget;
 
 		const FSlateBrush* White = FCoreStyle::Get().GetBrush("WhiteBrush");
 		const FLinearColor Line = GetColor("ProjectCleaner.Color.Line");
@@ -273,40 +273,36 @@ namespace PjcWidgets
 			// clang-format on
 		};
 
+		// every stat but the last two is large
+		const TSharedRef<SHorizontalBox> Row = SNew(SHorizontalBox);
 		// clang-format off
+		for (int32 Index = 0; Index < Stats.Num() - 2; ++Index) {
+			Row->AddSlot().FillWidth(1.0f)
+			[
+				Large(Stats[Index])
+			];
+			Row->AddSlot().AutoWidth()
+			[
+				Separator()
+			];
+		}
+		Row->AddSlot().FillWidth(LinesFill).VAlign(VAlign_Center).Padding(FMargin {14.0f, 8.0f})
+		[
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot().AutoHeight()
+			[
+				Small(Stats[Stats.Num() - 2])
+			]
+			+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {0.0f, 5.0f, 0.0f, 0.0f})
+			[
+				Small(Stats.Last())
+			]
+		];
 		return SNew(SBorder).BorderImage(White).BorderBackgroundColor(Line).Padding(1.0f)
 			[
 				SNew(SBorder).BorderImage(White).BorderBackgroundColor(GetColor("ProjectCleaner.Color.Recess")).Padding(0.0f)
 				[
-					SNew(SHorizontalBox)
-					+ SHorizontalBox::Slot().FillWidth(1.0f)
-					[
-						Large(Stats[0])
-					]
-					+ SHorizontalBox::Slot().AutoWidth()
-					[
-						Separator()
-					]
-					+ SHorizontalBox::Slot().FillWidth(1.0f)
-					[
-						Large(Stats[1])
-					]
-					+ SHorizontalBox::Slot().AutoWidth()
-					[
-						Separator()
-					]
-					+ SHorizontalBox::Slot().FillWidth(LinesFill).VAlign(VAlign_Center).Padding(FMargin {14.0f, 8.0f})
-					[
-						SNew(SVerticalBox)
-						+ SVerticalBox::Slot().AutoHeight()
-						[
-							Small(Stats[2])
-						]
-						+ SVerticalBox::Slot().AutoHeight().Padding(FMargin {0.0f, 5.0f, 0.0f, 0.0f})
-						[
-							Small(Stats[3])
-						]
-					]
+					Row
 				]
 			];
 		// clang-format on

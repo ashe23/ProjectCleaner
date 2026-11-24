@@ -445,28 +445,6 @@ namespace
 					SNew(STextBlock).Text(FText::FromString(Row->Name)).HighlightText(HighlightText)
 				];
 				// clang-format on
-				if (!Row->Holder.IsEmpty()) {
-					// clang-format off
-					NameBox->AddSlot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 4.0f, 0.0f})
-					[
-						SNew(SBorder)
-						.BorderImage(FCoreStyle::Get().GetBrush("WhiteBrush"))
-						.BorderBackgroundColor(PjcWidgets::GetColor("ProjectCleaner.Color.DangerQuiet"))
-						.Padding(FMargin {4.0f, 0.0f})
-						.ToolTip(PjcWidgets::MakeToolTip(
-							FText::FromString(
-								FString::Printf(TEXT("Delete failed last time: %s"), *Row->Holder)
-							)
-						))
-						[
-							SNew(STextBlock)
-							.Text(FText::FromString(TEXT("DELETE FAILED")))
-							.Font(PjcWidgets::GetFontMono(7))
-							.ColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.DangerText"))
-						]
-					];
-					// clang-format on
-				}
 				if (Row->bLabel) {
 					// clang-format off
 					NameBox->AddSlot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {6.0f, 0.0f, 4.0f, 0.0f})
@@ -565,7 +543,18 @@ namespace
 					.Padding(FMargin {0.0f, 0.0f, 8.0f, 0.0f})
 					.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(Row->ReasonTip)))
 					[
-						SNew(STextBlock).Text(FText::FromString(Row->Reason)).ColorAndOpacity(ReasonColor)
+						SNew(SHorizontalBox)
+						// a failed delete: the mark, then why it failed
+						+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 5.0f, 0.0f})
+						[
+							SNew(SImage)
+							.Image(FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.DeleteFailed"))
+							.Visibility(Row->Holder.IsEmpty() ? EVisibility::Collapsed : EVisibility::Visible)
+						]
+						+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
+						[
+							SNew(STextBlock).Text(FText::FromString(Row->Reason)).ColorAndOpacity(ReasonColor)
+						]
 					];
 				// clang-format on
 			}
@@ -1495,6 +1484,13 @@ void SPjcTabUnused::RefreshAssets() {
 			Row->Group = GroupSizes.Add(Asset.PackageName, With.Num());
 		}
 		MakeRowReason(Result, *Row);
+		if (!Row->Holder.IsEmpty()) {
+			// a failed delete: the column tells why it failed, why it is unused moves to the tooltip
+			const bool bBlocked = UPjcSubsystem::GetLastCleanupBlocked().Contains(Asset.PackageName);
+			const TCHAR* Hint = bBlocked ? TEXT("\nGet the latest or wait for the checkout to end, then clean again.") : TEXT("");
+			Row->ReasonTip = TEXT("Delete failed: ") + Row->Holder + Hint + TEXT("\nUnused: ") + Row->Reason + TEXT(". ") + Row->ReasonTip;
+			Row->Reason = Row->Holder.Left(1).ToUpper() + Row->Holder.Mid(1);
+		}
 		FolderRows.Add(Row);
 	}
 
@@ -2156,9 +2152,18 @@ TSharedRef<SWidget> SPjcTabUnused::MakeToolbar() {
 					.ForegroundColor(FSlateColor::UseForeground())
 #endif
 					.ContentPadding(FMargin {8.0f, 1.0f, 10.0f, 1.0f})
-					.ToolTip(PjcWidgets::MakeToolTip(TEXT("Force delete"), PjcActions::GetForceDeleteWarning()))
+					.ToolTip(PjcWidgets::MakeToolTip(
+						TEXT("Force delete"), PjcActions::GetForceDeleteWarning(), TEXT("Not for assets that revision control keeps.")
+					))
 					.Visibility_Lambda([this]() { return Set == EPjcAssetSet::Unused && bHeldOnly ? EVisibility::Visible : EVisibility::Collapsed; })
-					.IsEnabled_Lambda(HasSelection)
+					.IsEnabled_Lambda([this]() {
+						// something in the selection that force delete can remove
+						const TSet<FName>& Blocked = UPjcSubsystem::GetLastCleanupBlocked();
+						for (const FName Package : GetSelectedPackages()) {
+							if (UPjcSubsystem::GetLastCleanupKept().Contains(Package) && !Blocked.Contains(Package)) return true;
+						}
+						return false;
+					})
 					.OnClicked_Lambda([this]() {
 						TArray<FName> Held;
 						for (const FName Package : GetSelectedPackages()) {
@@ -2731,7 +2736,7 @@ FText SPjcTabUnused::GetSelectionText() const {
 		}
 	}
 	if (Num == 1 && One.IsValid()) {
-		const FString Held = One->Holder.IsEmpty() ? FString {} : TEXT(" \u00B7 held by ") + One->Holder;
+		const FString Held = One->Holder.IsEmpty() ? FString {} : TEXT(" \u00B7 delete failed: ") + One->Holder;
 		return FText::FromString(FString::Printf(TEXT("%s \u00B7 %s \u00B7 %s%s"), *One->Name, *One->ClassLabel, *PjcFormat::Size(Size), *Held));
 	}
 	return FText::FromString(FString::Printf(TEXT("%s selected \u00B7 %s"), *PjcFormat::Count(Num), *PjcFormat::Size(Size)));

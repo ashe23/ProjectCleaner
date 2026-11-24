@@ -49,7 +49,11 @@ class SPjcCleanWindow final : public SCompoundWidget
 	void Construct(const FArguments& InArgs);
 
 	// Shows the window as a modal window over the active one
-	static void Open();
+	// @param bLastResult opens on the result of the last Clean project of this editor session, when there is one
+	static void Open(const bool bLastResult = false);
+	// Numbers of the last Clean project of this editor session
+	// @return false when there was none
+	static bool GetLastResult(int32& OutDeleted, int32& OutNotDeleted);
 
   private:
 
@@ -98,8 +102,6 @@ class SPjcCleanWindow final : public SCompoundWidget
 	bool bBackup = false;
 	// a modal window blocks the editor, so the log opens after it closes
 	bool bOpenLogOnClose = false;
-	// off each time the window opens
-	bool bForceDelete = false;
 
 	// run
 	TArray<FString> Steps;

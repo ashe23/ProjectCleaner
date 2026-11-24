@@ -317,7 +317,7 @@ TSharedRef<SWidget> SPjcOverviewPanel::MakeIssues() {
 	const TCHAR* CorruptedTip = TEXT("Asset files the engine cannot read.");
 	const TCHAR* EmptyTip = TEXT("Folders without assets or files.");
 	const TCHAR* DeleteFailedTip = TEXT("Unused assets that the last cleanup could not delete. ")
-		TEXT("A live object or a saved asset still holds them.");
+		TEXT("A live object, a saved asset or revision control keeps them.");
 	const auto ToIndex = [](const EPjcIssueCategory Value) { return static_cast<int32>(Value); };
 	const TCHAR* ReviewTip = TEXT("Scan is not sure about these assets. Clean project keeps them until you delete or exclude them.");
 	const TArray<FIssue> Issues {
@@ -326,7 +326,7 @@ TSharedRef<SWidget> SPjcOverviewPanel::MakeIssues() {
 		{TEXT("External files"), Result.FilesExternal.Num(), ExternalWhat, ExternalTip, ToIndex(EPjcIssueCategory::External)},
 		{TEXT("Corrupted files"), Result.FilesCorrupted.Num(), TEXT("to delete"), CorruptedTip, ToIndex(EPjcIssueCategory::Corrupted)},
 		{TEXT("Empty folders"), Result.FoldersEmpty.Num(), TEXT("to delete"), EmptyTip, ToIndex(EPjcIssueCategory::Empty)},
-		{TEXT("Delete failed"), UPjcSubsystem::GetLastCleanupKept().Num(), TEXT("held in memory"), DeleteFailedTip, -1},
+		{TEXT("Delete failed"), UPjcSubsystem::GetLastCleanupKept().Num(), TEXT("not deleted"), DeleteFailedTip, -1},
 	};
 	// clang-format on
 

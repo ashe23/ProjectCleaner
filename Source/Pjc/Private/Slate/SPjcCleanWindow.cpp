@@ -54,6 +54,9 @@ namespace
 		}
 		return false;
 	}
+
+	// result of the last Clean project in this editor session
+	TOptional<FPjcCleanResult> PjcLastCleanResult;
 }	// namespace
 
 void SPjcCleanWindow::Construct(const FArguments& InArgs) {
@@ -76,7 +79,7 @@ void SPjcCleanWindow::Construct(const FArguments& InArgs) {
 	Rebuild();
 }
 
-void SPjcCleanWindow::Open() {
+void SPjcCleanWindow::Open(const bool bLastResult) {
 	// clang-format off
 	const TSharedRef<SWindow> CleanWindow = SNew(SWindow)
 		.Title(FText::FromString(TEXT("Clean project")))
@@ -85,7 +88,9 @@ void SPjcCleanWindow::Open() {
 		.SupportsMinimize(false)
 		.SizingRule(ESizingRule::UserSized);
 	// clang-format on
-	const TSharedRef<SPjcCleanWindow> Content = SNew(SPjcCleanWindow).Window(CleanWindow);
+	const bool bResult = bLastResult && PjcLastCleanResult.IsSet();
+	const TSharedRef<SPjcCleanWindow> Content
+		= bResult ? SNew(SPjcCleanWindow).Window(CleanWindow).Result(PjcLastCleanResult) : SNew(SPjcCleanWindow).Window(CleanWindow);
 	CleanWindow->SetContent(Content);
 
 	// the window stays while assets are deleted
@@ -106,7 +111,16 @@ void SPjcCleanWindow::Open() {
 	}
 }
 
+bool SPjcCleanWindow::GetLastResult(int32& OutDeleted, int32& OutNotDeleted) {
+	if (!PjcLastCleanResult.IsSet()) return false;
+
+	OutDeleted = PjcLastCleanResult->NumDeleted;
+	OutNotDeleted = PjcLastCleanResult->NotDeleted.Num() + PjcLastCleanResult->Blocked.Num();
+	return true;
+}
+
 void SPjcCleanWindow::Rebuild() {
+	if (Phase == EPhase::Done) PjcLastCleanResult = CleanResult;
 	const TSharedRef<SWidget> Content = Phase == EPhase::Confirm ? MakeConfirm() : (Phase == EPhase::Run ? MakeRun() : MakeDone());
 	Body->SetContent(Content);
 }
@@ -121,6 +135,8 @@ TSharedRef<SWidget> SPjcCleanWindow::MakeNumbers(const TArray<TTuple<FString, FS
 	}
 	// what the delete removes, in red
 	if (Stats.Num() > 0) Stats[0].Color = TEXT("ProjectCleaner.Color.Red");
+	// the result: what was not deleted, in yellow
+	if (Stats.Num() > 4) Stats[1].Color = TEXT("ProjectCleaner.Color.Yellow");
 	return PjcWidgets::MakeStats(Stats);
 }
 
@@ -404,20 +420,8 @@ TSharedRef<SWidget> SPjcCleanWindow::MakeConfirm() {
 	else {
 		AddCheck(MakeCheck(ECheck::Ok, TEXT("Asset Registry ready"), TEXT("All assets were found before scan"), NoExtra));
 	}
-	{
-		// clang-format off
-		const TSharedRef<SWidget> Force = SNew(SCheckBox)
-			.Style(&PjcShim::GetCheckBoxStyle())
-			.ToolTip(PjcWidgets::MakeToolTip(TEXT("Force delete"), PjcActions::GetForceDeleteWarning()))
-			.IsChecked_Lambda([this]() { return bForceDelete ? ECheckBoxState::Checked : ECheckBoxState::Unchecked; })
-			.OnCheckStateChanged_Lambda([this](const ECheckBoxState State) { bForceDelete = State == ECheckBoxState::Checked; })
-			[
-				SNew(STextBlock).Text(FText::FromString(TEXT("Force delete")))
-			];
-		// clang-format on
-		const TCHAR* ForceDetail = TEXT("Something in memory holds them \u00B7 the engine's Force Delete \u00B7 cannot be undone");
-		AddCheck(MakeCheck(ECheck::Info, TEXT("Assets that fail to delete"), ForceDetail, Force));
-	}
+	const TCHAR* FailDetail = TEXT("They are kept and listed at the end, with the reason and what to do");
+	AddCheck(MakeCheck(ECheck::Info, TEXT("Assets that fail to delete"), FailDetail, NoExtra));
 	const TCHAR* EditorsDetail = TEXT("All open asset editors close before the delete");
 	AddCheck(MakeCheck(ECheck::Info, TEXT("Asset editors close first"), EditorsDetail, NoExtra));
 	// redirectors never block Clean: the scan follows them, so nothing used is deleted through one
@@ -705,14 +709,6 @@ void SPjcCleanWindow::Run() {
 	CleanResult.bStopped = Progress.bStopped;
 	CleanResult.NumForced = 0;
 	CleanResult.NumInMemory = 0;
-	if (bForceDelete && !CleanResult.bStopped) {
-		TArray<FName> Held;
-		UPjcSubsystem::GetLastCleanupKept().GetKeys(Held);
-		if (Held.Num() > 0) {
-			SetStep(1, FString::Printf(TEXT("Force deleting %s"), *PjcFormat::Count(Held.Num())));
-			CleanResult.NumForced = PjcActions::ForceDelete(Held, false, false, &CleanResult.NumInMemory);
-		}
-	}
 	Percent = 0.85f;
 
 	TArray<FName> Deleted;
@@ -762,6 +758,11 @@ void SPjcCleanWindow::Run() {
 TSharedRef<SWidget> SPjcCleanWindow::MakeDone() {
 	const TArray<TTuple<FString, FString, FString>> Numbers {
 	  MakeTuple(PjcFormat::Count(CleanResult.NumDeleted), FString {TEXT("Assets deleted")}, FString {TEXT("Unused assets removed from disk")}),
+	  MakeTuple(
+		  PjcFormat::Count(CleanResult.NotDeleted.Num() + CleanResult.Blocked.Num()),
+		  FString {TEXT("Not deleted")},
+		  FString {TEXT("Unused assets the delete could not remove. The notes below tell why")}
+	  ),
 	  MakeTuple(PjcFormat::Size(CleanResult.SizeFreed), FString {TEXT("Space freed")}, FString {TEXT("Size on disk of deleted assets")}),
 	  MakeTuple(PjcFormat::Count(CleanResult.NumFoldersRemoved), FString {TEXT("Folders removed")}, FString {TEXT("Empty folders deleted")}),
 	  MakeTuple(
@@ -809,7 +810,8 @@ TSharedRef<SWidget> SPjcCleanWindow::MakeDone() {
 			= FString::Join(TArray<FString> {CleanResult.NotDeleted.GetData(), FMath::Min(CleanResult.NotDeleted.Num(), 8)}, TEXT("\n"));
 		const FString Held
 			= FString::Printf(TEXT("%s failed to delete. Each line shows what still holds it. "), *PjcFormat::Count(CleanResult.NotDeleted.Num()));
-		const TCHAR* Next = TEXT("They stay in Assets. Force delete removes them anyway. Use it only when you are sure nothing uses them.\n");
+		const TCHAR* Next
+			= TEXT("Close what uses them and clean again, or use Force delete: it clears the references in memory and cannot be undone.\n");
 		AddNote(Held + Next + Lines, true);
 	}
 	if (CleanResult.Broken.Num() > 0) {

@@ -109,6 +109,57 @@ void SPjcScanBar::Construct(const FArguments& InArgs) {
 					.ColorAndOpacity(FSlateColor::UseSubduedForeground())
 				]
 			]
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {10.0f, 0.0f, 0.0f, 0.0f})
+			[
+				// the result of the last Clean project, its window opens again
+				SNew(SButton)
+				.ButtonStyle(&PjcShim::GetStyle().GetWidgetStyle<FButtonStyle>(TEXT("NoBorder")))
+				.ContentPadding(FMargin {4.0f, 2.0f})
+				.Cursor(EMouseCursor::Hand)
+				.ToolTip(PjcWidgets::MakeToolTip(
+					TEXT("Last cleanup"), TEXT("Opens the result of the last cleanup again. Kept until the editor restarts.")
+				))
+				.Visibility_Lambda([]() {
+					int32 Deleted = 0;
+					int32 NotDeleted = 0;
+					return SPjcCleanWindow::GetLastResult(Deleted, NotDeleted) ? EVisibility::Visible : EVisibility::Collapsed;
+				})
+				.OnClicked_Lambda([]() {
+					SPjcCleanWindow::Open(true);
+					return FReply::Handled();
+				})
+				[
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot().AutoWidth()
+					[
+						SNew(STextBlock)
+						.Text_Lambda([]() {
+							int32 Deleted = 0;
+							int32 NotDeleted = 0;
+							SPjcCleanWindow::GetLastResult(Deleted, NotDeleted);
+							return FText::FromString(TEXT("Last cleanup: ") + PjcFormat::Count(Deleted) + TEXT(" deleted"));
+						})
+						.ColorAndOpacity(FSlateColor::UseSubduedForeground())
+					]
+					+ SHorizontalBox::Slot().AutoWidth()
+					[
+						SNew(STextBlock)
+						.Visibility_Lambda([]() {
+							int32 Deleted = 0;
+							int32 NotDeleted = 0;
+							SPjcCleanWindow::GetLastResult(Deleted, NotDeleted);
+							return NotDeleted > 0 ? EVisibility::Visible : EVisibility::Collapsed;
+						})
+						.Text_Lambda([]() {
+							int32 Deleted = 0;
+							int32 NotDeleted = 0;
+							SPjcCleanWindow::GetLastResult(Deleted, NotDeleted);
+							return FText::FromString(TEXT(" \u00B7 ") + PjcFormat::Count(NotDeleted) + TEXT(" not deleted"));
+						})
+						.ColorAndOpacity(PjcWidgets::GetColor("ProjectCleaner.Color.Yellow"))
+					]
+				]
+			]
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {10.0f, 0.0f, 4.0f, 0.0f})
 			[
 				SNew(STextBlock)

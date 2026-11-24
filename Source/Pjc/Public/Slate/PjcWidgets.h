@@ -80,7 +80,7 @@ namespace PjcWidgets
 		FName Color = TEXT("ProjectCleaner.Color.Strong");
 	};
 
-	// Stats card (Clean project, Scan): the first two numbers large with the label above and the unit smaller, the other
+	// Stats card (Clean project, Scan): the numbers large with the label above and the unit smaller, the last
 	// two as label and value lines on the right. A value of 0 or a dash is grey
 	TSharedRef<SWidget> MakeStats(const TArray<FStat>& Stats, const float LinesFill = 1.1f);
 
