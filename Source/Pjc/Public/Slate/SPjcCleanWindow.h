@@ -24,6 +24,8 @@ struct FPjcCleanResult
 	int32 NumInMemory = 0;
 	// name and what holds it
 	TArray<FString> NotDeleted;
+	// name and why revision control keeps it
+	TArray<FString> Blocked;
 	// used by now, not deleted
 	TArray<FName> Skipped;
 	// still on disk, they reference a deleted asset
@@ -86,6 +88,7 @@ class SPjcCleanWindow final : public SCompoundWidget
 	void SetStep(const int32 Step, const FString& Current);
 	static void PumpUi();
 	void Close();
+	void FillNotDeleted();
 
 	TWeakPtr<SWindow> Window;
 	TSharedPtr<SBox> Body;

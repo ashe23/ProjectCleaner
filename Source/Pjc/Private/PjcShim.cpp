@@ -16,6 +16,9 @@
 #include "ICollectionContainer.h"
 #endif
 #include "Misc/MessageDialog.h"
+#include "HAL/PlatformFileManager.h"
+#include "ISourceControlModule.h"
+#include "SourceControlHelpers.h"
 #include "Misc/PackageName.h"
 #include "Misc/RedirectCollector.h"
 #if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1
@@ -527,6 +530,17 @@ namespace PjcShim
 
 	void UpdateDefaultConfigFile(UObject* InObject) {
 		if (!InObject) return;
+
+		// under revision control the file is read-only until checked out, the engine then skips the write with only a log line
+		const FString File = FPaths::ConvertRelativePathToFull(InObject->GetDefaultConfigFilename());
+		if (FPaths::FileExists(File)) {
+			if (ISourceControlModule::Get().IsEnabled()) {
+				USourceControlHelpers::CheckOutOrAddFile(File, true);
+			}
+			if (IFileManager::Get().IsReadOnly(*File)) {
+				FPlatformFileManager::Get().GetPlatformFile().SetReadOnly(*File, false);
+			}
+		}
 
 #if ENGINE_MAJOR_VERSION == 5
 		InObject->TryUpdateDefaultConfigFile();

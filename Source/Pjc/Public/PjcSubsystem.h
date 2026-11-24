@@ -148,6 +148,8 @@ class UPjcSubsystem final : public UEditorSubsystem
 
 	// Assets the last delete (DeleteAssetsUnused, DeleteAssets) could not delete, by package name, and what kept them
 	static const TMap<FName, FString>& GetLastCleanupKept();
+	// The part of GetLastCleanupKept that revision control keeps (checked out by someone else, not at the latest revision)
+	static const TSet<FName>& GetLastCleanupBlocked();
 	// Short plain words for usage reason, e.g. "Primary asset Map:L_Main"
 	static FString GetUsageReasonText(const FPjcAssetUsage& Usage);
 
@@ -312,6 +314,10 @@ class UPjcSubsystem final : public UEditorSubsystem
 	// holds them: it clears those references, also in open editors, then deletes. Cannot be undone.
 	// @return how many of the packages are gone; the rest stay in GetLastCleanupKept
 	static int32 ForceDeleteAssets(const TArray<FName>& Packages);
+
+	// Packages revision control does not let the editor delete: checked out by someone else or not at the latest revision.
+	// The engine refuses a whole delete batch for one of them, so they are left out before the delete.
+	static void GetRevisionControlBlocks(const TArray<FName>& Packages, TMap<FName, FString>& OutBlocked);
 
 	// Delete all empty folders in project
 	// @param bShowSlowTask bool

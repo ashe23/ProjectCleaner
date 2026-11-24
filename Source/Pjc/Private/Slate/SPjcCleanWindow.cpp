@@ -688,7 +688,13 @@ void SPjcCleanWindow::Run() {
 	FPjcDeleteProgress* ProgressPtr = &Progress;
 	Progress.OnBatch = [this, ProgressPtr](const int32 NumTried, const int32 NumTotal, const FString& Current) {
 		Percent = 0.05f + 0.8f * static_cast<float>(NumTried) / static_cast<float>(FMath::Max(1, NumTotal));
-		SetStep(1, FString::Printf(TEXT("%s / %s \u00B7 %s"), *PjcFormat::Count(NumTried), *PjcFormat::Count(NumTotal), *Current));
+		// after the last batch the delete still checks what is left: the bar covers every step, not only the batches
+		if (NumTried >= NumTotal) {
+			SetStep(1, TEXT("Checking what is left\u2026"));
+		}
+		else {
+			SetStep(1, FString::Printf(TEXT("%s / %s \u00B7 %s"), *PjcFormat::Count(NumTried), *PjcFormat::Count(NumTotal), *Current));
+		}
 		ProgressPtr->bStopRequested = bStopRequested;
 	};
 	TArray<FString> RedirectorsBefore;
@@ -743,10 +749,7 @@ void SPjcCleanWindow::Run() {
 	Percent = 1.0f;
 
 	// what was not deleted, and what lost a reference
-	CleanResult.NotDeleted.Reset();
-	for (const auto& Pair : UPjcSubsystem::GetLastCleanupKept()) {
-		CleanResult.NotDeleted.Add(FString::Printf(TEXT("%s \u00B7 %s"), *FPackageName::GetShortName(Pair.Key), *Pair.Value));
-	}
+	FillNotDeleted();
 	FPjcCleanPlan::GetBrokenReferencers(Deleted, CleanResult.Broken);
 	for (const FName Referencer : CleanResult.Broken) {
 		UE_LOG(LogProjectCleaner, Warning, TEXT("Clean project: %s references a deleted asset"), *Referencer.ToString());
@@ -795,6 +798,12 @@ TSharedRef<SWidget> SPjcCleanWindow::MakeDone() {
 			= FString::Printf(TEXT("%s deleted from disk, but the editor still holds them. "), *PjcFormat::Count(CleanResult.NumInMemory));
 		AddNote(InMemory + TEXT("Restart the editor to remove them from the lists."), true);
 	}
+	if (CleanResult.Blocked.Num() > 0) {
+		const FString Lines = FString::Join(TArray<FString> {CleanResult.Blocked.GetData(), FMath::Min(CleanResult.Blocked.Num(), 8)}, TEXT("\n"));
+		const FString Held = FString::Printf(TEXT("%s kept by revision control. "), *PjcFormat::Count(CleanResult.Blocked.Num()));
+		const TCHAR* Next = TEXT("Get the latest or wait for the checkout to end, then clean again. Force delete cannot remove them.\n");
+		AddNote(Held + Next + Lines, true);
+	}
 	if (CleanResult.NotDeleted.Num() > 0) {
 		const FString Lines
 			= FString::Join(TArray<FString> {CleanResult.NotDeleted.GetData(), FMath::Min(CleanResult.NotDeleted.Num(), 8)}, TEXT("\n"));
@@ -826,6 +835,7 @@ TSharedRef<SWidget> SPjcCleanWindow::MakeDone() {
 	AddNote(TEXT("Next: open the main maps and play them before you commit."), false);
 
 	const bool bHeld = CleanResult.NotDeleted.Num() > 0;
+	const bool bFailed = bHeld || CleanResult.Blocked.Num() > 0;
 	// clang-format off
 	return SNew(SVerticalBox)
 		+ SVerticalBox::Slot().FillHeight(1.0f)
@@ -857,7 +867,7 @@ TSharedRef<SWidget> SPjcCleanWindow::MakeDone() {
 					.ButtonStyle(&PjcShim::GetButtonStyle427(false))
 					.ForegroundColor(FSlateColor::UseForeground())
 #endif
-					.Visibility(bHeld ? EVisibility::Visible : EVisibility::Collapsed)
+					.Visibility(bFailed ? EVisibility::Visible : EVisibility::Collapsed)
 					.ContentPadding(FMargin {12.0f, 2.0f})
 					.OnClicked_Lambda([this]() {
 						Close();
@@ -890,10 +900,7 @@ TSharedRef<SWidget> SPjcCleanWindow::MakeDone() {
 						CleanResult.NumInMemory += InMemory;
 						CleanResult.NumDeleted += Gone;
 						UPjcSubsystem::Scan(false);
-						CleanResult.NotDeleted.Reset();
-						for (const auto& Pair : UPjcSubsystem::GetLastCleanupKept()) {
-							CleanResult.NotDeleted.Add(FString::Printf(TEXT("%s \u00B7 %s"), *FPackageName::GetShortName(Pair.Key), *Pair.Value));
-						}
+						FillNotDeleted();
 						Rebuild();
 						return FReply::Handled();
 					})
@@ -938,6 +945,17 @@ TSharedRef<SWidget> SPjcCleanWindow::MakeDone() {
 			]
 		];
 	// clang-format on
+}
+
+void SPjcCleanWindow::FillNotDeleted() {
+	// what revision control keeps is listed apart: force delete cannot remove it
+	CleanResult.NotDeleted.Reset();
+	CleanResult.Blocked.Reset();
+	const TSet<FName>& Blocked = UPjcSubsystem::GetLastCleanupBlocked();
+	for (const auto& Pair : UPjcSubsystem::GetLastCleanupKept()) {
+		const FString Line = FString::Printf(TEXT("%s \u00B7 %s"), *FPackageName::GetShortName(Pair.Key), *Pair.Value);
+		(Blocked.Contains(Pair.Key) ? CleanResult.Blocked : CleanResult.NotDeleted).Add(Line);
+	}
 }
 
 void SPjcCleanWindow::Close() {

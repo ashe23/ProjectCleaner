@@ -149,6 +149,8 @@ namespace
 
 	// what kept each asset last cleanup could not delete, shown by the Inspector and Assets Unused
 	TMap<FName, FString> LastCleanupKept;
+	// the part of it revision control keeps: force delete cannot remove those either
+	TSet<FName> LastCleanupBlocked;
 
 	// last Scan, shared by every tab
 	FPjcScanResult LastScan;
@@ -1071,8 +1073,26 @@ FString UPjcSubsystem::GetAssetHolder(const FAssetData& InAsset) {
 	return Holders.FindRef(Object->GetPathName());
 }
 
-int32 UPjcSubsystem::ForceDeleteAssets(const TArray<FName>& Packages) {
-	if (Packages.Num() == 0 || !PrepareDelete()) return 0;
+int32 UPjcSubsystem::ForceDeleteAssets(const TArray<FName>& PackagesIn) {
+	if (PackagesIn.Num() == 0 || !PrepareDelete()) return 0;
+
+	// force delete cannot pass revision control either: those stay kept with their reason
+	TMap<FName, FString> Blocked;
+	GetRevisionControlBlocks(PackagesIn, Blocked);
+	TArray<FName> Packages;
+	for (const FName Package : PackagesIn) {
+		// the last delete kept it for revision control, also when only a blocked asset uses it
+		if (LastCleanupBlocked.Contains(Package)) continue;
+
+		if (const FString* Why = Blocked.Find(Package)) {
+			UE_LOG(LogProjectCleaner, Warning, TEXT("Force delete failed, revision control: %s (%s)"), *Package.ToString(), **Why);
+			LastCleanupKept.Add(Package, *Why);
+			LastCleanupBlocked.Add(Package);
+			continue;
+		}
+		Packages.Add(Package);
+	}
+	if (Packages.Num() == 0) return 0;
 
 	IAssetRegistry& Registry = GetModuleAssetRegistry().Get();
 	TArray<UObject*> Objects;
@@ -1113,6 +1133,10 @@ int32 UPjcSubsystem::ForceDeleteAssets(const TArray<FName>& Packages) {
 
 const TMap<FName, FString>& UPjcSubsystem::GetLastCleanupKept() {
 	return LastCleanupKept;
+}
+
+const TSet<FName>& UPjcSubsystem::GetLastCleanupBlocked() {
+	return LastCleanupBlocked;
 }
 
 FString UPjcSubsystem::GetUsageReasonText(const FPjcAssetUsage& Usage) {
@@ -2895,6 +2919,40 @@ bool UPjcSubsystem::DeleteAssets(
 	FBlueprintActionDatabase::Get();
 
 	LastCleanupKept.Reset();
+	LastCleanupBlocked.Reset();
+
+	// the engine refuses a whole batch, with a message box, when revision control blocks one asset in it
+	TArray<FName> PackagesAll;
+	for (const auto& Asset : AssetsUnused) {
+		PackagesAll.AddUnique(Asset.PackageName);
+	}
+	TMap<FName, FString> Blocked;
+	GetRevisionControlBlocks(PackagesAll, Blocked);
+	if (Blocked.Num() > 0) {
+		// what a blocked asset uses stays too: deleting it, also by force delete, would break the blocked asset
+		const TSet<FName> InSet {PackagesAll};
+		TArray<FName> Stack;
+		Blocked.GetKeys(Stack);
+		while (Stack.Num() > 0) {
+			const FName Current = PjcShim::PopArray(Stack);
+			TArray<FName> Dependencies;
+			GetModuleAssetRegistry().Get().GetDependencies(Current, Dependencies);
+			for (const FName Dependency : Dependencies) {
+				if (!InSet.Contains(Dependency) || Blocked.Contains(Dependency)) continue;
+
+				Blocked.Add(Dependency, TEXT("used by ") + FPackageName::GetShortName(Current) + TEXT(", which revision control keeps"));
+				Stack.Add(Dependency);
+			}
+		}
+		AssetsUnused.RemoveAll([&Blocked](const FAssetData& Asset) {
+			return Blocked.Contains(Asset.PackageName);
+		});
+		for (const auto& Pair : Blocked) {
+			UE_LOG(LogProjectCleaner, Warning, TEXT("Delete failed, revision control: %s (%s)"), *Pair.Key.ToString(), *Pair.Value);
+			LastCleanupKept.Add(Pair.Key, Pair.Value);
+			LastCleanupBlocked.Add(Pair.Key);
+		}
+	}
 
 	constexpr int32 BucketSize = PjcConstants::BucketSize;
 	const TArray<FAssetData> AssetsToDelete = AssetsUnused;
@@ -2902,7 +2960,7 @@ bool UPjcSubsystem::DeleteAssets(
 	for (const auto& Asset : AssetsUnused) {
 		PackagesUnused.Add(Asset.PackageName);
 	}
-	const int32 NumAssetsTotal = AssetsUnused.Num();
+	const int32 NumAssetsTotal = Assets.Num();
 	int32 NumAssetsDeleted = 0;
 
 	// an unreferenced redirector to an asset that goes would be left broken and hold that asset: it goes first.
@@ -3550,6 +3608,60 @@ UClass* UPjcSubsystem::GetRedirectorTargetClass(const FAssetData& Redirector) {
 		if (UClass* Class = FSoftClassPath {ClassPath}.ResolveClass()) return Class;
 	}
 	return nullptr;
+}
+
+void UPjcSubsystem::GetRevisionControlBlocks(const TArray<FName>& Packages, TMap<FName, FString>& OutBlocked) {
+	OutBlocked.Reset();
+	if (Packages.Num() == 0 || !ISourceControlModule::Get().IsEnabled()) return;
+
+	ISourceControlProvider& Provider = ISourceControlModule::Get().GetProvider();
+	if (!Provider.IsAvailable()) return;
+
+	TArray<FString> Files;
+	TMap<FString, FName> PackageByFile;
+	for (const FName Package : Packages) {
+		FString Filename;
+		if (!PjcShim::DoesPackageExist(Package.ToString(), &Filename)) continue;
+
+		Filename = FPaths::ConvertRelativePathToFull(Filename);
+		FPaths::NormalizeFilename(Filename);
+		Files.Add(Filename);
+		PackageByFile.Add(Filename, Package);
+	}
+	if (Files.Num() == 0) return;
+
+	// the same test the engine runs before each delete, in one request
+	TArray<FSourceControlStateRef> States;
+	Provider.GetState(Files, States, EStateCacheUsage::ForceUpdate);
+	for (const FSourceControlStateRef& State : States) {
+		// the engine's own test (FSourceControlModule::OnAssetsCanDelete), so every provider is covered
+		if (!State->IsSourceControlled() || State->CanDelete()) continue;
+
+		FString Filename = State->GetFilename();
+		FPaths::NormalizeFilename(Filename);
+		const FName* Package = PackageByFile.Find(Filename);
+		if (!Package) continue;
+
+		FString Who;
+		if (State->IsCheckedOutOther(&Who)) {
+			// Perforce gives "user @ stream" per user, the stream is empty outside streams
+			TArray<FString> Users;
+			Who.ParseIntoArray(Users, TEXT(","), true);
+			for (FString& User : Users) {
+				User.TrimStartAndEndInline();
+				User.RemoveFromEnd(TEXT("@"));
+				User.TrimEndInline();
+			}
+			Who = FString::Join(Users, TEXT(", "));
+			OutBlocked.Add(*Package, Who.IsEmpty() ? TEXT("checked out by someone else") : TEXT("checked out by ") + Who);
+		}
+		else if (!State->IsCurrent()) {
+			OutBlocked.Add(*Package, TEXT("not at the latest revision, get the latest first"));
+		}
+		else {
+			OutBlocked.Add(*Package, TEXT("revision control does not allow the delete"));
+		}
+	}
 }
 
 FString UPjcSubsystem::GetRedirectorDeleteBlock(const FName Package, FString& OutHint) {
