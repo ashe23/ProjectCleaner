@@ -93,6 +93,8 @@ class SPjcCleanWindow final : public SCompoundWidget
 	FPjcCleanPlan Plan;
 	TMap<FName, int64> Sizes;
 	bool bBackup = false;
+	// a modal window blocks the editor, so the log opens after it closes
+	bool bOpenLogOnClose = false;
 	// off each time the window opens
 	bool bForceDelete = false;
 

@@ -100,6 +100,10 @@ void SPjcCleanWindow::Open() {
 	PjcTabs::SetWindowOpen(true);
 	PjcWidgets::ShowModal(CleanWindow);
 	PjcTabs::SetWindowOpen(false);
+
+	if (Content->bOpenLogOnClose) {
+		FGlobalTabmanager::Get()->TryInvokeTab(FTabId {FName {TEXT("OutputLog")}});
+	}
 }
 
 void SPjcCleanWindow::Rebuild() {
@@ -905,8 +909,10 @@ TSharedRef<SWidget> SPjcCleanWindow::MakeDone() {
 					.ForegroundColor(FSlateColor::UseForeground())
 #endif
 					.ContentPadding(FMargin {12.0f, 2.0f})
-					.OnClicked_Lambda([]() {
-						FGlobalTabmanager::Get()->TryInvokeTab(FTabId {FName {TEXT("OutputLog")}});
+					.ToolTipText(FText::FromString(TEXT("Closes this window and opens the Output Log.")))
+					.OnClicked_Lambda([this]() {
+						bOpenLogOnClose = true;
+						Close();
 						return FReply::Handled();
 					})
 					[
