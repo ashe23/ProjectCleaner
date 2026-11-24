@@ -33,7 +33,7 @@ namespace PjcTabs
 	// Shows a category of Issues, EPjcIssueCategory as number; for assets to review only one reason when given
 	void ShowIssues(const TWeakPtr<FTabManager>& Tabs, const uint8 Category, const FString& Reason = FString {});
 
-	// Shows the assets the last delete could not remove in Assets
+	// Shows the assets the last delete could not remove: Issues, Delete failed
 	void ShowNotDeleted(const TWeakPtr<FTabManager>& Tabs);
 	// Selects the assets in Assets
 	void SelectAssets(const TWeakPtr<FTabManager>& Tabs, const TArray<FName>& Packages);

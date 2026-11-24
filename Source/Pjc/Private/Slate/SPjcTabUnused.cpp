@@ -59,8 +59,6 @@ namespace
 	const FName PjcUnusedColAssets {TEXT("Assets")};
 	// the reason of excluded assets in the Used list, as the Overview names it
 	const TCHAR* PjcUnusedReasonExcluded = TEXT("Excluded");
-	// key of the Delete failed pill
-	const TCHAR* PjcUnusedPillHeld = TEXT("__held");
 
 	// tree indent and the middle of the arrow: where a folder's guide runs
 	constexpr float PjcUnusedIndent = 14.0f;
@@ -543,18 +541,7 @@ namespace
 					.Padding(FMargin {0.0f, 0.0f, 8.0f, 0.0f})
 					.ToolTip(PjcWidgets::MakeToolTip(FText::FromString(Row->ReasonTip)))
 					[
-						SNew(SHorizontalBox)
-						// a failed delete: the mark, then why it failed
-						+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin {0.0f, 0.0f, 5.0f, 0.0f})
-						[
-							SNew(SImage)
-							.Image(FPjcStyles::Get().GetBrush("ProjectCleaner.Icon.DeleteFailed"))
-							.Visibility(Row->Holder.IsEmpty() ? EVisibility::Collapsed : EVisibility::Visible)
-						]
-						+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
-						[
-							SNew(STextBlock).Text(FText::FromString(Row->Reason)).ColorAndOpacity(ReasonColor)
-						]
+						SNew(STextBlock).Text(FText::FromString(Row->Reason)).ColorAndOpacity(ReasonColor)
 					];
 				// clang-format on
 			}
@@ -629,10 +616,7 @@ void SPjcTabUnused::Construct(const FArguments& InArgs) {
 			})
 			.IsSetShown_Lambda([this](const EPjcAssetSet InSet, const FString& Reason) {
 				const bool bReason = Reason.IsEmpty() ? ReasonFilters.Num() == 0 : ReasonFilters.Num() == 1 && ReasonFilters.Contains(Reason);
-				return Set == InSet && bReason && !bHeldOnly;
-			})
-			.OnShowDeleteFailed_Lambda([this]() {
-				ShowNotDeleted();
+				return Set == InSet && bReason;
 			})
 		]
 		[
@@ -698,7 +682,6 @@ void SPjcTabUnused::ShowSet(const EPjcAssetSet InSet, const FString& Reason) {
 	if (InSet == Set) {
 		ReasonFilters.Reset();
 		if (!Reason.IsEmpty()) ReasonFilters.Add(Reason);
-		bHeldOnly = false;
 		RebuildChips();
 		ApplyAssetFilter();
 		return;
@@ -707,7 +690,6 @@ void SPjcTabUnused::ShowSet(const EPjcAssetSet InSet, const FString& Reason) {
 	Set = InSet;
 	ClassBar->Reset();
 	ReasonFilters.Reset();
-	bHeldOnly = false;
 	RebuildTree();
 	OnFolderSearchChanged(FText::FromString(FolderSearch));
 	RefreshAssets();
@@ -1484,13 +1466,6 @@ void SPjcTabUnused::RefreshAssets() {
 			Row->Group = GroupSizes.Add(Asset.PackageName, With.Num());
 		}
 		MakeRowReason(Result, *Row);
-		if (!Row->Holder.IsEmpty()) {
-			// a failed delete: the column tells why it failed, why it is unused moves to the tooltip
-			const bool bBlocked = UPjcSubsystem::GetLastCleanupBlocked().Contains(Asset.PackageName);
-			const TCHAR* Hint = bBlocked ? TEXT("\nGet the latest or wait for the checkout to end, then clean again.") : TEXT("");
-			Row->ReasonTip = TEXT("Delete failed: ") + Row->Holder + Hint + TEXT("\nUnused: ") + Row->Reason + TEXT(". ") + Row->ReasonTip;
-			Row->Reason = Row->Holder.Left(1).ToUpper() + Row->Holder.Mid(1);
-		}
 		FolderRows.Add(Row);
 	}
 
@@ -1527,7 +1502,6 @@ void SPjcTabUnused::ApplyAssetFilter() {
 	for (const auto& Row : FolderRows) {
 		if (!ClassBar->IsShown(Row->ClassName)) continue;
 		if (ReasonFilters.Num() > 0 && !ReasonFilters.Contains(Row->ReasonKey)) continue;
-		if (bHeldOnly && Row->Holder.IsEmpty()) continue;
 
 		const TArray<FPjcSourceRef>* Refs = bSource ? Result.SourceRefs.Find(Row->Package) : nullptr;
 		const bool bFileMatch = Refs && Refs->ContainsByPredicate([this](const FPjcSourceRef& Ref) {
@@ -1643,9 +1617,7 @@ void SPjcTabUnused::RebuildChips() {
 		int64 Size = 0;
 	};
 	TMap<FString, FPill> Pills;
-	int32 NumHeld = 0;
 	for (const auto& Row : FolderRows) {
-		NumHeld += Row->Holder.IsEmpty() ? 0 : 1;
 		if (Set != EPjcAssetSet::Used || Row->ReasonKey.IsEmpty()) continue;
 
 		FPill& Pill = Pills.FindOrAdd(Row->ReasonKey);
@@ -1658,9 +1630,6 @@ void SPjcTabUnused::RebuildChips() {
 	for (const FString& Key : ReasonFilters) {
 		FPill& Pill = Pills.FindOrAdd(Key);
 		Pill.Key = Key;
-	}
-	if (NumHeld == 0) {
-		bHeldOnly = false;
 	}
 	TArray<FPill> PillsSorted;
 	Pills.GenerateValueArray(PillsSorted);
@@ -1679,14 +1648,13 @@ void SPjcTabUnused::RebuildChips() {
 	});
 
 	PillsBox->ClearChildren();
-	bHasPills = PillsSorted.Num() > 0 || NumHeld > 0;
+	bHasPills = PillsSorted.Num() > 0;
 	const auto AddPill = [this](const FString& Key, const FString& Label, const FString& ToolTip, const FLinearColor& Color, const int32 Num) {
 		const auto IsOn = [this, Key]() {
-			if (Key.IsEmpty()) return ReasonFilters.Num() == 0 && !bHeldOnly;
-			return Key == PjcUnusedPillHeld ? bHeldOnly : ReasonFilters.Contains(Key);
+			return Key.IsEmpty() ? ReasonFilters.Num() == 0 : ReasonFilters.Contains(Key);
 		};
 		const auto IsGrey = [this, Key, IsOn]() {
-			return !Key.IsEmpty() && !IsOn() && (ReasonFilters.Num() > 0 || bHeldOnly);
+			return !Key.IsEmpty() && !IsOn() && ReasonFilters.Num() > 0;
 		};
 		const FString More
 			= Key.IsEmpty() ? TEXT("Click to show all assets of the list") : TEXT("Click to show them. Click other filters to add them");
@@ -1703,10 +1671,6 @@ void SPjcTabUnused::RebuildChips() {
 		);
 		for (const auto& Pill : PillsSorted) {
 			AddPill(Pill.Key, Pill.Key, Pill.ToolTip, Pill.Color, Pill.Num);
-		}
-		if (NumHeld > 0) {
-			const TCHAR* HeldTip = TEXT("Last delete could not remove them. Something still holds them. Restart the editor to release them.");
-			AddPill(PjcUnusedPillHeld, TEXT("Delete failed"), HeldTip, PjcWidgets::GetColor("ProjectCleaner.Color.Red"), NumHeld);
 		}
 	}
 
@@ -1889,13 +1853,8 @@ void SPjcTabUnused::SortByColumn(const FName Column) {
 }
 
 void SPjcTabUnused::OnReasonChipClicked(const FString& Key) {
-	// All: every asset; Delete failed: on its own; a reason: added to the picked ones, or taken off
+	// All: every asset; a reason: added to the picked ones, or taken off
 	if (Key.IsEmpty()) {
-		ReasonFilters.Reset();
-		bHeldOnly = false;
-	}
-	else if (Key == PjcUnusedPillHeld) {
-		bHeldOnly = !bHeldOnly;
 		ReasonFilters.Reset();
 	}
 	else {
@@ -1905,7 +1864,6 @@ void SPjcTabUnused::OnReasonChipClicked(const FString& Key) {
 		else {
 			ReasonFilters.Add(Key);
 		}
-		bHeldOnly = false;
 		// every filter picked is all of them: All again
 		const TSet<FString> Keys = GetReasonKeys();
 		if (Keys.Num() > 0 && Keys.Difference(ReasonFilters).Num() == 0) {
@@ -2141,39 +2099,6 @@ TSharedRef<SWidget> SPjcTabUnused::MakeToolbar() {
 					})
 					[
 						Label("ProjectCleaner.Menu.Delete", Static(TEXT("Delete\u2026")), PjcWidgets::GetColor("ProjectCleaner.Color.DangerText"))
-					]
-				]
-				// the Delete failed list: the engine's Force Delete for what the last delete could not remove
-				+ SWrapBox::Slot().VAlign(VAlign_Center)
-				[
-					SNew(SButton)
-					.ButtonStyle(&FPjcStyles::Get().GetWidgetStyle<FButtonStyle>("ProjectCleaner.Button.DangerQuiet"))
-#if ENGINE_MAJOR_VERSION < 5
-					.ForegroundColor(FSlateColor::UseForeground())
-#endif
-					.ContentPadding(FMargin {8.0f, 1.0f, 10.0f, 1.0f})
-					.ToolTip(PjcWidgets::MakeToolTip(
-						TEXT("Force delete"), PjcActions::GetForceDeleteWarning(), TEXT("Not for assets that revision control keeps.")
-					))
-					.Visibility_Lambda([this]() { return Set == EPjcAssetSet::Unused && bHeldOnly ? EVisibility::Visible : EVisibility::Collapsed; })
-					.IsEnabled_Lambda([this]() {
-						// something in the selection that force delete can remove
-						const TSet<FName>& Blocked = UPjcSubsystem::GetLastCleanupBlocked();
-						for (const FName Package : GetSelectedPackages()) {
-							if (UPjcSubsystem::GetLastCleanupKept().Contains(Package) && !Blocked.Contains(Package)) return true;
-						}
-						return false;
-					})
-					.OnClicked_Lambda([this]() {
-						TArray<FName> Held;
-						for (const FName Package : GetSelectedPackages()) {
-							if (UPjcSubsystem::GetLastCleanupKept().Contains(Package)) Held.Add(Package);
-						}
-						PjcActions::ForceDelete(Held, true, true);
-						return FReply::Handled();
-					})
-					[
-						Label("ProjectCleaner.Menu.Delete", Static(TEXT("Force delete\u2026")), PjcWidgets::GetColor("ProjectCleaner.Color.DangerText"))
 					]
 				]
 				+ SWrapBox::Slot().VAlign(VAlign_Center)
@@ -2990,33 +2915,6 @@ void SPjcTabUnused::SelectAssets(const TArray<FName>& Packages) {
 		if (!First.IsValid()) First = Row;
 	}
 	if (First.IsValid()) View->RequestScrollIntoView(First);
-}
-
-void SPjcTabUnused::ShowNotDeleted() {
-	ShowSet(EPjcAssetSet::Unused);
-
-	// the root of the first asset the last delete kept, with subfolders
-	const FPjcScanResult& Result = UPjcSubsystem::GetScanResult();
-	const TMap<FName, FString>& Kept = UPjcSubsystem::GetLastCleanupKept();
-	FString Root;
-	for (const auto& Asset : Result.Assets) {
-		if (Kept.Contains(Asset.PackageName)) {
-			const FString Path = Asset.PackagePath.ToString();
-			const int32 Slash = Path.Find(TEXT("/"), ESearchCase::CaseSensitive, ESearchDir::FromStart, 1);
-			Root = Slash > 0 ? Path.Left(Slash) : Path;
-			break;
-		}
-	}
-	if (Root.IsEmpty()) return;
-
-	if (!bSubfolders) {
-		bSubfolders = true;
-		SaveViewState();
-	}
-	SelectFolder(Root);
-	RefreshAssets();
-	bHeldOnly = true;
-	ApplyAssetFilter();
 }
 
 bool SPjcTabUnused::HasSelectedMarks() const {

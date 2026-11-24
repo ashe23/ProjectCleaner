@@ -39,7 +39,6 @@ void SPjcOverviewPanel::Construct(const FArguments& InArgs) {
 	TabManager = InArgs._TabManager;
 	OnShowSet = InArgs._OnShowSet;
 	IsSetShown = InArgs._IsSetShown;
-	OnShowDeleteFailed = InArgs._OnShowDeleteFailed;
 	ScanFinishedHandle = UPjcSubsystem::OnScanFinished().AddSP(this, &SPjcOverviewPanel::OnScanFinished);
 
 	// clang-format off
@@ -326,7 +325,7 @@ TSharedRef<SWidget> SPjcOverviewPanel::MakeIssues() {
 		{TEXT("External files"), Result.FilesExternal.Num(), ExternalWhat, ExternalTip, ToIndex(EPjcIssueCategory::External)},
 		{TEXT("Corrupted files"), Result.FilesCorrupted.Num(), TEXT("to delete"), CorruptedTip, ToIndex(EPjcIssueCategory::Corrupted)},
 		{TEXT("Empty folders"), Result.FoldersEmpty.Num(), TEXT("to delete"), EmptyTip, ToIndex(EPjcIssueCategory::Empty)},
-		{TEXT("Delete failed"), UPjcSubsystem::GetLastCleanupKept().Num(), TEXT("not deleted"), DeleteFailedTip, -1},
+		{TEXT("Delete failed"), UPjcSubsystem::GetLastCleanupKept().Num(), TEXT("not deleted"), DeleteFailedTip, ToIndex(EPjcIssueCategory::Failed)},
 	};
 	// clang-format on
 
@@ -340,14 +339,9 @@ TSharedRef<SWidget> SPjcOverviewPanel::MakeIssues() {
 		NumFound += Issue.Num;
 		const int32 Category = Issue.Category;
 		const FSimpleDelegate OnClick = FSimpleDelegate::CreateLambda([this, Category]() {
-			if (Category < 0) {
-				OnShowDeleteFailed.ExecuteIfBound();
-			}
-			else {
-				PjcTabs::ShowIssues(TabManager, static_cast<uint8>(Category));
-			}
+			PjcTabs::ShowIssues(TabManager, static_cast<uint8>(Category));
 		});
-		const FString ClickTip = Category < 0 ? TEXT("Click to list them on the right") : TEXT("Click to open them in Issues");
+		const FString ClickTip = TEXT("Click to open them in Issues");
 		const TSharedRef<SToolTip> Tip = PjcWidgets::MakeToolTip(Issue.Title, Issue.ToolTip, ClickTip);
 		// clang-format off
 		Rows->AddSlot().AutoHeight()

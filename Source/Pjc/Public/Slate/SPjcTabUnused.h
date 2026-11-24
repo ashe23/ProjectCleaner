@@ -76,9 +76,6 @@ class SPjcTabUnused final : public SCompoundWidget
 		return SelectedFolder;
 	}
 
-	// Shows the assets the last delete could not remove
-	void ShowNotDeleted();
-
 	// Shows the assets selected: in Unused when one of them is unused, else in Used, in the folder they share
 	void SelectAssets(const TArray<FName>& Packages);
 
@@ -230,8 +227,6 @@ class SPjcTabUnused final : public SCompoundWidget
 	TSet<FString> ReasonFilters;
 	// Only Source & config picked: a row for every place a file names the asset, with the file and the line
 	bool bSourceRows = false;
-	// Only assets the last delete could not remove
-	bool bHeldOnly = false;
 	bool bSubfolders = true;
 	FString AssetSearch;
 	FName AssetSortColumn = TEXT("Size");

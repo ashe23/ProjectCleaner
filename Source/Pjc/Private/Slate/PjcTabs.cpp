@@ -89,11 +89,7 @@ namespace PjcTabs
 	}
 
 	void ShowNotDeleted(const TWeakPtr<FTabManager>& Tabs) {
-		const TSharedPtr<FTabManager> Manager = Tabs.Pin();
-		const TSharedPtr<SDockTab> Tab = Manager.IsValid() ? Manager->TryInvokeTab(FTabId {PjcConstants::TabAssetsUnused}) : nullptr;
-		if (Tab.IsValid() && Tab->GetContent()->GetType() == TEXT("SPjcTabUnused")) {
-			StaticCastSharedRef<SPjcTabUnused>(Tab->GetContent())->ShowNotDeleted();
-		}
+		ShowIssues(Tabs, static_cast<uint8>(EPjcIssueCategory::Failed));
 	}
 
 	void SelectAssets(const TWeakPtr<FTabManager>& Tabs, const TArray<FName>& Packages) {

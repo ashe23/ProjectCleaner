@@ -3,6 +3,8 @@
 #include "Slate/SPjcTabIssues.h"
 #include "FileHelpers.h"
 #include "Slate/PjcActions.h"
+#include "ContentBrowserModule.h"
+#include "IContentBrowserSingleton.h"
 #include "Slate/PjcTabs.h"
 #include "Slate/PjcWidgets.h"
 #include "Slate/SPjcDialog.h"
@@ -41,6 +43,50 @@ namespace
 {
 	// unity builds join files: names unique to this file
 	const FName PjcIssueColFirst {TEXT("First")};
+	// cause of a failed delete that force delete cannot pass
+	const TCHAR* PjcIssueCauseRevisionControl = TEXT("Revision control");
+
+	// Why the last delete kept an asset, for the Delete failed list: the cause (its filter), the reason and what to do
+	void PjcIssueFailedCause(const FName Package, const FString& Holder, FString& OutKey, FString& OutReason, FString& OutToDo, FName& OutColor) {
+		OutReason = Holder.Left(1).ToUpper() + Holder.Mid(1);
+		if (UPjcSubsystem::GetLastCleanupBlocked().Contains(Package)) {
+			OutKey = PjcIssueCauseRevisionControl;
+			OutColor = TEXT("ProjectCleaner.Color.Yellow");
+			if (Holder.StartsWith(TEXT("checked out"))) {
+				OutToDo = TEXT("Wait for the checkout to end, then clean again");
+			}
+			else if (Holder.StartsWith(TEXT("not at the latest"))) {
+				OutToDo = TEXT("Get the latest revision, then clean again");
+			}
+			else if (Holder.StartsWith(TEXT("used by "))) {
+				// "used by SM_Ramp, which revision control keeps"
+				FString User = Holder.Mid(8);
+				int32 Comma = INDEX_NONE;
+				if (User.FindChar(TEXT(','), Comma)) User = User.Left(Comma);
+				OutToDo = TEXT("It goes with ") + User;
+			}
+			else {
+				OutToDo = TEXT("Check its state in revision control");
+			}
+			return;
+		}
+		if (Holder.StartsWith(TEXT("referenced by "))) {
+			OutKey = TEXT("Referenced");
+			OutColor = TEXT("ProjectCleaner.Color.Link");
+			OutToDo = TEXT("Inspect what references it, or use Force delete");
+			return;
+		}
+		if (Holder.StartsWith(TEXT("could not")) || Holder.StartsWith(TEXT("the editor refused"))) {
+			OutKey = TEXT("Other");
+			OutColor = TEXT("ProjectCleaner.Color.Gray");
+			OutToDo = TEXT("See the Output Log, or use Force delete");
+			return;
+		}
+		OutKey = TEXT("Held in memory");
+		OutColor = TEXT("ProjectCleaner.Color.Red");
+		OutReason = TEXT("Held by ") + Holder;
+		OutToDo = TEXT("Close what uses it and clean again, or use Force delete");
+	}
 	const FName PjcIssueColCheck {TEXT("Check")};
 
 	FName PjcIssueStateColor(const EPjcRedirectorState State) {
@@ -394,6 +440,7 @@ int32 SPjcTabIssues::GetCount(const EPjcIssueCategory InCategory) const {
 		case EPjcIssueCategory::Corrupted :	  return Result.FilesCorrupted.Num();
 		case EPjcIssueCategory::Empty :		  return Result.FoldersEmpty.Num();
 		case EPjcIssueCategory::Review :	  return NumReview;
+		case EPjcIssueCategory::Failed :	  return UPjcSubsystem::GetLastCleanupKept().Num();
 	}
 	return 0;
 }
@@ -460,6 +507,42 @@ void SPjcTabIssues::RebuildRows() {
 			AllRows.Sort([](const FRowPtr& A, const FRowPtr& B) {
 				return A->Size != B->Size ? A->Size > B->Size : A->Name < B->Name;
 			});
+			break;
+
+		case EPjcIssueCategory::Failed :
+			{
+				FailedCauses.Reset();
+				const TMap<FName, FString>& Kept = UPjcSubsystem::GetLastCleanupKept();
+				for (int32 Index = 0; Index < Result.Assets.Num() && Kept.Num() > 0; ++Index) {
+					const FAssetData& Asset = Result.Assets[Index];
+					const FString* Holder = Kept.Find(Asset.PackageName);
+					if (!Holder) continue;
+
+					FString Key;
+					FString Reason;
+					FString ToDo;
+					FName Color;
+					PjcIssueFailedCause(Asset.PackageName, *Holder, Key, Reason, ToDo, Color);
+					FailedCauses.FindOrAdd(Key)++;
+					if (Filters.Num() > 0 && !Filters.Contains(Key)) continue;
+
+					const FRowPtr Row = MakeShared<FPjcIssueRow>();
+					Row->Id = Asset.PackageName.ToString();
+					Row->Package = Asset.PackageName;
+					Row->Asset = Index;
+					Row->Name = Asset.AssetName.ToString();
+					Row->Sub = PjcWidgets::GetAssetType(Asset).Label + TEXT(" \u00B7 ") + Asset.PackagePath.ToString().Mid(1);
+					Row->Reason = Key;
+					Row->Size = Result.GetSize(Asset.PackageName);
+					Row->Cells = {Reason, ToDo, PjcFormat::Size(Row->Size)};
+					Row->CellColors = {Color, TEXT("ProjectCleaner.Color.Gray"), NAME_None};
+					Row->ToolTip = Row->Id + TEXT("\n") + Reason + TEXT("\n") + ToDo;
+					AllRows.Add(Row);
+				}
+				AllRows.Sort([](const FRowPtr& A, const FRowPtr& B) {
+					return A->Reason != B->Reason ? A->Reason < B->Reason : (A->Size != B->Size ? A->Size > B->Size : A->Name < B->Name);
+				});
+			}
 			break;
 
 		case EPjcIssueCategory::Redirectors :
@@ -577,6 +660,12 @@ TArray<SPjcTabIssues::FColumn> SPjcTabIssues::GetColumns() const {
 			Add(TEXT("Asset"), 0.0f, 1.0f, false, false);
 			Add(TEXT("Reason"), 170.0f, 0.0f, false, false, TEXT("Why the scan is not sure"));
 			Add(TEXT("Detail"), 0.0f, 0.6f, false, false);
+			Add(TEXT("Size"), 90.0f, 0.0f, true, true);
+			break;
+		case EPjcIssueCategory::Failed :
+			Add(TEXT("Asset"), 0.0f, 1.0f, false, false);
+			Add(TEXT("Reason"), 0.0f, 0.8f, false, false, TEXT("Why the last delete could not remove it"));
+			Add(TEXT("What to do"), 0.0f, 0.8f, false, false);
 			Add(TEXT("Size"), 90.0f, 0.0f, true, true);
 			break;
 		case EPjcIssueCategory::Redirectors :
@@ -786,6 +875,11 @@ TSharedRef<SWidget> SPjcTabIssues::MakeCategories() {
 	   TEXT("Folders without assets or files"),
 	   TEXT("ProjectCleaner.Icon.Folder"),
 	   TEXT("ProjectCleaner.Color.Muted")},
+	  {		EPjcIssueCategory::Failed,
+	   TEXT("Delete failed"),
+	   TEXT("Unused assets the last cleanup could not delete, with the reason and what to do"),
+	   TEXT("ProjectCleaner.Icon.DeleteFailed"),
+	   White							 },
 	};
 	for (const auto& Entry : Entries) {
 		const EPjcIssueCategory EntryCategory = Entry.Category;
@@ -879,7 +973,7 @@ FText SPjcTabIssues::GetCountText() const {
 	const TCHAR* Noun = TEXT("file");
 	Noun = Category == EPjcIssueCategory::Redirectors ? TEXT("redirector") : Noun;
 	Noun = Category == EPjcIssueCategory::Empty ? TEXT("folder") : Noun;
-	Noun = Category == EPjcIssueCategory::Review ? TEXT("asset") : Noun;
+	Noun = Category == EPjcIssueCategory::Review || Category == EPjcIssueCategory::Failed ? TEXT("asset") : Noun;
 	return FText::FromString(FString::Printf(TEXT("%s %s%s"), *PjcFormat::Count(Num), Noun, Num == 1 ? TEXT("") : TEXT("s")));
 }
 
@@ -1029,6 +1123,41 @@ TSharedRef<SWidget> SPjcTabIssues::MakeToolbar() {
 						if (Selected.Num() == 1) PjcTabs::Inspect(TabManager, Selected[0]->Package);
 					})
 			]
+			// delete failed: the engine's Force Delete, never for what revision control keeps
+			+ SWrapBox::Slot().VAlign(VAlign_Center)
+			[
+				SNew(SButton)
+				.ButtonStyle(&FPjcStyles::Get().GetWidgetStyle<FButtonStyle>("ProjectCleaner.Button.DangerQuiet"))
+#if ENGINE_MAJOR_VERSION < 5
+				.ForegroundColor(FSlateColor::UseForeground())
+#endif
+				.ContentPadding(FMargin {8.0f, 1.0f, 10.0f, 1.0f})
+				.ToolTip(PjcWidgets::MakeToolTip(
+					TEXT("Force delete"), PjcActions::GetForceDeleteWarning(), TEXT("Not for assets that revision control keeps.")
+				))
+				.Visibility_Lambda(Is(EPjcIssueCategory::Failed))
+				.IsEnabled_Lambda([this]() { return CanForceDelete(GetSelected()); })
+				.OnClicked_Lambda([this]() {
+					ForceDeleteRows(GetSelected());
+					return FReply::Handled();
+				})
+				[
+					Label("ProjectCleaner.Menu.Delete", TEXT("Force delete\u2026"), PjcWidgets::GetColor("ProjectCleaner.Color.DangerText"))
+				]
+			]
+			+ SWrapBox::Slot().VAlign(VAlign_Center)
+			[
+				Button("ProjectCleaner.Menu.Inspect", TEXT("Inspect"), TEXT("Shows in the Inspector what uses it and what it uses"),
+					Is(EPjcIssueCategory::Failed), [this]() { return GetSelected().Num() == 1; }, [this]() {
+						const TArray<FRowPtr> Selected = GetSelected();
+						if (Selected.Num() == 1) PjcTabs::Inspect(TabManager, Selected[0]->Package);
+					})
+			]
+			+ SWrapBox::Slot().VAlign(VAlign_Center)
+			[
+				Button("ProjectCleaner.Menu.Browse", TEXT("Browse"), TEXT("Shows the selection in the Content Browser"),
+					Is(EPjcIssueCategory::Failed), HasSelection, [this]() { BrowseRows(GetSelected()); })
+			]
 			// redirectors
 			+ SWrapBox::Slot().VAlign(VAlign_Center)
 			[
@@ -1122,6 +1251,7 @@ FText SPjcTabIssues::GetTitle() const {
 		case EPjcIssueCategory::Corrupted :	  return FText::FromString(TEXT("Corrupted files"));
 		case EPjcIssueCategory::Empty :		  return FText::FromString(TEXT("Empty folders"));
 		case EPjcIssueCategory::Review :	  return FText::FromString(TEXT("Assets to review"));
+		case EPjcIssueCategory::Failed :	  return FText::FromString(TEXT("Delete failed"));
 	}
 	return FText::GetEmpty();
 }
@@ -1142,6 +1272,9 @@ FText SPjcTabIssues::GetDescription() const {
 		case EPjcIssueCategory::Empty :		return FText::FromString(TEXT("Folders without assets or files. Moved assets often leave them."));
 		case EPjcIssueCategory::Review :
 			return FText::FromString(TEXT("The scan is not sure about them. Clean project keeps them until you mark them unused or exclude them."));
+		case EPjcIssueCategory::Failed :
+			return FText::FromString(TEXT("Unused assets the last delete could not remove. Each row tells why and what to do. ")
+										 TEXT("Kept until the next delete or an editor restart."));
 	}
 	return FText::GetEmpty();
 }
@@ -1168,6 +1301,7 @@ FText SPjcTabIssues::GetSelectionText() const {
 			return FText::FromString(
 				bMarked ? TEXT("Select assets to remove their mark or inspect") : TEXT("Select assets to mark unused, exclude or inspect")
 			);
+		if (Category == EPjcIssueCategory::Failed) return FText::FromString(TEXT("Select assets to force delete or inspect"));
 		if (Category == EPjcIssueCategory::Redirectors) return FText::FromString(TEXT("Select redirectors to fix"));
 		if (Category == EPjcIssueCategory::Empty) return FText::FromString(TEXT("Select folders to delete"));
 		if (Category == EPjcIssueCategory::External && bKept) return FText::FromString(TEXT("Never deleted"));
@@ -1632,6 +1766,32 @@ void SPjcTabIssues::RebuildFilters() {
 	};
 	const FLinearColor Accent = PjcWidgets::GetColor("ProjectCleaner.Color.Accent");
 
+	if (Category == EPjcIssueCategory::Failed && FailedCauses.Num() > 0) {
+		AddHeading(TEXT("CAUSE FILTERS"), TEXT("Why the last delete could not remove them"));
+		AddPill(FString {}, TEXT("All"), TEXT("Every asset the last delete could not remove"), Accent, GetCount(EPjcIssueCategory::Failed));
+		TArray<FString> Keys;
+		FailedCauses.GenerateKeyArray(Keys);
+		Keys.Sort();
+		for (const auto& Key : Keys) {
+			FName Color = TEXT("ProjectCleaner.Color.Red");
+			FString ToolTip = TEXT("A live object in the editor still holds them. Force delete clears those references.");
+			if (Key == PjcIssueCauseRevisionControl) {
+				Color = TEXT("ProjectCleaner.Color.Yellow");
+				ToolTip = TEXT("Checked out by someone else, not at the latest revision, or used by such an asset. Force delete cannot remove them.");
+			}
+			else if (Key == TEXT("Referenced")) {
+				Color = TEXT("ProjectCleaner.Color.Link");
+				ToolTip = TEXT("A saved asset that stays references them. Force delete leaves that asset with a broken reference.");
+			}
+			else if (Key == TEXT("Other")) {
+				Color = TEXT("ProjectCleaner.Color.Gray");
+				ToolTip = TEXT("The editor did not delete them. The Output Log tells more.");
+			}
+			AddPill(Key, Key, ToolTip, PjcWidgets::GetColor(Color), FailedCauses[Key]);
+		}
+		bHasFilters = true;
+	}
+
 	const int32 NumMarked = Result.MarkedUnusedRoots.Num();
 	if (Category == EPjcIssueCategory::Review && (NumReview > 0 || NumMarked > 0)) {
 		AddHeading(TEXT("REASON FILTERS"), TEXT("Why the scan is not sure about them"));
@@ -1824,6 +1984,27 @@ TSharedPtr<SWidget> SPjcTabIssues::OnContextMenu() {
 				}
 			);
 			break;
+		case EPjcIssueCategory::Failed :
+			PjcWidgets::AddMenuEntry(
+				Menu,
+				EPjcMenuIcon::Delete,
+				TEXT("Force delete\u2026"),
+				TEXT("Uses the engine's Force Delete. Not for assets that revision control keeps"),
+				CanForceDelete(Selected),
+				[this]() {
+					ForceDeleteRows(GetSelected());
+				}
+			);
+			PjcWidgets::AddMenuEntry(
+				Menu, EPjcMenuIcon::Inspect, TEXT("Inspect"), TEXT("Shows what uses it and what it uses"), Selected.Num() == 1, [this]() {
+					const TArray<FRowPtr> Picked = GetSelected();
+					if (Picked.Num() == 1) PjcTabs::Inspect(TabManager, Picked[0]->Package);
+				}
+			);
+			PjcWidgets::AddMenuEntry(Menu, EPjcMenuIcon::Browse, TEXT("Browse"), TEXT("Shows the selection in the Content Browser"), [this]() {
+				BrowseRows(GetSelected());
+			});
+			break;
 		case EPjcIssueCategory::Redirectors :
 			{
 				TArray<int32> Indices;
@@ -1886,6 +2067,32 @@ FReply SPjcTabIssues::OnListKeyDown(const FGeometry& Geometry, const FKeyEvent& 
 		return FReply::Handled();
 	}
 	return FReply::Unhandled();
+}
+
+bool SPjcTabIssues::CanForceDelete(const TArray<FRowPtr>& InRows) {
+	return InRows.ContainsByPredicate([](const FRowPtr& Row) {
+		return Row->Reason != PjcIssueCauseRevisionControl;
+	});
+}
+
+void SPjcTabIssues::ForceDeleteRows(const TArray<FRowPtr>& InRows) {
+	TArray<FName> Packages;
+	for (const auto& Row : InRows) {
+		if (Row->Reason != PjcIssueCauseRevisionControl) Packages.Add(Row->Package);
+	}
+	// asks first, then scans again: the list is rebuilt
+	if (Packages.Num() > 0) PjcActions::ForceDelete(Packages, true, true);
+}
+
+void SPjcTabIssues::BrowseRows(const TArray<FRowPtr>& InRows) {
+	const FPjcScanResult& Result = UPjcSubsystem::GetScanResult();
+	TArray<FAssetData> Assets;
+	for (const auto& Row : InRows) {
+		if (Result.Assets.IsValidIndex(Row->Asset)) Assets.Add(Result.Assets[Row->Asset]);
+	}
+	if (Assets.Num() > 0) {
+		UPjcSubsystem::GetModuleContentBrowser().Get().SyncBrowserToAssets(Assets);
+	}
 }
 
 void SPjcTabIssues::DeleteRows(const TArray<FRowPtr>& InRows) {

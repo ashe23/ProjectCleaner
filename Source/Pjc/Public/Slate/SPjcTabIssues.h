@@ -22,6 +22,8 @@ enum class EPjcIssueCategory : uint8
 	Empty,
 	// assets the scan is not sure about, listed first
 	Review,
+	// unused assets the last delete could not remove, listed last
+	Failed,
 };
 
 // Row of an Issues list: the first column is a name with a tag and a muted path, then plain cells
@@ -51,8 +53,8 @@ struct FPjcIssueRow
 };
 
 /**
- * Issues tool: what the scan found besides unused assets. Assets to review, redirectors, external files, corrupted files
- * and empty folders, each with its list and the actions that fix it.
+ * Issues tool: what the scan found besides unused assets. Assets to review, redirectors, external files, corrupted files,
+ * empty folders and the assets the last delete could not remove, each with its list and the actions that fix it.
  */
 class SPjcTabIssues final : public SCompoundWidget
 {
@@ -133,6 +135,10 @@ class SPjcTabIssues final : public SCompoundWidget
 	void KeepAssets(const TArray<FRowPtr>& InRows);
 	void MarkAssetsUnused(const TArray<FRowPtr>& InRows);
 	void RemoveMarks(const TArray<FRowPtr>& InRows);
+	// Delete failed: the engine's Force Delete for the rows revision control does not keep, and the rows in the Content Browser
+	void ForceDeleteRows(const TArray<FRowPtr>& InRows);
+	static bool CanForceDelete(const TArray<FRowPtr>& InRows);
+	static void BrowseRows(const TArray<FRowPtr>& InRows);
 	// Adds file exclusions to the project settings (DefaultEditor.ini) and scans again
 	void ExcludeFiles(const TArray<FString>& Files, const TArray<FString>& Extensions, const TArray<FString>& Folders, const FString& What);
 
@@ -163,6 +169,8 @@ class SPjcTabIssues final : public SCompoundWidget
 	// Assets to review, and how many of each reason
 	int32 NumReview = 0;
 	TMap<FString, int32> ReviewReasons;
+	// Delete failed: how many assets each cause keeps
+	TMap<FString, int32> FailedCauses;
 	TSharedPtr<SBox> ListBox;
 	TSharedPtr<SListView<FRowPtr>> ListView;
 };

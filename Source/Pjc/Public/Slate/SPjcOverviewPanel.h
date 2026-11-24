@@ -31,8 +31,6 @@ class SPjcOverviewPanel final : public SCompoundWidget
 	SLATE_EVENT(FPjcOnShowSet, OnShowSet)
 	// Whether Assets shows that list now: its row is marked
 	SLATE_EVENT(FPjcIsSetShown, IsSetShown)
-	// Shows the assets the last delete could not remove
-	SLATE_EVENT(FSimpleDelegate, OnShowDeleteFailed)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
@@ -95,7 +93,6 @@ class SPjcOverviewPanel final : public SCompoundWidget
 	TWeakPtr<FTabManager> TabManager;
 	FPjcOnShowSet OnShowSet;
 	FPjcIsSetShown IsSetShown;
-	FSimpleDelegate OnShowDeleteFailed;
 
 	TSharedPtr<SBox> Body;
 	FPjcOverview Overview;
