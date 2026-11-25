@@ -334,8 +334,10 @@ class UPjcSubsystem final : public UEditorSubsystem
 	UFUNCTION(BlueprintCallable, Category = "ProjectCleanerSubsystem|Lib_Path")
 	static bool DeleteFoldersEmpty(const bool bShowSlowTask = true, const bool bShowEditorNotification = false);
 
-	// Deletes files that are not assets (external, corrupted), read-only ones too. Returns how many are gone
-	static int32 DeleteFiles(const TArray<FString>& Files);
+	// Deletes files that are not assets (external, corrupted), read-only ones too. Returns how many are gone.
+	// With revision control: tracked files are marked for delete, added ones reverted, files it blocks (checked out by
+	// someone else, not at the latest revision) stay in OutKept with the reason
+	static int32 DeleteFiles(const TArray<FString>& Files, TMap<FString, FString>* OutKept = nullptr);
 
 	// Deletes empty folders and removes them from the asset registry paths. Returns how many are gone
 	static int32 DeleteFolders(const TArray<FString>& Folders);

@@ -149,6 +149,9 @@ class SPjcTabIssues final : public SCompoundWidget
 	TArray<FPjcRedirectorInfo> Redirectors;
 	// Redirectors the last fix kept, and why
 	TMap<FName, FString> FixKept;
+	TMap<FName, FString> FixKeptHints;
+	// of those, the ones revision control keeps
+	TSet<FName> FixKeptRevisionControl;
 
 	TArray<FRowPtr> AllRows;
 	TArray<FRowPtr> Rows;

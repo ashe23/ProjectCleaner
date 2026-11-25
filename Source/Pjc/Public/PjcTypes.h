@@ -205,6 +205,9 @@ struct FPjcRedirectorFixResult
 	TMap<FName, FString> Kept;
 	// What to do about each redirector that stays
 	TMap<FName, FString> KeptHints;
+	// Of those, the ones revision control keeps: the redirector or an asset that uses it is checked out by someone else
+	// or not at the latest revision. A fix again works only after that changes
+	TSet<FName> KeptRevisionControl;
 	// Redirectors whose old path now resolves through a redirect in Config/DefaultEngine.ini
 	int32 NumRedirects = 0;
 	// Folders the fix left empty and deleted

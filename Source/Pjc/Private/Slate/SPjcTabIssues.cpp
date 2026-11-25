@@ -559,9 +559,12 @@ void SPjcTabIssues::RebuildRows() {
 				Row->Sub = FPaths::GetPath(Path).Mid(1);
 				Row->ToolTip = Path;
 				if (const FString* Kept = FixKept.Find(Info.Asset.PackageName)) {
-					Row->Tag = TEXT("FIX FAILED");
-					Row->TagColor = TEXT("ProjectCleaner.Color.Red");
-					Row->TagToolTip = *Kept;
+					// revision control: a fix again works only after the checkout ends or the latest is synced
+					const bool bBlocked = FixKeptRevisionControl.Contains(Info.Asset.PackageName);
+					Row->Tag = bBlocked ? TEXT("BLOCKED: REVISION CONTROL") : TEXT("FIX FAILED");
+					Row->TagColor = bBlocked ? TEXT("ProjectCleaner.Color.Yellow") : TEXT("ProjectCleaner.Color.Red");
+					const FString* Hint = FixKeptHints.Find(Info.Asset.PackageName);
+					Row->TagToolTip = Hint && !Hint->IsEmpty() ? *Kept + TEXT("\n\u2192 ") + *Hint : *Kept;
 				}
 				Row->Cells.Add(Info.FinalTarget.IsNone() ? TEXT("outside scan") : TEXT("\u2192 ") + FPackageName::GetShortName(Info.FinalTarget));
 				const TCHAR* Missing = Info.bTargetExists ? TEXT("") : TEXT(" \u00B7 missing");
@@ -1646,6 +1649,8 @@ void SPjcTabIssues::RepairRedirector(const int32 Index) {
 
 void SPjcTabIssues::ShowFixResult(const FPjcRedirectorFixResult& Result) {
 	FixKept = Result.Kept;
+	FixKeptHints = Result.KeptHints;
+	FixKeptRevisionControl = Result.KeptRevisionControl;
 	SPjcScanBar::ScanProject();
 
 	const int32 NumDeleted = Result.Deleted.Num();
@@ -1667,7 +1672,8 @@ void SPjcTabIssues::ShowFixResult(const FPjcRedirectorFixResult& Result) {
 		const int32 NumKept = Result.Kept.Num();
 		FPjcFixView View;
 		const FString Fixed = FString::Printf(TEXT("Fixed %s of %s"), *PjcFormat::Count(NumDeleted), *PjcFormat::Count(NumDeleted + NumKept));
-		View.Title = NumDeleted > 0 ? Fixed : FString {TEXT("Nothing was fixed")};
+		// assets resaved but no redirector deleted: part of the work is done, a fix again finishes it
+		View.Title = NumDeleted > 0 ? Fixed : FString {Result.NumResaved > 0 ? TEXT("Partly fixed") : TEXT("Nothing was fixed")};
 		const TCHAR* Stay = NumKept == 1 ? TEXT("stays") : TEXT("stay");
 		View.Lead = FString::Printf(
 			TEXT("%s %s. The project still works. A redirector that stays keeps its old path pointing to the real asset."),
@@ -2118,9 +2124,21 @@ void SPjcTabIssues::DeleteRows(const TArray<FRowPtr>& InRows) {
 		return;
 	}
 
-	const int32 NumDeleted = bFolders ? UPjcSubsystem::DeleteFolders(Paths) : UPjcSubsystem::DeleteFiles(Paths);
+	TMap<FString, FString> Kept;
+	const int32 NumDeleted = bFolders ? UPjcSubsystem::DeleteFolders(Paths) : UPjcSubsystem::DeleteFiles(Paths, &Kept);
 	if (NumDeleted == Paths.Num()) {
 		UPjcSubsystem::ShowNotification(TEXT("Deleted ") + What, SNotificationItem::CS_Success, 4.0f);
+	}
+	else if (NumDeleted + Kept.Num() == Paths.Num()) {
+		// the rest wait for revision control: checked out by someone else or not at the latest revision
+		PjcActions::ShowWarning(
+			FString::Printf(
+				TEXT("Deleted %s of %s. %s kept by revision control: get the latest or wait for the checkout to end"),
+				*PjcFormat::Count(NumDeleted),
+				*What,
+				*PjcFormat::Count(Kept.Num())
+			)
+		);
 	}
 	else {
 		const FString Partly = FString::Printf(TEXT("Deleted %s of %s. See Output Log for the others"), *PjcFormat::Count(NumDeleted), *What);

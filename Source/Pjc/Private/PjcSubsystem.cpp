@@ -3164,10 +3164,72 @@ bool UPjcSubsystem::DeleteAssets(
 	return !bErrors && NumNotLoaded == 0;
 }
 
-int32 UPjcSubsystem::DeleteFiles(const TArray<FString>& Files) {
+int32 UPjcSubsystem::DeleteFiles(const TArray<FString>& Files, TMap<FString, FString>* OutKept) {
+	// revision control records the delete: tracked files are marked for delete, added or checked out ones reverted first
+	TArray<FString> ToDisk;
+	TArray<FString> ToMarkForDelete;
+	TArray<FString> ToRevert;
+	TArray<FString> ToRevertThenDisk;
+	ISourceControlModule& RevisionControl = ISourceControlModule::Get();
+	if (Files.Num() > 0 && RevisionControl.IsEnabled() && RevisionControl.GetProvider().IsAvailable()) {
+		TMap<FString, FString> FileByFull;
+		TArray<FString> Full;
+		for (const auto& File : Files) {
+			FString Path = FPaths::ConvertRelativePathToFull(File);
+			FPaths::NormalizeFilename(Path);
+			FileByFull.Add(Path, File);
+			Full.Add(Path);
+		}
+		TArray<FSourceControlStateRef> States;
+		RevisionControl.GetProvider().GetState(Full, States, EStateCacheUsage::ForceUpdate);
+		TSet<FString> Sorted;
+		for (const FSourceControlStateRef& State : States) {
+			FString Path = State->GetFilename();
+			FPaths::NormalizeFilename(Path);
+			const FString* File = FileByFull.Find(Path);
+			if (!File) continue;
+
+			Sorted.Add(*File);
+			if (State->IsAdded()) {
+				ToRevertThenDisk.Add(*File);
+			}
+			else if (State->IsCheckedOut()) {
+				ToRevert.Add(*File);
+				ToMarkForDelete.Add(*File);
+			}
+			else if (!State->IsSourceControlled() || State->IsDeleted()) {
+				ToDisk.Add(*File);
+			}
+			else if (State->CanDelete()) {
+				ToMarkForDelete.Add(*File);
+			}
+			else {
+				const TCHAR* Why = State->IsCheckedOutOther() ? TEXT("checked out by someone else")
+					: !State->IsCurrent()					  ? TEXT("not at the latest revision")
+															  : TEXT("revision control does not allow the delete");
+				UE_LOG(LogProjectCleaner, Warning, TEXT("Not deleted, revision control: %s (%s)"), **File, Why);
+				if (OutKept) OutKept->Add(*File, Why);
+			}
+		}
+		for (const auto& File : Files) {
+			if (!Sorted.Contains(File)) ToDisk.Add(File);
+		}
+	}
+	else {
+		ToDisk = Files;
+	}
+
+	if (ToRevert.Num() > 0) USourceControlHelpers::RevertFiles(ToRevert, true);
+	if (ToRevertThenDisk.Num() > 0) USourceControlHelpers::RevertFiles(ToRevertThenDisk, true);
+	if (ToMarkForDelete.Num() > 0) USourceControlHelpers::MarkFilesForDelete(ToMarkForDelete, true);
+	ToDisk.Append(ToRevertThenDisk);
+	ToDisk.Append(ToMarkForDelete);
+
+	// marked files are gone already; the rest go from disk, read-only ones too
 	int32 NumDeleted = 0;
-	for (const auto& File : Files) {
-		if (IFileManager::Get().Delete(*File, false, true, true) && !FPaths::FileExists(File)) {
+	for (const auto& File : ToDisk) {
+		if (FPaths::FileExists(File)) IFileManager::Get().Delete(*File, false, true, true);
+		if (!FPaths::FileExists(File)) {
 			++NumDeleted;
 		}
 		else {
@@ -3271,20 +3333,15 @@ bool UPjcSubsystem::DeleteFilesExternal(const bool bShowSlowTask, const bool bSh
 	const int32 NumFilesTotal = FilesExternalFiltered.Num();
 	int32 NumFilesDeleted = 0;
 
-	for (const auto& File : FilesExternalFiltered) {
-		SlowTask.EnterProgressFrame(1.0f, FText::FromString(File));
-
-		if (!IFileManager::Get().Delete(*File, true)) {
-			bErrors = true;
-			UE_LOG(LogProjectCleaner, Error, TEXT("Failed to delete file: %s"), *File);
-			continue;
-		}
-
-		++NumFilesDeleted;
-	}
+	// files revision control keeps count as done: nothing failed, they wait for the checkout or the latest
+	SlowTask.EnterProgressFrame(static_cast<float>(NumFilesTotal));
+	TMap<FString, FString> Kept;
+	NumFilesDeleted = DeleteFiles(FilesExternalFiltered, &Kept);
+	bErrors = NumFilesDeleted + Kept.Num() < NumFilesTotal;
 
 	const FString DeletedText = PjcFormat::Count(NumFilesDeleted);
-	const FString Msg = FString::Printf(TEXT("Deleted %s of %s external files"), *DeletedText, *PjcFormat::Count(NumFilesTotal));
+	FString Msg = FString::Printf(TEXT("Deleted %s of %s external files"), *DeletedText, *PjcFormat::Count(NumFilesTotal));
+	if (Kept.Num() > 0) Msg += FString::Printf(TEXT(", %s kept by revision control"), *PjcFormat::Count(Kept.Num()));
 	UE_LOG(LogProjectCleaner, Display, TEXT("%s"), *Msg);
 
 	if (bErrors) {
@@ -3327,20 +3384,15 @@ bool UPjcSubsystem::DeleteFilesCorrupted(const bool bShowSlowTask, const bool bS
 	const int32 NumFilesTotal = FilesCorrupted.Num();
 	int32 NumFilesDeleted = 0;
 
-	for (const auto& File : FilesCorrupted) {
-		SlowTask.EnterProgressFrame(1.0f, FText::FromString(File));
-
-		if (!IFileManager::Get().Delete(*File, true)) {
-			bErrors = true;
-			UE_LOG(LogProjectCleaner, Error, TEXT("Failed to delete file: %s"), *File);
-			continue;
-		}
-
-		++NumFilesDeleted;
-	}
+	// files revision control keeps count as done: nothing failed, they wait for the checkout or the latest
+	SlowTask.EnterProgressFrame(static_cast<float>(NumFilesTotal));
+	TMap<FString, FString> Kept;
+	NumFilesDeleted = DeleteFiles(FilesCorrupted, &Kept);
+	bErrors = NumFilesDeleted + Kept.Num() < NumFilesTotal;
 
 	const FString DeletedText = PjcFormat::Count(NumFilesDeleted);
-	const FString Msg = FString::Printf(TEXT("Deleted %s of %s corrupted files"), *DeletedText, *PjcFormat::Count(NumFilesTotal));
+	FString Msg = FString::Printf(TEXT("Deleted %s of %s corrupted files"), *DeletedText, *PjcFormat::Count(NumFilesTotal));
+	if (Kept.Num() > 0) Msg += FString::Printf(TEXT(", %s kept by revision control"), *PjcFormat::Count(Kept.Num()));
 	UE_LOG(LogProjectCleaner, Display, TEXT("%s"), *Msg);
 
 	if (bErrors) {
@@ -4010,12 +4062,14 @@ UPjcSubsystem::FixRedirectorsWithReport(const TArray<FAssetData>& InRedirectors,
 			const TCHAR* Hint = bRevisionControl ? TEXT("Get the latest or wait for the checkout to end, then fix again")
 												 : (bReadOnly ? TEXT("Check it out, then fix again") : TEXT("See the Output Log"));
 			Keep(PackageName, Why, Hint);
+			if (bRevisionControl) Result.KeptRevisionControl.Add(PackageName);
 		}
 		else if (User) {
 			Keep(PackageName, UserName + TEXT(" still uses it"), TEXT("Open it and check the reference"));
 		}
 		else if (!Block.IsEmpty()) {
 			Keep(PackageName, Block, BlockHint);
+			Result.KeptRevisionControl.Add(PackageName);
 		}
 		else {
 			ObjectsToDelete.Add(RedirectorObject);
