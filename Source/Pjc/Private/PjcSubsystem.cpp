@@ -156,6 +156,10 @@ namespace
 	FPjcScanResult LastScan;
 	UPjcSubsystem::FPjcDelegateScanFinished ScanFinished;
 	FPjcProjectChanges ProjectChanges;
+	// packages that got dirty, the engine's list is checked only while this is not empty
+	TSet<TWeakObjectPtr<UPackage>> PackagesDirty;
+	uint64 UnsavedFrame = MAX_uint64;
+	bool bUnsaved = false;
 
 	// detail of the cinematic reason, then the class
 	const FString PjcCinematicDetail = TEXT("Cinematic ");
@@ -330,6 +334,14 @@ void UPjcSubsystem::Initialize(FSubsystemCollectionBase& Collection) {
 #else
 	PackageSavedHandle = UPackage::PackageSavedEvent.AddUObject(this, &UPjcSubsystem::OnPackageSavedEvent);
 #endif
+
+	TArray<UPackage*> Dirty;
+	FEditorFileUtils::GetDirtyWorldPackages(Dirty);
+	FEditorFileUtils::GetDirtyContentPackages(Dirty);
+	for (UPackage* Package : Dirty) {
+		PackagesDirty.Add(Package);
+	}
+	PackageDirtyHandle = UPackage::PackageDirtyStateChangedEvent.AddUObject(this, &UPjcSubsystem::OnPackageDirtyEvent);
 }
 
 int32 UPjcSubsystem::MoveUsedClassesToExclusions() {
@@ -464,12 +476,35 @@ void UPjcSubsystem::Deinitialize() {
 #else
 	UPackage::PackageSavedEvent.Remove(PackageSavedHandle);
 #endif
+	UPackage::PackageDirtyStateChangedEvent.Remove(PackageDirtyHandle);
+	PackagesDirty.Reset();
 
 	Super::Deinitialize();
 }
 
 const FPjcProjectChanges& UPjcSubsystem::GetChangesSinceScan() {
 	return ProjectChanges;
+}
+
+bool UPjcSubsystem::HasUnsavedAssets() {
+	for (auto It = PackagesDirty.CreateIterator(); It; ++It) {
+		if (!It->IsValid() || !(*It)->IsDirty()) It.RemoveCurrent();
+	}
+	if (PackagesDirty.Num() == 0) return false;
+
+	// the same packages the save prompt lists; buttons ask every frame, the list is read once a frame
+	if (UnsavedFrame != GFrameCounter) {
+		UnsavedFrame = GFrameCounter;
+		TArray<UPackage*> Dirty;
+		FEditorFileUtils::GetDirtyWorldPackages(Dirty);
+		FEditorFileUtils::GetDirtyContentPackages(Dirty);
+		bUnsaved = Dirty.Num() > 0;
+	}
+	return bUnsaved;
+}
+
+void UPjcSubsystem::OnPackageDirtyEvent(UPackage* Package) {
+	if (Package && Package->IsDirty()) PackagesDirty.Add(Package);
 }
 
 bool UPjcSubsystem::IsProjectChange(const FName Package) {

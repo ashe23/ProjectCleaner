@@ -656,6 +656,9 @@ void SPjcCleanWindow::PumpUi() {
 }
 
 void SPjcCleanWindow::Run() {
+	// the check below reads the saved files: save first, the save can make an asset used
+	if (!PjcActions::SaveForDelete()) return;
+
 	Phase = EPhase::Run;
 	Steps = {
 	  TEXT("Checking that assets are still unused"),

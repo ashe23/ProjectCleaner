@@ -140,6 +140,10 @@ class UPjcSubsystem final : public UEditorSubsystem
 	// Assets added, removed, renamed or saved in the scanned content since the last scan; nothing before the first scan
 	static const FPjcProjectChanges& GetChangesSinceScan();
 
+	// Levels or assets with unsaved changes. Clean project waits for them: a delete reads the saved files, and the save can
+	// make an asset used (an actor placed in an unsaved level)
+	static bool HasUnsavedAssets();
+
 	// Returns what holds given asset in memory, so deleting it is refused. Empty when asset is not loaded or nothing outside it holds it.
 	// @param InAsset FAssetData
 	// @return FString
@@ -553,6 +557,8 @@ class UPjcSubsystem final : public UEditorSubsystem
 	FDelegateHandle AssetRemovedHandle;
 	FDelegateHandle AssetRenamedHandle;
 	FDelegateHandle PackageSavedHandle;
+	void OnPackageDirtyEvent(UPackage* Package);
+	FDelegateHandle PackageDirtyHandle;
 
 	// Assets of the scanned roots, one per package, redirectors included: reference chains and roots go through them
 	static void GetAssetsScanned(TArray<FAssetData>& Assets);

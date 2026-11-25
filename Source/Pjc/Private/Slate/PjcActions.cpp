@@ -8,14 +8,88 @@
 #include "PjcScanDraft.h"
 #include "PjcSettings.h"
 #include "PjcShim.h"
+#include "PjcStyles.h"
 #include "PjcSubsystem.h"
 #include "PjcUnused.h"
+#include "Pjc.h"
 // Engine Headers
+#include "FileHelpers.h"
+#include "Framework/Docking/TabManager.h"
+#include "Framework/Notifications/NotificationManager.h"
 #include "Widgets/Notifications/SNotificationList.h"
 
 namespace PjcActions
 {
-	bool DeleteWithGroup(const TArray<FName>& Packages) {
+	namespace
+	{
+		int32 NumDirty() {
+			TArray<UPackage*> Dirty;
+			FEditorFileUtils::GetDirtyWorldPackages(Dirty);
+			FEditorFileUtils::GetDirtyContentPackages(Dirty);
+			return Dirty.Num();
+		}
+
+		// after a save: scans again and leaves out the packages the save made used
+		void ScanAndLeaveOutUsed(TArray<FName>& Packages) {
+			TSet<FName> UsedBefore;
+			for (const auto& Pair : UPjcSubsystem::GetScanResult().Usage) {
+				if (Pair.Value.bUsed) UsedBefore.Add(Pair.Key);
+			}
+			SPjcScanBar::ScanProject();
+
+			const TMap<FName, FPjcAssetUsage>& Usage = UPjcSubsystem::GetScanResult().Usage;
+			TArray<FName> UsedNow;
+			Packages.RemoveAll([&Usage, &UsedBefore, &UsedNow](const FName Package) {
+				const FPjcAssetUsage* Now = Usage.Find(Package);
+				if (!Now || !Now->bUsed || UsedBefore.Contains(Package)) return false;
+
+				UsedNow.Add(Package);
+				return true;
+			});
+			if (UsedNow.Num() == 0) return;
+
+			for (const FName Package : UsedNow) {
+				UE_LOG(LogProjectCleaner, Warning, TEXT("Kept, became used when saved: %s"), *Package.ToString());
+			}
+			const bool bOne = UsedNow.Num() == 1;
+			const FString Text = FString::Printf(
+				TEXT("%s %s kept: %s used when you saved"),
+				*PjcFormat::Count(UsedNow.Num()),
+				bOne ? TEXT("asset") : TEXT("assets"),
+				bOne ? TEXT("it became") : TEXT("they became")
+			);
+			FNotificationInfo Info {FText::FromString(Text)};
+			Info.Image = FPjcStyles::Get().GetBrush(TEXT("ProjectCleaner.Icon.Warning"));
+			Info.ExpireDuration = 8.0f;
+			Info.Hyperlink = FSimpleDelegate::CreateLambda([]() {
+				FGlobalTabmanager::Get()->TryInvokeTab(FName {TEXT("OutputLog")});
+			});
+			Info.HyperlinkText = FText::FromString(TEXT("Show Output Log..."));
+			FSlateNotificationManager::Get().AddNotification(Info);
+		}
+	}	// namespace
+
+	bool SaveForDelete(bool* OutSaved) {
+		if (OutSaved) *OutSaved = false;
+		if (NumDirty() == 0) return true;
+
+		if (!FEditorFileUtils::SaveDirtyPackages(true, true, true, false, false, false)) {
+			const TCHAR* Unsaved = TEXT("Delete needs all assets saved. Nothing was deleted.");
+			UPjcSubsystem::ShowNotificationWithOutputLog(Unsaved, SNotificationItem::CS_Fail, 5.0f);
+			return false;
+		}
+		if (OutSaved) *OutSaved = true;
+		return true;
+	}
+
+	bool DeleteWithGroup(const TArray<FName>& InPackages) {
+		if (InPackages.Num() == 0) return false;
+
+		bool bSaved = false;
+		if (!SaveForDelete(&bSaved)) return false;
+
+		TArray<FName> Packages = InPackages;
+		if (bSaved) ScanAndLeaveOutUsed(Packages);
 		if (Packages.Num() == 0) return false;
 
 		const FPjcScanResult& Result = UPjcSubsystem::GetScanResult();
@@ -163,7 +237,14 @@ namespace PjcActions
 				TEXT("Unsaved changes in those editors can be lost. You cannot undo it.");
 	}
 
-	int32 ForceDelete(const TArray<FName>& Packages, const bool bAsk, const bool bScan, int32* OutInMemory) {
+	int32 ForceDelete(const TArray<FName>& InPackages, const bool bAsk, const bool bScan, int32* OutInMemory) {
+		if (InPackages.Num() == 0) return 0;
+
+		bool bSaved = false;
+		if (!SaveForDelete(&bSaved)) return 0;
+
+		TArray<FName> Packages = InPackages;
+		if (bSaved) ScanAndLeaveOutUsed(Packages);
 		if (Packages.Num() == 0) return 0;
 
 		if (bAsk) {

@@ -315,7 +315,7 @@ FText SPjcScanBar::GetStatusToolTip() const {
 
 bool SPjcScanBar::IsCleanEnabled() const {
 	const FPjcScanResult& Result = UPjcSubsystem::GetScanResult();
-	return Result.IsValid() && !NeedsRescan() && Result.Unused.Num() > 0;
+	return Result.IsValid() && !NeedsRescan() && Result.Unused.Num() > 0 && !UPjcSubsystem::HasUnsavedAssets();
 }
 
 FText SPjcScanBar::GetCleanToolTip() const {
@@ -325,6 +325,9 @@ FText SPjcScanBar::GetCleanToolTip() const {
 	}
 	if (NeedsRescan()) {
 		return FText::FromString(TEXT("Rescan first. Results are from before the change"));
+	}
+	if (UPjcSubsystem::HasUnsavedAssets()) {
+		return FText::FromString(TEXT("Unsaved assets. Save all, then scan again"));
 	}
 	return FText::FromString(TEXT("Deletes all unused assets and empty folders"));
 }

@@ -9,7 +9,11 @@ namespace PjcActions
 {
 	// Deletes unused or review assets with the unused and review assets that reference them, after the delete dialog,
 	// then scans again. Refused while a used asset references them (it would break). False when nothing was deleted.
-	bool DeleteWithGroup(const TArray<FName>& Packages);
+	bool DeleteWithGroup(const TArray<FName>& InPackages);
+
+	// Saves unsaved assets before a delete (the editor asks). A delete reads the saved files, and a save can make an asset
+	// used: an actor placed in an unsaved level. False when the user does not save. OutSaved: something was saved
+	bool SaveForDelete(bool* OutSaved = nullptr);
 
 	// Adds exclusions to the project settings and the scan draft, tells Message, then scans again
 	void Exclude(const TArray<FString>& Folders, const TArray<FString>& Classes, const TArray<FString>& Assets, const FString& Message);
@@ -31,5 +35,5 @@ namespace PjcActions
 	// Force delete of assets the last delete could not remove: the warning dialog when bAsk, the engine's Force Delete,
 	// then a scan when bScan. Returns how many are gone from disk; OutInMemory: of those, how many the editor still holds
 	// (string tables before UE 5.7): they stay in the lists until the editor restarts
-	int32 ForceDelete(const TArray<FName>& Packages, const bool bAsk, const bool bScan, int32* OutInMemory = nullptr);
+	int32 ForceDelete(const TArray<FName>& InPackages, const bool bAsk, const bool bScan, int32* OutInMemory = nullptr);
 }	// namespace PjcActions
