@@ -324,7 +324,8 @@ class UPjcSubsystem final : public UEditorSubsystem
 
 	// Packages revision control does not let the editor delete: checked out by someone else or not at the latest revision.
 	// The engine refuses a whole delete batch for one of them, so they are left out before the delete.
-	static void GetRevisionControlBlocks(const TArray<FName>& Packages, TMap<FName, FString>& OutBlocked);
+	// bForSave: packages it does not let the editor check out and save instead
+	static void GetRevisionControlBlocks(const TArray<FName>& Packages, TMap<FName, FString>& OutBlocked, const bool bForSave = false);
 
 	// Delete all empty folders in project
 	// @param bShowSlowTask bool

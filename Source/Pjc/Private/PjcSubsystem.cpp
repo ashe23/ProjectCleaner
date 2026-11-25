@@ -3654,7 +3654,7 @@ UClass* UPjcSubsystem::GetRedirectorTargetClass(const FAssetData& Redirector) {
 	return nullptr;
 }
 
-void UPjcSubsystem::GetRevisionControlBlocks(const TArray<FName>& Packages, TMap<FName, FString>& OutBlocked) {
+void UPjcSubsystem::GetRevisionControlBlocks(const TArray<FName>& Packages, TMap<FName, FString>& OutBlocked, const bool bForSave) {
 	OutBlocked.Reset();
 	if (Packages.Num() == 0 || !ISourceControlModule::Get().IsEnabled()) return;
 
@@ -3678,8 +3678,9 @@ void UPjcSubsystem::GetRevisionControlBlocks(const TArray<FName>& Packages, TMap
 	TArray<FSourceControlStateRef> States;
 	Provider.GetState(Files, States, EStateCacheUsage::ForceUpdate);
 	for (const FSourceControlStateRef& State : States) {
-		// the engine's own test (FSourceControlModule::OnAssetsCanDelete), so every provider is covered
-		if (!State->IsSourceControlled() || State->CanDelete()) continue;
+		// the engine's own tests (FSourceControlModule::OnAssetsCanDelete, the checkout before a save), so every provider is covered
+		if (!State->IsSourceControlled()) continue;
+		if (bForSave ? State->CanEdit() || State->CanCheckout() : State->CanDelete()) continue;
 
 		FString Filename = State->GetFilename();
 		FPaths::NormalizeFilename(Filename);
@@ -3703,7 +3704,9 @@ void UPjcSubsystem::GetRevisionControlBlocks(const TArray<FName>& Packages, TMap
 			OutBlocked.Add(*Package, TEXT("not at the latest revision"));
 		}
 		else {
-			OutBlocked.Add(*Package, TEXT("revision control does not allow the delete"));
+			OutBlocked.Add(
+				*Package, bForSave ? TEXT("revision control does not allow the checkout") : TEXT("revision control does not allow the delete")
+			);
 		}
 	}
 }
@@ -3894,6 +3897,10 @@ UPjcSubsystem::FixRedirectorsWithReport(const TArray<FAssetData>& InRedirectors,
 		}
 	}
 
+	// referencers revision control does not let the editor check out stay as they are: no engine message box, a reason each
+	TMap<FName, FString> Blocked;
+	GetRevisionControlBlocks(ReferencerNames.Array(), Blocked, true);
+
 	// loading referencers resolves redirectors (loaded redirectors also fix soft references on save)
 	SlowTask.EnterProgressFrame(1.0f, FText::FromString(TEXT("Resaving the assets that use them")));
 	TArray<UPackage*> PackagesToSave;
@@ -3901,6 +3908,12 @@ UPjcSubsystem::FixRedirectorsWithReport(const TArray<FAssetData>& InRedirectors,
 	int32 NumLoaded = 0;
 	TSet<FString> Worlds;
 	for (const FName& ReferencerName : ReferencerNames) {
+		if (const FString* Why = Blocked.Find(ReferencerName)) {
+			UE_LOG(LogProjectCleaner, Warning, TEXT("Not resaved, revision control: %s (%s)"), *ReferencerName.ToString(), **Why);
+			Result.NotResaved.Add(ReferencerName, *Why);
+			continue;
+		}
+
 		FString Filename;
 		if (!PjcShim::DoesPackageExist(ReferencerName.ToString(), &Filename)) continue;
 
@@ -3976,15 +3989,27 @@ UPjcSubsystem::FixRedirectorsWithReport(const TArray<FAssetData>& InRedirectors,
 		FString BlockHint;
 		const FString Block = User ? FString {} : GetRedirectorDeleteBlock(PackageName, BlockHint);
 		const FString UserName = User ? FPackageName::GetShortName(*User) : FString {};
-		const FString* NotResaved = User ? Result.NotResaved.Find(*User) : nullptr;
+		// every user that was not resaved, with its reason
+		TArray<FString> NotResaved;
+		bool bReadOnly = false;
+		bool bRevisionControl = false;
+		for (const FName& Referencer : Referencers) {
+			const FString* Why = Result.NotResaved.Find(Referencer);
+			if (!Why) continue;
+
+			NotResaved.Add(FString::Printf(TEXT("%s (%s)"), *FPackageName::GetShortName(Referencer), **Why));
+			bReadOnly |= Why->Contains(TEXT("read-only"));
+			bRevisionControl |= Blocked.Contains(Referencer);
+		}
 		if (User && !GetFinalDestination(RedirectorObject) && !Options.bClearBroken) {
 			const FString Missing = FString::Printf(TEXT("Its target is missing and %s uses it"), *UserName);
 			Keep(PackageName, Missing, TEXT("Repair it. Point it to another asset, or clear the references"));
 		}
-		else if (NotResaved) {
-			const bool bReadOnly = NotResaved->Contains(TEXT("read-only"));
-			const FString Why = FString::Printf(TEXT("%s was not resaved: %s"), *UserName, **NotResaved);
-			Keep(PackageName, Why, bReadOnly ? TEXT("Check it out, then fix again") : TEXT("See the Output Log"));
+		else if (NotResaved.Num() > 0) {
+			const FString Why = TEXT("Not resaved: ") + FString::Join(NotResaved, TEXT(", "));
+			const TCHAR* Hint = bRevisionControl ? TEXT("Get the latest or wait for the checkout to end, then fix again")
+												 : (bReadOnly ? TEXT("Check it out, then fix again") : TEXT("See the Output Log"));
+			Keep(PackageName, Why, Hint);
 		}
 		else if (User) {
 			Keep(PackageName, UserName + TEXT(" still uses it"), TEXT("Open it and check the reference"));
