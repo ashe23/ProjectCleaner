@@ -10,6 +10,11 @@
 #include "PjcStyles.h"
 #include "PjcShim.h"
 #include "PjcSubsystem.h"
+#include "Slate/PjcActions.h"
+#include "Pjc.h"
+#include "Editor.h"
+#include "Subsystems/AssetEditorSubsystem.h"
+#include "TimerManager.h"
 // Engine Headers
 #include "FileHelpers.h"
 #include "Interfaces/IPluginManager.h"
@@ -231,7 +236,33 @@ void SPjcScanBar::ScanProject(const bool bByUser) {
 }
 
 void SPjcScanBar::CleanProject() {
-	SPjcCleanWindow::Open();
+	if (!GEditor) {
+		SPjcCleanWindow::Open();
+		return;
+	}
+
+	// the Clean window is modal and stops the engine tick that removes closed editor tabs: close them here, open the
+	// window on the next tick
+	if (!UPjcSubsystem::CloseAssetEditors()) {
+		const TCHAR* Open = TEXT("Clean needs the asset editors closed. Close them, then clean again");
+		UPjcSubsystem::ShowNotificationWithOutputLog(Open, SNotificationItem::CS_Fail, 5.0f);
+		return;
+	}
+	GEditor->GetTimerManager()->SetTimerForNextTick([]() {
+		// an editor can ask about its changes after the close call
+		if (!UPjcSubsystem::CloseAssetEditors()) {
+			const TCHAR* Open = TEXT("Clean needs the asset editors closed. Close them, then clean again");
+			UPjcSubsystem::ShowNotificationWithOutputLog(Open, SNotificationItem::CS_Fail, 5.0f);
+			return;
+		}
+		// closing an editor can change its asset (a compile, an applied edit): then Clean waits for a save and a scan
+		if (UPjcSubsystem::HasUnsavedAssets()) {
+			UE_LOG(LogProjectCleaner, Warning, TEXT("Clean project: closing the asset editors changed assets, save them and scan again"));
+			PjcActions::ShowWarning(TEXT("Closing the asset editors changed assets. Save them, then scan again"));
+			return;
+		}
+		SPjcCleanWindow::Open();
+	});
 }
 
 FReply SPjcScanBar::OnScanClicked() const {

@@ -15,6 +15,9 @@ namespace PjcActions
 	// used: an actor placed in an unsaved level. False when the user does not save. OutSaved: something was saved
 	bool SaveForDelete(bool* OutSaved = nullptr);
 
+	// Notification with the warning icon and a link to the Output Log
+	void ShowWarning(const FString& Text);
+
 	// Adds exclusions to the project settings and the scan draft, tells Message, then scans again
 	void Exclude(const TArray<FString>& Folders, const TArray<FString>& Classes, const TArray<FString>& Assets, const FString& Message);
 

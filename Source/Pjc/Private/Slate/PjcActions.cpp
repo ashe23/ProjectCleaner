@@ -58,16 +58,20 @@ namespace PjcActions
 				bOne ? TEXT("asset") : TEXT("assets"),
 				bOne ? TEXT("it became") : TEXT("they became")
 			);
-			FNotificationInfo Info {FText::FromString(Text)};
-			Info.Image = FPjcStyles::Get().GetBrush(TEXT("ProjectCleaner.Icon.Warning"));
-			Info.ExpireDuration = 8.0f;
-			Info.Hyperlink = FSimpleDelegate::CreateLambda([]() {
-				FGlobalTabmanager::Get()->TryInvokeTab(FName {TEXT("OutputLog")});
-			});
-			Info.HyperlinkText = FText::FromString(TEXT("Show Output Log..."));
-			FSlateNotificationManager::Get().AddNotification(Info);
+			ShowWarning(Text);
 		}
 	}	// namespace
+
+	void ShowWarning(const FString& Text) {
+		FNotificationInfo Info {FText::FromString(Text)};
+		Info.Image = FPjcStyles::Get().GetBrush(TEXT("ProjectCleaner.Icon.Warning"));
+		Info.ExpireDuration = 8.0f;
+		Info.Hyperlink = FSimpleDelegate::CreateLambda([]() {
+			FGlobalTabmanager::Get()->TryInvokeTab(FName {TEXT("OutputLog")});
+		});
+		Info.HyperlinkText = FText::FromString(TEXT("Show Output Log..."));
+		FSlateNotificationManager::Get().AddNotification(Info);
+	}
 
 	bool SaveForDelete(bool* OutSaved) {
 		if (OutSaved) *OutSaved = false;

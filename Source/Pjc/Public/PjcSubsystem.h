@@ -144,6 +144,9 @@ class UPjcSubsystem final : public UEditorSubsystem
 	// make an asset used (an actor placed in an unsaved level)
 	static bool HasUnsavedAssets();
 
+	// Closes every asset editor. False when one stays open (the user cancelled its "save changes" prompt)
+	static bool CloseAssetEditors();
+
 	// Returns what holds given asset in memory, so deleting it is refused. Empty when asset is not loaded or nothing outside it holds it.
 	// @param InAsset FAssetData
 	// @return FString

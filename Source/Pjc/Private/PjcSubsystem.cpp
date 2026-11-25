@@ -503,6 +503,15 @@ bool UPjcSubsystem::HasUnsavedAssets() {
 	return bUnsaved;
 }
 
+bool UPjcSubsystem::CloseAssetEditors() {
+	if (!GEditor) return true;
+
+	// the engine reports success when an editor stays open after its "save changes" prompt was cancelled: count what is open
+	UAssetEditorSubsystem* Editors = GEditor->GetEditorSubsystem<UAssetEditorSubsystem>();
+	Editors->CloseAllAssetEditors();
+	return Editors->GetAllEditedAssets().Num() == 0;
+}
+
 void UPjcSubsystem::OnPackageDirtyEvent(UPackage* Package) {
 	if (Package && Package->IsDirty()) PackagesDirty.Add(Package);
 }
@@ -2919,7 +2928,7 @@ bool UPjcSubsystem::PrepareDelete() {
 		return false;
 	}
 
-	if (GEditor && !GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->CloseAllAssetEditors()) {
+	if (!CloseAssetEditors()) {
 		UE_LOG(LogProjectCleaner, Warning, TEXT("Failed to delete unused assets because some editor windows are still open."));
 		// clang-format off
 		UE_LOG(LogProjectCleaner, Warning, TEXT("Please try again, check the Output Log for reasons why certain windows haven't closed, ")
