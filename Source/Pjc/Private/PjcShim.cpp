@@ -16,7 +16,11 @@
 #include "ICollectionContainer.h"
 #endif
 #include "Misc/MessageDialog.h"
+#if ENGINE_MAJOR_VERSION >= 5
 #include "HAL/PlatformFileManager.h"
+#else
+#include "HAL/PlatformFilemanager.h"
+#endif
 #include "ISourceControlModule.h"
 #include "SourceControlHelpers.h"
 #include "Misc/PackageName.h"
