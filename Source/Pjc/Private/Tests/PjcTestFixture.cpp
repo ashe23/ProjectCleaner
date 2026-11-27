@@ -54,6 +54,7 @@
 #include "Misc/RedirectCollector.h"
 #include "UObject/ObjectRedirector.h"
 #include "UObject/UObjectHash.h"
+#include "Sound/SoundBase.h"
 
 namespace
 {

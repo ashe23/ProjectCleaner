@@ -59,6 +59,7 @@
 #include "AssetToolsModule.h"
 #include "ContentBrowserModule.h"
 #include "PropertyEditorModule.h"
+#include "Misc/ConfigCacheIni.h"
 
 namespace
 {

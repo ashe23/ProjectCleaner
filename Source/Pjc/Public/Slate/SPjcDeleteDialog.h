@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Widgets/DeclarativeSyntaxSupport.h"
 #include "AssetRegistry/AssetData.h"
 #include "Widgets/SCompoundWidget.h"
 

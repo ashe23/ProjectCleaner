@@ -16,6 +16,7 @@
 #include "ICollectionContainer.h"
 #endif
 #include "Misc/MessageDialog.h"
+#include "HAL/FileManager.h"
 #if ENGINE_MAJOR_VERSION >= 5
 #include "HAL/PlatformFileManager.h"
 #else

@@ -3,7 +3,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Widgets/DeclarativeSyntaxSupport.h"
 #include "Animation/CurveSequence.h"
+#include "Types/SlateStructs.h"
 #include "Widgets/SCompoundWidget.h"
 
 /**

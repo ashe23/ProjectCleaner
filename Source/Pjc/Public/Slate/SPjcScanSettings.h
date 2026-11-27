@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Widgets/DeclarativeSyntaxSupport.h"
 #include "PjcScanDraft.h"
 #include "PjcTypes.h"
 #include "Widgets/SCompoundWidget.h"

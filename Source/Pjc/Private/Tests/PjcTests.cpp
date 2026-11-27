@@ -43,6 +43,8 @@
 #include "Serialization/MemoryWriter.h"
 #include "UObject/ObjectRedirector.h"
 #include "Internationalization/StringTable.h"
+#include "Engine/Blueprint.h"
+#include "Misc/ConfigCacheIni.h"
 
 namespace
 {

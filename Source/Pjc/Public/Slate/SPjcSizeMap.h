@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Widgets/DeclarativeSyntaxSupport.h"
 #include "PjcUnused.h"
 #include "Widgets/SLeafWidget.h"
 

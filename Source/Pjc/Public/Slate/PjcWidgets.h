@@ -7,9 +7,9 @@
 #include "Layout/Margin.h"
 #include "Textures/SlateIcon.h"
 #include "Widgets/Views/SHeaderRow.h"
+#include "Widgets/SToolTip.h"
 
 class FMenuBuilder;
-class SToolTip;
 class SWindow;
 class SWidget;
 struct FAssetData;

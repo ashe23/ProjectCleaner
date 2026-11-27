@@ -17,6 +17,7 @@ struct FAssetBundleEntry;
 enum class EPrimaryAssetCookRule : uint8;
 struct FButtonStyle;
 struct FCheckBoxStyle;
+struct FComboButtonStyle;
 struct FEditableTextBoxStyle;
 struct FProgressBarStyle;
 struct FSearchBoxStyle;
