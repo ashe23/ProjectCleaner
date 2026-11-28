@@ -2465,7 +2465,7 @@ bool FPjcTestForceDelete::RunTest(const FString& Parameters) {
 	const FString Folder = TEXT("/Game/PjcForceDelete");
 	const FString PackageName = Folder / TEXT("ST_Held");
 	ON_SCOPE_EXIT {
-		IFileManager::Get().DeleteDirectory(*FPackageName::LongPackageNameToFilename(Folder + TEXT("/")), false, true);
+		FPjcTestFixture::DeleteTestFolder(Folder);
 	};
 	UStringTable* Table = NewObject<UStringTable>(CreatePackage(*PackageName), TEXT("ST_Held"), RF_Public | RF_Standalone);
 	FAssetRegistryModule::AssetCreated(Table);
@@ -2515,7 +2515,7 @@ bool FPjcTestSaveFirst::RunTest(const FString& Parameters) {
 			if (UObject* Object = FindObject<UObject>(nullptr, *(Root / Name + TEXT(".") + Name))) Left.Add(Object);
 		}
 		if (Left.Num() > 0) ObjectTools::ForceDeleteObjects(Left, false);
-		IFileManager::Get().DeleteDirectory(*FPackageName::LongPackageNameToFilename(Root + TEXT("/")), false, true);
+		FPjcTestFixture::DeleteTestFolder(Root);
 		UPjcSubsystem::Scan(false);
 	};
 
@@ -2649,7 +2649,7 @@ bool FPjcTestCleanGate::RunTest(const FString& Parameters) {
 
 	const FString Folder = TEXT("/Game/PjcCleanGate");
 	ON_SCOPE_EXIT {
-		IFileManager::Get().DeleteDirectory(*FPackageName::LongPackageNameToFilename(Folder + TEXT("/")), false, true);
+		FPjcTestFixture::DeleteTestFolder(Folder);
 	};
 	UCurveFloat* Curve = NewObject<UCurveFloat>(CreatePackage(*(Folder / TEXT("C_Gate"))), TEXT("C_Gate"), RF_Public | RF_Standalone);
 	FAssetRegistryModule::AssetCreated(Curve);
@@ -2693,7 +2693,7 @@ bool FPjcTestCloseEditors::RunTest(const FString& Parameters) {
 
 	const FString Folder = TEXT("/Game/PjcCloseEditors");
 	ON_SCOPE_EXIT {
-		IFileManager::Get().DeleteDirectory(*FPackageName::LongPackageNameToFilename(Folder + TEXT("/")), false, true);
+		FPjcTestFixture::DeleteTestFolder(Folder);
 	};
 	UCurveFloat* Curve = NewObject<UCurveFloat>(CreatePackage(*(Folder / TEXT("C_Edited"))), TEXT("C_Edited"), RF_Public | RF_Standalone);
 	FAssetRegistryModule::AssetCreated(Curve);

@@ -227,6 +227,19 @@ bool FPjcTestFixture::IsTestHost() {
 	return FParse::Param(FCommandLine::Get(), TEXT("PjcTestHost"));
 }
 
+void FPjcTestFixture::DeleteTestFolder(const FString& LongPackagePath) {
+	const FString Dir = FPackageName::LongPackageNameToFilename(LongPackagePath + TEXT("/"));
+#if PLATFORM_LINUX && ENGINE_MAJOR_VERSION < 5
+	TArray<FString> Files;
+	IFileManager::Get().FindFilesRecursive(Files, *Dir, TEXT("*"), true, false);
+	for (const FString& File : Files) {
+		IFileManager::Get().Delete(*File, false, true, true);
+	}
+#else
+	IFileManager::Get().DeleteDirectory(*Dir, false, true);
+#endif
+}
+
 void FPjcTestFixture::Case(FAutomationTestBase& Test, const TCHAR* Name, const FString& SkippedWhy) {
 	const FString Ran = FString::Printf(TEXT("PjcCase ran: %s"), Name);
 	const FString Skipped = FString::Printf(TEXT("PjcCase skipped: %s: %s"), Name, *SkippedWhy);

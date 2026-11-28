@@ -116,6 +116,10 @@ class FPjcTestFixture
 	static constexpr int32 NumBulkAssets = 25;
 
 	static bool IsTestHost();
+	// Removes a test's own content folder (long package path, e.g. /Game/PjcSaveFirst). UE 4.27 on Linux: files only,
+	// the empty folder stays (its directory watcher logs an error when a watched folder goes; the dev tool removes
+	// test folders before the next fixture)
+	static void DeleteTestFolder(const FString& LongPackagePath);
 	// Coverage for the dev tool's test run: a feature case that ran, or why it was skipped (the feature is not in this
 	// engine or project). The table lists every case by engine.
 	static void Case(FAutomationTestBase& Test, const TCHAR* Name, const FString& SkippedWhy = FString {});
