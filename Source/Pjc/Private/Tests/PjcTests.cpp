@@ -45,6 +45,8 @@
 #include "Internationalization/StringTable.h"
 #include "Engine/Blueprint.h"
 #include "Misc/ConfigCacheIni.h"
+#include "Editor.h"
+#include "Subsystems/AssetEditorSubsystem.h"
 
 namespace
 {
@@ -2539,6 +2541,83 @@ bool FPjcTestExcludeInPlace::RunTest(const FString& Parameters) {
 	for (const auto& Each : Result.Unused) Full.Add(Each.PackageName);
 	TestEqual(TEXT("same unused count as a full scan"), InPlace.Num(), Full.Num());
 	TestTrue(TEXT("same unused assets as a full scan"), InPlace.Difference(Full).Num() == 0 && Full.Difference(InPlace).Num() == 0);
+	return true;
+}
+
+// Clean project waits for saved assets: HasUnsavedAssets follows the dirty state of each package (Clean gate, ed98b2a)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPjcTestCleanGate, "ProjectCleaner.Clean.Gate", PJC_TEST_FLAGS)
+
+bool FPjcTestCleanGate::RunTest(const FString& Parameters) {
+	if (!FPjcTestFixture::IsTestHost()) {
+		AddInfo(TEXT("Skipped, saves a test asset, runs only in test host projects"));
+		return true;
+	}
+
+	const FString Folder = TEXT("/Game/PjcCleanGate");
+	ON_SCOPE_EXIT {
+		IFileManager::Get().DeleteDirectory(*FPackageName::LongPackageNameToFilename(Folder + TEXT("/")), false, true);
+	};
+	UCurveFloat* Curve = NewObject<UCurveFloat>(CreatePackage(*(Folder / TEXT("C_Gate"))), TEXT("C_Gate"), RF_Public | RF_Standalone);
+	FAssetRegistryModule::AssetCreated(Curve);
+	Curve->MarkPackageDirty();
+	if (!TestTrue(TEXT("saved"), UEditorLoadingAndSavingUtils::SavePackages({Curve->GetOutermost()}, false))) return false;
+
+	const bool bOthersDirty = UPjcSubsystem::HasUnsavedAssets();
+	if (bOthersDirty) {
+		AddInfo(TEXT("other packages are unsaved in this editor, only the dirty check runs"));
+	}
+	Curve->MarkPackageDirty();
+	TestTrue(TEXT("unsaved after a change"), UPjcSubsystem::HasUnsavedAssets());
+	if (!TestTrue(TEXT("saved again"), UEditorLoadingAndSavingUtils::SavePackages({Curve->GetOutermost()}, false))) return false;
+	if (!bOthersDirty) {
+		TestFalse(TEXT("nothing unsaved after the save"), UPjcSubsystem::HasUnsavedAssets());
+	}
+
+	ObjectTools::ForceDeleteObjects({Curve}, false);
+	return true;
+}
+
+// Clean project closes the asset editors first; CloseAssetEditors says whether every one closed (6dbd7f4)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPjcTestCloseEditors, "ProjectCleaner.Clean.CloseEditors", PJC_TEST_FLAGS)
+
+bool FPjcTestCloseEditors::RunTest(const FString& Parameters) {
+	if (!FPjcTestFixture::IsTestHost()) {
+		AddInfo(TEXT("Skipped, opens an asset editor, runs only in test host projects"));
+		return true;
+	}
+	if (!GEditor || !FSlateApplication::IsInitialized()) {
+		AddInfo(TEXT("Skipped, needs the editor UI"));
+		return true;
+	}
+#if ENGINE_MAJOR_VERSION < 5 || (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION < 8)
+	// before UE 5.8 the engine asserts when an asset editor window closes without rendering (GenericWindow::GetRestoredDimensions)
+	if (!FApp::CanEverRender()) {
+		AddInfo(TEXT("Skipped, before UE 5.8 an asset editor cannot close without rendering (-nullrhi)"));
+		return true;
+	}
+#endif
+
+	const FString Folder = TEXT("/Game/PjcCloseEditors");
+	ON_SCOPE_EXIT {
+		IFileManager::Get().DeleteDirectory(*FPackageName::LongPackageNameToFilename(Folder + TEXT("/")), false, true);
+	};
+	UCurveFloat* Curve = NewObject<UCurveFloat>(CreatePackage(*(Folder / TEXT("C_Edited"))), TEXT("C_Edited"), RF_Public | RF_Standalone);
+	FAssetRegistryModule::AssetCreated(Curve);
+	Curve->MarkPackageDirty();
+	if (!TestTrue(TEXT("saved"), UEditorLoadingAndSavingUtils::SavePackages({Curve->GetOutermost()}, false))) return false;
+
+	UAssetEditorSubsystem* Editors = GEditor->GetEditorSubsystem<UAssetEditorSubsystem>();
+	Editors->OpenEditorForAsset(Curve);
+	if (!Editors->GetAllEditedAssets().Contains(Curve)) {
+		AddInfo(TEXT("Skipped, the asset editor did not open in this editor run"));
+	}
+	else {
+		TestTrue(TEXT("every editor closed"), UPjcSubsystem::CloseAssetEditors());
+		TestEqual(TEXT("no edited assets"), Editors->GetAllEditedAssets().Num(), 0);
+	}
+	TestTrue(TEXT("nothing open: closed"), UPjcSubsystem::CloseAssetEditors());
+
+	ObjectTools::ForceDeleteObjects({Curve}, false);
 	return true;
 }
 
