@@ -2,6 +2,8 @@
 
 #include "PjcSubsystem.h"
 #include "SourceControlHelpers.h"
+#include "SourceControlOperations.h"
+#include "ISourceControlProvider.h"
 #include "UObject/CoreRedirects.h"
 #include "PjcCookInfo.h"
 #include "PjcFormat.h"
@@ -3222,9 +3224,29 @@ int32 UPjcSubsystem::DeleteFiles(const TArray<FString>& Files, TMap<FString, FSt
 
 	if (ToRevert.Num() > 0) USourceControlHelpers::RevertFiles(ToRevert, true);
 	if (ToRevertThenDisk.Num() > 0) USourceControlHelpers::RevertFiles(ToRevertThenDisk, true);
-	if (ToMarkForDelete.Num() > 0) USourceControlHelpers::MarkFilesForDelete(ToMarkForDelete, true);
+	if (ToMarkForDelete.Num() > 0) {
+		// the provider marks the files itself: the engine helper deletes a file from disk even when the server
+		// refuses the delete, which leaves a missing file that is not marked for delete
+		TArray<FString> Full;
+		for (const auto& File : ToMarkForDelete) {
+			Full.Add(FPaths::ConvertRelativePathToFull(File));
+		}
+		ISourceControlProvider& Provider = RevisionControl.GetProvider();
+		Provider.Execute(ISourceControlOperation::Create<FDelete>(), Full);
+		TArray<FSourceControlStateRef> States;
+		Provider.GetState(Full, States, EStateCacheUsage::ForceUpdate);
+		for (int32 Index = 0; Index < ToMarkForDelete.Num(); ++Index) {
+			if (States.IsValidIndex(Index) && States[Index]->IsDeleted()) {
+				ToDisk.Add(ToMarkForDelete[Index]);
+			}
+			else {
+				const TCHAR* Why = TEXT("revision control refused the delete");
+				UE_LOG(LogProjectCleaner, Warning, TEXT("Not deleted, revision control: %s (%s)"), *ToMarkForDelete[Index], Why);
+				if (OutKept) OutKept->Add(ToMarkForDelete[Index], Why);
+			}
+		}
+	}
 	ToDisk.Append(ToRevertThenDisk);
-	ToDisk.Append(ToMarkForDelete);
 
 	// marked files are gone already; the rest go from disk, read-only ones too
 	int32 NumDeleted = 0;
