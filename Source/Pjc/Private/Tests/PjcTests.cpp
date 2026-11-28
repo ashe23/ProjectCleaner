@@ -22,6 +22,7 @@
 #include "Engine/ObjectLibrary.h"
 #include "Engine/AssetManager.h"
 #include "Framework/Application/SlateApplication.h"
+#include "Slate/PjcActions.h"
 #include "Slate/SPjcTabIssues.h"
 #include "Slate/SPjcTabUnused.h"
 #include "Slate/SPjcTabInspector.h"
@@ -2491,6 +2492,99 @@ bool FPjcTestForceDelete::RunTest(const FString& Parameters) {
 		AddInfo(FString::Printf(TEXT("listed until a restart: %s"), bListed ? TEXT("yes") : TEXT("no")));
 #endif
 	}
+	return true;
+}
+
+// a save before a delete can make an unused asset used: the scan after the save leaves it out of the delete
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPjcTestSaveFirst, "ProjectCleaner.Unused.SaveFirst", PJC_TEST_FLAGS)
+
+bool FPjcTestSaveFirst::RunTest(const FString& Parameters) {
+	if (!FPjcTestFixture::IsTestHost()) {
+		AddInfo(TEXT("Skipped, deletes test assets, runs only in test host projects"));
+		return true;
+	}
+
+	FPjcScopedScanSettings ScopedSettings {false};
+	const FString Root = TEXT("/Game/PjcSaveFirst");
+	UPjcAssetExcludeSettings* Exclusions = GetMutableDefault<UPjcAssetExcludeSettings>();
+	const TArray<TSoftObjectPtr<UObject>> AssetsBefore = Exclusions->ExcludedAssets;
+	ON_SCOPE_EXIT {
+		Exclusions->ExcludedAssets = AssetsBefore;
+		TArray<UObject*> Left;
+		for (const TCHAR* Name : {TEXT("C_Late"), TEXT("C_Alone"), TEXT("OL_Holder")}) {
+			if (UObject* Object = FindObject<UObject>(nullptr, *(Root / Name + TEXT(".") + Name))) Left.Add(Object);
+		}
+		if (Left.Num() > 0) ObjectTools::ForceDeleteObjects(Left, false);
+		IFileManager::Get().DeleteDirectory(*FPackageName::LongPackageNameToFilename(Root + TEXT("/")), false, true);
+		UPjcSubsystem::Scan(false);
+	};
+
+	// two unused curves and a library the exclusions keep, empty at first
+	IAssetRegistry& Registry = UPjcSubsystem::GetModuleAssetRegistry().Get();
+	TArray<UPackage*> Packages;
+	const auto NewCurve = [&Root, &Packages](const TCHAR* Name) {
+		UCurveFloat* Curve = NewObject<UCurveFloat>(CreatePackage(*(Root / Name)), Name, RF_Public | RF_Standalone);
+		FAssetRegistryModule::AssetCreated(Curve);
+		Curve->MarkPackageDirty();
+		Packages.Add(Curve->GetOutermost());
+		return Curve;
+	};
+	UCurveFloat* Late = NewCurve(TEXT("C_Late"));
+	NewCurve(TEXT("C_Alone"));
+	UObjectLibrary* Holder = NewObject<UObjectLibrary>(CreatePackage(*(Root / TEXT("OL_Holder"))), TEXT("OL_Holder"), RF_Public | RF_Standalone);
+	Holder->ObjectBaseClass = UCurveFloat::StaticClass();
+	FAssetRegistryModule::AssetCreated(Holder);
+	Holder->MarkPackageDirty();
+	Packages.Add(Holder->GetOutermost());
+	const auto SaveAndRead = [this, &Registry](const TArray<UPackage*>& ToSave) {
+		if (!TestTrue(TEXT("saved"), UEditorLoadingAndSavingUtils::SavePackages(ToSave, false))) return false;
+		TArray<FString> Files;
+		for (const UPackage* Package : ToSave) {
+			Files.Add(
+				FPaths::ConvertRelativePathToFull(
+					FPackageName::LongPackageNameToFilename(Package->GetName(), FPackageName::GetAssetPackageExtension())
+				)
+			);
+		}
+		Registry.ScanFilesSynchronous(Files, true);
+		return true;
+	};
+	if (!SaveAndRead(Packages)) return false;
+	Exclusions->ExcludedAssets.Add(TSoftObjectPtr<UObject> {FSoftObjectPath {Root / TEXT("OL_Holder.OL_Holder")}});
+
+	const FName LateName {*(Root / TEXT("C_Late"))};
+	const FName AloneName {*(Root / TEXT("C_Alone"))};
+	if (!TestTrue(TEXT("scanned"), UPjcSubsystem::Scan(false))) return false;
+	if (!TestFalse(TEXT("C_Late unused"), UPjcSubsystem::GetScanResult().IsUsed(LateName))) return false;
+	if (!TestFalse(TEXT("C_Alone unused"), UPjcSubsystem::GetScanResult().IsUsed(AloneName))) return false;
+	TSet<FName> UsedBefore;
+	for (const auto& Pair : UPjcSubsystem::GetScanResult().Usage) {
+		if (Pair.Value.bUsed) UsedBefore.Add(Pair.Key);
+	}
+
+	// an unsaved change in the library uses C_Late: the save before the delete makes it used
+	Holder->AddObject(Late);
+	Holder->MarkPackageDirty();
+	if (!SaveAndRead({Holder->GetOutermost()})) return false;
+	if (!TestTrue(TEXT("scanned after the save"), UPjcSubsystem::Scan(false))) return false;
+
+	TArray<FName> ToDelete {LateName, AloneName};
+	const TArray<FName> UsedNow = PjcActions::LeaveOutNewlyUsed(UsedBefore, UPjcSubsystem::GetScanResult().Usage, ToDelete);
+	TestEqual(TEXT("C_Late became used"), UsedNow, TArray<FName> {LateName});
+	TestEqual(TEXT("only C_Alone is deleted"), ToDelete, TArray<FName> {AloneName});
+	// an asset used before the save is not reported as made used by it
+	TArray<FName> Already {FName {*(Root / TEXT("OL_Holder"))}};
+	TestEqual(TEXT("used before: not reported"), PjcActions::LeaveOutNewlyUsed(UsedBefore, UPjcSubsystem::GetScanResult().Usage, Already).Num(), 0);
+	TestEqual(TEXT("used before: stays in the list"), Already.Num(), 1);
+
+	TArray<FAssetData> Assets;
+	for (const auto& Asset : UPjcSubsystem::GetScanResult().Unused) {
+		if (ToDelete.Contains(Asset.PackageName)) Assets.Add(Asset);
+	}
+	if (!TestEqual(TEXT("C_Alone in the unused list"), Assets.Num(), 1)) return false;
+	UPjcSubsystem::DeleteAssets(Assets, false, false);
+	TestFalse(TEXT("C_Alone deleted"), FPackageName::DoesPackageExist(AloneName.ToString()));
+	TestTrue(TEXT("C_Late on disk"), FPackageName::DoesPackageExist(LateName.ToString()));
 	return true;
 }
 

@@ -37,15 +37,7 @@ namespace PjcActions
 			}
 			SPjcScanBar::ScanProject();
 
-			const TMap<FName, FPjcAssetUsage>& Usage = UPjcSubsystem::GetScanResult().Usage;
-			TArray<FName> UsedNow;
-			Packages.RemoveAll([&Usage, &UsedBefore, &UsedNow](const FName Package) {
-				const FPjcAssetUsage* Now = Usage.Find(Package);
-				if (!Now || !Now->bUsed || UsedBefore.Contains(Package)) return false;
-
-				UsedNow.Add(Package);
-				return true;
-			});
+			const TArray<FName> UsedNow = LeaveOutNewlyUsed(UsedBefore, UPjcSubsystem::GetScanResult().Usage, Packages);
 			if (UsedNow.Num() == 0) return;
 
 			for (const FName Package : UsedNow) {
@@ -61,6 +53,18 @@ namespace PjcActions
 			ShowWarning(Text);
 		}
 	}	// namespace
+
+	TArray<FName> LeaveOutNewlyUsed(const TSet<FName>& UsedBefore, const TMap<FName, FPjcAssetUsage>& Usage, TArray<FName>& Packages) {
+		TArray<FName> UsedNow;
+		Packages.RemoveAll([&Usage, &UsedBefore, &UsedNow](const FName Package) {
+			const FPjcAssetUsage* Now = Usage.Find(Package);
+			if (!Now || !Now->bUsed || UsedBefore.Contains(Package)) return false;
+
+			UsedNow.Add(Package);
+			return true;
+		});
+		return UsedNow;
+	}
 
 	void ShowWarning(const FString& Text) {
 		FNotificationInfo Info {FText::FromString(Text)};

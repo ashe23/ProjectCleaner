@@ -748,7 +748,7 @@ void SPjcCleanWindow::Run() {
 	Percent = 1.0f;
 
 	// what was not deleted, and what lost a reference
-	FillNotDeleted();
+	FillNotDeleted(CleanResult);
 	FPjcCleanPlan::GetBrokenReferencers(Deleted, CleanResult.Broken);
 	for (const FName Referencer : CleanResult.Broken) {
 		UE_LOG(LogProjectCleaner, Warning, TEXT("Clean project: %s references a deleted asset"), *Referencer.ToString());
@@ -905,7 +905,7 @@ TSharedRef<SWidget> SPjcCleanWindow::MakeDone() {
 						CleanResult.NumInMemory += InMemory;
 						CleanResult.NumDeleted += Gone;
 						UPjcSubsystem::Scan(false);
-						FillNotDeleted();
+						FillNotDeleted(CleanResult);
 						Rebuild();
 						return FReply::Handled();
 					})
@@ -952,14 +952,14 @@ TSharedRef<SWidget> SPjcCleanWindow::MakeDone() {
 	// clang-format on
 }
 
-void SPjcCleanWindow::FillNotDeleted() {
+void SPjcCleanWindow::FillNotDeleted(FPjcCleanResult& Result) {
 	// what revision control keeps is listed apart: force delete cannot remove it
-	CleanResult.NotDeleted.Reset();
-	CleanResult.Blocked.Reset();
+	Result.NotDeleted.Reset();
+	Result.Blocked.Reset();
 	const TSet<FName>& Blocked = UPjcSubsystem::GetLastCleanupBlocked();
 	for (const auto& Pair : UPjcSubsystem::GetLastCleanupKept()) {
 		const FString Line = FString::Printf(TEXT("%s \u00B7 %s"), *FPackageName::GetShortName(Pair.Key), *Pair.Value);
-		(Blocked.Contains(Pair.Key) ? CleanResult.Blocked : CleanResult.NotDeleted).Add(Line);
+		(Blocked.Contains(Pair.Key) ? Result.Blocked : Result.NotDeleted).Add(Line);
 	}
 }
 

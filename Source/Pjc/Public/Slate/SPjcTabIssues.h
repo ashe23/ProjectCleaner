@@ -80,6 +80,15 @@ class SPjcTabIssues final : public SCompoundWidget
 		return Rows.Num();
 	}
 
+	const TArray<TSharedPtr<FPjcIssueRow>>& GetRows() const {
+		return Rows;
+	}
+
+	// Delete failed: rows per cause, before the cause filters
+	const TMap<FString, int32>& GetFailedCauses() const {
+		return FailedCauses;
+	}
+
   private:
 
 	using FRowPtr = TSharedPtr<FPjcIssueRow>;

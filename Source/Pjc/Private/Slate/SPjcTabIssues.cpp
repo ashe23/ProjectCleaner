@@ -84,7 +84,8 @@ namespace
 		}
 		OutKey = TEXT("Held in memory");
 		OutColor = TEXT("ProjectCleaner.Color.Red");
-		OutReason = TEXT("Held by ") + Holder;
+		// "in memory by <object>" from the delete, else what holds it
+		OutReason = (Holder.StartsWith(TEXT("in memory by ")) ? TEXT("Held ") : TEXT("Held by ")) + Holder;
 		OutToDo = TEXT("Close what uses it and clean again, or use Force delete");
 	}
 	const FName PjcIssueColCheck {TEXT("Check")};

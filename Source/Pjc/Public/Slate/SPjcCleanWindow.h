@@ -56,6 +56,9 @@ class SPjcCleanWindow final : public SCompoundWidget
 	// @return false when there was none
 	static bool GetLastResult(int32& OutDeleted, int32& OutNotDeleted);
 
+	// What the last delete kept, as result lines: held by something (NotDeleted) or kept by revision control (Blocked)
+	static void FillNotDeleted(FPjcCleanResult& Result);
+
   private:
 
 	enum class EPhase : uint8
@@ -93,7 +96,6 @@ class SPjcCleanWindow final : public SCompoundWidget
 	void SetStep(const int32 Step, const FString& Current);
 	static void PumpUi();
 	void Close();
-	void FillNotDeleted();
 
 	TWeakPtr<SWindow> Window;
 	TSharedPtr<SBox> Body;

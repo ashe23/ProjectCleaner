@@ -4,6 +4,8 @@
 
 #include "CoreMinimal.h"
 
+struct FPjcAssetUsage;
+
 // Actions the Project Cleaner tools share
 namespace PjcActions
 {
@@ -14,6 +16,10 @@ namespace PjcActions
 	// Saves unsaved assets before a delete (the editor asks). A delete reads the saved files, and a save can make an asset
 	// used: an actor placed in an unsaved level. False when the user does not save. OutSaved: something was saved
 	bool SaveForDelete(bool* OutSaved = nullptr);
+
+	// Packages a save made used: unused in UsedBefore (the scan before the save), used in Usage (the scan after it).
+	// Removes them from Packages and returns them
+	TArray<FName> LeaveOutNewlyUsed(const TSet<FName>& UsedBefore, const TMap<FName, FPjcAssetUsage>& Usage, TArray<FName>& Packages);
 
 	// Notification with the warning icon and a link to the Output Log
 	void ShowWarning(const FString& Text);
